@@ -1,0 +1,24 @@
+{
+  "id": "lumos",
+  "name": "LUMOS (Zhejiang University)",
+  "group": "fluoro",
+  "what": "803 living patients: 1,620 lumbar AP or lateral radiographs and 280 non-contrast lumbar CTs, anonymised DICOM and NPY; diagnostic radiography, not C-arm fluoroscopy; no pose given",
+  "level_truth": "levels readable from the paired CT after a 2D/3D registration",
+  "reach": "get",
+  "status": "open on Zenodo; never fetched",
+  "licence": "not recorded",
+  "link": "https://zenodo.org/records/18173664",
+  "how_to_get": [
+    "Open https://zenodo.org/records/18173664 and read its licence line.",
+    "Fetch the 46.4 GB archive to Ceph as a Slurm job (sbatch, never on the login node), verify the record's md5."
+  ],
+  "grid_path": null,
+  "counts": {
+    "patients": 803,
+    "radiographs": 1620,
+    "ct_volumes": 280,
+    "size_gb": 46.4
+  },
+  "measured": {},
+  "record": "spine-program 01_carm_level_detection/docs/research/research_datasets_fourth_pass_verified_2026-09-22.json; https://keyueshi.github.io/LUMOS"
+}

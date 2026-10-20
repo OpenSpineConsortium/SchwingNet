@@ -1,0 +1,21 @@
+{
+  "id": "carmlspine",
+  "name": "C-ArmLSpine (Surgio-B51)",
+  "group": "fluoro",
+  "what": "149 lumbar intraoperative cases from one mobile C-arm: AP and lateral spot frames with a CBCT of the same device",
+  "level_truth": "yes, lumbar, projected from the CBCT (two labellers agreeing on 814 of 910 bodies); 3 real L6 cases",
+  "reach": "held",
+  "status": "the test set and the demo; never trained on in the zero-shot arm; case134 headers carry a real PatientID, never printed",
+  "licence": "CC BY 4.0",
+  "link": "https://zenodo.org/records/22768651",
+  "how_to_get": [],
+  "grid_path": "/rs/rs_grp_oschome/go2432/data/carmlspine",
+  "counts": {
+    "cases": 149,
+    "spot_frames": 299,
+    "cbct_volumes": 149,
+    "size_gb": 86.834
+  },
+  "measured": {},
+  "record": "spine-program 01_carm_level_detection/DATA.md; spine-program 01_carm_level_detection/docs/handoff/DATASET_USAGE.md 2.1"
+}

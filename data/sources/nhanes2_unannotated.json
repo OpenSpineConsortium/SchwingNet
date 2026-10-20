@@ -1,0 +1,18 @@
+{
+  "id": "nhanes2_unannotated",
+  "name": "NHANES II unannotated films",
+  "group": "films",
+  "what": "16,531 digitised films without landmarks",
+  "level_truth": "none; pseudo-labels cut anomalous accuracy 20 points",
+  "reach": "held",
+  "status": "unused by a written criterion",
+  "licence": "open (NCHS)",
+  "link": "https://wwwn.cdc.gov/nchs/data/nhanes2/NH2_Xray.htm",
+  "how_to_get": [],
+  "grid_path": null,
+  "counts": {
+    "films": 16531
+  },
+  "measured": {},
+  "record": "spine-program 01_carm_level_detection/docs/handoff/DATASET_USAGE.md 2.2"
+}

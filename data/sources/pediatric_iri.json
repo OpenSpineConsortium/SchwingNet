@@ -1,0 +1,21 @@
+{
+  "id": "pediatric_iri",
+  "name": "Pediatric IRI abdominal angiography",
+  "group": "video",
+  "what": "95,308 real fluoroscopy images in 1,357 sequences with the lumbar spine in field; pediatric, DSA subtraction frames to be excluded",
+  "level_truth": "none",
+  "reach": "get",
+  "status": "a grain calibration target and an unlabelled pool; 150 to 200 frames would be annotated as a test set",
+  "licence": "not recorded",
+  "link": null,
+  "how_to_get": [
+    "Find the release by name (the record holds no link); read its terms; fetch to Ceph as a job."
+  ],
+  "grid_path": null,
+  "counts": {
+    "images": 95308,
+    "sequences": 1357
+  },
+  "measured": {},
+  "record": "spine-program 01_carm_level_detection/docs/FLUORO_DATASET_STRATEGY.md tier 2"
+}

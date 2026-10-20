@@ -115,3 +115,8 @@ Decisions the owner still owns, each with its default, which runs unless he says
 2. The witness set as section 4 lists it; default as listed.
 3. The identity level per source as the registry files will state it (person for films, cadaver for DeepFluoro, case for COBRA, source volume for renders); default as stated.
 4. The word and the number of jobs for each step of section 8, given when that step is ready; nothing is submitted before it.
+
+## 10. Future directions
+
+- Veterinary medicine (the owner, 2026-10-20): the workflow takes a species the way it takes a dataset. The pig CBCT, CT and planar images of Goswami 2020 (LevelCheck, 3D-to-2D intensity-based registration; open on IEEE DataPort, and seven zips in spine-program's archive) are the first veterinary source record in data/sources/, and a pig registry shard, keyed by animal as a person is keyed, would train and test the same stages with no change to the flow. Nothing of it starts before version 1.
+- The source registry (data/sources/, docs/research/datasets-inventory.md, #23) is the catalogue the shard registry of task #10 points at: each shard names its source id, so a source's licence and reach travel with every frame cut from it.

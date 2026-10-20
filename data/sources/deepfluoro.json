@@ -1,0 +1,22 @@
+{
+  "id": "deepfluoro",
+  "name": "DeepFluoro (Cios Fusion)",
+  "group": "fluoro",
+  "what": "6 cadaver specimens: 366 H5 frames with CTs, and a vendor DICOM deposit of 2,659 frames and 19 CTs",
+  "level_truth": "pelvis and lower lumbar, from the CT",
+  "reach": "held",
+  "status": "the sacrum detector's training; 2,293 vendor frames unused with no written criterion",
+  "licence": "CC BY-NC-SA 4.0",
+  "link": "https://github.com/eigenvivek/DiffDRR-Datasets",
+  "how_to_get": [],
+  "grid_path": "/rs/rs_grp_oschome/go2432/data/deepfluoro_h5/raw/deepfluoro; /rs/rs_grp_oschome/go2432/data/deepfluoro_vendor",
+  "counts": {
+    "specimens": 6,
+    "h5_frames": 366,
+    "vendor_frames": 2659,
+    "vendor_ct": 19,
+    "size_gb": 116.26
+  },
+  "measured": {},
+  "record": "spine-program 01_carm_level_detection/DATA.md; https://github.com/rg2/DeepFluoroLabeling-IPCAI2020"
+}

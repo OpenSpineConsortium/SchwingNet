@@ -1,0 +1,18 @@
+{
+  "id": "aasce",
+  "name": "AASCE / BoostNet whole-spine films",
+  "group": "films",
+  "what": "609 labelled AP whole-spine films on Ceph; 579 on HOME (481 labelled plus 98 challenge test)",
+  "level_truth": "thoracic, as a test set",
+  "reach": "held",
+  "status": "thoracic test only (608 films); a request-form source",
+  "licence": "by request form",
+  "link": "https://aasce19.github.io/",
+  "how_to_get": [],
+  "grid_path": null,
+  "counts": {
+    "films": 609
+  },
+  "measured": {},
+  "record": "spine-program 01_carm_level_detection/docs/handoff/DATASET_USAGE.md 2.2"
+}

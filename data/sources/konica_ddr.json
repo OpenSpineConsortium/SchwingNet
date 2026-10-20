@@ -1,0 +1,18 @@
+{
+  "id": "konica_ddr",
+  "name": "Konica Minolta dynamic digital radiography sequences",
+  "group": "video",
+  "what": "flat-panel lumbar motion sequences shown in a marketing video; not fluoroscopy, a separate arm",
+  "level_truth": "none named",
+  "reach": "get",
+  "status": "request 10 drafted, never sent; expect an NDA or a pointer to a clinical site",
+  "licence": "unknown",
+  "link": "https://healthcare.konicaminolta.us/contact-us",
+  "how_to_get": [
+    "Send request 10 of spine-program 01_carm_level_detection/docs/data_requests/FLUORO_VIDEO_REQUESTS_READY_2026-09-26.md (10_konica.eml) through the contact page."
+  ],
+  "grid_path": null,
+  "counts": {},
+  "measured": {},
+  "record": "spine-program 01_carm_level_detection/docs/data_requests/FLUORO_VIDEO_REQUESTS_READY_2026-09-26.md 10"
+}

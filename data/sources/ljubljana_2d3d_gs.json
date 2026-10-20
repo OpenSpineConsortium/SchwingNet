@@ -1,0 +1,18 @@
+{
+  "id": "ljubljana_2d3d_gs",
+  "name": "Ljubljana 2D-3D-GS (PIXIUM 4600)",
+  "group": "fluoro",
+  "what": "18 frames of one cadaver, L1 to L5, with CT and pose",
+  "level_truth": "yes, up to 90 level boxes possible from the pose",
+  "reach": "held",
+  "status": "parameters read, no truth bank built; read-only under its ND licence",
+  "licence": "ND (read-only)",
+  "link": null,
+  "how_to_get": [],
+  "grid_path": "/rs/rs_grp_oschome/go2432/data/ljubljana",
+  "counts": {
+    "frames": 18
+  },
+  "measured": {},
+  "record": "spine-program 01_carm_level_detection/DATA.md"
+}

@@ -1,0 +1,20 @@
+{
+  "id": "seattle_science_foundation",
+  "name": "Seattle Science Foundation spine videos",
+  "group": "video",
+  "what": "12 YouTube surgical teaching videos with live C-arm feeds (spinal cord stimulator trials, kyphoplasty); re-encodes on the grid",
+  "level_truth": "chapter titles name levels in some (T12, L1)",
+  "reach": "get",
+  "status": "request 5 drafted, never sent; one request covers all 12",
+  "licence": "unknown; embedding disabled",
+  "link": "https://www.seattlesciencefoundation.org/",
+  "how_to_get": [
+    "Send request 5 of spine-program 01_carm_level_detection/docs/data_requests/FLUORO_VIDEO_REQUESTS_READY_2026-09-26.md (05_ssf.eml) asking for the original C-arm recordings of the 12 videos."
+  ],
+  "grid_path": null,
+  "counts": {
+    "videos": 12
+  },
+  "measured": {},
+  "record": "spine-program 01_carm_level_detection/docs/data_requests/FLUORO_VIDEO_REQUESTS_READY_2026-09-26.md 5; spine-program 01_carm_level_detection/docs/FLUORO_VIDEO_YOUTUBE_SCAN_2026-09-26.md"
+}

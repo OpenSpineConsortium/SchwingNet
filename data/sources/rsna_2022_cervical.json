@@ -1,0 +1,19 @@
+{
+  "id": "rsna_2022_cervical",
+  "name": "RSNA 2022 cervical spine fracture CT",
+  "group": "ct",
+  "what": "2,019 studies, 203 GB, the only voxel-anchored C1, C2 and C7 source",
+  "level_truth": "fractures; C1, C2, C7 anchors",
+  "reach": "held",
+  "status": "the zip is on the grid, Kaggle rules accepted, never unpacked; a header census refused every study for a junction count; usable for a C2 anchor and cervical renders",
+  "licence": "Kaggle competition rules (non-commercial)",
+  "link": "https://www.kaggle.com/competitions/rsna-2022-cervical-spine-fracture-detection",
+  "how_to_get": [],
+  "grid_path": null,
+  "counts": {
+    "studies": 2019,
+    "size_gb": 203
+  },
+  "measured": {},
+  "record": "spine-program 01_carm_level_detection/docs/handoff/DATASET_USAGE.md; spine-program 10_data_platform_grid/code/data_platform/DATA_MANIFEST.md"
+}

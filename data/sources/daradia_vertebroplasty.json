@@ -1,0 +1,18 @@
+{
+  "id": "daradia_vertebroplasty",
+  "name": "DARADIA vertebroplasty video (Kolkata)",
+  "group": "video",
+  "what": "a step-by-step percutaneous vertebroplasty under fluoroscopy on YouTube",
+  "level_truth": "none named",
+  "reach": "get",
+  "status": "request 14 drafted, never sent",
+  "licence": "unknown",
+  "link": "https://daradia.com/",
+  "how_to_get": [
+    "Send request 14 of spine-program 01_carm_level_detection/docs/data_requests/FLUORO_VIDEO_REQUESTS_READY_2026-09-26.md (14_daradia.eml) to info@daradia.com."
+  ],
+  "grid_path": null,
+  "counts": {},
+  "measured": {},
+  "record": "spine-program 01_carm_level_detection/docs/data_requests/FLUORO_VIDEO_REQUESTS_READY_2026-09-26.md 14"
+}

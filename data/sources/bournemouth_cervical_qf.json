@@ -1,0 +1,23 @@
+{
+  "id": "bournemouth_cervical_qf",
+  "name": "Bournemouth cervical quantitative fluoroscopy (BORDaR 385)",
+  "group": "video",
+  "what": "252 lateral flexion and extension sequences from 63 people at 15 fps, 1024 x 1024 16-bit DICOM; the deposit holds the per-frame vertebral corner tracks (.mat, 24 MB) and no pixels",
+  "level_truth": "level-named corner tracks C0 to T1 on every frame (geometry only until the cine arrives)",
+  "reach": "get",
+  "status": "the tracks are on the grid; the DICOM cine is request 1, drafted, never sent",
+  "licence": "CC BY 4.0 (the tracks); README.rtf CC BY-ND",
+  "link": "https://bordar.bournemouth.ac.uk/385/",
+  "how_to_get": [
+    "Send request 1 of spine-program 01_carm_level_detection/docs/data_requests/FLUORO_VIDEO_REQUESTS_READY_2026-09-26.md (01_bournemouth.eml), citing doi:10.18746/bmth.data.00000385 and doi:10.3390/jfmk9010055, asking for the anonymised 16-bit DICOM keyed to the .mat event ids.",
+    "The same letter asks Professor Breen for the lumbar cine (below)."
+  ],
+  "grid_path": "/rs/rs_grp_oschome/go2432/data/realxray/bournemouth_qf/raw/Cervical_Database.mat",
+  "counts": {
+    "sequences": 252,
+    "people": 63,
+    "frames_per_sequence_median": 301
+  },
+  "measured": {},
+  "record": "spine-program 01_carm_level_detection/docs/FLUORO_VIDEO_SOURCES_2026-09-26.md; spine-program 01_carm_level_detection/docs/data_requests/FLUORO_VIDEO_REQUESTS_READY_2026-09-26.md 1"
+}
