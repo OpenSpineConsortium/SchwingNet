@@ -1,0 +1,6 @@
+# Every file asks the owner for review until docs/agents/OWNERSHIP.md names
+# areas and the lines below follow it. Filled by template-init with the
+# owner's login, or in an organization's copy with the login of whoever made
+# the copy: GitHub asks a user or a team for review, never an organization
+# (docs/setup/github.md, section 7).
+* @{{CODE_OWNER}}

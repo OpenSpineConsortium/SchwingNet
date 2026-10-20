@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "agents": {
+    "developer": {
+      "purpose": "develop",
+      "source": "symphony",
+      "runs": "manual",
+      "workers": []
+    },
+    "reviewer": {
+      "purpose": "review",
+      "source": "symphony",
+      "runs": "manual",
+      "workers": []
+    },
+    "tester": {
+      "purpose": "test",
+      "source": "symphony",
+      "runs": "manual",
+      "workers": []
+    }
+  }
+}

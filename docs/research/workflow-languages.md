@@ -1,0 +1,10 @@
+# A better language than hand-written workflow YAML
+
+Source: the owner's question in the thread "Protocol fixes toward 0.5.1", 2026-10-19: "is there any better way to do what im doing? github agentic workflows? compiled language to yml? a more powerful language to write github actions in than yml?" Answered from the plan the owner approved on 2026-10-14, docs/checkpoints/2026-10-14b/plans/gh-aw-migration-plan.md, and its two notes beside it; nothing new was measured.
+
+The owner chose this on 2026-10-14, and both parts waited for 0.5.0, published on 2026-10-18:
+
+- Candidate A, a compiler of Symphony's own: the eleven workflows written as Python, the language the rest of Symphony is in, and compiled to the YAML GitHub runs, with a check that the committed YAML is what the compiler writes. It keeps CLAUDE_CODE_OAUTH_TOKEN, the subscription token, as the only Claude credential, and adds no dependency. Its pull requests run in the order of the plan's section 6, PR 1a (actions pinned to commits) first; PR 1a's saved patch is under docs/checkpoints/2026-10-14b/plans/ and its pins need resolving again.
+- A pilot of GitHub Agentic Workflows (gh-aw) on symphony-protocol-canary, section 7. gh-aw compiles a Markdown file to a lock workflow, but its documentation says CLAUDE_CODE_OAUTH_TOKEN "is not supported" and is ignored by its built-in Claude engine, so a subscription-token run goes through a self-defined engine, which compiled on 2026-10-14 and which gh-aw calls unsupported; its threat detection runs only on its built-in engines.
+
+Other languages that generate workflow YAML (Dagger's SDKs, CUE, Pkl, Jsonnet, a TypeScript generator) each add a dependency, which the writing rule makes an issue first, and give nothing a Python compiler does not. The one public runtime (CLAUDE.md, the durable decision of 2026-10-13) shrinks the YAML further: each adopted repository keeps a few thin caller files and the logic lives in one versioned dispatcher. Nothing here is built until the coordinator starts Candidate A's thread.

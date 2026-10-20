@@ -1,0 +1,17 @@
+# Editor defaults for every file: UTF-8, LF, a final newline, two spaces in
+# YAML, JSON and Markdown, four in Python, as .gitattributes and the checks expect.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+[*.{yml,yaml,json,md}]
+indent_size = 2
+
+[*.py]
+indent_size = 4

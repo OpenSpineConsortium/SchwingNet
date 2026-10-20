@@ -1,0 +1,154 @@
+# Packet spec-H: from the Symphony and Beethoven Taxonomy Spec, sections: 8. What is unique
+
+=== [unit mggj4hxkexp.49673] heading level 2
+8. What is unique
+
+=== [unit mggj4hxkexp.49691] paragraph
+Every single mechanism Symphony uses has prior art. What may be unique is the combination, and three of its parts. Each claim below names the observation that would refute it. Symphony's three claims, U1 to U3, were put to an adversarial search of 25 candidates on 2026-10-15 (research/taxonomy/verify/03); none had four of the five mechanisms below, but one, unsorry, has (c) and looser forms of (a), (b) and (d), so the claims are worded narrowly. Beethoven's three, U4 to U6, were not part of that search; they rest on narrower searches in research notes 04, 11 and 12.
+
+=== [unit mggj4hxkexp.50091] paragraph
+The five mechanisms: (a) a claim made atomic by a git ref on the shared forge; (b) automatic release of an idle claim by a CI job, keeping the work; (c) a board and coordinator that run as CI jobs with state only in forge objects; (d) people's own sessions and agents in CI under one claim rule, on a flat-rate subscription; (e) validation of the shipped protocol code by exhaustive interleavings against an oracle written from the spec, with mutants.
+
+=== [unit mggj4hxkexp.50546] table 1, row 0, column 0 (header row)
+Mechanism
+
+=== [unit mggj4hxkexp.50557] table 1, row 0, column 1 (header row)
+Prior art
+
+=== [unit mggj4hxkexp.50569] table 1, row 1, column 0
+(a)
+
+=== [unit mggj4hxkexp.50574] table 1, row 1, column 1
+terraform-backend-git and actions-mutex (2020), DND-IT/action-lock (2026), Anthropic's C-compiler harness (2026-02), agentic-setup's create-only branch push, gh-aw's ledger and unsorry's claims branch
+
+=== [unit mggj4hxkexp.50777] table 1, row 2, column 0
+(b)
+
+=== [unit mggj4hxkexp.50782] table 1, row 2, column 1
+Leases (Gray and Cheriton, 1989); zulipbot, a hosted bot, unassigns an issue whose assignee does not answer within 3 days of a prompt sent after a week without an update; unsorry's two-hour reaper in Actions (2026-06); DND-IT/action-lock (2026-02) frees a CI lock held over 600 seconds by its commit's date, the clock Symphony reads, with no work to keep; agentsync flags claims idle for 24 hours as stale without freeing them
+
+=== [unit mggj4hxkexp.50903] table 1, row 3, column 0
+(c)
+
+=== [unit mggj4hxkexp.50908] table 1, row 3, column 1
+unsorry (2026-06) and gh-aw's work queue (2026-10)
+
+=== [unit mggj4hxkexp.50961] table 1, row 4, column 0
+(d)
+
+=== [unit mggj4hxkexp.50966] table 1, row 4, column 1
+aeon runs one agent in Actions on the subscription token, with no claims; claude-code-action itself
+
+=== [unit mggj4hxkexp.51068] table 1, row 5, column 0
+(e)
+
+=== [unit mggj4hxkexp.51073] table 1, row 5, column 1
+gh-aw checks TLA+ models of its queue, not its code; TLA+, P and Stateright are the established techniques
+
+=== [unit mggj4hxkexp.51180] heading level 3
+The claims
+
+=== [unit mggj4hxkexp.51194] table 2, row 0, column 0 (header row)
+#
+
+=== [unit mggj4hxkexp.51197] table 2, row 0, column 1 (header row)
+Claim
+
+=== [unit mggj4hxkexp.51204] table 2, row 0, column 2 (header row)
+Grade
+
+=== [unit mggj4hxkexp.51211] table 2, row 0, column 3 (header row)
+Refuted by
+
+=== [unit mggj4hxkexp.51224] table 2, row 1, column 0
+U1
+
+=== [unit mggj4hxkexp.51228] table 2, row 1, column 1
+Symphony is the only system found that puts people's own Claude Code sessions and agents running in GitHub Actions on a subscription token under one claim rule, with the claim, board, release and coordinator kept in GitHub objects and run by Actions
+
+=== [unit mggj4hxkexp.51479] table 2, row 1, column 2
+Inferred, from the search above
+
+=== [unit mggj4hxkexp.51512] table 2, row 1, column 3
+A system with four of (a) to (e), or with (a), (c) and (d) together
+
+=== [unit mggj4hxkexp.51582] table 2, row 2, column 0
+U2
+
+=== [unit mggj4hxkexp.51586] table 2, row 2, column 1
+It is the only system found that releases a claim by idleness since its branch's last commit and keeps the work under a renamed branch
+
+=== [unit mggj4hxkexp.51722] table 2, row 2, column 2
+Inferred
+
+=== [unit mggj4hxkexp.51732] table 2, row 2, column 3
+A system that releases by last activity and keeps the work. Caveat: the idle clock is the pusher's (spec risk 13)
+
+=== [unit mggj4hxkexp.51848] table 2, row 3, column 0
+U3
+
+=== [unit mggj4hxkexp.51852] table 2, row 3, column 1
+It is the only coordination protocol for agents found whose shipped code, not a model of it, is checked over every interleaving against an oracle written from the spec's text, with mutants that prove the checks bite
+
+=== [unit mggj4hxkexp.52069] table 2, row 3, column 2
+Inferred; the search was narrow (no paper databases)
+
+=== [unit mggj4hxkexp.52123] table 2, row 3, column 3
+A coordination layer for agents whose shipped code is model-checked
+
+=== [unit mggj4hxkexp.52193] table 2, row 4, column 0
+U4
+
+=== [unit mggj4hxkexp.52197] table 2, row 4, column 1
+Beethoven is the only system found that plans agents as Slurm jobs on the student's own subscription, reporting checklists as gates over each run's record, and contracts checked symbolically, together
+
+=== [unit mggj4hxkexp.52399] table 2, row 4, column 2
+Inferred; an absence claim from a search that ran out of budget; mostly unbuilt
+
+=== [unit mggj4hxkexp.52480] table 2, row 4, column 3
+Any system that gates REFORMS, CLAIM or a similar checklist in code
+
+=== [unit mggj4hxkexp.52550] table 2, row 5, column 0
+U5
+
+=== [unit mggj4hxkexp.52554] table 2, row 5, column 1
+Beethoven's launcher is the only tool found that starts Claude Code's Remote Control from an sbatch job through Open OnDemand, with nothing installed by an administrator
+
+=== [unit mggj4hxkexp.52725] table 2, row 5, column 2
+Inferred
+
+=== [unit mggj4hxkexp.52735] table 2, row 5, column 3
+A center-run Remote Control app for Open OnDemand
+
+=== [unit mggj4hxkexp.52787] table 2, row 6, column 0
+U6
+
+=== [unit mggj4hxkexp.52791] table 2, row 6, column 1
+beethoven-qa is the only project found in a narrow search of public repositories that makes contracts plus symbolic execution the required merge gate for code agents write
+
+=== [unit mggj4hxkexp.52940] table 2, row 6, column 2
+Inferred; a narrow search; the gate is a bounded search for most conditions, not a proof
+
+=== [unit mggj4hxkexp.53030] table 2, row 6, column 3
+Another required gate of this kind
+
+=== [unit mggj4hxkexp.53065] heading level 3
+What is not unique, and should not be claimed
+
+=== [unit mggj4hxkexp.53113] list item
+An atomic claim on the forge: gh-aw, unsorry and agentic-setup have one.
+
+=== [unit mggj4hxkexp.53187] list item
+Coordination that runs in Actions with no server: unsorry and gh-aw do it too.
+
+=== [unit mggj4hxkexp.53267] list item
+Free coordination on a public repository: any of them gets free minutes there.
+
+=== [unit mggj4hxkexp.53347] list item
+The subscription token in Actions: aeon and anyone using claude-code-action have it.
+
+=== [unit mggj4hxkexp.53433] list item
+One issue, one branch, one pull request: Copilot's cloud agent works the same way.
+
+=== [unit mggj4hxkexp.53517] list item
+The stack of Symphony and Beethoven: it is a design, not yet code (section 2).

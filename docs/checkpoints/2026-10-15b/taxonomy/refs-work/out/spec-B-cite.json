@@ -1,0 +1,784 @@
+{
+ "edits": [
+  {
+   "unit_id": "mggj4hxkexp.7413",
+   "find": "not a systematic review; research note 13)",
+   "replace": "not a systematic review [[s1]])"
+  },
+  {
+   "unit_id": "mggj4hxkexp.7413",
+   "find": "(Reported, from a news digest)",
+   "replace": "(Reported, from a news digest [[s2]])"
+  },
+  {
+   "unit_id": "mggj4hxkexp.7413",
+   "find": "Coding Agents (Reported)",
+   "replace": "Coding Agents (Reported [[s3]])"
+  },
+  {
+   "unit_id": "mggj4hxkexp.7413",
+   "find": "from a dataset of the radar)",
+   "replace": "from a dataset of the radar [[s4]])"
+  },
+  {
+   "unit_id": "mggj4hxkexp.7413",
+   "find": "(Verified, landscape.yml)",
+   "replace": "(Verified, landscape.yml [[s5]])"
+  },
+  {
+   "unit_id": "mggj4hxkexp.8843",
+   "find": "The CNCF landscape;",
+   "replace": "The CNCF landscape [[s5]];"
+  },
+  {
+   "unit_id": "mggj4hxkexp.8843",
+   "find": "Sapkota et al. 2025",
+   "replace": "Sapkota et al. 2025 [[s6]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.8843",
+   "find": "harness and sandbox",
+   "replace": "harness and sandbox [[s7]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.9017",
+   "find": "Zhang 2025",
+   "replace": "Zhang 2025 [[s8]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.9017",
+   "find": "Hassan et al. 2025",
+   "replace": "Hassan et al. 2025 [[s9]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.9231",
+   "find": "Guo et al. 2024",
+   "replace": "Guo et al. 2024 [[s10]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.9231",
+   "find": "Tran et al. 2025",
+   "replace": "Tran et al. 2025 [[s11]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.9231",
+   "find": "Anthropic's patterns",
+   "replace": "Anthropic's patterns [[s12]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.9471",
+   "find": "Yang et al. 2025",
+   "replace": "Yang et al. 2025 [[s13]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.9471",
+   "find": "Gelernter 1985",
+   "replace": "Gelernter 1985 [[s14]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.9471",
+   "find": "Nii 1986",
+   "replace": "Nii 1986 [[s15]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.9471",
+   "find": "on stigmergy",
+   "replace": "on stigmergy [[s16,s17]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.9738",
+   "find": "Kung and Robinson 1981",
+   "replace": "Kung and Robinson 1981 [[s18]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.9738",
+   "find": "Gray and Cheriton 1989",
+   "replace": "Gray and Cheriton 1989 [[s19]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.9738",
+   "find": "Chubby, 2006",
+   "replace": "Chubby, 2006 [[s20]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.9910",
+   "find": "Malone and Crowston 1994",
+   "replace": "Malone and Crowston 1994 [[s21]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.10042",
+   "find": "Guo et al.;",
+   "replace": "Guo et al. [[s10]];"
+  },
+  {
+   "unit_id": "mggj4hxkexp.10042",
+   "find": "Suter et al. 2025",
+   "replace": "Suter et al. 2025 [[s22]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.10042",
+   "find": "runner docs",
+   "replace": "runner docs [[s23]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.10206",
+   "find": "Suter et al.;",
+   "replace": "Suter et al. [[s22]];"
+  },
+  {
+   "unit_id": "mggj4hxkexp.10206",
+   "find": "of claude-code-action",
+   "replace": "of claude-code-action [[s24]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.10377",
+   "find": "Sapkota et al.;",
+   "replace": "Sapkota et al. [[s6]];"
+  },
+  {
+   "unit_id": "mggj4hxkexp.10377",
+   "find": "State and Memory;",
+   "replace": "State and Memory [[s5]];"
+  },
+  {
+   "unit_id": "mggj4hxkexp.10377",
+   "find": "Beads",
+   "replace": "Beads [[s25]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.10621",
+   "find": "billing pages",
+   "replace": "billing pages [[s26]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.10621",
+   "find": "Anthropic's pricing",
+   "replace": "Anthropic's pricing [[s27]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.10854",
+   "find": "MAST;",
+   "replace": "MAST [[s28]];"
+  },
+  {
+   "unit_id": "mggj4hxkexp.10854",
+   "find": "feedback sensors",
+   "replace": "feedback sensors [[s4]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.10854",
+   "find": "Merge-Readiness Packs",
+   "replace": "Merge-Readiness Packs [[s9]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.11075",
+   "find": "Liu et al. 2024",
+   "replace": "Liu et al. 2024 [[s29]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.11075",
+   "find": "Suter et al.;",
+   "replace": "Suter et al. [[s22]];"
+  },
+  {
+   "unit_id": "mggj4hxkexp.11075",
+   "find": "de-RSE guideline",
+   "replace": "de-RSE guideline [[s30]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.11075",
+   "find": "Hasselbring et al. 2024",
+   "replace": "Hasselbring et al. 2024 [[s31]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.11483",
+   "find": "Malone and Crowston define",
+   "replace": "Malone and Crowston [[s21]] define"
+  },
+  {
+   "unit_id": "mggj4hxkexp.11483",
+   "find": "of the paper; research note 13)",
+   "replace": "of the paper [[s32,s33]])"
+  },
+  {
+   "unit_id": "mggj4hxkexp.11483",
+   "find": "(Inferred; research note 13)",
+   "replace": "(Inferred [[s1,s34]])"
+  }
+ ],
+ "sources": [
+  {
+   "key": "s1",
+   "kind": "project-record",
+   "authors": [],
+   "title": "Taxonomies a classification of agent software can build on (as of 2026-10-15)",
+   "container": "research/taxonomy/notes",
+   "date": "2026-10-15",
+   "version": "",
+   "url": "",
+   "public_url": "",
+   "read": "record",
+   "path": "/mnt/project-files/research/taxonomy/notes/13-taxonomy-literature.md",
+   "supports": "the dozen agent taxonomies read share no compute-or-payer axis; the mapping of Malone and Crowston's dependencies onto agent work"
+  },
+  {
+   "key": "s2",
+   "kind": "news",
+   "authors": [],
+   "title": "2025-09-17",
+   "container": "imzye/sre.news",
+   "date": "2025-09-17",
+   "version": "",
+   "url": "https://github.com/imzye/sre.news/blob/HEAD/content/2025-09-17.md",
+   "public_url": "",
+   "read": "search",
+   "path": "",
+   "supports": "Gartner's 2025 Magic Quadrant for AI Code Assistants (news digest entry)"
+  },
+  {
+   "key": "s3",
+   "kind": "web-page",
+   "authors": [
+    "ChatForest"
+   ],
+   "title": "Gartner's 2026 Magic Quadrant for Enterprise AI Coding Agents: GitHub, OpenAI, Cursor, and Anthropic All Lead \u2014 But Not the Same Way",
+   "container": "chatforest.com",
+   "date": "2026-05-25",
+   "version": "",
+   "url": "https://raw.githubusercontent.com/Chatforest/chatforest.com/HEAD/content/reviews/gartner-magic-quadrant-2026-enterprise-ai-coding-agents-github-copilot-openai-codex-cursor.md",
+   "public_url": "",
+   "read": "search",
+   "path": "",
+   "supports": "a 2026 Gartner Magic Quadrant for Enterprise AI Coding Agents (single secondary page)"
+  },
+  {
+   "key": "s4",
+   "kind": "dataset",
+   "authors": [],
+   "title": "thoughtworks-tech-radar-volumes",
+   "container": "setchy/thoughtworks-tech-radar-volumes",
+   "date": "2026-10-15",
+   "version": "",
+   "url": "https://github.com/setchy/thoughtworks-tech-radar-volumes",
+   "public_url": "",
+   "read": "search",
+   "path": "",
+   "supports": "Thoughtworks Technology Radar Vol 34 blips: Beads, team of coding agents, coding agent swarms, feedback sensors for coding agents"
+  },
+  {
+   "key": "s5",
+   "kind": "repository-file",
+   "authors": [
+    "CNCF"
+   ],
+   "title": "landscape.yml",
+   "container": "cncf/landscape",
+   "date": "2026-10-15",
+   "version": "150352e3d857",
+   "url": "https://github.com/cncf/landscape/blob/master/landscape.yml",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the CNCF landscape's AI Agent category, its eleven subcategories, State and Memory"
+  },
+  {
+   "key": "s6",
+   "kind": "paper",
+   "authors": [
+    "Sapkota R",
+    "Roumeliotis KI",
+    "Karkee M"
+   ],
+   "title": "AI Agents vs. Agentic AI: A Conceptual Taxonomy, Applications and Challenges",
+   "container": "Information Fusion 126 (2026) 103599",
+   "date": "2025-05-15",
+   "version": "2505.10468",
+   "url": "https://arxiv.org/abs/2505.10468",
+   "public_url": "",
+   "read": "search",
+   "path": "",
+   "supports": "generative AI, AI agents and agentic AI as layers; memory and coordination dimensions"
+  },
+  {
+   "key": "s7",
+   "kind": "blog-post",
+   "authors": [
+    "Anthropic"
+   ],
+   "title": "Scaling Managed Agents: Decoupling the brain from the hands",
+   "container": "Anthropic Engineering",
+   "date": "2026-04-08",
+   "version": "",
+   "url": "https://www.anthropic.com/engineering/managed-agents",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Anthropic's split of the agent harness from the sandbox"
+  },
+  {
+   "key": "s8",
+   "kind": "preprint",
+   "authors": [
+    "Feng KJK",
+    "McDonald DW",
+    "Zhang AX"
+   ],
+   "title": "Levels of Autonomy for AI Agents",
+   "container": "arXiv",
+   "date": "2025-06-14",
+   "version": "2506.12469",
+   "url": "https://arxiv.org/abs/2506.12469",
+   "public_url": "",
+   "read": "search",
+   "path": "",
+   "supports": "five autonomy levels by the user's role: operator, collaborator, consultant, approver, observer"
+  },
+  {
+   "key": "s9",
+   "kind": "preprint",
+   "authors": [
+    "Hassan AE",
+    "Li H",
+    "Lin D",
+    "Adams B",
+    "Chen TH",
+    "Kashiwa Y",
+    "Qiu D"
+   ],
+   "title": "Agentic Software Engineering: Foundational Pillars and a Research Roadmap",
+   "container": "arXiv",
+   "date": "2025",
+   "version": "2509.06216",
+   "url": "https://arxiv.org/abs/2509.06216",
+   "public_url": "",
+   "read": "search",
+   "path": "",
+   "supports": "the SE 3.0 autonomy levels and Merge-Readiness Packs"
+  },
+  {
+   "key": "s10",
+   "kind": "paper",
+   "authors": [
+    "Guo T",
+    "Chen X",
+    "Wang Y",
+    "Chang R",
+    "Pei S",
+    "Chawla NV",
+    "Wiest O",
+    "Zhang X"
+   ],
+   "title": "Large Language Model based Multi-Agents: A Survey of Progress and Challenges",
+   "container": "IJCAI 2024",
+   "date": "2024",
+   "version": "2402.01680",
+   "url": "https://arxiv.org/abs/2402.01680",
+   "public_url": "",
+   "read": "search",
+   "path": "",
+   "supports": "communication structures (layered, decentralized, centralized, shared message pool) and the agents-environment interface"
+  },
+  {
+   "key": "s11",
+   "kind": "preprint",
+   "authors": [
+    "Tran KT",
+    "Dao D",
+    "Nguyen MD",
+    "Pham QV",
+    "O'Sullivan B",
+    "Nguyen HD"
+   ],
+   "title": "Multi-Agent Collaboration Mechanisms: A Survey of LLMs",
+   "container": "arXiv",
+   "date": "2025-01-10",
+   "version": "2501.06322",
+   "url": "https://arxiv.org/abs/2501.06322",
+   "public_url": "",
+   "read": "search",
+   "path": "",
+   "supports": "collaboration structures (peer-to-peer, centralized, distributed) and coordination protocols"
+  },
+  {
+   "key": "s12",
+   "kind": "blog-post",
+   "authors": [
+    "Anthropic"
+   ],
+   "title": "Building effective agents",
+   "container": "Anthropic Engineering",
+   "date": "2024-12-19",
+   "version": "",
+   "url": "https://www.anthropic.com/engineering/building-effective-agents",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "workflows versus agents and the five patterns, orchestrator-workers among them"
+  },
+  {
+   "key": "s13",
+   "kind": "preprint",
+   "authors": [
+    "Yang"
+   ],
+   "title": "A Survey of AI Agent Protocols",
+   "container": "arXiv",
+   "date": "2025",
+   "version": "2504.16736",
+   "url": "https://arxiv.org/abs/2504.16736",
+   "public_url": "",
+   "read": "search",
+   "path": "",
+   "supports": "protocols classed as context-oriented (MCP) or inter-agent (A2A)"
+  },
+  {
+   "key": "s14",
+   "kind": "blog-post",
+   "authors": [],
+   "title": "Generative Communication in Linda",
+   "container": "the morning paper (archive copy in simbo1905/the-morning-paper-archive)",
+   "date": "2015-02-17",
+   "version": "",
+   "url": "https://raw.githubusercontent.com/simbo1905/the-morning-paper-archive/HEAD/content/2015/02/generative-communication-in-linda.txt",
+   "public_url": "https://blog.acolyer.org/2015/02/17/generative-communication-in-linda/",
+   "read": "search",
+   "path": "",
+   "supports": "Gelernter 1985: Linda's tuple space, out, in and read (secondary summary)"
+  },
+  {
+   "key": "s15",
+   "kind": "preprint",
+   "authors": [
+    "Salemi A",
+    "Parmar M",
+    "Goyal P",
+    "Song Y",
+    "Yoon J",
+    "Zamani H",
+    "Palangi H",
+    "Pfister T"
+   ],
+   "title": "LLM-based Multi-Agent Blackboard System for Information Discovery in Data Science",
+   "container": "arXiv",
+   "date": "2025-09-30",
+   "version": "2510.01285",
+   "url": "https://arxiv.org/abs/2510.01285",
+   "public_url": "",
+   "read": "search",
+   "path": "",
+   "supports": "the blackboard architecture of Hearsay-II and Nii (1986), as described and cited there"
+  },
+  {
+   "key": "s16",
+   "kind": "repository-file",
+   "authors": [],
+   "title": "docs/research/organizational-patterns.md",
+   "container": "graphwork/wg",
+   "date": "",
+   "version": "",
+   "url": "https://raw.githubusercontent.com/graphwork/wg/HEAD/docs/research/organizational-patterns.md",
+   "public_url": "",
+   "read": "search",
+   "path": "",
+   "supports": "Heylighen's 2016 definition of stigmergy (secondary summary)"
+  },
+  {
+   "key": "s17",
+   "kind": "repository-file",
+   "authors": [],
+   "title": "related-literature/multi-agent-llm-mediator/_agent_findings/06_stigmergy.md",
+   "container": "LeeHengYu/mediator-coevo",
+   "date": "",
+   "version": "",
+   "url": "https://raw.githubusercontent.com/LeeHengYu/mediator-coevo/HEAD/related-literature/multi-agent-llm-mediator/_agent_findings/06_stigmergy.md",
+   "public_url": "",
+   "read": "search",
+   "path": "",
+   "supports": "Heylighen 2016 generalizing stigmergy to open source (secondary summary)"
+  },
+  {
+   "key": "s18",
+   "kind": "repository-file",
+   "authors": [],
+   "title": "cs202/10_OCC.md",
+   "container": "fengsxy/paper_reading",
+   "date": "",
+   "version": "",
+   "url": "https://raw.githubusercontent.com/fengsxy/paper_reading/HEAD/cs202/10_OCC.md",
+   "public_url": "",
+   "read": "search",
+   "path": "",
+   "supports": "Kung and Robinson's optimistic concurrency control: read, validate, write (secondary summary)"
+  },
+  {
+   "key": "s19",
+   "kind": "repository-file",
+   "authors": [
+    "Kleppmann"
+   ],
+   "title": "content/en/ch9.md",
+   "container": "Vonng/ddia",
+   "date": "",
+   "version": "",
+   "url": "https://raw.githubusercontent.com/Vonng/ddia/HEAD/content/en/ch9.md",
+   "public_url": "",
+   "read": "search",
+   "path": "",
+   "supports": "Gray and Cheriton's leases (cited as ref 73) and fencing tokens, in DDIA 2nd edition ch. 9"
+  },
+  {
+   "key": "s20",
+   "kind": "paper",
+   "authors": [
+    "Burrows"
+   ],
+   "title": "The Chubby lock service for loosely-coupled distributed systems",
+   "container": "OSDI 2006",
+   "date": "2006",
+   "version": "",
+   "url": "https://www.usenix.org/legacy/event/osdi06/tech/full_papers/burrows/burrows.pdf",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "advisory locks, session leases, lock-delay and sequencers"
+  },
+  {
+   "key": "s21",
+   "kind": "paper",
+   "authors": [
+    "Malone TW",
+    "Crowston K"
+   ],
+   "title": "The interdisciplinary study of coordination",
+   "container": "ACM Computing Surveys 26(1):87-119",
+   "date": "1994",
+   "version": "",
+   "url": "https://doi.org/10.1145/174666.174668",
+   "public_url": "",
+   "read": "search",
+   "path": "",
+   "supports": "coordination as managing dependencies among activities; the dependency families"
+  },
+  {
+   "key": "s22",
+   "kind": "paper",
+   "authors": [
+    "Suter F",
+    "Coleman T",
+    "Ferreira da Silva R"
+   ],
+   "title": "A Terminology for Scientific Workflow Systems",
+   "container": "Future Generation Computer Systems 174:107974",
+   "date": "2025",
+   "version": "2506.07838",
+   "url": "https://arxiv.org/abs/2506.07838",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "workflow systems' execution (runner, resource manager, serverless), planning (static, dynamic, event-driven) and domain axes"
+  },
+  {
+   "key": "s23",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "content/actions/reference/runners/github-hosted-runners.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs/blob/12691d2/content/actions/reference/runners/github-hosted-runners.md",
+   "public_url": "https://docs.github.com/en/actions/reference/runners/github-hosted-runners",
+   "read": "opened",
+   "path": "",
+   "supports": "GitHub-hosted runners as an execution environment"
+  },
+  {
+   "key": "s24",
+   "kind": "documentation",
+   "authors": [
+    "Anthropic"
+   ],
+   "title": "Claude Code GitHub Actions",
+   "container": "Claude Code Docs",
+   "date": "",
+   "version": "",
+   "url": "https://code.claude.com/docs/en/github-actions",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "claude-code-action's interactive (@claude) and automation (prompt) modes"
+  },
+  {
+   "key": "s25",
+   "kind": "repository",
+   "authors": [],
+   "title": "beads",
+   "container": "gastownhall/beads",
+   "date": "",
+   "version": "",
+   "url": "https://github.com/gastownhall/beads",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "a git-backed issue tracker as a shared work ledger for coding agents"
+  },
+  {
+   "key": "s26",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "content/billing/concepts/product-billing/github-actions.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs/blob/12691d2/content/billing/concepts/product-billing/github-actions.md",
+   "public_url": "https://docs.github.com/en/billing/concepts/product-billing/github-actions",
+   "read": "opened",
+   "path": "",
+   "supports": "who pays for Actions minutes: free on standard runners in public repositories, quotas for private ones"
+  },
+  {
+   "key": "s27",
+   "kind": "web-page",
+   "authors": [
+    "Anthropic"
+   ],
+   "title": "Pricing",
+   "container": "claude.com",
+   "date": "",
+   "version": "",
+   "url": "https://claude.com/pricing",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Claude's subscription plans and API pricing"
+  },
+  {
+   "key": "s28",
+   "kind": "repository",
+   "authors": [
+    "Cemri"
+   ],
+   "title": "MAST",
+   "container": "multi-agent-systems-failure-taxonomy/MAST",
+   "date": "2025-07-23",
+   "version": "",
+   "url": "https://github.com/multi-agent-systems-failure-taxonomy/MAST",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the multi-agent failure taxonomy, with task verification as one of its three categories"
+  },
+  {
+   "key": "s29",
+   "kind": "preprint",
+   "authors": [
+    "Liu"
+   ],
+   "title": "Large Language Model-Based Agents for Software Engineering: A Survey",
+   "container": "arXiv",
+   "date": "2024",
+   "version": "2409.02977",
+   "url": "https://arxiv.org/abs/2409.02977",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "agents for software engineering classed by SE task and by agent architecture"
+  },
+  {
+   "key": "s30",
+   "kind": "standard",
+   "authors": [
+    "GI",
+    "de-RSE"
+   ],
+   "title": "GI and de-RSE Template Guideline for the Efficient Development of Research Software",
+   "container": "Gesellschaft fuer Informatik, GI Leitlinien",
+   "date": "2025",
+   "version": "",
+   "url": "https://doi.org/10.18420/2025-gi_de-rse",
+   "public_url": "https://raw.githubusercontent.com/gi-ev/RSE-software-entwicklungs-leitlinien/HEAD/docs/RSE_Leitlinien_Softwareentwicklung-en-US.md",
+   "read": "opened",
+   "path": "",
+   "supports": "research software by kind, use, technology readiness level and application class"
+  },
+  {
+   "key": "s31",
+   "kind": "preprint",
+   "authors": [
+    "Hasselbring",
+    "Druskat",
+    "Bernoth",
+    "Betker",
+    "Felderer",
+    "Ferenz",
+    "Lamprecht",
+    "Linxweiler",
+    "Rumpe"
+   ],
+   "title": "Toward Research Software Categories",
+   "container": "arXiv",
+   "date": "2024",
+   "version": "2404.14364",
+   "url": "https://arxiv.org/abs/2404.14364",
+   "public_url": "",
+   "read": "search",
+   "path": "",
+   "supports": "role-based, developer-based and maturity-based categories of research software"
+  },
+  {
+   "key": "s32",
+   "kind": "repository-file",
+   "authors": [],
+   "title": "backend/paper_graph/data/venue_txt/348_.txt",
+   "container": "yiren-liu/coquest",
+   "date": "",
+   "version": "",
+   "url": "https://raw.githubusercontent.com/yiren-liu/coquest/HEAD/backend/paper_graph/data/venue_txt/348_.txt",
+   "public_url": "",
+   "read": "search",
+   "path": "",
+   "supports": "Malone and Crowston's abstract: coordination as managing dependencies, four dependency families (mirror)"
+  },
+  {
+   "key": "s33",
+   "kind": "repository-file",
+   "authors": [],
+   "title": "docs/research/A1-multi-agent-orchestration/06-malone-crowston-coordination-theory/SUMMARY.md",
+   "container": "AlexKapadia/AutoFirm",
+   "date": "",
+   "version": "",
+   "url": "https://raw.githubusercontent.com/AlexKapadia/AutoFirm/HEAD/docs/research/A1-multi-agent-orchestration/06-malone-crowston-coordination-theory/SUMMARY.md",
+   "public_url": "",
+   "read": "search",
+   "path": "",
+   "supports": "Malone and Crowston's Table 1: producer and consumer split into prerequisite, transfer and usability (summary)"
+  },
+  {
+   "key": "s34",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "docs/agents/PROTOCOL.md",
+   "container": "OpenSpineConsortium/symphony-template",
+   "date": "",
+   "version": "",
+   "url": "https://github.com/OpenSpineConsortium/symphony-template/blob/main/docs/agents/PROTOCOL.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Symphony's claims, blockers, pull requests, required check, landing order of overlaps and epics"
+  }
+ ],
+ "uncited": [],
+ "changes": [
+  "Replaced the three mentions of research note 13 with markers: the note itself where the claim is its own inference (s1), the Malone and Crowston mirrors it names (s32, s33), and PROTOCOL.md for the Symphony facts the mapping rests on (s34).",
+  "Added markers to every Reported or Verified claim in the opening paragraph (news digest, ChatForest page, Thoughtworks radar dataset, CNCF landscape.yml) and to every work named in the table's Built on column.",
+  "Classical papers read only through third-party summaries (Kung and Robinson, Gray and Cheriton, Gelernter, Nii, Heylighen) cite the summary pages the note names, not the papers, since the note gives no address for the papers themselves.",
+  "Looked up titles and author initials for several sources in the mirror pages note 13 cites, because the note gives only family names or truncated titles."
+ ],
+ "checker_problems": 0
+}

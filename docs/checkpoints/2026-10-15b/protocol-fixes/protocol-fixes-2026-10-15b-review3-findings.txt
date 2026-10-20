@@ -1,0 +1,117 @@
+{
+ "title": "The \"newest\" in \"the newest entry either read listed\" is never exercised: a library that takes the older or the first read's floor passes every lane",
+ "file": "validation/verbs.py",
+ "line": 135,
+ "severity": "should-fix",
+ "scenario": "Each fault that gives a floor produces at most one listed entry, or the same entry twice. pushes-lagging-twice answers both reads from the same model, so both list the same entry. pushes-lagging-then-500 lists nothing on its second read. No fault lists two different stale entries, which is what an activity that is catching up gives: two pushes behind on the first read, one behind on the second. invariants.push_readings takes the max correctly, but nothing feeds it two floors, so the max is never tested. In the worktree at a6465a5, with these two mutants added to mutants.MUTANTS, mutants.judge reported SLIPPED for both against every catcher (baselines in 37 s): head_since_copy(floor_of=lambda read, first: first.floor or read.floor), and one taking the earlier of the two floors. Concrete case against the library itself, using a stub api: pushes at 2026-10-13T06:00Z and 2026-10-14T10:00Z, the head pushed at 12:00Z and listed by neither read, the commit dated 48 h back, now 12:00Z. The first read lists the 06:00 push and the second the 10:00 push. The library dates the claim at 10:00 and holds it. The first-read-floor mutant dates it at 06:00 the day before, 30 h idle, and releases the claim in the run its holder's own push started. So G2's 'checked ... never earlier than the newest entry either read listed' is checked only for 'either', not for 'newest'.",
+ "fix": "Add a LAGGING-by-two answer to the fake, for example a LAGGING2 that drops the two newest entries. Then add a fault that answers the first read with it and the second with LAGGING, for example 'pushes-catching-up' = Fault(..., answer=LAGGING2, then=Fault(..., answer=LAGGING)). Add a step to F8.json where c's branch has three pushes and the oldest is more than a day back. Add a mutant 'the floor of the first read alone' (or the earlier floor) and pin where it is caught in tests/test_validation_traces.py UNDONE."
+}
+=====
+{
+ "title": "The spec's new 'or deleted it' has no lane: no fault lists a delete after the run read the branch, and a library that ignores such a delete passes",
+ "file": "validation/fake_github.py",
+ "line": 483,
+ "severity": "should-fix",
+ "scenario": "Round three adds 'an entry that set the branch to another head, or deleted it, dates it too when it came after the run began' to spec/PROTOCOL.md. DESIGN.md also lists 'or a delete' among the entries the fix check covers. But PUSHED_SINCE answers only append push entries. model.delete_ref also drops a deleted branch's created/pushed/earlier records, so the fake lists nothing for a deleted branch, where GitHub would list the branch_deletion as newest. A delete can therefore never be the fresh newest entry of a read. A mutant of github.pushed_by that dates a fresh entry only when its activity_type is not branch_deletion was added and judged against every catcher: SLIPPED. Failure scenario: the holder deletes claude/N between the run's branch list and its activity read. A library that ignores the delete reads again, contrary to pushes_read_again's rule. It then logs 'read from its newest entry's time' where the spec says the entry dates the claim. That is exactly what pushes_logged judges, but nothing reaches it.",
+ "fix": "Add a DELETED_SINCE answer, a branch_deletion at the run's minute whose before is the head the run read and whose after is NO_SHA. Persist it through moved_since like MOVED, and add a 'pushes-deleted' fault on the read of a claim's push. Then add a mutant that dates nothing by a fresh delete and a trace step or search that catches it. Otherwise, drop 'or a delete' from DESIGN.md's list of what the fix check shows."
+}
+=====
+{
+ "title": "Fault.then can fire before its head's times are spent, contrary to its docstring",
+ "file": "validation/fake_github.py",
+ "line": 207,
+ "severity": "should-fix",
+ "scenario": "FakeGitHub.__init__ flattens each chain into self.faults as independent [link, times] entries. fault_for returns the first link with times left that matches the call. Whether the head is spent is never checked. The docstring says 'then is the fault that takes the calls this one matches once its times are spent'. This holds only while head and then have the same matcher, as in both uses today. Checked: FakeGitHub(M.seeded((1,)), (Fault('GET', '/activity', 500, query=PUSHES, then=Fault('GET', '/issues/*', 502)),)).fault_for('GET /issues/1/comments', {}) returns the 502 link with no activity read made. A later chained fault with a different matcher would make the lane judge an interleaving other than the one its name and note describe.",
+ "fix": "Have fault_for skip a link while the link before it in its chain still has times left, for example by storing each link with the index of its head and checking that index's count. Alternatively, have Fault.chain or the constructor reject a then whose method, path and query differ from its head's, and say so in the docstring."
+}
+=====
+{
+ "title": "The floor misses the run a claim's first push starts: a fresh branch's activity that lags both reads is an empty list, so a commit dated back still has its claim released at once",
+ "file": "sdlc_protocol/adapters/github.py",
+ "line": 651,
+ "severity": "should-fix",
+ "scenario": "Worker pushes a new claude/5 at 11:59:30. Its claim commit is dated 48 hours back (the pusher's clock). board.yml runs on branch creation, not on later pushes to claude/*, so this create-event run is the run the claim's own push started. If both activity reads (around 12:00:20, and again after the 3 s pause) come before GitHub lists the branch's making, each returns []. read_push then gives PushRead(why=NO_PUSH_LISTED, again=True, floor=\"\") twice, so the floor is \"\" and head_since returns (\"\", committed - 48h). The claim reads as idle (probe: head_since(..., [[],[]], ...) -> ('', '2026-10-13T12:00:00Z'), is_idle True, 3 calls, one 3 s pause). releases_due releases it and the board renames claude/5 to released/5-<sha> in the same run, while its holder is still pushing. A name a rename freed behaves the same way, since the model gives such a name no entries. Round three's motivation (a) is exactly this failure: a claim dated back released in the run its own push started. The floor only closes it where an older entry of the branch exists, as in a pull_request synchronize run, and not for a branch's first push, the most common case. DESIGN.md line 735 says without condition that 'a backdated commit no longer has its claim released at once'. C6's backdated fresh claim relies on that and is exposed to the same lag. Only 'What it leaves' admits the committer date decides 'where it lists none of the branch's'.",
+ "fix": "Give the run a lower bound that holds only for that one run. cli already reads GITHUB_EVENT_NAME and GITHUB_REF_NAME, so plan_board can pass the ref a create event (or a pull_request opened/synchronize event) named down through collect and releases to head_since. When neither read lists an entry for that branch, head_since dates its head no earlier than now, or leaves it out of releases for that run. The next run reads the activity again, so no claim is held for good. Alternatively, state the residual next to DESIGN.md line 735 and C6's 'F8's own check', and stop claiming the backdated release is closed."
+}
+=====
+{
+ "title": "PR #35 body's How and Cost sections still describe round one: one call, then the committer date",
+ "file": "sdlc_protocol/adapters/github.py",
+ "line": 641,
+ "severity": "should-fix",
+ "scenario": "The PR body (head 6506c15) says 'github.head_since and github.head_pushed_at make one call ... Otherwise the function reads the head's committer date, as before'. Under Cost it says a run costs 'one call more, the commit, for a claim whose newest entry set another head or whose read is refused', and that claim_released 'costs one call more than before'. It also says 'The lane now holds 95 mutants'. The library at a6465a5 differs on each point. It makes a second activity read after a 3 s pause (PUSH_RETRY_SECONDS) wherever the first lists no push of the head or GitHub's answer may change, so an undated claim costs up to three calls and a pause, and the board pays that pause per such claim on every run. It dates by any entry within PUSH_SINCE_SLACK of the run's start whatever heads it names, and by the floor where that is strictly later than the committer date. The mutation lane holds 109 mutants. claim_released likewise costs up to three calls more than before, not one. The owner merges on the PR body and is told the wrong cost and the wrong rule.",
+ "fix": "Rewrite the PR body's How, Cost and The harness sections to match head_since's docstring and DESIGN.md's 'The cost' paragraph. Cover the second read and its pause, the fresh-entry rule, the floor and its strictness, the two log forms, the call counts (1, 2, or up to 3 with a pause) and the 109 mutants."
+}
+=====
+{
+ "title": "board.Release and released_keys still say pushed_at is the push that set the head and the committer date stands in otherwise, but pushed_at may now hold the floor",
+ "file": "sdlc_protocol/board.py",
+ "line": 276,
+ "severity": "should-fix",
+ "scenario": "Both reads list only a stale entry: a push to another head 30 hours ago, or a delete. The committer date is older. head_since then returns (floor, \"\"), so the snapshot's release carries pushed_at = the time of an entry that is not the push that set the head (probe: ('2026-10-14T06:00:00Z', '')). The Release docstring still reads: 'when GitHub received the push that set the head, as the repository's activity records it (pushed_at) ... or, where the activity records no such push, when the head was committed (committed_at)'. Release.last_commit says 'GitHub's time of the push that set the head, else the head's committer date'. released_keys says 'the last commit is when GitHub received the push that set the head, else its committer date'. Round three updated only the Snapshot docstring. A later change that trusts pushed_at as the head's push will misread a floor or a fresh entry naming another head as that push: comparing it to the branch's making, or showing it as 'pushed at'.",
+ "fix": "Update Release's class docstring, Release.last_commit and released_keys to say what head_since now puts in pushed_at: the push that set the head, or an entry after the run began whatever heads it names, or the newest entry listed where it is strictly later than the committer date. Or keep pushed_at for a push of the head and carry the floor separately."
+}
+=====
+{
+ "title": "The run's log line can misstate what was read: a 500 then a 404 is logged, 'read twice' after a refused read, and 'later than its committer date' when there is none",
+ "file": "sdlc_protocol/adapters/github.py",
+ "line": 652,
+ "severity": "nit",
+ "scenario": "There are three cases, all from probes against a6465a5. (1) The first read gets a 500 and the second a 404 (a repository GitHub keeps no activity of). `why = read.why or first.why` logs 'GitHub refused ... (HTTP 500), so its idleness is read from its committer date'. head_since's docstring says a 404 repository is not logged, and round two logged nothing here. (2) The first read gets a 500 and the second lists a stale entry, or the entry set the head but its timestamp is missing or unparseable. The line then says 'the repository's activity, read twice, lists no push that set the branch's head', yet one read was refused or the push of the head was listed. (3) GitHub does not know the commit (committed_at returns \"\"). The floor line says '..., later than its committer date', but there is no committer date.",
+ "fix": "Let a second read's 404 clear why, as round two did, unless a floor was taken. Word NO_PUSH_LISTED, or pick the why, by what each read actually returned. Say 'GitHub does not show its commit' in place of 'later than its committer date' when committed is \"\"."
+}
+=====
+{
+ "title": "The 'either read' half of SPEC[\"floor\"] has no catcher: a library that keeps only the first read's floor gets past all 109 lanes and releases a claim in the run its own push started",
+ "file": "validation/verbs.py",
+ "line": 141,
+ "severity": "should-fix",
+ "scenario": "Mutant: head_since_copy(..., floor_of=lambda read, first: first.floor), which is the mirror of 'the floor of the last read alone'. Every trace replays green under it. The whole mutation lane (mutants.main with it added to MUTANTS) reports 'SLIPPED: no search caught it'. The reason is that no fault refuses the first read and lags the second: pushes-500 lets the model answer the second read, which dates the push, and pushes-lagging-then-500 has the floor on the first read. In real use GitHub returns a 500 to the first read and then answers one push behind. A commit dated back (c's at 129, dated 81) gets the committer date, is 48 h idle, and is released while its holder pushes. That is finding (a) again. I checked it: I copied F8.json, added one board with a new fault pushes-500-then-lagging = Fault('GET','/activity',500,query=PUSHES,then=Fault(...,200,answer=LAGGING)), and replayed. The library is green. The mutant is red at step 45 (G2, G3, G10: 'released #3, which was not due'). DESIGN.md says two mutants 'hold the floor to the spec's clause', but only the last-read half is held. Related gap: the fake has no answer that lags two pushes, so no fault gives the two reads different floors, and a floor taken as the earlier of the two (min instead of github.latest) also slips every lane.",
+ "fix": "Add a fault pushes-500-then-lagging (a 500, then=LAGGING) to verbs.FAULTS. Add a board with it to F8.json after step 44; c's head is still dated 81 there, so the floor of 128 holds it. Add the mutant 'the floor of the first read alone' (floor_of=lambda read, first: first.floor), credited to the regression traces. Raise the count to 110 and update the README/DESIGN chains. Optionally add a LAGGING-by-two answer, so that a first read two pushes behind and a second one push behind pin 'the later of the two'."
+}
+=====
+{
+ "title": "The new spec clause 'or deleted it' (a fresh delete dates the claim) is reached by no fault or search, so ignoring deletes gets past every lane",
+ "file": "validation/oracle.py",
+ "line": 65,
+ "severity": "should-fix",
+ "scenario": "Round three adds to SPEC[\"moved off\"]: 'an entry that set the branch to another head, or deleted it, dates it too when it came after the run began'. DESIGN lists 'or a delete' among the entries pushed_by dates. Mutant: pushed_by dating a fresh entry only when its 'after' is not 0000... (a branch_deletion skipped). All traces stay green, and the whole lane reports 'SLIPPED'. The reason is that MOVED and MOVED_TWICE list only pushes, and no verb deletes a claim branch after a run has read it. Under that mutant, a holder who deletes the branch after the run read it gets a second read and a log line saying the claim was read from its newest entry's time. Reads owe neither of these. The floor still dates the claim at the same minute, so the cost is an extra read and a false log line, which are exactly what pushes_read_again and pushes_logged exist to hold.",
+ "fix": "Add an answer, say DELETED_SINCE, that lists a branch_deletion at the run's minute with before=head and after=NO_SHA, plus a fault pushes-deleted on the read of a claim's push. Add a board with that fault to F8.json and the mutant 'a fresh delete dates nothing' (pushed_by excluding after == NO_SHA from the came_since rule). The mutant is then caught by the read count and the log."
+}
+=====
+{
+ "title": "'which the build at 286ba37 held' is false for the both-lag case that the trace's step 41 shows",
+ "file": "validation/mutants.py",
+ "line": 644,
+ "severity": "nit",
+ "scenario": "The docstrings of head_since_with_no_floor and DESIGN.md's fix check (a) say that where both reads lagged and a commit was dated back, the claim was released in the run its own push started, 'which the build before that review (286ba37) held'. They then cite step 41. At 286ba37, head_pushed_at dated an entry only when the head was on one of its sides ('' when the newest entry 'names that head on neither side'). At step 41 the newest listed entry is c's push of 128 (before=claim commit, after=C128), and the head is C129. So 286ba37 dated nothing there and also released the claim. I checked this by replaying F8.json without the 127 board, under head_since_with_no_floor with pushed_by = 'sha in (after, before)': it is red at that step (G2, G3, G10, released #3). 286ba37 held only the narrower case, where the stale entry moved the branch off the head (a head pushed back).",
+ "fix": "Narrow the claim in both places. For example: 'which the build at 286ba37 held where the stale entry moved the branch off the head, and no build before the floor held where it named the head on neither side, as at step 41.'"
+}
+=====
+{
+ "title": "Two docstrings still say no canary check reads whether a rename keeps a branch's activity, but C6 now records exactly that",
+ "file": "validation/model.py",
+ "line": 172,
+ "severity": "nit",
+ "scenario": "Commit 52e66ba makes C6 record the newest activity entries of released/R-<sha7> and claude/R once the rename is seen. ACTIVITY_SETTLES['activity after the rename'] says this settles 'whether GitHub keeps a renamed branch's entries ... under its new name, as the model's rename carries them over (model.rename_ref)'. Round three updated DESIGN.md 3.2 (line 245) from 'no canary check reads them' to 'which canary C6 now records'. It missed two other places that still say the opposite. One is validation/model.py:170-172, the comment on Model.pushed: 'A rename keeps the old name's, as GitHub's activity is assumed to; no canary check reads that yet.' The other is the module docstring of validation/fake_github.py, lines 65-67: 'a renamed branch keeping them, which the model's rename does and no canary check reads yet.' A reader working on the model's rename is told nothing checks the assumption and never looks in canary.json's 'activity after the rename' record, the one place that settles it.",
+ "fix": "Reword both clauses to match DESIGN.md 3.2. For model.py: '... as GitHub's activity is assumed to, which canary C6 now records (DESIGN.md section 11, What C6 records of the activity).' For fake_github.py: '... which the model's rename does and canary C6 now records.'"
+}
+=====
+{
+ "title": "DESIGN.md F8 'What it leaves' says a read refused for good leaves the committer date alone, but a refused second read keeps the first read's floor",
+ "file": "validation/DESIGN.md",
+ "line": 840,
+ "severity": "nit",
+ "scenario": "The changed sentence reads: '... so the later of the newest entry it does list and the committer date stands in for that run, ..., and the committer date alone where it lists none of the branch's or GitHub refuses the read for good'. Scenario: the first read answers 200 with a stale entry at time T (NO_PUSH_LISTED, again=True, floor=T). The second read is refused for good, for example a 403 'Resource not accessible' or a 404. head_since then computes floor = latest(read.floor, first.floor) = T and dates the claim by T whenever T is later than the committer date. The spec's 'never earlier than the newest entry either read listed', GUARANTEES G2 and the F8 paragraph above all say this. Only this sentence says the committer date alone stands in.",
+ "fix": "Narrow the clause to the first read: '... and the committer date alone where neither read lists an entry of the branch, as where GitHub refuses the first read for good'."
+}
+=====
+{
+ "title": "validation/README.md's canary entries leave out C6's new activity record and still count 51 canary tests",
+ "file": "validation/README.md",
+ "line": 81,
+ "severity": "nit",
+ "scenario": "Round three adds record_activity to C6 and four tests to tests/test_canary.py: two C6 record tests, the activity_entries test and Site.activity's newest read. The file now has 66 tests (62 before this round). README's tests/test_canary.py entry still ends '51 tests in about 2 seconds'. Neither that entry nor the scripts/canary.py entry (line 79) mentions that C6 records the activity after the rename, after the second push and after the delete, or that a refused read there is only a note. A reader of the file map would not know C6 now makes four more GitHub reads or that canary.json carries these records.",
+ "fix": "In the scripts/canary.py entry, add after C6 that it records, as observations only, the newest activity entries of both names after the rename and of the freed name after its second push and after its delete (DESIGN.md section 11). In the tests/test_canary.py entry, add the activity record (its fields, a refused read noted, a 401 stopping) to the list, and update the count to 66 tests."
+}
+=====

@@ -1,0 +1,50 @@
+name: Queue
+
+# Keeps the queue to what maintainers queued, in a crowd repository
+# (docs/project.md, docs/setup/crowdsourcing.md). Anyone with Write can put
+# a label on an issue, but there only someone with the Maintain or Admin role
+# queues work: when anyone else adds todo or blocker, opens an issue that
+# carries one, or changes the title or body of a queued issue, which can
+# change what a maintainer queued, tools/crowd_check.py queue takes the
+# label off again, says so once on the issue, and starts the board, since a
+# label taken off with GITHUB_TOKEN starts no workflow and a dispatch does.
+# A maintainer's own label or edit is left as it is. The workers' and the
+# coordinator's prompts still check who queued an issue before they take it,
+# as a second layer.
+#
+# Issue events run the default branch's copy of this file, so a writer
+# cannot change what runs here without the owner's review (.github/ is the
+# owner's in CODEOWNERS). Outside crowd mode the job never starts, so the
+# Task form queues by itself as it always has: the variable CLAUDE_CROWD is
+# unset there, and an unset variable reads as empty. There is no concurrency
+# group on purpose: GitHub keeps one pending run per group and cancels the
+# rest, which would drop a writer's event in a burst. Each run decides from
+# its own event's sender alone and removing a label is idempotent, so runs
+# side by side can at worst take a label off a little eagerly, which a
+# maintainer puts back. The run uses GITHUB_TOKEN alone and reads no secret.
+
+on:
+  issues:
+    types: [opened, labeled, edited]
+
+permissions:
+  contents: read
+  issues: write
+  actions: write
+
+jobs:
+  gate:
+    if: >-
+      vars.CLAUDE_CROWD == 'true'
+      && ((github.event.action == 'labeled' && (github.event.label.name == 'todo' || github.event.label.name == 'blocker'))
+          || ((github.event.action == 'opened' || github.event.action == 'edited')
+              && (contains(github.event.issue.labels.*.name, 'todo') || contains(github.event.issue.labels.*.name, 'blocker'))))
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - name: Keep the queue to what maintainers queued
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: python3 tools/crowd_check.py queue

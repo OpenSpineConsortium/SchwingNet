@@ -1,0 +1,416 @@
+{
+ "group": "spec-A",
+ "doc": "spec",
+ "units": [
+  {
+   "id": "mggj4hxkexp.55",
+   "kind": "heading level 2",
+   "text": "1. Purpose and scope"
+  },
+  {
+   "id": "mggj4hxkexp.73",
+   "kind": "paragraph",
+   "text": "This spec says what kind of software Symphony and Beethoven are, what they sit beside, what they add, and what is still unproven. It is the reference the manual's deep research starts from, and the research corrects it."
+  },
+  {
+   "id": "mggj4hxkexp.293",
+   "kind": "paragraph",
+   "text": "It places three things:"
+  },
+  {
+   "id": "mggj4hxkexp.319",
+   "kind": "list item",
+   "text": "Symphony, the coordination layer: a claim protocol, a board and workers for Claude Code agents, kept in a GitHub repository and run on GitHub Actions."
+  },
+  {
+   "id": "mggj4hxkexp.471",
+   "kind": "list item",
+   "text": "Beethoven, the research layer: protocols for grid jobs on Wayne State's cluster, reproducible CLAIM and REFORMS workflows, and checks on code that agents wrote."
+  },
+  {
+   "id": "mggj4hxkexp.633",
+   "kind": "list item",
+   "text": "The stack they make together, in which Claude iterates the scientific method inside strict frameworks while Symphony coordinates the agents."
+  },
+  {
+   "id": "mggj4hxkexp.774",
+   "kind": "paragraph",
+   "text": "Out of scope: the price of the paid SymphonyBoard App, legal opinions on terms of service (raised as open questions only), and the AIDaS grant text, which takes nothing from the coordination experiment until you say so."
+  },
+  {
+   "id": "mggj4hxkexp.994",
+   "kind": "paragraph",
+   "text": "Every claim carries one grade:"
+  },
+  {
+   "id": "mggj4hxkexp.1028",
+   "kind": "table 1, row 0, column 0 (header row)",
+   "text": "Grade"
+  },
+  {
+   "id": "mggj4hxkexp.1035",
+   "kind": "table 1, row 0, column 1 (header row)",
+   "text": "Means"
+  },
+  {
+   "id": "mggj4hxkexp.1042",
+   "kind": "table 1, row 0, column 2 (header row)",
+   "text": "What it needs"
+  },
+  {
+   "id": "mggj4hxkexp.1058",
+   "kind": "table 1, row 1, column 0",
+   "text": "Verified"
+  },
+  {
+   "id": "mggj4hxkexp.1068",
+   "kind": "table 1, row 1, column 1",
+   "text": "Checked against a primary source opened on the as-of date"
+  },
+  {
+   "id": "mggj4hxkexp.1127",
+   "kind": "table 1, row 1, column 2",
+   "text": "A cited link or a file and line"
+  },
+  {
+   "id": "mggj4hxkexp.1161",
+   "kind": "table 1, row 2, column 0",
+   "text": "Inferred"
+  },
+  {
+   "id": "mggj4hxkexp.1171",
+   "kind": "table 1, row 2, column 1",
+   "text": "Follows from verified facts"
+  },
+  {
+   "id": "mggj4hxkexp.1200",
+   "kind": "table 1, row 2, column 2",
+   "text": "The reasoning, written beside it"
+  },
+  {
+   "id": "mggj4hxkexp.7224",
+   "kind": "table 1, row 3, column 0",
+   "text": "Reported"
+  },
+  {
+   "id": "mggj4hxkexp.7234",
+   "kind": "table 1, row 3, column 1",
+   "text": "Taken from a secondary source or a search summary, because the primary was unreachable from the research session"
+  },
+  {
+   "id": "mggj4hxkexp.7348",
+   "kind": "table 1, row 3, column 2",
+   "text": "A re-read at the primary before anyone quotes it"
+  },
+  {
+   "id": "mggj4hxkexp.1235",
+   "kind": "table 1, row 4, column 0",
+   "text": "Open"
+  },
+  {
+   "id": "mggj4hxkexp.1241",
+   "kind": "table 1, row 4, column 1",
+   "text": "Not yet checked, or unknown"
+  },
+  {
+   "id": "mggj4hxkexp.1270",
+   "kind": "table 1, row 4, column 2",
+   "text": "A research question in section 11 that owns it"
+  },
+  {
+   "id": "mggj4hxkexp.1317",
+   "kind": "heading level 2",
+   "text": "2. The systems"
+  },
+  {
+   "id": "mggj4hxkexp.1332",
+   "kind": "heading level 3",
+   "text": "Symphony: one repository as the shared plane for many agents"
+  },
+  {
+   "id": "mggj4hxkexp.1393",
+   "kind": "paragraph",
+   "text": "Symphony makes one GitHub repository the shared state for any number of Claude Code workers: a person's local or cloud sessions, routines, and agents running as GitHub Actions jobs. It has no server of its own. The rules are a Python library with no dependencies (symphony-protocol, public, MIT), vendored into each repository beside eleven workflow files and Claude Code hooks in a whole-template copy, or beside at most three workflow files (board, tidy and metrics) and the symphony plugin's hooks in a protocol-only adoption. Verified: PROTOCOL.md, research note 01."
+  },
+  {
+   "id": "mggj4hxkexp.1816",
+   "kind": "table 2, row 0, column 0 (header row)",
+   "text": "Part"
+  },
+  {
+   "id": "mggj4hxkexp.1822",
+   "kind": "table 2, row 0, column 1 (header row)",
+   "text": "What it is"
+  },
+  {
+   "id": "mggj4hxkexp.1834",
+   "kind": "table 2, row 0, column 2 (header row)",
+   "text": "Runs on"
+  },
+  {
+   "id": "mggj4hxkexp.1844",
+   "kind": "table 2, row 1, column 0",
+   "text": "Queue"
+  },
+  {
+   "id": "mggj4hxkexp.1851",
+   "kind": "table 2, row 1, column 1",
+   "text": "Open issues labelled todo"
+  },
+  {
+   "id": "mggj4hxkexp.1878",
+   "kind": "table 2, row 1, column 2",
+   "text": "GitHub Issues"
+  },
+  {
+   "id": "mggj4hxkexp.1894",
+   "kind": "table 2, row 2, column 0",
+   "text": "Claim"
+  },
+  {
+   "id": "mggj4hxkexp.1901",
+   "kind": "table 2, row 2, column 1",
+   "text": "The push that creates branch claude/N (of two racing creations, git lets exactly one win), whose first commit adds a claim file naming the worker, the plan and the files to touch"
+  },
+  {
+   "id": "mggj4hxkexp.2025",
+   "kind": "table 2, row 2, column 2",
+   "text": "git refs on GitHub"
+  },
+  {
+   "id": "mggj4hxkexp.2046",
+   "kind": "table 2, row 3, column 0",
+   "text": "Board"
+  },
+  {
+   "id": "mggj4hxkexp.2053",
+   "kind": "table 2, row 3, column 1",
+   "text": "STATE.md on the branch board, rewritten on every issue, pull request and branch event, and every six hours as a fallback"
+  },
+  {
+   "id": "mggj4hxkexp.2175",
+   "kind": "table 2, row 3, column 2",
+   "text": "board.yml, on the workflow's own token"
+  },
+  {
+   "id": "mggj4hxkexp.2216",
+   "kind": "table 2, row 4, column 0",
+   "text": "Release"
+  },
+  {
+   "id": "mggj4hxkexp.2225",
+   "kind": "table 2, row 4, column 1",
+   "text": "A claim with no commit for 24 hours loses its labels, gets a comment saying what the branch holds, and its branch is renamed released/N-sha so the work is kept"
+  },
+  {
+   "id": "mggj4hxkexp.2386",
+   "kind": "table 2, row 4, column 2",
+   "text": "The board's run"
+  },
+  {
+   "id": "mggj4hxkexp.2404",
+   "kind": "table 2, row 5, column 0",
+   "text": "Overlaps"
+  },
+  {
+   "id": "mggj4hxkexp.2414",
+   "kind": "table 2, row 5, column 1",
+   "text": "Each file that two pieces of open work change, with the order they should land in (a blocker, then ready work, then the oldest)"
+  },
+  {
+   "id": "mggj4hxkexp.2543",
+   "kind": "table 2, row 5, column 2",
+   "text": "The board's run"
+  },
+  {
+   "id": "mggj4hxkexp.2561",
+   "kind": "table 2, row 6, column 0",
+   "text": "Workers"
+  },
+  {
+   "id": "mggj4hxkexp.2570",
+   "kind": "table 2, row 6, column 1",
+   "text": "Each named worker:name: a person's sessions by GitHub login; routines and Actions workers registered by a file under .github/symphony/workers/"
+  },
+  {
+   "id": "mggj4hxkexp.2714",
+   "kind": "table 2, row 6, column 2",
+   "text": "Sessions, routines, workers.yml"
+  },
+  {
+   "id": "mggj4hxkexp.2748",
+   "kind": "table 2, row 7, column 0",
+   "text": "Coordinator"
+  },
+  {
+   "id": "mggj4hxkexp.2761",
+   "kind": "table 2, row 7, column 1",
+   "text": "Deterministic steps release idle claims and announce overlaps; Claude plans epics into tasks, settles blocked tasks and integrates finished epics"
+  },
+  {
+   "id": "mggj4hxkexp.2908",
+   "kind": "table 2, row 7, column 2",
+   "text": "board.yml; coordinator.yml"
+  },
+  {
+   "id": "mggj4hxkexp.2937",
+   "kind": "table 2, row 8, column 0",
+   "text": "Gate"
+  },
+  {
+   "id": "mggj4hxkexp.2943",
+   "kind": "table 2, row 8, column 1",
+   "text": "The required check named check, which includes the protocol check; a second required check, qa, is planned"
+  },
+  {
+   "id": "mggj4hxkexp.3051",
+   "kind": "table 2, row 8, column 2",
+   "text": "Actions and a ruleset"
+  },
+  {
+   "id": "mggj4hxkexp.3075",
+   "kind": "table 2, row 9, column 0",
+   "text": "Push guard"
+  },
+  {
+   "id": "mggj4hxkexp.3087",
+   "kind": "table 2, row 9, column 1",
+   "text": "A PreToolUse hook that refuses forced pushes, pushes to the default branch and leases onto another worker's claim"
+  },
+  {
+   "id": "mggj4hxkexp.3202",
+   "kind": "table 2, row 9, column 2",
+   "text": "Each Claude Code session"
+  },
+  {
+   "id": "mggj4hxkexp.3227",
+   "kind": "paragraph",
+   "text": "Claude runs in only three workflows (claude.yml, the work job of workers.yml and four jobs of coordinator.yml), all through anthropics/claude-code-action@v1 on one subscription token, CLAUDE_CODE_OAUTH_TOKEN. Everything else is deterministic code on the workflow's GITHUB_TOKEN, so a worker with nothing to do starts no Claude session. The design rests on about 30 GitHub primitives, among them concurrency queues, branch renames that close a pull request, and environments with required reviewers. Verified: research note 01."
+  },
+  {
+   "id": "mggj4hxkexp.3754",
+   "kind": "paragraph",
+   "text": "Maturity. The library's first commit is 2026-10-10 and release 0.4.1 is of 2026-10-13. Its 1,379 tests and the template's 581 passed on 2026-10-15. A validation harness drives the shipped library through every interleaving of scripted workers against an oracle written from the spec's text: 16.7 million states at depth 8, and 18.8 million with two issues at depth 7, with no violation in the run of 2026-10-14, which searched the library before the fixes of F2, F15, F17, F18 and F19; 93 mutants prove the checks bite. Building the harness and reviewing the fixes it led to found 19 defects: six are fixed in release 0.4.1, eleven more on main ahead of the next release, one (F16) was settled by changing the spec, and one (F8, idleness read from the committer date) waits on the owner (validation/DESIGN.md and known.json). Not built yet: the qa check, the cap of 10 Claude runs a day, the public runtime, the control panel, the account pool, and a benchmark run of Symphony at full scale. Verified: validation run of record, research notes 01 and 12."
+  },
+  {
+   "id": "mggj4hxkexp.4568",
+   "kind": "heading level 3",
+   "text": "Beethoven: protocols, gates and agents for research on a university cluster"
+  },
+  {
+   "id": "mggj4hxkexp.4644",
+   "kind": "paragraph",
+   "text": "In the owner's words, beethoven-base and beethoven-sites hold the protocols for grid jobs on Wayne State's cluster, beethoven-research the reproducible CLAIM and REFORMS workflows, and beethoven-qa the checks on code that agents write autonomously, while beethoven-agents and symphony-protocol coordinate the agents; Claude iterates the scientific method inside these frameworks. All of Beethoven is private and proprietary. The repositories' roles and their private, proprietary status are Verified (research notes 04 and 05). That symphony-protocol coordinates Beethoven's agents is the owner's design and is in no Beethoven file yet (Inferred; see the next subsection)."
+  },
+  {
+   "id": "mggj4hxkexp.5108",
+   "kind": "table 3, row 0, column 0 (header row)",
+   "text": "Part"
+  },
+  {
+   "id": "mggj4hxkexp.5114",
+   "kind": "table 3, row 0, column 1 (header row)",
+   "text": "What it does"
+  },
+  {
+   "id": "mggj4hxkexp.5128",
+   "kind": "table 3, row 0, column 2 (header row)",
+   "text": "Built so far"
+  },
+  {
+   "id": "mggj4hxkexp.5143",
+   "kind": "table 3, row 1, column 0",
+   "text": "Launcher: hpcworker and the Chrome extension"
+  },
+  {
+   "id": "mggj4hxkexp.5189",
+   "kind": "table 3, row 1, column 1",
+   "text": "Runs the student's own claude remote-control in tmux inside an Apptainer image as an ordinary Slurm batch job, reached through Open OnDemand; outbound HTTPS only, the student's own Pro or Max sign-in, no API key and no setup-token"
+  },
+  {
+   "id": "mggj4hxkexp.5421",
+   "kind": "table 3, row 1, column 2",
+   "text": "Working at one site, Wayne State; extension 20.0.0, pre-release"
+  },
+  {
+   "id": "mggj4hxkexp.5487",
+   "kind": "table 3, row 2, column 0",
+   "text": "beethoven-base, beethoven-sites"
+  },
+  {
+   "id": "mggj4hxkexp.5520",
+   "kind": "table 3, row 2, column 1",
+   "text": "The shared library and the data-only site modules, so a new university is a pair of JSON files rather than code"
+  },
+  {
+   "id": "mggj4hxkexp.5633",
+   "kind": "table 3, row 2, column 2",
+   "text": "Built"
+  },
+  {
+   "id": "mggj4hxkexp.5641",
+   "kind": "table 3, row 3, column 0",
+   "text": "beethoven-qa"
+  },
+  {
+   "id": "mggj4hxkexp.5655",
+   "kind": "table 3, row 3, column 1",
+   "text": "Contracts on every public function (icontract), CrossHair with Z3 as a required check, six code-standards groups reported as SARIF, auto-merge with no human gate"
+  },
+  {
+   "id": "mggj4hxkexp.5818",
+   "kind": "table 3, row 3, column 2",
+   "text": "Version 5.0.0 on main, untagged (the last tag, v3.0.0, is what both consumers pin); the symbolic step confirms 13 of 165 conditions over all paths and searches the rest within 20 seconds each"
+  },
+  {
+   "id": "mggj4hxkexp.5943",
+   "kind": "table 3, row 4, column 0",
+   "text": "beethoven-agents"
+  },
+  {
+   "id": "mggj4hxkexp.5961",
+   "kind": "table 3, row 4, column 1",
+   "text": "The hermetic Apptainer image, Claude Code managed settings, a tool guard, and bee, an account switcher that never touches a credential"
+  },
+  {
+   "id": "mggj4hxkexp.6097",
+   "kind": "table 3, row 4, column 2",
+   "text": "Image, settings, guard and bee built; Metaflow on Slurm, the fenced lease, the registry and the bus not built"
+  },
+  {
+   "id": "mggj4hxkexp.6209",
+   "kind": "table 3, row 5, column 0",
+   "text": "beethoven-research"
+  },
+  {
+   "id": "mggj4hxkexp.6229",
+   "kind": "table 3, row 5, column 1",
+   "text": "REFORMS (32 items, 20 as code gates and 12 declared) and CLAIM, as gates over each run's record"
+  },
+  {
+   "id": "mggj4hxkexp.6326",
+   "kind": "table 3, row 5, column 2",
+   "text": "One module, splits.py, the split-level disjointness check, at the level each corpus declares: patient, study, cadaver or CT source volume (REFORMS 6b in a draft's lettering, Reported); the rest not built"
+  },
+  {
+   "id": "mggj4hxkexp.6412",
+   "kind": "heading level 3",
+   "text": "How they compose into one stack"
+  },
+  {
+   "id": "mggj4hxkexp.6444",
+   "kind": "embedded drawing (never edit)",
+   "text": "[EMBED node/53e078e2-0f4a: The stack \u00b7 five layers, Symphony and Beethoven parts marked]"
+  },
+  {
+   "id": "mggj4hxkexp.6445",
+   "kind": "paragraph",
+   "text": "Read from the bottom: the substrate is rented or owned by someone else, sessions run where the work is, Symphony decides who holds which piece of work, tools decide whether the work is acceptable, and the study's checklists decide whether the result may be reported."
+  },
+  {
+   "id": "mggj4hxkexp.6712",
+   "kind": "paragraph",
+   "text": "The stack is the owner's design, and its composition is Inferred: no Beethoven repository references Symphony today, and Symphony's own plan rules that no Beethoven repository runs Symphony's code or holds a Claude token. The parts that can be shared are Symphony's Claude-free core (the branch-name claim, the board, the protocol check, the push guard, required checks and auto-merge), because Beethoven forbids a stored Claude token in CI and Symphony's Actions workers need one. Verified: research note 05."
+  }
+ ]
+}

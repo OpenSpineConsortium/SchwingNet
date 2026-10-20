@@ -1,0 +1,328 @@
+# Packet man-E: from the Symphony and Beethoven Taxonomy Manual, sections: 8. Keeping the spec current; 9. Glossary
+
+=== [unit mrzzsdjxrm2.30931] heading level 2
+8. Keeping the spec current
+
+=== [unit mrzzsdjxrm2.30959] paragraph
+The spec is dated beside its title. A claim is only as current as the date its source was read, and prices, terms and neighbors are the first to drift.
+
+=== [unit mrzzsdjxrm2.31111] heading level 3
+What to re-check, and when
+
+=== [unit mrzzsdjxrm2.31141] table 1, row 0, column 0 (header row)
+When this happens
+
+=== [unit mrzzsdjxrm2.31160] table 1, row 0, column 1 (header row)
+Re-check
+
+=== [unit mrzzsdjxrm2.31170] table 1, row 0, column 2 (header row)
+Spec sections
+
+=== [unit mrzzsdjxrm2.31186] table 1, row 1, column 0
+GitHub changes Actions prices, runner sizes, limits or terms
+
+=== [unit mrzzsdjxrm2.31248] table 1, row 1, column 1
+Pass 1, items 1 and 2; the github/docs and github/site-policy repositories
+
+=== [unit mrzzsdjxrm2.31324] table 1, row 1, column 2
+9.2 to 9.5; risk 1
+
+=== [unit mrzzsdjxrm2.31345] table 1, row 2, column 0
+Anthropic changes its plans, claude-code-action's sign-in, bare mode or its legal page
+
+=== [unit mrzzsdjxrm2.31433] table 1, row 2, column 1
+Pass 1, item 3
+
+=== [unit mrzzsdjxrm2.31449] table 1, row 2, column 2
+9.4 and 9.5; risks 2 and 3; R6
+
+=== [unit mrzzsdjxrm2.31482] table 1, row 3, column 0
+symphony-protocol publishes a release (0.5.0 is next)
+
+=== [unit mrzzsdjxrm2.31537] table 1, row 3, column 1
+Its release notes and validation/known.json
+
+=== [unit mrzzsdjxrm2.31582] table 1, row 3, column 2
+2 (maturity); risks 6, 12 and 13
+
+=== [unit mrzzsdjxrm2.31617] table 1, row 4, column 0
+A neighbor ships: gh-aw's queue leaves its draft design record, unsorry, Copilot's agents, openai/symphony
+
+=== [unit mrzzsdjxrm2.31725] table 1, row 4, column 1
+The worksheet in section 5, for that tool
+
+=== [unit mrzzsdjxrm2.31768] table 1, row 4, column 2
+4, 5 and 8
+
+=== [unit mrzzsdjxrm2.31781] table 1, row 5, column 0
+A research question meets its acceptance criteria: R1's full run, R3's measurement pass, R4 on the canary
+
+=== [unit mrzzsdjxrm2.31888] table 1, row 5, column 1
+The question's own criteria
+
+=== [unit mrzzsdjxrm2.31917] table 1, row 5, column 2
+7.1, 10 and 11
+
+=== [unit mrzzsdjxrm2.31934] table 1, row 6, column 0
+Beethoven builds a gate, or its launcher reaches a second university
+
+=== [unit mrzzsdjxrm2.32004] table 1, row 6, column 1
+The repository at its new commit
+
+=== [unit mrzzsdjxrm2.32038] table 1, row 6, column 2
+2 and 5.2; claims U4 to U6; risk 8
+
+=== [unit mrzzsdjxrm2.32075] table 1, row 7, column 0
+You lift the grant-data hold
+
+=== [unit mrzzsdjxrm2.32105] table 1, row 7, column 1
+Nothing to research; the grant reviewers' version in section 6 changes
+
+=== [unit mrzzsdjxrm2.32177] table 1, row 7, column 2
+7.1
+
+=== [unit mrzzsdjxrm2.32183] table 1, row 8, column 0
+Before any outside use: a submission, a talk, a public page
+
+=== [unit mrzzsdjxrm2.32244] table 1, row 8, column 1
+Pass 1 again if the spec's date is more than a month old (a default; change it if you like)
+
+=== [unit mrzzsdjxrm2.32337] table 1, row 8, column 2
+9, and every claim quoted
+
+=== [unit mrzzsdjxrm2.32363] heading level 3
+How to ask for an update
+
+=== [unit mrzzsdjxrm2.32388] paragraph
+Post this in the project chat, with the link or the text of what changed:
+
+=== [unit mrzzsdjxrm2.32462] code block (never edit)
+Update the taxonomy spec: <what changed, with a link>. Re-grade the claims it touches, update the parts of the manual that rest on them, and tell me in the thread what changed.
+
+=== [unit mrzzsdjxrm2.32639] paragraph
+The thread that makes the change writes its notes under research/taxonomy/notes/ (a new file for a new topic, or lines in the topic's file), puts adversarial checks under research/taxonomy/verify/, and moves the date beside the spec's title.
+
+=== [unit mrzzsdjxrm2.32881] heading level 2
+9. Glossary
+
+=== [unit mrzzsdjxrm2.32896] table 2, row 0, column 0 (header row)
+Term
+
+=== [unit mrzzsdjxrm2.32902] table 2, row 0, column 1 (header row)
+Meaning
+
+=== [unit mrzzsdjxrm2.32912] table 2, row 1, column 0
+Apptainer
+
+=== [unit mrzzsdjxrm2.32923] table 2, row 1, column 1
+A container runtime for clusters that runs without administrator rights
+
+=== [unit mrzzsdjxrm2.32997] table 2, row 2, column 0
+Blackboard
+
+=== [unit mrzzsdjxrm2.33009] table 2, row 2, column 1
+A shared store that independent agents read and write; the classic AI architecture (Nii, 1986)
+
+=== [unit mrzzsdjxrm2.33106] table 2, row 3, column 0
+Board
+
+=== [unit mrzzsdjxrm2.33113] table 2, row 3, column 1
+The file STATE.md on the branch board, which board.yml rewrites from the issues, branches, claim files and pull requests; nobody edits it by hand
+
+=== [unit mrzzsdjxrm2.33261] table 2, row 4, column 0
+Claim
+
+=== [unit mrzzsdjxrm2.33268] table 2, row 4, column 1
+The push that creates the branch claude/N for issue N, whose first commit adds a claim file naming the worker, the plan and the files to touch
+
+=== [unit mrzzsdjxrm2.33413] table 2, row 5, column 0
+CLAIM
+
+=== [unit mrzzsdjxrm2.33420] table 2, row 5, column 1
+The Checklist for Artificial Intelligence in Medical Imaging, updated in 2024 (Radiology: Artificial Intelligence)
+
+=== [unit mrzzsdjxrm2.33537] table 2, row 6, column 0
+claude-code-action
+
+=== [unit mrzzsdjxrm2.33557] table 2, row 6, column 1
+Anthropic's GitHub Action, anthropics/claude-code-action, which runs Claude Code inside a workflow
+
+=== [unit mrzzsdjxrm2.33658] table 2, row 7, column 0
+Compare-and-swap
+
+=== [unit mrzzsdjxrm2.33676] table 2, row 7, column 1
+An update that succeeds only if the value is still what the writer last saw; git applies one to a ref on every push
+
+=== [unit mrzzsdjxrm2.33794] table 2, row 8, column 0
+Coordinator
+
+=== [unit mrzzsdjxrm2.33807] table 2, row 8, column 1
+The deterministic steps in the board's run that release idle claims and announce overlaps, and Claude in coordinator.yml, which plans epics into tasks
+
+=== [unit mrzzsdjxrm2.33960] table 2, row 9, column 0
+CrossHair, Z3
+
+=== [unit mrzzsdjxrm2.33975] table 2, row 9, column 1
+A tool that searches by symbolic execution for inputs that break a Python function's contracts, and the solver it uses
+
+=== [unit mrzzsdjxrm2.34096] table 2, row 10, column 0
+Epic
+
+=== [unit mrzzsdjxrm2.34102] table 2, row 10, column 1
+An issue that asks for more than one piece of work, which the coordinator plans into tasks
+
+=== [unit mrzzsdjxrm2.34195] table 2, row 11, column 0
+Fast-forward
+
+=== [unit mrzzsdjxrm2.34209] table 2, row 11, column 1
+A push that only adds commits on top of the branch's tip, which git accepts without force
+
+=== [unit mrzzsdjxrm2.34301] table 2, row 12, column 0
+Fencing token
+
+=== [unit mrzzsdjxrm2.34316] table 2, row 12, column 1
+A number that rises with each grant of a lock, so a resource can refuse a holder whose lease has expired
+
+=== [unit mrzzsdjxrm2.34423] table 2, row 13, column 0
+Five-hour window, weekly limit
+
+=== [unit mrzzsdjxrm2.34455] table 2, row 13, column 1
+The usage limits of a Claude plan, shared by everything that runs on it
+
+=== [unit mrzzsdjxrm2.34529] table 2, row 14, column 0
+gh-aw
+
+=== [unit mrzzsdjxrm2.34536] table 2, row 14, column 1
+GitHub Agentic Workflows (github/gh-aw), which compiles agent workflows written in Markdown into Actions; its work queue is Symphony's closest neighbor
+
+=== [unit mrzzsdjxrm2.34690] table 2, row 15, column 0
+GITHUB_TOKEN
+
+=== [unit mrzzsdjxrm2.34704] table 2, row 15, column 1
+The token GitHub gives each workflow run, scoped to its repository, with 1,000 API requests an hour
+
+=== [unit mrzzsdjxrm2.34806] table 2, row 16, column 0
+icontract
+
+=== [unit mrzzsdjxrm2.34817] table 2, row 16, column 1
+A Python library for contracts (preconditions, postconditions, invariants) on functions
+
+=== [unit mrzzsdjxrm2.34907] table 2, row 17, column 0
+Interleaving
+
+=== [unit mrzzsdjxrm2.34921] table 2, row 17, column 1
+One order in which the steps of several concurrent workers can happen
+
+=== [unit mrzzsdjxrm2.34993] table 2, row 18, column 0
+Lease
+
+=== [unit mrzzsdjxrm2.35000] table 2, row 18, column 1
+In distributed systems, a lock that expires unless renewed (Gray and Cheriton, 1989). In git, --force-with-lease is a forced push that succeeds only if the remote branch is still where the pusher expects
+
+=== [unit mrzzsdjxrm2.35206] table 2, row 19, column 0
+Mutant
+
+=== [unit mrzzsdjxrm2.35214] table 2, row 19, column 1
+A copy of the code with one deliberate fault; a check that does not catch it does not bite
+
+=== [unit mrzzsdjxrm2.35307] table 2, row 20, column 0
+Open OnDemand
+
+=== [unit mrzzsdjxrm2.35322] table 2, row 20, column 1
+A web portal to a university cluster, through which Beethoven starts its jobs
+
+=== [unit mrzzsdjxrm2.35402] table 2, row 21, column 0
+Oracle
+
+=== [unit mrzzsdjxrm2.35410] table 2, row 21, column 1
+An independent statement of the right outcome, here written from the spec's text, against which every interleaving is checked
+
+=== [unit mrzzsdjxrm2.35538] table 2, row 22, column 0
+Overlap
+
+=== [unit mrzzsdjxrm2.35547] table 2, row 22, column 1
+Two pieces of open work that change the same file; the board lists them in the order they should land
+
+=== [unit mrzzsdjxrm2.35651] table 2, row 23, column 0
+PreToolUse hook
+
+=== [unit mrzzsdjxrm2.35668] table 2, row 23, column 1
+A command Claude Code runs before a tool call, which can refuse the call
+
+=== [unit mrzzsdjxrm2.35743] table 2, row 24, column 0
+Push guard
+
+=== [unit mrzzsdjxrm2.35755] table 2, row 24, column 1
+tools/guard_push.py, a PreToolUse hook that refuses forbidden pushes before they run, on the worker's own machine
+
+=== [unit mrzzsdjxrm2.35871] table 2, row 25, column 0
+REFORMS
+
+=== [unit mrzzsdjxrm2.35880] table 2, row 25, column 1
+Consensus recommendations for science that uses machine learning (Kapoor et al., Science Advances, 2024), 32 items
+
+=== [unit mrzzsdjxrm2.35997] table 2, row 26, column 0
+Release
+
+=== [unit mrzzsdjxrm2.36006] table 2, row 26, column 1
+What happens to a claim with no commit for 24 hours: its labels come off, a comment says what the branch holds, and the branch is renamed released/N-sha, so the work is kept and the name is free
+
+=== [unit mrzzsdjxrm2.36203] table 2, row 27, column 0
+Remote Control
+
+=== [unit mrzzsdjxrm2.36219] table 2, row 27, column 1
+Claude Code's feature that lets a session running on one machine be driven from claude.ai or the Claude app
+
+=== [unit mrzzsdjxrm2.36329] table 2, row 28, column 0
+Required check
+
+=== [unit mrzzsdjxrm2.36345] table 2, row 28, column 1
+A status check that a ruleset makes pass before anything merges; Symphony's is named check
+
+=== [unit mrzzsdjxrm2.36438] table 2, row 29, column 0
+Ruleset
+
+=== [unit mrzzsdjxrm2.36447] table 2, row 29, column 1
+GitHub's rules for branches or tags, such as required checks, blocked force pushes or a merge queue, set for a repository or an organization
+
+=== [unit mrzzsdjxrm2.36590] table 2, row 30, column 0
+Safe outputs
+
+=== [unit mrzzsdjxrm2.36604] table 2, row 30, column 1
+gh-aw's way of letting an agent ask for a write, such as a pull request or a comment, that a separate job with write permission carries out
+
+=== [unit mrzzsdjxrm2.36746] table 2, row 31, column 0
+Slurm, sbatch
+
+=== [unit mrzzsdjxrm2.36761] table 2, row 31, column 1
+The cluster's batch scheduler, and its command for submitting a job
+
+=== [unit mrzzsdjxrm2.36831] table 2, row 32, column 0
+Standard runner
+
+=== [unit mrzzsdjxrm2.36848] table 2, row 32, column 1
+A GitHub-hosted virtual machine of the default size; free and unlimited on public repositories
+
+=== [unit mrzzsdjxrm2.36945] table 2, row 33, column 0
+Stigmergy
+
+=== [unit mrzzsdjxrm2.36956] table 2, row 33, column 1
+Coordination through traces left in a shared environment, as Symphony's agents coordinate through branches and labels rather than messages
+
+=== [unit mrzzsdjxrm2.37097] table 2, row 34, column 0
+Subscription token
+
+=== [unit mrzzsdjxrm2.37117] table 2, row 34, column 1
+CLAUDE_CODE_OAUTH_TOKEN, made by claude setup-token, which lets claude-code-action bill a person's Claude plan instead of an API key
+
+=== [unit mrzzsdjxrm2.37252] table 2, row 35, column 0
+TRIPOD+AI
+
+=== [unit mrzzsdjxrm2.37263] table 2, row 35, column 1
+The reporting guideline for clinical prediction models that use regression or machine learning (BMJ, 2024)
+
+=== [unit mrzzsdjxrm2.37372] table 2, row 36, column 0
+Worker
+
+=== [unit mrzzsdjxrm2.37380] table 2, row 36, column 1
+Anything that claims issues: a person's sessions, a routine, or an agent in GitHub Actions, each labelled worker:name

@@ -1,0 +1,6100 @@
+{
+ "rev": 30,
+ "units": [
+  {
+   "id": "mrzzsdjxrm2.0",
+   "h": "cc63d4a5",
+   "heading": "1",
+   "ctx": [],
+   "section": "",
+   "subsection": "",
+   "text": "Symphony and Beethoven Taxonomy Manual",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.39",
+   "h": "588da410",
+   "heading": null,
+   "ctx": [],
+   "section": "",
+   "subsection": "",
+   "text": "2026-10-15 \u00b7 @f",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.54",
+   "h": "6b30f0cc",
+   "heading": "2",
+   "ctx": [],
+   "section": "1. What this manual is for",
+   "subsection": "",
+   "text": "1. What this manual is for",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.78",
+   "h": "c71eff79",
+   "heading": null,
+   "ctx": [],
+   "section": "1. What this manual is for",
+   "subsection": "",
+   "text": "This manual is how to use the spec: to run the deep research that checks and extends it, to place any other tool in the same taxonomy, and to explain the approach to grant reviewers, engineers and lab leads. The spec says what is true and how sure we are; the manual says what to do with it.",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.370",
+   "h": "1b7e8e94",
+   "heading": null,
+   "ctx": [],
+   "section": "1. What this manual is for",
+   "subsection": "",
+   "text": "The two travel together. The spec holds the taxonomy, the placement, the graded claims and the open research questions. This manual holds the procedures, the prompts to paste, the worksheet and the talking points.",
+   "spans": [
+    [
+     29,
+     33,
+     "https://claude.ai/code/artifact/9ed6238d-6b5e-4a7e-acb5-df360435c19c"
+    ]
+   ]
+  },
+  {
+   "id": "mrzzsdjxrm2.584",
+   "h": "132185a2",
+   "heading": null,
+   "ctx": [],
+   "section": "1. What this manual is for",
+   "subsection": "",
+   "text": "A finding changes the spec first, then every talking point that rests on it. The research notes behind both are in the project folder under research/taxonomy/notes/, one file per topic, each line with its source.",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.797",
+   "h": "24d3522f",
+   "heading": "2",
+   "ctx": [],
+   "section": "2. Before you start",
+   "subsection": "",
+   "text": "2. Before you start",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.817",
+   "h": "21b85d0a",
+   "heading": null,
+   "ctx": [],
+   "section": "2. Before you start",
+   "subsection": "",
+   "text": "Read, in this order (about twenty minutes): the spec's section 9 (the Actions story), section 8 (what is unique), section 7 (the need), then section 10 (the risks). Sections 3 to 5 are reference.",
+   "spans": [
+    [
+     0,
+     19,
+     "**bold**"
+    ]
+   ]
+  },
+  {
+   "id": "mrzzsdjxrm2.1013",
+   "h": "24c4144a",
+   "heading": null,
+   "ctx": [],
+   "section": "2. Before you start",
+   "subsection": "",
+   "text": "Already checked against primary sources on 2026-10-15, so the deep research need not redo them:",
+   "spans": [
+    [
+     0,
+     53,
+     "**bold**"
+    ]
+   ]
+  },
+  {
+   "id": "mrzzsdjxrm2.1111",
+   "h": "668bd6aa",
+   "heading": null,
+   "ctx": [
+    "list:mrzzsdjxrm2.1109:fd8a5427",
+    "listItem:mrzzsdjxrm2.1110:b65b9ced"
+   ],
+   "section": "2. Before you start",
+   "subsection": "",
+   "text": "GitHub Actions billing, runner sizes and limits, read from the github/docs repository at commit 12691d2",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.1216",
+   "h": "0894a419",
+   "heading": null,
+   "ctx": [
+    "list:mrzzsdjxrm2.1109:fd8a5427",
+    "listItem:mrzzsdjxrm2.1215:64b90982"
+   ],
+   "section": "2. Before you start",
+   "subsection": "",
+   "text": "The text of GitHub's Actions terms, effective 2026-04-27",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.1274",
+   "h": "517fe72b",
+   "heading": null,
+   "ctx": [
+    "list:mrzzsdjxrm2.1109:fd8a5427",
+    "listItem:mrzzsdjxrm2.1273:5d8264f6"
+   ],
+   "section": "2. Before you start",
+   "subsection": "",
+   "text": "Anthropic's pages on Claude Code GitHub Actions, costs, agent teams, Remote Control and legal use, and claude.com/pricing",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.1397",
+   "h": "d336fb38",
+   "heading": null,
+   "ctx": [
+    "list:mrzzsdjxrm2.1109:fd8a5427",
+    "listItem:mrzzsdjxrm2.1396:e491bcb4"
+   ],
+   "section": "2. Before you start",
+   "subsection": "",
+   "text": "gh-aw's work queue and its refusal of the subscription token, from its repository at dc91dbed",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.1492",
+   "h": "44574265",
+   "heading": null,
+   "ctx": [
+    "list:mrzzsdjxrm2.1109:fd8a5427",
+    "listItem:mrzzsdjxrm2.1491:4c154581"
+   ],
+   "section": "2. Before you start",
+   "subsection": "",
+   "text": "Copilot automations not being available in public repositories, and Copilot's cloud agent limits",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.1590",
+   "h": "d9a0e448",
+   "heading": null,
+   "ctx": [
+    "list:mrzzsdjxrm2.1109:fd8a5427",
+    "listItem:mrzzsdjxrm2.1589:3a8757ee"
+   ],
+   "section": "2. Before you start",
+   "subsection": "",
+   "text": "CooperBench's counts, from the paper's PDF in the authors' repository",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.1661",
+   "h": "68d5d4d3",
+   "heading": null,
+   "ctx": [
+    "list:mrzzsdjxrm2.1109:fd8a5427",
+    "listItem:mrzzsdjxrm2.1660:e320467c"
+   ],
+   "section": "2. Before you start",
+   "subsection": "",
+   "text": "How the claim behaves under git, by experiment on local repositories (spec, risks 12 to 14)",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.1754",
+   "h": "40b4bdd3",
+   "heading": null,
+   "ctx": [
+    "list:mrzzsdjxrm2.1109:fd8a5427",
+    "listItem:mrzzsdjxrm2.1753:904b7898"
+   ],
+   "section": "2. Before you start",
+   "subsection": "",
+   "text": "A search for a rival that combines Symphony's mechanisms (spec, section 8)",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.1829",
+   "h": "33f84faa",
+   "heading": null,
+   "ctx": [],
+   "section": "2. Before you start",
+   "subsection": "",
+   "text": "Still open are the ten research questions in the spec's section 11. Three of them need measurements, not reading: R1 (the benchmark run), R3 (cost of a coordination step) and R4 (the claim on github.com). Those run in their own threads, by your choice, because they spend tokens or touch live repositories.",
+   "spans": [
+    [
+     0,
+     10,
+     "**bold**"
+    ]
+   ]
+  },
+  {
+   "id": "mrzzsdjxrm2.2136",
+   "h": "8658a6c9",
+   "heading": null,
+   "ctx": [],
+   "section": "2. Before you start",
+   "subsection": "",
+   "text": "What this project's sessions cannot reach. The cloud environment blocks docs.github.com, github.blog, arxiv.org, metr.org, cursor.com, gartner.com, thoughtworks.com and openspineconsortium.com, and the first research pass used up its web-search allowance for the turn. GitHub's docs were read from the github/docs repository instead, and papers from their authors' repositories where there was one, graded Verified, or else from third-party mirrors and search summaries, graded Reported. That is why the deep research below runs in claude.ai's Research mode, which reaches the open web, and why its report comes back here to be folded into the spec.",
+   "spans": [
+    [
+     0,
+     42,
+     "**bold**"
+    ]
+   ]
+  },
+  {
+   "id": "mrzzsdjxrm2.2705",
+   "h": "28c65d49",
+   "heading": null,
+   "ctx": [],
+   "section": "2. Before you start",
+   "subsection": "",
+   "text": "Two holds stay in force. Data from the coordination experiment stays out of the grant until you say so. Nothing in either document is a legal opinion: the terms questions (R5, R6) are for GitHub, Anthropic or a lawyer to answer.",
+   "spans": [
+    [
+     0,
+     24,
+     "**bold**"
+    ]
+   ]
+  },
+  {
+   "id": "mrzzsdjxrm2.2934",
+   "h": "d812897d",
+   "heading": "2",
+   "ctx": [],
+   "section": "3. Running the deep research",
+   "subsection": "",
+   "text": "3. Running the deep research",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.2963",
+   "h": "ae0b3f42",
+   "heading": null,
+   "ctx": [],
+   "section": "3. Running the deep research",
+   "subsection": "",
+   "text": "Deep research is something you start; a thread here cannot start it for you. It runs in three passes.",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.3065",
+   "h": "b7499c0d",
+   "heading": "3",
+   "ctx": [],
+   "section": "3. Running the deep research",
+   "subsection": "Pass 1: the open web, in claude.ai Research",
+   "text": "Pass 1: the open web, in claude.ai Research",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.3111",
+   "h": "dac9bb9c",
+   "heading": null,
+   "ctx": [
+    "list:mrzzsdjxrm2.3109:9d7b4794",
+    "listItem:mrzzsdjxrm2.3110:96e44f09"
+   ],
+   "section": "3. Running the deep research",
+   "subsection": "Pass 1: the open web, in claude.ai Research",
+   "text": "Open claude.ai/new.",
+   "spans": [
+    [
+     5,
+     18,
+     "https://claude.ai/new"
+    ]
+   ]
+  },
+  {
+   "id": "mrzzsdjxrm2.3132",
+   "h": "5210b7ad",
+   "heading": null,
+   "ctx": [
+    "list:mrzzsdjxrm2.3109:9d7b4794",
+    "listItem:mrzzsdjxrm2.3131:9c27b708"
+   ],
+   "section": "3. Running the deep research",
+   "subsection": "Pass 1: the open web, in claude.ai Research",
+   "text": "Below the message box, turn on Research (and web search, if it is a separate switch).",
+   "spans": [
+    [
+     31,
+     39,
+     "**bold**"
+    ]
+   ]
+  },
+  {
+   "id": "mrzzsdjxrm2.3219",
+   "h": "a60f61f5",
+   "heading": null,
+   "ctx": [
+    "list:mrzzsdjxrm2.3109:9d7b4794",
+    "listItem:mrzzsdjxrm2.3218:6d01f12c"
+   ],
+   "section": "3. Running the deep research",
+   "subsection": "Pass 1: the open web, in claude.ai Research",
+   "text": "Paste the message below as it is, and send it.",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.3267",
+   "h": "a60e2730",
+   "heading": null,
+   "ctx": [
+    "list:mrzzsdjxrm2.3109:9d7b4794",
+    "listItem:mrzzsdjxrm2.3266:6ee98041"
+   ],
+   "section": "3. Running the deep research",
+   "subsection": "Pass 1: the open web, in claude.ai Research",
+   "text": "When the report is done, copy its whole text.",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.3313",
+   "h": "c0e61699",
+   "heading": null,
+   "ctx": [
+    "code"
+   ],
+   "section": "3. Running the deep research",
+   "subsection": "Pass 1: the open web, in claude.ai Research",
+   "text": "I am placing two pieces of software in a taxonomy of agent software and need a deep, sourced check of the claims below, as of today. Prefer primary sources (vendor docs and terms pages, papers, repositories); mark anything taken from a secondary source as Reported. For every claim give a verdict (Confirmed, Partly true, Refuted or Unverifiable), the evidence with links, dates and short quotes, and corrected wording. Start the report with a table of verdicts, and end it with a list of what you could not verify.\n\nThe systems:\n- Symphony (github.com/OpenSpineConsortium/symphony-protocol, MIT): a coordination protocol for Claude Code agents kept in a GitHub repository. Issues are the queue. A worker claims issue N by pushing a new branch claude/N whose first commit adds a claim file with the plan and the files it will touch; git's compare-and-swap on ref creation lets exactly one of two racing creations win. GitHub Actions jobs render a board (a file on a branch), release a claim idle for 24 hours while keeping its work under a renamed branch, and order work that touches the same files. Workers are people's own Claude Code sessions and agents running as GitHub Actions jobs through anthropics/claude-code-action on a Claude subscription token (CLAUDE_CODE_OAUTH_TOKEN). It has no server of its own.\n- Beethoven (private): runs a student's own Claude Code Remote Control session as a Slurm batch job on a university cluster, started through Open OnDemand, and plans gates that enforce research reporting checklists (REFORMS, CLAIM) over each run's record; a required check already holds the code its agents write to contracts checked by CrossHair and Z3.\n\nClaims and questions:\n1. GitHub Actions: standard GitHub-hosted runners are free and unlimited on public repositories (4 vCPU, 16 GB on Linux), bounded by concurrency (20 jobs on Free, 40 on Pro, 60 on Team, 500 on Enterprise), 6-hour jobs and GITHUB_TOKEN's 1,000 requests an hour per repository; larger and GPU runners are always billed; private repositories get 2,000, 3,000 or 50,000 included minutes a month, then $0.006 a minute on Linux since 2026-01-01. Report any change since 2026-10-15, and the status of the self-hosted runner charge GitHub announced on 2025-12-16 and withdrew the next day.\n2. GitHub's Actions terms (effective 2026-04-27) limit GitHub-hosted runners to activity related to \"the software project associated with the repository\" and forbid offering Actions or its elements for commercial purposes. How have GitHub, lawyers or practitioners read these clauses for AI coding agents running in Actions, for benchmarks that run other projects' tasks, and for a paid product whose open runtime runs in customers' own Actions?\n3. Anthropic: claude-code-action accepts CLAUDE_CODE_OAUTH_TOKEN from claude setup-token, so runs use the subscription instead of API billing; Anthropic advises an API key for a secret shared across repositories, and its legal page says plan limits assume \"ordinary, individual usage\". What is Anthropic's current position on several automated agents in CI on one person's subscription? Will claude-code-action keep supporting the token when bare mode becomes the default for claude -p?\n4. Uniqueness: is there any system, product or paper that has four of these five, or (a), (c) and (d) together: (a) a claim made atomic by a git ref on the shared forge; (b) automatic release of idle claims by a CI job that keeps the work; (c) a coordinator and board that run as CI jobs, with state only in forge objects; (d) people's interactive sessions and CI agents under one claim rule, on a flat-rate subscription; (e) validation of the shipped protocol code by exhaustive interleavings against an oracle written from its spec, with mutants. Known neighbors to go beyond: GitHub Agentic Workflows (gh-aw) and its October 2026 work queue, unsorry (agenticsnz/unsorry), GitHub Copilot cloud agent and Agent HQ, openai/symphony, CCPM, Beads and Gas Town, paperclip, Orbi, aeon, agentic-setup, Claude Code agent teams and Projects, Anthropic's C-compiler harness, CooperBench's team mode, Claim Plane (arXiv 2608.00947) and Nerveplane (arXiv 2610.07261). Search FSE, ICSE and ASE 2026, arXiv cs.SE and cs.MA, GitHub and practitioner writing.\n5. The need: CooperBench (arXiv 2601.13295) reports two agents, each in its own workspace and able only to message the other, passing far less often than one (for GPT-5, 183 against 315 of 652 pairs). Find replications, rebuttals, and any study comparing a claim- or pull-request-gated protocol on a shared remote with one agent at a matched budget.\n6. Free CI elsewhere: confirm from primary sources that Travis CI ended unlimited open-source builds (2020), GitLab.com put public projects on quotas (2021), Azure DevOps stopped new public projects (2026) and will make existing ones private (2027), Cirrus CI stopped running jobs (2026-06-01), and what CircleCI gives open source today.\n7. Taxonomy: does any published taxonomy of LLM agents or multi-agent systems have an axis for where the compute runs and who pays for it? Use the strongest surveys of 2025 and 2026. Give Gartner's and Thoughtworks' current categories for coding agents, from their own pages.\n8. Research automation: does any AI-scientist system or research workflow tool enforce a reporting checklist (REFORMS, CLAIM, TRIPOD+AI, DOME or similar) as a machine-checked gate over an agent's run? How many items does the CLAIM 2024 update have? Does any other project make contracts checked by symbolic execution the required merge gate for code that agents write, and does any tool start Claude Code's Remote Control from a Slurm batch job through Open OnDemand?\n9. The name: how crowded is \"Symphony\" among agent and coding software?",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.8659",
+   "h": "13dd577a",
+   "heading": "3",
+   "ctx": [],
+   "section": "3. Running the deep research",
+   "subsection": "Pass 2: fold the report into the spec, here",
+   "text": "Pass 2: fold the report into the spec, here",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.8703",
+   "h": "ee55c0f3",
+   "heading": null,
+   "ctx": [],
+   "section": "3. Running the deep research",
+   "subsection": "Pass 2: fold the report into the spec, here",
+   "text": "Post this in the project chat, with the report's text pasted under it:",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.8774",
+   "h": "df1c054b",
+   "heading": null,
+   "ctx": [
+    "code"
+   ],
+   "section": "3. Running the deep research",
+   "subsection": "Pass 2: fold the report into the spec, here",
+   "text": "Here is the deep research report on the Symphony and Beethoven taxonomy. Update the taxonomy spec from it: change each claim's grade and wording where the report has better evidence, add new neighbors to sections 4, 5 and 8, mark research questions answered when their acceptance criteria are met, and list in the thread what changed and what the report got wrong.",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.9139",
+   "h": "2ebdf69d",
+   "heading": "3",
+   "ctx": [],
+   "section": "3. Running the deep research",
+   "subsection": "Pass 3: the measurements, one thread each, when you choose",
+   "text": "Pass 3: the measurements, one thread each, when you choose",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.9200",
+   "h": "a3b255de",
+   "heading": null,
+   "ctx": [
+    "list:mrzzsdjxrm2.9198:5ba3e801",
+    "listItem:mrzzsdjxrm2.9199:20ca682c"
+   ],
+   "section": "3. Running the deep research",
+   "subsection": "Pass 3: the measurements, one thread each, when you choose",
+   "text": "R1, the benchmark: the coordination experiment thread already holds the plan you chose; nothing new to paste.",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.9311",
+   "h": "4c164304",
+   "heading": null,
+   "ctx": [
+    "list:mrzzsdjxrm2.9198:5ba3e801",
+    "listItem:mrzzsdjxrm2.9310:b32c0a22"
+   ],
+   "section": "3. Running the deep research",
+   "subsection": "Pass 3: the measurements, one thread each, when you choose",
+   "text": "R3, the cost of a coordination step: the measurement pass is already queued after the stuck-claim fix in the protocol work.",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.9436",
+   "h": "fe07e105",
+   "heading": null,
+   "ctx": [
+    "list:mrzzsdjxrm2.9198:5ba3e801",
+    "listItem:mrzzsdjxrm2.9435:223a65db"
+   ],
+   "section": "3. Running the deep research",
+   "subsection": "Pass 3: the measurements, one thread each, when you choose",
+   "text": "R4, the claim on github.com: post \"Run research question R4 of the taxonomy spec on the canary repository\" in the project chat.",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.9564",
+   "h": "46ed949a",
+   "heading": "3",
+   "ctx": [],
+   "section": "3. Running the deep research",
+   "subsection": "Scoping a pass",
+   "text": "Scoping a pass",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.9579",
+   "h": "c562314a",
+   "heading": null,
+   "ctx": [],
+   "section": "3. Running the deep research",
+   "subsection": "Scoping a pass",
+   "text": "One report per pass. If the report is thin on an item, run pass 1 again with that item alone and its question number. If it is confident without sources, ask it for the primary source of each claim it marked Confirmed. Treat anything it cannot link as Reported.",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.9844",
+   "h": "5ac12de3",
+   "heading": "2",
+   "ctx": [],
+   "section": "4. Checking a claim",
+   "subsection": "",
+   "text": "4. Checking a claim",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.9864",
+   "h": "71869455",
+   "heading": null,
+   "ctx": [],
+   "section": "4. Checking a claim",
+   "subsection": "",
+   "text": "Every claim in the spec carries one of four grades, defined in the spec's section 1: Verified, Inferred, Reported or Open. A grade rises only with new evidence, and falls as soon as a source contradicts it. This section is how to move one.",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.10104",
+   "h": "115ec1aa",
+   "heading": "3",
+   "ctx": [],
+   "section": "4. Checking a claim",
+   "subsection": "Testing a claim, in six steps",
+   "text": "Testing a claim, in six steps",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.10136",
+   "h": "9c8a7789",
+   "heading": null,
+   "ctx": [
+    "list:mrzzsdjxrm2.10134:941bf447",
+    "listItem:mrzzsdjxrm2.10135:94461330"
+   ],
+   "section": "4. Checking a claim",
+   "subsection": "Testing a claim, in six steps",
+   "text": "Write it with its scope. One sentence, with the version, the plan and the date it holds for. \"Free and unlimited\" is a claim about standard runners on public repositories as of 2026-10-15, not about Actions in general.",
+   "spans": [
+    [
+     0,
+     24,
+     "**bold**"
+    ]
+   ]
+  },
+  {
+   "id": "mrzzsdjxrm2.10356",
+   "h": "744dec35",
+   "heading": null,
+   "ctx": [
+    "list:mrzzsdjxrm2.10134:941bf447",
+    "listItem:mrzzsdjxrm2.10355:a09cd36b"
+   ],
+   "section": "4. Checking a claim",
+   "subsection": "Testing a claim, in six steps",
+   "text": "Write what would refute it, before looking for support. The spec's section 8 gives one refuting observation for each uniqueness claim, and section 11 gives each research question its acceptance criteria.",
+   "spans": [
+    [
+     0,
+     55,
+     "**bold**"
+    ]
+   ]
+  },
+  {
+   "id": "mrzzsdjxrm2.10561",
+   "h": "80e118f5",
+   "heading": null,
+   "ctx": [
+    "list:mrzzsdjxrm2.10134:941bf447",
+    "listItem:mrzzsdjxrm2.10560:b22fbfca"
+   ],
+   "section": "4. Checking a claim",
+   "subsection": "Testing a claim, in six steps",
+   "text": "Look for the refutation first. Search by mechanism, not by product name, since a rival rarely uses our words: first push wins, lock branch, claims branch, reaper, idle claim, compare-and-swap with agents, CLAUDE_CODE_OAUTH_TOKEN in a workflow.",
+   "spans": [
+    [
+     0,
+     30,
+     "**bold**"
+    ]
+   ]
+  },
+  {
+   "id": "mrzzsdjxrm2.10806",
+   "h": "77733f96",
+   "heading": null,
+   "ctx": [
+    "list:mrzzsdjxrm2.10134:941bf447",
+    "listItem:mrzzsdjxrm2.10805:edf12086"
+   ],
+   "section": "4. Checking a claim",
+   "subsection": "Testing a claim, in six steps",
+   "text": "Run it when it can be run. A claim about git or the protocol is cheapest to settle on a scratch repository. The claim-lock check (research/taxonomy/verify/02) did this and found or confirmed three things the documents did not say: the server enforces a claim only at its creation, the push guard judges a lease by the session's own directory rather than the clone a git -C command names, and the idle clock is the pusher's (the spec's risks 12 and 13).",
+   "spans": [
+    [
+     0,
+     26,
+     "**bold**"
+    ]
+   ]
+  },
+  {
+   "id": "mrzzsdjxrm2.11200",
+   "h": "09c5ee87",
+   "heading": null,
+   "ctx": [
+    "list:mrzzsdjxrm2.10134:941bf447",
+    "listItem:mrzzsdjxrm2.11199:ee6ed9b3"
+   ],
+   "section": "4. Checking a claim",
+   "subsection": "Testing a claim, in six steps",
+   "text": "Record the search even when it finds nothing: where you looked, with which terms, on what date. A search that finds nothing makes a claim Inferred, never Verified, and the spec says how far the search went.",
+   "spans": [
+    [
+     0,
+     45,
+     "**bold**"
+    ]
+   ]
+  },
+  {
+   "id": "mrzzsdjxrm2.11408",
+   "h": "c218b2af",
+   "heading": null,
+   "ctx": [
+    "list:mrzzsdjxrm2.10134:941bf447",
+    "listItem:mrzzsdjxrm2.11407:cb6d6b2c"
+   ],
+   "section": "4. Checking a claim",
+   "subsection": "Testing a claim, in six steps",
+   "text": "When the claim fails, narrow it or drop it. Change the spec first, then every talking point that rests on it (section 6).",
+   "spans": [
+    [
+     0,
+     43,
+     "**bold**"
+    ]
+   ]
+  },
+  {
+   "id": "mrzzsdjxrm2.11530",
+   "h": "f4cf8c31",
+   "heading": null,
+   "ctx": [],
+   "section": "4. Checking a claim",
+   "subsection": "Testing a claim, in six steps",
+   "text": "A worked case. An early draft of the placement figure said only Symphony puts its agents under an atomic claim. The adversarial search found three systems that have one: gh-aw's work queue (a compare-and-swap on a ledger branch), unsorry (first push wins on a shared claims branch) and agentic-setup (a create-only branch push). The atomic claim moved to the spec's list of what is not unique, and claim U1 now names only the combination, with the observation that would refute it.",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.12012",
+   "h": "fe372d94",
+   "heading": "3",
+   "ctx": [],
+   "section": "4. Checking a claim",
+   "subsection": "Which sources count",
+   "text": "Which sources count",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.12035",
+   "h": "a4130d7d",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.12032:2c55365d",
+    "row:mrzzsdjxrm2.12033:9ff23416",
+    "cell:mrzzsdjxrm2.12034:83878f37"
+   ],
+   "section": "4. Checking a claim",
+   "subsection": "Which sources count",
+   "text": "Rank",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.12041",
+   "h": "0e570ca6",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.12032:2c55365d",
+    "row:mrzzsdjxrm2.12033:9ff23416",
+    "cell:mrzzsdjxrm2.12040:6d7c8e10"
+   ],
+   "section": "4. Checking a claim",
+   "subsection": "Which sources count",
+   "text": "Source",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.12049",
+   "h": "0d2ad1db",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.12032:2c55365d",
+    "row:mrzzsdjxrm2.12033:9ff23416",
+    "cell:mrzzsdjxrm2.12048:e6dc6b6f"
+   ],
+   "section": "4. Checking a claim",
+   "subsection": "Which sources count",
+   "text": "Highest grade it gives",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.12073",
+   "h": "a08fcd84",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.12032:2c55365d",
+    "row:mrzzsdjxrm2.12033:9ff23416",
+    "cell:mrzzsdjxrm2.12072:ec962bfa"
+   ],
+   "section": "4. Checking a claim",
+   "subsection": "Which sources count",
+   "text": "Take care",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.12085",
+   "h": "6b86b273",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.12032:2c55365d",
+    "row:mrzzsdjxrm2.12083:9a3a3706",
+    "cell:mrzzsdjxrm2.12084:06f68e38"
+   ],
+   "section": "4. Checking a claim",
+   "subsection": "Which sources count",
+   "text": "1",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.12088",
+   "h": "c104e503",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.12032:2c55365d",
+    "row:mrzzsdjxrm2.12083:9a3a3706",
+    "cell:mrzzsdjxrm2.12087:8affb36b"
+   ],
+   "section": "4. Checking a claim",
+   "subsection": "Which sources count",
+   "text": "The thing itself: code at a named commit, an experiment you ran, a run log",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.12164",
+   "h": "4f783840",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.12032:2c55365d",
+    "row:mrzzsdjxrm2.12083:9a3a3706",
+    "cell:mrzzsdjxrm2.12163:b607d4e3"
+   ],
+   "section": "4. Checking a claim",
+   "subsection": "Which sources count",
+   "text": "Verified",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.12174",
+   "h": "1e3d56e0",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.12032:2c55365d",
+    "row:mrzzsdjxrm2.12083:9a3a3706",
+    "cell:mrzzsdjxrm2.12173:277271fc"
+   ],
+   "section": "4. Checking a claim",
+   "subsection": "Which sources count",
+   "text": "Give the commit or the command, so anyone can repeat it",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.12232",
+   "h": "d4735e3a",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.12032:2c55365d",
+    "row:mrzzsdjxrm2.12230:46cd0e97",
+    "cell:mrzzsdjxrm2.12231:077d227c"
+   ],
+   "section": "4. Checking a claim",
+   "subsection": "Which sources count",
+   "text": "2",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.12235",
+   "h": "2032ae85",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.12032:2c55365d",
+    "row:mrzzsdjxrm2.12230:46cd0e97",
+    "cell:mrzzsdjxrm2.12234:23c81da2"
+   ],
+   "section": "4. Checking a claim",
+   "subsection": "Which sources count",
+   "text": "The vendor's own documentation, terms and pricing pages",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.12292",
+   "h": "e026d074",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.12032:2c55365d",
+    "row:mrzzsdjxrm2.12230:46cd0e97",
+    "cell:mrzzsdjxrm2.12291:5a4d1b60"
+   ],
+   "section": "4. Checking a claim",
+   "subsection": "Which sources count",
+   "text": "Verified, with the date read",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.12322",
+   "h": "ac882c46",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.12032:2c55365d",
+    "row:mrzzsdjxrm2.12230:46cd0e97",
+    "cell:mrzzsdjxrm2.12321:dff860b3"
+   ],
+   "section": "4. Checking a claim",
+   "subsection": "Which sources count",
+   "text": "Prices and terms move; a price without its date is Reported",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.12384",
+   "h": "4e074085",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.12032:2c55365d",
+    "row:mrzzsdjxrm2.12382:8c089d75",
+    "cell:mrzzsdjxrm2.12383:bbd14f57"
+   ],
+   "section": "4. Checking a claim",
+   "subsection": "Which sources count",
+   "text": "3",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.12387",
+   "h": "ebfca7a0",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.12032:2c55365d",
+    "row:mrzzsdjxrm2.12382:8c089d75",
+    "cell:mrzzsdjxrm2.12386:6baa6398"
+   ],
+   "section": "4. Checking a claim",
+   "subsection": "Which sources count",
+   "text": "A paper with its data or code",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.12418",
+   "h": "a858611d",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.12032:2c55365d",
+    "row:mrzzsdjxrm2.12382:8c089d75",
+    "cell:mrzzsdjxrm2.12417:cdbc40ca"
+   ],
+   "section": "4. Checking a claim",
+   "subsection": "Which sources count",
+   "text": "Verified for counts you can re-derive from it",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.12465",
+   "h": "b530be23",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.12032:2c55365d",
+    "row:mrzzsdjxrm2.12382:8c089d75",
+    "cell:mrzzsdjxrm2.12464:51f556df"
+   ],
+   "section": "4. Checking a claim",
+   "subsection": "Which sources count",
+   "text": "Quote counts, not percentages: CooperBench states its gap three ways",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.12536",
+   "h": "4b227777",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.12032:2c55365d",
+    "row:mrzzsdjxrm2.12534:98ac78e2",
+    "cell:mrzzsdjxrm2.12535:9e37c0f5"
+   ],
+   "section": "4. Checking a claim",
+   "subsection": "Which sources count",
+   "text": "4",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.12539",
+   "h": "3ba0385b",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.12032:2c55365d",
+    "row:mrzzsdjxrm2.12534:98ac78e2",
+    "cell:mrzzsdjxrm2.12538:1cc5d323"
+   ],
+   "section": "4. Checking a claim",
+   "subsection": "Which sources count",
+   "text": "A project's README, design record, release notes or issues",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.12599",
+   "h": "c7332715",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.12032:2c55365d",
+    "row:mrzzsdjxrm2.12534:98ac78e2",
+    "cell:mrzzsdjxrm2.12598:d6c8c279"
+   ],
+   "section": "4. Checking a claim",
+   "subsection": "Which sources count",
+   "text": "Verified for what the project says of itself; Reported for what it says works",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.12678",
+   "h": "d8a35704",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.12032:2c55365d",
+    "row:mrzzsdjxrm2.12534:98ac78e2",
+    "cell:mrzzsdjxrm2.12677:93ccdce5"
+   ],
+   "section": "4. Checking a claim",
+   "subsection": "Which sources count",
+   "text": "gh-aw's design record for its queue is still a draft",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.12733",
+   "h": "ef2d127d",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.12032:2c55365d",
+    "row:mrzzsdjxrm2.12731:779103c1",
+    "cell:mrzzsdjxrm2.12732:65f6315d"
+   ],
+   "section": "4. Checking a claim",
+   "subsection": "Which sources count",
+   "text": "5",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.12736",
+   "h": "e389dd14",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.12032:2c55365d",
+    "row:mrzzsdjxrm2.12731:779103c1",
+    "cell:mrzzsdjxrm2.12735:77ae4013"
+   ],
+   "section": "4. Checking a claim",
+   "subsection": "Which sources count",
+   "text": "Blogs, talks, analyst reports, search summaries, a model's answer",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.12803",
+   "h": "34540bb7",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.12032:2c55365d",
+    "row:mrzzsdjxrm2.12731:779103c1",
+    "cell:mrzzsdjxrm2.12802:f7e7fdba"
+   ],
+   "section": "4. Checking a claim",
+   "subsection": "Which sources count",
+   "text": "Reported",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.12813",
+   "h": "ee6ee6d5",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.12032:2c55365d",
+    "row:mrzzsdjxrm2.12731:779103c1",
+    "cell:mrzzsdjxrm2.12812:38c85f38"
+   ],
+   "section": "4. Checking a claim",
+   "subsection": "Which sources count",
+   "text": "A lead to the primary source, never the source; this includes the deep-research report until its links are opened",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.12927",
+   "h": "c38433bf",
+   "heading": "3",
+   "ctx": [],
+   "section": "4. Checking a claim",
+   "subsection": "When a source is out of reach",
+   "text": "When a source is out of reach",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.12957",
+   "h": "0c9298b6",
+   "heading": null,
+   "ctx": [],
+   "section": "4. Checking a claim",
+   "subsection": "When a source is out of reach",
+   "text": "This project's sessions cannot open several hosts (section 2). Read GitHub's documentation from the github/docs repository's content files on raw.githubusercontent.com, at a commit you name. Read a paper from its authors' repository where there is one, as CooperBench's PDF was read from cooperbench/website. Leave the rest to claude.ai Research (section 3), then have a thread open each link the report gives. A claim whose only source stays out of reach keeps the grade Reported, with a note of what to re-read.",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.13471",
+   "h": "197c5c69",
+   "heading": "2",
+   "ctx": [],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "",
+   "text": "5. Placing any tool in the taxonomy",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.13507",
+   "h": "ab53975c",
+   "heading": null,
+   "ctx": [],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "",
+   "text": "Use this for any system someone names as an alternative, a competitor or a partner.",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.13591",
+   "h": "6196b779",
+   "heading": "3",
+   "ctx": [],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The procedure",
+   "text": "The procedure",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.13607",
+   "h": "8d9dac32",
+   "heading": null,
+   "ctx": [
+    "list:mrzzsdjxrm2.13605:4745d81c",
+    "listItem:mrzzsdjxrm2.13606:8f5e2866"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The procedure",
+   "text": "Pin the version. Name the repository and commit, or the product, plan and date. A placement goes stale when the tool ships.",
+   "spans": [
+    [
+     0,
+     16,
+     "**bold**"
+    ]
+   ]
+  },
+  {
+   "id": "mrzzsdjxrm2.13732",
+   "h": "698ae52c",
+   "heading": null,
+   "ctx": [
+    "list:mrzzsdjxrm2.13605:4745d81c",
+    "listItem:mrzzsdjxrm2.13731:4e8f5761"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The procedure",
+   "text": "Find its claim. Ask one question of the code, not the README: when two of its agents want the same piece of work, what stops the second, and what frees a claim nobody finishes? Most of the differences in the field sit in that answer (axis 5).",
+   "spans": [
+    [
+     0,
+     15,
+     "**bold**"
+    ]
+   ]
+  },
+  {
+   "id": "mrzzsdjxrm2.13976",
+   "h": "4923702c",
+   "heading": null,
+   "ctx": [
+    "list:mrzzsdjxrm2.13605:4745d81c",
+    "listItem:mrzzsdjxrm2.13975:fc8eeff6"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The procedure",
+   "text": "Put it in a quadrant. Where does the coordination state live, and what does one more agent run cost as the tool is usually run? Those are the two axes of the spec's placement figure.",
+   "spans": [
+    [
+     0,
+     21,
+     "**bold**"
+    ]
+   ]
+  },
+  {
+   "id": "mrzzsdjxrm2.14160",
+   "h": "2f978aae",
+   "heading": null,
+   "ctx": [
+    "list:mrzzsdjxrm2.13605:4745d81c",
+    "listItem:mrzzsdjxrm2.14159:6ebfe2e1"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The procedure",
+   "text": "Fill the worksheet below, one cell per axis, each with its source. Not stated is an answer; a guess is not.",
+   "spans": [
+    [
+     0,
+     24,
+     "**bold**"
+    ]
+   ]
+  },
+  {
+   "id": "mrzzsdjxrm2.14269",
+   "h": "1678b595",
+   "heading": null,
+   "ctx": [
+    "list:mrzzsdjxrm2.13605:4745d81c",
+    "listItem:mrzzsdjxrm2.14268:2b52dc20"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The procedure",
+   "text": "Score it on the five mechanisms, (a) to (e) of the spec's section 8: yes, partial (say what is missing) or no. Only a yes counts toward what would refute claim U1: four of the five, or (a), (c) and (d) together. A tool that reaches either goes to the spec before anything else.",
+   "spans": [
+    [
+     0,
+     31,
+     "**bold**"
+    ]
+   ]
+  },
+  {
+   "id": "mrzzsdjxrm2.14507",
+   "h": "38c4fe11",
+   "heading": null,
+   "ctx": [
+    "list:mrzzsdjxrm2.13605:4745d81c",
+    "listItem:mrzzsdjxrm2.14506:65257de1"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The procedure",
+   "text": "Add it to the spec: a row in the placement table of section 4 if it shares a cell with Symphony or Beethoven, a row in the matching table of section 5, and a line in the prior-art table of section 8 for each mechanism it has.",
+   "spans": [
+    [
+     0,
+     19,
+     "**bold**"
+    ]
+   ]
+  },
+  {
+   "id": "mrzzsdjxrm2.14733",
+   "h": "50c08809",
+   "heading": "3",
+   "ctx": [],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "The worksheet",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.14747",
+   "h": "8c9907bf",
+   "heading": null,
+   "ctx": [],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "Copy this table for each tool.",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.14781",
+   "h": "334359b9",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.14779:48dc6513",
+    "cell:mrzzsdjxrm2.14780:1b1ac0d9"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "#",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.14784",
+   "h": "32b73cae",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.14779:48dc6513",
+    "cell:mrzzsdjxrm2.14783:ef76e35d"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "Axis",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.14790",
+   "h": "289aff12",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.14779:48dc6513",
+    "cell:mrzzsdjxrm2.14789:f862cec8"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "Question",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.14800",
+   "h": "b2a3aa60",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.14779:48dc6513",
+    "cell:mrzzsdjxrm2.14799:a3f81ada"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "Answer",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.14808",
+   "h": "0e570ca6",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.14779:48dc6513",
+    "cell:mrzzsdjxrm2.14807:6e161f52"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "Source",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.14817",
+   "h": "5feceb66",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.14815:cb65bd5a",
+    "cell:mrzzsdjxrm2.14816:e380956b"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "0",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.14820",
+   "h": "999f23fc",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.14815:cb65bd5a",
+    "cell:mrzzsdjxrm2.14819:3cf016a2"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "Identity",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.14830",
+   "h": "1d846c93",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.14815:cb65bd5a",
+    "cell:mrzzsdjxrm2.14829:890e3f24"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "Name; repository and commit, or product and plan; date read",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.14891",
+   "h": "e3b0c442",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.14815:cb65bd5a",
+    "cell:mrzzsdjxrm2.14890:76590ca0"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.14893",
+   "h": "e3b0c442",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.14815:cb65bd5a",
+    "cell:mrzzsdjxrm2.14892:d6762cb6"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.14896",
+   "h": "6b86b273",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.14894:db0e73d7",
+    "cell:mrzzsdjxrm2.14895:ca99738d"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "1",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.14899",
+   "h": "78ca2e65",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.14894:db0e73d7",
+    "cell:mrzzsdjxrm2.14898:4be385f3"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "Stack layer",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.14912",
+   "h": "d0c07137",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.14894:db0e73d7",
+    "cell:mrzzsdjxrm2.14911:cd241721"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "Which of L0 to L5 does it occupy, and what does it sit on?",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.14972",
+   "h": "e3b0c442",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.14894:db0e73d7",
+    "cell:mrzzsdjxrm2.14971:e167497e"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.14974",
+   "h": "e3b0c442",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.14894:db0e73d7",
+    "cell:mrzzsdjxrm2.14973:837a4cfb"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.14977",
+   "h": "d4735e3a",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.14975:139baa24",
+    "cell:mrzzsdjxrm2.14976:0678367e"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "2",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.14980",
+   "h": "30edc47c",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.14975:139baa24",
+    "cell:mrzzsdjxrm2.14979:5f65278d"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "Autonomy",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.14990",
+   "h": "c09e1778",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.14975:139baa24",
+    "cell:mrzzsdjxrm2.14989:a562830f"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "While it works, does a person operate, collaborate, consult, approve or only observe?",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.15077",
+   "h": "e3b0c442",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.14975:139baa24",
+    "cell:mrzzsdjxrm2.15076:baeb7e9c"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.15079",
+   "h": "e3b0c442",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.14975:139baa24",
+    "cell:mrzzsdjxrm2.15078:01690b0f"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.15082",
+   "h": "4e074085",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.15080:d9360118",
+    "cell:mrzzsdjxrm2.15081:0c6e3105"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "3",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.15085",
+   "h": "237841ed",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.15080:d9360118",
+    "cell:mrzzsdjxrm2.15084:38390e74"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "Control topology",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.15103",
+   "h": "f1f6e234",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.15080:d9360118",
+    "cell:mrzzsdjxrm2.15102:eeb5ec2e"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "Who decides who does what: one agent, an orchestrator, planners, peers, or a shared medium?",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.15196",
+   "h": "e3b0c442",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.15080:d9360118",
+    "cell:mrzzsdjxrm2.15195:1bcd8a15"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.15198",
+   "h": "e3b0c442",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.15080:d9360118",
+    "cell:mrzzsdjxrm2.15197:979d4ca9"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.15201",
+   "h": "4b227777",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.15199:894a6717",
+    "cell:mrzzsdjxrm2.15200:cc30dc29"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "4",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.15204",
+   "h": "917f8b63",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.15199:894a6717",
+    "cell:mrzzsdjxrm2.15203:17271923"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "Communication medium",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.15226",
+   "h": "84b8aed1",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.15199:894a6717",
+    "cell:mrzzsdjxrm2.15225:f11e584f"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "How does one agent learn of another's work?",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.15271",
+   "h": "e3b0c442",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.15199:894a6717",
+    "cell:mrzzsdjxrm2.15270:57d022ff"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.15273",
+   "h": "e3b0c442",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.15199:894a6717",
+    "cell:mrzzsdjxrm2.15272:461d26ab"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.15276",
+   "h": "ef2d127d",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.15274:2d85ce21",
+    "cell:mrzzsdjxrm2.15275:a97a7a4b"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "5",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.15279",
+   "h": "73e78c47",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.15274:2d85ce21",
+    "cell:mrzzsdjxrm2.15278:edae0659"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "Concurrency control",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.15300",
+   "h": "74c25eb9",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.15274:2d85ce21",
+    "cell:mrzzsdjxrm2.15299:0c725818"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "What stops a second agent taking the same work, and what frees a claim nobody finishes?",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.15389",
+   "h": "e3b0c442",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.15274:2d85ce21",
+    "cell:mrzzsdjxrm2.15388:3b608212"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.15391",
+   "h": "e3b0c442",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.15274:2d85ce21",
+    "cell:mrzzsdjxrm2.15390:24799b01"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.15394",
+   "h": "e7f6c011",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.15392:549cae93",
+    "cell:mrzzsdjxrm2.15393:55e6a7e6"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "6",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.15397",
+   "h": "2e41b118",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.15392:549cae93",
+    "cell:mrzzsdjxrm2.15396:69e63291"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "Dependencies",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.15411",
+   "h": "2b31a94a",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.15392:549cae93",
+    "cell:mrzzsdjxrm2.15410:d0063d2d"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "Which does it manage: shared resource, prerequisite, transfer, usability, simultaneity, task and subtask?",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.15518",
+   "h": "e3b0c442",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.15392:549cae93",
+    "cell:mrzzsdjxrm2.15517:da0c69d2"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.15520",
+   "h": "e3b0c442",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.15392:549cae93",
+    "cell:mrzzsdjxrm2.15519:6d3408bf"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.15523",
+   "h": "7902699b",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.15521:b7449839",
+    "cell:mrzzsdjxrm2.15522:0e54d4aa"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "7",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.15526",
+   "h": "b15c535f",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.15521:b7449839",
+    "cell:mrzzsdjxrm2.15525:6881c8ff"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "Execution environment",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.15549",
+   "h": "9cc1342c",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.15521:b7449839",
+    "cell:mrzzsdjxrm2.15548:a5e71adb"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "Where does an agent run?",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.15575",
+   "h": "e3b0c442",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.15521:b7449839",
+    "cell:mrzzsdjxrm2.15574:f59e65f3"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.15577",
+   "h": "e3b0c442",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.15521:b7449839",
+    "cell:mrzzsdjxrm2.15576:c8a94212"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.15580",
+   "h": "2c624232",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.15578:5944f167",
+    "cell:mrzzsdjxrm2.15579:c69b0b38"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "8",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.15583",
+   "h": "a6d74471",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.15578:5944f167",
+    "cell:mrzzsdjxrm2.15582:522f3d4e"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "Trigger and lifetime",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.15605",
+   "h": "4a694281",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.15578:5944f167",
+    "cell:mrzzsdjxrm2.15604:bdf48ffa"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "What starts a run, and what ends it?",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.15643",
+   "h": "e3b0c442",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.15578:5944f167",
+    "cell:mrzzsdjxrm2.15642:bda49a6e"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.15645",
+   "h": "e3b0c442",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.15578:5944f167",
+    "cell:mrzzsdjxrm2.15644:c7789306"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.15648",
+   "h": "19581e27",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.15646:6c522253",
+    "cell:mrzzsdjxrm2.15647:3a702d8c"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "9",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.15651",
+   "h": "07ca4318",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.15646:6c522253",
+    "cell:mrzzsdjxrm2.15650:d5772bdf"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "State and memory",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.15669",
+   "h": "009259af",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.15646:6c522253",
+    "cell:mrzzsdjxrm2.15668:f13c3746"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "Where does the durable record live?",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.15706",
+   "h": "e3b0c442",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.15646:6c522253",
+    "cell:mrzzsdjxrm2.15705:449e81d6"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.15708",
+   "h": "e3b0c442",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.15646:6c522253",
+    "cell:mrzzsdjxrm2.15707:48ea740d"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.15711",
+   "h": "4a44dc15",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.15709:9c466322",
+    "cell:mrzzsdjxrm2.15710:d3779cfd"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "10",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.15715",
+   "h": "a9fa5de0",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.15709:9c466322",
+    "cell:mrzzsdjxrm2.15714:dc47365c"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "Cost model and payer",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.15737",
+   "h": "03bed619",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.15709:9c466322",
+    "cell:mrzzsdjxrm2.15736:d457291c"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "Who pays for inference and for compute, and under what licence?",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.15802",
+   "h": "e3b0c442",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.15709:9c466322",
+    "cell:mrzzsdjxrm2.15801:39e09dd2"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.15804",
+   "h": "e3b0c442",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.15709:9c466322",
+    "cell:mrzzsdjxrm2.15803:8c1dc9aa"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.15807",
+   "h": "4fc82b26",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.15805:847e62ee",
+    "cell:mrzzsdjxrm2.15806:5668364a"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "11",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.15811",
+   "h": "7140f4f1",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.15805:847e62ee",
+    "cell:mrzzsdjxrm2.15810:90756e37"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "Verification",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.15825",
+   "h": "cf4c104e",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.15805:847e62ee",
+    "cell:mrzzsdjxrm2.15824:7428246b"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "What decides that work is acceptable, and can it block a merge?",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.15890",
+   "h": "e3b0c442",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.15805:847e62ee",
+    "cell:mrzzsdjxrm2.15889:c53b5861"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.15892",
+   "h": "e3b0c442",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.15805:847e62ee",
+    "cell:mrzzsdjxrm2.15891:1da752fe"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.15895",
+   "h": "6b51d431",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.15893:1ade5e9a",
+    "cell:mrzzsdjxrm2.15894:5eb6c6a4"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "12",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.15899",
+   "h": "f657f2cc",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.15893:1ade5e9a",
+    "cell:mrzzsdjxrm2.15898:9eae7716"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "Domain and maturity",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.15920",
+   "h": "76e1ac13",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.15893:1ade5e9a",
+    "cell:mrzzsdjxrm2.15919:12b2b33e"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "What work is it for, and is it released, pre-release or a design?",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.15987",
+   "h": "e3b0c442",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.15893:1ade5e9a",
+    "cell:mrzzsdjxrm2.15986:adb40c21"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.15989",
+   "h": "e3b0c442",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.15893:1ade5e9a",
+    "cell:mrzzsdjxrm2.15988:d7e76a7e"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.15992",
+   "h": "f89bf797",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.15990:1a249553",
+    "cell:mrzzsdjxrm2.15991:426cd51c"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "(a)",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.15997",
+   "h": "4f4c1a8e",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.15990:1a249553",
+    "cell:mrzzsdjxrm2.15996:4755e2f8"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "Atomic claim on the forge",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.16024",
+   "h": "2871dc82",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.15990:1a249553",
+    "cell:mrzzsdjxrm2.16023:c6ad6062"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "Yes, partial or no",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.16044",
+   "h": "e3b0c442",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.15990:1a249553",
+    "cell:mrzzsdjxrm2.16043:7f227616"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.16046",
+   "h": "e3b0c442",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.15990:1a249553",
+    "cell:mrzzsdjxrm2.16045:30ed9099"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.16049",
+   "h": "8cca9bdc",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.16047:8ac6619b",
+    "cell:mrzzsdjxrm2.16048:1818eae3"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "(b)",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.16054",
+   "h": "c2e628ba",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.16047:8ac6619b",
+    "cell:mrzzsdjxrm2.16053:f2d2d362"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "Idle release by CI, work kept",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.16085",
+   "h": "2871dc82",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.16047:8ac6619b",
+    "cell:mrzzsdjxrm2.16084:da128b76"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "Yes, partial or no",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.16105",
+   "h": "e3b0c442",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.16047:8ac6619b",
+    "cell:mrzzsdjxrm2.16104:4f0f4ca8"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.16107",
+   "h": "e3b0c442",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.16047:8ac6619b",
+    "cell:mrzzsdjxrm2.16106:480a78ed"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.16110",
+   "h": "be0b40ec",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.16108:6cc8408d",
+    "cell:mrzzsdjxrm2.16109:98c454e6"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "(c)",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.16115",
+   "h": "2097e1e5",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.16108:6cc8408d",
+    "cell:mrzzsdjxrm2.16114:ee8836a4"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "Board and coordinator in CI, state in forge objects",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.16168",
+   "h": "2871dc82",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.16108:6cc8408d",
+    "cell:mrzzsdjxrm2.16167:46c87793"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "Yes, partial or no",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.16188",
+   "h": "e3b0c442",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.16108:6cc8408d",
+    "cell:mrzzsdjxrm2.16187:714a6542"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.16190",
+   "h": "e3b0c442",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.16108:6cc8408d",
+    "cell:mrzzsdjxrm2.16189:de4f4fd1"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.16193",
+   "h": "77cabbc3",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.16191:84c077ca",
+    "cell:mrzzsdjxrm2.16192:20c826a7"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "(d)",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.16198",
+   "h": "ecc5c995",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.16191:84c077ca",
+    "cell:mrzzsdjxrm2.16197:003e02d1"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "People's sessions and CI agents under one rule, on a subscription",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.16265",
+   "h": "2871dc82",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.16191:84c077ca",
+    "cell:mrzzsdjxrm2.16264:cf1584c3"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "Yes, partial or no",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.16285",
+   "h": "e3b0c442",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.16191:84c077ca",
+    "cell:mrzzsdjxrm2.16284:e492320c"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.16287",
+   "h": "e3b0c442",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.16191:84c077ca",
+    "cell:mrzzsdjxrm2.16286:60e661f5"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.16290",
+   "h": "82386a7f",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.16288:b6ea2736",
+    "cell:mrzzsdjxrm2.16289:a03c55b2"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "(e)",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.16295",
+   "h": "25ca7081",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.16288:b6ea2736",
+    "cell:mrzzsdjxrm2.16294:10d94adf"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "Shipped protocol code checked by interleavings and mutants",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.16355",
+   "h": "2871dc82",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.16288:b6ea2736",
+    "cell:mrzzsdjxrm2.16354:227666a8"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "Yes, partial or no",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.16375",
+   "h": "e3b0c442",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.16288:b6ea2736",
+    "cell:mrzzsdjxrm2.16374:cd7e6160"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.16377",
+   "h": "e3b0c442",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.14778:441f17c0",
+    "row:mrzzsdjxrm2.16288:b6ea2736",
+    "cell:mrzzsdjxrm2.16376:b0eb32fe"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "The worksheet",
+   "text": "",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.16378",
+   "h": "e3779586",
+   "heading": "3",
+   "ctx": [],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "A worked example: unsorry",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.16404",
+   "h": "411941ba",
+   "heading": null,
+   "ctx": [],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "unsorry (agenticsnz/unsorry), a swarm of agents that proves goals in Lean, is the closest rival the search found. Read at commit 029d328b on 2026-10-15 (research/taxonomy/verify/03).",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.16590",
+   "h": "334359b9",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.16587:d011d43a",
+    "row:mrzzsdjxrm2.16588:647224e2",
+    "cell:mrzzsdjxrm2.16589:44490e90"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "#",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.16593",
+   "h": "32b73cae",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.16587:d011d43a",
+    "row:mrzzsdjxrm2.16588:647224e2",
+    "cell:mrzzsdjxrm2.16592:22d90ce7"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "Axis",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.16599",
+   "h": "b2a3aa60",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.16587:d011d43a",
+    "row:mrzzsdjxrm2.16588:647224e2",
+    "cell:mrzzsdjxrm2.16598:d6b9fe82"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "Answer",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.16607",
+   "h": "0e570ca6",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.16587:d011d43a",
+    "row:mrzzsdjxrm2.16588:647224e2",
+    "cell:mrzzsdjxrm2.16606:03ec0965"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "Source",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.16616",
+   "h": "6b86b273",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.16587:d011d43a",
+    "row:mrzzsdjxrm2.16614:ac5d4e79",
+    "cell:mrzzsdjxrm2.16615:2a744468"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "1",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.16619",
+   "h": "78ca2e65",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.16587:d011d43a",
+    "row:mrzzsdjxrm2.16614:ac5d4e79",
+    "cell:mrzzsdjxrm2.16618:8a5fc82c"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "Stack layer",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.16632",
+   "h": "4edea38e",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.16587:d011d43a",
+    "row:mrzzsdjxrm2.16614:ac5d4e79",
+    "cell:mrzzsdjxrm2.16631:b6e6d26e"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "L3 coordination on L4 GitHub, for an L5 domain",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.16680",
+   "h": "488df0ce",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.16587:d011d43a",
+    "row:mrzzsdjxrm2.16614:ac5d4e79",
+    "cell:mrzzsdjxrm2.16679:cc063c3c"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "Inferred from the rows below",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.16711",
+   "h": "4e074085",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.16587:d011d43a",
+    "row:mrzzsdjxrm2.16709:da171f10",
+    "cell:mrzzsdjxrm2.16710:965e58de"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "3",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.16714",
+   "h": "237841ed",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.16587:d011d43a",
+    "row:mrzzsdjxrm2.16709:da171f10",
+    "cell:mrzzsdjxrm2.16713:40d56738"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "Control topology",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.16732",
+   "h": "a051f700",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.16587:d011d43a",
+    "row:mrzzsdjxrm2.16709:da171f10",
+    "cell:mrzzsdjxrm2.16731:2b570cc5"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "A shared medium with self-claiming peers, and a dispatcher in Actions",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.16803",
+   "h": "eb15a133",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.16587:d011d43a",
+    "row:mrzzsdjxrm2.16709:da171f10",
+    "cell:mrzzsdjxrm2.16802:b6fc7f6d"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "queue-dispatcher.yml",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.16826",
+   "h": "4b227777",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.16587:d011d43a",
+    "row:mrzzsdjxrm2.16824:995cf868",
+    "cell:mrzzsdjxrm2.16825:4cccec10"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "4",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.16829",
+   "h": "917f8b63",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.16587:d011d43a",
+    "row:mrzzsdjxrm2.16824:995cf868",
+    "cell:mrzzsdjxrm2.16828:6d8e63f3"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "Communication medium",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.16851",
+   "h": "02861661",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.16587:d011d43a",
+    "row:mrzzsdjxrm2.16824:995cf868",
+    "cell:mrzzsdjxrm2.16850:31bb7d41"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "Traces in git: claim files on the branch claims, queued/prove/* branches, files on main, pull requests",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.16955",
+   "h": "9220fc2b",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.16587:d011d43a",
+    "row:mrzzsdjxrm2.16824:995cf868",
+    "cell:mrzzsdjxrm2.16954:0f880f88"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "ADR-004",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.16965",
+   "h": "ef2d127d",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.16587:d011d43a",
+    "row:mrzzsdjxrm2.16963:18791bc2",
+    "cell:mrzzsdjxrm2.16964:19175edb"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "5",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.16968",
+   "h": "73e78c47",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.16587:d011d43a",
+    "row:mrzzsdjxrm2.16963:18791bc2",
+    "cell:mrzzsdjxrm2.16967:29694978"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "Concurrency control",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.16989",
+   "h": "e1b99f21",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.16587:d011d43a",
+    "row:mrzzsdjxrm2.16963:18791bc2",
+    "cell:mrzzsdjxrm2.16988:27839572"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "A lock with a timer: a claim file pushed to one shared branch, first push wins, checked again after the push; deleted two hours after the claim was made",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.17143",
+   "h": "165d737b",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.16587:d011d43a",
+    "row:mrzzsdjxrm2.16963:18791bc2",
+    "cell:mrzzsdjxrm2.17142:95cbb11f"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "ADR-004 lines 14 and 25; ADR-072; reaper.yml; tools/gate_b/config.py line 11",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.17222",
+   "h": "7902699b",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.16587:d011d43a",
+    "row:mrzzsdjxrm2.17220:fc90914b",
+    "cell:mrzzsdjxrm2.17221:8848fb6e"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "7",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.17225",
+   "h": "b15c535f",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.16587:d011d43a",
+    "row:mrzzsdjxrm2.17220:fc90914b",
+    "cell:mrzzsdjxrm2.17224:2388655a"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "Execution environment",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.17248",
+   "h": "4519b6e4",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.16587:d011d43a",
+    "row:mrzzsdjxrm2.17220:fc90914b",
+    "cell:mrzzsdjxrm2.17247:4a4f63cf"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "Agents on volunteers' own machines; the board, dispatcher, reaper and about 15 janitors in Actions",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.17348",
+   "h": "6d938a13",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.16587:d011d43a",
+    "row:mrzzsdjxrm2.17220:fc90914b",
+    "cell:mrzzsdjxrm2.17347:173bda9b"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "swarm/agent.sh; .github/workflows",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.17384",
+   "h": "2c624232",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.16587:d011d43a",
+    "row:mrzzsdjxrm2.17382:287ad08f",
+    "cell:mrzzsdjxrm2.17383:bf7b9075"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "8",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.17387",
+   "h": "a6d74471",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.16587:d011d43a",
+    "row:mrzzsdjxrm2.17382:287ad08f",
+    "cell:mrzzsdjxrm2.17386:0bead830"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "Trigger and lifetime",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.17409",
+   "h": "39eb1583",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.16587:d011d43a",
+    "row:mrzzsdjxrm2.17382:287ad08f",
+    "cell:mrzzsdjxrm2.17408:a1e86802"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "Volunteers start their agents; the reaper runs every 15 minutes",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.17474",
+   "h": "d1e16093",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.16587:d011d43a",
+    "row:mrzzsdjxrm2.17382:287ad08f",
+    "cell:mrzzsdjxrm2.17473:598bbf74"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "reaper.yml",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.17487",
+   "h": "19581e27",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.16587:d011d43a",
+    "row:mrzzsdjxrm2.17485:ed3d340e",
+    "cell:mrzzsdjxrm2.17486:68239ae9"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "9",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.17490",
+   "h": "07ca4318",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.16587:d011d43a",
+    "row:mrzzsdjxrm2.17485:ed3d340e",
+    "cell:mrzzsdjxrm2.17489:df509133"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "State and memory",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.17508",
+   "h": "080a4d3d",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.16587:d011d43a",
+    "row:mrzzsdjxrm2.17485:ed3d340e",
+    "cell:mrzzsdjxrm2.17507:a9b25f5e"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "Branches, files on main and pull requests; no central server",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.17570",
+   "h": "9220fc2b",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.16587:d011d43a",
+    "row:mrzzsdjxrm2.17485:ed3d340e",
+    "cell:mrzzsdjxrm2.17569:722e3750"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "ADR-004",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.17580",
+   "h": "4a44dc15",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.16587:d011d43a",
+    "row:mrzzsdjxrm2.17578:3f2fb698",
+    "cell:mrzzsdjxrm2.17579:df2ad9b5"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "10",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.17584",
+   "h": "a9fa5de0",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.16587:d011d43a",
+    "row:mrzzsdjxrm2.17578:3f2fb698",
+    "cell:mrzzsdjxrm2.17583:dc426989"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "Cost model and payer",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.17606",
+   "h": "f68c2140",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.16587:d011d43a",
+    "row:mrzzsdjxrm2.17578:3f2fb698",
+    "cell:mrzzsdjxrm2.17605:db9b4ae7"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "Each volunteer pays for inference (claude -p, Codex, Gemini); coordination runs on Actions minutes",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.17706",
+   "h": "6452141c",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.16587:d011d43a",
+    "row:mrzzsdjxrm2.17578:3f2fb698",
+    "cell:mrzzsdjxrm2.17705:534579c3"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "swarm/agent.sh line 2685",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.17733",
+   "h": "6b51d431",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.16587:d011d43a",
+    "row:mrzzsdjxrm2.17731:4a95ca6d",
+    "cell:mrzzsdjxrm2.17732:c8f402d8"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "12",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.17737",
+   "h": "f657f2cc",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.16587:d011d43a",
+    "row:mrzzsdjxrm2.17731:4a95ca6d",
+    "cell:mrzzsdjxrm2.17736:2716366e"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "Domain and maturity",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.17758",
+   "h": "4e18a651",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.16587:d011d43a",
+    "row:mrzzsdjxrm2.17731:4a95ca6d",
+    "cell:mrzzsdjxrm2.17757:2659bb01"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "Formal mathematics; claims in this form since 2026-06-10",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.17816",
+   "h": "9220fc2b",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.16587:d011d43a",
+    "row:mrzzsdjxrm2.17731:4a95ca6d",
+    "cell:mrzzsdjxrm2.17815:ebaf8d5a"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "ADR-004",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.17826",
+   "h": "f89bf797",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.16587:d011d43a",
+    "row:mrzzsdjxrm2.17824:48f95966",
+    "cell:mrzzsdjxrm2.17825:8107a737"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "(a)",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.17831",
+   "h": "7a93db70",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.16587:d011d43a",
+    "row:mrzzsdjxrm2.17824:48f95966",
+    "cell:mrzzsdjxrm2.17830:2716c73d"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "Atomic claim",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.17845",
+   "h": "57862986",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.16587:d011d43a",
+    "row:mrzzsdjxrm2.17824:48f95966",
+    "cell:mrzzsdjxrm2.17844:32870abd"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "Partial: files on one shared branch, not a ref per item",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.17902",
+   "h": "e3b0c442",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.16587:d011d43a",
+    "row:mrzzsdjxrm2.17824:48f95966",
+    "cell:mrzzsdjxrm2.17901:57c5a709"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.17905",
+   "h": "8cca9bdc",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.16587:d011d43a",
+    "row:mrzzsdjxrm2.17903:cf18498f",
+    "cell:mrzzsdjxrm2.17904:8e48d914"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "(b)",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.17910",
+   "h": "f624b21f",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.16587:d011d43a",
+    "row:mrzzsdjxrm2.17903:cf18498f",
+    "cell:mrzzsdjxrm2.17909:d091c3b9"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "Idle release",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.17924",
+   "h": "c52437e7",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.16587:d011d43a",
+    "row:mrzzsdjxrm2.17903:cf18498f",
+    "cell:mrzzsdjxrm2.17923:c44eb6be"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "Partial: a timer from the claim's own timestamp, not idleness; the work is not kept",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.18009",
+   "h": "e3b0c442",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.16587:d011d43a",
+    "row:mrzzsdjxrm2.17903:cf18498f",
+    "cell:mrzzsdjxrm2.18008:e2f59e61"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.18012",
+   "h": "be0b40ec",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.16587:d011d43a",
+    "row:mrzzsdjxrm2.18010:74a5e9f9",
+    "cell:mrzzsdjxrm2.18011:ecc6ef7a"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "(c)",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.18017",
+   "h": "0c61c8e2",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.16587:d011d43a",
+    "row:mrzzsdjxrm2.18010:74a5e9f9",
+    "cell:mrzzsdjxrm2.18016:1bbea3ac"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "Board in CI",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.18030",
+   "h": "85a39ab3",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.16587:d011d43a",
+    "row:mrzzsdjxrm2.18010:74a5e9f9",
+    "cell:mrzzsdjxrm2.18029:b0aa460b"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "Yes",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.18035",
+   "h": "e3b0c442",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.16587:d011d43a",
+    "row:mrzzsdjxrm2.18010:74a5e9f9",
+    "cell:mrzzsdjxrm2.18034:d95a66ee"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.18038",
+   "h": "77cabbc3",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.16587:d011d43a",
+    "row:mrzzsdjxrm2.18036:2f0cbc88",
+    "cell:mrzzsdjxrm2.18037:cdfa5456"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "(d)",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.18043",
+   "h": "0a52bc42",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.16587:d011d43a",
+    "row:mrzzsdjxrm2.18036:2f0cbc88",
+    "cell:mrzzsdjxrm2.18042:ae10acc8"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "One rule for sessions and CI agents",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.18080",
+   "h": "d5a9be0c",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.16587:d011d43a",
+    "row:mrzzsdjxrm2.18036:2f0cbc88",
+    "cell:mrzzsdjxrm2.18079:3c346209"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "Partial: volunteers' runs only; no agent in Actions, and no subscription token there",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.18166",
+   "h": "e3b0c442",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.16587:d011d43a",
+    "row:mrzzsdjxrm2.18036:2f0cbc88",
+    "cell:mrzzsdjxrm2.18165:3b9fbe39"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.18169",
+   "h": "82386a7f",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.16587:d011d43a",
+    "row:mrzzsdjxrm2.18167:adf36b1b",
+    "cell:mrzzsdjxrm2.18168:1c7319ac"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "(e)",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.18174",
+   "h": "4825446a",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.16587:d011d43a",
+    "row:mrzzsdjxrm2.18167:adf36b1b",
+    "cell:mrzzsdjxrm2.18173:49801eb7"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "Checked protocol code",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.18197",
+   "h": "1ea442a1",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.16587:d011d43a",
+    "row:mrzzsdjxrm2.18167:adf36b1b",
+    "cell:mrzzsdjxrm2.18196:ca84c5c7"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "No",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.18201",
+   "h": "e3b0c442",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.16587:d011d43a",
+    "row:mrzzsdjxrm2.18167:adf36b1b",
+    "cell:mrzzsdjxrm2.18200:14164c7e"
+   ],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.18202",
+   "h": "888efc72",
+   "heading": null,
+   "ctx": [],
+   "section": "5. Placing any tool in the taxonomy",
+   "subsection": "A worked example: unsorry",
+   "text": "One yes and three partials: unsorry does not refute U1, but it is why U1 and U2 are worded as narrowly as they are. Axes 2, 6 and 11 were not read, and stay blank until someone reads them.",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.18391",
+   "h": "ac0c801f",
+   "heading": "2",
+   "ctx": [],
+   "section": "6. Explaining the approach",
+   "subsection": "",
+   "text": "6. Explaining the approach",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.18418",
+   "h": "37b2efcf",
+   "heading": "3",
+   "ctx": [],
+   "section": "6. Explaining the approach",
+   "subsection": "The argument, in order",
+   "text": "The argument, in order",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.18441",
+   "h": "327380fa",
+   "heading": null,
+   "ctx": [],
+   "section": "6. Explaining the approach",
+   "subsection": "The argument, in order",
+   "text": "Keep this order for every audience. The need comes before the mechanism, so the listener knows what the mechanism is for; the limits come before anyone asks, so the rest is believed.",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.18626",
+   "h": "cd21c589",
+   "heading": null,
+   "ctx": [
+    "list:mrzzsdjxrm2.18624:4874ad50",
+    "listItem:mrzzsdjxrm2.18625:8a10d501"
+   ],
+   "section": "6. Explaining the approach",
+   "subsection": "The argument, in order",
+   "text": "The need. Agents that share a codebase get in each other's way. In CooperBench, where each of two agents worked in its own copy and could only message the other, one GPT-5 agent passed 315 of 652 feature pairs where two agents passed 183. The failures were duplicated and contradictory work, not a lack of skill, and chat between the agents did not raise success; in a later, smaller ablation, pairs given a shared git remote or task list did better than one agent, on weak evidence (spec 7.1).",
+   "spans": [
+    [
+     0,
+     9,
+     "**bold**"
+    ]
+   ]
+  },
+  {
+   "id": "mrzzsdjxrm2.18911",
+   "h": "e5f2b98b",
+   "heading": null,
+   "ctx": [
+    "list:mrzzsdjxrm2.18624:4874ad50",
+    "listItem:mrzzsdjxrm2.18910:766120e9"
+   ],
+   "section": "6. Explaining the approach",
+   "subsection": "The argument, in order",
+   "text": "The mechanism. Make the forge the coordinator. A claim is the push that creates the branch claude/N, and git lets exactly one of two racing creations win, so no lock server is needed. A board, the release of idle claims and the landing order of overlapping work are GitHub Actions jobs over GitHub's own objects, and a required check decides what merges (spec 2 and 9.1).",
+   "spans": [
+    [
+     0,
+     14,
+     "**bold**"
+    ]
+   ]
+  },
+  {
+   "id": "mrzzsdjxrm2.19284",
+   "h": "9893028d",
+   "heading": null,
+   "ctx": [
+    "list:mrzzsdjxrm2.18624:4874ad50",
+    "listItem:mrzzsdjxrm2.19283:1f63128c"
+   ],
+   "section": "6. Explaining the approach",
+   "subsection": "The argument, in order",
+   "text": "The economics. On a public repository those jobs run on GitHub's free standard runners and make no model call. The Claude work bills a flat plan, not tokens, and there is nothing to host (spec 9.2 and 9.6).",
+   "spans": [
+    [
+     0,
+     14,
+     "**bold**"
+    ]
+   ]
+  },
+  {
+   "id": "mrzzsdjxrm2.19492",
+   "h": "dab004dc",
+   "heading": null,
+   "ctx": [
+    "list:mrzzsdjxrm2.18624:4874ad50",
+    "listItem:mrzzsdjxrm2.19491:ab80a757"
+   ],
+   "section": "6. Explaining the approach",
+   "subsection": "The argument, in order",
+   "text": "The evidence. The protocol's shipped code was checked over 16.7 million states against an oracle written from its spec, with mutants that prove the checks bite, and found no violation. Building the harness and reviewing the fixes it led to found 19 defects: six are fixed in release 0.4.1, eleven on main but not yet released, one was settled in the spec, and one (F8) is open. What is not yet evidence: no full-scale benchmark of Symphony exists (spec 2; question R1).",
+   "spans": [
+    [
+     0,
+     13,
+     "**bold**"
+    ]
+   ]
+  },
+  {
+   "id": "mrzzsdjxrm2.19791",
+   "h": "fa12eb06",
+   "heading": null,
+   "ctx": [
+    "list:mrzzsdjxrm2.18624:4874ad50",
+    "listItem:mrzzsdjxrm2.19790:efcbe797"
+   ],
+   "section": "6. Explaining the approach",
+   "subsection": "The argument, in order",
+   "text": "The limits. Inference is still paid, and one plan's usage window is shared. The terms questions are open, the server enforces a claim only at its creation, and one vendor sets the price (spec 10).",
+   "spans": [
+    [
+     0,
+     11,
+     "**bold**"
+    ]
+   ]
+  },
+  {
+   "id": "mrzzsdjxrm2.19988",
+   "h": "806ea5b3",
+   "heading": null,
+   "ctx": [],
+   "section": "6. Explaining the approach",
+   "subsection": "The argument, in order",
+   "text": "For a short explanation, use three of the spec's twelve axes, the three the study rests on: who pays for compute and inference (axis 10), how a claim is kept (axis 5), and what decides that work is acceptable (axis 11).",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.20208",
+   "h": "bb8e3e7f",
+   "heading": "3",
+   "ctx": [],
+   "section": "6. Explaining the approach",
+   "subsection": "For grant reviewers",
+   "text": "For grant reviewers",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.20228",
+   "h": "2e72ff2c",
+   "heading": null,
+   "ctx": [],
+   "section": "6. Explaining the approach",
+   "subsection": "For grant reviewers",
+   "text": "Lead with the science, not the software: AI-run research fails in ways its paper cannot show (spec 7.2), so the checks belong inside the run. Then the coordination, as the laboratory's rule of one issue, one branch, one pull request.",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.20462",
+   "h": "88c2241c",
+   "heading": null,
+   "ctx": [],
+   "section": "6. Explaining the approach",
+   "subsection": "For grant reviewers",
+   "text": "Three sentences to adapt:",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.20489",
+   "h": "9a17dcde",
+   "heading": null,
+   "ctx": [
+    "blockquote:mrzzsdjxrm2.20488:4f187eda"
+   ],
+   "section": "6. Explaining the approach",
+   "subsection": "For grant reviewers",
+   "text": "Studies of AI agents find that two agents splitting work on one codebase, each in its own copy and talking only by message, succeed less often than one, because they duplicate and contradict each other's work, and that AI-run research fails in ways its paper cannot show. Our laboratory runs its agents under a claim protocol in which each piece of work is one issue, one branch and one pull request, and plans to turn reporting checklists such as CLAIM and REFORMS into gates checked over every run's record, so that a tool, not a model, decides whether a result may be reported. One such check is built today; the others are planned.",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.21062",
+   "h": "f094ad73",
+   "heading": null,
+   "ctx": [],
+   "section": "6. Explaining the approach",
+   "subsection": "For grant reviewers",
+   "text": "For this audience:",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.21083",
+   "h": "e998a7ca",
+   "heading": null,
+   "ctx": [
+    "list:mrzzsdjxrm2.21081:39f35bc4",
+    "listItem:mrzzsdjxrm2.21082:dd00df85"
+   ],
+   "section": "6. Explaining the approach",
+   "subsection": "For grant reviewers",
+   "text": "No numbers from this project's coordination experiment until you say so. The hold is on the experiment; whether CooperBench's published counts go in is your call.",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.21247",
+   "h": "000fcdfd",
+   "heading": null,
+   "ctx": [
+    "list:mrzzsdjxrm2.21081:39f35bc4",
+    "listItem:mrzzsdjxrm2.21246:fe48d164"
+   ],
+   "section": "6. Explaining the approach",
+   "subsection": "For grant reviewers",
+   "text": "Say, part by part, what is built and what is planned (the tables in spec section 2). Reviewers discount a plan presented as a result.",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.21382",
+   "h": "ea9fc33a",
+   "heading": null,
+   "ctx": [
+    "list:mrzzsdjxrm2.21081:39f35bc4",
+    "listItem:mrzzsdjxrm2.21381:b772c1a5"
+   ],
+   "section": "6. Explaining the approach",
+   "subsection": "For grant reviewers",
+   "text": "Say the stack is a design: no Beethoven repository runs Symphony's code today (spec 6.5).",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.21473",
+   "h": "8a98ffa7",
+   "heading": null,
+   "ctx": [
+    "list:mrzzsdjxrm2.21081:39f35bc4",
+    "listItem:mrzzsdjxrm2.21472:51dac8f0"
+   ],
+   "section": "6. Explaining the approach",
+   "subsection": "For grant reviewers",
+   "text": "Match the grant packet: Beethoven is your proprietary software, and the award funds none of it.",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.21570",
+   "h": "5c728e92",
+   "heading": null,
+   "ctx": [
+    "list:mrzzsdjxrm2.21081:39f35bc4",
+    "listItem:mrzzsdjxrm2.21569:d302a628"
+   ],
+   "section": "6. Explaining the approach",
+   "subsection": "For grant reviewers",
+   "text": "Name the data-handling preconditions before a reviewer does: Wayne State's approval of AI tools, no BAA on a personal plan, and Remote Control's limits under HIPAA (spec risk 9).",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.21749",
+   "h": "f73689ae",
+   "heading": "3",
+   "ctx": [],
+   "section": "6. Explaining the approach",
+   "subsection": "For engineers",
+   "text": "For engineers",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.21763",
+   "h": "51d80461",
+   "heading": null,
+   "ctx": [],
+   "section": "6. Explaining the approach",
+   "subsection": "For engineers",
+   "text": "Lead with the mechanism and its failure modes; engineers trust an account that names its own holes.",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.21864",
+   "h": "afd9d70a",
+   "heading": null,
+   "ctx": [
+    "blockquote:mrzzsdjxrm2.21863:c335e4d2"
+   ],
+   "section": "6. Explaining the approach",
+   "subsection": "For engineers",
+   "text": "Symphony makes a GitHub repository the coordinator for Claude Code agents. A claim is the push that creates branch claude/N, and git lets exactly one of two racing creations win, so there is no lock server; the board, the release of idle claims and the order in which overlapping work lands are deterministic Actions jobs on GITHUB_TOKEN, and Claude runs only where judgment is needed. The shipped protocol library is checked over every interleaving of two workers, to a depth of eight steps on one issue and seven on two, against an oracle written from its spec, and its known gaps are written down.",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.22409",
+   "h": "4d3ecfee",
+   "heading": null,
+   "ctx": [],
+   "section": "6. Explaining the approach",
+   "subsection": "For engineers",
+   "text": "Questions to expect, with honest answers:",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.22454",
+   "h": "289aff12",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.22451:8deb57f8",
+    "row:mrzzsdjxrm2.22452:16104322",
+    "cell:mrzzsdjxrm2.22453:229e36b7"
+   ],
+   "section": "6. Explaining the approach",
+   "subsection": "For engineers",
+   "text": "Question",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.22464",
+   "h": "b2a3aa60",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.22451:8deb57f8",
+    "row:mrzzsdjxrm2.22452:16104322",
+    "cell:mrzzsdjxrm2.22463:71984a3f"
+   ],
+   "section": "6. Explaining the approach",
+   "subsection": "For engineers",
+   "text": "Answer",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.22472",
+   "h": "9bdc1337",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.22451:8deb57f8",
+    "row:mrzzsdjxrm2.22452:16104322",
+    "cell:mrzzsdjxrm2.22471:48615ebc"
+   ],
+   "section": "6. Explaining the approach",
+   "subsection": "For engineers",
+   "text": "Spec",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.22479",
+   "h": "14572fa0",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.22451:8deb57f8",
+    "row:mrzzsdjxrm2.22477:37ee7618",
+    "cell:mrzzsdjxrm2.22478:c1defbeb"
+   ],
+   "section": "6. Explaining the approach",
+   "subsection": "For engineers",
+   "text": "What stops a push onto someone else's claim?",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.22525",
+   "h": "6f2700a8",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.22451:8deb57f8",
+    "row:mrzzsdjxrm2.22477:37ee7618",
+    "cell:mrzzsdjxrm2.22524:f876d0e7"
+   ],
+   "section": "6. Explaining the approach",
+   "subsection": "For engineers",
+   "text": "On GitHub, only the claim's creation is enforced. A fast-forward or forced push onto an existing claim is accepted, since the recommended setup leaves claude/** out of every ruleset so that a release can rename the branch. The local push guard refuses forced pushes and leases onto another worker's claim, and on 2026-10-15 it was found to judge a lease by the session's own directory rather than the clone git -C names, so a lease onto another worker's claim passed from a directory whose clone had neither branch",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.22895",
+   "h": "01296db6",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.22451:8deb57f8",
+    "row:mrzzsdjxrm2.22477:37ee7618",
+    "cell:mrzzsdjxrm2.22894:c9187929"
+   ],
+   "section": "6. Explaining the approach",
+   "subsection": "For engineers",
+   "text": "Risk 12",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.22905",
+   "h": "cfd70c82",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.22451:8deb57f8",
+    "row:mrzzsdjxrm2.22903:b1e8f80e",
+    "cell:mrzzsdjxrm2.22904:f1a3b547"
+   ],
+   "section": "6. Explaining the approach",
+   "subsection": "For engineers",
+   "text": "What if a worker's clock lies?",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.22937",
+   "h": "95dd8c65",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.22451:8deb57f8",
+    "row:mrzzsdjxrm2.22903:b1e8f80e",
+    "cell:mrzzsdjxrm2.22936:5b1ce7a5"
+   ],
+   "section": "6. Explaining the approach",
+   "subsection": "For engineers",
+   "text": "Idleness is read from the committer date, which the pusher writes. A fix that reads GitHub's own record of the push is written but not merged (finding F8)",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.23093",
+   "h": "1eb73136",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.22451:8deb57f8",
+    "row:mrzzsdjxrm2.22903:b1e8f80e",
+    "cell:mrzzsdjxrm2.23092:1dc48963"
+   ],
+   "section": "6. Explaining the approach",
+   "subsection": "For engineers",
+   "text": "Risk 13",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.23103",
+   "h": "55fc0578",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.22451:8deb57f8",
+    "row:mrzzsdjxrm2.23101:76991e7d",
+    "cell:mrzzsdjxrm2.23102:c281ae20"
+   ],
+   "section": "6. Explaining the approach",
+   "subsection": "For engineers",
+   "text": "What binds first at scale?",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.23131",
+   "h": "c4ffc9cb",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.22451:8deb57f8",
+    "row:mrzzsdjxrm2.23101:76991e7d",
+    "cell:mrzzsdjxrm2.23130:a1afb036"
+   ],
+   "section": "6. Explaining the approach",
+   "subsection": "For engineers",
+   "text": "On a public repository, not minutes. Probably GitHub's API limits, though nobody has measured it: 1,000 requests an hour on GITHUB_TOKEN, 100 queued runs, 20 concurrent jobs on Free, and no retry on 429 in the library yet",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.23262",
+   "h": "54f9fdd1",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.22451:8deb57f8",
+    "row:mrzzsdjxrm2.23101:76991e7d",
+    "cell:mrzzsdjxrm2.23261:2e2c8633"
+   ],
+   "section": "6. Explaining the approach",
+   "subsection": "For engineers",
+   "text": "9.3; risk 5; R3",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.23280",
+   "h": "2b2df70a",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.22451:8deb57f8",
+    "row:mrzzsdjxrm2.23278:4525a6d1",
+    "cell:mrzzsdjxrm2.23279:211f7e7f"
+   ],
+   "section": "6. Explaining the approach",
+   "subsection": "For engineers",
+   "text": "Isn't this gh-aw's work queue?",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.23312",
+   "h": "6dc9349c",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.22451:8deb57f8",
+    "row:mrzzsdjxrm2.23278:4525a6d1",
+    "cell:mrzzsdjxrm2.23311:5f1ea599"
+   ],
+   "section": "6. Explaining the approach",
+   "subsection": "For engineers",
+   "text": "Its claim is also a compare-and-swap on a git ref, but a trusted scheduler grants claims to Actions runs only, a claim never expires for idleness, and its Claude engine refuses the subscription token",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.23513",
+   "h": "fb830125",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.22451:8deb57f8",
+    "row:mrzzsdjxrm2.23278:4525a6d1",
+    "cell:mrzzsdjxrm2.23512:51cd5811"
+   ],
+   "section": "6. Explaining the approach",
+   "subsection": "For engineers",
+   "text": "4; 5.1",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.23522",
+   "h": "e65795fc",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.22451:8deb57f8",
+    "row:mrzzsdjxrm2.23520:5f187e13",
+    "cell:mrzzsdjxrm2.23521:18e737d7"
+   ],
+   "section": "6. Explaining the approach",
+   "subsection": "For engineers",
+   "text": "How is it tested?",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.23541",
+   "h": "b3afd63e",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.22451:8deb57f8",
+    "row:mrzzsdjxrm2.23520:5f187e13",
+    "cell:mrzzsdjxrm2.23540:6460f7e8"
+   ],
+   "section": "6. Explaining the approach",
+   "subsection": "For engineers",
+   "text": "1,379 library tests, and a harness that drives the shipped library through every interleaving to a set depth (5 in the required check, 7 and 8 in the weekly deep searches) against an oracle from the spec's text, with 93 mutants",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.23692",
+   "h": "d4735e3a",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.22451:8deb57f8",
+    "row:mrzzsdjxrm2.23520:5f187e13",
+    "cell:mrzzsdjxrm2.23691:c2af18be"
+   ],
+   "section": "6. Explaining the approach",
+   "subsection": "For engineers",
+   "text": "2",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.23694",
+   "h": "0c35ddff",
+   "heading": "3",
+   "ctx": [],
+   "section": "6. Explaining the approach",
+   "subsection": "For lab leads",
+   "text": "For lab leads",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.23708",
+   "h": "5839b691",
+   "heading": null,
+   "ctx": [],
+   "section": "6. Explaining the approach",
+   "subsection": "For lab leads",
+   "text": "Lead with what people have to do and what it costs.",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.23761",
+   "h": "2233c431",
+   "heading": null,
+   "ctx": [
+    "blockquote:mrzzsdjxrm2.23760:573dfd38"
+   ],
+   "section": "6. Explaining the approach",
+   "subsection": "For lab leads",
+   "text": "Your lab's people and agents share one GitHub repository as their to-do list, their lock and their record: each task is one issue, one branch and one pull request, and there is no server to run. On a public repository the bookkeeping runs free on GitHub's machines; the Claude work is paid by each person's own plan, and agents that run inside GitHub share one plan's usage limits. A required check decides what merges.",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.24181",
+   "h": "824f1586",
+   "heading": null,
+   "ctx": [],
+   "section": "6. Explaining the approach",
+   "subsection": "For lab leads",
+   "text": "What lab leads ask:",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.24203",
+   "h": "5bce358b",
+   "heading": null,
+   "ctx": [
+    "list:mrzzsdjxrm2.24201:93437b67",
+    "listItem:mrzzsdjxrm2.24202:cf7ecec1"
+   ],
+   "section": "6. Explaining the approach",
+   "subsection": "For lab leads",
+   "text": "What does a new person need? A GitHub login, and their own Claude plan for their own sessions.",
+   "spans": [
+    [
+     0,
+     28,
+     "**bold**"
+    ]
+   ]
+  },
+  {
+   "id": "mrzzsdjxrm2.24299",
+   "h": "b8b399cd",
+   "heading": null,
+   "ctx": [
+    "list:mrzzsdjxrm2.24201:93437b67",
+    "listItem:mrzzsdjxrm2.24298:f9799719"
+   ],
+   "section": "6. Explaining the approach",
+   "subsection": "For lab leads",
+   "text": "What does it cost? On a public repository, nothing in minutes. On a private one, a monthly quota and then a price per minute: in the spec's illustration, ten one-hour Claude runs a day come to about $90 a month on Team (spec 9.4). Claude plans are separate: Pro is $20 a month, Max $100 or $200.",
+   "spans": [
+    [
+     0,
+     18,
+     "**bold**"
+    ]
+   ]
+  },
+  {
+   "id": "mrzzsdjxrm2.24596",
+   "h": "d53aacf2",
+   "heading": null,
+   "ctx": [
+    "list:mrzzsdjxrm2.24201:93437b67",
+    "listItem:mrzzsdjxrm2.24595:fda72df5"
+   ],
+   "section": "6. Explaining the approach",
+   "subsection": "For lab leads",
+   "text": "Can it run our science? Not on GitHub's free machines, which have no GPUs. The science runs on the cluster, which is Beethoven's part (spec 9.6).",
+   "spans": [
+    [
+     0,
+     23,
+     "**bold**"
+    ]
+   ]
+  },
+  {
+   "id": "mrzzsdjxrm2.24743",
+   "h": "3abe2906",
+   "heading": null,
+   "ctx": [
+    "list:mrzzsdjxrm2.24201:93437b67",
+    "listItem:mrzzsdjxrm2.24742:3b564ea4"
+   ],
+   "section": "6. Explaining the approach",
+   "subsection": "For lab leads",
+   "text": "Is it ready? It is pre-release: 0.4.1 is the last release, and the rails for workers that run unattended, among them a cap on Claude runs and the qa check, are not built (spec risks 4 and 6).",
+   "spans": [
+    [
+     0,
+     12,
+     "**bold**"
+    ]
+   ]
+  },
+  {
+   "id": "mrzzsdjxrm2.24916",
+   "h": "ecb1426d",
+   "heading": "3",
+   "ctx": [],
+   "section": "6. Explaining the approach",
+   "subsection": "Telling the GitHub Actions story honestly",
+   "text": "Telling the GitHub Actions story honestly",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.24961",
+   "h": "64f3cd06",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.24958:6045e5f6",
+    "row:mrzzsdjxrm2.24959:70792b9c",
+    "cell:mrzzsdjxrm2.24960:aaa33e13"
+   ],
+   "section": "6. Explaining the approach",
+   "subsection": "Telling the GitHub Actions story honestly",
+   "text": "Say",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.24966",
+   "h": "bf79dc13",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.24958:6045e5f6",
+    "row:mrzzsdjxrm2.24959:70792b9c",
+    "cell:mrzzsdjxrm2.24965:10106060"
+   ],
+   "section": "6. Explaining the approach",
+   "subsection": "Telling the GitHub Actions story honestly",
+   "text": "Do not say",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.24978",
+   "h": "d3ae14a5",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.24958:6045e5f6",
+    "row:mrzzsdjxrm2.24959:70792b9c",
+    "cell:mrzzsdjxrm2.24977:62dcfa74"
+   ],
+   "section": "6. Explaining the approach",
+   "subsection": "Telling the GitHub Actions story honestly",
+   "text": "Why",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.24984",
+   "h": "685cbe5f",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.24958:6045e5f6",
+    "row:mrzzsdjxrm2.24982:809e6311",
+    "cell:mrzzsdjxrm2.24983:f3c03850"
+   ],
+   "section": "6. Explaining the approach",
+   "subsection": "Telling the GitHub Actions story honestly",
+   "text": "\"Standard GitHub-hosted runners are free and unlimited on public repositories\", quoting GitHub, with the date",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.25095",
+   "h": "3eba6ba8",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.24958:6045e5f6",
+    "row:mrzzsdjxrm2.24982:809e6311",
+    "cell:mrzzsdjxrm2.25094:68feffa1"
+   ],
+   "section": "6. Explaining the approach",
+   "subsection": "Telling the GitHub Actions story honestly",
+   "text": "Agents run for free",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.25116",
+   "h": "892a3712",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.24958:6045e5f6",
+    "row:mrzzsdjxrm2.24982:809e6311",
+    "cell:mrzzsdjxrm2.25115:4dea23cc"
+   ],
+   "section": "6. Explaining the approach",
+   "subsection": "Telling the GitHub Actions story honestly",
+   "text": "The minutes are free; inference is paid by a Claude plan (9.4)",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.25181",
+   "h": "6bf5b6c6",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.24958:6045e5f6",
+    "row:mrzzsdjxrm2.25179:04e52d0d",
+    "cell:mrzzsdjxrm2.25180:18ca0fd8"
+   ],
+   "section": "6. Explaining the approach",
+   "subsection": "Telling the GitHub Actions story honestly",
+   "text": "Coordination steps make no model call and run on those minutes",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.25245",
+   "h": "e47f00fc",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.24958:6045e5f6",
+    "row:mrzzsdjxrm2.25179:04e52d0d",
+    "cell:mrzzsdjxrm2.25244:b7507b05"
+   ],
+   "section": "6. Explaining the approach",
+   "subsection": "Telling the GitHub Actions story honestly",
+   "text": "Unlimited agents",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.25263",
+   "h": "6f4a94f0",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.24958:6045e5f6",
+    "row:mrzzsdjxrm2.25179:04e52d0d",
+    "cell:mrzzsdjxrm2.25262:a91f80b6"
+   ],
+   "section": "6. Explaining the approach",
+   "subsection": "Telling the GitHub Actions story honestly",
+   "text": "20 concurrent jobs on Free, 1,000 API requests an hour, one plan's window (9.3)",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.25345",
+   "h": "789ee672",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.24958:6045e5f6",
+    "row:mrzzsdjxrm2.25343:8a736ff0",
+    "cell:mrzzsdjxrm2.25344:3b4438b6"
+   ],
+   "section": "6. Explaining the approach",
+   "subsection": "Telling the GitHub Actions story honestly",
+   "text": "A public repository gets a 4 vCPU, 16 GB runner, twice a private one's",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.25417",
+   "h": "c691ac56",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.24958:6045e5f6",
+    "row:mrzzsdjxrm2.25343:8a736ff0",
+    "cell:mrzzsdjxrm2.25416:96189651"
+   ],
+   "section": "6. Explaining the approach",
+   "subsection": "Telling the GitHub Actions story honestly",
+   "text": "Symphony is free for its users today",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.25455",
+   "h": "5a1e9939",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.24958:6045e5f6",
+    "row:mrzzsdjxrm2.25343:8a736ff0",
+    "cell:mrzzsdjxrm2.25454:e365127d"
+   ],
+   "section": "6. Explaining the approach",
+   "subsection": "Telling the GitHub Actions story honestly",
+   "text": "Inference is paid by a Claude plan, a private repository bills minutes past its quota, and Symphony's own tests stay on private repositories until the Phase 3 rails exist (risk 4)",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.25552",
+   "h": "b166944a",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.24958:6045e5f6",
+    "row:mrzzsdjxrm2.25550:956193f0",
+    "cell:mrzzsdjxrm2.25551:4539fb08"
+   ],
+   "section": "6. Explaining the approach",
+   "subsection": "Telling the GitHub Actions story honestly",
+   "text": "Rulesets, required checks, environments with reviewers, CodeQL and secret scanning are free there",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.25651",
+   "h": "5bcf805c",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.24958:6045e5f6",
+    "row:mrzzsdjxrm2.25550:956193f0",
+    "cell:mrzzsdjxrm2.25650:040bc48f"
+   ],
+   "section": "6. Explaining the approach",
+   "subsection": "Telling the GitHub Actions story honestly",
+   "text": "Nothing else does this",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.25675",
+   "h": "aa943b27",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.24958:6045e5f6",
+    "row:mrzzsdjxrm2.25550:956193f0",
+    "cell:mrzzsdjxrm2.25674:d75e4b0a"
+   ],
+   "section": "6. Explaining the approach",
+   "subsection": "Telling the GitHub Actions story honestly",
+   "text": "The atomic claim, the serverless board and the free minutes all have prior art; only the combination is claimed (8)",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.25793",
+   "h": "61ad1a7b",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.24958:6045e5f6",
+    "row:mrzzsdjxrm2.25791:b872ee72",
+    "cell:mrzzsdjxrm2.25792:af2f0716"
+   ],
+   "section": "6. Explaining the approach",
+   "subsection": "Telling the GitHub Actions story honestly",
+   "text": "Nothing to host: the forge is the lock, CI the scheduler, the repository the state",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.25877",
+   "h": "f73d379a",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.24958:6045e5f6",
+    "row:mrzzsdjxrm2.25791:b872ee72",
+    "cell:mrzzsdjxrm2.25876:c33818e6"
+   ],
+   "section": "6. Explaining the approach",
+   "subsection": "Telling the GitHub Actions story honestly",
+   "text": "Beethoven runs on free GitHub minutes",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.25916",
+   "h": "e5d43bfb",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.24958:6045e5f6",
+    "row:mrzzsdjxrm2.25791:b872ee72",
+    "cell:mrzzsdjxrm2.25915:f4bfc441"
+   ],
+   "section": "6. Explaining the approach",
+   "subsection": "Telling the GitHub Actions story honestly",
+   "text": "It runs on the university cluster, and its repositories are private (9.6)",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.25992",
+   "h": "2d5081ec",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.24958:6045e5f6",
+    "row:mrzzsdjxrm2.25990:35dd6c28",
+    "cell:mrzzsdjxrm2.25991:65401c9e"
+   ],
+   "section": "6. Explaining the approach",
+   "subsection": "Telling the GitHub Actions story honestly",
+   "text": "No other major hosted CI found offers new public projects unlimited free minutes",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.26069",
+   "h": "fdc7d689",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.24958:6045e5f6",
+    "row:mrzzsdjxrm2.25990:35dd6c28",
+    "cell:mrzzsdjxrm2.26068:27963de2"
+   ],
+   "section": "6. Explaining the approach",
+   "subsection": "Telling the GitHub Actions story honestly",
+   "text": "GitHub guarantees it",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.26091",
+   "h": "444050d2",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.24958:6045e5f6",
+    "row:mrzzsdjxrm2.25990:35dd6c28",
+    "cell:mrzzsdjxrm2.26090:1153e1fc"
+   ],
+   "section": "6. Explaining the approach",
+   "subsection": "Telling the GitHub Actions story honestly",
+   "text": "It is GitHub's price to change, and its terms tie runner use to the repository's own project (9.5; R5)",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.26196",
+   "h": "e75064a2",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.24958:6045e5f6",
+    "row:mrzzsdjxrm2.26194:a351eea3",
+    "cell:mrzzsdjxrm2.26195:a1831ac2"
+   ],
+   "section": "6. Explaining the approach",
+   "subsection": "Telling the GitHub Actions story honestly",
+   "text": "Anthropic documents the subscription token for claude-code-action",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.26263",
+   "h": "ea115308",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.24958:6045e5f6",
+    "row:mrzzsdjxrm2.26194:a351eea3",
+    "cell:mrzzsdjxrm2.26262:4cd334b1"
+   ],
+   "section": "6. Explaining the approach",
+   "subsection": "Telling the GitHub Actions story honestly",
+   "text": "Anthropic approves agents on a subscription in CI",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.26314",
+   "h": "7578859d",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.24958:6045e5f6",
+    "row:mrzzsdjxrm2.26194:a351eea3",
+    "cell:mrzzsdjxrm2.26313:5cdcb8e0"
+   ],
+   "section": "6. Explaining the approach",
+   "subsection": "Telling the GitHub Actions story honestly",
+   "text": "It advises an API key for a shared secret, and plan limits assume ordinary, individual usage (9.5; R6)",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.26417",
+   "h": "ee55a0d1",
+   "heading": "2",
+   "ctx": [],
+   "section": "7. Combining Symphony and Beethoven with other software",
+   "subsection": "",
+   "text": "7. Combining Symphony and Beethoven with other software",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.26473",
+   "h": "b15cb5bf",
+   "heading": null,
+   "ctx": [],
+   "section": "7. Combining Symphony and Beethoven with other software",
+   "subsection": "",
+   "text": "Each recipe says what it gives, how it is put together, and whether it works today. None is a step to take now. Each one that is not built is a candidate issue, and the links use OWNER/REPO for the repository you mean.",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.26692",
+   "h": "c586ce8c",
+   "heading": "3",
+   "ctx": [],
+   "section": "7. Combining Symphony and Beethoven with other software",
+   "subsection": "7.1 Symphony with GitHub's own security gates",
+   "text": "7.1 Symphony with GitHub's own security gates",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.26738",
+   "h": "13b7c8e2",
+   "heading": null,
+   "ctx": [],
+   "section": "7. Combining Symphony and Beethoven with other software",
+   "subsection": "7.1 Symphony with GitHub's own security gates",
+   "text": "Works today on a public repository. It adds a free, deterministic second layer of checks on agents' code, which spec 7.2 shows is often insecure.",
+   "spans": [
+    [
+     0,
+     35,
+     "**bold**"
+    ]
+   ]
+  },
+  {
+   "id": "mrzzsdjxrm2.26886",
+   "h": "b8ca3628",
+   "heading": null,
+   "ctx": [
+    "list:mrzzsdjxrm2.26884:bb6d2ec6",
+    "listItem:mrzzsdjxrm2.26885:9b3728db"
+   ],
+   "section": "7. Combining Symphony and Beethoven with other software",
+   "subsection": "7.1 Symphony with GitHub's own security gates",
+   "text": "Open https://github.com/OWNER/REPO/settings/security_analysis (Settings, then Advanced Security in the sidebar's Security and quality section). Turn on Dependabot alerts, secret scanning with push protection, and CodeQL's default setup for code scanning.",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.27142",
+   "h": "5ea90ca5",
+   "heading": null,
+   "ctx": [
+    "list:mrzzsdjxrm2.26884:bb6d2ec6",
+    "listItem:mrzzsdjxrm2.27141:d172dfcb"
+   ],
+   "section": "7. Combining Symphony and Beethoven with other software",
+   "subsection": "7.1 Symphony with GitHub's own security gates",
+   "text": "Open https://github.com/OWNER/REPO/settings/rules (Settings, then Rules, then Rulesets) and edit the default branch's ruleset. Add the rule Require code scanning results beside the required check named check. The rule Require secret scanning alerts are resolved is in public preview and lists Secret Protection or Advanced Security as a prerequisite, so whether a public repository on GitHub Free can use it is Open.",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.27426",
+   "h": "a9cb5a51",
+   "heading": null,
+   "ctx": [],
+   "section": "7. Combining Symphony and Beethoven with other software",
+   "subsection": "7.1 Symphony with GitHub's own security gates",
+   "text": "Symphony's planned qa check would fold these into one required check with a report a person can read; it is not built. Verified for the rules from the github/docs repository at 8311902 (2026-10-15).",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.27625",
+   "h": "ae5793c6",
+   "heading": "3",
+   "ctx": [],
+   "section": "7. Combining Symphony and Beethoven with other software",
+   "subsection": "7.2 beethoven-qa as the Python lane of the qa check",
+   "text": "7.2 beethoven-qa as the Python lane of the qa check",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.27677",
+   "h": "effdf2ab",
+   "heading": null,
+   "ctx": [],
+   "section": "7. Combining Symphony and Beethoven with other software",
+   "subsection": "7.2 beethoven-qa as the Python lane of the qa check",
+   "text": "Planned; a recorded decision. Contracts on every public function, searched by CrossHair with Z3, would run as one lane of the qa check, with its findings uploaded as SARIF so they appear beside CodeQL's. beethoven-qa is private and proprietary, so a public repository could run this lane only from a published gate library, which is an open question (spec 10).",
+   "spans": [
+    [
+     0,
+     29,
+     "**bold**"
+    ]
+   ]
+  },
+  {
+   "id": "mrzzsdjxrm2.28038",
+   "h": "77fb6a54",
+   "heading": "3",
+   "ctx": [],
+   "section": "7. Combining Symphony and Beethoven with other software",
+   "subsection": "7.3 Symphony's Claude-free core in a Beethoven repository",
+   "text": "7.3 Symphony's Claude-free core in a Beethoven repository",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.28096",
+   "h": "f943aa5d",
+   "heading": null,
+   "ctx": [],
+   "section": "7. Combining Symphony and Beethoven with other software",
+   "subsection": "7.3 Symphony's Claude-free core in a Beethoven repository",
+   "text": "Waits on your decision. Beethoven forbids a stored Claude token in CI, and Symphony's plan says no Beethoven repository runs Symphony's code (spec 6.5). What could be shared is the core that needs no Claude token: the branch-name claim, the board, the protocol check, the push guard, the required check and auto-merge. Every route to that core runs Symphony's code: an adoption brings its workflows, and the plugin in symphony-marketplace brings the skills, /board and a push guard that is symphony-protocol's own code, though not the board's workflows or the protocol check (Verified, the plugin's README). So the step the plan allows is a Markdown-only pilot of the claim protocol in beethoven-qa, recommended after Symphony's Phase 3. If you change the rule instead, leave CLAUDE_CODE_OAUTH_TOKEN unset and register no worker in Actions.",
+   "spans": [
+    [
+     0,
+     23,
+     "**bold**"
+    ]
+   ]
+  },
+  {
+   "id": "mrzzsdjxrm2.28693",
+   "h": "5a6e8c19",
+   "heading": "3",
+   "ctx": [],
+   "section": "7. Combining Symphony and Beethoven with other software",
+   "subsection": "7.4 Other coding agents under Symphony's claim",
+   "text": "7.4 Other coding agents under Symphony's claim",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.28740",
+   "h": "f4b8f19a",
+   "heading": null,
+   "ctx": [],
+   "section": "7. Combining Symphony and Beethoven with other software",
+   "subsection": "7.4 Other coding agents under Symphony's claim",
+   "text": "Needs building (Inferred). Any agent that can run git can claim: it pushes claude/N with the claim file as its first commit, adds the labels and opens a draft pull request that says Closes #N. Two things change outside Claude Code. The push guard is a Claude Code hook, so another agent loses that local fence and keeps only GitHub's. And Copilot's cloud agent and gh-aw name their own branches, so each needs an adapter: a deterministic job that claims claude/N before handing the issue over, with the agent's pull request opened from or merged into that branch. gh-aw's Claude engine would then bill an API key or Copilot credits, not the subscription.",
+   "spans": [
+    [
+     0,
+     26,
+     "**bold**"
+    ]
+   ]
+  },
+  {
+   "id": "mrzzsdjxrm2.29395",
+   "h": "23545e3d",
+   "heading": "3",
+   "ctx": [],
+   "section": "7. Combining Symphony and Beethoven with other software",
+   "subsection": "7.5 GitHub's merge queue after Symphony's ordering",
+   "text": "7.5 GitHub's merge queue after Symphony's ordering",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.29446",
+   "h": "62f8d611",
+   "heading": null,
+   "ctx": [],
+   "section": "7. Combining Symphony and Beethoven with other software",
+   "subsection": "7.5 GitHub's merge queue after Symphony's ordering",
+   "text": "Not tried. Symphony's Overlaps section orders work that touches the same files; a merge queue then tests each pull request against the ones ahead of it, which catches conflicts that are not textual. The two are complementary. The merge queue is available in any public repository owned by an organization (Verified, github/docs at 8311902). A queue waits for the required checks on merge_group events, and the template's ci.yml runs only on pull_request, push and workflow_dispatch (ci.yml lines 70 to 75), so add a merge_group trigger first: without it, check may never reach the queue, and a queued merge then fails at the queue's timeout (Verified, github/docs at 8311902; whether ci.yml's push trigger would report check on the queue's branches is untested).",
+   "spans": [
+    [
+     0,
+     10,
+     "**bold**"
+    ]
+   ]
+  },
+  {
+   "id": "mrzzsdjxrm2.30031",
+   "h": "055b892f",
+   "heading": "3",
+   "ctx": [],
+   "section": "7. Combining Symphony and Beethoven with other software",
+   "subsection": "7.6 Workflow managers for Beethoven's outer loop",
+   "text": "7.6 Workflow managers for Beethoven's outer loop",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.30080",
+   "h": "60ebf7ba",
+   "heading": null,
+   "ctx": [],
+   "section": "7. Combining Symphony and Beethoven with other software",
+   "subsection": "7.6 Workflow managers for Beethoven's outer loop",
+   "text": "Chosen, not built. Metaflow is the chosen engine, but metaflow-slurm drives sbatch over SSH with a key file, which Beethoven's rule against touching a credential forbids unless the planned plain sbatch adapter replaces it. The alternatives are Snakemake with its Slurm executor plugin, Nextflow, Parsl and CWL; DVC can keep data versions, and MLflow or Weights and Biases the run records that the checklist gates would read (spec 6.1 and 6.3).",
+   "spans": [
+    [
+     0,
+     18,
+     "**bold**"
+    ]
+   ]
+  },
+  {
+   "id": "mrzzsdjxrm2.30524",
+   "h": "21be2191",
+   "heading": "3",
+   "ctx": [],
+   "section": "7. Combining Symphony and Beethoven with other software",
+   "subsection": "7.7 Actions as the control plane, the cluster as the compute plane",
+   "text": "7.7 Actions as the control plane, the cluster as the compute plane",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.30591",
+   "h": "04b82d93",
+   "heading": null,
+   "ctx": [],
+   "section": "7. Combining Symphony and Beethoven with other software",
+   "subsection": "7.7 Actions as the control plane, the cluster as the compute plane",
+   "text": "Works today in Beethoven's CI. GitHub's runners cannot reach the grid, so the gate runs on GitHub's runners and a grid lane on the cluster posts commit statuses named grid/... back to the pull request (spec 6.2). The same split lets any project keep its review and merge rules on GitHub while its heavy jobs run on hardware it already has.",
+   "spans": [
+    [
+     0,
+     30,
+     "**bold**"
+    ]
+   ]
+  },
+  {
+   "id": "mrzzsdjxrm2.30931",
+   "h": "05534217",
+   "heading": "2",
+   "ctx": [],
+   "section": "8. Keeping the spec current",
+   "subsection": "",
+   "text": "8. Keeping the spec current",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.30959",
+   "h": "4af8fca7",
+   "heading": null,
+   "ctx": [],
+   "section": "8. Keeping the spec current",
+   "subsection": "",
+   "text": "The spec is dated beside its title. A claim is only as current as the date its source was read, and prices, terms and neighbors are the first to drift.",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.31111",
+   "h": "18c7a07b",
+   "heading": "3",
+   "ctx": [],
+   "section": "8. Keeping the spec current",
+   "subsection": "What to re-check, and when",
+   "text": "What to re-check, and when",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.31141",
+   "h": "6a46bd57",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.31138:041c2576",
+    "row:mrzzsdjxrm2.31139:c0da9564",
+    "cell:mrzzsdjxrm2.31140:c69b70a5"
+   ],
+   "section": "8. Keeping the spec current",
+   "subsection": "What to re-check, and when",
+   "text": "When this happens",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.31160",
+   "h": "24fcca00",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.31138:041c2576",
+    "row:mrzzsdjxrm2.31139:c0da9564",
+    "cell:mrzzsdjxrm2.31159:c8e2f81e"
+   ],
+   "section": "8. Keeping the spec current",
+   "subsection": "What to re-check, and when",
+   "text": "Re-check",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.31170",
+   "h": "2c81579b",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.31138:041c2576",
+    "row:mrzzsdjxrm2.31139:c0da9564",
+    "cell:mrzzsdjxrm2.31169:ddd58fe1"
+   ],
+   "section": "8. Keeping the spec current",
+   "subsection": "What to re-check, and when",
+   "text": "Spec sections",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.31186",
+   "h": "6e96a235",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.31138:041c2576",
+    "row:mrzzsdjxrm2.31184:e3e74e76",
+    "cell:mrzzsdjxrm2.31185:7c8cc593"
+   ],
+   "section": "8. Keeping the spec current",
+   "subsection": "What to re-check, and when",
+   "text": "GitHub changes Actions prices, runner sizes, limits or terms",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.31248",
+   "h": "c29d1c29",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.31138:041c2576",
+    "row:mrzzsdjxrm2.31184:e3e74e76",
+    "cell:mrzzsdjxrm2.31247:e289693f"
+   ],
+   "section": "8. Keeping the spec current",
+   "subsection": "What to re-check, and when",
+   "text": "Pass 1, items 1 and 2; the github/docs and github/site-policy repositories",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.31324",
+   "h": "d0494c22",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.31138:041c2576",
+    "row:mrzzsdjxrm2.31184:e3e74e76",
+    "cell:mrzzsdjxrm2.31323:3c526cc1"
+   ],
+   "section": "8. Keeping the spec current",
+   "subsection": "What to re-check, and when",
+   "text": "9.2 to 9.5; risk 1",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.31345",
+   "h": "c79c13d0",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.31138:041c2576",
+    "row:mrzzsdjxrm2.31343:9f948994",
+    "cell:mrzzsdjxrm2.31344:e482098d"
+   ],
+   "section": "8. Keeping the spec current",
+   "subsection": "What to re-check, and when",
+   "text": "Anthropic changes its plans, claude-code-action's sign-in, bare mode or its legal page",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.31433",
+   "h": "da6b62bf",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.31138:041c2576",
+    "row:mrzzsdjxrm2.31343:9f948994",
+    "cell:mrzzsdjxrm2.31432:98a93048"
+   ],
+   "section": "8. Keeping the spec current",
+   "subsection": "What to re-check, and when",
+   "text": "Pass 1, item 3",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.31449",
+   "h": "19e6aa06",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.31138:041c2576",
+    "row:mrzzsdjxrm2.31343:9f948994",
+    "cell:mrzzsdjxrm2.31448:31dc19da"
+   ],
+   "section": "8. Keeping the spec current",
+   "subsection": "What to re-check, and when",
+   "text": "9.4 and 9.5; risks 2 and 3; R6",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.31482",
+   "h": "b8fb222b",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.31138:041c2576",
+    "row:mrzzsdjxrm2.31480:94f9c803",
+    "cell:mrzzsdjxrm2.31481:af1b71ee"
+   ],
+   "section": "8. Keeping the spec current",
+   "subsection": "What to re-check, and when",
+   "text": "symphony-protocol publishes a release (0.5.0 is next)",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.31537",
+   "h": "270e0741",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.31138:041c2576",
+    "row:mrzzsdjxrm2.31480:94f9c803",
+    "cell:mrzzsdjxrm2.31536:0a230ed1"
+   ],
+   "section": "8. Keeping the spec current",
+   "subsection": "What to re-check, and when",
+   "text": "Its release notes and validation/known.json",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.31582",
+   "h": "f1dd5cc9",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.31138:041c2576",
+    "row:mrzzsdjxrm2.31480:94f9c803",
+    "cell:mrzzsdjxrm2.31581:509fde3a"
+   ],
+   "section": "8. Keeping the spec current",
+   "subsection": "What to re-check, and when",
+   "text": "2 (maturity); risks 6, 12 and 13",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.31617",
+   "h": "08a7a475",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.31138:041c2576",
+    "row:mrzzsdjxrm2.31615:b7bc94cb",
+    "cell:mrzzsdjxrm2.31616:c837bbc8"
+   ],
+   "section": "8. Keeping the spec current",
+   "subsection": "What to re-check, and when",
+   "text": "A neighbor ships: gh-aw's queue leaves its draft design record, unsorry, Copilot's agents, openai/symphony",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.31725",
+   "h": "67633493",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.31138:041c2576",
+    "row:mrzzsdjxrm2.31615:b7bc94cb",
+    "cell:mrzzsdjxrm2.31724:a759a2d8"
+   ],
+   "section": "8. Keeping the spec current",
+   "subsection": "What to re-check, and when",
+   "text": "The worksheet in section 5, for that tool",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.31768",
+   "h": "4526232c",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.31138:041c2576",
+    "row:mrzzsdjxrm2.31615:b7bc94cb",
+    "cell:mrzzsdjxrm2.31767:aaf377b7"
+   ],
+   "section": "8. Keeping the spec current",
+   "subsection": "What to re-check, and when",
+   "text": "4, 5 and 8",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.31781",
+   "h": "57dbe2ca",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.31138:041c2576",
+    "row:mrzzsdjxrm2.31779:17466080",
+    "cell:mrzzsdjxrm2.31780:eb5f201f"
+   ],
+   "section": "8. Keeping the spec current",
+   "subsection": "What to re-check, and when",
+   "text": "A research question meets its acceptance criteria: R1's full run, R3's measurement pass, R4 on the canary",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.31888",
+   "h": "45dc9fa2",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.31138:041c2576",
+    "row:mrzzsdjxrm2.31779:17466080",
+    "cell:mrzzsdjxrm2.31887:aa13d1f6"
+   ],
+   "section": "8. Keeping the spec current",
+   "subsection": "What to re-check, and when",
+   "text": "The question's own criteria",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.31917",
+   "h": "73c72336",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.31138:041c2576",
+    "row:mrzzsdjxrm2.31779:17466080",
+    "cell:mrzzsdjxrm2.31916:ae63aca1"
+   ],
+   "section": "8. Keeping the spec current",
+   "subsection": "What to re-check, and when",
+   "text": "7.1, 10 and 11",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.31934",
+   "h": "696f1a06",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.31138:041c2576",
+    "row:mrzzsdjxrm2.31932:98d725ce",
+    "cell:mrzzsdjxrm2.31933:e4458489"
+   ],
+   "section": "8. Keeping the spec current",
+   "subsection": "What to re-check, and when",
+   "text": "Beethoven builds a gate, or its launcher reaches a second university",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.32004",
+   "h": "39bc9566",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.31138:041c2576",
+    "row:mrzzsdjxrm2.31932:98d725ce",
+    "cell:mrzzsdjxrm2.32003:4ad48873"
+   ],
+   "section": "8. Keeping the spec current",
+   "subsection": "What to re-check, and when",
+   "text": "The repository at its new commit",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.32038",
+   "h": "ac5a92b5",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.31138:041c2576",
+    "row:mrzzsdjxrm2.31932:98d725ce",
+    "cell:mrzzsdjxrm2.32037:5cf201f1"
+   ],
+   "section": "8. Keeping the spec current",
+   "subsection": "What to re-check, and when",
+   "text": "2 and 5.2; claims U4 to U6; risk 8",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.32075",
+   "h": "87f7f8c3",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.31138:041c2576",
+    "row:mrzzsdjxrm2.32073:dcce5b63",
+    "cell:mrzzsdjxrm2.32074:7ee14324"
+   ],
+   "section": "8. Keeping the spec current",
+   "subsection": "What to re-check, and when",
+   "text": "You lift the grant-data hold",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.32105",
+   "h": "88cbf875",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.31138:041c2576",
+    "row:mrzzsdjxrm2.32073:dcce5b63",
+    "cell:mrzzsdjxrm2.32104:2b53a178"
+   ],
+   "section": "8. Keeping the spec current",
+   "subsection": "What to re-check, and when",
+   "text": "Nothing to research; the grant reviewers' version in section 6 changes",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.32177",
+   "h": "772444a0",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.31138:041c2576",
+    "row:mrzzsdjxrm2.32073:dcce5b63",
+    "cell:mrzzsdjxrm2.32176:5eedbc88"
+   ],
+   "section": "8. Keeping the spec current",
+   "subsection": "What to re-check, and when",
+   "text": "7.1",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.32183",
+   "h": "090c221e",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.31138:041c2576",
+    "row:mrzzsdjxrm2.32181:684c434a",
+    "cell:mrzzsdjxrm2.32182:a0609b0f"
+   ],
+   "section": "8. Keeping the spec current",
+   "subsection": "What to re-check, and when",
+   "text": "Before any outside use: a submission, a talk, a public page",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.32244",
+   "h": "d75da64e",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.31138:041c2576",
+    "row:mrzzsdjxrm2.32181:684c434a",
+    "cell:mrzzsdjxrm2.32243:4c480783"
+   ],
+   "section": "8. Keeping the spec current",
+   "subsection": "What to re-check, and when",
+   "text": "Pass 1 again if the spec's date is more than a month old (a default; change it if you like)",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.32337",
+   "h": "68f96bed",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.31138:041c2576",
+    "row:mrzzsdjxrm2.32181:684c434a",
+    "cell:mrzzsdjxrm2.32336:dd27d791"
+   ],
+   "section": "8. Keeping the spec current",
+   "subsection": "What to re-check, and when",
+   "text": "9, and every claim quoted",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.32363",
+   "h": "987ec3da",
+   "heading": "3",
+   "ctx": [],
+   "section": "8. Keeping the spec current",
+   "subsection": "How to ask for an update",
+   "text": "How to ask for an update",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.32388",
+   "h": "b9d2cb39",
+   "heading": null,
+   "ctx": [],
+   "section": "8. Keeping the spec current",
+   "subsection": "How to ask for an update",
+   "text": "Post this in the project chat, with the link or the text of what changed:",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.32462",
+   "h": "e0997d05",
+   "heading": null,
+   "ctx": [
+    "code"
+   ],
+   "section": "8. Keeping the spec current",
+   "subsection": "How to ask for an update",
+   "text": "Update the taxonomy spec: <what changed, with a link>. Re-grade the claims it touches, update the parts of the manual that rest on them, and tell me in the thread what changed.",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.32639",
+   "h": "a1975479",
+   "heading": null,
+   "ctx": [],
+   "section": "8. Keeping the spec current",
+   "subsection": "How to ask for an update",
+   "text": "The thread that makes the change writes its notes under research/taxonomy/notes/ (a new file for a new topic, or lines in the topic's file), puts adversarial checks under research/taxonomy/verify/, and moves the date beside the spec's title.",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.32881",
+   "h": "a7e6544d",
+   "heading": "2",
+   "ctx": [],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "9. Glossary",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.32896",
+   "h": "c6f3bfd4",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.32894:02caba35",
+    "cell:mrzzsdjxrm2.32895:454cb073"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "Term",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.32902",
+   "h": "1f5d64b9",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.32894:02caba35",
+    "cell:mrzzsdjxrm2.32901:7dfd472d"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "Meaning",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.32912",
+   "h": "9ccb2d92",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.32910:cf1aef82",
+    "cell:mrzzsdjxrm2.32911:bdfeea1b"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "Apptainer",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.32923",
+   "h": "bce1a4ca",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.32910:cf1aef82",
+    "cell:mrzzsdjxrm2.32922:c284836b"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "A container runtime for clusters that runs without administrator rights",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.32997",
+   "h": "384b8fa5",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.32995:9922be4a",
+    "cell:mrzzsdjxrm2.32996:b47e4589"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "Blackboard",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.33009",
+   "h": "9c2d9a56",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.32995:9922be4a",
+    "cell:mrzzsdjxrm2.33008:b668809b"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "A shared store that independent agents read and write; the classic AI architecture (Nii, 1986)",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.33106",
+   "h": "4816cbfd",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.33104:f390d127",
+    "cell:mrzzsdjxrm2.33105:9ebe6533"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "Board",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.33113",
+   "h": "5cfca2f5",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.33104:f390d127",
+    "cell:mrzzsdjxrm2.33112:a4a98ce8"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "The file STATE.md on the branch board, which board.yml rewrites from the issues, branches, claim files and pull requests; nobody edits it by hand",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.33261",
+   "h": "4ca41db0",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.33259:497d0d0f",
+    "cell:mrzzsdjxrm2.33260:93fcbd42"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "Claim",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.33268",
+   "h": "3935d786",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.33259:497d0d0f",
+    "cell:mrzzsdjxrm2.33267:55231efa"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "The push that creates the branch claude/N for issue N, whose first commit adds a claim file naming the worker, the plan and the files to touch",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.33413",
+   "h": "4cce2bfc",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.33411:e65f07ff",
+    "cell:mrzzsdjxrm2.33412:eadff017"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "CLAIM",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.33420",
+   "h": "4d160c59",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.33411:e65f07ff",
+    "cell:mrzzsdjxrm2.33419:2ac00868"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "The Checklist for Artificial Intelligence in Medical Imaging, updated in 2024 (Radiology: Artificial Intelligence)",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.33537",
+   "h": "3992701a",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.33535:f8cea9aa",
+    "cell:mrzzsdjxrm2.33536:5b805c23"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "claude-code-action",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.33557",
+   "h": "f2882c64",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.33535:f8cea9aa",
+    "cell:mrzzsdjxrm2.33556:e1c6c0d8"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "Anthropic's GitHub Action, anthropics/claude-code-action, which runs Claude Code inside a workflow",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.33658",
+   "h": "c6c1c015",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.33656:2968b520",
+    "cell:mrzzsdjxrm2.33657:63e8a032"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "Compare-and-swap",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.33676",
+   "h": "e9e8d084",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.33656:2968b520",
+    "cell:mrzzsdjxrm2.33675:e6ead30c"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "An update that succeeds only if the value is still what the writer last saw; git applies one to a ref on every push",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.33794",
+   "h": "f00e33d1",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.33792:8d5aec43",
+    "cell:mrzzsdjxrm2.33793:ce32ef92"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "Coordinator",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.33807",
+   "h": "fe1a5f7b",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.33792:8d5aec43",
+    "cell:mrzzsdjxrm2.33806:7c4a1dd4"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "The deterministic steps in the board's run that release idle claims and announce overlaps, and Claude in coordinator.yml, which plans epics into tasks",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.33960",
+   "h": "e689c80d",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.33958:a407797f",
+    "cell:mrzzsdjxrm2.33959:c0332dea"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "CrossHair, Z3",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.33975",
+   "h": "c7011d21",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.33958:a407797f",
+    "cell:mrzzsdjxrm2.33974:20a24714"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "A tool that searches by symbolic execution for inputs that break a Python function's contracts, and the solver it uses",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.34096",
+   "h": "a93d3898",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.34094:cab97fbf",
+    "cell:mrzzsdjxrm2.34095:5afe49bc"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "Epic",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.34102",
+   "h": "30091ee3",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.34094:cab97fbf",
+    "cell:mrzzsdjxrm2.34101:a6f5b849"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "An issue that asks for more than one piece of work, which the coordinator plans into tasks",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.34195",
+   "h": "3ae887cf",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.34193:54c7cb6d",
+    "cell:mrzzsdjxrm2.34194:8efb2e95"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "Fast-forward",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.34209",
+   "h": "6e304eb8",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.34193:54c7cb6d",
+    "cell:mrzzsdjxrm2.34208:800393d2"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "A push that only adds commits on top of the branch's tip, which git accepts without force",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.34301",
+   "h": "2bb2d082",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.34299:905fd4cb",
+    "cell:mrzzsdjxrm2.34300:e0e9977f"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "Fencing token",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.34316",
+   "h": "96fbc7e1",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.34299:905fd4cb",
+    "cell:mrzzsdjxrm2.34315:ec6869a3"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "A number that rises with each grant of a lock, so a resource can refuse a holder whose lease has expired",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.34423",
+   "h": "1dbc00b7",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.34421:8d1f816d",
+    "cell:mrzzsdjxrm2.34422:a59d1788"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "Five-hour window, weekly limit",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.34455",
+   "h": "461d1717",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.34421:8d1f816d",
+    "cell:mrzzsdjxrm2.34454:2c6b73ea"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "The usage limits of a Claude plan, shared by everything that runs on it",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.34529",
+   "h": "7a41a0b2",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.34527:8dad80ca",
+    "cell:mrzzsdjxrm2.34528:90bac1c6"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "gh-aw",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.34536",
+   "h": "94052744",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.34527:8dad80ca",
+    "cell:mrzzsdjxrm2.34535:7611f23c"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "GitHub Agentic Workflows (github/gh-aw), which compiles agent workflows written in Markdown into Actions; its work queue is Symphony's closest neighbor",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.34690",
+   "h": "d29e33c3",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.34688:a57b1c35",
+    "cell:mrzzsdjxrm2.34689:f86c3ee8"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "GITHUB_TOKEN",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.34704",
+   "h": "aa1dcf97",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.34688:a57b1c35",
+    "cell:mrzzsdjxrm2.34703:b7750064"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "The token GitHub gives each workflow run, scoped to its repository, with 1,000 API requests an hour",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.34806",
+   "h": "58b37e50",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.34804:b4c3821a",
+    "cell:mrzzsdjxrm2.34805:1686ac2d"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "icontract",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.34817",
+   "h": "74a84b72",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.34804:b4c3821a",
+    "cell:mrzzsdjxrm2.34816:6d7e6f3c"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "A Python library for contracts (preconditions, postconditions, invariants) on functions",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.34907",
+   "h": "20dacd9c",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.34905:1180b298",
+    "cell:mrzzsdjxrm2.34906:05f51bec"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "Interleaving",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.34921",
+   "h": "e531d175",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.34905:1180b298",
+    "cell:mrzzsdjxrm2.34920:d30b69c1"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "One order in which the steps of several concurrent workers can happen",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.34993",
+   "h": "a789e9e0",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.34991:df47fb21",
+    "cell:mrzzsdjxrm2.34992:5a822846"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "Lease",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.35000",
+   "h": "35a82a2e",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.34991:df47fb21",
+    "cell:mrzzsdjxrm2.34999:8fa8f337"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "In distributed systems, a lock that expires unless renewed (Gray and Cheriton, 1989). In git, --force-with-lease is a forced push that succeeds only if the remote branch is still where the pusher expects",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.35206",
+   "h": "7804c6fd",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.35204:d226798f",
+    "cell:mrzzsdjxrm2.35205:e239c099"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "Mutant",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.35214",
+   "h": "71fb91f2",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.35204:d226798f",
+    "cell:mrzzsdjxrm2.35213:553a2af8"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "A copy of the code with one deliberate fault; a check that does not catch it does not bite",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.35307",
+   "h": "cd9158be",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.35305:0436ec37",
+    "cell:mrzzsdjxrm2.35306:947a5165"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "Open OnDemand",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.35322",
+   "h": "9f125d9d",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.35305:0436ec37",
+    "cell:mrzzsdjxrm2.35321:ecc6e5e5"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "A web portal to a university cluster, through which Beethoven starts its jobs",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.35402",
+   "h": "dc7620eb",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.35400:31e547cc",
+    "cell:mrzzsdjxrm2.35401:97e6162b"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "Oracle",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.35410",
+   "h": "9c8dc9d4",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.35400:31e547cc",
+    "cell:mrzzsdjxrm2.35409:d4c4021b"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "An independent statement of the right outcome, here written from the spec's text, against which every interleaving is checked",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.35538",
+   "h": "38b163f9",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.35536:c8f99089",
+    "cell:mrzzsdjxrm2.35537:bb2b1488"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "Overlap",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.35547",
+   "h": "e9248274",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.35536:c8f99089",
+    "cell:mrzzsdjxrm2.35546:84bdfcb6"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "Two pieces of open work that change the same file; the board lists them in the order they should land",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.35651",
+   "h": "28dd84fb",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.35649:def64b61",
+    "cell:mrzzsdjxrm2.35650:2519e0a7"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "PreToolUse hook",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.35668",
+   "h": "a5ed86b3",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.35649:def64b61",
+    "cell:mrzzsdjxrm2.35667:56d985d7"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "A command Claude Code runs before a tool call, which can refuse the call",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.35743",
+   "h": "ba853d73",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.35741:0401ce53",
+    "cell:mrzzsdjxrm2.35742:d8f6271a"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "Push guard",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.35755",
+   "h": "3a17aa3a",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.35741:0401ce53",
+    "cell:mrzzsdjxrm2.35754:256fc3bc"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "tools/guard_push.py, a PreToolUse hook that refuses forbidden pushes before they run, on the worker's own machine",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.35871",
+   "h": "03f0f482",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.35869:4bdbbeaf",
+    "cell:mrzzsdjxrm2.35870:1bae8d6d"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "REFORMS",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.35880",
+   "h": "f79ba465",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.35869:4bdbbeaf",
+    "cell:mrzzsdjxrm2.35879:013ecb44"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "Consensus recommendations for science that uses machine learning (Kapoor et al., Science Advances, 2024), 32 items",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.35997",
+   "h": "e020e3c6",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.35995:322e96f2",
+    "cell:mrzzsdjxrm2.35996:383fe385"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "Release",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.36006",
+   "h": "ca78a495",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.35995:322e96f2",
+    "cell:mrzzsdjxrm2.36005:68197f42"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "What happens to a claim with no commit for 24 hours: its labels come off, a comment says what the branch holds, and the branch is renamed released/N-sha, so the work is kept and the name is free",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.36203",
+   "h": "e3bb59df",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.36201:1e304bf8",
+    "cell:mrzzsdjxrm2.36202:dd4102ae"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "Remote Control",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.36219",
+   "h": "db4bec41",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.36201:1e304bf8",
+    "cell:mrzzsdjxrm2.36218:e3e18be8"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "Claude Code's feature that lets a session running on one machine be driven from claude.ai or the Claude app",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.36329",
+   "h": "edc82e81",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.36327:a5802853",
+    "cell:mrzzsdjxrm2.36328:2132b210"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "Required check",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.36345",
+   "h": "51e3d93c",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.36327:a5802853",
+    "cell:mrzzsdjxrm2.36344:515694ae"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "A status check that a ruleset makes pass before anything merges; Symphony's is named check",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.36438",
+   "h": "d1edca3f",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.36436:ceb79cbd",
+    "cell:mrzzsdjxrm2.36437:4fefa0d8"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "Ruleset",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.36447",
+   "h": "72be5e95",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.36436:ceb79cbd",
+    "cell:mrzzsdjxrm2.36446:09d1aa66"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "GitHub's rules for branches or tags, such as required checks, blocked force pushes or a merge queue, set for a repository or an organization",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.36590",
+   "h": "93dc658d",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.36588:6b826201",
+    "cell:mrzzsdjxrm2.36589:86a1eae6"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "Safe outputs",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.36604",
+   "h": "0b0fd22f",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.36588:6b826201",
+    "cell:mrzzsdjxrm2.36603:516a75e4"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "gh-aw's way of letting an agent ask for a write, such as a pull request or a comment, that a separate job with write permission carries out",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.36746",
+   "h": "d801b97f",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.36744:157e5150",
+    "cell:mrzzsdjxrm2.36745:f844d65a"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "Slurm, sbatch",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.36761",
+   "h": "14df2a80",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.36744:157e5150",
+    "cell:mrzzsdjxrm2.36760:98a307b6"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "The cluster's batch scheduler, and its command for submitting a job",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.36831",
+   "h": "b378d98c",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.36829:a29e4f66",
+    "cell:mrzzsdjxrm2.36830:f3ae5565"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "Standard runner",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.36848",
+   "h": "f49661c1",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.36829:a29e4f66",
+    "cell:mrzzsdjxrm2.36847:26571c2a"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "A GitHub-hosted virtual machine of the default size; free and unlimited on public repositories",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.36945",
+   "h": "1725de29",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.36943:64b2c216",
+    "cell:mrzzsdjxrm2.36944:0975312b"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "Stigmergy",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.36956",
+   "h": "d81e0422",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.36943:64b2c216",
+    "cell:mrzzsdjxrm2.36955:0f41cb82"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "Coordination through traces left in a shared environment, as Symphony's agents coordinate through branches and labels rather than messages",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.37097",
+   "h": "eac29146",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.37095:61a6450b",
+    "cell:mrzzsdjxrm2.37096:c3b9bf6c"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "Subscription token",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.37117",
+   "h": "43dc07e0",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.37095:61a6450b",
+    "cell:mrzzsdjxrm2.37116:9a89030d"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "CLAUDE_CODE_OAUTH_TOKEN, made by claude setup-token, which lets claude-code-action bill a person's Claude plan instead of an API key",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.37252",
+   "h": "a592e16d",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.37250:580b087f",
+    "cell:mrzzsdjxrm2.37251:27606e4c"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "TRIPOD+AI",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.37263",
+   "h": "d84666ce",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.37250:580b087f",
+    "cell:mrzzsdjxrm2.37262:eca3c8cc"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "The reporting guideline for clinical prediction models that use regression or machine learning (BMJ, 2024)",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.37372",
+   "h": "a67b04cd",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.37370:d0bd26f7",
+    "cell:mrzzsdjxrm2.37371:345a19d3"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "Worker",
+   "spans": []
+  },
+  {
+   "id": "mrzzsdjxrm2.37380",
+   "h": "1f69bad0",
+   "heading": null,
+   "ctx": [
+    "table:mrzzsdjxrm2.32893:1650348f",
+    "row:mrzzsdjxrm2.37370:d0bd26f7",
+    "cell:mrzzsdjxrm2.37379:cb5708b2"
+   ],
+   "section": "9. Glossary",
+   "subsection": "",
+   "text": "Anything that claims issues: a person's sessions, a routine, or an agent in GitHub Actions, each labelled worker:name",
+   "spans": []
+  }
+ ]
+}

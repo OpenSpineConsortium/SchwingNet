@@ -1,0 +1,13 @@
+# actionlint's settings (issue #248; docs/research/rust-coordinator.md,
+# section 8). scripts/check.sh runs actionlint where it is installed, and
+# CI installs it pinned by hash.
+self-hosted-runner:
+  # grid.yml runs on the WSU grid's runner chain (docs/setup/grid.md).
+  labels:
+    - grid
+paths:
+  .github/workflows/board.yml:
+    ignore:
+      # concurrency's queue key is newer than actionlint 1.7.12's schema;
+      # GitHub runs it (board.yml says why it is there, symphony-protocol F12).
+      - 'unexpected key "queue" for "concurrency" section'

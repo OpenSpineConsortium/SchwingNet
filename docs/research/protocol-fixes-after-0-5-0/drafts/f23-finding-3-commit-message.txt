@@ -1,0 +1,67 @@
+Leave a release's labels off after a rate limit's refusal (F23's review)
+
+F23's fix puts a release's labels back only where GitHub refused the
+comment with a 4xx and the read of the issue's comments after it lists
+none, since a 4xx is GitHub's answer in place of writing anything. The
+review's third finding is that, once the client waits out a rate limit
+(symphony-protocol#40), the rule rests on an assumption it never says: a
+429, or a 403 that names a rate limit or a wait in retry-after, is a 4xx,
+yet GitHub's documentation says how long to wait and when to stop asking,
+never that GitHub refuses such a call before it acts on it. Canary C4
+would settle that, and it is not run. Where GitHub had written the
+comment after all and listed it only later, the labels went back beside
+it and held the claim for good, the failure F23 fixed.
+
+github.wrote_nothing now reads a rate limit's refusal as it reads a
+server error: it says nothing of whether GitHub wrote the comment, so a
+release whose re-read lists none leaves the labels as the release left
+them, and the next run counts the comment GitHub wrote or releases the
+claim again where it wrote none. The client's making a write again after
+such a refusal still rests on C4, a choice of its own that
+invariants.written_once checks; only the labels a release puts back stop
+resting on it.
+
+No new rendered string: the run's line after such a refusal is
+not_listed's, unchanged, since its words fit, GitHub having perhaps acted
+on the call before it refused it. What changes, on purpose, is which line
+follows a rate limit's refusal whose re-read lists none. It was
+
+  #<n>: not released, the comment failed: <why>; <labels> put back
+
+and is now
+
+  #<n>: release unsettled, the comment failed: <why>; its issue's
+  comments list none yet, though GitHub may have written it before that
+  failure and list it only later; the labels stay as the release left
+  them
+
+The spec's Release says so in its two sentences on a failed comment,
+which the oracle quotes (SPEC["refused"], SPEC["listed late"]), and
+README.md, the coordinator's docstring and validation/DESIGN.md follow.
+
+The harness reads a rate limit from the fault and never from the
+library's rule (invariants.may_have_written), so a library that takes one
+for a refusal that wrote nothing is seen. #40's comment-limited-for-the-run
+and comment-limited-then-unread therefore expect the labels left for the
+next run, where the merge expected them back, and F20's mutant "an
+unsettled release put back" is caught under comment-422-then-unread
+alone. A new fault, comment-limited-late, writes the release comment
+though it refuses it for a secondary rate limit, as GitHub would were C4
+to find it acting on a call it refuses so, and asks a retry-after of 150
+seconds, longer than a run waits, so the client tries once and the fault
+never meets the client's own assumption with a double write. That
+exception to the fake's assumption is said where the assumption is.
+
+F23's trace gains steps 24 to 29 under the new fault: d claims #4 again,
+and at 53 hours GitHub writes the comment, refuses it and lists it late.
+Under the rule before the review the trace is red at step 28 alone, for
+G3L ("#4: the release comment stands and its labels were put back"), the
+claim held to the trace's end; with the fix it is green. The mutation
+lane gains "a rate limit's refusal taken for one that wrote nothing", the
+rule before the review, caught by the regression traces at that step, so
+it holds 138 mutants within its bound of 150; "no answer taken for a
+refusal" now reads every other answer by the library's own rule, so it
+still changes that one rule alone.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Qv1nNa8Mcvg1vvEuVqmPsE

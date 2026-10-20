@@ -1,0 +1,173 @@
+# Verification 01: gh-aw work queue and Copilot cloud agent claims
+
+Checked 2026-10-15 against primary sources only:
+
+- gh-aw: local clone /tmp/claude-research/gh-aw, github/gh-aw at dc91dbed (2026-10-15). Paths below are relative to it unless marked.
+- gh-aw at older tags: raw.githubusercontent.com/github/gh-aw/<tag>/<path>, fetched for v0.90.3, v0.91.5, v0.91.6 and v0.91.8.
+- GitHub docs: local clone /tmp/claude-research/github-docs, github/docs at 12691d2 (2026-10-15). Paths are relative to it.
+
+Method: try to refute each claim; a claim stands only as far as the files say it.
+
+---
+
+## Claim 1. gh-aw shipped a native Git-backed work queue with "Claims" around v0.90.3, extended to "Git-backed fair DAG work queues with claim-scoped effects" in v0.91.4-v0.91.8
+
+**Verdict: Partly true.** The release history is roughly right, but the dates and versions are loose. The two releases are also different designs, and the study must not mix them.
+
+### Release history
+
+- docs/src/content/docs/blog/2026-10-05-weekly-update.md:3: "Work queues and built-in ledgers land in v0.90.3". Line 19: "Git-backed `work-queue` operator commands", plus "#65494 adds selectable issue-backed queue storage". The post is dated 2026-10-05 and covers v0.90.0-v0.90.3, the week that ended on that date. ADR-64955 is dated 2026-10-02 (docs/adr/64955-git-backed-work-queue-coordination.md:3).
+- The blog post never uses the word "Claims", but the v0.90.3 code has them. raw v0.90.3 pkg/cli/work_command.go:21: `Short: "Experimental: inspect and update a Git-backed dispatch work queue"`. Line 166: `claim` "Add a claim with trusted owning run provenance". Line 185: "Claim %s added to Work %s (replay to check effectiveness)".
+- docs/src/content/docs/blog/2026-10-12-weekly-update.md:34 puts the fair DAG queue in one release, v0.91.6: "Git-backed fair DAG work queues with claim-scoped effects (#66024)". v0.91.7 added "priority-aware conformance dispatch (#67222) and scoped GitHub Issues mirrors (#67025)" (line 28). v0.91.4, v0.91.5 and v0.91.8 list no queue change.
+- The design was replaced, not extended. The v0.90.3 records are now refused: docs/adr/work-queue-protocol-upgrades.md:25-28 says old records "remain unsupported operational inputs". docs/src/content/docs/reference/work-queue.md:672-674 lists "Direct `claim --work-id`, legacy scalar assignments (including agent-selected winners), Issues storage, old records" as unsupported.
+
+### Where the queue state lives
+
+- Current: one append-only log, `work-queue.jsonl`, on the branch `work-queue`.
+  - pkg/workqueue/types.go:5-6: `FileName = "work-queue.jsonl"`, `DefaultBranch = "work-queue"`.
+  - actions/setup/js/work_queue_store.cjs:33-35 says the same, and rejects the legacy branches `dispatch-coordinator` and `gh-aw-work-queue`.
+  - reference/work-queue.md:13-14: "Its only source of authority is `work-queue.jsonl`, a transaction log". Line 541: the CLI "defaults to branch `work-queue` and supports Git storage only".
+- In v0.90.3: `dispatch-work-coordinator.jsonl` on the branch `gh-aw-dispatch-work-coordinator` (raw v0.90.3 pkg/workqueue/replay.go:19-20). v0.90.3 also offered issue-backed storage, which has since been removed (reference/work-queue.md:9-10: "Git is the only backend").
+- Settings live in `.github/workflows/aw.json` under `work_queue` (reference/work-queue.md:85-101). GitHub Issues can only mirror the queue: they "do not grant Claim authority or establish Result" (lines 21-22).
+
+### Who assigns work
+
+- Current: a trusted scheduler assigns. The agent does not choose.
+  - reference/work-queue.md:405: "Trusted processing refreshes the log, selects tasks by Policy, and commits the next fair group of assignments atomically."
+  - reference/work-queue.md:418, `work_queue_dispatch_next`: "The scheduler selects the Work and target."
+  - specs/work-queue-specification.md:1392: "The dispatcher remains an agent ... The trusted protocol owns admission, accounting identity validation, selection, Claim creation, launch binding, and release."
+  - ADR-64955:35: dispatchers "never select a preferred Work or invent Claim authority".
+  - Order of selection: priority classes, then fairness keys, then FIFO by commit position (spec:596-611, 664).
+- In v0.90.3 a dispatcher staged a Claim for "the oldest available Work in the dispatcher's local replay". Competing Claims were allowed and settled on replay. Source: specs/work-queue/README.md:637-640, 659 (historical model).
+
+### Does a claim expire when a worker goes idle?
+
+No. There is no lease, heartbeat or wall-clock timeout.
+
+- reference/work-queue.md:463-467: "A lost launch response, dispatcher cancellation, or elapsed deadline does not prove that a worker never launched ... Reservations remain until exact termination or definitive nonlaunch evidence exists".
+- spec:1138: "neither request nor lease expiry releases the slot". spec:1157: "Do not expire and reuse a slot merely because a lease timed out while its run might still execute."
+- reference/work-queue.md:323: "locks never expire or get stolen". actions/setup/js/work_queue_issue_coordination.cjs:7: "Locks have no expiring lease".
+- What does end a Claim is the GitHub Actions run itself. Its job timeout is the only clock: the agentic step defaults to 20 minutes and the agent job to 60 (docs/src/content/docs/reference/frontmatter.md:429; pkg/constants/constants.go:400).
+  - Once there is exact terminal-run evidence, trusted reconciliation cancels the still-open Claims and releases them (spec:1047-1048, 1139).
+  - The Work is then retried under the policy: 3 attempts, 30-second backoff by default (reference/work-queue.md:95-96).
+  - If the evidence stays uncertain, the reservation is kept indefinitely. There is no force-release (spec:1126-1131).
+
+### Can two workers ever hold one item? What makes a claim atomic?
+
+- Current design: no, by protocol.
+  - Only Work in state `available` can be granted (spec:655-657).
+  - Assignments hold one Claim by default (spec:599).
+  - "Retained Work cannot receive another Claim while delivery is pending or failed" (reference/work-queue.md:449).
+- Atomicity comes from a compare-and-swap on one Git ref.
+  - actions/setup/js/work_queue_store.cjs:428 calls `git.updateRef(... force: false)` (fast-forward only), and lines 66-72 treat 409/422 and `expectedHeadOid` mismatches as conflicts.
+  - The GraphQL path uses `createCommitOnBranch` with `expectedHeadOid` (reference/work-queue.md:313-314).
+  - Each conflict re-reads the log and recomputes the grant (ADR-64955:35).
+- Caveats from the project itself:
+  - Execution can still be duplicated; only authority is single. ADR-64955:11 says "Agent execution can be duplicated". spec:1119-1121 says multiple matching runs are a binding conflict whose unverified effects are rejected.
+  - Direct repository writers "can replace or delete the ledger" (reference/work-queue.md:167-171).
+  - Writer enforcement is "deferred" (ADR-64955:99-100).
+  - "Live Git/network contention remains unverified" (spec:2958).
+- In v0.90.3: yes. Several Claims could be recorded on one Work. "The least stable, uncancelled Claim identity wins" (specs/work-queue/README.md:637), and "pending competing Claims may become durable on nonterminal Work" (README.md:640).
+
+### Does it order work that touches the same files?
+
+No. Ordering comes only from DAG edges, priority, fairness and FIFO.
+
+- ADR-64955:106-108: "Each Claim has one authorized worker attempt; this does not serialize arbitrary different Work nodes writing the same resource".
+- spec:2611-2612: "Queue ownership does not serialize all writes to a shared Issue, PR, or branch."
+- A Work item's `resource_scope` may list paths, but that field only narrows what effects the worker may make. It does not order work (specs/work-queue/resource-scope.schema.json:5).
+- Producers have to model overlaps themselves as dependency edges.
+
+### Can a person's local or cloud Claude Code session be a claimant?
+
+No.
+
+- reference/work-queue.md:406: a Worker "Requires a version-3 Claim array. Trusted activation authenticates the actual run, workflow, and revision".
+- actions/setup/js/work_queue_store.cjs:400-402 requires `actor.role === "worker"` and a `workflow_dispatch` event at an immutable SHA.
+- spec:1110-1111 binds only run attempt 1.
+- reference/work-queue.md:671 and 677-678: worker finish "is a Claim-scoped MCP intent, not an operator command that can impersonate a worker ... An operator actor string does not authorize a worker."
+- What a person's session can do:
+  - Read the queue through `gh aw mcp-server`'s read-only `work-queue` tool (docs/src/content/docs/reference/gh-aw-as-mcp-server.md:134, 156; docs/adr/66938-expose-read-only-work-queue-subset-via-mcp.md:15).
+  - Act as an operator through the CLI (submit-work, cancel-claim, reprioritize; reference/work-queue.md:561-571).
+
+### Stable or experimental?
+
+It is no longer labelled experimental, but by its own records it is not proven either.
+
+- The CLI described itself as "Experimental:" through v0.91.5 (raw v0.91.5 pkg/cli/work_command.go). From v0.91.6 on it reads "Inspect and publish the current fair Git-backed DAG work queue" (pkg/cli/work_command.go:34).
+- The docs list "Work Queues" under Reference, not in the Experimental group (docs/astro.config.mjs:531 against 561-575).
+- Against calling it stable:
+  - ADR-64955 is "Status: Draft" (line 4).
+  - The spec's normative part is titled "Proposed normative specification" (spec:491).
+  - spec:2973: "Hosted Git publication and immutable-SHA dispatch remain unverified live gates".
+  - gh-aw is still on 0.x releases, one per week.
+
+### Does the Claude engine accept CLAUDE_CODE_OAUTH_TOKEN?
+
+No. The claim is confirmed nearly word for word.
+
+- docs/src/content/docs/reference/auth.mdx:219: "`CLAUDE_CODE_OAUTH_TOKEN` is not supported by GitHub Agentic Workflows. Provider-based OAuth authentication (such as billing through a Claude Teams or Claude Max subscription) is not supported. If you have set `CLAUDE_CODE_OAUTH_TOKEN` as a repository secret, it will be ignored".
+- The same rule appears in docs/src/content/docs/engines/claude.md:22, docs/src/content/docs/reference/faq.md:508-510 and docs/src/content/docs/setup/cli.md:253.
+- The code enforces it. pkg/cli/engine_secrets.go:27: "CLAUDE_CODE_OAUTH_TOKEN is not supported for Claude workflows; use ANTHROPIC_API_KEY or configure Anthropic Workload Identity Federation instead".
+- Supported routes:
+  - `ANTHROPIC_API_KEY`.
+  - Anthropic Workload Identity Federation.
+  - Since v0.91.4, Copilot-hosted Claude inference with `copilot-requests: write`, which needs no Anthropic key (engines/claude.md:24-35).
+
+### Corrected wording for the study
+
+> gh-aw first shipped an experimental Git-backed work queue in v0.90.3 (reported 2026-10-05). It had Claim records, but competing Claims were settled on replay. v0.91.6 (week ending 2026-10-12, PR #66024) replaced it with a "fair DAG" protocol, and v0.91.7 added to it.
+>
+> - **State:** one causal log, `work-queue.jsonl`, on the branch `work-queue`.
+> - **Assignment:** a trusted scheduler grants Claims (priority, fairness, FIFO). Agents only stage intents.
+> - **Atomicity:** a fast-forward-only compare-and-swap on the queue ref.
+> - **Release:** Claims never expire by time. They are released only on evidence that the GitHub Actions run ended or never launched, so the run's job timeout is the only clock.
+> - **Overlap:** nothing serializes work that touches the same files or branch, beyond declared dependencies.
+> - **Who can claim:** only an authenticated GitHub Actions worker run (`workflow_dispatch`, attempt 1). A person's own Claude Code session can read the queue or act as an operator, but cannot claim.
+> - **Status:** no longer labelled experimental since v0.91.6, but its ADR is a draft and the hosted live gates are unverified.
+> - **Claude engine:** takes `ANTHROPIC_API_KEY`, Anthropic WIF or Copilot-billed inference. gh-aw states that `CLAUDE_CODE_OAUTH_TOKEN` "is not supported".
+
+---
+
+## Claim 2. Copilot automations are not available in public repositories and are billed to the user who created them
+
+**Verdict: Confirmed.**
+
+- data/reusables/copilot/cloud-agent/automations-availability.md:3: "The repository must be **private or internal**. Automations are not available in public repositories."
+- data/reusables/gated-features/copilot-automations.md:1: "available in private and internal repositories only. They are not available where they have been disabled by a repository administrator, in repositories owned by managed users, or where Copilot cloud agent is not enabled."
+- data/reusables/copilot/cloud-agent/automations-billing.md:1: "Each time an automation runs, it starts a Copilot cloud agent session that uses GitHub Actions minutes and AI Credits. This usage is billed to the user who created the automation."
+- The page that includes these files is content/copilot/concepts/agent-capabilities/agent-powered-workflows-and-operations/about-automations.md: line 40 (availability) and line 100 (billing). Other relevant lines:
+  - Line 7 of the availability reusable: plans Pro, Pro+, Max, Business, Enterprise.
+  - Line 92: "private to the user who created it".
+  - Line 88: not stored in Git.
+  - Line 106: pull requests are attributed to the creator.
+
+**Corrected wording:** keep the claim. Add that automations are private to their creator, not versioned in Git, and limited to Pro, Pro+, Max, Business and Enterprise.
+
+---
+
+## Claim 3. GitHub's docs say Copilot code review's Actions minutes stay free in public repositories, but say nothing explicit about the Copilot cloud agent's minutes there
+
+**Verdict: Confirmed**, with one note.
+
+- content/billing/concepts/product-billing/github-actions.md:34-39, under "Copilot code review and GitHub Actions minutes": "Public repositories: Minutes remain free."
+- The same page, line 135: "Copilot code review consumes GitHub Actions minutes on private repositories. For public repositories, GitHub Actions minutes remain free."
+- I searched content/ and data/ for any statement pairing the cloud agent with Actions minutes. I found none about public repositories. The only cloud-agent minutes statements are:
+  - The automations billing reusable above, which applies to private and internal repositories only.
+  - content/copilot/concepts/agent-capabilities/about-agents/about-third-party-coding-agents.md:101-103: "Coding agents consume GitHub Actions minutes and AI Credits", with no word on visibility.
+- The note: the general rule on the same billing page, line 24, says Actions usage is "free ... for public repositories that use standard GitHub-hosted runners". By inference that could cover cloud agent runs, but the docs never say so for the cloud agent.
+
+**Corrected wording:** "GitHub's docs state that Copilot code review's Actions minutes remain free in public repositories. They state that the cloud agent consumes Actions minutes and AI Credits, but nowhere say whether its minutes are free in public repositories. Only the general rule that standard hosted runners are free there might apply by inference."
+
+---
+
+## Claim 4. Copilot cloud agent sessions stop at 59 minutes and work on one branch with one pull request per task
+
+**Verdict: Confirmed.**
+
+- content/copilot/concepts/copilot-surfaces/copilot-on-github.md:136: "Copilot can only work on one branch at a time and can open one pull request per task."
+- The same file, line 137: "Each Copilot cloud agent session has a maximum execution time of 59 minutes. This limit cannot be extended or bypassed. If a task exceeds the limit, the session times out and stops."
+- Line 139: a shorter limit can be set with `timeout-minutes` in `copilot-setup-steps.yml`.
+- Line 134: one repository per run.
+
+**Corrected wording:** keep the claim, phrased as "one branch at a time, one pull request per task, a hard 59-minute session limit (shorter if `copilot-setup-steps.yml` sets one), and one repository per run".

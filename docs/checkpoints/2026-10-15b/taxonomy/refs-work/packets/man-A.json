@@ -1,0 +1,181 @@
+{
+ "group": "man-A",
+ "doc": "manual",
+ "units": [
+  {
+   "id": "mrzzsdjxrm2.54",
+   "kind": "heading level 2",
+   "text": "1. What this manual is for"
+  },
+  {
+   "id": "mrzzsdjxrm2.78",
+   "kind": "paragraph",
+   "text": "This manual is how to use the spec: to run the deep research that checks and extends it, to place any other tool in the same taxonomy, and to explain the approach to grant reviewers, engineers and lab leads. The spec says what is true and how sure we are; the manual says what to do with it."
+  },
+  {
+   "id": "mrzzsdjxrm2.370",
+   "kind": "paragraph",
+   "text": "The two travel together. The spec holds the taxonomy, the placement, the graded claims and the open research questions. This manual holds the procedures, the prompts to paste, the worksheet and the talking points."
+  },
+  {
+   "id": "mrzzsdjxrm2.584",
+   "kind": "paragraph",
+   "text": "A finding changes the spec first, then every talking point that rests on it. The research notes behind both are in the project folder under research/taxonomy/notes/, one file per topic, each line with its source."
+  },
+  {
+   "id": "mrzzsdjxrm2.797",
+   "kind": "heading level 2",
+   "text": "2. Before you start"
+  },
+  {
+   "id": "mrzzsdjxrm2.817",
+   "kind": "paragraph",
+   "text": "Read, in this order (about twenty minutes): the spec's section 9 (the Actions story), section 8 (what is unique), section 7 (the need), then section 10 (the risks). Sections 3 to 5 are reference."
+  },
+  {
+   "id": "mrzzsdjxrm2.1013",
+   "kind": "paragraph",
+   "text": "Already checked against primary sources on 2026-10-15, so the deep research need not redo them:"
+  },
+  {
+   "id": "mrzzsdjxrm2.1111",
+   "kind": "list item",
+   "text": "GitHub Actions billing, runner sizes and limits, read from the github/docs repository at commit 12691d2"
+  },
+  {
+   "id": "mrzzsdjxrm2.1216",
+   "kind": "list item",
+   "text": "The text of GitHub's Actions terms, effective 2026-04-27"
+  },
+  {
+   "id": "mrzzsdjxrm2.1274",
+   "kind": "list item",
+   "text": "Anthropic's pages on Claude Code GitHub Actions, costs, agent teams, Remote Control and legal use, and claude.com/pricing"
+  },
+  {
+   "id": "mrzzsdjxrm2.1397",
+   "kind": "list item",
+   "text": "gh-aw's work queue and its refusal of the subscription token, from its repository at dc91dbed"
+  },
+  {
+   "id": "mrzzsdjxrm2.1492",
+   "kind": "list item",
+   "text": "Copilot automations not being available in public repositories, and Copilot's cloud agent limits"
+  },
+  {
+   "id": "mrzzsdjxrm2.1590",
+   "kind": "list item",
+   "text": "CooperBench's counts, from the paper's PDF in the authors' repository"
+  },
+  {
+   "id": "mrzzsdjxrm2.1661",
+   "kind": "list item",
+   "text": "How the claim behaves under git, by experiment on local repositories (spec, risks 12 to 14)"
+  },
+  {
+   "id": "mrzzsdjxrm2.1754",
+   "kind": "list item",
+   "text": "A search for a rival that combines Symphony's mechanisms (spec, section 8)"
+  },
+  {
+   "id": "mrzzsdjxrm2.1829",
+   "kind": "paragraph",
+   "text": "Still open are the ten research questions in the spec's section 11. Three of them need measurements, not reading: R1 (the benchmark run), R3 (cost of a coordination step) and R4 (the claim on github.com). Those run in their own threads, by your choice, because they spend tokens or touch live repositories."
+  },
+  {
+   "id": "mrzzsdjxrm2.2136",
+   "kind": "paragraph",
+   "text": "What this project's sessions cannot reach. The cloud environment blocks docs.github.com, github.blog, arxiv.org, metr.org, cursor.com, gartner.com, thoughtworks.com and openspineconsortium.com, and the first research pass used up its web-search allowance for the turn. GitHub's docs were read from the github/docs repository instead, and papers from their authors' repositories where there was one, graded Verified, or else from third-party mirrors and search summaries, graded Reported. That is why the deep research below runs in claude.ai's Research mode, which reaches the open web, and why its report comes back here to be folded into the spec."
+  },
+  {
+   "id": "mrzzsdjxrm2.2705",
+   "kind": "paragraph",
+   "text": "Two holds stay in force. Data from the coordination experiment stays out of the grant until you say so. Nothing in either document is a legal opinion: the terms questions (R5, R6) are for GitHub, Anthropic or a lawyer to answer."
+  },
+  {
+   "id": "mrzzsdjxrm2.2934",
+   "kind": "heading level 2",
+   "text": "3. Running the deep research"
+  },
+  {
+   "id": "mrzzsdjxrm2.2963",
+   "kind": "paragraph",
+   "text": "Deep research is something you start; a thread here cannot start it for you. It runs in three passes."
+  },
+  {
+   "id": "mrzzsdjxrm2.3065",
+   "kind": "heading level 3",
+   "text": "Pass 1: the open web, in claude.ai Research"
+  },
+  {
+   "id": "mrzzsdjxrm2.3111",
+   "kind": "list item",
+   "text": "Open claude.ai/new."
+  },
+  {
+   "id": "mrzzsdjxrm2.3132",
+   "kind": "list item",
+   "text": "Below the message box, turn on Research (and web search, if it is a separate switch)."
+  },
+  {
+   "id": "mrzzsdjxrm2.3219",
+   "kind": "list item",
+   "text": "Paste the message below as it is, and send it."
+  },
+  {
+   "id": "mrzzsdjxrm2.3267",
+   "kind": "list item",
+   "text": "When the report is done, copy its whole text."
+  },
+  {
+   "id": "mrzzsdjxrm2.3313",
+   "kind": "code block (never edit)",
+   "text": "I am placing two pieces of software in a taxonomy of agent software and need a deep, sourced check of the claims below, as of today. Prefer primary sources (vendor docs and terms pages, papers, repositories); mark anything taken from a secondary source as Reported. For every claim give a verdict (Confirmed, Partly true, Refuted or Unverifiable), the evidence with links, dates and short quotes, and corrected wording. Start the report with a table of verdicts, and end it with a list of what you could not verify.\n\nThe systems:\n- Symphony (github.com/OpenSpineConsortium/symphony-protocol, MIT): a coordination protocol for Claude Code agents kept in a GitHub repository. Issues are the queue. A worker claims issue N by pushing a new branch claude/N whose first commit adds a claim file with the plan and the files it will touch; git's compare-and-swap on ref creation lets exactly one of two racing creations win. GitHub Actions jobs render a board (a file on a branch), release a claim idle for 24 hours while keeping its work under a renamed branch, and order work that touches the same files. Workers are people's own Claude Code sessions and agents running as GitHub Actions jobs through anthropics/claude-code-action on a Claude subscription token (CLAUDE_CODE_OAUTH_TOKEN). It has no server of its own.\n- Beethoven (private): runs a student's own Claude Code Remote Control session as a Slurm batch job on a university cluster, started through Open OnDemand, and plans gates that enforce research reporting checklists (REFORMS, CLAIM) over each run's record; a required check already holds the code its agents write to contracts checked by CrossHair and Z3.\n\nClaims and questions:\n1. GitHub Actions: standard GitHub-hosted runners are free and unlimited on public repositories (4 vCPU, 16 GB on Linux), bounded by concurrency (20 jobs on Free, 40 on Pro, 60 on Team, 500 on Enterprise), 6-hour jobs and GITHUB_TOKEN's 1,000 requests an hour per repository; larger and GPU runners are always billed; private repositories get 2,000, 3,000 or 50,000 included minutes a month, then $0.006 a minute on Linux since 2026-01-01. Report any change since 2026-10-15, and the status of the self-hosted runner charge GitHub announced on 2025-12-16 and withdrew the next day.\n2. GitHub's Actions terms (effective 2026-04-27) limit GitHub-hosted runners to activity related to \"the software project associated with the repository\" and forbid offering Actions or its elements for commercial purposes. How have GitHub, lawyers or practitioners read these clauses for AI coding agents running in Actions, for benchmarks that run other projects' tasks, and for a paid product whose open runtime runs in customers' own Actions?\n3. Anthropic: claude-code-action accepts CLAUDE_CODE_OAUTH_TOKEN from claude setup-token, so runs use the subscription instead of API billing; Anthropic advises an API key for a secret shared across repositories, and its legal page says plan limits assume \"ordinary, individual usage\". What is Anthropic's current position on several automated agents in CI on one person's subscription? Will claude-code-action keep supporting the token when bare mode becomes the default for claude -p?\n4. Uniqueness: is there any system, product or paper that has four of these five, or (a), (c) and (d) together: (a) a claim made atomic by a git ref on the shared forge; (b) automatic release of idle claims by a CI job that keeps the work; (c) a coordinator and board that run as CI jobs, with state only in forge objects; (d) people's interactive sessions and CI agents under one claim rule, on a flat-rate subscription; (e) validation of the shipped protocol code by exhaustive interleavings against an oracle written from its spec, with mutants. Known neighbors to go beyond: GitHub Agentic Workflows (gh-aw) and its October 2026 work queue, unsorry (agenticsnz/unsorry), GitHub Copilot cloud agent and Agent HQ, openai/symphony, CCPM, Beads and Gas Town, paperclip, Orbi, aeon, agentic-setup, Claude Code agent teams and Projects, Anthropic's C-compiler harness, CooperBench's team mode, Claim Plane (arXiv 2608.00947) and Nerveplane (arXiv 2610.07261). Search FSE, ICSE and ASE 2026, arXiv cs.SE and cs.MA, GitHub and practitioner writing.\n5. The need: CooperBench (arXiv 2601.13295) reports two agents, each in its own workspace and able only to message the other, passing far less often than one (for GPT-5, 183 against 315 of 652 pairs). Find replications, rebuttals, and any study comparing a claim- or pull-request-gated protocol on a shared remote with one agent at a matched budget.\n6. Free CI elsewhere: confirm from primary sources that Travis CI ended unlimited open-source builds (2020), GitLab.com put public projects on quotas (2021), Azure DevOps stopped new public projects (2026) and will make existing ones private (2027), Cirrus CI stopped running jobs (2026-06-01), and what CircleCI gives open source today.\n7. Taxonomy: does any published taxonomy of LLM agents or multi-agent systems have an axis for where the compute runs and who pays for it? Use the strongest surveys of 2025 and 2026. Give Gartner's and Thoughtworks' current categories for coding agents, from their own pages.\n8. Research automation: does any AI-scientist system or research workflow tool enforce a reporting checklist (REFORMS, CLAIM, TRIPOD+AI, DOME or similar) as a machine-checked gate over an agent's run? How many items does the CLAIM 2024 update have? Does any other project make contracts checked by symbolic execution the required merge gate for code that agents write, and does any tool start Claude Code's Remote Control from a Slurm batch job through Open OnDemand?\n9. The name: how crowded is \"Symphony\" among agent and coding software?"
+  },
+  {
+   "id": "mrzzsdjxrm2.8659",
+   "kind": "heading level 3",
+   "text": "Pass 2: fold the report into the spec, here"
+  },
+  {
+   "id": "mrzzsdjxrm2.8703",
+   "kind": "paragraph",
+   "text": "Post this in the project chat, with the report's text pasted under it:"
+  },
+  {
+   "id": "mrzzsdjxrm2.8774",
+   "kind": "code block (never edit)",
+   "text": "Here is the deep research report on the Symphony and Beethoven taxonomy. Update the taxonomy spec from it: change each claim's grade and wording where the report has better evidence, add new neighbors to sections 4, 5 and 8, mark research questions answered when their acceptance criteria are met, and list in the thread what changed and what the report got wrong."
+  },
+  {
+   "id": "mrzzsdjxrm2.9139",
+   "kind": "heading level 3",
+   "text": "Pass 3: the measurements, one thread each, when you choose"
+  },
+  {
+   "id": "mrzzsdjxrm2.9200",
+   "kind": "list item",
+   "text": "R1, the benchmark: the coordination experiment thread already holds the plan you chose; nothing new to paste."
+  },
+  {
+   "id": "mrzzsdjxrm2.9311",
+   "kind": "list item",
+   "text": "R3, the cost of a coordination step: the measurement pass is already queued after the stuck-claim fix in the protocol work."
+  },
+  {
+   "id": "mrzzsdjxrm2.9436",
+   "kind": "list item",
+   "text": "R4, the claim on github.com: post \"Run research question R4 of the taxonomy spec on the canary repository\" in the project chat."
+  },
+  {
+   "id": "mrzzsdjxrm2.9564",
+   "kind": "heading level 3",
+   "text": "Scoping a pass"
+  },
+  {
+   "id": "mrzzsdjxrm2.9579",
+   "kind": "paragraph",
+   "text": "One report per pass. If the report is thin on an item, run pass 1 again with that item alone and its question number. If it is confident without sources, ask it for the primary source of each claim it marked Confirmed. Treat anything it cannot link as Reported."
+  }
+ ]
+}

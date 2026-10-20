@@ -1,0 +1,72 @@
+# One word to this repository's runner chain on the WSU grid, from GitHub's own machine: start,
+# status or stop. The word goes over ssh to the grid's ssh gate (OpenSpineConsortium/hpcworker,
+# tools/grid_gate.sh), the forced command of one restricted line in the owner's authorized_keys, which
+# runs tools/grid_runner.sh --start, --status or --stop for this one repository with the size fixed in
+# the line, at most once a minute, and nothing else: no shell, no job of the workflow's own, never the
+# password. A key alone signs in from outside the VPN (the owner's test of 2026-10-17). The key's
+# private half is the secret GRID_GATE_KEY of the environment grid, which only main may deploy to; the
+# owner's AccessID and the grid's host key are that environment's variables GRID_ACCESS_ID and
+# GRID_HOST_KEY. The key is written to a mode-0600 file under the job's own temp, never into an
+# argument, a log or another step's environment, and removed when the step ends. grid.yml calls this
+# with start when its start box is ticked, passing the secret by name, as a caller must even for an
+# environment's secret (GitHub resolves one a caller does not pass to an empty string); docs/setup/
+# grid.md, "The ssh gate", has the owner's steps.
+name: Grid gate
+on:
+  workflow_dispatch:
+    inputs:
+      word:
+        description: "What the gate does with this repository's runner chain on the grid"
+        type: choice
+        options: [status, start, stop]
+        default: status
+  workflow_call:
+    inputs:
+      word:
+        type: string
+        required: true
+    secrets:
+      GRID_GATE_KEY:
+        required: true
+permissions:
+  contents: read
+jobs:
+  gate:
+    # the same repositories grid.yml serves: private, not a fork, never a pull request from a fork
+    if: >-
+      github.event.repository.private == true && github.event.repository.fork == false &&
+      (github.event.pull_request == null || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    # a start may wait on gh's own five-minute bound on the grid, and a call the gate's floor refused is tried once more
+    timeout-minutes: 15
+    environment: grid
+    steps:
+      - name: say the word to the grid's gate
+        env:
+          WORD: ${{ inputs.word }}
+          KEY: ${{ secrets.GRID_GATE_KEY }}
+          ACCESS_ID: ${{ vars.GRID_ACCESS_ID }}
+          HOST_KEY: ${{ vars.GRID_HOST_KEY }}
+          HOST: grid.wayne.edu
+        run: |
+          case "$WORD" in start|status|stop) ;; *) echo "::error::the word is start, status or stop, not $WORD"; exit 1;; esac
+          [ -n "$KEY" ] && [ -n "$ACCESS_ID" ] && [ -n "$HOST_KEY" ] \
+            || { echo "::error::the environment grid needs the secret GRID_GATE_KEY and the variables GRID_ACCESS_ID and GRID_HOST_KEY (docs/setup/grid.md, The ssh gate)"; exit 1; }
+          [[ "$ACCESS_ID" =~ ^[A-Za-z0-9._-]+$ ]] || { echo "::error::GRID_ACCESS_ID is not a plain name"; exit 1; }
+          d=$(mktemp -d "$RUNNER_TEMP/gate.XXXXXX") || exit 1
+          trap 'rm -rf "$d"' EXIT
+          # a key pasted from Windows may carry carriage returns, which ssh reads as a broken key
+          ( umask 077; printf '%s\n' "$KEY" | tr -d '\r' > "$d/key"; printf '%s\n' "$HOST_KEY" | tr -d '\r' > "$d/known_hosts" ) || exit 1
+          unset KEY
+          gate() {
+            ssh -T -i "$d/key" -o IdentitiesOnly=yes -o BatchMode=yes -o PreferredAuthentications=publickey \
+              -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$d/known_hosts" -o GlobalKnownHostsFile=/dev/null \
+              -o ConnectTimeout=30 -o LogLevel=ERROR "$ACCESS_ID@$HOST" "$WORD" 2>&1 | tee "$d/out"
+            return "${PIPESTATUS[0]}"
+          }
+          # the step's shell stops at a failing command (bash -e), so each call is tested where it is made
+          rc=0; gate || rc=$?
+          # 123 is the gate's one-call-a-minute floor (two runs at once, or a call just before): one more try after it has passed
+          if [ "$rc" = 123 ]; then echo "the gate took a call less than a minute ago; trying once more in 61 seconds"; sleep 61; rc=0; gate || rc=$?; fi
+          { echo "### The grid's gate: $WORD"; echo '```'; cat "$d/out"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          exit "$rc"

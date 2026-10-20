@@ -1,0 +1,15 @@
+This copy of the template has not been initialised.
+
+.github/workflows/template-init.yml runs on the first push to the default
+branch while this file exists: it fills the names into every file except
+the workflows under .github/workflows/, which carry no placeholder because
+GitHub's own token may not write them, creates the labels, opens the issue
+"Set up this project", and deletes this folder. The workflow itself stays in
+the tree and does nothing once this file is gone. The board workflow reads
+it too and writes no board while this file is here, a second layer behind
+its job gate for a template whose box was never ticked and for a copy not
+yet initialised.
+
+In the template repository itself, tick "Template repository" under
+Settings, General before the first push; until then the workflow would run
+on the template and fill it.

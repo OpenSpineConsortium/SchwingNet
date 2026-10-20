@@ -1,0 +1,514 @@
+name: Workers
+
+# Runs the workers of the registry that run in GitHub Actions, the files
+# under .github/symphony/workers/ that say "runs": "actions"
+# (docs/agents/WORKERS.md), one leg per worker, in parallel, on this
+# repository's Claude token. The first job lists them with
+# tools/workers.py on the default branch, and with none registered the run
+# ends there; then it asks tools/team.py, once for the whole run and on
+# GITHUB_TOKEN alone, what each worker should do: its own claim that needs
+# work, the task it was given, its share of the unclaimed blockers and
+# queued issues whose files fit its area, or nothing. One look deals the
+# run, so no two legs of one run are dealt one issue because one looked
+# while a peer's pull request was clean and the other after the default
+# branch moved past it (symphony-protocol's finding F4); while the
+# vendored library has no deal yet, each leg asks for itself, as before.
+# Only the first three moves start a Claude session, so a worker with
+# nothing to do costs seconds of a runner and no usage; a look that fails
+# stops the run, and the schedule picks it up. Since a leg may wait for an
+# earlier run of its worker, and the deal came before that wait, every
+# leg looks again before its session starts, as every leg did before the
+# run dealt, and keeps from that look only its worker's own work, which no
+# leg of the run can be dealt: its own claim that needs work, which comes
+# first, or an issue given to it alone. An issue of the shared queue, or
+# one the labels give to several workers, which the deal gives to the
+# first of them in the registry's order with nothing else to do
+# (symphony-protocol's F18), is taken only as dealt, and only while
+# nobody has claimed, closed, held or given it away since. A run that a
+# label event starts while another run's legs still wait may deal such
+# an issue, or one of the queue, again from its later look; the claim
+# lock settles that at the cost of one session, as it always did. The
+# session runs the worker prompt, docs/agents/routines/worker.md,
+# under the worker's name, the same prompt a routine runs, with the
+# worker's own model and turns; the issue the clerk chose is named in it.
+# After a session, a leg that still has work dispatches itself again
+# (workflow_dispatch, which GITHUB_TOKEN may start; that run deals again,
+# from a look of its own), up to the worker's rounds in a row; the
+# six-hourly schedule picks up the rest, and an issue queued (todo,
+# blocker) or given to a worker (worker:<name>) while nobody holds it
+# wakes the workers at once, or only the one it was given to; given to
+# several workers, it wakes every worker, since the deal, over the whole
+# registry, may give it to one the new label does not name. Such
+# a run's actor is the github-actions bot, so the action is told to accept
+# it. Claude runs need the secret CLAUDE_CODE_OAUTH_TOKEN
+# (docs/setup/claude-action.md) and draw on that account's plan. One run
+# at a time per worker. In crowd mode (docs/project.md,
+# docs/setup/crowdsourcing.md) nothing starts, whatever the registry says:
+# each contributor runs their own worker on their own account, and the
+# repository holds no token. After each session the leg records what it
+# spent, tokens by model and seconds, with tools/usage.py run from a copy
+# made before the session, since the session may leave the checkout on an
+# older branch, and keeps the record as an artifact, symphony-usage-*,
+# which the metrics workflow reads (docs/setup/metrics.md, What the work
+# cost); while the metrics switch is off there is no record.
+
+on:
+  schedule:
+    - cron: '43 */6 * * *'
+  issues:
+    types: [labeled]
+  workflow_dispatch:
+    inputs:
+      worker:
+        description: "One worker to run; empty runs every worker in Actions"
+        required: false
+        default: ""
+      round:
+        description: "How many rounds this worker has run in a row"
+        required: false
+        default: "1"
+
+jobs:
+  registry:
+    if: >-
+      vars.CLAUDE_CROWD != 'true'
+      && (github.event_name != 'issues'
+          || (!contains(github.event.issue.labels.*.name, 'claimed')
+              && (github.event.label.name == 'todo' || github.event.label.name == 'blocker'
+                  || startsWith(github.event.label.name, 'worker:'))))
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
+      checks: read
+    outputs:
+      workers: ${{ steps.list.outputs.workers }}
+      deals: ${{ steps.list.outputs.deals }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+      - name: List the workers that run in Actions and deal them the open work
+        id: list
+        env:
+          ONLY: ${{ inputs.worker }}
+          LABEL: ${{ github.event.label.name }}
+          ISSUE_LABELS: ${{ toJSON(github.event.issue.labels.*.name) }}
+          REGISTRY: .github/symphony/workers
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          # A worker's label wakes that worker alone, unless the issue's
+          # labels now name several workers: the deal, over the whole
+          # registry, may give such an issue to one the new label does not
+          # name (symphony-protocol's F18), so every worker runs and the
+          # one the deal picks is in the run; an idle leg costs seconds.
+          case "${LABEL:-}" in
+            worker:*)
+              named=$(python3 -c 'import json, sys; sys.path.insert(0, "tools"); from sdlc_protocol import labels; print(len(labels.holder_names(json.loads(sys.argv[1]) or [])))' "${ISSUE_LABELS:-null}")
+              if [ "$named" = 1 ]; then ONLY="${LABEL#worker:}"; fi ;;
+          esac
+          all=$(python3 tools/workers.py list --runs actions)
+          workers=$(python3 -c 'import json, sys; names = json.loads(sys.argv[1]); only = sys.argv[2]; print(json.dumps([n for n in names if not only or n == only]))' "$all" "${ONLY:-}")
+          echo "workers in Actions: $all; this run: $workers"
+          echo "workers=$workers" >> "$GITHUB_OUTPUT"
+          # One look deals the whole run (symphony-protocol's F4). A copy
+          # whose vendored library is older than the deal command has none,
+          # and then each leg asks for itself, as every leg always did.
+          deals=""
+          if [ "$workers" != "[]" ] && python3 tools/team.py deal --help > /dev/null 2>&1; then
+            deals=$(python3 tools/team.py deal --registry "$REGISTRY" --workers "$workers")
+            echo "dealt from one look: $deals"
+          elif [ "$workers" != "[]" ]; then
+            echo "the vendored protocol library has no deal yet; each leg asks for itself"
+          fi
+          echo "deals=$deals" >> "$GITHUB_OUTPUT"
+
+  work:
+    needs: registry
+    if: needs.registry.outputs.workers != '' && needs.registry.outputs.workers != '[]'
+    strategy:
+      fail-fast: false
+      matrix:
+        worker: ${{ fromJSON(needs.registry.outputs.workers) }}
+    concurrency:
+      group: worker-${{ matrix.worker }}
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      checks: read
+      actions: write
+      id-token: write
+    env:
+      HAVE_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' }}
+      WORKER: ${{ matrix.worker }}
+      REGISTRY: .github/symphony/workers
+      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          fetch-depth: 0
+      - name: Read the worker's settings and the move it was dealt
+        id: next
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
+          DEALS: ${{ needs.registry.outputs.deals }}
+        run: |
+          set -eu
+          # The worker's own look, as every leg asked before the run dealt
+          # from one; and the issue's own state, read afresh with the
+          # library's label names: free (queued and nobody's), mine (given
+          # to this worker alone), shared (given to this worker and to
+          # others, so the run's deal says which of them takes it), unread,
+          # or why the worker may not take it. The Python stands at the
+          # script's left edge, since Python reads indentation and the
+          # step's block gives it none.
+          look() {
+            python3 tools/team.py next --agent "$WORKER" --registry "$REGISTRY" --label "worker:$WORKER"
+          }
+          claimed() {
+            found=0
+            git ls-remote --exit-code --heads origin "refs/heads/claude/$1" > /dev/null || found=$?
+            case "$found" in 0) echo yes ;; 2) echo no ;; *) echo unknown ;; esac
+          }
+          standing() {
+            if ! gh issue view "$1" --repo "$GITHUB_REPOSITORY" --json state,labels > "$RUNNER_TEMP/issue-$1.json"; then
+              echo unread
+              return 0
+            fi
+            python3 -c '
+          import json, sys
+          sys.path.insert(0, "tools")
+          from sdlc_protocol import labels
+          issue = json.load(open(sys.argv[1], encoding="utf-8"))
+          names = labels.label_names(issue)
+          holders = labels.holders(issue)
+          held = [n for n in names if n in (labels.CLAIMED, labels.BLOCKED, labels.EPIC)]
+          if str(issue.get("state", "")).upper() != "OPEN":
+              print("closed")
+          elif held:
+              print("labelled " + ", ".join(held))
+          elif holders == {sys.argv[2]}:
+              print("mine")
+          elif sys.argv[2] in holders:
+              print("shared")
+          elif holders:
+              print("given to " + ", ".join(sorted(holders)))
+          elif labels.TODO not in names and labels.BLOCKER not in names:
+              print("out of the queue")
+          else:
+              print("free")
+          ' "$RUNNER_TEMP/issue-$1.json" "$WORKER"
+          }
+          if [ -z "$DEALS" ]; then
+            answer=$(look)
+            echo "$WORKER: $answer, from its own look"
+          else
+            dealt=$(python3 -c 'import json, sys; print(json.loads(sys.argv[1])[sys.argv[2]])' "$DEALS" "$WORKER")
+            echo "$WORKER: $dealt, dealt with the run from one look"
+            # The deal came before this leg's wait for an earlier run of its
+            # worker, so the leg looks again and keeps from that look only
+            # the worker's own work, which no leg of the run can be dealt:
+            # its own claim that needs work, which the clerk answers first,
+            # or an issue given to it alone. An issue of the shared queue,
+            # or one given to this worker and to others, which the deal
+            # gives to the first of them with nothing else to do (F18), is
+            # taken only as dealt, and only while nobody has claimed it,
+            # closed it, held it or given it away since, so two legs of one
+            # run never take one issue: a fresh look's take of such an
+            # issue is never kept, since it may disagree with a peer's deal.
+            fresh=$(look) || { echo "a fresh look failed; the dealt move stands on its own checks"; fresh=unread; }
+            answer=none
+            case "$fresh" in
+              "carry "*) answer=$fresh ;;
+              "take "*)
+                number=${fresh##* }
+                if [ "$(claimed "$number")" = no ] && [ "$(standing "$number")" = mine ]; then
+                  answer=$fresh
+                fi ;;
+            esac
+            if [ "$answer" = none ]; then
+              case "$dealt" in
+                "take "*)
+                  number=${dealt##* }
+                  case "$(claimed "$number")" in
+                    yes) why=claimed ;;
+                    no) why=$(standing "$number") ;;
+                    *) echo "origin could not be read; the claim lock decides"; why=free ;;
+                  esac
+                  case "$why" in
+                    free | mine | shared) answer=$dealt ;;
+                    unread) echo "#$number could not be read from GitHub; the claim lock decides"; answer=$dealt ;;
+                    *) echo "#$number is $why since the run looked; nothing of the queue this run" ;;
+                  esac ;;
+                "carry "*)
+                  if [ "$fresh" = unread ]; then answer=$dealt; fi ;;
+              esac
+            fi
+            if [ "$answer" != "$dealt" ]; then
+              echo "$WORKER: $answer this run, since a fresh look says '$fresh'"
+            fi
+          fi
+          echo "move=${answer%% *}" >> "$GITHUB_OUTPUT"
+          echo "issue=${answer##* }" >> "$GITHUB_OUTPUT"
+          for setting in model max_turns rounds; do
+            echo "$setting=$(python3 tools/workers.py --dir "$REGISTRY" get "$WORKER" "$setting")" >> "$GITHUB_OUTPUT"
+          done
+          # The agent the worker runs under, when .github/symphony/agents.json
+          # names it (docs/agents/AGENTS.md); none leaves the worker prompt alone.
+          echo "agent=$(python3 tools/agents.py for-worker "$WORKER" 2> /dev/null || true)" >> "$GITHUB_OUTPUT"
+      - name: Choose the Claude account the worker runs on
+        id: account
+        if: steps.next.outputs.move != 'none' && env.HAVE_TOKEN == 'true'
+        env:
+          POOL: ${{ vars.SYMPHONY_CLAUDE_ACCOUNTS }}
+          SETTINGS: ${{ vars.SYMPHONY_CLAUDE_SETTINGS }}
+          MODEL: ${{ steps.next.outputs.model }}
+          SPREAD: ${{ strategy.job-index }}
+        run: |
+          # .github/symphony/accounts.json names a slot, main or auto for the
+          # worker (tools/pool.py); auto takes the pool's slot with the most
+          # room, read from the branch pool. SYMPHONY_CLAUDE_SETTINGS, the
+          # Tokens tab's tiles, gives each slot's model, effort and fallback
+          # and keeps a paused slot out. A file that does not hold together
+          # leaves the worker on the main token with its own model, as before.
+          if ! python3 tools/pool.py choose --worker "$WORKER" --pool "$POOL" --spread "$SPREAD" \
+              --settings "$SETTINGS" --model "$MODEL" >> "$GITHUB_OUTPUT"; then
+            echo "slot=main" >> "$GITHUB_OUTPUT"
+            echo "model=$MODEL" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Whether the chosen account's secret is seen here
+        id: secret
+        if: steps.next.outputs.move != 'none' && env.HAVE_TOKEN == 'true'
+        env:
+          CHOSEN: ${{ steps.account.outputs.slot }}
+          # Each slot's secret by a fixed name, as coordbench's bench.yml
+          # takes it: a computed name would hand the runner every secret it
+          # can see. Only this step and Claude's own have it.
+          SLOT_TOKEN: >-
+            ${{
+            (steps.account.outputs.slot == '1' && secrets.SYMPHONY_CLAUDE_1) ||
+            (steps.account.outputs.slot == '2' && secrets.SYMPHONY_CLAUDE_2) ||
+            (steps.account.outputs.slot == '3' && secrets.SYMPHONY_CLAUDE_3) ||
+            (steps.account.outputs.slot == '4' && secrets.SYMPHONY_CLAUDE_4) ||
+            (steps.account.outputs.slot == '5' && secrets.SYMPHONY_CLAUDE_5) ||
+            (steps.account.outputs.slot == '6' && secrets.SYMPHONY_CLAUDE_6) ||
+            (steps.account.outputs.slot == '7' && secrets.SYMPHONY_CLAUDE_7) ||
+            (steps.account.outputs.slot == '8' && secrets.SYMPHONY_CLAUDE_8) ||
+            (steps.account.outputs.slot == '9' && secrets.SYMPHONY_CLAUDE_9) ||
+            (steps.account.outputs.slot == '10' && secrets.SYMPHONY_CLAUDE_10) ||
+            (steps.account.outputs.slot == '11' && secrets.SYMPHONY_CLAUDE_11) ||
+            (steps.account.outputs.slot == '12' && secrets.SYMPHONY_CLAUDE_12) ||
+            (steps.account.outputs.slot == '13' && secrets.SYMPHONY_CLAUDE_13) ||
+            (steps.account.outputs.slot == '14' && secrets.SYMPHONY_CLAUDE_14) ||
+            (steps.account.outputs.slot == '15' && secrets.SYMPHONY_CLAUDE_15) ||
+            (steps.account.outputs.slot == '16' && secrets.SYMPHONY_CLAUDE_16) ||
+            (steps.account.outputs.slot == '17' && secrets.SYMPHONY_CLAUDE_17) ||
+            (steps.account.outputs.slot == '18' && secrets.SYMPHONY_CLAUDE_18) ||
+            (steps.account.outputs.slot == '19' && secrets.SYMPHONY_CLAUDE_19) ||
+            (steps.account.outputs.slot == '20' && secrets.SYMPHONY_CLAUDE_20) ||
+            (steps.account.outputs.slot == '21' && secrets.SYMPHONY_CLAUDE_21) ||
+            (steps.account.outputs.slot == '22' && secrets.SYMPHONY_CLAUDE_22) ||
+            (steps.account.outputs.slot == '23' && secrets.SYMPHONY_CLAUDE_23) ||
+            (steps.account.outputs.slot == '24' && secrets.SYMPHONY_CLAUDE_24) ||
+            (steps.account.outputs.slot == '25' && secrets.SYMPHONY_CLAUDE_25) ||
+            (steps.account.outputs.slot == '26' && secrets.SYMPHONY_CLAUDE_26) ||
+            (steps.account.outputs.slot == '27' && secrets.SYMPHONY_CLAUDE_27) ||
+            (steps.account.outputs.slot == '28' && secrets.SYMPHONY_CLAUDE_28) ||
+            (steps.account.outputs.slot == '29' && secrets.SYMPHONY_CLAUDE_29) ||
+            (steps.account.outputs.slot == '30' && secrets.SYMPHONY_CLAUDE_30) ||
+            (steps.account.outputs.slot == '31' && secrets.SYMPHONY_CLAUDE_31) ||
+            (steps.account.outputs.slot == '32' && secrets.SYMPHONY_CLAUDE_32) ||
+            ''
+            }}
+        run: |
+          if [ "$CHOSEN" != main ] && [ -z "$SLOT_TOKEN" ]; then
+            echo "SYMPHONY_CLAUDE_$CHOSEN is unset or not seen by this repository; this run takes CLAUDE_CODE_OAUTH_TOKEN"
+            CHOSEN=main
+          fi
+          echo "slot=${CHOSEN:-main}" >> "$GITHUB_OUTPUT"
+      - name: Say when every slot of the pool is held
+        if: steps.account.outputs.wait == 'true'
+        env:
+          UNTIL: ${{ steps.account.outputs.until }}
+        run: echo "Every slot of SYMPHONY_CLAUDE_ACCOUNTS is at its limit or paused; the first is free $UNTIL, and the next run picks again (Run workflow on Pool reads them afresh, Resume on a token's tile lets one back in). Doing nothing."
+      - name: Point at the setup when the token is not there
+        if: steps.next.outputs.move != 'none' && env.HAVE_TOKEN != 'true'
+        run: echo "The repository secret CLAUDE_CODE_OAUTH_TOKEN is not set; docs/setup/claude-action.md says how. Doing nothing."
+      - name: Keep a copy of the usage recorder, which the run cannot move
+        if: steps.next.outputs.move != 'none' && env.HAVE_TOKEN == 'true'
+        run: |
+          cp tools/usage.py "$RUNNER_TEMP/usage.py"
+          cp tools/pool.py "$RUNNER_TEMP/pool.py"
+          cp -r tools/profile.py tools/economics.py tools/sdlc_protocol "$RUNNER_TEMP/" || true
+      - uses: anthropics/claude-code-action@v1
+        id: claude
+        if: steps.next.outputs.move != 'none' && env.HAVE_TOKEN == 'true' && steps.account.outputs.wait != 'true'
+        with:
+          claude_code_oauth_token: >-
+            ${{
+            (steps.secret.outputs.slot == '1' && secrets.SYMPHONY_CLAUDE_1) ||
+            (steps.secret.outputs.slot == '2' && secrets.SYMPHONY_CLAUDE_2) ||
+            (steps.secret.outputs.slot == '3' && secrets.SYMPHONY_CLAUDE_3) ||
+            (steps.secret.outputs.slot == '4' && secrets.SYMPHONY_CLAUDE_4) ||
+            (steps.secret.outputs.slot == '5' && secrets.SYMPHONY_CLAUDE_5) ||
+            (steps.secret.outputs.slot == '6' && secrets.SYMPHONY_CLAUDE_6) ||
+            (steps.secret.outputs.slot == '7' && secrets.SYMPHONY_CLAUDE_7) ||
+            (steps.secret.outputs.slot == '8' && secrets.SYMPHONY_CLAUDE_8) ||
+            (steps.secret.outputs.slot == '9' && secrets.SYMPHONY_CLAUDE_9) ||
+            (steps.secret.outputs.slot == '10' && secrets.SYMPHONY_CLAUDE_10) ||
+            (steps.secret.outputs.slot == '11' && secrets.SYMPHONY_CLAUDE_11) ||
+            (steps.secret.outputs.slot == '12' && secrets.SYMPHONY_CLAUDE_12) ||
+            (steps.secret.outputs.slot == '13' && secrets.SYMPHONY_CLAUDE_13) ||
+            (steps.secret.outputs.slot == '14' && secrets.SYMPHONY_CLAUDE_14) ||
+            (steps.secret.outputs.slot == '15' && secrets.SYMPHONY_CLAUDE_15) ||
+            (steps.secret.outputs.slot == '16' && secrets.SYMPHONY_CLAUDE_16) ||
+            (steps.secret.outputs.slot == '17' && secrets.SYMPHONY_CLAUDE_17) ||
+            (steps.secret.outputs.slot == '18' && secrets.SYMPHONY_CLAUDE_18) ||
+            (steps.secret.outputs.slot == '19' && secrets.SYMPHONY_CLAUDE_19) ||
+            (steps.secret.outputs.slot == '20' && secrets.SYMPHONY_CLAUDE_20) ||
+            (steps.secret.outputs.slot == '21' && secrets.SYMPHONY_CLAUDE_21) ||
+            (steps.secret.outputs.slot == '22' && secrets.SYMPHONY_CLAUDE_22) ||
+            (steps.secret.outputs.slot == '23' && secrets.SYMPHONY_CLAUDE_23) ||
+            (steps.secret.outputs.slot == '24' && secrets.SYMPHONY_CLAUDE_24) ||
+            (steps.secret.outputs.slot == '25' && secrets.SYMPHONY_CLAUDE_25) ||
+            (steps.secret.outputs.slot == '26' && secrets.SYMPHONY_CLAUDE_26) ||
+            (steps.secret.outputs.slot == '27' && secrets.SYMPHONY_CLAUDE_27) ||
+            (steps.secret.outputs.slot == '28' && secrets.SYMPHONY_CLAUDE_28) ||
+            (steps.secret.outputs.slot == '29' && secrets.SYMPHONY_CLAUDE_29) ||
+            (steps.secret.outputs.slot == '30' && secrets.SYMPHONY_CLAUDE_30) ||
+            (steps.secret.outputs.slot == '31' && secrets.SYMPHONY_CLAUDE_31) ||
+            (steps.secret.outputs.slot == '32' && secrets.SYMPHONY_CLAUDE_32) ||
+            secrets.CLAUDE_CODE_OAUTH_TOKEN
+            }}
+          allowed_bots: "github-actions,claude"
+          claude_args: |
+            --max-turns ${{ steps.next.outputs.max_turns }}
+            ${{ steps.next.outputs.agent != '' && format('--agent {0}', steps.next.outputs.agent) || '' }}
+            ${{ steps.account.outputs.model != '' && format('--model {0}', steps.account.outputs.model) || '' }}
+            ${{ steps.account.outputs.effort != '' && format('--effort {0}', steps.account.outputs.effort) || '' }}
+            ${{ steps.account.outputs.fallback != '' && format('--fallback-model {0}', steps.account.outputs.fallback) || '' }}
+            --allowedTools "${{ vars.CLAUDE_ALLOWED_TOOLS || 'Read,Write,Edit,MultiEdit,Glob,Grep,Bash(git:*),Bash(gh:*),Bash(bash scripts/check.sh),Bash(python3:*)' }}"
+          prompt: |
+            You are the worker ${{ matrix.worker }} on the repository ${{ github.repository }}. Run `git fetch origin ${{ env.DEFAULT_BRANCH }} && git show origin/${{ env.DEFAULT_BRANCH }}:docs/agents/routines/worker.md` and do what the last fenced block of that page says, exactly and nothing else, as the worker ${{ matrix.worker }}. This run, ${{ steps.next.outputs.move }} issue #${{ steps.next.outputs.issue }}: the workflow chose it, so that the workers running at the same time each take a different issue.
+      - name: Record what the run spent, for the field metrics
+        if: always() && steps.claude.outcome != 'skipped'
+        continue-on-error: true
+        env:
+          EXECUTION_FILE: ${{ steps.claude.outputs.execution_file }}
+          SDLC_METRICS: ${{ vars.SDLC_METRICS }}
+          ISSUE: ${{ steps.next.outputs.issue }}
+        run: >-
+          python3 "$RUNNER_TEMP/usage.py" actions --root "$GITHUB_WORKSPACE"
+          --execution-file "${EXECUTION_FILE:-$RUNNER_TEMP/claude-execution-output.json}"
+          --out "$RUNNER_TEMP/symphony-usage/record.json" --workflow workers --job work --worker "$WORKER" --issue "$ISSUE"
+      - name: Keep the record where the metrics workflow reads it
+        if: always() && steps.claude.outcome != 'skipped'
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: symphony-usage-${{ github.run_id }}-${{ github.run_attempt }}-work-${{ matrix.worker }}
+          path: ${{ runner.temp }}/symphony-usage/record.json
+          if-no-files-found: ignore
+      # The issue is labelled token:<id> with the id of the token the run
+      # took, as the Tokens tab gives each token one, so the control panel's
+      # leaderboard credits the token and the person it belongs to with the
+      # issues it worked; a token with no id yet is credited from its next
+      # run after the Tokens tab gives it one.
+      - name: Credit the issue to the token the run took
+        if: always() && steps.claude.outcome != 'skipped' && steps.next.outputs.issue != ''
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SLOT: ${{ steps.secret.outputs.slot }}
+          SETTINGS: ${{ vars.SYMPHONY_CLAUDE_SETTINGS }}
+          ISSUE: ${{ steps.next.outputs.issue }}
+        run: |
+          id=$(python3 "$RUNNER_TEMP/pool.py" settings --slot "${SLOT:-main}" --settings "$SETTINGS" | sed -n 's/^id=//p')
+          if [ -z "$id" ]; then
+            echo "The token has no id yet, so issue #$ISSUE is not credited to it"
+            exit 0
+          fi
+          gh label create "token:$id" --repo "$GITHUB_REPOSITORY" --color 3cc2b1 \
+            --description "Worked by a Claude token; the control panel's leaderboard counts it" 2>/dev/null || true
+          gh issue edit "$ISSUE" --repo "$GITHUB_REPOSITORY" --add-label "token:$id"
+      # The reading goes to the job pool-publish as an artifact: Claude's
+      # action points origin at its own token and revokes it when it ends,
+      # so this job's checkout can no longer push.
+      - name: Read the run's use of its account, for the pool
+        if: always() && steps.claude.outcome != 'skipped'
+        continue-on-error: true
+        env:
+          EXECUTION_FILE: ${{ steps.claude.outputs.execution_file }}
+          SLOT: ${{ steps.secret.outputs.slot }}
+        run: >-
+          python3 "$RUNNER_TEMP/pool.py" observe --slot "${SLOT:-main}" --out "$RUNNER_TEMP/pool-readings"
+          --execution-file "${EXECUTION_FILE:-$RUNNER_TEMP/claude-execution-output.json}"
+      - name: Keep the reading for the job that writes the pool
+        if: always() && steps.claude.outcome != 'skipped'
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: pool-reading-${{ github.run_attempt }}-${{ matrix.worker }}
+          path: ${{ runner.temp }}/pool-readings/
+          if-no-files-found: ignore
+          retention-days: 1
+      - name: Go another round while this worker has work
+        if: steps.claude.outcome == 'success'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
+          ROUND: ${{ inputs.round || '1' }}
+          ROUNDS: ${{ steps.next.outputs.rounds }}
+        run: |
+          set -eu
+          if [ "$ROUND" -ge "$ROUNDS" ]; then
+            echo "$WORKER ran $ROUND rounds in a row; the schedule picks up the rest"
+            exit 0
+          fi
+          answer=$(python3 tools/team.py next --agent "$WORKER" --registry "$REGISTRY" --label "worker:$WORKER")
+          if [ "$answer" = "none" ]; then
+            echo "$WORKER has nothing left"
+            exit 0
+          fi
+          gh workflow run workers.yml --repo "$GITHUB_REPOSITORY" -f worker="$WORKER" -f round="$((ROUND + 1))"
+          echo "$WORKER: round $((ROUND + 1)) dispatched for '$answer'"
+
+  pool-publish:
+    needs: work
+    if: vars.CLAUDE_CROWD != 'true' && always() && needs.work.result != 'skipped'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    concurrency:
+      group: pool-publish
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v7
+        with:
+          pattern: pool-reading-*
+          path: ${{ runner.temp }}/readings
+      - name: Write the runs' readings to the branch pool
+        env:
+          GIT_AUTHOR_NAME: github-actions[bot]
+          GIT_AUTHOR_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+          GIT_COMMITTER_NAME: github-actions[bot]
+          GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+        run: |
+          shopt -s nullglob
+          readings=("$RUNNER_TEMP"/readings/*/slot-*.json)
+          if [ "${#readings[@]}" -eq 0 ]; then
+            echo "no run gave a reading"
+            exit 0
+          fi
+          python3 tools/pool.py publish "${readings[@]}"

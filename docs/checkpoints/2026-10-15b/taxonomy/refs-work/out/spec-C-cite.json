@@ -1,0 +1,1530 @@
+{
+ "edits": [
+  {
+   "unit_id": "mggj4hxkexp.12215",
+   "find": "to one shared branch,",
+   "replace": "to one shared branch [[s1]],"
+  },
+  {
+   "unit_id": "mggj4hxkexp.12215",
+   "find": "two-hour timer in Actions",
+   "replace": "two-hour timer in Actions [[s2,s3]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.12215",
+   "find": "renders its board in Actions,",
+   "replace": "renders its board in Actions [[s4]],"
+  },
+  {
+   "unit_id": "mggj4hxkexp.12215",
+   "find": "on volunteers' machines.",
+   "replace": "on volunteers' machines [[s5]]."
+  },
+  {
+   "unit_id": "mggj4hxkexp.12215",
+   "find": "claims by creating a branch,",
+   "replace": "claims by creating a branch [[s6]],"
+  },
+  {
+   "unit_id": "mggj4hxkexp.12215",
+   "find": "is a local session.",
+   "replace": "is a local session [[s7]]."
+  },
+  {
+   "unit_id": "mggj4hxkexp.12215",
+   "find": "which two agents can both do.",
+   "replace": "which two agents can both do [[s8]]."
+  },
+  {
+   "unit_id": "mggj4hxkexp.12215",
+   "find": "with no claims between workers.",
+   "replace": "with no claims between workers [[s9]]."
+  },
+  {
+   "unit_id": "mggj4hxkexp.12215",
+   "find": "(Inferred from research/taxonomy/verify/03, whose rows",
+   "replace": "(Inferred from [[s10]], whose rows"
+  },
+  {
+   "unit_id": "mggj4hxkexp.12215",
+   "find": "(Verified, research/taxonomy/verify/01)",
+   "replace": "(Verified [[s11,s12,s13]])"
+  },
+  {
+   "unit_id": "mggj4hxkexp.13026",
+   "find": "openai/symphony,",
+   "replace": "openai/symphony [[s14]],"
+  },
+  {
+   "unit_id": "mggj4hxkexp.13026",
+   "find": "unsorry,",
+   "replace": "unsorry [[s15]],"
+  },
+  {
+   "unit_id": "mggj4hxkexp.13026",
+   "find": "CCPM,",
+   "replace": "CCPM [[s8]],"
+  },
+  {
+   "unit_id": "mggj4hxkexp.13026",
+   "find": "Beads,",
+   "replace": "Beads [[s16]],"
+  },
+  {
+   "unit_id": "mggj4hxkexp.13026",
+   "find": "gh-aw's queue.",
+   "replace": "gh-aw's queue [[s11]]."
+  },
+  {
+   "unit_id": "mggj4hxkexp.13026",
+   "find": "Open OnDemand apps,",
+   "replace": "Open OnDemand apps [[s17]],"
+  },
+  {
+   "unit_id": "mggj4hxkexp.13026",
+   "find": "in Slurm jobs,",
+   "replace": "in Slurm jobs [[s18,s19,s53]],"
+  },
+  {
+   "unit_id": "mggj4hxkexp.13026",
+   "find": "Academy",
+   "replace": "Academy [[s20]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.13160",
+   "find": "bounded by the required check",
+   "replace": "bounded by the required check [[s41,s45]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.13262",
+   "find": "supervised by default.",
+   "replace": "supervised by default [[s53]]."
+  },
+  {
+   "unit_id": "mggj4hxkexp.13262",
+   "find": "clicks Publish",
+   "replace": "clicks Publish [[s55]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.13360",
+   "find": "Copilot cloud agent",
+   "replace": "Copilot cloud agent [[s21]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.13360",
+   "find": "Devin",
+   "replace": "Devin [[s22]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.13437",
+   "find": "(the board)",
+   "replace": "(the board [[s43]])"
+  },
+  {
+   "unit_id": "mggj4hxkexp.13437",
+   "find": "a planner for epics",
+   "replace": "a planner for epics [[s41,s42]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.13514",
+   "find": "(planned)",
+   "replace": "(planned) [[s56,s57]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.13560",
+   "find": "workers and judge;",
+   "replace": "workers and judge [[s23]];"
+  },
+  {
+   "unit_id": "mggj4hxkexp.13560",
+   "find": "Claude Code agent teams;",
+   "replace": "Claude Code agent teams [[s24]];"
+  },
+  {
+   "unit_id": "mggj4hxkexp.13560",
+   "find": "the C-compiler harness,",
+   "replace": "the C-compiler harness [[s25]],"
+  },
+  {
+   "unit_id": "mggj4hxkexp.13701",
+   "find": "a rendered board)",
+   "replace": "a rendered board [[s41,s43]])"
+  },
+  {
+   "unit_id": "mggj4hxkexp.13809",
+   "find": "a bus (planned);",
+   "replace": "a bus (planned) [[s56,s57]];"
+  },
+  {
+   "unit_id": "mggj4hxkexp.13853",
+   "find": "git-backed ledger;",
+   "replace": "git-backed ledger [[s16]];"
+  },
+  {
+   "unit_id": "mggj4hxkexp.13853",
+   "find": "on a branch;",
+   "replace": "on a branch [[s11]];"
+  },
+  {
+   "unit_id": "mggj4hxkexp.13853",
+   "find": "mailboxes",
+   "replace": "mailboxes [[s24]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.13966",
+   "find": "after 24 idle hours,",
+   "replace": "after 24 idle hours [[s41]],"
+  },
+  {
+   "unit_id": "mggj4hxkexp.13966",
+   "find": "on forced pushes,",
+   "replace": "on forced pushes [[s44]],"
+  },
+  {
+   "unit_id": "mggj4hxkexp.13966",
+   "find": "through the required check",
+   "replace": "through the required check [[s45,s46]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.14104",
+   "find": "(planned)",
+   "replace": "(planned) [[s56]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.14144",
+   "find": "C-compiler harness;",
+   "replace": "C-compiler harness [[s25]];"
+  },
+  {
+   "unit_id": "mggj4hxkexp.14144",
+   "find": "with a timer;",
+   "replace": "with a timer [[s1,s2,s3]];"
+  },
+  {
+   "unit_id": "mggj4hxkexp.14144",
+   "find": "branch push;",
+   "replace": "branch push [[s6]];"
+  },
+  {
+   "unit_id": "mggj4hxkexp.14144",
+   "find": "DND-IT/action-lock;",
+   "replace": "DND-IT/action-lock [[s26]];"
+  },
+  {
+   "unit_id": "mggj4hxkexp.14144",
+   "find": "Chubby;",
+   "replace": "Chubby [[s27]];"
+  },
+  {
+   "unit_id": "mggj4hxkexp.14144",
+   "find": "admission control",
+   "replace": "admission control [[s28]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.14327",
+   "find": "(task dependencies)",
+   "replace": "(task dependencies) [[s24]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.14399",
+   "find": "GitHub Actions runners,",
+   "replace": "GitHub Actions runners [[s47]],"
+  },
+  {
+   "unit_id": "mggj4hxkexp.14399",
+   "find": "own session",
+   "replace": "own session [[s41,s48]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.14454",
+   "find": "in Apptainer",
+   "replace": "in Apptainer [[s54,s58]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.14486",
+   "find": "Copilot cloud agent",
+   "replace": "Copilot cloud agent [[s29]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.14486",
+   "find": "gh-aw on Actions;",
+   "replace": "gh-aw on Actions [[s30]];"
+  },
+  {
+   "unit_id": "mggj4hxkexp.14486",
+   "find": "with tmux",
+   "replace": "with tmux [[s31]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.14605",
+   "find": "as a fallback",
+   "replace": "as a fallback [[s41,s43]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.14661",
+   "find": "before its wall time",
+   "replace": "before its wall time [[s54]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.14722",
+   "find": "gh-aw;",
+   "replace": "gh-aw [[s30]];"
+  },
+  {
+   "unit_id": "mggj4hxkexp.14722",
+   "find": "claude-code-action",
+   "replace": "claude-code-action [[s32]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.14771",
+   "find": "durable ledger;",
+   "replace": "durable ledger [[s41]];"
+  },
+  {
+   "unit_id": "mggj4hxkexp.14771",
+   "find": "as shared memory",
+   "replace": "as shared memory [[s49]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.14839",
+   "find": "Run records,",
+   "replace": "Run records [[s57]],"
+  },
+  {
+   "unit_id": "mggj4hxkexp.14839",
+   "find": "an engine store,",
+   "replace": "an engine store [[s56]],"
+  },
+  {
+   "unit_id": "mggj4hxkexp.14839",
+   "find": "status files",
+   "replace": "status files [[s54]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.14883",
+   "find": "Beads;",
+   "replace": "Beads [[s16]];"
+  },
+  {
+   "unit_id": "mggj4hxkexp.14883",
+   "find": "Temporal",
+   "replace": "Temporal [[s33]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.14927",
+   "find": "on a public repository.",
+   "replace": "on a public repository [[s51]]."
+  },
+  {
+   "unit_id": "mggj4hxkexp.14927",
+   "find": "the Actions workers,",
+   "replace": "the Actions workers [[s50]],"
+  },
+  {
+   "unit_id": "mggj4hxkexp.14927",
+   "find": "own for sessions.",
+   "replace": "own for sessions [[s41,s49]]."
+  },
+  {
+   "unit_id": "mggj4hxkexp.14927",
+   "find": "App paid",
+   "replace": "App paid [[s49]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.15090",
+   "find": "university's allocation.",
+   "replace": "university's allocation [[s53]]."
+  },
+  {
+   "unit_id": "mggj4hxkexp.15090",
+   "find": "the student's own plan.",
+   "replace": "the student's own plan [[s53]]."
+  },
+  {
+   "unit_id": "mggj4hxkexp.15090",
+   "find": "Proprietary",
+   "replace": "Proprietary [[s59]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.15176",
+   "find": "Copilot credits.",
+   "replace": "Copilot credits [[s12,s13]]."
+  },
+  {
+   "unit_id": "mggj4hxkexp.15176",
+   "find": "plus AI credits.",
+   "replace": "plus AI credits [[s34]]."
+  },
+  {
+   "unit_id": "mggj4hxkexp.15176",
+   "find": "codex-action: API key",
+   "replace": "codex-action: API key [[s35]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.15329",
+   "find": "required check;",
+   "replace": "required check [[s45,s46]];"
+  },
+  {
+   "unit_id": "mggj4hxkexp.15329",
+   "find": "qa planned;",
+   "replace": "qa planned [[s49]];"
+  },
+  {
+   "unit_id": "mggj4hxkexp.15329",
+   "find": "auto-merge decides",
+   "replace": "auto-merge decides [[s41]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.15406",
+   "find": "as a required check;",
+   "replace": "as a required check [[s60]];"
+  },
+  {
+   "unit_id": "mggj4hxkexp.15406",
+   "find": "REFORMS and CLAIM gates planned;",
+   "replace": "REFORMS [[s61]] and CLAIM [[s62]] gates planned [[s63]];"
+  },
+  {
+   "unit_id": "mggj4hxkexp.15406",
+   "find": "clicks Publish",
+   "replace": "clicks Publish [[s55]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.15517",
+   "find": "of agent code;",
+   "replace": "of agent code [[s34]];"
+  },
+  {
+   "unit_id": "mggj4hxkexp.15517",
+   "find": "(advisory, never blocks);",
+   "replace": "(advisory, never blocks) [[s36]];"
+  },
+  {
+   "unit_id": "mggj4hxkexp.15517",
+   "find": "number tracing",
+   "replace": "number tracing [[s37]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.15664",
+   "find": "pre-release",
+   "replace": "pre-release [[s52]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.15710",
+   "find": "imaging study;",
+   "replace": "imaging study [[s63]];"
+  },
+  {
+   "unit_id": "mggj4hxkexp.15710",
+   "find": "beyond qa",
+   "replace": "beyond qa [[s64,s57]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.15783",
+   "find": "The AI Scientist,",
+   "replace": "The AI Scientist [[s38]],"
+  },
+  {
+   "unit_id": "mggj4hxkexp.15783",
+   "find": "Agent Laboratory,",
+   "replace": "Agent Laboratory [[s39]],"
+  },
+  {
+   "unit_id": "mggj4hxkexp.15783",
+   "find": "Kosmos",
+   "replace": "Kosmos [[s40]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.15826",
+   "find": "Inferred from research notes 01, 04 to 07 and 13.",
+   "replace": "Inferred [[s65,s66,s67,s68,s9,s69]]."
+  }
+ ],
+ "sources": [
+  {
+   "key": "s1",
+   "kind": "repository-file",
+   "authors": [
+    "agenticsnz"
+   ],
+   "title": "docs/adrs/ADR-004-Claims-Branch-First-Push-Wins.md",
+   "container": "agenticsnz/unsorry",
+   "date": "",
+   "version": "029d328b",
+   "url": "https://github.com/agenticsnz/unsorry/blob/029d328b/docs/adrs/ADR-004-Claims-Branch-First-Push-Wins.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "unsorry's claim files pushed to one shared claims branch, first push wins"
+  },
+  {
+   "key": "s2",
+   "kind": "repository-file",
+   "authors": [
+    "agenticsnz"
+   ],
+   "title": ".github/workflows/reaper.yml",
+   "container": "agenticsnz/unsorry",
+   "date": "",
+   "version": "029d328b",
+   "url": "https://github.com/agenticsnz/unsorry/blob/029d328b/.github/workflows/reaper.yml",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "unsorry's Actions cron reaper that deletes expired claims"
+  },
+  {
+   "key": "s3",
+   "kind": "repository-file",
+   "authors": [
+    "agenticsnz"
+   ],
+   "title": "tools/gate_b/config.py",
+   "container": "agenticsnz/unsorry",
+   "date": "",
+   "version": "029d328b",
+   "url": "https://github.com/agenticsnz/unsorry/blob/029d328b/tools/gate_b/config.py",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "unsorry's claim TTL of two hours (TTL_SECONDS = 7200)"
+  },
+  {
+   "key": "s4",
+   "kind": "repository-file",
+   "authors": [
+    "agenticsnz"
+   ],
+   "title": ".github/workflows/queue-board.yml",
+   "container": "agenticsnz/unsorry",
+   "date": "",
+   "version": "029d328b",
+   "url": "https://github.com/agenticsnz/unsorry/blob/029d328b/.github/workflows/queue-board.yml",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "unsorry's queue board rendered in Actions"
+  },
+  {
+   "key": "s5",
+   "kind": "repository-file",
+   "authors": [
+    "agenticsnz"
+   ],
+   "title": "swarm/agent.sh",
+   "container": "agenticsnz/unsorry",
+   "date": "",
+   "version": "029d328b",
+   "url": "https://github.com/agenticsnz/unsorry/blob/029d328b/swarm/agent.sh",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "unsorry's agents run by volunteers on their own machines"
+  },
+  {
+   "key": "s6",
+   "kind": "repository-file",
+   "authors": [
+    "marcelusfernandes"
+   ],
+   "title": "scripts/claim.mts",
+   "container": "marcelusfernandes/agentic-setup",
+   "date": "",
+   "version": "4907361",
+   "url": "https://github.com/marcelusfernandes/agentic-setup/blob/4907361/scripts/claim.mts",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "agentic-setup's create-only branch push as the claim"
+  },
+  {
+   "key": "s7",
+   "kind": "repository",
+   "authors": [
+    "marcelusfernandes"
+   ],
+   "title": "agentic-setup",
+   "container": "marcelusfernandes/agentic-setup",
+   "date": "",
+   "version": "4907361",
+   "url": "https://github.com/marcelusfernandes/agentic-setup",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "agentic-setup's orchestrator is a local Claude Code session"
+  },
+  {
+   "key": "s8",
+   "kind": "repository-file",
+   "authors": [],
+   "title": "skill/ccpm/references/execute.md",
+   "container": "automazeio/ccpm",
+   "date": "2026-03-18",
+   "version": "",
+   "url": "https://github.com/automazeio/ccpm/blob/HEAD/skill/ccpm/references/execute.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "CCPM's claim step: an assignee plus an in-progress label"
+  },
+  {
+   "key": "s9",
+   "kind": "project-record",
+   "authors": [],
+   "title": "07 Multi-agent orchestration frameworks, interoperability protocols and parallel coding-agent tools (as of 2026-10-15)",
+   "container": "Symphony and Beethoven taxonomy research, project files",
+   "date": "2026-10-15",
+   "version": "",
+   "url": "",
+   "public_url": "",
+   "read": "record",
+   "path": "/mnt/project-files/research/taxonomy/notes/07-multi-agent-frameworks.md",
+   "supports": "aeon: one agent's scheduled skills in Actions, no claims between workers (no repository owner recorded); the placements of the coordination neighbors"
+  },
+  {
+   "key": "s10",
+   "kind": "project-record",
+   "authors": [],
+   "title": "03 Uniqueness: is Symphony the only system that combines (a) to (e)?",
+   "container": "Symphony and Beethoven taxonomy research, project files",
+   "date": "2026-10-15",
+   "version": "",
+   "url": "",
+   "public_url": "",
+   "read": "record",
+   "path": "/mnt/project-files/research/taxonomy/verify/03-uniqueness.md",
+   "supports": "no other system in the corner has one claim rule for Actions agents and people's sessions"
+  },
+  {
+   "key": "s11",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "docs/src/content/docs/reference/work-queue.md",
+   "container": "github/gh-aw",
+   "date": "2026-10-15",
+   "version": "dc91dbed",
+   "url": "https://github.com/github/gh-aw/blob/dc91dbed/docs/src/content/docs/reference/work-queue.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "gh-aw's work queue: work-queue.jsonl on a branch, compare-and-swap on the ref, scheduler-granted claims to Actions runs, no expiry by time"
+  },
+  {
+   "key": "s12",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "docs/src/content/docs/reference/auth.mdx",
+   "container": "github/gh-aw",
+   "date": "2026-10-15",
+   "version": "dc91dbed",
+   "url": "https://github.com/github/gh-aw/blob/dc91dbed/docs/src/content/docs/reference/auth.mdx",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "gh-aw does not support CLAUDE_CODE_OAUTH_TOKEN"
+  },
+  {
+   "key": "s13",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "docs/src/content/docs/engines/claude.md",
+   "container": "github/gh-aw",
+   "date": "2026-10-15",
+   "version": "dc91dbed",
+   "url": "https://github.com/github/gh-aw/blob/dc91dbed/docs/src/content/docs/engines/claude.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "gh-aw's Claude engine: API key, workload identity or Copilot-billed inference"
+  },
+  {
+   "key": "s14",
+   "kind": "repository",
+   "authors": [
+    "OpenAI"
+   ],
+   "title": "symphony",
+   "container": "openai/symphony",
+   "date": "",
+   "version": "",
+   "url": "https://github.com/openai/symphony",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "openai/symphony, an issue-driven orchestrator for Codex"
+  },
+  {
+   "key": "s15",
+   "kind": "repository",
+   "authors": [
+    "agenticsnz"
+   ],
+   "title": "unsorry",
+   "container": "agenticsnz/unsorry",
+   "date": "",
+   "version": "029d328b",
+   "url": "https://github.com/agenticsnz/unsorry",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "unsorry, a Lean proof swarm"
+  },
+  {
+   "key": "s16",
+   "kind": "repository",
+   "authors": [],
+   "title": "beads",
+   "container": "gastownhall/beads",
+   "date": "",
+   "version": "",
+   "url": "https://github.com/gastownhall/beads",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Beads, a git-backed issue ledger for agents with atomic claims"
+  },
+  {
+   "key": "s17",
+   "kind": "repository",
+   "authors": [
+    "Ohio Supercomputer Center"
+   ],
+   "title": "OSC/ondemand",
+   "container": "OSC/ondemand",
+   "date": "",
+   "version": "",
+   "url": "https://github.com/OSC/ondemand",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Open OnDemand and its interactive apps"
+  },
+  {
+   "key": "s18",
+   "kind": "web-page",
+   "authors": [],
+   "title": "[Oregon State HPC page on VS Code; title not recorded]",
+   "container": "docs.hpc.oregonstate.edu",
+   "date": "",
+   "version": "",
+   "url": "https://docs.hpc.oregonstate.edu/cqls/connecting/vscode",
+   "public_url": "",
+   "read": "search",
+   "path": "",
+   "supports": "VS Code tunnels run inside Slurm jobs"
+  },
+  {
+   "key": "s19",
+   "kind": "web-page",
+   "authors": [],
+   "title": "[Pitt CRC user manual page on VS Code; title not recorded]",
+   "container": "crc-pages.pitt.edu",
+   "date": "",
+   "version": "",
+   "url": "https://crc-pages.pitt.edu/user-manual/applications/coding/vscode/",
+   "public_url": "",
+   "read": "search",
+   "path": "",
+   "supports": "an sbatch script for a VS Code tunnel"
+  },
+  {
+   "key": "s20",
+   "kind": "repository-file",
+   "authors": [],
+   "title": "README.md",
+   "container": "proxystore/academy",
+   "date": "",
+   "version": "",
+   "url": "https://raw.githubusercontent.com/proxystore/academy/HEAD/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Academy, middleware for stateful agents across federated research infrastructure"
+  },
+  {
+   "key": "s21",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "content/copilot/concepts/copilot-surfaces/copilot-on-github.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs/blob/12691d2/content/copilot/concepts/copilot-surfaces/copilot-on-github.md",
+   "public_url": "https://docs.github.com/en/copilot/concepts/copilot-surfaces/copilot-on-github",
+   "read": "opened",
+   "path": "",
+   "supports": "Copilot cloud agent works one branch and one pull request per task"
+  },
+  {
+   "key": "s22",
+   "kind": "documentation",
+   "authors": [
+    "Cognition"
+   ],
+   "title": "[Devin documentation; title not recorded]",
+   "container": "docs.devin.ai",
+   "date": "",
+   "version": "",
+   "url": "https://docs.devin.ai",
+   "public_url": "",
+   "read": "search",
+   "path": "",
+   "supports": "Devin sessions in managed VMs, with a coordinator session over managed Devins"
+  },
+  {
+   "key": "s23",
+   "kind": "blog-post",
+   "authors": [
+    "Lin W"
+   ],
+   "title": "Scaling long-running autonomous coding",
+   "container": "Cursor blog",
+   "date": "2026",
+   "version": "",
+   "url": "https://cursor.com/blog/scaling-agents",
+   "public_url": "",
+   "read": "search",
+   "path": "",
+   "supports": "Cursor's planners, workers and judge"
+  },
+  {
+   "key": "s24",
+   "kind": "documentation",
+   "authors": [
+    "Anthropic"
+   ],
+   "title": "Orchestrate teams of Claude Code sessions",
+   "container": "Claude Code Docs (code.claude.com)",
+   "date": "",
+   "version": "",
+   "url": "https://code.claude.com/docs/en/agent-teams",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "agent teams: a lead, a shared task list with dependencies, file-locked claims and mailboxes"
+  },
+  {
+   "key": "s25",
+   "kind": "blog-post",
+   "authors": [
+    "Carlini N"
+   ],
+   "title": "Building a C compiler with a team of parallel Claudes",
+   "container": "Anthropic Engineering",
+   "date": "2026-02-05",
+   "version": "",
+   "url": "https://www.anthropic.com/engineering/building-c-compiler",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "lock files in current_tasks/ synced through git, with no orchestration agent"
+  },
+  {
+   "key": "s26",
+   "kind": "repository",
+   "authors": [
+    "DND-IT"
+   ],
+   "title": "action-lock",
+   "container": "DND-IT/action-lock",
+   "date": "2026-02-20",
+   "version": "",
+   "url": "https://github.com/DND-IT/action-lock",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "a lock as a ref created once, stale by its commit date"
+  },
+  {
+   "key": "s27",
+   "kind": "paper",
+   "authors": [
+    "Burrows"
+   ],
+   "title": "The Chubby lock service for loosely-coupled distributed systems",
+   "container": "OSDI 2006",
+   "date": "2006",
+   "version": "",
+   "url": "https://www.usenix.org/legacy/event/osdi06/tech/full_papers/burrows/burrows.pdf",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "advisory locks, session leases, lock-delay and sequencers"
+  },
+  {
+   "key": "s28",
+   "kind": "repository-file",
+   "authors": [],
+   "title": "README.md",
+   "container": "SkeinRank/claim-plane",
+   "date": "",
+   "version": "",
+   "url": "https://raw.githubusercontent.com/SkeinRank/claim-plane/HEAD/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Claim Plane's pre-write admission control for parallel coding agents"
+  },
+  {
+   "key": "s29",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "content/copilot/how-tos/administer-copilot/manage-for-organization/configure-runner-for-coding-agent.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs/blob/12691d2/content/copilot/how-tos/administer-copilot/manage-for-organization/configure-runner-for-coding-agent.md",
+   "public_url": "https://docs.github.com/en/copilot/how-tos/administer-copilot/manage-for-organization/configure-runner-for-coding-agent",
+   "read": "opened",
+   "path": "",
+   "supports": "Copilot cloud agent runs on a GitHub-hosted Actions runner by default"
+  },
+  {
+   "key": "s30",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "README.md",
+   "container": "github/gh-aw",
+   "date": "2026-10-15",
+   "version": "dc91dbed",
+   "url": "https://github.com/github/gh-aw/blob/dc91dbed/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "gh-aw compiles agentic workflows to GitHub Actions"
+  },
+  {
+   "key": "s31",
+   "kind": "blog-post",
+   "authors": [
+    "Anthropic"
+   ],
+   "title": "Long-running Claude for scientific computing",
+   "container": "Anthropic Research",
+   "date": "2026-03-23",
+   "version": "",
+   "url": "https://www.anthropic.com/research/long-running-Claude",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Claude Code in tmux in a Slurm job on an HPC cluster"
+  },
+  {
+   "key": "s32",
+   "kind": "repository",
+   "authors": [
+    "Anthropic"
+   ],
+   "title": "claude-code-action",
+   "container": "anthropics/claude-code-action",
+   "date": "2026-10-14",
+   "version": "a26b07d8",
+   "url": "https://github.com/anthropics/claude-code-action",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "claude-code-action, run on events or @claude in Actions"
+  },
+  {
+   "key": "s33",
+   "kind": "repository-file",
+   "authors": [
+    "CNCF"
+   ],
+   "title": "landscape.yml",
+   "container": "cncf/landscape",
+   "date": "2026-10-15",
+   "version": "150352e3d857",
+   "url": "https://github.com/cncf/landscape/blob/master/landscape.yml",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Temporal, durable workflow orchestration"
+  },
+  {
+   "key": "s34",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "content/copilot/concepts/agent-capabilities/about-agents/about-third-party-coding-agents.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs/blob/12691d2/content/copilot/concepts/agent-capabilities/about-agents/about-third-party-coding-agents.md",
+   "public_url": "https://docs.github.com/en/copilot/concepts/agent-capabilities/about-agents/about-third-party-coding-agents",
+   "read": "opened",
+   "path": "",
+   "supports": "coding agents consume Actions minutes and AI Credits; GitHub scans agent-written code with CodeQL, secret scanning and the Advisory Database"
+  },
+  {
+   "key": "s35",
+   "kind": "repository-file",
+   "authors": [
+    "OpenAI"
+   ],
+   "title": "README.md",
+   "container": "openai/codex-action",
+   "date": "",
+   "version": "",
+   "url": "https://raw.githubusercontent.com/openai/codex-action/HEAD/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "codex-action requires an API key"
+  },
+  {
+   "key": "s36",
+   "kind": "documentation",
+   "authors": [
+    "Anthropic"
+   ],
+   "title": "[Claude Code docs page on Code Review; title not recorded]",
+   "container": "Claude Code Docs (code.claude.com)",
+   "date": "",
+   "version": "",
+   "url": "https://code.claude.com/docs/en/code-review",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Claude Code Review never approves or blocks a pull request"
+  },
+  {
+   "key": "s37",
+   "kind": "repository",
+   "authors": [
+    "Technion-Kishony-lab"
+   ],
+   "title": "data-to-paper",
+   "container": "Technion-Kishony-lab/data-to-paper",
+   "date": "",
+   "version": "",
+   "url": "https://github.com/Technion-Kishony-lab/data-to-paper",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "data-to-paper's backward-traceable numbers"
+  },
+  {
+   "key": "s38",
+   "kind": "repository",
+   "authors": [
+    "Sakana AI"
+   ],
+   "title": "AI-Scientist-v2",
+   "container": "SakanaAI/AI-Scientist-v2",
+   "date": "2025-12-19",
+   "version": "",
+   "url": "https://github.com/SakanaAI/AI-Scientist-v2",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "The AI Scientist, an end-to-end research agent"
+  },
+  {
+   "key": "s39",
+   "kind": "repository-file",
+   "authors": [],
+   "title": "README.md",
+   "container": "SamuelSchmidgall/AgentLaboratory",
+   "date": "",
+   "version": "",
+   "url": "https://raw.githubusercontent.com/SamuelSchmidgall/AgentLaboratory/HEAD/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Agent Laboratory, an end-to-end research assistant"
+  },
+  {
+   "key": "s40",
+   "kind": "preprint",
+   "authors": [],
+   "title": "[Kosmos AI-scientist report; title not recorded]",
+   "container": "arXiv",
+   "date": "2025",
+   "version": "2511.02824",
+   "url": "https://arxiv.org/abs/2511.02824",
+   "public_url": "",
+   "read": "search",
+   "path": "",
+   "supports": "Kosmos, a long-running AI scientist"
+  },
+  {
+   "key": "s41",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "docs/agents/PROTOCOL.md",
+   "container": "OpenSpineConsortium/symphony-template",
+   "date": "2026-10-15",
+   "version": "15d3f22",
+   "url": "https://github.com/OpenSpineConsortium/symphony-template/blob/15d3f22/docs/agents/PROTOCOL.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the claim as a branch, the 24-hour idle release, the board, planning of epics, auto-merge workers"
+  },
+  {
+   "key": "s42",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": ".github/workflows/coordinator.yml",
+   "container": "OpenSpineConsortium/symphony-template",
+   "date": "2026-10-15",
+   "version": "15d3f22",
+   "url": "https://github.com/OpenSpineConsortium/symphony-template/blob/15d3f22/.github/workflows/coordinator.yml",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Claude plans an epic into tasks"
+  },
+  {
+   "key": "s43",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": ".github/workflows/board.yml",
+   "container": "OpenSpineConsortium/symphony-template",
+   "date": "2026-10-15",
+   "version": "15d3f22",
+   "url": "https://github.com/OpenSpineConsortium/symphony-template/blob/15d3f22/.github/workflows/board.yml",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the board rendered on events, with a six-hourly schedule as fallback"
+  },
+  {
+   "key": "s44",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "tools/sdlc_protocol/guard.py",
+   "container": "OpenSpineConsortium/symphony-template",
+   "date": "2026-10-15",
+   "version": "15d3f22",
+   "url": "https://github.com/OpenSpineConsortium/symphony-template/blob/15d3f22/tools/sdlc_protocol/guard.py",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the push guard that fences forced pushes"
+  },
+  {
+   "key": "s45",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "docs/setup/ruleset-main.json",
+   "container": "OpenSpineConsortium/symphony-template",
+   "date": "2026-10-15",
+   "version": "15d3f22",
+   "url": "https://github.com/OpenSpineConsortium/symphony-template/blob/15d3f22/docs/setup/ruleset-main.json",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the ruleset that requires the check named check"
+  },
+  {
+   "key": "s46",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": ".github/workflows/ci.yml",
+   "container": "OpenSpineConsortium/symphony-template",
+   "date": "2026-10-15",
+   "version": "15d3f22",
+   "url": "https://github.com/OpenSpineConsortium/symphony-template/blob/15d3f22/.github/workflows/ci.yml",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the deterministic check job running scripts/check.sh"
+  },
+  {
+   "key": "s47",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": ".github/workflows/workers.yml",
+   "container": "OpenSpineConsortium/symphony-template",
+   "date": "2026-10-15",
+   "version": "15d3f22",
+   "url": "https://github.com/OpenSpineConsortium/symphony-template/blob/15d3f22/.github/workflows/workers.yml",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "workers in Actions, one matrix leg per worker"
+  },
+  {
+   "key": "s48",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "docs/agents/WORKERS.md",
+   "container": "OpenSpineConsortium/symphony-template",
+   "date": "2026-10-15",
+   "version": "15d3f22",
+   "url": "https://github.com/OpenSpineConsortium/symphony-template/blob/15d3f22/docs/agents/WORKERS.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "a person's sessions as workers under the person's login"
+  },
+  {
+   "key": "s49",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "CLAUDE.md",
+   "container": "OpenSpineConsortium/symphony-template",
+   "date": "2026-10-15",
+   "version": "15d3f22",
+   "url": "https://github.com/OpenSpineConsortium/symphony-template/blob/15d3f22/CLAUDE.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "shared memory in docs/memory; open core with the protocol MIT and the App paid; each contributor on their own Claude account; qa not built yet"
+  },
+  {
+   "key": "s50",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "docs/project.md",
+   "container": "OpenSpineConsortium/symphony-template",
+   "date": "2026-10-15",
+   "version": "15d3f22",
+   "url": "https://github.com/OpenSpineConsortium/symphony-template/blob/15d3f22/docs/project.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "one account's CLAUDE_CODE_OAUTH_TOKEN for the workers in Actions and the coordinator"
+  },
+  {
+   "key": "s51",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "content/billing/concepts/product-billing/github-actions.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs/blob/12691d2/content/billing/concepts/product-billing/github-actions.md",
+   "public_url": "https://docs.github.com/en/billing/concepts/product-billing/github-actions",
+   "read": "opened",
+   "path": "",
+   "supports": "Actions free on public repositories with standard GitHub-hosted runners"
+  },
+  {
+   "key": "s52",
+   "kind": "repository",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "symphony-protocol",
+   "container": "OpenSpineConsortium/symphony-protocol",
+   "date": "2026-10-15",
+   "version": "a3a5b4d",
+   "url": "https://github.com/OpenSpineConsortium/symphony-protocol",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "first commit 2026-10-10; releases v0.1.0 to v0.4.1"
+  },
+  {
+   "key": "s53",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "docs/RESEARCH_REPORT.md",
+   "container": "OpenSpineConsortium/hpcworker",
+   "date": "2026-10-07",
+   "version": "3b22e70",
+   "url": "https://github.com/OpenSpineConsortium/hpcworker/blob/3b22e70/docs/RESEARCH_REPORT.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "supervised permission mode by default; the student's own plan; the allocation pays compute; VS Code tunnels in batch jobs"
+  },
+  {
+   "key": "s54",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "framework/jobs/worker.sbatch.tpl",
+   "container": "OpenSpineConsortium/hpcworker",
+   "date": "2026-10-07",
+   "version": "3b22e70",
+   "url": "https://github.com/OpenSpineConsortium/hpcworker/blob/3b22e70/framework/jobs/worker.sbatch.tpl",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the worker job: Apptainer under tmux, status files, a successor queued before the wall time"
+  },
+  {
+   "key": "s55",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "state/claude_context.md",
+   "container": "OpenSpineConsortium/beethoven",
+   "date": "2026-10-09",
+   "version": "cb41b4a",
+   "url": "https://github.com/OpenSpineConsortium/beethoven/blob/cb41b4a/state/claude_context.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "publication behind a human click (goal G7)"
+  },
+  {
+   "key": "s56",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "docs/ACCOUNTS.md",
+   "container": "OpenSpineConsortium/beethoven-agents",
+   "date": "2026-10-07",
+   "version": "a40a71a",
+   "url": "https://github.com/OpenSpineConsortium/beethoven-agents/blob/a40a71a/docs/ACCOUNTS.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the super-master lease: one row in the engine store with a fencing token, not built"
+  },
+  {
+   "key": "s57",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "CLAUDE.md",
+   "container": "OpenSpineConsortium/beethoven-agents",
+   "date": "2026-10-07",
+   "version": "a40a71a",
+   "url": "https://github.com/OpenSpineConsortium/beethoven-agents/blob/a40a71a/CLAUDE.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "masters, satellites, the lease, the registry and the bus planned; run records of compute and quota spend"
+  },
+  {
+   "key": "s58",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "containers/README.md",
+   "container": "OpenSpineConsortium/beethoven-agents",
+   "date": "2026-10-07",
+   "version": "a40a71a",
+   "url": "https://github.com/OpenSpineConsortium/beethoven-agents/blob/a40a71a/containers/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the engine's Apptainer image"
+  },
+  {
+   "key": "s59",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "LICENSE.txt",
+   "container": "OpenSpineConsortium/beethoven-extension",
+   "date": "2026-10-15",
+   "version": "a239ae5",
+   "url": "https://github.com/OpenSpineConsortium/beethoven-extension/blob/a239ae5/LICENSE.txt",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "All rights reserved: the launcher is proprietary"
+  },
+  {
+   "key": "s60",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "CLAUDE.md",
+   "container": "OpenSpineConsortium/beethoven-qa",
+   "date": "2026-10-09",
+   "version": "85f0e1c",
+   "url": "https://github.com/OpenSpineConsortium/beethoven-qa/blob/85f0e1c/CLAUDE.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "contracts and the CrossHair/Z3 gate as the required check on main"
+  },
+  {
+   "key": "s61",
+   "kind": "paper",
+   "authors": [
+    "Kapoor",
+    "Narayanan"
+   ],
+   "title": "REFORMS: Consensus-based Recommendations for Machine-learning-based Science",
+   "container": "Science Advances 10(18):eadk3452",
+   "date": "2024-05",
+   "version": "",
+   "url": "https://doi.org/10.1126/sciadv.adk3452",
+   "public_url": "",
+   "read": "search",
+   "path": "",
+   "supports": "the REFORMS checklist"
+  },
+  {
+   "key": "s62",
+   "kind": "paper",
+   "authors": [
+    "Tejani",
+    "Klontzas",
+    "Gatti",
+    "Mongan",
+    "Moy",
+    "Park",
+    "Kahn"
+   ],
+   "title": "CLAIM 2024 Update",
+   "container": "Radiology: Artificial Intelligence 6(4):e240300",
+   "date": "2024-05-29",
+   "version": "",
+   "url": "https://doi.org/10.1148/ryai.240300",
+   "public_url": "",
+   "read": "search",
+   "path": "",
+   "supports": "the CLAIM checklist"
+  },
+  {
+   "key": "s63",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "CLAUDE.md",
+   "container": "OpenSpineConsortium/beethoven-research",
+   "date": "",
+   "version": "7e8fd69",
+   "url": "https://github.com/OpenSpineConsortium/beethoven-research/blob/7e8fd69/CLAUDE.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the first study on fluoroscopy; REFORMS and CLAIM rules not built yet"
+  },
+  {
+   "key": "s64",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "README.md",
+   "container": "OpenSpineConsortium/beethoven-research",
+   "date": "2026-10-07",
+   "version": "7e8fd69",
+   "url": "https://github.com/OpenSpineConsortium/beethoven-research/blob/7e8fd69/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "one module built; the rest of the pipeline tracked, not built"
+  },
+  {
+   "key": "s65",
+   "kind": "project-record",
+   "authors": [],
+   "title": "Symphony as built: what it is, its mechanism, the GitHub primitives it rests on, what it costs, how mature it is",
+   "container": "Symphony and Beethoven taxonomy research, project files",
+   "date": "2026-10-15",
+   "version": "",
+   "url": "",
+   "public_url": "",
+   "read": "record",
+   "path": "/mnt/project-files/research/taxonomy/notes/01-symphony-mechanism.md",
+   "supports": "Symphony's mechanism and its neighbors table"
+  },
+  {
+   "key": "s66",
+   "kind": "project-record",
+   "authors": [],
+   "title": "Beethoven launcher: what it is and how it works (research notes 04)",
+   "container": "Symphony and Beethoven taxonomy research, project files",
+   "date": "2026-10-15",
+   "version": "",
+   "url": "",
+   "public_url": "",
+   "read": "record",
+   "path": "/mnt/project-files/research/taxonomy/notes/04-beethoven-launcher.md",
+   "supports": "the launcher's mechanism and its HPC neighbors"
+  },
+  {
+   "key": "s67",
+   "kind": "project-record",
+   "authors": [],
+   "title": "The Beethoven engine (beethoven-qa, beethoven-agents, beethoven-research) and the stack as its owner describes it",
+   "container": "Symphony and Beethoven taxonomy research, project files",
+   "date": "2026-10-15",
+   "version": "",
+   "url": "",
+   "public_url": "",
+   "read": "record",
+   "path": "/mnt/project-files/research/taxonomy/notes/05-beethoven-engine.md",
+   "supports": "the engine's mechanisms, what is built and its neighbors"
+  },
+  {
+   "key": "s68",
+   "kind": "project-record",
+   "authors": [],
+   "title": "Coding agents in a code host's CI or a vendor's cloud (October 2026)",
+   "container": "Symphony and Beethoven taxonomy research, project files",
+   "date": "2026-10-15",
+   "version": "",
+   "url": "",
+   "public_url": "",
+   "read": "record",
+   "path": "/mnt/project-files/research/taxonomy/notes/06-ci-and-cloud-coding-agents.md",
+   "supports": "CI and vendor-cloud coding agents and their neighbors table"
+  },
+  {
+   "key": "s69",
+   "kind": "project-record",
+   "authors": [],
+   "title": "Taxonomies a classification of agent software can build on (as of 2026-10-15)",
+   "container": "Symphony and Beethoven taxonomy research, project files",
+   "date": "2026-10-15",
+   "version": "",
+   "url": "",
+   "public_url": "",
+   "read": "record",
+   "path": "/mnt/project-files/research/taxonomy/notes/13-taxonomy-literature.md",
+   "supports": "the placements of Symphony and Beethoven on the coordination axes"
+  }
+ ],
+ "uncited": [],
+ "checker_problems": 0,
+ "changes": []
+}

@@ -1,0 +1,511 @@
+{
+ "group": "spec-J",
+ "doc": "spec",
+ "units": [
+  {
+   "id": "mggj4hxkexp.33812",
+   "kind": "heading level 2",
+   "text": "10. Gaps, risks and open questions"
+  },
+  {
+   "id": "mggj4hxkexp.33850",
+   "kind": "table 1, row 0, column 0 (header row)",
+   "text": "#"
+  },
+  {
+   "id": "mggj4hxkexp.33853",
+   "kind": "table 1, row 0, column 1 (header row)",
+   "text": "Risk"
+  },
+  {
+   "id": "mggj4hxkexp.33859",
+   "kind": "table 1, row 0, column 2 (header row)",
+   "text": "Why it matters"
+  },
+  {
+   "id": "mggj4hxkexp.33875",
+   "kind": "table 1, row 0, column 3 (header row)",
+   "text": "What would show it, or reduce it"
+  },
+  {
+   "id": "mggj4hxkexp.33910",
+   "kind": "table 1, row 1, column 0",
+   "text": "1"
+  },
+  {
+   "id": "mggj4hxkexp.33913",
+   "kind": "table 1, row 1, column 1",
+   "text": "One vendor sets the economics"
+  },
+  {
+   "id": "mggj4hxkexp.33944",
+   "kind": "table 1, row 1, column 2",
+   "text": "Free public minutes, free governance and the ref semantics are GitHub's to change; the Actions terms limit use to the repository's own software project"
+  },
+  {
+   "id": "mggj4hxkexp.34097",
+   "kind": "table 1, row 1, column 3",
+   "text": "GitHub's pricing and terms pages; a self-hosted runner as the fallback"
+  },
+  {
+   "id": "mggj4hxkexp.34170",
+   "kind": "table 1, row 2, column 0",
+   "text": "2"
+  },
+  {
+   "id": "mggj4hxkexp.34173",
+   "kind": "table 1, row 2, column 1",
+   "text": "The subscription token in CI"
+  },
+  {
+   "id": "mggj4hxkexp.34203",
+   "kind": "table 1, row 2, column 2",
+   "text": "Anthropic documents it but advises an API key for a shared secret, its terms assume ordinary, individual usage, its rules for subscriptions moved several times in 2026, and bare mode will stop reading the token"
+  },
+  {
+   "id": "mggj4hxkexp.34415",
+   "kind": "table 1, row 2, column 3",
+   "text": "Questions R6; keeping an API-key path in the workflows"
+  },
+  {
+   "id": "mggj4hxkexp.34472",
+   "kind": "table 1, row 3, column 0",
+   "text": "3"
+  },
+  {
+   "id": "mggj4hxkexp.34475",
+   "kind": "table 1, row 3, column 1",
+   "text": "One plan's window for every Actions worker"
+  },
+  {
+   "id": "mggj4hxkexp.34519",
+   "kind": "table 1, row 3, column 2",
+   "text": "All workers share one person's five-hour and weekly limits; this project's own account reached its weekly limit on 2026-10-15 with several threads running"
+  },
+  {
+   "id": "mggj4hxkexp.34675",
+   "kind": "table 1, row 3, column 3",
+   "text": "The planned cap of 10 Claude runs a day; one plan per worker"
+  },
+  {
+   "id": "mggj4hxkexp.34738",
+   "kind": "table 1, row 4, column 0",
+   "text": "4"
+  },
+  {
+   "id": "mggj4hxkexp.34741",
+   "kind": "table 1, row 4, column 1",
+   "text": "Symphony's own tests run private for now"
+  },
+  {
+   "id": "mggj4hxkexp.34787",
+   "kind": "table 1, row 4, column 2",
+   "text": "Its plan runs the owner's first fresh test on private repositories only until the Phase 3 rails exist (the run cap, the qa check, checks pinned to Actions), though it recommends public repositories for the code workers change where possible; so Symphony's own runs have not yet tested the free-minutes story"
+  },
+  {
+   "id": "mggj4hxkexp.34957",
+   "kind": "table 1, row 4, column 3",
+   "text": "Phase 3 landing"
+  },
+  {
+   "id": "mggj4hxkexp.34975",
+   "kind": "table 1, row 5, column 0",
+   "text": "5"
+  },
+  {
+   "id": "mggj4hxkexp.34978",
+   "kind": "table 1, row 5, column 1",
+   "text": "GitHub's rate limits before minutes"
+  },
+  {
+   "id": "mggj4hxkexp.35015",
+   "kind": "table 1, row 5, column 2",
+   "text": "GITHUB_TOKEN gets 1,000 requests an hour per repository and the library has no retry on 429 or secondary limits yet"
+  },
+  {
+   "id": "mggj4hxkexp.35132",
+   "kind": "table 1, row 5, column 3",
+   "text": "The measurement pass (question R3)"
+  },
+  {
+   "id": "mggj4hxkexp.35169",
+   "kind": "table 1, row 6, column 0",
+   "text": "6"
+  },
+  {
+   "id": "mggj4hxkexp.35172",
+   "kind": "table 1, row 6, column 1",
+   "text": "Maturity"
+  },
+  {
+   "id": "mggj4hxkexp.35182",
+   "kind": "table 1, row 6, column 2",
+   "text": "The library is days old, 0.4.1 is the last release, later fixes are unreleased, and no full-scale benchmark of Symphony exists"
+  },
+  {
+   "id": "mggj4hxkexp.35310",
+   "kind": "table 1, row 6, column 3",
+   "text": "Question R1; the next release"
+  },
+  {
+   "id": "mggj4hxkexp.35342",
+   "kind": "table 1, row 7, column 0",
+   "text": "7"
+  },
+  {
+   "id": "mggj4hxkexp.35345",
+   "kind": "table 1, row 7, column 1",
+   "text": "The name"
+  },
+  {
+   "id": "mggj4hxkexp.35355",
+   "kind": "table 1, row 7, column 2",
+   "text": "openai/symphony (about 27,700 stars, Apache-2.0) also claims issues for coding agents"
+  },
+  {
+   "id": "mggj4hxkexp.35442",
+   "kind": "table 1, row 7, column 3",
+   "text": "Question R10"
+  },
+  {
+   "id": "mggj4hxkexp.35457",
+   "kind": "table 1, row 8, column 0",
+   "text": "8"
+  },
+  {
+   "id": "mggj4hxkexp.35460",
+   "kind": "table 1, row 8, column 1",
+   "text": "Beethoven's evidence is mostly plans"
+  },
+  {
+   "id": "mggj4hxkexp.35498",
+   "kind": "table 1, row 8, column 2",
+   "text": "Only splits.py of the research gates exists; the symbolic gate is a bounded search for most conditions, not a proof"
+  },
+  {
+   "id": "mggj4hxkexp.35615",
+   "kind": "table 1, row 8, column 3",
+   "text": "Question R8"
+  },
+  {
+   "id": "mggj4hxkexp.35629",
+   "kind": "table 1, row 9, column 0",
+   "text": "9"
+  },
+  {
+   "id": "mggj4hxkexp.35632",
+   "kind": "table 1, row 9, column 1",
+   "text": "Beethoven's setting"
+  },
+  {
+   "id": "mggj4hxkexp.35653",
+   "kind": "table 1, row 9, column 2",
+   "text": "Wayne State requires approval of AI tools; a personal plan has no BAA; Remote Control is unavailable under the HIPAA configuration and stores transcripts on Anthropic's servers"
+  },
+  {
+   "id": "mggj4hxkexp.35831",
+   "kind": "table 1, row 9, column 3",
+   "text": "Written answers from the university and Anthropic, already preconditions of any paid edition"
+  },
+  {
+   "id": "mggj4hxkexp.35926",
+   "kind": "table 1, row 10, column 0",
+   "text": "10"
+  },
+  {
+   "id": "mggj4hxkexp.35930",
+   "kind": "table 1, row 10, column 1",
+   "text": "Prompt injection through issues"
+  },
+  {
+   "id": "mggj4hxkexp.35963",
+   "kind": "table 1, row 10, column 2",
+   "text": "Claude workers in Actions read issue text and hold write tokens"
+  },
+  {
+   "id": "mggj4hxkexp.36028",
+   "kind": "table 1, row 10, column 3",
+   "text": "Recorded decisions: only writers queue work, code owners guard the files that steer workers"
+  },
+  {
+   "id": "mggj4hxkexp.36122",
+   "kind": "table 1, row 11, column 0",
+   "text": "11"
+  },
+  {
+   "id": "mggj4hxkexp.36126",
+   "kind": "table 1, row 11, column 1",
+   "text": "The public story is untold"
+  },
+  {
+   "id": "mggj4hxkexp.36154",
+   "kind": "table 1, row 11, column 2",
+   "text": "The site and READMEs never mention Actions, free minutes or cost; several internal documents lag GitHub's current behavior"
+  },
+  {
+   "id": "mggj4hxkexp.36278",
+   "kind": "table 1, row 11, column 3",
+   "text": "The manual's talking points; a pass over the docs"
+  },
+  {
+   "id": "mggj4hxkexp.42252",
+   "kind": "table 1, row 12, column 0",
+   "text": "12"
+  },
+  {
+   "id": "mggj4hxkexp.42256",
+   "kind": "table 1, row 12, column 1",
+   "text": "The server enforces a claim only at its creation"
+  },
+  {
+   "id": "mggj4hxkexp.42306",
+   "kind": "table 1, row 12, column 2",
+   "text": "Git refuses a second creation of claude/N, but GitHub accepts a fast-forward or forced push onto an existing claim under the recommended setup, since rulesets must leave claude/** alone. Only the local push guard refuses forced pushes, and on 2026-10-15 it was found to read the session's own directory rather than the clone a git -C command names, so a lease onto another worker's claim passed when run from a directory whose clone had neither branch, though it was refused from either worker's own clone"
+  },
+  {
+   "id": "mggj4hxkexp.42701",
+   "kind": "table 1, row 12, column 3",
+   "text": "research/taxonomy/verify/02; a fix to the guard; question R4"
+  },
+  {
+   "id": "mggj4hxkexp.42764",
+   "kind": "table 1, row 13, column 0",
+   "text": "13"
+  },
+  {
+   "id": "mggj4hxkexp.42768",
+   "kind": "table 1, row 13, column 1",
+   "text": "The idle clock is the pusher's"
+  },
+  {
+   "id": "mggj4hxkexp.42800",
+   "kind": "table 1, row 13, column 2",
+   "text": "Idleness is read from the head commit's committer date, which the pusher writes: a commit dated in the future holds a claim indefinitely, against the coordinator and a person's release alike, and one dated in the past is released at once. This is finding F8, open in 0.4.1 and on main"
+  },
+  {
+   "id": "mggj4hxkexp.43086",
+   "kind": "table 1, row 13, column 3",
+   "text": "The unmerged F8 fix reads GitHub's record of the push, falling back to the commit date when that record is missing; question R4"
+  },
+  {
+   "id": "mggj4hxkexp.43216",
+   "kind": "table 1, row 14, column 0",
+   "text": "14"
+  },
+  {
+   "id": "mggj4hxkexp.43220",
+   "kind": "table 1, row 14, column 1",
+   "text": "A reopened issue can be orphaned"
+  },
+  {
+   "id": "mggj4hxkexp.43254",
+   "kind": "table 1, row 14, column 2",
+   "text": "The labels claimed and in-review stay on a closed issue; if it is reopened, the board lists it nowhere and no worker is dealt it until a person takes them off"
+  },
+  {
+   "id": "mggj4hxkexp.43414",
+   "kind": "table 1, row 14, column 3",
+   "text": "A board rule for reopened issues; question R4"
+  },
+  {
+   "id": "mggj4hxkexp.36328",
+   "kind": "paragraph",
+   "text": "Open questions that are not risks:"
+  },
+  {
+   "id": "mggj4hxkexp.36365",
+   "kind": "list item",
+   "text": "Whether a public, Claude-free Beethoven gate library is wanted, which is the only way Beethoven gets free minutes."
+  },
+  {
+   "id": "mggj4hxkexp.36481",
+   "kind": "list item",
+   "text": "Which subset of the taxonomy's twelve axes a short public explanation should use (the manual proposes three)."
+  },
+  {
+   "id": "mggj4hxkexp.36592",
+   "kind": "list item",
+   "text": "Whether the experiment, once complete, belongs in this spec; it stays out of the grant until you say so."
+  },
+  {
+   "id": "mggj4hxkexp.36697",
+   "kind": "heading level 2",
+   "text": "11. Research questions"
+  },
+  {
+   "id": "mggj4hxkexp.36720",
+   "kind": "paragraph",
+   "text": "Each question owns the Open claims named in it. A question is answered only when its acceptance criteria are met; until then the claim keeps its grade."
+  },
+  {
+   "id": "mggj4hxkexp.36875",
+   "kind": "table 2, row 0, column 0 (header row)",
+   "text": "#"
+  },
+  {
+   "id": "mggj4hxkexp.36878",
+   "kind": "table 2, row 0, column 1 (header row)",
+   "text": "Question"
+  },
+  {
+   "id": "mggj4hxkexp.36888",
+   "kind": "table 2, row 0, column 2 (header row)",
+   "text": "Answered when"
+  },
+  {
+   "id": "mggj4hxkexp.36904",
+   "kind": "table 2, row 1, column 0",
+   "text": "R1"
+  },
+  {
+   "id": "mggj4hxkexp.36908",
+   "kind": "table 2, row 1, column 1",
+   "text": "Does Symphony's protocol beat one agent, and the other two-agent arms, at a matched budget?"
+  },
+  {
+   "id": "mggj4hxkexp.37001",
+   "kind": "table 2, row 1, column 2",
+   "text": "The coordbench full run you chose on 2026-10-15 (35 new pairs under five arms, plus the runs to redo) reports pass rates with exact tests and confidence intervals, and tokens, wall time and list-price dollars per pair; any gap under the roughly 15-point noise floor is reported as not established"
+  },
+  {
+   "id": "mggj4hxkexp.37300",
+   "kind": "table 2, row 2, column 0",
+   "text": "R2"
+  },
+  {
+   "id": "mggj4hxkexp.37304",
+   "kind": "table 2, row 2, column 1",
+   "text": "Is the combination in section 8 unique?"
+  },
+  {
+   "id": "mggj4hxkexp.37345",
+   "kind": "table 2, row 2, column 2",
+   "text": "A documented search (FSE, ICSE and ASE 2026, arXiv cs.SE and cs.MA, GitHub topics, the awesome lists of agent orchestrators) scores every candidate on the five mechanisms of section 8; claim U1 stands only if none has four of the five, or (a), (c) and (d) together"
+  },
+  {
+   "id": "mggj4hxkexp.37583",
+   "kind": "table 2, row 3, column 0",
+   "text": "R3"
+  },
+  {
+   "id": "mggj4hxkexp.37587",
+   "kind": "table 2, row 3, column 1",
+   "text": "What does one coordination step cost, and which GitHub limit binds first?"
+  },
+  {
+   "id": "mggj4hxkexp.37662",
+   "kind": "table 2, row 3, column 2",
+   "text": "The canary measures API calls per board run, the medians from claim to first pull request and from open to merge, and the number of concurrent workers at which GITHUB_TOKEN's 1,000 requests an hour or the 100-run queue gives out; the library retries on 429 and secondary limits"
+  },
+  {
+   "id": "mggj4hxkexp.37942",
+   "kind": "table 2, row 4, column 0",
+   "text": "R4"
+  },
+  {
+   "id": "mggj4hxkexp.37946",
+   "kind": "table 2, row 4, column 1",
+   "text": "Does the claim hold on github.com as it does on a local git server?"
+  },
+  {
+   "id": "mggj4hxkexp.38015",
+   "kind": "table 2, row 4, column 2",
+   "text": "The canary records a second creation of claude/N, a push that descends from another worker's claim, a forced push with and without a ruleset, the rename on release, and a push after a merge; the clock question of F8 is settled"
+  },
+  {
+   "id": "mggj4hxkexp.38244",
+   "kind": "table 2, row 5, column 0",
+   "text": "R5"
+  },
+  {
+   "id": "mggj4hxkexp.38248",
+   "kind": "table 2, row 5, column 1",
+   "text": "Are Actions workers, benchmarks and a paid App inside GitHub's Actions terms?"
+  },
+  {
+   "id": "mggj4hxkexp.38327",
+   "kind": "table 2, row 5, column 2",
+   "text": "GitHub's written answer, or a lawyer's reading, on three cases: Claude workers writing the repository's own code; coordbench running other projects' tasks; SymphonyBoard's open runtime running in customers' Actions"
+  },
+  {
+   "id": "mggj4hxkexp.38544",
+   "kind": "table 2, row 6, column 0",
+   "text": "R6"
+  },
+  {
+   "id": "mggj4hxkexp.38548",
+   "kind": "table 2, row 6, column 1",
+   "text": "Can several Actions workers run on one person's subscription token, and will that keep working?"
+  },
+  {
+   "id": "mggj4hxkexp.38645",
+   "kind": "table 2, row 6, column 2",
+   "text": "Anthropic's written answer on a token in an organization secret, several parallel workers on one plan as ordinary, individual usage, and claude-code-action under bare mode; and a tested fallback that uses an API key"
+  },
+  {
+   "id": "mggj4hxkexp.38863",
+   "kind": "table 2, row 7, column 0",
+   "text": "R7"
+  },
+  {
+   "id": "mggj4hxkexp.38867",
+   "kind": "table 2, row 7, column 1",
+   "text": "What are free public minutes worth to an adopter?"
+  },
+  {
+   "id": "mggj4hxkexp.38918",
+   "kind": "table 2, row 7, column 2",
+   "text": "For three workloads (one maintainer, a small team, a research lab), the monthly minutes and their price on a private repository, and the same work's price on gh-aw with an API key and on Copilot's agents in credits, with every assumption stated and every price linked"
+  },
+  {
+   "id": "mggj4hxkexp.39188",
+   "kind": "table 2, row 8, column 0",
+   "text": "R8"
+  },
+  {
+   "id": "mggj4hxkexp.39192",
+   "kind": "table 2, row 8, column 1",
+   "text": "Do Beethoven's checklist gates catch what reviewers miss?"
+  },
+  {
+   "id": "mggj4hxkexp.39251",
+   "kind": "table 2, row 8, column 2",
+   "text": "REFORMS and CLAIM gates built for the first study catch seeded faults of the kinds Luo et al. found (leakage, post-hoc selection, metric misuse) that a reading of the paper alone misses; and a search names any other system that gates these checklists in code, or finds none"
+  },
+  {
+   "id": "mggj4hxkexp.39527",
+   "kind": "table 2, row 9, column 0",
+   "text": "R9"
+  },
+  {
+   "id": "mggj4hxkexp.39531",
+   "kind": "table 2, row 9, column 1",
+   "text": "Does the taxonomy separate the field?"
+  },
+  {
+   "id": "mggj4hxkexp.39570",
+   "kind": "table 2, row 9, column 2",
+   "text": "Every system in section 5 is placed on all twelve axes with sources, no two systems practitioners treat as different share all twelve cells, and a systematic search confirms or refutes that no published taxonomy has a compute-payer axis"
+  },
+  {
+   "id": "mggj4hxkexp.39809",
+   "kind": "table 2, row 10, column 0",
+   "text": "R10"
+  },
+  {
+   "id": "mggj4hxkexp.39814",
+   "kind": "table 2, row 10, column 1",
+   "text": "How much does the name cost?"
+  },
+  {
+   "id": "mggj4hxkexp.39844",
+   "kind": "table 2, row 10, column 2",
+   "text": "The first page of results on the main search engines and registries for Symphony with agents, coding or Claude is captured, with a recommendation: keep it, qualify it, or rename"
+  },
+  {
+   "id": "mggj4hxkexp.40022",
+   "kind": "paragraph",
+   "text": "The manual's section on deep research turns these into one message to paste."
+  }
+ ]
+}

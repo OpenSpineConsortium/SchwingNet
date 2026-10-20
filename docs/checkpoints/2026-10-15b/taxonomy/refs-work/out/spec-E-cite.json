@@ -1,0 +1,852 @@
+{
+ "changes": [
+  "Table 1 (5.2): each system's name cell cites its repository, paper or docs; cells with a number or a distinct source cite it (Beethoven's 20 REFORMS code gates and its one built check, the AI Scientist's $15 to $20 a run and v1's five reviewers, Kosmos's 79.4% and $200, Biomni's API key and full privileges).",
+  "Beethoven's row cites the private repositories at the commits notes 04 and 05 read (hpcworker 3b22e70, beethoven-qa 85f0e1c, beethoven-research 7e8fd69, the hub cb41b4a), plus Open OnDemand, REFORMS and CLAIM.",
+  "Table 2 (5.3): symphony-protocol's harness cites validation/DESIGN.md (oracle, fast lane at depth 5 in the required check, line 21), validation/README.md (93 mutants) and validate.yml (weekly deep job); gh-aw's models cite specs/work-queue/README.md at 8f27974, the commit verify/03 read.",
+  "The two closing Sources lines now carry the primary sources in place of the mentions of research note 11, research note 12 and verify/03."
+ ],
+ "edits": [
+  {
+   "unit_id": "mggj4hxkexp.47161",
+   "find": "Beethoven",
+   "replace": "Beethoven [[s1,s2]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.47172",
+   "find": "through Open OnDemand",
+   "replace": "through Open OnDemand [[s1,s3]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.47234",
+   "find": "as a required check",
+   "replace": "as a required check [[s4]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.47287",
+   "find": "REFORMS (20 items in code)",
+   "replace": "REFORMS [[s5]] (20 items in code [[s6]])"
+  },
+  {
+   "unit_id": "mggj4hxkexp.47287",
+   "find": "CLAIM; one check built",
+   "replace": "CLAIM [[s7]]; one check built [[s2]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.47351",
+   "find": "and the allocation",
+   "replace": "and the allocation [[s8]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.47391",
+   "find": "The AI Scientist v2",
+   "replace": "The AI Scientist v2 [[s9]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.47412",
+   "find": "in Docker",
+   "replace": "in Docker [[s9]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.47447",
+   "find": "the v2 launcher; v1 used an ensemble of five)",
+   "replace": "the v2 launcher [[s9]]; v1 used an ensemble of five [[s10]])"
+  },
+  {
+   "unit_id": "mggj4hxkexp.47485",
+   "find": "$15 to $20 a run",
+   "replace": "$15 to $20 a run [[s9]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.47515",
+   "find": "Agent Laboratory",
+   "replace": "Agent Laboratory [[s11]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.47553",
+   "find": "A person in the loop",
+   "replace": "A person in the loop [[s11]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.47587",
+   "find": "Kosmos (Edison)",
+   "replace": "Kosmos (Edison) [[s12,s13]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.47624",
+   "find": "79.4% accurate",
+   "replace": "79.4% accurate [[s12]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.47688",
+   "find": "(Reported)",
+   "replace": "(Reported [[s13]])"
+  },
+  {
+   "unit_id": "mggj4hxkexp.47710",
+   "find": "data-to-paper",
+   "replace": "data-to-paper [[s14]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.47745",
+   "find": "that made it",
+   "replace": "that made it [[s14]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.47805",
+   "find": "API",
+   "replace": "API [[s14]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.47811",
+   "find": "Biomni",
+   "replace": "Biomni [[s15]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.47840",
+   "find": "with full privileges",
+   "replace": "with full privileges [[s15]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.47915",
+   "find": "Anthropic API key",
+   "replace": "Anthropic API key [[s15]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.47935",
+   "find": "Anthropic's long-running guide",
+   "replace": "Anthropic's long-running guide [[s16]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.47967",
+   "find": "in tmux",
+   "replace": "in tmux [[s16]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.47994",
+   "find": "as lab notes",
+   "replace": "as lab notes [[s16]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.48086",
+   "find": "Academy (Argonne);",
+   "replace": "Academy (Argonne) [[s17]];"
+  },
+  {
+   "unit_id": "mggj4hxkexp.48086",
+   "find": "hpc-mcp and fractale (LLNL)",
+   "replace": "hpc-mcp [[s18]] and fractale [[s19]] (LLNL)"
+  },
+  {
+   "unit_id": "mggj4hxkexp.48211",
+   "find": "Snakemake, Nextflow, Metaflow",
+   "replace": "Snakemake [[s20]], Nextflow [[s21]], Metaflow [[s22]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.48318",
+   "find": "Sources: research note 11 (",
+   "replace": "Sources: [[s1,s2,s3,s4,s5,s6,s7,s8,s9,s10,s11,s12,s13,s14,s15,s16,s17,s18,s19,s20,s21,s22]] ("
+  },
+  {
+   "unit_id": "mggj4hxkexp.48519",
+   "find": "symphony-protocol's harness",
+   "replace": "symphony-protocol's harness [[s23,s24]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.48548",
+   "find": "written from the spec's text, with 93 mutants",
+   "replace": "written from the spec's text [[s24]], with 93 mutants [[s25]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.48679",
+   "find": "is part of the required check;",
+   "replace": "is part of the required check [[s24]];"
+  },
+  {
+   "unit_id": "mggj4hxkexp.48679",
+   "find": "run weekly or by hand,",
+   "replace": "run weekly or by hand [[s24,s26]],"
+  },
+  {
+   "unit_id": "mggj4hxkexp.48730",
+   "find": "beethoven-qa",
+   "replace": "beethoven-qa [[s27]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.48744",
+   "find": "with CrossHair and Z3",
+   "replace": "with CrossHair and Z3 [[s4,s27]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.48830",
+   "find": "with no human gate",
+   "replace": "with no human gate [[s4]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.48879",
+   "find": "gh-aw's work-queue models",
+   "replace": "gh-aw's work-queue models [[s28]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.48906",
+   "find": "broken configurations;",
+   "replace": "broken configurations [[s28]];"
+  },
+  {
+   "unit_id": "mggj4hxkexp.48906",
+   "find": "the shipped Go and JavaScript",
+   "replace": "the shipped Go and JavaScript [[s28]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.49002",
+   "find": "GitHub's security validation of agent code",
+   "replace": "GitHub's security validation of agent code [[s29,s31]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.49046",
+   "find": "with no Advanced Security licence",
+   "replace": "with no Advanced Security licence [[s29,s30,s31]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.49175",
+   "find": "It runs on the agent's own work",
+   "replace": "It runs on the agent's own work [[s29]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.49209",
+   "find": "Copilot code review",
+   "replace": "Copilot code review [[s32]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.49248",
+   "find": "are switched on",
+   "replace": "are switched on [[s32]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.49294",
+   "find": "Claude Code Review",
+   "replace": "Claude Code Review [[s33]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.49339",
+   "find": "neither approves nor blocks",
+   "replace": "neither approves nor blocks [[s33]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.49379",
+   "find": "SpecPylot",
+   "replace": "SpecPylot [[s34]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.49390",
+   "find": "CrossHair validates them",
+   "replace": "CrossHair validates them [[s34]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.49452",
+   "find": "it needs an API key",
+   "replace": "it needs an API key [[s34]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.49495",
+   "find": "Specula; untyped",
+   "replace": "Specula [[s35]]; untyped [[s36]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.49513",
+   "find": "TLA+ of system code;",
+   "replace": "TLA+ of system code [[s35]];"
+  },
+  {
+   "unit_id": "mggj4hxkexp.49513",
+   "find": "harness's tool calls",
+   "replace": "harness's tool calls [[s36]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.49614",
+   "find": "Sources: research note 12 and research/taxonomy/verify/03.",
+   "replace": "Sources: [[s4,s23,s24,s25,s26,s27,s28,s29,s30,s31,s32,s33,s34,s35,s36]]."
+  }
+ ],
+ "sources": [
+  {
+   "key": "s1",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "README.md",
+   "container": "OpenSpineConsortium/hpcworker",
+   "date": "2026-10-07",
+   "version": "3b22e70",
+   "url": "https://github.com/OpenSpineConsortium/hpcworker/blob/3b22e70/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the student's own Claude Code worker as a Slurm job, reached through Open OnDemand"
+  },
+  {
+   "key": "s2",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "README.md",
+   "container": "OpenSpineConsortium/beethoven-research",
+   "date": "2026-10-07",
+   "version": "7e8fd69",
+   "url": "https://github.com/OpenSpineConsortium/beethoven-research/blob/7e8fd69/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the research pipeline; splits.py its one built module, the rest not built"
+  },
+  {
+   "key": "s3",
+   "kind": "repository",
+   "authors": [
+    "Ohio Supercomputer Center"
+   ],
+   "title": "OSC/ondemand",
+   "container": "OSC/ondemand",
+   "date": "",
+   "version": "",
+   "url": "https://github.com/OSC/ondemand",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Open OnDemand, the HPC web portal"
+  },
+  {
+   "key": "s4",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "CLAUDE.md",
+   "container": "OpenSpineConsortium/beethoven-qa",
+   "date": "2026-10-09",
+   "version": "85f0e1c",
+   "url": "https://github.com/OpenSpineConsortium/beethoven-qa/blob/85f0e1c/CLAUDE.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "contracts proven by CrossHair and Z3 within a bound, as the required check, with no human gate on a merge"
+  },
+  {
+   "key": "s5",
+   "kind": "paper",
+   "authors": [
+    "Kapoor",
+    "Narayanan"
+   ],
+   "title": "REFORMS: Consensus-based Recommendations for Machine-learning-based Science",
+   "container": "Science Advances 10(18):eadk3452",
+   "date": "2024-05",
+   "version": "",
+   "url": "https://doi.org/10.1126/sciadv.adk3452",
+   "public_url": "",
+   "read": "search",
+   "path": "",
+   "supports": "the REFORMS checklist"
+  },
+  {
+   "key": "s6",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "plan/PROJECT_INSTRUCTIONS.md",
+   "container": "OpenSpineConsortium/beethoven",
+   "date": "2026-10-09",
+   "version": "cb41b4a",
+   "url": "https://github.com/OpenSpineConsortium/beethoven/blob/cb41b4a/plan/PROJECT_INSTRUCTIONS.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "REFORMS planned as 20 code gates and 12 declared fields; a CLAIM table per imaging study"
+  },
+  {
+   "key": "s7",
+   "kind": "paper",
+   "authors": [
+    "Tejani",
+    "Klontzas",
+    "Gatti",
+    "Mongan",
+    "Moy",
+    "Park",
+    "Kahn"
+   ],
+   "title": "CLAIM 2024 Update",
+   "container": "Radiology: Artificial Intelligence 6(4):e240300",
+   "date": "2024-05-29",
+   "version": "",
+   "url": "https://doi.org/10.1148/ryai.240300",
+   "public_url": "",
+   "read": "search",
+   "path": "",
+   "supports": "the CLAIM reporting checklist"
+  },
+  {
+   "key": "s8",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "CLAUDE.md",
+   "container": "OpenSpineConsortium/beethoven-research",
+   "date": "2026-10-07",
+   "version": "7e8fd69",
+   "url": "https://github.com/OpenSpineConsortium/beethoven-research/blob/7e8fd69/CLAUDE.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "D1: every step on the student's own flat-rate plan, run as Slurm jobs on the grid"
+  },
+  {
+   "key": "s9",
+   "kind": "repository",
+   "authors": [
+    "Sakana AI"
+   ],
+   "title": "AI-Scientist-v2",
+   "container": "SakanaAI/AI-Scientist-v2",
+   "date": "2025-12-19",
+   "version": "",
+   "url": "https://github.com/SakanaAI/AI-Scientist-v2",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "The AI Scientist v2: run in a Docker sandbox on a GPU machine, about $15 to $20 a run; its launcher"
+  },
+  {
+   "key": "s10",
+   "kind": "repository-file",
+   "authors": [
+    "Sakana AI"
+   ],
+   "title": "README.md",
+   "container": "SakanaAI/AI-Scientist",
+   "date": "",
+   "version": "",
+   "url": "https://raw.githubusercontent.com/SakanaAI/AI-Scientist/HEAD/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "v1's reviewer ensemble of five reviews"
+  },
+  {
+   "key": "s11",
+   "kind": "repository-file",
+   "authors": [
+    "Schmidgall"
+   ],
+   "title": "README.md",
+   "container": "SamuelSchmidgall/AgentLaboratory",
+   "date": "2025-08-20",
+   "version": "",
+   "url": "https://raw.githubusercontent.com/SamuelSchmidgall/AgentLaboratory/HEAD/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Agent Laboratory, run on the user's machine to assist a person (copilot mode)"
+  },
+  {
+   "key": "s12",
+   "kind": "preprint",
+   "authors": [],
+   "title": "[Kosmos AI-scientist report; title not recorded]",
+   "container": "arXiv",
+   "date": "2025",
+   "version": "2511.02824",
+   "url": "https://arxiv.org/abs/2511.02824",
+   "public_url": "",
+   "read": "search",
+   "path": "",
+   "supports": "79.4% of Kosmos statements judged accurate by independent scientists"
+  },
+  {
+   "key": "s13",
+   "kind": "web-page",
+   "authors": [
+    "Edison Scientific"
+   ],
+   "title": "[Kosmos launch announcement; title not recorded]",
+   "container": "Edison Scientific (edisonscientific.com)",
+   "date": "",
+   "version": "",
+   "url": "https://edisonscientific.com/articles/announcing-kosmos",
+   "public_url": "",
+   "read": "search",
+   "path": "",
+   "supports": "Kosmos at $200 a run at launch, with a free academic tier"
+  },
+  {
+   "key": "s14",
+   "kind": "repository",
+   "authors": [
+    "Kishony lab, Technion"
+   ],
+   "title": "data-to-paper",
+   "container": "Technion-Kishony-lab/data-to-paper",
+   "date": "",
+   "version": "",
+   "url": "https://github.com/Technion-Kishony-lab/data-to-paper",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "every number click-traced to the code line that made it; the user bears API costs"
+  },
+  {
+   "key": "s15",
+   "kind": "repository-file",
+   "authors": [
+    "Stanford SNAP"
+   ],
+   "title": "README.md",
+   "container": "snap-stanford/Biomni",
+   "date": "2026-01-14",
+   "version": "",
+   "url": "https://raw.githubusercontent.com/snap-stanford/Biomni/HEAD/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Biomni needs an Anthropic API key and runs model-written code with full system privileges"
+  },
+  {
+   "key": "s16",
+   "kind": "blog-post",
+   "authors": [
+    "Anthropic"
+   ],
+   "title": "Long-running Claude for Scientific Computing",
+   "container": "Anthropic (anthropic.com/research)",
+   "date": "2026-03-23",
+   "version": "",
+   "url": "https://www.anthropic.com/research/long-running-Claude",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Claude Code in tmux on a Slurm GPU node, tests before each commit, a CHANGELOG as lab notes"
+  },
+  {
+   "key": "s17",
+   "kind": "repository-file",
+   "authors": [
+    "Globus Labs"
+   ],
+   "title": "README.md",
+   "container": "proxystore/academy",
+   "date": "",
+   "version": "",
+   "url": "https://raw.githubusercontent.com/proxystore/academy/HEAD/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Academy, middleware for stateful agents across federated research infrastructure"
+  },
+  {
+   "key": "s18",
+   "kind": "repository-file",
+   "authors": [
+    "LLNL converged-computing group"
+   ],
+   "title": "README.md",
+   "container": "converged-computing/hpc-mcp",
+   "date": "",
+   "version": "",
+   "url": "https://raw.githubusercontent.com/converged-computing/hpc-mcp/HEAD/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "hpc-mcp, MCP tools for HPC"
+  },
+  {
+   "key": "s19",
+   "kind": "repository-file",
+   "authors": [
+    "LLNL converged-computing group"
+   ],
+   "title": "README.md",
+   "container": "converged-computing/fractale",
+   "date": "",
+   "version": "",
+   "url": "https://raw.githubusercontent.com/converged-computing/fractale/HEAD/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "fractale, a state-machine orchestrator over flux-mcp and hpc-mcp"
+  },
+  {
+   "key": "s20",
+   "kind": "repository-file",
+   "authors": [],
+   "title": "README.md",
+   "container": "snakemake/snakemake",
+   "date": "",
+   "version": "",
+   "url": "https://raw.githubusercontent.com/snakemake/snakemake/HEAD/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Snakemake, a workflow manager scaling to clusters"
+  },
+  {
+   "key": "s21",
+   "kind": "repository-file",
+   "authors": [],
+   "title": "README.md",
+   "container": "nextflow-io/nextflow",
+   "date": "",
+   "version": "",
+   "url": "https://raw.githubusercontent.com/nextflow-io/nextflow/HEAD/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Nextflow, a dataflow workflow system"
+  },
+  {
+   "key": "s22",
+   "kind": "web-page",
+   "authors": [],
+   "title": "metaflow",
+   "container": "PyPI",
+   "date": "2026-09-02",
+   "version": "2.19.39",
+   "url": "https://pypi.org/pypi/metaflow/json",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Metaflow, an ML workflow framework"
+  },
+  {
+   "key": "s23",
+   "kind": "repository",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "symphony-protocol",
+   "container": "OpenSpineConsortium/symphony-protocol",
+   "date": "2026-10-15",
+   "version": "a3a5b4d",
+   "url": "https://github.com/OpenSpineConsortium/symphony-protocol",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the claim protocol library and its validation harness"
+  },
+  {
+   "key": "s24",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "validation/DESIGN.md",
+   "container": "OpenSpineConsortium/symphony-protocol",
+   "date": "2026-10-15",
+   "version": "a3a5b4d",
+   "url": "https://github.com/OpenSpineConsortium/symphony-protocol/blob/a3a5b4d/validation/DESIGN.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the harness: the library's own code over interleavings, a spec-text oracle, the fast lane at depth 5 in the required check, the deep lane weekly or by hand"
+  },
+  {
+   "key": "s25",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "validation/README.md",
+   "container": "OpenSpineConsortium/symphony-protocol",
+   "date": "2026-10-15",
+   "version": "a3a5b4d",
+   "url": "https://github.com/OpenSpineConsortium/symphony-protocol/blob/a3a5b4d/validation/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the mutation lane's 93 mutants"
+  },
+  {
+   "key": "s26",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": ".github/workflows/validate.yml",
+   "container": "OpenSpineConsortium/symphony-protocol",
+   "date": "2026-10-15",
+   "version": "a3a5b4d",
+   "url": "https://github.com/OpenSpineConsortium/symphony-protocol/blob/a3a5b4d/.github/workflows/validate.yml",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the weekly deep job (360-minute timeout, cron on Mondays)"
+  },
+  {
+   "key": "s27",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "README.md",
+   "container": "OpenSpineConsortium/beethoven-qa",
+   "date": "2026-10-09",
+   "version": "85f0e1c",
+   "url": "https://github.com/OpenSpineConsortium/beethoven-qa/blob/85f0e1c/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "beethoven-qa: contracts on every public function, CrossHair and Z3 within a declared bound"
+  },
+  {
+   "key": "s28",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "specs/work-queue/README.md",
+   "container": "github/gh-aw",
+   "date": "",
+   "version": "8f27974",
+   "url": "https://github.com/github/gh-aw/blob/8f27974/specs/work-queue/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "TLA+ models of gh-aw's work queue with 68 Broken*.cfg controls; not of the Go or JavaScript code"
+  },
+  {
+   "key": "s29",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "content/copilot/concepts/agent-capabilities/about-agents/about-third-party-coding-agents.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs/blob/12691d2/content/copilot/concepts/agent-capabilities/about-agents/about-third-party-coding-agents.md",
+   "public_url": "https://docs.github.com/en/copilot/concepts/agent-capabilities/about-agents/about-third-party-coding-agents",
+   "read": "opened",
+   "path": "",
+   "supports": "CodeQL, secret scanning and the Advisory Database run on third-party agents' code, with no GHAS licence"
+  },
+  {
+   "key": "s30",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "content/copilot/concepts/security-governance-and-network-settings/risks-and-mitigations.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs/blob/12691d2/content/copilot/concepts/security-governance-and-network-settings/risks-and-mitigations.md",
+   "public_url": "https://docs.github.com/en/copilot/concepts/security-governance-and-network-settings/risks-and-mitigations",
+   "read": "opened",
+   "path": "",
+   "supports": "security validation of Copilot cloud agent's code"
+  },
+  {
+   "key": "s31",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "data/reusables/copilot/cloud-agent-validation-tools-intro.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs/blob/12691d2/data/reusables/copilot/cloud-agent-validation-tools-intro.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the validation tools run on Copilot cloud agent's code"
+  },
+  {
+   "key": "s32",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "content/copilot/concepts/agent-capabilities/agent-powered-workflows-and-operations/code-review.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs/blob/12691d2/content/copilot/concepts/agent-capabilities/agent-powered-workflows-and-operations/code-review.md",
+   "public_url": "https://docs.github.com/en/copilot/concepts/agent-capabilities/agent-powered-workflows-and-operations/code-review",
+   "read": "opened",
+   "path": "",
+   "supports": "Copilot code review satisfies a required-approval rule only with Copilot approvals enabled"
+  },
+  {
+   "key": "s33",
+   "kind": "documentation",
+   "authors": [
+    "Anthropic"
+   ],
+   "title": "[Claude Code docs page on Code Review; title not recorded]",
+   "container": "Claude Code Docs (code.claude.com)",
+   "date": "",
+   "version": "",
+   "url": "https://code.claude.com/docs/en/code-review.md",
+   "public_url": "https://code.claude.com/docs/en/code-review",
+   "read": "opened",
+   "path": "",
+   "supports": "Claude Code Review: several agents review; a review never approves or blocks the pull request"
+  },
+  {
+   "key": "s34",
+   "kind": "repository-file",
+   "authors": [
+    "Ayon",
+    "Ahmed"
+   ],
+   "title": "README.md",
+   "container": "ragibayon/specpylot",
+   "date": "",
+   "version": "",
+   "url": "https://raw.githubusercontent.com/ragibayon/specpylot/HEAD/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "SpecPylot: a model writes icontract contracts, CrossHair validates them; needs an OpenAI or Anthropic API key or a local Ollama"
+  },
+  {
+   "key": "s35",
+   "kind": "repository-file",
+   "authors": [],
+   "title": "README.md",
+   "container": "specula-org/Specula",
+   "date": "",
+   "version": "",
+   "url": "https://raw.githubusercontent.com/specula-org/Specula/HEAD/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Specula: coding agents write and model-check TLA+ of a target system's code"
+  },
+  {
+   "key": "s36",
+   "kind": "repository-file",
+   "authors": [],
+   "title": "README.md",
+   "container": "untyped-ai/untyped",
+   "date": "",
+   "version": "",
+   "url": "https://raw.githubusercontent.com/untyped-ai/untyped/HEAD/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "untyped: a TLA+ model of an agent harness's tool-call protocol"
+  }
+ ],
+ "uncited": [
+  {
+   "unit_id": "mggj4hxkexp.47447",
+   "claim": "The AI Scientist v2's launcher has one model review the finished paper's text and a vision model its figures (graded Verified).",
+   "why": "Cited to the AI-Scientist-v2 repository, which the cell names as its source and which note 11 cloned, but note 11 records only v1's five-review ensemble and the v2 README's Docker and cost lines, not the launcher's review step. A check made while citing (raw HEAD of launch_scientist_bfts.py, lines 26-27 and 304-319: perform_review on the text, perform_imgs_cap_ref_review on figures and captions) agrees; the research notes should record it with a commit."
+  }
+ ],
+ "checker_problems": 0
+}

@@ -1,0 +1,807 @@
+{
+ "edits": [
+  {
+   "unit_id": "mggj4hxkexp.16087",
+   "find": "preprint, 2026)",
+   "replace": "preprint, 2026) [[s2]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.16087",
+   "find": "PDF in the cooperbench/website repository",
+   "replace": "PDF [[s2]] in the cooperbench/website [[s1]] repository"
+  },
+  {
+   "unit_id": "mggj4hxkexp.16637",
+   "find": "same paper.",
+   "replace": "same paper [[s2]]."
+  },
+  {
+   "unit_id": "mggj4hxkexp.17064",
+   "find": "post in the",
+   "replace": "post [[s3]] in the"
+  },
+  {
+   "unit_id": "mggj4hxkexp.17064",
+   "find": "at 63b9d44.",
+   "replace": "at 63b9d44 [[s4]]."
+  },
+  {
+   "unit_id": "mggj4hxkexp.17571",
+   "find": "(AgenticFlict, Verified)",
+   "replace": "(AgenticFlict, Verified [[s5]])"
+  },
+  {
+   "unit_id": "mggj4hxkexp.17571",
+   "find": "same time (Reported)",
+   "replace": "same time (Reported [[s6]])"
+  },
+  {
+   "unit_id": "mggj4hxkexp.17816",
+   "find": "second agent (Verified)",
+   "replace": "second agent (Verified [[s7]])"
+  },
+  {
+   "unit_id": "mggj4hxkexp.17816",
+   "find": "different files (Verified)",
+   "replace": "different files (Verified [[s8]])"
+  },
+  {
+   "unit_id": "mggj4hxkexp.17816",
+   "find": "released (Reported)",
+   "replace": "released (Reported [[s9]])"
+  },
+  {
+   "unit_id": "mggj4hxkexp.18248",
+   "find": "1.000; Verified, research note 03)",
+   "replace": "1.000; Verified [[s10]])"
+  },
+  {
+   "unit_id": "mggj4hxkexp.18248",
+   "find": "inherits (Verified, research note 03)",
+   "replace": "inherits (Verified [[s10]])"
+  },
+  {
+   "unit_id": "mggj4hxkexp.18694",
+   "find": "(33.2%)",
+   "replace": "(33.2% [[s2]])"
+  },
+  {
+   "unit_id": "mggj4hxkexp.18735",
+   "find": "is refused",
+   "replace": "is refused [[s11]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.18801",
+   "find": "(42%)",
+   "replace": "(42% [[s2]])"
+  },
+  {
+   "unit_id": "mggj4hxkexp.18859",
+   "find": "Overlaps section",
+   "replace": "Overlaps section [[s11]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.18952",
+   "find": "(32%)",
+   "replace": "(32% [[s2]])"
+  },
+  {
+   "unit_id": "mggj4hxkexp.19001",
+   "find": "are the commitment",
+   "replace": "are the commitment [[s11]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.19069",
+   "find": "No plan before coding",
+   "replace": "No plan before coding [[s2]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.19092",
+   "find": "is the first commit",
+   "replace": "is the first commit [[s11]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.19168",
+   "find": "overwrites)",
+   "replace": "overwrites [[s3]])"
+  },
+  {
+   "unit_id": "mggj4hxkexp.19214",
+   "find": "another worker's claim",
+   "replace": "another worker's claim [[s11]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.19291",
+   "find": "(Cursor)",
+   "replace": "(Cursor [[s9]])"
+  },
+  {
+   "unit_id": "mggj4hxkexp.19322",
+   "find": "keeps its work",
+   "replace": "keeps its work [[s11]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.19386",
+   "find": "noise (Reported)",
+   "replace": "noise (Reported [[s12]])"
+  },
+  {
+   "unit_id": "mggj4hxkexp.19760",
+   "find": "the paper (Reported)",
+   "replace": "the paper (Reported [[s13]])"
+  },
+  {
+   "unit_id": "mggj4hxkexp.20006",
+   "find": "(Reported; n = 12)",
+   "replace": "(Reported [[s14]]; n = 12)"
+  },
+  {
+   "unit_id": "mggj4hxkexp.20006",
+   "find": "is not (Reported)",
+   "replace": "is not (Reported [[s15]])"
+  },
+  {
+   "unit_id": "mggj4hxkexp.20240",
+   "find": "across 421 studies,",
+   "replace": "across 421 studies [[s16]],"
+  },
+  {
+   "unit_id": "mggj4hxkexp.20240",
+   "find": "guidelines (Reported)",
+   "replace": "guidelines (Reported [[s17]])"
+  },
+  {
+   "unit_id": "mggj4hxkexp.20240",
+   "find": "REFORMS, CLAIM, TRIPOD+AI",
+   "replace": "REFORMS [[s18]], CLAIM [[s19]], TRIPOD+AI [[s20]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.20240",
+   "find": "(Inferred; an absence",
+   "replace": "(Inferred [[s21]]; an absence"
+  },
+  {
+   "unit_id": "mggj4hxkexp.20640",
+   "find": "on SusVibes (ICML 2026),",
+   "replace": "on SusVibes (ICML 2026) [[s22]],"
+  },
+  {
+   "unit_id": "mggj4hxkexp.20640",
+   "find": "submission files;",
+   "replace": "submission files [[s23]];"
+  },
+  {
+   "unit_id": "mggj4hxkexp.21144",
+   "find": "research system, costs)",
+   "replace": "research system [[s24]], costs [[s25]])"
+  },
+  {
+   "unit_id": "mggj4hxkexp.21144",
+   "find": "two weeks (Verified)",
+   "replace": "two weeks (Verified [[s7]])"
+  },
+  {
+   "unit_id": "mggj4hxkexp.21465",
+   "find": "or Copilot credits,",
+   "replace": "or Copilot credits [[s26]],"
+  },
+  {
+   "unit_id": "mggj4hxkexp.21465",
+   "find": "needs an API key,",
+   "replace": "needs an API key [[s27]],"
+  },
+  {
+   "unit_id": "mggj4hxkexp.21465",
+   "find": "(Verified, research note 10)",
+   "replace": "(Verified [[s28,s29]])"
+  },
+  {
+   "unit_id": "mggj4hxkexp.21465",
+   "find": "repository (research/taxonomy/verify/01)",
+   "replace": "repository [[s29,s30]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.21723",
+   "find": "builds in 2020,",
+   "replace": "builds in 2020 [[s31]],"
+  },
+  {
+   "unit_id": "mggj4hxkexp.21723",
+   "find": "quotas from 2021,",
+   "replace": "quotas from 2021 [[s32,s33]],"
+  },
+  {
+   "unit_id": "mggj4hxkexp.21723",
+   "find": "pointing them to GitHub,",
+   "replace": "pointing them to GitHub [[s34]],"
+  },
+  {
+   "unit_id": "mggj4hxkexp.21723",
+   "find": "on 2026-06-01 (Verified",
+   "replace": "on 2026-06-01 [[s35]] (Verified"
+  }
+ ],
+ "sources": [
+  {
+   "key": "s1",
+   "kind": "repository",
+   "authors": [
+    "CooperBench"
+   ],
+   "title": "cooperbench/website",
+   "container": "cooperbench/website",
+   "date": "2026-03-25",
+   "version": "97dbb0a",
+   "url": "https://github.com/cooperbench/website",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the CooperBench paper PDF and blog posts"
+  },
+  {
+   "key": "s2",
+   "kind": "preprint",
+   "authors": [
+    "Khatua A",
+    "Zhu H",
+    "Tran P",
+    "Prabhudesai A",
+    "Sadrieh F",
+    "Lieberwirth JK",
+    "Yu X",
+    "Fu Y",
+    "Ryan MJ",
+    "Pei J",
+    "Yang D"
+   ],
+   "title": "CooperBench: Why Coding Agents Cannot be Your Teammates Yet",
+   "container": "arXiv",
+   "date": "2026-01-27",
+   "version": "2601.13295",
+   "url": "https://arxiv.org/abs/2601.13295",
+   "public_url": "https://github.com/cooperbench/website/blob/97dbb0a/public/static/pdfs/main.pdf",
+   "read": "opened",
+   "path": "",
+   "supports": "solo and coop counts, failure symptoms and causes, messaging and planning effects"
+  },
+  {
+   "key": "s3",
+   "kind": "blog-post",
+   "authors": [
+    "Khatua A",
+    "Zhu H"
+   ],
+   "title": "The Curious Case of Miscoordination",
+   "container": "cooperbench/website",
+   "date": "2026",
+   "version": "97dbb0a",
+   "url": "https://github.com/cooperbench/website/blob/97dbb0a/src/content/blog/the-curious-case-of-miscoordination.mdx",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "a git server moved coop success 1 to 3 points; force pushes and overwrites"
+  },
+  {
+   "key": "s4",
+   "kind": "repository-file",
+   "authors": [
+    "CooperBench"
+   ],
+   "title": "docs/team_harness_ablation_report.html",
+   "container": "cooperbench/CooperBench",
+   "date": "2026-09-14",
+   "version": "63b9d44",
+   "url": "https://github.com/cooperbench/CooperBench/blob/63b9d44/docs/team_harness_ablation_report.html",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "team-harness ablation: coop 26%, solo 48%, coop+git 56%, team 62%"
+  },
+  {
+   "key": "s5",
+   "kind": "repository-file",
+   "authors": [
+    "Ogenrwot D",
+    "Businge J"
+   ],
+   "title": "README.md",
+   "container": "unlv-evol/AgenticFlict",
+   "date": "2026-05-10",
+   "version": "e050289",
+   "url": "https://github.com/unlv-evol/AgenticFlict/blob/e050289/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "27.67% textual conflicts in 107,026 simulated agent PRs"
+  },
+  {
+   "key": "s6",
+   "kind": "preprint",
+   "authors": [
+    "Xu",
+    "Subramanian",
+    "Karthik"
+   ],
+   "title": "[Concurrent agent pull requests in AIDev-pop; title not recorded]",
+   "container": "arXiv",
+   "date": "2026-07-06",
+   "version": "2607.04697",
+   "url": "https://arxiv.org/abs/2607.04697",
+   "public_url": "",
+   "read": "search",
+   "path": "",
+   "supports": "40.2% of AIDev-pop repositories had concurrent agent PRs"
+  },
+  {
+   "key": "s7",
+   "kind": "blog-post",
+   "authors": [
+    "Carlini N"
+   ],
+   "title": "Building a C compiler with a team of parallel Claudes",
+   "container": "Anthropic Engineering",
+   "date": "2026-02-05",
+   "version": "",
+   "url": "https://www.anthropic.com/engineering/building-c-compiler",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "lock-file task claims refused by git; just under $20,000 in API costs"
+  },
+  {
+   "key": "s8",
+   "kind": "documentation",
+   "authors": [
+    "Anthropic"
+   ],
+   "title": "Agent teams",
+   "container": "Claude Code Docs",
+   "date": "",
+   "version": "",
+   "url": "https://code.claude.com/docs/en/agent-teams",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "file-locked task claiming and file ownership advice"
+  },
+  {
+   "key": "s9",
+   "kind": "blog-post",
+   "authors": [
+    "Lin W"
+   ],
+   "title": "Scaling long-running autonomous coding",
+   "container": "Cursor blog",
+   "date": "2026",
+   "version": "",
+   "url": "https://cursor.com/blog/scaling-agents",
+   "public_url": "",
+   "read": "search",
+   "path": "",
+   "supports": "locks collapsed 20 agents to the throughput of two or three"
+  },
+  {
+   "key": "s10",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "bench/cooperbench/results/curse-1-step-8/README.md",
+   "container": "OpenSpineConsortium/coordbench",
+   "date": "2026-10-15",
+   "version": "fe2e245",
+   "url": "https://github.com/OpenSpineConsortium/coordbench/blob/fe2e245/bench/cooperbench/results/curse-1-step-8/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "coordbench 8-pair step: pass counts, McNemar p, inherited prompt size"
+  },
+  {
+   "key": "s11",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "docs/agents/PROTOCOL.md",
+   "container": "OpenSpineConsortium/symphony-template",
+   "date": "",
+   "version": "",
+   "url": "https://github.com/OpenSpineConsortium/symphony-template/blob/main/docs/agents/PROTOCOL.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "claims, Overlaps, push guard and the 24-hour release"
+  },
+  {
+   "key": "s12",
+   "kind": "preprint",
+   "authors": [
+    "Kaliyev",
+    "Maryanskyy"
+   ],
+   "title": "[Noise-floor study of multi-agent coordination gains; title not recorded]",
+   "container": "arXiv",
+   "date": "2026-06-15",
+   "version": "2606.20695",
+   "url": "https://arxiv.org/abs/2606.20695",
+   "public_url": "",
+   "read": "search",
+   "path": "",
+   "supports": "single-seed gains under about 15 points within run-to-run noise"
+  },
+  {
+   "key": "s13",
+   "kind": "paper",
+   "authors": [
+    "Luo",
+    "Kasirzadeh",
+    "Shah"
+   ],
+   "title": "[Pitfalls of AI-scientist systems; title not recorded]",
+   "container": "NeurIPS 2025",
+   "date": "2025",
+   "version": "2509.08713",
+   "url": "https://arxiv.org/abs/2509.08713",
+   "public_url": "",
+   "read": "search",
+   "path": "",
+   "supports": "leakage, benchmark, metric and selection pitfalls detectable from traces and code"
+  },
+  {
+   "key": "s14",
+   "kind": "preprint",
+   "authors": [
+    "Beel",
+    "Kan",
+    "Baumgart"
+   ],
+   "title": "Bold Claims, Mixed Results",
+   "container": "arXiv",
+   "date": "2025",
+   "version": "2502.14297",
+   "url": "https://arxiv.org/abs/2502.14297",
+   "public_url": "",
+   "read": "search",
+   "path": "",
+   "supports": "5 of 12 experiments failed on coding errors"
+  },
+  {
+   "key": "s15",
+   "kind": "preprint",
+   "authors": [],
+   "title": "[Kosmos AI-scientist report; title not recorded]",
+   "container": "arXiv",
+   "date": "2025",
+   "version": "2511.02824",
+   "url": "https://arxiv.org/abs/2511.02824",
+   "public_url": "",
+   "read": "search",
+   "path": "",
+   "supports": "79.4% of Kosmos statements judged accurate"
+  },
+  {
+   "key": "s16",
+   "kind": "paper",
+   "authors": [
+    "Kocak"
+   ],
+   "title": "[Umbrella review of CLAIM adherence; title not recorded]",
+   "container": "Diagnostic and Interventional Radiology 31(5):440-455",
+   "date": "2025",
+   "version": "",
+   "url": "https://dirjournal.org/articles/doi/dir.2025.243182",
+   "public_url": "",
+   "read": "search",
+   "path": "",
+   "supports": "median CLAIM compliance 68% across 421 studies"
+  },
+  {
+   "key": "s17",
+   "kind": "paper",
+   "authors": [
+    "Kocak",
+    "Keles",
+    "Kose"
+   ],
+   "title": "[AI reporting-guideline policies of 98 imaging journals; title not recorded]",
+   "container": "Diagnostic and Interventional Radiology",
+   "date": "2024",
+   "version": "",
+   "url": "https://dirjournal.org/articles/doi/dir.2024.232604",
+   "public_url": "",
+   "read": "search",
+   "path": "",
+   "supports": "5 of 98 imaging journals encouraged AI reporting guidelines"
+  },
+  {
+   "key": "s18",
+   "kind": "standard",
+   "authors": [
+    "Kapoor"
+   ],
+   "title": "REFORMS: Consensus-based Recommendations for Machine-learning-based Science",
+   "container": "Science Advances 10(18):eadk3452",
+   "date": "2024",
+   "version": "",
+   "url": "https://doi.org/10.1126/sciadv.adk3452",
+   "public_url": "",
+   "read": "search",
+   "path": "",
+   "supports": "the REFORMS checklist"
+  },
+  {
+   "key": "s19",
+   "kind": "standard",
+   "authors": [
+    "Tejani",
+    "Klontzas",
+    "Gatti",
+    "Mongan",
+    "Moy",
+    "Park",
+    "Kahn"
+   ],
+   "title": "CLAIM 2024 Update",
+   "container": "Radiology: Artificial Intelligence 6(4):e240300",
+   "date": "2024-05-29",
+   "version": "",
+   "url": "https://doi.org/10.1148/ryai.240300",
+   "public_url": "",
+   "read": "search",
+   "path": "",
+   "supports": "the CLAIM checklist"
+  },
+  {
+   "key": "s20",
+   "kind": "standard",
+   "authors": [
+    "Collins"
+   ],
+   "title": "TRIPOD+AI",
+   "container": "BMJ 385:e078378",
+   "date": "2024",
+   "version": "",
+   "url": "https://doi.org/10.1136/bmj-2023-078378",
+   "public_url": "",
+   "read": "search",
+   "path": "",
+   "supports": "the TRIPOD+AI checklist"
+  },
+  {
+   "key": "s21",
+   "kind": "project-record",
+   "authors": [],
+   "title": "AI-scientist systems, reproducibility frameworks, HPC workflow tools (research note 11)",
+   "container": "Symphony and Beethoven taxonomy research notes",
+   "date": "2026-10-15",
+   "version": "",
+   "url": "",
+   "public_url": "",
+   "read": "record",
+   "path": "/mnt/project-files/research/taxonomy/notes/11-ai-for-science.md",
+   "supports": "no AI-scientist system found gates a reporting checklist (search ran out)"
+  },
+  {
+   "key": "s22",
+   "kind": "repository",
+   "authors": [
+    "LeiLiLab"
+   ],
+   "title": "LeiLiLab/susvibes",
+   "container": "LeiLiLab/susvibes",
+   "date": "",
+   "version": "",
+   "url": "https://github.com/LeiLiLab/susvibes",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the SusVibes benchmark (ICML 2026)"
+  },
+  {
+   "key": "s23",
+   "kind": "repository-file",
+   "authors": [
+    "LeiLiLab"
+   ],
+   "title": "public/submissions/claude-opus-4.8_claude-code_default_2026-08-21/submission.json",
+   "container": "LeiLiLab/susvibes-leaderboard",
+   "date": "2026-08-21",
+   "version": "c74a6a2",
+   "url": "https://github.com/LeiLiLab/susvibes-leaderboard/blob/c74a6a2/public/submissions/claude-opus-4.8_claude-code_default_2026-08-21/submission.json",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Claude Opus 4.8 in Claude Code: FuncPass 83.9%, SecPass 32.8% (self-submitted)"
+  },
+  {
+   "key": "s24",
+   "kind": "blog-post",
+   "authors": [
+    "Anthropic"
+   ],
+   "title": "How we built our multi-agent research system",
+   "container": "Anthropic Engineering",
+   "date": "2025-06-13",
+   "version": "",
+   "url": "https://www.anthropic.com/engineering/multi-agent-research-system",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "multi-agent systems use about 15 times the tokens of chat"
+  },
+  {
+   "key": "s25",
+   "kind": "documentation",
+   "authors": [
+    "Anthropic"
+   ],
+   "title": "Costs",
+   "container": "Claude Code Docs",
+   "date": "",
+   "version": "",
+   "url": "https://code.claude.com/docs/en/costs",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "agent teams use about 7 times the tokens in plan mode"
+  },
+  {
+   "key": "s26",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "docs/src/content/docs/engines/claude.md",
+   "container": "github/gh-aw",
+   "date": "2026-10-15",
+   "version": "dc91dbed",
+   "url": "https://github.com/github/gh-aw/blob/dc91dbed/docs/src/content/docs/engines/claude.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "gh-aw's Claude engine: API key, WIF or Copilot-billed inference; no subscription OAuth token"
+  },
+  {
+   "key": "s27",
+   "kind": "repository-file",
+   "authors": [
+    "OpenAI"
+   ],
+   "title": "README.md",
+   "container": "openai/codex-action",
+   "date": "",
+   "version": "",
+   "url": "https://raw.githubusercontent.com/openai/codex-action/HEAD/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "codex-action requires an API key"
+  },
+  {
+   "key": "s28",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "content/copilot/reference/copilot-billing/request-based-billing-legacy/what-changed-with-billing.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs/blob/12691d2/content/copilot/reference/copilot-billing/request-based-billing-legacy/what-changed-with-billing.md",
+   "public_url": "https://docs.github.com/en/copilot/reference/copilot-billing/request-based-billing-legacy/what-changed-with-billing",
+   "read": "opened",
+   "path": "",
+   "supports": "Copilot usage billed in AI credits at $0.01 each"
+  },
+  {
+   "key": "s29",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "content/copilot/concepts/agent-capabilities/about-agents/about-third-party-coding-agents.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs/blob/12691d2/content/copilot/concepts/agent-capabilities/about-agents/about-third-party-coding-agents.md",
+   "public_url": "https://docs.github.com/en/copilot/concepts/agent-capabilities/about-agents/about-third-party-coding-agents",
+   "read": "opened",
+   "path": "",
+   "supports": "coding agents consume Actions minutes and AI credits, with no word on public repositories"
+  },
+  {
+   "key": "s30",
+   "kind": "project-record",
+   "authors": [],
+   "title": "Verification 01: gh-aw work queue and Copilot cloud agent claims",
+   "container": "Symphony and Beethoven taxonomy research, adversarial checks",
+   "date": "2026-10-15",
+   "version": "",
+   "url": "",
+   "public_url": "",
+   "read": "record",
+   "path": "/mnt/project-files/research/taxonomy/verify/01-gh-aw-copilot.md",
+   "supports": "GitHub's docs nowhere say whether the cloud agent's minutes are free on public repositories"
+  },
+  {
+   "key": "s31",
+   "kind": "blog-post",
+   "authors": [],
+   "title": "[Blog post on Travis CI's 2020 pricing change; title not recorded]",
+   "container": "jeffgeerling.com",
+   "date": "2020",
+   "version": "",
+   "url": "https://www.jeffgeerling.com/blog/2020/travis-cis-new-pricing-plan-threw-wrench-my-open-source-works/",
+   "public_url": "",
+   "read": "search",
+   "path": "",
+   "supports": "Travis CI ended unlimited open-source builds in 2020"
+  },
+  {
+   "key": "s32",
+   "kind": "repository-file",
+   "authors": [
+    "GitLab"
+   ],
+   "title": "doc/ci/pipelines/compute_minutes.md",
+   "container": "gitlabhq/gitlabhq",
+   "date": "",
+   "version": "",
+   "url": "https://github.com/gitlabhq/gitlabhq/blob/HEAD/doc/ci/pipelines/compute_minutes.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "GitLab.com's compute-minute quotas today"
+  },
+  {
+   "key": "s33",
+   "kind": "blog-post",
+   "authors": [
+    "GitLab"
+   ],
+   "title": "[GitLab blog post on public-project compute-minute limits; title not recorded]",
+   "container": "GitLab blog",
+   "date": "2021",
+   "version": "",
+   "url": "https://about.gitlab.com/blog/public-project-minute-limits/",
+   "public_url": "",
+   "read": "search",
+   "path": "",
+   "supports": "public projects consumed minutes from 2021"
+  },
+  {
+   "key": "s34",
+   "kind": "repository-file",
+   "authors": [
+    "Microsoft"
+   ],
+   "title": "docs/organizations/projects/public-projects-retirement.md",
+   "container": "MicrosoftDocs/azure-devops-docs",
+   "date": "",
+   "version": "",
+   "url": "https://github.com/MicrosoftDocs/azure-devops-docs/blob/HEAD/docs/organizations/projects/public-projects-retirement.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Azure DevOps public projects retired, made private in 2027, pointing to GitHub"
+  },
+  {
+   "key": "s35",
+   "kind": "web-page",
+   "authors": [
+    "Cirrus Labs"
+   ],
+   "title": "Cirrus Labs",
+   "container": "cirruslabs.org",
+   "date": "",
+   "version": "",
+   "url": "https://cirruslabs.org/",
+   "public_url": "",
+   "read": "search",
+   "path": "",
+   "supports": "Cirrus CI stopped running jobs on 2026-06-01"
+  }
+ ],
+ "uncited": [],
+ "checker_problems": 0
+}

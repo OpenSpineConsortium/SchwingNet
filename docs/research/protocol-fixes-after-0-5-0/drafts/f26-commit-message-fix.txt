@@ -1,0 +1,33 @@
+The push guard reads a wrapper's long option as getopt_long does (F26)
+
+GNU's env, nice and timeout, and GNU time, take a long option by any
+start of its name that names no other option, and take a value as the
+option says: one it needs attached or as the next word, one it may take
+only attached, none for a flag. The guard compared a wrapper's long
+option with the names that take a value, in full, and read every other
+word that starts with -- as a flag, so the value after "env --uns",
+"nice --adj" or "timeout --sig" was read as the command and the push
+behind it passed; "env --ch ../other" hid its push altogether and
+"env --c=../other" the clone it runs in. GNU time's own name for its
+output option is --output-file, which the table knew as --output, so a
+push behind that passed too.
+
+Each wrapper now carries every long option it has, by what it takes:
+coreutils' env, nice, nohup and timeout as 9.4's --help lists them,
+with env's options of 9.5, 9.12 and the release after it, GNU time as
+its src/time.c reads them, and bash's command and exec, which take
+none. long_option_of resolves a word as getopt_long does, the exact
+name before a start, and long_value_is_next takes the next word only
+for an option that needs a value. A word that names no option, a start
+of several names or of none, is still read as taking no value: GNU's
+wrapper refuses it and runs nothing, so no push runs whatever the guard
+reads there, and an older version that resolves such a start reads it
+as taking no value too, since no start that options of one wrapper
+share here is of an option that needs one. env_directory reads --chdir
+by any start of its name, so env --ch names the clone a push runs in.
+
+No rendered string changes; what changes is which commands reach a
+refusal.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Qv1nNa8Mcvg1vvEuVqmPsE

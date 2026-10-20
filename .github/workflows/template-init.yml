@@ -1,0 +1,99 @@
+name: Template init
+
+# Runs on the first push GitHub makes when someone presses "Use this
+# template", and does nothing afterwards. While .template/PENDING exists and
+# this repository is not the template itself, tools/template_init.py fills
+# the placeholders in every text file outside .github/workflows/, removes
+# .template/, makes the labels the board uses and opens the "Set up this
+# project" issue with the steps that remain by hand; the commit below
+# carries the filled files and the removal. The workflows hold no
+# placeholder and are never written, and this file stays in the tree,
+# because GITHUB_TOKEN may not create, change or delete a file under
+# .github/workflows/ (it has no workflows scope); every later push to the
+# default branch costs one short job that reads the marker and ends. In the
+# template repository itself, and on a push to any other branch, the job is
+# skipped, so the placeholders stay for the next copy. A push, an issue or
+# a label made with GITHUB_TOKEN starts no workflow, so without the App
+# below the first Checks run comes with the first pull request, and the
+# first Board run at the next six-hourly fallback or the first issue or
+# pull request a person opens. Where the variable SDLC_APP_ID and the
+# secret SDLC_APP_PRIVATE_KEY are set (the GitHub App of
+# OpenSpineConsortium/symphony-app, docs/setup/owner-checklist.md), the job
+# makes that App's installation token and uses it for the API calls and
+# the push instead, and what it does then starts the Checks and the Board
+# at once; like GITHUB_TOKEN, the App's token may not write a workflow.
+
+on:
+  push:
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  init:
+    if: github.event.repository.is_template == false && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-latest
+    steps:
+      # No credentials are left in the checkout: the push below names the
+      # token it pushes with, which may be the App's rather than this one.
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Is this copy still pending?
+        id: pending
+        run: |
+          if [ -f .template/PENDING ]; then
+            echo "pending=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "pending=false" >> "$GITHUB_OUTPUT"
+            echo "already initialised; nothing to do"
+          fi
+
+      # The App's token, made only in the one run that initialises the copy
+      # and only where the App is set up. A copy whose organization sets the
+      # variable but whose App is not installed on it carries on with
+      # GITHUB_TOKEN, as a copy without the App does, instead of failing.
+      - uses: actions/create-github-app-token@v3
+        id: app-token
+        if: steps.pending.outputs.pending == 'true' && vars.SDLC_APP_ID != ''
+        continue-on-error: true
+        with:
+          app-id: ${{ vars.SDLC_APP_ID }}
+          private-key: ${{ secrets.SDLC_APP_PRIVATE_KEY }}
+
+      - name: Fill the placeholders, make the labels, open the setup issue
+        if: steps.pending.outputs.pending == 'true'
+        env:
+          # The App's token when there is one: an issue or a label made with
+          # it starts other workflows, where one made with GITHUB_TOKEN
+          # starts none. GITHUB_TOKEN otherwise, as before the App existed.
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: >
+          python3 tools/template_init.py
+          --repo "$GITHUB_REPOSITORY"
+          --default-branch "$DEFAULT_BRANCH"
+          --create-labels --open-issue
+
+      # The push takes the App's token too, when there is one. The setup
+      # issue above starts a Board run, but that run usually checks out the
+      # default branch before this commit lands, finds .template/ still
+      # there and ends without writing; only a run started by this push
+      # renders the first board, and only a push made with the App's token
+      # starts one (and the first Checks run on the default branch). Such a
+      # push starts this workflow again too, and that run finds no
+      # .template/PENDING and ends. The header is the one actions/checkout
+      # leaves when it keeps its credentials.
+      - name: Commit and push
+        if: steps.pending.outputs.pending == 'true'
+        env:
+          PUSH_TOKEN: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Initialise from the template"
+          basic="$(printf 'x-access-token:%s' "$PUSH_TOKEN" | base64 -w0)"
+          git -c http.extraheader="AUTHORIZATION: basic $basic" push origin HEAD

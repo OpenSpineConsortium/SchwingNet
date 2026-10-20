@@ -1,0 +1,496 @@
+# Packet man-B: from the Symphony and Beethoven Taxonomy Manual, sections: 4. Checking a claim; 5. Placing any tool in the taxonomy
+
+=== [unit mrzzsdjxrm2.9844] heading level 2
+4. Checking a claim
+
+=== [unit mrzzsdjxrm2.9864] paragraph
+Every claim in the spec carries one of four grades, defined in the spec's section 1: Verified, Inferred, Reported or Open. A grade rises only with new evidence, and falls as soon as a source contradicts it. This section is how to move one.
+
+=== [unit mrzzsdjxrm2.10104] heading level 3
+Testing a claim, in six steps
+
+=== [unit mrzzsdjxrm2.10136] list item
+Write it with its scope. One sentence, with the version, the plan and the date it holds for. "Free and unlimited" is a claim about standard runners on public repositories as of 2026-10-15, not about Actions in general.
+
+=== [unit mrzzsdjxrm2.10356] list item
+Write what would refute it, before looking for support. The spec's section 8 gives one refuting observation for each uniqueness claim, and section 11 gives each research question its acceptance criteria.
+
+=== [unit mrzzsdjxrm2.10561] list item
+Look for the refutation first. Search by mechanism, not by product name, since a rival rarely uses our words: first push wins, lock branch, claims branch, reaper, idle claim, compare-and-swap with agents, CLAUDE_CODE_OAUTH_TOKEN in a workflow.
+
+=== [unit mrzzsdjxrm2.10806] list item
+Run it when it can be run. A claim about git or the protocol is cheapest to settle on a scratch repository. The claim-lock check (research/taxonomy/verify/02) did this and found or confirmed three things the documents did not say: the server enforces a claim only at its creation, the push guard judges a lease by the session's own directory rather than the clone a git -C command names, and the idle clock is the pusher's (the spec's risks 12 and 13).
+
+=== [unit mrzzsdjxrm2.11200] list item
+Record the search even when it finds nothing: where you looked, with which terms, on what date. A search that finds nothing makes a claim Inferred, never Verified, and the spec says how far the search went.
+
+=== [unit mrzzsdjxrm2.11408] list item
+When the claim fails, narrow it or drop it. Change the spec first, then every talking point that rests on it (section 6).
+
+=== [unit mrzzsdjxrm2.11530] paragraph
+A worked case. An early draft of the placement figure said only Symphony puts its agents under an atomic claim. The adversarial search found three systems that have one: gh-aw's work queue (a compare-and-swap on a ledger branch), unsorry (first push wins on a shared claims branch) and agentic-setup (a create-only branch push). The atomic claim moved to the spec's list of what is not unique, and claim U1 now names only the combination, with the observation that would refute it.
+
+=== [unit mrzzsdjxrm2.12012] heading level 3
+Which sources count
+
+=== [unit mrzzsdjxrm2.12035] table 1, row 0, column 0 (header row)
+Rank
+
+=== [unit mrzzsdjxrm2.12041] table 1, row 0, column 1 (header row)
+Source
+
+=== [unit mrzzsdjxrm2.12049] table 1, row 0, column 2 (header row)
+Highest grade it gives
+
+=== [unit mrzzsdjxrm2.12073] table 1, row 0, column 3 (header row)
+Take care
+
+=== [unit mrzzsdjxrm2.12085] table 1, row 1, column 0
+1
+
+=== [unit mrzzsdjxrm2.12088] table 1, row 1, column 1
+The thing itself: code at a named commit, an experiment you ran, a run log
+
+=== [unit mrzzsdjxrm2.12164] table 1, row 1, column 2
+Verified
+
+=== [unit mrzzsdjxrm2.12174] table 1, row 1, column 3
+Give the commit or the command, so anyone can repeat it
+
+=== [unit mrzzsdjxrm2.12232] table 1, row 2, column 0
+2
+
+=== [unit mrzzsdjxrm2.12235] table 1, row 2, column 1
+The vendor's own documentation, terms and pricing pages
+
+=== [unit mrzzsdjxrm2.12292] table 1, row 2, column 2
+Verified, with the date read
+
+=== [unit mrzzsdjxrm2.12322] table 1, row 2, column 3
+Prices and terms move; a price without its date is Reported
+
+=== [unit mrzzsdjxrm2.12384] table 1, row 3, column 0
+3
+
+=== [unit mrzzsdjxrm2.12387] table 1, row 3, column 1
+A paper with its data or code
+
+=== [unit mrzzsdjxrm2.12418] table 1, row 3, column 2
+Verified for counts you can re-derive from it
+
+=== [unit mrzzsdjxrm2.12465] table 1, row 3, column 3
+Quote counts, not percentages: CooperBench states its gap three ways
+
+=== [unit mrzzsdjxrm2.12536] table 1, row 4, column 0
+4
+
+=== [unit mrzzsdjxrm2.12539] table 1, row 4, column 1
+A project's README, design record, release notes or issues
+
+=== [unit mrzzsdjxrm2.12599] table 1, row 4, column 2
+Verified for what the project says of itself; Reported for what it says works
+
+=== [unit mrzzsdjxrm2.12678] table 1, row 4, column 3
+gh-aw's design record for its queue is still a draft
+
+=== [unit mrzzsdjxrm2.12733] table 1, row 5, column 0
+5
+
+=== [unit mrzzsdjxrm2.12736] table 1, row 5, column 1
+Blogs, talks, analyst reports, search summaries, a model's answer
+
+=== [unit mrzzsdjxrm2.12803] table 1, row 5, column 2
+Reported
+
+=== [unit mrzzsdjxrm2.12813] table 1, row 5, column 3
+A lead to the primary source, never the source; this includes the deep-research report until its links are opened
+
+=== [unit mrzzsdjxrm2.12927] heading level 3
+When a source is out of reach
+
+=== [unit mrzzsdjxrm2.12957] paragraph
+This project's sessions cannot open several hosts (section 2). Read GitHub's documentation from the github/docs repository's content files on raw.githubusercontent.com, at a commit you name. Read a paper from its authors' repository where there is one, as CooperBench's PDF was read from cooperbench/website. Leave the rest to claude.ai Research (section 3), then have a thread open each link the report gives. A claim whose only source stays out of reach keeps the grade Reported, with a note of what to re-read.
+
+=== [unit mrzzsdjxrm2.13471] heading level 2
+5. Placing any tool in the taxonomy
+
+=== [unit mrzzsdjxrm2.13507] paragraph
+Use this for any system someone names as an alternative, a competitor or a partner.
+
+=== [unit mrzzsdjxrm2.13591] heading level 3
+The procedure
+
+=== [unit mrzzsdjxrm2.13607] list item
+Pin the version. Name the repository and commit, or the product, plan and date. A placement goes stale when the tool ships.
+
+=== [unit mrzzsdjxrm2.13732] list item
+Find its claim. Ask one question of the code, not the README: when two of its agents want the same piece of work, what stops the second, and what frees a claim nobody finishes? Most of the differences in the field sit in that answer (axis 5).
+
+=== [unit mrzzsdjxrm2.13976] list item
+Put it in a quadrant. Where does the coordination state live, and what does one more agent run cost as the tool is usually run? Those are the two axes of the spec's placement figure.
+
+=== [unit mrzzsdjxrm2.14160] list item
+Fill the worksheet below, one cell per axis, each with its source. Not stated is an answer; a guess is not.
+
+=== [unit mrzzsdjxrm2.14269] list item
+Score it on the five mechanisms, (a) to (e) of the spec's section 8: yes, partial (say what is missing) or no. Only a yes counts toward what would refute claim U1: four of the five, or (a), (c) and (d) together. A tool that reaches either goes to the spec before anything else.
+
+=== [unit mrzzsdjxrm2.14507] list item
+Add it to the spec: a row in the placement table of section 4 if it shares a cell with Symphony or Beethoven, a row in the matching table of section 5, and a line in the prior-art table of section 8 for each mechanism it has.
+
+=== [unit mrzzsdjxrm2.14733] heading level 3
+The worksheet
+
+=== [unit mrzzsdjxrm2.14747] paragraph
+Copy this table for each tool.
+
+=== [unit mrzzsdjxrm2.14781] table 2, row 0, column 0 (header row)
+#
+
+=== [unit mrzzsdjxrm2.14784] table 2, row 0, column 1 (header row)
+Axis
+
+=== [unit mrzzsdjxrm2.14790] table 2, row 0, column 2 (header row)
+Question
+
+=== [unit mrzzsdjxrm2.14800] table 2, row 0, column 3 (header row)
+Answer
+
+=== [unit mrzzsdjxrm2.14808] table 2, row 0, column 4 (header row)
+Source
+
+=== [unit mrzzsdjxrm2.14817] table 2, row 1, column 0
+0
+
+=== [unit mrzzsdjxrm2.14820] table 2, row 1, column 1
+Identity
+
+=== [unit mrzzsdjxrm2.14830] table 2, row 1, column 2
+Name; repository and commit, or product and plan; date read
+
+=== [unit mrzzsdjxrm2.14896] table 2, row 2, column 0
+1
+
+=== [unit mrzzsdjxrm2.14899] table 2, row 2, column 1
+Stack layer
+
+=== [unit mrzzsdjxrm2.14912] table 2, row 2, column 2
+Which of L0 to L5 does it occupy, and what does it sit on?
+
+=== [unit mrzzsdjxrm2.14977] table 2, row 3, column 0
+2
+
+=== [unit mrzzsdjxrm2.14980] table 2, row 3, column 1
+Autonomy
+
+=== [unit mrzzsdjxrm2.14990] table 2, row 3, column 2
+While it works, does a person operate, collaborate, consult, approve or only observe?
+
+=== [unit mrzzsdjxrm2.15082] table 2, row 4, column 0
+3
+
+=== [unit mrzzsdjxrm2.15085] table 2, row 4, column 1
+Control topology
+
+=== [unit mrzzsdjxrm2.15103] table 2, row 4, column 2
+Who decides who does what: one agent, an orchestrator, planners, peers, or a shared medium?
+
+=== [unit mrzzsdjxrm2.15201] table 2, row 5, column 0
+4
+
+=== [unit mrzzsdjxrm2.15204] table 2, row 5, column 1
+Communication medium
+
+=== [unit mrzzsdjxrm2.15226] table 2, row 5, column 2
+How does one agent learn of another's work?
+
+=== [unit mrzzsdjxrm2.15276] table 2, row 6, column 0
+5
+
+=== [unit mrzzsdjxrm2.15279] table 2, row 6, column 1
+Concurrency control
+
+=== [unit mrzzsdjxrm2.15300] table 2, row 6, column 2
+What stops a second agent taking the same work, and what frees a claim nobody finishes?
+
+=== [unit mrzzsdjxrm2.15394] table 2, row 7, column 0
+6
+
+=== [unit mrzzsdjxrm2.15397] table 2, row 7, column 1
+Dependencies
+
+=== [unit mrzzsdjxrm2.15411] table 2, row 7, column 2
+Which does it manage: shared resource, prerequisite, transfer, usability, simultaneity, task and subtask?
+
+=== [unit mrzzsdjxrm2.15523] table 2, row 8, column 0
+7
+
+=== [unit mrzzsdjxrm2.15526] table 2, row 8, column 1
+Execution environment
+
+=== [unit mrzzsdjxrm2.15549] table 2, row 8, column 2
+Where does an agent run?
+
+=== [unit mrzzsdjxrm2.15580] table 2, row 9, column 0
+8
+
+=== [unit mrzzsdjxrm2.15583] table 2, row 9, column 1
+Trigger and lifetime
+
+=== [unit mrzzsdjxrm2.15605] table 2, row 9, column 2
+What starts a run, and what ends it?
+
+=== [unit mrzzsdjxrm2.15648] table 2, row 10, column 0
+9
+
+=== [unit mrzzsdjxrm2.15651] table 2, row 10, column 1
+State and memory
+
+=== [unit mrzzsdjxrm2.15669] table 2, row 10, column 2
+Where does the durable record live?
+
+=== [unit mrzzsdjxrm2.15711] table 2, row 11, column 0
+10
+
+=== [unit mrzzsdjxrm2.15715] table 2, row 11, column 1
+Cost model and payer
+
+=== [unit mrzzsdjxrm2.15737] table 2, row 11, column 2
+Who pays for inference and for compute, and under what licence?
+
+=== [unit mrzzsdjxrm2.15807] table 2, row 12, column 0
+11
+
+=== [unit mrzzsdjxrm2.15811] table 2, row 12, column 1
+Verification
+
+=== [unit mrzzsdjxrm2.15825] table 2, row 12, column 2
+What decides that work is acceptable, and can it block a merge?
+
+=== [unit mrzzsdjxrm2.15895] table 2, row 13, column 0
+12
+
+=== [unit mrzzsdjxrm2.15899] table 2, row 13, column 1
+Domain and maturity
+
+=== [unit mrzzsdjxrm2.15920] table 2, row 13, column 2
+What work is it for, and is it released, pre-release or a design?
+
+=== [unit mrzzsdjxrm2.15992] table 2, row 14, column 0
+(a)
+
+=== [unit mrzzsdjxrm2.15997] table 2, row 14, column 1
+Atomic claim on the forge
+
+=== [unit mrzzsdjxrm2.16024] table 2, row 14, column 2
+Yes, partial or no
+
+=== [unit mrzzsdjxrm2.16049] table 2, row 15, column 0
+(b)
+
+=== [unit mrzzsdjxrm2.16054] table 2, row 15, column 1
+Idle release by CI, work kept
+
+=== [unit mrzzsdjxrm2.16085] table 2, row 15, column 2
+Yes, partial or no
+
+=== [unit mrzzsdjxrm2.16110] table 2, row 16, column 0
+(c)
+
+=== [unit mrzzsdjxrm2.16115] table 2, row 16, column 1
+Board and coordinator in CI, state in forge objects
+
+=== [unit mrzzsdjxrm2.16168] table 2, row 16, column 2
+Yes, partial or no
+
+=== [unit mrzzsdjxrm2.16193] table 2, row 17, column 0
+(d)
+
+=== [unit mrzzsdjxrm2.16198] table 2, row 17, column 1
+People's sessions and CI agents under one rule, on a subscription
+
+=== [unit mrzzsdjxrm2.16265] table 2, row 17, column 2
+Yes, partial or no
+
+=== [unit mrzzsdjxrm2.16290] table 2, row 18, column 0
+(e)
+
+=== [unit mrzzsdjxrm2.16295] table 2, row 18, column 1
+Shipped protocol code checked by interleavings and mutants
+
+=== [unit mrzzsdjxrm2.16355] table 2, row 18, column 2
+Yes, partial or no
+
+=== [unit mrzzsdjxrm2.16378] heading level 3
+A worked example: unsorry
+
+=== [unit mrzzsdjxrm2.16404] paragraph
+unsorry (agenticsnz/unsorry), a swarm of agents that proves goals in Lean, is the closest rival the search found. Read at commit 029d328b on 2026-10-15 (research/taxonomy/verify/03).
+
+=== [unit mrzzsdjxrm2.16590] table 3, row 0, column 0 (header row)
+#
+
+=== [unit mrzzsdjxrm2.16593] table 3, row 0, column 1 (header row)
+Axis
+
+=== [unit mrzzsdjxrm2.16599] table 3, row 0, column 2 (header row)
+Answer
+
+=== [unit mrzzsdjxrm2.16607] table 3, row 0, column 3 (header row)
+Source
+
+=== [unit mrzzsdjxrm2.16616] table 3, row 1, column 0
+1
+
+=== [unit mrzzsdjxrm2.16619] table 3, row 1, column 1
+Stack layer
+
+=== [unit mrzzsdjxrm2.16632] table 3, row 1, column 2
+L3 coordination on L4 GitHub, for an L5 domain
+
+=== [unit mrzzsdjxrm2.16680] table 3, row 1, column 3
+Inferred from the rows below
+
+=== [unit mrzzsdjxrm2.16711] table 3, row 2, column 0
+3
+
+=== [unit mrzzsdjxrm2.16714] table 3, row 2, column 1
+Control topology
+
+=== [unit mrzzsdjxrm2.16732] table 3, row 2, column 2
+A shared medium with self-claiming peers, and a dispatcher in Actions
+
+=== [unit mrzzsdjxrm2.16803] table 3, row 2, column 3
+queue-dispatcher.yml
+
+=== [unit mrzzsdjxrm2.16826] table 3, row 3, column 0
+4
+
+=== [unit mrzzsdjxrm2.16829] table 3, row 3, column 1
+Communication medium
+
+=== [unit mrzzsdjxrm2.16851] table 3, row 3, column 2
+Traces in git: claim files on the branch claims, queued/prove/* branches, files on main, pull requests
+
+=== [unit mrzzsdjxrm2.16955] table 3, row 3, column 3
+ADR-004
+
+=== [unit mrzzsdjxrm2.16965] table 3, row 4, column 0
+5
+
+=== [unit mrzzsdjxrm2.16968] table 3, row 4, column 1
+Concurrency control
+
+=== [unit mrzzsdjxrm2.16989] table 3, row 4, column 2
+A lock with a timer: a claim file pushed to one shared branch, first push wins, checked again after the push; deleted two hours after the claim was made
+
+=== [unit mrzzsdjxrm2.17143] table 3, row 4, column 3
+ADR-004 lines 14 and 25; ADR-072; reaper.yml; tools/gate_b/config.py line 11
+
+=== [unit mrzzsdjxrm2.17222] table 3, row 5, column 0
+7
+
+=== [unit mrzzsdjxrm2.17225] table 3, row 5, column 1
+Execution environment
+
+=== [unit mrzzsdjxrm2.17248] table 3, row 5, column 2
+Agents on volunteers' own machines; the board, dispatcher, reaper and about 15 janitors in Actions
+
+=== [unit mrzzsdjxrm2.17348] table 3, row 5, column 3
+swarm/agent.sh; .github/workflows
+
+=== [unit mrzzsdjxrm2.17384] table 3, row 6, column 0
+8
+
+=== [unit mrzzsdjxrm2.17387] table 3, row 6, column 1
+Trigger and lifetime
+
+=== [unit mrzzsdjxrm2.17409] table 3, row 6, column 2
+Volunteers start their agents; the reaper runs every 15 minutes
+
+=== [unit mrzzsdjxrm2.17474] table 3, row 6, column 3
+reaper.yml
+
+=== [unit mrzzsdjxrm2.17487] table 3, row 7, column 0
+9
+
+=== [unit mrzzsdjxrm2.17490] table 3, row 7, column 1
+State and memory
+
+=== [unit mrzzsdjxrm2.17508] table 3, row 7, column 2
+Branches, files on main and pull requests; no central server
+
+=== [unit mrzzsdjxrm2.17570] table 3, row 7, column 3
+ADR-004
+
+=== [unit mrzzsdjxrm2.17580] table 3, row 8, column 0
+10
+
+=== [unit mrzzsdjxrm2.17584] table 3, row 8, column 1
+Cost model and payer
+
+=== [unit mrzzsdjxrm2.17606] table 3, row 8, column 2
+Each volunteer pays for inference (claude -p, Codex, Gemini); coordination runs on Actions minutes
+
+=== [unit mrzzsdjxrm2.17706] table 3, row 8, column 3
+swarm/agent.sh line 2685
+
+=== [unit mrzzsdjxrm2.17733] table 3, row 9, column 0
+12
+
+=== [unit mrzzsdjxrm2.17737] table 3, row 9, column 1
+Domain and maturity
+
+=== [unit mrzzsdjxrm2.17758] table 3, row 9, column 2
+Formal mathematics; claims in this form since 2026-06-10
+
+=== [unit mrzzsdjxrm2.17816] table 3, row 9, column 3
+ADR-004
+
+=== [unit mrzzsdjxrm2.17826] table 3, row 10, column 0
+(a)
+
+=== [unit mrzzsdjxrm2.17831] table 3, row 10, column 1
+Atomic claim
+
+=== [unit mrzzsdjxrm2.17845] table 3, row 10, column 2
+Partial: files on one shared branch, not a ref per item
+
+=== [unit mrzzsdjxrm2.17905] table 3, row 11, column 0
+(b)
+
+=== [unit mrzzsdjxrm2.17910] table 3, row 11, column 1
+Idle release
+
+=== [unit mrzzsdjxrm2.17924] table 3, row 11, column 2
+Partial: a timer from the claim's own timestamp, not idleness; the work is not kept
+
+=== [unit mrzzsdjxrm2.18012] table 3, row 12, column 0
+(c)
+
+=== [unit mrzzsdjxrm2.18017] table 3, row 12, column 1
+Board in CI
+
+=== [unit mrzzsdjxrm2.18030] table 3, row 12, column 2
+Yes
+
+=== [unit mrzzsdjxrm2.18038] table 3, row 13, column 0
+(d)
+
+=== [unit mrzzsdjxrm2.18043] table 3, row 13, column 1
+One rule for sessions and CI agents
+
+=== [unit mrzzsdjxrm2.18080] table 3, row 13, column 2
+Partial: volunteers' runs only; no agent in Actions, and no subscription token there
+
+=== [unit mrzzsdjxrm2.18169] table 3, row 14, column 0
+(e)
+
+=== [unit mrzzsdjxrm2.18174] table 3, row 14, column 1
+Checked protocol code
+
+=== [unit mrzzsdjxrm2.18197] table 3, row 14, column 2
+No
+
+=== [unit mrzzsdjxrm2.18202] paragraph
+One yes and three partials: unsorry does not refute U1, but it is why U1 and U2 are worded as narrowly as they are. Axes 2, 6 and 11 were not read, and stay blank until someone reads them.

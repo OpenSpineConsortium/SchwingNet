@@ -1,0 +1,375 @@
+{
+ "edits": [
+  {
+   "unit_id": "mrzzsdjxrm2.1111",
+   "find": "GitHub Actions billing, runner sizes and limits,",
+   "replace": "GitHub Actions billing [[s1]], runner sizes [[s2]] and limits [[s3]],"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.1216",
+   "find": "Actions terms,",
+   "replace": "Actions terms [[s4]],"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.1274",
+   "find": "GitHub Actions, costs,",
+   "replace": "GitHub Actions [[s5]], costs [[s6]],"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.1274",
+   "find": "agent teams, Remote Control and legal use,",
+   "replace": "agent teams [[s7]], Remote Control [[s8]] and legal use [[s9]],"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.1274",
+   "find": "claude.com/pricing",
+   "replace": "claude.com/pricing [[s10]]"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.1397",
+   "find": "work queue and",
+   "replace": "work queue [[s11]] and"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.1397",
+   "find": "subscription token,",
+   "replace": "subscription token [[s12]],"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.1492",
+   "find": "public repositories,",
+   "replace": "public repositories [[s13]],"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.1492",
+   "find": "cloud agent limits",
+   "replace": "cloud agent limits [[s14]]"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.1590",
+   "find": "in the authors' repository",
+   "replace": "in the authors' repository [[s15]]"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.1661",
+   "find": "on local repositories",
+   "replace": "on local repositories [[s16]]"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.1754",
+   "find": "Symphony's mechanisms",
+   "replace": "Symphony's mechanisms [[s17]]"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.2136",
+   "find": "github/docs repository instead",
+   "replace": "github/docs repository [[s18]] instead"
+  }
+ ],
+ "sources": [
+  {
+   "key": "s1",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "content/billing/concepts/product-billing/github-actions.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs/blob/12691d2/content/billing/concepts/product-billing/github-actions.md",
+   "public_url": "https://docs.github.com/en/billing/concepts/product-billing/github-actions",
+   "read": "opened",
+   "path": "",
+   "supports": "GitHub Actions billing: free public use, included minutes, prices"
+  },
+  {
+   "key": "s2",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "data/reusables/actions/supported-github-runners.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs/blob/12691d2/data/reusables/actions/supported-github-runners.md",
+   "public_url": "https://docs.github.com/en/actions/reference/runners/github-hosted-runners",
+   "read": "opened",
+   "path": "",
+   "supports": "standard GitHub-hosted runner sizes, public and private"
+  },
+  {
+   "key": "s3",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "content/actions/reference/limits.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs/blob/12691d2/content/actions/reference/limits.md",
+   "public_url": "https://docs.github.com/en/actions/reference/limits",
+   "read": "opened",
+   "path": "",
+   "supports": "Actions limits: concurrency, job time, rate limits"
+  },
+  {
+   "key": "s4",
+   "kind": "terms",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "GitHub Terms for Additional Products and Features",
+   "container": "github/site-policy",
+   "date": "2026-04-27",
+   "version": "b9578b5",
+   "url": "https://github.com/github/site-policy/blob/b9578b5/Policies/github-terms/github-terms-for-additional-products-and-features.md",
+   "public_url": "https://docs.github.com/en/site-policy/github-terms/github-terms-for-additional-products-and-features",
+   "read": "opened",
+   "path": "",
+   "supports": "the Actions terms, effective 2026-04-27"
+  },
+  {
+   "key": "s5",
+   "kind": "documentation",
+   "authors": [
+    "Anthropic"
+   ],
+   "title": "Claude Code GitHub Actions",
+   "container": "Claude Code Docs (code.claude.com)",
+   "date": "",
+   "version": "",
+   "url": "https://code.claude.com/docs/en/github-actions",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "claude-code-action and the subscription OAuth token"
+  },
+  {
+   "key": "s6",
+   "kind": "documentation",
+   "authors": [
+    "Anthropic"
+   ],
+   "title": "Manage costs effectively",
+   "container": "Claude Code Docs (code.claude.com)",
+   "date": "",
+   "version": "",
+   "url": "https://code.claude.com/docs/en/costs",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Claude Code costs and usage"
+  },
+  {
+   "key": "s7",
+   "kind": "documentation",
+   "authors": [
+    "Anthropic"
+   ],
+   "title": "Orchestrate teams of Claude Code sessions",
+   "container": "Claude Code Docs (code.claude.com)",
+   "date": "",
+   "version": "",
+   "url": "https://code.claude.com/docs/en/agent-teams",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Claude Code agent teams"
+  },
+  {
+   "key": "s8",
+   "kind": "documentation",
+   "authors": [
+    "Anthropic"
+   ],
+   "title": "Continue local sessions from any device with Remote Control",
+   "container": "Claude Code Docs (code.claude.com)",
+   "date": "",
+   "version": "",
+   "url": "https://code.claude.com/docs/en/remote-control",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Remote Control availability and requirements"
+  },
+  {
+   "key": "s9",
+   "kind": "documentation",
+   "authors": [
+    "Anthropic"
+   ],
+   "title": "Legal and compliance",
+   "container": "Claude Code Docs (code.claude.com)",
+   "date": "",
+   "version": "",
+   "url": "https://code.claude.com/docs/en/legal-and-compliance",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Anthropic's rules for subscription credentials in Claude Code"
+  },
+  {
+   "key": "s10",
+   "kind": "web-page",
+   "authors": [
+    "Anthropic"
+   ],
+   "title": "Plans & pricing",
+   "container": "claude.com",
+   "date": "",
+   "version": "",
+   "url": "https://claude.com/pricing",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Claude plans and prices"
+  },
+  {
+   "key": "s11",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "docs/src/content/docs/reference/work-queue.md",
+   "container": "github/gh-aw",
+   "date": "2026-10-15",
+   "version": "dc91dbed",
+   "url": "https://github.com/github/gh-aw/blob/dc91dbed/docs/src/content/docs/reference/work-queue.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "gh-aw's Git-backed work queue"
+  },
+  {
+   "key": "s12",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "docs/src/content/docs/reference/auth.mdx",
+   "container": "github/gh-aw",
+   "date": "2026-10-15",
+   "version": "dc91dbed",
+   "url": "https://github.com/github/gh-aw/blob/dc91dbed/docs/src/content/docs/reference/auth.mdx",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "gh-aw does not support CLAUDE_CODE_OAUTH_TOKEN"
+  },
+  {
+   "key": "s13",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "data/reusables/copilot/cloud-agent/automations-availability.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs/blob/12691d2/data/reusables/copilot/cloud-agent/automations-availability.md",
+   "public_url": "https://docs.github.com/en/copilot/concepts/agent-capabilities/agent-powered-workflows-and-operations/about-automations",
+   "read": "opened",
+   "path": "",
+   "supports": "Copilot automations not available in public repositories"
+  },
+  {
+   "key": "s14",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "content/copilot/concepts/copilot-surfaces/copilot-on-github.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs/blob/12691d2/content/copilot/concepts/copilot-surfaces/copilot-on-github.md",
+   "public_url": "https://docs.github.com/en/copilot/concepts/copilot-surfaces/copilot-on-github",
+   "read": "opened",
+   "path": "",
+   "supports": "Copilot cloud agent limits: one branch, one PR per task, 59 minutes"
+  },
+  {
+   "key": "s15",
+   "kind": "preprint",
+   "authors": [
+    "Khatua A",
+    "Zhu H",
+    "Tran P",
+    "Prabhudesai A",
+    "Sadrieh F",
+    "Lieberwirth JK",
+    "Yu X",
+    "Fu Y",
+    "Ryan MJ",
+    "Pei J",
+    "Yang D"
+   ],
+   "title": "CooperBench: Why Coding Agents Cannot be Your Teammates Yet",
+   "container": "arXiv",
+   "date": "2026-01-27",
+   "version": "2601.13295",
+   "url": "https://github.com/cooperbench/website/blob/97dbb0a/public/static/pdfs/main.pdf",
+   "public_url": "https://arxiv.org/abs/2601.13295",
+   "read": "opened",
+   "path": "",
+   "supports": "CooperBench's solo and cooperative pass counts"
+  },
+  {
+   "key": "s16",
+   "kind": "project-record",
+   "authors": [],
+   "title": "Verify 02: the claim lock, idleness and re-claims after a merge",
+   "container": "Symphony and Beethoven taxonomy research, project files",
+   "date": "2026-10-15",
+   "version": "",
+   "url": "",
+   "public_url": "",
+   "read": "record",
+   "path": "/mnt/project-files/research/taxonomy/verify/02-claim-lock.md",
+   "supports": "experiments on how the claim behaves under git"
+  },
+  {
+   "key": "s17",
+   "kind": "project-record",
+   "authors": [],
+   "title": "03 Uniqueness: is Symphony the only system that combines (a) to (e)?",
+   "container": "Symphony and Beethoven taxonomy research, project files",
+   "date": "2026-10-15",
+   "version": "",
+   "url": "",
+   "public_url": "",
+   "read": "record",
+   "path": "/mnt/project-files/research/taxonomy/verify/03-uniqueness.md",
+   "supports": "the search for a rival combining Symphony's mechanisms"
+  },
+  {
+   "key": "s18",
+   "kind": "repository",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "github/docs",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs",
+   "public_url": "https://docs.github.com",
+   "read": "opened",
+   "path": "",
+   "supports": "GitHub's documentation read from its source repository"
+  }
+ ],
+ "uncited": [],
+ "changes": [
+  "Marked each item of the 'already checked' list with the primary sources the notes read: github/docs files at 12691d2, the site-policy terms at b9578b5, six Anthropic pages, gh-aw files at dc91dbed, two Copilot docs files, and the CooperBench PDF in cooperbench/website at 97dbb0a.",
+  "The claim experiments and the rival search have no primary source outside the project, so they cite verify/02 and verify/03 as project records.",
+  "Cited the github/docs repository where section 2 says GitHub's docs were read from it.",
+  "Gave no marker to the 'spec' link in mrzzsdjxrm2.370, since it is a cross-reference to the spec, or to the claude.ai/new link in mrzzsdjxrm2.3111, since it is an instruction and not a source.",
+  "Left the research/taxonomy/notes/ pointer in mrzzsdjxrm2.584 as it was: it says where the notes are, not where a claim comes from.",
+  "Gave no marker to the list of blocked hosts in mrzzsdjxrm2.2136: it is ungraded, it is the session's own observation and it is spread across several notes."
+ ],
+ "checker_problems": 0
+}

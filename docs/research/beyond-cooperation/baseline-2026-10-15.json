@@ -1,0 +1,245 @@
+{
+  "attachments": 361,
+  "calls": {
+    "by_tool": {
+      "Agent": {
+        "calls": 2,
+        "context_tokens_estimated": 18465,
+        "failed": 0,
+        "input_bytes": 5320,
+        "repeated": 0,
+        "result_bytes": 2118,
+        "seconds_in_tool": 4
+      },
+      "Bash": {
+        "calls": 188,
+        "context_tokens_estimated": 189754,
+        "failed": 7,
+        "input_bytes": 451808,
+        "repeated": 0,
+        "result_bytes": 834099,
+        "seconds_in_tool": 959
+      },
+      "Read": {
+        "calls": 1,
+        "context_tokens_estimated": 0,
+        "failed": 0,
+        "input_bytes": 125,
+        "repeated": 0,
+        "result_bytes": 8039,
+        "seconds_in_tool": 0
+      },
+      "ReadNotifications": {
+        "calls": 3,
+        "context_tokens_estimated": 11279,
+        "failed": 0,
+        "input_bytes": 6,
+        "repeated": 2,
+        "result_bytes": 33898,
+        "seconds_in_tool": 0
+      },
+      "SendMessage": {
+        "calls": 1,
+        "context_tokens_estimated": 67,
+        "failed": 0,
+        "input_bytes": 870,
+        "repeated": 0,
+        "result_bytes": 163,
+        "seconds_in_tool": 2
+      },
+      "SubagentHandback": {
+        "calls": 2,
+        "context_tokens_estimated": 0,
+        "failed": 0,
+        "input_bytes": 38403,
+        "repeated": 0,
+        "result_bytes": 122,
+        "seconds_in_tool": 4
+      },
+      "ToolSearch": {
+        "calls": 6,
+        "context_tokens_estimated": 12479,
+        "failed": 0,
+        "input_bytes": 782,
+        "repeated": 0,
+        "result_bytes": 1484,
+        "seconds_in_tool": 4
+      },
+      "WebFetch": {
+        "calls": 21,
+        "context_tokens_estimated": 6346,
+        "failed": 11,
+        "input_bytes": 8600,
+        "repeated": 0,
+        "result_bytes": 19892,
+        "seconds_in_tool": 118
+      },
+      "WebSearch": {
+        "calls": 11,
+        "context_tokens_estimated": 10213,
+        "failed": 0,
+        "input_bytes": 1653,
+        "repeated": 0,
+        "result_bytes": 33824,
+        "seconds_in_tool": 294
+      },
+      "mcp__claude-code-remote__subscribe_pr_activity": {
+        "calls": 1,
+        "context_tokens_estimated": 256,
+        "failed": 0,
+        "input_bytes": 79,
+        "repeated": 0,
+        "result_bytes": 242,
+        "seconds_in_tool": 3
+      },
+      "mcp__github__create_pull_request": {
+        "calls": 1,
+        "context_tokens_estimated": 71,
+        "failed": 0,
+        "input_bytes": 3652,
+        "repeated": 0,
+        "result_bytes": 92,
+        "seconds_in_tool": 2
+      },
+      "mcp__github__get_file_contents": {
+        "calls": 2,
+        "context_tokens_estimated": 0,
+        "failed": 2,
+        "input_bytes": 222,
+        "repeated": 0,
+        "result_bytes": 974,
+        "seconds_in_tool": 1
+      },
+      "mcp__github__issue_write": {
+        "calls": 1,
+        "context_tokens_estimated": 97,
+        "failed": 0,
+        "input_bytes": 142,
+        "repeated": 0,
+        "result_bytes": 92,
+        "seconds_in_tool": 2
+      },
+      "mcp__github__pull_request_read": {
+        "calls": 4,
+        "context_tokens_estimated": 4226,
+        "failed": 0,
+        "input_bytes": 417,
+        "repeated": 2,
+        "result_bytes": 9727,
+        "seconds_in_tool": 6
+      },
+      "mcp__github__update_pull_request": {
+        "calls": 1,
+        "context_tokens_estimated": 86,
+        "failed": 1,
+        "input_bytes": 120,
+        "repeated": 0,
+        "result_bytes": 81,
+        "seconds_in_tool": 2
+      },
+      "mcp__hearthbot__no_reply_needed": {
+        "calls": 1,
+        "context_tokens_estimated": 10175,
+        "failed": 0,
+        "input_bytes": 28,
+        "repeated": 0,
+        "result_bytes": 31,
+        "seconds_in_tool": 0
+      },
+      "mcp__hearthbot__reply": {
+        "calls": 2,
+        "context_tokens_estimated": 441,
+        "failed": 0,
+        "input_bytes": 642,
+        "repeated": 0,
+        "result_bytes": 268,
+        "seconds_in_tool": 0
+      },
+      "mcp__hearthbot__update_status": {
+        "calls": 17,
+        "context_tokens_estimated": 2824,
+        "failed": 0,
+        "input_bytes": 10792,
+        "repeated": 0,
+        "result_bytes": 255,
+        "seconds_in_tool": 5
+      }
+    },
+    "failed": 21,
+    "repeated": 4,
+    "total": 265,
+    "unanswered": 1
+  },
+  "context": {
+    "cached_share": 0.965,
+    "calls": 112,
+    "compactions": 1,
+    "drops": 1,
+    "first": 120867,
+    "growth": 273352,
+    "last": 344769,
+    "mean": 280654,
+    "peak": 379356
+  },
+  "ended_at": "2026-10-16T08:47:08Z",
+  "estimated_usd": 55.1557,
+  "helpers": {
+    "calls": 76,
+    "output_tokens": 181317,
+    "seconds_in_tool": 661,
+    "transcripts": 2
+  },
+  "models": {
+    "claude-fable-5-1": [
+      3360,
+      529222,
+      794906,
+      27717225,
+      432727
+    ],
+    "claude-opus-5-5": [
+      36,
+      0,
+      301299,
+      5593071,
+      25694
+    ]
+  },
+  "prices_as_of": "2026-10-06",
+  "prompts": 12,
+  "reads": {
+    "bytes": 595385,
+    "calls": 63,
+    "files": 53,
+    "files_named": 97,
+    "partial": 41,
+    "reread_bytes": 178166,
+    "rereads": 19
+  },
+  "schema": "symphony-profile/1",
+  "seconds": {
+    "active": 4595,
+    "in_tools": 560,
+    "outside_tools": 4035,
+    "span": 32749,
+    "thinking": 1826
+  },
+  "session": "7667c678",
+  "shell": {
+    "filter": 178,
+    "git": 76,
+    "list": 56,
+    "read": 99,
+    "run": 195,
+    "search": 93
+  },
+  "started_at": "2026-10-15T23:41:20Z",
+  "tokens": {
+    "cache_read": 33310296,
+    "cache_write": 1625427,
+    "input": 3396,
+    "output": 458421,
+    "total": 35397540
+  },
+  "tokens_unpriced": 0
+}

@@ -1,0 +1,842 @@
+{
+ "edits": [
+  {
+   "unit_id": "mggj4hxkexp.29466",
+   "find": "the first commit and the sync)",
+   "replace": "the first commit and the sync [[s11,s10]])"
+  },
+  {
+   "unit_id": "mggj4hxkexp.29466",
+   "find": "claude-code-action@v1,",
+   "replace": "claude-code-action@v1 [[s12,s13]],"
+  },
+  {
+   "unit_id": "mggj4hxkexp.29466",
+   "find": "Claude Code's hooks,",
+   "replace": "Claude Code's hooks [[s14]],"
+  },
+  {
+   "unit_id": "mggj4hxkexp.29466",
+   "find": "standard library.",
+   "replace": "standard library [[s10]]."
+  },
+  {
+   "unit_id": "mggj4hxkexp.29737",
+   "find": "Slurm, Apptainer and Open OnDemand at",
+   "replace": "Slurm [[s5]], Apptainer [[s6]] and Open OnDemand [[s7]] at"
+  },
+  {
+   "unit_id": "mggj4hxkexp.29737",
+   "find": "Remote Control,",
+   "replace": "Remote Control [[s8]],"
+  },
+  {
+   "unit_id": "mggj4hxkexp.29737",
+   "find": "Z3 for the gate;",
+   "replace": "Z3 for the gate [[s9]];"
+  },
+  {
+   "unit_id": "mggj4hxkexp.29737",
+   "find": "chosen but not built,",
+   "replace": "chosen but not built [[s4]],"
+  },
+  {
+   "unit_id": "mggj4hxkexp.29737",
+   "find": "(Verified, research note 11).",
+   "replace": "(Verified [[s1,s2,s3]])."
+  },
+  {
+   "unit_id": "mggj4hxkexp.30443",
+   "find": "Files to touch)",
+   "replace": "Files to touch) [[s15]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.30598",
+   "find": "worker:name",
+   "replace": "worker:name [[s15]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.30725",
+   "find": "claims, overlaps",
+   "replace": "claims, overlaps [[s16]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.30865",
+   "find": "model and turns",
+   "replace": "model and turns [[s17]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.31049",
+   "find": "claim-released marker",
+   "replace": "claim-released marker [[s15]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.31181",
+   "find": "named check",
+   "replace": "named check [[s18]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.31256",
+   "find": "trailer on commits",
+   "replace": "trailer on commits [[s19]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.31256",
+   "find": "per Actions run",
+   "replace": "per Actions run [[s13]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.31366",
+   "find": "cannot reach the grid,",
+   "replace": "cannot reach the grid [[s20,s21]],"
+  },
+  {
+   "unit_id": "mggj4hxkexp.31366",
+   "find": "SARIF reports (Verified, research note 11).",
+   "replace": "SARIF reports [[s22]] (Verified)."
+  },
+  {
+   "unit_id": "mggj4hxkexp.31603",
+   "find": "planned qa check:",
+   "replace": "planned qa check [[s25]]:"
+  },
+  {
+   "unit_id": "mggj4hxkexp.31603",
+   "find": "free on a public repository (",
+   "replace": "free on a public repository [[s23,s24]] ("
+  },
+  {
+   "unit_id": "mggj4hxkexp.31795",
+   "find": "(a recorded decision;",
+   "replace": "(a recorded decision [[s25]];"
+  },
+  {
+   "unit_id": "mggj4hxkexp.32152",
+   "find": "its safe outputs opening",
+   "replace": "its safe outputs [[s26]] opening"
+  },
+  {
+   "unit_id": "mggj4hxkexp.32152",
+   "find": "read gh-aw's queue;",
+   "replace": "read gh-aw's queue [[s27]];"
+  },
+  {
+   "unit_id": "mggj4hxkexp.32466",
+   "find": "Snakemake (with a Slurm executor plugin), Nextflow, Parsl or CWL",
+   "replace": "Snakemake [[s28]] (with a Slurm executor plugin [[s29]]), Nextflow [[s30]], Parsl [[s31]] or CWL [[s32]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.32466",
+   "find": "the chosen Metaflow;",
+   "replace": "the chosen Metaflow [[s33]];"
+  },
+  {
+   "unit_id": "mggj4hxkexp.32466",
+   "find": "DVC for data versions;",
+   "replace": "DVC [[s34]] for data versions;"
+  },
+  {
+   "unit_id": "mggj4hxkexp.32466",
+   "find": "MLflow or Weights",
+   "replace": "MLflow [[s35]] or Weights"
+  },
+  {
+   "unit_id": "mggj4hxkexp.32466",
+   "find": "(Verified as products, research note 11)",
+   "replace": "(Verified as products)",
+   "removes_only": true
+  },
+  {
+   "unit_id": "mggj4hxkexp.32729",
+   "find": "in symphony-marketplace brings",
+   "replace": "in symphony-marketplace [[s36]] brings"
+  },
+  {
+   "unit_id": "mggj4hxkexp.32885",
+   "find": "(a paperclip server, a Beads Dolt server, an openai/symphony daemon)",
+   "replace": "(a paperclip server [[s37]], a Beads Dolt server [[s38]], an openai/symphony daemon [[s39]])"
+  },
+  {
+   "unit_id": "mggj4hxkexp.33056",
+   "find": "(Inferred, research note 07).",
+   "replace": "(Inferred [[s40]])."
+  },
+  {
+   "unit_id": "mggj4hxkexp.33373",
+   "find": "after Symphony's Phase 3 (Verified, research note 05).",
+   "replace": "after Symphony's Phase 3 (Verified [[s41]])."
+  },
+  {
+   "unit_id": "mggj4hxkexp.33373",
+   "find": "nor symphony-protocol (Verified, research note 05).",
+   "replace": "nor symphony-protocol (Verified [[s42]])."
+  }
+ ],
+ "sources": [
+  {
+   "key": "s1",
+   "kind": "repository-file",
+   "authors": [
+    "Outerbounds"
+   ],
+   "title": "README.md",
+   "container": "outerbounds/metaflow-slurm",
+   "date": "2026-03-25",
+   "version": "",
+   "url": "https://raw.githubusercontent.com/outerbounds/metaflow-slurm/HEAD/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "metaflow-slurm runs sbatch over SSH with a key file; no containers"
+  },
+  {
+   "key": "s2",
+   "kind": "repository-file",
+   "authors": [
+    "Outerbounds"
+   ],
+   "title": "metaflow_extensions/slurm_ext/plugins/slurm/slurm_client.py",
+   "container": "outerbounds/metaflow-slurm",
+   "date": "2026-03-25",
+   "version": "",
+   "url": "https://github.com/outerbounds/metaflow-slurm/blob/HEAD/metaflow_extensions/slurm_ext/plugins/slurm/slurm_client.py",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "metaflow-slurm connects with asyncssh and an SSH key file to run sbatch"
+  },
+  {
+   "key": "s3",
+   "kind": "web-page",
+   "authors": [],
+   "title": "metaflow-slurm",
+   "container": "PyPI",
+   "date": "2024-12-10",
+   "version": "0.0.4",
+   "url": "https://pypi.org/pypi/metaflow-slurm/json",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "metaflow-slurm 0.0.4, released 2024-12-10"
+  },
+  {
+   "key": "s4",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "CLAUDE.md",
+   "container": "OpenSpineConsortium/beethoven-research",
+   "date": "",
+   "version": "7e8fd69",
+   "url": "https://github.com/OpenSpineConsortium/beethoven-research/blob/7e8fd69/CLAUDE.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Metaflow with metaflow-slurm chosen (D3) and not built; never touch a credential"
+  },
+  {
+   "key": "s5",
+   "kind": "repository",
+   "authors": [
+    "SchedMD"
+   ],
+   "title": "SchedMD/slurm",
+   "container": "SchedMD/slurm",
+   "date": "",
+   "version": "",
+   "url": "https://github.com/SchedMD/slurm",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Slurm, the scheduler"
+  },
+  {
+   "key": "s6",
+   "kind": "repository",
+   "authors": [],
+   "title": "apptainer/apptainer",
+   "container": "apptainer/apptainer",
+   "date": "",
+   "version": "",
+   "url": "https://github.com/apptainer/apptainer",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Apptainer, the HPC container runtime"
+  },
+  {
+   "key": "s7",
+   "kind": "repository",
+   "authors": [
+    "Ohio Supercomputer Center"
+   ],
+   "title": "OSC/ondemand",
+   "container": "OSC/ondemand",
+   "date": "",
+   "version": "",
+   "url": "https://github.com/OSC/ondemand",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Open OnDemand, the HPC web portal"
+  },
+  {
+   "key": "s8",
+   "kind": "documentation",
+   "authors": [
+    "Anthropic"
+   ],
+   "title": "Remote Control",
+   "container": "Claude Code Docs",
+   "date": "",
+   "version": "",
+   "url": "https://code.claude.com/docs/en/remote-control",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Claude Code Remote Control"
+  },
+  {
+   "key": "s9",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "README.md",
+   "container": "OpenSpineConsortium/beethoven-qa",
+   "date": "2026-10-09",
+   "version": "85f0e1c",
+   "url": "https://github.com/OpenSpineConsortium/beethoven-qa/blob/85f0e1c/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the gate's icontract contracts and CrossHair with Z3"
+  },
+  {
+   "key": "s10",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "README.md",
+   "container": "OpenSpineConsortium/symphony-protocol",
+   "date": "2026-10-15",
+   "version": "a3a5b4d",
+   "url": "https://github.com/OpenSpineConsortium/symphony-protocol/blob/a3a5b4d/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Python 3.12 and its standard library only; App token for the sync pull requests"
+  },
+  {
+   "key": "s11",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": ".github/workflows/template-init.yml",
+   "container": "OpenSpineConsortium/symphony-template",
+   "date": "2026-10-15",
+   "version": "15d3f22",
+   "url": "https://github.com/OpenSpineConsortium/symphony-template/blob/15d3f22/.github/workflows/template-init.yml",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "GitHub App token for a copy's first commit"
+  },
+  {
+   "key": "s12",
+   "kind": "repository",
+   "authors": [
+    "Anthropic"
+   ],
+   "title": "anthropics/claude-code-action",
+   "container": "anthropics/claude-code-action",
+   "date": "2026-10-14",
+   "version": "a26b07d8",
+   "url": "https://github.com/anthropics/claude-code-action",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the action that runs Claude Code in GitHub Actions"
+  },
+  {
+   "key": "s13",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": ".github/workflows/workers.yml",
+   "container": "OpenSpineConsortium/symphony-template",
+   "date": "2026-10-15",
+   "version": "15d3f22",
+   "url": "https://github.com/OpenSpineConsortium/symphony-template/blob/15d3f22/.github/workflows/workers.yml",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "workers run claude-code-action@v1; a symphony-usage artifact per Claude run"
+  },
+  {
+   "key": "s14",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": ".claude/settings.json",
+   "container": "OpenSpineConsortium/symphony-template",
+   "date": "2026-10-15",
+   "version": "15d3f22",
+   "url": "https://github.com/OpenSpineConsortium/symphony-template/blob/15d3f22/.claude/settings.json",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Claude Code hooks wired by the template"
+  },
+  {
+   "key": "s15",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "docs/agents/PROTOCOL.md",
+   "container": "OpenSpineConsortium/symphony-template",
+   "date": "2026-10-15",
+   "version": "15d3f22",
+   "url": "https://github.com/OpenSpineConsortium/symphony-template/blob/15d3f22/docs/agents/PROTOCOL.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the claim branch and file, the labels, the release comment's marked first line"
+  },
+  {
+   "key": "s16",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": ".github/workflows/board.yml",
+   "container": "OpenSpineConsortium/symphony-template",
+   "date": "2026-10-15",
+   "version": "15d3f22",
+   "url": "https://github.com/OpenSpineConsortium/symphony-template/blob/15d3f22/.github/workflows/board.yml",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the board, STATE.md on the branch board"
+  },
+  {
+   "key": "s17",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "docs/agents/WORKERS.md",
+   "container": "OpenSpineConsortium/symphony-template",
+   "date": "2026-10-15",
+   "version": "15d3f22",
+   "url": "https://github.com/OpenSpineConsortium/symphony-template/blob/15d3f22/docs/agents/WORKERS.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the worker registry files and their settings"
+  },
+  {
+   "key": "s18",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "docs/setup/ruleset-main.json",
+   "container": "OpenSpineConsortium/symphony-template",
+   "date": "2026-10-15",
+   "version": "15d3f22",
+   "url": "https://github.com/OpenSpineConsortium/symphony-template/blob/15d3f22/docs/setup/ruleset-main.json",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the ruleset requiring the status check check"
+  },
+  {
+   "key": "s19",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "tools/usage.py",
+   "container": "OpenSpineConsortium/symphony-template",
+   "date": "2026-10-15",
+   "version": "15d3f22",
+   "url": "https://github.com/OpenSpineConsortium/symphony-template/blob/15d3f22/tools/usage.py",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the Symphony-Usage commit trailer"
+  },
+  {
+   "key": "s20",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "tools/grid_ci.sh",
+   "container": "OpenSpineConsortium/hpcworker",
+   "date": "2026-10-07",
+   "version": "3b22e70",
+   "url": "https://github.com/OpenSpineConsortium/hpcworker/blob/3b22e70/tools/grid_ci.sh",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "grid/... commit statuses posted from the cluster; runners cannot reach the grid"
+  },
+  {
+   "key": "s21",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": ".github/workflows/ci.yml",
+   "container": "OpenSpineConsortium/beethoven-research",
+   "date": "",
+   "version": "7e8fd69",
+   "url": "https://github.com/OpenSpineConsortium/beethoven-research/blob/7e8fd69/.github/workflows/ci.yml",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the gate on GitHub's runners beside the grid lane"
+  },
+  {
+   "key": "s22",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "docs/STANDARDS.md",
+   "container": "OpenSpineConsortium/beethoven-qa",
+   "date": "2026-10-09",
+   "version": "85f0e1c",
+   "url": "https://github.com/OpenSpineConsortium/beethoven-qa/blob/85f0e1c/docs/STANDARDS.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the code standards' SARIF 2.1.0 logs"
+  },
+  {
+   "key": "s23",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "content/billing/concepts/product-billing/github-advanced-security.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs/blob/12691d2/content/billing/concepts/product-billing/github-advanced-security.md",
+   "public_url": "https://docs.github.com/en/billing/concepts/product-billing/github-advanced-security",
+   "read": "opened",
+   "path": "",
+   "supports": "code scanning, secret scanning and dependency review free on public repositories"
+  },
+  {
+   "key": "s24",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "content/get-started/learning-about-github/about-github-advanced-security.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs/blob/12691d2/content/get-started/learning-about-github/about-github-advanced-security.md",
+   "public_url": "https://docs.github.com/en/get-started/learning-about-github/about-github-advanced-security",
+   "read": "opened",
+   "path": "",
+   "supports": "feature table for public repositories; marks dependency review No"
+  },
+  {
+   "key": "s25",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "CLAUDE.md",
+   "container": "OpenSpineConsortium/symphony-template",
+   "date": "2026-10-15",
+   "version": "15d3f22",
+   "url": "https://github.com/OpenSpineConsortium/symphony-template/blob/15d3f22/CLAUDE.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the recorded decision on the planned qa check and its beethoven-qa lane, not built"
+  },
+  {
+   "key": "s26",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "README.md",
+   "container": "github/gh-aw",
+   "date": "2026-10-15",
+   "version": "dc91dbed",
+   "url": "https://github.com/github/gh-aw/blob/dc91dbed/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "gh-aw's read-only agent jobs writing through safe outputs"
+  },
+  {
+   "key": "s27",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "docs/src/content/docs/reference/work-queue.md",
+   "container": "github/gh-aw",
+   "date": "2026-10-15",
+   "version": "dc91dbed",
+   "url": "https://github.com/github/gh-aw/blob/dc91dbed/docs/src/content/docs/reference/work-queue.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "gh-aw's Git-backed work queue"
+  },
+  {
+   "key": "s28",
+   "kind": "repository-file",
+   "authors": [],
+   "title": "README.md",
+   "container": "snakemake/snakemake",
+   "date": "",
+   "version": "",
+   "url": "https://raw.githubusercontent.com/snakemake/snakemake/HEAD/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Snakemake, a workflow manager scaling to clusters"
+  },
+  {
+   "key": "s29",
+   "kind": "web-page",
+   "authors": [],
+   "title": "snakemake-executor-plugin-slurm",
+   "container": "PyPI",
+   "date": "2026-08-10",
+   "version": "2.8.0",
+   "url": "https://pypi.org/pypi/snakemake-executor-plugin-slurm/json",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Snakemake's Slurm executor plugin"
+  },
+  {
+   "key": "s30",
+   "kind": "repository-file",
+   "authors": [],
+   "title": "README.md",
+   "container": "nextflow-io/nextflow",
+   "date": "",
+   "version": "",
+   "url": "https://raw.githubusercontent.com/nextflow-io/nextflow/HEAD/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Nextflow, a dataflow workflow system"
+  },
+  {
+   "key": "s31",
+   "kind": "repository-file",
+   "authors": [],
+   "title": "README.rst",
+   "container": "Parsl/parsl",
+   "date": "",
+   "version": "",
+   "url": "https://raw.githubusercontent.com/Parsl/parsl/HEAD/README.rst",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Parsl, parallel Python apps across nodes"
+  },
+  {
+   "key": "s32",
+   "kind": "repository-file",
+   "authors": [],
+   "title": "README.rst",
+   "container": "common-workflow-language/cwltool",
+   "date": "",
+   "version": "",
+   "url": "https://raw.githubusercontent.com/common-workflow-language/cwltool/HEAD/README.rst",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "CWL's reference runner cwltool"
+  },
+  {
+   "key": "s33",
+   "kind": "web-page",
+   "authors": [],
+   "title": "metaflow",
+   "container": "PyPI",
+   "date": "2026-09-02",
+   "version": "2.19.39",
+   "url": "https://pypi.org/pypi/metaflow/json",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Metaflow, with no Slurm support in core"
+  },
+  {
+   "key": "s34",
+   "kind": "web-page",
+   "authors": [],
+   "title": "dvc",
+   "container": "PyPI",
+   "date": "2026-03-31",
+   "version": "3.67.1",
+   "url": "https://pypi.org/pypi/dvc/json",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "DVC, data version control"
+  },
+  {
+   "key": "s35",
+   "kind": "repository-file",
+   "authors": [],
+   "title": "README.md",
+   "container": "mlflow/mlflow",
+   "date": "",
+   "version": "",
+   "url": "https://raw.githubusercontent.com/mlflow/mlflow/HEAD/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "MLflow, run tracking"
+  },
+  {
+   "key": "s36",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "README.md",
+   "container": "OpenSpineConsortium/symphony-marketplace",
+   "date": "2026-10-14",
+   "version": "5f6be11",
+   "url": "https://github.com/OpenSpineConsortium/symphony-marketplace/blob/5f6be11/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the Claude Code plugin symphony"
+  },
+  {
+   "key": "s37",
+   "kind": "repository",
+   "authors": [],
+   "title": "paperclipai/paperclip",
+   "container": "paperclipai/paperclip",
+   "date": "",
+   "version": "",
+   "url": "https://github.com/paperclipai/paperclip",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "paperclip, a self-hosted server with atomic task checkout"
+  },
+  {
+   "key": "s38",
+   "kind": "repository",
+   "authors": [],
+   "title": "gastownhall/beads",
+   "container": "gastownhall/beads",
+   "date": "",
+   "version": "",
+   "url": "https://github.com/gastownhall/beads",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Beads, an agent issue tracker on Dolt with a server mode"
+  },
+  {
+   "key": "s39",
+   "kind": "repository",
+   "authors": [
+    "OpenAI"
+   ],
+   "title": "openai/symphony",
+   "container": "openai/symphony",
+   "date": "",
+   "version": "",
+   "url": "https://github.com/openai/symphony",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "openai/symphony, a long-running orchestrator daemon"
+  },
+  {
+   "key": "s40",
+   "kind": "repository-file",
+   "authors": [],
+   "title": "skill/ccpm/references/execute.md",
+   "container": "automazeio/ccpm",
+   "date": "2026-03-18",
+   "version": "",
+   "url": "https://github.com/automazeio/ccpm/blob/HEAD/skill/ccpm/references/execute.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "CCPM's claim by assignee and label"
+  },
+  {
+   "key": "s41",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "docs/checkpoints/2026-10-14/handoff-page/PLAN.md",
+   "container": "OpenSpineConsortium/symphony-template",
+   "date": "2026-10-15",
+   "version": "15d3f22",
+   "url": "https://github.com/OpenSpineConsortium/symphony-template/blob/15d3f22/docs/checkpoints/2026-10-14/handoff-page/PLAN.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "no Beethoven repository runs Symphony's code or holds a Claude token; the beethoven-qa pilot question"
+  },
+  {
+   "key": "s42",
+   "kind": "project-record",
+   "authors": [],
+   "title": "AIDaS Seed 2027 grant packet",
+   "container": "",
+   "date": "",
+   "version": "",
+   "url": "",
+   "public_url": "",
+   "read": "record",
+   "path": "/mnt/project-files/grant/AIDaS_SEED_2027_packet.md",
+   "supports": "the agent under the laboratory's claim protocol; Symphony not named"
+  }
+ ],
+ "uncited": [
+  {
+   "unit_id": "mggj4hxkexp.32466",
+   "claim": "Weights and Biases verified as a product for run records",
+   "why": "No note gives a primary source for Weights and Biases; research note 11 only says Beethoven uses W&B, with no link or file read."
+  },
+  {
+   "unit_id": "mggj4hxkexp.29466",
+   "claim": "the writing rules forbid new dependencies",
+   "why": "Ungraded, but it names a source (.claude/rules/writing.md); no research note cites that file, so no marker was added."
+  },
+  {
+   "unit_id": "mggj4hxkexp.33373",
+   "claim": "spine-program adopted Symphony's protocol alone on 2026-10-12, according to the template's checkpoints",
+   "why": "Inferred and names the template's checkpoints as its source, but no research note names a checkpoint file for it (note 05 lists whether spine-program runs the protocol as a claim worth verifying)."
+  }
+ ],
+ "checker_problems": 0,
+ "changes": [
+  "Added numbered markers to section 6 (Integration) of the spec and replaced research-note mentions with primary sources."
+ ]
+}

@@ -1,0 +1,38 @@
+12. Sources
+The research behind this spec is in this project's files, under research/taxonomy/notes/ (thirteen notes, one per topic, each with its sources, line numbers and grades) and research/taxonomy/verify/ (the adversarial checks). Every claim above names its note. The primary sources most claims rest on:
+Symphony and Beethoven
+symphony-protocol, its validation design and the run of record
+    links: "symphony-protocol" -> https://github.com/OpenSpineConsortium/symphony-protocol; "validation design" -> https://github.com/OpenSpineConsortium/symphony-protocol/blob/main/validation/DESIGN.md; "run of record" -> https://github.com/OpenSpineConsortium/symphony-protocol/blob/main/validation/runs/2026-10-14/README.md
+The template's PROTOCOL.md and free-or-paid.md
+    links: "PROTOCOL.md" -> https://github.com/OpenSpineConsortium/symphony-template/blob/main/docs/agents/PROTOCOL.md; "free-or-paid.md" -> https://github.com/OpenSpineConsortium/symphony-template/blob/main/docs/setup/free-or-paid.md
+The Beethoven repositories (private): hpcworker, beethoven-extension, beethoven-qa, beethoven-agents, beethoven-research
+GitHub
+Billing for Actions, runners, limits and Advanced Security, read from the github/docs repository at 12691d2 (2026-10-15), because docs.github.com is unreachable from the research session
+    links: "github/docs" -> https://github.com/github/docs
+The Terms for Additional Products and Features, effective 2026-04-27
+    links: "Terms for Additional Products and Features" -> https://github.com/github/site-policy/blob/main/Policies/github-terms/github-terms-for-additional-products-and-features.md
+github/gh-aw at dc91dbed
+    links: "github/gh-aw" -> https://github.com/github/gh-aw
+Anthropic
+Claude Code GitHub Actions, Legal and compliance, Costs, Agent teams, Remote Control, pricing
+    links: "Claude Code GitHub Actions" -> https://code.claude.com/docs/en/github-actions; "Legal and compliance" -> https://code.claude.com/docs/en/legal-and-compliance; "Costs" -> https://code.claude.com/docs/en/costs; "Agent teams" -> https://code.claude.com/docs/en/agent-teams; "Remote Control" -> https://code.claude.com/docs/en/remote-control; "pricing" -> https://claude.com/pricing
+Building a C compiler with a team of parallel Claudes, How we built our multi-agent research system, Building effective agents
+    links: "Building a C compiler with a team of parallel Claudes" -> https://www.anthropic.com/engineering/building-c-compiler; "How we built our multi-agent research system" -> https://www.anthropic.com/engineering/multi-agent-research-system; "Building effective agents" -> https://www.anthropic.com/engineering/building-effective-agents
+Evidence on coordination and agent code
+CooperBench: arXiv 2601.13295, code, website and paper PDF
+    links: "arXiv 2601.13295" -> https://arxiv.org/abs/2601.13295; "code" -> https://github.com/cooperbench/CooperBench; "website and paper PDF" -> https://github.com/cooperbench/website
+MAST, AgenticFlict, AIDev, SusVibes
+    links: "MAST" -> https://github.com/multi-agent-systems-failure-taxonomy/MAST; "AgenticFlict" -> https://github.com/unlv-evol/AgenticFlict; "AIDev" -> https://github.com/SAILResearch/AI_Teammates_in_SE3; "SusVibes" -> https://github.com/LeiLiLab/susvibes
+DORA 2025
+    links: "DORA 2025" -> https://cloud.google.com/blog/products/ai-machine-learning/announcing-the-2025-dora-report
+Neighbors
+openai/symphony, CCPM, Beads, Gas Town, paperclip, Orbi, anthropics/claude-code-action, openai/codex-action
+    links: "openai/symphony" -> https://github.com/openai/symphony; "CCPM" -> https://github.com/automazeio/ccpm; "Beads" -> https://github.com/gastownhall/beads; "Gas Town" -> https://github.com/gastownhall/gastown; "paperclip" -> https://github.com/paperclipai/paperclip; "Orbi" -> https://github.com/orbi-build/orbi; "anthropics/claude-code-action" -> https://github.com/anthropics/claude-code-action; "openai/codex-action" -> https://github.com/openai/codex-action
+Research reporting and HPC
+REFORMS, Science Advances 2024; CLAIM 2024, Radiology: Artificial Intelligence; TRIPOD+AI, BMJ 2024
+    links: "Science Advances 2024" -> https://doi.org/10.1126/sciadv.adk3452; "Radiology: Artificial Intelligence" -> https://doi.org/10.1148/ryai.240300; "BMJ 2024" -> https://doi.org/10.1136/bmj-2023-078378
+Open OnDemand, Apptainer, Slurm
+    links: "Open OnDemand" -> https://github.com/OSC/ondemand; "Apptainer" -> https://github.com/apptainer/apptainer; "Slurm" -> https://github.com/SchedMD/slurm
+Luo, Kasirzadeh and Shah, arXiv 2509.08713; The AI Scientist; data-to-paper
+    links: "arXiv 2509.08713" -> https://arxiv.org/abs/2509.08713; "The AI Scientist" -> https://github.com/SakanaAI/AI-Scientist-v2; "data-to-paper" -> https://github.com/Technion-Kishony-lab/data-to-paper
+The taxonomy's own sources are linked in section 3.

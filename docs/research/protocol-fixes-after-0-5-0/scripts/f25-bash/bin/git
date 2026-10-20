@@ -1,0 +1,5 @@
+#!/bin/bash
+if [ "$1" = push ] || printf '%s\n' "$@" | grep -qx push; then
+  printf 'PUSH %s\n' "$*" >> "$PUSH_LOG"
+fi
+exit 0

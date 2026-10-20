@@ -1,0 +1,8 @@
+# The only dependencies are the pinned GitHub actions in .github/workflows/;
+# Dependabot proposes a new major tag once a week.
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"

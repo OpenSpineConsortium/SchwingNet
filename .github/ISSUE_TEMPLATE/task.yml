@@ -1,0 +1,26 @@
+name: Task
+description: A piece of work for the queue, which a Claude session or a person claims.
+title: "Task: "
+labels: ["todo"]
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: What is true when this is done, in a sentence or two.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance
+      description: How a reviewer tells it is done, and which checks must pass.
+    validations:
+      required: true
+  - type: textarea
+    id: files
+    attributes:
+      label: Files likely touched
+      description: Paths, one per line, so two claims that would meet in the same file are seen on the board before they do.
+    validations:
+      required: false

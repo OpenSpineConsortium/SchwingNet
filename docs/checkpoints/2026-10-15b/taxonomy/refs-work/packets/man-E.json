@@ -1,0 +1,551 @@
+{
+ "group": "man-E",
+ "doc": "manual",
+ "units": [
+  {
+   "id": "mrzzsdjxrm2.30931",
+   "kind": "heading level 2",
+   "text": "8. Keeping the spec current"
+  },
+  {
+   "id": "mrzzsdjxrm2.30959",
+   "kind": "paragraph",
+   "text": "The spec is dated beside its title. A claim is only as current as the date its source was read, and prices, terms and neighbors are the first to drift."
+  },
+  {
+   "id": "mrzzsdjxrm2.31111",
+   "kind": "heading level 3",
+   "text": "What to re-check, and when"
+  },
+  {
+   "id": "mrzzsdjxrm2.31141",
+   "kind": "table 1, row 0, column 0 (header row)",
+   "text": "When this happens"
+  },
+  {
+   "id": "mrzzsdjxrm2.31160",
+   "kind": "table 1, row 0, column 1 (header row)",
+   "text": "Re-check"
+  },
+  {
+   "id": "mrzzsdjxrm2.31170",
+   "kind": "table 1, row 0, column 2 (header row)",
+   "text": "Spec sections"
+  },
+  {
+   "id": "mrzzsdjxrm2.31186",
+   "kind": "table 1, row 1, column 0",
+   "text": "GitHub changes Actions prices, runner sizes, limits or terms"
+  },
+  {
+   "id": "mrzzsdjxrm2.31248",
+   "kind": "table 1, row 1, column 1",
+   "text": "Pass 1, items 1 and 2; the github/docs and github/site-policy repositories"
+  },
+  {
+   "id": "mrzzsdjxrm2.31324",
+   "kind": "table 1, row 1, column 2",
+   "text": "9.2 to 9.5; risk 1"
+  },
+  {
+   "id": "mrzzsdjxrm2.31345",
+   "kind": "table 1, row 2, column 0",
+   "text": "Anthropic changes its plans, claude-code-action's sign-in, bare mode or its legal page"
+  },
+  {
+   "id": "mrzzsdjxrm2.31433",
+   "kind": "table 1, row 2, column 1",
+   "text": "Pass 1, item 3"
+  },
+  {
+   "id": "mrzzsdjxrm2.31449",
+   "kind": "table 1, row 2, column 2",
+   "text": "9.4 and 9.5; risks 2 and 3; R6"
+  },
+  {
+   "id": "mrzzsdjxrm2.31482",
+   "kind": "table 1, row 3, column 0",
+   "text": "symphony-protocol publishes a release (0.5.0 is next)"
+  },
+  {
+   "id": "mrzzsdjxrm2.31537",
+   "kind": "table 1, row 3, column 1",
+   "text": "Its release notes and validation/known.json"
+  },
+  {
+   "id": "mrzzsdjxrm2.31582",
+   "kind": "table 1, row 3, column 2",
+   "text": "2 (maturity); risks 6, 12 and 13"
+  },
+  {
+   "id": "mrzzsdjxrm2.31617",
+   "kind": "table 1, row 4, column 0",
+   "text": "A neighbor ships: gh-aw's queue leaves its draft design record, unsorry, Copilot's agents, openai/symphony"
+  },
+  {
+   "id": "mrzzsdjxrm2.31725",
+   "kind": "table 1, row 4, column 1",
+   "text": "The worksheet in section 5, for that tool"
+  },
+  {
+   "id": "mrzzsdjxrm2.31768",
+   "kind": "table 1, row 4, column 2",
+   "text": "4, 5 and 8"
+  },
+  {
+   "id": "mrzzsdjxrm2.31781",
+   "kind": "table 1, row 5, column 0",
+   "text": "A research question meets its acceptance criteria: R1's full run, R3's measurement pass, R4 on the canary"
+  },
+  {
+   "id": "mrzzsdjxrm2.31888",
+   "kind": "table 1, row 5, column 1",
+   "text": "The question's own criteria"
+  },
+  {
+   "id": "mrzzsdjxrm2.31917",
+   "kind": "table 1, row 5, column 2",
+   "text": "7.1, 10 and 11"
+  },
+  {
+   "id": "mrzzsdjxrm2.31934",
+   "kind": "table 1, row 6, column 0",
+   "text": "Beethoven builds a gate, or its launcher reaches a second university"
+  },
+  {
+   "id": "mrzzsdjxrm2.32004",
+   "kind": "table 1, row 6, column 1",
+   "text": "The repository at its new commit"
+  },
+  {
+   "id": "mrzzsdjxrm2.32038",
+   "kind": "table 1, row 6, column 2",
+   "text": "2 and 5.2; claims U4 to U6; risk 8"
+  },
+  {
+   "id": "mrzzsdjxrm2.32075",
+   "kind": "table 1, row 7, column 0",
+   "text": "You lift the grant-data hold"
+  },
+  {
+   "id": "mrzzsdjxrm2.32105",
+   "kind": "table 1, row 7, column 1",
+   "text": "Nothing to research; the grant reviewers' version in section 6 changes"
+  },
+  {
+   "id": "mrzzsdjxrm2.32177",
+   "kind": "table 1, row 7, column 2",
+   "text": "7.1"
+  },
+  {
+   "id": "mrzzsdjxrm2.32183",
+   "kind": "table 1, row 8, column 0",
+   "text": "Before any outside use: a submission, a talk, a public page"
+  },
+  {
+   "id": "mrzzsdjxrm2.32244",
+   "kind": "table 1, row 8, column 1",
+   "text": "Pass 1 again if the spec's date is more than a month old (a default; change it if you like)"
+  },
+  {
+   "id": "mrzzsdjxrm2.32337",
+   "kind": "table 1, row 8, column 2",
+   "text": "9, and every claim quoted"
+  },
+  {
+   "id": "mrzzsdjxrm2.32363",
+   "kind": "heading level 3",
+   "text": "How to ask for an update"
+  },
+  {
+   "id": "mrzzsdjxrm2.32388",
+   "kind": "paragraph",
+   "text": "Post this in the project chat, with the link or the text of what changed:"
+  },
+  {
+   "id": "mrzzsdjxrm2.32462",
+   "kind": "code block (never edit)",
+   "text": "Update the taxonomy spec: <what changed, with a link>. Re-grade the claims it touches, update the parts of the manual that rest on them, and tell me in the thread what changed."
+  },
+  {
+   "id": "mrzzsdjxrm2.32639",
+   "kind": "paragraph",
+   "text": "The thread that makes the change writes its notes under research/taxonomy/notes/ (a new file for a new topic, or lines in the topic's file), puts adversarial checks under research/taxonomy/verify/, and moves the date beside the spec's title."
+  },
+  {
+   "id": "mrzzsdjxrm2.32881",
+   "kind": "heading level 2",
+   "text": "9. Glossary"
+  },
+  {
+   "id": "mrzzsdjxrm2.32896",
+   "kind": "table 2, row 0, column 0 (header row)",
+   "text": "Term"
+  },
+  {
+   "id": "mrzzsdjxrm2.32902",
+   "kind": "table 2, row 0, column 1 (header row)",
+   "text": "Meaning"
+  },
+  {
+   "id": "mrzzsdjxrm2.32912",
+   "kind": "table 2, row 1, column 0",
+   "text": "Apptainer"
+  },
+  {
+   "id": "mrzzsdjxrm2.32923",
+   "kind": "table 2, row 1, column 1",
+   "text": "A container runtime for clusters that runs without administrator rights"
+  },
+  {
+   "id": "mrzzsdjxrm2.32997",
+   "kind": "table 2, row 2, column 0",
+   "text": "Blackboard"
+  },
+  {
+   "id": "mrzzsdjxrm2.33009",
+   "kind": "table 2, row 2, column 1",
+   "text": "A shared store that independent agents read and write; the classic AI architecture (Nii, 1986)"
+  },
+  {
+   "id": "mrzzsdjxrm2.33106",
+   "kind": "table 2, row 3, column 0",
+   "text": "Board"
+  },
+  {
+   "id": "mrzzsdjxrm2.33113",
+   "kind": "table 2, row 3, column 1",
+   "text": "The file STATE.md on the branch board, which board.yml rewrites from the issues, branches, claim files and pull requests; nobody edits it by hand"
+  },
+  {
+   "id": "mrzzsdjxrm2.33261",
+   "kind": "table 2, row 4, column 0",
+   "text": "Claim"
+  },
+  {
+   "id": "mrzzsdjxrm2.33268",
+   "kind": "table 2, row 4, column 1",
+   "text": "The push that creates the branch claude/N for issue N, whose first commit adds a claim file naming the worker, the plan and the files to touch"
+  },
+  {
+   "id": "mrzzsdjxrm2.33413",
+   "kind": "table 2, row 5, column 0",
+   "text": "CLAIM"
+  },
+  {
+   "id": "mrzzsdjxrm2.33420",
+   "kind": "table 2, row 5, column 1",
+   "text": "The Checklist for Artificial Intelligence in Medical Imaging, updated in 2024 (Radiology: Artificial Intelligence)"
+  },
+  {
+   "id": "mrzzsdjxrm2.33537",
+   "kind": "table 2, row 6, column 0",
+   "text": "claude-code-action"
+  },
+  {
+   "id": "mrzzsdjxrm2.33557",
+   "kind": "table 2, row 6, column 1",
+   "text": "Anthropic's GitHub Action, anthropics/claude-code-action, which runs Claude Code inside a workflow"
+  },
+  {
+   "id": "mrzzsdjxrm2.33658",
+   "kind": "table 2, row 7, column 0",
+   "text": "Compare-and-swap"
+  },
+  {
+   "id": "mrzzsdjxrm2.33676",
+   "kind": "table 2, row 7, column 1",
+   "text": "An update that succeeds only if the value is still what the writer last saw; git applies one to a ref on every push"
+  },
+  {
+   "id": "mrzzsdjxrm2.33794",
+   "kind": "table 2, row 8, column 0",
+   "text": "Coordinator"
+  },
+  {
+   "id": "mrzzsdjxrm2.33807",
+   "kind": "table 2, row 8, column 1",
+   "text": "The deterministic steps in the board's run that release idle claims and announce overlaps, and Claude in coordinator.yml, which plans epics into tasks"
+  },
+  {
+   "id": "mrzzsdjxrm2.33960",
+   "kind": "table 2, row 9, column 0",
+   "text": "CrossHair, Z3"
+  },
+  {
+   "id": "mrzzsdjxrm2.33975",
+   "kind": "table 2, row 9, column 1",
+   "text": "A tool that searches by symbolic execution for inputs that break a Python function's contracts, and the solver it uses"
+  },
+  {
+   "id": "mrzzsdjxrm2.34096",
+   "kind": "table 2, row 10, column 0",
+   "text": "Epic"
+  },
+  {
+   "id": "mrzzsdjxrm2.34102",
+   "kind": "table 2, row 10, column 1",
+   "text": "An issue that asks for more than one piece of work, which the coordinator plans into tasks"
+  },
+  {
+   "id": "mrzzsdjxrm2.34195",
+   "kind": "table 2, row 11, column 0",
+   "text": "Fast-forward"
+  },
+  {
+   "id": "mrzzsdjxrm2.34209",
+   "kind": "table 2, row 11, column 1",
+   "text": "A push that only adds commits on top of the branch's tip, which git accepts without force"
+  },
+  {
+   "id": "mrzzsdjxrm2.34301",
+   "kind": "table 2, row 12, column 0",
+   "text": "Fencing token"
+  },
+  {
+   "id": "mrzzsdjxrm2.34316",
+   "kind": "table 2, row 12, column 1",
+   "text": "A number that rises with each grant of a lock, so a resource can refuse a holder whose lease has expired"
+  },
+  {
+   "id": "mrzzsdjxrm2.34423",
+   "kind": "table 2, row 13, column 0",
+   "text": "Five-hour window, weekly limit"
+  },
+  {
+   "id": "mrzzsdjxrm2.34455",
+   "kind": "table 2, row 13, column 1",
+   "text": "The usage limits of a Claude plan, shared by everything that runs on it"
+  },
+  {
+   "id": "mrzzsdjxrm2.34529",
+   "kind": "table 2, row 14, column 0",
+   "text": "gh-aw"
+  },
+  {
+   "id": "mrzzsdjxrm2.34536",
+   "kind": "table 2, row 14, column 1",
+   "text": "GitHub Agentic Workflows (github/gh-aw), which compiles agent workflows written in Markdown into Actions; its work queue is Symphony's closest neighbor"
+  },
+  {
+   "id": "mrzzsdjxrm2.34690",
+   "kind": "table 2, row 15, column 0",
+   "text": "GITHUB_TOKEN"
+  },
+  {
+   "id": "mrzzsdjxrm2.34704",
+   "kind": "table 2, row 15, column 1",
+   "text": "The token GitHub gives each workflow run, scoped to its repository, with 1,000 API requests an hour"
+  },
+  {
+   "id": "mrzzsdjxrm2.34806",
+   "kind": "table 2, row 16, column 0",
+   "text": "icontract"
+  },
+  {
+   "id": "mrzzsdjxrm2.34817",
+   "kind": "table 2, row 16, column 1",
+   "text": "A Python library for contracts (preconditions, postconditions, invariants) on functions"
+  },
+  {
+   "id": "mrzzsdjxrm2.34907",
+   "kind": "table 2, row 17, column 0",
+   "text": "Interleaving"
+  },
+  {
+   "id": "mrzzsdjxrm2.34921",
+   "kind": "table 2, row 17, column 1",
+   "text": "One order in which the steps of several concurrent workers can happen"
+  },
+  {
+   "id": "mrzzsdjxrm2.34993",
+   "kind": "table 2, row 18, column 0",
+   "text": "Lease"
+  },
+  {
+   "id": "mrzzsdjxrm2.35000",
+   "kind": "table 2, row 18, column 1",
+   "text": "In distributed systems, a lock that expires unless renewed (Gray and Cheriton, 1989). In git, --force-with-lease is a forced push that succeeds only if the remote branch is still where the pusher expects"
+  },
+  {
+   "id": "mrzzsdjxrm2.35206",
+   "kind": "table 2, row 19, column 0",
+   "text": "Mutant"
+  },
+  {
+   "id": "mrzzsdjxrm2.35214",
+   "kind": "table 2, row 19, column 1",
+   "text": "A copy of the code with one deliberate fault; a check that does not catch it does not bite"
+  },
+  {
+   "id": "mrzzsdjxrm2.35307",
+   "kind": "table 2, row 20, column 0",
+   "text": "Open OnDemand"
+  },
+  {
+   "id": "mrzzsdjxrm2.35322",
+   "kind": "table 2, row 20, column 1",
+   "text": "A web portal to a university cluster, through which Beethoven starts its jobs"
+  },
+  {
+   "id": "mrzzsdjxrm2.35402",
+   "kind": "table 2, row 21, column 0",
+   "text": "Oracle"
+  },
+  {
+   "id": "mrzzsdjxrm2.35410",
+   "kind": "table 2, row 21, column 1",
+   "text": "An independent statement of the right outcome, here written from the spec's text, against which every interleaving is checked"
+  },
+  {
+   "id": "mrzzsdjxrm2.35538",
+   "kind": "table 2, row 22, column 0",
+   "text": "Overlap"
+  },
+  {
+   "id": "mrzzsdjxrm2.35547",
+   "kind": "table 2, row 22, column 1",
+   "text": "Two pieces of open work that change the same file; the board lists them in the order they should land"
+  },
+  {
+   "id": "mrzzsdjxrm2.35651",
+   "kind": "table 2, row 23, column 0",
+   "text": "PreToolUse hook"
+  },
+  {
+   "id": "mrzzsdjxrm2.35668",
+   "kind": "table 2, row 23, column 1",
+   "text": "A command Claude Code runs before a tool call, which can refuse the call"
+  },
+  {
+   "id": "mrzzsdjxrm2.35743",
+   "kind": "table 2, row 24, column 0",
+   "text": "Push guard"
+  },
+  {
+   "id": "mrzzsdjxrm2.35755",
+   "kind": "table 2, row 24, column 1",
+   "text": "tools/guard_push.py, a PreToolUse hook that refuses forbidden pushes before they run, on the worker's own machine"
+  },
+  {
+   "id": "mrzzsdjxrm2.35871",
+   "kind": "table 2, row 25, column 0",
+   "text": "REFORMS"
+  },
+  {
+   "id": "mrzzsdjxrm2.35880",
+   "kind": "table 2, row 25, column 1",
+   "text": "Consensus recommendations for science that uses machine learning (Kapoor et al., Science Advances, 2024), 32 items"
+  },
+  {
+   "id": "mrzzsdjxrm2.35997",
+   "kind": "table 2, row 26, column 0",
+   "text": "Release"
+  },
+  {
+   "id": "mrzzsdjxrm2.36006",
+   "kind": "table 2, row 26, column 1",
+   "text": "What happens to a claim with no commit for 24 hours: its labels come off, a comment says what the branch holds, and the branch is renamed released/N-sha, so the work is kept and the name is free"
+  },
+  {
+   "id": "mrzzsdjxrm2.36203",
+   "kind": "table 2, row 27, column 0",
+   "text": "Remote Control"
+  },
+  {
+   "id": "mrzzsdjxrm2.36219",
+   "kind": "table 2, row 27, column 1",
+   "text": "Claude Code's feature that lets a session running on one machine be driven from claude.ai or the Claude app"
+  },
+  {
+   "id": "mrzzsdjxrm2.36329",
+   "kind": "table 2, row 28, column 0",
+   "text": "Required check"
+  },
+  {
+   "id": "mrzzsdjxrm2.36345",
+   "kind": "table 2, row 28, column 1",
+   "text": "A status check that a ruleset makes pass before anything merges; Symphony's is named check"
+  },
+  {
+   "id": "mrzzsdjxrm2.36438",
+   "kind": "table 2, row 29, column 0",
+   "text": "Ruleset"
+  },
+  {
+   "id": "mrzzsdjxrm2.36447",
+   "kind": "table 2, row 29, column 1",
+   "text": "GitHub's rules for branches or tags, such as required checks, blocked force pushes or a merge queue, set for a repository or an organization"
+  },
+  {
+   "id": "mrzzsdjxrm2.36590",
+   "kind": "table 2, row 30, column 0",
+   "text": "Safe outputs"
+  },
+  {
+   "id": "mrzzsdjxrm2.36604",
+   "kind": "table 2, row 30, column 1",
+   "text": "gh-aw's way of letting an agent ask for a write, such as a pull request or a comment, that a separate job with write permission carries out"
+  },
+  {
+   "id": "mrzzsdjxrm2.36746",
+   "kind": "table 2, row 31, column 0",
+   "text": "Slurm, sbatch"
+  },
+  {
+   "id": "mrzzsdjxrm2.36761",
+   "kind": "table 2, row 31, column 1",
+   "text": "The cluster's batch scheduler, and its command for submitting a job"
+  },
+  {
+   "id": "mrzzsdjxrm2.36831",
+   "kind": "table 2, row 32, column 0",
+   "text": "Standard runner"
+  },
+  {
+   "id": "mrzzsdjxrm2.36848",
+   "kind": "table 2, row 32, column 1",
+   "text": "A GitHub-hosted virtual machine of the default size; free and unlimited on public repositories"
+  },
+  {
+   "id": "mrzzsdjxrm2.36945",
+   "kind": "table 2, row 33, column 0",
+   "text": "Stigmergy"
+  },
+  {
+   "id": "mrzzsdjxrm2.36956",
+   "kind": "table 2, row 33, column 1",
+   "text": "Coordination through traces left in a shared environment, as Symphony's agents coordinate through branches and labels rather than messages"
+  },
+  {
+   "id": "mrzzsdjxrm2.37097",
+   "kind": "table 2, row 34, column 0",
+   "text": "Subscription token"
+  },
+  {
+   "id": "mrzzsdjxrm2.37117",
+   "kind": "table 2, row 34, column 1",
+   "text": "CLAUDE_CODE_OAUTH_TOKEN, made by claude setup-token, which lets claude-code-action bill a person's Claude plan instead of an API key"
+  },
+  {
+   "id": "mrzzsdjxrm2.37252",
+   "kind": "table 2, row 35, column 0",
+   "text": "TRIPOD+AI"
+  },
+  {
+   "id": "mrzzsdjxrm2.37263",
+   "kind": "table 2, row 35, column 1",
+   "text": "The reporting guideline for clinical prediction models that use regression or machine learning (BMJ, 2024)"
+  },
+  {
+   "id": "mrzzsdjxrm2.37372",
+   "kind": "table 2, row 36, column 0",
+   "text": "Worker"
+  },
+  {
+   "id": "mrzzsdjxrm2.37380",
+   "kind": "table 2, row 36, column 1",
+   "text": "Anything that claims issues: a person's sessions, a routine, or an agent in GitHub Actions, each labelled worker:name"
+  }
+ ]
+}

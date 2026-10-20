@@ -1,0 +1,28 @@
+# zizmor's settings (issue #248; docs/research/rust-coordinator.md,
+# section 8). scripts/check.sh runs zizmor offline where it is installed,
+# failing on findings of medium severity and above, and CI installs it
+# pinned by hash. Each ignore below was read and is deliberate.
+rules:
+  unpinned-uses:
+    config:
+      policies:
+        # The writing rule pins every action to a major tag
+        # (.claude/rules/writing.md); pinning to commits is PR 1a of the
+        # plan of 2026-10-14 and changes this line when it lands.
+        "*": ref-pin
+  dangerous-triggers:
+    ignore:
+      # pull_request_target runs this file from the default branch and
+      # checks out only the default branch, never the pull request's head.
+      - agents.yml
+      # claude-code-action answers only an actor with write access and
+      # fails the run for anyone else before it posts anything.
+      - claude.yml
+  github-app:
+    ignore:
+      # The App's token is made in the one run that initialises a copy.
+      - template-init.yml
+      # The token wizard needs the installation's whole set, since the
+      # action names no variables permission (token.yml says why); the look
+      # token is revoked before claude starts.
+      - token.yml

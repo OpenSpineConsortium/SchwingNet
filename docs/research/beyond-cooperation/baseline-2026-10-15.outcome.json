@@ -1,0 +1,9 @@
+{
+  "schema": "symphony-arm-outcome/1",
+  "question": "baseline",
+  "arm": "the way of working of 2026-10-15",
+  "tasks": 1,
+  "landed": 1,
+  "modes": null,
+  "source": "symphony-template#94, the pull request of the thread profiled, merged on 2026-10-16 with its check green and no revert since; the record was taken while the thread was still at work (README.md, section 5), so it may not hold all of that work"
+}

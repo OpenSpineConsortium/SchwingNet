@@ -1,0 +1,12 @@
+{
+  "name": "Symphony demo",
+  "image": "mcr.microsoft.com/devcontainers/python:3.12",
+  "postAttachCommand": "bash scripts/demo.sh",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "workbench.startupEditor": "none"
+      }
+    }
+  }
+}

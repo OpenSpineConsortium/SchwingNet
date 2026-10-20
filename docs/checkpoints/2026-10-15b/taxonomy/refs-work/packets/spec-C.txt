@@ -1,0 +1,214 @@
+# Packet spec-C: from the Symphony and Beethoven Taxonomy Spec, sections: 4. Placement
+
+=== [unit mggj4hxkexp.11921] heading level 2
+4. Placement
+
+=== [unit mggj4hxkexp.11934] paragraph
+Two of the twelve axes separate Symphony from its neighbors at a glance: where the coordination state lives, and what one more agent run costs as each system is usually run. Positions inside a quadrant mean nothing; only the quadrant is a claim, and each is sourced in section 5.
+
+=== [unit mggj4hxkexp.12214] embedded drawing (never edit)
+[EMBED node/3dde4a85-438e: Coordinators by where their state lives and what one more run costs - zones only, not measured positions]
+
+=== [unit mggj4hxkexp.12215] paragraph
+The tinted corner, a flat price with the state on the forge, holds five systems. unsorry, a Lean proof swarm, claims by pushing claim files to one shared branch, expires them with a two-hour timer in Actions and renders its board in Actions, but its agents run on volunteers' machines. agentic-setup claims by creating a branch, but its orchestrator is a local session. CCPM claims by setting an assignee and a label, which two agents can both do. aeon runs one agent's scheduled skills in Actions with no claims between workers. Symphony is the only one there that puts agents running in Actions and people's own sessions under one claim rule (Inferred from research/taxonomy/verify/03, whose rows show none of the other four with such a rule; section 8). Below the line, the gh-aw work queue is Symphony's closest neighbor: it too makes a claim atomic with a compare-and-swap on a git ref, but a trusted scheduler grants claims only to Actions runs, a claim ends when its run ends rather than after idle time, and it sits there because its Claude engine takes an API key, workload identity or Copilot credits and refuses the subscription token (Verified, research/taxonomy/verify/01).
+
+=== [unit mggj4hxkexp.12841] paragraph
+Placement on every axis:
+
+=== [unit mggj4hxkexp.12869] table 1, row 0, column 0 (header row)
+#
+
+=== [unit mggj4hxkexp.12872] table 1, row 0, column 1 (header row)
+Axis
+
+=== [unit mggj4hxkexp.12878] table 1, row 0, column 2 (header row)
+Symphony
+
+=== [unit mggj4hxkexp.12888] table 1, row 0, column 3 (header row)
+Beethoven
+
+=== [unit mggj4hxkexp.12899] table 1, row 0, column 4 (header row)
+Nearest neighbors in the same cell
+
+=== [unit mggj4hxkexp.12936] table 1, row 1, column 0
+1
+
+=== [unit mggj4hxkexp.12939] table 1, row 1, column 1
+Stack layer
+
+=== [unit mggj4hxkexp.12952] table 1, row 1, column 2
+L3 coordination, on L4 GitHub
+
+=== [unit mggj4hxkexp.12983] table 1, row 1, column 3
+L4 HPC launcher and L5 research workflows
+
+=== [unit mggj4hxkexp.13026] table 1, row 1, column 4
+L3: openai/symphony, unsorry, CCPM, Beads, gh-aw's queue. L4 on HPC: Open OnDemand apps, VS Code tunnels in Slurm jobs, Academy
+
+=== [unit mggj4hxkexp.13147] table 1, row 2, column 0
+2
+
+=== [unit mggj4hxkexp.13150] table 1, row 2, column 1
+Autonomy
+
+=== [unit mggj4hxkexp.13160] table 1, row 2, column 2
+Sessions: collaborator to approver. Workers that auto-merge: observer, bounded by the required check
+
+=== [unit mggj4hxkexp.13262] table 1, row 2, column 3
+Student sessions: operator to collaborator, supervised by default. The maintainer clicks Publish
+
+=== [unit mggj4hxkexp.13360] table 1, row 2, column 4
+Copilot cloud agent and Devin at approver to observer
+
+=== [unit mggj4hxkexp.13416] table 1, row 3, column 0
+3
+
+=== [unit mggj4hxkexp.13419] table 1, row 3, column 1
+Control topology
+
+=== [unit mggj4hxkexp.13437] table 1, row 3, column 2
+Shared medium (the board) with self-claiming peers, and a planner for epics
+
+=== [unit mggj4hxkexp.13514] table 1, row 3, column 3
+A hierarchy under one lease holder (planned)
+
+=== [unit mggj4hxkexp.13560] table 1, row 3, column 4
+Cursor's planners, workers and judge; Claude Code agent teams; the C-compiler harness, peers with no orchestrator
+
+=== [unit mggj4hxkexp.13676] table 1, row 4, column 0
+4
+
+=== [unit mggj4hxkexp.13679] table 1, row 4, column 1
+Communication medium
+
+=== [unit mggj4hxkexp.13701] table 1, row 4, column 2
+Traces in GitHub objects (issues, labels, branches, claim files, a rendered board); no agent-to-agent chat
+
+=== [unit mggj4hxkexp.13809] table 1, row 4, column 3
+An engine store and a bus (planned); Slurm
+
+=== [unit mggj4hxkexp.13853] table 1, row 4, column 4
+Beads' git-backed ledger; gh-aw's work-queue.jsonl on a branch; agent teams' mailboxes
+
+=== [unit mggj4hxkexp.13942] table 1, row 5, column 0
+5
+
+=== [unit mggj4hxkexp.13945] table 1, row 5, column 1
+Concurrency control
+
+=== [unit mggj4hxkexp.13966] table 1, row 5, column 2
+Hybrid: a claim made by creating a branch, a lease-like release after 24 idle hours, a local fence on forced pushes, optimistic merge through the required check
+
+=== [unit mggj4hxkexp.14104] table 1, row 5, column 3
+A lease with a fencing token (planned)
+
+=== [unit mggj4hxkexp.14144] table 1, row 5, column 4
+Lock files in the C-compiler harness; unsorry's claim files with a timer; agentic-setup's create-only branch push; DND-IT/action-lock; Chubby; Claim Plane's admission control
+
+=== [unit mggj4hxkexp.14244] table 1, row 6, column 0
+6
+
+=== [unit mggj4hxkexp.14247] table 1, row 6, column 1
+Dependencies managed
+
+=== [unit mggj4hxkexp.14269] table 1, row 6, column 2
+All six
+
+=== [unit mggj4hxkexp.14278] table 1, row 6, column 3
+Shared resource, task and subtask, simultaneity
+
+=== [unit mggj4hxkexp.14327] table 1, row 6, column 4
+Claude Code agent teams (task dependencies)
+
+=== [unit mggj4hxkexp.14373] table 1, row 7, column 0
+7
+
+=== [unit mggj4hxkexp.14376] table 1, row 7, column 1
+Execution environment
+
+=== [unit mggj4hxkexp.14399] table 1, row 7, column 2
+GitHub Actions runners, and each worker's own session
+
+=== [unit mggj4hxkexp.14454] table 1, row 7, column 3
+A Slurm batch job in Apptainer
+
+=== [unit mggj4hxkexp.14486] table 1, row 7, column 4
+Copilot cloud agent and gh-aw on Actions; Anthropic's long-running guide on Slurm with tmux
+
+=== [unit mggj4hxkexp.14580] table 1, row 8, column 0
+8
+
+=== [unit mggj4hxkexp.14583] table 1, row 8, column 1
+Trigger and lifetime
+
+=== [unit mggj4hxkexp.14605] table 1, row 8, column 2
+Event-driven, with a six-hourly schedule as a fallback
+
+=== [unit mggj4hxkexp.14661] table 1, row 8, column 3
+Batch; the worker queues its successor before its wall time
+
+=== [unit mggj4hxkexp.14722] table 1, row 8, column 4
+gh-aw; claude-code-action
+
+=== [unit mggj4hxkexp.14750] table 1, row 9, column 0
+9
+
+=== [unit mggj4hxkexp.14753] table 1, row 9, column 1
+State and memory
+
+=== [unit mggj4hxkexp.14771] table 1, row 9, column 2
+git and GitHub as the durable ledger; docs/memory as shared memory
+
+=== [unit mggj4hxkexp.14839] table 1, row 9, column 3
+Run records, an engine store, status files
+
+=== [unit mggj4hxkexp.14883] table 1, row 9, column 4
+Beads; Temporal
+
+=== [unit mggj4hxkexp.14901] table 1, row 10, column 0
+10
+
+=== [unit mggj4hxkexp.14905] table 1, row 10, column 1
+Cost model and payer
+
+=== [unit mggj4hxkexp.14927] table 1, row 10, column 2
+Compute: free standard minutes on a public repository. Inference: one Claude plan for the Actions workers, each person's own for sessions. Protocol MIT, App paid
+
+=== [unit mggj4hxkexp.15090] table 1, row 10, column 3
+Compute: the university's allocation. Inference: the student's own plan. Proprietary
+
+=== [unit mggj4hxkexp.15176] table 1, row 10, column 4
+gh-aw: minutes plus API key or Copilot credits. Copilot agents: minutes plus AI credits. openai/codex-action: API key
+
+=== [unit mggj4hxkexp.15296] table 1, row 11, column 0
+11
+
+=== [unit mggj4hxkexp.15300] table 1, row 11, column 1
+Verification and governance
+
+=== [unit mggj4hxkexp.15329] table 1, row 11, column 2
+A deterministic required check; qa planned; the owner or auto-merge decides
+
+=== [unit mggj4hxkexp.15406] table 1, row 11, column 3
+Contracts and CrossHair with Z3 as a required check; REFORMS and CLAIM gates planned; a person clicks Publish
+
+=== [unit mggj4hxkexp.15517] table 1, row 11, column 4
+GitHub's security validation of agent code; Claude Code Review (advisory, never blocks); data-to-paper's number tracing
+
+=== [unit mggj4hxkexp.15639] table 1, row 12, column 0
+12
+
+=== [unit mggj4hxkexp.15643] table 1, row 12, column 1
+Domain and maturity
+
+=== [unit mggj4hxkexp.15664] table 1, row 12, column 2
+End-to-end software development; pre-release
+
+=== [unit mggj4hxkexp.15710] table 1, row 12, column 3
+Research software for a medical imaging study; mostly unbuilt beyond qa
+
+=== [unit mggj4hxkexp.15783] table 1, row 12, column 4
+The AI Scientist, Agent Laboratory, Kosmos
+
+=== [unit mggj4hxkexp.15826] paragraph
+All placements are Inferred from research notes 01, 04 to 07 and 13.

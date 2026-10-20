@@ -1,0 +1,96 @@
+# A job on the lab's cluster. The runner that Beethoven's hpcworker serves as a Slurm job
+# (OpenSpineConsortium/hpcworker, tools/grid_runner.sh --start --repo <this repository>) takes a job
+# that names its labels, so the command below runs on a compute node, in a checkout of the ref, inside
+# the runner's own container (no home, no lab volume, no scheduler, the node's own temp), and GitHub
+# keeps the log and the artifact as for any job; no Actions minutes are spent. Run from the workflow's
+# page with a command, or called by another workflow with one. No secret of the repository's reaches
+# the grid: the job holds GitHub's own token for its checkout alone and does not keep it, and nothing
+# of Claude's is anywhere near a runner. Only a private or internal repository has a runner (the
+# chain refuses a public one). The job runs only for an event that names a private repository that is
+# not a fork, so a caller started by a schedule, whose event names no repository, is skipped; and
+# never for a pull request from a fork, whose own copy of this file could drop that test, so the
+# repository's setting "Run workflows from fork pull requests" stays off. The job must end within the
+# chain's margin (--margin at --start, 60 minutes unless set), or the wall time cuts it off and GitHub
+# reports the runner lost, so timeout-minutes stays under it. docs/setup/grid.md says how the chain is
+# started and what the container carries. With start ticked, grid-gate.yml first starts the chain
+# through the grid's ssh gate (a chain already queued or running is no failure), so it need not wait in
+# Slurm's queue between jobs; the job then waits for the chain's runner as it always does.
+name: Grid
+on:
+  workflow_dispatch:
+    inputs:
+      command:
+        description: "What to run on the grid, in a checkout of this ref, as bash reads it"
+        required: true
+        default: "bash scripts/check.sh"
+      python:
+        description: "Set Python 3.12 up first, as the checks on GitHub's machines do (the image's own python3 is Ubuntu's)"
+        type: boolean
+        default: true
+      start:
+        description: "Start the runner chain first through the grid's ssh gate (grid-gate.yml)"
+        type: boolean
+        default: false
+  workflow_call:
+    inputs:
+      command:
+        type: string
+        required: true
+      python:
+        type: boolean
+        default: true
+      start:
+        type: boolean
+        default: false
+      artifact:
+        description: "The artifact's name before -<run>-<attempt>; a caller that runs this job twice in one run gives each its own"
+        type: string
+        default: grid
+    secrets:
+      # only for start: a caller passes it by name, GRID_GATE_KEY: ${{ secrets.GRID_GATE_KEY }}
+      GRID_GATE_KEY:
+        required: false
+permissions:
+  contents: read
+jobs:
+  start:
+    if: inputs.start
+    uses: ./.github/workflows/grid-gate.yml
+    with:
+      word: start
+    # the environment's secret, passed by name (grid-gate.yml's header says why)
+    secrets:
+      GRID_GATE_KEY: ${{ secrets.GRID_GATE_KEY }}
+  grid:
+    needs: start
+    # never a public repository, whose forks could run their pull requests on the grid, never a
+    # repository that is itself a fork, and never a pull request from a fork; and not after a start
+    # that failed (a start left out is skipped, which is no failure)
+    if: >-
+      !cancelled() && needs.start.result != 'failure' &&
+      github.event.repository.private == true && github.event.repository.fork == false &&
+      (github.event.pull_request == null || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: [self-hosted, grid]
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        if: inputs.python
+        with:
+          python-version: "3.12"
+      - name: run the command on the compute node
+        env:
+          COMMAND: ${{ inputs.command }}
+        run: |
+          set -o pipefail
+          { printf '%s on %s as %s, in %s\n' "$(date -u +%FT%TZ)" "$(hostname -s)" "$(id -un)" "$(pwd)"; head -2 /etc/os-release; } | tee grid.log
+          bash -c "$COMMAND" 2>&1 | tee -a grid.log
+      - name: keep the log as an artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ inputs.artifact || 'grid' }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: grid.log
+          retention-days: 14

@@ -1,0 +1,3 @@
+The Python that runs the checks in CI is 3.12, so nothing in tools/ or tests/ may use an API newer than that.
+
+GitHub's ubuntu-latest runner carries Python 3.12 as `python3`, and the Checks workflow runs `scripts/check.sh` with it, while a laptop or a cloud session may have 3.13. The template's first Checks run failed on `Path.read_text(newline="")`, which exists only from 3.13; `open(path, newline="")` does the same on every supported version. When a change uses a standard-library call added after 3.12, run the tests with `python3.12` where one is installed, or read the "Changed in version" note in the Python documentation first. .claude/rules/writing.md names 3.12 as the floor for the same reason.

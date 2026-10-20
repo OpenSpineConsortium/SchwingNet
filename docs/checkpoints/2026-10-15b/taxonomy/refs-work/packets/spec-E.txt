@@ -1,0 +1,244 @@
+# Packet spec-E: from the Symphony and Beethoven Taxonomy Spec, sections: 5. Neighbors compared / 5.2 Research automation; 5. Neighbors compared / 5.3 Verification of agent code and of protocols
+
+=== [unit mggj4hxkexp.47049] heading level 3
+5.2 Research automation
+
+=== [unit mggj4hxkexp.47076] table 1, row 0, column 0 (header row)
+System
+
+=== [unit mggj4hxkexp.47084] table 1, row 0, column 1 (header row)
+Runs where
+
+=== [unit mggj4hxkexp.47096] table 1, row 0, column 2 (header row)
+How it checks its work
+
+=== [unit mggj4hxkexp.47120] table 1, row 0, column 3 (header row)
+Reporting checklist as a gate
+
+=== [unit mggj4hxkexp.47151] table 1, row 0, column 4 (header row)
+Paid by
+
+=== [unit mggj4hxkexp.47161] table 1, row 1, column 0
+Beethoven
+
+=== [unit mggj4hxkexp.47172] table 1, row 1, column 1
+A Slurm job on the university cluster, through Open OnDemand
+
+=== [unit mggj4hxkexp.47234] table 1, row 1, column 2
+Contracts with CrossHair and Z3 as a required check
+
+=== [unit mggj4hxkexp.47287] table 1, row 1, column 3
+Planned: REFORMS (20 items in code) and CLAIM; one check built
+
+=== [unit mggj4hxkexp.47351] table 1, row 1, column 4
+The student's plan and the allocation
+
+=== [unit mggj4hxkexp.47391] table 1, row 2, column 0
+The AI Scientist v2
+
+=== [unit mggj4hxkexp.47412] table 1, row 2, column 1
+The user's GPU machine, in Docker
+
+=== [unit mggj4hxkexp.47447] table 1, row 2, column 2
+One model reviews the finished paper's text and a vision model its figures (Verified, the v2 launcher; v1 used an ensemble of five)
+
+=== [unit mggj4hxkexp.47479] table 1, row 2, column 3
+None
+
+=== [unit mggj4hxkexp.47485] table 1, row 2, column 4
+API, about $15 to $20 a run
+
+=== [unit mggj4hxkexp.47515] table 1, row 3, column 0
+Agent Laboratory
+
+=== [unit mggj4hxkexp.47533] table 1, row 3, column 1
+The user's machine
+
+=== [unit mggj4hxkexp.47553] table 1, row 3, column 2
+A person in the loop
+
+=== [unit mggj4hxkexp.47575] table 1, row 3, column 3
+None
+
+=== [unit mggj4hxkexp.47581] table 1, row 3, column 4
+API
+
+=== [unit mggj4hxkexp.47587] table 1, row 4, column 0
+Kosmos (Edison)
+
+=== [unit mggj4hxkexp.47604] table 1, row 4, column 1
+The vendor's cloud
+
+=== [unit mggj4hxkexp.47624] table 1, row 4, column 2
+Experts graded statements after the fact: 79.4% accurate
+
+=== [unit mggj4hxkexp.47682] table 1, row 4, column 3
+None
+
+=== [unit mggj4hxkexp.47688] table 1, row 4, column 4
+The user, about $200 a run at launch, with a free academic tier (Reported)
+
+=== [unit mggj4hxkexp.47710] table 1, row 5, column 0
+data-to-paper
+
+=== [unit mggj4hxkexp.47725] table 1, row 5, column 1
+The user's machine
+
+=== [unit mggj4hxkexp.47745] table 1, row 5, column 2
+Every number traced to the line of code that made it
+
+=== [unit mggj4hxkexp.47799] table 1, row 5, column 3
+None
+
+=== [unit mggj4hxkexp.47805] table 1, row 5, column 4
+API
+
+=== [unit mggj4hxkexp.47811] table 1, row 6, column 0
+Biomni
+
+=== [unit mggj4hxkexp.47819] table 1, row 6, column 1
+A local environment
+
+=== [unit mggj4hxkexp.47840] table 1, row 6, column 2
+None beyond its tools; runs model-written code with full privileges
+
+=== [unit mggj4hxkexp.47909] table 1, row 6, column 3
+None
+
+=== [unit mggj4hxkexp.47915] table 1, row 6, column 4
+Anthropic API key
+
+=== [unit mggj4hxkexp.47935] table 1, row 7, column 0
+Anthropic's long-running guide
+
+=== [unit mggj4hxkexp.47967] table 1, row 7, column 1
+A Slurm GPU node, in tmux
+
+=== [unit mggj4hxkexp.47994] table 1, row 7, column 2
+Tests before each commit, a changelog as lab notes
+
+=== [unit mggj4hxkexp.48046] table 1, row 7, column 3
+None
+
+=== [unit mggj4hxkexp.48052] table 1, row 7, column 4
+Plan or API, and the allocation
+
+=== [unit mggj4hxkexp.48086] table 1, row 8, column 0
+Academy (Argonne); hpc-mcp and fractale (LLNL)
+
+=== [unit mggj4hxkexp.48134] table 1, row 8, column 1
+Research infrastructure, clusters
+
+=== [unit mggj4hxkexp.48169] table 1, row 8, column 2
+None of their own
+
+=== [unit mggj4hxkexp.48188] table 1, row 8, column 3
+None
+
+=== [unit mggj4hxkexp.48194] table 1, row 8, column 4
+The allocation
+
+=== [unit mggj4hxkexp.48211] table 1, row 9, column 0
+Snakemake, Nextflow, Metaflow
+
+=== [unit mggj4hxkexp.48242] table 1, row 9, column 1
+Clusters or clouds
+
+=== [unit mggj4hxkexp.48262] table 1, row 9, column 2
+Workflow structure only; no agent
+
+=== [unit mggj4hxkexp.48297] table 1, row 9, column 3
+None
+
+=== [unit mggj4hxkexp.48303] table 1, row 9, column 4
+The allocation
+
+=== [unit mggj4hxkexp.48318] paragraph
+Sources: research note 11 (Verified for repositories and licences; Reported for figures from papers).
+
+=== [unit mggj4hxkexp.48420] heading level 3
+5.3 Verification of agent code and of protocols
+
+=== [unit mggj4hxkexp.48471] table 2, row 0, column 0 (header row)
+System
+
+=== [unit mggj4hxkexp.48479] table 2, row 0, column 1 (header row)
+What it checks
+
+=== [unit mggj4hxkexp.48495] table 2, row 0, column 2 (header row)
+Can it block a merge?
+
+=== [unit mggj4hxkexp.48519] table 2, row 1, column 0
+symphony-protocol's harness
+
+=== [unit mggj4hxkexp.48548] table 2, row 1, column 1
+The shipped library, over every interleaving of scripted workers, against an oracle written from the spec's text, with 93 mutants
+
+=== [unit mggj4hxkexp.48679] table 2, row 1, column 2
+Its fast lane, a search to depth 5, is part of the required check; the deep searches run weekly or by hand, not as required checks
+
+=== [unit mggj4hxkexp.48730] table 2, row 2, column 0
+beethoven-qa
+
+=== [unit mggj4hxkexp.48744] table 2, row 2, column 1
+Contracts on every public function, by bounded symbolic search with CrossHair and Z3
+
+=== [unit mggj4hxkexp.48830] table 2, row 2, column 2
+Yes, as the required check, with no human gate
+
+=== [unit mggj4hxkexp.48879] table 2, row 3, column 0
+gh-aw's work-queue models
+
+=== [unit mggj4hxkexp.48906] table 2, row 3, column 1
+TLA+ models with 68 deliberately broken configurations; not the shipped Go and JavaScript
+
+=== [unit mggj4hxkexp.48997] table 2, row 3, column 2
+No
+
+=== [unit mggj4hxkexp.49002] table 2, row 4, column 0
+GitHub's security validation of agent code
+
+=== [unit mggj4hxkexp.49046] table 2, row 4, column 1
+CodeQL, secret scanning and the advisory database, on Copilot's and third-party agents' code, with no Advanced Security licence
+
+=== [unit mggj4hxkexp.49175] table 2, row 4, column 2
+It runs on the agent's own work
+
+=== [unit mggj4hxkexp.49209] table 2, row 5, column 0
+Copilot code review
+
+=== [unit mggj4hxkexp.49230] table 2, row 5, column 1
+A model's review
+
+=== [unit mggj4hxkexp.49248] table 2, row 5, column 2
+Only when Copilot approvals are switched on
+
+=== [unit mggj4hxkexp.49294] table 2, row 6, column 0
+Claude Code Review
+
+=== [unit mggj4hxkexp.49314] table 2, row 6, column 1
+Several model reviewers
+
+=== [unit mggj4hxkexp.49339] table 2, row 6, column 2
+Never: it neither approves nor blocks
+
+=== [unit mggj4hxkexp.49379] table 2, row 7, column 0
+SpecPylot
+
+=== [unit mggj4hxkexp.49390] table 2, row 7, column 1
+A model writes icontract contracts; CrossHair validates them
+
+=== [unit mggj4hxkexp.49452] table 2, row 7, column 2
+No: a generator, and it needs an API key
+
+=== [unit mggj4hxkexp.49495] table 2, row 8, column 0
+Specula; untyped
+
+=== [unit mggj4hxkexp.49513] table 2, row 8, column 1
+Agents write and model-check TLA+ of system code; a TLA+ model of one agent harness's tool calls
+
+=== [unit mggj4hxkexp.49611] table 2, row 8, column 2
+No
+
+=== [unit mggj4hxkexp.49614] paragraph
+Sources: research note 12 and research/taxonomy/verify/03.

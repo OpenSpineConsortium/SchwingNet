@@ -1,0 +1,1087 @@
+{
+ "edits": [
+  {
+   "unit_id": "mrzzsdjxrm2.18626",
+   "find": "two agents passed 183.",
+   "replace": "two agents passed 183 [[s1]]."
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.18626",
+   "find": "did not raise success;",
+   "replace": "did not raise success [[s1]];"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.18626",
+   "find": "did better than one agent,",
+   "replace": "did better than one agent [[s2]],"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.18911",
+   "find": "creates the branch claude/N,",
+   "replace": "creates the branch claude/N [[s3]],"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.18911",
+   "find": "racing creations win,",
+   "replace": "racing creations win [[s4]],"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.18911",
+   "find": "over GitHub's own objects,",
+   "replace": "over GitHub's own objects [[s3,s5]],"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.18911",
+   "find": "decides what merges",
+   "replace": "decides what merges [[s6]]"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.19284",
+   "find": "free standard runners",
+   "replace": "free standard runners [[s7,s8]]"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.19284",
+   "find": "make no model call.",
+   "replace": "make no model call [[s3,s5]]."
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.19284",
+   "find": "a flat plan, not tokens,",
+   "replace": "a flat plan, not tokens [[s9]],"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.19492",
+   "find": "written from its spec,",
+   "replace": "written from its spec [[s11]],"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.19492",
+   "find": "the checks bite,",
+   "replace": "the checks bite [[s12]],"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.19492",
+   "find": "found no violation.",
+   "replace": "found no violation [[s10]]."
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.19492",
+   "find": "(F8) is open.",
+   "replace": "(F8) is open [[s11]]."
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.19791",
+   "find": "Inference is still paid,",
+   "replace": "Inference is still paid [[s13]],"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.19791",
+   "find": "usage window is shared.",
+   "replace": "usage window is shared [[s9,s13]]."
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.19791",
+   "find": "only at its creation,",
+   "replace": "only at its creation [[s4]],"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.20228",
+   "find": "its paper cannot show",
+   "replace": "its paper cannot show [[s14]]"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.20489",
+   "find": "each other's work,",
+   "replace": "each other's work [[s1]],"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.20489",
+   "find": "its paper cannot show.",
+   "replace": "its paper cannot show [[s14]]."
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.20489",
+   "find": "such as CLAIM and REFORMS",
+   "replace": "such as CLAIM [[s15]] and REFORMS [[s16]]"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.20489",
+   "find": "One such check is built today;",
+   "replace": "One such check is built today [[s17]];"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.21382",
+   "find": "runs Symphony's code today",
+   "replace": "runs Symphony's code today [[s18]]"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.21570",
+   "find": "approval of AI tools,",
+   "replace": "approval of AI tools [[s19]],"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.21570",
+   "find": "on a personal plan,",
+   "replace": "on a personal plan [[s19]],"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.21570",
+   "find": "limits under HIPAA",
+   "replace": "limits under HIPAA [[s20]]"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.21864",
+   "find": "creates branch claude/N,",
+   "replace": "creates branch claude/N [[s3]],"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.21864",
+   "find": "racing creations win,",
+   "replace": "racing creations win [[s4]],"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.21864",
+   "find": "Actions jobs on GITHUB_TOKEN,",
+   "replace": "Actions jobs on GITHUB_TOKEN [[s5]],"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.21864",
+   "find": "where judgment is needed.",
+   "replace": "where judgment is needed [[s3]]."
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.21864",
+   "find": "seven on two,",
+   "replace": "seven on two [[s10]],"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.21864",
+   "find": "written from its spec,",
+   "replace": "written from its spec [[s11]],"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.21864",
+   "find": "are written down.",
+   "replace": "are written down [[s11]]."
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.22525",
+   "find": "creation is enforced.",
+   "replace": "creation is enforced [[s4]]."
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.22525",
+   "find": "rename the branch.",
+   "replace": "rename the branch [[s21]]."
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.22525",
+   "find": "another worker's claim, and on",
+   "replace": "another worker's claim [[s22]], and on"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.22525",
+   "find": "had neither branch",
+   "replace": "had neither branch [[s4]]"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.22937",
+   "find": "which the pusher writes.",
+   "replace": "which the pusher writes [[s11]]."
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.22937",
+   "find": "is written but not merged",
+   "replace": "is written but not merged [[s4]]"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.23131",
+   "find": "not minutes.",
+   "replace": "not minutes [[s8]]."
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.23131",
+   "find": "on GITHUB_TOKEN,",
+   "replace": "on GITHUB_TOKEN [[s23]],"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.23131",
+   "find": "100 queued runs,",
+   "replace": "100 queued runs [[s23]],"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.23131",
+   "find": "concurrent jobs on Free,",
+   "replace": "concurrent jobs on Free [[s23]],"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.23131",
+   "find": "in the library yet",
+   "replace": "in the library yet [[s24]]"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.23312",
+   "find": "on a git ref,",
+   "replace": "on a git ref [[s25]],"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.23312",
+   "find": "to Actions runs only,",
+   "replace": "to Actions runs only [[s25]],"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.23312",
+   "find": "never expires for idleness,",
+   "replace": "never expires for idleness [[s25]],"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.23312",
+   "find": "the subscription token",
+   "replace": "the subscription token [[s26]]"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.23541",
+   "find": "1,379 library tests,",
+   "replace": "1,379 library tests [[s27]],"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.23541",
+   "find": "5 in the required check,",
+   "replace": "5 in the required check [[s12]],"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.23541",
+   "find": "weekly deep searches)",
+   "replace": "weekly deep searches [[s10]])"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.23541",
+   "find": "from the spec's text,",
+   "replace": "from the spec's text [[s11]],"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.23541",
+   "find": "with 93 mutants",
+   "replace": "with 93 mutants [[s12]]"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.23761",
+   "find": "no server to run.",
+   "replace": "no server to run [[s3]]."
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.23761",
+   "find": "free on GitHub's machines;",
+   "replace": "free on GitHub's machines [[s7]];"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.23761",
+   "find": "share one plan's usage limits.",
+   "replace": "share one plan's usage limits [[s9]]."
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.23761",
+   "find": "decides what merges.",
+   "replace": "decides what merges [[s6]]."
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.24203",
+   "find": "A GitHub login,",
+   "replace": "A GitHub login [[s3]],"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.24203",
+   "find": "for their own sessions.",
+   "replace": "for their own sessions [[s31]]."
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.24299",
+   "find": "nothing in minutes.",
+   "replace": "nothing in minutes [[s7]]."
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.24299",
+   "find": "a price per minute:",
+   "replace": "a price per minute [[s7]]:"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.24299",
+   "find": "Max $100 or $200.",
+   "replace": "Max $100 or $200 [[s13]]."
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.24596",
+   "find": "which have no GPUs.",
+   "replace": "which have no GPUs [[s28]]."
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.24596",
+   "find": "runs on the cluster,",
+   "replace": "runs on the cluster [[s29]],"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.24743",
+   "find": "0.4.1 is the last release,",
+   "replace": "0.4.1 is the last release [[s30]],"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.24743",
+   "find": "are not built",
+   "replace": "are not built [[s31]]"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.24984",
+   "find": "quoting GitHub,",
+   "replace": "quoting GitHub [[s8]],"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.25116",
+   "find": "The minutes are free;",
+   "replace": "The minutes are free [[s7]];"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.25116",
+   "find": "paid by a Claude plan",
+   "replace": "paid by a Claude plan [[s9]]"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.25181",
+   "find": "make no model call",
+   "replace": "make no model call [[s5]]"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.25263",
+   "find": "concurrent jobs on Free,",
+   "replace": "concurrent jobs on Free [[s23]],"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.25263",
+   "find": "1,000 API requests an hour,",
+   "replace": "1,000 API requests an hour [[s23]],"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.25263",
+   "find": "one plan's window",
+   "replace": "one plan's window [[s9]]"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.25345",
+   "find": "twice a private one's",
+   "replace": "twice a private one's [[s8]]"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.25455",
+   "find": "paid by a Claude plan,",
+   "replace": "paid by a Claude plan [[s9]],"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.25455",
+   "find": "bills minutes past its quota,",
+   "replace": "bills minutes past its quota [[s7]],"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.25455",
+   "find": "Phase 3 rails exist",
+   "replace": "Phase 3 rails exist [[s32]]"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.25552",
+   "find": "Rulesets, required checks,",
+   "replace": "Rulesets, required checks [[s34]],"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.25552",
+   "find": "environments with reviewers,",
+   "replace": "environments with reviewers [[s35]],"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.25552",
+   "find": "CodeQL and secret scanning",
+   "replace": "CodeQL and secret scanning [[s33]]"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.25675",
+   "find": "all have prior art;",
+   "replace": "all have prior art [[s36]];"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.25793",
+   "find": "the repository the state",
+   "replace": "the repository the state [[s3]]"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.25916",
+   "find": "on the university cluster,",
+   "replace": "on the university cluster [[s29]],"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.25916",
+   "find": "repositories are private",
+   "replace": "repositories are private [[s18]]"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.25992",
+   "find": "unlimited free minutes",
+   "replace": "unlimited free minutes [[s37]]"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.26091",
+   "find": "repository's own project",
+   "replace": "repository's own project [[s38]]"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.26196",
+   "find": "for claude-code-action",
+   "replace": "for claude-code-action [[s9]]"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.26314",
+   "find": "for a shared secret,",
+   "replace": "for a shared secret [[s9]],"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.26314",
+   "find": "individual usage",
+   "replace": "individual usage [[s39]]"
+  }
+ ],
+ "sources": [
+  {
+   "key": "s1",
+   "kind": "preprint",
+   "authors": [
+    "Khatua A",
+    "Zhu H",
+    "Tran P",
+    "Prabhudesai A",
+    "Sadrieh F",
+    "Lieberwirth JK",
+    "Yu X",
+    "Fu Y",
+    "Ryan MJ",
+    "Pei J",
+    "Yang D"
+   ],
+   "title": "CooperBench: Why Coding Agents Cannot be Your Teammates Yet",
+   "container": "arXiv",
+   "date": "2026-01-27",
+   "version": "2601.13295",
+   "url": "https://arxiv.org/abs/2601.13295",
+   "public_url": "https://github.com/cooperbench/website/blob/97dbb0a/public/static/pdfs/main.pdf",
+   "read": "opened",
+   "path": "",
+   "supports": "CooperBench's solo and cooperative pass counts, failure causes, messaging"
+  },
+  {
+   "key": "s2",
+   "kind": "repository-file",
+   "authors": [],
+   "title": "docs/team_harness_ablation_report.html",
+   "container": "cooperbench/CooperBench",
+   "date": "2026-09-14",
+   "version": "63b9d44",
+   "url": "https://github.com/cooperbench/CooperBench/blob/63b9d44/docs/team_harness_ablation_report.html",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the later ablation: shared git remote and team task list above solo, one seed, 50 pairs"
+  },
+  {
+   "key": "s3",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "docs/agents/PROTOCOL.md",
+   "container": "OpenSpineConsortium/symphony-template",
+   "date": "2026-10-15",
+   "version": "15d3f22",
+   "url": "https://github.com/OpenSpineConsortium/symphony-template/blob/15d3f22/docs/agents/PROTOCOL.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the claim as the first push of claude/N; board, release and overlaps in the board run; no Claude in them"
+  },
+  {
+   "key": "s4",
+   "kind": "project-record",
+   "authors": [],
+   "title": "Verify 02: the claim lock, idleness and re-claims after a merge",
+   "container": "Symphony and Beethoven taxonomy research, project files",
+   "date": "2026-10-15",
+   "version": "",
+   "url": "",
+   "public_url": "",
+   "read": "record",
+   "path": "/mnt/project-files/research/taxonomy/verify/02-claim-lock.md",
+   "supports": "claim-lock experiments: racing creations, pushes onto a claim, the guard's directory, the F8 fix branch"
+  },
+  {
+   "key": "s5",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": ".github/workflows/board.yml",
+   "container": "OpenSpineConsortium/symphony-template",
+   "date": "2026-10-15",
+   "version": "15d3f22",
+   "url": "https://github.com/OpenSpineConsortium/symphony-template/blob/15d3f22/.github/workflows/board.yml",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "board, idle-claim release and overlaps as one Actions job on GITHUB_TOKEN alone"
+  },
+  {
+   "key": "s6",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "docs/setup/ruleset-main.json",
+   "container": "OpenSpineConsortium/symphony-template",
+   "date": "2026-10-15",
+   "version": "15d3f22",
+   "url": "https://github.com/OpenSpineConsortium/symphony-template/blob/15d3f22/docs/setup/ruleset-main.json",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the ruleset requiring the check \"check\" before a merge"
+  },
+  {
+   "key": "s7",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "content/billing/concepts/product-billing/github-actions.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs/blob/12691d2/content/billing/concepts/product-billing/github-actions.md",
+   "public_url": "https://docs.github.com/en/billing/concepts/product-billing/github-actions",
+   "read": "opened",
+   "path": "",
+   "supports": "Actions free on public repositories; private quotas and per-minute prices"
+  },
+  {
+   "key": "s8",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "data/reusables/actions/supported-github-runners.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs/blob/12691d2/data/reusables/actions/supported-github-runners.md",
+   "public_url": "https://docs.github.com/en/actions/reference/runners/github-hosted-runners",
+   "read": "opened",
+   "path": "",
+   "supports": "standard runners free and unlimited on public repositories; 4 vCPU/16 GB public, 2 vCPU/8 GB private"
+  },
+  {
+   "key": "s9",
+   "kind": "documentation",
+   "authors": [
+    "Anthropic"
+   ],
+   "title": "Claude Code GitHub Actions",
+   "container": "Claude Code Docs",
+   "date": "",
+   "version": "",
+   "url": "https://code.claude.com/docs/en/github-actions",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the subscription OAuth token for claude-code-action; runs bill the subscription; API key advised for shared secrets"
+  },
+  {
+   "key": "s10",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "validation/runs/2026-10-14/README.md",
+   "container": "OpenSpineConsortium/symphony-protocol",
+   "date": "2026-10-15",
+   "version": "a3a5b4d",
+   "url": "https://github.com/OpenSpineConsortium/symphony-protocol/blob/a3a5b4d/validation/runs/2026-10-14/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the deep run of record: depth 8 on one issue, 16.7 M states; depth 7 on two; no violation"
+  },
+  {
+   "key": "s11",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "validation/DESIGN.md",
+   "container": "OpenSpineConsortium/symphony-protocol",
+   "date": "2026-10-15",
+   "version": "a3a5b4d",
+   "url": "https://github.com/OpenSpineConsortium/symphony-protocol/blob/a3a5b4d/validation/DESIGN.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the harness design: oracle from the spec text; findings F1 to F19 and their status, F8 open"
+  },
+  {
+   "key": "s12",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "validation/README.md",
+   "container": "OpenSpineConsortium/symphony-protocol",
+   "date": "2026-10-15",
+   "version": "a3a5b4d",
+   "url": "https://github.com/OpenSpineConsortium/symphony-protocol/blob/a3a5b4d/validation/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the mutation lane (93 mutants) and the fast lane at depth 5 in the required check"
+  },
+  {
+   "key": "s13",
+   "kind": "web-page",
+   "authors": [
+    "Anthropic"
+   ],
+   "title": "Plans & pricing",
+   "container": "claude.com",
+   "date": "",
+   "version": "",
+   "url": "https://claude.com/pricing",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Claude plan prices; one usage pool with a five-hour window"
+  },
+  {
+   "key": "s14",
+   "kind": "preprint",
+   "authors": [
+    "Luo",
+    "Kasirzadeh",
+    "Shah"
+   ],
+   "title": "arXiv 2509.08713",
+   "container": "arXiv (NeurIPS 2025)",
+   "date": "2025",
+   "version": "2509.08713",
+   "url": "https://arxiv.org/abs/2509.08713",
+   "public_url": "",
+   "read": "search",
+   "path": "",
+   "supports": "AI-scientist failures detectable from trace logs and code, not from the paper"
+  },
+  {
+   "key": "s15",
+   "kind": "paper",
+   "authors": [
+    "Tejani",
+    "Klontzas",
+    "Gatti",
+    "Mongan",
+    "Moy",
+    "Park",
+    "Kahn"
+   ],
+   "title": "CLAIM 2024 Update",
+   "container": "Radiology: Artificial Intelligence 6(4):e240300",
+   "date": "2024-05-29",
+   "version": "",
+   "url": "https://doi.org/10.1148/ryai.240300",
+   "public_url": "",
+   "read": "search",
+   "path": "",
+   "supports": "the CLAIM reporting checklist for AI in medical imaging"
+  },
+  {
+   "key": "s16",
+   "kind": "paper",
+   "authors": [
+    "Kapoor",
+    "Narayanan"
+   ],
+   "title": "REFORMS: Consensus-based Recommendations for Machine-learning-based Science",
+   "container": "Science Advances 10(18):eadk3452",
+   "date": "2024-05",
+   "version": "",
+   "url": "https://doi.org/10.1126/sciadv.adk3452",
+   "public_url": "",
+   "read": "search",
+   "path": "",
+   "supports": "the REFORMS reporting checklist for machine-learning-based science"
+  },
+  {
+   "key": "s17",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "README.md",
+   "container": "OpenSpineConsortium/beethoven-research",
+   "date": "",
+   "version": "7e8fd69",
+   "url": "https://github.com/OpenSpineConsortium/beethoven-research/blob/7e8fd69/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the one built check, splits.py; the rest of the pipeline not built"
+  },
+  {
+   "key": "s18",
+   "kind": "project-record",
+   "authors": [],
+   "title": "The Beethoven engine (beethoven-qa, beethoven-agents, beethoven-research) and the stack as its owner describes it",
+   "container": "Symphony and Beethoven taxonomy research, project files",
+   "date": "2026-10-15",
+   "version": "",
+   "url": "",
+   "public_url": "",
+   "read": "record",
+   "path": "/mnt/project-files/research/taxonomy/notes/05-beethoven-engine.md",
+   "supports": "no Beethoven repository references Symphony (grep); the three repositories private (GitHub API read)"
+  },
+  {
+   "key": "s19",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "docs/WAYNE_STATE_PILOT.md",
+   "container": "OpenSpineConsortium/hpcworker",
+   "date": "2026-10-07",
+   "version": "3b22e70",
+   "url": "https://github.com/OpenSpineConsortium/hpcworker/blob/3b22e70/docs/WAYNE_STATE_PILOT.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Wayne State's AI-tool approval rule; no BAA on a personal plan"
+  },
+  {
+   "key": "s20",
+   "kind": "documentation",
+   "authors": [
+    "Anthropic"
+   ],
+   "title": "Continue local sessions from any device with Remote Control",
+   "container": "Claude Code Docs",
+   "date": "",
+   "version": "",
+   "url": "https://code.claude.com/docs/en/remote-control",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Remote Control unavailable under the HIPAA configuration"
+  },
+  {
+   "key": "s21",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "docs/setup/github.md",
+   "container": "OpenSpineConsortium/symphony-template",
+   "date": "2026-10-15",
+   "version": "15d3f22",
+   "url": "https://github.com/OpenSpineConsortium/symphony-template/blob/15d3f22/docs/setup/github.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "rulesets must leave claude/** and released/** alone so the board can rename"
+  },
+  {
+   "key": "s22",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "tools/sdlc_protocol/guard.py",
+   "container": "OpenSpineConsortium/symphony-template",
+   "date": "2026-10-15",
+   "version": "15d3f22",
+   "url": "https://github.com/OpenSpineConsortium/symphony-template/blob/15d3f22/tools/sdlc_protocol/guard.py",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the push guard's refusals of forced pushes and leases onto another worker's claim"
+  },
+  {
+   "key": "s23",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "content/actions/reference/limits.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs/blob/12691d2/content/actions/reference/limits.md",
+   "public_url": "https://docs.github.com/en/actions/reference/limits",
+   "read": "opened",
+   "path": "",
+   "supports": "GITHUB_TOKEN 1,000 requests an hour; 100 queued runs a group; 20 concurrent jobs on Free"
+  },
+  {
+   "key": "s24",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "sdlc_protocol/adapters/github.py",
+   "container": "OpenSpineConsortium/symphony-protocol",
+   "date": "2026-10-15",
+   "version": "a3a5b4d",
+   "url": "https://github.com/OpenSpineConsortium/symphony-protocol/blob/a3a5b4d/sdlc_protocol/adapters/github.py",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "no retry or backoff on 403/429 in the library"
+  },
+  {
+   "key": "s25",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "docs/src/content/docs/reference/work-queue.md",
+   "container": "github/gh-aw",
+   "date": "2026-10-15",
+   "version": "dc91dbed",
+   "url": "https://github.com/github/gh-aw/blob/dc91dbed/docs/src/content/docs/reference/work-queue.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "gh-aw's work queue: CAS on a ref, scheduler-granted claims for Actions runs, no idle expiry"
+  },
+  {
+   "key": "s26",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "docs/src/content/docs/reference/auth.mdx",
+   "container": "github/gh-aw",
+   "date": "2026-10-15",
+   "version": "dc91dbed",
+   "url": "https://github.com/github/gh-aw/blob/dc91dbed/docs/src/content/docs/reference/auth.mdx",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "gh-aw does not support CLAUDE_CODE_OAUTH_TOKEN"
+  },
+  {
+   "key": "s27",
+   "kind": "project-record",
+   "authors": [],
+   "title": "Symphony as built: what it is, its mechanism, the GitHub primitives it rests on, what it costs, how mature it is",
+   "container": "Symphony and Beethoven taxonomy research, project files",
+   "date": "2026-10-15",
+   "version": "",
+   "url": "",
+   "public_url": "",
+   "read": "record",
+   "path": "/mnt/project-files/research/taxonomy/notes/01-symphony-mechanism.md",
+   "supports": "the library test suite run on 2026-10-15: 1,379 tests"
+  },
+  {
+   "key": "s28",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "content/billing/reference/actions-runner-pricing.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs/blob/12691d2/content/billing/reference/actions-runner-pricing.md",
+   "public_url": "https://docs.github.com/en/billing/reference/actions-runner-pricing",
+   "read": "opened",
+   "path": "",
+   "supports": "GPU runners only as paid larger runners, never free"
+  },
+  {
+   "key": "s29",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "README.md",
+   "container": "OpenSpineConsortium/hpcworker",
+   "date": "2026-10-07",
+   "version": "3b22e70",
+   "url": "https://github.com/OpenSpineConsortium/hpcworker/blob/3b22e70/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the worker runs as a Slurm job on the university cluster"
+  },
+  {
+   "key": "s30",
+   "kind": "repository",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "symphony-protocol",
+   "container": "OpenSpineConsortium/symphony-protocol",
+   "date": "2026-10-15",
+   "version": "a3a5b4d",
+   "url": "https://github.com/OpenSpineConsortium/symphony-protocol",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "release tags: v0.4.1 the last release"
+  },
+  {
+   "key": "s31",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "CLAUDE.md",
+   "container": "OpenSpineConsortium/symphony-template",
+   "date": "2026-10-15",
+   "version": "15d3f22",
+   "url": "https://github.com/OpenSpineConsortium/symphony-template/blob/15d3f22/CLAUDE.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "durable decisions: the run cap and the qa check not built; each contributor on their own Claude account"
+  },
+  {
+   "key": "s32",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "docs/checkpoints/2026-10-14/handoff-page/PLAN.md",
+   "container": "OpenSpineConsortium/symphony-template",
+   "date": "2026-10-15",
+   "version": "15d3f22",
+   "url": "https://github.com/OpenSpineConsortium/symphony-template/blob/15d3f22/docs/checkpoints/2026-10-14/handoff-page/PLAN.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "\"Private repositories only until Phase 3\""
+  },
+  {
+   "key": "s33",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "content/billing/concepts/product-billing/github-advanced-security.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs/blob/12691d2/content/billing/concepts/product-billing/github-advanced-security.md",
+   "public_url": "https://docs.github.com/en/billing/concepts/product-billing/github-advanced-security",
+   "read": "opened",
+   "path": "",
+   "supports": "code scanning and secret scanning free on public repositories"
+  },
+  {
+   "key": "s34",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "data/reusables/gated-features/repo-rules.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs/blob/12691d2/data/reusables/gated-features/repo-rules.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "rulesets free on public repositories"
+  },
+  {
+   "key": "s35",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "content/actions/reference/workflows-and-actions/deployments-and-environments.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs/blob/12691d2/content/actions/reference/workflows-and-actions/deployments-and-environments.md",
+   "public_url": "https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments",
+   "read": "opened",
+   "path": "",
+   "supports": "required reviewers on Free, Pro and Team only for public repositories"
+  },
+  {
+   "key": "s36",
+   "kind": "project-record",
+   "authors": [],
+   "title": "03 Uniqueness: is Symphony the only system that combines (a) to (e)?",
+   "container": "Symphony and Beethoven taxonomy research, project files",
+   "date": "2026-10-15",
+   "version": "",
+   "url": "",
+   "public_url": "",
+   "read": "record",
+   "path": "/mnt/project-files/research/taxonomy/verify/03-uniqueness.md",
+   "supports": "prior art for each mechanism; only the combination is new"
+  },
+  {
+   "key": "s37",
+   "kind": "project-record",
+   "authors": [],
+   "title": "GitHub Actions economics, limits and terms (as of 2026-10-15)",
+   "container": "Symphony and Beethoven taxonomy research, project files",
+   "date": "2026-10-15",
+   "version": "",
+   "url": "",
+   "public_url": "",
+   "read": "record",
+   "path": "/mnt/project-files/research/taxonomy/notes/09-actions-economics.md",
+   "supports": "survey of free CI for public projects elsewhere (GitLab, Azure, CircleCI, Cirrus, Travis)"
+  },
+  {
+   "key": "s38",
+   "kind": "terms",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "GitHub Terms for Additional Products and Features",
+   "container": "github/site-policy",
+   "date": "2026-04-27",
+   "version": "b9578b5",
+   "url": "https://github.com/github/site-policy/blob/b9578b5/Policies/github-terms/github-terms-for-additional-products-and-features.md",
+   "public_url": "https://docs.github.com/en/site-policy/github-terms/github-terms-for-additional-products-and-features",
+   "read": "opened",
+   "path": "",
+   "supports": "the Actions terms tying hosted-runner use to the repository's own project"
+  },
+  {
+   "key": "s39",
+   "kind": "documentation",
+   "authors": [
+    "Anthropic"
+   ],
+   "title": "Legal and compliance",
+   "container": "Claude Code Docs",
+   "date": "",
+   "version": "",
+   "url": "https://code.claude.com/docs/en/legal-and-compliance",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "plan limits assume ordinary, individual usage"
+  }
+ ],
+ "uncited": [],
+ "checker_problems": 0,
+ "changes": [
+  "Added numbered markers to part C (section 6, explaining the approach) of the manual: 89 edits over 34 units, 39 sources."
+ ]
+}

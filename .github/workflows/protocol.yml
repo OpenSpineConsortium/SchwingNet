@@ -1,0 +1,230 @@
+name: Protocol
+
+# Brings each new release of the claim protocol into this repository, with
+# nobody's hands on it. symphony-protocol's own sync reaches the template
+# alone, so a repository made from the template would keep the copy it was
+# made with (tools/sdlc_protocol, held to tools/VENDORED by the check).
+# Weekly and by hand, this run clones the library, which is public, and
+# when its newest release tag is newer than the version VENDORED records
+# (tools/protocol_update.py plan), vendors that tag with the library's own
+# scripts/vendor.py, commits it on the branch symphony-protocol/sync, which
+# belongs to this workflow alone and is force-pushed, and opens the pull
+# request from it, or updates the one already open. This repository's
+# check decides, as on any pull request. It pushes only when the branch
+# does not already hold this copy on the default branch as it is, so a
+# quiet week starts nothing, and once the default branch carries a copy
+# no older than the newest release it closes the update's pull request
+# or issue still open.
+#
+# GITHUB_TOKEN does it all, so no secret is named, and only the steps that
+# call GitHub hold it: the library's script runs without it. A push or a pull request
+# made with it starts no workflow, so the run asks for the check on the
+# branch itself (ci.yml's workflow_dispatch), and the check run it leaves
+# on the branch's head is the one the pull request needs. It may open a
+# pull request only where the repository lets GitHub Actions do so
+# (Settings, Actions, General, Workflow permissions); where it may not, the
+# run opens an issue instead, or updates its own, whose link opens the pull
+# request in one press. Auto-merge is armed with GitHub's
+# enablePullRequestAutoMerge, which only arms it, by a merge commit, never
+# with gh pr merge --auto, which merges at once a pull request GitHub does
+# not count as blocked; where the repository allows no auto-merge, or no
+# required check is left to wait for, the summary says so and the pull
+# request waits for a merge. A merge auto-merge makes for GITHUB_TOKEN
+# starts no workflow either, so the board shows it at its next run.
+#
+# Never in the template itself, which takes each release by the library's
+# sync and still holds .template/PENDING, nor in a fork. In crowd mode it
+# runs as anywhere: it names no secret and starts nothing on anyone's
+# subscription, and a crowd repository allows no auto-merge, so its pull
+# request waits for a maintainer's review. Values reach the shell only
+# through env, and the run's lists and texts go through files, never a
+# heredoc fed by a pipe. The schedule's minute is an odd one, so the run
+# does not queue behind every workflow set for the top of the hour.
+
+on:
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  actions: write
+
+concurrency:
+  group: protocol
+  cancel-in-progress: false
+
+jobs:
+  update:
+    if: github.event.repository.is_template == false && github.event.repository.fork == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      REPO: ${{ github.repository }}
+      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+      BRANCH: symphony-protocol/sync
+    steps:
+      # No credentials are left in the checkout: the push names its token.
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+
+      - name: Stop in the template itself
+        id: gate
+        run: |
+          if [ -e .template/PENDING ]; then
+            echo "the template itself, or a copy not yet initialised; the library's sync brings its releases"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Clone symphony-protocol, whose releases this copy takes
+        if: steps.gate.outputs.skip != 'true'
+        run: git clone --quiet https://github.com/OpenSpineConsortium/symphony-protocol "$RUNNER_TEMP/symphony-protocol"
+
+      - name: Is the newest release newer than the copy?
+        id: plan
+        if: steps.gate.outputs.skip != 'true'
+        run: python3 tools/protocol_update.py plan --library "$RUNNER_TEMP/symphony-protocol" >> "$GITHUB_OUTPUT"
+
+      - name: Close the update still open, the default branch's copy no older than the newest release
+        if: steps.plan.outputs.needed == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RECORDED: ${{ steps.plan.outputs.recorded }}
+        run: |
+          set -eu
+          comment="$RUNNER_TEMP/closing.md"
+          python3 tools/protocol_update.py closing --recorded "$RECORDED" > "$comment"
+          # gh's --head matches the branch's name in any repository, so a
+          # fork's pull request from a branch of the same name is left out.
+          url="$(gh pr list --repo "$REPO" --head "$BRANCH" --state open --json url,isCrossRepository \
+            --jq '[.[] | select(.isCrossRepository | not)][0].url // ""')"
+          if [ -n "$url" ]; then
+            gh pr close "$url" --comment "$(cat "$comment")"
+            echo "closed $url"
+          fi
+          MARKER="$(python3 tools/protocol_update.py marker)" gh api --paginate "repos/$REPO/issues?state=open&per_page=100" \
+            --jq '.[] | select(.pull_request | not) | select((.body // "") | contains(env.MARKER)) | .number' \
+            > "$RUNNER_TEMP/issues.txt"
+          while read -r number <&3; do
+            gh issue close "$number" --repo "$REPO" --comment "$(cat "$comment")"
+            echo "closed issue #$number"
+          done 3< "$RUNNER_TEMP/issues.txt"
+          echo "up to date: the copy is at symphony-protocol $RECORDED, no older than the newest release" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Vendor the newest release on the branch symphony-protocol/sync
+        id: vendor
+        if: steps.plan.outputs.needed == 'true'
+        env:
+          TAG: ${{ steps.plan.outputs.tag }}
+        run: |
+          set -eu
+          library="$RUNNER_TEMP/symphony-protocol"
+          git -C "$library" checkout --quiet "$TAG"
+          python3 "$library/scripts/vendor.py" . --consumer OpenSpineConsortium/symphony-template
+          git add -A tools
+          if git diff --cached --quiet; then
+            echo "the copy already matches $TAG" >> "$GITHUB_STEP_SUMMARY"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          python3 tools/protocol_update.py message --tag "$TAG" > "$RUNNER_TEMP/message.txt"
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit --quiet --file "$RUNNER_TEMP/message.txt"
+
+      - name: Push it to the branch symphony-protocol/sync unless the branch holds it already
+        id: push
+        if: steps.vendor.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.plan.outputs.tag }}
+        run: |
+          set -eu
+          basic="$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+          # The branch already holds this copy when its commit has the same
+          # tree on the same default branch; pushing it again would only
+          # start the check again for nothing.
+          already_pushed() {
+            git -c http.extraheader="AUTHORIZATION: basic $basic" fetch --quiet origin "$BRANCH" 2>/dev/null || return 1
+            [ "$(git rev-parse 'FETCH_HEAD^{tree}')" = "$(git rev-parse 'HEAD^{tree}')" ] &&
+              [ "$(git rev-parse 'FETCH_HEAD^')" = "$(git rev-parse 'HEAD^')" ]
+          }
+          if already_pushed; then
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
+            echo "$BRANCH already holds this copy"
+          else
+            git -c http.extraheader="AUTHORIZATION: basic $basic" push --quiet --force origin "HEAD:refs/heads/$BRANCH"
+            echo "pushed=true" >> "$GITHUB_OUTPUT"
+            echo "pushed $TAG to $BRANCH"
+          fi
+
+      - name: Open or update the pull request, or the issue where Actions may open none
+        if: steps.vendor.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.plan.outputs.tag }}
+          RECORDED: ${{ steps.plan.outputs.recorded }}
+          RECORDED_COMMIT: ${{ steps.plan.outputs.recorded_commit }}
+          PUSHED: ${{ steps.push.outputs.pushed }}
+        run: |
+          set -eu
+          tool="python3 tools/protocol_update.py"
+          $tool title --tag "$TAG" > "$RUNNER_TEMP/title.txt"
+          $tool body --tag "$TAG" --recorded "$RECORDED" --from "$RECORDED_COMMIT" > "$RUNNER_TEMP/body.md"
+          url="$(gh pr list --repo "$REPO" --head "$BRANCH" --state open --json url,isCrossRepository \
+            --jq '[.[] | select(.isCrossRepository | not)][0].url // ""')"
+          fresh=false
+          if [ -n "$url" ]; then
+            gh pr edit "$url" --title "$(cat "$RUNNER_TEMP/title.txt")" --body-file "$RUNNER_TEMP/body.md"
+            echo "updated $url" >> "$GITHUB_STEP_SUMMARY"
+          elif url="$(gh pr create --repo "$REPO" --base "$DEFAULT_BRANCH" --head "$BRANCH" \
+              --title "$(cat "$RUNNER_TEMP/title.txt")" --body-file "$RUNNER_TEMP/body.md" 2> "$RUNNER_TEMP/refused.txt")"; then
+            fresh=true
+            echo "opened $url" >> "$GITHUB_STEP_SUMMARY"
+          else
+            # Actions may not open a pull request here: say so on an issue
+            # of this workflow's own, with the link that opens it.
+            compare="https://github.com/$REPO/compare/$DEFAULT_BRANCH...$BRANCH?expand=1"
+            $tool issue-title --tag "$TAG" > "$RUNNER_TEMP/issue-title.txt"
+            $tool issue-body --tag "$TAG" --recorded "$RECORDED" --url "$compare" > "$RUNNER_TEMP/issue-body.md"
+            MARKER="$($tool marker)" gh api --paginate "repos/$REPO/issues?state=open&per_page=100" \
+              --jq '.[] | select(.pull_request | not) | select((.body // "") | contains(env.MARKER)) | .number' \
+              > "$RUNNER_TEMP/issues.txt"
+            number="$(head -n 1 "$RUNNER_TEMP/issues.txt")"
+            if [ -n "$number" ]; then
+              gh issue edit "$number" --repo "$REPO" --title "$(cat "$RUNNER_TEMP/issue-title.txt")" \
+                --body-file "$RUNNER_TEMP/issue-body.md"
+              echo "updated issue #$number" >> "$GITHUB_STEP_SUMMARY"
+            else
+              gh issue create --repo "$REPO" --title "$(cat "$RUNNER_TEMP/issue-title.txt")" \
+                --body-file "$RUNNER_TEMP/issue-body.md" >> "$GITHUB_STEP_SUMMARY"
+            fi
+            echo "GitHub Actions may not open a pull request here: $(cat "$RUNNER_TEMP/refused.txt")" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          if [ "$PUSHED" != "true" ] && [ "$fresh" != "true" ]; then
+            exit 0
+          fi
+          # A push made with GITHUB_TOKEN starts no check, so ask for it on
+          # the branch; a repository without ci.yml says so and goes on.
+          if gh workflow run ci.yml --repo "$REPO" --ref "$BRANCH" 2> "$RUNNER_TEMP/dispatch.txt"; then
+            echo "asked for the check on $BRANCH" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "could not ask for the check: $(cat "$RUNNER_TEMP/dispatch.txt")" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          if [ "$(gh pr view "$url" --repo "$REPO" --json autoMergeRequest --jq '.autoMergeRequest != null')" = "true" ]; then
+            echo "auto-merge was armed already: it lands once the check is green" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          id="$(gh pr view "$url" --repo "$REPO" --json id --jq .id)"
+          if gh api graphql -f id="$id" \
+              -f query='mutation($id: ID!) { enablePullRequestAutoMerge(input: {pullRequestId: $id, mergeMethod: MERGE}) { clientMutationId } }' \
+              > /dev/null 2> "$RUNNER_TEMP/auto-merge.txt"; then
+            echo "auto-merge armed: it lands once the check is green" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "auto-merge not armed, so it waits for a merge: $(cat "$RUNNER_TEMP/auto-merge.txt")" >> "$GITHUB_STEP_SUMMARY"
+          fi

@@ -1,0 +1,271 @@
+{
+ "group": "spec-F",
+ "doc": "spec",
+ "units": [
+  {
+   "id": "mggj4hxkexp.29419",
+   "kind": "heading level 2",
+   "text": "6. Integration"
+  },
+  {
+   "id": "mggj4hxkexp.29434",
+   "kind": "heading level 3",
+   "text": "6.1 What the stack depends on"
+  },
+  {
+   "id": "mggj4hxkexp.29466",
+   "kind": "list item",
+   "text": "Symphony: GitHub (issues, labels, refs, Actions, rulesets, environments, a GitHub App for the first commit and the sync), anthropics/claude-code-action@v1, Claude Code's hooks, and Python 3.12's standard library. Nothing else: the writing rules forbid new dependencies."
+  },
+  {
+   "id": "mggj4hxkexp.29737",
+   "kind": "list item",
+   "text": "Beethoven: Slurm, Apptainer and Open OnDemand at the university, Claude Code's Remote Control, Chrome for the extension, and icontract, CrossHair and Z3 for the gate; Metaflow with metaflow-slurm is chosen but not built, and metaflow-slurm is a 0.0.4 release from 2024 that drives sbatch over SSH with a key file, which conflicts with Beethoven's rule never to touch a credential unless its planned plain sbatch adapter replaces it (Verified, research note 11)."
+  },
+  {
+   "id": "mggj4hxkexp.30199",
+   "kind": "heading level 3",
+   "text": "6.2 The interfaces, which are the integration surface"
+  },
+  {
+   "id": "mggj4hxkexp.30253",
+   "kind": "paragraph",
+   "text": "Symphony's interfaces are files and names in the repository, so anything that can push a branch, edit a label or read a file can take part."
+  },
+  {
+   "id": "mggj4hxkexp.30396",
+   "kind": "table 1, row 0, column 0 (header row)",
+   "text": "Interface"
+  },
+  {
+   "id": "mggj4hxkexp.30407",
+   "kind": "table 1, row 0, column 1 (header row)",
+   "text": "Shape"
+  },
+  {
+   "id": "mggj4hxkexp.30414",
+   "kind": "table 1, row 0, column 2 (header row)",
+   "text": "Written by"
+  },
+  {
+   "id": "mggj4hxkexp.30426",
+   "kind": "table 1, row 0, column 3 (header row)",
+   "text": "Read by"
+  },
+  {
+   "id": "mggj4hxkexp.30436",
+   "kind": "table 1, row 1, column 0",
+   "text": "Claim"
+  },
+  {
+   "id": "mggj4hxkexp.30443",
+   "kind": "table 1, row 1, column 1",
+   "text": "Branch claude/N whose first commit adds docs/agents/claims/N.md (Worker, Plan, Files to touch)"
+  },
+  {
+   "id": "mggj4hxkexp.30539",
+   "kind": "table 1, row 1, column 2",
+   "text": "The worker"
+  },
+  {
+   "id": "mggj4hxkexp.30551",
+   "kind": "table 1, row 1, column 3",
+   "text": "The board, the clerk, the push guard"
+  },
+  {
+   "id": "mggj4hxkexp.30590",
+   "kind": "table 1, row 2, column 0",
+   "text": "Labels"
+  },
+  {
+   "id": "mggj4hxkexp.30598",
+   "kind": "table 1, row 2, column 1",
+   "text": "todo, claimed, in-review, blocker, epic, blocked, worker:name"
+  },
+  {
+   "id": "mggj4hxkexp.30661",
+   "kind": "table 1, row 2, column 2",
+   "text": "Workers, the coordinator, people"
+  },
+  {
+   "id": "mggj4hxkexp.30695",
+   "kind": "table 1, row 2, column 3",
+   "text": "The board, the clerk"
+  },
+  {
+   "id": "mggj4hxkexp.30718",
+   "kind": "table 1, row 3, column 0",
+   "text": "Board"
+  },
+  {
+   "id": "mggj4hxkexp.30725",
+   "kind": "table 1, row 3, column 1",
+   "text": "STATE.md on the branch board: queue, work given to workers, claims, overlaps"
+  },
+  {
+   "id": "mggj4hxkexp.30803",
+   "kind": "table 1, row 3, column 2",
+   "text": "board.yml only"
+  },
+  {
+   "id": "mggj4hxkexp.30819",
+   "kind": "table 1, row 3, column 3",
+   "text": "Every worker, every person"
+  },
+  {
+   "id": "mggj4hxkexp.30848",
+   "kind": "table 1, row 4, column 0",
+   "text": "Worker registry"
+  },
+  {
+   "id": "mggj4hxkexp.30865",
+   "kind": "table 1, row 4, column 1",
+   "text": ".github/symphony/workers/name.json: where it runs, its area, how its pull requests land, model and turns"
+  },
+  {
+   "id": "mggj4hxkexp.30971",
+   "kind": "table 1, row 4, column 2",
+   "text": "People, the Add a worker form"
+  },
+  {
+   "id": "mggj4hxkexp.31002",
+   "kind": "table 1, row 4, column 3",
+   "text": "workers.yml, the clerk"
+  },
+  {
+   "id": "mggj4hxkexp.31027",
+   "kind": "table 1, row 5, column 0",
+   "text": "Coordinator comments"
+  },
+  {
+   "id": "mggj4hxkexp.31049",
+   "kind": "table 1, row 5, column 1",
+   "text": "Marked first lines, for example the claim-released marker"
+  },
+  {
+   "id": "mggj4hxkexp.31108",
+   "kind": "table 1, row 5, column 2",
+   "text": "The board's run"
+  },
+  {
+   "id": "mggj4hxkexp.31125",
+   "kind": "table 1, row 5, column 3",
+   "text": "The board (a release counts only from a writer)"
+  },
+  {
+   "id": "mggj4hxkexp.31175",
+   "kind": "table 1, row 6, column 0",
+   "text": "Gate"
+  },
+  {
+   "id": "mggj4hxkexp.31181",
+   "kind": "table 1, row 6, column 1",
+   "text": "The required check named check"
+  },
+  {
+   "id": "mggj4hxkexp.31213",
+   "kind": "table 1, row 6, column 2",
+   "text": "CI"
+  },
+  {
+   "id": "mggj4hxkexp.31217",
+   "kind": "table 1, row 6, column 3",
+   "text": "The ruleset, auto-merge"
+  },
+  {
+   "id": "mggj4hxkexp.31243",
+   "kind": "table 1, row 7, column 0",
+   "text": "Cost record"
+  },
+  {
+   "id": "mggj4hxkexp.31256",
+   "kind": "table 1, row 7, column 1",
+   "text": "A Symphony-Usage trailer on commits and a usage artifact per Actions run"
+  },
+  {
+   "id": "mggj4hxkexp.31330",
+   "kind": "table 1, row 7, column 2",
+   "text": "Sessions and workflows"
+  },
+  {
+   "id": "mggj4hxkexp.31354",
+   "kind": "table 1, row 7, column 3",
+   "text": "metrics.yml"
+  },
+  {
+   "id": "mggj4hxkexp.31366",
+   "kind": "paragraph",
+   "text": "Beethoven's interface to GitHub is narrower: commit statuses named grid/... posted from the cluster, because GitHub's runners cannot reach the grid, plus the gate's SARIF reports (Verified, research note 11)."
+  },
+  {
+   "id": "mggj4hxkexp.31575",
+   "kind": "heading level 3",
+   "text": "6.3 What it composes with"
+  },
+  {
+   "id": "mggj4hxkexp.31603",
+   "kind": "list item",
+   "text": "GitHub's own gates fold into Symphony's planned qa check: CodeQL, dependency review and secret scanning, free on a public repository (Verified for CodeQL and secret scanning; GitHub's own pages disagree on dependency review, as section 9.2 says; the qa check is not built)."
+  },
+  {
+   "id": "mggj4hxkexp.31795",
+   "kind": "list item",
+   "text": "beethoven-qa is planned as the Python design-by-contract lane of that qa check (a recorded decision; not built)."
+  },
+  {
+   "id": "mggj4hxkexp.31909",
+   "kind": "list item",
+   "text": "Other coding agents could claim under the same rule if they push claude/N with a claim file: the protocol is agent-neutral in shape, but Copilot's cloud agent and gh-aw name their own branches, so each would need an adapter (Inferred; Open)."
+  },
+  {
+   "id": "mggj4hxkexp.32152",
+   "kind": "list item",
+   "text": "gh-aw could run as a kind of Symphony worker, its safe outputs opening the pull request, or Symphony's board could read gh-aw's queue; neither exists (Inferred; depends on section 5's comparison)."
+  },
+  {
+   "id": "mggj4hxkexp.32350",
+   "kind": "list item",
+   "text": "GitHub's merge queue can land work after Symphony orders overlapping pieces; the two are complementary (Inferred)."
+  },
+  {
+   "id": "mggj4hxkexp.32466",
+   "kind": "list item",
+   "text": "Workflow managers for Beethoven's outer loop: Snakemake (with a Slurm executor plugin), Nextflow, Parsl or CWL are alternatives to the chosen Metaflow; DVC for data versions; MLflow or Weights and Biases for run records (Verified as products, research note 11)."
+  },
+  {
+   "id": "mggj4hxkexp.32729",
+   "kind": "list item",
+   "text": "The Symphony plugin in symphony-marketplace brings the skills, /board and the hooks to a repository not made from the template."
+  },
+  {
+   "id": "mggj4hxkexp.32857",
+   "kind": "heading level 3",
+   "text": "6.4 What it could replace"
+  },
+  {
+   "id": "mggj4hxkexp.32885",
+   "kind": "list item",
+   "text": "A coordination server of the project's own (a paperclip server, a Beads Dolt server, an openai/symphony daemon) for a team whose work already lives on GitHub (Inferred)."
+  },
+  {
+   "id": "mggj4hxkexp.33056",
+   "kind": "list item",
+   "text": "Convention-only claiming, such as CCPM's assignee and label, which two agents can set at once (Inferred, research note 07)."
+  },
+  {
+   "id": "mggj4hxkexp.33181",
+   "kind": "list item",
+   "text": "For Beethoven, the checklist tables authors fill after the fact, if the gates are built and shown to catch what reviewers miss (Open, question R8)."
+  },
+  {
+   "id": "mggj4hxkexp.33329",
+   "kind": "heading level 3",
+   "text": "6.5 Where Symphony and Beethoven meet today"
+  },
+  {
+   "id": "mggj4hxkexp.33373",
+   "kind": "paragraph",
+   "text": "Nowhere in code. Symphony's plan says no Beethoven repository runs Symphony's code or holds a Claude token; a Markdown-only pilot of the claim protocol in beethoven-qa is an open owner question, recommended yes after Symphony's Phase 3 (Verified, research note 05). The grant packet puts its agent under the laboratory's claim protocol of one issue, one branch, one pull request, and names neither Symphony nor symphony-protocol (Verified, research note 05). That protocol matches Symphony's rule without its Actions workers (Inferred: spine-program, the repository the packet builds on, adopted Symphony's protocol alone on 2026-10-12, according to the template's checkpoints)."
+  }
+ ]
+}

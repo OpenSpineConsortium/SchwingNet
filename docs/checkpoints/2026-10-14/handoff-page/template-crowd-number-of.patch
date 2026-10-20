@@ -1,0 +1,45 @@
+diff --git a/scripts/crowd.py b/scripts/crowd.py
+index a4fbe20..21913ab 100644
+--- a/scripts/crowd.py
++++ b/scripts/crowd.py
+@@ -2250,8 +2250,13 @@ def claim_account_of(text):
+ 
+ 
+ def claim_branches(ctx):
++    """The claim branches, by the library's rule (claims.number_of): GitHub's
++    first-push lock holds per name, so only claude/N as the claim skill
++    writes it holds issue N, and claude/03 or a name in other digits holds
++    nothing and is not read as a claim."""
++    from sdlc_protocol.claims import number_of
+     return [branch["name"] for branch in ctx.gh.pages(f"repos/{ctx.repo}/branches")
+-            if re.match(r"^claude/\d+$", branch["name"])]
++            if number_of(branch.get("name") or "") is not None]
+ 
+ 
+ def audit_claim_pushes(ctx):
+diff --git a/tests/test_crowd.py b/tests/test_crowd.py
+index dfb2098..2329fbb 100644
+--- a/tests/test_crowd.py
++++ b/tests/test_crowd.py
+@@ -1606,6 +1606,21 @@ class Audit(unittest.TestCase):
+         self.assertEqual(len(warns), 1, run.out)
+         self.assertIn("claude/12, claimed by alice, was pushed this week by mallory", warns[0])
+ 
++    def test_only_the_claim_branch_the_library_writes_is_a_claim(self):
++        # GitHub's first-push lock holds per name, so claude/03 is no claim on
++        # #3 (claims.number_of); a name in other digits, or one int() cannot
++        # read, is not one either, and none of them may be read as a claim.
++        world = merged_world(World())
++        world.claims = {12: ("alice", ["alice", "mallory"])}
++        routes = world.routes()
++        listed = routes[f"GET {API}/branches?per_page=100"][0]["body"]
++        listed += [{"name": name} for name in ("claude/03", "claude/\u0663", "claude/\u00b2", "claude/x", "claude/")]
++        world.routes = lambda: routes
++        run = self.audit(world)
++        warns = [line for line in run.lines if line.startswith("warn  claim pushes")]
++        self.assertEqual(len(warns), 1, run.out)
++        self.assertIn("claude/12, claimed by alice, was pushed this week by mallory", warns[0])
++
+     def test_every_failing_check_says_what_fixes_it(self):
+         # The guide's step 10: each line comes with the command or the page
+         # that fixes it. A check with several lines may say it once, last.

@@ -1,0 +1,8 @@
+# Research accumulates in docs/research/
+
+What a session finds out is kept in the repository, under docs/research/, where every account and every later session reads it: a reply, a status line, a Claude Doc or an artifact is read once, and a claude.ai Project's files belong to one account. A handoff under docs/checkpoints/ says where the research is and never carries it, so research never waits for a checkpoint and is never lost with one.
+
+- One file or one folder per topic, named in kebab-case. A programme, a question measured over time, is a folder with a README that says where it stands; a finished study, comparison, deep-research run or fact-check is one file. docs/research/README.md lists both, one line each, and the line comes in the same pull request as the file.
+- Every file opens by naming its source: the thread's title, the date, and the link of the Claude Doc, artifact or upload it came from where there is one. A doc or artifact a session cannot read from its container is listed in the README by link and never written down from memory.
+- Research lands in the pull request of the work it came from or, when the research is the work, in a pull request of its own, before the thread's checkpoint. A note stays here once its question is settled; a pull request that settles a finding for good may move it to docs/history/, the longer record, and a fact every session should know becomes a memory (.claude/rules/memory.md) that points here.
+- ASCII and LF, as the checks hold everything under docs/ to, and plain prose that says why (.claude/rules/writing.md); no secret, no token, no transcript and no tool output, as docs/history/ holds too, and the checks refuse the shapes of common secrets and any .events.json.

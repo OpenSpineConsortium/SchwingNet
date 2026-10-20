@@ -1,0 +1,12 @@
+on
+
+The first word of this file is the switch for field metrics. With on,
+.github/workflows/metrics.yml writes the project's aggregates (counts,
+durations and rates, never a name, a title or any text) to the branch
+metrics, where OpenSpineConsortium's collector reads them if this repository
+installed the Symphony App. With off, it writes only that sharing is
+off. The repository variable SDLC_METRICS set to off turns sharing off too,
+whatever this file says. A merge that changes this file starts the workflow
+at once, so the branch holds the new setting before the collector's next
+read; the variable starts no run, so run the workflow once by hand after
+setting it. docs/setup/metrics.md says what is computed.

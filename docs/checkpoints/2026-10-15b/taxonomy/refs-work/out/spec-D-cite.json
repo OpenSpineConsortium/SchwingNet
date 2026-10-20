@@ -1,0 +1,644 @@
+{
+ "changes": [
+  "Table 1 (5.1): each system's name cell cites its repository or docs; cells with numbers or a distinct source cite it (Symphony's 24-hour release and token, gh-aw's three attempts and refused token, unsorry's two-hour TTL and 15-minute reaper, Copilot's 59 minutes and billing, the C compiler's 16 agents and $20,000).",
+  "The racing-creation result in Symphony's claim cell cites verify/02, whose own experiment measured it.",
+  "The closing Sources line now carries the primary sources in place of the mentions of notes 06 and 07 and verify/01 and 03."
+ ],
+ "edits": [
+  {
+   "unit_id": "mggj4hxkexp.44504",
+   "find": "Symphony",
+   "replace": "Symphony [[s1,s2]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.44554",
+   "find": "Creating branch claude/N;",
+   "replace": "Creating branch claude/N [[s1]];"
+  },
+  {
+   "unit_id": "mggj4hxkexp.44554",
+   "find": "racing creations win",
+   "replace": "racing creations win [[s4]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.44622",
+   "find": "under a renamed branch",
+   "replace": "under a renamed branch [[s1]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.44753",
+   "find": "for the Actions workers;",
+   "replace": "for the Actions workers [[s3]];"
+  },
+  {
+   "unit_id": "mggj4hxkexp.44832",
+   "find": "gh-aw work queue",
+   "replace": "gh-aw work queue [[s5,s6]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.44950",
+   "find": "up to three attempts",
+   "replace": "up to three attempts [[s6]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.45030",
+   "find": "or Copilot credits;",
+   "replace": "or Copilot credits [[s8]];"
+  },
+  {
+   "unit_id": "mggj4hxkexp.45030",
+   "find": "token is refused",
+   "replace": "token is refused [[s7]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.45113",
+   "find": "unsorry",
+   "replace": "unsorry [[s9]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.45195",
+   "find": "first push wins,",
+   "replace": "first push wins [[s10]],"
+  },
+  {
+   "unit_id": "mggj4hxkexp.45195",
+   "find": "checked again after the push",
+   "replace": "checked again after the push [[s9]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.45283",
+   "find": "two hours after the claim",
+   "replace": "two hours after the claim [[s12]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.45283",
+   "find": "every 15 minutes;",
+   "replace": "every 15 minutes [[s11]];"
+  },
+  {
+   "unit_id": "mggj4hxkexp.45432",
+   "find": "agentic-setup",
+   "replace": "agentic-setup [[s13]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.45481",
+   "find": "create-only with a lease",
+   "replace": "create-only with a lease [[s14]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.45531",
+   "find": "resumed by the next round",
+   "replace": "resumed by the next round [[s15]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.45613",
+   "find": "openai/symphony",
+   "replace": "openai/symphony [[s16]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.45758",
+   "find": "CCPM",
+   "replace": "CCPM [[s17]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.45793",
+   "find": "Assignee and label,",
+   "replace": "Assignee and label [[s18]],"
+  },
+  {
+   "unit_id": "mggj4hxkexp.45896",
+   "find": "Beads and Gas Town",
+   "replace": "Beads [[s19]] and Gas Town [[s20]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.46111",
+   "find": "paperclip",
+   "replace": "paperclip [[s21]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.46242",
+   "find": "Copilot cloud agent,",
+   "replace": "Copilot cloud agent [[s22]],"
+  },
+  {
+   "unit_id": "mggj4hxkexp.46242",
+   "find": "Agent HQ",
+   "replace": "Agent HQ [[s23]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.46273",
+   "find": "as control plane",
+   "replace": "as control plane [[s22]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.46330",
+   "find": "one pull request",
+   "replace": "one pull request [[s22]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.46389",
+   "find": "at 59 minutes",
+   "replace": "at 59 minutes [[s22]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.46420",
+   "find": "Codex agents",
+   "replace": "Codex agents [[s24]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.46454",
+   "find": "plus minutes;",
+   "replace": "plus minutes [[s24]];"
+  },
+  {
+   "unit_id": "mggj4hxkexp.46454",
+   "find": "on public repositories",
+   "replace": "on public repositories [[s25]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.46532",
+   "find": "agent teams,",
+   "replace": "agent teams [[s26]],"
+  },
+  {
+   "unit_id": "mggj4hxkexp.46532",
+   "find": "Projects",
+   "replace": "Projects [[s27]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.46615",
+   "find": "on one machine;",
+   "replace": "on one machine [[s26]];"
+  },
+  {
+   "unit_id": "mggj4hxkexp.46739",
+   "find": "C-compiler harness",
+   "replace": "C-compiler harness [[s28]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.46870",
+   "find": "16 Claude agents",
+   "replace": "16 Claude agents [[s28]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.46888",
+   "find": "just under $20,000",
+   "replace": "just under $20,000 [[s28]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.46912",
+   "find": "research notes 06 and 07, and research/taxonomy/verify/01 and 03",
+   "replace": "[[s1,s2,s5,s6,s9,s13,s16,s17,s19,s20,s21,s22,s24,s26,s27,s28]]"
+  }
+ ],
+ "sources": [
+  {
+   "key": "s1",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "docs/agents/PROTOCOL.md",
+   "container": "OpenSpineConsortium/symphony-template",
+   "date": "2026-10-15",
+   "version": "15d3f22",
+   "url": "https://github.com/OpenSpineConsortium/symphony-template/blob/15d3f22/docs/agents/PROTOCOL.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Symphony's claim by the first push of claude/N, its 24-hour release under a renamed branch, and its kinds of worker"
+  },
+  {
+   "key": "s2",
+   "kind": "repository",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "symphony-protocol",
+   "container": "OpenSpineConsortium/symphony-protocol",
+   "date": "2026-10-15",
+   "version": "a3a5b4d",
+   "url": "https://github.com/OpenSpineConsortium/symphony-protocol",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the claim protocol library behind Symphony's board, coordinator and push guard"
+  },
+  {
+   "key": "s3",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": ".github/workflows/workers.yml",
+   "container": "OpenSpineConsortium/symphony-template",
+   "date": "2026-10-15",
+   "version": "15d3f22",
+   "url": "https://github.com/OpenSpineConsortium/symphony-template/blob/15d3f22/.github/workflows/workers.yml",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the workers in Actions running claude-code-action on one CLAUDE_CODE_OAUTH_TOKEN"
+  },
+  {
+   "key": "s4",
+   "kind": "project-record",
+   "authors": [],
+   "title": "Verify 02: the claim lock, idleness and re-claims after a merge",
+   "container": "Symphony and Beethoven taxonomy research, adversarial checks",
+   "date": "2026-10-15",
+   "version": "",
+   "url": "",
+   "public_url": "",
+   "read": "record",
+   "path": "/mnt/project-files/research/taxonomy/verify/02-claim-lock.md",
+   "supports": "measured on bare git: of two racing creations of claude/N only one succeeds"
+  },
+  {
+   "key": "s5",
+   "kind": "repository",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "gh-aw",
+   "container": "github/gh-aw",
+   "date": "2026-10-15",
+   "version": "dc91dbed",
+   "url": "https://github.com/github/gh-aw",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "GitHub Agentic Workflows, whose native work queue runs in Actions"
+  },
+  {
+   "key": "s6",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "docs/src/content/docs/reference/work-queue.md",
+   "container": "github/gh-aw",
+   "date": "2026-10-15",
+   "version": "dc91dbed",
+   "url": "https://github.com/github/gh-aw/blob/dc91dbed/docs/src/content/docs/reference/work-queue.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the work queue: a log on the branch work-queue, compare-and-swap publication, a trusted scheduler, Claims that never expire, 3 retry attempts"
+  },
+  {
+   "key": "s7",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "docs/src/content/docs/reference/auth.mdx",
+   "container": "github/gh-aw",
+   "date": "2026-10-15",
+   "version": "dc91dbed",
+   "url": "https://github.com/github/gh-aw/blob/dc91dbed/docs/src/content/docs/reference/auth.mdx",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "CLAUDE_CODE_OAUTH_TOKEN is not supported by GitHub Agentic Workflows"
+  },
+  {
+   "key": "s8",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "docs/src/content/docs/engines/claude.md",
+   "container": "github/gh-aw",
+   "date": "2026-10-15",
+   "version": "dc91dbed",
+   "url": "https://github.com/github/gh-aw/blob/dc91dbed/docs/src/content/docs/engines/claude.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the Claude engine's routes: ANTHROPIC_API_KEY, workload identity federation or Copilot-billed inference"
+  },
+  {
+   "key": "s9",
+   "kind": "repository",
+   "authors": [
+    "agenticsnz"
+   ],
+   "title": "unsorry",
+   "container": "agenticsnz/unsorry",
+   "date": "",
+   "version": "029d328b",
+   "url": "https://github.com/agenticsnz/unsorry",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "unsorry's board, dispatcher and reaper in Actions, its claim recheck after the push (ADR-072) and volunteers' agents"
+  },
+  {
+   "key": "s10",
+   "kind": "repository-file",
+   "authors": [
+    "agenticsnz"
+   ],
+   "title": "docs/adrs/ADR-004-Claims-Branch-First-Push-Wins.md",
+   "container": "agenticsnz/unsorry",
+   "date": "",
+   "version": "029d328b",
+   "url": "https://github.com/agenticsnz/unsorry/blob/029d328b/docs/adrs/ADR-004-Claims-Branch-First-Push-Wins.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "claim files pushed to one shared claims branch, first push wins"
+  },
+  {
+   "key": "s11",
+   "kind": "repository-file",
+   "authors": [
+    "agenticsnz"
+   ],
+   "title": ".github/workflows/reaper.yml",
+   "container": "agenticsnz/unsorry",
+   "date": "",
+   "version": "029d328b",
+   "url": "https://github.com/agenticsnz/unsorry/blob/029d328b/.github/workflows/reaper.yml",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the reaper that deletes expired claims every 15 minutes"
+  },
+  {
+   "key": "s12",
+   "kind": "repository-file",
+   "authors": [
+    "agenticsnz"
+   ],
+   "title": "tools/gate_b/config.py",
+   "container": "agenticsnz/unsorry",
+   "date": "",
+   "version": "029d328b",
+   "url": "https://github.com/agenticsnz/unsorry/blob/029d328b/tools/gate_b/config.py",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the claim's default time to live, TTL_SECONDS = 7200"
+  },
+  {
+   "key": "s13",
+   "kind": "repository",
+   "authors": [
+    "marcelusfernandes"
+   ],
+   "title": "agentic-setup",
+   "container": "marcelusfernandes/agentic-setup",
+   "date": "",
+   "version": "4907361",
+   "url": "https://github.com/marcelusfernandes/agentic-setup",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "a local Claude Code orchestrator of Claude Code and Codex loops with a branch-push lock"
+  },
+  {
+   "key": "s14",
+   "kind": "repository-file",
+   "authors": [
+    "marcelusfernandes"
+   ],
+   "title": "scripts/claim.mts",
+   "container": "marcelusfernandes/agentic-setup",
+   "date": "",
+   "version": "4907361",
+   "url": "https://github.com/marcelusfernandes/agentic-setup/blob/4907361/scripts/claim.mts",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the claim as a branch push made create-only with --force-with-lease"
+  },
+  {
+   "key": "s15",
+   "kind": "repository-file",
+   "authors": [
+    "marcelusfernandes"
+   ],
+   "title": "docs/orchestration.md",
+   "container": "marcelusfernandes/agentic-setup",
+   "date": "",
+   "version": "4907361",
+   "url": "https://github.com/marcelusfernandes/agentic-setup/blob/4907361/docs/orchestration.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "a dead orchestrator's issue resumed as the next round, not reclaimed"
+  },
+  {
+   "key": "s16",
+   "kind": "repository",
+   "authors": [
+    "OpenAI"
+   ],
+   "title": "symphony",
+   "container": "openai/symphony",
+   "date": "",
+   "version": "",
+   "url": "https://github.com/openai/symphony",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "a host daemon that holds claims in memory, kills a stalled Codex worker and retries"
+  },
+  {
+   "key": "s17",
+   "kind": "repository",
+   "authors": [
+    "automazeio"
+   ],
+   "title": "ccpm",
+   "container": "automazeio/ccpm",
+   "date": "",
+   "version": "",
+   "url": "https://github.com/automazeio/ccpm",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "CCPM, a Claude Code skill running parallel streams inside one session"
+  },
+  {
+   "key": "s18",
+   "kind": "repository-file",
+   "authors": [
+    "automazeio"
+   ],
+   "title": "skill/ccpm/references/execute.md",
+   "container": "automazeio/ccpm",
+   "date": "2026-03-18",
+   "version": "",
+   "url": "https://github.com/automazeio/ccpm/blob/HEAD/skill/ccpm/references/execute.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the claim step: gh issue edit with an assignee and the in-progress label"
+  },
+  {
+   "key": "s19",
+   "kind": "repository",
+   "authors": [
+    "gastownhall"
+   ],
+   "title": "beads",
+   "container": "gastownhall/beads",
+   "date": "",
+   "version": "",
+   "url": "https://github.com/gastownhall/beads",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Beads: atomic claims inside one Dolt database, synced to a git ref, released by hand"
+  },
+  {
+   "key": "s20",
+   "kind": "repository",
+   "authors": [
+    "gastownhall"
+   ],
+   "title": "gastown",
+   "container": "gastownhall/gastown",
+   "date": "",
+   "version": "",
+   "url": "https://github.com/gastownhall/gastown",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Gas Town: local agents over the Beads ledger and a Witness that detects stuck agents"
+  },
+  {
+   "key": "s21",
+   "kind": "repository",
+   "authors": [
+    "paperclipai"
+   ],
+   "title": "paperclip",
+   "container": "paperclipai/paperclip",
+   "date": "",
+   "version": "",
+   "url": "https://github.com/paperclipai/paperclip",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "a self-hosted server with atomic task checkout, heartbeats and execution locks, agents in an org chart"
+  },
+  {
+   "key": "s22",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "content/copilot/concepts/copilot-surfaces/copilot-on-github.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs/blob/12691d2/content/copilot/concepts/copilot-surfaces/copilot-on-github.md",
+   "public_url": "https://docs.github.com/en/copilot/concepts/copilot-surfaces/copilot-on-github",
+   "read": "opened",
+   "path": "",
+   "supports": "Copilot cloud agent on Actions runners, one branch and one pull request per task, a 59-minute session limit"
+  },
+  {
+   "key": "s23",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "content/copilot/concepts/agent-capabilities/choosing-and-delegating-agent-work/agent-management.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs/blob/12691d2/content/copilot/concepts/agent-capabilities/choosing-and-delegating-agent-work/agent-management.md",
+   "public_url": "https://docs.github.com/en/copilot/concepts/agent-capabilities/choosing-and-delegating-agent-work/agent-management",
+   "read": "opened",
+   "path": "",
+   "supports": "the Agents tab for starting, steering and tracking sessions of several agents"
+  },
+  {
+   "key": "s24",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "content/copilot/concepts/agent-capabilities/about-agents/about-third-party-coding-agents.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs/blob/12691d2/content/copilot/concepts/agent-capabilities/about-agents/about-third-party-coding-agents.md",
+   "public_url": "https://docs.github.com/en/copilot/concepts/agent-capabilities/about-agents/about-third-party-coding-agents",
+   "read": "opened",
+   "path": "",
+   "supports": "Claude and Codex coding agents on GitHub, which consume Actions minutes and AI Credits"
+  },
+  {
+   "key": "s25",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "data/reusables/copilot/cloud-agent/automations-availability.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs/blob/12691d2/data/reusables/copilot/cloud-agent/automations-availability.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Copilot automations are not available in public repositories"
+  },
+  {
+   "key": "s26",
+   "kind": "documentation",
+   "authors": [
+    "Anthropic"
+   ],
+   "title": "Agent teams",
+   "container": "Claude Code Docs",
+   "date": "",
+   "version": "",
+   "url": "https://code.claude.com/docs/en/agent-teams",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "agent teams: teammates in one session claiming tasks under a file lock on one machine"
+  },
+  {
+   "key": "s27",
+   "kind": "documentation",
+   "authors": [
+    "Anthropic"
+   ],
+   "title": "Projects",
+   "container": "Claude Code Docs",
+   "date": "",
+   "version": "",
+   "url": "https://code.claude.com/docs/en/claude-projects",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Projects: one account's threads, usually cloud sessions"
+  },
+  {
+   "key": "s28",
+   "kind": "blog-post",
+   "authors": [
+    "Carlini N"
+   ],
+   "title": "Building a C compiler with a team of parallel Claudes",
+   "container": "Anthropic Engineering",
+   "date": "2026-02-05",
+   "version": "",
+   "url": "https://www.anthropic.com/engineering/building-c-compiler",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "16 agents in containers on one host claiming tasks by lock files in a shared git upstream, at just under $20,000"
+  }
+ ],
+ "uncited": [],
+ "checker_problems": 0
+}

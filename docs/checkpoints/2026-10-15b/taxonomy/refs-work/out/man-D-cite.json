@@ -1,0 +1,631 @@
+{
+ "edits": [
+  {
+   "unit_id": "mrzzsdjxrm2.26738",
+   "find": "It adds a free, deterministic",
+   "replace": "It adds a free [[s1,s2]], deterministic"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.26886",
+   "find": "Security and quality section).",
+   "replace": "Security and quality section [[s3]])."
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.27142",
+   "find": "Require code scanning results beside",
+   "replace": "Require code scanning results [[s4]] beside"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.27142",
+   "find": "is in public preview and lists",
+   "replace": "is in public preview [[s4,s5]] and lists"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.27142",
+   "find": "as a prerequisite,",
+   "replace": "as a prerequisite [[s5]],"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.27426",
+   "find": "a report a person can read;",
+   "replace": "a report a person can read [[s6]];"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.27426",
+   "find": "at 8311902 (2026-10-15).",
+   "replace": "at 8311902 (2026-10-15) [[s4,s5]]."
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.27677",
+   "find": "Planned; a recorded decision.",
+   "replace": "Planned; a recorded decision [[s6]]."
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.27677",
+   "find": "searched by CrossHair with Z3,",
+   "replace": "searched by CrossHair with Z3 [[s7]],"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.27677",
+   "find": "is private and proprietary,",
+   "replace": "is private and proprietary [[s8]],"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.28096",
+   "find": "a stored Claude token in CI,",
+   "replace": "a stored Claude token in CI [[s9]],"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.28096",
+   "find": "runs Symphony's code (spec 6.5).",
+   "replace": "runs Symphony's code [[s10]] (spec 6.5)."
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.28096",
+   "find": "(Verified, the plugin's README).",
+   "replace": "(Verified, the plugin's README [[s11]])."
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.28096",
+   "find": "recommended after Symphony's Phase 3.",
+   "replace": "recommended after Symphony's Phase 3 [[s10]]."
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.28740",
+   "find": "The push guard is a Claude Code hook,",
+   "replace": "The push guard is a Claude Code hook [[s11]],"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.28740",
+   "find": "And Copilot's cloud agent and",
+   "replace": "And Copilot's cloud agent [[s12]] and"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.28740",
+   "find": "or Copilot credits,",
+   "replace": "or Copilot credits [[s13,s14]],"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.29446",
+   "find": "Symphony's Overlaps section orders",
+   "replace": "Symphony's Overlaps section [[s15]] orders"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.29446",
+   "find": "against the ones ahead of it,",
+   "replace": "against the ones ahead of it [[s16]],"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.29446",
+   "find": "github/docs at 8311902).",
+   "replace": "github/docs at 8311902 [[s17]])."
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.29446",
+   "find": "(ci.yml lines 70 to 75)",
+   "replace": "(ci.yml lines 70 to 75 [[s18]])"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.29446",
+   "find": "github/docs at 8311902;",
+   "replace": "github/docs at 8311902 [[s16,s19]];"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.30080",
+   "find": "Metaflow is the chosen engine,",
+   "replace": "Metaflow [[s20]] is the chosen engine [[s21]],"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.30080",
+   "find": "over SSH with a key file,",
+   "replace": "over SSH with a key file [[s22]],"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.30080",
+   "find": "against touching a credential forbids",
+   "replace": "against touching a credential [[s21]] forbids"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.30080",
+   "find": "Snakemake with its Slurm executor plugin,",
+   "replace": "Snakemake [[s23]] with its Slurm executor plugin [[s24]],"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.30080",
+   "find": "Nextflow, Parsl and CWL;",
+   "replace": "Nextflow [[s25]], Parsl [[s26]] and CWL [[s27]];"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.30080",
+   "find": "DVC can keep",
+   "replace": "DVC [[s28]] can keep"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.30080",
+   "find": "and MLflow or Weights",
+   "replace": "and MLflow [[s29]] or Weights"
+  },
+  {
+   "unit_id": "mrzzsdjxrm2.30591",
+   "find": "back to the pull request (spec 6.2).",
+   "replace": "back to the pull request [[s30]] (spec 6.2)."
+  }
+ ],
+ "sources": [
+  {
+   "key": "s1",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "content/billing/concepts/product-billing/github-advanced-security.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs/blob/12691d2/content/billing/concepts/product-billing/github-advanced-security.md",
+   "public_url": "https://docs.github.com/en/billing/concepts/product-billing/github-advanced-security",
+   "read": "opened",
+   "path": "",
+   "supports": "code scanning, secret scanning and dependency review free on public repositories"
+  },
+  {
+   "key": "s2",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "data/reusables/gated-features/dependabot-alerts.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs/blob/12691d2/data/reusables/gated-features/dependabot-alerts.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Dependabot alerts available on every repository"
+  },
+  {
+   "key": "s3",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "data/reusables/repositories/navigate-to-code-security-and-analysis.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "8311902",
+   "url": "https://github.com/github/docs/blob/8311902/data/reusables/repositories/navigate-to-code-security-and-analysis.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the Advanced Security page in the Security and quality section of a repository's settings"
+  },
+  {
+   "key": "s4",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "content/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "8311902",
+   "url": "https://github.com/github/docs/blob/8311902/content/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets.md",
+   "public_url": "https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets",
+   "read": "opened",
+   "path": "",
+   "supports": "the ruleset rules Require code scanning results and Require secret scanning alerts are resolved (public preview)"
+  },
+  {
+   "key": "s5",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "content/code-security/how-tos/secure-your-secrets/prevent-future-leaks/block-merges-with-secrets.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "8311902",
+   "url": "https://github.com/github/docs/blob/8311902/content/code-security/how-tos/secure-your-secrets/prevent-future-leaks/block-merges-with-secrets.md",
+   "public_url": "https://docs.github.com/en/code-security/how-tos/secure-your-secrets/prevent-future-leaks/block-merges-with-secrets",
+   "read": "opened",
+   "path": "",
+   "supports": "the secret scanning merge rule: public preview, Secret Protection or Advanced Security as prerequisite"
+  },
+  {
+   "key": "s6",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "CLAUDE.md",
+   "container": "OpenSpineConsortium/symphony-template",
+   "date": "2026-10-15",
+   "version": "15d3f22",
+   "url": "https://github.com/OpenSpineConsortium/symphony-template/blob/15d3f22/CLAUDE.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the recorded decision for the qa check with beethoven-qa as its Python lane, not built"
+  },
+  {
+   "key": "s7",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "CLAUDE.md",
+   "container": "OpenSpineConsortium/beethoven-qa",
+   "date": "2026-10-09",
+   "version": "85f0e1c",
+   "url": "https://github.com/OpenSpineConsortium/beethoven-qa/blob/85f0e1c/CLAUDE.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "beethoven-qa's contracts on every public function and its CrossHair and Z3 gate"
+  },
+  {
+   "key": "s8",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "README.md",
+   "container": "OpenSpineConsortium/beethoven-qa",
+   "date": "2026-10-09",
+   "version": "85f0e1c",
+   "url": "https://github.com/OpenSpineConsortium/beethoven-qa/blob/85f0e1c/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "beethoven-qa is private and its code proprietary"
+  },
+  {
+   "key": "s9",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "state/claude_context.md",
+   "container": "OpenSpineConsortium/beethoven",
+   "date": "2026-10-09",
+   "version": "cb41b4a",
+   "url": "https://github.com/OpenSpineConsortium/beethoven/blob/cb41b4a/state/claude_context.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Beethoven's rule: no CI that runs Claude Code on a stored key or token"
+  },
+  {
+   "key": "s10",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "docs/checkpoints/2026-10-14/handoff-page/PLAN.md",
+   "container": "OpenSpineConsortium/symphony-template",
+   "date": "2026-10-15",
+   "version": "15d3f22",
+   "url": "https://github.com/OpenSpineConsortium/symphony-template/blob/15d3f22/docs/checkpoints/2026-10-14/handoff-page/PLAN.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Phase 11: no Beethoven repository runs Symphony's code; a Markdown-only pilot after Phase 3"
+  },
+  {
+   "key": "s11",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "README.md",
+   "container": "OpenSpineConsortium/symphony-marketplace",
+   "date": "2026-10-14",
+   "version": "5f6be11",
+   "url": "https://github.com/OpenSpineConsortium/symphony-marketplace/blob/5f6be11/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "what the symphony plugin brings: skills, /board and the library's push guard as a Claude Code hook"
+  },
+  {
+   "key": "s12",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "content/copilot/concepts/security-governance-and-network-settings/risks-and-mitigations.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs/blob/12691d2/content/copilot/concepts/security-governance-and-network-settings/risks-and-mitigations.md",
+   "public_url": "https://docs.github.com/en/copilot/concepts/security-governance-and-network-settings/risks-and-mitigations",
+   "read": "opened",
+   "path": "",
+   "supports": "Copilot cloud agent pushes only to a copilot/ branch made for it"
+  },
+  {
+   "key": "s13",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "docs/src/content/docs/reference/auth.mdx",
+   "container": "github/gh-aw",
+   "date": "2026-10-15",
+   "version": "dc91dbed",
+   "url": "https://github.com/github/gh-aw/blob/dc91dbed/docs/src/content/docs/reference/auth.mdx",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "gh-aw does not support CLAUDE_CODE_OAUTH_TOKEN; API key or Copilot billing"
+  },
+  {
+   "key": "s14",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "docs/src/content/docs/engines/claude.md",
+   "container": "github/gh-aw",
+   "date": "2026-10-15",
+   "version": "dc91dbed",
+   "url": "https://github.com/github/gh-aw/blob/dc91dbed/docs/src/content/docs/engines/claude.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "gh-aw's Claude engine: API key, WIF or Copilot-billed inference"
+  },
+  {
+   "key": "s15",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "docs/agents/PROTOCOL.md",
+   "container": "OpenSpineConsortium/symphony-template",
+   "date": "2026-10-15",
+   "version": "15d3f22",
+   "url": "https://github.com/OpenSpineConsortium/symphony-template/blob/15d3f22/docs/agents/PROTOCOL.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the board's Overlaps section and its landing order"
+  },
+  {
+   "key": "s16",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "content/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/managing-a-merge-queue.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "8311902",
+   "url": "https://github.com/github/docs/blob/8311902/content/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/managing-a-merge-queue.md",
+   "public_url": "https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/managing-a-merge-queue",
+   "read": "opened",
+   "path": "",
+   "supports": "the merge queue tests against the queue ahead, waits for required checks on merge_group, status check timeout"
+  },
+  {
+   "key": "s17",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "data/reusables/gated-features/merge-queue.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "8311902",
+   "url": "https://github.com/github/docs/blob/8311902/data/reusables/gated-features/merge-queue.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "merge queue available in any public repository owned by an organization"
+  },
+  {
+   "key": "s18",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": ".github/workflows/ci.yml",
+   "container": "OpenSpineConsortium/symphony-template",
+   "date": "2026-10-15",
+   "version": "15d3f22",
+   "url": "https://github.com/OpenSpineConsortium/symphony-template/blob/15d3f22/.github/workflows/ci.yml",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the template's check runs on pull_request, push and workflow_dispatch only"
+  },
+  {
+   "key": "s19",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "data/reusables/actions/merge-group-event-with-required-checks.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "8311902",
+   "url": "https://github.com/github/docs/blob/8311902/data/reusables/actions/merge-group-event-with-required-checks.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "without a merge_group trigger the required check is not reported and the merge fails"
+  },
+  {
+   "key": "s20",
+   "kind": "web-page",
+   "authors": [],
+   "title": "metaflow",
+   "container": "PyPI",
+   "date": "2026-09-02",
+   "version": "2.19.39",
+   "url": "https://pypi.org/pypi/metaflow/json",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Metaflow, the outer loop's chosen engine"
+  },
+  {
+   "key": "s21",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "CLAUDE.md",
+   "container": "OpenSpineConsortium/beethoven-agents",
+   "date": "2026-10-07",
+   "version": "a40a71a",
+   "url": "https://github.com/OpenSpineConsortium/beethoven-agents/blob/a40a71a/CLAUDE.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "decision D3 (Metaflow with metaflow-slurm, a plain sbatch adapter first) and the credential rule"
+  },
+  {
+   "key": "s22",
+   "kind": "repository-file",
+   "authors": [
+    "Outerbounds"
+   ],
+   "title": "README.md",
+   "container": "outerbounds/metaflow-slurm",
+   "date": "",
+   "version": "",
+   "url": "https://raw.githubusercontent.com/outerbounds/metaflow-slurm/HEAD/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "metaflow-slurm submits sbatch over SSH with a key file"
+  },
+  {
+   "key": "s23",
+   "kind": "repository-file",
+   "authors": [],
+   "title": "README.md",
+   "container": "snakemake/snakemake",
+   "date": "",
+   "version": "",
+   "url": "https://raw.githubusercontent.com/snakemake/snakemake/HEAD/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Snakemake, a workflow manager scaling to clusters"
+  },
+  {
+   "key": "s24",
+   "kind": "web-page",
+   "authors": [],
+   "title": "snakemake-executor-plugin-slurm",
+   "container": "PyPI",
+   "date": "2026-08-10",
+   "version": "2.8.0",
+   "url": "https://pypi.org/pypi/snakemake-executor-plugin-slurm/json",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Snakemake's Slurm executor plugin"
+  },
+  {
+   "key": "s25",
+   "kind": "repository-file",
+   "authors": [
+    "Seqera"
+   ],
+   "title": "README.md",
+   "container": "nextflow-io/nextflow",
+   "date": "",
+   "version": "",
+   "url": "https://raw.githubusercontent.com/nextflow-io/nextflow/HEAD/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Nextflow, a dataflow workflow system"
+  },
+  {
+   "key": "s26",
+   "kind": "web-page",
+   "authors": [],
+   "title": "parsl",
+   "container": "PyPI",
+   "date": "2026-10-12",
+   "version": "2026.10.12",
+   "url": "https://pypi.org/pypi/parsl/json",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Parsl, parallel Python apps across cores and nodes"
+  },
+  {
+   "key": "s27",
+   "kind": "repository-file",
+   "authors": [],
+   "title": "README.rst",
+   "container": "common-workflow-language/cwltool",
+   "date": "",
+   "version": "",
+   "url": "https://raw.githubusercontent.com/common-workflow-language/cwltool/HEAD/README.rst",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "CWL's reference runner cwltool, with Apptainer support"
+  },
+  {
+   "key": "s28",
+   "kind": "web-page",
+   "authors": [],
+   "title": "dvc",
+   "container": "PyPI",
+   "date": "2026-03-31",
+   "version": "3.67.1",
+   "url": "https://pypi.org/pypi/dvc/json",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "DVC, version control for data"
+  },
+  {
+   "key": "s29",
+   "kind": "repository-file",
+   "authors": [
+    "Databricks"
+   ],
+   "title": "README.md",
+   "container": "mlflow/mlflow",
+   "date": "",
+   "version": "",
+   "url": "https://raw.githubusercontent.com/mlflow/mlflow/HEAD/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "MLflow, run tracking"
+  },
+  {
+   "key": "s30",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "README.md",
+   "container": "OpenSpineConsortium/hpcworker",
+   "date": "2026-10-07",
+   "version": "3b22e70",
+   "url": "https://github.com/OpenSpineConsortium/hpcworker/blob/3b22e70/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the grid lane: grid_ci.sh posts grid/ commit statuses, since GitHub's runners cannot reach the grid"
+  }
+ ],
+ "uncited": [],
+ "checker_problems": 0,
+ "changes": [
+  "30 markers in 11 units of section 7; no note or verify mention appeared in this part, so no words were changed.",
+  "github/docs at 8311902, which the manual names but no research note records, was checked by fetching each cited file from raw.githubusercontent.com at that commit: the ruleset rules, the secret-scanning merge rule's preview and prerequisites, merge queue availability, the merge_group requirement, the status check timeout, and the Advanced Security settings path.",
+  "Weights and Biases in 7.6 has no marker: no note gives a source for it, and the recipe carries no Verified or Reported grade."
+ ]
+}

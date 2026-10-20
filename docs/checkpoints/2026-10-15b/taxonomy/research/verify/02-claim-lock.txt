@@ -1,0 +1,158 @@
+# Verify 02: the claim lock, idleness and re-claims after a merge
+
+Adversarial check, 2026-10-15, against /home/user/symphony-template (vendored sdlc-protocol 0.4.1 plus the post-0.4.1 fixes, tools/VENDORED) and /home/user/symphony-protocol (main at a3a5b4d, plus the unmerged branch claude/owner-decisions-f8 fetched read-only). Experiments ran on local bare repositories under /tmp/claude-research/lockexp (gc.auto=0, gc.autoDetach=false, maintenance.auto=false, maintenance.autoDetach=false, receive.autogc=false), git 2.43.0; nothing was pushed anywhere else, and the directory was deleted afterwards. GitHub itself was not tested: what is said of GitHub comes from the repository's own documents and design notes, and from git's behaviour, which GitHub's receive follows for these cases unless a ruleset adds a rule.
+
+## Claim 1: "A claim is the first push of a branch claude/N: GitHub refuses the second push of the same name, so two workers can never hold the same issue."
+
+Verdict: Partly true. A second *creation* of claude/N is refused by git's own compare-and-swap. But nothing on the server refuses "a second push of the same name" as such: a fast-forward push from a worker who fetched the claim is accepted everywhere, a forced push overwrites the claim on a stock server and on GitHub under the setup the template recommends, and the only thing that stops a forced push is the local push guard, which runs only in Claude Code sessions that load the hook.
+
+### Experiments
+
+Setup: one bare origin, two clones a (alice) and b (bob); alice pushes claude/5 with docs/agents/claims/5.md saying "- Worker: alice".
+
+```
+== A: alice claims first (creation)
+ * [new branch]      claude/5 -> claude/5
+== B1: bob, not fetched, pushes his own claim (not a descendant)
+ ! [rejected]        claude/5 -> claude/5 (fetch first)
+== B2: bob pushes it with --force
+ + 10b9f35...1c4929d claude/5 -> claude/5 (forced update)
+   origin claude/5 now carries: - Worker: bob
+== (alice restores hers with a + refspec)
+ + 1c4929d...10b9f35 claude/5 -> claude/5 (forced update)
+== B3: bob fetches alice's claim, builds on it, plain push (fast-forward)
+   10b9f35..4d54f25  claude/5 -> claude/5
+== B4: identical commit pushed again
+Everything up-to-date
+== B5: bob, after a fetch, --force-with-lease onto alice's claim with his own claim
+ + 4d54f25...1c4929d mine -> claude/5 (forced update)
+   origin claude/5 now carries: - Worker: bob
+== server with receive.denyNonFastForwards=true
+remote: error: denying non-fast-forward refs/heads/claude/5 (you should pull first)
+ ! [remote rejected] claude/5 -> claude/5 (non-fast-forward)
+```
+
+The race (exp_race.sh): a pre-receive hook holds every push for 2 s; alice pushes claude/8 plainly, bob pushes his own claude/8 with --force 0.5 s later, both having seen no claude/8:
+
+```
+== alice (plain push):  * [new branch]      claude/8 -> claude/8
+== bob (--force, same instant):
+remote: error: cannot lock ref 'refs/heads/claude/8': reference already exists
+ ! [remote rejected] claude/8 -> claude/8 (failed to update ref)
+== origin claude/8 carries: - Worker: a
+```
+
+The same refusal came when both pushed the identical commit (a first run of the race in which neither claim commit had content, so both branches pointed at main's tip): "cannot lock ref ... reference already exists".
+
+The push guard, asked through the real hook entry point (python3 tools/guard_push.py with a PreToolUse payload, cwd = bob's clone, origin/claude/5 = alice's claim, bob's claude/5 a descendant of it):
+
+```
+PASS   git push origin claude/5                                   (fast-forward onto alice's claim)
+REFUSE git push --force origin claude/5
+REFUSE git push origin +claude/5
+REFUSE git push --force-with-lease=claude/5 origin mine:claude/5  (claim file names alice, pushed branch bob)
+PASS   git push --force-with-lease origin claude/5                (pushed branch still carries alice's claim file)
+PASS   git push origin mine:claude/5                              (left to git, which rejects it as non-fast-forward)
+```
+
+A side finding: the guard reads the branches and claim files in the session's working directory (the payload's cwd), not in the clone a `git -C <dir>` names; push_arguments skips -C's value. The same lease, `git -C <bob's clone> push --force-with-lease=claude/5 origin mine:claude/5`, was refused from bob's clone, refused for a wrong reason from alice's clone (it named the stale remote-tracking ref there), and PASSED from a clone that had neither ref. The project's own constraints tell cloud sessions to use git -C in every command, so the fence can be silently out of reach.
+
+### What does what
+
+| Second push of claude/N | stock git server | GitHub (recommended setup) | push guard (Claude Code hook) |
+|---|---|---|---|
+| Creation racing another creation (both saw no branch), plain or --force | refused: the ref update is a compare-and-swap on "must not exist" | refused the same way (git's ref transaction) | not involved |
+| Not a descendant, unforced (pusher has not fetched, or fetched and diverged) | refused, by the *pushing client* (send-pack: "fetch first" / "non-fast-forward"); the server checks nothing unless receive.denyNonFastForwards is set | same client-side refusal | passes; leaves it to git |
+| Descendant of the claim (pusher fetched and built on it) | accepted | accepted | passes (the guard does not enforce "never push to another worker's branch" for plain pushes) |
+| --force or +refspec | accepted (denyNonFastForwards defaults to false) | accepted unless a ruleset or branch protection on claude/** blocks force pushes, which docs/setup/github.md:16 tells the owner NOT to have | refused |
+| --force-with-lease after a fetch, onto another worker's claim | accepted | accepted (same caveat) | refused by the F7 fence when the session cwd is the pushing clone and git can show both claim files; passes otherwise |
+| Identical commit | no-op ("Everything up-to-date") | no-op | passes |
+
+Code evidence:
+- The claim as written: docs/agents/PROTOCOL.md:3 ("GitHub refuses the second push of the same name, so two workers can never hold the same issue"); tools/sdlc_protocol/claims.py:3-5 ("GitHub refuses the second push of the same name, so the branch is the lock").
+- Guard rules: tools/sdlc_protocol/guard.py:565-568 (--force), 573-576 (+refspec), 588-601 (lease limited to claude/ and the other_holder fence); no rule refuses a plain push onto another worker's claude/N. guard.py:36-42 says anything it cannot read passes. Directory: guard.py:655-660 (where_to_ask takes the payload cwd), 318-337 (push_arguments skips -C's value, GIT_VALUE_OPTIONS at :119).
+- Rulesets kept off claim branches: docs/setup/github.md:16 ("It must leave the claim branches `claude/**` alone too, and the `released/**` they become"), because the board renames released branches and a ruleset would also refuse the prescribed lease.
+- The project's own design note agrees: /home/user/symphony-protocol/validation/DESIGN.md:826 ("under the setup the spec recommends, nothing on GitHub enforces 'never push to another worker's branch'"); F7 (DESIGN.md:823-824) reproduced the lease takeover and is fixed only in the guard.
+
+### Corrected wording
+
+"A claim is the push that creates claude/N. Git's ref update is a compare-and-swap, so of two workers who both push that creation, only one succeeds, and a worker who has not fetched the claim is turned away by its own git client as a non-fast-forward. Nothing on the server stops a later push onto the claim: a fast-forward from a worker who fetched it is accepted, and a forced push (--force, a + refspec, or --force-with-lease after a fetch) overwrites it on GitHub under the recommended setup, since rulesets must leave claude/** alone. Those forced pushes are refused only by the local push guard, a Claude Code PreToolUse hook that sees only Claude Code sessions with the hook loaded, and that judges a lease only from the session's own working directory."
+
+## Claim 2: "An idle claim is released after 24 hours without a commit, by the committer date of the branch head."
+
+Verdict: Confirmed as a description of the shipped code (main and the template's vendored copy), but the date is the pusher's to choose, with no guard either way; this is the project's own known, open finding F8, with a fix on an unmerged branch as of 2026-10-15.
+
+### Experiments
+
+```
+GIT_COMMITTER_DATE='2099-01-01T00:00:00Z' git -C a commit ...; git -C a push origin claude/9
+   (origin with receive.fsckObjects=true)
+ * [new branch]      claude/9 -> claude/9
+origin's head of claude/9, committer date: 2099-01-01T00:00:00+00:00
+GIT_COMMITTER_DATE='2000-01-01T00:00:00Z' ... push origin claude/10
+ * [new branch]      claude/10 -> claude/10
+origin's head of claude/10, committer date: 2000-01-01T00:00:00+00:00
+```
+
+The vendored library's rule over those heads (exp2_release.py, now = wall clock):
+
+```
+coordinator release_due now:            ['claude/10']   (pushed seconds ago, due at once)
+release_due 30 days on:                 ['claude/10']   (claude/9 still not due)
+a person's release comment 30 days on counts for claude/9: False
+claude/10 released by the coordinator in the same minute it was pushed: True
+```
+
+So a future-dated head holds the claim indefinitely, and it defeats not only the coordinator but also a release by hand: the board counts a person's release comment only when it came more than 24 hours after the head's committer date (was_released), which a 2099 date never satisfies. The only remedies left are the holder's own push, or a person deleting or renaming the branch outside the protocol. A past-dated head is released on the next board run. The committer date is part of the hashed commit object, so no server can correct it; fsck checks only its format.
+
+Code evidence:
+- tools/sdlc_protocol/claims.py:26 (IDLE_AFTER = 24 h), 237-241 (is_idle: now - committer date > 24 h; no clamp for a date in the future or far past), 244-258 (release_due), 317-327 (was_released, the same test for a person's release).
+- tools/sdlc_protocol/adapters/github.py:528-532 (committed_at reads `committer.date` from /git/commits/{sha}, i.e. what the client wrote), used at :549-550 and :597-598; board.py:454-464 (is_released requires was_released).
+- No guard: no mention of future dates, skew or push time in tools/sdlc_protocol/ or in symphony-protocol main's sdlc_protocol/.
+
+Known and open:
+- /home/user/symphony-protocol/validation/DESIGN.md:38 (table: "F8 | Idleness is measured by the committer date, which the person pushing sets | decision for the owner"), :829-831 ("A commit dated in the future holds a claim past its idle day; a commit dated in the past is released at once. The canary uses the second on purpose (C6)"), :925 (the owner's options). validation/GUARANTEES.md:7, 17-18: G2 and G3 are "checked, under F8".
+- validation/traces/F8.json: status "open; decision for the owner"; a claim dated +72 h is not due at hour 25, a commit dated -48 h is released at once. known.json lists F8 neither as red nor as fixed.
+- /home/user/symphony-template/docs/checkpoints/2026-10-14/protocol-fixes.md:5 and :47-48 (F8 queued "behind the committer-date read until canary C5"); coordinator-checkpoint.md:44 (F8 to read the server's push time after canary C5).
+- In progress: symphony-protocol branch claude/owner-decisions-f8 (8 commits on 2026-10-15, not merged to main, no release) changes the spec to "when GitHub received the push that set its head, as the repository's activity records that push", reading GET /repos/{owner}/{repo}/activity; its DESIGN.md marks F8 fixed after canary C5 passed on 2026-10-15. It still falls back to the head's committer date when the activity lists no push that set the head after a second read, or when GitHub refuses the read (for example, a token that may not read the activity), so the pusher's clock remains the fallback. Whether a pull request is open for it could not be checked (the GitHub tools do not reach that repository from this session).
+
+### Corrected wording
+
+"A claim is released once its branch head is more than 24 hours old by the head commit's committer date. That date is written by the pusher's own git client, so a commit dated in the future holds a claim indefinitely, against the coordinator and against a person's release comment alike, and one dated in the past is released on the next board run. This is the project's open finding F8 in 0.4.1 and on main; an unmerged fix (2026-10-15) measures idleness by GitHub's record of the push and falls back to the committer date when that record is missing or cannot be read."
+
+## Claim 3: "A merged pull request frees nothing harmful: after merge the claim file is gone and the closed issue is no longer listed."
+
+Verdict: Partly true. Nothing lets two workers hold one issue after a merge. But "after merge the claim file is gone and the issue is no longer listed" hides three things: a reopened issue can be stuck where no one will take it, a kept merged branch silently becomes the next claim's base, and a branch pushed for a closed issue stays until a person deletes it.
+
+### Experiments (exp3.sh; alice claims, works, deletes her claim file, the work is merged into main)
+
+```
+== Case A: #20 merged with a merge commit, branch deleted, issue closed; bob pushes claude/20
+ * [new branch]      claude/20 -> claude/20
+== Case B: #22 merged with a merge commit, branch NOT deleted, issue reopened; carol claims from main
+   e7e93d5..7d31c43  claude/22 -> claude/22          (a fast-forward, not a creation)
+   history: Claim #22 for carol / Merge #22 / ...
+== Case C: #23 squash-merged, branch NOT deleted, issue reopened; carol claims from main
+ ! [rejected]        claude/23 -> claude/23 (non-fast-forward)
+```
+
+Board rows from the vendored library (board.claim_row) for those states, labels as the protocol leaves them (nothing takes claimed or in-review off at merge or close):
+
+```
+Case A (closed issue, bob's branch):            ['#20', 'claude/20', 'bob', 'issue closed', 'delete the branch']
+Case B/C (reopened, alice's merged branch kept): ['#22', 'claude/22', 'alice', '(no pull request yet)', '-']
+```
+
+What follows:
+- Case A, a push of claude/N for a closed issue: git takes it as a new branch. The board lists a leftover row that asks a person to delete the branch (board.py:641-662). tidy.yml runs only on `issues: closed` (tidy.yml:18-20, 50), so it does not delete a branch pushed after the close, and the coordinator never releases it, since a candidate's issue must be open (coordinator.py:58-69). Clutter until a person deletes it, and the proxy refuses branch deletion from a cloud session (CLAUDE.md constraints). Not a double hold.
+- Reopened issue, branch deleted at merge (the setup the template recommends, docs/setup/github.md:20; scripts/setup-repo.sh:181): the issue still carries claimed (and in-review, worker:alice). The Queue leaves out any issue labelled claimed (board.py:710), Given to workers does too (board.py:730), the clerk deals it to nobody (team.py:347-358, which names this exact case), and with no branch the coordinator has nothing to release. The issue is listed nowhere and no worker takes it until a person takes the labels off: missed work, which the project's validation notes record (symphony-protocol validation/DESIGN.md, F14's review).
+- Reopened issue, merged branch kept (auto-delete off, or not yet run): the stale branch counts as alice's claim (claimed_numbers is by branch), the board shows it as hers, and with in-review still on the issue the coordinator never releases it (coordinator.py:67: in-review is "finished"). With a merge commit, the next worker's claim from main is a fast-forward of the old branch and is accepted with no "new branch", so the lock is a plain update on top of alice's history (later competitors are still refused by the compare-and-swap on the old value). With a squash or rebase merge, the claim is rejected as non-fast-forward and the issue stays blocked until a person deletes the branch or removes in-review.
+- Re-claim after a merge is judged correctly by the guard's lease fence, which reads the claim file "where its history last added it", so the new claim's file is read, not the merged one (guard.py:27-31; docs/agents/PROTOCOL.md:37).
+
+### Corrected wording
+
+"After a merge, GitHub's auto-delete removes claude/N and the merge closes the issue; the pull request has already deleted the claim file. Nothing lets two workers hold one issue afterwards, but the labels claimed and in-review stay on the closed issue. If it is reopened, the board lists it nowhere and no worker is dealt it until a person takes those labels off. If the merged branch was kept, the reopened issue reads as the old worker's claim, which the coordinator never releases while in-review is on. A new claim then lands as a fast-forward after a merge commit, or is refused after a squash merge. A claude/N pushed for an issue that is already closed stays on the board as a leftover until a person deletes it."
+
+## Scripts
+
+The experiment scripts were kept in the session's scratchpad (exp1.sh, exp_race.sh, exp_guard.py, exp2.sh, exp2_release.py, exp3.sh); the experiment directory /tmp/claude-research/lockexp was deleted after the run.

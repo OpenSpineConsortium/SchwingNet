@@ -1,0 +1,361 @@
+{
+ "group": "spec-C",
+ "doc": "spec",
+ "units": [
+  {
+   "id": "mggj4hxkexp.11921",
+   "kind": "heading level 2",
+   "text": "4. Placement"
+  },
+  {
+   "id": "mggj4hxkexp.11934",
+   "kind": "paragraph",
+   "text": "Two of the twelve axes separate Symphony from its neighbors at a glance: where the coordination state lives, and what one more agent run costs as each system is usually run. Positions inside a quadrant mean nothing; only the quadrant is a claim, and each is sourced in section 5."
+  },
+  {
+   "id": "mggj4hxkexp.12214",
+   "kind": "embedded drawing (never edit)",
+   "text": "[EMBED node/3dde4a85-438e: Coordinators by where their state lives and what one more run costs \u00b7 zones only, not measured positions]"
+  },
+  {
+   "id": "mggj4hxkexp.12215",
+   "kind": "paragraph",
+   "text": "The tinted corner, a flat price with the state on the forge, holds five systems. unsorry, a Lean proof swarm, claims by pushing claim files to one shared branch, expires them with a two-hour timer in Actions and renders its board in Actions, but its agents run on volunteers' machines. agentic-setup claims by creating a branch, but its orchestrator is a local session. CCPM claims by setting an assignee and a label, which two agents can both do. aeon runs one agent's scheduled skills in Actions with no claims between workers. Symphony is the only one there that puts agents running in Actions and people's own sessions under one claim rule (Inferred from research/taxonomy/verify/03, whose rows show none of the other four with such a rule; section 8). Below the line, the gh-aw work queue is Symphony's closest neighbor: it too makes a claim atomic with a compare-and-swap on a git ref, but a trusted scheduler grants claims only to Actions runs, a claim ends when its run ends rather than after idle time, and it sits there because its Claude engine takes an API key, workload identity or Copilot credits and refuses the subscription token (Verified, research/taxonomy/verify/01)."
+  },
+  {
+   "id": "mggj4hxkexp.12841",
+   "kind": "paragraph",
+   "text": "Placement on every axis:"
+  },
+  {
+   "id": "mggj4hxkexp.12869",
+   "kind": "table 1, row 0, column 0 (header row)",
+   "text": "#"
+  },
+  {
+   "id": "mggj4hxkexp.12872",
+   "kind": "table 1, row 0, column 1 (header row)",
+   "text": "Axis"
+  },
+  {
+   "id": "mggj4hxkexp.12878",
+   "kind": "table 1, row 0, column 2 (header row)",
+   "text": "Symphony"
+  },
+  {
+   "id": "mggj4hxkexp.12888",
+   "kind": "table 1, row 0, column 3 (header row)",
+   "text": "Beethoven"
+  },
+  {
+   "id": "mggj4hxkexp.12899",
+   "kind": "table 1, row 0, column 4 (header row)",
+   "text": "Nearest neighbors in the same cell"
+  },
+  {
+   "id": "mggj4hxkexp.12936",
+   "kind": "table 1, row 1, column 0",
+   "text": "1"
+  },
+  {
+   "id": "mggj4hxkexp.12939",
+   "kind": "table 1, row 1, column 1",
+   "text": "Stack layer"
+  },
+  {
+   "id": "mggj4hxkexp.12952",
+   "kind": "table 1, row 1, column 2",
+   "text": "L3 coordination, on L4 GitHub"
+  },
+  {
+   "id": "mggj4hxkexp.12983",
+   "kind": "table 1, row 1, column 3",
+   "text": "L4 HPC launcher and L5 research workflows"
+  },
+  {
+   "id": "mggj4hxkexp.13026",
+   "kind": "table 1, row 1, column 4",
+   "text": "L3: openai/symphony, unsorry, CCPM, Beads, gh-aw's queue. L4 on HPC: Open OnDemand apps, VS Code tunnels in Slurm jobs, Academy"
+  },
+  {
+   "id": "mggj4hxkexp.13147",
+   "kind": "table 1, row 2, column 0",
+   "text": "2"
+  },
+  {
+   "id": "mggj4hxkexp.13150",
+   "kind": "table 1, row 2, column 1",
+   "text": "Autonomy"
+  },
+  {
+   "id": "mggj4hxkexp.13160",
+   "kind": "table 1, row 2, column 2",
+   "text": "Sessions: collaborator to approver. Workers that auto-merge: observer, bounded by the required check"
+  },
+  {
+   "id": "mggj4hxkexp.13262",
+   "kind": "table 1, row 2, column 3",
+   "text": "Student sessions: operator to collaborator, supervised by default. The maintainer clicks Publish"
+  },
+  {
+   "id": "mggj4hxkexp.13360",
+   "kind": "table 1, row 2, column 4",
+   "text": "Copilot cloud agent and Devin at approver to observer"
+  },
+  {
+   "id": "mggj4hxkexp.13416",
+   "kind": "table 1, row 3, column 0",
+   "text": "3"
+  },
+  {
+   "id": "mggj4hxkexp.13419",
+   "kind": "table 1, row 3, column 1",
+   "text": "Control topology"
+  },
+  {
+   "id": "mggj4hxkexp.13437",
+   "kind": "table 1, row 3, column 2",
+   "text": "Shared medium (the board) with self-claiming peers, and a planner for epics"
+  },
+  {
+   "id": "mggj4hxkexp.13514",
+   "kind": "table 1, row 3, column 3",
+   "text": "A hierarchy under one lease holder (planned)"
+  },
+  {
+   "id": "mggj4hxkexp.13560",
+   "kind": "table 1, row 3, column 4",
+   "text": "Cursor's planners, workers and judge; Claude Code agent teams; the C-compiler harness, peers with no orchestrator"
+  },
+  {
+   "id": "mggj4hxkexp.13676",
+   "kind": "table 1, row 4, column 0",
+   "text": "4"
+  },
+  {
+   "id": "mggj4hxkexp.13679",
+   "kind": "table 1, row 4, column 1",
+   "text": "Communication medium"
+  },
+  {
+   "id": "mggj4hxkexp.13701",
+   "kind": "table 1, row 4, column 2",
+   "text": "Traces in GitHub objects (issues, labels, branches, claim files, a rendered board); no agent-to-agent chat"
+  },
+  {
+   "id": "mggj4hxkexp.13809",
+   "kind": "table 1, row 4, column 3",
+   "text": "An engine store and a bus (planned); Slurm"
+  },
+  {
+   "id": "mggj4hxkexp.13853",
+   "kind": "table 1, row 4, column 4",
+   "text": "Beads' git-backed ledger; gh-aw's work-queue.jsonl on a branch; agent teams' mailboxes"
+  },
+  {
+   "id": "mggj4hxkexp.13942",
+   "kind": "table 1, row 5, column 0",
+   "text": "5"
+  },
+  {
+   "id": "mggj4hxkexp.13945",
+   "kind": "table 1, row 5, column 1",
+   "text": "Concurrency control"
+  },
+  {
+   "id": "mggj4hxkexp.13966",
+   "kind": "table 1, row 5, column 2",
+   "text": "Hybrid: a claim made by creating a branch, a lease-like release after 24 idle hours, a local fence on forced pushes, optimistic merge through the required check"
+  },
+  {
+   "id": "mggj4hxkexp.14104",
+   "kind": "table 1, row 5, column 3",
+   "text": "A lease with a fencing token (planned)"
+  },
+  {
+   "id": "mggj4hxkexp.14144",
+   "kind": "table 1, row 5, column 4",
+   "text": "Lock files in the C-compiler harness; unsorry's claim files with a timer; agentic-setup's create-only branch push; DND-IT/action-lock; Chubby; Claim Plane's admission control"
+  },
+  {
+   "id": "mggj4hxkexp.14244",
+   "kind": "table 1, row 6, column 0",
+   "text": "6"
+  },
+  {
+   "id": "mggj4hxkexp.14247",
+   "kind": "table 1, row 6, column 1",
+   "text": "Dependencies managed"
+  },
+  {
+   "id": "mggj4hxkexp.14269",
+   "kind": "table 1, row 6, column 2",
+   "text": "All six"
+  },
+  {
+   "id": "mggj4hxkexp.14278",
+   "kind": "table 1, row 6, column 3",
+   "text": "Shared resource, task and subtask, simultaneity"
+  },
+  {
+   "id": "mggj4hxkexp.14327",
+   "kind": "table 1, row 6, column 4",
+   "text": "Claude Code agent teams (task dependencies)"
+  },
+  {
+   "id": "mggj4hxkexp.14373",
+   "kind": "table 1, row 7, column 0",
+   "text": "7"
+  },
+  {
+   "id": "mggj4hxkexp.14376",
+   "kind": "table 1, row 7, column 1",
+   "text": "Execution environment"
+  },
+  {
+   "id": "mggj4hxkexp.14399",
+   "kind": "table 1, row 7, column 2",
+   "text": "GitHub Actions runners, and each worker's own session"
+  },
+  {
+   "id": "mggj4hxkexp.14454",
+   "kind": "table 1, row 7, column 3",
+   "text": "A Slurm batch job in Apptainer"
+  },
+  {
+   "id": "mggj4hxkexp.14486",
+   "kind": "table 1, row 7, column 4",
+   "text": "Copilot cloud agent and gh-aw on Actions; Anthropic's long-running guide on Slurm with tmux"
+  },
+  {
+   "id": "mggj4hxkexp.14580",
+   "kind": "table 1, row 8, column 0",
+   "text": "8"
+  },
+  {
+   "id": "mggj4hxkexp.14583",
+   "kind": "table 1, row 8, column 1",
+   "text": "Trigger and lifetime"
+  },
+  {
+   "id": "mggj4hxkexp.14605",
+   "kind": "table 1, row 8, column 2",
+   "text": "Event-driven, with a six-hourly schedule as a fallback"
+  },
+  {
+   "id": "mggj4hxkexp.14661",
+   "kind": "table 1, row 8, column 3",
+   "text": "Batch; the worker queues its successor before its wall time"
+  },
+  {
+   "id": "mggj4hxkexp.14722",
+   "kind": "table 1, row 8, column 4",
+   "text": "gh-aw; claude-code-action"
+  },
+  {
+   "id": "mggj4hxkexp.14750",
+   "kind": "table 1, row 9, column 0",
+   "text": "9"
+  },
+  {
+   "id": "mggj4hxkexp.14753",
+   "kind": "table 1, row 9, column 1",
+   "text": "State and memory"
+  },
+  {
+   "id": "mggj4hxkexp.14771",
+   "kind": "table 1, row 9, column 2",
+   "text": "git and GitHub as the durable ledger; docs/memory as shared memory"
+  },
+  {
+   "id": "mggj4hxkexp.14839",
+   "kind": "table 1, row 9, column 3",
+   "text": "Run records, an engine store, status files"
+  },
+  {
+   "id": "mggj4hxkexp.14883",
+   "kind": "table 1, row 9, column 4",
+   "text": "Beads; Temporal"
+  },
+  {
+   "id": "mggj4hxkexp.14901",
+   "kind": "table 1, row 10, column 0",
+   "text": "10"
+  },
+  {
+   "id": "mggj4hxkexp.14905",
+   "kind": "table 1, row 10, column 1",
+   "text": "Cost model and payer"
+  },
+  {
+   "id": "mggj4hxkexp.14927",
+   "kind": "table 1, row 10, column 2",
+   "text": "Compute: free standard minutes on a public repository. Inference: one Claude plan for the Actions workers, each person's own for sessions. Protocol MIT, App paid"
+  },
+  {
+   "id": "mggj4hxkexp.15090",
+   "kind": "table 1, row 10, column 3",
+   "text": "Compute: the university's allocation. Inference: the student's own plan. Proprietary"
+  },
+  {
+   "id": "mggj4hxkexp.15176",
+   "kind": "table 1, row 10, column 4",
+   "text": "gh-aw: minutes plus API key or Copilot credits. Copilot agents: minutes plus AI credits. openai/codex-action: API key"
+  },
+  {
+   "id": "mggj4hxkexp.15296",
+   "kind": "table 1, row 11, column 0",
+   "text": "11"
+  },
+  {
+   "id": "mggj4hxkexp.15300",
+   "kind": "table 1, row 11, column 1",
+   "text": "Verification and governance"
+  },
+  {
+   "id": "mggj4hxkexp.15329",
+   "kind": "table 1, row 11, column 2",
+   "text": "A deterministic required check; qa planned; the owner or auto-merge decides"
+  },
+  {
+   "id": "mggj4hxkexp.15406",
+   "kind": "table 1, row 11, column 3",
+   "text": "Contracts and CrossHair with Z3 as a required check; REFORMS and CLAIM gates planned; a person clicks Publish"
+  },
+  {
+   "id": "mggj4hxkexp.15517",
+   "kind": "table 1, row 11, column 4",
+   "text": "GitHub's security validation of agent code; Claude Code Review (advisory, never blocks); data-to-paper's number tracing"
+  },
+  {
+   "id": "mggj4hxkexp.15639",
+   "kind": "table 1, row 12, column 0",
+   "text": "12"
+  },
+  {
+   "id": "mggj4hxkexp.15643",
+   "kind": "table 1, row 12, column 1",
+   "text": "Domain and maturity"
+  },
+  {
+   "id": "mggj4hxkexp.15664",
+   "kind": "table 1, row 12, column 2",
+   "text": "End-to-end software development; pre-release"
+  },
+  {
+   "id": "mggj4hxkexp.15710",
+   "kind": "table 1, row 12, column 3",
+   "text": "Research software for a medical imaging study; mostly unbuilt beyond qa"
+  },
+  {
+   "id": "mggj4hxkexp.15783",
+   "kind": "table 1, row 12, column 4",
+   "text": "The AI Scientist, Agent Laboratory, Kosmos"
+  },
+  {
+   "id": "mggj4hxkexp.15826",
+   "kind": "paragraph",
+   "text": "All placements are Inferred from research notes 01, 04 to 07 and 13."
+  }
+ ]
+}

@@ -1,0 +1,376 @@
+{
+ "group": "man-C",
+ "doc": "manual",
+ "units": [
+  {
+   "id": "mrzzsdjxrm2.18391",
+   "kind": "heading level 2",
+   "text": "6. Explaining the approach"
+  },
+  {
+   "id": "mrzzsdjxrm2.18418",
+   "kind": "heading level 3",
+   "text": "The argument, in order"
+  },
+  {
+   "id": "mrzzsdjxrm2.18441",
+   "kind": "paragraph",
+   "text": "Keep this order for every audience. The need comes before the mechanism, so the listener knows what the mechanism is for; the limits come before anyone asks, so the rest is believed."
+  },
+  {
+   "id": "mrzzsdjxrm2.18626",
+   "kind": "list item",
+   "text": "The need. Agents that share a codebase get in each other's way. In CooperBench, where each of two agents worked in its own copy and could only message the other, one GPT-5 agent passed 315 of 652 feature pairs where two agents passed 183. The failures were duplicated and contradictory work, not a lack of skill, and chat between the agents did not raise success; in a later, smaller ablation, pairs given a shared git remote or task list did better than one agent, on weak evidence (spec 7.1)."
+  },
+  {
+   "id": "mrzzsdjxrm2.18911",
+   "kind": "list item",
+   "text": "The mechanism. Make the forge the coordinator. A claim is the push that creates the branch claude/N, and git lets exactly one of two racing creations win, so no lock server is needed. A board, the release of idle claims and the landing order of overlapping work are GitHub Actions jobs over GitHub's own objects, and a required check decides what merges (spec 2 and 9.1)."
+  },
+  {
+   "id": "mrzzsdjxrm2.19284",
+   "kind": "list item",
+   "text": "The economics. On a public repository those jobs run on GitHub's free standard runners and make no model call. The Claude work bills a flat plan, not tokens, and there is nothing to host (spec 9.2 and 9.6)."
+  },
+  {
+   "id": "mrzzsdjxrm2.19492",
+   "kind": "list item",
+   "text": "The evidence. The protocol's shipped code was checked over 16.7 million states against an oracle written from its spec, with mutants that prove the checks bite, and found no violation. Building the harness and reviewing the fixes it led to found 19 defects: six are fixed in release 0.4.1, eleven on main but not yet released, one was settled in the spec, and one (F8) is open. What is not yet evidence: no full-scale benchmark of Symphony exists (spec 2; question R1)."
+  },
+  {
+   "id": "mrzzsdjxrm2.19791",
+   "kind": "list item",
+   "text": "The limits. Inference is still paid, and one plan's usage window is shared. The terms questions are open, the server enforces a claim only at its creation, and one vendor sets the price (spec 10)."
+  },
+  {
+   "id": "mrzzsdjxrm2.19988",
+   "kind": "paragraph",
+   "text": "For a short explanation, use three of the spec's twelve axes, the three the study rests on: who pays for compute and inference (axis 10), how a claim is kept (axis 5), and what decides that work is acceptable (axis 11)."
+  },
+  {
+   "id": "mrzzsdjxrm2.20208",
+   "kind": "heading level 3",
+   "text": "For grant reviewers"
+  },
+  {
+   "id": "mrzzsdjxrm2.20228",
+   "kind": "paragraph",
+   "text": "Lead with the science, not the software: AI-run research fails in ways its paper cannot show (spec 7.2), so the checks belong inside the run. Then the coordination, as the laboratory's rule of one issue, one branch, one pull request."
+  },
+  {
+   "id": "mrzzsdjxrm2.20462",
+   "kind": "paragraph",
+   "text": "Three sentences to adapt:"
+  },
+  {
+   "id": "mrzzsdjxrm2.20489",
+   "kind": "quote",
+   "text": "Studies of AI agents find that two agents splitting work on one codebase, each in its own copy and talking only by message, succeed less often than one, because they duplicate and contradict each other's work, and that AI-run research fails in ways its paper cannot show. Our laboratory runs its agents under a claim protocol in which each piece of work is one issue, one branch and one pull request, and plans to turn reporting checklists such as CLAIM and REFORMS into gates checked over every run's record, so that a tool, not a model, decides whether a result may be reported. One such check is built today; the others are planned."
+  },
+  {
+   "id": "mrzzsdjxrm2.21062",
+   "kind": "paragraph",
+   "text": "For this audience:"
+  },
+  {
+   "id": "mrzzsdjxrm2.21083",
+   "kind": "list item",
+   "text": "No numbers from this project's coordination experiment until you say so. The hold is on the experiment; whether CooperBench's published counts go in is your call."
+  },
+  {
+   "id": "mrzzsdjxrm2.21247",
+   "kind": "list item",
+   "text": "Say, part by part, what is built and what is planned (the tables in spec section 2). Reviewers discount a plan presented as a result."
+  },
+  {
+   "id": "mrzzsdjxrm2.21382",
+   "kind": "list item",
+   "text": "Say the stack is a design: no Beethoven repository runs Symphony's code today (spec 6.5)."
+  },
+  {
+   "id": "mrzzsdjxrm2.21473",
+   "kind": "list item",
+   "text": "Match the grant packet: Beethoven is your proprietary software, and the award funds none of it."
+  },
+  {
+   "id": "mrzzsdjxrm2.21570",
+   "kind": "list item",
+   "text": "Name the data-handling preconditions before a reviewer does: Wayne State's approval of AI tools, no BAA on a personal plan, and Remote Control's limits under HIPAA (spec risk 9)."
+  },
+  {
+   "id": "mrzzsdjxrm2.21749",
+   "kind": "heading level 3",
+   "text": "For engineers"
+  },
+  {
+   "id": "mrzzsdjxrm2.21763",
+   "kind": "paragraph",
+   "text": "Lead with the mechanism and its failure modes; engineers trust an account that names its own holes."
+  },
+  {
+   "id": "mrzzsdjxrm2.21864",
+   "kind": "quote",
+   "text": "Symphony makes a GitHub repository the coordinator for Claude Code agents. A claim is the push that creates branch claude/N, and git lets exactly one of two racing creations win, so there is no lock server; the board, the release of idle claims and the order in which overlapping work lands are deterministic Actions jobs on GITHUB_TOKEN, and Claude runs only where judgment is needed. The shipped protocol library is checked over every interleaving of two workers, to a depth of eight steps on one issue and seven on two, against an oracle written from its spec, and its known gaps are written down."
+  },
+  {
+   "id": "mrzzsdjxrm2.22409",
+   "kind": "paragraph",
+   "text": "Questions to expect, with honest answers:"
+  },
+  {
+   "id": "mrzzsdjxrm2.22454",
+   "kind": "table 1, row 0, column 0 (header row)",
+   "text": "Question"
+  },
+  {
+   "id": "mrzzsdjxrm2.22464",
+   "kind": "table 1, row 0, column 1 (header row)",
+   "text": "Answer"
+  },
+  {
+   "id": "mrzzsdjxrm2.22472",
+   "kind": "table 1, row 0, column 2 (header row)",
+   "text": "Spec"
+  },
+  {
+   "id": "mrzzsdjxrm2.22479",
+   "kind": "table 1, row 1, column 0",
+   "text": "What stops a push onto someone else's claim?"
+  },
+  {
+   "id": "mrzzsdjxrm2.22525",
+   "kind": "table 1, row 1, column 1",
+   "text": "On GitHub, only the claim's creation is enforced. A fast-forward or forced push onto an existing claim is accepted, since the recommended setup leaves claude/** out of every ruleset so that a release can rename the branch. The local push guard refuses forced pushes and leases onto another worker's claim, and on 2026-10-15 it was found to judge a lease by the session's own directory rather than the clone git -C names, so a lease onto another worker's claim passed from a directory whose clone had neither branch"
+  },
+  {
+   "id": "mrzzsdjxrm2.22895",
+   "kind": "table 1, row 1, column 2",
+   "text": "Risk 12"
+  },
+  {
+   "id": "mrzzsdjxrm2.22905",
+   "kind": "table 1, row 2, column 0",
+   "text": "What if a worker's clock lies?"
+  },
+  {
+   "id": "mrzzsdjxrm2.22937",
+   "kind": "table 1, row 2, column 1",
+   "text": "Idleness is read from the committer date, which the pusher writes. A fix that reads GitHub's own record of the push is written but not merged (finding F8)"
+  },
+  {
+   "id": "mrzzsdjxrm2.23093",
+   "kind": "table 1, row 2, column 2",
+   "text": "Risk 13"
+  },
+  {
+   "id": "mrzzsdjxrm2.23103",
+   "kind": "table 1, row 3, column 0",
+   "text": "What binds first at scale?"
+  },
+  {
+   "id": "mrzzsdjxrm2.23131",
+   "kind": "table 1, row 3, column 1",
+   "text": "On a public repository, not minutes. Probably GitHub's API limits, though nobody has measured it: 1,000 requests an hour on GITHUB_TOKEN, 100 queued runs, 20 concurrent jobs on Free, and no retry on 429 in the library yet"
+  },
+  {
+   "id": "mrzzsdjxrm2.23262",
+   "kind": "table 1, row 3, column 2",
+   "text": "9.3; risk 5; R3"
+  },
+  {
+   "id": "mrzzsdjxrm2.23280",
+   "kind": "table 1, row 4, column 0",
+   "text": "Isn't this gh-aw's work queue?"
+  },
+  {
+   "id": "mrzzsdjxrm2.23312",
+   "kind": "table 1, row 4, column 1",
+   "text": "Its claim is also a compare-and-swap on a git ref, but a trusted scheduler grants claims to Actions runs only, a claim never expires for idleness, and its Claude engine refuses the subscription token"
+  },
+  {
+   "id": "mrzzsdjxrm2.23513",
+   "kind": "table 1, row 4, column 2",
+   "text": "4; 5.1"
+  },
+  {
+   "id": "mrzzsdjxrm2.23522",
+   "kind": "table 1, row 5, column 0",
+   "text": "How is it tested?"
+  },
+  {
+   "id": "mrzzsdjxrm2.23541",
+   "kind": "table 1, row 5, column 1",
+   "text": "1,379 library tests, and a harness that drives the shipped library through every interleaving to a set depth (5 in the required check, 7 and 8 in the weekly deep searches) against an oracle from the spec's text, with 93 mutants"
+  },
+  {
+   "id": "mrzzsdjxrm2.23692",
+   "kind": "table 1, row 5, column 2",
+   "text": "2"
+  },
+  {
+   "id": "mrzzsdjxrm2.23694",
+   "kind": "heading level 3",
+   "text": "For lab leads"
+  },
+  {
+   "id": "mrzzsdjxrm2.23708",
+   "kind": "paragraph",
+   "text": "Lead with what people have to do and what it costs."
+  },
+  {
+   "id": "mrzzsdjxrm2.23761",
+   "kind": "quote",
+   "text": "Your lab's people and agents share one GitHub repository as their to-do list, their lock and their record: each task is one issue, one branch and one pull request, and there is no server to run. On a public repository the bookkeeping runs free on GitHub's machines; the Claude work is paid by each person's own plan, and agents that run inside GitHub share one plan's usage limits. A required check decides what merges."
+  },
+  {
+   "id": "mrzzsdjxrm2.24181",
+   "kind": "paragraph",
+   "text": "What lab leads ask:"
+  },
+  {
+   "id": "mrzzsdjxrm2.24203",
+   "kind": "list item",
+   "text": "What does a new person need? A GitHub login, and their own Claude plan for their own sessions."
+  },
+  {
+   "id": "mrzzsdjxrm2.24299",
+   "kind": "list item",
+   "text": "What does it cost? On a public repository, nothing in minutes. On a private one, a monthly quota and then a price per minute: in the spec's illustration, ten one-hour Claude runs a day come to about $90 a month on Team (spec 9.4). Claude plans are separate: Pro is $20 a month, Max $100 or $200."
+  },
+  {
+   "id": "mrzzsdjxrm2.24596",
+   "kind": "list item",
+   "text": "Can it run our science? Not on GitHub's free machines, which have no GPUs. The science runs on the cluster, which is Beethoven's part (spec 9.6)."
+  },
+  {
+   "id": "mrzzsdjxrm2.24743",
+   "kind": "list item",
+   "text": "Is it ready? It is pre-release: 0.4.1 is the last release, and the rails for workers that run unattended, among them a cap on Claude runs and the qa check, are not built (spec risks 4 and 6)."
+  },
+  {
+   "id": "mrzzsdjxrm2.24916",
+   "kind": "heading level 3",
+   "text": "Telling the GitHub Actions story honestly"
+  },
+  {
+   "id": "mrzzsdjxrm2.24961",
+   "kind": "table 2, row 0, column 0 (header row)",
+   "text": "Say"
+  },
+  {
+   "id": "mrzzsdjxrm2.24966",
+   "kind": "table 2, row 0, column 1 (header row)",
+   "text": "Do not say"
+  },
+  {
+   "id": "mrzzsdjxrm2.24978",
+   "kind": "table 2, row 0, column 2 (header row)",
+   "text": "Why"
+  },
+  {
+   "id": "mrzzsdjxrm2.24984",
+   "kind": "table 2, row 1, column 0",
+   "text": "\"Standard GitHub-hosted runners are free and unlimited on public repositories\", quoting GitHub, with the date"
+  },
+  {
+   "id": "mrzzsdjxrm2.25095",
+   "kind": "table 2, row 1, column 1",
+   "text": "Agents run for free"
+  },
+  {
+   "id": "mrzzsdjxrm2.25116",
+   "kind": "table 2, row 1, column 2",
+   "text": "The minutes are free; inference is paid by a Claude plan (9.4)"
+  },
+  {
+   "id": "mrzzsdjxrm2.25181",
+   "kind": "table 2, row 2, column 0",
+   "text": "Coordination steps make no model call and run on those minutes"
+  },
+  {
+   "id": "mrzzsdjxrm2.25245",
+   "kind": "table 2, row 2, column 1",
+   "text": "Unlimited agents"
+  },
+  {
+   "id": "mrzzsdjxrm2.25263",
+   "kind": "table 2, row 2, column 2",
+   "text": "20 concurrent jobs on Free, 1,000 API requests an hour, one plan's window (9.3)"
+  },
+  {
+   "id": "mrzzsdjxrm2.25345",
+   "kind": "table 2, row 3, column 0",
+   "text": "A public repository gets a 4 vCPU, 16 GB runner, twice a private one's"
+  },
+  {
+   "id": "mrzzsdjxrm2.25417",
+   "kind": "table 2, row 3, column 1",
+   "text": "Symphony is free for its users today"
+  },
+  {
+   "id": "mrzzsdjxrm2.25455",
+   "kind": "table 2, row 3, column 2",
+   "text": "Inference is paid by a Claude plan, a private repository bills minutes past its quota, and Symphony's own tests stay on private repositories until the Phase 3 rails exist (risk 4)"
+  },
+  {
+   "id": "mrzzsdjxrm2.25552",
+   "kind": "table 2, row 4, column 0",
+   "text": "Rulesets, required checks, environments with reviewers, CodeQL and secret scanning are free there"
+  },
+  {
+   "id": "mrzzsdjxrm2.25651",
+   "kind": "table 2, row 4, column 1",
+   "text": "Nothing else does this"
+  },
+  {
+   "id": "mrzzsdjxrm2.25675",
+   "kind": "table 2, row 4, column 2",
+   "text": "The atomic claim, the serverless board and the free minutes all have prior art; only the combination is claimed (8)"
+  },
+  {
+   "id": "mrzzsdjxrm2.25793",
+   "kind": "table 2, row 5, column 0",
+   "text": "Nothing to host: the forge is the lock, CI the scheduler, the repository the state"
+  },
+  {
+   "id": "mrzzsdjxrm2.25877",
+   "kind": "table 2, row 5, column 1",
+   "text": "Beethoven runs on free GitHub minutes"
+  },
+  {
+   "id": "mrzzsdjxrm2.25916",
+   "kind": "table 2, row 5, column 2",
+   "text": "It runs on the university cluster, and its repositories are private (9.6)"
+  },
+  {
+   "id": "mrzzsdjxrm2.25992",
+   "kind": "table 2, row 6, column 0",
+   "text": "No other major hosted CI found offers new public projects unlimited free minutes"
+  },
+  {
+   "id": "mrzzsdjxrm2.26069",
+   "kind": "table 2, row 6, column 1",
+   "text": "GitHub guarantees it"
+  },
+  {
+   "id": "mrzzsdjxrm2.26091",
+   "kind": "table 2, row 6, column 2",
+   "text": "It is GitHub's price to change, and its terms tie runner use to the repository's own project (9.5; R5)"
+  },
+  {
+   "id": "mrzzsdjxrm2.26196",
+   "kind": "table 2, row 7, column 0",
+   "text": "Anthropic documents the subscription token for claude-code-action"
+  },
+  {
+   "id": "mrzzsdjxrm2.26263",
+   "kind": "table 2, row 7, column 1",
+   "text": "Anthropic approves agents on a subscription in CI"
+  },
+  {
+   "id": "mrzzsdjxrm2.26314",
+   "kind": "table 2, row 7, column 2",
+   "text": "It advises an API key for a shared secret, and plan limits assume ordinary, individual usage (9.5; R6)"
+  }
+ ]
+}

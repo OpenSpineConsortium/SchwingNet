@@ -1,0 +1,462 @@
+name: Coordinator
+
+# The part of the coordinator that needs judgement, run by Claude on this
+# repository's Claude token (docs/agents/WORKERS.md); the board's own run
+# does the rest with no Claude usage (releases, overlaps). When an issue is
+# labelled epic, Claude reads it, the code and the registry of workers, and
+# returns a plan as JSON: which files each task owns, the interfaces
+# between them, and the worker each task goes to; tools/team.py then
+# writes the plan into the epic, opens the tasks labelled todo and
+# worker:<name>, or todo alone where no worker is registered, and starts
+# the workers in Actions (workers.yml). When a worker labels its task
+# blocked, Claude settles what it needs and the task's worker starts
+# again. When the last task of an epic closes, Claude integrates: it checks
+# the default branch as a whole and fixes what the pieces broke together.
+# Once a week, and by hand with the duty tidy, Claude runs the coordinator
+# prompt (docs/agents/routines/coordinator.md): it splits requests into
+# issues and tidies the shared memory, as a coordinator routine would; not
+# in the template repository itself, whose schedule would open pull
+# requests there.
+# Everything that needs no judgement runs without Claude: the route job
+# asks tools/team.py what an event calls for, so a closed issue outside any
+# epic costs a few seconds of a runner and no usage. Claude runs need the
+# secret CLAUDE_CODE_OAUTH_TOKEN (docs/setup/claude-action.md) and draw on
+# that account's plan; until it is set, each job says so and does nothing.
+# In crowd mode (docs/project.md, docs/setup/crowdsourcing.md) no job
+# starts: the repository holds no token, and a coordinator routine on a
+# maintainer's own account runs the coordinator prompt instead; plan,
+# unblock and integrate need route and ask for no status function, so
+# GitHub skips them with it.
+#
+# Runs for one epic or task wait for each other; runs for different ones
+# do not. The group is set on the jobs that run Claude, not on the
+# workflow: every label event in the repository starts this workflow, and
+# GitHub keeps only one pending run per group, so a workflow-wide group
+# would let any later label event cancel a plan or an integration that
+# was waiting its turn. Each such job asks route again once its turn comes,
+# so a duplicate that waited behind the first finds nothing left to do.
+# Workers' runs are started by GITHUB_TOKEN and integrations by a merge the
+# Claude app turned on, so the action is told to accept those two bots.
+# After each Claude session the job records what it spent, as workers.yml
+# does, as an artifact the metrics workflow reads; the coordinator's runs
+# that name no pull request count as the cost of working in parallel
+# (docs/setup/metrics.md, What the work cost).
+
+on:
+  issues:
+    types: [labeled, closed]
+  schedule:
+    - cron: '29 5 * * 1'
+  workflow_dispatch:
+    inputs:
+      issue:
+        description: "The epic's or the task's issue number; empty with the duty tidy"
+        required: false
+        default: ""
+      event:
+        description: "labeled to plan an epic, closed to integrate it, tidy to run the weekly duties"
+        required: true
+        default: labeled
+
+env:
+  EVENT: ${{ github.event_name == 'workflow_dispatch' && inputs.event || github.event.action }}
+  ISSUE: ${{ inputs.issue || github.event.issue.number }}
+  LABEL: ${{ github.event_name == 'workflow_dispatch' && 'epic' || github.event.label.name }}
+  REGISTRY: .github/symphony/workers
+
+jobs:
+  route:
+    if: >-
+      vars.CLAUDE_CROWD != 'true'
+      && ((github.event_name == 'workflow_dispatch' && inputs.event != 'tidy')
+          || (github.event.action == 'labeled' && github.event.label.name == 'epic')
+          || (github.event.action == 'labeled' && github.event.label.name == 'blocked'
+              && contains(github.event.issue.body, 'Epic: #'))
+          || (github.event.action == 'closed' && contains(github.event.issue.body, 'Epic: #')))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
+    outputs:
+      phase: ${{ steps.route.outputs.phase }}
+      number: ${{ steps.route.outputs.number }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Ask what this event calls for
+        id: route
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          answer=$(python3 tools/team.py route --event "$EVENT" --issue "$ISSUE" --label "$LABEL")
+          echo "$answer"
+          echo "phase=${answer%% *}" >> "$GITHUB_OUTPUT"
+          echo "number=${answer##* }" >> "$GITHUB_OUTPUT"
+
+  plan:
+    needs: route
+    if: needs.route.outputs.phase == 'plan'
+    concurrency:
+      group: coordinator-${{ needs.route.outputs.number }}
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
+      actions: write
+      id-token: write
+    env:
+      HAVE_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' }}
+      EPIC: ${{ needs.route.outputs.number }}
+    steps:
+      - name: Point at the setup when the token is not there
+        if: env.HAVE_TOKEN != 'true'
+        run: echo "The repository secret CLAUDE_CODE_OAUTH_TOKEN is not set; docs/setup/claude-action.md says how. Doing nothing."
+      - uses: actions/checkout@v7
+        if: env.HAVE_TOKEN == 'true'
+      - name: Ask again now that this run's turn has come, and read the workers
+        id: due
+        if: env.HAVE_TOKEN == 'true'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          answer=$(python3 tools/team.py route --event "$EVENT" --issue "$ISSUE" --label "$LABEL")
+          echo "$answer"
+          echo "phase=${answer%% *}" >> "$GITHUB_OUTPUT"
+          {
+            echo "schema=$(python3 tools/team.py schema --registry "$REGISTRY")"
+            echo "workers<<WORKERS_END"
+            python3 tools/workers.py --dir "$REGISTRY" describe
+            echo "WORKERS_END"
+          } >> "$GITHUB_OUTPUT"
+      - name: Keep a copy of the usage recorder, which the run cannot move, and read the main token's settings
+        id: main
+        if: steps.due.outputs.phase == 'plan'
+        env:
+          SETTINGS: ${{ vars.SYMPHONY_CLAUDE_SETTINGS }}
+        run: |
+          cp tools/usage.py "$RUNNER_TEMP/usage.py"
+          cp -r tools/profile.py tools/economics.py tools/sdlc_protocol "$RUNNER_TEMP/" || true
+          # the model, effort and fallback the Tokens tab's main tile sets (tools/pool.py);
+          # a variable that does not hold together leaves Claude's own defaults
+          python3 tools/pool.py settings --slot main --settings "$SETTINGS" >> "$GITHUB_OUTPUT" || true
+      - uses: anthropics/claude-code-action@v1
+        id: plan
+        if: steps.due.outputs.phase == 'plan'
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          allowed_bots: "github-actions,claude"
+          claude_args: |
+            --max-turns 40
+            ${{ steps.main.outputs.model != '' && format('--model {0}', steps.main.outputs.model) || '' }}
+            ${{ steps.main.outputs.effort != '' && format('--effort {0}', steps.main.outputs.effort) || '' }}
+            ${{ steps.main.outputs.fallback != '' && format('--fallback-model {0}', steps.main.outputs.fallback) || '' }}
+            --allowedTools "Read,Glob,Grep,Bash(gh issue view:*),Bash(git log:*)"
+            --json-schema '${{ steps.due.outputs.schema }}'
+          prompt: |
+            You are the coordinator, planning epic #${{ env.EPIC }} on this repository. Read the epic and what has been said on it (gh issue view ${{ env.EPIC }} --comments), CLAUDE.md, docs/agents/WORKERS.md, and the code the epic touches.
+
+            The workers registered here, one a line (name, where it runs, area, what it is for):
+            ${{ steps.due.outputs.workers }}
+
+            Plan to avoid collisions. Divide the epic into tasks, fewer when the epic is small; give each task a disjoint set of files to own; where two tasks meet, write the interface between them (names, signatures, data shapes) into both, so each worker can build against it before the other lands. Each task's body says what to build, the interface it provides and the one it uses, and how to know it is done: the tests that must pass. Give each task to the worker whose area fits it best, at most one task per worker unless there are more tasks than workers; with no worker registered, leave each owner empty and the tasks go to the open queue.
+
+            Do not change any file and do not open any issue: return the plan as the JSON your output schema asks for, and a script opens the tasks. Its plan field is one or two paragraphs the workers read first: who owns what, why, and in what order the pieces land. Plain prose, no emoji.
+      - name: Record what the run spent, for the field metrics
+        if: always() && steps.plan.outcome != 'skipped'
+        continue-on-error: true
+        env:
+          EXECUTION_FILE: ${{ steps.plan.outputs.execution_file }}
+          SDLC_METRICS: ${{ vars.SDLC_METRICS }}
+          EPIC_NUMBER: ${{ env.EPIC }}
+        run: >-
+          python3 "$RUNNER_TEMP/usage.py" actions --root "$GITHUB_WORKSPACE"
+          --execution-file "${EXECUTION_FILE:-$RUNNER_TEMP/claude-execution-output.json}"
+          --out "$RUNNER_TEMP/symphony-usage/record.json" --workflow coordinator --job plan --issue "$EPIC_NUMBER"
+      - name: Keep the record where the metrics workflow reads it
+        if: always() && steps.plan.outcome != 'skipped'
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: symphony-usage-${{ github.run_id }}-${{ github.run_attempt }}-plan
+          path: ${{ runner.temp }}/symphony-usage/record.json
+          if-no-files-found: ignore
+      - name: Open the tasks and start the workers in Actions
+        if: steps.plan.outputs.structured_output != ''
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
+          PLAN: ${{ steps.plan.outputs.structured_output }}
+        run: |
+          set -eu
+          printf '%s' "$PLAN" > "$RUNNER_TEMP/plan.json"
+          python3 tools/team.py seed --epic "$EPIC" --plan "$RUNNER_TEMP/plan.json" --registry "$REGISTRY"
+          if [ "$(python3 tools/workers.py --dir "$REGISTRY" list --runs actions)" != "[]" ]; then
+            gh workflow run workers.yml --repo "$GITHUB_REPOSITORY"
+          fi
+
+  unblock:
+    needs: route
+    if: needs.route.outputs.phase == 'unblock'
+    concurrency:
+      group: coordinator-${{ needs.route.outputs.number }}
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
+      actions: write
+      id-token: write
+    env:
+      HAVE_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' }}
+      TASK: ${{ needs.route.outputs.number }}
+    steps:
+      - name: Point at the setup when the token is not there
+        if: env.HAVE_TOKEN != 'true'
+        run: echo "The repository secret CLAUDE_CODE_OAUTH_TOKEN is not set; docs/setup/claude-action.md says how. Doing nothing."
+      - uses: actions/checkout@v7
+        if: env.HAVE_TOKEN == 'true'
+        with:
+          fetch-depth: 0
+      - name: Ask again now that this run's turn has come
+        id: due
+        if: env.HAVE_TOKEN == 'true'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          answer=$(python3 tools/team.py route --event "$EVENT" --issue "$ISSUE" --label "$LABEL")
+          echo "$answer"
+          echo "phase=${answer%% *}" >> "$GITHUB_OUTPUT"
+      - name: Keep a copy of the usage recorder, which the run cannot move, and read the main token's settings
+        id: main
+        if: steps.due.outputs.phase == 'unblock'
+        env:
+          SETTINGS: ${{ vars.SYMPHONY_CLAUDE_SETTINGS }}
+        run: |
+          cp tools/usage.py "$RUNNER_TEMP/usage.py"
+          cp -r tools/profile.py tools/economics.py tools/sdlc_protocol "$RUNNER_TEMP/" || true
+          # the model, effort and fallback the Tokens tab's main tile sets (tools/pool.py);
+          # a variable that does not hold together leaves Claude's own defaults
+          python3 tools/pool.py settings --slot main --settings "$SETTINGS" >> "$GITHUB_OUTPUT" || true
+      - uses: anthropics/claude-code-action@v1
+        id: settle
+        if: steps.due.outputs.phase == 'unblock'
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          allowed_bots: "github-actions,claude"
+          claude_args: |
+            --max-turns 40
+            ${{ steps.main.outputs.model != '' && format('--model {0}', steps.main.outputs.model) || '' }}
+            ${{ steps.main.outputs.effort != '' && format('--effort {0}', steps.main.outputs.effort) || '' }}
+            ${{ steps.main.outputs.fallback != '' && format('--fallback-model {0}', steps.main.outputs.fallback) || '' }}
+            --allowedTools "Read,Glob,Grep,Bash(gh issue view:*),Bash(gh issue comment:*),Bash(gh issue edit:*),Bash(gh pr view:*),Bash(git fetch:*),Bash(git log:*),Bash(git diff:*),Bash(git show:*),Bash(git branch:*)"
+          prompt: |
+            You are the coordinator on this repository, and the worker that holds task #${{ env.TASK }} has labelled it blocked: it needs something only you or a peer can settle. Read the task and what has been said on it (gh issue view ${{ env.TASK }} --comments), then its epic, named on the task's "Epic: #N" line, with its plan and comments (gh issue view N --comments), CLAUDE.md, docs/agents/WORKERS.md and the registry of workers under .github/symphony/workers/. Look at the code and at the workers' branches where they bear on it (git fetch origin, then the claude/ branches of the epic's tasks).
+
+            Settle it, as the author of the plan. If an interface between two tasks is unclear or must change, decide it and write the decision on the epic, naming both tasks; if a peer must do something first, say so on the epic and on the peer's task; if the task cannot be done as planned, say what changes, and move it to another worker by swapping its worker: label when that is better. Then remove the label blocked from #${{ env.TASK }} (gh issue edit ${{ env.TASK }} --remove-label blocked), and a script starts its worker again. If only the repository's owner can settle it (a product decision outside the epic, a setting or a secret), say exactly what is needed on the epic and leave the label on. Do not change any file. Plain prose, no emoji.
+      - name: Record what the run spent, for the field metrics
+        if: always() && steps.settle.outcome != 'skipped'
+        continue-on-error: true
+        env:
+          EXECUTION_FILE: ${{ steps.settle.outputs.execution_file }}
+          SDLC_METRICS: ${{ vars.SDLC_METRICS }}
+          TASK_NUMBER: ${{ env.TASK }}
+        run: >-
+          python3 "$RUNNER_TEMP/usage.py" actions --root "$GITHUB_WORKSPACE"
+          --execution-file "${EXECUTION_FILE:-$RUNNER_TEMP/claude-execution-output.json}"
+          --out "$RUNNER_TEMP/symphony-usage/record.json" --workflow coordinator --job unblock --issue "$TASK_NUMBER"
+      - name: Keep the record where the metrics workflow reads it
+        if: always() && steps.settle.outcome != 'skipped'
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: symphony-usage-${{ github.run_id }}-${{ github.run_attempt }}-unblock
+          path: ${{ runner.temp }}/symphony-usage/record.json
+          if-no-files-found: ignore
+      - name: Start the task's worker again
+        if: steps.settle.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          labels=$(gh issue view "$TASK" --repo "$GITHUB_REPOSITORY" --json labels --jq '.labels[].name')
+          if printf '%s\n' "$labels" | grep -qx blocked; then
+            echo "#$TASK is still blocked; it waits for the owner of the repository"
+            exit 0
+          fi
+          named=$(printf '%s\n' "$labels" | sed -n 's/^\(worker\|agent\|account\)://p' | sort -u)
+          worker=$(printf '%s\n' "$named" | head -n 1)
+          in_actions=$(python3 tools/workers.py --dir "$REGISTRY" list --runs actions)
+          # A task the labels of several workers give goes to the first of
+          # them with nothing else to do, dealt over the whole registry
+          # (symphony-protocol's F18), so every worker runs and the deal
+          # picks, rather than the one worker the first label names; when
+          # none of them runs in Actions the run would deal it to nobody,
+          # so nothing starts.
+          if [ "$(printf '%s\n' "$named" | grep -c .)" -gt 1 ] && printf '%s' "$in_actions" | python3 -c 'import json, sys; sys.exit(not set(json.load(sys.stdin)) & set(sys.argv[1].split()))' "$named"; then
+            gh workflow run workers.yml --repo "$GITHUB_REPOSITORY"
+            echo "#$TASK is given to several workers; every worker in Actions runs and the deal picks the first of them with nothing else to do"
+          elif [ -n "$worker" ] && printf '%s' "$in_actions" | python3 -c 'import json, sys; sys.exit(sys.argv[1] not in json.load(sys.stdin))' "$worker"; then
+            gh workflow run workers.yml --repo "$GITHUB_REPOSITORY" -f worker="$worker"
+            echo "$worker started again for #$TASK"
+          else
+            echo "#$TASK's worker ${worker:-(none named)} does not run in Actions; it finds the task on its next run"
+          fi
+
+  integrate:
+    needs: route
+    if: needs.route.outputs.phase == 'integrate'
+    concurrency:
+      group: coordinator-${{ needs.route.outputs.number }}
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      actions: read
+      id-token: write
+    env:
+      HAVE_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' }}
+      EPIC: ${{ needs.route.outputs.number }}
+    steps:
+      - name: Point at the setup when the token is not there
+        if: env.HAVE_TOKEN != 'true'
+        run: echo "The repository secret CLAUDE_CODE_OAUTH_TOKEN is not set; docs/setup/claude-action.md says how. Doing nothing."
+      - uses: actions/checkout@v7
+        if: env.HAVE_TOKEN == 'true'
+        with:
+          fetch-depth: 0
+      - name: Ask again now that this run's turn has come
+        id: due
+        if: env.HAVE_TOKEN == 'true'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          answer=$(python3 tools/team.py route --event "$EVENT" --issue "$ISSUE" --label "$LABEL")
+          echo "$answer"
+          echo "phase=${answer%% *}" >> "$GITHUB_OUTPUT"
+      - name: Keep a copy of the usage recorder, which the run cannot move, and read the main token's settings
+        id: main
+        if: steps.due.outputs.phase == 'integrate'
+        env:
+          SETTINGS: ${{ vars.SYMPHONY_CLAUDE_SETTINGS }}
+        run: |
+          cp tools/usage.py "$RUNNER_TEMP/usage.py"
+          cp -r tools/profile.py tools/economics.py tools/sdlc_protocol "$RUNNER_TEMP/" || true
+          # the model, effort and fallback the Tokens tab's main tile sets (tools/pool.py);
+          # a variable that does not hold together leaves Claude's own defaults
+          python3 tools/pool.py settings --slot main --settings "$SETTINGS" >> "$GITHUB_OUTPUT" || true
+      - uses: anthropics/claude-code-action@v1
+        id: integrate
+        if: steps.due.outputs.phase == 'integrate'
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          allowed_bots: "github-actions,claude"
+          claude_args: |
+            --max-turns 60
+            ${{ steps.main.outputs.model != '' && format('--model {0}', steps.main.outputs.model) || '' }}
+            ${{ steps.main.outputs.effort != '' && format('--effort {0}', steps.main.outputs.effort) || '' }}
+            ${{ steps.main.outputs.fallback != '' && format('--fallback-model {0}', steps.main.outputs.fallback) || '' }}
+            --allowedTools "${{ vars.CLAUDE_ALLOWED_TOOLS || 'Read,Write,Edit,MultiEdit,Glob,Grep,Bash(git:*),Bash(gh:*),Bash(bash scripts/check.sh),Bash(python3:*)' }}"
+          prompt: |
+            You are the coordinator, and every task of epic #${{ env.EPIC }} is closed. Integration is the whole point of your job now: every task can pass alone while the whole fails. Read the epic, its plan and what has been said on it (gh issue view ${{ env.EPIC }} --comments), CLAUDE.md and docs/agents/WORKERS.md.
+
+            On the default branch, freshly fetched, run bash scripts/check.sh and every test the epic and its tasks name. If everything passes and the epic's spec is met, comment a short summary on the epic (what landed, in which pull requests) and close it; then propose the project's next step, one ambitious enough to keep a worker busy for a day or two and following from what landed and the epic's directions, as one new issue titled "Next step: " and what it is, labelled decision (gh label create decision --force first), whose body says why in a few lines and ends with a section "## Options" of two to four lines "- **Label**: what happens if chosen", labels of at most 40 letters, digits, spaces, hyphens and apostrophes, starting with a letter or digit, Accept and Decline among them, and a line "Recommended: Label" (tools/outlook_digest.py reads it; the owner answers it in the digest or on the issue, and nothing starts before that). If anything fails, fix it under the claim protocol (docs/agents/PROTOCOL.md) as the worker coordinator, on the branch claude/${{ env.EPIC }}: if that branch is already on origin, an earlier integration of yours left it, so check it out and carry on from its pull request; otherwise claim it as .claude/skills/claim says, making the branch with git switch -c claude/${{ env.EPIC }} --no-track origin/${{ github.event.repository.default_branch }}, so that no push of it can land on the default branch, with "- Worker: coordinator" on the claim file, the labels claimed and worker:coordinator on the epic (gh label create worker:coordinator --force first, so the label exists) and a draft pull request saying "Closes #${{ env.EPIC }}". Make the fix with the checks passing and push it by name (git push origin claude/${{ env.EPIC }}); merge the default branch in if it has moved (never rebase, never force-push), then delete the claim file, mark the pull request ready and turn on auto-merge with gh pr merge --auto --merge; the epic closes when it lands. Never push to the default branch or to another worker's branch. Plain prose, no emoji.
+      - name: Record what the run spent, for the field metrics
+        if: always() && steps.integrate.outcome != 'skipped'
+        continue-on-error: true
+        env:
+          EXECUTION_FILE: ${{ steps.integrate.outputs.execution_file }}
+          SDLC_METRICS: ${{ vars.SDLC_METRICS }}
+          EPIC_NUMBER: ${{ env.EPIC }}
+        run: >-
+          python3 "$RUNNER_TEMP/usage.py" actions --root "$GITHUB_WORKSPACE"
+          --execution-file "${EXECUTION_FILE:-$RUNNER_TEMP/claude-execution-output.json}"
+          --out "$RUNNER_TEMP/symphony-usage/record.json" --workflow coordinator --job integrate --worker coordinator --issue "$EPIC_NUMBER"
+      - name: Keep the record where the metrics workflow reads it
+        if: always() && steps.integrate.outcome != 'skipped'
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: symphony-usage-${{ github.run_id }}-${{ github.run_attempt }}-integrate
+          path: ${{ runner.temp }}/symphony-usage/record.json
+          if-no-files-found: ignore
+
+  tidy:
+    if: >-
+      vars.CLAUDE_CROWD != 'true' && github.event.repository.is_template == false
+      && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.event == 'tidy'))
+    concurrency:
+      group: coordinator-tidy
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      id-token: write
+    env:
+      HAVE_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' }}
+      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+    steps:
+      - name: Point at the setup when the token is not there
+        if: env.HAVE_TOKEN != 'true'
+        run: echo "The repository secret CLAUDE_CODE_OAUTH_TOKEN is not set; docs/setup/claude-action.md says how. Doing nothing."
+      - uses: actions/checkout@v7
+        if: env.HAVE_TOKEN == 'true'
+        with:
+          fetch-depth: 0
+      - name: Keep a copy of the usage recorder, which the run cannot move, and read the main token's settings
+        id: main
+        if: env.HAVE_TOKEN == 'true'
+        env:
+          SETTINGS: ${{ vars.SYMPHONY_CLAUDE_SETTINGS }}
+        run: |
+          cp tools/usage.py "$RUNNER_TEMP/usage.py"
+          cp -r tools/profile.py tools/economics.py tools/sdlc_protocol "$RUNNER_TEMP/" || true
+          # the model, effort and fallback the Tokens tab's main tile sets (tools/pool.py);
+          # a variable that does not hold together leaves Claude's own defaults
+          python3 tools/pool.py settings --slot main --settings "$SETTINGS" >> "$GITHUB_OUTPUT" || true
+      - uses: anthropics/claude-code-action@v1
+        id: tidy
+        if: env.HAVE_TOKEN == 'true'
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          allowed_bots: "github-actions,claude"
+          claude_args: |
+            --max-turns 60
+            ${{ steps.main.outputs.model != '' && format('--model {0}', steps.main.outputs.model) || '' }}
+            ${{ steps.main.outputs.effort != '' && format('--effort {0}', steps.main.outputs.effort) || '' }}
+            ${{ steps.main.outputs.fallback != '' && format('--fallback-model {0}', steps.main.outputs.fallback) || '' }}
+            --allowedTools "${{ vars.CLAUDE_ALLOWED_TOOLS || 'Read,Write,Edit,MultiEdit,Glob,Grep,Bash(git:*),Bash(gh:*),Bash(bash scripts/check.sh),Bash(python3:*)' }}"
+          prompt: |
+            You coordinate the repository ${{ github.repository }}. Run `git fetch origin ${{ env.DEFAULT_BRANCH }} && git show origin/${{ env.DEFAULT_BRANCH }}:docs/agents/routines/coordinator.md` and do what the last fenced block of that page says, exactly and nothing else. Read it again on every run, since it changes by pull request.
+      - name: Record what the run spent, for the field metrics
+        if: always() && steps.tidy.outcome != 'skipped'
+        continue-on-error: true
+        env:
+          EXECUTION_FILE: ${{ steps.tidy.outputs.execution_file }}
+          SDLC_METRICS: ${{ vars.SDLC_METRICS }}
+        run: >-
+          python3 "$RUNNER_TEMP/usage.py" actions --root "$GITHUB_WORKSPACE"
+          --execution-file "${EXECUTION_FILE:-$RUNNER_TEMP/claude-execution-output.json}"
+          --out "$RUNNER_TEMP/symphony-usage/record.json" --workflow coordinator --job tidy
+      - name: Keep the record where the metrics workflow reads it
+        if: always() && steps.tidy.outcome != 'skipped'
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: symphony-usage-${{ github.run_id }}-${{ github.run_attempt }}-tidy
+          path: ${{ runner.temp }}/symphony-usage/record.json
+          if-no-files-found: ignore

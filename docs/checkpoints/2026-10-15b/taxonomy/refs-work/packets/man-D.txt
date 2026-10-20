@@ -1,0 +1,58 @@
+# Packet man-D: from the Symphony and Beethoven Taxonomy Manual, sections: 7. Combining Symphony and Beethoven with other software
+
+=== [unit mrzzsdjxrm2.26417] heading level 2
+7. Combining Symphony and Beethoven with other software
+
+=== [unit mrzzsdjxrm2.26473] paragraph
+Each recipe says what it gives, how it is put together, and whether it works today. None is a step to take now. Each one that is not built is a candidate issue, and the links use OWNER/REPO for the repository you mean.
+
+=== [unit mrzzsdjxrm2.26692] heading level 3
+7.1 Symphony with GitHub's own security gates
+
+=== [unit mrzzsdjxrm2.26738] paragraph
+Works today on a public repository. It adds a free, deterministic second layer of checks on agents' code, which spec 7.2 shows is often insecure.
+
+=== [unit mrzzsdjxrm2.26886] list item
+Open https://github.com/OWNER/REPO/settings/security_analysis (Settings, then Advanced Security in the sidebar's Security and quality section). Turn on Dependabot alerts, secret scanning with push protection, and CodeQL's default setup for code scanning.
+
+=== [unit mrzzsdjxrm2.27142] list item
+Open https://github.com/OWNER/REPO/settings/rules (Settings, then Rules, then Rulesets) and edit the default branch's ruleset. Add the rule Require code scanning results beside the required check named check. The rule Require secret scanning alerts are resolved is in public preview and lists Secret Protection or Advanced Security as a prerequisite, so whether a public repository on GitHub Free can use it is Open.
+
+=== [unit mrzzsdjxrm2.27426] paragraph
+Symphony's planned qa check would fold these into one required check with a report a person can read; it is not built. Verified for the rules from the github/docs repository at 8311902 (2026-10-15).
+
+=== [unit mrzzsdjxrm2.27625] heading level 3
+7.2 beethoven-qa as the Python lane of the qa check
+
+=== [unit mrzzsdjxrm2.27677] paragraph
+Planned; a recorded decision. Contracts on every public function, searched by CrossHair with Z3, would run as one lane of the qa check, with its findings uploaded as SARIF so they appear beside CodeQL's. beethoven-qa is private and proprietary, so a public repository could run this lane only from a published gate library, which is an open question (spec 10).
+
+=== [unit mrzzsdjxrm2.28038] heading level 3
+7.3 Symphony's Claude-free core in a Beethoven repository
+
+=== [unit mrzzsdjxrm2.28096] paragraph
+Waits on your decision. Beethoven forbids a stored Claude token in CI, and Symphony's plan says no Beethoven repository runs Symphony's code (spec 6.5). What could be shared is the core that needs no Claude token: the branch-name claim, the board, the protocol check, the push guard, the required check and auto-merge. Every route to that core runs Symphony's code: an adoption brings its workflows, and the plugin in symphony-marketplace brings the skills, /board and a push guard that is symphony-protocol's own code, though not the board's workflows or the protocol check (Verified, the plugin's README). So the step the plan allows is a Markdown-only pilot of the claim protocol in beethoven-qa, recommended after Symphony's Phase 3. If you change the rule instead, leave CLAUDE_CODE_OAUTH_TOKEN unset and register no worker in Actions.
+
+=== [unit mrzzsdjxrm2.28693] heading level 3
+7.4 Other coding agents under Symphony's claim
+
+=== [unit mrzzsdjxrm2.28740] paragraph
+Needs building (Inferred). Any agent that can run git can claim: it pushes claude/N with the claim file as its first commit, adds the labels and opens a draft pull request that says Closes #N. Two things change outside Claude Code. The push guard is a Claude Code hook, so another agent loses that local fence and keeps only GitHub's. And Copilot's cloud agent and gh-aw name their own branches, so each needs an adapter: a deterministic job that claims claude/N before handing the issue over, with the agent's pull request opened from or merged into that branch. gh-aw's Claude engine would then bill an API key or Copilot credits, not the subscription.
+
+=== [unit mrzzsdjxrm2.29395] heading level 3
+7.5 GitHub's merge queue after Symphony's ordering
+
+=== [unit mrzzsdjxrm2.29446] paragraph
+Not tried. Symphony's Overlaps section orders work that touches the same files; a merge queue then tests each pull request against the ones ahead of it, which catches conflicts that are not textual. The two are complementary. The merge queue is available in any public repository owned by an organization (Verified, github/docs at 8311902). A queue waits for the required checks on merge_group events, and the template's ci.yml runs only on pull_request, push and workflow_dispatch (ci.yml lines 70 to 75), so add a merge_group trigger first: without it, check may never reach the queue, and a queued merge then fails at the queue's timeout (Verified, github/docs at 8311902; whether ci.yml's push trigger would report check on the queue's branches is untested).
+
+=== [unit mrzzsdjxrm2.30031] heading level 3
+7.6 Workflow managers for Beethoven's outer loop
+
+=== [unit mrzzsdjxrm2.30080] paragraph
+Chosen, not built. Metaflow is the chosen engine, but metaflow-slurm drives sbatch over SSH with a key file, which Beethoven's rule against touching a credential forbids unless the planned plain sbatch adapter replaces it. The alternatives are Snakemake with its Slurm executor plugin, Nextflow, Parsl and CWL; DVC can keep data versions, and MLflow or Weights and Biases the run records that the checklist gates would read (spec 6.1 and 6.3).
+
+=== [unit mrzzsdjxrm2.30524] heading level 3
+7.7 Actions as the control plane, the cluster as the compute plane
+
+=== [unit mrzzsdjxrm2.30591] paragraph
+Works today in Beethoven's CI. GitHub's runners cannot reach the grid, so the gate runs on GitHub's runners and a grid lane on the cluster posts commit statuses named grid/... back to the pull request (spec 6.2). The same split lets any project keep its review and merge rules on GitHub while its heavy jobs run on hardware it already has.

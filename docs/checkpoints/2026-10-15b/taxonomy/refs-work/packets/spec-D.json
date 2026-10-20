@@ -1,0 +1,381 @@
+{
+ "group": "spec-D",
+ "doc": "spec",
+ "units": [
+  {
+   "id": "mggj4hxkexp.44367",
+   "kind": "heading level 2",
+   "text": "5. Neighbors compared"
+  },
+  {
+   "id": "mggj4hxkexp.44389",
+   "kind": "heading level 3",
+   "text": "5.1 Coordinators of coding agents"
+  },
+  {
+   "id": "mggj4hxkexp.44426",
+   "kind": "table 1, row 0, column 0 (header row)",
+   "text": "System"
+  },
+  {
+   "id": "mggj4hxkexp.44434",
+   "kind": "table 1, row 0, column 1 (header row)",
+   "text": "Where it runs"
+  },
+  {
+   "id": "mggj4hxkexp.44449",
+   "kind": "table 1, row 0, column 2 (header row)",
+   "text": "The claim"
+  },
+  {
+   "id": "mggj4hxkexp.44460",
+   "kind": "table 1, row 0, column 3 (header row)",
+   "text": "An idle claim"
+  },
+  {
+   "id": "mggj4hxkexp.44475",
+   "kind": "table 1, row 0, column 4 (header row)",
+   "text": "Workers"
+  },
+  {
+   "id": "mggj4hxkexp.44484",
+   "kind": "table 1, row 0, column 5 (header row)",
+   "text": "Inference paid by"
+  },
+  {
+   "id": "mggj4hxkexp.44504",
+   "kind": "table 1, row 1, column 0",
+   "text": "Symphony"
+  },
+  {
+   "id": "mggj4hxkexp.44514",
+   "kind": "table 1, row 1, column 1",
+   "text": "Actions, and each worker's own session"
+  },
+  {
+   "id": "mggj4hxkexp.44554",
+   "kind": "table 1, row 1, column 2",
+   "text": "Creating branch claude/N; git lets one of two racing creations win"
+  },
+  {
+   "id": "mggj4hxkexp.44622",
+   "kind": "table 1, row 1, column 3",
+   "text": "Released after 24 hours without a commit; the work is kept under a renamed branch"
+  },
+  {
+   "id": "mggj4hxkexp.44705",
+   "kind": "table 1, row 1, column 4",
+   "text": "People's sessions, routines, agents in Actions"
+  },
+  {
+   "id": "mggj4hxkexp.44753",
+   "kind": "table 1, row 1, column 5",
+   "text": "One Claude plan for the Actions workers; each person's own plan for sessions"
+  },
+  {
+   "id": "mggj4hxkexp.44832",
+   "kind": "table 1, row 2, column 0",
+   "text": "gh-aw work queue"
+  },
+  {
+   "id": "mggj4hxkexp.44850",
+   "kind": "table 1, row 2, column 1",
+   "text": "Actions"
+  },
+  {
+   "id": "mggj4hxkexp.44859",
+   "kind": "table 1, row 2, column 2",
+   "text": "A record on a ledger branch, published by compare-and-swap; a trusted scheduler grants it"
+  },
+  {
+   "id": "mggj4hxkexp.44950",
+   "kind": "table 1, row 2, column 3",
+   "text": "Never expires; ends with its run, then up to three attempts"
+  },
+  {
+   "id": "mggj4hxkexp.45011",
+   "kind": "table 1, row 2, column 4",
+   "text": "Actions runs only"
+  },
+  {
+   "id": "mggj4hxkexp.45030",
+   "kind": "table 1, row 2, column 5",
+   "text": "API key, workload identity or Copilot credits; the subscription token is refused"
+  },
+  {
+   "id": "mggj4hxkexp.45113",
+   "kind": "table 1, row 3, column 0",
+   "text": "unsorry"
+  },
+  {
+   "id": "mggj4hxkexp.45122",
+   "kind": "table 1, row 3, column 1",
+   "text": "Board, dispatcher and reaper in Actions; agents on volunteers' machines"
+  },
+  {
+   "id": "mggj4hxkexp.45195",
+   "kind": "table 1, row 3, column 2",
+   "text": "Claim files pushed to one shared branch, first push wins, checked again after the push"
+  },
+  {
+   "id": "mggj4hxkexp.45283",
+   "kind": "table 1, row 3, column 3",
+   "text": "Deleted two hours after the claim by a reaper every 15 minutes; the work is not kept"
+  },
+  {
+   "id": "mggj4hxkexp.45369",
+   "kind": "table 1, row 3, column 4",
+   "text": "Volunteers' claude -p, Codex and Gemini runs"
+  },
+  {
+   "id": "mggj4hxkexp.45415",
+   "kind": "table 1, row 3, column 5",
+   "text": "Each volunteer"
+  },
+  {
+   "id": "mggj4hxkexp.45432",
+   "kind": "table 1, row 4, column 0",
+   "text": "agentic-setup"
+  },
+  {
+   "id": "mggj4hxkexp.45447",
+   "kind": "table 1, row 4, column 1",
+   "text": "A local Claude Code orchestrator"
+  },
+  {
+   "id": "mggj4hxkexp.45481",
+   "kind": "table 1, row 4, column 2",
+   "text": "Creating a branch, made create-only with a lease"
+  },
+  {
+   "id": "mggj4hxkexp.45531",
+   "kind": "table 1, row 4, column 3",
+   "text": "Not reclaimed; resumed by the next round"
+  },
+  {
+   "id": "mggj4hxkexp.45573",
+   "kind": "table 1, row 4, column 4",
+   "text": "Claude Code and Codex loops"
+  },
+  {
+   "id": "mggj4hxkexp.45602",
+   "kind": "table 1, row 4, column 5",
+   "text": "The user"
+  },
+  {
+   "id": "mggj4hxkexp.45613",
+   "kind": "table 1, row 5, column 0",
+   "text": "openai/symphony"
+  },
+  {
+   "id": "mggj4hxkexp.45630",
+   "kind": "table 1, row 5, column 1",
+   "text": "A long-running daemon on a host"
+  },
+  {
+   "id": "mggj4hxkexp.45663",
+   "kind": "table 1, row 5, column 2",
+   "text": "Held in the daemon's memory"
+  },
+  {
+   "id": "mggj4hxkexp.45692",
+   "kind": "table 1, row 5, column 3",
+   "text": "A stall timeout kills the worker, then retries"
+  },
+  {
+   "id": "mggj4hxkexp.45740",
+   "kind": "table 1, row 5, column 4",
+   "text": "Codex"
+  },
+  {
+   "id": "mggj4hxkexp.45747",
+   "kind": "table 1, row 5, column 5",
+   "text": "The user"
+  },
+  {
+   "id": "mggj4hxkexp.45758",
+   "kind": "table 1, row 6, column 0",
+   "text": "CCPM"
+  },
+  {
+   "id": "mggj4hxkexp.45764",
+   "kind": "table 1, row 6, column 1",
+   "text": "A local Claude Code session"
+  },
+  {
+   "id": "mggj4hxkexp.45793",
+   "kind": "table 1, row 6, column 2",
+   "text": "Assignee and label, which two agents can both set"
+  },
+  {
+   "id": "mggj4hxkexp.45844",
+   "kind": "table 1, row 6, column 3",
+   "text": "None"
+  },
+  {
+   "id": "mggj4hxkexp.45850",
+   "kind": "table 1, row 6, column 4",
+   "text": "Streams inside one session"
+  },
+  {
+   "id": "mggj4hxkexp.45878",
+   "kind": "table 1, row 6, column 5",
+   "text": "The user's plan"
+  },
+  {
+   "id": "mggj4hxkexp.45896",
+   "kind": "table 1, row 7, column 0",
+   "text": "Beads and Gas Town"
+  },
+  {
+   "id": "mggj4hxkexp.45916",
+   "kind": "table 1, row 7, column 1",
+   "text": "Local, with data synced to a git ref"
+  },
+  {
+   "id": "mggj4hxkexp.45954",
+   "kind": "table 1, row 7, column 2",
+   "text": "Atomic inside one Dolt database, merged across machines after the fact"
+  },
+  {
+   "id": "mggj4hxkexp.46026",
+   "kind": "table 1, row 7, column 3",
+   "text": "Released by hand (Beads); stuck agents detected (Gas Town)"
+  },
+  {
+   "id": "mggj4hxkexp.46086",
+   "kind": "table 1, row 7, column 4",
+   "text": "Local agents"
+  },
+  {
+   "id": "mggj4hxkexp.46100",
+   "kind": "table 1, row 7, column 5",
+   "text": "The user"
+  },
+  {
+   "id": "mggj4hxkexp.46111",
+   "kind": "table 1, row 8, column 0",
+   "text": "paperclip"
+  },
+  {
+   "id": "mggj4hxkexp.46122",
+   "kind": "table 1, row 8, column 1",
+   "text": "A self-hosted server"
+  },
+  {
+   "id": "mggj4hxkexp.46144",
+   "kind": "table 1, row 8, column 2",
+   "text": "Atomic checkout on the server"
+  },
+  {
+   "id": "mggj4hxkexp.46175",
+   "kind": "table 1, row 8, column 3",
+   "text": "Heartbeats and execution locks"
+  },
+  {
+   "id": "mggj4hxkexp.46207",
+   "kind": "table 1, row 8, column 4",
+   "text": "Agents in an org chart"
+  },
+  {
+   "id": "mggj4hxkexp.46231",
+   "kind": "table 1, row 8, column 5",
+   "text": "The user"
+  },
+  {
+   "id": "mggj4hxkexp.46242",
+   "kind": "table 1, row 9, column 0",
+   "text": "Copilot cloud agent, Agent HQ"
+  },
+  {
+   "id": "mggj4hxkexp.46273",
+   "kind": "table 1, row 9, column 1",
+   "text": "Actions runners, with GitHub's service as control plane"
+  },
+  {
+   "id": "mggj4hxkexp.46330",
+   "kind": "table 1, row 9, column 2",
+   "text": "A person assigns; one agent, one branch, one pull request"
+  },
+  {
+   "id": "mggj4hxkexp.46389",
+   "kind": "table 1, row 9, column 3",
+   "text": "A session stops at 59 minutes"
+  },
+  {
+   "id": "mggj4hxkexp.46420",
+   "kind": "table 1, row 9, column 4",
+   "text": "Copilot, Claude and Codex agents"
+  },
+  {
+   "id": "mggj4hxkexp.46454",
+   "kind": "table 1, row 9, column 5",
+   "text": "AI credits plus minutes; automations are not offered on public repositories"
+  },
+  {
+   "id": "mggj4hxkexp.46532",
+   "kind": "table 1, row 10, column 0",
+   "text": "Claude Code agent teams, Projects"
+  },
+  {
+   "id": "mggj4hxkexp.46567",
+   "kind": "table 1, row 10, column 1",
+   "text": "One machine; Anthropic's cloud for one account"
+  },
+  {
+   "id": "mggj4hxkexp.46615",
+   "kind": "table 1, row 10, column 2",
+   "text": "A file lock on one machine; none across accounts"
+  },
+  {
+   "id": "mggj4hxkexp.46665",
+   "kind": "table 1, row 10, column 3",
+   "text": "None"
+  },
+  {
+   "id": "mggj4hxkexp.46671",
+   "kind": "table 1, row 10, column 4",
+   "text": "Teammates in one session; threads of one account"
+  },
+  {
+   "id": "mggj4hxkexp.46721",
+   "kind": "table 1, row 10, column 5",
+   "text": "The user's plan"
+  },
+  {
+   "id": "mggj4hxkexp.46739",
+   "kind": "table 1, row 11, column 0",
+   "text": "Anthropic's C-compiler harness"
+  },
+  {
+   "id": "mggj4hxkexp.46771",
+   "kind": "table 1, row 11, column 1",
+   "text": "Containers on one host with a bare git upstream"
+  },
+  {
+   "id": "mggj4hxkexp.46820",
+   "kind": "table 1, row 11, column 2",
+   "text": "Lock files that git refuses a second agent"
+  },
+  {
+   "id": "mggj4hxkexp.46864",
+   "kind": "table 1, row 11, column 3",
+   "text": "None"
+  },
+  {
+   "id": "mggj4hxkexp.46870",
+   "kind": "table 1, row 11, column 4",
+   "text": "16 Claude agents"
+  },
+  {
+   "id": "mggj4hxkexp.46888",
+   "kind": "table 1, row 11, column 5",
+   "text": "API, just under $20,000"
+  },
+  {
+   "id": "mggj4hxkexp.46912",
+   "kind": "paragraph",
+   "text": "Sources: research notes 06 and 07, and research/taxonomy/verify/01 and 03 (Verified from each project's repository or docs, 2026-10-15)."
+  }
+ ]
+}

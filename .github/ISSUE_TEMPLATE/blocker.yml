@@ -1,0 +1,26 @@
+name: Blocker
+description: Something that stops everyone until it is settled; it goes to the top of the board.
+title: "Blocker: "
+labels: ["blocker"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What stops everyone
+      description: What is broken or undecided, and what it keeps from moving.
+    validations:
+      required: true
+  - type: textarea
+    id: seen
+    attributes:
+      label: How it shows
+      description: The failing check, the error, or the question nobody can answer; paste the line, not a screenshot.
+    validations:
+      required: true
+  - type: textarea
+    id: way_out
+    attributes:
+      label: A way out, if you see one
+      description: Who can settle it, or what would.
+    validations:
+      required: false

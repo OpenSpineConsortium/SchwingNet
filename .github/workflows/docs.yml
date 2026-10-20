@@ -1,0 +1,77 @@
+# The living documentation site (docs/learn/README.md): the lessons, the
+# capabilities page, a reference made from the code's own docstrings and the
+# test suite's results, built by tools/living_docs.py on every push to the
+# default branch and published with GitHub Pages. The lessons' commands
+# already ran in the required check before the merge; they run again here,
+# so a page is published only from a commit whose examples still print what
+# the pages say. The test report is written even when a test fails, so the
+# Tests page shows the failure rather than hiding the page.
+#
+# Publishing needs two settings the workflow's token cannot make: Pages set
+# to deploy from GitHub Actions, and the repository variable SYMPHONY_DOCS
+# set to pages (docs/learn/README.md, Publishing the site). Until both are
+# set the site is built and kept as an artifact, and nothing is deployed, so
+# a copy that never turns Pages on sees no red run.
+name: Docs
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-${{ github.ref }}
+  # a deploy stopped halfway leaves Pages between two versions
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.ref_name == github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Run every lesson's commands
+        run: python3 tools/living_docs.py test
+
+      - name: Clone symphony-protocol, as CI does, so the Tests page matches CI's run
+        run: git clone --quiet https://github.com/OpenSpineConsortium/symphony-protocol "$RUNNER_TEMP/symphony-protocol"
+
+      - name: Run the test suite for the Tests page
+        continue-on-error: true
+        env:
+          SDLC_PROTOCOL: ${{ runner.temp }}/symphony-protocol
+        run: python3 tools/living_docs.py report "$RUNNER_TEMP/tests.json"
+
+      - name: Build the site
+        env:
+          SHA: ${{ github.sha }}
+        run: python3 tools/living_docs.py site "$RUNNER_TEMP/site" --tests "$RUNNER_TEMP/tests.json" --repo "$GITHUB_REPOSITORY" --sha "$SHA"
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: ${{ runner.temp }}/site
+
+  deploy:
+    needs: build
+    if: vars.SYMPHONY_DOCS == 'pages'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5

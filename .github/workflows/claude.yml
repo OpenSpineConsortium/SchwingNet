@@ -1,0 +1,141 @@
+name: Claude
+
+# Runs a Claude Code session when a person or a routine writes @claude on
+# an issue, a pull request or a review: answer a question, take a fix, do
+# what the comment asks, under the same CLAUDE.md and rules every other
+# session reads. Authentication is the main account's subscription OAuth
+# token in the repository secret CLAUDE_CODE_OAUTH_TOKEN, made with
+# `claude setup-token` (docs/setup/claude-action.md): a run draws on that
+# account's plan limits and bills no API. Until the secret is set, every
+# run ends at the first step with a pointer and does nothing, so the
+# template works without it. The turn cap keeps one runaway mention from
+# spending the owner's five-hour window. Without --allowedTools the action
+# grants only its own GitHub tools, so the session could not run git, gh or
+# the checks; the repository variable CLAUDE_ALLOWED_TOOLS overrides the list.
+# In crowd mode (docs/project.md, docs/setup/crowdsourcing.md) the job never
+# starts: its condition needs the repository variable CLAUDE_CROWD not to be
+# true, and a repository that never set it reads it as empty, so there the
+# condition is exactly the one before it. After the session the job records
+# what it spent, as workers.yml does, as an artifact the metrics workflow
+# reads (docs/setup/metrics.md, What the work cost).
+#
+# An issue labelled assistant is the control panel's assistant
+# (docs/setup/claude-action.md, The assistant issue): the job reads the
+# label from the event's issue, an issue and never a pull request, since a
+# comment on a pull request carries the pull request's labels as its
+# issue's, and the same step then runs with ten turns, tools that only
+# read, and the file .github/symphony/assistant.md appended to the system
+# prompt. A question needs no write, ten turns bound what it costs, and
+# the file tells the session what the page is and how to answer it. The
+# job's permissions stay the same, since the tools, not the token, are
+# what keeps the assistant read-only, and a deny holds over every allow,
+# the repository's own .claude/settings.json included: the action's tag
+# mode allows edits, git add, git commit, git rm and its own push script
+# scripts/git-push.sh whatever the allow list says, so the assistant
+# denies each, the script by a wildcard for the action's path; its
+# acceptEdits mode would approve edits and file commands inside the
+# checkout with no rule at all, so the assistant sets the mode back to
+# default, where whatever no rule allows is refused, the run having
+# nobody to ask; and git fetch, sed, python3 and bash are denied because
+# each runs a program it is handed (fetch's --upload-pack, sed's e
+# command), the two scripts the repository's settings allow among them.
+# The board needs no fetch: the checkout brings every branch. Reading
+# runs needs actions: read on the token the action mints, which carries
+# none unless asked, so the assistant asks through additional_permissions.
+# The action answers only an actor with write access on the repository
+# (checkActorWritePermissions in its src/github/validation/permissions.ts)
+# and fails the run for anyone else before it posts anything. The job
+# itself starts only for the repository's owner, a member of its
+# organization or a collaborator, read from the author association GitHub
+# puts on the comment, the review or the issue that woke it: on a public
+# repository anyone may open an issue or comment, as a lend of a Claude
+# token is (token.yml), and without this a stranger's @claude would start
+# a runner and hand the token to the action for every such comment, to be
+# refused there. A member who may only read still fails at the action.
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  pull_request_review:
+    types: [submitted]
+  issues:
+    types: [opened, assigned]
+
+jobs:
+  claude:
+    if: |
+      vars.CLAUDE_CROWD != 'true' &&
+      contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association || github.event.review.author_association || github.event.issue.author_association) && (
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
+      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude'))))
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      actions: read
+      id-token: write
+    env:
+      HAVE_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' }}
+      ASSISTANT: ${{ !github.event.issue.pull_request && contains(github.event.issue.labels.*.name, 'assistant') }}
+    steps:
+      - name: Point at the setup when the token is not there
+        if: env.HAVE_TOKEN != 'true'
+        run: echo "The repository secret CLAUDE_CODE_OAUTH_TOKEN is not set; docs/setup/claude-action.md says how. Doing nothing."
+      - uses: actions/checkout@v7
+        if: env.HAVE_TOKEN == 'true'
+        with:
+          fetch-depth: 0
+      - name: Keep a copy of the usage recorder, which the run cannot move, and read the main token's settings
+        id: main
+        if: env.HAVE_TOKEN == 'true'
+        env:
+          SETTINGS: ${{ vars.SYMPHONY_CLAUDE_SETTINGS }}
+        run: |
+          cp tools/usage.py "$RUNNER_TEMP/usage.py"
+          cp -r tools/profile.py tools/economics.py tools/sdlc_protocol "$RUNNER_TEMP/" || true
+          # the model, effort and fallback the Tokens tab's main tile sets (tools/pool.py), for
+          # @claude and the assistant alike, since the owner set them for wherever the token runs;
+          # a variable that does not hold together leaves Claude's own defaults
+          python3 tools/pool.py settings --slot main --settings "$SETTINGS" >> "$GITHUB_OUTPUT" || true
+      - uses: anthropics/claude-code-action@v1
+        id: claude
+        if: env.HAVE_TOKEN == 'true'
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          additional_permissions: |
+            ${{ env.ASSISTANT == 'true' && 'actions: read' || '' }}
+          claude_args: |
+            --max-turns ${{ env.ASSISTANT == 'true' && '10' || '50' }}
+            ${{ steps.main.outputs.model != '' && format('--model {0}', steps.main.outputs.model) || '' }}
+            ${{ steps.main.outputs.effort != '' && format('--effort {0}', steps.main.outputs.effort) || '' }}
+            ${{ steps.main.outputs.fallback != '' && format('--fallback-model {0}', steps.main.outputs.fallback) || '' }}
+            --allowedTools "${{ env.ASSISTANT == 'true' && 'Read,Glob,Grep,Bash(git log:*),Bash(git show:*),Bash(git diff:*),Bash(git branch:*),Bash(git ls-files:*),Bash(gh issue view:*),Bash(gh issue list:*),Bash(gh pr view:*),Bash(gh pr list:*),Bash(gh run list:*),Bash(gh run view:*)' || (vars.CLAUDE_ALLOWED_TOOLS || 'Read,Write,Edit,MultiEdit,Glob,Grep,Bash(git:*),Bash(gh:*),Bash(bash scripts/check.sh),Bash(python3:*)') }}"
+            ${{ env.ASSISTANT == 'true' && '--disallowedTools "Edit,Write,MultiEdit,NotebookEdit,Bash(git add:*),Bash(git commit:*),Bash(git rm:*),Bash(*/scripts/git-push.sh:*),Bash(git fetch:*),Bash(sed:*),Bash(python3:*),Bash(bash:*)"' || '' }}
+            ${{ env.ASSISTANT == 'true' && '--permission-mode default' || '' }}
+            ${{ env.ASSISTANT == 'true' && '--append-system-prompt-file .github/symphony/assistant.md' || '' }}
+      - name: Record what the run spent, for the field metrics
+        if: always() && steps.claude.outcome != 'skipped'
+        continue-on-error: true
+        env:
+          EXECUTION_FILE: ${{ steps.claude.outputs.execution_file }}
+          SDLC_METRICS: ${{ vars.SDLC_METRICS }}
+          ISSUE_NUMBER: ${{ !github.event.issue.pull_request && github.event.issue.number || '' }}
+          PULL_NUMBER: ${{ github.event.pull_request.number || (github.event.issue.pull_request && github.event.issue.number) || '' }}
+        run: >-
+          python3 "$RUNNER_TEMP/usage.py" actions --root "$GITHUB_WORKSPACE"
+          --execution-file "${EXECUTION_FILE:-$RUNNER_TEMP/claude-execution-output.json}"
+          --out "$RUNNER_TEMP/symphony-usage/record.json" --workflow claude --job claude --issue "$ISSUE_NUMBER" --pull "$PULL_NUMBER"
+      - name: Keep the record where the metrics workflow reads it
+        if: always() && steps.claude.outcome != 'skipped'
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: symphony-usage-${{ github.run_id }}-${{ github.run_attempt }}-claude
+          path: ${{ runner.temp }}/symphony-usage/record.json
+          if-no-files-found: ignore

@@ -1,0 +1,29 @@
+# Python caches
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Node modules, should a project add any
+node_modules/
+
+# Environment files: never a secret in the repository
+.env
+.env.*
+
+# One person's own Claude Code settings and notes
+.claude/settings.local.json
+*.local.md
+
+# Operating system clutter
+.DS_Store
+Thumbs.db
+
+# The field metrics' files belong on the branch metrics, never on the
+# default branch; the judge writes JUDGE.json at the clone's root, and --push
+# commits it onto metrics without touching the checkout (docs/setup/metrics.md)
+/JUDGE.json
+/METRICS.json
+
+# The documentation site tools/living_docs.py builds; the Docs workflow
+# publishes it and nothing commits it
+/_site/

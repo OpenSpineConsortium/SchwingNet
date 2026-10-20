@@ -1,0 +1,109 @@
+# Packet spec-G: from the Symphony and Beethoven Taxonomy Spec, sections: 7. The need
+
+=== [unit mggj4hxkexp.15895] heading level 2
+7. The need
+
+=== [unit mggj4hxkexp.15907] paragraph
+Three problems, each with its evidence. The strength of each source is stated, because the evidence is uneven.
+
+=== [unit mggj4hxkexp.16018] heading level 3
+7.1 Agents that share a codebase collide, and chat does not fix it
+
+=== [unit mggj4hxkexp.16087] list item
+The curse of coordination. CooperBench (Stanford and SAP Labs, preprint, 2026) gave 652 feature pairs from 12 repositories either to one agent or to two agents in isolated workspaces that could only message each other. One agent passed far more often: GPT-5 315 against 183 of 652 (48.3% against 28.1%), Claude Sonnet 4.5 307 against 168 (47.1% against 25.8%). The paper states the gap three ways (30% in the abstract, up to 50% in section 4, 41% in appendix C), so quote the counts. Verified, the paper's PDF in the cooperbench/website repository.
+    links in this unit: "cooperbench/website" -> https://github.com/cooperbench/website
+
+=== [unit mggj4hxkexp.16637] list item
+What fails is duplicated or incompatible work, not skill. Of the failed two-agent runs, 33.2% were work overlap and 29.7% divergent architecture; in 50 hand-read traces the root causes were expectation (42%), commitment (32%) and communication (26%). Messaging took up to 20% of the agents' steps and did not raise success. A plan in the first turn nearly halved the conflict rate (29.4% against 51.5%). Verified, same paper.
+
+=== [unit mggj4hxkexp.17064] list item
+Git alone is not enough; a shared substrate with a task list is. Giving each pair a git server moved success by only 1 to 3 points (Verified, the February 2026 post in the cooperbench/website repository). In CooperBench's later ablation (50 pairs, one seed, one model) messaging alone reached 26%, one agent 48%, a shared git remote 56%, and a lead with a shared task list and scratchpad 62%; removing the task list or the scratchpad dropped the team below one agent. Weak evidence (n = 50, one seed), but it points the same way. Verified, the CooperBench repository at 63b9d44.
+
+=== [unit mggj4hxkexp.17571] list item
+The field shows the same. Merge-simulating 107,026 agent pull requests found textual conflicts in 27.67% (AgenticFlict, Verified), and 40.2% of popular repositories in the AIDev dataset had agent pull requests open at the same time (Reported).
+
+=== [unit mggj4hxkexp.17816] list item
+Practitioners converge on claims, ownership and gates. Anthropic's 16-agent C compiler claimed tasks by writing lock files that git refused a second agent (Verified); Claude Code agent teams claim tasks under a file lock and advise each teammate to own different files (Verified); Cursor reports that naive locks collapsed 20 agents to the throughput of two or three, because locks were held too long or never released (Reported).
+    links in this unit: "Verified" -> https://www.anthropic.com/engineering/building-c-compiler; "Verified" -> https://code.claude.com/docs/en/agent-teams
+
+=== [unit mggj4hxkexp.18248] list item
+The owner's own replication (coordbench) has run 8 pairs: Symphony's arm passed 6 of 8 like every two-agent arm, one agent 5 of 8, and no difference is significant (every exact McNemar p is 1.000; Verified, research note 03). It is a pilot, and its token and dollar figures are inflated by a prompt of about 78,000 to 82,000 tokens that every agent there inherits (Verified, research note 03). It stays out of the grant until you say so.
+
+=== [unit mggj4hxkexp.18572] paragraph
+What each Symphony primitive answers, by design (Inferred, not measured):
+
+=== [unit mggj4hxkexp.18649] table 1, row 0, column 0 (header row)
+Failure in the evidence
+
+=== [unit mggj4hxkexp.18674] table 1, row 0, column 1 (header row)
+Symphony's answer
+
+=== [unit mggj4hxkexp.18694] table 1, row 1, column 0
+Two agents build the same thing (33.2%)
+
+=== [unit mggj4hxkexp.18735] table 1, row 1, column 1
+One claim per issue; the second creation of claude/N is refused
+
+=== [unit mggj4hxkexp.18801] table 1, row 2, column 0
+An agent assumes its partner's work does not exist (42%)
+
+=== [unit mggj4hxkexp.18859] table 1, row 2, column 1
+Claim branches and draft pull requests on one remote, and a board with an Overlaps section
+
+=== [unit mggj4hxkexp.18952] table 1, row 3, column 0
+Promises not kept, contracts unverifiable (32%)
+
+=== [unit mggj4hxkexp.19001] table 1, row 3, column 1
+The pull request's diff and the required check are the commitment
+
+=== [unit mggj4hxkexp.19069] table 1, row 4, column 0
+No plan before coding
+
+=== [unit mggj4hxkexp.19092] table 1, row 4, column 1
+The claim file, with the plan and the files to touch, is the first commit
+
+=== [unit mggj4hxkexp.19168] table 1, row 5, column 0
+Agents misuse git (force pushes, overwrites)
+
+=== [unit mggj4hxkexp.19214] table 1, row 5, column 1
+The push guard refuses forced pushes, and leases onto another worker's claim
+
+=== [unit mggj4hxkexp.19291] table 1, row 6, column 0
+Locks never released (Cursor)
+
+=== [unit mggj4hxkexp.19322] table 1, row 6, column 1
+The board releases a claim idle for 24 hours and keeps its work (idle by the commit's own date; risk 13)
+
+=== [unit mggj4hxkexp.19386] paragraph
+The gap: no peer-reviewed study yet compares a claim- and pull-request-gated protocol on a shared GitHub remote with one agent at a matched budget, and a 2026 noise-floor study puts single-seed gains under about 15 points inside run-to-run noise (Reported). Section 11 makes this the first research question.
+
+=== [unit mggj4hxkexp.19695] heading level 3
+7.2 Agent-driven research fails where the paper cannot show it
+
+=== [unit mggj4hxkexp.19760] list item
+Luo, Kasirzadeh and Shah (NeurIPS 2025) found data leakage, inappropriate benchmarks, metric misuse and post-hoc selection in two AI-scientist systems, and found them far easier to detect from trace logs and code than from the paper (Reported).
+
+=== [unit mggj4hxkexp.20006] list item
+Beel and colleagues found 5 of 12 proposed experiments (42%) failed on coding errors, with some hallucinated numbers (Reported; n = 12). Kosmos reports 79.4% of its statements judged accurate, so about one in five is not (Reported).
+
+=== [unit mggj4hxkexp.20240] list item
+Reporting checklists are filled by authors after the fact: a 2025 umbrella review put median CLAIM compliance at 68% across 421 studies, and in 2024 only 5 of 98 imaging journals encouraged AI-specific reporting guidelines (Reported). No AI-scientist system found enforces REFORMS, CLAIM, TRIPOD+AI or a similar checklist as a gate (Inferred; an absence claim from a search that ran out of budget).
+
+=== [unit mggj4hxkexp.20640] list item
+Code written by agents is often insecure: on SusVibes (ICML 2026), Claude Opus 4.8 in Claude Code passes 83.9% of tasks functionally but only 32.8% both functionally and securely (Verified from the leaderboard's submission files; the entries are self-submitted).
+
+=== [unit mggj4hxkexp.20903] paragraph
+This is the gap Beethoven's design names: gates that read the agent's run record, not its paper, and fail the run when a checklist item is unmet. It is almost entirely unbuilt (section 2).
+
+=== [unit mggj4hxkexp.21092] heading level 3
+7.3 Cost and setup keep coordination out of reach
+
+=== [unit mggj4hxkexp.21144] list item
+Coordination multiplies tokens: Anthropic measured multi-agent research systems at about 15 times the tokens of chat, and Claude Code's agent teams at about 7 times a standard session in plan mode (Verified, research system, costs). The 16-agent C compiler cost just under $20,000 in API fees over two weeks (Verified).
+    links in this unit: "research system" -> https://www.anthropic.com/engineering/multi-agent-research-system; "costs" -> https://code.claude.com/docs/en/costs
+
+=== [unit mggj4hxkexp.21465] list item
+The neighbors that run agents in CI meter every run: gh-aw's Claude engine takes an API key or Copilot credits, openai/codex-action needs an API key, and Copilot's agents spend AI credits at $0.01 each as well as Actions minutes (Verified, research note 10), though GitHub's docs do not say whether the cloud agent's minutes are free on a public repository (research/taxonomy/verify/01).
+
+=== [unit mggj4hxkexp.21723] list item
+Free CI for open source has shrunk everywhere but GitHub: Travis CI ended unlimited open-source builds in 2020, GitLab.com put public projects on quotas from 2021, Azure DevOps stopped new public projects in 2026 and will make the existing ones private in 2027, pointing them to GitHub, and Cirrus CI stopped running jobs on 2026-06-01 (Verified from their docs for GitLab's quotas today and for Azure; Reported for GitLab's 2021 start and the rest). Section 9 takes this up.

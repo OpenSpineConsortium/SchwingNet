@@ -1,0 +1,344 @@
+name: Agents
+
+# Runs this repository's agents in GitHub Actions, and brings one in from
+# elsewhere (docs/agents/AGENTS.md). An agent is a Claude Code subagent
+# file under .claude/agents/, registered in .github/symphony/agents.json
+# with its purpose and when it runs; tools/agents.py reads both.
+#
+# Running: an agent whose registry entry says "runs": "pull_request" runs
+# on every pull request opened, reopened or marked ready, drafts and forks
+# left out; any agent but a developer runs by hand with Run workflow,
+# naming it and the pull request or issue it works on. The trigger is
+# pull_request_target, so this file, the registry and the agent's own file
+# are the default branch's: a pull request cannot rewrite the workflow or
+# the agent that reviews it. The session runs as the agent (`claude
+# --agent NAME`) with only the tools the agent lists, and on this job's
+# GITHUB_TOKEN, which may read the code and comment and review but not
+# push, merge or mint the Claude App's own token (no id-token), so an
+# agent a diff talks into something can still only comment. A developer
+# writes code, so it runs as a worker in Actions instead (its workers
+# list), under workers.yml's claim protocol. The tester runs a pull
+# request's code, as the person who opened it from this repository's own
+# branches could already run any code with its secrets by pushing a
+# workflow; a fork's pull request starts nothing here. Which Claude token
+# a run takes is .github/symphony/accounts.json under the agent's name, the
+# Tokens tab's file, chosen by tools/pool.py as for a worker in Actions:
+# with no line for the agent, the file's default, else
+# CLAUDE_CODE_OAUTH_TOKEN. Each run records what
+# it spent for the field metrics, as every Claude run here does. The
+# agents the template brings all say "manual", so nothing here spends a
+# token until someone switches an agent on.
+#
+# Importing: Run workflow with "import" set to a source
+# (OWNER/REPO/PATH.md[@REF] or an https address) runs tools/agents.py
+# import on the default branch, pushes the file and its registry entry on
+# the branch symphony/agent-<name>, rebuilt and force-pushed on every run,
+# opens the pull request with GITHUB_TOKEN, or names the link that opens
+# it, and starts the checks on the branch, since a push with GITHUB_TOKEN
+# starts no workflow. The agent joins only when someone merges it, and
+# code-owner review covers .claude/. Only people who may write can press
+# Run workflow, and in crowd mode no agent runs, since the repository
+# holds no Claude token, nor is one imported, as add-worker.yml refuses a
+# worker in Actions there.
+
+on:
+  pull_request_target:
+    types: [opened, reopened, ready_for_review]
+  workflow_dispatch:
+    inputs:
+      agent:
+        description: "The agent to run, by name; empty when importing"
+        required: false
+        default: ""
+      target:
+        description: "The pull request or issue number it works on"
+        required: false
+        default: ""
+      import:
+        description: "Import an agent from OWNER/REPO/PATH.md[@REF] or an https address, by pull request"
+        required: false
+        default: ""
+      name:
+        description: "When importing: the name it takes here, if not its own"
+        required: false
+        default: ""
+      purpose:
+        description: "When importing: review, develop, test or other; empty guesses from its description"
+        required: false
+        default: ""
+
+jobs:
+  import:
+    if: vars.CLAUDE_CROWD != 'true' && github.event_name == 'workflow_dispatch' && inputs.import != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      SOURCE: ${{ inputs.import }}
+      NAME: ${{ inputs.name }}
+      PURPOSE: ${{ inputs.purpose }}
+      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+      GIT_AUTHOR_NAME: github-actions[bot]
+      GIT_AUTHOR_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+      GIT_COMMITTER_NAME: github-actions[bot]
+      GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+      - name: Import the agent, push it on its branch and offer the pull request
+        run: |
+          set -eu
+          set -- import "$SOURCE"
+          if [ -n "$NAME" ]; then set -- "$@" --name "$NAME"; fi
+          if [ -n "$PURPOSE" ]; then set -- "$@" --purpose "$PURPOSE"; fi
+          name=$(python3 tools/agents.py "$@")
+          python3 tools/agents.py check
+          branch="symphony/agent-$name"
+          git checkout -q -B "$branch"
+          git add ".claude/agents/$name.md" .github/symphony/agents.json
+          printf 'Import the agent %s\n\nFrom %s, by the Agents workflow.\n' "$name" "$SOURCE" > "$RUNNER_TEMP/message.txt"
+          git commit -q -F "$RUNNER_TEMP/message.txt"
+          git push -q --force origin "HEAD:refs/heads/$branch"
+          printf 'Imports the agent `%s` from `%s` into .claude/agents/ and registers it in .github/symphony/agents.json (docs/agents/AGENTS.md).\n\nRead the agent'"'"'s instructions and tools before merging: once merged, any session here can hand it work, and Run workflow on the Agents workflow runs it in Actions on the tokens .github/symphony/accounts.json gives it.\n' "$name" "$SOURCE" > "$RUNNER_TEMP/body.md"
+          url=$(gh pr list --repo "$REPO" --head "$branch" --state open --json url --jq '.[0].url // ""')
+          if [ -z "$url" ]; then
+            url=$(gh pr create --repo "$REPO" --head "$branch" --base "$DEFAULT_BRANCH" \
+                    --title "Import the agent $name" --body-file "$RUNNER_TEMP/body.md") \
+              || url="https://github.com/$REPO/compare/$DEFAULT_BRANCH...$branch?expand=1"
+          fi
+          gh workflow run ci.yml --repo "$REPO" --ref "$branch" || echo "the checks did not start on $branch; they start with the pull request's next event"
+          echo "### The agent $name is offered at $url" >> "$GITHUB_STEP_SUMMARY"
+          echo "offered $name at $url"
+
+  plan:
+    if: >-
+      vars.CLAUDE_CROWD != 'true'
+      && ((github.event_name == 'workflow_dispatch' && inputs.import == '' && inputs.agent != '')
+          || (github.event_name == 'pull_request_target' && !github.event.pull_request.draft
+              && github.event.pull_request.head.repo.full_name == github.repository))
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      agents: ${{ steps.list.outputs.agents }}
+      target: ${{ steps.list.outputs.target }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+      - name: Name the agents this event runs
+        id: list
+        env:
+          ONLY: ${{ inputs.agent }}
+          TARGET: ${{ inputs.target || github.event.pull_request.number }}
+        run: |
+          set -eu
+          case "$TARGET" in
+            ''|*[!0-9]*) echo "a pull request or issue number is needed, not '$TARGET'"; exit 1 ;;
+          esac
+          if [ -n "${ONLY:-}" ]; then
+            python3 tools/agents.py allowed-tools "$ONLY" > /dev/null
+            purpose=$(python3 -c 'import json, sys; print(json.load(open(".github/symphony/agents.json"))["agents"][sys.argv[1]]["purpose"])' "$ONLY")
+            if [ "$purpose" = develop ]; then
+              echo "$ONLY writes code, so it runs as a worker in Actions under the claim protocol: list a worker under its workers in .github/symphony/agents.json (docs/agents/AGENTS.md)"
+              exit 1
+            fi
+            agents=$(python3 -c 'import json, sys; print(json.dumps([sys.argv[1]]))' "$ONLY")
+          else
+            agents=$(python3 tools/agents.py runs-on pull_request)
+          fi
+          echo "agents: $agents, on #$TARGET"
+          echo "agents=$agents" >> "$GITHUB_OUTPUT"
+          echo "target=$TARGET" >> "$GITHUB_OUTPUT"
+
+  run:
+    needs: plan
+    if: needs.plan.outputs.agents != '' && needs.plan.outputs.agents != '[]'
+    strategy:
+      fail-fast: false
+      matrix:
+        agent: ${{ fromJSON(needs.plan.outputs.agents) }}
+    concurrency:
+      group: agent-${{ matrix.agent }}-${{ needs.plan.outputs.target }}
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      actions: read
+    env:
+      HAVE_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' }}
+      AGENT: ${{ matrix.agent }}
+      TARGET: ${{ needs.plan.outputs.target }}
+    steps:
+      - name: Point at the setup when the token is not there
+        if: env.HAVE_TOKEN != 'true'
+        run: echo "The repository secret CLAUDE_CODE_OAUTH_TOKEN is not set; docs/setup/claude-action.md says how. Doing nothing."
+      - uses: actions/checkout@v7
+        if: env.HAVE_TOKEN == 'true'
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          fetch-depth: 0
+      - name: Read the agent's tools
+        id: agent
+        if: env.HAVE_TOKEN == 'true'
+        run: |
+          set -eu
+          tools=$(python3 tools/agents.py allowed-tools "$AGENT")
+          if [ -z "$tools" ]; then echo "$AGENT lists no tools; a run in Actions allows only what an agent lists"; exit 1; fi
+          echo "tools=$tools" >> "$GITHUB_OUTPUT"
+      - name: Choose the Claude account the agent runs on
+        id: account
+        if: env.HAVE_TOKEN == 'true'
+        env:
+          POOL: ${{ vars.SYMPHONY_CLAUDE_ACCOUNTS }}
+          SETTINGS: ${{ vars.SYMPHONY_CLAUDE_SETTINGS }}
+          SPREAD: ${{ strategy.job-index }}
+        run: |
+          # The agent's line in .github/symphony/accounts.json, by its name,
+          # as a worker's is read (tools/pool.py); a file that does not hold
+          # together leaves the agent on the main token and its own model.
+          if ! python3 tools/pool.py choose --worker "$AGENT" --pool "$POOL" --spread "$SPREAD" \
+              --settings "$SETTINGS" --model "" >> "$GITHUB_OUTPUT"; then
+            echo "slot=main" >> "$GITHUB_OUTPUT"
+            echo "model=" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Whether the chosen account's secret is seen here
+        id: secret
+        if: env.HAVE_TOKEN == 'true'
+        env:
+          CHOSEN: ${{ steps.account.outputs.slot }}
+          # Each slot's secret by a fixed name, as workers.yml takes it: a
+          # computed name would hand the runner every secret it can see.
+          SLOT_TOKEN: >-
+            ${{
+            (steps.account.outputs.slot == '1' && secrets.SYMPHONY_CLAUDE_1) ||
+            (steps.account.outputs.slot == '2' && secrets.SYMPHONY_CLAUDE_2) ||
+            (steps.account.outputs.slot == '3' && secrets.SYMPHONY_CLAUDE_3) ||
+            (steps.account.outputs.slot == '4' && secrets.SYMPHONY_CLAUDE_4) ||
+            (steps.account.outputs.slot == '5' && secrets.SYMPHONY_CLAUDE_5) ||
+            (steps.account.outputs.slot == '6' && secrets.SYMPHONY_CLAUDE_6) ||
+            (steps.account.outputs.slot == '7' && secrets.SYMPHONY_CLAUDE_7) ||
+            (steps.account.outputs.slot == '8' && secrets.SYMPHONY_CLAUDE_8) ||
+            (steps.account.outputs.slot == '9' && secrets.SYMPHONY_CLAUDE_9) ||
+            (steps.account.outputs.slot == '10' && secrets.SYMPHONY_CLAUDE_10) ||
+            (steps.account.outputs.slot == '11' && secrets.SYMPHONY_CLAUDE_11) ||
+            (steps.account.outputs.slot == '12' && secrets.SYMPHONY_CLAUDE_12) ||
+            (steps.account.outputs.slot == '13' && secrets.SYMPHONY_CLAUDE_13) ||
+            (steps.account.outputs.slot == '14' && secrets.SYMPHONY_CLAUDE_14) ||
+            (steps.account.outputs.slot == '15' && secrets.SYMPHONY_CLAUDE_15) ||
+            (steps.account.outputs.slot == '16' && secrets.SYMPHONY_CLAUDE_16) ||
+            (steps.account.outputs.slot == '17' && secrets.SYMPHONY_CLAUDE_17) ||
+            (steps.account.outputs.slot == '18' && secrets.SYMPHONY_CLAUDE_18) ||
+            (steps.account.outputs.slot == '19' && secrets.SYMPHONY_CLAUDE_19) ||
+            (steps.account.outputs.slot == '20' && secrets.SYMPHONY_CLAUDE_20) ||
+            (steps.account.outputs.slot == '21' && secrets.SYMPHONY_CLAUDE_21) ||
+            (steps.account.outputs.slot == '22' && secrets.SYMPHONY_CLAUDE_22) ||
+            (steps.account.outputs.slot == '23' && secrets.SYMPHONY_CLAUDE_23) ||
+            (steps.account.outputs.slot == '24' && secrets.SYMPHONY_CLAUDE_24) ||
+            (steps.account.outputs.slot == '25' && secrets.SYMPHONY_CLAUDE_25) ||
+            (steps.account.outputs.slot == '26' && secrets.SYMPHONY_CLAUDE_26) ||
+            (steps.account.outputs.slot == '27' && secrets.SYMPHONY_CLAUDE_27) ||
+            (steps.account.outputs.slot == '28' && secrets.SYMPHONY_CLAUDE_28) ||
+            (steps.account.outputs.slot == '29' && secrets.SYMPHONY_CLAUDE_29) ||
+            (steps.account.outputs.slot == '30' && secrets.SYMPHONY_CLAUDE_30) ||
+            (steps.account.outputs.slot == '31' && secrets.SYMPHONY_CLAUDE_31) ||
+            (steps.account.outputs.slot == '32' && secrets.SYMPHONY_CLAUDE_32) ||
+            ''
+            }}
+        run: |
+          if [ "$CHOSEN" != main ] && [ -z "$SLOT_TOKEN" ]; then
+            echo "SYMPHONY_CLAUDE_$CHOSEN is unset or not seen by this repository; this run takes CLAUDE_CODE_OAUTH_TOKEN"
+            CHOSEN=main
+          fi
+          echo "slot=${CHOSEN:-main}" >> "$GITHUB_OUTPUT"
+      - name: Say when every slot of the pool is held
+        if: steps.account.outputs.wait == 'true'
+        env:
+          UNTIL: ${{ steps.account.outputs.until }}
+        run: echo "Every slot this agent may take is at its limit or paused; the first is free $UNTIL. Doing nothing."
+      - name: Keep a copy of the usage recorder, which the run cannot move
+        if: env.HAVE_TOKEN == 'true' && steps.account.outputs.wait != 'true'
+        run: |
+          cp tools/usage.py "$RUNNER_TEMP/usage.py"
+          cp -r tools/profile.py tools/economics.py tools/sdlc_protocol "$RUNNER_TEMP/" || true
+      - uses: anthropics/claude-code-action@v1
+        id: claude
+        if: env.HAVE_TOKEN == 'true' && steps.account.outputs.wait != 'true'
+        with:
+          claude_code_oauth_token: >-
+            ${{
+            (steps.secret.outputs.slot == '1' && secrets.SYMPHONY_CLAUDE_1) ||
+            (steps.secret.outputs.slot == '2' && secrets.SYMPHONY_CLAUDE_2) ||
+            (steps.secret.outputs.slot == '3' && secrets.SYMPHONY_CLAUDE_3) ||
+            (steps.secret.outputs.slot == '4' && secrets.SYMPHONY_CLAUDE_4) ||
+            (steps.secret.outputs.slot == '5' && secrets.SYMPHONY_CLAUDE_5) ||
+            (steps.secret.outputs.slot == '6' && secrets.SYMPHONY_CLAUDE_6) ||
+            (steps.secret.outputs.slot == '7' && secrets.SYMPHONY_CLAUDE_7) ||
+            (steps.secret.outputs.slot == '8' && secrets.SYMPHONY_CLAUDE_8) ||
+            (steps.secret.outputs.slot == '9' && secrets.SYMPHONY_CLAUDE_9) ||
+            (steps.secret.outputs.slot == '10' && secrets.SYMPHONY_CLAUDE_10) ||
+            (steps.secret.outputs.slot == '11' && secrets.SYMPHONY_CLAUDE_11) ||
+            (steps.secret.outputs.slot == '12' && secrets.SYMPHONY_CLAUDE_12) ||
+            (steps.secret.outputs.slot == '13' && secrets.SYMPHONY_CLAUDE_13) ||
+            (steps.secret.outputs.slot == '14' && secrets.SYMPHONY_CLAUDE_14) ||
+            (steps.secret.outputs.slot == '15' && secrets.SYMPHONY_CLAUDE_15) ||
+            (steps.secret.outputs.slot == '16' && secrets.SYMPHONY_CLAUDE_16) ||
+            (steps.secret.outputs.slot == '17' && secrets.SYMPHONY_CLAUDE_17) ||
+            (steps.secret.outputs.slot == '18' && secrets.SYMPHONY_CLAUDE_18) ||
+            (steps.secret.outputs.slot == '19' && secrets.SYMPHONY_CLAUDE_19) ||
+            (steps.secret.outputs.slot == '20' && secrets.SYMPHONY_CLAUDE_20) ||
+            (steps.secret.outputs.slot == '21' && secrets.SYMPHONY_CLAUDE_21) ||
+            (steps.secret.outputs.slot == '22' && secrets.SYMPHONY_CLAUDE_22) ||
+            (steps.secret.outputs.slot == '23' && secrets.SYMPHONY_CLAUDE_23) ||
+            (steps.secret.outputs.slot == '24' && secrets.SYMPHONY_CLAUDE_24) ||
+            (steps.secret.outputs.slot == '25' && secrets.SYMPHONY_CLAUDE_25) ||
+            (steps.secret.outputs.slot == '26' && secrets.SYMPHONY_CLAUDE_26) ||
+            (steps.secret.outputs.slot == '27' && secrets.SYMPHONY_CLAUDE_27) ||
+            (steps.secret.outputs.slot == '28' && secrets.SYMPHONY_CLAUDE_28) ||
+            (steps.secret.outputs.slot == '29' && secrets.SYMPHONY_CLAUDE_29) ||
+            (steps.secret.outputs.slot == '30' && secrets.SYMPHONY_CLAUDE_30) ||
+            (steps.secret.outputs.slot == '31' && secrets.SYMPHONY_CLAUDE_31) ||
+            (steps.secret.outputs.slot == '32' && secrets.SYMPHONY_CLAUDE_32) ||
+            secrets.CLAUDE_CODE_OAUTH_TOKEN
+            }}
+          # This job's own token, read-only for code, in place of the Claude
+          # App's, which the action would mint with id-token and which may push.
+          github_token: ${{ github.token }}
+          allowed_bots: "claude,github-actions"
+          claude_args: |
+            --agent ${{ matrix.agent }}
+            --max-turns 60
+            ${{ steps.account.outputs.model != '' && format('--model {0}', steps.account.outputs.model) || '' }}
+            ${{ steps.account.outputs.effort != '' && format('--effort {0}', steps.account.outputs.effort) || '' }}
+            ${{ steps.account.outputs.fallback != '' && format('--fallback-model {0}', steps.account.outputs.fallback) || '' }}
+            --allowedTools "${{ steps.agent.outputs.tools }}"
+          prompt: |
+            You are the agent ${{ matrix.agent }} on the repository ${{ github.repository }}, run by its Agents workflow. Work on #${{ env.TARGET }}, which is a pull request when `gh pr view ${{ env.TARGET }}` answers and an issue otherwise, exactly as your instructions say, and nothing else.
+      - name: Record what the run spent, for the field metrics
+        if: always() && steps.claude.outcome != 'skipped'
+        continue-on-error: true
+        env:
+          EXECUTION_FILE: ${{ steps.claude.outputs.execution_file }}
+          SDLC_METRICS: ${{ vars.SDLC_METRICS }}
+        run: >-
+          python3 "$RUNNER_TEMP/usage.py" actions --root "$GITHUB_WORKSPACE"
+          --execution-file "${EXECUTION_FILE:-$RUNNER_TEMP/claude-execution-output.json}"
+          --out "$RUNNER_TEMP/symphony-usage/record.json" --workflow agents --job run --worker "$AGENT" --pull "$TARGET"
+      - name: Keep the record where the metrics workflow reads it
+        if: always() && steps.claude.outcome != 'skipped'
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: symphony-usage-${{ github.run_id }}-${{ github.run_attempt }}-agent-${{ matrix.agent }}
+          path: ${{ runner.temp }}/symphony-usage/record.json
+          if-no-files-found: ignore

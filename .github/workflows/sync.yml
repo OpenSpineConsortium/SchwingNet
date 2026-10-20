@@ -1,0 +1,65 @@
+name: Sync
+
+# Offers the files Symphony's board and control panel run on to every
+# adopted repository, as one pull request from the branch symphony/sync in
+# each (tools/sync_adopted.py says what is offered, where and why). An
+# adoption copied them once and nothing reached a repository after that,
+# so one adopted for the protocol alone never got the workflow Token (the
+# owner, 2026-10-19). It runs here alone, in the template, whenever a file
+# it offers changes on the default branch, weekly as a fallback and by
+# hand; never in a copy, which has no App key and no installations of its
+# own to walk.
+#
+# The script mints SymphonyBoard's JWT itself, with openssl, and from it
+# one installation token at a time, Contents, Pull requests and Workflows
+# (since the files include workflows) and Metadata alone, each
+# revoked once its repositories are offered; GITHUB_TOKEN only reads. The
+# whole history is fetched, since a file is replaced only where the
+# repository holds a version the default branch once held there. The log
+# says counts alone and never a repository's name, since an installation's
+# repositories may be private and anyone's.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/board.yml"
+      - ".github/workflows/tidy.yml"
+      - ".github/workflows/metrics.yml"
+      - ".github/workflows/token.yml"
+      - ".github/workflows/drive-sync.yml"
+      - "tools/**"
+      - "scripts/tokens.py"
+  schedule:
+    - cron: "29 7 * * 2"
+  workflow_dispatch:
+    inputs:
+      only_owner:
+        description: "Offer only to this account's repositories (empty: every installation)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sync
+  cancel-in-progress: false
+
+jobs:
+  offer:
+    if: github.repository == 'OpenSpineConsortium/symphony-template' && github.ref == 'refs/heads/main' && vars.SDLC_APP_ID != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Offer the files to every adopted repository
+        env:
+          APP_ID: ${{ vars.SDLC_APP_ID }}
+          APP_PRIVATE_KEY: ${{ secrets.SDLC_APP_PRIVATE_KEY }}
+          ONLY_OWNER: ${{ inputs.only_owner }}
+        run: python3 tools/sync_adopted.py run

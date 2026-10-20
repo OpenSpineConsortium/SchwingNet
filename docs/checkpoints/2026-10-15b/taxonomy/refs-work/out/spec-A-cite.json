@@ -1,0 +1,1188 @@
+{
+ "edits": [
+  {
+   "unit_id": "mggj4hxkexp.1393",
+   "find": "running as GitHub Actions jobs.",
+   "replace": "running as GitHub Actions jobs [[s2]]."
+  },
+  {
+   "unit_id": "mggj4hxkexp.1393",
+   "find": "(symphony-protocol, public, MIT)",
+   "replace": "(symphony-protocol [[s1]], public, MIT)"
+  },
+  {
+   "unit_id": "mggj4hxkexp.1393",
+   "find": "eleven workflow files and Claude Code hooks",
+   "replace": "eleven workflow files [[s3]] and Claude Code hooks [[s4]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.1393",
+   "find": "in a protocol-only adoption.",
+   "replace": "in a protocol-only adoption [[s5]]."
+  },
+  {
+   "unit_id": "mggj4hxkexp.1393",
+   "find": "Verified: PROTOCOL.md, research note 01.",
+   "replace": "Verified: PROTOCOL.md [[s1,s2,s3,s4,s5]]."
+  },
+  {
+   "unit_id": "mggj4hxkexp.1851",
+   "find": "Open issues labelled todo",
+   "replace": "Open issues labelled todo [[s2]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.1901",
+   "find": "git lets exactly one win)",
+   "replace": "git lets exactly one win [[s6]])"
+  },
+  {
+   "unit_id": "mggj4hxkexp.1901",
+   "find": "the files to touch",
+   "replace": "the files to touch [[s2]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.2053",
+   "find": "as a fallback",
+   "replace": "as a fallback [[s2]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.2175",
+   "find": "board.yml",
+   "replace": "board.yml [[s7]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.2225",
+   "find": "so the work is kept",
+   "replace": "so the work is kept [[s2]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.2414",
+   "find": "then the oldest)",
+   "replace": "then the oldest) [[s2]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.2570",
+   "find": ".github/symphony/workers/",
+   "replace": ".github/symphony/workers/ [[s2]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.2714",
+   "find": "workers.yml",
+   "replace": "workers.yml [[s8]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.2761",
+   "find": "integrates finished epics",
+   "replace": "integrates finished epics [[s2]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.2908",
+   "find": "board.yml; coordinator.yml",
+   "replace": "board.yml [[s7]]; coordinator.yml [[s9]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.2943",
+   "find": "named check,",
+   "replace": "named check [[s10]],"
+  },
+  {
+   "unit_id": "mggj4hxkexp.2943",
+   "find": "the protocol check;",
+   "replace": "the protocol check [[s11]];"
+  },
+  {
+   "unit_id": "mggj4hxkexp.2943",
+   "find": "is planned",
+   "replace": "is planned [[s12]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.3087",
+   "find": "another worker's claim",
+   "replace": "another worker's claim [[s4,s13]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.3227",
+   "find": "anthropics/claude-code-action@v1",
+   "replace": "anthropics/claude-code-action@v1 [[s14]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.3227",
+   "find": "CLAUDE_CODE_OAUTH_TOKEN.",
+   "replace": "CLAUDE_CODE_OAUTH_TOKEN [[s8,s9,s15]]."
+  },
+  {
+   "unit_id": "mggj4hxkexp.3227",
+   "find": "starts no Claude session.",
+   "replace": "starts no Claude session [[s3,s16]]."
+  },
+  {
+   "unit_id": "mggj4hxkexp.3227",
+   "find": "about 30 GitHub primitives",
+   "replace": "about 30 GitHub primitives [[s17]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.3227",
+   "find": "concurrency queues",
+   "replace": "concurrency queues [[s7,s18]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.3227",
+   "find": "close a pull request",
+   "replace": "close a pull request [[s2,s19]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.3227",
+   "find": "required reviewers.",
+   "replace": "required reviewers [[s20]]."
+  },
+  {
+   "unit_id": "mggj4hxkexp.3227",
+   "find": "Verified: research note 01.",
+   "replace": "Verified [[s3,s8,s9,s15,s16]]."
+  },
+  {
+   "unit_id": "mggj4hxkexp.3754",
+   "find": "is of 2026-10-13.",
+   "replace": "is of 2026-10-13 [[s1]]."
+  },
+  {
+   "unit_id": "mggj4hxkexp.3754",
+   "find": "passed on 2026-10-15.",
+   "replace": "passed on 2026-10-15 [[s17]]."
+  },
+  {
+   "unit_id": "mggj4hxkexp.3754",
+   "find": "written from the spec's text:",
+   "replace": "written from the spec's text [[s21]]:"
+  },
+  {
+   "unit_id": "mggj4hxkexp.3754",
+   "find": "F18 and F19;",
+   "replace": "F18 and F19 [[s22]];"
+  },
+  {
+   "unit_id": "mggj4hxkexp.3754",
+   "find": "prove the checks bite.",
+   "replace": "prove the checks bite [[s23]]."
+  },
+  {
+   "unit_id": "mggj4hxkexp.3754",
+   "find": "(validation/DESIGN.md and known.json)",
+   "replace": "(validation/DESIGN.md [[s21]] and known.json [[s24]])"
+  },
+  {
+   "unit_id": "mggj4hxkexp.3754",
+   "find": "Symphony at full scale.",
+   "replace": "Symphony at full scale [[s12,s25]]."
+  },
+  {
+   "unit_id": "mggj4hxkexp.3754",
+   "find": "Verified: validation run of record, research notes 01 and 12.",
+   "replace": "Verified: validation run of record [[s1,s17,s21,s22,s23]]."
+  },
+  {
+   "unit_id": "mggj4hxkexp.4644",
+   "find": "are Verified (research notes 04 and 05).",
+   "replace": "are Verified [[s26,s27,s28,s29,s30,s31]]."
+  },
+  {
+   "unit_id": "mggj4hxkexp.5189",
+   "find": "reached through Open OnDemand;",
+   "replace": "reached through Open OnDemand [[s32]];"
+  },
+  {
+   "unit_id": "mggj4hxkexp.5189",
+   "find": "outbound HTTPS only,",
+   "replace": "outbound HTTPS only [[s33]],"
+  },
+  {
+   "unit_id": "mggj4hxkexp.5189",
+   "find": "no API key and no setup-token",
+   "replace": "no API key and no setup-token [[s32,s33]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.5421",
+   "find": "one site, Wayne State;",
+   "replace": "one site, Wayne State [[s27]];"
+  },
+  {
+   "unit_id": "mggj4hxkexp.5421",
+   "find": "extension 20.0.0, pre-release",
+   "replace": "extension 20.0.0 [[s34]], pre-release [[s32]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.5520",
+   "find": "rather than code",
+   "replace": "rather than code [[s26,s27]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.5655",
+   "find": "(icontract), CrossHair with Z3 as a required check,",
+   "replace": "(icontract), CrossHair with Z3 as a required check [[s35]],"
+  },
+  {
+   "unit_id": "mggj4hxkexp.5655",
+   "find": "reported as SARIF,",
+   "replace": "reported as SARIF [[s36]],"
+  },
+  {
+   "unit_id": "mggj4hxkexp.5655",
+   "find": "with no human gate",
+   "replace": "with no human gate [[s35]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.5818",
+   "find": "Version 5.0.0 on main, untagged",
+   "replace": "Version 5.0.0 on main [[s37]], untagged [[s38]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.5818",
+   "find": "what both consumers pin)",
+   "replace": "what both consumers pin [[s39,s40]])"
+  },
+  {
+   "unit_id": "mggj4hxkexp.5818",
+   "find": "within 20 seconds each",
+   "replace": "within 20 seconds each [[s35]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.5961",
+   "find": "a tool guard,",
+   "replace": "a tool guard [[s30]],"
+  },
+  {
+   "unit_id": "mggj4hxkexp.5961",
+   "find": "never touches a credential",
+   "replace": "never touches a credential [[s41]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.6097",
+   "find": "guard and bee built;",
+   "replace": "guard and bee built [[s41,s42]];"
+  },
+  {
+   "unit_id": "mggj4hxkexp.6097",
+   "find": "the bus not built",
+   "replace": "the bus not built [[s41,s43,s44]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.6229",
+   "find": "REFORMS (32 items",
+   "replace": "REFORMS [[s45]] (32 items"
+  },
+  {
+   "unit_id": "mggj4hxkexp.6229",
+   "find": "12 declared)",
+   "replace": "12 declared [[s46]])"
+  },
+  {
+   "unit_id": "mggj4hxkexp.6229",
+   "find": "and CLAIM, as gates",
+   "replace": "and CLAIM [[s47]], as gates"
+  },
+  {
+   "unit_id": "mggj4hxkexp.6229",
+   "find": "each run's record",
+   "replace": "each run's record [[s46]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.6326",
+   "find": "CT source volume (",
+   "replace": "CT source volume [[s48]] ("
+  },
+  {
+   "unit_id": "mggj4hxkexp.6326",
+   "find": "lettering, Reported)",
+   "replace": "lettering, Reported [[s49]])"
+  },
+  {
+   "unit_id": "mggj4hxkexp.6326",
+   "find": "the rest not built",
+   "replace": "the rest not built [[s28]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.6712",
+   "find": "references Symphony today",
+   "replace": "references Symphony today [[s50]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.6712",
+   "find": "or holds a Claude token.",
+   "replace": "or holds a Claude token [[s51]]."
+  },
+  {
+   "unit_id": "mggj4hxkexp.6712",
+   "find": "required checks and auto-merge)",
+   "replace": "required checks and auto-merge) [[s50]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.6712",
+   "find": "a stored Claude token in CI",
+   "replace": "a stored Claude token in CI [[s35,s52]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.6712",
+   "find": "Actions workers need one.",
+   "replace": "Actions workers need one [[s53]]."
+  },
+  {
+   "unit_id": "mggj4hxkexp.6712",
+   "find": "Verified: research note 05.",
+   "replace": "Verified [[s35,s51,s52,s53]]."
+  }
+ ],
+ "sources": [
+  {
+   "key": "s1",
+   "kind": "repository",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "symphony-protocol",
+   "container": "OpenSpineConsortium/symphony-protocol",
+   "date": "2026-10-15",
+   "version": "a3a5b4d",
+   "url": "https://github.com/OpenSpineConsortium/symphony-protocol",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the claim protocol as a dependency-free MIT Python library; first commit 2026-10-10, v0.4.1 on 2026-10-13"
+  },
+  {
+   "key": "s2",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "docs/agents/PROTOCOL.md",
+   "container": "OpenSpineConsortium/symphony-template",
+   "date": "2026-10-15",
+   "version": "15d3f22",
+   "url": "https://github.com/OpenSpineConsortium/symphony-template/blob/main/docs/agents/PROTOCOL.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the queue, claim, board, release, overlaps, workers and coordinator rules"
+  },
+  {
+   "key": "s3",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": ".github/workflows/",
+   "container": "OpenSpineConsortium/symphony-template",
+   "date": "2026-10-15",
+   "version": "15d3f22",
+   "url": "https://github.com/OpenSpineConsortium/symphony-template/tree/15d3f22/.github/workflows",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the template's eleven workflow files and their GITHUB_TOKEN headers"
+  },
+  {
+   "key": "s4",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": ".claude/settings.json",
+   "container": "OpenSpineConsortium/symphony-template",
+   "date": "2026-10-15",
+   "version": "15d3f22",
+   "url": "https://github.com/OpenSpineConsortium/symphony-template/blob/15d3f22/.claude/settings.json",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the Claude Code hooks, the push guard among them, wired as PreToolUse"
+  },
+  {
+   "key": "s5",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "README.md",
+   "container": "OpenSpineConsortium/symphony-start",
+   "date": "2026-10-13",
+   "version": "e14903d",
+   "url": "https://github.com/OpenSpineConsortium/symphony-start/blob/e14903d/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the two adoption kinds and what a protocol-only adoption brings (board, tidy, metrics, the plugin)"
+  },
+  {
+   "key": "s6",
+   "kind": "project-record",
+   "authors": [],
+   "title": "Verify 02: the claim lock, idleness and re-claims after a merge",
+   "container": "research/taxonomy",
+   "date": "2026-10-15",
+   "version": "",
+   "url": "",
+   "public_url": "",
+   "read": "record",
+   "path": "/mnt/project-files/research/taxonomy/verify/02-claim-lock.md",
+   "supports": "race of two creations of claude/N: git lets exactly one win"
+  },
+  {
+   "key": "s7",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": ".github/workflows/board.yml",
+   "container": "OpenSpineConsortium/symphony-template",
+   "date": "2026-10-15",
+   "version": "15d3f22",
+   "url": "https://github.com/OpenSpineConsortium/symphony-template/blob/15d3f22/.github/workflows/board.yml",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the board's triggers, its GITHUB_TOKEN run and its queue: max concurrency group"
+  },
+  {
+   "key": "s8",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": ".github/workflows/workers.yml",
+   "container": "OpenSpineConsortium/symphony-template",
+   "date": "2026-10-15",
+   "version": "15d3f22",
+   "url": "https://github.com/OpenSpineConsortium/symphony-template/blob/15d3f22/.github/workflows/workers.yml",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Actions workers and the Claude work job on CLAUDE_CODE_OAUTH_TOKEN"
+  },
+  {
+   "key": "s9",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": ".github/workflows/coordinator.yml",
+   "container": "OpenSpineConsortium/symphony-template",
+   "date": "2026-10-15",
+   "version": "15d3f22",
+   "url": "https://github.com/OpenSpineConsortium/symphony-template/blob/15d3f22/.github/workflows/coordinator.yml",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the coordinator's Claude jobs: plan, unblock, integrate, tidy"
+  },
+  {
+   "key": "s10",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "docs/setup/ruleset-main.json",
+   "container": "OpenSpineConsortium/symphony-template",
+   "date": "2026-10-15",
+   "version": "15d3f22",
+   "url": "https://github.com/OpenSpineConsortium/symphony-template/blob/15d3f22/docs/setup/ruleset-main.json",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the ruleset requiring the status check named check"
+  },
+  {
+   "key": "s11",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": ".github/workflows/ci.yml",
+   "container": "OpenSpineConsortium/symphony-template",
+   "date": "2026-10-15",
+   "version": "15d3f22",
+   "url": "https://github.com/OpenSpineConsortium/symphony-template/blob/15d3f22/.github/workflows/ci.yml",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "job check running scripts/check.sh and the protocol check"
+  },
+  {
+   "key": "s12",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "CLAUDE.md",
+   "container": "OpenSpineConsortium/symphony-template",
+   "date": "2026-10-15",
+   "version": "15d3f22",
+   "url": "https://github.com/OpenSpineConsortium/symphony-template/blob/15d3f22/CLAUDE.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "decisions marked not built yet: qa gate, 10-run daily cap, runtime, control panel, account pool"
+  },
+  {
+   "key": "s13",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "tools/sdlc_protocol/guard.py",
+   "container": "OpenSpineConsortium/symphony-template",
+   "date": "2026-10-15",
+   "version": "15d3f22",
+   "url": "https://github.com/OpenSpineConsortium/symphony-template/blob/15d3f22/tools/sdlc_protocol/guard.py",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the push guard's refusals, leases onto another worker's claim among them"
+  },
+  {
+   "key": "s14",
+   "kind": "repository",
+   "authors": [
+    "Anthropic"
+   ],
+   "title": "claude-code-action",
+   "container": "anthropics/claude-code-action",
+   "date": "2026-10-14",
+   "version": "a26b07d8",
+   "url": "https://github.com/anthropics/claude-code-action",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the GitHub Action that runs Claude Code, authenticating with CLAUDE_CODE_OAUTH_TOKEN"
+  },
+  {
+   "key": "s15",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": ".github/workflows/claude.yml",
+   "container": "OpenSpineConsortium/symphony-template",
+   "date": "2026-10-15",
+   "version": "15d3f22",
+   "url": "https://github.com/OpenSpineConsortium/symphony-template/blob/15d3f22/.github/workflows/claude.yml",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the @claude workflow on claude-code-action@v1 and the OAuth token"
+  },
+  {
+   "key": "s16",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "docs/agents/WORKERS.md",
+   "container": "OpenSpineConsortium/symphony-template",
+   "date": "2026-10-15",
+   "version": "15d3f22",
+   "url": "https://github.com/OpenSpineConsortium/symphony-template/blob/15d3f22/docs/agents/WORKERS.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "a worker with nothing to do costs no Claude usage"
+  },
+  {
+   "key": "s17",
+   "kind": "project-record",
+   "authors": [],
+   "title": "Symphony as built: what it is, its mechanism, the GitHub primitives it rests on, what it costs, how mature it is",
+   "container": "research/taxonomy",
+   "date": "2026-10-15",
+   "version": "",
+   "url": "",
+   "public_url": "",
+   "read": "record",
+   "path": "/mnt/project-files/research/taxonomy/notes/01-symphony-mechanism.md",
+   "supports": "table of about 30 GitHub primitives; test suites run on 2026-10-15 (1,379 and 581 passed)"
+  },
+  {
+   "key": "s18",
+   "kind": "documentation",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "data/reusables/actions/actions-group-concurrency.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs/blob/12691d2/data/reusables/actions/actions-group-concurrency.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "concurrency groups that queue up to 100 pending runs (queue: max)"
+  },
+  {
+   "key": "s19",
+   "kind": "documentation",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "content/repositories/configuring-branches-and-merges-in-your-repository/managing-branches-in-your-repository/renaming-a-branch.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs/blob/12691d2/content/repositories/configuring-branches-and-merges-in-your-repository/managing-branches-in-your-repository/renaming-a-branch.md",
+   "public_url": "https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-branches-in-your-repository/renaming-a-branch",
+   "read": "opened",
+   "path": "",
+   "supports": "renaming the head branch of an open pull request closes the pull request"
+  },
+  {
+   "key": "s20",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "README.md",
+   "container": "OpenSpineConsortium/symphony-protocol",
+   "date": "2026-10-15",
+   "version": "a3a5b4d",
+   "url": "https://github.com/OpenSpineConsortium/symphony-protocol/blob/a3a5b4d/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the release gate: environment release with the owner as required reviewer"
+  },
+  {
+   "key": "s21",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "validation/DESIGN.md",
+   "container": "OpenSpineConsortium/symphony-protocol",
+   "date": "2026-10-15",
+   "version": "a3a5b4d",
+   "url": "https://github.com/OpenSpineConsortium/symphony-protocol/blob/a3a5b4d/validation/DESIGN.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the validation harness, its spec-text oracle and findings F1 to F19"
+  },
+  {
+   "key": "s22",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "validation/runs/2026-10-14/README.md",
+   "container": "OpenSpineConsortium/symphony-protocol",
+   "date": "2026-10-15",
+   "version": "a3a5b4d",
+   "url": "https://github.com/OpenSpineConsortium/symphony-protocol/blob/main/validation/runs/2026-10-14/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "deep run of record: 16.7 M states at depth 8, 18.8 M at depth 7 with two issues, 0 violations, library at c2de8b1"
+  },
+  {
+   "key": "s23",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "validation/README.md",
+   "container": "OpenSpineConsortium/symphony-protocol",
+   "date": "2026-10-15",
+   "version": "a3a5b4d",
+   "url": "https://github.com/OpenSpineConsortium/symphony-protocol/blob/a3a5b4d/validation/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the mutation lane's 93 mutants, each caught"
+  },
+  {
+   "key": "s24",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "validation/known.json",
+   "container": "OpenSpineConsortium/symphony-protocol",
+   "date": "2026-10-15",
+   "version": "a3a5b4d",
+   "url": "https://github.com/OpenSpineConsortium/symphony-protocol/blob/a3a5b4d/validation/known.json",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "findings fixed after 0.4.1 and none left red"
+  },
+  {
+   "key": "s25",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "README.md",
+   "container": "OpenSpineConsortium/coordbench",
+   "date": "2026-10-15",
+   "version": "5028999",
+   "url": "https://github.com/OpenSpineConsortium/coordbench/blob/5028999/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the real CooperBench run of Symphony waits on the owner's steps"
+  },
+  {
+   "key": "s26",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "README.md",
+   "container": "OpenSpineConsortium/beethoven-base",
+   "date": "2026-10-09",
+   "version": "a8e545d",
+   "url": "https://github.com/OpenSpineConsortium/beethoven-base/blob/a8e545d/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the shared library of the editions; private and proprietary"
+  },
+  {
+   "key": "s27",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "README.md",
+   "container": "OpenSpineConsortium/beethoven-sites",
+   "date": "2026-10-08",
+   "version": "83f34e8",
+   "url": "https://github.com/OpenSpineConsortium/beethoven-sites/blob/83f34e8/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "data-only site and lab modules; Wayne State the one site"
+  },
+  {
+   "key": "s28",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "README.md",
+   "container": "OpenSpineConsortium/beethoven-research",
+   "date": "2026-10-07",
+   "version": "7e8fd69",
+   "url": "https://github.com/OpenSpineConsortium/beethoven-research/blob/7e8fd69/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the research pipeline's role; splits.py the first module, the rest not built; private"
+  },
+  {
+   "key": "s29",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "README.md",
+   "container": "OpenSpineConsortium/beethoven-qa",
+   "date": "2026-10-09",
+   "version": "85f0e1c",
+   "url": "https://github.com/OpenSpineConsortium/beethoven-qa/blob/85f0e1c/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "how agent-written code is checked before it runs; private, proprietary"
+  },
+  {
+   "key": "s30",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "README.md",
+   "container": "OpenSpineConsortium/beethoven-agents",
+   "date": "2026-10-07",
+   "version": "a40a71a",
+   "url": "https://github.com/OpenSpineConsortium/beethoven-agents/blob/a40a71a/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the image, managed settings, guard, accounts and orchestration; private"
+  },
+  {
+   "key": "s31",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "LICENSE.txt",
+   "container": "OpenSpineConsortium/beethoven-extension",
+   "date": "2026-10-15",
+   "version": "a239ae5",
+   "url": "https://github.com/OpenSpineConsortium/beethoven-extension/blob/a239ae5/LICENSE.txt",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "All rights reserved: the launcher is proprietary"
+  },
+  {
+   "key": "s32",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "README.md",
+   "container": "OpenSpineConsortium/beethoven-extension",
+   "date": "2026-10-15",
+   "version": "a239ae5",
+   "url": "https://github.com/OpenSpineConsortium/beethoven-extension/blob/a239ae5/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Remote Control in tmux in an Apptainer Slurm job through Open OnDemand; no setup-token; pre-release"
+  },
+  {
+   "key": "s33",
+   "kind": "documentation",
+   "authors": [
+    "Anthropic"
+   ],
+   "title": "Remote Control",
+   "container": "Claude Code Docs",
+   "date": "",
+   "version": "",
+   "url": "https://code.claude.com/docs/en/remote-control",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "outbound HTTPS only; API keys and setup-token not supported for Remote Control"
+  },
+  {
+   "key": "s34",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "extension/package.json",
+   "container": "OpenSpineConsortium/beethoven-extension",
+   "date": "2026-10-15",
+   "version": "a239ae5",
+   "url": "https://github.com/OpenSpineConsortium/beethoven-extension/blob/a239ae5/extension/package.json",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "extension version 20.0.0"
+  },
+  {
+   "key": "s35",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "CLAUDE.md",
+   "container": "OpenSpineConsortium/beethoven-qa",
+   "date": "2026-10-09",
+   "version": "85f0e1c",
+   "url": "https://github.com/OpenSpineConsortium/beethoven-qa/blob/85f0e1c/CLAUDE.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "contracts and CrossHair/Z3 gate, no human gate on a merge, 13 of 165 conditions confirmed; no setup-token or OAuth token"
+  },
+  {
+   "key": "s36",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "docs/STANDARDS.md",
+   "container": "OpenSpineConsortium/beethoven-qa",
+   "date": "2026-10-09",
+   "version": "85f0e1c",
+   "url": "https://github.com/OpenSpineConsortium/beethoven-qa/blob/85f0e1c/docs/STANDARDS.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "six code-standards groups, each a SARIF log"
+  },
+  {
+   "key": "s37",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "pyproject.toml",
+   "container": "OpenSpineConsortium/beethoven-qa",
+   "date": "2026-10-09",
+   "version": "85f0e1c",
+   "url": "https://github.com/OpenSpineConsortium/beethoven-qa/blob/85f0e1c/pyproject.toml",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "version 5.0.0"
+  },
+  {
+   "key": "s38",
+   "kind": "repository",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "beethoven-qa",
+   "container": "OpenSpineConsortium/beethoven-qa",
+   "date": "2026-10-09",
+   "version": "85f0e1c",
+   "url": "https://github.com/OpenSpineConsortium/beethoven-qa",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "tags v1.0.0, v2.0.0 and v3.0.0 only (tags read 2026-10-15)"
+  },
+  {
+   "key": "s39",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "vendor/beethoven-qa/ORIGIN",
+   "container": "OpenSpineConsortium/beethoven-agents",
+   "date": "2026-10-07",
+   "version": "a40a71a",
+   "url": "https://github.com/OpenSpineConsortium/beethoven-agents/blob/a40a71a/vendor/beethoven-qa/ORIGIN",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "beethoven-agents pins beethoven-qa v3.0.0"
+  },
+  {
+   "key": "s40",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "vendor/beethoven-qa/ORIGIN",
+   "container": "OpenSpineConsortium/beethoven-research",
+   "date": "2026-10-07",
+   "version": "7e8fd69",
+   "url": "https://github.com/OpenSpineConsortium/beethoven-research/blob/7e8fd69/vendor/beethoven-qa/ORIGIN",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "beethoven-research pins beethoven-qa v3.0.0"
+  },
+  {
+   "key": "s41",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "docs/ACCOUNTS.md",
+   "container": "OpenSpineConsortium/beethoven-agents",
+   "date": "2026-10-07",
+   "version": "a40a71a",
+   "url": "https://github.com/OpenSpineConsortium/beethoven-agents/blob/a40a71a/docs/ACCOUNTS.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "bee built and never touches a credential; the lease not built"
+  },
+  {
+   "key": "s42",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "containers/README.md",
+   "container": "OpenSpineConsortium/beethoven-agents",
+   "date": "2026-10-07",
+   "version": "a40a71a",
+   "url": "https://github.com/OpenSpineConsortium/beethoven-agents/blob/a40a71a/containers/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the image, settings and guard built in CI; no grid build"
+  },
+  {
+   "key": "s43",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "CLAUDE.md",
+   "container": "OpenSpineConsortium/beethoven-agents",
+   "date": "2026-10-07",
+   "version": "a40a71a",
+   "url": "https://github.com/OpenSpineConsortium/beethoven-agents/blob/a40a71a/CLAUDE.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the lease, the registry, the bus and the reaper not built"
+  },
+  {
+   "key": "s44",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "pixi.toml",
+   "container": "OpenSpineConsortium/beethoven-agents",
+   "date": "2026-10-07",
+   "version": "a40a71a",
+   "url": "https://github.com/OpenSpineConsortium/beethoven-agents/blob/a40a71a/pixi.toml",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Metaflow not yet added"
+  },
+  {
+   "key": "s45",
+   "kind": "paper",
+   "authors": [
+    "Kapoor",
+    "Narayanan"
+   ],
+   "title": "REFORMS: Consensus-based Recommendations for Machine-learning-based Science",
+   "container": "Science Advances 10(18):eadk3452",
+   "date": "2024-05",
+   "version": "",
+   "url": "https://doi.org/10.1126/sciadv.adk3452",
+   "public_url": "",
+   "read": "search",
+   "path": "",
+   "supports": "the REFORMS checklist of 32 items"
+  },
+  {
+   "key": "s46",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "plan/PROJECT_INSTRUCTIONS.md",
+   "container": "OpenSpineConsortium/beethoven",
+   "date": "2026-10-09",
+   "version": "cb41b4a",
+   "url": "https://github.com/OpenSpineConsortium/beethoven/blob/cb41b4a/plan/PROJECT_INSTRUCTIONS.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "REFORMS as 20 code gates and 12 declared fields; CLAIM table per imaging study"
+  },
+  {
+   "key": "s47",
+   "kind": "paper",
+   "authors": [
+    "Tejani",
+    "Klontzas",
+    "Gatti",
+    "Mongan",
+    "Moy",
+    "Park",
+    "Kahn"
+   ],
+   "title": "CLAIM 2024 Update",
+   "container": "Radiology: Artificial Intelligence 6(4):e240300",
+   "date": "2024-05-29",
+   "version": "",
+   "url": "https://doi.org/10.1148/ryai.240300",
+   "public_url": "",
+   "read": "search",
+   "path": "",
+   "supports": "the CLAIM reporting checklist"
+  },
+  {
+   "key": "s48",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "src/beethoven_research/splits.py",
+   "container": "OpenSpineConsortium/beethoven-research",
+   "date": "2026-10-07",
+   "version": "7e8fd69",
+   "url": "https://github.com/OpenSpineConsortium/beethoven-research/blob/7e8fd69/src/beethoven_research/splits.py",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "split-level disjointness check at patient, study, cadaver or source-volume level"
+  },
+  {
+   "key": "s49",
+   "kind": "preprint",
+   "authors": [],
+   "title": "REFORMS: Consensus-based Recommendations for Machine-learning-based Science",
+   "container": "reforms.cs.princeton.edu (draft-paper.pdf)",
+   "date": "",
+   "version": "",
+   "url": "https://reforms.cs.princeton.edu/draft-paper.pdf",
+   "public_url": "",
+   "read": "search",
+   "path": "",
+   "supports": "item 6b, dependencies between training and test partitions, in the draft's lettering"
+  },
+  {
+   "key": "s50",
+   "kind": "project-record",
+   "authors": [],
+   "title": "The Beethoven engine (beethoven-qa, beethoven-agents, beethoven-research) and the stack as its owner describes it",
+   "container": "research/taxonomy",
+   "date": "2026-10-15",
+   "version": "",
+   "url": "",
+   "public_url": "",
+   "read": "record",
+   "path": "/mnt/project-files/research/taxonomy/notes/05-beethoven-engine.md",
+   "supports": "grep: no Beethoven repository references Symphony; the Claude-free core that can be shared"
+  },
+  {
+   "key": "s51",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "docs/checkpoints/2026-10-14/handoff-page/PLAN.md",
+   "container": "OpenSpineConsortium/symphony-template",
+   "date": "2026-10-15",
+   "version": "15d3f22",
+   "url": "https://github.com/OpenSpineConsortium/symphony-template/blob/15d3f22/docs/checkpoints/2026-10-14/handoff-page/PLAN.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Phase 11: no Beethoven repository runs Symphony's code or holds a Claude token"
+  },
+  {
+   "key": "s52",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "state/claude_context.md",
+   "container": "OpenSpineConsortium/beethoven",
+   "date": "2026-10-09",
+   "version": "cb41b4a",
+   "url": "https://github.com/OpenSpineConsortium/beethoven/blob/cb41b4a/state/claude_context.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "no CI that runs Claude Code on a stored key or token"
+  },
+  {
+   "key": "s53",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "docs/project.md",
+   "container": "OpenSpineConsortium/symphony-template",
+   "date": "2026-10-15",
+   "version": "15d3f22",
+   "url": "https://github.com/OpenSpineConsortium/symphony-template/blob/15d3f22/docs/project.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Symphony's workers, @claude and coordinator run on CLAUDE_CODE_OAUTH_TOKEN from setup-token"
+  }
+ ],
+ "uncited": [],
+ "checker_problems": 0,
+ "changes": [
+  "Added citation markers to sections 1-2 (Symphony and Beethoven system descriptions, tables 2 and 3) and replaced the research-note mentions with the notes' primary sources."
+ ]
+}

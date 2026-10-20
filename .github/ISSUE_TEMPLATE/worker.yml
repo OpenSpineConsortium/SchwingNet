@@ -1,0 +1,81 @@
+name: Add a worker
+description: A routine, a worker in GitHub Actions or a person's sessions that claims work here; the answers become one file under .github/symphony/workers/.
+title: "Add a worker: "
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        The workflow .github/workflows/add-worker.yml checks these answers, opens a pull request that adds the
+        worker's file, and answers here with what to do next: for a routine, the one prompt to paste into the
+        routine; for a worker in Actions, nothing more once the pull request merges and the repository secret
+        CLAUDE_CODE_OAUTH_TOKEN is set. docs/agents/WORKERS.md says what each setting does. Never put a credential here.
+  - type: input
+    id: name
+    attributes:
+      label: Name
+      description: Lower case letters, digits and inner dashes, up to 39, after the worker's job, as nightly or docs-fixer. It becomes the label worker:<name>.
+    validations:
+      required: true
+  - type: dropdown
+    id: runs
+    attributes:
+      label: Where it runs
+      options:
+        - "actions: GitHub Actions, on this repository's Claude token"
+        - "routine: a routine on someone's Claude account"
+        - "session: a person's own sessions, local or in the cloud"
+      default: 0
+    validations:
+      required: true
+  - type: input
+    id: about
+    attributes:
+      label: What it is for
+      description: One line, for the people reading the board.
+    validations:
+      required: false
+  - type: textarea
+    id: area
+    attributes:
+      label: Area
+      description: Paths or globs it prefers, one a line, as docs/ or src/**/*.py; empty means anywhere.
+    validations:
+      required: false
+  - type: dropdown
+    id: lands
+    attributes:
+      label: How its pull requests land
+      options:
+        - "owner: the owner merges each pull request"
+        - "auto-merge: GitHub merges it once the check is green"
+      default: 0
+    validations:
+      required: true
+  - type: input
+    id: model
+    attributes:
+      label: Model
+      description: For a worker in Actions, a model's alias or name, as sonnet or opus; empty for the default.
+    validations:
+      required: false
+  - type: input
+    id: max_turns
+    attributes:
+      label: Turns per run
+      description: For a worker in Actions, 1 to 500; empty for 80.
+    validations:
+      required: false
+  - type: input
+    id: rounds
+    attributes:
+      label: Rounds in a row
+      description: For a worker in Actions, how many runs it takes in a row before the schedule picks up the rest, 1 to 50; empty for 6.
+    validations:
+      required: false
+  - type: input
+    id: account
+    attributes:
+      label: Claude account
+      description: Whose Claude account runs a routine, or whose sessions these are, as a note; never a credential.
+    validations:
+      required: false

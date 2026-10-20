@@ -1,0 +1,1104 @@
+{
+ "edits": [
+  {
+   "unit_id": "mggj4hxkexp.22195",
+   "find": "Verified, research note 01.",
+   "replace": "Verified [[s1,s2,s3,s4,s5]]."
+  },
+  {
+   "unit_id": "mggj4hxkexp.22852",
+   "find": "(supported-github-runners.md, Verified",
+   "replace": "(supported-github-runners.md [[s6]], Verified"
+  },
+  {
+   "unit_id": "mggj4hxkexp.22852",
+   "find": "free on every plan.",
+   "replace": "free on every plan [[s7]]."
+  },
+  {
+   "unit_id": "mggj4hxkexp.23053",
+   "find": "Verified.",
+   "replace": "Verified [[s6]]."
+  },
+  {
+   "unit_id": "mggj4hxkexp.23249",
+   "find": "code owners on GitHub Free,",
+   "replace": "code owners on GitHub Free [[s8,s9,s10]],"
+  },
+  {
+   "unit_id": "mggj4hxkexp.23249",
+   "find": "exist only for public repositories)",
+   "replace": "exist only for public repositories [[s11]])"
+  },
+  {
+   "unit_id": "mggj4hxkexp.23249",
+   "find": "with push protection, and Dependabot.",
+   "replace": "with push protection [[s12,s13]], and Dependabot [[s14]]."
+  },
+  {
+   "unit_id": "mggj4hxkexp.23249",
+   "find": "release environment rely on this.",
+   "replace": "release environment rely on this [[s3,s16]]."
+  },
+  {
+   "unit_id": "mggj4hxkexp.23249",
+   "find": "GitHub's own pages disagree",
+   "replace": "GitHub's own pages disagree [[s12,s13,s15]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.23759",
+   "find": "on 2025-12-16 and",
+   "replace": "on 2025-12-16 [[s17]] and"
+  },
+  {
+   "unit_id": "mggj4hxkexp.23759",
+   "find": "the next day;",
+   "replace": "the next day [[s18]];"
+  },
+  {
+   "unit_id": "mggj4hxkexp.23759",
+   "find": "postponed, not cancelled (",
+   "replace": "postponed, not cancelled [[s19,s20]] ("
+  },
+  {
+   "unit_id": "mggj4hxkexp.24138",
+   "find": "Enterprise 500",
+   "replace": "Enterprise 500 [[s21]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.24275",
+   "find": "a run 35 days",
+   "replace": "a run 35 days [[s21]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.24369",
+   "find": "per repository",
+   "replace": "per repository [[s21]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.24497",
+   "find": "are cancelled",
+   "replace": "are cancelled [[s22,s21]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.24623",
+   "find": "500 an hour",
+   "replace": "500 an hour [[s23]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.24709",
+   "find": "without activity;",
+   "replace": "without activity [[s24]];"
+  },
+  {
+   "unit_id": "mggj4hxkexp.24709",
+   "find": "top of the hour",
+   "replace": "top of the hour [[s25]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.24889",
+   "find": "public repositories",
+   "replace": "public repositories [[s26,s7]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.24997",
+   "find": "are evicted",
+   "replace": "are evicted [[s27]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.25107",
+   "find": "at 12691d2 (2026-10-15), research note 09.",
+   "replace": "at 12691d2 (2026-10-15) [[s28]]."
+  },
+  {
+   "unit_id": "mggj4hxkexp.25107",
+   "find": "table is by plan)",
+   "replace": "table is by plan [[s21]])"
+  },
+  {
+   "unit_id": "mggj4hxkexp.25107",
+   "find": "contributors in 2021,",
+   "replace": "contributors in 2021 [[s29,s30]],"
+  },
+  {
+   "unit_id": "mggj4hxkexp.25107",
+   "find": "suspicious runs in 2026,",
+   "replace": "suspicious runs in 2026 [[s31]],"
+  },
+  {
+   "unit_id": "mggj4hxkexp.25107",
+   "find": "from 2026-11-02)",
+   "replace": "from 2026-11-02 [[s32]])"
+  },
+  {
+   "unit_id": "mggj4hxkexp.25465",
+   "find": "through CLAUDE_CODE_OAUTH_TOKEN (",
+   "replace": "through CLAUDE_CODE_OAUTH_TOKEN [[s34]] ("
+  },
+  {
+   "unit_id": "mggj4hxkexp.25465",
+   "find": "Max $100 or $200)",
+   "replace": "Max $100 or $200 [[s33]])"
+  },
+  {
+   "unit_id": "mggj4hxkexp.25465",
+   "find": "the person's own use.",
+   "replace": "the person's own use [[s33,s35]]."
+  },
+  {
+   "unit_id": "mggj4hxkexp.25465",
+   "find": "GitHub Action. Verified, research note 10.",
+   "replace": "GitHub Action [[s36]]. Verified."
+  },
+  {
+   "unit_id": "mggj4hxkexp.25848",
+   "find": "50,000 on Enterprise Cloud,",
+   "replace": "50,000 on Enterprise Cloud [[s37]],"
+  },
+  {
+   "unit_id": "mggj4hxkexp.25848",
+   "find": "(since 2026-01-01)",
+   "replace": "(since 2026-01-01) [[s38,s39]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.25848",
+   "find": "rounded up to a whole minute",
+   "replace": "rounded up to a whole minute [[s26]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.25848",
+   "find": "without a payment method.",
+   "replace": "without a payment method [[s7]]."
+  },
+  {
+   "unit_id": "mggj4hxkexp.25848",
+   "find": "need Pro or Team there.",
+   "replace": "need Pro or Team there [[s8]]."
+  },
+  {
+   "unit_id": "mggj4hxkexp.26510",
+   "find": "(Copilot code review, GitHub's AI Scan, Claude Code Review)",
+   "replace": "(Copilot code review [[s40]], GitHub's AI Scan [[s12]], Claude Code Review [[s41]])"
+  },
+  {
+   "unit_id": "mggj4hxkexp.26510",
+   "find": "out of the gate. Verified, research note 12.",
+   "replace": "out of the gate [[s42]]. Verified."
+  },
+  {
+   "unit_id": "mggj4hxkexp.26732",
+   "find": "(Verified, github/site-policy)",
+   "replace": "(Verified, github/site-policy [[s43]])"
+  },
+  {
+   "unit_id": "mggj4hxkexp.27342",
+   "find": "(Verified, GitHub Actions, legal and compliance)",
+   "replace": "(Verified, GitHub Actions [[s34]], legal and compliance [[s44]])"
+  },
+  {
+   "unit_id": "mggj4hxkexp.27821",
+   "find": "the default for claude -p",
+   "replace": "the default for claude -p [[s45]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.27821",
+   "find": "does not read the OAuth token;",
+   "replace": "does not read the OAuth token [[s45,s46]];"
+  },
+  {
+   "unit_id": "mggj4hxkexp.28065",
+   "find": "free on a public repository,",
+   "replace": "free on a public repository [[s6]],"
+  },
+  {
+   "unit_id": "mggj4hxkexp.28065",
+   "find": "with no model call.",
+   "replace": "with no model call [[s2]]."
+  },
+  {
+   "unit_id": "mggj4hxkexp.28338",
+   "find": "plan usage, not dollars.",
+   "replace": "plan usage, not dollars [[s34]]."
+  },
+  {
+   "unit_id": "mggj4hxkexp.28338",
+   "find": "gh-aw, openai/codex-action and Copilot's agents meter",
+   "replace": "gh-aw [[s47]], openai/codex-action [[s48]] and Copilot's agents [[s49]] meter"
+  },
+  {
+   "unit_id": "mggj4hxkexp.28338",
+   "find": "aeon runs one agent",
+   "replace": "aeon [[s50]] runs one agent"
+  },
+  {
+   "unit_id": "mggj4hxkexp.28846",
+   "find": "turn private in 2027)",
+   "replace": "turn private in 2027 [[s51]])"
+  },
+  {
+   "unit_id": "mggj4hxkexp.28846",
+   "find": "(Reported, from its pricing page",
+   "replace": "(Reported [[s52]], from its pricing page"
+  },
+  {
+   "unit_id": "mggj4hxkexp.29006",
+   "find": "which Actions never gives free.",
+   "replace": "which Actions never gives free [[s26]]."
+  },
+  {
+   "unit_id": "mggj4hxkexp.29006",
+   "find": "posts commit statuses back.",
+   "replace": "posts commit statuses back [[s53]]."
+  }
+ ],
+ "sources": [
+  {
+   "key": "s1",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "docs/agents/PROTOCOL.md",
+   "container": "OpenSpineConsortium/symphony-template",
+   "date": "2026-10-15",
+   "version": "15d3f22",
+   "url": "https://github.com/OpenSpineConsortium/symphony-template/blob/15d3f22/docs/agents/PROTOCOL.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the claim as the first push of a branch, which GitHub refuses twice"
+  },
+  {
+   "key": "s2",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": ".github/workflows/board.yml",
+   "container": "OpenSpineConsortium/symphony-template",
+   "date": "2026-10-15",
+   "version": "15d3f22",
+   "url": "https://github.com/OpenSpineConsortium/symphony-template/blob/15d3f22/.github/workflows/board.yml",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the board, idle-claim release and overlaps as plain code on GITHUB_TOKEN, serialized by a concurrency queue"
+  },
+  {
+   "key": "s3",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "docs/setup/ruleset-main.json",
+   "container": "OpenSpineConsortium/symphony-template",
+   "date": "2026-10-15",
+   "version": "15d3f22",
+   "url": "https://github.com/OpenSpineConsortium/symphony-template/blob/15d3f22/docs/setup/ruleset-main.json",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the ruleset that requires the check and a pull request"
+  },
+  {
+   "key": "s4",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": ".github/workflows/coordinator.yml",
+   "container": "OpenSpineConsortium/symphony-template",
+   "date": "2026-10-15",
+   "version": "15d3f22",
+   "url": "https://github.com/OpenSpineConsortium/symphony-template/blob/15d3f22/.github/workflows/coordinator.yml",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Claude runs only for planning, unblocking and integrating, as Actions jobs"
+  },
+  {
+   "key": "s5",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": ".github/workflows/workers.yml",
+   "container": "OpenSpineConsortium/symphony-template",
+   "date": "2026-10-15",
+   "version": "15d3f22",
+   "url": "https://github.com/OpenSpineConsortium/symphony-template/blob/15d3f22/.github/workflows/workers.yml",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "workers dealt work by code, Claude run in Actions jobs"
+  },
+  {
+   "key": "s6",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "data/reusables/actions/supported-github-runners.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs/blob/main/data/reusables/actions/supported-github-runners.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "standard runners free and unlimited on public repositories; public 4 vCPU / 16 GB, private 2 vCPU / 8 GB"
+  },
+  {
+   "key": "s7",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "content/billing/concepts/product-billing/github-actions.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs/blob/12691d2/content/billing/concepts/product-billing/github-actions.md",
+   "public_url": "https://docs.github.com/en/billing/concepts/product-billing/github-actions",
+   "read": "opened",
+   "path": "",
+   "supports": "Actions free for self-hosted runners and public repositories; larger runners always billed; usage blocked at quota without a payment method"
+  },
+  {
+   "key": "s8",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "data/reusables/gated-features/repo-rules.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs/blob/12691d2/data/reusables/gated-features/repo-rules.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "rulesets free on public repositories, Pro or Team for private ones"
+  },
+  {
+   "key": "s9",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "data/reusables/gated-features/protected-branches.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs/blob/12691d2/data/reusables/gated-features/protected-branches.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "protected branches and required checks free on public repositories"
+  },
+  {
+   "key": "s10",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "data/reusables/gated-features/code-owners.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs/blob/12691d2/data/reusables/gated-features/code-owners.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "code owners free on public repositories"
+  },
+  {
+   "key": "s11",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "content/actions/reference/workflows-and-actions/deployments-and-environments.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs/blob/12691d2/content/actions/reference/workflows-and-actions/deployments-and-environments.md",
+   "public_url": "https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments",
+   "read": "opened",
+   "path": "",
+   "supports": "required reviewers and wait timers only for public repositories on Free, Pro and Team"
+  },
+  {
+   "key": "s12",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "content/billing/concepts/product-billing/github-advanced-security.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs/blob/12691d2/content/billing/concepts/product-billing/github-advanced-security.md",
+   "public_url": "https://docs.github.com/en/billing/concepts/product-billing/github-advanced-security",
+   "read": "opened",
+   "path": "",
+   "supports": "code scanning, secret scanning and dependency review free on public repositories; AI Scan consumes AI credits even when public"
+  },
+  {
+   "key": "s13",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "content/get-started/learning-about-github/about-github-advanced-security.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs/blob/12691d2/content/get-started/learning-about-github/about-github-advanced-security.md",
+   "public_url": "https://docs.github.com/en/get-started/learning-about-github/about-github-advanced-security",
+   "read": "opened",
+   "path": "",
+   "supports": "feature table for public repositories, which marks dependency review No"
+  },
+  {
+   "key": "s14",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "data/reusables/gated-features/dependabot-alerts.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs/blob/12691d2/data/reusables/gated-features/dependabot-alerts.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Dependabot available on all repositories"
+  },
+  {
+   "key": "s15",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "content/code-security/concepts/supply-chain-security/dependency-review.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs/blob/12691d2/content/code-security/concepts/supply-chain-security/dependency-review.md",
+   "public_url": "https://docs.github.com/en/code-security/concepts/supply-chain-security/dependency-review",
+   "read": "opened",
+   "path": "",
+   "supports": "the dependency review action available for all public repositories"
+  },
+  {
+   "key": "s16",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "README.md",
+   "container": "OpenSpineConsortium/symphony-protocol",
+   "date": "2026-10-15",
+   "version": "a3a5b4d",
+   "url": "https://github.com/OpenSpineConsortium/symphony-protocol/blob/a3a5b4d/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the release environment whose required reviewer is the owner"
+  },
+  {
+   "key": "s17",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "content/billing/concepts/product-billing/github-actions.md",
+   "container": "github/docs",
+   "date": "2025-12-16",
+   "version": "ce33310e",
+   "url": "https://github.com/github/docs/blob/ce33310e/content/billing/concepts/product-billing/github-actions.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the $0.002-a-minute self-hosted runner charge written into the docs on 2025-12-16"
+  },
+  {
+   "key": "s18",
+   "kind": "repository",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "GitHub Actions pricing update",
+   "container": "github/docs",
+   "date": "2025-12-17",
+   "version": "dd812b36",
+   "url": "https://github.com/github/docs/commit/dd812b36",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the commit that removed the self-hosted runner charge from the docs the next day"
+  },
+  {
+   "key": "s19",
+   "kind": "news",
+   "authors": [],
+   "title": "[The Register article on GitHub's self-hosted runner charge; title not recorded]",
+   "container": "The Register",
+   "date": "2025-12-17",
+   "version": "",
+   "url": "https://www.theregister.com/2025/12/17/github_charge_dev_own_hardware/",
+   "public_url": "",
+   "read": "search",
+   "path": "",
+   "supports": "the self-hosted runner charge postponed, not cancelled"
+  },
+  {
+   "key": "s20",
+   "kind": "news",
+   "authors": [],
+   "title": "[gihyo.jp article on the GitHub Actions pricing update; title not recorded]",
+   "container": "gihyo.jp",
+   "date": "2025-12",
+   "version": "",
+   "url": "https://gihyo.jp/article/2025/12/github-actions-pricing-structure-updates",
+   "public_url": "",
+   "read": "search",
+   "path": "",
+   "supports": "the self-hosted runner charge postponed"
+  },
+  {
+   "key": "s21",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "content/actions/reference/limits.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs/blob/12691d2/content/actions/reference/limits.md",
+   "public_url": "https://docs.github.com/en/actions/reference/limits",
+   "read": "opened",
+   "path": "",
+   "supports": "concurrent jobs by plan, 6-hour job and 35-day run limits, GITHUB_TOKEN 1,000 requests an hour, 100 pending runs a group"
+  },
+  {
+   "key": "s22",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "data/reusables/actions/actions-group-concurrency.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs/blob/12691d2/data/reusables/actions/actions-group-concurrency.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "queue: max holds up to 100 pending runs a group; the rest are cancelled"
+  },
+  {
+   "key": "s23",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "data/reusables/rest-api/secondary-rate-limit-rest-graphql.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs/blob/12691d2/data/reusables/rest-api/secondary-rate-limit-rest-graphql.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "about 80 content-creating requests a minute and 500 an hour"
+  },
+  {
+   "key": "s24",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "data/reusables/actions/scheduled-workflows-disabled.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs/blob/12691d2/data/reusables/actions/scheduled-workflows-disabled.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "schedules disabled in a public repository after 60 days without activity"
+  },
+  {
+   "key": "s25",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "data/reusables/actions/schedule-delay.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs/blob/12691d2/data/reusables/actions/schedule-delay.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "schedules delayed at high load, including the start of every hour"
+  },
+  {
+   "key": "s26",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "content/billing/reference/actions-runner-pricing.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs/blob/12691d2/content/billing/reference/actions-runner-pricing.md",
+   "public_url": "https://docs.github.com/en/billing/reference/actions-runner-pricing",
+   "read": "opened",
+   "path": "",
+   "supports": "larger and GPU runners always charged; jobs rounded up to whole minutes"
+  },
+  {
+   "key": "s27",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "content/actions/reference/workflows-and-actions/dependency-caching.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs/blob/12691d2/content/actions/reference/workflows-and-actions/dependency-caching.md",
+   "public_url": "https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching",
+   "read": "opened",
+   "path": "",
+   "supports": "10 GB cache per repository; entries unused for 7 days evicted"
+  },
+  {
+   "key": "s28",
+   "kind": "repository",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "github/docs",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "GitHub's documentation source, read at 12691d2"
+  },
+  {
+   "key": "s29",
+   "kind": "blog-post",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "[GitHub blog post of 2021-04-22 on helping maintainers combat bad actors in Actions; title not recorded]",
+   "container": "The GitHub Blog",
+   "date": "2021-04-22",
+   "version": "",
+   "url": "https://github.blog/2021-04-22-github-actions-update-helping-maintainers-combat-bad-actors/",
+   "public_url": "",
+   "read": "search",
+   "path": "",
+   "supports": "approval for first-time contributors introduced in 2021 against cryptomining"
+  },
+  {
+   "key": "s30",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "data/reusables/actions/workflow-run-approve-public-fork.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs/blob/12691d2/data/reusables/actions/workflow-run-approve-public-fork.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "first-time contributors require approval to run workflows by default"
+  },
+  {
+   "key": "s31",
+   "kind": "blog-post",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "[GitHub changelog of 2026-07-28 on holding potentially malicious workflow runs; title not recorded]",
+   "container": "GitHub Changelog",
+   "date": "2026-07-28",
+   "version": "",
+   "url": "https://github.blog/changelog/2026-07-28-github-actions-holds-potentially-malicious-workflows-for-approval",
+   "public_url": "",
+   "read": "search",
+   "path": "",
+   "supports": "suspicious runs on public repositories held for approval from 2026-07-28"
+  },
+  {
+   "key": "s32",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "content/actions/reference/security/securely-using-pull_request_target.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs/blob/12691d2/content/actions/reference/security/securely-using-pull_request_target.md",
+   "public_url": "https://docs.github.com/en/actions/reference/security/securely-using-pull_request_target",
+   "read": "opened",
+   "path": "",
+   "supports": "the default policy blocking pull_request_target in public repositories, enforced 2026-11-02"
+  },
+  {
+   "key": "s33",
+   "kind": "web-page",
+   "authors": [
+    "Anthropic"
+   ],
+   "title": "Pricing",
+   "container": "claude.com",
+   "date": "",
+   "version": "",
+   "url": "https://claude.com/pricing",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Claude plan prices; the five-hour window and weekly limit shared by all of a plan's use"
+  },
+  {
+   "key": "s34",
+   "kind": "documentation",
+   "authors": [
+    "Anthropic"
+   ],
+   "title": "Claude Code GitHub Actions",
+   "container": "Claude Code Docs (code.claude.com)",
+   "date": "",
+   "version": "",
+   "url": "https://code.claude.com/docs/en/github-actions",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "CLAUDE_CODE_OAUTH_TOKEN; runs use the subscription instead of API billing; an API key advised for a shared secret"
+  },
+  {
+   "key": "s35",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "docs/setup/claude-action.md",
+   "container": "OpenSpineConsortium/symphony-template",
+   "date": "2026-10-15",
+   "version": "15d3f22",
+   "url": "https://github.com/OpenSpineConsortium/symphony-template/blob/15d3f22/docs/setup/claude-action.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Actions workers share the main account's five-hour window and weekly limit"
+  },
+  {
+   "key": "s36",
+   "kind": "web-page",
+   "authors": [
+    "Anthropic"
+   ],
+   "title": "[Support article on monthly API credits for Max and Team plans; title not recorded]",
+   "container": "Claude Help Center (support.claude.com)",
+   "date": "",
+   "version": "",
+   "url": "https://support.claude.com/en/articles/17154008-monthly-api-credits-for-max-and-team-plans",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "monthly API credits do not cover runs of the Claude Code GitHub Action"
+  },
+  {
+   "key": "s37",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "data/reusables/billing/actions-included-quotas.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs/blob/12691d2/data/reusables/billing/actions-included-quotas.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "included minutes: 2,000 Free, 3,000 Pro and Team, 50,000 Enterprise Cloud"
+  },
+  {
+   "key": "s38",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "data/reusables/billing/actions-standard-runner-prices.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs/blob/12691d2/data/reusables/billing/actions-standard-runner-prices.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Linux 2-core standard runner at $0.006 a minute"
+  },
+  {
+   "key": "s39",
+   "kind": "repository",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "Phase 2: Update relevant content for 1 Jan price change",
+   "container": "github/docs",
+   "date": "2026-01-05",
+   "version": "260144b4",
+   "url": "https://github.com/github/docs/commit/260144b4",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the 2026-01-01 price cut from $0.008 to $0.006 a minute"
+  },
+  {
+   "key": "s40",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "content/copilot/concepts/agent-capabilities/agent-powered-workflows-and-operations/code-review.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs/blob/12691d2/content/copilot/concepts/agent-capabilities/agent-powered-workflows-and-operations/code-review.md",
+   "public_url": "https://docs.github.com/en/copilot/concepts/agent-capabilities/agent-powered-workflows-and-operations/code-review",
+   "read": "opened",
+   "path": "",
+   "supports": "Copilot code review billed in AI credits per review"
+  },
+  {
+   "key": "s41",
+   "kind": "documentation",
+   "authors": [
+    "Anthropic"
+   ],
+   "title": "[Claude Code docs page on Code Review costs; title not recorded]",
+   "container": "Claude Code Docs (code.claude.com)",
+   "date": "",
+   "version": "",
+   "url": "https://code.claude.com/docs/en/code-review-costs",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Claude Code Review billed on token usage through usage credits"
+  },
+  {
+   "key": "s42",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "CLAUDE.md",
+   "container": "OpenSpineConsortium/symphony-template",
+   "date": "2026-10-15",
+   "version": "15d3f22",
+   "url": "https://github.com/OpenSpineConsortium/symphony-template/blob/15d3f22/CLAUDE.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Symphony's rules: GitHub's native free features, no API billing, a deterministic qa gate"
+  },
+  {
+   "key": "s43",
+   "kind": "terms",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "GitHub Terms for Additional Products and Features",
+   "container": "github/site-policy",
+   "date": "2026-04-27",
+   "version": "b9578b5",
+   "url": "https://github.com/github/site-policy/blob/main/Policies/github-terms/github-terms-for-additional-products-and-features.md",
+   "public_url": "https://docs.github.com/en/site-policy/github-terms/github-terms-for-additional-products-and-features",
+   "read": "opened",
+   "path": "",
+   "supports": "the Actions terms, effective 2026-04-27"
+  },
+  {
+   "key": "s44",
+   "kind": "documentation",
+   "authors": [
+    "Anthropic"
+   ],
+   "title": "Legal and compliance",
+   "container": "Claude Code Docs (code.claude.com)",
+   "date": "",
+   "version": "",
+   "url": "https://code.claude.com/docs/en/legal-and-compliance",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "plan limits assume ordinary, individual usage"
+  },
+  {
+   "key": "s45",
+   "kind": "documentation",
+   "authors": [
+    "Anthropic"
+   ],
+   "title": "[Claude Code docs page on headless mode; title not recorded]",
+   "container": "Claude Code Docs (code.claude.com)",
+   "date": "",
+   "version": "",
+   "url": "https://code.claude.com/docs/en/headless",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "bare mode to become the default for -p; bare mode never reads OAuth credentials"
+  },
+  {
+   "key": "s46",
+   "kind": "documentation",
+   "authors": [
+    "Anthropic"
+   ],
+   "title": "[Claude Code docs page on authentication; title not recorded]",
+   "container": "Claude Code Docs (code.claude.com)",
+   "date": "",
+   "version": "",
+   "url": "https://code.claude.com/docs/en/authentication",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "bare mode does not read CLAUDE_CODE_OAUTH_TOKEN"
+  },
+  {
+   "key": "s47",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "docs/src/content/docs/engines/claude.md",
+   "container": "github/gh-aw",
+   "date": "2026-10-15",
+   "version": "dc91dbed",
+   "url": "https://github.com/github/gh-aw/blob/dc91dbed/docs/src/content/docs/engines/claude.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "gh-aw's Claude engine: API key, WIF or Copilot billing; no subscription OAuth token"
+  },
+  {
+   "key": "s48",
+   "kind": "repository-file",
+   "authors": [
+    "OpenAI"
+   ],
+   "title": "README.md",
+   "container": "openai/codex-action",
+   "date": "",
+   "version": "",
+   "url": "https://raw.githubusercontent.com/openai/codex-action/HEAD/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "codex-action requires an API key"
+  },
+  {
+   "key": "s49",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "content/copilot/concepts/agent-capabilities/about-agents/about-third-party-coding-agents.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs/blob/12691d2/content/copilot/concepts/agent-capabilities/about-agents/about-third-party-coding-agents.md",
+   "public_url": "https://docs.github.com/en/copilot/concepts/agent-capabilities/about-agents/about-third-party-coding-agents",
+   "read": "opened",
+   "path": "",
+   "supports": "Copilot coding agents consume Actions minutes and AI credits"
+  },
+  {
+   "key": "s50",
+   "kind": "project-record",
+   "authors": [],
+   "title": "07 Multi-agent orchestration frameworks, interoperability protocols and parallel coding-agent tools (research note 07)",
+   "container": "Symphony and Beethoven taxonomy research notes",
+   "date": "2026-10-15",
+   "version": "",
+   "url": "",
+   "public_url": "",
+   "read": "record",
+   "path": "/mnt/project-files/research/taxonomy/notes/07-multi-agent-frameworks.md",
+   "supports": "aeon runs one agent in Actions on CLAUDE_CODE_OAUTH_TOKEN or an API key, with no claims between workers"
+  },
+  {
+   "key": "s51",
+   "kind": "repository-file",
+   "authors": [
+    "Microsoft"
+   ],
+   "title": "docs/organizations/projects/public-projects-retirement.md",
+   "container": "MicrosoftDocs/azure-devops-docs",
+   "date": "2026-04-30",
+   "version": "",
+   "url": "https://github.com/MicrosoftDocs/azure-devops-docs/blob/HEAD/docs/organizations/projects/public-projects-retirement.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Azure DevOps public projects retired, converted to private in 2027"
+  },
+  {
+   "key": "s52",
+   "kind": "web-page",
+   "authors": [
+    "CircleCI"
+   ],
+   "title": "[CircleCI pricing page; title not recorded]",
+   "container": "circleci.com",
+   "date": "",
+   "version": "",
+   "url": "https://circleci.com/pricing/",
+   "public_url": "",
+   "read": "search",
+   "path": "",
+   "supports": "open source up to 400,000 credits a month"
+  },
+  {
+   "key": "s53",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": ".github/workflows/ci.yml",
+   "container": "OpenSpineConsortium/hpcworker",
+   "date": "2026-10-07",
+   "version": "3b22e70",
+   "url": "https://github.com/OpenSpineConsortium/hpcworker/blob/3b22e70/.github/workflows/ci.yml",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "hpcworker's CI on GitHub's runners, with the grid lanes posting commit statuses"
+  }
+ ],
+ "uncited": [],
+ "checker_problems": 0,
+ "changes": [
+  "Replaced the mentions of research notes 01, 09, 10 and 12 with markers of the primary sources those notes give.",
+  "Added markers to every Verified and Reported claim, every linked source and every number in section 9, and to the value cells of the limits table."
+ ]
+}

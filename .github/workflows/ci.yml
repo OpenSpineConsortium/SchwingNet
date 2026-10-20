@@ -1,0 +1,148 @@
+name: Checks
+
+# The project's fast checks on every pull request and every push to the
+# default branch: bash scripts/check.sh, which runs tools/check_docs.py (the
+# repository's documents are the Claude project's instructions and memory,
+# so a broken import or a stray secret is a broken project), the tests, and
+# whatever lines the project adds. Branch protection requires the job named
+# "check" (docs/setup/github.md). A newer push to the same branch cancels
+# the run still going, so nobody waits on a result that is already stale.
+# The runner's own python3 is used (3.12 on ubuntu-latest); swap in
+# actions/setup-python@v7 if the image ever moves below what the tools need.
+# The file names no branch, so no placeholder is needed here and template-init
+# never writes a workflow file (GITHUB_TOKEN may not change one): the push
+# trigger leaves out the claim branches, whose pull request runs the check, so
+# no run is ever skipped under the name "check" and a required check cannot be
+# satisfied by a skipped run. It leaves out symphony-protocol's sync branch for
+# the same reason: that repository's sync workflow pushes symphony-protocol/sync
+# with the GitHub App's token, which, unlike a workflow's own GITHUB_TOKEN,
+# starts this workflow, and then opens or updates the branch's pull request,
+# which runs the check again on the same commit. It leaves out crowd/setup
+# too, and only that branch, so a repository outside crowd mode loses no
+# run it had: scripts/crowd.py setup pushes crowd/setup with the owner's
+# token through the API and opens its pull request, whose run is the one
+# that counts. It leaves out metrics as well, the branch that holds only
+# METRICS.json and JUDGE.json: a maintainer's judge pushes JUDGE.json there
+# with their own credentials (docs/setup/metrics.md), which, unlike
+# GITHUB_TOKEN, start this workflow, and the branch has no checks to run.
+# It also runs by hand, and when .github/workflows/protocol.yml asks: that
+# workflow pushes symphony-protocol/sync and opens its pull request with
+# GITHUB_TOKEN, which start no workflow, so it starts this one on the
+# branch itself, and the job check leaves its check run on the branch's
+# head, where the pull request's required check looks for it.
+# Before the checks the job clones OpenSpineConsortium/symphony-protocol, which
+# is public, so the clone needs no token, and names the clone to them in
+# SDLC_PROTOCOL. check.sh's vendoring.py verify holds tools/sdlc_protocol to
+# tools/VENDORED, but both sit in this tree, and a pull request that edits
+# the copy can rewrite its line in VENDORED as easily; with the clone named,
+# tests/test_vendored.py compares every file of the copy with the library's
+# at the commit VENDORED names, and fails, rather than skips, when the clone
+# is missing or has no such commit, so neither edit passes the check.
+# On a pull request the same job also runs tools/check_protocol.py, which
+# holds a claude/<issue> pull request to the claim protocol: its claim file
+# while draft, that file's deletion when ready, a body that closes its
+# issue, a head in this repository. The extra event types are the moments
+# those facts change without a push: marked ready, converted back to draft,
+# the body edited.
+# The same job holds a crowd repository (docs/setup/crowdsourcing.md) to
+# its rules, so they are part of the required check: tools/crowd_check.py
+# guard fails while a Claude secret or variable reaches the repository and
+# crowd mode shows anywhere, while the default branch says crowd mode is on
+# and the variable CLAUDE_CROWD, which keeps the Claude workflows from
+# starting, is not true, and when a pull request changes a committed
+# checkpoint there. Which secrets exist is learnt by the job values, never
+# by check: GitHub hands a job's runner the value of every secret the job
+# names, even in a comparison, and code that runs on that runner can read it
+# from the runner's memory, so the job that runs this repository's scripts
+# and tests names no secret at all. values checks nothing out, runs no file
+# of the repository and uses no action; it compares each secret with nothing
+# inside GitHub's expressions, prints the names that are set, and hands
+# check only that list of names, as its output. check runs after it even
+# when it fails, so a required check is never skipped, and the guard fails
+# in crowd mode when values did not succeed. values runs everywhere, with no
+# condition, because a pull request that turns crowd mode on is held to the
+# secret rule before the variable says so. An organization's secret reaches
+# secrets.NAME as a repository's does, so both are caught. A fork's pull
+# request is given no secret and perhaps no variable, so for it the guard
+# holds the checkpoint rule alone, which needs only git. Outside crowd mode
+# it prints "crowd: off" and passes, whatever secrets exist.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft, edited]
+  push:
+    branches-ignore: ["claude/**", "symphony-protocol/**", "crowd/setup", "metrics"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    needs: values
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Clone symphony-protocol, the library the copy is held to
+        run: git clone --quiet https://github.com/OpenSpineConsortium/symphony-protocol "$RUNNER_TEMP/symphony-protocol"
+
+      - name: Install the workflow linters, pinned by hash
+        # actionlint and zizmor, which scripts/check.sh runs (issue #248).
+        run: |
+          set -eu
+          v=1.7.12
+          curl -fsSLo "$RUNNER_TEMP/actionlint.tar.gz" "https://github.com/rhysd/actionlint/releases/download/v$v/actionlint_${v}_linux_amd64.tar.gz"
+          echo "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8  $RUNNER_TEMP/actionlint.tar.gz" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/lint/bin"
+          tar -xzf "$RUNNER_TEMP/actionlint.tar.gz" -C "$RUNNER_TEMP/lint/bin" actionlint
+          python3 -m venv "$RUNNER_TEMP/lint/zizmor"
+          echo "zizmor==1.31.1 --hash=sha256:58e878eb2dbd2c6183c105e1ac28c14f7dd1eca44a783f1fe2a69647d012c410" > "$RUNNER_TEMP/lint/zizmor.txt"
+          "$RUNNER_TEMP/lint/zizmor/bin/pip" install --quiet --no-deps --require-hashes -r "$RUNNER_TEMP/lint/zizmor.txt"
+          ln -s "$RUNNER_TEMP/lint/zizmor/bin/zizmor" "$RUNNER_TEMP/lint/bin/zizmor"
+          echo "$RUNNER_TEMP/lint/bin" >> "$GITHUB_PATH"
+
+      - name: Run the checks
+        env:
+          SDLC_PROTOCOL: ${{ runner.temp }}/symphony-protocol
+        run: bash scripts/check.sh
+
+      - name: Hold a crowd repository to its rules
+        env:
+          CLAUDE_CROWD: ${{ vars.CLAUDE_CROWD }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          FROM_FORK: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+          SECRETS_SET: ${{ needs.values.outputs.secrets }}
+          VALUES_RESULT: ${{ needs.values.result }}
+          SET_CLAUDE_WORKER: ${{ vars.CLAUDE_WORKER != '' }}
+          SET_CLAUDE_TEAM: ${{ vars.CLAUDE_TEAM != '' }}
+        run: python3 tools/crowd_check.py guard
+
+      - name: Hold a claude/ pull request to the claim protocol
+        if: github.event_name == 'pull_request'
+        run: python3 tools/check_protocol.py
+
+  values:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      secrets: ${{ steps.names.outputs.secrets }}
+    steps:
+      - name: Name the Claude secrets that reach this repository
+        id: names
+        env:
+          SET_CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' }}
+          SET_ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY != '' }}
+          SET_COORDINATOR_TRIGGER_URL: ${{ secrets.COORDINATOR_TRIGGER_URL != '' }}
+          SET_COORDINATOR_TRIGGER_TOKEN: ${{ secrets.COORDINATOR_TRIGGER_TOKEN != '' }}
+          SET_SDLC_APP_PRIVATE_KEY: ${{ secrets.SDLC_APP_PRIVATE_KEY != '' }}
+        run: |
+          names=$(env | sed -n 's/^SET_\([A-Z_]*\)=true$/\1/p' | sort | tr '\n' ' ')
+          echo "set: ${names:-none}"
+          echo "secrets=${names% }" >> "$GITHUB_OUTPUT"

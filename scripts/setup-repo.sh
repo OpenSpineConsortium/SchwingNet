@@ -1,0 +1,456 @@
+#!/usr/bin/env bash
+# Set up the GitHub side of a repository made from this template, in one
+# command.
+#
+# "Use this template" copies files and nothing else: the new repository has
+# no branch rules, none of the toggles, no labels, no secret and no
+# variable, and GitHub lets only a person with admin rights set them.
+# docs/setup/github.md says what each setting is for and
+# docs/setup/owner-checklist.md gathers every step; this script does the
+# GitHub steps through the GitHub CLI, so they are one run instead of seven
+# settings pages. Run it once on your own computer, from a clone, with gh
+# signed in (gh auth login) as a user with admin rights on the repository. A
+# cloud session cannot run it: gh is installed there, but its GitHub proxy
+# refuses gh's GraphQL commands and the session has no admin rights. Running
+# it again does nothing twice: a ruleset that exists is skipped, a toggle
+# that is on stays on, a label is updated in place. In a crowd repository
+# (docs/setup/crowdsourcing.md), whose variable CLAUDE_CROWD is true or
+# whose docs/project.md says crowd mode is on, it stops before any write,
+# and so it does when it cannot read the variable: it would turn auto-merge
+# on and can store a subscription token, and crowd mode keeps both off;
+# scripts/crowd.py setup is that repository's one command instead.
+#
+# What it does, in order, one line of output per step:
+#   1. finds the repository (the argument, or the clone's remote) and its
+#      default branch, and stops when crowd mode is on there, or when it
+#      cannot tell;
+#   2. creates the ruleset docs/setup/ruleset-main.json unless one of that
+#      name is already listed for the repository; on GitHub Free a private
+#      repository's ruleset is written but not enforced (docs/setup/tiers.md),
+#      and the script says so when the repository is private; then pins
+#      its check "check" to GitHub Actions, once Actions has reported that
+#      check on the default branch, so a commit status anyone with write
+#      access sets cannot stand in for it (run it again after the first
+#      pull request's check to pin a new copy);
+#   3. turns on "Automatically delete head branches" and "Allow auto-merge"
+#      (auto-merge does nothing until a pull request asks for it, and team
+#      mode needs it), and adds the repository topic symphony, the sign on
+#      the repository's page that it is set up, which the front door's run
+#      sets too and the Symphony browser extension reads to show "Ready
+#      for Symphony" in place of "Migrate to Symphony";
+#   4. turns on secret scanning, then push protection, which GitHub accepts
+#      only once scanning is on; where the plan or the visibility offers
+#      neither (a Free organization's private repository has no Secret
+#      Protection) it prints why and carries on, and a gh older than 2.65,
+#      which lacks the two flags, is reported as that and not as the plan;
+#   5. turns on "Allow GitHub Actions to create and approve pull requests"
+#      unless it is on already, keeping the token's default permissions as
+#      they are: the weekly protocol update and the "Add a worker" form
+#      open their pull requests with GITHUB_TOKEN, and while it is off they
+#      offer an issue or a link instead; where the organization or its
+#      enterprise holds it off, it prints GitHub's answer and where an
+#      owner turns it on, and carries on;
+#      then makes the environment token-store, limited to the default
+#      branch, unless the repository has one of that name, so only the
+#      default branch's Token workflow ever holds the SymphonyBoard App's
+#      token there (Symphony Setup makes it in an adoption too);
+#   6. creates or updates the labels, read from LABELS in
+#      tools/template_init.py, so the list lives in one place;
+#   7. sets each repository variable given as --var NAME=VALUE; the one
+#      this repository reads is CLAUDE_ALLOWED_TOOLS (docs/setup/claude-action.md),
+#      since its workers are files, not variables (docs/agents/WORKERS.md);
+#   8. with --token, stores the repository secret CLAUDE_CODE_OAUTH_TOKEN:
+#      you run `claude setup-token` in another terminal and paste the token
+#      at gh's hidden prompt. The token is never on a command line, never in
+#      a file and never in this script's output: gh reads it without echo
+#      (or from standard input when no terminal is attached), encrypts it on
+#      your machine and sends only the sealed value. Without --token the
+#      step prints the alternative, /install-github-app in Claude Code;
+#   9. reads GitHub's own list of the errors in .github/CODEOWNERS and
+#      prints each one, since a line GitHub cannot resolve (an
+#      organization's name, a user or a team without Write) asks nobody for
+#      review and says so nowhere else; it changes nothing, the fix is a
+#      pull request (docs/setup/github.md, section 7).
+#
+# Usage: bash scripts/setup-repo.sh [OWNER/NAME] [--var NAME=VALUE]... [--token]
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+RULESET=docs/setup/ruleset-main.json
+SECRET=CLAUDE_CODE_OAUTH_TOKEN
+
+usage() {
+  cat <<'EOF'
+Usage: bash scripts/setup-repo.sh [OWNER/NAME] [--var NAME=VALUE]... [--token]
+
+Sets up the GitHub side of a repository made from this template: the
+default branch's ruleset, delete-branch-on-merge, auto-merge, secret
+scanning with push protection, the setting that lets GitHub Actions open
+pull requests, the labels, the variables asked for and, with --token, the
+secret CLAUDE_CODE_OAUTH_TOKEN; then prints any line of
+.github/CODEOWNERS GitHub cannot resolve. Needs the GitHub CLI signed in
+(gh auth login) with admin rights on the repository. In crowd mode (the
+variable CLAUDE_CROWD is true, or docs/project.md says crowd mode is on)
+it changes nothing: run python3 scripts/crowd.py setup instead. It
+changes nothing either when it cannot read that variable.
+
+  OWNER/NAME        the repository; by default the one this clone's
+                    remote points at
+  --var NAME=VALUE  set a repository variable; repeatable. The variable
+                    this repository reads: CLAUDE_ALLOWED_TOOLS
+                    (docs/setup/claude-action.md); its workers are files
+                    under .github/symphony/workers/ (docs/agents/WORKERS.md)
+  --token           store the secret CLAUDE_CODE_OAUTH_TOKEN from a hidden
+                    prompt: run `claude setup-token` in another terminal
+                    first and paste what it prints
+  -h, --help        this text
+EOF
+}
+
+die() {
+  printf 'setup-repo: %s\n' "$1" >&2
+  exit "${2:-1}"
+}
+
+REPO=""
+VARIABLES=()
+TOKEN=no
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -h|--help) usage; exit 0 ;;
+    --var) [ $# -ge 2 ] || die "--var needs NAME=VALUE" 2; VARIABLES+=("$2"); shift 2 ;;
+    --var=*) VARIABLES+=("${1#--var=}"); shift ;;
+    --token) TOKEN=yes; shift ;;
+    -*) usage >&2; die "unknown option $1" 2 ;;
+    *) [ -z "$REPO" ] || die "one repository at a time: $REPO and $1" 2; REPO="$1"; shift ;;
+  esac
+done
+for pair in ${VARIABLES[@]+"${VARIABLES[@]}"}; do
+  case "$pair" in
+    [A-Za-z_]*=*) ;;
+    *) die "--var takes NAME=VALUE, not $pair" 2 ;;
+  esac
+done
+
+# The check's pin: the step's one line, and a PUT only where GitHub Actions
+# has reported "check" on the default branch and the ruleset does not name
+# a source for it yet. Every failure is reported and the run goes on.
+ACTIONS_APP=15368
+# One read for the step: GitHub's body on standard output, and on a failure
+# gh's first line of standard error alone, since gh prints a refused call's
+# body on standard output too.
+pin_read() {
+  local error answer
+  error=$(mktemp)
+  if answer=$(gh api "$@" 2>"$error"); then
+    rm -f "$error"
+    printf '%s' "$answer"
+  else
+    head -n 1 "$error"
+    rm -f "$error"
+    return 1
+  fi
+}
+pin_check() {
+  local name=$1 id rulesets reported ruleset body answer status
+  # The repository's own rulesets alone: an organization's ruleset of the
+  # same name is listed too by default, and only its owners edit it.
+  if ! rulesets=$(pin_read "repos/$REPO/rulesets?includes_parents=false&per_page=100"); then
+    echo "check pin: not changed (could not list the rulesets: $rulesets)"
+    return 0
+  fi
+  id=$(printf '%s' "$rulesets" | python3 -c 'import json, sys
+try:
+    rulesets = json.load(sys.stdin)
+except ValueError:
+    rulesets = []
+print(next((str(r["id"]) for r in rulesets if isinstance(r, dict) and r.get("name") == sys.argv[1]), ""))' "$name") || id=""
+  if [ -z "$id" ]; then
+    echo "check pin: not changed (the repository has no ruleset \"$name\" of its own; an organization's ruleset is pinned by its owners under the organization's Settings, Rules)"
+    return 0
+  fi
+  if ! reported=$(pin_read "repos/$REPO/commits/$DEFAULT_BRANCH/check-runs?check_name=check&per_page=100" \
+      --jq "[.check_runs[] | select(.app.id == $ACTIONS_APP)] | length"); then
+    echo "check pin: not changed (could not read the default branch's checks: $reported)"
+    return 0
+  fi
+  if [ "$reported" = "0" ] || [ -z "$reported" ]; then
+    echo "check pin: not yet; GitHub Actions has not reported \"check\" on $DEFAULT_BRANCH, so run this again after the first pull request's check"
+    return 0
+  fi
+  if ! ruleset=$(pin_read "repos/$REPO/rulesets/$id"); then
+    echo "check pin: not changed (could not read the ruleset: $ruleset)"
+    return 0
+  fi
+  status=0
+  body=$(printf '%s' "$ruleset" | python3 -c 'import json, sys
+ruleset, app = json.load(sys.stdin), int(sys.argv[1])
+checks = [check for rule in ruleset.get("rules") or [] if rule.get("type") == "required_status_checks"
+          for check in (rule.get("parameters") or {}).get("required_status_checks") or [] if check.get("context") == "check"]
+if not checks or all(check.get("integration_id") for check in checks):
+    sys.exit(3)
+for check in checks:
+    check["integration_id"] = check.get("integration_id") or app
+keys = ("name", "target", "enforcement", "conditions", "rules", "bypass_actors")
+json.dump({key: ruleset[key] for key in keys if key in ruleset}, sys.stdout)' "$ACTIONS_APP") || status=$?
+  if [ "$status" = 3 ]; then
+    echo "check pin: already pinned, or the ruleset requires no check named \"check\""
+    return 0
+  elif [ "$status" != 0 ]; then
+    echo "check pin: not changed (the ruleset GitHub gave back could not be read)"
+    return 0
+  fi
+  if answer=$(printf '%s' "$body" | gh api --method PUT "repos/$REPO/rulesets/$id" --input - --silent 2>&1); then
+    echo "check pin: \"check\" now requires GitHub Actions as its source"
+  else
+    echo "check pin: not changed ($answer); pick GitHub Actions as the check's source under https://github.com/$REPO/settings/rules/$id"
+  fi
+}
+
+# 1. The repository and its default branch, in one call. gh reads the
+# clone's remote when no repository is named.
+if [ -n "$REPO" ]; then
+  view=$(gh repo view "$REPO" --json nameWithOwner,defaultBranchRef,visibility --jq '[.nameWithOwner, .defaultBranchRef.name, .visibility] | @tsv')
+else
+  view=$(gh repo view --json nameWithOwner,defaultBranchRef,visibility --jq '[.nameWithOwner, .defaultBranchRef.name, .visibility] | @tsv')
+fi
+IFS=$'\t' read -r REPO DEFAULT_BRANCH VISIBILITY <<<"$view"
+VISIBILITY=$(printf '%s' "$VISIBILITY" | tr '[:upper:]' '[:lower:]')
+printf 'repository: %s (default branch %s, %s)\n' "$REPO" "$DEFAULT_BRANCH" "$VISIBILITY"
+
+# Crowd mode keeps auto-merge off and holds no Claude token, and the steps
+# below turn auto-merge on and can store one, so they never run there. Two
+# signs say crowd mode: this clone's docs/project.md, whose mode line only
+# the owner's review changes, and the variable CLAUDE_CROWD. A 404, no such
+# variable, is the ordinary case; any other failure to read it (a token
+# without the right to read variables, a rate limit, the network) leaves
+# the mode unknown, and the script stops rather than guess; GitHub compares
+# the value without case, and so does this.
+crowd_refusal="scripts/setup-repo.sh would turn auto-merge on and can store a subscription token; run python3 scripts/crowd.py setup $REPO instead, which keeps both off"
+if grep -q '^- Crowd mode: on\.' docs/project.md 2>/dev/null; then
+  die "crowd mode is on in this clone's docs/project.md: $crowd_refusal"
+fi
+read_error=$(mktemp)
+if crowd=$(gh api "repos/$REPO/actions/variables/CLAUDE_CROWD" --jq .value 2>"$read_error"); then
+  rm -f "$read_error"
+elif grep -q '(HTTP 404)' "$read_error"; then
+  crowd=""
+  rm -f "$read_error"
+else
+  reason=$(head -n 1 "$read_error")
+  rm -f "$read_error"
+  die "could not read the variable CLAUDE_CROWD ($reason), so whether crowd mode is on is unknown and nothing was changed; run this again with a login that can read the repository's variables, or, in a crowd repository, run python3 scripts/crowd.py setup $REPO instead"
+fi
+if [ "$(printf '%s' "$crowd" | tr '[:upper:]' '[:lower:]')" = "true" ]; then
+  die "crowd mode is on (the variable CLAUDE_CROWD is true): $crowd_refusal"
+fi
+
+# 2. The ruleset, from the file the docs ship, unless its name is already
+# listed. GitHub would make a second ruleset of the same name, so the check
+# is this script's job.
+name=$(python3 -c 'import json, sys; print(json.load(open(sys.argv[1]))["name"])' "$RULESET")
+existing=$(gh api "repos/$REPO/rulesets" --jq '.[].name')
+if grep -Fxq -- "$name" <<<"$existing"; then
+  printf 'ruleset "%s": exists, skipped\n' "$name"
+else
+  gh api --method POST "repos/$REPO/rulesets" --input "$RULESET" --silent
+  printf 'ruleset "%s": created from %s\n' "$name" "$RULESET"
+fi
+if [ "$VISIBILITY" = "private" ]; then
+  echo "  note: on GitHub Free a private repository's ruleset is written but not enforced (docs/setup/tiers.md)"
+fi
+
+# 2b. The pin. A required check named by its context alone takes a commit
+# status of that name from anyone with write access, whatever CI said, so
+# the check "check" is pinned to GitHub Actions, the app its check runs
+# report under. GitHub takes the pin only once that app has reported the
+# check in the repository, so a new copy is pinned by a run of this script
+# after its first pull request's check; until then the step says so.
+pin_check "$name"
+
+# 3. The two toggles under General. Both are idempotent PATCHes.
+gh repo edit "$REPO" --delete-branch-on-merge --enable-auto-merge
+echo "general: delete head branches on merge, allow auto-merge: on"
+# The topic keeps the ones already there: --add-topic appends.
+gh repo edit "$REPO" --add-topic symphony
+echo "topic symphony: added"
+
+# 4. Secret scanning, then push protection. A failure here is the plan or
+# the visibility, not the script, so it is reported and the run goes on;
+# except "unknown flag", which is a gh older than 2.65.0, the first release
+# with these two flags (a distribution's package often is), and blaming the
+# plan for that would leave scanning off for good.
+old_gh() {
+  printf '%s: this gh (%s) predates the flag; install gh 2.65 or later (https://github.com/cli/cli/blob/trunk/docs/install_linux.md) and run this again\n' "$1" "$(gh --version | head -n 1)"
+}
+if answer=$(gh repo edit "$REPO" --enable-secret-scanning 2>&1); then
+  echo "secret scanning: on"
+  if answer=$(gh repo edit "$REPO" --enable-secret-scanning-push-protection 2>&1); then
+    echo "push protection: on"
+  elif grep -q "unknown flag" <<<"$answer"; then
+    old_gh "push protection"
+  else
+    printf 'push protection: not available here (%s); turn it on by hand if the plan offers it\n' "$(tr '\n' ' ' <<<"$answer")"
+  fi
+elif grep -q "unknown flag" <<<"$answer"; then
+  old_gh "secret scanning"
+else
+  printf 'secret scanning: not available here (%s); a Free organization'"'"'s private repository has no Secret Protection, docs/setup/github.md section 5\n' "$(tr '\n' ' ' <<<"$answer")"
+fi
+
+# 5. "Allow GitHub Actions to create and approve pull requests" (Settings,
+# Actions, General, Workflow permissions), off in a new repository unless
+# its organization has it on. .github/workflows/protocol.yml and
+# add-worker.yml open their pull requests with GITHUB_TOKEN, which GitHub
+# refuses while it is off, so they offer an issue or a link instead. The
+# same setting lets a workflow approve a pull request, which counts only
+# where a ruleset or a branch protection rule requires a review, and
+# docs/setup/ruleset-main.json requires none. GitHub sets it together with
+# the token's default permissions, so the PUT sends those back as they
+# were read and nothing else changes; an answer that does not say them as
+# the REST description gives them, "read" or "write" beside a JSON
+# boolean, sends nothing, since a guess could widen the token. An
+# organization, or the enterprise above it, can hold it off for its
+# repositories, and GitHub then answers 409; only an owner there, or in
+# the organization someone with the "Manage organization Actions
+# policies" permission, can change that, so, as in the step above, a
+# refusal is reported with where to change it and the run goes on. gh
+# prints GitHub's answer to a refused call on standard error and the body
+# on standard output, so the answer is read from standard error alone.
+WORKFLOW_SETTING="workflow permissions: allow GitHub Actions to create and approve pull requests"
+# The read's two fields on one line, such as "read false", or exit 1 when
+# the answer does not hold both with those types.
+READ_WORKFLOW_PERMISSIONS='
+import json, sys
+try:
+    answer = json.load(sys.stdin)
+except ValueError:
+    sys.exit(1)
+fields = answer if isinstance(answer, dict) else {}
+permissions = fields.get("default_workflow_permissions")
+can_approve = fields.get("can_approve_pull_request_reviews")
+if permissions not in ("read", "write") or not isinstance(can_approve, bool):
+    sys.exit(1)
+print(permissions, "true" if can_approve else "false")
+'
+workflow_setting_refused() {
+  local answer=${1//$'\n'/ } organization=${REPO%%/*} owner_type
+  if grep -q "unknown flag" <<<"$answer"; then
+    old_gh "workflow permissions"
+  elif grep -q '(HTTP 409)' <<<"$answer"; then
+    # Only an organization has the settings page named below; a personal
+    # account's repository, or one whose owner cannot be read, gets
+    # GitHub's answer and its own page.
+    owner_type=$(gh api "repos/$REPO" --jq .owner.type 2>/dev/null || true)
+    if [ "$owner_type" = Organization ]; then
+      printf '%s: held off by the policy of %s or its enterprise (%s); an owner of %s turns it on under https://github.com/organizations/%s/settings/actions, Workflow permissions, or, where the enterprise sets it, an owner of the enterprise under its Policies, Actions; then run this again\n' \
+        "$WORKFLOW_SETTING" "$organization" "$answer" "$organization" "$organization"
+    else
+      printf '%s: held off by a policy above this repository (%s); turn it on under https://github.com/%s/settings/actions, Workflow permissions, once that page allows it, then run this again\n' \
+        "$WORKFLOW_SETTING" "$answer" "$REPO"
+    fi
+  else
+    printf '%s: not changed (%s); turn it on by hand under https://github.com/%s/settings/actions, Workflow permissions, with admin rights on the repository\n' \
+      "$WORKFLOW_SETTING" "$answer" "$REPO"
+  fi
+}
+refusal=$(mktemp)
+if ! workflow_answer=$(gh api "repos/$REPO/actions/permissions/workflow" 2>"$refusal"); then
+  workflow_setting_refused "$(<"$refusal")"
+elif ! permissions=$(python3 -c "$READ_WORKFLOW_PERMISSIONS" <<<"$workflow_answer"); then
+  workflow_setting_refused "GitHub's answer did not say the token's default permissions, so nothing was sent back"
+else
+  read -r default_permissions can_approve <<<"$permissions"
+  if [ "$can_approve" = true ]; then
+    echo "$WORKFLOW_SETTING: on already"
+  elif gh api --method PUT "repos/$REPO/actions/permissions/workflow" --silent \
+         -f default_workflow_permissions="$default_permissions" -F can_approve_pull_request_reviews=true 2>"$refusal"; then
+    echo "$WORKFLOW_SETTING: on"
+  else
+    workflow_setting_refused "$(<"$refusal")"
+  fi
+fi
+rm -f "$refusal"
+
+# 5b. The environment token-store, limited to the default branch. The Token
+# workflow (.github/workflows/token.yml) saves a lent Claude token there
+# with the SymphonyBoard App's key, and GitHub would make the environment
+# on its first run open to every branch, so a workflow pushed to any branch
+# could run the job that holds the App's token. An environment of that name
+# the repository has already is left as it is; a refusal is reported with
+# the page to make it on, and the run goes on.
+STORE=token-store
+store_refused() {
+  printf 'environment %s: not made (%s); make it at https://github.com/%s/settings/environments/new and, under Deployment branches and tags, choose %s alone\n' \
+    "$STORE" "$(head -n 1 <<<"$1")" "$REPO" "$DEFAULT_BRANCH"
+}
+refusal=$(mktemp)
+# An empty repository has no default branch, and read then shifts the
+# visibility into its place, so the branch must look like one.
+if [ -z "$VISIBILITY" ] || ! git check-ref-format --branch "$DEFAULT_BRANCH" >/dev/null 2>&1; then
+  echo "environment $STORE: not made, since the default branch is not known yet; run this again after the first commit"
+elif gh api "repos/$REPO/environments/$STORE" --silent 2>"$refusal"; then
+  echo "environment $STORE: exists, left as it is"
+elif ! grep -q '(HTTP 404)' "$refusal"; then
+  store_refused "$(<"$refusal")"
+elif ! gh api --method PUT "repos/$REPO/environments/$STORE" --silent \
+       -F 'deployment_branch_policy[protected_branches]=false' \
+       -F 'deployment_branch_policy[custom_branch_policies]=true' 2>"$refusal"; then
+  store_refused "$(<"$refusal")"
+elif ! gh api --method POST "repos/$REPO/environments/$STORE/deployment-branch-policies" --silent \
+       -f name="$DEFAULT_BRANCH" -f type=branch 2>"$refusal"; then
+  # the environment stands with no branch allowed, so nothing runs there
+  # until the rule is added by hand
+  printf 'environment %s: made with no branch allowed (%s); open https://github.com/%s/settings/environments, press %s and, under Deployment branches and tags, add %s\n' \
+    "$STORE" "$(head -n 1 "$refusal")" "$REPO" "$STORE" "$DEFAULT_BRANCH"
+else
+  echo "environment $STORE: made, $DEFAULT_BRANCH only"
+fi
+rm -f "$refusal"
+
+# 6. The labels, from the one list in tools/template_init.py. --force
+# updates a label that exists instead of failing on it.
+while IFS=$'\t' read -r label color description; do
+  gh label create "$label" --repo "$REPO" --color "$color" --description "$description" --force
+  printf 'label %s: created or updated\n' "$label"
+done < <(python3 -c '
+import sys
+sys.path.insert(0, "tools")
+from template_init import LABELS
+for name, color, description in LABELS:
+    print(name, color, description, sep="\t")
+')
+
+# 7. The variables asked for.
+if [ ${#VARIABLES[@]} -eq 0 ]; then
+  echo "variables: none asked for (--var NAME=VALUE; docs/setup/claude-action.md names them)"
+fi
+for pair in ${VARIABLES[@]+"${VARIABLES[@]}"}; do
+  gh variable set "${pair%%=*}" --repo "$REPO" --body "${pair#*=}"
+  printf 'variable %s: set\n' "${pair%%=*}"
+done
+
+# 8. The secret, from gh's own hidden prompt; nothing is echoed or saved.
+if [ "$TOKEN" = yes ]; then
+  echo "In another terminal, run: claude setup-token"
+  echo "Approve it in the browser, copy the token it prints, and paste it at the prompt below."
+  echo "Nothing you paste is shown or saved; gh encrypts it on this machine before it is sent."
+  gh secret set "$SECRET" --repo "$REPO"
+  printf 'secret %s: set\n' "$SECRET"
+else
+  printf 'secret %s: skipped; run again with --token, or run /install-github-app in Claude Code, which installs the app and stores the secret in one OAuth flow (docs/setup/claude-action.md)\n' "$SECRET"
+fi
+
+# 9. GitHub's reading of .github/CODEOWNERS, after the secret's prompt so
+# its lines are the last on the screen. A failed read (no such file on the
+# default branch) is reported, not fatal: everything above is done.
+if errors=$(gh api "repos/$REPO/codeowners/errors" --jq '.errors[] | "  line \(.line): \(.kind): \(.source)"' 2>&1); then
+  if [ -z "$errors" ]; then
+    echo "code owners: GitHub resolves every owner in .github/CODEOWNERS"
+  else
+    echo "code owners: GitHub cannot resolve these lines of .github/CODEOWNERS, so they ask nobody for review; name a user or a team with Write instead (docs/setup/github.md, section 7)"
+    printf '%s\n' "$errors"
+  fi
+else
+  printf 'code owners: could not read GitHub'"'"'s list (%s); open .github/CODEOWNERS on GitHub, which marks the lines it cannot resolve\n' "$(tr '\n' ' ' <<<"$errors")"
+fi

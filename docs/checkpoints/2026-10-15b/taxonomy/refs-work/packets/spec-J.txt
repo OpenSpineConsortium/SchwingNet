@@ -1,0 +1,304 @@
+# Packet spec-J: from the Symphony and Beethoven Taxonomy Spec, sections: 10. Gaps, risks and open questions; 11. Research questions
+
+=== [unit mggj4hxkexp.33812] heading level 2
+10. Gaps, risks and open questions
+
+=== [unit mggj4hxkexp.33850] table 1, row 0, column 0 (header row)
+#
+
+=== [unit mggj4hxkexp.33853] table 1, row 0, column 1 (header row)
+Risk
+
+=== [unit mggj4hxkexp.33859] table 1, row 0, column 2 (header row)
+Why it matters
+
+=== [unit mggj4hxkexp.33875] table 1, row 0, column 3 (header row)
+What would show it, or reduce it
+
+=== [unit mggj4hxkexp.33910] table 1, row 1, column 0
+1
+
+=== [unit mggj4hxkexp.33913] table 1, row 1, column 1
+One vendor sets the economics
+
+=== [unit mggj4hxkexp.33944] table 1, row 1, column 2
+Free public minutes, free governance and the ref semantics are GitHub's to change; the Actions terms limit use to the repository's own software project
+
+=== [unit mggj4hxkexp.34097] table 1, row 1, column 3
+GitHub's pricing and terms pages; a self-hosted runner as the fallback
+
+=== [unit mggj4hxkexp.34170] table 1, row 2, column 0
+2
+
+=== [unit mggj4hxkexp.34173] table 1, row 2, column 1
+The subscription token in CI
+
+=== [unit mggj4hxkexp.34203] table 1, row 2, column 2
+Anthropic documents it but advises an API key for a shared secret, its terms assume ordinary, individual usage, its rules for subscriptions moved several times in 2026, and bare mode will stop reading the token
+
+=== [unit mggj4hxkexp.34415] table 1, row 2, column 3
+Questions R6; keeping an API-key path in the workflows
+
+=== [unit mggj4hxkexp.34472] table 1, row 3, column 0
+3
+
+=== [unit mggj4hxkexp.34475] table 1, row 3, column 1
+One plan's window for every Actions worker
+
+=== [unit mggj4hxkexp.34519] table 1, row 3, column 2
+All workers share one person's five-hour and weekly limits; this project's own account reached its weekly limit on 2026-10-15 with several threads running
+
+=== [unit mggj4hxkexp.34675] table 1, row 3, column 3
+The planned cap of 10 Claude runs a day; one plan per worker
+
+=== [unit mggj4hxkexp.34738] table 1, row 4, column 0
+4
+
+=== [unit mggj4hxkexp.34741] table 1, row 4, column 1
+Symphony's own tests run private for now
+
+=== [unit mggj4hxkexp.34787] table 1, row 4, column 2
+Its plan runs the owner's first fresh test on private repositories only until the Phase 3 rails exist (the run cap, the qa check, checks pinned to Actions), though it recommends public repositories for the code workers change where possible; so Symphony's own runs have not yet tested the free-minutes story
+
+=== [unit mggj4hxkexp.34957] table 1, row 4, column 3
+Phase 3 landing
+
+=== [unit mggj4hxkexp.34975] table 1, row 5, column 0
+5
+
+=== [unit mggj4hxkexp.34978] table 1, row 5, column 1
+GitHub's rate limits before minutes
+
+=== [unit mggj4hxkexp.35015] table 1, row 5, column 2
+GITHUB_TOKEN gets 1,000 requests an hour per repository and the library has no retry on 429 or secondary limits yet
+
+=== [unit mggj4hxkexp.35132] table 1, row 5, column 3
+The measurement pass (question R3)
+
+=== [unit mggj4hxkexp.35169] table 1, row 6, column 0
+6
+
+=== [unit mggj4hxkexp.35172] table 1, row 6, column 1
+Maturity
+
+=== [unit mggj4hxkexp.35182] table 1, row 6, column 2
+The library is days old, 0.4.1 is the last release, later fixes are unreleased, and no full-scale benchmark of Symphony exists
+
+=== [unit mggj4hxkexp.35310] table 1, row 6, column 3
+Question R1; the next release
+
+=== [unit mggj4hxkexp.35342] table 1, row 7, column 0
+7
+
+=== [unit mggj4hxkexp.35345] table 1, row 7, column 1
+The name
+
+=== [unit mggj4hxkexp.35355] table 1, row 7, column 2
+openai/symphony (about 27,700 stars, Apache-2.0) also claims issues for coding agents
+
+=== [unit mggj4hxkexp.35442] table 1, row 7, column 3
+Question R10
+
+=== [unit mggj4hxkexp.35457] table 1, row 8, column 0
+8
+
+=== [unit mggj4hxkexp.35460] table 1, row 8, column 1
+Beethoven's evidence is mostly plans
+
+=== [unit mggj4hxkexp.35498] table 1, row 8, column 2
+Only splits.py of the research gates exists; the symbolic gate is a bounded search for most conditions, not a proof
+
+=== [unit mggj4hxkexp.35615] table 1, row 8, column 3
+Question R8
+
+=== [unit mggj4hxkexp.35629] table 1, row 9, column 0
+9
+
+=== [unit mggj4hxkexp.35632] table 1, row 9, column 1
+Beethoven's setting
+
+=== [unit mggj4hxkexp.35653] table 1, row 9, column 2
+Wayne State requires approval of AI tools; a personal plan has no BAA; Remote Control is unavailable under the HIPAA configuration and stores transcripts on Anthropic's servers
+
+=== [unit mggj4hxkexp.35831] table 1, row 9, column 3
+Written answers from the university and Anthropic, already preconditions of any paid edition
+
+=== [unit mggj4hxkexp.35926] table 1, row 10, column 0
+10
+
+=== [unit mggj4hxkexp.35930] table 1, row 10, column 1
+Prompt injection through issues
+
+=== [unit mggj4hxkexp.35963] table 1, row 10, column 2
+Claude workers in Actions read issue text and hold write tokens
+
+=== [unit mggj4hxkexp.36028] table 1, row 10, column 3
+Recorded decisions: only writers queue work, code owners guard the files that steer workers
+
+=== [unit mggj4hxkexp.36122] table 1, row 11, column 0
+11
+
+=== [unit mggj4hxkexp.36126] table 1, row 11, column 1
+The public story is untold
+
+=== [unit mggj4hxkexp.36154] table 1, row 11, column 2
+The site and READMEs never mention Actions, free minutes or cost; several internal documents lag GitHub's current behavior
+
+=== [unit mggj4hxkexp.36278] table 1, row 11, column 3
+The manual's talking points; a pass over the docs
+
+=== [unit mggj4hxkexp.42252] table 1, row 12, column 0
+12
+
+=== [unit mggj4hxkexp.42256] table 1, row 12, column 1
+The server enforces a claim only at its creation
+
+=== [unit mggj4hxkexp.42306] table 1, row 12, column 2
+Git refuses a second creation of claude/N, but GitHub accepts a fast-forward or forced push onto an existing claim under the recommended setup, since rulesets must leave claude/** alone. Only the local push guard refuses forced pushes, and on 2026-10-15 it was found to read the session's own directory rather than the clone a git -C command names, so a lease onto another worker's claim passed when run from a directory whose clone had neither branch, though it was refused from either worker's own clone
+
+=== [unit mggj4hxkexp.42701] table 1, row 12, column 3
+research/taxonomy/verify/02; a fix to the guard; question R4
+
+=== [unit mggj4hxkexp.42764] table 1, row 13, column 0
+13
+
+=== [unit mggj4hxkexp.42768] table 1, row 13, column 1
+The idle clock is the pusher's
+
+=== [unit mggj4hxkexp.42800] table 1, row 13, column 2
+Idleness is read from the head commit's committer date, which the pusher writes: a commit dated in the future holds a claim indefinitely, against the coordinator and a person's release alike, and one dated in the past is released at once. This is finding F8, open in 0.4.1 and on main
+
+=== [unit mggj4hxkexp.43086] table 1, row 13, column 3
+The unmerged F8 fix reads GitHub's record of the push, falling back to the commit date when that record is missing; question R4
+
+=== [unit mggj4hxkexp.43216] table 1, row 14, column 0
+14
+
+=== [unit mggj4hxkexp.43220] table 1, row 14, column 1
+A reopened issue can be orphaned
+
+=== [unit mggj4hxkexp.43254] table 1, row 14, column 2
+The labels claimed and in-review stay on a closed issue; if it is reopened, the board lists it nowhere and no worker is dealt it until a person takes them off
+
+=== [unit mggj4hxkexp.43414] table 1, row 14, column 3
+A board rule for reopened issues; question R4
+
+=== [unit mggj4hxkexp.36328] paragraph
+Open questions that are not risks:
+
+=== [unit mggj4hxkexp.36365] list item
+Whether a public, Claude-free Beethoven gate library is wanted, which is the only way Beethoven gets free minutes.
+
+=== [unit mggj4hxkexp.36481] list item
+Which subset of the taxonomy's twelve axes a short public explanation should use (the manual proposes three).
+
+=== [unit mggj4hxkexp.36592] list item
+Whether the experiment, once complete, belongs in this spec; it stays out of the grant until you say so.
+
+=== [unit mggj4hxkexp.36697] heading level 2
+11. Research questions
+
+=== [unit mggj4hxkexp.36720] paragraph
+Each question owns the Open claims named in it. A question is answered only when its acceptance criteria are met; until then the claim keeps its grade.
+
+=== [unit mggj4hxkexp.36875] table 2, row 0, column 0 (header row)
+#
+
+=== [unit mggj4hxkexp.36878] table 2, row 0, column 1 (header row)
+Question
+
+=== [unit mggj4hxkexp.36888] table 2, row 0, column 2 (header row)
+Answered when
+
+=== [unit mggj4hxkexp.36904] table 2, row 1, column 0
+R1
+
+=== [unit mggj4hxkexp.36908] table 2, row 1, column 1
+Does Symphony's protocol beat one agent, and the other two-agent arms, at a matched budget?
+
+=== [unit mggj4hxkexp.37001] table 2, row 1, column 2
+The coordbench full run you chose on 2026-10-15 (35 new pairs under five arms, plus the runs to redo) reports pass rates with exact tests and confidence intervals, and tokens, wall time and list-price dollars per pair; any gap under the roughly 15-point noise floor is reported as not established
+
+=== [unit mggj4hxkexp.37300] table 2, row 2, column 0
+R2
+
+=== [unit mggj4hxkexp.37304] table 2, row 2, column 1
+Is the combination in section 8 unique?
+
+=== [unit mggj4hxkexp.37345] table 2, row 2, column 2
+A documented search (FSE, ICSE and ASE 2026, arXiv cs.SE and cs.MA, GitHub topics, the awesome lists of agent orchestrators) scores every candidate on the five mechanisms of section 8; claim U1 stands only if none has four of the five, or (a), (c) and (d) together
+
+=== [unit mggj4hxkexp.37583] table 2, row 3, column 0
+R3
+
+=== [unit mggj4hxkexp.37587] table 2, row 3, column 1
+What does one coordination step cost, and which GitHub limit binds first?
+
+=== [unit mggj4hxkexp.37662] table 2, row 3, column 2
+The canary measures API calls per board run, the medians from claim to first pull request and from open to merge, and the number of concurrent workers at which GITHUB_TOKEN's 1,000 requests an hour or the 100-run queue gives out; the library retries on 429 and secondary limits
+
+=== [unit mggj4hxkexp.37942] table 2, row 4, column 0
+R4
+
+=== [unit mggj4hxkexp.37946] table 2, row 4, column 1
+Does the claim hold on github.com as it does on a local git server?
+
+=== [unit mggj4hxkexp.38015] table 2, row 4, column 2
+The canary records a second creation of claude/N, a push that descends from another worker's claim, a forced push with and without a ruleset, the rename on release, and a push after a merge; the clock question of F8 is settled
+
+=== [unit mggj4hxkexp.38244] table 2, row 5, column 0
+R5
+
+=== [unit mggj4hxkexp.38248] table 2, row 5, column 1
+Are Actions workers, benchmarks and a paid App inside GitHub's Actions terms?
+
+=== [unit mggj4hxkexp.38327] table 2, row 5, column 2
+GitHub's written answer, or a lawyer's reading, on three cases: Claude workers writing the repository's own code; coordbench running other projects' tasks; SymphonyBoard's open runtime running in customers' Actions
+
+=== [unit mggj4hxkexp.38544] table 2, row 6, column 0
+R6
+
+=== [unit mggj4hxkexp.38548] table 2, row 6, column 1
+Can several Actions workers run on one person's subscription token, and will that keep working?
+
+=== [unit mggj4hxkexp.38645] table 2, row 6, column 2
+Anthropic's written answer on a token in an organization secret, several parallel workers on one plan as ordinary, individual usage, and claude-code-action under bare mode; and a tested fallback that uses an API key
+
+=== [unit mggj4hxkexp.38863] table 2, row 7, column 0
+R7
+
+=== [unit mggj4hxkexp.38867] table 2, row 7, column 1
+What are free public minutes worth to an adopter?
+
+=== [unit mggj4hxkexp.38918] table 2, row 7, column 2
+For three workloads (one maintainer, a small team, a research lab), the monthly minutes and their price on a private repository, and the same work's price on gh-aw with an API key and on Copilot's agents in credits, with every assumption stated and every price linked
+
+=== [unit mggj4hxkexp.39188] table 2, row 8, column 0
+R8
+
+=== [unit mggj4hxkexp.39192] table 2, row 8, column 1
+Do Beethoven's checklist gates catch what reviewers miss?
+
+=== [unit mggj4hxkexp.39251] table 2, row 8, column 2
+REFORMS and CLAIM gates built for the first study catch seeded faults of the kinds Luo et al. found (leakage, post-hoc selection, metric misuse) that a reading of the paper alone misses; and a search names any other system that gates these checklists in code, or finds none
+
+=== [unit mggj4hxkexp.39527] table 2, row 9, column 0
+R9
+
+=== [unit mggj4hxkexp.39531] table 2, row 9, column 1
+Does the taxonomy separate the field?
+
+=== [unit mggj4hxkexp.39570] table 2, row 9, column 2
+Every system in section 5 is placed on all twelve axes with sources, no two systems practitioners treat as different share all twelve cells, and a systematic search confirms or refutes that no published taxonomy has a compute-payer axis
+
+=== [unit mggj4hxkexp.39809] table 2, row 10, column 0
+R10
+
+=== [unit mggj4hxkexp.39814] table 2, row 10, column 1
+How much does the name cost?
+
+=== [unit mggj4hxkexp.39844] table 2, row 10, column 2
+The first page of results on the main search engines and registries for Symphony with agents, coding or Claude is captured, with a recommendation: keep it, qualify it, or rename
+
+=== [unit mggj4hxkexp.40022] paragraph
+The manual's section on deep research turns these into one message to paste.

@@ -1,0 +1,23 @@
+{
+  "name": "Symphony setup",
+  "image": "mcr.microsoft.com/devcontainers/universal:linux",
+  "postCreateCommand": "bash scripts/codespace.sh install",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "terminal.integrated.profiles.linux": {
+          "Symphony setup": {
+            "path": "bash",
+            "args": [
+              "-lc",
+              "bash scripts/codespace.sh auto; exec bash -l"
+            ]
+          }
+        },
+        "terminal.integrated.defaultProfile.linux": "Symphony setup",
+        "workbench.startupEditor": "none",
+        "workbench.panel.opensMaximized": "always"
+      }
+    }
+  }
+}

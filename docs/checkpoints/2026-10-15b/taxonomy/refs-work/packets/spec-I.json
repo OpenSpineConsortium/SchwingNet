@@ -1,0 +1,266 @@
+{
+ "group": "spec-I",
+ "doc": "spec",
+ "units": [
+  {
+   "id": "mggj4hxkexp.22105",
+   "kind": "heading level 2",
+   "text": "9. GitHub Actions nativeness and free public minutes"
+  },
+  {
+   "id": "mggj4hxkexp.22158",
+   "kind": "heading level 3",
+   "text": "9.1 What \"Actions-native\" means here"
+  },
+  {
+   "id": "mggj4hxkexp.22195",
+   "kind": "paragraph",
+   "text": "Symphony's coordinator is not a service that talks to GitHub; it is a set of GitHub Actions jobs that run when GitHub says something happened. The board, the idle-claim release, the overlap notices, the dealing of work to workers, the protocol check and the cleanup are deterministic code on the workflow's own GITHUB_TOKEN, with no Claude call and no server. GitHub's own events trigger them, GitHub's concurrency queue serializes them, GitHub's refs make the claim atomic, and GitHub's rulesets and required checks enforce the result. Claude runs only where judgment is needed, as a job on the same runners. Verified, research note 01."
+  },
+  {
+   "id": "mggj4hxkexp.22833",
+   "kind": "heading level 3",
+   "text": "9.2 What is free"
+  },
+  {
+   "id": "mggj4hxkexp.22852",
+   "kind": "list item",
+   "text": "GitHub's docs: \"Use of the standard GitHub-hosted runners is free and unlimited on public repositories\" (supported-github-runners.md, Verified 2026-10-15). Self-hosted runners are free on every plan."
+  },
+  {
+   "id": "mggj4hxkexp.23053",
+   "kind": "list item",
+   "text": "A public repository gets twice the machine a private one does: Linux and Windows standard runners with 4 vCPUs, 16 GB and a 14 GB SSD, against 2 vCPUs and 8 GB in a private repository. Verified."
+  },
+  {
+   "id": "mggj4hxkexp.23249",
+   "kind": "list item",
+   "text": "The governance a coordination protocol needs is free there too: rulesets, required checks and code owners on GitHub Free, environments with required reviewers and wait timers (which on Free, Pro and Team exist only for public repositories), CodeQL code scanning, secret scanning with push protection, and Dependabot. Symphony's gate and its owner-approved release environment rely on this. Verified; GitHub's own pages disagree on whether dependency review is free on a public repository, and most say it is."
+  },
+  {
+   "id": "mggj4hxkexp.23759",
+   "kind": "list item",
+   "text": "GitHub announced a $0.002-a-minute charge on self-hosted runners on 2025-12-16 and withdrew it from the docs the next day; secondary sources say it is postponed, not cancelled (Verified from the github/docs history; Reported for the postponement)."
+  },
+  {
+   "id": "mggj4hxkexp.24007",
+   "kind": "heading level 3",
+   "text": "9.3 What \"unlimited\" does not mean"
+  },
+  {
+   "id": "mggj4hxkexp.24045",
+   "kind": "table 1, row 0, column 0 (header row)",
+   "text": "Limit"
+  },
+  {
+   "id": "mggj4hxkexp.24052",
+   "kind": "table 1, row 0, column 1 (header row)",
+   "text": "Value"
+  },
+  {
+   "id": "mggj4hxkexp.24059",
+   "kind": "table 1, row 0, column 2 (header row)",
+   "text": "What it means for Symphony"
+  },
+  {
+   "id": "mggj4hxkexp.24088",
+   "kind": "table 1, row 1, column 0",
+   "text": "Concurrent jobs on standard runners, per account"
+  },
+  {
+   "id": "mggj4hxkexp.24138",
+   "kind": "table 1, row 1, column 1",
+   "text": "Free 20, Pro 40, Team 60, Enterprise 500"
+  },
+  {
+   "id": "mggj4hxkexp.24180",
+   "kind": "table 1, row 1, column 2",
+   "text": "Caps how many Actions workers one account runs at once, across all its repositories"
+  },
+  {
+   "id": "mggj4hxkexp.24266",
+   "kind": "table 1, row 2, column 0",
+   "text": "One job"
+  },
+  {
+   "id": "mggj4hxkexp.24275",
+   "kind": "table 1, row 2, column 1",
+   "text": "6 hours; a run 35 days"
+  },
+  {
+   "id": "mggj4hxkexp.24299",
+   "kind": "table 1, row 2, column 2",
+   "text": "A worker's run must finish or hand off within 6 hours"
+  },
+  {
+   "id": "mggj4hxkexp.24355",
+   "kind": "table 1, row 3, column 0",
+   "text": "GITHUB_TOKEN"
+  },
+  {
+   "id": "mggj4hxkexp.24369",
+   "kind": "table 1, row 3, column 1",
+   "text": "1,000 REST requests an hour per repository"
+  },
+  {
+   "id": "mggj4hxkexp.24413",
+   "kind": "table 1, row 3, column 2",
+   "text": "Likely binds the board and coordinator before minutes do; not yet measured (R3)"
+  },
+  {
+   "id": "mggj4hxkexp.24465",
+   "kind": "table 1, row 4, column 0",
+   "text": "A queue: max concurrency group"
+  },
+  {
+   "id": "mggj4hxkexp.24497",
+   "kind": "table 1, row 4, column 1",
+   "text": "100 pending runs; the rest are cancelled"
+  },
+  {
+   "id": "mggj4hxkexp.24539",
+   "kind": "table 1, row 4, column 2",
+   "text": "The board's queue can overflow under a burst of events"
+  },
+  {
+   "id": "mggj4hxkexp.24596",
+   "kind": "table 1, row 5, column 0",
+   "text": "Content-creating requests"
+  },
+  {
+   "id": "mggj4hxkexp.24623",
+   "kind": "table 1, row 5, column 1",
+   "text": "About 80 a minute and 500 an hour"
+  },
+  {
+   "id": "mggj4hxkexp.24658",
+   "kind": "table 1, row 5, column 2",
+   "text": "Limits comments and labels in a burst"
+  },
+  {
+   "id": "mggj4hxkexp.24698",
+   "kind": "table 1, row 6, column 0",
+   "text": "Schedules"
+  },
+  {
+   "id": "mggj4hxkexp.24709",
+   "kind": "table 1, row 6, column 1",
+   "text": "Disabled in a public repository after 60 days without activity; delayed at the top of the hour"
+  },
+  {
+   "id": "mggj4hxkexp.24805",
+   "kind": "table 1, row 6, column 2",
+   "text": "Symphony's schedules are fallbacks only; events drive it"
+  },
+  {
+   "id": "mggj4hxkexp.24864",
+   "kind": "table 1, row 7, column 0",
+   "text": "Larger runners and GPUs"
+  },
+  {
+   "id": "mggj4hxkexp.24889",
+   "kind": "table 1, row 7, column 1",
+   "text": "Always billed, even on public repositories"
+  },
+  {
+   "id": "mggj4hxkexp.24933",
+   "kind": "table 1, row 7, column 2",
+   "text": "No free GPU; Beethoven's science cannot run on Actions"
+  },
+  {
+   "id": "mggj4hxkexp.24990",
+   "kind": "table 1, row 8, column 0",
+   "text": "Cache"
+  },
+  {
+   "id": "mggj4hxkexp.24997",
+   "kind": "table 1, row 8, column 1",
+   "text": "10 GB per repository; entries unused for 7 days are evicted"
+  },
+  {
+   "id": "mggj4hxkexp.25058",
+   "kind": "table 1, row 8, column 2",
+   "text": "Records kept in the cache must tolerate eviction"
+  },
+  {
+   "id": "mggj4hxkexp.25107",
+   "kind": "paragraph",
+   "text": "The limits are Verified from the github/docs repository at 12691d2 (2026-10-15), research note 09. What each means for Symphony is Inferred, including that the concurrency caps apply to public repositories (GitHub's table is by plan) and which limit binds first, which question R3 measures. GitHub has narrowed free public use only to fight abuse (approval for first-time contributors in 2021, holds on suspicious runs in 2026, a default block on pull_request_target from 2026-11-02), never by metering standard minutes (Inferred)."
+  },
+  {
+   "id": "mggj4hxkexp.25436",
+   "kind": "heading level 3",
+   "text": "9.4 What still costs money"
+  },
+  {
+   "id": "mggj4hxkexp.25465",
+   "kind": "list item",
+   "text": "Inference is never free. Symphony's Actions workers run on one person's Claude plan through CLAUDE_CODE_OAUTH_TOKEN (Pro $20 a month, or $17 billed annually; Max $100 or $200), and they share that plan's five-hour window and weekly limit with the person's own use. The Max and Team monthly API credits do not cover runs of the Claude Code GitHub Action. Verified, research note 10."
+  },
+  {
+   "id": "mggj4hxkexp.25848",
+   "kind": "list item",
+   "text": "A private repository gets 2,000 included minutes a month on Free, 3,000 on Pro and Team, 50,000 on Enterprise Cloud, then $0.006 a minute on Linux (since 2026-01-01), each job rounded up to a whole minute, and usage stops at the quota without a payment method. Rulesets that enforce the gate need Pro or Team there. Verified."
+  },
+  {
+   "id": "mggj4hxkexp.26175",
+   "kind": "list item",
+   "text": "An illustration (Inferred; the workload is an assumption): ten one-hour Claude runs a day is 18,000 runner minutes a month. On a public repository that costs nothing in minutes. On a private repository on Team it is 15,000 minutes over the quota, about $90 a month, before the board's own runs, each of which bills at least a minute."
+  },
+  {
+   "id": "mggj4hxkexp.26510",
+   "kind": "list item",
+   "text": "AI review layers (Copilot code review, GitHub's AI Scan, Claude Code Review) bill credits even on public repositories; Symphony's rules keep them out of the gate. Verified, research note 12."
+  },
+  {
+   "id": "mggj4hxkexp.26701",
+   "kind": "heading level 3",
+   "text": "9.5 The terms that govern it"
+  },
+  {
+   "id": "mggj4hxkexp.26732",
+   "kind": "list item",
+   "text": "GitHub's Actions terms (effective 2026-04-27) forbid offering Actions \"or any elements of the Actions product or service, for commercial purposes\", disproportionate burden, and, on GitHub-hosted runners, \"any other activity unrelated to the production, testing, deployment, or publication of the software project associated with the repository\" (Verified, github/site-policy). Agents writing and testing the repository's own code sit inside that line (Inferred). A benchmark that runs other projects' tasks, and a paid App whose runtime rides each customer's free minutes, need a reading (Open, question R5)."
+  },
+  {
+   "id": "mggj4hxkexp.27342",
+   "kind": "list item",
+   "text": "Anthropic documents the subscription token for claude-code-action and says runs then \"use your Claude subscription instead of API billing\", but advises an API key for a secret shared across repositories, since the token is tied to one person's plan; its legal page says plan limits \"assume ordinary, individual usage\" (Verified, GitHub Actions, legal and compliance). Whether several Actions workers on one plan are ordinary, individual usage is not stated (Open, question R6)."
+  },
+  {
+   "id": "mggj4hxkexp.27821",
+   "kind": "list item",
+   "text": "Claude Code's docs say bare mode will become the default for claude -p and that bare mode does not read the OAuth token; whether claude-code-action will keep the subscription path working is not stated (Open, question R6)."
+  },
+  {
+   "id": "mggj4hxkexp.28044",
+   "kind": "heading level 3",
+   "text": "9.6 Why it matters"
+  },
+  {
+   "id": "mggj4hxkexp.28065",
+   "kind": "list item",
+   "text": "A coordination step costs nothing. Claiming, releasing, ordering overlaps and rendering the board are runner minutes on GITHUB_TOKEN, free on a public repository, with no model call. Neighbors that coordinate with a model, or through a hosted service, pay for every step."
+  },
+  {
+   "id": "mggj4hxkexp.28338",
+   "kind": "list item",
+   "text": "A Claude run costs plan usage, not dollars. Until the plan's window is reached, one more worker run has no metered price. Of the neighbors examined that run agents in Actions, gh-aw, openai/codex-action and Copilot's agents meter inference by the token or the credit; aeon runs one agent on the subscription token but coordinates no claims (sections 5 and 8)."
+  },
+  {
+   "id": "mggj4hxkexp.28543",
+   "kind": "list item",
+   "text": "There is nothing to host. No server, database or daemon of the project's own: the forge is the lock, the CI is the scheduler, and the repository is the state. That removes the setup and the bill that keep a coordinator out of a small project, and it survives the churn of agent frameworks (section 5)."
+  },
+  {
+   "id": "mggj4hxkexp.28846",
+   "kind": "list item",
+   "text": "The offer is GitHub's alone, so far. No other major hosted CI found still offers new public projects unlimited free minutes (Azure Pipelines keeps them only for existing public projects, until those turn private in 2027): section 7.3 lists who withdrew, and CircleCI caps open source at 400,000 credits a month (Reported, from its pricing page by search). That is also a dependency: one vendor's pricing decides the economics (section 10)."
+  },
+  {
+   "id": "mggj4hxkexp.29006",
+   "kind": "list item",
+   "text": "It does not reach Beethoven as built. Beethoven's repositories are private and its science needs the cluster and GPUs, which Actions never gives free. Actions fits Beethoven as the control and verification plane, with the cluster as the compute plane, as its CI already does: the gate runs on GitHub's runners and a grid lane posts commit statuses back. A public Beethoven gate library would run free (Inferred)."
+  }
+ ]
+}

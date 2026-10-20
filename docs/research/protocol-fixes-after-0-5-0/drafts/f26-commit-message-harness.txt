@@ -1,0 +1,21 @@
+F26's regression trace, grammar prefixes and mutants, and its record
+
+validation/traces/F26.json plays four guard steps, each a command of the
+guard grammar judged by git's recorded answer, and b's lease from its
+second clone by env --ch: green with the fix, and red on the guard of
+main at ff75657 at steps 1, 2 and 3 and at the lease, step 5. The grammar
+gains four prefixes that give a wrapper a long option by a start of its
+name, taken with the command alone, 932 commands over the same 1,398
+argument lists, since a prefix changes what the guard reads and never
+git's words; the guard before the fix lets 471 of their forbidden pushes
+through, the fix none. lease-elsewhere gains env's way.
+
+Three mutants undo the fix's rules, each caught by the trace: a long
+option read only in full, env's abbreviated --chdir not read, and an
+optional value taken from the next word, 128 in all. known.json records
+F26 fixed after 0.5.0, as the canary reads it, and the design, the
+validation README and the guarantees say what F26 was, what the fix
+reads and what it leaves.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Qv1nNa8Mcvg1vvEuVqmPsE

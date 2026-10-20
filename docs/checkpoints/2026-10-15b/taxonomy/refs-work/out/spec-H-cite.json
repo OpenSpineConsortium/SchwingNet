@@ -1,0 +1,749 @@
+{
+ "edits": [
+  {
+   "unit_id": "mggj4hxkexp.49691",
+   "find": "on 2026-10-15 (research/taxonomy/verify/03);",
+   "replace": "on 2026-10-15 [[s1]];"
+  },
+  {
+   "unit_id": "mggj4hxkexp.49691",
+   "find": "one, unsorry, has",
+   "replace": "one, unsorry [[s2]], has"
+  },
+  {
+   "unit_id": "mggj4hxkexp.49691",
+   "find": "narrower searches in research notes 04, 11 and 12.",
+   "replace": "narrower searches [[s3,s4,s5]]."
+  },
+  {
+   "unit_id": "mggj4hxkexp.50574",
+   "find": "terraform-backend-git and actions-mutex (2020)",
+   "replace": "terraform-backend-git [[s6]] and actions-mutex [[s7]] (2020)"
+  },
+  {
+   "unit_id": "mggj4hxkexp.50574",
+   "find": "DND-IT/action-lock (2026)",
+   "replace": "DND-IT/action-lock (2026) [[s8]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.50574",
+   "find": "C-compiler harness (2026-02)",
+   "replace": "C-compiler harness (2026-02) [[s9]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.50574",
+   "find": "create-only branch push,",
+   "replace": "create-only branch push [[s10]],"
+  },
+  {
+   "unit_id": "mggj4hxkexp.50574",
+   "find": "gh-aw's ledger and unsorry's claims branch",
+   "replace": "gh-aw's ledger [[s11]] and unsorry's claims branch [[s12]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.50782",
+   "find": "(Gray and Cheriton, 1989);",
+   "replace": "(Gray and Cheriton, 1989) [[s13]];"
+  },
+  {
+   "unit_id": "mggj4hxkexp.50782",
+   "find": "a week without an update;",
+   "replace": "a week without an update [[s14]];"
+  },
+  {
+   "unit_id": "mggj4hxkexp.50782",
+   "find": "reaper in Actions (2026-06);",
+   "replace": "reaper in Actions (2026-06) [[s12,s15,s16]];"
+  },
+  {
+   "unit_id": "mggj4hxkexp.50782",
+   "find": "by its commit's date, the clock Symphony reads,",
+   "replace": "by its commit's date [[s8]], the clock Symphony reads [[s17]],"
+  },
+  {
+   "unit_id": "mggj4hxkexp.50782",
+   "find": "without freeing them",
+   "replace": "without freeing them [[s18]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.50908",
+   "find": "unsorry (2026-06)",
+   "replace": "unsorry (2026-06) [[s12,s19,s20]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.50908",
+   "find": "work queue (2026-10)",
+   "replace": "work queue (2026-10) [[s11,s21]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.50966",
+   "find": "with no claims;",
+   "replace": "with no claims [[s22]];"
+  },
+  {
+   "unit_id": "mggj4hxkexp.50966",
+   "find": "claude-code-action itself",
+   "replace": "claude-code-action itself [[s23,s24]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.51073",
+   "find": "not its code;",
+   "replace": "not its code [[s25]];"
+  },
+  {
+   "unit_id": "mggj4hxkexp.51073",
+   "find": "TLA+, P and Stateright",
+   "replace": "TLA+ [[s26]], P [[s27]] and Stateright [[s28]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.51479",
+   "find": "from the search above",
+   "replace": "from the search above [[s1]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.51722",
+   "find": "Inferred",
+   "replace": "Inferred [[s1]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.51732",
+   "find": "the idle clock is the pusher's",
+   "replace": "the idle clock is the pusher's [[s29,s30]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.52069",
+   "find": "(no paper databases)",
+   "replace": "(no paper databases) [[s1,s5]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.52399",
+   "find": "ran out of budget;",
+   "replace": "ran out of budget [[s4]];"
+  },
+  {
+   "unit_id": "mggj4hxkexp.52399",
+   "find": "mostly unbuilt",
+   "replace": "mostly unbuilt [[s31]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.52480",
+   "find": "REFORMS, CLAIM or",
+   "replace": "REFORMS [[s33]], CLAIM [[s34]] or"
+  },
+  {
+   "unit_id": "mggj4hxkexp.52725",
+   "find": "Inferred",
+   "replace": "Inferred [[s3]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.52940",
+   "find": "a narrow search;",
+   "replace": "a narrow search [[s5]];"
+  },
+  {
+   "unit_id": "mggj4hxkexp.52940",
+   "find": "not a proof",
+   "replace": "not a proof [[s32]]"
+  },
+  {
+   "unit_id": "mggj4hxkexp.53113",
+   "find": "gh-aw, unsorry and agentic-setup have one.",
+   "replace": "gh-aw [[s11]], unsorry [[s12]] and agentic-setup [[s10]] have one."
+  },
+  {
+   "unit_id": "mggj4hxkexp.53187",
+   "find": "unsorry and gh-aw do it too.",
+   "replace": "unsorry [[s19,s20]] and gh-aw [[s11]] do it too."
+  },
+  {
+   "unit_id": "mggj4hxkexp.53267",
+   "find": "free minutes there.",
+   "replace": "free minutes there [[s35]]."
+  },
+  {
+   "unit_id": "mggj4hxkexp.53347",
+   "find": "aeon and anyone using claude-code-action have it.",
+   "replace": "aeon [[s22]] and anyone using claude-code-action [[s23,s24]] have it."
+  },
+  {
+   "unit_id": "mggj4hxkexp.53433",
+   "find": "works the same way.",
+   "replace": "works the same way [[s36]]."
+  }
+ ],
+ "sources": [
+  {
+   "key": "s1",
+   "kind": "project-record",
+   "authors": [],
+   "title": "03 Uniqueness: is Symphony the only system that combines (a) to (e)?",
+   "container": "Symphony and Beethoven taxonomy research, project files",
+   "date": "2026-10-15",
+   "version": "",
+   "url": "",
+   "public_url": "",
+   "read": "record",
+   "path": "/mnt/project-files/research/taxonomy/verify/03-uniqueness.md",
+   "supports": "adversarial search of 25 candidates for mechanisms (a) to (e); none had four of the five"
+  },
+  {
+   "key": "s2",
+   "kind": "repository",
+   "authors": [
+    "agenticsnz"
+   ],
+   "title": "unsorry",
+   "container": "agenticsnz/unsorry",
+   "date": "",
+   "version": "029d328b",
+   "url": "https://github.com/agenticsnz/unsorry",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "unsorry, the closest rival: claims branch, TTL reaper, board and dispatcher in Actions"
+  },
+  {
+   "key": "s3",
+   "kind": "project-record",
+   "authors": [],
+   "title": "Beethoven launcher: what it is and how it works (research notes 04)",
+   "container": "Symphony and Beethoven taxonomy research, project files",
+   "date": "2026-10-15",
+   "version": "",
+   "url": "",
+   "public_url": "",
+   "read": "record",
+   "path": "/mnt/project-files/research/taxonomy/notes/04-beethoven-launcher.md",
+   "supports": "no search found another tool that launches Remote Control from an sbatch job through Open OnDemand"
+  },
+  {
+   "key": "s4",
+   "kind": "project-record",
+   "authors": [],
+   "title": "Beethoven's neighbors: AI-scientist systems, reproducibility frameworks and HPC workflow tooling (as of 2026-10-15)",
+   "container": "Symphony and Beethoven taxonomy research, project files",
+   "date": "2026-10-15",
+   "version": "",
+   "url": "",
+   "public_url": "",
+   "read": "record",
+   "path": "/mnt/project-files/research/taxonomy/notes/11-ai-for-science.md",
+   "supports": "no neighbor found gates a reporting checklist; the search ran out of budget"
+  },
+  {
+   "key": "s5",
+   "kind": "project-record",
+   "authors": [],
+   "title": "Verifying agent-written code and coordination protocols (as of 2026-10-15)",
+   "container": "Symphony and Beethoven taxonomy research, project files",
+   "date": "2026-10-15",
+   "version": "",
+   "url": "",
+   "public_url": "",
+   "read": "record",
+   "path": "/mnt/project-files/research/taxonomy/notes/12-verification.md",
+   "supports": "narrow GitHub search: no other contracts-plus-symbolic merge gate or interleaving-checked protocol found; no paper search"
+  },
+  {
+   "key": "s6",
+   "kind": "repository",
+   "authors": [
+    "plumber-cd"
+   ],
+   "title": "terraform-backend-git",
+   "container": "plumber-cd/terraform-backend-git",
+   "date": "2020-04-12",
+   "version": "",
+   "url": "https://github.com/plumber-cd/terraform-backend-git",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "pushing a locks/<file> branch as an atomic lock"
+  },
+  {
+   "key": "s7",
+   "kind": "repository",
+   "authors": [
+    "shogo82148"
+   ],
+   "title": "actions-mutex",
+   "container": "shogo82148/actions-mutex",
+   "date": "2020-12-27",
+   "version": "",
+   "url": "https://github.com/shogo82148/actions-mutex",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "a branch push as a mutex for Actions jobs"
+  },
+  {
+   "key": "s8",
+   "kind": "repository",
+   "authors": [
+    "DND-IT"
+   ],
+   "title": "action-lock",
+   "container": "DND-IT/action-lock",
+   "date": "2026-02-20",
+   "version": "",
+   "url": "https://github.com/DND-IT/action-lock",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "refs/locks/<name> created once (422); a lock stale after 600 s by its commit date is removed"
+  },
+  {
+   "key": "s9",
+   "kind": "blog-post",
+   "authors": [
+    "Carlini N"
+   ],
+   "title": "Building a C compiler with a team of parallel Claudes",
+   "container": "Anthropic Engineering",
+   "date": "2026-02-05",
+   "version": "",
+   "url": "https://www.anthropic.com/engineering/building-c-compiler",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "task locks as files in current_tasks/ synchronized by git among parallel Claudes"
+  },
+  {
+   "key": "s10",
+   "kind": "repository-file",
+   "authors": [
+    "marcelusfernandes"
+   ],
+   "title": "scripts/claim.mts",
+   "container": "marcelusfernandes/agentic-setup",
+   "date": "",
+   "version": "4907361",
+   "url": "https://github.com/marcelusfernandes/agentic-setup/blob/4907361/scripts/claim.mts",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "agentic-setup's create-only branch push as a lock"
+  },
+  {
+   "key": "s11",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "docs/src/content/docs/reference/work-queue.md",
+   "container": "github/gh-aw",
+   "date": "2026-10-15",
+   "version": "dc91dbed",
+   "url": "https://github.com/github/gh-aw/blob/dc91dbed/docs/src/content/docs/reference/work-queue.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "gh-aw's work-queue ledger on a branch, published by compare-and-swap; dispatcher and workers as Actions runs"
+  },
+  {
+   "key": "s12",
+   "kind": "repository-file",
+   "authors": [
+    "agenticsnz"
+   ],
+   "title": "docs/adrs/ADR-004-Claims-Branch-First-Push-Wins.md",
+   "container": "agenticsnz/unsorry",
+   "date": "",
+   "version": "029d328b",
+   "url": "https://github.com/agenticsnz/unsorry/blob/029d328b/docs/adrs/ADR-004-Claims-Branch-First-Push-Wins.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "unsorry's first-push-wins claim files on a shared claims branch (2026-06-10)"
+  },
+  {
+   "key": "s13",
+   "kind": "repository-file",
+   "authors": [
+    "Kleppmann"
+   ],
+   "title": "content/en/ch9.md",
+   "container": "Vonng/ddia",
+   "date": "",
+   "version": "",
+   "url": "https://raw.githubusercontent.com/Vonng/ddia/HEAD/content/en/ch9.md",
+   "public_url": "",
+   "read": "search",
+   "path": "",
+   "supports": "Gray and Cheriton's leases (SOSP 1989), as cited in DDIA 2nd edition ch. 9"
+  },
+  {
+   "key": "s14",
+   "kind": "repository-file",
+   "authors": [],
+   "title": "docs/contributing/zulipbot-usage.md",
+   "container": "zulip/zulip",
+   "date": "",
+   "version": "",
+   "url": "https://raw.githubusercontent.com/zulip/zulip/main/docs/contributing/zulipbot-usage.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "zulipbot unassigns an issue after a week without updates and 3 days without a reply"
+  },
+  {
+   "key": "s15",
+   "kind": "repository-file",
+   "authors": [
+    "agenticsnz"
+   ],
+   "title": ".github/workflows/reaper.yml",
+   "container": "agenticsnz/unsorry",
+   "date": "",
+   "version": "029d328b",
+   "url": "https://github.com/agenticsnz/unsorry/blob/029d328b/.github/workflows/reaper.yml",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "unsorry's reaper, every 15 minutes in Actions"
+  },
+  {
+   "key": "s16",
+   "kind": "repository-file",
+   "authors": [
+    "agenticsnz"
+   ],
+   "title": "tools/gate_b/config.py",
+   "container": "agenticsnz/unsorry",
+   "date": "",
+   "version": "029d328b",
+   "url": "https://github.com/agenticsnz/unsorry/blob/029d328b/tools/gate_b/config.py",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "unsorry's claim TTL of 7200 seconds"
+  },
+  {
+   "key": "s17",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "docs/agents/PROTOCOL.md",
+   "container": "OpenSpineConsortium/symphony-template",
+   "date": "2026-10-15",
+   "version": "15d3f22",
+   "url": "https://github.com/OpenSpineConsortium/symphony-template/blob/main/docs/agents/PROTOCOL.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Symphony's release after 24 hours by the committer date of the claim branch's head"
+  },
+  {
+   "key": "s18",
+   "kind": "repository-file",
+   "authors": [
+    "jarmstrong158"
+   ],
+   "title": "DESIGN.md",
+   "container": "jarmstrong158/agentsync",
+   "date": "",
+   "version": "4d190ad",
+   "url": "https://github.com/jarmstrong158/agentsync/blob/4d190ad/DESIGN.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "agentsync flags claims older than 24 hours as stale rather than expiring them"
+  },
+  {
+   "key": "s19",
+   "kind": "repository-file",
+   "authors": [
+    "agenticsnz"
+   ],
+   "title": ".github/workflows/queue-board.yml",
+   "container": "agenticsnz/unsorry",
+   "date": "",
+   "version": "029d328b",
+   "url": "https://github.com/agenticsnz/unsorry/blob/029d328b/.github/workflows/queue-board.yml",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "unsorry's queue board rendered in Actions"
+  },
+  {
+   "key": "s20",
+   "kind": "repository-file",
+   "authors": [
+    "agenticsnz"
+   ],
+   "title": ".github/workflows/queue-dispatcher.yml",
+   "container": "agenticsnz/unsorry",
+   "date": "",
+   "version": "029d328b",
+   "url": "https://github.com/agenticsnz/unsorry/blob/029d328b/.github/workflows/queue-dispatcher.yml",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "unsorry's dispatcher in Actions"
+  },
+  {
+   "key": "s21",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "docs/src/content/docs/blog/2026-10-05-weekly-update.md",
+   "container": "github/gh-aw",
+   "date": "2026-10-15",
+   "version": "dc91dbed",
+   "url": "https://github.com/github/gh-aw/blob/dc91dbed/docs/src/content/docs/blog/2026-10-05-weekly-update.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "work queues and built-in ledgers land in gh-aw v0.90.3 (week to 2026-10-05)"
+  },
+  {
+   "key": "s22",
+   "kind": "project-record",
+   "authors": [],
+   "title": "07 Multi-agent orchestration frameworks, interoperability protocols and parallel coding-agent tools (as of 2026-10-15)",
+   "container": "Symphony and Beethoven taxonomy research, project files",
+   "date": "2026-10-15",
+   "version": "",
+   "url": "",
+   "public_url": "",
+   "read": "record",
+   "path": "/mnt/project-files/research/taxonomy/notes/07-multi-agent-frameworks.md",
+   "supports": "aeon: one agent's skills on an Actions schedule, accepting CLAUDE_CODE_OAUTH_TOKEN (read from a clone; no repository owner recorded)"
+  },
+  {
+   "key": "s23",
+   "kind": "repository",
+   "authors": [
+    "Anthropic"
+   ],
+   "title": "claude-code-action",
+   "container": "anthropics/claude-code-action",
+   "date": "2026-10-14",
+   "version": "a26b07d8",
+   "url": "https://github.com/anthropics/claude-code-action",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the GitHub Action that runs Claude Code, authenticating with CLAUDE_CODE_OAUTH_TOKEN"
+  },
+  {
+   "key": "s24",
+   "kind": "documentation",
+   "authors": [
+    "Anthropic"
+   ],
+   "title": "Claude Code GitHub Actions",
+   "container": "Claude Code Docs (code.claude.com)",
+   "date": "",
+   "version": "",
+   "url": "https://code.claude.com/docs/en/github-actions",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "claude-code-action on a subscription OAuth token from claude setup-token"
+  },
+  {
+   "key": "s25",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "specs/work-queue/README.md",
+   "container": "github/gh-aw",
+   "date": "",
+   "version": "8f27974",
+   "url": "https://github.com/github/gh-aw/blob/8f27974/specs/work-queue/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "TLA+ models of gh-aw's work queue, bounded TLC and 68 mutation configurations; not of the Go or JavaScript code"
+  },
+  {
+   "key": "s26",
+   "kind": "repository-file",
+   "authors": [
+    "TLA+ Foundation"
+   ],
+   "title": "README.md",
+   "container": "tlaplus/tlaplus",
+   "date": "",
+   "version": "",
+   "url": "https://raw.githubusercontent.com/tlaplus/tlaplus/HEAD/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the TLA+ tools: the TLC model checker, PlusCal and SANY"
+  },
+  {
+   "key": "s27",
+   "kind": "repository-file",
+   "authors": [],
+   "title": "README.md",
+   "container": "p-org/P",
+   "date": "",
+   "version": "",
+   "url": "https://raw.githubusercontent.com/p-org/P/HEAD/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "P: communicating state machines, modeled and checked, used across AWS"
+  },
+  {
+   "key": "s28",
+   "kind": "repository",
+   "authors": [],
+   "title": "stateright",
+   "container": "stateright/stateright",
+   "date": "",
+   "version": "",
+   "url": "https://github.com/stateright/stateright",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "Stateright: an embedded model checker for Rust actors"
+  },
+  {
+   "key": "s29",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "validation/DESIGN.md",
+   "container": "OpenSpineConsortium/symphony-protocol",
+   "date": "2026-10-15",
+   "version": "a3a5b4d",
+   "url": "https://github.com/OpenSpineConsortium/symphony-protocol/blob/a3a5b4d/validation/DESIGN.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "finding F8: idleness is measured by the committer date, which the person pushing sets"
+  },
+  {
+   "key": "s30",
+   "kind": "project-record",
+   "authors": [],
+   "title": "Verify 02: the claim lock, idleness and re-claims after a merge",
+   "container": "Symphony and Beethoven taxonomy research, project files",
+   "date": "2026-10-15",
+   "version": "",
+   "url": "",
+   "public_url": "",
+   "read": "record",
+   "path": "/mnt/project-files/research/taxonomy/verify/02-claim-lock.md",
+   "supports": "experiment: a future-dated head holds a claim, a past-dated one is released at once"
+  },
+  {
+   "key": "s31",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "README.md",
+   "container": "OpenSpineConsortium/beethoven-research",
+   "date": "2026-10-07",
+   "version": "7e8fd69",
+   "url": "https://github.com/OpenSpineConsortium/beethoven-research/blob/7e8fd69/README.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "splits.py the first module built; the rest not built"
+  },
+  {
+   "key": "s32",
+   "kind": "repository-file",
+   "authors": [
+    "OpenSpineConsortium"
+   ],
+   "title": "CLAUDE.md",
+   "container": "OpenSpineConsortium/beethoven-qa",
+   "date": "2026-10-09",
+   "version": "85f0e1c",
+   "url": "https://github.com/OpenSpineConsortium/beethoven-qa/blob/85f0e1c/CLAUDE.md",
+   "public_url": "",
+   "read": "opened",
+   "path": "",
+   "supports": "the gate as the required merge check; 13 of 165 conditions confirmed over all paths, the rest a bounded search"
+  },
+  {
+   "key": "s33",
+   "kind": "paper",
+   "authors": [
+    "Kapoor",
+    "Narayanan"
+   ],
+   "title": "REFORMS: Consensus-based Recommendations for Machine-learning-based Science",
+   "container": "Science Advances 10(18):eadk3452",
+   "date": "2024-05",
+   "version": "",
+   "url": "https://doi.org/10.1126/sciadv.adk3452",
+   "public_url": "",
+   "read": "search",
+   "path": "",
+   "supports": "the REFORMS checklist"
+  },
+  {
+   "key": "s34",
+   "kind": "paper",
+   "authors": [
+    "Tejani",
+    "Klontzas",
+    "Gatti",
+    "Mongan",
+    "Moy",
+    "Park",
+    "Kahn"
+   ],
+   "title": "CLAIM 2024 Update",
+   "container": "Radiology: Artificial Intelligence 6(4):e240300",
+   "date": "2024-05-29",
+   "version": "",
+   "url": "https://doi.org/10.1148/ryai.240300",
+   "public_url": "",
+   "read": "search",
+   "path": "",
+   "supports": "the CLAIM checklist"
+  },
+  {
+   "key": "s35",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "content/billing/concepts/product-billing/github-actions.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs/blob/12691d2/content/billing/concepts/product-billing/github-actions.md",
+   "public_url": "https://docs.github.com/en/billing/concepts/product-billing/github-actions",
+   "read": "opened",
+   "path": "",
+   "supports": "Actions is free on standard hosted runners for public repositories"
+  },
+  {
+   "key": "s36",
+   "kind": "repository-file",
+   "authors": [
+    "GitHub"
+   ],
+   "title": "content/copilot/concepts/copilot-surfaces/copilot-on-github.md",
+   "container": "github/docs",
+   "date": "2026-10-15",
+   "version": "12691d2",
+   "url": "https://github.com/github/docs/blob/12691d2/content/copilot/concepts/copilot-surfaces/copilot-on-github.md",
+   "public_url": "https://docs.github.com/en/copilot/concepts/copilot-surfaces/copilot-on-github",
+   "read": "opened",
+   "path": "",
+   "supports": "Copilot works on one branch at a time and opens one pull request per task"
+  }
+ ],
+ "uncited": [],
+ "checker_problems": 0,
+ "changes": [
+  "Paragraph: the verify/03 mention became its own marker (the search is that file's work); \"in research notes 04, 11 and 12\" became the three notes' markers, since those narrower searches are the notes' own.",
+  "Prior-art table: each named system carries its repository, file or post; Gray and Cheriton is cited through DDIA ch. 9, the only place the notes read it (search grade); aeon is cited through research note 07, which read a clone and records no repository owner or URL.",
+  "Claims table: each grade cell carries the search it rests on (verify/03 for U1 to U3; notes 04, 11, 12 for U4 to U6); the F8 caveat cites validation/DESIGN.md and verify/02's experiment; \"mostly unbuilt\" and \"not a proof\" cite beethoven-research's README and beethoven-qa's CLAUDE.md; REFORMS and CLAIM carry their papers.",
+  "Not-unique list: each named system carries its source; free minutes cite GitHub's billing doc at 12691d2; Copilot's one branch, one pull request cites copilot-on-github.md at 12691d2."
+ ]
+}

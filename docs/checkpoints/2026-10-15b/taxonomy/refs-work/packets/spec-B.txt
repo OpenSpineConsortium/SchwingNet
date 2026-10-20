@@ -1,0 +1,181 @@
+# Packet spec-B: from the Symphony and Beethoven Taxonomy Spec, sections: 3. The taxonomy
+
+=== [unit mggj4hxkexp.7397] heading level 2
+3. The taxonomy
+
+=== [unit mggj4hxkexp.7413] paragraph
+No published taxonomy answers the question this spec asks. The academic taxonomies of agents read for it (2024 to 2026) classify by architecture, control structure, interaction type, autonomy, environment, memory and domain; none has an axis for where the compute runs and who pays for it (Inferred from the dozen read, not a systematic review; research note 13). Industry categories moved in 2025 and 2026 from assistants to agents: Gartner's 2025 report was a Magic Quadrant for AI Code Assistants (Reported, from a news digest), and a single secondary page, possibly machine-written, reports a 2026 Magic Quadrant for Enterprise AI Coding Agents (Reported). Thoughtworks' Technology Radar Vol 34 (April 2026) named "agent-native project memory and task tracking" a new category, with Beads as its example, put a small team of coding agents in Assess and coding agent swarms in Caution (Reported, from a dataset of the radar). The CNCF landscape has an AI Agent category with eleven subcategories, none for coding agents or for coordinating them (Verified, landscape.yml).
+    links in this unit: "landscape.yml" -> https://github.com/cncf/landscape/blob/master/landscape.yml
+
+=== [unit mggj4hxkexp.8430] paragraph
+The taxonomy below keeps the axes that recur in that literature and adds the one it lacks. An axis earns its place only if it separates the neighbors in section 5.
+
+=== [unit mggj4hxkexp.8597] table 1, row 0, column 0 (header row)
+#
+
+=== [unit mggj4hxkexp.8600] table 1, row 0, column 1 (header row)
+Axis
+
+=== [unit mggj4hxkexp.8606] table 1, row 0, column 2 (header row)
+Categories
+
+=== [unit mggj4hxkexp.8618] table 1, row 0, column 3 (header row)
+Built on
+
+=== [unit mggj4hxkexp.8629] table 1, row 1, column 0
+1
+
+=== [unit mggj4hxkexp.8632] table 1, row 1, column 1
+Stack layer
+
+=== [unit mggj4hxkexp.8645] table 1, row 1, column 2
+L0 model; L1 single-agent harness (Claude Code, Codex CLI); L2 agent framework or SDK; L3 coordination layer; L4 execution platform (sandbox, CI, HPC scheduler, hosted service); L5 domain workflow
+
+=== [unit mggj4hxkexp.8843] table 1, row 1, column 3
+The CNCF landscape; Sapkota et al. 2025; Anthropic's split of harness and sandbox
+    links in this unit: "Sapkota et al. 2025" -> https://arxiv.org/abs/2505.10468
+
+=== [unit mggj4hxkexp.8927] table 1, row 2, column 0
+2
+
+=== [unit mggj4hxkexp.8930] table 1, row 2, column 1
+Autonomy, by the human's role
+
+=== [unit mggj4hxkexp.8961] table 1, row 2, column 2
+Operator, collaborator, consultant, approver, observer
+
+=== [unit mggj4hxkexp.9017] table 1, row 2, column 3
+Feng, McDonald and Zhang 2025; the SE 3.0 levels of Hassan et al. 2025
+    links in this unit: "Feng, McDonald and Zhang 2025" -> https://arxiv.org/abs/2506.12469; "Hassan et al. 2025" -> https://arxiv.org/abs/2509.06216
+
+=== [unit mggj4hxkexp.9090] table 1, row 3, column 0
+3
+
+=== [unit mggj4hxkexp.9093] table 1, row 3, column 1
+Control topology
+
+=== [unit mggj4hxkexp.9111] table 1, row 3, column 2
+Single agent; orchestrator and workers; hierarchy of planners; decentralized peers; shared medium (blackboard, ledger)
+
+=== [unit mggj4hxkexp.9231] table 1, row 3, column 3
+Guo et al. 2024; Tran et al. 2025; Anthropic's patterns
+    links in this unit: "Guo et al. 2024" -> https://arxiv.org/abs/2402.01680; "Tran et al. 2025" -> https://arxiv.org/abs/2501.06322; "Anthropic's patterns" -> https://www.anthropic.com/engineering/building-effective-agents
+
+=== [unit mggj4hxkexp.9289] table 1, row 4, column 0
+4
+
+=== [unit mggj4hxkexp.9292] table 1, row 4, column 1
+Communication medium
+
+=== [unit mggj4hxkexp.9314] table 1, row 4, column 2
+Direct messages (mailboxes, A2A); context protocol (MCP); shared task list or blackboard; traces in the work itself (issues, branches, labels); tuple space
+
+=== [unit mggj4hxkexp.9471] table 1, row 4, column 3
+Yang et al. 2025; Gelernter 1985; Nii 1986; Heylighen 2016 on stigmergy
+    links in this unit: "Yang et al. 2025" -> https://arxiv.org/abs/2504.16736
+
+=== [unit mggj4hxkexp.9545] table 1, row 5, column 0
+5
+
+=== [unit mggj4hxkexp.9548] table 1, row 5, column 1
+Concurrency control over shared work
+
+=== [unit mggj4hxkexp.9586] table 1, row 5, column 2
+Partitioning only (file ownership); lock; lease (a lock with expiry, renewal and a fence); optimistic (private copy, validate at merge, retry); hybrid
+
+=== [unit mggj4hxkexp.9738] table 1, row 5, column 3
+Kung and Robinson 1981; Gray and Cheriton 1989; Chubby, 2006
+    links in this unit: "Chubby, 2006" -> https://www.usenix.org/legacy/event/osdi06/tech/full_papers/burrows/burrows.pdf
+
+=== [unit mggj4hxkexp.9801] table 1, row 6, column 0
+6
+
+=== [unit mggj4hxkexp.9804] table 1, row 6, column 1
+Dependencies managed
+
+=== [unit mggj4hxkexp.9826] table 1, row 6, column 2
+Shared resource; prerequisite; transfer; usability; simultaneity; task and subtask
+
+=== [unit mggj4hxkexp.9910] table 1, row 6, column 3
+Malone and Crowston 1994
+    links in this unit: "Malone and Crowston 1994" -> https://doi.org/10.1145/174666.174668
+
+=== [unit mggj4hxkexp.9937] table 1, row 7, column 0
+7
+
+=== [unit mggj4hxkexp.9940] table 1, row 7, column 1
+Execution environment
+
+=== [unit mggj4hxkexp.9963] table 1, row 7, column 2
+Developer machine; vendor cloud; CI runner; HPC batch job; self-hosted server
+
+=== [unit mggj4hxkexp.10042] table 1, row 7, column 3
+Guo et al.; Suter et al. 2025; GitHub's runner docs
+    links in this unit: "Suter et al. 2025" -> https://arxiv.org/abs/2506.07838
+
+=== [unit mggj4hxkexp.10096] table 1, row 8, column 0
+8
+
+=== [unit mggj4hxkexp.10099] table 1, row 8, column 1
+Trigger and lifetime
+
+=== [unit mggj4hxkexp.10121] table 1, row 8, column 2
+Interactive; event-driven; scheduled; batch; long-running loop or durable execution
+
+=== [unit mggj4hxkexp.10206] table 1, row 8, column 3
+Suter et al.; the two modes of claude-code-action
+
+=== [unit mggj4hxkexp.10258] table 1, row 9, column 0
+9
+
+=== [unit mggj4hxkexp.10261] table 1, row 9, column 1
+State and memory
+
+=== [unit mggj4hxkexp.10279] table 1, row 9, column 2
+Stateless; context window; session log; project memory files; shared work ledger; lineage record
+
+=== [unit mggj4hxkexp.10377] table 1, row 9, column 3
+Sapkota et al.; CNCF State and Memory; Beads
+
+=== [unit mggj4hxkexp.10424] table 1, row 10, column 0
+10
+
+=== [unit mggj4hxkexp.10428] table 1, row 10, column 1
+Cost model and payer
+
+=== [unit mggj4hxkexp.10450] table 1, row 10, column 2
+Inference: metered API, flat subscription, vendor credits; compute: own machine, vendor, free CI minutes, institution's allocation; licence: open, open core, proprietary
+
+=== [unit mggj4hxkexp.10621] table 1, row 10, column 3
+New here, from GitHub's billing pages and Anthropic's pricing
+
+=== [unit mggj4hxkexp.10685] table 1, row 11, column 0
+11
+
+=== [unit mggj4hxkexp.10689] table 1, row 11, column 1
+Verification and governance
+
+=== [unit mggj4hxkexp.10718] table 1, row 11, column 2
+None; self-check; model as judge; deterministic gates (tests, required checks, formal methods); human approval; external certification
+
+=== [unit mggj4hxkexp.10854] table 1, row 11, column 3
+MAST; Thoughtworks' feedback sensors; Hassan et al.'s Merge-Readiness Packs
+    links in this unit: "MAST" -> https://github.com/multi-agent-systems-failure-taxonomy/MAST
+
+=== [unit mggj4hxkexp.10932] table 1, row 12, column 0
+12
+
+=== [unit mggj4hxkexp.10936] table 1, row 12, column 1
+Domain and maturity
+
+=== [unit mggj4hxkexp.10957] table 1, row 12, column 2
+Software engineering task; scientific workflow; research software by kind, use and readiness level; business process
+
+=== [unit mggj4hxkexp.11075] table 1, row 12, column 3
+Liu et al. 2024; Suter et al.; the GI and de-RSE guideline after Hasselbring et al. 2024
+
+=== [unit mggj4hxkexp.11164] paragraph
+Three axes carry this study. Axis 10 is where the Actions story lives and the one no taxonomy has. Axis 5 is where Symphony's claim sits: a claim made by creating a branch, a lease-like release and optimistic merging. Axis 11 is where Beethoven's claim sits: a tool, never a model, decides. Axes 1, 3 and 7 locate the neighbors.
+
+=== [unit mggj4hxkexp.11483] paragraph
+The classical frames fit closely. Malone and Crowston define coordination as "managing dependencies among activities" and name four families of dependency, one of which, producer and consumer, splits into prerequisite, transfer and usability (Reported, from mirrors of the paper; research note 13). Each of the six kinds has a counterpart in agent work: claiming an issue is a shared resource, a blocker is a prerequisite, a pull request is a transfer, a required check is a usability standard, the landing order of overlapping work is simultaneity, and an epic is task and subtask (Inferred; research note 13).

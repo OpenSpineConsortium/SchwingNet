@@ -1,0 +1,22 @@
+---
+name: beethoven-20-store-readiness
+description: Where Beethoven 20.0.0 stands against the Chrome Web Store checklist (docs/store/SUBMISSION.md section 0) after the owner's 2026-10-13 go-ahead for a public listing, and which steps are the owner's
+metadata:
+  type: project
+  modified: 2026-10-13T20:19:14.889Z
+---
+
+Owner's go-ahead 2026-10-13 19:42: "the store accepted 19 but i want to release 20 and public, do everything i have to". The store ACCEPTED 19.0.0; 20.0.0 keeps its number and ships on a Public listing with agreement version 14 and privacy statement version 15 (both 2026-10-13; the 13/14 texts of 2026-10-11 never shipped). Texts say the listing "needs no invitation", never "anyone", because the item's Regions stay United States only.
+
+Landed or open as of 20:20Z: beethoven-access#6 merged and deployed (invitation step retired, Google account optional, mock st1234 from any installation). beethoven-extension#11 (branch claude/public-listing) and site#17 (branch claude/beethoven-public-listing) are draft PRs, to be merged by the thread once #11's CI is green (the site has no CI). The site's `store_url` in tools/build_site.py stays None until the owner gives the listing's address https://chromewebstore.google.com/detail/<item id>.
+
+Still to do after the merge: build the package from main (`npm ci`, typecheck, test, `npm run zip`), write release/20.0.0/ (README.md, SHA256SUMS.txt, guides/, reviewer/beethoven-mock-portal.zip: 30 files, assembled in the thread's scratchpad), tag v20.0.0 (the proxy may refuse), deliver the zip via /mnt/project-files. Owner's: the listing address, Visibility Public in the dashboard, the hand test (TEST_BEFORE_UPLOAD.md) on the real grid, fresh screenshots from 20.0.0 (current ones are 9.0.0's), the two st1234 curls from WSL, and the upload with publish-store.mjs. Never upload without the owner's own words on the upload.
+
+**Why:** the checkpoint's item 8 ("Beethoven 20.0.0 to the store") is the owner's; a session cannot reach the site, the worker or the store from the cloud (proxy 403).
+**How to apply:** when asked about the extension's status, recheck #11, site#17, release/20.0.0 and the tags before repeating this. See [[symphony-owner-items]].
+
+Update 20:27Z: beethoven-extension#11 merged (main be0b86d) and site#17 merged (master 7d1da68). The 20.0.0 package was built from be0b86d (SHA-256 33294f8b9ea662d9354eef416a05ca1d570918dbcb74cd4b8f73e05f9bbbd790, 441,350 bytes), copied to /mnt/project-files/beethoven/beethoven-20.0.0-chrome.zip, and its record release/20.0.0 is merged (beethoven-extension#12, main 0c9daaa, 20:35Z). The thread delivered the zip and the owner's list (listing address, Public visibility, screenshots, hand test, st1234 curls, the upload) at 20:35Z; the thread stays open for the owner's word on the upload. The repository has no tags at all, so none is made for 20.0.0.
+
+Update 2026-10-13 23:45Z: the owner gave the listing address (item id heoopgbkbkfckhhpbkkcgigohfekjicn); site#18 merged puts it on the install card (master 5ef1f62). Automatic store releases: beethoven-extension#13 (branch claude/release-from-ci) adds .github/workflows/release.yml calling the org's chrome-store-release-kit, like symphony-extension; the owner still has to make the OAuth client, the refresh token and set the five CWS_ secrets plus CWS_ON_PUSH (the step-by-step is the Claude Doc https://claude.ai/code/artifact/faad8276-a633-4b1b-902b-0716790a0f26). The store kit release/20.0.0/store-kit/ (and store-kit-20.0.0.zip) is the submission package; 20.0.0 screenshots were captured headlessly against the mock where possible, the rest are 9.0.0's with 07-SCREENSHOTS-OUT-OF-DATE.txt. The first upload of 20.0.0 stays the owner's, by hand.
+
+Update 2026-10-14 00:35Z: delivered. beethoven-extension#13 (release.yml calling the org kit), #14 (20.0.0 screenshots 2-5 from real captures in extension/store-assets/raw-20/, store kit release/20.0.0/store-kit, kit zip pinned in SHA256SUMS) and #15 (the kit's build command in a subshell; the first release run failed because `cd extension` moved the zip lookup) are merged. Kit zip at /mnt/project-files/beethoven/store-kit-20.0.0.zip. Owner's remaining steps are in the Claude Doc (upload by hand, OAuth client, refresh token, five CWS_ secrets, CWS_ON_PUSH=upload, one manual run). A capture of the 20.0.0 build in a Chromium older than Chrome 148 needs the manifest floor lowered and a wrapper on the background's onMessage listener (raw-20/LIST.txt); the e2e harness's words.mjs is behind 20.0.0's welcome texts.

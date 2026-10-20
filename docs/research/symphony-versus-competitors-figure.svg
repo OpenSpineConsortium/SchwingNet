@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="US-ASCII"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 608" width="760" height="608" role="img" aria-label="Of the forge-kept, flat-plan systems found, only Symphony takes sessions and Actions agents" font-family="Helvetica, Arial, sans-serif" font-size="13">
+<rect x="0" y="0" width="760" height="608" fill="#ffffff"/>
+<text x="24" y="28" font-size="15" font-weight="600" fill="#1f1f1f" text-anchor="start">Of the forge-kept, flat-plan systems found, only Symphony takes sessions and Actions agents</text>
+<text x="442" y="46" font-size="11.5" font-weight="400" fill="#6b6b6b" text-anchor="middle">Where the coordination state lives</text>
+<text x="246" y="64" font-size="13" font-weight="600" fill="#1f1f1f" text-anchor="middle">Own machine, server</text>
+<text x="246" y="80" font-size="13" font-weight="600" fill="#1f1f1f" text-anchor="middle">or database</text>
+<text x="442" y="72" font-size="13" font-weight="600" fill="#1f1f1f" text-anchor="middle">The vendor's service</text>
+<text x="638" y="72" font-size="13" font-weight="600" fill="#1f1f1f" text-anchor="middle">The forge: GitHub</text>
+<rect x="152" y="92" width="188" height="96" fill="none" stroke="#d6d6d6"/>
+<rect x="348" y="92" width="188" height="96" fill="none" stroke="#d6d6d6"/>
+<rect x="544" y="92" width="188" height="96" fill="none" stroke="#d6d6d6"/>
+<rect x="152" y="196" width="188" height="352" fill="none" stroke="#d6d6d6"/>
+<rect x="348" y="196" width="188" height="352" fill="none" stroke="#d6d6d6"/>
+<rect x="544" y="196" width="188" height="352" fill="#f1f1ee" stroke="#d6d6d6"/>
+<text x="24" y="128" font-size="13" font-weight="600" fill="#1f1f1f" text-anchor="start">Inference metered</text>
+<text x="24" y="144" font-size="11.5" font-weight="400" fill="#6b6b6b" text-anchor="start">by the system itself:</text>
+<text x="24" y="160" font-size="11.5" font-weight="400" fill="#6b6b6b" text-anchor="start">credits or API tokens</text>
+<text x="24" y="358" font-size="13" font-weight="600" fill="#1f1f1f" text-anchor="start">Inference on what</text>
+<text x="24" y="374" font-size="13" font-weight="600" fill="#1f1f1f" text-anchor="start">the user brings:</text>
+<text x="24" y="390" font-size="11.5" font-weight="400" fill="#6b6b6b" text-anchor="start">a plan or own key</text>
+<rect x="159" y="104" width="174" height="56" rx="8" fill="none" stroke="#8a8a8a" stroke-width="1"/>
+<text x="171" y="128" font-size="13" font-weight="600" fill="#1f1f1f" text-anchor="start">C compiler harness</text>
+<text x="171" y="144" font-size="11.5" font-weight="400" fill="#6b6b6b" text-anchor="start">Anthropic; API, one host</text>
+<rect x="355" y="104" width="174" height="72" rx="8" fill="none" stroke="#8a8a8a" stroke-width="1"/>
+<text x="367" y="128" font-size="13" font-weight="600" fill="#1f1f1f" text-anchor="start">Copilot cloud agent</text>
+<text x="367" y="144" font-size="11.5" font-weight="400" fill="#6b6b6b" text-anchor="start">with Claude and Codex;</text>
+<text x="367" y="160" font-size="11.5" font-weight="400" fill="#6b6b6b" text-anchor="start">credits plus minutes</text>
+<rect x="551" y="104" width="174" height="72" rx="8" fill="none" stroke="#8a8a8a" stroke-width="1"/>
+<text x="563" y="128" font-size="13" font-weight="600" fill="#1f1f1f" text-anchor="start">gh-aw work queue</text>
+<text x="563" y="144" font-size="11.5" font-weight="400" fill="#6b6b6b" text-anchor="start">API key or credits;</text>
+<text x="563" y="160" font-size="11.5" font-weight="400" fill="#6b6b6b" text-anchor="start">plan token not supported</text>
+<rect x="159" y="208" width="174" height="56" rx="8" fill="none" stroke="#8a8a8a" stroke-width="1"/>
+<text x="171" y="232" font-size="13" font-weight="600" fill="#1f1f1f" text-anchor="start">openai/symphony</text>
+<text x="171" y="248" font-size="11.5" font-weight="400" fill="#6b6b6b" text-anchor="start">one daemon of the user's</text>
+<rect x="159" y="272" width="174" height="56" rx="8" fill="none" stroke="#8a8a8a" stroke-width="1"/>
+<text x="171" y="296" font-size="13" font-weight="600" fill="#1f1f1f" text-anchor="start">paperclip</text>
+<text x="171" y="312" font-size="11.5" font-weight="400" fill="#6b6b6b" text-anchor="start">a self-hosted server</text>
+<rect x="159" y="336" width="174" height="56" rx="8" fill="none" stroke="#8a8a8a" stroke-width="1"/>
+<text x="171" y="360" font-size="13" font-weight="600" fill="#1f1f1f" text-anchor="start">Beads and Gas Town</text>
+<text x="171" y="376" font-size="11.5" font-weight="400" fill="#6b6b6b" text-anchor="start">a Dolt database</text>
+<rect x="159" y="400" width="174" height="56" rx="8" fill="none" stroke="#8a8a8a" stroke-width="1"/>
+<text x="171" y="424" font-size="13" font-weight="600" fill="#1f1f1f" text-anchor="start">Agent teams</text>
+<text x="171" y="440" font-size="11.5" font-weight="400" fill="#6b6b6b" text-anchor="start">Claude Code; one machine</text>
+<rect x="355" y="208" width="174" height="56" rx="8" fill="none" stroke="#8a8a8a" stroke-width="1"/>
+<text x="367" y="232" font-size="13" font-weight="600" fill="#1f1f1f" text-anchor="start">Claude Code Projects</text>
+<text x="367" y="248" font-size="11.5" font-weight="400" fill="#6b6b6b" text-anchor="start">one account's threads</text>
+<rect x="551" y="208" width="174" height="72" rx="8" fill="#2f6fb3" fill-opacity="0.12" stroke="#2f6fb3" stroke-width="2"/>
+<text x="563" y="232" font-size="13" font-weight="600" fill="#1f1f1f" text-anchor="start">Symphony</text>
+<text x="563" y="248" font-size="11.5" font-weight="400" fill="#1f1f1f" text-anchor="start">sessions, routines and</text>
+<text x="563" y="264" font-size="11.5" font-weight="400" fill="#1f1f1f" text-anchor="start">agents in Actions alike</text>
+<rect x="551" y="288" width="174" height="56" rx="8" fill="none" stroke="#8a8a8a" stroke-width="1"/>
+<text x="563" y="312" font-size="13" font-weight="600" fill="#1f1f1f" text-anchor="start">unsorry</text>
+<text x="563" y="328" font-size="11.5" font-weight="400" fill="#6b6b6b" text-anchor="start">volunteers' machines</text>
+<rect x="551" y="352" width="174" height="56" rx="8" fill="none" stroke="#8a8a8a" stroke-width="1"/>
+<text x="563" y="376" font-size="13" font-weight="600" fill="#1f1f1f" text-anchor="start">agentic-setup</text>
+<text x="563" y="392" font-size="11.5" font-weight="400" fill="#6b6b6b" text-anchor="start">one local orchestrator</text>
+<rect x="551" y="416" width="174" height="56" rx="8" fill="none" stroke="#8a8a8a" stroke-width="1"/>
+<text x="563" y="440" font-size="13" font-weight="600" fill="#1f1f1f" text-anchor="start">CCPM</text>
+<text x="563" y="456" font-size="11.5" font-weight="400" fill="#6b6b6b" text-anchor="start">one local session</text>
+<rect x="551" y="480" width="174" height="56" rx="8" fill="none" stroke="#8a8a8a" stroke-width="1"/>
+<text x="563" y="504" font-size="13" font-weight="600" fill="#1f1f1f" text-anchor="start">aeon</text>
+<text x="563" y="520" font-size="11.5" font-weight="400" fill="#6b6b6b" text-anchor="start">one agent in Actions</text>
+<text x="24" y="570" font-size="11.5" font-weight="400" fill="#6b6b6b" text-anchor="start">Tinted cell: state kept in the forge and inference on the user's own plan; five systems share it.</text>
+<text x="24" y="586" font-size="11.5" font-weight="400" fill="#6b6b6b" text-anchor="start">Within it, only Symphony puts people's sessions and agents in Actions under one claim rule (claim 1, Inferred).</text>
+</svg>

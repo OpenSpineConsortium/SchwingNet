@@ -1,0 +1,831 @@
+{
+ "group": "man-B",
+ "doc": "manual",
+ "units": [
+  {
+   "id": "mrzzsdjxrm2.9844",
+   "kind": "heading level 2",
+   "text": "4. Checking a claim"
+  },
+  {
+   "id": "mrzzsdjxrm2.9864",
+   "kind": "paragraph",
+   "text": "Every claim in the spec carries one of four grades, defined in the spec's section 1: Verified, Inferred, Reported or Open. A grade rises only with new evidence, and falls as soon as a source contradicts it. This section is how to move one."
+  },
+  {
+   "id": "mrzzsdjxrm2.10104",
+   "kind": "heading level 3",
+   "text": "Testing a claim, in six steps"
+  },
+  {
+   "id": "mrzzsdjxrm2.10136",
+   "kind": "list item",
+   "text": "Write it with its scope. One sentence, with the version, the plan and the date it holds for. \"Free and unlimited\" is a claim about standard runners on public repositories as of 2026-10-15, not about Actions in general."
+  },
+  {
+   "id": "mrzzsdjxrm2.10356",
+   "kind": "list item",
+   "text": "Write what would refute it, before looking for support. The spec's section 8 gives one refuting observation for each uniqueness claim, and section 11 gives each research question its acceptance criteria."
+  },
+  {
+   "id": "mrzzsdjxrm2.10561",
+   "kind": "list item",
+   "text": "Look for the refutation first. Search by mechanism, not by product name, since a rival rarely uses our words: first push wins, lock branch, claims branch, reaper, idle claim, compare-and-swap with agents, CLAUDE_CODE_OAUTH_TOKEN in a workflow."
+  },
+  {
+   "id": "mrzzsdjxrm2.10806",
+   "kind": "list item",
+   "text": "Run it when it can be run. A claim about git or the protocol is cheapest to settle on a scratch repository. The claim-lock check (research/taxonomy/verify/02) did this and found or confirmed three things the documents did not say: the server enforces a claim only at its creation, the push guard judges a lease by the session's own directory rather than the clone a git -C command names, and the idle clock is the pusher's (the spec's risks 12 and 13)."
+  },
+  {
+   "id": "mrzzsdjxrm2.11200",
+   "kind": "list item",
+   "text": "Record the search even when it finds nothing: where you looked, with which terms, on what date. A search that finds nothing makes a claim Inferred, never Verified, and the spec says how far the search went."
+  },
+  {
+   "id": "mrzzsdjxrm2.11408",
+   "kind": "list item",
+   "text": "When the claim fails, narrow it or drop it. Change the spec first, then every talking point that rests on it (section 6)."
+  },
+  {
+   "id": "mrzzsdjxrm2.11530",
+   "kind": "paragraph",
+   "text": "A worked case. An early draft of the placement figure said only Symphony puts its agents under an atomic claim. The adversarial search found three systems that have one: gh-aw's work queue (a compare-and-swap on a ledger branch), unsorry (first push wins on a shared claims branch) and agentic-setup (a create-only branch push). The atomic claim moved to the spec's list of what is not unique, and claim U1 now names only the combination, with the observation that would refute it."
+  },
+  {
+   "id": "mrzzsdjxrm2.12012",
+   "kind": "heading level 3",
+   "text": "Which sources count"
+  },
+  {
+   "id": "mrzzsdjxrm2.12035",
+   "kind": "table 1, row 0, column 0 (header row)",
+   "text": "Rank"
+  },
+  {
+   "id": "mrzzsdjxrm2.12041",
+   "kind": "table 1, row 0, column 1 (header row)",
+   "text": "Source"
+  },
+  {
+   "id": "mrzzsdjxrm2.12049",
+   "kind": "table 1, row 0, column 2 (header row)",
+   "text": "Highest grade it gives"
+  },
+  {
+   "id": "mrzzsdjxrm2.12073",
+   "kind": "table 1, row 0, column 3 (header row)",
+   "text": "Take care"
+  },
+  {
+   "id": "mrzzsdjxrm2.12085",
+   "kind": "table 1, row 1, column 0",
+   "text": "1"
+  },
+  {
+   "id": "mrzzsdjxrm2.12088",
+   "kind": "table 1, row 1, column 1",
+   "text": "The thing itself: code at a named commit, an experiment you ran, a run log"
+  },
+  {
+   "id": "mrzzsdjxrm2.12164",
+   "kind": "table 1, row 1, column 2",
+   "text": "Verified"
+  },
+  {
+   "id": "mrzzsdjxrm2.12174",
+   "kind": "table 1, row 1, column 3",
+   "text": "Give the commit or the command, so anyone can repeat it"
+  },
+  {
+   "id": "mrzzsdjxrm2.12232",
+   "kind": "table 1, row 2, column 0",
+   "text": "2"
+  },
+  {
+   "id": "mrzzsdjxrm2.12235",
+   "kind": "table 1, row 2, column 1",
+   "text": "The vendor's own documentation, terms and pricing pages"
+  },
+  {
+   "id": "mrzzsdjxrm2.12292",
+   "kind": "table 1, row 2, column 2",
+   "text": "Verified, with the date read"
+  },
+  {
+   "id": "mrzzsdjxrm2.12322",
+   "kind": "table 1, row 2, column 3",
+   "text": "Prices and terms move; a price without its date is Reported"
+  },
+  {
+   "id": "mrzzsdjxrm2.12384",
+   "kind": "table 1, row 3, column 0",
+   "text": "3"
+  },
+  {
+   "id": "mrzzsdjxrm2.12387",
+   "kind": "table 1, row 3, column 1",
+   "text": "A paper with its data or code"
+  },
+  {
+   "id": "mrzzsdjxrm2.12418",
+   "kind": "table 1, row 3, column 2",
+   "text": "Verified for counts you can re-derive from it"
+  },
+  {
+   "id": "mrzzsdjxrm2.12465",
+   "kind": "table 1, row 3, column 3",
+   "text": "Quote counts, not percentages: CooperBench states its gap three ways"
+  },
+  {
+   "id": "mrzzsdjxrm2.12536",
+   "kind": "table 1, row 4, column 0",
+   "text": "4"
+  },
+  {
+   "id": "mrzzsdjxrm2.12539",
+   "kind": "table 1, row 4, column 1",
+   "text": "A project's README, design record, release notes or issues"
+  },
+  {
+   "id": "mrzzsdjxrm2.12599",
+   "kind": "table 1, row 4, column 2",
+   "text": "Verified for what the project says of itself; Reported for what it says works"
+  },
+  {
+   "id": "mrzzsdjxrm2.12678",
+   "kind": "table 1, row 4, column 3",
+   "text": "gh-aw's design record for its queue is still a draft"
+  },
+  {
+   "id": "mrzzsdjxrm2.12733",
+   "kind": "table 1, row 5, column 0",
+   "text": "5"
+  },
+  {
+   "id": "mrzzsdjxrm2.12736",
+   "kind": "table 1, row 5, column 1",
+   "text": "Blogs, talks, analyst reports, search summaries, a model's answer"
+  },
+  {
+   "id": "mrzzsdjxrm2.12803",
+   "kind": "table 1, row 5, column 2",
+   "text": "Reported"
+  },
+  {
+   "id": "mrzzsdjxrm2.12813",
+   "kind": "table 1, row 5, column 3",
+   "text": "A lead to the primary source, never the source; this includes the deep-research report until its links are opened"
+  },
+  {
+   "id": "mrzzsdjxrm2.12927",
+   "kind": "heading level 3",
+   "text": "When a source is out of reach"
+  },
+  {
+   "id": "mrzzsdjxrm2.12957",
+   "kind": "paragraph",
+   "text": "This project's sessions cannot open several hosts (section 2). Read GitHub's documentation from the github/docs repository's content files on raw.githubusercontent.com, at a commit you name. Read a paper from its authors' repository where there is one, as CooperBench's PDF was read from cooperbench/website. Leave the rest to claude.ai Research (section 3), then have a thread open each link the report gives. A claim whose only source stays out of reach keeps the grade Reported, with a note of what to re-read."
+  },
+  {
+   "id": "mrzzsdjxrm2.13471",
+   "kind": "heading level 2",
+   "text": "5. Placing any tool in the taxonomy"
+  },
+  {
+   "id": "mrzzsdjxrm2.13507",
+   "kind": "paragraph",
+   "text": "Use this for any system someone names as an alternative, a competitor or a partner."
+  },
+  {
+   "id": "mrzzsdjxrm2.13591",
+   "kind": "heading level 3",
+   "text": "The procedure"
+  },
+  {
+   "id": "mrzzsdjxrm2.13607",
+   "kind": "list item",
+   "text": "Pin the version. Name the repository and commit, or the product, plan and date. A placement goes stale when the tool ships."
+  },
+  {
+   "id": "mrzzsdjxrm2.13732",
+   "kind": "list item",
+   "text": "Find its claim. Ask one question of the code, not the README: when two of its agents want the same piece of work, what stops the second, and what frees a claim nobody finishes? Most of the differences in the field sit in that answer (axis 5)."
+  },
+  {
+   "id": "mrzzsdjxrm2.13976",
+   "kind": "list item",
+   "text": "Put it in a quadrant. Where does the coordination state live, and what does one more agent run cost as the tool is usually run? Those are the two axes of the spec's placement figure."
+  },
+  {
+   "id": "mrzzsdjxrm2.14160",
+   "kind": "list item",
+   "text": "Fill the worksheet below, one cell per axis, each with its source. Not stated is an answer; a guess is not."
+  },
+  {
+   "id": "mrzzsdjxrm2.14269",
+   "kind": "list item",
+   "text": "Score it on the five mechanisms, (a) to (e) of the spec's section 8: yes, partial (say what is missing) or no. Only a yes counts toward what would refute claim U1: four of the five, or (a), (c) and (d) together. A tool that reaches either goes to the spec before anything else."
+  },
+  {
+   "id": "mrzzsdjxrm2.14507",
+   "kind": "list item",
+   "text": "Add it to the spec: a row in the placement table of section 4 if it shares a cell with Symphony or Beethoven, a row in the matching table of section 5, and a line in the prior-art table of section 8 for each mechanism it has."
+  },
+  {
+   "id": "mrzzsdjxrm2.14733",
+   "kind": "heading level 3",
+   "text": "The worksheet"
+  },
+  {
+   "id": "mrzzsdjxrm2.14747",
+   "kind": "paragraph",
+   "text": "Copy this table for each tool."
+  },
+  {
+   "id": "mrzzsdjxrm2.14781",
+   "kind": "table 2, row 0, column 0 (header row)",
+   "text": "#"
+  },
+  {
+   "id": "mrzzsdjxrm2.14784",
+   "kind": "table 2, row 0, column 1 (header row)",
+   "text": "Axis"
+  },
+  {
+   "id": "mrzzsdjxrm2.14790",
+   "kind": "table 2, row 0, column 2 (header row)",
+   "text": "Question"
+  },
+  {
+   "id": "mrzzsdjxrm2.14800",
+   "kind": "table 2, row 0, column 3 (header row)",
+   "text": "Answer"
+  },
+  {
+   "id": "mrzzsdjxrm2.14808",
+   "kind": "table 2, row 0, column 4 (header row)",
+   "text": "Source"
+  },
+  {
+   "id": "mrzzsdjxrm2.14817",
+   "kind": "table 2, row 1, column 0",
+   "text": "0"
+  },
+  {
+   "id": "mrzzsdjxrm2.14820",
+   "kind": "table 2, row 1, column 1",
+   "text": "Identity"
+  },
+  {
+   "id": "mrzzsdjxrm2.14830",
+   "kind": "table 2, row 1, column 2",
+   "text": "Name; repository and commit, or product and plan; date read"
+  },
+  {
+   "id": "mrzzsdjxrm2.14896",
+   "kind": "table 2, row 2, column 0",
+   "text": "1"
+  },
+  {
+   "id": "mrzzsdjxrm2.14899",
+   "kind": "table 2, row 2, column 1",
+   "text": "Stack layer"
+  },
+  {
+   "id": "mrzzsdjxrm2.14912",
+   "kind": "table 2, row 2, column 2",
+   "text": "Which of L0 to L5 does it occupy, and what does it sit on?"
+  },
+  {
+   "id": "mrzzsdjxrm2.14977",
+   "kind": "table 2, row 3, column 0",
+   "text": "2"
+  },
+  {
+   "id": "mrzzsdjxrm2.14980",
+   "kind": "table 2, row 3, column 1",
+   "text": "Autonomy"
+  },
+  {
+   "id": "mrzzsdjxrm2.14990",
+   "kind": "table 2, row 3, column 2",
+   "text": "While it works, does a person operate, collaborate, consult, approve or only observe?"
+  },
+  {
+   "id": "mrzzsdjxrm2.15082",
+   "kind": "table 2, row 4, column 0",
+   "text": "3"
+  },
+  {
+   "id": "mrzzsdjxrm2.15085",
+   "kind": "table 2, row 4, column 1",
+   "text": "Control topology"
+  },
+  {
+   "id": "mrzzsdjxrm2.15103",
+   "kind": "table 2, row 4, column 2",
+   "text": "Who decides who does what: one agent, an orchestrator, planners, peers, or a shared medium?"
+  },
+  {
+   "id": "mrzzsdjxrm2.15201",
+   "kind": "table 2, row 5, column 0",
+   "text": "4"
+  },
+  {
+   "id": "mrzzsdjxrm2.15204",
+   "kind": "table 2, row 5, column 1",
+   "text": "Communication medium"
+  },
+  {
+   "id": "mrzzsdjxrm2.15226",
+   "kind": "table 2, row 5, column 2",
+   "text": "How does one agent learn of another's work?"
+  },
+  {
+   "id": "mrzzsdjxrm2.15276",
+   "kind": "table 2, row 6, column 0",
+   "text": "5"
+  },
+  {
+   "id": "mrzzsdjxrm2.15279",
+   "kind": "table 2, row 6, column 1",
+   "text": "Concurrency control"
+  },
+  {
+   "id": "mrzzsdjxrm2.15300",
+   "kind": "table 2, row 6, column 2",
+   "text": "What stops a second agent taking the same work, and what frees a claim nobody finishes?"
+  },
+  {
+   "id": "mrzzsdjxrm2.15394",
+   "kind": "table 2, row 7, column 0",
+   "text": "6"
+  },
+  {
+   "id": "mrzzsdjxrm2.15397",
+   "kind": "table 2, row 7, column 1",
+   "text": "Dependencies"
+  },
+  {
+   "id": "mrzzsdjxrm2.15411",
+   "kind": "table 2, row 7, column 2",
+   "text": "Which does it manage: shared resource, prerequisite, transfer, usability, simultaneity, task and subtask?"
+  },
+  {
+   "id": "mrzzsdjxrm2.15523",
+   "kind": "table 2, row 8, column 0",
+   "text": "7"
+  },
+  {
+   "id": "mrzzsdjxrm2.15526",
+   "kind": "table 2, row 8, column 1",
+   "text": "Execution environment"
+  },
+  {
+   "id": "mrzzsdjxrm2.15549",
+   "kind": "table 2, row 8, column 2",
+   "text": "Where does an agent run?"
+  },
+  {
+   "id": "mrzzsdjxrm2.15580",
+   "kind": "table 2, row 9, column 0",
+   "text": "8"
+  },
+  {
+   "id": "mrzzsdjxrm2.15583",
+   "kind": "table 2, row 9, column 1",
+   "text": "Trigger and lifetime"
+  },
+  {
+   "id": "mrzzsdjxrm2.15605",
+   "kind": "table 2, row 9, column 2",
+   "text": "What starts a run, and what ends it?"
+  },
+  {
+   "id": "mrzzsdjxrm2.15648",
+   "kind": "table 2, row 10, column 0",
+   "text": "9"
+  },
+  {
+   "id": "mrzzsdjxrm2.15651",
+   "kind": "table 2, row 10, column 1",
+   "text": "State and memory"
+  },
+  {
+   "id": "mrzzsdjxrm2.15669",
+   "kind": "table 2, row 10, column 2",
+   "text": "Where does the durable record live?"
+  },
+  {
+   "id": "mrzzsdjxrm2.15711",
+   "kind": "table 2, row 11, column 0",
+   "text": "10"
+  },
+  {
+   "id": "mrzzsdjxrm2.15715",
+   "kind": "table 2, row 11, column 1",
+   "text": "Cost model and payer"
+  },
+  {
+   "id": "mrzzsdjxrm2.15737",
+   "kind": "table 2, row 11, column 2",
+   "text": "Who pays for inference and for compute, and under what licence?"
+  },
+  {
+   "id": "mrzzsdjxrm2.15807",
+   "kind": "table 2, row 12, column 0",
+   "text": "11"
+  },
+  {
+   "id": "mrzzsdjxrm2.15811",
+   "kind": "table 2, row 12, column 1",
+   "text": "Verification"
+  },
+  {
+   "id": "mrzzsdjxrm2.15825",
+   "kind": "table 2, row 12, column 2",
+   "text": "What decides that work is acceptable, and can it block a merge?"
+  },
+  {
+   "id": "mrzzsdjxrm2.15895",
+   "kind": "table 2, row 13, column 0",
+   "text": "12"
+  },
+  {
+   "id": "mrzzsdjxrm2.15899",
+   "kind": "table 2, row 13, column 1",
+   "text": "Domain and maturity"
+  },
+  {
+   "id": "mrzzsdjxrm2.15920",
+   "kind": "table 2, row 13, column 2",
+   "text": "What work is it for, and is it released, pre-release or a design?"
+  },
+  {
+   "id": "mrzzsdjxrm2.15992",
+   "kind": "table 2, row 14, column 0",
+   "text": "(a)"
+  },
+  {
+   "id": "mrzzsdjxrm2.15997",
+   "kind": "table 2, row 14, column 1",
+   "text": "Atomic claim on the forge"
+  },
+  {
+   "id": "mrzzsdjxrm2.16024",
+   "kind": "table 2, row 14, column 2",
+   "text": "Yes, partial or no"
+  },
+  {
+   "id": "mrzzsdjxrm2.16049",
+   "kind": "table 2, row 15, column 0",
+   "text": "(b)"
+  },
+  {
+   "id": "mrzzsdjxrm2.16054",
+   "kind": "table 2, row 15, column 1",
+   "text": "Idle release by CI, work kept"
+  },
+  {
+   "id": "mrzzsdjxrm2.16085",
+   "kind": "table 2, row 15, column 2",
+   "text": "Yes, partial or no"
+  },
+  {
+   "id": "mrzzsdjxrm2.16110",
+   "kind": "table 2, row 16, column 0",
+   "text": "(c)"
+  },
+  {
+   "id": "mrzzsdjxrm2.16115",
+   "kind": "table 2, row 16, column 1",
+   "text": "Board and coordinator in CI, state in forge objects"
+  },
+  {
+   "id": "mrzzsdjxrm2.16168",
+   "kind": "table 2, row 16, column 2",
+   "text": "Yes, partial or no"
+  },
+  {
+   "id": "mrzzsdjxrm2.16193",
+   "kind": "table 2, row 17, column 0",
+   "text": "(d)"
+  },
+  {
+   "id": "mrzzsdjxrm2.16198",
+   "kind": "table 2, row 17, column 1",
+   "text": "People's sessions and CI agents under one rule, on a subscription"
+  },
+  {
+   "id": "mrzzsdjxrm2.16265",
+   "kind": "table 2, row 17, column 2",
+   "text": "Yes, partial or no"
+  },
+  {
+   "id": "mrzzsdjxrm2.16290",
+   "kind": "table 2, row 18, column 0",
+   "text": "(e)"
+  },
+  {
+   "id": "mrzzsdjxrm2.16295",
+   "kind": "table 2, row 18, column 1",
+   "text": "Shipped protocol code checked by interleavings and mutants"
+  },
+  {
+   "id": "mrzzsdjxrm2.16355",
+   "kind": "table 2, row 18, column 2",
+   "text": "Yes, partial or no"
+  },
+  {
+   "id": "mrzzsdjxrm2.16378",
+   "kind": "heading level 3",
+   "text": "A worked example: unsorry"
+  },
+  {
+   "id": "mrzzsdjxrm2.16404",
+   "kind": "paragraph",
+   "text": "unsorry (agenticsnz/unsorry), a swarm of agents that proves goals in Lean, is the closest rival the search found. Read at commit 029d328b on 2026-10-15 (research/taxonomy/verify/03)."
+  },
+  {
+   "id": "mrzzsdjxrm2.16590",
+   "kind": "table 3, row 0, column 0 (header row)",
+   "text": "#"
+  },
+  {
+   "id": "mrzzsdjxrm2.16593",
+   "kind": "table 3, row 0, column 1 (header row)",
+   "text": "Axis"
+  },
+  {
+   "id": "mrzzsdjxrm2.16599",
+   "kind": "table 3, row 0, column 2 (header row)",
+   "text": "Answer"
+  },
+  {
+   "id": "mrzzsdjxrm2.16607",
+   "kind": "table 3, row 0, column 3 (header row)",
+   "text": "Source"
+  },
+  {
+   "id": "mrzzsdjxrm2.16616",
+   "kind": "table 3, row 1, column 0",
+   "text": "1"
+  },
+  {
+   "id": "mrzzsdjxrm2.16619",
+   "kind": "table 3, row 1, column 1",
+   "text": "Stack layer"
+  },
+  {
+   "id": "mrzzsdjxrm2.16632",
+   "kind": "table 3, row 1, column 2",
+   "text": "L3 coordination on L4 GitHub, for an L5 domain"
+  },
+  {
+   "id": "mrzzsdjxrm2.16680",
+   "kind": "table 3, row 1, column 3",
+   "text": "Inferred from the rows below"
+  },
+  {
+   "id": "mrzzsdjxrm2.16711",
+   "kind": "table 3, row 2, column 0",
+   "text": "3"
+  },
+  {
+   "id": "mrzzsdjxrm2.16714",
+   "kind": "table 3, row 2, column 1",
+   "text": "Control topology"
+  },
+  {
+   "id": "mrzzsdjxrm2.16732",
+   "kind": "table 3, row 2, column 2",
+   "text": "A shared medium with self-claiming peers, and a dispatcher in Actions"
+  },
+  {
+   "id": "mrzzsdjxrm2.16803",
+   "kind": "table 3, row 2, column 3",
+   "text": "queue-dispatcher.yml"
+  },
+  {
+   "id": "mrzzsdjxrm2.16826",
+   "kind": "table 3, row 3, column 0",
+   "text": "4"
+  },
+  {
+   "id": "mrzzsdjxrm2.16829",
+   "kind": "table 3, row 3, column 1",
+   "text": "Communication medium"
+  },
+  {
+   "id": "mrzzsdjxrm2.16851",
+   "kind": "table 3, row 3, column 2",
+   "text": "Traces in git: claim files on the branch claims, queued/prove/* branches, files on main, pull requests"
+  },
+  {
+   "id": "mrzzsdjxrm2.16955",
+   "kind": "table 3, row 3, column 3",
+   "text": "ADR-004"
+  },
+  {
+   "id": "mrzzsdjxrm2.16965",
+   "kind": "table 3, row 4, column 0",
+   "text": "5"
+  },
+  {
+   "id": "mrzzsdjxrm2.16968",
+   "kind": "table 3, row 4, column 1",
+   "text": "Concurrency control"
+  },
+  {
+   "id": "mrzzsdjxrm2.16989",
+   "kind": "table 3, row 4, column 2",
+   "text": "A lock with a timer: a claim file pushed to one shared branch, first push wins, checked again after the push; deleted two hours after the claim was made"
+  },
+  {
+   "id": "mrzzsdjxrm2.17143",
+   "kind": "table 3, row 4, column 3",
+   "text": "ADR-004 lines 14 and 25; ADR-072; reaper.yml; tools/gate_b/config.py line 11"
+  },
+  {
+   "id": "mrzzsdjxrm2.17222",
+   "kind": "table 3, row 5, column 0",
+   "text": "7"
+  },
+  {
+   "id": "mrzzsdjxrm2.17225",
+   "kind": "table 3, row 5, column 1",
+   "text": "Execution environment"
+  },
+  {
+   "id": "mrzzsdjxrm2.17248",
+   "kind": "table 3, row 5, column 2",
+   "text": "Agents on volunteers' own machines; the board, dispatcher, reaper and about 15 janitors in Actions"
+  },
+  {
+   "id": "mrzzsdjxrm2.17348",
+   "kind": "table 3, row 5, column 3",
+   "text": "swarm/agent.sh; .github/workflows"
+  },
+  {
+   "id": "mrzzsdjxrm2.17384",
+   "kind": "table 3, row 6, column 0",
+   "text": "8"
+  },
+  {
+   "id": "mrzzsdjxrm2.17387",
+   "kind": "table 3, row 6, column 1",
+   "text": "Trigger and lifetime"
+  },
+  {
+   "id": "mrzzsdjxrm2.17409",
+   "kind": "table 3, row 6, column 2",
+   "text": "Volunteers start their agents; the reaper runs every 15 minutes"
+  },
+  {
+   "id": "mrzzsdjxrm2.17474",
+   "kind": "table 3, row 6, column 3",
+   "text": "reaper.yml"
+  },
+  {
+   "id": "mrzzsdjxrm2.17487",
+   "kind": "table 3, row 7, column 0",
+   "text": "9"
+  },
+  {
+   "id": "mrzzsdjxrm2.17490",
+   "kind": "table 3, row 7, column 1",
+   "text": "State and memory"
+  },
+  {
+   "id": "mrzzsdjxrm2.17508",
+   "kind": "table 3, row 7, column 2",
+   "text": "Branches, files on main and pull requests; no central server"
+  },
+  {
+   "id": "mrzzsdjxrm2.17570",
+   "kind": "table 3, row 7, column 3",
+   "text": "ADR-004"
+  },
+  {
+   "id": "mrzzsdjxrm2.17580",
+   "kind": "table 3, row 8, column 0",
+   "text": "10"
+  },
+  {
+   "id": "mrzzsdjxrm2.17584",
+   "kind": "table 3, row 8, column 1",
+   "text": "Cost model and payer"
+  },
+  {
+   "id": "mrzzsdjxrm2.17606",
+   "kind": "table 3, row 8, column 2",
+   "text": "Each volunteer pays for inference (claude -p, Codex, Gemini); coordination runs on Actions minutes"
+  },
+  {
+   "id": "mrzzsdjxrm2.17706",
+   "kind": "table 3, row 8, column 3",
+   "text": "swarm/agent.sh line 2685"
+  },
+  {
+   "id": "mrzzsdjxrm2.17733",
+   "kind": "table 3, row 9, column 0",
+   "text": "12"
+  },
+  {
+   "id": "mrzzsdjxrm2.17737",
+   "kind": "table 3, row 9, column 1",
+   "text": "Domain and maturity"
+  },
+  {
+   "id": "mrzzsdjxrm2.17758",
+   "kind": "table 3, row 9, column 2",
+   "text": "Formal mathematics; claims in this form since 2026-06-10"
+  },
+  {
+   "id": "mrzzsdjxrm2.17816",
+   "kind": "table 3, row 9, column 3",
+   "text": "ADR-004"
+  },
+  {
+   "id": "mrzzsdjxrm2.17826",
+   "kind": "table 3, row 10, column 0",
+   "text": "(a)"
+  },
+  {
+   "id": "mrzzsdjxrm2.17831",
+   "kind": "table 3, row 10, column 1",
+   "text": "Atomic claim"
+  },
+  {
+   "id": "mrzzsdjxrm2.17845",
+   "kind": "table 3, row 10, column 2",
+   "text": "Partial: files on one shared branch, not a ref per item"
+  },
+  {
+   "id": "mrzzsdjxrm2.17905",
+   "kind": "table 3, row 11, column 0",
+   "text": "(b)"
+  },
+  {
+   "id": "mrzzsdjxrm2.17910",
+   "kind": "table 3, row 11, column 1",
+   "text": "Idle release"
+  },
+  {
+   "id": "mrzzsdjxrm2.17924",
+   "kind": "table 3, row 11, column 2",
+   "text": "Partial: a timer from the claim's own timestamp, not idleness; the work is not kept"
+  },
+  {
+   "id": "mrzzsdjxrm2.18012",
+   "kind": "table 3, row 12, column 0",
+   "text": "(c)"
+  },
+  {
+   "id": "mrzzsdjxrm2.18017",
+   "kind": "table 3, row 12, column 1",
+   "text": "Board in CI"
+  },
+  {
+   "id": "mrzzsdjxrm2.18030",
+   "kind": "table 3, row 12, column 2",
+   "text": "Yes"
+  },
+  {
+   "id": "mrzzsdjxrm2.18038",
+   "kind": "table 3, row 13, column 0",
+   "text": "(d)"
+  },
+  {
+   "id": "mrzzsdjxrm2.18043",
+   "kind": "table 3, row 13, column 1",
+   "text": "One rule for sessions and CI agents"
+  },
+  {
+   "id": "mrzzsdjxrm2.18080",
+   "kind": "table 3, row 13, column 2",
+   "text": "Partial: volunteers' runs only; no agent in Actions, and no subscription token there"
+  },
+  {
+   "id": "mrzzsdjxrm2.18169",
+   "kind": "table 3, row 14, column 0",
+   "text": "(e)"
+  },
+  {
+   "id": "mrzzsdjxrm2.18174",
+   "kind": "table 3, row 14, column 1",
+   "text": "Checked protocol code"
+  },
+  {
+   "id": "mrzzsdjxrm2.18197",
+   "kind": "table 3, row 14, column 2",
+   "text": "No"
+  },
+  {
+   "id": "mrzzsdjxrm2.18202",
+   "kind": "paragraph",
+   "text": "One yes and three partials: unsorry does not refute U1, but it is why U1 and U2 are worded as narrowly as they are. Axes 2, 6 and 11 were not read, and stay blank until someone reads them."
+  }
+ ]
+}

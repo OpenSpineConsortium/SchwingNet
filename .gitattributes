@@ -1,0 +1,2 @@
+# Every text file is stored and checked out with LF line endings; the checks expect it.
+* text=auto eol=lf

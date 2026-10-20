@@ -1,0 +1,226 @@
+# Packet spec-D: from the Symphony and Beethoven Taxonomy Spec, sections: 5. Neighbors compared / ; 5. Neighbors compared / 5.1 Coordinators of coding agents
+
+=== [unit mggj4hxkexp.44367] heading level 2
+5. Neighbors compared
+
+=== [unit mggj4hxkexp.44389] heading level 3
+5.1 Coordinators of coding agents
+
+=== [unit mggj4hxkexp.44426] table 1, row 0, column 0 (header row)
+System
+
+=== [unit mggj4hxkexp.44434] table 1, row 0, column 1 (header row)
+Where it runs
+
+=== [unit mggj4hxkexp.44449] table 1, row 0, column 2 (header row)
+The claim
+
+=== [unit mggj4hxkexp.44460] table 1, row 0, column 3 (header row)
+An idle claim
+
+=== [unit mggj4hxkexp.44475] table 1, row 0, column 4 (header row)
+Workers
+
+=== [unit mggj4hxkexp.44484] table 1, row 0, column 5 (header row)
+Inference paid by
+
+=== [unit mggj4hxkexp.44504] table 1, row 1, column 0
+Symphony
+
+=== [unit mggj4hxkexp.44514] table 1, row 1, column 1
+Actions, and each worker's own session
+
+=== [unit mggj4hxkexp.44554] table 1, row 1, column 2
+Creating branch claude/N; git lets one of two racing creations win
+
+=== [unit mggj4hxkexp.44622] table 1, row 1, column 3
+Released after 24 hours without a commit; the work is kept under a renamed branch
+
+=== [unit mggj4hxkexp.44705] table 1, row 1, column 4
+People's sessions, routines, agents in Actions
+
+=== [unit mggj4hxkexp.44753] table 1, row 1, column 5
+One Claude plan for the Actions workers; each person's own plan for sessions
+
+=== [unit mggj4hxkexp.44832] table 1, row 2, column 0
+gh-aw work queue
+
+=== [unit mggj4hxkexp.44850] table 1, row 2, column 1
+Actions
+
+=== [unit mggj4hxkexp.44859] table 1, row 2, column 2
+A record on a ledger branch, published by compare-and-swap; a trusted scheduler grants it
+
+=== [unit mggj4hxkexp.44950] table 1, row 2, column 3
+Never expires; ends with its run, then up to three attempts
+
+=== [unit mggj4hxkexp.45011] table 1, row 2, column 4
+Actions runs only
+
+=== [unit mggj4hxkexp.45030] table 1, row 2, column 5
+API key, workload identity or Copilot credits; the subscription token is refused
+
+=== [unit mggj4hxkexp.45113] table 1, row 3, column 0
+unsorry
+
+=== [unit mggj4hxkexp.45122] table 1, row 3, column 1
+Board, dispatcher and reaper in Actions; agents on volunteers' machines
+
+=== [unit mggj4hxkexp.45195] table 1, row 3, column 2
+Claim files pushed to one shared branch, first push wins, checked again after the push
+
+=== [unit mggj4hxkexp.45283] table 1, row 3, column 3
+Deleted two hours after the claim by a reaper every 15 minutes; the work is not kept
+
+=== [unit mggj4hxkexp.45369] table 1, row 3, column 4
+Volunteers' claude -p, Codex and Gemini runs
+
+=== [unit mggj4hxkexp.45415] table 1, row 3, column 5
+Each volunteer
+
+=== [unit mggj4hxkexp.45432] table 1, row 4, column 0
+agentic-setup
+
+=== [unit mggj4hxkexp.45447] table 1, row 4, column 1
+A local Claude Code orchestrator
+
+=== [unit mggj4hxkexp.45481] table 1, row 4, column 2
+Creating a branch, made create-only with a lease
+
+=== [unit mggj4hxkexp.45531] table 1, row 4, column 3
+Not reclaimed; resumed by the next round
+
+=== [unit mggj4hxkexp.45573] table 1, row 4, column 4
+Claude Code and Codex loops
+
+=== [unit mggj4hxkexp.45602] table 1, row 4, column 5
+The user
+
+=== [unit mggj4hxkexp.45613] table 1, row 5, column 0
+openai/symphony
+
+=== [unit mggj4hxkexp.45630] table 1, row 5, column 1
+A long-running daemon on a host
+
+=== [unit mggj4hxkexp.45663] table 1, row 5, column 2
+Held in the daemon's memory
+
+=== [unit mggj4hxkexp.45692] table 1, row 5, column 3
+A stall timeout kills the worker, then retries
+
+=== [unit mggj4hxkexp.45740] table 1, row 5, column 4
+Codex
+
+=== [unit mggj4hxkexp.45747] table 1, row 5, column 5
+The user
+
+=== [unit mggj4hxkexp.45758] table 1, row 6, column 0
+CCPM
+
+=== [unit mggj4hxkexp.45764] table 1, row 6, column 1
+A local Claude Code session
+
+=== [unit mggj4hxkexp.45793] table 1, row 6, column 2
+Assignee and label, which two agents can both set
+
+=== [unit mggj4hxkexp.45844] table 1, row 6, column 3
+None
+
+=== [unit mggj4hxkexp.45850] table 1, row 6, column 4
+Streams inside one session
+
+=== [unit mggj4hxkexp.45878] table 1, row 6, column 5
+The user's plan
+
+=== [unit mggj4hxkexp.45896] table 1, row 7, column 0
+Beads and Gas Town
+
+=== [unit mggj4hxkexp.45916] table 1, row 7, column 1
+Local, with data synced to a git ref
+
+=== [unit mggj4hxkexp.45954] table 1, row 7, column 2
+Atomic inside one Dolt database, merged across machines after the fact
+
+=== [unit mggj4hxkexp.46026] table 1, row 7, column 3
+Released by hand (Beads); stuck agents detected (Gas Town)
+
+=== [unit mggj4hxkexp.46086] table 1, row 7, column 4
+Local agents
+
+=== [unit mggj4hxkexp.46100] table 1, row 7, column 5
+The user
+
+=== [unit mggj4hxkexp.46111] table 1, row 8, column 0
+paperclip
+
+=== [unit mggj4hxkexp.46122] table 1, row 8, column 1
+A self-hosted server
+
+=== [unit mggj4hxkexp.46144] table 1, row 8, column 2
+Atomic checkout on the server
+
+=== [unit mggj4hxkexp.46175] table 1, row 8, column 3
+Heartbeats and execution locks
+
+=== [unit mggj4hxkexp.46207] table 1, row 8, column 4
+Agents in an org chart
+
+=== [unit mggj4hxkexp.46231] table 1, row 8, column 5
+The user
+
+=== [unit mggj4hxkexp.46242] table 1, row 9, column 0
+Copilot cloud agent, Agent HQ
+
+=== [unit mggj4hxkexp.46273] table 1, row 9, column 1
+Actions runners, with GitHub's service as control plane
+
+=== [unit mggj4hxkexp.46330] table 1, row 9, column 2
+A person assigns; one agent, one branch, one pull request
+
+=== [unit mggj4hxkexp.46389] table 1, row 9, column 3
+A session stops at 59 minutes
+
+=== [unit mggj4hxkexp.46420] table 1, row 9, column 4
+Copilot, Claude and Codex agents
+
+=== [unit mggj4hxkexp.46454] table 1, row 9, column 5
+AI credits plus minutes; automations are not offered on public repositories
+
+=== [unit mggj4hxkexp.46532] table 1, row 10, column 0
+Claude Code agent teams, Projects
+
+=== [unit mggj4hxkexp.46567] table 1, row 10, column 1
+One machine; Anthropic's cloud for one account
+
+=== [unit mggj4hxkexp.46615] table 1, row 10, column 2
+A file lock on one machine; none across accounts
+
+=== [unit mggj4hxkexp.46665] table 1, row 10, column 3
+None
+
+=== [unit mggj4hxkexp.46671] table 1, row 10, column 4
+Teammates in one session; threads of one account
+
+=== [unit mggj4hxkexp.46721] table 1, row 10, column 5
+The user's plan
+
+=== [unit mggj4hxkexp.46739] table 1, row 11, column 0
+Anthropic's C-compiler harness
+
+=== [unit mggj4hxkexp.46771] table 1, row 11, column 1
+Containers on one host with a bare git upstream
+
+=== [unit mggj4hxkexp.46820] table 1, row 11, column 2
+Lock files that git refuses a second agent
+
+=== [unit mggj4hxkexp.46864] table 1, row 11, column 3
+None
+
+=== [unit mggj4hxkexp.46870] table 1, row 11, column 4
+16 Claude agents
+
+=== [unit mggj4hxkexp.46888] table 1, row 11, column 5
+API, just under $20,000
+
+=== [unit mggj4hxkexp.46912] paragraph
+Sources: research notes 06 and 07, and research/taxonomy/verify/01 and 03 (Verified from each project's repository or docs, 2026-10-15).

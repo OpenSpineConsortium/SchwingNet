@@ -1,0 +1,63 @@
+# 03 Uniqueness: is Symphony the only system that combines (a) to (e)?
+
+Adversarial check, 2026-10-15. The claim under test: Symphony is unique in combining
+(a) a claim that is the first push of a per-issue branch `claude/N` on the shared forge, so the forge and not a server of the project's own makes the claim atomic across accounts and machines;
+(b) automatic release of a claim idle 24 hours without a commit, by a CI job, with the work kept under a renamed branch;
+(c) the board and the coordinator running as GitHub Actions jobs in the repository, with state only in GitHub objects;
+(d) workers that include people's own interactive Claude Code sessions and agents in Actions on a Claude subscription token (CLAUDE_CODE_OAUTH_TOKEN), under one claim rule;
+(e) validation of the protocol by exhaustive interleavings of the shipped library against an oracle written from the spec text, with mutants.
+
+The target was a counterexample with (a)+(b)+(c), (a)+(c)+(d), or any four of the five.
+
+Method: WebSearch (14 queries, budget not exhausted), shallow clones into /tmp/claude-research/rival/ (README and docs read, no code run; folder deleted afterwards), and raw.githubusercontent.com and PyPI/crates.io metadata. dev.to and forge.lthn.ai were unreachable from the session (DNS), so two leads were not read: a dev.to post on a git-built coordination layer and a Forgejo "issue dispatch" RFC. No GitHub MCP search was used.
+
+Symphony's own (e) was confirmed: /home/user/symphony-protocol/validation/README.md describes the library's own code run against a stateful GitHub fake and real git, breadth-first search over every interleaving to a set depth, an oracle "written from the spec's own text", and a mutation lane (93 mutants, each caught on a shortest trace).
+
+## Table
+
+yes = does it as the study states it; partial = a weaker or different form; no = absent or not found.
+
+| Candidate | (a) forge-atomic per-item claim | (b) idle release by CI, work kept | (c) board + coordinator in Actions, state in GitHub | (d) interactive sessions + Actions agents on subscription token, one rule | (e) shipped library vs spec oracle, interleavings, mutants | Source |
+|---|---|---|---|---|---|---|
+| **unsorry** (agenticsnz, Lean proof swarm, ADR-004 of 2026-06-10) | partial: a claim file `claims/<goal>.<agent>.aisp` pushed to one shared unprotected `claims` branch, "first-push-wins" through git's non-fast-forward rejection on GitHub, with no server. Per-agent paths let a second claim fast-forward, so ADR-072 adds a recheck after the push. It is not a per-item create-once ref | partial: the Actions cron `reaper.yml` (every 15 min) deletes claims whose TTL has passed (default TTL_SECONDS = 7200, from the claim's own timestamp, not from the last commit). No work is kept or renamed | yes: `queue-board.yml` renders docs/queue.{html,json} and `queue-dispatcher.yml`, the reaper and about 15 janitors run in Actions, with state in branches (`claims`, `queued/prove/*`), files on main and PRs; "no central server" | partial: many volunteers' own runs of `claude -p`, `codex exec` and Gemini through swarm/agent.sh on their own machines, plus a deterministic solver, all under one claim rule. No agent runs in Actions and no subscription token is used there | no: none found (grep of docs/ and tools/) | github.com/agenticsnz/unsorry @029d328b: docs/adrs/ADR-004-Claims-Branch-First-Push-Wins.md l.14,25; ADR-072; ADR-053; .github/workflows/reaper.yml, queue-board.yml, queue-dispatcher.yml; tools/gate_b/config.py l.11; swarm/agent.sh l.2685 |
+| **gh-aw native work queue** (github/gh-aw v0.9x) | partial: Claims are records in `work-queue.jsonl` on branch `work-queue`, published by `createCommitOnBranch` with `expectedHeadOid`. That is a forge CAS on one log branch, and a trusted dispatcher hands out the Claims; workers do not take them | no: "locks never expire or get stolen". A reservation is freed only on trusted evidence that the run ended, with retry under policy; there is no idle timer and no renamed branch | yes: dispatcher and workers are Actions runs; the ledger lives on a branch, with optional backing issues | no: Actions workers only, and "`CLAUDE_CODE_OAUTH_TOKEN` is not supported" | partial: TLA+ models checked by bounded TLC, with 68 `Broken*.cfg` mutation controls and witnesses, plus a stress simulator on real git. These are abstract models: "Neither finite model checking nor sampled traces verify Go/JavaScript runtime ... refinement" | github.com/github/gh-aw @8f27974: docs/src/content/docs/reference/work-queue.md l.6-42, 323, 463-476; specs/work-queue/README.md l.1-30, 87, 812; notes 06 l.107 |
+| agentic-setup (marcelusfernandes) | yes, and stricter than Symphony: the push of `<type>/<n>-<slug>` or `codex/task-<n>` is the lock, made create-only with `--force-with-lease=refs/heads/<branch>:` | no: a dead orchestrator's issue is "resumed as round N+1 ... not reclaimed"; liveness is a PID probe on the local worktree lock | partial: plan, labels and evidence live in GitHub, but the orchestrator is a local Claude Code session; Actions runs only checks | partial: Claude Code plugin and Codex loops under one lock rule; none in Actions | no: per-PR "negative-control" for tests, not protocol validation | github.com/marcelusfernandes/agentic-setup @4907361: README.md l.14-20; scripts/claim.mts l.28-62; docs/orchestration.md l.575-595 |
+| agentsync (jarmstrong158, MCP) | partial: one `claims.json` on branch `agentsync`, written by git push as compare-and-swap; advisory (`force=True`) | partial: flags claims older than 24 h as `stale` (AGENTSYNC_STALE_HOURS), and decided "Rather than auto-expire" | no: a local MCP server per agent | partial: two or more people's agents, each on its own clone; no Actions | no | github.com/jarmstrong158/agentsync @4d190ad: README.md; DESIGN.md l.132-152, 208 |
+| agent-squad-hr gh-issue-claim-coordination | no: assignee plus `wip` label | partial: a 24 h stale-claim sweep, run by sessions and not by CI | no | partial: parallel interactive sessions only | no | raw.githubusercontent.com/wan-huiyan/agent-squad-hr/HEAD/README.md l.39 |
+| grite (neul-labs, arXiv 2606.19616) | partial: an event log in `refs/grite/wal`, merged as a CRDT, so claims merge after the fact | partial: locks with TTL lease expiry, "advisory"; local | no: local CLI and daemon | partial: any local agents | no | raw README (neul-labs/grite) l.13, 59, 89, 108; search summary of the paper |
+| autonomous-dev-team (zxkane) | no: a dispatcher edits labels | partial: stale detection by wrapper PID and re-dispatch | partial: the tick script "can" run on an Actions schedule, but agents are spawned as local or SSM processes | no | no: hand-written invariants with unit tests | github.com/zxkane/autonomous-dev-team @5c3f78a: README.md l.44-76; skills/autonomous-dispatcher/SKILL.md l.59, 81, 139 |
+| Olympus (lr00rl) | partial: task files with states, pushed to git | no | no | partial: several people's `claude -p` seats | no | github.com/lr00rl/olympus @3c2c53f: README.md l.58-73; rules/02-collaboration-protocol.md l.143-148 |
+| DND-IT/action-lock | yes as a primitive: `refs/locks/<name>`, with a 422 when it exists | partial: stale after 600 s by the commit date, then re-acquired inside Actions; a CI mutex with no work to keep | partial: Actions and refs only, with no queue or board | no | no | notes 07 l.98, 110 |
+| terraform-backend-git | partial: push of `locks/<file>` is the lock (state files, not work items) | no | no | no | no | notes 07 l.107 |
+| shogo82148/actions-mutex, ben-z/gh-action-mutex | partial: branch push as test-and-set | no | partial: Actions mutex only | no | no | notes 07 l.108-109 |
+| openai/symphony; Contrabass (its port) | no: in-memory claims in one daemon | partial: a stall timeout kills a worker, then retry | no | no: Codex only | no | notes 07 l.71-72, 92 |
+| CCPM | no: assignee plus label | no | no | partial: local streams only | no | notes 07 l.73, 93 |
+| Beads / Gas Town | partial: atomic inside one Dolt DB, synced to `refs/dolt/data` | partial: Gas Town's Witness detects stuck agents; Beads releases by hand | no | partial: local agents | no | notes 07 l.74-75, 95 |
+| paperclip | no: server checkout | partial: heartbeats and execution locks on its server | no | no | no | notes 07 l.76 |
+| Orbi | partial: branch per issue, pushed only at closeout | no | no: local timer | no | no | notes 07 l.77, 94 |
+| cyrus | no | no | no | no | no | notes 07 l.78 |
+| aeon | no | no | partial: one agent's schedule in Actions, with state in git and issues | partial: CLAUDE_CODE_OAUTH_TOKEN in Actions, but one agent and no claims | no | notes 07 l.79, 102 |
+| Anthropic C-compiler harness | partial: lock files in current_tasks/ synced by git, on one host's bare upstream | no | no | no: API-billed | no | notes 07 l.97, 111 |
+| zulipbot | no: assign plus label | partial: unassigns after a week idle plus 3 days, by a hosted bot | no | no: humans only | no | notes 07 l.114 |
+| Claude Code agent teams, Projects | no: local file lock | no | no | no: not under `claude -p` | no | notes 07 l.36, 96 |
+| Copilot cloud agent, Agent HQ | no | no | partial: runs on Actions runners, with the control plane on GitHub's service | partial: agents on Actions, billed in AI Credits; a person assigns, with no claim rule | no | notes 06 l.79-82, 117-118 |
+| CooperBench team mode | no: a shared task list inside the harness | no | no | no | no | notes 08 l.11 |
+| Claim Plane (arXiv 2608.00947) | no: SQLite WAL, single host | partial: SQLite leases | no | no | no | raw README (SkeinRank/claim-plane) l.76, 215 |
+| Nerveplane (arXiv 2610.07261) | no: local scheduler | no | no | no | no: simulated scenarios | notes 08 l.73, 96 (Reported) |
+
+## Verdict: Survives with narrower wording
+
+No candidate does (a)+(b)+(c) as stated, (a)+(c)+(d), or any four of the five. The claim as worded is too broad, though, and three findings narrow it.
+
+1. **unsorry has a looser form of (a)+(b)+(c), four months earlier** (ADR-004, 2026-06-10). Its claims are first-push-wins pushes to GitHub with no server. An Actions cron reaper expires them every 15 minutes. Its board and dispatcher are Actions jobs over GitHub-only state. What differs from Symphony is the form of each part:
+   - its claims are files on one shared branch, not a ref per item;
+   - its expiry is a two-hour TTL from the claim, not idleness since the last commit;
+   - nothing keeps or renames the work.
+
+   unsorry lacks (d), since no agent runs in Actions and no subscription token is used there, and it lacks (e). It is the strongest counterexample and should go into the study.
+2. **gh-aw does (c), and model-level (e).** Its work-queue claims are published by a forge CAS on one ledger branch. It has bounded TLA+ checking with 68 mutation configurations, but of abstract models, explicitly not of the shipped Go and JavaScript code. It has no idle release and no subscription token. So (e) must say "the shipped library", or gh-aw nearly matches it.
+3. **agentic-setup's branch lock is stricter than Symphony's (a)**: it is create-only through `--force-with-lease=<ref>:`. Symphony's "GitHub refuses the second push" is really git's non-fast-forward rule (notes 07 l.177). So (a) should not say "create-once".
+
+Exact narrower wording:
+
+> Each mechanism has prior art, and a looser form of three of them already exists together: unsorry (2026-06) has first-push-wins claim files on a shared GitHub branch, a TTL reaper and a board and dispatcher that run in Actions. Symphony is the only system found that adds the other two to them: one claim rule for people's interactive Claude Code sessions and for agents in GitHub Actions on a Claude subscription token, and validation of the shipped library itself, by exhaustive interleavings against an oracle written from the spec's text, with mutants. It is also the only one found that claims through a branch per issue and releases a claim by idleness since that branch's last commit, keeping the work under a renamed branch.

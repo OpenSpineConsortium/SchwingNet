@@ -1,0 +1,225 @@
+# A fresh reading of how much of each Claude slot's limits is used, for
+# the control panel's Tokens page and the auto mode (tools/pool.py,
+# docs/setup/claude-tokens.md). GitHub never gives a secret back, so the
+# reading comes from Claude itself: one word asked of each slot's token
+# brings the rate-limit event Claude Code reads from the response's
+# headers, with the five-hour and seven-day windows' use and resets. Each
+# probe spends that one word of the slot's window, so it runs only when a
+# person asks, by Run workflow here or the panel's Refresh, never on a
+# schedule (the owner's choice, 2026-10-17).
+# The readings go to the branch pool, one file per slot and kind, beside
+# the ones the Claude runs and cswap leave there; no reading holds a token.
+name: Pool
+
+on:
+  workflow_dispatch:
+    inputs:
+      slots:
+        description: the slots to read, from 1 to 32 (default the variable SYMPHONY_CLAUDE_ACCOUNTS)
+        required: false
+        default: ""
+
+permissions: {}
+
+jobs:
+  plan:
+    if: vars.CLAUDE_CROWD != 'true' && github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      slots: ${{ steps.slots.outputs.slots }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: The slots to read
+        id: slots
+        env:
+          SLOTS: ${{ inputs.slots || vars.SYMPHONY_CLAUDE_ACCOUNTS }}
+        run: |
+          python3 - <<'EOF' >> "$GITHUB_OUTPUT"
+          import json, os, sys
+          sys.path.insert(0, "tools")
+          import pool
+          slots = [slot for slot in pool.parse_slots(os.environ["SLOTS"]) if slot != "main"]
+          print("slots=" + json.dumps(slots))
+          EOF
+
+  probe:
+    needs: plan
+    if: needs.plan.outputs.slots != '' && needs.plan.outputs.slots != '[]'
+    strategy:
+      fail-fast: false
+      matrix:
+        slot: ${{ fromJSON(needs.plan.outputs.slots) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+      - name: Whether the slot's secret is seen here
+        id: secret
+        env:
+          SLOT: ${{ matrix.slot }}
+          # The slot's secret by a fixed name, as coordbench's bench.yml
+          # takes it: a computed name would hand the runner every secret it
+          # can see. Only this step and Claude's own have it.
+          SLOT_TOKEN: >-
+            ${{
+            (matrix.slot == '1' && secrets.SYMPHONY_CLAUDE_1) ||
+            (matrix.slot == '2' && secrets.SYMPHONY_CLAUDE_2) ||
+            (matrix.slot == '3' && secrets.SYMPHONY_CLAUDE_3) ||
+            (matrix.slot == '4' && secrets.SYMPHONY_CLAUDE_4) ||
+            (matrix.slot == '5' && secrets.SYMPHONY_CLAUDE_5) ||
+            (matrix.slot == '6' && secrets.SYMPHONY_CLAUDE_6) ||
+            (matrix.slot == '7' && secrets.SYMPHONY_CLAUDE_7) ||
+            (matrix.slot == '8' && secrets.SYMPHONY_CLAUDE_8) ||
+            (matrix.slot == '9' && secrets.SYMPHONY_CLAUDE_9) ||
+            (matrix.slot == '10' && secrets.SYMPHONY_CLAUDE_10) ||
+            (matrix.slot == '11' && secrets.SYMPHONY_CLAUDE_11) ||
+            (matrix.slot == '12' && secrets.SYMPHONY_CLAUDE_12) ||
+            (matrix.slot == '13' && secrets.SYMPHONY_CLAUDE_13) ||
+            (matrix.slot == '14' && secrets.SYMPHONY_CLAUDE_14) ||
+            (matrix.slot == '15' && secrets.SYMPHONY_CLAUDE_15) ||
+            (matrix.slot == '16' && secrets.SYMPHONY_CLAUDE_16) ||
+            (matrix.slot == '17' && secrets.SYMPHONY_CLAUDE_17) ||
+            (matrix.slot == '18' && secrets.SYMPHONY_CLAUDE_18) ||
+            (matrix.slot == '19' && secrets.SYMPHONY_CLAUDE_19) ||
+            (matrix.slot == '20' && secrets.SYMPHONY_CLAUDE_20) ||
+            (matrix.slot == '21' && secrets.SYMPHONY_CLAUDE_21) ||
+            (matrix.slot == '22' && secrets.SYMPHONY_CLAUDE_22) ||
+            (matrix.slot == '23' && secrets.SYMPHONY_CLAUDE_23) ||
+            (matrix.slot == '24' && secrets.SYMPHONY_CLAUDE_24) ||
+            (matrix.slot == '25' && secrets.SYMPHONY_CLAUDE_25) ||
+            (matrix.slot == '26' && secrets.SYMPHONY_CLAUDE_26) ||
+            (matrix.slot == '27' && secrets.SYMPHONY_CLAUDE_27) ||
+            (matrix.slot == '28' && secrets.SYMPHONY_CLAUDE_28) ||
+            (matrix.slot == '29' && secrets.SYMPHONY_CLAUDE_29) ||
+            (matrix.slot == '30' && secrets.SYMPHONY_CLAUDE_30) ||
+            (matrix.slot == '31' && secrets.SYMPHONY_CLAUDE_31) ||
+            (matrix.slot == '32' && secrets.SYMPHONY_CLAUDE_32) ||
+            ''
+            }}
+        run: |
+          if [ -n "$SLOT_TOKEN" ]; then
+            echo "seen=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "SYMPHONY_CLAUDE_$SLOT is unset or not seen by this repository; python3 scripts/tokens.py status says which."
+          fi
+      - name: Keep a copy of the usage recorder and the pool's reader, which the run cannot move
+        if: steps.secret.outputs.seen == 'true'
+        run: |
+          cp tools/usage.py "$RUNNER_TEMP/usage.py"
+          cp tools/pool.py "$RUNNER_TEMP/pool.py"
+          cp -r tools/profile.py tools/economics.py tools/sdlc_protocol "$RUNNER_TEMP/" || true
+      - uses: anthropics/claude-code-action@v1
+        id: claude
+        if: steps.secret.outputs.seen == 'true'
+        with:
+          claude_code_oauth_token: >-
+            ${{
+            (matrix.slot == '1' && secrets.SYMPHONY_CLAUDE_1) ||
+            (matrix.slot == '2' && secrets.SYMPHONY_CLAUDE_2) ||
+            (matrix.slot == '3' && secrets.SYMPHONY_CLAUDE_3) ||
+            (matrix.slot == '4' && secrets.SYMPHONY_CLAUDE_4) ||
+            (matrix.slot == '5' && secrets.SYMPHONY_CLAUDE_5) ||
+            (matrix.slot == '6' && secrets.SYMPHONY_CLAUDE_6) ||
+            (matrix.slot == '7' && secrets.SYMPHONY_CLAUDE_7) ||
+            (matrix.slot == '8' && secrets.SYMPHONY_CLAUDE_8) ||
+            (matrix.slot == '9' && secrets.SYMPHONY_CLAUDE_9) ||
+            (matrix.slot == '10' && secrets.SYMPHONY_CLAUDE_10) ||
+            (matrix.slot == '11' && secrets.SYMPHONY_CLAUDE_11) ||
+            (matrix.slot == '12' && secrets.SYMPHONY_CLAUDE_12) ||
+            (matrix.slot == '13' && secrets.SYMPHONY_CLAUDE_13) ||
+            (matrix.slot == '14' && secrets.SYMPHONY_CLAUDE_14) ||
+            (matrix.slot == '15' && secrets.SYMPHONY_CLAUDE_15) ||
+            (matrix.slot == '16' && secrets.SYMPHONY_CLAUDE_16) ||
+            (matrix.slot == '17' && secrets.SYMPHONY_CLAUDE_17) ||
+            (matrix.slot == '18' && secrets.SYMPHONY_CLAUDE_18) ||
+            (matrix.slot == '19' && secrets.SYMPHONY_CLAUDE_19) ||
+            (matrix.slot == '20' && secrets.SYMPHONY_CLAUDE_20) ||
+            (matrix.slot == '21' && secrets.SYMPHONY_CLAUDE_21) ||
+            (matrix.slot == '22' && secrets.SYMPHONY_CLAUDE_22) ||
+            (matrix.slot == '23' && secrets.SYMPHONY_CLAUDE_23) ||
+            (matrix.slot == '24' && secrets.SYMPHONY_CLAUDE_24) ||
+            (matrix.slot == '25' && secrets.SYMPHONY_CLAUDE_25) ||
+            (matrix.slot == '26' && secrets.SYMPHONY_CLAUDE_26) ||
+            (matrix.slot == '27' && secrets.SYMPHONY_CLAUDE_27) ||
+            (matrix.slot == '28' && secrets.SYMPHONY_CLAUDE_28) ||
+            (matrix.slot == '29' && secrets.SYMPHONY_CLAUDE_29) ||
+            (matrix.slot == '30' && secrets.SYMPHONY_CLAUDE_30) ||
+            (matrix.slot == '31' && secrets.SYMPHONY_CLAUDE_31) ||
+            (matrix.slot == '32' && secrets.SYMPHONY_CLAUDE_32) ||
+            ''
+            }}
+          claude_args: |
+            --model haiku
+            --max-turns 1
+            --allowedTools ""
+          prompt: Reply with the one word ok.
+      - name: Record what the run spent, for the field metrics
+        if: always() && steps.claude.outcome != 'skipped'
+        continue-on-error: true
+        env:
+          EXECUTION_FILE: ${{ steps.claude.outputs.execution_file }}
+          SDLC_METRICS: ${{ vars.SDLC_METRICS }}
+        run: >-
+          python3 "$RUNNER_TEMP/usage.py" actions --root "$GITHUB_WORKSPACE"
+          --execution-file "${EXECUTION_FILE:-$RUNNER_TEMP/claude-execution-output.json}"
+          --out "$RUNNER_TEMP/symphony-usage/record.json" --workflow pool --job probe
+      - name: Keep the record where the metrics workflow reads it
+        if: always() && steps.claude.outcome != 'skipped'
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: symphony-usage-${{ github.run_id }}-${{ github.run_attempt }}-probe-${{ matrix.slot }}
+          path: ${{ runner.temp }}/symphony-usage/record.json
+          if-no-files-found: ignore
+      - name: Read the slot's windows from the run
+        if: always() && steps.claude.outcome != 'skipped'
+        env:
+          EXECUTION_FILE: ${{ steps.claude.outputs.execution_file }}
+          SLOT: ${{ matrix.slot }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/readings"
+          python3 "$RUNNER_TEMP/pool.py" observe --slot "$SLOT" --source probe --out "$RUNNER_TEMP/readings" \
+            --execution-file "${EXECUTION_FILE:-$RUNNER_TEMP/claude-execution-output.json}"
+      - uses: actions/upload-artifact@v7
+        if: always() && steps.claude.outcome != 'skipped'
+        with:
+          name: pool-reading-${{ github.run_attempt }}-${{ matrix.slot }}
+          path: ${{ runner.temp }}/readings/
+          if-no-files-found: ignore
+          retention-days: 1
+
+  publish:
+    needs: probe
+    if: vars.CLAUDE_CROWD != 'true' && always() && needs.probe.result != 'skipped'
+    runs-on: ubuntu-latest
+    # Two presses publish one after the other; each run's probes go on.
+    concurrency:
+      group: pool-publish
+      cancel-in-progress: false
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v7
+        with:
+          pattern: pool-reading-*
+          path: ${{ runner.temp }}/readings
+      - name: Write the readings to the branch pool
+        env:
+          GIT_AUTHOR_NAME: github-actions[bot]
+          GIT_AUTHOR_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+          GIT_COMMITTER_NAME: github-actions[bot]
+          GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+        run: |
+          shopt -s nullglob
+          readings=("$RUNNER_TEMP"/readings/*/slot-*.json)
+          if [ "${#readings[@]}" -eq 0 ]; then
+            echo "no slot gave a reading"
+            exit 0
+          fi
+          python3 tools/pool.py publish "${readings[@]}"

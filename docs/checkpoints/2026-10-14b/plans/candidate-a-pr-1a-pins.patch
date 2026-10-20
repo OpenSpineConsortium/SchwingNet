@@ -1,0 +1,490 @@
+From c3e9a6558953584abd03a2af835b9c860955415a Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 14 Oct 2026 10:09:57 +0000
+Subject: [PATCH] Pin every action to a commit, with its version beside it
+
+A workflow that names a moving tag runs whatever the tag points to on the
+day it runs, so a release of claude-code-action or of GitHub's own actions
+reached every run here, and every copy, the day it was published, without
+review. Each of the 30 uses: lines now names the commit its tag pointed to
+on 2026-10-14 (checkout v7.0.1, upload-artifact v7.0.2, cache v6.1.0,
+create-github-app-token v1.12.0, claude-code-action v1.0.249), with the
+version in a comment, which Dependabot reads to propose the next commit.
+
+Dependabot now groups every action into one pull request a week: with
+commit pins it proposes every patch release, and claude-code-action ships
+several a week, so one group keeps that to one review. The writing rule and
+the GitHub setup page say "pinned to a commit" instead of "pinned to a major
+tag", and a new test holds every workflow to it: a tag, a pin without its
+version comment, or one action pinned to two commits fails the check.
+
+This is the first pull request of the plan the owner approved on
+2026-10-14 (/mnt/project-files/plans/gh-aw-migration-plan.md, section 6,
+PR 1a). Nothing else changes: the same commits run as ran today.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01PaEeGoJPqFtMjXCD8V1ZEw
+---
+ .claude/rules/writing.md            |  2 +-
+ .github/dependabot.yml              | 11 +++++-
+ .github/workflows/add-worker.yml    |  2 +-
+ .github/workflows/board.yml         |  2 +-
+ .github/workflows/ci.yml            |  2 +-
+ .github/workflows/claude.yml        |  6 +--
+ .github/workflows/coordinator.yml   | 26 ++++++-------
+ .github/workflows/metrics.yml       |  6 +--
+ .github/workflows/protocol.yml      |  2 +-
+ .github/workflows/queue.yml         |  2 +-
+ .github/workflows/template-init.yml |  4 +-
+ .github/workflows/workers.yml       |  8 ++--
+ docs/setup/github.md                |  2 +-
+ tests/test_pinned_actions.py        | 60 +++++++++++++++++++++++++++++
+ tests/test_usage.py                 |  4 +-
+ 15 files changed, 103 insertions(+), 36 deletions(-)
+ create mode 100644 tests/test_pinned_actions.py
+
+diff --git a/.claude/rules/writing.md b/.claude/rules/writing.md
+index d7e67e4..ff3bd2a 100644
+--- a/.claude/rules/writing.md
++++ b/.claude/rules/writing.md
+@@ -3,6 +3,6 @@
+ - Plain prose that says why, in comments, commit messages, pull requests and documents alike. What the code does is read from the code.
+ - Short functions; names that read as English.
+ - No emoji in code, output or documents. ASCII and LF in everything under .claude/, docs/, tools/ and .github/; prefer ASCII elsewhere.
+-- No new dependencies: Python 3.12 or later with its standard library, plain bash, and GitHub's own actions and anthropics/claude-code-action, pinned to a major tag. A proposal to add one is an issue first.
++- No new dependencies: Python 3.12 or later with its standard library, plain bash, and GitHub's own actions and anthropics/claude-code-action, each pinned to a full commit with its version in a comment beside it (`uses: actions/checkout@<commit> # v7.0.1`), which Dependabot moves. A proposal to add one is an issue first.
+ - Nothing refers to a file that does not exist.
+ - In conversation, put a fact worth keeping on its own line tagged `Decision:` or `Constraint:`, so the checkpoint skill and `cswap checkpoint write` keep it word for word; the rest of a session is inferred and may be lost.
+diff --git a/.github/dependabot.yml b/.github/dependabot.yml
+index 00cb451..8ea4a4e 100644
+--- a/.github/dependabot.yml
++++ b/.github/dependabot.yml
+@@ -1,8 +1,15 @@
+-# The only dependencies are the pinned GitHub actions in .github/workflows/;
+-# Dependabot proposes a new major tag once a week.
++# The only dependencies are the GitHub actions in .github/workflows/, each
++# pinned to a full commit with its version in a comment beside it, so a tag
++# moved upstream changes nothing here until a pull request says so.
++# Dependabot reads the comment, proposes the newer commit and version once a
++# week, and groups every action into one pull request, since the pins move
++# with each release of an action and one pull request a week is one review.
+ version: 2
+ updates:
+   - package-ecosystem: "github-actions"
+     directory: "/"
+     schedule:
+       interval: "weekly"
++    groups:
++      actions:
++        patterns: ["*"]
+diff --git a/.github/workflows/add-worker.yml b/.github/workflows/add-worker.yml
+index a02dab7..bb7cfd4 100644
+--- a/.github/workflows/add-worker.yml
++++ b/.github/workflows/add-worker.yml
+@@ -55,7 +55,7 @@ jobs:
+       CROWD: ${{ vars.CLAUDE_CROWD }}
+       DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+     steps:
+-      - uses: actions/checkout@v7
++      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+         with:
+           ref: ${{ github.event.repository.default_branch }}
+ 
+diff --git a/.github/workflows/board.yml b/.github/workflows/board.yml
+index c2ec828..49c464d 100644
+--- a/.github/workflows/board.yml
++++ b/.github/workflows/board.yml
+@@ -107,7 +107,7 @@ jobs:
+       && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+     runs-on: ubuntu-latest
+     steps:
+-      - uses: actions/checkout@v7
++      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+         with:
+           ref: ${{ env.DEFAULT_BRANCH }}
+ 
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+index 47ffb6d..6798d13 100644
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -87,7 +87,7 @@ jobs:
+     if: ${{ !cancelled() }}
+     runs-on: ubuntu-latest
+     steps:
+-      - uses: actions/checkout@v7
++      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+ 
+       - name: Clone symphony-protocol, the library the copy is held to
+         run: git clone --quiet https://github.com/OpenSpineConsortium/symphony-protocol "$RUNNER_TEMP/symphony-protocol"
+diff --git a/.github/workflows/claude.yml b/.github/workflows/claude.yml
+index 3da9f62..0781648 100644
+--- a/.github/workflows/claude.yml
++++ b/.github/workflows/claude.yml
+@@ -51,14 +51,14 @@ jobs:
+       - name: Point at the setup when the token is not there
+         if: env.HAVE_TOKEN != 'true'
+         run: echo "The repository secret CLAUDE_CODE_OAUTH_TOKEN is not set; docs/setup/claude-action.md says how. Doing nothing."
+-      - uses: actions/checkout@v7
++      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+         if: env.HAVE_TOKEN == 'true'
+         with:
+           fetch-depth: 0
+       - name: Keep a copy of the usage recorder, which the run cannot move
+         if: env.HAVE_TOKEN == 'true'
+         run: cp tools/usage.py "$RUNNER_TEMP/usage.py"
+-      - uses: anthropics/claude-code-action@v1
++      - uses: anthropics/claude-code-action@34968b5981d5d170904281aa3df6f3c0d4a28855 # v1.0.249
+         id: claude
+         if: env.HAVE_TOKEN == 'true'
+         with:
+@@ -81,7 +81,7 @@ jobs:
+       - name: Keep the record where the metrics workflow reads it
+         if: always() && steps.claude.outcome != 'skipped'
+         continue-on-error: true
+-        uses: actions/upload-artifact@v7
++        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+         with:
+           name: symphony-usage-${{ github.run_id }}-${{ github.run_attempt }}-claude
+           path: ${{ runner.temp }}/symphony-usage/record.json
+diff --git a/.github/workflows/coordinator.yml b/.github/workflows/coordinator.yml
+index a5d4d0b..071705b 100644
+--- a/.github/workflows/coordinator.yml
++++ b/.github/workflows/coordinator.yml
+@@ -82,7 +82,7 @@ jobs:
+       phase: ${{ steps.route.outputs.phase }}
+       number: ${{ steps.route.outputs.number }}
+     steps:
+-      - uses: actions/checkout@v7
++      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+       - name: Ask what this event calls for
+         id: route
+         env:
+@@ -115,7 +115,7 @@ jobs:
+       - name: Point at the setup when the token is not there
+         if: env.HAVE_TOKEN != 'true'
+         run: echo "The repository secret CLAUDE_CODE_OAUTH_TOKEN is not set; docs/setup/claude-action.md says how. Doing nothing."
+-      - uses: actions/checkout@v7
++      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+         if: env.HAVE_TOKEN == 'true'
+       - name: Ask again now that this run's turn has come, and read the workers
+         id: due
+@@ -136,7 +136,7 @@ jobs:
+       - name: Keep a copy of the usage recorder, which the run cannot move
+         if: steps.due.outputs.phase == 'plan'
+         run: cp tools/usage.py "$RUNNER_TEMP/usage.py"
+-      - uses: anthropics/claude-code-action@v1
++      - uses: anthropics/claude-code-action@34968b5981d5d170904281aa3df6f3c0d4a28855 # v1.0.249
+         id: plan
+         if: steps.due.outputs.phase == 'plan'
+         with:
+@@ -169,7 +169,7 @@ jobs:
+       - name: Keep the record where the metrics workflow reads it
+         if: always() && steps.plan.outcome != 'skipped'
+         continue-on-error: true
+-        uses: actions/upload-artifact@v7
++        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+         with:
+           name: symphony-usage-${{ github.run_id }}-${{ github.run_attempt }}-plan
+           path: ${{ runner.temp }}/symphony-usage/record.json
+@@ -209,7 +209,7 @@ jobs:
+       - name: Point at the setup when the token is not there
+         if: env.HAVE_TOKEN != 'true'
+         run: echo "The repository secret CLAUDE_CODE_OAUTH_TOKEN is not set; docs/setup/claude-action.md says how. Doing nothing."
+-      - uses: actions/checkout@v7
++      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+         if: env.HAVE_TOKEN == 'true'
+         with:
+           fetch-depth: 0
+@@ -226,7 +226,7 @@ jobs:
+       - name: Keep a copy of the usage recorder, which the run cannot move
+         if: steps.due.outputs.phase == 'unblock'
+         run: cp tools/usage.py "$RUNNER_TEMP/usage.py"
+-      - uses: anthropics/claude-code-action@v1
++      - uses: anthropics/claude-code-action@34968b5981d5d170904281aa3df6f3c0d4a28855 # v1.0.249
+         id: settle
+         if: steps.due.outputs.phase == 'unblock'
+         with:
+@@ -253,7 +253,7 @@ jobs:
+       - name: Keep the record where the metrics workflow reads it
+         if: always() && steps.settle.outcome != 'skipped'
+         continue-on-error: true
+-        uses: actions/upload-artifact@v7
++        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+         with:
+           name: symphony-usage-${{ github.run_id }}-${{ github.run_attempt }}-unblock
+           path: ${{ runner.temp }}/symphony-usage/record.json
+@@ -299,7 +299,7 @@ jobs:
+       - name: Point at the setup when the token is not there
+         if: env.HAVE_TOKEN != 'true'
+         run: echo "The repository secret CLAUDE_CODE_OAUTH_TOKEN is not set; docs/setup/claude-action.md says how. Doing nothing."
+-      - uses: actions/checkout@v7
++      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+         if: env.HAVE_TOKEN == 'true'
+         with:
+           fetch-depth: 0
+@@ -316,7 +316,7 @@ jobs:
+       - name: Keep a copy of the usage recorder, which the run cannot move
+         if: steps.due.outputs.phase == 'integrate'
+         run: cp tools/usage.py "$RUNNER_TEMP/usage.py"
+-      - uses: anthropics/claude-code-action@v1
++      - uses: anthropics/claude-code-action@34968b5981d5d170904281aa3df6f3c0d4a28855 # v1.0.249
+         id: integrate
+         if: steps.due.outputs.phase == 'integrate'
+         with:
+@@ -343,7 +343,7 @@ jobs:
+       - name: Keep the record where the metrics workflow reads it
+         if: always() && steps.integrate.outcome != 'skipped'
+         continue-on-error: true
+-        uses: actions/upload-artifact@v7
++        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+         with:
+           name: symphony-usage-${{ github.run_id }}-${{ github.run_attempt }}-integrate
+           path: ${{ runner.temp }}/symphony-usage/record.json
+@@ -370,14 +370,14 @@ jobs:
+       - name: Point at the setup when the token is not there
+         if: env.HAVE_TOKEN != 'true'
+         run: echo "The repository secret CLAUDE_CODE_OAUTH_TOKEN is not set; docs/setup/claude-action.md says how. Doing nothing."
+-      - uses: actions/checkout@v7
++      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+         if: env.HAVE_TOKEN == 'true'
+         with:
+           fetch-depth: 0
+       - name: Keep a copy of the usage recorder, which the run cannot move
+         if: env.HAVE_TOKEN == 'true'
+         run: cp tools/usage.py "$RUNNER_TEMP/usage.py"
+-      - uses: anthropics/claude-code-action@v1
++      - uses: anthropics/claude-code-action@34968b5981d5d170904281aa3df6f3c0d4a28855 # v1.0.249
+         id: tidy
+         if: env.HAVE_TOKEN == 'true'
+         with:
+@@ -401,7 +401,7 @@ jobs:
+       - name: Keep the record where the metrics workflow reads it
+         if: always() && steps.tidy.outcome != 'skipped'
+         continue-on-error: true
+-        uses: actions/upload-artifact@v7
++        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+         with:
+           name: symphony-usage-${{ github.run_id }}-${{ github.run_attempt }}-tidy
+           path: ${{ runner.temp }}/symphony-usage/record.json
+diff --git a/.github/workflows/metrics.yml b/.github/workflows/metrics.yml
+index 47b2e74..479c9c4 100644
+--- a/.github/workflows/metrics.yml
++++ b/.github/workflows/metrics.yml
+@@ -98,7 +98,7 @@ jobs:
+     runs-on: ubuntu-latest
+     timeout-minutes: 20
+     steps:
+-      - uses: actions/checkout@v7
++      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+         with:
+           ref: ${{ env.DEFAULT_BRANCH }}
+ 
+@@ -116,7 +116,7 @@ jobs:
+       # missing cache only means the next run reads more.
+       - name: Restore the usage records read before
+         if: steps.gate.outputs.skip != 'true'
+-        uses: actions/cache/restore@v6
++        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+         with:
+           path: ${{ runner.temp }}/usage-records.json
+           key: symphony-usage-records-${{ github.run_id }}
+@@ -137,7 +137,7 @@ jobs:
+       - name: Keep the usage records for the next run
+         if: steps.gate.outputs.skip != 'true'
+         continue-on-error: true
+-        uses: actions/cache/save@v6
++        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+         with:
+           path: ${{ runner.temp }}/usage-records.json
+           key: symphony-usage-records-${{ github.run_id }}
+diff --git a/.github/workflows/protocol.yml b/.github/workflows/protocol.yml
+index 4d06a16..46851dc 100644
+--- a/.github/workflows/protocol.yml
++++ b/.github/workflows/protocol.yml
+@@ -66,7 +66,7 @@ jobs:
+       BRANCH: symphony-protocol/sync
+     steps:
+       # No credentials are left in the checkout: the push names its token.
+-      - uses: actions/checkout@v7
++      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+         with:
+           ref: ${{ github.event.repository.default_branch }}
+           persist-credentials: false
+diff --git a/.github/workflows/queue.yml b/.github/workflows/queue.yml
+index 68559c4..2ed4d60 100644
+--- a/.github/workflows/queue.yml
++++ b/.github/workflows/queue.yml
+@@ -42,7 +42,7 @@ jobs:
+     runs-on: ubuntu-latest
+     timeout-minutes: 5
+     steps:
+-      - uses: actions/checkout@v7
++      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+       - name: Keep the queue to what maintainers queued
+         env:
+           GH_TOKEN: ${{ github.token }}
+diff --git a/.github/workflows/template-init.yml b/.github/workflows/template-init.yml
+index f830f4a..bbb3995 100644
+--- a/.github/workflows/template-init.yml
++++ b/.github/workflows/template-init.yml
+@@ -37,7 +37,7 @@ jobs:
+     steps:
+       # No credentials are left in the checkout: the push below names the
+       # token it pushes with, which may be the App's rather than this one.
+-      - uses: actions/checkout@v7
++      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+         with:
+           persist-credentials: false
+ 
+@@ -55,7 +55,7 @@ jobs:
+       # and only where the App is set up. A copy whose organization sets the
+       # variable but whose App is not installed on it carries on with
+       # GITHUB_TOKEN, as a copy without the App does, instead of failing.
+-      - uses: actions/create-github-app-token@v1
++      - uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1.12.0
+         id: app-token
+         if: steps.pending.outputs.pending == 'true' && vars.SDLC_APP_ID != ''
+         continue-on-error: true
+diff --git a/.github/workflows/workers.yml b/.github/workflows/workers.yml
+index d1e85d0..6a4c8bf 100644
+--- a/.github/workflows/workers.yml
++++ b/.github/workflows/workers.yml
+@@ -63,7 +63,7 @@ jobs:
+     outputs:
+       workers: ${{ steps.list.outputs.workers }}
+     steps:
+-      - uses: actions/checkout@v7
++      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+         with:
+           ref: ${{ github.event.repository.default_branch }}
+       - name: List the workers that run in Actions
+@@ -104,7 +104,7 @@ jobs:
+       REGISTRY: .github/symphony/workers
+       DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+     steps:
+-      - uses: actions/checkout@v7
++      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+         with:
+           ref: ${{ github.event.repository.default_branch }}
+           fetch-depth: 0
+@@ -127,7 +127,7 @@ jobs:
+       - name: Keep a copy of the usage recorder, which the run cannot move
+         if: steps.next.outputs.move != 'none' && env.HAVE_TOKEN == 'true'
+         run: cp tools/usage.py "$RUNNER_TEMP/usage.py"
+-      - uses: anthropics/claude-code-action@v1
++      - uses: anthropics/claude-code-action@34968b5981d5d170904281aa3df6f3c0d4a28855 # v1.0.249
+         id: claude
+         if: steps.next.outputs.move != 'none' && env.HAVE_TOKEN == 'true'
+         with:
+@@ -153,7 +153,7 @@ jobs:
+       - name: Keep the record where the metrics workflow reads it
+         if: always() && steps.claude.outcome != 'skipped'
+         continue-on-error: true
+-        uses: actions/upload-artifact@v7
++        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+         with:
+           name: symphony-usage-${{ github.run_id }}-${{ github.run_attempt }}-work-${{ matrix.worker }}
+           path: ${{ runner.temp }}/symphony-usage/record.json
+diff --git a/docs/setup/github.md b/docs/setup/github.md
+index 00ae8e7..6c888d7 100644
+--- a/docs/setup/github.md
++++ b/docs/setup/github.md
+@@ -39,7 +39,7 @@ Under Code security, turn on secret scanning and push protection. A public repos
+ 
+ ## 6. Dependabot
+ 
+-.github/dependabot.yml asks for weekly updates of the GitHub Actions the workflows use, which are pinned to a major tag. Nothing to set; it runs once the file is on {{DEFAULT_BRANCH}}.
++.github/dependabot.yml asks for weekly updates of the GitHub Actions the workflows use, which are pinned to a full commit with the version in a comment beside it; Dependabot proposes the newer commit and version for every action in one pull request a week. Nothing to set; it runs once the file is on {{DEFAULT_BRANCH}}.
+ 
+ ## 7. Code owners
+ 
+diff --git a/tests/test_pinned_actions.py b/tests/test_pinned_actions.py
+new file mode 100644
+index 0000000..d7c506b
+--- /dev/null
++++ b/tests/test_pinned_actions.py
+@@ -0,0 +1,60 @@
++"""Every action a workflow uses is pinned to a full commit, with the version
++in a comment beside it, as .claude/rules/writing.md asks.
++
++A tag can be moved by whoever publishes the action, so a workflow that names
++a tag runs whatever the tag points to on the day it runs; a commit runs what
++was reviewed. Dependabot (.github/dependabot.yml) reads the version comment
++to propose the next commit, so a pin without the comment would never move.
++One action pinned to two commits in two files would mean one of them was
++left behind by an update, so every use of an action names the same commit.
++"""
++
++import pathlib
++import re
++import unittest
++
++ROOT = pathlib.Path(__file__).resolve().parent.parent
++WORKFLOWS = sorted((ROOT / ".github" / "workflows").glob("*.yml"))
++USES = re.compile(r"^\s*(?:- )?uses:\s*(\S+)(.*)$")
++PINNED = re.compile(r"^(?P<action>[A-Za-z0-9_.-]+/[A-Za-z0-9_./-]+)@(?P<commit>[0-9a-f]{40})$")
++VERSION_COMMENT = re.compile(r"^\s+# v\d+\.\d+\.\d+$")
++
++
++def uses_lines():
++    """Each `uses:` line of every workflow, as (file name, line number,
++    the action reference, the rest of the line)."""
++    for path in WORKFLOWS:
++        for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
++            match = USES.match(line)
++            if match:
++                yield path.name, number, match.group(1), match.group(2)
++
++
++class PinnedActions(unittest.TestCase):
++
++    def test_the_workflows_use_actions(self):
++        self.assertTrue(list(uses_lines()), "no uses: line found; the reader no longer matches the files")
++
++    def test_every_action_is_pinned_to_a_commit_with_its_version_beside_it(self):
++        for name, number, reference, rest in uses_lines():
++            if reference.startswith("./"):
++                continue
++            where = f"{name}:{number}: {reference}{rest}"
++            self.assertRegex(reference, PINNED, where)
++            self.assertRegex(rest, VERSION_COMMENT, where)
++
++    def test_each_action_is_pinned_to_one_commit_everywhere(self):
++        commits = {}
++        for name, number, reference, rest in uses_lines():
++            match = PINNED.match(reference)
++            if not match:
++                continue
++            repository = "/".join(match.group("action").split("/")[:2])
++            seen = commits.setdefault(repository, {})
++            seen.setdefault((match.group("commit"), rest.strip()), []).append(f"{name}:{number}")
++        for repository, pins in commits.items():
++            self.assertEqual(len(pins), 1, f"{repository} is pinned to more than one commit: {pins}")
++
++
++if __name__ == "__main__":
++    unittest.main()
+diff --git a/tests/test_usage.py b/tests/test_usage.py
+index 9b7ecb0..8424fcf 100644
+--- a/tests/test_usage.py
++++ b/tests/test_usage.py
+@@ -329,14 +329,14 @@ class Wiring(unittest.TestCase):
+                 self.assertIn(f"steps.{step_id.group(1)}.outputs.execution_file", record, path.name)
+                 self.assertIn('python3 "$RUNNER_TEMP/usage.py" actions --root "$GITHUB_WORKSPACE"', record, path.name)
+                 self.assertIn("continue-on-error: true", record, path.name)
+-                self.assertIn("uses: actions/upload-artifact@v7", kept, path.name)
++                self.assertIn("uses: actions/upload-artifact@", kept, path.name)
+                 self.assertIn("name: symphony-usage-${{ github.run_id }}-${{ github.run_attempt }}-", kept, path.name)
+                 self.assertIn("if-no-files-found: ignore", kept, path.name)
+         self.assertEqual(found, 6, "workers.yml's one, coordinator.yml's four and claude.yml's one")
+ 
+     def test_the_metrics_workflow_reads_the_records_and_keeps_what_it_read(self):
+         text = (ROOT / ".github" / "workflows" / "metrics.yml").read_text(encoding="utf-8")
+-        for needed in ("  actions: read\n", "uses: actions/cache/restore@v6", "uses: actions/cache/save@v6",
++        for needed in ("  actions: read\n", "uses: actions/cache/restore@", "uses: actions/cache/save@",
+                        '--usage-cache "$RUNNER_TEMP/usage-records.json"'):
+             self.assertIn(needed, text)
+ 
+-- 
+2.43.0
+

@@ -1,0 +1,411 @@
+{
+ "group": "spec-E",
+ "doc": "spec",
+ "units": [
+  {
+   "id": "mggj4hxkexp.47049",
+   "kind": "heading level 3",
+   "text": "5.2 Research automation"
+  },
+  {
+   "id": "mggj4hxkexp.47076",
+   "kind": "table 1, row 0, column 0 (header row)",
+   "text": "System"
+  },
+  {
+   "id": "mggj4hxkexp.47084",
+   "kind": "table 1, row 0, column 1 (header row)",
+   "text": "Runs where"
+  },
+  {
+   "id": "mggj4hxkexp.47096",
+   "kind": "table 1, row 0, column 2 (header row)",
+   "text": "How it checks its work"
+  },
+  {
+   "id": "mggj4hxkexp.47120",
+   "kind": "table 1, row 0, column 3 (header row)",
+   "text": "Reporting checklist as a gate"
+  },
+  {
+   "id": "mggj4hxkexp.47151",
+   "kind": "table 1, row 0, column 4 (header row)",
+   "text": "Paid by"
+  },
+  {
+   "id": "mggj4hxkexp.47161",
+   "kind": "table 1, row 1, column 0",
+   "text": "Beethoven"
+  },
+  {
+   "id": "mggj4hxkexp.47172",
+   "kind": "table 1, row 1, column 1",
+   "text": "A Slurm job on the university cluster, through Open OnDemand"
+  },
+  {
+   "id": "mggj4hxkexp.47234",
+   "kind": "table 1, row 1, column 2",
+   "text": "Contracts with CrossHair and Z3 as a required check"
+  },
+  {
+   "id": "mggj4hxkexp.47287",
+   "kind": "table 1, row 1, column 3",
+   "text": "Planned: REFORMS (20 items in code) and CLAIM; one check built"
+  },
+  {
+   "id": "mggj4hxkexp.47351",
+   "kind": "table 1, row 1, column 4",
+   "text": "The student's plan and the allocation"
+  },
+  {
+   "id": "mggj4hxkexp.47391",
+   "kind": "table 1, row 2, column 0",
+   "text": "The AI Scientist v2"
+  },
+  {
+   "id": "mggj4hxkexp.47412",
+   "kind": "table 1, row 2, column 1",
+   "text": "The user's GPU machine, in Docker"
+  },
+  {
+   "id": "mggj4hxkexp.47447",
+   "kind": "table 1, row 2, column 2",
+   "text": "One model reviews the finished paper's text and a vision model its figures (Verified, the v2 launcher; v1 used an ensemble of five)"
+  },
+  {
+   "id": "mggj4hxkexp.47479",
+   "kind": "table 1, row 2, column 3",
+   "text": "None"
+  },
+  {
+   "id": "mggj4hxkexp.47485",
+   "kind": "table 1, row 2, column 4",
+   "text": "API, about $15 to $20 a run"
+  },
+  {
+   "id": "mggj4hxkexp.47515",
+   "kind": "table 1, row 3, column 0",
+   "text": "Agent Laboratory"
+  },
+  {
+   "id": "mggj4hxkexp.47533",
+   "kind": "table 1, row 3, column 1",
+   "text": "The user's machine"
+  },
+  {
+   "id": "mggj4hxkexp.47553",
+   "kind": "table 1, row 3, column 2",
+   "text": "A person in the loop"
+  },
+  {
+   "id": "mggj4hxkexp.47575",
+   "kind": "table 1, row 3, column 3",
+   "text": "None"
+  },
+  {
+   "id": "mggj4hxkexp.47581",
+   "kind": "table 1, row 3, column 4",
+   "text": "API"
+  },
+  {
+   "id": "mggj4hxkexp.47587",
+   "kind": "table 1, row 4, column 0",
+   "text": "Kosmos (Edison)"
+  },
+  {
+   "id": "mggj4hxkexp.47604",
+   "kind": "table 1, row 4, column 1",
+   "text": "The vendor's cloud"
+  },
+  {
+   "id": "mggj4hxkexp.47624",
+   "kind": "table 1, row 4, column 2",
+   "text": "Experts graded statements after the fact: 79.4% accurate"
+  },
+  {
+   "id": "mggj4hxkexp.47682",
+   "kind": "table 1, row 4, column 3",
+   "text": "None"
+  },
+  {
+   "id": "mggj4hxkexp.47688",
+   "kind": "table 1, row 4, column 4",
+   "text": "The user, about $200 a run at launch, with a free academic tier (Reported)"
+  },
+  {
+   "id": "mggj4hxkexp.47710",
+   "kind": "table 1, row 5, column 0",
+   "text": "data-to-paper"
+  },
+  {
+   "id": "mggj4hxkexp.47725",
+   "kind": "table 1, row 5, column 1",
+   "text": "The user's machine"
+  },
+  {
+   "id": "mggj4hxkexp.47745",
+   "kind": "table 1, row 5, column 2",
+   "text": "Every number traced to the line of code that made it"
+  },
+  {
+   "id": "mggj4hxkexp.47799",
+   "kind": "table 1, row 5, column 3",
+   "text": "None"
+  },
+  {
+   "id": "mggj4hxkexp.47805",
+   "kind": "table 1, row 5, column 4",
+   "text": "API"
+  },
+  {
+   "id": "mggj4hxkexp.47811",
+   "kind": "table 1, row 6, column 0",
+   "text": "Biomni"
+  },
+  {
+   "id": "mggj4hxkexp.47819",
+   "kind": "table 1, row 6, column 1",
+   "text": "A local environment"
+  },
+  {
+   "id": "mggj4hxkexp.47840",
+   "kind": "table 1, row 6, column 2",
+   "text": "None beyond its tools; runs model-written code with full privileges"
+  },
+  {
+   "id": "mggj4hxkexp.47909",
+   "kind": "table 1, row 6, column 3",
+   "text": "None"
+  },
+  {
+   "id": "mggj4hxkexp.47915",
+   "kind": "table 1, row 6, column 4",
+   "text": "Anthropic API key"
+  },
+  {
+   "id": "mggj4hxkexp.47935",
+   "kind": "table 1, row 7, column 0",
+   "text": "Anthropic's long-running guide"
+  },
+  {
+   "id": "mggj4hxkexp.47967",
+   "kind": "table 1, row 7, column 1",
+   "text": "A Slurm GPU node, in tmux"
+  },
+  {
+   "id": "mggj4hxkexp.47994",
+   "kind": "table 1, row 7, column 2",
+   "text": "Tests before each commit, a changelog as lab notes"
+  },
+  {
+   "id": "mggj4hxkexp.48046",
+   "kind": "table 1, row 7, column 3",
+   "text": "None"
+  },
+  {
+   "id": "mggj4hxkexp.48052",
+   "kind": "table 1, row 7, column 4",
+   "text": "Plan or API, and the allocation"
+  },
+  {
+   "id": "mggj4hxkexp.48086",
+   "kind": "table 1, row 8, column 0",
+   "text": "Academy (Argonne); hpc-mcp and fractale (LLNL)"
+  },
+  {
+   "id": "mggj4hxkexp.48134",
+   "kind": "table 1, row 8, column 1",
+   "text": "Research infrastructure, clusters"
+  },
+  {
+   "id": "mggj4hxkexp.48169",
+   "kind": "table 1, row 8, column 2",
+   "text": "None of their own"
+  },
+  {
+   "id": "mggj4hxkexp.48188",
+   "kind": "table 1, row 8, column 3",
+   "text": "None"
+  },
+  {
+   "id": "mggj4hxkexp.48194",
+   "kind": "table 1, row 8, column 4",
+   "text": "The allocation"
+  },
+  {
+   "id": "mggj4hxkexp.48211",
+   "kind": "table 1, row 9, column 0",
+   "text": "Snakemake, Nextflow, Metaflow"
+  },
+  {
+   "id": "mggj4hxkexp.48242",
+   "kind": "table 1, row 9, column 1",
+   "text": "Clusters or clouds"
+  },
+  {
+   "id": "mggj4hxkexp.48262",
+   "kind": "table 1, row 9, column 2",
+   "text": "Workflow structure only; no agent"
+  },
+  {
+   "id": "mggj4hxkexp.48297",
+   "kind": "table 1, row 9, column 3",
+   "text": "None"
+  },
+  {
+   "id": "mggj4hxkexp.48303",
+   "kind": "table 1, row 9, column 4",
+   "text": "The allocation"
+  },
+  {
+   "id": "mggj4hxkexp.48318",
+   "kind": "paragraph",
+   "text": "Sources: research note 11 (Verified for repositories and licences; Reported for figures from papers)."
+  },
+  {
+   "id": "mggj4hxkexp.48420",
+   "kind": "heading level 3",
+   "text": "5.3 Verification of agent code and of protocols"
+  },
+  {
+   "id": "mggj4hxkexp.48471",
+   "kind": "table 2, row 0, column 0 (header row)",
+   "text": "System"
+  },
+  {
+   "id": "mggj4hxkexp.48479",
+   "kind": "table 2, row 0, column 1 (header row)",
+   "text": "What it checks"
+  },
+  {
+   "id": "mggj4hxkexp.48495",
+   "kind": "table 2, row 0, column 2 (header row)",
+   "text": "Can it block a merge?"
+  },
+  {
+   "id": "mggj4hxkexp.48519",
+   "kind": "table 2, row 1, column 0",
+   "text": "symphony-protocol's harness"
+  },
+  {
+   "id": "mggj4hxkexp.48548",
+   "kind": "table 2, row 1, column 1",
+   "text": "The shipped library, over every interleaving of scripted workers, against an oracle written from the spec's text, with 93 mutants"
+  },
+  {
+   "id": "mggj4hxkexp.48679",
+   "kind": "table 2, row 1, column 2",
+   "text": "Its fast lane, a search to depth 5, is part of the required check; the deep searches run weekly or by hand, not as required checks"
+  },
+  {
+   "id": "mggj4hxkexp.48730",
+   "kind": "table 2, row 2, column 0",
+   "text": "beethoven-qa"
+  },
+  {
+   "id": "mggj4hxkexp.48744",
+   "kind": "table 2, row 2, column 1",
+   "text": "Contracts on every public function, by bounded symbolic search with CrossHair and Z3"
+  },
+  {
+   "id": "mggj4hxkexp.48830",
+   "kind": "table 2, row 2, column 2",
+   "text": "Yes, as the required check, with no human gate"
+  },
+  {
+   "id": "mggj4hxkexp.48879",
+   "kind": "table 2, row 3, column 0",
+   "text": "gh-aw's work-queue models"
+  },
+  {
+   "id": "mggj4hxkexp.48906",
+   "kind": "table 2, row 3, column 1",
+   "text": "TLA+ models with 68 deliberately broken configurations; not the shipped Go and JavaScript"
+  },
+  {
+   "id": "mggj4hxkexp.48997",
+   "kind": "table 2, row 3, column 2",
+   "text": "No"
+  },
+  {
+   "id": "mggj4hxkexp.49002",
+   "kind": "table 2, row 4, column 0",
+   "text": "GitHub's security validation of agent code"
+  },
+  {
+   "id": "mggj4hxkexp.49046",
+   "kind": "table 2, row 4, column 1",
+   "text": "CodeQL, secret scanning and the advisory database, on Copilot's and third-party agents' code, with no Advanced Security licence"
+  },
+  {
+   "id": "mggj4hxkexp.49175",
+   "kind": "table 2, row 4, column 2",
+   "text": "It runs on the agent's own work"
+  },
+  {
+   "id": "mggj4hxkexp.49209",
+   "kind": "table 2, row 5, column 0",
+   "text": "Copilot code review"
+  },
+  {
+   "id": "mggj4hxkexp.49230",
+   "kind": "table 2, row 5, column 1",
+   "text": "A model's review"
+  },
+  {
+   "id": "mggj4hxkexp.49248",
+   "kind": "table 2, row 5, column 2",
+   "text": "Only when Copilot approvals are switched on"
+  },
+  {
+   "id": "mggj4hxkexp.49294",
+   "kind": "table 2, row 6, column 0",
+   "text": "Claude Code Review"
+  },
+  {
+   "id": "mggj4hxkexp.49314",
+   "kind": "table 2, row 6, column 1",
+   "text": "Several model reviewers"
+  },
+  {
+   "id": "mggj4hxkexp.49339",
+   "kind": "table 2, row 6, column 2",
+   "text": "Never: it neither approves nor blocks"
+  },
+  {
+   "id": "mggj4hxkexp.49379",
+   "kind": "table 2, row 7, column 0",
+   "text": "SpecPylot"
+  },
+  {
+   "id": "mggj4hxkexp.49390",
+   "kind": "table 2, row 7, column 1",
+   "text": "A model writes icontract contracts; CrossHair validates them"
+  },
+  {
+   "id": "mggj4hxkexp.49452",
+   "kind": "table 2, row 7, column 2",
+   "text": "No: a generator, and it needs an API key"
+  },
+  {
+   "id": "mggj4hxkexp.49495",
+   "kind": "table 2, row 8, column 0",
+   "text": "Specula; untyped"
+  },
+  {
+   "id": "mggj4hxkexp.49513",
+   "kind": "table 2, row 8, column 1",
+   "text": "Agents write and model-check TLA+ of system code; a TLA+ model of one agent harness's tool calls"
+  },
+  {
+   "id": "mggj4hxkexp.49611",
+   "kind": "table 2, row 8, column 2",
+   "text": "No"
+  },
+  {
+   "id": "mggj4hxkexp.49614",
+   "kind": "paragraph",
+   "text": "Sources: research note 12 and research/taxonomy/verify/03."
+  }
+ ]
+}

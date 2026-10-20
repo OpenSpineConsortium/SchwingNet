@@ -1,0 +1,291 @@
+{
+ "group": "spec-B",
+ "doc": "spec",
+ "units": [
+  {
+   "id": "mggj4hxkexp.7397",
+   "kind": "heading level 2",
+   "text": "3. The taxonomy"
+  },
+  {
+   "id": "mggj4hxkexp.7413",
+   "kind": "paragraph",
+   "text": "No published taxonomy answers the question this spec asks. The academic taxonomies of agents read for it (2024 to 2026) classify by architecture, control structure, interaction type, autonomy, environment, memory and domain; none has an axis for where the compute runs and who pays for it (Inferred from the dozen read, not a systematic review; research note 13). Industry categories moved in 2025 and 2026 from assistants to agents: Gartner's 2025 report was a Magic Quadrant for AI Code Assistants (Reported, from a news digest), and a single secondary page, possibly machine-written, reports a 2026 Magic Quadrant for Enterprise AI Coding Agents (Reported). Thoughtworks' Technology Radar Vol 34 (April 2026) named \"agent-native project memory and task tracking\" a new category, with Beads as its example, put a small team of coding agents in Assess and coding agent swarms in Caution (Reported, from a dataset of the radar). The CNCF landscape has an AI Agent category with eleven subcategories, none for coding agents or for coordinating them (Verified, landscape.yml)."
+  },
+  {
+   "id": "mggj4hxkexp.8430",
+   "kind": "paragraph",
+   "text": "The taxonomy below keeps the axes that recur in that literature and adds the one it lacks. An axis earns its place only if it separates the neighbors in section 5."
+  },
+  {
+   "id": "mggj4hxkexp.8597",
+   "kind": "table 1, row 0, column 0 (header row)",
+   "text": "#"
+  },
+  {
+   "id": "mggj4hxkexp.8600",
+   "kind": "table 1, row 0, column 1 (header row)",
+   "text": "Axis"
+  },
+  {
+   "id": "mggj4hxkexp.8606",
+   "kind": "table 1, row 0, column 2 (header row)",
+   "text": "Categories"
+  },
+  {
+   "id": "mggj4hxkexp.8618",
+   "kind": "table 1, row 0, column 3 (header row)",
+   "text": "Built on"
+  },
+  {
+   "id": "mggj4hxkexp.8629",
+   "kind": "table 1, row 1, column 0",
+   "text": "1"
+  },
+  {
+   "id": "mggj4hxkexp.8632",
+   "kind": "table 1, row 1, column 1",
+   "text": "Stack layer"
+  },
+  {
+   "id": "mggj4hxkexp.8645",
+   "kind": "table 1, row 1, column 2",
+   "text": "L0 model; L1 single-agent harness (Claude Code, Codex CLI); L2 agent framework or SDK; L3 coordination layer; L4 execution platform (sandbox, CI, HPC scheduler, hosted service); L5 domain workflow"
+  },
+  {
+   "id": "mggj4hxkexp.8843",
+   "kind": "table 1, row 1, column 3",
+   "text": "The CNCF landscape; Sapkota et al. 2025; Anthropic's split of harness and sandbox"
+  },
+  {
+   "id": "mggj4hxkexp.8927",
+   "kind": "table 1, row 2, column 0",
+   "text": "2"
+  },
+  {
+   "id": "mggj4hxkexp.8930",
+   "kind": "table 1, row 2, column 1",
+   "text": "Autonomy, by the human's role"
+  },
+  {
+   "id": "mggj4hxkexp.8961",
+   "kind": "table 1, row 2, column 2",
+   "text": "Operator, collaborator, consultant, approver, observer"
+  },
+  {
+   "id": "mggj4hxkexp.9017",
+   "kind": "table 1, row 2, column 3",
+   "text": "Feng, McDonald and Zhang 2025; the SE 3.0 levels of Hassan et al. 2025"
+  },
+  {
+   "id": "mggj4hxkexp.9090",
+   "kind": "table 1, row 3, column 0",
+   "text": "3"
+  },
+  {
+   "id": "mggj4hxkexp.9093",
+   "kind": "table 1, row 3, column 1",
+   "text": "Control topology"
+  },
+  {
+   "id": "mggj4hxkexp.9111",
+   "kind": "table 1, row 3, column 2",
+   "text": "Single agent; orchestrator and workers; hierarchy of planners; decentralized peers; shared medium (blackboard, ledger)"
+  },
+  {
+   "id": "mggj4hxkexp.9231",
+   "kind": "table 1, row 3, column 3",
+   "text": "Guo et al. 2024; Tran et al. 2025; Anthropic's patterns"
+  },
+  {
+   "id": "mggj4hxkexp.9289",
+   "kind": "table 1, row 4, column 0",
+   "text": "4"
+  },
+  {
+   "id": "mggj4hxkexp.9292",
+   "kind": "table 1, row 4, column 1",
+   "text": "Communication medium"
+  },
+  {
+   "id": "mggj4hxkexp.9314",
+   "kind": "table 1, row 4, column 2",
+   "text": "Direct messages (mailboxes, A2A); context protocol (MCP); shared task list or blackboard; traces in the work itself (issues, branches, labels); tuple space"
+  },
+  {
+   "id": "mggj4hxkexp.9471",
+   "kind": "table 1, row 4, column 3",
+   "text": "Yang et al. 2025; Gelernter 1985; Nii 1986; Heylighen 2016 on stigmergy"
+  },
+  {
+   "id": "mggj4hxkexp.9545",
+   "kind": "table 1, row 5, column 0",
+   "text": "5"
+  },
+  {
+   "id": "mggj4hxkexp.9548",
+   "kind": "table 1, row 5, column 1",
+   "text": "Concurrency control over shared work"
+  },
+  {
+   "id": "mggj4hxkexp.9586",
+   "kind": "table 1, row 5, column 2",
+   "text": "Partitioning only (file ownership); lock; lease (a lock with expiry, renewal and a fence); optimistic (private copy, validate at merge, retry); hybrid"
+  },
+  {
+   "id": "mggj4hxkexp.9738",
+   "kind": "table 1, row 5, column 3",
+   "text": "Kung and Robinson 1981; Gray and Cheriton 1989; Chubby, 2006"
+  },
+  {
+   "id": "mggj4hxkexp.9801",
+   "kind": "table 1, row 6, column 0",
+   "text": "6"
+  },
+  {
+   "id": "mggj4hxkexp.9804",
+   "kind": "table 1, row 6, column 1",
+   "text": "Dependencies managed"
+  },
+  {
+   "id": "mggj4hxkexp.9826",
+   "kind": "table 1, row 6, column 2",
+   "text": "Shared resource; prerequisite; transfer; usability; simultaneity; task and subtask"
+  },
+  {
+   "id": "mggj4hxkexp.9910",
+   "kind": "table 1, row 6, column 3",
+   "text": "Malone and Crowston 1994"
+  },
+  {
+   "id": "mggj4hxkexp.9937",
+   "kind": "table 1, row 7, column 0",
+   "text": "7"
+  },
+  {
+   "id": "mggj4hxkexp.9940",
+   "kind": "table 1, row 7, column 1",
+   "text": "Execution environment"
+  },
+  {
+   "id": "mggj4hxkexp.9963",
+   "kind": "table 1, row 7, column 2",
+   "text": "Developer machine; vendor cloud; CI runner; HPC batch job; self-hosted server"
+  },
+  {
+   "id": "mggj4hxkexp.10042",
+   "kind": "table 1, row 7, column 3",
+   "text": "Guo et al.; Suter et al. 2025; GitHub's runner docs"
+  },
+  {
+   "id": "mggj4hxkexp.10096",
+   "kind": "table 1, row 8, column 0",
+   "text": "8"
+  },
+  {
+   "id": "mggj4hxkexp.10099",
+   "kind": "table 1, row 8, column 1",
+   "text": "Trigger and lifetime"
+  },
+  {
+   "id": "mggj4hxkexp.10121",
+   "kind": "table 1, row 8, column 2",
+   "text": "Interactive; event-driven; scheduled; batch; long-running loop or durable execution"
+  },
+  {
+   "id": "mggj4hxkexp.10206",
+   "kind": "table 1, row 8, column 3",
+   "text": "Suter et al.; the two modes of claude-code-action"
+  },
+  {
+   "id": "mggj4hxkexp.10258",
+   "kind": "table 1, row 9, column 0",
+   "text": "9"
+  },
+  {
+   "id": "mggj4hxkexp.10261",
+   "kind": "table 1, row 9, column 1",
+   "text": "State and memory"
+  },
+  {
+   "id": "mggj4hxkexp.10279",
+   "kind": "table 1, row 9, column 2",
+   "text": "Stateless; context window; session log; project memory files; shared work ledger; lineage record"
+  },
+  {
+   "id": "mggj4hxkexp.10377",
+   "kind": "table 1, row 9, column 3",
+   "text": "Sapkota et al.; CNCF State and Memory; Beads"
+  },
+  {
+   "id": "mggj4hxkexp.10424",
+   "kind": "table 1, row 10, column 0",
+   "text": "10"
+  },
+  {
+   "id": "mggj4hxkexp.10428",
+   "kind": "table 1, row 10, column 1",
+   "text": "Cost model and payer"
+  },
+  {
+   "id": "mggj4hxkexp.10450",
+   "kind": "table 1, row 10, column 2",
+   "text": "Inference: metered API, flat subscription, vendor credits; compute: own machine, vendor, free CI minutes, institution's allocation; licence: open, open core, proprietary"
+  },
+  {
+   "id": "mggj4hxkexp.10621",
+   "kind": "table 1, row 10, column 3",
+   "text": "New here, from GitHub's billing pages and Anthropic's pricing"
+  },
+  {
+   "id": "mggj4hxkexp.10685",
+   "kind": "table 1, row 11, column 0",
+   "text": "11"
+  },
+  {
+   "id": "mggj4hxkexp.10689",
+   "kind": "table 1, row 11, column 1",
+   "text": "Verification and governance"
+  },
+  {
+   "id": "mggj4hxkexp.10718",
+   "kind": "table 1, row 11, column 2",
+   "text": "None; self-check; model as judge; deterministic gates (tests, required checks, formal methods); human approval; external certification"
+  },
+  {
+   "id": "mggj4hxkexp.10854",
+   "kind": "table 1, row 11, column 3",
+   "text": "MAST; Thoughtworks' feedback sensors; Hassan et al.'s Merge-Readiness Packs"
+  },
+  {
+   "id": "mggj4hxkexp.10932",
+   "kind": "table 1, row 12, column 0",
+   "text": "12"
+  },
+  {
+   "id": "mggj4hxkexp.10936",
+   "kind": "table 1, row 12, column 1",
+   "text": "Domain and maturity"
+  },
+  {
+   "id": "mggj4hxkexp.10957",
+   "kind": "table 1, row 12, column 2",
+   "text": "Software engineering task; scientific workflow; research software by kind, use and readiness level; business process"
+  },
+  {
+   "id": "mggj4hxkexp.11075",
+   "kind": "table 1, row 12, column 3",
+   "text": "Liu et al. 2024; Suter et al.; the GI and de-RSE guideline after Hasselbring et al. 2024"
+  },
+  {
+   "id": "mggj4hxkexp.11164",
+   "kind": "paragraph",
+   "text": "Three axes carry this study. Axis 10 is where the Actions story lives and the one no taxonomy has. Axis 5 is where Symphony's claim sits: a claim made by creating a branch, a lease-like release and optimistic merging. Axis 11 is where Beethoven's claim sits: a tool, never a model, decides. Axes 1, 3 and 7 locate the neighbors."
+  },
+  {
+   "id": "mggj4hxkexp.11483",
+   "kind": "paragraph",
+   "text": "The classical frames fit closely. Malone and Crowston define coordination as \"managing dependencies among activities\" and name four families of dependency, one of which, producer and consumer, splits into prerequisite, transfer and usability (Reported, from mirrors of the paper; research note 13). Each of the six kinds has a counterpart in agent work: claiming an issue is a shared resource, a blocker is a prerequisite, a pull request is a transfer, a required check is a usability standard, the landing order of overlapping work is simultaneity, and an epic is task and subtask (Inferred; research note 13)."
+  }
+ ]
+}

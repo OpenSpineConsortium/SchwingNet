@@ -1,0 +1,134 @@
+name: Add a worker
+
+# Turns the answers of the "Add a worker" issue form
+# (.github/ISSUE_TEMPLATE/worker.yml) into a worker's file under
+# .github/symphony/workers/ (docs/agents/WORKERS.md), and offers it by pull
+# request: a worker spends a Claude account's plan, so it joins the
+# registry only when the owner merges. tools/workers.py from-form checks
+# the answers and writes the file on a checkout of the default branch;
+# tools/add_worker.py words everything said. The run pushes the file on
+# its own branch, symphony/worker-<name>, rebuilt from the default branch
+# on every run and force-pushed, so an edit of the answers updates the same
+# pull request. It opens the pull request with GITHUB_TOKEN, or, where the
+# repository does not let GitHub Actions open one, answers with the link
+# that opens it in one press; and since neither a push nor a pull request
+# made with GITHUB_TOKEN starts a workflow, it starts the checks on the
+# branch itself (ci.yml takes workflow_dispatch), so the required check is
+# there when the pull request is. It answers on the issue with what to do
+# next: for a routine, the one prompt to paste, its name filled in. Only
+# someone who may write to the repository can add a worker, judged by
+# their permission on it, and in crowd mode (docs/setup/crowdsourcing.md)
+# a worker in Actions is refused, since the repository holds no Claude
+# token. An issue is the form's when its body has the form's two dropdown
+# headings; any other issue costs a skipped job. The run uses GITHUB_TOKEN
+# alone and names no other secret, since it runs this repository's
+# scripts.
+
+on:
+  issues:
+    types: [opened, edited]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  actions: write
+
+concurrency:
+  group: add-worker-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  add:
+    if: >-
+      github.event.issue.state == 'open'
+      && contains(github.event.issue.body, '### Where it runs')
+      && contains(github.event.issue.body, '### How its pull requests land')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      ISSUE: ${{ github.event.issue.number }}
+      AUTHOR: ${{ github.event.issue.user.login }}
+      BODY: ${{ github.event.issue.body }}
+      CROWD: ${{ vars.CLAUDE_CROWD }}
+      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+
+      - name: Write the worker the answers describe, or say why not
+        id: worker
+        run: |
+          set -eu
+          say() { gh issue comment "$ISSUE" --repo "$REPO" --body-file "$1"; }
+          printf '%s' "$BODY" > "$RUNNER_TEMP/issue.md"
+          if ! python3 tools/add_worker.py is-form < "$RUNNER_TEMP/issue.md"; then
+            echo "not the form's answers; nothing to do"
+            exit 0
+          fi
+          role=$(gh api "repos/$REPO/collaborators/$AUTHOR/permission" --jq .role_name 2>/dev/null || echo none)
+          case "$role" in
+            admin|maintain|write) ;;
+            *)
+              python3 tools/add_worker.py not-allowed > "$RUNNER_TEMP/reply.md"
+              say "$RUNNER_TEMP/reply.md"
+              echo "$AUTHOR may not write here ($role); answered"
+              exit 0
+              ;;
+          esac
+          if ! made=$(python3 tools/workers.py from-form --body "$RUNNER_TEMP/issue.md" 2> "$RUNNER_TEMP/problems.txt"); then
+            python3 tools/add_worker.py refused --problems "$RUNNER_TEMP/problems.txt" > "$RUNNER_TEMP/reply.md"
+            say "$RUNNER_TEMP/reply.md"
+            cat "$RUNNER_TEMP/problems.txt"
+            exit 0
+          fi
+          name="${made%% *}"
+          runs="${made##* }"
+          if [ "$runs" = "actions" ] && [ "$CROWD" = "true" ]; then
+            python3 tools/add_worker.py crowd > "$RUNNER_TEMP/reply.md"
+            say "$RUNNER_TEMP/reply.md"
+            echo "crowd mode: no worker in Actions"
+            exit 0
+          fi
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          echo "runs=$runs" >> "$GITHUB_OUTPUT"
+          echo "wrote .github/symphony/workers/$name.json ($runs)"
+
+      - name: Push the file on its branch, offer the pull request and answer
+        if: steps.worker.outputs.name != ''
+        env:
+          NAME: ${{ steps.worker.outputs.name }}
+          RUNS: ${{ steps.worker.outputs.runs }}
+          GIT_AUTHOR_NAME: github-actions[bot]
+          GIT_AUTHOR_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+          GIT_COMMITTER_NAME: github-actions[bot]
+          GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+        run: |
+          set -eu
+          branch=$(python3 tools/add_worker.py branch --name "$NAME")
+          python3 tools/add_worker.py message --name "$NAME" --runs "$RUNS" --issue "$ISSUE" > "$RUNNER_TEMP/message.txt"
+          python3 tools/add_worker.py body --name "$NAME" --runs "$RUNS" --issue "$ISSUE" > "$RUNNER_TEMP/body.md"
+          git checkout -q -B "$branch"
+          git add ".github/symphony/workers/$NAME.json"
+          git commit -q -F "$RUNNER_TEMP/message.txt"
+          git push -q --force origin "HEAD:refs/heads/$branch"
+          opened=""
+          url=$(gh pr list --repo "$REPO" --head "$branch" --state open --json url --jq '.[0].url // ""')
+          if [ -z "$url" ]; then
+            if url=$(gh pr create --repo "$REPO" --head "$branch" --base "$DEFAULT_BRANCH" \
+                       --title "$(python3 tools/add_worker.py title --name "$NAME")" --body-file "$RUNNER_TEMP/body.md" 2> "$RUNNER_TEMP/pr-error.txt"); then
+              opened="--opened"
+            else
+              cat "$RUNNER_TEMP/pr-error.txt"
+              url="https://github.com/$REPO/compare/$DEFAULT_BRANCH...$branch?expand=1"
+            fi
+          else
+            opened="--opened"
+          fi
+          gh workflow run ci.yml --repo "$REPO" --ref "$branch" || echo "the checks did not start on $branch; they start with the pull request's next event"
+          python3 tools/add_worker.py reply --name "$NAME" --runs "$RUNS" --url "$url" $opened > "$RUNNER_TEMP/reply.md"
+          gh issue comment "$ISSUE" --repo "$REPO" --body-file "$RUNNER_TEMP/reply.md"
+          echo "offered $NAME at $url"
