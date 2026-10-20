@@ -2,17 +2,19 @@
   "id": "aasce",
   "name": "AASCE / BoostNet whole-spine films",
   "group": "films",
-  "what": "609 labelled AP whole-spine films on Ceph; 579 on HOME (481 labelled plus 98 challenge test)",
+  "what": "609 labelled AP whole-spine films (481 BoostNet training + 128 BoostNet test) and 98 challenge-test films whose landmarks the release never published; both copies are on Ceph: the GitHub mirror holds all 707, and an older request-form copy holds 481 + 98 = 579 without the 128 test films (HOME's spine-detector path has linked to it since 2026-10-10)",
   "level_truth": "thoracic, as a test set",
   "reach": "held",
-  "status": "thoracic test only (608 films); a request-form source",
-  "licence": "by request form",
+  "status": "thoracic test set only: the prep wrote 608 of the 609 labelled films (one degenerate box); 457 of the 481 training films once fed the deleted level banks v4, v5 and v5c (24 skipped by an unsorted-landmark artefact) and the 128 test films never did; a request-form source",
+  "licence": "by request form (SpineWeb); the mirror repository is MIT, the images' reuse terms not recorded",
   "link": "https://aasce19.github.io/",
   "how_to_get": [],
-  "grid_path": null,
+  "grid_path": "/rs/rs_grp_oschome/go2432/data/thoracic_xr/mirror_zlinzju_ke30_u7_AASCE2019; the 579 at /rs/rs_grp_oschome/go2432/data/aasce2019_boostnet/raw/aasce",
   "counts": {
-    "films": 609
+    "labelled_films": 609,
+    "challenge_test_films": 98,
+    "thoracic_test_films": 608
   },
   "measured": {},
-  "record": "spine-program 01_carm_level_detection/docs/handoff/DATASET_USAGE.md 2.2"
+  "record": "spine-program 10_data_platform_grid/docs/DATA_COMPLETENESS_AUDIT.md, the AASCE rows; spinesurg-ct-nnunet data_platform/sources.json, aasce2019_boostnet; grid listing 2026-10-20 (thoracic_xr/aasce/summary.json: films_labelled 609, films_written 608)"
 }

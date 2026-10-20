@@ -49,8 +49,7 @@ and 10_data_platform_grid's DATA_MANIFEST.md (211 sources carded); each record n
 file. Counts are the record's; a count the record does not state is left out, and "not recorded"
 means the record is silent. The fields a grid job fills at sample level (`measured`) are empty until
 the owner gives the word and the number for the jobs, and print after the record's counts once filled.
-The closing section is prose: its numbers are read from the records where a record counts them, and
-the rest quote the record files the sources name.
+The closing section is prose, and every count in it is read from the record it names.
 
 Reach: HAVE = on the grid now; GET = public or by request, not yet fetched; GATED = behind a data use
 agreement, an application or a login the project does not hold; EMBARGOED = released on a date;
@@ -59,23 +58,23 @@ NONE = does not exist publicly; EXCLUDED = held or seen and set aside for a stat
 
 MEANING = """## What this means for the plan
 
-The four numbers in brackets are read from the records named; every other number quotes the
-record files the sources name.
+Every count below is read from the record named beside it; a date, a citation's year and a version
+are not counts.
 
 - Real frames with level truth exist only for the lumbar spine (C-ArmLSpine) and the pelvis
   (DeepFluoro, COBRA). Every cervical and thoracic truth held is a film (CSXA, AASCE) or a render
   (RSNA, VerSe, TotalSegmentator). That is the gap, and no public set fills it; the drafted requests
   above are the cheapest next move and none has been sent.
-- Video: the only consecutive frames with a paired volume are the two C-ArmLSpine sweeps; the
-  {clips} GB of public clips (fluoro_video_clips) are for a private tracker screening and nothing
-  else; every labelled cine set (Bournemouth, Maastricht, Pittsburgh) is by request, and the Bern
-  myelography videos are the one CC BY travelling sequence.
-- Rare classes: 3 real L6 persons (all test), {l6_cts} L6 CTs in the project's own release
-  (ctspinopelvic1k), {l6_renders} L6 renders (fluorogen_synth_rare), and the harvest's census over
-  thousands of CTs. In 3D the project is rich; in real 2D it has three people.
-- Gated for good as the project stands: VinDr (a DUA outside the IRB determination) and the {gated_ct} gated
-  CT collections; TVGH and Radiopaedia were never asked.
-- Three licences bind a product: COBRA and DeepFluoro are non-commercial, CTSpinoPelvic1K is
+- Video: the only consecutive frames with a paired volume are the {sweeps} C-ArmLSpine sweeps
+  (carmlspine_sweeps); the {clips} GB of public clips (fluoro_video_clips) are for a private tracker
+  screening and nothing else; every labelled cine set (Bournemouth, Maastricht, Pittsburgh) is by
+  request, and the Bern myelography videos are the one CC BY travelling sequence.
+- Rare classes: {l6_real} real L6 persons (carmlspine, all test), {l6_cts} L6 CTs in the project's
+  own release (ctspinopelvic1k), {l6_renders} L6 renders (fluorogen_synth_rare), and the harvest's
+  census over thousands of CTs. In 3D the project is rich; in real 2D it has {l6_real} people.
+- Gated for good as the project stands: the {gated_ct} gated CT collections; TVGH and Radiopaedia
+  were never asked.
+- Licences bind a product: COBRA and DeepFluoro are non-commercial, CTSpinoPelvic1K is
   non-commercial share-alike. That is a lawyer's question before version 1 depends on them.
 - Veterinary medicine is a future direction (the owner, 2026-10-20): the pig CBCT of Goswami 2020 is
   open on IEEE DataPort, and the workflow takes a species the way it takes a dataset, as one source
@@ -168,7 +167,9 @@ def meaning(sources: list[Source]) -> str:
     """The closing prose, its record-backed numbers read from the records."""
     gated_ct = sum(1 for s in sources if s.group is Group.CT and s.reach is Reach.GATED)
     return MEANING.format(
+        sweeps=count_of(sources, "carmlspine_sweeps", "sweeps"),
         clips=count_of(sources, "fluoro_video_clips", "size_gb"),
+        l6_real=count_of(sources, "carmlspine", "l6_cases"),
         l6_cts=count_of(sources, "ctspinopelvic1k", "l6_cases"),
         l6_renders=count_of(sources, "fluorogen_synth_rare", "l6"),
         gated_ct=format_number(gated_ct),

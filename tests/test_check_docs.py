@@ -161,6 +161,14 @@ class SoundTree(unittest.TestCase):
         problems, _ = run_checks(self.root)
         self.assertEqual(problems, [".claude/rules/quote.md: line 3 is not ASCII"])
 
+    def test_a_dataset_record_is_held_like_a_document(self):
+        write(self.root, "data/sources/aasce.json", b'{"name": "Jos\xc3\xa9"}\r\n')
+        problems, _ = run_checks(self.root)
+        self.assertEqual(problems, [
+            "data/sources/aasce.json: line 1 has a CR (CRLF line ending)",
+            "data/sources/aasce.json: line 1 is not ASCII",
+        ])
+
     def test_non_ascii_outside_the_document_folders_is_allowed(self):
         write(self.root, "data/names.txt", "Jos\u00e9\n")
         problems, _ = run_checks(self.root)
