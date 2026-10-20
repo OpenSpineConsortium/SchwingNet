@@ -240,7 +240,13 @@ if grep -q '^- Crowd mode: on\.' docs/project.md 2>/dev/null; then
   die "crowd mode is on in this clone's docs/project.md: $crowd_refusal"
 fi
 read_error=$(mktemp)
-if crowd=$(gh api "repos/$REPO/actions/variables/CLAUDE_CROWD" --jq .value 2>"$read_error"); then
+if [ "${SYMPHONY_SETTINGS_APP:-}" = 1 ] && [ -n "${SYMPHONY_CROWD_VARIABLE+set}" ]; then
+  # The Settings workflow reads the variable from its own vars context,
+  # which needs no permission, and hands it here, set but empty where the
+  # repository has none.
+  crowd="$SYMPHONY_CROWD_VARIABLE"
+  rm -f "$read_error"
+elif crowd=$(gh api "repos/$REPO/actions/variables/CLAUDE_CROWD" --jq .value 2>"$read_error"); then
   rm -f "$read_error"
 elif grep -q '(HTTP 404)' "$read_error"; then
   crowd=""

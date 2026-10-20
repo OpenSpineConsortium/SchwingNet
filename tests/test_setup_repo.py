@@ -259,6 +259,22 @@ class AsTheApp(unittest.TestCase):
         self.assertNotIn("--enable-auto-merge", edit["args"])
         self.assertIn("label create", self.keys(calls))
 
+    def test_the_workflows_own_read_of_the_variable_needs_no_permission(self):
+        """The workflow hands the value from its vars context: empty turns
+        auto-merge on without asking the API, true stops before any write."""
+        refused = {f"GET repos/{REPO}/actions/variables/CLAUDE_CROWD": [answer(403, {"message": "Forbidden"})]}
+        with mock.patch.dict(os.environ, {"SYMPHONY_CROWD_VARIABLE": ""}):
+            done, calls = self.run_script(refused)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertNotIn("crowd mode: unknown", done.stdout)
+        self.assertNotIn(f"GET repos/{REPO}/actions/variables/CLAUDE_CROWD", self.keys(calls))
+        edit = next(call for call in calls if call["key"] == "repo edit" and "--delete-branch-on-merge" in call["args"])
+        self.assertIn("--enable-auto-merge", edit["args"])
+        with mock.patch.dict(os.environ, {"SYMPHONY_CROWD_VARIABLE": "TRUE"}):
+            done, calls = self.run_script({})
+        self.assertNotEqual(done.returncode, 0)
+        self.assertNotIn("repo edit", self.keys(calls))
+
     def test_a_person_who_cannot_read_it_is_still_stopped(self):
         refused = {f"GET repos/{REPO}/actions/variables/CLAUDE_CROWD": [answer(403, {"message": "Forbidden"})]}
         done, calls = self.run_script(refused, app=False)

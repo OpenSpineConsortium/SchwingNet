@@ -22,11 +22,6 @@ rules:
     ignore:
       # The App's token is made in the one run that initialises a copy.
       - template-init.yml
-      # The settings need the installation's whole set, since the action
-      # names no variables permission (crowd mode's CLAUDE_CROWD, Pages'
-      # SYMPHONY_DOCS) and setup-repo.sh would fail where one it names is
-      # not accepted; the token is revoked by the step after the settings.
-      - settings.yml
       # The token wizard needs the installation's whole set, since the
       # action names no variables permission (token.yml says why); the look
       # token is revoked before claude starts.
