@@ -1,0 +1,18 @@
+{
+  "id": "dmx_imaging",
+  "name": "DMX Imaging digital motion X-ray",
+  "group": "video",
+  "what": "lateral lumbar flexion-extension at 30 frames a second, a commercial practice's YouTube video",
+  "level_truth": "none named",
+  "reach": "get",
+  "status": "request 7 drafted, never sent",
+  "licence": "unknown",
+  "link": "https://www.dmxworks.com/",
+  "how_to_get": [
+    "Send request 7 of spine-program 01_carm_level_detection/docs/data_requests/FLUORO_VIDEO_REQUESTS_READY_2026-09-26.md (07_dmx.eml) asking for de-identified lumbar DMX studies."
+  ],
+  "grid_path": null,
+  "counts": {},
+  "measured": {},
+  "record": "spine-program 01_carm_level_detection/docs/data_requests/FLUORO_VIDEO_REQUESTS_READY_2026-09-26.md 7"
+}

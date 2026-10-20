@@ -1,0 +1,20 @@
+{
+  "id": "jefferson_drg",
+  "name": "Jefferson Neurosurgery DRG stimulation video (Hines 2020)",
+  "group": "video",
+  "what": "a Neurosurgical Focus Video article with lumbosacral fluoroscopy; the YouTube copy carries a CC BY licence and is on the grid",
+  "level_truth": "L5 and S1 named in the article",
+  "reach": "get",
+  "status": "request 11 drafted, never sent; the copy is usable now under CC BY",
+  "licence": "CC BY (YouTube copy); the article text says CC BY-NC-ND while linking CC BY 4.0",
+  "link": "https://doi.org/10.3171/2020.7.FOCVID2034",
+  "how_to_get": [
+    "Send request 11 of spine-program 01_carm_level_detection/docs/data_requests/FLUORO_VIDEO_REQUESTS_READY_2026-09-26.md (11_jefferson_CHECK_ADDRESS.eml) after confirming the address; ask for the original file and which licence applies."
+  ],
+  "grid_path": null,
+  "counts": {
+    "videos": 1
+  },
+  "measured": {},
+  "record": "spine-program 01_carm_level_detection/docs/data_requests/FLUORO_VIDEO_REQUESTS_READY_2026-09-26.md 11"
+}

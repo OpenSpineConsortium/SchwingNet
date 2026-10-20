@@ -1,0 +1,20 @@
+{
+  "id": "bournemouth_lumbar_qf",
+  "name": "Bournemouth lumbar quantitative fluoroscopy (Breen 2021)",
+  "group": "video",
+  "what": "weight-bearing and recumbent L2 to S1 flexion and extension cine of 127 subjects at 15 fps, 60 degrees at 6 degrees a second; only per-frame angles are public on OSF",
+  "level_truth": "lumbar, if corner templates exist as they do for the cervical set",
+  "reach": "get",
+  "status": "the only confirmed lumbar cine; asked for in request 1",
+  "licence": "not recorded (OSF holds derived tables only)",
+  "link": "https://osf.io/a27py/",
+  "how_to_get": [
+    "Part of request 1 above: write to the corresponding author of doi:10.3389/fbioe.2021.745837 for the L2-S1 cine behind osf.io/a27py."
+  ],
+  "grid_path": null,
+  "counts": {
+    "subjects": 127
+  },
+  "measured": {},
+  "record": "spine-program 01_carm_level_detection/docs/FLUORO_VIDEO_SOURCES_2026-09-26.md; spine-program 01_carm_level_detection/docs/data_requests/FLUORO_VIDEO_REQUESTS_READY_2026-09-26.md 1"
+}

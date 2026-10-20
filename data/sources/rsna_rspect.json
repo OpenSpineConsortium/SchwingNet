@@ -1,0 +1,18 @@
+{
+  "id": "rsna_rspect",
+  "name": "RSNA pulmonary embolism CT (RSPECT)",
+  "group": "ct",
+  "what": "7,279 patients; a gated anomaly-harvest collection (group B7)",
+  "level_truth": "counted by the census pipeline once fetched",
+  "reach": "gated",
+  "status": "an agreement stands in front of the data; none signed",
+  "licence": "a data use agreement (non-commercial)",
+  "link": "https://www.kaggle.com/competitions/rsna-str-pulmonary-embolism-detection",
+  "how_to_get": [
+    "Hold a Kaggle account and accept the competition rules; fetch with the Kaggle API token kept in a file, never on a command line."
+  ],
+  "grid_path": null,
+  "counts": {},
+  "measured": {},
+  "record": "spine-program 10_data_platform_grid/code/data_platform/DATA_MANIFEST.md group B7; spine-program 10_data_platform_grid acquisition/ACQUISITION_PLAN.md section 7"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "radiopaedia",
+  "name": "Radiopaedia fluoroscopy cases",
+  "group": "video",
+  "what": "seven cases: the rotational C-arm spin of rID 24796 (vertebral body stenting), the 61-projection series of rID 90103 (sublaminar lumbar puncture), the lateral L1 series of rID 21585 (vertebroplasty), and four injection cases",
+  "level_truth": "named in the case text (L1, L5, S1)",
+  "reach": "gated",
+  "status": "never applied for; machine-learning research goes through Radiopaedia's licence application, fee reported as USD 250, non-commercial only; no scraping",
+  "licence": "CC BY-NC-SA 3.0 (the site); ML use by application",
+  "link": "https://radiopaedia.org/licence",
+  "how_to_get": [
+    "Open https://radiopaedia.org/licence in a browser and start the machine-learning research application (request 8 of spine-program 01_carm_level_detection/docs/data_requests/FLUORO_VIDEO_REQUESTS_READY_2026-09-26.md is the text).",
+    "List the seven cases: rID 24796, rID 90103, rID 21585, https://radiopaedia.org/cases/lumbar-transforaminal-epidural-steroid-injection-fluoroscopic-guided, https://radiopaedia.org/cases/lumbar-transforminal-epidural-steroid-injection-fluoroscopic-guided, https://radiopaedia.org/cases/s1-transforaminal-epidural-steroid-injection-fluoroscopic-guided, https://radiopaedia.org/cases/l5-nerve-root-block-fluoroscopic.",
+    "Ask for the native DICOM stacks and say the use is non-commercial academic evaluation; a commercial product needs a negotiated licence."
+  ],
+  "grid_path": null,
+  "counts": {
+    "cases": 7
+  },
+  "measured": {},
+  "record": "spine-program 01_carm_level_detection/docs/data_requests/FLUORO_VIDEO_REQUESTS_READY_2026-09-26.md 8"
+}

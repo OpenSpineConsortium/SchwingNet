@@ -1,0 +1,19 @@
+{
+  "id": "cads",
+  "name": "CADS CT (unique cases)",
+  "group": "ct",
+  "what": "753 CTs; a gated anomaly-harvest collection (group B7)",
+  "level_truth": "counted by the census pipeline once fetched",
+  "reach": "gated",
+  "status": "an agreement stands in front of the data; none signed",
+  "licence": "a data use agreement (non-commercial)",
+  "link": "https://huggingface.co/datasets/mrmrx/CADS-dataset",
+  "how_to_get": [
+    "Hold a Hugging Face account and tick the one checkbox on the dataset page.",
+    "Read CT-TRI's own terms before any derived label; the VISCERAL folders carry the VISCERAL agreement text."
+  ],
+  "grid_path": null,
+  "counts": {},
+  "measured": {},
+  "record": "spine-program 10_data_platform_grid/code/data_platform/DATA_MANIFEST.md group B7; spine-program 10_data_platform_grid acquisition/ACQUISITION_PLAN.md section 7"
+}

@@ -1,0 +1,21 @@
+{
+  "id": "bern_myelography",
+  "name": "Inselspital Bern dynamic myelography (Piechowiak 2021)",
+  "group": "video",
+  "what": "four pulsed fluoroscopy runs at 7.5 frames a second, the detector moved cranially along the spine during tilting: the only overlapping travelling frames found; the published MP4s are on the grid, the native DICOM is not",
+  "level_truth": "thoracic (T7/8, T9/10) and one clip at L5/S1, from the captions",
+  "reach": "get",
+  "status": "the published videos held under CC BY; request 3 for the native DICOM drafted, never sent",
+  "licence": "CC BY 4.0 (the article's videos); native DICOM available on reasonable request under Swiss law",
+  "link": "https://pmc.ncbi.nlm.nih.gov/articles/PMC8463391/",
+  "how_to_get": [
+    "Send request 3 of spine-program 01_carm_level_detection/docs/data_requests/FLUORO_VIDEO_REQUESTS_READY_2026-09-26.md (the draft 03_bern.eml) to the corresponding author of doi:10.1007/s00062-020-00943-w.",
+    "Expect a data transfer agreement under Swiss federal law."
+  ],
+  "grid_path": "/rs/rs_grp_oschome/go2432/data/external/fluoro_video/pmc/",
+  "counts": {
+    "videos": 4
+  },
+  "measured": {},
+  "record": "spine-program 01_carm_level_detection/docs/FLUORO_VIDEO_SOURCES_2026-09-26.md; spine-program 01_carm_level_detection/docs/data_requests/FLUORO_VIDEO_REQUESTS_READY_2026-09-26.md 3"
+}

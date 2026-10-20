@@ -1,0 +1,19 @@
+{
+  "id": "ct_rate",
+  "name": "CT-RATE chest CT",
+  "group": "ct",
+  "what": "25,692 CT of 21,304 patients; a gated anomaly-harvest collection (group B7)",
+  "level_truth": "counted by the census pipeline once fetched",
+  "reach": "gated",
+  "status": "an agreement stands in front of the data; none signed",
+  "licence": "a data use agreement (non-commercial)",
+  "link": "https://huggingface.co/datasets/ibrahimhamamci/CT-RATE",
+  "how_to_get": [
+    "Hold a Hugging Face account, fill the gate form (name, institution, e-mail, terms) on the dataset page.",
+    "The fetch tool passes no token, so fetch with a token read from a file; the ungated re-uploads were deliberately not used."
+  ],
+  "grid_path": null,
+  "counts": {},
+  "measured": {},
+  "record": "spine-program 10_data_platform_grid/code/data_platform/DATA_MANIFEST.md group B7; spine-program 10_data_platform_grid acquisition/ACQUISITION_PLAN.md section 7"
+}

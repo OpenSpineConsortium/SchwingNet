@@ -1,0 +1,19 @@
+{
+  "id": "spinal_ai2024",
+  "name": "Spinal-AI2024",
+  "group": "films",
+  "what": "20,000 machine-generated films from 44 synthetic identities; no patient was imaged",
+  "level_truth": "assumed",
+  "reach": "held",
+  "status": "all on train in the G3 split; nothing to hold out",
+  "licence": "not recorded",
+  "link": null,
+  "how_to_get": [],
+  "grid_path": null,
+  "counts": {
+    "films": 20000,
+    "identities": 44
+  },
+  "measured": {},
+  "record": "spine-program 01_carm_level_detection/docs/handoff/DATASET_USAGE.md 2.2; spine-program 10_data_platform_grid/code/data_platform/DATA_MANIFEST.md defect 34"
+}

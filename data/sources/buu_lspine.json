@@ -1,0 +1,20 @@
+{
+  "id": "buu_lspine",
+  "name": "BUU-LSPINE",
+  "group": "films",
+  "what": "3,603 lateral and 3,600 AP lumbar radiographs of 3,600 people with end-plate lines, plus the 2000 relabel and a 400 sample",
+  "level_truth": "lumbar",
+  "reach": "held",
+  "status": "laterals used; the AP films and the 2000 relabel never used, no criterion; no weight trained on them leaves the grid until the owner has read the licence",
+  "licence": "unread by the owner",
+  "link": null,
+  "how_to_get": [],
+  "grid_path": null,
+  "counts": {
+    "lateral_films": 3603,
+    "ap_films": 3600,
+    "people": 3600
+  },
+  "measured": {},
+  "record": "spine-program 01_carm_level_detection/docs/handoff/DATASET_USAGE.md 2.2; spine-program 10_data_platform_grid/code/data_platform/DATA_MANIFEST.md"
+}

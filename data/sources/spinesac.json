@@ -1,0 +1,18 @@
+{
+  "id": "spinesac",
+  "name": "SpineSAC",
+  "group": "fluoro",
+  "what": "5,490 sawbone frames from six C-arms",
+  "level_truth": "none: the masks are empty on sawbone CT",
+  "reach": "excluded",
+  "status": "0 frames scored; no licence stated",
+  "licence": "none stated",
+  "link": "https://github.com/IGRS-Imaging/SpineSAC",
+  "how_to_get": [],
+  "grid_path": "/rs/rs_grp_oschome/go2432/data/spinesac",
+  "counts": {
+    "frames": 5490
+  },
+  "measured": {},
+  "record": "spine-program 01_carm_level_detection/DATA.md; spine-program 01_carm_level_detection/docs/handoff/DATASET_USAGE.md"
+}

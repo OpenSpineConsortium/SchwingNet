@@ -1,0 +1,19 @@
+{
+  "id": "nhanes2_annotated",
+  "name": "NHANES II annotated films",
+  "group": "films",
+  "what": "543 digitised films of 364 persons with landmarks",
+  "level_truth": "lumbar and cervical",
+  "reach": "held",
+  "status": "used; counted twice in the old fold banks (a leak the registry ends)",
+  "licence": "open (NCHS)",
+  "link": "https://wwwn.cdc.gov/nchs/data/nhanes2/NH2_Xray.htm",
+  "how_to_get": [],
+  "grid_path": null,
+  "counts": {
+    "films": 543,
+    "persons": 364
+  },
+  "measured": {},
+  "record": "spine-program 01_carm_level_detection/docs/handoff/DATASET_USAGE.md 2.2"
+}

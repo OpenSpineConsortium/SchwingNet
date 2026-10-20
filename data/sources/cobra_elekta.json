@@ -1,0 +1,19 @@
+{
+  "id": "cobra_elekta",
+  "name": "COBRA2026 Elekta",
+  "group": "projections",
+  "what": "kV projections around supine pelvic radiotherapy patients, 504 x 504 at 0.8 mm, 120 kVp, with the planning CT deformably registered",
+  "level_truth": "whatever is segmented on the CT: the sacrum today, L5 and L6 possible",
+  "reach": "held",
+  "status": "all 467 cases on Ceph; 145 in a bank of 24 frames each, the rest never exported; the sacrum detector's training",
+  "licence": "CC BY-NC 4.0",
+  "link": "https://zenodo.org/records/21322350",
+  "how_to_get": [],
+  "grid_path": "/rs/rs_grp_oschome/go2432/data/cobra2026",
+  "counts": {
+    "cases": 467,
+    "in_bank": 145
+  },
+  "measured": {},
+  "record": "spine-program 01_carm_level_detection/DATA.md; spine-program 01_carm_level_detection/docs/handoff/DATASET_USAGE.md 2.3"
+}

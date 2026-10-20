@@ -1,0 +1,18 @@
+{
+  "id": "magic_ct",
+  "name": "MAGIC-CT (Zenodo)",
+  "group": "ct",
+  "what": "562 CTs; a gated anomaly-harvest collection (group B7)",
+  "level_truth": "counted by the census pipeline once fetched",
+  "reach": "gated",
+  "status": "an agreement stands in front of the data; none signed",
+  "licence": "a data use agreement (non-commercial)",
+  "link": "https://zenodo.org/",
+  "how_to_get": [
+    "The files download without a gate, but the record's data use agreement requires an application with proof of human-subjects or HIPAA training, which only the owner can make; not fetched."
+  ],
+  "grid_path": null,
+  "counts": {},
+  "measured": {},
+  "record": "spine-program 10_data_platform_grid/code/data_platform/DATA_MANIFEST.md group B7; spine-program 10_data_platform_grid acquisition/ACQUISITION_PLAN.md section 7"
+}

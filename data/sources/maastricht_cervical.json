@@ -1,0 +1,21 @@
+{
+  "id": "maastricht_cervical",
+  "name": "Maastricht UMC+ cervical flexion-extension cine (van Santbrink 2026)",
+  "group": "video",
+  "what": "112 lateral cervical recordings at 1024 x 1024, 15 fps, uncompressed, with C0 to C7 contours on every frame carrying identity through the sequence",
+  "level_truth": "yes, C0 to C7 per frame",
+  "reach": "get",
+  "status": "request 2 drafted, never sent; on request only",
+  "licence": "available on request under privacy restrictions; a Dutch WMO/GDPR data transfer agreement is expected",
+  "link": "https://pmc.ncbi.nlm.nih.gov/articles/PMC13024292/",
+  "how_to_get": [
+    "Send request 2 of spine-program 01_carm_level_detection/docs/data_requests/FLUORO_VIDEO_REQUESTS_READY_2026-09-26.md (02_maastricht.eml) to the corresponding author of doi:10.3390/bioengineering13030351.",
+    "Expect a data transfer agreement; the predecessor paper reports about 52 frames per recording."
+  ],
+  "grid_path": null,
+  "counts": {
+    "recordings": 112
+  },
+  "measured": {},
+  "record": "spine-program 01_carm_level_detection/docs/FLUORO_VIDEO_SOURCES_2026-09-26.md; spine-program 01_carm_level_detection/docs/data_requests/FLUORO_VIDEO_REQUESTS_READY_2026-09-26.md 2"
+}

@@ -1,0 +1,18 @@
+{
+  "id": "mendeley_5jdfdgp762",
+  "name": "Mendeley 5jdfdgp762 spondylolisthesis films",
+  "group": "films",
+  "what": "714 films with spondylolisthesis landmarks",
+  "level_truth": "landmarks",
+  "reach": "excluded",
+  "status": "about 500 are BUU people redistributed, so it adds no new person",
+  "licence": "not recorded",
+  "link": "https://data.mendeley.com/datasets/5jdfdgp762",
+  "how_to_get": [],
+  "grid_path": null,
+  "counts": {
+    "films": 714
+  },
+  "measured": {},
+  "record": "spine-program 01_carm_level_detection/docs/handoff/DATASET_USAGE.md 2.2; spine-program 10_data_platform_grid/code/data_platform/DATA_MANIFEST.md defect on spondy_landmark"
+}

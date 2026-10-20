@@ -63,5 +63,14 @@ if [ -f vendor/beethoven-qa/ORIGIN ]; then
 fi
 
 # The project's own checks go here: its linter, its test runner, its build.
+# The dataset inventory is rendered from data/sources/ (tools/sources.py); the page
+# and the records must agree. The renderer imports the package, so it runs in the
+# locked environment; where pixi is not here the gate lane's test holds the same
+# (tests/schwingnet/test_sources.py).
+if command -v pixi >/dev/null 2>&1 && [ -f pixi.lock ]; then
+  pixi run --locked python tools/sources.py check
+else
+  echo "data/sources/ against docs/research/datasets-inventory.md: pixi is not here, so the gate lane checks it"
+fi
 
 echo "checks ok"

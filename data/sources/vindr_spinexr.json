@@ -1,0 +1,22 @@
+{
+  "id": "vindr_spinexr",
+  "name": "VinDr-SpineXR",
+  "group": "films",
+  "what": "10,466 DICOM in 5,000 studies with lesion boxes",
+  "level_truth": "no levels",
+  "reach": "gated",
+  "status": "on the grid under a PhysioNet data use agreement that sits outside IRB determination 2026-269 (its own determination pending); dropped from training; only implant boxes used",
+  "licence": "PhysioNet credentialed health data licence",
+  "link": "https://physionet.org/content/vindr-spinexr/1.0.0/",
+  "how_to_get": [
+    "Hold a credentialed PhysioNet account (CITI training on file), sign the data use agreement on the record page.",
+    "Get an IRB determination that covers its use before any new training reads it."
+  ],
+  "grid_path": "on the grid (DATA.md)",
+  "counts": {
+    "images": 10466,
+    "studies": 5000
+  },
+  "measured": {},
+  "record": "spine-program 01_carm_level_detection/docs/handoff/DATASET_USAGE.md 2.2 and the agreements row"
+}
