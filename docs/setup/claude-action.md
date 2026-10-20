@@ -27,7 +27,7 @@ in to the main account, run `/install-github-app`, pick this repository,
 and approve the browser flow it opens. It installs the Claude GitHub App
 and writes the repository secret CLAUDE_CODE_OAUTH_TOKEN itself, so no
 token is ever copied by hand. The workflow is already on
-{{DEFAULT_BRANCH}}; the next @claude mention runs it.
+main; the next @claude mention runs it.
 
 Or run `python3 scripts/tokens.py main` from a clone with gh signed in:
 it runs `claude setup-token` for you behind a terminal of its own, keeps
@@ -40,7 +40,7 @@ By hand, where neither is at hand:
 1. Run `claude setup-token` and approve it in the browser. It prints a
    token good for about a year and saves it nowhere.
 2. Put the token in the repository secret CLAUDE_CODE_OAUTH_TOKEN, under
-   https://github.com/{{REPO}}/settings/secrets/actions.
+   https://github.com/OpenSpineConsortium/SchwingNet/settings/secrets/actions.
 
 ## What a run costs
 
@@ -72,7 +72,7 @@ with a comment that mentions @claude, and reads the answer on the issue.
 The label is not one template-init makes: the six it makes are the claim
 protocol's own list, held to the vendored library by the checks, so the
 page makes the label before it puts it on the issue, or a person makes
-it once at https://github.com/{{REPO}}/labels, any colour, since the
+it once at https://github.com/OpenSpineConsortium/SchwingNet/labels, any colour, since the
 workflow reads only the name.
 
 claude.yml tells the issue apart by that label alone, on an issue and
@@ -155,7 +155,7 @@ A worker in Actions is one file under .github/symphony/workers/ that says
 "runs": "actions" (docs/agents/WORKERS.md), and
 .github/symphony/workers/README.md lists its settings. Add one with the
 "Add a worker" issue form,
-https://github.com/{{REPO}}/issues/new?template=worker.yml, whose
+https://github.com/OpenSpineConsortium/SchwingNet/issues/new?template=worker.yml, whose
 workflow opens the pull request that adds the file where the repository
 lets GitHub Actions open pull requests ("Allow GitHub Actions to create
 and approve pull requests" under Settings, Actions, General, which

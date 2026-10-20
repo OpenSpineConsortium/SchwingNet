@@ -189,17 +189,17 @@ Each secret is one page; the values come from `claude setup-token`, run
 while signed in to the account the secret is for.
 
 - An organization secret: open
-  https://github.com/organizations/{{OWNER}}/settings/secrets/actions,
+  https://github.com/organizations/OpenSpineConsortium/settings/secrets/actions,
   press "New organization secret", type the name (SYMPHONY_CLAUDE_1, or
   CLAUDE_CODE_OAUTH_TOKEN), paste the token as the value, set Repository
   access to "Selected repositories", press the gear beside it and tick
   each repository that should see it, then "Add secret".
 - A repository secret: open
-  https://github.com/{{REPO}}/settings/secrets/actions/new, type the
+  https://github.com/OpenSpineConsortium/SchwingNet/settings/secrets/actions/new, type the
   name, paste the value, press "Add secret".
 - The list of slots: open
-  https://github.com/organizations/{{OWNER}}/settings/variables/actions
-  (or https://github.com/{{REPO}}/settings/variables/actions for one
+  https://github.com/organizations/OpenSpineConsortium/settings/variables/actions
+  (or https://github.com/OpenSpineConsortium/SchwingNet/settings/variables/actions for one
   repository), press "New organization variable" (or "New repository
   variable"), name SYMPHONY_CLAUDE_ACCOUNTS, value the slots in use such
   as `1,2,3`, the same repositories as the secrets, "Add variable".

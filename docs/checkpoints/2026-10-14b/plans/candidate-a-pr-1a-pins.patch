@@ -393,8 +393,8 @@ index 00ae8e7..6c888d7 100644
  
  ## 6. Dependabot
  
--.github/dependabot.yml asks for weekly updates of the GitHub Actions the workflows use, which are pinned to a major tag. Nothing to set; it runs once the file is on {{DEFAULT_BRANCH}}.
-+.github/dependabot.yml asks for weekly updates of the GitHub Actions the workflows use, which are pinned to a full commit with the version in a comment beside it; Dependabot proposes the newer commit and version for every action in one pull request a week. Nothing to set; it runs once the file is on {{DEFAULT_BRANCH}}.
+-.github/dependabot.yml asks for weekly updates of the GitHub Actions the workflows use, which are pinned to a major tag. Nothing to set; it runs once the file is on main.
++.github/dependabot.yml asks for weekly updates of the GitHub Actions the workflows use, which are pinned to a full commit with the version in a comment beside it; Dependabot proposes the newer commit and version for every action in one pull request a week. Nothing to set; it runs once the file is on main.
  
  ## 7. Code owners
  

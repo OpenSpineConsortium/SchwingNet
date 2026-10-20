@@ -7,7 +7,7 @@ Projects are in public beta on Pro and Max plans and are reaching accounts gradu
 ## Steps, once per account
 
 1. Install the Claude GitHub App on the repository if docs/setup/github.md has not been done yet; every thread of the Project needs it. The installation starts from claude.ai/code: when you link the repository in step 2, Claude sends you to GitHub to install the app and pick this repository.
-2. In claude.ai, make a new Project and link the repository {{REPO}}. Make the repository the Project's only resource: a thread then starts from a fresh clone of {{DEFAULT_BRANCH}}, reads CLAUDE.md and is shown the board at the start of every session.
+2. In claude.ai, make a new Project and link the repository OpenSpineConsortium/SchwingNet. Make the repository the Project's only resource: a thread then starts from a fresh clone of main, reads CLAUDE.md and is shown the board at the start of every session.
 3. Leave the Project's instructions, description and memory blank. Nothing else happens when a repository is linked; the Project's page stays as it was, because the goal, the memory and the board are read from the repository inside every thread, not copied into the Project, and a thread loses nothing by it. Only if people will also chat in the Project outside a code session, paste the pointer text below into the instructions, as it stands: a chat has no clone and would otherwise know nothing of the project. The pointer never changes, so it never needs updating.
 4. Choose the model and effort for this project if docs/project.md does not record them yet, set them in the Project's settings (General), and record the choice in docs/project.md under "Model and effort" by pull request, so every later Project copies it from there.
 5. Name the Project after the repository and the account, so an account with several Projects tells them apart.
@@ -20,14 +20,14 @@ A Project's fields and a session's context are two different planes. The fields 
 
 Keep this repository the Project's only resource. Claude Code runs a repository's hooks, permission rules and environment only in a session with that one repository; a thread of a Project with several, or one that adds another repository to itself, runs none of them. What stands on GitHub still holds there, and what stands on the session's hooks does not.
 
-Still holds: the default branch's ruleset, so nothing reaches {{DEFAULT_BRANCH}} but a pull request; the claim lock, GitHub's refusal of the second push of a branch `claude/<issue>`; the required check, which holds every pull request to the protocol; and the board through /board and the claim skill, which load in every repository and fetch the board by the form that works in a clone made for one branch (CLAUDE.md, "Read first").
+Still holds: the default branch's ruleset, so nothing reaches main but a pull request; the claim lock, GitHub's refusal of the second push of a branch `claude/<issue>`; the required check, which holds every pull request to the protocol; and the board through /board and the claim skill, which load in every repository and fetch the board by the form that works in a clone made for one branch (CLAUDE.md, "Read first").
 
 Does not hold: the push guard (tools/guard_push.py), so only the rules in .claude/rules/board.md and GitHub stand between the session and a push they forbid; the board printed at the start of the session, so the session reads it itself, with /board; and the usage trailer, so the session's commits carry no Symphony-Usage line and the cost metrics count its pull requests as unmeasured, outside pull_requests_measured and outside the cost per measured merge (docs/memory/field-metrics.md).
 
 ## The pointer text
 
 ```
-This Project works on {{REPO}}. Read CLAUDE.md first. The shared memory is docs/memory/ (read MEMORY.md); the board is the file STATE.md on the branch board, read with: git fetch origin +refs/heads/board:refs/remotes/origin/board && git show origin/board:STATE.md; work is claimed as docs/agents/PROTOCOL.md says: one issue, one branch claude/<issue>, one pull request. A fact worth keeping goes to docs/memory/ by pull request, not only into this Project's memory. A chat here has no clone: start a thread on the repository for anything that needs its files.
+This Project works on OpenSpineConsortium/SchwingNet. Read CLAUDE.md first. The shared memory is docs/memory/ (read MEMORY.md); the board is the file STATE.md on the branch board, read with: git fetch origin +refs/heads/board:refs/remotes/origin/board && git show origin/board:STATE.md; work is claimed as docs/agents/PROTOCOL.md says: one issue, one branch claude/<issue>, one pull request. A fact worth keeping goes to docs/memory/ by pull request, not only into this Project's memory. A chat here has no clone: start a thread on the repository for anything that needs its files.
 ```
 
 ## The main account and routines

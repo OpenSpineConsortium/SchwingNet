@@ -5,7 +5,7 @@
 # after the area lines name what Claude Code loads as instructions from any
 # folder, CLAUDE.md, CLAUDE.local.md, AGENTS.md and .claude/, and the
 # project's MCP servers; coming last, they ask the owner inside an area too.
-* @{{OWNER}}/maintainers
+* @OpenSpineConsortium/maintainers
 /.github/ @OWNER_LOGIN
 /.claude/ @OWNER_LOGIN
 /tools/ @OWNER_LOGIN
@@ -16,8 +16,8 @@
 /docs/agents/ @OWNER_LOGIN
 /docs/memory/ @OWNER_LOGIN
 /docs/setup/ @OWNER_LOGIN
-/src/AREA/ @{{OWNER}}/AREA-maintainers
-/tests/test_AREA/ @{{OWNER}}/AREA-maintainers
+/src/AREA/ @OpenSpineConsortium/AREA-maintainers
+/tests/test_AREA/ @OpenSpineConsortium/AREA-maintainers
 CLAUDE.md @OWNER_LOGIN
 CLAUDE.local.md @OWNER_LOGIN
 AGENTS.md @OWNER_LOGIN

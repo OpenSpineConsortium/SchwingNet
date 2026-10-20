@@ -25,7 +25,7 @@ default_branch() {
   if ref=$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null); then
     printf '%s\n' "${ref#origin/}"
   else
-    printf '%s\n' "{{DEFAULT_BRANCH}}"
+    printf '%s\n' "main"
   fi
 }
 

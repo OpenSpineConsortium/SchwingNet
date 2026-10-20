@@ -7,7 +7,7 @@ The template, with N the issue's number and NAME the worker's name:
 ```
 # Claim: #N
 
-- Issue: https://github.com/{{REPO}}/issues/N
+- Issue: https://github.com/OpenSpineConsortium/SchwingNet/issues/N
 - Worker: NAME
 - Branch: claude/N
 
