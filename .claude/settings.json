@@ -31,6 +31,16 @@
             "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/session-start.sh"
           }
         ]
+      },
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/beethoven-qa-session-start.sh",
+            "timeout": 900
+          }
+        ]
       }
     ],
     "PreToolUse": [
@@ -57,7 +67,20 @@
             "command": "python3 \"$CLAUDE_PROJECT_DIR\"/tools/check_edit.py"
           }
         ]
+      },
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/vendor/beethoven-qa/plugin/hooks/coach.sh",
+            "timeout": 60
+          }
+        ]
       }
     ]
+  },
+  "worktree": {
+    "baseRef": "head"
   }
 }

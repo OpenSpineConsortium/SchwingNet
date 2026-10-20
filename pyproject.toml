@@ -1,0 +1,57 @@
+# Package metadata and tool configuration. The environment is pixi's (pixi.toml, pixi.lock); this
+# file tells the tools where the code is and how strict to be. The package is imported from src/
+# through PYTHONPATH (pixi.toml's activation), so no build backend is needed yet.
+
+[project]
+name = "schwingnet"
+version = "0.0.0"
+description = "SchwingNet: the retraining, measurement and demo of the level-naming network, under beethoven-qa's gate"
+requires-python = ">=3.11"
+dependencies = [
+  "icontract>=2.6",
+  "pydantic>=2",
+  "beartype>=0.18",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["src", "vendor/beethoven-qa/src"]
+# The gated tests only. The template's own tests under tests/ run with unittest from
+# scripts/check.sh and skip what a copy cannot run, and the gate refuses a skipped test in the
+# directories named here, so the two sets of tests keep their own directories.
+testpaths = ["tests/schwingnet"]
+addopts = "-ra"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests/schwingnet"]
+# A bare `ruff check --fix .` or `ruff format .` must never rewrite the pinned copy or the
+# template's tools.
+extend-exclude = ["vendor", "tools", "tests/*.py", "scripts"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+# Contract lambdas take positional names that must match the function's arguments.
+ignore = ["E731"]
+
+[tool.mypy]
+python_version = "3.11"
+mypy_path = "src:vendor/beethoven-qa/src"
+packages = ["schwingnet"]
+strict = true
+warn_unused_ignores = true
+
+# What `python -m beethoven_qa gate` checks in this repository (beethoven-qa docs/CONSUMING.md).
+# The package holds the study's pure logic; what reads a corpus, runs torch or starts a Slurm job
+# is listed below with its reason when it arrives, and the trainers of the reported stack stay in
+# spinesurg-ct-nnunet, called by path, never refactored before the talk (docs/project.md).
+[tool.beethoven-qa]
+package = "schwingnet"
+src = "src"
+per_condition_timeout = 20
+
+# Functions the gate never checks as targets, each with its reason; the gate prints the list on
+# every run. None yet: the measure module is pure. A new entry is a person's decision in a
+# reviewed change, never a way to get green, and every contracted function that calls a listed
+# one is listed too, since CrossHair runs a listed function's body when it proves its caller.
+[tool.beethoven-qa.unproven]
