@@ -46,7 +46,7 @@ EXCLUDED  #.......................................   2
 | FluoroCap literature panels | 29,500 figure panels harvested from the literature; 72.8 percent are reproductions with no pixel residual | pseudo, no patient key | HAVE | out of training by directive D1; a test set at most; still inside the old fold banks | panels 29,500, size gb 316 | the publishers' (figures) | not recorded |
 | Geneva hip phantom (BV Pulsera) | 116 frames of one phantom on a device no model saw | pelvis | HAVE | the unseen-device test | frames 116 | not recorded | not recorded |
 | Ljubljana 2D-3D-GS (PIXIUM 4600) | 18 frames of one cadaver, L1 to L5, with CT and pose | yes, up to 90 level boxes possible from the pose | HAVE | parameters read, no truth bank built; read-only under its ND licence | frames 18 | ND (read-only) | not recorded |
-| Balgrist ex-vivo lumbar CT plus C-arm (Jecklin) | cadaver lumbar CT with real C-arm frames | yes, from the CT | GET | request drafted 2026-09-21, never sent |  | not recorded | not recorded |
+| Balgrist ex-vivo lumbar CT plus C-arm (Jecklin) | cadaver lumbar CT with real C-arm frames | yes, from the CT | GET | request drafted 2026-09-21, never sent; the authors' group is ROCS (Research in Orthopedic Computer Science, Balgrist, head Philipp Fuernstahl), whose group address is rocs@balgrist.ch; the paper is arXiv:2401.16027 (Medical Image Analysis 2024); the set is restricted for pending patents |  | not recorded | [link](https://rocs.balgrist.ch/en/contact) |
 | LUMOS (Zhejiang University) | 803 living patients: 1,620 lumbar AP or lateral radiographs and 280 non-contrast lumbar CTs, anonymised DICOM and NPY; diagnostic radiography, not C-arm fluoroscopy; no pose given | levels readable from the paired CT after a 2D/3D registration | GET | open on Zenodo; never fetched | patients 803, radiographs 1,620, ct volumes 280, size gb 46.4 | not recorded | [link](https://zenodo.org/records/18173664) |
 | SX-Stitch intraoperative C-arm series (Li 2024, PUMCH) | intraoperative C-arm series translated along the spine for stitching | levels present in the series | GET | request drafted 2026-09-19, never sent; the paper's data statement says no datasets, so success is unlikely |  | not recorded | [link](https://arxiv.org/abs/2409.05681) |
 | Real cervical or thoracic intraoperative frames with level truth | the gap: no public set of real cervical or thoracic C-arm frames with named levels | none public | NONE | your own captures with a preoperative CT are the way (the plan's section 3.5) |  | not recorded | not recorded |
@@ -60,18 +60,18 @@ EXCLUDED  #.......................................   2
 | Public fluoroscopy clips on the grid | clips cut from public video: Bern videos 1 to 4, three PMC videos (PMC10242080, PMC11328828, PMC4852439), three Wikimedia Commons items, the YouTube re-encodes of 28 ids, in folders clips/, youtube/, pmc/, commons/, vimeo/, github/, ajr/, dysphagiabank_unm/; 18 of 70 YouTube entries show live fluoroscopy, 9 of them cervical, one CC-licensed | almost never named; levels burned into a chapter title at best | HAVE | never scored; private tracker screening only, never training or a slide; the YouTube copies are unpermitted until a request is answered | size gb 262.801, youtube ids 28, live fluoro entries 18, clip folders 20 | mixed: CC BY (Bern, PMC), unlicensed re-encodes (YouTube) | [link](https://pmc.ncbi.nlm.nih.gov/articles/PMC8463391/) |
 | Bournemouth cervical quantitative fluoroscopy (BORDaR 385) | 252 lateral flexion and extension sequences from 63 people at 15 fps, 1024 x 1024 16-bit DICOM; the deposit holds the per-frame vertebral corner tracks (.mat, 24 MB) and no pixels | level-named corner tracks C0 to T1 on every frame (geometry only until the cine arrives) | GET | the tracks are on the grid; the DICOM cine is request 1, drafted, never sent | sequences 252, people 63, frames per sequence median 301 | CC BY 4.0 (the tracks); README.rtf CC BY-ND | [link](https://bordar.bournemouth.ac.uk/385/) |
 | Bournemouth lumbar quantitative fluoroscopy (Breen 2021) | weight-bearing and recumbent L2 to S1 flexion and extension cine of 127 subjects at 15 fps, 60 degrees at 6 degrees a second; only per-frame angles are public on OSF | lumbar, if corner templates exist as they do for the cervical set | GET | the only confirmed lumbar cine; asked for in request 1 | subjects 127 | not recorded (OSF holds derived tables only) | [link](https://osf.io/a27py/) |
-| Coronary angiography sets (CADICA, ARCADE, XCAD, AngioCAD) | real fluoroscopy video with the thoracic spine in the background: CADICA 42 patients DICOM at 10 fps, ARCADE 3,000 images, XCAD 1,747 images, AngioCAD 413 patients; heavy contrast, LAO/RAO rotation | none; thoracic in the background | GET | the only large real thoracic fluoroscopy without a DUA; the thoracic test would be annotated by hand | cadica patients 42, arcade images 3,000, xcad images 1,747, angiocad patients 413 | varies by set | not recorded |
+| Coronary angiography sets (CADICA, ARCADE, XCAD, AngioCAD) | real fluoroscopy video with the thoracic spine in the background: CADICA 42 patients DICOM at 10 fps, ARCADE 3,000 images, XCAD 1,747 images, AngioCAD 413 patients; heavy contrast, LAO/RAO rotation | none; thoracic in the background | GET | the only large real thoracic fluoroscopy without a DUA; the thoracic test would be annotated by hand; CADICA (Universidad de Malaga, 42 patients, over 6,000 images), ARCADE (Scientific Data 2024, 3,000 images), XCAD (ICCV 2021, 1,747 images, the link), AngioCAD (413 patients); each set's own licence is read before fetching | cadica patients 42, arcade images 3,000, xcad images 1,747, angiocad patients 413 | varies by set | [link](https://github.com/AISIGSJTU/SSVS) |
 | DARADIA vertebroplasty video (Kolkata) | a step-by-step percutaneous vertebroplasty under fluoroscopy on YouTube | none named | GET | request 14 drafted, never sent |  | unknown | [link](https://daradia.com/) |
 | DMX Imaging digital motion X-ray | lateral lumbar flexion-extension at 30 frames a second, a commercial practice's YouTube video | none named | GET | request 7 drafted, never sent |  | unknown | [link](https://www.dmxworks.com/) |
 | DysphagiaBank (TalkBank), UNM corpus | lateral swallow videofluoroscopy of about 7 to 53 adults, cervical only, non-commercial, by registration | none named | GET | a registration, not a letter; the count on the corpus page is to be checked when registering |  | non-commercial, by registration | [link](https://dysphagia.talkbank.org/) |
 | Inselspital Bern dynamic myelography (Piechowiak 2021) | four pulsed fluoroscopy runs at 7.5 frames a second, the detector moved cranially along the spine during tilting: the only overlapping travelling frames found; the published MP4s are on the grid, the native DICOM is not | thoracic (T7/8, T9/10) and one clip at L5/S1, from the captions | GET | the published videos held under CC BY; request 3 for the native DICOM drafted, never sent | videos 4 | CC BY 4.0 (the article's videos); native DICOM available on reasonable request under Swiss law | [link](https://pmc.ncbi.nlm.nih.gov/articles/PMC8463391/) |
+| IRI-VFI: pediatric interventional radiology image sequences (Chongqing) | 95,308 real fluoroscopy images in 1,357 sequences with the lumbar spine in field; pediatric, DSA subtraction frames to be excluded | none | GET | a grain calibration target and an unlabelled pool; 150 to 200 frames would be annotated as a test set; the record is IRI-VFI on IEEE DataPort (doi:10.21227/v4kg-zp42, 1,357 sequences, 95,308 images, angiography, fluoroscopy and subtraction, Children's Hospital of Chongqing Medical University, ChiCTR2200058971); its licence line was not readable from the cloud session | images 95,308, sequences 1,357 | not recorded | [link](https://ieee-dataport.org/documents/iri-vfi-dataset) |
 | Jefferson Neurosurgery DRG stimulation video (Hines 2020) | a Neurosurgical Focus Video article with lumbosacral fluoroscopy; the YouTube copy carries a CC BY licence and is on the grid | L5 and S1 named in the article | GET | request 11 drafted, never sent; the copy is usable now under CC BY | videos 1 | CC BY (YouTube copy); the article text says CC BY-NC-ND while linking CC BY 4.0 | [link](https://doi.org/10.3171/2020.7.FOCVID2034) |
 | Konica Minolta dynamic digital radiography sequences | flat-panel lumbar motion sequences shown in a marketing video; not fluoroscopy, a separate arm | none named | GET | request 10 drafted, never sent; expect an NDA or a pointer to a clinical site |  | unknown | [link](https://healthcare.konicaminolta.us/contact-us) |
 | Maastricht UMC+ cervical flexion-extension cine (van Santbrink 2026) | 112 lateral cervical recordings at 1024 x 1024, 15 fps, uncompressed, with C0 to C7 contours on every frame carrying identity through the sequence | yes, C0 to C7 per frame | GET | request 2 drafted, never sent; on request only | recordings 112 | available on request under privacy restrictions; a Dutch WMO/GDPR data transfer agreement is expected | [link](https://pmc.ncbi.nlm.nih.gov/articles/PMC13024292/) |
 | Manual Therapy Foundation of India lumbar coupling video | AP lumbar side-bending with rotation under video fluoroscopy, a view the project lacks | none named | GET | request 12 drafted (address on the site, not decoded), never sent |  | unknown | [link](https://www.mtfi.net/) |
 | Mayfield Brain and Spine kyphoplasty alignment series | two native DICOM C-arm alignment series played in OsiriX on YouTube: AP 98 frames, lateral 65 frames; a birth date is burned in | thoracolumbar, unnamed | GET | request 6 drafted, never sent | series 2, frames 163 | unknown | [link](https://www.youtube.com/watch?v=fkRFgkESCgQ) |
 | Neurosurgical Focus: Video (every article CC BY 4.0) | a library of spine-surgery videos PMC serves as MP4; the one checked (PMC13418632, 200 MB, 8 min) shows saved C-arm stills under a tracking overlay, not cine; the rest unscreened | levels in the article text where given | GET | download by browser (a proof-of-work gate stops scripts); screen for live fluoroscopy; AANS reserves TDM/AI-training rights in a footer |  | CC BY 4.0 | [link](https://thejns.org/page/72659) |
-| Pediatric IRI abdominal angiography | 95,308 real fluoroscopy images in 1,357 sequences with the lumbar spine in field; pediatric, DSA subtraction frames to be excluded | none | GET | a grain calibration target and an unlabelled pool; 150 to 200 frames would be annotated as a test set | images 95,308, sequences 1,357 | not recorded | not recorded |
 | Pittsburgh videofluoroscopic swallow corpus (Sejdic, Coyle) | about 1,500 lateral swallow clips at 30 fps captured by video card, 265 patients and 70 volunteers on two machines | thin: named corner landmarks on C2 and C4 only, no boxes, no other levels | GET | request 4 drafted, never sent; a Pitt data use agreement expected | clips 1,500, subjects 335 | by request | [link](https://doi.org/10.1016/j.media.2021.102218) |
 | Seattle Science Foundation spine videos | 12 YouTube surgical teaching videos with live C-arm feeds (spinal cord stimulator trials, kyphoplasty); re-encodes on the grid | chapter titles name levels in some (T12, L1) | GET | request 5 drafted, never sent; one request covers all 12 | videos 12 | unknown; embedding disabled | [link](https://www.seattlesciencefoundation.org/) |
 | The Procedure Guide (Puranik) live fluoroscopy clips | four YouTube clips of live fluoroscopy under a CC BY-NC-SA 4.0 site licence whose reach to the clips is unstated | the targeted level, if the author tells it | GET | request 9 drafted (contact form, no e-mail), never sent | clips 4 | CC BY-NC-SA 4.0 (site) | [link](https://theprocedureguide.com/contact) |
@@ -99,7 +99,7 @@ EXCLUDED  #.......................................   2
 | NHANES II unannotated films | 16,531 digitised films without landmarks | none; pseudo-labels cut anomalous accuracy 20 points | HAVE | unused by a written criterion | films 16,531 | open (NCHS) | [link](https://wwwn.cdc.gov/nchs/data/nhanes2/NH2_Xray.htm) |
 | Spinal-AI2024 | 20,000 machine-generated films from 44 synthetic identities; no patient was imaged | assumed | HAVE | all on train in the G3 split; nothing to hold out | films 20,000, identities 44 | not recorded | not recorded |
 | VinDr-SpineXR | 10,466 DICOM (8,389 train + 2,077 test) in 5,000 studies with lesion boxes | no levels | HAVE | on the grid under the PhysioNet agreement, covered since 29 Sep 2026 by WSU IRB HPR 2026-330 (the supplement to 2026-269: not human participant research); the C-ArmLSpine fold models carry 2,632 of its crops; the v8 and v9 level banks left it out for comparability, with no criterion; its implant boxes trained yolo_hw | images 10,466, studies 5,000 | PhysioNet Restricted Health Data License 1.5.0 (credentialed, named-person agreement) | [link](https://physionet.org/content/vindr-spinexr/1.0.0/) |
-| TVGH-SpineXR | a Taiwanese spine radiograph set behind a login | not recorded | GATED | 403 at a login; access never requested |  | not recorded | not recorded |
+| TVGH-SpineXR | a Taiwanese spine radiograph set behind a login | not recorded | GATED | 403 at a login; access never requested; the record is on IEEE DataPort (doi:10.21227/x6bb-7r75) with T1-L5 per-vertebra level labels, masks and end-plates per its description, never seen |  | not recorded | [link](https://ieee-dataport.org/documents/tvgh-spinexr) |
 | Mendeley 5jdfdgp762 spondylolisthesis films | 714 films with spondylolisthesis landmarks | landmarks | EXCLUDED | about 500 are BUU people redistributed, so it adds no new person | films 714 | not recorded | [link](https://data.mendeley.com/datasets/5jdfdgp762) |
 
 ## 5. CT collections and their renders (3D truth, synthetic 2D)
@@ -115,7 +115,7 @@ EXCLUDED  #.......................................   2
 | VerSe 19 and 20 | 374 series of 355 subjects with vertebra labels | yes | HAVE | renders in the v9 base; 10 series never downloaded | series 374, subjects 355 | CC BY-SA 4.0 | not recorded |
 | CADS CT (unique cases) | 753 CTs; a gated anomaly-harvest collection (group B7) | counted by the census pipeline once fetched | GATED | an agreement stands in front of the data; none signed |  | a data use agreement (non-commercial) | [link](https://huggingface.co/datasets/mrmrx/CADS-dataset) |
 | CT-RATE chest CT | 25,692 CT of 21,304 patients; a gated anomaly-harvest collection (group B7) | counted by the census pipeline once fetched | GATED | an agreement stands in front of the data; none signed |  | a data use agreement (non-commercial) | [link](https://huggingface.co/datasets/ibrahimhamamci/CT-RATE) |
-| MAGIC-CT (Zenodo) | 562 CTs; a gated anomaly-harvest collection (group B7) | counted by the census pipeline once fetched | GATED | an agreement stands in front of the data; none signed |  | a data use agreement (non-commercial) | not recorded |
+| MAGIC-CT (Zenodo) | 562 CTs; a gated anomaly-harvest collection (group B7) | counted by the census pipeline once fetched | GATED | an agreement stands in front of the data; none signed; the Zenodo record (v2, 2026) is labelled CC0 yet carries a data use agreement (no re-identification, no sharing), and names maxim.popov@nu.edu.kz as contact; the record counts 562 patients, 39.1 GB, 492 with reports |  | a data use agreement (non-commercial) | [link](https://zenodo.org/records/18389015) |
 | RSNA abdominal trauma CT (RATIC) | 3,147 patients, 4,711 series; a gated anomaly-harvest collection (group B7) | counted by the census pipeline once fetched | GATED | an agreement stands in front of the data; none signed |  | a data use agreement (non-commercial) | [link](https://mira.rsna.org/dataset/5) |
 | RSNA pulmonary embolism CT (RSPECT) | 7,279 patients; a gated anomaly-harvest collection (group B7) | counted by the census pipeline once fetched | GATED | an agreement stands in front of the data; none signed |  | a data use agreement (non-commercial) | [link](https://www.kaggle.com/competitions/rsna-str-pulmonary-embolism-detection) |
 | Stanford AIMI INSPECT chest CT | 19,402 patients; a gated anomaly-harvest collection (group B7) | counted by the census pipeline once fetched | GATED | an agreement stands in front of the data; none signed |  | a data use agreement (non-commercial) | [link](https://stanfordaimi.azurewebsites.net/) |
@@ -153,9 +153,10 @@ Every source whose reach is GET, GATED or EMBARGOED, with the steps the record g
 
 ### Balgrist ex-vivo lumbar CT plus C-arm (Jecklin) (GET)
 
-Link: not recorded. Licence: not recorded.
+Link: https://rocs.balgrist.ch/en/contact. Licence: not recorded.
 
-1. Send spine-program 01_carm_level_detection/docs/data_requests/balgrist_data_request_2026-09-21.md to the Balgrist authors.
+1. Send spine-program 01_carm_level_detection/docs/data_requests/balgrist_data_request_2026-09-21.md to the ROCS group address or to the corresponding authors (Jecklin, Fuernstahl) once their addresses are confirmed on the article's first page.
+2. Expect a data transfer agreement through Balgrist and Wayne State, since the set is restricted for pending patents.
 
 ### LUMOS (Zhejiang University) (GET)
 
@@ -185,9 +186,10 @@ Link: https://osf.io/a27py/. Licence: not recorded (OSF holds derived tables onl
 
 ### Coronary angiography sets (CADICA, ARCADE, XCAD, AngioCAD) (GET)
 
-Link: not recorded. Licence: varies by set.
+Link: https://github.com/AISIGSJTU/SSVS. Licence: varies by set.
 
-1. Find each set by name (the record holds no link); read its licence; fetch to Ceph as a job.
+1. Find each set by name: XCAD at the link; CADICA from the Universidad de Malaga (arXiv:2402.00570); ARCADE from its Scientific Data 2024 article; AngioCAD by name.
+2. Read each licence; fetch to Ceph as a Slurm job where the licence allows research use.
 
 ### DARADIA vertebroplasty video (Kolkata) (GET)
 
@@ -213,6 +215,13 @@ Link: https://pmc.ncbi.nlm.nih.gov/articles/PMC8463391/. Licence: CC BY 4.0 (the
 
 1. Send request 3 of spine-program 01_carm_level_detection/docs/data_requests/FLUORO_VIDEO_REQUESTS_READY_2026-09-26.md (the draft 03_bern.eml) to the corresponding author of doi:10.1007/s00062-020-00943-w.
 2. Expect a data transfer agreement under Swiss federal law.
+
+### IRI-VFI: pediatric interventional radiology image sequences (Chongqing) (GET)
+
+Link: https://ieee-dataport.org/documents/iri-vfi-dataset. Licence: not recorded.
+
+1. Open https://ieee-dataport.org/documents/iri-vfi-dataset signed in to an IEEE account (free); read the licence line and whether the files are open access or need a DataPort subscription.
+2. Fetch to Ceph as a Slurm job; read the terms before any derived label.
 
 ### Jefferson Neurosurgery DRG stimulation video (Hines 2020) (GET)
 
@@ -250,12 +259,6 @@ Link: https://www.youtube.com/watch?v=fkRFgkESCgQ. Licence: unknown.
 Link: https://thejns.org/page/72659. Licence: CC BY 4.0.
 
 1. Search PMC for spine articles in the journal, download the MP4s in a browser, screen for live fluoroscopy segments, keep attribution.
-
-### Pediatric IRI abdominal angiography (GET)
-
-Link: not recorded. Licence: not recorded.
-
-1. Find the release by name (the record holds no link); read its terms; fetch to Ceph as a job.
 
 ### Pittsburgh videofluoroscopic swallow corpus (Sejdic, Coyle) (GET)
 
@@ -298,9 +301,10 @@ Link: https://zenodo.org/records/21322350. Licence: CC BY-NC 4.0.
 
 ### TVGH-SpineXR (GATED)
 
-Link: not recorded. Licence: not recorded.
+Link: https://ieee-dataport.org/documents/tvgh-spinexr. Licence: not recorded.
 
-1. Find the dataset's host page by name (the record holds no link), register, and request access with the study's purpose.
+1. Open https://doi.org/10.21227/x6bb-7r75 signed in to an IEEE account (free); read whether the files are open access, subscription or by request, and the licence.
+2. Request access with the study's purpose where the page asks for one; the owner accepts any terms.
 
 ### CADS CT (unique cases) (GATED)
 
@@ -318,9 +322,11 @@ Link: https://huggingface.co/datasets/ibrahimhamamci/CT-RATE. Licence: a data us
 
 ### MAGIC-CT (Zenodo) (GATED)
 
-Link: not recorded. Licence: a data use agreement (non-commercial).
+Link: https://zenodo.org/records/18389015. Licence: a data use agreement (non-commercial).
 
-1. Find the Zenodo record (the manifest names it zenodo_magic_ct and gives no address): the files download without a gate, but the record's data use agreement requires an application with proof of human-subjects or HIPAA training, which only the owner can make; not fetched.
+1. Open https://zenodo.org/records/18389015 and read the data use agreement on the record; its terms (no re-identification, no onward sharing, either side may end it) bind the person who accepts them, so the owner accepts, never a session.
+2. Where the record asks for an application with proof of human-subjects or HIPAA training, the owner sends it to the contact the record names.
+3. Then fetch the 39.1 GB to Ceph as a Slurm job and verify the record's checksums.
 
 ### RSNA abdominal trauma CT (RATIC) (GATED)
 

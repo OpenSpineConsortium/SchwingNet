@@ -23,7 +23,9 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import pool  # noqa: E402
 import tokens  # noqa: E402
 
-NOW = datetime(2026, 10, 17, 22, 0, tzinfo=timezone.utc)
+# The clock the fixtures stand on: the real one, rounded, since pool.main reads the real clock and a
+# frozen date rots once its resets pass (the first did on 2026-10-20, three days after it was written).
+NOW = datetime.now(timezone.utc).replace(microsecond=0)
 SOON = int((NOW + timedelta(hours=2)).timestamp())
 LATER = int((NOW + timedelta(days=3)).timestamp())
 # Git's background maintenance races a scratch repository's cleanup, and
@@ -147,7 +149,7 @@ class ThePick(unittest.TestCase):
 
     def test_a_full_model_limit_holds_the_slot(self):
         held = record("1", 0.1, 0.1, source="cswap")
-        held["scoped"] = [{"name": "Fable", "utilization": 1.0, "resetsAt": "2026-10-22T21:00:00Z"}]
+        held["scoped"] = [{"name": "Fable", "utilization": 1.0, "resetsAt": pool.iso(NOW + timedelta(days=2))}]
         found = {"1": [held], "2": [record("2", 0.5, 0.5)]}
         self.assertEqual(pool.pick(found, ["1", "2"], now=NOW), ("2", None))
 
@@ -318,7 +320,7 @@ class TheSettings(unittest.TestCase):
 
     def fable_spent(self, slot):
         held = record(slot, 0.1, 0.1, source="cswap")
-        held["scoped"] = [{"name": "Fable", "utilization": 1.0, "resetsAt": "2026-10-22T21:00:00Z"}]
+        held["scoped"] = [{"name": "Fable", "utilization": 1.0, "resetsAt": pool.iso(NOW + timedelta(days=2))}]
         pool.write(self.readings / f"slot-{slot}.cswap.json", held)
 
     def test_a_slot_gives_its_model_and_effort(self):

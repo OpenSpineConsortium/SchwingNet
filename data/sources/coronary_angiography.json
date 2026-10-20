@@ -5,11 +5,12 @@
   "what": "real fluoroscopy video with the thoracic spine in the background: CADICA 42 patients DICOM at 10 fps, ARCADE 3,000 images, XCAD 1,747 images, AngioCAD 413 patients; heavy contrast, LAO/RAO rotation",
   "level_truth": "none; thoracic in the background",
   "reach": "get",
-  "status": "the only large real thoracic fluoroscopy without a DUA; the thoracic test would be annotated by hand",
+  "status": "the only large real thoracic fluoroscopy without a DUA; the thoracic test would be annotated by hand; CADICA (Universidad de Malaga, 42 patients, over 6,000 images), ARCADE (Scientific Data 2024, 3,000 images), XCAD (ICCV 2021, 1,747 images, the link), AngioCAD (413 patients); each set's own licence is read before fetching",
   "licence": "varies by set",
-  "link": null,
+  "link": "https://github.com/AISIGSJTU/SSVS",
   "how_to_get": [
-    "Find each set by name (the record holds no link); read its licence; fetch to Ceph as a job."
+    "Find each set by name: XCAD at the link; CADICA from the Universidad de Malaga (arXiv:2402.00570); ARCADE from its Scientific Data 2024 article; AngioCAD by name.",
+    "Read each licence; fetch to Ceph as a Slurm job where the licence allows research use."
   ],
   "grid_path": null,
   "counts": {
