@@ -73,7 +73,7 @@ jobs:
     runs-on: [self-hosted, grid]
     timeout-minutes: 55
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
       - uses: actions/setup-python@v7
