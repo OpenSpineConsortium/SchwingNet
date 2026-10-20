@@ -2,8 +2,8 @@
 
 Thread "SchwingNet video demo plan", 2026-10-20. A plan only: nothing was created, run, committed or spent.
 Confidential (SchwingNet internals, numbers held from publication pending the technology-transfer office), so it
-lives in this private repository and nowhere public; written as a plan only, before anything was created, run or spent,
-and brought here unchanged by SchwingNet#6, with the owner's answers of the same day appended as section 8. Every number names the file it comes from in OpenSpineConsortium/spine-program
+lives in this private repository and nowhere public. Sections 0 to 7 are the plan as written that day; the pull
+request of issue #4 brought it here with this paragraph rewritten and the owner's answers of the same day as section 8. Every number names the file it comes from in OpenSpineConsortium/spine-program
 (`01/` = `01_carm_level_detection/`).
 
 ## 0. What the files say, before any plan
@@ -157,17 +157,24 @@ existing Beethoven route (the session submits only what Greg approves, with the 
 1. The talk is on 2 November. Anything after it keeps 11 November.
 2. The provisional will be filed by 30 October; at CNS the talk shows what SchwingNet can do, not how it does it. The
    demo is made in private and shown only after the filing; nothing of the method goes on a slide.
-3. The owner asked why the level encoder is trained only on synthetics. Section 0.4 is the answer the record gives: the
-   encoder's fluoroscopy is synthetic because no labelled real intraoperative fluoroscopy exists for training
-   (C-ArmLSpine, 296 frames, is the test set and stays held out), while its bank also holds real plain films (CSXA, BUU,
-   NHANES, FluoroCap) and DRRs; the detectors are trained on real frames plus renders, and renders alone fail.
+3. The owner asked why the level encoder is trained only on synthetics. What the record says (section 0.4;
+   `01/docs/MODEL_CARD.md` sections 3.1 and 3.2, `01/STATUS.md` A2.1, A3.1 and A9.4): it is not trained only on
+   synthetics. The zero-shot encoder, allspine_v9 base, never saw C-ArmLSpine (the 296-frame test set) and holds real
+   plain films (CSXA, BUU, NHANES) beside DRRs, so for it the intraoperative C-arm appearance comes from renders alone,
+   because no other labelled intraoperative fluoroscopy was available for training; that is the 96.4 % zero-shot
+   number. The fine-tuned arm (97.4 %, five-fold) trains on C-ArmLSpine's own folds, and MODEL_CARD.md 3.2 lists
+   FluoroCap crops in its mixed bank, which the owner's standing rule keeps out of training (spine-program's CLAUDE.md,
+   rule 9): which arm the talk quotes, and whether that bank stands, is the owner's to settle before the slide. The
+   detectors are trained on real frames plus renders, and renders alone fail (A6.12, A8.1).
 4. The demo is the recorded sweep (section 1).
 5. The repository is this one, OpenSpineConsortium/SchwingNet, private, made by the owner from symphony-template.
 6. The goal between now and 2 November is a better SchwingNet, trained through this framework with beethoven-qa and the
-   research pipeline so every number can be backed, on the owner's H200 allocation with the dataset already on the grid;
+   research pipeline so every number can be backed, on the H200 nodes the owner says are available (gmsap; the plan's
+   section 6 names gmsap, gvohp and galhp) with the dataset already on the grid;
    what "better" means (which measure, by how much, which model is the baseline) is still the owner's to say, and no
    grid job is submitted before the owner gives the word and the number (section 6).
-7. The senior second transitional reader is Dr Tech, neuroradiologist at Corewell (section 5).
+7. The senior second transitional reader is Dr Tech, neuroradiologist at Corewell, in the owner's own words; the
+   record had only a placeholder of that name (section 5).
 8. Beethoven and Symphony: the owner develops both and asked for whatever compatibility the work needs. The result is
-   symphony-template#280 and beethoven-qa 6.0.0 (symphony-template's docs/research/beethoven-and-symphony.md); this
-   repository takes beethoven-qa under issue #5.
+   symphony-template#280 and beethoven-qa's 6.0.0 pull request, unreleased until merged and tagged
+   (symphony-template's docs/research/beethoven-and-symphony.md); this repository takes beethoven-qa under issue #5.
