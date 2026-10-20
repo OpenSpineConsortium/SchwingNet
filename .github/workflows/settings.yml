@@ -15,8 +15,10 @@
 # It runs on the push that template-init's App token makes, which deletes
 # .template/ (a push made with GITHUB_TOKEN would start nothing, and then
 # the App is not set up either), on a merge that changes the ruleset's file
-# or this workflow, and by hand; never on a schedule, which would turn back
-# on each day what the owner turned off on purpose. template-init's own
+# or this workflow, and by hand. Weekly and when the repository is made
+# public it runs again to make only what a Free plan or a private
+# repository held back, the environment and the Pages site, where they are
+# missing; it never turns back on what the owner turned off on purpose. template-init's own
 # placeholders keep it off in the template itself and in a copy not yet
 # initialised. Where the variable SDLC_APP_ID and the secret
 # SDLC_APP_PRIVATE_KEY are not set, or the App is not installed here, it
@@ -39,6 +41,13 @@ on:
       - docs/setup/ruleset-main.json
       - scripts/setup-repo.sh
       - .github/workflows/settings.yml
+  # A private repository made public, and a weekly look, since GitHub sends
+  # no event when a plan changes: these runs make only the environment and
+  # the Pages site where they are missing (SYMPHONY_SETTINGS_RECHECK in
+  # scripts/setup-repo.sh), never turning back on what the owner turned off.
+  public:
+  schedule:
+    - cron: "17 6 * * 1"
   workflow_dispatch:
 
 permissions:
@@ -130,6 +139,8 @@ jobs:
           GH_TOKEN: ${{ steps.app-token.outputs.token || steps.app-token-core.outputs.token }}
           SYMPHONY_SETTINGS_APP: "1"
           SYMPHONY_CROWD_VARIABLE: ${{ vars.CLAUDE_CROWD }}
+          SYMPHONY_DOCS_VARIABLE: ${{ vars.SYMPHONY_DOCS }}
+          SYMPHONY_SETTINGS_RECHECK: ${{ (github.event_name == 'schedule' || github.event_name == 'public') && '1' || '' }}
         run: |
           status=0
           bash scripts/setup-repo.sh "$GITHUB_REPOSITORY" > "$RUNNER_TEMP/settings.log" 2>&1 || status=$?
