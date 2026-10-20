@@ -27,3 +27,6 @@ Thumbs.db
 # The documentation site tools/living_docs.py builds; the Docs workflow
 # publishes it and nothing commits it
 /_site/
+
+# The locked pixi environment beethoven-qa's gate runs in (pixi.toml); reconstructed from pixi.lock
+.pixi/
