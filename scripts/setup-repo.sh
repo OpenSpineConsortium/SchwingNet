@@ -31,7 +31,8 @@
 #      its check "check" to GitHub Actions, once Actions has reported that
 #      check on the default branch, so a commit status anyone with write
 #      access sets cannot stand in for it (run it again after the first
-#      pull request's check to pin a new copy);
+#      pull request's check to pin a new copy), and turns "Require
+#      branches to be up to date" off where the ruleset has it on;
 #   3. turns on "Automatically delete head branches" and "Allow auto-merge"
 #      (auto-merge does nothing until a pull request asks for it, and team
 #      mode needs it), and adds the repository topic symphony, the sign on
@@ -141,9 +142,14 @@ for pair in ${VARIABLES[@]+"${VARIABLES[@]}"}; do
   esac
 done
 
-# The check's pin: the step's one line, and a PUT only where GitHub Actions
-# has reported "check" on the default branch and the ruleset does not name
-# a source for it yet. Every failure is reported and the run goes on.
+# The check's pin and the up-to-date rule: one line each, and one PUT only
+# where the ruleset needs either change. The pin is made only where GitHub
+# Actions has reported "check" on the default branch and the ruleset does
+# not name a source for it yet. "Require branches to be up to date" is
+# turned off wherever it is on, since every merge then made each other
+# ready pull request behind, its check run again on a branch that changed
+# nothing it touched, and a copy made before the shipped rulesets dropped
+# it keeps it until this runs. Every failure is reported and the run goes on.
 ACTIONS_APP=15368
 # One read for the step: GitHub's body on standard output, and on a failure
 # gh's first line of standard error alone, since gh prints a refused call's
@@ -161,11 +167,12 @@ pin_read() {
   fi
 }
 pin_check() {
-  local name=$1 id rulesets reported ruleset body answer status
+  local name=$1 id rulesets reported ruleset body answer status pin pinned strict changed
   # The repository's own rulesets alone: an organization's ruleset of the
   # same name is listed too by default, and only its owners edit it.
   if ! rulesets=$(pin_read "repos/$REPO/rulesets?includes_parents=false&per_page=100"); then
     echo "check pin: not changed (could not list the rulesets: $rulesets)"
+    echo "up-to-date rule: not changed (could not list the rulesets)"
     return 0
   fi
   id=$(printf '%s' "$rulesets" | python3 -c 'import json, sys
@@ -176,43 +183,67 @@ except ValueError:
 print(next((str(r["id"]) for r in rulesets if isinstance(r, dict) and r.get("name") == sys.argv[1]), ""))' "$name") || id=""
   if [ -z "$id" ]; then
     echo "check pin: not changed (the repository has no ruleset \"$name\" of its own; an organization's ruleset is pinned by its owners under the organization's Settings, Rules)"
+    echo "up-to-date rule: not changed (no ruleset \"$name\" of the repository's own; an organization's is changed by its owners)"
     return 0
   fi
+  pin=""
   if ! reported=$(pin_read "repos/$REPO/commits/$DEFAULT_BRANCH/check-runs?check_name=check&per_page=100" \
       --jq "[.check_runs[] | select(.app.id == $ACTIONS_APP)] | length"); then
-    echo "check pin: not changed (could not read the default branch's checks: $reported)"
-    return 0
-  fi
-  if [ "$reported" = "0" ] || [ -z "$reported" ]; then
-    echo "check pin: not yet; GitHub Actions has not reported \"check\" on $DEFAULT_BRANCH, so run this again after the first pull request's check"
-    return 0
+    pin="check pin: not changed (could not read the default branch's checks: $reported)"
+    reported=0
+  elif [ "$reported" = "0" ] || [ -z "$reported" ]; then
+    pin="check pin: not yet; GitHub Actions has not reported \"check\" on $DEFAULT_BRANCH, so run this again after the first pull request's check"
+    reported=0
   fi
   if ! ruleset=$(pin_read "repos/$REPO/rulesets/$id"); then
-    echo "check pin: not changed (could not read the ruleset: $ruleset)"
+    echo "${pin:-check pin: not changed (could not read the ruleset: $ruleset)}"
+    echo "up-to-date rule: not changed (could not read the ruleset: $ruleset)"
     return 0
   fi
   status=0
+  changed=$(mktemp)
+  # The script prints the new body, or nothing where nothing changes, and
+  # on standard error the two words that say what it changed.
   body=$(printf '%s' "$ruleset" | python3 -c 'import json, sys
-ruleset, app = json.load(sys.stdin), int(sys.argv[1])
-checks = [check for rule in ruleset.get("rules") or [] if rule.get("type") == "required_status_checks"
-          for check in (rule.get("parameters") or {}).get("required_status_checks") or [] if check.get("context") == "check"]
-if not checks or all(check.get("integration_id") for check in checks):
-    sys.exit(3)
-for check in checks:
+ruleset, app, reported = json.load(sys.stdin), int(sys.argv[1]), sys.argv[2] != "0"
+rules = [rule for rule in ruleset.get("rules") or [] if rule.get("type") == "required_status_checks"]
+checks = [check for rule in rules for check in (rule.get("parameters") or {}).get("required_status_checks") or []
+          if check.get("context") == "check"]
+pinned = reported and any(not check.get("integration_id") for check in checks)
+strict = any((rule.get("parameters") or {}).get("strict_required_status_checks_policy") for rule in rules)
+for check in checks if pinned else []:
     check["integration_id"] = check.get("integration_id") or app
-keys = ("name", "target", "enforcement", "conditions", "rules", "bypass_actors")
-json.dump({key: ruleset[key] for key in keys if key in ruleset}, sys.stdout)' "$ACTIONS_APP") || status=$?
-  if [ "$status" = 3 ]; then
-    echo "check pin: already pinned, or the ruleset requires no check named \"check\""
+for rule in rules if strict else []:
+    rule["parameters"]["strict_required_status_checks_policy"] = False
+print("pinned" if pinned else "same", "unstrict" if strict else "same", file=sys.stderr)
+if pinned or strict:
+    keys = ("name", "target", "enforcement", "conditions", "rules", "bypass_actors")
+    json.dump({key: ruleset[key] for key in keys if key in ruleset}, sys.stdout)' "$ACTIONS_APP" "$reported" 2>"$changed") || status=$?
+  read -r pinned strict <"$changed" || true
+  rm -f "$changed"
+  if [ "$status" != 0 ]; then
+    echo "${pin:-check pin: not changed (the ruleset GitHub gave back could not be read)}"
+    echo "up-to-date rule: not changed (the ruleset GitHub gave back could not be read)"
     return 0
-  elif [ "$status" != 0 ]; then
-    echo "check pin: not changed (the ruleset GitHub gave back could not be read)"
+  fi
+  [ -n "$pin" ] || [ "$pinned" = pinned ] || pin="check pin: already pinned, or the ruleset requires no check named \"check\""
+  if [ -z "$body" ]; then
+    echo "$pin"
+    echo "up-to-date rule: off already"
     return 0
   fi
   if answer=$(printf '%s' "$body" | gh api --method PUT "repos/$REPO/rulesets/$id" --input - --silent 2>&1); then
-    echo "check pin: \"check\" now requires GitHub Actions as its source"
+    [ "$pinned" = pinned ] && pin="check pin: \"check\" now requires GitHub Actions as its source"
+    echo "$pin"
+    if [ "$strict" = unstrict ]; then echo "up-to-date rule: turned off"; else echo "up-to-date rule: off already"; fi
   else
-    echo "check pin: not changed ($answer); pick GitHub Actions as the check's source under https://github.com/$REPO/settings/rules/$id"
+    [ "$pinned" = pinned ] && pin="check pin: not changed ($answer); pick GitHub Actions as the check's source under https://github.com/$REPO/settings/rules/$id"
+    echo "$pin"
+    if [ "$strict" = unstrict ]; then
+      echo "up-to-date rule: not changed ($answer); untick \"Require branches to be up to date before merging\" under https://github.com/$REPO/settings/rules/$id"
+    else
+      echo "up-to-date rule: off already"
+    fi
   fi
 }
 
@@ -308,7 +339,9 @@ fi
 # the check "check" is pinned to GitHub Actions, the app its check runs
 # report under. GitHub takes the pin only once that app has reported the
 # check in the repository, so a new copy is pinned by a run of this script
-# after its first pull request's check; until then the step says so.
+# after its first pull request's check; until then the step says so. The
+# same PUT turns "Require branches to be up to date" off in a ruleset that
+# has it on, as a copy made before the shipped rulesets dropped it does.
 pin_check "$name"
 
 # 3. The two toggles under General. Both are idempotent PATCHes; where gh's
