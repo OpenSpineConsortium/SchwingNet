@@ -7,9 +7,9 @@
   "reach": "gated",
   "status": "an agreement stands in front of the data; none signed",
   "licence": "a data use agreement (non-commercial)",
-  "link": "https://zenodo.org/",
+  "link": null,
   "how_to_get": [
-    "The files download without a gate, but the record's data use agreement requires an application with proof of human-subjects or HIPAA training, which only the owner can make; not fetched."
+    "Find the Zenodo record (the manifest names it zenodo_magic_ct and gives no address): the files download without a gate, but the record's data use agreement requires an application with proof of human-subjects or HIPAA training, which only the owner can make; not fetched."
   ],
   "grid_path": null,
   "counts": {},

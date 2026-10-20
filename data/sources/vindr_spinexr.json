@@ -12,7 +12,7 @@
     "Hold a credentialed PhysioNet account (CITI training on file), sign the data use agreement on the record page.",
     "Get an IRB determination that covers its use before any new training reads it."
   ],
-  "grid_path": "on the grid (DATA.md)",
+  "grid_path": null,
   "counts": {
     "images": 10466,
     "studies": 5000

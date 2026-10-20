@@ -20,7 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "vendor" / "beethoven-qa" / "src"))
 
-from schwingnet.sources import (  # noqa: E402  (the path above makes the package importable)
+from schwingnet.sources import (  # the path above makes the package importable
     GROUP_TITLES,
     REACH_WORDS,
     Group,
@@ -48,7 +48,9 @@ DATASET_USAGE.md and LEAKAGE.md, FLUORO_VIDEO_SOURCES_2026-09-26.md, the data re
 and 10_data_platform_grid's DATA_MANIFEST.md (211 sources carded); each record names its own record
 file. Counts are the record's; a count the record does not state is left out, and "not recorded"
 means the record is silent. The fields a grid job fills at sample level (`measured`) are empty until
-the owner gives the word and the number for the jobs.
+the owner gives the word and the number for the jobs, and print after the record's counts once filled.
+The closing section is prose: its numbers are read from the records where a record counts them, and
+the rest quote the record files the sources name.
 
 Reach: HAVE = on the grid now; GET = public or by request, not yet fetched; GATED = behind a data use
 agreement, an application or a login the project does not hold; EMBARGOED = released on a date;
@@ -57,19 +59,22 @@ NONE = does not exist publicly; EXCLUDED = held or seen and set aside for a stat
 
 MEANING = """## What this means for the plan
 
+The four numbers in brackets are read from the records named; every other number quotes the
+record files the sources name.
+
 - Real frames with level truth exist only for the lumbar spine (C-ArmLSpine) and the pelvis
   (DeepFluoro, COBRA). Every cervical and thoracic truth held is a film (CSXA, AASCE) or a render
   (RSNA, VerSe, TotalSegmentator). That is the gap, and no public set fills it; the drafted requests
   above are the cheapest next move and none has been sent.
-- Video: the only consecutive frames with a paired volume are the two C-ArmLSpine sweeps; the 262.8 GB
-  of public clips are for a private tracker screening and nothing else; every labelled cine set
-  (Bournemouth, Maastricht, Pittsburgh) is by request, and the Bern myelography videos are the one
-  CC BY travelling sequence.
-- Rare classes: 3 real L6 persons (all test), 18 L6 CTs in the project's own release, 1,763 L6
-  renders, and the harvest's census over thousands of CTs. In 3D the project is rich; in real 2D it
-  has three people.
-- Gated for good as the project stands: VinDr (a DUA outside the IRB determination) and the 7 gated
-  harvest collections; TVGH and Radiopaedia were never asked.
+- Video: the only consecutive frames with a paired volume are the two C-ArmLSpine sweeps; the
+  {clips} GB of public clips (fluoro_video_clips) are for a private tracker screening and nothing
+  else; every labelled cine set (Bournemouth, Maastricht, Pittsburgh) is by request, and the Bern
+  myelography videos are the one CC BY travelling sequence.
+- Rare classes: 3 real L6 persons (all test), {l6_cts} L6 CTs in the project's own release
+  (ctspinopelvic1k), {l6_renders} L6 renders (fluorogen_synth_rare), and the harvest's census over
+  thousands of CTs. In 3D the project is rich; in real 2D it has three people.
+- Gated for good as the project stands: VinDr (a DUA outside the IRB determination) and the {gated_ct} gated
+  CT collections; TVGH and Radiopaedia were never asked.
 - Three licences bind a product: COBRA and DeepFluoro are non-commercial, CTSpinoPelvic1K is
   non-commercial share-alike. That is a lawyer's question before version 1 depends on them.
 - Veterinary medicine is a future direction (the owner, 2026-10-20): the pig CBCT of Goswami 2020 is
@@ -89,10 +94,16 @@ def link_cell(source: Source) -> str:
     return f"[link]({source.link})" if source.link else "not recorded"
 
 
+def counts_of(source: Source) -> str:
+    """The record's counts, and after them what a grid job measured, once one has."""
+    measured = counts_cell(source.measured)
+    return counts_cell(source.counts) + (f"; measured: {measured}" if measured else "")
+
+
 def row(source: Source) -> str:
     """One source as one table row."""
     return table_row((source.name, source.what, source.level_truth, REACH_WORDS[source.reach],
-                      source.status, counts_cell(source.counts), source.licence, link_cell(source)))
+                      source.status, counts_of(source), source.licence, link_cell(source)))
 
 
 def totals(sources: list[Source]) -> list[str]:
@@ -139,13 +150,29 @@ def where(sources: list[Source]) -> list[str]:
              "Every held source with a path the record gives, Ceph under /rs/rs_grp_oschome/go2432 unless said "
              "otherwise; `ls -ld` is the check, never a read of a header (case134 carries a real PatientID).", "",
              table_row(("Source", "Grid path", "Counts")), table_row(("---", "---", "---"))]
-    lines += [row_where(s) for s in sources if s.grid_path]
+    lines += [row_where(s) for s in sources if s.reach is Reach.HELD and s.grid_path]
     return lines + [""]
 
 
 def row_where(source: Source) -> str:
     """One held source and its path."""
-    return table_row((source.name, f"`{source.grid_path}`", counts_cell(source.counts)))
+    return table_row((source.name, f"`{source.grid_path}`", counts_of(source)))
+
+
+def count_of(sources: list[Source], source_id: str, key: str) -> str:
+    """One record's count, printed as the tables print it."""
+    return format_number(next(s.counts[key] for s in sources if s.id == source_id))
+
+
+def meaning(sources: list[Source]) -> str:
+    """The closing prose, its record-backed numbers read from the records."""
+    gated_ct = sum(1 for s in sources if s.group is Group.CT and s.reach is Reach.GATED)
+    return MEANING.format(
+        clips=count_of(sources, "fluoro_video_clips", "size_gb"),
+        l6_cts=count_of(sources, "ctspinopelvic1k", "l6_cases"),
+        l6_renders=count_of(sources, "fluorogen_synth_rare", "l6"),
+        gated_ct=format_number(gated_ct),
+    )
 
 
 def render(sources: list[Source]) -> str:
@@ -153,7 +180,7 @@ def render(sources: list[Source]) -> str:
     lines = [HEAD] + totals(sources)
     for number, group in enumerate(Group, 1):
         lines += table(group, number, sources)
-    lines += where(sources) + steps(sources) + [MEANING]
+    lines += where(sources) + steps(sources) + [meaning(sources)]
     return "\n".join(lines)
 
 

@@ -2,7 +2,7 @@
   "id": "aasce",
   "name": "AASCE / BoostNet whole-spine films",
   "group": "films",
-  "what": "609 labelled AP whole-spine films (481 labelled plus 98 challenge test on HOME; the full mirror on Ceph)",
+  "what": "609 labelled AP whole-spine films on Ceph; 579 on HOME (481 labelled plus 98 challenge test)",
   "level_truth": "thoracic, as a test set",
   "reach": "held",
   "status": "thoracic test only (608 films); a request-form source",

@@ -81,10 +81,13 @@ class Source(BaseModel):
 
 
 @beartype
-@ensure(lambda result: "|" not in result and "\n" not in result, "a cell never breaks its row")
+@ensure(
+    lambda result: "|" not in result and "\n" not in result and "\r" not in result,
+    "a cell never breaks its row",
+)
 def escape_cell(text: str) -> str:
-    """A table cell: a pipe would end the cell and a newline the row, so each becomes a space."""
-    return text.replace("|", "/").replace("\n", " ")
+    """A table cell: a pipe would end the cell and a line break the row, so each becomes a space."""
+    return text.replace("|", "/").replace("\r", " ").replace("\n", " ")
 
 
 @beartype
@@ -124,8 +127,11 @@ def tally(reaches: tuple[Reach, ...]) -> dict[Reach, int]:
 @require(lambda width: width > 0, "a bar has a width")
 @ensure(lambda result, width: len(result) == width, "the bar is as wide as asked")
 def bar(count: int, total: int, width: int) -> str:
-    """A text bar of the share count takes of total, filled with # and padded with . to width."""
-    filled = 0 if total == 0 else round(width * count / total)
+    """A text bar of the share count takes of total, filled with # and padded with . to width.
+
+    Integer arithmetic, rounding half up, so the postcondition holds for any width.
+    """
+    filled = 0 if total == 0 else (2 * width * count + total) // (2 * total)
     return "#" * filled + "." * (width - filled)
 
 

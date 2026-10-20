@@ -88,7 +88,9 @@ def test_every_record_on_disk_is_a_source_named_by_its_file() -> None:
     files = sorted(folder.glob("*.json"))
     assert files, "the registry holds records"
     for path in files:
-        source = Source.model_validate(json.loads(path.read_text(encoding="ascii")))
+        raw = path.read_bytes()
+        assert raw.isascii() and b"\r" not in raw, f"{path.name}: ASCII with LF endings"
+        source = Source.model_validate(json.loads(raw.decode("ascii")))
         assert source.id == path.stem
         if source.reach in (Reach.GET, Reach.GATED, Reach.EMBARGOED):
             assert source.how_to_get, f"{path.name}: a source not held says how to get it"
