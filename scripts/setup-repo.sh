@@ -269,6 +269,19 @@ if [ "$(printf '%s' "$crowd" | tr '[:upper:]' '[:lower:]')" = "true" ]; then
   die "crowd mode is on (the variable CLAUDE_CROWD is true): $crowd_refusal"
 fi
 
+# The Settings workflow's weekly and visibility runs (SYMPHONY_SETTINGS_RECHECK)
+# make only what a plan or a visibility may have held back, the
+# environment and the Pages site, both made only when missing: a ruleset
+# is written on any plan and starts to hold by itself once the plan or the
+# visibility allows, and the toggles, the topic, scanning and the Actions
+# box are left as the owner may have set them since.
+RECHECK=no
+[ "${SYMPHONY_SETTINGS_RECHECK:-}" = 1 ] && RECHECK=yes
+if [ "$RECHECK" = yes ]; then
+  echo "recheck: only the environment and Pages, where they are missing"
+fi
+if [ "$RECHECK" = no ]; then
+
 # 2. The ruleset, from the file the docs ship, unless its name is already
 # listed. GitHub would make a second ruleset of the same name, so the check
 # is this script's job.
@@ -424,6 +437,8 @@ else
 fi
 rm -f "$refusal"
 
+fi
+
 # 5b. The environment token-store, limited to the default branch. The Token
 # workflow (.github/workflows/token.yml) saves a lent Claude token there
 # with the SymphonyBoard App's key, and GitHub would make the environment
@@ -487,7 +502,11 @@ pages_limited() {
   fi
 }
 refusal=$(mktemp)
-if gh api "repos/$REPO/pages" --silent 2>"$refusal"; then
+if [ "$RECHECK" = yes ] && [ -n "${SYMPHONY_DOCS_VARIABLE:-}" ]; then
+  # SYMPHONY_DOCS is written once Pages is on, so set means decided: a site
+  # the owner removed since is not put back.
+  echo "pages: left as it is, since the variable SYMPHONY_DOCS is set"
+elif gh api "repos/$REPO/pages" --silent 2>"$refusal"; then
   echo "pages: a site is there already, left as it is; docs.yml publishes the documentation site there only once the repository variable SYMPHONY_DOCS is pages"
 elif ! grep -q '(HTTP 404)' "$refusal"; then
   pages_refused "$(<"$refusal")"
@@ -508,6 +527,10 @@ else
   echo "pages: turned on, built by GitHub Actions; docs.yml publishes the documentation site on its next run on $DEFAULT_BRANCH"
 fi
 rm -f "$refusal"
+
+if [ "$RECHECK" = yes ]; then
+  exit 0
+fi
 
 # 6. The labels, from the one list in tools/template_init.py. --force
 # updates a label that exists instead of failing on it.
