@@ -5,11 +5,13 @@
   "what": "562 CTs; a gated anomaly-harvest collection (group B7)",
   "level_truth": "counted by the census pipeline once fetched",
   "reach": "gated",
-  "status": "an agreement stands in front of the data; none signed",
+  "status": "an agreement stands in front of the data; none signed; the Zenodo record (v2, 2026) is labelled CC0 yet carries a data use agreement (no re-identification, no sharing), and names maxim.popov@nu.edu.kz as contact; the record counts 562 patients, 39.1 GB, 492 with reports",
   "licence": "a data use agreement (non-commercial)",
-  "link": null,
+  "link": "https://zenodo.org/records/18389015",
   "how_to_get": [
-    "Find the Zenodo record (the manifest names it zenodo_magic_ct and gives no address): the files download without a gate, but the record's data use agreement requires an application with proof of human-subjects or HIPAA training, which only the owner can make; not fetched."
+    "Open https://zenodo.org/records/18389015 and read the data use agreement on the record; its terms (no re-identification, no onward sharing, either side may end it) bind the person who accepts them, so the owner accepts, never a session.",
+    "Where the record asks for an application with proof of human-subjects or HIPAA training, the owner sends it to the contact the record names.",
+    "Then fetch the 39.1 GB to Ceph as a Slurm job and verify the record's checksums."
   ],
   "grid_path": null,
   "counts": {},

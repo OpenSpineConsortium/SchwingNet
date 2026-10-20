@@ -5,11 +5,12 @@
   "what": "a Taiwanese spine radiograph set behind a login",
   "level_truth": "not recorded",
   "reach": "gated",
-  "status": "403 at a login; access never requested",
+  "status": "403 at a login; access never requested; the record is on IEEE DataPort (doi:10.21227/x6bb-7r75) with T1-L5 per-vertebra level labels, masks and end-plates per its description, never seen",
   "licence": "not recorded",
-  "link": null,
+  "link": "https://ieee-dataport.org/documents/tvgh-spinexr",
   "how_to_get": [
-    "Find the dataset's host page by name (the record holds no link), register, and request access with the study's purpose."
+    "Open https://doi.org/10.21227/x6bb-7r75 signed in to an IEEE account (free); read whether the files are open access, subscription or by request, and the licence.",
+    "Request access with the study's purpose where the page asks for one; the owner accepts any terms."
   ],
   "grid_path": null,
   "counts": {},
