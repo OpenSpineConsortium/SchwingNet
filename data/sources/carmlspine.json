@@ -14,8 +14,9 @@
     "cases": 149,
     "spot_frames": 299,
     "cbct_volumes": 149,
-    "size_gb": 86.834
+    "size_gb": 86.834,
+    "l6_cases": 3
   },
   "measured": {},
-  "record": "spine-program 01_carm_level_detection/DATA.md; spine-program 01_carm_level_detection/docs/handoff/DATASET_USAGE.md 2.1"
+  "record": "spine-program 01_carm_level_detection/DATA.md; spine-program 01_carm_level_detection/docs/handoff/DATASET_USAGE.md 2.1; spine-program 01_carm_level_detection/docs/handoff/context/lstv-tltv-detection-goal.md (the three real L6 patients)"
 }

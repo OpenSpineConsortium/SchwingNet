@@ -1,0 +1,7 @@
+VinDr-SpineXR is covered by WSU IRB HPR 2026-330 of 29 September 2026, so no record, page or plan calls it gated or outside the IRB determination.
+
+HPR 2026-269 (2 September 2026) covers public datasets that download without an agreement, so VinDr, held under PhysioNet's credentialed agreement, sat outside it until its supplement. The HPR tool for VinDr was filled on 25 September, and the notice of HPR 2026-330 came on 29 September: "Secondary Analysis of a De-Identified Radiograph Dataset (VinDr-SpineXR) Obtained Under the PhysioNet Restricted Health Data Use Agreement -- supplement to HPR Determination 2026-269", not human participant research. The data platform recorded it on 2026-10-10 (spinesurg-ct-nnunet 65fb454).
+
+The handoff copied into spine-program (01_carm_level_detection/docs/handoff/DATASET_USAGE.md and its twin under 02_transitional_naming_truth, assembled on 2026-10-08 from older notes) still says the determination is pending, and so does a line of 01_carm_level_detection/CLAUDE.md. Those lines are stale. The registry record built from them in #24 was wrong for that reason and was corrected in #26. The owner also said on 2026-10-14 that permission and the data use agreements are in hand for all the data, VinDr included, and that neither the IRB scope nor directive D1 is a reason to drop a result.
+
+The signed notice carries contact details and stays out of every repository. The release is complete on Ceph: 8,389 train and 2,077 test DICOM under /rs/rs_grp_oschome/go2432/data/vindr_spinexr/raw/vindr/1.0.0.

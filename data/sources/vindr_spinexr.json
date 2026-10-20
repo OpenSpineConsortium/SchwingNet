@@ -2,21 +2,18 @@
   "id": "vindr_spinexr",
   "name": "VinDr-SpineXR",
   "group": "films",
-  "what": "10,466 DICOM in 5,000 studies with lesion boxes",
+  "what": "10,466 DICOM (8,389 train + 2,077 test) in 5,000 studies with lesion boxes",
   "level_truth": "no levels",
-  "reach": "gated",
-  "status": "on the grid under a PhysioNet data use agreement that sits outside IRB determination 2026-269 (its own determination pending); dropped from training; only implant boxes used",
-  "licence": "PhysioNet credentialed health data licence",
+  "reach": "held",
+  "status": "on the grid under the PhysioNet agreement, covered since 29 Sep 2026 by WSU IRB HPR 2026-330 (the supplement to 2026-269: not human participant research); the C-ArmLSpine fold models carry 2,632 of its crops; the v8 and v9 level banks left it out for comparability, with no criterion; its implant boxes trained yolo_hw",
+  "licence": "PhysioNet Restricted Health Data License 1.5.0 (credentialed, named-person agreement)",
   "link": "https://physionet.org/content/vindr-spinexr/1.0.0/",
-  "how_to_get": [
-    "Hold a credentialed PhysioNet account (CITI training on file), sign the data use agreement on the record page.",
-    "Get an IRB determination that covers its use before any new training reads it."
-  ],
-  "grid_path": null,
+  "how_to_get": [],
+  "grid_path": "/rs/rs_grp_oschome/go2432/data/vindr_spinexr/raw/vindr/1.0.0",
   "counts": {
     "images": 10466,
     "studies": 5000
   },
   "measured": {},
-  "record": "spine-program 01_carm_level_detection/docs/handoff/DATASET_USAGE.md 2.2 and the agreements row"
+  "record": "WSU IRB HPR 2026-330 notice of 29 Sep 2026 (the signed copy stays out of every repository); spinesurg-ct-nnunet data_platform/sources.json, vindr_spinexr (65fb454, 2026-10-10); spine-program 01_carm_level_detection/docs/handoff/DATASET_USAGE.md 2.2 for its training use (its IRB line predates the notice); grid listing 2026-10-20"
 }

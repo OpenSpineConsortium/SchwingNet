@@ -9,8 +9,7 @@ and 10_data_platform_grid's DATA_MANIFEST.md (211 sources carded); each record n
 file. Counts are the record's; a count the record does not state is left out, and "not recorded"
 means the record is silent. The fields a grid job fills at sample level (`measured`) are empty until
 the owner gives the word and the number for the jobs, and print after the record's counts once filled.
-The closing section is prose: its numbers are read from the records where a record counts them, and
-the rest quote the record files the sources name.
+The closing section is prose, and every count in it is read from the record it names.
 
 Reach: HAVE = on the grid now; GET = public or by request, not yet fetched; GATED = behind a data use
 agreement, an application or a login the project does not hold; EMBARGOED = released on a date;
@@ -21,9 +20,9 @@ NONE = does not exist publicly; EXCLUDED = held or seen and set aside for a stat
 60 sources in the registry.
 
 ```
-HAVE      ################........................  24
+HAVE      #################.......................  25
 GET       ###############.........................  22
-GATED     #######.................................  10
+GATED     ######..................................   9
 EMBARGOED #.......................................   1
 NONE      #.......................................   1
 EXCLUDED  #.......................................   2
@@ -34,7 +33,7 @@ EXCLUDED  #.......................................   2
 | Real intraoperative fluoroscopy, stills (the target domain) | 5 | 3 | 0 | 0 | 1 | 1 | 10 |
 | Video and cine (consecutive frames) | 2 | 18 | 1 | 0 | 0 | 0 | 21 |
 | Real projections with a registered CT (the COBRA kind) | 3 | 0 | 0 | 1 | 0 | 0 | 4 |
-| Plain films (lateral or AP radiographs) | 7 | 0 | 2 | 0 | 0 | 1 | 10 |
+| Plain films (lateral or AP radiographs) | 8 | 0 | 1 | 0 | 0 | 1 | 10 |
 | CT collections and their renders (3D truth, synthetic 2D) | 7 | 0 | 7 | 0 | 0 | 0 | 14 |
 | Future directions | 0 | 1 | 0 | 0 | 0 | 0 | 1 |
 
@@ -42,7 +41,7 @@ EXCLUDED  #.......................................   2
 
 | Source | What it is | Level truth | Reach | Status | Counts | Licence | Link |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| C-ArmLSpine (Surgio-B51) | 149 lumbar intraoperative cases from one mobile C-arm: AP and lateral spot frames with a CBCT of the same device | yes, lumbar, projected from the CBCT (two labellers agreeing on 814 of 910 bodies); 3 real L6 cases | HAVE | the test set and the demo; never trained on in the zero-shot arm; case134 headers carry a real PatientID, never printed | cases 149, spot frames 299, cbct volumes 149, size gb 86.834 | CC BY 4.0 | [link](https://zenodo.org/records/22768651) |
+| C-ArmLSpine (Surgio-B51) | 149 lumbar intraoperative cases from one mobile C-arm: AP and lateral spot frames with a CBCT of the same device | yes, lumbar, projected from the CBCT (two labellers agreeing on 814 of 910 bodies); 3 real L6 cases | HAVE | the test set and the demo; never trained on in the zero-shot arm; case134 headers carry a real PatientID, never printed | cases 149, spot frames 299, cbct volumes 149, size gb 86.834, l6 cases 3 | CC BY 4.0 | [link](https://zenodo.org/records/22768651) |
 | DeepFluoro (Cios Fusion) | 6 cadaver specimens: 366 H5 frames with CTs, and a vendor DICOM deposit of 2,659 frames and 19 CTs | pelvis and lower lumbar, from the CT | HAVE | the sacrum detector's training; 2,293 vendor frames unused with no written criterion | specimens 6, h5 frames 366, vendor frames 2,659, vendor ct 19, size gb 116.26 | CC BY-NC-SA 4.0 | [link](https://github.com/eigenvivek/DiffDRR-Datasets) |
 | FluoroCap literature panels | 29,500 figure panels harvested from the literature; 72.8 percent are reproductions with no pixel residual | pseudo, no patient key | HAVE | out of training by directive D1; a test set at most; still inside the old fold banks | panels 29,500, size gb 316 | the publishers' (figures) | not recorded |
 | Geneva hip phantom (BV Pulsera) | 116 frames of one phantom on a device no model saw | pelvis | HAVE | the unseen-device test | frames 116 | not recorded | not recorded |
@@ -92,15 +91,15 @@ EXCLUDED  #.......................................   2
 
 | Source | What it is | Level truth | Reach | Status | Counts | Licence | Link |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| AASCE / BoostNet whole-spine films | 609 labelled AP whole-spine films on Ceph; 579 on HOME (481 labelled plus 98 challenge test) | thoracic, as a test set | HAVE | thoracic test only (608 films); a request-form source | films 609 | by request form | [link](https://aasce19.github.io/) |
+| AASCE / BoostNet whole-spine films | 609 labelled AP whole-spine films (481 BoostNet training + 128 BoostNet test) and 98 challenge-test films whose landmarks the release never published; both copies are on Ceph: the GitHub mirror holds all 707, and an older request-form copy holds 481 + 98 = 579 without the 128 test films (HOME's spine-detector path has linked to it since 2026-10-10) | thoracic, as a test set | HAVE | thoracic test set only: the prep wrote 608 of the 609 labelled films (one degenerate box); 457 of the 481 training films once fed the deleted level banks v4, v5 and v5c (24 skipped by an unsorted-landmark artefact) and the 128 test films never did; a request-form source | labelled films 609, challenge test films 98, thoracic test films 608 | by request form (SpineWeb); the mirror repository is MIT, the images' reuse terms not recorded | [link](https://aasce19.github.io/) |
 | BUU-LSPINE | 3,603 lateral and 3,600 AP lumbar radiographs of 3,600 people with end-plate lines, plus the 2000 relabel and a 400 sample | lumbar | HAVE | laterals used; the AP films and the 2000 relabel never used, no criterion; no weight trained on them leaves the grid until the owner has read the licence | lateral films 3,603, ap films 3,600, people 3,600 | unread by the owner | not recorded |
 | CSXA cervical lateral films | 4,963 lateral cervical radiographs with corner JSON | cervical, C1 to C7 | HAVE | used fully; every person in the v9 base, so not held out until re-keyed | films 4,963 | open | not recorded |
 | IEEE DataPort lateral whole-spine 236 | 236 whole-spine lateral films | none | HAVE | the pseudo-label arm was refuted | films 236 | not recorded | not recorded |
 | NHANES II annotated films | 543 digitised films of 364 persons with landmarks | lumbar and cervical | HAVE | used; counted twice in the old fold banks (a leak the registry ends) | films 543, persons 364 | open (NCHS) | [link](https://wwwn.cdc.gov/nchs/data/nhanes2/NH2_Xray.htm) |
 | NHANES II unannotated films | 16,531 digitised films without landmarks | none; pseudo-labels cut anomalous accuracy 20 points | HAVE | unused by a written criterion | films 16,531 | open (NCHS) | [link](https://wwwn.cdc.gov/nchs/data/nhanes2/NH2_Xray.htm) |
 | Spinal-AI2024 | 20,000 machine-generated films from 44 synthetic identities; no patient was imaged | assumed | HAVE | all on train in the G3 split; nothing to hold out | films 20,000, identities 44 | not recorded | not recorded |
+| VinDr-SpineXR | 10,466 DICOM (8,389 train + 2,077 test) in 5,000 studies with lesion boxes | no levels | HAVE | on the grid under the PhysioNet agreement, covered since 29 Sep 2026 by WSU IRB HPR 2026-330 (the supplement to 2026-269: not human participant research); the C-ArmLSpine fold models carry 2,632 of its crops; the v8 and v9 level banks left it out for comparability, with no criterion; its implant boxes trained yolo_hw | images 10,466, studies 5,000 | PhysioNet Restricted Health Data License 1.5.0 (credentialed, named-person agreement) | [link](https://physionet.org/content/vindr-spinexr/1.0.0/) |
 | TVGH-SpineXR | a Taiwanese spine radiograph set behind a login | not recorded | GATED | 403 at a login; access never requested |  | not recorded | not recorded |
-| VinDr-SpineXR | 10,466 DICOM in 5,000 studies with lesion boxes | no levels | GATED | on the grid under a PhysioNet data use agreement that sits outside IRB determination 2026-269 (its own determination pending); dropped from training; only implant boxes used | images 10,466, studies 5,000 | PhysioNet credentialed health data licence | [link](https://physionet.org/content/vindr-spinexr/1.0.0/) |
 | Mendeley 5jdfdgp762 spondylolisthesis films | 714 films with spondylolisthesis landmarks | landmarks | EXCLUDED | about 500 are BUU people redistributed, so it adds no new person | films 714 | not recorded | [link](https://data.mendeley.com/datasets/5jdfdgp762) |
 
 ## 5. CT collections and their renders (3D truth, synthetic 2D)
@@ -134,7 +133,7 @@ Every held source with a path the record gives, Ceph under /rs/rs_grp_oschome/go
 
 | Source | Grid path | Counts |
 | --- | --- | --- |
-| C-ArmLSpine (Surgio-B51) | `/rs/rs_grp_oschome/go2432/data/carmlspine` | cases 149, spot frames 299, cbct volumes 149, size gb 86.834 |
+| C-ArmLSpine (Surgio-B51) | `/rs/rs_grp_oschome/go2432/data/carmlspine` | cases 149, spot frames 299, cbct volumes 149, size gb 86.834, l6 cases 3 |
 | DeepFluoro (Cios Fusion) | `/rs/rs_grp_oschome/go2432/data/deepfluoro_h5/raw/deepfluoro; /rs/rs_grp_oschome/go2432/data/deepfluoro_vendor` | specimens 6, h5 frames 366, vendor frames 2,659, vendor ct 19, size gb 116.26 |
 | FluoroCap literature panels | `/wsu/home/go/go24/go2432/FluoroCap (HOME, Greg only)` | panels 29,500, size gb 316 |
 | Geneva hip phantom (BV Pulsera) | `/rs/rs_grp_oschome/go2432/data/geneva_hip_src` | frames 116 |
@@ -144,6 +143,8 @@ Every held source with a path the record gives, Ceph under /rs/rs_grp_oschome/go
 | COBRA2026 Elekta | `/rs/rs_grp_oschome/go2432/data/cobra2026` | cases 467, in bank 145 |
 | COBRA2026 on the grid, all projections | `/rs/rs_grp_oschome/go2432/data/cobra2026` | cases 692, projections 375,618, size gb 808.615 |
 | COBRA2026 Varian | `/rs/rs_grp_oschome/go2432/data/cobra2026` | cases 225 |
+| AASCE / BoostNet whole-spine films | `/rs/rs_grp_oschome/go2432/data/thoracic_xr/mirror_zlinzju_ke30_u7_AASCE2019; the 579 at /rs/rs_grp_oschome/go2432/data/aasce2019_boostnet/raw/aasce` | labelled films 609, challenge test films 98, thoracic test films 608 |
+| VinDr-SpineXR | `/rs/rs_grp_oschome/go2432/data/vindr_spinexr/raw/vindr/1.0.0` | images 10,466, studies 5,000 |
 | The anomaly harvest (family B) | `/rs/rs_grp_oschome/go2432/data/anomaly_harvest` | sources 144, on disk 56, planned 23, gated 7, excluded 58 |
 
 ## How to get what is not held
@@ -301,13 +302,6 @@ Link: not recorded. Licence: not recorded.
 
 1. Find the dataset's host page by name (the record holds no link), register, and request access with the study's purpose.
 
-### VinDr-SpineXR (GATED)
-
-Link: https://physionet.org/content/vindr-spinexr/1.0.0/. Licence: PhysioNet credentialed health data licence.
-
-1. Hold a credentialed PhysioNet account (CITI training on file), sign the data use agreement on the record page.
-2. Get an IRB determination that covers its use before any new training reads it.
-
 ### CADS CT (unique cases) (GATED)
 
 Link: https://huggingface.co/datasets/mrmrx/CADS-dataset. Licence: a data use agreement (non-commercial).
@@ -362,23 +356,23 @@ Link: https://ieee-dataport.org/open-access/pig-data-2d-3d-intensity-based-regis
 
 ## What this means for the plan
 
-The four numbers in brackets are read from the records named; every other number quotes the
-record files the sources name.
+Every count below is read from the record named beside it; a date, a citation's year and a version
+are not counts.
 
 - Real frames with level truth exist only for the lumbar spine (C-ArmLSpine) and the pelvis
   (DeepFluoro, COBRA). Every cervical and thoracic truth held is a film (CSXA, AASCE) or a render
   (RSNA, VerSe, TotalSegmentator). That is the gap, and no public set fills it; the drafted requests
   above are the cheapest next move and none has been sent.
-- Video: the only consecutive frames with a paired volume are the two C-ArmLSpine sweeps; the
-  262.801 GB of public clips (fluoro_video_clips) are for a private tracker screening and nothing
-  else; every labelled cine set (Bournemouth, Maastricht, Pittsburgh) is by request, and the Bern
-  myelography videos are the one CC BY travelling sequence.
-- Rare classes: 3 real L6 persons (all test), 18 L6 CTs in the project's own release
-  (ctspinopelvic1k), 1,763 L6 renders (fluorogen_synth_rare), and the harvest's census over
-  thousands of CTs. In 3D the project is rich; in real 2D it has three people.
-- Gated for good as the project stands: VinDr (a DUA outside the IRB determination) and the 7 gated
-  CT collections; TVGH and Radiopaedia were never asked.
-- Three licences bind a product: COBRA and DeepFluoro are non-commercial, CTSpinoPelvic1K is
+- Video: the only consecutive frames with a paired volume are the 2 C-ArmLSpine sweeps
+  (carmlspine_sweeps); the 262.801 GB of public clips (fluoro_video_clips) are for a private tracker
+  screening and nothing else; every labelled cine set (Bournemouth, Maastricht, Pittsburgh) is by
+  request, and the Bern myelography videos are the one CC BY travelling sequence.
+- Rare classes: 3 real L6 persons (carmlspine, all test), 18 L6 CTs in the project's
+  own release (ctspinopelvic1k), 1,763 L6 renders (fluorogen_synth_rare), and the harvest's
+  census over thousands of CTs. In 3D the project is rich; in real 2D it has 3 people.
+- Gated for good as the project stands: the 7 gated CT collections; TVGH and Radiopaedia
+  were never asked.
+- Licences bind a product: COBRA and DeepFluoro are non-commercial, CTSpinoPelvic1K is
   non-commercial share-alike. That is a lawyer's question before version 1 depends on them.
 - Veterinary medicine is a future direction (the owner, 2026-10-20): the pig CBCT of Goswami 2020 is
   open on IEEE DataPort, and the workflow takes a species the way it takes a dataset, as one source
