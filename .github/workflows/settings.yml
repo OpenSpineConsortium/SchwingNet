@@ -1,0 +1,130 @@
+# The GitHub side of a copy, applied by the SymphonyBoard App with no step
+# by hand (the owner, 2026-10-20: "I NEVER WANT TO NEED TO MANUALLY ... SET
+# REPO SETTINGS AGAIN"). "Use this template" copies files and nothing else,
+# and GITHUB_TOKEN can set none of the settings, so this job makes the App's
+# installation token, which carries Administration, Variables and Pages
+# where the installation accepted them, and runs scripts/setup-repo.sh with
+# it: the ruleset of docs/setup/ruleset-main.json, with whatever checks this
+# copy adds to that file, then the pin of its check "check" to GitHub
+# Actions, delete-branch-on-merge and auto-merge, the topic symphony, secret
+# scanning with push protection, "Allow GitHub Actions to create and approve
+# pull requests", the environment token-store, GitHub Pages for docs.yml
+# with the variable SYMPHONY_DOCS, and the labels. The script does nothing
+# twice and reports each refusal and goes on, so running it again is safe.
+#
+# It runs on the push that template-init's App token makes, which deletes
+# .template/ (a push made with GITHUB_TOKEN would start nothing, and then
+# the App is not set up either), on a merge that changes the ruleset's file
+# or this workflow, and by hand; never on a schedule, which would turn back
+# on each day what the owner turned off on purpose. template-init's own
+# placeholders keep it off in the template itself and in a copy not yet
+# initialised. Where the variable SDLC_APP_ID and the secret
+# SDLC_APP_PRIVATE_KEY are not set, or the App is not installed here, it
+# says so and ends green. In crowd mode the script stops before any write,
+# since crowd mode keeps auto-merge off (docs/setup/crowdsourcing.md), and
+# where the App cannot read the variable that says so it leaves auto-merge
+# alone (SYMPHONY_SETTINGS_APP). A run whose script stopped ends green with
+# a warning, so a refusal never reads as a broken default branch.
+#
+# The ruleset is made once from the file and left as it is after, as the
+# script leaves it, so a change to the file's checks is applied by the
+# rule's own workflow where the copy has one, or by deleting the ruleset
+# under Settings, Rules and running this again.
+name: Settings
+
+on:
+  push:
+    paths:
+      - .template/**
+      - docs/setup/ruleset-main.json
+      - scripts/setup-repo.sh
+      - .github/workflows/settings.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: settings
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    if: github.ref_name == github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Is this a copy that has been initialised?
+        id: copy
+        run: |
+          if [ -f .template/PENDING ]; then
+            echo "copy=false" >> "$GITHUB_OUTPUT"
+            echo "the template itself, or a copy template-init has not filled yet; nothing to do"
+          else
+            echo "copy=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Every permission the installation accepted, for this repository
+      # alone, the action's default: one it has not accepted, such as Pages before the owner
+      # accepts it, is a refusal the script reports, never a failed mint.
+      - uses: actions/create-github-app-token@v3
+        id: app-token
+        if: steps.copy.outputs.copy == 'true' && vars.SDLC_APP_ID != ''
+        continue-on-error: true
+        with:
+          app-id: ${{ vars.SDLC_APP_ID }}
+          private-key: ${{ secrets.SDLC_APP_PRIVATE_KEY }}
+          skip-token-revoke: true
+
+      # The pin takes the check only once GitHub Actions has reported it on
+      # the default branch; on the push that started the check too, wait
+      # for its run to appear, five minutes at most, or run this workflow
+      # again later to pin it.
+      - name: Wait for the check on the default branch
+        if: steps.app-token.outputs.token != '' && github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          SHA: ${{ github.sha }}
+        run: |
+          for _ in $(seq 30); do
+            reported=$(gh api "repos/$GITHUB_REPOSITORY/commits/$SHA/check-runs?check_name=check" \
+              --jq '[.check_runs[] | select(.app.id == 15368)] | length' 2>/dev/null) || reported=0
+            if [ "$reported" != 0 ]; then
+              echo "GitHub Actions has reported the check"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "the check has not appeared yet; run this workflow again to pin it"
+
+      - name: Apply the settings
+        if: steps.app-token.outputs.token != ''
+        shell: bash
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          SYMPHONY_SETTINGS_APP: "1"
+        run: |
+          status=0
+          bash scripts/setup-repo.sh "$GITHUB_REPOSITORY" > "$RUNNER_TEMP/settings.log" 2>&1 || status=$?
+          cat "$RUNNER_TEMP/settings.log"
+          { echo '```'; cat "$RUNNER_TEMP/settings.log"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$status" != 0 ]; then
+            echo "::warning::scripts/setup-repo.sh stopped (exit $status) before every setting was applied; its last line says why"
+          fi
+
+      - name: Revoke the App's token
+        if: always() && steps.app-token.outputs.token != ''
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          gh api --method DELETE installation/token --silent \
+            || echo "::warning::the App's token could not be revoked; it expires within the hour"
+
+      - name: Say why nothing was applied
+        if: steps.copy.outputs.copy == 'true' && steps.app-token.outputs.token == ''
+        run: |
+          echo "::notice::the SymphonyBoard App's token could not be made here (the variable SDLC_APP_ID and the secret SDLC_APP_PRIVATE_KEY are not set, or the App is not installed on this repository), so no setting was applied; run scripts/setup-repo.sh from a clone, or install the App and run this workflow"
