@@ -80,10 +80,12 @@ jobs:
       # The permissions the script uses, named, for this repository alone,
       # since this repository's supply-chain standard refuses a token with
       # the installation's whole set. Naming one the installation has not
-      # accepted fails the whole mint, so a second mint without Pages
-      # stands in until the owner accepts it; the action has no input for
-      # Variables, so the variable SYMPHONY_DOCS is a refusal the script
-      # reports. The action's own post step revokes each token.
+      # accepted fails the whole mint, so a second mint without Pages and
+      # Variables stands in until the owner accepts them. The action reads
+      # every permission-* input it is given, declared or not, so
+      # permission-actions-variables reaches GitHub as actions_variables,
+      # which lets the script set SYMPHONY_DOCS. The action's own post step
+      # revokes each token.
       - uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         id: app-token
         if: steps.copy.outputs.copy == 'true' && vars.SDLC_APP_ID != ''
@@ -97,6 +99,7 @@ jobs:
           permission-issues: write
           permission-metadata: read
           permission-pages: write
+          permission-actions-variables: write
 
       - uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         id: app-token-core

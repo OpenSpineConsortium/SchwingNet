@@ -192,6 +192,24 @@ class Pages(unittest.TestCase):
         self.assertNotIn(f"POST {PAGES}", self.keys(calls))
         self.assertNotIn("variable set", self.keys(calls))
 
+    def test_a_site_published_already_is_left_alone_whatever_builds_it(self):
+        """A site that has been built may be the owner's own, so the
+        variable that would let docs.yml deploy over it stays unset."""
+        for site in ("workflow built", "legacy never"):
+            with self.subTest(site=site):
+                done, calls = self.run_script({f"GET {PAGES}": [answer(200, f"{site}\n")]})
+                self.assertIn("left as it is", self.pages_line(done))
+                self.assertNotIn("variable set", self.keys(calls))
+
+    def test_a_site_from_actions_never_published_takes_the_variable(self):
+        """An earlier run made the site before it could set the variable;
+        nothing has deployed there since, so this run sets it."""
+        done, calls = self.run_script({f"GET {PAGES}": [answer(200, "workflow never\n")]})
+        self.assertIn("never published, so the variable SYMPHONY_DOCS is set to pages", self.pages_line(done))
+        self.assertNotIn(f"POST {PAGES}", self.keys(calls))
+        variable = next(call for call in calls if call["key"] == "variable set")
+        self.assertEqual(variable["args"][:3], ["variable", "set", "SYMPHONY_DOCS"])
+
     def limiting(self, public):
         """The PUT that limits the site, after which the read back says
         public as given."""

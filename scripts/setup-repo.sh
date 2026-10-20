@@ -501,13 +501,27 @@ pages_limited() {
     return 1
   fi
 }
+# A site that deploys from Actions and has never been published is the one
+# an earlier run made before it could set the variable, since nothing else
+# has deployed there, so it takes the variable now; any other site may be
+# the owner's own and is left alone.
+pages_found() {
+  if [ "$1" != "workflow never" ] || [ -n "${SYMPHONY_DOCS_VARIABLE:-}" ]; then
+    echo "pages: a site is there already, left as it is; docs.yml publishes the documentation site there only once the repository variable SYMPHONY_DOCS is pages"
+  elif ! gh variable set SYMPHONY_DOCS --repo "$REPO" --body pages 2>"$refusal"; then
+    printf 'pages: on, built by GitHub Actions and never published, but the variable SYMPHONY_DOCS was not set (%s); set it to pages at https://github.com/%s/settings/variables/actions\n' \
+      "$(head -n 1 "$refusal")" "$REPO"
+  else
+    echo "pages: on, built by GitHub Actions and never published, so the variable SYMPHONY_DOCS is set to pages; docs.yml publishes the documentation site on its next run on $DEFAULT_BRANCH"
+  fi
+}
 refusal=$(mktemp)
 if [ "$RECHECK" = yes ] && [ -n "${SYMPHONY_DOCS_VARIABLE:-}" ]; then
   # SYMPHONY_DOCS is written once Pages is on, so set means decided: a site
   # the owner removed since is not put back.
   echo "pages: left as it is, since the variable SYMPHONY_DOCS is set"
-elif gh api "repos/$REPO/pages" --silent 2>"$refusal"; then
-  echo "pages: a site is there already, left as it is; docs.yml publishes the documentation site there only once the repository variable SYMPHONY_DOCS is pages"
+elif site=$(gh api "repos/$REPO/pages" --jq '[.build_type, (.status // "never")] | join(" ")' 2>"$refusal"); then
+  pages_found "$site"
 elif ! grep -q '(HTTP 404)' "$refusal"; then
   pages_refused "$(<"$refusal")"
 elif ! gh api --method POST "repos/$REPO/pages" --silent -f build_type=workflow 2>"$refusal"; then
