@@ -4,20 +4,33 @@ This file is the project's goal and the settings every account's thin Project sh
 
 ## Goal
 
-Not yet written. One paragraph: what this project makes, for whom, and what done looks like. The owner writes it, or asks a session to, when ticking the "Set up this project" issue's box for this file, and merges it by pull request.
+SchwingNet names vertebral levels on intraoperative fluoroscopy: a detector finds the vertebrae and the sacrum, a level encoder and a sequence head name each one, and a tracker carries the names through a C-arm sweep with an abstain signal where it is unsure. This project makes a better SchwingNet than the one recorded in spine-program's 01_carm_level_detection, trained and measured between 2026-10-20 and the CNS talk of 2 November 2026 (mini-oral 66629), through Symphony's claim protocol and beethoven-qa's definition of done, so that every number the talk shows is reproduced by a command from a record in this repository. Done is: a pre-registered retraining run on the WSU grid, its held-out results on C-ArmLSpine with Wilson intervals, its accuracy on anomalous (transitional) spines measured as a stratum of its own with Dr Tech of Corewell as the senior second reader, and a recorded C-arm sweep with the overlay and the measured per-frame latency, ready to show once the provisional is filed (by 30 October). The plan is docs/research/demo-plan.md; what "better" means, which measure and which baseline, is the owner's to state before the first training job.
 
 ## Scope
 
 In scope: the areas this project owns, each in one line; docs/agents/OWNERSHIP.md maps them to workers.
 
+- The retraining: the pre-registered plan, the grid jobs through Beethoven (docs/setup/grid.md), the clean encoder rebuild, the split check, the eval gate; every number carries its run id, commit and result file.
+- The measurement: held-out C-ArmLSpine, the transitional stratum with two readers, the synthetic anomaly arm with exact truth, never pooled with the real one.
+- The demo: the recorded sweep (C-ArmLSpine case134 and case39), the overlay, the measured latency, the slides' figures.
+- The quality gate: new code to beethoven-qa's definition of done; the legacy tools of the reported pipeline listed under unproven, never refactored before the talk, since a refactor voids the parity gate.
+
 Out of scope, by decision: what this project does not do, each with the reason, so nobody proposes it again.
 
+- Anything public before the provisional is filed: no push to a public repository, no preprint, no slide of the method; the talk shows what SchwingNet does, not how (the owner, 2026-10-20).
+- A live run at the podium: no laptop latency exists and the CPU path took seconds per frame; the demo is a recording of a causal run with its latency on screen.
+- A grid job, a Claude run or a training without the owner's word and the number of jobs; usage credits are never used.
 - A settings-as-code app (github/safe-settings, or the Repository Settings App reading .github/settings.yml), decided no on 2026-10-11 (issue #18): it is a dependency with admin rights on every repository it covers, and a server of our own in one case, for settings that Symphony Setup applies for one run from the front door, scripts/setup-repo.sh from a clone, and organization rulesets, secrets and variables for what an organization makes.
 
 ## Repositories
 
 - OpenSpineConsortium/SchwingNet, this one: the shared plane for every account and every session; the default branch is main.
-- Other repositories this project reads or uses, four, each owned by the OpenSpineConsortium organization, whose owners merge to its default branch:
+- Repositories this project reads, all private, each a record and never changed from here (a change lands as a patch in the claim's pull request, as spine-program's CLAUDE.md says):
+  - OpenSpineConsortium/spine-program, folder 01_carm_level_detection: the reported SchwingNet, its STATUS.md numbers, MODEL_CARD.md, the cine demo build plan and the handoff; 02_transitional_naming_truth for the transitional truth file and the frozen G3 split; 07_plain_film_level_id for the CNS manuscript rows.
+  - Gregory-Schwing-MD-PhD/spinesurg-ct-nnunet, branch L6_Class: the training and evaluation code (tools/cine_eval.py, cine_latency.py, level_prototype.py, eval_gate.py, the slurm/ scripts).
+  - The grid, Wayne State's, reached through Beethoven's runner chain (docs/setup/grid.md): the corpora under /rs/rs_grp_oschome/go2432/data/, C-ArmLSpine among them; nothing of them is ever copied here.
+  - OpenSpineConsortium/beethoven-qa, public, taken as a pinned copy under vendor/beethoven-qa from 6.0.0 (issue #5; the template's docs/setup/beethoven-qa.md), and OpenSpineConsortium/beethoven-research, whose split check the measurement uses.
+- The template's own repositories, four, each owned by the OpenSpineConsortium organization, whose owners merge to its default branch:
   - OpenSpineConsortium/symphony-protocol, public: the claim protocol as a Python library with no dependencies (the board, the protocol check, team mode's clerk, the push guard's rules and the merge gate). It is vendored here under tools/sdlc_protocol, with tools/VENDORED recording the version, the commit and the sha256 of every copied file, and scripts/check.sh fails when the copy differs from that record, or, on CI, which clones the library, from the library's files at that commit. A change to the rules is made there, never here: once the owner has approved and published a release there that carries it, its sync workflow opens the pull request `symphony-protocol/sync` in OpenSpineConsortium/symphony-template with that release's copy, and the template's check decides. A repository made from the template is not on the sync's list; its own .github/workflows/protocol.yml brings each new release in instead, weekly, as a pull request from a branch of the same name, or as an issue linking that pull request where GitHub Actions may not open one. By hand it is `python3 <symphony-protocol>/scripts/vendor.py <this repository> --consumer OpenSpineConsortium/symphony-template` and a pull request. Its ecosystem.json is the one list of which repository takes which modules, and its ECOSYSTEM.md, generated from that list, maps all five repositories.
   - OpenSpineConsortium/coordbench, public: the playground and benchmark that compares ways of coordinating Claude Code agents on CooperBench's tasks, this protocol among them; its sdlc arm runs on the library's merge gate, vendored under coordbench/vendor. It began as experiment/ on OpenSpineConsortium/symphony-template's branch claude/10.
   - OpenSpineConsortium/symphony-marketplace, public: the Claude Code plugin marketplace with one plugin, symphony, which brings the skills, /board and the hooks to a repository not made from this template. .claude/settings.json names the marketplace and enables nothing, since this repository wires the same hooks itself.
