@@ -248,8 +248,8 @@ Settings of the repository, as docs/setup/github.md describes:
 2. **General**: tick "Automatically delete head branches". Tick "Allow
    auto-merge" too, so the pull requests of a worker whose file says
    "lands": "auto-merge", and the coordinator's integrations, land once
-   the check is green; with several such workers, optionally untick
-   "Require branches to be up to date" in the ruleset.
+   the check is green; the ruleset leaves "Require branches to be up
+   to date" off, so one merge never sends the others back to CI.
 3. **Actions**: under Actions, General, Workflow permissions, tick
    "Allow GitHub Actions to create and approve pull requests", so the
    weekly protocol update and the "Add a worker" form open their pull
