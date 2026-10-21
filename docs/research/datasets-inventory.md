@@ -83,7 +83,7 @@ EXCLUDED  #.......................................   3
 | ThePainSource (Faubel) fluoroscopy clips | pain-procedure fluoroscopy clips on YouTube; fax or phone only | none named | GET | request 13 drafted, never sent; request 13 sent 2026-10-21 04:03 UTC to thepainsource@gmail.com (fax fallback 815-381-7498, to confirm) |  | unknown | [link](https://www.faubelmd.com/contact-us) |
 | Veriserum (ETH Zurich, MICCAI 2025) | about 110,000 dual-plane fluoroscopic images of knee implant phantoms with registered poses, 200 with manual registration (ETH Research Collection doi:10.3929/ethz-b-000701146) | none; no spine | GET | found by the sweep of 2026-10-21; not fetched; freely accessible per the authors, licence to confirm on the page; real flat-panel fluoroscopy of metal implants at scale, which the project otherwise learns only from simulation | images about 110,000, manually registered 200 | to confirm on the page | [link](https://movement.ethz.ch/data-repository/veriserum.html) |
 | VFSS2022 videofluoroscopic swallow frames (TIB) | 440 videofluoroscopic swallow frames with instance masks of the bolus and pharynx, the cervical spine in every frame (doi:10.57702/w1ye2nim; Video-TransUNet) | none; cervical spine in field, no vertebra labels | GET | found by the sweep of 2026-10-21; not fetched; open per the listing, licence to confirm on the page; a small labelled cervical fluoroscopy set that the swallow requests (DysphagiaBank, Pittsburgh) do not yet deliver | frames 440 | to confirm on the page | [link](https://service.tib.eu/ldmservice/dataset/vfss2022-dataset) |
-| Radiopaedia fluoroscopy cases | seven cases: the rotational C-arm spin of rID 24796 (vertebral body stenting), the 61-projection series of rID 90103 (sublaminar lumbar puncture), the lateral L1 series of rID 21585 (vertebroplasty), and four injection cases | named in the case text (L1, L5, S1) | GATED | never applied for; machine-learning research goes through Radiopaedia's licence application, fee reported as USD 250, non-commercial only; no scraping | cases 7 | CC BY-NC-SA 3.0 (the site); ML use by application | [link](https://radiopaedia.org/licence) |
+| Radiopaedia spine cases | every case whose body system is Spine (and musculoskeletal cases whose images show the spine), in every modality, with the reference articles on vertebral numbering and transitional vertebrae; the seven fluoroscopy cases first identified (rID 24796, rID 90103, rID 21585 and four fluoroscopy-guided injection cases) are within it; the count is Radiopaedia's to state at approval | named in the case text (L1, L5, S1) | GATED | applied for on 2026-10-21: the non-commercial machine-learning licence agreement (v1.3) signed and submitted through Radiopaedia's SignNow form at 03:36 UTC, fee USD 250 paid (receipt 1967-5247), checklist NO/NO/NO, pending Radiopaedia's countersignature; the form cut the Project Aims and Radiopaedia Content answers off, so the full text goes to license@radiopaedia.org in a follow-up; any model that reads these cases is a Model under the agreement (release only under CC BY-NC-SA, no commercial use), which is the lawyer's question before training on them |  | CC BY-NC-SA 3.0 (the site); ML use by application | [link](https://radiopaedia.org/licence) |
 
 ## 3. Real projections with a registered CT (the COBRA kind)
 
@@ -165,11 +165,11 @@ EXCLUDED  #.......................................   3
 | UniToChest chest CT (623 patients; distributed as slices) | UniToChest chest CT, 623 patients, distributed as slices, Zenodo 5797912 published 2021-12-22, about 84 GB | counted by the census pipeline once fetched | GET | planned in the data platform at bf1432f; fetch job in the 2026-10-21 chain | subjects 623, size gb 84.07 | CC BY 4.0 | [link](https://zenodo.org/records/5797912) |
 | VerSe 2D projections with soft labels (Zenodo 8115942) | 2D projections of the central slices of VerSe 19 and 20 vertebrae, with soft labels from proposal-based non-expert annotation ('Annotating ambiguous images', 2023); count to confirm on the page (VerSe holds 4,505 vertebrae over 374 scans) | vertebral identity from VerSe | GET | found by the sweep of 2026-10-21; not fetched; its people are already in the v9 base (verse), so train-side only: a cheap extra render arm or a sanity check of the project's own VerSe renders |  | to confirm on the page (VerSe itself is CC BY-SA 4.0) | [link](https://zenodo.org/records/8115942) |
 | VSDFullBody: post-mortem whole-body CT, forensic institutes Bern and Zurich | VSDFullBody post-mortem whole-body CT, 100 subjects, forensic institutes Bern and Zurich, Zenodo 8270365 published 2013-11-12, about 116 GB; the mirror notes duplicate CT datasets (100 new of 109 files) | counted by the census pipeline once fetched | GET | planned in the data platform at bf1432f; fetch job in the 2026-10-21 chain | subjects 100, size gb 116.3 | CC BY-NC-SA per the record's text (the record's licence field is empty) | [link](https://zenodo.org/records/8270365) |
-| CADS CT (unique cases) | 753 CTs; a gated anomaly-harvest collection (group B7) | counted by the census pipeline once fetched | GATED | an agreement stands in front of the data; none signed |  | a data use agreement (non-commercial) | [link](https://huggingface.co/datasets/mrmrx/CADS-dataset) |
-| CT-RATE chest CT | 25,692 CT of 21,304 patients; a gated anomaly-harvest collection (group B7) | counted by the census pipeline once fetched | GATED | an agreement stands in front of the data; none signed |  | a data use agreement (non-commercial) | [link](https://huggingface.co/datasets/ibrahimhamamci/CT-RATE) |
+| CADS CT (unique cases) | 753 CTs; a gated anomaly-harvest collection (group B7) | counted by the census pipeline once fetched | GATED | access granted on the owner's Hugging Face account on 2026-10-21; not yet fetched |  | a data use agreement (non-commercial) | [link](https://huggingface.co/datasets/mrmrx/CADS-dataset) |
+| CT-RATE chest CT | 25,692 CT of 21,304 patients; a gated anomaly-harvest collection (group B7) | counted by the census pipeline once fetched | GATED | access granted on the owner's Hugging Face account on 2026-10-21 (the dataset page shows the gate accepted); not yet fetched: 21.3 TB, so the fetch waits for the owner's word on how much Ceph space it may take |  | a data use agreement (non-commercial) | [link](https://huggingface.co/datasets/ibrahimhamamci/CT-RATE) |
 | MAGIC-CT (Zenodo) | 562 CTs; a gated anomaly-harvest collection (group B7) | counted by the census pipeline once fetched | GATED | an agreement stands in front of the data; none signed; the Zenodo record (v2, 2026) is labelled CC0 yet carries a data use agreement (no re-identification, no sharing), and names maxim.popov@nu.edu.kz as contact; the record counts 562 patients, 39.1 GB, 492 with reports |  | a data use agreement (non-commercial) | [link](https://zenodo.org/records/18389015) |
-| RSNA abdominal trauma CT (RATIC) | 3,147 patients, 4,711 series; a gated anomaly-harvest collection (group B7) | counted by the census pipeline once fetched | GATED | an agreement stands in front of the data; none signed |  | a data use agreement (non-commercial) | [link](https://mira.rsna.org/dataset/5) |
-| RSNA pulmonary embolism CT (RSPECT) | 7,279 patients; a gated anomaly-harvest collection (group B7) | counted by the census pipeline once fetched | GATED | an agreement stands in front of the data; none signed |  | a data use agreement (non-commercial) | [link](https://www.kaggle.com/competitions/rsna-str-pulmonary-embolism-detection) |
+| RSNA abdominal trauma CT (RATIC) | 3,147 patients, 4,711 series; a gated anomaly-harvest collection (group B7) | counted by the census pipeline once fetched | GATED | an RSNA download link (a presigned zip, valid until 2026-10-28 02:38 UTC) received by the owner on 2026-10-21 after accepting RSNA's terms; the fetch command was given to the owner (curl -C - into DEST on reqp --qos=requeue); job id not yet recorded |  | a data use agreement (non-commercial) | [link](https://mira.rsna.org/dataset/5) |
+| RSNA pulmonary embolism CT (RSPECT) | 7,279 patients; a gated anomaly-harvest collection (group B7) | counted by the census pipeline once fetched | GATED | the owner joined the competition on Kaggle on 2026-10-21; the fetch command was given (kagglehub competition_download on a compute node, the Kaggle token read from ~/.fluorocap/credentials.env, never on a command line); the token the owner pasted into the chat is to be revoked and minted again; job id not yet recorded |  | a data use agreement (non-commercial) | [link](https://www.kaggle.com/competitions/rsna-str-pulmonary-embolism-detection) |
 | Stanford AIMI INSPECT chest CT | 19,402 patients; a gated anomaly-harvest collection (group B7) | counted by the census pipeline once fetched | GATED | an agreement stands in front of the data; none signed |  | a data use agreement (non-commercial) | [link](https://stanfordaimi.azurewebsites.net/) |
 | Stanford AIMI Merlin abdominal CT | 25,494 CT of 18,317 patients; a gated anomaly-harvest collection (group B7) | counted by the census pipeline once fetched | GATED | an agreement stands in front of the data; none signed |  | a data use agreement (non-commercial) | [link](https://stanfordaimi.azurewebsites.net/datasets/60b9c7ff-877b-48ce-96c3-0194c8205c40) |
 
@@ -374,13 +374,13 @@ Link: https://service.tib.eu/ldmservice/dataset/vfss2022-dataset. Licence: to co
 1. Open https://service.tib.eu/ldmservice/dataset/vfss2022-dataset and read the licence and the file list.
 2. Fetch as a Slurm job on the owner's word, never on the login node: python3 data/reproduce/reacquire/reacquire.py http-get --url U --dest FILE, U being the address the page gives.
 
-### Radiopaedia fluoroscopy cases (GATED)
+### Radiopaedia spine cases (GATED)
 
 Link: https://radiopaedia.org/licence. Licence: CC BY-NC-SA 3.0 (the site); ML use by application.
 
-1. Open https://radiopaedia.org/licence in a browser and start the machine-learning research application (request 8 of spine-program 01_carm_level_detection/docs/data_requests/FLUORO_VIDEO_REQUESTS_READY_2026-09-26.md is the text).
-2. List the seven cases: rID 24796, rID 90103, rID 21585, https://radiopaedia.org/cases/lumbar-transforaminal-epidural-steroid-injection-fluoroscopic-guided, https://radiopaedia.org/cases/lumbar-transforminal-epidural-steroid-injection-fluoroscopic-guided, https://radiopaedia.org/cases/s1-transforaminal-epidural-steroid-injection-fluoroscopic-guided, https://radiopaedia.org/cases/l5-nerve-root-block-fluoroscopic.
-3. Ask for the native DICOM stacks and say the use is non-commercial academic evaluation; a commercial product needs a negotiated licence.
+1. The application text is /mnt/project-files/data-requests/radiopaedia-application-draft.md (the thread's file); the agreement is SignNow document 2b7a4819d4ea45198cd8e71ba0703993ba89663b, sent to andrew.murphy+ml@radiopaedia.org with license@radiopaedia.org in copy.
+2. Wait for the countersigned copy and the agreement ID, which every publication must quote; then Radiopaedia says how the export is delivered (bulk export, never scraping).
+3. A commercial product built from any model that touched these cases needs a negotiated licence first (clause 2b).
 
 ### IPCAI 2025 paired X-ray and CT set (Zenodo 15753063) (GET)
 
@@ -714,15 +714,16 @@ Link: https://zenodo.org/records/8270365. Licence: CC BY-NC-SA per the record's 
 
 Link: https://huggingface.co/datasets/mrmrx/CADS-dataset. Licence: a data use agreement (non-commercial).
 
-1. Hold a Hugging Face account and tick the one checkbox on the dataset page.
-2. Read CT-TRI's own terms before any derived label; the VISCERAL folders carry the VISCERAL agreement text.
+1. Access is granted on the owner's Hugging Face account (2026-10-21).
+2. Fetch on a compute node with data/reproduce/reacquire/reacquire.py (manifest id hf_cads_unique, DEST=/rs/rs_grp_oschome/go2432/data/hf_cads_unique/raw) with the Hugging Face token read from a file.
+3. Read CT-TRI's own terms before any derived label; the VISCERAL folders carry the VISCERAL agreement text.
 
 ### CT-RATE chest CT (GATED)
 
 Link: https://huggingface.co/datasets/ibrahimhamamci/CT-RATE. Licence: a data use agreement (non-commercial).
 
-1. Hold a Hugging Face account, fill the gate form (name, institution, e-mail, terms) on the dataset page.
-2. The fetch tool passes no token, so fetch with a token read from a file; the ungated re-uploads were deliberately not used.
+1. Access is granted on the owner's Hugging Face account (2026-10-21).
+2. Fetch on a compute node with data/reproduce/reacquire/reacquire.py (manifest id hf_ct_rate, DEST=/rs/rs_grp_oschome/go2432/data/hf_ct_rate/raw) with the Hugging Face token read from a file in the submitter's environment, never on a command line; the ungated re-uploads were deliberately not used.
 
 ### MAGIC-CT (Zenodo) (GATED)
 
@@ -736,14 +737,15 @@ Link: https://zenodo.org/records/18389015. Licence: a data use agreement (non-co
 
 Link: https://mira.rsna.org/dataset/5. Licence: a data use agreement (non-commercial).
 
-1. Hold a MIRA account (controlled access to s3://abdominal-trauma-detection) or a Kaggle account, accept RSNA's terms (non-commercial, no redistribution).
-2. Derived labels stay internal.
+1. RSNA's terms accepted on the owner's account (2026-10-21); the link expires 2026-10-28, so the fetch runs before then.
+2. Fetch on a compute node into /rs/rs_grp_oschome/go2432/data/rsna_ratic_abdominal_trauma/raw (manifest id rsna_ratic_abdominal_trauma); derived labels stay internal.
 
 ### RSNA pulmonary embolism CT (RSPECT) (GATED)
 
 Link: https://www.kaggle.com/competitions/rsna-str-pulmonary-embolism-detection. Licence: a data use agreement (non-commercial).
 
-1. Hold a Kaggle account and accept the competition rules; fetch with the Kaggle API token kept in a file, never on a command line.
+1. The competition rules are accepted on the owner's Kaggle account (2026-10-21).
+2. Fetch on a compute node with kagglehub into /rs/rs_grp_oschome/go2432/data/rsna_rspect_pe/raw (manifest id rsna_rspect_pe), the Kaggle API token kept in a mode-0600 file and read into the job's environment, never on a command line.
 
 ### Stanford AIMI INSPECT chest CT (GATED)
 

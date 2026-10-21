@@ -470,9 +470,9 @@ registry record holds no such field.
 - Manifest records: none. found by the sweep of 2026-10-21 (docs/research/xray-datasets-missing.md); nothing fetched, so no manifest record was ever made.
 - The registry's steps: Open https://service.tib.eu/ldmservice/dataset/vfss2022-dataset and read the licence and the file list. Fetch as a Slurm job on the owner's word, never on the login node: python3 data/reproduce/reacquire/reacquire.py http-get --url U --dest FILE, U being the address the page gives.
 
-### Radiopaedia fluoroscopy cases (`radiopaedia`, GATED)
+### Radiopaedia spine cases (`radiopaedia`, GATED)
 
-- Registry: link https://radiopaedia.org/licence; grid path none; counts cases 7.
+- Registry: link https://radiopaedia.org/licence; grid path none; counts none.
 - Manifest records (request 8 is the application text; nothing held, nothing scraped):
   - `fluoro_cine_requests_2026_09_26`: Fourteen fluoroscopy cine requests drafted 2026-09-26 (Bournemouth DICOM cine, Maastricht, Bern, Pittsburgh, ...); kind request, family D; route `manual`, mode manual; status requested_not_sent.
     - acquired: not acquired; request drafted (2026-09-26)
