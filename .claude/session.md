@@ -56,3 +56,7 @@ What remains to be fleshed out, in the plan's order (docs/research/retraining-pl
 - The pre-push hook runs the whole gate (pixi run --locked gate) and refuses a push from a tree with anything uncommitted; export PATH="$HOME/.pixi/bin:$PATH" before pushing from a cloud session.
 - Scripts under tools/ drop tools/ from sys.path before importing torch, since tools/profile.py shadows the standard library's profile; functions that take a pydantic model go under [tool.beethoven-qa.unproven].
 - Nothing of this repository is public before the provisional is filed; every grid job and every training needs the owner's word and the number; usage credits are never used; no Claude credential and no API key anywhere; PHI stays on the grid.
+
+## Added 2026-10-21 about 20:35 UTC by the thread "3D CT priors for 2D detection"
+
+The programme "From 3D to X-ray" (the segmented CTs carried to X-ray, the anomaly screener, the corner annotation format, device harmonisation, COBRA's rotations, view translation) is docs/research/xr-from-3d/README.md, with issues #56 (parent) and #57 to #70 (workstreams A to N); its handoff, what is done and what is next, is docs/checkpoints/2026-10-21-xr-from-3d/HANDOFF.md.
