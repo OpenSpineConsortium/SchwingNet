@@ -1,0 +1,2 @@
+boundary: vendor/beethoven-qa is beethoven-qa's pinned copy; vendor-check checks its files
+boundary: rules 1 to 5 hold in /home/user/schwingnet-11 (0 known exceptions)

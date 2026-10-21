@@ -13,7 +13,9 @@ version = "0.0.0"
 channels = ["conda-forge"]
 # One platform, named apart from its subdirectory because it states a glibc floor: jscpd (the
 # duplication detector, from PyPI) ships manylinux_2_34 wheels only.
-platforms = [{ name = "linux-64-glibc234", platform = "linux-64", glibc = "2.34" }]
+# The CUDA driver is the grid's H200 nodes', assumed here so the train-gpu environment solves on a
+# machine with no GPU; the default and train-cpu environments never load it.
+platforms = [{ name = "linux-64-glibc234", platform = "linux-64", glibc = "2.34", cuda = "12" }]
 # Only while no package comes from both conda-forge and PyPI; beethoven-qa's pixi.toml says why.
 conda-pypi-map = false
 
@@ -60,3 +62,25 @@ boundary = "python -m beethoven_qa boundary"
 report = "python -m beethoven_qa report"
 gate = { depends-on = ["lint", "typecheck", "test", "boundary", "symbolic", "standards", "vendor-check"] }
 hooks = "git config core.hooksPath .githooks"
+
+# The training stack (docs/research/retraining-plan.md, section 5; #11): torch and the image
+# tools, as features so the verification environment stays small. train-cpu is a laptop's and
+# the dry run's; train-gpu is the grid's H200 job, which the same lock pins for CUDA.
+[feature.train.dependencies]
+torchvision = ">=0.18"
+pillow = ">=10"
+numpy = ">=1.26"
+matplotlib = ">=3.8"
+metaflow = ">=2.12"
+
+[feature.cpu.dependencies]
+pytorch-cpu = ">=2.3"
+
+[feature.cuda.dependencies]
+pytorch = { version = ">=2.3", build = "cuda*" }
+cuda-version = ">=12.4"
+
+
+[environments]
+train-cpu = { features = ["train", "cpu"], solve-group = "train-cpu" }
+train-gpu = { features = ["train", "cuda"], solve-group = "train-gpu" }

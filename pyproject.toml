@@ -51,7 +51,12 @@ src = "src"
 per_condition_timeout = 20
 
 # Functions the gate never checks as targets, each with its reason; the gate prints the list on
-# every run. None yet: the measure module is pure. A new entry is a person's decision in a
-# reviewed change, never a way to get green, and every contracted function that calls a listed
-# one is listed too, since CrossHair runs a listed function's body when it proves its caller.
+# every run. A new entry is a person's decision in a reviewed change, never a way to get green,
+# and every contracted function that calls a listed one is listed too, since CrossHair runs a
+# listed function's body when it proves its caller. The two below take a pydantic model, which
+# CrossHair 0.0.111 does not construct (beethoven-qa's Measured, 2026-10-04), so their
+# preconditions can be met by no input it builds; tests/schwingnet/test_flow.py checks their
+# contracts at run time, and nothing contracted calls them.
 [tool.beethoven-qa.unproven]
+"schwingnet.flow.result_line" = "takes a ResultRow, a pydantic model CrossHair cannot construct; its contracts are checked by the tests"
+"schwingnet.slurm.sbatch_script" = "takes a JobSpec, a pydantic model CrossHair cannot construct; its contracts are checked by the tests"

@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "coverage.py",
+          "version": "7.16.2",
+          "informationUri": "https://coverage.readthedocs.io/",
+          "rules": [
+            {
+              "id": "coverage/new-lines",
+              "name": "CoverageOfNewLines",
+              "shortDescription": {
+                "text": "The tests run at least 80% of the new lines that can run."
+              },
+              "fullDescription": {
+                "text": "Sonar way quality gate (SonarSource): coverage on new code at least 80%; line coverage, measured by coverage.py."
+              },
+              "helpUri": "https://coverage.readthedocs.io/",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "testability"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "automationDetails": {
+        "id": "beethoven-qa/standards/coverage/"
+      },
+      "originalUriBaseIds": {
+        "%SRCROOT%": {
+          "description": {
+            "text": "The root of the repository."
+          }
+        }
+      },
+      "columnKind": "unicodeCodePoints",
+      "results": []
+    }
+  ]
+}

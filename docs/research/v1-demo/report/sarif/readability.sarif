@@ -1,0 +1,155 @@
+{
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "complexipy",
+          "version": "8.1.0",
+          "informationUri": "https://www.sonarsource.com/docs/CognitiveComplexity.pdf",
+          "rules": [
+            {
+              "id": "readability/cognitive-complexity",
+              "name": "CognitiveComplexity",
+              "shortDescription": {
+                "text": "A function's cognitive complexity is at most 15."
+              },
+              "fullDescription": {
+                "text": "Cognitive Complexity (G. A. Campbell, SonarSource, 2018); 15 is SonarSource's default for Python (S3776)."
+              },
+              "helpUri": "https://www.sonarsource.com/docs/CognitiveComplexity.pdf",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "maintainability",
+                  "readability"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "automationDetails": {
+        "id": "beethoven-qa/standards/readability/"
+      },
+      "originalUriBaseIds": {
+        "%SRCROOT%": {
+          "description": {
+            "text": "The root of the repository."
+          }
+        }
+      },
+      "columnKind": "unicodeCodePoints",
+      "results": []
+    },
+    {
+      "tool": {
+        "driver": {
+          "name": "ruff",
+          "version": "0.17.1",
+          "informationUri": "https://docs.astral.sh/ruff/rules/complex-structure/",
+          "rules": [
+            {
+              "id": "readability/cyclomatic-complexity",
+              "name": "CyclomaticComplexity",
+              "shortDescription": {
+                "text": "A function's cyclomatic complexity is at most 10."
+              },
+              "fullDescription": {
+                "text": "Cyclomatic complexity V(G) = E - N + 2P (T. J. McCabe, 1976); 10 is McCabe's own limit."
+              },
+              "helpUri": "https://docs.astral.sh/ruff/rules/complex-structure/",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "maintainability",
+                  "testability"
+                ]
+              }
+            },
+            {
+              "id": "readability/parameters",
+              "name": "ParameterCount",
+              "shortDescription": {
+                "text": "A function takes at most 4 parameters, self and cls not counted."
+              },
+              "fullDescription": {
+                "text": "Over-parameterization (ISO/IEC 5055 maintainability); 4 is Code Climate's default."
+              },
+              "helpUri": "https://docs.astral.sh/ruff/rules/too-many-arguments/",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "maintainability",
+                  "readability"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "automationDetails": {
+        "id": "beethoven-qa/standards/readability/"
+      },
+      "originalUriBaseIds": {
+        "%SRCROOT%": {
+          "description": {
+            "text": "The root of the repository."
+          }
+        }
+      },
+      "columnKind": "unicodeCodePoints",
+      "results": []
+    },
+    {
+      "tool": {
+        "driver": {
+          "name": "lizard",
+          "version": "1.24.1",
+          "informationUri": "https://docs.codeclimate.com/docs/maintainability",
+          "rules": [
+            {
+              "id": "readability/function-length",
+              "name": "FunctionLength",
+              "shortDescription": {
+                "text": "A function holds at most 26 lines of code as lizard counts them (NLOC): the def line and 25 more, its signature and body together; docstring, comments and blanks not counted."
+              },
+              "fullDescription": {
+                "text": "Method length; 25 lines in the body is Code Climate's default, as the Drive file quotes it, and lizard's NLOC counts the def line with them."
+              },
+              "helpUri": "https://docs.codeclimate.com/docs/maintainability",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "maintainability",
+                  "readability"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "automationDetails": {
+        "id": "beethoven-qa/standards/readability/"
+      },
+      "originalUriBaseIds": {
+        "%SRCROOT%": {
+          "description": {
+            "text": "The root of the repository."
+          }
+        }
+      },
+      "columnKind": "unicodeCodePoints",
+      "results": []
+    }
+  ]
+}
