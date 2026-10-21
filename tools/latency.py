@@ -2,21 +2,26 @@
 
 Usage (inside the train-cpu or train-gpu environment):
     python tools/latency.py export  --run <run dir>
-    python tools/latency.py parity  --run <run dir> --catalog <catalog.sqlite> [--part validation] [--crops 64] [--device cpu]
+    python tools/latency.py parity  --run <run dir> --catalog <catalog.sqlite> --runtime torch|onnxruntime
+        [--device cpu|cuda] [--threads 8] [--part validation] [--crops 64]
     python tools/latency.py measure --run <run dir> --catalog <catalog.sqlite> --runtime torch|onnxruntime
         [--device cpu|cuda] [--threads 8] [--frames 300] [--warmup 30] [--part test]
 
 docs/research/demo-plan.md, sections 1 and W6, and issue #13. `export` writes onnx/level.onnx
 from the run's best.pt with a batch axis that may vary, since a frame holds as many crops as it
-has vertebrae. `parity` runs PyTorch and ONNX Runtime on the same crops and writes
-onnx/parity.json: every predicted level equal and every softmax probability within 1e-5
-(schwingnet.latency.parity_holds), on the crops the run was validated on, never test crops.
+has vertebrae. `parity` compares one arm, a runtime on a device, with the reference, PyTorch on
+the CPU in float32, on the same crops and writes onnx/parity-<runtime>-<device>.json: every
+predicted level equal and every softmax probability within 1e-5 (schwingnet.latency.parity_holds),
+on the crops the run was validated on, never test crops. TF32 is off on both runtimes' GPU paths,
+so a GPU arm computes in float32 as the reference does; PyTorch on the CPU is the reference and
+needs no file.
 `measure` times each frame as the demo runs it, one frame at a time, the model resident and
 warmed up, the frame already decoded (acquisition and decode are the C-arm's and the file's, not
 SchwingNet's): crop and resize every box, the forward pass, the softmax and the causal tracker's
-step. It refuses ONNX Runtime unless parity passed for the same file, so no latency number exists
-for a runtime whose outputs differ. Each arm writes latency/<arm>.json, and evaluate/latency.json
-holds the fastest arm whose parity holds, under the keys the evaluation page reads.
+step. It refuses an arm whose parity did not pass for that runtime, that device and, for ONNX
+Runtime, that same file, so no latency number exists for outputs that differ. Each arm writes
+latency/<arm>.json, and evaluate/latency.json holds the fastest arm whose parity still holds when
+the headline is written, under the keys the evaluation page reads.
 """
 
 import importlib.util
@@ -51,7 +56,11 @@ def load_trainer():
 
 
 train = load_trainer()
+# float32 on the GPU as on the CPU: TF32 would change the outputs past the parity tolerance.
+torch.backends.cudnn.allow_tf32 = False
+torch.backends.cuda.matmul.allow_tf32 = False
 ONNX_NAME = "level.onnx"
+REFERENCE = ("torch", "cpu")
 OPSET = 17
 
 
@@ -113,7 +122,7 @@ def ort_session(path, device, threads):
     if device == "cuda":
         if "CUDAExecutionProvider" not in ort.get_available_providers():
             raise LatencyError("ONNX Runtime here has no CUDA provider; run in the train-gpu environment on a GPU node")
-        providers = ["CUDAExecutionProvider", "CPUExecutionProvider"]
+        providers = [("CUDAExecutionProvider", {"use_tf32": "0"}), "CPUExecutionProvider"]
     return ort.InferenceSession(str(path), sess_options=options, providers=providers)
 
 
@@ -123,39 +132,92 @@ def softmax(logits):
     return exp / exp.sum(axis=1, keepdims=True)
 
 
-def parity(run, catalog, part, crops_wanted, device):
-    """PyTorch against ONNX Runtime on the same crops; onnx/parity.json says whether they agree."""
+def parity_file(run, runtime, device):
+    return Path(run) / "onnx" / f"parity-{runtime}-{device}.json"
+
+
+def exported_sha256(run):
+    """The ONNX file's sha256, refused when it is not the file export.json names."""
     folder = Path(run) / "onnx"
     export_file = folder / "export.json"
-    if not export_file.is_file():
-        raise LatencyError(f"{folder}: no export.json; run export first")
-    exported = json.loads(export_file.read_text(encoding="utf-8"))
-    if sha256_of(folder / ONNX_NAME) != exported["onnx_sha256"]:
+    if not export_file.is_file() or not (folder / ONNX_NAME).is_file():
+        raise LatencyError(f"{folder}: no export.json and {ONNX_NAME}; run export first")
+    actual = sha256_of(folder / ONNX_NAME)
+    if actual != json.loads(export_file.read_text(encoding="utf-8"))["onnx_sha256"]:
         raise LatencyError(f"{folder / ONNX_NAME}: not the file export.json names")
-    model, facts = load_torch_model(run, device)
-    crops = [c for c in train.read_crops(catalog, (part,))][:crops_wanted]
+    return actual
+
+
+def parity(run, catalog, part, crops_wanted, runtime, device, threads):
+    """One arm against PyTorch on the CPU, on the same crops; its parity file says whether they agree."""
+    if (runtime, device) == REFERENCE:
+        raise LatencyError("PyTorch on the CPU is the reference; it has no parity of its own to check")
+    onnx_sha256 = exported_sha256(run) if runtime == "onnxruntime" else None
+    model, facts = load_torch_model(run, "cpu")
+    crops = train.read_crops(catalog, (part,))[:crops_wanted]
     if not crops:
         raise LatencyError(f"the catalog has no labelled crops in the {part} part")
     inputs, _ = train.load_crops(crops, int(facts["size"]), {})
     with torch.no_grad():
-        reference = torch.softmax(model(inputs.to(device)), dim=1).cpu().numpy()
-    session = ort_session(folder / ONNX_NAME, device, 1)
-    candidate = softmax(session.run(["logits"], {"crops": inputs.numpy()})[0])
+        reference = torch.softmax(model(inputs), dim=1).numpy()
+    if runtime == "onnxruntime":
+        session = ort_session(Path(run) / "onnx" / ONNX_NAME, device, threads)
+        candidate = softmax(session.run(["logits"], {"crops": inputs.numpy()})[0])
+    else:
+        on_device, _ = load_torch_model(run, device)
+        with torch.no_grad():
+            candidate = torch.softmax(on_device(inputs.to(device)), dim=1).cpu().numpy()
     difference = float(np.abs(reference - candidate).max())
     labels_equal = bool((reference.argmax(axis=1) == candidate.argmax(axis=1)).all())
     verdict = {
-        "onnx_sha256": exported["onnx_sha256"],
+        "runtime": runtime,
+        "device": device,
+        "threads": threads,
+        "reference": "torch on the CPU, float32",
+        "onnx_sha256": onnx_sha256,
+        "checkpoint_sha256": sha256_of(checkpoint_of(run)[1]),
         "part": part,
         "crops": len(crops),
         "persons": len({c["person"] for c in crops}),
-        "device": device,
         "max_abs_probability_difference": difference,
         "labels_equal": labels_equal,
         "tolerance": PARITY_TOLERANCE,
         "passed": parity_holds(difference, labels_equal, len(crops)),
     }
-    (folder / "parity.json").write_text(json.dumps(verdict, indent=1) + "\n", encoding="utf-8")
+    target = parity_file(run, runtime, device)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(json.dumps(verdict, indent=1) + "\n", encoding="utf-8")
     return verdict
+
+
+def parity_problem(run, runtime, device):
+    """Why an arm may not be timed or shown, or None when its parity holds for what is on disk now."""
+    if (runtime, device) == REFERENCE:
+        return None
+    verdict_file = parity_file(run, runtime, device)
+    if not verdict_file.is_file():
+        return f"{verdict_file.name} is missing: no latency is measured for {runtime} on {device} before parity"
+    verdict = json.loads(verdict_file.read_text(encoding="utf-8"))
+    if not verdict.get("passed"):
+        return f"{verdict_file.name}: parity did not pass for {runtime} on {device}"
+    if verdict.get("checkpoint_sha256") != sha256_of(checkpoint_of(run)[1]):
+        return f"{verdict_file.name}: parity was shown for another checkpoint"
+    if runtime == "onnxruntime":
+        try:
+            current = exported_sha256(run)
+        except LatencyError as error:
+            return str(error)
+        if verdict.get("onnx_sha256") != current:
+            return f"{verdict_file.name}: parity was shown for another ONNX file"
+    return None
+
+
+def require_parity(run, runtime, device):
+    """The ONNX file's sha256 (None for PyTorch), once the arm's parity holds."""
+    problem = parity_problem(run, runtime, device)
+    if problem:
+        raise LatencyError(problem)
+    return exported_sha256(run) if runtime == "onnxruntime" else None
 
 
 def crop_from_image(image, box, size):
@@ -185,8 +247,8 @@ class FramePath:
         self.model, facts = load_torch_model(run, device)
         self.size, self.levels = int(facts["size"]), list(facts["levels"])
         self.session = None
+        self.onnx_sha256 = require_parity(run, runtime, device)
         if runtime == "onnxruntime":
-            self.onnx_sha256 = require_parity(run)
             self.session = ort_session(Path(run) / "onnx" / ONNX_NAME, device, threads)
         self.reset()
 
@@ -219,19 +281,6 @@ class FramePath:
         done = time.perf_counter()
         timing = {"preprocess_ms": (cropped - start) * 1e3, "model_ms": (modelled - cropped) * 1e3, "track_ms": (done - modelled) * 1e3, "frame_ms": (done - start) * 1e3}
         return shown, probs, timing
-
-
-def require_parity(run):
-    """The ONNX file's sha256, once parity.json says it passed for that same file."""
-    folder = Path(run) / "onnx"
-    verdict_file = folder / "parity.json"
-    if not verdict_file.is_file():
-        raise LatencyError(f"{folder}: no parity.json; no latency is measured for ONNX Runtime before parity")
-    verdict = json.loads(verdict_file.read_text(encoding="utf-8"))
-    actual = sha256_of(folder / ONNX_NAME)
-    if not verdict.get("passed") or verdict.get("onnx_sha256") != actual:
-        raise LatencyError(f"{verdict_file}: parity did not pass for this file; no latency is measured for it")
-    return actual
 
 
 def frames_of(catalog, part):
@@ -278,6 +327,7 @@ def measure(run, catalog, runtime, device, threads, frames_wanted, warmup, part)
         "run_id": record["run_id"],
         "code_commit": record["code_commit"],
         "runtime": runtime,
+        "device_kind": device,
         "device": device_name(device),
         "threads": threads,
         "batch": 1,
@@ -293,7 +343,8 @@ def measure(run, catalog, runtime, device, threads, frames_wanted, warmup, part)
         "budget_ms": BUDGET_MS,
         "within_budget": within_budget(total["p95"]),
         "parity_passed": True,
-        "onnx_sha256": getattr(path, "onnx_sha256", None),
+        "part": part,
+        "onnx_sha256": path.onnx_sha256,
         "excludes": "acquisition, file read and decode, display",
         "torch": torch.__version__,
     }
@@ -307,8 +358,11 @@ def measure(run, catalog, runtime, device, threads, frames_wanted, warmup, part)
 def write_headline(run):
     """evaluate/latency.json: the fastest arm by p95 whose parity holds, for the evaluation page."""
     arms = [json.loads(p.read_text(encoding="utf-8")) for p in sorted((Path(run) / "latency").glob("*.json"))]
-    passing = [a for a in arms if a.get("parity_passed")]
+    # parity is read again now, so an arm whose file, checkpoint or verdict changed since it was
+    # timed is never the headline
+    passing = [a for a in arms if parity_problem(run, a["runtime"], a["device_kind"]) is None]
     if not passing:
+        (Path(run) / "evaluate" / "latency.json").unlink(missing_ok=True)
         return None
     best = min(passing, key=lambda a: (a["ms_per_frame_p95"], a["arm"]))
     folder = Path(run) / "evaluate"
@@ -328,7 +382,9 @@ def parse(argv):
     parity_p.add_argument("--catalog", required=True)
     parity_p.add_argument("--part", default="validation", choices=["train", "validation"], help="never the test part")
     parity_p.add_argument("--crops", type=int, default=64)
-    parity_p.add_argument("--device", default="cpu")
+    parity_p.add_argument("--runtime", choices=["torch", "onnxruntime"], required=True)
+    parity_p.add_argument("--device", default="cpu", choices=["cpu", "cuda"])
+    parity_p.add_argument("--threads", type=int, default=8)
     measure_p = sub.add_parser("measure")
     measure_p.add_argument("--run", required=True)
     measure_p.add_argument("--catalog", required=True)
@@ -345,7 +401,7 @@ def run_command(args):
     if args.command == "export":
         return export(args.run)
     if args.command == "parity":
-        verdict = parity(args.run, args.catalog, args.part, args.crops, args.device)
+        verdict = parity(args.run, args.catalog, args.part, args.crops, args.runtime, args.device, args.threads)
         if not verdict["passed"]:
             raise LatencyError(f"parity failed: {json.dumps(verdict)}")
         return verdict

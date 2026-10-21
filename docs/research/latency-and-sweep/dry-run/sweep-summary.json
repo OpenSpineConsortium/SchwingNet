@@ -10,12 +10,12 @@
  "frames": 12,
  "latency_ms": {
   "frames": 12,
-  "p50": 10.601059000009627,
-  "p95": 15.29485499997918,
-  "p99": 15.29485499997918,
-  "mean": 10.893386250008538,
-  "min": 6.840637999971477,
-  "max": 15.29485499997918
+  "p50": 10.740272000020923,
+  "p95": 18.09164399992369,
+  "p99": 18.09164399992369,
+  "mean": 10.908440333328903,
+  "min": 6.032170000025872,
+  "max": 18.09164399992369
  },
  "budget_ms": 97.0,
  "within_budget": true,
@@ -162,6 +162,6 @@
   }
  },
  "onnx_sha256": "0cf060843c9c7d2b9d47d6f96d66d9804a220fe2e68b06b1cbd36602aeb7f160",
- "excludes": "acquisition, file read and decode, drawing and encoding the overlay",
- "video": "<run dir>/sweep/case134/sweep.mp4"
+ "excludes": "acquisition, file read and decode, drawing and encoding the overlay; timed as tools/latency.py measure times a frame",
+ "video": "<run dir>"
 }

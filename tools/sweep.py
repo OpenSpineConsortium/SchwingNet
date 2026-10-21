@@ -4,6 +4,7 @@ Usage (inside the train-cpu or train-gpu environment):
     python tools/sweep.py run --run <run dir> --frames <folder of frames, or a .npy stack> --boxes <boxes.jsonl>
         --name case134 [--runtime onnxruntime|torch] [--device cpu|cuda] [--threads 8] [--fps 10.3]
         [--box-source truth|detector] [--out <folder>]
+    python tools/sweep.py from-bank --bank <bank folder> --case case134 --out <folder>
     python tools/sweep.py synthetic --catalog <catalog.sqlite> --person <person key> --out <folder> [--part test]
 
 docs/research/demo-plan.md, section 1, and issue #13. `run` reads the frames in order, one at a
@@ -12,6 +13,9 @@ forward, softmax, the causal tracker's step), timed as tools/latency.py times it
 overlay: each box coloured by its track, its level and probability or "?" where the tracker
 abstains, and in the corner the frame counter, the gantry angle where the boxes file gives it, this
 frame's compute time, the p95 so far against the 97 ms budget, and where the boxes came from.
+`from-bank` turns a sweep held as a bank in the builders' format (images/<split>/<case>_*.png and
+meta/<stem>.json with the boxes in pixels, their levels and view.gantry_deg), as the case134
+export under realxray/carmlspine_sweep is, into the frames and the boxes file `run` reads.
 Nothing in the overlay reads a later frame, so the recording is what a live run would have shown.
 It writes overlay/<frame>.png, sweep.jsonl (one line per frame: the boxes, the tracks, the levels,
 the probabilities, the timings), summary.json (the latency summary and, where the boxes file gives
@@ -36,8 +40,8 @@ import argparse  # noqa: E402
 import json  # noqa: E402
 import math  # noqa: E402
 import shutil  # noqa: E402
+import re  # noqa: E402
 import subprocess  # noqa: E402
-import time  # noqa: E402
 from collections import defaultdict  # noqa: E402
 
 import numpy as np  # noqa: E402
@@ -63,60 +67,78 @@ class SweepError(Exception):
     """What stops a sweep with a reason a person reads."""
 
 
+def natural_key(name):
+    """Name order with the digits read as numbers, so img_2 comes before img_10."""
+    return [int(part) if part.isdigit() else part for part in re.split(r"(\d+)", name)]
+
+
 def frame_sources(frames):
-    """The frames in order: a folder's images sorted by name, or the slices of a .npy stack."""
+    """The frames in order: a folder's images by name, digits as numbers, or the slices of a .npy stack."""
     path = Path(frames)
     if path.is_dir():
-        files = sorted(p for p in path.iterdir() if p.suffix.lower() in IMAGE_SUFFIXES)
+        files = sorted((p for p in path.iterdir() if p.suffix.lower() in IMAGE_SUFFIXES), key=lambda p: natural_key(p.name))
         if not files:
             raise SweepError(f"{path}: no image files ({', '.join(sorted(IMAGE_SUFFIXES))})")
         return [(p.name, p) for p in files]
     if path.suffix == ".npy":
         stack = np.load(path, mmap_mode="r")
-        if stack.ndim != 3:
-            raise SweepError(f"{path}: a stack is frames x height x width, not {stack.shape}")
+        if stack.ndim != 3 or stack.dtype != np.uint8:
+            raise SweepError(f"{path}: a stack is 8-bit frames x height x width, not {stack.dtype} {stack.shape}")
         return [(str(n), (stack, n)) for n in range(stack.shape[0])]
     raise SweepError(f"{path}: neither a folder of images nor a .npy stack")
 
 
-def read_raw(source):
-    """The frame's pixels as stored, before windowing: what the file gives, untimed."""
+def decode(source):
+    """The frame as the trainer reads its crops: Pillow's convert("L") of the file, untimed.
+
+    The level stage was trained on 8-bit frames read this way (tools/train.py, crop_pixels), so a
+    sweep is read the same way and no windowing of its own changes what the model sees. A frame
+    deeper than 8 bits is refused, since convert("L") would clip it rather than window it.
+    """
     if isinstance(source, tuple):
         stack, n = source
-        return np.asarray(stack[n])
+        return Image.fromarray(np.asarray(stack[n]), mode="L")
     with Image.open(source) as image:
-        return np.asarray(image)
+        if image.mode in ("I", "I;16", "I;16B", "I;16L", "F"):
+            raise SweepError(f"{source}: a {image.mode} frame; write 8-bit frames as the training bank holds them")
+        converted = image.convert("L")
+        converted.load()
+    return converted
 
 
-def window(pixels):
-    """8-bit greyscale for the stage: 8-bit frames as they are, deeper ones from the 1st to the 99th percentile."""
-    if pixels.ndim == 3:
-        pixels = pixels[..., :3].mean(axis=2)
-    if pixels.dtype == np.uint8:
-        return Image.fromarray(pixels, mode="L")
-    low, high = np.percentile(pixels, (1, 99))
-    scaled = np.clip((pixels.astype(np.float32) - low) / max(1e-6, float(high - low)), 0.0, 1.0)
-    return Image.fromarray((scaled * 255.0).astype(np.uint8), mode="L")
-
-
-def read_boxes(path, count):
-    """One line per frame, in order; boxes kept as given until the frame's size is known."""
+def read_boxes(path, names):
+    """One line per frame, in the frames' order, each naming its frame; checked before any frame runs."""
     lines = [json.loads(line) for line in Path(path).read_text(encoding="utf-8").splitlines() if line.strip()]
-    if len(lines) != count:
-        raise SweepError(f"{path}: {len(lines)} lines for {count} frames; one line per frame, in order")
+    if len(lines) != len(names):
+        raise SweepError(f"{path}: {len(lines)} lines for {len(names)} frames; one line per frame, in order")
+    for n, (line, name) in enumerate(zip(lines, names, strict=True)):
+        if str(line.get("frame")) not in (name, str(n)):
+            raise SweepError(f"{path}: line {n + 1} names frame {line.get('frame')!r}, but frame {n + 1} is {name!r}")
+        given = line.get("boxes", line.get("boxes_px", []))
+        if line.get("levels") is not None and len(line["levels"]) != len(given):
+            raise SweepError(f"{path}: line {n + 1} has {len(given)} boxes and {len(line['levels'])} levels")
     return lines
 
 
 def unit_boxes(line, width, height):
-    """The line's boxes as fractions of the frame, whichever way the file wrote them."""
+    """The line's boxes as fractions of the frame, clipped to it, and the indices of those kept.
+
+    A projected box may run past the frame's edge; it is clipped, and one with nothing left
+    inside the frame is dropped with its truth level, so the boxes and the levels stay paired.
+    """
     if "boxes" in line:
-        boxes = [tuple(map(float, b)) for b in line["boxes"]]
+        given = [tuple(map(float, b)) for b in line["boxes"]]
     else:
-        boxes = [(b[0] / width, b[1] / height, b[2] / width, b[3] / height) for b in line.get("boxes_px", [])]
-    for box in boxes:
-        if not (0.0 <= box[0] <= box[2] <= 1.0 and 0.0 <= box[1] <= box[3] <= 1.0):
-            raise SweepError(f"frame {line.get('frame')}: box {box} is not inside the frame")
-    return boxes
+        given = [(b[0] / width, b[1] / height, b[2] / width, b[3] / height) for b in line.get("boxes_px", [])]
+    boxes, kept = [], []
+    for n, (x0, y0, x1, y1) in enumerate(given):
+        if x0 > x1 or y0 > y1:
+            raise SweepError(f"frame {line.get('frame')}: box {(x0, y0, x1, y1)} is not x0 <= x1, y0 <= y1")
+        clipped = (min(max(x0, 0.0), 1.0), min(max(y0, 0.0), 1.0), min(max(x1, 0.0), 1.0), min(max(y1, 0.0), 1.0))
+        if clipped[2] - clipped[0] > 1.0 / width and clipped[3] - clipped[1] > 1.0 / height:
+            boxes.append(clipped)
+            kept.append(n)
+    return boxes, kept
 
 
 def font(size):
@@ -190,16 +212,18 @@ def contact_sheet(paths, out, columns=6, width=320):
 
 
 def encode_video(folder, fps, out):
-    """sweep.mp4 through ffmpeg where it is on the path; else sweep.gif through Pillow."""
+    """sweep.mp4 through ffmpeg where it is on the path and has libx264; else sweep.gif through Pillow."""
     frames = sorted((folder / "overlay").glob("*.png"))
     if shutil.which("ffmpeg"):
         target = out / "sweep.mp4"
-        subprocess.run(
-            ["ffmpeg", "-y", "-loglevel", "error", "-framerate", f"{fps}", "-pattern_type", "glob", "-i", str(folder / "overlay" / "*.png"),
+        done = subprocess.run(
+            ["ffmpeg", "-y", "-loglevel", "error", "-framerate", f"{fps}", "-i", str(folder / "overlay" / "%05d.png"),
              "-c:v", "libx264", "-pix_fmt", "yuv420p", "-vf", "pad=ceil(iw/2)*2:ceil(ih/2)*2", str(target)],
-            check=True,
+            capture_output=True, text=True,
         )
-        return target
+        if done.returncode == 0:
+            return target
+        print(f"sweep: ffmpeg could not write the MP4 ({done.stderr.strip()[:200]}); writing a GIF", file=sys.stderr)
     target = out / "sweep.gif"
     images = [Image.open(p).convert("P", palette=Image.ADAPTIVE) for p in frames]
     images[0].save(target, save_all=True, append_images=images[1:], duration=int(frame_interval_ms(fps)), loop=0)
@@ -208,32 +232,30 @@ def encode_video(folder, fps, out):
 
 def run_sweep(args):
     sources = frame_sources(args.frames)
-    lines = read_boxes(args.boxes, len(sources))
+    lines = read_boxes(args.boxes, [name for name, _ in sources])
     path = latency.FramePath(args.run, args.runtime, args.device, args.threads)
     record = json.loads((Path(args.run) / "RUN.json").read_text(encoding="utf-8"))
     out = Path(args.out or Path(args.run) / "sweep" / args.name)
-    (out / "overlay").mkdir(parents=True, exist_ok=True)
-    warm_image = window(read_raw(sources[0][1]))
+    # a folder an earlier run left would put its frames into this run's video
+    shutil.rmtree(out / "overlay", ignore_errors=True)
+    (out / "overlay").mkdir(parents=True)
+    warm_image = decode(sources[0][1])
     for _ in range(args.warmup):
-        path.run(warm_image, unit_boxes(lines[0], *warm_image.size))
+        path.run(warm_image, unit_boxes(lines[0], *warm_image.size)[0])
     path.reset()
     tallies = defaultdict(lambda: {"correct": 0, "total": 0, "abstained": 0})
     times, written = [], []
     with (out / "sweep.jsonl").open("w", encoding="utf-8") as log:
         for n, ((name, source), line) in enumerate(zip(sources, lines, strict=True)):
-            raw = read_raw(source)
-            started = time.perf_counter()
-            image = window(raw)
-            window_ms = (time.perf_counter() - started) * 1e3
-            boxes = unit_boxes(line, *image.size)
+            image = decode(source)
+            boxes, kept = unit_boxes(line, *image.size)
             shown, probs, timing = path.run(image, boxes)
-            timing["window_ms"] = window_ms
-            timing["frame_ms"] += window_ms
             times.append(timing["frame_ms"])
             angle = line.get("gantry_deg")
-            if line.get("levels"):
+            truth = [line["levels"][k] for k in kept] if line.get("levels") else None
+            if truth:
                 single = [path.levels[int(np.argmax(p))] for p in probs]
-                score_frame(tallies, shown, single, line["levels"], angle)
+                score_frame(tallies, shown, single, truth, angle)
             caption = [
                 f"{args.name}  frame {n + 1}/{len(sources)}" + (f"  gantry {angle:+.1f} deg" if angle is not None else ""),
                 f"compute {timing['frame_ms']:.1f} ms  p95 so far {nearest_rank(times, 0.95):.1f} ms  budget {BUDGET_MS:.0f} ms",
@@ -243,7 +265,7 @@ def run_sweep(args):
             target = out / "overlay" / f"{n:05d}.png"
             overlay.save(target)
             written.append(target)
-            log.write(json.dumps({"n": n, "frame": name, "boxes": boxes, "tracks": [s.ident for s in shown], "levels": [s.level for s in shown], "probabilities": [round(s.probability, 6) for s in shown], "truth": line.get("levels"), "gantry_deg": angle, "timing_ms": timing}) + "\n")
+            log.write(json.dumps({"n": n, "frame": name, "boxes": boxes, "tracks": [s.ident for s in shown], "levels": [s.level for s in shown], "probabilities": [round(s.probability, 6) for s in shown], "truth": truth, "dropped_outside": len(line.get("boxes", line.get("boxes_px", []))) - len(kept), "gantry_deg": angle, "timing_ms": timing}) + "\n")
     total = summarise(times)
     summary = {
         "name": args.name,
@@ -260,13 +282,36 @@ def run_sweep(args):
         "within_budget": within_budget(total["p95"]),
         "accuracy": {key: scored(t) for key, t in sorted(tallies.items()) if t["total"]},
         "onnx_sha256": getattr(path, "onnx_sha256", None),
-        "excludes": "acquisition, file read and decode, drawing and encoding the overlay",
+        "excludes": "acquisition, file read and decode, drawing and encoding the overlay; timed as tools/latency.py measure times a frame",
     }
     (out / "summary.json").write_text(json.dumps(summary, indent=1) + "\n", encoding="utf-8")
     contact_sheet(written, out / "contact.png")
     summary["video"] = str(encode_video(out, args.fps, out))
     (out / "summary.json").write_text(json.dumps(summary, indent=1) + "\n", encoding="utf-8")
     return summary
+
+
+def from_bank(args):
+    """A sweep in the run's input format from a bank: the case's frames in name order, linked, and its boxes."""
+    bank = Path(args.bank)
+    images = sorted((p for p in (bank / "images").glob("*/*") if p.suffix.lower() in IMAGE_SUFFIXES and p.name.startswith(args.case + "_")), key=lambda p: natural_key(p.name))
+    if not images:
+        raise SweepError(f"{bank}/images: no frame named {args.case}_*")
+    out = Path(args.out)
+    (out / "frames").mkdir(parents=True, exist_ok=True)
+    with (out / "boxes.jsonl").open("w", encoding="utf-8") as boxes_file:
+        for n, image in enumerate(images):
+            meta_file = bank / "meta" / f"{image.stem}.json"
+            if not meta_file.is_file():
+                raise SweepError(f"{meta_file}: no meta for {image.name}")
+            meta = json.loads(meta_file.read_text(encoding="utf-8"))
+            link = out / "frames" / f"{n:05d}{image.suffix.lower()}"
+            link.unlink(missing_ok=True)
+            link.symlink_to(image.resolve())
+            boxes = meta.get("boxes", [])
+            line = {"frame": link.name, "bank_frame": image.name, "boxes_px": [b["box"] for b in boxes], "levels": [b.get("level") for b in boxes], "gantry_deg": (meta.get("view") or {}).get("gantry_deg")}
+            boxes_file.write(json.dumps(line) + "\n")
+    return {"frames": len(images), "out": str(out)}
 
 
 def synthetic(args):
@@ -306,6 +351,10 @@ def parse(argv):
     run_p.add_argument("--warmup", type=int, default=30)
     run_p.add_argument("--box-source", default="truth", choices=["truth", "detector"])
     run_p.add_argument("--out", default=None)
+    bank_p = sub.add_parser("from-bank")
+    bank_p.add_argument("--bank", required=True)
+    bank_p.add_argument("--case", required=True)
+    bank_p.add_argument("--out", required=True)
     syn_p = sub.add_parser("synthetic")
     syn_p.add_argument("--catalog", required=True)
     syn_p.add_argument("--person", required=True)
@@ -317,7 +366,8 @@ def parse(argv):
 def main(argv=None):
     args = parse(argv)
     try:
-        result = run_sweep(args) if args.command == "run" else synthetic(args)
+        commands = {"run": run_sweep, "from-bank": from_bank, "synthetic": synthetic}
+        result = commands[args.command](args)
     except (SweepError, latency.LatencyError) as error:
         print(f"sweep: {error}", file=sys.stderr)
         return 1

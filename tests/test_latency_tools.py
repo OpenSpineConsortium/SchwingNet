@@ -92,8 +92,9 @@ class LatencyToolsTest(unittest.TestCase):
 
     def test_2_the_export_passes_parity(self):
         exported = self.latency.export(self.run_dir)
-        verdict = self.latency.parity(self.run_dir, self.catalog, "validation", 32, "cpu")
+        verdict = self.latency.parity(self.run_dir, self.catalog, "validation", 32, "onnxruntime", "cpu", 2)
         self.assertTrue(verdict["passed"], verdict)
+        self.assertTrue((self.run_dir / "onnx" / "parity-onnxruntime-cpu.json").is_file())
         self.assertEqual(verdict["onnx_sha256"], exported["onnx_sha256"])
         self.assertTrue(verdict["labels_equal"])
         self.assertLess(verdict["max_abs_probability_difference"], 1e-5)
@@ -134,6 +135,36 @@ class LatencyToolsTest(unittest.TestCase):
         self.assertIn("all frames, frame alone (no tracker)", summary["accuracy"])
         self.assertTrue(Path(summary["video"]).is_file())
         self.assertTrue((out / "contact.png").is_file())
+        # a second run into the same folder with fewer frames leaves none of the first run's behind
+        short = self.tmp / "sweep-short"
+        (short / "frames").mkdir(parents=True)
+        first_two = sorted((folder / "frames").iterdir())[:2]
+        for path in first_two:
+            (short / "frames" / path.name).write_bytes(path.read_bytes())
+        (short / "boxes.jsonl").write_text("".join((folder / "boxes.jsonl").read_text(encoding="utf-8").splitlines(keepends=True)[:2]), encoding="utf-8")
+        self.assertEqual(sweep.main(["run", "--run", str(self.run_dir), "--frames", str(short / "frames"), "--boxes", str(short / "boxes.jsonl"),
+                                     "--name", "case134", "--threads", "1", "--warmup", "1", "--out", str(out)]), 0)
+        self.assertEqual(len(list((out / "overlay").glob("*.png"))), 2)
+
+    def test_6b_a_bank_becomes_a_sweep_with_its_boxes_in_pixels(self):
+        sweep = load("sweep")
+        folder = self.tmp / "from-bank"
+        self.assertEqual(sweep.main(["from-bank", "--bank", str(self.tmp / "bank-test"), "--case", "case134", "--out", str(folder)]), 0)
+        lines = [json.loads(l) for l in (folder / "boxes.jsonl").read_text(encoding="utf-8").splitlines()]
+        frames = sorted((folder / "frames").iterdir())
+        self.assertEqual(len(lines), len(frames))
+        self.assertTrue(lines and all("boxes_px" in l and len(l["levels"]) == len(l["boxes_px"]) for l in lines))
+        out = self.tmp / "from-bank-recorded"
+        self.assertEqual(sweep.main(["run", "--run", str(self.run_dir), "--frames", str(folder / "frames"), "--boxes", str(folder / "boxes.jsonl"),
+                                     "--name", "case134", "--threads", "1", "--warmup", "1", "--out", str(out)]), 0)
+        self.assertEqual(json.loads((out / "summary.json").read_text(encoding="utf-8"))["frames"], len(frames))
+
+    def test_6c_a_box_past_the_edge_is_clipped_and_one_outside_is_dropped_with_its_level(self):
+        sweep = load("sweep")
+        line = {"frame": "x", "boxes_px": [[-10, 10, 50, 60], [300, 10, 320, 60], [10, 10, 40, 40]], "levels": ["L1", "L2", "L3"]}
+        boxes, kept = sweep.unit_boxes(line, 256, 192)
+        self.assertEqual(kept, [0, 2])
+        self.assertEqual(boxes[0][0], 0.0)
 
     def test_6_a_changed_onnx_file_loses_its_parity(self):
         onnx_file = self.run_dir / "onnx" / "level.onnx"
@@ -141,9 +172,48 @@ class LatencyToolsTest(unittest.TestCase):
         try:
             onnx_file.write_bytes(original + b"\0")
             with self.assertRaises(self.latency.LatencyError):
-                self.latency.require_parity(self.run_dir)
+                self.latency.require_parity(self.run_dir, "onnxruntime", "cpu")
         finally:
             onnx_file.write_bytes(original)
+
+    def test_7_parity_on_one_device_is_no_parity_on_another(self):
+        with self.assertRaises(self.latency.LatencyError):
+            self.latency.require_parity(self.run_dir, "onnxruntime", "cuda")
+
+    def test_8_a_failed_parity_takes_the_arm_out_of_the_headline(self):
+        verdict_file = self.run_dir / "onnx" / "parity-onnxruntime-cpu.json"
+        original = verdict_file.read_text(encoding="utf-8")
+        try:
+            verdict_file.write_text(json.dumps(dict(json.loads(original), passed=False)), encoding="utf-8")
+            headline = self.latency.write_headline(self.run_dir)
+            self.assertEqual(headline["arm"], "torch-cpu-2t")
+        finally:
+            verdict_file.write_text(original, encoding="utf-8")
+            self.latency.write_headline(self.run_dir)
+
+    def test_9_frames_run_in_number_order_and_a_misnamed_line_is_refused(self):
+        sweep = load("sweep")
+        folder = self.tmp / "order"
+        (folder / "frames").mkdir(parents=True)
+        frame, _ = self.latency.frames_of(self.catalog, "test")[0]
+        for name in ("img_10.png", "img_2.png", "img_1.png"):
+            (folder / "frames" / name).write_bytes(Path(frame).read_bytes())
+        names = [name for name, _ in sweep.frame_sources(folder / "frames")]
+        self.assertEqual(names, ["img_1.png", "img_2.png", "img_10.png"])
+        lines = [{"frame": n, "boxes": []} for n in ("img_1.png", "img_10.png", "img_2.png")]
+        (folder / "boxes.jsonl").write_text("".join(json.dumps(l) + "\n" for l in lines), encoding="utf-8")
+        with self.assertRaises(sweep.SweepError):
+            sweep.read_boxes(folder / "boxes.jsonl", names)
+
+    def test_9b_a_sixteen_bit_frame_is_refused_not_clipped(self):
+        import numpy as np
+        from PIL import Image
+
+        sweep = load("sweep")
+        path = self.tmp / "deep.png"
+        Image.fromarray(np.full((8, 8), 4000, dtype=np.uint16)).save(path)
+        with self.assertRaises(sweep.SweepError):
+            sweep.decode(path)
 
 
 if __name__ == "__main__":

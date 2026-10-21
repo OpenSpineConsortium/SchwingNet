@@ -27,6 +27,8 @@ class LatencyGridTest(unittest.TestCase):
         self.sbatch.write_text(FAKE_SBATCH, encoding="utf-8")
         self.sbatch.chmod(0o755)
         self.log = self.tmp / "submitted.txt"
+        self.catalog = self.tmp / "catalog.sqlite"
+        self.catalog.write_bytes(b"")
         # a copy of the two scripts, so a test's LAST_LATENCY.txt never lands in the checkout
         self.repo = self.tmp / "repo"
         (self.repo / "grid").mkdir(parents=True)
@@ -56,38 +58,61 @@ class LatencyGridTest(unittest.TestCase):
         self.assertEqual(done.returncode, 0, done.stderr)
         self.assertEqual(len(lines), 1)
         self.assertIn("PART=probe", lines[0])
-        self.assertIn("--gres=none", lines[0])
+        self.assertNotIn("--gres", lines[0])
         self.assertIn("--partition=reqp", lines[0])
 
     def test_each_run_gets_a_gpu_job_then_a_cpu_job_and_a_sweep_array(self):
         first, second = self.make_run("a"), self.make_run("b")
-        done, lines = self.submit("--catalog", "/c.sqlite", str(first), str(second), "--sweep", "case134:/f134:/b134.jsonl", "--sweep", "case39:/f39:/b39.jsonl")
+        done, lines = self.submit("--catalog", str(self.catalog), str(first), str(second), "--sweep", "case134:/f134:/b134.jsonl", "--sweep", "case39:/f39:/b39.jsonl")
         self.assertEqual(done.returncode, 0, done.stderr)
         self.assertEqual(len(lines), 6)
         gpu_a, cpu_a, sweep_a, gpu_b = lines[0], lines[1], lines[2], lines[3]
         self.assertIn("PART=gpu", gpu_a)
+        self.assertIn("--gres=gpu:1", gpu_a)
+        self.assertIn(f"CATALOG={self.catalog}", gpu_a)
         self.assertIn(f"RUN={first}", gpu_a)
         self.assertNotIn("--dependency", gpu_a)
-        self.assertIn("--dependency=afterok:1001", cpu_a)
+        self.assertIn("--dependency=afterany:1001", cpu_a)
         self.assertIn("PART=cpu", cpu_a)
+        self.assertNotIn("--gres", cpu_a)
         self.assertIn("--array=0-1", sweep_a)
-        self.assertIn("--dependency=afterok:1001", sweep_a)
+        self.assertIn("--dependency=afterany:1001", sweep_a)
+        self.assertIn("--gres=gpu:1", sweep_a)
         self.assertIn("SWEEPS=case134:/f134:/b134.jsonl case39:/f39:/b39.jsonl", sweep_a)
         self.assertIn(f"RUN={second}", gpu_b)
         self.assertNotIn("--dependency", gpu_b)
-        self.assertIn("--dependency=afterok:1004", lines[4])
+        self.assertIn("--dependency=afterany:1004", lines[4])
 
     def test_no_sweep_is_submitted_without_frames_and_boxes(self):
-        done, lines = self.submit("--catalog", "/c.sqlite", str(self.make_run("a")))
+        done, lines = self.submit("--catalog", str(self.catalog), str(self.make_run("a")))
         self.assertEqual(done.returncode, 0, done.stderr)
         self.assertEqual([("PART=gpu" in l, "PART=cpu" in l) for l in lines], [(True, False), (False, True)])
 
     def test_a_run_without_its_checkpoint_is_refused(self):
         bare = self.tmp / "bare"
         bare.mkdir()
-        done, lines = self.submit("--catalog", "/c.sqlite", str(bare))
+        done, lines = self.submit("--catalog", str(self.catalog), str(bare))
         self.assertNotEqual(done.returncode, 0)
         self.assertEqual(lines, [])
+
+    def test_a_relative_run_is_passed_to_the_jobs_as_an_absolute_path(self):
+        self.make_run("rel")
+        env = dict(os.environ, SBATCH=str(self.sbatch), LOG=str(self.log), SCHWINGNET=str(self.repo))
+        done = subprocess.run(["bash", str(self.repo / "grid" / "run-latency-sweep.sh"), "--catalog", "catalog.sqlite", "rel"],
+                              env=env, capture_output=True, text=True, timeout=60, cwd=self.tmp)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        submitted = self.log.read_text(encoding="utf-8")
+        self.assertIn(f"RUN={self.tmp.resolve()}/rel,", submitted)
+        self.assertIn(f"CATALOG={self.tmp.resolve()}/catalog.sqlite,", submitted)
+
+    def test_a_path_with_a_comma_or_an_extra_colon_is_refused(self):
+        done, lines = self.submit("--catalog", str(self.catalog), str(self.make_run("a")), "--sweep", "case134:/f:/b:/c")
+        self.assertEqual(done.returncode, 64)
+        self.assertEqual(lines, [])
+        comma = self.tmp / "a,b"
+        comma.mkdir()
+        done, lines = self.submit("--catalog", str(self.catalog), str(comma))
+        self.assertEqual(done.returncode, 64)
 
     def test_runs_without_a_catalog_are_refused(self):
         done, lines = self.submit(str(self.make_run("a")))
