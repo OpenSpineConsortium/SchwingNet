@@ -5,11 +5,12 @@
   "what": "753 CTs; a gated anomaly-harvest collection (group B7)",
   "level_truth": "counted by the census pipeline once fetched",
   "reach": "gated",
-  "status": "an agreement stands in front of the data; none signed",
+  "status": "access granted on the owner's Hugging Face account on 2026-10-21; not yet fetched",
   "licence": "a data use agreement (non-commercial)",
   "link": "https://huggingface.co/datasets/mrmrx/CADS-dataset",
   "how_to_get": [
-    "Hold a Hugging Face account and tick the one checkbox on the dataset page.",
+    "Access is granted on the owner's Hugging Face account (2026-10-21).",
+    "Fetch on a compute node with data/reproduce/reacquire/reacquire.py (manifest id hf_cads_unique, DEST=/rs/rs_grp_oschome/go2432/data/hf_cads_unique/raw) with the Hugging Face token read from a file.",
     "Read CT-TRI's own terms before any derived label; the VISCERAL folders carry the VISCERAL agreement text."
   ],
   "grid_path": null,
