@@ -1,0 +1,29 @@
+{
+  "id": "kub_stonex",
+  "raw": "/rs/rs_grp_oschome/go2432/data/kub_stonex/raw",
+  "bank": "/rs/rs_grp_oschome/go2432/data/kub_stonex/bank",
+  "images": [
+    "to confirm: the four classes' image folders inside the unpacked KUB-StoneX.zip, such as **/Images/*.png (Bladder_Stone, Kidney_Stone, Ureteric_Stone, Normal_No_Stone); never the ROI patches or the masks"
+  ],
+  "format": "to confirm: the format under <class>/Images/",
+  "person": {
+    "regex": "to confirm: the patient from the file naming or the <class>_patient/ folder, since 1,703 patients hold 2,570 films; never one person per image"
+  },
+  "person_prefix": "kub_stonex",
+  "view": {
+    "lat_from_ap_deg": 0.0,
+    "gantry_deg": null
+  },
+  "device": {
+    "make": null,
+    "model": null,
+    "detector": null
+  },
+  "modality": "dx",
+  "device_class": "film",
+  "split": "train",
+  "labels": null,
+  "synthetic": false,
+  "px_mm": null,
+  "notes": "2,570 AP KUB radiographs of 1,703 patients from two Bangladeshi hospitals (Daffodil International University, figshare 32049369, CC BY 4.0): frontal lumbar spine and pelvis at abdominal exposure; the stone masks are not vertebra labels, so no label enters"
+}

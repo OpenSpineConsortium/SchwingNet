@@ -264,3 +264,128 @@ class SlurmScriptsTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class FigshareRouteTest(unittest.TestCase):
+    """The figshare route, written for Aariz and KUB-StoneX (#40): the article's public API
+    lists each file with its download URL, size and md5, which http-get verifies; the run can be
+    sent to another data root and allowed outside a Slurm job; a zip that came is unpacked."""
+
+    ARTICLE = {
+        "id": 27986417, "is_embargoed": False, "download_disabled": False,
+        "license": {"name": "CC BY 4.0", "url": "https://creativecommons.org/licenses/by/4.0/"},
+        "files": [
+            {"name": "Aariz.zip", "size": 2098209792, "computed_md5": "e0bd645bca6759abdae4f199d841bda6",
+             "download_url": "https://ndownloader.figshare.com/files/51041642", "is_link_only": False},
+            {"name": "readme.txt", "size": 12, "computed_md5": None,
+             "download_url": "https://ndownloader.figshare.com/files/1", "is_link_only": False},
+            {"name": "elsewhere", "download_url": "https://example.org/x", "is_link_only": True},
+        ],
+    }
+
+    def opener(self, article):
+        class Response(io.BytesIO):
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+        return lambda url, timeout=0: Response(json.dumps(article).encode("utf-8"))
+
+    def test_the_two_entries_are_listed_and_planned_through_the_api(self):
+        data = json.loads((GRID / "fetch-xray.json").read_text(encoding="utf-8"))
+        entries = {e["id"]: e for e in data["open"]}
+        for name, article in (("aariz", 27986417), ("kub_stonex", 32049369)):
+            self.assertEqual(entries[name]["route"], "figshare")
+            self.assertEqual(entries[name]["api"], f"https://api.figshare.com/v2/articles/{article}")
+            self.assertTrue(entries[name]["unpack"])
+            self.assertIn("CC BY 4.0", entries[name]["licence"])
+        tool = load("fetch_sources")
+        code, out, _ = run_tool(tool, ["--only", "aariz,kub_stonex"])
+        self.assertEqual(code, 0)
+        self.assertIn("figshare: list https://api.figshare.com/v2/articles/27986417", out)
+        self.assertIn("and unpack each zip there", out)
+        self.assertIn("size: 20.8 GB", out)
+
+    def test_the_api_listing_becomes_http_get_commands_with_md5_and_size(self):
+        tool = load("fetch_sources")
+        files = tool.figshare_files("https://api.figshare.com/v2/articles/27986417", self.opener(self.ARTICLE))
+        self.assertEqual([f["name"] for f in files], ["Aariz.zip", "readme.txt"])
+        entry = {"id": "aariz", "dest": "/data/aariz/raw", "route": "figshare", "api": "x"}
+        command = tool.http_command("py", "helper.py", files[0]["url"], "/data/aariz/raw/Aariz.zip", entry,
+                                   {"md5": files[0]["md5"]}, files[0]["size"])
+        self.assertEqual(command[2:], ["http-get", "--url", "https://ndownloader.figshare.com/files/51041642",
+                                       "--dest", "/data/aariz/raw/Aariz.zip", "--state", "/data/aariz/fetch-state",
+                                       "--md5", "e0bd645bca6759abdae4f199d841bda6", "--bytes", "2098209792"])
+        command = tool.http_command("py", "helper.py", files[1]["url"], "/data/aariz/raw/readme.txt", entry,
+                                   {"md5": files[1]["md5"]}, files[1]["size"])
+        self.assertNotIn("--md5", command)
+        self.assertIn("--bytes", command)
+        with self.assertRaises(tool.FetchError):
+            tool.figshare_files("x", self.opener(dict(self.ARTICLE, is_embargoed=True)))
+        with self.assertRaises(tool.FetchError):
+            tool.figshare_files("x", self.opener(dict(self.ARTICLE, files=[])))
+
+        def refused(url, timeout=0):
+            raise tool.urllib.error.URLError("Tunnel connection failed: 403 Forbidden")
+
+        with self.assertRaises(tool.FetchError) as caught:
+            tool.figshare_files("https://api.figshare.com/v2/articles/1", refused)
+        self.assertIn("api.figshare.com", str(caught.exception))
+        self.assertIn("403", str(caught.exception))
+
+    def test_another_data_root_and_a_run_outside_slurm(self):
+        tool = load("fetch_sources")
+        code, out, _ = run_tool(tool, ["--only", "aariz,fracatlas", "--data-root", "/scratch/xr"])
+        self.assertEqual(code, 0, out)
+        self.assertIn("== aariz -> /scratch/xr/aariz/raw", out)
+        self.assertIn("--dest /scratch/xr/fracatlas/raw --state /scratch/xr/fracatlas/fetch-state", out)
+        self.assertNotIn("/rs/rs_grp_oschome/go2432/data/fracatlas", out)
+        with self.assertRaises(tool.FetchError):
+            tool.relocate([{"id": "x", "dest": "/elsewhere/x/raw"}], "/rs/data", "/scratch")
+        self.assertIsNone(tool.refuse_unless_job(outside_slurm=True))
+        env = {k: v for k, v in os.environ.items() if k != "SLURM_JOB_ID"}
+        with mock.patch.dict(os.environ, env, clear=True):
+            self.assertIn("outside a Slurm job", tool.refuse_unless_job())
+        with mock.patch.object(tool.socket, "gethostname", return_value="warrior.grid.wayne.edu"):
+            self.assertIn("login node", tool.refuse_unless_job(outside_slurm=True))
+        settings = mock.Mock(outside_slurm=True, netrc="~/.netrc")
+        plan = {"commands": [["py", "r.py", "zenodo-get", "--record", "1"], ["kaggle", "datasets", "download"]]}
+        commands, _ = tool.expand_plan({"id": "x", "dest": "/d/x/raw"}, plan, "py", "r.py", settings)
+        self.assertEqual(commands[0][-1], "--outside-slurm")
+        self.assertNotIn("--outside-slurm", commands[1])
+        self.assertEqual(tool.reacquire_path({"reacquire": "/no/such/reacquire.py"}, None), tool.REACQUIRE_COPY)
+        self.assertTrue(tool.REACQUIRE_COPY.is_file())
+
+    def test_a_zip_that_came_is_unpacked_once_and_never_outside_the_raw_folder(self):
+        import tempfile
+        import zipfile
+        tool = load("fetch_sources")
+        with tempfile.TemporaryDirectory() as tmp:
+            raw = Path(tmp) / "raw"
+            raw.mkdir()
+            with zipfile.ZipFile(raw / "Set.zip", "w") as archive:
+                archive.writestr("Set/Images/a.png", png(8, 8, 1))
+                archive.writestr("Set/Images/b.png", png(8, 8, 2))
+                archive.writestr("Set/empty/", b"")
+            self.assertEqual(tool.unpack_archives(raw), ["Set/Images/a.png", "Set/Images/b.png"])
+            self.assertEqual((raw / "Set" / "Images" / "a.png").read_bytes(), png(8, 8, 1))
+            self.assertTrue((raw / "Set.zip").is_file())
+            self.assertEqual(tool.unpack_archives(raw), [])
+            with zipfile.ZipFile(raw / "Bad.zip", "w") as archive:
+                archive.writestr("../outside.png", png(8, 8, 3))
+            with self.assertRaises(tool.FetchError):
+                tool.unpack_archives(raw)
+            self.assertFalse((Path(tmp) / "outside.png").exists())
+            records, total = tool.file_records(raw)
+            self.assertEqual(len(records), 4)
+
+    def test_every_stage_script_takes_a_data_root(self):
+        for name in ("01-fetch.sbatch", "02-bank-ingest.sbatch", "03-catalog.sbatch"):
+            text = (GRID / name).read_text(encoding="utf-8")
+            self.assertIn("DATA_ROOT", text, name)
+            self.assertIn("_tmp", text, name)
+        self.assertIn("--supersedes latest", (GRID / "02-bank-ingest.sbatch").read_text(encoding="utf-8"))
+        self.assertIn("--drop-superseded", (GRID / "03-catalog.sbatch").read_text(encoding="utf-8"))
+        self.assertIn('BANKS=${BANKS:-$REPO/grid/banks}', (GRID / "02-bank-ingest.sbatch").read_text(encoding="utf-8"))

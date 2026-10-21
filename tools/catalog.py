@@ -370,10 +370,19 @@ def insert_sources(db, registry, needed):
         )
 
 
-def manifest_paths(registry, named, root):
+def without_superseded(paths):
+    """The named manifests less every one that another of them supersedes, so a stage that
+    names every manifest under the data root reads each source's chain at its head alone; the
+    build's own check still refuses a pair the caller named on purpose."""
+    read = [(Path(p), json.loads(read_bytes(p))) for p in paths]
+    superseded = {data.get("supersedes") for _, data in read if data.get("supersedes")}
+    return [path for path, data in read if data.get("name") not in superseded]
+
+
+def manifest_paths(registry, named, root, drop_superseded=False):
     """The manifests to read: those named on the command line, else every one the registry lists."""
     if named:
-        return [Path(p) for p in named]
+        return without_superseded(named) if drop_superseded else [Path(p) for p in named]
     paths = []
     for entry in registry.values():
         for shard in entry.shards:
@@ -890,6 +899,8 @@ def parser():
     build_p.add_argument("--store", required=True, help="the catalog's directory")
     build_p.add_argument("--manifest", action="append", default=[])
     build_p.add_argument("--root", default="", help="where the registry's manifest paths start")
+    build_p.add_argument("--drop-superseded", action="store_true",
+                         help="leave out each named manifest that another named one supersedes")
     add_version_arguments(build_p)
     sub.add_parser("versions", help="print the version log").add_argument("store")
     for name in ("query", "similar", "summary", "export", "embed", "split-check"):
@@ -932,7 +943,7 @@ def command_part(args):
 
 def command_build(args):
     inputs = load_inputs()
-    manifests = manifest_paths(inputs.registry, args.manifest, args.root)
+    manifests = manifest_paths(inputs.registry, args.manifest, args.root, args.drop_superseded)
     if not manifests:
         raise CatalogError("no manifest to read: name one with --manifest, or register a shard")
     record, new = build(args.store, manifests, inputs, args.code_commit, args.as_of)

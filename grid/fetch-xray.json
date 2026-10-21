@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "about": "The open X-ray datasets of docs/research/xray-datasets-missing.md, one entry per set (LUMOS is fetched by grid/run-platform-fetch.sh as zenodo_lumos, record 18173664, whose landing grid/banks/lumos.json reads), read by tools/fetch_sources.py inside grid/01-fetch.sbatch. Every entry lands at <data_root>/<id>/raw, the folder the registry entry data/registry/<id>.json names as the source's own; the state of each helper goes to <data_root>/<id>/fetch-state and the record of the run to <data_root>/<id>/FETCH.json. A field spelled null is not known; 'confirm' lists what a person reads on the page before the first run, and a route 'manual' is skipped with one printed line until the entry carries its link. The checksums the helper verifies itself (Zenodo's md5 per file, Hugging Face's LFS sha256) are not repeated here; 'checksum' holds a hash only where a page states one for a plain URL.",
+  "about": "The open X-ray datasets of docs/research/xray-datasets-missing.md, one entry per set (LUMOS is fetched by grid/run-platform-fetch.sh as zenodo_lumos, record 18173664, whose landing grid/banks/lumos.json reads), read by tools/fetch_sources.py inside grid/01-fetch.sbatch; a figshare entry names the article's public API, from which the job reads each file's download URL, size and md5, and 'unpack' true opens each zip that came into raw/, since the bank stage reads files and not archives. Every entry lands at <data_root>/<id>/raw, the folder the registry entry data/registry/<id>.json names as the source's own; the state of each helper goes to <data_root>/<id>/fetch-state and the record of the run to <data_root>/<id>/FETCH.json. A field spelled null is not known; 'confirm' lists what a person reads on the page before the first run, and a route 'manual' is skipped with one printed line until the entry carries its link. The checksums the helper verifies itself (Zenodo's md5 per file, Hugging Face's LFS sha256) are not repeated here; 'checksum' holds a hash only where a page states one for a plain URL.",
   "data_root": "/rs/rs_grp_oschome/go2432/data",
   "reacquire": "~/spinesurg-ct-nnunet/data_platform/reacquire/reacquire.py",
   "open": [
@@ -156,6 +156,45 @@
         "that the mirror is complete and unaltered against the figshare file; where it is not, the figshare download link goes into 'urls' and the route becomes 'http'",
         "the licence on the mirror's page",
         "the image format and the folder layout (hand, leg, hip, shoulder), for the recipe"
+      ]
+    },
+    {
+      "id": "aariz",
+      "route": "figshare",
+      "source": "https://figshare.com/articles/dataset/Aariz_Cephalometric_Dataset/27986417 (Khalid, Zulfiqar, Bashir, Shaheen, Iqbal, Rizwan, Rizwan and Fraz: 1,000 lateral cephalograms from seven devices with 29 landmarks and the CVM stage; Scientific Data 12, 1336 (2025), doi:10.1038/s41597-025-05542-3; the CEPHA29 challenge, arXiv:2212.04808)",
+      "figshare_id": 27986417,
+      "doi": "10.6084/m9.figshare.27986417",
+      "api": "https://api.figshare.com/v2/articles/27986417",
+      "dest": "/rs/rs_grp_oschome/go2432/data/aariz/raw",
+      "size_gb": 2.1,
+      "unpack": true,
+      "checksum": {
+        "md5": "the job reads each file's computed_md5 from the API (Aariz.zip, 2,098,209,792 bytes, e0bd645bca6759abdae4f199d841bda6 on 2026-10-21) and http-get verifies it"
+      },
+      "licence": "CC BY 4.0 (the record's licence field, https://creativecommons.org/licenses/by/4.0/, read from the API on 2026-10-21)",
+      "confirm": [
+        "the folder layout and the image format inside Aariz.zip, which no page states: the recipe grid/banks/aariz.json stops until its images glob and format are filled in from the unpacked folder",
+        "whether the landmark and CVM files inside the zip carry an image id that could key persons across devices; the record states no patient id, so the recipe keys one person per image"
+      ]
+    },
+    {
+      "id": "kub_stonex",
+      "route": "figshare",
+      "source": "https://figshare.com/articles/dataset/_b_KUB-StoneX_b_Annotated_Kidney-Ureter-Bladder_X-ray_Dataset_with_Expert_Stone_Segmentations_and_Radiomic_Features/32049369 (Israt Zerin, Mojumder Anik, Bijoy, Hasan, Amena Ferdoucy, Islam and Nobi Rima, Daffodil International University, 2026: 2,570 AP KUB radiographs of 1,703 patients from the Kidney Foundation Hospital and Research Institute, Mirpur-2, and the National Institute of Kidney Diseases and Urology, Bangladesh, with stone masks, ROI patches and radiomic features)",
+      "figshare_id": 32049369,
+      "doi": "10.6084/m9.figshare.32049369",
+      "api": "https://api.figshare.com/v2/articles/32049369",
+      "dest": "/rs/rs_grp_oschome/go2432/data/kub_stonex/raw",
+      "size_gb": 20.8,
+      "unpack": true,
+      "checksum": {
+        "md5": "the job reads each file's computed_md5 from the API (KUB-StoneX.zip, 20,765,554,562 bytes, 277ec7981732dbed5ecf49a371ff8676 on 2026-10-21) and http-get verifies it"
+      },
+      "licence": "CC BY 4.0 (the record's licence field, name 'CC BY 4.0', url https://creativecommons.org/licenses/by/4.0/, read from the API on 2026-10-21; the record's ethics statement names IRB approval REC-FSIT-2025/No: 12732 and states every image is de-identified)",
+      "confirm": [
+        "the image format under <class>/Images/ and the file naming, which the record calls consistent without spelling it: the recipe grid/banks/kub_stonex.json stops until its images glob, format and person rule are filled in from the unpacked folder",
+        "the patient key: the record states 1,703 patients for 2,570 images and a folder <class>_patient/ per class, so one person per image would put one patient's films on both sides of a split; the person rule is written from that folder or the file naming, never per image",
+        "that 20.8 GB plus the unpacked images fit: df -h /rs/rs_grp_oschome"
       ]
     },
     {

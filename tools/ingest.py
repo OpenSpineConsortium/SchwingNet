@@ -24,7 +24,12 @@ spec says, so a detector can still train on it while no level score counts it.
         --split test --date 2026-10-21 --code-commit <sha> [--supersedes <shard name>] [--grid-root <dir>]
 
 `plan` reads and checks and prints the manifest that `run` would write, writing nothing; `run`
-writes the shard. The grid root is the registry entry's unless named, for a test or a stress run
+writes the shard. `--supersedes latest` names the source's current shard for it, the one under
+`<grid root>/shards/` that no other shard there supersedes, so a bank that grew (a raw copy that
+came in parts, a zip unpacked after a first ingest) cuts a successor and not a sibling, and the
+catalog, which reads a shard or its successor and never both, counts no frame twice (measured in
+the chain's first run, issue #40: a second ingest of a grown bank without it gave a catalog of 287
+frames for 167 files); where the new shard is that current one, nothing supersedes anything. The grid root is the registry entry's unless named, for a test or a stress run
 on another volume. This is an I/O tool around the gated rules; it runs on the grid in the shell or
 as one CPU job (docs/setup/grid.md), never on the login node for a bank of any size.
 """
@@ -222,9 +227,29 @@ def frozen_not_seen(persons, settings, inputs):
     return sorted(p for p in inputs.test_persons if p.startswith(prefix) and p not in persons)
 
 
+def latest_shard(grid_root):
+    """The head of the source's shard chain, with what it supersedes: the shard under
+    `<grid root>/shards/` that none of the others there supersedes, the newest by name where the
+    chain forked; a pair of None with no shard."""
+    manifests = {}
+    for path in sorted(Path(grid_root).glob("shards/*/" + MANIFEST)):
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as error:
+            raise IngestError(f"{path}: not a readable manifest: {error}") from error
+        manifests[data["name"]] = data.get("supersedes")
+    heads = sorted(set(manifests) - {s for s in manifests.values() if s})
+    return (heads[-1], manifests[heads[-1]]) if heads else (None, None)
+
+
 def manifest_of(items, settings):
     digest = content_digest(tuple(i.sha256 for i in items))
     name = shard_name(settings.source, settings.date, digest)
+    if settings.supersedes == "latest":
+        # The same bank again is the head itself, whose manifest must come out byte for byte, so
+        # it keeps what the head supersedes; a changed bank supersedes the head.
+        head, head_supersedes = latest_shard(settings.grid_root)
+        settings.supersedes = head_supersedes if head == name else head
     data = {"schema_version": 1, "name": name, "source": settings.source, "kind": settings.kind.value,
             "ingest_date": settings.date, "code_commit": settings.code_commit,
             "supersedes": settings.supersedes, "items": [json.loads(i.model_dump_json()) for i in items]}
@@ -341,7 +366,7 @@ def parser():
         p.add_argument("--split", default="", help="the bank's split folder to read; every one unless named")
         p.add_argument("--date", required=True, help="the ingest date, YYYY-MM-DD")
         p.add_argument("--code-commit", required=True, help="the commit of the code that made the bank")
-        p.add_argument("--supersedes", default=None)
+        p.add_argument("--supersedes", default=None, help="the shard this one replaces; 'latest' names the source's current one")
         p.add_argument("--person-prefix", default=None, help="the person key's prefix; the source id unless named")
         p.add_argument("--labeller", default="projected", help="who drew the boxes, as the manifest records it")
         p.add_argument("--modality", default=None)

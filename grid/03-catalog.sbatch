@@ -8,7 +8,8 @@
 #SBATCH --time=12:00:00
 #SBATCH --output=logs/%x_%j.out
 # Stage 3 of the X-ray chain: rebuild the read-only catalog from every shard manifest under
-# the data root (tools/catalog.py build) and run the REFORMS split check on the new version.
+# the data root (tools/catalog.py build, each source's chain at its head alone, since stage 2
+# supersedes a shard whose bank grew) and run the REFORMS split check on the new version.
 # A build whose bytes equal the latest version is reported as not new and leaves the store as it
 # was. The report is logs/03-catalog-STAGE-REPORT.md. DATA_ROOT and STORE can be overridden.
 set -uo pipefail
@@ -18,8 +19,9 @@ DATA_ROOT=${DATA_ROOT:-/rs/rs_grp_oschome/go2432/data}
 STORE=${STORE:-$DATA_ROOT/_catalog}
 REPORT=logs/03-catalog-STAGE-REPORT.md
 COMMIT=$(git -C "$REPO" rev-parse --short HEAD 2>/dev/null || echo 0000000)
-export PYTHONNOUSERSITE=1
-mkdir -p logs
+export PYTHONNOUSERSITE=1 TMPDIR=${TMPDIR_OVERRIDE:-${DATA_ROOT:+$DATA_ROOT/_tmp}}
+TMPDIR=${TMPDIR:-/rs/rs_grp_oschome/go2432/tmp}
+mkdir -p logs "$TMPDIR"
 echo "XR_CATALOG start $(date '+%F %T') on $(hostname) job ${SLURM_JOB_ID:-}"
 {
   echo "# Stage 3, catalog: $(date '+%F %T')"
@@ -34,7 +36,7 @@ if [ "${#args[@]}" = 0 ]; then
 fi
 echo "- manifests read: $(( ${#args[@]} / 2 ))" >> "$REPORT"
 rc=0
-if out=$("$PYDRV" "$REPO/tools/catalog.py" build --store "$STORE" --code-commit "$COMMIT" "${args[@]}" 2>&1); then
+if out=$("$PYDRV" "$REPO/tools/catalog.py" build --store "$STORE" --code-commit "$COMMIT" --drop-superseded "${args[@]}" 2>&1); then
   echo "$out"; echo "- build: $out" >> "$REPORT"
 else
   echo "$out"; echo "- build refused: $(echo "$out" | tail -n 1)" >> "$REPORT"; rc=1
