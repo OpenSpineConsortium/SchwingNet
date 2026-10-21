@@ -70,6 +70,8 @@ def test_the_hash_split_is_a_share_of_the_hash_space_and_the_frozen_list_wins() 
     assert hash_part(0, 0.1) is Part.VALIDATION
     assert hash_part(HASH_SPACE - 1, 0.1) is Part.TRAIN
     assert hash_part(int(0.1 * HASH_SPACE) - 1, 0.1) is Part.VALIDATION
+    with pytest.raises(ViolationError):
+        hash_part(0, 1e-4)
     frozen = frozenset({"carmlspine:case42"})
     assert part_of("carmlspine:case42", 0, 0.1, frozen) is Part.TEST
     assert part_of("carmlspine:case7", 0, 0.1, frozen) is Part.VALIDATION
@@ -232,6 +234,8 @@ def test_the_shapes_refuse_what_the_catalog_cannot_hold() -> None:
         FrozenPerson(person=" x", why="w")
     with pytest.raises(ValidationError):
         SplitRule(salt="s", validation_share=1.0, hash="h")
+    with pytest.raises(ValidationError):
+        SplitRule(salt="s", validation_share=1e-4, hash="h")
     with pytest.raises(ValidationError):
         RegistryEntry.model_validate({"source": "carmlspine"})
     with pytest.raises(ValidationError, match="its facts name it"):

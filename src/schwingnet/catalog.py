@@ -131,7 +131,10 @@ def is_transitional(level: str) -> bool:
 
 @beartype
 @require(lambda hash_value: 0 <= hash_value < HASH_SPACE, "a hash is a 64-bit value")
-@require(lambda validation_share: 0.0 < validation_share < 1.0, "a share leaves both sides some")
+@require(
+    lambda validation_share: 0.001 <= validation_share < 1.0,
+    "a share is one in a thousand or more, and less than all",
+)
 @ensure(lambda result: result is not Part.TEST, "a hash never sends a person to the test set")
 @ensure(
     lambda result, hash_value, validation_share: (
@@ -149,7 +152,10 @@ def hash_part(hash_value: int, validation_share: float) -> Part:
 @beartype
 @require(lambda person: person != "" and person == person.strip(), "a person key is named exactly")
 @require(lambda hash_value: 0 <= hash_value < HASH_SPACE, "a hash is a 64-bit value")
-@require(lambda validation_share: 0.0 < validation_share < 1.0, "a share leaves both sides some")
+@require(
+    lambda validation_share: 0.001 <= validation_share < 1.0,
+    "a share is one in a thousand or more, and less than all",
+)
 @ensure(
     lambda result, person, test_persons: (result is Part.TEST) == (person in test_persons),
     "the frozen list alone decides who is a test person",
@@ -577,7 +583,7 @@ class SplitRule(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     salt: str = Field(min_length=1)
-    validation_share: Annotated[float, Field(gt=0, lt=1)]
+    validation_share: Annotated[float, Field(ge=0.001, lt=1)]
     hash: str = Field(min_length=1)
 
 
