@@ -420,7 +420,7 @@ def near_duplicates(
     rows = []
     for pair in scored:
         a, b = prints[pair.first], prints[pair.second]
-        if pair.ncc < NCC_MIN or a.pixel_key == b.pixel_key or not _crosses(a, b, persons):
+        if not pair.ncc >= NCC_MIN or a.pixel_key == b.pixel_key or not _crosses(a, b, persons):
             continue
         same = persons.get(a.person, a.person) == persons.get(b.person, b.person)
         reason = "near-duplicate across parts" if same else "near-duplicate under two persons"
@@ -453,6 +453,7 @@ def _why_shared(
 
 
 @beartype
+@require(lambda prints: len({p.frame for p in prints}) == len(prints), "each frame once")
 @ensure(lambda result: all(f.check == CHK7 for f in result), "CHK-7 rows")
 @ensure(lambda result: all(len(f.frames) >= 2 for f in result), "a row ties two frames or more")
 def shared_keys(prints: tuple[Print, ...], classes: dict[str, str]) -> tuple[Finding, ...]:
