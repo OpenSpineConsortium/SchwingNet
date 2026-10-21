@@ -25,8 +25,10 @@ SKIPPED_FOLDERS = {".git", "__pycache__"}
 PLAIN_TEXT_ROOTS = (".claude", "docs", "tools", ".github")
 PLAIN_TEXT_FILES = (CLAUDE_MD, "README.md")
 # The dataset records are held the same way, because tools/sources.py copies
-# their text into docs/research/; the rest of data/ is not a document.
-PLAIN_TEXT_FOLDERS = ("data/sources",)
+# their text into docs/research/; so are the registry and the split files,
+# which tools/catalog.py reads into the catalog and quotes in its answers;
+# the rest of data/ is not a document.
+PLAIN_TEXT_FOLDERS = ("data/sources", "data/registry", "data/splits")
 
 # An import is any "@path" outside code spans and fenced code; Claude Code
 # follows it wherever it stands in the line, so the check must too. The

@@ -169,6 +169,15 @@ class SoundTree(unittest.TestCase):
             "data/sources/aasce.json: line 1 is not ASCII",
         ])
 
+    def test_the_registry_and_the_split_files_are_held_like_documents(self):
+        write(self.root, "data/registry/carmlspine.json", b'{"notes": "\xe2\x80\x9cq\xe2\x80\x9d"}\n')
+        write(self.root, "data/splits/rule.json", b'{"salt": "s"}\r\n')
+        problems, _ = run_checks(self.root)
+        self.assertEqual(problems, [
+            "data/registry/carmlspine.json: line 1 is not ASCII",
+            "data/splits/rule.json: line 1 has a CR (CRLF line ending)",
+        ])
+
     def test_non_ascii_outside_the_document_folders_is_allowed(self):
         write(self.root, "data/names.txt", "Jos\u00e9\n")
         problems, _ = run_checks(self.root)

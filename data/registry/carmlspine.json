@@ -1,0 +1,12 @@
+{
+  "source": "carmlspine",
+  "identity_level": "patient",
+  "person_key_rule": "carmlspine:<case id as the archive names it>; one case is one patient (the archive's own statement), the DICOM PatientID of case134 is never read into a key",
+  "access": "CC BY 4.0, public (Zenodo 22768651); real patients, de-identified by the publisher; covered by the IRB umbrella HPR 2026-269 as public de-identified data",
+  "modality": "xa",
+  "device_class": "mobile_c_arm",
+  "regions": ["lumbar", "sacrum"],
+  "grid_root": "/rs/rs_grp_oschome/go2432/data/carmlspine",
+  "shards": [],
+  "notes": "149 cases, 299 AP and lateral spot frames, one CBCT per case; level truth projected from the CBCT; case42, case121 and case136 are the real L6 persons and are frozen test persons (data/splits/test-persons.json); no shard until the owner gives the word for the first ingest job"
+}
