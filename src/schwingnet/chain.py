@@ -190,8 +190,38 @@ def _hypotheses(prior: ChainPrior) -> list[tuple[str, tuple[str, ...], float]]:
     return found
 
 
+def _law_is_sound(law: Spacing) -> bool:
+    return math.isfinite(law.mu) and math.isfinite(law.sigma) and law.sigma > 0.0
+
+
+@beartype
+@ensure(
+    lambda result, prior: not result or _law_is_sound(prior.fallback),
+    "a sound prior has a usable fallback",
+)
+def prior_is_sound(prior: ChainPrior) -> bool:
+    """Whether every law has a finite mean and positive spread, and every odds a finite share."""
+    laws = [prior.fallback, *prior.spacing.values()]
+    odds = list(prior.columns.values())
+    return (
+        all(_law_is_sound(law) for law in laws)
+        and all(math.isfinite(o) and o >= 0.0 for o in odds)
+        and math.isfinite(prior.miss_log)
+    )
+
+
+def _body_is_sound(body: Body) -> bool:
+    finite = math.isfinite(body.position) and math.isfinite(body.height)
+    shares = all(math.isfinite(p) and 0.0 <= p <= 1.0 for p in body.posterior.values())
+    return finite and shares
+
+
 @beartype
 @require(lambda bodies: len(bodies) >= 1, "a frame with no body has nothing to name")
+@require(
+    lambda bodies: all(_body_is_sound(b) for b in bodies), "places, heights and shares are finite"
+)
+@require(lambda prior: prior_is_sound(prior), "the prior's laws and odds are finite")
 @require(
     lambda bodies: all(a.position < b.position for a, b in zip(bodies, bodies[1:], strict=False)),
     "bodies come sorted cranial to caudal, at distinct places",
@@ -274,6 +304,7 @@ def fit_spacing(ratios: Sequence[float]) -> Spacing:
 
 @beartype
 @require(lambda offset: math.isfinite(offset), "an offset is a finite number")
+@require(lambda prior: prior_is_sound(prior), "the prior's laws and odds are finite")
 @ensure(
     lambda result, prior: result.columns == prior.columns and result.miss_log == prior.miss_log,
     "only the spacing laws move",

@@ -92,3 +92,12 @@ def test_fitted_spacing_is_lognormal_and_floored() -> None:
     assert abs(law.mu - math.log(1.3)) < 1e-12 and law.sigma == 0.05
     wide = fit_spacing([1.0, math.e])
     assert abs(wide.mu - 0.5) < 1e-12 and wide.sigma > 0.05
+
+
+def test_a_prior_with_a_missing_number_is_not_sound() -> None:
+    from schwingnet.chain import prior_is_sound
+
+    assert prior_is_sound(PRIOR)
+    assert not prior_is_sound(ChainPrior({}, Spacing(float("nan"), 0.05), {"T12L5": 1.0}))
+    assert not prior_is_sound(ChainPrior({}, PRIOR.fallback, {"T12L5": float("inf")}))
+    assert not prior_is_sound(ChainPrior({"L1|L2": Spacing(0.2, 0.0)}, PRIOR.fallback, {}))
