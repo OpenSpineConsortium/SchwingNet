@@ -15,6 +15,7 @@ persons rather than repeating the one person with the most frames; a sweep is sa
 along its frames' order. Reading the catalog and drawing live in tools/witness.py.
 """
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from hashlib import sha256
 
@@ -173,40 +174,62 @@ def choose(
     set short of its count is named, so the page says what it does not show.
     """
     mine = tuple(c for c in candidates if c.source == rule.source)
-    # A sweep is shown as a sweep alone; an L6 case may lend frames to the general test set too,
-    # since the frozen test persons may be few, and its own frames are then chosen from the rest.
-    validation = tuple(c for c in mine if c.part == "validation")
-    test = tuple(c for c in mine if c.part == "test" and case_of(c.person) not in rule.sweep_cases)
     picked: list[tuple[str, Candidate]] = []
     missing: list[str] = []
-    for role, pool, count in (
-        (ROLE_VALIDATION, validation, rule.validation_count),
-        (ROLE_TEST, test, rule.test_count),
-    ):
+    for role, pool, count in _general_pools(mine, rule):
         got = spread(pool, LUMBAR, count, rule.salt)
         picked.extend((role, c) for c in got)
-        if len(got) < count:
-            missing.append(f"{role}: {len(got)} of {count} frames with a lumbar level")
-    for case in rule.transitional_cases:
-        taken = {c.sha256 for _, c in picked}
-        frames = tuple(
-            c for c in _of_case(mine, case) if c.part == "test" and c.sha256 not in taken
-        )
-        showing = tuple(c for c in frames if "L6" in c.levels) or frames
-        got = spread(showing, ("L6", *LUMBAR, "sacrum"), rule.per_transitional, rule.salt)
-        picked.extend((ROLE_TRANSITIONAL, c) for c in got)
-        if not got:
-            missing.append(f"{ROLE_TRANSITIONAL}: no test frame of {case} in the catalog")
-    for case in rule.sweep_cases:
-        taken = {c.sha256 for _, c in picked}
-        frames = tuple(
-            sorted(
-                (c for c in _of_case(mine, case) if c.part == "test" and c.sha256 not in taken),
-                key=lambda c: c.path,
-            )
-        )
-        got = tuple(frames[i] for i in evenly_spaced(len(frames), rule.per_sweep))
-        picked.extend((ROLE_SWEEP, c) for c in got)
-        if not got:
-            missing.append(f"{ROLE_SWEEP}: no test frame of {case} in the catalog")
+        missing.extend(_shortfall(role, len(got), count, ""))
+    for role, case, pick in _case_steps(rule):
+        got = pick(_left(mine, case, picked), rule)
+        picked.extend((role, c) for c in got)
+        missing.extend(_shortfall(role, len(got), 1, case))
     return tuple(picked), tuple(missing)
+
+
+def _case_steps(rule: WitnessRule) -> list[tuple[str, str, Callable[..., tuple[Candidate, ...]]]]:
+    """Each L6 case, then each sweep, with the rule that picks its frames."""
+    steps: list[tuple[str, str, Callable[..., tuple[Candidate, ...]]]] = []
+    steps += [(ROLE_TRANSITIONAL, case, _transitional) for case in rule.transitional_cases]
+    steps += [(ROLE_SWEEP, case, _sweep) for case in rule.sweep_cases]
+    return steps
+
+
+def _left(
+    mine: tuple[Candidate, ...], case: str, picked: list[tuple[str, Candidate]]
+) -> tuple[Candidate, ...]:
+    """A case's test frames that no role has taken yet."""
+    taken = {c.sha256 for _, c in picked}
+    return tuple(c for c in _of_case(mine, case) if c.part == "test" and c.sha256 not in taken)
+
+
+def _shortfall(role: str, got: int, wanted: int, case: str) -> list[str]:
+    """The line that says a role has too few frames, or none."""
+    if case:
+        return [f"{role}: no test frame of {case} in the catalog"] if not got else []
+    return [f"{role}: {got} of {wanted} frames with a lumbar level"] if got < wanted else []
+
+
+def _general_pools(
+    mine: tuple[Candidate, ...], rule: WitnessRule
+) -> tuple[tuple[str, tuple[Candidate, ...], int], ...]:
+    """The validation and test pools; a sweep is shown as a sweep alone, while an L6 case may
+    lend frames to the general test set, since the frozen test persons may be few."""
+    validation = tuple(c for c in mine if c.part == "validation")
+    test = tuple(c for c in mine if c.part == "test" and case_of(c.person) not in rule.sweep_cases)
+    return (
+        (ROLE_VALIDATION, validation, rule.validation_count),
+        (ROLE_TEST, test, rule.test_count),
+    )
+
+
+def _transitional(frames: tuple[Candidate, ...], rule: WitnessRule) -> tuple[Candidate, ...]:
+    """An L6 case's frames that show its L6 body, or any of its frames where none does."""
+    showing = tuple(c for c in frames if "L6" in c.levels) or frames
+    return spread(showing, ("L6", *LUMBAR, "sacrum"), rule.per_transitional, rule.salt)
+
+
+def _sweep(frames: tuple[Candidate, ...], rule: WitnessRule) -> tuple[Candidate, ...]:
+    """A sweep's frames evenly along its order, the first and the last among them."""
+    ordered = tuple(sorted(frames, key=lambda c: c.path))
+    return tuple(ordered[i] for i in evenly_spaced(len(ordered), rule.per_sweep))
