@@ -141,21 +141,28 @@ def choose(
     test = tuple(c for c in mine if c.part == "test" and case_of(c.person) not in rule.sweep_cases)
     picked: list[tuple[str, Candidate]] = []
     missing: list[str] = []
-    for role, pool, count in ((ROLE_VALIDATION, validation, rule.validation_count), (ROLE_TEST, test, rule.test_count)):
+    for role, pool, count in (
+        (ROLE_VALIDATION, validation, rule.validation_count),
+        (ROLE_TEST, test, rule.test_count),
+    ):
         got = spread(pool, LUMBAR, count, rule.salt)
         picked.extend((role, c) for c in got)
         if len(got) < count:
             missing.append(f"{role}: {len(got)} of {count} frames with a lumbar level")
     for case in rule.transitional_cases:
         taken = {c.sha256 for _, c in picked}
-        frames = tuple(c for c in _of_case(mine, case) if c.part == "test" and c.sha256 not in taken)
+        frames = tuple(
+            c for c in _of_case(mine, case) if c.part == "test" and c.sha256 not in taken
+        )
         showing = tuple(c for c in frames if "L6" in c.levels) or frames
         got = spread(showing, ("L6", *LUMBAR, "sacrum"), rule.per_transitional, rule.salt)
         picked.extend((ROLE_TRANSITIONAL, c) for c in got)
         if not got:
             missing.append(f"{ROLE_TRANSITIONAL}: no test frame of {case} in the catalog")
     for case in rule.sweep_cases:
-        frames = tuple(sorted((c for c in _of_case(mine, case) if c.part == "test"), key=lambda c: c.path))
+        frames = tuple(
+            sorted((c for c in _of_case(mine, case) if c.part == "test"), key=lambda c: c.path)
+        )
         got = tuple(frames[i] for i in evenly_spaced(len(frames), rule.per_sweep))
         picked.extend((ROLE_SWEEP, c) for c in got)
         if not got:

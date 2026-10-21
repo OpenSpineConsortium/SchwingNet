@@ -42,7 +42,21 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from schwingnet.flow import JobRecord, JobSpec, RunRecord, Stage, Step, ledger_row, run_id  # noqa: E402
 from schwingnet.slurm import elapsed_seconds, is_finished, job_id_of, sbatch_script  # noqa: E402
-from witness import FROZEN, WitnessError, for_run  # noqa: E402
+
+
+def _load_witness():
+    """tools/witness.py by its file: putting this folder on the path would let tools/profile.py
+    shadow the standard library for whatever imports next, as tools/train.py explains."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("schwingnet_tool_witness", ROOT / "tools" / "witness.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+_witness = _load_witness()
+FROZEN, WitnessError, for_run = _witness.FROZEN, _witness.WitnessError, _witness.for_run
 
 VERSION_NAME = re.compile(r"catalog-(\d{6})-[0-9a-f]{12}\.sqlite$")
 LEDGER_HEADER = (

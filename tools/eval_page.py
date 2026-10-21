@@ -131,7 +131,7 @@ def change(run, previous):
     if not now or not before:
         return "first version" if not previous else "not comparable"
     delta = now["correct"] / now["total"] - before["correct"] / before["total"]
-    shards = "same catalog" if run["record"].get("catalog_sha256") == previous["record"].get("catalog_sha256") else f"catalog {previous['record'].get('catalog_version')} to {run['record'].get('catalog_version')}"
+    shards = "same catalog" if run["record"].get("catalog_sha256") == previous["record"].get("catalog_sha256") else f"catalog {previous['record'].get('catalog_version')} {previous['record'].get('catalog_sha256', '')[:8]} to {run['record'].get('catalog_version')} {run['record'].get('catalog_sha256', '')[:8]}"
     return f"{delta:+.3f} ({shards})"
 
 
