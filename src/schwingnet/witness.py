@@ -150,8 +150,14 @@ def _of_case(candidates: tuple[Candidate, ...], case: str) -> tuple[Candidate, .
     return tuple(c for c in candidates if case_of(c.person) == case)
 
 
+def _small(rule: WitnessRule) -> bool:
+    counts = (rule.validation_count, rule.test_count, rule.per_transitional, rule.per_sweep)
+    return all(0 <= n <= 1000 for n in counts)
+
+
 @beartype
 @require(lambda candidates: _distinct(candidates), "a frame is a candidate once, by its bytes")
+@require(lambda rule: _small(rule), "each count of a witness set is small")
 @require(
     lambda rule: not set(rule.transitional_cases) & set(rule.sweep_cases),
     "a case is an L6 case or a sweep, not both",
