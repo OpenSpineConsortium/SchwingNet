@@ -1,0 +1,49 @@
+{
+ "run_id": "cd37124c487d",
+ "code_commit": "cf0d3f03d5d974d84e7d026a993ba14503664878",
+ "clean_tree": true,
+ "catalog_version": 1,
+ "catalog_sha256": "5adfe5ec5715fcb2eb62215597b06a65794368d9fced76c7e0a486d6e7e8b19b",
+ "split_disjoint": true,
+ "stage": "level",
+ "seed": 1,
+ "epochs": 4,
+ "parent_weights": null,
+ "started_at": "2026-10-21T13:41:11Z",
+ "mode": "local",
+ "jobs": [
+  {
+   "step": "split-check",
+   "job_id": "local-2684-split-check",
+   "partition": "runner",
+   "qos": null,
+   "hours_requested": 0.01,
+   "seconds_used": 1,
+   "gpus": 0,
+   "preemptions": 0,
+   "exit_code": 0
+  },
+  {
+   "step": "train",
+   "job_id": "local-2684-train",
+   "partition": "local",
+   "qos": null,
+   "hours_requested": 4.0,
+   "seconds_used": 99,
+   "gpus": 0,
+   "preemptions": 0,
+   "exit_code": 0
+  },
+  {
+   "step": "evaluate",
+   "job_id": "local-2684-evaluate",
+   "partition": "local",
+   "qos": null,
+   "hours_requested": 1.0,
+   "seconds_used": 19,
+   "gpus": 0,
+   "preemptions": 0,
+   "exit_code": 0
+  }
+ ]
+}

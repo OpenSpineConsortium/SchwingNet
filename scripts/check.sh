@@ -79,4 +79,9 @@ fi
 # the SHA-256 that data/reproduce/SHA256SUMS records.
 python3 tools/reproduce_table.py check
 
+# The evaluation page (docs/research/evaluation/README.md) is written from the recorded runs under
+# docs/research/v1-demo/runs/ by tools/eval_page.py, standard library: a run recorded without the
+# page written again, or a page edited by hand, fails here.
+python3 tools/eval_page.py check
+
 echo "checks ok"
