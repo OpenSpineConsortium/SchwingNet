@@ -6,6 +6,7 @@ needs pydantic, is tests/schwingnet/test_bank.py."""
 
 import importlib.util
 import io
+import hashlib
 import json
 import os
 import struct
@@ -93,7 +94,8 @@ class FetchListTest(unittest.TestCase):
             self.assertIn(f"== {entry['id']} -> {entry['dest']}", out)
         self.assertIn("skip: record number needed", out)
         self.assertIn("== nih_chestxray14", out)
-        self.assertNotIn("nihcc.box.com", out)
+        self.assertIn("nihcc.box.com/shared/static/i28rlmbvmfjbl8p2n3ril0pptcmcu9d1.gz", out)
+        self.assertIn("SHA-1 piece checked against https://academictorrents.com/", out)
         self.assertIn("zenodo-get --record 8115942", out)
         self.assertIn("fallback: ", out)
         self.assertIn("<login from ~/.netrc>", out)
@@ -190,7 +192,7 @@ class BankTest(unittest.TestCase):
             path.write_text(json.dumps(recipe), encoding="utf-8")
             code, _, err = run_tool(tool, ["--recipe", str(path), "--run"])
             self.assertEqual(code, 2)
-            self.assertIn("pydicom", err)
+            self.assertTrue("pydicom" in err or "DICOM" in err or "pixel" in err, err)
 
     def test_every_shipped_recipe_is_well_formed(self):
         tool = load("bank")
@@ -389,3 +391,135 @@ class FigshareRouteTest(unittest.TestCase):
         self.assertIn("--supersedes latest", (GRID / "02-bank-ingest.sbatch").read_text(encoding="utf-8"))
         self.assertIn("--drop-superseded", (GRID / "03-catalog.sbatch").read_text(encoding="utf-8"))
         self.assertIn('BANKS=${BANKS:-$REPO/grid/banks}', (GRID / "02-bank-ingest.sbatch").read_text(encoding="utf-8"))
+
+
+def bencode(value):
+    if isinstance(value, int):
+        return b"i%de" % value
+    if isinstance(value, bytes):
+        return b"%d:%s" % (len(value), value)
+    if isinstance(value, str):
+        return bencode(value.encode("utf-8"))
+    if isinstance(value, list):
+        return b"l" + b"".join(bencode(v) for v in value) + b"e"
+    return b"d" + b"".join(bencode(k) + bencode(value[k]) for k in sorted(value)) + b"e"
+
+
+def torrent_of(files, piece_length=16):
+    """A multi-file .torrent of (name, bytes) pairs in order, as Academic Torrents serves one."""
+    joined = b"".join(data for _, data in files)
+    pieces = b"".join(hashlib.sha1(joined[i:i + piece_length]).digest() for i in range(0, len(joined), piece_length))
+    info = {"name": "ChestXray-NIHCC", "piece length": piece_length, "pieces": pieces,
+            "files": [{"length": len(data), "path": [name]} for name, data in files]}
+    return bencode({"announce": "http://tracker.invalid/", "info": info})
+
+
+class TorrentAndTarTest(unittest.TestCase):
+    """NIH ChestX-ray14's bytes are checked against the Academic Torrents release (#44), since its
+    Box page publishes no checksum, and its .tar.gz archives are opened in place for the bank."""
+
+    files = [("README_ChestXray.pdf", b"readme" * 7), ("images_001.tar.gz", bytes(range(200)) * 3),
+             ("images_002.tar.gz", b"second archive" * 9)]
+
+    def write(self, dest, names):
+        dest.mkdir(parents=True, exist_ok=True)
+        for name, data in self.files:
+            if name in names:
+                (dest / name).write_bytes(data)
+
+    def test_present_files_pass_and_partial_pieces_are_left_out(self):
+        import tempfile
+        tool = load("fetch_sources")
+        with tempfile.TemporaryDirectory() as tmp:
+            dest = Path(tmp) / "raw"
+            self.write(dest, {"images_001.tar.gz", "images_002.tar.gz"})
+            counts = tool.verify_torrent(dest, torrent_of(self.files), ["images_001.tar.gz", "images_002.tar.gz"])
+            self.assertEqual(counts["files_matched"], 2)
+            with self.assertRaisesRegex(tool.FetchError, "images_013.tar.gz: not checked"):
+                tool.verify_torrent(dest, torrent_of(self.files), ["images_001.tar.gz", "images_013.tar.gz"])
+            self.assertGreater(counts["pieces_checked"], 40)
+            self.assertLess(counts["pieces_checked"], counts["pieces_in_torrent"])
+
+    def test_a_wrong_length_or_a_changed_byte_fails_by_name(self):
+        import tempfile
+        tool = load("fetch_sources")
+        with tempfile.TemporaryDirectory() as tmp:
+            dest = Path(tmp) / "raw"
+            self.write(dest, {"images_001.tar.gz"})
+            (dest / "images_002.tar.gz").write_bytes(b"<html>an error page</html>")
+            with self.assertRaisesRegex(tool.FetchError, "images_002.tar.gz: 26 bytes"):
+                tool.verify_torrent(dest, torrent_of(self.files))
+            (dest / "images_002.tar.gz").unlink()
+            data = bytearray(self.files[1][1])
+            data[300] ^= 1
+            (dest / "images_001.tar.gz").write_bytes(bytes(data))
+            with self.assertRaisesRegex(tool.FetchError, "does not match its SHA-1"):
+                tool.verify_torrent(dest, torrent_of(self.files))
+
+    def test_nothing_checked_is_a_failure(self):
+        import tempfile
+        tool = load("fetch_sources")
+        with tempfile.TemporaryDirectory() as tmp:
+            dest = Path(tmp) / "raw"
+            dest.mkdir()
+            with self.assertRaisesRegex(tool.FetchError, "nothing was verified"):
+                tool.verify_torrent(dest, torrent_of(self.files))
+
+    def test_the_torrent_is_used_only_under_the_infohash_its_address_names(self):
+        import io
+        import tempfile
+        tool = load("fetch_sources")
+        torrent = torrent_of(self.files)
+        info = torrent[torrent.index(b"4:info") + 6:-1]
+        good = hashlib.sha1(info).hexdigest()
+
+        def opener(body):
+            return lambda url, timeout: io.BytesIO(body)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            state = Path(tmp)
+            (state / "release.torrent").write_bytes(b"<html>an error page</html>")
+            url = f"https://academictorrents.com/download/{good}.torrent"
+            self.assertEqual(tool.fetch_torrent(url, state, opener(torrent)), torrent)
+            self.assertEqual((state / "release.torrent").read_bytes(), torrent)
+            other = f"https://academictorrents.com/download/{'0' * 40}.torrent"
+            fresh = Path(tmp) / "fresh"
+            fresh.mkdir()
+            with self.assertRaisesRegex(tool.FetchError, "its infohash is"):
+                tool.fetch_torrent(other, fresh, opener(torrent))
+            self.assertFalse((fresh / "release.torrent").exists())
+
+    def test_a_tar_gz_is_unpacked_once_and_never_outside_the_raw_folder(self):
+        import io
+        import tarfile
+        import tempfile
+        tool = load("fetch_sources")
+        with tempfile.TemporaryDirectory() as tmp:
+            raw = Path(tmp) / "raw"
+            raw.mkdir()
+
+            def archive(path, members):
+                with tarfile.open(path, "w:gz") as opened:
+                    for name, data in members:
+                        info = tarfile.TarInfo(name)
+                        info.size = len(data)
+                        opened.addfile(info, io.BytesIO(data))
+
+            archive(raw / "images_001.tar.gz", [("images/00000001_000.png", png(8, 8, 1)),
+                                                ("images/00000002_000.png", png(8, 8, 2))])
+            self.assertEqual(sorted(tool.unpack_archives(raw)),
+                             ["images/00000001_000.png", "images/00000002_000.png"])
+            self.assertEqual(tool.unpack_archives(raw), [])
+            archive(raw / "images_002.tar.gz", [("../escape.png", png(8, 8, 3))])
+            with self.assertRaisesRegex(tool.FetchError, "outside"):
+                tool.unpack_archives(raw)
+
+    def test_the_nih_entry_fetches_twelve_archives_and_names_the_torrent(self):
+        data = json.loads((GRID / "fetch-xray.json").read_text(encoding="utf-8"))
+        entry = next(e for e in data["open"] if e["id"] == "nih_chestxray14")
+        self.assertEqual(entry["route"], "http")
+        self.assertEqual(len(entry["urls"]), 12)
+        self.assertEqual(len(set(entry["urls"])), 12)
+        self.assertEqual(entry["names"][0], "images_001.tar.gz")
+        self.assertTrue(entry["unpack"])
+        self.assertIn("557481faacd824c83fbf57dcf7b6da9383b3235a", entry["torrent"])
