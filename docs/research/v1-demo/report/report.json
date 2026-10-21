@@ -1,0 +1,777 @@
+{
+  "format": 1,
+  "made": "2026-10-21T02:56:09+00:00",
+  "version": "6.0.0",
+  "repository": {
+    "head": "3a0407904f9ccf17cdc5e040b04644ad38e57027",
+    "branch": "claude/11",
+    "clean": true,
+    "origin": "https://github.com/OpenSpineConsortium/schwingnet"
+  },
+  "tools": [
+    {
+      "name": "python",
+      "locked": "3.11.17",
+      "reported": "Python 3.11.17"
+    },
+    {
+      "name": "ruff",
+      "locked": "0.17.1",
+      "reported": "ruff 0.17.1"
+    },
+    {
+      "name": "mypy",
+      "locked": "2.4.0",
+      "reported": "mypy 2.4.0 (compiled: yes)"
+    },
+    {
+      "name": "pytest",
+      "locked": "9.1.1",
+      "reported": "pytest 9.1.1"
+    },
+    {
+      "name": "typeguard",
+      "locked": "4.6.0",
+      "reported": ""
+    },
+    {
+      "name": "beartype",
+      "locked": "0.23.1",
+      "reported": ""
+    },
+    {
+      "name": "icontract",
+      "locked": "2.7.3",
+      "reported": ""
+    },
+    {
+      "name": "pydantic",
+      "locked": "2.14.1",
+      "reported": ""
+    },
+    {
+      "name": "crosshair-tool",
+      "locked": "0.0.111",
+      "reported": ""
+    },
+    {
+      "name": "z3-solver",
+      "locked": "5.3.1.0",
+      "reported": ""
+    },
+    {
+      "name": "complexipy",
+      "locked": "8.1.0",
+      "reported": "complexipy 8.1.0"
+    },
+    {
+      "name": "radon",
+      "locked": "6.0.1",
+      "reported": "6.0.1"
+    },
+    {
+      "name": "bandit",
+      "locked": "1.9.4",
+      "reported": "bandit 1.9.4"
+    },
+    {
+      "name": "coverage",
+      "locked": "7.16.2",
+      "reported": "Coverage.py, version 7.16.2 with C extension"
+    },
+    {
+      "name": "lizard",
+      "locked": "1.24.1",
+      "reported": "1.24.1"
+    },
+    {
+      "name": "jscpd",
+      "locked": "5.4.2",
+      "reported": "jscpd 5.4.2"
+    },
+    {
+      "name": "zizmor",
+      "locked": "1.31.1",
+      "reported": "zizmor 1.31.1"
+    }
+  ],
+  "lock": "`pixi.lock` read: 87 of its 280 records are the environment `default` for linux-64, this machine's platform",
+  "lanes": [
+    {
+      "task": "lint",
+      "argv": [
+        "ruff",
+        "check",
+        "src",
+        "tests/schwingnet"
+      ],
+      "exit": 0,
+      "seconds": 0.016170593999959237,
+      "output": "lanes/lint-1.txt"
+    },
+    {
+      "task": "lint",
+      "argv": [
+        "ruff",
+        "format",
+        "--check",
+        "src",
+        "tests/schwingnet"
+      ],
+      "exit": 0,
+      "seconds": 0.016280235000522225,
+      "output": "lanes/lint-2.txt"
+    },
+    {
+      "task": "typecheck",
+      "argv": [
+        "mypy",
+        "src"
+      ],
+      "exit": 0,
+      "seconds": 0.4239803099999335,
+      "output": "lanes/typecheck-1.txt"
+    },
+    {
+      "task": "test",
+      "argv": [
+        "pytest",
+        "-q"
+      ],
+      "exit": 0,
+      "seconds": 3.7814606469992214,
+      "output": "lanes/test-1.txt"
+    },
+    {
+      "task": "boundary",
+      "argv": [
+        "python",
+        "-m",
+        "beethoven_qa",
+        "boundary"
+      ],
+      "exit": 0,
+      "seconds": 4.225788325000394,
+      "output": "lanes/boundary-1.txt"
+    },
+    {
+      "task": "symbolic",
+      "argv": [
+        "python",
+        "-m",
+        "beethoven_qa",
+        "gate"
+      ],
+      "exit": 0,
+      "seconds": 366.66894005299946,
+      "output": "lanes/symbolic-1.txt"
+    },
+    {
+      "task": "standards",
+      "argv": [
+        "python",
+        "-m",
+        "beethoven_qa",
+        "standards",
+        "all",
+        "--sarif",
+        "/home/user/schwingnet-11/docs/research/v1-demo/report/sarif"
+      ],
+      "exit": 0,
+      "seconds": 22.34498090299985,
+      "output": "lanes/standards-1.txt"
+    },
+    {
+      "task": "vendor-check",
+      "argv": [
+        "python",
+        "-m",
+        "beethoven_qa",
+        "vendor-check"
+      ],
+      "exit": 0,
+      "seconds": 0.4912292949993571,
+      "output": "lanes/vendor-check-1.txt"
+    }
+  ],
+  "gate": {
+    "totals": {
+      "confirmed": 4,
+      "conditions": 42,
+      "not_confirmed": 38,
+      "bound": 20,
+      "unable": 0
+    },
+    "targets": [
+      {
+        "name": "schwingnet.catalog.band",
+        "confirmed": 0,
+        "not_confirmed": 2,
+        "bound": 20,
+        "unable": 0
+      },
+      {
+        "name": "schwingnet.catalog.best",
+        "confirmed": 0,
+        "not_confirmed": 2,
+        "bound": 20,
+        "unable": 0
+      },
+      {
+        "name": "schwingnet.catalog.content_digest",
+        "confirmed": 0,
+        "not_confirmed": 2,
+        "bound": 20,
+        "unable": 0
+      },
+      {
+        "name": "schwingnet.catalog.cosine",
+        "confirmed": 0,
+        "not_confirmed": 1,
+        "bound": 20,
+        "unable": 0
+      },
+      {
+        "name": "schwingnet.catalog.hash_part",
+        "confirmed": 0,
+        "not_confirmed": 2,
+        "bound": 20,
+        "unable": 0
+      },
+      {
+        "name": "schwingnet.catalog.is_transitional",
+        "confirmed": 1,
+        "not_confirmed": 0,
+        "bound": 20,
+        "unable": 0
+      },
+      {
+        "name": "schwingnet.catalog.part_of",
+        "confirmed": 0,
+        "not_confirmed": 1,
+        "bound": 20,
+        "unable": 0
+      },
+      {
+        "name": "schwingnet.catalog.region_of",
+        "confirmed": 2,
+        "not_confirmed": 0,
+        "bound": 20,
+        "unable": 0
+      },
+      {
+        "name": "schwingnet.catalog.shard_name",
+        "confirmed": 0,
+        "not_confirmed": 3,
+        "bound": 20,
+        "unable": 0
+      },
+      {
+        "name": "schwingnet.catalog.view_band",
+        "confirmed": 0,
+        "not_confirmed": 2,
+        "bound": 20,
+        "unable": 0
+      },
+      {
+        "name": "schwingnet.catalog.where_clause",
+        "confirmed": 0,
+        "not_confirmed": 3,
+        "bound": 20,
+        "unable": 0
+      },
+      {
+        "name": "schwingnet.flow.gpu_hours",
+        "confirmed": 0,
+        "not_confirmed": 1,
+        "bound": 20,
+        "unable": 0
+      },
+      {
+        "name": "schwingnet.flow.ledger_row",
+        "confirmed": 0,
+        "not_confirmed": 3,
+        "bound": 20,
+        "unable": 0
+      },
+      {
+        "name": "schwingnet.flow.run_id",
+        "confirmed": 0,
+        "not_confirmed": 2,
+        "bound": 20,
+        "unable": 0
+      },
+      {
+        "name": "schwingnet.flow.wall_hours",
+        "confirmed": 0,
+        "not_confirmed": 1,
+        "bound": 20,
+        "unable": 0
+      },
+      {
+        "name": "schwingnet.flow.wilson",
+        "confirmed": 0,
+        "not_confirmed": 2,
+        "bound": 20,
+        "unable": 0
+      },
+      {
+        "name": "schwingnet.measure.better",
+        "confirmed": 1,
+        "not_confirmed": 0,
+        "bound": 20,
+        "unable": 0
+      },
+      {
+        "name": "schwingnet.measure.fraction",
+        "confirmed": 0,
+        "not_confirmed": 1,
+        "bound": 20,
+        "unable": 0
+      },
+      {
+        "name": "schwingnet.slurm.elapsed_seconds",
+        "confirmed": 0,
+        "not_confirmed": 1,
+        "bound": 20,
+        "unable": 0
+      },
+      {
+        "name": "schwingnet.slurm.is_finished",
+        "confirmed": 0,
+        "not_confirmed": 1,
+        "bound": 20,
+        "unable": 0
+      },
+      {
+        "name": "schwingnet.slurm.job_id_of",
+        "confirmed": 0,
+        "not_confirmed": 1,
+        "bound": 20,
+        "unable": 0
+      },
+      {
+        "name": "schwingnet.slurm.wall_time",
+        "confirmed": 0,
+        "not_confirmed": 1,
+        "bound": 20,
+        "unable": 0
+      },
+      {
+        "name": "schwingnet.sources.bar",
+        "confirmed": 0,
+        "not_confirmed": 1,
+        "bound": 20,
+        "unable": 0
+      },
+      {
+        "name": "schwingnet.sources.counts_cell",
+        "confirmed": 0,
+        "not_confirmed": 1,
+        "bound": 20,
+        "unable": 0
+      },
+      {
+        "name": "schwingnet.sources.escape_cell",
+        "confirmed": 0,
+        "not_confirmed": 1,
+        "bound": 20,
+        "unable": 0
+      },
+      {
+        "name": "schwingnet.sources.format_number",
+        "confirmed": 0,
+        "not_confirmed": 1,
+        "bound": 20,
+        "unable": 0
+      },
+      {
+        "name": "schwingnet.sources.table_row",
+        "confirmed": 0,
+        "not_confirmed": 1,
+        "bound": 20,
+        "unable": 0
+      },
+      {
+        "name": "schwingnet.sources.tally",
+        "confirmed": 0,
+        "not_confirmed": 1,
+        "bound": 20,
+        "unable": 0
+      }
+    ],
+    "unproven": [
+      [
+        "schwingnet.flow.result_line",
+        "takes a ResultRow, a pydantic model CrossHair cannot construct; its contracts are checked by the tests"
+      ],
+      [
+        "schwingnet.slurm.sbatch_script",
+        "takes a JobSpec, a pydantic model CrossHair cannot construct; its contracts are checked by the tests"
+      ]
+    ]
+  },
+  "standards": [
+    {
+      "group": "coverage",
+      "verdict": "passed",
+      "tools": [
+        [
+          "coverage.py",
+          "7.16.2"
+        ]
+      ],
+      "levels": [],
+      "states": []
+    },
+    {
+      "group": "design",
+      "verdict": "passed",
+      "tools": [
+        [
+          "beethoven-qa",
+          "6.0.0"
+        ]
+      ],
+      "levels": [],
+      "states": []
+    },
+    {
+      "group": "duplication",
+      "verdict": "passed",
+      "tools": [
+        [
+          "jscpd",
+          "5.4.2"
+        ]
+      ],
+      "levels": [],
+      "states": []
+    },
+    {
+      "group": "readability",
+      "verdict": "passed",
+      "tools": [
+        [
+          "complexipy",
+          "8.1.0"
+        ],
+        [
+          "ruff",
+          "0.17.1"
+        ],
+        [
+          "lizard",
+          "1.24.1"
+        ]
+      ],
+      "levels": [],
+      "states": []
+    },
+    {
+      "group": "security",
+      "verdict": "passed",
+      "tools": [
+        [
+          "bandit",
+          "1.9.4"
+        ]
+      ],
+      "levels": [],
+      "states": []
+    },
+    {
+      "group": "supply-chain",
+      "verdict": "passed",
+      "tools": [
+        [
+          "beethoven-qa",
+          "6.0.0"
+        ],
+        [
+          "zizmor",
+          "1.31.1"
+        ]
+      ],
+      "levels": [
+        [
+          "error",
+          160
+        ],
+        [
+          "note",
+          23
+        ]
+      ],
+      "states": [
+        [
+          "unchanged",
+          183
+        ]
+      ]
+    }
+  ],
+  "enforcement": {
+    "hooks_path": ".githooks",
+    "hook_present": true,
+    "hook_executable": true,
+    "hook_command": "pixi run --locked gate",
+    "required": [],
+    "strict": null,
+    "workflows": [
+      [
+        "add-worker.yml",
+        [
+          "add"
+        ]
+      ],
+      [
+        "agents.yml",
+        [
+          "import",
+          "plan",
+          "run"
+        ]
+      ],
+      [
+        "automerge.yml",
+        [
+          "arm"
+        ]
+      ],
+      [
+        "board.yml",
+        [
+          "board"
+        ]
+      ],
+      [
+        "ci.yml",
+        [
+          "check",
+          "values"
+        ]
+      ],
+      [
+        "claude.yml",
+        [
+          "claude"
+        ]
+      ],
+      [
+        "coordinator.yml",
+        [
+          "route",
+          "plan",
+          "unblock",
+          "integrate",
+          "tidy"
+        ]
+      ],
+      [
+        "docs.yml",
+        [
+          "build",
+          "deploy"
+        ]
+      ],
+      [
+        "drive-organize.yml",
+        [
+          "catalog",
+          "organize",
+          "open",
+          "accept"
+        ]
+      ],
+      [
+        "drive-sync.yml",
+        [
+          "sync"
+        ]
+      ],
+      [
+        "gate.yml",
+        [
+          "gate"
+        ]
+      ],
+      [
+        "grid-gate.yml",
+        [
+          "gate"
+        ]
+      ],
+      [
+        "grid.yml",
+        [
+          "start",
+          "grid"
+        ]
+      ],
+      [
+        "metrics.yml",
+        [
+          "metrics"
+        ]
+      ],
+      [
+        "papers.yml",
+        [
+          "queue"
+        ]
+      ],
+      [
+        "pool.yml",
+        [
+          "plan",
+          "probe",
+          "publish"
+        ]
+      ],
+      [
+        "protocol.yml",
+        [
+          "update"
+        ]
+      ],
+      [
+        "queue.yml",
+        [
+          "gate"
+        ]
+      ],
+      [
+        "rulesets.yml",
+        [
+          "apply"
+        ]
+      ],
+      [
+        "settings.yml",
+        [
+          "apply"
+        ]
+      ],
+      [
+        "standards.yml",
+        [
+          "standards / ${{ matrix.group }}",
+          "standards (every group green)",
+          "scorecard (report)"
+        ]
+      ],
+      [
+        "sync.yml",
+        [
+          "offer"
+        ]
+      ],
+      [
+        "template-init.yml",
+        [
+          "init"
+        ]
+      ],
+      [
+        "tidy.yml",
+        [
+          "tidy"
+        ]
+      ],
+      [
+        "token.yml",
+        [
+          "mint",
+          "store",
+          "manage",
+          "no-app",
+          "crowd"
+        ]
+      ],
+      [
+        "workers.yml",
+        [
+          "registry",
+          "work",
+          "pool-publish"
+        ]
+      ]
+    ],
+    "bypass": []
+  },
+  "decided": [
+    [
+      "lint",
+      "a tool, ruff 0.17.1"
+    ],
+    [
+      "typecheck",
+      "a tool, mypy 2.4.0"
+    ],
+    [
+      "test",
+      "a tool, pytest 9.1.1; what each test asserts is a person's judgement"
+    ],
+    [
+      "boundary",
+      "home-made code, `beethoven_qa.boundary`, contracted and under the gate, whose table says how far each contract was confirmed"
+    ],
+    [
+      "symbolic, check 1: every public function carries contracts",
+      "home-made code, `beethoven_qa.gate`, contracted and under the gate, whose table says how far each contract was confirmed; what reads the files is private code the tests hold"
+    ],
+    [
+      "symbolic, check 2: no counterexample within the bound",
+      "a tool, crosshair-tool 0.0.111 with z3-solver 5.3.1.0"
+    ],
+    [
+      "standards: coverage",
+      "the findings: a tool, coverage.py 7.16.2; the verdict over them: home-made code, beethoven-qa 6.0.0 (the limit, the base matching), contracted and under the gate, whose table says how far each contract was confirmed"
+    ],
+    [
+      "standards: design",
+      "the findings: home-made code, beethoven-qa 6.0.0; the verdict over them: home-made code, beethoven-qa 6.0.0 (the limit, the base matching), contracted and under the gate, whose table says how far each contract was confirmed"
+    ],
+    [
+      "standards: duplication",
+      "the findings: a tool, jscpd 5.4.2; the verdict over them: home-made code, beethoven-qa 6.0.0 (the limit, the base matching), contracted and under the gate, whose table says how far each contract was confirmed"
+    ],
+    [
+      "standards: readability",
+      "the findings: a tool, complexipy 8.1.0; a tool, ruff 0.17.1; a tool, lizard 1.24.1; the verdict over them: home-made code, beethoven-qa 6.0.0 (the limit, the base matching), contracted and under the gate, whose table says how far each contract was confirmed"
+    ],
+    [
+      "standards: security",
+      "the findings: a tool, bandit 1.9.4; the verdict over them: home-made code, beethoven-qa 6.0.0 (the limit, the base matching), contracted and under the gate, whose table says how far each contract was confirmed"
+    ],
+    [
+      "standards: supply-chain",
+      "the findings: home-made code, beethoven-qa 6.0.0; a tool, zizmor 1.31.1; the verdict over them: home-made code, beethoven-qa 6.0.0 (the limit, the base matching), contracted and under the gate, whose table says how far each contract was confirmed"
+    ],
+    [
+      "vendor-check",
+      "home-made code, `beethoven_qa.vendor`, contracted and under the gate, whose table says how far each contract was confirmed"
+    ],
+    [
+      "whether a change merges",
+      "GitHub's required checks, the rule as code in `.github/rulesets/main.json`; no person"
+    ],
+    [
+      "every limit, and what a contract or a test means",
+      "a person, in a reviewed release of beethoven-qa"
+    ]
+  ],
+  "passed": true,
+  "language_model": [
+    "The plugin's workflows (gate-until-green, verify-module, improve-module), its skills and its stream agent have a language model write code and contracts; the gate then proves the contracts, and a person reviews what they mean.",
+    "The plugin's coaching hook has a language model read a verdict: after an edit it is shown what the code standards would block in that file, and the edit stays as it is.",
+    "No verdict in this report comes from a model. Each is a tool's, the gate's contracted code's, or GitHub's rule's, as the table above says."
+  ],
+  "not_shown": [
+    "A condition \"not confirmed\" is a bounded search that found no counterexample within its seconds; it is not a proof. Only a condition confirmed over all paths is one.",
+    "The code standards block only code new or worse since the base commit; the findings of older code are recorded as unchanged and pass.",
+    "A green test lane says every test passed; what each test means, and whether it is the right test, is a person's judgement, and so is what each contract promises.",
+    "The pre-push hook runs every lane on the machine that pushes; GitHub's runner runs the jobs the Enforcement section lists, and a lane no job runs is checked by the hook alone. This report is as true as the machine that made it, and no truer: its lanes ran in that machine's environment."
+  ]
+}

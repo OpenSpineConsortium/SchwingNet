@@ -1,0 +1,149 @@
+{
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "beethoven-qa",
+          "version": "6.0.0",
+          "informationUri": "https://www.aivosto.com/project/help/pm-oo-ck.html",
+          "rules": [
+            {
+              "id": "design/wmc",
+              "name": "WMC",
+              "shortDescription": {
+                "text": "A class's weighted methods (WMC) is at most 50."
+              },
+              "fullDescription": {
+                "text": "Chidamber and Kemerer (1994): Weighted Methods per Class; limit chosen here."
+              },
+              "helpUri": "https://www.aivosto.com/project/help/pm-oo-ck.html",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "design",
+                  "maintainability"
+                ]
+              }
+            },
+            {
+              "id": "design/dit",
+              "name": "DIT",
+              "shortDescription": {
+                "text": "A class's depth of inheritance (DIT) is at most 5."
+              },
+              "fullDescription": {
+                "text": "Chidamber and Kemerer (1994): Depth of Inheritance Tree; the Drive file."
+              },
+              "helpUri": "https://www.aivosto.com/project/help/pm-oo-ck.html",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "design",
+                  "maintainability"
+                ]
+              }
+            },
+            {
+              "id": "design/noc",
+              "name": "NOC",
+              "shortDescription": {
+                "text": "A class's number of children (NOC) is at most 10."
+              },
+              "fullDescription": {
+                "text": "Chidamber and Kemerer (1994): Number of Children; limit chosen here."
+              },
+              "helpUri": "https://www.aivosto.com/project/help/pm-oo-ck.html",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "design",
+                  "maintainability"
+                ]
+              }
+            },
+            {
+              "id": "design/cbo",
+              "name": "CBO",
+              "shortDescription": {
+                "text": "A class's coupling (CBO) is at most 14."
+              },
+              "fullDescription": {
+                "text": "Chidamber and Kemerer (1994): Coupling Between Objects; Sahraoui et al., 2000."
+              },
+              "helpUri": "https://www.aivosto.com/project/help/pm-oo-ck.html",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "design",
+                  "maintainability"
+                ]
+              }
+            },
+            {
+              "id": "design/rfc",
+              "name": "RFC",
+              "shortDescription": {
+                "text": "A class's response set (RFC) is at most 50."
+              },
+              "fullDescription": {
+                "text": "Chidamber and Kemerer (1994): Response For a Class; limit chosen here."
+              },
+              "helpUri": "https://www.aivosto.com/project/help/pm-oo-ck.html",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "design",
+                  "maintainability"
+                ]
+              }
+            },
+            {
+              "id": "design/lcom4",
+              "name": "LCOM4",
+              "shortDescription": {
+                "text": "A class's lack of cohesion (LCOM4) is at most 1."
+              },
+              "fullDescription": {
+                "text": "Chidamber and Kemerer (1994): LCOM4; Hitz and Montazeri, 1995."
+              },
+              "helpUri": "https://www.aivosto.com/project/help/pm-oo-ck.html",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "design",
+                  "maintainability"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "automationDetails": {
+        "id": "beethoven-qa/standards/design/"
+      },
+      "originalUriBaseIds": {
+        "%SRCROOT%": {
+          "description": {
+            "text": "The root of the repository."
+          }
+        }
+      },
+      "columnKind": "unicodeCodePoints",
+      "results": []
+    }
+  ]
+}

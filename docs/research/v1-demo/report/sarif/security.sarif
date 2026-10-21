@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "bandit",
+          "version": "1.9.4",
+          "informationUri": "https://bandit.readthedocs.io/",
+          "rules": []
+        }
+      },
+      "automationDetails": {
+        "id": "beethoven-qa/standards/security/"
+      },
+      "originalUriBaseIds": {
+        "%SRCROOT%": {
+          "description": {
+            "text": "The root of the repository."
+          }
+        }
+      },
+      "columnKind": "unicodeCodePoints",
+      "results": []
+    }
+  ]
+}
