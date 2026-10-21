@@ -8,22 +8,54 @@
   ],
   "format": "dcm",
   "person": {
-    "regex": "to confirm: the image id to patient map in the release's CSV"
+    "dicom": [
+      "PatientID",
+      "StudyInstanceUID"
+    ]
   },
   "view": {
-    "lat_from_ap_deg": 0.0,
+    "lat_from_ap_deg": {
+      "dicom": "ViewPosition",
+      "map": {
+        "AP": 0.0,
+        "PA": 0.0,
+        "LAT": 90.0,
+        "LL": 90.0,
+        "RL": 90.0,
+        "LLAT": 90.0,
+        "RLAT": 90.0,
+        "LATERAL": 90.0
+      },
+      "default": null
+    },
     "gantry_deg": null
   },
   "device": {
-    "make": null,
-    "model": null,
-    "detector": null
+    "make": {
+      "dicom": "Manufacturer"
+    },
+    "model": {
+      "dicom": "ManufacturerModelName"
+    },
+    "detector": {
+      "dicom": "DetectorType"
+    },
+    "kvp": {
+      "dicom": "KVP"
+    },
+    "mas": {
+      "dicom": "mAs"
+    }
   },
   "modality": "dx",
   "device_class": "film",
   "split": "train",
   "labels": null,
   "synthetic": false,
-  "px_mm": null,
-  "notes": "18,000 adult frontal chest radiographs as DICOM; refused by the bank stage until pydicom is locked"
+  "px_mm": {
+    "dicom": "ImagerPixelSpacing",
+    "default": null
+  },
+  "notes": "18,000 adult frontal chest radiographs, one per study (15,000 train, 3,000 test) as DICOM, <image_id>.dicom under the release's train and test folders, read from the PhysioNet page 2026-10-21 (#44); the release's CSVs key images only, so the person is the header's PatientID where it holds a value, else its StudyInstanceUID (identity level study at worst); every file under the wget landing is banked, the person hash splits them",
+  "max_frames_per_person": 12
 }

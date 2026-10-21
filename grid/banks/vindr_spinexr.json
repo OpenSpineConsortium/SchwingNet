@@ -1,0 +1,61 @@
+{
+  "id": "vindr_spinexr",
+  "raw": "/rs/rs_grp_oschome/go2432/data/vindr_spinexr/raw/vindr/1.0.0",
+  "bank": "/rs/rs_grp_oschome/go2432/data/vindr_spinexr/bank",
+  "images": [
+    "train_images/*.dicom",
+    "test_images/*.dicom"
+  ],
+  "format": "dcm",
+  "person": {
+    "dicom": [
+      "PatientID",
+      "StudyInstanceUID"
+    ]
+  },
+  "max_frames_per_person": 12,
+  "view": {
+    "lat_from_ap_deg": {
+      "dicom": "ViewPosition",
+      "map": {
+        "AP": 0.0,
+        "PA": 0.0,
+        "LAT": 90.0,
+        "LL": 90.0,
+        "RL": 90.0,
+        "LLAT": 90.0,
+        "RLAT": 90.0,
+        "LATERAL": 90.0
+      },
+      "default": null
+    },
+    "gantry_deg": null
+  },
+  "device": {
+    "make": {
+      "dicom": "Manufacturer"
+    },
+    "model": {
+      "dicom": "ManufacturerModelName"
+    },
+    "detector": {
+      "dicom": "DetectorType"
+    },
+    "kvp": {
+      "dicom": "KVP"
+    },
+    "mas": {
+      "dicom": "mAs"
+    }
+  },
+  "modality": "dx",
+  "device_class": "film",
+  "split": "train",
+  "labels": null,
+  "synthetic": false,
+  "px_mm": {
+    "dicom": "ImagerPixelSpacing",
+    "default": null
+  },
+  "notes": "Held complete on the grid (8,389 train and 2,077 test DICOM of 4,000 and 1,000 studies), covered by WSU IRB HPR 2026-330 under the PhysioNet credentialed agreement. Layout from the PhysioNet page, read 2026-10-21 (#44): train_images/<image_id>.dicom, test_images/<image_id>.dicom, annotations/train.csv and test.csv with image_id, series_id, study_id (hashes of the DICOM UIDs), rad_id, lesion_type and a box. The person is the header's PatientID where it holds a value, else its StudyInstanceUID, so the identity level is the study wherever the release blanked the patient; the publisher's own train and test folders are both banked and the person hash splits them. The lesion boxes are not level labels and are not banked."
+}
