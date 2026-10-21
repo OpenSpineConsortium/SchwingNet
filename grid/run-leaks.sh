@@ -71,7 +71,9 @@ submit() {  # submit [sbatch options...] SCRIPT: prints the job id; a dry run pr
   echo "$out" | tail -n 1 | cut -d';' -f1
 }
 j1=$(submit --array=0-$((count - 1))%"$CONCURRENCY" --export=ALL "$REPO/grid/04-leaks.sbatch") || exit 1
-j2=$(submit --dependency=afterany:"$j1" --export=ALL "$REPO/grid/05-leaks-join.sbatch") || exit 1
+# Both or neither: an array whose join was refused would write fingerprints nobody reads.
+j2=$(submit --dependency=afterany:"$j1" --export=ALL "$REPO/grid/05-leaks-join.sbatch") \
+  || { "${SCANCEL:-scancel}" "$j1" && echo "cancelled the fingerprint array $j1, since its join was refused" >&2; exit 1; }
 echo "$(date '+%F %T') leaks fingerprint=$j1 join=$j2 shards=$count new=${NEW:-none} run=$RUN pydrv=$PYDRV" \
   | tee -a "$REPO/grid/LAST_RUN.txt"
 echo "submitted: 4 fingerprint array $j1 ($count tasks, $CONCURRENCY at a time) -> 5 join $j2 (afterany)"

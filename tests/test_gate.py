@@ -23,13 +23,16 @@ ENVS = ("default", "train-cpu", "train-gpu", "telemetry")
 
 FAKES = {
     # one job id per call, counting from 101, each call's arguments and dependency-bearing variables logged
+    # a call whose arguments hold the text of $FAKE/refuse is refused, as a busy controller refuses one
     "sbatch": """#!/bin/bash
+if [ -s "$FAKE/refuse" ] && [[ "$*" == *"$(cat "$FAKE/refuse")"* ]]; then echo "Socket timed out" >&2; exit 1; fi
 n=$(( $(wc -l < "$FAKE/sbatch.log" 2>/dev/null || echo 0) + 101 ))
 echo "$* | DEPEND=${DEPEND:-} FETCH_ARGS=${FETCH_ARGS:-}" >> "$FAKE/sbatch.log"
 echo "$n"
 """,
     "squeue": """#!/bin/bash
-cat "$FAKE/queue" 2>/dev/null
+[ -f "$FAKE/squeue_fails" ] && { echo "slurm_load_jobs error: Socket timed out" >&2; exit 1; }
+cat "$FAKE/queue" 2>/dev/null || true
 """,
     "sacct": """#!/bin/bash
 echo "101|COMPLETED|00:01:00|0:0|node1"
@@ -126,19 +129,25 @@ class GateTest(unittest.TestCase):
         done = self.gate("start")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         jobs = self.recorded()
-        for what in ("setup", "weights", "carmlspine", "xr_fetch", "xr_bank", "xr_catalog", "probe", "v1_driver"):
+        for what in ("setup", "weights", "carmlspine", "catalog", "xr_fetch", "xr_bank", "xr_catalog", "probe", "v1_driver"):
             self.assertIn(what, jobs, done.stdout)
         self.assertTrue(any(what.startswith("dp_") for what in jobs), done.stdout)
-        setup, weights, catalog = jobs["setup"], jobs["weights"], jobs["xr_catalog"]
+        setup, weights, ingest, first = jobs["setup"], jobs["weights"], jobs["carmlspine"], jobs["catalog"]
         self.assertNotIn("--dependency", self.line_of("00-setup.sbatch")[0])
         self.assertIn(f"--dependency=afterok:{setup} ", self.line_of("00-carmlspine.sbatch")[0])
-        self.assertIn(f"--dependency=afterok:{setup},afterany:{jobs['carmlspine']} ", self.line_of("01-fetch.sbatch")[0])
+        # the first catalog after the ingest; the chain's own catalog after its bank and the first
+        catalogs = self.line_of("03-catalog.sbatch")
+        self.assertEqual(len(catalogs), 2, catalogs)
+        self.assertIn(f"--dependency=afterok:{setup},afterany:{ingest} ", catalogs[0])
+        self.assertIn(f"--dependency=afterany:{jobs['xr_bank']},afterany:{first} ", catalogs[1])
+        # the fetch waits on the environments alone, not on the C-ArmLSpine ingest
+        self.assertIn(f"--dependency=afterok:{setup} ", self.line_of("01-fetch.sbatch")[0])
         self.assertIn(f"--dependency=afterany:{jobs['xr_fetch']} ", self.line_of("02-bank-ingest.sbatch")[0])
         # X-ray before CT: the first platform job waits on the X-ray fetch
         self.assertIn(f"--dependency=afterany:{jobs['xr_fetch']} ", self.line_of("platform-fetch.sbatch")[0])
         self.assertIn("PART=probe", self.line_of("latency-sweep.sbatch")[0])
         v1 = self.line_of("v1-driver.sbatch")[0]
-        self.assertIn(f"--dependency=afterok:{catalog},afterok:{setup},afterok:{weights} ", v1)
+        self.assertIn(f"--dependency=afterok:{first},afterok:{ingest},afterok:{setup},afterok:{weights} ", v1)
         self.assertIn("--kill-on-invalid-dep=yes", v1)
         # the stages run their Python through the container's shim
         self.assertIn("pydrv=" + str(self.repo / "grid" / "bin" / "train-cpu-python"), (self.repo / "grid" / "LAST_RUN.txt").read_text(encoding="utf-8"))
@@ -153,8 +162,9 @@ class GateTest(unittest.TestCase):
         self.assertNotIn("weights", jobs)
         self.assertEqual(self.line_of("00-setup.sbatch") + self.line_of("00-weights.sbatch"), [])
         self.assertNotIn("--dependency", self.line_of("00-carmlspine.sbatch")[0])
-        self.assertIn(f"--dependency=afterany:{jobs['carmlspine']} ", self.line_of("01-fetch.sbatch")[0])
-        self.assertIn(f"--dependency=afterok:{jobs['xr_catalog']} ", self.line_of("v1-driver.sbatch")[0])
+        self.assertNotIn("--dependency", self.line_of("01-fetch.sbatch")[0])
+        self.assertIn(f"--dependency=afterany:{jobs['carmlspine']} ", self.line_of("03-catalog.sbatch")[0])
+        self.assertIn(f"--dependency=afterok:{jobs['catalog']},afterok:{jobs['carmlspine']} ", self.line_of("v1-driver.sbatch")[0])
 
     def test_start_refuses_while_a_job_of_the_gate_is_live_and_stop_cancels_only_its_own(self):
         self.assertEqual(self.gate("start").returncode, 0)
@@ -172,10 +182,11 @@ class GateTest(unittest.TestCase):
     def test_leaks_wait_for_the_catalog(self):
         self.environments_ready()
         self.assertEqual(self.gate("start").returncode, 0)
-        (self.fake / "queue").write_text(self.recorded()["xr_catalog"] + "\n", encoding="utf-8")
         count = len(self.submitted())
-        self.assertEqual(self.gate("leaks").returncode, 75)
-        self.assertEqual(len(self.submitted()), count)
+        for what in ("catalog", "xr_catalog"):
+            (self.fake / "queue").write_text(self.recorded()[what] + "\n", encoding="utf-8")
+            self.assertEqual(self.gate("leaks").returncode, 75, what)
+            self.assertEqual(len(self.submitted()), count)
 
     def test_a_credentialed_fetch_needs_the_netrc(self):
         self.environments_ready()
@@ -228,6 +239,79 @@ class GateTest(unittest.TestCase):
         self.assertIn(f"CATALOG={catalog}", lines[0])
         self.assertIn(f"SWEEPS=case134:bank={self.data}/realxray/carmlspine_sweep", lines[2])
         self.assertTrue({"latency_gpu", "latency_cpu", "latency_sweep"} <= set(self.recorded()))
+
+    def live(self, *jobs):
+        (self.fake / "queue").write_text("".join(f"{job}\n" for job in jobs), encoding="utf-8")
+
+    def state_line(self, job, word, what):
+        state = self.repo / "grid" / "logs" / "GATE_JOBS.txt"
+        state.parent.mkdir(parents=True, exist_ok=True)
+        with state.open("a", encoding="utf-8") as out:
+            out.write(f"{job} {word} {what} 2026-10-21T20:00:00Z\n")
+
+    def test_a_failed_squeue_refuses_every_word_that_submits_or_cancels(self):
+        self.environments_ready()
+        self.weights_ready()
+        (self.fake / "squeue_fails").write_text("", encoding="utf-8")
+        for words in (("start",), ("leaks",), ("v1",), ("latency",), ("fetch", "aariz"), ("stop",)):
+            done = self.gate(*words)
+            self.assertEqual(done.returncode, 75, f"{words}: {done.stdout}")
+            self.assertIn("squeue failed", done.stdout)
+        self.assertEqual(self.submitted(), [])
+        self.assertFalse((self.fake / "scancel.log").exists())
+        self.assertEqual(self.gate("status").returncode, 0)
+
+    def test_a_chain_refused_part_way_is_cancelled_and_ct_waits_for_x_ray(self):
+        (self.fake / "refuse").write_text("02-bank-ingest", encoding="utf-8")
+        done = self.gate("start")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        fetch = self.line_of("01-fetch.sbatch")
+        self.assertEqual(len(fetch), 1)
+        fetch_id = str(101 + self.submitted().index(fetch[0]))
+        self.assertEqual((self.fake / "scancel.log").read_text(encoding="utf-8").split(), [fetch_id])
+        self.assertNotIn("xr_fetch", self.recorded())
+        self.assertEqual(self.line_of("platform-fetch.sbatch"), [])
+        self.assertIn("X-ray before CT", done.stdout)
+        # version 1 never waited on the X-ray chain, so it still goes in
+        self.assertEqual(len(self.line_of("v1-driver.sbatch")), 1)
+
+    def test_a_fetch_waits_for_its_own_set_and_for_the_live_catalogs(self):
+        self.environments_ready()
+        self.netrc.write_text("machine physionet.org login x password y\n", encoding="utf-8")
+        self.netrc.chmod(0o600)
+        self.assertEqual(self.gate("start").returncode, 0)
+        started = self.recorded()
+        self.live(started["xr_fetch"], started["catalog"], started["xr_catalog"])
+        # an open set while start's chain fetches every open set: refused
+        count = len(self.submitted())
+        self.assertEqual(self.gate("fetch", "aariz").returncode, 75)
+        self.assertEqual(len(self.submitted()), count)
+        # a credentialed set goes in, its catalog job after every catalog still live
+        done = self.gate("fetch", "vindr_pcxr")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        catalog = self.line_of("03-catalog.sbatch")[-1]
+        self.assertIn(f"afterany:{started['catalog']},afterany:{started['xr_catalog']} ", catalog)
+        # the same set again while its fetch is live: refused
+        state = (self.repo / "grid" / "logs" / "GATE_JOBS.txt").read_text(encoding="utf-8")
+        own = [line.split()[0] for line in state.splitlines() if line.split()[1:3] == ["fetch:vindr_pcxr", "xr_fetch"]]
+        self.assertEqual(len(own), 1, state)
+        self.live(own[0])
+        count = len(self.submitted())
+        self.assertEqual(self.gate("fetch", "vindr_pcxr").returncode, 75)
+        self.assertEqual(len(self.submitted()), count)
+
+    def test_leaks_and_latency_refuse_while_their_own_jobs_are_live(self):
+        self.environments_ready()
+        self.state_line(500, "leaks", "leaks_fingerprint")
+        self.state_line(600, "latency", "latency_gpu")
+        self.live(500, 600)
+        done = self.gate("leaks")
+        self.assertEqual(done.returncode, 75, done.stdout)
+        self.assertIn("leak checks are still queued", done.stdout)
+        done = self.gate("latency")
+        self.assertEqual(done.returncode, 75, done.stdout)
+        self.assertIn("latency jobs are still queued", done.stdout)
+        self.assertEqual(self.submitted(), [])
 
     def test_status_reads_the_jobs_and_never_fails(self):
         self.assertEqual(self.gate("status").returncode, 0)

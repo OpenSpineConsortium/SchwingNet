@@ -12,11 +12,14 @@
 #                                  changed since the environments were last made
 #                     weights      the ImageNet ResNet-18 file, only when it is not there yet
 #                     carmlspine   C-ArmLSpine's bank as a train and a test shard (afterok setup)
-#                     xr_*         the X-ray chain: fetch, bank and ingest, catalog
-#                                  (afterok setup, afterany carmlspine)
+#                     catalog      the first catalog version, with C-ArmLSpine and the shards
+#                                  already there (afterok setup, afterany carmlspine)
+#                     xr_*         the X-ray chain: fetch (afterok setup), bank and ingest,
+#                                  catalog (afterany bank and the first catalog)
 #                     dp_*         the CT platform fetch, after the X-ray fetch (X-ray before CT)
 #                     probe        what the raw case134 and case39 sweeps are on disk
-#                     v1_driver    the version 1 run (afterok catalog, setup and weights)
+#                     v1_driver    the version 1 run (afterok the first catalog, carmlspine,
+#                                  setup and weights)
 #   status          the gate's jobs and their states, the stage reports, the newest run
 #   leaks           the leak checks over every shard on the volume, once no ingest is queued
 #   v1              the version 1 run alone (again, after a failure)
@@ -77,8 +80,8 @@ WHO=${USER:-$(id -un)}
 commit=$(git -C "$REPO" rev-parse --short HEAD 2>/dev/null || echo unknown)
 echo "schwingnet $word${id:+ $id} at commit $commit on $(hostname) $(date -u '+%F %T') UTC"
 
-record() {  # record ID WHAT: one line of the gate's own job list
-  echo "$1 $word $2 $(date -u '+%FT%TZ')" >> "$STATE"
+record() {  # record ID WHAT: one line of the gate's own job list, the word with its id (fetch:<id>)
+  echo "$1 $word${id:+:$id} $2 $(date -u '+%FT%TZ')" >> "$STATE"
   echo "  $2: job $1"
 }
 submit() {  # submit WHAT [sbatch options...] SCRIPT: the job id on stdout, the record on stderr
@@ -93,20 +96,26 @@ submit() {  # submit WHAT [sbatch options...] SCRIPT: the job id on stdout, the 
 gate_ids() {  # every job id the gate's list names, oldest first
   [ -f "$STATE" ] && awk '{ print $1 }' "$STATE"
 }
+QUEUED=""
+snapshot() {  # what Slurm holds for WHO, read once per word; a failed squeue refuses the word
+  local out
+  if ! out=$("$SQUEUE" -h -u "$WHO" -o '%i' 2>/dev/null); then
+    echo "refusing: squeue failed, so the gate cannot tell which of its jobs are queued or running; send the word again"
+    return 75
+  fi
+  QUEUED=" $(echo "$out" | sed 's/_.*//' | sort -u | tr '\n' ' ') "
+}
 live_ids() {  # the gate's jobs Slurm still holds, queued or running (an array as its base id)
-  local queued
-  queued=" $("$SQUEUE" -h -u "$WHO" -o '%i' 2>/dev/null | sed 's/_.*//' | sort -u | tr '\n' ' ') "
   gate_ids | sort -u | while read -r job; do
-    case "$queued" in *" $job "*) echo "$job" ;; esac
+    case "$QUEUED" in *" $job "*) echo "$job" ;; esac
   done
 }
-live_of() {  # live_of WHAT: the newest live job the gate submitted for WHAT, if any
-  local live job from what
-  live=" $(live_ids | tr '\n' ' ') "
+live_of() {  # live_of WHAT [FROM]: the newest live job the gate submitted for WHAT (from the word FROM)
+  local job from what
   [ -f "$STATE" ] || return 0
   tac "$STATE" | while read -r job from what _; do
-    if [ "$what" = "$1" ]; then
-      case "$live" in *" $job "*) echo "$job"; break ;; esac
+    if [ "$what" = "$1" ] && { [ -z "${2:-}" ] || [ "$from" = "$2" ]; }; then
+      case "$QUEUED" in *" $job "*) echo "$job"; break ;; esac
     fi
   done
 }
@@ -149,7 +158,7 @@ chain() {  # chain DEPEND [run-xray-chain.sh arguments...]: the X-ray chain afte
   local depend=$1 before after
   shift
   before=$(last_line ' fetch=')
-  DEPEND=$depend bash "$REPO/grid/run-xray-chain.sh" "$@" 2>&1 | sed 's/^/  /'
+  DEPEND=$depend CATALOG_DEPEND=${CATALOG_DEPEND:-} bash "$REPO/grid/run-xray-chain.sh" "$@" 2>&1 | sed 's/^/  /'
   [ "${PIPESTATUS[0]}" = 0 ] || return 1
   after=$(last_line ' fetch=')
   [ -n "$after" ] && [ "$after" != "$before" ] || { echo "  the X-ray chain wrote no new line to grid/LAST_RUN.txt"; return 1; }
@@ -164,7 +173,7 @@ v1_driver() {  # v1_driver DEPS: the version 1 run after DEPS
 }
 
 word_start() {
-  local live setup weights_dep="" ingest opts platform job name
+  local live setup weights_dep="" ingest first opts platform job name
   live=$(live_ids | wc -l)
   if [ "$live" -gt 0 ]; then
     echo "refusing: $live of the gate's jobs are still queued or running; 'status' lists them, 'stop' cancels them"
@@ -180,28 +189,32 @@ word_start() {
   fi
   mapfile -t opts < <(depend_on "$setup")
   ingest=$(submit carmlspine ${opts[@]+"${opts[@]}"} --export=ALL 00-carmlspine.sbatch) || return 1
-  # X-ray before CT (the owner's order of 2026-10-21). afterany on the C-ArmLSpine ingest, since its
-  # refusal must not hold back every other set; afterok on setup, since without the environments
-  # every stage would fail.
+  # The first catalog version: C-ArmLSpine and every shard already on the data root, built once the
+  # ingest ends, so the version 1 run starts hours after it and not days after the X-ray fetch. The
+  # X-ray chain's own catalog job builds the next version after it, once its banks are in.
+  mapfile -t opts < <(depend_on "$(joined "$setup" "afterany:$ingest")")
+  first=$(submit catalog ${opts[@]+"${opts[@]}"} --export=ALL 03-catalog.sbatch) || return 1
+  # X-ray before CT (the owner's order of 2026-10-21). The fetch waits on setup alone, since without
+  # the environments every stage would fail; the chain's catalog waits on the first catalog too.
   XR_FETCH="" XR_CATALOG=""
-  chain "$(joined "$setup" "afterany:$ingest")" || echo "  the X-ray chain was not submitted (above); the rest goes on"
-  # The CT platform chain after the X-ray fetch, so the X-ray sets take the network first.
-  platform=$(DEPEND=${XR_FETCH:+afterany:$XR_FETCH} bash "$REPO/grid/run-platform-fetch.sh" 2>&1)
-  [ $? = 0 ] || echo "  the platform fetch refused; the X-ray jobs stand"
-  echo "$platform" | sed -n '/^Not submitted/q; p' | sed 's/^/  /'
-  echo "$platform" | sed -n 's/^\([a-z0-9_]*\): job \([0-9][0-9]*\).*/\2 \1/p' | while read -r job name; do
-    record "$job" "dp_$name"
-  done
+  if CATALOG_DEPEND="afterany:$first" chain "$setup"; then
+    # The CT platform chain after the X-ray fetch, so the X-ray sets take the network first. Each
+    # job it printed is recorded, a refusal part-way or not, so 'stop' reaches every one.
+    platform=$(DEPEND="afterany:$XR_FETCH" bash "$REPO/grid/run-platform-fetch.sh" 2>&1)
+    [ $? = 0 ] || echo "  the platform fetch refused; the X-ray jobs stand"
+    echo "$platform" | sed -n '/^Not submitted/q; p' | sed 's/^/  /'
+    echo "$platform" | sed -n 's/^\([a-z0-9_]*\): job \([0-9][0-9]*\).*/\2 \1/p' | while read -r job name; do
+      record "$job" "dp_$name"
+    done
+  else
+    echo "  the X-ray chain was not submitted (above), so the CT platform chain is not either (X-ray before CT); 'stop', then 'start' again"
+  fi
   # The probe reads what the sweeps are on disk with the node's own python3; it needs nothing above.
   bash "$REPO/grid/run-latency-sweep.sh" --probe 2>&1 | sed 's/^/  /'
   awk '$1 == "probe" { print $NF }' "$REPO/grid/LAST_LATENCY.txt" 2>/dev/null | while read -r job; do record "$job" probe; done
-  if [ -n "$XR_CATALOG" ]; then
-    v1_driver "$(joined "afterok:$XR_CATALOG" "$setup" "$weights_dep")" || return 1
-  elif catalog_ready; then
-    v1_driver "$(joined "$setup" "$weights_dep")" || return 1
-  else
-    echo "  v1_driver: not submitted, since no catalog job was queued and no catalog version is there"
-  fi
+  # Version 1 needs C-ArmLSpine (its test part is the frozen persons), the first catalog with its
+  # split check passed, the environments and the weights: afterok on each, so a failure cancels it.
+  v1_driver "$(joined "afterok:$first" "afterok:$ingest" "$setup" "$weights_dep")" || return 1
   echo "submitted. 'status' follows them; 'leaks' once the catalog job has ended; 'latency' once the version 1 run has its checkpoint."
 }
 
@@ -232,11 +245,13 @@ word_status() {
 
 word_leaks() {
   local busy line
-  busy=$( { live_of carmlspine; live_of xr_bank; live_of xr_catalog; } | tr '\n' ' ')
+  busy=$( { live_of carmlspine; live_of catalog; live_of xr_bank; live_of xr_catalog; } | tr '\n' ' ')
   if [ -n "${busy// /}" ]; then
     echo "refusing: an ingest or the catalog is still queued or running (jobs $busy); the leak checks read every shard once they end"
     return 75
   fi
+  busy=$( { live_of leaks_fingerprint; live_of leaks_join; } | tr '\n' ' ')
+  [ -z "${busy// /}" ] || { echo "refusing: the leak checks are still queued or running (jobs $busy)"; return 75; }
   envs_ready || { echo "refusing: the environments are not ready; 'start' makes them first"; return 75; }
   CONCURRENCY=${CONCURRENCY:-32} bash "$REPO/grid/run-leaks.sh" 2>&1 | sed 's/^/  /'
   [ "${PIPESTATUS[0]}" = 0 ] || return 1
@@ -256,7 +271,9 @@ word_v1() {
 }
 
 word_latency() {
-  local run version catalog
+  local run version catalog busy rc
+  busy=$( { live_of latency_gpu; live_of latency_cpu; live_of latency_sweep; } | tr '\n' ' ')
+  [ -z "${busy// /}" ] || { echo "refusing: latency jobs are still queued or running (jobs $busy)"; return 75; }
   envs_ready || { echo "refusing: the environments are not ready; 'start' makes them first"; return 75; }
   run=$(for one in $(ls -1dt "$RUNS"/*/ 2>/dev/null); do
           [ -f "$one/RUN.json" ] && [ -f "$one/train/best.pt" ] && { echo "${one%/}"; break; }
@@ -268,14 +285,16 @@ word_latency() {
   [ -n "$catalog" ] || { echo "refusing: catalog version $version is not under $STORE/versions"; return 2; }
   echo "  run: $run; catalog: $catalog"
   bash "$REPO/grid/run-latency-sweep.sh" --catalog "$catalog" "$run" --sweep "case134:bank=$SWEEP_BANK" 2>&1 | sed 's/^/  /'
-  [ "${PIPESTATUS[0]}" = 0 ] || return 1
+  rc=${PIPESTATUS[0]}
+  # Every job the script submitted is recorded, a refusal part-way or not, so 'stop' reaches it.
   awk '{ print $NF, "latency_" $1 }' "$REPO/grid/LAST_LATENCY.txt" 2>/dev/null | while read -r job what; do
     record "$job" "$what"
   done
+  [ "$rc" = 0 ] || return 1
 }
 
 word_fetch() {
-  local section setup args=(--only "$id")
+  local section setup busy waits="" one args=(--only "$id")
   section=$(awk -v id="$id" '
     /"credentialed": \[/ { cred = 1 }
     index($0, "\"id\": \"" id "\"") { print (cred ? "credentialed" : "open"); exit }' "$REPO/grid/fetch-xray.json")
@@ -287,9 +306,17 @@ word_fetch() {
     grep -q 'physionet\.org' "$NETRC" || { echo "refusing: ~/.netrc has no physionet.org line"; return 2; }
     args+=(--credentialed)
   fi
-  [ -z "$(live_of xr_catalog)" ] || echo "  note: an X-ray chain is still live; this fetch's catalog job runs after its own bank job"
+  # One fetch of a set at a time: two would resume the same .part files at once. start's chain
+  # fetches every open set, so an open id waits for it too.
+  busy=$(live_of xr_fetch "fetch:$id")
+  [ "$section" = credentialed ] || busy=$busy$(live_of xr_fetch start)
+  [ -z "$busy" ] || { echo "refusing: a fetch that holds $id is still queued or running (job $busy)"; return 75; }
+  # One catalog build at a time: this chain's catalog job waits for every one still live.
+  for one in $(awk '$3 == "catalog" || $3 == "xr_catalog" { print $1 }' "$STATE" 2>/dev/null | sort -u); do
+    case "$QUEUED" in *" $one "*) waits=$(joined "$waits" "afterany:$one") ;; esac
+  done
   setup=$(setup_dependency) || return 1
-  chain "$setup" "${args[@]}"
+  CATALOG_DEPEND=$waits chain "$setup" "${args[@]}"
 }
 
 word_stop() {
@@ -300,6 +327,9 @@ word_stop() {
   "$SCANCEL" $live && echo "cancelled: $live"
 }
 
+if [ "$word" != status ]; then
+  snapshot || { echo "schwingnet $word: exit 75"; exit 75; }
+fi
 case "$word" in
   start) word_start ;;
   status) out=$(word_status); head -n 200 <<< "$out" ;;

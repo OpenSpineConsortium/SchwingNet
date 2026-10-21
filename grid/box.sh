@@ -7,7 +7,8 @@
 # grid-apptainer-module-works note measured building unprivileged on a compute node with the
 # module apptainer/1.2.2. grid/00-setup.sbatch builds the sandbox once, on the lab volume.
 # Bound: the home folder (Apptainer's default), the lab volume and /dev/shm; on a node Slurm gave a
-# GPU, --nv brings the host's driver in. pixi (~/.pixi/bin) leads the container's PATH, and CPU
+# GPU, --nv brings the host's driver in. SchwingNet's own pixi (the lab volume's
+# tools/pixi-0.81.0/bin, which grid/00-setup.sbatch fills) leads the container's PATH, and CPU
 # nodes tell pixi the CUDA the lock was solved for, since the platform asks for one.
 # Inside the container already, or with SCHWINGNET_NATIVE=1, the command runs as it is.
 set -uo pipefail
@@ -36,6 +37,6 @@ if [ -n "${CUDA_VISIBLE_DEVICES:-}${SLURM_JOB_GPUS:-}" ]; then
 else
   export CONDA_OVERRIDE_CUDA=${CONDA_OVERRIDE_CUDA:-12.4}
 fi
-export APPTAINERENV_PREPEND_PATH="$HOME/.pixi/bin"
+export APPTAINERENV_PREPEND_PATH=${SCHWINGNET_PIXI_BIN:-$LAB/go2432/tools/pixi-0.81.0/bin}
 export PIXI_CACHE_DIR=${PIXI_CACHE_DIR:-$LAB/go2432/.cache/pixi}
 exec "$APPTAINER" exec "${opts[@]}" "$SANDBOX" "$@"

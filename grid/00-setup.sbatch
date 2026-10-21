@@ -8,8 +8,10 @@
 #SBATCH --time=06:00:00
 #SBATCH --output=logs/%x_%j.out
 # The pixi environments for every SchwingNet job on the grid (issue #53), made once per pixi.lock:
-#   1. pixi 0.81.0 into ~/.pixi/bin, its release asset checked against the sha256 this repository
-#      measured (.claude/hooks/beethoven-qa-session-start.sh holds the same pair);
+#   1. pixi 0.81.0 into the lab volume's tools/pixi-0.81.0/bin, its release asset checked against
+#      the sha256 this repository measured (.claude/hooks/beethoven-qa-session-start.sh holds the
+#      same pair); a folder of SchwingNet's own, so a pixi of another project's in ~/.pixi is never
+#      replaced;
 #   2. the container (grid/box.sh): a sandbox built from docker://node:22-bookworm on the lab volume,
 #      unless it is there, since the nodes' glibc 2.17 cannot run what pixi.lock holds;
 #   3. .pixi on the lab volume, a link from the checkout, so the environments and pixi's cache sit
@@ -25,6 +27,7 @@ OWN=$LAB/go2432
 SANDBOX=${SCHWINGNET_SANDBOX:-$OWN/containers/schwingnet-bookworm}
 IMAGE=${SCHWINGNET_IMAGE:-docker://node:22-bookworm}
 PIXI_VERSION=0.81.0
+PIXI_BIN=${SCHWINGNET_PIXI_BIN:-$OWN/tools/pixi-$PIXI_VERSION/bin}
 PIXI_SHA256=248510f5f75460a2ae4ec62d761e15c0191dc35db3b1da6f82d9f17c6017051d
 ENVS="default train-cpu train-gpu telemetry"
 REPORT=logs/00-setup-STAGE-REPORT.md
@@ -43,15 +46,15 @@ report "commit $(git -C "$REPO" rev-parse --short HEAD 2>/dev/null); node glibc 
 report "home: $(df -h "$HOME" 2>/dev/null | tail -n 1 | awk '{ print $4 " free of " $2 }'); lab volume: $(df -h "$LAB" 2>/dev/null | tail -n 1 | awk '{ print $4 " free of " $2 }')"
 
 # 1. pixi
-if "$HOME/.pixi/bin/pixi" --version 2>/dev/null | grep -q "$PIXI_VERSION"; then
-  report "pixi $PIXI_VERSION: already in ~/.pixi/bin"
+if "$PIXI_BIN/pixi" --version 2>/dev/null | grep -q "$PIXI_VERSION"; then
+  report "pixi $PIXI_VERSION: already in $PIXI_BIN"
 else
-  mkdir -p "$HOME/.pixi/bin"
+  mkdir -p "$PIXI_BIN"
   url="https://github.com/prefix-dev/pixi/releases/download/v${PIXI_VERSION}/pixi-x86_64-unknown-linux-musl"
   curl -fsSL -o "$scratch/pixi" "$url" || fail "could not fetch pixi $PIXI_VERSION from $url"
   echo "$PIXI_SHA256  $scratch/pixi" | sha256sum --status -c - || fail "the pixi fetched is not the one this repository measured (sha256 differs); nothing installed"
-  chmod 755 "$scratch/pixi" && mv "$scratch/pixi" "$HOME/.pixi/bin/pixi" || fail "could not place pixi in ~/.pixi/bin"
-  report "pixi $PIXI_VERSION: fetched, sha256 matched, placed in ~/.pixi/bin"
+  chmod 755 "$scratch/pixi" && mv "$scratch/pixi" "$PIXI_BIN/pixi" || fail "could not place pixi in $PIXI_BIN"
+  report "pixi $PIXI_VERSION: fetched, sha256 matched, placed in $PIXI_BIN"
 fi
 
 # 2. the container
