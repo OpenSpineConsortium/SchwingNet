@@ -72,6 +72,9 @@ pillow = ">=10"
 numpy = ">=1.26"
 matplotlib = ">=3.8"
 metaflow = ">=2.12"
+# The ONNX export and its parity check (#13): every stage is exported and its outputs compared
+# with PyTorch's on the witness frames before a latency number is written for it.
+onnx = ">=1.16"
 # Reads the DICOM X-ray sets (LUMOS, VinDr) in the bank stage, tools/bank.py (#44).
 pydicom = ">=2.4"
 # The decoders pydicom hands a compressed pixel array to (JPEG baseline, lossless and LS,
@@ -83,10 +86,12 @@ wandb = ">=0.18"
 
 [feature.cpu.dependencies]
 pytorch-cpu = ">=2.3"
+onnxruntime = { version = ">=1.18", build = "*cpu*" }
 
 [feature.cuda.dependencies]
 pytorch = { version = ">=2.3", build = "cuda*" }
 cuda-version = ">=12.4"
+onnxruntime = { version = ">=1.18", build = "*cuda*" }
 
 
 # W&B alone, for the flow's push of a step's offline run from a login node with no GPU (#12).

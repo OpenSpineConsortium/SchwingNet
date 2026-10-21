@@ -1,0 +1,15 @@
+{
+ "runtime": "onnxruntime",
+ "device": "cpu",
+ "threads": 4,
+ "reference": "torch on the CPU, float32",
+ "onnx_sha256": "0cf060843c9c7d2b9d47d6f96d66d9804a220fe2e68b06b1cbd36602aeb7f160",
+ "checkpoint_sha256": "f1db2e5b0ca7a5e08fa605240249970a39af7e53dba847621dd9147ac29ffb4e",
+ "part": "validation",
+ "crops": 64,
+ "persons": 5,
+ "max_abs_probability_difference": 1.9073486328125e-06,
+ "labels_equal": true,
+ "tolerance": 1e-05,
+ "passed": true
+}
