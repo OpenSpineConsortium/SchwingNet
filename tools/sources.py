@@ -50,6 +50,8 @@ file. Counts are the record's; a count the record does not state is left out, an
 means the record is silent. The fields a grid job fills at sample level (`measured`) are empty until
 the owner gives the word and the number for the jobs, and print after the record's counts once filled.
 The closing section is prose, and every count in it is read from the record it names.
+How each source is obtained again, with the manifest records behind it, the links it came from, the fetch
+command and the checks, is docs/research/datasets-reproduce.md.
 
 Reach: HAVE = on the grid now; GET = public or by request, not yet fetched; GATED = behind a data use
 agreement, an application or a login the project does not hold; EMBARGOED = released on a date;
