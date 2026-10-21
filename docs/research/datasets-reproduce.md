@@ -434,9 +434,9 @@ registry record holds no such field.
     - on the grid: `/rs/rs_grp_oschome/go2432/data/fluoro_cine_requests_2026_09_26`
     - licence: request / DUA per source; access: request
 
-### Radiopaedia fluoroscopy cases (`radiopaedia`, GATED)
+### Radiopaedia spine cases (`radiopaedia`, GATED)
 
-- Registry: link https://radiopaedia.org/licence; grid path none; counts cases 7.
+- Registry: link https://radiopaedia.org/licence; grid path none; counts none.
 - Manifest records (request 8 is the application text; nothing held, nothing scraped):
   - `fluoro_cine_requests_2026_09_26`: Fourteen fluoroscopy cine requests drafted 2026-09-26 (Bournemouth DICOM cine, Maastricht, Bern, Pittsburgh, ...); kind request, family D; route `manual`, mode manual; status requested_not_sent.
     - acquired: not acquired; request drafted (2026-09-26)
