@@ -268,3 +268,38 @@ def test_the_command_line_is_checked_before_the_bank_is_read(
     (bank / "images" / "train" / "notes.txt").write_text("not a frame", encoding="utf-8")
     assert ingest.main(base) == 0
     assert json.loads(capsys.readouterr().out)["frames_read"] == 4
+
+
+def test_one_bank_whose_split_mixes_frozen_persons_becomes_a_test_and_a_train_shard(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    ingest = load("ingest")
+    bank, root = bank_of(tmp_path), tmp_path / "grid" / "carmlspine"
+    frame(bank, "train", "case121_f1", "case121", 6, [box("L5")])
+    assert ingest.main(argv(bank, root, "train", "")) == 1
+    assert "would hold the frozen test persons" in capsys.readouterr().err
+    assert ingest.main(argv(bank, root, "train", "") + ["--persons", "unfrozen"]) == 0
+    train = json.loads(capsys.readouterr().out)
+    assert train["kind"] == "train" and train["persons"] == 3 and train["persons_left_out"] == 2
+    assert train["frozen_persons_not_seen"] == [
+        "carmlspine:case134",
+        "carmlspine:case136",
+        "carmlspine:case39",
+    ]
+    assert ingest.main(argv(bank, root, "test", "") + ["--persons", "frozen"]) == 0
+    test = json.loads(capsys.readouterr().out)
+    assert test["kind"] == "test" and test["persons"] == 2 and test["frames_kept"] == 2
+    assert len(list(root.glob("shards/*/MANIFEST.json"))) == 2
+
+
+def test_the_persons_filter_never_hides_the_same_bytes_under_two_persons(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    ingest = load("ingest")
+    bank, root = bank_of(tmp_path), tmp_path / "grid" / "carmlspine"
+    frame(bank, "train", "case121_f1", "case121", 1, [box("L5")])
+    assert ingest.main(argv(bank, root, "train", "") + ["--persons", "unfrozen"]) == 1
+    assert "under another person" in capsys.readouterr().err
+    assert ingest.main(argv(bank, root, "test", "test") + ["--persons", "unfrozen"]) == 1
+    assert "leaves no frame of the bank" in capsys.readouterr().err
+    assert not root.exists()

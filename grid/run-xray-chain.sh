@@ -90,9 +90,18 @@ submit() {  # submit [sbatch options...] SCRIPT: prints the job id; a dry run pr
 # The stages read their settings from the environment (--export=ALL), never from --export's
 # own list, whose comma-separated grammar would cut an --only list of ids at its first comma.
 export FETCH_ARGS ONLY="$ONLY_IDS"
-j1=$(submit --export=ALL "$REPO/grid/01-fetch.sbatch") || exit 1
-j2=$(submit --dependency=afterany:"$j1" --export=ALL "$REPO/grid/02-bank-ingest.sbatch") || exit 1
-j3=$(submit --dependency=afterany:"$j2" --export=ALL "$REPO/grid/03-catalog.sbatch") || exit 1
+# DEPEND (sbatch's dependency grammar, as grid/gate.sh gives it) holds stage 1 back until the jobs
+# it names allow; a dependency that can never be met cancels the stage instead of stranding it.
+first=()
+[ -z "${DEPEND:-}" ] || first=(--dependency="$DEPEND" --kill-on-invalid-dep=yes)
+# All three or none: a stage refused after the first cancels what was submitted, so no fetch runs
+# that nothing recorded and no later chain waits on half of this one.
+undo() { "${SCANCEL:-scancel}" "$@" && echo "cancelled what was submitted before the refusal: $*" >&2; exit 1; }
+j1=$(submit ${first[@]+"${first[@]}"} --export=ALL "$REPO/grid/01-fetch.sbatch") || exit 1
+j2=$(submit --dependency=afterany:"$j1" --export=ALL "$REPO/grid/02-bank-ingest.sbatch") || undo "$j1"
+# CATALOG_DEPEND adds to stage 3's wait (grid/gate.sh names its first catalog job there, so two
+# catalog builds never run at once and the C-ArmLSpine ingest never holds back the fetch).
+j3=$(submit --dependency=afterany:"$j2"${CATALOG_DEPEND:+,$CATALOG_DEPEND} --export=ALL "$REPO/grid/03-catalog.sbatch") || undo "$j1" "$j2"
 {
   echo "$(date '+%F %T') fetch=$j1 bank=$j2 catalog=$j3 only=${ONLY:-all} credentialed=$CRED size_gb=$total_gb pydrv=$PYDRV"
 } | tee -a "$REPO/grid/LAST_RUN.txt"

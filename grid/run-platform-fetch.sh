@@ -107,7 +107,10 @@ previous=""; ids=""; n=0
 while IFS='|' read -r id route size licence access args extra; do
   [ -n "$id" ] || continue
   wanted "$id" || continue
-  dep=""; [ -z "$previous" ] || dep="--dependency=afterany:$previous"
+  # The first job waits on DEPEND where grid/gate.sh gives one (the X-ray fetch: X-ray before CT);
+  # each later one on the job before it.
+  dep=""; [ -z "${DEPEND:-}" ] || dep="--dependency=$DEPEND"
+  [ -z "$previous" ] || dep="--dependency=afterany:$previous"
   # The job reads its settings from the environment: --export's own comma grammar would cut the
   # arguments, so each is exported for this one submission and unset after.
   export ID="$id" ROUTE="$route" ARGS="$args" LICENCE="$licence" ACCESS="$access"

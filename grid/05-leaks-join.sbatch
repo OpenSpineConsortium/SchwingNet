@@ -31,7 +31,7 @@ while IFS= read -r shard; do
   [ -n "$shard" ] || continue
   files+=("$LEAKS_OUT/fingerprints/$(basename "$(dirname "$(dirname "$shard")")")__$(basename "$shard").jsonl")
 done < "$LEAKS_LIST"
-args=(join --fingerprints "${files[@]}" --expect "$LEAKS_LIST" --declared "$DECLARED" --out "$LEAKS_RUN"
+args=(join --fingerprints ${files[@]+"${files[@]}"} --expect "$LEAKS_LIST" --declared "$DECLARED" --out "$LEAKS_RUN"
       --workers "${SLURM_CPUS_PER_TASK:-1}")
 [ -z "$NEW" ] || args+=(--new "$NEW")
 out=$("$PYDRV" "$REPO/tools/leaks.py" "${args[@]}" 2>&1)

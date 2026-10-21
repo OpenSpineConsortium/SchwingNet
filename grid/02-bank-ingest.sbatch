@@ -60,7 +60,7 @@ for recipe in "$BANKS"/*.json; do
   fi
   echo "$out"
   if ! out=$("$PYDRV" "$REPO/tools/ingest.py" run --bank "$bank" --source "$id" --kind train --split train \
-        --date "$DATE" --code-commit "$COMMIT" --person-prefix "$prefix" --supersedes latest "${root_args[@]}" 2>&1); then
+        --date "$DATE" --code-commit "$COMMIT" --person-prefix "$prefix" --supersedes latest ${root_args[@]+"${root_args[@]}"} 2>&1); then
     echo "$out"; echo "- $id: ingest refused: $(echo "$out" | tail -n 1)" >> "$REPORT"; failed=1; continue
   fi
   echo "$out"
