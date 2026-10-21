@@ -10,7 +10,11 @@
 #
 #   bash grid/run-samples.sh                     # submit, printing "<step>: job <id>" lines
 #   bash grid/run-samples.sh report              # the newest whole run's MANIFEST.md
-#   SBATCH=echo bash grid/run-samples.sh         # dry run
+#   SBATCH=echo bash grid/run-samples.sh         # dry run; any other SBATCH (a test's fake) is called
+#
+# On the login node it runs bash, sbatch and coreutils only. The index holds DICOM header values and
+# sidecar rows that can be PHI, so every file it writes is the owner's alone (umask 077, the run
+# folders mode 700); only MANIFEST.md, counts per source, goes on to grid/logs and the gate's status.
 #   OUTSIDE_SLURM=1 DATA_ROOT=<root> bash grid/run-samples.sh   # off the grid: every step here
 #
 # ALL_SLICES=1 writes every slice's whole DICOM header, not one per series.
@@ -39,7 +43,8 @@ if [ "${1:-}" = report ]; then
 fi
 [ $# -eq 0 ] || { echo "refusing: run-samples.sh takes no argument but report"; exit 64; }
 
-mkdir -p "$SAMPLES_OUT" "$REPO/grid/logs"
+umask 077
+mkdir -p "$SAMPLES_OUT" "$REPO/grid/logs" && chmod 700 "$SAMPLES_OUT"
 if [ -n "${RESUME:-}" ]; then
   RUN=$SAMPLES_OUT/$RESUME
   [ -f "$RUN/units.tsv" ] || { echo "refusing: $RUN has no units.tsv to resume"; exit 2; }
@@ -58,7 +63,7 @@ fi
 
 submit() {  # submit [sbatch options...] -- STEP: prints the job id; a dry run prints the line instead
   local out
-  if [ "$SBATCH" != sbatch ]; then
+  if [ "$SBATCH" = echo ]; then
     echo "would submit: sbatch --parsable -D $REPO/grid $*" >&2; echo "DRY$RANDOM"; return 0
   fi
   out=$("$SBATCH" --parsable -D "$REPO/grid" "$@") || { echo "sbatch failed: $out" >&2; return 1; }
