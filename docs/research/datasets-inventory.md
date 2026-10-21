@@ -22,18 +22,18 @@ NONE = does not exist publicly; EXCLUDED = held or seen and set aside for a stat
 111 sources in the registry.
 
 ```
-HAVE      #########...............................  26
-GET       #######################.................  65
+HAVE      ##########..............................  27
+GET       #######################.................  63
 GATED     #####...................................  15
 EMBARGOED ........................................   1
-NONE      ........................................   1
+NONE      #.......................................   2
 EXCLUDED  #.......................................   3
 ```
 
 | Table | HAVE | GET | GATED | EMBARGOED | NONE | EXCLUDED | All |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Real intraoperative fluoroscopy, stills (the target domain) | 5 | 4 | 0 | 0 | 1 | 1 | 11 |
-| Video and cine (consecutive frames) | 2 | 22 | 1 | 0 | 0 | 0 | 25 |
+| Real intraoperative fluoroscopy, stills (the target domain) | 5 | 3 | 0 | 0 | 2 | 1 | 11 |
+| Video and cine (consecutive frames) | 3 | 21 | 1 | 0 | 0 | 0 | 25 |
 | Real projections with a registered CT (the COBRA kind) | 3 | 1 | 0 | 1 | 0 | 0 | 5 |
 | Plain films (lateral or AP radiographs) | 8 | 12 | 7 | 0 | 0 | 2 | 29 |
 | CT collections and their renders (3D truth, synthetic 2D) | 8 | 24 | 7 | 0 | 0 | 0 | 39 |
@@ -48,10 +48,10 @@ EXCLUDED  #.......................................   3
 | FluoroCap literature panels | 29,500 figure panels harvested from the literature; 72.8 percent are reproductions with no pixel residual | pseudo, no patient key | HAVE | out of training by directive D1; a test set at most; still inside the old fold banks | panels 29,500, size gb 316 | the publishers' (figures) | not recorded |
 | Geneva hip phantom (BV Pulsera) | 116 frames of one phantom on a device no model saw | pelvis | HAVE | the unseen-device test | frames 116 | not recorded | not recorded |
 | Ljubljana 2D-3D-GS (PIXIUM 4600) | 18 frames of one cadaver, L1 to L5, with CT and pose | yes, up to 90 level boxes possible from the pose | HAVE | parameters read, no truth bank built; read-only under its ND licence | frames 18 | ND (read-only) | not recorded |
-| Balgrist ex-vivo lumbar CT plus C-arm (Jecklin) | cadaver lumbar CT with real C-arm frames | yes, from the CT | GET | request drafted 2026-09-21, never sent; the authors' group is ROCS (Research in Orthopedic Computer Science, Balgrist, head Philipp Fuernstahl), whose group address is rocs@balgrist.ch; the paper is arXiv:2401.16027 (Medical Image Analysis 2024); the set is restricted for pending patents |  | not recorded | [link](https://rocs.balgrist.ch/en/contact) |
 | cm_spine: one Google Drive file described only as 'intraoperative' (empty download) | one Google Drive file, id 1r9wX1802gkU4-EQHMMlyAlEiWXGWLhhJ, described only as 'intraoperative' by download_sources.py's get_cm_spine(); the download was empty and what the file is has never been established | unknown | GET | empty in the data platform at bf1432f; the owner's hand: gdown into a scratch directory, inspect, then decide |  | not recorded | not recorded |
 | LUMOS (Zhejiang University) | 803 living patients: 1,620 lumbar AP or lateral radiographs and 280 non-contrast lumbar CTs, anonymised DICOM and NPY; diagnostic radiography, not C-arm fluoroscopy; no pose given | levels readable from the paired CT after a 2D/3D registration | GET | open on Zenodo; never fetched; still open on Zenodo at the sweep of 2026-10-21, never fetched; queued in the fetch chain of #38 | patients 803, radiographs 1,620, ct volumes 280, size gb 46.4 | not recorded on the card; to confirm on the record | [link](https://zenodo.org/records/18173664) |
 | SX-Stitch intraoperative C-arm series (Li 2024, PUMCH) | intraoperative C-arm series translated along the spine for stitching | levels present in the series | GET | request drafted 2026-09-19, never sent; the paper's data statement says no datasets, so success is unlikely |  | not recorded | [link](https://arxiv.org/abs/2409.05681) |
+| Balgrist ex-vivo lumbar CT plus C-arm (Jecklin) | cadaver lumbar CT with real C-arm frames | yes, from the CT | NONE | refused 2026-10-21 05:52 UTC: Philipp Fuernstahl answered the letter of 2026-10-20 that the ex-vivo dataset was licensed to a startup and is proprietary, so it cannot be shared; the resend through the ROCS contact form is dropped |  | not recorded | [link](https://rocs.balgrist.ch/en/contact) |
 | Real cervical or thoracic intraoperative frames with level truth | the gap: no public set of real cervical or thoracic C-arm frames with named levels | none public | NONE | your own captures with a preoperative CT are the way (the plan's section 3.5) |  | not recorded | not recorded |
 | SpineSAC | 5,490 sawbone frames from six C-arms | none: the masks are empty on sawbone CT | EXCLUDED | 0 frames scored; no licence stated | frames 5,490 | none stated | [link](https://github.com/IGRS-Imaging/SpineSAC) |
 
@@ -60,6 +60,7 @@ EXCLUDED  #.......................................   3
 | Source | What it is | Level truth | Reach | Status | Counts | Licence | Link |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | C-ArmLSpine CBCT projection sweeps (case134, case39) | the only confirmed consecutive-frame sequences with a paired volume: raw CBCT projections at quantised gantry angles, 301 XA frames each; rotational, not cranio-caudal | yes: project the CBCT level labels through the known gantry angles | HAVE | the demo's recorded sweep; the 301-frame case134 bank exists (detection only); case39 has no export yet | sweeps 2, projections 602 | CC BY 4.0 | [link](https://zenodo.org/records/22768651) |
+| DysphagiaBank (TalkBank), UNM corpus | lateral swallow videofluoroscopy of about 7 to 53 adults, cervical only, non-commercial, by registration | none named | HAVE | held on the grid since before 2026-10-08 (spine-program 01_carm_level_detection/MANIFEST_GRID.md, ls of 2026-10-08): the UNM corpus, 87 files, 19 GB, fetched after the owner's registration; CC BY-NC-SA, programmatic processing only, no language-model use of its text; never scored |  | CC BY-NC-SA, non-commercial, by registration; no language-model use | [link](https://dysphagia.talkbank.org/) |
 | Public fluoroscopy clips on the grid | clips cut from public video: Bern videos 1 to 4, three PMC videos (PMC10242080, PMC11328828, PMC4852439), three Wikimedia Commons items, the YouTube re-encodes of 28 ids, in folders clips/, youtube/, pmc/, commons/, vimeo/, github/, ajr/, dysphagiabank_unm/; 18 of 70 YouTube entries show live fluoroscopy, 9 of them cervical, one CC-licensed | almost never named; levels burned into a chapter title at best | HAVE | never scored; private tracker screening only, never training or a slide; the YouTube copies are unpermitted until a request is answered; CathAction (cathaction, about 500,000 frames, no DUA) is the larger real-fluoroscopy exposure pool found by the sweep of 2026-10-21 | size gb 262.801, youtube ids 28, live fluoro entries 18, clip folders 20 | mixed: CC BY (Bern, PMC), unlicensed re-encodes (YouTube) | [link](https://pmc.ncbi.nlm.nih.gov/articles/PMC8463391/) |
 | Bournemouth cervical quantitative fluoroscopy (BORDaR 385) | 252 lateral flexion and extension sequences from 63 people at 15 fps, 1024 x 1024 16-bit DICOM; the deposit holds the per-frame vertebral corner tracks (.mat, 24 MB) and no pixels | level-named corner tracks C0 to T1 on every frame (geometry only until the cine arrives) | GET | the tracks are on the grid; the DICOM cine is request 1, drafted, never sent; the letter (request 1) was forwarded to ckaching.cheung@polyu.edu.hk on 2026-10-21 03:57 UTC | sequences 252, people 63, frames per sequence median 301 | CC BY 4.0 (the tracks); README.rtf CC BY-ND | [link](https://bordar.bournemouth.ac.uk/385/) |
 | Bournemouth lumbar quantitative fluoroscopy (Breen 2021) | weight-bearing and recumbent L2 to S1 flexion and extension cine of 127 subjects at 15 fps, 60 degrees at 6 degrees a second; only per-frame angles are public on OSF | lumbar, if corner templates exist as they do for the cervical set | GET | the only confirmed lumbar cine; asked for in request 1; the letter (request 1) was forwarded to ckaching.cheung@polyu.edu.hk on 2026-10-21 03:57 UTC | subjects 127 | not recorded (OSF holds derived tables only) | [link](https://osf.io/a27py/) |
@@ -67,7 +68,6 @@ EXCLUDED  #.......................................   3
 | Coronary angiography sets (CADICA, ARCADE, XCAD, AngioCAD) | real fluoroscopy video with the thoracic spine in the background: CADICA 42 patients DICOM at 10 fps, ARCADE 3,000 images, XCAD 1,747 images, AngioCAD 413 patients; heavy contrast, LAO/RAO rotation | none; thoracic in the background | GET | the only large real thoracic fluoroscopy without a DUA; the thoracic test would be annotated by hand; CADICA (Universidad de Malaga, 42 patients, over 6,000 images), ARCADE (Scientific Data 2024, 3,000 images), XCAD (ICCV 2021, 1,747 images, the link), AngioCAD (413 patients); each set's own licence is read before fetching; CathAction (cathaction, about 500,000 frames, no DUA) is the larger real-fluoroscopy exposure pool found by the sweep of 2026-10-21, with Guide3D (guide3d) beside it | cadica patients 42, arcade images 3,000, xcad images 1,747, angiocad patients 413 | varies by set | [link](https://github.com/AISIGSJTU/SSVS) |
 | DARADIA vertebroplasty video (Kolkata) | a step-by-step percutaneous vertebroplasty under fluoroscopy on YouTube | none named | GET | request 14 drafted, never sent |  | unknown | [link](https://daradia.com/) |
 | DMX Imaging digital motion X-ray | lateral lumbar flexion-extension at 30 frames a second, a commercial practice's YouTube video | none named | GET | request 7 drafted, never sent |  | unknown | [link](https://www.dmxworks.com/) |
-| DysphagiaBank (TalkBank), UNM corpus | lateral swallow videofluoroscopy of about 7 to 53 adults, cervical only, non-commercial, by registration | none named | GET | a registration, not a letter; the count on the corpus page is to be checked when registering |  | non-commercial, by registration | [link](https://dysphagia.talkbank.org/) |
 | Guide3D (ACCV 2024, AIRVLab) | more than 8,700 bi-planar fluoroscopic frames of guidewires in a vascular phantom, two guidewires, varied flow | none; phantom only | GET | found by the sweep of 2026-10-21; not fetched; open per the paper, licence to confirm on the page; bi-planar real fluoroscopy geometry from one device, domain and calibration value only | frames over 8,700 | to confirm on the page | [link](https://airvlab.github.io/guide3d/) |
 | Inselspital Bern dynamic myelography (Piechowiak 2021) | four pulsed fluoroscopy runs at 7.5 frames a second, the detector moved cranially along the spine during tilting: the only overlapping travelling frames found; the published MP4s are on the grid, the native DICOM is not | thoracic (T7/8, T9/10) and one clip at L5/S1, from the captions | GET | the published videos held under CC BY; request 3 for the native DICOM drafted, never sent | videos 4 | CC BY 4.0 (the article's videos); native DICOM available on reasonable request under Swiss law | [link](https://pmc.ncbi.nlm.nih.gov/articles/PMC8463391/) |
 | IRI-VFI: pediatric interventional radiology image sequences (Chongqing) | 95,308 real fluoroscopy images in 1,357 sequences with the lumbar spine in field; pediatric, DSA subtraction frames to be excluded | none | GET | a grain calibration target and an unlabelled pool; 150 to 200 frames would be annotated as a test set; the record is IRI-VFI on IEEE DataPort (doi:10.21227/v4kg-zp42, 1,357 sequences, 95,308 images, angiography, fluoroscopy and subtraction, Children's Hospital of Chongqing Medical University, ChiCTR2200058971); its licence line was not readable from the cloud session | images 95,308, sequences 1,357 | not recorded | [link](https://ieee-dataport.org/documents/iri-vfi-dataset) |
@@ -192,6 +192,7 @@ Every held source with a path the record gives, Ceph under /rs/rs_grp_oschome/go
 | Geneva hip phantom (BV Pulsera) | `/rs/rs_grp_oschome/go2432/data/geneva_hip_src` | frames 116 |
 | Ljubljana 2D-3D-GS (PIXIUM 4600) | `/rs/rs_grp_oschome/go2432/data/ljubljana` | frames 18 |
 | C-ArmLSpine CBCT projection sweeps (case134, case39) | `/rs/rs_grp_oschome/go2432/data/carmlspine (case134/ori, case39/CBCT); /rs/rs_grp_oschome/go2432/data/realxray/carmlspine_sweep` | sweeps 2, projections 602 |
+| DysphagiaBank (TalkBank), UNM corpus | `/rs/rs_grp_oschome/go2432/data/external/fluoro_video/dysphagiabank_unm` |  |
 | Public fluoroscopy clips on the grid | `/rs/rs_grp_oschome/go2432/data/external/fluoro_video/ (manifest.tsv, clips/manifest.json, clips/REPORT.md)` | size gb 262.801, youtube ids 28, live fluoro entries 18, clip folders 20 |
 | COBRA2026 Elekta | `/rs/rs_grp_oschome/go2432/data/cobra2026` | cases 467, in bank 145 |
 | COBRA2026 on the grid, all projections | `/rs/rs_grp_oschome/go2432/data/cobra2026` | cases 692, projections 375,618, size gb 808.615 |
@@ -204,13 +205,6 @@ Every held source with a path the record gives, Ceph under /rs/rs_grp_oschome/go
 ## How to get what is not held
 
 Every source whose reach is GET, GATED or EMBARGOED, with the steps the record gives; a request with a draft number is in spine-program's data_requests folder, written and never sent.
-
-### Balgrist ex-vivo lumbar CT plus C-arm (Jecklin) (GET)
-
-Link: https://rocs.balgrist.ch/en/contact. Licence: not recorded.
-
-1. Send spine-program 01_carm_level_detection/docs/data_requests/balgrist_data_request_2026-09-21.md to the ROCS group address or to the corresponding authors (Jecklin, Fuernstahl) once their addresses are confirmed on the article's first page.
-2. Expect a data transfer agreement through Balgrist and Wayne State, since the set is restricted for pending patents.
 
 ### cm_spine: one Google Drive file described only as 'intraoperative' (empty download) (GET)
 
@@ -270,12 +264,6 @@ Link: https://daradia.com/. Licence: unknown.
 Link: https://www.dmxworks.com/. Licence: unknown.
 
 1. Send request 7 of spine-program 01_carm_level_detection/docs/data_requests/FLUORO_VIDEO_REQUESTS_READY_2026-09-26.md (07_dmx.eml) asking for de-identified lumbar DMX studies.
-
-### DysphagiaBank (TalkBank), UNM corpus (GET)
-
-Link: https://dysphagia.talkbank.org/. Licence: non-commercial, by registration.
-
-1. Register on the TalkBank site for the UNM corpus and accept its non-commercial terms.
 
 ### Guide3D (ACCV 2024, AIRVLab) (GET)
 

@@ -11,7 +11,7 @@
 # bank (tools/bank.py --run) and ingest the bank into a content-hashed shard
 # (tools/ingest.py run, superseding the source's current shard where the bank grew, so a raw
 # copy that came in parts is counted once by the catalog). A recipe still spelled "to confirm", a raw folder not fetched, or a
-# format the bank tool refuses (DICOM until pydicom is locked) is one line in the report and the
+# format the bank tool refuses (a DICOM set run without the train environment) is one line in the report and the
 # loop goes on; the stage exits non-zero at the end when any source failed. PYDRV must hold
 # pydantic, beartype and icontract (the repository's pixi environment). ONLY narrows the loop to
 # a space-separated list of ids. The report is logs/02-bank-ingest-STAGE-REPORT.md. Off the grid
@@ -25,6 +25,9 @@ ONLY=${ONLY:-}
 DATA_ROOT=${DATA_ROOT:-}
 BANKS=${BANKS:-$REPO/grid/banks}
 DATE=$(date '+%F')
+# The bank tool decodes in as many processes as the job has cores (DICOM and JPEG are the slow
+# part); the bank is the same bytes whatever the number (tools/bank.py --workers).
+export BANK_WORKERS=${BANK_WORKERS:-${SLURM_CPUS_PER_TASK:-1}}
 COMMIT=$(git -C "$REPO" rev-parse --short HEAD 2>/dev/null || echo 0000000)
 REPORT=logs/02-bank-ingest-STAGE-REPORT.md
 export PYTHONNOUSERSITE=1 TMPDIR=${TMPDIR_OVERRIDE:-${DATA_ROOT:+$DATA_ROOT/_tmp}}
