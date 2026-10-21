@@ -21,7 +21,7 @@ from typing import Annotated
 
 from beartype import beartype
 from beethoven_qa.contracts import ensure, require
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 HexDigest = Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
 Unit = Annotated[float, Field(ge=0.0, le=1.0)]
@@ -259,6 +259,98 @@ def shard_name(source: str, ingest_date: str, content_hash: str) -> str:
     return f"{source}/{ingest_date}-{content_hash[:12]}"
 
 
+@beartype
+@require(lambda sha256: len(sha256) == 64, "a frame is named by its sha256 hex digest")
+@require(
+    lambda extension: extension != "" and "/" not in extension and "." not in extension,
+    "an extension is a bare word",
+)
+@ensure(lambda result, sha256: result.startswith(sha256[:2] + "/"), "fanned out by the first two")
+@ensure(
+    lambda result, sha256, extension: result == sha256[:2] + "/" + sha256 + "." + extension,
+    "then the whole digest and the extension",
+)
+def frame_path(sha256: str, extension: str) -> str:
+    """Where a frame lives inside its shard: a folder of its first two hex digits, then its digest.
+
+    Two hex digits fan a shard of a million frames into 256 folders of about four thousand, the
+    size a directory listing on CephFS stays quick at, and the name is the content, so the same
+    bytes land in the same place in every shard and a path is checked against its digest by eye.
+    """
+    return f"{sha256[:2]}/{sha256}.{extension}"
+
+
+@beartype
+@require(
+    lambda root: root.startswith("/") and not root.endswith("/"),
+    "a root is an absolute path with no trailing slash",
+)
+@require(
+    lambda name: name.count("/") == 1 and not name.startswith("/") and not name.endswith("/"),
+    "a shard is named source/shard",
+)
+@require(
+    lambda root, name: root.endswith("/" + name.split("/")[0]),
+    "a source's root is the folder named by its id",
+)
+@ensure(lambda result, root: result.startswith(root + "/shards/"), "in the source's shards folder")
+@ensure(lambda result, name: result.endswith("/" + name.split("/")[1]), "named by the shard")
+def shard_folder(root: str, name: str) -> str:
+    """Where a shard lives on the volume: `<data root>/<source>/shards/<date-hash>`.
+
+    The registry's grid_root is the source's own folder, the last segment of which is the
+    source's id, so the data root lists its sources alphabetically by id; one shards folder
+    under it, so the raw copy a source came with and the shards cut from it never mix; and the
+    shard's own name, so the folder is found from the catalog row alone.
+    """
+    return f"{root}/shards/{name.split('/')[1]}"
+
+
+@beartype
+@require(lambda number: number >= 1, "versions count from one")
+@require(
+    lambda content_sha256: len(content_sha256) >= 12 and "/" not in content_sha256,
+    "a content hash gives twelve characters and holds no slash",
+)
+@ensure(
+    lambda result: result.startswith("catalog-") and result.endswith(".sqlite"),
+    "a catalog file, by its name",
+)
+@ensure(lambda result, content_sha256: content_sha256[:12] in result, "named by its content")
+@ensure(lambda result: "/" not in result, "a file name, not a path")
+def version_file_name(number: int, content_sha256: str) -> str:
+    """The file name of one catalog version: its number, zero-padded so names sort, and its hash.
+
+    The number says which came first and the hash says what it is, so a run's artifact (the
+    hash) finds the file and a person's eye finds the latest; a file whose hash does not match
+    its name has been changed, which a read-only file on a read-only mount never is.
+    """
+    return f"catalog-{number:06d}-{content_sha256[:12]}.sqlite"
+
+
+@beartype
+@ensure(
+    lambda result, before, after: set(result[0]) == after - before, "added is what after has new"
+)
+@ensure(
+    lambda result, before, after: set(result[1]) == before - after, "removed is what before lost"
+)
+@ensure(
+    lambda result: all(list(part) == sorted(part) for part in result),
+    "each list sorted, so two runs print the same accounting",
+)
+def changed_keys(
+    before: frozenset[str], after: frozenset[str]
+) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """What one version adds to and removes from its parent, as two sorted lists of keys.
+
+    Shards, persons and sources are accounted this way between versions, the way a table
+    snapshot lists its added and deleted files, so the version log says what moved and not
+    only how much.
+    """
+    return tuple(sorted(after - before)), tuple(sorted(before - after))
+
+
 # What a query reads when it names no part: never the test set, which a query asks for by name.
 DEFAULT_PARTS: tuple[Part, ...] = (Part.TRAIN, Part.VALIDATION)
 
@@ -401,7 +493,7 @@ class Item(BaseModel):
 
     model_config = ConfigDict(frozen=True, extra="forbid", hide_input_in_errors=True)
 
-    path: str = Field(min_length=1, pattern=r"^[^/].*")
+    path: str = Field(pattern=r"^[0-9a-f]{2}/[0-9a-f]{64}\.[a-z0-9]+$")
     sha256: HexDigest
     person: str = Field(min_length=1, pattern=r"^\S.*\S$|^\S$")
     modality: Modality
@@ -412,13 +504,14 @@ class Item(BaseModel):
     acquired: str | None = None
     labels: tuple[Label, ...] = ()
 
-    @field_validator("path")
-    @classmethod
-    def _inside_the_shard(cls, path: str) -> str:
-        """A path stays under its shard: no segment is . or .., so a loader never leaves it."""
-        if any(segment in (".", "..") for segment in path.split("/")):
-            raise ValueError("a frame's path has no . or .. segment")
-        return path
+    @model_validator(mode="after")
+    def _at_its_content_address(self) -> "Item":
+        """A frame's path is frame_path of its own digest, so a path never leaves its shard and
+        a row's path and hash cannot disagree."""
+        expected = frame_path(self.sha256, self.path.rsplit(".", 1)[1])
+        if self.path != expected:
+            raise ValueError(f"the frame is at {self.path} but its digest puts it at {expected}")
+        return self
 
 
 class ShardManifest(BaseModel):
@@ -495,3 +588,45 @@ class FrozenPerson(BaseModel):
 
     person: str = Field(min_length=1, pattern=r"^\S.*\S$|^\S$")
     why: str = Field(min_length=1)
+
+
+class VersionRecord(BaseModel):
+    """One line of a catalog store's VERSIONS.jsonl: what a version is, came from and holds.
+
+    The store is append-only and every version file is read-only, so this line is the one
+    place a version's accounting is written: its parent, when it was written, the shards it
+    added and dropped beside its running totals (the shape of a table snapshot's summary), and
+    its counts per source and part, which are the numbers a result row carries.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    version: int = Field(ge=1)
+    file: str = Field(pattern=r"^catalog-\d{6}-[0-9a-f]{12}\.sqlite$")
+    sha256: HexDigest
+    parent: HexDigest | None = None
+    schema_version: int = Field(ge=1)
+    code_commit: str | None = None
+    as_of: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
+    written_at: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
+    reason: str = Field(min_length=1)
+    bytes: int = Field(ge=1)
+    shards: tuple[str, ...] = ()
+    added_shards: tuple[str, ...] = ()
+    removed_shards: tuple[str, ...] = ()
+    frames: int = Field(ge=0)
+    persons: int = Field(ge=0)
+    frames_by_source_and_part: dict[str, int] = {}
+    embeddings_by_model: dict[str, int] = {}
+
+    @model_validator(mode="after")
+    def _named_by_its_facts(self) -> "VersionRecord":
+        """The file is named by the version's number and its hash; nothing else may say so."""
+        expected = version_file_name(self.version, self.sha256)
+        if self.file != expected:
+            raise ValueError(
+                f"version {self.version} is in {self.file} but its facts name it {expected}"
+            )
+        if self.parent == self.sha256:
+            raise ValueError("a version cannot be its own parent")
+        return self

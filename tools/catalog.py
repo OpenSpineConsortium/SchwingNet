@@ -1,36 +1,54 @@
-"""The frame catalog: build a SQLite index from the registry and the shard manifests, and query it.
+"""The frame catalog: build read-only, versioned SQLite indexes from the registry and the shard
+manifests, and query them.
 
 docs/research/data-catalog.md is the design. The pure rules (the shapes, the split, the bands, the
-query predicates, the cosine ranking) are schwingnet.catalog under beethoven-qa's gate; this script
-is the reading and writing around them: it validates the files under data/registry/ and data/splits/,
-reads each shard's MANIFEST.json, writes one SQLite file (the standard library's sqlite3, a plain
-file on whatever volume holds it, which DuckDB and pandas open in place) and answers queries from
-it. A Metaflow step calls these commands by path and passes the catalog's sha256 and a query's
-answer on as artifacts. The images never enter the file: a row names a frame's shard, path and hash.
-Every write makes a fresh file and renames it into place, so a reader never sees a half file and two
-builds from the same inputs are the same bytes.
+query predicates, the cosine ranking, the layout and the version names) are schwingnet.catalog under
+beethoven-qa's gate; this script is the reading and writing around them: it validates the files
+under data/registry/ and data/splits/, reads each shard's MANIFEST.json, writes one SQLite file per
+version (the standard library's sqlite3, a plain file on whatever volume holds it, which DuckDB and
+pandas open in place) and answers queries from it. A Metaflow step calls these commands by path and
+passes the version's sha256 and a query's answer on as artifacts. The images never enter the file: a
+row names a frame's shard, path and hash.
+
+A catalog is a store, one directory: `versions/` holds every version ever built, each a file named
+by its number and its content hash and made read-only the moment it is complete; `VERSIONS.jsonl`
+is the append-only log, one line per version with its parent and its accounting; `CURRENT` names
+the latest. Nothing is rewritten: a build or an embedding load that changes anything is a new
+version, one that changes nothing is reported and leaves the store as it was, and a reader opens a
+version with SQLite's read-only, immutable flags, so it can neither write nor lock it.
 
     pixi run --locked python tools/catalog.py check
     pixi run --locked python tools/catalog.py schema
     pixi run --locked python tools/catalog.py part carmlspine:case7
-    pixi run --locked python tools/catalog.py build --out catalog.sqlite --manifest <dir>/MANIFEST.json ...
-    pixi run --locked python tools/catalog.py query catalog.sqlite --levels L5,sacrum --views lateral
-    pixi run --locked python tools/catalog.py embed catalog.sqlite --model v1 --vectors vectors.jsonl
-    pixi run --locked python tools/catalog.py similar catalog.sqlite --model v1 --item <sha256> --k 24
-    pixi run --locked python tools/catalog.py summary catalog.sqlite
-    pixi run --locked python tools/catalog.py export catalog.sqlite --table item --out item.jsonl
+    pixi run --locked python tools/catalog.py build --store <dir> --manifest <shard>/MANIFEST.json ...
+    pixi run --locked python tools/catalog.py versions <dir>
+    pixi run --locked python tools/catalog.py query <dir> --levels L5,sacrum --views lateral
+    pixi run --locked python tools/catalog.py embed <dir> --model v1 --vectors vectors.jsonl
+    pixi run --locked python tools/catalog.py similar <dir> --model v1 --item <sha256> --k 24
+    pixi run --locked python tools/catalog.py summary <dir> --version 3
+    pixi run --locked python tools/catalog.py split-check <dir>
+    pixi run --locked python tools/catalog.py export <dir> --table item --out item.jsonl
 """
 
 import argparse
+import contextlib
+import fcntl
 import hashlib
 import json
+import math
 import os
+import re
 import shutil
 import sqlite3
 import struct
 import sys
+import tempfile
+import time
 from collections import namedtuple
 from pathlib import Path
+from urllib.parse import quote
+
+from pydantic import ValidationError
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
@@ -48,12 +66,16 @@ from schwingnet.catalog import (  # the path above makes the package importable
     ShardKind,
     ShardManifest,
     SplitRule,
+    VersionRecord,
     View,
     best,
+    changed_keys,
     cosine,
     is_transitional,
     part_of,
     region_of,
+    shard_folder,
+    version_file_name,
     view_band,
     where_clause,
 )
@@ -62,7 +84,15 @@ REGISTRY = ROOT / "data" / "registry"
 TEST_PERSONS = ROOT / "data" / "splits" / "test-persons.json"
 RULE = ROOT / "data" / "splits" / "rule.json"
 CATALOG_SCHEMA = 1
+# PRAGMA application_id of every version file: "SCWN", so `file` and SQLite's own tools name it.
+APPLICATION_ID = 0x5343574E
 TABLES = ("build", "source", "shard", "person", "item", "label", "embedding")
+VERSIONS_DIR = "versions"
+VERSIONS_LOG = "VERSIONS.jsonl"
+CURRENT = "CURRENT"
+# The one writer at a time: a POSIX record lock on this file, held for the whole of a write.
+LOCK = "LOCK"
+VERSION_FILE = re.compile(r"^catalog-\d{6}-(?P<hash>[0-9a-f]{12})\.sqlite$")
 
 # What a build reads besides the manifests: the registry, the frozen test persons with the
 # sha256 of their file, and the split rule with the sha256 of its file.
@@ -186,17 +216,32 @@ def read_json(path):
 
 
 def load_registry(folder=REGISTRY):
-    """Every registry entry, validated; a file that does not hold together names itself."""
-    entries = {}
+    """Every registry entry, keyed by source, in alphabetical order; the layout rules hold."""
+    registry = {}
     for path in sorted(Path(folder).glob("*.json")):
         try:
             entry = RegistryEntry.model_validate(read_json(path))
-        except ValueError as error:
+        except ValidationError as error:
             raise CatalogError(f"{path}: {error}") from error
-        if entry.source != path.stem:
-            raise CatalogError(f"{path}: the file is named {path.stem} but the entry says {entry.source}")
-        entries[entry.source] = entry
-    return entries
+        if path.stem != entry.source:
+            raise CatalogError(f"{path}: the file is named {path.stem} but the source is {entry.source}")
+        refuse_misplaced_shards(entry, path)
+        registry[entry.source] = entry
+    return registry
+
+
+def refuse_misplaced_shards(entry, path):
+    """A source's grid_root is the folder named by its id, and a shard's manifest is at
+    `<grid_root>/shards/<shard>/MANIFEST.json` and nowhere else, so a new dataset is one folder
+    in one place, the data root lists its sources alphabetically, and the tree reads from the
+    catalog."""
+    if not entry.grid_root.endswith("/" + entry.source):
+        raise CatalogError(f"{path}: grid_root {entry.grid_root} is not the folder {entry.source}")
+    for shard in entry.shards:
+        expected = shard_folder(entry.grid_root, shard.name) + "/MANIFEST.json"
+        if shard.manifest != expected:
+            raise CatalogError(f"{path}: shard {shard.name} names its manifest {shard.manifest},"
+                               f" but the layout puts it at {expected}")
 
 
 def load_split(test_persons_path=TEST_PERSONS, rule_path=RULE):
@@ -337,30 +382,215 @@ def manifest_paths(registry, named, root):
     return paths
 
 
-def write_fresh(out, writer):
-    """Write a file beside `out` through `writer(path)`, then rename it into place; on a refusal
-    nothing is left behind. Returns the sha256 of the file in place."""
-    fresh = Path(str(out) + ".building")
-    fresh.unlink(missing_ok=True)
+def store_paths(store):
+    store = Path(store)
+    return store / VERSIONS_DIR, store / VERSIONS_LOG, store / CURRENT
+
+
+def read_versions(store):
+    """The version log, oldest first, each line held to its shape and to the chain: line N is
+    version N and its parent is line N-1's hash, so a line forged, dropped or written twice by a
+    build that lost a race is refused, never served."""
+    _, log, _ = store_paths(store)
+    if not log.is_file():
+        return []
+    records = []
+    for number, line in enumerate(log.read_text(encoding="utf-8").splitlines(), start=1):
+        try:
+            record = VersionRecord.model_validate(json.loads(line))
+        except (ValueError, ValidationError) as error:
+            raise CatalogError(f"{log}: line {number}: {error}") from error
+        refuse_broken_chain(log, number, record, records[-1] if records else None)
+        records.append(record)
+    return records
+
+
+def refuse_broken_chain(log, number, record, previous):
+    if record.version != number:
+        raise CatalogError(f"{log}: line {number} is version {record.version}; the log counts 1, 2, 3")
+    parent = previous.sha256 if previous else None
+    if record.parent != parent:
+        raise CatalogError(f"{log}: line {number}: version {number}'s parent is {record.parent},"
+                           f" not the line before it ({parent})")
+
+
+def check_current(store, records):
+    """CURRENT names the log's last line, or the store was left half written or edited by hand."""
+    _, _, current = store_paths(store)
     try:
-        writer(fresh)
-    except BaseException:
-        fresh.unlink(missing_ok=True)
-        raise
-    os.replace(fresh, out)
-    return hashlib.sha256(Path(out).read_bytes()).hexdigest()
+        named = current.read_text(encoding="utf-8").strip()
+    except OSError as error:
+        raise CatalogError(f"{current}: {error}") from error
+    if named != records[-1].file:
+        raise CatalogError(f"{current} names {named}, but the log's last line is {records[-1].file}")
 
 
-def build(out, manifests, inputs, code_commit=None):
-    """The catalog from the manifests and the inputs, as one fresh file."""
+def file_sha256(path):
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as handle:
+        for block in iter(lambda: handle.read(1 << 20), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def refuse_changed_file(path, sha256):
+    """The bytes are what the record says, or the file was replaced since it was sealed: the mode
+    0444 stops nothing on a directory its owner may write, so the hash is the check."""
+    found = file_sha256(path)
+    if not found.startswith(sha256):
+        raise CatalogError(f"{path}: its sha256 is {found}, not the {sha256} it was sealed with")
+
+
+def version_path(store, version=None):
+    """The file of one version: the latest unless a number is named, with its bytes checked."""
+    records = read_versions(store)
+    if not records:
+        raise CatalogError(f"{store}: no catalog there; build one first")
+    check_current(store, records)
+    wanted = records[-1] if version is None else next((r for r in records if r.version == version), None)
+    if wanted is None:
+        raise CatalogError(f"{store}: no version {version}; the log holds 1 to {records[-1].version}")
+    path = store_paths(store)[0] / wanted.file
+    if not path.is_file():
+        raise CatalogError(f"{path}: the log names it but it is not there")
+    refuse_changed_file(path, wanted.sha256)
+    return path, wanted
+
+
+def accounting(db):
+    """What a version holds, as the numbers its log line carries."""
+    counts = summary(db)
+    shards = tuple(r[0] for r in db.execute("SELECT name FROM shard ORDER BY name"))
+    frames = db.execute("SELECT COUNT(*) FROM item").fetchone()[0]
+    persons = db.execute("SELECT COUNT(*) FROM person").fetchone()[0]
+    models = db.execute("SELECT model, COUNT(*) FROM embedding GROUP BY model ORDER BY model").fetchall()
+    by_source_and_part = {f"{r['source']}|{r['part']}": r["frames"] for r in counts["by_source_and_part"]}
+    return {"shards": shards, "frames": frames, "persons": persons,
+            "frames_by_source_and_part": by_source_and_part,
+            "embeddings_by_model": {m: n for m, n in models}}
+
+
+def file_uri(path, flags):
+    """A SQLite URI for a path: quoted, so a `?` or a `#` in a folder's name is part of the path
+    and not the start of the flags."""
+    return f"file:{quote(str(path))}?{flags}"
+
+
+def describe(fresh, number, digest, parent, reason, code_commit, as_of):
+    """The log line of a version just written, with what it adds to and drops from its parent."""
+    db = sqlite3.connect(file_uri(fresh, "mode=ro"), uri=True)
+    db.row_factory = sqlite3.Row
+    try:
+        facts = accounting(db)
+        schema_version = db.execute("SELECT schema_version FROM build").fetchone()[0]
+    finally:
+        db.close()
+    before = frozenset(parent.shards) if parent else frozenset()
+    added, removed = changed_keys(before, frozenset(facts["shards"]))
+    return VersionRecord(
+        version=number, file=version_file_name(number, digest), sha256=digest,
+        parent=parent.sha256 if parent else None, schema_version=schema_version,
+        code_commit=code_commit, as_of=as_of, written_at=written_at(parent), reason=reason,
+        bytes=Path(fresh).stat().st_size, added_shards=added, removed_shards=removed, **facts,
+    )
+
+
+def written_at(parent):
+    """The clock, as a UTC second, never earlier than the parent's: the log reads in order
+    even across machines whose clocks disagree."""
+    now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    return max(now, parent.written_at) if parent else now
+
+
+@contextlib.contextmanager
+def store_lock(store):
+    """One writer at a time: an exclusive POSIX record lock on `<store>/LOCK`, held from the
+    reading of the log to the writing of CURRENT, so two builds at once cannot both number
+    themselves from one reading of the log. The lock reaches every machine that mounts the
+    volume where the filesystem honours fcntl, as CephFS does through its metadata server."""
+    with (Path(store) / LOCK).open("a") as handle:
+        fcntl.lockf(handle, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.lockf(handle, fcntl.LOCK_UN)
+
+
+def write_version(store, writer, reason, code_commit=None, as_of=None):
+    """Write a new version through `writer(path)` and record it; a version whose bytes the
+    latest already has is dropped and the latest returned, so the store never holds two of
+    one thing. Returns the record and whether it is new."""
+    folder, log, current = store_paths(store)
+    folder.mkdir(parents=True, exist_ok=True)
+    with store_lock(store):
+        records = read_versions(store)
+        latest = records[-1] if records else None
+        fresh = staging_file(folder)
+        try:
+            writer(fresh)
+            digest = file_sha256(fresh)
+            if latest is not None and latest.sha256 == digest:
+                return latest, False
+            record = describe(fresh, len(records) + 1, digest, latest, reason, code_commit, as_of)
+            refuse_moved_store(store, records)
+            seal(fresh, folder / record.file)
+        finally:
+            fresh.unlink(missing_ok=True)
+        append_record(log, current, record)
+    return record, True
+
+
+def staging_file(folder):
+    """A name of this build's own, made by the system: a name built from the pid could be an
+    older run's file still being written, which must never be deleted or written over."""
+    handle, name = tempfile.mkstemp(dir=folder, prefix=".building-")
+    os.close(handle)
+    return Path(name)
+
+
+def refuse_moved_store(store, records):
+    """The log is as it was read when the version was numbered, or another writer got past the
+    lock (a lock a process cannot hold against itself, or a volume that honours none): the
+    version is dropped rather than numbered twice."""
+    if read_versions(store) != records:
+        raise CatalogError(f"{store}: another build landed while this one was written; build again")
+
+
+def append_record(log, current, record):
+    with log.open("a", encoding="utf-8") as handle:
+        handle.write(record.model_dump_json(exclude_none=True) + "\n")
+    point = current.with_name(current.name + ".new")
+    point.write_text(record.file + "\n", encoding="utf-8")
+    os.replace(point, current)
+
+
+def seal(fresh, final):
+    """Move a complete version into place and make it read-only: nothing writes it again."""
+    if final.exists():
+        raise CatalogError(f"{final}: a file of that name is already there")
+    os.chmod(fresh, 0o444)
+    os.replace(fresh, final)
+
+
+def build(store, manifests, inputs, code_commit=None, as_of=None):
+    """A new version of the catalog from the manifests and the inputs."""
     def writer(fresh):
         db = sqlite3.connect(fresh)
         try:
             fill(db, manifests, inputs, code_commit)
             db.commit()
+            stamp(db)
         finally:
             db.close()
-    return write_fresh(out, writer)
+    return write_version(store, writer, "build", code_commit, as_of)
+
+
+def stamp(db):
+    """Mark the file as a catalog and pack it: the same facts give the same bytes."""
+    db.execute(f"PRAGMA application_id = {APPLICATION_ID}")
+    db.execute(f"PRAGMA user_version = {CATALOG_SCHEMA}")
+    db.commit()
+    db.execute("VACUUM")
 
 
 def fill(db, manifests, inputs, code_commit):
@@ -370,7 +600,13 @@ def fill(db, manifests, inputs, code_commit):
         (CATALOG_SCHEMA, code_commit, inputs.rule.salt, inputs.rule.validation_share,
          inputs.test_persons_sha256, inputs.rule_sha256),
     )
-    loaded = [(path, *load_manifest(path)) for path in manifests]
+    # The manifests go in by shard name and by their resolved paths, so the order they were named
+    # in and the directory they were named from change no byte of the file: the same facts give
+    # the same hash, which is what the dedupe against the latest version compares. That dedupe
+    # looks at the latest alone, on purpose: a build equal to an older version is still a new
+    # version, since the log reads as a line of time and a step names what it read by number.
+    loaded = sorted(((Path(path).resolve(), *load_manifest(path)) for path in manifests),
+                    key=lambda entry: entry[1].name)
     refuse_superseded(loaded)
     insert_sources(db, inputs.registry, {manifest.source for _, manifest, _ in loaded})
     for path, manifest, manifest_sha256 in loaded:
@@ -378,12 +614,39 @@ def fill(db, manifests, inputs, code_commit):
         insert_shard(db, manifest, path, manifest_sha256)
         parts = insert_persons(db, manifest, inputs.test_persons, inputs.rule)
         insert_items(db, manifest, parts)
+    refuse_frames_in_two_places(db)
 
 
-def open_catalog(path):
-    if not Path(path).is_file():
+def refuse_frames_in_two_places(db):
+    """One frame's bytes sit under one person and in one part, whichever shards hold them: the
+    item table is keyed by shard and hash, so the same bytes may be in a train shard and a
+    review shard, but a frame that is one person's in one shard and another's in another, or in
+    the test part here and the training part there, would leak at the byte level and pass a
+    check that reads persons alone."""
+    rows = db.execute(
+        "SELECT sha256, GROUP_CONCAT(DISTINCT person), GROUP_CONCAT(DISTINCT part) FROM item"
+        " GROUP BY sha256 HAVING COUNT(DISTINCT person) > 1 OR COUNT(DISTINCT part) > 1"
+        " ORDER BY sha256 LIMIT 5"
+    ).fetchall()
+    if rows:
+        found = "; ".join(f"{sha}: persons {persons}, parts {parts}" for sha, persons, parts in rows)
+        raise CatalogError(f"a frame's bytes sit under two persons or in two parts: {found}")
+
+
+def open_catalog(path, version=None):
+    """A version, read-only and immutable: a store's latest, one of its versions by number, or
+    one version file by path. The immutable flag tells SQLite the file cannot change under it,
+    so it takes no lock, which a network filesystem may not honour, and never writes."""
+    path = Path(path)
+    if path.is_dir():
+        path, _ = version_path(path, version)
+    elif not path.is_file():
         raise CatalogError(f"{path}: no catalog there; build one first")
-    db = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
+    elif VERSION_FILE.match(path.name):
+        # A version file named alone has no log line to check against, but its name carries the
+        # start of its hash, which a replaced file does not have.
+        refuse_changed_file(path, VERSION_FILE.match(path.name)["hash"])
+    db = sqlite3.connect(file_uri(path, "mode=ro&immutable=1"), uri=True)
     db.row_factory = sqlite3.Row
     return db
 
@@ -435,24 +698,51 @@ def unpack(blob, dim):
     return struct.unpack(f"<{dim}f", blob)
 
 
+def stored_vector(row, model):
+    """An embedding read back with a direction, or a row an older tool loaded unchecked."""
+    vector = unpack(row["vector"], row["dim"])
+    if not any(vector) or not all(math.isfinite(x) for x in vector):
+        raise CatalogError(f"model {model} holds a vector with no direction for {row['item']}")
+    return vector
+
+
 def read_vectors(path):
-    """JSONL lines {"item": sha256, "vector": [...]}, every vector of one length, none empty."""
+    """JSONL lines {"item": sha256, "vector": [...]}, every vector of one length, none empty, each
+    with a direction: finite, within float32, not all zero, as the embedding table holds it."""
     rows = []
     for number, line in enumerate(Path(path).read_text(encoding="utf-8").splitlines(), start=1):
         row = json.loads(line)
         vector = [float(x) for x in row["vector"]]
         if not vector or (rows and len(vector) != len(rows[0][1])):
             raise CatalogError(f"{path}: line {number}: every vector has the same length, above zero")
-        rows.append((str(row["item"]), vector))
+        rows.append((str(row["item"]), as_stored(vector, f"{path}: line {number}")))
     return rows
 
 
-def embed(catalog, model, vectors_path):
-    """Load one model's embeddings into a fresh copy of the catalog and rename it into place."""
+def as_stored(vector, where):
+    """A vector as the table keeps it, float32, and refused where cosine is undefined on it: a
+    component that is not a number, one beyond float32, or a vector that packs to all zeros."""
+    if not all(math.isfinite(x) for x in vector):
+        raise CatalogError(f"{where}: a vector holds a value that is not a number")
+    try:
+        stored = list(unpack(pack(vector), len(vector)))
+    except OverflowError as error:
+        raise CatalogError(f"{where}: a component is beyond float32") from error
+    if not any(stored):
+        raise CatalogError(f"{where}: a vector of zeros has no direction")
+    return stored
+
+
+def embed(store, model, vectors_path, code_commit=None, as_of=None):
+    """Load one model's embeddings into a new version whose parent is the latest."""
     rows = read_vectors(vectors_path)
 
     def writer(fresh):
-        shutil.copyfile(catalog, fresh)
+        # The parent is resolved inside the write, under the store's lock, so it is the version
+        # the new one is recorded as the child of.
+        source, _ = version_path(store)
+        shutil.copyfile(source, fresh)
+        os.chmod(fresh, 0o644)
         db = sqlite3.connect(fresh)
         try:
             known = {r[0] for r in db.execute("SELECT DISTINCT sha256 FROM item")}
@@ -462,10 +752,11 @@ def embed(catalog, model, vectors_path):
                 db.execute("INSERT OR REPLACE INTO embedding VALUES (?, ?, ?, ?)",
                            (item, model, len(vector), pack(vector)))
             db.commit()
+            stamp(db)
         finally:
             db.close()
 
-    return len(rows), write_fresh(catalog, writer)
+    return len(rows), write_version(store, writer, f"embed {model}", code_commit, as_of)
 
 
 def similar(db, model, item, k, parts=DEFAULT_PARTS):
@@ -475,15 +766,20 @@ def similar(db, model, item, k, parts=DEFAULT_PARTS):
     selection fed by this answer cannot carry a test frame into training.
     """
     marks = ", ".join("?" for _ in parts)
+    names = tuple(p.value for p in parts)
+    # A frame whose bytes also sit in a part outside those asked for is left out, however the
+    # row in an asked-for part names it: the bytes are what a selection carries into training.
     rows = db.execute(
         "SELECT DISTINCT embedding.item, dim, vector FROM embedding JOIN item ON item.sha256 = embedding.item"
-        f" WHERE embedding.model = ? AND item.part IN ({marks})", (model, *(p.value for p in parts)),
+        f" WHERE embedding.model = ? AND item.part IN ({marks}) AND NOT EXISTS"
+        f" (SELECT 1 FROM item AS other WHERE other.sha256 = item.sha256 AND other.part NOT IN ({marks}))",
+        (model, *names, *names),
     ).fetchall()
-    anchor = db.execute("SELECT dim, vector FROM embedding WHERE model = ? AND item = ?", (model, item)).fetchone()
+    anchor = db.execute("SELECT item, dim, vector FROM embedding WHERE model = ? AND item = ?", (model, item)).fetchone()
     if anchor is None:
         raise CatalogError(f"{item} has no embedding under model {model}")
-    reference = unpack(anchor["vector"], anchor["dim"])
-    vectors = {row["item"]: unpack(row["vector"], row["dim"]) for row in rows if row["item"] != item}
+    reference = stored_vector(anchor, model)
+    vectors = {row["item"]: stored_vector(row, model) for row in rows if row["item"] != item}
     if any(len(v) != len(reference) for v in vectors.values()):
         raise CatalogError(f"model {model} holds embeddings of more than one length")
     scored = tuple((other, cosine(reference, vector)) for other, vector in vectors.items())
@@ -508,6 +804,38 @@ def summary(db):
         "by_level_and_part": [dict(r) for r in by_level],
         "test_persons": [dict(r) for r in test],
     }
+
+
+def split_check(db, inputs):
+    """The REFORMS split check over one version: no person in two parts, no frame's bytes in two
+    parts, every test person frozen and every frozen person present held out, counted per source
+    at its identity level.
+
+    The answer is a record a result row cites: the counts per part, the four lists that must be
+    empty, and a verdict; beethoven-research's splits.disjoint is the same rule over groups, and
+    this is it over the catalog's own person table, before any training step reads a frame.
+    """
+    levels = {r["source"]: r["identity_level"] for r in db.execute("SELECT source, identity_level FROM source")}
+    in_two_parts = [r[0] for r in db.execute(
+        "SELECT person FROM item GROUP BY person HAVING COUNT(DISTINCT part) > 1 ORDER BY person")]
+    # The same bytes in two parts under two persons: a leak the person table alone never shows.
+    frames_in_two_parts = [r[0] for r in db.execute(
+        "SELECT sha256 FROM item GROUP BY sha256 HAVING COUNT(DISTINCT part) > 1 ORDER BY sha256")]
+    test_rows = db.execute("SELECT person FROM person WHERE part = 'test' ORDER BY person").fetchall()
+    not_frozen = [r[0] for r in test_rows if r[0] not in inputs.test_persons]
+    marks = ", ".join("?" for _ in inputs.test_persons) or "''"
+    leaked = [r[0] for r in db.execute(
+        f"SELECT person FROM person WHERE part != 'test' AND person IN ({marks}) ORDER BY person",
+        tuple(sorted(inputs.test_persons)))]
+    per_source = {}
+    for row in db.execute("SELECT source, part, COUNT(DISTINCT person) AS persons, COUNT(*) AS frames"
+                          " FROM item GROUP BY source, part ORDER BY source, part"):
+        per_source.setdefault(row["source"], {"identity_level": levels[row["source"]], "parts": {}})
+        per_source[row["source"]]["parts"][row["part"]] = {"persons": row["persons"], "frames": row["frames"]}
+    return {"per_source": per_source, "persons_in_two_parts": in_two_parts,
+            "frames_in_two_parts": frames_in_two_parts,
+            "test_persons_not_frozen": not_frozen, "frozen_persons_not_held_out": leaked,
+            "disjoint": not (in_two_parts or frames_in_two_parts or not_frozen or leaked)}
 
 
 def export(db, table, out):
@@ -547,19 +875,27 @@ def add_query_arguments(parser):
     parser.add_argument("--count", action="store_true", help="print the count alone")
 
 
+def add_version_arguments(parser):
+    parser.add_argument("--code-commit", default=None)
+    parser.add_argument("--as-of", default=None, help="the date the log line carries, YYYY-MM-DD")
+
+
 def parser():
     top = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = top.add_subparsers(dest="command", required=True)
-    sub.add_parser("check", help="validate the registry and the split files")
+    sub.add_parser("check", help="validate the registry, the split files and the layout")
     sub.add_parser("schema", help="print the catalog's SQL")
     sub.add_parser("part", help="where a person's frames go under the split rule").add_argument("person")
-    build_p = sub.add_parser("build", help="build the catalog from the manifests")
-    build_p.add_argument("--out", required=True)
+    build_p = sub.add_parser("build", help="build a new version of the catalog from the manifests")
+    build_p.add_argument("--store", required=True, help="the catalog's directory")
     build_p.add_argument("--manifest", action="append", default=[])
     build_p.add_argument("--root", default="", help="where the registry's manifest paths start")
-    build_p.add_argument("--code-commit", default=None)
-    for name in ("query", "similar", "summary", "export", "embed"):
-        sub.add_parser(name).add_argument("catalog")
+    add_version_arguments(build_p)
+    sub.add_parser("versions", help="print the version log").add_argument("store")
+    for name in ("query", "similar", "summary", "export", "embed", "split-check"):
+        sub.add_parser(name).add_argument("catalog", help="a store, or one version's file")
+    for name in ("query", "similar", "summary", "export", "split-check"):
+        sub.choices[name].add_argument("--version", type=positive, default=None, help="a store's version")
     add_query_arguments(sub.choices["query"])
     sub.choices["similar"].add_argument("--model", required=True)
     sub.choices["similar"].add_argument("--item", required=True)
@@ -569,13 +905,21 @@ def parser():
     sub.choices["export"].add_argument("--out", required=True)
     sub.choices["embed"].add_argument("--model", required=True)
     sub.choices["embed"].add_argument("--vectors", required=True)
+    add_version_arguments(sub.choices["embed"])
     return top
+
+
+def version_line(record, new):
+    return json.dumps({"version": record.version, "file": record.file, "sha256": record.sha256,
+                       "new": new, "frames": record.frames, "shards": len(record.shards),
+                       "added_shards": list(record.added_shards),
+                       "removed_shards": list(record.removed_shards)}, sort_keys=True)
 
 
 def command_check(args):
     inputs = load_inputs()
-    print(f"registry: {len(inputs.registry)} sources; test persons: {len(inputs.test_persons)};"
-          f" validation share: {inputs.rule.validation_share}")
+    print(f"registry: {len(inputs.registry)} sources ({', '.join(inputs.registry)});"
+          f" test persons: {len(inputs.test_persons)}; validation share: {inputs.rule.validation_share}")
     return 0
 
 
@@ -591,13 +935,22 @@ def command_build(args):
     manifests = manifest_paths(inputs.registry, args.manifest, args.root)
     if not manifests:
         raise CatalogError("no manifest to read: name one with --manifest, or register a shard")
-    digest = build(args.out, manifests, inputs, args.code_commit)
-    print(json.dumps({"catalog": str(args.out), "sha256": digest, "manifests": len(manifests)}))
+    record, new = build(args.store, manifests, inputs, args.code_commit, args.as_of)
+    print(version_line(record, new))
+    return 0
+
+
+def command_versions(args):
+    records = read_versions(args.store)
+    if not records:
+        raise CatalogError(f"{args.store}: no catalog there; build one first")
+    for record in records:
+        print(record.model_dump_json(exclude_none=True))
     return 0
 
 
 def command_query(args):
-    rows = run_query(open_catalog(args.catalog), query_from_args(args))
+    rows = run_query(open_catalog(args.catalog, args.version), query_from_args(args))
     if args.count:
         print(len(rows))
     else:
@@ -607,18 +960,23 @@ def command_query(args):
 
 
 def command_embed(args):
-    open_catalog(args.catalog).close()
-    loaded, digest = embed(args.catalog, args.model, args.vectors)
-    print(json.dumps({"model": args.model, "vectors": loaded, "sha256": digest}))
+    loaded, (record, new) = embed(args.catalog, args.model, args.vectors, args.code_commit, args.as_of)
+    print(json.dumps({"model": args.model, "vectors": loaded, "version": record.version,
+                      "sha256": record.sha256, "new": new}, sort_keys=True))
     return 0
 
 
 def command_read(args):
-    db = open_catalog(args.catalog)
+    db = open_catalog(args.catalog, args.version)
     if args.command == "similar":
         result = similar(db, args.model, args.item, args.k, split_list(args.parts, Part) or DEFAULT_PARTS)
     elif args.command == "summary":
         result = summary(db)
+    elif args.command == "split-check":
+        result = split_check(db, load_inputs())
+        if not result["disjoint"]:
+            print(json.dumps(result, indent=2, sort_keys=True))
+            raise CatalogError("the split is not disjoint; no training step reads this version")
     else:
         result = {"table": args.table, "rows": export(db, args.table, args.out), "out": args.out}
     print(json.dumps(result, indent=2, sort_keys=True))
@@ -626,7 +984,7 @@ def command_read(args):
 
 
 HANDLERS = {"check": command_check, "part": command_part, "build": command_build,
-            "query": command_query, "embed": command_embed}
+            "versions": command_versions, "query": command_query, "embed": command_embed}
 
 
 def main(argv=None):
