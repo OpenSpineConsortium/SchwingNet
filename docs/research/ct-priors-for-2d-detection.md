@@ -94,6 +94,17 @@ Why: it uses real appearance without a reader. Effort about a week; grid 20 to 4
 
 What: edit the segmented CTs before rendering, adding or removing a lumbar segment, a thirteenth rib, a sacralised L5, to make transitional spines with exact truth. Extends the synthetic anomaly arm, scored apart from the real one as the scope requires. Effort 1 to 2 weeks; grid modest. After the talk.
 
+### The anomalies are labelled on CT and carried to X-ray (the owner, 2026-10-21 20:09 UTC)
+
+The owner's words: "it's way easier to label anomalies on cat scan and it can be used as a prior for detecting them in XR. Also it's probably easier to find anomalies in ct and there are way more ct datasets. Incorporate the idea of this into the workflow." So a transitional spine is called once, on CT, where the whole column is seen and counted from C2 down, and that call feeds every X-ray step that follows:
+
+- The counting prior (item 1) takes readers' CT calls, one row per scan (scan, column such as T12L5, T12L6 or T13L5, reader), through tools/chain_stats.py --columns. A call names the column even where the segmentation is cut short, so the odds of each column come from every scan a reader called, and the spacing laws of the transitional pairs (L6 to the sacrum, T13 to L1) come from the very CTs that show them.
+- The renders (items 3 and 8) carry the call down: a CT called T12L6 renders frames whose labels say L6 exactly, so the X-ray model meets the anomaly with truth it could never get from a film.
+- The anomaly harvest's census (datasets-inventory.md section 5, 144 CT sources screened, 56 on disk) is the first source of calls, the owner's reads the second, a second reader's the third; disagreements are kept as such and a scan two readers call differently is left out of the odds.
+- The X-ray screening detector the owner asked for next (docs/research/xr-annotation-format.md) is trained on the same calls through the renders and on X-rays annotated in that format, and its finds on the unannotated films go back to readers for confirmation.
+
+One caution the decoder's settings answer: a collection gathered because it holds anomalies inflates their odds. The odds should come from collections screened whole (the census counts every scan it screened, anomalous or not), and the abstain margin is set on validation frames, where too high an L6 odds shows as wrong L6 calls.
+
 ### Not recommended now
 
 - Reconstructing 3D from the 2D frame at inference (X2CT-style): it adds latency and a second model for a labelling task the decoder of item 1 does more cheaply.
