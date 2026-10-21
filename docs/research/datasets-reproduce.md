@@ -108,18 +108,6 @@ registry record holds no such field.
     - on the grid: `/rs/rs_grp_oschome/go2432/data/ljubljana`
     - licence: CC BY-NC-ND (research record and manifest); the page shows a generic CC link (audit verifier); access: open
 
-### Balgrist ex-vivo lumbar CT plus C-arm (Jecklin) (`balgrist_lumbar`, GET)
-
-- Registry: link https://rocs.balgrist.ch/en/contact; grid path none; counts none.
-- Manifest records (the request record of 2026-09-21):
-  - `balgrist_exvivo_request`: Balgrist ex-vivo lumbar CT + C-arm set (Jecklin et al.), request draft; kind request, family D; route `manual`, mode manual; status requested_not_sent.
-    - acquired: not acquired; request drafted (2026-09-21)
-    - origin: none recorded
-    - fetch: manual: Send docs/outreach/balgrist_data_request_2026-09-21.md to sascha.jecklin@balgrist.ch; data restricted (pending patents), DUA through Wayne State offered
-    - checks: none recorded
-    - on the grid: `/rs/rs_grp_oschome/go2432/data/balgrist_exvivo_request`
-    - licence: request / DUA per source; access: request
-
 ### cm_spine: one Google Drive file described only as 'intraoperative' (empty download) (`cm_spine_drive_file`, GET)
 
 - Registry: link none recorded; grid path none; counts none.
@@ -154,6 +142,18 @@ registry record holds no such field.
     - fetch: manual: Send docs/data_requests/SX-Stitch_request.md to the authors (SUSTech, PUMCH); 'to be sent by Greg'
     - checks: none recorded
     - on the grid: `/rs/rs_grp_oschome/go2432/data/sx_stitch_request`
+    - licence: request / DUA per source; access: request
+
+### Balgrist ex-vivo lumbar CT plus C-arm (Jecklin) (`balgrist_lumbar`, NONE)
+
+- Registry: link https://rocs.balgrist.ch/en/contact; grid path none; counts none.
+- Manifest records (the request record of 2026-09-21):
+  - `balgrist_exvivo_request`: Balgrist ex-vivo lumbar CT + C-arm set (Jecklin et al.), request draft; kind request, family D; route `manual`, mode manual; status requested_not_sent.
+    - acquired: not acquired; request drafted (2026-09-21)
+    - origin: none recorded
+    - fetch: manual: Send docs/outreach/balgrist_data_request_2026-09-21.md to sascha.jecklin@balgrist.ch; data restricted (pending patents), DUA through Wayne State offered
+    - checks: none recorded
+    - on the grid: `/rs/rs_grp_oschome/go2432/data/balgrist_exvivo_request`
     - licence: request / DUA per source; access: request
 
 ### Real cervical or thoracic intraoperative frames with level truth (`cervical_thoracic_intraop`, NONE)
@@ -194,6 +194,18 @@ registry record holds no such field.
     - checks: `note: text python tools/realxray_train.py check --root ${DATA}/realxray (case-id disjointness across device banks)`
     - on the grid: `/rs/rs_grp_oschome/go2432/data/realxray`
     - licence: not distributed; each source keeps its own licence; access: project
+
+### DysphagiaBank (TalkBank), UNM corpus (`dysphagiabank`, HAVE)
+
+- Registry: link https://dysphagia.talkbank.org/; grid path `/rs/rs_grp_oschome/go2432/data/external/fluoro_video/dysphagiabank_unm`; counts none.
+- Manifest records (the UNM corpus clips are held in that record's folder dysphagiabank_unm (95 files on 2026-10-20); the TalkBank registration is the route to the rest):
+  - `fluoro_video_public_clips`: Public fluoroscopy video and cine clips (PMC supplements, Commons, YouTube re-encodes, Neurosurgical Focus: Video, DysphagiaBank UNM); kind upstream_release, family D; route `manual`, mode manual; status on_disk.
+    - acquired: downloads by jobs 40477816 (YouTube) and 40478021 (PMC); clips by tools/fluoro_video (2026-09-26)
+    - origin: PMC8463391; PMC10242080; PMC11328828; PMC4852439; PMC9542308; PMC9555359; PMC9574671; PMC11013356; PMC11013367; PMC11013353; PMC13418632
+    - fetch: manual: PMC supplementary files by PMCID from Europe PMC / PMC; YouTube by yt-dlp from WSL (grid glibc cannot run the JS runtime); then tools/fluoro_video inventory/run/report The exact download commands are not recorded locally
+    - checks: `note: text manifest.tsv on CEPH is the list to re-fetch against`
+    - on the grid: `/rs/rs_grp_oschome/go2432/data/external/fluoro_video`
+    - licence: mixed: CC BY; CC BY-NC-SA (DysphagiaBank, no LLM use); YouTube copies kept for screening without permission; access: mixed
 
 ### Public fluoroscopy clips on the grid (`fluoro_video_clips`, HAVE)
 
@@ -273,18 +285,6 @@ registry record holds no such field.
     - checks: none recorded
     - on the grid: `/rs/rs_grp_oschome/go2432/data/fluoro_cine_requests_2026_09_26`
     - licence: request / DUA per source; access: request
-
-### DysphagiaBank (TalkBank), UNM corpus (`dysphagiabank`, GET)
-
-- Registry: link https://dysphagia.talkbank.org/; grid path none; counts none.
-- Manifest records (the UNM corpus clips are held in that record's folder dysphagiabank_unm (95 files on 2026-10-20); the TalkBank registration is the route to the rest):
-  - `fluoro_video_public_clips`: Public fluoroscopy video and cine clips (PMC supplements, Commons, YouTube re-encodes, Neurosurgical Focus: Video, DysphagiaBank UNM); kind upstream_release, family D; route `manual`, mode manual; status on_disk.
-    - acquired: downloads by jobs 40477816 (YouTube) and 40478021 (PMC); clips by tools/fluoro_video (2026-09-26)
-    - origin: PMC8463391; PMC10242080; PMC11328828; PMC4852439; PMC9542308; PMC9555359; PMC9574671; PMC11013356; PMC11013367; PMC11013353; PMC13418632
-    - fetch: manual: PMC supplementary files by PMCID from Europe PMC / PMC; YouTube by yt-dlp from WSL (grid glibc cannot run the JS runtime); then tools/fluoro_video inventory/run/report The exact download commands are not recorded locally
-    - checks: `note: text manifest.tsv on CEPH is the list to re-fetch against`
-    - on the grid: `/rs/rs_grp_oschome/go2432/data/external/fluoro_video`
-    - licence: mixed: CC BY; CC BY-NC-SA (DysphagiaBank, no LLM use); YouTube copies kept for screening without permission; access: mixed
 
 ### Guide3D (ACCV 2024, AIRVLab) (`guide3d`, GET)
 
