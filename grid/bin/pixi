@@ -1,0 +1,7 @@
+#!/bin/bash
+# pixi for a job on a WSU compute node: the real one (~/.pixi/bin/pixi) run inside the container,
+# where the environments' binaries find the glibc they were built for (grid/box.sh). A job that
+# puts grid/bin first on its PATH, as the gate does for the latency jobs, runs `pixi run ...`
+# unchanged.
+here=$(cd "$(dirname "$0")/.." && pwd)
+exec bash "$here/box.sh" "$HOME/.pixi/bin/pixi" "$@"

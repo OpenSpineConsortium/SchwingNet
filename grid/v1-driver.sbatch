@@ -1,0 +1,51 @@
+#!/bin/bash
+#SBATCH --job-name=sn_v1
+#SBATCH --partition=gmsap
+#SBATCH --gres=gpu:1
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=64G
+#SBATCH --time=24:00:00
+#SBATCH --no-requeue
+#SBATCH --output=logs/%x_%j.out
+# The version 1 run on real frames (issue #53, SchwingNet's item 4): tools/flow.py on the catalog's
+# current version, its train and evaluate steps run in this job on the GPU Slurm gave it, inside the
+# container (grid/box.sh). flow.py's slurm mode would submit each step with sbatch, which the
+# container does not hold, so the flow runs in local mode here with the train-gpu environment, and
+# this job is the one Slurm job the run costs. flow.py refuses a dirty checkout and a catalog whose
+# split check fails, records the run under RUNS, and pushes each step's W&B run as the step ends.
+# Not requeued: a requeued job would start a second run beside the first.
+# The report is logs/v1-driver-STAGE-REPORT.md: the GPU, the run directory and the W&B lines.
+set -uo pipefail
+REPO=${SCHWINGNET:-$HOME/SchwingNet}
+DATA_ROOT=${DATA_ROOT:-/rs/rs_grp_oschome/go2432/data}
+STORE=${STORE:-$DATA_ROOT/_catalog}
+RUNS=${RUNS:-/rs/rs_grp_oschome/go2432/runs}
+WEIGHTS=${WEIGHTS:-/rs/rs_grp_oschome/go2432/models/resnet18-f37072fd.pth}
+EPOCHS=${EPOCHS:-20}
+SEED=${SEED:-1}
+REPORT=logs/v1-driver-STAGE-REPORT.md
+mkdir -p logs "$RUNS"
+report() { echo "- $*" | tee -a "$REPORT"; }
+fail() { report "FAILED: $*"; echo "SN_V1_RC=1"; exit 1; }
+echo "# Version 1 run: $(date '+%F %T'), job ${SLURM_JOB_ID:-none} on $(hostname), commit $(git -C "$REPO" rev-parse --short HEAD 2>/dev/null)" > "$REPORT"
+current=$(cat "$STORE/CURRENT" 2>/dev/null)
+[ -n "$current" ] || fail "no catalog version: $STORE/CURRENT is missing or empty (the catalog job first)"
+CATALOG=$STORE/versions/$current
+[ -f "$CATALOG" ] || fail "CURRENT names $current, which is not under $STORE/versions"
+[ -s "$WEIGHTS" ] || fail "no ImageNet weights at $WEIGHTS (the weights job first)"
+report "catalog: $CATALOG; weights: $(basename "$WEIGHTS"); epochs $EPOCHS, seed $SEED"
+report "GPU: $(nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv,noheader 2>/dev/null | head -n 1 || echo 'nvidia-smi gave nothing')"
+cd "$REPO" || fail "no checkout at $REPO"
+said=$(bash grid/box.sh pixi run --locked -e train-gpu python -c "import torch; print('torch', torch.__version__, 'cuda available', torch.cuda.is_available())" 2>&1 | tail -n 1)
+report "in the container: $said"
+out=$(mktemp "$REPO/grid/logs/v1-flow-${SLURM_JOB_ID:-$$}.XXXXXX")
+bash grid/box.sh pixi run --locked python tools/flow.py run --catalog "$CATALOG" --out "$RUNS" --mode local \
+  --environment train-gpu --epochs "$EPOCHS" --seed "$SEED" --weights "$WEIGHTS" 2>&1 | tee "$out"
+rc=${PIPESTATUS[0]}
+run_dir=$(sed -n 's/.*"run_dir": "\([^"]*\)".*/\1/p' "$out" | head -n 1)
+report "run directory: ${run_dir:-none was made}"
+grep -h 'W&B' "$out" | tail -n 3 | while IFS= read -r line; do report "$line"; done
+[ -z "$run_dir" ] || [ ! -f "$run_dir/evaluate/results.md" ] || { echo; echo "## The test part"; cat "$run_dir/evaluate/results.md"; } >> "$REPORT"
+report "flow exited $rc"
+echo "SN_V1_RC=$rc"
+exit "$rc"

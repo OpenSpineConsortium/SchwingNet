@@ -30,7 +30,11 @@ came in parts, a zip unpacked after a first ingest) cuts a successor and not a s
 catalog, which reads a shard or its successor and never both, counts no frame twice (measured in
 the chain's first run, issue #40: a second ingest of a grown bank without it gave a catalog of 287
 frames for 167 files); where the new shard is that current one, nothing supersedes anything. The grid root is the registry entry's unless named, for a test or a stress run
-on another volume. This is an I/O tool around the gated rules; it runs on the grid in the shell or
+on another volume. `--persons frozen` keeps only the frames of the frozen test persons
+(data/splits/test-persons.json) and `--persons unfrozen` only the others', so a bank whose own
+split folders mix them, as C-ArmLSpine's does, becomes one test shard and one train shard, each
+read from the whole bank; the same bytes under two persons are still refused across the whole bank,
+before either half is taken. This is an I/O tool around the gated rules; it runs on the grid in the shell or
 as one CPU job (docs/setup/grid.md), never on the login node for a bank of any size.
 """
 
@@ -181,27 +185,50 @@ def read_frame(image, meta_path, settings):
 def plan_shard(bank, settings, inputs):
     """Read and check the bank; return the items to write, where each comes from, and the report."""
     kept, sources, duplicates, dropped, persons = {}, {}, [], 0, set()
+    first_seen, left_out = {}, set()
     for stem, image, meta_path in frames_of(bank, settings.split):
-        try:
-            item, dropped_here = read_frame(image, meta_path, settings)
-        except (IngestError, ValueError, KeyError) as error:
-            raise IngestError(f"{image}: {error}") from error
+        item, dropped_here = checked_frame(image, meta_path, settings)
+        # The same bytes under two persons are refused across the whole bank, before --persons
+        # leaves any frame out, so splitting a bank in two never hides one.
+        first_item, first_image = first_seen.setdefault(item.sha256, (item, image))
+        refuse_two_persons(item, first_item, first_image, image)
+        if not wanted(item.person, settings.persons, inputs.test_persons):
+            left_out.add(item.person)
+            continue
         dropped += dropped_here
         persons.add(item.person)
         if item.sha256 in kept:
-            refuse_two_persons(item, kept[item.sha256], sources[item.sha256], image)
             duplicates.append({"stem": stem, "same_bytes_as": sources[item.sha256].name, "sha256": item.sha256})
             continue
         kept[item.sha256], sources[item.sha256] = item, image
     # Every person the bank named is checked, the duplicates' too, never only the kept items'.
     refuse_test_persons(frozenset(persons), settings, inputs)
+    if not kept:
+        raise IngestError(f"{bank}: --persons {settings.persons} leaves no frame of the bank")
     items = list(kept.values())
-    report = {"frames_read": len(items) + len(duplicates), "frames_kept": len(items),
-              "duplicates": duplicates, "boxes_without_level": dropped,
-              "persons": len({i.person for i in items}),
-              "frozen_persons_not_seen": frozen_not_seen(frozenset(persons), settings, inputs),
-              "labels": sum(len(i.labels) for i in items)}
-    return items, sources, report
+    return items, sources, shard_report(items, duplicates, dropped, persons | left_out, left_out, settings, inputs)
+
+
+def checked_frame(image, meta_path, settings):
+    try:
+        return read_frame(image, meta_path, settings)
+    except (IngestError, ValueError, KeyError) as error:
+        raise IngestError(f"{image}: {error}") from error
+
+
+def wanted(person, which, frozen):
+    """Whether --persons keeps a frame: every person, only the frozen test persons, or only the
+    others, so one bank whose own split mixes them becomes a test shard and a train shard."""
+    return which == "all" or (person in frozen) == (which == "frozen")
+
+
+def shard_report(items, duplicates, dropped, seen, left_out, settings, inputs):
+    return {"frames_read": len(items) + len(duplicates), "frames_kept": len(items),
+            "duplicates": duplicates, "boxes_without_level": dropped,
+            "persons": len({i.person for i in items}),
+            "persons_filter": settings.persons, "persons_left_out": len(left_out),
+            "frozen_persons_not_seen": frozen_not_seen(frozenset(seen), settings, inputs),
+            "labels": sum(len(i.labels) for i in items)}
 
 
 def refuse_two_persons(item, first, first_image, image):
@@ -348,6 +375,7 @@ class Settings:
         self.supersedes = args.supersedes
         self.person_prefix = args.person_prefix or entry.source
         self.labeller = args.labeller
+        self.persons = args.persons
         self.modality = choice(args.modality, Modality, entry.modality)
         self.device_class = choice(args.device_class, DeviceClass, entry.device_class)
         self.grid_root = (args.grid_root or entry.grid_root).rstrip("/")
@@ -369,6 +397,8 @@ def parser():
         p.add_argument("--supersedes", default=None, help="the shard this one replaces; 'latest' names the source's current one")
         p.add_argument("--person-prefix", default=None, help="the person key's prefix; the source id unless named")
         p.add_argument("--labeller", default="projected", help="who drew the boxes, as the manifest records it")
+        p.add_argument("--persons", default="all", choices=["all", "frozen", "unfrozen"],
+                       help="only the frozen test persons' frames, only the others', or every frame")
         p.add_argument("--modality", default=None)
         p.add_argument("--device-class", default=None)
         p.add_argument("--grid-root", default=None, help="the source's folder; the registry's unless named")

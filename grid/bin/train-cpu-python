@@ -1,0 +1,6 @@
+#!/bin/bash
+# The train-cpu environment's python run inside the container (grid/box.sh): the PYDRV the gate
+# hands the X-ray chain, the C-ArmLSpine ingest and the leak checks, since that environment holds
+# pydantic, Pillow, pydicom and numpy, and the node's own glibc cannot run it.
+here=$(cd "$(dirname "$0")/.." && pwd)
+exec bash "$here/box.sh" "$(dirname "$here")/.pixi/envs/train-cpu/bin/python" "$@"
