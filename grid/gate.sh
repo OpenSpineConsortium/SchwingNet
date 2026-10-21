@@ -293,14 +293,21 @@ word_v1() {
   [ -z "$running" ] || { echo "refusing: the version 1 run is already queued or running (job $running)"; return 75; }
   # A start still in the queue: the run waits (afterok) on the gate's own C-ArmLSpine, catalog and
   # weights jobs, as start's own v1 job does, instead of being refused until they end; a resource no
-  # live job is making must be there already.
+  # live job is making must be there already. An X-ray chain's catalog (xr_catalog) is not waited on,
+  # since it follows a fetch that can take days, during which the run's script would sit frozen.
   job=$(live_of carmlspine)
   [ -z "$job" ] || ingest_dep="afterok:$job"
   job=$(live_of catalog)
   if [ -n "$job" ]; then
     catalog_dep="afterok:$job"
-  else
-    catalog_ready || { echo "refusing: no catalog version under $STORE and no catalog job queued; 'start' builds one"; return 2; }
+  elif ! catalog_ready; then
+    job=$(live_of xr_catalog)
+    if [ -n "$job" ]; then
+      echo "refusing: no catalog version under $STORE, and start's catalog job is not queued; the X-ray chain's catalog (job $job) follows a fetch that can take days, so the run does not wait on it: send 'v1' again once a catalog version is there"
+    else
+      echo "refusing: no catalog version under $STORE and no catalog job of start's queued; 'start' builds one"
+    fi
+    return 2
   fi
   job=$(live_of weights)
   if [ -n "$job" ]; then

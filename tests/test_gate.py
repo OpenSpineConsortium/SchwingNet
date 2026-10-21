@@ -258,6 +258,26 @@ class GateTest(unittest.TestCase):
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         self.assertIn(f"--dependency=afterok:{first} ", self.line_of("v1-driver.sbatch")[-1])
 
+    def test_v1_does_not_wait_on_an_x_ray_chains_catalog_and_says_so(self):
+        # start's first catalog ended without a version while its X-ray chain's catalog still waits
+        # behind a fetch of days: v1 is refused, and the refusal names that job instead of saying
+        # no catalog job is queued
+        self.environments_ready()
+        self.weights_ready()
+        self.assertEqual(self.gate("start").returncode, 0)
+        xr_catalog = self.recorded()["xr_catalog"]
+        before = len(self.line_of("v1-driver.sbatch"))
+        self.live(xr_catalog)
+        done = self.gate("v1")
+        self.assertEqual(done.returncode, 2, done.stdout)
+        self.assertIn(f"the X-ray chain's catalog (job {xr_catalog})", done.stdout)
+        self.assertNotIn("no catalog job", done.stdout)
+        self.assertEqual(len(self.line_of("v1-driver.sbatch")), before)
+        self.live()
+        done = self.gate("v1")
+        self.assertEqual(done.returncode, 2, done.stdout)
+        self.assertIn("no catalog job of start's queued", done.stdout)
+
     def test_every_job_header_names_its_qos_and_a_gpu_job_takes_the_gpu_qos(self):
         # Slurm refused the version 1 run for a GPU partition with no QoS (issue #74); a GPU job takes
         # the gpu QoS on gmsap, gvohp or galhp, as Beethoven for VS Code submits one

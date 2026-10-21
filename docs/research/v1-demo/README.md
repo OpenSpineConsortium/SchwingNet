@@ -46,7 +46,7 @@ What the dry run did not do: the manifests came from a scratch stand-in that wri
 
 ## The grid run (waits on the owner)
 
-The plan, for one word: the level stage on C-ArmLSpine as ingested, 20 epochs, seed 1, one GPU on `gmsap`, `gvohp` or `galhp`, the first with room, with the `gpu` QoS (issue #74; the grid's run is grid/v1-driver.sbatch), 4 hours of wall time requested (`python tools/flow.py plan --mode slurm --epochs 20 --hours 4` prints the two jobs), at most 6 GPU-hours in all with the evaluation job; the CPU ingest and build on `reqp --qos=requeue`. Nothing is submitted until the owner says go and the number.
+The plan, for one word: the level stage on C-ArmLSpine as ingested, 20 epochs, seed 1, one GPU on `gmsap`, `gvohp` or `galhp`, the first with room, with the `gpu` QoS (issue #74). The grid's run is grid/v1-driver.sbatch, one job of at most 24 hours on one GPU that trains and evaluates in flow.py's local mode, so at most 24 GPU-hours; flow.py's own slurm mode (`python tools/flow.py plan --mode slurm --epochs 20 --hours 4`) would instead submit two jobs, 4 hours for training and 1 for the evaluation, at most 5 GPU-hours; the CPU ingest and build on `reqp --qos=requeue`. Nothing is submitted until the owner says go and the number.
 
 Before it can run, three things only the owner can do:
 
