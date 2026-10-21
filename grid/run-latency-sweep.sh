@@ -32,11 +32,12 @@ while [ $# -gt 0 ]; do
 done
 # Paths are made absolute before the cd below, since the jobs start in the checkout; a comma would
 # split sbatch's --export and a colon a sweep's name:frames:boxes, so either is refused.
-plain() { case "$1" in *,*|*:*) echo "$1: a path with a comma or a colon cannot be passed to the jobs"; exit 64 ;; esac; }
-absolute() { plain "$1"; [ -e "$1" ] || { echo "$1: not there"; exit 2; }; (cd "$(dirname "$1")" && printf '%s/%s' "$(pwd -P)" "$(basename "$1")"); }
+# Their refusals go to stderr, since absolute runs inside $(...), where stdout is the path.
+plain() { case "$1" in *,*|*:*) echo "$1: a path with a comma or a colon cannot be passed to the jobs" >&2; exit 64 ;; esac; }
+absolute() { plain "$1"; [ -e "$1" ] || { echo "$1: not there" >&2; exit 2; }; (cd "$(dirname "$1")" && printf '%s/%s' "$(pwd -P)" "$(basename "$1")"); }
 [ -n "$CATALOG" ] && CATALOG=$(absolute "$CATALOG")
 for i in "${!RUNS[@]}"; do RUNS[$i]=$(absolute "${RUNS[$i]}") || exit $?; done
-for one in "${SWEEPS[@]}"; do
+for one in ${SWEEPS[@]+"${SWEEPS[@]}"}; do
   colons=${one//[^:]/}
   [ ${#colons} -le 2 ] || { echo "$one: name:frames:boxes or name:bank=<folder>, with no other colon"; exit 64; }
   case "$one" in *,*) echo "$one: a comma cannot be passed to the jobs"; exit 64 ;; esac
@@ -58,7 +59,7 @@ if [ "$PROBE" = 1 ]; then
     --job-name=sn_probe --export=ALL,PART=probe,SCHWINGNET="$REPO" latency-sweep.sbatch >/dev/null || exit 1
 fi
 if [ ${#RUNS[@]} -gt 0 ] && [ -z "$CATALOG" ]; then echo "--catalog names the runs' catalog"; exit 64; fi
-for run in "${RUNS[@]}"; do
+for run in ${RUNS[@]+"${RUNS[@]}"}; do
   [ -f "$run/RUN.json" ] && [ -f "$run/train/best.pt" ] || { echo "$run: no RUN.json and train/best.pt"; exit 2; }
   common="ALL,SCHWINGNET=$REPO,RUN=$run,CATALOG=$CATALOG"
   gpu=$(submit "gpu $run" --gres=gpu:1 --export="$common,PART=gpu" latency-sweep.sbatch) || exit 1

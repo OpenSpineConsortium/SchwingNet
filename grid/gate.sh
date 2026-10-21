@@ -27,6 +27,9 @@
 #   fetch <id>      one set of grid/fetch-xray.json, a credentialed one with ~/.netrc, banked and catalogued
 #   stop            cancel the gate's own jobs that are still queued or running, and nothing else
 #
+# While a version 1 run lasts, grid/logs/HOLD names its job and commit (grid/v1-driver.sbatch); the
+# gate's side skips its fast-forward while the file is there, and every word but a refused one
+# clears a hold whose job Slurm no longer holds, so the run's later steps run the code it recorded.
 # Every submission is one line of grid/logs/GATE_JOBS.txt (<job id> <word> <what> <when>); status
 # and stop read that file and touch no job it does not name. SBATCH, SQUEUE, SACCT and SCANCEL
 # name fakes for the tests; DATA_ROOT, RUNS and MODELS other folders. Exit codes: 0 done, 64 a word
@@ -40,7 +43,14 @@ SBATCH=${SBATCH:-sbatch}
 SQUEUE=${SQUEUE:-squeue}
 SACCT=${SACCT:-sacct}
 SCANCEL=${SCANCEL:-scancel}
-DATA_ROOT=${DATA_ROOT:-/rs/rs_grp_oschome/go2432/data}
+# DATA_ROOT reaches the jobs only when the caller set it (a test's folder): on the grid each stage
+# keeps its own default, since stage 2 reads a set DATA_ROOT as its off-grid layout
+# (<root>/<id>/raw in place of each recipe's raw folder), where LUMOS and VinDr-SpineXR are not.
+GRID_DATA=/rs/rs_grp_oschome/go2432/data
+DATA_ROOT_GIVEN=""
+[ -z "${DATA_ROOT:-}" ] || [ "$DATA_ROOT" = "$GRID_DATA" ] || DATA_ROOT_GIVEN=yes
+export -n DATA_ROOT 2>/dev/null
+DATA_ROOT=${DATA_ROOT:-$GRID_DATA}
 STORE=$DATA_ROOT/_catalog
 RUNS=${RUNS:-/rs/rs_grp_oschome/go2432/runs}
 MODELS=${MODELS:-/rs/rs_grp_oschome/go2432/models}
@@ -54,8 +64,10 @@ ENVS="default train-cpu train-gpu telemetry"
 
 word=${1:-}
 id=${2:-}
-case " $WORDS " in
-  *" $word "*) [ -n "$word" ] || { echo "refusing: no word; one of: $WORDS"; exit 64; } ;;
+# Matched whole, so one argument holding two words ("v1 latency") is refused and never runs nothing.
+case "$word" in
+  start|status|leaks|v1|latency|fetch|stop) ;;
+  "") echo "refusing: no word; one of: $WORDS"; exit 64 ;;
   *) echo "refusing: '$word' is not one of: $WORDS"; exit 64 ;;
 esac
 if [ "$word" = fetch ]; then
@@ -73,7 +85,8 @@ exec 9> "$LOGS/gate.lock"
 flock -w 60 9 || { echo "refusing: another gate word is still running"; exit 75; }
 # The jobs and the scripts they start find pixi and the train-cpu python through the shims, which
 # run them inside the container; the stages read PYDRV, the X-ray chain, the leaks and the ingest.
-export PATH="$REPO/grid/bin:$PATH" SCHWINGNET="$REPO" DATA_ROOT
+export PATH="$REPO/grid/bin:$PATH" SCHWINGNET="$REPO"
+[ -z "$DATA_ROOT_GIVEN" ] || export DATA_ROOT
 export PYDRV=$REPO/grid/bin/train-cpu-python
 WHO=${USER:-$(id -un)}
 
@@ -210,8 +223,16 @@ word_start() {
     echo "  the X-ray chain was not submitted (above), so the CT platform chain is not either (X-ray before CT); 'stop', then 'start' again"
   fi
   # The probe reads what the sweeps are on disk with the node's own python3; it needs nothing above.
-  bash "$REPO/grid/run-latency-sweep.sh" --probe 2>&1 | sed 's/^/  /'
-  awk '$1 == "probe" { print $NF }' "$REPO/grid/LAST_LATENCY.txt" 2>/dev/null | while read -r job; do record "$job" probe; done
+  # Its job id is read from what this call printed, never from LAST_LATENCY.txt, which an earlier
+  # call may have left; a probe that was not submitted is said and start goes on without it.
+  probed=$(bash "$REPO/grid/run-latency-sweep.sh" --probe 2>&1)
+  probe_rc=$?
+  echo "$probed" | sed 's/^/  /'
+  if [ "$probe_rc" = 0 ]; then
+    echo "$probed" | awk '$1 == "probe" && $2 ~ /^[0-9]+$/ { print $2 }' | while read -r job; do record "$job" probe; done
+  else
+    echo "  the probe was not submitted (exit $probe_rc, above); the rest of start goes on"
+  fi
   # Version 1 needs C-ArmLSpine (its test part is the frozen persons), the first catalog with its
   # split check passed, the environments and the weights: afterok on each, so a failure cancels it.
   v1_driver "$(joined "afterok:$first" "afterok:$ingest" "$setup" "$weights_dep")" || return 1
@@ -271,7 +292,7 @@ word_v1() {
 }
 
 word_latency() {
-  local run version catalog busy rc
+  local run version catalog busy rc said
   busy=$( { live_of latency_gpu; live_of latency_cpu; live_of latency_sweep; } | tr '\n' ' ')
   [ -z "${busy// /}" ] || { echo "refusing: latency jobs are still queued or running (jobs $busy)"; return 75; }
   envs_ready || { echo "refusing: the environments are not ready; 'start' makes them first"; return 75; }
@@ -284,12 +305,13 @@ word_latency() {
   catalog=$(ls -1 "$STORE/versions/catalog-$(printf '%06d' "$version")-"*.sqlite 2>/dev/null | head -n 1)
   [ -n "$catalog" ] || { echo "refusing: catalog version $version is not under $STORE/versions"; return 2; }
   echo "  run: $run; catalog: $catalog"
-  bash "$REPO/grid/run-latency-sweep.sh" --catalog "$catalog" "$run" --sweep "case134:bank=$SWEEP_BANK" 2>&1 | sed 's/^/  /'
-  rc=${PIPESTATUS[0]}
-  # Every job the script submitted is recorded, a refusal part-way or not, so 'stop' reaches it.
-  awk '{ print $NF, "latency_" $1 }' "$REPO/grid/LAST_LATENCY.txt" 2>/dev/null | while read -r job what; do
-    record "$job" "$what"
-  done
+  said=$(bash "$REPO/grid/run-latency-sweep.sh" --catalog "$catalog" "$run" --sweep "case134:bank=$SWEEP_BANK" 2>&1)
+  rc=$?
+  echo "$said" | sed 's/^/  /'
+  # Every job this call submitted is recorded, a refusal part-way or not, so 'stop' reaches it; the
+  # ids come from what this call printed, never from LAST_LATENCY.txt, which an earlier call may have left.
+  echo "$said" | awk '($1 == "gpu" || $1 == "cpu" || $1 == "sweep") && $NF ~ /^[0-9]+$/ { print $NF, "latency_" $1 }' \
+    | while read -r job what; do record "$job" "$what"; done
   [ "$rc" = 0 ] || return 1
 }
 
@@ -327,8 +349,21 @@ word_stop() {
   "$SCANCEL" $live && echo "cancelled: $live"
 }
 
-if [ "$word" != status ]; then
+release_hold() {  # the version 1 run's hold (grid/v1-driver.sbatch) is cleared once Slurm no longer holds its job
+  local job
+  [ -f "$LOGS/HOLD" ] || return 0
+  job=$(awk '{ print $1; exit }' "$LOGS/HOLD")
+  case "$QUEUED" in
+    *" $job "*) echo "  the checkout holds still at $(awk '{ print substr($2, 1, 7); exit }' "$LOGS/HOLD") while the version 1 run (job $job) lasts" ;;
+    *) rm -f "$LOGS/HOLD" ;;
+  esac
+}
+if [ "$word" = status ]; then
+  # status reads even when squeue does not answer; only a hold it can see is over is cleared
+  snapshot > /dev/null && release_hold
+else
   snapshot || { echo "schwingnet $word: exit 75"; exit 75; }
+  release_hold
 fi
 case "$word" in
   start) word_start ;;

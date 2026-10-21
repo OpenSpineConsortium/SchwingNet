@@ -27,7 +27,7 @@ FAKES = {
     "sbatch": """#!/bin/bash
 if [ -s "$FAKE/refuse" ] && [[ "$*" == *"$(cat "$FAKE/refuse")"* ]]; then echo "Socket timed out" >&2; exit 1; fi
 n=$(( $(wc -l < "$FAKE/sbatch.log" 2>/dev/null || echo 0) + 101 ))
-echo "$* | DEPEND=${DEPEND:-} FETCH_ARGS=${FETCH_ARGS:-}" >> "$FAKE/sbatch.log"
+echo "$* | DEPEND=${DEPEND:-} FETCH_ARGS=${FETCH_ARGS:-} DATA_ROOT=${DATA_ROOT:-}" >> "$FAKE/sbatch.log"
 echo "$n"
 """,
     "squeue": """#!/bin/bash
@@ -69,11 +69,14 @@ class GateTest(unittest.TestCase):
             folder.mkdir()
         self.netrc = self.tmp / "netrc"
 
-    def gate(self, *words):
+    def gate(self, *words, data_root=None):
         env = dict(os.environ, PATH=f"{self.fake}:{os.environ['PATH']}", FAKE=str(self.fake), SCHWINGNET=str(self.repo),
-                   DATA_ROOT=str(self.data), RUNS=str(self.runs), MODELS=str(self.models), NETRC=str(self.netrc), USER="go2432")
+                   DATA_ROOT=str(self.data) if data_root is None else data_root, RUNS=str(self.runs), MODELS=str(self.models),
+                   NETRC=str(self.netrc), USER="go2432")
         for name in ("SBATCH", "SQUEUE", "SACCT", "SCANCEL", "DF", "DEPEND", "PYDRV"):
             env.pop(name, None)
+        if data_root == "":
+            env.pop("DATA_ROOT")
         return subprocess.run(["bash", str(self.repo / "grid" / "gate.sh"), *words], env=env, capture_output=True, text=True, timeout=120)
 
     def submitted(self):
@@ -119,7 +122,8 @@ class GateTest(unittest.TestCase):
             self.assertTrue(os.access(GRID / name, os.X_OK), name)
 
     def test_a_word_outside_the_list_or_a_stray_argument_is_refused(self):
-        for words in (("rm",), (), ("start", "now"), ("status", "-v"), ("fetch",), ("fetch", "../netrc"),
+        for words in (("rm",), (), ("start", "now"), ("status", "-v"), ("v1 latency",), ("start status",),
+                      ("latency fetch",), (" start",), ("fetch",), ("fetch", "../netrc"),
                       ("fetch", "VinDr"), ("fetch", "a" * 41), ("fetch", "a", "b")):
             done = self.gate(*words)
             self.assertEqual(done.returncode, 64, f"{words}: {done.stdout}{done.stderr}")
@@ -319,6 +323,66 @@ class GateTest(unittest.TestCase):
         done = self.gate("status")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         self.assertIn("101 setup COMPLETED", done.stdout)
+
+    def test_on_the_grid_the_stages_keep_their_own_data_paths(self):
+        # stage 2 reads a set DATA_ROOT as its off-grid layout, so the gate passes none on the grid,
+        # whether the caller sets nothing or the grid's own data root
+        for given in ("", "/rs/rs_grp_oschome/go2432/data"):
+            (self.fake / "sbatch.log").unlink(missing_ok=True)
+            shutil.rmtree(self.repo / "grid" / "logs", ignore_errors=True)
+            done = self.gate("start", data_root=given)
+            self.assertEqual(done.returncode, 0, done.stdout)
+            for script in ("01-fetch.sbatch", "02-bank-ingest.sbatch", "03-catalog.sbatch", "00-carmlspine.sbatch"):
+                for line in self.line_of(script):
+                    self.assertTrue(line.endswith("DATA_ROOT="), f"{given!r}: {line}")
+
+    def test_a_probe_that_was_not_submitted_is_said_and_nothing_stale_is_recorded(self):
+        (self.repo / "grid" / "LAST_LATENCY.txt").write_text("probe 999\ngpu /old/run 998\n", encoding="utf-8")
+        (self.fake / "refuse").write_text("sn_probe", encoding="utf-8")
+        done = self.gate("start")
+        self.assertEqual(done.returncode, 0, done.stdout)
+        self.assertIn("the probe was not submitted", done.stdout)
+        state = (self.repo / "grid" / "logs" / "GATE_JOBS.txt").read_text(encoding="utf-8")
+        self.assertNotIn("999", state)
+        self.assertNotIn(" probe ", state)
+        self.assertIn("v1_driver", state)
+
+    def test_latency_records_only_the_jobs_its_own_call_submitted(self):
+        self.environments_ready()
+        catalog = self.catalog_ready(version=3)
+        # a run folder whose name holds a comma is refused before the sweep script writes its id file,
+        # so a stale probe line there would have been recorded as a latency job
+        run = self.runs / "run,a"
+        (run / "train").mkdir(parents=True)
+        (run / "RUN.json").write_text('{"catalog_version": 3}', encoding="utf-8")
+        (run / "train" / "best.pt").write_bytes(b"")
+        (self.repo / "grid" / "LAST_LATENCY.txt").write_text("probe 999\n", encoding="utf-8")
+        done = self.gate("latency")
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("cannot be passed to the jobs", done.stdout)
+        state = self.repo / "grid" / "logs" / "GATE_JOBS.txt"
+        self.assertNotIn("999", state.read_text(encoding="utf-8") if state.exists() else "")
+        self.assertTrue(catalog.exists())
+
+    def test_the_version_1_hold_is_cleared_once_its_job_is_gone(self):
+        logs = self.repo / "grid" / "logs"
+        logs.mkdir(parents=True, exist_ok=True)
+        hold = logs / "HOLD"
+        hold.write_text("555 0123456789abcdef\n", encoding="utf-8")
+        self.live(555)
+        done = self.gate("status")
+        self.assertEqual(done.returncode, 0, done.stdout)
+        self.assertTrue(hold.exists())
+        self.assertIn("holds still at 0123456", done.stdout)
+        self.live()
+        self.assertEqual(self.gate("status").returncode, 0)
+        self.assertFalse(hold.exists())
+        # a word squeue cannot answer for leaves the hold alone
+        hold.write_text("555 0123456789abcdef\n", encoding="utf-8")
+        (self.fake / "squeue_fails").write_text("", encoding="utf-8")
+        self.assertEqual(self.gate("status").returncode, 0)
+        self.assertEqual(self.gate("stop").returncode, 75)
+        self.assertTrue(hold.exists())
 
 
 if __name__ == "__main__":

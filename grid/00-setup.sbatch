@@ -30,7 +30,8 @@ PIXI_VERSION=0.81.0
 PIXI_BIN=${SCHWINGNET_PIXI_BIN:-$OWN/tools/pixi-$PIXI_VERSION/bin}
 PIXI_SHA256=248510f5f75460a2ae4ec62d761e15c0191dc35db3b1da6f82d9f17c6017051d
 ENVS="default train-cpu train-gpu telemetry"
-REPORT=logs/00-setup-STAGE-REPORT.md
+# Absolute, since the job changes to the checkout before it installs the environments.
+REPORT=$REPO/grid/logs/00-setup-STAGE-REPORT.md
 cd "$REPO" || exit 2
 mkdir -p grid/logs
 cd grid || exit 2

@@ -23,8 +23,9 @@ RUNS=${RUNS:-/rs/rs_grp_oschome/go2432/runs}
 WEIGHTS=${WEIGHTS:-/rs/rs_grp_oschome/go2432/models/resnet18-f37072fd.pth}
 EPOCHS=${EPOCHS:-20}
 SEED=${SEED:-1}
-REPORT=logs/v1-driver-STAGE-REPORT.md
-mkdir -p logs "$RUNS"
+# Absolute, since the job changes to the checkout before it runs the flow.
+REPORT=$REPO/grid/logs/v1-driver-STAGE-REPORT.md
+mkdir -p "$REPO/grid/logs" "$RUNS"
 report() { echo "- $*" | tee -a "$REPORT"; }
 fail() { report "FAILED: $*"; echo "SN_V1_RC=1"; exit 1; }
 echo "# Version 1 run: $(date '+%F %T'), job ${SLURM_JOB_ID:-none} on $(hostname), commit $(git -C "$REPO" rev-parse --short HEAD 2>/dev/null)" > "$REPORT"
@@ -36,6 +37,16 @@ CATALOG=$STORE/versions/$current
 report "catalog: $CATALOG; weights: $(basename "$WEIGHTS"); epochs $EPOCHS, seed $SEED"
 report "GPU: $(nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv,noheader 2>/dev/null | head -n 1 || echo 'nvidia-smi gave nothing')"
 cd "$REPO" || fail "no checkout at $REPO"
+# The run's code holds still while it lasts: flow.py records the commit at the start and runs its
+# later steps from this checkout, so grid/logs/HOLD names this job and the commit, the gate's side
+# skips its fast-forward while the file is there, and the gate clears a hold whose job Slurm no
+# longer holds. The commit is read again at the end, and a run whose checkout moved is not used.
+started_at=$(git -C "$REPO" rev-parse HEAD 2>/dev/null)
+HOLD=$REPO/grid/logs/HOLD
+echo "${SLURM_JOB_ID:-$$} $started_at" > "$HOLD"
+unhold() { [ "$(awk '{ print $1; exit }' "$HOLD" 2>/dev/null)" != "${SLURM_JOB_ID:-$$}" ] || rm -f "$HOLD"; }
+trap unhold EXIT
+trap 'exit 143' TERM
 said=$(bash grid/box.sh pixi run --locked -e train-gpu python -c "import torch; print('torch', torch.__version__, 'cuda available', torch.cuda.is_available())" 2>&1 | tail -n 1)
 report "in the container: $said"
 out=$(mktemp "$REPO/grid/logs/v1-flow-${SLURM_JOB_ID:-$$}.XXXXXX")
@@ -47,5 +58,10 @@ report "run directory: ${run_dir:-none was made}"
 grep -h 'W&B' "$out" | tail -n 3 | while IFS= read -r line; do report "$line"; done
 [ -z "$run_dir" ] || [ ! -f "$run_dir/evaluate/results.md" ] || { echo; echo "## The test part"; cat "$run_dir/evaluate/results.md"; } >> "$REPORT"
 report "flow exited $rc"
+ended_at=$(git -C "$REPO" rev-parse HEAD 2>/dev/null)
+if [ "$ended_at" != "$started_at" ]; then
+  report "FAILED: the checkout moved from ${started_at:0:7} to ${ended_at:0:7} during the run, so a later step may have run the newer code while RUN.json names the older; this run is not used, and v1 runs again"
+  [ "$rc" != 0 ] || rc=3
+fi
 echo "SN_V1_RC=$rc"
 exit "$rc"
