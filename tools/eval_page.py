@@ -194,7 +194,7 @@ def frames_section(run):
     for line in witness.get("missing", []):
         lines.append(f"- Not shown: {line}.")
     for step in ("train", "evaluate"):
-        sheets = sorted((run["folder"] / step / "witness" / "frames").glob("sheet-epoch-*.png"))
+        sheets = sorted((run["folder"] / step / "witness" / "frames").glob("sheet-epoch-*.jpg"))
         for sheet in sheets:
             lines.append(f"![{step} {sheet.stem}]({rel(sheet).as_posix()})")
     for role in ROLES:
@@ -205,9 +205,9 @@ def frames_section(run):
         lines += ["", f"<details><summary>{role}: {len(frames)} frames, strips over the epochs (each links to its animation)</summary>", ""]
         for frame in frames:
             base = run["folder"] / step / "witness" / "frames" / frame["key"]
-            if (base / "strip.png").is_file():
-                link = rel(base / "anim.gif").as_posix() if (base / "anim.gif").is_file() else rel(base / "strip.png").as_posix()
-                lines.append(f"[![{frame['key']} {frame['person']} {','.join(frame['levels'])}]({rel(base / 'strip.png').as_posix()})]({link})")
+            if (base / "strip.jpg").is_file():
+                link = rel(base / "anim.gif").as_posix() if (base / "anim.gif").is_file() else rel(base / "strip.jpg").as_posix()
+                lines.append(f"[![{frame['key']} {frame['person']} {','.join(frame['levels'])}]({rel(base / 'strip.jpg').as_posix()})]({link})")
                 lines.append("")
         lines += ["</details>"]
     return lines

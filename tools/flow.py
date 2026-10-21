@@ -216,7 +216,7 @@ def push_wandb(run_dir, environment):
 KEPT = ("RUN.json", "split-check.json", "witness.json", "wandb-sync.json", "train/metrics.jsonl", "train/checkpoint.json", "train/MODEL.md", "train/accuracy.png", "evaluate/results.json", "evaluate/results.md", "evaluate/confusion.png", "evaluate/per-level.png", "evaluate/witness-test.jsonl", "evaluate/latency.json")
 # Of each witness frame, the strip and the animation; the sheets of the first and last epoch; the
 # latency thread's arms. Never a checkpoint, and never every epoch's picture, which W&B holds.
-KEPT_GLOBS = ("train/witness/frames/*/strip.png", "train/witness/frames/*/anim.gif", "train/witness/frames/sheet-*.png", "evaluate/witness/frames/*/strip.png", "evaluate/witness/frames/*/anim.gif", "evaluate/witness/frames/sheet-*.png", "latency/*.json")
+KEPT_GLOBS = ("train/witness/frames/*/strip.jpg", "train/witness/frames/*/anim.gif", "train/witness/frames/sheet-*.jpg", "evaluate/witness/frames/*/strip.jpg", "evaluate/witness/frames/*/anim.gif", "evaluate/witness/frames/sheet-*.jpg", "latency/*.json")
 
 
 def command_record(args):

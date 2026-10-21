@@ -230,7 +230,7 @@ def log_to_wandb(out, record, rows, folder, lines, drawn):
     media = telemetry.images({"confusion": folder / "confusion.png", "per_level": folder / "per-level.png"})
     if drawn:
         frames_folder, frames = drawn
-        media |= telemetry.images({f"witness/test/{f['key']}": frames_folder / f["key"] / "strip.png" for f in frames})
+        media |= telemetry.images({f"witness/test/{f['key']}": frames_folder / f["key"] / "strip.jpg" for f in frames})
         media |= telemetry.videos({f"witness/test_video/{f['key']}": frames_folder / f["key"] / "anim.gif" for f in frames})
     telemetry.log(dict(media, **({"results": table} if table is not None else {})))
     overall = next((r for r in rows if r.stratum == "all levels"), None)

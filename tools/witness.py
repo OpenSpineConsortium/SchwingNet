@@ -161,8 +161,12 @@ def _epochs(folder):
     return sorted(Path(folder).glob("epoch-*.png"))
 
 
-def strip_and_animation(folder, thumb=160, columns=11):
-    """strip.png (the untrained frame, then evenly spaced epochs to the last) and anim.gif (all)."""
+def strip_and_animation(folder, thumb=160, columns=11, motion=128):
+    """strip.jpg (the untrained frame, then evenly spaced epochs to the last) and anim.gif (all).
+
+    JPEG and a smaller animation keep a run's record to a few megabytes in the repository; the
+    full-size picture of every epoch stays in the run directory and in W&B.
+    """
     from PIL import Image
 
     files = _epochs(folder)
@@ -177,8 +181,8 @@ def strip_and_animation(folder, thumb=160, columns=11):
     for i in picks:
         strip.paste(small[i], (x, 0))
         x += small[i].width + 2
-    strip.save(Path(folder) / "strip.png")
-    frames = [s.quantize(colors=32) for s in small]
+    strip.save(Path(folder) / "strip.jpg", quality=85)
+    frames = [s.resize((max(1, round(s.width * motion / s.height)), motion), Image.BILINEAR).quantize(colors=32) for s in shots]
     durations = [700] * (len(frames) - 1) + [2000]
     frames[0].save(Path(folder) / "anim.gif", save_all=True, append_images=frames[1:], duration=durations, loop=0)
 
@@ -200,7 +204,7 @@ def sheet(folder, frames, epoch, out, thumb=200, columns=6):
     page = Image.new("RGB", (cell * min(columns, len(tiles)), (thumb + 4) * rows), PAPER)
     for n, tile in enumerate(tiles):
         page.paste(tile, ((n % columns) * cell, (n // columns) * (thumb + 4)))
-    page.save(out)
+    page.save(out, quality=85)
     return out
 
 
@@ -209,7 +213,7 @@ def finish(folder, frames, epochs):
     for frame in frames:
         strip_and_animation(Path(folder) / frame["key"])
     for epoch in sorted({epochs[0], epochs[-1]}):
-        sheet(folder, frames, epoch, Path(folder) / f"sheet-epoch-{epoch:02d}.png")
+        sheet(folder, frames, epoch, Path(folder) / f"sheet-epoch-{epoch:02d}.jpg")
 
 
 def parse(argv):
