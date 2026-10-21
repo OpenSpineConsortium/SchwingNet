@@ -22,7 +22,8 @@
 #                                  setup and weights)
 #   status          the gate's jobs and their states, the stage reports, the newest run
 #   leaks           the leak checks over every shard on the volume, once no ingest is queued
-#   v1              the version 1 run alone (again, after a failure)
+#   v1              the version 1 run alone (again, after a failure), afterok on start's
+#                   C-ArmLSpine, catalog and weights jobs while they are queued or running
 #   latency         the latency jobs for the newest run that has a checkpoint, with the case134 sweep
 #   fetch <id>      one set of grid/fetch-xray.json, a credentialed one with ~/.netrc, banked and catalogued
 #   stop            cancel the gate's own jobs that are still queued or running, and nothing else
@@ -235,7 +236,10 @@ word_start() {
   fi
   # Version 1 needs C-ArmLSpine (its test part is the frozen persons), the first catalog with its
   # split check passed, the environments and the weights: afterok on each, so a failure cancels it.
-  v1_driver "$(joined "afterok:$first" "afterok:$ingest" "$setup" "$weights_dep")" || return 1
+  v1_driver "$(joined "afterok:$first" "afterok:$ingest" "$setup" "$weights_dep")" || {
+    echo "  the version 1 run was not submitted (above); the jobs above stand, and 'v1' submits it alone after them"
+    return 1
+  }
   echo "submitted. 'status' follows them; 'leaks' once the catalog job has ended; 'latency' once the version 1 run has its checkpoint."
 }
 
@@ -284,13 +288,35 @@ word_leaks() {
 }
 
 word_v1() {
-  local running setup
+  local running setup ingest_dep="" catalog_dep="" weights_dep="" job
   running=$(live_of v1_driver)
   [ -z "$running" ] || { echo "refusing: the version 1 run is already queued or running (job $running)"; return 75; }
-  catalog_ready || { echo "refusing: no catalog version under $STORE; 'start' builds one"; return 2; }
-  weights_ready || { echo "refusing: no ImageNet weights at $WEIGHTS; 'start' fetches them"; return 2; }
+  # A start still in the queue: the run waits (afterok) on the gate's own C-ArmLSpine, catalog and
+  # weights jobs, as start's own v1 job does, instead of being refused until they end; a resource no
+  # live job is making must be there already. An X-ray chain's catalog (xr_catalog) is not waited on,
+  # since it follows a fetch that can take days, during which the run's script would sit frozen.
+  job=$(live_of carmlspine)
+  [ -z "$job" ] || ingest_dep="afterok:$job"
+  job=$(live_of catalog)
+  if [ -n "$job" ]; then
+    catalog_dep="afterok:$job"
+  elif ! catalog_ready; then
+    job=$(live_of xr_catalog)
+    if [ -n "$job" ]; then
+      echo "refusing: no catalog version under $STORE, and start's catalog job is not queued; the X-ray chain's catalog (job $job) follows a fetch that can take days, so the run does not wait on it: send 'v1' again once a catalog version is there"
+    else
+      echo "refusing: no catalog version under $STORE and no catalog job of start's queued; 'start' builds one"
+    fi
+    return 2
+  fi
+  job=$(live_of weights)
+  if [ -n "$job" ]; then
+    weights_dep="afterok:$job"
+  else
+    weights_ready || { echo "refusing: no ImageNet weights at $WEIGHTS and no weights job queued; 'start' fetches them"; return 2; }
+  fi
   setup=$(setup_dependency) || return 1
-  v1_driver "$setup"
+  v1_driver "$(joined "$catalog_dep" "$ingest_dep" "$weights_dep" "$setup")"
 }
 
 word_latency() {

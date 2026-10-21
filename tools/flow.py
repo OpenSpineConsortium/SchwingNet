@@ -282,8 +282,11 @@ def add_run_arguments(parser):
     parser.add_argument("--max-frames", type=int, default=0)
     parser.add_argument("--weights", default=None)
     parser.add_argument("--hours", type=float, default=4.0, help="the training job's wall time")
-    parser.add_argument("--partition", default="gmsap")
-    parser.add_argument("--qos", default=None)
+    # A GPU step as Beethoven for VS Code submits one (extension/src/core/slurm.ts): the three GPU
+    # partitions, the first with room, and the gpu QoS they take, without which Slurm refuses the job
+    # (issue #74). Only slurm mode submits; local mode runs each step here, under neither.
+    parser.add_argument("--partition", default="gmsap,gvohp,galhp", help="slurm mode: the partitions a step may run on")
+    parser.add_argument("--qos", default="gpu", help="slurm mode: the QoS those partitions take")
     parser.add_argument("--cpus", type=int, default=4)
     parser.add_argument("--memory-gb", type=int, default=32)
     parser.add_argument("--environment", default=None, help="train-cpu locally, train-gpu on the grid")
@@ -307,7 +310,7 @@ def parse(argv):
     if getattr(args, "environment", None) is None and hasattr(args, "mode"):
         args.environment = "train-cpu" if args.mode == "local" else "train-gpu"
     if hasattr(args, "mode") and args.mode == "local":
-        args.partition = "local"
+        args.partition, args.qos = "local", None
     return args
 
 
