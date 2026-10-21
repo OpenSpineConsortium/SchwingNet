@@ -16,6 +16,7 @@ import random
 import subprocess
 from pathlib import Path
 from types import ModuleType
+from typing import Any
 
 import pytest
 
@@ -232,13 +233,13 @@ def shard(tmp: Path, source: str, seed: int) -> Path:
     return folder
 
 
-def frame_row(item: object, source: str, image: bytes) -> dict[str, str]:
+def frame_row(item: Any, source: str, image: bytes) -> dict[str, str]:
     return {
         "record": "frame",
-        "frame": item.path,  # type: ignore[attr-defined]
-        "person": item.person,  # type: ignore[attr-defined]
+        "frame": item.path,
+        "person": item.person,
         "source": source,
-        "store_key": item.sha256,  # type: ignore[attr-defined]
+        "store_key": item.sha256,
         "pixel_key": hashlib.sha256(image).hexdigest(),
         "phash": f"{leaks.phash(pooled(image), 32):016x}",
         "ncc64": base64.b64encode(image).decode("ascii"),
@@ -256,17 +257,22 @@ def write_prints(
     for index, fields in change.items():
         rows[index] = {k: v for k, v in {**rows[index], **fields}.items() if v != ""}
     header = {
-        "record": "shard", "shard": manifest.name, "source": manifest.source,
-        "kind": manifest.kind.value, "supersedes": manifest.supersedes, "manifest_sha256": digest,
-        "fingerprint_version": TOOL.FINGERPRINT_VERSION, "frames": len(rows),
+        "record": "shard",
+        "shard": manifest.name,
+        "source": manifest.source,
+        "kind": manifest.kind.value,
+        "supersedes": manifest.supersedes,
+        "manifest_sha256": digest,
+        "fingerprint_version": TOOL.FINGERPRINT_VERSION,
+        "frames": len(rows),
         "errors": sum(1 for r in rows if "error" in r),
-    }  # fmt: skip
+    }
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text("".join(TOOL.line(r) + "\n" for r in [header, *rows]), encoding="utf-8")
     return rows
 
 
-def join(tmp: Path, *extra: str) -> tuple[int, dict[str, object]]:
+def join(tmp: Path, *extra: str) -> tuple[int, dict[str, Any]]:
     out = tmp / "out"
     argv = ["join", "--fingerprints", str(tmp / "fp" / "*.jsonl"), "--out", str(out), *extra]
     code = TOOL.main(argv)
@@ -308,7 +314,7 @@ def test_the_join_fails_a_copy_across_shards_and_persons(
     code, result = join(tmp)
     assert code == 1 and result["verdict"] == "FAIL"
     assert result["counts"] == {"CHK-6": 1, "CHK-7": 1, "UNKNOWN": 0, "input_problems": 0}
-    checks = {row["check"]: row for row in result["rows"]}  # type: ignore[union-attr]
+    checks = {row["check"]: row for row in result["rows"]}
     assert checks["CHK-7"]["key"] == rows_a[0]["store_key"]
     assert checks["CHK-6"]["ncc"] >= leaks.NCC_MIN
 
@@ -321,8 +327,8 @@ def test_a_frame_never_fingerprinted_and_a_shard_never_listed_fail_the_join(
     listing = tmp / "shards.txt"
     listing.write_text(f"{a}\n{b}\n", encoding="utf-8")
     code, result = join(tmp, "--expect", str(listing))
-    assert code == 1 and result["counts"]["UNKNOWN"] == 1  # type: ignore[index]
-    assert any("no fingerprint of carmlspine_sweeps/" in p for p in result["input_problems"])  # type: ignore[union-attr]
+    assert code == 1 and result["counts"]["UNKNOWN"] == 1
+    assert any("no fingerprint of carmlspine_sweeps/" in p for p in result["input_problems"])
 
 
 def test_an_unreadable_fingerprint_file_fails_the_join(two_shards: tuple[Path, Path, Path]) -> None:
@@ -344,8 +350,8 @@ def test_a_new_shard_is_checked_against_the_rest_and_a_superseded_one_is_dropped
     copied = {k: rows_a[0][k] for k in ("store_key", "pixel_key", "phash", "ncc64")}
     write_prints(b, tmp / "fp" / "b.jsonl", {0: copied})
     code, result = join(tmp, "--new", str(b))
-    assert code == 1 and result["settings"]["new"].startswith("carmlspine_sweeps/")  # type: ignore[index]
-    assert result["counts"]["CHK-7"] == 1  # type: ignore[index]
+    assert code == 1 and result["settings"]["new"].startswith("carmlspine_sweeps/")
+    assert result["counts"]["CHK-7"] == 1
     first_a, *_ = (tmp / "fp" / "a.jsonl").read_text(encoding="utf-8").splitlines()
     head_b, *rest_b = (tmp / "fp" / "b.jsonl").read_text(encoding="utf-8").splitlines()
     superseded = json.loads(first_a)["shard"]
