@@ -168,3 +168,32 @@ def test_a_step_logged_online_counts_as_pushed(tmp_path: Path, monkeypatch: pyte
     outcome = tool.sync(tmp_path)
     assert outcome["synced"] and outcome["urls"] == ["https://wandb.ai/e/SchwingNet/runs/x-train"]
     assert tool.verdict(outcome) == "W&B: pushed https://wandb.ai/e/SchwingNet/runs/x-train"
+
+
+def test_the_rules_refuse_what_would_put_a_frame_twice() -> None:
+    from beethoven_qa.contracts import ViolationError
+
+    one = frame(1, "carmlspine:case1000", "validation", ("L3",))
+    twin = Candidate(one.sha256, "carmlspine:case1001", "validation", "carmlspine", ("L3",), "/x")
+    with pytest.raises(ViolationError):
+        spread((one, twin), LUMBAR, 2, "salt")
+    with pytest.raises(ViolationError):
+        choose(bank(), WitnessRule(transitional_cases=("case39",)))
+
+
+def test_spread_stays_fast_on_a_catalog_sized_pool() -> None:
+    import time
+
+    pool = tuple(
+        frame(n, f"carmlspine:case{n % 400}", "validation", (LUMBAR[n % 5],)) for n in range(20000)
+    )
+    started = time.monotonic()
+    chosen = spread(pool, LUMBAR, 24, "salt")
+    assert len(chosen) == 24 and len({c.person for c in chosen}) == 24
+    assert time.monotonic() - started < 20
+
+
+def test_an_error_is_made_safe_for_a_committed_table() -> None:
+    tool = load_tool("wandb_log")
+    said = tool.plain("bad key " + "a1" * 20 + " | rest\nsecond line")
+    assert "[redacted]" in said and "|" not in said and "second" not in said and "a1a1" not in said

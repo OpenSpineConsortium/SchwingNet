@@ -90,28 +90,39 @@ def _unique(chosen: tuple[Candidate, ...]) -> bool:
     return len({c.sha256 for c in chosen}) == len(chosen)
 
 
+def _distinct(candidates: tuple[Candidate, ...]) -> bool:
+    return len({c.sha256 for c in candidates}) == len(candidates)
+
+
 @beartype
 @require(lambda count: 0 <= count <= 1000, "a witness set is small")
+@require(lambda candidates: _distinct(candidates), "a frame is a candidate once, by its bytes")
 @ensure(lambda result, count: len(result) <= count, "no more than asked")
 @ensure(lambda result: _unique(result), "no frame twice")
 @ensure(lambda result, candidates: all(c in candidates for c in result), "only candidates")
 def spread(
     candidates: tuple[Candidate, ...], levels: tuple[str, ...], count: int, salt: str
 ) -> tuple[Candidate, ...]:
-    """Up to count frames, the levels taken in turn, each the least-shown person's best rank."""
+    """Up to count frames, the levels taken in turn, each the least-shown person's best rank.
+
+    Each level's frames are listed once in rank order, so a pick costs one pass over that level's
+    list, never the whole catalog searched again: a real catalog has tens of thousands of frames.
+    """
     order = sorted(candidates, key=lambda c: rank(salt, c.sha256))
+    by_level = {level: [c for c in order if level in c.levels] for level in levels}
     chosen: list[Candidate] = []
+    taken: set[str] = set()
     shown: dict[str, int] = {}
     while len(chosen) < count:
         added = False
         for level in levels:
             if len(chosen) >= count:
                 break
-            left = [c for c in order if level in c.levels and c not in chosen]
-            if not left:
+            best = _least_shown(by_level[level], taken, shown)
+            if best is None:
                 continue
-            best = min(left, key=lambda c: (shown.get(c.person, 0), order.index(c)))
             chosen.append(best)
+            taken.add(best.sha256)
             shown[best.person] = shown.get(best.person, 0) + 1
             added = True
         if not added:
@@ -119,11 +130,32 @@ def spread(
     return tuple(chosen)
 
 
+def _least_shown(
+    ranked: list[Candidate], taken: set[str], shown: dict[str, int]
+) -> Candidate | None:
+    """The first-ranked frame not taken whose person has been shown the fewest times."""
+    best, fewest = None, -1
+    for candidate in ranked:
+        if candidate.sha256 in taken:
+            continue
+        times = shown.get(candidate.person, 0)
+        if best is None or times < fewest:
+            best, fewest = candidate, times
+            if times == 0:
+                break
+    return best
+
+
 def _of_case(candidates: tuple[Candidate, ...], case: str) -> tuple[Candidate, ...]:
     return tuple(c for c in candidates if case_of(c.person) == case)
 
 
 @beartype
+@require(lambda candidates: _distinct(candidates), "a frame is a candidate once, by its bytes")
+@require(
+    lambda rule: not set(rule.transitional_cases) & set(rule.sweep_cases),
+    "a case is an L6 case or a sweep, not both",
+)
 @ensure(lambda result: _unique(tuple(c for _, c in result[0])), "no frame in two roles")
 @ensure(lambda result: all(role in ROLES for role, _ in result[0]), "every role is named")
 def choose(
@@ -160,8 +192,12 @@ def choose(
         if not got:
             missing.append(f"{ROLE_TRANSITIONAL}: no test frame of {case} in the catalog")
     for case in rule.sweep_cases:
+        taken = {c.sha256 for _, c in picked}
         frames = tuple(
-            sorted((c for c in _of_case(mine, case) if c.part == "test"), key=lambda c: c.path)
+            sorted(
+                (c for c in _of_case(mine, case) if c.part == "test" and c.sha256 not in taken),
+                key=lambda c: c.path,
+            )
         )
         got = tuple(frames[i] for i in evenly_spaced(len(frames), rule.per_sweep))
         picked.extend((ROLE_SWEEP, c) for c in got)

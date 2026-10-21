@@ -112,7 +112,7 @@ def wandb_cell(run):
     if sync.get("synced"):
         urls = sync.get("urls") or []
         return " ".join(f"[{n + 1}]({u})" for n, u in enumerate(urls)) or "pushed"
-    return "not pushed: " + sync.get("why", "unknown").replace("|", "/")
+    return "not pushed: " + " ".join(str(sync.get("why", "unknown")).split()).replace("|", "/")
 
 
 def best_test_witness(run):

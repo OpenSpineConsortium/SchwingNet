@@ -219,12 +219,14 @@ def write_witness(run_dir, catalog, catalog_sha256):
     print(json.dumps({"witness": how, "frames": len(document["frames"]), "missing": document["missing"]}), flush=True)
 
 
-def push_wandb(run_dir, environment):
+def push_wandb(run_dir, environment=None):
     """Push the steps' offline W&B runs from here; the one line that says whether they went."""
-    command = ["pixi", "run", "--locked", "-e", environment, "python", "tools/wandb_log.py", "sync", "--run", str(run_dir)]
+    # The small telemetry environment, never train-gpu, whose CUDA build the login node may refuse.
+    command = ["pixi", "run", "--locked", "-e", "telemetry", "python", "tools/wandb_log.py", "sync", "--run", str(run_dir)]
     done = subprocess.run(command, cwd=ROOT, capture_output=True, text=True, check=False)
     lines = [line for line in done.stdout.splitlines() if line.startswith("W&B")]
-    return lines[-1] if lines else f"W&B NOT PUSHED: the sync step exited {done.returncode}: {done.stderr.strip()[-200:]}"
+    said = " ".join((done.stderr.strip().splitlines() or [""])[-1].split()).replace("|", "/")[:200]
+    return lines[-1] if lines else f"W&B NOT PUSHED: the sync step exited {done.returncode}: {said}"
 
 
 KEPT = ("RUN.json", "split-check.json", "witness.json", "wandb-sync.json", "train/metrics.jsonl", "train/checkpoint.json", "train/MODEL.md", "train/accuracy.png", "evaluate/results.json", "evaluate/results.md", "evaluate/confusion.png", "evaluate/per-level.png", "evaluate/witness-test.jsonl", "evaluate/latency.json")

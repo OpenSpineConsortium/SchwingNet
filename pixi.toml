@@ -82,6 +82,11 @@ pytorch = { version = ">=2.3", build = "cuda*" }
 cuda-version = ">=12.4"
 
 
+# W&B alone, for the flow's push of a step's offline run from a login node with no GPU (#12).
+[feature.telemetry.dependencies]
+wandb = ">=0.18"
+
 [environments]
 train-cpu = { features = ["train", "cpu"], solve-group = "train-cpu" }
 train-gpu = { features = ["train", "cuda"], solve-group = "train-gpu" }
+telemetry = { features = ["telemetry"], solve-group = "telemetry" }

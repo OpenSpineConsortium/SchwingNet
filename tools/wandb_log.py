@@ -27,6 +27,7 @@ so the trainer's epochs and the evaluator's tables sit side by side.
 import argparse
 import json
 import os
+import re
 import stat
 import subprocess
 import sys
@@ -65,15 +66,38 @@ def token_file_env():
     raise ValueError(f"{TOKEN_FILE} has no WANDB_API_KEY line")
 
 
+def plain(text, limit=200):
+    """An error's first line, whitespace collapsed, no table bar, nothing key-shaped, so it is
+    safe in a committed file, a ledger row and a Markdown cell."""
+    first = (str(text).strip().splitlines() or [""])[0]
+    first = re.sub(r"[0-9A-Za-z_-]{32,}", "[redacted]", " ".join(first.split()))
+    return first.replace("|", "/")[:limit]
+
+
 class Telemetry:
-    """One step's W&B run in offline mode; every call is a no-op where W&B is off or absent."""
+    """One step's W&B run; every call is a no-op where W&B is off, absent or broken.
+
+    Nothing W&B does may stop a training run: a failure at any call is caught, logging stops for
+    the step, and the reason is written to wandb-mode.json and said by the flow.
+    """
 
     def __init__(self, run_dir, record, step, config):
         self.run = None
+        self.mode = "off"
         self.reason = None
+        self.modes = Path(run_dir) / "wandb-mode.json"
+        self.step = step
         if not enabled():
             self.reason = "SCHWINGNET_WANDB=off"
-            return
+        else:
+            try:
+                self._start(run_dir, record, step, config)
+            except Exception as error:  # noqa: BLE001 - W&B never stops a run
+                self.run, self.mode = None, "off"
+                self.reason = f"W&B could not start ({type(error).__name__}: {plain(error, 120)})"
+        self._note()
+
+    def _start(self, run_dir, record, step, config):
         try:
             import wandb
         except ImportError:
@@ -88,7 +112,6 @@ class Telemetry:
             entity=os.environ.get("WANDB_ENTITY") or None,
             group=record["run_id"],
             name=f"{record['run_id']}-{step}",
-            id=f"{record['run_id']}-{step}",
             job_type=step,
             dir=str(folder),
             config=dict(config, run_id=record["run_id"], code_commit=record["code_commit"], catalog_sha256=record["catalog_sha256"], catalog_version=record["catalog_version"], clean_tree=record["clean_tree"]),
@@ -98,45 +121,55 @@ class Telemetry:
             try:
                 if where == "file":
                     os.environ.update(token_file_env())
-                self.run = wandb.init(mode="online", settings=wandb.Settings(silent=True, console="off", init_timeout=60), **options)
+                self.run = wandb.init(mode="online", id=f"{record['run_id']}-{step}", settings=wandb.Settings(silent=True, console="off", init_timeout=60), **options)
                 self.mode, self.reason = "online", None
             except Exception as error:  # noqa: BLE001 - any failure to reach W&B falls back to offline
-                said = " ".join(str(error).split())[:120]
-                self.reason = f"online start failed ({type(error).__name__}: {said}); logged offline"
+                self.reason = f"online start failed ({type(error).__name__}: {plain(error, 120)}); logged offline"
                 # The failed start still holds the run id in W&B's service; a fresh service frees it.
                 wandb.teardown()
         if self.run is None:
-            self.run = wandb.init(mode="offline", settings=wandb.Settings(silent=True, console="off"), **options)
-        note = {"step": step, "mode": self.mode, "why": self.reason, "url": getattr(self.run, "url", None) if self.mode == "online" else None}
-        modes = Path(run_dir) / "wandb-mode.json"
-        known = json.loads(modes.read_text(encoding="utf-8")) if modes.is_file() else {}
-        modes.write_text(json.dumps(dict(known, **{step: note}), indent=1) + "\n", encoding="utf-8")
+            # An id of its own, since a failed online start may have registered the first one.
+            suffix = "" if self.mode == "offline" and self.reason.startswith("no W&B key") else "-offline"
+            self.run = wandb.init(mode="offline", id=f"{record['run_id']}-{step}{suffix}", settings=wandb.Settings(silent=True, console="off"), **options)
+
+    def _note(self):
+        try:
+            note = {"step": self.step, "mode": self.mode, "why": self.reason, "url": getattr(self.run, "url", None) if self.mode == "online" else None}
+            known = json.loads(self.modes.read_text(encoding="utf-8")) if self.modes.is_file() else {}
+            self.modes.write_text(json.dumps(dict(known, **{self.step: note}), indent=1) + "\n", encoding="utf-8")
+        except (OSError, ValueError):
+            pass
+
+    def _guard(self, action, default=None):
+        """Run one W&B call; on any failure logging stops for this step and says why."""
+        if not self.run:
+            return default
+        try:
+            return action()
+        except Exception as error:  # noqa: BLE001 - W&B never stops a run
+            self.run, self.mode = None, "off"
+            self.reason = f"W&B failed mid-run ({type(error).__name__}: {plain(error, 120)}); logging stopped"
+            self._note()
+            return default
 
     def log(self, values, step=None):
-        if self.run:
-            self.run.log(values, step=step)
+        self._guard(lambda: self.run.log(values, step=step))
 
     def images(self, named_paths):
         """Images by name, from files already on disk; a missing file is skipped."""
-        if self.run:
-            return {name: self.wandb.Image(str(p)) for name, p in named_paths.items() if Path(p).is_file()}
-        return {}
+        return self._guard(lambda: {name: self.wandb.Image(str(p)) for name, p in named_paths.items() if Path(p).is_file()}, {})
 
     def videos(self, named_paths):
-        if self.run:
-            return {name: self.wandb.Video(str(p), format="gif") for name, p in named_paths.items() if Path(p).is_file()}
-        return {}
+        return self._guard(lambda: {name: self.wandb.Video(str(p), format="gif") for name, p in named_paths.items() if Path(p).is_file()}, {})
 
     def table(self, columns, rows):
-        return self.wandb.Table(columns=list(columns), data=[list(r) for r in rows]) if self.run else None
+        return self._guard(lambda: self.wandb.Table(columns=list(columns), data=[list(r) for r in rows]))
 
     def summary(self, values):
-        if self.run:
-            self.run.summary.update(values)
+        self._guard(lambda: self.run.summary.update(values))
 
     def finish(self):
-        if self.run:
-            self.run.finish()
+        self._guard(lambda: self.run.finish())
 
 
 def offline_runs(run_dir):
@@ -167,7 +200,8 @@ def sync(run_dir):
         outcome["synced"] = done.returncode == 0
         outcome["urls"] = sorted(set(live) | set(previous.get("urls", [])) | {word for word in (done.stdout + done.stderr).split() if word.startswith("https://wandb.ai/")})
         if done.returncode != 0:
-            outcome["why"] = f"wandb sync exited {done.returncode}: {(done.stderr or done.stdout).strip()[-300:]}"
+            lines = [line for line in (done.stderr or done.stdout).splitlines() if line.strip()]
+            outcome["why"] = f"wandb sync exited {done.returncode}: {plain(lines[-1] if lines else '')}"
     (run_dir / "wandb-sync.json").write_text(json.dumps(outcome, indent=1) + "\n", encoding="utf-8")
     return outcome
 

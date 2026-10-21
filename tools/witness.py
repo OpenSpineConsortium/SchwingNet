@@ -158,7 +158,7 @@ def draw_checkpoint(frames, marks_by_sha, epoch, folder):
 
 
 def _epochs(folder):
-    return sorted(Path(folder).glob("epoch-*.png"))
+    return sorted(Path(folder).glob("epoch-*.png"), key=lambda f: int(f.stem.split("-")[1]))
 
 
 def strip_and_animation(folder, thumb=160, columns=11, motion=128):

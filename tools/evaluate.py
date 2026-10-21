@@ -184,8 +184,8 @@ def parse(argv):
 
 def epoch_files(out):
     """The epochs the trainer kept, in order, as (epoch, path)."""
-    files = sorted((out / "train" / "epochs").glob("epoch-*.pt"))
-    return [(int(f.stem.split("-")[1]), f) for f in files]
+    files = ((int(f.stem.split("-")[1]), f) for f in (out / "train" / "epochs").glob("epoch-*.pt"))
+    return sorted(files)
 
 
 def test_witness(out, args, size):

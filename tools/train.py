@@ -368,6 +368,8 @@ def run(args):
     if not run_file.is_file():
         raise TrainError(f"{run_file}: no run record; start the run with tools/flow.py")
     record = json.loads(run_file.read_text(encoding="utf-8"))
+    if args.epochs < 1:
+        raise TrainError("a run trains at least one epoch; epoch 0 is the untrained network, drawn before it")
     seed_everything(args.seed)
     crops = read_crops(args.catalog, TRAIN_PARTS)
     train_crops = pick(crops, "train", args.max_frames, args.seed)
