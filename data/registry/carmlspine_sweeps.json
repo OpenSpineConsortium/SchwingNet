@@ -6,7 +6,7 @@
   "modality": "cbct_projection",
   "device_class": "cbct_gantry",
   "regions": ["lumbar", "sacrum"],
-  "grid_root": "/rs/rs_grp_oschome/go2432/data/realxray/carmlspine_sweep",
+  "grid_root": "/rs/rs_grp_oschome/go2432/data/carmlspine_sweeps",
   "shards": [],
-  "notes": "case134 and case39, 301 projections each at quantised gantry angles; the demo's recorded sweeps, so both persons are frozen test persons and no sweep frame is ever trained on"
+  "notes": "the raw bank is /rs/rs_grp_oschome/go2432/data/realxray/carmlspine_sweep, read by the ingest and never moved; case134 and case39, 301 projections each at quantised gantry angles; the demo's recorded sweeps, so both persons are frozen test persons and no sweep frame is ever trained on"
 }
