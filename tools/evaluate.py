@@ -12,22 +12,36 @@ the per-level accuracy with its intervals. The transitional stratum (T13, L6) is
 never pooled, as docs/research/retraining-plan.md asks.
 """
 
-import argparse
-import json
+import importlib.util
 import sys
-from collections import Counter, defaultdict
 from pathlib import Path
 
-import numpy as np
-import torch
-
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT / "src"))
-sys.path.insert(0, str(ROOT / "tools"))
+# As in tools/train.py: this folder leaves the path so tools/profile.py never shadows the
+# standard library; the trainer's readers are loaded from their file instead.
+sys.path[0] = str(ROOT / "src")
 
+import argparse  # noqa: E402
+import json  # noqa: E402
+from collections import Counter, defaultdict  # noqa: E402
+
+import numpy as np  # noqa: E402
+import torch  # noqa: E402
 from schwingnet.catalog import LEVELS, TRANSITIONAL  # noqa: E402
 from schwingnet.flow import ResultRow, result_line, wilson  # noqa: E402
-from train import TrainError, build_model, load_crops, predict, read_crops  # noqa: E402
+
+
+def load_trainer():
+    spec = importlib.util.spec_from_file_location("schwingnet_train", ROOT / "tools" / "train.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+train = load_trainer()
+TrainError, build_model, load_crops, predict, read_crops = (
+    train.TrainError, train.build_model, train.load_crops, train.predict, train.read_crops,
+)
 
 HEADER = (
     "| measure | stratum | correct/n | fraction | 95% interval | persons | run | commit | tree |\n"

@@ -16,26 +16,28 @@ seed fixes every source of randomness torch exposes, and the run is refused unle
 is there, since tools/flow.py writes that record from a clean tree before any step starts.
 """
 
-import argparse
-import hashlib
-import json
-import random
-import sqlite3
 import sys
-import time
 from pathlib import Path
 
-import numpy as np
-import torch
-from PIL import Image, ImageDraw
-from torch import nn
-from torchvision.models import resnet18
-
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT / "src"))
+# Run as a script, this folder is first on the path, and tools/profile.py would then shadow the
+# standard library's profile module, which torch imports; the package under src/ takes its place.
+sys.path[0] = str(ROOT / "src")
 
+import argparse  # noqa: E402
+import hashlib  # noqa: E402
+import json  # noqa: E402
+import random  # noqa: E402
+import sqlite3  # noqa: E402
+import time  # noqa: E402
+
+import numpy as np  # noqa: E402
+import torch  # noqa: E402
+from PIL import Image, ImageDraw  # noqa: E402
 from schwingnet.catalog import LEVELS, TRANSITIONAL  # noqa: E402
 from schwingnet.flow import wilson  # noqa: E402
+from torch import nn  # noqa: E402
+from torchvision.models import resnet18  # noqa: E402
 
 PAD = 0.15
 TRAIN_PARTS = ("train", "validation")
