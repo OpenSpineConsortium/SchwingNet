@@ -1,0 +1,62 @@
+{
+ "arm": "torch-cpu-4t",
+ "run_id": "2553f50346d4",
+ "code_commit": "d949c4ff8cbab6cdea086062e0e683b43b1c1bb8",
+ "runtime": "torch",
+ "device_kind": "cpu",
+ "device": "x86_64 (4 cores visible)",
+ "threads": 4,
+ "batch": 1,
+ "frames": 300,
+ "distinct_frames": 59,
+ "boxes_per_frame_mean": 3.6271186440677967,
+ "warmup_frames": 30,
+ "ms_per_frame_median": 20.5217929999435,
+ "ms_per_frame_p95": 31.27224199988632,
+ "ms_per_frame_p99": 40.94511900007092,
+ "frame": {
+  "frames": 300,
+  "p50": 20.5217929999435,
+  "p95": 31.27224199988632,
+  "p99": 40.94511900007092,
+  "mean": 21.721932453333466,
+  "min": 12.596152000014627,
+  "max": 44.25122500015277
+ },
+ "per_stage": {
+  "preprocess_ms": {
+   "frames": 300,
+   "p50": 0.5034880000494013,
+   "p95": 0.9056789999704051,
+   "p99": 1.0655559999577235,
+   "mean": 0.5458373866645161,
+   "min": 0.30561099993065,
+   "max": 2.32764599991242
+  },
+  "model_ms": {
+   "frames": 300,
+   "p50": 19.117803999961325,
+   "p95": 29.34288699998433,
+   "p99": 38.69189500005632,
+   "mean": 20.2295613600063,
+   "min": 11.595084999953542,
+   "max": 42.66859700010173
+  },
+  "track_ms": {
+   "frames": 300,
+   "p50": 0.8949769999162527,
+   "p95": 1.5639820001069893,
+   "p99": 1.8750910001017473,
+   "mean": 0.9465337066626489,
+   "min": 0.29877199995098636,
+   "max": 2.1774259998892376
+  }
+ },
+ "budget_ms": 97.0,
+ "within_budget": true,
+ "parity_passed": true,
+ "part": "test",
+ "onnx_sha256": null,
+ "excludes": "acquisition, file read and decode, display",
+ "torch": "2.14.1"
+}

@@ -129,7 +129,7 @@ def test_the_synthetic_bank_is_learnable_and_repeats_a_frame(tmp_path: Path) -> 
     metas = sorted((tmp_path / "meta").glob("*.json"))
     assert len(images) == 120 and len(metas) == 120
     digests = {p.read_bytes() for p in images}
-    assert len(digests) == 119, "frame 50 repeats frame 49's bytes under another stem"
+    assert len(digests) == 119, "frame 50 repeats an earlier frame of its own case under another stem"
     meta = json.loads(metas[0].read_text(encoding="utf-8"))
     assert meta["boxes"] and all(len(b["box"]) == 4 for b in meta["boxes"])
     assert any(p.parent.name == "val" for p in images)

@@ -1,0 +1,9 @@
+{
+ "onnx": "<run dir>",
+ "onnx_sha256": "0cf060843c9c7d2b9d47d6f96d66d9804a220fe2e68b06b1cbd36602aeb7f160",
+ "checkpoint_sha256": "f1db2e5b0ca7a5e08fa605240249970a39af7e53dba847621dd9147ac29ffb4e",
+ "opset": 17,
+ "size": 64,
+ "torch": "2.14.1",
+ "onnx_version": "1.23.2"
+}

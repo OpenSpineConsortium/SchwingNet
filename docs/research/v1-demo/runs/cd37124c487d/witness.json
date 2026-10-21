@@ -1,0 +1,1067 @@
+{
+ "schema": 1,
+ "rule": {
+  "source": "carmlspine",
+  "validation_count": 24,
+  "test_count": 24,
+  "transitional_cases": [
+   "case42",
+   "case121",
+   "case136"
+  ],
+  "per_transitional": 2,
+  "sweep_cases": [
+   "case134",
+   "case39"
+  ],
+  "per_sweep": 8,
+  "salt": "schwingnet-witness-v1"
+ },
+ "chosen_from_catalog": "5adfe5ec5715fcb2eb62215597b06a65794368d9fced76c7e0a486d6e7e8b19b",
+ "frames": [
+  {
+   "key": "validation-00-15f305da",
+   "role": "validation",
+   "sha256": "15f305da1529a150ba7f74baa816f40ee71feb16e0eaedc2a00a9512ad1b6096",
+   "person": "carmlspine:case1028",
+   "part": "validation",
+   "source": "carmlspine",
+   "levels": [
+    "L1",
+    "L2",
+    "L5",
+    "sacrum"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-e825b359705a/15/15f305da1529a150ba7f74baa816f40ee71feb16e0eaedc2a00a9512ad1b6096.png"
+  },
+  {
+   "key": "validation-01-9d69c1c1",
+   "role": "validation",
+   "sha256": "9d69c1c168544709292c74c1029ef4e4c781d403146b4fa44a8669cd05d7ae00",
+   "person": "carmlspine:case1024",
+   "part": "validation",
+   "source": "carmlspine",
+   "levels": [
+    "L1",
+    "L2",
+    "L3",
+    "L4",
+    "T12"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-e825b359705a/9d/9d69c1c168544709292c74c1029ef4e4c781d403146b4fa44a8669cd05d7ae00.png"
+  },
+  {
+   "key": "validation-02-81cb9000",
+   "role": "validation",
+   "sha256": "81cb900016ddd1b9483a14183b015985fb9ee818604b5de173d744e0738b540d",
+   "person": "carmlspine:case1035",
+   "part": "validation",
+   "source": "carmlspine",
+   "levels": [
+    "L2",
+    "L3",
+    "L4"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-e825b359705a/81/81cb900016ddd1b9483a14183b015985fb9ee818604b5de173d744e0738b540d.png"
+  },
+  {
+   "key": "validation-03-9536c2ad",
+   "role": "validation",
+   "sha256": "9536c2adecd9611f186639986e54222a640382f478e86fcae524a75e20b0b596",
+   "person": "carmlspine:case1002",
+   "part": "validation",
+   "source": "carmlspine",
+   "levels": [
+    "L1",
+    "L2",
+    "L3",
+    "L4"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-e825b359705a/95/9536c2adecd9611f186639986e54222a640382f478e86fcae524a75e20b0b596.png"
+  },
+  {
+   "key": "validation-04-a930d3af",
+   "role": "validation",
+   "sha256": "a930d3af2910e8be98c654d5b8af8bd40eedde748ba8109542dba88cccde5d8f",
+   "person": "carmlspine:case1013",
+   "part": "validation",
+   "source": "carmlspine",
+   "levels": [
+    "L3",
+    "L4",
+    "L5",
+    "sacrum"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-e825b359705a/a9/a930d3af2910e8be98c654d5b8af8bd40eedde748ba8109542dba88cccde5d8f.png"
+  },
+  {
+   "key": "validation-05-faad6cc4",
+   "role": "validation",
+   "sha256": "faad6cc48ea85b0e94738ef8fb8721cc05f2c2558f717e63b714a25996615bcd",
+   "person": "carmlspine:case1017",
+   "part": "validation",
+   "source": "carmlspine",
+   "levels": [
+    "L1",
+    "T11",
+    "T12"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-e825b359705a/fa/faad6cc48ea85b0e94738ef8fb8721cc05f2c2558f717e63b714a25996615bcd.png"
+  },
+  {
+   "key": "validation-06-98b939ce",
+   "role": "validation",
+   "sha256": "98b939ce262bf41a782abbece66c384130314d138ac1ea0398807ce2e503065e",
+   "person": "carmlspine:case1028",
+   "part": "validation",
+   "source": "carmlspine",
+   "levels": [
+    "L1",
+    "L2",
+    "L3",
+    "L4",
+    "T11",
+    "T12"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-e825b359705a/98/98b939ce262bf41a782abbece66c384130314d138ac1ea0398807ce2e503065e.png"
+  },
+  {
+   "key": "validation-07-06be9d74",
+   "role": "validation",
+   "sha256": "06be9d74d23295a8eaa59bf38d9d0d57979227de4ee23824b41a9f7c9e98a7fc",
+   "person": "carmlspine:case1002",
+   "part": "validation",
+   "source": "carmlspine",
+   "levels": [
+    "L2",
+    "L3",
+    "L4",
+    "L5",
+    "sacrum"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-e825b359705a/06/06be9d74d23295a8eaa59bf38d9d0d57979227de4ee23824b41a9f7c9e98a7fc.png"
+  },
+  {
+   "key": "validation-08-e2a67efb",
+   "role": "validation",
+   "sha256": "e2a67efbe0e943dbab7adff9ff10418876626c06768dc17812945fe20583a8b8",
+   "person": "carmlspine:case1035",
+   "part": "validation",
+   "source": "carmlspine",
+   "levels": [
+    "L4",
+    "L5",
+    "sacrum"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-e825b359705a/e2/e2a67efbe0e943dbab7adff9ff10418876626c06768dc17812945fe20583a8b8.png"
+  },
+  {
+   "key": "validation-09-8c2efc97",
+   "role": "validation",
+   "sha256": "8c2efc97a08595a091c7964ae40188ce37375296ba119c4f5d928e454d22f462",
+   "person": "carmlspine:case1024",
+   "part": "validation",
+   "source": "carmlspine",
+   "levels": [
+    "L4",
+    "L5",
+    "sacrum"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-e825b359705a/8c/8c2efc97a08595a091c7964ae40188ce37375296ba119c4f5d928e454d22f462.png"
+  },
+  {
+   "key": "validation-10-ba5f76a9",
+   "role": "validation",
+   "sha256": "ba5f76a92d40d5be4ed4f179805b71dbb297a4227f96c41a6e5c1293d4564fd4",
+   "person": "carmlspine:case1013",
+   "part": "validation",
+   "source": "carmlspine",
+   "levels": [
+    "L1",
+    "T11",
+    "T12"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-e825b359705a/ba/ba5f76a92d40d5be4ed4f179805b71dbb297a4227f96c41a6e5c1293d4564fd4.png"
+  },
+  {
+   "key": "validation-11-2ded4246",
+   "role": "validation",
+   "sha256": "2ded424658505f88c10ad18bff72d71174cdd3ae5e57ca8aeee11cde06330398",
+   "person": "carmlspine:case1017",
+   "part": "validation",
+   "source": "carmlspine",
+   "levels": [
+    "L1",
+    "L2",
+    "L3",
+    "T12"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-e825b359705a/2d/2ded424658505f88c10ad18bff72d71174cdd3ae5e57ca8aeee11cde06330398.png"
+  },
+  {
+   "key": "validation-12-276d7eb0",
+   "role": "validation",
+   "sha256": "276d7eb0301510aeb60e3dd4fb8ed4b184713bb5b324bc93f31579aac27aaf3d",
+   "person": "carmlspine:case1028",
+   "part": "validation",
+   "source": "carmlspine",
+   "levels": [
+    "L1",
+    "L2",
+    "L3",
+    "T12"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-e825b359705a/27/276d7eb0301510aeb60e3dd4fb8ed4b184713bb5b324bc93f31579aac27aaf3d.png"
+  },
+  {
+   "key": "validation-13-ef00fe7b",
+   "role": "validation",
+   "sha256": "ef00fe7bcec2eecba6d11dc2cd0d88de730c5300a1da8d01b8c42cff7489b7a9",
+   "person": "carmlspine:case1024",
+   "part": "validation",
+   "source": "carmlspine",
+   "levels": [
+    "L4",
+    "sacrum"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-e825b359705a/ef/ef00fe7bcec2eecba6d11dc2cd0d88de730c5300a1da8d01b8c42cff7489b7a9.png"
+  },
+  {
+   "key": "validation-14-9066c77d",
+   "role": "validation",
+   "sha256": "9066c77d0d6d909e52be245cf5e6a97b7cd43b4c72f79d45c8c1105b6ff7c4fd",
+   "person": "carmlspine:case1035",
+   "part": "validation",
+   "source": "carmlspine",
+   "levels": [
+    "L4",
+    "L5",
+    "sacrum"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-e825b359705a/90/9066c77d0d6d909e52be245cf5e6a97b7cd43b4c72f79d45c8c1105b6ff7c4fd.png"
+  },
+  {
+   "key": "validation-15-eb137480",
+   "role": "validation",
+   "sha256": "eb13748041b6fac83e376495b88b8eb3c0ec4b4556fa34d7557f0668adf95378",
+   "person": "carmlspine:case1002",
+   "part": "validation",
+   "source": "carmlspine",
+   "levels": [
+    "L1",
+    "L2",
+    "T11",
+    "T12"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-e825b359705a/eb/eb13748041b6fac83e376495b88b8eb3c0ec4b4556fa34d7557f0668adf95378.png"
+  },
+  {
+   "key": "validation-16-a22fdab5",
+   "role": "validation",
+   "sha256": "a22fdab5219f97be6e15b8e6aeb4fbd1ac9dfaff080fb5ac1fc9de2145099664",
+   "person": "carmlspine:case1013",
+   "part": "validation",
+   "source": "carmlspine",
+   "levels": [
+    "L1",
+    "L2",
+    "L3",
+    "L4",
+    "L5",
+    "T12"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-e825b359705a/a2/a22fdab5219f97be6e15b8e6aeb4fbd1ac9dfaff080fb5ac1fc9de2145099664.png"
+  },
+  {
+   "key": "validation-17-5e48dccd",
+   "role": "validation",
+   "sha256": "5e48dccd8b639d95e5b2a87dbf9ebe2c4a25e03afb6c83ad1fc6d299db6445be",
+   "person": "carmlspine:case1017",
+   "part": "validation",
+   "source": "carmlspine",
+   "levels": [
+    "L2",
+    "L3",
+    "L4",
+    "L5",
+    "sacrum"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-e825b359705a/5e/5e48dccd8b639d95e5b2a87dbf9ebe2c4a25e03afb6c83ad1fc6d299db6445be.png"
+  },
+  {
+   "key": "validation-18-68de831d",
+   "role": "validation",
+   "sha256": "68de831d6a66aaa8c3a8e1ec9881d77a51b0ee8db47df654fbdad1dd9cd8e13a",
+   "person": "carmlspine:case1002",
+   "part": "validation",
+   "source": "carmlspine",
+   "levels": [
+    "L4",
+    "L5",
+    "sacrum"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-e825b359705a/68/68de831d6a66aaa8c3a8e1ec9881d77a51b0ee8db47df654fbdad1dd9cd8e13a.png"
+  },
+  {
+   "key": "validation-19-6fede9f3",
+   "role": "validation",
+   "sha256": "6fede9f3fbe065aebc50545902fa3c27dfa826cda16817fc1ab7b3c6d9736d38",
+   "person": "carmlspine:case1028",
+   "part": "validation",
+   "source": "carmlspine",
+   "levels": [
+    "L4",
+    "L5",
+    "sacrum"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-e825b359705a/6f/6fede9f3fbe065aebc50545902fa3c27dfa826cda16817fc1ab7b3c6d9736d38.png"
+  },
+  {
+   "key": "validation-20-0ac2ce52",
+   "role": "validation",
+   "sha256": "0ac2ce52e51a433df2b4f9f70aca1e01751b4749ce508e63f964e1434ca0387e",
+   "person": "carmlspine:case1024",
+   "part": "validation",
+   "source": "carmlspine",
+   "levels": [
+    "L1",
+    "L2"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-e825b359705a/0a/0ac2ce52e51a433df2b4f9f70aca1e01751b4749ce508e63f964e1434ca0387e.png"
+  },
+  {
+   "key": "validation-21-307dc218",
+   "role": "validation",
+   "sha256": "307dc218608c1bc9d6388c12b02277f947e379a5cef26e8772bcdd45a9fe51e7",
+   "person": "carmlspine:case1035",
+   "part": "validation",
+   "source": "carmlspine",
+   "levels": [
+    "L1",
+    "L2",
+    "L3",
+    "T12"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-e825b359705a/30/307dc218608c1bc9d6388c12b02277f947e379a5cef26e8772bcdd45a9fe51e7.png"
+  },
+  {
+   "key": "validation-22-61e86917",
+   "role": "validation",
+   "sha256": "61e86917d373478c2685ad16d6253b500ed16e2e25ae52ed312d680ecb8d3a78",
+   "person": "carmlspine:case1013",
+   "part": "validation",
+   "source": "carmlspine",
+   "levels": [
+    "L1",
+    "L2",
+    "L3",
+    "L4",
+    "L5"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-e825b359705a/61/61e86917d373478c2685ad16d6253b500ed16e2e25ae52ed312d680ecb8d3a78.png"
+  },
+  {
+   "key": "validation-23-244e3fb4",
+   "role": "validation",
+   "sha256": "244e3fb47ffc349bdd1a8fc315b53a77b7ddba32748695cfa73896f91febf0c6",
+   "person": "carmlspine:case1017",
+   "part": "validation",
+   "source": "carmlspine",
+   "levels": [
+    "L1",
+    "L2",
+    "L3",
+    "L4",
+    "T12"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-e825b359705a/24/244e3fb47ffc349bdd1a8fc315b53a77b7ddba32748695cfa73896f91febf0c6.png"
+  },
+  {
+   "key": "test-24-c108baaf",
+   "role": "test",
+   "sha256": "c108baaffe7ee76d152d7b243c83af0d2f25de58519fef21a21ba86046c1a522",
+   "person": "carmlspine:case42",
+   "part": "test",
+   "source": "carmlspine",
+   "levels": [
+    "L1",
+    "L2",
+    "L3",
+    "L4",
+    "T12"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-7b178f66db19/c1/c108baaffe7ee76d152d7b243c83af0d2f25de58519fef21a21ba86046c1a522.png"
+  },
+  {
+   "key": "test-25-eb0a8bda",
+   "role": "test",
+   "sha256": "eb0a8bdaf45e3c44a57aa6348fa4aaf3d96bac499a7cbfbe65cd34df1c6f54f2",
+   "person": "carmlspine:case121",
+   "part": "test",
+   "source": "carmlspine",
+   "levels": [
+    "L1",
+    "L2",
+    "L4",
+    "T11",
+    "T12"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-7b178f66db19/eb/eb0a8bdaf45e3c44a57aa6348fa4aaf3d96bac499a7cbfbe65cd34df1c6f54f2.png"
+  },
+  {
+   "key": "test-26-ec0d1c3b",
+   "role": "test",
+   "sha256": "ec0d1c3b408e227223f5c4e02ea5524aeec570a205e3b0aa9170cc58de8c8715",
+   "person": "carmlspine:case136",
+   "part": "test",
+   "source": "carmlspine",
+   "levels": [
+    "L2",
+    "L3",
+    "L4"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-7b178f66db19/ec/ec0d1c3b408e227223f5c4e02ea5524aeec570a205e3b0aa9170cc58de8c8715.png"
+  },
+  {
+   "key": "test-27-e4a8f321",
+   "role": "test",
+   "sha256": "e4a8f321a58a23b173626b26951c7678d26e30b67c95f797e0f7739afedeba86",
+   "person": "carmlspine:case121",
+   "part": "test",
+   "source": "carmlspine",
+   "levels": [
+    "L3",
+    "L4",
+    "L5",
+    "sacrum"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-7b178f66db19/e4/e4a8f321a58a23b173626b26951c7678d26e30b67c95f797e0f7739afedeba86.png"
+  },
+  {
+   "key": "test-28-1098079c",
+   "role": "test",
+   "sha256": "1098079cdabd0917aa2ed494daa51d929944832ab8bbefada33eaa918bf10622",
+   "person": "carmlspine:case136",
+   "part": "test",
+   "source": "carmlspine",
+   "levels": [
+    "L3",
+    "L4",
+    "L5",
+    "sacrum"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-7b178f66db19/10/1098079cdabd0917aa2ed494daa51d929944832ab8bbefada33eaa918bf10622.png"
+  },
+  {
+   "key": "test-29-0d910abf",
+   "role": "test",
+   "sha256": "0d910abf4d82be13d732ec1404ab1cc893b646d3a53c5f82b167018bf8e2f88b",
+   "person": "carmlspine:case42",
+   "part": "test",
+   "source": "carmlspine",
+   "levels": [
+    "L1",
+    "T11",
+    "T12"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-7b178f66db19/0d/0d910abf4d82be13d732ec1404ab1cc893b646d3a53c5f82b167018bf8e2f88b.png"
+  },
+  {
+   "key": "test-30-3d9e4bc9",
+   "role": "test",
+   "sha256": "3d9e4bc976a56ba18af570ac5f7f546bb82839ae3cd0fbcaf0e3b15ed7dd98b0",
+   "person": "carmlspine:case42",
+   "part": "test",
+   "source": "carmlspine",
+   "levels": [
+    "L2",
+    "L4",
+    "L5",
+    "sacrum"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-7b178f66db19/3d/3d9e4bc976a56ba18af570ac5f7f546bb82839ae3cd0fbcaf0e3b15ed7dd98b0.png"
+  },
+  {
+   "key": "test-31-412b80ed",
+   "role": "test",
+   "sha256": "412b80ed622eec52cc8a00b3888983af44d3d3c82727700f246e0abcce220eac",
+   "person": "carmlspine:case121",
+   "part": "test",
+   "source": "carmlspine",
+   "levels": [
+    "L1",
+    "L2",
+    "L3",
+    "L4",
+    "L5",
+    "T12"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-7b178f66db19/41/412b80ed622eec52cc8a00b3888983af44d3d3c82727700f246e0abcce220eac.png"
+  },
+  {
+   "key": "test-32-1ebe52c9",
+   "role": "test",
+   "sha256": "1ebe52c9cd37ea5b871ca07b78fb884153be836c269d5c706e359ec62dcca73c",
+   "person": "carmlspine:case136",
+   "part": "test",
+   "source": "carmlspine",
+   "levels": [
+    "L4",
+    "L5",
+    "sacrum"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-7b178f66db19/1e/1ebe52c9cd37ea5b871ca07b78fb884153be836c269d5c706e359ec62dcca73c.png"
+  },
+  {
+   "key": "test-33-a265ca26",
+   "role": "test",
+   "sha256": "a265ca26a1bf7ab195e4514bb2654e826a03b7e5f78133458968dc6e9881146d",
+   "person": "carmlspine:case121",
+   "part": "test",
+   "source": "carmlspine",
+   "levels": [
+    "L4",
+    "L5"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-7b178f66db19/a2/a265ca26a1bf7ab195e4514bb2654e826a03b7e5f78133458968dc6e9881146d.png"
+  },
+  {
+   "key": "test-34-e07e71a6",
+   "role": "test",
+   "sha256": "e07e71a6d0edde0363b4d45a2f26bdb01e4b044f3553b785c63f589a7ba3d1a3",
+   "person": "carmlspine:case136",
+   "part": "test",
+   "source": "carmlspine",
+   "levels": [
+    "L1",
+    "L2",
+    "L3",
+    "L4",
+    "T11",
+    "T12"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-7b178f66db19/e0/e07e71a6d0edde0363b4d45a2f26bdb01e4b044f3553b785c63f589a7ba3d1a3.png"
+  },
+  {
+   "key": "test-35-04137797",
+   "role": "test",
+   "sha256": "04137797f8185bb40fc5b382a9df204d4328cb7817c5abcdc99a210ca9a876a0",
+   "person": "carmlspine:case42",
+   "part": "test",
+   "source": "carmlspine",
+   "levels": [
+    "L1",
+    "L2",
+    "L3"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-7b178f66db19/04/04137797f8185bb40fc5b382a9df204d4328cb7817c5abcdc99a210ca9a876a0.png"
+  },
+  {
+   "key": "test-36-be37073d",
+   "role": "test",
+   "sha256": "be37073db8be5a97f23121d1fb150ebd76ce7deae53d0d8c9d0b6418418dcfa7",
+   "person": "carmlspine:case121",
+   "part": "test",
+   "source": "carmlspine",
+   "levels": [
+    "L1",
+    "L2",
+    "L3"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-7b178f66db19/be/be37073db8be5a97f23121d1fb150ebd76ce7deae53d0d8c9d0b6418418dcfa7.png"
+  },
+  {
+   "key": "test-37-92382588",
+   "role": "test",
+   "sha256": "92382588014429bd32c6b9e73d5208a17775e5442103fe6e91ed9c0e01db0852",
+   "person": "carmlspine:case42",
+   "part": "test",
+   "source": "carmlspine",
+   "levels": [
+    "L4"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-7b178f66db19/92/92382588014429bd32c6b9e73d5208a17775e5442103fe6e91ed9c0e01db0852.png"
+  },
+  {
+   "key": "test-38-f24482f2",
+   "role": "test",
+   "sha256": "f24482f20ce98e909e32ea902a207f7786aae5a45490c63b0c40cc57eefedc3b",
+   "person": "carmlspine:case136",
+   "part": "test",
+   "source": "carmlspine",
+   "levels": [
+    "L3",
+    "L5"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-7b178f66db19/f2/f24482f20ce98e909e32ea902a207f7786aae5a45490c63b0c40cc57eefedc3b.png"
+  },
+  {
+   "key": "test-39-3a580d47",
+   "role": "test",
+   "sha256": "3a580d4752b0efe2609a8ea6e73698f39e68a8f1d85d2bfa063870feb7944494",
+   "person": "carmlspine:case121",
+   "part": "test",
+   "source": "carmlspine",
+   "levels": [
+    "L1",
+    "L2",
+    "L3",
+    "L4",
+    "T11",
+    "T12"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-7b178f66db19/3a/3a580d4752b0efe2609a8ea6e73698f39e68a8f1d85d2bfa063870feb7944494.png"
+  },
+  {
+   "key": "test-40-829e8bd6",
+   "role": "test",
+   "sha256": "829e8bd6257d826fa150fa250c753afa2d0a8eba5edffa84454aaf9fb9ec4dec",
+   "person": "carmlspine:case42",
+   "part": "test",
+   "source": "carmlspine",
+   "levels": [
+    "L2",
+    "L3"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-7b178f66db19/82/829e8bd6257d826fa150fa250c753afa2d0a8eba5edffa84454aaf9fb9ec4dec.png"
+  },
+  {
+   "key": "test-41-72188b73",
+   "role": "test",
+   "sha256": "72188b731ced4eb647b7acfeb9f62e4ce1010bd581df97435297256c701703d8",
+   "person": "carmlspine:case136",
+   "part": "test",
+   "source": "carmlspine",
+   "levels": [
+    "L3",
+    "L4",
+    "L5"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-7b178f66db19/72/72188b731ced4eb647b7acfeb9f62e4ce1010bd581df97435297256c701703d8.png"
+  },
+  {
+   "key": "test-42-fbc5de6f",
+   "role": "test",
+   "sha256": "fbc5de6f2e955d00c749102910bc73d44dbe653bf7ea99457c7be45052cc10bb",
+   "person": "carmlspine:case121",
+   "part": "test",
+   "source": "carmlspine",
+   "levels": [
+    "L4",
+    "L5",
+    "sacrum"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-7b178f66db19/fb/fbc5de6f2e955d00c749102910bc73d44dbe653bf7ea99457c7be45052cc10bb.png"
+  },
+  {
+   "key": "test-43-13ecadbd",
+   "role": "test",
+   "sha256": "13ecadbd22cbd00b61ef9d3f2e5d0ac6a070817ded4e02a65b0948c59914c768",
+   "person": "carmlspine:case42",
+   "part": "test",
+   "source": "carmlspine",
+   "levels": [
+    "L4",
+    "L5",
+    "sacrum"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-7b178f66db19/13/13ecadbd22cbd00b61ef9d3f2e5d0ac6a070817ded4e02a65b0948c59914c768.png"
+  },
+  {
+   "key": "test-44-91b3b64a",
+   "role": "test",
+   "sha256": "91b3b64a2abc7c3726d74b05b413547d485bdf159283791c71eff773ba01d594",
+   "person": "carmlspine:case136",
+   "part": "test",
+   "source": "carmlspine",
+   "levels": [
+    "L1",
+    "L2",
+    "L4",
+    "L5",
+    "sacrum"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-7b178f66db19/91/91b3b64a2abc7c3726d74b05b413547d485bdf159283791c71eff773ba01d594.png"
+  },
+  {
+   "key": "test-45-85aea6b0",
+   "role": "test",
+   "sha256": "85aea6b029cbd45a32db04c923c03c8267448915913ad2e14b8f074bd67a9d09",
+   "person": "carmlspine:case121",
+   "part": "test",
+   "source": "carmlspine",
+   "levels": [
+    "L1",
+    "L2",
+    "L3",
+    "L4",
+    "L5",
+    "sacrum"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-7b178f66db19/85/85aea6b029cbd45a32db04c923c03c8267448915913ad2e14b8f074bd67a9d09.png"
+  },
+  {
+   "key": "test-46-39e4befc",
+   "role": "test",
+   "sha256": "39e4befc33432643fcf28cf71d570954f6aeff73bf8bc4e83bec1f02e5cdb06e",
+   "person": "carmlspine:case42",
+   "part": "test",
+   "source": "carmlspine",
+   "levels": [
+    "L1",
+    "L2",
+    "L3",
+    "T11",
+    "T12"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-7b178f66db19/39/39e4befc33432643fcf28cf71d570954f6aeff73bf8bc4e83bec1f02e5cdb06e.png"
+  },
+  {
+   "key": "test-47-5f5b7950",
+   "role": "test",
+   "sha256": "5f5b7950b507fae4413b539a7bf08670cd70d9e8bbab40e394ff60ca1a4bc95a",
+   "person": "carmlspine:case136",
+   "part": "test",
+   "source": "carmlspine",
+   "levels": [
+    "L3",
+    "L4",
+    "L5",
+    "sacrum"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-7b178f66db19/5f/5f5b7950b507fae4413b539a7bf08670cd70d9e8bbab40e394ff60ca1a4bc95a.png"
+  },
+  {
+   "key": "transitional-48-52b970ef",
+   "role": "transitional",
+   "sha256": "52b970efa9e74619292ae840b04087a9efd03fa7f4fca530387da5536c2a5e4c",
+   "person": "carmlspine:case42",
+   "part": "test",
+   "source": "carmlspine",
+   "levels": [
+    "L1",
+    "L2",
+    "L3",
+    "T11",
+    "T12"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-7b178f66db19/52/52b970efa9e74619292ae840b04087a9efd03fa7f4fca530387da5536c2a5e4c.png"
+  },
+  {
+   "key": "transitional-49-cce29686",
+   "role": "transitional",
+   "sha256": "cce29686111dc196c0a5149920705c008735b4991f158dc38d4dc0c31e37f07b",
+   "person": "carmlspine:case42",
+   "part": "test",
+   "source": "carmlspine",
+   "levels": [
+    "L1",
+    "L2",
+    "L3",
+    "L4",
+    "T12"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-7b178f66db19/cc/cce29686111dc196c0a5149920705c008735b4991f158dc38d4dc0c31e37f07b.png"
+  },
+  {
+   "key": "transitional-50-213ac986",
+   "role": "transitional",
+   "sha256": "213ac98677bd8a60b7542f7b8ded5d52cd48ad3de7b06c8edc4386db57cb8a39",
+   "person": "carmlspine:case121",
+   "part": "test",
+   "source": "carmlspine",
+   "levels": [
+    "L1",
+    "L2",
+    "T12"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-7b178f66db19/21/213ac98677bd8a60b7542f7b8ded5d52cd48ad3de7b06c8edc4386db57cb8a39.png"
+  },
+  {
+   "key": "transitional-51-478cc6f4",
+   "role": "transitional",
+   "sha256": "478cc6f4c1fe2973eefccf80aafcfee02ca15af13388216ec8775c5909be7842",
+   "person": "carmlspine:case121",
+   "part": "test",
+   "source": "carmlspine",
+   "levels": [
+    "L1",
+    "L2",
+    "L3",
+    "L4",
+    "L5",
+    "T12"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-7b178f66db19/47/478cc6f4c1fe2973eefccf80aafcfee02ca15af13388216ec8775c5909be7842.png"
+  },
+  {
+   "key": "transitional-52-1340aee8",
+   "role": "transitional",
+   "sha256": "1340aee8f0289099fb1c6fa0c75613e3c37f81856feca91023a88a2ed827735f",
+   "person": "carmlspine:case136",
+   "part": "test",
+   "source": "carmlspine",
+   "levels": [
+    "L1",
+    "L2",
+    "L3",
+    "L4"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-7b178f66db19/13/1340aee8f0289099fb1c6fa0c75613e3c37f81856feca91023a88a2ed827735f.png"
+  },
+  {
+   "key": "transitional-53-8d44221e",
+   "role": "transitional",
+   "sha256": "8d44221ee13874ed1f2fa49302ee4ef60b0daa768e3b582f7d6af4634fd44098",
+   "person": "carmlspine:case136",
+   "part": "test",
+   "source": "carmlspine",
+   "levels": [
+    "L1",
+    "L2",
+    "L3",
+    "L4",
+    "L5"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-7b178f66db19/8d/8d44221ee13874ed1f2fa49302ee4ef60b0daa768e3b582f7d6af4634fd44098.png"
+  },
+  {
+   "key": "sweep-54-0b0ac04d",
+   "role": "sweep",
+   "sha256": "0b0ac04d59b230c1200a43e57d3d3675c8a13d1cfea84b6a0ec96ab878eed38c",
+   "person": "carmlspine:case134",
+   "part": "test",
+   "source": "carmlspine",
+   "levels": [
+    "L4",
+    "L5",
+    "sacrum"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-7b178f66db19/0b/0b0ac04d59b230c1200a43e57d3d3675c8a13d1cfea84b6a0ec96ab878eed38c.png"
+  },
+  {
+   "key": "sweep-55-1ac42bcc",
+   "role": "sweep",
+   "sha256": "1ac42bcc703f1362cef3f75a9379cc841f1585047e1bd24715b097be5d325401",
+   "person": "carmlspine:case134",
+   "part": "test",
+   "source": "carmlspine",
+   "levels": [
+    "L2",
+    "L3",
+    "L5"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-7b178f66db19/1a/1ac42bcc703f1362cef3f75a9379cc841f1585047e1bd24715b097be5d325401.png"
+  },
+  {
+   "key": "sweep-56-68c3217a",
+   "role": "sweep",
+   "sha256": "68c3217a225007474244686dd8d3af732a47902449afcaefe9d9f2b05cea96eb",
+   "person": "carmlspine:case134",
+   "part": "test",
+   "source": "carmlspine",
+   "levels": [
+    "L1",
+    "L2",
+    "L3"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-7b178f66db19/68/68c3217a225007474244686dd8d3af732a47902449afcaefe9d9f2b05cea96eb.png"
+  },
+  {
+   "key": "sweep-57-705a5662",
+   "role": "sweep",
+   "sha256": "705a566234e9664a1e5bb5545a4a372e3de56d86140a1ea0d514c4071f5c89e5",
+   "person": "carmlspine:case134",
+   "part": "test",
+   "source": "carmlspine",
+   "levels": [
+    "L2",
+    "L3",
+    "L4",
+    "L5",
+    "sacrum"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-7b178f66db19/70/705a566234e9664a1e5bb5545a4a372e3de56d86140a1ea0d514c4071f5c89e5.png"
+  },
+  {
+   "key": "sweep-58-7e4ca9c3",
+   "role": "sweep",
+   "sha256": "7e4ca9c3021cfa074ebb1612fb7eea1197e2aabc5519764a320c10faf213c937",
+   "person": "carmlspine:case134",
+   "part": "test",
+   "source": "carmlspine",
+   "levels": [
+    "L2",
+    "L3",
+    "L4"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-7b178f66db19/7e/7e4ca9c3021cfa074ebb1612fb7eea1197e2aabc5519764a320c10faf213c937.png"
+  },
+  {
+   "key": "sweep-59-a5ef39bb",
+   "role": "sweep",
+   "sha256": "a5ef39bb6fd3cb8636438f849f858680d04ae4c49e08a67543932c8c5cba595d",
+   "person": "carmlspine:case134",
+   "part": "test",
+   "source": "carmlspine",
+   "levels": [
+    "L2",
+    "L3",
+    "L4",
+    "L5"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-7b178f66db19/a5/a5ef39bb6fd3cb8636438f849f858680d04ae4c49e08a67543932c8c5cba595d.png"
+  },
+  {
+   "key": "sweep-60-eb90caf7",
+   "role": "sweep",
+   "sha256": "eb90caf789570a86976c1b5574dd650820e352bf54bcffa907061f6fdb605a07",
+   "person": "carmlspine:case134",
+   "part": "test",
+   "source": "carmlspine",
+   "levels": [
+    "L1",
+    "L2",
+    "L3"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-7b178f66db19/eb/eb90caf789570a86976c1b5574dd650820e352bf54bcffa907061f6fdb605a07.png"
+  },
+  {
+   "key": "sweep-61-fe8e1709",
+   "role": "sweep",
+   "sha256": "fe8e1709d6530ff26aeb107e0172d90f0ef3539c527f96053e6f677aad990c6e",
+   "person": "carmlspine:case134",
+   "part": "test",
+   "source": "carmlspine",
+   "levels": [
+    "L1",
+    "L2",
+    "T12"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-7b178f66db19/fe/fe8e1709d6530ff26aeb107e0172d90f0ef3539c527f96053e6f677aad990c6e.png"
+  },
+  {
+   "key": "sweep-62-017fb1ee",
+   "role": "sweep",
+   "sha256": "017fb1ee25b2f6465bd5b2803c7e19b779f9c755dc50811904c2c00cba6d680c",
+   "person": "carmlspine:case39",
+   "part": "test",
+   "source": "carmlspine",
+   "levels": [
+    "L3",
+    "L4",
+    "T11",
+    "T12"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-7b178f66db19/01/017fb1ee25b2f6465bd5b2803c7e19b779f9c755dc50811904c2c00cba6d680c.png"
+  },
+  {
+   "key": "sweep-63-13271283",
+   "role": "sweep",
+   "sha256": "13271283698c6d39f1ae6774cd1ab3815788c6b2a0579f20985b1726b8ef8cef",
+   "person": "carmlspine:case39",
+   "part": "test",
+   "source": "carmlspine",
+   "levels": [
+    "L1",
+    "L2",
+    "L3",
+    "T12"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-7b178f66db19/13/13271283698c6d39f1ae6774cd1ab3815788c6b2a0579f20985b1726b8ef8cef.png"
+  },
+  {
+   "key": "sweep-64-31841e6d",
+   "role": "sweep",
+   "sha256": "31841e6d447c1c53cde4b01216e39bcf148049441e821238c99c6d59f05587ac",
+   "person": "carmlspine:case39",
+   "part": "test",
+   "source": "carmlspine",
+   "levels": [
+    "L2",
+    "L3",
+    "L4"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-7b178f66db19/31/31841e6d447c1c53cde4b01216e39bcf148049441e821238c99c6d59f05587ac.png"
+  },
+  {
+   "key": "sweep-65-37a955a3",
+   "role": "sweep",
+   "sha256": "37a955a3ff51b1224c435841957879a8baeab6882409d53289c3b9512d6d7344",
+   "person": "carmlspine:case39",
+   "part": "test",
+   "source": "carmlspine",
+   "levels": [
+    "L2",
+    "L3",
+    "L4",
+    "T12"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-7b178f66db19/37/37a955a3ff51b1224c435841957879a8baeab6882409d53289c3b9512d6d7344.png"
+  },
+  {
+   "key": "sweep-66-5ed1ca01",
+   "role": "sweep",
+   "sha256": "5ed1ca013b62818cb482d7a8fba70aaa9b0d56e74e55655a507dca2fd6a40525",
+   "person": "carmlspine:case39",
+   "part": "test",
+   "source": "carmlspine",
+   "levels": [
+    "L1",
+    "T11",
+    "T12"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-7b178f66db19/5e/5ed1ca013b62818cb482d7a8fba70aaa9b0d56e74e55655a507dca2fd6a40525.png"
+  },
+  {
+   "key": "sweep-67-8c480f8c",
+   "role": "sweep",
+   "sha256": "8c480f8c3eb088de4ca0a5948a94d918f634b8c1d5e9c6e29320c42a490cee5a",
+   "person": "carmlspine:case39",
+   "part": "test",
+   "source": "carmlspine",
+   "levels": [
+    "L1",
+    "L2",
+    "L3",
+    "L4",
+    "L5",
+    "T12"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-7b178f66db19/8c/8c480f8c3eb088de4ca0a5948a94d918f634b8c1d5e9c6e29320c42a490cee5a.png"
+  },
+  {
+   "key": "sweep-68-a3f5af1b",
+   "role": "sweep",
+   "sha256": "a3f5af1b45d9454cf7f9f4acfb2f8d5abc2fb06600ab77d753d1e2a885783d28",
+   "person": "carmlspine:case39",
+   "part": "test",
+   "source": "carmlspine",
+   "levels": [
+    "L1",
+    "L2",
+    "L3",
+    "L4"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-7b178f66db19/a3/a3f5af1b45d9454cf7f9f4acfb2f8d5abc2fb06600ab77d753d1e2a885783d28.png"
+  },
+  {
+   "key": "sweep-69-ed0fd33d",
+   "role": "sweep",
+   "sha256": "ed0fd33d9dcaab79d2b0c78b707c48bbc7100f5fc5c3d8ed78a680f2c6960c8f",
+   "person": "carmlspine:case39",
+   "part": "test",
+   "source": "carmlspine",
+   "levels": [
+    "L1",
+    "L2",
+    "L3",
+    "L4",
+    "L5",
+    "sacrum"
+   ],
+   "path": "/tmp/claude-0/-home-user/dfa270b9-e9a2-5c4f-a79b-2c81df90c172/scratchpad/dry/carmlspine/shards/2026-10-21-7b178f66db19/ed/ed0fd33d9dcaab79d2b0c78b707c48bbc7100f5fc5c3d8ed78a680f2c6960c8f.png"
+  }
+ ],
+ "missing": []
+}
