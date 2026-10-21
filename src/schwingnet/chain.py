@@ -112,26 +112,35 @@ def gaussian_log(value: float, mu: float, sigma: float) -> float:
     return -0.5 * z * z - math.log(sigma)
 
 
-def _spacing_of(prior: ChainPrior, names: Sequence[str], start: int, steps: int) -> Spacing:
+@dataclass(frozen=True)
+class _Column:
+    """One column hypothesis as the Viterbi pass reads it: its names, the prior, the weight."""
+
+    names: Sequence[str]
+    prior: ChainPrior
+    weight: float
+
+
+def _spacing_of(column_: _Column, start: int, steps: int) -> Spacing:
     """The spacing law of the gap from names[start] across steps levels, summing the pairs'."""
     mu = 0.0
     variance = 0.0
     for k in range(start, start + steps):
-        law = prior.spacing.get(pair_key(names[k], names[k + 1]), prior.fallback)
+        key = pair_key(column_.names[k], column_.names[k + 1])
+        law = column_.prior.spacing.get(key, column_.prior.fallback)
         mu += math.exp(law.mu)
         variance += max(law.sigma, SIGMA_FLOOR) ** 2
     return Spacing(math.log(mu), max(math.sqrt(variance), SIGMA_FLOOR))
 
 
-def _gap_log(
-    prior: ChainPrior, names: Sequence[str], upper: Body, lower: Body, start: int, steps: int
-) -> float:
+def _gap_log(column_: _Column, pair: tuple[Body, Body], start: int, steps: int) -> float:
     """How well the gap between two bodies fits the levels they are given."""
+    upper, lower = pair
     height = 0.5 * (upper.height + lower.height)
     gap = lower.position - upper.position
     if height <= 0.0 or gap <= 0.0:
         return math.log(POSTERIOR_FLOOR)
-    law = _spacing_of(prior, names, start, steps)
+    law = _spacing_of(column_, start, steps)
     return gaussian_log(math.log(gap / height), law.mu, law.sigma)
 
 
@@ -139,44 +148,58 @@ def _emission(body: Body, name: str) -> float:
     return math.log(max(body.posterior.get(name, 0.0), POSTERIOR_FLOOR))
 
 
-def _viterbi(
-    bodies: Sequence[Body],
-    names: Sequence[str],
-    prior: ChainPrior,
-    weight: float,
-    banned_start: int,
-) -> tuple[float, tuple[int, ...]]:
-    """The best path of level indices for the bodies, the first body never at banned_start."""
-    width = len(names)
-    best = [-math.inf] * width
-    back: list[list[int]] = []
-    for j in range(width):
-        if j != banned_start:
-            best[j] = _emission(bodies[0], names[j])
-    for i in range(1, len(bodies)):
-        row = [-math.inf] * width
-        came = [-1] * width
-        for j in range(width):
-            for steps in (1, 2):
-                k = j - steps
-                if k < 0 or best[k] == -math.inf:
-                    continue
-                gap = weight * _gap_log(prior, names, bodies[i - 1], bodies[i], k, steps)
-                miss = prior.miss_log if steps == 2 else 0.0
-                total = best[k] + gap + miss
-                if total > row[j]:
-                    row[j], came[j] = total, k
-            if came[j] >= 0:
-                row[j] += _emission(bodies[i], names[j])
-        best = row
-        back.append(came)
-    end = max(range(width), key=lambda j: best[j])
+def _arrive(
+    column_: _Column, best: list[float], pair: tuple[Body, Body], j: int
+) -> tuple[float, int]:
+    """The best way into level j for the lower body: from one level up, or two with a miss."""
+    found, came = -math.inf, -1
+    for steps in (1, 2):
+        k = j - steps
+        if k < 0 or best[k] == -math.inf:
+            continue
+        miss = column_.prior.miss_log if steps == 2 else 0.0
+        total = best[k] + column_.weight * _gap_log(column_, pair, k, steps) + miss
+        if total > found:
+            found, came = total, k
+    return found, came
+
+
+def _step(
+    column_: _Column, best: list[float], pair: tuple[Body, Body]
+) -> tuple[list[float], list[int]]:
+    """One body further down: each level's best score and the level it came from."""
+    row = [-math.inf] * len(column_.names)
+    back = [-1] * len(column_.names)
+    for j, name in enumerate(column_.names):
+        score, came = _arrive(column_, best, pair, j)
+        if came >= 0:
+            row[j], back[j] = score + _emission(pair[1], name), came
+    return row, back
+
+
+def _backtrack(best: list[float], back: list[list[int]]) -> tuple[float, tuple[int, ...]]:
+    end = max(range(len(best)), key=lambda j: best[j])
     if best[end] == -math.inf:
         return -math.inf, ()
     path = [end]
     for came in reversed(back):
         path.append(came[path[-1]])
     return best[end], tuple(reversed(path))
+
+
+def _viterbi(
+    column_: _Column, bodies: Sequence[Body], banned_start: int
+) -> tuple[float, tuple[int, ...]]:
+    """The best path of level indices for the bodies, the first body never at banned_start."""
+    best = [
+        -math.inf if j == banned_start else _emission(bodies[0], name)
+        for j, name in enumerate(column_.names)
+    ]
+    back: list[list[int]] = []
+    for i in range(1, len(bodies)):
+        best, came = _step(column_, best, (bodies[i - 1], bodies[i]))
+        back.append(came)
+    return _backtrack(best, back)
 
 
 def _hypotheses(prior: ChainPrior) -> list[tuple[str, tuple[str, ...], float]]:
@@ -238,12 +261,13 @@ def decode(
     """Name a frame's bodies as one stretch of the most likely column."""
     candidates: list[tuple[float, tuple[str, ...], str]] = []
     for name, names, log_odds in _hypotheses(prior):
-        score, path = _viterbi(bodies, names, prior, weight, banned_start=-1)
+        column_ = _Column(names, prior, weight)
+        score, path = _viterbi(column_, bodies, banned_start=-1)
         if not path:
             continue
         labels = tuple(names[j] for j in path)
         candidates.append((score + log_odds, labels, name))
-        shifted, other = _viterbi(bodies, names, prior, weight, banned_start=path[0])
+        shifted, other = _viterbi(column_, bodies, banned_start=path[0])
         if other:
             candidates.append((shifted + log_odds, tuple(names[j] for j in other), name))
     if not candidates:
