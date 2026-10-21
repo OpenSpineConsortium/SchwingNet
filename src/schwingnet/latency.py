@@ -100,7 +100,7 @@ def parity_holds(
 
 
 @beartype
-@require(lambda fps: fps > 0.0, "a rate is above zero")
+@require(lambda fps: 0.001 <= fps <= 1e6, "a rate a camera can have, in frames per second")
 @ensure(lambda result: result > 0.0, "an interval is above zero")
 def frame_interval_ms(fps: float) -> float:
     """The time between two frames at a rate, in milliseconds."""

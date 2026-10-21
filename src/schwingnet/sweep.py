@@ -136,6 +136,19 @@ class Shown:
     lambda tracks, boxes: all(_well_formed(b) for b in [t.box for t in tracks] + boxes),
     "boxes are well formed",
 )
+@require(lambda levels: len(levels) > 0, "at least one level")
+@require(
+    lambda tracks, probabilities, levels: (
+        all(len(row) == len(levels) for row in probabilities)
+        and all(len(t.probabilities) == len(levels) for t in tracks)
+    ),
+    "one probability per level, in every row and every track",
+)
+@require(lambda tracks: len({t.ident for t in tracks}) == len(tracks), "track ids are unique")
+@require(
+    lambda tracks, next_ident: all(t.ident < next_ident for t in tracks), "the next id is unused"
+)
+@require(lambda tracks: all(0 <= t.misses <= MAX_MISSES for t in tracks), "misses within the limit")
 @ensure(lambda result: len({t.ident for t in result[0]}) == len(result[0]), "track ids are unique")
 @ensure(lambda result, boxes: len(result[1]) == len(boxes), "every box this frame is shown")
 @ensure(
