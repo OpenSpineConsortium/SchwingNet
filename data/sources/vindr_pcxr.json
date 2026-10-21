@@ -5,11 +5,11 @@
   "what": "9,125 pediatric frontal chest radiographs from the VinDr hospitals with radiologist boxes; the only sizeable public pediatric spine-bearing radiograph source found",
   "level_truth": "none; the pediatric frontal thoracic spine",
   "reach": "gated",
-  "status": "found by the sweep of 2026-10-21; not fetched; PhysioNet credentialed access, the route VinDr-SpineXR already took",
-  "licence": "PhysioNet credentialed health data licence; to confirm on the page",
+  "status": "found by the sweep of 2026-10-21; the owner's data use agreement is on file (spine-datasets 7a74bb6, 2026-10-21); the first fetch, Slurm job 40697734 on 2026-10-21 (the gate's answer for the request schwingnet-fetch-vindr_pcxr-first), ended with wget exit 8 and 0 files, and the next fetch's report names PhysioNet's answer",
+  "licence": "PhysioNet Restricted Health Data License 1.5.0: a data use agreement signed on the page, with no CITI training review (spine-datasets 7a74bb6, 2026-10-21, which records the files open to the owner's account, 34.1 GB uncompressed)",
   "link": "https://physionet.org/content/vindr-pcxr/1.0.0/",
   "how_to_get": [
-    "The owner's PhysioNet credentialing (CITI training on file) and the data use agreement on the record page, signed by the owner, the route VinDr-SpineXR took.",
+    "The data use agreement on the record page, signed under the owner's PhysioNet account, the account ~/.netrc names; this Restricted project needs no CITI training review (spine-datasets 7a74bb6).",
     "Then a recursive wget with the owner's PhysioNet login as a Slurm job on the owner's word, never on the login node, as the manifest's vindr_spinexr route does, and sha256sum -c SHA256SUMS.txt on the copy.",
     "An IRB determination before any training reads it, as for VinDr-SpineXR."
   ],

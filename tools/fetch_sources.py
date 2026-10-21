@@ -43,7 +43,9 @@ only the login name is passed, as PhysioNet's own documentation passes it. Stand
 import argparse
 import hashlib
 import json
+import netrc
 import os
+import re
 import shlex
 import socket
 import stat
@@ -54,6 +56,7 @@ import time
 import urllib.error
 import urllib.request
 import zipfile
+from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -163,14 +166,21 @@ def kaggle_token(path):
 
 
 def netrc_login(host, path="~/.netrc"):
-    """The login name for a host from ~/.netrc, which wget reads the password from itself."""
-    words = mode_0600(path).read_text(encoding="utf-8").split()
-    for index, word in enumerate(words):
-        if word == "machine" and index + 1 < len(words) and words[index + 1] == host:
-            rest = words[index + 2:]
-            if "login" in rest:
-                return rest[rest.index("login") + 1]
-    raise FetchError(f"{path}: no 'machine {host} login <user>' entry")
+    """The login name for a host from ~/.netrc, which wget reads the password from itself. An
+    entry with no password is refused here, before the job's fetch: wget would send no login at
+    all, and PhysioNet's 401 would read as a refusal it never made. The parser's own message is
+    never repeated, since it can quote a token of the file."""
+    path = mode_0600(path)
+    try:
+        entry = netrc.netrc(path).authenticators(host)
+    except (netrc.NetrcParseError, OSError, UnicodeDecodeError):
+        raise FetchError(f"{path}: not a netrc file this tool can read") from None
+    login, _, password = entry or ("", "", "")
+    if not login:
+        raise FetchError(f"{path}: no 'machine {host} login <user>' entry")
+    if not password:
+        raise FetchError(f"{path}: the 'machine {host}' entry has no password, so wget would send no login")
+    return login
 
 
 def mendeley_files(api_url, opener=None):
@@ -270,6 +280,77 @@ def plan_entry(entry, python, helper, settings):
     raise FetchError(f"{entry['id']}: unknown route {route!r}")
 
 
+# wget's exit codes (its manual, "Exit Status"); 6 and 8 are the two a PhysioNet fetch meets.
+WGET_EXITS = {1: "generic error", 2: "parse error", 3: "file I/O error", 4: "network failure",
+              5: "SSL verification failure", 6: "username/password authentication failure",
+              7: "protocol error", 8: "server issued an error response"}
+# wget's own line, read from its start: a Saving line names a file the server chose.
+WGET_STATUS = re.compile(r"^(?:HTTP|Proxy) request sent, awaiting response\.\.\. (\d{3})\b", re.M)
+# The answers that say what PhysioNet made of the login come first: a redirect, the 401 that asks
+# for a login, then the answer to it.
+FIRST_ANSWERS = 6
+
+
+def http_statuses(output):
+    """The HTTP status codes wget's own default lines name, in order. Only those lines are read:
+    never -S or -d, which would print the session cookie PhysioNet sets after a login."""
+    return [int(code) for code in WGET_STATUS.findall(output or "")]
+
+
+def answer_summary(statuses):
+    """A recursive fetch asks once per index page and file, about 9,000 times for VinDr-PCXR and
+    377,110 for MIMIC-CXR-JPG, so a run keeps its first answers and a count of each code, never
+    the whole list, and FETCH.json and the report line stay short however big the set."""
+    counts = Counter(statuses)
+    return {"first": statuses[:FIRST_ANSWERS], "answers": len(statuses),
+            "counts": {str(code): counts[code] for code in sorted(counts)}}
+
+
+def answers_text(http):
+    first = http.get("first", [])
+    if not first:
+        return "no HTTP answer"
+    said = "HTTP " + ", ".join(map(str, first))
+    if http.get("answers", 0) > len(first):
+        counts = ", ".join(f"{n:,} x {code}" for code, n in http.get("counts", {}).items())
+        said += f", ... ({http['answers']:,} answers: {counts})"
+    return said
+
+
+def physionet_why(http, exit_code):
+    """What PhysioNet's answers mean (physionet-build, project/views.py serve_published_project_file
+    and project/utility.py require_http_auth): an anonymous Wget/ over HTTPS is asked for a login
+    with 401; a wget with no password for that login in $HOME/.netrc stops there (exit 6); a login
+    PhysioNet rejects is asked for again (401, 401, exit 6); a login it takes for an account that
+    may not read the files is refused with 403 (exit 8). The answers to the project's own URL
+    decide, after any redirect, which says nothing either way; once a file has come, the login and
+    the access held, and what failed was some of the files."""
+    said = answers_text(http)
+    head = [code for code in http.get("first", []) if not 300 <= code < 400]
+    came = sum(n for code, n in http.get("counts", {}).items() if 200 <= int(code) < 300 or int(code) == 304)
+    failure = f"wget exit {exit_code}, {WGET_EXITS.get(exit_code, 'unknown')}"
+    if came:
+        return f"{said}: PhysioNet took the login and served {came:,} answers, so the login and the access" \
+               f" held; {failure} for the rest, counted above; the next fetch continues where this one stopped"
+    if head[:2] == [401, 403]:
+        return f"{said}: PhysioNet took the login and refused the files; the account $HOME/.netrc names lacks" \
+               " access to this version (its data use agreement, credentialing or required training), or" \
+               " PhysioNet does not serve this version's files directly (deprecated, cloud-only or" \
+               " region-blocked; the project page's Files section says which)"
+    if head[:2] == [401, 401]:
+        return f"{said}: PhysioNet refused the login; the login or password in $HOME/.netrc is wrong," \
+               " or the account is not active"
+    if head == [401] and exit_code == 6:
+        return f"{said}: wget found no password for that login in $HOME/.netrc and sent no login; the" \
+               " machine physionet.org line needs a password, and wget reads only $HOME/.netrc"
+    if head[:1] == [403]:
+        return f"{said}: PhysioNet refused before asking for a login (user agent not Wget/, not HTTPS," \
+               " a proxy, or the address blocked)"
+    if [code for code in head if code != 401][:1] == [404]:
+        return f"{said}: no such project version at that URL"
+    return f"{said}: {failure}"
+
+
 def physionet_commands(entry, login):
     # -r -N -c -np: recurse, keep timestamps, continue a partial file, never climb; the password
     # comes from ~/.netrc, which wget consults when --user is given without --password.
@@ -305,13 +386,19 @@ def print_plan(entry, plan):
 
 def run_command(command, env=None, log=None):
     started = time.time()
+    if command and command[0] == "wget":
+        # Its lines are read below, so they are wget's English source text whatever the job's locale.
+        env = dict(os.environ if env is None else env, LC_ALL="C", LANGUAGE="C")
     done = subprocess.run(command, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     if log is not None:
         log.write(done.stdout)
         log.flush()
     else:
         sys.stdout.write(done.stdout)
-    return {"command": shlex.join(command), "exit": done.returncode, "seconds": round(time.time() - started, 1)}
+    result = {"command": shlex.join(command), "exit": done.returncode, "seconds": round(time.time() - started, 1)}
+    if command and command[0] == "wget":
+        result["http"] = answer_summary(http_statuses(done.stdout))
+    return result
 
 
 def file_records(dest):
@@ -349,6 +436,9 @@ def expand_plan(entry, plan, python, helper, settings):
         plan["commands"] = [http_command(python, helper, f["url"], os.path.join(entry["dest"], f["name"]), entry,
                                          {"md5": f.get("md5")}, f.get("size")) for f in files]
     if "physionet" in plan:
+        if Path(os.path.expanduser(settings.netrc)).resolve() != Path(os.path.expanduser("~/.netrc")).resolve():
+            raise FetchError(f"{settings.netrc}: wget reads the password only from $HOME/.netrc, so the"
+                             " login must come from there too")
         plan["commands"] = physionet_commands(entry, netrc_login("physionet.org", settings.netrc))
     if getattr(settings, "outside_slurm", False):
         # The helper refuses a shell outside a Slurm job as this tool does, and lifts it on the
@@ -559,6 +649,9 @@ def run_entry(entry, plan, python, helper, settings):
     # is done, and so is a list of URLs only when every one of them came.
     exits = [r["exit"] for r in outcome["runs"]]
     outcome["status"] = DONE if exits and (exits[-1] == 0 if plan.get("fallback") else all(e == 0 for e in exits)) else FAILED
+    if outcome["status"] == FAILED and "physionet" in plan and outcome["runs"]:
+        last = outcome["runs"][-1]
+        outcome["error"] = physionet_why(last.get("http", {}), last["exit"])
     if outcome["status"] == DONE and entry.get("torrent"):
         try:
             outcome["torrent"] = verify_torrent(entry["dest"], fetch_torrent(entry["torrent"], state_dir(entry)),
