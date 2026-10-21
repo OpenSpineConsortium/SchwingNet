@@ -40,6 +40,7 @@ class LatencyGridTest(unittest.TestCase):
         (run / "train").mkdir(parents=True)
         (run / "RUN.json").write_text("{}", encoding="utf-8")
         (run / "train" / "best.pt").write_bytes(b"weights")
+        (run / "train" / "checkpoint.json").write_text("{}", encoding="utf-8")
         return run
 
     def submit(self, *args):
@@ -93,6 +94,15 @@ class LatencyGridTest(unittest.TestCase):
         bare.mkdir()
         done, lines = self.submit("--catalog", str(self.catalog), str(bare))
         self.assertNotEqual(done.returncode, 0)
+        self.assertEqual(lines, [])
+
+    def test_a_run_still_training_is_refused(self):
+        # train.py keeps best.pt from the first epoch on and writes checkpoint.json only at the end
+        run = self.make_run("training")
+        (run / "train" / "checkpoint.json").unlink()
+        done, lines = self.submit("--catalog", str(self.catalog), str(run))
+        self.assertEqual(done.returncode, 2, done.stderr)
+        self.assertIn("has not finished training", done.stderr)
         self.assertEqual(lines, [])
 
     def test_a_relative_run_is_passed_to_the_jobs_as_an_absolute_path(self):
