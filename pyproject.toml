@@ -60,3 +60,4 @@ per_condition_timeout = 20
 [tool.beethoven-qa.unproven]
 "schwingnet.flow.result_line" = "takes a ResultRow, a pydantic model CrossHair cannot construct; its contracts are checked by the tests"
 "schwingnet.slurm.sbatch_script" = "takes a JobSpec, a pydantic model CrossHair cannot construct; its contracts are checked by the tests"
+"schwingnet.leaks.phash" = "takes a square grey reduction of 64 bytes or more, which CrossHair 0.0.111 does not build within the per-condition bound (the gate measured it unable to meet the precondition, 2026-10-21); tests/schwingnet/test_leaks.py checks its contracts at run time, and nothing contracted calls it"
