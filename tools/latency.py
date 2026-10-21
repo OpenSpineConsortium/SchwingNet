@@ -45,7 +45,7 @@ import numpy as np  # noqa: E402
 import torch  # noqa: E402
 from PIL import Image  # noqa: E402
 from schwingnet.latency import BUDGET_MS, PARITY_TOLERANCE, parity_holds, summarise, within_budget  # noqa: E402
-from schwingnet.sweep import step  # noqa: E402
+from schwingnet.sweep import Tracker, step  # noqa: E402
 
 
 def load_trainer():
@@ -253,7 +253,7 @@ class FramePath:
         self.reset()
 
     def reset(self):
-        self.tracks, self.next_ident = [], 1
+        self.tracker = Tracker()
 
     def _sync(self):
         if self.device == "cuda":
@@ -277,7 +277,7 @@ class FramePath:
         probs = self.probabilities(crops) if boxes else np.zeros((0, len(self.levels)), np.float32)
         self._sync()
         modelled = time.perf_counter()
-        self.tracks, shown, self.next_ident = step(self.tracks, self.next_ident, [tuple(map(float, b)) for b in boxes], [list(map(float, p)) for p in probs], self.levels)
+        self.tracker, shown = step(self.tracker, [tuple(map(float, b)) for b in boxes], [list(map(float, p)) for p in probs], self.levels)
         done = time.perf_counter()
         timing = {"preprocess_ms": (cropped - start) * 1e3, "model_ms": (modelled - cropped) * 1e3, "track_ms": (done - modelled) * 1e3, "frame_ms": (done - start) * 1e3}
         return shown, probs, timing

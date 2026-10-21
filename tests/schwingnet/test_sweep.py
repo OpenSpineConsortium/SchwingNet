@@ -3,7 +3,7 @@
 import pytest
 from icontract import ViolationError
 
-from schwingnet.sweep import ABSTAIN, MAX_MISSES, Track, iou, label_of, match, smooth, step
+from schwingnet.sweep import ABSTAIN, MAX_MISSES, Tracker, iou, label_of, match, smooth, step
 
 LEVELS = ["L1", "L2", "L3"]
 A = (0.1, 0.1, 0.3, 0.3)
@@ -49,38 +49,43 @@ def test_a_confident_level_is_shown_and_an_unsure_one_abstains() -> None:
 
 
 def test_one_wrong_frame_does_not_flip_a_steady_track() -> None:
-    tracks: list[Track] = []
-    ident = 1
+    state = Tracker()
     for _ in range(3):
-        tracks, shown, ident = step(tracks, ident, [A], [[0.0, 1.0, 0.0]], LEVELS)
-    tracks, shown, ident = step(tracks, ident, [A], [[0.0, 0.2, 0.8]], LEVELS)
+        state, shown = step(state, [A], [[0.0, 1.0, 0.0]], LEVELS)
+    state, shown = step(state, [A], [[0.0, 0.2, 0.8]], LEVELS)
     assert shown[0].level == "L2"
     assert shown[0].ident == 1
 
 
 def test_a_new_box_starts_a_new_track() -> None:
-    tracks, _, ident = step([], 1, [A], [[1.0, 0.0, 0.0]], LEVELS)
-    tracks, shown, ident = step(tracks, ident, [A, B], [[1.0, 0.0, 0.0], [0.0, 0.0, 1.0]], LEVELS)
+    state, _ = step(Tracker(), [A], [[1.0, 0.0, 0.0]], LEVELS)
+    state, shown = step(state, [A, B], [[1.0, 0.0, 0.0], [0.0, 0.0, 1.0]], LEVELS)
     assert [s.ident for s in shown] == [1, 2]
-    assert ident == 3
+    assert state.next_ident == 3
 
 
 def test_a_track_unseen_too_long_ends() -> None:
-    tracks, _, ident = step([], 1, [A], [[1.0, 0.0, 0.0]], LEVELS)
+    state, _ = step(Tracker(), [A], [[1.0, 0.0, 0.0]], LEVELS)
     for _ in range(MAX_MISSES):
-        tracks, _, ident = step(tracks, ident, [], [], LEVELS)
-        assert len(tracks) == 1
-    tracks, _, ident = step(tracks, ident, [], [], LEVELS)
-    assert tracks == []
+        state, _ = step(state, [], [], LEVELS)
+        assert len(state.tracks) == 1
+    state, _ = step(state, [], [], LEVELS)
+    assert state.tracks == ()
 
 
 def test_the_same_frames_give_the_same_tracks() -> None:
     def replay() -> list[tuple[int, str]]:
-        tracks: list[Track] = []
-        ident, out = 1, []
+        state, out = Tracker(), []
         for probs in ([[0.9, 0.1, 0.0]], [[0.2, 0.7, 0.1]], [[0.1, 0.1, 0.8]]):
-            tracks, shown, ident = step(tracks, ident, [A], probs, LEVELS)
+            state, shown = step(state, [A], probs, LEVELS)
             out += [(s.ident, s.level) for s in shown]
         return out
 
     assert replay() == replay()
+
+
+def test_a_tracker_whose_next_id_is_taken_is_refused() -> None:
+    from schwingnet.sweep import Track
+
+    with pytest.raises(ViolationError):
+        step(Tracker((Track(3, A, (1.0, 0.0, 0.0)),), 2), [A], [[1.0, 0.0, 0.0]], LEVELS)

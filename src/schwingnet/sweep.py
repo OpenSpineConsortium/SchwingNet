@@ -127,46 +127,58 @@ class Shown:
     probability: float
 
 
+@dataclass(frozen=True)
+class Tracker:
+    """The tracker between frames: the tracks so far and the next free track id."""
+
+    tracks: tuple[Track, ...] = ()
+    next_ident: int = 1
+
+
 @beartype
 @require(
     lambda boxes, probabilities: len(boxes) == len(probabilities),
     "one row of probabilities per box",
 )
 @require(
-    lambda tracks, boxes: all(_well_formed(b) for b in [t.box for t in tracks] + boxes),
+    lambda state, boxes: all(_well_formed(b) for b in [t.box for t in state.tracks] + boxes),
     "boxes are well formed",
 )
 @require(lambda levels: len(levels) > 0, "at least one level")
 @require(
-    lambda tracks, probabilities, levels: (
+    lambda state, probabilities, levels: (
         all(len(row) == len(levels) for row in probabilities)
-        and all(len(t.probabilities) == len(levels) for t in tracks)
+        and all(len(t.probabilities) == len(levels) for t in state.tracks)
     ),
     "one probability per level, in every row and every track",
 )
-@require(lambda tracks: len({t.ident for t in tracks}) == len(tracks), "track ids are unique")
 @require(
-    lambda tracks, next_ident: all(t.ident < next_ident for t in tracks), "the next id is unused"
+    lambda state: len({t.ident for t in state.tracks}) == len(state.tracks), "track ids are unique"
 )
-@require(lambda tracks: all(0 <= t.misses <= MAX_MISSES for t in tracks), "misses within the limit")
-@ensure(lambda result: len({t.ident for t in result[0]}) == len(result[0]), "track ids are unique")
+@require(
+    lambda state: all(t.ident < state.next_ident for t in state.tracks), "the next id is unused"
+)
+@require(
+    lambda state: all(0 <= t.misses <= MAX_MISSES for t in state.tracks), "misses within the limit"
+)
+@ensure(
+    lambda result: len({t.ident for t in result[0].tracks}) == len(result[0].tracks),
+    "track ids are unique",
+)
 @ensure(lambda result, boxes: len(result[1]) == len(boxes), "every box this frame is shown")
 @ensure(
-    lambda result: all(t.misses <= MAX_MISSES for t in result[0]),
+    lambda result: all(t.misses <= MAX_MISSES for t in result[0].tracks),
     "a track unseen too long has ended",
 )
 def step(
-    tracks: list[Track],
-    next_ident: int,
-    boxes: list[Box],
-    probabilities: list[list[float]],
-    levels: list[str],
-) -> tuple[list[Track], list[Shown], int]:
+    state: Tracker, boxes: list[Box], probabilities: list[list[float]], levels: list[str]
+) -> tuple[Tracker, list[Shown]]:
     """One frame of the tracker: match, smooth, start and end tracks, and say what is shown.
 
-    Returns the tracks after this frame, what the overlay draws (one per box, in the boxes'
-    order) and the next free track id. Only this frame and the tracks so far are read.
+    Returns the tracker after this frame and what the overlay draws, one per box in the boxes'
+    order. Only this frame and the tracks so far are read.
     """
+    tracks, next_ident = list(state.tracks), state.next_ident
     pairs = dict((bi, ti) for ti, bi in match([t.box for t in tracks], boxes))
     updated: dict[int, Track] = {}
     shown = []
@@ -184,4 +196,4 @@ def step(
     for ti, old in enumerate(tracks):
         if ti not in matched and old.misses < MAX_MISSES:
             updated[old.ident] = Track(old.ident, old.box, old.probabilities, old.misses + 1)
-    return list(updated.values()), shown, next_ident
+    return Tracker(tuple(updated.values()), next_ident), shown
