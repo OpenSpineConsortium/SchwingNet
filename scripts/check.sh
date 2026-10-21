@@ -73,4 +73,10 @@ else
   echo "data/sources/ against docs/research/datasets-inventory.md: pixi is not here, so the gate lane checks it"
 fi
 
+# The reproduction page (docs/research/datasets-reproduce.md) is rendered from the registry,
+# data/reproduce/map.json and the copied manifest by tools/reproduce_table.py, standard library: the
+# page must match its inputs, every registry record must be in the map, and the copies must carry
+# the SHA-256 that data/reproduce/SHA256SUMS records.
+python3 tools/reproduce_table.py check
+
 echo "checks ok"
