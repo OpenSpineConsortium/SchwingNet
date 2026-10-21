@@ -87,6 +87,10 @@ def chosen(data, only, credentialed):
     missing = [name for name in wanted if name not in known]
     if missing:
         raise FetchError(f"no entry named {', '.join(missing)} in {LIST.name}")
+    gated = {entry["id"] for entry in data["credentialed"]}
+    named_gated = [name for name in wanted if name in gated]
+    if named_gated and not credentialed:
+        raise FetchError(f"{', '.join(named_gated)} is on the credentialed list: add --credentialed to run it")
     return [known[name] for name in wanted]
 
 
@@ -175,12 +179,14 @@ def plan_entry(entry, python, helper, settings):
                      "--state", state_dir(entry)]]
         fallback = entry.get("fallback")
         if fallback and fallback.get("route") == "hf":
-            commands.append([python, str(helper), "hf-get", "--repo", fallback["repo"], "--repo-type",
+            commands.append([settings.acq_python, str(helper), "hf-get", "--repo", fallback["repo"], "--repo-type",
                              fallback.get("repo_type", "dataset"), "--dest", dest, "--state", state_dir(entry)])
             return {"commands": commands, "fallback": True}
         return {"commands": commands}
     if route == "hf":
-        return {"commands": [[python, str(helper), "hf-get", "--repo", entry["repo"], "--repo-type",
+        # hf-get imports huggingface_hub, which the repository's lock lacks and the data
+        # platform's acq environment holds, so it runs under that python, as the IDC route does.
+        return {"commands": [[settings.acq_python, str(helper), "hf-get", "--repo", entry["repo"], "--repo-type",
                               entry.get("repo_type", "dataset"), "--dest", dest, "--state", state_dir(entry)]]}
     if route == "http":
         if not entry.get("urls"):
@@ -334,6 +340,8 @@ def parser():
     top.add_argument("--run", action="store_true", help="run the commands (inside a Slurm job only)")
     top.add_argument("--python", default=sys.executable, help="the python the helper runs under (PYDRV)")
     top.add_argument("--reacquire", default=None, help="reacquire.py; the list's path unless named")
+    top.add_argument("--acq-python", default="/rs/rs_grp_oschome/go2432/envs/acq/bin/python",
+                     help="the data platform's acq environment, which holds huggingface_hub for hf-get")
     top.add_argument("--kaggle-bin", default=os.path.expanduser("~/mambaforge/envs/spineps/bin/kaggle"))
     top.add_argument("--netrc", default="~/.netrc")
     top.add_argument("--report", default=None, help="write STAGE-REPORT.md here after a run")

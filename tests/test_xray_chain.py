@@ -92,12 +92,18 @@ class FetchListTest(unittest.TestCase):
         for entry in data["open"] + data["credentialed"]:
             self.assertIn(f"== {entry['id']} -> {entry['dest']}", out)
         self.assertIn("skip: record number needed", out)
+        self.assertIn("== nih_chestxray14", out)
+        self.assertNotIn("nihcc.box.com", out)
         self.assertIn("zenodo-get --record 8115942", out)
         self.assertIn("fallback: ", out)
         self.assertIn("<login from ~/.netrc>", out)
         self.assertIn("dry run:", out)
-        code, out, _ = run_tool(tool, ["--only", "lumos,fracatlas"])
+        code, out, _ = run_tool(tool, ["--only", "cathaction,fracatlas"])
         self.assertEqual(out.count("== "), 2)
+        self.assertIn("envs/acq/bin/python", out)
+        code, _, err = run_tool(tool, ["--only", "mimic_cxr_jpg"])
+        self.assertEqual(code, 2)
+        self.assertIn("add --credentialed", err)
         code, _, err = run_tool(tool, ["--only", "nothing_of_that_name"])
         self.assertEqual(code, 2)
         self.assertIn("no entry named", err)
@@ -210,7 +216,7 @@ class SlurmScriptsTest(unittest.TestCase):
                          "#SBATCH --cpus-per-task=8", "#SBATCH --mem=24G", "#SBATCH --output=logs/"):
                 self.assertIn(line, text, name)
 
-    def dry_run(self, script, *args, free="5000G"):
+    def dry_run(self, script, *args, free="9000G"):
         import tempfile
         with tempfile.TemporaryDirectory() as tmp:
             df = Path(tmp) / "df"
@@ -223,18 +229,25 @@ class SlurmScriptsTest(unittest.TestCase):
         return done.returncode, done.stdout + done.stderr
 
     def test_the_chain_submits_three_dependent_jobs_in_a_dry_run(self):
-        code, out = self.dry_run("run-xray-chain.sh", "--only", "lumos,fracatlas")
+        code, out = self.dry_run("run-xray-chain.sh", "--only", "cathaction,fracatlas")
         self.assertEqual(code, 0, out)
         self.assertIn("would submit: sbatch --parsable -D", out)
         self.assertIn("01-fetch.sbatch", out)
         self.assertIn("--dependency=afterany:DRY1 --export=ALL", out)
         self.assertIn("--dependency=afterany:DRY2 --export=ALL", out)
-        self.assertIn("size budget: 2 entries, 46 GB stated", out)
+        self.assertIn("size budget: 2 entries, 14 GB stated", out)
         self.assertIn("no size stated for: fracatlas", out)
         self.assertIn("ETA:", out)
-        code, out = self.dry_run("run-xray-chain.sh", free="1030G")
+        code, out = self.dry_run("run-xray-chain.sh", free="5010G")
         self.assertEqual(code, 3)
         self.assertIn("refusing to submit", out)
+        code, out = self.dry_run("run-xray-chain.sh", "--only", "mimic_cxr_jpg")
+        self.assertEqual(code, 64)
+        self.assertIn("credentialed list", out)
+        code, out = self.dry_run("run-xray-chain.sh", "--only", "no_such_set")
+        self.assertEqual(code, 64)
+        self.assertIn("nothing to submit", out)
+        self.assertNotIn("would submit", out)
 
     def test_the_platform_chain_keeps_ct_rate_and_nlst_apart(self):
         code, out = self.dry_run("run-platform-fetch.sh")

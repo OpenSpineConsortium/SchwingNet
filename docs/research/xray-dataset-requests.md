@@ -313,7 +313,7 @@ family-B sources, the three requests "drafted, not sent", BUU-LSPINE and the Tot
 sets) and spine-program's 01_carm_level_detection/docs/handoff/LITERATURE_STATE.md section 2 (the
 intraoperative sets A1 to A21); the old drafts are docs/data_requests/SX-Stitch_request.md and
 docs/outreach/balgrist_data_request_2026-09-21.md in that clone (there is no fluoro_requests_eml
-folder in git). Every old draft said "neural network", "detector" or "train"; the texts below keep
+folder in git). Every old draft used words now excluded; the texts below keep
 their facts and none of those words. Every author address in the old drafts is redacted in git, so
 each is re-read from the paper's correspondence line, marked "to confirm", and no personal address
 is written here. The same shared blocks apply.
@@ -444,7 +444,7 @@ the resend through the ROCS contact form at https://rocs.balgrist.ch/en/contact 
 set: 13 whole-torso cadaver specimens plus six validation specimens, CT with real mobile C-arm
 images (Siemens Cios Spin, Ziehm Vision, Ziehm Vision FD) and fiducial-based projection matrices
 (Medical Image Analysis 2024, arXiv:2401.16027; a 2025 Scientific Reports follow-up); restricted
-for pending patents. The sent letter said "we train a vertebra detector"; the form text below
+for pending patents. The sent letter used words now excluded; the form text below
 does not, and if the group answers the first letter the owner's reply uses this wording.
 
 Form fields likely asked (to confirm on the page): name, email, institution, subject, message.

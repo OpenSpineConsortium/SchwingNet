@@ -22,7 +22,9 @@ REPO=${SCHWINGNET:-$HOME/SchwingNet}
 SBATCH=${SBATCH:-sbatch}
 DF=${DF:-df}
 VOLUME=${VOLUME:-/rs/rs_grp_oschome}
-MARGIN_GB=${MARGIN_GB:-1000}
+# 5 TB, not 1: acquisition_fetch.sh stops its own job when the volume falls under 5 TB free
+# (--floor-tb 5), so a chain admitted below that would start and stop at once.
+MARGIN_GB=${MARGIN_GB:-5000}
 LIST=$REPO/grid/fetch-xray.json
 ONLY=""; CRED=0
 while [ $# -gt 0 ]; do
@@ -34,8 +36,13 @@ while [ $# -gt 0 ]; do
 done
 [ -f "$LIST" ] || { echo "no $LIST: is SCHWINGNET the checkout?"; exit 2; }
 mkdir -p "$REPO/grid/logs"
+# The train-cpu environment first, since it holds Pillow, which stage 2 needs to convert a JPEG,
+# TIFF or BMP set; the default environment holds pydantic for the ingest and the catalog but no
+# Pillow; python3 last, which stages 2 and 3 then report as lacking pydantic.
 if [ -z "${PYDRV:-}" ]; then
-  if [ -x "$REPO/.pixi/envs/default/bin/python" ]; then PYDRV=$REPO/.pixi/envs/default/bin/python; else PYDRV=python3; fi
+  if [ -x "$REPO/.pixi/envs/train-cpu/bin/python" ]; then PYDRV=$REPO/.pixi/envs/train-cpu/bin/python
+  elif [ -x "$REPO/.pixi/envs/default/bin/python" ]; then PYDRV=$REPO/.pixi/envs/default/bin/python
+  else PYDRV=python3; fi
 fi
 export PYDRV SCHWINGNET="$REPO"
 
@@ -46,10 +53,17 @@ budget=$(awk -v only="$ONLY" -v cred="$CRED" '
   /"id": "/ { id = $0; sub(/.*"id": "/, "", id); sub(/".*/, "", id) }
   /"size_gb": / { size = $0; sub(/.*"size_gb": /, "", size); sub(/[,} ].*/, "", size)
     wanted = (only == "") ? (section != "cred" || cred == 1) : (index("," only ",", "," id ",") > 0)
+    if (wanted && section == "cred" && cred == 0) { gated = gated " " id }
     if (wanted) { if (size == "null") { unknown = unknown " " id } else { total += size }; n++ } }
-  END { printf "%d %d%s\n", n, total, unknown }' "$LIST")
-set -- $budget
-count=$1; total_gb=$2; shift 2; unknown="$*"
+  END { printf "%d %d %s|%s\n", n, total, gated, unknown }' "$LIST")
+count=${budget%% *}; rest=${budget#* }; total_gb=${rest%% *}; rest=${rest#* }
+gated=${rest%%|*}; unknown=${rest#*|}
+if [ -n "${gated// /}" ]; then
+  echo "refusing: ${gated# } is on the credentialed list; add --credentialed to run it"; exit 64
+fi
+if [ "$count" = 0 ]; then
+  echo "refusing: no entry of grid/fetch-xray.json is named by --only ${ONLY:-}; nothing to submit"; exit 64
+fi
 free_gb=$("$DF" -BG --output=avail "$VOLUME" 2>/dev/null | tail -n 1 | tr -dc '0-9')
 [ -n "$free_gb" ] || { echo "cannot read the free space of $VOLUME with df"; exit 2; }
 echo "size budget: $count entries, $total_gb GB stated; $VOLUME has $free_gb GB free, margin $MARGIN_GB GB"

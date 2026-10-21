@@ -42,6 +42,9 @@ if [ ! -f "$DATA/$ID/README.yaml" ]; then
     echo "access: \"$ACCESS\""
     echo "restricted: $([ "$ACCESS" = open ] && echo false || echo true)"
     echo "roles: {raw: as downloaded, fetch: the fetcher's state (verified.jsonl, failed.jsonl), meta: manifests and FETCH.json}"
+    echo "existing_subfolders_kept: \"the acquisition sub-layout (raw/, fetch/, meta/)\""
+    echo "index_adapter: \"\"                # the db/build_index.py adapter that reads this folder; none written yet"
+    echo "index_skip: []"
     echo "fetched_by: \"$ROUTE $ARGS\""
     [ -z "${NOTE:-}" ] || echo "note: \"$NOTE\""
   } > "$DATA/$ID/README.yaml"
@@ -78,8 +81,9 @@ case "$ROUTE" in
     curl -sSIL --max-time 60 "$ARGS" | tee "$DATA/$ID/meta/probe_$(date '+%F').txt" | grep -i "^HTTP\|location\|www-authenticate" ; rc=0 ;;
   hf-token)
     load_token HF_TOKEN "${TOKEN_FILE:?}" || exit 2
+    # hf-get imports huggingface_hub, which the acq environment holds and the repository's lock does not.
     # shellcheck disable=SC2086
-    python3 "$SSN/data_platform/reacquire/reacquire.py" hf-get $ARGS --dest "$DATA/$ID/raw" --state "$DATA/$ID/meta/fetch-state"; rc=$? ;;
+    "$ACQ_ENV/bin/python" "$SSN/data_platform/reacquire/reacquire.py" hf-get $ARGS --dest "$DATA/$ID/raw" --state "$DATA/$ID/meta/fetch-state"; rc=$? ;;
   curl-link)
     link_file=$(eval echo "${LINK_FILE:?}")
     [ "$(stat -c %a "$link_file")" = 600 ] || { echo "$link_file must be mode 600"; exit 2; }

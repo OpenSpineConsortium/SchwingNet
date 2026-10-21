@@ -15,13 +15,15 @@
 #
 # The size budget comes first: the stated size of every source in the chain (from the cards'
 # "GB catalogue" and the records) summed against df on /rs/rs_grp_oschome minus a 1 TB margin;
-# a source with no stated size counts as 0 and is named.
+# a source with no stated size counts as 0 and is named. The margin is 5 TB because
+# acquisition_fetch.sh stops its own job when less than 5 TB is free (--floor-tb 5).
 set -uo pipefail
 REPO=${SCHWINGNET:-$HOME/SchwingNet}
 SBATCH=${SBATCH:-sbatch}
 DF=${DF:-df}
 VOLUME=${VOLUME:-/rs/rs_grp_oschome}
-MARGIN_GB=${MARGIN_GB:-1000}
+# 5 TB, not 1: acquisition_fetch.sh stops its own job under 5 TB free (--floor-tb 5).
+MARGIN_GB=${MARGIN_GB:-5000}
 DATA_ROOT=${DATA_ROOT:-/rs/rs_grp_oschome/go2432/data}
 ONLY=""; GATED=0
 while [ $# -gt 0 ]; do
@@ -43,7 +45,7 @@ idc_spine_mets_ct_seg|idc|17.2|CC BY 4.0|open|spine_mets_ct_seg|
 idc_spinal_multiple_myeloma_seg|idc|33.8|CC BY 4.0|open|spinal_multiple_myeloma_seg|
 zenodo_medpelvis3d|acq|15.1|CC BY 4.0|open|zenodo --collection zenodo_medpelvis3d --record 21757686 --include .|
 zenodo_lumvbcanseg|acq|10.08|CC BY 4.0|open|zenodo --collection zenodo_lumvbcanseg --record 8181250 --include .|
-zenodo_lumos|acq|46.4|CC BY-NC 4.0|open|zenodo --collection zenodo_lumos --record 18173663 --include .|
+zenodo_lumos|acq|46.4|not recorded on the card; to confirm on the record|open|zenodo --collection zenodo_lumos --record 18173664 --include .|NOTE=the version record 18173664 (18173663 is the concept DOI); the 1,620 radiographs are banked by grid/banks/lumos.json from this landing
 zenodo_ts_task_hip_implant|acq|9.03|CC BY 4.0|open|zenodo --collection zenodo_ts_task_hip_implant --record 20272031 --include .|NOTE=overlap with TotalSegmentator v2/v3 not yet asked of the authors; out of every split until answered
 zenodo_ts_task_pleural_effusion|acq|8.99|CC BY 4.0|open|zenodo --collection zenodo_ts_task_pleural_effusion --record 20272295 --include .|NOTE=overlap with TotalSegmentator v2/v3 not yet asked of the authors; out of every split until answered
 zenodo_ts_task_liver_lesions|acq|38.87|CC BY 4.0|open|zenodo --collection zenodo_ts_task_liver_lesions --record 20272572 --include .|NOTE=overlap with TotalSegmentator v2/v3 not yet asked of the authors; out of every split until answered

@@ -1,6 +1,6 @@
 {
   "id": "lumos",
-  "raw": "/rs/rs_grp_oschome/go2432/data/lumos/raw",
+  "raw": "/rs/rs_grp_oschome/go2432/data/zenodo_lumos/raw",
   "bank": "/rs/rs_grp_oschome/go2432/data/lumos/bank",
   "images": [
     "**/*.dcm"
@@ -24,5 +24,5 @@
   "labels": null,
   "synthetic": false,
   "px_mm": null,
-  "notes": "803 patients, 1,620 lumbar AP or lateral radiographs as DICOM beside 280 CTs; the radiographs are DICOM, so the bank stage refuses them until pydicom is locked"
+  "notes": "803 patients, 1,620 lumbar AP or lateral radiographs as DICOM beside 280 CTs; the radiographs are DICOM, so the bank stage refuses them until pydicom is locked; the raw copy is the data platform's landing zenodo_lumos (record 18173664), fetched by grid/run-platform-fetch.sh, so the record is on disk once"
 }

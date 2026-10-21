@@ -2,7 +2,7 @@
   "source": "lumos",
   "identity_level": "patient",
   "person_key_rule": "lumos:<case as grid/banks/lumos.json derives it>; one case is one patient",
-  "access": "Zenodo 18173664, open; licence CC BY-NC 4.0 per the data platform's card, to confirm on the record",
+  "access": "Zenodo 18173664, open; licence not recorded on the card; to confirm on the record",
   "modality": "dx",
   "device_class": "film",
   "regions": [
@@ -11,5 +11,5 @@
   ],
   "grid_root": "/rs/rs_grp_oschome/go2432/data/lumos",
   "shards": [],
-  "notes": "803 patients, 1,620 lumbar AP or lateral radiographs as DICOM beside 280 CTs; the radiographs are DICOM, so the bank stage refuses them until pydicom is locked; the raw copy is /rs/rs_grp_oschome/go2432/data/lumos/raw (grid/fetch-xray.json) and the bank /rs/rs_grp_oschome/go2432/data/lumos/bank; no shard until the chain's first run"
+  "notes": "803 patients, 1,620 lumbar AP or lateral radiographs as DICOM beside 280 CTs; the radiographs are DICOM, so the bank stage refuses them until pydicom is locked; the raw copy is the data platform's landing /rs/rs_grp_oschome/go2432/data/zenodo_lumos/raw (grid/run-platform-fetch.sh, record 18173664), read by grid/banks/lumos.json and never moved and the bank /rs/rs_grp_oschome/go2432/data/lumos/bank; no shard until the chain's first run"
 }
