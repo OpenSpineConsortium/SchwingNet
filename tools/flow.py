@@ -15,6 +15,13 @@ mode as a subprocess in the train-cpu environment and in slurm mode as one sbatc
 train-gpu, polled no faster than once a minute (grid rule 7). `record` copies the run's small
 files, never the checkpoint, into the research folder with one ledger row, so the repository
 holds what ran and what it cost beside the numbers.
+
+Before the first step the run's witness.json is written (tools/witness.py): the frozen list in
+data/witness/ where the repository has one, checked against this catalog, else the frames chosen
+from it now. After the last step the flow pushes the steps' offline Weights and Biases files from
+where it runs (tools/wandb_log.py sync; on the grid that is the login node, which has a route
+out), and its last line and the ledger say whether they were pushed, never silently. `record
+--freeze` makes the run's witness list the frozen one, for the first run on real frames only.
 """
 
 import argparse
@@ -35,6 +42,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from schwingnet.flow import JobRecord, JobSpec, RunRecord, Stage, Step, ledger_row, run_id  # noqa: E402
 from schwingnet.slurm import elapsed_seconds, is_finished, job_id_of, sbatch_script  # noqa: E402
+from witness import FROZEN, WitnessError, for_run  # noqa: E402
 
 VERSION_NAME = re.compile(r"catalog-(\d{6})-[0-9a-f]{12}\.sqlite$")
 LEDGER_HEADER = (
@@ -165,6 +173,7 @@ def command_run(args):
     run_dir.mkdir(parents=True)
     (run_dir / "split-check.json").write_text(json.dumps(check, indent=1) + "\n", encoding="utf-8")
     write_record(run_dir, record)
+    write_witness(run_dir, args.catalog, record.catalog_sha256)
     print(json.dumps({"run_id": record.run_id, "run_dir": str(run_dir), "mode": args.mode}), flush=True)
     jobs = [JobRecord(step=Step.SPLIT_CHECK, job_id=f"local-{os.getpid()}-split-check", partition="runner", qos=None, hours_requested=0.01, seconds_used=1, gpus=0, preemptions=0, exit_code=0)]
     for job in job_specs(args):
@@ -174,13 +183,37 @@ def command_run(args):
         write_record(run_dir, record)
         print(json.dumps(done.model_dump()), flush=True)
         if done.exit_code != 0:
+            print(push_wandb(run_dir, args.environment), file=sys.stderr, flush=True)
             raise FlowError(f"{job.step.value} exited {done.exit_code}; see {run_dir}/{job.step.value}.log")
     activity = f"{record.stage.value} stage, {record.epochs} epochs, seed {record.seed}" + (f", {args.max_frames} crops per part" if args.max_frames else "")
-    append_ledger(Path(args.out) / "LEDGER.md", record, activity, "evaluate/results.md from the test part; split-check.json disjoint")
+    pushed = push_wandb(run_dir, args.environment)
+    append_ledger(Path(args.out) / "LEDGER.md", record, activity, f"evaluate/results.md from the test part; split-check.json disjoint; {pushed}")
+    print(pushed, file=sys.stderr if "NOT" in pushed else sys.stdout, flush=True)
     return 0
 
 
-KEPT = ("RUN.json", "split-check.json", "train/metrics.jsonl", "train/checkpoint.json", "train/MODEL.md", "train/accuracy.png", "evaluate/results.json", "evaluate/results.md", "evaluate/confusion.png", "evaluate/per-level.png")
+def write_witness(run_dir, catalog, catalog_sha256):
+    """The run's witness list, before any step, so both steps draw the same frames."""
+    try:
+        document, how = for_run(catalog, catalog_sha256)
+    except WitnessError as error:
+        raise FlowError(f"witness frames: {error}") from error
+    (Path(run_dir) / "witness.json").write_text(json.dumps(document, indent=1) + "\n", encoding="utf-8")
+    print(json.dumps({"witness": how, "frames": len(document["frames"]), "missing": document["missing"]}), flush=True)
+
+
+def push_wandb(run_dir, environment):
+    """Push the steps' offline W&B runs from here; the one line that says whether they went."""
+    command = ["pixi", "run", "--locked", "-e", environment, "python", "tools/wandb_log.py", "sync", "--run", str(run_dir)]
+    done = subprocess.run(command, cwd=ROOT, capture_output=True, text=True, check=False)
+    lines = [line for line in done.stdout.splitlines() if line.startswith("W&B")]
+    return lines[-1] if lines else f"W&B NOT PUSHED: the sync step exited {done.returncode}: {done.stderr.strip()[-200:]}"
+
+
+KEPT = ("RUN.json", "split-check.json", "witness.json", "wandb-sync.json", "train/metrics.jsonl", "train/checkpoint.json", "train/MODEL.md", "train/accuracy.png", "evaluate/results.json", "evaluate/results.md", "evaluate/confusion.png", "evaluate/per-level.png", "evaluate/witness-test.jsonl", "evaluate/latency.json")
+# Of each witness frame, the strip and the animation; the sheets of the first and last epoch; the
+# latency thread's arms. Never a checkpoint, and never every epoch's picture, which W&B holds.
+KEPT_GLOBS = ("train/witness/frames/*/strip.png", "train/witness/frames/*/anim.gif", "train/witness/frames/sheet-*.png", "evaluate/witness/frames/*/strip.png", "evaluate/witness/frames/*/anim.gif", "evaluate/witness/frames/sheet-*.png", "latency/*.json")
 
 
 def command_record(args):
@@ -188,10 +221,13 @@ def command_record(args):
     source = Path(args.run)
     record = RunRecord.model_validate_json((source / "RUN.json").read_text(encoding="utf-8"))
     target = Path(args.into) / record.run_id
-    for name in KEPT:
+    names = [*KEPT, *(str(p.relative_to(source)) for pattern in KEPT_GLOBS for p in sorted(source.glob(pattern)))]
+    for name in names:
         if (source / name).is_file():
             (target / name).parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(source / name, target / name)
+    if args.freeze:
+        freeze_witness(source / "witness.json")
     strips = sorted((source / "train" / "witness").glob("epoch-*.png"))
     for strip in (strips[:1] + strips[-1:]) if strips else []:
         (target / "train" / "witness").mkdir(parents=True, exist_ok=True)
@@ -199,6 +235,16 @@ def command_record(args):
     append_ledger(Path(args.into).parent / "LEDGER.md", record, args.activity, args.verified)
     print(json.dumps({"recorded": str(target), "files": sorted(str(p.relative_to(target)) for p in target.rglob("*") if p.is_file())}))
     return 0
+
+
+def freeze_witness(listing):
+    """The run's witness list becomes the repository's frozen one; an existing one is kept."""
+    if FROZEN.is_file():
+        raise FlowError(f"{FROZEN.relative_to(ROOT)} is frozen already; a new list is a pull request that removes it first, on purpose")
+    if not listing.is_file():
+        raise FlowError(f"{listing}: the run has no witness list to freeze")
+    FROZEN.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(listing, FROZEN)
 
 
 def command_plan(args):
@@ -237,6 +283,7 @@ def parse(argv):
     record_p.add_argument("--into", required=True)
     record_p.add_argument("--activity", required=True)
     record_p.add_argument("--verified", required=True)
+    record_p.add_argument("--freeze", action="store_true", help="make this run's witness list the frozen one (the first run on real frames)")
     args = parser.parse_args(argv)
     if getattr(args, "environment", None) is None and hasattr(args, "mode"):
         args.environment = "train-cpu" if args.mode == "local" else "train-gpu"

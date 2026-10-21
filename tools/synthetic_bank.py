@@ -9,7 +9,7 @@ of any person. Each box is a vertebra drawn as a bright rectangle with as many d
 its level's index among the levels below, over noise, so a trainer that reads the crops can
 learn the level and a trainer that reads nothing scores chance: a dry run whose accuracy stays
 at chance is a broken workflow, not a hard dataset. Every frame's bytes differ, and a few frames
-repeat an earlier frame's bytes under another stem, which the ingest must count as duplicates.
+repeat an earlier frame's bytes of the same case under another stem, which the ingest must count as duplicates.
 Standard library only, so it runs where the verification environment runs.
 """
 
@@ -117,18 +117,20 @@ def write_bank(bank, frames, cases, seed, test_cases):
     for split in ("train", "val", "test"):
         (bank / "images" / split).mkdir(parents=True, exist_ok=True)
     (bank / "meta").mkdir(exist_ok=True)
-    last = None
+    # A repeat copies an earlier frame of the same case: the ingest counts that as a duplicate,
+    # while the same bytes under two persons it refuses as an identity question (tools/ingest.py).
+    last = {}
     for index in range(frames):
         case = test_cases[index % len(test_cases)] if test_cases else f"case{1000 + index % cases}"
         split = "test" if test_cases else ("val" if index % 10 == 7 else "train")
         stem = f"{case}_f{index:06d}"
         boxes = boxes_for(rnd)
-        data = last if (index % 97 == 50 and last) else png(frame_rows(rnd, boxes))
+        data = last[case] if (index % 97 == 50 and case in last) else png(frame_rows(rnd, boxes))
         (bank / "images" / split / f"{stem}.png").write_bytes(data)
         (bank / "meta" / f"{stem}.json").write_text(
             json.dumps(meta_for(case, index, split, boxes, rnd)), encoding="utf-8"
         )
-        last = data
+        last[case] = data
     return {"bank": str(bank), "frames": frames, "cases": cases or len(test_cases)}
 
 

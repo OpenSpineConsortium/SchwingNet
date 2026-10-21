@@ -72,6 +72,7 @@ pillow = ">=10"
 numpy = ">=1.26"
 matplotlib = ">=3.8"
 metaflow = ">=2.12"
+wandb = ">=0.18"
 
 [feature.cpu.dependencies]
 pytorch-cpu = ">=2.3"

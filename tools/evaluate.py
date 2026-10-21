@@ -10,6 +10,14 @@ tools/flow.py wrote from a clean tree. The test part is read once, here, after t
 the trainer never saw it. Beside the table the figures a reader checks: the confusion matrix and
 the per-level accuracy with its intervals. The transitional stratum (T13, L6) is reported apart,
 never pooled, as docs/research/retraining-plan.md asks.
+
+The evaluator is the version boundary, so it is where the test witness frames are read
+(docs/research/retraining-plan.md, section 4): the test, transitional and sweep frames of the
+run's witness.json are drawn over every epoch's weights the trainer kept, from the untrained
+network on, with each frame's strip and animation and witness-test.jsonl holding each epoch's
+score; none of it chooses anything, since the checkpoint was chosen before this step began. The
+table, the figures and the pictures go to Weights and Biases offline beside the run
+(tools/wandb_log.py), pushed by the flow once the step is done.
 """
 
 import importlib.util
@@ -42,6 +50,7 @@ train = load_trainer()
 TrainError, build_model, load_crops, predict, read_crops = (
     train.TrainError, train.build_model, train.load_crops, train.predict, train.read_crops,
 )
+TEST_ROLES = ("test", "transitional", "sweep")
 
 HEADER = (
     "| measure | stratum | correct/n | fraction | 95% interval | persons | run | commit | tree |\n"
@@ -173,6 +182,63 @@ def parse(argv):
     return parser.parse_args(argv)
 
 
+def epoch_files(out):
+    """The epochs the trainer kept, in order, as (epoch, path)."""
+    files = sorted((out / "train" / "epochs").glob("epoch-*.pt"))
+    return [(int(f.stem.split("-")[1]), f) for f in files]
+
+
+def test_witness(out, args, size):
+    """The test witness frames drawn over every kept epoch; each epoch's score per role."""
+    listing = out / "witness.json"
+    if not listing.is_file():
+        return [], None
+    tool = train.load_tool("witness")
+    document = json.loads(listing.read_text(encoding="utf-8"))
+    frames = [f for f in document["frames"] if f["role"] in TEST_ROLES]
+    keys = {f["sha256"] for f in frames}
+    crops = [c for c in read_crops(args.catalog, ("test",)) if c["sha256"] in keys]
+    epochs = epoch_files(out)
+    if not crops or not epochs:
+        return [], None
+    folder = out / "evaluate" / "witness" / "frames"
+    inputs, _ = load_crops(crops, size, {})
+    roles = {f["key"]: f["role"] for f in frames}
+    lines = []
+    for epoch, path in epochs:
+        model = build_model(None, args.device)
+        model.load_state_dict(torch.load(path, map_location=args.device, weights_only=True))
+        scores = tool.draw_checkpoint(frames, train.marks_of(crops, predict(model, inputs, args.device, args.batch)), epoch, folder)
+        line = {"epoch": epoch}
+        for role in TEST_ROLES:
+            mine = [v for k, v in scores.items() if roles[k] == role]
+            line[role] = [sum(v[0] for v in mine), sum(v[1] for v in mine)]
+        lines.append(line)
+    tool.finish(folder, frames, [e for e, _ in epochs])
+    with (out / "evaluate" / "witness-test.jsonl").open("w", encoding="utf-8") as handle:
+        handle.writelines(json.dumps(line) + "\n" for line in lines)
+    return lines, (folder, frames)
+
+
+def log_to_wandb(out, record, rows, folder, lines, drawn):
+    """The table, the figures and the test witness pictures as one W&B run of this step."""
+    telemetry = train.load_tool("wandb_log").Telemetry(out, record, "evaluate", {"part": "test"})
+    columns = ("measure", "stratum", "correct", "total", "fraction", "ci_low", "ci_high", "persons")
+    table = telemetry.table(columns, [(r.measure, r.stratum, r.correct, r.total, r.correct / r.total, *wilson(r.correct, r.total), r.persons) for r in rows])
+    for line in lines:
+        telemetry.log({f"test_witness/{role}": v[0] / v[1] for role, v in line.items() if role != "epoch" and v[1]}, step=line["epoch"])
+    media = telemetry.images({"confusion": folder / "confusion.png", "per_level": folder / "per-level.png"})
+    if drawn:
+        frames_folder, frames = drawn
+        media |= telemetry.images({f"witness/test/{f['key']}": frames_folder / f["key"] / "strip.png" for f in frames})
+        media |= telemetry.videos({f"witness/test_video/{f['key']}": frames_folder / f["key"] / "anim.gif" for f in frames})
+    telemetry.log(dict(media, **({"results": table} if table is not None else {})))
+    overall = next((r for r in rows if r.stratum == "all levels"), None)
+    if overall:
+        telemetry.summary({"test_accuracy": overall.correct / overall.total, "test_ci": list(wilson(overall.correct, overall.total)), "test_persons": overall.persons})
+    telemetry.finish()
+
+
 def run(args):
     out = Path(args.run)
     record = json.loads((out / "RUN.json").read_text(encoding="utf-8"))
@@ -194,6 +260,8 @@ def run(args):
     write_results(folder, rows, record, args.part, counts)
     confusion_figure(crops, guesses, folder / "confusion.png")
     per_level_figure(rows, folder / "per-level.png")
+    lines, drawn = test_witness(out, args, size) if args.part == "test" else ([], None)
+    log_to_wandb(out, record, rows, folder, lines, drawn)
     for row in rows:
         print(result_line(row))
     return 0
