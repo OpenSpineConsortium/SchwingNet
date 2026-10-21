@@ -1,0 +1,23 @@
+{
+  "id": "kub_stonex",
+  "name": "KUB-StoneX (Daffodil International University HIRL)",
+  "group": "films",
+  "what": "2,570 AP kidney-ureter-bladder radiographs of 1,703 patients from two Bangladeshi hospitals, with pixel-level stone masks and radiomic features; a KUB film is a frontal lumbar spine and pelvis radiograph at abdominal exposure, with the iliac crests and the sacrum in field",
+  "level_truth": "none; frontal lumbar spine and pelvis",
+  "reach": "get",
+  "status": "found by the sweep of 2026-10-21; not fetched; public per the listing, the licence and the download route to confirm on the page; the frontal counterpart of what the registry lacks in volume",
+  "licence": "to confirm on the page",
+  "link": "https://hirl.daffodilvarsity.edu.bd/dataset/",
+  "how_to_get": [
+    "Open https://hirl.daffodilvarsity.edu.bd/dataset/ and read the licence and the download route; where a form is asked for, the owner fills it.",
+    "Fetch as a Slurm job on the owner's word, never on the login node: python3 data/reproduce/reacquire/reacquire.py http-get --url U --dest FILE, U being the address the page gives."
+  ],
+  "grid_path": null,
+  "counts": {
+    "radiographs": 2570,
+    "patients": 1703,
+    "hospitals": 2
+  },
+  "measured": {},
+  "record": "docs/research/xray-datasets-missing.md (2026-10-21)"
+}

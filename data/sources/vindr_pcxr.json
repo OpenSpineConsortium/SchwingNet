@@ -1,0 +1,22 @@
+{
+  "id": "vindr_pcxr",
+  "name": "VinDr-PCXR (PhysioNet)",
+  "group": "films",
+  "what": "9,125 pediatric frontal chest radiographs from the VinDr hospitals with radiologist boxes; the only sizeable public pediatric spine-bearing radiograph source found",
+  "level_truth": "none; the pediatric frontal thoracic spine",
+  "reach": "gated",
+  "status": "found by the sweep of 2026-10-21; not fetched; PhysioNet credentialed access, the route VinDr-SpineXR already took",
+  "licence": "PhysioNet credentialed health data licence; to confirm on the page",
+  "link": "https://physionet.org/content/vindr-pcxr/1.0.0/",
+  "how_to_get": [
+    "The owner's PhysioNet credentialing (CITI training on file) and the data use agreement on the record page, signed by the owner, the route VinDr-SpineXR took.",
+    "Then a recursive wget with the owner's PhysioNet login as a Slurm job on the owner's word, never on the login node, as the manifest's vindr_spinexr route does, and sha256sum -c SHA256SUMS.txt on the copy.",
+    "An IRB determination before any training reads it, as for VinDr-SpineXR."
+  ],
+  "grid_path": null,
+  "counts": {
+    "radiographs": 9125
+  },
+  "measured": {},
+  "record": "docs/research/xray-datasets-missing.md (2026-10-21)"
+}

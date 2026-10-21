@@ -1,0 +1,22 @@
+{
+  "id": "zenodo_tmtv_benchmark",
+  "name": "International TMTV Benchmark, lymphoma FDG PET/CT (60)",
+  "group": "ct",
+  "what": "International TMTV Benchmark, lymphoma FDG PET/CT, 60 subjects, Zenodo 13255214 published 2024-08-07, about 6.9 GB; the NIfTI CTs on the PET grid are over 3 mm, so the DICOM is wanted",
+  "level_truth": "counted by the census pipeline once fetched",
+  "reach": "get",
+  "status": "planned in the data platform at bf1432f; fetch job in the 2026-10-21 chain once a zipped-DICOM convert route is written",
+  "licence": "CC BY 4.0",
+  "link": "https://zenodo.org/records/13255214",
+  "how_to_get": [
+    "Read the record listing and choose the include pattern, then spinesurg-ct-nnunet's tools/acquisition_fetch.py zenodo --collection tmtv_benchmark --record 13255214 --include '<pattern>' (md5-verified) through slurm/acquisition_fetch.sh; the download works with --include '\\.zip$', but a zipped-DICOM convert route must be written first.",
+    "The route as the manifest prints it: python3 data/reproduce/reacquire/reacquire.py --grid zenodo_tmtv_benchmark; on the grid, from ~/spinesurg-ct-nnunet/data_platform/reacquire, sbatch -D \"$PWD\" --export=ALL,IDS=\"zenodo_tmtv_benchmark\",MODE=--run reacquire.sbatch, as a Slurm job on the owner's word."
+  ],
+  "grid_path": null,
+  "counts": {
+    "subjects": 60,
+    "size_gb": 6.85
+  },
+  "measured": {},
+  "record": "spinesurg-ct-nnunet data_platform/sources.json bf1432f"
+}

@@ -1,0 +1,29 @@
+{
+  "id": "vindr_cxr",
+  "raw": "/rs/rs_grp_oschome/go2432/data/vindr_cxr/raw",
+  "bank": "/rs/rs_grp_oschome/go2432/data/vindr_cxr/bank",
+  "images": [
+    "**/*.dicom",
+    "**/*.dcm"
+  ],
+  "format": "dcm",
+  "person": {
+    "regex": "to confirm: the image id to patient map in the release's CSV"
+  },
+  "view": {
+    "lat_from_ap_deg": 0.0,
+    "gantry_deg": null
+  },
+  "device": {
+    "make": null,
+    "model": null,
+    "detector": null
+  },
+  "modality": "dx",
+  "device_class": "film",
+  "split": "train",
+  "labels": null,
+  "synthetic": false,
+  "px_mm": null,
+  "notes": "18,000 adult frontal chest radiographs as DICOM; refused by the bank stage until pydicom is locked"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "idc_cptac_lscc",
+  "name": "IDC `cptac_lscc` (tier 2)",
+  "group": "ct",
+  "what": "IDC v24 collection cptac_lscc (TCIA doi:10.7937/k9/tcia.2018.6emub5l2), tier 2 of the anomaly harvest: 32 subjects, about 8.3 GB raw plus screen; chest, abdomen, pelvis and whole body",
+  "level_truth": "counted by the census pipeline once fetched",
+  "reach": "get",
+  "status": "planned in the data platform at bf1432f; fetch job in the 2026-10-21 chain after idc_tier2.csv is regenerated; the ranking's refusals: slice over 3.0 mm 46, non-axial reformat 29, localizer 16, not a regularly spaced 3-D volume 12",
+  "licence": "CC BY 4.0",
+  "link": "https://doi.org/10.7937/k9/tcia.2018.6emub5l2",
+  "how_to_get": [
+    "Regenerate the tier-2 manifest idc_tier2.csv with spinesurg-ct-nnunet's tools/acquisition_census.py (its inputs aa3_meta.csv and fdg_ct_series.json are not on local disk), then slurm/acquisition_submit.sh tier2; or this one collection alone, filtering that manifest on its first column as the tier-1 cards do.",
+    "The route as the manifest prints it: python3 data/reproduce/reacquire/reacquire.py --grid idc_cptac_lscc; on the grid, from ~/spinesurg-ct-nnunet/data_platform/reacquire, sbatch -D \"$PWD\" --export=ALL,IDS=\"idc_cptac_lscc\",MODE=--run reacquire.sbatch, as a Slurm job on the owner's word."
+  ],
+  "grid_path": null,
+  "counts": {
+    "subjects": 32,
+    "size_gb": 8.3
+  },
+  "measured": {},
+  "record": "spinesurg-ct-nnunet data_platform/sources.json bf1432f"
+}

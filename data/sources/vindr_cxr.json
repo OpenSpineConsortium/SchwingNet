@@ -1,0 +1,23 @@
+{
+  "id": "vindr_cxr",
+  "name": "VinDr-CXR (PhysioNet)",
+  "group": "films",
+  "what": "18,000 adult frontal chest radiographs from two Vietnamese hospitals with radiologist boxes; the same institutions and devices as VinDr-SpineXR",
+  "level_truth": "none; the frontal thoracic spine on known hardware",
+  "reach": "gated",
+  "status": "found by the sweep of 2026-10-21; not fetched; PhysioNet credentialed access, the route VinDr-SpineXR already took",
+  "licence": "PhysioNet credentialed health data licence; to confirm on the page",
+  "link": "https://physionet.org/content/vindr-cxr/1.0.0/",
+  "how_to_get": [
+    "The owner's PhysioNet credentialing (CITI training on file) and the data use agreement on the record page, signed by the owner, the route VinDr-SpineXR took.",
+    "Then a recursive wget with the owner's PhysioNet login as a Slurm job on the owner's word, never on the login node, as the manifest's vindr_spinexr route does, and sha256sum -c SHA256SUMS.txt on the copy.",
+    "An IRB determination before any training reads it, as for VinDr-SpineXR."
+  ],
+  "grid_path": null,
+  "counts": {
+    "radiographs": 18000,
+    "hospitals": 2
+  },
+  "measured": {},
+  "record": "docs/research/xray-datasets-missing.md (2026-10-21)"
+}

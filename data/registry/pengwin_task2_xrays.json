@@ -1,0 +1,15 @@
+{
+  "source": "pengwin_task2_xrays",
+  "identity_level": "source_volume",
+  "person_key_rule": "pengwin_task2_xrays:<case as grid/banks/pengwin_task2_xrays.json derives it>; one case is one source volume",
+  "access": "Zenodo 10913195, CC BY to confirm; the challenge's terms at https://pengwin.grand-challenge.org/",
+  "modality": "render",
+  "device_class": "synthetic",
+  "regions": [
+    "lumbar",
+    "sacrum"
+  ],
+  "grid_root": "/rs/rs_grp_oschome/go2432/data/pengwin_task2_xrays",
+  "shards": [],
+  "notes": "50,000 DeepDRR synthetic X-rays of 100 pelvic-fracture CTs at 500 C-arm poses each, simulated K-wires and screws in half; the images are DRRs (synthetic), the person is the source CT, which is also a pengwin2026 CT on the grid; the raw copy is /rs/rs_grp_oschome/go2432/data/pengwin_task2_xrays/raw (grid/fetch-xray.json) and the bank /rs/rs_grp_oschome/go2432/data/pengwin_task2_xrays/bank; no shard until the chain's first run"
+}

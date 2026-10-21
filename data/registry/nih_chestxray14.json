@@ -1,0 +1,14 @@
+{
+  "source": "nih_chestxray14",
+  "identity_level": "patient",
+  "person_key_rule": "nih_chestxray14:<case as grid/banks/nih_chestxray14.json derives it>; one case is one patient",
+  "access": "NIH Clinical Center, open; the Box page's terms to confirm",
+  "modality": "dx",
+  "device_class": "film",
+  "regions": [
+    "thoracic"
+  ],
+  "grid_root": "/rs/rs_grp_oschome/go2432/data/nih_chestxray14",
+  "shards": [],
+  "notes": "112,120 frontal chest films of 30,805 patients in 12 archives; the file name <patient 8 digits>_<follow-up>.png carries the patient, the person key; the raw copy is /rs/rs_grp_oschome/go2432/data/nih_chestxray14/raw (grid/fetch-xray.json) and the bank /rs/rs_grp_oschome/go2432/data/nih_chestxray14/bank; no shard until the chain's first run"
+}

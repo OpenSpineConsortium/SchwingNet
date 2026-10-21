@@ -19,25 +19,25 @@ NONE = does not exist publicly; EXCLUDED = held or seen and set aside for a stat
 
 ## Totals
 
-60 sources in the registry.
+111 sources in the registry.
 
 ```
-HAVE      #################.......................  25
-GET       ###############.........................  22
-GATED     ######..................................   9
-EMBARGOED #.......................................   1
-NONE      #.......................................   1
-EXCLUDED  #.......................................   2
+HAVE      #########...............................  26
+GET       #######################.................  65
+GATED     #####...................................  15
+EMBARGOED ........................................   1
+NONE      ........................................   1
+EXCLUDED  #.......................................   3
 ```
 
 | Table | HAVE | GET | GATED | EMBARGOED | NONE | EXCLUDED | All |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Real intraoperative fluoroscopy, stills (the target domain) | 5 | 3 | 0 | 0 | 1 | 1 | 10 |
-| Video and cine (consecutive frames) | 2 | 18 | 1 | 0 | 0 | 0 | 21 |
-| Real projections with a registered CT (the COBRA kind) | 3 | 0 | 0 | 1 | 0 | 0 | 4 |
-| Plain films (lateral or AP radiographs) | 8 | 0 | 1 | 0 | 0 | 1 | 10 |
-| CT collections and their renders (3D truth, synthetic 2D) | 7 | 0 | 7 | 0 | 0 | 0 | 14 |
-| Future directions | 0 | 1 | 0 | 0 | 0 | 0 | 1 |
+| Real intraoperative fluoroscopy, stills (the target domain) | 5 | 4 | 0 | 0 | 1 | 1 | 11 |
+| Video and cine (consecutive frames) | 2 | 22 | 1 | 0 | 0 | 0 | 25 |
+| Real projections with a registered CT (the COBRA kind) | 3 | 1 | 0 | 1 | 0 | 0 | 5 |
+| Plain films (lateral or AP radiographs) | 8 | 12 | 7 | 0 | 0 | 2 | 29 |
+| CT collections and their renders (3D truth, synthetic 2D) | 8 | 24 | 7 | 0 | 0 | 0 | 39 |
+| Future directions | 0 | 2 | 0 | 0 | 0 | 0 | 2 |
 
 ## 1. Real intraoperative fluoroscopy, stills (the target domain)
 
@@ -49,7 +49,8 @@ EXCLUDED  #.......................................   2
 | Geneva hip phantom (BV Pulsera) | 116 frames of one phantom on a device no model saw | pelvis | HAVE | the unseen-device test | frames 116 | not recorded | not recorded |
 | Ljubljana 2D-3D-GS (PIXIUM 4600) | 18 frames of one cadaver, L1 to L5, with CT and pose | yes, up to 90 level boxes possible from the pose | HAVE | parameters read, no truth bank built; read-only under its ND licence | frames 18 | ND (read-only) | not recorded |
 | Balgrist ex-vivo lumbar CT plus C-arm (Jecklin) | cadaver lumbar CT with real C-arm frames | yes, from the CT | GET | request drafted 2026-09-21, never sent; the authors' group is ROCS (Research in Orthopedic Computer Science, Balgrist, head Philipp Fuernstahl), whose group address is rocs@balgrist.ch; the paper is arXiv:2401.16027 (Medical Image Analysis 2024); the set is restricted for pending patents |  | not recorded | [link](https://rocs.balgrist.ch/en/contact) |
-| LUMOS (Zhejiang University) | 803 living patients: 1,620 lumbar AP or lateral radiographs and 280 non-contrast lumbar CTs, anonymised DICOM and NPY; diagnostic radiography, not C-arm fluoroscopy; no pose given | levels readable from the paired CT after a 2D/3D registration | GET | open on Zenodo; never fetched | patients 803, radiographs 1,620, ct volumes 280, size gb 46.4 | not recorded | [link](https://zenodo.org/records/18173664) |
+| cm_spine: one Google Drive file described only as 'intraoperative' (empty download) | one Google Drive file, id 1r9wX1802gkU4-EQHMMlyAlEiWXGWLhhJ, described only as 'intraoperative' by download_sources.py's get_cm_spine(); the download was empty and what the file is has never been established | unknown | GET | empty in the data platform at bf1432f; the owner's hand: gdown into a scratch directory, inspect, then decide |  | not recorded | not recorded |
+| LUMOS (Zhejiang University) | 803 living patients: 1,620 lumbar AP or lateral radiographs and 280 non-contrast lumbar CTs, anonymised DICOM and NPY; diagnostic radiography, not C-arm fluoroscopy; no pose given | levels readable from the paired CT after a 2D/3D registration | GET | open on Zenodo; never fetched; still open on Zenodo at the sweep of 2026-10-21, never fetched; queued in the fetch chain of #38 | patients 803, radiographs 1,620, ct volumes 280, size gb 46.4 | not recorded | [link](https://zenodo.org/records/18173664) |
 | SX-Stitch intraoperative C-arm series (Li 2024, PUMCH) | intraoperative C-arm series translated along the spine for stitching | levels present in the series | GET | request drafted 2026-09-19, never sent; the paper's data statement says no datasets, so success is unlikely |  | not recorded | [link](https://arxiv.org/abs/2409.05681) |
 | Real cervical or thoracic intraoperative frames with level truth | the gap: no public set of real cervical or thoracic C-arm frames with named levels | none public | NONE | your own captures with a preoperative CT are the way (the plan's section 3.5) |  | not recorded | not recorded |
 | SpineSAC | 5,490 sawbone frames from six C-arms | none: the masks are empty on sawbone CT | EXCLUDED | 0 frames scored; no licence stated | frames 5,490 | none stated | [link](https://github.com/IGRS-Imaging/SpineSAC) |
@@ -59,13 +60,15 @@ EXCLUDED  #.......................................   2
 | Source | What it is | Level truth | Reach | Status | Counts | Licence | Link |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | C-ArmLSpine CBCT projection sweeps (case134, case39) | the only confirmed consecutive-frame sequences with a paired volume: raw CBCT projections at quantised gantry angles, 301 XA frames each; rotational, not cranio-caudal | yes: project the CBCT level labels through the known gantry angles | HAVE | the demo's recorded sweep; the 301-frame case134 bank exists (detection only); case39 has no export yet | sweeps 2, projections 602 | CC BY 4.0 | [link](https://zenodo.org/records/22768651) |
-| Public fluoroscopy clips on the grid | clips cut from public video: Bern videos 1 to 4, three PMC videos (PMC10242080, PMC11328828, PMC4852439), three Wikimedia Commons items, the YouTube re-encodes of 28 ids, in folders clips/, youtube/, pmc/, commons/, vimeo/, github/, ajr/, dysphagiabank_unm/; 18 of 70 YouTube entries show live fluoroscopy, 9 of them cervical, one CC-licensed | almost never named; levels burned into a chapter title at best | HAVE | never scored; private tracker screening only, never training or a slide; the YouTube copies are unpermitted until a request is answered | size gb 262.801, youtube ids 28, live fluoro entries 18, clip folders 20 | mixed: CC BY (Bern, PMC), unlicensed re-encodes (YouTube) | [link](https://pmc.ncbi.nlm.nih.gov/articles/PMC8463391/) |
-| Bournemouth cervical quantitative fluoroscopy (BORDaR 385) | 252 lateral flexion and extension sequences from 63 people at 15 fps, 1024 x 1024 16-bit DICOM; the deposit holds the per-frame vertebral corner tracks (.mat, 24 MB) and no pixels | level-named corner tracks C0 to T1 on every frame (geometry only until the cine arrives) | GET | the tracks are on the grid; the DICOM cine is request 1, drafted, never sent | sequences 252, people 63, frames per sequence median 301 | CC BY 4.0 (the tracks); README.rtf CC BY-ND | [link](https://bordar.bournemouth.ac.uk/385/) |
-| Bournemouth lumbar quantitative fluoroscopy (Breen 2021) | weight-bearing and recumbent L2 to S1 flexion and extension cine of 127 subjects at 15 fps, 60 degrees at 6 degrees a second; only per-frame angles are public on OSF | lumbar, if corner templates exist as they do for the cervical set | GET | the only confirmed lumbar cine; asked for in request 1 | subjects 127 | not recorded (OSF holds derived tables only) | [link](https://osf.io/a27py/) |
-| Coronary angiography sets (CADICA, ARCADE, XCAD, AngioCAD) | real fluoroscopy video with the thoracic spine in the background: CADICA 42 patients DICOM at 10 fps, ARCADE 3,000 images, XCAD 1,747 images, AngioCAD 413 patients; heavy contrast, LAO/RAO rotation | none; thoracic in the background | GET | the only large real thoracic fluoroscopy without a DUA; the thoracic test would be annotated by hand; CADICA (Universidad de Malaga, 42 patients, over 6,000 images), ARCADE (Scientific Data 2024, 3,000 images), XCAD (ICCV 2021, 1,747 images, the link), AngioCAD (413 patients); each set's own licence is read before fetching | cadica patients 42, arcade images 3,000, xcad images 1,747, angiocad patients 413 | varies by set | [link](https://github.com/AISIGSJTU/SSVS) |
+| Public fluoroscopy clips on the grid | clips cut from public video: Bern videos 1 to 4, three PMC videos (PMC10242080, PMC11328828, PMC4852439), three Wikimedia Commons items, the YouTube re-encodes of 28 ids, in folders clips/, youtube/, pmc/, commons/, vimeo/, github/, ajr/, dysphagiabank_unm/; 18 of 70 YouTube entries show live fluoroscopy, 9 of them cervical, one CC-licensed | almost never named; levels burned into a chapter title at best | HAVE | never scored; private tracker screening only, never training or a slide; the YouTube copies are unpermitted until a request is answered; CathAction (cathaction, about 500,000 frames, no DUA) is the larger real-fluoroscopy exposure pool found by the sweep of 2026-10-21 | size gb 262.801, youtube ids 28, live fluoro entries 18, clip folders 20 | mixed: CC BY (Bern, PMC), unlicensed re-encodes (YouTube) | [link](https://pmc.ncbi.nlm.nih.gov/articles/PMC8463391/) |
+| Bournemouth cervical quantitative fluoroscopy (BORDaR 385) | 252 lateral flexion and extension sequences from 63 people at 15 fps, 1024 x 1024 16-bit DICOM; the deposit holds the per-frame vertebral corner tracks (.mat, 24 MB) and no pixels | level-named corner tracks C0 to T1 on every frame (geometry only until the cine arrives) | GET | the tracks are on the grid; the DICOM cine is request 1, drafted, never sent; the letter (request 1) was forwarded to ckaching.cheung@polyu.edu.hk on 2026-10-21 03:57 UTC | sequences 252, people 63, frames per sequence median 301 | CC BY 4.0 (the tracks); README.rtf CC BY-ND | [link](https://bordar.bournemouth.ac.uk/385/) |
+| Bournemouth lumbar quantitative fluoroscopy (Breen 2021) | weight-bearing and recumbent L2 to S1 flexion and extension cine of 127 subjects at 15 fps, 60 degrees at 6 degrees a second; only per-frame angles are public on OSF | lumbar, if corner templates exist as they do for the cervical set | GET | the only confirmed lumbar cine; asked for in request 1; the letter (request 1) was forwarded to ckaching.cheung@polyu.edu.hk on 2026-10-21 03:57 UTC | subjects 127 | not recorded (OSF holds derived tables only) | [link](https://osf.io/a27py/) |
+| CathAction (Jianu et al. 2024, AIRVLab) | about 500,000 fluoroscopy frames (600,000 in the 2026 revision) of endovascular catheterisation, animal and phantom, with action labels, collision labels and 25,000 to 40,000 catheter and guidewire masks; two zips, 4.35 GB and 9.88 GB | none; no spine, much of it animal | GET | found by the sweep of 2026-10-21; not fetched; the largest real fluoroscopy frame pool in the open with no DUA, from clinical C-arms with live instruments: an exposure, noise and device-domain source beside coronary_angiography and fluoro_video_clips, not anatomy | frames about 500,000, zip 1 gb 4.35, zip 2 gb 9.88 | to confirm on the page | [link](https://huggingface.co/datasets/airvlab/CathAction) |
+| Coronary angiography sets (CADICA, ARCADE, XCAD, AngioCAD) | real fluoroscopy video with the thoracic spine in the background: CADICA 42 patients DICOM at 10 fps, ARCADE 3,000 images, XCAD 1,747 images, AngioCAD 413 patients; heavy contrast, LAO/RAO rotation | none; thoracic in the background | GET | the only large real thoracic fluoroscopy without a DUA; the thoracic test would be annotated by hand; CADICA (Universidad de Malaga, 42 patients, over 6,000 images), ARCADE (Scientific Data 2024, 3,000 images), XCAD (ICCV 2021, 1,747 images, the link), AngioCAD (413 patients); each set's own licence is read before fetching; CathAction (cathaction, about 500,000 frames, no DUA) is the larger real-fluoroscopy exposure pool found by the sweep of 2026-10-21, with Guide3D (guide3d) beside it | cadica patients 42, arcade images 3,000, xcad images 1,747, angiocad patients 413 | varies by set | [link](https://github.com/AISIGSJTU/SSVS) |
 | DARADIA vertebroplasty video (Kolkata) | a step-by-step percutaneous vertebroplasty under fluoroscopy on YouTube | none named | GET | request 14 drafted, never sent |  | unknown | [link](https://daradia.com/) |
 | DMX Imaging digital motion X-ray | lateral lumbar flexion-extension at 30 frames a second, a commercial practice's YouTube video | none named | GET | request 7 drafted, never sent |  | unknown | [link](https://www.dmxworks.com/) |
 | DysphagiaBank (TalkBank), UNM corpus | lateral swallow videofluoroscopy of about 7 to 53 adults, cervical only, non-commercial, by registration | none named | GET | a registration, not a letter; the count on the corpus page is to be checked when registering |  | non-commercial, by registration | [link](https://dysphagia.talkbank.org/) |
+| Guide3D (ACCV 2024, AIRVLab) | more than 8,700 bi-planar fluoroscopic frames of guidewires in a vascular phantom, two guidewires, varied flow | none; phantom only | GET | found by the sweep of 2026-10-21; not fetched; open per the paper, licence to confirm on the page; bi-planar real fluoroscopy geometry from one device, domain and calibration value only | frames over 8,700 | to confirm on the page | [link](https://airvlab.github.io/guide3d/) |
 | Inselspital Bern dynamic myelography (Piechowiak 2021) | four pulsed fluoroscopy runs at 7.5 frames a second, the detector moved cranially along the spine during tilting: the only overlapping travelling frames found; the published MP4s are on the grid, the native DICOM is not | thoracic (T7/8, T9/10) and one clip at L5/S1, from the captions | GET | the published videos held under CC BY; request 3 for the native DICOM drafted, never sent | videos 4 | CC BY 4.0 (the article's videos); native DICOM available on reasonable request under Swiss law | [link](https://pmc.ncbi.nlm.nih.gov/articles/PMC8463391/) |
 | IRI-VFI: pediatric interventional radiology image sequences (Chongqing) | 95,308 real fluoroscopy images in 1,357 sequences with the lumbar spine in field; pediatric, DSA subtraction frames to be excluded | none | GET | a grain calibration target and an unlabelled pool; 150 to 200 frames would be annotated as a test set; the record is IRI-VFI on IEEE DataPort (doi:10.21227/v4kg-zp42, 1,357 sequences, 95,308 images, angiography, fluoroscopy and subtraction, Children's Hospital of Chongqing Medical University, ChiCTR2200058971); its licence line was not readable from the cloud session | images 95,308, sequences 1,357 | not recorded | [link](https://ieee-dataport.org/documents/iri-vfi-dataset) |
 | Jefferson Neurosurgery DRG stimulation video (Hines 2020) | a Neurosurgical Focus Video article with lumbosacral fluoroscopy; the YouTube copy carries a CC BY licence and is on the grid | L5 and S1 named in the article | GET | request 11 drafted, never sent; the copy is usable now under CC BY | videos 1 | CC BY (YouTube copy); the article text says CC BY-NC-ND while linking CC BY 4.0 | [link](https://doi.org/10.3171/2020.7.FOCVID2034) |
@@ -77,7 +80,9 @@ EXCLUDED  #.......................................   2
 | Pittsburgh videofluoroscopic swallow corpus (Sejdic, Coyle) | about 1,500 lateral swallow clips at 30 fps captured by video card, 265 patients and 70 volunteers on two machines | thin: named corner landmarks on C2 and C4 only, no boxes, no other levels | GET | request 4 drafted, never sent; a Pitt data use agreement expected | clips 1,500, subjects 335 | by request | [link](https://doi.org/10.1016/j.media.2021.102218) |
 | Seattle Science Foundation spine videos | 12 YouTube surgical teaching videos with live C-arm feeds (spinal cord stimulator trials, kyphoplasty); re-encodes on the grid | chapter titles name levels in some (T12, L1) | GET | request 5 drafted, never sent; one request covers all 12 | videos 12 | unknown; embedding disabled | [link](https://www.seattlesciencefoundation.org/) |
 | The Procedure Guide (Puranik) live fluoroscopy clips | four YouTube clips of live fluoroscopy under a CC BY-NC-SA 4.0 site licence whose reach to the clips is unstated | the targeted level, if the author tells it | GET | request 9 drafted (contact form, no e-mail), never sent | clips 4 | CC BY-NC-SA 4.0 (site) | [link](https://theprocedureguide.com/contact) |
-| ThePainSource (Faubel) fluoroscopy clips | pain-procedure fluoroscopy clips on YouTube; fax or phone only | none named | GET | request 13 drafted, never sent |  | unknown | [link](https://www.faubelmd.com/contact-us) |
+| ThePainSource (Faubel) fluoroscopy clips | pain-procedure fluoroscopy clips on YouTube; fax or phone only | none named | GET | request 13 drafted, never sent; request 13 sent 2026-10-21 04:03 UTC to thepainsource@gmail.com (fax fallback 815-381-7498, to confirm) |  | unknown | [link](https://www.faubelmd.com/contact-us) |
+| Veriserum (ETH Zurich, MICCAI 2025) | about 110,000 dual-plane fluoroscopic images of knee implant phantoms with registered poses, 200 with manual registration (ETH Research Collection doi:10.3929/ethz-b-000701146) | none; no spine | GET | found by the sweep of 2026-10-21; not fetched; freely accessible per the authors, licence to confirm on the page; real flat-panel fluoroscopy of metal implants at scale, which the project otherwise learns only from simulation | images about 110,000, manually registered 200 | to confirm on the page | [link](https://movement.ethz.ch/data-repository/veriserum.html) |
+| VFSS2022 videofluoroscopic swallow frames (TIB) | 440 videofluoroscopic swallow frames with instance masks of the bolus and pharynx, the cervical spine in every frame (doi:10.57702/w1ye2nim; Video-TransUNet) | none; cervical spine in field, no vertebra labels | GET | found by the sweep of 2026-10-21; not fetched; open per the listing, licence to confirm on the page; a small labelled cervical fluoroscopy set that the swallow requests (DysphagiaBank, Pittsburgh) do not yet deliver | frames 440 | to confirm on the page | [link](https://service.tib.eu/ldmservice/dataset/vfss2022-dataset) |
 | Radiopaedia fluoroscopy cases | seven cases: the rotational C-arm spin of rID 24796 (vertebral body stenting), the 61-projection series of rID 90103 (sublaminar lumbar puncture), the lateral L1 series of rID 21585 (vertebroplasty), and four injection cases | named in the case text (L1, L5, S1) | GATED | never applied for; machine-learning research goes through Radiopaedia's licence application, fee reported as USD 250, non-commercial only; no scraping | cases 7 | CC BY-NC-SA 3.0 (the site); ML use by application | [link](https://radiopaedia.org/licence) |
 
 ## 3. Real projections with a registered CT (the COBRA kind)
@@ -87,22 +92,42 @@ EXCLUDED  #.......................................   2
 | COBRA2026 Elekta | kV projections around supine pelvic radiotherapy patients, 504 x 504 at 0.8 mm, 120 kVp, with the planning CT deformably registered | whatever is segmented on the CT: the sacrum today, L5 and L6 possible | HAVE | all 467 cases on Ceph; 145 in a bank of 24 frames each, the rest never exported; the sacrum detector's training | cases 467, in bank 145 | CC BY-NC 4.0 | [link](https://zenodo.org/records/21322350) |
 | COBRA2026 on the grid, all projections | every projection of the 692 public cases | same | HAVE | 808.615 GB on Ceph | cases 692, projections 375,618, size gb 808.615 | CC BY-NC 4.0 | [link](https://zenodo.org/records/21322350) |
 | COBRA2026 Varian | the same kind, from Varian linacs | same | HAVE | geometry solved 2026-09-23; no bank built, no frame looked at | cases 225 | CC BY-NC 4.0 | [link](https://zenodo.org/records/21322350) |
+| IPCAI 2025 paired X-ray and CT set (Zenodo 15753063) | real calibrated X-ray images with 5 CT scans, 6.7 GB, from 'Automatic multi-view X-ray/CT registration using bone substructure contours'; the anatomy, pelvis or spine, to confirm on the page | from the CT by the registration, if spine | GET | found by the sweep of 2026-10-21; not fetched; anatomy to confirm; if spine or pelvis, one more real C-arm set with a registered CT, the COBRA and DeepFluoro kind, from a fourth device | ct scans 5, size gb 6.7 | to confirm on the page | [link](https://zenodo.org/records/15753063) |
 | COBRA2026 embargoed cases | the challenge's held-back cases | same | EMBARGOED | released on 2032-03-01 | cases 175 | CC BY-NC 4.0 | [link](https://zenodo.org/records/21322350) |
 
 ## 4. Plain films (lateral or AP radiographs)
 
 | Source | What it is | Level truth | Reach | Status | Counts | Licence | Link |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| AASCE / BoostNet whole-spine films | 609 labelled AP whole-spine films (481 BoostNet training + 128 BoostNet test) and 98 challenge-test films whose landmarks the release never published; both copies are on Ceph: the GitHub mirror holds all 707, and an older request-form copy holds 481 + 98 = 579 without the 128 test films (HOME's spine-detector path has linked to it since 2026-10-10) | thoracic, as a test set | HAVE | thoracic test set only: the prep wrote 608 of the 609 labelled films (one degenerate box); 457 of the 481 training films once fed the deleted level banks v4, v5 and v5c (24 skipped by an unsorted-landmark artefact) and the 128 test films never did; a request-form source | labelled films 609, challenge test films 98, thoracic test films 608 | by request form (SpineWeb); the mirror repository is MIT, the images' reuse terms not recorded | [link](https://aasce19.github.io/) |
+| AASCE / BoostNet whole-spine films | 609 labelled AP whole-spine films (481 BoostNet training + 128 BoostNet test) and 98 challenge-test films whose landmarks the release never published; both copies are on Ceph: the GitHub mirror holds all 707, and an older request-form copy holds 481 + 98 = 579 without the 128 test films (HOME's spine-detector path has linked to it since 2026-10-10) | thoracic, as a test set | HAVE | thoracic test set only: the prep wrote 608 of the 609 labelled films (one degenerate box); 457 of the 481 training films once fed the deleted level banks v4, v5 and v5c (24 skipped by an unsorted-landmark artefact) and the 128 test films never did; a request-form source; the Kaggle scoliosis YOLOv5 set (kaggle_scoliosis_yolov5) may be a relabel of these films: its hashes are checked against this copy before it counts as new people (the sweep of 2026-10-21) | labelled films 609, challenge test films 98, thoracic test films 608 | by request form (SpineWeb); the mirror repository is MIT, the images' reuse terms not recorded | [link](https://aasce19.github.io/) |
 | BUU-LSPINE | 3,603 lateral and 3,600 AP lumbar radiographs of 3,600 people with end-plate lines, plus the 2000 relabel and a 400 sample | lumbar | HAVE | laterals used; the AP films and the 2000 relabel never used, no criterion; no weight trained on them leaves the grid until the owner has read the licence | lateral films 3,603, ap films 3,600, people 3,600 | unread by the owner | not recorded |
 | CSXA cervical lateral films | 4,963 lateral cervical radiographs with corner JSON | cervical, C1 to C7 | HAVE | used fully; every person in the v9 base, so not held out until re-keyed | films 4,963 | open | not recorded |
 | IEEE DataPort lateral whole-spine 236 | 236 whole-spine lateral films | none | HAVE | the pseudo-label arm was refuted | films 236 | not recorded | not recorded |
-| NHANES II annotated films | 543 digitised films of 364 persons with landmarks | lumbar and cervical | HAVE | used; counted twice in the old fold banks (a leak the registry ends) | films 543, persons 364 | open (NCHS) | [link](https://wwwn.cdc.gov/nchs/data/nhanes2/NH2_Xray.htm) |
-| NHANES II unannotated films | 16,531 digitised films without landmarks | none; pseudo-labels cut anomalous accuracy 20 points | HAVE | unused by a written criterion | films 16,531 | open (NCHS) | [link](https://wwwn.cdc.gov/nchs/data/nhanes2/NH2_Xray.htm) |
+| NHANES II annotated films | 543 digitised films of 364 persons with landmarks | lumbar and cervical | HAVE | used; counted twice in the old fold banks (a leak the registry ends); the VertXNet Zenodo record adds radiologist landmarks with vertebral identity and the reference bodies C2 and S1 to these films (record vertxnet_nhanes2_labels, found by the sweep of 2026-10-21) | films 543, persons 364 | open (NCHS) | [link](https://wwwn.cdc.gov/nchs/data/nhanes2/NH2_Xray.htm) |
+| NHANES II unannotated films | 16,531 digitised films without landmarks | none; pseudo-labels cut anomalous accuracy 20 points | HAVE | unused by a written criterion; the VertXNet Zenodo record adds radiologist landmarks with vertebral identity and the reference bodies C2 and S1 to the NHANES II films (record vertxnet_nhanes2_labels, found by the sweep of 2026-10-21), and the manifest's nhanes_pseudo directory of 16,234 pseudo-labelled films could be checked against those labels | films 16,531 | open (NCHS) | [link](https://wwwn.cdc.gov/nchs/data/nhanes2/NH2_Xray.htm) |
 | Spinal-AI2024 | 20,000 machine-generated films from 44 synthetic identities; no patient was imaged | assumed | HAVE | all on train in the G3 split; nothing to hold out | films 20,000, identities 44 | not recorded | not recorded |
-| VinDr-SpineXR | 10,466 DICOM (8,389 train + 2,077 test) in 5,000 studies with lesion boxes | no levels | HAVE | on the grid under the PhysioNet agreement, covered since 29 Sep 2026 by WSU IRB HPR 2026-330 (the supplement to 2026-269: not human participant research); the C-ArmLSpine fold models carry 2,632 of its crops; the v8 and v9 level banks left it out for comparability, with no criterion; its implant boxes trained yolo_hw | images 10,466, studies 5,000 | PhysioNet Restricted Health Data License 1.5.0 (credentialed, named-person agreement) | [link](https://physionet.org/content/vindr-spinexr/1.0.0/) |
+| VinDr-SpineXR | 10,466 DICOM (8,389 train + 2,077 test) in 5,000 studies with lesion boxes | no levels | HAVE | on the grid under the PhysioNet agreement, covered since 29 Sep 2026 by WSU IRB HPR 2026-330 (the supplement to 2026-269: not human participant research); the C-ArmLSpine fold models carry 2,632 of its crops; the v8 and v9 level banks left it out for comparability, with no criterion; its implant boxes trained yolo_hw; the Roboflow rf100-vl relabels (roboflow_vindr_relabels) redistribute these images outside the agreement and are not to be fetched (the sweep of 2026-10-21) | images 10,466, studies 5,000 | PhysioNet Restricted Health Data License 1.5.0 (credentialed, named-person agreement) | [link](https://physionet.org/content/vindr-spinexr/1.0.0/) |
+| Aariz cephalometric benchmark (Khalid, Fraz 2023) and the ISBI 2015 cephalograms | 1,000 lateral cephalograms from 7 devices with 29 landmarks and a cervical vertebral maturation (CVM) stage per film, C2 to C4 in every image (arXiv:2302.07797; the CEPHA29 challenge at ISBI 2023); the ISBI 2015 set of 400 cephalograms with 19 landmarks and no CVM stage is openly downloadable | C2 to C4 by the CVM stage (named vertebra shapes); no other level | GET | found by the sweep of 2026-10-21; not fetched; the 400-film ISBI 2015 set is open, the 1,000-film set by request to the authors (to confirm on the page); pediatric anchors for the top of the cervical counter from seven devices | films 1,000, devices 7, landmarks 29, isbi 2015 films 400 | to confirm on the page | [link](https://arxiv.org/abs/2302.07797) |
+| FracAtlas (Abedeen 2023, Scientific Data) | 4,083 musculoskeletal radiographs from three Bangladeshi hospitals (hand, leg, hip, shoulder), 717 with 922 fracture instances, boxes and masks; the hip and pelvis films show the sacrum and L5 | none; no spine labels | GET | found by the sweep of 2026-10-21; not fetched; a South Asian population and devices the project has not seen | radiographs 4,083, fractured 717, fracture instances 922, hospitals 3 | CC BY 4.0 | [link](https://figshare.com/articles/dataset/The_dataset/22363012) |
+| Fraiwan spine X-ray set (Mendeley xkt857dsxk) | 338 subjects' spine radiographs from King Abdullah University Hospital, Jordan, in three classes (scoliosis, spondylolisthesis, normal), original and resized (Fraiwan et al. 2022); views to confirm on the page | none; a pseudo-label or test arm only | GET | found by the sweep of 2026-10-21; not fetched; new people from a Middle-Eastern centre, with spondylolisthesis cases | subjects 338, classes 3 | CC BY 4.0 (Mendeley's default; to confirm on the page) | [link](https://data.mendeley.com/datasets/xkt857dsxk) |
+| Kaggle bone fracture multi-region X-ray data (bmadushanirodrigo) | 10,580 radiographs in fractured and non-fractured folders over lower limbs, upper limbs, lumbar spine, hips and knees; 481 MB | none; a lumbar-spine folder and a hip folder from unknown devices | GET | found by the sweep of 2026-10-21; not fetched; warning: the licence and the images' origin are unstated in what was read (many Kaggle fracture sets are scraped from teaching sites), to confirm on the page; an exposure-diversity pool only, and not to be fetched until its origin is shown to be redistributable | radiographs 10,580, size mb 481 | Kaggle; the licence and the images' origin to confirm on the page | [link](https://www.kaggle.com/datasets/bmadushanirodrigo/fracture-multi-region-x-ray-data) |
+| Kaggle scoliosis YOLOv5 annotated spine X-ray set (salmankey) | AP spine films with YOLO boxes on vertebrae and curve regions; count, source and whether the people are AASCE's to confirm on the page | boxes per vertebra, level-adjacent if the vertebrae are ordered; worthless if the films are AASCE's | GET | found by the sweep of 2026-10-21; not fetched; its origin is unstated, so it may be a relabel of AASCE (aasce): every image is hash-checked (filename or pixel hash) against the AASCE copy on the grid before any use, and a match excludes it as new people |  | Kaggle; the licence on the page, to confirm | [link](https://www.kaggle.com/datasets/salmankey/scoliosis-yolov5-annotated-spine-x-ray-dataset) |
+| KUB-StoneX (Daffodil International University HIRL) | 2,570 AP kidney-ureter-bladder radiographs of 1,703 patients from two Bangladeshi hospitals, with pixel-level stone masks and radiomic features; a KUB film is a frontal lumbar spine and pelvis radiograph at abdominal exposure, with the iliac crests and the sacrum in field | none; frontal lumbar spine and pelvis | GET | found by the sweep of 2026-10-21; not fetched; public per the listing, the licence and the download route to confirm on the page; the frontal counterpart of what the registry lacks in volume | radiographs 2,570, patients 1,703, hospitals 2 | to confirm on the page | [link](https://hirl.daffodilvarsity.edu.bd/dataset/) |
+| Mendeley DDH hip sets (jf3pv98m9g and 4gvcb6gmh2) | infant and child AP pelvis radiographs with developmental dysplasia labels: jf3pv98m9g (Jordan, 354 subjects) and 4gvcb6gmh2 (AV-DDH, 2,417 infant hip films, updated 2026-03); the lumbosacral junction in field at low exposure | none; pediatric pelvis | GET | found by the sweep of 2026-10-21; not fetched; the only sizeable pediatric pelvic film source found | jf3pv98m9g subjects 354, av ddh films 2,417 | CC BY 4.0 (to confirm on the page) | [link](https://data.mendeley.com/datasets/jf3pv98m9g) |
+| MrOS lateral spine radiographs (Osteoporotic Fractures in Men) | lateral thoracic and lumbar films of 5,994 men at six US centres, two visits (2000-2002 and about 4.6 years later), with Genant semi-quantitative vertebral fracture grades per vertebra; one deep-learning study used 4,461 subjects and 15,524 films; the image counts and the request steps to confirm on the page | Genant grades on named levels, so level truth exists | GET | found by the sweep of 2026-10-21; not fetched; a research data request through the MrOS coordinating centre (an online application with a proposal), not sent; the images are not on dbGaP, whose phs000373 covers genotypes (to confirm on the page); older osteoporotic spines with compression fractures, the anatomy the C-arm sees in kyphoplasty | men 5,994, centres 6, visits 2 | a MrOS data request agreement; terms to confirm on the page | [link](https://mrosonline.ucsf.edu/) |
+| NIH ChestX-ray14 and the RSNA pneumonia subset | 112,120 frontal chest films of 30,805 patients; the RSNA pneumonia detection challenge on Kaggle used 30,000 of them | none; the frontal thoracic spine behind the mediastinum | GET | found by the sweep of 2026-10-21; not fetched; open (NIH) and Kaggle competition rules (RSNA); volume with no agreement, no laterals | films 112,120, patients 30,805, rsna subset films 30,000 | open (NIH); Kaggle competition rules for the RSNA subset | [link](https://nihcc.app.box.com/v/ChestXray-NIHCC) |
+| Open-i Indiana chest collection | 7,470 chest radiographs of 3,955 studies with reports, frontal and lateral pairs (the Indiana University collection on Open-i) | none; the thoracic spine in a lateral chest film | GET | found by the sweep of 2026-10-21; not fetched; open, no agreement; small but frictionless lateral chest films for a thoracic-lateral probe before the gated sets arrive | radiographs 7,470, studies 3,955 | open, no agreement (the Open-i FAQ); to confirm on the page | [link](https://openi.nlm.nih.gov/faq) |
+| SOF lateral spine radiographs (Study of Osteoporotic Fractures) | the women's counterpart of MrOS: lateral thoracolumbar films at several visits, about 9,700 women, Genant grading per vertebra; counts to confirm on the page | Genant grades on named levels, so level truth exists | GET | found by the sweep of 2026-10-21; not fetched; the same kind of request as MrOS (to confirm on the page), not sent; with MrOS the largest level-labelled lateral spine film resource that exists | women about 9,700 | a SOF data request agreement; terms to confirm on the page | [link](https://sofonline.ucsf.edu/) |
+| VertXNet extra labels for NHANES II (Mo, Papiez, Chen 2023) | labels only, for films already held: 8 landmarks per vertebral body with vertebral identity on the NHANES II cervical and lumbar laterals, and the reference bodies C2 and S1 annotated by radiologists where visible; the Zenodo record 'NHANES II Spinal X-ray with Extra Labels For Reference Vertebral Bodies (C2, S1)', version 1, 2023, named in the Data availability statement of Scientific Reports 14:3341 (doi:10.1038/s41598-023-49923-3) | vertebral identity per body, with C2 and S1 as the anchors the level counter needs | GET | found by the sweep of 2026-10-21; not fetched; the manifest's nhanes2_zenodo_landmarks already names Zenodo 10223910 (concept 10145564) by the same authors, whose osteophyte annotation zip is the held 543-film landmark set, so whether the C2 and S1 labels are another file of that record or a sibling record under the concept is to confirm on the page; closes the registry's NHANES gap (C3-C7 and L1-L5 only) at no imaging cost | landmarks per body 8 | Zenodo, open; licence to confirm on the page (the held record of the same authors is CC BY 4.0) | [link](https://doi.org/10.1038/s41598-023-49923-3) |
+| CheXpert and CheXpert Plus (Stanford AIMI) | 224,316 chest radiographs of 65,240 patients, frontal and lateral (CheXpert); CheXpert Plus adds reports and DICOM | none; laterals from one centre with many devices | GATED | found by the sweep of 2026-10-21; not fetched; the Stanford AIMI research use agreement, the same portal as INSPECT and Merlin (stanford_aimi_inspect, stanford_aimi_merlin), so the owner's AIMI account would cover it | radiographs 224,316, patients 65,240 | Stanford AIMI research use agreement, non-commercial | [link](https://stanfordaimi.azurewebsites.net/) |
+| MIMIC-CXR and MIMIC-CXR-JPG (PhysioNet) | 377,110 chest radiographs of 227,835 studies, 65,379 patients, Beth Israel Deaconess; frontal and lateral views, the lateral share roughly a third (to confirm from the metadata CSV) | none; the thoracic spine T1 to about L1 in a lateral chest film | GATED | found by the sweep of 2026-10-21; not fetched; PhysioNet credentialed access (CITI training and the data use agreement, as VinDr-SpineXR needed); the largest source of lateral chest films, hence of thoracic spine laterals, free of charge once credentialed | radiographs 377,110, studies 227,835, patients 65,379 | PhysioNet credentialed health data licence; to confirm on the page | [link](https://physionet.org/content/mimic-cxr/2.1.0/) |
+| PadChest (BIMCV, Alicante) | 160,868 chest radiographs of 67,625 patients, 109 projections including lateral (about 30 percent) and some oblique; labels include 174 findings | none; oblique and lateral thoracic spines | GATED | found by the sweep of 2026-10-21; not fetched; a licence form on the page (research use, by request); European devices and film-era digitised plates, the richest set of non-standard chest projections | radiographs 160,868, patients 67,625, projections 109 | research use by request; a licence form on the page | [link](https://bimcv.cipf.es/bimcv-projects/padchest/) |
+| ReXGradient-160K (Rajpurkar lab and Gradient Health, 2025) | 160,000 chest radiograph studies with reports from 109,487 patients at 79 US sites; several images per study, so laterals are likely included (to confirm on the page) | none; the thoracic spine behind the heart, and laterals if present | GATED | found by the sweep of 2026-10-21; not fetched; Hugging Face gated behind a non-commercial data access and use agreement signed on the page; 79 sites means 79 exposure recipes | studies 160,000, patients 109,487, sites 79 | a non-commercial data access and use agreement on the Hugging Face page | [link](https://huggingface.co/datasets/rajpurkarlab/ReXGradient-160K) |
 | TVGH-SpineXR | a Taiwanese spine radiograph set behind a login | not recorded | GATED | 403 at a login; access never requested; the record is on IEEE DataPort (doi:10.21227/x6bb-7r75) with T1-L5 per-vertebra level labels, masks and end-plates per its description, never seen |  | not recorded | [link](https://ieee-dataport.org/documents/tvgh-spinexr) |
-| Mendeley 5jdfdgp762 spondylolisthesis films | 714 films with spondylolisthesis landmarks | landmarks | EXCLUDED | about 500 are BUU people redistributed, so it adds no new person | films 714 | not recorded | [link](https://data.mendeley.com/datasets/5jdfdgp762) |
+| VinDr-CXR (PhysioNet) | 18,000 adult frontal chest radiographs from two Vietnamese hospitals with radiologist boxes; the same institutions and devices as VinDr-SpineXR | none; the frontal thoracic spine on known hardware | GATED | found by the sweep of 2026-10-21; not fetched; PhysioNet credentialed access, the route VinDr-SpineXR already took | radiographs 18,000, hospitals 2 | PhysioNet credentialed health data licence; to confirm on the page | [link](https://physionet.org/content/vindr-cxr/1.0.0/) |
+| VinDr-PCXR (PhysioNet) | 9,125 pediatric frontal chest radiographs from the VinDr hospitals with radiologist boxes; the only sizeable public pediatric spine-bearing radiograph source found | none; the pediatric frontal thoracic spine | GATED | found by the sweep of 2026-10-21; not fetched; PhysioNet credentialed access, the route VinDr-SpineXR already took | radiographs 9,125 | PhysioNet credentialed health data licence; to confirm on the page | [link](https://physionet.org/content/vindr-pcxr/1.0.0/) |
+| Mendeley 5jdfdgp762 spondylolisthesis films | 714 films with spondylolisthesis landmarks | landmarks | EXCLUDED | about 500 are BUU people redistributed, so it adds no new person; the Mendeley page as summarised in search (the sweep of 2026-10-21) says 698 (one reading) or 716 (another) sagittal lumbar films, 508 of them BUU-LSPINE's, with boxes and four corners per vertebra from L3 to S1, version 1 of 20 June 2025, against this record's 714, the zip's count (the manifest's defect line already notes 716 on the page): the count and the version are to confirm on the page | films 714 | not recorded | [link](https://data.mendeley.com/datasets/5jdfdgp762) |
+| Roboflow Universe VinDr-SpineXR relabels (rf100-vl) | object-detection relabels of VinDr-SpineXR (osteophytes, implants, vertebral collapse) under rf100-vl (spinefrxnormalvindr and others) | none | EXCLUDED | found by the sweep of 2026-10-21; never fetched: the pixels are VinDr-SpineXR's, redistributed outside its PhysioNet agreement, under which the project already holds them (vindr_spinexr); the box labels could be read against the held copy only if their licence allows, which is doubtful |  | Roboflow; the images' redistribution is outside VinDr-SpineXR's DUA | [link](https://universe.roboflow.com/rf100-vl/spinefrxnormalvindr-lt1cn-ryhy) |
 
 ## 5. CT collections and their renders (3D truth, synthetic 2D)
 
@@ -112,9 +137,34 @@ EXCLUDED  #.......................................   2
 | CTSpinoPelvic1K (the project's own release v11) | 802 CTs with vertebra, sacrum and pelvis labels, from TCIA sources | yes, whole lumbosacral, L6 cases flagged | HAVE | the render banks; the synthetic L6 arm (18 spines by 3 seeds); non-commercial share-alike binds a product | ct volumes 802, l6 cases 18 | CC BY-NC-SA 4.0 | [link](https://zenodo.org/records/22797014) |
 | FluoroGen synth_rare renders | 12,929 renders with 1,763 L6 and 86 T13 | exact | HAVE | in no bank, no reason written | renders 12,929, l6 1,763, t13 86 | the project's own | not recorded |
 | RSNA 2022 cervical spine fracture CT | 2,019 studies, 203 GB, the only voxel-anchored C1, C2 and C7 source | fractures; C1, C2, C7 anchors | HAVE | the zip is on the grid, Kaggle rules accepted, never unpacked; a header census refused every study for a junction count; usable for a C2 anchor and cervical renders | studies 2,019, size gb 203 | Kaggle competition rules (non-commercial) | [link](https://www.kaggle.com/competitions/rsna-2022-cervical-spine-fracture-detection) |
-| The anomaly harvest (family B) | 144 CT sources screened for transitional spines: 39 IDC collections (3,499 usable CTs), AbdomenAtlas (7,649), FDG-PET-CT (900), AMOS22 (723), NLST pilot (500) and more | counted by the census pipeline | HAVE | 56 on disk, 23 planned, 7 gated (below), 58 excluded; the rare-class source in 3D | sources 144, on disk 56, planned 23, gated 7, excluded 58 | varies by collection | not recorded |
+| Synthetic hardware CTs: implant_ct (CTSP, deleted), implant_verse, implant_ts | project-generated synthetic hardware CTs (tools/make_implant_ct.py over real volumes): implant_ct from CTSpinoPelvic1K, 799 subjects and 1,518 volumes, deleted (427 GB); implant_verse 373 subjects, 1,119 volumes, 187 GB; implant_ts 817 subjects, 1,629 volumes, 39 GB; thoracic, lumbar and sacrum | from the source CT's labels | HAVE | on_disk_partial in the data platform at bf1432f: implant_ct deleted, implant_verse complete (1,119 = 373 x 3), implant_ts unfinished (355 subjects never processed), cases 0394 and 0405 produced nothing and verse116 is missing; the owner's hand: a rebuild on a GPU partition with a resume guard first, never reqp/requeue | implant verse subjects 373, implant verse volumes 1,119, implant verse size gb 187, implant ts subjects 817, implant ts volumes 1,629, implant ts size gb 39 | inherits the source terms | not recorded |
+| The anomaly harvest (family B) | 144 CT sources screened for transitional spines: 39 IDC collections (3,499 usable CTs), AbdomenAtlas (7,649), FDG-PET-CT (900), AMOS22 (723), NLST pilot (500) and more | counted by the census pipeline | HAVE | 56 on disk, 23 planned, 7 gated (below), 58 excluded; the rare-class source in 3D; since 2026-10-21 every planned collection has a registry record of its own under the manifest's id, and the gated ones had theirs already | sources 144, on disk 56, planned 23, gated 7, excluded 58 | varies by collection | not recorded |
 | TotalSegmentator v2 and v3 | 1,228 and 1,935 scans with whole-body segmentation (the manifest counts v3 at 1,939) | yes, segmentation | HAVE | renders; v3 is the device corpus (142 whole-spine subjects) | v2 scans 1,228, v3 scans 1,935 | CC BY 4.0 | not recorded |
 | VerSe 19 and 20 | 374 series of 355 subjects with vertebra labels | yes | HAVE | renders in the v9 base; 10 series never downloaded | series 374, subjects 355 | CC BY-SA 4.0 | not recorded |
+| AbdomenAtlas 2.0 Mini (10,135 CT) | AbdomenAtlas 2.0 Mini, 10,135 CT in 21 tars, about 620 GB on Hugging Face (tree read 2026-09-24); no card, no metadata; the AbdomenAtlas line aggregates public sets, 3.0 Mini (9,262) is already fetched and the other about 873 are unidentified | counted by the census pipeline once fetched | GET | the owner's hand: an id map against AbdomenAtlas 3.0 Mini first, since there is no card and no metadata (planned in the data platform at bf1432f) | volumes 10,135, tars 21, size gb 620.4 | CC BY-NC-SA 4.0 | [link](https://huggingface.co/datasets/AbdomenAtlas/AbdomenAtlas2.0Mini) |
+| ENHANCE.PET 1.6k: whole-/total-body FDG-PET/CT, 1,683 studies (NIfTI) | ENHANCE.PET 1.6k, whole- and total-body FDG-PET/CT, 1,683 studies as NIfTI (Science Data Bank doi:10.57760/sciencedb.34150), about 286 GB; multi-centre (Vienna, UC Davis, Careggi, Leipzig, Tuebingen), so Tuebingen may be autoPET and Vienna's healthy controls QUADRA_HC, both tier 1, which the landing dedupe would find; the slice thickness per study is in its CT-details.xlsx, not read | counted by the census pipeline once fetched | GET | the owner's hand: confirm whether Science Data Bank needs a login and read CT-details.xlsx for slice thickness; no fetch route exists in tools/acquisition_fetch.py for Science Data Bank (planned in the data platform at bf1432f) | studies 1,683, size gb 286.3 | CC BY 4.0 | [link](https://doi.org/10.57760/sciencedb.34150) |
+| IDC `cptac_lscc` (tier 2) | IDC v24 collection cptac_lscc (TCIA doi:10.7937/k9/tcia.2018.6emub5l2), tier 2 of the anomaly harvest: 32 subjects, about 8.3 GB raw plus screen; chest, abdomen, pelvis and whole body | counted by the census pipeline once fetched | GET | planned in the data platform at bf1432f; fetch job in the 2026-10-21 chain after idc_tier2.csv is regenerated; the ranking's refusals: slice over 3.0 mm 46, non-axial reformat 29, localizer 16, not a regularly spaced 3-D volume 12 | subjects 32, size gb 8.3 | CC BY 4.0 | [link](https://doi.org/10.7937/k9/tcia.2018.6emub5l2) |
+| IDC `cptac_luad` (tier 2) | IDC v24 collection cptac_luad (TCIA doi:10.7937/k9/tcia.2018.pat12tbs), tier 2 of the anomaly harvest: 32 subjects, about 7 GB raw plus screen; chest, abdomen and whole body | counted by the census pipeline once fetched | GET | planned in the data platform at bf1432f; fetch job in the 2026-10-21 chain after idc_tier2.csv is regenerated; the ranking's refusals: slice over 3.0 mm 78, non-axial reformat 72, localizer 66, under 60 slices 37 | subjects 32, size gb 7 | CC BY 4.0 | [link](https://doi.org/10.7937/k9/tcia.2018.pat12tbs) |
+| IDC `ldct_and_projection_data` (tier 2) | IDC v24 collection ldct_and_projection_data (TCIA doi:10.7937/9npb-2637), tier 2 of the anomaly harvest: 99 subjects, about 16.5 GB raw plus screen; chest | counted by the census pipeline once fetched | GET | planned in the data platform at bf1432f; fetch job in the 2026-10-21 chain after idc_tier2.csv is regenerated; the ranking's refusals: slice over 3.0 mm 150 | subjects 99, size gb 16.5 | CC BY 4.0 | [link](https://doi.org/10.7937/9npb-2637) |
+| IDC `lidc_idri` (tier 2) | IDC v24 collection lidc_idri (TCIA doi:10.7937/k9/tcia.2015.lo9ql9sx), tier 2 of the anomaly harvest: 997 subjects, about 123.3 GB raw plus screen; chest, abdomen and pelvis | counted by the census pipeline once fetched | GET | planned in the data platform at bf1432f; fetch job in the 2026-10-21 chain after idc_tier2.csv is regenerated; the ranking's refusals: not a regularly spaced 3-D volume 9, slice over 3.0 mm 4 | subjects 997, size gb 123.3 | CC BY 3.0 | [link](https://doi.org/10.7937/k9/tcia.2015.lo9ql9sx) |
+| IDC `midrc_ricord_1b` (tier 2) | IDC v24 collection midrc_ricord_1b (TCIA doi:10.7937/31v8-4a40), tier 2 of the anomaly harvest: 91 subjects, about 7 GB raw plus screen; chest, abdomen and pelvis | counted by the census pipeline once fetched | GET | planned in the data platform at bf1432f; fetch job in the 2026-10-21 chain after idc_tier2.csv is regenerated; the ranking's refusals: non-axial reformat 25, not a regularly spaced 3-D volume 1, under 60 slices 1 | subjects 91, size gb 7 | CC BY-NC 4.0 | [link](https://doi.org/10.7937/31v8-4a40) |
+| IDC `nsclc_radiogenomics` (tier 2) | IDC v24 collection nsclc_radiogenomics (TCIA doi:10.7937/k9/tcia.2017.7hs46erv), tier 2 of the anomaly harvest: 188 subjects, about 28 GB raw plus screen; chest, abdomen, pelvis and whole body | counted by the census pipeline once fetched | GET | planned in the data platform at bf1432f; fetch job in the 2026-10-21 chain after idc_tier2.csv is regenerated; the ranking's refusals: slice over 3.0 mm 235, non-axial reformat 123, localizer 100, reformat or MIP series 37 | subjects 188, size gb 28 | CC BY 3.0 | [link](https://doi.org/10.7937/k9/tcia.2017.7hs46erv) |
+| IDC `nsclc_radiomics` (tier 2) | IDC v24 collection nsclc_radiomics (TCIA doi:10.7937/k9/tcia.2015.pf0m9rei), tier 2 of the anomaly harvest: 415 subjects, about 25.8 GB raw plus screen; chest | counted by the census pipeline once fetched | GET | planned in the data platform at bf1432f; fetch job in the 2026-10-21 chain after idc_tier2.csv is regenerated; the ranking's refusals: not a regularly spaced 3-D volume 6, non-axial reformat 1 | subjects 415, size gb 25.8 | CC BY-NC 3.0 | [link](https://doi.org/10.7937/k9/tcia.2015.pf0m9rei) |
+| IDC `prostate_anatomical_edge_cases` (tier 2) | IDC v24 collection prostate_anatomical_edge_cases (TCIA doi:10.7937/qstf-st65), tier 2 of the anomaly harvest: 131 subjects, about 16.6 GB raw plus screen; pelvis | counted by the census pipeline once fetched | GET | planned in the data platform at bf1432f; fetch job in the 2026-10-21 chain after idc_tier2.csv is regenerated; the ranking's refusals: none | subjects 131, size gb 16.6 | CC BY 4.0 | [link](https://doi.org/10.7937/qstf-st65) |
+| IDC `spinal_multiple_myeloma_seg` (tier 2) | IDC v24 collection spinal_multiple_myeloma_seg (TCIA doi:10.7937/k4qv-hh78), tier 2 of the anomaly harvest: 67 subjects, about 33.8 GB raw plus screen; spine | counted by the census pipeline once fetched | GET | planned in the data platform at bf1432f; fetch job in the 2026-10-21 chain after idc_tier2.csv is regenerated; the ranking's refusals: non-HU reconstruction (spectral map or suppression) 288 | subjects 67, size gb 33.8 | CC BY 4.0 | [link](https://doi.org/10.7937/k4qv-hh78) |
+| IDC `spine_mets_ct_seg` (tier 2) | IDC v24 collection spine_mets_ct_seg (TCIA doi:10.7937/kh36-ds04), tier 2 of the anomaly harvest: 54 subjects, about 17.2 GB raw plus screen; spine, abdomen and pelvis | counted by the census pipeline once fetched | GET | planned in the data platform at bf1432f; fetch job in the 2026-10-21 chain after idc_tier2.csv is regenerated; the ranking's refusals: not a regularly spaced 3-D volume 1 | subjects 54, size gb 17.2 | CC BY 4.0 | [link](https://doi.org/10.7937/kh36-ds04) |
+| International TMTV Benchmark, lymphoma FDG PET/CT (60) | International TMTV Benchmark, lymphoma FDG PET/CT, 60 subjects, Zenodo 13255214 published 2024-08-07, about 6.9 GB; the NIfTI CTs on the PET grid are over 3 mm, so the DICOM is wanted | counted by the census pipeline once fetched | GET | planned in the data platform at bf1432f; fetch job in the 2026-10-21 chain once a zipped-DICOM convert route is written | subjects 60, size gb 6.85 | CC BY 4.0 | [link](https://zenodo.org/records/13255214) |
+| LumVBCanSeg lumbar CT (185, ShengJing Hospital) | LumVBCanSeg lumbar CT, 185 subjects, ShengJing Hospital, Zenodo 8181250 published 2023-07-25, about 10.1 GB | counted by the census pipeline once fetched | GET | planned in the data platform at bf1432f; fetch job in the 2026-10-21 chain | subjects 185, size gb 10.08 | CC BY 4.0 | [link](https://zenodo.org/records/8181250) |
+| MedPelvis3D pelvic CT (99, PLA General Hospital) | MedPelvis3D pelvic CT, 99 subjects, PLA General Hospital, Zenodo 21757686 published 2026-08-02, about 15.1 GB | counted by the census pipeline once fetched | GET | planned in the data platform at bf1432f; fetch job in the 2026-10-21 chain | subjects 99, size gb 15.1 | CC BY 4.0 | [link](https://zenodo.org/records/21757686) |
+| NLST, full (tier 2; 500-person pilot fetched) | the National Lung Screening Trial in IDC v24 (TCIA doi:10.7937/tcia.hmq8-j677), full: 24,713 subjects, about 2,305 GB raw plus screen; the 500-person pilot is fetched (the manifest's nlst_pilot, in the harvest) | counted by the census pipeline once fetched | GET | planned in the data platform at bf1432f and refused as it stands by the stopping rule (2.3 TB for about 110 T13 people, its only yield, about 1.5 percent single-labeller calls that all need adjudication); no fetch job until the owner lifts that rule; the ranking's refusals: localizer 65,174, slice over 3.0 mm 21,188, under 60 slices 5,209, not a regularly spaced 3-D volume 3,652 | subjects 24,713, size gb 2,305.3, pilot subjects fetched 500 | CC BY 4.0 | [link](https://doi.org/10.7937/tcia.hmq8-j677) |
+| PENGWIN 2024 Task 2 synthetic X-rays | 50,000 DeepDRR images with 2D fragment masks from 100 pelvic-fracture CTs at 500 random C-arm poses each; projections 0250-0499 add up to 10 simulated K-wires and screws; pelvis, sacrum and the lower lumbar spine are in field; Zenodo doi:10.5281/zenodo.10913195, mirrored at huggingface.co/datasets/MedOtter/PENGWIN_Task2 | none in 2D; from the Task 1 CTs by pose (the manifest's pengwin2026, already on the grid) | GET | found by the sweep of 2026-10-21; not fetched; a 2D product of the challenge's CTs already on the grid; the only large public DRR set rendered with real C-arm poses and simulated hardware, so pelvic-ring and sacral appearance under instruments without any patient | images 50,000, cts 100, poses per ct 500 | CC BY, to confirm on the page; the challenge page lists its terms | [link](https://pengwin.grand-challenge.org/) |
+| STOIC2021 training (AWS Open Data) | STOIC2021 training set, 2,000 chest CT as MHA on AWS Open Data (s3://stoic2021-training; LICENCE.txt read 2026-09-23), about 240 GB; also inside CADS (gated) and re-packed as AUC23 'Lung CT COVID-19' | counted by the census pipeline once fetched | GET | planned in the data platform at bf1432f; fetch job in the 2026-10-21 chain | subjects 2,000, size gb 240 | CC BY-NC 4.0 | [link](s3://stoic2021-training) |
+| TotalSegmentator task data 'hip_implant' (71 CT) | TotalSegmentator task data 'hip_implant', 71 CT, Zenodo 20272031 published 2026-05-18, about 9.0 GB; the same institution as TotalSegmentator v2/v3 (on disk) with no subject map | counted by the census pipeline once fetched | GET | the owner's hand: ask the TotalSegmentator authors whether these subjects overlap the public v2/v3 release (planned in the data platform at bf1432f) | subjects 71, size gb 9.03 | CC BY 4.0 | [link](https://zenodo.org/records/20272031) |
+| TotalSegmentator task data 'liver_lesions' (842 CT) | TotalSegmentator task data 'liver_lesions', 842 CT, Zenodo 20272572 published 2026-05-18, about 38.9 GB; the same institution as TotalSegmentator v2/v3 (on disk) with no subject map | counted by the census pipeline once fetched | GET | the owner's hand: ask the TotalSegmentator authors whether these subjects overlap the public v2/v3 release (planned in the data platform at bf1432f) | subjects 842, size gb 38.87 | CC BY 4.0 | [link](https://zenodo.org/records/20272572) |
+| TotalSegmentator task data 'pleural_pericard_effusion' (600 CT) | TotalSegmentator task data 'pleural_pericard_effusion', 600 CT, Zenodo 20272295 published 2026-05-18, about 9.0 GB; the same institution as TotalSegmentator v2/v3 (on disk) with no subject map | counted by the census pipeline once fetched | GET | the owner's hand: ask the TotalSegmentator authors whether these subjects overlap the public v2/v3 release (planned in the data platform at bf1432f) | subjects 600, size gb 8.99 | CC BY 4.0 | [link](https://zenodo.org/records/20272295) |
+| UniToChest chest CT (623 patients; distributed as slices) | UniToChest chest CT, 623 patients, distributed as slices, Zenodo 5797912 published 2021-12-22, about 84 GB | counted by the census pipeline once fetched | GET | planned in the data platform at bf1432f; fetch job in the 2026-10-21 chain | subjects 623, size gb 84.07 | CC BY 4.0 | [link](https://zenodo.org/records/5797912) |
+| VerSe 2D projections with soft labels (Zenodo 8115942) | 2D projections of the central slices of VerSe 19 and 20 vertebrae, with soft labels from proposal-based non-expert annotation ('Annotating ambiguous images', 2023); count to confirm on the page (VerSe holds 4,505 vertebrae over 374 scans) | vertebral identity from VerSe | GET | found by the sweep of 2026-10-21; not fetched; its people are already in the v9 base (verse), so train-side only: a cheap extra render arm or a sanity check of the project's own VerSe renders |  | to confirm on the page (VerSe itself is CC BY-SA 4.0) | [link](https://zenodo.org/records/8115942) |
+| VSDFullBody: post-mortem whole-body CT, forensic institutes Bern and Zurich | VSDFullBody post-mortem whole-body CT, 100 subjects, forensic institutes Bern and Zurich, Zenodo 8270365 published 2013-11-12, about 116 GB; the mirror notes duplicate CT datasets (100 new of 109 files) | counted by the census pipeline once fetched | GET | planned in the data platform at bf1432f; fetch job in the 2026-10-21 chain | subjects 100, size gb 116.3 | CC BY-NC-SA per the record's text (the record's licence field is empty) | [link](https://zenodo.org/records/8270365) |
 | CADS CT (unique cases) | 753 CTs; a gated anomaly-harvest collection (group B7) | counted by the census pipeline once fetched | GATED | an agreement stands in front of the data; none signed |  | a data use agreement (non-commercial) | [link](https://huggingface.co/datasets/mrmrx/CADS-dataset) |
 | CT-RATE chest CT | 25,692 CT of 21,304 patients; a gated anomaly-harvest collection (group B7) | counted by the census pipeline once fetched | GATED | an agreement stands in front of the data; none signed |  | a data use agreement (non-commercial) | [link](https://huggingface.co/datasets/ibrahimhamamci/CT-RATE) |
 | MAGIC-CT (Zenodo) | 562 CTs; a gated anomaly-harvest collection (group B7) | counted by the census pipeline once fetched | GATED | an agreement stands in front of the data; none signed; the Zenodo record (v2, 2026) is labelled CC0 yet carries a data use agreement (no re-identification, no sharing), and names maxim.popov@nu.edu.kz as contact; the record counts 562 patients, 39.1 GB, 492 with reports |  | a data use agreement (non-commercial) | [link](https://zenodo.org/records/18389015) |
@@ -127,7 +177,8 @@ EXCLUDED  #.......................................   2
 
 | Source | What it is | Level truth | Reach | Status | Counts | Licence | Link |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Veterinary: pig CBCT, CT and planar images (Goswami 2020, LevelCheck) | the LevelCheck pig study's seven zips of CBCT, CT and planar images, about 205 MB, with the paper (IEEE Access 2020), 3D-to-2D intensity-based registration | from the CT, by registration | GET | the owner's future direction of 2026-10-20: expand the workflow into veterinary medicine; the zips sit in spine-program's archive, excluded from the record, and the set is open on IEEE DataPort | zips 7, size mb 205 | IEEE DataPort open access | [link](https://ieee-dataport.org/open-access/pig-data-2d-3d-intensity-based-registration) |
+| Veterinary: canine lateral thoracic radiographs for vertebral heart size (Mendeley ktx4cj55pn) | 152 anonymised lateral thoracic radiographs of dogs; a lateral dog thorax shows T1 to L1 and the VHS method itself counts vertebrae from T4 | none; T4 is the VHS reference vertebra | GET | the owner's veterinary direction of 2026-10-20; found by the sweep of 2026-10-21; not fetched; the only other public veterinary spine radiograph set found beside the pig CBCT (veterinary_pig_levelcheck) | radiographs 152 | CC BY 4.0 (to confirm on the page) | [link](https://data.mendeley.com/datasets/ktx4cj55pn) |
+| Veterinary: pig CBCT, CT and planar images (Goswami 2020, LevelCheck) | the LevelCheck pig study's seven zips of CBCT, CT and planar images, about 205 MB, with the paper (IEEE Access 2020), 3D-to-2D intensity-based registration | from the CT, by registration | GET | the owner's future direction of 2026-10-20: expand the workflow into veterinary medicine; the zips sit in spine-program's archive, excluded from the record, and the set is open on IEEE DataPort; the Mendeley canine thoracic set (canine_thoracic_vhs) stands beside it since the sweep of 2026-10-21 | zips 7, size mb 205 | IEEE DataPort open access | [link](https://ieee-dataport.org/open-access/pig-data-2d-3d-intensity-based-registration) |
 
 ## Where it sits on the grid
 
@@ -147,6 +198,7 @@ Every held source with a path the record gives, Ceph under /rs/rs_grp_oschome/go
 | COBRA2026 Varian | `/rs/rs_grp_oschome/go2432/data/cobra2026` | cases 225 |
 | AASCE / BoostNet whole-spine films | `/rs/rs_grp_oschome/go2432/data/thoracic_xr/mirror_zlinzju_ke30_u7_AASCE2019; the 579 at /rs/rs_grp_oschome/go2432/data/aasce2019_boostnet/raw/aasce` | labelled films 609, challenge test films 98, thoracic test films 608 |
 | VinDr-SpineXR | `/rs/rs_grp_oschome/go2432/data/vindr_spinexr/raw/vindr/1.0.0` | images 10,466, studies 5,000 |
+| Synthetic hardware CTs: implant_ct (CTSP, deleted), implant_verse, implant_ts | `/rs/rs_grp_oschome/go2432/data/multisource_banks/derived/implant_*` | implant verse subjects 373, implant verse volumes 1,119, implant verse size gb 187, implant ts subjects 817, implant ts volumes 1,629, implant ts size gb 39 |
 | The anomaly harvest (family B) | `/rs/rs_grp_oschome/go2432/data/anomaly_harvest` | sources 144, on disk 56, planned 23, gated 7, excluded 58 |
 
 ## How to get what is not held
@@ -159,6 +211,13 @@ Link: https://rocs.balgrist.ch/en/contact. Licence: not recorded.
 
 1. Send spine-program 01_carm_level_detection/docs/data_requests/balgrist_data_request_2026-09-21.md to the ROCS group address or to the corresponding authors (Jecklin, Fuernstahl) once their addresses are confirmed on the article's first page.
 2. Expect a data transfer agreement through Balgrist and Wayne State, since the set is restricted for pending patents.
+
+### cm_spine: one Google Drive file described only as 'intraoperative' (empty download) (GET)
+
+Link: not recorded. Licence: not recorded.
+
+1. cd into a scratch directory on a compute node and gdown 1r9wX1802gkU4-EQHMMlyAlEiWXGWLhhJ; inspect what came; then decide whether it is a source at all.
+2. The route as the manifest prints it: python3 data/reproduce/reacquire/reacquire.py --grid cm_spine_drive_file; on the grid, from ~/spinesurg-ct-nnunet/data_platform/reacquire, sbatch -D "$PWD" --export=ALL,IDS="cm_spine_drive_file",MODE=--run reacquire.sbatch, as a Slurm job on the owner's word.
 
 ### LUMOS (Zhejiang University) (GET)
 
@@ -186,6 +245,13 @@ Link: https://osf.io/a27py/. Licence: not recorded (OSF holds derived tables onl
 
 1. Part of request 1 above: write to the corresponding author of doi:10.3389/fbioe.2021.745837 for the L2-S1 cine behind osf.io/a27py.
 
+### CathAction (Jianu et al. 2024, AIRVLab) (GET)
+
+Link: https://huggingface.co/datasets/airvlab/CathAction. Licence: to confirm on the page.
+
+1. Open https://huggingface.co/datasets/airvlab/CathAction and read the licence line.
+2. Fetch as a Slurm job on the owner's word, never on the login node: python3 data/reproduce/reacquire/reacquire.py hf-get --repo airvlab/CathAction --repo-type dataset --dest DIR.
+
 ### Coronary angiography sets (CADICA, ARCADE, XCAD, AngioCAD) (GET)
 
 Link: https://github.com/AISIGSJTU/SSVS. Licence: varies by set.
@@ -210,6 +276,13 @@ Link: https://www.dmxworks.com/. Licence: unknown.
 Link: https://dysphagia.talkbank.org/. Licence: non-commercial, by registration.
 
 1. Register on the TalkBank site for the UNM corpus and accept its non-commercial terms.
+
+### Guide3D (ACCV 2024, AIRVLab) (GET)
+
+Link: https://airvlab.github.io/guide3d/. Licence: to confirm on the page.
+
+1. Open https://airvlab.github.io/guide3d/ and read the download route and the licence.
+2. Fetch as a Slurm job on the owner's word, never on the login node: python3 data/reproduce/reacquire/reacquire.py http-get --url U --dest FILE, or python3 data/reproduce/reacquire/reacquire.py hf-get --repo X --repo-type dataset --dest DIR where the page names a Hugging Face repository.
 
 ### Inselspital Bern dynamic myelography (Piechowiak 2021) (GET)
 
@@ -287,6 +360,20 @@ Link: https://www.faubelmd.com/contact-us. Licence: unknown.
 
 1. Fax or phone request 13 of spine-program 01_carm_level_detection/docs/data_requests/FLUORO_VIDEO_REQUESTS_READY_2026-09-26.md to the numbers on the contact page.
 
+### Veriserum (ETH Zurich, MICCAI 2025) (GET)
+
+Link: https://movement.ethz.ch/data-repository/veriserum.html. Licence: to confirm on the page.
+
+1. Open https://movement.ethz.ch/data-repository/veriserum.html and the ETH Research Collection record doi:10.3929/ethz-b-000701146; read the licence and the file list.
+2. Fetch as a Slurm job on the owner's word, never on the login node: python3 data/reproduce/reacquire/reacquire.py http-get --url U --dest FILE for each file address the record gives.
+
+### VFSS2022 videofluoroscopic swallow frames (TIB) (GET)
+
+Link: https://service.tib.eu/ldmservice/dataset/vfss2022-dataset. Licence: to confirm on the page.
+
+1. Open https://service.tib.eu/ldmservice/dataset/vfss2022-dataset and read the licence and the file list.
+2. Fetch as a Slurm job on the owner's word, never on the login node: python3 data/reproduce/reacquire/reacquire.py http-get --url U --dest FILE, U being the address the page gives.
+
 ### Radiopaedia fluoroscopy cases (GATED)
 
 Link: https://radiopaedia.org/licence. Licence: CC BY-NC-SA 3.0 (the site); ML use by application.
@@ -295,11 +382,137 @@ Link: https://radiopaedia.org/licence. Licence: CC BY-NC-SA 3.0 (the site); ML u
 2. List the seven cases: rID 24796, rID 90103, rID 21585, https://radiopaedia.org/cases/lumbar-transforaminal-epidural-steroid-injection-fluoroscopic-guided, https://radiopaedia.org/cases/lumbar-transforminal-epidural-steroid-injection-fluoroscopic-guided, https://radiopaedia.org/cases/s1-transforaminal-epidural-steroid-injection-fluoroscopic-guided, https://radiopaedia.org/cases/l5-nerve-root-block-fluoroscopic.
 3. Ask for the native DICOM stacks and say the use is non-commercial academic evaluation; a commercial product needs a negotiated licence.
 
+### IPCAI 2025 paired X-ray and CT set (Zenodo 15753063) (GET)
+
+Link: https://zenodo.org/records/15753063. Licence: to confirm on the page.
+
+1. Open https://zenodo.org/records/15753063 and read its licence line, the file list and what anatomy the images show.
+2. Fetch as a Slurm job on the owner's word, never on the login node: python3 data/reproduce/reacquire/reacquire.py zenodo-get --record 15753063 --dest DIR.
+
 ### COBRA2026 embargoed cases (EMBARGOED)
 
 Link: https://zenodo.org/records/21322350. Licence: CC BY-NC 4.0.
 
 1. Wait for the embargo to lift on 2032-03-01; nothing to apply for.
+
+### Aariz cephalometric benchmark (Khalid, Fraz 2023) and the ISBI 2015 cephalograms (GET)
+
+Link: https://arxiv.org/abs/2302.07797. Licence: to confirm on the page.
+
+1. Read the data link in the paper at https://arxiv.org/abs/2302.07797 and the ISBI 2015 challenge page for the 400-film set.
+2. Fetch the open 400-film set as a Slurm job on the owner's word, never on the login node: python3 data/reproduce/reacquire/reacquire.py http-get --url U --dest FILE, U being the address the page gives.
+3. For the 1,000-film set the owner writes to the authors; any agreement is the owner's to sign.
+
+### FracAtlas (Abedeen 2023, Scientific Data) (GET)
+
+Link: https://figshare.com/articles/dataset/The_dataset/22363012. Licence: CC BY 4.0.
+
+1. Open https://figshare.com/articles/dataset/The_dataset/22363012 (to confirm) or the Hugging Face mirror yh0701/FracAtlas_dataset and read the file list.
+2. Fetch as a Slurm job on the owner's word, never on the login node: python3 data/reproduce/reacquire/reacquire.py http-get --url U --dest FILE from figshare, or python3 data/reproduce/reacquire/reacquire.py hf-get --repo yh0701/FracAtlas_dataset --repo-type dataset --dest DIR.
+
+### Fraiwan spine X-ray set (Mendeley xkt857dsxk) (GET)
+
+Link: https://data.mendeley.com/datasets/xkt857dsxk. Licence: CC BY 4.0 (Mendeley's default; to confirm on the page).
+
+1. Open https://data.mendeley.com/datasets/xkt857dsxk and read the licence line, the version and the file list.
+2. Fetch as a Slurm job on the owner's word, never on the login node: python3 data/reproduce/reacquire/reacquire.py http-get --url U --dest FILE, U being the public-files address the page gives, as the manifest's mendeley_5jdfdgp762 route does.
+
+### Kaggle bone fracture multi-region X-ray data (bmadushanirodrigo) (GET)
+
+Link: https://www.kaggle.com/datasets/bmadushanirodrigo/fracture-multi-region-x-ray-data. Licence: Kaggle; the licence and the images' origin to confirm on the page.
+
+1. The owner reads the licence and the stated origin on the page; where the origin is not redistributable the record's reach becomes excluded.
+2. Only then, fetch with the Kaggle API as a Slurm job on the owner's word, never on the login node, the token from the submitter's environment, never from this repository.
+
+### Kaggle scoliosis YOLOv5 annotated spine X-ray set (salmankey) (GET)
+
+Link: https://www.kaggle.com/datasets/salmankey/scoliosis-yolov5-annotated-spine-x-ray-dataset. Licence: Kaggle; the licence on the page, to confirm.
+
+1. The owner's Kaggle account; read the licence and the stated source on the page.
+2. Fetch with the Kaggle API as a Slurm job on the owner's word, never on the login node, the token from the submitter's environment, never from this repository.
+3. Hash every image against the AASCE copy at /rs/rs_grp_oschome/go2432/data/thoracic_xr/mirror_zlinzju_ke30_u7_AASCE2019 before any use; a match makes it a relabel, and the aasce record then says so.
+
+### KUB-StoneX (Daffodil International University HIRL) (GET)
+
+Link: https://hirl.daffodilvarsity.edu.bd/dataset/. Licence: to confirm on the page.
+
+1. Open https://hirl.daffodilvarsity.edu.bd/dataset/ and read the licence and the download route; where a form is asked for, the owner fills it.
+2. Fetch as a Slurm job on the owner's word, never on the login node: python3 data/reproduce/reacquire/reacquire.py http-get --url U --dest FILE, U being the address the page gives.
+
+### Mendeley DDH hip sets (jf3pv98m9g and 4gvcb6gmh2) (GET)
+
+Link: https://data.mendeley.com/datasets/jf3pv98m9g. Licence: CC BY 4.0 (to confirm on the page).
+
+1. Open https://data.mendeley.com/datasets/jf3pv98m9g and https://data.mendeley.com/datasets/4gvcb6gmh2 and read each licence line, version and file list.
+2. Fetch each as a Slurm job on the owner's word, never on the login node: python3 data/reproduce/reacquire/reacquire.py http-get --url U --dest FILE, U being the public-files address the page gives.
+
+### MrOS lateral spine radiographs (Osteoporotic Fractures in Men) (GET)
+
+Link: https://mrosonline.ucsf.edu/. Licence: a MrOS data request agreement; terms to confirm on the page.
+
+1. Open https://mrosonline.ucsf.edu/ and read the data request route (an online application with a proposal), to confirm on the page.
+2. The owner files the request in the owner's name and signs whatever agreement follows; a session drafts the proposal text once the owner asks.
+3. Once granted, fetch by the route the centre gives, as a Slurm job on the owner's word, never on the login node; no fetch helper applies until the route is known.
+
+### NIH ChestX-ray14 and the RSNA pneumonia subset (GET)
+
+Link: https://nihcc.app.box.com/v/ChestXray-NIHCC. Licence: open (NIH); Kaggle competition rules for the RSNA subset.
+
+1. Open https://nihcc.app.box.com/v/ChestXray-NIHCC and read the archive list and its batch download script.
+2. Fetch as a Slurm job on the owner's word, never on the login node: python3 data/reproduce/reacquire/reacquire.py http-get --url U --dest FILE for each archive address the page gives.
+3. The RSNA subset (https://www.kaggle.com/competitions/rsna-pneumonia-detection-challenge) needs a Kaggle account and the competition rules accepted by the owner; the Kaggle API token comes from the submitter's environment, never from this repository.
+
+### Open-i Indiana chest collection (GET)
+
+Link: https://openi.nlm.nih.gov/faq. Licence: open, no agreement (the Open-i FAQ); to confirm on the page.
+
+1. Read the download route on https://openi.nlm.nih.gov/faq.
+2. Fetch as a Slurm job on the owner's word, never on the login node: python3 data/reproduce/reacquire/reacquire.py http-get --url U --dest FILE for each archive address the page gives.
+
+### SOF lateral spine radiographs (Study of Osteoporotic Fractures) (GET)
+
+Link: https://sofonline.ucsf.edu/. Licence: a SOF data request agreement; terms to confirm on the page.
+
+1. Open https://sofonline.ucsf.edu/ and read the data request route, to confirm on the page.
+2. The owner files the request in the owner's name and signs whatever agreement follows; a session drafts the proposal text once the owner asks.
+3. Once granted, fetch by the route the centre gives, as a Slurm job on the owner's word, never on the login node.
+
+### VertXNet extra labels for NHANES II (Mo, Papiez, Chen 2023) (GET)
+
+Link: https://doi.org/10.1038/s41598-023-49923-3. Licence: Zenodo, open; licence to confirm on the page (the held record of the same authors is CC BY 4.0).
+
+1. Open the article's Data availability statement at https://doi.org/10.1038/s41598-023-49923-3 and read the Zenodo record it names; check whether it is Zenodo 10223910 (concept 10145564), carded as nhanes2_zenodo_landmarks, or a sibling, and read its licence line.
+2. Fetch as a Slurm job on the owner's word, never on the login node: python3 data/reproduce/reacquire/reacquire.py zenodo-get --record N --dest DIR, N being the record number read on the page; the labels join the NHANES II films already on the grid and no image is fetched.
+3. Check the manifest's nhanes_pseudo directory of 16,234 pseudo-labelled films against these labels where the films overlap.
+
+### CheXpert and CheXpert Plus (Stanford AIMI) (GATED)
+
+Link: https://stanfordaimi.azurewebsites.net/. Licence: Stanford AIMI research use agreement, non-commercial.
+
+1. The owner signs the research use agreement on https://stanfordaimi.azurewebsites.net/ (the CheXpert entries), one per dataset.
+2. A time-limited Azure Blob address follows; fetch it with AzCopy as a Slurm job on the owner's word, never on the login node, as the stanford_aimi records say.
+
+### MIMIC-CXR and MIMIC-CXR-JPG (PhysioNet) (GATED)
+
+Link: https://physionet.org/content/mimic-cxr/2.1.0/. Licence: PhysioNet credentialed health data licence; to confirm on the page.
+
+1. The owner's PhysioNet credentialing (CITI training on file) and the data use agreement on the record page, signed by the owner, the route VinDr-SpineXR took.
+2. Then a recursive wget with the owner's PhysioNet login as a Slurm job on the owner's word, never on the login node, as the manifest's vindr_spinexr route does, and sha256sum -c SHA256SUMS.txt on the copy.
+3. An IRB determination before any training reads it, as for VinDr-SpineXR.
+
+### PadChest (BIMCV, Alicante) (GATED)
+
+Link: https://bimcv.cipf.es/bimcv-projects/padchest/. Licence: research use by request; a licence form on the page.
+
+1. The owner fills the licence form on https://bimcv.cipf.es/bimcv-projects/padchest/ and signs what follows.
+2. Fetch by the route BIMCV gives, as a Slurm job on the owner's word, never on the login node.
+
+### ReXGradient-160K (Rajpurkar lab and Gradient Health, 2025) (GATED)
+
+Link: https://huggingface.co/datasets/rajpurkarlab/ReXGradient-160K. Licence: a non-commercial data access and use agreement on the Hugging Face page.
+
+1. The owner accepts the data access and use agreement on https://huggingface.co/datasets/rajpurkarlab/ReXGradient-160K under the owner's Hugging Face account.
+2. Fetch as a Slurm job on the owner's word, never on the login node: python3 data/reproduce/reacquire/reacquire.py hf-get --repo rajpurkarlab/ReXGradient-160K --repo-type dataset --dest DIR; HF_TOKEN from the submitter's environment, never from this repository.
 
 ### TVGH-SpineXR (GATED)
 
@@ -307,6 +520,195 @@ Link: https://ieee-dataport.org/documents/tvgh-spinexr. Licence: not recorded.
 
 1. Open https://doi.org/10.21227/x6bb-7r75 signed in to an IEEE account (free); read whether the files are open access, subscription or by request, and the licence.
 2. Request access with the study's purpose where the page asks for one; the owner accepts any terms.
+
+### VinDr-CXR (PhysioNet) (GATED)
+
+Link: https://physionet.org/content/vindr-cxr/1.0.0/. Licence: PhysioNet credentialed health data licence; to confirm on the page.
+
+1. The owner's PhysioNet credentialing (CITI training on file) and the data use agreement on the record page, signed by the owner, the route VinDr-SpineXR took.
+2. Then a recursive wget with the owner's PhysioNet login as a Slurm job on the owner's word, never on the login node, as the manifest's vindr_spinexr route does, and sha256sum -c SHA256SUMS.txt on the copy.
+3. An IRB determination before any training reads it, as for VinDr-SpineXR.
+
+### VinDr-PCXR (PhysioNet) (GATED)
+
+Link: https://physionet.org/content/vindr-pcxr/1.0.0/. Licence: PhysioNet credentialed health data licence; to confirm on the page.
+
+1. The owner's PhysioNet credentialing (CITI training on file) and the data use agreement on the record page, signed by the owner, the route VinDr-SpineXR took.
+2. Then a recursive wget with the owner's PhysioNet login as a Slurm job on the owner's word, never on the login node, as the manifest's vindr_spinexr route does, and sha256sum -c SHA256SUMS.txt on the copy.
+3. An IRB determination before any training reads it, as for VinDr-SpineXR.
+
+### AbdomenAtlas 2.0 Mini (10,135 CT) (GET)
+
+Link: https://huggingface.co/datasets/AbdomenAtlas/AbdomenAtlas2.0Mini. Licence: CC BY-NC-SA 4.0.
+
+1. Obtain an id map against AbdomenAtlas 3.0 Mini.
+2. Then spinesurg-ct-nnunet's tools/acquisition_fetch.py hf --collection abdomenatlas2_mini --repo AbdomenAtlas/AbdomenAtlas2.0Mini --include '<tars>' through slurm/acquisition_fetch.sh; HF_TOKEN from the submitter's environment, never from this repository.
+3. The route as the manifest prints it: python3 data/reproduce/reacquire/reacquire.py --grid hf_abdomenatlas2_0_mini; on the grid, from ~/spinesurg-ct-nnunet/data_platform/reacquire, sbatch -D "$PWD" --export=ALL,IDS="hf_abdomenatlas2_0_mini",MODE=--run reacquire.sbatch, as a Slurm job on the owner's word.
+
+### ENHANCE.PET 1.6k: whole-/total-body FDG-PET/CT, 1,683 studies (NIfTI) (GET)
+
+Link: https://doi.org/10.57760/sciencedb.34150. Licence: CC BY 4.0.
+
+1. The owner opens https://doi.org/10.57760/sciencedb.34150, reads whether a login is needed and CT-details.xlsx for slice thickness.
+2. A Science Data Bank route is written for tools/acquisition_fetch.py before any job.
+3. The route as the manifest prints it: python3 data/reproduce/reacquire/reacquire.py --grid scidb_enhance_pet_1_6k; on the grid, from ~/spinesurg-ct-nnunet/data_platform/reacquire, sbatch -D "$PWD" --export=ALL,IDS="scidb_enhance_pet_1_6k",MODE=--run reacquire.sbatch, as a Slurm job on the owner's word.
+
+### IDC `cptac_lscc` (tier 2) (GET)
+
+Link: https://doi.org/10.7937/k9/tcia.2018.6emub5l2. Licence: CC BY 4.0.
+
+1. Regenerate the tier-2 manifest idc_tier2.csv with spinesurg-ct-nnunet's tools/acquisition_census.py (its inputs aa3_meta.csv and fdg_ct_series.json are not on local disk), then slurm/acquisition_submit.sh tier2; or this one collection alone, filtering that manifest on its first column as the tier-1 cards do.
+2. The route as the manifest prints it: python3 data/reproduce/reacquire/reacquire.py --grid idc_cptac_lscc; on the grid, from ~/spinesurg-ct-nnunet/data_platform/reacquire, sbatch -D "$PWD" --export=ALL,IDS="idc_cptac_lscc",MODE=--run reacquire.sbatch, as a Slurm job on the owner's word.
+
+### IDC `cptac_luad` (tier 2) (GET)
+
+Link: https://doi.org/10.7937/k9/tcia.2018.pat12tbs. Licence: CC BY 4.0.
+
+1. Regenerate the tier-2 manifest idc_tier2.csv with spinesurg-ct-nnunet's tools/acquisition_census.py (its inputs aa3_meta.csv and fdg_ct_series.json are not on local disk), then slurm/acquisition_submit.sh tier2; or this one collection alone, filtering that manifest on its first column as the tier-1 cards do.
+2. The route as the manifest prints it: python3 data/reproduce/reacquire/reacquire.py --grid idc_cptac_luad; on the grid, from ~/spinesurg-ct-nnunet/data_platform/reacquire, sbatch -D "$PWD" --export=ALL,IDS="idc_cptac_luad",MODE=--run reacquire.sbatch, as a Slurm job on the owner's word.
+
+### IDC `ldct_and_projection_data` (tier 2) (GET)
+
+Link: https://doi.org/10.7937/9npb-2637. Licence: CC BY 4.0.
+
+1. Regenerate the tier-2 manifest idc_tier2.csv with spinesurg-ct-nnunet's tools/acquisition_census.py (its inputs aa3_meta.csv and fdg_ct_series.json are not on local disk), then slurm/acquisition_submit.sh tier2; or this one collection alone, filtering that manifest on its first column as the tier-1 cards do.
+2. The route as the manifest prints it: python3 data/reproduce/reacquire/reacquire.py --grid idc_ldct_and_projection_data; on the grid, from ~/spinesurg-ct-nnunet/data_platform/reacquire, sbatch -D "$PWD" --export=ALL,IDS="idc_ldct_and_projection_data",MODE=--run reacquire.sbatch, as a Slurm job on the owner's word.
+
+### IDC `lidc_idri` (tier 2) (GET)
+
+Link: https://doi.org/10.7937/k9/tcia.2015.lo9ql9sx. Licence: CC BY 3.0.
+
+1. Regenerate the tier-2 manifest idc_tier2.csv with spinesurg-ct-nnunet's tools/acquisition_census.py (its inputs aa3_meta.csv and fdg_ct_series.json are not on local disk), then slurm/acquisition_submit.sh tier2; or this one collection alone, filtering that manifest on its first column as the tier-1 cards do.
+2. The route as the manifest prints it: python3 data/reproduce/reacquire/reacquire.py --grid idc_lidc_idri; on the grid, from ~/spinesurg-ct-nnunet/data_platform/reacquire, sbatch -D "$PWD" --export=ALL,IDS="idc_lidc_idri",MODE=--run reacquire.sbatch, as a Slurm job on the owner's word.
+
+### IDC `midrc_ricord_1b` (tier 2) (GET)
+
+Link: https://doi.org/10.7937/31v8-4a40. Licence: CC BY-NC 4.0.
+
+1. Regenerate the tier-2 manifest idc_tier2.csv with spinesurg-ct-nnunet's tools/acquisition_census.py (its inputs aa3_meta.csv and fdg_ct_series.json are not on local disk), then slurm/acquisition_submit.sh tier2; or this one collection alone, filtering that manifest on its first column as the tier-1 cards do.
+2. The route as the manifest prints it: python3 data/reproduce/reacquire/reacquire.py --grid idc_midrc_ricord_1b; on the grid, from ~/spinesurg-ct-nnunet/data_platform/reacquire, sbatch -D "$PWD" --export=ALL,IDS="idc_midrc_ricord_1b",MODE=--run reacquire.sbatch, as a Slurm job on the owner's word.
+
+### IDC `nsclc_radiogenomics` (tier 2) (GET)
+
+Link: https://doi.org/10.7937/k9/tcia.2017.7hs46erv. Licence: CC BY 3.0.
+
+1. Regenerate the tier-2 manifest idc_tier2.csv with spinesurg-ct-nnunet's tools/acquisition_census.py (its inputs aa3_meta.csv and fdg_ct_series.json are not on local disk), then slurm/acquisition_submit.sh tier2; or this one collection alone, filtering that manifest on its first column as the tier-1 cards do.
+2. The route as the manifest prints it: python3 data/reproduce/reacquire/reacquire.py --grid idc_nsclc_radiogenomics; on the grid, from ~/spinesurg-ct-nnunet/data_platform/reacquire, sbatch -D "$PWD" --export=ALL,IDS="idc_nsclc_radiogenomics",MODE=--run reacquire.sbatch, as a Slurm job on the owner's word.
+
+### IDC `nsclc_radiomics` (tier 2) (GET)
+
+Link: https://doi.org/10.7937/k9/tcia.2015.pf0m9rei. Licence: CC BY-NC 3.0.
+
+1. Regenerate the tier-2 manifest idc_tier2.csv with spinesurg-ct-nnunet's tools/acquisition_census.py (its inputs aa3_meta.csv and fdg_ct_series.json are not on local disk), then slurm/acquisition_submit.sh tier2; or this one collection alone, filtering that manifest on its first column as the tier-1 cards do.
+2. The route as the manifest prints it: python3 data/reproduce/reacquire/reacquire.py --grid idc_nsclc_radiomics; on the grid, from ~/spinesurg-ct-nnunet/data_platform/reacquire, sbatch -D "$PWD" --export=ALL,IDS="idc_nsclc_radiomics",MODE=--run reacquire.sbatch, as a Slurm job on the owner's word.
+
+### IDC `prostate_anatomical_edge_cases` (tier 2) (GET)
+
+Link: https://doi.org/10.7937/qstf-st65. Licence: CC BY 4.0.
+
+1. Regenerate the tier-2 manifest idc_tier2.csv with spinesurg-ct-nnunet's tools/acquisition_census.py (its inputs aa3_meta.csv and fdg_ct_series.json are not on local disk), then slurm/acquisition_submit.sh tier2; or this one collection alone, filtering that manifest on its first column as the tier-1 cards do.
+2. The route as the manifest prints it: python3 data/reproduce/reacquire/reacquire.py --grid idc_prostate_anatomical_edge_cases; on the grid, from ~/spinesurg-ct-nnunet/data_platform/reacquire, sbatch -D "$PWD" --export=ALL,IDS="idc_prostate_anatomical_edge_cases",MODE=--run reacquire.sbatch, as a Slurm job on the owner's word.
+
+### IDC `spinal_multiple_myeloma_seg` (tier 2) (GET)
+
+Link: https://doi.org/10.7937/k4qv-hh78. Licence: CC BY 4.0.
+
+1. Regenerate the tier-2 manifest idc_tier2.csv with spinesurg-ct-nnunet's tools/acquisition_census.py (its inputs aa3_meta.csv and fdg_ct_series.json are not on local disk), then slurm/acquisition_submit.sh tier2; or this one collection alone, filtering that manifest on its first column as the tier-1 cards do.
+2. The route as the manifest prints it: python3 data/reproduce/reacquire/reacquire.py --grid idc_spinal_multiple_myeloma_seg; on the grid, from ~/spinesurg-ct-nnunet/data_platform/reacquire, sbatch -D "$PWD" --export=ALL,IDS="idc_spinal_multiple_myeloma_seg",MODE=--run reacquire.sbatch, as a Slurm job on the owner's word.
+
+### IDC `spine_mets_ct_seg` (tier 2) (GET)
+
+Link: https://doi.org/10.7937/kh36-ds04. Licence: CC BY 4.0.
+
+1. Regenerate the tier-2 manifest idc_tier2.csv with spinesurg-ct-nnunet's tools/acquisition_census.py (its inputs aa3_meta.csv and fdg_ct_series.json are not on local disk), then slurm/acquisition_submit.sh tier2; or this one collection alone, filtering that manifest on its first column as the tier-1 cards do.
+2. The route as the manifest prints it: python3 data/reproduce/reacquire/reacquire.py --grid idc_spine_mets_ct_seg; on the grid, from ~/spinesurg-ct-nnunet/data_platform/reacquire, sbatch -D "$PWD" --export=ALL,IDS="idc_spine_mets_ct_seg",MODE=--run reacquire.sbatch, as a Slurm job on the owner's word.
+
+### International TMTV Benchmark, lymphoma FDG PET/CT (60) (GET)
+
+Link: https://zenodo.org/records/13255214. Licence: CC BY 4.0.
+
+1. Read the record listing and choose the include pattern, then spinesurg-ct-nnunet's tools/acquisition_fetch.py zenodo --collection tmtv_benchmark --record 13255214 --include '<pattern>' (md5-verified) through slurm/acquisition_fetch.sh; the download works with --include '\.zip$', but a zipped-DICOM convert route must be written first.
+2. The route as the manifest prints it: python3 data/reproduce/reacquire/reacquire.py --grid zenodo_tmtv_benchmark; on the grid, from ~/spinesurg-ct-nnunet/data_platform/reacquire, sbatch -D "$PWD" --export=ALL,IDS="zenodo_tmtv_benchmark",MODE=--run reacquire.sbatch, as a Slurm job on the owner's word.
+
+### LumVBCanSeg lumbar CT (185, ShengJing Hospital) (GET)
+
+Link: https://zenodo.org/records/8181250. Licence: CC BY 4.0.
+
+1. Read the record listing and choose the include pattern, then spinesurg-ct-nnunet's tools/acquisition_fetch.py zenodo --collection lumvbcanseg --record 8181250 --include '<pattern>' (md5-verified) through slurm/acquisition_fetch.sh; then a chain entry with convert arguments, which does not exist yet.
+2. The route as the manifest prints it: python3 data/reproduce/reacquire/reacquire.py --grid zenodo_lumvbcanseg; on the grid, from ~/spinesurg-ct-nnunet/data_platform/reacquire, sbatch -D "$PWD" --export=ALL,IDS="zenodo_lumvbcanseg",MODE=--run reacquire.sbatch, as a Slurm job on the owner's word.
+
+### MedPelvis3D pelvic CT (99, PLA General Hospital) (GET)
+
+Link: https://zenodo.org/records/21757686. Licence: CC BY 4.0.
+
+1. Read the record listing and choose the include pattern, then spinesurg-ct-nnunet's tools/acquisition_fetch.py zenodo --collection medpelvis3d --record 21757686 --include '<pattern>' (md5-verified) through slurm/acquisition_fetch.sh; then a chain entry with convert arguments, which does not exist yet.
+2. The route as the manifest prints it: python3 data/reproduce/reacquire/reacquire.py --grid zenodo_medpelvis3d; on the grid, from ~/spinesurg-ct-nnunet/data_platform/reacquire, sbatch -D "$PWD" --export=ALL,IDS="zenodo_medpelvis3d",MODE=--run reacquire.sbatch, as a Slurm job on the owner's word.
+
+### NLST, full (tier 2; 500-person pilot fetched) (GET)
+
+Link: https://doi.org/10.7937/tcia.hmq8-j677. Licence: CC BY 4.0.
+
+1. Regenerate manifests/idc_tier2.csv with spinesurg-ct-nnunet's tools/acquisition_census.py --calibration fov_calibration.json --aa3-meta aa3_meta.csv --nbia-fdg fdg_ct_series.json --out ... (the last two inputs are not on local disk), then bash ~/spinesurg-ct-nnunet/slurm/acquisition_submit.sh tier2.
+2. The route as the manifest prints it: python3 data/reproduce/reacquire/reacquire.py --grid idc_nlst; on the grid, from ~/spinesurg-ct-nnunet/data_platform/reacquire, sbatch -D "$PWD" --export=ALL,IDS="idc_nlst",MODE=--run reacquire.sbatch, as a Slurm job on the owner's word.
+
+### PENGWIN 2024 Task 2 synthetic X-rays (GET)
+
+Link: https://pengwin.grand-challenge.org/. Licence: CC BY, to confirm on the page; the challenge page lists its terms.
+
+1. Read the terms on https://pengwin.grand-challenge.org/ and the licence line on Zenodo doi:10.5281/zenodo.10913195.
+2. Fetch as a Slurm job on the owner's word, never on the login node: python3 data/reproduce/reacquire/reacquire.py zenodo-get --record 10913195 --dest DIR, or from the mirror python3 data/reproduce/reacquire/reacquire.py hf-get --repo MedOtter/PENGWIN_Task2 --repo-type dataset --dest DIR.
+
+### STOIC2021 training (AWS Open Data) (GET)
+
+Link: s3://stoic2021-training. Licence: CC BY-NC 4.0.
+
+1. spinesurg-ct-nnunet's slurm/acquisition_fetch.sh s3 --collection stoic2021 --bucket s3://stoic2021-training/data/mha --include '\.mha$', submitted from the harvest's acquisition folder; the check is FETCH_STATUS.json's unresolved_failures at 0, and the 2,000 MHA verified by size.
+2. The route as the manifest prints it: python3 data/reproduce/reacquire/reacquire.py --grid aws_stoic2021; on the grid, from ~/spinesurg-ct-nnunet/data_platform/reacquire, sbatch -D "$PWD" --export=ALL,IDS="aws_stoic2021",MODE=--run reacquire.sbatch, as a Slurm job on the owner's word.
+
+### TotalSegmentator task data 'hip_implant' (71 CT) (GET)
+
+Link: https://zenodo.org/records/20272031. Licence: CC BY 4.0.
+
+1. The owner writes to the TotalSegmentator authors about the overlap with v2/v3 (one letter for the three task sets).
+2. Read the record listing and choose the include pattern, then spinesurg-ct-nnunet's tools/acquisition_fetch.py zenodo --collection ts_task_hip_implant --record 20272031 --include '<pattern>' (md5-verified) through slurm/acquisition_fetch.sh; as liver_lesions.
+3. The route as the manifest prints it: python3 data/reproduce/reacquire/reacquire.py --grid zenodo_ts_task_hip_implant; on the grid, from ~/spinesurg-ct-nnunet/data_platform/reacquire, sbatch -D "$PWD" --export=ALL,IDS="zenodo_ts_task_hip_implant",MODE=--run reacquire.sbatch, as a Slurm job on the owner's word.
+
+### TotalSegmentator task data 'liver_lesions' (842 CT) (GET)
+
+Link: https://zenodo.org/records/20272572. Licence: CC BY 4.0.
+
+1. The owner writes to the TotalSegmentator authors about the overlap with v2/v3.
+2. Read the record listing and choose the include pattern, then spinesurg-ct-nnunet's tools/acquisition_fetch.py zenodo --collection ts_task_liver_lesions --record 20272572 --include '<pattern>' (md5-verified) through slurm/acquisition_fetch.sh; the pattern '.' takes every file.
+3. The route as the manifest prints it: python3 data/reproduce/reacquire/reacquire.py --grid zenodo_ts_task_liver_lesions; on the grid, from ~/spinesurg-ct-nnunet/data_platform/reacquire, sbatch -D "$PWD" --export=ALL,IDS="zenodo_ts_task_liver_lesions",MODE=--run reacquire.sbatch, as a Slurm job on the owner's word.
+
+### TotalSegmentator task data 'pleural_pericard_effusion' (600 CT) (GET)
+
+Link: https://zenodo.org/records/20272295. Licence: CC BY 4.0.
+
+1. The owner writes to the TotalSegmentator authors about the overlap with v2/v3 (one letter for the three task sets).
+2. Read the record listing and choose the include pattern, then spinesurg-ct-nnunet's tools/acquisition_fetch.py zenodo --collection ts_task_pleural_effusion --record 20272295 --include '<pattern>' (md5-verified) through slurm/acquisition_fetch.sh; as liver_lesions.
+3. The route as the manifest prints it: python3 data/reproduce/reacquire/reacquire.py --grid zenodo_ts_task_pleural_effusion; on the grid, from ~/spinesurg-ct-nnunet/data_platform/reacquire, sbatch -D "$PWD" --export=ALL,IDS="zenodo_ts_task_pleural_effusion",MODE=--run reacquire.sbatch, as a Slurm job on the owner's word.
+
+### UniToChest chest CT (623 patients; distributed as slices) (GET)
+
+Link: https://zenodo.org/records/5797912. Licence: CC BY 4.0.
+
+1. Read the record listing and choose the include pattern, then spinesurg-ct-nnunet's tools/acquisition_fetch.py zenodo --collection unitochest --record 5797912 --include '<pattern>' (md5-verified) through slurm/acquisition_fetch.sh; then a chain entry with convert arguments, which does not exist yet.
+2. The route as the manifest prints it: python3 data/reproduce/reacquire/reacquire.py --grid zenodo_unitochest; on the grid, from ~/spinesurg-ct-nnunet/data_platform/reacquire, sbatch -D "$PWD" --export=ALL,IDS="zenodo_unitochest",MODE=--run reacquire.sbatch, as a Slurm job on the owner's word.
+
+### VerSe 2D projections with soft labels (Zenodo 8115942) (GET)
+
+Link: https://zenodo.org/records/8115942. Licence: to confirm on the page (VerSe itself is CC BY-SA 4.0).
+
+1. Open https://zenodo.org/records/8115942 and read its licence line and file list.
+2. Fetch as a Slurm job on the owner's word, never on the login node: python3 data/reproduce/reacquire/reacquire.py zenodo-get --record 8115942 --dest DIR.
+
+### VSDFullBody: post-mortem whole-body CT, forensic institutes Bern and Zurich (GET)
+
+Link: https://zenodo.org/records/8270365. Licence: CC BY-NC-SA per the record's text (the record's licence field is empty).
+
+1. Read the record listing and choose the include pattern, then spinesurg-ct-nnunet's tools/acquisition_fetch.py zenodo --collection vsd_fullbody --record 8270365 --include '<pattern>' (md5-verified) through slurm/acquisition_fetch.sh; then a chain entry with convert arguments, which does not exist yet.
+2. The route as the manifest prints it: python3 data/reproduce/reacquire/reacquire.py --grid zenodo_vsd_fullbody; on the grid, from ~/spinesurg-ct-nnunet/data_platform/reacquire, sbatch -D "$PWD" --export=ALL,IDS="zenodo_vsd_fullbody",MODE=--run reacquire.sbatch, as a Slurm job on the owner's word.
 
 ### CADS CT (unique cases) (GATED)
 
@@ -355,6 +757,13 @@ Link: https://stanfordaimi.azurewebsites.net/datasets/60b9c7ff-877b-48ce-96c3-01
 
 1. Sign in to the Stanford AIMI portal and accept the non-commercial research-use agreement on the dataset page (also stanford.redivis.com/datasets/exfv-e8h3kvfhs).
 2. A time-limited Azure Blob URL is issued; fetch with AzCopy as a job and verify against the portal's file list.
+
+### Veterinary: canine lateral thoracic radiographs for vertebral heart size (Mendeley ktx4cj55pn) (GET)
+
+Link: https://data.mendeley.com/datasets/ktx4cj55pn. Licence: CC BY 4.0 (to confirm on the page).
+
+1. Open https://data.mendeley.com/datasets/ktx4cj55pn and read the licence line and the file list.
+2. Fetch as a Slurm job on the owner's word, never on the login node: python3 data/reproduce/reacquire/reacquire.py http-get --url U --dest FILE, U being the public-files address the page gives.
 
 ### Veterinary: pig CBCT, CT and planar images (Goswami 2020, LevelCheck) (GET)
 

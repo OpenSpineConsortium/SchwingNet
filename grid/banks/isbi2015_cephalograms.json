@@ -1,0 +1,28 @@
+{
+  "id": "isbi2015_cephalograms",
+  "raw": "/rs/rs_grp_oschome/go2432/data/isbi2015_cephalograms/raw",
+  "bank": "/rs/rs_grp_oschome/go2432/data/isbi2015_cephalograms/bank",
+  "images": [
+    "to confirm: the films' glob, such as **/*.bmp"
+  ],
+  "format": "to confirm: bmp",
+  "person": {
+    "regex": "to confirm: the film number, as (?P<case>\\d{3})\\.bmp$"
+  },
+  "view": {
+    "lat_from_ap_deg": 90.0,
+    "gantry_deg": null
+  },
+  "device": {
+    "make": null,
+    "model": null,
+    "detector": null
+  },
+  "modality": "cr",
+  "device_class": "film",
+  "split": "train",
+  "labels": null,
+  "synthetic": false,
+  "px_mm": null,
+  "notes": "400 lateral cephalograms with 19 landmarks (no vertebra labels); C2 to C4 in every film; the person is one subject per film"
+}

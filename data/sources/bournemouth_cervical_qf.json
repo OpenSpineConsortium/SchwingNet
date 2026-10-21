@@ -5,7 +5,7 @@
   "what": "252 lateral flexion and extension sequences from 63 people at 15 fps, 1024 x 1024 16-bit DICOM; the deposit holds the per-frame vertebral corner tracks (.mat, 24 MB) and no pixels",
   "level_truth": "level-named corner tracks C0 to T1 on every frame (geometry only until the cine arrives)",
   "reach": "get",
-  "status": "the tracks are on the grid; the DICOM cine is request 1, drafted, never sent",
+  "status": "the tracks are on the grid; the DICOM cine is request 1, drafted, never sent; the letter (request 1) was forwarded to ckaching.cheung@polyu.edu.hk on 2026-10-21 03:57 UTC",
   "licence": "CC BY 4.0 (the tracks); README.rtf CC BY-ND",
   "link": "https://bordar.bournemouth.ac.uk/385/",
   "how_to_get": [

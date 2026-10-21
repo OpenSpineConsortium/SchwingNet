@@ -1,0 +1,22 @@
+{
+  "id": "zenodo_unitochest",
+  "name": "UniToChest chest CT (623 patients; distributed as slices)",
+  "group": "ct",
+  "what": "UniToChest chest CT, 623 patients, distributed as slices, Zenodo 5797912 published 2021-12-22, about 84 GB",
+  "level_truth": "counted by the census pipeline once fetched",
+  "reach": "get",
+  "status": "planned in the data platform at bf1432f; fetch job in the 2026-10-21 chain",
+  "licence": "CC BY 4.0",
+  "link": "https://zenodo.org/records/5797912",
+  "how_to_get": [
+    "Read the record listing and choose the include pattern, then spinesurg-ct-nnunet's tools/acquisition_fetch.py zenodo --collection unitochest --record 5797912 --include '<pattern>' (md5-verified) through slurm/acquisition_fetch.sh; then a chain entry with convert arguments, which does not exist yet.",
+    "The route as the manifest prints it: python3 data/reproduce/reacquire/reacquire.py --grid zenodo_unitochest; on the grid, from ~/spinesurg-ct-nnunet/data_platform/reacquire, sbatch -D \"$PWD\" --export=ALL,IDS=\"zenodo_unitochest\",MODE=--run reacquire.sbatch, as a Slurm job on the owner's word."
+  ],
+  "grid_path": null,
+  "counts": {
+    "subjects": 623,
+    "size_gb": 84.07
+  },
+  "measured": {},
+  "record": "spinesurg-ct-nnunet data_platform/sources.json bf1432f"
+}

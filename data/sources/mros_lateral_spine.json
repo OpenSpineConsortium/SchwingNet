@@ -1,0 +1,24 @@
+{
+  "id": "mros_lateral_spine",
+  "name": "MrOS lateral spine radiographs (Osteoporotic Fractures in Men)",
+  "group": "films",
+  "what": "lateral thoracic and lumbar films of 5,994 men at six US centres, two visits (2000-2002 and about 4.6 years later), with Genant semi-quantitative vertebral fracture grades per vertebra; one deep-learning study used 4,461 subjects and 15,524 films; the image counts and the request steps to confirm on the page",
+  "level_truth": "Genant grades on named levels, so level truth exists",
+  "reach": "get",
+  "status": "found by the sweep of 2026-10-21; not fetched; a research data request through the MrOS coordinating centre (an online application with a proposal), not sent; the images are not on dbGaP, whose phs000373 covers genotypes (to confirm on the page); older osteoporotic spines with compression fractures, the anatomy the C-arm sees in kyphoplasty",
+  "licence": "a MrOS data request agreement; terms to confirm on the page",
+  "link": "https://mrosonline.ucsf.edu/",
+  "how_to_get": [
+    "Open https://mrosonline.ucsf.edu/ and read the data request route (an online application with a proposal), to confirm on the page.",
+    "The owner files the request in the owner's name and signs whatever agreement follows; a session drafts the proposal text once the owner asks.",
+    "Once granted, fetch by the route the centre gives, as a Slurm job on the owner's word, never on the login node; no fetch helper applies until the route is known."
+  ],
+  "grid_path": null,
+  "counts": {
+    "men": 5994,
+    "centres": 6,
+    "visits": 2
+  },
+  "measured": {},
+  "record": "docs/research/xray-datasets-missing.md (2026-10-21)"
+}

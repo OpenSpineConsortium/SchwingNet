@@ -5,7 +5,7 @@
   "what": "10,466 DICOM (8,389 train + 2,077 test) in 5,000 studies with lesion boxes",
   "level_truth": "no levels",
   "reach": "held",
-  "status": "on the grid under the PhysioNet agreement, covered since 29 Sep 2026 by WSU IRB HPR 2026-330 (the supplement to 2026-269: not human participant research); the C-ArmLSpine fold models carry 2,632 of its crops; the v8 and v9 level banks left it out for comparability, with no criterion; its implant boxes trained yolo_hw",
+  "status": "on the grid under the PhysioNet agreement, covered since 29 Sep 2026 by WSU IRB HPR 2026-330 (the supplement to 2026-269: not human participant research); the C-ArmLSpine fold models carry 2,632 of its crops; the v8 and v9 level banks left it out for comparability, with no criterion; its implant boxes trained yolo_hw; the Roboflow rf100-vl relabels (roboflow_vindr_relabels) redistribute these images outside the agreement and are not to be fetched (the sweep of 2026-10-21)",
   "licence": "PhysioNet Restricted Health Data License 1.5.0 (credentialed, named-person agreement)",
   "link": "https://physionet.org/content/vindr-spinexr/1.0.0/",
   "how_to_get": [],

@@ -1,0 +1,19 @@
+{
+  "id": "cm_spine_drive_file",
+  "name": "cm_spine: one Google Drive file described only as 'intraoperative' (empty download)",
+  "group": "fluoro",
+  "what": "one Google Drive file, id 1r9wX1802gkU4-EQHMMlyAlEiWXGWLhhJ, described only as 'intraoperative' by download_sources.py's get_cm_spine(); the download was empty and what the file is has never been established",
+  "level_truth": "unknown",
+  "reach": "get",
+  "status": "empty in the data platform at bf1432f; the owner's hand: gdown into a scratch directory, inspect, then decide",
+  "licence": "not recorded",
+  "link": null,
+  "how_to_get": [
+    "cd into a scratch directory on a compute node and gdown 1r9wX1802gkU4-EQHMMlyAlEiWXGWLhhJ; inspect what came; then decide whether it is a source at all.",
+    "The route as the manifest prints it: python3 data/reproduce/reacquire/reacquire.py --grid cm_spine_drive_file; on the grid, from ~/spinesurg-ct-nnunet/data_platform/reacquire, sbatch -D \"$PWD\" --export=ALL,IDS=\"cm_spine_drive_file\",MODE=--run reacquire.sbatch, as a Slurm job on the owner's word."
+  ],
+  "grid_path": null,
+  "counts": {},
+  "measured": {},
+  "record": "spinesurg-ct-nnunet data_platform/sources.json bf1432f"
+}

@@ -1,0 +1,21 @@
+{
+  "id": "vfss2022",
+  "name": "VFSS2022 videofluoroscopic swallow frames (TIB)",
+  "group": "video",
+  "what": "440 videofluoroscopic swallow frames with instance masks of the bolus and pharynx, the cervical spine in every frame (doi:10.57702/w1ye2nim; Video-TransUNet)",
+  "level_truth": "none; cervical spine in field, no vertebra labels",
+  "reach": "get",
+  "status": "found by the sweep of 2026-10-21; not fetched; open per the listing, licence to confirm on the page; a small labelled cervical fluoroscopy set that the swallow requests (DysphagiaBank, Pittsburgh) do not yet deliver",
+  "licence": "to confirm on the page",
+  "link": "https://service.tib.eu/ldmservice/dataset/vfss2022-dataset",
+  "how_to_get": [
+    "Open https://service.tib.eu/ldmservice/dataset/vfss2022-dataset and read the licence and the file list.",
+    "Fetch as a Slurm job on the owner's word, never on the login node: python3 data/reproduce/reacquire/reacquire.py http-get --url U --dest FILE, U being the address the page gives."
+  ],
+  "grid_path": null,
+  "counts": {
+    "frames": 440
+  },
+  "measured": {},
+  "record": "docs/research/xray-datasets-missing.md (2026-10-21)"
+}

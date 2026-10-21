@@ -1,0 +1,28 @@
+{
+  "id": "fraiwan_spine_xray",
+  "raw": "/rs/rs_grp_oschome/go2432/data/fraiwan_spine_xray/raw",
+  "bank": "/rs/rs_grp_oschome/go2432/data/fraiwan_spine_xray/bank",
+  "images": [
+    "to confirm: the original (not resized) folder's glob, such as **/original/**/*.jpg"
+  ],
+  "format": "to confirm: jpg",
+  "person": {
+    "regex": "to confirm: one file is one subject, as (?P<case>[^/]+)\\.jpe?g$"
+  },
+  "view": {
+    "lat_from_ap_deg": "to confirm: AP (0) or lateral (90), per the page",
+    "gantry_deg": null
+  },
+  "device": {
+    "make": null,
+    "model": null,
+    "detector": null
+  },
+  "modality": "dx",
+  "device_class": "film",
+  "split": "train",
+  "labels": null,
+  "synthetic": false,
+  "px_mm": null,
+  "notes": "338 subjects in three classes (scoliosis, spondylolisthesis, normal), original and resized folders; no vertebra labels"
+}

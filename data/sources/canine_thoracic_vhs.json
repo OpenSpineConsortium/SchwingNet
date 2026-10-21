@@ -1,0 +1,21 @@
+{
+  "id": "canine_thoracic_vhs",
+  "name": "Veterinary: canine lateral thoracic radiographs for vertebral heart size (Mendeley ktx4cj55pn)",
+  "group": "future",
+  "what": "152 anonymised lateral thoracic radiographs of dogs; a lateral dog thorax shows T1 to L1 and the VHS method itself counts vertebrae from T4",
+  "level_truth": "none; T4 is the VHS reference vertebra",
+  "reach": "get",
+  "status": "the owner's veterinary direction of 2026-10-20; found by the sweep of 2026-10-21; not fetched; the only other public veterinary spine radiograph set found beside the pig CBCT (veterinary_pig_levelcheck)",
+  "licence": "CC BY 4.0 (to confirm on the page)",
+  "link": "https://data.mendeley.com/datasets/ktx4cj55pn",
+  "how_to_get": [
+    "Open https://data.mendeley.com/datasets/ktx4cj55pn and read the licence line and the file list.",
+    "Fetch as a Slurm job on the owner's word, never on the login node: python3 data/reproduce/reacquire/reacquire.py http-get --url U --dest FILE, U being the public-files address the page gives."
+  ],
+  "grid_path": null,
+  "counts": {
+    "radiographs": 152
+  },
+  "measured": {},
+  "record": "docs/research/xray-datasets-missing.md (2026-10-21)"
+}

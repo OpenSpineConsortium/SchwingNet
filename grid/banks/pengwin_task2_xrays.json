@@ -1,0 +1,28 @@
+{
+  "id": "pengwin_task2_xrays",
+  "raw": "/rs/rs_grp_oschome/go2432/data/pengwin_task2_xrays/raw",
+  "bank": "/rs/rs_grp_oschome/go2432/data/pengwin_task2_xrays/bank",
+  "images": [
+    "to confirm: the DRR files' glob, such as train/input/images/x-ray/*.tif"
+  ],
+  "format": "to confirm: tif",
+  "person": {
+    "regex": "to confirm: the CT id in the file name, three digits, as (?P<case>\\d{3})_"
+  },
+  "view": {
+    "lat_from_ap_deg": null,
+    "gantry_deg": null
+  },
+  "device": {
+    "make": "synthetic",
+    "model": "DeepDRR",
+    "detector": null
+  },
+  "modality": "render",
+  "device_class": "synthetic",
+  "split": "train",
+  "labels": null,
+  "synthetic": true,
+  "px_mm": null,
+  "notes": "50,000 DeepDRR synthetic X-rays of 100 pelvic-fracture CTs at 500 C-arm poses each, simulated K-wires and screws in half; the images are DRRs (synthetic), the person is the source CT, which is also a pengwin2026 CT on the grid"
+}

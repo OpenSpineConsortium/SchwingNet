@@ -5,7 +5,7 @@
   "what": "clips cut from public video: Bern videos 1 to 4, three PMC videos (PMC10242080, PMC11328828, PMC4852439), three Wikimedia Commons items, the YouTube re-encodes of 28 ids, in folders clips/, youtube/, pmc/, commons/, vimeo/, github/, ajr/, dysphagiabank_unm/; 18 of 70 YouTube entries show live fluoroscopy, 9 of them cervical, one CC-licensed",
   "level_truth": "almost never named; levels burned into a chapter title at best",
   "reach": "held",
-  "status": "never scored; private tracker screening only, never training or a slide; the YouTube copies are unpermitted until a request is answered",
+  "status": "never scored; private tracker screening only, never training or a slide; the YouTube copies are unpermitted until a request is answered; CathAction (cathaction, about 500,000 frames, no DUA) is the larger real-fluoroscopy exposure pool found by the sweep of 2026-10-21",
   "licence": "mixed: CC BY (Bern, PMC), unlicensed re-encodes (YouTube)",
   "link": "https://pmc.ncbi.nlm.nih.gov/articles/PMC8463391/",
   "how_to_get": [],

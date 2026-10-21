@@ -5,7 +5,7 @@
   "what": "16,531 digitised films without landmarks",
   "level_truth": "none; pseudo-labels cut anomalous accuracy 20 points",
   "reach": "held",
-  "status": "unused by a written criterion",
+  "status": "unused by a written criterion; the VertXNet Zenodo record adds radiologist landmarks with vertebral identity and the reference bodies C2 and S1 to the NHANES II films (record vertxnet_nhanes2_labels, found by the sweep of 2026-10-21), and the manifest's nhanes_pseudo directory of 16,234 pseudo-labelled films could be checked against those labels",
   "licence": "open (NCHS)",
   "link": "https://wwwn.cdc.gov/nchs/data/nhanes2/NH2_Xray.htm",
   "how_to_get": [],
