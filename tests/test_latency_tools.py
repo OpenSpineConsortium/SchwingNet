@@ -99,6 +99,31 @@ class LatencyToolsTest(unittest.TestCase):
         self.assertTrue(verdict["labels_equal"])
         self.assertLess(verdict["max_abs_probability_difference"], 1e-5)
 
+    def test_2b_parity_reads_the_witness_frames_first(self):
+        train = load("train")
+        validation = train.read_crops(self.catalog, ("validation",))
+        test = train.read_crops(self.catalog, ("test",))
+        chosen = validation[-1]["sha256"]
+        frames = [
+            {"role": "validation", "part": "validation", "sha256": chosen},
+            {"role": "test", "part": "test", "sha256": test[0]["sha256"]},
+        ]
+        listing = self.run_dir / "witness.json"
+        listing.write_text(json.dumps({"schema": 1, "frames": frames}), encoding="utf-8")
+        try:
+            crops, witnessed = self.latency.parity_crops(self.run_dir, self.catalog, "validation", 3)
+            own = [c for c in validation if c["sha256"] == chosen]
+            self.assertEqual(witnessed, len(own))
+            self.assertEqual(crops[:witnessed], own)
+            self.assertEqual(len(crops), max(3, witnessed))
+            self.assertTrue(all(c["part"] == "validation" for c in crops))
+            self.latency.export(self.run_dir)
+            verdict = self.latency.parity(self.run_dir, self.catalog, "validation", 3, "onnxruntime", "cpu", 2)
+            self.assertEqual((verdict["witness_frames"], verdict["witness_crops"]), (1, len(own)))
+            self.assertTrue(verdict["passed"], verdict)
+        finally:
+            listing.unlink()
+
     def test_3_both_runtimes_are_timed_and_the_headline_is_the_faster(self):
         arms = [self.latency.measure(self.run_dir, self.catalog, runtime, "cpu", 2, 12, 2, "test") for runtime in ("torch", "onnxruntime")]
         headline = json.loads((self.run_dir / "evaluate" / "latency.json").read_text(encoding="utf-8"))

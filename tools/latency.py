@@ -148,15 +148,42 @@ def exported_sha256(run):
     return actual
 
 
+def witness_frames(run, part):
+    """The sha256 of each frame the run's witness list draws in this part, or none without a list.
+
+    The witness list (witness.json, written by tools/flow.py before any step) is the fixed set of
+    frames the evaluation page draws at every checkpoint, so parity shown on them is parity on the
+    very frames a reader sees; only frames whose role is this part count, never a test frame.
+    """
+    listing = Path(run) / "witness.json"
+    if not listing.is_file():
+        return set()
+    frames = json.loads(listing.read_text(encoding="utf-8")).get("frames", [])
+    return {f["sha256"] for f in frames if f.get("role") == part and f.get("part") == part}
+
+
+def parity_crops(run, catalog, part, crops_wanted):
+    """The crops parity reads, the witness frames' first, and how many of them are witness crops.
+
+    Every crop of a witness frame is kept even past `crops_wanted`, so the witness frames are
+    shown whole; the rest of the part fills up to `crops_wanted` in the catalog's own order.
+    """
+    every = train.read_crops(catalog, (part,))
+    if not every:
+        raise LatencyError(f"the catalog has no labelled crops in the {part} part")
+    witnessed = witness_frames(run, part)
+    first = [c for c in every if c["sha256"] in witnessed]
+    rest = [c for c in every if c["sha256"] not in witnessed]
+    return first + rest[: max(0, crops_wanted - len(first))], len(first)
+
+
 def parity(run, catalog, part, crops_wanted, runtime, device, threads):
     """One arm against PyTorch on the CPU, on the same crops; its parity file says whether they agree."""
     if (runtime, device) == REFERENCE:
         raise LatencyError("PyTorch on the CPU is the reference; it has no parity of its own to check")
     onnx_sha256 = exported_sha256(run) if runtime == "onnxruntime" else None
     model, facts = load_torch_model(run, "cpu")
-    crops = train.read_crops(catalog, (part,))[:crops_wanted]
-    if not crops:
-        raise LatencyError(f"the catalog has no labelled crops in the {part} part")
+    crops, witnessed = parity_crops(run, catalog, part, crops_wanted)
     inputs, _ = train.load_crops(crops, int(facts["size"]), {})
     with torch.no_grad():
         reference = torch.softmax(model(inputs), dim=1).numpy()
@@ -179,6 +206,8 @@ def parity(run, catalog, part, crops_wanted, runtime, device, threads):
         "part": part,
         "crops": len(crops),
         "persons": len({c["person"] for c in crops}),
+        "witness_frames": len({c["sha256"] for c in crops[:witnessed]}),
+        "witness_crops": witnessed,
         "max_abs_probability_difference": difference,
         "labels_equal": labels_equal,
         "tolerance": PARITY_TOLERANCE,
