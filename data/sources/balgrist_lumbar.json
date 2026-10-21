@@ -4,13 +4,12 @@
   "group": "fluoro",
   "what": "cadaver lumbar CT with real C-arm frames",
   "level_truth": "yes, from the CT",
-  "reach": "get",
-  "status": "request drafted 2026-09-21, never sent; the authors' group is ROCS (Research in Orthopedic Computer Science, Balgrist, head Philipp Fuernstahl), whose group address is rocs@balgrist.ch; the paper is arXiv:2401.16027 (Medical Image Analysis 2024); the set is restricted for pending patents",
+  "reach": "none",
+  "status": "refused 2026-10-21 05:52 UTC: Philipp Fuernstahl answered the letter of 2026-10-20 that the ex-vivo dataset was licensed to a startup and is proprietary, so it cannot be shared; the resend through the ROCS contact form is dropped",
   "licence": "not recorded",
   "link": "https://rocs.balgrist.ch/en/contact",
   "how_to_get": [
-    "Send spine-program 01_carm_level_detection/docs/data_requests/balgrist_data_request_2026-09-21.md to the ROCS group address or to the corresponding authors (Jecklin, Fuernstahl) once their addresses are confirmed on the article's first page.",
-    "Expect a data transfer agreement through Balgrist and Wayne State, since the set is restricted for pending patents."
+    "Nothing: the holder refused on 2026-10-21. A later ask would be to the startup that licensed it, whose name the answer did not give."
   ],
   "grid_path": null,
   "counts": {},

@@ -440,7 +440,10 @@ institutional agreement and a transfer by link.
 
 State on 2026-10-21: the letter of 2026-09-21 was sent on 2026-10-20; sascha.jecklin@balgrist.ch
 bounced, while Philipp Fuernstahl's address and the group address rocs@balgrist.ch received it;
-the resend through the ROCS contact form at https://rocs.balgrist.ch/en/contact is pending. The
+the resend through the ROCS contact form at https://rocs.balgrist.ch/en/contact is dropped:
+Philipp Fuernstahl answered on 2026-10-21 05:52 UTC that the ex-vivo dataset was licensed to a
+startup, is proprietary and cannot be shared, so the request is refused and the record's reach
+is none; the form text below is kept as the record of what would have been asked. The
 set: 13 whole-torso cadaver specimens plus six validation specimens, CT with real mobile C-arm
 images (Siemens Cios Spin, Ziehm Vision, Ziehm Vision FD) and fiducial-based projection matrices
 (Medical Image Analysis 2024, arXiv:2401.16027; a 2025 Scientific Reports follow-up); restricted
@@ -485,6 +488,28 @@ and the 62-image reader set of Manbachi et al. 2018. Neither paper has a data st
 route is a DUA with the PI. Jeffrey Siewerdsen has been at MD Anderson (Surgical Data Science)
 since 2022; copy the JHU co-authors still there (Ali Uneri, Wojciech Zbijewski, J. Webster
 Stayman), addresses from the institutional directories, to confirm.
+
+Answered 2026-10-21 12:48 UTC: Siewerdsen replied that the LevelCheck clinical cohort is held at
+Johns Hopkins, that sharing was never arranged while he was there, and that Ali Uneri, now on
+the JHU faculty, could speak to whether it can be shared. The follow-up below went to
+ali.uneri@jhu.edu (Associate Research Professor, Biomedical Engineering; the address is the one
+JHU BME's admissions-committee page lists) from the owner's mailbox on 2026-10-21, copying
+Siewerdsen, under the owner's standing approval for the letters of 2026-10-20; the record waits
+on his answer.
+
+```text
+Dear Dr Uneri,
+
+I study the application of computer science to improving spinal health, and my current work needs real intraoperative radiographs of the spine for which the correct level of each vertebra is already known from the same patient's labelled preoperative CT. Professor Siewerdsen, whom I wrote to yesterday, tells me the LevelCheck clinical cohort (De Silva et al., Spine 2016; Ketcha et al. 2017; Manbachi et al. 2018) is held at Johns Hopkins and that you could speak to whether it can be shared.
+
+My work measures how reliably automated image-analysis methods name the vertebrae on real intraoperative images, reported as per-image agreement with the CT-derived labels and confidence intervals, with the transitional and degraded cases broken out. I am asking whether the de-identified radiographs with their CT-derived level labels could be shared under a data use agreement with Johns Hopkins, and what terms you require.
+
+I am at the Department of General Surgery, Wayne State University School of Medicine and the Detroit Medical Center; the work is under Wayne State IRB determination HPR 2026-269. I will work under whatever agreement Johns Hopkins requires: research use only, no redistribution, storage on Wayne State's research computing, read by me alone, and I will cite the papers and share any result on the cohort before submission.
+
+Gregory Schwing, MD, PhD
+General Surgery, Wayne State University School of Medicine / Detroit Medical Center
+go2432@wayne.edu, +1 504-994-0403
+```
 
 ```text
 Dear Professor Siewerdsen and colleagues,
