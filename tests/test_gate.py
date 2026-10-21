@@ -228,6 +228,73 @@ class GateTest(unittest.TestCase):
         self.assertNotIn("--dependency", line[0])
         self.assertIn(f"RUNS={self.runs},WEIGHTS={self.models}/resnet18-f37072fd.pth", line[0])
 
+    def test_v1_waits_on_a_start_still_in_the_queue(self):
+        # issue #74: start's own v1 job was refused, and its catalog, weights and C-ArmLSpine jobs are
+        # still queued or running; v1 chains onto them with afterok rather than refusing until they end
+        self.assertEqual(self.gate("start").returncode, 0)
+        jobs = self.recorded()
+        setup, weights, ingest, first = jobs["setup"], jobs["weights"], jobs["carmlspine"], jobs["catalog"]
+        before = len(self.line_of("v1-driver.sbatch"))
+        (self.fake / "queue").write_text(f"{setup}\n{ingest}\n{first}\n", encoding="utf-8")
+        done = self.gate("v1")
+        self.assertEqual(done.returncode, 2, done.stdout)
+        self.assertIn("no weights job queued", done.stdout)
+        self.assertEqual(len(self.line_of("v1-driver.sbatch")), before)
+        (self.fake / "queue").write_text(f"{setup}\n{weights}\n{ingest}\n{first}\n", encoding="utf-8")
+        done = self.gate("v1")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        line = self.line_of("v1-driver.sbatch")[-1]
+        self.assertIn(f"--dependency=afterok:{first},afterok:{ingest},afterok:{weights},afterok:{setup} ", line)
+        self.assertIn("--kill-on-invalid-dep=yes", line)
+        self.assertEqual(len(self.line_of("v1-driver.sbatch")), before + 1)
+
+    def test_v1_after_a_finished_start_waits_only_on_what_is_still_live(self):
+        self.environments_ready()
+        self.weights_ready()
+        self.assertEqual(self.gate("start").returncode, 0)
+        first = self.recorded()["catalog"]
+        (self.fake / "queue").write_text(f"{first}\n", encoding="utf-8")
+        done = self.gate("v1")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn(f"--dependency=afterok:{first} ", self.line_of("v1-driver.sbatch")[-1])
+
+    def test_v1_does_not_wait_on_an_x_ray_chains_catalog_and_says_so(self):
+        # start's first catalog ended without a version while its X-ray chain's catalog still waits
+        # behind a fetch of days: v1 is refused, and the refusal names that job instead of saying
+        # no catalog job is queued
+        self.environments_ready()
+        self.weights_ready()
+        self.assertEqual(self.gate("start").returncode, 0)
+        xr_catalog = self.recorded()["xr_catalog"]
+        before = len(self.line_of("v1-driver.sbatch"))
+        self.live(xr_catalog)
+        done = self.gate("v1")
+        self.assertEqual(done.returncode, 2, done.stdout)
+        self.assertIn(f"the X-ray chain's catalog (job {xr_catalog})", done.stdout)
+        self.assertNotIn("no catalog job", done.stdout)
+        self.assertEqual(len(self.line_of("v1-driver.sbatch")), before)
+        self.live()
+        done = self.gate("v1")
+        self.assertEqual(done.returncode, 2, done.stdout)
+        self.assertIn("no catalog job of start's queued", done.stdout)
+
+    def test_every_job_header_names_its_qos_and_a_gpu_job_takes_the_gpu_qos(self):
+        # Slurm refused the version 1 run for a GPU partition with no QoS (issue #74); a GPU job takes
+        # the gpu QoS on gmsap, gvohp or galhp, as Beethoven for VS Code submits one
+        for script in sorted(GRID.glob("*.sbatch")):
+            header = [line for line in script.read_text(encoding="utf-8").splitlines() if line.startswith("#SBATCH")]
+            partitions = [line.split("=", 1)[1] for line in header if line.startswith("#SBATCH --partition=")]
+            qos = [line.split("=", 1)[1] for line in header if line.startswith("#SBATCH --qos=")]
+            self.assertEqual(len(partitions), 1, script.name)
+            self.assertEqual(len(qos), 1, f"{script.name}: a partition with no QoS")
+            if any(line.startswith("#SBATCH --gres=gpu") for line in header):
+                self.assertEqual(qos, ["gpu"], script.name)
+                self.assertTrue(set(partitions[0].split(",")) <= {"gmsap", "gvohp", "galhp"}, script.name)
+            else:
+                self.assertEqual((partitions, qos), (["reqp"], ["requeue"]), script.name)
+        header = (GRID / "v1-driver.sbatch").read_text(encoding="utf-8")
+        self.assertIn("#SBATCH --partition=gmsap,gvohp,galhp\n#SBATCH --qos=gpu\n#SBATCH --gres=gpu:1\n", header)
+
     def test_latency_takes_the_newest_run_with_a_checkpoint_and_its_catalog(self):
         self.environments_ready()
         catalog = self.catalog_ready(version=3)
