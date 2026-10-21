@@ -25,7 +25,6 @@ from functools import lru_cache
 from itertools import combinations
 from math import cos, pi, sqrt
 from operator import mul
-from statistics import median
 
 from beartype import beartype
 from beethoven_qa.contracts import ensure, require
@@ -35,6 +34,9 @@ HASH_BITS = 64
 HASH_SPACE = 2**HASH_BITS
 # The low-frequency block a perceptual hash keeps: 8 x 8 DCT coefficients, one bit each.
 HASH_SIDE = 8
+# The fixed-point scale of the DCT basis: 2**14 keeps every product an exact integer and a
+# cosine's rounding far below what a grey level moves a coefficient.
+COSINE_SCALE = 1 << 14
 BANDS = 4
 BAND_BITS = HASH_BITS // BANDS
 BAND_MASK = (1 << BAND_BITS) - 1
@@ -126,28 +128,47 @@ def hamming(a: int, b: int) -> int:
 
 
 @lru_cache(maxsize=8)
-def _cosines(side: int) -> tuple[tuple[float, ...], ...]:
-    """The DCT-II basis rows of the low frequencies a hash keeps, for an image of this side."""
+def _cosines(side: int) -> tuple[tuple[int, ...], ...]:
+    """The DCT-II basis rows of the low frequencies a hash keeps, for an image of this side, in
+    fixed point: each cosine times COSINE_SCALE, rounded once to an integer.
+
+    Everything after this table is integer arithmetic, so a hash is the same bits on every
+    machine; the table itself depends on the platform's cosine only where a scaled value lies
+    within its error of a half, and the tests hold every side's table away from that.
+    """
     return tuple(
-        tuple(cos(pi * (2 * x + 1) * u / (2 * side)) for x in range(side)) for u in range(HASH_SIDE)
+        tuple(round(cos(pi * (2 * x + 1) * u / (2 * side)) * COSINE_SCALE) for x in range(side))
+        for u in range(HASH_SIDE)
     )
 
 
-def _low_frequencies(grey: bytes, side: int) -> list[float]:
-    """The 8 x 8 low-frequency DCT-II coefficients of a square grey image, row by row.
+def _low_frequencies(grey: bytes, side: int) -> list[int]:
+    """The 8 x 8 low-frequency DCT-II coefficients of a square grey image, row by row, exactly,
+    each n times its true value (n the image's pixel count), so all of them stay integers.
 
-    Only the kept frequencies are computed, a row transform then a column transform, so a
-    32 x 32 reduction costs about ten thousand products. Each coefficient is rounded to six
-    places, so the floating-point noise of a flat image is zero and never sets a bit.
+    The AC coefficients are taken over the image less its mean (each pixel times n, less the
+    sum), so a flat image has none however the fixed-point basis rounds; the DC coefficient is
+    the sum itself on the same scale. Only the kept frequencies are computed, a row transform
+    then a column transform, so a 32 x 32 reduction costs about ten thousand products.
     """
     basis = _cosines(side)
-    rows = [grey[y * side : (y + 1) * side] for y in range(side)]
+    n, total = side * side, sum(grey)
+    rows = [[n * value - total for value in grey[y * side : (y + 1) * side]] for y in range(side)]
     across = [[sum(map(mul, row, wave)) for row in rows] for wave in basis]
-    return [
-        round(sum(map(mul, basis[v], across[u])), 6)
-        for v in range(HASH_SIDE)
-        for u in range(HASH_SIDE)
+    coefficients = [
+        sum(map(mul, basis[v], across[u])) for v in range(HASH_SIDE) for u in range(HASH_SIDE)
     ]
+    coefficients[0] = n * total * COSINE_SCALE * COSINE_SCALE
+    return coefficients
+
+
+def _above_median(coefficients: list[int]) -> list[bool]:
+    """Which coefficients stand above the median of all of them, compared in integers: twice a
+    value against the sum of the two middle ones, so no division is ever rounded."""
+    ordered = sorted(coefficients)
+    middle = len(ordered) // 2
+    twice_median = ordered[middle - 1] + ordered[middle]
+    return [2 * value > twice_median for value in coefficients]
 
 
 @beartype
@@ -162,11 +183,9 @@ def phash(grey: bytes, side: int) -> int:
     """The perceptual hash of a square 8-bit grey reduction: one bit per low frequency of its
     DCT, set where the coefficient stands above the median of the 64, the first bit the mean's.
     """
-    coefficients = _low_frequencies(grey, side)
-    middle = median(coefficients)
     code = 0
-    for value in coefficients:
-        code = (code << 1) | (1 if value > middle else 0)
+    for above in _above_median(_low_frequencies(grey, side)):
+        code = (code << 1) | int(above)
     return code
 
 
@@ -437,15 +456,17 @@ def _groups(prints: tuple[Print, ...], kind: str) -> list[tuple[str, tuple[int, 
     return sorted((key, tuple(members)) for key, members in holders.items() if len(members) > 1)
 
 
-def _why_shared(
-    prints: tuple[Print, ...], members: tuple[int, ...], classes: dict[str, str]
-) -> str:
+# The person classes and the source classes of a declaration, kept apart.
+Classes = tuple[dict[str, str], dict[str, str]]
+
+
+def _why_shared(prints: tuple[Print, ...], members: tuple[int, ...], classes: Classes) -> str:
     """Why a group of prints sharing a key fails, or the empty string where it does not."""
     chosen = [prints[i] for i in members]
-    if len({classes.get(p.person, p.person) for p in chosen}) > 1:
+    persons, sources = classes
+    if len({persons.get(p.person, p.person) for p in chosen}) > 1:
         return "undeclared alias: one key under two persons"
-    sources = {"source:" + p.source for p in chosen}
-    if len({classes.get(source, source) for source in sources}) > 1:
+    if len({sources.get(p.source, p.source) for p in chosen}) > 1:
         return "undeclared alias: one key under two sources"
     if len({p.part for p in chosen}) > 1:
         return "declared alias split across parts"
@@ -456,18 +477,20 @@ def _why_shared(
 @require(lambda prints: len({p.frame for p in prints}) == len(prints), "each frame once")
 @ensure(lambda result: all(f.check == CHK7 for f in result), "CHK-7 rows")
 @ensure(lambda result: all(len(f.frames) >= 2 for f in result), "a row ties two frames or more")
-def shared_keys(prints: tuple[Print, ...], classes: dict[str, str]) -> tuple[Finding, ...]:
+def shared_keys(
+    prints: tuple[Print, ...], persons: dict[str, str], sources: dict[str, str]
+) -> tuple[Finding, ...]:
     """CHK-7: every group of frames sharing a store key or a pixel key that spans persons or
     sources no declaration joins, or one declared person split across parts. A pixel-key group
     that is exactly a store-key group's frames is the same finding and is not repeated.
 
-    The classes hold persons by their keys and sources as "source:<id>", so one declaration
-    file joins both without a person key ever being read as a source.
+    Persons and sources are joined by two separate class maps, one from each half of the
+    declaration file, so no person key, whatever it is spelled, is ever read as a source.
     """
     rows, seen = [], set()
     for kind in ("store_key", "pixel_key"):
         for key, members in _groups(prints, kind):
-            reason = _why_shared(prints, members, classes)
+            reason = _why_shared(prints, members, (persons, sources))
             if not reason or members in seen:
                 continue
             seen.add(members)

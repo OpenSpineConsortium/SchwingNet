@@ -9,6 +9,7 @@ train-cpu environment is.
 
 import base64
 import hashlib
+import math
 import importlib.util
 import json
 import os
@@ -24,6 +25,7 @@ from schwingnet import leaks
 
 ROOT = Path(__file__).resolve().parents[2]
 SIDE = leaks.NCC_SIDE
+PINNED_PHASH = "8d1cc53631763bc3"
 
 
 def load(name: str) -> ModuleType:
@@ -107,6 +109,20 @@ def test_a_hash_is_stable_and_a_flat_frame_sets_only_its_mean() -> None:
     assert leaks.hamming(leaks.phash(image, 32), leaks.phash(pooled(pattern(4)), 32)) > 6
 
 
+def test_a_hash_is_exact_integers_so_every_machine_sets_the_same_bits() -> None:
+    # The fixed-point basis is the one place a platform's cosine enters; every scaled value of
+    # every side a hash takes lies far from a half, so no libm's last bit can round it the
+    # other way, and the bits of a known image are pinned.
+    for side in range(leaks.HASH_SIDE, 65):
+        for u in range(leaks.HASH_SIDE):
+            for x in range(side):
+                scaled = math.cos(math.pi * (2 * x + 1) * u / (2 * side)) * leaks.COSINE_SCALE
+                assert abs(abs(scaled) % 1 - 0.5) > 1e-6
+    assert f"{leaks.phash(pooled(pattern(3)), 32):016x}" == PINNED_PHASH
+    gradient = bytes((x * 7 + y * 3) % 256 for y in range(32) for x in range(32))
+    assert leaks.phash(gradient, 32) == leaks.phash(bytes(gradient), 32)
+
+
 def test_bands_put_back_together_and_the_radius_covers_the_distance() -> None:
     code = 0x0123_4567_89AB_CDEF
     assert leaks.bands(code) == (0xCDEF, 0x89AB, 0x4567, 0x0123)
@@ -185,7 +201,7 @@ def test_chk7_catches_an_exact_copy_under_two_persons_once() -> None:
     image = pattern(31)
     a = print_of("a/1.png", "src:p1", image)
     b = leaks.Print("b/1.png", "src:p2", "train", "src", a.store_key, a.pixel_key, a.phash)
-    rows = leaks.shared_keys((a, b, print_of("a/2.png", "src:p3", pattern(32))), {})
+    rows = leaks.shared_keys((a, b, print_of("a/2.png", "src:p3", pattern(32))), {}, {})
     assert len(rows) == 1
     assert rows[0].reason == "undeclared alias: one key under two persons (store_key)"
     assert rows[0].key == a.store_key and rows[0].persons == ("src:p1", "src:p2")
@@ -196,13 +212,13 @@ def test_chk7_takes_a_declaration_and_still_fails_a_declared_person_on_two_sides
     a = print_of("a/1.png", "one:p1", image)
     b = leaks.Print("b/1.png", "two:q1", "train", "two", "f" * 64, a.pixel_key, a.phash)
     persons = leaks.alias_classes((("one:p1", "two:q1"),))
-    assert leaks.shared_keys((a, b), persons)[0].reason.startswith(
+    assert leaks.shared_keys((a, b), persons, {})[0].reason.startswith(
         "undeclared alias: one key under two sources"
     )
-    both = leaks.alias_classes((("one:p1", "two:q1"), ("source:one", "source:two")))
-    assert leaks.shared_keys((a, b), both) == ()
+    sources = leaks.alias_classes((("one", "two"),))
+    assert leaks.shared_keys((a, b), persons, sources) == ()
     split = leaks.Print("b/1.png", "two:q1", "validation", "two", "f" * 64, a.pixel_key, a.phash)
-    rows = leaks.shared_keys((a, split), both)
+    rows = leaks.shared_keys((a, split), persons, sources)
     assert [r.reason for r in rows] == ["declared alias split across parts (pixel_key)"]
 
 
@@ -371,6 +387,72 @@ def test_a_frame_that_cannot_be_read_or_does_not_match_its_hash_is_a_line_with_i
     assert gone["error"] == "unreadable (FileNotFoundError)" and "store_key" not in gone
     wrong = TOOL.fingerprint_frame((str(folder), item.path, "1" * 64, item.person, "carmlspine"))
     assert wrong["error"] == "the bytes do not match the manifest's sha256"
+
+
+def test_a_person_key_spelled_like_a_source_never_joins_two_sources(tmp_path: Path) -> None:
+    # Persons whose keys read "source:one" and "source:two", declared one person, are a person
+    # alias only: the sources one and two stay two, so one key under both still fails.
+    declared = tmp_path / "aliases.json"
+    groups = [{"persons": ["one:p1", "two:q1"], "why": "a crosswalk"}]
+    groups.append({"persons": ["source:one", "source:two"], "why": "a person so keyed"})
+    declared.write_text(json.dumps({"persons": groups, "sources": []}), encoding="utf-8")
+    persons, sources = TOOL.load_declared(declared)
+    assert sources == {}
+    image = pattern(51)
+    a = print_of("a/1.png", "one:p1", image)
+    b = leaks.Print("b/1.png", "two:q1", "train", "two", "f" * 64, a.pixel_key, a.phash)
+    (row,) = leaks.shared_keys((a, b), persons, sources)
+    assert row.reason == "undeclared alias: one key under two sources (pixel_key)"
+
+
+def test_a_line_with_a_key_missing_or_malformed_is_a_frame_never_fingerprinted(
+    two_shards: tuple[Path, Path, Path],
+) -> None:
+    tmp, a, b = two_shards
+    write_prints(a, tmp / "fp" / "a.jsonl", {1: {"ncc64": "AAAA"}, 4: {"pixel_key": ""}})
+    write_prints(b, tmp / "fp" / "b.jsonl", {2: {"phash": "not-hex-at-all!!"}})
+    code, result = join(tmp)
+    assert code == 1 and result["counts"]["UNKNOWN"] == 3
+    assert {row["reason"] for row in result["rows"]} == {
+        "not fingerprinted: a fingerprint line with a key missing or malformed"
+    }
+
+
+class Interrupted(Exception):
+    """What a requeue looks like to the task: the work stops part way."""
+
+
+def test_a_requeued_fingerprint_takes_up_the_chunks_it_finished(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    folder = shard(tmp_path, "carmlspine", 4)
+    manifest, _ = TOOL.read_manifest(folder)
+    paths = sorted(item.path for item in manifest.items)
+    seen: list[str] = []
+
+    def stopping_at(limit: int) -> Any:
+        def fake(task: tuple[str, str, str, str, str]) -> dict[str, str]:
+            if len(seen) == limit:
+                raise Interrupted
+            seen.append(task[1])
+            return {"record": "frame", "frame": task[1], "person": task[3], "source": task[4]}
+
+        return fake
+
+    monkeypatch.setattr(TOOL, "imaging", lambda: None)
+    monkeypatch.setattr(TOOL, "CHUNK_FRAMES", 5)
+    out = tmp_path / "fp" / "a.jsonl"
+    monkeypatch.setattr(TOOL, "fingerprint_frame", stopping_at(7))
+    with pytest.raises(Interrupted):
+        TOOL.fingerprint(folder, out, 1)
+    assert seen == paths[:7] and not out.exists()
+    seen.clear()
+    monkeypatch.setattr(TOOL, "fingerprint_frame", stopping_at(len(paths)))
+    answer = TOOL.fingerprint(folder, out, 1)
+    assert seen == paths[5:] and answer["chunks_resumed"] == 1 and answer["errors"] == 0
+    lines = out.read_text(encoding="utf-8").splitlines()
+    assert [json.loads(text)["frame"] for text in lines[1:]] == paths
+    assert not Path(f"{out}.parts").exists()
 
 
 # --- the grid scripts --------------------------------------------------------------------------

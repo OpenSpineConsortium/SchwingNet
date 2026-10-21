@@ -32,11 +32,16 @@ if [ -z "${PYDRV:-}" ]; then
 fi
 [ -f "$REPO/tools/leaks.py" ] || { echo "no $REPO/tools/leaks.py: is SCHWINGNET the checkout?"; exit 2; }
 [ -d "$DATA_ROOT" ] || { echo "no data root $DATA_ROOT"; exit 2; }
-RUN=$LEAKS_OUT/runs/$(date '+%Y%m%d-%H%M%S')
-mkdir -p "$RUN" "$LEAKS_OUT/fingerprints" "$REPO/grid/logs"
+mkdir -p "$LEAKS_OUT/runs" "$LEAKS_OUT/fingerprints" "$REPO/grid/logs"
+# A folder of its own for each run, even two started in one second, so one never overwrites the
+# shard list another's array is still reading.
+RUN=$(mktemp -d "$LEAKS_OUT/runs/$(date '+%Y%m%d-%H%M%S')-XXXX") || exit 2
 LIST=$RUN/shards.txt
-find "$DATA_ROOT" -mindepth 4 -maxdepth 4 -path '*/shards/*/MANIFEST.json' 2>/dev/null | sort \
-  | sed 's|/MANIFEST.json$||' > "$LIST"
+# -L and the trailing slash follow a data root or a source folder that is a symbolic link, as a
+# source kept on another volume would be; without them find lists none of its shards, and the
+# join, which checks only the list, would pass without having seen them.
+find -L "$DATA_ROOT/" -mindepth 4 -maxdepth 4 -path '*/shards/*/MANIFEST.json' 2>/dev/null \
+  | sed -e 's|/MANIFEST.json$||' -e 's|//*|/|g' | sort > "$LIST"
 count=$(wc -l < "$LIST" | tr -dc '0-9')
 if [ "$count" = 0 ]; then
   echo "refusing: no MANIFEST.json under $DATA_ROOT/*/shards/; nothing to check"; exit 64

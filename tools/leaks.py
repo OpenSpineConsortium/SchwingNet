@@ -18,7 +18,9 @@ between its 0.5 and 99.5 percentiles and hashes that (the pixel key), and from t
 a 32 x 32 grey image for the perceptual hash and a 64 x 64 one for NCC64, kept in the file as
 base64. One JSON line a frame after a header line that names the shard and the sha256 of its
 manifest; the same shard gives the same bytes, and a file already there for the same manifest with
-no failed frame is left as it is. A frame that cannot be read, does not match its hash or cannot be
+no failed frame is left as it is. The lines are written as they come, a chunk of 1,024 frames at a
+time, atomically, beside the file (<file>.parts/), so a task the partition requeues takes up the
+chunks it finished and decodes only the rest. A frame that cannot be read, does not match its hash or cannot be
 decoded is a line with its reason and no keys, and the step exits 2 after writing the file, so the
 join counts it: unknown is not clean.
 
@@ -39,14 +41,19 @@ standard library's profile for anything that imports it.
 import argparse
 import base64
 import dataclasses
+import gc
 import glob
 import hashlib
 import importlib.util
 import io
 import json
+import multiprocessing
 import os
+import re
+import shutil
 import sys
 import tempfile
+from array import array
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
@@ -70,12 +77,20 @@ def load_catalog_tool():
 
 catalog_tool = load_catalog_tool()
 
-FINGERPRINT_VERSION = 1
+# Version 2: the perceptual hash in exact integer arithmetic (schwingnet.leaks), so a file of
+# version 1, whose bits a node's floating point could flip, is taken again rather than joined.
+FINGERPRINT_VERSION = 2
 MANIFEST = "MANIFEST.json"
 HASH_REDUCTION = 32
 DECLARED = ROOT / "data" / "splits" / "aliases.json"
 LEAKS_JSON, LEAKS_MD = "LEAKS.json", "LEAKS.md"
 ROWS_IN_PAGE = 50
+# The frames of one partial file, written as each fills, so a task the reqp partition requeues
+# loses at most one chunk's work: about a minute of eight cores on the largest films.
+CHUNK_FRAMES = 1024
+REDUCTION_BYTES = 64 * 64
+KEYS = ("store_key", "pixel_key", "phash", "ncc64")
+PHASH_TEXT = re.compile(r"[0-9a-f]{16}")
 # The candidate pairs a join holds before it stops: about 2 GB of pairs and, at the NCC rate
 # measured in a container (grid/README.md, The leak checks), under an hour on eight cores.
 MAX_PAIRS = 20_000_000
@@ -198,19 +213,67 @@ def line(record):
     return json.dumps(record, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
 
 
-def fingerprint_rows(shard_dir, manifest, workers):
+def parts_folder(out, digest):
+    """Where a task keeps the chunks it has finished, by version and manifest, so a chunk of
+    another manifest or of an older fingerprint is never taken for this one's."""
+    return Path(f"{out}.parts") / f"v{FINGERPRINT_VERSION}-{digest}"
+
+
+def chunk_path(folder, number):
+    return Path(folder) / f"{number:06d}.jsonl"
+
+
+def finished_chunk(path, tasks):
+    """The rows of a chunk an earlier attempt finished, or None where it is to be done (again):
+    no file, a file that does not read, other frames than these, or a frame that failed, which
+    a requeue or a second run tries again."""
+    try:
+        rows = [json.loads(text) for text in Path(path).read_text(encoding="utf-8").splitlines()]
+    except (OSError, ValueError):
+        return None
+    if [row.get("frame") for row in rows] != [task[1] for task in tasks]:
+        return None
+    if any("error" in row for row in rows):
+        return None
+    return rows
+
+
+def computed(chunks, pending, pool):
+    """The rows of each pending chunk in turn, the frames spread over the pool's processes in
+    the manifest's order, which imap keeps."""
+    tasks = (task for number in pending for task in chunks[number])
+    rows = map(fingerprint_frame, tasks) if pool is None else pool.imap(fingerprint_frame, tasks, chunksize=16)
+    for number in pending:
+        yield [next(rows) for _ in chunks[number]]
+
+
+def fingerprint_rows(shard_dir, manifest, folder, workers):
+    """Every frame's line, in the manifest's order by path, and how many chunks an earlier
+    attempt had already finished. Each chunk is written atomically as it fills, so a requeued
+    task starts where its last finished chunk ends."""
     tasks = [(str(shard_dir), item.path, item.sha256, item.person, manifest.source)
              for item in sorted(manifest.items, key=lambda item: item.path)]
-    if workers <= 1:
-        return [fingerprint_frame(task) for task in tasks]
-    with ProcessPoolExecutor(max_workers=workers) as pool:
-        return list(pool.map(fingerprint_frame, tasks, chunksize=64))
+    chunks = [tasks[k:k + CHUNK_FRAMES] for k in range(0, len(tasks), CHUNK_FRAMES)]
+    done = {number: finished_chunk(chunk_path(folder, number), chunk) for number, chunk in enumerate(chunks)}
+    pending = [number for number, rows in done.items() if rows is None]
+    pool = None if workers <= 1 or not pending else multiprocessing.get_context("fork").Pool(workers)
+    try:
+        for number, rows in zip(pending, computed(chunks, pending, pool)):
+            write_atomically(chunk_path(folder, number), "".join(line(r) + "\n" for r in rows))
+            done[number] = rows
+    finally:
+        if pool is not None:
+            pool.terminate()
+            pool.join()
+    return [row for number in range(len(chunks)) for row in done[number]], len(chunks) - len(pending)
 
 
 def fingerprint(shard_dir, out, workers):
     """Write one shard's fingerprint file; the answer is a line for the log. numpy and Pillow are
     asked for first, so a step run in an environment without them stops with that reason and
-    never writes a file of frames that all failed to decode."""
+    never writes a file of frames that all failed to decode. The chunks a requeued attempt left
+    are taken up, and removed once the whole file is written with no failed frame; with one,
+    they stay, so the next run decodes only the chunks that failed."""
     try:
         imaging()
     except ImportError as error:
@@ -218,14 +281,19 @@ def fingerprint(shard_dir, out, workers):
     manifest, digest = read_manifest(shard_dir)
     if up_to_date(out, digest):
         return {"shard": manifest.name, "outcome": "already there", "frames": len(manifest.items), "errors": 0}
-    rows = fingerprint_rows(shard_dir, manifest, workers)
+    folder = parts_folder(out, digest)
+    folder.mkdir(parents=True, exist_ok=True)
+    rows, resumed = fingerprint_rows(shard_dir, manifest, folder, workers)
     errors = sum(1 for row in rows if "error" in row)
     header = {"record": "shard", "shard": manifest.name, "source": manifest.source,
               "kind": manifest.kind.value, "supersedes": manifest.supersedes,
               "manifest_sha256": digest, "fingerprint_version": FINGERPRINT_VERSION,
               "frames": len(rows), "errors": errors}
     write_atomically(out, "".join(line(r) + "\n" for r in [header, *rows]))
-    return {"shard": manifest.name, "outcome": "written", "frames": len(rows), "errors": errors}
+    if not errors:
+        shutil.rmtree(folder.parent, ignore_errors=True)
+    return {"shard": manifest.name, "outcome": "written", "frames": len(rows), "errors": errors,
+            "chunks_resumed": resumed}
 
 
 # --- join --------------------------------------------------------------------------------------
@@ -240,20 +308,30 @@ def expand(patterns):
     return sorted(files)
 
 
-def read_file(path):
-    """A fingerprint file's header and frame lines; a LeakError where it cannot be read whole."""
+def read_file(path, keep):
+    """A fingerprint file's header and its frame lines, each frame line passed through keep as it
+    is read, so a file's text is never held whole; a LeakError where it cannot be read whole."""
     try:
         with open(path, encoding="utf-8") as handle:
-            records = [json.loads(text) for text in handle]
+            header = json.loads(handle.readline() or "null")
+            named = isinstance(header, dict) and all(isinstance(header.get(k), str) for k in ("shard", "manifest_sha256"))
+            if not named or header.get("record") != "shard":
+                raise LeakError(f"{path}: no header line")
+            frames = [keep(frame_line(text)) for text in handle]
     except (OSError, ValueError) as error:
         raise LeakError(f"{path}: not a readable fingerprint file ({type(error).__name__})") from error
-    if not records or records[0].get("record") != "shard":
-        raise LeakError(f"{path}: no header line")
-    header, frames = records[0], records[1:]
     if header.get("fingerprint_version") != FINGERPRINT_VERSION or len(frames) != header.get("frames"):
         raise LeakError(f"{path}: version {header.get('fingerprint_version')}, {len(frames)} of"
                         f" {header.get('frames')} frames")
     return header, frames
+
+
+def frame_line(text):
+    """One frame line, which names at least the frame, its person and its source."""
+    row = json.loads(text)
+    if not isinstance(row, dict) or not all(isinstance(row.get(k), str) for k in ("frame", "person", "source")):
+        raise ValueError("a frame line without its frame, person and source")
+    return row
 
 
 class Inputs:
@@ -261,17 +339,42 @@ class Inputs:
 
     def __init__(self):
         self.headers, self.frames, self.problems, self.dropped = {}, {}, [], []
+        # Every frame's 64 x 64 reduction, end to end in one buffer, a frame's row naming its
+        # slot: about 4 KB a frame where the base64 text and its object were three times that,
+        # and one object the scoring processes read without writing to its pages.
+        self.reductions = bytearray()
+
+    def kept(self, row):
+        """A frame line as the join holds it: its reduction moved into the buffer, or, where a
+        key is missing or malformed, a line with that reason and no keys, which the checks count
+        as a frame never fingerprinted, since unknown is not clean."""
+        if "error" in row:
+            return row
+        try:
+            reduction = base64.b64decode(row.get("ncc64", ""), validate=True)
+        except ValueError:
+            reduction = b""
+        whole = all(isinstance(row.get(key), str) for key in KEYS)
+        if not whole or len(reduction) != REDUCTION_BYTES or not PHASH_TEXT.fullmatch(row["phash"]):
+            bare = {key: value for key, value in row.items() if key not in KEYS}
+            return {**bare, "error": "a fingerprint line with a key missing or malformed"}
+        slot = len(self.reductions) // REDUCTION_BYTES
+        self.reductions += reduction
+        return {**{key: value for key, value in row.items() if key != "ncc64"}, "slot": slot}
 
     def add(self, path):
+        start = len(self.reductions)
         try:
-            header, frames = read_file(path)
+            header, frames = read_file(path, self.kept)
         except LeakError as error:
             self.problems.append(str(error))
+            del self.reductions[start:]
             return
         shard = header["shard"]
         known = self.headers.get(shard)
         if known and known["manifest_sha256"] != header["manifest_sha256"]:
             self.problems.append(f"{path}: a second fingerprint of {shard} for another manifest")
+            del self.reductions[start:]
             return
         self.headers[shard] = {**header, "file": str(path)}
         self.frames[shard] = frames
@@ -305,13 +408,15 @@ def check_expected(inputs, listing):
 
 
 def load_declared(path):
+    """The person classes and the source classes the declaration file joins, kept as two maps,
+    so a person key spelled like a source can never join or split a source."""
     try:
         declared = leaks.DeclaredAliases.model_validate(json.loads(Path(path).read_text(encoding="utf-8")))
     except (OSError, ValueError) as error:
         raise LeakError(f"{path}: not a readable declaration ({type(error).__name__})") from error
-    groups = [tuple(a.persons) for a in declared.persons]
-    groups += [tuple("source:" + s for s in a.sources) for a in declared.sources]
-    return leaks.alias_classes(tuple(groups))
+    persons = leaks.alias_classes(tuple(tuple(a.persons) for a in declared.persons))
+    sources = leaks.alias_classes(tuple(tuple(a.sources) for a in declared.sources))
+    return persons, sources
 
 
 class Prints:
@@ -327,41 +432,70 @@ class Prints:
 
     def add(self, shard, number, row, part):
         frame = f"{shard}/{row['frame']}"
-        if "error" in row or not row.get("phash"):
-            self.unknown.append((frame, row["person"], row["source"], row.get("error", "no keys")))
+        if "error" in row:
+            self.unknown.append((frame, row["person"], row["source"], row["error"]))
             return
         self.prints.append(leaks.Print(frame, row["person"], part, row["source"], row["store_key"],
                                        row["pixel_key"], int(row["phash"], 16)))
-        self.where.append((shard, number))
+        self.where.append((shard, row["slot"]))
 
 
-_REDUCTIONS = {}
+_SHARED = {}
+SCORE_CHUNK = 4096
 
 
 def score_chunk(chunk):
-    """The scores of some pairs, from the reductions the parent process loaded before forking."""
-    rows = []
-    for i, j, distance in chunk:
-        (a, of_a), (b, of_b) = _REDUCTIONS[i], _REDUCTIONS[j]
-        rows.append((i, j, distance, leaks.ncc_with(a, b, of_a, of_b)))
-    return rows
+    """The NCC64 of some pairs of slots, from the buffer and the moments the parent process set
+    before forking; reading them copies none of their pages into this process."""
+    view, sums, squares = memoryview(_SHARED["reductions"]), _SHARED["sums"], _SHARED["squares"]
+    scores = []
+    for a, b in chunk:
+        first = bytes(view[a * REDUCTION_BYTES:(a + 1) * REDUCTION_BYTES])
+        second = bytes(view[b * REDUCTION_BYTES:(b + 1) * REDUCTION_BYTES])
+        scores.append(leaks.ncc_with(first, second, (sums[a], squares[a]), (sums[b], squares[b])))
+    view.release()
+    return scores
 
 
-def score(prints, inputs, pairs, workers):
-    """The pairs with their hash distance and NCC64, reading only the reductions they need; the
-    NCC is the gated rule's, run in as many processes as the join is given."""
-    _REDUCTIONS.clear()
-    for i in sorted({i for i, _, _ in pairs} | {j for _, j, _ in pairs}):
-        shard, number = prints.where[i]
-        reduction = base64.b64decode(inputs.frames[shard][number]["ncc64"], validate=True)
-        _REDUCTIONS[i] = (reduction, leaks.moments(reduction))
-    chunks = [pairs[k:k + 4096] for k in range(0, len(pairs), 4096)]
+def share_moments(inputs, slots):
+    """The sum and the sum of squares of each reduction the pairs need, in two flat arrays the
+    forked processes only read."""
+    count = len(inputs.reductions) // REDUCTION_BYTES
+    sums, squares = array("q", bytes(8 * count)), array("q", bytes(8 * count))
+    view = memoryview(inputs.reductions)
+    for slot in slots:
+        sums[slot], squares[slot] = leaks.moments(bytes(view[slot * REDUCTION_BYTES:(slot + 1) * REDUCTION_BYTES]))
+    view.release()
+    _SHARED.update(reductions=inputs.reductions, sums=sums, squares=squares)
+
+
+def scored_chunks(chunks, workers):
+    """The scores of each chunk in turn. The pool forks, so the buffer is shared with it, and
+    the collector is frozen first, so a child's collection never writes to the parent's pages."""
     if workers <= 1 or len(chunks) <= 1:
-        scored = [row for chunk in chunks for row in score_chunk(chunk)]
-    else:
-        with ProcessPoolExecutor(max_workers=workers) as pool:
-            scored = [row for rows in pool.map(score_chunk, chunks) for row in rows]
-    return tuple(leaks.Scored(*row) for row in scored)
+        yield from map(score_chunk, chunks)
+        return
+    gc.freeze()
+    try:
+        with ProcessPoolExecutor(max_workers=workers, mp_context=multiprocessing.get_context("fork")) as pool:
+            yield from pool.map(score_chunk, chunks)
+    finally:
+        gc.unfreeze()
+
+
+def near_duplicates(prints, inputs, pairs, settings):
+    """CHK-6's rows: each chunk of crossing pairs scored by NCC64 and handed to the gated rule as
+    it comes, so the scores of twenty million pairs are never held at once."""
+    slot_of = [slot for _, slot in prints.where]
+    share_moments(inputs, sorted({slot_of[i] for i, _, _ in pairs} | {slot_of[j] for _, j, _ in pairs}))
+    chunks = [pairs[k:k + SCORE_CHUNK] for k in range(0, len(pairs), SCORE_CHUNK)]
+    slot_chunks = [[(slot_of[i], slot_of[j]) for i, j, _ in chunk] for chunk in chunks]
+    every, rows = tuple(prints.prints), []
+    for chunk, scores in zip(chunks, scored_chunks(slot_chunks, settings["workers"])):
+        scored = tuple(leaks.Scored(i, j, d, ncc) for (i, j, d), ncc in zip(chunk, scores))
+        rows.extend(leaks.near_duplicates(every, scored, settings["persons"]))
+    _SHARED.clear()
+    return tuple(rows)
 
 
 def probes_of(prints, new):
@@ -385,7 +519,7 @@ def crossing_pairs(prints, settings):
     pairs = leaks.candidate_pairs(codes, settings["distance"], probes_of(prints, settings["new"]),
                                   settings["max_pairs"])
     over = len(pairs) > settings["max_pairs"]
-    return leaks.crossing(tuple(prints.prints), pairs, settings["classes"]), len(pairs), over
+    return leaks.crossing(tuple(prints.prints), pairs, settings["persons"]), len(pairs), over
 
 
 def run_checks(prints, inputs, settings):
@@ -395,9 +529,8 @@ def run_checks(prints, inputs, settings):
                                " within the distance, so CHK-6 did not finish; a smaller --distance or a"
                                " larger --max-pairs, decided by a person, runs it again")
         crossing = ()
-    scored = score(prints, inputs, crossing, settings["workers"])
-    findings = (leaks.near_duplicates(tuple(prints.prints), scored, settings["classes"])
-                + leaks.shared_keys(tuple(prints.prints), settings["classes"])
+    findings = (near_duplicates(prints, inputs, crossing, settings)
+                + leaks.shared_keys(tuple(prints.prints), settings["persons"], settings["sources"])
                 + leaks.unfingerprinted(tuple(prints.unknown)))
     return findings, {"candidate_pairs": candidates, "crossing_pairs": len(crossing)}
 
@@ -455,7 +588,8 @@ def join(args):
     if args.expect:
         check_expected(inputs, args.expect)
     test_persons, rule, _ = catalog_tool.load_split(args.test_persons, args.rule)
-    settings = {"classes": load_declared(args.declared), "distance": args.distance,
+    persons, sources = load_declared(args.declared)
+    settings = {"persons": persons, "sources": sources, "distance": args.distance,
                 "new": new_shard_name(args.new), "max_pairs": args.max_pairs, "workers": args.workers}
     if settings["new"] is not None and settings["new"] not in inputs.headers:
         inputs.problems.append(f"the new shard {settings['new']} has no fingerprint among the inputs")

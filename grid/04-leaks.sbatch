@@ -13,7 +13,9 @@
 # writes the shard list and submits this array and the join after it; the task reads line
 # SLURM_ARRAY_TASK_ID + 1 of LEAKS_LIST. The file lands in LEAKS_OUT/fingerprints/ under the
 # shard's source and name, and a file already there for the same manifest with no failed frame
-# is kept, so a requeued task or a second run redoes nothing. A frame that could not be
+# is kept, so a second run redoes nothing; the frames are written a chunk of 1,024 at a time
+# beside it (<file>.parts/), so a task the partition requeues decodes only the chunks it had not
+# finished. A frame that could not be
 # fingerprinted makes the task exit 2 after writing the file; the join, which runs afterany,
 # counts it as a failure, since unknown is not clean. PYDRV must hold numpy and Pillow (the
 # train-cpu environment).
