@@ -1,0 +1,14 @@
+{
+  "source": "cathaction",
+  "identity_level": "study",
+  "person_key_rule": "cathaction:<case as grid/banks/cathaction.json derives it>; one case is one study",
+  "access": "Hugging Face airvlab/CathAction; licence to confirm on the page",
+  "modality": "rf",
+  "device_class": "fixed_c_arm",
+  "regions": [
+    "thoracic"
+  ],
+  "grid_root": "/rs/rs_grp_oschome/go2432/data/cathaction",
+  "shards": [],
+  "notes": "about 500,000 fluoroscopy frames of catheterisation, animal and phantom, with live instruments; an exposure, noise and device source, not anatomy; the person is the recording; the raw copy is /rs/rs_grp_oschome/go2432/data/cathaction/raw (grid/fetch-xray.json) and the bank /rs/rs_grp_oschome/go2432/data/cathaction/bank; no shard until the chain's first run"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "ipcai2025_xray_ct",
+  "name": "IPCAI 2025 paired X-ray and CT set (Zenodo 15753063)",
+  "group": "projections",
+  "what": "real calibrated X-ray images with 5 CT scans, 6.7 GB, from 'Automatic multi-view X-ray/CT registration using bone substructure contours'; the anatomy, pelvis or spine, to confirm on the page",
+  "level_truth": "from the CT by the registration, if spine",
+  "reach": "get",
+  "status": "found by the sweep of 2026-10-21; not fetched; anatomy to confirm; if spine or pelvis, one more real C-arm set with a registered CT, the COBRA and DeepFluoro kind, from a fourth device",
+  "licence": "to confirm on the page",
+  "link": "https://zenodo.org/records/15753063",
+  "how_to_get": [
+    "Open https://zenodo.org/records/15753063 and read its licence line, the file list and what anatomy the images show.",
+    "Fetch as a Slurm job on the owner's word, never on the login node: python3 data/reproduce/reacquire/reacquire.py zenodo-get --record 15753063 --dest DIR."
+  ],
+  "grid_path": null,
+  "counts": {
+    "ct_scans": 5,
+    "size_gb": 6.7
+  },
+  "measured": {},
+  "record": "docs/research/xray-datasets-missing.md (2026-10-21)"
+}

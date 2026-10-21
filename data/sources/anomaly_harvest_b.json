@@ -5,7 +5,7 @@
   "what": "144 CT sources screened for transitional spines: 39 IDC collections (3,499 usable CTs), AbdomenAtlas (7,649), FDG-PET-CT (900), AMOS22 (723), NLST pilot (500) and more",
   "level_truth": "counted by the census pipeline",
   "reach": "held",
-  "status": "56 on disk, 23 planned, 7 gated (below), 58 excluded; the rare-class source in 3D",
+  "status": "56 on disk, 23 planned, 7 gated (below), 58 excluded; the rare-class source in 3D; since 2026-10-21 every planned collection has a registry record of its own under the manifest's id, and the gated ones had theirs already",
   "licence": "varies by collection",
   "link": null,
   "how_to_get": [],

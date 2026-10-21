@@ -1,0 +1,22 @@
+{
+  "id": "open_i_chest",
+  "name": "Open-i Indiana chest collection",
+  "group": "films",
+  "what": "7,470 chest radiographs of 3,955 studies with reports, frontal and lateral pairs (the Indiana University collection on Open-i)",
+  "level_truth": "none; the thoracic spine in a lateral chest film",
+  "reach": "get",
+  "status": "found by the sweep of 2026-10-21; not fetched; open, no agreement; small but frictionless lateral chest films for a thoracic-lateral probe before the gated sets arrive",
+  "licence": "open, no agreement (the Open-i FAQ); to confirm on the page",
+  "link": "https://openi.nlm.nih.gov/faq",
+  "how_to_get": [
+    "Read the download route on https://openi.nlm.nih.gov/faq.",
+    "Fetch as a Slurm job on the owner's word, never on the login node: python3 data/reproduce/reacquire/reacquire.py http-get --url U --dest FILE for each archive address the page gives."
+  ],
+  "grid_path": null,
+  "counts": {
+    "radiographs": 7470,
+    "studies": 3955
+  },
+  "measured": {},
+  "record": "docs/research/xray-datasets-missing.md (2026-10-21)"
+}

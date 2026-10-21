@@ -1,0 +1,22 @@
+{
+  "id": "mendeley_ddh_hips",
+  "name": "Mendeley DDH hip sets (jf3pv98m9g and 4gvcb6gmh2)",
+  "group": "films",
+  "what": "infant and child AP pelvis radiographs with developmental dysplasia labels: jf3pv98m9g (Jordan, 354 subjects) and 4gvcb6gmh2 (AV-DDH, 2,417 infant hip films, updated 2026-03); the lumbosacral junction in field at low exposure",
+  "level_truth": "none; pediatric pelvis",
+  "reach": "get",
+  "status": "found by the sweep of 2026-10-21; not fetched; the only sizeable pediatric pelvic film source found",
+  "licence": "CC BY 4.0 (to confirm on the page)",
+  "link": "https://data.mendeley.com/datasets/jf3pv98m9g",
+  "how_to_get": [
+    "Open https://data.mendeley.com/datasets/jf3pv98m9g and https://data.mendeley.com/datasets/4gvcb6gmh2 and read each licence line, version and file list.",
+    "Fetch each as a Slurm job on the owner's word, never on the login node: python3 data/reproduce/reacquire/reacquire.py http-get --url U --dest FILE, U being the public-files address the page gives."
+  ],
+  "grid_path": null,
+  "counts": {
+    "jf3pv98m9g_subjects": 354,
+    "av_ddh_films": 2417
+  },
+  "measured": {},
+  "record": "docs/research/xray-datasets-missing.md (2026-10-21)"
+}

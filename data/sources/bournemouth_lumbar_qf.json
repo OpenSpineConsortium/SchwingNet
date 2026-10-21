@@ -5,7 +5,7 @@
   "what": "weight-bearing and recumbent L2 to S1 flexion and extension cine of 127 subjects at 15 fps, 60 degrees at 6 degrees a second; only per-frame angles are public on OSF",
   "level_truth": "lumbar, if corner templates exist as they do for the cervical set",
   "reach": "get",
-  "status": "the only confirmed lumbar cine; asked for in request 1",
+  "status": "the only confirmed lumbar cine; asked for in request 1; the letter (request 1) was forwarded to ckaching.cheung@polyu.edu.hk on 2026-10-21 03:57 UTC",
   "licence": "not recorded (OSF holds derived tables only)",
   "link": "https://osf.io/a27py/",
   "how_to_get": [

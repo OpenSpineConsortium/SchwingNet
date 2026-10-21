@@ -1,0 +1,28 @@
+{
+  "id": "cathaction",
+  "raw": "/rs/rs_grp_oschome/go2432/data/cathaction/raw",
+  "bank": "/rs/rs_grp_oschome/go2432/data/cathaction/bank",
+  "images": [
+    "to confirm: the frames' glob after the two zips are unpacked"
+  ],
+  "format": "to confirm: png or jpg",
+  "person": {
+    "regex": "to confirm: the video or recording id in the path, as (?P<case>...)"
+  },
+  "view": {
+    "lat_from_ap_deg": null,
+    "gantry_deg": null
+  },
+  "device": {
+    "make": null,
+    "model": null,
+    "detector": null
+  },
+  "modality": "rf",
+  "device_class": "fixed_c_arm",
+  "split": "train",
+  "labels": null,
+  "synthetic": false,
+  "px_mm": null,
+  "notes": "about 500,000 fluoroscopy frames of catheterisation, animal and phantom, with live instruments; an exposure, noise and device source, not anatomy; the person is the recording"
+}

@@ -1,0 +1,324 @@
+{
+  "schema": 1,
+  "about": "The open X-ray datasets of docs/research/xray-datasets-missing.md, one entry per set (LUMOS is fetched by grid/run-platform-fetch.sh as zenodo_lumos, record 18173664, whose landing grid/banks/lumos.json reads), read by tools/fetch_sources.py inside grid/01-fetch.sbatch. Every entry lands at <data_root>/<id>/raw, the folder the registry entry data/registry/<id>.json names as the source's own; the state of each helper goes to <data_root>/<id>/fetch-state and the record of the run to <data_root>/<id>/FETCH.json. A field spelled null is not known; 'confirm' lists what a person reads on the page before the first run, and a route 'manual' is skipped with one printed line until the entry carries its link. The checksums the helper verifies itself (Zenodo's md5 per file, Hugging Face's LFS sha256) are not repeated here; 'checksum' holds a hash only where a page states one for a plain URL.",
+  "data_root": "/rs/rs_grp_oschome/go2432/data",
+  "reacquire": "~/spinesurg-ct-nnunet/data_platform/reacquire/reacquire.py",
+  "open": [
+    {
+      "id": "vertxnet_nhanes2_labels",
+      "route": "zenodo",
+      "source": "the Zenodo record named in the Data availability of doi:10.1038/s41598-023-49923-3 (Mo, Papiez, Chen, Scientific Reports 2024): 'NHANES II Spinal X-ray with Extra Labels For Reference Vertebral Bodies (C2, S1)', version 1, 2023",
+      "record": null,
+      "dest": "/rs/rs_grp_oschome/go2432/data/vertxnet_nhanes2_labels/raw",
+      "size_gb": null,
+      "checksum": {
+        "md5": null,
+        "sha256": null
+      },
+      "licence": "to confirm on the Zenodo page",
+      "confirm": [
+        "the Zenodo record number: open the article's Data availability statement, copy the number into 'record' here; the job prints 'record number needed' and skips until then",
+        "the licence on the record",
+        "whether the record holds labels only (landmark files) or the NHANES II films too; the recipe grid/banks/vertxnet_nhanes2_labels.json expects labels only and the films from the grid's own NHANES II copy"
+      ]
+    },
+    {
+      "id": "verse_2d_projections",
+      "route": "zenodo",
+      "source": "https://zenodo.org/records/8115942 (Annotating ambiguous images: 2D projections of VerSe vertebrae with soft labels, 2023)",
+      "record": 8115942,
+      "dest": "/rs/rs_grp_oschome/go2432/data/verse_2d_projections/raw",
+      "size_gb": null,
+      "checksum": {
+        "md5": "the helper reads each file's md5 from the record"
+      },
+      "licence": "to confirm on the Zenodo page (VerSe itself is CC BY-SA 4.0)",
+      "confirm": [
+        "the licence on the record",
+        "the count of projections and the image format",
+        "that the VerSe case id is readable from each file's name, which the recipe's person regex needs"
+      ]
+    },
+    {
+      "id": "pengwin_task2_xrays",
+      "route": "zenodo",
+      "source": "https://doi.org/10.5281/zenodo.10913195 (PENGWIN 2024 Task 2: 50,000 DeepDRR synthetic X-rays with fragment masks from 100 pelvic-fracture CTs)",
+      "record": 10913195,
+      "fallback": {
+        "route": "hf",
+        "repo": "MedOtter/PENGWIN_Task2",
+        "repo_type": "dataset"
+      },
+      "dest": "/rs/rs_grp_oschome/go2432/data/pengwin_task2_xrays/raw",
+      "size_gb": null,
+      "checksum": {
+        "md5": "the helper reads each file's md5 from the record"
+      },
+      "licence": "CC BY, to confirm on the Zenodo page and the challenge's terms at https://pengwin.grand-challenge.org/",
+      "confirm": [
+        "the licence on the record and the challenge's terms",
+        "the size of the record, since 50,000 images is a large record",
+        "the image format (the recipe expects TIFF and stops until it is confirmed)",
+        "that the Hugging Face mirror MedOtter/PENGWIN_Task2 holds the same files, used only where Zenodo fails"
+      ]
+    },
+    {
+      "id": "fraiwan_spine_xray",
+      "route": "mendeley",
+      "source": "https://data.mendeley.com/datasets/xkt857dsxk (Fraiwan et al. 2022: 338 subjects, scoliosis, spondylolisthesis and normal spine radiographs)",
+      "mendeley_id": "xkt857dsxk",
+      "version": 1,
+      "api": "https://data.mendeley.com/public-api/datasets/xkt857dsxk/files?folder_id=root&version=1",
+      "dest": "/rs/rs_grp_oschome/go2432/data/fraiwan_spine_xray/raw",
+      "size_gb": null,
+      "checksum": {
+        "sha256": "Mendeley's public API lists a sha256 per file (content_details.sha256), which the job hands to http-get"
+      },
+      "licence": "CC BY 4.0 (Mendeley's default), to confirm on the page",
+      "confirm": [
+        "the licence on the page",
+        "the version number (1 here): the page's latest version",
+        "that the public API at 'api' answers a JSON list of files with content_details.download_url; where it does not, open the page, copy each file's download link into 'urls' and set the route to 'http'",
+        "the views (AP, lateral, both) and the image format, for the recipe"
+      ]
+    },
+    {
+      "id": "canine_thoracic_vhs",
+      "route": "mendeley",
+      "source": "https://data.mendeley.com/datasets/ktx4cj55pn (152 lateral thoracic radiographs of dogs for the vertebral heart size)",
+      "mendeley_id": "ktx4cj55pn",
+      "version": 1,
+      "api": "https://data.mendeley.com/public-api/datasets/ktx4cj55pn/files?folder_id=root&version=1",
+      "dest": "/rs/rs_grp_oschome/go2432/data/canine_thoracic_vhs/raw",
+      "size_gb": null,
+      "checksum": {
+        "sha256": "Mendeley's public API lists a sha256 per file (content_details.sha256), which the job hands to http-get"
+      },
+      "licence": "CC BY 4.0, to confirm on the page",
+      "confirm": [
+        "the licence on the page",
+        "the version number (1 here): the page's latest version",
+        "that the public API at 'api' answers a JSON list of files; else copy the download links into 'urls' and set the route to 'http'",
+        "the image format and whether one file is one dog"
+      ]
+    },
+    {
+      "id": "ipcai2025_xray_ct",
+      "route": "zenodo",
+      "source": "https://zenodo.org/records/15753063 (IPCAI 2025, 'Automatic multi-view X-ray/CT registration using bone substructure contours': real calibrated X-rays with 5 CT scans)",
+      "record": 15753063,
+      "dest": "/rs/rs_grp_oschome/go2432/data/ipcai2025_xray_ct/raw",
+      "size_gb": 6.7,
+      "checksum": {
+        "md5": "the helper reads each file's md5 from the record"
+      },
+      "licence": "to confirm on the Zenodo page",
+      "confirm": [
+        "the licence on the record",
+        "the anatomy (pelvis or spine) and the device, which decide the registry entry's regions and device class",
+        "the image format and whether the X-rays are files or arrays inside a container"
+      ]
+    },
+    {
+      "id": "open_i_chest",
+      "route": "http",
+      "source": "https://openi.nlm.nih.gov/faq (the Indiana chest collection: 7,470 frontal and lateral films with reports)",
+      "urls": [
+        "https://openi.nlm.nih.gov/imgs/collections/NLMCXR_png.tgz",
+        "https://openi.nlm.nih.gov/imgs/collections/NLMCXR_reports.tgz"
+      ],
+      "dest": "/rs/rs_grp_oschome/go2432/data/open_i_chest/raw",
+      "size_gb": null,
+      "checksum": {
+        "md5": null,
+        "sha256": null
+      },
+      "licence": "open, no agreement (Open-i's FAQ); to confirm on the page",
+      "confirm": [
+        "the two bulk-download URLs: they are Open-i's documented archive names and are to confirm on the FAQ page before the run",
+        "the size of NLMCXR_png.tgz",
+        "the licence line on the FAQ"
+      ]
+    },
+    {
+      "id": "fracatlas",
+      "route": "hf",
+      "source": "https://huggingface.co/datasets/yh0701/FracAtlas_dataset (a mirror of FracAtlas, Abedeen 2023; the original is https://figshare.com/articles/dataset/The_dataset/22363012)",
+      "repo": "yh0701/FracAtlas_dataset",
+      "repo_type": "dataset",
+      "dest": "/rs/rs_grp_oschome/go2432/data/fracatlas/raw",
+      "size_gb": null,
+      "checksum": {
+        "sha256": "the helper verifies each LFS file's sha256 from the repository's tree"
+      },
+      "licence": "CC BY 4.0 (the paper); to confirm on the mirror's page",
+      "confirm": [
+        "that the mirror is complete and unaltered against the figshare file; where it is not, the figshare download link goes into 'urls' and the route becomes 'http'",
+        "the licence on the mirror's page",
+        "the image format and the folder layout (hand, leg, hip, shoulder), for the recipe"
+      ]
+    },
+    {
+      "id": "vfss2022",
+      "route": "manual",
+      "source": "https://service.tib.eu/ldmservice/dataset/vfss2022-dataset (VFSS2022, doi:10.57702/w1ye2nim: 440 videofluoroscopic swallow frames with masks)",
+      "urls": [],
+      "dest": "/rs/rs_grp_oschome/go2432/data/vfss2022/raw",
+      "size_gb": null,
+      "checksum": {
+        "md5": null,
+        "sha256": null
+      },
+      "licence": "to confirm on the page",
+      "confirm": [
+        "manual: open the page, copy the download link of each file into 'urls' and set the route to 'http'",
+        "the licence on the page"
+      ]
+    },
+    {
+      "id": "cathaction",
+      "route": "hf",
+      "source": "https://huggingface.co/datasets/airvlab/CathAction (two zips, 4.35 GB and 9.88 GB; about 500,000 fluoroscopy frames of catheterisation, animal and phantom)",
+      "repo": "airvlab/CathAction",
+      "repo_type": "dataset",
+      "dest": "/rs/rs_grp_oschome/go2432/data/cathaction/raw",
+      "size_gb": 14.2,
+      "checksum": {
+        "sha256": "the helper verifies each LFS file's sha256 from the repository's tree"
+      },
+      "licence": "to confirm on the page",
+      "confirm": [
+        "the licence on the page",
+        "whether the repository is gated (a gated one needs HF_TOKEN in the job's environment, which this chain does not pass)",
+        "that 14.2 GB plus the unpacked frames fit: df -h /rs/rs_grp_oschome"
+      ]
+    },
+    {
+      "id": "nih_chestxray14",
+      "route": "manual",
+      "source": "https://nihcc.app.box.com/v/ChestXray-NIHCC (NIH ChestX-ray14: 112,120 frontal chest films in 12 archives)",
+      "dest": "/rs/rs_grp_oschome/go2432/data/nih_chestxray14/raw",
+      "size_gb": 42,
+      "checksum": {
+        "md5": null,
+        "sha256": null
+      },
+      "licence": "open (NIH Clinical Center); the Box page's terms to confirm",
+      "confirm": [
+        "manual: open https://nihcc.app.box.com/v/ChestXray-NIHCC, copy the twelve URLs and their md5s from its batch_download_zips.py into 'urls', 'names' and 'checksums' here and set the route to 'http'; the twelve under 'urls_unverified' are from memory, and http-get would keep an error page as a tar, so nothing is fetched until then",
+        "that 42 GB is there: df -h /rs/rs_grp_oschome",
+        "the Box page's terms; Data_Entry_2017.csv (the patient ids per image) is a separate file on the page and is fetched by hand into raw/ if the recipe is to key persons by it"
+      ],
+      "urls_unverified": [
+        "https://nihcc.box.com/shared/static/vfk49d74nhbxq3nqjg0900w5nvkorp5c.gz",
+        "https://nihcc.box.com/shared/static/i28rlmbvmfjbl8p2n3ril0pq6sqk5pg3.gz",
+        "https://nihcc.box.com/shared/static/f1t00wrtdk94satdfb9olcolqx20z2jp.gz",
+        "https://nihcc.box.com/shared/static/0aowwzs5lhjrceb3qp67ahp0rd1l1etg.gz",
+        "https://nihcc.box.com/shared/static/v5e3goj22zr6h8tzualxfsqlqaygfbsn.gz",
+        "https://nihcc.box.com/shared/static/asi7ikud9jwnkrnkj99jnpfkjdes7l6l.gz",
+        "https://nihcc.box.com/shared/static/jn1b4mw4n6lnh74ovmcjb8y48h8xj07n.gz",
+        "https://nihcc.box.com/shared/static/tvpxmn7qyrgl0w8wfh9kqfjskv6nmm1j.gz",
+        "https://nihcc.box.com/shared/static/upyy3ml7qdumlgk2rfcvlb9k6gvqq2pj.gz",
+        "https://nihcc.box.com/shared/static/l6nilvfa9cg3s28tqv1qc1olm3gnz54p.gz",
+        "https://nihcc.box.com/shared/static/hhq8fkdgvcari67vfhs7ppg2w6ni4jze.gz",
+        "https://nihcc.box.com/shared/static/ioqwiy20ihqwyr8pf4c24eazhh281pbu.gz"
+      ]
+    },
+    {
+      "id": "kaggle_scoliosis_yolov5",
+      "route": "kaggle",
+      "source": "https://www.kaggle.com/datasets/salmankey/scoliosis-yolov5-annotated-spine-x-ray-dataset",
+      "kaggle": "salmankey/scoliosis-yolov5-annotated-spine-x-ray-dataset",
+      "dest": "/rs/rs_grp_oschome/go2432/data/kaggle_scoliosis_yolov5/raw",
+      "size_gb": null,
+      "checksum": {
+        "md5": null,
+        "sha256": null
+      },
+      "licence": "on the Kaggle page; to confirm",
+      "token_file": "~/.fluorocap/credentials.env",
+      "confirm": [
+        "the licence and the stated origin of the films on the page",
+        "hash-check against the AASCE copy on the grid before use: compare the sha256 list in FETCH.json with the films under /rs/rs_grp_oschome/go2432/data/thoracic_xr/mirror_zlinzju_ke30_u7_AASCE2019 and /rs/rs_grp_oschome/go2432/data/aasce2019_boostnet/raw/aasce; a match means no new person, and the bank stage is then skipped for this id",
+        "that ~/.fluorocap/credentials.env is mode 0600 and holds KAGGLE_API_TOKEN=<token> (the token the RSNA 2022 fetch used); the job reads it and never prints it"
+      ]
+    },
+    {
+      "id": "isbi2015_cephalograms",
+      "route": "manual",
+      "source": "the ISBI 2015 Grand Challenge cephalometric set: 400 lateral cephalograms with 19 landmarks (Wang et al.); the open download link is to confirm (the challenge site moved after 2015; the figshare copy doi:10.6084/m9.figshare.3471321 is one candidate)",
+      "urls": [],
+      "dest": "/rs/rs_grp_oschome/go2432/data/isbi2015_cephalograms/raw",
+      "size_gb": null,
+      "checksum": {
+        "md5": null,
+        "sha256": null
+      },
+      "licence": "to confirm",
+      "confirm": [
+        "manual: find the current open link of the 400-film set, copy it into 'urls' and set the route to 'http'",
+        "the licence and the citation terms",
+        "the image format (BMP in the original release), for the recipe"
+      ]
+    }
+  ],
+  "credentialed": [
+    {
+      "id": "vindr_cxr",
+      "route": "physionet",
+      "source": "https://physionet.org/content/vindr-cxr/1.0.0/ (18,000 adult frontal chest radiographs, DICOM, radiologist boxes)",
+      "url": "https://physionet.org/files/vindr-cxr/1.0.0/",
+      "dest": "/rs/rs_grp_oschome/go2432/data/vindr_cxr/raw",
+      "size_gb": 180,
+      "checksum": {
+        "sha256": "PhysioNet publishes SHA256SUMS.txt in the project folder, fetched with the files"
+      },
+      "licence": "PhysioNet Credentialed Health Data License 1.5.0: CITI training, the PhysioNet credential and this project's data use agreement signed on the page",
+      "credentialed": true,
+      "confirm": [
+        "the data use agreement for vindr-cxr is signed under the owner's PhysioNet account (the VinDr-SpineXR agreement does not cover it)",
+        "~/.netrc holds 'machine physionet.org login <user> password <password>', mode 0600; the job reads the login from it and wget reads the password from it, nothing is printed",
+        "about 180 GB (the DICOM release; to confirm on the page): df -h /rs/rs_grp_oschome first",
+        "DICOM: the bank stage refuses it until pydicom is in pixi.lock"
+      ]
+    },
+    {
+      "id": "vindr_pcxr",
+      "route": "physionet",
+      "source": "https://physionet.org/content/vindr-pcxr/1.0.0/ (9,125 pediatric frontal chest radiographs, DICOM)",
+      "url": "https://physionet.org/files/vindr-pcxr/1.0.0/",
+      "dest": "/rs/rs_grp_oschome/go2432/data/vindr_pcxr/raw",
+      "size_gb": 30,
+      "checksum": {
+        "sha256": "PhysioNet publishes SHA256SUMS.txt in the project folder, fetched with the files"
+      },
+      "licence": "PhysioNet Credentialed Health Data License 1.5.0, the agreement signed on the page",
+      "credentialed": true,
+      "confirm": [
+        "the data use agreement for vindr-pcxr is signed under the owner's PhysioNet account",
+        "~/.netrc as above",
+        "about 30 GB (to confirm on the page)",
+        "DICOM: the bank stage refuses it until pydicom is in pixi.lock"
+      ]
+    },
+    {
+      "id": "mimic_cxr_jpg",
+      "route": "physionet",
+      "source": "https://physionet.org/content/mimic-cxr-jpg/2.1.0/ (377,110 chest radiographs as JPG, frontal and lateral, 65,379 patients)",
+      "url": "https://physionet.org/files/mimic-cxr-jpg/2.1.0/",
+      "dest": "/rs/rs_grp_oschome/go2432/data/mimic_cxr_jpg/raw",
+      "size_gb": 570,
+      "checksum": {
+        "sha256": "PhysioNet publishes SHA256SUMS.txt in the project folder, fetched with the files"
+      },
+      "licence": "PhysioNet Credentialed Health Data License 1.5.0, the agreement signed on the page",
+      "credentialed": true,
+      "confirm": [
+        "ABOUT 570 GB: this one entry is larger than everything else in this file together; run it alone, with --only mimic_cxr_jpg --credentialed, after df -h /rs/rs_grp_oschome shows the room, and expect days of wall time",
+        "the data use agreement for mimic-cxr-jpg is signed under the owner's PhysioNet account",
+        "~/.netrc as above",
+        "JPG: the bank stage converts JPG through Pillow in the train environment (grid/README.md)"
+      ]
+    }
+  ]
+}

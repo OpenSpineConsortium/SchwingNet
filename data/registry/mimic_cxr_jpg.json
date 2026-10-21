@@ -1,0 +1,14 @@
+{
+  "source": "mimic_cxr_jpg",
+  "identity_level": "patient",
+  "person_key_rule": "mimic_cxr_jpg:<case as grid/banks/mimic_cxr_jpg.json derives it>; one case is one patient",
+  "access": "PhysioNet Credentialed Health Data License 1.5.0; credentialed, the agreement signed on the page; opt-in only; about 570 GB",
+  "modality": "dx",
+  "device_class": "film",
+  "regions": [
+    "thoracic"
+  ],
+  "grid_root": "/rs/rs_grp_oschome/go2432/data/mimic_cxr_jpg",
+  "shards": [],
+  "notes": "377,110 chest radiographs as JPG, frontal and lateral; the path files/p1x/p<patient>/s<study>/<image>.jpg carries the patient, the person key; the view per image is in mimic-cxr-2.0.0-metadata.csv; the raw copy is /rs/rs_grp_oschome/go2432/data/mimic_cxr_jpg/raw (grid/fetch-xray.json) and the bank /rs/rs_grp_oschome/go2432/data/mimic_cxr_jpg/bank; no shard until the chain's first run"
+}

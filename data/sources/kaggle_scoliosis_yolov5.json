@@ -1,0 +1,20 @@
+{
+  "id": "kaggle_scoliosis_yolov5",
+  "name": "Kaggle scoliosis YOLOv5 annotated spine X-ray set (salmankey)",
+  "group": "films",
+  "what": "AP spine films with YOLO boxes on vertebrae and curve regions; count, source and whether the people are AASCE's to confirm on the page",
+  "level_truth": "boxes per vertebra, level-adjacent if the vertebrae are ordered; worthless if the films are AASCE's",
+  "reach": "get",
+  "status": "found by the sweep of 2026-10-21; not fetched; its origin is unstated, so it may be a relabel of AASCE (aasce): every image is hash-checked (filename or pixel hash) against the AASCE copy on the grid before any use, and a match excludes it as new people",
+  "licence": "Kaggle; the licence on the page, to confirm",
+  "link": "https://www.kaggle.com/datasets/salmankey/scoliosis-yolov5-annotated-spine-x-ray-dataset",
+  "how_to_get": [
+    "The owner's Kaggle account; read the licence and the stated source on the page.",
+    "Fetch with the Kaggle API as a Slurm job on the owner's word, never on the login node, the token from the submitter's environment, never from this repository.",
+    "Hash every image against the AASCE copy at /rs/rs_grp_oschome/go2432/data/thoracic_xr/mirror_zlinzju_ke30_u7_AASCE2019 before any use; a match makes it a relabel, and the aasce record then says so."
+  ],
+  "grid_path": null,
+  "counts": {},
+  "measured": {},
+  "record": "docs/research/xray-datasets-missing.md (2026-10-21)"
+}

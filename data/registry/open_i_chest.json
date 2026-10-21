@@ -1,0 +1,14 @@
+{
+  "source": "open_i_chest",
+  "identity_level": "study",
+  "person_key_rule": "open_i_chest:<case as grid/banks/open_i_chest.json derives it>; one case is one study",
+  "access": "Open-i (NLM), open, no agreement; the FAQ's terms to confirm",
+  "modality": "cr",
+  "device_class": "film",
+  "regions": [
+    "thoracic"
+  ],
+  "grid_root": "/rs/rs_grp_oschome/go2432/data/open_i_chest",
+  "shards": [],
+  "notes": "7,470 frontal and lateral chest films of 3,955 studies (the Indiana collection); the file name CXR<study>_<image>_IM-... carries the study, the person key, since no patient id is given; the raw copy is /rs/rs_grp_oschome/go2432/data/open_i_chest/raw (grid/fetch-xray.json) and the bank /rs/rs_grp_oschome/go2432/data/open_i_chest/bank; no shard until the chain's first run"
+}

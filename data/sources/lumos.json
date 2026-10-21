@@ -5,8 +5,8 @@
   "what": "803 living patients: 1,620 lumbar AP or lateral radiographs and 280 non-contrast lumbar CTs, anonymised DICOM and NPY; diagnostic radiography, not C-arm fluoroscopy; no pose given",
   "level_truth": "levels readable from the paired CT after a 2D/3D registration",
   "reach": "get",
-  "status": "open on Zenodo; never fetched",
-  "licence": "not recorded",
+  "status": "open on Zenodo; never fetched; still open on Zenodo at the sweep of 2026-10-21, never fetched; queued in the fetch chain of #38",
+  "licence": "not recorded on the card; to confirm on the record",
   "link": "https://zenodo.org/records/18173664",
   "how_to_get": [
     "Open https://zenodo.org/records/18173664 and read its licence line.",

@@ -1,0 +1,23 @@
+{
+  "id": "zenodo_ts_task_liver_lesions",
+  "name": "TotalSegmentator task data 'liver_lesions' (842 CT)",
+  "group": "ct",
+  "what": "TotalSegmentator task data 'liver_lesions', 842 CT, Zenodo 20272572 published 2026-05-18, about 38.9 GB; the same institution as TotalSegmentator v2/v3 (on disk) with no subject map",
+  "level_truth": "counted by the census pipeline once fetched",
+  "reach": "get",
+  "status": "the owner's hand: ask the TotalSegmentator authors whether these subjects overlap the public v2/v3 release (planned in the data platform at bf1432f)",
+  "licence": "CC BY 4.0",
+  "link": "https://zenodo.org/records/20272572",
+  "how_to_get": [
+    "The owner writes to the TotalSegmentator authors about the overlap with v2/v3.",
+    "Read the record listing and choose the include pattern, then spinesurg-ct-nnunet's tools/acquisition_fetch.py zenodo --collection ts_task_liver_lesions --record 20272572 --include '<pattern>' (md5-verified) through slurm/acquisition_fetch.sh; the pattern '.' takes every file.",
+    "The route as the manifest prints it: python3 data/reproduce/reacquire/reacquire.py --grid zenodo_ts_task_liver_lesions; on the grid, from ~/spinesurg-ct-nnunet/data_platform/reacquire, sbatch -D \"$PWD\" --export=ALL,IDS=\"zenodo_ts_task_liver_lesions\",MODE=--run reacquire.sbatch, as a Slurm job on the owner's word."
+  ],
+  "grid_path": null,
+  "counts": {
+    "subjects": 842,
+    "size_gb": 38.87
+  },
+  "measured": {},
+  "record": "spinesurg-ct-nnunet data_platform/sources.json bf1432f"
+}

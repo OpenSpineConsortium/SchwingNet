@@ -483,7 +483,9 @@ def test_the_command_line(tmp_path: Path, capsys: pytest.CaptureFixture[str]) ->
     assert "no catalog there" in capsys.readouterr().err
     assert tool.main(["versions", str(tmp_path / "none")]) == 1
     assert "no catalog there" in capsys.readouterr().err
-    assert tool.main(["check"]) == 0 and "registry: 2 sources" in capsys.readouterr().out
+    registered = len(list((ROOT / "data" / "registry").glob("*.json")))
+    assert tool.main(["check"]) == 0
+    assert f"registry: {registered} sources" in capsys.readouterr().out
     assert (
         tool.main(["part", " carmlspine:case42 "]) == 0
         and capsys.readouterr().out.strip() == "test"

@@ -1,0 +1,22 @@
+{
+  "id": "chexpert_plus",
+  "name": "CheXpert and CheXpert Plus (Stanford AIMI)",
+  "group": "films",
+  "what": "224,316 chest radiographs of 65,240 patients, frontal and lateral (CheXpert); CheXpert Plus adds reports and DICOM",
+  "level_truth": "none; laterals from one centre with many devices",
+  "reach": "gated",
+  "status": "found by the sweep of 2026-10-21; not fetched; the Stanford AIMI research use agreement, the same portal as INSPECT and Merlin (stanford_aimi_inspect, stanford_aimi_merlin), so the owner's AIMI account would cover it",
+  "licence": "Stanford AIMI research use agreement, non-commercial",
+  "link": "https://stanfordaimi.azurewebsites.net/",
+  "how_to_get": [
+    "The owner signs the research use agreement on https://stanfordaimi.azurewebsites.net/ (the CheXpert entries), one per dataset.",
+    "A time-limited Azure Blob address follows; fetch it with AzCopy as a Slurm job on the owner's word, never on the login node, as the stanford_aimi records say."
+  ],
+  "grid_path": null,
+  "counts": {
+    "radiographs": 224316,
+    "patients": 65240
+  },
+  "measured": {},
+  "record": "docs/research/xray-datasets-missing.md (2026-10-21)"
+}

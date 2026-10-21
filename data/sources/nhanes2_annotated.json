@@ -5,7 +5,7 @@
   "what": "543 digitised films of 364 persons with landmarks",
   "level_truth": "lumbar and cervical",
   "reach": "held",
-  "status": "used; counted twice in the old fold banks (a leak the registry ends)",
+  "status": "used; counted twice in the old fold banks (a leak the registry ends); the VertXNet Zenodo record adds radiologist landmarks with vertebral identity and the reference bodies C2 and S1 to these films (record vertxnet_nhanes2_labels, found by the sweep of 2026-10-21)",
   "licence": "open (NCHS)",
   "link": "https://wwwn.cdc.gov/nchs/data/nhanes2/NH2_Xray.htm",
   "how_to_get": [],

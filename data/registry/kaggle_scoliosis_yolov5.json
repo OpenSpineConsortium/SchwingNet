@@ -1,0 +1,15 @@
+{
+  "source": "kaggle_scoliosis_yolov5",
+  "identity_level": "patient",
+  "person_key_rule": "kaggle_scoliosis_yolov5:<case as grid/banks/kaggle_scoliosis_yolov5.json derives it>; one case is one patient",
+  "access": "Kaggle; the licence on the page to confirm; provenance unstated, so a relabel of AASCE until the hash check says otherwise",
+  "modality": "dx",
+  "device_class": "film",
+  "regions": [
+    "thoracic",
+    "lumbar"
+  ],
+  "grid_root": "/rs/rs_grp_oschome/go2432/data/kaggle_scoliosis_yolov5",
+  "shards": [],
+  "notes": "AP spine films with YOLO boxes on vertebrae; hash-check FETCH.json's sha256 list against the AASCE copy on the grid before any bank, and skip this source if they match; the raw copy is /rs/rs_grp_oschome/go2432/data/kaggle_scoliosis_yolov5/raw (grid/fetch-xray.json) and the bank /rs/rs_grp_oschome/go2432/data/kaggle_scoliosis_yolov5/bank; no shard until the chain's first run"
+}

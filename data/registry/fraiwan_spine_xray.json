@@ -1,0 +1,15 @@
+{
+  "source": "fraiwan_spine_xray",
+  "identity_level": "patient",
+  "person_key_rule": "fraiwan_spine_xray:<case as grid/banks/fraiwan_spine_xray.json derives it>; one case is one patient",
+  "access": "Mendeley Data xkt857dsxk, CC BY 4.0 to confirm on the page",
+  "modality": "dx",
+  "device_class": "film",
+  "regions": [
+    "thoracic",
+    "lumbar"
+  ],
+  "grid_root": "/rs/rs_grp_oschome/go2432/data/fraiwan_spine_xray",
+  "shards": [],
+  "notes": "338 subjects in three classes (scoliosis, spondylolisthesis, normal), original and resized folders; no vertebra labels; the raw copy is /rs/rs_grp_oschome/go2432/data/fraiwan_spine_xray/raw (grid/fetch-xray.json) and the bank /rs/rs_grp_oschome/go2432/data/fraiwan_spine_xray/bank; no shard until the chain's first run"
+}

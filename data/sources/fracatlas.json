@@ -1,0 +1,24 @@
+{
+  "id": "fracatlas",
+  "name": "FracAtlas (Abedeen 2023, Scientific Data)",
+  "group": "films",
+  "what": "4,083 musculoskeletal radiographs from three Bangladeshi hospitals (hand, leg, hip, shoulder), 717 with 922 fracture instances, boxes and masks; the hip and pelvis films show the sacrum and L5",
+  "level_truth": "none; no spine labels",
+  "reach": "get",
+  "status": "found by the sweep of 2026-10-21; not fetched; a South Asian population and devices the project has not seen",
+  "licence": "CC BY 4.0",
+  "link": "https://figshare.com/articles/dataset/The_dataset/22363012",
+  "how_to_get": [
+    "Open https://figshare.com/articles/dataset/The_dataset/22363012 (to confirm) or the Hugging Face mirror yh0701/FracAtlas_dataset and read the file list.",
+    "Fetch as a Slurm job on the owner's word, never on the login node: python3 data/reproduce/reacquire/reacquire.py http-get --url U --dest FILE from figshare, or python3 data/reproduce/reacquire/reacquire.py hf-get --repo yh0701/FracAtlas_dataset --repo-type dataset --dest DIR."
+  ],
+  "grid_path": null,
+  "counts": {
+    "radiographs": 4083,
+    "fractured": 717,
+    "fracture_instances": 922,
+    "hospitals": 3
+  },
+  "measured": {},
+  "record": "docs/research/xray-datasets-missing.md (2026-10-21)"
+}

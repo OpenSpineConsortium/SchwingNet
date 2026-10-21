@@ -1,0 +1,24 @@
+{
+  "id": "mimic_cxr",
+  "name": "MIMIC-CXR and MIMIC-CXR-JPG (PhysioNet)",
+  "group": "films",
+  "what": "377,110 chest radiographs of 227,835 studies, 65,379 patients, Beth Israel Deaconess; frontal and lateral views, the lateral share roughly a third (to confirm from the metadata CSV)",
+  "level_truth": "none; the thoracic spine T1 to about L1 in a lateral chest film",
+  "reach": "gated",
+  "status": "found by the sweep of 2026-10-21; not fetched; PhysioNet credentialed access (CITI training and the data use agreement, as VinDr-SpineXR needed); the largest source of lateral chest films, hence of thoracic spine laterals, free of charge once credentialed",
+  "licence": "PhysioNet credentialed health data licence; to confirm on the page",
+  "link": "https://physionet.org/content/mimic-cxr/2.1.0/",
+  "how_to_get": [
+    "The owner's PhysioNet credentialing (CITI training on file) and the data use agreement on the record page, signed by the owner, the route VinDr-SpineXR took.",
+    "Then a recursive wget with the owner's PhysioNet login as a Slurm job on the owner's word, never on the login node, as the manifest's vindr_spinexr route does, and sha256sum -c SHA256SUMS.txt on the copy.",
+    "An IRB determination before any training reads it, as for VinDr-SpineXR."
+  ],
+  "grid_path": null,
+  "counts": {
+    "radiographs": 377110,
+    "studies": 227835,
+    "patients": 65379
+  },
+  "measured": {},
+  "record": "docs/research/xray-datasets-missing.md (2026-10-21)"
+}

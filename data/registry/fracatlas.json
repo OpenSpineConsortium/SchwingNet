@@ -1,0 +1,14 @@
+{
+  "source": "fracatlas",
+  "identity_level": "patient",
+  "person_key_rule": "fracatlas:<case as grid/banks/fracatlas.json derives it>; one case is one patient",
+  "access": "CC BY 4.0 (Abedeen 2023); the Hugging Face mirror's page to confirm",
+  "modality": "dx",
+  "device_class": "film",
+  "regions": [
+    "sacrum"
+  ],
+  "grid_root": "/rs/rs_grp_oschome/go2432/data/fracatlas",
+  "shards": [],
+  "notes": "4,083 musculoskeletal radiographs from three Bangladeshi hospitals; the hip films show the sacrum and L5; only the hip folder enters, no spine labels; the raw copy is /rs/rs_grp_oschome/go2432/data/fracatlas/raw (grid/fetch-xray.json) and the bank /rs/rs_grp_oschome/go2432/data/fracatlas/bank; no shard until the chain's first run"
+}

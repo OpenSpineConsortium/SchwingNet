@@ -1,0 +1,26 @@
+{
+  "id": "implant_ct_synthetic",
+  "name": "Synthetic hardware CTs: implant_ct (CTSP, deleted), implant_verse, implant_ts",
+  "group": "ct",
+  "what": "project-generated synthetic hardware CTs (tools/make_implant_ct.py over real volumes): implant_ct from CTSpinoPelvic1K, 799 subjects and 1,518 volumes, deleted (427 GB); implant_verse 373 subjects, 1,119 volumes, 187 GB; implant_ts 817 subjects, 1,629 volumes, 39 GB; thoracic, lumbar and sacrum",
+  "level_truth": "from the source CT's labels",
+  "reach": "held",
+  "status": "on_disk_partial in the data platform at bf1432f: implant_ct deleted, implant_verse complete (1,119 = 373 x 3), implant_ts unfinished (355 subjects never processed), cases 0394 and 0405 produced nothing and verse116 is missing; the owner's hand: a rebuild on a GPU partition with a resume guard first, never reqp/requeue",
+  "licence": "inherits the source terms",
+  "link": null,
+  "how_to_get": [
+    "Add a resume guard first; then from spinesurg-ct-nnunet: STAGE=implant_verse sbatch --array=0-<N-1> slurm/fluorocap_v2.sh, and STAGE=implant_ts TS_SRC=<TotalSegmentator dir> sbatch --array=0-<N-1> slurm/fluorocap_v2.sh, with a GPU header of its own.",
+    "The route as the manifest prints it: python3 data/reproduce/reacquire/reacquire.py --grid implant_ct_synthetic; on the grid, from ~/spinesurg-ct-nnunet/data_platform/reacquire, sbatch -D \"$PWD\" --export=ALL,IDS=\"implant_ct_synthetic\",MODE=--run reacquire.sbatch, as a Slurm job on the owner's word."
+  ],
+  "grid_path": "/rs/rs_grp_oschome/go2432/data/multisource_banks/derived/implant_*",
+  "counts": {
+    "implant_verse_subjects": 373,
+    "implant_verse_volumes": 1119,
+    "implant_verse_size_gb": 187,
+    "implant_ts_subjects": 817,
+    "implant_ts_volumes": 1629,
+    "implant_ts_size_gb": 39
+  },
+  "measured": {},
+  "record": "spinesurg-ct-nnunet data_platform/sources.json bf1432f"
+}
