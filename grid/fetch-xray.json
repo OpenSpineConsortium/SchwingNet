@@ -234,7 +234,7 @@
     },
     {
       "id": "nih_chestxray14",
-      "route": "manual",
+      "route": "http",
       "source": "https://nihcc.app.box.com/v/ChestXray-NIHCC (NIH ChestX-ray14: 112,120 frontal chest films in 12 archives)",
       "dest": "/rs/rs_grp_oschome/go2432/data/nih_chestxray14/raw",
       "size_gb": 42,
@@ -242,15 +242,13 @@
         "md5": null,
         "sha256": null
       },
-      "licence": "open (NIH Clinical Center); the Box page's terms to confirm",
+      "licence": "open (NIH Clinical Center); the release's README states the usage is unrestricted, with the CVPR 2017 citation asked",
       "confirm": [
-        "manual: open https://nihcc.app.box.com/v/ChestXray-NIHCC, copy the twelve URLs and their md5s from its batch_download_zips.py into 'urls', 'names' and 'checksums' here and set the route to 'http'; the twelve under 'urls_unverified' are from memory, and http-get would keep an error page as a tar, so nothing is fetched until then",
-        "that 42 GB is there: df -h /rs/rs_grp_oschome",
-        "the Box page's terms; Data_Entry_2017.csv (the patient ids per image) is a separate file on the page and is fetched by hand into raw/ if the recipe is to key persons by it"
+        "that 42 GB for the archives and about 45 GB unpacked are there: df -h /rs/rs_grp_oschome"
       ],
-      "urls_unverified": [
+      "urls": [
         "https://nihcc.box.com/shared/static/vfk49d74nhbxq3nqjg0900w5nvkorp5c.gz",
-        "https://nihcc.box.com/shared/static/i28rlmbvmfjbl8p2n3ril0pq6sqk5pg3.gz",
+        "https://nihcc.box.com/shared/static/i28rlmbvmfjbl8p2n3ril0pptcmcu9d1.gz",
         "https://nihcc.box.com/shared/static/f1t00wrtdk94satdfb9olcolqx20z2jp.gz",
         "https://nihcc.box.com/shared/static/0aowwzs5lhjrceb3qp67ahp0rd1l1etg.gz",
         "https://nihcc.box.com/shared/static/v5e3goj22zr6h8tzualxfsqlqaygfbsn.gz",
@@ -261,7 +259,24 @@
         "https://nihcc.box.com/shared/static/l6nilvfa9cg3s28tqv1qc1olm3gnz54p.gz",
         "https://nihcc.box.com/shared/static/hhq8fkdgvcari67vfhs7ppg2w6ni4jze.gz",
         "https://nihcc.box.com/shared/static/ioqwiy20ihqwyr8pf4c24eazhh281pbu.gz"
-      ]
+      ],
+      "names": [
+        "images_001.tar.gz",
+        "images_002.tar.gz",
+        "images_003.tar.gz",
+        "images_004.tar.gz",
+        "images_005.tar.gz",
+        "images_006.tar.gz",
+        "images_007.tar.gz",
+        "images_008.tar.gz",
+        "images_009.tar.gz",
+        "images_010.tar.gz",
+        "images_011.tar.gz",
+        "images_012.tar.gz"
+      ],
+      "torrent": "https://academictorrents.com/download/557481faacd824c83fbf57dcf7b6da9383b3235a.torrent",
+      "unpack": true,
+      "about_the_check": "Read 2026-10-21 (#44): the twelve URLs are batch_download_zips.py's, the same in three independent copies (N-Nieto/GenderBias_CheXNet, the alkzar90 Hugging Face loader's history, a Kaggle notebook), and differ from the list this entry held before in the second URL; NIH publishes no checksum for them (the script ends 'Please check the checksums' and the Box folder holds none), so the bytes are checked against the Academic Torrents release 557481faacd824c83fbf57dcf7b6da9383b3235a of the same fifteen files (images_001.tar.gz to images_012.tar.gz, 2.01 to 4.19 GB): lengths and SHA-1 per piece, after the download and before the unpack"
     },
     {
       "id": "kaggle_scoliosis_yolov5",

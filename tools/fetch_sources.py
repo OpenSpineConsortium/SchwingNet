@@ -27,7 +27,12 @@ entry whose helper fails is reported and the next one runs; the exit code is 1 a
 any entry failed, so the chain's next stage, submitted with afterany, still runs on what came. An
 entry marked `"unpack": true` has each zip archive that came verified opened into its raw folder,
 member by member, since the bank stage reads files and not archives; a member already there with
-its full size is left, so a rerun unpacks nothing twice. The helper is reacquire.py where the list
+its full size is left, so a rerun unpacks nothing twice; a .tar.gz is opened the same way, regular
+files only. An entry that names a `"torrent"` (a .torrent of the same release, as Academic Torrents
+holds NIH ChestX-ray14's, whose Box page gives no checksum) has what came checked against it after
+the download: every file the torrent names that is here has the torrent's length, and every piece
+of the torrent that lies wholly in files that are here has the torrent's SHA-1, so an error page
+kept as an archive, or a truncated one, fails the entry by name (issue #44). The helper is reacquire.py where the list
 names it, else the repository's own copy under data/reproduce/reacquire/, which is the same file.
 
 Secrets never reach a command line: the Kaggle token is read from a mode-0600 file into the
@@ -44,6 +49,7 @@ import socket
 import stat
 import subprocess
 import sys
+import tarfile
 import time
 import urllib.error
 import urllib.request
@@ -285,6 +291,10 @@ def print_plan(entry, plan):
     for index, command in enumerate(plan.get("commands", [])):
         prefix = "   fallback: " if plan.get("fallback") and index else "   "
         print(prefix + shlex.join(command))
+    if entry.get("torrent") and "commands" in plan:
+        print(f"   then: every length and every SHA-1 piece checked against {entry['torrent']}")
+    if entry.get("unpack") and "commands" in plan:
+        print("   then: each zip and .tar.gz that came opened in place")
     if plan.get("env_from"):
         print(f"   with KAGGLE_API_TOKEN read from {plan['env_from']} (mode 0600) into the environment")
     size = entry.get("size_gb")
@@ -351,6 +361,92 @@ def expand_plan(entry, plan, python, helper, settings):
     return plan["commands"], env
 
 
+def bdecode(data, index=0):
+    """One bencoded value from data at index, and the index after it (BEP 3); strings stay bytes."""
+    head = data[index:index + 1]
+    if head == b"i":
+        end = data.index(b"e", index)
+        return int(data[index + 1:end]), end + 1
+    if head in (b"l", b"d"):
+        index, items = index + 1, []
+        while data[index:index + 1] != b"e":
+            item, index = bdecode(data, index)
+            items.append(item)
+        if head == b"l":
+            return items, index + 1
+        return dict(zip(items[0::2], items[1::2])), index + 1
+    if head.isdigit():
+        colon = data.index(b":", index)
+        length = int(data[index:colon])
+        return data[colon + 1:colon + 1 + length], colon + 1 + length
+    raise FetchError(f"the torrent is not bencoded at byte {index}")
+
+
+def torrent_files(info):
+    """The torrent's files in its byte order, each with its name (last path part) and length."""
+    if b"files" not in info:
+        return [{"name": info[b"name"].decode("utf-8"), "length": info[b"length"]}]
+    return [{"name": f[b"path"][-1].decode("utf-8"), "length": f[b"length"]} for f in info[b"files"]]
+
+
+def pieces_inside(files, piece_length, count):
+    """For each piece, the (file index, offset, size) runs it spans, in order."""
+    spans, start = [], 0
+    bounds = []
+    for index, item in enumerate(files):
+        bounds.append((index, start, start + item["length"]))
+        start += item["length"]
+    for piece in range(count):
+        low, high = piece * piece_length, min((piece + 1) * piece_length, start)
+        spans.append([(i, max(low, a) - a, min(high, b) - max(low, a)) for i, a, b in bounds if a < high and b > low])
+    return spans
+
+
+def verify_torrent(dest, torrent):
+    """What came under dest checked against a .torrent's bytes: lengths, then every piece that lies
+    wholly in files that are here. Returns the counts; raises FetchError on any disagreement or
+    when no piece could be checked, since a check that checked nothing is no check."""
+    info = bdecode(torrent)[0][b"info"]
+    files, piece_length = torrent_files(info), info[b"piece length"]
+    hashes = info[b"pieces"]
+    here = {p.name: p for p in Path(dest).rglob("*") if p.is_file() and not p.name.endswith(".part")}
+    present = {}
+    for index, item in enumerate(files):
+        path = here.get(item["name"])
+        if path is None:
+            continue
+        if path.stat().st_size != item["length"]:
+            raise FetchError(f"{path.name}: {path.stat().st_size} bytes, the torrent says {item['length']}")
+        present[index] = path
+    checked = 0
+    for piece, runs in enumerate(pieces_inside(files, piece_length, len(hashes) // 20)):
+        if not all(i in present for i, _, _ in runs):
+            continue
+        digest = hashlib.sha1()
+        for i, offset, size in runs:
+            with open(present[i], "rb") as handle:
+                handle.seek(offset)
+                digest.update(handle.read(size))
+        if digest.digest() != hashes[piece * 20:(piece + 1) * 20]:
+            names = ", ".join(files[i]["name"] for i, _, _ in runs)
+            raise FetchError(f"piece {piece} of the torrent ({names}) does not match its SHA-1")
+        checked += 1
+    if not checked:
+        raise FetchError("no piece of the torrent lies wholly in the files that came; nothing was verified")
+    return {"files_matched": len(present), "files_in_torrent": len(files), "pieces_checked": checked,
+            "pieces_in_torrent": len(hashes) // 20}
+
+
+def fetch_torrent(url, state, opener=None):
+    """The .torrent's bytes, kept under the state folder so a rerun reads the same file."""
+    path = Path(state) / "release.torrent"
+    if not path.is_file():
+        opener = opener or urllib.request.urlopen
+        with opener(url, timeout=120) as answer:
+            path.write_bytes(answer.read())
+    return path.read_bytes()
+
+
 def unpack_archives(dest):
     """Every zip under the raw folder opened in place, member by member, beside the archive; a
     member already there with its full size is left, a member whose name climbs out of the folder
@@ -371,6 +467,27 @@ def unpack_archives(dest):
                 with opened.open(member) as source, open(target, "wb") as sink:
                     shutil_copy(source, sink)
                 unpacked.append(str(target.relative_to(root)))
+    for archive in sorted(p for p in root.rglob("*") if p.is_file() and p.name.endswith((".tar.gz", ".tgz"))):
+        unpacked += unpack_tar(archive, root)
+    return unpacked
+
+
+def unpack_tar(archive, root):
+    """A .tar.gz opened beside itself, regular files only, none outside the raw folder."""
+    unpacked = []
+    with tarfile.open(archive, "r:gz") as opened:
+        for member in opened:
+            if not member.isfile():
+                continue
+            target = (archive.parent / member.name).resolve()
+            if root not in target.parents:
+                raise FetchError(f"{archive}: member {member.name} would land outside {root}")
+            if target.is_file() and target.stat().st_size == member.size:
+                continue
+            target.parent.mkdir(parents=True, exist_ok=True)
+            with opened.extractfile(member) as source, open(target, "wb") as sink:
+                shutil_copy(source, sink)
+            unpacked.append(str(target.relative_to(root)))
     return unpacked
 
 
@@ -399,10 +516,15 @@ def run_entry(entry, plan, python, helper, settings):
     # is done, and so is a list of URLs only when every one of them came.
     exits = [r["exit"] for r in outcome["runs"]]
     outcome["status"] = DONE if exits and (exits[-1] == 0 if plan.get("fallback") else all(e == 0 for e in exits)) else FAILED
+    if outcome["status"] == DONE and entry.get("torrent"):
+        try:
+            outcome["torrent"] = verify_torrent(entry["dest"], fetch_torrent(entry["torrent"], state_dir(entry)))
+        except (FetchError, OSError, KeyError, ValueError, urllib.error.URLError) as error:
+            outcome.update(status=FAILED, error=f"torrent check: {error}")
     if outcome["status"] == DONE and entry.get("unpack"):
         try:
             outcome["unpacked"] = unpack_archives(entry["dest"])
-        except (FetchError, OSError, zipfile.BadZipFile) as error:
+        except (FetchError, OSError, zipfile.BadZipFile, tarfile.TarError) as error:
             outcome.update(status=FAILED, error=f"unpack: {error}")
     files, total = file_records(entry["dest"])
     outcome.update(files=files, bytes=total, ended=now())
