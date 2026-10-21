@@ -4,11 +4,13 @@ Usage:
     python tools/wandb_log.py status
     python tools/wandb_log.py sync --run <run dir>
 
-The owner's words of 2026-10-21: the grid's environment holds a W&B key, and the runs are to be
-pushed there. A compute node may have no route out, so the trainer and the evaluator always
-write W&B's offline files into <run dir>/wandb, which nothing can lose to a dropped connection,
-and `sync` pushes them from wherever tools/flow.py runs (the login node in slurm mode), once the
-steps are done. The key is never read into this repository, never printed and never put on a
+The owner's words of 2026-10-21: the grid's environment holds a W&B key, the runs are to be
+pushed there, and something is to be seen on the W&B website as soon as training starts. So
+where a key is found, the trainer and the evaluator log online, live, epoch by epoch; where the
+node has no route out, W&B's start times out within a minute and the step logs offline into
+<run dir>/wandb instead, which nothing can lose, and `sync` pushes those files from wherever
+tools/flow.py runs (the login node in slurm mode) as soon as each step ends. Which of the two
+happened is in wandb-mode.json beside the run and in the flow's last line. The key is never read into this repository, never printed and never put on a
 command line: W&B reads it from the environment (WANDB_API_KEY), from ~/.netrc's api.wandb.ai
 entry that `wandb login` writes, or from ~/.wandb/token.env (one line WANDB_API_KEY=..., mode
 600, the grid's convention for tokens, as ~/.hf/token.env is), which `sync` reads into the push's
@@ -80,7 +82,8 @@ class Telemetry:
         self.wandb = wandb
         folder = Path(run_dir) / "wandb"
         folder.mkdir(parents=True, exist_ok=True)
-        self.run = wandb.init(
+        where = key_source()
+        options = dict(
             project=os.environ.get("WANDB_PROJECT", PROJECT),
             entity=os.environ.get("WANDB_ENTITY") or None,
             group=record["run_id"],
@@ -88,10 +91,26 @@ class Telemetry:
             id=f"{record['run_id']}-{step}",
             job_type=step,
             dir=str(folder),
-            mode="offline",
             config=dict(config, run_id=record["run_id"], code_commit=record["code_commit"], catalog_sha256=record["catalog_sha256"], catalog_version=record["catalog_version"], clean_tree=record["clean_tree"]),
-            settings=wandb.Settings(silent=True, console="off"),
         )
+        self.mode, self.reason = "offline", f"no W&B key ({where})"
+        if where != "none" and os.environ.get("SCHWINGNET_WANDB_MODE", "online") == "online":
+            try:
+                if where == "file":
+                    os.environ.update(token_file_env())
+                self.run = wandb.init(mode="online", settings=wandb.Settings(silent=True, console="off", init_timeout=60), **options)
+                self.mode, self.reason = "online", None
+            except Exception as error:  # noqa: BLE001 - any failure to reach W&B falls back to offline
+                said = " ".join(str(error).split())[:120]
+                self.reason = f"online start failed ({type(error).__name__}: {said}); logged offline"
+                # The failed start still holds the run id in W&B's service; a fresh service frees it.
+                wandb.teardown()
+        if self.run is None:
+            self.run = wandb.init(mode="offline", settings=wandb.Settings(silent=True, console="off"), **options)
+        note = {"step": step, "mode": self.mode, "why": self.reason, "url": getattr(self.run, "url", None) if self.mode == "online" else None}
+        modes = Path(run_dir) / "wandb-mode.json"
+        known = json.loads(modes.read_text(encoding="utf-8")) if modes.is_file() else {}
+        modes.write_text(json.dumps(dict(known, **{step: note}), indent=1) + "\n", encoding="utf-8")
 
     def log(self, values, step=None):
         if self.run:
@@ -121,7 +140,8 @@ class Telemetry:
 
 
 def offline_runs(run_dir):
-    return sorted((Path(run_dir) / "wandb" / "wandb").glob("offline-run-*"))
+    """The step runs logged offline and not yet pushed; wandb sync leaves a .synced file behind."""
+    return sorted(p for p in (Path(run_dir) / "wandb" / "wandb").glob("offline-run-*") if not any(p.glob("*.synced")))
 
 
 def sync(run_dir):
@@ -129,18 +149,23 @@ def sync(run_dir):
     run_dir = Path(run_dir)
     runs = offline_runs(run_dir)
     where = key_source()
-    outcome = {"key": where, "offline_runs": [p.name for p in runs], "synced": False}
+    modes = json.loads((run_dir / "wandb-mode.json").read_text(encoding="utf-8")) if (run_dir / "wandb-mode.json").is_file() else {}
+    previous = json.loads((run_dir / "wandb-sync.json").read_text(encoding="utf-8")) if (run_dir / "wandb-sync.json").is_file() else {}
+    live = sorted(note["url"] for note in modes.values() if note.get("mode") == "online" and note.get("url"))
+    outcome = {"key": where, "offline_runs": [p.name for p in runs], "online_urls": live, "synced": False}
     if not enabled():
         outcome["why"] = "SCHWINGNET_WANDB=off"
+    elif not runs and (live or previous.get("synced")):
+        outcome.update(synced=True, urls=sorted(set(live) | set(previous.get("urls", []))))
     elif not runs:
-        outcome["why"] = "no offline W&B run in this run directory"
+        outcome["why"] = "no W&B run in this run directory"
     elif where == "none":
         outcome["why"] = "no W&B key: not in WANDB_API_KEY, ~/.wandb/token.env or ~/.netrc"
     else:
         env = dict(os.environ, **(token_file_env() if where == "file" else {}))
         done = subprocess.run([sys.executable, "-m", "wandb", "sync", "--include-offline", *map(str, runs)], env=env, capture_output=True, text=True, check=False)
         outcome["synced"] = done.returncode == 0
-        outcome["urls"] = sorted({word for word in (done.stdout + done.stderr).split() if word.startswith("https://wandb.ai/")})
+        outcome["urls"] = sorted(set(live) | set(previous.get("urls", [])) | {word for word in (done.stdout + done.stderr).split() if word.startswith("https://wandb.ai/")})
         if done.returncode != 0:
             outcome["why"] = f"wandb sync exited {done.returncode}: {(done.stderr or done.stdout).strip()[-300:]}"
     (run_dir / "wandb-sync.json").write_text(json.dumps(outcome, indent=1) + "\n", encoding="utf-8")

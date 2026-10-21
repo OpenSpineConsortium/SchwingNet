@@ -178,7 +178,7 @@ def strip_and_animation(folder, thumb=160, columns=11):
         strip.paste(small[i], (x, 0))
         x += small[i].width + 2
     strip.save(Path(folder) / "strip.png")
-    frames = [s.quantize(colors=64) for s in small]
+    frames = [s.quantize(colors=32) for s in small]
     durations = [700] * (len(frames) - 1) + [2000]
     frames[0].save(Path(folder) / "anim.gif", save_all=True, append_images=frames[1:], duration=durations, loop=0)
 

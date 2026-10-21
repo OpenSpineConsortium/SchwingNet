@@ -182,8 +182,11 @@ def command_run(args):
         record = record.model_copy(update={"jobs": tuple(jobs)})
         write_record(run_dir, record)
         print(json.dumps(done.model_dump()), flush=True)
+        # Each step's W&B run is pushed as soon as the step ends, so the website shows training
+        # before evaluation starts, even from a node that could only log offline.
+        step_push = push_wandb(run_dir, args.environment)
+        print(f"{job.step.value}: {step_push}", file=sys.stderr if "NOT" in step_push else sys.stdout, flush=True)
         if done.exit_code != 0:
-            print(push_wandb(run_dir, args.environment), file=sys.stderr, flush=True)
             raise FlowError(f"{job.step.value} exited {done.exit_code}; see {run_dir}/{job.step.value}.log")
     activity = f"{record.stage.value} stage, {record.epochs} epochs, seed {record.seed}" + (f", {args.max_frames} crops per part" if args.max_frames else "")
     pushed = push_wandb(run_dir, args.environment)
