@@ -24,11 +24,15 @@ refused with the way to get it otherwise. DICOM is read through pydicom, numpy a
 the train environment's lock (#44), with pylibjpeg's decoders for a compressed pixel array: the
 modality LUT applied, MONOCHROME1 inverted, and the 0.5 to 99.5 percentile window cut to 8 bits,
 the reduction LEAKAGE.md's pixel key is defined on. Identity comes from the header first: a
-person rule `{"dicom": ["PatientID", "StudyInstanceUID"]}` takes the first tag that holds a value
-that is not a placeholder, and the view, the device and the pixel size may each be read from the
-header by naming its tag. A person key that holds more frames than the recipe's
+person rule `{"dicom": ["PatientID", "StudyInstanceUID"]}` keys the whole source by the first tag
+that holds a value that is not a placeholder in every file (never one tag here and another there,
+which would key one study's films apart), every header is read before anything is written, and a
+study found under two keys is refused, since such a key is finer than the study; the view, the
+device and the pixel size may each be read from the header by naming its tag, and a number of zero
+or less there is a blank, not a value. A person key that holds more frames than the recipe's
 `max_frames_per_person` is refused, since a blank tag filled with one constant would make the
-whole set one person. `--workers N` decodes in N processes and writes in path order, so the bank
+whole set one person; only MONOCHROME1 and MONOCHROME2 pixels are banked, and every file is
+written as a .part first and renamed, so a preempted job leaves no short frame. `--workers N` decodes in N processes and writes in path order, so the bank
 is the same bytes whatever N is. Standard library only, Pillow, numpy and pydicom optional.
 """
 
@@ -50,9 +54,11 @@ TO_CONFIRM = "to confirm"
 REQUIRED = ("id", "raw", "bank", "images", "format", "person", "view", "device", "split", "labels")
 FORMATS = ("png", "jpg", "jpeg", "tif", "tiff", "bmp", "dcm")
 PILLOW_FORMATS = ("jpg", "jpeg", "tif", "tiff", "bmp")
-PLACEHOLDERS = ("", "anonymous", "anon", "none", "unknown", "0", "na", "n/a", "null")
+PLACEHOLDERS = ("", "anonymous", "anonymous^", "anonymized", "anonymised", "anon", "none", "unknown",
+                "unknown_patient", "0", "00000000", "-", "na", "n/a", "null")
 HEADER_TAGS = ("PatientID", "StudyInstanceUID", "SeriesInstanceUID", "ViewPosition", "Manufacturer",
-               "ManufacturerModelName", "DetectorType", "KVP", "Exposure", "ImagerPixelSpacing", "PixelSpacing",
+               "ManufacturerModelName", "DetectorType", "KVP", "Exposure", "ExposureInmAs", "ExposureInuAs",
+               "ImagerPixelSpacing", "PixelSpacing",
                "BodyPartExamined", "PhotometricInterpretation", "Modality")
 
 
@@ -146,6 +152,17 @@ class Persons:
         if self.regex is None and self.table is None and not self.tags:
             raise BankError("the person rule names neither a regex, a csv nor a dicom tag")
 
+    def choose_tag(self, headers):
+        """The one tag the whole source is keyed by: the first named tag that holds a real value in
+        every file. Mixing tags file by file would key one study's AP film by its patient and its
+        lateral film by its study, two persons the hash may split."""
+        for tag in self.tags:
+            if all(str(h.get(tag) or "").strip().lower() not in self.placeholders for h in headers):
+                self.tags = [tag]
+                return tag
+        raise BankError(f"none of the tags {', '.join(self.tags)} holds a person key in every file;"
+                        " the recipe is read again rather than mixing keys")
+
     def of(self, relative, header=None):
         if self.tags:
             return self.from_header(relative, header or {})
@@ -160,8 +177,7 @@ class Persons:
         return self.table[key]
 
     def from_header(self, relative, header):
-        """The first named tag that holds a real value, as `<tag>:<value>` would be ambiguous across
-        tags, the value alone, and the tag it came from kept in the meta by the caller."""
+        """The value of the first named tag that holds one; after choose_tag, the source's one tag."""
         for tag in self.tags:
             value = str(header.get(tag) or "").strip()
             if value.lower() not in self.placeholders:
@@ -213,22 +229,43 @@ def dicom_modules():
     return numpy, pydicom, apply_modality_lut
 
 
-def header_of(dataset):
-    """The header fields a recipe may read, as plain strings and numbers, absent ones left out."""
-    header = {}
-    for tag in HEADER_TAGS:
+def positive(value, scale=1.0):
+    """A header number as a float above zero, else None: an X-ray's kVp, mAs or pixel size of zero
+    or less is a blank written as a number, which the catalog's models refuse."""
+    try:
+        number = float(value) * scale
+    except (TypeError, ValueError):
+        return None
+    return number if number > 0 else None
+
+
+def tag_value(dataset, tag):
+    """One header field as a plain string or number, None where absent or unreadable."""
+    try:
         value = dataset.get(tag)
-        if value is None or value == "":
-            continue
-        if tag in ("ImagerPixelSpacing", "PixelSpacing"):
-            value = [float(v) for v in value]
-        elif tag in ("KVP", "Exposure"):
-            value = float(value)
-        else:
-            value = str(value)
-        header[tag] = value
-    header["TransferSyntaxUID"] = str(getattr(dataset.file_meta, "TransferSyntaxUID", "")) if hasattr(
-        dataset, "file_meta") else ""
+    except Exception:  # pydicom raises several kinds for a malformed element
+        return None
+    if value is None or value == "":
+        return None
+    if tag in ("ImagerPixelSpacing", "PixelSpacing"):
+        values = list(value) if isinstance(value, (list, tuple)) or hasattr(value, "__iter__") and not isinstance(
+            value, str) else [value]
+        spacing = [positive(v) for v in values]
+        return spacing if spacing and all(spacing) else None
+    if tag in ("KVP", "Exposure", "ExposureInmAs", "ExposureInuAs"):
+        return positive(value)
+    return str(value)
+
+
+def header_of(dataset):
+    """The header fields a recipe may read, absent or unreadable ones left out; `mAs` is the
+    exposure from the most precise of its three tags, since a paediatric film under 1 mAs keeps a
+    zero in the integer tag Exposure."""
+    header = {tag: value for tag in HEADER_TAGS if (value := tag_value(dataset, tag)) is not None}
+    header["mAs"] = header.get("ExposureInmAs") or positive(header.get("ExposureInuAs"), 0.001) or header.get("Exposure")
+    header = {k: v for k, v in header.items() if v is not None}
+    meta = getattr(dataset, "file_meta", None)
+    header["TransferSyntaxUID"] = str(getattr(meta, "TransferSyntaxUID", "") or "")
     return header
 
 
@@ -253,6 +290,9 @@ def dicom_as_png(data):
     numpy, pydicom, apply_modality_lut = dicom_modules()
     dataset = pydicom.dcmread(io.BytesIO(data), force=True)
     header = header_of(dataset)
+    if header.get("PhotometricInterpretation") not in ("MONOCHROME1", "MONOCHROME2"):
+        raise BankError(f"photometric interpretation {header.get('PhotometricInterpretation')!r}; a film is"
+                        " MONOCHROME1 or MONOCHROME2, and palette or colour pixels are not grey levels")
     if int(dataset.get("NumberOfFrames", 1) or 1) > 1:
         raise BankError(f"{int(dataset.NumberOfFrames)} frames in one file; a cine is not a film and this tool"
                         " banks one frame per file")
@@ -373,7 +413,9 @@ def write_once(path, data):
             return "kept"
         raise BankError(f"{path}: already there with other bytes; the raw copy changed, which is a person's call")
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(data)
+    part = path.with_name(path.name + ".part")
+    part.write_bytes(data)
+    os.replace(part, path)  # a job preempted mid-write leaves a .part, never a short frame
     return "written"
 
 
@@ -388,28 +430,60 @@ def decode(job):
         return png, width, height, {}
     except BankError as error:
         raise BankError(f"{relative}: {error}") from None
+    except Exception as error:  # a malformed file names itself in the report, not a traceback
+        raise BankError(f"{relative}: {type(error).__name__}: {error}") from None
 
 
 def header_only(job):
     raw, relative, image_format = job
-    return dicom_header(read_frame(raw, relative)) if image_format == "dcm" else {}
+    try:
+        return dicom_header(read_frame(raw, relative)) if image_format == "dcm" else {}
+    except BankError as error:
+        raise BankError(f"{relative}: {error}") from None
+    except Exception as error:
+        raise BankError(f"{relative}: {type(error).__name__}: {error}") from None
 
 
 def mapped(function, jobs, workers):
     """function over jobs in order, in `workers` processes where more than one is asked for."""
     if workers <= 1:
-        return map(function, jobs)
-    pool = ProcessPoolExecutor(max_workers=workers)
-    return pool.map(function, jobs, chunksize=8)
+        yield from map(function, jobs)
+        return
+    window = workers * 4  # a bounded queue, so decoded frames never pile up past the writer
+    with ProcessPoolExecutor(max_workers=workers) as pool:
+        pending = []
+        for job in jobs:
+            pending.append(pool.submit(function, job))
+            if len(pending) >= window:
+                yield pending.pop(0).result()
+        for future in pending:
+            yield future.result()
+
+
+def keys_of(persons, relatives, headers):
+    """Each file's person key; for a header-keyed source one tag for the whole source, and no study
+    under two keys, since a key finer than the study would let the hash split one study's films."""
+    tag = persons.choose_tag(headers) if persons.tags else None
+    keys = [persons.of(relative, header) for relative, header in zip(relatives, headers)]
+    by_study = {}
+    for key, header in zip(keys, headers):
+        study = header.get("StudyInstanceUID")
+        if study:
+            by_study.setdefault(study, set()).add(key)
+    split = sorted(study for study, found in by_study.items() if len(found) > 1)
+    if split:
+        raise BankError(f"{len(split)} studies fall under more than one person key (first {split[0]}); the key is"
+                        " finer than the study, so the recipe is read again")
+    return keys, tag, len(by_study)
 
 
 def convert(recipe, raw, bank, run, workers=1):
-    """Plan or write the bank; the counts either way. A plan of a DICOM source reads each header,
-    so the person keys and the transfer syntaxes are known before a pixel is decoded."""
+    """Plan or write the bank; the counts either way. A DICOM source's headers are read first, every
+    one, so the person keys, the studies and the transfer syntaxes are settled before a pixel is
+    decoded or a file written."""
     raw, bank = Path(raw), Path(bank)
     persons, labels = Persons(recipe["person"], raw), Labels(recipe["labels"], raw)
     counts = {"frames": 0, "written": 0, "kept": 0, "boxes": 0, "persons": set(), "stems": set()}
-    syntaxes, per_person = {}, {}
     relatives = image_paths(raw, recipe["images"], recipe.get("archives"))
     for relative in relatives:
         stem = stem_of(relative)
@@ -417,39 +491,41 @@ def convert(recipe, raw, bank, run, workers=1):
             raise BankError(f"{relative}: its stem {stem} is another file's too")
         counts["stems"].add(stem)
     jobs = [(str(raw), relative, recipe["format"]) for relative in relatives]
-    needs_header = recipe["format"] == "dcm"
-    if run:
-        results = mapped(decode, jobs, workers)
-    elif needs_header:
-        results = ((None, None, None, header) for header in mapped(header_only, jobs, workers))
-    else:
-        results = ((None, None, None, {}) for _ in jobs)
+    dicom_source = recipe["format"] == "dcm"
+    headers = list(mapped(header_only, jobs, workers)) if dicom_source else [{} for _ in jobs]
+    keys, tag, studies = keys_of(persons, relatives, headers)
+    per_person = {}
+    for key in keys:
+        per_person[key] = per_person.get(key, 0) + 1
     limit = recipe.get("max_frames_per_person")
-    for relative, (data, width, height, header) in zip(relatives, results):
-        case = persons.of(relative, header)
-        counts["persons"].add(case)
-        per_person[case] = per_person.get(case, 0) + 1
-        if limit and per_person[case] > int(limit):
-            raise BankError(f"person {case} holds more than {limit} frames (max_frames_per_person); a placeholder"
-                            " in the person tag would make the set one person, so the recipe is read again")
-        if needs_header:
+    crowded = [key for key, n in per_person.items() if limit and n > int(limit)]
+    if crowded:
+        raise BankError(f"person {crowded[0]} holds more than {limit} frames (max_frames_per_person); a"
+                        " placeholder in the person tag would make the set one person, so the recipe is read again")
+    counts["persons"] = set(keys)
+    if dicom_source:
+        syntaxes = {}
+        for header in headers:
             syntax = header.get("TransferSyntaxUID") or "none"
             syntaxes[syntax] = syntaxes.get(syntax, 0) + 1
-        if not run:
+        counts.update(transfer_syntaxes=dict(sorted(syntaxes.items())), studies=studies, person_tag=tag,
+                      most_frames_per_person=max(per_person.values(), default=0))
+    if not run:
+        counts["frames"] = len(relatives)
+    else:
+        for relative, case, (data, width, height, header) in zip(relatives, keys, mapped(decode, jobs, workers)):
+            stem = stem_of(relative)
+            boxes = labels.of(relative, width, height)
+            counts["boxes"] += len(boxes)
+            meta = meta_of(recipe, case, relative, boxes, header)
+            if tag:
+                meta["person_tag"] = tag
+            text = json.dumps(meta, indent=1, sort_keys=True) + "\n"
+            outcome = write_once(bank / "images" / recipe["split"] / f"{stem}.png", data)
+            write_once(bank / "meta" / f"{stem}.json", text.encode("utf-8"))
+            counts[outcome] += 1
             counts["frames"] += 1
-            continue
-        stem = stem_of(relative)
-        boxes = labels.of(relative, width, height)
-        counts["boxes"] += len(boxes)
-        meta = json.dumps(meta_of(recipe, case, relative, boxes, header), indent=1, sort_keys=True) + "\n"
-        outcome = write_once(bank / "images" / recipe["split"] / f"{stem}.png", data)
-        write_once(bank / "meta" / f"{stem}.json", meta.encode("utf-8"))
-        counts[outcome] += 1
-        counts["frames"] += 1
     counts["persons"], counts["stems"] = len(counts["persons"]), len(counts["stems"])
-    if needs_header:
-        counts["transfer_syntaxes"] = dict(sorted(syntaxes.items()))
-        counts["most_frames_per_person"] = max(per_person.values(), default=0)
     return counts
 
 
@@ -473,7 +549,7 @@ def main(argv=None):
                        "split": recipe["split"], "person_prefix": recipe.get("person_prefix", recipe["id"])})
         print(json.dumps(counts, indent=1, sort_keys=True))
         return 0
-    except (BankError, OSError, ValueError, KeyError) as error:
+    except (BankError, OSError, ValueError, KeyError, TypeError, zipfile.BadZipFile) as error:
         print(f"bank: {error}", file=sys.stderr)
         return 2
 

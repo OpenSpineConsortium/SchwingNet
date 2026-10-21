@@ -433,8 +433,10 @@ class TorrentAndTarTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             dest = Path(tmp) / "raw"
             self.write(dest, {"images_001.tar.gz", "images_002.tar.gz"})
-            counts = tool.verify_torrent(dest, torrent_of(self.files))
+            counts = tool.verify_torrent(dest, torrent_of(self.files), ["images_001.tar.gz", "images_002.tar.gz"])
             self.assertEqual(counts["files_matched"], 2)
+            with self.assertRaisesRegex(tool.FetchError, "images_013.tar.gz: not checked"):
+                tool.verify_torrent(dest, torrent_of(self.files), ["images_001.tar.gz", "images_013.tar.gz"])
             self.assertGreater(counts["pieces_checked"], 40)
             self.assertLess(counts["pieces_checked"], counts["pieces_in_torrent"])
 
@@ -462,6 +464,30 @@ class TorrentAndTarTest(unittest.TestCase):
             dest.mkdir()
             with self.assertRaisesRegex(tool.FetchError, "nothing was verified"):
                 tool.verify_torrent(dest, torrent_of(self.files))
+
+    def test_the_torrent_is_used_only_under_the_infohash_its_address_names(self):
+        import io
+        import tempfile
+        tool = load("fetch_sources")
+        torrent = torrent_of(self.files)
+        info = torrent[torrent.index(b"4:info") + 6:-1]
+        good = hashlib.sha1(info).hexdigest()
+
+        def opener(body):
+            return lambda url, timeout: io.BytesIO(body)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            state = Path(tmp)
+            (state / "release.torrent").write_bytes(b"<html>an error page</html>")
+            url = f"https://academictorrents.com/download/{good}.torrent"
+            self.assertEqual(tool.fetch_torrent(url, state, opener(torrent)), torrent)
+            self.assertEqual((state / "release.torrent").read_bytes(), torrent)
+            other = f"https://academictorrents.com/download/{'0' * 40}.torrent"
+            fresh = Path(tmp) / "fresh"
+            fresh.mkdir()
+            with self.assertRaisesRegex(tool.FetchError, "its infohash is"):
+                tool.fetch_torrent(other, fresh, opener(torrent))
+            self.assertFalse((fresh / "release.torrent").exists())
 
     def test_a_tar_gz_is_unpacked_once_and_never_outside_the_raw_folder(self):
         import io

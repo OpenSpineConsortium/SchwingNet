@@ -26,7 +26,7 @@
         "RLAT": 90.0,
         "LATERAL": 90.0
       },
-      "default": 0.0
+      "default": null
     },
     "gantry_deg": null
   },
@@ -44,7 +44,7 @@
       "dicom": "KVP"
     },
     "mas": {
-      "dicom": "Exposure"
+      "dicom": "mAs"
     }
   },
   "modality": "dx",

@@ -35,7 +35,7 @@ def load(name):
     return tool
 
 
-def dicom(patient, study, view, seed, photometric="MONOCHROME2"):
+def dicom(patient, study, view, seed, photometric="MONOCHROME2", **tags):
     meta = FileMetaDataset()
     meta.MediaStorageSOPClassUID = "1.2.840.10008.5.1.4.1.1.1.1"
     meta.MediaStorageSOPInstanceUID = generate_uid()
@@ -46,6 +46,8 @@ def dicom(patient, study, view, seed, photometric="MONOCHROME2"):
     data.Modality, data.PhotometricInterpretation = "DX", photometric
     data.Rows, data.Columns, data.SamplesPerPixel = 24, 32, 1
     data.BitsAllocated, data.BitsStored, data.HighBit, data.PixelRepresentation = 16, 12, 11, 0
+    for name, value in tags.items():
+        setattr(data, name, value)
     grid = (numpy.arange(24 * 32).reshape(24, 32) * (seed + 3)) % 4096
     data.PixelData = grid.astype(numpy.uint16).tobytes()
     out = io.BytesIO()
@@ -110,8 +112,8 @@ class DicomBankTest(unittest.TestCase):
         self.assertEqual((meta["case"], meta["view"]["lat_from_ap_deg"]), ("1.2.3.1", 90.0))
         self.assertEqual((meta["device"]["make"], meta["device"]["kvp"], meta["px_mm"]), ("Maker", 80.0, 0.15))
         self.assertNotIn("PatientID", meta["dicom"])
-        image = Image.open(self.tmp / "bank" / "images" / "train" / "test_images_b1.png")
-        self.assertEqual((image.mode, image.size), ("L", (32, 24)))
+        with Image.open(self.tmp / "bank" / "images" / "train" / "test_images_b1.png") as image:
+            self.assertEqual((image.mode, image.size), ("L", (32, 24)))
 
     def test_monochrome1_is_inverted_and_flat_frames_are_refused(self):
         straight = self.tool.dicom_as_png(dicom("p", "1.2.5", "AP", 5))[0]
@@ -144,6 +146,42 @@ class DicomBankTest(unittest.TestCase):
         code, _, err = run(self.tool, ["--recipe", str(recipe(self.tmp, max_frames_per_person=3))])
         self.assertEqual(code, 2)
         self.assertIn("more than 3 frames", err)
+
+    def test_one_tag_keys_the_whole_source(self):
+        raw = self.tmp / "raw" / "train_images"
+        raw.mkdir(parents=True)
+        (raw / "ap.dicom").write_bytes(dicom("P1", "1.2.7.1", "AP", 1))
+        (raw / "lat.dicom").write_bytes(dicom("", "1.2.7.1", "LL", 2))
+        counts = counts_of(self.tool, recipe(self.tmp))
+        self.assertEqual((counts["persons"], counts["person_tag"], counts["studies"]), (1, "StudyInstanceUID", 1))
+
+    def test_a_key_finer_than_the_study_is_refused(self):
+        raw = self.tmp / "raw" / "train_images"
+        raw.mkdir(parents=True)
+        (raw / "ap.dicom").write_bytes(dicom("image-hash-1", "1.2.8.1", "AP", 1))
+        (raw / "lat.dicom").write_bytes(dicom("image-hash-2", "1.2.8.1", "LL", 2))
+        code, _, err = run(self.tool, ["--recipe", str(recipe(self.tmp))])
+        self.assertEqual(code, 2)
+        self.assertIn("finer than the study", err)
+
+    def test_a_zero_exposure_is_a_blank_and_the_finer_tags_win(self):
+        raw = self.tmp / "raw" / "train_images"
+        raw.mkdir(parents=True)
+        (raw / "a.dicom").write_bytes(dicom("P1", "1.2.9.1", "AP", 1, Exposure=0, ExposureInuAs=800))
+        (raw / "b.dicom").write_bytes(dicom("P2", "1.2.9.2", "AP", 2, KVP=0, Exposure=0))
+        counts_of(self.tool, recipe(self.tmp), "--run")
+        a = json.loads((self.tmp / "bank" / "meta" / "train_images_a.json").read_text(encoding="utf-8"))
+        b = json.loads((self.tmp / "bank" / "meta" / "train_images_b.json").read_text(encoding="utf-8"))
+        self.assertAlmostEqual(a["device"]["mas"], 0.8)
+        self.assertEqual((b["device"]["kvp"], b["device"]["mas"]), (None, None))
+
+    def test_palette_pixels_are_refused_by_name(self):
+        raw = self.tmp / "raw" / "train_images"
+        raw.mkdir(parents=True)
+        (raw / "p.dicom").write_bytes(dicom("P1", "1.2.10.1", "AP", 1, "PALETTE COLOR"))
+        code, _, err = run(self.tool, ["--recipe", str(recipe(self.tmp)), "--run"])
+        self.assertEqual(code, 2)
+        self.assertIn("train_images/p.dicom: photometric interpretation 'PALETTE COLOR'", err)
 
     def test_lumos_members_are_read_inside_their_zips_by_the_shipped_recipe(self):
         shipped = json.loads((ROOT / "grid" / "banks" / "lumos.json").read_text(encoding="utf-8"))

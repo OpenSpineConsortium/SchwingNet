@@ -237,14 +237,15 @@
       "route": "http",
       "source": "https://nihcc.app.box.com/v/ChestXray-NIHCC (NIH ChestX-ray14: 112,120 frontal chest films in 12 archives)",
       "dest": "/rs/rs_grp_oschome/go2432/data/nih_chestxray14/raw",
-      "size_gb": 42,
+      "size_gb": 87,
       "checksum": {
         "md5": null,
         "sha256": null
       },
       "licence": "open (NIH Clinical Center); the release's README states the usage is unrestricted, with the CVPR 2017 citation asked",
       "confirm": [
-        "that 42 GB for the archives and about 45 GB unpacked are there: df -h /rs/rs_grp_oschome"
+        "that 87 GB are there, 42 for the archives and about 45 unpacked: df -h /rs/rs_grp_oschome",
+        "that the node reaches academictorrents.com; where it does not, the entry fails at the check and keeps the archives, and the torrent can be put by hand at <dest>/../fetch-state/release.torrent, which the job verifies by its infohash before use"
       ],
       "urls": [
         "https://nihcc.box.com/shared/static/vfk49d74nhbxq3nqjg0900w5nvkorp5c.gz",
@@ -276,7 +277,7 @@
       ],
       "torrent": "https://academictorrents.com/download/557481faacd824c83fbf57dcf7b6da9383b3235a.torrent",
       "unpack": true,
-      "about_the_check": "Read 2026-10-21 (#44): the twelve URLs are batch_download_zips.py's, the same in three independent copies (N-Nieto/GenderBias_CheXNet, the alkzar90 Hugging Face loader's history, a Kaggle notebook), and differ from the list this entry held before in the second URL; NIH publishes no checksum for them (the script ends 'Please check the checksums' and the Box folder holds none), so the bytes are checked against the Academic Torrents release 557481faacd824c83fbf57dcf7b6da9383b3235a of the same fifteen files (images_001.tar.gz to images_012.tar.gz, 2.01 to 4.19 GB): lengths and SHA-1 per piece, after the download and before the unpack"
+      "about_the_check": "Read 2026-10-21 (#44): the twelve URLs are batch_download_zips.py's, the same in three independent copies (N-Nieto/GenderBias_CheXNet, the alkzar90 Hugging Face loader's history, a Kaggle notebook), and differ from the list this entry held before in the second URL; NIH publishes no checksum for them (the script ends 'Please check the checksums' and the Box folder holds none), so the bytes are checked against the Academic Torrents release 557481faacd824c83fbf57dcf7b6da9383b3235a of the same release (its listing names the twelve archives images_001.tar.gz to images_012.tar.gz, 2.01 to 4.19 GB, beside two CSVs and the README; the torrent itself is fetched by the job, since this container's proxy refuses academictorrents.com, so its names and its agreement with Box's bytes are checked first there): lengths and SHA-1 per piece, after the download and before the unpack"
     },
     {
       "id": "kaggle_scoliosis_yolov5",

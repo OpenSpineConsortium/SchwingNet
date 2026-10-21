@@ -44,7 +44,7 @@
       "dicom": "KVP"
     },
     "mas": {
-      "dicom": "Exposure"
+      "dicom": "mAs"
     }
   },
   "modality": "dx",
