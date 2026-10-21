@@ -5,12 +5,12 @@
   "what": "25,692 CT of 21,304 patients; a gated anomaly-harvest collection (group B7)",
   "level_truth": "counted by the census pipeline once fetched",
   "reach": "gated",
-  "status": "an agreement stands in front of the data; none signed",
+  "status": "access granted on the owner's Hugging Face account on 2026-10-21 (the dataset page shows the gate accepted); not yet fetched: 21.3 TB, so the fetch waits for the owner's word on how much Ceph space it may take",
   "licence": "a data use agreement (non-commercial)",
   "link": "https://huggingface.co/datasets/ibrahimhamamci/CT-RATE",
   "how_to_get": [
-    "Hold a Hugging Face account, fill the gate form (name, institution, e-mail, terms) on the dataset page.",
-    "The fetch tool passes no token, so fetch with a token read from a file; the ungated re-uploads were deliberately not used."
+    "Access is granted on the owner's Hugging Face account (2026-10-21).",
+    "Fetch on a compute node with data/reproduce/reacquire/reacquire.py (manifest id hf_ct_rate, DEST=/rs/rs_grp_oschome/go2432/data/hf_ct_rate/raw) with the Hugging Face token read from a file in the submitter's environment, never on a command line; the ungated re-uploads were deliberately not used."
   ],
   "grid_path": null,
   "counts": {},
