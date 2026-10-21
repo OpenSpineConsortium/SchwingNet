@@ -1,12 +1,14 @@
 #!/bin/bash
 #SBATCH --job-name=sn_latency
-#SBATCH --partition=gmsap
+#SBATCH --partition=reqp
+#SBATCH --qos=requeue
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=32G
 #SBATCH --time=01:30:00
 #SBATCH --output=logs/%x_%A_%a.out
-# The GPU is asked for on sbatch's command line (--gres=gpu:1), never here, so the probe and the
-# CPU job, submitted from the same file, ask for none.
+# The header is the CPU class, reqp with the requeue QoS, as the probe and the CPU job are submitted;
+# the GPU job and the sweeps put gmsap, the gpu QoS and one GPU on sbatch's command line
+# (run-latency-sweep.sh's GPU), which wins over the header, so no submission leaves a QoS unnamed.
 # Issue #13: one part of the latency, ONNX and sweep work on one run of the level stage, chosen by
 # PART (and, for a sweep array, by SLURM_ARRAY_TASK_ID over SWEEPS). grid/run-latency-sweep.sh
 # submits it four ways and says which; by hand:
