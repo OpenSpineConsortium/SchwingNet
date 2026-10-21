@@ -258,7 +258,9 @@ word_status() {
   run=$(ls -1dt "$RUNS"/*/ 2>/dev/null | head -n 1)
   if [ -n "$run" ]; then
     echo "## newest run: $run"
-    [ -f "$run/train/best.pt" ] && echo "  checkpoint: train/best.pt is there" || echo "  checkpoint: not yet"
+    if [ -f "$run/train/checkpoint.json" ]; then echo "  checkpoint: training finished (train/checkpoint.json)"
+    elif [ -f "$run/train/best.pt" ]; then echo "  checkpoint: not yet; training has kept a best epoch but has not finished"
+    else echo "  checkpoint: not yet"; fi
     [ -f "$run/wandb-sync.json" ] && grep -o 'https://wandb\.ai/[^" ]*' "$run/wandb-sync.json" | sort -u | sed 's/^/  W\&B /' | head -n 4
     [ -f "$run/evaluate/results.md" ] && head -n 30 "$run/evaluate/results.md" | sed 's/^/  /'
   fi
@@ -297,9 +299,11 @@ word_latency() {
   [ -z "${busy// /}" ] || { echo "refusing: latency jobs are still queued or running (jobs $busy)"; return 75; }
   envs_ready || { echo "refusing: the environments are not ready; 'start' makes them first"; return 75; }
   run=$(for one in $(ls -1dt "$RUNS"/*/ 2>/dev/null); do
-          [ -f "$one/RUN.json" ] && [ -f "$one/train/best.pt" ] && { echo "${one%/}"; break; }
+          # train.py keeps best.pt from the first epoch on and writes checkpoint.json only when it
+          # has finished, which the latency tools need, so a run still training is passed over
+          [ -f "$one/RUN.json" ] && [ -f "$one/train/checkpoint.json" ] && [ -f "$one/train/best.pt" ] && { echo "${one%/}"; break; }
         done)
-  [ -n "$run" ] || { echo "refusing: no run under $RUNS has RUN.json and train/best.pt yet"; return 2; }
+  [ -n "$run" ] || { echo "refusing: no run under $RUNS has finished training yet (RUN.json, train/checkpoint.json and train/best.pt)"; return 2; }
   version=$(sed -n 's/.*"catalog_version": *\([0-9][0-9]*\).*/\1/p' "$run/RUN.json" | head -n 1)
   [ -n "$version" ] || { echo "refusing: $run/RUN.json names no catalog_version"; return 2; }
   catalog=$(ls -1 "$STORE/versions/catalog-$(printf '%06d' "$version")-"*.sqlite 2>/dev/null | head -n 1)

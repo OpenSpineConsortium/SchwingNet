@@ -98,6 +98,9 @@ declare -A IMPORTS=(
 rm -f "$REPO/.pixi/SETUP.sha256"
 ok=1
 cd "$REPO" || exit 2
+# the lock the installs read, hashed before they start: the gate fast-forwards this checkout before
+# every word, so a lock that changed while they ran must not be recorded as the one they built
+lock=$(sha256sum < "$REPO/pixi.lock" | cut -d' ' -f1)
 for env in $ENVS; do
   started=$(date +%s)
   if bash grid/box.sh pixi install --locked -e "$env" > "$scratch/install-$env.log" 2>&1; then
@@ -112,6 +115,7 @@ for env in $ENVS; do
   fi
 done
 [ "$ok" = 1 ] || fail "an environment is not ready (above); the gate submits nothing that needs one"
-sha256sum < "$REPO/pixi.lock" | cut -d' ' -f1 > "$REPO/.pixi/SETUP.sha256"
+[ "$(sha256sum < "$REPO/pixi.lock" | cut -d' ' -f1)" = "$lock" ] || fail "pixi.lock changed while the environments were installed; the next 'start' makes them again from the new lock"
+echo "$lock" > "$REPO/.pixi/SETUP.sha256"
 report "ready: .pixi/SETUP.sha256 = $(cat "$REPO/.pixi/SETUP.sha256")"
 echo "SN_SETUP_RC=0"

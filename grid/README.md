@@ -10,7 +10,7 @@ Nobody types a command on the grid. Every grid run of this repository goes throu
 | `status` | The gate's newest jobs as sacct sees them, the tail of every stage report, and the newest run's checkpoint, W&B link and test table. |
 | `leaks` | The leak checks over every shard on the volume (run-leaks.sh, 32 array tasks at a time), refused while an ingest or a catalog job is still queued. |
 | `v1` | The version 1 run alone, on the catalog's current version; refused without a catalog or the weights. While a version 1 run lasts, grid/logs/HOLD names its job and commit, the gate's side skips its fast-forward, and the gate clears the file once Slurm no longer holds the job; a run whose checkout moved anyway says so in its report and is not used. |
-| `latency` | The latency jobs (run-latency-sweep.sh) for the newest run with a checkpoint, on the catalog version its RUN.json names, with the case134 sweep. |
+| `latency` | The latency jobs (run-latency-sweep.sh) for the newest run that has finished training (train/checkpoint.json, which train.py writes last), on the catalog version its RUN.json names, with the case134 sweep. |
 | `fetch <id>` | One set of grid/fetch-xray.json through the X-ray chain; a credentialed one needs ~/.netrc at mode 600 with a physionet.org line, which the gate checks and never prints. |
 | `stop` | Cancels the jobs the gate submitted that are still live, and no other job. |
 

@@ -236,6 +236,8 @@ class GateTest(unittest.TestCase):
         (run / "train").mkdir(parents=True)
         (run / "RUN.json").write_text('{\n "catalog_version": 3,\n "seed": 1\n}\n', encoding="utf-8")
         (run / "train" / "best.pt").write_bytes(b"w")
+        self.assertEqual(self.gate("latency").returncode, 2, "a run still training has no checkpoint.json")
+        (run / "train" / "checkpoint.json").write_text("{}\n", encoding="utf-8")
         done = self.gate("latency")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         lines = self.line_of("latency-sweep.sbatch")
@@ -243,6 +245,23 @@ class GateTest(unittest.TestCase):
         self.assertIn(f"CATALOG={catalog}", lines[0])
         self.assertIn(f"SWEEPS=case134:bank={self.data}/realxray/carmlspine_sweep", lines[2])
         self.assertTrue({"latency_gpu", "latency_cpu", "latency_sweep"} <= set(self.recorded()))
+
+    def test_latency_passes_over_a_run_still_training_for_the_newest_finished_one(self):
+        self.environments_ready()
+        self.catalog_ready(version=3)
+        finished, training = self.runs / "run-a", self.runs / "run-b"
+        for run in (finished, training):
+            (run / "train").mkdir(parents=True)
+            (run / "RUN.json").write_text('{\n "catalog_version": 3,\n "seed": 1\n}\n', encoding="utf-8")
+            (run / "train" / "best.pt").write_bytes(b"w")
+        (finished / "train" / "checkpoint.json").write_text("{}\n", encoding="utf-8")
+        os.utime(finished, (1_000_000_000, 1_000_000_000))
+        done = self.gate("latency")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        lines = self.line_of("latency-sweep.sbatch")
+        self.assertTrue(lines and all(f"RUN={finished}," in line for line in lines), lines)
+        status = self.gate("status")
+        self.assertIn("has not finished", status.stdout)
 
     def live(self, *jobs):
         (self.fake / "queue").write_text("".join(f"{job}\n" for job in jobs), encoding="utf-8")
@@ -356,6 +375,7 @@ class GateTest(unittest.TestCase):
         (run / "train").mkdir(parents=True)
         (run / "RUN.json").write_text('{"catalog_version": 3}', encoding="utf-8")
         (run / "train" / "best.pt").write_bytes(b"")
+        (run / "train" / "checkpoint.json").write_text("{}\n", encoding="utf-8")
         (self.repo / "grid" / "LAST_LATENCY.txt").write_text("probe 999\n", encoding="utf-8")
         done = self.gate("latency")
         self.assertEqual(done.returncode, 1, done.stdout)

@@ -60,7 +60,7 @@ if [ "$PROBE" = 1 ]; then
 fi
 if [ ${#RUNS[@]} -gt 0 ] && [ -z "$CATALOG" ]; then echo "--catalog names the runs' catalog"; exit 64; fi
 for run in ${RUNS[@]+"${RUNS[@]}"}; do
-  [ -f "$run/RUN.json" ] && [ -f "$run/train/best.pt" ] || { echo "$run: no RUN.json and train/best.pt"; exit 2; }
+  [ -f "$run/RUN.json" ] && [ -f "$run/train/checkpoint.json" ] && [ -f "$run/train/best.pt" ] || { echo "$run: has not finished training (no RUN.json, train/checkpoint.json or train/best.pt)" >&2; exit 2; }
   common="ALL,SCHWINGNET=$REPO,RUN=$run,CATALOG=$CATALOG"
   gpu=$(submit "gpu $run" --gres=gpu:1 --export="$common,PART=gpu" latency-sweep.sbatch) || exit 1
   # afterany: the CPU arms and the sweeps need only the export, and each refuses an arm whose
