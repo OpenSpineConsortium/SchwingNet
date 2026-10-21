@@ -1,0 +1,11 @@
+{
+ "onnx_sha256": "0cf060843c9c7d2b9d47d6f96d66d9804a220fe2e68b06b1cbd36602aeb7f160",
+ "part": "validation",
+ "crops": 64,
+ "persons": 5,
+ "device": "cpu",
+ "max_abs_probability_difference": 1.9073486328125e-06,
+ "labels_equal": true,
+ "tolerance": 1e-05,
+ "passed": true
+}
