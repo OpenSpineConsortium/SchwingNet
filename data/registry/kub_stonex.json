@@ -1,0 +1,15 @@
+{
+  "source": "kub_stonex",
+  "identity_level": "patient",
+  "person_key_rule": "kub_stonex:<patient as grid/banks/kub_stonex.json derives it from the file naming or the <class>_patient/ folder>; 1,703 patients hold 2,570 films, so the rule is never one person per image",
+  "access": "CC BY 4.0 (figshare 32049369, doi 10.6084/m9.figshare.32049369; the record's licence field, read from the API on 2026-10-21); de-identified per the record, IRB REC-FSIT-2025/No: 12732 of Daffodil International University",
+  "modality": "dx",
+  "device_class": "film",
+  "regions": [
+    "lumbar",
+    "sacrum"
+  ],
+  "grid_root": "/rs/rs_grp_oschome/go2432/data/kub_stonex",
+  "shards": [],
+  "notes": "2,570 AP kidney-ureter-bladder radiographs of 1,703 patients from two Bangladeshi hospitals: frontal lumbar spine and pelvis at abdominal exposure, no vertebra labels; the raw copy is /rs/rs_grp_oschome/go2432/data/kub_stonex/raw (grid/fetch-xray.json, one zip of 20,765,554,562 bytes unpacked there) and the bank /rs/rs_grp_oschome/go2432/data/kub_stonex/bank; no shard yet: the recipe's images glob, format and person rule wait on the unpacked folder, and the container of issue #40 could not reach figshare (grid/README.md, Measured)"
+}

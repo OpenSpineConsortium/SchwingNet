@@ -5,20 +5,21 @@
   "what": "1,000 lateral cephalograms from 7 devices with 29 landmarks and a cervical vertebral maturation (CVM) stage per film, C2 to C4 in every image (arXiv:2302.07797; the CEPHA29 challenge at ISBI 2023); the ISBI 2015 set of 400 cephalograms with 19 landmarks and no CVM stage is openly downloadable",
   "level_truth": "C2 to C4 by the CVM stage (named vertebra shapes); no other level",
   "reach": "get",
-  "status": "found by the sweep of 2026-10-21; not fetched; the 400-film ISBI 2015 set is open, the 1,000-film set by request to the authors (to confirm on the page); pediatric anchors for the top of the cervical counter from seven devices",
-  "licence": "to confirm on the page",
-  "link": "https://arxiv.org/abs/2302.07797",
+  "status": "found by the sweep of 2026-10-21; not fetched; the 1,000-film set is an open figshare download (27986417, one zip of 2,098,209,792 bytes), entered in grid/fetch-xray.json as aariz on 2026-10-21 (issue #40); the 400-film ISBI 2015 set's link is still to confirm; pediatric anchors for the top of the cervical counter from seven devices",
+  "licence": "CC BY 4.0 (the figshare record's licence field, read from the API on 2026-10-21)",
+  "link": "https://doi.org/10.6084/m9.figshare.27986417",
   "how_to_get": [
-    "Read the data link in the paper at https://arxiv.org/abs/2302.07797 and the ISBI 2015 challenge page for the 400-film set.",
-    "Fetch the open 400-film set as a Slurm job on the owner's word, never on the login node: python3 data/reproduce/reacquire/reacquire.py http-get --url U --dest FILE, U being the address the page gives.",
-    "For the 1,000-film set the owner writes to the authors; any agreement is the owner's to sign."
+    "The 1,000-film set is figshare article 27986417 (doi 10.6084/m9.figshare.27986417), one file Aariz.zip with its md5 in the record; the paper is Khalid, Fraz et al., Scientific Data 12, 1336 (2025), doi 10.1038/s41597-025-05542-3.",
+    "Fetch it as a Slurm job on the owner's word, never on the login node: bash grid/run-xray-chain.sh --only aariz, whose stage 1 reads the API, runs http-get with the md5 and unpacks the zip (grid/README.md).",
+    "The ISBI 2015 set of 400 cephalograms is the entry isbi2015_cephalograms of grid/fetch-xray.json, whose link is still to confirm."
   ],
   "grid_path": null,
   "counts": {
     "films": 1000,
     "devices": 7,
     "landmarks": 29,
-    "isbi_2015_films": 400
+    "isbi_2015_films": 400,
+    "zip_bytes": 2098209792
   },
   "measured": {},
   "record": "docs/research/xray-datasets-missing.md (2026-10-21)"

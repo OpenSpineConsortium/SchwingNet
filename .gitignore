@@ -30,3 +30,8 @@ Thumbs.db
 
 # The locked pixi environment beethoven-qa's gate runs in (pixi.toml); reconstructed from pixi.lock
 .pixi/
+
+# The X-ray chain's logs and its last submission, written beside grid/ by the stages when they
+# run from a checkout; a data root (DATA_ROOT) lives outside every checkout and is never committed
+/grid/logs/
+/grid/LAST_RUN.txt
