@@ -1,0 +1,8 @@
+The v1 flow: a run is refused from a dirty tree or a leaky split, stamped by a run id, and recorded with what it cost beside its numbers.
+
+- tools/flow.py runs the level stage (task #11) locally in the train-cpu environment or as sbatch jobs in train-gpu, writes RUN.json (schwingnet.flow.RunRecord) before the first step, records each job's cost from the runner or sacct, and `record` copies a run's small files into docs/research/v1-demo/runs/ with one ledger row; never the checkpoint.
+- Every reported number is a ResultRow: correct/n, the 95 percent Wilson interval, the persons, the run id, the commit, the clean-tree flag and the catalog's sha256; tools/evaluate.py reads the test part once, after training, and the transitional stratum is reported apart.
+- tools/train.py writes a witness strip of the same validation crops at every epoch, so learning is seen, not trusted; crops come from the truth boxes (the detector stage is not in v1), and ImageNet weights come from a file, never a download, since compute nodes have no internet.
+- The dry run of 2026-10-21 on tools/synthetic_bank.py (learnable, nothing of any person) is docs/research/v1-demo/README.md: the workflow end to end on a CPU in 2.5 minutes; a grid run waits on the owner's word and the gate.
+- A script under tools/ must take tools/ off sys.path before importing torch: tools/profile.py shadows the standard library's profile module.
+- Functions that take a pydantic model are listed under [tool.beethoven-qa.unproven] in pyproject.toml, since CrossHair 0.0.111 cannot construct one; their contracts are checked by tests/schwingnet/test_flow.py.

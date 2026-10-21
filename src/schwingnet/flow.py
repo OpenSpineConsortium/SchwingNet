@@ -21,6 +21,12 @@ HexDigest = Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
 Commit = Annotated[str, Field(pattern=r"^[0-9a-f]{7,40}$")]
 Instant = Annotated[str, Field(pattern=r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")]
 RUN_ID_LENGTH = 12
+HEX = frozenset("0123456789abcdef")
+
+
+def _is_hex(text: str) -> bool:
+    """Hex digits only, checked on the result; the inputs are ASCII, which the hash needs."""
+    return all(c in HEX for c in text)
 
 
 class Step(StrEnum):
@@ -113,11 +119,13 @@ class RunRecord(BaseModel):
 
 
 @beartype
-@require(lambda commit: 7 <= len(commit) <= 40, "a commit is 7 to 40 hex digits")
-@require(lambda catalog_sha256: len(catalog_sha256) == 64, "a catalog is named by its sha256")
-@require(lambda started_at: len(started_at) == 20, "an instant is YYYY-MM-DDTHH:MM:SSZ")
+@require(
+    lambda commit: 7 <= len(commit) <= 40 and commit.isascii(), "a commit is 7 to 40 hex digits"
+)
+@require(lambda catalog_sha256: len(catalog_sha256) == 64 and catalog_sha256.isascii(), "a sha256")
+@require(lambda started_at: len(started_at) == 20 and started_at.isascii(), "YYYY-MM-DDTHH:MM:SSZ")
 @ensure(lambda result: len(result) == RUN_ID_LENGTH, "a run id is twelve hex digits")
-@ensure(lambda result: all(c in "0123456789abcdef" for c in result), "a run id is hex")
+@ensure(lambda result: _is_hex(result), "a run id is hex")
 def run_id(commit: str, catalog_sha256: str, started_at: str) -> str:
     """The run's name: a hash of what it ran on and when, so no two runs share one."""
     text = f"{commit}\n{catalog_sha256}\n{started_at}\n"
