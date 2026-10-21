@@ -13,10 +13,10 @@ One paste in the grid's shell fetches the open X-ray datasets of docs/research/x
 ## The paste
 
 ```
-cd ~/SchwingNet && git pull && df -h /rs/rs_grp_oschome && bash grid/run-platform-fetch.sh && bash grid/run-xray-chain.sh
+cd ~/SchwingNet && git pull && df -h /rs/rs_grp_oschome && bash grid/run-xray-chain.sh && bash grid/run-platform-fetch.sh
 ```
 
-That submits the data platform's chain (25 jobs, one per source, each afterany on the one before) and the X-ray chain (three jobs: fetch, bank and ingest, catalog), prints every job id with its dependency and an ETA, and writes them to grid/LAST_RUN.txt. The two chains are independent and run side by side. `squeue -u $USER` watches them; the X-ray stages each write one report, grid/logs/01-fetch-STAGE-REPORT.md, 02-bank-ingest-STAGE-REPORT.md and 03-catalog-STAGE-REPORT.md, and each platform job logs to grid/logs/dp_fetch_<id>_<job>.out with a README.yaml written at its landing. Add `--only <id,id>` to either script for a part, `--credentialed` to the X-ray chain for the PhysioNet opt-in list, `--gated` to the platform chain for the granted gated sources (CADS CT-TRI, RSNA RATIC, RSPECT), and `SBATCH=echo` in front of either for a dry run that submits nothing.
+That submits the X-ray chain first (three jobs: fetch, bank and ingest, catalog) and then the data platform's chain (25 jobs, one per source, each afterany on the one before), in that order because the owner put X-ray datasets before CT everywhere on 2026-10-21, so the X-ray jobs take their place in the queue first; prints every job id with its dependency and an ETA, and writes them to grid/LAST_RUN.txt. The two chains are independent and run side by side. `squeue -u $USER` watches them; the X-ray stages each write one report, grid/logs/01-fetch-STAGE-REPORT.md, 02-bank-ingest-STAGE-REPORT.md and 03-catalog-STAGE-REPORT.md, and each platform job logs to grid/logs/dp_fetch_<id>_<job>.out with a README.yaml written at its landing. Add `--only <id,id>` to either script for a part, `--credentialed` to the X-ray chain for the PhysioNet opt-in list, `--gated` to the platform chain for the granted gated sources (CADS CT-TRI, RSNA RATIC, RSPECT), and `SBATCH=echo` in front of either for a dry run that submits nothing.
 
 The lines never in a chain, each one job you run or skip:
 
