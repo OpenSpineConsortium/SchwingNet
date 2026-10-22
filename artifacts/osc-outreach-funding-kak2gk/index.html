@@ -1,0 +1,584 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found]){display:none!important}</style></head><body>
+<title>OSC Outreach Funding</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* Palette and faces are the consortium's own: the teal and ochre are the accent pair
+     used in the CTSpinoPelvic1K figures, and Newsreader / IBM Plex are the faces on
+     openspineconsortium.com. A funding brief for OSC should look like OSC. */
+  :root {
+    --paper:      #f5f6f6;
+    --surface:    #ffffff;
+    --ink:        #1a1e21;
+    --ink-soft:   #464e52;
+    --ink-faint:  #6f787c;
+    --rule:       #dcdfde;
+    --rule-firm:  #b9c0bf;
+    --teal:       #1c6b73;
+    --teal-soft:  #e6eeef;
+    --ochre:      #a76d18;
+    --ochre-soft: #f6ecdc;
+    --flag:       #8d3221;
+    --flag-soft:  #f7e6e2;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:      #14181a;
+      --surface:    #1b2023;
+      --ink:        #e8ecec;
+      --ink-soft:   #b3bcbd;
+      --ink-faint:  #838d8f;
+      --rule:       #2c3336;
+      --rule-firm:  #414a4d;
+      --teal:       #6fb3b9;
+      --teal-soft:  #172f31;
+      --ochre:      #d9a75a;
+      --ochre-soft: #2e2417;
+      --flag:       #e08b78;
+      --flag-soft:  #33201c;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:      #14181a;
+    --surface:    #1b2023;
+    --ink:        #e8ecec;
+    --ink-soft:   #b3bcbd;
+    --ink-faint:  #838d8f;
+    --rule:       #2c3336;
+    --rule-firm:  #414a4d;
+    --teal:       #6fb3b9;
+    --teal-soft:  #172f31;
+    --ochre:      #d9a75a;
+    --ochre-soft: #2e2417;
+    --flag:       #e08b78;
+    --flag-soft:  #33201c;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font: 400 16px/1.62 "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 62rem; margin: 0 auto; padding: 3.5rem 1.5rem 6rem; }
+
+  /* ---- masthead ---- */
+  .mast { border-bottom: 2px solid var(--ink); padding-bottom: 1.4rem; margin-bottom: 2.2rem; }
+  .eyebrow {
+    font: 500 0.72rem/1 "IBM Plex Mono", ui-monospace, monospace;
+    letter-spacing: 0.14em; text-transform: uppercase; color: var(--teal);
+    margin: 0 0 0.85rem;
+  }
+  h1 {
+    font: 600 clamp(2.1rem, 5vw, 3rem)/1.08 Newsreader, Georgia, serif;
+    letter-spacing: -0.015em; margin: 0 0 0.7rem; text-wrap: balance;
+  }
+  .standfirst {
+    font-size: 1.06rem; color: var(--ink-soft); max-width: 63ch; margin: 0;
+  }
+
+  /* ---- the gate ---- */
+  .gate {
+    background: var(--flag-soft);
+    border-left: 3px solid var(--flag);
+    padding: 1.1rem 1.3rem; margin: 0 0 2.6rem;
+    display: flex; flex-direction: column; gap: 0.6rem;
+  }
+  .gate h2 {
+    font: 600 0.95rem/1.3 "IBM Plex Sans", sans-serif; margin: 0; color: var(--ink);
+  }
+  .gate p { margin: 0; font-size: 0.93rem; color: var(--ink-soft); max-width: 70ch; }
+  .gate strong { color: var(--ink); font-weight: 600; }
+
+  h2.tier {
+    font: 500 0.74rem/1 "IBM Plex Mono", monospace;
+    letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--ink-faint);
+    display: flex; align-items: baseline; gap: 0.9rem;
+    margin: 2.9rem 0 1.1rem; padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--rule-firm);
+  }
+  h2.tier .when { color: var(--teal); }
+  h2.tier .rest { flex: 1; color: var(--ink-faint); font-weight: 400; letter-spacing: 0.04em; text-transform: none; font-size: 0.8rem; }
+
+  /* ---- one funding source ---- */
+  .item {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--teal);
+    padding: 1.35rem 1.5rem;
+    margin-bottom: 0.85rem;
+    display: flex; flex-direction: column; gap: 0.85rem;
+  }
+  .item.is-cold { border-left-color: var(--rule-firm); }
+  .item.is-warm { border-left-color: var(--ochre); }
+
+  .item-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.6rem 1rem; }
+  .item-head h3 {
+    font: 600 1.16rem/1.25 Newsreader, Georgia, serif;
+    margin: 0; flex: 1 1 18rem; letter-spacing: -0.005em;
+  }
+  .amount {
+    font: 500 1.02rem/1 "IBM Plex Mono", monospace;
+    font-variant-numeric: tabular-nums;
+    color: var(--teal); white-space: nowrap;
+  }
+
+  .meta {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    gap: 0.55rem 1.4rem;
+    padding: 0.75rem 0; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule);
+  }
+  .meta div { display: flex; flex-direction: column; gap: 0.15rem; }
+  .meta dt, .meta .k {
+    font: 500 0.66rem/1 "IBM Plex Mono", monospace;
+    letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-faint);
+  }
+  .meta .v { font-size: 0.9rem; color: var(--ink); font-variant-numeric: tabular-nums; }
+
+  .why { margin: 0; font-size: 0.95rem; color: var(--ink-soft); max-width: 72ch; }
+  .why strong { color: var(--ink); font-weight: 600; }
+
+  .catch {
+    margin: 0; font-size: 0.89rem; color: var(--ink-soft);
+    background: var(--ochre-soft); padding: 0.7rem 0.9rem;
+    border-left: 2px solid var(--ochre); max-width: 72ch;
+  }
+  .catch b { color: var(--ink); font-weight: 600; }
+
+  .act { margin: 0; font-size: 0.9rem; }
+  .act .k {
+    font: 500 0.66rem/1 "IBM Plex Mono", monospace;
+    letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-faint);
+    display: block; margin-bottom: 0.25rem;
+  }
+  a { color: var(--teal); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+  a:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+  code {
+    font: 400 0.87em/1 "IBM Plex Mono", monospace;
+    background: var(--teal-soft); padding: 0.12em 0.35em; border-radius: 2px;
+    word-break: break-word;
+  }
+
+  /* ---- pitch block ---- */
+  .pitch { margin-top: 3.2rem; }
+  .pitch h2 {
+    font: 600 1.4rem/1.2 Newsreader, Georgia, serif; margin: 0 0 0.5rem;
+  }
+  .pitch > p { color: var(--ink-soft); max-width: 70ch; font-size: 0.96rem; }
+  .facts {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+    gap: 1px; background: var(--rule); border: 1px solid var(--rule);
+    margin-top: 1.2rem;
+  }
+  .facts div { background: var(--surface); padding: 0.95rem 1.05rem; }
+  .facts .n {
+    font: 500 1.28rem/1.1 "IBM Plex Mono", monospace;
+    font-variant-numeric: tabular-nums; color: var(--teal); display: block;
+  }
+  .facts .l { font-size: 0.84rem; color: var(--ink-soft); display: block; margin-top: 0.28rem; }
+
+  footer {
+    margin-top: 3.4rem; padding-top: 1.2rem; border-top: 1px solid var(--rule);
+    font-size: 0.84rem; color: var(--ink-faint); max-width: 72ch;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="mast">
+    <p class="eyebrow">Briefing · prepared for the OSC research year</p>
+    <h1>OSC Outreach Funding</h1>
+    <p class="standfirst">Where to ask for money to run OpenSpineConsortium outreach, ordered
+    by how fast it can actually arrive — not by how much it is. The first seven are local and
+    small; the radiology societies at the end are the opposite, and their window opens next
+    month. Each entry says what it will and won't pay for, and who has to be the one
+    signing.</p>
+  </header>
+
+  <section class="gate">
+    <h2>Check this before you write anything</h2>
+    <p><strong>Are you enrolled this year?</strong> Nearly every award below requires a
+    currently enrolled medical student. A research or gap year usually keeps you enrolled —
+    but "usually" is not "verified." Confirm your registration status with the Registrar
+    before you spend an afternoon on an application, because it decides which half of this
+    list you can use.</p>
+    <p><strong>Two structural facts that shape the whole list.</strong> Greg is a resident,
+    so he cannot be the applicant on any student award — that is why you are applying and he
+    is not. And OpenSpineConsortium is not a Registered Student Organization, which several
+    of these require. The fastest way around that is to have an existing registered
+    organization host the event with OSC as the program, rather than registering OSC
+    itself.</p>
+  </section>
+
+  <h2 class="tier"><span class="when">Days</span> <span class="rest">email a person, no committee cycle</span></h2>
+
+  <article class="item">
+    <div class="item-head">
+      <h3>WSUSOM Student Senate — funding request</h3>
+      <span class="amount">$250–$400</span>
+    </div>
+    <div class="meta">
+      <div><span class="k">Ceiling</span><span class="v">$450</span></div>
+      <div><span class="k">Applicant</span><span class="v">Enrolled student</span></div>
+      <div><span class="k">Route</span><span class="v">Email a form</span></div>
+      <div><span class="k">Posted deadline</span><span class="v">None</span></div>
+    </div>
+    <p class="why"><strong>Why this one first:</strong> the amount is almost exactly what is
+    needed, and it is the only source on this list with no committee calendar between the ask
+    and the answer — you send a completed Funding Request Form to a named person.</p>
+    <p class="catch"><b>The catch:</b> Senate positions itself as the last resort and expects
+    you to have tried alumni and mentor funds first, so say in the request which ones you
+    tried and what they said. Anyone who has already taken Alumni or Senate money is
+    ineligible. The form is written around conference attendance, so state plainly that this
+    is an outreach event and what the money buys.</p>
+    <p class="act"><span class="k">Do this</span>Request the 2026–27 form and send it to
+    <code>hadi.elmenini@med.wayne.edu</code> ·
+    <a href="https://www.wsusomstudentsenate.com/new-page-2" target="_blank" rel="noopener">wsusomstudentsenate.com</a></p>
+  </article>
+
+  <article class="item">
+    <div class="item-head">
+      <h3>Student Activities Funding Board — event funding</h3>
+      <span class="amount">Capped, per event</span>
+    </div>
+    <div class="meta">
+      <div><span class="k">Covers</span><span class="v">Vendors, food, supplies</span></div>
+      <div><span class="k">Applicant</span><span class="v">Registered org</span></div>
+      <div><span class="k">Route</span><span class="v">Budget request</span></div>
+      <div><span class="k">Cycle</span><span class="v">Posted deadlines</span></div>
+    </div>
+    <p class="why"><strong>Why this one:</strong> it is the only source here built for
+    <em>events</em> rather than travel. SAFB exists to fund registered organizations running
+    speakers, workshops and seminars on campus — which is what an OSC annotation workshop
+    actually is.</p>
+    <p class="catch"><b>The catch, and it is a real one:</b> the event must be
+    <b>on campus</b> and <b>free and open to the public for its whole duration</b>. A
+    Zoom-based annotation session for enrolled trainees may not qualify at all. If the
+    outreach can be staged as an open on-campus workshop, this is your best fit; if it
+    can't, skip it rather than reshaping the program to chase the money.</p>
+    <p class="act"><span class="k">Do this</span>Talk to Deirdre Turner, Coordinator of
+    Student Organizations Programs and Events — <code>dturner@wayne.edu</code>,
+    (313) 577-7865 — before writing, to confirm the format qualifies ·
+    <a href="https://doso.wayne.edu/policies/event-funding" target="_blank" rel="noopener">doso.wayne.edu</a></p>
+  </article>
+
+  <h2 class="tier"><span class="when">Weeks</span> <span class="rest">an office reviews it; one has a deadline that moves with your acceptance</span></h2>
+
+  <article class="item is-warm">
+    <div class="item-head">
+      <h3>Office of Medical Student Research — Scholarly Activity Award</h3>
+      <span class="amount">up to $500</span>
+    </div>
+    <div class="meta">
+      <div><span class="k">Group rate</span><span class="v">$3,500 org travel</span></div>
+      <div><span class="k">Applicant</span><span class="v">Enrolled student</span></div>
+      <div><span class="k">Lead time</span><span class="v">60 days</span></div>
+      <div><span class="k">Fast path</span><span class="v">3 days post-acceptance</span></div>
+    </div>
+    <p class="why"><strong>Why this one:</strong> the largest per-student amount available
+    quickly, and it carries a genuine fast path most people miss — if an abstract is accepted
+    fewer than 60 days before the event, you may submit <em>within three days of the
+    acceptance</em> instead of 60 days ahead. If OSC has a recent acceptance, that clock may
+    already be running.</p>
+    <p class="catch"><b>The catch:</b> it funds airfare, lodging and registration — travel to
+    present, not an outreach event itself. Use it if the outreach has a conference
+    presentation attached; don't stretch it if it doesn't. Continental US and Canada only.</p>
+    <p class="act"><span class="k">Do this</span>Check the acceptance date first, because it
+    decides which deadline applies ·
+    <a href="https://www.med.wayne.edu/studentaffairs/conference-travel" target="_blank" rel="noopener">med.wayne.edu/studentaffairs</a></p>
+  </article>
+
+  <article class="item is-warm">
+    <div class="item-head">
+      <h3>SOM Alumni Association funds, via Student Affairs</h3>
+      <span class="amount">Varies</span>
+    </div>
+    <div class="meta">
+      <div><span class="k">Covers</span><span class="v">Org activities &amp; events</span></div>
+      <div><span class="k">Applicant</span><span class="v">Student organization</span></div>
+      <div><span class="k">Route</span><span class="v">Office of Student Affairs</span></div>
+      <div><span class="k">Detail</span><span class="v">Confirm by phone</span></div>
+    </div>
+    <p class="why"><strong>Why this one:</strong> the Alumni Association allocates money to
+    the Office of Student Affairs, which then distributes it for student organization
+    activities, travel and events. Senate treats these funds as the <em>primary</em> source
+    and itself as the fallback — so asking here first is not just good manners, it is what
+    makes the Senate request admissible.</p>
+    <p class="catch"><b>The catch:</b> amounts and current deadlines are not published, so
+    this one needs a phone call rather than a form download. Treat what is written here as a
+    lead to confirm, not a specification.</p>
+    <p class="act"><span class="k">Do this</span>Ask the Office of Student Affairs what the
+    current allocation and cutoff are ·
+    <a href="https://www.med.wayne.edu/studentaffairs/student-org-finance" target="_blank" rel="noopener">med.wayne.edu/studentaffairs/student-org-finance</a></p>
+  </article>
+
+  <h2 class="tier"><span class="when">Months</span> <span class="rest">real applications with sponsors and matching funds — start now, spend later</span></h2>
+
+  <article class="item is-cold">
+    <div class="item-head">
+      <h3>WSU GME Seed Grant</h3>
+      <span class="amount">up to $2,500</span>
+    </div>
+    <div class="meta">
+      <div><span class="k">Applicant</span><span class="v">Greg, not you</span></div>
+      <div><span class="k">Cycle</span><span class="v">2026–27 open, rolling</span></div>
+      <div><span class="k">Funds</span><span class="v">Supplies, software, printing</span></div>
+      <div><span class="k">Blocks</span><span class="v">Travel, registration, page fees</span></div>
+    </div>
+    <p class="why"><strong>Why it's on the list even though you can't apply:</strong> it is
+    the one source that will pay for <em>materials</em> — printing, supplies, software, even
+    contracted help. That is a large share of what an outreach program actually spends money
+    on, and nothing else here covers it. Greg applies as the resident; you would be named in
+    the mentoring plan.</p>
+    <p class="catch"><b>The catch:</b> it explicitly prohibits travel, conference
+    registration <b>and publication fees</b> — so it cannot cover the journal's excess-page
+    charge, which was the other reason this search started. It also requires IRB
+    documentation, a faculty mentor's written approval and a mentoring plan, so it is a real
+    application, not a form.</p>
+    <p class="act"><span class="k">Do this</span>Greg emails the GME Research Coordinator at
+    <code>ci3238@wayne.edu</code> for feedback before submitting ·
+    <a href="https://gme.med.wayne.edu/seed-grant" target="_blank" rel="noopener">gme.med.wayne.edu/seed-grant</a></p>
+  </article>
+
+  <article class="item is-cold">
+    <div class="item-head">
+      <h3>AΩA Medical Student Service Leadership Project Grant</h3>
+      <span class="amount">$9,000 / 2 yr</span>
+    </div>
+    <div class="meta">
+      <div><span class="k">Structure</span><span class="v">$5,000 then $4,000</span></div>
+      <div><span class="k">Applicant</span><span class="v">Student team</span></div>
+      <div><span class="k">Deadline</span><span class="v">16 Feb 2027</span></div>
+      <div><span class="k">Institution cap</span><span class="v">1 per 3 years</span></div>
+    </div>
+    <p class="why"><strong>Why it's worth the paperwork:</strong> it is the only award here
+    that would fund outreach as a <em>program</em> rather than a single event, over two years.
+    OSC's shape — students leading a structured service and training project — is what this
+    grant is for.</p>
+    <p class="catch"><b>Four gates, all of which take time:</b> an AΩA chapter member should
+    lead the team, it must be a <b>new</b> project rather than support for an existing one,
+    only <b>one proposal per institution every three years</b> is allowed — so check whether
+    Wayne State has already used its slot — and it needs the Dean's endorsement <b>plus a
+    commitment of matching funds</b>. Start the Dean's conversation months before the
+    deadline, not weeks.</p>
+    <p class="act"><span class="k">Do this</span>Ask the AΩA Councilor whether the
+    institution's slot is free before drafting anything ·
+    <code>msslp@alphaomegaalpha.org</code> · 720-859-4149 ·
+    <a href="https://www.alphaomegaalpha.org/programs/medical-student-service-leadership-project-grant/" target="_blank" rel="noopener">alphaomegaalpha.org</a></p>
+  </article>
+
+  <article class="item is-cold">
+    <div class="item-head">
+      <h3>Community Foundation for Southeast Michigan</h3>
+      <span class="amount">Precedent: $70,000</span>
+    </div>
+    <div class="meta">
+      <div><span class="k">Precedent</span><span class="v">$70,000 / 2 yr</span></div>
+      <div><span class="k">Applicant</span><span class="v">Usually the org</span></div>
+      <div><span class="k">Deadline</span><span class="v">Not published — ask</span></div>
+      <div><span class="k">Fit</span><span class="v">Detroit youth / STEM</span></div>
+    </div>
+    <p class="why"><strong>Why this is the serious one:</strong> a WSU School of Medicine
+    student group — the Black Medical Association's "Bridging the Gap" — won $70,000 over two
+    years from this foundation for STEM education outreach to local youth. That is the same
+    funder, the same school, and the same kind of program. The precedent is the argument.</p>
+    <p class="catch"><b>The catch:</b> nothing about the application process is published in
+    what I could find, and this is a foundation relationship rather than a form. Also worth
+    noting how that award was built: an outreach event first, then a poster at a scientific
+    meeting, <em>then</em> the grant. The record came before the money.</p>
+    <p class="act"><span class="k">Do this</span>Ask the Bridging the Gap organizers how they
+    approached the foundation before approaching it cold ·
+    <a href="https://today.wayne.edu/medicine/news/2024/08/29/student-initiative-to-introduce-stem-education-to-local-youth-wins-community-grant-63473" target="_blank" rel="noopener">Wayne State news coverage</a></p>
+  </article>
+
+  <h2 class="tier"><span class="when">The radiology societies</span> <span class="rest">bigger money, slower clock — but the cycle opens next month</span></h2>
+
+  <section class="gate" style="margin-bottom:1.4rem">
+    <h2>Two things gate this whole group</h2>
+    <p><strong>The October window.</strong> RSNA's 2026–27 cycles are closed and the next
+    ones open in <strong>October 2026</strong>, with medical student deadlines around
+    <strong>1 February</strong>. That is the single most useful date on this page: it is far
+    enough out to prepare properly and close enough that preparation should start now.</p>
+    <p><strong>These fund the programme, not the party.</strong> Nothing in this group pays
+    for an outreach event the way SAFB does. They fund research experience, or an education
+    project, over a year. That suits OSC — which is a training programme with a published
+    framework and a released dataset — but the application has to be written as that, not as
+    a request for event costs.</p>
+  </section>
+
+  <article class="item is-warm">
+    <div class="item-head">
+      <h3>RSNA Research Medical Student Grant</h3>
+      <span class="amount">$3,000 + match</span>
+    </div>
+    <div class="meta">
+      <div><span class="k">With dept match</span><span class="v">$6,000</span></div>
+      <div><span class="k">Applicant</span><span class="v">Medical student</span></div>
+      <div><span class="k">Opens</span><span class="v">October 2026</span></div>
+      <div><span class="k">Deadline</span><span class="v">1 February</span></div>
+    </div>
+    <p class="why"><strong>Why this is the one to aim at:</strong> it is the largest award on
+    this entire page that <em>you</em> can hold in your own name, and it is designed for
+    exactly your situation — a medical student getting a supervised research experience in
+    medical imaging. The $3,000 is matched by the sponsoring department, so the project is
+    funded at $6,000. RSNA also awards up to ten additional grants to students who identify
+    as underrepresented in medicine.</p>
+    <p class="catch"><b>The catch:</b> the departmental match is not automatic — someone has
+    to commit it, so that conversation happens before the application, not after. And this
+    funds research, so OSC goes in as the research programme it is, with the dataset and the
+    published framework as evidence, rather than as outreach.</p>
+    <p class="act"><span class="k">Do this</span>Watch for the cycle to open in October and
+    settle the departmental match first ·
+    <a href="https://www.rsna.org/research/funding-opportunities/research-grants/medical-student-research-grant" target="_blank" rel="noopener">rsna.org — Medical Student Research Grant</a></p>
+  </article>
+
+  <article class="item is-cold">
+    <div class="item-head">
+      <h3>RSNA Education Project Award</h3>
+      <span class="amount">$10,000–$20,000</span>
+    </div>
+    <div class="meta">
+      <div><span class="k">Term</span><span class="v">One year</span></div>
+      <div><span class="k">Applicant</span><span class="v">RSNA member</span></div>
+      <div><span class="k">Opens</span><span class="v">October 2026</span></div>
+      <div><span class="k">Funds</span><span class="v">Salary, fringe, direct costs</span></div>
+    </div>
+    <p class="why"><strong>Why this is the closest fit in the whole document:</strong> it
+    exists to give supplemental funding to new or ongoing <em>education projects</em>, and
+    OSC is an education project with a peer-reviewed description of itself already in print.
+    Nothing else here is shaped that precisely, and at $10,000–$20,000 it is two orders of
+    magnitude past the few hundred dollars this search started with.</p>
+    <p class="catch"><b>The catch:</b> you must be an RSNA member to apply, and the award is
+    aimed at educators rather than students — so realistically Greg or a faculty sponsor is
+    the applicant and you are named on the project. Funds cover salary, fringe and direct
+    project costs.</p>
+    <p class="act"><span class="k">Do this</span>Sort out membership before October, not
+    after ·
+    <a href="https://www.rsna.org/research/funding-opportunities/education-grants/education-project-award" target="_blank" rel="noopener">rsna.org — Education Project Award</a></p>
+  </article>
+
+  <article class="item is-cold">
+    <div class="item-head">
+      <h3>Radiology Education Research Development Grant</h3>
+      <span class="amount">up to $10,000</span>
+    </div>
+    <div class="meta">
+      <div><span class="k">Funders</span><span class="v">RSNA / AAR / APDR / SCARD</span></div>
+      <div><span class="k">Applicant</span><span class="v">Confirm — likely faculty</span></div>
+      <div><span class="k">Scope</span><span class="v">International welcome</span></div>
+      <div><span class="k">Purpose</span><span class="v">Education innovation</span></div>
+    </div>
+    <p class="why"><strong>Why it belongs here:</strong> it funds innovation and improvement
+    in health sciences education, which is the claim the OSC framework paper already makes
+    and evidences. A joint award across four radiology education bodies also carries more
+    weight per dollar than its size suggests.</p>
+    <p class="catch"><b>The catch:</b> eligibility and deadline were not published on the
+    listing I found, so confirm both with the Association for Academic Radiology before
+    investing time. Treat the amount as the only reliable figure here.</p>
+    <p class="act"><span class="k">Do this</span>Check current terms ·
+    <a href="https://www.aur.org/other-grants" target="_blank" rel="noopener">aur.org — other education grants</a></p>
+  </article>
+
+  <article class="item is-cold">
+    <div class="item-head">
+      <h3>Society of Interventional Radiology — student awards</h3>
+      <span class="amount">Two programmes</span>
+    </div>
+    <div class="meta">
+      <div><span class="k">Research grant</span><span class="v">Deadline 1 February</span></div>
+      <div><span class="k">Summer internship</span><span class="v">Deadline 13 March</span></div>
+      <div><span class="k">Applicant</span><span class="v">Medical student</span></div>
+      <div><span class="k">Fit</span><span class="v">Weaker — IR-specific</span></div>
+    </div>
+    <p class="why"><strong>Why it's listed:</strong> both are open to medical students in
+    their own name, and the deadlines sit next to RSNA's, so one preparation effort covers
+    several applications.</p>
+    <p class="catch"><b>The catch, said plainly:</b> OSC is spine imaging and morphometry,
+    not interventional radiology. Apply only if you can draw a real line to IR practice —
+    image-guided spinal intervention needs the same level identification the dataset is
+    built around. If that line feels like a stretch when you write it, it will read as one.</p>
+    <p class="act"><span class="k">Do this</span>Compare against the RSNA student grant and
+    pick one to do properly rather than both thinly ·
+    <a href="https://www.aur.org/other-grants" target="_blank" rel="noopener">deadlines listed at aur.org</a></p>
+  </article>
+
+  <article class="item is-cold">
+    <div class="item-head">
+      <h3>RSNA Education Scholar Grant</h3>
+      <span class="amount">up to $75,000</span>
+    </div>
+    <div class="meta">
+      <div><span class="k">Term</span><span class="v">One year, rarely two</span></div>
+      <div><span class="k">Applicant</span><span class="v">Established educator</span></div>
+      <div><span class="k">Covers</span><span class="v">Salary + project costs</span></div>
+      <div><span class="k">Horizon</span><span class="v">Not this year</span></div>
+    </div>
+    <p class="why"><strong>Why it's on the page at all:</strong> it is where this line of
+    work goes if the smaller education awards land first. It is not a realistic target now,
+    and knowing that it exists is the point — a funded Education Project Award is the natural
+    thing to build into this.</p>
+    <p class="catch"><b>Not for you, and not yet.</b> It supports individuals with an
+    established record in radiologic education, covering salary and project costs. Listed as
+    a destination, not a to-do.</p>
+    <p class="act"><span class="k">Do this</span>Nothing now ·
+    <a href="https://www.rsna.org/research/funding-opportunities/education-grants" target="_blank" rel="noopener">rsna.org — education grants</a></p>
+  </article>
+
+  <section class="pitch">
+    <h2>What to put in every one of them</h2>
+    <p>Most student funding requests describe an intention. This one can describe a record,
+    which is the whole advantage — use these numbers in each application rather than writing
+    a new case each time.</p>
+    <div class="facts">
+      <div><span class="n">802</span><span class="l">CT records annotated and openly released</span></div>
+      <div><span class="n">13</span><span class="l">medical students trained as annotators</span></div>
+      <div><span class="n">1</span><span class="l">peer-reviewed paper on the education model, in <em>Cureus</em></span></div>
+      <div><span class="n">2</span><span class="l">permanent archives: a Zenodo DOI and a public dataset mirror</span></div>
+    </div>
+    <p style="margin-top:1.2rem">The published framework paper is Schehr A, Kim J, Schwing G,
+    <em>OpenSpineConsortium: an open-source framework for medical student engagement in
+    computational spine imaging research</em>, <em>Cureus</em> 2026 —
+    <a href="https://doi.org/10.7759/cureus.112661" target="_blank" rel="noopener">doi:10.7759/cureus.112661</a>.
+    Cite it. A reviewer deciding between applications will take a peer-reviewed description
+    of the program over any amount of description you write yourself.</p>
+  </section>
+
+  <section class="pitch" style="margin-top:2.6rem">
+    <h2>The one thing to do this week</h2>
+    <p>Everything above splits into two jobs on two clocks, and they don't compete for the
+    same effort.</p>
+    <div class="facts">
+      <div><span class="n">Now</span><span class="l">Confirm enrolment, then email the Office
+      of Student Affairs about alumni funds — that ask is what makes the Senate request
+      admissible</span></div>
+      <div><span class="n">Oct</span><span class="l">RSNA cycles open. Settle RSNA membership
+      and the departmental match <em>before</em> they do, because both take longer than the
+      form does</span></div>
+      <div><span class="n">Feb 1</span><span class="l">RSNA and SIR student deadlines. One
+      application done properly beats three done thinly</span></div>
+    </div>
+  </section>
+
+  <footer>
+    <p>Amounts, deadlines and contacts here were read off each funder's own pages in
+    September 2026 and are quoted rather than estimated — but funding levels and cycles
+    change without notice. Four entries are marked in place as leads rather than facts: the
+    Alumni Association allocation and the Community Foundation process publish no figures at
+    all, the Radiology Education Research Development Grant published neither eligibility nor
+    deadline, and RSNA does not list a medical-student membership rate — it notes only that
+    some groups qualify for discounted or complimentary membership and that student
+    applicants must file a program verification form, so confirm that directly with
+    <code>customerservice@rsna.org</code>. Verify before relying on any number in a submitted
+    application.</p>
+  </footer>
+
+</div>
+
+</body></html>

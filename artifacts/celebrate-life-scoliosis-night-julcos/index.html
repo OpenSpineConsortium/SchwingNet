@@ -1,0 +1,254 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Celebrate Life Scoliosis Night</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Stencil+Display:wght@700;800;900&family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  /* Detroit City FC event palette, carried over from the first flyer so the two read as
+     one series: teal ground, orange accent, black panels, bone-white cards. */
+  :root{
+    --teal:#4cb8b0; --teal-deep:#2f8d86;
+    --orange:#e8762c; --orange-lt:#f2934f;
+    --black:#141414; --bone:#f4efe4; --white:#ffffff;
+    --ink-on-bone:#1a1a1a;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0; background:#2a2a2a;}
+  body{font-family:Barlow,system-ui,-apple-system,Segoe UI,sans-serif; color:var(--black);}
+
+  .sheet{
+    width:8.5in; min-height:11in; margin:24px auto; background:var(--teal);
+    display:flex; flex-direction:column; box-shadow:0 10px 50px rgba(0,0,0,.45);
+  }
+  @media (max-width:920px){ .sheet{width:100%; margin:0;} }
+
+  .display{font-family:"Big Shoulders Stencil Display","Barlow Condensed",Impact,sans-serif;
+           text-transform:uppercase; line-height:.92;}
+  .cond{font-family:"Barlow Condensed",Barlow,sans-serif;}
+
+  /* ---------- masthead ---------- */
+  .top{padding:26px 34px 18px; text-align:center;}
+  h1{margin:0; font-family:"Big Shoulders Stencil Display","Barlow Condensed",Impact,sans-serif;
+     font-weight:900; font-size:78px; letter-spacing:.012em; line-height:.86; color:var(--black);
+     text-shadow:4px 4px 0 var(--orange);}
+  .sub{margin:12px auto 0; max-width:20ch; font-family:"Barlow Condensed",sans-serif; font-weight:700;
+       font-size:27px; line-height:1.12; text-transform:uppercase; color:var(--black);
+       text-shadow:2px 2px 0 var(--orange-lt);}
+
+  /* ---------- the line that does the work ---------- */
+  .banner{background:var(--black); color:var(--bone); margin:16px 34px 0; padding:12px 18px;
+          border:3px solid var(--orange); text-align:center;}
+  .banner .big{font-family:"Big Shoulders Stencil Display","Barlow Condensed",Impact,sans-serif;
+        font-weight:800; font-size:34px; letter-spacing:.02em; color:var(--orange); line-height:1;}
+  .banner .small{font-family:Barlow,sans-serif; font-weight:500; font-size:15.5px; margin-top:6px;
+        color:var(--bone); line-height:1.35;}
+
+  /* ---------- body grid ---------- */
+  .grid{display:grid; grid-template-columns:1fr 1.12fr; gap:16px; padding:16px 34px 0; align-items:start;}
+  @media (max-width:720px){ .grid{grid-template-columns:1fr;} }
+
+  .kicker{font-family:"Big Shoulders Stencil Display","Barlow Condensed",Impact,sans-serif;
+          font-weight:800; font-size:23px; line-height:1.05; text-transform:uppercase;
+          color:var(--black); text-shadow:2px 2px 0 var(--orange-lt); text-align:center; margin:0 0 12px;}
+
+  .trunk{background:var(--bone); border:3px solid var(--black); padding:13px 15px;
+         font-size:14.5px; line-height:1.4; text-align:center; color:var(--ink-on-bone);}
+  .trunk strong{display:block; font-family:"Barlow Condensed",sans-serif; text-transform:uppercase;
+         font-size:17px; letter-spacing:.03em; color:var(--orange); margin-bottom:4px;}
+
+  .panel{background:var(--black); border:3px solid var(--orange); padding:13px 17px; color:var(--bone);}
+  .panel + .panel{margin-top:13px;}
+  .panel .lab{font-family:"Barlow Condensed",sans-serif; font-weight:700; font-size:14px;
+        letter-spacing:.16em; text-transform:uppercase; color:var(--orange);}
+  .panel .day{font-family:"Big Shoulders Stencil Display","Barlow Condensed",Impact,sans-serif;
+        font-weight:800; font-size:27px; color:var(--bone); line-height:1.05; margin-top:2px;}
+  .panel .date{font-family:"Big Shoulders Stencil Display","Barlow Condensed",Impact,sans-serif;
+        font-weight:900; font-size:47px; color:var(--bone); line-height:.95;}
+  .panel .time{font-family:"Big Shoulders Stencil Display","Barlow Condensed",Impact,sans-serif;
+        font-weight:800; font-size:31px; color:var(--orange); line-height:1;}
+  .panel .place{font-family:"Big Shoulders Stencil Display","Barlow Condensed",Impact,sans-serif;
+        font-weight:800; font-size:31px; color:var(--orange); line-height:1; margin-top:1px;}
+  .panel .addr{font-family:Barlow,sans-serif; font-weight:600; font-size:16px; line-height:1.3;
+        color:var(--bone); margin-top:5px;}
+  .panel .after{font-family:Barlow,sans-serif; font-weight:500; font-size:13.5px; line-height:1.32;
+        color:#d8d3c7; margin-top:7px; border-top:1px solid #3a3a3a; padding-top:6px;}
+  .panel .after b{color:var(--orange-lt); font-weight:700;}
+
+  .card{background:var(--bone); border:3px solid var(--black); padding:12px 16px; color:var(--ink-on-bone);}
+  .card + .card{margin-top:13px;}
+  .card .lab{font-family:"Barlow Condensed",sans-serif; font-weight:700; font-size:14px;
+        letter-spacing:.14em; text-transform:uppercase; color:var(--orange); margin-bottom:3px;}
+  .card p{margin:0; font-size:15.5px; line-height:1.36; font-weight:500;}
+  .card p + p{margin-top:6px;}
+
+  /* Two fields, named. The venue's whole point is that these are separate rooms, so they
+     are set as two labelled halves rather than one sentence a parent has to parse. */
+  .fields{display:grid; grid-template-columns:1fr 1fr; gap:9px; margin-top:10px;}
+  @media (max-width:520px){ .fields{grid-template-columns:1fr;} }
+  .field{background:var(--black); color:var(--bone); padding:9px 10px; text-align:center;
+         border:2px solid var(--orange);}
+  .field .n{font-family:"Barlow Condensed",sans-serif; font-weight:700; font-size:12.5px;
+        letter-spacing:.14em; text-transform:uppercase; color:var(--orange);}
+  .field .w{font-family:"Big Shoulders Stencil Display","Barlow Condensed",Impact,sans-serif;
+        font-weight:800; font-size:19px; line-height:1.05; margin-top:2px;}
+
+  /* ---------- footer ---------- */
+  .foot{background:var(--black); color:var(--bone); margin-top:auto; padding:18px 34px 16px;
+        border-top:5px solid var(--orange);}
+  .footgrid{display:grid; grid-template-columns:1fr auto; gap:20px 26px; align-items:center;}
+  @media (max-width:720px){ .footgrid{grid-template-columns:1fr;} }
+  .cta{font-family:"Big Shoulders Stencil Display","Barlow Condensed",Impact,sans-serif;
+       font-weight:800; font-size:25px; color:var(--orange); text-align:center; line-height:1.05;
+       text-transform:uppercase;}
+  .contacts{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:11px; text-align:center;}
+  @media (max-width:520px){ .contacts{grid-template-columns:1fr;} }
+  .contacts .tel{font-family:"Big Shoulders Stencil Display","Barlow Condensed",Impact,sans-serif;
+        font-weight:800; font-size:29px; color:var(--orange); line-height:1;}
+  .contacts .who{font-weight:700; font-size:15px; margin-top:3px;}
+  .contacts .role{font-size:13px; color:#c9c4b8; line-height:1.25;}
+  .contacts .mail{font-size:12.5px; color:var(--orange-lt); word-break:break-word; margin-top:2px;}
+
+  .qrwrap{text-align:center;}
+  .qrwrap .lab{font-family:"Big Shoulders Stencil Display","Barlow Condensed",Impact,sans-serif;
+        font-weight:800; font-size:19px; color:var(--orange); letter-spacing:.03em; margin-bottom:7px;
+        text-transform:uppercase;}
+  #qr{background:var(--bone); padding:9px; display:inline-block; line-height:0;}
+  #qr img, #qr canvas{display:block; width:128px; height:128px;}
+  .qrwrap .url{font-family:"Barlow Condensed",sans-serif; font-weight:600; font-size:12.5px;
+        color:var(--bone); margin-top:6px;}
+
+  .tail{border-top:2px solid var(--orange); margin-top:14px; padding-top:11px; text-align:center;}
+  .tail .site{font-family:"Big Shoulders Stencil Display","Barlow Condensed",Impact,sans-serif;
+        font-weight:800; font-size:26px; color:var(--bone); letter-spacing:.01em;}
+  .tail .social{font-family:"Barlow Condensed",sans-serif; font-weight:600; font-size:15px;
+        color:var(--orange-lt); margin-top:4px;}
+
+  @media print{
+    html,body{background:#fff;}
+    .sheet{width:auto; min-height:auto; margin:0; box-shadow:none;}
+    @page{size:letter portrait; margin:0;}
+  }
+</style>
+
+<div class="sheet">
+
+  <div class="top">
+    <h1>Celebrate Life</h1>
+    <p class="sub">A soccer night for kids with scoliosis</p>
+  </div>
+
+  <div class="banner">
+    <div class="big">Braces on. Braces off. Your call.</div>
+    <div class="small">Most nights, a curve is a list of things you can&rsquo;t do.
+      This one is a team, a ball and two hours of nobody telling you to sit down.</div>
+  </div>
+
+  <div class="grid">
+
+    <div>
+      <p class="kicker">Simultaneous with the<br>Detroit City Fieldhouse<br>Turf or Treat event!</p>
+      <div class="trunk">
+        <strong>Candy, costumes, all indoors</strong>
+        Two indoor fields, side by side. One is given over entirely to trick-or-treating;
+        the other is where we play. Costumes encouraged for players and families &mdash;
+        and yes, a brace fits under a costume just fine.
+        <div class="fields">
+          <div class="field"><div class="n">Field one</div><div class="w">Trick-or-<br>treating</div></div>
+          <div class="field"><div class="n">Field two</div><div class="w">Soccer<br>with the pros</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="panel">
+        <div class="lab">When</div>
+        <div class="day">Saturday</div>
+        <div class="date">October 24</div>
+        <div class="time">5:00 &ndash; 7:00 PM</div>
+        <div class="after">Stay after: <b>watch party</b> for Detroit City&rsquo;s men&rsquo;s
+          pro team in the upstairs restaurant.</div>
+      </div>
+      <div class="panel">
+        <div class="lab">Where</div>
+        <div class="place">Detroit City<br>Fieldhouse</div>
+        <div class="addr">3401 E Lafayette St<br>Detroit, MI 48207</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="grid" style="padding-top:14px; grid-template-columns:1fr 1fr;">
+    <div class="card">
+      <div class="lab">Who plays</div>
+      <p>Every kid under 18 living with scoliosis or a spine condition &mdash; bracing,
+        being watched and waited on, or after surgery with your surgeon&rsquo;s OK.</p>
+      <p>Families welcome on the sideline.</p>
+    </div>
+    <div class="card">
+      <div class="lab">Who coaches</div>
+      <p>Professional soccer players from Southeast Michigan, on the field with the kids for
+        the whole game.</p>
+      <p>Teams are picked so everyone plays. Nobody sits the bench.</p>
+    </div>
+  </div>
+
+  <div class="grid" style="padding-top:13px; grid-template-columns:1fr;">
+    <div class="card">
+      <div class="lab">Eating</div>
+      <p>The Fieldhouse restaurant upstairs is open all evening and is where the watch party
+        happens. Outside food and drink aren&rsquo;t permitted in the facility, so come hungry
+        and eat upstairs.</p>
+    </div>
+  </div>
+
+  <div class="foot">
+    <div class="footgrid">
+      <div>
+        <div class="cta">Sign up so we<br>can pick teams!</div>
+        <div class="contacts">
+          <div>
+            <div class="tel">313-570-2299</div>
+            <div class="who">Josh Podzikowski</div>
+            <div class="role">Operations Assistant, Detroit City FC</div>
+            <div class="mail">joshp@detcityfc.com</div>
+          </div>
+          <div>
+            <div class="tel">504-994-0403</div>
+            <div class="who">Gregory Schwing, MD, PhD</div>
+            <div class="role">DMC/WSU General Surgery</div>
+            <div class="mail">gregory.schwing@med.wayne.edu</div>
+          </div>
+        </div>
+      </div>
+      <div class="qrwrap">
+        <div class="lab">Scan to register</div>
+        <div id="qr"></div>
+        <div class="url">forms.gle/v2NbizhJ8TpBdVi66</div>
+      </div>
+    </div>
+    <div class="tail">
+      <div class="site">openspineconsortium.com/celebrate-life</div>
+      <div class="social">&#64;detroitcityfieldhouse &nbsp;&middot;&nbsp; &#64;openspineconsortium</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // The registration link is the one thing on this flyer a phone has to read correctly,
+  // so it is generated from the URL string rather than pasted as an image that could
+  // drift from it. High correction level survives a fold or a thumb over the corner.
+  (function () {
+    var el = document.getElementById("qr");
+    if (!el || typeof QRCode === "undefined") { return; }
+    new QRCode(el, {
+      text: "https://forms.gle/v2NbizhJ8TpBdVi66",
+      width: 128, height: 128,
+      colorDark: "#141414", colorLight: "#f4efe4",
+      correctLevel: QRCode.CorrectLevel.H
+    });
+  })();
+</script>
+
+</body></html>
