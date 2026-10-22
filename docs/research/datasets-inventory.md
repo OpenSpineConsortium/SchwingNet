@@ -178,7 +178,7 @@ EXCLUDED  #.......................................   3
 | Source | What it is | Level truth | Reach | Status | Counts | Licence | Link |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Veterinary: canine lateral thoracic radiographs for vertebral heart size (Mendeley ktx4cj55pn) | 152 anonymised lateral thoracic radiographs of dogs; a lateral dog thorax shows T1 to L1 and the VHS method itself counts vertebrae from T4 | none; T4 is the VHS reference vertebra | GET | the owner's veterinary direction of 2026-10-20; found by the sweep of 2026-10-21; not fetched; the only other public veterinary spine radiograph set found beside the pig CBCT (veterinary_pig_levelcheck) | radiographs 152 | CC BY 4.0 (to confirm on the page) | [link](https://data.mendeley.com/datasets/ktx4cj55pn) |
-| Veterinary: pig CBCT, CT and planar images (Goswami 2020, LevelCheck) | the LevelCheck pig study's seven zips of CBCT, CT and planar images, about 205 MB, with the paper (IEEE Access 2020), 3D-to-2D intensity-based registration | from the CT, by registration | GET | the owner's future direction of 2026-10-20: expand the workflow into veterinary medicine; the zips sit in spine-program's archive, excluded from the record, and the set is open on IEEE DataPort; the Mendeley canine thoracic set (canine_thoracic_vhs) stands beside it since the sweep of 2026-10-21 | zips 7, size mb 205 | IEEE DataPort open access | [link](https://ieee-dataport.org/open-access/pig-data-2d-3d-intensity-based-registration) |
+| Veterinary: pig lower limb CT, CBCT and planar images (Goswami 2020, IEEE DataPort) | seven zips, about 205 MB: the CT of a pig lower limb phantom, two CBCTs (with and without soft tissue), 7 C-arm planar projections at different poses in each condition and the registration matrices, from 'A new workflow for image-guided intraoperative electron radiotherapy' (IEEE Access 2020, doi 10.21227/gxpd-d998); not the LevelCheck pig study this record once named, and no spine | none; no spine; the pose matrices make it a 2D/3D registration benchmark | GET | the owner's future direction of 2026-10-20: expand the workflow into veterinary medicine; the zips sit in spine-program's archive, excluded from the record, and the set is open on IEEE DataPort; the Mendeley canine thoracic set (canine_thoracic_vhs) stands beside it since the sweep of 2026-10-21; the page read on 2026-10-22 says the phantom is a pig lower limb, so the set tunes the registration code and names no level | zips 7, size mb 205 | IEEE DataPort open access | [link](https://ieee-dataport.org/open-access/pig-data-2d-3d-intensity-based-registration) |
 
 ## Where it sits on the grid
 
@@ -756,7 +756,7 @@ Link: https://data.mendeley.com/datasets/ktx4cj55pn. Licence: CC BY 4.0 (to conf
 1. Open https://data.mendeley.com/datasets/ktx4cj55pn and read the licence line and the file list.
 2. Fetch as a Slurm job on the owner's word, never on the login node: python3 data/reproduce/reacquire/reacquire.py http-get --url U --dest FILE, U being the public-files address the page gives.
 
-### Veterinary: pig CBCT, CT and planar images (Goswami 2020, LevelCheck) (GET)
+### Veterinary: pig lower limb CT, CBCT and planar images (Goswami 2020, IEEE DataPort) (GET)
 
 Link: https://ieee-dataport.org/open-access/pig-data-2d-3d-intensity-based-registration. Licence: IEEE DataPort open access.
 

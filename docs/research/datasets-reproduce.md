@@ -1391,7 +1391,7 @@ registry record holds no such field.
 - Manifest records: none. found by the sweep of 2026-10-21 (docs/research/xray-datasets-missing.md); nothing fetched, so no manifest record was ever made.
 - The registry's steps: Open https://data.mendeley.com/datasets/ktx4cj55pn and read the licence line and the file list. Fetch as a Slurm job on the owner's word, never on the login node: python3 data/reproduce/reacquire/reacquire.py http-get --url U --dest FILE, U being the public-files address the page gives.
 
-### Veterinary: pig CBCT, CT and planar images (Goswami 2020, LevelCheck) (`veterinary_pig_levelcheck`, GET)
+### Veterinary: pig lower limb CT, CBCT and planar images (Goswami 2020, IEEE DataPort) (`veterinary_pig_levelcheck`, GET)
 
 - Registry: link https://ieee-dataport.org/open-access/pig-data-2d-3d-intensity-based-registration; grid path none; counts zips 7, size mb 205.
 - Manifest records: none. the zips sit in spine-program's archive and the set is open on IEEE DataPort; no manifest record was ever made.

@@ -133,19 +133,38 @@ The owner's ask: find out whether the held CT-X-ray sets come with segmentations
 AI-assisted segmentation with Dr Tech's verification into the priors work, and use registration code
 for supervised pixel-to-pixel 3D-to-2D priors.
 
-| Set | X-rays | CT | Segmentation shipped | What is needed |
-| --- | --- | --- | --- | --- |
-| C-ArmLSpine (held) | 149 cases, 299 spot frames, 59,609 DICOM frames, 2 sweeps | CBCT per case | level labels on the CBCT, two labellers agreeing on 814 of 910 bodies; no body masks | masks per body: TotalSegmentator, then correction |
-| COBRA (held, CC BY-NC) | 692 cases of raw CBCT projections with geometry | planning CT and the reconstruction | none for vertebrae | TotalSegmentator on the planning CT, then correction; the geometry projects them |
-| DeepFluoro (held) | 366 H5 frames, 2,659 vendor frames | CT of 6 specimens | pelvis and femur masks, no vertebrae | lumbar bodies to add |
-| Ljubljana 2D/3D gold standard (held) | 18 frames of one cadaver, L1 to L5 | CT, with the pose of every frame | the registration's gold standard; no body masks | masks for five bodies, then projection |
-| FluoroSAM's cadaver | 464 frames | CBCT | TotalSegmentator | not released |
-| Flepp's femur set | 50 X-rays | 5 CTs | contour masks, bone models | not spine; a registration benchmark only |
+The owner's count on 2026-10-22 23:08 UTC is nine such sets once the pig set is counted, and the
+goal restated then is: every paired CT-and-X-ray set is segmented, in ITK-SNAP with AI assistance
+where no annotation exists and verified by Dr Tech, so that every real X-ray with a CT carries gold
+per-pixel labels; and the annotated X-ray sets without a CT (BUU-LSPINE, NHANES II, CSXA, Aariz,
+AASCE, VinDr-SpineXR, Spinal-AI2024, C-ArmLSpine's spots) then either train an independent
+pseudolabeller or test the network, never both for one person. The nine, with what each ships:
 
-The plan, as workstream O of the xr-from-3d programme (issue #127 under #56):
+| Set | Anatomy | X-rays | CT | Pose | Segmentation shipped | What ITK-SNAP must add |
+| --- | --- | --- | --- | --- | --- | --- |
+| C-ArmLSpine (held) | lumbar | 149 cases, 299 spot frames, 59,609 DICOM frames, 2 sweeps | CBCT per case | stored | level labels on the CBCT, two labellers agreeing on 814 of 910 bodies; no body masks | masks per body, L1 to S1 |
+| COBRA (held, CC BY-NC) | lumbosacral, pelvis | 692 cases of raw CBCT projections, 375,618 | planning CT and the reconstruction | stored (geometry solved) | none for vertebrae | masks on the planning CT, L3 to S1 and the pelvis |
+| DeepFluoro (held, CC BY-NC-SA) | pelvis, hip, low lumbar | 366 H5 frames, 2,659 vendor frames | 19 CT of 6 specimens | registered for the H5 frames | pelvis and femur masks, no vertebrae | lumbar bodies and the sacrum |
+| Ljubljana 2D/3D gold standard (held, ND) | L1 to L5 | 18 frames of one cadaver | CT | stored | the registration's gold standard; no body masks | five bodies, read-only licence: masks live beside, never redistributed |
+| LUMOS (Zenodo 18173664, not fetched, 46.4 GB) | lumbar, diagnostic radiographs | 1,620 AP or lateral films of 803 patients | 280 non-contrast lumbar CTs | none: registration needed | to confirm on the record | masks on the 280 CTs, then registration to the films |
+| IPCAI 2025 paired set (Zenodo 15753063, not fetched, 6.7 GB) | femur | 50 calibrated X-rays | 5 CTs | stored | contour masks and bone models | nothing for the spine; a registration benchmark |
+| Pig lower limb (IEEE DataPort 10.21227/gxpd-d998, 205 MB) | pig lower limb, no spine | 7 C-arm projections, with and without soft tissue | CT and two CBCT | matrices shipped | none | nothing for the spine; a registration benchmark (not the LevelCheck pig study the record named) |
+| Veriserum (ETH, not fetched) | knee implant phantoms | about 110,000 dual-plane fluoroscopic frames | implant models, 200 frames manually registered | registered | implant poses | nothing for the spine; real flat-panel noise and metal at scale |
+| Geneva hip phantom (held) | pelvis | 116 frames of one phantom on an unseen device | not recorded | none | none | whether its CT exists is the owner's to say |
+
+Real spine X-rays with a CT of the same subject are the first five; all five are lumbar or
+lumbosacral, so the gold stays there until a cervical or thoracic pair is found. The last four pair
+real frames with a CT or a model of something else, and their use is the registration code: a
+2D/3D registration tuned on the femur, the pig limb and the knee, where the truth pose is shipped,
+is then run on LUMOS and the FluoroCap panels, where it is not. Two synthetic pairs stand beside the
+nine: PENGWIN task 2 (50,000 renders of 100 pelvic CTs at real C-arm poses) and FluoroSeg
+(2.65 TB of DRRs); FluoroSAM's 464-frame cadaver is not released.
+
+The plan, as workstream O of the xr-from-3d programme (issue #127 under #56); reaching the cervical and thoracic spine from this lumbosacral gold is workstream P (issue #135), whose prior art and feasibility is docs/research/lumbosacral-to-cervical-extrapolation.md:
 
 1. Automatic first pass: TotalSegmentator (vertebrae and sacrum) on every planning CT and CBCT of
-   C-ArmLSpine, COBRA and DeepFluoro, on the grid, as one array job; its masks are the AI assistance.
+   C-ArmLSpine, COBRA, DeepFluoro, Ljubljana and LUMOS, on the grid, as one array job; its masks
+   are the AI assistance, and every set is done, not only the three held longest.
 2. Correction by the owner in ITK-SNAP, case by case, with the level names from the C-ArmLSpine
    labels and the counting prior as the check; each corrected mask is a file under the case with the
    editor's name and the date in its sidecar, never in the mask.
@@ -167,6 +186,11 @@ The plan, as workstream O of the xr-from-3d programme (issue #127 under #56):
 6. What it feeds: E layer 4's shape head (masks as targets on real frames), C's anchors on real
    frames, and the gold truth column of the Any-View plan, which until now held only lumbar and
    lumbosacral sets; the gold stays lumbar and lumbosacral until a cervical or thoracic pair is held.
+7. The annotated X-rays without a CT then take one of two roles per person, chosen by the split and
+   never both: the training of an independent pseudolabeller (a teacher that never sees the gold
+   sets, whose labels on the unannotated films are checked against the gold), or the test of the
+   network itself. Which role each set takes is decided when the gold count is known, since a set
+   that tests must stay out of every training.
 
 Before the talk: step 1 can run as soon as the owner gives the word and the number of jobs; steps 2
 and 3 are the owner's and Dr Tech's hours, so their count of cases is theirs to set (every case is
