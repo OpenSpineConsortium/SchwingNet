@@ -33,24 +33,38 @@ mkdir -p "$REPO/grid/logs" "$RUNS"
 report() { echo "- $*" | tee -a "$REPORT"; }
 fail() { report "FAILED: $*"; echo "SN_V1_RC=1"; exit 1; }
 echo "# Version 1 run: $(date '+%F %T'), job ${SLURM_JOB_ID:-none} on $(hostname), commit $(git -C "$REPO" rev-parse --short HEAD 2>/dev/null)" > "$REPORT"
-current=$(cat "$STORE/CURRENT" 2>/dev/null)
-[ -n "$current" ] || fail "no catalog version: $STORE/CURRENT is missing or empty (the catalog job first)"
-CATALOG=$STORE/versions/$current
-[ -f "$CATALOG" ] || fail "CURRENT names $current, which is not under $STORE/versions"
-[ -s "$WEIGHTS" ] || fail "no ImageNet weights at $WEIGHTS (the weights job first)"
-report "catalog: $CATALOG; weights: $(basename "$WEIGHTS"); epochs $EPOCHS, seed $SEED"
-report "GPU: $(nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv,noheader 2>/dev/null | head -n 1 || echo 'nvidia-smi gave nothing')"
 cd "$REPO" || fail "no checkout at $REPO"
-# The run's code holds still while it lasts: flow.py records the commit at the start and runs its
-# later steps from this checkout, so grid/logs/HOLD names this job and the commit, the gate's side
-# skips its fast-forward while the file is there, and the gate clears a hold whose job Slurm no
-# longer holds. The commit is read again at the end, and a run whose checkout moved is not used.
+# The run's code holds still while it lasts, from before it chooses its catalog version: flow.py
+# records the commit at the start and runs its later steps from this checkout, so grid/logs/HOLD
+# names this job and the commit, the gate's side skips its fast-forward while the file is there, and
+# the gate clears a hold whose job Slurm no longer holds. The commit is read again at the end, and
+# a run whose checkout moved is not used.
 started_at=$(git -C "$REPO" rev-parse HEAD 2>/dev/null)
 HOLD=$REPO/grid/logs/HOLD
 echo "${SLURM_JOB_ID:-$$} $started_at" > "$HOLD"
 unhold() { [ "$(awk '{ print $1; exit }' "$HOLD" 2>/dev/null)" != "${SLURM_JOB_ID:-$$}" ] || rm -f "$HOLD"; }
 trap unhold EXIT
 trap 'exit 143' TERM
+# The version grid/v1-version.sh chooses, as the gate's v1 word asked it (issue #80): the newest that
+# holds both of C-ArmLSpine's parts and every C-ArmLSpine shard now on the volume, with a split-check
+# marker for today's test persons and rule. CURRENT is the newest version of all, and a catalog job
+# that listed the manifests before C-ArmLSpine's shards were written can land after it.
+# The name from stdout alone, so a warning on stderr never becomes part of the path.
+why=$(mktemp)
+chosen=$(bash grid/v1-version.sh "$STORE" "$DATA_ROOT" "$REPO" 2> "$why") \
+  || fail "no catalog version to run on: $(head -n 1 "$why") (the C-ArmLSpine ingest and a catalog build first; 'v1' submits them)"
+rm -f "$why"
+CATALOG=$STORE/versions/$chosen
+newest=$(cat "$STORE/CURRENT" 2>/dev/null)
+[ "$newest" = "$chosen" ] || report "CURRENT names ${newest:-nothing}; the run takes $chosen, the newest that qualifies"
+[ -s "$WEIGHTS" ] || fail "no ImageNet weights at $WEIGHTS (the weights job first)"
+# The split check again, on the chosen file itself, here where python runs: the marker says it
+# passed, and this says it still does before any frame is read.
+number=$(echo "$chosen" | sed -n 's/^catalog-0*\([0-9][0-9]*\)-.*/\1/p')
+bash grid/box.sh pixi run --locked python tools/catalog.py split-check "$STORE" --version "$number" > /dev/null 2>&1 \
+  || fail "the split check of version $number failed; no run reads it"
+report "catalog: $CATALOG (split check passed); weights: $(basename "$WEIGHTS"); epochs $EPOCHS, seed $SEED"
+report "GPU: $(nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv,noheader 2>/dev/null | head -n 1 || echo 'nvidia-smi gave nothing')"
 said=$(bash grid/box.sh pixi run --locked -e train-gpu python -c "import torch; print('torch', torch.__version__, 'cuda available', torch.cuda.is_available())" 2>&1 | tail -n 1)
 report "in the container: $said"
 out=$(mktemp "$REPO/grid/logs/v1-flow-${SLURM_JOB_ID:-$$}.XXXXXX")
