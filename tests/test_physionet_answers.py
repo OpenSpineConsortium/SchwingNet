@@ -162,12 +162,57 @@ class NetrcTest(unittest.TestCase):
         self.assertEqual(self.login("machine other.org login x password y\nmachine physionet.org login someone"
                                     " password secret-value\n"), "someone")
 
-    def test_a_file_that_does_not_parse_names_no_token(self):
-        said = self.login("machine physionet.org login someone password secret-value bogus\n")
-        self.assertIn("not a netrc file this tool can read", str(said))
-        self.assertNotIn("secret-value", str(said))
-        self.assertNotIn("bogus", str(said))
+    def test_an_unknown_word_is_passed_over_as_wget_passes_it(self):
+        # Python's netrc refused such a file, which stopped every PhysioNet fetch (issue #100)
+        self.assertEqual(self.login("machine physionet.org login someone password secret-value bogus\n"), "someone")
 
+    def test_the_forms_wget_reads(self):
+        text = ("# the grid's netrc\n"
+                "machine urs.earthdata.nasa.gov\n  login a\n  password b\n\n"
+                "macdef init\nmachine physionet.org login wrong password wrong\n\n"
+                "machine physionet.org\n\tlogin someone # a note\n\tpassword \"pass word\\\"#1\"\n"
+                "machine physionet.org login later password later\n"
+                "default login anon password anon\n")
+        self.assertEqual(self.login(text), "someone")
+
+    def test_default_never_stands_in_since_wget_given_a_user_ignores_it(self):
+        said = self.login("machine other.org login x password y\ndefault login anon password z\n")
+        self.assertIn("no 'machine physionet.org login <user>' entry", str(said))
+
+    def test_an_entry_with_no_login_is_dropped_as_wget_drops_it(self):
+        self.assertEqual(self.login("machine physionet.org password p\nmachine physionet.org login a password b\n"), "a")
+
+    def test_keywords_are_read_only_as_written(self):
+        self.assertEqual(self.login("Machine physionet.org login a password b\nmachine physionet.org login c password d\n"), "c")
+
+    def test_the_values_wget_skips_and_the_marks_it_takes_out(self):
+        self.assertEqual(self.login("machine physionet.org port login login a password b\n"), "a")
+        self.assertEqual(self.login("machine physionet.org login dom\\\\user password b\n"), "dom\\user")
+        self.assertEqual(self.login('machine physionet.org login "a"Xlogin b password c\n'), "b")
+        self.assertEqual(self.login("macdef init machine physionet.org login wrong password w\nmachine x\n\n"
+                                    "machine physionet.org login right password r\n"), "right")
+
+    def test_a_byte_that_is_no_utf_8_in_another_entry_is_read_past(self):
+        tool = load()
+        with tempfile.TemporaryDirectory() as tmp:
+            netrc = Path(tmp) / ".netrc"
+            netrc.write_bytes(b"machine other.org login x password caf\xe9\nmachine physionet.org login a password b\n")
+            netrc.chmod(0o600)
+            self.assertEqual(tool.netrc_login("physionet.org", netrc), "a")
+
+    def test_a_file_that_cannot_be_read_names_no_token(self):
+        tool = load()
+        with tempfile.TemporaryDirectory() as tmp:
+            netrc = Path(tmp) / ".netrc"
+            netrc.mkdir(mode=0o700)
+            with self.assertRaises(tool.FetchError) as said:
+                tool.netrc_login("physionet.org", netrc)
+        self.assertNotIn("password", str(said.exception))
+
+    def test_the_password_is_read_as_wget_reads_it(self):
+        tool = load()
+        entries = tool.netrc_entries('machine physionet.org login someone password "pass word\\"#1"\n')
+        self.assertEqual(entries, [("physionet.org", "someone", 'pass word"#1')])
 
 if __name__ == "__main__":
     unittest.main()

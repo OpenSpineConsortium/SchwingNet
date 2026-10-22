@@ -12,6 +12,7 @@ import pytest
 from pydantic import ValidationError
 
 from schwingnet.flow import (
+    JobClass,
     JobRecord,
     JobSpec,
     ResultRow,
@@ -25,7 +26,7 @@ from schwingnet.flow import (
     wall_hours,
     wilson,
 )
-from schwingnet.slurm import elapsed_seconds, is_finished, job_id_of, sbatch_script, wall_time
+from schwingnet.slurm import elapsed_seconds, is_finished, sbatch_script, submitted_of, wall_time
 
 ROOT = Path(__file__).resolve().parents[2]
 SHA = "a" * 64
@@ -107,16 +108,24 @@ def test_a_result_row_is_stamped_and_its_line_carries_the_interval() -> None:
         ResultRow(measure="accuracy", stratum="s", correct=1, total=10, persons=1, run_id=row.run_id, code_commit=COMMIT, clean_tree=False, catalog_sha256=SHA)
 
 
-def test_the_sbatch_script_carries_the_grid_rules_and_nothing_secret() -> None:
-    job = JobSpec(step=Step.TRAIN, command="python tools/train.py --out /runs/x", partition="gmsap", qos=None, cpus=4, memory_gb=32, gpus=1, hours=2.5, environment="train-gpu")
-    text = sbatch_script(job, "/runs/x", "/home/me/schwingnet")
-    assert "#SBATCH --time=02:30:00" in text and "#SBATCH --gres=gpu:1" in text
-    assert "#SBATCH --chdir=/runs/x" in text and "exec pixi run --locked -e train-gpu python" in text
-    cpu = job.model_copy(update={"partition": "reqp", "qos": "requeue", "gpus": 0})
-    cpu_text = sbatch_script(cpu, "/runs/x", "/home/me/schwingnet")
-    assert "--qos=requeue" in cpu_text and "gres" not in cpu_text
+def test_the_batch_script_carries_the_grid_rules_and_nothing_secret_or_placed() -> None:
+    # issue #77: the script says what the step needs; where it runs is hpcworker's job submit's,
+    # from the site profile, so no partition, QoS, GPU request or log line is written here
+    job = JobSpec(step=Step.TRAIN, command="python tools/train.py --out /runs/x", job_class=JobClass.GPU, cpus=4, memory_gb=32, gpus=1, hours=2.5, environment="train-gpu")
+    text = sbatch_script(job, "/home/me/schwingnet")
+    assert "#SBATCH --time=02:30:00" in text and "#SBATCH --cpus-per-task=4" in text and "#SBATCH --mem=32G" in text
+    assert "exec pixi run --locked -e train-gpu python" in text and "cd /home/me/schwingnet\n" in text
+    assert all(f"#SBATCH --{word}" not in text for word in ("partition", "qos", "gres", "output", "job-name"))
+    with pytest.raises(ValidationError):
+        job.model_validate({**job.model_dump(), "qos": "gpu"})
+    with pytest.raises(ValidationError):
+        job.model_validate({**job.model_dump(), "partition": "gmsap; rm"})
     assert wall_time(0.01) == "00:01:00" and wall_time(25.0) == "25:00:00"
-    assert job_id_of("Submitted batch job 123456\n") == "123456" and job_id_of("sbatch: error") is None
+    said = "HPCW-JOB submitted 123456 flow_train gmsap,gvohp,galhp/gpu log /x/flow_train_123456.out\n"
+    assert submitted_of(said) == ("123456", "gmsap,gvohp,galhp", "gpu")
+    assert submitted_of("HPCW-JOB submitted 7 flow_train secp/none log /x/a.out") == ("7", "secp", None)
+    assert submitted_of("HPCW-JOB refused flow_train gmsap/gpu: Invalid qos specification") is None
+    assert submitted_of("Submitted batch job 123456") is None
     assert elapsed_seconds("1-02:03:04") == 93784 and elapsed_seconds("00:00:30") == 30
     assert is_finished("COMPLETED") and is_finished("CANCELLED by 1234") and not is_finished("RUNNING") and not is_finished("")
 
@@ -165,11 +174,22 @@ def test_the_flow_tool_reads_the_split_and_refuses_a_dirty_tree(tmp_path: Path, 
     assert made.catalog_version == 3 and made.epochs == 2 and made.seed == 7 and check["disjoint"]
     plan = flow.job_specs(flow.parse(["plan", "--mode", "slurm", "--hours", "4"]))
     assert [j.step for j in plan] == [Step.TRAIN, Step.EVALUATE] and plan[0].gpus == 1 and plan[0].environment == "train-gpu"
-    # issue #74: a GPU step without the gpu QoS is refused by Slurm, so slurm mode asks for it by default
-    assert all(j.partition == "gmsap,gvohp,galhp" and j.qos == "gpu" for j in plan)
-    assert "#SBATCH --qos=gpu" in sbatch_script(plan[0], "/runs/x", "/home/me/schwingnet")
+    # issues #74 and #77: a GPU step names the gpu class, whose QoS the site profile gives
+    assert all(j.job_class is JobClass.GPU and j.partition is None for j in plan)
+    monkeypatch.setenv("HPCWORKER", "/lab/hpcworker/framework/bin/hpcworker")
+    call = flow.submit_call(plan[0], tmp_path / "run", tmp_path / "run" / "train.sbatch")
+    assert call[:4] == ["bash", "/lab/hpcworker/framework/bin/hpcworker", "job", "submit"]
+    assert call[call.index("--class") + 1] == "gpu" and "--no-requeue" in call and "--qos" not in call
+    assert call[call.index("--dir") + 1] == str(tmp_path / "run") and call[-2:] == ["--", str(tmp_path / "run" / "train.sbatch")]
+    narrowed = flow.job_specs(flow.parse(["plan", "--mode", "slurm", "--partition", "gmsap"]))[0]
+    narrowed_call = flow.submit_call(narrowed, tmp_path, tmp_path / "t.sbatch")
+    assert narrowed_call[narrowed_call.index("--partition") + 1] == "gmsap"
+    monkeypatch.delenv("HPCWORKER")
+    monkeypatch.setenv("PATH", str(tmp_path))
+    with pytest.raises(flow.FlowError, match="HPCWORKER"):
+        flow.submit_call(plan[0], tmp_path, tmp_path / "t.sbatch")
     local = flow.job_specs(flow.parse(["plan", "--mode", "local"]))
-    assert local[0].gpus == 0 and local[0].environment == "train-cpu" and local[0].partition == "local" and local[0].qos is None
+    assert local[0].gpus == 0 and local[0].environment == "train-cpu" and local[0].job_class is JobClass.CPU and local[0].partition is None
 
 
 def test_record_copies_the_small_files_and_appends_one_ledger_row(tmp_path: Path) -> None:

@@ -1,23 +1,18 @@
 #!/bin/bash
-#SBATCH --job-name=sn_v1
-#SBATCH --partition=gmsap,gvohp,galhp
-#SBATCH --qos=gpu
-#SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=64G
 #SBATCH --time=24:00:00
-#SBATCH --no-requeue
-#SBATCH --output=logs/%x_%j.out
 # The version 1 run on real frames (issue #53, SchwingNet's item 4): tools/flow.py on the catalog's
 # current version, its train and evaluate steps run in this job on the GPU Slurm gave it, inside the
 # container (grid/box.sh). flow.py's slurm mode would submit each step with sbatch, which the
 # container does not hold, so the flow runs in local mode here with the train-gpu environment, and
 # this job is the one Slurm job the run costs. flow.py refuses a dirty checkout and a catalog whose
 # split check fails, records the run under RUNS, and pushes each step's W&B run as the step ends.
-# Not requeued: a requeued job would start a second run beside the first.
-# A GPU job as Beethoven for VS Code submits one (extension/src/core/slurm.ts): the three GPU
-# partitions, the first with room, and the gpu QoS they take; without it Slurm gives the account's
-# default and refuses the job (issue #74: "Invalid qos specification"). The report names the GPU.
+# grid/gate.sh queues it through hpcworker's job submit as the gpu class (grid/hpcw.sh, issue #77),
+# whose partitions, QoS and one GPU the site profile gives, as Beethoven for VS Code submits a GPU
+# job; this header holds no partition or QoS line, since one guessed here was refused (issue #74).
+# Not requeued (--no-requeue): a requeued job would start a second run beside the first. The report
+# names the GPU.
 # The report is logs/v1-driver-STAGE-REPORT.md: the GPU, the run directory and the W&B lines.
 set -uo pipefail
 REPO=${SCHWINGNET:-$HOME/SchwingNet}

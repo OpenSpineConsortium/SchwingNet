@@ -3,7 +3,8 @@
 # bf1432f: 23 planned, 7 gated, 3 requested, 1 not acquired, 2 on disk with an unknown state,
 # 1 empty) as one chain of Slurm jobs, one job per source through grid/platform-fetch.sbatch,
 # each submitted --dependency=afterany on the one before, so a source that fails strands nothing
-# behind it (bash 4.2; the login node runs only sbatch, df and this script). Every landing goes to
+# behind it, each queued through hpcworker's job submit as a batch job (grid/hpcw.sh; bash 4.2; the
+# login node runs only hpcworker, df and this script). Every landing goes to
 # /rs/rs_grp_oschome/go2432/data/<source id>/raw with a README.yaml. The gated sources run only
 # when named with --only and their token or link file is in place; CT-RATE (21.3 TB) and NLST full
 # (2.3 TB) are never in the chain: their lines are printed at the end for the owner to run or skip.
@@ -11,7 +12,7 @@
 #   bash grid/run-platform-fetch.sh                       # the open chain, in the order below
 #   bash grid/run-platform-fetch.sh --only aws_stoic2021,zenodo_lumos
 #   bash grid/run-platform-fetch.sh --gated               # the open chain plus the granted gated sources
-#   SBATCH=echo bash grid/run-platform-fetch.sh           # dry run
+#   HPCW_DRY=1 bash grid/run-platform-fetch.sh            # dry run
 #
 # The size budget comes first: the stated size of every source in the chain (from the cards'
 # "GB catalogue" and the records) summed against df on /rs/rs_grp_oschome minus a 1 TB margin;
@@ -19,7 +20,6 @@
 # acquisition_fetch.sh stops its own job when less than 5 TB is free (--floor-tb 5).
 set -uo pipefail
 REPO=${SCHWINGNET:-$HOME/SchwingNet}
-SBATCH=${SBATCH:-sbatch}
 DF=${DF:-df}
 VOLUME=${VOLUME:-/rs/rs_grp_oschome}
 # 5 TB, not 1: acquisition_fetch.sh stops its own job under 5 TB free (--floor-tb 5).
@@ -103,37 +103,34 @@ if [ "$total_gb" -gt $(( free_gb - MARGIN_GB )) ]; then
   exit 3
 fi
 
-previous=""; ids=""; n=0
+# shellcheck source=grid/hpcw.sh
+. "$REPO/grid/hpcw.sh"
+previous=""; ids=""
 while IFS='|' read -r id route size licence access args extra; do
   [ -n "$id" ] || continue
   wanted "$id" || continue
   # The first job waits on DEPEND where grid/gate.sh gives one (the X-ray fetch: X-ray before CT);
   # each later one on the job before it.
-  dep=""; [ -z "${DEPEND:-}" ] || dep="--dependency=$DEPEND"
-  [ -z "$previous" ] || dep="--dependency=afterany:$previous"
-  # The job reads its settings from the environment: --export's own comma grammar would cut the
-  # arguments, so each is exported for this one submission and unset after.
+  dep=${DEPEND:-}
+  [ -z "$previous" ] || dep="afterany:$previous"
+  hpcw_after "$dep" || exit 1
+  # The job reads its settings from the environment, which job submit hands it: --export's own
+  # comma grammar would cut the arguments, so each is exported for this one submission.
   export ID="$id" ROUTE="$route" ARGS="$args" LICENCE="$licence" ACCESS="$access"
   unset NOTE TOKEN_FILE LINK_FILE
   for pair in $extra; do
     case "$pair" in NOTE=*) export NOTE="${extra#*NOTE=}" ;; TOKEN_FILE=*|LINK_FILE=*) export "$pair" ;; esac
   done
-  if [ "$SBATCH" != sbatch ]; then
-    n=$((n + 1)); job="DRY$n"
-    echo "would submit: sbatch --parsable -D $REPO/grid --job-name=dp_fetch_$id $dep --export=ALL $REPO/grid/platform-fetch.sbatch (ID=$id ROUTE=$route ARGS='$args'${NOTE:+ NOTE=...})"
-  else
-    # shellcheck disable=SC2086
-    job=$("$SBATCH" --parsable -D "$REPO/grid" --job-name="dp_fetch_$id" $dep --export=ALL "$REPO/grid/platform-fetch.sbatch") || { echo "sbatch failed for $id"; exit 1; }
-    job=$(echo "$job" | tail -n 1 | cut -d';' -f1)
-  fi
+  [ -z "${HPCW_DRY:-}" ] || echo "would submit $id: ROUTE=$route ARGS='$args'${NOTE:+ NOTE=...}"
+  job=$(hpcw_submit "dp_fetch_$id" batch ${HPCW_AFTER[@]+"${HPCW_AFTER[@]}"} -- platform-fetch.sbatch) || { echo "hpcworker refused the fetch of $id"; exit 1; }
   echo "$id: job $job${dep:+ ($dep)} $route ${size}GB"
   previous=$job; ids="$ids $id=$job"
 done <<< "$TABLE"
 echo "$(date '+%F %T') platform chain:$ids size_gb=$total_gb" | tee -a "$REPO/grid/LAST_RUN.txt"
-echo "ETA: network-bound, about 1 hour per 20 GB, so about $(( total_gb / 20 + 1 )) hours for $total_gb GB in one chain of 4-day jobs requeued on preemption; watch with squeue -u \$USER and the logs under $REPO/grid/logs/dp_fetch_*"
+echo "ETA: network-bound, about 1 hour per 20 GB, so about $(( total_gb / 20 + 1 )) hours for $total_gb GB in one chain of 4-day jobs requeued on preemption; watch with the gate word status"
 echo
 echo "Not submitted, the owner's own lines (each one job; run or skip):"
 while IFS='|' read -r id route size licence access args extra; do
   [ -n "$id" ] || continue
-  echo "  ID=$id ROUTE=$route ARGS='$args' LICENCE='$licence' ACCESS=$access ${extra%%NOTE=*}sbatch -D $REPO/grid --job-name=dp_fetch_$id --export=ALL $REPO/grid/platform-fetch.sbatch   # ${size} GB; ${extra#*NOTE=}"
+  echo "  ID=$id ROUTE=$route ARGS='$args' LICENCE='$licence' ACCESS=$access ${extra%%NOTE=*}hpcworker job submit --project schwingnet --name dp_fetch_$id --class batch --dir $REPO/grid -- platform-fetch.sbatch   # ${size} GB; ${extra#*NOTE=}"
 done <<< "$APART"

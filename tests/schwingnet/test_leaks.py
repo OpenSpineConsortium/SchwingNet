@@ -472,10 +472,10 @@ def test_the_dry_run_submits_one_array_task_a_shard_and_the_join_after_it(tmp_pa
     for name in ("alpha/shards/2026-10-21-aaaaaaaaaaaa", "beta/shards/2026-10-21-bbbbbbbbbbbb"):
         (tmp_path / name).mkdir(parents=True)
         (tmp_path / name / "MANIFEST.json").write_text("{}", encoding="utf-8")
-    done = run_leaks(tmp_path, SBATCH="echo", CONCURRENCY="3", LEAKS_OUT=str(tmp_path / "_leaks"))
+    done = run_leaks(tmp_path, HPCW_DRY="1", CONCURRENCY="3", LEAKS_OUT=str(tmp_path / "_leaks"))
     assert done.returncode == 0, done.stdout + done.stderr
-    assert "--array=0-1%3 --export=ALL" in done.stderr and "04-leaks.sbatch" in done.stderr
-    assert "--dependency=afterany:DRY4 --export=ALL" in done.stderr
+    assert "--name leaks_fingerprint --class batch" in done.stderr and "--array 0-1%3 -- 04-leaks.sbatch" in done.stderr
+    assert "--name leaks_join --class batch" in done.stderr and "--after DRY_leaks_fingerprint:any -- 05-leaks-join.sbatch" in done.stderr
     assert "05-leaks-join.sbatch" in done.stderr and "shards: 2 listed" in done.stdout
     (listing,) = (tmp_path / "_leaks" / "runs").glob("*/shards.txt")
     assert listing.read_text(encoding="utf-8").splitlines() == [
@@ -485,5 +485,5 @@ def test_the_dry_run_submits_one_array_task_a_shard_and_the_join_after_it(tmp_pa
 
 
 def test_the_submit_refuses_a_data_root_with_no_shard(tmp_path: Path) -> None:
-    done = run_leaks(tmp_path, SBATCH="echo", LEAKS_OUT=str(tmp_path / "_leaks"))
+    done = run_leaks(tmp_path, HPCW_DRY="1", LEAKS_OUT=str(tmp_path / "_leaks"))
     assert done.returncode == 64 and "nothing to check" in done.stdout

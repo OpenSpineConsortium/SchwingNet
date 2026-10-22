@@ -212,11 +212,14 @@ class SlurmScriptsTest(unittest.TestCase):
         for name in SBATCH_FILES + SCRIPTS:
             done = subprocess.run(["bash", "-n", str(GRID / name)], capture_output=True, text=True)
             self.assertEqual(done.returncode, 0, f"{name}: {done.stderr}")
+        # issue #77: where a job runs is hpcworker's job submit's, from the site profile, so a header
+        # holds only what the job needs
         for name in SBATCH_FILES:
             text = (GRID / name).read_text(encoding="utf-8")
-            for line in ("#SBATCH --partition=reqp", "#SBATCH --qos=requeue", "#SBATCH --requeue",
-                         "#SBATCH --cpus-per-task=8", "#SBATCH --mem=24G", "#SBATCH --output=logs/"):
+            for line in ("#SBATCH --cpus-per-task=8", "#SBATCH --mem=24G"):
                 self.assertIn(line, text, name)
+            for word in ("partition", "qos", "requeue", "gres", "output", "job-name"):
+                self.assertNotIn(f"#SBATCH --{word}", text, name)
 
     def dry_run(self, script, *args, free="9000G"):
         import tempfile
@@ -224,7 +227,7 @@ class SlurmScriptsTest(unittest.TestCase):
             df = Path(tmp) / "df"
             df.write_text(f"#!/bin/bash\necho Avail\necho {free}\n", encoding="utf-8")
             df.chmod(0o755)
-            env = dict(os.environ, SCHWINGNET=str(ROOT), SBATCH="echo", DF=str(df))
+            env = dict(os.environ, SCHWINGNET=str(ROOT), HPCW_DRY="1", DF=str(df))
             done = subprocess.run(["bash", str(GRID / script), *args], env=env, capture_output=True, text=True,
                                   timeout=60)
             Path(ROOT / "grid" / "LAST_RUN.txt").unlink(missing_ok=True)
@@ -233,10 +236,10 @@ class SlurmScriptsTest(unittest.TestCase):
     def test_the_chain_submits_three_dependent_jobs_in_a_dry_run(self):
         code, out = self.dry_run("run-xray-chain.sh", "--only", "cathaction,fracatlas")
         self.assertEqual(code, 0, out)
-        self.assertIn("would submit: sbatch --parsable -D", out)
-        self.assertIn("01-fetch.sbatch", out)
-        self.assertIn("--dependency=afterany:DRY1 --export=ALL", out)
-        self.assertIn("--dependency=afterany:DRY2 --export=ALL", out)
+        self.assertIn("would submit: hpcworker job submit --project schwingnet --name xr_fetch --class batch", out)
+        self.assertIn("-- 01-fetch.sbatch", out)
+        self.assertIn("--name xr_bank --class batch --dir " + str(ROOT / "grid") + " --after DRY_xr_fetch:any -- 02-bank-ingest.sbatch", out)
+        self.assertIn("--after DRY_xr_bank:any -- 03-catalog.sbatch", out)
         self.assertIn("size budget: 2 entries, 14 GB stated", out)
         self.assertIn("no size stated for: fracatlas", out)
         self.assertIn("ETA:", out)
@@ -254,8 +257,8 @@ class SlurmScriptsTest(unittest.TestCase):
     def test_the_platform_chain_keeps_ct_rate_and_nlst_apart(self):
         code, out = self.dry_run("run-platform-fetch.sh")
         self.assertEqual(code, 0, out)
-        self.assertIn("aws_stoic2021: job DRY1", out)
-        self.assertIn("--dependency=afterany:DRY1", out)
+        self.assertIn("aws_stoic2021: job DRY_dp_fetch_aws_stoic2021", out)
+        self.assertIn("--after DRY_dp_fetch_aws_stoic2021:any -- platform-fetch.sbatch", out)
         self.assertNotIn("ID=hf_ct_rate ROUTE=hf-token", out.split("Not submitted")[0])
         self.assertIn("ID=hf_ct_rate", out.split("Not submitted")[1])
         self.assertIn("ID=idc_nlst", out.split("Not submitted")[1])

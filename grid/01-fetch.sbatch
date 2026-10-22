@@ -1,17 +1,12 @@
 #!/bin/bash
-#SBATCH --job-name=xr_fetch
-#SBATCH --partition=reqp
-#SBATCH --qos=requeue
-#SBATCH --requeue
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=24G
 #SBATCH --time=4-00:00:00
-#SBATCH --output=logs/%x_%j.out
 # Stage 1 of the X-ray chain: fetch every open set of grid/fetch-xray.json to the data root
 # (tools/fetch_sources.py --run). Compute nodes have internet; the login node runs nothing, so
-# this is submitted by grid/run-xray-chain.sh with -D <repo>/grid, where logs/ exists. A requeue
+# this is submitted by grid/run-xray-chain.sh in <repo>/grid, where logs/ exists. A requeue
 # keeps the job id and the helpers resume their .part files. The report is
-# logs/01-fetch-STAGE-REPORT.md beside this log. FETCH_ARGS carries --only and --credentialed.
+# logs/01-fetch-STAGE-REPORT.md. FETCH_ARGS carries --only and --credentialed.
 # Off the grid (a container testing the chain, issue #40) the same script runs with bash:
 # DATA_ROOT names another data root, OUTSIDE_SLURM=1 lifts the tool's refusal of a shell with no
 # job, and REACQUIRE names the helper where ~/spinesurg-ct-nnunet is not there (the repository's
