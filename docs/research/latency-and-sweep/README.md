@@ -4,7 +4,7 @@ Source: the thread "SchwingNet latency and ONNX", 2026-10-21, from the owner's l
 
 ## Where it stands
 
-Built and measured on the synthetic-bank dry-run model in a cloud container, so it runs the moment the version 1 model exists on the grid. No grid job has run for it yet; the jobs are below. No number here says anything about SchwingNet on fluoroscopy: the model read synthetic crops and the CPU is the container's.
+Built and measured on the synthetic-bank dry-run model in a cloud container, so it runs the moment the version 1 model exists on the grid. One grid job has run for it, the probe (2026-10-21, Slurm job 40697708, 13 s), whose answer is below; the timing and sweep jobs wait for the version 1 run. No number here says anything about SchwingNet on fluoroscopy: the model read synthetic crops and the CPU is the container's.
 
 ## What the code does
 
@@ -34,12 +34,33 @@ The synthetic sweep's frames are unrelated pictures, not a moving C-arm, so the 
 
 From the grid's shell, in the checkout (`cd ~/SchwingNet && git pull && pixi install --locked -e train-gpu && pixi install --locked -e train-cpu`):
 
-1. The probe, now, needing nothing else: `bash grid/run-latency-sweep.sh --probe`. One job on reqp, 1 CPU, 2 GB, 10 minutes: for case134 and case39 it counts the raw sweep files under /rs/rs_grp_oschome/go2432/data/carmlspine/unpacked/C-ArmLSpine (suffixes, folders, sizes; never a DICOM header, since case134's carry a real PatientID) and the export's PNG frames under /rs/rs_grp_oschome/go2432/data/realxray/carmlspine_sweep (dimensions, the first meta's keys, view and levels), so what the records say below is checked against the disk. The answer goes into this file.
+1. The probe, now, needing nothing else: `bash grid/run-latency-sweep.sh --probe`. One job on reqp, 1 CPU, 2 GB, 10 minutes: for case134 and case39 it counts the raw sweep files under /rs/rs_grp_oschome/go2432/data/carmlspine/unpacked/C-ArmLSpine (suffixes, folders, sizes; never a DICOM header, since case134's carry a real PatientID) and the export's PNG frames under /rs/rs_grp_oschome/go2432/data/realxray/carmlspine_sweep (dimensions, the first meta's keys, view and levels), so what the records say below is checked against the disk. It ran on 2026-10-21 as part of the gate's `start` (Slurm job 40697708, 13 s on hao1); the gate's `status` prints its answer by its shapes since #87, with no folder or file name, and the answer is below.
 2. Per model version, once the version 1 run exists: `bash grid/run-latency-sweep.sh --catalog <catalog.sqlite> <run dir> [<run dir> ...] --sweep case134:bank=/rs/rs_grp_oschome/go2432/data/realxray/carmlspine_sweep`. Paths may be relative; a comma in a path, or a colon past the sweep's own two, is refused. Each run directory gets, in parallel with the others: a GPU job on gmsap with the gpu QoS, without which Slurm refuses a GPU job (issue #74), and gmsap alone since the retraining plan measures latency on the H200 (1 GPU, 8 CPUs, 32 GB, 1.5 h requested: export, parity of ONNX Runtime on the CPU and the GPU and of PyTorch on the GPU, each against PyTorch on the CPU, then latency with PyTorch and ONNX Runtime on the H200; a failed parity stops its own arm and no other), a CPU job after it on reqp with --qos=requeue (8 threads, 16 GB, 1 h: the plan's "CPU with 8 threads" arm), and an array of one GPU task per sweep after it, on gmsap with the gpu QoS (1.5 h requested each). The two later jobs wait with afterany, since they need only the export and each refuses an arm whose parity did not pass. Job ids go to grid/LAST_LATENCY.txt.
 
 Resource estimate for one model version with the case134 sweep: 2 GPU jobs and 1 CPU job, at most 3 GPU-hours requested (1.5 more for each further sweep); expected use well under 1 GPU-hour (the export and parity take seconds, 330 timed frames take under a minute on a CPU here, and a sweep of 301 frames at 1024 x 1024 is bounded by writing 301 PNGs and one MP4, minutes). The onnxruntime CUDA build in the lock is 1.31.0 for CUDA 12.9; if the H200 nodes' driver is older, the GPU job's ONNX Runtime arm fails with a provider error and the PyTorch arm, the CPU job and the sweeps still run (a sweep then takes `SWEEP_RUNTIME=torch` in front of the submit line).
 
 What the records say about the two sweeps (the thread "SchwingNet video demo plan", 2026-10-21, from spine-program's 01_carm_level_detection, carm-cases_CHECK.md and the sweep map; documents, not yet a read of the disk, which the probe makes): the raw sweeps are DICOM XA frames with no suffix, 1024 x 1024, 16-bit, case134 under case134/ori/ (302 frames, 301 usable) and case39 under case39/CBCT/ (301 frames), PositionerPrimaryAngle from +122 to -52 degrees in 58 readings. case134 has a pose for every frame and its projected body boxes, exported with --dump-corners as a bank under /rs/rs_grp_oschome/go2432/data/realxray/carmlspine_sweep (images/test/case134_sw###.png, 1024 x 1024 8-bit, -log and windowed as the operating room shows it; meta/; labels/), which `--sweep case134:bank=...` reads as it is. case39 has level names (L2 to L5, sacrum) but no poses and no export, so it has no boxes yet and version 1, with no detector, has no sweep of it; its sweep waits on its poses (docs/research/demo-plan.md, W4: 4 GPU shards) or on a detector stage.
+
+What the probe found (2026-10-21, job 40697708, read back through `status` on 2026-10-22 by the thread "SchwingNet latency and ONNX"; counts, suffixes, sizes and meta keys only, since the gate shows the probe by its shapes and never a file name):
+
+| | case134 | case39 |
+|---|---|---|
+| raw files | 698: 302 in case134/ori, 396 in case134/CBCT | 699: 696 in case39/CBCT, 3 in folders the shapes do not name |
+| suffixes | a number per file (.1745, .1746, ...), not none | .dcm on every file |
+| commonest sizes in bytes | 311952 (295 files), 4196390 (134), 4196392 (115) | 311926 (295), 4196360 (138), 4196362 (123) |
+| export PNG frames | 301, each with its meta | 0 |
+| first frame | 1024 x 1024, 8-bit, greyscale | none |
+| meta keys | angle, boxes, case, dataset, device, display, frame, frame_key, kvp, lat_signed_deg, mode, n_kept, pose, px_mm_detector, quarter_turns, roll_signed_deg, and more past the line's cut | none |
+
+Where the disk differs from the records:
+- case134/ori holds 302 files, as the records say, but they carry a numbered suffix, not none.
+- case134 also has a CBCT folder of 396 files, which the records do not name.
+- case39/CBCT holds 696 files, not 301.
+- Both cases split into two size classes: 295 files near 312 KB, and about 250 near 4.2 MB.
+
+A reading of that, not yet checked against a header: the 302 files in case134/ori are the projection frames, and each CBCT folder holds about 396 files of something else, perhaps the reconstruction. case39/CBCT would then hold both kinds, about 300 frames and about 396 others. The probe reads no header, so it cannot tell the two kinds apart. Telling them apart is a step for whoever exports case39's sweep, under the rule that no header value leaves the grid.
+
+The case134 export is as `tools/sweep.py from-bank` expects since #85: 301 frames of 1024 x 1024 8-bit greyscale, every frame with its meta. The meta has no `view` and keeps the spin angle as `angle` beside `mode`, which is the shape #84 found. So `--sweep case134:bank=...` reads it as it is. case39 has no export, as the records say.
 
 ## The adversarial review, and what it changed
 
