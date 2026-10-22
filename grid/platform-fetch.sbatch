@@ -16,6 +16,8 @@
 #   kaggle   kaggle competitions download with KAGGLE_API_TOKEN read from TOKEN_FILE
 #   redivis  grid/redivis_fetch.py ARGS with REDIVIS_API_TOKEN read from TOKEN_FILE, in REDIVIS_ENV, a
 #            venv the job makes once from the acq environment's Python with the pinned redivis client
+#   zenodo-token grid/zenodo_fetch.py ARGS with ZENODO_TOKEN read from TOKEN_FILE: a record that opens only to
+#            the owner's approved account, each file md5-checked against the record
 #   note     print NOTE and exit 0 (a step that needs a repository or a hand step not on the grid yet)
 # Secrets are read from files into this job's environment or a mode-0600 config and never echoed.
 set -uo pipefail
@@ -101,6 +103,10 @@ case "$ROUTE" in
     ) 9> "$renv.lock" || exit 2
     # shellcheck disable=SC2086
     "$renv/bin/python" "$REPO/grid/redivis_fetch.py" --dest "$DATA/$ID/raw" --manifest "$DATA/$ID/meta" $ARGS; rc=$? ;;
+  zenodo-token)
+    load_token ZENODO_TOKEN "${TOKEN_FILE:-~/.zenodo/token.env}" || exit 2
+    # shellcheck disable=SC2086
+    python3 "$REPO/grid/zenodo_fetch.py" --dest "$DATA/$ID/raw" --manifest "$DATA/$ID/meta" $ARGS; rc=$? ;;
   note)
     echo "NOTE for $ID: ${NOTE:-see grid/README.md}"; rc=0 ;;
   *) echo "unknown route $ROUTE"; rc=64 ;;
