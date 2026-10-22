@@ -1,9 +1,11 @@
 """What a step asks Slurm for, and what Slurm answers: pure text, no scheduler call.
 
 The grid rules (spine-program CLAUDE.md, rule 7; docs/setup/grid.md) hold here as text the
-runner writes: every job has a wall time, -D names the run directory so the log lands beside the
-result, the command runs through pixi's locked environment, and nothing secret is on the
-script's lines, since the scheduler keeps a copy of every script it is given.
+runner writes: every job has a wall time, the command runs through pixi's locked environment,
+and nothing secret is on the script's lines, since the scheduler keeps a copy of every script it
+is given. The script names no partition, QoS, GPU request or log: hpcworker's job submit queues
+it with those from the site profile, in the run directory, and writes its output to the
+project's log folder (issue #77).
 """
 
 import re
@@ -13,7 +15,10 @@ from beethoven_qa.contracts import ensure, require
 
 from schwingnet.flow import JobSpec
 
-SUBMITTED = re.compile(r"Submitted batch job (\d+)")
+SUBMITTED = re.compile(
+    r"^HPCW-JOB submitted (\d+) \S+ ([A-Za-z0-9_.,-]+)/([A-Za-z0-9_.-]+) log ", re.MULTILINE
+)
+PLACEMENT = ("partition", "qos", "gres", "output")
 SECRET_SHAPES = re.compile(r"(?i)(token|secret|password|api[_-]?key)\s*=")
 
 
@@ -27,29 +32,23 @@ def wall_time(hours: float) -> str:
 
 
 @beartype
-@require(lambda run_dir: run_dir.startswith("/"), "the run directory is absolute")
-@require(lambda run_dir: "\n" not in run_dir and " " not in run_dir, "a plain path")
+@require(lambda checkout: checkout.startswith("/"), "the checkout is absolute")
+@require(lambda checkout: "\n" not in checkout and " " not in checkout, "a plain path")
 @ensure(lambda result: result.startswith("#!/bin/bash\n"), "a bash script")
 @ensure(lambda result: "#SBATCH --time=" in result, "every job has a wall time")
+@ensure(
+    lambda result: all(f"#SBATCH --{w}" not in result for w in PLACEMENT),
+    "placement is hpcworker's",
+)
 @ensure(lambda result: SECRET_SHAPES.search(result) is None, "no secret on a script's lines")
 @ensure(lambda result: result.endswith("\n"), "ends with a newline")
-def sbatch_script(job: JobSpec, run_dir: str, checkout: str) -> str:
-    """The script one step is submitted as; the log goes beside the run's record."""
+def sbatch_script(job: JobSpec, checkout: str) -> str:
+    """The script one step is submitted as, in the run directory: what it needs, never where."""
     lines = [
         "#!/bin/bash",
-        f"#SBATCH --job-name=schwingnet-{job.step.value}",
-        f"#SBATCH --partition={job.partition}",
         f"#SBATCH --cpus-per-task={job.cpus}",
         f"#SBATCH --mem={job.memory_gb}G",
         f"#SBATCH --time={wall_time(job.hours)}",
-        f"#SBATCH --chdir={run_dir}",
-        f"#SBATCH --output={run_dir}/{job.step.value}-%j.log",
-    ]
-    if job.qos:
-        lines.append(f"#SBATCH --qos={job.qos}")
-    if job.gpus:
-        lines.append(f"#SBATCH --gres=gpu:{job.gpus}")
-    lines += [
         "set -euo pipefail",
         f"cd {checkout}",
         f"exec pixi run --locked -e {job.environment} {job.command}",
@@ -58,11 +57,22 @@ def sbatch_script(job: JobSpec, run_dir: str, checkout: str) -> str:
 
 
 @beartype
-@ensure(lambda result: result is None or result.isdigit(), "a job id is digits")
-def job_id_of(sbatch_output: str) -> str | None:
-    """The job id sbatch printed, or None when it printed no submission line."""
-    found = SUBMITTED.search(sbatch_output)
-    return found.group(1) if found else None
+@ensure(lambda result: result is None or result[0].isdigit(), "a job id is digits")
+@ensure(
+    lambda result: result is None or (result[1] != "" and result[2] != "none"),
+    "hpcworker's placement",
+)
+def submitted_of(answer: str) -> tuple[str, str, str | None] | None:
+    """The job id, partition and QoS hpcworker's job submit printed, or None when it queued nothing.
+
+    Its line is "HPCW-JOB submitted <id> <name> <partition>/<qos> log <path>", the QoS "none"
+    where the class has none.
+    """
+    found = SUBMITTED.search(answer)
+    if found is None:
+        return None
+    qos = found.group(3)
+    return found.group(1), found.group(2), None if qos == "none" else qos
 
 
 @beartype

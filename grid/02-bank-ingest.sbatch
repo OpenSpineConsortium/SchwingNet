@@ -1,12 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=xr_bank
-#SBATCH --partition=reqp
-#SBATCH --qos=requeue
-#SBATCH --requeue
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=24G
 #SBATCH --time=2-00:00:00
-#SBATCH --output=logs/%x_%j.out
 # Stage 2 of the X-ray chain: for each recipe grid/banks/<id>.json, turn the raw copy into a
 # bank (tools/bank.py --run) and ingest the bank into a content-hashed shard
 # (tools/ingest.py run, superseding the source's current shard where the bank grew, so a raw
@@ -69,8 +64,8 @@ for recipe in "$BANKS"/*.json; do
 done
 {
   echo
-  if [ "$failed" = 0 ]; then echo "Every recipe that had a raw copy was banked and ingested."; else echo "Some recipes failed; the lines above say which, the log logs/xr_bank_${SLURM_JOB_ID:-}.out says why."; fi
-  echo "A recipe spelled 'to confirm' is filled in from the page and this stage is run again for that id: ONLY=<id> sbatch -D $REPO/grid $REPO/grid/02-bank-ingest.sbatch"
+  if [ "$failed" = 0 ]; then echo "Every recipe that had a raw copy was banked and ingested."; else echo "Some recipes failed; the lines above say which, the job's log, which the gate word status shows, says why."; fi
+  echo "A recipe spelled 'to confirm' is filled in from the page, by pull request, and the gate word fetch <id> runs this stage again for that id."
 } >> "$REPORT"
 cat "$REPORT"
 echo "XR_BANK_RC=$failed $(date '+%F %T')"

@@ -1,12 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=xr_leakprint
-#SBATCH --partition=reqp
-#SBATCH --qos=requeue
-#SBATCH --requeue
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=16G
 #SBATCH --time=1-00:00:00
-#SBATCH --output=logs/%x_%A_%a.out
 # The leak checks, step 1 of 2 (issue #9): one task of a Slurm array per shard, which writes that
 # shard's fingerprint file (tools/leaks.py fingerprint: the store key checked against the manifest,
 # the pixel key, the perceptual hash and the 64 x 64 reduction of every frame). grid/run-leaks.sh

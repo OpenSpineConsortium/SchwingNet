@@ -1,0 +1,56 @@
+#!/bin/bash
+# A stand-in for hpcworker's job verbs (framework 27 and later, interface 2) in the tests of the grid
+# scripts (issue #77), so nothing reaches a scheduler. `job submit` answers as the real one does,
+# "HPCW-JOB submitted <id> <name> <partition>/<qos> log <path>", and logs each job it queues as one
+# line of HPCW_LOG: its class and name, its --after list in sbatch's words as job submit turns it
+# into them, its other options and script, then the job's environment the tests look at. Ids count
+# from HPCW_FIRST (101). --check queues nothing and logs nothing. A call whose line holds the text
+# of HPCW_REFUSE's file is refused, as a busy controller refuses one. `job log` prints
+# HPCW_LOGS/<id>.out, or <id>_<task>.out for an array task, as the ledger would find it. `job version`
+# names framework HPCW_FRAMEWORK (27).
+set -uo pipefail
+[ "${1:-}" = job ] || { echo "fake hpcworker: job verbs only" >&2; exit 64; }
+verb=${2:-}
+shift 2
+submit() {
+  local name="" class="" after="" check=0 opts=() id kind line n
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --project|--dir) shift 2 ;;
+      --name) name=$2; shift 2 ;;
+      --class) class=$2; shift 2 ;;
+      --after) id=${2%%:*} kind=any; [ "$id" = "$2" ] || kind=${2#*:}; after=${after:+$after,}after$kind:$id; shift 2 ;;
+      --check) check=1; shift ;;
+      --) shift; break ;;
+      *) opts+=("$1"); shift ;;
+    esac
+  done
+  case "$class" in cpu|batch|gpu) ;; *) echo "the class is cpu, batch or gpu" >&2; exit 1 ;; esac
+  line="--class $class --name $name${after:+ --dependency=$after --kill-on-invalid-dep=yes}${opts[*]+ ${opts[*]}} $*"
+  line="$line | DEPEND=${DEPEND:-} FETCH_ARGS=${FETCH_ARGS:-} DATA_ROOT=${DATA_ROOT:-} PART=${PART:-} RUN=${RUN:-} CATALOG=${CATALOG:-} THREADS=${THREADS:-} SWEEPS=${SWEEPS:-} RUNS=${RUNS:-} WEIGHTS=${WEIGHTS:-} MODELS=${MODELS:-} ID=${ID:-}"
+  if [ -n "${HPCW_REFUSE:-}" ] && [ -s "$HPCW_REFUSE" ] && [[ $line == *"$(cat "$HPCW_REFUSE")"* ]]; then
+    echo "HPCW-JOB refused $name reqp/requeue: Socket timed out"; exit 1
+  fi
+  [ $check = 0 ] || { echo "HPCW-JOB would-run $name reqp/requeue: ok"; exit 0; }
+  n=$(( $(wc -l < "$HPCW_LOG" 2>/dev/null || echo 0) + ${HPCW_FIRST:-101} ))
+  echo "$line" >> "$HPCW_LOG"
+  echo "HPCW-JOB submitted $n $name reqp/requeue log /state/jobs/schwingnet/logs/${name}_$n.out"
+}
+log() {
+  local id="" task=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --project|--lines) shift 2 ;;
+      --task) task=$2; shift 2 ;;
+      *) id=$1; shift ;;
+    esac
+  done
+  if [ -f "${HPCW_LOGS:-/nonexistent}/$id${task:+_$task}.out" ]; then cat "$HPCW_LOGS/$id${task:+_$task}.out"
+  else echo "HPCW-JOB no output yet for $id (/state/jobs/schwingnet/logs/x_$id.out)"; fi
+}
+case "$verb" in
+  version) echo "HPCW-JOB version ${HPCW_FRAMEWORK:-27} interface 2" ;;
+  submit) submit "$@" ;;
+  log) log "$@" ;;
+  *) echo "fake hpcworker: no verb $verb" >&2; exit 64 ;;
+esac

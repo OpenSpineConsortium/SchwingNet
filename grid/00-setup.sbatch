@@ -1,12 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=sn_setup
-#SBATCH --partition=reqp
-#SBATCH --qos=requeue
-#SBATCH --requeue
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=32G
 #SBATCH --time=06:00:00
-#SBATCH --output=logs/%x_%j.out
 # The pixi environments for every SchwingNet job on the grid (issue #53), made once per pixi.lock:
 #   1. pixi 0.81.0 into the lab volume's tools/pixi-0.81.0/bin, its release asset checked against
 #      the sha256 this repository measured (.claude/hooks/beethoven-qa-session-start.sh holds the
