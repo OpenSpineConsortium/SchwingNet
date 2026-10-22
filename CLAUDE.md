@@ -28,7 +28,7 @@ A fact worth keeping is one file under docs/memory/ with one index line in MEMOR
 
 ## Checks
 
-Run `bash scripts/check.sh` before opening or updating a pull request. CI runs the same script as the check named "check", and the default branch takes only pull requests that pass it.
+Run `bash scripts/check.sh` before opening or updating a pull request. CI runs the same script as the check named "check", and the default branch takes only pull requests that pass it. The same check fails a pull request marked ready whose body has no section `## Adversarial review` (tools/review_record.py, CONTRIBUTING.md), so write the review into the body before marking it ready.
 
 <!-- cswap:checkpoint:begin -->
 ## Session checkpoint (kept by cswap)
