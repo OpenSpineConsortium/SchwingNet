@@ -79,7 +79,7 @@ COCO keypoints is the export (category "vertebral body", four named keypoints, t
 4. It runs over the unannotated films as a grid array job. A film whose most likely column is not T12L5 with odds past the margin, or where the decoder abstains, or where a body finding fires, goes to a reader, ranked by how sure the model is, so the readers' time goes where the anomalies are; the readers write the same format, and their confirmed films come back as new shards, which is how the rare classes grow (retraining-plan.md 3.2).
 5. What is reported is the stratified prevalence: per collection, per view, per age band where the record has one, each column and finding with its interval, from confirmed reads only, and the model's screening yield (confirmed per film sent to a reader) beside it.
 
-Which films are "the massive unannotated X-ray dataset" is the owner's to name; the candidates the inventory lists are the 16,531 digitised NHANES II films without landmarks, the chest sets (ChestX-ray14, MIMIC-CXR-JPG, VinDr-CXR and PCXR, where the thoracic spine is in every frame) and the films the owner holds outside the registry.
+The owner named "the massive unannotated X-ray dataset" on 2026-10-22: it is NHANES II, the 16,531 digitised films without landmarks, which the screener runs over first; the census through the samples gate word counts what of it is held and annotated. The other candidates the inventory lists, kept for later, are the chest sets (ChestX-ray14, MIMIC-CXR-JPG, VinDr-CXR and PCXR, where the thoracic spine is in every frame) and the films the owner holds outside the registry.
 
 ## 6. The pseudo-labeller (the owner, 2026-10-21 20:12 UTC)
 
