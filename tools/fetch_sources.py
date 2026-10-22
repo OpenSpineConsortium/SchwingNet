@@ -303,11 +303,15 @@ NEXTCLOUD_DEPTH = 6
 
 
 def nextcloud_share(share_url):
-    """The install's root and the share's token of a public Nextcloud link, https://host[/prefix]/s/<token>."""
+    """The install's root, its page prefix and the share's token of a public Nextcloud link,
+    https://host[/prefix][/index.php]/s/<token>. The pages keep index.php where the link has it,
+    since an install without pretty URLs serves /s/ only behind it, while WebDAV's public.php
+    sits beside index.php at the root (BIMCV COVID-19+'s B2DROP share, 2026-10-22)."""
     match = NEXTCLOUD_SHARE.match(share_url or "")
     if not match:
         raise FetchError(f"{share_url}: not a public Nextcloud share link (https://host/.../s/<token>)")
-    return match.group(1), match.group(2)
+    pages = match.group(1)
+    return pages.removesuffix("/index.php"), pages, match.group(2)
 
 
 def nextcloud_listing(root, token, folder, opener):
@@ -346,7 +350,7 @@ def nextcloud_files(share_url, opener=None):
     bounded depth: the path inside the share, the share's own download link for that one file,
     which needs no login, and the size WebDAV states, which http-get checks. Nextcloud states no
     checksum, so the sha256 of what came is FETCH.json's alone."""
-    root, token = nextcloud_share(share_url)
+    root, pages, token = nextcloud_share(share_url)
     found, pending = [], [("/", 0)]
     while pending:
         folder, depth = pending.pop(0)
@@ -354,7 +358,7 @@ def nextcloud_files(share_url, opener=None):
         for item in files:
             parent, name = item["path"].rsplit("/", 1)
             query = urllib.parse.urlencode({"path": parent or "/", "files": name})
-            found.append({"name": item["path"].lstrip("/"), "url": f"{root}/s/{token}/download?{query}",
+            found.append({"name": item["path"].lstrip("/"), "url": f"{pages}/s/{token}/download?{query}",
                           "size": item["size"]})
         if depth + 1 < NEXTCLOUD_DEPTH:
             pending += [(inner, depth + 1) for inner in folders]

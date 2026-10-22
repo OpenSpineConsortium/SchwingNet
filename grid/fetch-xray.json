@@ -351,6 +351,23 @@
         "10,580 radiographs in fractured and non-fractured folders over lower and upper limbs, lumbar spine, hips and knees; only the lumbar spine folder concerns the bank, whose recipe waits on the folder names",
         "the origin of the three source uploads, which the page does not state"
       ]
+    },
+    {
+      "id": "bimcv_covid19",
+      "route": "nextcloud",
+      "source": "https://bimcv.cipf.es/bimcv-projects/bimcv-covid19/ (BIMCV COVID-19+, iterations 1 to 3: chest films and CTs of COVID-19 patients from the hospitals of the Valencian region, laterals among the films)",
+      "share": "https://b2drop.bsc.es/index.php/s/BIMCV-COVID19-cIter_1_2_3",
+      "dest": "/rs/rs_grp_oschome/go2432/data/bimcv_covid19/raw",
+      "size_gb": 389,
+      "checksum": {
+        "md5": null,
+        "sha256": null
+      },
+      "licence": "the BIMCV COVID-19+ Dataset Research Use Agreement, accepted by the owner on 2026-10-22: research use only, no sale or redistribution, the download link not shared outside the organisation",
+      "confirm": [
+        "the share is B2DROP's public Nextcloud link BIMCV sent after the form, behind index.php; the job lists it by WebDAV and checks each file's size, since Nextcloud states no checksum",
+        "about 389 GB, as the record states; films and CTs come together, the archives stay packed, and the bank stage waits on a recipe for this set"
+      ]
     }
   ],
   "credentialed": [
