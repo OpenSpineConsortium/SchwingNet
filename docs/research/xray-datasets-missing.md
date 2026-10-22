@@ -67,6 +67,10 @@ or click, as far as it could be read.
 | Roboflow Universe spine X-ray projects (spinefrxnormalvindr and others under rf100-vl) | Object-detection relabels of VinDr-SpineXR (osteophytes, implants, vertebral collapse) | https://universe.roboflow.com/rf100-vl/spinefrxnormalvindr-lt1cn-ryhy | Roboflow; these redistribute VinDr-SpineXR images outside its PhysioNet DUA | Not to be fetched: the pixels are VinDr-SpineXR's, already held under the agreement; the box labels could be read against the held copy if their licence allows, which is doubtful | exclude |
 | Hugging Face UniqueData/spine-x-ray | A commercial marketplace sample (under 1,000 JPG and DICOM) across scoliosis, osteoporosis, spondylolisthesis, compression fracture and healthy classes | https://huggingface.co/datasets/UniqueData/spine-x-ray | A paid product; the sample's terms to confirm | Noted so it is not mistaken for an open set; a priced quote would need the owner's word | exclude unless bought |
 
+Correction, 2026-10-21 (issue #81): of the VinDr-CXR and VinDr-PCXR row, VinDr-PCXR is under PhysioNet's
+Restricted Health Data License 1.5.0, a data use agreement and no CITI training review, and the
+owner's agreement is on file (spine-datasets 7a74bb6); VinDr-CXR stays credentialed.
+
 ## Sets looked for and not found public
 
 - A scoliosis radiograph release newer than AASCE 2019 and Spinal-AI2024: every 2024 to 2026

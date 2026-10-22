@@ -31,7 +31,7 @@ The grid's nodes run CentOS 7 (glibc 2.17) and pixi.lock is solved for glibc 2.3
 
 The X-ray chain first (three jobs: fetch, bank and ingest, catalog), then the data platform's chain (25 jobs, one per source, each afterany on the one before, the first after the X-ray fetch), because the owner put X-ray datasets before CT everywhere on 2026-10-21. The X-ray stages each write one report, grid/logs/01-fetch-STAGE-REPORT.md, 02-bank-ingest-STAGE-REPORT.md and 03-catalog-STAGE-REPORT.md, and each platform job logs to grid/logs/dp_fetch_<id>_<job>.out with a README.yaml written at its landing; the jobs gate.sh adds write 00-setup-, 00-weights-, 00-carmlspine- and v1-driver-STAGE-REPORT.md beside them, which `status` prints. The submit scripts underneath (run-xray-chain.sh, run-platform-fetch.sh, run-latency-sweep.sh, run-leaks.sh) keep their own options and dry runs (`SBATCH=echo`) for the tests and for reading; the gate is the only caller on the grid.
 
-The sets never in a chain: MIMIC-CXR-JPG (about 570 GB), VinDr-CXR (about 180 GB) and VinDr-PCXR (about 30 GB) are each the word `fetch <id>` once PhysioNet has approved the owner's access; the gated platform sources (CADS CT-TRI, RSNA RATIC, RSPECT) wait for a gate word of their own; CT-RATE is off (the owner, 2026-10-21) and NLST full is refused as it stands by the stopping rule.
+The sets never in a chain: MIMIC-CXR-JPG (about 570 GB), VinDr-CXR (about 180 GB) and VinDr-PCXR (34.1 GB) are each the word `fetch <id>` once PhysioNet has approved the owner's access; the gated platform sources (CADS CT-TRI, RSNA RATIC, RSPECT) wait for a gate word of their own; CT-RATE is off (the owner, 2026-10-21) and NLST full is refused as it stands by the stopping rule.
 
 ## What the X-ray chain does
 
