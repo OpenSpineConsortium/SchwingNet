@@ -255,6 +255,61 @@ class GateTest(unittest.TestCase):
         self.assertEqual(self.submitted()[0], fetch[0])
         self.assertIn("xr_catalog", self.recorded())
 
+    def gate_at_home(self, *words):
+        """The gate with HOME in the test's folder, where a gated source's token or link file is looked for."""
+        home = self.tmp / "home"
+        home.mkdir(exist_ok=True)
+        env = dict(self.gate_env(), HOME=str(home))
+        return subprocess.run(["bash", str(self.repo / "grid" / "gate.sh"), *words], env=env, capture_output=True, text=True,
+                              timeout=120)
+
+    def link_file(self, mode):
+        link = self.tmp / "home" / ".rsna" / "ratic_link"
+        link.parent.mkdir(parents=True, exist_ok=True)
+        link.write_text("https://example.invalid/ratic.zip?X-Amz-Signature=secretpart\n", encoding="utf-8")
+        link.chmod(mode)
+
+    def test_a_gated_ct_source_needs_its_file_and_is_fetched_alone(self):
+        ratic = "rsna_ratic_abdominal_trauma"
+        done = self.gate_at_home("fetch", ratic)
+        self.assertEqual(done.returncode, 2, done.stdout)
+        self.assertIn("~/.rsna/ratic_link", done.stdout)
+        self.link_file(0o644)
+        done = self.gate_at_home("fetch", ratic)
+        self.assertEqual(done.returncode, 2, done.stdout)
+        self.assertIn("mode 644", done.stdout)
+        self.assertEqual(self.submitted(), [])
+        self.link_file(0o600)
+        done = self.gate_at_home("fetch", ratic)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertNotIn("secretpart", done.stdout + done.stderr)
+        jobs = self.line_of("platform-fetch.sbatch")
+        self.assertEqual(len(jobs), 1)
+        self.assertIn(f"ID={ratic}", jobs[0])
+        self.assertNotIn("--dependency", jobs[0])
+        self.assertEqual(len(self.submitted()), 1)
+        self.assertIn(f"dp_{ratic}", self.recorded())
+        self.assertNotIn("hf_ct_rate", done.stdout)
+        # the same source again while its fetch is live: refused
+        self.live(self.recorded()[f"dp_{ratic}"])
+        self.assertEqual(self.gate_at_home("fetch", ratic).returncode, 75)
+        self.assertEqual(len(self.submitted()), 1)
+
+    def test_a_gated_ct_source_waits_for_a_live_x_ray_fetch(self):
+        self.state_line(201, "start", "xr_fetch")
+        self.state_line(202, "fetch:vindr_pcxr", "xr_fetch")
+        self.state_line(203, "start", "xr_fetch")
+        self.live(201, 202)
+        self.link_file(0o600)
+        done = self.gate_at_home("fetch", "rsna_ratic_abdominal_trauma")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("--dependency=afterany:201,afterany:202 ", self.line_of("platform-fetch.sbatch")[0])
+
+    def test_ct_rate_and_nlst_are_never_a_fetch_word(self):
+        for name in ("hf_ct_rate", "idc_nlst", "aws_stoic2021"):
+            self.assertEqual(self.gate_at_home("fetch", name).returncode, 64, name)
+        self.assertEqual(self.submitted(), [])
+
     def test_an_id_not_on_the_list_is_refused(self):
         self.assertEqual(self.gate("fetch", "nosuchset").returncode, 64)
         self.assertEqual(self.submitted(), [])

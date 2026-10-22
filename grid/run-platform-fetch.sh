@@ -12,6 +12,7 @@
 #   bash grid/run-platform-fetch.sh                       # the open chain, in the order below
 #   bash grid/run-platform-fetch.sh --only aws_stoic2021,zenodo_lumos
 #   bash grid/run-platform-fetch.sh --gated               # the open chain plus the granted gated sources
+#   bash grid/run-platform-fetch.sh --gated-ids           # the granted gated ids, one a line (grid/gate.sh's fetch)
 #   HPCW_DRY=1 bash grid/run-platform-fetch.sh            # dry run
 #
 # The size budget comes first: the stated size of every source in the chain (from the cards'
@@ -25,11 +26,12 @@ VOLUME=${VOLUME:-/rs/rs_grp_oschome}
 # 5 TB, not 1: acquisition_fetch.sh stops its own job under 5 TB free (--floor-tb 5).
 MARGIN_GB=${MARGIN_GB:-5000}
 DATA_ROOT=${DATA_ROOT:-/rs/rs_grp_oschome/go2432/data}
-ONLY=""; GATED=0
+ONLY=""; GATED=0; GATED_IDS=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --only) ONLY=$2; shift 2 ;;
     --gated) GATED=1; shift ;;
+    --gated-ids) GATED_IDS=1; shift ;;
     *) echo "unknown argument $1"; exit 64 ;;
   esac
 done
@@ -78,6 +80,25 @@ hf_ct_rate|hf-token|21300|CC BY-NC-SA 4.0|gated|--repo ibrahimhamamci/CT-RATE --
 idc_nlst|idc|2305|CC BY 4.0|open|nlst|NOTE=24,713 subjects, 2.3 TB; refused as it stands by the stopping rule
 "
 
+if [ "$GATED_IDS" = 1 ]; then
+  sed -n 's/^\([a-z0-9_]*\)|.*/\1/p' <<< "$GATED_LIST"
+  exit 0
+fi
+
+secret_file_problem() {  # secret_file_problem EXTRA: why a gated source's token or link file cannot be read yet, or nothing
+  # Checked on the login node, before anything is queued, so a missing file is one line now and not
+  # a failed job later; the file's text is never read here, only that it is there and the owner's alone.
+  local pair file mode
+  for pair in $1; do
+    case "$pair" in TOKEN_FILE=*|LINK_FILE=*) ;; *) continue ;; esac
+    file=${pair#*=}
+    file=${file/#\~/$HOME}
+    [ -f "$file" ] || { echo "there is no ${pair#*=} on the grid account; the owner writes it, mode 600 (grid/README.md)"; return; }
+    mode=$(stat -c %a "$file")
+    [ "$mode" = 600 ] || [ "$mode" = 400 ] || { echo "${pair#*=} is mode $mode, readable by others; it must be mode 600"; return; }
+  done
+}
+
 wanted() {  # wanted ID: whether this run takes the source
   [ -z "$ONLY" ] && return 0
   case ",$ONLY," in *",$1,"*) return 0 ;; esac
@@ -87,10 +108,14 @@ TABLE="$OPEN"
 [ "$GATED" = 0 ] || TABLE="$OPEN$GATED_LIST"
 [ -z "$ONLY" ] || TABLE="$OPEN$GATED_LIST"
 
-total_gb=0; unknown=""; n=0
+total_gb=0; unknown=""; n=0; missing=""
 while IFS='|' read -r id route size licence access args extra; do
   [ -n "$id" ] || continue
   wanted "$id" || continue
+  if [ "$access" = gated ]; then
+    problem=$(secret_file_problem "${extra%%NOTE=*}")
+    [ -z "$problem" ] || { echo "$id: left out: $problem"; missing="$missing $id"; continue; }
+  fi
   n=$((n + 1))
   if [ "$size" = 0 ]; then unknown="$unknown $id"; else total_gb=$(awk -v a="$total_gb" -v b="$size" 'BEGIN { printf "%d", a + b + 0.999 }'); fi
 done <<< "$TABLE"
@@ -98,6 +123,10 @@ free_gb=$("$DF" -BG --output=avail "$VOLUME" 2>/dev/null | tail -n 1 | tr -dc '0
 [ -n "$free_gb" ] || { echo "cannot read the free space of $VOLUME with df"; exit 2; }
 echo "size budget: $n sources, $total_gb GB stated; $VOLUME has $free_gb GB free, margin $MARGIN_GB GB"
 [ -z "$unknown" ] || echo "no size stated for:${unknown} (counted as 0)" | sed "s/for: */for: /"
+if [ "$n" = 0 ] && [ -n "$missing" ]; then
+  echo "refusing to submit: the token or link file of${missing} is not in place (above); nothing was queued"
+  exit 2
+fi
 if [ "$total_gb" -gt $(( free_gb - MARGIN_GB )) ]; then
   echo "refusing to submit: $total_gb GB exceeds the free space minus the margin; free room or narrow with --only"
   exit 3
@@ -109,6 +138,7 @@ previous=""; ids=""
 while IFS='|' read -r id route size licence access args extra; do
   [ -n "$id" ] || continue
   wanted "$id" || continue
+  case " $missing " in *" $id "*) continue ;; esac
   # The first job waits on DEPEND where grid/gate.sh gives one (the X-ray fetch: X-ray before CT);
   # each later one on the job before it.
   dep=${DEPEND:-}
