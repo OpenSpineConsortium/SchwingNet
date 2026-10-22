@@ -372,6 +372,19 @@ probe_text() {  # a heading line, then the newest latency probe's output; nothin
   echo "## the latency probe: $(basename "$probe") ($(date -r "$probe" '+%F %T'))"
   cat "$probe"
 }
+latency_lines() {  # the newest run's parity, latency and sweep numbers, one line a file (#99)
+  local run file files=()
+  run=$(ls -1dt "$RUNS"/*/ 2>/dev/null | head -n 1)
+  [ -n "$run" ] || return 0
+  for file in "$run"onnx/parity-*.json "$run"latency/*.json "$run"evaluate/latency.json "$run"sweep/*/summary.json; do
+    [ -f "$file" ] && files+=("$file")
+  done
+  [ ${#files[@]} -gt 0 ] || return 0
+  # Before the stage reports, so the 200 lines status keeps never cut the timing off.
+  echo "## latency of the newest run, $(basename "$run")"
+  awk -f "$REPO/grid/latency-lines.awk" "${files[@]}" | masked | sed 's/^/  /'
+}
+
 word_status() {
   local ids report run lines shown job name state elapsed code node probe
   ids=$(gate_ids | tail -n 60 | tr '\n' ',' | sed 's/,$//')
@@ -395,6 +408,7 @@ word_status() {
     printf '%s\n' "$probe" | tail -n +2 | head -n 40 | LC_ALL=C tr -cd '\11\12\40-\176' \
       | awk -f "$REPO/grid/probe-shapes.awk" | masked | sed 's/^/  /'
   fi
+  latency_lines
   for report in "$LOGS"/*STAGE-REPORT.md; do
     [ -f "$report" ] || continue
     echo "## $(basename "$report") ($(date -r "$report" '+%F %T'))"

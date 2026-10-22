@@ -1007,6 +1007,39 @@ echo "the split is not disjoint; no training step reads this version"; exit 1
         self.assertNotIn("- line 7\n", done.stdout)
         self.assertIn("- line 19\n", done.stdout)
 
+    def test_status_prints_the_newest_runs_latency_parity_and_sweep(self):
+        import json
+        run = self.runs / "e4f7054848f5"
+        for folder in ("onnx", "latency", "evaluate", "sweep/case134"):
+            (run / folder).mkdir(parents=True)
+        def write(path, record):
+            (run / path).write_text(json.dumps(record, indent=1) + "\n", encoding="utf-8")
+        write("onnx/parity-onnxruntime-cuda.json", {"runtime": "onnxruntime", "device": "cuda", "crops": 64, "persons": 4,
+                                                    "witness_frames": 6, "max_abs_probability_difference": 2.5e-06,
+                                                    "labels_equal": True, "passed": True, "onnx_sha256": "ab" * 32})
+        arm = {"arm": "onnxruntime-cuda-1t", "device": "NVIDIA H200", "frames": 300, "ms_per_frame_median": 3.21,
+               "ms_per_frame_p95": 4.56, "ms_per_frame_p99": 5.0, "budget_ms": 97.0, "within_budget": True,
+               "frame": {"p50": 3.21}, "per_stage": {"model_ms": {"p50": 2.0}}}
+        write("latency/onnxruntime-cuda-1t.json", arm)
+        write("evaluate/latency.json", dict(arm, arms=["onnxruntime-cuda-1t"]))
+        write("sweep/case134/summary.json", {"name": "case134", "frames": 301, "runtime": "onnxruntime", "device": "NVIDIA H200",
+                                             "box_source": "truth", "latency_ms": {"p50": 6.04, "p95": 7.91}, "within_budget": True,
+                                             "accuracy": {"all frames": {"correct": 290, "total": 301, "ci95": [0.9, 1.0]},
+                                                          "Jane/Doe": {"correct": 1, "total": 1}},
+                                             "video": str(run / "sweep" / "case134" / "sweep.mp4")})
+        done = self.gate("status")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        for kept in ("## latency of the newest run, e4f7054848f5",
+                     "  parity onnxruntime on cuda: 64 crops of 4 persons (6 witness frames), max difference 2.5e-06, labels equal yes, passed yes",
+                     "  arm onnxruntime-cuda-1t on NVIDIA H200: 300 frames, p50 3.2 ms, p95 4.6 ms, p99 5.0 ms, within the 97.0 ms budget yes",
+                     "  headline: onnxruntime-cuda-1t on NVIDIA H200, p50 3.2 ms, p95 4.6 ms",
+                     "  sweep case134: 301 frames, onnxruntime on NVIDIA H200, boxes truth, p50 6.0 ms, p95 7.9 ms, within budget yes, video mp4",
+                     "    accuracy all frames: 290/301", "    accuracy <withheld>: 1/1"):
+            self.assertIn(kept, done.stdout)
+        section = done.stdout.split("## latency of the newest run", 1)[1].split("## newest run:", 1)[0]
+        for gone in (str(self.runs), "Jane", "abab"):
+            self.assertNotIn(gone, section)
+
     def test_on_the_grid_the_stages_keep_their_own_data_paths(self):
         # stage 2 reads a set DATA_ROOT as its off-grid layout, so the gate passes none on the grid,
         # whether the caller sets nothing or the grid's own data root
