@@ -34,8 +34,9 @@
 #                   catalog version is the one grid/v1-version.sh chooses
 #   latency         the latency jobs for the newest run that has a checkpoint, with the case134 sweep
 #   fetch <id>      one set of grid/fetch-xray.json, a credentialed one with ~/.netrc, banked and catalogued;
-#                   or one granted gated CT source of grid/run-platform-fetch.sh (its --gated-ids: CADS,
-#                   RSNA RATIC, RSPECT) once its token or link file is in place, after any live X-ray fetch
+#                   or one source of grid/run-platform-fetch.sh's --gated-ids (CADS, RSNA RATIC, RSPECT,
+#                   ReXGradient once its token or link file is in place; the full NLST on the owner's yes),
+#                   after any live X-ray fetch
 #   samples         the sample index (grid/run-samples.sh): plan, scan and merge, refused while one
 #                   of them is live; status shows its MANIFEST.md, aggregates only
 #   stop            cancel the gate's own jobs that are still queued or running, and nothing else

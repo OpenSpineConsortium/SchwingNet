@@ -74,6 +74,7 @@ GATED_LIST="
 hf_cads_unique|hf-token|123.3|per component; CT-TRI under CADS terms|gated|--repo mrmrx/CADS-dataset --repo-type dataset --include CT-TRI/*|TOKEN_FILE=~/.hf/token.env NOTE=parts CT-TRI and VISCERAL only; VISCERAL is a second run with --include VISCERAL*
 rsna_ratic_abdominal_trauma|curl-link|0|RSNA terms, non-commercial, no redistribution|gated|ratic.zip|LINK_FILE=~/.rsna/ratic_link NOTE=the presigned link is good until 2026-10-28 02:38 UTC
 rsna_rspect_pe|kaggle|0|RSNA terms, non-commercial research|gated|rsna-str-pulmonary-embolism-detection|TOKEN_FILE=~/.fluorocap/credentials.env
+hf_rexgradient_160k|hf-token|156|ReXGradient-160K data access and use agreement, non-commercial, no redistribution|gated|--repo rajpurkarlab/ReXGradient-160K --repo-type dataset --include .|TOKEN_FILE=~/.hf/token.env NOTE=the whole repository, about 156 GB, on the owner's choice of 2026-10-22 knowing clause A.5 limits a download to the part the project needs
 "
 # The owner's yes, one source at a time: never in the chain, fetched only when grid/gate.sh's fetch
 # names it. The full NLST is here since the owner lifted the stopping rule on 2026-10-22 ("yes
