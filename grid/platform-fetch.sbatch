@@ -14,6 +14,8 @@
 #   hf-token reacquire.py hf-get with HF_TOKEN read from TOKEN_FILE (mode 0600) into the environment
 #   curl-link curl on a presigned link read from LINK_FILE (mode 0600) through a curl config, never on a command line
 #   kaggle   kaggle competitions download with KAGGLE_API_TOKEN read from TOKEN_FILE
+#   redivis  grid/redivis_fetch.py ARGS with REDIVIS_API_TOKEN read from TOKEN_FILE, in REDIVIS_ENV, a
+#            venv the job makes once from the acq environment's Python with the pinned redivis client
 #   note     print NOTE and exit 0 (a step that needs a repository or a hand step not on the grid yet)
 # Secrets are read from files into this job's environment or a mode-0600 config and never echoed.
 set -uo pipefail
@@ -88,6 +90,17 @@ case "$ROUTE" in
   kaggle)
     load_token KAGGLE_API_TOKEN "${TOKEN_FILE:-~/.fluorocap/credentials.env}" || exit 2
     "${KAGGLE_BIN:-$HOME/mambaforge/envs/spineps/bin/kaggle}" competitions download -c "$ARGS" -p "$DATA/$ID/raw"; rc=$? ;;
+  redivis)
+    load_token REDIVIS_API_TOKEN "${TOKEN_FILE:-~/.redivis/token.env}" || exit 2
+    renv=${REDIVIS_ENV:-/rs/rs_grp_oschome/go2432/envs/redivis}
+    # Under a lock, so two Redivis fetches starting together never build the environment at once.
+    (
+      flock 9
+      "$renv/bin/python" -c 'import redivis' 2>/dev/null ||
+        { "$ACQ_ENV/bin/python" -m venv "$renv" && "$renv/bin/pip" install -q "redivis==${REDIVIS_VERSION:-0.21.1}"; }
+    ) 9> "$renv.lock" || exit 2
+    # shellcheck disable=SC2086
+    "$renv/bin/python" "$REPO/grid/redivis_fetch.py" --dest "$DATA/$ID/raw" --manifest "$DATA/$ID/meta" $ARGS; rc=$? ;;
   note)
     echo "NOTE for $ID: ${NOTE:-see grid/README.md}"; rc=0 ;;
   *) echo "unknown route $ROUTE"; rc=64 ;;
