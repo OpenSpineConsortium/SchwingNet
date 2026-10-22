@@ -35,8 +35,9 @@ Feasibility is graded on three counts: the data is held (H), requested (R) or mi
 | L | View translation, AP to lateral | H | 10 to 15 | 20 to 50 GPU-h | Published (XraySyn, DL-GIPS, X2CT-GAN, Diff2CT) | no |
 | M | Physics renderer and its ablation | H | 3 to 5 | 10 to 20 GPU-h | Published (DeepDRR) | no |
 | N | Rare anatomy made in 3D | H | 7 to 10 | modest | Inferred | no |
+| O | Gold masks on the paired CT and X-ray sets, verified, projected and registered | H | 5 to 10, plus the readers' hours | an array job per set, then small | Published (TotalSegmentator, DiffDRR); Measured for C-ArmLSpine's projection | step 1 and the first cases |
 
-A, B, C, F, G and J are in the two notes beside this one; A, G's format and J's tool are built. What follows is the three the owner added last, E, D and L, written out, and then the order.
+A, B, C, F, G and J are in the two notes beside this one; O, the owner's ask of 2026-10-22, is docs/research/benchmarks-to-beat.md section 5 and issue #127, and that note sets the benchmarks the whole programme is measured against; A, G's format and J's tool are built. What follows is the three the owner added last, E, D and L, written out, and then the order.
 
 ### E. Device and setting differences without losing shape
 

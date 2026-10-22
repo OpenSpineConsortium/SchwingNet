@@ -6,3 +6,4 @@ The programme that carries the segmented CTs to X-ray (counting prior, renders, 
 - Variables beside the images come from tools/covariates.py, aggregates only, ages as decades.
 - COBRA is CC BY-NC 4.0; commercial use is the owner's lawyer question.
 - The screener (#64) runs over NHANES II's unannotated films first, the owner's choice of 2026-10-22; BUU-LSPINE is held (3,600 AP and lateral pairs), not requested.
+- The benchmarks the programme is measured against are docs/research/benchmarks-to-beat.md (2026-10-22): FluoroSAM names vertebral levels at 0.04 Dice on a real cadaver and bridges renders to real fluoroscopy by intensity randomisation alone; the contour registration (0.67 mm) needs the CT, a fiducial and two views. Workstream O (#127) makes gold masks on the paired sets: TotalSegmentator, the owner in ITK-SNAP, Dr Tech verifying, projection and DiffDRR registration.
