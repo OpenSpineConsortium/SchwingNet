@@ -34,8 +34,10 @@ echo "$n"
 [ -f "$FAKE/squeue_fails" ] && { echo "slurm_load_jobs error: Socket timed out" >&2; exit 1; }
 cat "$FAKE/queue" 2>/dev/null || true
 """,
+    # what $FAKE/sacct.out holds, else one finished job; its arguments logged
     "sacct": """#!/bin/bash
-echo "101|COMPLETED|00:01:00|0:0|node1"
+echo "$*" >> "$FAKE/sacct.log"
+if [ -f "$FAKE/sacct.out" ]; then cat "$FAKE/sacct.out"; else echo "101|sn_setup|COMPLETED|00:01:00|0:0|node1"; fi
 """,
     "scancel": """#!/bin/bash
 echo "$*" >> "$FAKE/scancel.log"
@@ -101,13 +103,25 @@ class GateTest(unittest.TestCase):
         (self.models / "resnet18-f37072fd.pth").write_bytes(b"weights")
         (self.models / "resnet18-f37072fd.pth.sha256").write_text("f37072fd" + "0" * 56 + "\n", encoding="utf-8")
 
-    def catalog_ready(self, version=3):
-        versions = self.data / "_catalog" / "versions"
-        versions.mkdir(parents=True)
+    def catalog_ready(self, version=3, carmlspine_test=True):
+        """A version in the store as tools/catalog.py writes one: its file, its line in VERSIONS.jsonl
+        (compact, as pydantic writes it) and CURRENT naming it."""
+        store = self.data / "_catalog"
+        versions = store / "versions"
+        versions.mkdir(parents=True, exist_ok=True)
         name = f"catalog-{version:06d}-0123456789ab.sqlite"
         (versions / name).write_bytes(b"")
-        (self.data / "_catalog" / "CURRENT").write_text(name + "\n", encoding="utf-8")
+        parts = '"carmlspine|test":59,"carmlspine|train":50' if carmlspine_test else '"vindr_pcxr|train":7'
+        with (store / "VERSIONS.jsonl").open("a", encoding="utf-8") as log:
+            log.write(f'{{"version":{version},"file":"{name}","sha256":"{"0" * 64}","frames_by_source_and_part":{{{parts}}}}}\n')
+        (store / "CURRENT").write_text(name + "\n", encoding="utf-8")
         return versions / name
+
+    def carmlspine_shards(self):
+        for kind, folder in (("train", "2026-10-21-c8ea18032437"), ("test", "2026-10-21-2f554446fe70")):
+            shard = self.data / "carmlspine" / "shards" / folder
+            shard.mkdir(parents=True)
+            (shard / "MANIFEST.json").write_text(f'{{\n "kind": "{kind}",\n "source": "carmlspine"\n}}\n', encoding="utf-8")
 
     def line_of(self, script):
         return [line for line in self.submitted() if script in line]
@@ -215,18 +229,102 @@ class GateTest(unittest.TestCase):
         self.assertEqual(self.gate("fetch", "nosuchset").returncode, 64)
         self.assertEqual(self.submitted(), [])
 
-    def test_v1_needs_a_catalog_and_the_weights(self):
+    def test_v1_with_every_input_there_submits_the_run_alone(self):
         self.environments_ready()
-        self.assertEqual(self.gate("v1").returncode, 2)
-        self.catalog_ready()
-        self.assertEqual(self.gate("v1").returncode, 2)
+        self.weights_ready()
+        self.carmlspine_shards()
+        self.catalog_ready(version=2)
+        self.catalog_ready(version=3, carmlspine_test=False)
+        done = self.gate("v1")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(len(self.submitted()), 1, self.submitted())
+        line = self.line_of("v1-driver.sbatch")[0]
+        self.assertNotIn("--dependency", line)
+        self.assertIn(f"RUNS={self.runs},WEIGHTS={self.models}/resnet18-f37072fd.pth", line)
+        self.assertIn("catalog-000002-0123456789ab.sqlite holds C-ArmLSpine's test part; no job", done.stdout)
+
+    def test_v1_from_nothing_submits_every_input_and_the_run_afterok_on_each(self):
+        done = self.gate("v1")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        jobs = self.recorded()
+        setup, weights, ingest, catalog = jobs["setup"], jobs["weights"], jobs["carmlspine"], jobs["catalog"]
+        self.assertIn(f"--dependency=afterok:{setup} ", self.line_of("00-carmlspine.sbatch")[0])
+        # afterok, unlike start's afterany: a failed ingest cancels the build and the run with it
+        self.assertIn(f"--dependency=afterok:{setup},afterok:{ingest} ", self.line_of("03-catalog.sbatch")[0])
+        line = self.line_of("v1-driver.sbatch")[0]
+        self.assertIn(f"--dependency=afterok:{catalog},afterok:{ingest},afterok:{weights},afterok:{setup} ", line)
+        self.assertIn("--kill-on-invalid-dep=yes", line)
+        self.assertEqual(self.line_of("01-fetch.sbatch") + self.line_of("platform-fetch.sbatch"), [])
+
+    def test_v1_builds_a_catalog_when_no_version_holds_the_test_part(self):
+        self.environments_ready()
+        self.weights_ready()
+        self.carmlspine_shards()
+        self.catalog_ready(version=4, carmlspine_test=False)
+        done = self.gate("v1")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        catalog = self.recorded()["catalog"]
+        self.assertNotIn("--dependency", self.line_of("03-catalog.sbatch")[0])
+        self.assertEqual(self.line_of("00-carmlspine.sbatch"), [])
+        self.assertIn(f"--dependency=afterok:{catalog} ", self.line_of("v1-driver.sbatch")[0])
+
+    def test_v1_runs_again_the_inputs_that_failed_while_start_is_still_live(self):
+        # issue #74, the grid at 21:48 UTC: setup and weights done, start's C-ArmLSpine ingest and
+        # first catalog failed, its X-ray and CT jobs still queued or running; start refuses
+        self.assertEqual(self.gate("start").returncode, 0)
+        started = self.recorded()
+        self.environments_ready()
+        self.weights_ready()
+        still = [started[what] for what in started if what.startswith(("xr_", "dp_"))]
+        self.live(*still)
+        count = len(self.submitted())
+        self.assertEqual(self.gate("start").returncode, 75)
+        self.assertEqual(len(self.submitted()), count)
+        done = self.gate("v1")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        new = self.submitted()[count:]
+        self.assertEqual([line.split(" | ")[0].split()[-1] for line in new],
+                         ["00-carmlspine.sbatch", "03-catalog.sbatch", "v1-driver.sbatch"], new)
+        jobs = self.recorded()
+        ingest, catalog = jobs["carmlspine"], jobs["catalog"]
+        self.assertNotIn("--dependency", new[0])
+        self.assertIn(f"--dependency=afterok:{ingest} ", new[1])
+        self.assertIn(f"--dependency=afterok:{catalog},afterok:{ingest} ", new[2])
+        # the X-ray chain's catalogs are never waited on: they wait on fetches that take days
+        for job in (started["xr_catalog"], started["xr_fetch"]):
+            for waits in (f":{job},", f":{job} "):
+                self.assertNotIn(waits, new[1] + new[2])
+        # a v1 sent again while its run is queued is refused; one sent while only its inputs are
+        # queued waits on them and submits nothing else
+        self.live(*still, ingest, catalog, jobs["v1_driver"])
+        self.assertEqual(self.gate("v1").returncode, 75)
+        self.live(*still, ingest, catalog)
+        done = self.gate("v1")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(len(self.submitted()), count + 4)
+        self.assertIn(f"--dependency=afterok:{catalog},afterok:{ingest} ", self.submitted()[-1])
+
+    def test_v1_says_when_the_ingest_failed_at_the_same_commit(self):
+        git = ["git", "-c", "gc.auto=0", "-c", "maintenance.auto=false", "-c", "user.name=t", "-c", "user.email=t@t",
+               "-C", str(self.repo)]
+        subprocess.run([*git, "init", "-q"], check=True)
+        subprocess.run([*git, "add", "pixi.lock"], check=True)
+        subprocess.run([*git, "commit", "-q", "-m", "c"], check=True)
+        commit = subprocess.run([*git, "rev-parse", "--short", "HEAD"], check=True, capture_output=True, text=True).stdout.strip()
+        logs = self.repo / "grid" / "logs"
+        logs.mkdir(parents=True, exist_ok=True)
+        report = logs / "00-carmlspine-STAGE-REPORT.md"
+        report.write_text(f"# C-ArmLSpine ingest: 2026-10-21 21:31:00, job 40697678 on n1, commit {commit}\n"
+                          "- train (unfrozen persons) refused: AttributeError: 'str' object has no attribute 'get'\n", encoding="utf-8")
+        self.environments_ready()
         self.weights_ready()
         done = self.gate("v1")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
-        line = self.line_of("v1-driver.sbatch")
-        self.assertEqual(len(line), 1)
-        self.assertNotIn("--dependency", line[0])
-        self.assertIn(f"RUNS={self.runs},WEIGHTS={self.models}/resnet18-f37072fd.pth", line[0])
+        self.assertIn(f"refused at this same commit {commit}", done.stdout)
+        report.write_text("# C-ArmLSpine ingest: 2026-10-21 21:31:00, job 40697678 on n1, commit 0000000\n- refused\n", encoding="utf-8")
+        self.live()
+        (self.repo / "grid" / "logs" / "GATE_JOBS.txt").unlink()
+        self.assertNotIn("same commit", self.gate("v1").stdout)
 
     def test_v1_waits_on_a_start_still_in_the_queue(self):
         # issue #74: start's own v1 job was refused, and its catalog, weights and C-ArmLSpine jobs are
@@ -234,49 +332,113 @@ class GateTest(unittest.TestCase):
         self.assertEqual(self.gate("start").returncode, 0)
         jobs = self.recorded()
         setup, weights, ingest, first = jobs["setup"], jobs["weights"], jobs["carmlspine"], jobs["catalog"]
-        before = len(self.line_of("v1-driver.sbatch"))
-        (self.fake / "queue").write_text(f"{setup}\n{ingest}\n{first}\n", encoding="utf-8")
-        done = self.gate("v1")
-        self.assertEqual(done.returncode, 2, done.stdout)
-        self.assertIn("no weights job queued", done.stdout)
-        self.assertEqual(len(self.line_of("v1-driver.sbatch")), before)
+        count = len(self.submitted())
         (self.fake / "queue").write_text(f"{setup}\n{weights}\n{ingest}\n{first}\n", encoding="utf-8")
         done = self.gate("v1")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(len(self.submitted()), count + 1)
         line = self.line_of("v1-driver.sbatch")[-1]
         self.assertIn(f"--dependency=afterok:{first},afterok:{ingest},afterok:{weights},afterok:{setup} ", line)
         self.assertIn("--kill-on-invalid-dep=yes", line)
-        self.assertEqual(len(self.line_of("v1-driver.sbatch")), before + 1)
+        # the weights job gone and its file not there: v1 fetches the weights again rather than refusing
+        (self.fake / "queue").write_text(f"{setup}\n{ingest}\n{first}\n", encoding="utf-8")
+        state = self.repo / "grid" / "logs" / "GATE_JOBS.txt"
+        state.write_text("".join(l + "\n" for l in state.read_text(encoding="utf-8").splitlines() if " v1_driver " not in l), encoding="utf-8")
+        done = self.gate("v1")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(len(self.line_of("00-weights.sbatch")), 2)
 
     def test_v1_after_a_finished_start_waits_only_on_what_is_still_live(self):
         self.environments_ready()
         self.weights_ready()
         self.assertEqual(self.gate("start").returncode, 0)
+        self.carmlspine_shards()
         first = self.recorded()["catalog"]
         (self.fake / "queue").write_text(f"{first}\n", encoding="utf-8")
         done = self.gate("v1")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         self.assertIn(f"--dependency=afterok:{first} ", self.line_of("v1-driver.sbatch")[-1])
 
-    def test_v1_does_not_wait_on_an_x_ray_chains_catalog_and_says_so(self):
+    def run_catalog_job(self, pydrv):
+        env = dict(os.environ, SCHWINGNET=str(self.repo), PYDRV=str(pydrv), DATA_ROOT=str(self.data), FAKE=str(self.fake),
+                   TMPDIR_OVERRIDE=str(self.tmp / "t"), BUILD_LOCK_WAIT="60")
+        env.pop("STORE", None)
+        return subprocess.Popen(["bash", str(self.repo / "grid" / "03-catalog.sbatch")], cwd=self.repo / "grid", env=env,
+                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+
+    def test_two_catalog_builds_run_one_after_the_other_and_each_checks_its_own_version(self):
+        # issue #74: start's first catalog, the X-ray chain's and a fetch's can start together; one
+        # build that listed the manifests before another job's shards landed must never land last
+        manifest = self.data / "carmlspine" / "shards" / "a" / "MANIFEST.json"
+        manifest.parent.mkdir(parents=True)
+        manifest.write_text("{}\n", encoding="utf-8")
+        pydrv = self.fake / "pydrv"
+        pydrv.write_text("""#!/bin/bash
+echo "$2 start $$ $(grep -o -- '--manifest' <<< "$*" | wc -l) $*" >> "$FAKE/pydrv.log"
+if [ "$2" = build ]; then
+  sleep 2
+  if [ ! -f "$FAKE/grown" ]; then : > "$FAKE/grown"; mkdir -p "$DATA_ROOT/vindr_pcxr/shards/b"; echo '{}' > "$DATA_ROOT/vindr_pcxr/shards/b/MANIFEST.json"; fi
+  n=$(( $(cat "$FAKE/n" 2>/dev/null || echo 0) + 1 )); echo "$n" > "$FAKE/n"
+  echo "{\\"added_shards\\": [], \\"file\\": \\"catalog-00000$n-0123456789ab.sqlite\\", \\"new\\": true, \\"version\\": $n}"
+fi
+echo "$2 end $$" >> "$FAKE/pydrv.log"
+""", encoding="utf-8")
+        pydrv.chmod(0o755)
+        jobs = [self.run_catalog_job(pydrv), self.run_catalog_job(pydrv)]
+        outs = [job.communicate(timeout=120)[0] for job in jobs]
+        self.assertEqual([job.returncode for job in jobs], [0, 0], outs)
+        events = (self.fake / "pydrv.log").read_text(encoding="utf-8").splitlines()
+        self.assertEqual([e.split()[:2] for e in events],
+                         [["build", "start"], ["build", "end"], ["split-check", "start"], ["split-check", "end"]] * 2, events)
+        # the second build listed the manifests only once the first had ended, so it saw the shard
+        # that landed during the first
+        builds = [e.split() for e in events if e.startswith("build start")]
+        self.assertEqual([int(b[3]) for b in builds], [1, 2], events)
+        checks = [e for e in events if e.startswith("split-check start")]
+        self.assertTrue(checks[0].endswith("--version 1") and checks[1].endswith("--version 2"), checks)
+        self.assertTrue((self.data / "_catalog" / "BUILD.lock").exists())
+
+    def test_the_run_takes_the_newest_version_that_holds_c_armlspine_s_test_part(self):
+        self.weights_ready()
+        self.catalog_ready(version=2)
+        self.catalog_ready(version=3, carmlspine_test=False)
+        (self.repo / "grid" / "box.sh").write_text('#!/bin/bash\necho "$*" >> "$FAKE/box.log"\necho \'{"run_dir": "/nowhere"}\'\n', encoding="utf-8")
+        env = dict(os.environ, SCHWINGNET=str(self.repo), DATA_ROOT=str(self.data), RUNS=str(self.runs), FAKE=str(self.fake),
+                   WEIGHTS=str(self.models / "resnet18-f37072fd.pth"), SLURM_JOB_ID="777")
+        env.pop("STORE", None)
+        done = subprocess.run(["bash", str(self.repo / "grid" / "v1-driver.sbatch")], cwd=self.repo / "grid", env=env,
+                              capture_output=True, text=True, timeout=60)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        flow = [line for line in (self.fake / "box.log").read_text(encoding="utf-8").splitlines() if "flow.py" in line]
+        self.assertIn(f"--catalog {self.data}/_catalog/versions/catalog-000002-0123456789ab.sqlite ", flow[0])
+        self.assertIn("CURRENT names catalog-000003-0123456789ab.sqlite, which holds no C-ArmLSpine test part", done.stdout)
+        # no version holds it: the run says so and never starts the flow
+        (self.data / "_catalog" / "VERSIONS.jsonl").write_text("", encoding="utf-8")
+        (self.fake / "box.log").unlink()
+        done = subprocess.run(["bash", str(self.repo / "grid" / "v1-driver.sbatch")], cwd=self.repo / "grid", env=env,
+                              capture_output=True, text=True, timeout=60)
+        self.assertEqual(done.returncode, 1)
+        self.assertIn("holds C-ArmLSpine's test part", done.stdout)
+        self.assertFalse((self.fake / "box.log").exists())
+
+    def test_v1_never_waits_on_an_x_ray_chains_catalog(self):
         # start's first catalog ended without a version while its X-ray chain's catalog still waits
-        # behind a fetch of days: v1 is refused, and the refusal names that job instead of saying
-        # no catalog job is queued
+        # behind a fetch of days: v1 builds a catalog of its own and never waits on that job
         self.environments_ready()
         self.weights_ready()
         self.assertEqual(self.gate("start").returncode, 0)
+        self.carmlspine_shards()
         xr_catalog = self.recorded()["xr_catalog"]
-        before = len(self.line_of("v1-driver.sbatch"))
+        count = len(self.submitted())
         self.live(xr_catalog)
         done = self.gate("v1")
-        self.assertEqual(done.returncode, 2, done.stdout)
-        self.assertIn(f"the X-ray chain's catalog (job {xr_catalog})", done.stdout)
-        self.assertNotIn("no catalog job", done.stdout)
-        self.assertEqual(len(self.line_of("v1-driver.sbatch")), before)
-        self.live()
-        done = self.gate("v1")
-        self.assertEqual(done.returncode, 2, done.stdout)
-        self.assertIn("no catalog job of start's queued", done.stdout)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        new = self.submitted()[count:]
+        self.assertEqual(len(new), 2, new)
+        self.assertIn("03-catalog.sbatch", new[0])
+        for waits in (f":{xr_catalog},", f":{xr_catalog} "):
+            self.assertNotIn(waits, new[0] + new[1])
+        self.assertIn(f"--dependency=afterok:{self.recorded()['catalog']} ", new[1])
 
     def test_every_job_header_names_its_qos_and_a_gpu_job_takes_the_gpu_qos(self):
         # Slurm refused the version 1 run for a GPU partition with no QoS (issue #74); a GPU job takes
@@ -409,6 +571,107 @@ class GateTest(unittest.TestCase):
         done = self.gate("status")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         self.assertIn("101 setup COMPLETED", done.stdout)
+        self.assertIn("--format=JobID,JobName,State,Elapsed,ExitCode,NodeList", (self.fake / "sacct.log").read_text(encoding="utf-8"))
+
+    def failed(self, *rows):
+        """rows of (id, word, what, job name, state, elapsed, log lines or None): the gate's list, what
+        sacct says of them and their logs"""
+        logs = self.repo / "grid" / "logs"
+        logs.mkdir(parents=True, exist_ok=True)
+        sacct = []
+        for job, word, what, name, state, elapsed, lines in rows:
+            base = str(job).split("_")[0]
+            state_file = logs / "GATE_JOBS.txt"
+            if base not in (state_file.read_text(encoding="utf-8").split() if state_file.exists() else []):
+                self.state_line(base, word, what)
+            sacct.append(f"{job}|{name}|{state}|{elapsed}|1:0|n1")
+            if lines is not None:
+                (logs / f"{name}_{job}.out").write_text("".join(f"{line}\n" for line in lines), encoding="utf-8")
+        (self.fake / "sacct.out").write_text("".join(f"{row}\n" for row in sacct), encoding="utf-8")
+
+    def test_status_shows_the_end_of_an_open_jobs_log_masked_and_cut(self):
+        lines = [f"pixi line {i}" for i in range(30)] + ["x" * 300, "token=abcdef0123456789 and https://u:p@host/x"]
+        self.failed((300, "start", "setup", "sn_setup", "FAILED", "00:00:10", lines))
+        done = self.gate("status")
+        self.assertEqual(done.returncode, 0, done.stdout)
+        self.assertIn("## 300 (sn_setup) ended FAILED after 00:00:10, exit 1:0: logs/sn_setup_300.out", done.stdout)
+        self.assertIn("pixi line 29", done.stdout)
+        self.assertNotIn("pixi line 15\n", done.stdout)
+        self.assertIn("    pixi line 17\n", done.stdout)
+        self.assertIn("    " + "x" * 200 + "\n", done.stdout)
+        self.assertNotIn("x" * 201, done.stdout)
+        self.assertNotIn("abcdef0123456789", done.stdout)
+        self.assertNotIn("u:p@", done.stdout)
+
+    def test_status_shows_a_dicom_jobs_log_only_as_its_traceback_and_status_lines(self):
+        lines = ["XR_FETCH start 2026-10-21 21:30:00 on n1 job 301 restart 0: --only vindr_pcxr --credentialed",
+                 "(0010, 0020) Patient ID                          LO: 'ABC123'",
+                 "PatientName: DOE^JANE",
+                 "person vindr_pcxr:9f86d081884c7d659a2feaa0c55ad015 holds more than one part",
+                 "frames: 1.2.840.113619.2.55.3.604688119.868.1234567890.123",
+                 "    \"vindr_spinexr:abc123\",",
+                 "Traceback (most recent call last):",
+                 '  File "/home/go2432/SchwingNet/tools/ingest.py", line 153, in item_of',
+                 '    "lat_from_ap_deg": view.get("lat_from_ap_deg"),',
+                 "                       ^^^^^^^^",
+                 "AttributeError: 'str' object has no attribute 'get'",
+                 "KeyError: 'carmlspine:case042'",
+                 "HTTP request sent, awaiting response... 403 Forbidden",
+                 "SN_CARMLSPINE_RC=1"]
+        self.failed((301, "start", "carmlspine", "sn_carmlspine", "FAILED", "00:00:48", lines))
+        done = self.gate("status")
+        self.assertEqual(done.returncode, 0, done.stdout)
+        for kept in ('  File "/home/go2432/SchwingNet/tools/ingest.py", line 153, in item_of',
+                     "AttributeError: 'str' object has no attribute 'get'", "KeyError: <message withheld>",
+                     "HTTP request sent, awaiting response... 403 Forbidden", "SN_CARMLSPINE_RC=1",
+                     "XR_FETCH start 2026-10-21 21:30:00 on n1 job 301\n"):
+            self.assertIn(kept, done.stdout)
+        for value in ("ABC123", "DOE", "9f86d081", "1.2.840", "abc123", "case042", "credentialed"):
+            self.assertNotIn(value, done.stdout)
+        self.assertIn("(5 of its last 400 lines withheld", done.stdout)
+
+    def test_status_shows_each_things_newest_job_and_says_what_never_started(self):
+        self.failed((301, "start", "carmlspine", "sn_carmlspine", "FAILED", "00:00:48", ["old failure"]),
+                    (302, "start", "xr_fetch", "xr_fetch", "RUNNING", "00:20:00", None),
+                    (401, "v1", "carmlspine", "sn_carmlspine", "COMPLETED", "00:05:00", None),
+                    (402, "v1", "v1_driver", "sn_v1", "CANCELLED by 0", "00:00:00", None),
+                    (501, "fetch:vindr_pcxr", "xr_fetch", "xr_fetch", "FAILED", "00:00:08", ["XR_FETCH_RC=1"]))
+        done = self.gate("status")
+        self.assertEqual(done.returncode, 0, done.stdout)
+        self.assertNotIn("## 301", done.stdout)
+        self.assertNotIn("## 302", done.stdout)
+        self.assertIn("## 402 (sn_v1) ended CANCELLED after 00:00:00", done.stdout)
+        self.assertIn("cancelled before it started", done.stdout)
+        self.assertIn("## 501 (xr_fetch) ended FAILED", done.stdout)
+        self.assertIn("    XR_FETCH_RC=1", done.stdout)
+
+    def test_status_bounds_how_many_failed_jobs_and_array_tasks_it_shows(self):
+        rows = [(600 + i, "start", f"dp_s{i}", f"dp_fetch_s{i}", "FAILED", "00:00:01", ["PLATFORM_RC=1"]) for i in range(8)]
+        rows += [(f"700_{i}", "latency", "latency_sweep", "sn_latency", "TIMEOUT", "01:00:00", [f"SN_LATENCY_RC={i}"]) for i in range(3)]
+        self.failed(*rows)
+        done = self.gate("status")
+        self.assertEqual(done.returncode, 0, done.stdout)
+        self.assertEqual(done.stdout.count("\n## 6"), 6, done.stdout)
+        self.assertIn("## 4 more failed jobs not shown", done.stdout)
+        rows = rows[8:] + rows[:1]
+        self.failed(*rows)
+        done = self.gate("status")
+        self.assertIn("## 700_0 (sn_latency) ended TIMEOUT after 01:00:00, exit 1:0: logs/sn_latency_700_0.out", done.stdout)
+        self.assertIn("    SN_LATENCY_RC=1", done.stdout)
+        self.assertNotIn("700_2 (", done.stdout)
+
+    def test_status_masks_the_stage_reports_and_bounds_what_it_prints(self):
+        logs = self.repo / "grid" / "logs"
+        logs.mkdir(parents=True, exist_ok=True)
+        (logs / "02-bank-ingest-STAGE-REPORT.md").write_text(
+            "- vindr_spinexr: bank refused: person vindr_spinexr:9f86d081884c7d659a2feaa0c55ad015 holds more than one part (first 1.2.3.4.5.6)\n",
+            encoding="utf-8")
+        self.failed((300, "start", "setup", "sn_setup", "FAILED", "00:00:10", ["y" * 100000]))
+        done = self.gate("status")
+        self.assertEqual(done.returncode, 0, done.stdout)
+        self.assertIn("bank refused: person <withheld> holds more than one part (first <withheld>)", done.stdout)
+        self.assertNotIn("9f86d081", done.stdout)
+        self.assertLess(len(done.stdout), 65536 + 400)
 
     def test_on_the_grid_the_stages_keep_their_own_data_paths(self):
         # stage 2 reads a set DATA_ROOT as its off-grid layout, so the gate passes none on the grid,

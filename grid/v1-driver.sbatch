@@ -33,10 +33,17 @@ mkdir -p "$REPO/grid/logs" "$RUNS"
 report() { echo "- $*" | tee -a "$REPORT"; }
 fail() { report "FAILED: $*"; echo "SN_V1_RC=1"; exit 1; }
 echo "# Version 1 run: $(date '+%F %T'), job ${SLURM_JOB_ID:-none} on $(hostname), commit $(git -C "$REPO" rev-parse --short HEAD 2>/dev/null)" > "$REPORT"
-current=$(cat "$STORE/CURRENT" 2>/dev/null)
-[ -n "$current" ] || fail "no catalog version: $STORE/CURRENT is missing or empty (the catalog job first)"
+# The newest version that holds C-ArmLSpine's test part, the frozen persons the run is measured on
+# (issue #74), by its line in VERSIONS.jsonl: CURRENT is the newest version of all, and a catalog
+# job that listed the manifests before C-ArmLSpine's shards were written (one submitted before the
+# build lock of grid/03-catalog.sbatch, which Slurm runs as it was submitted) can land after it.
+current=$(grep -F '"carmlspine|test":' "$STORE/VERSIONS.jsonl" 2>/dev/null | tail -n 1 \
+  | sed -n 's/.*"file": *"\(catalog-[0-9]*-[0-9a-f]*\.sqlite\)".*/\1/p')
+[ -n "$current" ] || fail "no catalog version in $STORE/VERSIONS.jsonl holds C-ArmLSpine's test part (the C-ArmLSpine ingest and a catalog build first; 'v1' submits them)"
 CATALOG=$STORE/versions/$current
-[ -f "$CATALOG" ] || fail "CURRENT names $current, which is not under $STORE/versions"
+[ -f "$CATALOG" ] || fail "VERSIONS.jsonl names $current, which is not under $STORE/versions"
+newest=$(cat "$STORE/CURRENT" 2>/dev/null)
+[ "$newest" = "$current" ] || report "CURRENT names ${newest:-nothing}, which holds no C-ArmLSpine test part; the run takes $current"
 [ -s "$WEIGHTS" ] || fail "no ImageNet weights at $WEIGHTS (the weights job first)"
 report "catalog: $CATALOG; weights: $(basename "$WEIGHTS"); epochs $EPOCHS, seed $SEED"
 report "GPU: $(nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv,noheader 2>/dev/null | head -n 1 || echo 'nvidia-smi gave nothing')"
