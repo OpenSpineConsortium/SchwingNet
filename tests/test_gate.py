@@ -64,6 +64,8 @@ class GateTest(unittest.TestCase):
         (self.repo / "pixi.lock").write_text("lock\n", encoding="utf-8")
         (self.repo / "tools").mkdir()
         (self.repo / "tools" / "leaks.py").write_text("", encoding="utf-8")
+        # the freeze and the rule the split-check marker names (grid/03-catalog.sbatch, grid/v1-version.sh)
+        shutil.copytree(ROOT / "data" / "splits", self.repo / "data" / "splits")
         self.data = self.tmp / "data"
         self.runs = self.tmp / "runs"
         self.models = self.tmp / "models"
@@ -103,25 +105,54 @@ class GateTest(unittest.TestCase):
         (self.models / "resnet18-f37072fd.pth").write_bytes(b"weights")
         (self.models / "resnet18-f37072fd.pth.sha256").write_text("f37072fd" + "0" * 56 + "\n", encoding="utf-8")
 
-    def catalog_ready(self, version=3, carmlspine_test=True):
+    SHARDS = ("2026-10-21-c8ea18032437", "2026-10-21-2f554446fe70")
+
+    def catalog_ready(self, version=3, carmlspine_test=True, shards=SHARDS, checked=True):
         """A version in the store as tools/catalog.py writes one: its file, its line in VERSIONS.jsonl
-        (compact, as pydantic writes it) and CURRENT naming it."""
+        (compact, as pydantic writes it) and CURRENT naming it, and, when checked, the split-check
+        marker grid/03-catalog.sbatch writes for today's freeze and rule."""
         store = self.data / "_catalog"
         versions = store / "versions"
         versions.mkdir(parents=True, exist_ok=True)
         name = f"catalog-{version:06d}-0123456789ab.sqlite"
         (versions / name).write_bytes(b"")
         parts = '"carmlspine|test":59,"carmlspine|train":50' if carmlspine_test else '"vindr_pcxr|train":7'
+        listed = ",".join(f'"{shard}"' for shard in shards)
         with (store / "VERSIONS.jsonl").open("a", encoding="utf-8") as log:
-            log.write(f'{{"version":{version},"file":"{name}","sha256":"{"0" * 64}","frames_by_source_and_part":{{{parts}}}}}\n')
+            log.write(f'{{"version":{version},"file":"{name}","sha256":"{"0" * 64}","shards":[{listed}],'
+                      f'"frames_by_source_and_part":{{{parts}}}}}\n')
         (store / "CURRENT").write_text(name + "\n", encoding="utf-8")
+        if checked:
+            self.mark(name)
         return versions / name
 
+    def mark(self, name, persons=None):
+        """The split-check marker of a version, against the freeze as it is or the digest given."""
+        checked = self.data / "_catalog" / "checked"
+        checked.mkdir(parents=True, exist_ok=True)
+        splits = self.repo / "data" / "splits"
+        persons = persons or hashlib.sha256((splits / "test-persons.json").read_bytes()).hexdigest()
+        rule = hashlib.sha256((splits / "rule.json").read_bytes()).hexdigest()
+        (checked / name).write_text(f"commit abc1234\ntest-persons {persons}\nrule {rule}\n", encoding="utf-8")
+
     def carmlspine_shards(self):
-        for kind, folder in (("train", "2026-10-21-c8ea18032437"), ("test", "2026-10-21-2f554446fe70")):
-            shard = self.data / "carmlspine" / "shards" / folder
-            shard.mkdir(parents=True)
-            (shard / "MANIFEST.json").write_text(f'{{\n "kind": "{kind}",\n "source": "carmlspine"\n}}\n', encoding="utf-8")
+        for kind, folder in zip(("train", "test"), self.SHARDS):
+            self.shard(folder, kind)
+
+    def shard(self, name, kind, supersedes=None):
+        """A C-ArmLSpine shard's manifest as tools/ingest.py writes one: indent 1, sorted keys."""
+        shard = self.data / "carmlspine" / "shards" / name
+        shard.mkdir(parents=True)
+        later = f'"{supersedes}"' if supersedes else "null"
+        (shard / "MANIFEST.json").write_text(
+            f'{{\n "items": [\n  {{\n   "name": "frame"\n  }}\n ],\n "kind": "{kind}",\n "name": "{name}",\n'
+            f' "source": "carmlspine",\n "supersedes": {later}\n}}\n', encoding="utf-8")
+
+    def chosen(self):
+        """What grid/v1-version.sh chooses now: its exit code and what it said."""
+        done = subprocess.run(["bash", str(self.repo / "grid" / "v1-version.sh"), str(self.data / "_catalog"), str(self.data),
+                               str(self.repo)], capture_output=True, text=True, timeout=60)
+        return done.returncode, (done.stdout + done.stderr).strip()
 
     def line_of(self, script):
         return [line for line in self.submitted() if script in line]
@@ -241,7 +272,7 @@ class GateTest(unittest.TestCase):
         line = self.line_of("v1-driver.sbatch")[0]
         self.assertNotIn("--dependency", line)
         self.assertIn(f"RUNS={self.runs},WEIGHTS={self.models}/resnet18-f37072fd.pth", line)
-        self.assertIn("catalog-000002-0123456789ab.sqlite holds C-ArmLSpine's test part; no job", done.stdout)
+        self.assertIn("catalog: catalog-000002-0123456789ab.sqlite qualifies for the run (grid/v1-version.sh); no job", done.stdout)
 
     def test_v1_from_nothing_submits_every_input_and_the_run_afterok_on_each(self):
         done = self.gate("v1")
@@ -397,29 +428,121 @@ echo "$2 end $$" >> "$FAKE/pydrv.log"
         checks = [e for e in events if e.startswith("split-check start")]
         self.assertTrue(checks[0].endswith("--version 1") and checks[1].endswith("--version 2"), checks)
         self.assertTrue((self.data / "_catalog" / "BUILD.lock").exists())
+        # each build's split check passed, so each wrote its marker for today's freeze and rule
+        for version in (1, 2):
+            marker = (self.data / "_catalog" / "checked" / f"catalog-00000{version}-0123456789ab.sqlite").read_text(encoding="utf-8")
+            persons = hashlib.sha256((self.repo / "data" / "splits" / "test-persons.json").read_bytes()).hexdigest()
+            self.assertIn(f"test-persons {persons}\n", marker)
+            self.assertIn("rule ", marker)
 
-    def test_the_run_takes_the_newest_version_that_holds_c_armlspine_s_test_part(self):
-        self.weights_ready()
-        self.catalog_ready(version=2)
-        self.catalog_ready(version=3, carmlspine_test=False)
-        (self.repo / "grid" / "box.sh").write_text('#!/bin/bash\necho "$*" >> "$FAKE/box.log"\necho \'{"run_dir": "/nowhere"}\'\n', encoding="utf-8")
+    def test_a_failed_split_check_writes_no_marker(self):
+        manifest = self.data / "carmlspine" / "shards" / "a" / "MANIFEST.json"
+        manifest.parent.mkdir(parents=True)
+        manifest.write_text("{}\n", encoding="utf-8")
+        pydrv = self.fake / "pydrv"
+        pydrv.write_text("""#!/bin/bash
+if [ "$2" = build ]; then echo '{"file": "catalog-000001-0123456789ab.sqlite", "new": true, "version": 1}'; exit 0; fi
+echo "the split is not disjoint; no training step reads this version"; exit 1
+""", encoding="utf-8")
+        pydrv.chmod(0o755)
+        job = self.run_catalog_job(pydrv)
+        out = job.communicate(timeout=120)[0]
+        self.assertEqual(job.returncode, 1, out)
+        self.assertIn("split-check of version 1 FAILED", out)
+        self.assertFalse((self.data / "_catalog" / "checked" / "catalog-000001-0123456789ab.sqlite").exists())
+
+    def driver(self):
         env = dict(os.environ, SCHWINGNET=str(self.repo), DATA_ROOT=str(self.data), RUNS=str(self.runs), FAKE=str(self.fake),
                    WEIGHTS=str(self.models / "resnet18-f37072fd.pth"), SLURM_JOB_ID="777")
         env.pop("STORE", None)
-        done = subprocess.run(["bash", str(self.repo / "grid" / "v1-driver.sbatch")], cwd=self.repo / "grid", env=env,
+        return subprocess.run(["bash", str(self.repo / "grid" / "v1-driver.sbatch")], cwd=self.repo / "grid", env=env,
                               capture_output=True, text=True, timeout=60)
+
+    def fake_box(self):
+        """box.sh as a fake: it logs what it was asked, fails a split check while $FAKE/split_fails is
+        there, and says where the hold was when it was asked."""
+        (self.repo / "grid" / "box.sh").write_text(
+            '#!/bin/bash\necho "$* hold=$(cat "$SCHWINGNET/grid/logs/HOLD" 2>/dev/null)" >> "$FAKE/box.log"\n'
+            'if [[ "$*" == *split-check* ]] && [ -f "$FAKE/split_fails" ]; then exit 1; fi\n'
+            'echo \'{"run_dir": "/nowhere"}\'\n', encoding="utf-8")
+
+    def boxed(self):
+        log = self.fake / "box.log"
+        return log.read_text(encoding="utf-8").splitlines() if log.exists() else []
+
+    def test_the_run_takes_the_newest_version_that_qualifies_and_checks_its_split_first(self):
+        self.weights_ready()
+        self.carmlspine_shards()
+        self.catalog_ready(version=2)
+        self.catalog_ready(version=3, carmlspine_test=False)
+        self.fake_box()
+        done = self.driver()
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
-        flow = [line for line in (self.fake / "box.log").read_text(encoding="utf-8").splitlines() if "flow.py" in line]
-        self.assertIn(f"--catalog {self.data}/_catalog/versions/catalog-000002-0123456789ab.sqlite ", flow[0])
-        self.assertIn("CURRENT names catalog-000003-0123456789ab.sqlite, which holds no C-ArmLSpine test part", done.stdout)
-        # no version holds it: the run says so and never starts the flow
+        boxed = self.boxed()
+        check = [i for i, line in enumerate(boxed) if "tools/catalog.py split-check" in line]
+        flow = [i for i, line in enumerate(boxed) if "flow.py" in line]
+        self.assertTrue(check and flow and check[0] < flow[0], boxed)
+        self.assertIn(f"split-check {self.data}/_catalog --version 2 hold=777 ", boxed[check[0]])
+        self.assertIn(f"--catalog {self.data}/_catalog/versions/catalog-000002-0123456789ab.sqlite ", boxed[flow[0]])
+        self.assertIn("CURRENT names catalog-000003-0123456789ab.sqlite; the run takes catalog-000002-0123456789ab.sqlite", done.stdout)
+        # the split check fails on the chosen file: the run says so and never starts the flow
+        (self.fake / "box.log").unlink()
+        (self.fake / "split_fails").write_text("1", encoding="utf-8")
+        done = self.driver()
+        self.assertEqual(done.returncode, 1)
+        self.assertIn("FAILED: the split check of version 2 failed; no run reads it", done.stdout)
+        self.assertFalse([line for line in self.boxed() if "flow.py" in line])
+        # no version holds the test part: the run says so and starts nothing
+        (self.fake / "split_fails").unlink()
         (self.data / "_catalog" / "VERSIONS.jsonl").write_text("", encoding="utf-8")
         (self.fake / "box.log").unlink()
-        done = subprocess.run(["bash", str(self.repo / "grid" / "v1-driver.sbatch")], cwd=self.repo / "grid", env=env,
-                              capture_output=True, text=True, timeout=60)
+        done = self.driver()
         self.assertEqual(done.returncode, 1)
-        self.assertIn("holds C-ArmLSpine's test part", done.stdout)
-        self.assertFalse((self.fake / "box.log").exists())
+        self.assertIn("no catalog version to run on: no catalog version holds both of the C-ArmLSpine parts", done.stdout)
+        self.assertEqual(self.boxed(), [])
+        self.assertFalse((self.repo / "grid" / "logs" / "HOLD").exists())
+
+    def test_the_chooser_wants_both_parts_every_head_shard_and_a_current_split_check(self):
+        self.carmlspine_shards()
+        self.assertEqual(self.chosen()[0], 1)
+        # only the test part: not chosen
+        store = self.data / "_catalog"
+        self.catalog_ready(version=1)
+        log = store / "VERSIONS.jsonl"
+        log.write_text(log.read_text(encoding="utf-8").replace(',"carmlspine|train":50', ""), encoding="utf-8")
+        self.assertEqual(self.chosen(), (1, "no catalog version holds both of the C-ArmLSpine parts"))
+        # both parts and every shard, checked against today's freeze: chosen
+        self.catalog_ready(version=2)
+        self.assertEqual(self.chosen(), (0, "catalog-000002-0123456789ab.sqlite"))
+        # a newer version checked against another freeze is passed over for the older one that holds
+        self.catalog_ready(version=3)
+        self.mark("catalog-000003-0123456789ab.sqlite", persons="0" * 64)
+        self.assertEqual(self.chosen(), (0, "catalog-000002-0123456789ab.sqlite"))
+        # with no marker at all, the same
+        (store / "checked" / "catalog-000003-0123456789ab.sqlite").unlink()
+        self.assertEqual(self.chosen(), (0, "catalog-000002-0123456789ab.sqlite"))
+        # a new head shard that supersedes the test shard: no version holds it, and the reason is the newest one's
+        self.shard("2026-10-22-0a0b0c0d0e0f", "test", supersedes=self.SHARDS[1])
+        code, said = self.chosen()
+        self.assertEqual(code, 1)
+        self.assertIn("catalog-000003-0123456789ab.sqlite) lacks a C-ArmLSpine shard now on the volume", said)
+        self.catalog_ready(version=4, shards=(self.SHARDS[0], "2026-10-22-0a0b0c0d0e0f"))
+        self.assertEqual(self.chosen(), (0, "catalog-000004-0123456789ab.sqlite"))
+        # the file is gone from versions/: not chosen
+        (store / "versions" / "catalog-000004-0123456789ab.sqlite").unlink()
+        code, said = self.chosen()
+        self.assertEqual(code, 1)
+        self.assertIn("names catalog-000004-0123456789ab.sqlite, which is not under versions/", said)
+
+    def test_v1_builds_a_catalog_when_no_version_holds_the_newest_shards(self):
+        self.environments_ready()
+        self.weights_ready()
+        self.carmlspine_shards()
+        self.catalog_ready(version=2, shards=(self.SHARDS[0],))
+        done = self.gate("v1")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        catalog = self.recorded()["catalog"]
+        self.assertIn(f"--dependency=afterok:{catalog} ", self.line_of("v1-driver.sbatch")[0])
 
     def test_v1_never_waits_on_an_x_ray_chains_catalog(self):
         # start's first catalog ended without a version while its X-ray chain's catalog still waits
@@ -616,6 +739,7 @@ echo "$2 end $$" >> "$FAKE/pydrv.log"
                  "                       ^^^^^^^^",
                  "AttributeError: 'str' object has no attribute 'get'",
                  "KeyError: 'carmlspine:case042'",
+                 "IndexError: index 1965031 is out of bounds",
                  "HTTP request sent, awaiting response... 403 Forbidden",
                  "SN_CARMLSPINE_RC=1"]
         self.failed((301, "start", "carmlspine", "sn_carmlspine", "FAILED", "00:00:48", lines))
@@ -623,6 +747,7 @@ echo "$2 end $$" >> "$FAKE/pydrv.log"
         self.assertEqual(done.returncode, 0, done.stdout)
         for kept in ('  File "/home/go2432/SchwingNet/tools/ingest.py", line 153, in item_of',
                      "AttributeError: 'str' object has no attribute 'get'", "KeyError: <message withheld>",
+                     "IndexError: <message withheld>",
                      "HTTP request sent, awaiting response... 403 Forbidden", "SN_CARMLSPINE_RC=1",
                      "XR_FETCH start 2026-10-21 21:30:00 on n1 job 301\n"):
             self.assertIn(kept, done.stdout)
@@ -660,18 +785,66 @@ echo "$2 end $$" >> "$FAKE/pydrv.log"
         self.assertIn("    SN_LATENCY_RC=1", done.stdout)
         self.assertNotIn("700_2 (", done.stdout)
 
-    def test_status_masks_the_stage_reports_and_bounds_what_it_prints(self):
+    def test_status_cuts_the_paths_of_the_stage_reports_and_withholds_a_quoting_reason(self):
         logs = self.repo / "grid" / "logs"
         logs.mkdir(parents=True, exist_ok=True)
         (logs / "02-bank-ingest-STAGE-REPORT.md").write_text(
-            "- vindr_spinexr: bank refused: person vindr_spinexr:9f86d081884c7d659a2feaa0c55ad015 holds more than one part (first 1.2.3.4.5.6)\n",
+            "- vindr_spinexr: bank refused: person vindr_spinexr:9f86d081884c7d659a2feaa0c55ad015 holds more than one part (first 1.2.3.4.5.6)\n"
+            f"- FAILED: no bank at {self.data}/realxray/carmlspine/case134_19650312\n"
+            f"- run directory: {self.runs}/20261022-abc, weights {self.models}/resnet18-f37072fd.pth, raw /home/go2432/x/case39.png\n"
+            "- split-check of version 3 FAILED: the split is not disjoint; no training step reads this version\n",
             encoding="utf-8")
+        done = self.gate("status")
+        self.assertEqual(done.returncode, 0, done.stdout)
+        self.assertIn("bank refused: <reason withheld: it can quote a value; the whole report stays on the grid>", done.stdout)
+        self.assertIn("- FAILED: no bank at <data root: realxray>\n", done.stdout)
+        self.assertIn("- run directory: <runs>, weights <models>, raw <path>\n", done.stdout)
+        self.assertIn("FAILED: the split is not disjoint; no training step reads this version", done.stdout)
+        for value in ("9f86d081", "1.2.3.4", "case134", "19650312", "20261022", "case39", "go2432"):
+            self.assertNotIn(value, done.stdout)
+
+    def test_status_is_bounded_whatever_the_reports_hold(self):
+        # 50 reports of 12 lines each would print 650 lines: the bound, not the inputs, keeps it to 400
+        logs = self.repo / "grid" / "logs"
+        logs.mkdir(parents=True, exist_ok=True)
+        for n in range(50):
+            (logs / f"{n:02d}-STAGE-REPORT.md").write_text("".join(f"- line {i} {'z' * 150}\n" for i in range(12)), encoding="utf-8")
         self.failed((300, "start", "setup", "sn_setup", "FAILED", "00:00:10", ["y" * 100000]))
         done = self.gate("status")
         self.assertEqual(done.returncode, 0, done.stdout)
-        self.assertIn("bank refused: person <withheld> holds more than one part (first <withheld>)", done.stdout)
-        self.assertNotIn("9f86d081", done.stdout)
-        self.assertLess(len(done.stdout), 65536 + 400)
+        lines = done.stdout.splitlines()
+        # the word's first line, the 400 the bound lets through and the exit line
+        self.assertEqual(len(lines), 402, lines[-3:])
+        self.assertEqual(lines[-1], "schwingnet status: exit 0")
+        self.assertLess(len(done.stdout), 65536 + 100)
+
+    def test_status_shows_slurms_errors_by_phrase_and_masks_a_date_after_an_underscore(self):
+        lines = ["slurmstepd: error: *** JOB 40697734 ON n7 CANCELLED AT 2026-10-22T01:00:00 DUE TO TIME LIMIT ***",
+                 "srun: error: n7: task 0: Exited with exit code 1",
+                 "TypeError: cannot read /rs/data/case134_19650312.dcm",
+                 "SN_V1_RC=1"]
+        self.failed((310, "v1", "v1_driver", "sn_v1", "TIMEOUT", "24:00:00", lines))
+        done = self.gate("status")
+        self.assertIn("slurmstepd: error: [DUE TO TIME LIMIT]", done.stdout)
+        self.assertIn("srun: error: <message withheld>", done.stdout)
+        self.assertIn("TypeError: <message withheld>", done.stdout)
+        for value in ("40697734", "n7", "case134"):
+            self.assertNotIn(value, done.stdout)
+        masked = subprocess.run(["sed", "-r", "-f", str(GRID / "redact.sed")], input="scan_19650312.dcm 20201231_19990101\n",
+                                capture_output=True, text=True).stdout
+        self.assertEqual(masked, "scan_<date withheld>.dcm <date withheld>_<date withheld>\n")
+
+    def test_status_finds_the_log_of_a_job_named_as_an_array_that_is_none(self):
+        self.failed((320, "start", "probe", "sn_probe", "FAILED", "00:00:05", None))
+        logs = self.repo / "grid" / "logs"
+        (logs / "sn_probe_320_4294967294.out").write_text("PROBE start 2026-10-22 01:00:00 on n1 job 320\ncase134 frames 12\nSN_PROBE_RC=1\n",
+                                                          encoding="utf-8")
+        done = self.gate("status")
+        self.assertIn("logs/sn_probe_320_4294967294.out", done.stdout)
+        self.assertIn("    SN_PROBE_RC=1", done.stdout)
+        # the probe prints the sweeps' file names, so its log is shown as shapes too
+        self.assertNotIn("case134", done.stdout)
+        self.assertIn("(1 of its last 400 lines withheld", done.stdout)
 
     def test_on_the_grid_the_stages_keep_their_own_data_paths(self):
         # stage 2 reads a set DATA_ROOT as its off-grid layout, so the gate passes none on the grid,

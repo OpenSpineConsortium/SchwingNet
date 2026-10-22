@@ -23,12 +23,14 @@
 #   status          the gate's jobs and their states; the end of the log of each newest job that
 #                   failed, masked (grid/redact.sed), and for a job that reads DICOM headers,
 #                   person keys or a sign-in only its tracebacks and status lines (grid/log-shapes.awk);
-#                   the stage reports, masked; the newest run
+#                   the stage reports with their paths cut and a quoting reason withheld
+#                   (grid/report-shapes.awk), masked; the newest run
 #   leaks           the leak checks over every shard on the volume, once no ingest is queued
 #   v1              the version 1 run alone (again, after a failure), while start's other jobs are
 #                   still live: each input is there, made by a live job of the gate's, or submitted
 #                   now (the weights, the C-ArmLSpine ingest, a catalog build afterok on it), and
-#                   the run waits afterok on each, so an input that fails again cancels it
+#                   the run waits afterok on each, so an input that fails again cancels it; the
+#                   catalog version is the one grid/v1-version.sh chooses
 #   latency         the latency jobs for the newest run that has a checkpoint, with the case134 sweep
 #   fetch <id>      one set of grid/fetch-xray.json, a credentialed one with ~/.netrc, banked and catalogued
 #   stop            cancel the gate's own jobs that are still queued or running, and nothing else
@@ -153,11 +155,8 @@ carmlspine_ready() {  # a train and a test shard of C-ArmLSpine are on the data 
     grep -lqs "\"kind\": *\"$kind\"" "$DATA_ROOT"/carmlspine/shards/*/MANIFEST.json || return 1
   done
 }
-v1_version() {  # the newest catalog version that holds C-ArmLSpine's test part, as v1-driver.sbatch picks it
-  local file
-  file=$(grep -F '"carmlspine|test":' "$STORE/VERSIONS.jsonl" 2>/dev/null | tail -n 1 \
-    | sed -n 's/.*"file": *"\(catalog-[0-9]*-[0-9a-f]*\.sqlite\)".*/\1/p')
-  [ -n "$file" ] && [ -f "$STORE/versions/$file" ] && echo "$file"
+v1_version() {  # the catalog version the version 1 run would read now, as v1-driver.sbatch chooses it
+  bash "$REPO/grid/v1-version.sh" "$STORE" "$DATA_ROOT" "$REPO" 2>/dev/null
 }
 ingest_failed_here() {  # the newest C-ArmLSpine ingest was refused at the commit the gate is at now
   local report=$LOGS/00-carmlspine-STAGE-REPORT.md
@@ -266,12 +265,12 @@ word_start() {
 FAILED_STATES=" FAILED TIMEOUT OUT_OF_MEMORY NODE_FAIL CANCELLED "
 SHOWN_JOBS=6 ARRAY_TASKS=2 TAIL_LINES=15 SHAPE_LINES=400 LINE_CHARS=200
 # The jobs whose logs hold nothing read from a patient's file, a person key or a sign-in, shown
-# whole (masked): the container and the environments, the public weights file, and the probe,
-# which prints counts and names and no header. Every other job's log, any name not here among
-# them, is shown only as shapes: the C-ArmLSpine ingest and the X-ray stages read DICOM headers
-# and print person keys, the fetches run wget and curl with a sign-in, and the catalog, the leak
-# checks, the latency jobs and the run print persons.
-OPEN_LOGS=" sn_setup sn_weights sn_probe "
+# whole (masked): the container and the environments, and the public weights file. Every other
+# job's log, any name not here among them, is shown only as shapes: the C-ArmLSpine ingest and the
+# X-ray stages read DICOM headers and print person keys, the fetches run wget and curl with a
+# sign-in, the probe prints the sweeps' file names, which carry case numbers, and the catalog, the
+# leak checks, the latency jobs and the run print persons.
+OPEN_LOGS=" sn_setup sn_weights "
 newest_jobs() {  # " <id> <id> ... ": the newest job the gate submitted for each thing it makes
   # Keyed by what was made, so a v1 that ran the ingest again hides start's failed one; an X-ray
   # job's key carries its word, so each fetch's chain is its own.
@@ -279,6 +278,10 @@ newest_jobs() {  # " <id> <id> ... ": the newest job the gate submitted for each
 }
 masked() {  # every line status shows of a log or a stage report: masked, then cut
   sed -r -f "$REPO/grid/redact.sed" | cut -c "1-$LINE_CHARS"
+}
+report_shapes() {  # a stage report's lines with their paths cut and a quoting reason withheld
+  awk -v data="$DATA_ROOT" -v runs="$RUNS" -v models="$MODELS" -v repo="$REPO" \
+    -f "$REPO/grid/shape-words.awk" -f "$REPO/grid/report-shapes.awk"
 }
 clean_tail() {  # clean_tail FILE: the file's last 64 KiB as lines of printable ASCII
   tail -c 65536 "$1" | tr '\r' '\n' | LC_ALL=C tr -cd '\11\12\40-\176'
@@ -288,7 +291,7 @@ log_tail() {  # log_tail NAME FILE: a failed job's log, its end whole for an ope
   case "$OPEN_LOGS" in
     *" $1 "*) clean_tail "$2" | tail -n "$TAIL_LINES" | masked | sed 's/^/    /'; return ;;
   esac
-  kept=$(clean_tail "$2" | tail -n "$SHAPE_LINES" | awk -f "$REPO/grid/log-shapes.awk")
+  kept=$(clean_tail "$2" | tail -n "$SHAPE_LINES" | awk -f "$REPO/grid/shape-words.awk" -f "$REPO/grid/log-shapes.awk")
   withheld=$(echo "$kept" | sed -n 's/^#withheld \([0-9][0-9]*\)$/\1/p' | tail -n 1)
   echo "$kept" | grep -v '^#withheld ' | tail -n "$TAIL_LINES" | masked | sed 's/^/    /'
   echo "    (${withheld:-0} of its last $SHAPE_LINES lines withheld: this job can print DICOM header values, person keys or a sign-in, so only its tracebacks and status lines are shown; the whole log stays on the grid)"
@@ -311,6 +314,9 @@ failed_tails() {  # failed_tails SACCT: the end of the log of each newest job th
       echo "## $base ended $end; no log name can be made from what sacct gave"; continue
     fi
     log=${name}_${job}.out
+    # A job that is no array but whose script names its log %x_%A_%a (latency-sweep.sbatch, run
+    # once for the probe and the sweep) gets the task id 4294967294, Slurm's NO_VAL, in its name.
+    [ -f "$LOGS/$log" ] || [ "$base" != "$job" ] || [ ! -f "$LOGS/${name}_${job}_4294967294.out" ] || log=${name}_${job}_4294967294.out
     echo "## $job ($name) ended $end after $elapsed, exit $code: logs/$log"
     if [ -f "$LOGS/$log" ]; then
       log_tail "$name" "$LOGS/$log"
@@ -340,7 +346,7 @@ word_status() {
   for report in "$LOGS"/*STAGE-REPORT.md; do
     [ -f "$report" ] || continue
     echo "## $(basename "$report") ($(date -r "$report" '+%F %T'))"
-    tail -n 12 "$report" | LC_ALL=C tr -cd '\11\12\40-\176' | masked | sed 's/^/  /'
+    tail -n 12 "$report" | LC_ALL=C tr -cd '\11\12\40-\176' | report_shapes | masked | sed 's/^/  /'
   done
   run=$(ls -1dt "$RUNS"/*/ 2>/dev/null | head -n 1)
   if [ -n "$run" ]; then
@@ -376,7 +382,7 @@ word_v1() {
   [ -z "$running" ] || { echo "refusing: the version 1 run is already queued or running (job $running)"; return 75; }
   # Each input of the run is there, made by a live job of the gate's (start's or an earlier v1's),
   # or submitted now, so v1 runs again what failed while start's X-ray and CT jobs are still live,
-  # which start refuses to while any of them is (issue #74). The run waits afterok on each input
+  # which start refuses to while any of them is (issue #80). The run waits afterok on each input
   # still to come, so one that fails again cancels it rather than leaving it to fail on the GPU.
   setup=$(setup_dependency) || return 1
   job=$(live_of weights)
@@ -403,7 +409,7 @@ word_v1() {
     ingest=$(submit carmlspine ${opts[@]+"${opts[@]}"} --export=ALL 00-carmlspine.sbatch) || return 1
     ingest_dep="afterok:$ingest"
   fi
-  # A catalog version that holds the test part: one there already, the gate's live catalog job
+  # A catalog version the run may read (grid/v1-version.sh): one there already, the gate's live catalog job
   # when it was submitted after a live ingest (start's and v1's always are), or a new build. The
   # build waits afterok on an ingest still to come, unlike start's, so a failed ingest cancels it
   # and no version without C-ArmLSpine is made for this run. The X-ray chain's xr_catalog jobs
@@ -412,7 +418,7 @@ word_v1() {
   if [ -n "$ingest_dep" ] && [ -n "$catalog" ] && [ "$catalog" -gt "$ingest" ]; then
     catalog_dep="afterok:$catalog"
   elif [ -z "$ingest_dep" ] && version=$(v1_version); then
-    echo "  catalog: $version holds C-ArmLSpine's test part; no job"
+    echo "  catalog: $version qualifies for the run (grid/v1-version.sh); no job"
   elif [ -z "$ingest_dep" ] && [ -n "$catalog" ]; then
     catalog_dep="afterok:$catalog"
   else

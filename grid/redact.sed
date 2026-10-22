@@ -1,6 +1,6 @@
 # What grid/gate.sh 'status' masks in every line it shows of a job's log or a stage report
-# (issue #74), run as sed -r -f, which GNU sed 4.2 on the login node reads. A net, not a proof:
-# the audit in issue #74 found which jobs' logs can carry a DICOM header value, a person key made
+# (issue #80), run as sed -r -f, which GNU sed 4.2 on the login node reads. A net, not a proof:
+# the audit in issue #80 found which jobs' logs can carry a DICOM header value, a person key made
 # from one or a credential, and status shows those jobs' logs only as shapes (grid/log-shapes.awk)
 # before this runs. Every rule leaves the shape of the line and takes the value.
 #
@@ -28,7 +28,11 @@ s#\b([0-9a-fA-F]{32}|[0-9a-fA-F]{40})\b#<hex withheld>#g
 # DICOM values by their shape: a UID (five or more dotted numbers), a date as DICOM writes it
 # (YYYYMMDD) or quoted, and a value pydantic or icontract quotes back.
 s#\b[0-9]+(\.[0-9]+){4,}\b#<uid withheld>#g
-s#\b(19|20)[0-9]{2}(0[1-9]|1[0-2])(0[1-9]|[12][0-9]|3[01])\b#<date withheld>#g
+# Bounded by any non-digit, not by \b, since an underscore is a word character and a file name
+# such as scan_19650312.dcm carries a date with no word boundary before it; run twice, since two
+# dates one character apart share that character and g takes only the first.
+s#(^|[^0-9])(19|20)[0-9]{2}(0[1-9]|1[0-2])(0[1-9]|[12][0-9]|3[01])([^0-9]|$)#\1<date withheld>\5#g
+s#(^|[^0-9])(19|20)[0-9]{2}(0[1-9]|1[0-2])(0[1-9]|[12][0-9]|3[01])([^0-9]|$)#\1<date withheld>\5#g
 s#(["'])(19|20)[0-9]{2}-?(0[1-9]|1[0-2])-?(0[1-9]|[12][0-9]|3[01])([T ][0-9:.]*)?["']#\1<date withheld>\1#g
 s#input_value=.*(, input_type=[A-Za-z_]+\])#input_value=<withheld>\1#g
 s#input_value=[^<].*#input_value=<withheld>#
