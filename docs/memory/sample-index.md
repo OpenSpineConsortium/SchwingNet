@@ -5,3 +5,4 @@ The sample index (tools/sample_index.py, grid/run-samples.sh): samples.sqlite un
 - Joins are by reduced name, digit runs of five or more, and DICOM UIDs or PatientID; a key more than twenty files carry names none. The link says which way it met.
 - NHANES II is the owner's large unannotated X-ray set for the screener (#64), his word of 2026-10-21.
 - The research and queries: docs/research/data-manifest/README.md.
+- The first run (2026-10-22): 140 groups, 7,008,826 files, 7.3 TB, in docs/research/data-manifest/MANIFEST.md; the scan took 64 tasks of 8 to 97 minutes, the merge 5 hours and the manifest's queries another 5 (job 40703320), so the report step stays its own job (grid/run-samples.sh) and `samples` sent again starts a new census.

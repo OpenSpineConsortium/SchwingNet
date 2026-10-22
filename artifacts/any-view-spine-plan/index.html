@@ -154,14 +154,15 @@ ol.steps { margin: 0; padding-left: 1.4em; display: grid; gap: 8px; max-width: 6
 
 <section>
   <h2>4. What the census must count</h2>
-  <p>The census (PR #76) indexes every held file with its format, size, DICOM header and sidecar rows, and whether it is annotated. These cells fill in from its answer. The "needed" column is the count at which each approach becomes testable. It is an estimate made here, from the papers above and the interval width a test needs.</p>
+  <p>The census (PR #76, run on 2026-10-22: 140 groups, 7,008,826 files, 7.3 TB; docs/research/data-manifest/MANIFEST.md) indexes every held file with its format, size, DICOM header and sidecar rows, and whether it is annotated. The cells below are its counts, read with the registry for each set's region; NHANES II, VinDr-SpineXR and FluoroCap wait for the next run's body-part split. <span class="ev ev-m">Census</span> The "needed" column is the count at which each approach becomes testable. It is an estimate made here, from the papers above and the interval width a test needs.</p>
   <div class="scroll"><table>
     <thead><tr><th>Region</th><th>X-ray, annotated</th><th>X-ray, unannotated</th><th>Real AP + lateral pairs</th><th>X-ray with CT (gold)</th><th>Segmented CT</th></tr></thead>
     <tbody>
-      <tr><td>Cervical</td><td class="pending">census</td><td class="pending">census</td><td class="pending">census</td><td>none held</td><td class="pending">census</td></tr>
-      <tr><td>Thoracic</td><td class="pending">census</td><td class="pending">census</td><td class="pending">census</td><td>none held</td><td class="pending">census</td></tr>
-      <tr><td>Lumbar</td><td class="pending">census</td><td class="pending">census</td><td class="num">&ge; 3,600 (BUU)</td><td class="num">&ge; 149 + COBRA</td><td class="pending">census</td></tr>
-      <tr><td>Sacral / lumbosacral</td><td class="pending">census</td><td class="pending">census</td><td class="pending">census</td><td class="num">COBRA 692</td><td class="pending">census</td></tr>
+      <tr><td>Cervical</td><td class="num">CSXA 4,962; Aariz 1,000</td><td class="num">NHANES II part of 16,531</td><td>none held</td><td>none held</td><td class="num">CTSpine1K 1,005; VerSe 374; TotalSeg 3,567; RSNA 2022 cervical 2,019 (zipped)</td></tr>
+      <tr><td>Thoracic</td><td class="num">AASCE 609</td><td class="num">AASCE 294; chest sets not unpacked</td><td>none held</td><td>none held</td><td class="num">CTSpine1K; VerSe; TotalSeg; RibFrac 660</td></tr>
+      <tr><td>Lumbar</td><td class="num">BUU 7,203 films (3,600 people); BUU 2000 relabel 2,000; C-ArmLSpine 297 spots; NHANES II 543 landmarked</td><td class="num">NHANES II part of 16,531; FluoroCap 322,914 panels; fluoro clips 690,554 frames; C-ArmLSpine 51,429 frames</td><td class="num">3,600 (BUU)</td><td class="num">149 (C-ArmLSpine) + COBRA</td><td class="num">CTSpinoPelvic1K 802; CTSpine1K; VerSe; TotalSeg; spine mets 35,527 DICOM</td></tr>
+      <tr><td>Sacral / lumbosacral</td><td class="num">DeepFluoro 36 frames; Geneva hip 234 (pelvis)</td><td class="num">DeepFluoro 94,566 vendor frames; KUB-StoneX 6,810</td><td>none held</td><td class="num">COBRA 692; DeepFluoro 6 specimens; Ljubljana 18 frames</td><td class="num">CTSpinoPelvic1K 802; CTPelvic1K 178; PENGWIN 680</td></tr>
+      <tr><td>Unsplit by region</td><td class="num">VinDr-SpineXR 10,466 (boxes, no levels); Spinal-AI2024 20,001</td><td class="num">FluoroCap and NHANES II above</td><td>&mdash;</td><td>&mdash;</td><td>&mdash;</td></tr>
     </tbody>
   </table></div>
   <div class="scroll"><table>
@@ -178,7 +179,7 @@ ol.steps { margin: 0; padding-left: 1.4em; display: grid; gap: 8px; max-width: 6
 <section>
   <h2>5. The order</h2>
   <ol class="steps">
-    <li>Run the census on the grid (PR #76; the gate word goes in beside #72), and fill section 4.</li>
+    <li>Split NHANES II, VinDr-SpineXR and FluoroCap by region in the next census run (the JSON manifest holds the DICOM body parts; a second table in tools/sample_index.py prints them).</li>
     <li>The counting prior's grid job (#57, built) and the AP and oblique renders with anchors (#59). These lift AP naming before the talk.</li>
     <li>COBRA projected labels and the per-angle curve (#60), the gold set for the lumbosacral spine.</li>
     <li>Structured AP-to-lateral transfer on BUU-LSPINE and C-ArmLSpine pairs (#68), scored on held-out persons. Pixel synthesis only as its auxiliary task.</li>

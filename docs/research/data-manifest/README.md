@@ -10,10 +10,48 @@ sample specific metadata"). He named NHANES II as the large unannotated X-ray se
 
 ## Where it stands
 
-Built, not yet run: tools/sample_index.py, grid/samples.sbatch and grid/run-samples.sh, tested on
-synthetic sets (tests/test_sample_index.py, the DICOM part in the train-cpu environment). It runs
-through the Beethoven gate once the word `samples` is there (asked of the thread that owns the
-gate's new words, beside #72); its answer, MANIFEST.md, is copied here when it comes back.
+Run once, on 2026-10-22, through the gate word `samples` (grid/run-samples.sh): the plan (job
+40702274), 64 scan tasks of 8 to 97 minutes each (array 40702275), the merge (40702276, 5 h 9 min,
+which wrote samples.sqlite and then failed in the report's json.dumps on a None key, fixed in #114)
+and the manifest alone (40703320, 4 h 56 min). The manifest is MANIFEST.md beside this file: 140
+groups, 7,008,826 files, 7.3 TB. The gate's status shows it whole since #122.
+
+What the first run says, read with the registry (data/sources/) for each source's region, since
+the markdown manifest carries no body part; the JSON on the grid does, for DICOM sets:
+
+- X-ray films with level or landmark truth, by region. Cervical: CSXA 4,963 films (4,962 with a
+  sidecar), Aariz cephalograms 1,000 (C2 to C4 shapes). Thoracic: AASCE 609 landmarked films (the
+  BoostNet copy is the same films). Lumbar: BUU-LSPINE 3,600 AP and 3,603 lateral films with
+  end-plate lines (the scan counts 14,551 annotated of 19,754 image files under its folder, crops
+  and renders among them) and its 2000 relabel (2,000 of 4,000 JPEG), C-ArmLSpine 299 spot frames
+  (297 annotated). Across regions, unsplit here: NHANES II 17,073 films (the registry says 543
+  carry landmarks, 364 persons; the scan finds a sidecar beside every film, which is the JSON and
+  NPY the landmark pipeline wrote, not truth), VinDr-SpineXR 10,466 DICOM (lesion boxes, no
+  levels; cervical, thoracic and lumbar studies), Spinal-AI2024 20,001 JPEG (10,346 with a
+  sidecar), FluoroCap 361,567 panels (pseudo-labels only).
+- X-ray without truth, usable for the screener and self-supervision: NHANES II 16,531 films,
+  FluoroCap 322,914 panels, fluoro_video_clips 726,614 frames (690,554 without a sidecar),
+  C-ArmLSpine 51,429 DICOM frames beyond the spots, DeepFluoro vendor frames 94,566 (pelvis),
+  KUB-StoneX 6,810 (frontal lumbar and pelvis, no spine labels). The chest sets (NIH ChestX-ray14,
+  Open-i, VinDr-PCXR) and FracAtlas are on the volume only as archives or a record, not unpacked.
+- Real AP and lateral pairs: BUU-LSPINE's 3,600 people, lumbar; none above the lumbar spine.
+- X-ray with the CT of the same person: C-ArmLSpine 149 cases (CBCT), COBRA 692 cases of
+  projections (cobra2026, 6,920 image files; the bank 1,337), DeepFluoro 6 specimens, Ljubljana
+  18 frames. Lumbar and lumbosacral only.
+- Segmented CT: CTSpine1K 1,005 (whole spine), VerSe 374 series (on the volume as versefusion,
+  4,325 image files, 1,652 with labels), TotalSegmentator v2.0.1 1,631 and v3.0.0 1,936 scans,
+  CTSpinoPelvic1K 802 volumes (2,052 image files, 1,006 with labels; lumbosacral, L6 flagged),
+  CTPelvic1K 178 (163 with labels), RibFrac 660, PENGWIN 680 (203 with labels; pelvic fracture),
+  RSNA 2022 cervical 2,019 studies (189 GB, still zipped), the spine metastasis set (35,527
+  DICOM), anomaly_harvest_b 14,909 NIfTI (6,670 with labels).
+- Derived corpora, counted but not sources: or_ready (66,153 images, 808 GB), multisource_banks
+  (52,653), spine_detector_corpus (268,441), devcorpus (40,529), realxray (23,582), rare_class and
+  fluorogen_synthetic (renders), xrspinopelvic1k (6,421 DRRs).
+
+The next run should split NHANES II, VinDr-SpineXR and FluoroCap by region: the JSON manifest
+already counts each DICOM group's body parts and views, and markdown() in tools/sample_index.py
+can print them as a second table; a PNG set's region comes from its sidecar rows, which the
+sample_meta view answers on the grid.
 
 ## What it reads
 
