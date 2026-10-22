@@ -162,12 +162,37 @@ class NetrcTest(unittest.TestCase):
         self.assertEqual(self.login("machine other.org login x password y\nmachine physionet.org login someone"
                                     " password secret-value\n"), "someone")
 
-    def test_a_file_that_does_not_parse_names_no_token(self):
-        said = self.login("machine physionet.org login someone password secret-value bogus\n")
-        self.assertIn("not a netrc file this tool can read", str(said))
-        self.assertNotIn("secret-value", str(said))
-        self.assertNotIn("bogus", str(said))
+    def test_an_unknown_word_is_passed_over_as_wget_passes_it(self):
+        # Python's netrc refused such a file, which stopped every PhysioNet fetch (issue #100)
+        self.assertEqual(self.login("machine physionet.org login someone password secret-value bogus\n"), "someone")
 
+    def test_the_forms_wget_reads(self):
+        text = ("# the grid's netrc\n"
+                "machine urs.earthdata.nasa.gov\n  login a\n  password b\n\n"
+                "macdef init\nmachine physionet.org login wrong password wrong\n\n"
+                "machine physionet.org\n\tlogin someone # a note\n\tpassword \"pass word\\\"#1\"\n"
+                "machine physionet.org login later password later\n"
+                "default login anon password anon\n")
+        self.assertEqual(self.login(text), "someone")
+
+    def test_default_stands_in_when_no_machine_is_named(self):
+        self.assertEqual(self.login("machine other.org login x password y\ndefault login anon password z\n"), "anon")
+
+    def test_a_file_that_cannot_be_read_names_no_token(self):
+        tool = load()
+        with tempfile.TemporaryDirectory() as tmp:
+            netrc = Path(tmp) / ".netrc"
+            netrc.write_bytes(b"machine physionet.org login someone password secret-\xff\n")
+            netrc.chmod(0o600)
+            with self.assertRaises(tool.FetchError) as said:
+                tool.netrc_login("physionet.org", netrc)
+        self.assertIn("not a netrc file this tool can read", str(said.exception))
+        self.assertNotIn("secret", str(said.exception))
+
+    def test_the_password_is_read_as_wget_reads_it(self):
+        tool = load()
+        entries = tool.netrc_entries('machine physionet.org login someone password "pass word\\"#1"\n')
+        self.assertEqual(entries, [("physionet.org", "someone", 'pass word"#1')])
 
 if __name__ == "__main__":
     unittest.main()

@@ -43,7 +43,6 @@ only the login name is passed, as PhysioNet's own documentation passes it. Stand
 import argparse
 import hashlib
 import json
-import netrc
 import os
 import re
 import shlex
@@ -165,17 +164,82 @@ def kaggle_token(path):
     raise FetchError(f"{path}: no KAGGLE_API_TOKEN= line")
 
 
+NETRC_KEYWORDS = {"machine", "default", "login", "user", "password", "passwd", "account", "macdef"}
+
+
+def netrc_tokens(line):
+    """A .netrc line's tokens as wget reads them: split on blanks, a token opened by a double quote
+    runs to the next unescaped one with a backslash taking the next character as it is, and a token
+    that starts with # ends the line."""
+    tokens, at = [], 0
+    while True:
+        while at < len(line) and line[at] in " \t\r":
+            at += 1
+        if at == len(line) or line[at] == "#":
+            return tokens
+        if line[at] == '"':
+            at, token = at + 1, []
+            while at < len(line) and line[at] != '"':
+                if line[at] == "\\" and at + 1 < len(line):
+                    at += 1
+                token.append(line[at])
+                at += 1
+            tokens.append("".join(token))
+            at += 1
+        else:
+            start = at
+            while at < len(line) and line[at] not in " \t\r":
+                at += 1
+            tokens.append(line[start:at])
+
+
+def netrc_entries(text):
+    """The entries of a .netrc as wget's own reader takes them, in order: (host, login, password),
+    with None as the host of default. A keyword's value is the next token, wherever it falls; an
+    unknown word is passed over, as wget passes it over with a warning, and a macdef's body runs to
+    the next blank line. Python's netrc module refuses a file wget reads (issue #100), so it is not
+    used: a refusal there stopped every PhysioNet fetch before its first request."""
+    entries, current, waiting, in_macro = [], None, None, False
+    for line in text.splitlines():
+        if in_macro:
+            in_macro = bool(line.strip())
+            continue
+        for token in netrc_tokens(line):
+            if waiting in ("login", "user", "password", "passwd") and current is not None:
+                key = 1 if waiting in ("login", "user") else 2
+                current[key] = token
+            elif waiting == "machine":
+                current = [token, "", ""]
+                entries.append(current)
+            elif waiting == "macdef":
+                in_macro = True
+            if waiting is not None:
+                waiting = None
+                continue
+            word = token.lower()
+            if word == "default":
+                current = [None, "", ""]
+                entries.append(current)
+            elif word in NETRC_KEYWORDS:
+                waiting = word
+        if waiting == "macdef":
+            waiting, in_macro = None, True
+    return [tuple(entry) for entry in entries]
+
+
 def netrc_login(host, path="~/.netrc"):
-    """The login name for a host from ~/.netrc, which wget reads the password from itself. An
-    entry with no password is refused here, before the job's fetch: wget would send no login at
-    all, and PhysioNet's 401 would read as a refusal it never made. The parser's own message is
-    never repeated, since it can quote a token of the file."""
+    """The login name for a host from ~/.netrc, which wget reads the password from itself. The
+    entry is the one wget picks: the first for the host, else default. An entry with no password is
+    refused here, before the job's fetch: wget would send no login at all, and PhysioNet's 401
+    would read as a refusal it never made. No message quotes the file, which holds a password."""
     path = mode_0600(path)
     try:
-        entry = netrc.netrc(path).authenticators(host)
-    except (netrc.NetrcParseError, OSError, UnicodeDecodeError):
+        entries = netrc_entries(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError):
         raise FetchError(f"{path}: not a netrc file this tool can read") from None
-    login, _, password = entry or ("", "", "")
+    named = [entry for entry in entries if entry[0] is not None and entry[0].lower() == host.lower()]
+    fallback = [entry for entry in entries if entry[0] is None]
+    _, login, password = (named or fallback or [(host, "", "")])[0]
     if not login:
         raise FetchError(f"{path}: no 'machine {host} login <user>' entry")
     if not password:
