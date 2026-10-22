@@ -25,7 +25,8 @@ To add the artifacts of another account, open a session on OpenSpineConsortium/s
 | Imaging data holding: manifest, migration and index | [imaging-data-holding-manifest-migration-and-index-fqmtjs](imaging-data-holding-manifest-migration-and-index-fqmtjs/) | https://claude.ai/artifact/FQMtjsD8h2ummECc2TVBmw | second account | The 212 imaging sources in five families, their cards and re-acquisition recipes, the move to the Ceph volume and the index students read (Docs type, kept as Markdown) |
 | Research directions from the data holding | [research-directions-from-the-data-holding-kcyckb](research-directions-from-the-data-holding-kcyckb/) | https://claude.ai/artifact/KCyCkBtrHXGYQVM6LtpnK8 | second account | The order of work the evidence supports, measurement first, human reads second, models third, with the numbers behind it (Docs type, kept as Markdown) |
 | Handoff: SchwingNet, CTSpinoPelvic1K and the imaging programme | [handoff-schwingnet-ctspinopelvic1k-and-the-imaging-programme-rbcdmf](handoff-schwingnet-ctspinopelvic1k-and-the-imaging-programme-rbcdmf/) | https://claude.ai/artifact/RBCDMF1YwL93MmeJTkv3oa | second account | The shareable summary of the spinesurg-ct-nnunet handoff for a new student or a fresh Claude project: the work, where every result lives and how to regenerate it (Docs type, kept as Markdown) |
+| Send the letter | not copied: holds e-mail addresses | https://claude.ai/artifact/VVZW3KzYvmKirhh5ngkcBV | second account | Three steps for sending a letter to a list of programs by Bcc, with its subject and note; kept only on claude.ai until the owner decides on a redacted copy |
 
 Exported 2026-10-22 from the first account, the one at 97% of its usage that day, by the thread "3D CT priors for 2D detection".
 
-Exported 2026-10-22 from the second account: 4 artifacts.
+Exported 2026-10-22 from the second account: 4 artifacts copied, 1 not copied.
