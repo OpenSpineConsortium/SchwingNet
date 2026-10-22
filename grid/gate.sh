@@ -106,7 +106,8 @@ WHO=${USER:-$(id -un)}
 
 # shellcheck source=grid/hpcw.sh
 . "$REPO/grid/hpcw.sh"
-hpcw_bin > /dev/null || { echo "schwingnet $word: exit 2"; exit 2; }
+# status still reads what it can without one (the logs of jobs queued before issue #77 among it)
+[ "$word" = status ] || hpcw_bin > /dev/null || { echo "schwingnet $word: exit 2"; exit 2; }
 
 commit=$(git -C "$REPO" rev-parse --short HEAD 2>/dev/null || echo unknown)
 echo "schwingnet $word${id:+ $id} at commit $commit on $(hostname) $(date -u '+%F %T') UTC"
@@ -182,9 +183,10 @@ joined() {  # joined DEP...: the non-empty dependencies, comma-separated
   for one in "$@"; do [ -n "$one" ] && out=${out:+$out,}$one; done
   echo "$out"
 }
-depend_on() {  # depend_on DEPS: job submit's --after options for DEPS (sbatch's text), none when DEPS is empty
+depend_on() {  # depend_on DEPS: job submit's --after options for DEPS (sbatch's text) into opts, none when DEPS is empty
   # job submit adds --kill-on-invalid-dep=yes itself, so a dependency that can never be met ends the job
-  hpcw_after "$1"
+  hpcw_after "$1" || return 1
+  opts=(${HPCW_AFTER[@]+"${HPCW_AFTER[@]}"})
 }
 last_line() {  # last_line PATTERN: the newest line of LAST_RUN.txt that holds PATTERN
   grep -- "$1" "$REPO/grid/LAST_RUN.txt" 2>/dev/null | tail -n 1
@@ -205,7 +207,7 @@ chain() {  # chain DEPEND [run-xray-chain.sh arguments...]: the X-ray chain afte
 }
 v1_driver() {  # v1_driver DEPS: the version 1 run after DEPS
   local opts
-  mapfile -t opts < <(depend_on "$1")
+  depend_on "$1" || return 1
   # ${a[@]+"${a[@]}"}: the grid's bash 4.2 calls an empty array unbound under set -u
   submit v1_driver gpu RUNS="$RUNS" WEIGHTS="$WEIGHTS" ${opts[@]+"${opts[@]}"} --no-requeue -- v1-driver.sbatch >/dev/null
 }
@@ -225,12 +227,12 @@ word_start() {
     job=$(submit weights batch MODELS="$MODELS" -- 00-weights.sbatch) || return 1
     weights_dep="afterok:$job"
   fi
-  mapfile -t opts < <(depend_on "$setup")
+  depend_on "$setup" || return 1
   ingest=$(submit carmlspine batch ${opts[@]+"${opts[@]}"} -- 00-carmlspine.sbatch) || return 1
   # The first catalog version: C-ArmLSpine and every shard already on the data root, built once the
   # ingest ends, so the version 1 run starts hours after it and not days after the X-ray fetch. The
   # X-ray chain's own catalog job builds the next version after it, once its banks are in.
-  mapfile -t opts < <(depend_on "$(joined "$setup" "afterany:$ingest")")
+  depend_on "$(joined "$setup" "afterany:$ingest")" || return 1
   first=$(submit catalog batch ${opts[@]+"${opts[@]}"} -- 03-catalog.sbatch) || return 1
   # X-ray before CT (the owner's order of 2026-10-21). The fetch waits on setup alone, since without
   # the environments every stage would fail; the chain's catalog waits on the first catalog too.
@@ -433,7 +435,7 @@ word_v1() {
       echo "  carmlspine: the last ingest was refused at this same commit $commit (logs/00-carmlspine-STAGE-REPORT.md);"
       echo "    it is submitted again and will fail the same way unless its bank changed; 'status' shows why it failed"
     fi
-    mapfile -t opts < <(depend_on "$setup")
+    depend_on "$setup" || return 1
     ingest=$(submit carmlspine batch ${opts[@]+"${opts[@]}"} -- 00-carmlspine.sbatch) || return 1
     ingest_dep="afterok:$ingest"
   fi
@@ -450,7 +452,7 @@ word_v1() {
   elif [ -z "$ingest_dep" ] && [ -n "$catalog" ]; then
     catalog_dep="afterok:$catalog"
   else
-    mapfile -t opts < <(depend_on "$(joined "$setup" "$ingest_dep")")
+    depend_on "$(joined "$setup" "$ingest_dep")" || return 1
     catalog=$(submit catalog batch ${opts[@]+"${opts[@]}"} -- 03-catalog.sbatch) || return 1
     catalog_dep="afterok:$catalog"
   fi

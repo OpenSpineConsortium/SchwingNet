@@ -1,12 +1,13 @@
 #!/bin/bash
-# A stand-in for hpcworker's job verbs (framework 25 and later, interface 2) in the tests of the grid
+# A stand-in for hpcworker's job verbs (framework 27 and later, interface 2) in the tests of the grid
 # scripts (issue #77), so nothing reaches a scheduler. `job submit` answers as the real one does,
 # "HPCW-JOB submitted <id> <name> <partition>/<qos> log <path>", and logs each job it queues as one
 # line of HPCW_LOG: its class and name, its --after list in sbatch's words as job submit turns it
 # into them, its other options and script, then the job's environment the tests look at. Ids count
 # from HPCW_FIRST (101). --check queues nothing and logs nothing. A call whose line holds the text
 # of HPCW_REFUSE's file is refused, as a busy controller refuses one. `job log` prints
-# HPCW_LOGS/<id>.out, or <id>_<task>.out for an array task, as the ledger would find it.
+# HPCW_LOGS/<id>.out, or <id>_<task>.out for an array task, as the ledger would find it. `job version`
+# names framework HPCW_FRAMEWORK (27).
 set -uo pipefail
 [ "${1:-}" = job ] || { echo "fake hpcworker: job verbs only" >&2; exit 64; }
 verb=${2:-}
@@ -48,6 +49,7 @@ log() {
   else echo "HPCW-JOB no output yet for $id (/state/jobs/schwingnet/logs/x_$id.out)"; fi
 }
 case "$verb" in
+  version) echo "HPCW-JOB version ${HPCW_FRAMEWORK:-27} interface 2" ;;
   submit) submit "$@" ;;
   log) log "$@" ;;
   *) echo "fake hpcworker: no verb $verb" >&2; exit 64 ;;

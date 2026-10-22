@@ -68,15 +68,19 @@ class GateTest(unittest.TestCase):
         self.netrc = self.tmp / "netrc"
 
     def gate(self, *words, data_root=None):
+        env = self.gate_env(data_root)
+        if data_root == "":
+            env.pop("DATA_ROOT")
+        return subprocess.run(["bash", str(self.repo / "grid" / "gate.sh"), *words], env=env, capture_output=True, text=True, timeout=120)
+
+    def gate_env(self, data_root=None):
         env = dict(os.environ, PATH=f"{self.fake}:{os.environ['PATH']}", FAKE=str(self.fake), SCHWINGNET=str(self.repo),
                    DATA_ROOT=str(self.data) if data_root is None else data_root, RUNS=str(self.runs), MODELS=str(self.models),
                    NETRC=str(self.netrc), USER="go2432", HPCWORKER=str(FAKE_HPCWORKER),
                    HPCW_LOG=str(self.fake / "sbatch.log"), HPCW_REFUSE=str(self.fake / "refuse"), HPCW_LOGS=str(self.fake / "joblogs"))
-        for name in ("HPCW_DRY", "HPCW_FIRST", "SQUEUE", "SACCT", "SCANCEL", "DF", "DEPEND", "PYDRV"):
+        for name in ("HPCW_DRY", "HPCW_FIRST", "HPCW_FRAMEWORK", "SBATCH", "SQUEUE", "SACCT", "SCANCEL", "DF", "DEPEND", "PYDRV"):
             env.pop(name, None)
-        if data_root == "":
-            env.pop("DATA_ROOT")
-        return subprocess.run(["bash", str(self.repo / "grid" / "gate.sh"), *words], env=env, capture_output=True, text=True, timeout=120)
+        return env
 
     def submitted(self):
         log = self.fake / "sbatch.log"
@@ -598,11 +602,25 @@ echo "the split is not disjoint; no training step reads this version"; exit 1
         self.assertIn(" --no-requeue v1-driver.sbatch", v1)
 
     def test_a_dependency_reaches_job_submit_as_after_options(self):
-        script = f'REPO={self.repo}; . {GRID / "hpcw.sh"}; hpcw_after "$1"'
+        script = f'REPO={self.repo}; . {GRID / "hpcw.sh"}; hpcw_after "$1" && printf "%s\\n" ${{HPCW_AFTER[@]+"${{HPCW_AFTER[@]}}"}}'
         done = subprocess.run(["bash", "-c", script, "-", "afterok:101,afterany:102:103"], capture_output=True, text=True)
         self.assertEqual(done.stdout.split(), ["--after", "101:ok", "--after", "102:any", "--after", "103:any"])
-        done = subprocess.run(["bash", "-c", script, "-", "singleton"], capture_output=True, text=True)
-        self.assertIn("neither afterok nor afterany", done.stderr)
+        # anything job submit cannot say is refused, so no job is queued without its wait
+        for refused in ("singleton", "afternotok:5", "afterok:12_3"):
+            done = subprocess.run(["bash", "-c", script, "-", refused], capture_output=True, text=True)
+            self.assertEqual((done.returncode, done.stdout), (1, ""), refused)
+            self.assertIn("nothing was queued", done.stderr)
+
+    def test_an_old_hpcworker_or_the_old_dry_run_queues_nothing(self):
+        self.environments_ready()
+        done = subprocess.run(["bash", str(self.repo / "grid" / "gate.sh"), "start"], capture_output=True, text=True, timeout=60,
+                              env={**self.gate_env(), "HPCW_FRAMEWORK": "25"})
+        self.assertEqual(done.returncode, 2, done.stdout)
+        self.assertIn("job submit needs 27 or later", done.stdout)
+        done = subprocess.run(["bash", str(self.repo / "grid" / "gate.sh"), "start"], capture_output=True, text=True, timeout=60,
+                              env={**self.gate_env(), "SBATCH": "echo"})
+        self.assertIn("SBATCH is no longer read", done.stdout)
+        self.assertEqual(self.submitted(), [])
 
     def test_without_hpcworker_no_word_runs(self):
         env = dict(os.environ, PATH=f"{self.fake}:/usr/bin:/bin", FAKE=str(self.fake), SCHWINGNET=str(self.repo),

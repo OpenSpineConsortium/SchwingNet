@@ -225,7 +225,8 @@ def command_run(args):
         step_push = push_wandb(run_dir, args.environment)
         print(f"{job.step.value}: {step_push}", file=sys.stderr if "NOT" in step_push else sys.stdout, flush=True)
         if done.exit_code != 0:
-            raise FlowError(f"{job.step.value} exited {done.exit_code}; see {run_dir}/{job.step.value}.log")
+            where = f"{run_dir}/{job.step.value}.log" if args.mode == "local" else f"hpcworker's log of job {done.job_id}"
+            raise FlowError(f"{job.step.value} exited {done.exit_code}; see {where}")
     activity = f"{record.stage.value} stage, {record.epochs} epochs, seed {record.seed}" + (f", {args.max_frames} crops per part" if args.max_frames else "")
     pushed = push_wandb(run_dir, args.environment)
     append_ledger(Path(args.out) / "LEDGER.md", record, activity, f"evaluate/results.md from the test part; split-check.json disjoint; {pushed}")

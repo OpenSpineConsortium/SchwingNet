@@ -66,8 +66,8 @@ fi
 . "$REPO/grid/hpcw.sh"
 j1=$(hpcw_submit leaks_fingerprint batch --array "0-$((count - 1))%$CONCURRENCY" -- 04-leaks.sbatch) || exit 1
 # Both or neither: an array whose join was refused would write fingerprints nobody reads.
-mapfile -t after < <(hpcw_after "afterany:$j1")
-j2=$(hpcw_submit leaks_join batch "${after[@]}" -- 05-leaks-join.sbatch) \
+hpcw_after "afterany:$j1" || { "${SCANCEL:-scancel}" "$j1"; exit 1; }
+j2=$(hpcw_submit leaks_join batch ${HPCW_AFTER[@]+"${HPCW_AFTER[@]}"} -- 05-leaks-join.sbatch) \
   || { "${SCANCEL:-scancel}" "$j1" && echo "cancelled the fingerprint array $j1, since its join was refused" >&2; exit 1; }
 echo "$(date '+%F %T') leaks fingerprint=$j1 join=$j2 shards=$count new=${NEW:-none} run=$RUN pydrv=$PYDRV" \
   | tee -a "$REPO/grid/LAST_RUN.txt"

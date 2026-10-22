@@ -113,7 +113,7 @@ while IFS='|' read -r id route size licence access args extra; do
   # each later one on the job before it.
   dep=${DEPEND:-}
   [ -z "$previous" ] || dep="afterany:$previous"
-  mapfile -t after < <(hpcw_after "$dep")
+  hpcw_after "$dep" || exit 1
   # The job reads its settings from the environment, which job submit hands it: --export's own
   # comma grammar would cut the arguments, so each is exported for this one submission.
   export ID="$id" ROUTE="$route" ARGS="$args" LICENCE="$licence" ACCESS="$access"
@@ -122,7 +122,7 @@ while IFS='|' read -r id route size licence access args extra; do
     case "$pair" in NOTE=*) export NOTE="${extra#*NOTE=}" ;; TOKEN_FILE=*|LINK_FILE=*) export "$pair" ;; esac
   done
   [ -z "${HPCW_DRY:-}" ] || echo "would submit $id: ROUTE=$route ARGS='$args'${NOTE:+ NOTE=...}"
-  job=$(hpcw_submit "dp_fetch_$id" batch ${after[@]+"${after[@]}"} -- platform-fetch.sbatch) || { echo "hpcworker refused the fetch of $id"; exit 1; }
+  job=$(hpcw_submit "dp_fetch_$id" batch ${HPCW_AFTER[@]+"${HPCW_AFTER[@]}"} -- platform-fetch.sbatch) || { echo "hpcworker refused the fetch of $id"; exit 1; }
   echo "$id: job $job${dep:+ ($dep)} $route ${size}GB"
   previous=$job; ids="$ids $id=$job"
 done <<< "$TABLE"

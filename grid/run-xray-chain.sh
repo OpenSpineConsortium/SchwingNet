@@ -86,17 +86,17 @@ ONLY_IDS=$(echo "$ONLY" | tr ',' ' ')
 export FETCH_ARGS ONLY="$ONLY_IDS"
 # DEPEND (sbatch's dependency grammar, as grid/gate.sh gives it) holds stage 1 back until the jobs
 # it names allow; job submit ends a stage whose dependency can never be met instead of stranding it.
-mapfile -t first < <(hpcw_after "${DEPEND:-}")
+hpcw_after "${DEPEND:-}" || exit 1
 # All three or none: a stage refused after the first cancels what was submitted, so no fetch runs
 # that nothing recorded and no later chain waits on half of this one.
 undo() { "${SCANCEL:-scancel}" "$@" && echo "cancelled what was submitted before the refusal: $*" >&2; exit 1; }
-j1=$(hpcw_submit xr_fetch batch ${first[@]+"${first[@]}"} -- 01-fetch.sbatch) || exit 1
-mapfile -t after < <(hpcw_after "afterany:$j1")
-j2=$(hpcw_submit xr_bank batch "${after[@]}" -- 02-bank-ingest.sbatch) || undo "$j1"
+j1=$(hpcw_submit xr_fetch batch ${HPCW_AFTER[@]+"${HPCW_AFTER[@]}"} -- 01-fetch.sbatch) || exit 1
+hpcw_after "afterany:$j1" || undo "$j1"
+j2=$(hpcw_submit xr_bank batch ${HPCW_AFTER[@]+"${HPCW_AFTER[@]}"} -- 02-bank-ingest.sbatch) || undo "$j1"
 # CATALOG_DEPEND adds to stage 3's wait (grid/gate.sh names its first catalog job there, so two
 # catalog builds never run at once and the C-ArmLSpine ingest never holds back the fetch).
-mapfile -t after < <(hpcw_after "afterany:$j2${CATALOG_DEPEND:+,$CATALOG_DEPEND}")
-j3=$(hpcw_submit xr_catalog batch "${after[@]}" -- 03-catalog.sbatch) || undo "$j1" "$j2"
+hpcw_after "afterany:$j2${CATALOG_DEPEND:+,$CATALOG_DEPEND}" || undo "$j1" "$j2"
+j3=$(hpcw_submit xr_catalog batch ${HPCW_AFTER[@]+"${HPCW_AFTER[@]}"} -- 03-catalog.sbatch) || undo "$j1" "$j2"
 {
   echo "$(date '+%F %T') fetch=$j1 bank=$j2 catalog=$j3 only=${ONLY:-all} credentialed=$CRED size_gb=$total_gb pydrv=$PYDRV"
 } | tee -a "$REPO/grid/LAST_RUN.txt"

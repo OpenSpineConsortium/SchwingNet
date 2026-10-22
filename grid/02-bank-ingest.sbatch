@@ -64,7 +64,7 @@ for recipe in "$BANKS"/*.json; do
 done
 {
   echo
-  if [ "$failed" = 0 ]; then echo "Every recipe that had a raw copy was banked and ingested."; else echo "Some recipes failed; the lines above say which, the log logs/xr_bank_${SLURM_JOB_ID:-}.out says why."; fi
+  if [ "$failed" = 0 ]; then echo "Every recipe that had a raw copy was banked and ingested."; else echo "Some recipes failed; the lines above say which, the job's log, which the gate word status shows, says why."; fi
   echo "A recipe spelled 'to confirm' is filled in from the page, by pull request, and the gate word fetch <id> runs this stage again for that id."
 } >> "$REPORT"
 cat "$REPORT"
