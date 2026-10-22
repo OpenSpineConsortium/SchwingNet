@@ -11,8 +11,8 @@ the commit, the catalog's sha256 and the start, so no two runs share one; RUN.js
 before the first step, so the trainer and the evaluator stamp their numbers from it and never
 type a fact of their own. The steps are the split check (SQL over the catalog, here), training
 and evaluation, each one process, each timed and recorded as a job with what it cost, in local
-mode as a subprocess in the train-cpu environment and in slurm mode as one sbatch each in
-train-gpu, polled no faster than once a minute (grid rule 7). `record` copies the run's small
+mode as a subprocess in the train-cpu environment and in slurm mode as one job each in
+train-gpu, queued through hpcworker's job submit as the gpu class (issue #77), polled no faster than once a minute (grid rule 7). `record` copies the run's small
 files, never the checkpoint, into the research folder with one ledger row, so the repository
 holds what ran and what it cost beside the numbers.
 
@@ -40,8 +40,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
-from schwingnet.flow import JobRecord, JobSpec, RunRecord, Stage, Step, ledger_row, run_id  # noqa: E402
-from schwingnet.slurm import elapsed_seconds, is_finished, job_id_of, sbatch_script  # noqa: E402
+from schwingnet.flow import JobClass, JobRecord, JobSpec, RunRecord, Stage, Step, ledger_row, run_id  # noqa: E402
+from schwingnet.slurm import elapsed_seconds, is_finished, sbatch_script, submitted_of  # noqa: E402
 
 
 def _load_witness():
@@ -115,9 +115,11 @@ def job_specs(args):
     )
     evaluate_command = f"python tools/evaluate.py --catalog {args.catalog} --run {{run_dir}}"
     gpus = 1 if args.mode == "slurm" else 0
+    job_class = JobClass.GPU if gpus else JobClass.CPU
+    common = {"job_class": job_class, "partition": args.partition, "cpus": args.cpus, "memory_gb": args.memory_gb, "gpus": gpus, "environment": args.environment}
     return (
-        JobSpec(step=Step.TRAIN, command=train_command, partition=args.partition, qos=args.qos, cpus=args.cpus, memory_gb=args.memory_gb, gpus=gpus, hours=args.hours, environment=args.environment),
-        JobSpec(step=Step.EVALUATE, command=evaluate_command, partition=args.partition, qos=args.qos, cpus=args.cpus, memory_gb=args.memory_gb, gpus=gpus, hours=max(0.25, args.hours / 4), environment=args.environment),
+        JobSpec(step=Step.TRAIN, command=train_command, hours=args.hours, **common),
+        JobSpec(step=Step.EVALUATE, command=evaluate_command, hours=max(0.25, args.hours / 4), **common),
     )
 
 
@@ -140,22 +142,44 @@ def sacct(job_id):
     return state, elapsed, int(exit_code.split(":")[0]), sum(1 for line in lines if line.startswith("REQUEUED"))
 
 
+def hpcworker():
+    """The hpcworker to run: HPCWORKER, as the grid gate hands it, else the one on PATH."""
+    found = os.environ.get("HPCWORKER") or shutil.which("hpcworker")
+    if not found:
+        raise FlowError("slurm mode queues through hpcworker's job submit: set HPCWORKER or put hpcworker on PATH")
+    return found
+
+
+def submit_call(job, run_dir, script):
+    """hpcworker's job submit for one step, in the run directory, never requeued: a requeued
+    step would train a second time beside the first."""
+    narrowed = ["--partition", job.partition] if job.partition else []
+    gpus = ["--gpus", str(job.gpus)] if job.gpus else []
+    return ["bash", hpcworker(), "job", "submit", "--project", "schwingnet", "--name", f"flow_{job.step.value}", "--class", job.job_class.value, *narrowed, *gpus, "--no-requeue", "--dir", str(run_dir), "--", str(script)]
+
+
 def run_slurm(job, run_dir, poll):
-    """One step as one sbatch, polled no faster than once a minute until sacct calls it finished."""
+    """One step as one job through hpcworker's job submit, its shape asked with --check first, then
+    polled no faster than once a minute until sacct calls it finished."""
     script = Path(run_dir) / f"{job.step.value}.sbatch"
-    script.write_text(sbatch_script(job.model_copy(update={"command": job.command.format(run_dir=run_dir)}), str(run_dir), str(ROOT)), encoding="utf-8")
-    submitted = subprocess.run(["sbatch", str(script)], capture_output=True, text=True, check=False)
-    job_id = job_id_of(submitted.stdout)
-    if job_id is None:
-        raise FlowError(f"sbatch refused {script.name}: {submitted.stderr.strip()}")
-    print(json.dumps({"step": job.step.value, "job_id": job_id, "submitted": now()}), flush=True)
+    script.write_text(sbatch_script(job.model_copy(update={"command": job.command.format(run_dir=run_dir)}), str(ROOT)), encoding="utf-8")
+    call = submit_call(job, run_dir, script)
+    checked = subprocess.run([*call[:4], "--check", *call[4:]], capture_output=True, text=True, check=False)
+    if checked.returncode != 0:
+        raise FlowError(f"hpcworker refused {script.name}: {(checked.stdout + checked.stderr).strip()}")
+    submitted = subprocess.run(call, capture_output=True, text=True, check=False)
+    answer = submitted_of(submitted.stdout)
+    if answer is None:
+        raise FlowError(f"hpcworker refused {script.name}: {(submitted.stdout + submitted.stderr).strip()}")
+    job_id, partition, qos = answer
+    print(json.dumps({"step": job.step.value, "job_id": job_id, "partition": partition, "submitted": now()}), flush=True)
     while True:
         time.sleep(max(MIN_POLL, poll))
         answer = sacct(job_id)
         if answer and is_finished(answer[0]):
             break
     state, elapsed, exit_code, preemptions = answer
-    return JobRecord(step=job.step, job_id=job_id, partition=job.partition, qos=job.qos, hours_requested=job.hours, seconds_used=elapsed_seconds(elapsed), gpus=job.gpus, preemptions=preemptions, exit_code=exit_code if state.startswith("COMPLETED") else max(1, exit_code))
+    return JobRecord(step=job.step, job_id=job_id, partition=partition, qos=qos, hours_requested=job.hours, seconds_used=elapsed_seconds(elapsed), gpus=job.gpus, preemptions=preemptions, exit_code=exit_code if state.startswith("COMPLETED") else max(1, exit_code))
 
 
 def write_record(run_dir, record):
@@ -282,11 +306,10 @@ def add_run_arguments(parser):
     parser.add_argument("--max-frames", type=int, default=0)
     parser.add_argument("--weights", default=None)
     parser.add_argument("--hours", type=float, default=4.0, help="the training job's wall time")
-    # A GPU step as Beethoven for VS Code submits one (extension/src/core/slurm.ts): the three GPU
-    # partitions, the first with room, and the gpu QoS they take, without which Slurm refuses the job
-    # (issue #74). Only slurm mode submits; local mode runs each step here, under neither.
-    parser.add_argument("--partition", default="gmsap,gvohp,galhp", help="slurm mode: the partitions a step may run on")
-    parser.add_argument("--qos", default="gpu", help="slurm mode: the QoS those partitions take")
+    # A step names hpcworker's gpu class and never a QoS: the site profile gives the GPU partitions,
+    # the first with room, and the QoS they take, without which Slurm refused a GPU job (issue #74).
+    # Only slurm mode submits; local mode runs each step here.
+    parser.add_argument("--partition", default=None, help="slurm mode: one of the gpu class's partitions, else any of them")
     parser.add_argument("--cpus", type=int, default=4)
     parser.add_argument("--memory-gb", type=int, default=32)
     parser.add_argument("--environment", default=None, help="train-cpu locally, train-gpu on the grid")
@@ -310,7 +333,7 @@ def parse(argv):
     if getattr(args, "environment", None) is None and hasattr(args, "mode"):
         args.environment = "train-cpu" if args.mode == "local" else "train-gpu"
     if hasattr(args, "mode") and args.mode == "local":
-        args.partition, args.qos = "local", None
+        args.partition = None
     return args
 
 

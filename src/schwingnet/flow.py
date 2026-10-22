@@ -50,15 +50,28 @@ class Stage(StrEnum):
     LEVEL = "level"
 
 
+class JobClass(StrEnum):
+    """hpcworker's job classes (issue #77): the site profile gives each its partitions and QoS."""
+
+    CPU = "cpu"
+    BATCH = "batch"
+    GPU = "gpu"
+
+
 class JobSpec(BaseModel):
-    """What one step asks the scheduler for; the sbatch script is rendered from it."""
+    """What one step asks the scheduler for; the batch script is rendered from it.
+
+    A step names a class and never a QoS: hpcworker's job submit takes the partitions, the QoS and
+    the GPU request from the site profile, since a QoS guessed here was refused (issue #74).
+    partition, when given, narrows the class to one of its own partitions.
+    """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     step: Step
     command: str = Field(min_length=1)
-    partition: str = Field(min_length=1)
-    qos: str | None = None
+    job_class: JobClass
+    partition: str | None = Field(default=None, pattern=r"^[A-Za-z0-9_.-]{1,64}$")
     cpus: int = Field(ge=1, le=256)
     memory_gb: int = Field(ge=1, le=2048)
     gpus: int = Field(ge=0, le=8)

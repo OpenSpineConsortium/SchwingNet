@@ -1,12 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=sn_carmlspine
-#SBATCH --partition=reqp
-#SBATCH --qos=requeue
-#SBATCH --requeue
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=24G
 #SBATCH --time=04:00:00
-#SBATCH --output=logs/%x_%j.out
 # C-ArmLSpine's bank ingested as two shards (issue #53): the real X-ray builders' bank at
 # realxray/carmlspine is split by case, and its own split does not follow data/splits/test-persons.json,
 # which freezes case42, case121, case136, case134 and case39 as test persons, so the bank is read

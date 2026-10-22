@@ -1,16 +1,18 @@
 #!/bin/bash
-# Submit the X-ray chain as three dependent Slurm jobs (bash 4.2; the login node runs nothing
-# but sbatch, df and this script, which is why the size budget is read with awk and not python):
+# Submit the X-ray chain as three dependent Slurm jobs through hpcworker's job submit (grid/hpcw.sh;
+# bash 4.2; the login node runs nothing but hpcworker, df and this script, which is why the size
+# budget is read with awk and not python):
 #   1. grid/01-fetch.sbatch        every open set of grid/fetch-xray.json to the data root
 #   2. grid/02-bank-ingest.sbatch  each raw copy into a bank, each bank into a shard (afterany:1)
 #   3. grid/03-catalog.sbatch      the catalog rebuilt and split-checked (afterany:2)
 # afterany, not afterok: a set that failed to fetch must not strand the rest, and each stage
-# reports what it found. The job ids go to grid/LAST_RUN.txt and the logs under grid/logs/.
+# reports what it found. The job ids go to grid/LAST_RUN.txt, the stage reports to grid/logs/ and
+# each job's output to hpcworker's log folder for the project.
 #
 #   bash grid/run-xray-chain.sh                      # every open set
 #   bash grid/run-xray-chain.sh --only lumos,fracatlas
 #   bash grid/run-xray-chain.sh --credentialed --only mimic_cxr_jpg   # the opt-in PhysioNet list
-#   SBATCH=echo bash grid/run-xray-chain.sh           # dry run: print the submissions
+#   HPCW_DRY=1 bash grid/run-xray-chain.sh            # dry run: print the submissions
 #
 # Before submitting it sums the sizes the list states for the chosen entries and refuses when
 # they exceed the volume's free space minus a 1 TB margin (df on /rs/rs_grp_oschome at submit
@@ -19,7 +21,6 @@
 # else python3 (then stage 2 and 3 fail at pydantic, and the report says so).
 set -uo pipefail
 REPO=${SCHWINGNET:-$HOME/SchwingNet}
-SBATCH=${SBATCH:-sbatch}
 DF=${DF:-df}
 VOLUME=${VOLUME:-/rs/rs_grp_oschome}
 # 5 TB, not 1: acquisition_fetch.sh stops its own job when the volume falls under 5 TB free
@@ -78,33 +79,27 @@ FETCH_ARGS=""
 [ "$CRED" = 0 ] || FETCH_ARGS="$FETCH_ARGS --credentialed"
 ONLY_IDS=$(echo "$ONLY" | tr ',' ' ')
 
-submit() {  # submit [sbatch options...] SCRIPT: prints the job id; a dry run prints the line instead
-  local out
-  if [ "$SBATCH" != sbatch ]; then
-    # The stage's number stands in for the job id, since a subshell cannot count for its caller.
-    echo "would submit: sbatch --parsable -D $REPO/grid $*" >&2; echo "DRY$(basename "${@: -1}" | cut -c2)"; return 0
-  fi
-  out=$("$SBATCH" --parsable -D "$REPO/grid" "$@") || { echo "sbatch failed: $out" >&2; return 1; }
-  echo "$out" | tail -n 1 | cut -d';' -f1
-}
-# The stages read their settings from the environment (--export=ALL), never from --export's
-# own list, whose comma-separated grammar would cut an --only list of ids at its first comma.
+# shellcheck source=grid/hpcw.sh
+. "$REPO/grid/hpcw.sh"
+# The stages read their settings from the environment, which job submit hands each job, never from
+# --export's own list, whose comma-separated grammar would cut an --only list of ids at its first comma.
 export FETCH_ARGS ONLY="$ONLY_IDS"
 # DEPEND (sbatch's dependency grammar, as grid/gate.sh gives it) holds stage 1 back until the jobs
-# it names allow; a dependency that can never be met cancels the stage instead of stranding it.
-first=()
-[ -z "${DEPEND:-}" ] || first=(--dependency="$DEPEND" --kill-on-invalid-dep=yes)
+# it names allow; job submit ends a stage whose dependency can never be met instead of stranding it.
+mapfile -t first < <(hpcw_after "${DEPEND:-}")
 # All three or none: a stage refused after the first cancels what was submitted, so no fetch runs
 # that nothing recorded and no later chain waits on half of this one.
 undo() { "${SCANCEL:-scancel}" "$@" && echo "cancelled what was submitted before the refusal: $*" >&2; exit 1; }
-j1=$(submit ${first[@]+"${first[@]}"} --export=ALL "$REPO/grid/01-fetch.sbatch") || exit 1
-j2=$(submit --dependency=afterany:"$j1" --export=ALL "$REPO/grid/02-bank-ingest.sbatch") || undo "$j1"
+j1=$(hpcw_submit xr_fetch batch ${first[@]+"${first[@]}"} -- 01-fetch.sbatch) || exit 1
+mapfile -t after < <(hpcw_after "afterany:$j1")
+j2=$(hpcw_submit xr_bank batch "${after[@]}" -- 02-bank-ingest.sbatch) || undo "$j1"
 # CATALOG_DEPEND adds to stage 3's wait (grid/gate.sh names its first catalog job there, so two
 # catalog builds never run at once and the C-ArmLSpine ingest never holds back the fetch).
-j3=$(submit --dependency=afterany:"$j2"${CATALOG_DEPEND:+,$CATALOG_DEPEND} --export=ALL "$REPO/grid/03-catalog.sbatch") || undo "$j1" "$j2"
+mapfile -t after < <(hpcw_after "afterany:$j2${CATALOG_DEPEND:+,$CATALOG_DEPEND}")
+j3=$(hpcw_submit xr_catalog batch "${after[@]}" -- 03-catalog.sbatch) || undo "$j1" "$j2"
 {
   echo "$(date '+%F %T') fetch=$j1 bank=$j2 catalog=$j3 only=${ONLY:-all} credentialed=$CRED size_gb=$total_gb pydrv=$PYDRV"
 } | tee -a "$REPO/grid/LAST_RUN.txt"
 echo "submitted: 1 fetch $j1 -> 2 bank-ingest $j2 (afterany) -> 3 catalog $j3 (afterany)"
 echo "ETA: stage 1 is network-bound, about 1 hour per 20 GB on a compute node (${total_gb} GB stated, so about $(( total_gb / 20 + 1 )) hours; a 4-day wall time, requeued on preemption); stage 2 minutes per source (hashing and copying; a JPG set converts at a few hundred frames a minute); stage 3 under a minute."
-echo "watch: squeue -u \$USER; the reports: $REPO/grid/logs/0*-STAGE-REPORT.md"
+echo "watch: the gate word status; the reports: $REPO/grid/logs/0*-STAGE-REPORT.md"

@@ -1,12 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=sn_weights
-#SBATCH --partition=reqp
-#SBATCH --qos=requeue
-#SBATCH --requeue
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=2G
 #SBATCH --time=00:30:00
-#SBATCH --output=logs/%x_%j.out
 # The ImageNet ResNet-18 file the version 1 run starts from (issue #53): tools/train.py takes it as
 # a file and never downloads one, so this job fetches it once onto the lab volume. torchvision names
 # the file by the first eight hex digits of its sha256 (resnet18-f37072fd.pth), so the file is kept

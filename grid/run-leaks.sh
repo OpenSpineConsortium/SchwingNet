@@ -1,6 +1,7 @@
 #!/bin/bash
 # Submit the leak checks (issue #9) as a Slurm array of fingerprint tasks, one per shard, and the
-# join after it (bash 4.2; the login node runs nothing but sbatch, find and this script):
+# join after it, both through hpcworker's job submit (grid/hpcw.sh; bash 4.2; the login node runs
+# nothing but hpcworker, find and this script):
 #   1. grid/04-leaks.sbatch       one task per shard under <data root>/*/shards/*/, %K at a time
 #   2. grid/05-leaks-join.sbatch  CHK-6 and CHK-7 over every fingerprint (afterany:1)
 # The shard list is written first, to <out>/runs/<stamp>/shards.txt, and is what the array
@@ -9,7 +10,7 @@
 #   bash grid/run-leaks.sh                                    # every shard on the volume
 #   NEW=carmlspine/2026-10-21-0123456789ab bash grid/run-leaks.sh   # one new shard against the rest
 #   CONCURRENCY=32 bash grid/run-leaks.sh                     # 32 array tasks at once (16 unless said)
-#   SBATCH=echo bash grid/run-leaks.sh                        # dry run: print the submissions
+#   HPCW_DRY=1 bash grid/run-leaks.sh                         # dry run: print the submissions
 #   OUTSIDE_SLURM=1 DATA_ROOT=<root> bash grid/run-leaks.sh   # off the grid: the tasks, then the join, here
 #
 # DATA_ROOT (the grid's data root unless set), LEAKS_OUT (<data root>/_leaks), DECLARED
@@ -18,7 +19,6 @@
 # MaxArraySize less one) is refused with the count, since sbatch would refuse it anyway.
 set -uo pipefail
 REPO=${SCHWINGNET:-$HOME/SchwingNet}
-SBATCH=${SBATCH:-sbatch}
 DATA_ROOT=${DATA_ROOT:-/rs/rs_grp_oschome/go2432/data}
 LEAKS_OUT=${LEAKS_OUT:-$DATA_ROOT/_leaks}
 CONCURRENCY=${CONCURRENCY:-16}
@@ -62,19 +62,14 @@ if [ -n "$OUTSIDE_SLURM" ]; then
   exit $?
 fi
 
-submit() {  # submit [sbatch options...] SCRIPT: prints the job id; a dry run prints the line instead
-  local out
-  if [ "$SBATCH" != sbatch ]; then
-    echo "would submit: sbatch --parsable -D $REPO/grid $*" >&2; echo "DRY$(basename "${@: -1}" | cut -c2)"; return 0
-  fi
-  out=$("$SBATCH" --parsable -D "$REPO/grid" "$@") || { echo "sbatch failed: $out" >&2; return 1; }
-  echo "$out" | tail -n 1 | cut -d';' -f1
-}
-j1=$(submit --array=0-$((count - 1))%"$CONCURRENCY" --export=ALL "$REPO/grid/04-leaks.sbatch") || exit 1
+# shellcheck source=grid/hpcw.sh
+. "$REPO/grid/hpcw.sh"
+j1=$(hpcw_submit leaks_fingerprint batch --array "0-$((count - 1))%$CONCURRENCY" -- 04-leaks.sbatch) || exit 1
 # Both or neither: an array whose join was refused would write fingerprints nobody reads.
-j2=$(submit --dependency=afterany:"$j1" --export=ALL "$REPO/grid/05-leaks-join.sbatch") \
+mapfile -t after < <(hpcw_after "afterany:$j1")
+j2=$(hpcw_submit leaks_join batch "${after[@]}" -- 05-leaks-join.sbatch) \
   || { "${SCANCEL:-scancel}" "$j1" && echo "cancelled the fingerprint array $j1, since its join was refused" >&2; exit 1; }
 echo "$(date '+%F %T') leaks fingerprint=$j1 join=$j2 shards=$count new=${NEW:-none} run=$RUN pydrv=$PYDRV" \
   | tee -a "$REPO/grid/LAST_RUN.txt"
 echo "submitted: 4 fingerprint array $j1 ($count tasks, $CONCURRENCY at a time) -> 5 join $j2 (afterany)"
-echo "watch: squeue -u \$USER; the report: $REPO/grid/logs/05-leaks-STAGE-REPORT.md; the rows: $RUN/LEAKS.md"
+echo "watch: the gate word status; the report: $REPO/grid/logs/05-leaks-STAGE-REPORT.md; the rows: $RUN/LEAKS.md"

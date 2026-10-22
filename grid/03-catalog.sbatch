@@ -1,12 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=xr_catalog
-#SBATCH --partition=reqp
-#SBATCH --qos=requeue
-#SBATCH --requeue
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=24G
 #SBATCH --time=12:00:00
-#SBATCH --output=logs/%x_%j.out
 # Stage 3 of the X-ray chain: rebuild the read-only catalog from every shard manifest under
 # the data root (tools/catalog.py build, each source's chain at its head alone, since stage 2
 # supersedes a shard whose bank grew) and run the REFORMS split check on the new version.

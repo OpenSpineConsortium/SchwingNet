@@ -1,7 +1,8 @@
 """grid/run-latency-sweep.sh and grid/latency-sweep.sbatch (issue #13): the scripts parse, a probe is
 one small CPU job, each run directory gets a GPU job, a CPU job after it and a sweep array after it,
 in parallel across runs, and a run without its checkpoint or without a catalog is refused before
-anything is submitted. A fake sbatch records what would be submitted; nothing reaches a scheduler.
+anything is submitted. Every job goes through hpcworker's job submit with a class (issue #77); the
+fake hpcworker under tests/fakes/ records what would be queued, and nothing reaches a scheduler.
 Standard library only, so the required check runs it."""
 
 import os
@@ -13,26 +14,19 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 GRID = ROOT / "grid"
 
-FAKE_SBATCH = """#!/bin/bash
-n=$(( $(wc -l < "$LOG" 2>/dev/null || echo 0) + 1001 ))
-echo "$*" >> "$LOG"
-echo "$n"
-"""
+FAKE_HPCWORKER = ROOT / "tests" / "fakes" / "hpcworker"
 
 
 class LatencyGridTest(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp())
-        self.sbatch = self.tmp / "sbatch"
-        self.sbatch.write_text(FAKE_SBATCH, encoding="utf-8")
-        self.sbatch.chmod(0o755)
         self.log = self.tmp / "submitted.txt"
         self.catalog = self.tmp / "catalog.sqlite"
         self.catalog.write_bytes(b"")
         # a copy of the two scripts, so a test's LAST_LATENCY.txt never lands in the checkout
         self.repo = self.tmp / "repo"
         (self.repo / "grid").mkdir(parents=True)
-        for name in ("run-latency-sweep.sh", "latency-sweep.sbatch"):
+        for name in ("run-latency-sweep.sh", "latency-sweep.sbatch", "hpcw.sh"):
             (self.repo / "grid" / name).write_bytes((GRID / name).read_bytes())
 
     def make_run(self, name):
@@ -43,8 +37,11 @@ class LatencyGridTest(unittest.TestCase):
         (run / "train" / "checkpoint.json").write_text("{}", encoding="utf-8")
         return run
 
+    def env(self):
+        return dict(os.environ, HPCWORKER=str(FAKE_HPCWORKER), HPCW_LOG=str(self.log), HPCW_FIRST="1001", SCHWINGNET=str(self.repo))
+
     def submit(self, *args):
-        env = dict(os.environ, SBATCH=str(self.sbatch), LOG=str(self.log), SCHWINGNET=str(self.repo))
+        env = self.env()
         done = subprocess.run(["bash", str(self.repo / "grid" / "run-latency-sweep.sh"), *args], env=env, capture_output=True, text=True, timeout=60)
         lines = self.log.read_text(encoding="utf-8").splitlines() if self.log.exists() else []
         return done, lines
@@ -59,8 +56,8 @@ class LatencyGridTest(unittest.TestCase):
         self.assertEqual(done.returncode, 0, done.stderr)
         self.assertEqual(len(lines), 1)
         self.assertIn("PART=probe", lines[0])
-        self.assertNotIn("--gres", lines[0])
-        self.assertIn("--partition=reqp --qos=requeue", lines[0])
+        self.assertIn("--class batch --name latency_probe ", lines[0])
+        self.assertIn("--cpus 1 --mem 2G --time 00:10:00 latency-sweep.sbatch", lines[0])
 
     def test_each_run_gets_a_gpu_job_then_a_cpu_job_and_a_sweep_array(self):
         first, second = self.make_run("a"), self.make_run("b")
@@ -69,18 +66,22 @@ class LatencyGridTest(unittest.TestCase):
         self.assertEqual(len(lines), 6)
         gpu_a, cpu_a, sweep_a, gpu_b = lines[0], lines[1], lines[2], lines[3]
         self.assertIn("PART=gpu", gpu_a)
-        # gmsap, the H200 nodes the retraining plan measures latency on, with the gpu QoS (issue #74)
-        self.assertIn("--partition=gmsap --qos=gpu --gres=gpu:1 ", gpu_a)
+        # the gpu class, whose QoS the site profile gives (issues #74, #77), narrowed to gmsap, the
+        # H200 nodes the retraining plan measures latency on
+        self.assertIn("--class gpu --name latency_gpu --partition gmsap latency-sweep.sbatch", gpu_a)
         self.assertIn(f"CATALOG={self.catalog}", gpu_a)
         self.assertIn(f"RUN={first}", gpu_a)
         self.assertNotIn("--dependency", gpu_a)
         self.assertIn("--dependency=afterany:1001", cpu_a)
         self.assertIn("PART=cpu", cpu_a)
-        self.assertIn("--partition=reqp --qos=requeue", cpu_a)
-        self.assertNotIn("--gres", cpu_a)
-        self.assertIn("--array=0-1", sweep_a)
+        self.assertIn("--class batch --name latency_cpu ", cpu_a)
+        self.assertIn("--array 0-1", sweep_a)
         self.assertIn("--dependency=afterany:1001", sweep_a)
-        self.assertIn("--partition=gmsap --qos=gpu --gres=gpu:1 ", sweep_a)
+        self.assertIn("--class gpu --name latency_sweep ", sweep_a)
+        self.assertIn("--partition gmsap ", sweep_a)
+        for line in lines:
+            self.assertNotIn("--qos", line)
+            self.assertNotIn("--gres", line)
         self.assertIn("SWEEPS=case134:/f134:/b134.jsonl case39:/f39:/b39.jsonl", sweep_a)
         self.assertIn(f"RUN={second}", gpu_b)
         self.assertNotIn("--dependency", gpu_b)
@@ -109,13 +110,12 @@ class LatencyGridTest(unittest.TestCase):
 
     def test_a_relative_run_is_passed_to_the_jobs_as_an_absolute_path(self):
         self.make_run("rel")
-        env = dict(os.environ, SBATCH=str(self.sbatch), LOG=str(self.log), SCHWINGNET=str(self.repo))
         done = subprocess.run(["bash", str(self.repo / "grid" / "run-latency-sweep.sh"), "--catalog", "catalog.sqlite", "rel"],
-                              env=env, capture_output=True, text=True, timeout=60, cwd=self.tmp)
+                              env=self.env(), capture_output=True, text=True, timeout=60, cwd=self.tmp)
         self.assertEqual(done.returncode, 0, done.stderr)
         submitted = self.log.read_text(encoding="utf-8")
-        self.assertIn(f"RUN={self.tmp.resolve()}/rel,", submitted)
-        self.assertIn(f"CATALOG={self.tmp.resolve()}/catalog.sqlite,", submitted)
+        self.assertIn(f"RUN={self.tmp.resolve()}/rel ", submitted)
+        self.assertIn(f"CATALOG={self.tmp.resolve()}/catalog.sqlite ", submitted)
 
     def test_a_path_with_a_comma_or_an_extra_colon_is_refused(self):
         done, lines = self.submit("--catalog", str(self.catalog), str(self.make_run("a")), "--sweep", "case134:/f:/b:/c")

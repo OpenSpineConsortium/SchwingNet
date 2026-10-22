@@ -4,8 +4,9 @@ id that is not a plain name are refused before anything is submitted; start subm
 with its Slurm dependencies, leaving out the setup and weights jobs when their results are there;
 start refuses while one of the gate's jobs is live; stop cancels the gate's jobs and nothing else;
 a credentialed fetch needs ~/.netrc at mode 600 with a PhysioNet line; v1 and latency find their
-catalog. Fake sbatch, squeue, sacct, scancel and df on PATH record what would be submitted; nothing
-reaches a scheduler. Standard library only, so the required check runs it."""
+catalog. Every job goes through hpcworker's job submit with a class (issue #77): the fake hpcworker
+under tests/fakes/ records what would be queued, and fake squeue, sacct, scancel and df on PATH
+answer for Slurm; nothing reaches a scheduler. Standard library only, so the required check runs it."""
 
 import hashlib
 import os
@@ -17,19 +18,12 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 GRID = ROOT / "grid"
-NEW_SCRIPTS = ("gate.sh", "box.sh", "bin/pixi", "bin/train-cpu-python", "00-setup.sbatch", "00-weights.sbatch",
+FAKE_HPCWORKER = ROOT / "tests" / "fakes" / "hpcworker"
+NEW_SCRIPTS = ("gate.sh", "hpcw.sh", "box.sh", "bin/pixi", "bin/train-cpu-python", "00-setup.sbatch", "00-weights.sbatch",
                "00-carmlspine.sbatch", "v1-driver.sbatch", "run-xray-chain.sh", "run-platform-fetch.sh")
 ENVS = ("default", "train-cpu", "train-gpu", "telemetry")
 
 FAKES = {
-    # one job id per call, counting from 101, each call's arguments and dependency-bearing variables logged
-    # a call whose arguments hold the text of $FAKE/refuse is refused, as a busy controller refuses one
-    "sbatch": """#!/bin/bash
-if [ -s "$FAKE/refuse" ] && [[ "$*" == *"$(cat "$FAKE/refuse")"* ]]; then echo "Socket timed out" >&2; exit 1; fi
-n=$(( $(wc -l < "$FAKE/sbatch.log" 2>/dev/null || echo 0) + 101 ))
-echo "$* | DEPEND=${DEPEND:-} FETCH_ARGS=${FETCH_ARGS:-} DATA_ROOT=${DATA_ROOT:-}" >> "$FAKE/sbatch.log"
-echo "$n"
-""",
     "squeue": """#!/bin/bash
 [ -f "$FAKE/squeue_fails" ] && { echo "slurm_load_jobs error: Socket timed out" >&2; exit 1; }
 cat "$FAKE/queue" 2>/dev/null || true
@@ -76,8 +70,9 @@ class GateTest(unittest.TestCase):
     def gate(self, *words, data_root=None):
         env = dict(os.environ, PATH=f"{self.fake}:{os.environ['PATH']}", FAKE=str(self.fake), SCHWINGNET=str(self.repo),
                    DATA_ROOT=str(self.data) if data_root is None else data_root, RUNS=str(self.runs), MODELS=str(self.models),
-                   NETRC=str(self.netrc), USER="go2432")
-        for name in ("SBATCH", "SQUEUE", "SACCT", "SCANCEL", "DF", "DEPEND", "PYDRV"):
+                   NETRC=str(self.netrc), USER="go2432", HPCWORKER=str(FAKE_HPCWORKER),
+                   HPCW_LOG=str(self.fake / "sbatch.log"), HPCW_REFUSE=str(self.fake / "refuse"), HPCW_LOGS=str(self.fake / "joblogs"))
+        for name in ("HPCW_DRY", "HPCW_FIRST", "SQUEUE", "SACCT", "SCANCEL", "DF", "DEPEND", "PYDRV"):
             env.pop(name, None)
         if data_root == "":
             env.pop("DATA_ROOT")
@@ -271,7 +266,7 @@ class GateTest(unittest.TestCase):
         self.assertEqual(len(self.submitted()), 1, self.submitted())
         line = self.line_of("v1-driver.sbatch")[0]
         self.assertNotIn("--dependency", line)
-        self.assertIn(f"RUNS={self.runs},WEIGHTS={self.models}/resnet18-f37072fd.pth", line)
+        self.assertIn(f"RUNS={self.runs} WEIGHTS={self.models}/resnet18-f37072fd.pth", line)
         self.assertIn("catalog: catalog-000002-0123456789ab.sqlite qualifies for the run (grid/v1-version.sh); no job", done.stdout)
 
     def test_v1_from_nothing_submits_every_input_and_the_run_afterok_on_each(self):
@@ -582,22 +577,40 @@ echo "the split is not disjoint; no training step reads this version"; exit 1
             self.assertNotIn(waits, new[0] + new[1])
         self.assertIn(f"--dependency=afterok:{self.recorded()['catalog']} ", new[1])
 
-    def test_every_job_header_names_its_qos_and_a_gpu_job_takes_the_gpu_qos(self):
-        # Slurm refused the version 1 run for a GPU partition with no QoS (issue #74); a GPU job takes
-        # the gpu QoS on gmsap, gvohp or galhp, as Beethoven for VS Code submits one
+    def test_no_job_header_places_a_job_and_every_submission_names_a_class(self):
+        # Slurm refused the version 1 run for a GPU partition with no QoS (issue #74), so where a job
+        # runs is hpcworker's job submit's, from the site profile (issue #77): a header holds only
+        # the wall time, the CPUs and the memory, and each submission names cpu, batch or gpu
         for script in sorted(GRID.glob("*.sbatch")):
             header = [line for line in script.read_text(encoding="utf-8").splitlines() if line.startswith("#SBATCH")]
-            partitions = [line.split("=", 1)[1] for line in header if line.startswith("#SBATCH --partition=")]
-            qos = [line.split("=", 1)[1] for line in header if line.startswith("#SBATCH --qos=")]
-            self.assertEqual(len(partitions), 1, script.name)
-            self.assertEqual(len(qos), 1, f"{script.name}: a partition with no QoS")
-            if any(line.startswith("#SBATCH --gres=gpu") for line in header):
-                self.assertEqual(qos, ["gpu"], script.name)
-                self.assertTrue(set(partitions[0].split(",")) <= {"gmsap", "gvohp", "galhp"}, script.name)
-            else:
-                self.assertEqual((partitions, qos), (["reqp"], ["requeue"]), script.name)
-        header = (GRID / "v1-driver.sbatch").read_text(encoding="utf-8")
-        self.assertIn("#SBATCH --partition=gmsap,gvohp,galhp\n#SBATCH --qos=gpu\n#SBATCH --gres=gpu:1\n", header)
+            self.assertEqual(sorted(line.split("=")[0] for line in header),
+                             ["#SBATCH --cpus-per-task", "#SBATCH --mem", "#SBATCH --time"], script.name)
+        for path in [*GRID.glob("*.sh"), ROOT / "tools" / "flow.py"]:
+            text = path.read_text(encoding="utf-8")
+            self.assertNotRegex(text, r'"\$SBATCH"|\bsbatch --|--qos[= ]|--gres', path.name)
+        self.assertEqual(self.gate("start").returncode, 0)
+        lines = self.submitted()
+        self.assertTrue(lines)
+        for line in lines:
+            self.assertRegex(line, r"^--class (cpu|batch|gpu) --name [a-z0-9_]+ ", line)
+        v1 = self.line_of("v1-driver.sbatch")[0]
+        self.assertTrue(v1.startswith("--class gpu --name v1_driver "), v1)
+        self.assertIn(" --no-requeue v1-driver.sbatch", v1)
+
+    def test_a_dependency_reaches_job_submit_as_after_options(self):
+        script = f'REPO={self.repo}; . {GRID / "hpcw.sh"}; hpcw_after "$1"'
+        done = subprocess.run(["bash", "-c", script, "-", "afterok:101,afterany:102:103"], capture_output=True, text=True)
+        self.assertEqual(done.stdout.split(), ["--after", "101:ok", "--after", "102:any", "--after", "103:any"])
+        done = subprocess.run(["bash", "-c", script, "-", "singleton"], capture_output=True, text=True)
+        self.assertIn("neither afterok nor afterany", done.stderr)
+
+    def test_without_hpcworker_no_word_runs(self):
+        env = dict(os.environ, PATH=f"{self.fake}:/usr/bin:/bin", FAKE=str(self.fake), SCHWINGNET=str(self.repo),
+                   HPCWORKER=str(self.tmp / "no-such-hpcworker"))
+        done = subprocess.run(["bash", str(self.repo / "grid" / "gate.sh"), "start"], env=env, capture_output=True, text=True, timeout=60)
+        self.assertEqual(done.returncode, 2, done.stdout)
+        self.assertIn("HPCWORKER names", done.stdout)
+        self.assertEqual(self.submitted(), [])
 
     def test_latency_takes_the_newest_run_with_a_checkpoint_and_its_catalog(self):
         self.environments_ready()
@@ -630,7 +643,7 @@ echo "the split is not disjoint; no training step reads this version"; exit 1
         done = self.gate("latency")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         lines = self.line_of("latency-sweep.sbatch")
-        self.assertTrue(lines and all(f"RUN={finished}," in line for line in lines), lines)
+        self.assertTrue(lines and all(f"RUN={finished} " in line for line in lines), lines)
         status = self.gate("status")
         self.assertIn("has not finished", status.stdout)
 
@@ -728,7 +741,9 @@ echo "the split is not disjoint; no training step reads this version"; exit 1
                 self.state_line(base, word, what)
             sacct.append(f"{job}|{name}|{state}|{elapsed}|1:0|n1")
             if lines is not None:
-                (logs / f"{name}_{job}.out").write_text("".join(f"{line}\n" for line in lines), encoding="utf-8")
+                # where hpcworker's job log finds it (tests/fakes/hpcworker): <id>.out, <id>_<task>.out
+                (self.fake / "joblogs").mkdir(exist_ok=True)
+                (self.fake / "joblogs" / f"{job}.out").write_text("".join(f"{line}\n" for line in lines), encoding="utf-8")
         (self.fake / "sacct.out").write_text("".join(f"{row}\n" for row in sacct), encoding="utf-8")
 
     def test_status_shows_the_end_of_an_open_jobs_log_masked_and_cut(self):
@@ -736,7 +751,7 @@ echo "the split is not disjoint; no training step reads this version"; exit 1
         self.failed((300, "start", "setup", "sn_setup", "FAILED", "00:00:10", lines))
         done = self.gate("status")
         self.assertEqual(done.returncode, 0, done.stdout)
-        self.assertIn("## 300 (sn_setup) ended FAILED after 00:00:10, exit 1:0: logs/sn_setup_300.out", done.stdout)
+        self.assertIn("## 300 (setup) ended FAILED after 00:00:10, exit 1:0\n", done.stdout)
         self.assertIn("pixi line 29", done.stdout)
         self.assertNotIn("pixi line 15\n", done.stdout)
         self.assertIn("    pixi line 17\n", done.stdout)
@@ -787,7 +802,7 @@ echo "the split is not disjoint; no training step reads this version"; exit 1
         self.assertEqual(done.returncode, 0, done.stdout)
         self.assertNotIn("## 301", done.stdout)
         self.assertNotIn("## 302", done.stdout)
-        self.assertIn("## 402 (sn_v1) ended CANCELLED after 00:00:00", done.stdout)
+        self.assertIn("## 402 (v1_driver) ended CANCELLED after 00:00:00", done.stdout)
         self.assertIn("cancelled before it started", done.stdout)
         self.assertIn("## 501 (xr_fetch) ended FAILED", done.stdout)
         self.assertIn("    XR_FETCH_RC=1", done.stdout)
@@ -803,7 +818,7 @@ echo "the split is not disjoint; no training step reads this version"; exit 1
         rows = rows[8:] + rows[:1]
         self.failed(*rows)
         done = self.gate("status")
-        self.assertIn("## 700_0 (sn_latency) ended TIMEOUT after 01:00:00, exit 1:0: logs/sn_latency_700_0.out", done.stdout)
+        self.assertIn("## 700_0 (latency_sweep) ended TIMEOUT after 01:00:00, exit 1:0\n", done.stdout)
         self.assertIn("    SN_LATENCY_RC=1", done.stdout)
         self.assertNotIn("700_2 (", done.stdout)
 
@@ -859,13 +874,15 @@ echo "the split is not disjoint; no training step reads this version"; exit 1
                                 capture_output=True, text=True).stdout
         self.assertEqual(masked, "scan_<date withheld>.dcm <date withheld>_<date withheld>\n")
 
-    def test_status_finds_the_log_of_a_job_named_as_an_array_that_is_none(self):
+    def test_status_finds_the_log_a_job_queued_before_hpcworker_wrote_in_grid_logs(self):
+        # a job sbatch queued before issue #77 is in no ledger of hpcworker's; its log is where its
+        # script's own --output put it, %x_%A_%a giving a job that is no array Slurm's NO_VAL
         self.failed((320, "start", "probe", "sn_probe", "FAILED", "00:00:05", None))
         logs = self.repo / "grid" / "logs"
         (logs / "sn_probe_320_4294967294.out").write_text("PROBE start 2026-10-22 01:00:00 on n1 job 320\ncase134 frames 12\nSN_PROBE_RC=1\n",
                                                           encoding="utf-8")
         done = self.gate("status")
-        self.assertIn("logs/sn_probe_320_4294967294.out", done.stdout)
+        self.assertIn("## 320 (probe) ended FAILED", done.stdout)
         self.assertIn("    SN_PROBE_RC=1", done.stdout)
         # the probe prints the sweeps' file names, so its log is shown as shapes too
         self.assertNotIn("case134", done.stdout)
@@ -915,11 +932,11 @@ echo "the split is not disjoint; no training step reads this version"; exit 1
             self.assertEqual(done.returncode, 0, done.stdout)
             for script in ("01-fetch.sbatch", "02-bank-ingest.sbatch", "03-catalog.sbatch", "00-carmlspine.sbatch"):
                 for line in self.line_of(script):
-                    self.assertTrue(line.endswith("DATA_ROOT="), f"{given!r}: {line}")
+                    self.assertIn(" DATA_ROOT= PART=", line, f"{given!r}: {line}")
 
     def test_a_probe_that_was_not_submitted_is_said_and_nothing_stale_is_recorded(self):
         (self.repo / "grid" / "LAST_LATENCY.txt").write_text("probe 999\ngpu /old/run 998\n", encoding="utf-8")
-        (self.fake / "refuse").write_text("sn_probe", encoding="utf-8")
+        (self.fake / "refuse").write_text("latency_probe", encoding="utf-8")
         done = self.gate("start")
         self.assertEqual(done.returncode, 0, done.stdout)
         self.assertIn("the probe was not submitted", done.stdout)

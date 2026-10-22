@@ -1,12 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=xr_leakjoin
-#SBATCH --partition=reqp
-#SBATCH --qos=requeue
-#SBATCH --requeue
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=32G
 #SBATCH --time=12:00:00
-#SBATCH --output=logs/%x_%j.out
 # The leak checks, step 2 of 2 (issue #9): after every task of the fingerprint array (afterany, so
 # a task that failed is counted here and not left as a join that never starts), CHK-6 and CHK-7
 # over the fingerprint of every shard in LEAKS_LIST (tools/leaks.py join): a shard listed with no

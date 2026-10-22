@@ -1,12 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=samples
-#SBATCH --partition=reqp
-#SBATCH --qos=requeue
-#SBATCH --requeue
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=16G
 #SBATCH --time=1-00:00:00
-#SBATCH --output=logs/%x_%j_%a.out
 # The sample index (tools/sample_index.py), one script for its three steps, named by the one
 # argument grid/run-samples.sh gives it:
 #   plan    the roots (every raw location the manifest holds, every registry path, every folder of

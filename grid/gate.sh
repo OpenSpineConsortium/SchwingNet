@@ -3,9 +3,10 @@
 # `schwingnet <word> [<id>]`, so the owner never types a grid command again (his rule of
 # 2026-10-21 19:37 UTC). The gate's side brings the checkout to main first (a clone at ~/SchwingNet
 # when there is none, else a fast-forward) and then runs `bash ~/SchwingNet/grid/gate.sh <word> [<id>]`.
-# On the login node this script runs only bash, git, sbatch, squeue, sacct, scancel, flock, awk,
-# sed and coreutils (warrior kills python by name); every byte of work is a Slurm job, and every
-# Python step of those jobs runs inside the container (grid/box.sh, grid/bin/).
+# On the login node this script runs only bash, git, hpcworker, squeue, sacct, scancel, flock, awk,
+# sed and coreutils (warrior kills python by name); every byte of work is a Slurm job, queued through
+# hpcworker's `job submit` with a class and no partition or QoS of ours (grid/hpcw.sh, issue #77),
+# and every Python step of those jobs runs inside the container (grid/box.sh, grid/bin/).
 #
 #   start           the whole graph, with Slurm dependencies, once:
 #                     setup        the container and the pixi environments, only when pixi.lock
@@ -40,16 +41,19 @@
 # While a version 1 run lasts, grid/logs/HOLD names its job and commit (grid/v1-driver.sbatch); the
 # gate's side skips its fast-forward while the file is there, and every word but a refused one
 # clears a hold whose job Slurm no longer holds, so the run's later steps run the code it recorded.
-# Every submission is one line of grid/logs/GATE_JOBS.txt (<job id> <word> <what> <when>); status
-# and stop read that file and touch no job it does not name. SBATCH, SQUEUE, SACCT and SCANCEL
-# name fakes for the tests; DATA_ROOT, RUNS and MODELS other folders. Exit codes: 0 done, 64 a word
+# Every submission is one line of grid/logs/GATE_JOBS.txt (<job id> <word> <what> <when>) as well
+# as of hpcworker's ledger for the project; status and stop read the gate's file, which knows the
+# word each job came from, and touch no job it does not name. Which of them are live is read from
+# squeue, as before: hpcworker's `job status` reads every job as ended when neither squeue nor sacct
+# answers, and a gate that took that for "nothing live" would queue a second graph beside the first.
+# HPCWORKER names the hpcworker (the gate's clone hands it here), SQUEUE, SACCT and SCANCEL fakes
+# for the tests; DATA_ROOT, RUNS and MODELS other folders. Exit codes: 0 done, 64 a word
 # refused, 75 busy (a word still running, or jobs still live), 2 the checkout or a file missing,
 # 1 a submission failed.
 set -uo pipefail
 # One stream, in order: what the jobs were and why a word was refused reach the gate together.
 exec 2>&1
 REPO=${SCHWINGNET:-$HOME/SchwingNet}
-SBATCH=${SBATCH:-sbatch}
 SQUEUE=${SQUEUE:-squeue}
 SACCT=${SACCT:-sacct}
 SCANCEL=${SCANCEL:-scancel}
@@ -100,6 +104,10 @@ export PATH="$REPO/grid/bin:$PATH" SCHWINGNET="$REPO"
 export PYDRV=$REPO/grid/bin/train-cpu-python
 WHO=${USER:-$(id -un)}
 
+# shellcheck source=grid/hpcw.sh
+. "$REPO/grid/hpcw.sh"
+hpcw_bin > /dev/null || { echo "schwingnet $word: exit 2"; exit 2; }
+
 commit=$(git -C "$REPO" rev-parse --short HEAD 2>/dev/null || echo unknown)
 echo "schwingnet $word${id:+ $id} at commit $commit on $(hostname) $(date -u '+%F %T') UTC"
 
@@ -107,12 +115,9 @@ record() {  # record ID WHAT: one line of the gate's own job list, the word with
   echo "$1 $word${id:+:$id} $2 $(date -u '+%FT%TZ')" >> "$STATE"
   echo "  $2: job $1"
 }
-submit() {  # submit WHAT [sbatch options...] SCRIPT: the job id on stdout, the record on stderr
+submit() {  # submit WHAT CLASS [K=V...] [job submit options...] -- SCRIPT: the job id on stdout, the record on stderr
   local what=$1 out
-  shift
-  out=$("$SBATCH" --parsable -D "$REPO/grid" "$@") || { echo "  sbatch refused $what: $out" >&2; return 1; }
-  out=$(echo "$out" | tail -n 1 | cut -d';' -f1)
-  case "$out" in ''|*[!0-9]*) echo "  sbatch gave no job id for $what: $out" >&2; return 1 ;; esac
+  out=$(hpcw_submit "$@" 2>&1) || { echo "  $out" >&2; return 1; }
   record "$out" "$what" >&2
   echo "$out"
 }
@@ -169,7 +174,7 @@ setup_dependency() {  # prints afterok:<setup job> unless the environments are r
   local job
   envs_ready && return 0
   job=$(live_of setup)
-  [ -n "$job" ] || job=$(submit setup 00-setup.sbatch) || return 1
+  [ -n "$job" ] || job=$(submit setup batch -- 00-setup.sbatch) || return 1
   echo "afterok:$job"
 }
 joined() {  # joined DEP...: the non-empty dependencies, comma-separated
@@ -177,8 +182,9 @@ joined() {  # joined DEP...: the non-empty dependencies, comma-separated
   for one in "$@"; do [ -n "$one" ] && out=${out:+$out,}$one; done
   echo "$out"
 }
-depend_on() {  # depend_on DEPS: the sbatch options for DEPS, none when DEPS is empty
-  [ -n "$1" ] && printf '%s\n' "--dependency=$1" "--kill-on-invalid-dep=yes"
+depend_on() {  # depend_on DEPS: job submit's --after options for DEPS (sbatch's text), none when DEPS is empty
+  # job submit adds --kill-on-invalid-dep=yes itself, so a dependency that can never be met ends the job
+  hpcw_after "$1"
 }
 last_line() {  # last_line PATTERN: the newest line of LAST_RUN.txt that holds PATTERN
   grep -- "$1" "$REPO/grid/LAST_RUN.txt" 2>/dev/null | tail -n 1
@@ -201,7 +207,7 @@ v1_driver() {  # v1_driver DEPS: the version 1 run after DEPS
   local opts
   mapfile -t opts < <(depend_on "$1")
   # ${a[@]+"${a[@]}"}: the grid's bash 4.2 calls an empty array unbound under set -u
-  submit v1_driver ${opts[@]+"${opts[@]}"} --export=ALL,RUNS="$RUNS",WEIGHTS="$WEIGHTS" v1-driver.sbatch >/dev/null
+  submit v1_driver gpu RUNS="$RUNS" WEIGHTS="$WEIGHTS" ${opts[@]+"${opts[@]}"} --no-requeue -- v1-driver.sbatch >/dev/null
 }
 
 word_start() {
@@ -216,16 +222,16 @@ word_start() {
   if weights_ready; then
     echo "  weights: $WEIGHTS is there; no job"
   else
-    job=$(submit weights --export=ALL,MODELS="$MODELS" 00-weights.sbatch) || return 1
+    job=$(submit weights batch MODELS="$MODELS" -- 00-weights.sbatch) || return 1
     weights_dep="afterok:$job"
   fi
   mapfile -t opts < <(depend_on "$setup")
-  ingest=$(submit carmlspine ${opts[@]+"${opts[@]}"} --export=ALL 00-carmlspine.sbatch) || return 1
+  ingest=$(submit carmlspine batch ${opts[@]+"${opts[@]}"} -- 00-carmlspine.sbatch) || return 1
   # The first catalog version: C-ArmLSpine and every shard already on the data root, built once the
   # ingest ends, so the version 1 run starts hours after it and not days after the X-ray fetch. The
   # X-ray chain's own catalog job builds the next version after it, once its banks are in.
   mapfile -t opts < <(depend_on "$(joined "$setup" "afterany:$ingest")")
-  first=$(submit catalog ${opts[@]+"${opts[@]}"} --export=ALL 03-catalog.sbatch) || return 1
+  first=$(submit catalog batch ${opts[@]+"${opts[@]}"} -- 03-catalog.sbatch) || return 1
   # X-ray before CT (the owner's order of 2026-10-21). The fetch waits on setup alone, since without
   # the environments every stage would fail; the chain's catalog waits on the first catalog too.
   XR_FETCH="" XR_CATALOG=""
@@ -272,11 +278,15 @@ SHOWN_JOBS=6 ARRAY_TASKS=2 TAIL_LINES=15 SHAPE_LINES=400 LINE_CHARS=200
 # X-ray stages read DICOM headers and print person keys, the fetches run wget and curl with a
 # sign-in, the probe prints the sweeps' file names, which carry case numbers, and the catalog, the
 # leak checks, the latency jobs and the run print persons.
-OPEN_LOGS=" sn_setup sn_weights "
+# Matched against what the gate recorded the job as (GATE_JOBS.txt), never the name Slurm shows.
+OPEN_LOGS=" setup weights "
 newest_jobs() {  # " <id> <id> ... ": the newest job the gate submitted for each thing it makes
   # Keyed by what was made, so a v1 that ran the ingest again hides start's failed one; an X-ray
   # job's key carries its word, so each fetch's chain is its own.
   echo " $(tac "$STATE" 2>/dev/null | awk '{ key = $3; if (key ~ /^xr_/) key = $2 " " key; if (!(key in seen)) { seen[key] = 1; print $1 } }' | tr '\n' ' ') "
+}
+what_of() {  # what_of ID: what the gate recorded job ID as
+  awk -v j="$1" '$1 == j { what = $3 } END { print what }' "$STATE" 2>/dev/null
 }
 masked() {  # every line status shows of a log or a stage report: masked, then cut
   sed -r -f "$REPO/grid/redact.sed" | cut -c "1-$LINE_CHARS"
@@ -285,21 +295,36 @@ report_shapes() {  # a stage report's lines with their paths cut and a quoting r
   awk -v data="$DATA_ROOT" -v runs="$RUNS" -v models="$MODELS" -v repo="$REPO" \
     -f "$REPO/grid/shape-words.awk" -f "$REPO/grid/report-shapes.awk"
 }
-clean_tail() {  # clean_tail FILE: the file's last 64 KiB as lines of printable ASCII
-  tail -c 65536 "$1" | tr '\r' '\n' | LC_ALL=C tr -cd '\11\12\40-\176'
+printable() {  # the last 64 KiB of stdin as lines of printable ASCII
+  tail -c 65536 | tr '\r' '\n' | LC_ALL=C tr -cd '\11\12\40-\176'
 }
-log_tail() {  # log_tail NAME FILE: a failed job's log, its end whole for an open job, as shapes otherwise
+log_text() {  # log_text ID TASK NAME: the end of a job's output, or nothing when there is none
+  local id=$1 task=$2 name=$3 out old
+  # hpcworker's log of the job, which job submit wrote (issue #77)
+  if out=$(hpcw log --project "$HPCW_PROJECT" "$id" ${task:+--task "$task"} --lines "$SHAPE_LINES" 2>/dev/null) \
+    && [ -n "$out" ] && [[ $out != "HPCW-JOB no output yet"* ]]; then
+    printf '%s\n' "$out" | printable
+    return 0
+  fi
+  # a job sbatch queued before then wrote logs/<Slurm's name>_<id>.out (_<task> for an array task;
+  # _4294967294, Slurm's NO_VAL, for a job that is no array but whose script named its log %x_%A_%a)
+  [[ $name =~ ^[A-Za-z0-9_.-]+$ ]] || return 0
+  for old in "$LOGS/${name}_$id${task:+_$task}.out" "$LOGS/${name}_${id}_4294967294.out"; do
+    [ -f "$old" ] && { printable < "$old"; return 0; }
+  done
+}
+log_tail() {  # log_tail WHAT: a failed job's log on stdin, its end whole for an open job, as shapes otherwise
   local kept withheld
   case "$OPEN_LOGS" in
-    *" $1 "*) clean_tail "$2" | tail -n "$TAIL_LINES" | masked | sed 's/^/    /'; return ;;
+    *" $1 "*) tail -n "$TAIL_LINES" | masked | sed 's/^/    /'; return ;;
   esac
-  kept=$(clean_tail "$2" | tail -n "$SHAPE_LINES" | awk -f "$REPO/grid/shape-words.awk" -f "$REPO/grid/log-shapes.awk")
+  kept=$(tail -n "$SHAPE_LINES" | awk -f "$REPO/grid/shape-words.awk" -f "$REPO/grid/log-shapes.awk")
   withheld=$(echo "$kept" | sed -n 's/^#withheld \([0-9][0-9]*\)$/\1/p' | tail -n 1)
   echo "$kept" | grep -v '^#withheld ' | tail -n "$TAIL_LINES" | masked | sed 's/^/    /'
   echo "    (${withheld:-0} of its last $SHAPE_LINES lines withheld: this job can print DICOM header values, person keys or a sign-in, so only its tracebacks and status lines are shown; the whole log stays on the grid)"
 }
 failed_tails() {  # failed_tails SACCT: the end of the log of each newest job that failed
-  local newest shown=0 more=0 tasks="" job name state elapsed code node base end log
+  local newest shown=0 more=0 tasks="" job name state elapsed code node base task end what text
   newest=$(newest_jobs)
   while IFS='|' read -r job name state elapsed code node; do
     base=${job%%_*} end=${state%% *}
@@ -311,24 +336,22 @@ failed_tails() {  # failed_tails SACCT: the end of the log of each newest job th
     fi
     [ "$shown" -lt "$SHOWN_JOBS" ] || { more=$((more + 1)); continue; }
     shown=$((shown + 1))
-    # the log name the job's own --output=logs/%x_%j.out (%x_%A_%a for an array task) gives
-    if ! [[ $job =~ ^[0-9]+(_[0-9]+)?$ ]] || ! [[ $name =~ ^[A-Za-z0-9_.-]+$ ]]; then
-      echo "## $base ended $end; no log name can be made from what sacct gave"; continue
+    if ! [[ $job =~ ^[0-9]+(_[0-9]+)?$ ]]; then
+      echo "## $base ended $end; no log can be named from what sacct gave"; continue
     fi
-    log=${name}_${job}.out
-    # A job that is no array but whose script names its log %x_%A_%a (latency-sweep.sbatch, run
-    # once for the probe and the sweep) gets the task id 4294967294, Slurm's NO_VAL, in its name.
-    [ -f "$LOGS/$log" ] || [ "$base" != "$job" ] || [ ! -f "$LOGS/${name}_${job}_4294967294.out" ] || log=${name}_${job}_4294967294.out
-    echo "## $job ($name) ended $end after $elapsed, exit $code: logs/$log"
-    if [ -f "$LOGS/$log" ]; then
-      log_tail "$name" "$LOGS/$log"
+    task=""; [ "$base" = "$job" ] || task=${job#*_}
+    what=$(what_of "$base")
+    echo "## $job (${what:-unrecorded}) ended $end after $elapsed, exit $code"
+    text=$(log_text "$base" "$task" "$name")
+    if [ -n "$text" ]; then
+      printf '%s\n' "$text" | log_tail "$what"
     elif [ "$end" = CANCELLED ]; then
       echo "    cancelled before it started (a job it waited on failed, or 'stop'); no log"
     else
-      echo "    no log at logs/$log"
+      echo "    no log of it yet"
     fi
   done <<< "$1"
-  [ "$more" = 0 ] || echo "## $more more failed jobs not shown; their logs are under $LOGS"
+  [ "$more" = 0 ] || echo "## $more more failed jobs not shown; their logs stay on the grid"
 }
 
 word_status() {
@@ -341,7 +364,7 @@ word_status() {
     lines=$("$SACCT" -X -n -P -j "$ids" --format=JobID,JobName,State,Elapsed,ExitCode,NodeList 2>/dev/null)
     while IFS='|' read -r job name state elapsed code node; do
       [ -n "$job" ] || continue
-      echo "  $job $(awk -v j="${job%%_*}" '$1 == j { print $3 }' "$STATE" | tail -n 1) $state $elapsed $code $node"
+      echo "  $job $(what_of "${job%%_*}") $state $elapsed $code $node"
     done <<< "$lines"
     failed_tails "$lines"
   fi
@@ -396,7 +419,7 @@ word_v1() {
   elif weights_ready; then
     echo "  weights: $WEIGHTS is there; no job"
   else
-    job=$(submit weights --export=ALL,MODELS="$MODELS" 00-weights.sbatch) || return 1
+    job=$(submit weights batch MODELS="$MODELS" -- 00-weights.sbatch) || return 1
     weights_dep="afterok:$job"
   fi
   # C-ArmLSpine's train and test shards: its test part is the frozen persons the run is measured on.
@@ -411,7 +434,7 @@ word_v1() {
       echo "    it is submitted again and will fail the same way unless its bank changed; 'status' shows why it failed"
     fi
     mapfile -t opts < <(depend_on "$setup")
-    ingest=$(submit carmlspine ${opts[@]+"${opts[@]}"} --export=ALL 00-carmlspine.sbatch) || return 1
+    ingest=$(submit carmlspine batch ${opts[@]+"${opts[@]}"} -- 00-carmlspine.sbatch) || return 1
     ingest_dep="afterok:$ingest"
   fi
   # A catalog version the run may read (grid/v1-version.sh): one there already, the gate's live catalog job
@@ -428,7 +451,7 @@ word_v1() {
     catalog_dep="afterok:$catalog"
   else
     mapfile -t opts < <(depend_on "$(joined "$setup" "$ingest_dep")")
-    catalog=$(submit catalog ${opts[@]+"${opts[@]}"} --export=ALL 03-catalog.sbatch) || return 1
+    catalog=$(submit catalog batch ${opts[@]+"${opts[@]}"} -- 03-catalog.sbatch) || return 1
     catalog_dep="afterok:$catalog"
   fi
   v1_driver "$(joined "$catalog_dep" "$ingest_dep" "$weights_dep" "$setup")"

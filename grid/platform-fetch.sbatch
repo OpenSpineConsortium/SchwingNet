@@ -1,12 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=dp_fetch
-#SBATCH --partition=reqp
-#SBATCH --qos=requeue
-#SBATCH --requeue
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=24G
 #SBATCH --time=4-00:00:00
-#SBATCH --output=logs/%x_%j.out
 # One source of the data platform's unfetched list (grid/run-platform-fetch.sh submits one job
 # per source, chained with afterany). The job writes the landing's README.yaml once
 # (data_platform/LAYOUT.md: what the folder is, its source id, licence, access and roles; never
