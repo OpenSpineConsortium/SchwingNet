@@ -58,5 +58,12 @@ To add the artifacts of another account, open a session on OpenSpineConsortium/s
 Exported 2026-10-22 from the first account, the one at 97% of its usage that day, by the thread "3D CT priors for 2D detection".
 
 Exported 2026-10-22 from the second account: 4 artifacts copied, 1 not copied.
+| How the Beethoven repositories are encapsulated | [how-the-beethoven-repositories-are-encapsulated-6h4zq9](how-the-beethoven-repositories-are-encapsulated-6h4zq9/) | https://claude.ai/artifact/6h4ZQ9Tgwu5zqmsLUgkTeT | go2432 | The sealed-repository standard for Beethoven's seven code repositories, who pins what from whom, and what still crosses a boundary (Docs type, kept as Markdown; the dependency diagram dropped, chips kept as text) |
+| The Lab Recipe | [the-lab-recipe-1t2gvp](the-lab-recipe-1t2gvp/) | https://claude.ai/artifact/1T2gVPMkKhzU2J4TryUDRG | go2432 | How a lab paper runs from frozen pre-registration through grid jobs and a numbers manifest to the manuscript, with the data rules and checklists (Docs type, kept as Markdown; chips kept as text) |
+| Secure Hybrid RDP Access: Spec and Setup Runbook | [secure-hybrid-rdp-access-spec-and-setup-runbook-exbt1w](secure-hybrid-rdp-access-spec-and-setup-runbook-exbt1w/) | https://claude.ai/artifact/ExbT1w2MAF9wysQBWmuj3n | go2432 | Remote Desktop to the P50 only over Tailscale, with Duo MFA for every device but the owner's laptop (Docs type, kept as Markdown; the access-path diagram dropped, chips kept as text) |
+| Motion to Amend Judgment: Taxable Costs | not copied: holds an e-mail address and private persons' names and addresses | https://claude.ai/artifact/6NDDpxQS11qRXy4iMG63BF | go2432 | A personal court filing; kept only on claude.ai until the owner decides on a redacted copy |
+| Motion for Alternate Service: Debtor Exam Subpoena | not copied: holds a private person's name and home address | https://claude.ai/artifact/FFHu9wFJoyFp8byuioDZmT | go2432 | A personal court filing; kept only on claude.ai until the owner decides on a redacted copy |
 
 Exported 2026-10-22 from gregoryamdg: 24 copied (23 pages and 1 Docs document), 4 not copied (listed above, held back).
+
+Exported 2026-10-22 from go2432: 3 artifacts copied here, 2 not copied, 5 more in symphony-template's artifacts/.
