@@ -1,0 +1,389 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found]){display:none!important}</style></head><body>
+<title>Spine X-ray Data Handoff</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* Same identity as the OSC site and the funding brief: teal/ochre from the CTSpinoPelvic1K
+     figures, Newsreader + IBM Plex from openspineconsortium.com. A handoff inside the same
+     project should look like the project. */
+  :root {
+    --paper:#f5f6f6; --surface:#ffffff; --ink:#1a1e21; --ink-soft:#464e52; --ink-faint:#6f787c;
+    --rule:#dcdfde; --rule-firm:#b9c0bf;
+    --teal:#1c6b73; --teal-soft:#e6eeef;
+    --ochre:#a76d18; --ochre-soft:#f6ecdc;
+    --flag:#8d3221; --flag-soft:#f7e6e2;
+    --code-bg:#eef1f1;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:#14181a; --surface:#1b2023; --ink:#e8ecec; --ink-soft:#b3bcbd; --ink-faint:#838d8f;
+      --rule:#2c3336; --rule-firm:#414a4d;
+      --teal:#6fb3b9; --teal-soft:#172f31;
+      --ochre:#d9a75a; --ochre-soft:#2e2417;
+      --flag:#e08b78; --flag-soft:#33201c;
+      --code-bg:#10191b;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:#14181a; --surface:#1b2023; --ink:#e8ecec; --ink-soft:#b3bcbd; --ink-faint:#838d8f;
+    --rule:#2c3336; --rule-firm:#414a4d;
+    --teal:#6fb3b9; --teal-soft:#172f31;
+    --ochre:#d9a75a; --ochre-soft:#2e2417;
+    --flag:#e08b78; --flag-soft:#33201c;
+    --code-bg:#10191b;
+  }
+  *,*::before,*::after{box-sizing:border-box}
+  body{background:var(--paper);color:var(--ink);
+       font:400 16px/1.6 "IBM Plex Sans",-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:64rem;margin:0 auto;padding:3.2rem 1.5rem 6rem}
+
+  .mast{border-bottom:2px solid var(--ink);padding-bottom:1.3rem;margin-bottom:1.8rem}
+  .eyebrow{font:500 .72rem/1 "IBM Plex Mono",monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--teal);margin:0 0 .8rem}
+  h1{font:600 clamp(2rem,4.6vw,2.8rem)/1.08 Newsreader,Georgia,serif;letter-spacing:-.015em;margin:0 0 .6rem;text-wrap:balance}
+  .standfirst{font-size:1.04rem;color:var(--ink-soft);max-width:66ch;margin:0}
+
+  /* summary strip: the one number that matters is AP vs lateral */
+  .strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(11rem,1fr));gap:1px;
+         background:var(--rule);border:1px solid var(--rule);margin:0 0 2.4rem}
+  .strip div{background:var(--surface);padding:.9rem 1rem}
+  .strip .n{font:500 1.35rem/1.1 "IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;display:block}
+  .strip .n.warn{color:var(--flag)}
+  .strip .n.ok{color:var(--teal)}
+  .strip .l{font-size:.8rem;color:var(--ink-soft);display:block;margin-top:.3rem;line-height:1.35}
+
+  .note{background:var(--flag-soft);border-left:3px solid var(--flag);padding:1rem 1.2rem;margin:0 0 2.4rem;font-size:.93rem;color:var(--ink-soft)}
+  .note strong{color:var(--ink)}
+  .note p{margin:0 0 .5rem}.note p:last-child{margin:0}
+
+  h2.tier{font:500 .74rem/1 "IBM Plex Mono",monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);
+          display:flex;gap:.9rem;align-items:baseline;margin:2.6rem 0 1rem;padding-bottom:.5rem;border-bottom:1px solid var(--rule-firm)}
+  h2.tier .when{color:var(--teal)}
+  h2.tier .rest{font-weight:400;letter-spacing:.04em;text-transform:none;font-size:.8rem}
+
+  .ds{background:var(--surface);border:1px solid var(--rule);border-left:3px solid var(--teal);
+      padding:1.3rem 1.5rem;margin-bottom:.9rem;display:flex;flex-direction:column;gap:.85rem}
+  .ds.fix{border-left-color:var(--ochre)} .ds.gate{border-left-color:var(--flag)}
+  .head{display:flex;flex-wrap:wrap;align-items:baseline;gap:.5rem 1rem}
+  .head h3{font:600 1.18rem/1.25 Newsreader,Georgia,serif;margin:0;flex:1 1 16rem}
+  .chip{font:500 .66rem/1 "IBM Plex Mono",monospace;letter-spacing:.1em;text-transform:uppercase;
+        padding:.35rem .55rem;border-radius:2px;white-space:nowrap}
+  .chip.have{background:var(--teal-soft);color:var(--teal)}
+  .chip.fix{background:var(--ochre-soft);color:var(--ochre)}
+  .chip.gate{background:var(--flag-soft);color:var(--flag)}
+
+  .meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(10.5rem,1fr));gap:.5rem 1.2rem;
+        padding:.7rem 0;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+  .meta div{display:flex;flex-direction:column;gap:.15rem}
+  .k{font:500 .64rem/1 "IBM Plex Mono",monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint)}
+  .v{font-size:.9rem;font-variant-numeric:tabular-nums}
+
+  .why{margin:0;font-size:.94rem;color:var(--ink-soft);max-width:74ch}
+  .why strong{color:var(--ink)}
+  .err{font:400 .8rem/1.5 "IBM Plex Mono",monospace;background:var(--code-bg);padding:.6rem .8rem;
+       border-left:2px solid var(--rule-firm);white-space:pre-wrap;word-break:break-word;margin:0;color:var(--ink-soft)}
+  ol.fix{margin:0;padding-left:1.3rem;font-size:.93rem;display:flex;flex-direction:column;gap:.4rem;max-width:76ch}
+  ol.fix li::marker{font:500 .8rem "IBM Plex Mono",monospace;color:var(--ochre)}
+  code{font:400 .84em/1 "IBM Plex Mono",monospace;background:var(--code-bg);padding:.12em .35em;border-radius:2px;word-break:break-word}
+  pre{font:400 .8rem/1.5 "IBM Plex Mono",monospace;background:var(--code-bg);padding:.7rem .9rem;margin:.25rem 0 0;
+      overflow-x:auto;border-radius:2px}
+  .buys{margin:0;font-size:.88rem;color:var(--ink-soft)}
+  .buys b{color:var(--teal);font-weight:600}
+  a{color:var(--teal);text-decoration-thickness:1px;text-underline-offset:2px}
+  a:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+
+  .rules{margin-top:3rem}
+  .rules h2{font:600 1.35rem/1.2 Newsreader,Georgia,serif;margin:0 0 .6rem}
+  .rules ul{margin:0;padding-left:1.2rem;font-size:.93rem;color:var(--ink-soft);display:flex;flex-direction:column;gap:.4rem;max-width:76ch}
+  .rules li strong{color:var(--ink)}
+  footer{margin-top:3rem;padding-top:1.1rem;border-top:1px solid var(--rule);font-size:.83rem;color:var(--ink-faint);max-width:74ch}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header class="mast">
+    <p class="eyebrow">Handoff · spine-detector · for Nishan</p>
+    <h1>Spine X-ray Data Handoff</h1>
+    <p class="standfirst">Nine public spine radiograph sources, what the pipeline got from each, exactly why the rest
+    did not download, and how to get it. Ordered by how fast each one unblocks. Everything here was checked against
+    the grid on 3 September 2026, not recalled.</p>
+  </header>
+
+  <div class="strip">
+    <div><span class="n ok">6,073</span><span class="l">vertebra instances currently in the manifest, 3 sources</span></div>
+    <div><span class="n warn">125</span><span class="l">of those are AP view. 5,948 are lateral. AP is the gap.</span></div>
+    <div><span class="n ok">800</span><span class="l">BUU images (400 AP + 400 LAT) already on this PC, never ingested</span></div>
+    <div><span class="n warn">0</span><span class="l">CSXA images on disk — the largest annotated lateral set, 4,963</span></div>
+  </div>
+
+  <section class="note">
+    <p><strong>Read this first.</strong> The two biggest wins need no permission from anyone. The 400-pair BUU subset is
+    already at <code>c:\Users\grego\OneDrive\Desktop\CTSpinoPelvic1K-1\BUU-LSPINE_400\</code> with its annotations, and the
+    2,000-pair subset is a single Google Drive <em>file</em>, so the folder cap that stopped the first download does not apply.
+    Between them that is 2,400 AP images against the 125 AP instances the model has seen. Do those two before touching anything
+    with a form.</p>
+    <p><strong>One correction to the earlier report.</strong> VinDr-SpineXR was described as needing PhysioNet credentialing
+    (CITI training, supervisor sign-off, weeks). It does not. It is a <em>restricted</em>-access dataset: register on PhysioNet,
+    sign the Data Use Agreement, download. Same day.</p>
+  </section>
+
+  <h2 class="tier"><span class="when">Today, no permissions</span><span class="rest">files exist and are open — the block was mechanical</span></h2>
+
+  <article class="ds">
+    <div class="head"><h3>BUU-LSPINE 400-pair subset</h3><span class="chip have">On this PC · not ingested</span></div>
+    <div class="meta">
+      <div><span class="k">Images</span><span class="v">400 AP + 400 LAT, 400 patients</span></div>
+      <div><span class="k">Annotation</span><span class="v">Edge lines, CSV per image; L1–L5 (AP), L1–S1 (LAT)</span></div>
+      <div><span class="k">Also carries</span><span class="v">Spondylolisthesis type per level; L6 (LSTV) sheet, 7 cases</span></div>
+      <div><span class="k">Where</span><span class="v">Local, 889 MB, 1,602 files</span></div>
+    </div>
+    <p class="why"><strong>Why it was not used:</strong> nobody pointed the pipeline at it. The converter was written against the
+    7,200-image full release on Google Drive, and the training run ingested the 77 files that download managed — 50 AP, 27 LAT —
+    while this complete subset sat in the CTSpinoPelvic1K repo root. The CSV format is identical to what
+    <code>src/converters/buu.py</code> already parses (10 lines AP, 11 lines LAT, <code>x1,y1,x2,y2,flag</code>), and filenames carry
+    the view in the last character (<code>…Y0</code> AP, <code>…Y1</code> LAT).</p>
+    <ol class="fix">
+      <li>Copy the folder to the grid: <pre>scp -r "BUU-LSPINE_400" go2432@grid.wayne.edu:~/spine-detector/data/raw/buu_400/</pre></li>
+      <li>Run the existing BUU converter over <code>data/raw/buu_400/AP</code> and <code>…/LA</code>. It needs the source tag
+      changed so provenance stays distinct from the partial <code>buu_v1</code>, then <code>python src/build_dataset.py</code>.</li>
+      <li><code>BUU-LSPINE_400_report.xlsx</code> has sheets <code>diag_all</code>, <code>L4L6</code> and
+      <code>normal_disorder</code> — the spondylolisthesis and L6 labels. Ingest these into the manifest as extra columns; the
+      L6 cases are the ones the level head will care about.</li>
+      <li>Check for overlap with the 77 already-ingested patients by the 4-digit patient ID in the filename before splitting.</li>
+    </ol>
+    <p class="buys"><b>Buys:</b> 400 AP images immediately — more than triple the AP the model has ever seen — plus the first LSTV labels in the corpus.</p>
+  </article>
+
+  <article class="ds">
+    <div class="head"><h3>BUU-LSPINE 2,000-pair subset</h3><span class="chip have">Open · one command</span></div>
+    <div class="meta">
+      <div><span class="k">Images</span><span class="v">2,000 AP + 2,000 LAT</span></div>
+      <div><span class="k">Annotation</span><span class="v">Same edge-line CSV format as the 400</span></div>
+      <div><span class="k">Host</span><span class="v">Google Drive, single file</span></div>
+      <div><span class="k">Terms</span><span class="v">Acknowledge BUU; no implied endorsement</span></div>
+    </div>
+    <p class="why"><strong>Why the first attempt got 77 files:</strong> the full 7,200-image release is a Drive <em>folder</em>, and
+    <code>gdown --folder</code> stops at roughly 50 files per folder. The 2,000-pair subset on the official site is a single zip,
+    which sidesteps the cap entirely.</p>
+    <ol class="fix">
+      <li>On the grid:<pre>pip install -U gdown
+gdown 1qFdU420eLo6rSR0lyuWB9M3rfknXFhvm -O BUU-LSPINE_2000.zip
+unzip BUU-LSPINE_2000.zip -d data/raw/buu_2000/</pre></li>
+      <li>If Drive answers "too many users have viewed or downloaded this file recently", open the link in a browser, choose
+      <em>Add shortcut to Drive</em>, then download from your own Drive — the quota is per-file-per-day on the owner's copy.</li>
+      <li>Same converter, same patient-ID overlap check against the 400 and the 77.</li>
+    </ol>
+    <p class="buys"><b>Buys:</b> 2,000 AP images. With the 400 this takes AP from 125 instances to roughly 12,000.</p>
+  </article>
+
+  <article class="ds fix">
+    <div class="head"><h3>VinDr-SpineXR</h3><span class="chip fix">Register + sign DUA</span></div>
+    <div class="meta">
+      <div><span class="k">Images</span><span class="v">10,466 images, 5,000 studies, DICOM</span></div>
+      <div><span class="k">Views</span><span class="v">Roughly half lateral, multi-vendor PACS</span></div>
+      <div><span class="k">Annotation</span><span class="v">Lesion boxes, 13 types — no vertebra labels</span></div>
+      <div><span class="k">License</span><span class="v">PhysioNet Restricted Health Data DUA 1.5.0</span></div>
+    </div>
+    <p class="why"><strong>Why it was skipped:</strong> the report said it needed a credentialed PhysioNet account. That was wrong.
+    PhysioNet has two tiers — <em>credentialed</em> (CITI course, reference, review) and <em>restricted</em> (registered user signs
+    the DUA). VinDr-SpineXR is restricted. The page states: <em>"Only registered users who sign the specified data use agreement can
+    access the files."</em></p>
+    <ol class="fix">
+      <li>Create an account at <a href="https://physionet.org" target="_blank" rel="noopener">physionet.org</a>.</li>
+      <li>Open <a href="https://physionet.org/content/vindr-spinexr/1.0.0/" target="_blank" rel="noopener">the project page</a>,
+      sign the DUA at the bottom.</li>
+      <li>Download on the grid, not a laptop:<pre>wget -r -N -c -np --user YOUR_PHYSIONET_USER --ask-password \
+  https://physionet.org/files/vindr-spinexr/1.0.0/ -P data/raw/vindr/</pre></li>
+      <li><strong>The DUA forbids redistribution and use on online platforms.</strong> It stays on the grid. Never on HuggingFace,
+      never through an API, never in a shared Drive. Each person who touches it signs their own DUA.</li>
+    </ol>
+    <p class="buys"><b>Buys:</b> the largest pool of real multi-vendor DICOM laterals available. No vertebra labels, so it is a
+    pretraining / pseudo-label pool and an annotation target, not Stage-1 supervision.</p>
+  </article>
+
+  <article class="ds fix">
+    <div class="head"><h3>CSXA — Cervical Spine X-ray Atlas</h3><span class="chip fix">Free login, browser download</span></div>
+    <div class="meta">
+      <div><span class="k">Images</span><span class="v">4,963 lateral cervical PNG + 4,963 JSON</span></div>
+      <div><span class="k">Annotation</span><span class="v">23 keypoints: 4 corners × C3–C7, C2 lower endplate</span></div>
+      <div><span class="k">Per image</span><span class="v">Sex, age, mm/px, symptomatic, curvature class</span></div>
+      <div><span class="k">License</span><span class="v">CC BY 4.0 (Sci Data 2024)</span></div>
+    </div>
+    <p class="why"><strong>Why there are zero images on disk:</strong> the GitHub repo downloaded fine — <code>datasets.xlsx</code>,
+    the pixel-scale script — but the images live on Science Data Bank
+    (<a href="https://doi.org/10.57760/sciencedb.15391" target="_blank" rel="noopener">doi 10.57760/sciencedb.15391</a>), whose download
+    is a JavaScript UI behind a login. Eight guessed API endpoints were tried (<code>sdb-file/file/list</code>,
+    <code>sdb-core/dataSetFile/list</code>, <code>sdb-open/dataset/…</code> and others); all returned errors. The report's own
+    line: <em>"SciDB listing not obtained; images need a browser session."</em> Nothing about the license blocks it — this is purely
+    that a script cannot drive their web app.</p>
+    <ol class="fix">
+      <li>Make a free ScienceDB account and log in in a browser.</li>
+      <li>Open the record (dataSetId <code>8e3b3d5e60a348ba961e19d48b881c90</code>, "Cervical Spine X-ray Atlas (CSXA) V3.0") and
+      download the <code>datasets</code> folder — it contains <code>datasets-PNG</code> and <code>datasets-JSON</code>.</li>
+      <li>Move it to the grid: <pre>scp CSXA*.zip go2432@grid.wayne.edu:~/spine-detector/data/raw/csxa/</pre>
+      The repo with <code>dataset.xlsx</code> is already at <code>data/raw/csxa/CSXA-dataset-main/</code>; you need both, the
+      mm/px table is only in the repo.</li>
+      <li>If the browser download stalls on 4,963 files, ask ScienceDB support for a bulk zip — the record is CC BY 4.0, so there
+      is no access argument to have.</li>
+    </ol>
+    <p class="buys"><b>Buys:</b> the largest annotated lateral spine dataset in existence, with physical scale per image. The report
+    called its absence "the single biggest gap in the corpus."</p>
+  </article>
+
+  <article class="ds fix">
+    <div class="head"><h3>CM Spine — intraoperative</h3><span class="chip fix">Drive refused gdown · try a browser</span></div>
+    <div class="meta">
+      <div><span class="k">Images</span><span class="v">208 lumbar AP, 1024×1024, during surgery</span></div>
+      <div><span class="k">Equipment</span><span class="v">Geelin500-A mobile G-arm</span></div>
+      <div><span class="k">Annotation</span><span class="v">Per-level vertebra labels; format unverified</span></div>
+      <div><span class="k">Host</span><span class="v">Google Drive only (repo zengyuyuyu/Neighbor)</span></div>
+    </div>
+    <p class="why"><strong>Verbatim, from the download log:</strong></p>
+    <pre class="err">Cannot retrieve the public link of the file. You may need to change
+the permission to 'Anyone with the link', or have had many accesses.
+You may still be able to access the file from the browser:
+    https://drive.google.com/uc?id=1r9wX1802gkU4-EQHMMlyAlEiWXGWLhhJ
+but Gdown can't. Please check connections and permissions.
+[23:28:14] === cm_spine: INCOMPLETE ===</pre>
+    <p class="why">Two possible causes and gdown cannot tell them apart: the owner restricted the file, or it hit Drive's daily
+    download quota. The repo offers no other host and no contact email.</p>
+    <ol class="fix">
+      <li>Open <a href="https://drive.google.com/file/d/1r9wX1802gkU4-EQHMMlyAlEiWXGWLhhJ/view" target="_blank" rel="noopener">the
+      link</a> in a browser while signed in to Google. If it downloads, scp it to the grid and it is done.</li>
+      <li>If Drive says the quota is exceeded: <em>Add shortcut to Drive</em>, wait a day if needed, download from your own copy.</li>
+      <li>If it says access denied: the file is private. Request access through the Drive prompt, and email the authors — paper is
+      Zeng Y, Wang K, … Song B, <em>Electronics</em> 2024;13(11):2137 (Anhui Medical University / CAS Hefei). No corresponding
+      email is in the metadata; the MDPI page has it.</li>
+    </ol>
+    <p class="buys"><b>Buys:</b> the only public intraoperative spine radiographs — the one place surgical metal and labeled
+    vertebrae coexist. Small, but nothing else covers fluoroscopy.</p>
+  </article>
+
+  <h2 class="tier"><span class="when">Needs a form or a person</span><span class="rest">start these now; they run in the background while the above is ingested</span></h2>
+
+  <article class="ds gate">
+    <div class="head"><h3>BUU-LSPINE full release (3,600 patients)</h3><span class="chip gate">Google Form</span></div>
+    <div class="meta">
+      <div><span class="k">Images</span><span class="v">7,200 (3,600 AP + 3,600 LAT), 18.5 GB</span></div>
+      <div><span class="k">Extra vs subsets</span><span class="v">1,600 more pairs; 621 spondylolisthesis pts; LSTV labels</span></div>
+      <div><span class="k">Route</span><span class="v">Official site form → approval → email delivery</span></div>
+      <div><span class="k">Site</span><span class="v">services.informatics.buu.ac.th/spine/</span></div>
+    </div>
+    <p class="why"><strong>Why the first attempt got 77 files:</strong> the community mirror
+    (<a href="https://github.com/North-Github/BUU-LSPINE" target="_blank" rel="noopener">North-Github/BUU-LSPINE</a>) links a Drive
+    <em>folder</em> of the full set, and gdown's folder mode caps at ~50 files. The official route is a request form.</p>
+    <ol class="fix">
+      <li>Submit the <a href="https://docs.google.com/forms/d/e/1FAIpQLSf15LOH7J1QSbK971LdErtHDjpW90m89Vl0nO8BpC5AAyQhyg/viewform" target="_blank" rel="noopener">BUU-LSPINE(3600) request form</a>. State the research use and that results will acknowledge the Burapha Spine Dataset.</li>
+      <li>While waiting, the 400 + 2,000 subsets above are already 2,400 of the 3,600 patients.</li>
+      <li>If you want the Drive folder instead: <code>rclone</code> with a Google Drive remote has no folder cap —
+      <pre>rclone config   # new remote, type drive
+rclone copy "gdrive:BUU-LSPINEv1" data/raw/buu_full/ -P</pre></li>
+    </ol>
+    <p class="buys"><b>Buys:</b> the remaining 1,200 patients and the full LSTV / spondylolisthesis label set.</p>
+  </article>
+
+  <article class="ds gate">
+    <div class="head"><h3>AASCE / SpineWeb Dataset 16</h3><span class="chip gate">SpineWeb request form</span></div>
+    <div class="meta">
+      <div><span class="k">Images</span><span class="v">609 standing AP full-spine, EOS</span></div>
+      <div><span class="k">Annotation</span><span class="v">68 landmarks = 4 corners × 17 vertebrae, T1–L5</span></div>
+      <div><span class="k">Also</span><span class="v">Cobb angles (PT / MT / TL), two radiologists</span></div>
+      <div><span class="k">Source</span><span class="v">London Health Sciences Centre; MICCAI AASCE 2019</span></div>
+    </div>
+    <p class="why"><strong>Why it was not obtained:</strong> SpineWeb gates the archive behind a request form; no script route exists.
+    Its absence is why the corpus has <em>no thoracic levels and no AP full-spine at all</em>.</p>
+    <ol class="fix">
+      <li>Request Dataset 16 at <a href="http://spineweb.digitalimaginggroup.ca" target="_blank" rel="noopener">spineweb.digitalimaginggroup.ca</a>
+      (Datasets → Dataset 16). Others have documented the process in
+      <a href="https://github.com/tensorflow/datasets/issues/974" target="_blank" rel="noopener">tensorflow/datasets #974</a>.</li>
+      <li>Apply the published landmark-ordering exclusion lists before use — the annotations have known ordering errors.</li>
+      <li><strong>Levels are implicit by index:</strong> the top annotated vertebra is <em>assumed</em> T1. Any film not starting at
+      T1, or any 13-rib / L6 spine, shifts every label below it. Spot-check 50 images against rib and sacrum visibility before
+      trusting a level from this source. This is precisely the failure the whole project is about.</li>
+    </ol>
+    <p class="buys"><b>Buys:</b> the only AP full-spine source with corner landmarks, and the only thoracic coverage.</p>
+  </article>
+
+  <article class="ds gate">
+    <div class="head"><h3>IEEE DataPort lateral full-spine</h3><span class="chip gate">Subscription</span></div>
+    <div class="meta">
+      <div><span class="k">Images</span><span class="v">236 standing lateral, head to mid-thigh, ~3000×7000 JPG</span></div>
+      <div><span class="k">Annotation</span><span class="v">None</span></div>
+      <div><span class="k">Size</span><span class="v">909.55 MB zip · doi 10.21227/pacw-ws92</span></div>
+      <div><span class="k">Access</span><span class="v">"requires an IEEE DataPort Subscription"</span></div>
+    </div>
+    <p class="why"><strong>Why it was not obtained:</strong> paywalled. The page states verbatim: <em>"This dataset requires an IEEE
+    DataPort Subscription to access."</em> Included with IEEE Society membership.</p>
+    <ol class="fix">
+      <li>Ask the WSU library whether the university holds an institutional IEEE DataPort subscription before anyone pays.</li>
+      <li>Failing that, an individual IEEE membership plus a society membership includes DataPort.</li>
+      <li><strong>This is the evaluation hold-out.</strong> The femoral heads are in frame, so it is the only public lateral source
+      where pelvic incidence is computable. Annotate it; never train on it.</li>
+    </ol>
+    <p class="buys"><b>Buys:</b> a genuinely external test set. Until it exists every test image comes from a source the model trained on.</p>
+  </article>
+
+  <h2 class="tier"><span class="when">Already ingested</span><span class="rest">for completeness — what the 6,073 instances are</span></h2>
+
+  <article class="ds">
+    <div class="head"><h3>NHANES II annotated subset</h3><span class="chip have">Ingested · 3,217 instances</span></div>
+    <div class="meta">
+      <div><span class="k">Images</span><span class="v">543 lateral: 275 cervical, 268 lumbar, 1976–80 film</span></div>
+      <div><span class="k">Annotation</span><span class="v">Per-level masks keyed by name (C2–C7, T1; L1–L5, S1)</span></div>
+      <div><span class="k">License</span><span class="v">CC BY 4.0 · Zenodo 10223910</span></div>
+      <div><span class="k">On grid</span><span class="v">1.2 GB zip, md5 875a3228…</span></div>
+    </div>
+    <p class="why">The only source with <em>named</em> levels under one protocol. Corners are derived from the masks (minimum-area
+    rectangle), not drawn by a radiologist — recorded in the manifest as such. The unlabeled full NHANES II set
+    (17,075 TIFFs, public domain, no registration) is at
+    <a href="https://wwwn.cdc.gov/nchs/data/nhanes2/NH2_Xray.htm" target="_blank" rel="noopener">CDC</a> for pseudo-labeling — note
+    cervical films were shot in maximum flexion, not neutral.</p>
+  </article>
+
+  <article class="ds">
+    <div class="head"><h3>Mendeley 716 spondylolisthesis</h3><span class="chip have">Ingested · 2,666 instances</span></div>
+    <div class="meta">
+      <div><span class="k">Images</span><span class="v">716 lateral lumbar: 208 Honduran + 508 from BUU</span></div>
+      <div><span class="k">Annotation</span><span class="v">Boxes + 4 corner keypoints, L3–S1, Keypoint R-CNN JSON</span></div>
+      <div><span class="k">Source</span><span class="v">data.mendeley.com/datasets/5jdfdgp762/1</span></div>
+      <div><span class="k">Levels</span><span class="v">Not named in the export — left "unknown"</span></div>
+    </div>
+    <p class="why"><strong>Leakage hazard:</strong> 508 of these are BUU images. Only the 208 Honduran are independent of BUU, and
+    they are the only genuine cross-site lateral lumbar test set in the project. Provenance is tagged per image; keep the 208 out
+    of training entirely, especially once the BUU subsets above go in.</p>
+  </article>
+
+  <article class="ds">
+    <div class="head"><h3>BUU-LSPINE partial (the 77 files)</h3><span class="chip have">Ingested · 190 instances</span></div>
+    <div class="meta">
+      <div><span class="k">Images</span><span class="v">50 AP + 27 LAT of 7,200</span></div>
+      <div><span class="k">Why 77</span><span class="v">gdown folder cap</span></div>
+      <div><span class="k">Superseded by</span><span class="v">The 400 and 2,000 subsets above</span></div>
+    </div>
+    <p class="why">Every one of the 125 AP instances the model has seen came from these 50 files. That is the whole reason AP is
+    the gap.</p>
+  </article>
+
+  <section class="rules">
+    <h2>Rules that apply to all of it</h2>
+    <ul>
+      <li><strong>Everything lands on the grid</strong> at <code>~/spine-detector/data/raw/&lt;source&gt;/</code>, never on a laptop
+      or a personal Drive. VinDr in particular may not leave it.</li>
+      <li><strong>Patient-disjoint splits.</strong> BUU pairs an AP and a lateral per patient; Mendeley contains BUU patients; NHANES
+      participants have two films. Split by patient ID, never by image.</li>
+      <li><strong>Do not invent levels.</strong> Where a source gives positions rather than names (BUU, AASCE), the manifest records
+      <code>level_source = inferred_from_position</code>. That distinction is the project.</li>
+      <li><strong>Do not use:</strong> Kaggle "vertebrae X-ray images" (scraped, murky), TrainingDataPro spine sets on HuggingFace
+      (commercial scrape), Kaggle "Lumbar Coordinate Pretraining" (it is RSNA 2024 <em>MRI</em>, routinely miscited as X-ray).</li>
+      <li><strong>Acknowledge every source</strong> in anything presented — BUU's terms require it by name.</li>
+    </ul>
+  </section>
+
+  <footer>
+    <p>Grid state verified 3 Sep 2026 over ssh: <code>buu_v1</code> 77 files / 43 MB; <code>cm_spine</code> 0 files;
+    <code>csxa</code> 6 files (repo only, no images); <code>mendeley_716</code> 2 files / 53 MB;
+    <code>nhanes_annotated</code> 2 files / 1.2 GB. Failure text is quoted from the run's own log. Access terms for VinDr, IEEE
+    DataPort, ScienceDB and the BUU site were read from their pages today; the one thing not confirmed programmatically is whether
+    ScienceDB offers a single bulk zip, because its download UI is JavaScript.</p>
+  </footer>
+</div>
+
+</body></html>

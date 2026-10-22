@@ -1,0 +1,180 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>FluoroCap Access Setup</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root{
+  --ink:#111820; --muted:#5b6b78; --faint:#8697a3;
+  --surface:#f1f4f6; --panel:#ffffff; --line:#cfd9de; --rule:#e3eaee;
+  --steel:#23607f; --steel-soft:#b9d2e0; --amber:#9a6410; --crimson:#9c2f27; --green:#2b6b4a;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace; --disp:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --body:"Source Serif 4",Georgia,serif;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --ink:#e7eef2; --muted:#9bacb7; --faint:#758794; --surface:#0c1216; --panel:#141d23; --line:#27353e; --rule:#1e2a31;
+  --steel:#6fb3d8; --steel-soft:#2b4e63; --amber:#d9a259; --crimson:#e5796f; --green:#6cba91; } }
+:root[data-theme="dark"]{
+  --ink:#e7eef2; --muted:#9bacb7; --faint:#758794; --surface:#0c1216; --panel:#141d23; --line:#27353e; --rule:#1e2a31;
+  --steel:#6fb3d8; --steel-soft:#2b4e63; --amber:#d9a259; --crimson:#e5796f; --green:#6cba91; }
+*{box-sizing:border-box}
+body{background:var(--surface);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.6;padding-inline:20px;padding-block:0}
+.wrap{max-width:900px;margin:0 auto;padding-block:0 70px}
+header{padding-block:44px 26px;border-bottom:2px solid var(--ink)}
+.eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin:0 0 12px}
+h1{font-family:var(--disp);font-weight:700;font-size:clamp(28px,5vw,44px);line-height:1.05;letter-spacing:-.018em;margin:0;text-wrap:balance}
+.sub{max-width:64ch;color:var(--muted);margin:14px 0 0}
+h2{font-family:var(--disp);font-weight:600;font-size:21px;letter-spacing:-.01em;margin:0 0 6px;text-wrap:balance}
+h2 .num{font-family:var(--mono);font-size:12px;color:var(--steel);letter-spacing:.1em;display:block;margin-bottom:6px;font-weight:600}
+section{padding-block:34px;border-bottom:1px solid var(--rule)}
+p{margin:12px 0;max-width:66ch}
+code,pre{font-family:var(--mono)}
+pre{background:var(--panel);border:1px solid var(--line);padding:12px 14px;font-size:13.5px;overflow-x:auto;margin:14px 0;line-height:1.5}
+code{font-size:.92em;background:var(--panel);border:1px solid var(--rule);padding:1px 5px}
+.gain{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);margin:22px 0}
+.gain div{background:var(--panel);padding:14px 14px 12px}
+.gain b{display:block;font-family:var(--mono);font-size:26px;font-weight:600;color:var(--green);letter-spacing:-.02em}
+.gain span{font-family:var(--disp);font-size:12.5px;color:var(--muted)}
+ol.steps{list-style:none;padding:0;margin:18px 0 0;counter-reset:s}
+ol.steps li{counter-increment:s;position:relative;padding:14px 0 14px 50px;border-top:1px solid var(--rule);max-width:70ch}
+ol.steps li::before{content:counter(s);position:absolute;left:0;top:15px;font-family:var(--mono);font-size:12px;font-weight:600;color:var(--steel);
+  border:1px solid var(--steel-soft);width:30px;height:30px;display:grid;place-items:center;background:var(--panel)}
+ol.steps b{font-family:var(--disp);font-size:15.5px}
+ol.steps .k{font-family:var(--mono);font-size:12.5px;color:var(--steel);display:block;margin-top:4px}
+ol.steps .w{color:var(--muted);font-size:15px;display:block;margin-top:4px}
+ol.steps a{color:var(--steel);text-decoration:none;border-bottom:1px solid var(--steel-soft)}
+.call{border-left:3px solid var(--amber);padding:2px 0 2px 18px;margin:22px 0}
+.call.bad{border-left-color:var(--crimson)} .call.ok{border-left-color:var(--green)}
+.call .tag{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--amber);font-weight:600;margin:0 0 4px}
+.call.bad .tag{color:var(--crimson)} .call.ok .tag{color:var(--green)}
+.call p{margin:6px 0}
+.rules{display:grid;grid-template-columns:1fr 1fr;gap:16px 26px;margin-top:16px}
+@media(max-width:640px){.rules{grid-template-columns:1fr}}
+.rules div{border-top:2px solid var(--line);padding-top:10px}
+.rules b{font-family:var(--disp);font-size:14px;display:block;margin-bottom:4px}
+.rules span{color:var(--muted);font-size:15px}
+footer{padding-block:30px;color:var(--faint);font-size:13.5px;font-family:var(--disp)}
+</style>
+
+<div class="wrap">
+<header>
+  <p class="eyebrow">Environment setup &middot; 14 September 2026</p>
+  <h1>FluoroCap Access Setup</h1>
+  <p class="sub">What to obtain, where to get it, and where to put it so the harvesters can use it without any
+  secret ever being printed or committed. Ranked by how much of the resolution problem each one fixes.</p>
+</header>
+
+<section>
+  <h2><span class="num">00</span>Start here, because the biggest fix is already free</h2>
+  <p>The figure PMC serves is the rendition the publisher deposited; the publisher's own site keeps the larger
+  file, and for five of the corpus's largest publishers the figure URL is deterministic from the DOI and the PMC
+  file name. Measured this afternoon on real corpus figures, no login involved:</p>
+  <div class="gain">
+    <div><b>16&times;</b><span>Cureus &middot; 750&times;1017 &rarr; 3000&times;4067</span></div>
+    <div><b>9&ndash;20&times;</b><span>MDPI &middot; 713&times;259 &rarr; 3211&times;1165</span></div>
+    <div><b>12&times;</b><span>Elsevier CDN &middot; 788&times;926 &rarr; 2760&times;3242</span></div>
+    <div><b>6&times;</b><span>Frontiers &middot; 770&times;609 &rarr; 1925&times;1522</span></div>
+    <div><b>4&times;</b><span>Springer, BMC, Nature &middot; 721&times;1132 &rarr; 1443&times;2266</span></div>
+  </div>
+  <p>That refetch is running now over every PMC figure in the corpus. Eighteen of the twenty-one test figures were
+  replaced; the three that were not are on SAGE, which blocks non-browser clients and is what the credentials
+  below are for. Nothing in this page is needed for the run in progress.</p>
+</section>
+
+<section>
+  <h2><span class="num">01</span>How the hand-over works</h2>
+  <p>One file on the WSL machine, readable only by you, outside every repository. Values go in with an editor,
+  never on a command line, so they never enter a shell history or this conversation.</p>
+<pre>python tools/fluorocap_creds.py init     # creates ~/.fluorocap/credentials.env (mode 600) from the template
+nano ~/.fluorocap/credentials.env        # fill in the values
+python tools/fluorocap_creds.py check    # prints WHICH keys are set and probes each service. Never a value.</pre>
+  <div class="rules">
+    <div><b>Environment file</b><span><code>~/.fluorocap/credentials.env</code> holds every key; a blank line skips that route and the harvester falls back to credential-free behaviour.</span></div>
+    <div><b>Cookie jars</b><span><code>~/.fluorocap/cookies/&lt;site&gt;.txt</code> in Netscape format, exported from a browser with a "cookies.txt" extension. No password is ever stored.</span></div>
+    <div><b>Instagram session</b><span><code>~/.fluorocap/instagram_session</code>, created once by instaloader on any machine with a browser.</span></div>
+    <div><b>What I will never do</b><span>Print a value, write one to a log or a commit, or send one anywhere but the service it belongs to. <code>check</code> reports names and pass/fail only.</span></div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="num">02</span>Free API keys, about five minutes each</h2>
+  <ol class="steps">
+    <li><b>Contact email</b><span class="k">FLUOROCAP_CONTACT_EMAIL</span><span class="w">Any lab or role address. Identifies the harvester on the Crossref, Unpaywall and NCBI polite pools. Put this in first; the refetch and every literature route use it.</span></li>
+    <li><b>NCBI E-utilities</b><span class="k">NCBI_API_KEY &middot; <a href="https://account.ncbi.nlm.nih.gov/settings/">account.ncbi.nlm.nih.gov/settings</a> &rarr; API Key Management &rarr; Create</span><span class="w">Ten requests a second instead of three. The refetch resolves 2,900 figures through NCBI; this triples its speed.</span></li>
+    <li><b>YouTube Data API v3</b><span class="k">YOUTUBE_API_KEY &middot; <a href="https://console.cloud.google.com/">console.cloud.google.com</a> &rarr; new project &rarr; Enable APIs &rarr; YouTube Data API v3 &rarr; Credentials &rarr; API key</span><span class="w">Proper search and channel enumeration, 10,000 units a day (about 100 searches). Video frames are the only source that is 1080 px native; the current route scrapes search pages and misses most of what the API returns.</span></li>
+    <li><b>Springer Nature</b><span class="k">SPRINGER_API_KEY &middot; <a href="https://dev.springernature.com/">dev.springernature.com</a> &rarr; Sign up &rarr; API key</span><span class="w">Figure lists for every Springer, BMC and Nature article without touching a landing page.</span></li>
+    <li><b>Elsevier</b><span class="k">ELSEVIER_API_KEY &middot; <a href="https://dev.elsevier.com/">dev.elsevier.com</a> &rarr; register with the Wayne State affiliation &rarr; API key</span><span class="w">Article Retrieval API for World Neurosurgery, The Spine Journal, Clinical Neurology and Neurosurgery. The key is free; entitlement to closed articles comes from the institution, section 03.</span></li>
+    <li><b>Flickr</b><span class="k">FLICKR_API_KEY &middot; <a href="https://www.flickr.com/services/apps/create/">flickr.com/services/apps/create</a></span><span class="w">Original-size downloads on the archive route.</span></li>
+    <li><b>Reddit</b><span class="k">REDDIT_CLIENT_ID, REDDIT_CLIENT_SECRET &middot; <a href="https://www.reddit.com/prefs/apps">reddit.com/prefs/apps</a> &rarr; create app &rarr; type "script"</span><span class="w">The Reddit route without rate-limit stalls.</span></li>
+    <li><b>Google Programmable Search</b><span class="k">GOOGLE_CSE_KEY, GOOGLE_CSE_CX &middot; <a href="https://programmablesearchengine.google.com/">programmablesearchengine.google.com</a> (search the entire web, image search on), key from the Cloud console</span><span class="w">Image search over surgeon and practice websites. 100 free queries a day.</span></li>
+    <li><b>PatentsView</b><span class="k">PATENTSVIEW_API_KEY &middot; <a href="https://patentsview.org/apis/keyrequest">patentsview.org/apis/keyrequest</a></span><span class="w">The patent-drawing route; Google Patents cut us off after forty requests.</span></li>
+  </ol>
+</section>
+
+<section>
+  <h2><span class="num">03</span>Wayne State institutional access</h2>
+  <p>For Spine, Neurosurgery, JNS Spine, European Spine Journal and the other subscription titles whose author
+  manuscripts sit in PMC at whatever size the author uploaded. Two routes, in order of preference.</p>
+  <ol class="steps">
+    <li><b>Try the campus IP first, it costs nothing</b><span class="w">The grid is inside the university's address space (141.217.x.x) and publishers authenticate by IP. I will run the closed-journal refetch from the grid login node with a browser-impersonating client before asking you for anything. Today's probe was inconclusive only because Wolters Kluwer refuses plain clients outright.</span></li>
+    <li><b>If that fails: export the proxy session cookie</b><span class="k">WSU_PROXY_PREFIX + ~/.fluorocap/cookies/wsu_proxy.txt</span><span class="w">Log in to the library proxy once in a browser (AccessID, password, Duo). Export the cookies for the proxy host with a "cookies.txt" extension and save the file to that path. Set the prefix to the library's link prefix; it is on every "Find it @ WSU" link. The cookie expires; <code>check</code> tells you when to export it again. Your password is never stored.</span></li>
+  </ol>
+  <div class="call">
+    <p class="tag">Two cautions</p>
+    <p>The library note of 30 June 2026 says DMC residents were dropped from WSU library access. Confirm your
+    current affiliation still authenticates before exporting anything.</p>
+    <p>Every publisher licence forbids systematic downloading, and publishers block a whole institution's range
+    when they detect it. The refetch touches only the closed-journal figures that already carry a matched caption
+    (about 600), one request every three seconds per host, capped per day, never full text or PDFs in bulk. The
+    clean way to do this at scale is the publishers' own text-and-data-mining APIs, which the institutional licence
+    covers: Elsevier and Springer above, and Wiley's <code>WILEY_TDM_TOKEN</code> from
+    <a href="https://onlinelibrary.wiley.com/library-info/resources/text-and-datamining">onlinelibrary.wiley.com/library-info/resources/text-and-datamining</a>.
+    Asking the library for the TDM terms is a five-minute email and removes the risk entirely.</p>
+  </div>
+</section>
+
+<section>
+  <h2><span class="num">04</span>Instagram and Facebook</h2>
+  <p>Instagram serves posts at 1080 px wide, larger than the median journal panel, and the captions are written by
+  the people who took the films. It serves almost nothing to an anonymous client, so the route runs on a logged-in
+  session.</p>
+<pre>pip install instaloader
+instaloader --login USERNAME            # or, from a browser already logged in:  instaloader --load-cookies firefox
+cp ~/.config/instaloader/session-USERNAME ~/.fluorocap/instagram_session
+# then in credentials.env:  INSTAGRAM_USERNAME=USERNAME</pre>
+  <div class="call bad">
+    <p class="tag">Read before choosing the account</p>
+    <p>Meta's terms prohibit automated collection. Accounts used for it get action-blocked, then disabled. Use a
+    dedicated account, not the one attached to your name or practice. The harvester walks hashtags and named
+    accounts at the slow end of what the library allows, one post every 8 to 20 seconds, and sleeps an hour on the
+    first rate-limit response. It keeps the caption, the poster, the date and a licence line saying the image is
+    the poster's and is held for research review only.</p>
+  </div>
+  <p>Facebook: no tool works reliably in 2026. A cookie jar exported from a logged-in browser can be given as
+  <code>FACEBOOK_COOKIES</code> and the same script will try public groups. Expect it to break.</p>
+</section>
+
+<section>
+  <h2><span class="num">05</span>Not worth buying</h2>
+  <p>X/Twitter's API is $100 a month for seven-day search, which cannot reach the historical posts that hold the
+  images. TikTok has no public API; <code>yt-dlp</code> fetches public TikTok videos by URL with no credentials,
+  so that route needs URLs, not keys.</p>
+</section>
+
+<section style="border-bottom:none">
+  <h2><span class="num">06</span>The order to do it in</h2>
+  <ol class="steps">
+    <li><b>Run <code>init</code>, put the contact email in, run <code>check</code>.</b><span class="w">The credential-free refetch is already running on nothing more than this.</span></li>
+    <li><b>NCBI, YouTube, Springer, Elsevier keys.</b><span class="w">Twenty minutes total. Run <code>check</code> again; I take it from there.</span></li>
+    <li><b>Let me try the closed journals from the grid IP.</b><span class="w">Only if that fails, export the proxy cookie.</span></li>
+    <li><b>Instagram session from a dedicated account.</b></li>
+    <li><b>Flickr, Reddit, Google search, PatentsView when convenient.</b></li>
+  </ol>
+  <div class="call ok">
+    <p class="tag">Where it lives</p>
+    <p>The same content, for the repo: <code>docs/CREDENTIALS_SETUP.md</code>, template
+    <code>tools/credentials.template.env</code>, loader <code>tools/fluorocap_creds.py</code>.</p>
+  </div>
+</section>
+<footer>FluoroCap environment setup, written 14 September 2026. No secret appears on this page and none should ever be pasted into chat.</footer>
+</div>
+
+</body></html>

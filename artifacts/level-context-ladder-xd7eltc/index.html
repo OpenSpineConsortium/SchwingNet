@@ -1,0 +1,273 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Level Context Ladder</title>
+<style>
+  :root {
+    color-scheme: light;
+    --plane: #f9f9f7; --surface: #fcfcfb; --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
+    --grid: #e1e0d9; --axis: #c3c2b7; --ring: rgba(11,11,11,0.10);
+    --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #8a5cd6; --s5: #b8860b;
+    --callout: #f3f1ea; --good: #1baf7a; --warn: #eb6834;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --plane: #0d0d0d; --surface: #1a1a19; --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
+      --grid: #2c2c2a; --axis: #383835; --ring: rgba(255,255,255,0.10);
+      --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #9d78e0; --s5: #d4a017;
+      --callout: #232320; --good: #199e70; --warn: #d95926;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --plane: #0d0d0d; --surface: #1a1a19; --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --axis: #383835; --ring: rgba(255,255,255,0.10);
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #9d78e0; --s5: #d4a017;
+    --callout: #232320; --good: #199e70; --warn: #d95926;
+  }
+  body { background: var(--plane); color: var(--ink); font: 15px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif;
+         padding-block: 32px 64px; padding-inline: clamp(16px, 4vw, 40px); }
+  main { max-width: 78ch; margin: 0 auto; }
+  h1 { font-size: 1.7rem; line-height: 1.2; margin: 0 0 6px; text-wrap: balance; letter-spacing: -0.01em; }
+  h2 { font-size: 1.15rem; margin: 40px 0 10px; letter-spacing: -0.005em; }
+  h3 { font-size: 0.95rem; margin: 22px 0 6px; color: var(--ink-2); }
+  p, li { max-width: 74ch; }
+  .sub { color: var(--ink-2); margin: 0 0 20px; }
+  .eyebrow { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 0 0 8px; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 22px 0 8px; }
+  .tile { background: var(--surface); border: 1px solid var(--ring); border-radius: 6px; padding: 12px 14px; }
+  .tile .v { font-size: 1.9rem; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .tile .k { font-size: 0.8rem; color: var(--ink-2); margin-top: 4px; }
+  .tile .n { font-size: 0.72rem; color: var(--muted); margin-top: 2px; }
+  .note { font-size: 0.85rem; color: var(--ink-2); }
+  .callout { background: var(--callout); border-left: 3px solid var(--axis); padding: 10px 14px; border-radius: 0 4px 4px 0; margin: 14px 0; }
+  .callout b { color: var(--ink); }
+  .bound { border-left-color: var(--s3); }
+  table { border-collapse: collapse; width: 100%; font-size: 0.86rem; font-variant-numeric: tabular-nums; margin: 8px 0 4px; }
+  .tw { overflow-x: auto; }
+  th { text-align: left; font-weight: 600; color: var(--ink-2); border-bottom: 1px solid var(--axis); padding: 6px 8px 6px 0; font-size: 0.78rem; }
+  td { padding: 5px 8px 5px 0; border-bottom: 1px solid var(--grid); vertical-align: top; }
+  td.num, th.num { text-align: right; padding-right: 0; padding-left: 8px; }
+  td b { font-weight: 600; }
+  .fig { background: var(--surface); border: 1px solid var(--ring); border-radius: 6px; padding: 14px 14px 8px; margin: 14px 0; }
+  .fig h3 { margin: 0 0 2px; color: var(--ink); }
+  .fig .cap { font-size: 0.8rem; color: var(--muted); margin: 0 0 8px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 0.8rem; color: var(--ink-2); margin: 0 0 6px; }
+  .legend span::before { content: ""; display: inline-block; width: 14px; height: 3px; border-radius: 2px; margin-right: 6px; vertical-align: middle; background: var(--c); }
+  .legend span.dash::before { height: 0; border-top: 2px dashed var(--c); background: none; }
+  svg { width: 100%; height: auto; display: block; max-width: 100%; }
+  .tip { position: absolute; pointer-events: none; background: var(--surface); color: var(--ink); border: 1px solid var(--ring);
+         border-radius: 4px; padding: 6px 8px; font-size: 0.78rem; line-height: 1.4; box-shadow: 0 2px 8px rgba(0,0,0,0.12); white-space: nowrap; }
+  .figwrap { position: relative; }
+  .dim { color: var(--muted); }
+  code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 0.86em; }
+  ul { padding-left: 1.2em; }
+  .status { display: inline-block; font-size: 0.72rem; padding: 1px 7px; border-radius: 10px; border: 1px solid var(--ring); color: var(--ink-2); margin-left: 6px; vertical-align: middle; }
+  @media (prefers-reduced-motion: no-preference) { .tip { transition: opacity 80ms; } }
+</style>
+
+<main>
+  <p class="eyebrow">Runs of 12–13 September 2026 · updated 13 Sep 11:30 · 27 levels C1–L6, T13, sacrum · held-out patients throughout</p>
+  <h1>How much of the spine does a model need to see to name a vertebra?</h1>
+  <p class="sub">Lateral projections of CT (VerSe, CTSpinoPelvic1K) and real lateral films (NHANES II lumbar and cervical, CSXA cervical, BUU-LSPINE lumbar), the target vertebra always scaled to the same pixel height so size cannot be used, the visible context shrunk one rung at a time down to a single vertebra.</p>
+
+  <div class="tiles">
+    <div class="tile"><div class="v">96.7%</div><div class="k">one vertebra, real films, exact level</div><div class="n">8,422 held-out crops · 99.7% within one level</div></div>
+    <div class="tile"><div class="v">97.7%</div><div class="k">cervical, one vertebra</div><div class="n">7,900 crops, CSXA + NHANES · 99.5% at three</div></div>
+    <div class="tile"><div class="v">80.7–85.4%</div><div class="k">lumbar, one vertebra</div><div class="n">410 crops, NHANES · 91.9% at three</div></div>
+    <div class="tile"><div class="v">7%</div><div class="k">CT-only models on real film</div><div class="n">what all the synthetic work transfers: nothing</div></div>
+  </div>
+  <p class="note">The number that matters moved from 84% to 97% in one night, and every point of it came from data: 4,963 CSXA cervical patients and 7,200 BUU lumbar films entered training. Nothing else that was tried — architecture, size in millimetres, learning rate, epochs, masking — moved a single vertebra by more than a few points. The lumbar number is lower for one reason: about 380 lumbar films with annotated levels exist in training, against ~5,000 cervical.</p>
+
+  <div class="fig">
+    <h3>The boundary: exact-level accuracy against vertebrae visible, by region, on real films</h3>
+    <p class="cap">Held-out patients (30% of every annotated source). Solid lines are real films with films in training; the dashed line is the best CT-only model scored on its own synthetic validation, for scale. Hover for values.</p>
+    <div class="legend">
+      <span style="--c: var(--s3)">real films, cervical (CSXA + NHANES, n = 7,900)</span>
+      <span style="--c: var(--s2)">real films, lumbar (NHANES, n = 410)</span>
+      <span style="--c: var(--s1)">real films, all regions (n = 8,422)</span>
+      <span class="dash" style="--c: var(--s4)">CT projections only, synthetic validation (n = 2,304)</span>
+    </div>
+    <div class="figwrap" id="figwrap">
+      <svg id="chart" viewBox="0 0 640 320" role="img" aria-label="Exact-level accuracy versus vertebrae visible, real films by region and CT-only reference"></svg>
+      <div class="tip" id="tip" hidden></div>
+    </div>
+  </div>
+
+  <div class="callout bound">
+    <b>What is possible today, on held-out patients.</b> Cervical: one vertebra 97.7%, three 99.3%, five 99.5%. Lumbar: one vertebra 81–85% (85.4% at 96 px targets), three 91.9%, five 91.9%. Within one level: 99.7% at one vertebra in every region; region itself 99.7%. <b>What is not:</b> a single lumbar vertebra above ~85% with the lumbar films that exist; nothing at all from CT alone. The remaining lumbar error is almost entirely ±1 level (L2↔L3, L3↔L4, L1↔T12), and it is the training count that bounds it, not the model.
+  </div>
+
+  <div class="fig">
+    <h3>Why: single-vertebra accuracy against real films of that region in training</h3>
+    <p class="cap">Each bar is a separate model; the test set is the same held-out patients throughout. Counting-inferred labels (BUU) are train-only and never scored.</p>
+    <div class="figwrap" id="barwrap">
+      <svg id="bars" viewBox="0 0 640 260" role="img" aria-label="Bar chart of single-vertebra accuracy against number of real films of that region in training"></svg>
+    </div>
+  </div>
+  <p class="note">The lumbar side of that chart is the whole argument. Zero lumbar films: 7%. About 380 NHANES lumbar films with annotated levels: 81%. Add 7,200 BUU lumbar films whose levels were assigned by counting: 83%. Raise the crop resolution: 85%. The cervical side, with 5,000 annotated patients, is at 98%. The next lumbar step is more lumbar films with levels, which is what the VinDr pseudo-labelling below is for.</p>
+
+  <h2>1. Real films, the full table</h2>
+  <p>Every real-film arm holds out 30% of patients from every annotated source and joins the remaining 70% to the synthetic crops. Three rungs were trained per arm (one, three and five vertebrae visible), collimated field, 320 px canvas. Test crops: CSXA 7,440, NHANES 982 (cervical, lumbar 410, sacrum 46), thoracic 66.</p>
+  <div class="tw"><table>
+    <tr><th>arm</th><th>vertebrae visible</th><th class="num">exact</th><th class="num">within one</th><th class="num">cervical</th><th class="num">thoracic</th><th class="num">lumbar</th><th class="num">sacrum</th><th class="num">NHANES only</th></tr>
+    <tr><td rowspan="3">annotated films only, 48 px</td><td>1</td><td class="num"><b>96.7%</b></td><td class="num">99.7%</td><td class="num">97.7%</td><td class="num">86.4%</td><td class="num">80.7%</td><td class="num">91.3%</td><td class="num">84.0%</td></tr>
+    <tr><td>3</td><td class="num"><b>98.8%</b></td><td class="num">99.8%</td><td class="num">99.3%</td><td class="num">86.4%</td><td class="num">91.9%</td><td class="num">93.5%</td><td class="num">92.8%</td></tr>
+    <tr><td>5</td><td class="num"><b>99.1%</b></td><td class="num">99.8%</td><td class="num">99.5%</td><td class="num">90.9%</td><td class="num">91.9%</td><td class="num">97.8%</td><td class="num">94.4%</td></tr>
+    <tr><td rowspan="3">annotated films only, 96 px</td><td>1</td><td class="num"><b>96.9%</b></td><td class="num">99.7%</td><td class="num">97.6%</td><td class="num">95.5%</td><td class="num"><b>85.4%</b></td><td class="num">93.5%</td><td class="num">88.6%</td></tr>
+    <tr><td>3</td><td class="num">98.6%</td><td class="num">99.8%</td><td class="num">99.2%</td><td class="num">92.4%</td><td class="num">90.5%</td><td class="num">91.3%</td><td class="num">92.8%</td></tr>
+    <tr><td>5</td><td class="num">98.8%</td><td class="num">99.8%</td><td class="num">99.2%</td><td class="num">95.5%</td><td class="num">91.2%</td><td class="num">93.5%</td><td class="num">93.5%</td></tr>
+    <tr><td>+ BUU in training (counting-inferred, train only), 48 px</td><td>1</td><td class="num"><b>97.6%</b></td><td class="num">99.6%</td><td class="num">98.4%</td><td class="num">92.4%</td><td class="num">82.7%</td><td class="num">93.5%</td><td class="num">88.1%</td></tr>
+    <tr><td class="dim">same, 3 and 5 <span class="status">re-running</span></td><td class="dim">3, 5</td><td class="num dim" colspan="7">first launch started before its crop bank was built; relaunched 11:05, job 40215523</td></tr>
+    <tr><td rowspan="2">annotated films + size in mm to the head, 48 px</td><td>1</td><td class="num">96.4%</td><td class="num">99.7%</td><td class="num">97.4%</td><td class="num">92.4%</td><td class="num">79.0%</td><td class="num">91.3%</td><td class="num">83.4%</td></tr>
+    <tr><td>5</td><td class="num">99.0%</td><td class="num">99.8%</td><td class="num">99.5%</td><td class="num">90.9%</td><td class="num">90.7%</td><td class="num">95.7%</td><td class="num">93.5%</td></tr>
+  </table></div>
+  <p class="note">Thoracic and sacral columns rest on 66 and 46 crops and move by several points between arms on a handful of films; read them as bands, not rankings. The NHANES-only column is the number the previous version of this report headlined (84.2% at one vertebra); it has not changed, because NHANES has not changed — the cervical films around it have.</p>
+  <h3>What moved the lumbar number, and what did not</h3>
+  <ul>
+    <li><b>Resolution</b>: 48 → 96 px targets, lumbar one-vertebra 80.7% → 85.4%. Same lever as on CT (73.7% → 82.8%).</li>
+    <li><b>BUU's counting-inferred labels</b>: +2.0 points at one vertebra with the films never scored. The counting prior is in training now, deliberately, as a train-only source; the test set is annotated levels only.</li>
+    <li><b>Absolute size in millimetres</b>: −1.7 points. Third time this has been tried (CT 22 px, CT full merge, films); it has never helped. The ±1 confusions are not a magnification problem.</li>
+    <li><b>Architecture</b>: ResNet-50 and ConvNeXt-tiny within two points of ResNet-18 on CT; ViT-B/16 47 points worse. Not repeated on films.</li>
+  </ul>
+
+  <h2>2. The ladder, synthetic (CT projections)</h2>
+  <p>Every rung shows the target with <em>k</em> neighbours either side; rung 0 is one vertebra alone. VerSe alone, masked to the vertebrae at 22 px: 63.5% at one vertebra rising to 82.7% with the whole scan. VerSe + all 801 readable CTSpinoPelvic1K cases: 73.7% → 91.8%. Collimated field at 96 px on the full merge: <b>82.8%</b> at one vertebra, 89.8% at three, 89.5% at five and seven. Within one level 94–99% at every rung; region 96–99%.</p>
+  <div class="tw"><table>
+    <tr><th>vertebrae visible</th><th class="num">VerSe, masked 22 px</th><th class="num">full merge, masked 22 px</th><th class="num">full merge, field 96 px</th></tr>
+    <tr><td>all in the scan</td><td class="num">82.7%</td><td class="num"><b>91.8%</b></td><td class="num dim">—</td></tr>
+    <tr><td>9</td><td class="num">79.3%</td><td class="num">90.8%</td><td class="num dim">—</td></tr>
+    <tr><td>7</td><td class="num">78.0%</td><td class="num">90.0%</td><td class="num">89.5%</td></tr>
+    <tr><td>5</td><td class="num">75.6%</td><td class="num">87.5%</td><td class="num">89.5%</td></tr>
+    <tr><td>3</td><td class="num">73.3%</td><td class="num">84.2%</td><td class="num">89.8%</td></tr>
+    <tr><td>1</td><td class="num">63.5%</td><td class="num">73.7%</td><td class="num"><b>82.8%</b></td></tr>
+  </table></div>
+  <p class="note">Where the last 8% goes with the whole scan visible: rendering the 188 errors showed <b>80% are whole-case shifts</b> — every vertebra in a case one level cranial or caudal together, 151 errors in 24 of 234 validation cases. Only 4 of the 17 VerSe cases that shift carry an atypical count in the raw label; the rest are spines whose field of view cuts the column where the topmost level's identity is under-determined. At wide context the ceiling is enumeration, not local morphology, which is why within-one-level is the honest primary metric for a level-confirmation tool.</p>
+
+  <h2>3. Outline alone</h2>
+  <p>A vertebra reduced to 128 points on its silhouette, centred and unit-scaled, reaches <b>72.5%</b> exact, 95.0% within one, 94.9% region on held-out synthetic cases. That equals the image arm at one vertebra at the same resolution: the identity of a single vertebra lives in its outline. The same contour model scores 0.1% on NHANES, which is a shape-definition mismatch (NHANES annotates the body alone; CT labels the whole vertebra), not a generalisation result.</p>
+
+  <h2>4. CT alone does not transfer</h2>
+  <p>Models trained on projected CT, scored on NHANES films cropped the same way: 7.4% exact at one vertebra, 21.1% at three, and region accuracy of 21–64%, below chance for three regions — a network collapsing to its majority class on input unlike anything it has seen. Tripling the CT data did not change it. Integrating soft tissue into the projection (−200 HU rather than 150 HU) doubles the transfer (27.5% at five vertebrae, region 73.5%) and is still a third of what real films in training reach. Every real-film arm above therefore trains on films.</p>
+
+  <h2>5. Data: what was used, what was excluded, what is being added</h2>
+  <ul>
+    <li><b>NHANES II</b> (543 films; 364 patients after de-duplicating cervical/lumbar pairs), levels annotated: train and test.</li>
+    <li><b>CSXA</b> (4,963 patients, cervical C3–C7), levels annotated: train and test. This is what took the cervical number to 98%.</li>
+    <li><b>BUU-LSPINE</b> (7,203 films, AP + lateral; laterals used), levels <code>inferred_from_position</code>: <b>train only</b>, never scored. Excluded from the first report on principle; admitted as a train-only source once the test set was annotated-only, and it helped.</li>
+    <li><b>VinDr-SpineXR</b> (5,136 lumbar films, lesion boxes, no view or level labels) <span class="status">pipeline running</span>: a view classifier routes the laterals to the corner detector, and the three-vertebra film model (99.1%) assigns levels, to be admitted as a second train-only lumbar source. The first run labelled zero films lateral: the view classifier's training loop read <code>r.view</code>, which in pandas is the <code>Series.view</code> method, so every training film was labelled AP. Fixed (<code>r["view"]</code>) and relaunched 11:05, job 40215525.</li>
+    <li><b>AASCE</b> (481, AP scoliosis) and <b>Mendeley</b> (591): AP or no levels; not used.</li>
+    <li>The <b>Sequence Loss</b> of the closest prior work (Multi-View, MICCAI 2023) re-injects the counting prior and is left out of every arm. SpineCLUE states the question but never publishes the curve.</li>
+  </ul>
+
+  <h2>6. What comes next, in order</h2>
+  <ol>
+    <li>Three- and five-vertebra rungs of the +BUU arm (running).</li>
+    <li>VinDr laterals pseudo-labelled and admitted as train-only; the lumbar single-vertebra bar above is the number to watch.</li>
+    <li>Dual-view fusion on BUU's paired AP + lateral films — the one route with an untested information source rather than more of the same.</li>
+    <li>Supervised-contrastive pre-training of the encoder on the crop bank, then fine-tune: cheap, one run, plausible few points.</li>
+  </ol>
+
+  <h2>7. What these numbers can and cannot support</h2>
+  <ul>
+    <li><b>Can:</b> how exact-level accuracy falls with visible context on held-out patients; that region survives when ordinal position is gone; that the outline alone carries single-vertebra identity; that CT alone does not transfer to film; that annotated real films are the binding constraint and roughly how many buy what.</li>
+    <li><b>Cannot:</b> clinical validation. No number here is a claim about intra-operative safety. NHANES is 1970s film, CSXA and BUU are standing radiographs, none is fluoroscopy, and NHANES annotation is body-only.</li>
+    <li>Per-crop predictions for every arm are in <code>~/*_ctx/runs/result_rung_*.json</code> on the grid; this page is regenerated from <code>tools/collect_context_curve.py</code> output and <code>~/tmp/ladder_summary.json</code>.</li>
+  </ul>
+  <p class="note dim">Code: <code>spinesurg-ct-nnunet/tools/make_drr_dataset.py</code>, <code>make_context_crops.py</code>, <code>train_level_classifier.py</code>, <code>train_view_classifier.py</code>, <code>pseudolabel_films.py</code>, <code>make_contours.py</code>, <code>train_contour_pointnet.py</code>.</p>
+</main>
+
+<script>
+(function () {
+  const ns = "http://www.w3.org/2000/svg";
+  const el = (t, a) => { const e = document.createElementNS(ns, t); for (const k in a) e.setAttribute(k, a[k]); return e; };
+
+  // ---- chart 1: accuracy vs vertebrae visible
+  const X = ["1", "3", "5", "7", "9", "all"];
+  const series = [
+    { name: "real films, cervical", color: "var(--s3)", pts: { "1": 97.7, "3": 99.3, "5": 99.5 } },
+    { name: "real films, lumbar", color: "var(--s2)", pts: { "1": 80.7, "3": 91.9, "5": 91.9 } },
+    { name: "real films, all regions", color: "var(--s1)", pts: { "1": 96.7, "3": 98.8, "5": 99.1 } },
+    { name: "CT projections only, synthetic validation", color: "var(--s4)", dash: true, pts: { "1": 82.8, "3": 89.8, "5": 89.5, "7": 89.5, "9": 90.8, "all": 91.8 } },
+  ];
+  const svg = document.getElementById("chart");
+  const W = 640, H = 320, L = 44, R = 16, T = 14, B = 40;
+  const iw = W - L - R, ih = H - T - B;
+  const y0 = 60, y1 = 100;
+  const xs = i => L + (iw * i) / (X.length - 1);
+  const ys = v => T + ih - ((v - y0) / (y1 - y0)) * ih;
+  for (let v = y0; v <= y1; v += 10) {
+    svg.appendChild(el("line", { x1: L, x2: W - R, y1: ys(v), y2: ys(v), stroke: "var(--grid)", "stroke-width": 1 }));
+    const t = el("text", { x: L - 8, y: ys(v) + 4, "text-anchor": "end", "font-size": 11, fill: "var(--muted)" });
+    t.textContent = v + "%"; svg.appendChild(t);
+  }
+  // the 99% line: what a level-confirmation tool would need
+  svg.appendChild(el("line", { x1: L, x2: W - R, y1: ys(99), y2: ys(99), stroke: "var(--axis)", "stroke-width": 1, "stroke-dasharray": "2 4" }));
+  const t99 = el("text", { x: W - R, y: ys(99) - 4, "text-anchor": "end", "font-size": 10, fill: "var(--muted)" });
+  t99.textContent = "99%"; svg.appendChild(t99);
+  svg.appendChild(el("line", { x1: L, x2: W - R, y1: ys(y0), y2: ys(y0), stroke: "var(--axis)", "stroke-width": 1 }));
+  X.forEach((x, i) => {
+    const t = el("text", { x: xs(i), y: H - B + 18, "text-anchor": "middle", "font-size": 11, fill: "var(--muted)" });
+    t.textContent = x; svg.appendChild(t);
+  });
+  const ax = el("text", { x: L + iw / 2, y: H - 4, "text-anchor": "middle", "font-size": 11, fill: "var(--muted)" });
+  ax.textContent = "vertebrae visible"; svg.appendChild(ax);
+  series.forEach(s => {
+    const idx = X.map((x, i) => [x, i]).filter(([x]) => s.pts[x] != null);
+    const d = idx.map(([x, i], k) => (k ? "L" : "M") + xs(i).toFixed(1) + " " + ys(s.pts[x]).toFixed(1)).join(" ");
+    const attrs = { d, fill: "none", stroke: s.color, "stroke-width": 2, "stroke-linejoin": "round" };
+    if (s.dash) attrs["stroke-dasharray"] = "6 4";
+    svg.appendChild(el("path", attrs));
+    idx.forEach(([x, i]) => svg.appendChild(el("circle", { cx: xs(i), cy: ys(s.pts[x]), r: 4, fill: s.color, stroke: "var(--surface)", "stroke-width": 2 })));
+    const [lx, li] = idx[idx.length - 1];
+    const lab = el("text", { x: xs(li) + (li === X.length - 1 ? -6 : 8), y: ys(s.pts[lx]) + (s.name.includes("lumbar") ? 14 : -8),
+      "text-anchor": li === X.length - 1 ? "end" : "start", "font-size": 11, fill: "var(--ink-2)" });
+    lab.textContent = s.pts[lx].toFixed(1) + "%"; svg.appendChild(lab);
+  });
+  const cross = el("line", { x1: 0, x2: 0, y1: T, y2: T + ih, stroke: "var(--axis)", "stroke-width": 1, "stroke-dasharray": "3 3", visibility: "hidden" });
+  svg.appendChild(cross);
+  const tip = document.getElementById("tip");
+  svg.addEventListener("mousemove", ev => {
+    const r = svg.getBoundingClientRect(); const px = ((ev.clientX - r.left) / r.width) * W;
+    let best = 0, bd = 1e9; X.forEach((x, i) => { const d = Math.abs(xs(i) - px); if (d < bd) { bd = d; best = i; } });
+    cross.setAttribute("x1", xs(best)); cross.setAttribute("x2", xs(best)); cross.setAttribute("visibility", "visible");
+    const rows = series.filter(s => s.pts[X[best]] != null).map(s => `<div><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${s.color};margin-right:6px;vertical-align:middle"></span>${s.name}: <b>${s.pts[X[best]].toFixed(1)}%</b></div>`).join("");
+    tip.innerHTML = `<div style="color:var(--ink-2)">${X[best] === "all" ? "all vertebrae in the scan" : X[best] + " vertebra" + (X[best] === "1" ? "" : "e") + " visible"}</div>${rows}`;
+    tip.hidden = false;
+    const tx = (xs(best) / W) * r.width; const flip = tx > r.width * 0.6;
+    tip.style.left = (flip ? tx - tip.offsetWidth - 12 : tx + 12) + "px";
+    tip.style.top = ((ev.clientY - r.top) - 10) + "px";
+  });
+  svg.addEventListener("mouseleave", () => { tip.hidden = true; cross.setAttribute("visibility", "hidden"); });
+
+  // ---- chart 2: single-vertebra accuracy vs real films of that region in training
+  const bars = [
+    { label: "lumbar · 0 films (CT only)", v: 7.4, color: "var(--s2)", note: "NHANES held-out, CT-trained" },
+    { label: "lumbar · ~380 NHANES films", v: 80.7, color: "var(--s2)", note: "levels annotated" },
+    { label: "lumbar · + 7,200 BUU (counting-inferred)", v: 82.7, color: "var(--s2)", note: "train only" },
+    { label: "lumbar · ~380 films, 96 px targets", v: 85.4, color: "var(--s2)", note: "resolution" },
+    { label: "cervical · ~5,300 CSXA + NHANES films", v: 97.7, color: "var(--s3)", note: "levels annotated" },
+  ];
+  const bs = document.getElementById("bars");
+  const BW = 640, BH = 260, BL = 250, BR = 40, BT = 12, BB = 30;
+  const bw = BW - BL - BR, rowh = (BH - BT - BB) / bars.length;
+  const bx = v => BL + (bw * v) / 100;
+  for (let v = 0; v <= 100; v += 20) {
+    bs.appendChild(el("line", { x1: bx(v), x2: bx(v), y1: BT, y2: BH - BB, stroke: "var(--grid)", "stroke-width": 1 }));
+    const t = el("text", { x: bx(v), y: BH - BB + 16, "text-anchor": "middle", "font-size": 11, fill: "var(--muted)" });
+    t.textContent = v + "%"; bs.appendChild(t);
+  }
+  bs.appendChild(el("line", { x1: bx(99), x2: bx(99), y1: BT, y2: BH - BB, stroke: "var(--axis)", "stroke-width": 1, "stroke-dasharray": "2 4" }));
+  bars.forEach((b, i) => {
+    const y = BT + i * rowh + 6, h = rowh - 12;
+    const lab = el("text", { x: BL - 10, y: y + h / 2 + 4, "text-anchor": "end", "font-size": 11, fill: "var(--ink-2)" });
+    lab.textContent = b.label; bs.appendChild(lab);
+    bs.appendChild(el("rect", { x: bx(0), y, width: Math.max(bx(b.v) - bx(0), 2), height: h, rx: 3, fill: b.color }));
+    const vt = el("text", { x: bx(b.v) + 6, y: y + h / 2 + 4, "font-size": 11, fill: "var(--ink)", "font-weight": 600 });
+    vt.textContent = b.v.toFixed(1) + "%"; bs.appendChild(vt);
+  });
+  const bax = el("text", { x: BL + bw / 2, y: BH - 2, "text-anchor": "middle", "font-size": 11, fill: "var(--muted)" });
+  bax.textContent = "one vertebra visible, exact level, held-out patients"; bs.appendChild(bax);
+})();
+</script>
+
+</body></html>

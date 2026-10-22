@@ -1,0 +1,333 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Spine Program Decisions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&display=swap">
+<style>
+  :root{
+    --ink:#10171b; --ink-2:#3c4a52; --ink-3:#6b7a83;
+    --paper:#eceff1; --card:#ffffff; --rule:#d3dade; --rule-2:#e5eaed;
+    --teal:#2f6f7e; --teal-soft:#dceaed;
+    --ochre:#a96c12; --ochre-soft:#f4e6cf;
+    --moss:#3f6238; --moss-soft:#dde8d9;
+    --crimson:#8f2a26; --crimson-soft:#f3dcda;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ink:#e7edf0; --ink-2:#a9b8c0; --ink-3:#7d8c95;
+      --paper:#0e1417; --card:#161f24; --rule:#2a373e; --rule-2:#1f2a30;
+      --teal:#69b3c2; --teal-soft:#16333a;
+      --ochre:#d8a44e; --ochre-soft:#392c15;
+      --moss:#8fbc82; --moss-soft:#1c2b19;
+      --crimson:#e0817c; --crimson-soft:#361a19;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ink:#e7edf0; --ink-2:#a9b8c0; --ink-3:#7d8c95;
+    --paper:#0e1417; --card:#161f24; --rule:#2a373e; --rule-2:#1f2a30;
+    --teal:#69b3c2; --teal-soft:#16333a;
+    --ochre:#d8a44e; --ochre-soft:#392c15;
+    --moss:#8fbc82; --moss-soft:#1c2b19;
+    --crimson:#e0817c; --crimson-soft:#361a19;
+  }
+  *{box-sizing:border-box}
+  body{margin:0; background:var(--paper); color:var(--ink);
+       font-family:"Source Sans 3",system-ui,sans-serif; font-size:15px; line-height:1.55;}
+  .wrap{max-width:1060px; margin:0 auto; padding-inline:20px; padding-block:34px 76px;}
+  h1,h2,h3{font-family:Archivo,system-ui,sans-serif; margin:0; text-wrap:balance;}
+  h1{font-size:clamp(27px,4.2vw,40px); font-weight:700; letter-spacing:-.022em; line-height:1.1;}
+  h2{font-size:14px; font-weight:700; letter-spacing:.11em; text-transform:uppercase; color:var(--ink-3);}
+  h3{font-size:17px; font-weight:600; letter-spacing:-.008em;}
+  p{margin:0}
+  code,.mono{font-family:"IBM Plex Mono",ui-monospace,monospace; font-variant-numeric:tabular-nums;}
+
+  .head{border-bottom:2px solid var(--ink); padding-bottom:15px;}
+  .head p{color:var(--ink-2); max-width:62ch; margin-top:9px; font-size:16px;}
+  section{margin-top:38px;}
+  .sechead{display:flex; align-items:baseline; gap:12px; margin-bottom:14px; flex-wrap:wrap;}
+  .sechead .n{font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--ink-3);}
+
+  /* decision entries */
+  .dec{border-top:1px solid var(--rule); padding:15px 0 3px;}
+  .dec:last-child{border-bottom:1px solid var(--rule);}
+  .dec .top{display:flex; gap:12px; align-items:baseline; justify-content:space-between; flex-wrap:wrap;}
+  .dec .call{font-weight:600; font-size:16px; letter-spacing:-.005em;}
+  .dec .why{color:var(--ink-2); font-size:14.5px; margin-top:6px; max-width:80ch;}
+  .dec .so{font-size:14px; margin-top:7px; padding-left:12px; border-left:2px solid var(--teal);
+           color:var(--ink); max-width:80ch;}
+  .dec .so b{font-weight:600;}
+  .chip{font-family:"IBM Plex Mono",monospace; font-size:10.5px; font-weight:600; letter-spacing:.06em;
+        text-transform:uppercase; padding:3px 8px; border-radius:2px; white-space:nowrap;}
+  .chip.locked{background:var(--moss-soft); color:var(--moss);}
+  .chip.live{background:var(--teal-soft); color:var(--teal);}
+  .chip.rev{background:var(--ochre-soft); color:var(--ochre);}
+
+  /* tables */
+  .scroll{overflow-x:auto; border:1px solid var(--rule); background:var(--card); margin-top:12px;}
+  table{border-collapse:collapse; width:100%; min-width:660px; font-size:14px;}
+  th,td{text-align:left; padding:9px 13px; border-bottom:1px solid var(--rule-2); vertical-align:top;}
+  th{font-family:"IBM Plex Mono",monospace; font-size:10.5px; letter-spacing:.08em; text-transform:uppercase;
+     color:var(--ink-3); font-weight:600; background:var(--paper);}
+  tbody tr:last-child td{border-bottom:none;}
+  td.num{font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums; white-space:nowrap;}
+  td.tot{font-weight:700; background:var(--paper);}
+  .ok{color:var(--moss); font-weight:600;}
+  .no{color:var(--crimson); font-weight:600;}
+  .hm{color:var(--ochre); font-weight:600;}
+
+  /* capability cards */
+  .caps{display:grid; grid-template-columns:repeat(auto-fit,minmax(290px,1fr)); gap:14px; margin-top:14px;}
+  .cap{background:var(--card); border:1px solid var(--rule); border-radius:3px; padding:15px 17px;}
+  .cap .when{font-family:"IBM Plex Mono",monospace; font-size:10.5px; letter-spacing:.07em;
+       text-transform:uppercase; color:var(--ink-3);}
+  .cap h3{margin:3px 0 7px;}
+  .cap p{font-size:14px; color:var(--ink-2);}
+  .cap .feeds{font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--teal); margin-top:9px;
+       padding-top:8px; border-top:1px dashed var(--rule);}
+  .cap .gap{font-size:13px; color:var(--ochre); margin-top:6px;}
+
+  .note{font-size:13.5px; color:var(--ink-3); margin-top:11px; max-width:84ch; font-style:italic;}
+  a{color:var(--teal)}
+</style>
+
+<div class="wrap">
+
+  <div class="head">
+    <h1>Every call made this session, and what it buys you</h1>
+    <p>Twelve decisions across the paper, the network architecture, the data and the
+      governance — each with the evidence behind it and what it commits you to. Then the
+      corpus as it now stands, and what can actually be built on it.</p>
+  </div>
+
+  <!-- ============ DECISIONS ============ -->
+  <section>
+    <div class="sechead"><h2>Decisions</h2><span class="n">the ones that were not obvious</span></div>
+
+    <div class="dec">
+      <div class="top"><span class="call">One network, four heads — not separate models, not one flat class list</span>
+        <span class="chip locked">locked</span></div>
+      <p class="why">A VinDr film has lesion boxes and no corners; a CSXA film has corners and no
+        lesion boxes. Concatenated into one class list, every CSXA image teaches the model
+        &ldquo;no osteophytes here&rdquo; — which is false, nobody looked.</p>
+      <p class="so">Shared backbone. Vertebra detection + 4 keypoints, a level head, a lesion head,
+        and later Cobb landmarks. Each head&rsquo;s loss is <b>masked to zero</b> on images not
+        annotated for it. Prior art: Zhou&rsquo;s <span class="mono">UniDet</span> (CVPR 2022) matches
+        dataset-specific models on every training domain; Yan&rsquo;s <span class="mono">LENS</span>
+        (IEEE TMI 2021) is the medical version, +49% sensitivity.</p>
+    </div>
+
+    <div class="dec">
+      <div class="top"><span class="call">Level identity goes on a head, never on the detector</span>
+        <span class="chip locked">locked</span></div>
+      <p class="why">C3 appears only in CSXA, T7 only in AASCE. A detector with level classes can hit
+        near-perfect training accuracy by reading <em>which dataset the image came from</em>. A
+        ResNet50 identifies source dataset from chest X-ray <b>contours alone</b> at 86.6% F1 — the
+        signature survives intensity normalisation.</p>
+      <p class="so">The level head reads <b>pooled features inside the detected box</b>, so it only
+        ever sees the vertebra itself. This is your local-level-identity thesis, moved to 2D — and
+        it is the reason the architecture question mattered at all.</p>
+    </div>
+
+    <div class="dec">
+      <div class="top"><span class="call">Adding CSXA is what makes the level experiment possible</span>
+        <span class="chip locked">locked</span></div>
+      <p class="why">Not mainly for volume. Cervical levels were covered by one source, so a
+        train-here/test-there experiment could not be run at all.</p>
+      <p class="so">Cervical is now covered by <b>CSXA and NHANES independently</b>. Train the level
+        head on one, test on the other: survives the swap, it is morphology; collapses, it was
+        signature. No published work tests cross-dataset generalisation of level identity.</p>
+    </div>
+
+    <div class="dec">
+      <div class="top"><span class="call">One training fold while debugging, not five</span>
+        <span class="chip live">in effect</span></div>
+      <p class="why">Five folds on one node made each other slow: the first to land stages to local
+        NVMe and the rest fall back to NFS. Fold 2 also died on a 16&nbsp;GB V100 with a plan built
+        for 100&nbsp;GB — nothing to do with the model.</p>
+      <p class="so">Fold 4 alone on an H200, resumed from its checkpoint at epoch 50. Vertebrae are at
+        <b>Dice 0.82–0.95</b>. See the open question below about whether five folds can ever measure
+        the rare classes.</p>
+    </div>
+
+    <div class="dec">
+      <div class="top"><span class="call">Gate on geometry, never on the answer</span>
+        <span class="chip locked">locked</span></div>
+      <p class="why">The figure had been dropping records whose pelvic tilt was below &minus;15&deg;
+        — removing them by their <em>result</em>, which hides the defect that produced it.</p>
+      <p class="so">The real fault was a plate normal leaning posteriorly, which the tilt gate could
+        not see because it measures only the angle from vertical. <b>39/39</b> of the bad records lean
+        back, <b>0/39</b> of the good ones. Now rejected on orientation; the value filter is gone.</p>
+    </div>
+
+    <div class="dec">
+      <div class="top"><span class="call">Withhold L5 rather than publish it with a caveat</span>
+        <span class="chip locked">locked</span></div>
+      <p class="why">End-plate and pedicle width both come from a body isolated by cutting at the
+        canal wall, and the L5 transverse processes arise in front of that wall. Three replacement
+        rules were built and run over all 802 records; none beat the one that ships.</p>
+      <p class="so">L5 dropped from those two panels and from <span class="mono">level_atlas.csv</span>.
+        A number wrong in an eighth of the cohort, in a figure whose point is telling whether a
+        patient is unusual, is worse than one fewer row.</p>
+    </div>
+
+    <div class="dec">
+      <div class="top"><span class="call">Research first on licensing, enforced in code</span>
+        <span class="chip live">in effect</span></div>
+      <p class="why">Nothing in a checkpoint records what it saw, so a README is not a control.</p>
+      <p class="so"><span class="mono">src/licensing.py</span> makes the exporter <b>unable to select
+        a forbidden source</b>. Commercial-clean today: CSXA, the 208 Honduran images, NHANES if
+        counsel agrees. VinDr is research-only by its PhysioNet licence — that is the entire lesion
+        corpus.</p>
+    </div>
+
+    <div class="dec">
+      <div class="top"><span class="call">Spinal-AI2024 pulled despite having no licence file</span>
+        <span class="chip rev">revisit</span></div>
+      <p class="why">No LICENSE means all-rights-reserved by default — a commercial concern, not a
+        research one, and you made the call.</p>
+      <p class="so">20,000 synthetic scoliosis films with <b>19,999 Cobb-angle triples</b> and COCO
+        annotations. Same label schema as AASCE at <b>35&times; the volume</b>. Tagged research-track
+        so the gate keeps it out of any commercial lineage automatically.</p>
+    </div>
+
+    <div class="dec">
+      <div class="top"><span class="call">IRB correspondence purged from public history</span>
+        <span class="chip locked">done</span></div>
+      <p class="why">Eight named DMC/WSU staff with work addresses, on two public remotes.</p>
+      <p class="so">Removed from every ref with <span class="mono">git-filter-repo</span>, both remotes
+        force-pushed, verified zero commits/trees/blobs remaining. Backups outside the repo.
+        <b>Still yours to do:</b> ask GitHub support to purge cached views for old SHAs
+        <span class="mono">a959ff7</span> and <span class="mono">1bf15c1</span>.</p>
+    </div>
+  </section>
+
+  <!-- ============ CORPUS ============ -->
+  <section>
+    <div class="sechead"><h2>The corpus as it stands</h2><span class="n">radiographs on the grid today</span></div>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Source</th><th>Images</th><th>What the labels are</th><th>Commercial</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Spinal-AI2024</strong></td><td class="num">20,000</td>
+              <td>3 Cobb angles per image + COCO annotations. Synthetic.</td><td class="no">No</td></tr>
+          <tr><td><strong>VinDr-SpineXR</strong></td><td class="num">10,466</td>
+              <td>19,551 lesion boxes across 7 detectable classes</td><td class="no">No</td></tr>
+          <tr><td><strong>BUU-LSPINE</strong></td><td class="num">7,204</td>
+              <td>L1–L5 endplate lines, AP+LAT paired, <strong>plus LSTV and slip grades</strong></td><td class="hm">Unknown</td></tr>
+          <tr><td><strong>DRR (yours)</strong></td><td class="num">6,416</td>
+              <td>4 corners + pelvis, level known with certainty from 3D</td><td class="no">No</td></tr>
+          <tr><td><strong>CSXA</strong></td><td class="num">4,963</td>
+              <td>24,815 named C3–C7 quads, 23 keypoints/image</td><td class="ok">Yes</td></tr>
+          <tr><td><strong>Mendeley</strong></td><td class="num">716</td>
+              <td>lateral lumbar — only 208 independent, 508 are re-filtered BUU</td><td class="ok">Yes</td></tr>
+          <tr><td><strong>AASCE / SpineWeb</strong></td><td class="num">579</td>
+              <td>68 landmarks (17&times;4), the Cobb benchmark</td><td class="hm">Unknown</td></tr>
+          <tr><td><strong>NHANES II</strong></td><td class="num">543</td>
+              <td>per-vertebra <strong>masks</strong> keyed by level name</td><td class="hm">Unknown</td></tr>
+          <tr><td>NHANES unannotated</td><td class="num">17,073</td>
+              <td>none — pretraining / pseudo-label pool</td><td class="hm">Unknown</td></tr>
+          <tr><td class="tot">Annotated total</td><td class="num tot">50,887</td>
+              <td class="tot">against 4,327 in the current training set</td><td class="tot"></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">The model that scores mAP50 0.991 today was trained on 4,327 images — about a
+      twelfth of what is now on disk, and it has never seen a named level, a lesion, an LSTV label or
+      a Cobb angle.</p>
+  </section>
+
+  <!-- ============ FEATURES ============ -->
+  <section>
+    <div class="sechead"><h2>What you can expect to be able to do</h2><span class="n">ordered by how ready the data is</span></div>
+    <div class="caps">
+
+      <div class="cap">
+        <div class="when">Working now</div>
+        <h3>Find every vertebra and its four corners</h3>
+        <p>Class-agnostic detection plus keypoints on any spine radiograph.
+          mAP50 <span class="mono">0.991</span>, PCK@0.1 <span class="mono">0.812</span>.</p>
+        <div class="feeds">trained on 4,327 → retraining on ~34,000</div>
+      </div>
+
+      <div class="cap">
+        <div class="when">Next, data ready</div>
+        <h3>Name the level from the vertebra alone</h3>
+        <p>A level head on pooled box features, trained only where the level was annotated rather
+          than inferred from position.</p>
+        <div class="feeds">CSXA 24,815 named · NHANES masks · DRR 6,416 certain</div>
+        <p class="gap">The number to beat: SpineCLUE gets 92–94% from single-vertebra shape in 3D CT,
+          98.7% once global context is added. Nobody has tested it across datasets.</p>
+      </div>
+
+      <div class="cap">
+        <div class="when">Next, data ready</div>
+        <h3>Flag a transitional vertebra</h3>
+        <p>Lumbarization vs sacralization from a lateral film — subtypes, not just presence.</p>
+        <div class="feeds">BUU: 3,461 normal / 15 lumbar. / 130 sacral.</div>
+        <p class="gap">At 4.0% that is population prevalence. Published SOTA is AUC 0.84, binary,
+          single centre, at 62.3% prevalence.</p>
+      </div>
+
+      <div class="cap">
+        <div class="when">Next, data ready</div>
+        <h3>Grade a slip</h3>
+        <p>Spondylolisthesis detection and grading from the same endplate lines already parsed.</p>
+        <div class="feeds">BUU: 465 grade-3 and 194 grade-4 across 36,060 endplates</div>
+        <p class="gap">Meyerding percentage needs the slip measured, not just classified.</p>
+      </div>
+
+      <div class="cap">
+        <div class="when">Scoliosis pivot</div>
+        <h3>Measure a Cobb angle</h3>
+        <p>Three angles per film, the standard benchmark output.</p>
+        <div class="feeds">Spinal-AI2024 19,999 triples + AASCE 579 real</div>
+        <p class="gap">Train on synthetic, validate on real — synthetic cannot be the test set.
+          Benchmark is SMAPE; beware that AASCE numbers in the literature use three incompatible
+          splits.</p>
+      </div>
+
+      <div class="cap">
+        <div class="when">Research track only</div>
+        <h3>Detect pathology</h3>
+        <p>Osteophytes, disc space narrowing, foraminal stenosis, spondylolisthesis, vertebral
+          collapse, surgical implants.</p>
+        <div class="feeds">VinDr 19,551 boxes · mAP50 to beat: 0.336</div>
+        <p class="gap">PhysioNet licence forbids commercial use. Any weights that touch it inherit
+          that, permanently.</p>
+      </div>
+
+      <div class="cap">
+        <div class="when">The experiment</div>
+        <h3>Prove 3D morphology transfers to 2D</h3>
+        <p>Train the level head on DRRs where the level is certain, test on real radiographs.</p>
+        <div class="feeds">6,416 DRRs, one rendering style, no source confound</div>
+        <p class="gap">No published work uses DRRs to supply level identity to a 2D model — everyone
+          uses them for landmarks, registration or 3D reconstruction. This is the opening.</p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============ OPEN ============ -->
+  <section>
+    <div class="sechead"><h2>The one open question that changes the plan</h2></div>
+    <div class="dec" style="border-top:3px solid var(--crimson);">
+      <div class="top"><span class="call">L6 has scored Dice 0.00 in every run, every fold, every epoch</span>
+        <span class="chip rev">investigating</span></div>
+      <p class="why">Ten training runs, one reaching epoch 83. Never once above zero — so it is not a
+        regression and not &ldquo;too early&rdquo;. About <b>22 of 802 cases</b> carry an L6 at all,
+        roughly 2.7%.</p>
+      <p class="so">With five folds that is four or five validation cases per fold, and
+        <span class="mono">nan</span> is already appearing — meaning some epochs have none. nnU-Net&rsquo;s
+        foreground oversampling is per-patch and class-agnostic, so an L6 will almost never be the
+        sampled class inside a 384&times;256&times;256 patch. <b>The rare transitional classes are
+        exactly the phenotypes the dataset exists to capture, and they are the ones the training
+        setup cannot see.</b></p>
+    </div>
+    <p class="note">Counting how the rare classes fall across the five folds is running now. It decides
+      whether consolidating folds helps, or whether the fix has to be class-aware patch sampling.</p>
+  </section>
+
+</div>
+
+</body></html>
