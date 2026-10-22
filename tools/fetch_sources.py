@@ -386,7 +386,17 @@ def answers_text(http):
     return said
 
 
-def physionet_why(http, exit_code):
+def masked_login(login):
+    """A login name a person can recognise and a stranger cannot read whole: its first two
+    characters and its last, the rest as * (the first alone under five), with its length; an email address keeps its domain,
+    which names an institution and not the account. The report names the account the grid's
+    ~/.netrc signs in as, since a 403 there means that account and not the owner's (issue #108)."""
+    local, at, domain = login.rpartition("@") if "@" in login else (login, "", "")
+    shown = local[:1] + "*" * (len(local) - 1) if len(local) < 5 else local[:2] + "*" * (len(local) - 3) + local[-1]
+    return f"{shown}{at}{domain} ({len(local)} characters{' before the @' if at else ''})"
+
+
+def physionet_why(http, exit_code, login=None):
     """What PhysioNet's answers mean (physionet-build, project/views.py serve_published_project_file
     and project/utility.py require_http_auth): an anonymous Wget/ over HTTPS is asked for a login
     with 401; a wget with no password for that login in $HOME/.netrc stops there (exit 6); a login
@@ -394,7 +404,8 @@ def physionet_why(http, exit_code):
     may not read the files is refused with 403 (exit 8). The answers to the project's own URL
     decide, after any redirect, which says nothing either way; once a file has come, the login and
     the access held, and what failed was some of the files."""
-    said = answers_text(http)
+    # The login comes first, so the status word's cut line keeps it whatever follows.
+    said = (f"login {masked_login(login)}; " if login else "") + answers_text(http)
     head = [code for code in http.get("first", []) if not 300 <= code < 400]
     came = sum(n for code, n in http.get("counts", {}).items() if 200 <= int(code) < 300 or int(code) == 304)
     failure = f"wget exit {exit_code}, {WGET_EXITS.get(exit_code, 'unknown')}"
@@ -720,7 +731,9 @@ def run_entry(entry, plan, python, helper, settings):
     outcome["status"] = DONE if exits and (exits[-1] == 0 if plan.get("fallback") else all(e == 0 for e in exits)) else FAILED
     if outcome["status"] == FAILED and "physionet" in plan and outcome["runs"]:
         last = outcome["runs"][-1]
-        outcome["error"] = physionet_why(last.get("http", {}), last["exit"])
+        command = commands[len(outcome["runs"]) - 1]
+        login = command[command.index("--user") + 1] if "--user" in command[:-1] else None
+        outcome["error"] = physionet_why(last.get("http", {}), last["exit"], login)
     if outcome["status"] == DONE and entry.get("torrent"):
         try:
             outcome["torrent"] = verify_torrent(entry["dest"], fetch_torrent(entry["torrent"], state_dir(entry)),
