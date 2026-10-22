@@ -11,6 +11,7 @@
 #   merge   the parts into SAMPLES_RUN/samples.sqlite, the joins, then MANIFEST.json and
 #           MANIFEST.md (aggregates only), which also becomes logs/SAMPLES-STAGE-REPORT.md and,
 #           once whole, SAMPLES_OUT/CURRENT names this run
+#   report  the manifest alone, from a run whose samples.sqlite the merge left whole
 # PYDRV is the train-cpu environment, since the DICOM headers need pydicom.
 set -uo pipefail
 REPO=${SCHWINGNET:-$HOME/SchwingNet}
@@ -18,12 +19,16 @@ PYDRV=${PYDRV:-python3}
 SAMPLES_RUN=${SAMPLES_RUN:?SAMPLES_RUN names the run folder grid/run-samples.sh made}
 SAMPLES_TASKS=${SAMPLES_TASKS:-64}
 SAMPLES_ARGS=${SAMPLES_ARGS:-}
-step=${1:?plan, scan or merge}
+step=${1:?plan, scan, merge or report}
 export PYTHONNOUSERSITE=1
 # The index can hold PHI (header values, sidecar rows): the owner's alone.
 umask 077
 mkdir -p logs
 tool=$REPO/tools/sample_index.py
+publish() {  # the manifest to the gate's status, and CURRENT names this run once it is whole
+  cp "$SAMPLES_RUN/MANIFEST.md" logs/SAMPLES-STAGE-REPORT.md && chmod 644 logs/SAMPLES-STAGE-REPORT.md \
+    && basename "$SAMPLES_RUN" > "$(dirname "$SAMPLES_RUN")/CURRENT"
+}
 echo "SAMPLES $step start $(date '+%F %T') on $(hostname) job ${SLURM_JOB_ID:-} task ${SLURM_ARRAY_TASK_ID:-}"
 case "$step" in
   plan)
@@ -34,10 +39,12 @@ case "$step" in
     "$PYDRV" "$tool" scan --run "$SAMPLES_RUN" --task "${SLURM_ARRAY_TASK_ID:?one task of the array}" \
       --tasks "$SAMPLES_TASKS" --workers "${SLURM_CPUS_PER_TASK:-8}" $SAMPLES_ARGS ;;
   merge)
-    "$PYDRV" "$tool" merge --run "$SAMPLES_RUN" > "$SAMPLES_RUN/merge.out" \
-      && cp "$SAMPLES_RUN/MANIFEST.md" logs/SAMPLES-STAGE-REPORT.md && chmod 644 logs/SAMPLES-STAGE-REPORT.md \
-      && basename "$SAMPLES_RUN" > "$(dirname "$SAMPLES_RUN")/CURRENT" ;;
-  *) echo "samples.sbatch: '$step' is not plan, scan or merge"; exit 64 ;;
+    "$PYDRV" "$tool" merge --run "$SAMPLES_RUN" > "$SAMPLES_RUN/merge.out" && publish ;;
+  report)
+    # A merge whose samples.sqlite is whole but whose manifest failed: the manifest alone, again.
+    "$PYDRV" "$tool" report --db "$SAMPLES_RUN/samples.sqlite" --json "$SAMPLES_RUN/MANIFEST.json" \
+      --md "$SAMPLES_RUN/MANIFEST.md" > "$SAMPLES_RUN/report.out" && publish ;;
+  *) echo "samples.sbatch: '$step' is not plan, scan, merge or report"; exit 64 ;;
 esac
 rc=$?
 echo "SAMPLES_RC=$rc $step $(date '+%F %T')"

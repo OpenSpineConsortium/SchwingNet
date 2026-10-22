@@ -955,11 +955,23 @@ def markdown(result, recorded=None):
     return "\n".join(lines) + "\n"
 
 
+def string_keys(value):
+    """The manifest with every key a string, a missing one named unknown: a group's formats and
+    roles hold None beside names for a file the scan could not open, and json.dumps sorts keys only of
+    one type, which failed the first grid merge (job 40702276) after samples.sqlite was whole."""
+    if isinstance(value, dict):
+        return {("unknown" if key is None else str(key)): string_keys(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [string_keys(item) for item in value]
+    return value
+
+
 def report(db_path, out_json=None, out_md=None):
     result = manifest(db_path)
     text = markdown(result)
     if out_json:
-        Path(out_json).write_text(json.dumps(result, indent=1, sort_keys=True, default=str) + "\n", encoding="utf-8")
+        Path(out_json).write_text(json.dumps(string_keys(result), indent=1, sort_keys=True, default=str) + "\n",
+                                  encoding="utf-8")
     if out_md:
         Path(out_md).write_text(text, encoding="utf-8")
     return text
