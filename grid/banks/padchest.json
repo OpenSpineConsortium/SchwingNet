@@ -1,0 +1,28 @@
+{
+  "id": "padchest",
+  "raw": "/rs/rs_grp_oschome/go2432/data/padchest/raw",
+  "bank": "/rs/rs_grp_oschome/go2432/data/padchest/bank",
+  "images": [
+    "to confirm: the PNG glob inside the unpacked archives, which stay packed until the owner says to open them"
+  ],
+  "format": "png",
+  "person": {
+    "regex": "to confirm: PadChest's PatientID comes from its labels CSV by ImageID, not from the file name, so the recipe needs a CSV join first"
+  },
+  "view": {
+    "lat_from_ap_deg": "to confirm: the CSV's Projection column (PA, AP, L and others) names each film's view",
+    "gantry_deg": null
+  },
+  "device": {
+    "make": null,
+    "model": null,
+    "detector": "to confirm: the CSV's Modality and Manufacturer columns"
+  },
+  "modality": "cr",
+  "device_class": "film",
+  "split": "train",
+  "labels": null,
+  "synthetic": false,
+  "px_mm": null,
+  "notes": "160,868 chest films of 67,625 patients from Hospital San Juan, Alicante (BIMCV), 109 projections, laterals about 30 percent; fetched from the B2DROP share under the PadChest research use agreement the owner accepted on 2026-10-22"
+}

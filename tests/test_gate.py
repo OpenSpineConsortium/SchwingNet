@@ -77,8 +77,8 @@ class GateTest(unittest.TestCase):
         env = dict(os.environ, PATH=f"{self.fake}:{os.environ['PATH']}", FAKE=str(self.fake), SCHWINGNET=str(self.repo),
                    DATA_ROOT=str(self.data) if data_root is None else data_root, RUNS=str(self.runs), MODELS=str(self.models),
                    NETRC=str(self.netrc), USER="go2432", HPCWORKER=str(FAKE_HPCWORKER),
-                   HPCW_LOG=str(self.fake / "sbatch.log"), HPCW_REFUSE=str(self.fake / "refuse"), HPCW_LOGS=str(self.fake / "joblogs"))
-        for name in ("HPCW_DRY", "HPCW_FIRST", "HPCW_FRAMEWORK", "SBATCH", "SQUEUE", "SACCT", "SCANCEL", "DF", "DEPEND", "PYDRV"):
+                   HPCW_LOG=str(self.fake / "sbatch.log"), HPCW_REFUSE=str(self.fake / "refuse"), HPCW_LOGS=str(self.fake / "joblogs"), SHARED_DATA=str(self.tmp / "shared"))
+        for name in ("GETFATTR", "VOLUME", "HPCW_DRY", "HPCW_FIRST", "HPCW_FRAMEWORK", "SBATCH", "SQUEUE", "SACCT", "SCANCEL", "DF", "DEPEND", "PYDRV"):
             env.pop(name, None)
         return env
 
@@ -305,10 +305,16 @@ class GateTest(unittest.TestCase):
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         self.assertIn("--dependency=afterany:201,afterany:202 ", self.line_of("platform-fetch.sbatch")[0])
 
-    def test_ct_rate_and_nlst_are_never_a_fetch_word(self):
-        for name in ("hf_ct_rate", "idc_nlst", "aws_stoic2021"):
+    def test_ct_rate_and_an_open_chain_source_are_never_a_fetch_word(self):
+        for name in ("hf_ct_rate", "aws_stoic2021"):
             self.assertEqual(self.gate_at_home("fetch", name).returncode, 64, name)
         self.assertEqual(self.submitted(), [])
+
+    def test_the_full_nlst_is_a_fetch_word_on_the_owners_yes(self):
+        done = self.gate_at_home("fetch", "idc_nlst")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(len(self.line_of("platform-fetch.sbatch")), 1)
+        self.assertEqual(self.recorded().get("dp_idc_nlst") is not None, True, self.recorded())
 
     def test_an_id_not_on_the_list_is_refused(self):
         self.assertEqual(self.gate("fetch", "nosuchset").returncode, 64)
@@ -800,6 +806,33 @@ echo "the split is not disjoint; no training step reads this version"; exit 1
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         self.assertIn("101 setup COMPLETED", done.stdout)
         self.assertIn("--format=JobID,JobName,State,Elapsed,ExitCode,NodeList", (self.fake / "sacct.log").read_text(encoding="utf-8"))
+
+    def test_status_tallies_the_space_each_set_takes_largest_first(self):
+        # CephFS's recursive size, faked per folder; a folder the attribute is missing on reads unknown
+        (self.fake / "getfattr").write_text("""#!/bin/bash
+folder=${!#}
+case "$folder" in
+  */big) echo -n 2500000000000 ;;
+  */small) echo -n 1500000000 ;;
+  */unread) exit 1 ;;
+  *) echo -n 2600000000000 ;;
+esac
+""", encoding="utf-8")
+        (self.fake / "getfattr").chmod(0o755)
+        for name in ("small", "big", "unread"):
+            (self.data / name).mkdir()
+        done = self.gate("status")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        out = done.stdout
+        self.assertIn("## space on the lab volume", out)
+        self.assertIn("900000 GB free", out)
+        self.assertIn("the volume's quota: 2600 GB", out)
+        self.assertIn("  data: 2600 GB in all", out)
+        tally = [line.split() for line in out.splitlines() if line.startswith("    ")][:3]
+        self.assertEqual(tally, [["2500", "big"], ["2", "small"], ["?", "unread"]])
+        self.assertIn("shared datasets: not there", out)
+        self.assertNotIn(str(self.tmp), out)
+        self.assertLess(out.index("## space"), out.index("## the gate's newest jobs") if "## the gate's" in out else len(out))
 
     def failed(self, *rows):
         """rows of (id, word, what, job name, state, elapsed, log lines or None): the gate's list, what

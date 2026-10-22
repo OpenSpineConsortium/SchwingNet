@@ -1,0 +1,14 @@
+{
+  "source": "padchest",
+  "identity_level": "patient",
+  "person_key_rule": "padchest:<PatientID from the labels CSV, joined by ImageID>",
+  "access": "BIMCV's PadChest research use agreement, accepted by the owner on 2026-10-22; no redistribution, the link kept inside the organisation",
+  "modality": "cr",
+  "device_class": "film",
+  "regions": [
+    "thoracic"
+  ],
+  "grid_root": "/rs/rs_grp_oschome/go2432/data/padchest",
+  "shards": [],
+  "notes": "160,868 chest films of 67,625 patients, 109 projections, laterals about 30 percent; the raw copy is /rs/rs_grp_oschome/go2432/data/padchest/raw (grid/fetch-xray.json, the nextcloud route) and the bank /rs/rs_grp_oschome/go2432/data/padchest/bank, whose recipe waits on the CSV join; no shard until then"
+}
