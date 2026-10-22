@@ -77,12 +77,16 @@ rsna_rspect_pe|kaggle|0|RSNA terms, non-commercial research|gated|rsna-str-pulmo
 hf_rexgradient_160k|hf-token|156|ReXGradient-160K data access and use agreement, non-commercial, no redistribution|gated|--repo rajpurkarlab/ReXGradient-160K --repo-type dataset --include .|TOKEN_FILE=~/.hf/token.env NOTE=the whole repository, about 156 GB, on the owner's choice of 2026-10-22 knowing clause A.5 limits a download to the part the project needs
 aimi_ol3i|redivis|4.3|Stanford AIMI research use agreement, non-commercial|gated|--max-gb 10 --files aimi.ol3i_opportunistic_l3_ct_slices_for_ischemic_heart_disease_risk_assessment:asvh:v1_0.ol3i:n1y3 --csv aimi.ol3i_opportunistic_l3_ct_slices_for_ischemic_heart_disease_risk_assessment:asvh:v1_0.clinical_data:2cqm|TOKEN_FILE=~/.redivis/token.env NOTE=the L3 CT slices in one file and the clinical table, on the owner's choice of 2026-10-22
 chexpert_plus|redivis|0|Stanford AIMI research use agreement, non-commercial|gated|--max-gb 3000 --files aimi.chexpert_plus:5yyj:v1_0.png_train:s6cj --files aimi.chexpert_plus:5yyj:v1_0.png_valid:41v9 --files aimi.chexpert_plus:5yyj:v1_0.chexpert_labels:pmec --files aimi.chexpert_plus:5yyj:v1_0.radgraph_xl_annotations:8wdv --csv aimi.chexpert_plus:5yyj:v1_0.df_chexpert_plus_240401:bavj|TOKEN_FILE=~/.redivis/token.env NOTE=the PNGs, labels, RadGraph-XL annotations and reports, no DICOM, on the owner's choice of 2026-10-22; refuses before downloading above 3000 GB listed
+zenodo_magic_ct|zenodo-token|39.1|CC BY 4.0 on the record, under its data use agreement (non-commercial)|gated|--record 18389015 --max-gb 50|TOKEN_FILE=~/.zenodo/token.env NOTE=MAGIC-CT, 21 files, each md5-checked against the record; the owner's approved access of 2026-10-22
 "
 # The owner's yes, one source at a time: never in the chain, fetched only when grid/gate.sh's fetch
 # names it. The full NLST is here since the owner lifted the stopping rule on 2026-10-22 ("yes
 # please add this"), choosing what the volume holds by its tally (status) and not by a yield rule.
 OWNER_LIST="
 idc_nlst|idc|2305|CC BY 4.0|open|nlst|NOTE=24,713 subjects, 2.3 TB; the owner's yes of 2026-10-22
+ipcai2025_robotic_xray_drive|gdown|0.85|not stated on the file; to ask the authors|open|1pV8qaW4kHGI8wrDWc6wVWS4za5XRWsXA|NOTE=202410191.zip, the data of arXiv 2412.08020 (Killeen and others, language-controlled robotic C-arm; the cadaver study's X-rays), shared with the owner by its author on 2026-10-22 and readable by anyone with the link
+fluorosam_weights_drive|gdown|1.0|per arcadelab/fluorosam; not stated on the file|open|1lJqVIuVFbdc9Bcmj17ac_cha-gW827Q6|NOTE=fluorosam_model_weights.pth, 1,002,351,026 bytes, the weights the FluoroSAM repository's README links, readable by anyone with the link; asked for by the 3D-to-X-ray work on 2026-10-22 as its comparison row
+hf_fluoroseg|hf-token|2650|FluoroSeg data use terms, accepted by the owner on 2026-10-22|gated|--repo benjamindkilleen/fluoroseg --repo-type dataset --include .|TOKEN_FILE=~/.hf/token.env NOTE=the whole set, about 2.65 TB of simulated X-rays with masks, on the owner's yes of 2026-10-22 (12.6 TB free of the 22 TB quota at the time, 6.8 TB of it promised to queued fetches)
 "
 # Never in the chain: the owner's own lines, printed at the end.
 APART="
