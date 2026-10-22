@@ -72,3 +72,10 @@ Exported 2026-10-22 from gregoryamdg: 24 copied (23 pages and 1 Docs document), 
 Exported 2026-10-22 from go2432: 3 artifacts copied here, 2 not copied, 5 more in symphony-template's artifacts/.
 
 Exported 2026-10-22 from gschwing: 2 artifacts copied, 1 not copied.
+
+| Level Verification Bench | [level-verification-bench-mkjxsy](level-verification-bench-mkjxsy/) | https://claude.ai/artifact/MKJXSYgzFBa5ndLK8TVsKo | gregoryamdg | Random-sample bench for checking the model's vertebral level names on decoded panels (page with its data file; its db rows are not copied). Copied at the owner's word after the first export held it back; the flagged string was base64 noise. |
+| OSC Outreach Funding | [osc-outreach-funding-kak2gk](osc-outreach-funding-kak2gk/) | https://claude.ai/artifact/KaK2gKBYF5vcPoJuSxtoyf | gregoryamdg | Outreach funding page; holds a few individuals' e-mail addresses. Copied at the owner's word. |
+| Celebrate Life Flyer | [celebrate-life-flyer-noutom](celebrate-life-flyer-noutom/) | https://claude.ai/artifact/NoUtoMYAUrpbtrMNx9unFq | gregoryamdg | The first Celebrate Life flyer (page with embedded images); holds contact e-mail addresses printed on the flyer. Copied at the owner's word. |
+| Celebrate Life Scoliosis Night | [celebrate-life-scoliosis-night-julcos](celebrate-life-scoliosis-night-julcos/) | https://claude.ai/artifact/JULCosGcibnbxFo7ecTRZZ | gregoryamdg | Flyer for the 24 October soccer night for kids with scoliosis; holds the contact names, phones and e-mail addresses printed on it. Copied at the owner's word. |
+
+Exported 2026-10-22 from gregoryamdg, second pass at the owner's word: the 4 artifacts first held back are copied here (no credential was found; the e-mail addresses are the owner's decision, and this repository is private). The earlier "not copied" rows for these four links are superseded by the rows above.

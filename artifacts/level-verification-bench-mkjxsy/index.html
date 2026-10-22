@@ -1,0 +1,165 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Level Verification Bench</title>
+<style>
+:root{--bg:#f4f6f6;--paper:#fff;--ink:#16201f;--ink2:#41504e;--muted:#6f7c7a;--rule:#d8e0df;--accent:#1f6b6f;--accent-ink:#164f52;--tint:#e4efef;--ok:#2f8f5b;--bad:#b3413a;--warn:#b7791f;
+--sans:"IBM Plex Sans","Helvetica Neue",Arial,sans-serif;--mono:ui-monospace,Menlo,Consolas,monospace}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1414;--paper:#171e1e;--ink:#e7ecec;--ink2:#c1caca;--muted:#8c9897;--rule:#2a3535;--accent:#5fb3b6;--accent-ink:#8fd0d2;--tint:#13282a}}
+:root[data-theme="dark"]{--bg:#0f1414;--paper:#171e1e;--ink:#e7ecec;--ink2:#c1caca;--muted:#8c9897;--rule:#2a3535;--accent:#5fb3b6;--accent-ink:#8fd0d2;--tint:#13282a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.45;padding-inline:16px}
+.wrap{max-width:1150px;margin:0 auto;padding-block:18px 90px}
+header{border-bottom:2px solid var(--ink);padding-bottom:10px;margin-bottom:12px}
+h1{font-size:22px;margin:0 0 4px;font-weight:600}
+.sub{color:var(--muted);font-size:13px}
+.note{border:1px dashed var(--rule);padding:9px 13px;font-size:13px;color:var(--ink2);margin:12px 0}
+.note b{color:var(--ink)}
+.bar{position:sticky;top:0;z-index:5;background:var(--bg);display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;padding:8px 0;border-bottom:1px solid var(--rule);font-size:13px}
+.prog{font-family:var(--mono);font-size:12.5px}
+.prog b{color:var(--accent-ink)}
+.bar select{font:inherit;padding:3px 6px;border:1px solid var(--rule);border-radius:4px;background:var(--paper);color:var(--ink)}
+.card{display:grid;grid-template-columns:minmax(260px,1fr) minmax(280px,420px);gap:16px;background:var(--paper);border:1px solid var(--rule);border-radius:6px;padding:12px;margin-bottom:14px}
+.card.done{border-left:4px solid var(--ok)}
+.card img{width:100%;height:auto;border-radius:3px;background:#000;cursor:zoom-in}
+.meta{font-size:12.5px;color:var(--muted);margin-bottom:8px}
+.tag{display:inline-block;font-family:var(--mono);font-size:11px;padding:1px 6px;border:1px solid var(--rule);border-radius:3px;margin-right:4px}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th{text-align:left;font-weight:600;color:var(--muted);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;padding:2px 6px}
+td{padding:3px 6px;border-bottom:1px solid var(--rule)}
+td.lv{font-family:var(--mono);font-weight:600}
+.btn{border:1px solid var(--rule);background:var(--paper);color:var(--ink);border-radius:4px;padding:2px 9px;cursor:pointer;font:inherit;font-size:12.5px}
+.btn.y[data-on="1"]{background:var(--ok);border-color:var(--ok);color:#fff}
+.btn.n[data-on="1"]{background:var(--bad);border-color:var(--bad);color:#fff}
+.btn.u[data-on="1"]{background:var(--warn);border-color:var(--warn);color:#fff}
+.allrow{margin:8px 0;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.saved{font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+.saved.ok{color:var(--ok)} .saved.err{color:var(--bad)}
+.zoom{position:fixed;inset:0;background:rgba(0,0,0,.93);display:none;align-items:center;justify-content:center;z-index:9;cursor:zoom-out}
+.zoom img{max-width:98vw;max-height:96vh}
+kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--rule);border-radius:3px;padding:0 4px}
+@media (max-width:780px){.card{grid-template-columns:1fr}}
+</style>
+
+<div class="wrap">
+<header>
+  <h1>Level verification bench</h1>
+  <div class="sub">A random sample of decoded panels. 179 panels, 865 vertebrae. This is the measurement, not training data.</div>
+</header>
+
+<div class="note">
+For each numbered box, say whether the name the model gave it is <b>right</b>, <b>wrong</b>, or <b>can't tell</b> from this image.
+If it is wrong and you know the correct level, type it. The sample is <b>random within each route</b>, drawn with a fixed seed,
+so the result is an unbiased estimate of accuracy: a set chosen by the model's own uncertainty could not be used this way.
+Use <kbd>a</kbd> to mark every box on a panel right when the whole run is correct, which should be the common case and makes this fast.
+Verdicts save as you click (<span id="dbstate">connecting…</span>).
+</div>
+
+<div class="bar">
+  <span class="prog"><b id="np">0</b>/<span id="ntp">0</span> panels · <b id="nv">0</b>/<span id="ntv">0</span> vertebrae ·
+  right <b id="nr">0</b> · wrong <b id="nw">0</b> · unsure <b id="nu">0</b> · <b id="acc">—</b> accuracy so far</span>
+  <label>show <select id="filt">
+    <option value="todo" selected>unverified</option><option value="all">all</option><option value="done">verified</option>
+    <option value="wrong">with a wrong call</option></select></label>
+  <label>route <select id="rt"><option value="">any</option></select></label>
+  <label>caption <select id="cap"><option value="">any</option><option value="1">constrained the decode</option><option value="0">did not</option></select></label>
+</div>
+
+<div id="list"></div>
+<div class="zoom" id="zoom"><img id="zimg" alt=""></div>
+</div>
+
+<script src="verify_data.js"></script>
+<script>
+(function(){
+  const rows = (window.VERIFY || []).slice();
+  const V = {};                       // id -> {marks:{i:'y'|'n'|'u'}, fix:{i:level}, ts}
+  let db = null, cur = 0;
+  const $ = s => document.querySelector(s);
+  const el = (t,a,...k)=>{const e=document.createElement(t);for(const p in (a||{})){if(p==="class")e.className=a[p];else if(p.startsWith("on"))e.addEventListener(p.slice(2),a[p]);else e.setAttribute(p,a[p]);}for(const c of k)e.append(c);return e;};
+  const routes = [...new Set(rows.map(r=>r.route))].sort();
+  routes.forEach(r=>$("#rt").append(el("option",{value:r},r)));
+  $("#ntp").textContent = rows.length;
+  $("#ntv").textContent = rows.reduce((s,r)=>s+r.n_boxes,0);
+
+  function panelDone(r){const v=V[r.id];return v && r.labels.every((_,i)=>v.marks && v.marks[i]);}
+  function counts(){
+    let np=0,nv=0,nr=0,nw=0,nu=0;
+    rows.forEach(r=>{const v=V[r.id]; if(!v||!v.marks)return; if(panelDone(r))np++;
+      r.labels.forEach((_,i)=>{const m=v.marks[i]; if(!m)return; nv++; if(m==="y")nr++; else if(m==="n")nw++; else nu++;});});
+    $("#np").textContent=np; $("#nv").textContent=nv; $("#nr").textContent=nr; $("#nw").textContent=nw; $("#nu").textContent=nu;
+    const d=nr+nw; $("#acc").textContent = d ? (100*nr/d).toFixed(1)+"%" : "—";
+  }
+  function visible(r){
+    const f=$("#filt").value, rt=$("#rt").value, cp=$("#cap").value;
+    if(rt && r.route!==rt) return false;
+    if(cp!=="" && String(r.hard_caption?1:0)!==cp) return false;
+    const v=V[r.id];
+    if(f==="todo") return !panelDone(r);
+    if(f==="done") return panelDone(r);
+    if(f==="wrong") return v && v.marks && Object.values(v.marks).includes("n");
+    return true;
+  }
+  async function save(r){
+    const v = V[r.id] = V[r.id] || {marks:{},fix:{}};
+    v.ts = new Date().toISOString(); v.image_id=r.image_id; v.route=r.route; v.hard_caption=r.hard_caption;
+    v.labels=r.labels; v.panel_path=r.panel_path;
+    const s=document.getElementById("s_"+r.id);
+    paint(r); counts();
+    if(!db){ if(s){s.textContent="not saved: no store"; s.className="saved err";} return; }
+    try{ await db.doc("verdicts/"+r.id).set(v); if(s){s.textContent="saved "+v.ts.slice(11,19); s.className="saved ok";} }
+    catch(e){ if(s){s.textContent="save failed: "+((e&&e.code)||e); s.className="saved err";} }
+  }
+  function mark(r,i,m){ const v=V[r.id]=V[r.id]||{marks:{},fix:{}}; v.marks[i]=(v.marks[i]===m?null:m); if(!v.marks[i])delete v.marks[i]; save(r); }
+  function markAll(r,m){ const v=V[r.id]=V[r.id]||{marks:{},fix:{}}; r.labels.forEach((_,i)=>v.marks[i]=m); save(r); }
+  function paint(r){ const c=document.getElementById("c_"+r.id); if(!c)return; c.className="card"+(panelDone(r)?" done":"");
+    r.labels.forEach((_,i)=>{ ["y","n","u"].forEach(m=>{ const b=document.getElementById(`b_${r.id}_${i}_${m}`); if(b) b.dataset.on=((V[r.id]&&V[r.id].marks[i])===m)?"1":"0"; }); }); }
+  function card(r){
+    const v = V[r.id] || {marks:{},fix:{}};
+    const img = el("img",{src:r.img,alt:r.file,loading:"lazy",onclick:()=>{$("#zimg").src=r.img;$("#zoom").style.display="flex";}});
+    const tb = el("table",{},el("thead",{},el("tr",{},el("th",{},"#"),el("th",{},"model says"),el("th",{},"verdict"),el("th",{},"if wrong, the right one"))));
+    const body = el("tbody");
+    r.labels.forEach((lv,i)=>{
+      const btn=(m,t)=>el("button",{class:"btn "+m,id:`b_${r.id}_${i}_${m}`,"data-on":((v.marks||{})[i]===m)?"1":"0",onclick:()=>mark(r,i,m)},t);
+      const fix=el("input",{type:"text",size:"5",placeholder:"e.g. L5",value:((v.fix||{})[i])||"",
+        onchange:e=>{const w=V[r.id]=V[r.id]||{marks:{},fix:{}}; w.fix=w.fix||{}; w.fix[i]=e.target.value.trim(); save(r);}});
+      body.append(el("tr",{},el("td",{class:"lv"},String(i+1)),el("td",{class:"lv"},lv),
+        el("td",{},btn("y","right"),document.createTextNode(" "),btn("n","wrong"),document.createTextNode(" "),btn("u","can't tell")),
+        el("td",{},fix)));
+    });
+    tb.append(body);
+    const right = el("div",{},
+      el("div",{class:"meta"},
+        el("span",{class:"tag"},r.route), el("span",{class:"tag"}, r.hard_caption?"caption constrained":"caption-free"),
+        el("span",{class:"tag"},"decided by "+(r.decided_by||"?")), r.reversed?el("span",{class:"tag"},"read bottom-up"):"",
+        document.createTextNode(" "+r.n_boxes+" vertebrae")),
+      el("div",{class:"allrow"},
+        el("button",{class:"btn",onclick:()=>markAll(r,"y")},"all right (a)"),
+        el("button",{class:"btn",onclick:()=>markAll(r,"u")},"all can't tell"),
+        el("span",{class:"saved",id:"s_"+r.id}, v.ts?("saved "+v.ts.slice(11,19)):"")),
+      tb);
+    return el("div",{class:"card"+(panelDone(r)?" done":""),id:"c_"+r.id,onclick:()=>{cur=rows.indexOf(r);}},img,right);
+  }
+  function render(){ const L=$("#list"); L.replaceChildren(); rows.filter(visible).forEach(r=>L.append(card(r))); counts(); }
+  $("#filt").onchange=render; $("#rt").onchange=render; $("#cap").onchange=render;
+  $("#zoom").onclick=()=>{$("#zoom").style.display="none";};
+  document.addEventListener("keydown",e=>{
+    if(e.target.tagName==="INPUT")return;
+    const vis=rows.filter(visible); if(!vis.length)return;
+    let i=Math.max(0,vis.indexOf(rows[cur]));
+    if(e.key==="a"&&vis[i]){markAll(vis[i],"y");}
+    if(e.key==="j"){i=Math.min(vis.length-1,i+1);cur=rows.indexOf(vis[i]);document.getElementById("c_"+vis[i].id).scrollIntoView({block:"start",behavior:"smooth"});}
+    if(e.key==="k"){i=Math.max(0,i-1);cur=rows.indexOf(vis[i]);document.getElementById("c_"+vis[i].id).scrollIntoView({block:"start",behavior:"smooth"});}
+  });
+  render();
+  (async()=>{
+    try{ db = (window.claude&&window.claude.use)? await window.claude.use("db") : null; }catch(e){ db=null; }
+    if(!db){ $("#dbstate").textContent="no store in this view: verdicts will not persist"; return; }
+    $("#dbstate").textContent="verdicts persist in the page's store";
+    db.collection("verdicts").onSnapshot(s=>{ let ch=false;
+      (s.docs||[]).forEach(d=>{const data=d.data?d.data():d; const id=d.id||(data&&data.id); if(id&&data){V[id]=data;ch=true;}});
+      if(ch){ if($("#filt").value==="todo") render(); else { rows.forEach(paint); counts(); } }
+    }, err=>{ $("#dbstate").textContent="store error: "+((err&&err.code)||err); });
+  })();
+})();
+</script>
+
+</body></html>
