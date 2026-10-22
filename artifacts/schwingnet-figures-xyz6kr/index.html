@@ -1,0 +1,128 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>SchwingNet Figures</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root { --paper:#f6f8f9; --surface:#fff; --ink:#12181d; --muted:#5c6873; --faint:#8b96a0; --rule:#dbe2e7;
+          --chain:#1f4e79; --chain-w:#e8eff6; --warn:#b4620a; --warn-w:#fdf3e7; --good:#1e6b4f; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    --paper:#0e1317; --surface:#161d23; --ink:#e6ecf1; --muted:#9aa7b2; --faint:#6d7a86; --rule:#2a343d;
+    --chain:#7db3e0; --chain-w:#16242f; --warn:#e39b4a; --warn-w:#2a2014; --good:#5fc39c; } }
+  :root[data-theme="dark"] { --paper:#0e1317; --surface:#161d23; --ink:#e6ecf1; --muted:#9aa7b2; --faint:#6d7a86;
+    --rule:#2a343d; --chain:#7db3e0; --chain-w:#16242f; --warn:#e39b4a; --warn-w:#2a2014; --good:#5fc39c; }
+  body { background:var(--paper); color:var(--ink); font-family:"IBM Plex Sans",system-ui,sans-serif; font-size:16px; line-height:1.55; }
+  .wrap { max-width:1100px; margin-inline:auto; padding-inline:20px; padding-block:40px 72px; display:flex; flex-direction:column; gap:36px; }
+  h1,h2 { font-family:Newsreader,Georgia,serif; font-weight:600; margin:0; text-wrap:balance; }
+  h1 { font-size:clamp(1.9rem,5vw,2.6rem); line-height:1.1; }
+  h2 { font-size:1.35rem; }
+  p { margin:0; }
+  .eyebrow { font-family:"IBM Plex Mono",monospace; font-size:.7rem; letter-spacing:.12em; text-transform:uppercase; color:var(--faint); margin-bottom:8px; }
+  .lede { color:var(--muted); font-size:1.05rem; margin-top:10px; max-width:70ch; }
+  .rule { height:1px; background:var(--rule); border:0; }
+  figure { margin:0; display:flex; flex-direction:column; gap:10px; }
+  figure img { width:100%; height:auto; display:block; background:#fff; border:1px solid var(--rule); border-radius:3px; }
+  figcaption { font-size:.88rem; color:var(--muted); max-width:90ch; }
+  figcaption b { color:var(--ink); font-weight:600; }
+  .path { font-family:"IBM Plex Mono",monospace; font-size:.74rem; color:var(--faint); }
+  .tag { display:inline-block; font-family:"IBM Plex Mono",monospace; font-size:.66rem; letter-spacing:.06em; text-transform:uppercase;
+         padding:1px 7px; border-radius:2px; border:1px solid var(--chain); color:var(--chain); margin-right:6px; }
+  .tag.warn { border-color:var(--warn); color:var(--warn); }
+  .tag.good { border-color:var(--good); color:var(--good); }
+  .grid2 { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:24px; }
+  .note { background:var(--warn-w); border-left:3px solid var(--warn); padding:12px 16px; border-radius:3px; font-size:.92rem; }
+  .ask { background:var(--chain-w); border-left:3px solid var(--chain); padding:12px 16px; border-radius:3px; font-size:.95rem; }
+</style>
+<div class="wrap">
+  <header>
+    <p class="eyebrow">SchwingNet &middot; 22 September 2026, 22:50</p>
+    <h1>The six figures, as built</h1>
+    <p class="lede">Your verdicts, figure by figure, turned into files. Two passed inspection outright, two are being
+      fixed (the inspector's exact findings are under each), and the assembler's result plots &mdash; which you have
+      not judged yet &mdash; are at the bottom with a question.</p>
+  </header>
+
+  <div class="note">The compiled PDF (24 pages, in your side panel) still carries the assembler's figure set; the
+    integration pass now running swaps these six in, moves the result plots to a supplement, and recompiles.</div>
+
+  <hr class="rule">
+  <figure><img src="sn_fig_set_preview.png" alt="All six figures stacked">
+    <figcaption><span class="tag">preview</span><b>The set, stacked.</b> Figures 1&ndash;6 in order.
+      <span class="path">SchwingNet/figures/fig_set_preview.png</span></figcaption></figure>
+
+  <hr class="rule">
+  <section><h2>Figure by figure</h2></section>
+
+  <figure><img src="fig1_problem.png" alt="Figure 1, the ambiguity">
+    <figcaption><span class="tag good">kept</span><b>Figure 1.</b> Unchanged, as you asked. The count from the sacrum is
+      undetermined in a limited field; the paper's objective is the network that resolves it.</figcaption></figure>
+
+  <figure><img src="sn_fig2_pipeline.png" alt="Figure 2, the processing chain">
+    <figcaption><span class="tag good">met</span><b>Figure 2.</b> Same chain, fonts raised so the smallest text prints
+      above 8 pt at column width, boxes shrunk to their text. Inspector's one note: the inter-box arrows are short
+      stubs &mdash; lengthening them means smaller text, so that trade-off is yours.
+      <span class="path">SchwingNet/figures/fig2_pipeline.png</span></figcaption></figure>
+
+  <figure><img src="sn_fig3_panorama.png" alt="Figure 3, the numbered full-spine panorama">
+    <figcaption><span class="tag good">met</span><span class="tag warn">small fixes running</span><b>Figure 3.</b> The
+      focused paper's cartoon extended to all 23 bodies along lordosis&ndash;kyphosis&ndash;lordosis, prone, head left,
+      numbered from the sacral anchor, no names. Being nudged: numeral 23 touches the skull outline; numerals 10&ndash;14
+      along the thoracic crest sit tight. <span class="path">SchwingNet/figures/fig3_panorama.png</span></figcaption></figure>
+
+  <figure><img src="sn_fig4_confirm.png" alt="Figure 4, confirmation with the mechanism strip">
+    <figcaption><span class="tag warn">failed, being re-laid out</span><b>Figure 4.</b> Your panel E plus a fourth
+      panel explaining it: the crop slid along the chain, the peak under the matched body, the one-body-off peaks a
+      pitch away, the search window shaded. Why it failed: a&ndash;c were placed at 0.82&times; so their text prints
+      under 5 pt; the two "one body off" labels collide. Fix: two rows, a&ndash;c at full width above, the strip below.
+      <span class="path">SchwingNet/figures/fig4_confirm.png</span></figcaption></figure>
+
+  <figure><img src="fig1_row6_confirm_fluoro.png" alt="Figure 5, confirmation on styled C-arm frames">
+    <figcaption><span class="tag good">kept</span><b>Figure 5.</b> Unchanged. A sixth lumbar vertebra counted from the
+      sacrum on frames styled by the Cios Fusion card; the 0.01 margin is stated as weak.</figcaption></figure>
+
+  <figure><img src="sn_fig6_arch.png" alt="Figure 6, the two networks">
+    <figcaption><span class="tag warn">failed, arrows being redrawn</span><b>Figure 6.</b> Blocks as before. Why it
+      failed: the residual-skip arrowheads end at a block corner pointing into empty canvas, and on the narrow blocks
+      the arc is shorter than its head; the recurrence is ten bowties instead of one loop. Fix: elbowed skips landing
+      on the target's top edge, one bidirectional arrow across the cells, lighter strokes.
+      <span class="path">SchwingNet/figures/fig6_arch.png</span></figcaption></figure>
+
+  <figure><img src="sn_tab_corpus.png" alt="Table 1 fit check">
+    <figcaption><span class="tag good">met</span><b>Table 1</b> (your panel H as a table), as it fits the column. Being
+      corrected: the VinDr row mixes an in-bank and a corpus count; the "C-arm frames" header includes a linac
+      imager; one footnote says 149 cases where the cell says 148.
+      <span class="path">SchwingNet/tables/tab_corpus.tex</span></figcaption></figure>
+
+  <hr class="rule">
+  <section><h2>The assembler's result plots &mdash; you have not judged these</h2>
+    <div class="ask">Your six are all method figures. With the six-figure limit, every <em>result</em> plot below
+      becomes supplemental (S1&ndash;S4) and the numbers live in Tables 2&ndash;4. If you want one result figure in
+      the main text, one of the six has to move to the supplement &mdash; Figure 6 (architectures) is the natural
+      candidate, with the naming curves taking its place. Say which.</div>
+  </section>
+
+  <figure><img src="sn_fig3_naming.png" alt="Naming accuracy against vertebrae in the field, and the abstention sweep">
+    <figcaption><span class="tag">S2 candidate</span><b>Level naming on C-ArmLSpine.</b> (a) Exact level against vertebrae in the
+      field for both fold groupings and the zero-shot model, with case-cluster intervals &mdash; this is where the 98.2 vs 92.5
+      lives. (b) The abstention sweep: coverage against accuracy on the answered share.</figcaption></figure>
+
+  <figure><img src="sn_fig4_detection.png" alt="Detector recall against confidence, paired comparisons, card gains">
+    <figcaption><span class="tag">S3 candidate</span><b>Detection and device cards.</b> (a) Recall against confidence on the
+      held-out device with the pre-stated operating point. (b) The four paired comparisons with the interval of the
+      difference. (c) Per-fold gain of the fitted physics terms.</figcaption></figure>
+
+  <figure><img src="sn_fig5_contribution.png" alt="Which training source carries the detector">
+    <figcaption><span class="tag">S4 candidate</span><b>Which source carries the detector.</b> The matrix behind the reversed
+      DeepFluoro answer: adding the arc-spanning Elekta source gains 71.8 points on the held-out device; adding the
+      near-AP cadaver source changes it by &minus;2.1. (You called the earlier version of this too technical; this is
+      the version the manuscript drew.)</figcaption></figure>
+
+  <figure><img src="sn_fig2_flow.png" alt="Flow of cases">
+    <figcaption><span class="tag">S1 candidate</span><b>Flow of cases.</b> Required by CLAIM item 33; it can live in the
+      supplement.</figcaption></figure>
+
+  <hr class="rule">
+  <figure><img src="sn_main_p1.png" alt="Page 1 of the compiled manuscript">
+    <figcaption><b>Page 1 of the compiled manuscript</b> as it stands: title, summary statement, three key results.
+      <span class="path">SchwingNet/main.pdf</span></figcaption></figure>
+</div>
+
+</body></html>
