@@ -1,0 +1,389 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>OpenSpine Board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&display=swap">
+<style>
+  :root{
+    --ink:#10171b; --ink-2:#3c4a52; --ink-3:#6b7a83;
+    --paper:#eceff1; --card:#ffffff; --rule:#d3dade; --rule-2:#e5eaed;
+    --teal:#2f6f7e; --teal-soft:#dceaed;
+    --ochre:#a96c12; --ochre-soft:#f4e6cf;
+    --moss:#3f6238; --moss-soft:#dde8d9;
+    --crimson:#8f2a26; --crimson-soft:#f3dcda;
+    --shadow:0 1px 2px rgba(16,23,27,.06), 0 8px 24px -16px rgba(16,23,27,.30);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ink:#e7edf0; --ink-2:#a9b8c0; --ink-3:#7d8c95;
+      --paper:#0e1417; --card:#161f24; --rule:#2a373e; --rule-2:#1f2a30;
+      --teal:#69b3c2; --teal-soft:#16333a;
+      --ochre:#d8a44e; --ochre-soft:#392c15;
+      --moss:#8fbc82; --moss-soft:#1c2b19;
+      --crimson:#e0817c; --crimson-soft:#361a19;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.7);
+    }
+  }
+  :root[data-theme="dark"]{
+    --ink:#e7edf0; --ink-2:#a9b8c0; --ink-3:#7d8c95;
+    --paper:#0e1417; --card:#161f24; --rule:#2a373e; --rule-2:#1f2a30;
+    --teal:#69b3c2; --teal-soft:#16333a;
+    --ochre:#d8a44e; --ochre-soft:#392c15;
+    --moss:#8fbc82; --moss-soft:#1c2b19;
+    --crimson:#e0817c; --crimson-soft:#361a19;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.7);
+  }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:"Source Sans 3",system-ui,-apple-system,Segoe UI,sans-serif;
+    font-size:15px; line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1160px; margin:0 auto; padding-inline:20px; padding-block:34px 72px;}
+
+  h1,h2,h3{font-family:Archivo,system-ui,sans-serif; text-wrap:balance; margin:0;}
+  h1{font-size:clamp(28px,4.4vw,42px); font-weight:700; letter-spacing:-.022em; line-height:1.08;}
+  h2{font-size:15px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-3);}
+  h3{font-size:17px; font-weight:600; letter-spacing:-.01em;}
+  p{margin:0}
+  code,.mono{font-family:"IBM Plex Mono",ui-monospace,monospace; font-variant-numeric:tabular-nums;}
+
+  /* ---------- masthead ---------- */
+  .head{display:flex; flex-wrap:wrap; gap:18px 28px; align-items:flex-end; justify-content:space-between;
+        border-bottom:2px solid var(--ink); padding-bottom:16px;}
+  .head .sub{color:var(--ink-2); max-width:56ch; margin-top:8px; font-size:16px;}
+  .stamp{font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--ink-3); text-align:right; line-height:1.7;}
+  .stamp b{color:var(--ink); font-weight:600;}
+
+  section{margin-top:40px;}
+  .sechead{display:flex; align-items:baseline; gap:12px; margin-bottom:14px;}
+  .sechead .n{font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--ink-3);}
+
+  /* ---------- running strip ---------- */
+  .jobs{display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:12px;}
+  .job{background:var(--card); border:1px solid var(--rule); border-radius:3px; padding:13px 15px;
+       display:flex; flex-direction:column; gap:5px;}
+  .job .top{display:flex; align-items:center; gap:8px; justify-content:space-between;}
+  .job .name{font-family:Archivo,sans-serif; font-weight:600; font-size:15px;}
+  .job .id{font-family:"IBM Plex Mono",monospace; font-size:11.5px; color:var(--ink-3);}
+  .job .detail{font-size:13.5px; color:var(--ink-2);}
+  .dot{width:7px; height:7px; border-radius:50%; flex:none;}
+  .dot.run{background:var(--moss); box-shadow:0 0 0 3px var(--moss-soft);}
+  .dot.wait{background:var(--ochre); box-shadow:0 0 0 3px var(--ochre-soft);}
+  .dot.dead{background:var(--ink-3);}
+
+  /* ---------- finding rows ---------- */
+  .track{margin-top:18px;}
+  .track > .label{display:flex; align-items:center; gap:9px; margin-bottom:9px;}
+  .track > .label .tag{font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:.09em;
+        text-transform:uppercase; padding:2px 7px; border-radius:2px; font-weight:600;}
+  .tag.ct{background:var(--teal-soft); color:var(--teal);}
+  .tag.xr{background:var(--ochre-soft); color:var(--ochre);}
+  .tag.paper{background:var(--moss-soft); color:var(--moss);}
+
+  .rows{border-top:1px solid var(--rule);}
+  .row{display:grid; grid-template-columns:1fr auto; gap:6px 18px; align-items:baseline;
+       padding:12px 0; border-bottom:1px solid var(--rule-2);}
+  .row .what{font-weight:600; font-size:15.5px;}
+  .row .why{grid-column:1/-1; color:var(--ink-2); font-size:14px; max-width:78ch;}
+  .chip{font-family:"IBM Plex Mono",monospace; font-size:11px; font-weight:600; letter-spacing:.05em;
+        text-transform:uppercase; padding:3px 8px; border-radius:2px; white-space:nowrap;}
+  .chip.fixed{background:var(--moss-soft); color:var(--moss);}
+  .chip.built{background:var(--teal-soft); color:var(--teal);}
+  .chip.open{background:var(--ochre-soft); color:var(--ochre);}
+  .chip.stop{background:var(--crimson-soft); color:var(--crimson);}
+
+  /* ---------- numbers ---------- */
+  .metrics{display:grid; grid-template-columns:repeat(auto-fit,minmax(148px,1fr)); gap:1px;
+           background:var(--rule); border:1px solid var(--rule); margin-top:12px;}
+  .metric{background:var(--card); padding:12px 14px;}
+  .metric .k{font-size:11.5px; letter-spacing:.07em; text-transform:uppercase; color:var(--ink-3);
+             font-family:"IBM Plex Mono",monospace;}
+  .metric .v{font-family:Archivo,sans-serif; font-weight:700; font-size:25px; letter-spacing:-.02em;
+             font-variant-numeric:tabular-nums; margin-top:2px; line-height:1.1;}
+  .metric .v .was{font-size:15px; font-weight:500; color:var(--ink-3); text-decoration:line-through;
+                  margin-right:7px; text-decoration-thickness:1px;}
+  .metric .n{font-size:12.5px; color:var(--ink-2); margin-top:3px;}
+
+  /* ---------- table ---------- */
+  .scroll{overflow-x:auto; margin-top:12px; border:1px solid var(--rule); background:var(--card);}
+  table{border-collapse:collapse; width:100%; min-width:600px; font-size:14px;}
+  th,td{text-align:left; padding:9px 13px; border-bottom:1px solid var(--rule-2); vertical-align:top;}
+  th{font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:.08em; text-transform:uppercase;
+     color:var(--ink-3); font-weight:600; background:var(--paper);}
+  tbody tr:last-child td{border-bottom:none;}
+  td.num{font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums; white-space:nowrap;}
+  .yes{color:var(--moss); font-weight:600;} .no{color:var(--crimson); font-weight:600;}
+  .maybe{color:var(--ochre); font-weight:600;}
+
+  /* ---------- decisions ---------- */
+  .asks{display:grid; grid-template-columns:repeat(auto-fit,minmax(268px,1fr)); gap:14px; margin-top:14px;}
+  .ask{background:var(--card); border:1px solid var(--rule); border-left:3px solid var(--crimson);
+       border-radius:2px; padding:14px 16px;}
+  .ask h3{margin-bottom:6px;}
+  .ask p{font-size:14px; color:var(--ink-2);}
+
+  .note{font-size:13.5px; color:var(--ink-3); margin-top:10px; max-width:80ch; font-style:italic;}
+  a{color:var(--teal);}
+  @media (max-width:520px){ .row{grid-template-columns:1fr;} }
+</style>
+
+<div class="wrap">
+
+  <div class="head">
+    <div>
+      <h1>What moved while you were on rounds</h1>
+      <p class="sub">Three tracks: the dataset paper closed out, one CT fold training clean, and the
+        radiograph corpus roughly tripled. Two findings below change what you can build.</p>
+    </div>
+    <div class="stamp">
+      11 SEP 2026 &middot; <b>09:05 EDT</b><br>
+      grid.wayne.edu &middot; go2432<br>
+      <b>3</b> repos pushed &middot; <b>1</b> GPU in use
+    </div>
+  </div>
+
+  <!-- ================= RUNNING ================= -->
+  <section>
+    <div class="sechead"><h2>On the grid right now</h2></div>
+    <div class="jobs">
+      <div class="job">
+        <div class="top"><span class="name">spine_train f4</span><span class="dot run"></span></div>
+        <div class="id">40194990 &middot; msa1 &middot; H200</div>
+        <div class="detail">Resumed from <span class="mono">checkpoint_latest</span> at epoch 50.
+          Staging on, running alone. ~910&nbsp;s/epoch.</div>
+      </div>
+      <div class="job">
+        <div class="top"><span class="name">xr_build</span><span class="dot run"></span></div>
+        <div class="id">40195159 &middot; rhi4 &middot; 16 cpu</div>
+        <div class="detail">Normalising ~22,000 radiographs into one manifest — CSXA, full BUU
+          and VinDr for the first time.</div>
+      </div>
+      <div class="job">
+        <div class="top"><span class="name">dl_nhanes</span><span class="dot dead"></span></div>
+        <div class="id">chain cancelled</div>
+        <div class="detail">Was resubmitting itself every 5&nbsp;min, forever. 17,073 of 17,075 files
+          were already down; two are permanently dead.</div>
+      </div>
+      <div class="job">
+        <div class="top"><span class="name">folds 0,1,2,3</span><span class="dot wait"></span></div>
+        <div class="id">stopped deliberately</div>
+        <div class="detail">Five folds in parallel made each other slow — the first to land stages
+          to NVMe, the rest fall back to NFS.</div>
+      </div>
+    </div>
+    <p class="note">Fold 2 never had a dataloader problem. It was handed a 16&nbsp;GB V100 instead of
+      an H200, and a plan built for 100&nbsp;GB of VRAM — patch 384×256×256, batch 2 — died in the
+      first forward pass.</p>
+  </section>
+
+  <!-- ================= PAPER ================= -->
+  <section>
+    <div class="sechead"><h2>Dataset paper</h2><span class="n">10 pages · clean build · pushed to both remotes</span></div>
+
+    <div class="track">
+      <div class="rows">
+
+        <div class="row">
+          <span class="what">Canal depth was measuring the wrong chord on the wrong slice</span>
+          <span class="chip fixed">fixed</span>
+          <p class="why">It took the total anteroposterior extent of the enclosed hole on the
+            <em>first</em> axial slice whose ring happened to close. Every normative series measures a
+            midsagittal chord at the pedicle plane, and the L4/L5 canal is trefoil — so the widest
+            chord ran through a lateral recess.</p>
+        </div>
+
+        <div class="metrics">
+          <div class="metric"><div class="k">below 11 mm</div><div class="v"><span class="was">473</span>12</div><div class="n">under any diameter reported in a living adult</div></div>
+          <div class="metric"><div class="k">L3 alone</div><div class="v"><span class="was">157</span>1</div><div class="n">was 21% of that level</div></div>
+          <div class="metric"><div class="k">SD, T11–L4</div><div class="v">1.6–2.0</div><div class="n">published consensus 1.5–2.5</div></div>
+          <div class="metric"><div class="k">L5 median</div><div class="v"><span class="was">21.0</span>17.4</div><div class="n">inside every published series</div></div>
+        </div>
+
+        <div class="row" style="margin-top:14px">
+          <span class="what">The 128 low pelvic incidences were the plate leaning backwards</span>
+          <span class="chip fixed">solved</span>
+          <p class="why">The tilt gate measures the angle from vertical and is blind to the
+            <em>direction</em> of tilt. <span class="mono">_endplate</span> orients its normal by the
+            superior component alone, so a plane fitted to the wrong surface returns a posteriorly
+            leaning normal at a perfectly normal angle — and sails through. Rendering it showed what
+            it lands on: where the S1 carve fails, the plane is fitted to the <strong>ventral surface
+            of the sacrum</strong>. On one record "S1" spanned most of the sacrum and PI read 2.8°.</p>
+        </div>
+
+        <div class="metrics">
+          <div class="metric"><div class="k">separation</div><div class="v">39/39</div><div class="n">of PI ≤ 17 lean posteriorly; 0/39 of PI &gt; 35 do</div></div>
+          <div class="metric"><div class="k">plates rejected</div><div class="v">140</div><div class="n">on geometry, not on the answer</div></div>
+          <div class="metric"><div class="k">minimum PI</div><div class="v"><span class="was">1.0</span>22.4</div><div class="n">nothing implausible left</div></div>
+          <div class="metric"><div class="k">table II n</div><div class="v">563</div><div class="n">PI 52.7 · SS 33.2 · PT 19.7</div></div>
+        </div>
+
+        <div class="row" style="margin-top:14px">
+          <span class="what">L5 withheld for end-plate and pedicle width</span>
+          <span class="chip fixed">withheld</span>
+          <p class="why">Both are measured on a body isolated by cutting at the canal wall, and the L5
+            transverse processes arise <em>in front of</em> that wall. Contamination is confined to L5
+            and large there: end-plate +2.2&nbsp;mm with 95 records over 60&nbsp;mm, pedicle
+            +4.5&nbsp;mm. Three replacement rules were built, run over all 802, and none beat the one
+            that ships — so the row is dropped and the text says why.</p>
+        </div>
+
+        <div class="row">
+          <span class="what">Recumbency raises sacral slope — the manuscript said it lowers it</span>
+          <span class="chip fixed">corrected</span>
+          <p class="why">Stated twice, and backwards. Verified against Hasegawa's own table: supine
+            34.1° against standing 27.0°. The gap to Veilleux is cohort, not method — his 200 were
+            asymptomatic, and the one matched supine-CT series reports 53.4 / 34.1 / 19.2 against
+            your 52.7 / 33.2 / 19.7.</p>
+        </div>
+
+        <div class="row">
+          <span class="what">Figure 5 back to one published CT line</span>
+          <span class="chip fixed">reverted</span>
+          <p class="why">Drawing Hasegawa beside Veilleux gave 24 deformity patients the same visual
+            weight as 200 asymptomatic subjects, with no <em>n</em> on the figure to weigh them by.
+            Table II carries both, where the <em>n</em> is visible.</p>
+        </div>
+
+        <div class="row">
+          <span class="what">Rib bases were hardcoded and silently wrong on one label set</span>
+          <span class="chip fixed">fixed</span>
+          <p class="why">Two directories that both look like "the labels" have voxel-identical
+            vertebrae and rib blocks that differ by one. The constant was right for one and wrong for
+            the other — it moved <span class="mono">rib12_to_crest_mm</span> in 237 of 802 records,
+            worst 36&nbsp;mm. Now read from the scheme shipped beside the labels.</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= X-RAY ================= -->
+  <section>
+    <div class="sechead"><h2>Radiograph corpus</h2><span class="n">from 4,327 training images toward ~13,500</span></div>
+
+    <div class="track">
+      <div class="label"><span class="tag xr">new</span><h3>CSXA converter written and validated</h3></div>
+      <div class="rows">
+        <div class="row">
+          <span class="what">24,815 named cervical vertebrae, zero unparsable files</span>
+          <span class="chip built">built</span>
+          <p class="why">4,963 lateral films, C3–C7 complete quads at exactly 4,963 each. Two traps
+            that would have corrupted the merge silently: <strong>715 films face right</strong> (facing
+            is now detected per image, not assumed), and the same label is a
+            <span class="mono">point</span> in some files and a <span class="mono">polygon</span> in
+            others — reading only points would have dropped a fifth of the corners, non-uniformly.</p>
+        </div>
+        <div class="row">
+          <span class="what">BUU ships LSTV ground truth nobody was reading</span>
+          <span class="chip open">unused</span>
+          <p class="why">It is in the <span class="mono">S1a</span> row's class field on lateral films.
+            <strong>3,461 normal / 15 lumbarization / 130 sacralization</strong> — 4.0% prevalence,
+            which is the population rate rather than a referral-enriched one. Published SOTA on
+            radiographs is AUC 0.84, binary, single centre, at 62.3% prevalence. You have subtypes at
+            true prevalence, and a CT cohort stratified on the same thing.</p>
+        </div>
+        <div class="row">
+          <span class="what">And spondylolisthesis grades in the same files</span>
+          <span class="chip open">unused</span>
+          <p class="why">465 grade-3 and 194 grade-4 slips across 36,060 annotated endplates.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="track">
+      <div class="label"><span class="tag xr">architecture</span><h3>One backbone, four heads — not one flat class list</h3></div>
+      <div class="rows">
+        <div class="row">
+          <span class="what">Level identity goes on a head, never on the detector</span>
+          <span class="chip built">decided</span>
+          <p class="why">A VinDr film has lesion boxes and no corners; a CSXA film has corners and no
+            lesion boxes. In one flat class list every CSXA image teaches "no osteophytes here" — which
+            is false, nobody looked. And because C3 appears only in CSXA and T7 only in AASCE, a
+            detector with level classes learns dataset signature wearing level identity's clothes.
+            A second head reading pooled per-instance features only ever sees the vertebra itself.</p>
+        </div>
+        <div class="row">
+          <span class="what">Adding CSXA breaks the cervical confound for the first time</span>
+          <span class="chip built">enabling</span>
+          <p class="why">Cervical levels are now covered by two independent sources — CSXA and NHANES.
+            That makes the experiment possible at all: train the level head on one, test on the other.
+            Survives the source swap, it is morphology. Collapses, it was signature.</p>
+        </div>
+        <div class="row">
+          <span class="what">The DRRs are the version of that experiment with no confound left</span>
+          <span class="chip open">next</span>
+          <p class="why">6,416 synthetic radiographs where level is known with certainty from the 3D
+            labels — unlimited level supervision, zero annotation, one rendering style. No published
+            work uses DRRs to supply level identity to a 2D model; everyone uses them for landmarks,
+            registration or 3D reconstruction.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= LICENSING ================= -->
+  <section>
+    <div class="sechead"><h2>What each dataset lets you build</h2><span class="n">checked against primary sources, not assumed</span></div>
+    <p style="color:var(--ink-2); max-width:74ch;">This is now enforced in code rather than written in a
+      README — <span class="mono">src/licensing.py</span> makes the exporter unable to select a
+      forbidden source, because nothing in a checkpoint records what it saw.</p>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Dataset</th><th>Licence</th><th>Commercial</th><th>What it means for you</th></tr></thead>
+        <tbody>
+          <tr><td><strong>CSXA</strong></td><td>CC BY 4.0</td><td class="yes">Yes</td>
+              <td>Clean. Images from Science Data Bank — the GitHub repo is GPL-3.0 and covers code only.</td></tr>
+          <tr><td><strong>Mendeley 716</strong></td><td>CC BY 4.0</td><td class="yes">Yes</td>
+              <td><strong>508 of 716 are re-filtered BUU.</strong> Only the 208 Honduran images are independent — dedupe before using it as a test set.</td></tr>
+          <tr><td><strong>VinDr-SpineXR</strong></td><td>PhysioNet Restricted 1.5.0</td><td class="no">No</td>
+              <td>Research only, explicitly. That is the entire lesion corpus. Anything fine-tuned from those weights inherits it.</td></tr>
+          <tr><td><strong>BUU-LSPINE</strong></td><td>bespoke EULA</td><td class="maybe">Unknown</td>
+              <td>No NC clause, but no commercial grant either, and access is by discretionary request that asks your purpose. Get it in writing now.</td></tr>
+          <tr><td><strong>NHANES II</strong></td><td>federal work + NCHS DUA</td><td class="maybe">Unknown</td>
+              <td>No copyright bar; the DUA's "statistical reporting and analysis only" is a lawyer's question. The Zenodo re-annotation is separately CC BY 4.0.</td></tr>
+          <tr><td><strong>AASCE / SpineWeb</strong></td><td>none found</td><td class="maybe">Unknown</td>
+              <td>The host domain no longer resolves. Treat as research-only until someone answers.</td></tr>
+          <tr><td><strong>Spinal-AI2024</strong></td><td>no licence file</td><td class="no">No</td>
+              <td>All rights reserved by default, and GAN-derived from an upstream corpus whose terms it inherits. <strong>Do not download.</strong></td></tr>
+          <tr><td><strong>Your DRRs</strong></td><td>inherits CTSpine1K</td><td class="no">No</td>
+              <td>CC BY-NC-SA. Research track — which is fine, that is where the thesis lives.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">Clean-for-commercial today: CSXA, the 208 Honduran images, and NHANES if counsel
+      agrees. Everything else is research-track until someone signs something.</p>
+  </section>
+
+  <!-- ================= DECISIONS ================= -->
+  <section>
+    <div class="sechead"><h2>Waiting on you</h2></div>
+    <div class="asks">
+      <div class="ask">
+        <h3>The IRB files are still public</h3>
+        <p><span class="mono">proposals/irb/IRB_PLAN.md</span> and <span class="mono">EMAIL.md</span>
+          carry eight named DMC/WSU staff with work addresses, on both remotes. Everything is backed
+          up outside the repo. Purging needs a history rewrite and a force-push — say go and it is
+          done in ten minutes.</p>
+      </div>
+      <div class="ask">
+        <h3>BUU commercial permission</h3>
+        <p>The full release comes by a form that asks your purpose. State dual-use intent now and get
+          written confirmation, rather than discovering the constraint at 510(k) time. It is the
+          largest corpus whose status is still recoverable.</p>
+      </div>
+      <div class="ask">
+        <h3>A competing group is already on CSXA</h3>
+        <p>Barr et al. trained a diffusion model on all 4,963 CSXA films and released 20,063 synthetic
+          radiographs; eight blinded experts picked the real image 29% of the time against 25% chance.
+          They also used an external cervical landmark set, <span class="mono">CLX-34</span>, that is
+          not in your corpus.</p>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+</body></html>

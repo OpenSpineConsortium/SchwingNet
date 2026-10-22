@@ -1,0 +1,593 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}</style></head><body>
+<title>Counting Against Two Anchors</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+<style>
+:root{
+  --ground:#F5F3EE;
+  --surface:#FFFFFF;
+  --surface-2:#EBE8E1;
+  --ink:#161B1F;
+  --ink-soft:#3D474E;
+  --muted:#6B767E;
+  --rule:#D6D1C7;
+  --rib:#1F6E96;
+  --rib-soft:#D8E8F1;
+  --sac:#8A6D12;
+  --sac-soft:#F0E7C9;
+  --moves:#C2472A;
+  --moves-soft:#F6DED6;
+  --holds:#4A6B54;
+  --shadow:0 1px 2px rgba(22,27,31,.06),0 8px 24px rgba(22,27,31,.05);
+  --measure:66ch;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#0F1519;
+    --surface:#161E24;
+    --surface-2:#1D272E;
+    --ink:#E9E5DD;
+    --ink-soft:#C2C8CC;
+    --muted:#8A98A3;
+    --rule:#2A363E;
+    --rib:#5BA3C9;
+    --rib-soft:#16303E;
+    --sac:#C9A227;
+    --sac-soft:#33290C;
+    --moves:#E2603F;
+    --moves-soft:#3A1C13;
+    --holds:#7FA98B;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0F1519;
+  --surface:#161E24;
+  --surface-2:#1D272E;
+  --ink:#E9E5DD;
+  --ink-soft:#C2C8CC;
+  --muted:#8A98A3;
+  --rule:#2A363E;
+  --rib:#5BA3C9;
+  --rib-soft:#16303E;
+  --sac:#C9A227;
+  --sac-soft:#33290C;
+  --moves:#E2603F;
+  --moves-soft:#3A1C13;
+  --holds:#7FA98B;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.35);
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--ground);
+  color:var(--ink);
+  font-family:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-size:17px;
+  line-height:1.62;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1180px;margin:0 auto;padding:0 28px}
+.col{max-width:var(--measure)}
+
+/* ---------- masthead ---------- */
+header.mast{
+  border-bottom:1px solid var(--rule);
+  padding:72px 0 40px;
+  margin-bottom:56px;
+}
+.eyebrow{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--muted);margin:0 0 22px;
+}
+h1{
+  font-family:Spectral,Georgia,serif;
+  font-weight:600;
+  font-size:clamp(2.5rem,6vw,4.1rem);
+  line-height:1.04;
+  letter-spacing:-.02em;
+  margin:0 0 24px;
+  text-wrap:balance;
+  max-width:15ch;
+}
+.standfirst{
+  font-family:Spectral,Georgia,serif;
+  font-size:clamp(1.12rem,2.1vw,1.34rem);
+  line-height:1.55;
+  color:var(--ink-soft);
+  max-width:58ch;margin:0;
+}
+.standfirst em{color:var(--ink);font-style:italic}
+
+/* ---------- sections ---------- */
+section{margin:0 0 68px}
+.sec-head{display:flex;gap:16px;align-items:baseline;margin:0 0 20px}
+.sec-num{
+  font-family:"IBM Plex Mono",monospace;font-size:12px;
+  color:var(--muted);letter-spacing:.08em;padding-top:.35em;
+  flex:0 0 auto;
+}
+h2{
+  font-family:Spectral,Georgia,serif;font-weight:600;
+  font-size:clamp(1.5rem,3vw,2.05rem);line-height:1.18;
+  letter-spacing:-.012em;margin:0;text-wrap:balance;max-width:26ch;
+}
+h3{
+  font-family:"IBM Plex Sans",sans-serif;font-weight:600;
+  font-size:1.02rem;letter-spacing:.005em;margin:36px 0 12px;
+}
+p{margin:0 0 18px;max-width:var(--measure)}
+strong{font-weight:600}
+em.lead{font-style:normal;font-weight:600;color:var(--moves)}
+code{
+  font-family:"IBM Plex Mono",monospace;font-size:.88em;
+  background:var(--surface-2);padding:.12em .38em;border-radius:3px;
+  border:1px solid var(--rule);
+}
+a{color:var(--rib)}
+
+/* ---------- the thesis pull ---------- */
+.thesis{
+  background:var(--surface);
+  border:1px solid var(--rule);
+  border-left:3px solid var(--moves);
+  padding:28px 32px;
+  margin:34px 0;
+  box-shadow:var(--shadow);
+  max-width:var(--measure);
+}
+.thesis p{margin:0;font-family:Spectral,Georgia,serif;font-size:1.16rem;line-height:1.5}
+.thesis p + p{margin-top:14px}
+
+/* ---------- anchor matrix ---------- */
+.breakout{margin:40px 0}
+.matrix-frame{
+  background:var(--surface);
+  border:1px solid var(--rule);
+  box-shadow:var(--shadow);
+  overflow-x:auto;
+}
+table.matrix{border-collapse:collapse;width:100%;min-width:720px}
+table.matrix caption{
+  text-align:left;padding:22px 26px 6px;
+  font-family:"IBM Plex Mono",monospace;font-size:11.5px;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--muted);
+}
+table.matrix th,table.matrix td{
+  padding:13px 18px;text-align:left;font-size:14.5px;
+  border-bottom:1px solid var(--rule);
+}
+table.matrix thead th{
+  font-family:"IBM Plex Mono",monospace;font-weight:500;
+  font-size:11.5px;letter-spacing:.06em;color:var(--muted);
+  text-transform:uppercase;vertical-align:bottom;line-height:1.35;
+}
+table.matrix thead th .fam{display:block;font-size:10.5px;letter-spacing:.12em;margin-bottom:4px}
+th.rib-h .fam{color:var(--rib)}
+th.sac-h .fam{color:var(--sac)}
+table.matrix tbody th{
+  font-weight:500;font-size:14.5px;color:var(--ink);
+  font-family:"IBM Plex Sans",sans-serif;
+}
+table.matrix tbody tr:last-child th,table.matrix tbody tr:last-child td{border-bottom:none}
+tr.typical{background:var(--surface-2)}
+.cell{
+  font-family:"IBM Plex Mono",monospace;font-size:13.5px;
+  display:inline-flex;align-items:center;gap:7px;
+}
+.dot{width:8px;height:8px;border-radius:50%;flex:0 0 auto;background:var(--holds)}
+.cell.moved{color:var(--moves);font-weight:500}
+.cell.moved .dot{background:var(--moves);box-shadow:0 0 0 3px var(--moves-soft)}
+.cell.maybe{color:var(--muted)}
+.cell.maybe .dot{background:transparent;border:1.5px solid var(--moves)}
+.legend{
+  display:flex;flex-wrap:wrap;gap:22px;padding:16px 26px 22px;
+  font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--muted);
+}
+.legend span{display:inline-flex;align-items:center;gap:8px}
+
+/* ---------- signature strip ---------- */
+.sigs{
+  display:grid;gap:14px;margin:30px 0 8px;
+  grid-template-columns:repeat(auto-fit,minmax(268px,1fr));
+}
+.sig{
+  border:1px solid var(--rule);background:var(--surface);
+  padding:18px 20px;box-shadow:var(--shadow);
+}
+.sig h4{
+  margin:0 0 8px;font-family:"IBM Plex Mono",monospace;
+  font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);
+  font-weight:500;
+}
+.sig .expr{
+  font-family:"IBM Plex Mono",monospace;font-size:15px;
+  margin:0 0 10px;color:var(--ink);
+}
+.sig p{font-size:14.5px;line-height:1.5;margin:0;color:var(--ink-soft)}
+.sig.rib{border-top:2px solid var(--rib)}
+.sig.sac{border-top:2px solid var(--sac)}
+
+/* ---------- plain data tables ---------- */
+.tbl-frame{overflow-x:auto;border:1px solid var(--rule);background:var(--surface);
+  box-shadow:var(--shadow);margin:26px 0}
+table.data{border-collapse:collapse;width:100%;min-width:560px;
+  font-variant-numeric:tabular-nums}
+table.data th,table.data td{padding:11px 18px;text-align:left;font-size:14.5px;
+  border-bottom:1px solid var(--rule)}
+table.data thead th{font-family:"IBM Plex Mono",monospace;font-weight:500;font-size:11px;
+  letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+table.data tbody tr:last-child th,table.data tbody tr:last-child td{border-bottom:none}
+table.data td.mono,table.data th.mono{font-family:"IBM Plex Mono",monospace;font-size:13.5px}
+
+/* ---------- ordered arms ---------- */
+ol.arms{list-style:none;counter-reset:arm;padding:0;margin:24px 0;max-width:var(--measure)}
+ol.arms li{
+  counter-increment:arm;position:relative;padding:0 0 0 46px;margin:0 0 20px;
+}
+ol.arms li::before{
+  content:counter(arm);position:absolute;left:0;top:1px;
+  font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--muted);
+  border:1px solid var(--rule);width:28px;height:28px;
+  display:flex;align-items:center;justify-content:center;background:var(--surface);
+}
+ol.arms b{font-weight:600;display:block;margin-bottom:2px}
+ol.arms p{margin:0;font-size:15px;color:var(--ink-soft)}
+
+ul.plain{margin:0 0 18px;padding-left:22px;max-width:var(--measure)}
+ul.plain li{margin-bottom:9px}
+
+/* ---------- negative result ---------- */
+.negative{
+  border:1px dashed var(--rule);padding:24px 28px;margin:30px 0;
+  max-width:var(--measure);background:transparent;
+}
+.negative h3{margin-top:0}
+
+footer{
+  border-top:1px solid var(--rule);margin-top:20px;padding:32px 0 72px;
+  font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--muted);
+}
+footer p{max-width:var(--measure)}
+
+@media (max-width:640px){
+  body{font-size:16px}
+  .wrap{padding:0 20px}
+  header.mast{padding:48px 0 32px;margin-bottom:44px}
+  .sec-head{flex-direction:column;gap:6px}
+  .thesis{padding:22px 20px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div class="wrap">
+
+<header class="mast">
+  <p class="eyebrow">CTSpinoPelvic1K &middot; training design</p>
+  <h1>Counting Against Two Anchors</h1>
+  <p class="standfirst">How to make a network enumerate vertebrae correctly when the
+  anatomy is anomalous — by training almost entirely on the anatomy that is
+  <em>not</em>.</p>
+</header>
+
+<section>
+  <div class="sec-head"><span class="sec-num">01</span>
+    <h2>Predicting a level name is the wrong target</h2></div>
+  <div class="col">
+    <p>Ask a network for <code>L5</code> and it has a defect no amount of capacity repairs.
+    A sixth lumbar vertebra occurs in roughly 2% of people, so the model is rewarded for
+    never predicting one. Worse, a model that learns normal anatomy <em>well</em> will call
+    every lowest lumbar vertebra L5, because that prior is right about 97% of the time.</p>
+    <p>This is the documented failure mode, and it is a property of the <strong>target</strong>,
+    not the backbone. Oversampling fights the symptom. The target has to change.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">02</span>
+    <h2>Predict two counts instead, and derive the name</h2></div>
+  <div class="col">
+    <p>Two anatomical landmarks bracket the lumbar column from opposite ends, and both are
+    locally decidable — you can identify each without knowing anything about the count. So
+    for every vertebra voxel, predict two ordinal fields:</p>
+  </div>
+
+  <div class="tbl-frame">
+    <table class="data">
+      <thead><tr><th>Head</th><th>Predicts</th><th>Learned from</th></tr></thead>
+      <tbody>
+        <tr><th class="mono">n_up</th><td>how many vertebrae this one sits above the sacrum</td><td>every case</td></tr>
+        <tr><th class="mono">n_down</th><td>how many it sits below the lowest rib-bearing vertebra</td><td>every case</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="col">
+    <p>The level name becomes a deterministic function of the pair. The network never
+    predicts it.</p>
+    <p>In typical anatomy the two counts agree, and <code>n_up + n_down</code> is constant
+    down the column. <strong>In transitional anatomy they disagree, and the sign of the
+    disagreement names the phenotype.</strong> A sacralised lowest segment shortens the
+    interval from below; a lumbar rib shortens it from above; lumbarisation runs the other
+    way.</p>
+  </div>
+
+  <div class="thesis">
+    <p>Both counting functions are learned from the 97% of cases that are normal.</p>
+    <p>The model never memorises sixteen lumbar-rib examples in order to recognise one. It
+    learns to count from the sacrum, and to count from the ribs, with ~800 cases of each.
+    The anomaly is then detected as a <strong>violation of consistency between two things it
+    learned well</strong> — not as a rare category it saw a handful of times.</p>
+  </div>
+
+  <div class="col">
+    <p>That converts anomaly <em>classification</em> into anomaly <em>detection by
+    disagreement</em>, which is a far better-posed problem when positives are scarce. It
+    also yields an uncertainty for free: <code>|n_up + n_down − K|</code> is a per-case
+    scalar, near zero in normal anatomy and near one at a transition. A calibrated flag,
+    not a softmax over a class that barely exists.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">03</span>
+    <h2>The objection that breaks the naive version</h2></div>
+  <div class="col">
+    <p>Two anchors are not enough, and the reason is the entire point of the dataset.
+    <em class="lead">Every anchor named so far is perturbed by exactly the variants it is
+    meant to detect.</em> A lumbar rib moves the lowest rib-bearing vertebra down one. An
+    aplastic twelfth rib moves it up one. A sacralised segment moves the top of the sacrum
+    up; a lumbarised one moves it down.</p>
+    <p>And the failure is worse than it first looks. A lumbar rib and a sacralisation both
+    reduce <code>n_up + n_down</code> by one. <strong>The sum cannot tell them apart.</strong>
+    A design resting on it would flag both correctly and name both wrongly, half the time.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">04</span>
+    <h2>Choose anchors that fail to different variants</h2></div>
+  <div class="col">
+    <p>Anchors defined by <strong>morphology</strong> do not move when the <strong>feature</strong>
+    moves. Four are available, and what matters is that each variant family perturbs a
+    different subset of them.</p>
+  </div>
+
+  <div class="breakout">
+    <div class="matrix-frame">
+      <table class="matrix">
+        <caption>Which anchor moves, under which variant</caption>
+        <thead>
+          <tr>
+            <th>Variant</th>
+            <th class="rib-h"><span class="fam">Rib family</span>A · costal facets</th>
+            <th class="rib-h"><span class="fam">Rib family</span>B · rib articulates</th>
+            <th class="sac-h"><span class="fam">Sacral family</span>C · SI articulation</th>
+            <th class="sac-h"><span class="fam">Sacral family</span>D · promontory</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="typical">
+            <th>Typical</th>
+            <td><span class="cell"><i class="dot"></i>T12</span></td>
+            <td><span class="cell"><i class="dot"></i>T12</span></td>
+            <td><span class="cell"><i class="dot"></i>S1</span></td>
+            <td><span class="cell"><i class="dot"></i>S1</span></td>
+          </tr>
+          <tr>
+            <th>Lumbar rib</th>
+            <td><span class="cell"><i class="dot"></i>T12</span></td>
+            <td><span class="cell moved"><i class="dot"></i>L1 &darr;</span></td>
+            <td><span class="cell"><i class="dot"></i>S1</span></td>
+            <td><span class="cell"><i class="dot"></i>S1</span></td>
+          </tr>
+          <tr>
+            <th>Stump / aplastic 12th rib</th>
+            <td><span class="cell"><i class="dot"></i>T12</span></td>
+            <td><span class="cell moved"><i class="dot"></i>T11 &uarr;</span></td>
+            <td><span class="cell"><i class="dot"></i>S1</span></td>
+            <td><span class="cell"><i class="dot"></i>S1</span></td>
+          </tr>
+          <tr>
+            <th>Sacralisation &middot; Castellvi II</th>
+            <td><span class="cell"><i class="dot"></i>T12</span></td>
+            <td><span class="cell"><i class="dot"></i>T12</span></td>
+            <td><span class="cell"><i class="dot"></i>S1</span></td>
+            <td><span class="cell moved"><i class="dot"></i>&uarr; one</span></td>
+          </tr>
+          <tr>
+            <th>Sacralisation &middot; Castellvi III&ndash;IV</th>
+            <td><span class="cell"><i class="dot"></i>T12</span></td>
+            <td><span class="cell"><i class="dot"></i>T12</span></td>
+            <td><span class="cell maybe"><i class="dot"></i>may move</span></td>
+            <td><span class="cell moved"><i class="dot"></i>&uarr; one</span></td>
+          </tr>
+          <tr>
+            <th>Lumbarisation</th>
+            <td><span class="cell"><i class="dot"></i>T12</span></td>
+            <td><span class="cell"><i class="dot"></i>T12</span></td>
+            <td><span class="cell maybe"><i class="dot"></i>may move</span></td>
+            <td><span class="cell moved"><i class="dot"></i>&darr; one</span></td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="legend">
+        <span><i class="dot"></i>anchor holds</span>
+        <span><i class="dot" style="background:var(--moves);box-shadow:0 0 0 3px var(--moves-soft)"></i>anchor moves</span>
+        <span><i class="dot" style="background:transparent;border:1.5px solid var(--moves)"></i>may move &mdash; itself informative</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="sigs">
+    <div class="sig rib">
+      <h4>Rib signature</h4>
+      <p class="expr">A &minus; B &nbsp;=&nbsp; 0 &middot; +1 &middot; &minus;1</p>
+      <p>An aplastic twelfth rib <strong>leaves its costal facet behind</strong>, and a lumbar
+      rib grows on a vertebra that never had one. So A is the control for B, and the sign
+      names the rib variant.</p>
+    </div>
+    <div class="sig sac">
+      <h4>Sacral signature</h4>
+      <p class="expr">C &minus; D &nbsp;=&nbsp; 0 &middot; non-zero</p>
+      <p>The auricular surface belongs to the <strong>ilium</strong> and is not relinquished
+      when a lumbar segment fuses above it. C and D moving <em>together</em> marks a higher
+      Castellvi grade than D moving alone.</p>
+    </div>
+  </div>
+
+  <div class="col">
+    <p>The two families are orthogonal: rib variants perturb {A, B} and leave {C, D}; sacral
+    variants perturb {C, D} and leave {A, B}. A case carrying <em>both</em> — a lumbar rib
+    and a sacralisation, which this corpus contains — is therefore decomposable, where a
+    single-anchor design sees one net shift and cannot say what caused it.</p>
+    <p><strong>No anchor is individually reliable, and that is fine.</strong> The pattern of
+    which anchors disagree is a signature, and the signature identifies the variant.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">05</span>
+    <h2>Where morphology has to carry it alone</h2></div>
+  <div class="col">
+    <p>When the twelfth rib is aplastic there is no lowest rib, so <code>n_down</code> has no
+    origin. This is exactly the case worth detecting, and counting cannot reach it.</p>
+    <p>Thoracic and lumbar vertebrae are <strong>different bones</strong>, and every
+    discriminating feature is patch-local: costal facets on the body (thoracic only, and
+    present whether or not a rib grew); the costotransverse joint, a joint space where a
+    lumbar transverse process is continuous with the pedicle; and process shape — thoracic
+    short and club-like, lumbar long and blade-like with mammillary processes.</p>
+    <p>So a third head predicts <strong>thoracic versus lumbar type</strong> per vertebra,
+    from morphology, and repairs the rib anchor when the rib is missing. A vertebra with
+    costal facets and no rib is a T12 with an aplastic rib. A vertebra with no facets and a
+    small rib is an L1 with a lumbar rib. <em class="lead">The vertebra names the rib, not
+    the other way round.</em></p>
+    <p>This is learnable for the same reason the counts are: the facet is present in every
+    thoracic vertebra in the training set — hundreds of cases, not sixteen. On this corpus,
+    T12 separates from L1 at <strong>AUC 0.990</strong> and 97.3% accuracy over 1485
+    vertebrae, using shape alone with each patient's own size divided out.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">06</span>
+    <h2>Heads, losses, and the constraint that is free</h2></div>
+
+  <div class="tbl-frame">
+    <table class="data">
+      <thead><tr><th>Head</th><th>Type</th><th>Loss</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><th>semantic</th><td>per-voxel classes</td><td class="mono">Dice + CE</td><td>the segmentation</td></tr>
+        <tr><th class="mono">n_up</th><td>dense ordinal</td><td class="mono">ordinal-CE</td><td>count from the sacrum</td></tr>
+        <tr><th class="mono">n_down</th><td>dense ordinal</td><td class="mono">ordinal-CE</td><td>count from the ribs</td></tr>
+        <tr><th>type</th><td>per-voxel binary</td><td class="mono">BCE + Dice</td><td>thoracic vs lumbar morphology</td></tr>
+        <tr><th>rib-bearing</th><td>per-voxel binary</td><td class="mono">BCE + Dice</td><td>already built</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="col">
+    <p>Ordinal regression rather than plain regression: the targets are small integers with a
+    natural order, and rank-consistent formulations respect that where an L2 loss does not.</p>
+    <p>The strongest supervisory signal costs nothing. Penalise
+    <code>|n_up + n_down − K|</code> against the case's own constant. In normal anatomy this
+    is a self-supervised constraint that holds on <strong>every case</strong> — so it applies
+    to all the data, including the cases carrying no transitional label at all.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">07</span>
+    <h2>The patch is the real architectural tension</h2></div>
+  <div class="col">
+    <p>An ordinal count is not local. <code>n_up</code> at L1 needs the sacrum in the
+    receptive field — about <strong>265 mm</strong> from T11 to the S1 endplate on this
+    corpus.</p>
+    <ul class="plain">
+      <li>A tall narrow patch, 112 × 112 × 320 at 1 mm, spans the column in
+        <strong>4.01 Mvox</strong> — cheaper than nnU-Net's default 192³ at 7.08.</li>
+      <li>The pelvis needs 309 mm of width at p95, which that patch cannot span.</li>
+      <li>Going anisotropic to reach it blurs the 2–4 mm costotransverse joint — the very
+        feature that separates a stump rib from a lumbar rib.</li>
+    </ul>
+    <p><strong>The ordinal heads and the morphology classes want different patches.</strong>
+    Naming that tension is more useful than pretending one configuration serves both, and
+    the cascade is its principled resolution: a low-resolution stage locates the sacral
+    anchors against the whole pelvis, and hands its prediction to a full-resolution stage
+    that resolves the costal facet at native detail.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">08</span>
+    <h2>Arms, in order, each with a reason</h2></div>
+  <ol class="arms">
+    <li><b>ResEnc-L, tall narrow patch, semantic heads only</b>
+      <p>The honest baseline. Establishes what the column-spanning receptive field alone buys.</p></li>
+    <li><b>The same, plus the two ordinal heads and the consistency loss</b>
+      <p>Isolates the contribution of the formulation from that of the architecture. This is
+      the comparison the whole argument turns on.</p></li>
+    <li><b>3d_cascade_fullres</b>
+      <p>Global context for the counting heads, native resolution for the morphology.</p></li>
+    <li><b>PrimusV2 on the winner</b>
+      <p>The generic finding that CNNs beat Transformers came from organ segmentation, where
+      long-range ordering is not the task. Here it is the entire task, and positional
+      embeddings are the mechanism by which a network knows <em>which</em> vertebra it sees.</p></li>
+    <li><b>The staged count-free pipeline</b>
+      <p>The comparator that already exists.</p></li>
+  </ol>
+  <div class="col">
+    <p>Run arms 1 and 2 as a matched pair on the same folds. The delta between them is the
+    result.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">09</span>
+    <h2>What to measure, since Dice would hide it</h2></div>
+  <div class="col">
+    <ul class="plain">
+      <li><strong>Rib-free count accuracy, split by typical and transitional anatomy.</strong>
+        A model 97% accurate overall and 0% on transitional cases is the null result in
+        costume, and only the split reveals it.</li>
+      <li><strong>Anchor-agreement calibration.</strong> Does <code>|n_up + n_down − K|</code>
+        separate transitional from typical? An ROC on that scalar is the cleanest single
+        figure this design can produce.</li>
+      <li><strong>Stump-rib recall specifically</strong> — the case where the rib anchor
+        fails and morphology carries it alone.</li>
+      <li><strong>The failure mode when it fails.</strong> An off-by-one traceable to a named
+        vertebra, or a silent misnumbering. The argument for two anchors is that disagreement
+        is visible.</li>
+    </ul>
+  </div>
+
+  <div class="negative">
+    <h3>An anchor that did not survive contact with the data</h3>
+    <p>Sacral foramina are the textbook sacrum-intrinsic anchor — four pairs is normal, five
+    means it absorbed a lumbar segment — and would be an ideal anchor C, needing no reference
+    to the ilium.</p>
+    <p>It does not work here, and the corpus says so plainly. Counting foramina per side
+    across 802 records gives, for cases labelled <em>normal</em>: 2 in 211 cases, 3 in 324,
+    4 in 163, 5 in 49. <strong>The mode is three, not four</strong>, and the distribution
+    overlaps the labelled sacralisations and lumbarisations completely. The measurement is
+    dominated by field of view — many sacra are truncated inferiorly in an abdominal CT.</p>
+    <p>An anchor whose distribution in normal anatomy overlaps the variants it should detect
+    is not an anchor. It is recorded here so the next person does not spend a week
+    rediscovering it.</p>
+  </div>
+</section>
+
+<footer>
+  <p>Design notes for single-pass LSTV / TLTV labelling on CTSpinoPelvic1K — 802 CT records,
+  spine, pelvis, per-level ribs and femurs in one coordinate frame. Counts quoted are
+  measured on the released labels. Full derivation in
+  <code>docs/ANCHOR_ORDINAL_DESIGN.md</code>.</p>
+</footer>
+
+</div>
+
+</body></html>
