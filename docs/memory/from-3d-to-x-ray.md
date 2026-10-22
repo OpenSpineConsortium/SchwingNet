@@ -5,3 +5,4 @@ The programme that carries the segmented CTs to X-ray (counting prior, renders, 
 - The counting prior's settings (scale, weight, margin) are chosen on validation frames only (tools/chain_eval.py).
 - Variables beside the images come from tools/covariates.py, aggregates only, ages as decades.
 - COBRA is CC BY-NC 4.0; commercial use is the owner's lawyer question.
+- The screener (#64) runs over NHANES II's unannotated films first, the owner's choice of 2026-10-22; BUU-LSPINE is held (3,600 AP and lateral pairs), not requested.
