@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Vertebral count anomaly rule</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Source+Sans+3:wght@400;600&display=swap">
+  <style>
+    body { margin: 0; background: #FAF9F5; font-family: "Source Sans 3", ui-sans-serif, system-ui, sans-serif; color: #141413; }
+    a { color: #B0532F; } a:hover { color: #8A3F23; }
+  </style>
+</helmet>
+
+<div style="width: 1180px; height: 900px; box-sizing: border-box; padding: 40px 44px; display: flex; flex-direction: column; gap: 18px; background: #FAF9F5;">
+
+  <div style="display: flex; flex-direction: column; gap: 6px;">
+    <div style="font-family: Fraunces, Georgia, serif; font-size: 34px; font-weight: 600; letter-spacing: -0.01em;">Counting is the whole rule</div>
+    <div style="font-size: 16px; color: #55524C; max-width: 760px;">C1 is excluded from these datasets, so a structurally ordinary column holds 23 vertebrae: C2&ndash;C7, T1&ndash;T12, L1&ndash;L5. For any target vertebra, the count above it plus the count below it must be 22. Click a vertebra to move the target.</div>
+  </div>
+
+  <div style="display: flex; gap: 34px; flex-grow: 1; min-height: 0;">
+
+    <!-- the column -->
+    <div style="width: 470px; display: flex; flex-direction: column; gap: 0px;">
+      <div style="display: flex; align-items: center; gap: 12px; height: 26px; opacity: 0.45;">
+        <div style="width: 62px; text-align: right; font-size: 13px; font-weight: 600; letter-spacing: 0.04em;">C1</div>
+        <div style="width: 104px; height: 17px; border: 1.5px dashed #8A8780; border-radius: 5px; background: repeating-linear-gradient(135deg, #EDEBE4 0 6px, #F7F5EF 6px 12px); position: relative;">
+          <div style="position: absolute; left: 6px; right: 6px; top: 7px; height: 1.5px; background: #8A8780;"></div>
+        </div>
+        <div style="font-size: 12.5px; color: #55524C; font-style: italic;">excluded from the data, and from the arithmetic</div>
+      </div>
+
+      <sc-for list="{{rows}}" as="v" hint-placeholder-count="12">
+        <div style="display: flex; align-items: center; gap: 12px; height: {{v.rowH}};">
+          <div style="width: 62px; text-align: right; font-size: 13px; font-weight: {{v.weight}}; color: {{v.labelColor}};">{{v.name}}</div>
+          <button type="button" aria-label="{{v.aria}}" onClick="{{v.pick}}" style="width: {{v.w}}; height: 19px; border: {{v.border}}; border-radius: 5px; background: {{v.fill}}; padding: 0; cursor: pointer; box-shadow: {{v.shadow}};"></button>
+          <div style="font-size: 12px; color: #8A8780; width: 30px;">{{v.tag}}</div>
+          <sc-if value="{{v.isExtra}}" hint-placeholder-val="{{true}}">
+            <div style="display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; color: #B3261E;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#B3261E" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 20h20L12 3z"/><path d="M12 9v5"/><path d="M12 17.5v.5"/></svg>
+              <span>extra vertebra</span>
+            </div>
+          </sc-if>
+        </div>
+      </sc-for>
+
+      <div style="display: flex; align-items: center; gap: 12px; height: 26px; margin-top: 4px;">
+        <div style="width: 62px; text-align: right; font-size: 13px; font-weight: 600; color: #55524C;">sacrum</div>
+        <div style="width: 150px; height: 22px; border: 1.5px solid #B8B4AA; border-radius: 5px 5px 14px 14px; background: #E7E4DA;"></div>
+        <div style="font-size: 12.5px; color: #55524C; font-style: italic;">the anchor the count starts from</div>
+      </div>
+    </div>
+
+    <!-- the dashboard -->
+    <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 14px;">
+
+      <div style="display: flex; gap: 10px;">
+        <button type="button" onClick="{{setNormal}}" style="flex-grow: 1; padding: 9px 12px; border-radius: 8px; border: {{normalBorder}}; background: {{normalBg}}; font-family: inherit; font-size: 13.5px; font-weight: 600; color: #141413; cursor: pointer;">Ordinary column &middot; 23</button>
+        <button type="button" onClick="{{setL6}}" style="flex-grow: 1; padding: 9px 12px; border-radius: 8px; border: {{l6Border}}; background: {{l6Bg}}; font-family: inherit; font-size: 13.5px; font-weight: 600; color: #141413; cursor: pointer;">Sixth lumbar &middot; 24</button>
+        <button type="button" onClick="{{setT13}}" style="flex-grow: 1; padding: 9px 12px; border-radius: 8px; border: {{t13Border}}; background: {{t13Bg}}; font-family: inherit; font-size: 13.5px; font-weight: 600; color: #141413; cursor: pointer;">Thirteenth thoracic &middot; 24</button>
+      </div>
+
+      <div style="border: 1.5px solid #141413; border-radius: 12px; background: #FFFFFF; padding: 22px 24px; display: flex; flex-direction: column; gap: 16px;">
+        <div style="font-size: 12.5px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: #8A8780;">The arithmetic</div>
+
+        <div style="display: flex; gap: 12px;">
+          <div style="flex-grow: 1; border-radius: 10px; background: #DCE9F6; padding: 14px 16px;">
+            <div style="font-size: 12.5px; color: #3C5A78; font-weight: 600;">Rostral, R</div>
+            <div style="font-family: Fraunces, Georgia, serif; font-size: 40px; line-height: 1.05;">{{R}}</div>
+            <div style="font-size: 12px; color: #3C5A78;">{{rostralSpan}}</div>
+          </div>
+          <div style="flex-grow: 1; border-radius: 10px; background: #F6DFC8; padding: 14px 16px;">
+            <div style="font-size: 12.5px; color: #8A5320; font-weight: 600;">Target</div>
+            <div style="font-family: Fraunces, Georgia, serif; font-size: 40px; line-height: 1.05;">{{target}}</div>
+            <div style="font-size: 12px; color: #8A5320;">the body under the instrument</div>
+          </div>
+          <div style="flex-grow: 1; border-radius: 10px; background: #DCEDDF; padding: 14px 16px;">
+            <div style="font-size: 12.5px; color: #35603C; font-weight: 600;">Caudal, C</div>
+            <div style="font-family: Fraunces, Georgia, serif; font-size: 40px; line-height: 1.05;">{{C}}</div>
+            <div style="font-size: 12px; color: #35603C;">{{caudalSpan}}</div>
+          </div>
+        </div>
+
+        <div style="display: flex; align-items: baseline; gap: 14px; font-family: Fraunces, Georgia, serif; font-size: 27px;">
+          <span>{{R}} + {{C}} = {{sum}}</span>
+          <span style="font-family: 'Source Sans 3', sans-serif; font-size: 15px; color: #55524C;">expected 22</span>
+        </div>
+
+        <div style="border-radius: 10px; background: {{verdictBg}}; border: 1.5px solid {{verdictEdge}}; padding: 13px 16px; display: flex; align-items: center; gap: 11px;">
+          <div style="font-size: 15.5px; font-weight: 600; color: {{verdictEdge}};">{{verdict}}</div>
+          <div style="font-size: 14px; color: #141413;">{{verdictNote}}</div>
+        </div>
+
+        <div style="border-top: 1px solid #E7E4DA; padding-top: 13px; font-size: 13.5px; color: #55524C; line-height: 1.5;">
+          <span style="font-weight: 600; color: #141413;">What the report would say.</span> {{report}}
+        </div>
+      </div>
+
+      <div style="border: 1.5px solid #E7E4DA; border-radius: 12px; background: #FFFFFF; padding: 18px 20px; display: flex; flex-direction: column; gap: 9px;">
+        <div style="font-size: 12.5px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: #8A8780;">What the rule cannot do</div>
+        <div style="font-size: 13.5px; color: #55524C; line-height: 1.55;">It counts, and nothing more. It cannot say <em>which</em> vertebra is the extra one, so it flags the column rather than the level. A column carrying both an extra and a missing vertebra sums to 22 and passes. And its error is the counting error compounded over the whole column: one missed body anywhere turns an ordinary spine into a flagged one.</div>
+      </div>
+
+    </div>
+  </div>
+</div>
+</x-dc>
+
+<script type="text/x-dc" data-dc-script data-props='{"variant":{"editor":"enum","options":["l6","normal","t13"],"default":"l6"},"$preview":{"width":1180,"height":900}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { variant: null, target: 'L1' };
+  }
+
+  column(variant) {
+    const cx = ['C2', 'C3', 'C4', 'C5', 'C6', 'C7'];
+    const tx = ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T9', 'T10', 'T11', 'T12'];
+    const lx = ['L1', 'L2', 'L3', 'L4', 'L5'];
+    if (variant === 't13') return { names: cx.concat(tx, ['T13'], lx), extra: 'T13' };
+    if (variant === 'normal') return { names: cx.concat(tx, lx), extra: null };
+    return { names: cx.concat(tx, lx, ['L6']), extra: 'L6' };
+  }
+
+  bodyWidth(name) {
+    if (name[0] === 'C') return 104 + 3 * Number(name.slice(1));
+    if (name[0] === 'T') return 132 + 3.2 * Number(name.slice(1));
+    return 186 + 6 * Number(name.slice(1));
+  }
+
+  renderVals() {
+    const variant = this.state.variant || this.props.variant || 'l6';
+    const col = this.column(variant);
+    const names = col.names;
+    let target = this.state.target;
+    if (names.indexOf(target) < 0) target = 'L1';
+    const ti = names.indexOf(target);
+    const R = ti;
+    const C = names.length - ti - 1;
+    const sum = R + C;
+    const ok = sum === 22;
+
+    const rows = names.map((name, i) => {
+      const isTarget = i === ti;
+      const isExtra = name === col.extra;
+      const fill = isTarget ? '#E8833A' : (i < ti ? '#DCE9F6' : '#DCEDDF');
+      const border = isExtra ? '2px solid #B3261E' : (isTarget ? '2px solid #8A5320' : '1.5px solid #C9C5BB');
+      return {
+        name: name,
+        aria: 'Set the target to ' + name,
+        w: this.bodyWidth(name).toFixed(0) + 'px',
+        rowH: '26px',
+        fill: fill,
+        border: border,
+        shadow: isTarget ? '0 1px 6px rgba(138,83,32,0.35)' : 'none',
+        weight: isTarget ? 700 : 500,
+        labelColor: isTarget ? '#8A5320' : '#55524C',
+        tag: isTarget ? 'target' : '',
+        isExtra: isExtra,
+        pick: () => this.setState({ target: name }),
+      };
+    });
+
+    const sel = (v) => (variant === v ? '2px solid #141413' : '1.5px solid #D6D2C8');
+    const selBg = (v) => (variant === v ? '#F0EDE4' : '#FFFFFF');
+    const first = names[0], last = names[names.length - 1];
+    const above = ti > 0 ? first + ' through ' + names[ti - 1] : 'nothing above';
+    const below = ti < names.length - 1 ? names[ti + 1] + ' through ' + last : 'nothing below';
+
+    const report = ok
+      ? ('Target body: ' + (ti + 1) + 'th from C2 going caudally, ' + (C + 1) + 'th from the sacrum going cranially. Column total '
+         + names.length + ', as expected. Level reported as ' + target + '.')
+      : ('Target body: ' + (ti + 1) + 'th from C2 going caudally, ' + (C + 1) + 'th from the sacrum going cranially. Column total '
+         + names.length + ' against an expected 23, so R + C = ' + sum + ' and not 22. The ordinal is reported and the name is withheld: '
+         + 'a transitional column cannot be named by counting alone.');
+
+    return {
+      rows: rows,
+      R: R, C: C, sum: sum, target: target,
+      rostralSpan: above,
+      caudalSpan: below,
+      verdict: ok ? 'Ordinary column' : 'Anomaly detected',
+      verdictNote: ok ? 'the count matches an unremarkable column' : 'the column carries ' + (names.length > 23 ? 'an extra vertebra' : 'one vertebra too few'),
+      verdictBg: ok ? '#DCEDDF' : '#FBE3E0',
+      verdictEdge: ok ? '#35603C' : '#B3261E',
+      report: report,
+      setNormal: () => this.setState({ variant: 'normal' }),
+      setL6: () => this.setState({ variant: 'l6' }),
+      setT13: () => this.setState({ variant: 't13' }),
+      normalBorder: sel('normal'), l6Border: sel('l6'), t13Border: sel('t13'),
+      normalBg: selBg('normal'), l6Bg: selBg('l6'), t13Bg: selBg('t13'),
+    };
+  }
+}
+</script>
+</body>
+</html>

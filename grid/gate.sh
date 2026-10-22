@@ -357,7 +357,7 @@ failed_tails() {  # failed_tails SACCT: the end of the log of each newest job th
 }
 
 word_status() {
-  local ids report run lines shown job name state elapsed code node
+  local ids report run lines shown job name state elapsed code node probe
   ids=$(gate_ids | tail -n 60 | tr '\n' ',' | sed 's/,$//')
   if [ -z "$ids" ]; then
     echo "no job submitted by the gate yet; 'start' submits the graph"
@@ -369,6 +369,14 @@ word_status() {
       echo "  $job $(what_of "${job%%_*}") $state $elapsed $code $node"
     done <<< "$lines"
     failed_tails "$lines"
+  fi
+  # The latency probe's answer (#87): counts, sizes, PNG dimensions and the export's meta keys only,
+  # never a DICOM header, printed before the reports so it stays inside status's 200 lines; only
+  # its own lines' shapes, with no folder or file name (grid/probe-shapes.awk), then masked (#80).
+  probe=$(ls -1t "$LOGS"/sn_probe_*.out 2>/dev/null | head -n 1)
+  if [ -n "$probe" ]; then
+    echo "## the latency probe: $(basename "$probe") ($(date -r "$probe" '+%F %T'))"
+    head -n 40 "$probe" | LC_ALL=C tr -cd '\11\12\40-\176' | awk -f "$REPO/grid/probe-shapes.awk" | masked | sed 's/^/  /'
   fi
   for report in "$LOGS"/*STAGE-REPORT.md; do
     [ -f "$report" ] || continue

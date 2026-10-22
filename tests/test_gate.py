@@ -927,6 +927,37 @@ echo "the split is not disjoint; no training step reads this version"; exit 1
         self.assertNotIn("case134", done.stdout)
         self.assertIn("(1 of its last 400 lines withheld", done.stdout)
 
+    PROBE = (
+        "SN_LATENCY probe start 2026-10-21 17:31:00 on hao1 job 9 task  commit 5ecce95",
+        "raw case134: 302 files under /rs/data/carmlspine/unpacked/C-ArmLSpine",
+        "  suffixes: {'(none)': 302}",
+        "     302  /rs/data/carmlspine/unpacked/C-ArmLSpine/case134/ori",
+        "       4  /rs/data/carmlspine/unpacked/C-ArmLSpine/Jane_Doe_scan",
+        "  commonest sizes in bytes: [(2098432, 301), (1024, 1)]",
+        "bank case134: 301 PNG frames under /rs/data/realxray/carmlspine_sweep/images",
+        "  first: case134_sw000.png 1024x1024, 8-bit, colour type 0 | last: case134_sw300.png",
+        "  meta keys: ['angle', 'boxes', 'mode'] | view: None | boxes: 5 | box keys: ['level', 'xyxy'] | levels: ['L1', 'L2']",
+        "  frames with meta: 301",
+        "Traceback (most recent call last): Jane Doe",
+    )
+
+    def test_status_prints_the_newest_latency_probe_by_its_shapes(self):
+        logs = self.repo / "grid" / "logs"
+        logs.mkdir(parents=True, exist_ok=True)
+        older = logs / "sn_probe_7_4294967294.out"
+        older.write_text("raw case39: 1 files under /x\n", encoding="utf-8")
+        os.utime(older, (1, 1))
+        (logs / "sn_probe_9_4294967294.out").write_text("\n".join(self.PROBE) + "\n", encoding="utf-8")
+        done = self.gate("status")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("## the latency probe: sn_probe_9_4294967294.out", done.stdout)
+        for kept in ("  raw case134: 302 files", "  302 files in case134/ori", "  bank case134: 301 PNG frames",
+                     "  first frame: 1024x1024, 8-bit, colour type 0", "levels: ['L1', 'L2']", "  frames with meta: 301",
+                     "suffixes: {'(none)': 302}", "(2 of its lines not shown"):
+            self.assertIn(kept, done.stdout)
+        for gone in ("case39", "Jane", "/rs/", "sw000", "C-ArmLSpine"):
+            self.assertNotIn(gone, done.stdout)
+
     def test_samples_submits_the_index_records_its_jobs_and_waits_for_them(self):
         (self.repo / "tools" / "sample_index.py").write_text("", encoding="utf-8")
         self.assertEqual(self.gate("samples").returncode, 75)

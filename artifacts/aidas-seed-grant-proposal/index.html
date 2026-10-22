@@ -1,0 +1,107 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>AIDaS Seed Grant Proposal</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600&family=Source+Sans+3:wght@400;600&display=swap">
+<style>
+:root{--bg:#f6f5f2;--panel:#ffffff;--ink:#1f2328;--ink2:#5c6470;--rule:#d9d6cf;--accent:#1f4e79;--soft:#eef2f6;--sans:"Source Sans 3",system-ui,-apple-system,"Segoe UI",sans-serif;--serif:"Source Serif 4",Georgia,serif;--mono:ui-monospace,Menlo,Consolas,monospace}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#15181c;--panel:#1d2126;--ink:#e8e9ec;--ink2:#a6adb7;--rule:#333a43;--accent:#8db6e3;--soft:#232a33}}
+:root[data-theme="dark"]{--bg:#15181c;--panel:#1d2126;--ink:#e8e9ec;--ink2:#a6adb7;--rule:#333a43;--accent:#8db6e3;--soft:#232a33}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15.5px;line-height:1.5;padding-inline:16px;padding-block:22px 60px}
+.doc{max-width:860px;margin:0 auto;background:var(--panel);border:1px solid var(--rule);padding:28px 32px}
+h1{font-family:var(--serif);font-weight:600;font-size:clamp(22px,3.6vw,30px);line-height:1.15;margin:0 0 14px;text-wrap:balance}
+h2{font-family:var(--serif);font-weight:600;font-size:21px;margin:30px 0 8px;border-bottom:1px solid var(--rule);padding-bottom:4px}
+h3{font-size:16px;font-weight:600;margin:20px 0 6px;color:var(--accent)}
+h4{font-size:14.5px;font-weight:600;margin:14px 0 4px}
+p{margin:0 0 10px;max-width:78ch}
+ul,ol{padding-left:24px;max-width:78ch}
+li{margin-bottom:4px}
+table{border-collapse:collapse;font-size:13.5px;margin:8px 0 14px;width:100%}
+th,td{padding:5px 8px;border:1px solid var(--rule);text-align:left;vertical-align:top}
+th{background:var(--soft);font-weight:600}
+.tblwrap{overflow-x:auto}
+hr{border:0;border-top:1px solid var(--rule);margin:22px 0}
+code{font-family:var(--mono);font-size:13px;background:var(--soft);padding:1px 4px}
+.flag{background:#fff3cd;color:#5c4400;padding:0 3px}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .flag{background:#4a3b12;color:#ffe08a}}
+:root[data-theme="dark"] .flag{background:#4a3b12;color:#ffe08a}
+@media print{@page{size:letter;margin:16mm}body{background:#fff;padding:0;font-size:11.5px}.doc{border:0;padding:0;max-width:none}h2{page-break-after:avoid}}
+</style>
+<div class="doc">
+<h1>AIDaS Seed Grant Proposal, 2026–2027 Cycle</h1>
+<h2>1. Cover Page</h2>
+<p><strong>Project title:</strong> Exact intraoperative vertebral counting on the C-arm the hospital already owns: closing the domain gap with in-domain fluoroscopy, phantom, cadaver and shadow-mode validation</p>
+<p><strong>Strategic area(s) addressed:</strong> 4, AI for Health (primary). 1, Foundational AI (secondary: a trustworthy inference design with one learned component and an auditable count).</p>
+<p><strong>Principal Investigator:</strong> [Faculty PI, tenure-track, AIDaS member], [Department, College], <span class="flag">[to confirm: name, AIDaS affiliation, email, phone]</span>. The call requires the PI to hold a tenure-track or tenured WSU faculty appointment and to be an AIDaS member; this slot is a placeholder until a faculty member has agreed to serve.</p>
+<p><strong>Co-Investigator and project lead:</strong> Gregory Schwing, MD PhD, neurosurgery resident, Department of Neurosurgery, Wayne State University / Detroit Medical Center <span class="flag">[to confirm: departmental name]</span>; gregoryjschwing@gmail.com. Dr. Schwing designed the method, wrote the software and the manuscript now in preparation, and will run the project day to day.</p>
+<p><strong>Clinical collaborator:</strong> Dr. Chien To Do, DO, neurosurgeon, Detroit Medical Center <span class="flag">[to confirm: spelling of name and written agreement; WSU appointment; if external, may participate but may not receive award funds]</span>. Source of the retrospective intraoperative fluoroscopy and site of the shadow-mode observational study.</p>
+<p><strong>Institutional resources named in this proposal:</strong> WSU C-arm fluoroscope, Room 0312 Elliman, operated by the Division of Laboratory Animal Resources (DLAR); Body Bequest Program, Department of Anatomy &amp; Cell Biology (Barb Rosso-Norgan, Coordinator and Mortuary Supervisor, 540 E. Canfield Room 525, brosso@med.wayne.edu, 313-577-1188).</p>
+<p><strong>Contact for this proposal:</strong> [Faculty PI email and phone]; Gregory Schwing, gregoryjschwing@gmail.com.</p>
+<p><strong>New Investigator status:</strong> <span class="flag">[to confirm: New Investigator definition in the RFP, and whether the faculty PI meets it]</span>. Dr. Schwing is a resident and is not eligible to serve as PI.</p>
+<p><strong>Award requested:</strong> $20,000 for a one-year project period, January 1 to December 31, 2027.</p>
+<p><strong>Submission:</strong> single PDF, submitted per the RFP <span class="flag">[to confirm: address]</span>, by October 16, 2026, 11:59 p.m. ET.</p>
+<hr>
+<h2>2. Project Narrative</h2>
+<h3>Significance and Innovation</h3>
+<p>Wrong-level spine surgery persists because a C-arm shows a few vertebrae at a time and the surgeon counts from whatever landmark is visible. In a registry of 34,544 degenerative spine operations at 27 hospitals (2012–2022) the incidence was 0.12% (95% CI 0.09–0.16): thoracic 0.42%, lumbar 0.13%, cervical 0.05%. Intraoperative disorientation was the cause in 81.3% (Furuya et al., Bone Joint J 2026). By self-report the rate is 1 in 3,110 procedures; 50% of 415 surveyed surgeons had performed one, and 17% of 418 events led to legal action (Mody et al., Spine 2008). Almost 50% of 569 AANS/CNS Spine Section respondents had done one and nearly 20% had been sued for it (Groff et al., World Neurosurg 2013). Of 68 litigated wrong-disc-level cases, 81% ended in a payment; surgeons won 42% of jury trials (Goodkin and Laska, Surg Neurol 2004). The median NPDB payment for a surgical never event is $75,220 (IQR $28,847–$215,003, 2025 dollars; Bettis et al., Patient Saf Surg 2026). In the NHS, 978 spinal claims over five years were valued at £535.5M, 26 of them never events (Machin et al., Eur Spine J 2018). The Joint Commission recorded 127 wrong surgeries in 2024, nine wrong-level and seven spinal, with severe permanent harm in 36%.</p>
+<p>The safeguards in use are themselves counts. Site-verification protocols failed to prevent about one-third of cases in the one study that assessed them (Longo et al., J Bone Joint Surg Br 2012). The recommended safeguard, imaging after exposure against a marked fixed structure (DeVine et al., Spine 2010), is another count. The standard technique places needles every few levels and counts cephalad from the sacrum on lateral fluoroscopy, and surgeons disagree on the thoracic landmark (pedicle 67%, spinous process 49%; Strong et al., J Neurosurg Spine 2021; Mayer et al., Spine J 2014). Avoiding the count costs time and dose: one centre placed 179 preoperative gold fiducials over 38 months, 176 thoracic, at a mean of 51.9 min and 183 mGy each (Siminski et al., AJNR 2023). At $33.78–37.45 per operating-room minute (FY2014, before physician fees; Childers and Maggard-Gibbons, JAMA Surg 2018) that is $1,750–1,950 per placement. Also not known: a verified capital cost for a navigation suite, any study showing that navigation reduces wrong-level surgery, any measure of surgeon workload with versus without navigation, and navigation penetration by site of care. A method that needs only the C-arm the hospital already owns does not depend on any of these.</p>
+<p>The innovation is to count, not name. The first exposure is anchored at the sacrum (or C2). The C-arm is moved one field minus two vertebral bodies and exposed again. Consecutive overlapping frames are linked by normalised cross-correlation restricted to within 0.6 of a vertebral body of the commanded step. The target is read as the k-th node from the anchor. The only learned component is a detector of vertebral bodies and the anchor class. Nothing learned decides the level, and no name such as "L4" is formed. There is no tracker, no reference frame, no preoperative CT and no capital equipment. The second element is a physics renderer of fluoroscopy from CT, calibrated on real C-arm frames, so that a detector can be trained on rendered exposures with known boxes. Every count can be traced to boxes and a correlation peak that a surgeon can inspect.</p>
+<h3>Approach and Preliminary Work</h3>
+<p><strong>Preliminary work</strong> (manuscript in preparation for Radiology: Artificial Intelligence). On public labelled CT renders and real radiographs with annotation boxes, the count was exact on 99.17–100% of reached walks in twelve arms of 16–801 spines (1.13–2.96 exposures per walk). From C2 with three bodies of overlap: 834/834 walks on 76 whole-spine studies, and 1,205/1,209 on 262 real lateral radiographs (99.67%; 95% CI 99.16–99.91). From the sacrum: 6,234/6,255 (99.66%) on 801 abdominopelvic spines and 7,168/7,228 (99.17%) on 522 second-institution spines; regionally 99.73% lumbar and 95.45% thoracic on the 801, and 99.33/97.41/83.84% lumbar/thoracic/cervical on the 522. A confirming frame with a radiopaque instrument was assigned to the correct vertebra on 99.31% of 5,385 confirmations (801 spines) and 98.57% of 6,343 on 501 whole-spine studies.</p>
+<p>The deployment risk is detection, not counting. A detector trained on real films reaches 99.14% per-body recall on real radiographs; the same architecture trained on renders only reaches 71.67%, and with its boxes exactness fell from 100% to 30.06% on 79 held-out spines. On DeepFluoro (366 real C-arm frames of six cadaveric pelves on one Siemens Cios Fusion, with CT and exact pose) our renderer explains 80.9% of a real frame's variance; nine calibrated device terms add 4.3 points, held out by specimen; a per-frame smooth field reaches 93.9% against a 99.5% quantum-noise ceiling. A detector trained only on calibrated renders of DeepFluoro's own CTs finds the sacrum on about 96–98% of real frames (leave-one-specimen-out). Trained on renders of living whole-body CTs it reaches about 64–77% depending on round; three seeds of one dataset spanned 26 points; a constant-box location prior scores 5–60%, so these are detection results, not chance. Learned refiners and Fourier low-band swaps are being measured as arms; results are pending. The honest conclusion: synthetic fluoroscopy from CT is close in physics but tuned to one C-arm and one cadaveric population. The number that matters, performance on our own machines and patients, requires in-domain real fluoroscopy.</p>
+<p><strong>Q1 2027.</strong> (a) Submit a WSU IRB protocol for retrospective review of intraoperative fluoroscopic images and videos saved to PACS by Dr. Chien To Do at DMC, spine cases 2021–2026, with level truth from operative notes and post-operative imaging (Exempt Category 4 or Expedited Category 5; waiver of consent and of HIPAA authorization; DICOM header scrub and burned-in text removal at export; coded key held separately by the investigators; storage on WSU/DMC-approved encrypted systems). The existing Not Human Participant Research determination 2026_269 covers public de-identified data only, so this is a new protocol. (b) Phantom sweeps on the WSU C-arm in 0312 Elliman under the OEHS Radiation Safety policy: dosimetry badges, Appendix L training form and Dosimetry Request Form filed ≥15 business days ahead; IACUC/RSC approval <span class="flag">[to confirm: which applies to a phantom-only study]</span>. OEHS allows no exceptions, so this paperwork starts before the award date. The phantom sweeps measure how far a manual C-arm step departs from the commanded step, which decides whether the 0.6-body window holds in practice.</p>
+<p><strong>Q2 2027.</strong> (c) Cadaver validation through the Body Bequest Program (a research proposal to the program and to biosafety; not human-subjects research under the Common Rule): anchored sweeps on an intact thoracolumbar spine with a needle in a chosen interspace, the count read against the known level. (d) Fine-tune the detector on the DMC fluoroscopy together with the calibrated renders, trained on the NVIDIA workstation GPU. (e) Build the prototype: a lossless frame grabber on the C-arm's video output feeding an NVIDIA Jetson AGX Orin unit that runs detection and linking outside the C-arm's own software.</p>
+<p><strong>Q3 2027.</strong> (f) Shadow-mode prospective observational study in the operating room under a second IRB protocol. The system displays nothing to the surgeon; its count and the surgeon's count are recorded and compared against the record.</p>
+<p><strong>Q4 2027.</strong> (g) An FDA pre-submission for the device pathway, and (h) an external federal proposal (Section 3). FDA clearance is not achievable within 2027 from a seed grant. The deliverable is a validated prototype, in-domain data and the pre-submission.</p>
+<h3>Expected Outcomes and Deliverables</h3>
+<ol>
+<li>An IRB-approved, de-identified corpus of DMC intraoperative fluoroscopy with per-body boxes and level truth from the record <span class="flag">[to confirm: case count after the PACS query]</span>.</li>
+<li>Per-body recall of the fine-tuned detector on held-out cases from the same devices, with 95% CI, reported against the 99.14% measured on radiographs and the 71.67% render-only floor.</li>
+<li>Exactness of the count against the record on phantom sweeps, cadaver sweeps and shadow-mode cases, with 95% CI, and the share of walks not reached.</li>
+<li>The distribution of manual step error from the phantom sweeps, tested against the 0.6-body window.</li>
+<li>A working frame-grabber prototype on NVIDIA edge hardware, with a bench log of its latency per frame.</li>
+<li>An FDA pre-submission package and a submitted NIH R21 <span class="flag">[to confirm: RFP reporting requirements]</span>.</li>
+</ol>
+<p>Public release of any part of the corpus is not a deliverable <span class="flag">[to confirm: whether the IRB protocol and DMC data-use terms will permit public release]</span>.</p>
+<hr>
+<h2>3. AIDaS Funding Priority Alignment</h2>
+<p><strong>Target agencies, programs and solicitations.</strong></p>
+<ul>
+<li>NIH NIBIB R21 (Trailblazer R21 for new investigators where the faculty PI is eligible), then R01; NIH NINDS as the alternate institute <span class="flag">[to confirm: current notices of funding opportunity and receipt dates]</span>.</li>
+<li>NSF Smart Health and Biomedical Research in the Era of AI (SCH) <span class="flag">[to confirm: solicitation number and deadline]</span>.</li>
+<li>DoD CDMRP Peer Reviewed Medical Research Program (PRMRP) <span class="flag">[to confirm: topic areas]</span>.</li>
+<li>NSF CAREER for the faculty PI <span class="flag">[to confirm: eligibility and deadline]</span>.</li>
+</ul>
+<p><strong>Relevance to national priorities.</strong> The work sits in AIDaS area 4, AI for Health, and addresses three stated national priorities. Trustworthy AI in health: the design has one learned component, a detector; the level is decided by a correlation peak and a count that a surgeon can inspect. Patient safety: wrong-level surgery is a never event, with a registry incidence of 0.12% and intraoperative disorientation as the cause in 81.3% of cases. Access: the method runs on the C-arm every hospital already owns and needs no capital equipment, no preoperative CT and no tracker, so it can reach community and rural operating rooms that do not have a navigation suite.</p>
+<p><strong>What the seed award supplies for the federal proposal.</strong> Each target mechanism will ask for in-domain preliminary data, which we do not yet have. The award produces an IRB-approved fluoroscopy corpus from our own institution, a detector measured on held-out cases from the same devices, cadaver and shadow-mode exactness with confidence intervals, and a working edge prototype. These are the preliminary results a federal submission needs.</p>
+<p><strong>Timeline for external submission.</strong></p>
+<ul>
+<li>January–March 2027: IRB submission and approval; PACS extraction; OEHS/DLAR paperwork and phantom sweeps.</li>
+<li>April–June 2027: cadaver validation; in-domain detector; prototype bench test.</li>
+<li>July–September 2027: shadow-mode observational study under the second protocol; interim analysis.</li>
+<li>Fourth quarter 2027: NIH NIBIB R21 submitted <span class="flag">[to confirm: receipt date]</span>, with the in-domain data and prototype as preliminary results; FDA pre-submission; NSF SCH and CDMRP PRMRP pre-application prepared for their next deadlines <span class="flag">[to confirm: dates]</span>; NSF CAREER prepared by the faculty PI <span class="flag">[to confirm: eligibility and deadline]</span>.</li>
+</ul>
+<p>This gives the review's pathway-to-external-funding criterion a named target and a dated timeline within the award year.</p>
+<hr>
+<h2>4. Budget and Justification</h2>
+<p>Requested: $20,000 for January 1 to December 31, 2027. The call lists graduate student support, computing cost, invited collaborator travel and data management/storage as allowable; hardware purchase is not listed explicitly, so the NVIDIA items sit under computing cost, and the phantom and cadaver fee fall outside the listed categories. Amounts are estimates against list prices or stated ranges; quotes precede the award date.</p>
+<div class="tblwrap"><table><tr><th>Line</th><th>Item</th><th>Category per the call</th><th>Amount</th></tr>
+<tr><td>1</td><td>Workstation GPU, RTX 6000 Ada or RTX 5090-class</td><td>Computing cost</td><td>$6,500</td></tr>
+<tr><td>2</td><td>NVIDIA Jetson AGX Orin developer kit</td><td>Computing cost</td><td>$2,000</td></tr>
+<tr><td>3</td><td>Lossless HDMI/SDI frame grabber</td><td>Computing cost</td><td>$700</td></tr>
+<tr><td>4</td><td>Lumbar spine phantom for fluoroscopy</td><td>Not a listed category</td><td>$3,000</td></tr>
+<tr><td>5</td><td>Cadaver research fee, Body Bequest Program</td><td>Not a listed category</td><td>$2,000</td></tr>
+<tr><td>6</td><td>Student annotation support, 200 h</td><td>Graduate student support</td><td>$4,800</td></tr>
+<tr><td>7</td><td>Encrypted data storage and management</td><td>Data management/storage</td><td>$500</td></tr>
+<tr><td>8</td><td>Invited collaborator travel</td><td>Invited collaborator travel</td><td>$500</td></tr>
+<tr><td></td><td><strong>Total</strong></td><td></td><td><strong>$20,000</strong></td></tr>
+</table></div>
+<p>Lines 1–5 are flagged for confirmation with AIDaS before submission; see justification.</p>
+<p><strong>Justification.</strong> Line 1, $6,500: one RTX 6000 Ada or RTX 5090-class card, about $5,000–8,000 at list <span class="flag">[to confirm: vendor quote]</span>; a local GPU under WSU/DMC-approved encrypted controls for training on the coded corpus. Line 2, $2,000: Jetson AGX Orin developer kit, about $2,000 at list; runs detection and linking beside the C-arm without touching its software. Line 3, $700: Magewell or Blackmagic frame grabber, $300–1,000 at list; takes the C-arm's video output losslessly. Line 4, $3,000: anthropomorphic lumbar phantom, about $2,000–4,000; for the 0312 Elliman step-error sweeps; $0 if a loan unit is obtained, releasing the line to annotation. Line 5, $2,000: one cadaver session, within the typical $1,000–3,000 research fee <span class="flag">[to confirm: fee with the program]</span>. Line 6, $4,800: 200 h at an assumed $24/h <span class="flag">[to confirm: WSU rate and fringe]</span> for per-body boxes, level truth from the record, and sweep scoring. Line 7, $500: estimate; encrypted storage for the coded corpus. Line 8, $500: estimate; one collaborator visit. If AIDaS rules any of lines 1–5 not allowable, that line moves to annotation and storage <span class="flag">[to confirm: WSU shared computing for training]</span>, total unchanged.</p>
+<hr>
+<h2>5. Biosketches</h2>
+<ul>
+<li>[Faculty PI: biosketch in NIH or NSF format, two pages, to be supplied by the faculty PI.]</li>
+<li>[Gregory Schwing, MD PhD: biosketch in NIH format, two pages, to be supplied from the current CV. Not drafted here.]</li>
+</ul>
+</div>
+
+</body></html>

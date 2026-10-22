@@ -1,0 +1,336 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Retrospective Fluoroscopy Protocol</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600&family=Source+Sans+3:wght@400;600&display=swap">
+<style>
+:root{--bg:#f6f5f2;--panel:#ffffff;--ink:#1f2328;--ink2:#5c6470;--rule:#d9d6cf;--accent:#1f4e79;--soft:#eef2f6;--sans:"Source Sans 3",system-ui,-apple-system,"Segoe UI",sans-serif;--serif:"Source Serif 4",Georgia,serif;--mono:ui-monospace,Menlo,Consolas,monospace}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#15181c;--panel:#1d2126;--ink:#e8e9ec;--ink2:#a6adb7;--rule:#333a43;--accent:#8db6e3;--soft:#232a33}}
+:root[data-theme="dark"]{--bg:#15181c;--panel:#1d2126;--ink:#e8e9ec;--ink2:#a6adb7;--rule:#333a43;--accent:#8db6e3;--soft:#232a33}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15.5px;line-height:1.5;padding-inline:16px;padding-block:22px 60px}
+.doc{max-width:860px;margin:0 auto;background:var(--panel);border:1px solid var(--rule);padding:28px 32px}
+h1{font-family:var(--serif);font-weight:600;font-size:clamp(22px,3.6vw,30px);line-height:1.15;margin:0 0 14px;text-wrap:balance}
+h2{font-family:var(--serif);font-weight:600;font-size:21px;margin:30px 0 8px;border-bottom:1px solid var(--rule);padding-bottom:4px}
+h3{font-size:16px;font-weight:600;margin:20px 0 6px;color:var(--accent)}
+h4{font-size:14.5px;font-weight:600;margin:14px 0 4px}
+p{margin:0 0 10px;max-width:78ch}
+ul,ol{padding-left:24px;max-width:78ch}
+li{margin-bottom:4px}
+table{border-collapse:collapse;font-size:13.5px;margin:8px 0 14px;width:100%}
+th,td{padding:5px 8px;border:1px solid var(--rule);text-align:left;vertical-align:top}
+th{background:var(--soft);font-weight:600}
+.tblwrap{overflow-x:auto}
+hr{border:0;border-top:1px solid var(--rule);margin:22px 0}
+code{font-family:var(--mono);font-size:13px;background:var(--soft);padding:1px 4px}
+.flag{background:#fff3cd;color:#5c4400;padding:0 3px}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .flag{background:#4a3b12;color:#ffe08a}}
+:root[data-theme="dark"] .flag{background:#4a3b12;color:#ffe08a}
+@media print{@page{size:letter;margin:16mm}body{background:#fff;padding:0;font-size:11.5px}.doc{border:0;padding:0;max-width:none}h2{page-break-after:avoid}}
+</style>
+<div class="doc">
+<h1>WSU IRB eProtocol — draft for submission (mirrors the print view of IRB-21-10-4123)</h1>
+<p><strong>Protocol Title:</strong> Retrospective collection of intraoperative fluoroscopic images and videos from spine surgery at the Detroit Medical Center for the development and validation of an algorithm that counts vertebral levels</p>
+<p><strong>Protocol Type:</strong> IRB Form <strong>Protocol #:</strong> <span class="flag">[to confirm: assigned by eProtocol on submission]</span> <strong>Date Submitted:</strong> Draft <strong>Principal Investigator:</strong> <span class="flag">[to confirm: decide before submission. If a faculty PI is required, enter the faculty PI here (name, department, WSU AccessID email) and list Gregory Schwing, MD PhD as Co-Investigator; if a resident may serve as PI, enter Dr. Schwing and cite the WSU IRB policy that permits it. eProtocol correspondence goes to the PI's WSU email.]</span> <strong>Co-Investigator (Neurosurgery, DMC):</strong> Chien To Do, DO <span class="flag">[spelling to confirm: the surname form "To Do" is used throughout this document and will be search-replaced once confirmed]</span> <strong>Co-Investigator (Neurosurgery resident, WSU/DMC):</strong> Gregory Schwing, MD PhD, <span class="flag">[to confirm: WSU AccessID email for eProtocol correspondence]</span> <strong>Study Location:</strong> Detroit Medical Center — <span class="flag">[to confirm: which DMC hospital(s) Dr. To Do operates at; select each in the Study Location section]</span></p>
+<hr>
+<h2>* * * Protocol Checklist * * *</h2>
+<div class="tblwrap"><table><tr><th>Checklist item</th><th>Response</th></tr>
+<tr><td>Research that will be used to support an application to the Food and Drug Administration (FDA)</td><td><strong>Yes</strong> — data from this retrospective study may be included in a future 510(k) pre-submission; no device is used on any participant under this protocol. Because research that may support an FDA submission is not eligible for exemption, Expedited review is requested (see the attached Protocol document).</td></tr>
+<tr><td>Clinical trial posted on ClinicalTrials.gov</td><td>No</td></tr>
+<tr><td>Humanitarian Use Device</td><td>No</td></tr>
+<tr><td>Investigational drug or biologic</td><td>No</td></tr>
+<tr><td>Expanded use of an investigational drug</td><td>No</td></tr>
+<tr><td>Commercially available drugs, reagents, chemicals, or FDA-regulated devices administered to participants</td><td>No</td></tr>
+<tr><td>Chemotherapeutic drug</td><td>No</td></tr>
+<tr><td>Investigational medical device</td><td>No. The algorithm is applied to archived images only; it is not used on any patient under this protocol.</td></tr>
+<tr><td>Standard of care radiation to be used for the research study</td><td>No. All images were acquired for clinical care before this study. No new exposure. [to confirm with IRB that Appendix G is not required for retrospective use of archived clinical images]</td></tr>
+<tr><td>Ionizing radiation for research purposes</td><td>No</td></tr>
+<tr><td>Infectious agents</td><td>No</td></tr>
+<tr><td>Non-plasmid recombinant DNA</td><td>No</td></tr>
+<tr><td>Plasmid recombinant DNA</td><td>No</td></tr>
+<tr><td>Biological specimens</td><td>No</td></tr>
+<tr><td>Biological specimens stored for future research</td><td>No</td></tr>
+<tr><td>Microbial pathogens (first checklist row)</td><td>No</td></tr>
+<tr><td>Microbial pathogens (second checklist row)</td><td>No</td></tr>
+<tr><td>Human embryos</td><td>No</td></tr>
+<tr><td>Human embryonic cells</td><td>No</td></tr>
+<tr><td>NIH Genomic Data Sharing</td><td>No</td></tr>
+<tr><td>Waiver of Consent or Waiver of written documentation of consent</td><td><strong>X</strong> — Waiver of Consent (see Consent Information)</td></tr>
+<tr><td>Waiver of consent to screen for eligibility</td><td>No</td></tr>
+<tr><td>Planned Emergency Research</td><td>No</td></tr>
+<tr><td>Request to Rely on Another IRB</td><td>No</td></tr>
+<tr><td>Ancillary Review: Detroit Medical Center (DMC)</td><td><strong>X</strong> — DMC Clinical Translation Research Office approval will be attached</td></tr>
+<tr><td>Ancillary Review: ESCRO</td><td>No</td></tr>
+<tr><td>Ancillary Review: IBC</td><td>No</td></tr>
+<tr><td>Ancillary Review: MTA</td><td>No</td></tr>
+<tr><td>Ancillary Review: PRMC</td><td>No</td></tr>
+<tr><td>Ancillary Review: Radiation Safety Committee (RSC)</td><td>No (no new exposure)</td></tr>
+<tr><td>Ancillary Review: McLaren</td><td>No</td></tr>
+<tr><td>Ancillary Review: VA CIC</td><td>No</td></tr>
+<tr><td>Ancillary Review: Single IRB / IAA</td><td>No</td></tr>
+<tr><td>Ancillary Review: Other</td><td>No</td></tr>
+<tr><td>Will Protected Health Information (PHI) be viewed, created, accessed, used, or disclosed?</td><td><strong>Y</strong></td></tr>
+<tr><td>Use of PHI</td><td><strong>X</strong> Waiver or Alteration of Authorization; Limited Data Set and Data Use Agreement — not selected</td></tr>
+</table></div>
+<hr>
+<h2>* * * Funding * * *</h2>
+<p><strong>Does this project have funding?</strong> N</p>
+<p>An internal application to the Wayne State University AIDaS Seed Grant (four awards of $10,000–$20,000; one-year period starting January 1, 2027; deadline October 16, 2026; notification December 16, 2026) is planned. If awarded, the Funding section will be amended. No external funding at submission.</p>
+<hr>
+<h2>* * * DoD Questionnaire * * *</h2>
+<p>Not applicable. The Department of Defense is not a funding source and no DoD component, property, or personnel is involved.</p>
+<hr>
+<h2>* * * Study Details * * *</h2>
+<p><strong>Please select one of the following:</strong> WSU IRB <strong>Study Title:</strong> Retrospective collection of intraoperative fluoroscopic images and videos from spine surgery at the Detroit Medical Center for the development and validation of an algorithm that counts vertebral levels <strong>Study Type:</strong> Medical <strong>Review Type:</strong> Full Board / <strong>Expedited (X)</strong> / Exempt / Not Human Participant Research</p>
+<p>(The reasons for requesting Expedited review, Category 5, are given in the attached Protocol document at the end of this draft; the Study Details page has only the four radio buttons.)</p>
+<hr>
+<h2>* * * Exempt Paragraph(s) * * *</h2>
+<p>Not applicable: the FDA checklist box is checked, and research that may support an FDA submission is not eligible for exemption. The paragraphs below are completed only so the IRB has the answers if it disagrees and routes this submission to Exempt Category 4.</p>
+<p><strong>Item A:</strong> Will the proposed research include activities that are more than minimal risk? <strong>No</strong> <strong>Item B:</strong> Will the research involve a clinical investigation of FDA-regulated drugs, biological products, or medical devices? <strong>No</strong> — the algorithm is applied to archived images only and is not used on any participant. The data may nonetheless support a future FDA submission (see the checklist), which is why Expedited review is requested rather than exemption. <strong>Item C:</strong> Will the proposed research target populations held in a jail, prison, or treatment facility? <strong>No</strong> <strong>Item D:</strong> Potential risks: <strong>Breach of confidentiality</strong></p>
+<p><strong>Category 4 — stand-alone qualifications (check all that apply):</strong></p>
+<ol>
+<li>Data/Specimens are publicly available — no</li>
+<li>Data is recorded such that the participants' identity cannot be readily ascertained and there will be no contact with or attempts to re-identify participants — no (a coded master list is retained during abstraction, so the investigators can ascertain identity)</li>
+<li><strong>X</strong> Data includes only identifiable health information protected under HIPAA</li>
+<li>Federal agency data — no</li>
+</ol>
+<ul>
+<li>4a. Will researchers record information in a manner where participants can be identified and HIPAA does not apply? <strong>N</strong> (HIPAA applies; a master list is kept separately by Dr. Schwing and destroyed as described in Procedures to Maintain Confidentiality)</li>
+<li>4a(i). Any contact with or attempts to re-identify participants? <strong>N</strong></li>
+<li>4b. Does the research involve the collection of any data that cannot be considered pre-existing? <strong>N</strong> — all records date from surgeries performed between 2021 <span class="flag">[to confirm: window start]</span> and <span class="flag">[to confirm: end date of the inclusion window, no later than the date of IRB submission]</span></li>
+<li>4c. Bio specimens? <strong>N</strong></li>
+<li>4d. Prison population? <strong>N</strong></li>
+<li>4e. Will medical records or a database with information originating from medical records be accessed? <strong>Y</strong> (DMC PACS and EMR)</li>
+<li>4f. Will the collection of identifiable health information be protected under HIPAA? <strong>Y</strong></li>
+</ul>
+<hr>
+<h2>* * * Summary &amp; Purpose * * *</h2>
+<p><strong>Study Title:</strong> Retrospective collection of intraoperative fluoroscopic images and videos from spine surgery at the Detroit Medical Center for the development and validation of an algorithm that counts vertebral levels <strong>Proposed Start Date:</strong> Upon IRB and DMC approval <span class="flag">[to confirm: target January 2027]</span> <strong>Proposed End Date:</strong> <span class="flag">[to confirm: suggest two years after approval to cover analysis and publication]</span></p>
+<h3>1. Summary</h3>
+<p><strong>a) Brief summary in non-technical terms (≤200 words):</strong></p>
+<p>During spine surgery the surgeon must find the correct vertebra before cutting. This is usually done by counting vertebrae on X-ray pictures taken in the operating room with a C-arm machine. Counting can go wrong: in a registry of 34,544 spine operations, about one in 830 (0.12%) was performed at the wrong level, and most of those errors came from losing one's place while counting. We have built a computer method that counts vertebrae automatically from the same C-arm pictures the surgeon already takes. It has been tested on public CT scans and X-rays, but not yet on real operating-room images from our hospital, and computer methods often perform worse on images from a machine they have not seen. This study will collect the C-arm images and short videos already stored in the Detroit Medical Center's imaging archive from spine operations performed between 2021 and 2026, remove all patient identifiers, and use them to train and test the counting method. The surgeon's operative note tells us which level was actually operated on, so we can check whether the method counts correctly. No patient will be contacted and no care will change.</p>
+<h3>2. Purpose</h3>
+<p><strong>a) Purpose and hypotheses/research questions:</strong></p>
+<p>The purpose is to obtain intraoperative fluoroscopic images from the C-arms actually used at the Detroit Medical Center, with the operated level known from the operative note, so that the vertebral-body detector at the front of our counting method can be trained and tested in the domain where it would be used.</p>
+<p><em>Specific aims.</em></p>
+<ul>
+<li><strong>Aim 1.</strong> Assemble a de-identified, coded dataset of archived intraoperative C-arm still images and cine loops from spine operations performed by Dr. To Do at the DMC between 2021 and 2026, with the operated level recorded from the operative note and, where present, post-operative imaging.</li>
+<li><strong>Aim 2.</strong> Annotate vertebral bodies, the anchor structures (sacrum, C2) and radiopaque instruments on these frames; fine-tune the detector on a patient-level training split; measure per-body detector recall on held-out cases (primary endpoint).</li>
+<li><strong>Aim 3.</strong> On archived series that contain an anchor and consecutive overlapping frames (in practice, cine loops and some still-image series), measure count exactness against the operative note, the decline rate, and agreement between the vertebra the method assigns to the surgeon's confirming instrument frame and the level the surgeon documented (secondary endpoints).</li>
+</ul>
+<p><em>Hypotheses.</em></p>
+<ul>
+<li><strong>H1.</strong> A detector fine-tuned on DMC fluoroscopy will reach per-body recall of at least 97% on held-out DMC cases (target 95% CI half-width 1 point). Context: the same architecture reached 99.14% on real radiographs when trained on real radiographs and 71.67% when trained on synthetic renders only.</li>
+<li><strong>H2.</strong> With in-domain detector boxes, count exactness on reached walks will be consistent with the 99.17–100% observed on public CT renders and real radiographs, rather than the 30.06% observed when the detector was trained out of domain.</li>
+<li><strong>H3.</strong> The vertebra assigned to the surgeon's confirming instrument frame will agree with the level documented in the operative note at a rate consistent with the 99.31% (5,385 confirmations) and 98.57% (6,343 confirmations) observed on public data.</li>
+</ul>
+<p><strong>b) What do the investigators hope to learn from this project?</strong></p>
+<p>Whether the learned component of the method — the detector, which is where the deployment risk lies — works on this hospital's own C-arm images and patients; what fraction of archived series permit a full count from an anchor (a feasibility outcome that is unknown); how the method's count and confirming-frame assignment agree with the surgeon's documented level; and where failures occur (spinal region, prior instrumentation, transitional anatomy, image quality). These answers decide whether a prospective observational study in the operating room (planned follow-on study, described in the attached Protocol document) is justified.</p>
+<hr>
+<h2>* * * Background, Rationale, Data Analysis and Procedures * * *</h2>
+<h3>3. Background, Rationale, Data Analysis, and Procedures</h3>
+<h4>Section A</h4>
+<p><strong>a) Relevant background</strong></p>
+<p><strong>i) Current knowledge and literature.</strong> Wrong-level spine surgery is rare per operation and common per surgeon. In a registry of 34,544 degenerative spine operations across 27 hospitals (2012–2022), the wrong level was operated in 0.12% (95% CI 0.09–0.16): thoracic 0.42% (CI 0.16–1.08), lumbar 0.13%, cervical 0.05%. Intraoperative disorientation was the cause in 81.3% (Furuya M et al. Bone Joint J 2026;108-B(5):673-680, PMID 42061893). In self-report, 418 events occurred in 1.3 million procedures (1 in 3,110); 50% of 415 surgeons had performed one, 15% had prepared the wrong level and caught it, and 17% of events led to legal action (Mody MG et al. Spine 2008;33:194-8, PMID 18197106). Almost 50% of 569 AANS/CNS Spine Section respondents reported a wrong-level event and nearly 20% had been sued for it (Groff MW et al. World Neurosurg 2013;79:585-92, PMID 22480979). In 2024 the Joint Commission recorded 127 wrong surgeries, 9 wrong-level and 7 spinal, with 36% causing severe permanent harm; NHS England recorded 185 wrong-site never events in 2024/25.</p>
+<p>The cost is borne by patients, surgeons and institutions. Of 68 litigated wrong-disc-level cases, 81% (55/68) ended in a payment; surgeons won 42% of jury trials (Goodkin R, Laska LL. Surg Neurol 2004;61:323-7, PMID 15031066). The National Practitioner Data Bank median payment for a surgical never event is $75,220 (IQR $28,847–$215,003, 2025 dollars) (Bettis T et al. Patient Saf Surg 2026, DOI 10.1186/s13037-026-00508-9); the mean paid claim is about $133k–136k (Mehtsun WT, Ibrahim AM, Diener-West M, Pronovost PJ, Makary MA. Surgical never events in the United States. Surgery 2013;153(4):465-72, DOI 10.1016/j.surg.2012.10.005; Tan J, Ross JM, Wright D, Pimentel MPT, Urman RD. A contemporary analysis of closed claims related to wrong-site surgery. Jt Comm J Qual Patient Saf 2023;49(5):265-73, PMID 36925434). In the NHS, 978 spinal claims over five years were valued at £535.5M, including 26 never events (Machin JT et al. Eur Spine J 2018;27:2693-9, PMID 30151803).</p>
+<p>The standard safeguard is a count. Needles are placed every few levels and counted cephalad from the sacrum on lateral fluoroscopy; surgeons disagree on which landmark to count (pedicle 67%, spinous process 49% in the thoracic spine) (Strong MJ et al. J Neurosurg Spine 2021;36:792, PMC10193475; Mayer JE et al. Spine J 2014;14:741-8). Site-verification protocols failed to prevent about one-third of wrong-level cases in the one study that assessed them (Longo UG et al. J Bone Joint Surg Br 2012;94-B:1546-50, PMID 23109638). The recommended safeguard — imaging after exposure against a marked fixed structure — is itself a count (DeVine J et al. Spine 2010;35(9 Suppl):S28-36, PMID 20407349). The alternative of pre-operative fiducial placement is costly: at Mayo, 179 fiducials (176 thoracic) over 38 months took a mean of 51.9 minutes and 183 mGy each (Siminski et al. AJNR 2023;44:618-622, PMID 37080723); at an operating-room cost of $33.78 median / $37.45 mean per minute, FY2014, before physician fees (Childers CP, Maggard-Gibbons M. JAMA Surg 2018;153(4):e176233) that is roughly $1,750–1,950 per placement in 2014 dollars. Not available in the literature, and stated so here: a verified capital cost of a navigation suite, any study showing that navigation reduces wrong-level surgery, and any measure of surgeon workload with versus without navigation.</p>
+<p><strong>The method under study.</strong> The investigators have developed a method that counts the vertebral level under intraoperative fluoroscopy on the C-arm the hospital already owns. The first exposure is anchored at the sacrum (or C2); the C-arm is moved one field minus two vertebral bodies; a second exposure is taken; consecutive overlapping frames are linked by normalised cross-correlation restricted to within 0.6 of a vertebral body of the commanded step; the target is read as the k-th vertebra from the anchor. The only learned component is a detector of vertebral bodies and the anchor class. Nothing learned decides the level, and no name (for example "L4") is formed. It requires no tracker, no reference frame, no pre-operative CT and no capital equipment. On public labelled CT renders and real radiographs the count was exact on 99.17–100% of reached walks across twelve arms of 16–801 spines: from C2, 834/834 walks on 76 whole-spine studies and 1,205/1,209 (99.67%; 95% CI 99.16–99.91) on 262 real lateral radiographs; from the sacrum, 6,234/6,255 (99.66%; CI 99.49–99.79) on 801 abdominopelvic spines and 7,168/7,228 (99.17%) on 522 second-institution spines. A confirming frame with a radiopaque instrument was assigned to the correct vertebra on 99.31% of 5,385 confirmations and 98.57% of 6,343. A manuscript is in preparation (private repository spinesurg-ct-nnunet). Work on public de-identified datasets was determined Not Human Participant Research by the WSU IRB (determination 2026_269, September 2, 2026); that determination does not cover PACS data, hence this protocol.</p>
+<p><strong>ii) Rationale for conducting the research.</strong> The deployment risk is the detector. The film-trained detector reaches 99.14% per-body recall on real radiographs; the same architecture trained on synthetic renders reaches 71.67%; and when a render-trained detector's boxes were used, count exactness fell from 100% to 30.06% on 79 held-out spines. Synthetic fluoroscopy from CT does not close this gap: on 366 real C-arm frames of six cadaveric pelves with matching CT and exact pose (the DeepFluoro dataset), a physics renderer explains 80.9% of a real frame's variance (93.9% with a per-frame smooth field, against a 99.5% quantum-noise ceiling); a detector trained only on calibrated renders of that dataset's own CTs finds the sacrum on about 96–98% of real frames, but trained on renders of other living whole-body CTs it finds it on about 64–77%, and three training seeds of one dataset spanned 26 points. Synthetic fluoroscopy is therefore close in physics but tuned to one C-arm and one population. The number that matters — performance on our own machines and our own patients — requires real fluoroscopy from this institution. No prospective study should be started until that number is known.</p>
+<p><strong>iii) Rationale for the selected participant population.</strong> Adults who underwent spine surgery with intraoperative fluoroscopy at the DMC, operated by a single neurosurgeon (Dr. To Do) between 2021 and 2026. A single surgeon gives consistent operative-note documentation of the localisation technique and the operated level, which is the reference standard. The five-year window is chosen to reach the target of <span class="flag">[to confirm: N cases, from a pilot PACS query]</span> and to span the C-arm units in use at the site. Cervical, thoracic and lumbar cases are all included because the method's measured performance differs by region (lumbar 99.73%, thoracic 95.45% on 801 spines; 99.33/97.41/83.84% lumbar/thoracic/cervical on 522) and the study must report each.</p>
+<p><strong>iv) Inclusion criteria.</strong></p>
+<ul>
+<li>Age ≥18 years at the date of surgery.</li>
+<li>Spine surgery (cervical, thoracic, lumbar or sacral; any approach) performed by Dr. To Do at the DMC between 2021 <span class="flag">[to confirm: window start]</span> and <span class="flag">[to confirm: end of inclusion window]</span>.</li>
+<li>At least one intraoperative fluoroscopic still image or cine loop from the case archived in DMC PACS.</li>
+<li>An operative note in the EMR that names the operated level(s).</li>
+</ul>
+<p><strong>v) Exclusion criteria.</strong></p>
+<ul>
+<li>Age &lt;18 years at surgery.</li>
+<li>No intraoperative fluoroscopy archived in PACS.</li>
+<li>Operative note absent or not naming a level.</li>
+<li>Patient identifiable in the record as a prisoner at the time of surgery <span class="flag">[to confirm: how prisoner status is recorded at DMC; prisoners are not targeted, and incidental inclusion is prevented only where status is identifiable]</span>.</li>
+<li>Pregnant patients are not excluded; the images were acquired for clinical care and pregnancy status is not abstracted.</li>
+<li>Cases with prior instrumentation or transitional anatomy are included and analysed as subgroups.</li>
+</ul>
+<p><strong>b) Statistical methods and plan for analysis</strong></p>
+<p><em>Data split.</em> Cases are split by patient, never by frame. A fixed held-out test set of <span class="flag">[to confirm: held-out fraction of cases]</span> is drawn before any training, stratified by spinal region and by presence of prior instrumentation. The remaining cases are used for fine-tuning and for patient-level 5-fold cross-validation, so that every case receives a prediction from a model that did not train on it.</p>
+<p><em>Primary endpoint.</em> Per-body detector recall on the held-out test set: the fraction of annotated vertebral bodies (and anchors) that the detector finds, using the same box-matching criterion as the manuscript <span class="flag">[to confirm: the overlap criterion]</span>. Reported with a 95% confidence interval computed by patient-level cluster bootstrap (bodies cluster within frames and frames within patients; see c), overall and by region, by presence of hardware, and by image type (still versus cine frame). The pre-specified comparison is the render-only detector (71.67% on real radiographs) applied to the same held-out frames; the difference in recall is reported with its confidence interval.</p>
+<p><em>Secondary endpoints.</em></p>
+<ol>
+<li>Count exactness: on each archived series that contains an anchor and a chain of consecutive overlapping frames, whether the k-th vertebra from the anchor equals the level named in the operative note (post-operative imaging is the reference where the note is ambiguous or a re-localisation is documented). Reported on reached walks with exact 95% CI.</li>
+<li>Decline rate: the fraction of series on which the method produces no count because the overlap constraint is not satisfied, and the fraction of cases with no anchored series at all. This is also the feasibility outcome for Aim 3.</li>
+<li>Agreement with the surgeon's documented level: on frames containing a radiopaque instrument at the target, whether the vertebra the method assigns to the instrument equals the level documented in the operative note; reported with exact 95% CI and, for cases with post-operative imaging, against that imaging.</li>
+<li>Failure characterisation: descriptive tabulation of misses and miscounts by region, hardware, transitional anatomy (as noted in the radiology report) and C-arm model (from the DICOM manufacturer/model fields; serial numbers are not retained).</li>
+</ol>
+<p><em>Limitation stated in advance.</em> Archived still images were not acquired under the method's stepping protocol, so the fraction of cases on which a full count is possible is unknown and is expected to be a minority [to confirm]. Cine loops, whose consecutive frames overlap by construction, are the main source for the count endpoints. The primary endpoint (detection) does not depend on this.</p>
+<p>Analyses will be done in Python on de-identified data; the analysis code will be frozen and the test set sealed before fine-tuning begins.</p>
+<p><strong>c) Justification for sample size</strong></p>
+<p>The sample size is set by the primary endpoint. To estimate per-body recall of 97% with a 95% confidence-interval half-width of 1 point, the normal approximation n = z²p(1−p)/E² gives n = 3.8416 × 0.97 × 0.03 / 0.0001 ≈ 1,118, so about 1,100 labelled bodies are needed in the held-out set. (To hold 99% recall to a half-width of 0.5 points would need about 1,520.) Because bodies cluster within frames and patients, the confidence interval for the primary endpoint will be computed by patient-level cluster bootstrap; the target half-width of 1 point is a planning value and the achieved width will be reported. The held-out set is <span class="flag">[to confirm: held-out fraction]</span> of eligible cases; with <span class="flag">[to confirm: mean number of archived intraoperative frames per case, from a pilot query of 20 cases]</span> frames per case and several visible bodies per frame, whether the held-out set reaches 1,100 bodies after unusable frames are removed will be checked on the pilot query before the test set is sealed. For the secondary count endpoints, 5-fold cross-validation by patient gives every case a held-out prediction; for illustration, at 99% exactness the 95% half-width is about 0.6 points on 1,000 evaluated walks and about 1.4 points on 200, so the achievable precision depends on how many anchored series the archive contains. We therefore request all eligible cases in the window, estimated <span class="flag">[to confirm: N cases]</span> pending a pilot PACS query (about <span class="flag">[to confirm: N]</span> frames plus cine loops); all eligible cases will be used and the achieved precision reported <span class="flag">[to confirm: Dr. To Do's five-year case volume with archived fluoroscopy]</span>.</p>
+<p><strong>d) Alternatives to participating in the research:</strong> NA (retrospective record and image review).</p>
+<p><strong>e) Will participants be followed after their active participation is complete?</strong> N. There is no active participation.</p>
+<p><strong>f) Will participants have access to the study treatment/procedure after completing the study?</strong> N/A. No treatment or procedure is provided.</p>
+<h4>Section B — Procedures</h4>
+<p><strong>a) Will the study include interactions, interventions, data collection from participants, and/or procedures involving study participants?</strong> N</p>
+<p><strong>b) Research activities in chronological order:</strong></p>
+<ol>
+<li>Obtain WSU IRB approval and DMC Clinical Translation Research Office approval; complete CITI training for all team members.</li>
+<li><em>Case identification.</em> Generate the list of spine operations performed by Dr. To Do at the DMC in the inclusion window from <span class="flag">[to confirm: the OR scheduling system, the surgeon's case log, or a billing query]</span> using procedure codes <span class="flag">[to confirm: CPT/ICD-10-PCS code list for cervical, thoracic, lumbar and sacral procedures]</span>.</li>
+<li><em>PACS screening.</em> For each case, query DMC PACS for intraoperative fluoroscopy series (C-arm modality) dated on the day of surgery. Cases with none are excluded and logged by count only.</li>
+<li><em>Coding.</em> Assign each included case a sequential study ID. Record the master list (study ID, medical record number, accession number, date of surgery) on DMC-approved encrypted storage (CITRIX), separate from all image and abstraction data. The study ID contains no part of any identifier.</li>
+<li><em>Export.</em> Export the still images and cine loops for each included case to a DMC-approved workstation <span class="flag">[to confirm: whether a DMC PACS administrator performs the bulk export]</span>.</li>
+<li><em>De-identification.</em> On the DMC workstation, before any transfer: remove all 18 HIPAA identifier types from DICOM headers (retaining year of surgery, manufacturer and model of the C-arm, and acquisition parameters; removing device serial numbers); mask burned-in text regions in the pixel data of every frame, including every frame of each cine loop; rename files by study ID. A second team member checks every frame of a random <span class="flag">[to confirm: verification fraction of cases; 10% proposed]</span> of cases and every frame of any case where the automatic mask was edited, and a de-identification log is kept <span class="flag">[to confirm: the de-identification tool and the verification fraction the DMC research office requires]</span>.</li>
+<li><em>Abstraction.</em> From the operative note and the radiology report of any post-operative imaging, record on the data collection sheet: age in years (ages over 89 recorded as "90+"), sex, BMI if recorded, procedure and approach, spinal region, operated level(s), localisation method described (needle count, marker, other), any documented re-localisation or level discrepancy, prior instrumentation, transitional anatomy noted by radiology, number of archived frames and loops, and the operated level as read on post-operative imaging where present. No free-text from the note is copied.</li>
+<li><em>Transfer.</em> Move only the coded, de-identified images and the abstraction sheet to WSU-approved encrypted research storage <span class="flag">[to confirm: WSU HPC grid project space or WSU Box for research, whichever the IRB and DMC approve for coded data]</span>.</li>
+<li><em>Annotation.</em> Trained annotators (medical or graduate students on the study team) draw boxes around every visible vertebral body, the anchor structures (sacrum, C2) and any radiopaque instrument, following a written annotation protocol; disagreements are adjudicated by Dr. Schwing. Annotators see only coded, de-identified frames.</li>
+<li><em>Sealing the test set and fine-tuning.</em> Draw and seal the held-out set; fine-tune the detector on the remainder on WSU computing resources.</li>
+<li><em>Evaluation.</em> Compute the primary and secondary endpoints as in Section A(b); prepare the manuscript and any grant or regulatory pre-submission material using aggregate results only.</li>
+<li><em>Closure.</em> Destroy the master list as described under Procedures to Maintain Confidentiality; report closure to the IRB.</li>
+</ol>
+<p><strong>c) Who will conduct the procedures, where and when:</strong> Steps 2–7 are performed by Dr. To Do and Dr. Schwing on DMC systems <span class="flag">[to confirm: DMC research office requirements for PACS query access by residents]</span>; steps 8–12 by Dr. Schwing and the study annotators on WSU systems. Anticipated period: the first three months after approval for steps 2–9 (extraction and de-identification in month 1, abstraction and annotation in months 2–3); months 4–6 for steps 10–11; the remainder of the study for step 12. [to confirm against the pilot PACS query: if three months is unrealistic for steps 2–9, the slip must be carried into the grant timeline, whose Q2 detector fine-tuning and Q3 shadow-mode study depend on it.]</p>
+<p><strong>d) Participant's total time commitment:</strong> None. No contact with participants.</p>
+<p><strong>e) Non-research procedures done in conjunction with the research:</strong> None. All imaging and documentation were completed as clinical standard of care before the study.</p>
+<p><strong>Public Health Pandemic:</strong> a) Does the site include mitigation procedures? <strong>N</strong> b) If No, provide justification: No in-person recruitment or research activities; all data are archived records.</p>
+<h4>Section C — Data Collection</h4>
+<p><strong>a) How will the data be collected?</strong> Electronically: image export from DMC PACS and record review in the DMC EMR (CITRIX). <strong>b) Do you have data collection instruments?</strong> Y — the data collection sheet (attached), designed by the study team; no copyrighted scale is used. <strong>c) School-based activities?</strong> N <strong>d) Will deception be used?</strong> N <strong>e) Audio recording / video recording / photographing of participants?</strong> N / N / N. No new recording is made. Existing clinical cine loops (multi-frame fluoroscopy acquired for care) will be used as data; they contain no face or voice and will be de-identified as described. <strong>f) Will the proposed research involve the use of existing data/specimens?</strong> Y</p>
+<ul>
+<li>i) Publicly available sources — no</li>
+<li>ii) The data will be recorded by the investigator in such a manner that participants cannot be identified — no (a coded key exists during abstraction)</li>
+<li>iii) Any link to identifying information has been destroyed — no; the key is retained until abstraction is verified, then destroyed as described under Procedures to Maintain Confidentiality</li>
+<li>iv) <strong>X</strong> Recorded such that participants can be identified — coded; the images and the abstraction sheet carry only the study ID, and the key is held separately by Dr. Schwing and destroyed as in Section 9(k)</li>
+</ul>
+<hr>
+<h2>* * * Participant Population * * *</h2>
+<h3>4. Participant Population</h3>
+<h4>Section A</h4>
+<p><strong>Participant population:</strong> Adults who underwent spine surgery by Dr. To Do at the DMC between 2021 and 2026 with archived intraoperative fluoroscopy. <strong>Expected age range:</strong> ≥18 to 99 years <strong>How many participants will be directly solicited:</strong> 0 <strong>How many participants will be consented:</strong> 0 (waiver requested) <strong>How many participants are expected to complete this study:</strong> N/A <strong>How many participants are expected to complete the study at all of the sites?</strong> N/A (single site; records only) <strong>Is this a multi-center/site study?</strong> N (DMC only) <strong>Does the study involve use of records, charts, or specimens?</strong> Y <strong>How many records/charts/specimens will be used?</strong> All eligible cases in the window, estimated <span class="flag">[to confirm: N cases]</span> pending a pilot PACS query (about <span class="flag">[to confirm: N]</span> fluoroscopic frames plus cine loops)</p>
+<h4>Section B — Vulnerable Populations</h4>
+<ul>
+<li>Pregnant women are excluded — no</li>
+<li>Selected based on race or ethnic criteria — no</li>
+<li>Selected based on gender — no</li>
+<li><strong>X</strong> None of the above</li>
+</ul>
+<p><strong>Rationale for exclusions:</strong> Children are excluded because the method concerns adult spine surgery and paediatric vertebral morphology differs. Records identifying a patient as a prisoner at the time of surgery are excluded; prisoners are not a target population. No other group is excluded. <strong>Justification for inclusion of vulnerable groups:</strong> None targeted. Individuals with impaired decision-making capacity may be incidentally present in the record set; they are not identified or selected, and the study involves no interaction. <strong>Measures to minimise risk to these participants:</strong> Identical to all records: coding, de-identification, encrypted storage, no contact.</p>
+<h4>Section C — Students as participants</h4>
+<ul>
+<li>Will students be participants? N/A — no students are participants.</li>
+<li>(Second prompt) N/A — no students are participants.</li>
+<li>(Third prompt) N/A — no students are participants.</li>
+</ul>
+<h4>Section D — Employees as participants</h4>
+<ul>
+<li>Will employees be participants? N/A — no employees are participants.</li>
+<li>(Second prompt) N/A — no employees are participants.</li>
+<li>(Third prompt) N/A — no employees are participants.</li>
+</ul>
+<h4>Section E — Non-English speaking participants</h4>
+<p>Non-English speaking participants: N. Please specify additional languages: none. Planned screening procedures: N.</p>
+<h4>Section F — Principal Investigator's Expertise</h4>
+<p><span class="flag">[to confirm: if a faculty PI is entered in the header, that person's expertise paragraph and CITI completion date go first here.]</span> Dr. Schwing is a neurosurgery resident at WSU/DMC with an MD and PhD. He developed the counting method and its detector, built the public labelled CT datasets on which it was validated (under WSU IRB Not Human Participant Research determination 2026_269), and is first author of the manuscript describing it. Dr. To Do is a neurosurgeon at the DMC and the surgeon of record for every case in the study; he is credentialed at DMC and familiar with its PACS, EMR and operating-room fluoroscopy. Knowledge of local community attitudes and cultural norms: no participant contact; no community-specific considerations apply. <span class="flag">[to confirm: CITI completion dates for all team members.]</span></p>
+<hr>
+<h2>* * * Recruitment Process, Participant Compensation and Costs * * *</h2>
+<h3>5. Recruitment Process, Participant Compensation and Costs</h3>
+<p><strong>N/A. This is ONLY a secondary data analysis/retrospective chart review submission.</strong></p>
+<h4>Section A — Recruitment Process</h4>
+<p><strong>i) Step-by-step process for requesting pre-existing data:</strong> Cases are identified from Dr. To Do's operative case list by procedure code and date; images are retrieved from DMC PACS; operative notes and post-operative imaging reports are retrieved from the DMC EMR. No participant is contacted. <strong>ii) Agencies or institutions providing access:</strong> <strong>X DMC</strong> <strong>iii) Who will contact prospective participants and how:</strong> N/A <strong>Planned participant identification methods:</strong> <strong>X</strong> Medical Record Review; <strong>X</strong> Database Review (PACS and OR case list) <strong>Planned recruitment materials/methods:</strong> <strong>X</strong> N/A</p>
+<h4>Section B — Participant Compensation</h4>
+<p><strong>Will participants receive compensation?</strong> N</p>
+<h4>Section C — Study Costs</h4>
+<p><strong>Will participants or their health care providers be required to pay for any study-related procedures?</strong> N <strong>Who is responsible for costs incurred due to injury or harm?</strong> N/A</p>
+<hr>
+<h2>* * * Risks and Data Safety Monitoring (Sections 6–7, if active) * * *</h2>
+<p><span class="flag">[to confirm: open the eProtocol shell and check whether sections 6, 7 and 13 activate for an Expedited/Medical submission; the Vaidya print view lacks them, but its warning that unanswered questions may not have been required means they may be active here.]</span> Prepared answer: the only risk is breach of confidentiality, addressed under Procedures to Maintain Confidentiality. There is no physical, psychological, social, economic or legal risk; no intervention, no contact and no change to care. No Data Safety Monitoring Board is required for a retrospective review of archived records and images.</p>
+<hr>
+<h2>* * * Benefits * * *</h2>
+<h3>8. Benefits</h3>
+<p><strong>a) i) Direct benefits to participants?</strong> N <strong>a) ii) Indirect benefits to society?</strong> The study measures, on this hospital's own images, whether an automatic vertebral count is reliable enough to test prospectively. If it is, future patients may benefit from fewer wrong-level operations, from a safeguard that runs on the existing C-arm without added equipment, pre-operative fiducial placement or additional radiation, and from shorter localisation time. Wrong-level surgery occurred in 0.12% of 34,544 registry operations and was caused by intraoperative disorientation in 81.3%. <strong>b) How the potential benefits justify the potential risks:</strong> There is no physical risk to participants. The only risk is breach of confidentiality, which is low: data are coded, images are de-identified at export, the master list is held separately on DMC CITRIX, and all data are kept on encrypted institution-approved storage.</p>
+<hr>
+<h2>* * * Procedures to Maintain Confidentiality * * *</h2>
+<h3>9. Procedures to Maintain Confidentiality</h3>
+<p><strong>Type of data:</strong> <strong>X Coded.</strong> Each record has a study ID linked to the medical record number in a master list held separately by Dr. Schwing. The study ID contains no identifier.</p>
+<p><strong>a) Will information derived from the study be shared outside of the research team or sponsors?</strong> N. Only aggregate results (recall, exactness, agreement, subgroup tables) will be published or included in grant or regulatory materials. Any future release of de-identified images would be submitted to the IRB as an amendment before any sharing. <strong>b) Type of data collected, stored, or analyzed:</strong> Protected Health Information; Secondary Data Analysis — archived intraoperative fluoroscopic images and cine loops, operative-note variables and post-operative imaging report variables, as listed in the data collection sheet. <strong>c) How privacy will be protected:</strong> Data will be coded and stored on secure, password-protected, encrypted institutional servers (DMC CITRIX for the master list; WSU-approved encrypted research storage for the coded, de-identified images). No participant is contacted, so no participant's time, place or manner of giving information is affected. <strong>d) How confidentiality will be maintained:</strong> Data will not be shared with anyone outside the research team. Identifiers are removed from headers and pixel data before images leave DMC systems. Annotators and computing staff see only coded, de-identified frames. <strong>e) Who will have access to study records?</strong> The Principal Investigator named in the header and the research study team: Dr. To Do and Dr. Schwing (master list and identifiable data during export and abstraction); study annotators <span class="flag">[to confirm: names]</span> (coded, de-identified images only). <strong>f) Source of existing data and how accessed:</strong> DMC PACS (images) and DMC EMR via CITRIX (operative notes, radiology reports), accessed by DMC-credentialed team members under DMC research office approval. <strong>g) How participants will be asked for permission for release of identifiable data:</strong> N/A (waiver of consent requested; no identifiable data are released). <strong>h) Will the researchers have access to a code linking the data to personally identifiable information?</strong> Yes. A master list (key to identifiers) will be used. <strong>i) Where the key will be stored, how protected, who has access:</strong> The master list and the study data will be stored separately. The master list is stored on DMC CITRIX, accessible only to the Principal Investigator named in the header, Dr. To Do and Dr. Schwing; the coded data set never leaves institution-approved encrypted storage. <strong>j) How and where data will be stored:</strong> Identifiable images: on a DMC-approved workstation only until de-identification is complete, then deleted. Coded, de-identified images, annotations and the abstraction sheet: on WSU-approved encrypted research storage <span class="flag">[to confirm: location]</span> with access limited to the study team. Analysis on WSU computing resources <span class="flag">[to confirm: that the WSU HPC grid is approved for coded research data; if not, analysis stays on approved storage]</span>. <strong>k) How long data will be kept and why:</strong> The master list will be kept until abstraction of operative-note and post-operative-imaging variables is complete and verified, and no longer than the acceptance of the resulting publications, then destroyed. The coded, de-identified image set and annotations will be kept <span class="flag">[to confirm: retention period; a regulatory pre-submission requires that the data supporting reported performance be retained, so a retention period covering that use is proposed]</span>. <strong>l) Plan for final disposal:</strong> Secure deletion of the master list from CITRIX by Dr. Schwing, documented in the study log; at the end of the retention period, secure deletion of the coded image set from institutional storage.</p>
+<p><strong>Limited IRB Review</strong> (the WSU form requests this for Exempt Categories 2 and 3; provided for completeness):</p>
+<ol>
+<li>Risks if information is lost, stolen or compromised: disclosure of a patient's spine surgery and imaging. a) Security controls: encryption at rest on institutional servers, access limited to named team members, de-identification before transfer, master list held separately.</li>
+<li>Point of de-identification: at export from PACS on the DMC workstation, before any transfer. a) Who: Dr. Schwing, with verification by a second team member. b) How before sharing with any outside party: no outside sharing is planned; any future sharing would follow a separate IRB amendment.</li>
+</ol>
+<hr>
+<h2>* * * Consent Information * * *</h2>
+<h3>10. Consent Information</h3>
+<p><strong>a) Consent process:</strong> N/A. A waiver of consent is requested. <strong>b) Withdrawal:</strong> N/A <strong>c) Who is obtaining consent:</strong> N/A</p>
+<p><strong>Waiver of Consent</strong> (Consent Information Type: Waiver of Consent or Parental Permission), addressing the criteria of 45 CFR 46.116(f)(3):</p>
+<ol>
+<li><em>The research involves no more than minimal risk to the participants.</em> The study uses existing clinical images and records only. There is no intervention, no contact and no change to care. The only risk is breach of confidentiality, minimised by coding, de-identification and encrypted storage.</li>
+<li><em>The research could not practicably be carried out without the waiver.</em> The study covers up to <span class="flag">[to confirm: N]</span> patients operated over five years, many of whom are no longer in follow-up at the DMC. Locating and consenting each would not be feasible, and requiring consent would bias the data set toward patients still in contact with the institution.</li>
+<li><em>The research could not practicably be carried out without using identifiable private information.</em> Identifiers are needed at the outset to match images in PACS to the operative note and post-operative imaging of the same surgery, which supply the reference level. Once matched, the data are coded and identifiers are removed.</li>
+<li><em>The waiver will not adversely affect the rights and welfare of the participants.</em> No care is changed; no result is returned to any patient's record; no participant is identified in any output.</li>
+<li><em>Pertinent information will be provided after participation where appropriate.</em> Not appropriate: the data are archived records and participants are not contacted.</li>
+</ol>
+<hr>
+<h2>* * * Assent Information * * *</h2>
+<h3>11. Assent Information</h3>
+<p>Not applicable. No children are included.</p>
+<hr>
+<h2>* * * HIPAA * * *</h2>
+<h3>12. Health Insurance Portability and Accountability Act (HIPAA)</h3>
+<p><strong>Identifiers that will be collected from medical records for this project:</strong></p>
+<ul>
+<li><strong>X</strong> 1. Names (viewed in PACS during retrieval and present in exported pixel data until masked; never recorded or retained)</li>
+<li>4. All geographic subdivisions smaller than a state — not collected (unchecked)</li>
+<li><strong>X</strong> 5. All elements of dates directly related to an individual (date of surgery; date of post-operative imaging), and all ages over 89</li>
+<li><strong>X</strong> 8. Medical Record Numbers</li>
+<li><strong>X</strong> 13. Device Identifiers and Serial Numbers (present in DICOM headers of exported images; removed at de-identification, not retained)</li>
+<li>17. Full-face photographic images and any comparable images — not collected (unchecked); lateral cervical fluoroscopic frames may include a facial profile but are not full-face photographs</li>
+<li><strong>X</strong> 18. Any other unique identifying number, character, or code (imaging accession numbers)</li>
+<li>All other identifiers: not collected.</li>
+</ul>
+<p><strong>Identifiers that will be USED:</strong> Names (viewed in PACS and present in exported pixel data until masked; never recorded or retained), all elements of dates, ages over 89, Medical Record Number, device serial numbers (transiently, in headers), any other unique identifying number (accession number). <strong>Identifiers that will be DISCLOSED:</strong> None.</p>
+<p><strong>Will someone with the clinical relationship contact or refer potential participants to the study?</strong> N — retrospective study; no contact. <strong>Will PHI be disclosed to sponsors, companies hired to provide study-related services, or research institutions outside of Wayne State and its affiliates?</strong> N. Analysis takes place on WSU and DMC systems. No PHI leaves WSU and its affiliates.</p>
+<p><strong>Waiver of HIPAA Authorization</strong></p>
+<ol>
+<li><strong>Is a Waiver of HIPAA Authorization being requested?</strong> Y — <strong>X</strong> To obtain data for a retrospective chart review study.</li>
+<li><strong>How the proposed use presents no more than minimal risk to privacy:</strong> Data will be coded; the master list and data collection sheet will be stored on a password-protected, encrypted institutional server (DMC CITRIX), separately from the coded image data; images are stripped of header identifiers and burned-in text before leaving DMC systems; access is limited to named team members.</li>
+<li><strong>Why the research could not practicably be conducted without the waiver:</strong> This is a retrospective study of up to <span class="flag">[to confirm: N]</span> patients operated over five years; obtaining authorization from each is not feasible and would bias the sample.</li>
+<li><strong>Why the research could not practicably be conducted without access to PHI:</strong> The images must be matched to the operative note and post-operative imaging of the same surgery to establish the true operated level, which requires the medical record number, accession number and date of surgery at the time of retrieval.</li>
+<li><strong>Steps to protect identifying information from improper use or disclosure:</strong> Data will not be shared with anyone outside the study team; identifiable images exist only on a DMC-approved workstation until de-identification; the master list is stored on DMC CITRIX separate from the coded data; all storage is encrypted and access-controlled.</li>
+<li><strong>Plans for destroying identifying information and when:</strong> The master list will be destroyed once abstraction is complete and verified, and no later than the acceptance of the resulting publications. Names in pixel data are masked, and device serial numbers and accession numbers are removed, at export. The de-identified image set is retained as described in Procedures to Maintain Confidentiality, with justification given there <span class="flag">[to confirm: retention period]</span>.</li>
+<li><strong>PI assurance that PHI obtained under the waiver will not be reused or disclosed except (a) as required by law, (b) for authorized oversight, or (c) for other research permitted by the Privacy Rule:</strong> Y</li>
+</ol>
+<hr>
+<h2>* * * Attachments * * *</h2>
+<h3>14. Attachments</h3>
+<div class="tblwrap"><table><tr><th>Document Type</th><th>Document Name</th><th>Attached Date</th><th>Submitted Date</th></tr>
+<tr><td>Data Collection Sheet</td><td>Intraoperative Fluoroscopy Level-Count Variables (case-level abstraction sheet)</td><td>[to confirm]</td><td>[to confirm]</td></tr>
+<tr><td>Letter of Support</td><td>Letter from Chien To Do, DO, Neurosurgery, DMC, confirming access to his archived cases and participation as co-investigator</td><td>[to confirm]</td><td>[to confirm]</td></tr>
+<tr><td>DMC Approval Letter</td><td>DMC Clinical Translation Research Office review form and approval</td><td>[to confirm]</td><td>[to confirm]</td></tr>
+<tr><td>Protocol, Proposal, or Grant Application with Scientific References</td><td>Protocol document (below): cover note to the IRB, review type requested, this protocol with references, and the planned follow-on study; AIDaS Seed Grant application if awarded</td><td>[to confirm]</td><td>[to confirm]</td></tr>
+<tr><td>Other</td><td>Annotation protocol (box definitions for vertebral bodies, anchors and instruments)</td><td>[to confirm]</td><td>[to confirm]</td></tr>
+<tr><td>Other</td><td>De-identification standard operating procedure (header scrub, pixel masking, verification and log)</td><td>[to confirm]</td><td>[to confirm]</td></tr>
+<tr><td>CV / Resume</td><td>CV of the PI and of each co-investigator</td><td>[to confirm]</td><td>[to confirm]</td></tr>
+<tr><td>Other</td><td>CITI training certificates for all study team members</td><td>[to confirm]</td><td>[to confirm]</td></tr>
+</table></div>
+<p><strong>Addendum: International Research</strong> — Not applicable.</p>
+<hr>
+<h2>Attachment: Protocol document</h2>
+<p>Attached to eProtocol under "Protocol, Proposal, or Grant Application with Scientific References". Nothing in this section is pasted into a form field.</p>
+<h3>Cover note to the IRB</h3>
+<p>This submission is a retrospective review of archived intraoperative fluoroscopic images and records from spine surgery at the Detroit Medical Center. No participant is contacted, no care is changed and no device is used on any patient. The data may be included in a future 510(k) pre-submission to the FDA, so the FDA checklist box is checked and Expedited review is requested rather than exemption; the reasons follow. The Exempt paragraphs are completed only in case the IRB disagrees. A planned follow-on prospective study is described at the end of this document for context; it is not part of this submission and will be submitted as a separate protocol if this study meets its endpoints.</p>
+<h3>Review type requested: Expedited, Category 5</h3>
+<p>Two review types could fit this study:</p>
+<ol>
+<li><em>Exempt Category 4</em> (45 CFR 46.104(d)(4)), qualification (iii): secondary research on identifiable health information regulated under HIPAA. All data exist before submission, no participant is contacted, and no attempt is made to re-identify anyone. The WSU form applies limited IRB review to Exempt Categories 2 and 3 only, so an Exempt 4 determination would carry no limited review.</li>
+<li><em>Expedited Category 5</em> (45 CFR 46.110): research involving materials (data, documents, records) that have been collected, or will be collected, solely for non-research purposes (medical treatment). The precedent protocol at this institution, IRB-21-10-4123, a retrospective chart review of 2,000 DMC records, was reviewed by the expedited procedure.</li>
+</ol>
+<p><strong>We request Expedited Category 5</strong>, for four reasons. (a) A coded master list linking study IDs to medical record numbers is retained for the duration of data abstraction, because the operative note and post-operative imaging must be retrieved from the EMR after the images are exported. (b) The images carry burned-in patient text in the pixel data and identifiers in the DICOM header, so the study team handles identifiable images before de-identification; the IRB should see and approve the de-identification procedure. (c) Multi-frame cine loops are clinical video recordings and the IRB may wish to review their handling under the expedited pathway. (d) Expedited review yields an IRB approval (rather than a concurrence of exemption), and research that may support an FDA submission is not eligible for exemption: the data from this study may be included in a future 510(k) pre-submission (checklist, FDA row), so the Exempt route is closed. If the IRB nonetheless determines that Exempt Category 4 applies, the Exempt paragraphs in the form are completed for that purpose.</p>
+<h3>Planned follow-on study (not part of this submission): Protocol 2, prospective shadow-mode observational study in the operating room</h3>
+<p>This page outlines the second, separate eProtocol that would follow if Protocol 1 meets its endpoints. It is not part of the present submission.</p>
+<p><strong>Title.</strong> Prospective observational evaluation of an automatic vertebral-level count from intraoperative fluoroscopy during spine surgery at the Detroit Medical Center (shadow mode).</p>
+<p><strong>Review type.</strong> Human-subjects review: Expedited, Category 5 (clinical images and records collected solely for non-research purposes, collected prospectively) [to confirm with the IRB]. Device status: this is expected to be an IDE-exempt clinical investigation of a non-significant-risk diagnostic device under 21 CFR 812.2(c)(3) (noninvasive; output not used for patient management); 21 CFR 50/56 apply, and a waiver of consent under 21 CFR 50.22 will be requested. The IRB's written determination will be sought.</p>
+<p><strong>Design.</strong> No change to care. The surgeon localises the level exactly as usual (needle count on lateral fluoroscopy, confirming frame with an instrument). An external unit connected to the C-arm's video output by a frame grabber captures the images the surgeon already takes; the counting method runs on that unit; <strong>its output is not shown to the surgeon or to anyone in the room during the case.</strong> No additional exposure is made for the study. After the case, a study team member records the surgeon's documented level (operative note), the method's count and its decline status, and the post-operative imaging read where present. Discrepancies are reviewed after the case only.</p>
+<p><strong>Prerequisites (before submission).</strong> Protocol 1 endpoints met on DMC data; phantom sweeps on the WSU C-arm in Room 0312 Elliman under the OEHS Radiation Safety and DLAR rules (dosimetry enrolled and training forms filed at least 15 business days before use; RSC approval); cadaveric validation through the WSU Body Bequest Program (not human-subjects research; requires a program proposal and biosafety review); DMC biomedical engineering approval for connecting the frame grabber to the C-arm video output [to confirm].</p>
+<p><strong>Population.</strong> Adults undergoing spine surgery with fluoroscopic localisation at the DMC by participating surgeons <span class="flag">[to confirm: which surgeons and sites]</span>. Sample size to be computed from Protocol 1's measured exactness [to confirm].</p>
+<p><strong>Endpoints.</strong> Primary: agreement between the method's count and the surgeon's documented level, with the decline rate. Secondary: per-body recall on the captured frames; time from first exposure to confirmed level as documented in the anaesthesia and nursing records; number of exposures. No published measure of surgeon workload or satisfaction with versus without navigation was found; a short, standard workload questionnaire completed by the surgeon after the case would be added [to confirm the instrument], with the surgeon as a consented participant (WSU employee section applies).</p>
+<p><strong>Consent.</strong> Patients: a waiver of consent under 21 CFR 50.22 (minimal risk) will be requested, or an information sheet if the IRB prefers [to confirm]; there is no intervention, no added radiation and no change to care, and the images captured are the clinical images. Surgeons: written consent for the questionnaire.</p>
+<p><strong>Confidentiality.</strong> As in Protocol 1: coded data, de-identification of captured frames at the unit, master list held separately by Dr. Schwing, encrypted institutional storage.</p>
+<p><strong>Stopping rule.</strong> The study is observational; the method's output cannot affect a patient. It would be paused for IRB review if the captured data or unit interfered with any operating-room equipment or workflow <span class="flag">[to confirm: DMC biomedical engineering requirements]</span>.</p>
+</div>
+
+</body></html>
