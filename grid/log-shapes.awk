@@ -18,10 +18,14 @@ function exception_type(line,    name) {
   sub(/.*\./, "", name)
   return name
 }
-# These types quote names, 'str' or 'get', never values, so a quoted name is no value to them;
-# anything else quoted, a path or a long run of digits still withholds the message.
-function unquote_names(text) {
-  gsub(/'[A-Za-z_][A-Za-z0-9_.]*'/, "NAME", text)
+# An AttributeError, a NameError and an import error quote names from the code, 'get' or 'torch',
+# never values, so any quoted name is no value to them; the other types may quote only Python's
+# own type names. Anything else quoted, a path or a long run of digits withholds the message.
+function unquote_names(text, type) {
+  if (type == "AttributeError" || type == "NameError" || type == "UnboundLocalError" || type == "ImportError" || type == "ModuleNotFoundError")
+    gsub(/'[A-Za-z_][A-Za-z0-9_.]*'/, "NAME", text)
+  else
+    gsub(/'(str|int|float|bool|bytes|list|dict|tuple|set|frozenset|NoneType|object|type|function|module|Path|PosixPath)'/, "NAME", text)
   return text
 }
 BEGIN {
@@ -47,7 +51,7 @@ BEGIN {
     name = line; sub(/:.*/, "", name)
     message = line; sub(/^[^:]*:[ ]*/, "", message)
     if (index(line, ":") == 0) keep(line)
-    else if (index(safe, " " exception_type(line) " ") > 0 && message_is_plain(unquote_names(message))) keep(line)
+    else if (index(safe, " " exception_type(line) " ") > 0 && message_is_plain(unquote_names(message, exception_type(line)))) keep(line)
     else keep(name ": <message withheld>")
     next
   }

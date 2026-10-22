@@ -25,6 +25,14 @@ function cut_paths(text, prefix, name,    at, rest, top, out) {
   }
   return out text
 }
+# A reason is judged after the cuts, so the folders they name stay readable, but a cut that left
+# a <path> (a relative path such as <person>/<file> keeps its first part before it) or any file
+# name, which a bank's or an ingest's refusal quotes, withholds it all.
+function reason_is_plain(text) {
+  if (index(text, "<path>") > 0) return 0
+  if (text ~ /[A-Za-z0-9_-]\.[A-Za-z][A-Za-z0-9]*/) return 0
+  return message_is_plain(text)
+}
 function cut_other_paths(text) {
   gsub(/\/[A-Za-z0-9._~+-][^ \t:;,)"']*/, "<path>", text)
   return text
@@ -39,7 +47,7 @@ function cut_other_paths(text) {
   if (match(line, /(refused|FAILED):/)) {
     head = substr(line, 1, RSTART + RLENGTH - 1)
     reason = substr(line, RSTART + RLENGTH)
-    if (!message_is_plain(reason)) line = head " <reason withheld: it can quote a value; the whole report stays on the grid>"
+    if (!reason_is_plain(reason)) line = head " <reason withheld: it can quote a value; the whole report stays on the grid>"
   }
   print line
 }

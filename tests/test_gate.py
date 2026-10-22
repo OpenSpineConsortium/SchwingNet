@@ -435,6 +435,25 @@ echo "$2 end $$" >> "$FAKE/pydrv.log"
             self.assertIn(f"test-persons {persons}\n", marker)
             self.assertIn("rule ", marker)
 
+    def test_a_catalog_build_never_lists_a_shard_still_being_staged(self):
+        for folder in ("a", ".ingest-a-x1y2"):
+            manifest = self.data / "carmlspine" / "shards" / folder / "MANIFEST.json"
+            manifest.parent.mkdir(parents=True)
+            manifest.write_text("{}\n", encoding="utf-8")
+        pydrv = self.fake / "pydrv"
+        pydrv.write_text("""#!/bin/bash
+echo "$*" >> "$FAKE/pydrv.log"
+[ "$2" = build ] && echo '{"file": "catalog-000001-0123456789ab.sqlite", "new": true, "version": 1}'
+exit 0
+""", encoding="utf-8")
+        pydrv.chmod(0o755)
+        job = self.run_catalog_job(pydrv)
+        out = job.communicate(timeout=120)[0]
+        self.assertEqual(job.returncode, 0, out)
+        build = (self.fake / "pydrv.log").read_text(encoding="utf-8").splitlines()[0]
+        self.assertIn("/shards/a/MANIFEST.json", build)
+        self.assertNotIn(".ingest-", build)
+
     def test_a_failed_split_check_writes_no_marker(self):
         manifest = self.data / "carmlspine" / "shards" / "a" / "MANIFEST.json"
         manifest.parent.mkdir(parents=True)
@@ -740,6 +759,8 @@ echo "the split is not disjoint; no training step reads this version"; exit 1
                  "AttributeError: 'str' object has no attribute 'get'",
                  "KeyError: 'carmlspine:case042'",
                  "IndexError: index 1965031 is out of bounds",
+                 "TypeError: unhashable type: 'Doe_John'",
+                 "TypeError: can only concatenate 'str' (not 'int') to 'str'",
                  "HTTP request sent, awaiting response... 403 Forbidden",
                  "SN_CARMLSPINE_RC=1"]
         self.failed((301, "start", "carmlspine", "sn_carmlspine", "FAILED", "00:00:48", lines))
@@ -747,11 +768,12 @@ echo "the split is not disjoint; no training step reads this version"; exit 1
         self.assertEqual(done.returncode, 0, done.stdout)
         for kept in ('  File "/home/go2432/SchwingNet/tools/ingest.py", line 153, in item_of',
                      "AttributeError: 'str' object has no attribute 'get'", "KeyError: <message withheld>",
-                     "IndexError: <message withheld>",
+                     "IndexError: <message withheld>", "TypeError: <message withheld>",
+                     "TypeError: can only concatenate 'str' (not 'int') to 'str'",
                      "HTTP request sent, awaiting response... 403 Forbidden", "SN_CARMLSPINE_RC=1",
                      "XR_FETCH start 2026-10-21 21:30:00 on n1 job 301\n"):
             self.assertIn(kept, done.stdout)
-        for value in ("ABC123", "DOE", "9f86d081", "1.2.840", "abc123", "case042", "credentialed"):
+        for value in ("ABC123", "DOE", "Doe_John", "9f86d081", "1.2.840", "abc123", "case042", "credentialed"):
             self.assertNotIn(value, done.stdout)
         self.assertIn("(5 of its last 400 lines withheld", done.stdout)
 
@@ -792,7 +814,9 @@ echo "the split is not disjoint; no training step reads this version"; exit 1
             "- vindr_spinexr: bank refused: person vindr_spinexr:9f86d081884c7d659a2feaa0c55ad015 holds more than one part (first 1.2.3.4.5.6)\n"
             f"- FAILED: no bank at {self.data}/realxray/carmlspine/case134_19650312\n"
             f"- run directory: {self.runs}/20261022-abc, weights {self.models}/resnet18-f37072fd.pth, raw /home/go2432/x/case39.png\n"
-            "- split-check of version 3 FAILED: the split is not disjoint; no training step reads this version\n",
+            "- split-check of version 3 FAILED: the split is not disjoint; no training step reads this version\n"
+            "- vindr: bank refused: Doe_John/IM0007.dcm: not in the person table\n"
+            "- carmlspine: refused: the same bytes as case039_0002.png, under another person\n",
             encoding="utf-8")
         done = self.gate("status")
         self.assertEqual(done.returncode, 0, done.stdout)
@@ -800,7 +824,8 @@ echo "the split is not disjoint; no training step reads this version"; exit 1
         self.assertIn("- FAILED: no bank at <data root: realxray>\n", done.stdout)
         self.assertIn("- run directory: <runs>, weights <models>, raw <path>\n", done.stdout)
         self.assertIn("FAILED: the split is not disjoint; no training step reads this version", done.stdout)
-        for value in ("9f86d081", "1.2.3.4", "case134", "19650312", "20261022", "case39", "go2432"):
+        self.assertEqual(done.stdout.count("<reason withheld"), 3, done.stdout)
+        for value in ("9f86d081", "1.2.3.4", "case134", "19650312", "20261022", "case39", "go2432", "Doe_John", "case039"):
             self.assertNotIn(value, done.stdout)
 
     def test_status_is_bounded_whatever_the_reports_hold(self):

@@ -49,8 +49,11 @@ trap 'exit 143' TERM
 # holds both of C-ArmLSpine's parts and every C-ArmLSpine shard now on the volume, with a split-check
 # marker for today's test persons and rule. CURRENT is the newest version of all, and a catalog job
 # that listed the manifests before C-ArmLSpine's shards were written can land after it.
-chosen=$(bash grid/v1-version.sh "$STORE" "$DATA_ROOT" "$REPO" 2>&1) \
-  || fail "no catalog version to run on: $chosen (the C-ArmLSpine ingest and a catalog build first; 'v1' submits them)"
+# The name from stdout alone, so a warning on stderr never becomes part of the path.
+why=$(mktemp)
+chosen=$(bash grid/v1-version.sh "$STORE" "$DATA_ROOT" "$REPO" 2> "$why") \
+  || fail "no catalog version to run on: $(head -n 1 "$why") (the C-ArmLSpine ingest and a catalog build first; 'v1' submits them)"
+rm -f "$why"
 CATALOG=$STORE/versions/$chosen
 newest=$(cat "$STORE/CURRENT" 2>/dev/null)
 [ "$newest" = "$chosen" ] || report "CURRENT names ${newest:-nothing}; the run takes $chosen, the newest that qualifies"

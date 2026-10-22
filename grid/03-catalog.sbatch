@@ -37,13 +37,15 @@ mkdir -p logs "$TMPDIR" "$STORE"
 # The marker grid/v1-version.sh reads: the version passed the split check at this commit, against
 # these test persons and this rule, so a version checked before the freeze changed is not run on.
 # Written whole and then renamed, so a reader never sees half of it.
+# The digests are read before the check runs, since the gate may move the checkout while a catalog
+# job lasts, and the marker must name the freeze the check read, not a later one.
+PERSONS_SHA=$(sha256sum < "$REPO/data/splits/test-persons.json" | cut -d' ' -f1)
+RULE_SHA=$(sha256sum < "$REPO/data/splits/rule.json" | cut -d' ' -f1)
 mark() {  # mark FILE
   local marker=$STORE/checked/$1
+  [ -n "$PERSONS_SHA" ] && [ -n "$RULE_SHA" ] || return 1
   mkdir -p "$STORE/checked" || return 1
-  { echo "commit $COMMIT"
-    echo "test-persons $(sha256sum < "$REPO/data/splits/test-persons.json" | cut -d' ' -f1)"
-    echo "rule $(sha256sum < "$REPO/data/splits/rule.json" | cut -d' ' -f1)"
-  } > "$marker.new" && mv -f "$marker.new" "$marker"
+  printf 'commit %s\ntest-persons %s\nrule %s\n' "$COMMIT" "$PERSONS_SHA" "$RULE_SHA" > "$marker.new" && mv -f "$marker.new" "$marker"
 }
 echo "XR_CATALOG start $(date '+%F %T') on $(hostname) job ${SLURM_JOB_ID:-}"
 exec 8>> "$STORE/BUILD.lock"
@@ -60,7 +62,9 @@ echo "XR_CATALOG lock $(date '+%F %T')"
 args=()
 while IFS= read -r manifest; do
   args+=(--manifest "$manifest")
-done < <(find "$DATA_ROOT" -mindepth 4 -maxdepth 4 -path '*/shards/*/MANIFEST.json' 2>/dev/null | sort)
+# Not a folder whose name starts with a dot: tools/ingest.py stages a shard as shards/.ingest-*
+# and renames it into place, which the build lock does not wait for (grid/v1-version.sh skips them too).
+done < <(find "$DATA_ROOT" -mindepth 4 -maxdepth 4 -path '*/shards/[!.]*/MANIFEST.json' 2>/dev/null | sort)
 if [ "${#args[@]}" = 0 ]; then
   echo "- no MANIFEST.json under $DATA_ROOT/*/shards/: nothing to build" >> "$REPORT"; cat "$REPORT"
   echo "XR_CATALOG_RC=1 $(date '+%F %T')"; exit 1
