@@ -33,6 +33,8 @@
 #                   catalog version is the one grid/v1-version.sh chooses
 #   latency         the latency jobs for the newest run that has a checkpoint, with the case134 sweep
 #   fetch <id>      one set of grid/fetch-xray.json, a credentialed one with ~/.netrc, banked and catalogued
+#   samples         the sample index (grid/run-samples.sh): plan, scan and merge, refused while one
+#                   of them is live; status shows its MANIFEST.md, aggregates only
 #   stop            cancel the gate's own jobs that are still queued or running, and nothing else
 #
 # While a version 1 run lasts, grid/logs/HOLD names its job and commit (grid/v1-driver.sbatch); the
@@ -67,14 +69,14 @@ SWEEP_BANK=${SWEEP_BANK:-$DATA_ROOT/realxray/carmlspine_sweep}
 NETRC=${NETRC:-$HOME/.netrc}
 LOGS=$REPO/grid/logs
 STATE=$LOGS/GATE_JOBS.txt
-WORDS="start status leaks v1 latency fetch stop"
+WORDS="start status leaks v1 latency fetch samples stop"
 ENVS="default train-cpu train-gpu telemetry"
 
 word=${1:-}
 id=${2:-}
 # Matched whole, so one argument holding two words ("v1 latency") is refused and never runs nothing.
 case "$word" in
-  start|status|leaks|v1|latency|fetch|stop) ;;
+  start|status|leaks|v1|latency|fetch|samples|stop) ;;
   "") echo "refusing: no word; one of: $WORDS"; exit 64 ;;
   *) echo "refusing: '$word' is not one of: $WORDS"; exit 64 ;;
 esac
@@ -330,7 +332,7 @@ failed_tails() {  # failed_tails SACCT: the end of the log of each newest job th
 }
 
 word_status() {
-  local ids report run lines job name state elapsed code node
+  local ids report run lines shown job name state elapsed code node
   ids=$(gate_ids | tail -n 60 | tr '\n' ',' | sed 's/,$//')
   if [ -z "$ids" ]; then
     echo "no job submitted by the gate yet; 'start' submits the graph"
@@ -346,7 +348,10 @@ word_status() {
   for report in "$LOGS"/*STAGE-REPORT.md; do
     [ -f "$report" ] || continue
     echo "## $(basename "$report") ($(date -r "$report" '+%F %T'))"
-    tail -n 12 "$report" | LC_ALL=C tr -cd '\11\12\40-\176' | report_shapes | masked | sed 's/^/  /'
+    # The sample index's manifest is counts per source and nothing else (tools/sample_index.py),
+    # read whole up to the 180 lines run-samples.sh's report gives; every other report its end.
+    if [ "$(basename "$report")" = SAMPLES-STAGE-REPORT.md ]; then shown=180; else shown=12; fi
+    tail -n "$shown" "$report" | LC_ALL=C tr -cd '\11\12\40-\176' | report_shapes | masked | sed 's/^/  /'
   done
   run=$(ls -1dt "$RUNS"/*/ 2>/dev/null | head -n 1)
   if [ -n "$run" ]; then
@@ -481,6 +486,22 @@ word_fetch() {
   CATALOG_DEPEND=$waits chain "$setup" "${args[@]}"
 }
 
+word_samples() {
+  local busy said rc
+  busy=$( { live_of samples_plan; live_of samples_scan; live_of samples_merge; } | tr '\n' ' ')
+  [ -z "${busy// /}" ] || { echo "refusing: the sample index is still queued or running (jobs $busy)"; return 75; }
+  envs_ready || { echo "refusing: the environments are not ready; 'start' makes them first"; return 75; }
+  said=$(bash "$REPO/grid/run-samples.sh" 2>&1)
+  rc=$?
+  echo "$said" | sed 's/^/  /'
+  # Every job this call printed is recorded, a refusal part-way or not, so 'stop' reaches it.
+  echo "$said" | sed -n 's/^\(samples_[a-z]*\): job \([0-9][0-9]*\)$/\2 \1/p' | while read -r job what; do
+    record "$job" "$what" > /dev/null
+  done
+  [ "$rc" = 0 ] || return 1
+  echo "submitted. 'status' shows the index's MANIFEST.md (counts per source) once the merge ends."
+}
+
 word_stop() {
   local live
   live=$(live_ids | tr '\n' ' ')
@@ -513,6 +534,7 @@ case "$word" in
   v1) word_v1 ;;
   latency) word_latency ;;
   fetch) word_fetch ;;
+  samples) word_samples ;;
   stop) word_stop ;;
 esac
 rc=$?
