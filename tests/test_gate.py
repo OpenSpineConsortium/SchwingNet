@@ -871,6 +871,40 @@ echo "the split is not disjoint; no training step reads this version"; exit 1
         self.assertNotIn("case134", done.stdout)
         self.assertIn("(1 of its last 400 lines withheld", done.stdout)
 
+    def test_samples_submits_the_index_records_its_jobs_and_waits_for_them(self):
+        (self.repo / "tools" / "sample_index.py").write_text("", encoding="utf-8")
+        self.assertEqual(self.gate("samples").returncode, 75)
+        self.environments_ready()
+        done = self.gate("samples")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        jobs = self.recorded()
+        plan, scan, merge = jobs["samples_plan"], jobs["samples_scan"], jobs["samples_merge"]
+        lines = self.submitted()
+        self.assertEqual(len(lines), 3, lines)
+        self.assertIn(f"--dependency=afterok:{plan} ", lines[1])
+        self.assertIn(f"--dependency=afterany:{scan} ", lines[2])
+        # while one of its jobs is live, samples is refused and submits nothing
+        self.live(merge)
+        done = self.gate("samples")
+        self.assertEqual(done.returncode, 75, done.stdout)
+        self.assertIn("sample index is still queued or running", done.stdout)
+        self.assertEqual(len(self.submitted()), 3)
+        self.assertEqual(self.gate("samples", "all").returncode, 64)
+
+    def test_status_shows_the_sample_manifest_whole(self):
+        logs = self.repo / "grid" / "logs"
+        logs.mkdir(parents=True, exist_ok=True)
+        rows = "".join(f"| source_{i} | {i * 10} | {i} |\n" for i in range(40))
+        (logs / "SAMPLES-STAGE-REPORT.md").write_text("# The sample index\n\n" + rows, encoding="utf-8")
+        (logs / "03-catalog-STAGE-REPORT.md").write_text("".join(f"- line {i}\n" for i in range(20)), encoding="utf-8")
+        done = self.gate("status")
+        self.assertIn("  # The sample index\n", done.stdout)
+        self.assertIn("| source_0 | 0 | 0 |", done.stdout)
+        self.assertIn("| source_39 | 390 | 39 |", done.stdout)
+        # another report still shows only its end
+        self.assertNotIn("- line 7\n", done.stdout)
+        self.assertIn("- line 19\n", done.stdout)
+
     def test_on_the_grid_the_stages_keep_their_own_data_paths(self):
         # stage 2 reads a set DATA_ROOT as its off-grid layout, so the gate passes none on the grid,
         # whether the caller sets nothing or the grid's own data root
