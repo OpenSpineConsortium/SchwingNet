@@ -1,0 +1,243 @@
+{
+ "claims": {
+  "whole": 798,
+  "parts": 79,
+  "raw-whole": 19,
+  "raw-parts": 2,
+  "window": 31,
+  "absent": 7
+ },
+ "numbers": {
+  "whole": 2750,
+  "raw-whole": 122,
+  "absent": 37,
+  "raw-parts": 11,
+  "raw-window": 7,
+  "parts": 67,
+  "window": 31
+ },
+ "bad_claims": [
+  [
+   "SchwingNet/vertebra-detector-field-report-1jljc6",
+   "The detector reaches box mAP@50 0.980 and corner mAP@50 0.922 on validation, AP@50 0.957 and PCK@0.2",
+   "0.980 Box mAP@50 \u00b7 val / 0.922 Corner mAP@50 \u00b7 val / 0.957 AP@50 \u00b7 held-out test / 91.7% PCK@0.2 \u00b7 t"
+  ],
+  [
+   "SchwingNet/vertebral-levels-without-ct-a4rydj",
+   "Nothing has been used on a patient and there is no prospective clinical result.",
+   "Nothing here has been used on a patient, and there is no prospective clinical result"
+  ],
+  [
+   "SchwingNet/fluorocap-access-setup-jlvkft",
+   "Resolution gains by publisher: 16x Cureus, 9\u201320x MDPI, 12x Elsevier CDN, 6x Frontiers, 4x Springer/B",
+   "16\u00d7 Cureus \u00b7 750\u00d71017 \u2192 3000\u00d74067 / 9\u201320\u00d7 MDPI \u00b7 713\u00d7259 \u2192 3211\u00d71165 / 12\u00d7 Elsevier CDN / 6\u00d7 Frontie"
+  ],
+  [
+   "SchwingNet/rib-anchor-audit-t7wr2h",
+   "The non-rib-bearing count returns 5 in 93.3% of cases but agrees with the radiologist on only 2 of 2",
+   "On the 22 overlapping cases it agrees twice."
+  ],
+  [
+   "SchwingNet/registration-free-level-id-feasibility-uramo1",
+   "An alert built on the Kwak model's specificity would fire falsely on roughly two of five normal pati",
+   "its 61.9% specificity means an alert built on it would fire falsely on roughly two of five normal pa"
+  ],
+  [
+   "SchwingNet/the-lab-recipe-1t2gvp",
+   "A home quota overflow silently emptied the held-out set for about ninety scripts.",
+   "home at 97 %; 260 GB deleted; ~90 scripts then read an empty held-out set"
+  ],
+  [
+   "symphony-template/symphony-and-beethoven-taxonomy-manual-re4jtx",
+   "A merge queue after Symphony's ordering needs a merge_group trigger in ci.yml, which runs only on pu",
+   "the template's ci.yml runs only on pull_request, push and workflow_dispatch (ci.yml lines 70 to 75),"
+  ]
+ ],
+ "bad_nums": [
+  [
+   "SchwingNet/fluoroscopy-data-atlas",
+   "52",
+   "\"greg_status\": \"held\" (52 entries in window.ATLAS)"
+  ],
+  [
+   "SchwingNet/fluoroscopy-data-atlas",
+   "149",
+   "\"greg_status\": \"not held\" (149 entries in window.ATLAS)"
+  ],
+  [
+   "SchwingNet/fluoroscopy-data-atlas",
+   "357",
+   "its CTSP_COLONOG_<token> naming against physics_drr's ctsp_<rel> put 357 people on both sides of the"
+  ],
+  [
+   "SchwingNet/schwingnet-data-registry",
+   "316",
+   "counts: {'panels': 29500, 'size_gb': 316}"
+  ],
+  [
+   "SchwingNet/schwingnet-data-registry",
+   "808.615",
+   "status: 808.615 GB on Ceph"
+  ],
+  [
+   "SchwingNet/schwingnet-data-registry",
+   "175",
+   "status: released on 2032-03-01"
+  ],
+  [
+   "SchwingNet/counting-from-the-sacrum",
+   "4",
+   "body 4 from the sacrum read as L2 with a correlation margin of 0.18"
+  ],
+  [
+   "SchwingNet/ninety-three-pixels",
+   "15.8",
+   "Scatter width boxed to 6\u201316 px: +4.3, 15.8 px with spread 0.4"
+  ],
+  [
+   "SchwingNet/ninety-three-pixels",
+   "194",
+   "194 GB in u251-xenograft-murine-RNASeq-study, untouched since July"
+  ],
+  [
+   "SchwingNet/spine-program-student-onboarding",
+   "600",
+   "save it as one line in $HOME/.beethoven/github_token with mode 600"
+  ],
+  [
+   "SchwingNet/imaging-data-holding-manifest-migration-and-index-fqmtjs",
+   "31 / 30",
+   "| A | ... | 31 | 30 | 0 | 0 | 0 |"
+  ],
+  [
+   "SchwingNet/vertebral-levels-without-ct-a4rydj",
+   ">96",
+   ">96% \u2014 the registration-free network | detection F1 \u2014 whether a vertebra was found"
+  ],
+  [
+   "SchwingNet/vertebral-levels-without-ct-a4rydj",
+   "3,000",
+   "3,000 lumbar and whole-spine radiographs, already labelled by the model"
+  ],
+  [
+   "SchwingNet/spine-program-decisions-qqhkqz",
+   "0.82\u20130.95",
+   "Vertebrae are at Dice 0.82\u20130.95."
+  ],
+  [
+   "SchwingNet/spine-program-decisions-qqhkqz",
+   "35",
+   "Same label schema as AASCE at 35\u00d7 the volume."
+  ],
+  [
+   "SchwingNet/spine-program-decisions-qqhkqz",
+   "0.812",
+   "mAP50 0.991, PCK@0.1 0.812."
+  ],
+  [
+   "SchwingNet/fluorocap-adjudication-bench-rnsyir",
+   "5",
+   "Levels are correct 1 / Off by one level 2 / Wrong, more than one off 3 / Cannot tell from this image"
+  ],
+  [
+   "SchwingNet/rib-anchor-audit-t7wr2h",
+   "-1: 129, +1: 32, -2: 9",
+   "In v4 the deltas ran \u22121: 129, +1: 32, \u22122: 9 \u2014 four to one in one direction"
+  ],
+  [
+   "SchwingNet/rib-anchor-audit-t7wr2h",
+   "-1: 71, +1: 34, -2: 4",
+   "After the review: \u22121: 71, +1: 34, \u22122: 4."
+  ],
+  [
+   "SchwingNet/rib-anchor-audit-t7wr2h",
+   "<= 10",
+   "Rib N is on T\u2011N when the minimum surface distance is \u2264 10 mm."
+  ],
+  [
+   "SchwingNet/registration-free-level-id-feasibility-uramo1",
+   "99.99 / 100 / 99.3 / 100",
+   "'registration-based tools report near-perfect accuracy' summary (Otake 99.99%, Lo 100%/99.3%, Vaishn"
+  ],
+  [
+   "SchwingNet/registration-free-level-id-feasibility-uramo1",
+   "5",
+   "of the five sub-questions, only (2) LSTV/TLTV detection from a single view and the LevelCheck half o"
+  ],
+  [
+   "SchwingNet/registration-free-level-id-feasibility-uramo1",
+   "2 of 5",
+   "an alert built on it would fire falsely on roughly two of five normal patients with spondylolisthesi"
+  ],
+  [
+   "SchwingNet/registration-free-level-id-feasibility-uramo1",
+   "30",
+   "The Castellvi-typing studies use standard AP views rather than the Ferguson 30\u00b0 view Castellvi speci"
+  ],
+  [
+   "SchwingNet/registration-free-level-id-feasibility-uramo1",
+   "October 2025",
+   "the deep-learning result is from October 2025 and the two systematic reviews are from 2026, so nothi"
+  ],
+  [
+   "SchwingNet/celebrate-life-scoliosis-night-julcos",
+   "October 24 (Saturday)",
+   "Saturday / October 24 / 5:00 \u2013 7:00 PM"
+  ],
+  [
+   "SchwingNet/symphony-and-beethoven-taxonomy-spec-lcbqro",
+   "1,000",
+   "GITHUB_TOKEN | 1,000 REST requests an hour per repository"
+  ],
+  [
+   "SchwingNet/how-the-beethoven-repositories-are-encapsulated-6h4zq9",
+   "818f4a2c746b7a81325cfe5e5b02e8bca36c0276",
+   "repository OpenSpineConsortium/hpcworker / commit 818f4a2c746b7a81325cfe5e5b02e8bca36c0276 / export "
+  ],
+  [
+   "SchwingNet/how-the-beethoven-repositories-are-encapsulated-6h4zq9",
+   "2026-10-07",
+   "beethoven-agents #4 and beethoven-research #6 merged on 2026-10-07 with every check green"
+  ],
+  [
+   "SchwingNet/the-lab-recipe-1t2gvp",
+   "~95",
+   "dozens of smoke tests on a node shared by ~95 users (2026-09-21)"
+  ],
+  [
+   "SchwingNet/the-lab-recipe-1t2gvp",
+   "97",
+   "home at 97 %; 260 GB deleted; ~90 scripts then read an empty held-out set"
+  ],
+  [
+   "SchwingNet/the-lab-recipe-1t2gvp",
+   "260",
+   "home at 97 %; 260 GB deleted; ~90 scripts then read an empty held-out set"
+  ],
+  [
+   "SchwingNet/the-lab-recipe-1t2gvp",
+   "~90",
+   "home at 97 %; 260 GB deleted; ~90 scripts then read an empty held-out set"
+  ],
+  [
+   "SchwingNet/secure-hybrid-rdp-access-spec-and-setup-runbook-exbt1w",
+   "192.0.2.1/32",
+   "change the laptop's entry to 192.0.2.1/32, then RDP from the laptop | Duo push arrives"
+  ],
+  [
+   "symphony-template/symphony-versus-competitors-lynwzk",
+   "dc91dbed",
+   "gh-aw ... at dc91dbed"
+  ],
+  [
+   "symphony-template/symphony-versus-competitors-lynwzk",
+   "029d328b",
+   "unsorry ... at 029d328b"
+  ],
+  [
+   "symphony-template/symphony-versus-competitors-lynwzk",
+   "October 2026",
+   "GitHub Agentic Workflows' work queue (gh-aw, shipped October 2026)"
+  ]
+ ]
+}

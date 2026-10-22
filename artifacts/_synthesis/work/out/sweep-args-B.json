@@ -1,0 +1,200 @@
+[
+ {
+  "name": "Programme direction, handoffs and onboarding",
+  "part": "schwingnet",
+  "description": "For a programme lead, a new student or a fresh Claude project deciding what is decided, what runs next on the grid and in which order, where every result lives and which numbers are leaked or superseded, and how to join the work under its data and grid rules. It answers the order of work the evidence supports (measurement first, human reads second, models third), the lab's recipe for a paper, how a student is set up, and where the SchwingNet grid run stands against the provisional and the CNS talk.",
+  "members": [
+   "SchwingNet/handoff-schwingnet-ctspinopelvic1k-and-the-imaging-programme-rbcdmf",
+   "SchwingNet/research-directions-from-the-data-holding-kcyckb",
+   "SchwingNet/the-lab-recipe-1t2gvp",
+   "SchwingNet/spine-program-student-onboarding",
+   "SchwingNet/schwingnet-grid-pipeline"
+  ],
+  "secondary_members": [
+   "SchwingNet/spine-program-decisions-qqhkqz",
+   "SchwingNet/openspine-board-t3gfds",
+   "SchwingNet/connect-the-grid-to-github",
+   "symphony-template/several-grid-workers-one-per-project",
+   "symphony-template/grid-and-cloud-claude-workers-review",
+   "symphony-template/claude-code-on-a-slurm-apptainer-cluster-7dbjwc",
+   "symphony-template/symphony-in-brief-9cdciz",
+   "SchwingNet/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay",
+   "SchwingNet/imaging-data-holding-manifest-migration-and-index-fqmtjs",
+   "SchwingNet/schwingnet-data-registry",
+   "SchwingNet/reforms-compliance-checklist-bpzdoi",
+   "SchwingNet/counting-from-the-sacrum",
+   "SchwingNet/aidas-seed-grant-proposal",
+   "SchwingNet/any-view-spine-plan"
+  ],
+  "canonical": [
+   "SchwingNet/schwingnet-grid-pipeline",
+   "SchwingNet/handoff-schwingnet-ctspinopelvic1k-and-the-imaging-programme-rbcdmf",
+   "SchwingNet/research-directions-from-the-data-holding-kcyckb",
+   "SchwingNet/spine-program-student-onboarding",
+   "SchwingNet/the-lab-recipe-1t2gvp"
+  ],
+  "superseded": [],
+  "duplicates": []
+ },
+ {
+  "name": "Symphony: the protocol, its evidence and its place",
+  "part": "symphony-beethoven",
+  "description": "For a Symphony maintainer deciding how the claim protocol works (issues as the queue, the first push of claude/N as the lock, no server), which of its guarantees are checked and how, where it and Beethoven sit on a taxonomy of agent systems, what may honestly be claimed against CooperBench and the other coordinators before any outcome is measured, and what each GitHub and Claude price rung buys. It answers where every Symphony repository, release and design stood on 13 to 16 October 2026 and what is still unproven.",
+  "members": [
+   "symphony-template/symphony-in-brief-9cdciz",
+   "symphony-template/symphony-versus-competitors-lynwzk",
+   "SchwingNet/symphony-and-beethoven-taxonomy-spec-lcbqro",
+   "symphony-template/symphony-and-beethoven-taxonomy-manual-re4jtx",
+   "symphony-template/symphony-handoff",
+   "symphony-template/the-dollar-per-feature-ladder-9ymg61"
+  ],
+  "secondary_members": [
+   "symphony-template/shared-multi-account-claude-project-plan-rqzwh9",
+   "symphony-template/sdlc-build-plan-bjzikn",
+   "symphony-template/sdlc-primitives-spec-ldx4zd",
+   "symphony-template/grid-and-cloud-claude-workers-review",
+   "symphony-template/several-grid-workers-one-per-project",
+   "symphony-template/claude-chat-vs-claude-code-architectural-analysis-snuzfd",
+   "symphony-template/claude-code-on-a-slurm-apptainer-cluster-7dbjwc",
+   "symphony-template/beethoven-build-roadmap-sttvvw",
+   "SchwingNet/reforms-compliance-checklist-bpzdoi",
+   "SchwingNet/how-the-beethoven-repositories-are-encapsulated-6h4zq9",
+   "SchwingNet/spine-program-student-onboarding"
+  ],
+  "canonical": [
+   "symphony-template/symphony-in-brief-9cdciz",
+   "symphony-template/symphony-versus-competitors-lynwzk",
+   "SchwingNet/symphony-and-beethoven-taxonomy-spec-lcbqro",
+   "symphony-template/symphony-and-beethoven-taxonomy-manual-re4jtx",
+   "symphony-template/symphony-handoff"
+  ],
+  "superseded": [],
+  "duplicates": []
+ },
+ {
+  "name": "Symphony's origins: cswap, the primitives and the two Claude surfaces",
+  "part": "symphony-beethoven",
+  "description": "For a maintainer deciding how several Claude accounts can work one project when no Claude product shares a Project, an agent or a memory across accounts: what cswap and Claude Swap Cloud can export and import of a Project, which route to build (the repository as the shared plane, GitHub Issues as the queue), what Claude Chat and Claude Code each do that the other cannot, and how the Claude Swap Cloud extension reaches the Chrome Web Store. It is the line of thought of 3 to 9 October 2026 that became Symphony.",
+  "members": [
+   "symphony-template/shared-multi-account-claude-project-plan-rqzwh9",
+   "symphony-template/sdlc-primitives-spec-ldx4zd",
+   "symphony-template/sdlc-build-plan-bjzikn",
+   "symphony-template/claude-chat-vs-claude-code-architectural-analysis-snuzfd",
+   "symphony-template/store-upload-and-repo-move-step-by-step-fpy3fh"
+  ],
+  "secondary_members": [
+   "symphony-template/symphony-in-brief-9cdciz",
+   "symphony-template/symphony-handoff",
+   "symphony-template/beethoven-on-the-chrome-web-store",
+   "symphony-template/the-dollar-per-feature-ladder-9ymg61",
+   "SchwingNet/symphony-and-beethoven-taxonomy-spec-lcbqro",
+   "symphony-template/claude-code-on-a-slurm-apptainer-cluster-7dbjwc",
+   "SchwingNet/spine-program-student-onboarding"
+  ],
+  "canonical": [
+   "symphony-template/sdlc-build-plan-bjzikn",
+   "symphony-template/sdlc-primitives-spec-ldx4zd",
+   "symphony-template/claude-chat-vs-claude-code-architectural-analysis-snuzfd",
+   "symphony-template/store-upload-and-repo-move-step-by-step-fpy3fh"
+  ],
+  "superseded": [
+   {
+    "id": "symphony-template/shared-multi-account-claude-project-plan-rqzwh9",
+    "by": "symphony-template/sdlc-build-plan-bjzikn"
+   }
+  ],
+  "duplicates": []
+ },
+ {
+  "name": "Grid, workstation and Claude worker operations",
+  "part": "symphony-beethoven",
+  "description": "For a grid operator deciding how Claude Code workers run on the Wayne State Slurm cluster and in GitHub Actions under a consumer subscription within Anthropic's terms, how they are started, watched and stopped from the control panel and the Beethoven extension, one per project, how a student's Beethoven session gets a GitHub login without the token reaching Claude, and how the owner's workstation is reached only over Tailscale with Duo. The review of 21 October gives the state and the ten fixes; the playbook of 3 October gives the compliance conditions and the credential model.",
+  "members": [
+   "symphony-template/grid-and-cloud-claude-workers-review",
+   "symphony-template/several-grid-workers-one-per-project",
+   "SchwingNet/connect-the-grid-to-github",
+   "symphony-template/claude-code-on-a-slurm-apptainer-cluster-7dbjwc",
+   "SchwingNet/secure-hybrid-rdp-access-spec-and-setup-runbook-exbt1w"
+  ],
+  "secondary_members": [
+   "SchwingNet/schwingnet-grid-pipeline",
+   "SchwingNet/spine-program-student-onboarding",
+   "SchwingNet/the-lab-recipe-1t2gvp",
+   "symphony-template/moving-beethoven-for-vs-code-onto-hpcworker-apbd6t",
+   "symphony-template/beethoven-build-roadmap-sttvvw",
+   "SchwingNet/how-the-beethoven-repositories-are-encapsulated-6h4zq9",
+   "SchwingNet/symphony-and-beethoven-taxonomy-spec-lcbqro",
+   "symphony-template/symphony-handoff",
+   "symphony-template/symphony-in-brief-9cdciz",
+   "symphony-template/claude-chat-vs-claude-code-architectural-analysis-snuzfd",
+   "SchwingNet/fluorocap-pipeline-map-h9rmbs",
+   "SchwingNet/fluorocap-access-setup-jlvkft"
+  ],
+  "canonical": [
+   "symphony-template/grid-and-cloud-claude-workers-review",
+   "symphony-template/several-grid-workers-one-per-project",
+   "SchwingNet/connect-the-grid-to-github",
+   "symphony-template/claude-code-on-a-slurm-apptainer-cluster-7dbjwc",
+   "SchwingNet/secure-hybrid-rdp-access-spec-and-setup-runbook-exbt1w"
+  ],
+  "superseded": [],
+  "duplicates": []
+ },
+ {
+  "name": "Beethoven: the research engine and its repositories",
+  "part": "symphony-beethoven",
+  "description": "For a Beethoven maintainer deciding what to build next on hpcworker and the extension (headless runs, the chained-Slurm outer loop, REFORMS gates enforced by code, a student-pressed Publish), how the seven code repositories stay sealed from one another, and whether the VS Code edition should give up its own grid scripts. It also answers how the owner releases the extension to the Chrome Web Store by hand and then from CI.",
+  "members": [
+   "symphony-template/beethoven-build-roadmap-sttvvw",
+   "SchwingNet/reforms-compliance-checklist-bpzdoi",
+   "SchwingNet/how-the-beethoven-repositories-are-encapsulated-6h4zq9",
+   "symphony-template/moving-beethoven-for-vs-code-onto-hpcworker-apbd6t",
+   "symphony-template/beethoven-on-the-chrome-web-store"
+  ],
+  "secondary_members": [
+   "SchwingNet/symphony-and-beethoven-taxonomy-spec-lcbqro",
+   "symphony-template/symphony-and-beethoven-taxonomy-manual-re4jtx",
+   "symphony-template/grid-and-cloud-claude-workers-review",
+   "symphony-template/several-grid-workers-one-per-project",
+   "SchwingNet/the-lab-recipe-1t2gvp",
+   "symphony-template/store-upload-and-repo-move-step-by-step-fpy3fh",
+   "symphony-template/claude-code-on-a-slurm-apptainer-cluster-7dbjwc",
+   "SchwingNet/spine-program-student-onboarding",
+   "SchwingNet/connect-the-grid-to-github",
+   "symphony-template/symphony-handoff"
+  ],
+  "canonical": [
+   "SchwingNet/how-the-beethoven-repositories-are-encapsulated-6h4zq9",
+   "symphony-template/beethoven-build-roadmap-sttvvw",
+   "SchwingNet/reforms-compliance-checklist-bpzdoi",
+   "symphony-template/beethoven-on-the-chrome-web-store"
+  ],
+  "superseded": [],
+  "duplicates": []
+ },
+ {
+  "name": "Outreach events and student funding",
+  "part": "outreach-and-governance",
+  "description": "For the medical student and the owner deciding where to ask for OpenSpine Consortium outreach money, in what order and with which record to cite, and what the Celebrate Life soccer-night flyers say about when, where, for whom and how to sign up. None of these pages holds method or data.",
+  "members": [
+   "SchwingNet/osc-outreach-funding-kak2gk",
+   "SchwingNet/celebrate-life-flyer-noutom",
+   "SchwingNet/celebrate-life-scoliosis-night-julcos"
+  ],
+  "secondary_members": [
+   "SchwingNet/aidas-seed-grant-proposal",
+   "SchwingNet/spine-program-student-onboarding"
+  ],
+  "canonical": [
+   "SchwingNet/osc-outreach-funding-kak2gk",
+   "SchwingNet/celebrate-life-scoliosis-night-julcos"
+  ],
+  "superseded": [
+   {
+    "id": "SchwingNet/celebrate-life-flyer-noutom",
+    "by": "SchwingNet/celebrate-life-scoliosis-night-julcos"
+   }
+  ],
+  "duplicates": []
+ }
+]

@@ -12,3 +12,7 @@ Where it stands:
 How the inventory was made, so that the next phase can be made the same way: each artifact's page was reduced to plain text by script (the embedded page of a Design-type artifact included), e-mail addresses and phone numbers replaced before any reader saw it; readers, three artifacts at a time, wrote one record each from the text and the artifact's own files; three readers clustered the records by different lenses (the question answered, the stage of the work, the reader and the decision) and a fourth settled one clustering; two readers went over the numbers table for collisions and one per cluster for disagreements; and a script checked every candidate's quotes against the extracted text and the page's own files. Every count in the records was checked by script: every artifact id placed exactly once, no address of any kind in any file, every file ASCII.
 
 No grid job, training run or paid usage was submitted for this work, and none is planned by it: the book reads records and plans experiments; running one waits for the owner's word and the number, as docs/research/README.md requires.
+
+## Resume here
+
+On 2026-10-22 at 23:45 UTC the owner's account reached its usage limit while issue #136 (draft pull request #137) was verifying the contradictions. The scripts, the sweeps and the verdicts that came back are under artifacts/_synthesis/work/ on branch claude/136, and its RESUME.md lists what is left. Phases 2 to 4 still wait for the owner's go and his answers to the 9 questions on #121.
