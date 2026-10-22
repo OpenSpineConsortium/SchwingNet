@@ -77,6 +77,18 @@ class PhysioNetAnswerTest(unittest.TestCase):
         self.assertIn("HTTP 401, 403: PhysioNet took the login and refused the files", text)
         self.assertIn("deprecated, cloud-only or region-blocked", text)
 
+    def test_a_refusal_names_the_login_sent_masked_before_the_answers(self):
+        # the owner signed the agreement and the grid was still refused, so which account
+        # ~/.netrc names is the question; the status word cuts long lines, so it comes first
+        _, text = self.fetch("401 403", 8)
+        self.assertIn("; login so****e (7 characters); HTTP 401, 403: PhysioNet took the login", text)
+
+    def test_a_login_is_masked_to_its_ends_and_its_length(self):
+        tool = load()
+        self.assertEqual(tool.masked_login("gschwing"), "gs*****g (8 characters)")
+        self.assertEqual(tool.masked_login("abcd"), "a*** (4 characters)")
+        self.assertEqual(tool.masked_login("someone@wayne.edu"), "so****e@wayne.edu (7 characters before the @)")
+
     def test_a_redirect_first_says_nothing_either_way(self):
         record, text = self.fetch("301 401 403", 8)
         self.assertIn("HTTP 301, 401, 403: PhysioNet took the login and refused the files", text)
