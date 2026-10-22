@@ -32,7 +32,7 @@ Feasibility is graded on three counts: the data is held (H), requested (R) or mi
 | I | Pseudo-labeller (teacher and student) | H | 5 to 10 | 6 GPU-h per round | Published practice | no |
 | J | Covariate census and supplements | H | 1 to 2 | 1 CPU-h per source | none needed | yes, built |
 | K | Multi-view 3D-aware pretraining | H | 7 to 10 | 20 to 50 GPU-h | Published on DRRs only | no |
-| L | View translation, AP to lateral | H, R | 10 to 15 | 20 to 50 GPU-h | Published (XraySyn, DL-GIPS, X2CT-GAN, Diff2CT) | no |
+| L | View translation, AP to lateral | H | 10 to 15 | 20 to 50 GPU-h | Published (XraySyn, DL-GIPS, X2CT-GAN, Diff2CT) | no |
 | M | Physics renderer and its ablation | H | 3 to 5 | 10 to 20 GPU-h | Published (DeepDRR) | no |
 | N | Rare anatomy made in 3D | H | 7 to 10 | modest | Inferred | no |
 
@@ -75,7 +75,7 @@ Feasibility, honestly: from one AP film, depth is missing, so a synthesised late
 
 - The output that matters is structured, not pixels: from the AP, predict the lateral's corners and levels (cross-view label transfer), trained on DRR pairs (unlimited, exact) and COBRA's real rotation pairs, and scored against a reader's corners on the real pair. That tells whether the AP holds the information at all.
 - Pixel synthesis comes second, as an auxiliary task that makes the encoder carry 3D shape (a consistency loss between a view and its synthesised partner), never as an image shown to a person as if it were a film.
-- The test set is real pairs of one person and one visit: VinDr-SpineXR's studies that hold both views (held; how many is for J's census to count), BUU-LSPINE's AP and lateral of 3,600 patients (requested), and any of the owner's own. The pairs are test persons for this task and kept out of its training.
+- The test set is real pairs of one person and one visit: VinDr-SpineXR's studies that hold both views (held; how many is for J's census to count), BUU-LSPINE's AP and lateral of 3,600 patients (held: 3,600 AP and 3,603 lateral films, data/sources/buu_lspine.json; corrected 2026-10-22, the first version of this report called it requested, and no weight trained on it leaves the grid until the owner has read its licence), and any of the owner's own. The pairs are test persons for this task and kept out of its training.
 
 Feasibility is the lowest of the set: 2 to 3 weeks and a real chance that the structured transfer is only as good as the counting prior already makes the AP. It is after the talk and after D.
 
