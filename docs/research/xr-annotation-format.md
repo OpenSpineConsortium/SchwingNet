@@ -11,7 +11,7 @@ Four corners per vertebral body, in a fixed order, each with its level name and 
 | Set | Held? | What each body carries |
 | --- | --- | --- |
 | AASCE 2019 (BoostNet) | yes, 609 labelled AP films | four corners of each of 17 bodies, T1 to L5, 68 points per film |
-| BUU-LSPINE | requested | the upper and lower edge lines of each lumbar body, as CSV points (each line's two ends are two corners), with the LSTV call per patient |
+| BUU-LSPINE | yes, 3,600 AP and lateral pairs (licence unread) | the upper and lower edge lines of each lumbar body, as CSV points (each line's two ends are two corners), with the LSTV call per patient |
 | Spondylolisthesis landmarks (Mendeley 5jdfdgp762, 508 of them BUU's) | yes, 714 films | four corners per body, L3 to S1, as Keypoint R-CNN JSON |
 | CSXA lateral cervical | yes, 4,963 films | corners per body, as JSON |
 | VertXNet labels on NHANES II | labels to fetch | eight landmarks per body with the level, C2 and S1 as reference bodies |
@@ -73,7 +73,7 @@ COCO keypoints is the export (category "vertebral body", four named keypoints, t
 
 ## 5. The screening detector over the unannotated films
 
-1. Converters bring every held corner set into the format: AASCE's 68 points (17 bodies, T1 to L5), the spondylolisthesis set's Keypoint R-CNN JSON, CSXA's corner JSON, VertXNet's eight points reduced to the four corners, BUU's edge lines once it arrives; each source keeps its registry record and its persons' split (retraining-plan.md section 3).
+1. Converters bring every held corner set into the format: AASCE's 68 points (17 bodies, T1 to L5), the spondylolisthesis set's Keypoint R-CNN JSON, CSXA's corner JSON, VertXNet's eight points reduced to the four corners, BUU's edge lines (held; data/sources/buu_lspine.json); each source keeps its registry record and its persons' split (retraining-plan.md section 3).
 2. The renders add the anomalies with exact truth: a CT called T12L6 or T13L5 renders AP and lateral films whose bodies carry the format's corners and the column call (ct-priors-for-2d-detection.md, the section on anomalies labelled on CT).
 3. The detector is a box-and-four-keypoint model over the 27 levels, its per-body posteriors decoded as one column by the counting prior, so its answer per film is a column call with odds and the per-body findings.
 4. It runs over the unannotated films as a grid array job. A film whose most likely column is not T12L5 with odds past the margin, or where the decoder abstains, or where a body finding fires, goes to a reader, ranked by how sure the model is, so the readers' time goes where the anomalies are; the readers write the same format, and their confirmed films come back as new shards, which is how the rare classes grow (retraining-plan.md 3.2).
