@@ -1,0 +1,203 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Any-View Spine Plan</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:wght@500;600&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column with wide tables in their own scrollers; a verdict strip per goal. */
+:root {
+  --bg: #f5f7f8; --panel: #ffffff; --fg: #1b2328; --muted: #5b6870; --rule: #d5dde1;
+  --accent: #0e6f7c; --accent-soft: #e2f0f2;
+  --good: #2f7a3e; --warn: #9a6a0b; --bad: #a3392f;
+  --good-soft: #e5f2e7; --warn-soft: #f7efdc; --bad-soft: #f6e4e1;
+  --display: "Spectral", Georgia, "Times New Roman", serif;
+  --body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #11171a; --panel: #182024; --fg: #dde5e8; --muted: #93a2a9; --rule: #2a363b;
+  --accent: #5cc3cf; --accent-soft: #173238;
+  --good: #7ccc8a; --warn: #e2b456; --bad: #ec8b80;
+  --good-soft: #1b2f20; --warn-soft: #33290f; --bad-soft: #3a1f1c; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #11171a; --panel: #182024; --fg: #dde5e8; --muted: #93a2a9; --rule: #2a363b;
+  --accent: #5cc3cf; --accent-soft: #173238;
+  --good: #7ccc8a; --warn: #e2b456; --bad: #ec8b80;
+  --good-soft: #1b2f20; --warn-soft: #33290f; --bad-soft: #3a1f1c; color-scheme: dark }
+body { background: var(--bg); color: var(--fg); font: 16px/1.6 var(--body); }
+.wrap { max-width: 860px; margin: 0 auto; padding-block: 40px 72px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 40px; }
+h1, h2, h3 { font-family: var(--display); font-weight: 600; text-wrap: balance; line-height: 1.2; margin: 0; }
+h1 { font-size: 2.1rem; }
+h2 { font-size: 1.5rem; padding-top: 8px; border-top: 1px solid var(--rule); }
+h3 { font-size: 1.12rem; }
+p, ul { margin: 0; max-width: 68ch; }
+ul { padding-left: 1.2em; display: grid; gap: 6px; }
+section { display: grid; gap: 16px; min-width: 0; }
+.eyebrow { font: 500 0.75rem/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.conf { display: inline-block; font: 500 0.72rem/1 var(--mono); letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--bad); border: 1px solid var(--bad); border-radius: 3px; padding: 5px 7px; }
+header { display: grid; gap: 12px; }
+.lede { font-size: 1.08rem; color: var(--muted); }
+.answer { background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; padding: 20px; display: grid; gap: 12px; }
+.verdicts { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+.verdict { border-radius: 6px; padding: 14px 16px; display: grid; gap: 6px; align-content: start; min-width: 0; }
+.verdict b { font-family: var(--display); font-size: 1.02rem; }
+.v-good { background: var(--good-soft); } .v-good .tag { color: var(--good); }
+.v-warn { background: var(--warn-soft); } .v-warn .tag { color: var(--warn); }
+.v-bad { background: var(--bad-soft); } .v-bad .tag { color: var(--bad); }
+.tag { font: 500 0.72rem/1 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; }
+.scroll { overflow-x: auto; border: 1px solid var(--rule); border-radius: 6px; background: var(--panel); }
+table { border-collapse: collapse; width: 100%; min-width: 620px; font-size: 0.92rem; }
+th, td { text-align: left; vertical-align: top; padding: 9px 12px; border-bottom: 1px solid var(--rule); }
+th { font: 500 0.74rem/1.3 var(--mono); letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); background: var(--accent-soft); }
+tr:last-child td { border-bottom: 0; }
+td.num { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pending { font-family: var(--mono); color: var(--warn); }
+.limit { border-left: 3px solid var(--bad); padding: 4px 0 4px 14px; max-width: 68ch; }
+.note { font-size: 0.9rem; color: var(--muted); }
+.ev { font: 500 0.7rem/1 var(--mono); padding: 3px 5px; border-radius: 3px; white-space: nowrap; }
+.ev-m { background: var(--good-soft); color: var(--good); }
+.ev-p { background: var(--accent-soft); color: var(--accent); }
+.ev-i { background: var(--warn-soft); color: var(--warn); }
+a { color: var(--accent); }
+a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+ol.steps { margin: 0; padding-left: 1.4em; display: grid; gap: 8px; max-width: 68ch; }
+.sources { font-size: 0.88rem; }
+</style>
+
+<div class="wrap">
+<header>
+  <span class="conf">Confidential: patent material, before the provisional</span>
+  <span class="eyebrow">SchwingNet &middot; From 3D to X-ray &middot; 21 October 2026</span>
+  <h1>Any view, any position, and a 3D gold standard</h1>
+  <p class="lede">This plan covers three goals. The first is a network that turns an X-ray taken in one position into another, such as AP to lateral. The second is a detector and classifier that works at any position. The third is the paired X-ray and CT sets serving as gold ground truth for the 3D prior. For each goal it gives what has been published, how well you can expect it to work, and what the census has to count before training starts.</p>
+</header>
+
+<section class="answer">
+  <span class="eyebrow">The short answer</span>
+  <div class="verdicts">
+    <div class="verdict v-good"><span class="tag">Strong</span><b>Paired X-ray and CT as gold truth</b>
+      <span>Where a CT and the X-ray geometry are both known, level labels need no reader, and registration-based labelling is near perfect in the published work. This is the best-founded part of the plan.</span></div>
+    <div class="verdict v-warn"><span class="tag">Feasible, measured gap</span><b>Detect and classify at any position</b>
+      <span>Your own record shows lateral naming already transfers from renders, at 96.4% zero-shot. AP naming collapses to 43.7%, a counting error the 3D prior targets. Detection needs real frames.</span></div>
+    <div class="verdict v-bad"><span class="tag">Hard as stated</span><b>AP image to lateral image</b>
+      <span>No published work turns a spine AP film into a lateral one. The closest work moves the view only 9 degrees. What will work is predicting the lateral's levels, corners and alignment from the AP. A synthesised lateral picture is a display aid and not a film.</span></div>
+  </div>
+  <p><b>Should it wait for the census?</b> Partly. Nothing below needs the census to start: the first steps are renders and data plumbing on sets you already hold. The decision to train each model does wait for it, because the per-region counts (cervical, thoracic, lumbar, sacral) decide where each model has enough real pairs to be tested at all. The census job is built (PR #76) and goes to the grid next. This page's last table fills in once it returns.</p>
+</section>
+
+<section>
+  <h2>1. Turning one view into another</h2>
+  <h3>What has been published</h3>
+  <div class="scroll"><table>
+    <thead><tr><th>Work</th><th>What it does</th><th>Result</th><th>What it tells you</th></tr></thead>
+    <tbody>
+      <tr><td>XraySyn (AAAI 2021)</td><td>Novel views from one chest radiograph, through a CT prior learned on simulated data</td><td class="num">PSNR 27.2 / SSIM 0.93 (sim)<br>falls to ~25.4 at &plusmn;9&deg;</td><td>Only &plusmn;9&deg; was shown, and quality falls as the angle grows. AP to lateral is a 90&deg; move, ten times further.</td></tr>
+      <tr><td>LatXGen (arXiv 2509.24165)</td><td>Lateral spine radiograph from a photo and depth scan of the back, two-stage GAN</td><td class="num">3,264 real pairs; PSNR 20.9<br>sagittal angles R&sup2; 0.85&ndash;0.90<br>abnormal: sens 0.83&ndash;0.84, spec 0.86&ndash;0.90</td><td>With thousands of real pairs and a structure-first stage (the curve before the picture), global alignment carries over to the other view to within about half a degree on average.</td></tr>
+      <tr><td>X2CT-GAN, Diff2CT, the spine GANs</td><td>A CT from two orthogonal films (biplanar)</td><td>Sharp vertebral edges, weaker voxel agreement; a single film did worst</td><td>Two views pin the shape down. One view leaves depth to the model's guess.</td></tr>
+      <tr><td>DL-GIPS (MedIA 2022)</td><td>Lifts geometry features to 3D and reprojects them at a new angle</td><td>Shown on the lungs</td><td>The right architecture idea for using your CT prior, but it is untested on bone.</td></tr>
+    </tbody>
+  </table></div>
+  <p class="limit">The limit no data removes: what an AP film does not show, a model cannot recover. A listhesis or a wedged body seen only on the lateral is invisible on the AP, and a synthesised lateral would paint the typical spine in its place. So a generated lateral must never be read as if it were a film.</p>
+  <h3>What will work, and how well</h3>
+  <ul>
+    <li><b>Structured transfer first.</b> From the AP, predict the lateral's levels, corners and sagittal alignment, and score them against the real lateral of the same person. This answers whether the AP holds the information at all. Expect levels and global alignment to transfer about as well as LatXGen's angles did. Expect focal sagittal findings not to transfer. <span class="ev ev-i">Inferred</span></li>
+    <li><b>Pixels second.</b> Train image synthesis as an extra task, so the encoder learns 3D shape from the pairing. The picture is a teaching signal, not a product. <span class="ev ev-p">Published idea</span></li>
+    <li><b>You have more real pairs than the report assumed.</b> BUU-LSPINE is held: 3,600 people with an AP and a lateral lumbar film each, with end-plate lines. That is on the scale of LatXGen's 2,611 training pairs. C-ArmLSpine adds 149 cases with AP and lateral frames <i>and</i> the CBCT of the same patient. COBRA adds full rotations, and renders add unlimited exact pairs. <span class="ev ev-m">Registry</span></li>
+    <li><b>Where it is thin.</b> There are no real paired films above the lumbar spine among the held sets. VinDr-SpineXR's two-view studies are lumbar too, and the census counts how many it has. Cervical and thoracic transfer would rest on renders alone until pairs are found. <span class="ev ev-i">To count</span></li>
+  </ul>
+</section>
+
+<section>
+  <h2>2. Detect and classify at any position</h2>
+  <h3>Your own record, which outweighs any paper here</h3>
+  <div class="scroll"><table>
+    <thead><tr><th>Measured on C-ArmLSpine</th><th>Result</th><th>Reading</th></tr></thead>
+    <tbody>
+      <tr><td>Naming, lateral, encoder that saw the device only through renders</td><td class="num">96.4% (595/617)</td><td>Naming transfers from 3D renders. It is within a point of the 97.4% fine-tuned on the device.</td></tr>
+      <tr><td>Naming, AP, zero-shot</td><td class="num">43.7%</td><td>A one-level cranial shift: a counting error, not an appearance error. The 3D counting prior (#57, built) and AP renders with anchors (#59) target exactly this.</td></tr>
+      <tr><td>Detection from renders alone</td><td class="num">0.3%</td><td>Detection does not transfer from today's renders.</td></tr>
+      <tr><td>Detection with other devices' real frames plus renders</td><td class="num">80.5%</td><td>Real frames from any device carry most of it.</td></tr>
+      <tr><td>Detection with 24 frames of the device added</td><td class="num">84.0%</td><td>A handful of frames per new device closes part of the gap.</td></tr>
+    </tbody>
+  </table></div>
+  <h3>What the published work adds</h3>
+  <ul>
+    <li><b>SyntheX</b> (hip, 20 CTs, real test on 366 cadaver X-rays): trained on realistic simulation with strong randomisation alone, it matched real-data training, with landmark error 6.44 vs 6.46 mm and Dice 0.80 vs 0.79. Scaled up to 10k images it beat it, at 5.95 mm and Dice 0.86. On another imaging system it scored 6.16 mm. For chest lesions it fell short (85% vs 94%). So physics renders can carry detection, but not always. Your 0.3% may be the renderer's fault, which is what the physics renderer ablation (#69) tests. <span class="ev ev-p">Published</span></li>
+    <li><b>Any angle</b> means a per-angle curve: accuracy at each C-arm angle from AP through the obliques to lateral. COBRA's 692 real rotations give that curve on real projections for the low lumbar spine and the sacrum (#60). Renders give it everywhere else.</li>
+  </ul>
+  <h3>Expected</h3>
+  <p>Lateral naming at any device is already at the ceiling. AP should rise substantially once counting is fixed, because its error is one systematic shift and not noise. Obliques are unmeasured. Detection at a new device needs some real frames of it, or a renderer good enough that the ablation says otherwise. <span class="ev ev-i">Inferred from the record</span></p>
+</section>
+
+<section>
+  <h2>3. Paired X-ray and CT as the gold standard for the 3D prior</h2>
+  <p>On a frame whose patient also has a CT, and whose geometry is stored or can be registered, every vertebra's level and corners come from projecting the CT's segmentation. No reader is involved, so the 3D prior is checked against truth and not against another opinion.</p>
+  <div class="scroll"><table>
+    <thead><tr><th>Set</th><th>Held</th><th>Size</th><th>Region</th><th>Use</th></tr></thead>
+    <tbody>
+      <tr><td>COBRA</td><td>held</td><td class="num">692 cases, 375,618 real projections</td><td>Lumbosacral, pelvis</td><td>The large gold set and the real rotations. Radiotherapy CBCT, not fluoroscopy, but the same physics. CC BY-NC: commercial use is a lawyer's question.</td></tr>
+      <tr><td>C-ArmLSpine</td><td>held</td><td class="num">149 cases, 299 spot frames, 149 CBCT</td><td>Lumbar</td><td>Gold truth already projected. It is the test device, so its test persons stay out of every training.</td></tr>
+      <tr><td>DeepFluoro</td><td>held</td><td class="num">6 cadavers, 366 + 2,659 frames, 19 CT</td><td>Pelvis and hip, some lumbar</td><td>2,293 vendor frames unused. Registration gives their truth.</td></tr>
+      <tr><td>Ljubljana 2D/3D gold standard</td><td>held</td><td class="num">18 frames, 1 cadaver</td><td>L1&ndash;L5</td><td>Registration accuracy check only.</td></tr>
+      <tr><td>IPCAI 2025 X-ray with CT</td><td>not yet</td><td class="num">5 CT, 6.7 GB</td><td>To confirm</td><td>Calibrated real X-rays.</td></tr>
+    </tbody>
+  </table></div>
+  <ul>
+    <li><b>How well registration labels levels:</b> LevelCheck (Lo et al., Spine 2015, 20 thoracolumbar surgery patients, 10,000 perturbed views) labelled 100% of views correctly at about 26 s, and 99.3% at 7 s. Earlier work reported 0.2 &plusmn; 0.2 mm projection error in simulation and under 1 mm in cadavers. So frames labelled by registration are gold within a fraction of a vertebra. <span class="ev ev-p">Published</span></li>
+    <li><b>What gold truth can and cannot cover:</b> every held paired set is lumbar or lumbosacral. The prior's thoracic and cervical parts can be checked only on renders until a paired set there is found. <span class="ev ev-m">Registry</span></li>
+    <li><b>The rule that keeps it gold:</b> a person used to check the prior is never used to fit it. The split is by person, as the catalog already does.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>4. What the census must count</h2>
+  <p>The census (PR #76) indexes every held file with its format, size, DICOM header and sidecar rows, and whether it is annotated. These cells fill in from its answer. The "needed" column is the count at which each approach becomes testable. It is an estimate made here, from the papers above and the interval width a test needs.</p>
+  <div class="scroll"><table>
+    <thead><tr><th>Region</th><th>X-ray, annotated</th><th>X-ray, unannotated</th><th>Real AP + lateral pairs</th><th>X-ray with CT (gold)</th><th>Segmented CT</th></tr></thead>
+    <tbody>
+      <tr><td>Cervical</td><td class="pending">census</td><td class="pending">census</td><td class="pending">census</td><td>none held</td><td class="pending">census</td></tr>
+      <tr><td>Thoracic</td><td class="pending">census</td><td class="pending">census</td><td class="pending">census</td><td>none held</td><td class="pending">census</td></tr>
+      <tr><td>Lumbar</td><td class="pending">census</td><td class="pending">census</td><td class="num">&ge; 3,600 (BUU)</td><td class="num">&ge; 149 + COBRA</td><td class="pending">census</td></tr>
+      <tr><td>Sacral / lumbosacral</td><td class="pending">census</td><td class="pending">census</td><td class="pending">census</td><td class="num">COBRA 692</td><td class="pending">census</td></tr>
+    </tbody>
+  </table></div>
+  <div class="scroll"><table>
+    <thead><tr><th>Approach</th><th>Needed to test</th><th>Why that number</th></tr></thead>
+    <tbody>
+      <tr><td>AP &rarr; lateral structured transfer</td><td class="num">~1,000+ real pairs per region to fine-tune;<br>~100 persons to test</td><td>LatXGen trained on 2,611 real pairs. About 100 test persons gives a 95% interval near &plusmn;6 points at 90% accuracy.</td></tr>
+      <tr><td>Detection at a new device</td><td class="num">~25 real frames of it</td><td>Your record: 24 frames took detection from 80.5% to 84.0%.</td></tr>
+      <tr><td>Gold check of the 3D prior</td><td class="num">~100 persons per region</td><td>The same interval width. Only the lumbar and lumbosacral regions have that today.</td></tr>
+      <tr><td>Anomaly screener over NHANES II</td><td class="num">every film, plus ~50 confirmed per anomaly class</td><td>A rare class needs enough confirmed cases to estimate its precision. The census tells which classes the CT side holds.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2>5. The order</h2>
+  <ol class="steps">
+    <li>Run the census on the grid (PR #76; the gate word goes in beside #72), and fill section 4.</li>
+    <li>The counting prior's grid job (#57, built) and the AP and oblique renders with anchors (#59). These lift AP naming before the talk.</li>
+    <li>COBRA projected labels and the per-angle curve (#60), the gold set for the lumbosacral spine.</li>
+    <li>Structured AP-to-lateral transfer on BUU-LSPINE and C-ArmLSpine pairs (#68), scored on held-out persons. Pixel synthesis only as its auxiliary task.</li>
+    <li>Thoracic and cervical transfer only once the census or new letters find paired films there.</li>
+  </ol>
+  <p class="note">Results go on slides as results only; nothing here appears in an external text before the provisional is filed. The full written report is docs/research/xr-from-3d/ in SchwingNet.</p>
+</section>
+
+<section class="sources">
+  <h2>Sources</h2>
+  <ul>
+    <li><a href="https://arxiv.org/abs/2012.02407">XraySyn: realistic view synthesis from a single radiograph through CT priors</a>, AAAI 2021</li>
+    <li><a href="https://arxiv.org/abs/2509.24165">LatXGen: lateral spine radiographs from back surface images</a>, arXiv 2025</li>
+    <li><a href="https://arxiv.org/abs/2408.09731">Reconstruct spine CT from biplanar X-rays via diffusion learning</a>; <a href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC10744485/">spine vertebrae from biplanar X-rays with GANs</a></li>
+    <li><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC10959504">SyntheX: scaling up learning-based X-ray image analysis through in silico experiments</a></li>
+    <li><a href="https://www.auntminnie.com/imaging-informatics/advanced-visualization/image-processing/article/15612187/levelcheck-algorithm-targets-wrong-site-spinal-surgery">LevelCheck clinical study (Lo et al., Spine 2015), as reported</a></li>
+    <li>The project's own record: docs/research/ct-priors-for-2d-detection.md and docs/research/xr-from-3d/ in SchwingNet; the registry under data/sources/.</li>
+  </ul>
+</section>
+</div>
+
+</body></html>

@@ -1,0 +1,729 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>SchwingNet grid pipeline</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+:root {
+  --bg: #f4f5f7;
+  --surface: #ffffff;
+  --sunk: #eceff2;
+  --fg: #15191e;
+  --muted: #535c67;
+  --faint: #7c8590;
+  --line: #d5dae0;
+  --line-strong: #a9b1ba;
+  --accent: #0a7366;
+  --accent-soft: #dcf0ec;
+  --greg: #9a5200;
+  --greg-soft: #fbedd6;
+  --bar: #0a7366;
+  --bar-track: #e3e7eb;
+  --sans: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --head: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1114;
+    --surface: #161a1f;
+    --sunk: #1c2127;
+    --fg: #e4e8ec;
+    --muted: #a2abb5;
+    --faint: #76808b;
+    --line: #2a3138;
+    --line-strong: #4a535d;
+    --accent: #3ec3b0;
+    --accent-soft: #12332e;
+    --greg: #f0a94a;
+    --greg-soft: #3a2a12;
+    --bar: #3ec3b0;
+    --bar-track: #232a31;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1114;
+  --surface: #161a1f;
+  --sunk: #1c2127;
+  --fg: #e4e8ec;
+  --muted: #a2abb5;
+  --faint: #76808b;
+  --line: #2a3138;
+  --line-strong: #4a535d;
+  --accent: #3ec3b0;
+  --accent-soft: #12332e;
+  --greg: #f0a94a;
+  --greg-soft: #3a2a12;
+  --bar: #3ec3b0;
+  --bar-track: #232a31;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.55;
+}
+.page {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 28px 56px;
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+h1, h2 {
+  font-family: var(--head);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1.1;
+  margin: 0;
+  text-wrap: balance;
+}
+h1 { font-size: clamp(34px, 6vw, 52px); }
+h2 { font-size: 28px; }
+p { margin: 0; max-width: 68ch; }
+a { color: var(--accent); text-underline-offset: 2px; }
+.mono, code { font-family: var(--mono); font-size: 0.86em; }
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.src {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--faint);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+section { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.lede { color: var(--muted); }
+
+/* header */
+header { display: flex; flex-direction: column; gap: 12px; }
+.status {
+  display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap;
+  padding: 10px 14px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--accent);
+  border-radius: 6px;
+  max-width: 68ch;
+}
+.status b { font-weight: 600; }
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+}
+.tile {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 12px 14px;
+  display: flex; flex-direction: column; gap: 4px;
+  min-width: 0;
+}
+.tile .k { font-size: 12.5px; color: var(--muted); }
+.tile .v { font-family: var(--head); font-size: 38px; font-weight: 600; line-height: 1; }
+.tile .d { font-size: 13px; color: var(--muted); }
+.tile.zero .v { color: var(--greg); }
+
+/* figures */
+figure { margin: 0; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.fig {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+}
+.scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.scroll svg { min-width: 780px; }
+svg { display: block; width: 100%; height: auto; max-width: 100%; }
+figcaption { display: flex; flex-direction: column; gap: 4px; max-width: 80ch; }
+figcaption p { color: var(--fg); }
+.narrow-hint { display: none; font-size: 12.5px; color: var(--muted); }
+.fig1-tall { display: none; }
+@media (max-width: 720px) {
+  .fig1-wide { display: none; }
+  .fig1-tall { display: block; max-width: 380px; margin: 0 auto; }
+  .narrow-hint { display: block; }
+}
+
+/* svg parts */
+.n { fill: var(--surface); stroke: var(--line-strong); stroke-width: 1.2; }
+.n-acc { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.6; }
+.n-later { fill: none; stroke: var(--line-strong); stroke-width: 1.2; stroke-dasharray: 5 4; }
+.n-greg { fill: var(--greg-soft); stroke: var(--greg); stroke-width: 1.4; }
+.t { fill: var(--fg); font-family: var(--sans); font-size: 13px; font-weight: 600; }
+.ts { fill: var(--muted); font-family: var(--sans); font-size: 11.5px; }
+.tm { fill: var(--muted); font-family: var(--mono); font-size: 10.5px; }
+.tl { fill: var(--muted); font-family: var(--mono); font-size: 10.5px; paint-order: stroke; stroke: var(--surface); stroke-width: 4px; stroke-linejoin: round; }
+.tl-acc { fill: var(--accent); font-family: var(--mono); font-size: 10.5px; font-weight: 500; paint-order: stroke; stroke: var(--surface); stroke-width: 4px; stroke-linejoin: round; }
+.tg { fill: var(--greg); font-family: var(--sans); font-size: 12px; font-weight: 600; }
+.tg-s { fill: var(--greg); font-family: var(--sans); font-size: 11.5px; }
+.e { fill: none; stroke: var(--line-strong); stroke-width: 1.4; }
+.e-acc { fill: none; stroke: var(--accent); stroke-width: 2.2; }
+.e-later { fill: none; stroke: var(--line-strong); stroke-width: 1.3; stroke-dasharray: 5 4; }
+.e-ret { fill: none; stroke: var(--muted); stroke-width: 1.4; stroke-dasharray: 2 3; }
+.e-greg { fill: none; stroke: var(--greg); stroke-width: 1.4; }
+.ah { fill: var(--line-strong); }
+.ah-acc { fill: var(--accent); }
+.ah-ret { fill: var(--muted); }
+.dot-greg { fill: var(--greg); }
+.dot-greg-t { fill: var(--surface); font-family: var(--sans); font-size: 12px; font-weight: 600; }
+
+/* tables */
+.tablewrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; vertical-align: top; padding: 9px 12px; border-bottom: 1px solid var(--line); }
+tr:last-child td { border-bottom: 0; }
+th { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; background: var(--sunk); }
+td.word { font-family: var(--mono); font-size: 13px; font-weight: 500; white-space: nowrap; color: var(--accent); }
+td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.words td:nth-child(2) { min-width: 260px; }
+.words td:nth-child(3) { min-width: 240px; color: var(--muted); }
+.exits { display: flex; flex-wrap: wrap; gap: 8px; }
+.exit {
+  font-family: var(--mono); font-size: 12.5px;
+  border: 1px solid var(--line); background: var(--surface);
+  border-radius: 4px; padding: 3px 8px;
+}
+.exit b { color: var(--accent); font-weight: 500; }
+
+/* timeline */
+.timeline {
+  list-style: none; margin: 0; padding: 0;
+  display: grid; grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0;
+  position: relative;
+}
+.timeline li {
+  position: relative;
+  padding: 26px 10px 0 0;
+  display: flex; flex-direction: column; gap: 4px;
+  min-width: 0;
+}
+.timeline li::before {
+  content: ""; position: absolute; left: 0; right: 0; top: 8px;
+  border-top: 2px solid var(--line-strong);
+}
+.timeline li::after {
+  content: ""; position: absolute; left: 0; top: 2px;
+  width: 12px; height: 12px; border-radius: 50%;
+  background: var(--surface); border: 2px solid var(--line-strong);
+}
+.timeline li.today::after { background: var(--accent); border-color: var(--accent); }
+.timeline li.greg::after { background: var(--greg); border-color: var(--greg); }
+.timeline li.talk::after { background: var(--fg); border-color: var(--fg); }
+.timeline .when { font-family: var(--head); font-size: 20px; font-weight: 600; line-height: 1.1; }
+.timeline .what { font-size: 13.5px; color: var(--muted); }
+.timeline .who { font-family: var(--mono); font-size: 11px; color: var(--greg); }
+@media (max-width: 760px) {
+  .timeline { grid-template-columns: 1fr; }
+  .timeline li { padding: 0 0 18px 26px; }
+  .timeline li::before { left: 5px; right: auto; top: 14px; bottom: 0; border-top: 0; border-left: 2px solid var(--line-strong); }
+  .timeline li:last-child::before { display: none; }
+  .timeline li::after { top: 4px; }
+}
+.note {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 6px;
+  padding: 10px 14px; font-size: 14px; max-width: 80ch;
+}
+.note.greg { border-left: 4px solid var(--greg); }
+
+/* waits */
+.owner {
+  display: inline-block; font-family: var(--mono); font-size: 11.5px; font-weight: 500;
+  padding: 1px 7px; border-radius: 3px; white-space: nowrap;
+  border: 1px solid var(--line-strong); color: var(--muted);
+}
+.owner.greg { background: var(--greg-soft); border-color: var(--greg); color: var(--greg); }
+.owner.claude { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.waits td:first-child { white-space: nowrap; width: 1%; }
+.waits td:nth-child(2) { min-width: 300px; }
+.waits td:last-child { min-width: 180px; }
+
+/* bars */
+.bars td.bar { width: 40%; min-width: 120px; }
+.bar-track { height: 10px; background: var(--bar-track); border-radius: 0 4px 4px 0; }
+.bar-fill { height: 10px; background: var(--bar); border-radius: 0 4px 4px 0; min-width: 2px; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap: 16px; }
+.grid2 > div { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.grid2 h3 { font-family: var(--head); font-size: 20px; font-weight: 600; margin: 0; }
+
+@media (max-width: 640px) {
+  table.stack thead { display: none; }
+  table.stack, table.stack tbody, table.stack tr, table.stack td { display: block; }
+  table.stack tr { padding: 10px 14px; border-bottom: 1px solid var(--line); }
+  table.stack tr:last-child { border-bottom: 0; }
+  table.stack td { padding: 2px 0; border-bottom: 0; width: auto !important; min-width: 0 !important; text-align: left; white-space: normal; }
+  table.stack td[data-label]::before {
+    content: attr(data-label); display: block; margin-top: 6px;
+    font-family: var(--sans); font-size: 11px; font-weight: 600; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--muted);
+  }
+  table.stack td.word { white-space: nowrap; }
+  table.fetch td:first-child { font-weight: 600; }
+  .bars th, .bars td { padding: 8px 8px; }
+  .bars td.bar { min-width: 48px; width: 28%; }
+  .bars th.num { white-space: nowrap; }
+}
+
+.sources { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
+.sources li { font-family: var(--mono); font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
+.sources li span { font-family: var(--sans); font-size: 13px; color: var(--fg); }
+footer { font-size: 12.5px; color: var(--faint); border-top: 1px solid var(--line); padding-top: 14px; }
+</style>
+
+<div class="page">
+
+<header>
+  <div class="eyebrow">SchwingNet &middot; private &middot; 2026-10-21</div>
+  <h1>SchwingNet grid pipeline</h1>
+  <div class="status">
+    <b>Gate words written and under review in SchwingNet PR #54; no job has run yet.</b>
+    <span class="src">grid/gate.sh on claude/53; grid/README.md line 3</span>
+  </div>
+  <p class="lede">How a run starts on the Wayne State grid without greg typing a command, what each job waits for, and what still stands in the way. Every number names the file it comes from.</p>
+  <div class="tiles">
+    <div class="tile">
+      <span class="k">Registry sources</span>
+      <span class="v">111</span>
+      <span class="d">get 63 &middot; held 27 &middot; gated 15 &middot; 6 other</span>
+      <span class="src">data/sources/*.json, reach</span>
+    </div>
+    <div class="tile">
+      <span class="k">X-ray sources</span>
+      <span class="v">70</span>
+      <span class="d">held 19 &middot; get 37 &middot; gated 8 &middot; 6 other</span>
+      <span class="src">data/sources/*.json, group</span>
+    </div>
+    <div class="tile">
+      <span class="k">spine-datasets records</span>
+      <span class="v">86</span>
+      <span class="d">todo 52 &middot; requested 26 &middot; granted 5</span>
+      <span class="src">spine-datasets 7a74bb6, datasets/</span>
+    </div>
+    <div class="tile">
+      <span class="k">Training registry</span>
+      <span class="v">22</span>
+      <span class="d">entries; none has a shard yet</span>
+      <span class="src">data/registry/ (shards: [])</span>
+    </div>
+    <div class="tile">
+      <span class="k">Bank recipes ready</span>
+      <span class="v">5<span style="font-size:22px;color:var(--muted)"> / 20</span></span>
+      <span class="d">15 still hold "to confirm"</span>
+      <span class="src">grid/banks/*.json</span>
+    </div>
+    <div class="tile zero">
+      <span class="k">Grid jobs run</span>
+      <span class="v">0</span>
+      <span class="d">every number so far is from synthetic CPU runs</span>
+      <span class="src">grid/README.md l.3; docs/research/v1-demo/</span>
+    </div>
+  </div>
+</header>
+
+<section>
+  <h2>How a run starts</h2>
+  <p class="lede">greg types nothing on the grid. Claude sends one gate word, and the answer comes back as a file Claude reads.</p>
+  <figure>
+    <div class="fig">
+      <svg class="fig1-wide" viewBox="0 0 1080 250" role="img" aria-label="Claude dispatches a GitHub Actions job, which hands the word to the Beethoven gate on the grid login node; the gate updates the checkout and runs grid/gate.sh, which submits Slurm jobs; the output returns on the grid branch for Claude to read. greg's one press connects GitHub Actions to Beethoven.">
+        <defs>
+          <marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker>
+          <marker id="a1r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah-ret" d="M0,0 L10,5 L0,10 z"/></marker>
+          <marker id="a1g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="dot-greg" d="M0,0 L10,5 L0,10 z"/></marker>
+        </defs>
+        <!-- greg's press -->
+        <rect class="n-greg" x="300" y="6" width="260" height="38" rx="5"/>
+        <text class="tg" x="430" y="22" text-anchor="middle">greg, once: Connect GitHub Actions</text>
+        <text class="tg-s" x="430" y="37" text-anchor="middle">in Beethoven, after beethoven-extension #23</text>
+        <path class="e-greg" d="M430,44 L430,72" marker-end="url(#a1g)"/>
+        <!-- nodes -->
+        <rect class="n" x="20" y="56" width="160" height="76" rx="6"/>
+        <text class="t" x="100" y="80" text-anchor="middle">Claude</text>
+        <text class="ts" x="100" y="98" text-anchor="middle">cloud session</text>
+        <text class="tm" x="100" y="116" text-anchor="middle">action=job</text>
+
+        <rect class="n" x="240" y="56" width="160" height="76" rx="6"/>
+        <text class="t" x="320" y="80" text-anchor="middle">GitHub Actions</text>
+        <text class="tm" x="320" y="98" text-anchor="middle">grid-accounts.yml</text>
+        <text class="ts" x="320" y="116" text-anchor="middle">symphony-template</text>
+
+        <rect class="n-acc" x="460" y="56" width="160" height="76" rx="6"/>
+        <text class="t" x="540" y="80" text-anchor="middle">Beethoven gate</text>
+        <text class="ts" x="540" y="98" text-anchor="middle">WSU grid login node</text>
+        <text class="tm" x="540" y="116" text-anchor="middle">~/SchwingNet to main</text>
+
+        <rect class="n-acc" x="680" y="56" width="160" height="76" rx="6"/>
+        <text class="t" x="760" y="80" text-anchor="middle" style="font-family:var(--mono)">grid/gate.sh</text>
+        <text class="ts" x="760" y="98" text-anchor="middle">one word at a time</text>
+        <text class="ts" x="760" y="116" text-anchor="middle">records every job</text>
+
+        <rect class="n" x="900" y="56" width="160" height="76" rx="6"/>
+        <text class="t" x="980" y="80" text-anchor="middle">Slurm jobs</text>
+        <text class="ts" x="980" y="98" text-anchor="middle">compute nodes</text>
+        <text class="ts" x="980" y="116" text-anchor="middle">inside the container</text>
+        <!-- forward edges -->
+        <path class="e" d="M180,94 L238,94" marker-end="url(#a1)"/>
+        <text class="tl" x="210" y="88" text-anchor="middle">dispatch</text>
+        <path class="e" d="M400,94 L458,94" marker-end="url(#a1)"/>
+        <text class="tl" x="430" y="112" text-anchor="middle">word</text>
+        <path class="e-acc" d="M620,94 L678,94" marker-end="url(#a1)"/>
+        <text class="tl-acc" x="650" y="88" text-anchor="middle">runs</text>
+        <path class="e-acc" d="M840,94 L898,94" marker-end="url(#a1)"/>
+        <text class="tl-acc" x="870" y="88" text-anchor="middle">sbatch</text>
+        <!-- return -->
+        <path class="e-ret" d="M760,132 L760,190 L100,190 L100,134" marker-end="url(#a1r)"/>
+        <text class="tm" x="430" y="208" text-anchor="middle">output, at most 200 kB: branch grid of symphony-template, logs/job-schwingnet-&lt;word&gt;.json</text>
+        <text class="ts" x="430" y="228" text-anchor="middle">Claude reads it and reports in the thread</text>
+      </svg>
+
+      <svg class="fig1-tall" viewBox="0 0 360 640" role="img" aria-label="The same path drawn top to bottom: Claude, GitHub Actions, the Beethoven gate, grid/gate.sh, Slurm jobs, with the output returning to Claude on the grid branch.">
+        <defs>
+          <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker>
+          <marker id="a2r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah-ret" d="M0,0 L10,5 L0,10 z"/></marker>
+          <marker id="a2a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="ah-acc" d="M0,0 L10,5 L0,10 z"/></marker>
+        </defs>
+        <rect class="n" x="70" y="10" width="230" height="64" rx="6"/>
+        <text class="t" x="185" y="34" text-anchor="middle">Claude</text>
+        <text class="ts" x="185" y="54" text-anchor="middle">cloud session, action=job</text>
+        <path class="e" d="M185,74 L185,118" marker-end="url(#a2)"/>
+        <text class="tl" x="195" y="100">dispatch</text>
+
+        <rect class="n" x="70" y="120" width="230" height="64" rx="6"/>
+        <text class="t" x="185" y="144" text-anchor="middle">GitHub Actions</text>
+        <text class="tm" x="185" y="164" text-anchor="middle">grid-accounts.yml</text>
+        <path class="e" d="M185,184 L185,268" marker-end="url(#a2)"/>
+        <text class="tl" x="195" y="206">word</text>
+        <rect class="n-greg" x="196" y="216" width="160" height="40" rx="5"/>
+        <text class="tg" x="276" y="232" text-anchor="middle">greg, once:</text>
+        <text class="tg-s" x="276" y="249" text-anchor="middle">Connect GitHub Actions</text>
+
+        <rect class="n-acc" x="70" y="270" width="230" height="64" rx="6"/>
+        <text class="t" x="185" y="294" text-anchor="middle">Beethoven gate</text>
+        <text class="ts" x="185" y="314" text-anchor="middle">login node; ~/SchwingNet to main</text>
+        <path class="e-acc" d="M185,334 L185,378" marker-end="url(#a2a)"/>
+        <text class="tl-acc" x="195" y="360">runs</text>
+
+        <rect class="n-acc" x="70" y="380" width="230" height="64" rx="6"/>
+        <text class="t" x="185" y="404" text-anchor="middle" style="font-family:var(--mono)">grid/gate.sh</text>
+        <text class="ts" x="185" y="424" text-anchor="middle">one word at a time</text>
+        <path class="e-acc" d="M185,444 L185,488" marker-end="url(#a2a)"/>
+        <text class="tl-acc" x="195" y="470">sbatch</text>
+
+        <rect class="n" x="70" y="490" width="230" height="64" rx="6"/>
+        <text class="t" x="185" y="514" text-anchor="middle">Slurm jobs</text>
+        <text class="ts" x="185" y="534" text-anchor="middle">compute nodes, in the container</text>
+
+        <path class="e-ret" d="M70,412 L36,412 L36,42 L68,42" marker-end="url(#a2r)"/>
+        <text class="tm" transform="translate(28 228) rotate(-90)" text-anchor="middle">output on branch grid, read by Claude</text>
+        <text class="tm" x="185" y="584" text-anchor="middle">logs/job-schwingnet-&lt;word&gt;.json</text>
+        <text class="ts" x="185" y="604" text-anchor="middle">at most 200 kB, on symphony-template</text>
+      </svg>
+    </div>
+    <figcaption>
+      <p>One press by greg remains: Connect GitHub Actions in Beethoven, once beethoven-extension #23 reaches him. Until then no word can run. The gate clones ~/SchwingNet if it is missing and otherwise only fast-forwards a clean checkout on main.</p>
+      <span class="src">hpcworker #24 (the gate words); beethoven-extension #23; symphony-template .github/workflows/grid-accounts.yml; grid/gate.sh header</span>
+    </figcaption>
+  </figure>
+</section>
+
+<section>
+  <h2>What <span class="mono" style="font-size:0.8em">start</span> submits</h2>
+  <p class="lede">One word submits the whole graph with Slurm dependencies. The accented path is version 1, which no longer waits on the multi-day X-ray fetch.</p>
+  <figure>
+    <div class="fig">
+      <div class="narrow-hint">Scroll sideways to see the whole graph.</div>
+      <div class="scroll">
+        <svg viewBox="0 0 1080 470" role="img" aria-label="Job graph of the start word. Setup gates the C-ArmLSpine ingest and the X-ray fetch. The ingest feeds the first catalog, which feeds the version 1 run on a GPU, together with the weights file; version 1 pushes to W&amp;B and the run record. The X-ray fetch feeds bank and ingest, then the next catalog, which also waits on the first catalog. The CT platform fetch waits on the X-ray fetch. Leak checks and latency are later words.">
+          <defs>
+            <marker id="g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker>
+            <marker id="ga" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="ah-acc" d="M0,0 L10,5 L0,10 z"/></marker>
+          </defs>
+
+          <!-- edges first, so boxes sit on top -->
+          <path class="e-acc" d="M170,218 C205,218 205,148 238,148" marker-end="url(#ga)"/>
+          <text class="tl-acc" x="205" y="176" text-anchor="middle">afterok</text>
+          <path class="e" d="M170,238 C205,238 205,308 238,308" marker-end="url(#g)"/>
+          <text class="tl" x="205" y="282" text-anchor="middle">afterok</text>
+
+          <path class="e-acc" d="M390,148 L458,148" marker-end="url(#ga)"/>
+          <text class="tl-acc" x="424" y="141" text-anchor="middle">afterany</text>
+
+          <path class="e" d="M330,120 C330,100 345,98 365,98 L715,98 C732,98 735,104 735,118" marker-end="url(#g)"/>
+          <text class="tl" x="680" y="93" text-anchor="middle">afterok</text>
+
+          <path class="e" d="M610,48 C700,48 785,64 785,118" marker-end="url(#g)"/>
+          <text class="tl" x="680" y="45" text-anchor="middle">afterok</text>
+
+          <path class="e-acc" d="M610,148 L678,148" marker-end="url(#ga)"/>
+          <text class="tl-acc" x="644" y="141" text-anchor="middle">afterok</text>
+
+          <path class="e-acc" d="M830,148 L898,148" marker-end="url(#ga)"/>
+          <text class="tl-acc" x="864" y="141" text-anchor="middle">each step</text>
+
+          <path class="e-later" d="M770,176 C770,228 860,228 898,228" marker-end="url(#g)"/>
+          <text class="tl" x="822" y="246" text-anchor="middle">word latency</text>
+
+          <path class="e" d="M390,308 L458,308" marker-end="url(#g)"/>
+          <text class="tl" x="424" y="301" text-anchor="middle">afterany</text>
+          <path class="e" d="M610,308 L678,308" marker-end="url(#g)"/>
+          <text class="tl" x="644" y="301" text-anchor="middle">afterany</text>
+
+          <path class="e" d="M570,176 C570,236 720,236 720,278" marker-end="url(#g)"/>
+          <text class="tl" x="624" y="232" text-anchor="middle">afterany</text>
+
+          <path class="e-later" d="M830,308 L898,308" marker-end="url(#g)"/>
+          <text class="tl" x="864" y="301" text-anchor="middle">word leaks</text>
+
+          <path class="e" d="M315,336 C315,408 400,408 458,408" marker-end="url(#g)"/>
+          <text class="tl" x="372" y="428" text-anchor="middle">afterany: X-ray first</text>
+
+          <!-- row A -->
+          <rect class="n" x="460" y="20" width="150" height="56" rx="5"/>
+          <text class="t" x="472" y="40">Weights file</text>
+          <text class="tm" x="472" y="56">sn_weights</text>
+          <text class="tm" x="472" y="69">reqp &#183; 30 min</text>
+
+          <!-- row B -->
+          <rect class="n-acc" x="240" y="120" width="150" height="56" rx="5"/>
+          <text class="t" x="252" y="140">C-ArmLSpine ingest</text>
+          <text class="tm" x="252" y="156">sn_carmlspine</text>
+          <text class="tm" x="252" y="169">reqp &#183; 4 h</text>
+
+          <rect class="n-acc" x="460" y="120" width="150" height="56" rx="5"/>
+          <text class="t" x="472" y="140">First catalog</text>
+          <text class="tm" x="472" y="156">xr_catalog</text>
+          <text class="tm" x="472" y="169">reqp &#183; 12 h</text>
+
+          <rect class="n-acc" x="680" y="120" width="150" height="56" rx="5"/>
+          <text class="t" x="692" y="140">Version 1 run</text>
+          <text class="tm" x="692" y="156">sn_v1</text>
+          <text class="tm" x="692" y="169">gmsap GPU &#183; 24 h</text>
+
+          <rect class="n-acc" x="900" y="120" width="160" height="56" rx="5"/>
+          <text class="t" x="912" y="140">W&amp;B, run record</text>
+          <text class="tm" x="912" y="156">per step</text>
+          <text class="tm" x="912" y="169">record lands by PR</text>
+
+          <!-- setup -->
+          <rect class="n-acc" x="20" y="200" width="150" height="56" rx="5"/>
+          <text class="t" x="32" y="220">Setup</text>
+          <text class="tm" x="32" y="236">sn_setup</text>
+          <text class="tm" x="32" y="249">reqp &#183; 6 h</text>
+          <text class="ts" x="20" y="274">only when pixi.lock changed;</text>
+          <text class="ts" x="20" y="290">first catalog and v1 wait</text>
+          <text class="ts" x="20" y="306">afterok on it too</text>
+
+          <rect class="n-later" x="900" y="200" width="160" height="56" rx="5"/>
+          <text class="t" x="912" y="220">Latency and sweep</text>
+          <text class="tm" x="912" y="236">gpu, cpu, one sweep</text>
+          <text class="tm" x="912" y="249">after a checkpoint</text>
+
+          <!-- row C -->
+          <rect class="n" x="240" y="280" width="150" height="56" rx="5"/>
+          <text class="t" x="252" y="300">X-ray fetch</text>
+          <text class="tm" x="252" y="316">xr_fetch</text>
+          <text class="tm" x="252" y="329">reqp &#183; 4 d</text>
+
+          <rect class="n" x="460" y="280" width="150" height="56" rx="5"/>
+          <text class="t" x="472" y="300">Bank and ingest</text>
+          <text class="tm" x="472" y="316">xr_bank</text>
+          <text class="tm" x="472" y="329">reqp &#183; 2 d</text>
+
+          <rect class="n" x="680" y="280" width="150" height="56" rx="5"/>
+          <text class="t" x="692" y="300">Next catalog</text>
+          <text class="tm" x="692" y="316">xr_catalog</text>
+          <text class="tm" x="692" y="329">reqp &#183; 12 h</text>
+
+          <rect class="n-later" x="900" y="280" width="160" height="56" rx="5"/>
+          <text class="t" x="912" y="300">Leak checks</text>
+          <text class="tm" x="912" y="316">xr_leakprint array,</text>
+          <text class="tm" x="912" y="329">then xr_leakjoin</text>
+
+          <!-- row D -->
+          <rect class="n" x="460" y="380" width="150" height="56" rx="5"/>
+          <text class="t" x="472" y="400">CT platform fetch</text>
+          <text class="tm" x="472" y="416">dp_fetch, one per set</text>
+          <text class="tm" x="472" y="429">reqp &#183; 4 d each</text>
+
+          <rect class="n" x="20" y="380" width="150" height="56" rx="5"/>
+          <text class="t" x="32" y="400">Disk probe</text>
+          <text class="tm" x="32" y="416">sn_probe</text>
+          <text class="tm" x="32" y="429">reqp &#183; 10 min</text>
+          <text class="ts" x="20" y="456">no dependency</text>
+
+          <!-- legend -->
+          <line class="e-acc" x1="680" y1="404" x2="712" y2="404"/>
+          <text class="ts" x="720" y="408">version 1 path</text>
+          <line class="e-later" x1="680" y1="428" x2="712" y2="428"/>
+          <text class="ts" x="720" y="432">a later gate word, not part of start</text>
+          <text class="ts" x="680" y="456">times are wall-time limits, not measurements</text>
+        </svg>
+      </div>
+    </div>
+    <figcaption>
+      <p>Version 1 starts from the first catalog, which holds C-ArmLSpine, hours after the ingest ends. The X-ray sets reach the next catalog version as they arrive. Each fetch chain refuses to submit when the sizes it states exceed the volume's free space minus 5 TB.</p>
+      <span class="src">grid/gate.sh word_start; grid/run-xray-chain.sh (MARGIN_GB=5000); #SBATCH headers of grid/00-*.sbatch, 01-03, v1-driver, platform-fetch, 04-05, latency-sweep</span>
+    </figcaption>
+  </figure>
+</section>
+
+<section>
+  <h2>The gate words</h2>
+  <p class="lede">These seven words are everything Claude can ask of the grid for SchwingNet. Every word refuses a bad word or argument, a second word sent while one still runs, and a failed squeue.</p>
+  <div class="tablewrap">
+    <table class="words stack">
+      <thead><tr><th>Word</th><th>What it does</th><th>What it refuses</th></tr></thead>
+      <tbody>
+        <tr><td class="word">start</td><td>Submits the whole graph above once. Setup runs only when pixi.lock changed, and the weights job only when the file is missing.</td><td data-label="Refuses">Any of the gate's jobs still queued or running (75).</td></tr>
+        <tr><td class="word">status</td><td>Lists the gate's newest jobs from sacct, the end of each stage report, and the newest run's checkpoint, W&amp;B link and test table.</td><td data-label="Refuses">Nothing; it submits nothing.</td></tr>
+        <tr><td class="word">leaks</td><td>Runs the leak checks over every shard on the volume, an array of fingerprint tasks and then a join.</td><td data-label="Refuses">An ingest or catalog job still live, the leak checks still live, or no environments yet (75).</td></tr>
+        <tr><td class="word">v1</td><td>Submits the version 1 run alone, for a second try after a failure.</td><td data-label="Refuses">A version 1 run already live (75); no catalog version or no weights file (2).</td></tr>
+        <tr><td class="word">latency</td><td>Submits the latency jobs for the newest run with a checkpoint, with one recorded C-ArmLSpine sweep.</td><td data-label="Refuses">Latency jobs still live or no environments (75); no run with a checkpoint (2).</td></tr>
+        <tr><td class="word">fetch &lt;id&gt;</td><td>Fetches one set of grid/fetch-xray.json, then banks and catalogues it. A credentialed set reads greg's ~/.netrc inside the job.</td><td data-label="Refuses">An unknown id (64); a missing ~/.netrc or one not mode 600 (2); a fetch holding that set still live (75).</td></tr>
+        <tr><td class="word">stop</td><td>Cancels the gate's own queued or running jobs and nothing else.</td><td data-label="Refuses">Nothing.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="exits">
+    <span class="exit"><b>0</b> done</span>
+    <span class="exit"><b>64</b> refused</span>
+    <span class="exit"><b>75</b> busy, send again later</span>
+    <span class="exit"><b>2</b> a file or the checkout missing</span>
+    <span class="exit"><b>1</b> a submission failed</span>
+  </div>
+  <span class="src">grid/gate.sh: word_start, word_status, word_leaks, word_v1, word_latency, word_fetch, word_stop, and its header for the exit codes</span>
+</section>
+
+<section>
+  <h2>Schedule to the talk</h2>
+  <ol class="timeline">
+    <li class="today"><span class="when">Wed 21 Oct</span><span class="what">Today. Gate words in review; no job run.</span></li>
+    <li><span class="when">Fri 23 Oct</span><span class="what">The registry and the first shards, C-ArmLSpine and its sweeps.</span></li>
+    <li><span class="when">Sun 25 Oct</span><span class="what">More films registered; evaluation frames drawn from the first checkpoint.</span></li>
+    <li><span class="when">Wed 28 Oct</span><span class="what">Version 1 trained; the evaluation page and W&amp;B, members only.</span></li>
+    <li><span class="when">Thu 29 Oct</span><span class="what">Latency measured; the recorded sweep with its overlay.</span></li>
+    <li class="greg"><span class="when">Fri 30 Oct</span><span class="what">Provisional filed.</span><span class="who">greg's</span></li>
+    <li class="talk"><span class="when">Mon 2 Nov</span><span class="what">CNS talk, mini-oral 66629.</span></li>
+  </ol>
+  <div class="note">If time runs short, three things drop first: some film rows of the evaluation set, the CPU latency and the export step. The registry, version 1 and the evaluation page do not drop.</div>
+  <div class="note greg">The RSNA RATIC download link expires 2026-10-28 02:38 UTC. The link is greg's own presigned address, which no gate word may carry, so its fetch stays his one exception and must start before then.</div>
+  <span class="src">docs/research/retraining-plan.md section 9; docs/research/data-access-requirements.md row 21</span>
+</section>
+
+<section>
+  <h2>What still waits</h2>
+  <div class="tablewrap">
+    <table class="waits stack">
+      <thead><tr><th>Owner</th><th>What</th><th>Source</th></tr></thead>
+      <tbody>
+        <tr><td><span class="owner greg">greg</span></td><td>Press Connect GitHub Actions in Beethoven once beethoven-extension #23 reaches him; no gate word runs before that.</td><td data-label="Source" class="src">hpcworker #24; beethoven-extension #23</td></tr>
+        <tr><td><span class="owner greg">greg</span></td><td>Start the RSNA RATIC fetch before its presigned link expires on 2026-10-28 02:38 UTC; the link is his and no gate word carries it.</td><td data-label="Source" class="src">docs/research/data-access-requirements.md row 21</td></tr>
+        <tr><td><span class="owner claude">Claude</span></td><td>Merge SchwingNet PR #54, the gate words, once the review fixes are in and the check is green.</td><td data-label="Source" class="src">SchwingNet #53, #54</td></tr>
+        <tr><td><span class="owner claude">Claude</span></td><td>Queue the VinDr-PCXR fetch first once the words are live; access was granted on 21 Oct and greg's PhysioNet login is in place.</td><td data-label="Source" class="src">grid/fetch-xray.json (credentialed); spine-datasets #17</td></tr>
+        <tr><td><span class="owner claude">Claude</span></td><td>Fill the 15 of 20 bank recipes that still hold fields spelled "to confirm", since those sets stop at banking.</td><td data-label="Source" class="src">grid/banks/*.json; bank recipes thread</td></tr>
+        <tr><td><span class="owner claude">Claude</span></td><td>One of the two recorded sweeps has no export yet, so only the other can be shown as a recording in version 1.</td><td data-label="Source" class="src">docs/research/latency-and-sweep/</td></tr>
+        <tr><td><span class="owner claude">Claude</span></td><td>The record step does not copy the sweep folder, so the recording stays on the grid until a script brings it in.</td><td data-label="Source" class="src">tools/flow.py record (KEPT)</td></tr>
+        <tr><td><span class="owner claude">Claude</span></td><td>The leak verdict holds training back by instruction only, since no tool of the run reads it yet.</td><td data-label="Source" class="src">tools/flow.py, tools/catalog.py, tools/train.py</td></tr>
+        <tr><td><span class="owner claude">Claude</span></td><td>spine-datasets lands its sets in shared/datasets, which no SchwingNet file reads yet.</td><td data-label="Source" class="src">spine-datasets grid/README.md l.22; grid/fetch-xray.json</td></tr>
+        <tr><td><span class="owner">PhysioNet</span></td><td>MIMIC-CXR, MIMIC-CXR-JPG and VinDr-CXR wait on PhysioNet's review of greg's CITI training record.</td><td data-label="Source" class="src">spine-datasets datasets/mimic_cxr*.json, vindr_cxr.json</td></tr>
+        <tr><td><span class="owner">Radiopaedia</span></td><td>The licence greg signed and paid for waits on Radiopaedia's countersignature; its cases are never fetched by script.</td><td data-label="Source" class="src">spine-datasets datasets/radiopaedia*.json</td></tr>
+        <tr><td><span class="owner">JHU</span></td><td>Asked on 21 Oct about the LevelCheck cohort, as its senior author suggested; no reply yet.</td><td data-label="Source" class="src">letters/levelcheck_jhu.md (spine-datasets)</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <h2>Data counts</h2>
+  <div class="grid2">
+    <div>
+      <h3>Registry sources by reach</h3>
+      <div class="tablewrap">
+        <table class="bars">
+          <thead><tr><th>Reach</th><th class="num">X-ray</th><th class="num">CT</th><th class="num">Vet</th><th class="num">All</th><th></th></tr></thead>
+          <tbody>
+            <tr><td>get</td><td class="num">37</td><td class="num">24</td><td class="num">2</td><td class="num">63</td><td class="bar"><div class="bar-track"><div class="bar-fill" style="width:100%"></div></div></td></tr>
+            <tr><td>held</td><td class="num">19</td><td class="num">8</td><td class="num">0</td><td class="num">27</td><td class="bar"><div class="bar-track"><div class="bar-fill" style="width:42.9%"></div></div></td></tr>
+            <tr><td>gated</td><td class="num">8</td><td class="num">7</td><td class="num">0</td><td class="num">15</td><td class="bar"><div class="bar-track"><div class="bar-fill" style="width:23.8%"></div></div></td></tr>
+            <tr><td>excluded</td><td class="num">3</td><td class="num">0</td><td class="num">0</td><td class="num">3</td><td class="bar"><div class="bar-track"><div class="bar-fill" style="width:4.8%"></div></div></td></tr>
+            <tr><td>none</td><td class="num">2</td><td class="num">0</td><td class="num">0</td><td class="num">2</td><td class="bar"><div class="bar-track"><div class="bar-fill" style="width:3.2%"></div></div></td></tr>
+            <tr><td>embargoed</td><td class="num">1</td><td class="num">0</td><td class="num">0</td><td class="num">1</td><td class="bar"><div class="bar-track"><div class="bar-fill" style="width:1.6%"></div></div></td></tr>
+            <tr><td><b>total</b></td><td class="num"><b>70</b></td><td class="num"><b>39</b></td><td class="num"><b>2</b></td><td class="num"><b>111</b></td><td></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <span class="src">SchwingNet data/sources/*.json, reach and group fields; docs/research/datasets-inventory.md Totals</span>
+    </div>
+    <div>
+      <h3>spine-datasets records by status</h3>
+      <div class="tablewrap">
+        <table class="bars">
+          <thead><tr><th>Status</th><th class="num">Records</th><th></th></tr></thead>
+          <tbody>
+            <tr><td>todo</td><td class="num">52</td><td class="bar"><div class="bar-track"><div class="bar-fill" style="width:100%"></div></div></td></tr>
+            <tr><td>requested</td><td class="num">26</td><td class="bar"><div class="bar-track"><div class="bar-fill" style="width:50%"></div></div></td></tr>
+            <tr><td>granted</td><td class="num">5</td><td class="bar"><div class="bar-track"><div class="bar-fill" style="width:9.6%"></div></div></td></tr>
+            <tr><td>fetching</td><td class="num">1</td><td class="bar"><div class="bar-track"><div class="bar-fill" style="width:1.9%"></div></div></td></tr>
+            <tr><td>fetched</td><td class="num">1</td><td class="bar"><div class="bar-track"><div class="bar-fill" style="width:1.9%"></div></div></td></tr>
+            <tr><td>refused</td><td class="num">1</td><td class="bar"><div class="bar-track"><div class="bar-fill" style="width:1.9%"></div></div></td></tr>
+            <tr><td><b>total</b></td><td class="num"><b>86</b></td><td></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <span class="src">spine-datasets origin/main 7a74bb6 (2026-10-21), datasets/*.json status field</span>
+    </div>
+  </div>
+  <div class="note">The two repositories count held sets one apart. DysphagiaBank is held on the grid in SchwingNet's record and marked fetched in spine-datasets. The 86 records are 81 copied from SchwingNet plus 5 intraoperative sets from the literature.</div>
+  <div class="tablewrap">
+    <table class="fetch stack">
+      <thead><tr><th>Fetch list</th><th>Sets</th><th>Stated size</th><th>Source</th></tr></thead>
+      <tbody>
+        <tr><td>X-ray, open</td><td data-label="Sets" class="num">15</td><td data-label="Stated size">131 GB where stated; 10 sets state none</td><td data-label="Source" class="src">grid/fetch-xray.json; grid/README.md l.7</td></tr>
+        <tr><td>X-ray, credentialed</td><td data-label="Sets" class="num">3</td><td data-label="Stated size">VinDr-CXR 180 GB, VinDr-PCXR 30 GB, MIMIC-CXR-JPG 570 GB</td><td data-label="Source" class="src">grid/fetch-xray.json</td></tr>
+        <tr><td>CT platform</td><td data-label="Sets" class="num">25</td><td data-label="Stated size">1,489 GB as the script sums it; 4 sets state none</td><td data-label="Source" class="src">grid/run-platform-fetch.sh</td></tr>
+        <tr><td>CT-RATE, full</td><td data-label="Sets" class="num">1</td><td data-label="Stated size">21.3 TB; off by greg's decision of 21 Oct</td><td data-label="Source" class="src">grid/run-platform-fetch.sh (printed, never submitted)</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <h2>Sources</h2>
+  <ul class="sources">
+    <li><a href="https://github.com/OpenSpineConsortium/SchwingNet/pull/54">OpenSpineConsortium/SchwingNet#54</a> <span>the gate words, branch claude/53</span></li>
+    <li><a href="https://github.com/OpenSpineConsortium/SchwingNet/issues/53">OpenSpineConsortium/SchwingNet#53</a> <span>grid runs without a paste</span></li>
+    <li><a href="https://github.com/OpenSpineConsortium/hpcworker/issues/24">OpenSpineConsortium/hpcworker#24</a> <span>the Beethoven gate's schwingnet words</span></li>
+    <li><a href="https://github.com/OpenSpineConsortium/beethoven-extension/issues/23">OpenSpineConsortium/beethoven-extension#23</a> <span>where Connect GitHub Actions reaches greg</span></li>
+    <li>grid/gate.sh, grid/run-xray-chain.sh, grid/run-platform-fetch.sh, grid/run-leaks.sh, grid/run-latency-sweep.sh <span>the scripts the words run</span></li>
+    <li>grid/*.sbatch <span>job names, partitions and wall-time limits</span></li>
+    <li>grid/fetch-xray.json, grid/banks/*.json <span>the X-ray sets and their bank recipes</span></li>
+    <li>grid/README.md <span>no job has run on the grid yet (line 3)</span></li>
+    <li>data/sources/*.json, data/registry/, docs/research/datasets-inventory.md <span>the counts</span></li>
+    <li>docs/research/retraining-plan.md <span>the schedule (section 9)</span></li>
+    <li>docs/research/data-access-requirements.md <span>access and deadlines</span></li>
+    <li>docs/research/v1-demo/, docs/research/latency-and-sweep/ <span>what has been measured: synthetic CPU runs only</span></li>
+    <li>OpenSpineConsortium/spine-datasets 7a74bb6, datasets/*.json <span>request status of record</span></li>
+    <li>OpenSpineConsortium/symphony-template .github/workflows/grid-accounts.yml, branch grid <span>how a word is sent and its output returned</span></li>
+  </ul>
+</section>
+
+<footer>Private to the SchwingNet project. It shows what runs and what waits, never how the model is built. Nothing here has run on the grid yet; every grid number above is a limit or a stated size, not a measurement.</footer>
+
+</div>
+
+</body></html>

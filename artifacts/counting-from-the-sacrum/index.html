@@ -1,0 +1,298 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Counting From The Sacrum</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --paper:   #f6f8f9;
+    --surface: #ffffff;
+    --ink:     #12181d;
+    --muted:   #5c6873;
+    --faint:   #8b96a0;
+    --rule:    #dbe2e7;
+    --chain:   #1f4e79;
+    --chain-w: #e8eff6;
+    --detect:  #b4620a;
+    --good:    #1e6b4f;
+    --gap:     #9b2c2c;
+    --gap-w:   #fbecec;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:   #0e1317;
+      --surface: #161d23;
+      --ink:     #e6ecf1;
+      --muted:   #9aa7b2;
+      --faint:   #6d7a86;
+      --rule:    #2a343d;
+      --chain:   #7db3e0;
+      --chain-w: #16242f;
+      --detect:  #e39b4a;
+      --good:    #5fc39c;
+      --gap:     #e88b8b;
+      --gap-w:   #2a1a1a;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:   #0e1317;
+    --surface: #161d23;
+    --ink:     #e6ecf1;
+    --muted:   #9aa7b2;
+    --faint:   #6d7a86;
+    --rule:    #2a343d;
+    --chain:   #7db3e0;
+    --chain-w: #16242f;
+    --detect:  #e39b4a;
+    --good:    #5fc39c;
+    --gap:     #e88b8b;
+    --gap-w:   #2a1a1a;
+  }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+  }
+  .wrap {
+    max-width: 780px;
+    margin-inline: auto;
+    padding-inline: 20px;
+    padding-block: 48px 72px;
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+  }
+  h1, h2, h3 { font-family: Newsreader, Georgia, serif; font-weight: 600; text-wrap: balance; margin: 0; }
+  h1 { font-size: clamp(2rem, 6vw, 2.9rem); line-height: 1.12; letter-spacing: -0.012em; }
+  h2 { font-size: 1.5rem; line-height: 1.2; }
+  h3 { font-size: 1.1rem; line-height: 1.3; }
+  p  { margin: 0; }
+  a  { color: var(--chain); }
+  .eyebrow {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--faint); margin: 0 0 10px;
+  }
+  .lede { font-size: 1.1rem; color: var(--muted); margin-top: 16px; }
+  section { display: flex; flex-direction: column; gap: 16px; }
+  .rule { height: 1px; background: var(--rule); border: 0; margin: 0; }
+
+  figure { margin: 0; display: flex; flex-direction: column; gap: 12px; }
+  figure img {
+    width: 100%; height: auto; display: block;
+    background: #fff; border: 1px solid var(--rule); border-radius: 3px;
+  }
+  figcaption { font-size: 0.85rem; color: var(--muted); }
+
+  .tablewrap { overflow-x: auto; border: 1px solid var(--rule); border-radius: 3px; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; font-size: 0.88rem; min-width: 480px; }
+  th, td { padding: 9px 14px; text-align: left; border-bottom: 1px solid var(--rule); }
+  thead th {
+    font-family: "IBM Plex Mono", monospace; font-size: 0.68rem; font-weight: 500;
+    letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint);
+  }
+  tbody tr:last-child td { border-bottom: 0; }
+  td.num, th.num { text-align: right; font-family: "IBM Plex Mono", monospace; font-variant-numeric: tabular-nums; }
+  .big { font-weight: 500; color: var(--chain); }
+  .n { color: var(--faint); font-size: 0.8rem; }
+
+  .verdict {
+    display: flex; flex-direction: column; gap: 6px;
+    padding: 16px 18px; border-radius: 3px; background: var(--surface);
+    border: 1px solid var(--rule); border-left: 3px solid var(--chain);
+  }
+  .verdict.behind { border-left-color: var(--gap); background: var(--gap-w); }
+  .verdict .label {
+    font-family: "IBM Plex Mono", monospace; font-size: 0.68rem;
+    letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint);
+  }
+  .verdict.behind .label { color: var(--gap); }
+
+  ul { margin: 0; padding-left: 1.15em; display: flex; flex-direction: column; gap: 9px; }
+  li::marker { color: var(--faint); }
+  code {
+    font-family: "IBM Plex Mono", monospace; font-size: 0.86em;
+    background: var(--chain-w); padding: 1px 5px; border-radius: 2px;
+  }
+  .stamp {
+    font-family: "IBM Plex Mono", monospace; font-size: 0.72rem;
+    color: var(--faint); line-height: 1.7;
+  }
+  .pending {
+    display: inline-block; font-family: "IBM Plex Mono", monospace; font-size: 0.68rem;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--detect); border: 1px solid var(--detect);
+    padding: 1px 7px; border-radius: 2px;
+  }
+</style>
+
+<div class="wrap">
+
+  <header>
+    <p class="eyebrow">Wayne State &middot; 22 September 2026</p>
+    <h1>Counting from the sacrum</h1>
+    <p class="lede">Naming the vertebral level from C-arm exposures alone — no preoperative CT, no tracker,
+      no registration. Every number below is verified against a file on disk.</p>
+  </header>
+
+  <hr class="rule">
+
+  <section>
+    <h2>The method in one page</h2>
+    <figure>
+      <img src="fig1_story.png"
+           alt="Six-row figure: (a) the processing chain from exposure to confirmation; (b) four overlapping
+                C-arm exposures on a prone patient stitched into a panorama counted from the sacrum;
+                (c) an instrument on bone matched onto the chain, body 4 from the sacrum read as L2 with a
+                correlation margin of 0.18; (d) pending; (e) the training corpus, the two networks and what
+                differs from prior art; (f) the same confirmation on frames styled by a fitted C-arm card,
+                finding a sixth lumbar vertebra.">
+      <figcaption>
+        Expose, detect, link, chain, count, confirm. Only the shaded boxes are learned; the rest is geometry.
+        Row (b) is a real sweep counted from the sacral anchor; row (c) places an instrument frame on that chain
+        and reads L2, correctly, with a margin of 0.18 over being one body off. Row (f) does the same on frames
+        styled by a fitted Cios&nbsp;Fusion card and finds a sixth lumbar vertebra — the anomaly that makes
+        counting fail in practice. Row (d) is <span class="pending">rendering</span>.
+      </figcaption>
+    </figure>
+  </section>
+
+  <hr class="rule">
+
+  <section>
+    <h2>Am I ahead of the literature?</h2>
+
+    <div class="verdict">
+      <span class="label">On naming — yes, by a wide margin</span>
+      <p>On real intraoperative C-arm lateral frames the method names the exact level in
+        <strong>98.2%</strong> of vertebrae. The best published registration-free naming is 73.3%, and it
+        imports identity from a preoperative radiograph. LevelCheck, the clinical state of the art, registers to
+        the patient's own CT — it is a ceiling, not a rival, and it costs a CT.</p>
+    </div>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>Real intraoperative C-arm</th><th class="num">Exact level</th><th class="num">Within one</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Lateral, whole frame <span class="n">141 cases, 617 vertebrae, 5-fold CV</span></td>
+              <td class="num big">98.22%</td><td class="num">100%</td></tr>
+          <tr><td>AP, whole frame</td><td class="num big">96.67%</td><td class="num">100%</td></tr>
+          <tr><td>Lateral, five vertebrae in the field</td><td class="num">97.00%</td><td class="num">&mdash;</td></tr>
+          <tr><td>Lateral, three vertebrae in the field</td><td class="num">92.86%</td><td class="num">&mdash;</td></tr>
+          <tr><td>Lateral, one vertebra in the field</td><td class="num">72.85%</td><td class="num">90.23%</td></tr>
+          <tr><td><strong>Zero-shot</strong>, lateral <span class="n">no C-ArmLSpine data in training at all</span></td>
+              <td class="num big">96.27%</td><td class="num">&mdash;</td></tr>
+          <tr><td>Zero-shot, AP</td><td class="num">37.88%</td><td class="num">&mdash;</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="stamp">95% case-bootstrap CI on the lateral whole-frame figure: lower bound 95.71%.
+      Frames within a case are not independent; a naive interval covers 70.8% of the time, so every interval here
+      is clustered at the case.</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>Plain radiographs, held out by patient</th><th class="num">Exact level</th><th class="num">n</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>CSXA cervical, random 2&ndash;9 vertebra window</td><td class="num big">99.87%</td><td class="num">3,720</td></tr>
+          <tr><td>BUU-LSPINE lumbar, random window</td><td class="num big">98.04%</td><td class="num">2,698</td></tr>
+          <tr><td>BUU-LSPINE, only three vertebrae visible</td><td class="num">94.89%</td><td class="num">&mdash;</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="stamp">No published plain-radiograph naming accuracy is metric-comparable to these: the
+      comparable systems import level identity by registering to a 3-D scan rather than reading it off the film.</p>
+
+    <div class="verdict behind">
+      <span class="label">On detection — no, not yet, and this is the binding constraint</span>
+      <p>Finding the bodies, not naming them, is what fails. On a device held out entirely, per-body recall is
+        <strong>90.6%</strong> (whole-vertebra outline truth, IoU 0.5); published class-agnostic C-arm detection
+        reaches 0.96&ndash;0.98. Recall compounds over eight to twelve bodies, so 90.6% is not counting-grade.
+        A detector trained on 6,650 renders and no real image gets <strong>71.7%</strong> on real radiographs
+        against 99.1% for the same architecture trained on real film — and that 28-point sim-to-real tax matches
+        what the field reports elsewhere almost exactly.</p>
+    </div>
+
+    <p>So the honest shape of the claim: the naming problem is solved to a standard nobody has published, and
+      the detection problem in front of it is not. Reporting both is what makes the first one credible.</p>
+  </section>
+
+  <hr class="rule">
+
+  <section>
+    <h2>What today's audit found</h2>
+    <p>Three questions were asked of the synthetic-data pipeline. Two had good answers and one did not.</p>
+
+    <h3>The C-arm cards do sample real distributions</h3>
+    <p>Of 114 device&times;parameter pairs, 51 are drawn per frame from a fitted Gaussian copula conditioned on the
+      patient's water-equivalent thickness; 9 values come from DICOM headers, with kilovoltage inside the copula
+      for two devices and a vendor constant for two more. It is distribution sampling, not noise fitted to
+      reproduce existing images.</p>
+
+    <h3>But almost none of that distribution was reaching the renders</h3>
+    <p>A clip meant to stop implausible draws was applied to 8&ndash;11 correlated terms at once, and it
+      saturates rather than truncates — an out-of-band draw is pinned to the boundary value, not redrawn.</p>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>Device</th><th class="num">Terms</th><th class="num">Joint distribution reached</th><th class="num">Frames with a pinned term</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Philips BV Pulsera</td><td class="num">9</td><td class="num">5.1%</td><td class="num">94.9%</td></tr>
+          <tr><td>Siemens Cios Fusion</td><td class="num">9</td><td class="num">3.3%</td><td class="num">96.7%</td></tr>
+          <tr><td>Elekta XVI</td><td class="num">10</td><td class="num">2.4%</td><td class="num">97.6%</td></tr>
+          <tr><td>Trixell Pixium 4600</td><td class="num">8</td><td class="num">5.0%</td><td class="num">95.0%</td></tr>
+          <tr><td>Surgio B51 DR</td><td class="num">11</td><td class="num">2.8%</td><td class="num">97.2%</td></tr>
+          <tr><td>Varian Halcyon</td><td class="num">10</td><td class="num">1.7%</td><td class="num">98.3%</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>The replacement keeps every marginal intact and rejects only the combinations a device never produces,
+      using the same typicality statistic each card is already validated against on held-out frames. It reaches
+      99% of the joint distribution. It is implemented and tested but <strong>not adopted</strong>: a sampler that
+      reaches more of the distribution is not automatically better training data, and the A/B that decides it is
+      running.</p>
+    <p class="stamp">Found by looking at the figure, not the numbers — the clipped kilovoltage histogram is a set
+      of stacked spikes rather than a narrowed distribution. Second time on this project that rendering settled
+      what two rounds of reasoning from numbers did not.</p>
+
+    <h3>The benchmark was scored on too few scans</h3>
+    <p>The CT axis named 802 abdominopelvic records, which see only the lower spine. It now names every
+      collection here by distinct subject, counted with the same keying the train/validation split uses:
+      TotalSegmentator v3 1,735, v2 1,170, CTSpinoPelvic1K 801, VerSe 374, C-ArmLSpine 120, and more.</p>
+  </section>
+
+  <hr class="rule">
+
+  <section>
+    <h2>What is still open</h2>
+    <ul>
+      <li><strong>Whether a release id is a person.</strong> CTSpinoPelvic1K is built from CT colonography, which
+        scans each patient both prone and supine. If two ids are one human being then the corpus is mis-split,
+        and that would be larger than either data leak already found and fixed. An audit is running; it is not
+        assumed to be fine.</li>
+      <li><strong>One model for the whole fleet.</strong> A single detector over every C-arm, tested on a holdout
+        spanning every device, is training now — 18,906 training frames, 56 test specimens, and a list builder
+        that refuses to write anything if a subject or a specimen lands on both sides of the split.</li>
+      <li><strong>Exposure data on disk and unused.</strong> One card records its kilovoltage as unavailable; the
+        same acquisitions' vendor files carry it on 2,654 frames across 84 distinct values.</li>
+    </ul>
+  </section>
+
+  <hr class="rule">
+
+  <p class="stamp">
+    Figure: <code>paper/rsnai/figures/fig1_story.png</code>, rows drawn from seeded runs that reproduce.<br>
+    Numbers: <code>docs/RSNAI_CLAIMS.json</code>, 54 claims, each checked against the file that produced it.<br>
+    Sampling audit: <code>docs/DEVICE_PARAM_AUDIT.md</code>, <code>docs/DEVICE_SPREAD_SWEEP.md</code>, generated
+    from the device cards so they cannot drift from the code.
+  </p>
+
+</div>
+
+</body></html>
