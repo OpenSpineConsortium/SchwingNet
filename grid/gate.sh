@@ -442,6 +442,38 @@ samples_report() {  # the sample index's manifest, whole: counts per source and 
     | report_shapes | sed -r -f "$REPO/grid/redact.sed" | fold -w $((LINE_CHARS - 10)) | sed 's/^/  /'
 }
 
+attr_digits() {  # attr_digits NAME FOLDER: one CephFS attribute's leading digits, or nothing
+  "$GETFATTR" --only-values -n "$1" "$2" 2>/dev/null | sed -n 's/^\([0-9][0-9]*\).*/\1/p'
+}
+fetch_progress() {  # one line per live fetch of one set: what its raw folder holds, read with no walk
+  # A fetch runs for hours and status shows a job's log only once it has ended, so until this nobody
+  # could tell a slow fetch from a stalled one without a grid shell (#125). CephFS keeps each
+  # folder's recursive file count, size and newest change as attributes, three reads on the login
+  # node in place of a find over thousands of files, and no file name leaves the grid.
+  local job from what id raw files bytes written now age seen=" "
+  [ -f "$STATE" ] || return 0
+  now=$(date -u +%s)
+  tac "$STATE" | while read -r job from what _; do
+    [ "$what" = xr_fetch ] || continue
+    case "$from" in fetch:*) id=${from#fetch:} ;; *) continue ;; esac
+    case "$QUEUED" in *" $job "*) ;; *) continue ;; esac
+    case "$seen" in *" $id "*) continue ;; esac
+    seen="$seen$id "
+    raw=$DATA_ROOT/$id/raw
+    [ -d "$raw" ] || { echo "  fetch of $id (job $job): nothing landed yet"; continue; }
+    files=$(attr_digits ceph.dir.rfiles "$raw"); bytes=$(attr_digits ceph.dir.rbytes "$raw"); written=$(attr_digits ceph.dir.rctime "$raw")
+    if [ -z "$files" ] || [ -z "$bytes" ] || [ -z "$written" ]; then
+      echo "  fetch of $id (job $job): the raw folder is there; its size is not readable here (no CephFS attributes)"
+      continue
+    fi
+    age=$((now - written))
+    if [ "$age" -lt 120 ]; then age="${age}s ago"
+    elif [ "$age" -lt 7200 ]; then age="$((age / 60)) min ago"
+    else age="$((age / 3600)) h ago"; fi
+    echo "  fetch of $id (job $job): $files files, $(( (bytes + 999999) / 1000000 )) MB, last write $age"
+  done
+}
+
 word_status() {
   local ids report run lines shown job name state elapsed code node probe
   # First, so the status's 400 lines never cut it off; then the sample manifest, whole.
@@ -457,6 +489,7 @@ word_status() {
       [ -n "$job" ] || continue
       echo "  $job $(what_of "${job%%_*}") $state $elapsed $code $node"
     done <<< "$lines"
+    fetch_progress
     failed_tails "$lines"
   fi
   # The latency probe's answer (#87): counts, sizes, PNG dimensions and the export's meta keys only,
