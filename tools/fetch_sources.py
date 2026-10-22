@@ -164,87 +164,92 @@ def kaggle_token(path):
     raise FetchError(f"{path}: no KAGGLE_API_TOKEN= line")
 
 
-NETRC_KEYWORDS = {"machine", "default", "login", "user", "password", "passwd", "account", "macdef"}
+NETRC_BLANKS = " \t\n\v\f\r"
+NETRC_VALUED = {"account": "account", "login": "login", "user": "login", "macdef": "macdef",
+                "machine": "machine", "password": "password", "passwd": "password", "port": "port",
+                "force": "force"}
 
 
 def netrc_tokens(line):
-    """A .netrc line's tokens as wget reads them: split on blanks, a token opened by a double quote
-    runs to the next unescaped one with a backslash taking the next character as it is, and a token
-    that starts with # ends the line."""
+    """A .netrc line's tokens as wget's parse_netrc_fp cuts them: blanks between, a token that
+    starts with # ends the line, a backslash keeps the character after it, a token opened by a
+    double quote runs to the next one, and the character after a token, a closing quote's too, is
+    taken as its end."""
     tokens, at = [], 0
     while True:
-        while at < len(line) and line[at] in " \t\r":
+        while at < len(line) and line[at] in NETRC_BLANKS:
             at += 1
         if at == len(line) or line[at] == "#":
             return tokens
-        if line[at] == '"':
-            at, token = at + 1, []
-            while at < len(line) and line[at] != '"':
-                if line[at] == "\\" and at + 1 < len(line):
-                    at += 1
-                token.append(line[at])
+        quoted = line[at] == '"'
+        at += quoted
+        token = []
+        while at < len(line) and (line[at] != '"' if quoted else line[at] not in NETRC_BLANKS):
+            if line[at] == "\\":
                 at += 1
-            tokens.append("".join(token))
+                if at == len(line):
+                    break
+            token.append(line[at])
             at += 1
-        else:
-            start = at
-            while at < len(line) and line[at] not in " \t\r":
-                at += 1
-            tokens.append(line[start:at])
+        tokens.append("".join(token))
+        at += 1 + quoted
 
 
 def netrc_entries(text):
-    """The entries of a .netrc as wget's own reader takes them, in order: (host, login, password),
-    with None as the host of default. A keyword's value is the next token, wherever it falls; an
-    unknown word is passed over, as wget passes it over with a warning, and a macdef's body runs to
-    the next blank line. Python's netrc module refuses a file wget reads (issue #100), so it is not
-    used: a refusal there stopped every PhysioNet fetch before its first request."""
+    """The entries of a .netrc as wget 1.21's own reader keeps them, in file order: (host, login,
+    password), host None for default. Keywords are matched as written, a keyword's value is the
+    next token wherever it falls, a word that is no keyword is passed over, macdef skips the rest
+    of its line and every line after it up to a blank one, and an entry with no login is dropped.
+    Python's netrc module refuses a file wget reads (issue #100), so it is not used: its refusal
+    stopped every PhysioNet fetch before its first request."""
     entries, current, waiting, in_macro = [], None, None, False
-    for line in text.splitlines():
+
+    def close():
+        if current is not None and current[1] is not None:
+            entries.append(tuple(current))
+
+    for line in text.split("\n"):
+        if in_macro and not line.strip(NETRC_BLANKS):
+            in_macro = False
         if in_macro:
-            in_macro = bool(line.strip())
             continue
-        for token in netrc_tokens(line):
-            if waiting in ("login", "user", "password", "passwd") and current is not None:
-                key = 1 if waiting in ("login", "user") else 2
-                current[key] = token
-            elif waiting == "machine":
-                current = [token, "", ""]
-                entries.append(current)
-            elif waiting == "macdef":
-                in_macro = True
+        for token in netrc_tokens(line + "\n"):
+            if waiting == "machine":
+                close()
+                current = [token, None, None]
+            elif waiting in ("login", "password") and current is not None:
+                current[1 if waiting == "login" else 2] = token
             if waiting is not None:
                 waiting = None
-                continue
-            word = token.lower()
-            if word == "default":
-                current = [None, "", ""]
-                entries.append(current)
-            elif word in NETRC_KEYWORDS:
-                waiting = word
-        if waiting == "macdef":
-            waiting, in_macro = None, True
-    return [tuple(entry) for entry in entries]
+            elif token == "default":
+                close()
+                current = [None, None, None]
+            else:
+                waiting = NETRC_VALUED.get(token)
+            if waiting == "macdef":
+                waiting, in_macro = None, True
+                break
+    close()
+    return entries
 
 
 def netrc_login(host, path="~/.netrc"):
-    """The login name for a host from ~/.netrc, which wget reads the password from itself. The
-    entry is the one wget picks: the first for the host, else default. An entry with no password is
-    refused here, before the job's fetch: wget would send no login at all, and PhysioNet's 401
-    would read as a refusal it never made. No message quotes the file, which holds a password."""
+    """The login name wget will send for a host, from ~/.netrc, which wget reads the password
+    from itself: the first entry for the host, as wget's search_netrc takes it. A default entry
+    never stands in, since wget given --user ignores it. An entry with no password is refused here,
+    before the job's fetch: wget would send no login at all, and PhysioNet's 401 would read as a
+    refusal it never made. No message quotes the file, which holds a password."""
     path = mode_0600(path)
     try:
-        entries = netrc_entries(path.read_text(encoding="utf-8"))
-    except (OSError, UnicodeDecodeError):
+        text = path.read_bytes().decode("utf-8", "surrogateescape")
+    except OSError:
         raise FetchError(f"{path}: not a netrc file this tool can read") from None
-    named = [entry for entry in entries if entry[0] is not None and entry[0].lower() == host.lower()]
-    fallback = [entry for entry in entries if entry[0] is None]
-    _, login, password = (named or fallback or [(host, "", "")])[0]
-    if not login:
+    named = [entry for entry in netrc_entries(text) if entry[0] is not None and entry[0].lower() == host.lower()]
+    if not named:
         raise FetchError(f"{path}: no 'machine {host} login <user>' entry")
-    if not password:
+    if not named[0][2]:
         raise FetchError(f"{path}: the 'machine {host}' entry has no password, so wget would send no login")
-    return login
+    return named[0][1]
 
 
 def mendeley_files(api_url, opener=None):

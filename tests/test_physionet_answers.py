@@ -175,19 +175,39 @@ class NetrcTest(unittest.TestCase):
                 "default login anon password anon\n")
         self.assertEqual(self.login(text), "someone")
 
-    def test_default_stands_in_when_no_machine_is_named(self):
-        self.assertEqual(self.login("machine other.org login x password y\ndefault login anon password z\n"), "anon")
+    def test_default_never_stands_in_since_wget_given_a_user_ignores_it(self):
+        said = self.login("machine other.org login x password y\ndefault login anon password z\n")
+        self.assertIn("no 'machine physionet.org login <user>' entry", str(said))
+
+    def test_an_entry_with_no_login_is_dropped_as_wget_drops_it(self):
+        self.assertEqual(self.login("machine physionet.org password p\nmachine physionet.org login a password b\n"), "a")
+
+    def test_keywords_are_read_only_as_written(self):
+        self.assertEqual(self.login("Machine physionet.org login a password b\nmachine physionet.org login c password d\n"), "c")
+
+    def test_the_values_wget_skips_and_the_marks_it_takes_out(self):
+        self.assertEqual(self.login("machine physionet.org port login login a password b\n"), "a")
+        self.assertEqual(self.login("machine physionet.org login dom\\\\user password b\n"), "dom\\user")
+        self.assertEqual(self.login('machine physionet.org login "a"Xlogin b password c\n'), "b")
+        self.assertEqual(self.login("macdef init machine physionet.org login wrong password w\nmachine x\n\n"
+                                    "machine physionet.org login right password r\n"), "right")
+
+    def test_a_byte_that_is_no_utf_8_in_another_entry_is_read_past(self):
+        tool = load()
+        with tempfile.TemporaryDirectory() as tmp:
+            netrc = Path(tmp) / ".netrc"
+            netrc.write_bytes(b"machine other.org login x password caf\xe9\nmachine physionet.org login a password b\n")
+            netrc.chmod(0o600)
+            self.assertEqual(tool.netrc_login("physionet.org", netrc), "a")
 
     def test_a_file_that_cannot_be_read_names_no_token(self):
         tool = load()
         with tempfile.TemporaryDirectory() as tmp:
             netrc = Path(tmp) / ".netrc"
-            netrc.write_bytes(b"machine physionet.org login someone password secret-\xff\n")
-            netrc.chmod(0o600)
+            netrc.mkdir(mode=0o700)
             with self.assertRaises(tool.FetchError) as said:
                 tool.netrc_login("physionet.org", netrc)
-        self.assertIn("not a netrc file this tool can read", str(said.exception))
-        self.assertNotIn("secret", str(said.exception))
+        self.assertNotIn("password", str(said.exception))
 
     def test_the_password_is_read_as_wget_reads_it(self):
         tool = load()
