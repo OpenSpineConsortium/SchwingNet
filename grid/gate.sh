@@ -244,7 +244,7 @@ word_start() {
 }
 
 word_status() {
-  local ids report run
+  local ids report run probe
   ids=$(gate_ids | tail -n 60 | tr '\n' ',' | sed 's/,$//')
   if [ -z "$ids" ]; then
     echo "no job submitted by the gate yet; 'start' submits the graph"
@@ -253,6 +253,13 @@ word_status() {
     "$SACCT" -X -n -P -j "$ids" --format=JobID,State,Elapsed,ExitCode,NodeList 2>/dev/null | while IFS='|' read -r job state elapsed code node; do
       echo "  $job $(awk -v j="${job%%_*}" '$1 == j { print $3 }' "$STATE" | tail -n 1) $state $elapsed $code $node"
     done
+  fi
+  # The latency probe's answer (#87): counts, sizes, PNG dimensions and the export's meta keys only,
+  # never a DICOM header, printed before the reports so it stays inside status's 200 lines.
+  probe=$(ls -1t "$LOGS"/sn_probe_*.out 2>/dev/null | head -n 1)
+  if [ -n "$probe" ]; then
+    echo "## the latency probe: $(basename "$probe") ($(date -r "$probe" '+%F %T'))"
+    head -n 40 "$probe" | sed 's/^/  /'
   fi
   for report in "$LOGS"/*STAGE-REPORT.md; do
     [ -f "$report" ] || continue

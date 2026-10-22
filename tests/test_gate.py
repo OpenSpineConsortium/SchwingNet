@@ -410,6 +410,19 @@ class GateTest(unittest.TestCase):
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         self.assertIn("101 setup COMPLETED", done.stdout)
 
+    def test_status_prints_the_newest_latency_probe(self):
+        logs = self.repo / "grid" / "logs"
+        logs.mkdir(parents=True, exist_ok=True)
+        older = logs / "sn_probe_7_4294967294.out"
+        older.write_text("raw case134: 1 files\n", encoding="utf-8")
+        os.utime(older, (1, 1))
+        (logs / "sn_probe_9_4294967294.out").write_text("raw case134: 302 files\nbank case134: 301 PNG frames\n", encoding="utf-8")
+        done = self.gate("status")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("## the latency probe: sn_probe_9_4294967294.out", done.stdout)
+        self.assertIn("  bank case134: 301 PNG frames", done.stdout)
+        self.assertNotIn("1 files", done.stdout)
+
     def test_on_the_grid_the_stages_keep_their_own_data_paths(self):
         # stage 2 reads a set DATA_ROOT as its off-grid layout, so the gate passes none on the grid,
         # whether the caller sets nothing or the grid's own data root
