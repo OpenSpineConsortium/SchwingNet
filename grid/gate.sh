@@ -356,6 +356,22 @@ failed_tails() {  # failed_tails SACCT: the end of the log of each newest job th
   [ "$more" = 0 ] || echo "## $more more failed jobs not shown; their logs stay on the grid"
 }
 
+probe_text() {  # a heading line, then the newest latency probe's output; nothing when there is none
+  # Since issue #77 the probe (latency_probe) logs to hpcworker's folder, read by its recorded id; a
+  # probe sbatch queued before then left grid/logs/sn_probe_<id>_4294967294.out, read when no
+  # recorded probe has output.
+  local id out probe
+  id=$(awk '$3 == "probe" { job = $1 } END { print job }' "$STATE" 2>/dev/null)
+  if [ -n "$id" ] && out=$(log_text "$id" "" sn_probe) && [ -n "$out" ]; then
+    echo "## the latency probe: job $id"
+    printf '%s\n' "$out"
+    return 0
+  fi
+  probe=$(ls -1t "$LOGS"/sn_probe_*.out 2>/dev/null | head -n 1)
+  [ -n "$probe" ] || return 0
+  echo "## the latency probe: $(basename "$probe") ($(date -r "$probe" '+%F %T'))"
+  cat "$probe"
+}
 word_status() {
   local ids report run lines shown job name state elapsed code node probe
   ids=$(gate_ids | tail -n 60 | tr '\n' ',' | sed 's/,$//')
@@ -373,10 +389,11 @@ word_status() {
   # The latency probe's answer (#87): counts, sizes, PNG dimensions and the export's meta keys only,
   # never a DICOM header, printed before the reports so it stays inside status's 200 lines; only
   # its own lines' shapes, with no folder or file name (grid/probe-shapes.awk), then masked (#80).
-  probe=$(ls -1t "$LOGS"/sn_probe_*.out 2>/dev/null | head -n 1)
+  probe=$(probe_text)
   if [ -n "$probe" ]; then
-    echo "## the latency probe: $(basename "$probe") ($(date -r "$probe" '+%F %T'))"
-    head -n 40 "$probe" | LC_ALL=C tr -cd '\11\12\40-\176' | awk -f "$REPO/grid/probe-shapes.awk" | masked | sed 's/^/  /'
+    printf '%s\n' "$probe" | head -n 1
+    printf '%s\n' "$probe" | tail -n +2 | head -n 40 | LC_ALL=C tr -cd '\11\12\40-\176' \
+      | awk -f "$REPO/grid/probe-shapes.awk" | masked | sed 's/^/  /'
   fi
   for report in "$LOGS"/*STAGE-REPORT.md; do
     [ -f "$report" ] || continue

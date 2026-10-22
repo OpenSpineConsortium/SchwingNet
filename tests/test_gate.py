@@ -958,6 +958,21 @@ echo "the split is not disjoint; no training step reads this version"; exit 1
         for gone in ("case39", "Jane", "/rs/", "sw000", "C-ArmLSpine"):
             self.assertNotIn(gone, done.stdout)
 
+    def test_status_reads_a_recorded_probe_from_hpcworkers_log(self):
+        # since issue #77 the probe logs to hpcworker's folder under its recorded id, not grid/logs
+        logs = self.repo / "grid" / "logs"
+        logs.mkdir(parents=True, exist_ok=True)
+        (logs / "sn_probe_7_4294967294.out").write_text("raw case39: 1 files under /x\n", encoding="utf-8")
+        (logs / "GATE_JOBS.txt").write_text("7 start probe 2026-10-21T00:00:00Z\n12 start probe 2026-10-22T00:00:00Z\n", encoding="utf-8")
+        (self.fake / "joblogs").mkdir(exist_ok=True)
+        (self.fake / "joblogs" / "12.out").write_text("\n".join(self.PROBE) + "\n", encoding="utf-8")
+        done = self.gate("status")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("## the latency probe: job 12", done.stdout)
+        self.assertIn("  bank case134: 301 PNG frames", done.stdout)
+        for gone in ("case39", "Jane", "/rs/", "sw000"):
+            self.assertNotIn(gone, done.stdout)
+
     def test_samples_submits_the_index_records_its_jobs_and_waits_for_them(self):
         (self.repo / "tools" / "sample_index.py").write_text("", encoding="utf-8")
         self.assertEqual(self.gate("samples").returncode, 75)
