@@ -26,6 +26,9 @@ To add the artifacts of another account, open a session on OpenSpineConsortium/s
 | Research directions from the data holding | [research-directions-from-the-data-holding-kcyckb](research-directions-from-the-data-holding-kcyckb/) | https://claude.ai/artifact/KCyCkBtrHXGYQVM6LtpnK8 | second account | The order of work the evidence supports, measurement first, human reads second, models third, with the numbers behind it (Docs type, kept as Markdown) |
 | Handoff: SchwingNet, CTSpinoPelvic1K and the imaging programme | [handoff-schwingnet-ctspinopelvic1k-and-the-imaging-programme-rbcdmf](handoff-schwingnet-ctspinopelvic1k-and-the-imaging-programme-rbcdmf/) | https://claude.ai/artifact/RBCDMF1YwL93MmeJTkv3oa | second account | The shareable summary of the spinesurg-ct-nnunet handoff for a new student or a fresh Claude project: the work, where every result lives and how to regenerate it (Docs type, kept as Markdown) |
 | Send the letter | not copied: holds e-mail addresses | https://claude.ai/artifact/VVZW3KzYvmKirhh5ngkcBV | second account | Three steps for sending a letter to a list of programs by Bcc, with its subject and note; kept only on claude.ai until the owner decides on a redacted copy |
+| SchwingNet Figures | [schwingnet-figures-jshksq](schwingnet-figures-jshksq/) | https://claude.ai/artifact/JSHksQ6Tgad2w8cwJmaDZT | gschwing | Every figure on disk on 22 September 2026, 20:12: the composite, each row and the audit figures, with its 15 images |
+| SchwingNet Figures | not copied: holds a person's name on a screenshot | https://claude.ai/artifact/XyZ6krXFYezkdkpj2kAKPw | gschwing | The six figures as built, 22 September 2026, 22:50, with the result plots; kept only on claude.ai until the owner decides on a redacted copy |
+| Symphony and Beethoven Taxonomy Spec | [symphony-and-beethoven-taxonomy-spec-lcbqro](symphony-and-beethoven-taxonomy-spec-lcbqro/) | https://claude.ai/artifact/Lcbqrojz4uLvqPfvv1DZym | gschwing | The spec of the Symphony and Beethoven taxonomy; here because the sort search found a SchwingNet term in it (Docs type, kept as Markdown; chips kept as text) |
 
 Exported 2026-10-22 from the first account, the one at 97% of its usage that day, by the thread "3D CT priors for 2D detection".
 
@@ -37,3 +40,5 @@ Exported 2026-10-22 from the second account: 4 artifacts copied, 1 not copied.
 | Motion for Alternate Service: Debtor Exam Subpoena | not copied: holds a private person's name and home address | https://claude.ai/artifact/FFHu9wFJoyFp8byuioDZmT | go2432 | A personal court filing; kept only on claude.ai until the owner decides on a redacted copy |
 
 Exported 2026-10-22 from go2432: 3 artifacts copied here, 2 not copied, 5 more in symphony-template's artifacts/.
+
+Exported 2026-10-22 from gschwing: 2 artifacts copied, 1 not copied.
