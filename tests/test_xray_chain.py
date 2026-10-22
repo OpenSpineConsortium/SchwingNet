@@ -288,7 +288,7 @@ class SlurmScriptsTest(unittest.TestCase):
         self.assertIn("rsna_rspect_pe: left out: there is no ~/.fluorocap/credentials.env", out)
         self.assertNotIn("rsna_rspect_pe: job", out)
         self.assertIn("aws_stoic2021: job", out)
-        for path in (".fluorocap/credentials.env", ".hf/token.env", ".rsna/ratic_link"):
+        for path in (".fluorocap/credentials.env", ".hf/token.env", ".rsna/ratic_link", ".redivis/token.env"):
             secret = self.home / path
             secret.parent.mkdir(parents=True, exist_ok=True)
             secret.write_text("KEY=value\n", encoding="utf-8")
