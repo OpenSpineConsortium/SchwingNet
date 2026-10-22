@@ -13,6 +13,7 @@ import os
 import shutil
 import subprocess
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -833,6 +834,36 @@ esac
         self.assertIn("shared datasets: not there", out)
         self.assertNotIn(str(self.tmp), out)
         self.assertLess(out.index("## space"), out.index("## the gate's newest jobs") if "## the gate's" in out else len(out))
+
+    def test_status_shows_what_a_live_fetch_has_landed_with_no_walk(self):
+        # CephFS's recursive attributes, faked by name: a fetch sent 40 s ago still writing
+        now = int(time.time())
+        (self.fake / "getfattr").write_text(f"""#!/bin/bash
+case "$3" in
+  ceph.dir.rfiles) echo -n 1234 ;;
+  ceph.dir.rbytes) echo -n 4560000000 ;;
+  ceph.dir.rctime) echo -n {now - 40}.123456789 ;;
+  *) echo -n 1500000000 ;;
+esac
+""", encoding="utf-8")
+        (self.fake / "getfattr").chmod(0o755)
+        (self.data / "vindr_pcxr" / "raw").mkdir(parents=True)
+        self.state_line(900, "fetch:vindr_pcxr", "xr_fetch")
+        self.state_line(901, "fetch:padchest", "xr_fetch")
+        self.state_line(902, "start", "xr_fetch")
+        self.live(900, 901, 902)
+        done = self.gate("status")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("  fetch of vindr_pcxr (job 900): 1234 files, 4560 MB, last write 40s ago", done.stdout)
+        self.assertIn("  fetch of padchest (job 901): nothing landed yet", done.stdout)
+        self.assertNotIn("job 902", done.stdout)
+        self.assertNotIn(str(self.data), done.stdout)
+        # a fetch that ended says nothing here, and a folder with no attributes says so
+        self.live(900)
+        (self.fake / "getfattr").write_text("#!/bin/bash\nexit 1\n", encoding="utf-8")
+        done = self.gate("status")
+        self.assertIn("fetch of vindr_pcxr (job 900): the raw folder is there; its size is not readable here", done.stdout)
+        self.assertNotIn("job 901", done.stdout)
 
     def failed(self, *rows):
         """rows of (id, word, what, job name, state, elapsed, log lines or None): the gate's list, what
