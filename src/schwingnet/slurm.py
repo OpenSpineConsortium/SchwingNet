@@ -15,7 +15,10 @@ from beethoven_qa.contracts import ensure, require
 
 from schwingnet.flow import JobSpec
 
-SUBMITTED = re.compile(r"^HPCW-JOB submitted (\d+) \S+ ([A-Za-z0-9_.,-]+)/([A-Za-z0-9_.-]+) log ", re.MULTILINE)
+SUBMITTED = re.compile(
+    r"^HPCW-JOB submitted (\d+) \S+ ([A-Za-z0-9_.,-]+)/([A-Za-z0-9_.-]+) log ", re.MULTILINE
+)
+PLACEMENT = ("partition", "qos", "gres", "output")
 SECRET_SHAPES = re.compile(r"(?i)(token|secret|password|api[_-]?key)\s*=")
 
 
@@ -33,7 +36,10 @@ def wall_time(hours: float) -> str:
 @require(lambda checkout: "\n" not in checkout and " " not in checkout, "a plain path")
 @ensure(lambda result: result.startswith("#!/bin/bash\n"), "a bash script")
 @ensure(lambda result: "#SBATCH --time=" in result, "every job has a wall time")
-@ensure(lambda result: all(f"#SBATCH --{word}" not in result for word in ("partition", "qos", "gres", "output")), "placement is hpcworker's")
+@ensure(
+    lambda result: all(f"#SBATCH --{w}" not in result for w in PLACEMENT),
+    "placement is hpcworker's",
+)
 @ensure(lambda result: SECRET_SHAPES.search(result) is None, "no secret on a script's lines")
 @ensure(lambda result: result.endswith("\n"), "ends with a newline")
 def sbatch_script(job: JobSpec, checkout: str) -> str:
@@ -52,7 +58,10 @@ def sbatch_script(job: JobSpec, checkout: str) -> str:
 
 @beartype
 @ensure(lambda result: result is None or result[0].isdigit(), "a job id is digits")
-@ensure(lambda result: result is None or (result[1] != "" and result[2] != "none"), "the placement hpcworker gave")
+@ensure(
+    lambda result: result is None or (result[1] != "" and result[2] != "none"),
+    "hpcworker's placement",
+)
 def submitted_of(answer: str) -> tuple[str, str, str | None] | None:
     """The job id, partition and QoS hpcworker's job submit printed, or None when it queued nothing.
 
