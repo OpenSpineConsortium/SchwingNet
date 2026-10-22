@@ -141,6 +141,17 @@ class SampleIndexTest(unittest.TestCase):
         self.assertIn("| nhanes2_cdc_films | 5 |", text)
         self.assertNotIn("film_0001234", (run / "MANIFEST.json").read_text(encoding="utf-8"))
 
+    def test_manifest_takes_an_unreadable_file(self):
+        # A file the scan could not open has no format and the role unreadable, beside named
+        # formats in its group: the first grid merge failed writing MANIFEST.json on just that.
+        tool, run, db = self.build()
+        db.execute("UPDATE file SET format = NULL, role = 'unreadable', error = 'PermissionError' "
+                   "WHERE name = 'film_00012341.tif'")
+        db.commit()
+        tool.report(run / "samples.sqlite", run / "again.json", run / "again.md")
+        formats = json.loads((run / "again.json").read_text(encoding="utf-8"))["nhanes2_cdc_films"]["formats"]
+        self.assertEqual(formats["unknown"], 1)
+
     def test_a_requeued_task_skips_what_it_finished(self):
         tool, run, db = self.build()
         before = db.execute("SELECT COUNT(*) FROM file").fetchone()[0]

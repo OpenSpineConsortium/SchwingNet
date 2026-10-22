@@ -7,7 +7,9 @@
 #   3. merge    samples.sqlite and the manifest               (afterany:2, so a task that failed
 #               leaves its finished units in, and the done lines say what is missing)
 # Each run is a folder of its own, SAMPLES_OUT/<stamp>; RESUME=<stamp> runs the scan and merge
-# again in an earlier one, where each task skips the units it finished.
+# again in an earlier one, where each task skips the units it finished. When the newest run's merge
+# left samples.sqlite whole and no MANIFEST.md, as job 40702276 did, the call submits only the
+# manifest (samples.sbatch report) for that run, named samples_merge.
 #
 #   bash grid/run-samples.sh                     # submit, printing "<step>: job <id>" lines
 #   bash grid/run-samples.sh report              # the newest whole run's MANIFEST.md
@@ -45,7 +47,14 @@ fi
 
 umask 077
 mkdir -p "$SAMPLES_OUT" "$REPO/grid/logs" && chmod 700 "$SAMPLES_OUT"
-if [ -n "${RESUME:-}" ]; then
+# The newest run, when its merge left samples.sqlite whole and no manifest, needs only the manifest.
+newest=$(ls -1d "$SAMPLES_OUT"/*/ 2>/dev/null | sort | tail -n 1)
+newest=${newest%/}
+step=merge
+if [ -z "${RESUME:-}" ] && [ -n "$newest" ] && [ -f "$newest/samples.sqlite" ] && [ ! -f "$newest/MANIFEST.md" ]; then
+  step=report
+  RUN=$newest
+elif [ -n "${RESUME:-}" ]; then
   RUN=$SAMPLES_OUT/$RESUME
   [ -f "$RUN/units.tsv" ] || { echo "refusing: $RUN has no units.tsv to resume"; exit 2; }
 else
@@ -55,6 +64,7 @@ export SCHWINGNET="$REPO" PYDRV SAMPLES_RUN="$RUN" SAMPLES_TASKS SAMPLES_ARGS
 
 if [ -n "$OUTSIDE_SLURM" ]; then
   cd "$REPO/grid" || exit 2
+  [ "$step" = merge ] || { bash samples.sbatch report; exit $?; }
   [ -n "${RESUME:-}" ] || bash samples.sbatch plan || exit 1
   for task in $(seq 0 $((SAMPLES_TASKS - 1))); do SLURM_ARRAY_TASK_ID=$task bash samples.sbatch scan || exit 1; done
   bash samples.sbatch merge
@@ -65,6 +75,14 @@ fi
 # prints the submissions and queues nothing.
 # shellcheck source=grid/hpcw.sh
 . "$REPO/grid/hpcw.sh"
+if [ "$step" = report ]; then
+  # Named as the merge, so the gate's samples word refuses while it is queued or running.
+  report=$(hpcw_submit samples_merge batch --cpus 2 --mem 16G --time 06:00:00 -- samples.sbatch report) || exit 1
+  echo "samples_merge: job $report"
+  echo "$(date '+%F %T') samples report=$report run=$RUN" | tee -a "$REPO/grid/LAST_RUN.txt"
+  echo "the manifest: $RUN/MANIFEST.md once the report ends; 'bash grid/run-samples.sh report' prints it"
+  exit 0
+fi
 plan_dep=()
 if [ -z "${RESUME:-}" ]; then
   plan=$(hpcw_submit samples_plan batch --cpus 2 --mem 8G --time 06:00:00 -- samples.sbatch plan) || exit 1
