@@ -2,7 +2,7 @@
   "source": "vindr_pcxr",
   "identity_level": "study",
   "person_key_rule": "vindr_pcxr:<the header's PatientID, else its StudyInstanceUID>; a study at worst, since the release keys images and studies only",
-  "access": "PhysioNet Credentialed Health Data License 1.5.0; credentialed, the agreement signed on the page; opt-in only",
+  "access": "PhysioNet Restricted Health Data License 1.5.0; the data use agreement signed on the page, no CITI training review; opt-in only",
   "modality": "dx",
   "device_class": "film",
   "regions": [

@@ -283,6 +283,10 @@ immediate access; 18,000 adult and 9,125 pediatric frontal films from the same t
 hospitals and devices as VinDr-SpineXR, fetched as grid jobs on the owner's word. The IRB
 supplement question of section 7 applies.
 
+Correction, 2026-10-21 (issue #81): VinDr-PCXR is under PhysioNet's Restricted Health Data License
+1.5.0, a data use agreement and no CITI training review, and the owner's agreement is on file with
+the files open to his account (spine-datasets 7a74bb6); VinDr-CXR is credentialed as written above.
+
 ## 9. KUB-StoneX (Daffodil International University HIRL)
 
 Page to open: https://hirl.daffodilvarsity.edu.bd/dataset/ (the KUB-StoneX entry). The sweep read

@@ -291,6 +291,25 @@ def run_sweep(args):
     return summary
 
 
+def gantry_of(meta, where):
+    """A bank frame's gantry angle in degrees, or None, read as each C-ArmLSpine bank writes it.
+
+    The builders' format keeps it as view.gantry_deg; the case134 spin export
+    (spinesurg-ct-nnunet tools/case134_sweep.py) writes no view and keeps the spin angle as the
+    top-level angle with mode "cbct_spin"; the spot bank writes view as a tag ("AP", "LAT") and its
+    angle is a projection, not a place on a spin, so it has none. This is how tools/ingest.py reads
+    it since #79, so a sweep and the catalog agree on every frame's angle.
+    """
+    view = meta.get("view")
+    if isinstance(view, dict):
+        return view.get("gantry_deg")
+    if meta.get("mode") == "cbct_spin":
+        return meta.get("angle")
+    if view is None or isinstance(view, str):
+        return None
+    raise SweepError(f"{where}: view is neither an object nor a tag ({type(view).__name__})")
+
+
 def from_bank(args):
     """A sweep in the run's input format from a bank: the case's frames in name order, linked, and its boxes."""
     bank = Path(args.bank)
@@ -309,7 +328,7 @@ def from_bank(args):
             link.unlink(missing_ok=True)
             link.symlink_to(image.resolve())
             boxes = meta.get("boxes", [])
-            line = {"frame": link.name, "bank_frame": image.name, "boxes_px": [b["box"] for b in boxes], "levels": [b.get("level") for b in boxes], "gantry_deg": (meta.get("view") or {}).get("gantry_deg")}
+            line = {"frame": link.name, "bank_frame": image.name, "boxes_px": [b["box"] for b in boxes], "levels": [b.get("level") for b in boxes], "gantry_deg": gantry_of(meta, meta_file)}
             boxes_file.write(json.dumps(line) + "\n")
     return {"frames": len(images), "out": str(out)}
 
