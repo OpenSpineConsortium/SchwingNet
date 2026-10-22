@@ -35,13 +35,15 @@ the markdown manifest carries no body part; the JSON on the grid does, for DICOM
   KUB-StoneX 6,810 (frontal lumbar and pelvis, no spine labels). The chest sets (NIH ChestX-ray14,
   Open-i, VinDr-PCXR) and FracAtlas are on the volume only as archives or a record, not unpacked.
 - Real AP and lateral pairs: BUU-LSPINE's 3,600 people, lumbar; none above the lumbar spine.
-- X-ray with the CT of the same subject, nine sets by the owner's count of 2026-10-22: held,
+- X-ray with a CT or a model of the same subject, nine sets by the owner's count of 2026-10-22: held,
   C-ArmLSpine 149 cases (CBCT), COBRA 692 cases of projections (cobra2026, 6,920 image files; the
   bank 1,337), DeepFluoro 6 specimens, Ljubljana 18 frames, the Geneva hip phantom 116 frames (its
-  CT not recorded); not fetched, LUMOS 1,620 lumbar films with 280 CTs (no pose), the IPCAI 2025
+  phantom CT and gold poses ship; the unseen-device test); not fetched, LUMOS 1,620 lumbar films with 280 CTs (no pose), the IPCAI 2025
   femur set, the IEEE DataPort pig lower limb (7 projections, CT, CBCT, matrices) and Veriserum's
-  knee implant frames. The spine ones are lumbar and lumbosacral only; the others tune the
-  registration code. Which ships vertebra masks and what ITK-SNAP must add is the table in
+  knee implant frames; and a tenth found the same evening, the digital twin's cadaver of arXiv
+  2412.08020 (80 Loop-X frames registered to 4 CTs, mid-femur to T2, the fetch word
+  ipcai2025_robotic_xray_drive). The spine ones are lumbar and lumbosacral except that cadaver, the
+  one real C-arm pair above L1; the others tune the registration code. Which ships vertebra masks and what ITK-SNAP must add is the table in
   docs/research/benchmarks-to-beat.md, section 5.
 - Segmented CT: CTSpine1K 1,005 (whole spine), VerSe 374 series (on the volume as versefusion,
   4,325 image files, 1,652 with labels), TotalSegmentator v2.0.1 1,631 and v3.0.0 1,936 scans,

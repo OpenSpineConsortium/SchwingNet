@@ -32,9 +32,15 @@ A Segment-Anything variant trained from scratch on synthetic X-rays with text, p
   0.26; with points, hard tissue 0.90 +/- 0.15 (the abstract says 0.79), soft tissue 0.73 +/- 0.15;
   MedSAM with a box 0.51 +/- 0.21; the whole lung on chest films zero-shot 0.52 text only, 0.90 with
   points. No per-vertebra table.
+- Those numbers are arXiv v2's. The v3 of June 2025 reports others, read in full by the thread
+  "Benchmark and priors issues" on 2026-10-22 and matching this programme's own second reading
+  (docs/research/lumbosacral-to-cervical-extrapolation.md): on the real cadaver, over 1,741 masks,
+  Dice 0.60 text only, 0.69 with two points or a box, 0.77 with eight points; on synthetic
+  validation 0.59, 0.70, 0.79; FluoroSeg 2,953,257 DRRs from 1,621 CTs. A comparison on the talk
+  quotes v3.
 - Released: the code, the weights (2.5 GB on Google Drive) and FluoroSeg (2.65 TB on Hugging Face,
-  gated, CC BY-NC-SA 4.0; the owner accepted its terms on 2026-10-22). The cadaver set is not
-  released.
+  gated, CC BY-NC-SA 4.0; the owner accepted its terms on 2026-10-22). The 464-frame cadaver set of
+  v2 is not released under that name; the digital twin's cadaver, below, is.
 
 ### The language-promptable digital twin (Killeen et al., arXiv 2412.08020, December 2024)
 
@@ -48,7 +54,13 @@ viewpoints; truth from four stitched navigated CBCTs segmented by TotalSegmentat
   0.04 Dice; ribs 0.02 Dice; centroid error 58.87 +/- 50.29 mm over the top 40 prompts.
 - The twin localises 35 structures within 51.68 +/- 30.84 mm from random orientations; collimation
   boxes precision 0.26, recall 0.70.
-- Nothing released; no baseline compared.
+- Released: the cadaver set, a Google Drive zip linked from the README of
+  github.com/benjamindkilleen/IPCAI-language-digital-twin (the repository is MIT; the data's own
+  terms are to read on unzip): 80 single-shot X-rays, 46 from unique viewpoints, of a torso from the
+  mid-femur to T2, acquired with navigation and registered to 4 CTs included in the archive. The
+  fetch word ipcai2025_robotic_xray_drive (#124) brings it to the grid. No baseline compared.
+  Correction of 2026-10-22: this line said "Nothing released" until the thread "Benchmark and
+  priors issues" found the README.
 
 ### Multi-view X-ray/CT registration by bone substructure contours (Flepp et al., arXiv 2506.13292)
 
@@ -78,7 +90,8 @@ patient-specific DRRs, and a contour ICP that matches within a substructure only
 So the first-time claims the talk can make, each with its measurement: level naming on real frames
 with no CT, at any angle, with latency; and anomaly and transitional-anatomy classification from a
 single frame. Segmentation of bone as one class is not a claim to make against FluoroSAM, which does
-it well (0.78 to 0.90 with points); the comparison is on levels, where it scores 0.04.
+it well (vertebrae as one class 0.78 text only on the digital twin's cadaver; 0.60 to 0.77 over all
+structures in v3); the comparison is on levels, where it scores 0.04.
 
 ## 3. How FluoroSAM handles the gap between renders and real fluoroscopy
 
@@ -133,37 +146,42 @@ The owner's ask: find out whether the held CT-X-ray sets come with segmentations
 AI-assisted segmentation with Dr Tech's verification into the priors work, and use registration code
 for supervised pixel-to-pixel 3D-to-2D priors.
 
-The owner's count on 2026-10-22 23:08 UTC is nine such sets once the pig set is counted, and the
+The owner's count on 2026-10-22 23:08 UTC is nine such sets once the pig set is counted, a tenth,
+the digital twin's cadaver, was found the same evening, and the
 goal restated then is: every paired CT-and-X-ray set is segmented, in ITK-SNAP with AI assistance
 where no annotation exists and verified by Dr Tech, so that every real X-ray with a CT carries gold
 per-pixel labels; and the annotated X-ray sets without a CT (BUU-LSPINE, NHANES II, CSXA, Aariz,
-AASCE, VinDr-SpineXR, Spinal-AI2024, C-ArmLSpine's spots) then either train an independent
-pseudolabeller or test the network, never both for one person. The nine, with what each ships:
+AASCE, VinDr-SpineXR; Spinal-AI2024 is synthetic and train-side only) then either train an independent
+pseudolabeller or test the network, never both for one person. The ten, with what each ships:
 
 | Set | Anatomy | X-rays | CT | Pose | Segmentation shipped | What ITK-SNAP must add |
 | --- | --- | --- | --- | --- | --- | --- |
-| C-ArmLSpine (held) | lumbar | 149 cases, 299 spot frames, 59,609 DICOM frames, 2 sweeps | CBCT per case | stored | level labels on the CBCT, two labellers agreeing on 814 of 910 bodies; no body masks | masks per body, L1 to S1 |
+| C-ArmLSpine (held) | lumbar | 149 cases, 299 spot frames, 59,609 DICOM frames, 2 sweeps | CBCT per case | registered by the project (quality not measured) | level names on each CBCT from two automatic labellers (TotalSegmentator and SPINEPS/VERIDAH), agreed levels only, 814 of 910 bodies; the filter drops the thoracolumbar junction; no body masks | masks per body, L1 to S1, read by a person |
 | COBRA (held, CC BY-NC) | lumbosacral, pelvis | 692 cases of raw CBCT projections, 375,618 | planning CT and the reconstruction | stored (geometry solved) | none for vertebrae | masks on the planning CT, L3 to S1 and the pelvis |
-| DeepFluoro (held, CC BY-NC-SA) | pelvis, hip, low lumbar | 366 H5 frames, 2,659 vendor frames | 19 CT of 6 specimens | registered for the H5 frames | pelvis and femur masks, no vertebrae | lumbar bodies and the sacrum |
+| DeepFluoro (held, CC BY-NC-SA) | pelvis, hip, low lumbar | 366 H5 frames, 2,659 vendor frames | 19 CT of 6 specimens | registered for the H5 frames | 7-class 3D and per-frame 2D labels, the vertebrae as one class and the upper sacrum | split the vertebrae class into named lumbar bodies |
 | Ljubljana 2D/3D gold standard (held, ND) | L1 to L5 | 18 frames of one cadaver | CT | stored | the registration's gold standard; no body masks | five bodies, read-only licence: masks live beside, never redistributed |
-| LUMOS (Zenodo 18173664, not fetched, 46.4 GB) | lumbar, diagnostic radiographs | 1,620 AP or lateral films of 803 patients | 280 non-contrast lumbar CTs | none: registration needed | to confirm on the record | masks on the 280 CTs, then registration to the films |
-| IPCAI 2025 paired set (Zenodo 15753063, not fetched, 6.7 GB) | femur | 50 calibrated X-rays | 5 CTs | stored | contour masks and bone models | nothing for the spine; a registration benchmark |
+| LUMOS (Zenodo 18173664, not fetched, 46.4 GB, CC BY-NC 4.0) | lumbar, diagnostic radiographs | 1,620 AP or lateral films of 803 patients, 280 of them with a CT | 280 non-contrast lumbar CTs | none: registration needed | to confirm on the record | masks on the 280 CTs, then registration to the films |
+| Digital-twin cadaver (arXiv 2412.08020; a Drive zip, the fetch word ipcai2025_robotic_xray_drive since #124) | torso from mid-femur to T2: sacrum, lumbar and thoracic | 80 single-shot Loop-X frames, 46 unique viewpoints | 4 CTs covering the specimen, in the archive | registered by navigation to a fixed patient array | TotalSegmentator masks in the paper; whether they ship, to confirm on unzip | verify the lumbar and thoracic bodies; the one real C-arm pair above L1 |
+| IPCAI 2025 paired set (Zenodo 15753063, research-only licence; fetched, still zipped, 6.2 GB on the volume) | femur | 50 calibrated X-rays | 5 CTs | stored | contour masks and bone models | nothing for the spine; a registration benchmark |
 | Pig lower limb (IEEE DataPort 10.21227/gxpd-d998, 205 MB) | pig lower limb, no spine | 7 C-arm projections, with and without soft tissue | CT and two CBCT | matrices shipped | none | nothing for the spine; a registration benchmark (not the LevelCheck pig study the record named) |
 | Veriserum (ETH, not fetched) | knee implant phantoms | about 110,000 dual-plane fluoroscopic frames | implant models, 200 frames manually registered | registered | implant poses | nothing for the spine; real flat-panel noise and metal at scale |
-| Geneva hip phantom (held) | pelvis | 116 frames of one phantom on an unseen device | not recorded | none | none | whether its CT exists is the owner's to say |
+| Geneva hip phantom (held; D'Isidoro, Med Phys 2021) | pelvis | 116 frames of one phantom on an unseen device | phantom CT | gold-standard rigid transforms and projection matrix | two-labeller boxes through the pose | nothing; it stays the unseen-device test, never used to tune |
 
-Real spine X-rays with a CT of the same subject are the first five; all five are lumbar or
-lumbosacral, so the gold stays there until a cervical or thoracic pair is found. The last four pair
-real frames with a CT or a model of something else, and their use is the registration code: a
+Real spine X-rays with a CT of the same subject are the first six. Five are lumbar or lumbosacral;
+the digital twin's cadaver reaches T2, so it is the one real C-arm pair above L1 (one specimen, so a
+test for issue #135's thoracic rows, never a training set). No cervical pair exists among them. Three of the last four pair
+real frames with a CT or a model of something else (the femur, the pig limb, the knee implants),
+and their use is the registration code; the Geneva phantom stays the unseen-device test: a
 2D/3D registration tuned on the femur, the pig limb and the knee, where the truth pose is shipped,
 is then run on LUMOS and the FluoroCap panels, where it is not. Two synthetic pairs stand beside the
 nine: PENGWIN task 2 (50,000 renders of 100 pelvic CTs at real C-arm poses) and FluoroSeg
-(2.65 TB of DRRs); FluoroSAM's 464-frame cadaver is not released.
+(2.65 TB of DRRs); FluoroSAM's 464-frame cadaver of v2 is not released under that name.
 
 The plan, as workstream O of the xr-from-3d programme (issue #127 under #56); reaching the cervical and thoracic spine from this lumbosacral gold is workstream P (issue #135), whose prior art and feasibility is docs/research/lumbosacral-to-cervical-extrapolation.md:
 
 1. Automatic first pass: TotalSegmentator (vertebrae and sacrum) on every planning CT and CBCT of
-   C-ArmLSpine, COBRA, DeepFluoro, Ljubljana and LUMOS, on the grid, as one array job; its masks
+   C-ArmLSpine, COBRA, DeepFluoro, Ljubljana, LUMOS and the digital twin's cadaver, on the grid, as
+   one array job; its masks
    are the AI assistance, and every set is done, not only the three held longest.
 2. Correction by the owner in ITK-SNAP, case by case, with the level names from the C-ArmLSpine
    labels and the counting prior as the check; each corrected mask is a file under the case with the
@@ -174,7 +192,8 @@ The plan, as workstream O of the xr-from-3d programme (issue #127 under #56); re
    814 of 910 is.
 4. Projection: for C-ArmLSpine and COBRA the pose is stored, so the verified masks project through it
    to per-pixel label maps and corners on every real frame (xr-from-3d D, use 1). For DeepFluoro the
-   released registrations give the pose.
+   released registrations give the pose; C-ArmLSpine's poses are the project's own registrations,
+   whose accuracy is not measured, so its label maps carry a pose-quality flag.
 5. Registration-supervised priors: where no pose is stored (FluoroCap panels, a new device's frames
    with a CT), the registration code gives it: a 2D/3D registration of the frame to the verified CT
    (DiffDRR or the contour method of section 1, which is patent-pending and non-commercial, so the
@@ -205,8 +224,8 @@ FluoroSeg is 2.65 TB, gated on Hugging Face; the owner accepted the terms, and h
 (schwingnet-fetch-<id>) once a record names it. Its worth here is bounded: renders
 of other people's CTs with TotalSegmentator masks, which the project already makes from its own CTs
 (workstream C); the one use is pretraining the encoder on 3 million views with tools, and its licence
-is non-commercial like COBRA's, the same lawyer's question. Not fetched until the owner says so and
-the space (2.65 TB against the volume's 22 TB quota, 7.3 TB used) is his call.
+is non-commercial like COBRA's, the same lawyer's question. The owner said yes on 2026-10-22, and
+its fetch word is hf_fluoroseg (#124), against the volume's 22 TB quota with 7.3 TB used.
 
 The FluoroSAM weights (2.5 GB, Google Drive) are the one download row 7 needs; the container cannot
 reach Google Drive, so the thread that holds the grid's Drive route ("Granted datasets onto the grid")
@@ -215,5 +234,8 @@ through SchwingNet #124, as it fetched the Killeen archive.
 
 ## 7. Open questions for the owner
 
-- The number of C-ArmLSpine cases he and Dr Tech will correct and verify before the talk.
-- Whether FluoroSeg is fetched at all before the licence question is answered.
+- The number of C-ArmLSpine cases he and Dr Tech will correct and verify before the talk: his answer
+  of 2026-10-22 23:08 UTC was "maybe none maybe all of them", so the automatic first pass runs on
+  every set and the count is set once its masks show how much correction they need.
+- FluoroSeg: answered, yes (2026-10-22, the fetch word hf_fluoroseg); its licence question for a
+  product stays the lawyer's, as COBRA's.

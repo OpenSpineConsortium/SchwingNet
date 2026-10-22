@@ -540,6 +540,12 @@ registry record holds no such field.
 
 ## 4. Plain films (lateral or AP radiographs)
 
+### Aariz cephalometric benchmark (Khalid, Fraz 2023) and the ISBI 2015 cephalograms (`aariz_cephalograms`, HAVE)
+
+- Registry: link https://doi.org/10.6084/m9.figshare.27986417; grid path `/rs/rs_grp_oschome/go2432/data/aariz`; counts films 1,000, devices 7, landmarks 29, isbi 2015 films 400, zip bytes 2,098,209,792.
+- Manifest records: none. found by the sweep of 2026-10-21 (docs/research/xray-datasets-missing.md); nothing fetched, so no manifest record was ever made.
+- The registry's steps: The 1,000-film set is figshare article 27986417 (doi 10.6084/m9.figshare.27986417), one file Aariz.zip with its md5 in the record; the paper is Khalid, Fraz et al., Scientific Data 12, 1336 (2025), doi 10.1038/s41597-025-05542-3. Fetch it as a Slurm job on the owner's word, never on the login node: bash grid/run-xray-chain.sh --only aariz, whose stage 1 reads the API, runs http-get with the md5 and unpacks the zip (grid/README.md). The ISBI 2015 set of 400 cephalograms is the entry isbi2015_cephalograms of grid/fetch-xray.json, whose link is still to confirm.
+
 ### AASCE / BoostNet whole-spine films (`aasce`, HAVE)
 
 - Registry: link https://aasce19.github.io/; grid path `/rs/rs_grp_oschome/go2432/data/thoracic_xr/mirror_zlinzju_ke30_u7_AASCE2019; the 579 at /rs/rs_grp_oschome/go2432/data/aasce2019_boostnet/raw/aasce`; counts labelled films 609, challenge test films 98, thoracic test films 608.
@@ -684,12 +690,6 @@ registry record holds no such field.
     - checks: `sha256sums: path ${DEST}/vindr/1.0.0, file SHA256SUMS.txt`; `note: text 8,389 train + 2,077 test .dicom; csv-to-disk one-to-one; rebuild the study map with slurm/vindr_identity_export.sh`
     - on the grid: `/rs/rs_grp_oschome/go2432/data/vindr_spinexr`
     - licence: PhysioNet Restricted Health Data License 1.5.0 (named-person DUA); outside WSU determination 2026-269; covered by its supplement HPR 2026-330 (notice 2026-09-29); access: credentialed_dua
-
-### Aariz cephalometric benchmark (Khalid, Fraz 2023) and the ISBI 2015 cephalograms (`aariz_cephalograms`, GET)
-
-- Registry: link https://doi.org/10.6084/m9.figshare.27986417; grid path none; counts films 1,000, devices 7, landmarks 29, isbi 2015 films 400, zip bytes 2,098,209,792.
-- Manifest records: none. found by the sweep of 2026-10-21 (docs/research/xray-datasets-missing.md); nothing fetched, so no manifest record was ever made.
-- The registry's steps: The 1,000-film set is figshare article 27986417 (doi 10.6084/m9.figshare.27986417), one file Aariz.zip with its md5 in the record; the paper is Khalid, Fraz et al., Scientific Data 12, 1336 (2025), doi 10.1038/s41597-025-05542-3. Fetch it as a Slurm job on the owner's word, never on the login node: bash grid/run-xray-chain.sh --only aariz, whose stage 1 reads the API, runs http-get with the md5 and unpacks the zip (grid/README.md). The ISBI 2015 set of 400 cephalograms is the entry isbi2015_cephalograms of grid/fetch-xray.json, whose link is still to confirm.
 
 ### FracAtlas (Abedeen 2023, Scientific Data) (`fracatlas`, GET)
 

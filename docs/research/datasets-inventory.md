@@ -22,8 +22,8 @@ NONE = does not exist publicly; EXCLUDED = held or seen and set aside for a stat
 111 sources in the registry.
 
 ```
-HAVE      ##########..............................  27
-GET       #######################.................  63
+HAVE      ##########..............................  28
+GET       ######################..................  62
 GATED     #####...................................  15
 EMBARGOED ........................................   1
 NONE      #.......................................   2
@@ -35,7 +35,7 @@ EXCLUDED  #.......................................   3
 | Real intraoperative fluoroscopy, stills (the target domain) | 5 | 3 | 0 | 0 | 2 | 1 | 11 |
 | Video and cine (consecutive frames) | 3 | 21 | 1 | 0 | 0 | 0 | 25 |
 | Real projections with a registered CT (the COBRA kind) | 3 | 1 | 0 | 1 | 0 | 0 | 5 |
-| Plain films (lateral or AP radiographs) | 8 | 12 | 7 | 0 | 0 | 2 | 29 |
+| Plain films (lateral or AP radiographs) | 9 | 11 | 7 | 0 | 0 | 2 | 29 |
 | CT collections and their renders (3D truth, synthetic 2D) | 8 | 24 | 7 | 0 | 0 | 0 | 39 |
 | Future directions | 0 | 2 | 0 | 0 | 0 | 0 | 2 |
 
@@ -99,6 +99,7 @@ EXCLUDED  #.......................................   3
 
 | Source | What it is | Level truth | Reach | Status | Counts | Licence | Link |
 | --- | --- | --- | --- | --- | --- | --- | --- |
+| Aariz cephalometric benchmark (Khalid, Fraz 2023) and the ISBI 2015 cephalograms | 1,000 lateral cephalograms from 7 devices with 29 landmarks and a cervical vertebral maturation (CVM) stage per film, C2 to C4 in every image (arXiv:2302.07797; the CEPHA29 challenge at ISBI 2023); the ISBI 2015 set of 400 cephalograms with 19 landmarks and no CVM stage is openly downloadable | C2 to C4 by the CVM stage (named vertebra shapes); no other level | HAVE | on the volume at the census of 2026-10-22 (1,000 images with their sidecars, docs/research/data-manifest/MANIFEST.md); found by the sweep of 2026-10-21; not fetched; the 1,000-film set is an open figshare download (27986417, one zip of 2,098,209,792 bytes), entered in grid/fetch-xray.json as aariz on 2026-10-21 (issue #40); the 400-film ISBI 2015 set's link is still to confirm; pediatric anchors for the top of the cervical counter from seven devices | films 1,000, devices 7, landmarks 29, isbi 2015 films 400, zip bytes 2,098,209,792 | CC BY 4.0 (the figshare record's licence field, read from the API on 2026-10-21) | [link](https://doi.org/10.6084/m9.figshare.27986417) |
 | AASCE / BoostNet whole-spine films | 609 labelled AP whole-spine films (481 BoostNet training + 128 BoostNet test) and 98 challenge-test films whose landmarks the release never published; both copies are on Ceph: the GitHub mirror holds all 707, and an older request-form copy holds 481 + 98 = 579 without the 128 test films (HOME's spine-detector path has linked to it since 2026-10-10) | thoracic, as a test set | HAVE | thoracic test set only: the prep wrote 608 of the 609 labelled films (one degenerate box); 457 of the 481 training films once fed the deleted level banks v4, v5 and v5c (24 skipped by an unsorted-landmark artefact) and the 128 test films never did; a request-form source; the Kaggle scoliosis YOLOv5 set (kaggle_scoliosis_yolov5) may be a relabel of these films: its hashes are checked against this copy before it counts as new people (the sweep of 2026-10-21) | labelled films 609, challenge test films 98, thoracic test films 608 | by request form (SpineWeb); the mirror repository is MIT, the images' reuse terms not recorded | [link](https://aasce19.github.io/) |
 | BUU-LSPINE | 3,603 lateral and 3,600 AP lumbar radiographs of 3,600 people with end-plate lines, plus the 2000 relabel and a 400 sample | lumbar | HAVE | laterals used; the AP films and the 2000 relabel never used, no criterion; no weight trained on them leaves the grid until the owner has read the licence | lateral films 3,603, ap films 3,600, people 3,600 | unread by the owner | not recorded |
 | CSXA cervical lateral films | 4,963 lateral cervical radiographs with corner JSON | cervical, C1 to C7 | HAVE | used fully; every person in the v9 base, so not held out until re-keyed | films 4,963 | open | not recorded |
@@ -107,7 +108,6 @@ EXCLUDED  #.......................................   3
 | NHANES II unannotated films | 16,531 digitised films without landmarks | none; pseudo-labels cut anomalous accuracy 20 points | HAVE | unused by a written criterion; the VertXNet Zenodo record adds radiologist landmarks with vertebral identity and the reference bodies C2 and S1 to the NHANES II films (record vertxnet_nhanes2_labels, found by the sweep of 2026-10-21), and the manifest's nhanes_pseudo directory of 16,234 pseudo-labelled films could be checked against those labels | films 16,531 | open (NCHS) | [link](https://wwwn.cdc.gov/nchs/data/nhanes2/NH2_Xray.htm) |
 | Spinal-AI2024 | 20,000 machine-generated films from 44 synthetic identities; no patient was imaged | assumed | HAVE | all on train in the G3 split; nothing to hold out | films 20,000, identities 44 | not recorded | not recorded |
 | VinDr-SpineXR | 10,466 DICOM (8,389 train + 2,077 test) in 5,000 studies with lesion boxes | no levels | HAVE | on the grid under the PhysioNet agreement, covered since 29 Sep 2026 by WSU IRB HPR 2026-330 (the supplement to 2026-269: not human participant research); the C-ArmLSpine fold models carry 2,632 of its crops; the v8 and v9 level banks left it out for comparability, with no criterion; its implant boxes trained yolo_hw; the Roboflow rf100-vl relabels (roboflow_vindr_relabels) redistribute these images outside the agreement and are not to be fetched (the sweep of 2026-10-21) | images 10,466, studies 5,000 | PhysioNet Restricted Health Data License 1.5.0 (credentialed, named-person agreement) | [link](https://physionet.org/content/vindr-spinexr/1.0.0/) |
-| Aariz cephalometric benchmark (Khalid, Fraz 2023) and the ISBI 2015 cephalograms | 1,000 lateral cephalograms from 7 devices with 29 landmarks and a cervical vertebral maturation (CVM) stage per film, C2 to C4 in every image (arXiv:2302.07797; the CEPHA29 challenge at ISBI 2023); the ISBI 2015 set of 400 cephalograms with 19 landmarks and no CVM stage is openly downloadable | C2 to C4 by the CVM stage (named vertebra shapes); no other level | GET | found by the sweep of 2026-10-21; not fetched; the 1,000-film set is an open figshare download (27986417, one zip of 2,098,209,792 bytes), entered in grid/fetch-xray.json as aariz on 2026-10-21 (issue #40); the 400-film ISBI 2015 set's link is still to confirm; pediatric anchors for the top of the cervical counter from seven devices | films 1,000, devices 7, landmarks 29, isbi 2015 films 400, zip bytes 2,098,209,792 | CC BY 4.0 (the figshare record's licence field, read from the API on 2026-10-21) | [link](https://doi.org/10.6084/m9.figshare.27986417) |
 | FracAtlas (Abedeen 2023, Scientific Data) | 4,083 musculoskeletal radiographs from three Bangladeshi hospitals (hand, leg, hip, shoulder), 717 with 922 fracture instances, boxes and masks; the hip and pelvis films show the sacrum and L5 | none; no spine labels | GET | found by the sweep of 2026-10-21; not fetched; a South Asian population and devices the project has not seen | radiographs 4,083, fractured 717, fracture instances 922, hospitals 3 | CC BY 4.0 | [link](https://figshare.com/articles/dataset/The_dataset/22363012) |
 | Fraiwan spine X-ray set (Mendeley xkt857dsxk) | 338 subjects' spine radiographs from King Abdullah University Hospital, Jordan, in three classes (scoliosis, spondylolisthesis, normal), original and resized (Fraiwan et al. 2022); views to confirm on the page | none; a pseudo-label or test arm only | GET | found by the sweep of 2026-10-21; not fetched; new people from a Middle-Eastern centre, with spondylolisthesis cases | subjects 338, classes 3 | CC BY 4.0 (Mendeley's default; to confirm on the page) | [link](https://data.mendeley.com/datasets/xkt857dsxk) |
 | Kaggle bone fracture multi-region X-ray data (bmadushanirodrigo) | 10,580 radiographs in fractured and non-fractured folders over lower limbs, upper limbs, lumbar spine, hips and knees; 481 MB | none; a lumbar-spine folder and a hip folder from unknown devices | GET | found by the sweep of 2026-10-21; not fetched; warning: the licence and the images' origin are unstated in what was read (many Kaggle fracture sets are scraped from teaching sites), to confirm on the page; an exposure-diversity pool only, and not to be fetched until its origin is shown to be redistributable | radiographs 10,580, size mb 481 | Kaggle; the licence and the images' origin to confirm on the page | [link](https://www.kaggle.com/datasets/bmadushanirodrigo/fracture-multi-region-x-ray-data) |
@@ -197,6 +197,7 @@ Every held source with a path the record gives, Ceph under /rs/rs_grp_oschome/go
 | COBRA2026 Elekta | `/rs/rs_grp_oschome/go2432/data/cobra2026` | cases 467, in bank 145 |
 | COBRA2026 on the grid, all projections | `/rs/rs_grp_oschome/go2432/data/cobra2026` | cases 692, projections 375,618, size gb 808.615 |
 | COBRA2026 Varian | `/rs/rs_grp_oschome/go2432/data/cobra2026` | cases 225 |
+| Aariz cephalometric benchmark (Khalid, Fraz 2023) and the ISBI 2015 cephalograms | `/rs/rs_grp_oschome/go2432/data/aariz` | films 1,000, devices 7, landmarks 29, isbi 2015 films 400, zip bytes 2,098,209,792 |
 | AASCE / BoostNet whole-spine films | `/rs/rs_grp_oschome/go2432/data/thoracic_xr/mirror_zlinzju_ke30_u7_AASCE2019; the 579 at /rs/rs_grp_oschome/go2432/data/aasce2019_boostnet/raw/aasce` | labelled films 609, challenge test films 98, thoracic test films 608 |
 | VinDr-SpineXR | `/rs/rs_grp_oschome/go2432/data/vindr_spinexr/raw/vindr/1.0.0` | images 10,466, studies 5,000 |
 | Synthetic hardware CTs: implant_ct (CTSP, deleted), implant_verse, implant_ts | `/rs/rs_grp_oschome/go2432/data/multisource_banks/derived/implant_*` | implant verse subjects 373, implant verse volumes 1,119, implant verse size gb 187, implant ts subjects 817, implant ts volumes 1,629, implant ts size gb 39 |
@@ -382,14 +383,6 @@ Link: https://zenodo.org/records/15753063. Licence: to confirm on the page.
 Link: https://zenodo.org/records/21322350. Licence: CC BY-NC 4.0.
 
 1. Wait for the embargo to lift on 2032-03-01; nothing to apply for.
-
-### Aariz cephalometric benchmark (Khalid, Fraz 2023) and the ISBI 2015 cephalograms (GET)
-
-Link: https://doi.org/10.6084/m9.figshare.27986417. Licence: CC BY 4.0 (the figshare record's licence field, read from the API on 2026-10-21).
-
-1. The 1,000-film set is figshare article 27986417 (doi 10.6084/m9.figshare.27986417), one file Aariz.zip with its md5 in the record; the paper is Khalid, Fraz et al., Scientific Data 12, 1336 (2025), doi 10.1038/s41597-025-05542-3.
-2. Fetch it as a Slurm job on the owner's word, never on the login node: bash grid/run-xray-chain.sh --only aariz, whose stage 1 reads the API, runs http-get with the md5 and unpacks the zip (grid/README.md).
-3. The ISBI 2015 set of 400 cephalograms is the entry isbi2015_cephalograms of grid/fetch-xray.json, whose link is still to confirm.
 
 ### FracAtlas (Abedeen 2023, Scientific Data) (GET)
 
