@@ -33,9 +33,18 @@ function reason_is_plain(text) {
   if (text ~ /[A-Za-z0-9_-]\.[A-Za-z][A-Za-z0-9]*/) return 0
   return message_is_plain(text)
 }
-function cut_other_paths(text) {
-  gsub(/\/[A-Za-z0-9._~+-][^ \t:;,)"']*/, "<path>", text)
-  return text
+# Every other path is cut whole, but a count such as 21/21 or 1/27 (digits on both sides of the
+# slash and nothing else) is a fraction and stays.
+function cut_other_paths(text,    out, piece, before) {
+  out = ""
+  while (match(text, /\/[A-Za-z0-9._~+-][^ \t:;,)"'|]*/)) {
+    piece = substr(text, RSTART, RLENGTH)
+    before = substr(text, 1, RSTART - 1)
+    if (before ~ /(^|[^A-Za-z0-9_.\/-])[0-9]+$/ && piece ~ /^\/[0-9]+\.?$/) out = out before piece
+    else out = out before "<path>"
+    text = substr(text, RSTART + RLENGTH)
+  }
+  return out text
 }
 {
   line = $0

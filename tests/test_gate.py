@@ -848,6 +848,7 @@ echo "the split is not disjoint; no training step reads this version"; exit 1
             f"- FAILED: no bank at {self.data}/realxray/carmlspine/case134_19650312\n"
             f"- run directory: {self.runs}/20261022-abc, weights {self.models}/resnet18-f37072fd.pth, raw /home/go2432/x/case39.png\n"
             "- split-check of version 3 FAILED: the split is not disjoint; no training step reads this version\n"
+            "| accuracy | all levels | 21/21 | 1.000 |\nChance is 1/27.\n"
             "- vindr: bank refused: Doe_John/IM0007.dcm: not in the person table\n"
             "- carmlspine: refused: the same bytes as case039_0002.png, under another person\n",
             encoding="utf-8")
@@ -857,9 +858,29 @@ echo "the split is not disjoint; no training step reads this version"; exit 1
         self.assertIn("- FAILED: no bank at <data root: realxray>\n", done.stdout)
         self.assertIn("- run directory: <runs>, weights <models>, raw <path>\n", done.stdout)
         self.assertIn("FAILED: the split is not disjoint; no training step reads this version", done.stdout)
+        # a count is no path: the run's results table keeps 21/21 and chance 1/27
+        self.assertIn("| accuracy | all levels | 21/21 | 1.000 |", done.stdout)
+        self.assertIn("Chance is 1/27.", done.stdout)
         self.assertEqual(done.stdout.count("<reason withheld"), 3, done.stdout)
         for value in ("9f86d081", "1.2.3.4", "case134", "19650312", "20261022", "case39", "go2432", "Doe_John", "case039"):
             self.assertNotIn(value, done.stdout)
+
+    def test_the_box_runs_apptainer_quietly(self):
+        # apptainer's INFO lines would land in the output a stage reads as JSON (the C-ArmLSpine
+        # ingest's summary failed on one on 2026-10-22)
+        sandbox = self.tmp / "sandbox"
+        (sandbox / "bin").mkdir(parents=True)
+        (sandbox / "bin" / "bash").write_text("", encoding="utf-8")
+        (sandbox / "bin" / "bash").chmod(0o755)
+        (self.fake / "apptainer").write_text('#!/bin/bash\necho "$*" > "$FAKE/apptainer.log"\n', encoding="utf-8")
+        (self.fake / "apptainer").chmod(0o755)
+        env = dict(os.environ, PATH=f"{self.fake}:{os.environ['PATH']}", FAKE=str(self.fake), SCHWINGNET_SANDBOX=str(sandbox),
+                   LAB_VOLUME=str(self.tmp))
+        for name in ("APPTAINER_CONTAINER", "SINGULARITY_CONTAINER", "SCHWINGNET_NATIVE", "CUDA_VISIBLE_DEVICES", "SLURM_JOB_GPUS"):
+            env.pop(name, None)
+        done = subprocess.run(["bash", str(GRID / "box.sh"), "python", "-V"], env=env, capture_output=True, text=True, timeout=60)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertTrue((self.fake / "apptainer.log").read_text(encoding="utf-8").startswith("--quiet exec "))
 
     def test_status_is_bounded_whatever_the_reports_hold(self):
         # 50 reports of 12 lines each would print 650 lines: the bound, not the inputs, keeps it to 400

@@ -39,4 +39,6 @@ else
 fi
 export APPTAINERENV_PREPEND_PATH=${SCHWINGNET_PIXI_BIN:-$LAB/go2432/tools/pixi-0.81.0/bin}
 export PIXI_CACHE_DIR=${PIXI_CACHE_DIR:-$LAB/go2432/.cache/pixi}
-exec "$APPTAINER" exec "${opts[@]}" "$SANDBOX" "$@"
+# --quiet: apptainer's INFO lines (the grid's "/etc/singularity/ exists" notice) would land in the
+# output of every tool a stage reads as JSON, and the C-ArmLSpine ingest's summary failed on one.
+exec "$APPTAINER" --quiet exec "${opts[@]}" "$SANDBOX" "$@"
