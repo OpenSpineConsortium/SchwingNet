@@ -184,6 +184,40 @@ class LatencyToolsTest(unittest.TestCase):
                                      "--name", "case134", "--threads", "1", "--warmup", "1", "--out", str(out)]), 0)
         self.assertEqual(json.loads((out / "summary.json").read_text(encoding="utf-8"))["frames"], len(frames))
 
+    def test_6d_the_angle_is_read_as_each_real_bank_writes_it(self):
+        sweep = load("sweep")
+        where = "meta.json"
+        self.assertEqual(sweep.gantry_of({"view": {"gantry_deg": 12.5}}, where), 12.5)
+        spin = {"angle": -37.0, "tilt": 0.0, "lat_signed_deg": 37.0, "mode": "cbct_spin", "boxes": []}
+        self.assertEqual(sweep.gantry_of(spin, where), -37.0)
+        spot = {"view": "LAT", "angle": 88.0, "boxes": []}
+        self.assertIsNone(sweep.gantry_of(spot, where))
+        self.assertIsNone(sweep.gantry_of({"boxes": []}, where))
+        with self.assertRaises(sweep.SweepError):
+            sweep.gantry_of({"view": 3}, where)
+
+    def test_6e_a_spin_bank_carries_its_angle_into_the_sweep(self):
+        import shutil
+
+        sweep = load("sweep")
+        bank = self.tmp / "spin-bank"
+        source = self.tmp / "bank-test"
+        images = sorted((source / "images").glob("*/case134_*"))[:3]
+        self.assertTrue(images)
+        for n, image in enumerate(images):
+            target = bank / "images" / "test" / image.name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(image, target)
+            meta = json.loads((source / "meta" / f"{image.stem}.json").read_text(encoding="utf-8"))
+            meta.pop("view", None)
+            meta.update({"angle": 10.0 * n - 10.0, "mode": "cbct_spin"})
+            (bank / "meta").mkdir(exist_ok=True)
+            (bank / "meta" / f"{image.stem}.json").write_text(json.dumps(meta), encoding="utf-8")
+        folder = self.tmp / "spin-sweep"
+        self.assertEqual(sweep.main(["from-bank", "--bank", str(bank), "--case", "case134", "--out", str(folder)]), 0)
+        lines = [json.loads(l) for l in (folder / "boxes.jsonl").read_text(encoding="utf-8").splitlines()]
+        self.assertEqual([l["gantry_deg"] for l in lines], [-10.0, 0.0, 10.0])
+
     def test_6c_a_box_past_the_edge_is_clipped_and_one_outside_is_dropped_with_its_level(self):
         sweep = load("sweep")
         line = {"frame": "x", "boxes_px": [[-10, 10, 50, 60], [300, 10, 320, 60], [10, 10, 40, 40]], "levels": ["L1", "L2", "L3"]}

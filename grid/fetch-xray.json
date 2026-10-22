@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "about": "The open X-ray datasets of docs/research/xray-datasets-missing.md, one entry per set (LUMOS is fetched by grid/run-platform-fetch.sh as zenodo_lumos, record 18173664, whose landing grid/banks/lumos.json reads), read by tools/fetch_sources.py inside grid/01-fetch.sbatch; a figshare entry names the article's public API, from which the job reads each file's download URL, size and md5, and 'unpack' true opens each zip that came into raw/, since the bank stage reads files and not archives. Every entry lands at <data_root>/<id>/raw, the folder the registry entry data/registry/<id>.json names as the source's own; the state of each helper goes to <data_root>/<id>/fetch-state and the record of the run to <data_root>/<id>/FETCH.json. A field spelled null is not known; 'confirm' lists what a person reads on the page before the first run, and a route 'manual' is skipped with one printed line until the entry carries its link. The checksums the helper verifies itself (Zenodo's md5 per file, Hugging Face's LFS sha256) are not repeated here; 'checksum' holds a hash only where a page states one for a plain URL.",
+  "about": "The open X-ray datasets of docs/research/xray-datasets-missing.md, one entry per set (LUMOS is fetched by grid/run-platform-fetch.sh as zenodo_lumos, record 18173664, whose landing grid/banks/lumos.json reads), read by tools/fetch_sources.py inside grid/01-fetch.sbatch; a figshare entry names the article's public API, from which the job reads each file's download URL, size and md5, and 'unpack' true opens each zip that came into raw/, since the bank stage reads files and not archives. Every entry lands at <data_root>/<id>/raw, the folder the registry entry data/registry/<id>.json names as the source's own; the state of each helper goes to <data_root>/<id>/fetch-state and the record of the run to <data_root>/<id>/FETCH.json. A field spelled null is not known; 'confirm' lists what a person reads on the page before the first run, and a route 'manual' is skipped with one printed line until the entry carries its link. The checksums the helper verifies itself (Zenodo's md5 per file, Hugging Face's LFS sha256) are not repeated here; 'checksum' holds a hash only where a page states one for a plain URL. The credentialed list is the opt-in list behind a PhysioNet login, whether a project is Restricted or Credentialed, which each entry's licence says.",
   "data_root": "/rs/rs_grp_oschome/go2432/data",
   "reacquire": "~/spinesurg-ct-nnunet/data_platform/reacquire/reacquire.py",
   "open": [
@@ -343,16 +343,16 @@
       "source": "https://physionet.org/content/vindr-pcxr/1.0.0/ (9,125 pediatric frontal chest radiographs, DICOM)",
       "url": "https://physionet.org/files/vindr-pcxr/1.0.0/",
       "dest": "/rs/rs_grp_oschome/go2432/data/vindr_pcxr/raw",
-      "size_gb": 30,
+      "size_gb": 35,
       "checksum": {
         "sha256": "PhysioNet publishes SHA256SUMS.txt in the project folder, fetched with the files"
       },
-      "licence": "PhysioNet Credentialed Health Data License 1.5.0, the agreement signed on the page",
+      "licence": "PhysioNet Restricted Health Data License 1.5.0, the data use agreement signed on the page and no training (spine-datasets 7a74bb6, 2026-10-21)",
       "credentialed": true,
       "confirm": [
-        "the data use agreement for vindr-pcxr is signed under the owner's PhysioNet account",
+        "the data use agreement for vindr-pcxr is signed under the PhysioNet account ~/.netrc names; HTTP 403 after the login means another account (the fetch report names the answer)",
         "~/.netrc as above",
-        "about 30 GB (to confirm on the page)",
+        "34.1 GB uncompressed (spine-datasets 7a74bb6)",
         "DICOM: the bank stage refuses it until pydicom is in pixi.lock"
       ]
     },

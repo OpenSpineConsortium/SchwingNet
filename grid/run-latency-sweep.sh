@@ -2,10 +2,10 @@
 # Submit issue #13's grid jobs for one or more runs of the level stage, each run's jobs side by side
 # (the login node runs nothing but sbatch and this script):
 #   probe   reqp, 10 minutes, no GPU: what the raw case134 and case39 sweeps are on disk
-#   gpu     gmsap, 1 GPU: ONNX export, parity of each arm against PyTorch on the CPU, latency PyTorch
-#           and ONNX Runtime on the GPU
+#   gpu     gmsap, QoS gpu, 1 GPU: ONNX export, parity of each arm against PyTorch on the CPU,
+#           latency PyTorch and ONNX Runtime on the GPU
 #   cpu     reqp --qos=requeue, 8 threads: latency PyTorch and ONNX Runtime on CPU (afterany:gpu)
-#   sweep   gmsap, 1 GPU each, an array of one task per sweep given (afterany:gpu)
+#   sweep   gmsap, QoS gpu, 1 GPU each, an array of one task per sweep given (afterany:gpu)
 #
 #   bash grid/run-latency-sweep.sh --probe
 #   bash grid/run-latency-sweep.sh --catalog <catalog.sqlite> <run dir> [<run dir> ...] \
@@ -45,6 +45,12 @@ done
 cd "$REPO/grid" || { echo "no $REPO/grid: is SCHWINGNET the checkout?"; exit 2; }
 mkdir -p logs
 out=LAST_LATENCY.txt
+# A GPU job takes the gpu QoS, as Beethoven for VS Code submits one (extension/src/core/slurm.ts),
+# without which Slurm refuses it (issue #74: "Invalid qos specification"). The partition is gmsap
+# alone, not the three GPU partitions the version 1 run takes, since the retraining plan measures
+# latency on the H200 (docs/research/retraining-plan.md, item 4) and gmsap holds the H200 nodes;
+# each latency record still names the GPU it ran on (tools/latency.py, "device").
+GPU=(--partition=gmsap --qos=gpu --gres=gpu:1)
 : > "$out"
 submit() { # name, then sbatch's arguments; prints and records the job id
   local name=$1; shift
@@ -62,13 +68,13 @@ if [ ${#RUNS[@]} -gt 0 ] && [ -z "$CATALOG" ]; then echo "--catalog names the ru
 for run in ${RUNS[@]+"${RUNS[@]}"}; do
   [ -f "$run/RUN.json" ] && [ -f "$run/train/checkpoint.json" ] && [ -f "$run/train/best.pt" ] || { echo "$run: has not finished training (no RUN.json, train/checkpoint.json or train/best.pt)" >&2; exit 2; }
   common="ALL,SCHWINGNET=$REPO,RUN=$run,CATALOG=$CATALOG"
-  gpu=$(submit "gpu $run" --gres=gpu:1 --export="$common,PART=gpu" latency-sweep.sbatch) || exit 1
+  gpu=$(submit "gpu $run" "${GPU[@]}" --export="$common,PART=gpu" latency-sweep.sbatch) || exit 1
   # afterany: the CPU arms and the sweeps need only the export, and each refuses an arm whose
   # parity did not pass, so a failed GPU arm never holds them back
   submit "cpu $run" --dependency=afterany:"$gpu" --partition=reqp --qos=requeue --cpus-per-task=8 \
     --mem=16G --time=01:00:00 --export="$common,PART=cpu,THREADS=8" latency-sweep.sbatch >/dev/null || exit 1
   if [ ${#SWEEPS[@]} -gt 0 ]; then
-    submit "sweep $run" --dependency=afterany:"$gpu" --gres=gpu:1 --array=0-$(( ${#SWEEPS[@]} - 1 )) \
+    submit "sweep $run" --dependency=afterany:"$gpu" "${GPU[@]}" --array=0-$(( ${#SWEEPS[@]} - 1 )) \
       --export="$common,PART=sweep,SWEEPS=${SWEEPS[*]}" latency-sweep.sbatch >/dev/null || exit 1
   fi
 done

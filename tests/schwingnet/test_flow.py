@@ -165,8 +165,11 @@ def test_the_flow_tool_reads_the_split_and_refuses_a_dirty_tree(tmp_path: Path, 
     assert made.catalog_version == 3 and made.epochs == 2 and made.seed == 7 and check["disjoint"]
     plan = flow.job_specs(flow.parse(["plan", "--mode", "slurm", "--hours", "4"]))
     assert [j.step for j in plan] == [Step.TRAIN, Step.EVALUATE] and plan[0].gpus == 1 and plan[0].environment == "train-gpu"
+    # issue #74: a GPU step without the gpu QoS is refused by Slurm, so slurm mode asks for it by default
+    assert all(j.partition == "gmsap,gvohp,galhp" and j.qos == "gpu" for j in plan)
+    assert "#SBATCH --qos=gpu" in sbatch_script(plan[0], "/runs/x", "/home/me/schwingnet")
     local = flow.job_specs(flow.parse(["plan", "--mode", "local"]))
-    assert local[0].gpus == 0 and local[0].environment == "train-cpu" and local[0].partition == "local"
+    assert local[0].gpus == 0 and local[0].environment == "train-cpu" and local[0].partition == "local" and local[0].qos is None
 
 
 def test_record_copies_the_small_files_and_appends_one_ledger_row(tmp_path: Path) -> None:

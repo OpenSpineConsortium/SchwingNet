@@ -75,7 +75,7 @@ def test_the_stages_run_off_the_grid_and_a_grown_raw_copy_is_counted_once(tmp_pa
     assert len(shards) == 1
     code, out = stage("03-catalog.sbatch", logs, env)
     assert code == 0, out
-    assert '"frames": 16' in out and "split-check: disjoint" in out
+    assert '"frames": 16' in out and "split-check of version 1: disjoint" in out
 
     # The raw copy grows by two patients (a zip unpacked after the first ingest, a second part of
     # a download): the second ingest supersedes the first shard and the catalog counts 20 frames,
@@ -105,4 +105,6 @@ def test_the_stages_run_off_the_grid_and_a_grown_raw_copy_is_counted_once(tmp_pa
     assert code == 0, out
     assert '"new": false' in out
     report = (logs / "logs" / "03-catalog-STAGE-REPORT.md").read_text(encoding="utf-8")
-    assert "split-check: disjoint" in report
+    assert "split-check of version 2: disjoint" in report
+    # each passed check left the marker the version 1 run's chooser reads (grid/v1-version.sh)
+    assert sorted(p.name[:14] for p in (data_root / "_catalog" / "checked").iterdir()) == ["catalog-000001", "catalog-000002"]

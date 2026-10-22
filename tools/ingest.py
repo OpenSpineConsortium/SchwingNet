@@ -108,7 +108,7 @@ def level_name(text):
 def labels_of(meta, width, height, labeller):
     """The boxes of a frame as catalog labels: a box with no trusted level is a frame fact only."""
     labels, dropped = [], 0
-    for box in meta.get("boxes", []):
+    for box in boxes_of(meta):
         level = level_name(box.get("level"))
         if level is None or box.get("kept") is False:
             dropped += 1
@@ -121,8 +121,55 @@ def labels_of(meta, width, height, labeller):
     return labels, dropped
 
 
+def mapping_of(meta, key):
+    """A field the spec makes an object, as a dict ({} where it is absent), refused by name where
+    a bank wrote something else, so a frame of another shape is one line and never a traceback."""
+    value = meta.get(key)
+    if value is None:
+        return {}
+    if not isinstance(value, dict):
+        raise IngestError(f"meta's {key} is a {type(value).__name__}, not an object")
+    return value
+
+
+def boxes_of(meta):
+    boxes = meta.get("boxes")
+    if boxes is None:
+        return []
+    if not isinstance(boxes, list) or not all(isinstance(box, dict) for box in boxes):
+        raise IngestError("meta's boxes is not a list of objects")
+    return boxes
+
+
+def angle_of(meta):
+    """The positioner angle a builder wrote beside the view, None where it wrote none, refused by
+    name where it is not a number; Item holds it to its range, so no value is cast here."""
+    angle = meta.get("angle")
+    if angle is None:
+        return None
+    if isinstance(angle, bool) or not isinstance(angle, (int, float)):
+        raise IngestError(f"meta's angle is a {type(angle).__name__}, not a number")
+    return angle
+
+
+def view_of(meta):
+    """The frame's angle from AP and its gantry angle. The spec holds both under `view`. The
+    C-ArmLSpine builders write no such object and keep the C-arm's positioner angle as `angle`
+    (the DICOM PositionerPrimaryAngle, whose sign is the spec's lat_from_ap_deg): the spot bank's
+    (spinesurg-ct-nnunet tools/carmlspine_labels.py) writes `view` as the frame's tag (AP, LAT,
+    OBL, LAT2), read from that angle (tools/carmlspine_io.py view_of_angle); the case134 sweep's
+    (tools/case134_sweep.py) writes no `view` and names itself a spin with `mode`, where the same
+    angle is the spin's gantry angle, as COBRA's spin export writes it."""
+    view = meta.get("view")
+    if view is None or isinstance(view, str):
+        angle = angle_of(meta)
+        return angle, angle if meta.get("mode") == "cbct_spin" else None
+    view = mapping_of(meta, "view")
+    return view.get("lat_from_ap_deg"), view.get("gantry_deg")
+
+
 def device_of(meta, device_class):
-    device = meta.get("device") or {}
+    device = mapping_of(meta, "device")
     return {
         "device_class": device_class.value,
         "make": device.get("make") or None,
@@ -132,8 +179,10 @@ def device_of(meta, device_class):
 
 
 def exposure_of(meta):
-    device = meta.get("device") or {}
-    return {"kvp": device.get("kvp"), "mas": device.get("mas"), "px_mm": meta.get("px_mm")}
+    """The spec keeps kVp and mAs with the device; the C-ArmLSpine builder writes kvp beside it."""
+    device = mapping_of(meta, "device")
+    kvp = device.get("kvp") if device.get("kvp") is not None else meta.get("kvp")
+    return {"kvp": kvp, "mas": device.get("mas"), "px_mm": meta.get("px_mm")}
 
 
 def item_of(meta, sha, extension, width, height, settings):
@@ -141,7 +190,7 @@ def item_of(meta, sha, extension, width, height, settings):
     case = meta.get("case")
     if not case:
         raise IngestError("meta names no case")
-    view = meta.get("view") or {}
+    lat_from_ap_deg, gantry_deg = view_of(meta)
     labels, dropped = labels_of(meta, width, height, settings.labeller)
     row = {
         "path": frame_path(sha, extension),
@@ -150,8 +199,8 @@ def item_of(meta, sha, extension, width, height, settings):
         "modality": settings.modality.value,
         "device": device_of(meta, settings.device_class),
         "exposure": exposure_of(meta),
-        "lat_from_ap_deg": view.get("lat_from_ap_deg"),
-        "gantry_deg": view.get("gantry_deg"),
+        "lat_from_ap_deg": lat_from_ap_deg,
+        "gantry_deg": gantry_deg,
         "acquired": meta.get("acquired"),
         "labels": labels,
     }
@@ -179,6 +228,8 @@ def read_frame(image, meta_path, settings):
     sha = hashlib.sha256(data).hexdigest()
     width, height = png_size(data)
     meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    if not isinstance(meta, dict):
+        raise IngestError(f"{meta_path.name} is not a JSON object")
     return item_of(meta, sha, image.suffix.lstrip(".").lower(), width, height, settings)
 
 
