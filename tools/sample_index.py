@@ -779,15 +779,35 @@ def merge(run):
     db.executescript(SCHEMA)
     db.execute("PRAGMA journal_mode = OFF")
     db.execute("PRAGMA synchronous = OFF")
+    db.execute(f"PRAGMA cache_size = {-merge_cache_kib()}")
     insert_roots(db, read_roots(run / "roots.tsv"))
-    for part in sorted((run / "parts").glob("task-*.sqlite")):
+    parts = sorted((run / "parts").glob("task-*.sqlite"))
+    for number, part in enumerate(parts, 1):
         merge_part(db, part)
+        progress(f"part {number} of {len(parts)} merged")
     db.executescript(INDEXES)
+    progress("indexes built")
     join(db)
     db.commit()
     db.close()
     os.replace(staging, final)
     return final
+
+
+def merge_cache_kib():
+    """The page cache the merge may use, in KiB. SQLite's default of 2 MB makes every index build
+    and join sort spill to the lab volume, the likeliest reason the first merge on the grid's
+    network storage ran past five hours. SAMPLES_CACHE_MB sets it, in ASCII digits; the default,
+    32 GB, is half the memory grid/run-samples.sh gives the merge job."""
+    megabytes = os.environ.get("SAMPLES_CACHE_MB", "")
+    if re.fullmatch(r"[0-9]{1,7}", megabytes):
+        return int(megabytes) * 1024
+    return 32 * 1024 * 1024
+
+
+def progress(step):
+    """A dated line on stderr, the job's own log, so a long merge shows where it is."""
+    print(f"merge: {step} at {time.strftime('%Y-%m-%d %H:%M:%S')}", file=sys.stderr, flush=True)
 
 
 def insert_roots(db, rows):
@@ -836,9 +856,10 @@ JOINS = (
 
 
 def join(db):
-    for statement in JOINS:
+    for number, statement in enumerate(JOINS, 1):
         db.execute(statement.format(cap=MAX_KEY_FILES))
         db.commit()
+        progress(f"join {number} of {len(JOINS)} done")
 
 
 # ---- report: aggregates only -----------------------------------------------------------------
@@ -934,11 +955,23 @@ def markdown(result, recorded=None):
     return "\n".join(lines) + "\n"
 
 
+def string_keys(value):
+    """The manifest with every key a string, a missing one named unknown: a group's formats and
+    roles hold None beside names for a file the scan could not open, and json.dumps sorts keys only of
+    one type, which failed the first grid merge (job 40702276) after samples.sqlite was whole."""
+    if isinstance(value, dict):
+        return {("unknown" if key is None else str(key)): string_keys(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [string_keys(item) for item in value]
+    return value
+
+
 def report(db_path, out_json=None, out_md=None):
     result = manifest(db_path)
     text = markdown(result)
     if out_json:
-        Path(out_json).write_text(json.dumps(result, indent=1, sort_keys=True, default=str) + "\n", encoding="utf-8")
+        Path(out_json).write_text(json.dumps(string_keys(result), indent=1, sort_keys=True, default=str) + "\n",
+                                  encoding="utf-8")
     if out_md:
         Path(out_md).write_text(text, encoding="utf-8")
     return text

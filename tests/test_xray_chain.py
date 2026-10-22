@@ -221,13 +221,20 @@ class SlurmScriptsTest(unittest.TestCase):
             for word in ("partition", "qos", "requeue", "gres", "output", "job-name"):
                 self.assertNotIn(f"#SBATCH --{word}", text, name)
 
+    def setUp(self):
+        import tempfile
+        # a home of the test's own, so the gated sources' token and link files are the test's, never the runner's
+        home = tempfile.TemporaryDirectory()
+        self.addCleanup(home.cleanup)
+        self.home = Path(home.name)
+
     def dry_run(self, script, *args, free="9000G"):
         import tempfile
         with tempfile.TemporaryDirectory() as tmp:
             df = Path(tmp) / "df"
             df.write_text(f"#!/bin/bash\necho Avail\necho {free}\n", encoding="utf-8")
             df.chmod(0o755)
-            env = dict(os.environ, SCHWINGNET=str(ROOT), HPCW_DRY="1", DF=str(df))
+            env = dict(os.environ, SCHWINGNET=str(ROOT), HPCW_DRY="1", DF=str(df), HOME=str(self.home))
             done = subprocess.run(["bash", str(GRID / script), *args], env=env, capture_output=True, text=True,
                                   timeout=60)
             Path(ROOT / "grid" / "LAST_RUN.txt").unlink(missing_ok=True)
@@ -263,8 +270,20 @@ class SlurmScriptsTest(unittest.TestCase):
         self.assertIn("ID=hf_ct_rate", out.split("Not submitted")[1])
         self.assertIn("ID=idc_nlst", out.split("Not submitted")[1])
         self.assertNotIn("rsna_rspect_pe: job", out)
+        # a gated source whose token or link file is not in place is left out, the rest still go in
+        code, out = self.dry_run("run-platform-fetch.sh", "--gated")
+        self.assertEqual(code, 0, out)
+        self.assertIn("rsna_rspect_pe: left out: there is no ~/.fluorocap/credentials.env", out)
+        self.assertNotIn("rsna_rspect_pe: job", out)
+        self.assertIn("aws_stoic2021: job", out)
+        for path in (".fluorocap/credentials.env", ".hf/token.env", ".rsna/ratic_link"):
+            secret = self.home / path
+            secret.parent.mkdir(parents=True, exist_ok=True)
+            secret.write_text("KEY=value\n", encoding="utf-8")
+            secret.chmod(0o600)
         code, out = self.dry_run("run-platform-fetch.sh", "--gated")
         self.assertIn("rsna_rspect_pe: job", out)
+        self.assertNotIn("left out", out)
 
 
 if __name__ == "__main__":

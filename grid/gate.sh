@@ -33,7 +33,9 @@
 #                   the run waits afterok on each, so an input that fails again cancels it; the
 #                   catalog version is the one grid/v1-version.sh chooses
 #   latency         the latency jobs for the newest run that has a checkpoint, with the case134 sweep
-#   fetch <id>      one set of grid/fetch-xray.json, a credentialed one with ~/.netrc, banked and catalogued
+#   fetch <id>      one set of grid/fetch-xray.json, a credentialed one with ~/.netrc, banked and catalogued;
+#                   or one granted gated CT source of grid/run-platform-fetch.sh (its --gated-ids: CADS,
+#                   RSNA RATIC, RSPECT) once its token or link file is in place, after any live X-ray fetch
 #   samples         the sample index (grid/run-samples.sh): plan, scan and merge, refused while one
 #                   of them is live; status shows its MANIFEST.md, aggregates only
 #   stop            cancel the gate's own jobs that are still queued or running, and nothing else
@@ -529,7 +531,11 @@ word_fetch() {
   section=$(awk -v id="$id" '
     /"credentialed": \[/ { cred = 1 }
     index($0, "\"id\": \"" id "\"") { print (cred ? "credentialed" : "open"); exit }' "$REPO/grid/fetch-xray.json")
-  [ -n "$section" ] || { echo "refusing: $id is not an id of grid/fetch-xray.json"; return 64; }
+  if [ -z "$section" ]; then
+    gated_platform_id || { echo "refusing: $id is not an id of grid/fetch-xray.json nor a gated source of grid/run-platform-fetch.sh"; return 64; }
+    word_fetch_gated
+    return
+  fi
   if [ "$section" = credentialed ]; then
     # The owner's PhysioNet sign-in, read by the fetch job alone; never printed here.
     [ -f "$NETRC" ] || { echo "refusing: $id is credentialed and there is no ~/.netrc"; return 2; }
@@ -548,6 +554,28 @@ word_fetch() {
   done
   setup=$(setup_dependency) || return 1
   CATALOG_DEPEND=$waits chain "$setup" "${args[@]}"
+}
+
+gated_platform_id() {  # whether $id is one of the granted gated CT sources the platform script fetches alone
+  bash "$REPO/grid/run-platform-fetch.sh" --gated-ids 2>/dev/null | grep -qxF -- "$id"
+}
+word_fetch_gated() {  # one gated CT source through the platform script, recorded as dp_<id> under fetch:<id>
+  local busy xray="" one out rc
+  # One fetch of a source at a time: two would write the same landing at once.
+  busy=$(live_of "dp_$id")
+  [ -z "$busy" ] || { echo "refusing: a fetch of $id is still queued or running (job $busy)"; return 75; }
+  # X-ray before CT (the owner's order of 2026-10-21): the CT fetch waits on every X-ray fetch still live.
+  for one in $(awk '$3 == "xr_fetch" { print $1 }' "$STATE" 2>/dev/null | sort -u); do
+    case "$QUEUED" in *" $one "*) xray=$(joined "$xray" "afterany:$one") ;; esac
+  done
+  out=$(DEPEND="$xray" bash "$REPO/grid/run-platform-fetch.sh" --only "$id" 2>&1)
+  rc=$?
+  # The platform script's list of the owner's own lines (CT-RATE, NLST) is not this word's business.
+  echo "$out" | sed -n '/^Not submitted/q; p' | sed 's/^/  /'
+  echo "$out" | sed -n 's/^\([a-z0-9_]*\): job \([0-9][0-9]*\).*/\2 \1/p' | while read -r one name; do
+    record "$one" "dp_$name"
+  done
+  return $rc
 }
 
 word_samples() {
