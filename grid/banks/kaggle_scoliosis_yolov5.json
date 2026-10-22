@@ -1,0 +1,34 @@
+{
+  "id": "kaggle_scoliosis_yolov5",
+  "raw": "/rs/rs_grp_oschome/go2432/data/kaggle_scoliosis_yolov5/raw",
+  "bank": "/rs/rs_grp_oschome/go2432/data/kaggle_scoliosis_yolov5/bank",
+  "images": [
+    "to confirm: the images' glob, such as **/images/**/*.jpg, after the hash check against AASCE"
+  ],
+  "format": "to confirm: jpg or png",
+  "person": {
+    "regex": "to confirm: one film is one patient unless the page says otherwise, as (?P<case>[^/]+)\\.(jpe?g|png)$"
+  },
+  "view": {
+    "lat_from_ap_deg": 0.0,
+    "gantry_deg": null
+  },
+  "device": {
+    "make": null,
+    "model": null,
+    "detector": null
+  },
+  "modality": "dx",
+  "device_class": "film",
+  "split": "train",
+  "labels": {
+    "kind": "yolo",
+    "labels_dir": "to confirm: the labels folder beside images, such as train/labels",
+    "classes": {
+      "0": "to confirm: the level name of class 0, or null for a box with no trusted level"
+    }
+  },
+  "synthetic": false,
+  "px_mm": null,
+  "notes": "AP spine films with YOLO boxes on vertebrae; hash-check FETCH.json's sha256 list against the AASCE copy on the grid before any bank, and skip this source if they match"
+}

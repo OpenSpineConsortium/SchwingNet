@@ -1,0 +1,22 @@
+{
+  "id": "fraiwan_spine_xray",
+  "name": "Fraiwan spine X-ray set (Mendeley xkt857dsxk)",
+  "group": "films",
+  "what": "338 subjects' spine radiographs from King Abdullah University Hospital, Jordan, in three classes (scoliosis, spondylolisthesis, normal), original and resized (Fraiwan et al. 2022); views to confirm on the page",
+  "level_truth": "none; a pseudo-label or test arm only",
+  "reach": "get",
+  "status": "found by the sweep of 2026-10-21; not fetched; new people from a Middle-Eastern centre, with spondylolisthesis cases",
+  "licence": "CC BY 4.0 (Mendeley's default; to confirm on the page)",
+  "link": "https://data.mendeley.com/datasets/xkt857dsxk",
+  "how_to_get": [
+    "Open https://data.mendeley.com/datasets/xkt857dsxk and read the licence line, the version and the file list.",
+    "Fetch as a Slurm job on the owner's word, never on the login node: python3 data/reproduce/reacquire/reacquire.py http-get --url U --dest FILE, U being the public-files address the page gives, as the manifest's mendeley_5jdfdgp762 route does."
+  ],
+  "grid_path": null,
+  "counts": {
+    "subjects": 338,
+    "classes": 3
+  },
+  "measured": {},
+  "record": "docs/research/xray-datasets-missing.md (2026-10-21)"
+}

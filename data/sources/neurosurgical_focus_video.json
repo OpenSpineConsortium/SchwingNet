@@ -1,0 +1,18 @@
+{
+  "id": "neurosurgical_focus_video",
+  "name": "Neurosurgical Focus: Video (every article CC BY 4.0)",
+  "group": "video",
+  "what": "a library of spine-surgery videos PMC serves as MP4; the one checked (PMC13418632, 200 MB, 8 min) shows saved C-arm stills under a tracking overlay, not cine; the rest unscreened",
+  "level_truth": "levels in the article text where given",
+  "reach": "get",
+  "status": "download by browser (a proof-of-work gate stops scripts); screen for live fluoroscopy; AANS reserves TDM/AI-training rights in a footer",
+  "licence": "CC BY 4.0",
+  "link": "https://thejns.org/page/72659",
+  "how_to_get": [
+    "Search PMC for spine articles in the journal, download the MP4s in a browser, screen for live fluoroscopy segments, keep attribution."
+  ],
+  "grid_path": null,
+  "counts": {},
+  "measured": {},
+  "record": "spine-program 01_carm_level_detection/docs/FLUORO_VIDEO_SOURCES_2026-09-26.md"
+}

@@ -1,0 +1,111 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Level Counting Visual Abstract</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600&family=Source+Sans+3:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+:root{--bg:#f4f4f1;--panel:#ffffff;--ink:#1e2429;--ink2:#5a626c;--rule:#d6d3cb;--accent:#1f4e79;--accent2:#b5402a;--ok:#2e7d4f;--soft:#eaf0f6;--mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;--sans:"Source Sans 3",system-ui,-apple-system,"Segoe UI",sans-serif;--serif:"Source Serif 4",Georgia,serif}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#14171b;--panel:#1c2126;--ink:#e9ebee;--ink2:#a7aeb8;--rule:#323a44;--accent:#8db6e3;--accent2:#e58a75;--ok:#7cc79b;--soft:#22292f}}
+:root[data-theme="dark"]{--bg:#14171b;--panel:#1c2126;--ink:#e9ebee;--ink2:#a7aeb8;--rule:#323a44;--accent:#8db6e3;--accent2:#e58a75;--ok:#7cc79b;--soft:#22292f}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.4;padding-inline:16px;padding-block:18px 40px}
+.page{max-width:900px;margin:0 auto;background:var(--panel);border:1px solid var(--rule);padding:22px 26px 18px}
+h1{font-family:var(--serif);font-weight:600;font-size:clamp(20px,3.4vw,27px);line-height:1.15;margin:0 0 4px;text-wrap:balance}
+.sub{font-size:13.5px;color:var(--ink2);margin:0 0 12px;max-width:80ch}
+.tldr{background:var(--soft);border-left:4px solid var(--accent);padding:10px 14px;margin:0 0 14px;font-size:14.5px}
+.tldr b{color:var(--accent)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin:0 0 12px}
+.cell{border:1px solid var(--rule);padding:10px 11px 9px;background:var(--panel);min-width:0}
+.cell svg{width:44px;height:44px;display:block;margin-bottom:6px}
+.cell h3{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink2);margin:0 0 4px}
+.cell .big{font-family:var(--mono);font-size:19px;font-weight:500;color:var(--accent);line-height:1.15;margin:0 0 3px}
+.cell p{margin:0;font-size:12.5px;color:var(--ink)}
+.cell .ref{color:var(--ink2);font-size:11px}
+.strip{display:grid;grid-template-columns:1.2fr 1fr 1fr 1fr;gap:0;border:1px solid var(--rule);margin:0 0 12px;font-variant-numeric:tabular-nums}
+.strip div{padding:8px 10px;border-right:1px solid var(--rule);font-size:12.5px}
+.strip div:last-child{border-right:0}
+.strip .h{background:var(--soft);font-weight:600;font-size:11.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink2)}
+.strip .n{font-family:var(--mono);font-size:15px;color:var(--accent)}
+.strip .l{font-weight:600}
+.flow{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px;align-items:center}
+.flow .s{border:1px solid var(--rule);padding:6px 9px;font-size:12.5px;background:var(--panel)}
+.flow .s.l{background:var(--soft);border-color:var(--accent)}
+.flow .arrow{color:var(--ink2)}
+.refs{font-size:10.5px;color:var(--ink2);line-height:1.35;border-top:1px solid var(--rule);padding-top:8px;column-count:2;column-gap:18px}
+.refs ol{margin:0;padding-left:16px}
+.refs li{margin:0 0 2px;break-inside:avoid}
+.foot{font-size:10.5px;color:var(--ink2);margin-top:8px}
+@media print{
+  @page{size:letter portrait;margin:9mm}
+  body{background:#fff;padding:0;font-size:11.5px}
+  .page{border:0;padding:0;max-width:none}
+  .grid{grid-template-columns:repeat(5,1fr)}
+  .cell svg{width:34px;height:34px}
+  .cell .big{font-size:16px}
+  .refs{column-count:3;font-size:9px}
+}
+@media (max-width:520px){.strip{grid-template-columns:1fr 1fr}.strip div{border-bottom:1px solid var(--rule)}}
+</style>
+<div class="page">
+  <h1>The level, counted from the sacrum on the C-arm you already own</h1>
+  <p class="sub">A vertebra detector and a counter that link overlapping fluoroscopic frames from a trusted anchor to the level in hand. No tracker, no reference frame, no capital purchase. For spine surgeons at the hospitals that will never buy a navigation system.</p>
+  <div class="tldr"><b>TL;DR for the surgeon and the CFO.</b> Wrong-level spine surgery is rare per operation and common per career: a 34,544-case registry puts it at 1 in 830 operations (1 in 240 in the thoracic spine), and half of surveyed spine surgeons have done it once. Almost every case is a counting error under fluoroscopy, and the tools that prevent it — navigation suites — cost more than most hospitals will spend on a problem this rare. This method counts the level on the C-arm the hospital already owns: no tracker, no reference frame, no capital purchase, one learned detector and an exact count. With correct boxes it is exact on 99.2–100% of walks. The savings that can be priced are operating-room minutes (a thoracic localization takes about 15 minutes by needle-and-count and 3 with a pre-placed fiducial that itself costs $1,750–1,950 and a second visit); the savings that cannot be priced are the never event a hospital does not report, the lawsuit it does not defend, and the surgeon who does not spend those minutes worried. We ask for our own fluoroscopy, retrospectively, to measure the one number none of this can predict: how it performs on our machines and our patients.</div>
+
+  <div class="flow">
+    <div class="s">expose at the anchor</div><span class="arrow">&rarr;</span>
+    <div class="s l">detect bodies + anchor (the only learned step)</div><span class="arrow">&rarr;</span>
+    <div class="s">link overlapping frames</div><span class="arrow">&rarr;</span>
+    <div class="s">count <em>k</em> from the anchor</div><span class="arrow">&rarr;</span>
+    <div class="s">confirm with the instrument on bone</div>
+  </div>
+
+  <div class="grid">
+    <div class="cell">
+      <svg viewBox="0 0 48 48" fill="none" stroke="var(--accent2)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="16" y="6" width="16" height="7" rx="2"/><rect x="16" y="16" width="16" height="7" rx="2"/><rect x="16" y="26" width="16" height="7" rx="2"/><rect x="16" y="36" width="16" height="7" rx="2"/><path d="M6 19.5l7 0M6 19.5l3-3M6 19.5l3 3" /><path d="M42 30l-7 0" stroke-dasharray="2 2"/></svg>
+      <h3>The never event</h3>
+      <div class="big">1 in 830</div>
+      <p>operations at the wrong level in a 34,544-case registry (0.12%; thoracic 0.42%, 1 in 240). Half of surveyed surgeons have done one; 81% of events are intraoperative disorientation — a count that went wrong.</p>
+      <p class="ref">Furuya 2026 [1]; Mody 2008 [2]; Groff 2013 [3]</p>
+    </div>
+    <div class="cell">
+      <svg viewBox="0 0 48 48" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="24" r="16"/><path d="M24 12v12l8 5"/></svg>
+      <h3>Operating-room time</h3>
+      <div class="big">15 → 3 min</div>
+      <p>thoracic level localization by needle-and-count versus with a pre-placed fiducial, in two small series; an OR minute costs $34–37 before physician fees (2014 dollars, 30–40% more today).</p>
+      <p class="ref">Mongardi 2021, Upadhyaya 2012 [4,5]; Childers 2018 [6]</p>
+    </div>
+    <div class="cell">
+      <svg viewBox="0 0 48 48" fill="none" stroke="var(--ok)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M24 5l15 6v11c0 9-6 16-15 20C15 38 9 31 9 22V11z"/><path d="M17 24l5 5 9-11"/></svg>
+      <h3>What a wrong level costs</h3>
+      <div class="big">$75k median</div>
+      <p>indemnity per paid surgical never-event claim (IQR $29k–$215k); 17% of self-reported wrong-level events led to legal action, and 81% of litigated wrong-disc-level cases ended in a payment. Non-payment by CMS; public reporting; the patient's second operation.</p>
+      <p class="ref">Bettis 2026 [7]; Mody 2008 [2]; Goodkin 2004 [8]</p>
+    </div>
+    <div class="cell">
+      <svg viewBox="0 0 48 48" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 40V12a4 4 0 0 1 4-4h24a4 4 0 0 1 4 4v28"/><path d="M4 40h40"/><path d="M16 22h16M16 29h10"/></svg>
+      <h3>Navigation today</h3>
+      <div class="big">≈ $1–2.5M</div>
+      <p>list price of a spine navigation suite plus ~10% a year in service (vendor pricing; no verified capital figure exists in the literature). It addresses screw placement; no published study shows it reduces wrong-level surgery. Penetration by site of care is unreported.</p>
+      <p class="ref">assumption, labelled; see note</p>
+    </div>
+    <div class="cell">
+      <svg viewBox="0 0 48 48" fill="none" stroke="var(--ok)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="16" r="7"/><path d="M8 42c2-9 8-14 16-14s14 5 16 14"/><path d="M33 8l4 4 7-7" stroke="var(--ok)"/></svg>
+      <h3>Peace of mind</h3>
+      <div class="big">unmeasured</div>
+      <p>No study measures surgeon workload or satisfaction with versus without navigation, or during level localization. What is measured: 15% of surgeons have prepared the wrong level and caught it before incision, and nearly one in five has been sued for it.</p>
+      <p class="ref">Mody 2008 [2]; Groff 2013 [3]</p>
+    </div>
+  </div>
+
+  <div class="strip">
+    <div class="h">Per hospital, per year (inputs cited below)</div><div class="h">300 spine cases</div><div class="h">600 cases</div><div class="h">1,000 cases</div>
+    <div class="l">Wrong-level events expected at the published rate</div><div class="n">0.36</div><div class="n">0.72</div><div class="n">1.2</div>
+    <div class="l">Cost of those events (indemnity, defence, reoperation, non-payment)</div><div class="n">$8k expected; $75k–215k when it happens</div><div class="n">$17k expected</div><div class="n">$28k expected</div>
+    <div class="l">OR minutes on localization at the published time</div><div class="n">3,000 min</div><div class="n">6,000 min</div><div class="n">10,000 min</div>
+    <div class="l">Value of those minutes at the published cost</div><div class="n">$140k–$150k</div><div class="n">$275k–$300k</div><div class="n">$460k–$500k</div>
+    <div class="l">Navigation system, capital plus service, amortised</div><div class="n">$360k</div><div class="n">$360k</div><div class="n">$360k</div>
+  </div>
+  <p class="foot">Model, with every input labelled. Events = N × 0.12% (registry rate, all regions). Expected event cost = events × 17% litigated × $135k mean paid claim (Mehtsun 2013, Tan 2023); the per-event figure is the NPDB median and IQR — the expectation is small, the event is not. Minutes = N × 10 (needle-and-count at about 15 minutes against a 3-to-5-minute sweep; the 15 comes from two small non-randomised thoracic series and is applied to all cases: the weakest input here) × $34–37 (2014) × 1.35 (to 2026). Navigation = $1.5M capital over 7 years plus 10% service, an assumption, not a source. Reoperation, non-payment, reputation and surgeon well-being are not priced. The honest reading: the dollars are operating-room minutes; the never event is a harm and a reputation, not a line item.</p>
+
+  <div class="refs"><ol><li>Furuya M et al. Wrong-level spinal surgery in 34,544 degenerative spine operations. Bone Joint J 2026;108-B(5):673-680. PMID 42061893.</li><li>Mody MG et al. The prevalence of wrong level surgery among spine surgeons. Spine 2008;33(2):194-8. PMID 18197106.</li><li>Groff MW et al. Wrong-level and wrong-side lumbar surgery: AANS/CNS Spine Section survey. World Neurosurg 2013;79(3-4):585-92. PMID 22480979.</li><li>Mongardi L et al. Gold fiducial markers for thoracic level localization. 2021 (19 vs 11 patients).</li><li>Upadhyaya CD et al. Preoperative fiducial placement for thoracic localization. 2012 (26 vs 26).</li><li>Childers CP, Maggard-Gibbons M. Understanding costs of care in the operating room. JAMA Surg 2018;153(4):e176233.</li><li>Bettis T et al. Malpractice payments for surgical never events, NPDB 1991-2025. Patient Saf Surg 2026. DOI 10.1186/s13037-026-00508-9.</li><li>Goodkin R, Laska LL. Wrong disc space level surgery: medicolegal implications. Surg Neurol 2004;61:323-7.</li><li>Mehtsun WT et al. Surgical never events in the United States. Surgery 2013;153(4):465-72; Tan 2023 (mean paid claim).</li><li>Siminski et al. Preoperative gold fiducial placement for spinal level localization. AJNR 2023;44(5):618-622. PMID 37080723.</li><li>Longo UG et al. Errors of level in spinal surgery: systematic review. J Bone Joint Surg Br 2012;94-B(11):1546-50.</li><li>Joint Commission Sentinel Event Data 2024: 127 wrong surgeries, 9 wrong-level, 7 spinal.</li><li>The manuscript in preparation: exactness 99.17-100% with the annotation's boxes; 1,205/1,209 on 262 real lateral radiographs; detection is the deployment risk.</li></ol></div>
+  <p class="foot">Measured performance of the method: with the annotation's boxes the count was exact on 99.17–100% of reached walks in twelve arms of 16 to 801 spines; on 262 real lateral radiographs from C2, 1,205 of 1,209 (99.67%). Deployment risk is detection, not counting: that is what the retrospective fluoroscopy collection measures. Numbers in this page are from the cited sources and the manuscript in preparation; assumptions are labelled in the note above the references.</p>
+</div>
+
+</body></html>

@@ -1,0 +1,18 @@
+{
+  "id": "stanford_aimi_inspect",
+  "name": "Stanford AIMI INSPECT chest CT",
+  "group": "ct",
+  "what": "19,402 patients; a gated anomaly-harvest collection (group B7)",
+  "level_truth": "counted by the census pipeline once fetched",
+  "reach": "gated",
+  "status": "an agreement stands in front of the data; none signed",
+  "licence": "a data use agreement (non-commercial)",
+  "link": "https://stanfordaimi.azurewebsites.net/",
+  "how_to_get": [
+    "The same AIMI research-use agreement as Merlin, on the INSPECT dataset page."
+  ],
+  "grid_path": null,
+  "counts": {},
+  "measured": {},
+  "record": "spine-program 10_data_platform_grid/code/data_platform/DATA_MANIFEST.md group B7; spine-program 10_data_platform_grid acquisition/ACQUISITION_PLAN.md section 7"
+}

@@ -1,0 +1,14 @@
+{
+  "source": "aariz",
+  "identity_level": "patient",
+  "person_key_rule": "aariz:<film stem as grid/banks/aariz.json derives it>; the record states no patient id, so one film is one person, the weakest rule the split can hold and the one the recipe's note names",
+  "access": "CC BY 4.0 (figshare 27986417, doi 10.6084/m9.figshare.27986417; the record's licence field, read from the API on 2026-10-21); Khalid, Fraz et al., Scientific Data 2025, doi 10.1038/s41597-025-05542-3",
+  "modality": "dx",
+  "device_class": "film",
+  "regions": [
+    "cervical"
+  ],
+  "grid_root": "/rs/rs_grp_oschome/go2432/data/aariz",
+  "shards": [],
+  "notes": "1,000 lateral cephalograms from seven devices with 29 landmarks and the CVM stage, C2 to C4 in every film; the raw copy is /rs/rs_grp_oschome/go2432/data/aariz/raw (grid/fetch-xray.json, one zip of 2,098,209,792 bytes unpacked there) and the bank /rs/rs_grp_oschome/go2432/data/aariz/bank; no shard yet: the recipe's images glob and format wait on the unpacked folder, and the container of issue #40 could not reach figshare (grid/README.md, Measured)"
+}

@@ -36,7 +36,14 @@ Run `bash scripts/check.sh` before opening or updating a pull request. CI runs t
 Read `.claude/session.md` at the start of a session: it holds the completed work, the current state and the remaining tasks. Tag durable facts in conversation as `Decision:` or `Constraint:` so the next `cswap checkpoint write` keeps them.
 
 ### Durable decisions
-- (none recorded)
+- The goal (the owner, 2026-10-20): low-latency, high-accuracy vertebral classification on fluoroscopic video or images; the data workflow first, one model per stage as version 1, evaluation on real frames visible from the first checkpoint, no ensembles until one model works, no comparison to the old baseline.
+- Every grid job and every training waits for the owner's word and the number of jobs; usage credits are never used; CT-RATE (21.3 TB) is never submitted without his TB number.
+- Dataset request letters go from the owner's Wayne State Outlook on his word, subject tag [XR/CT Imaging Research], short, the opening line "I study the application of computer science to improving spinal health, and my current work needs ...", addresses verified from institutional pages or papers, he signs any DUA; no external text says or implies that a model, a neural network, machine learning, AI or training is built or used.
+- The unheld datasets are obtained with collaborators in a separate private repository worked through Symphony (OpenSpineConsortium/spine-datasets, the owner's ask of 2026-10-21); SchwingNet stays confidential until the provisional is filed, and the talk shows results, not methods.
+- Radiopaedia is never fetched by script.
 ### Constraints
-- (none recorded)
+- A cloud session cannot create a repository, approve a deployment or publish a release (403), and its proxy refuses figshare, Zenodo, Mendeley, Hugging Face, openi.nlm.nih.gov, doi.org and most publishers, so no real fetch runs in a container; the grid paste in grid/README.md is the first real run.
+- The pre-push hook runs the whole gate and refuses a push from a tree with anything uncommitted; a cloud session exports PATH="$HOME/.pixi/bin:$PATH" before pushing.
+- Scripts under tools/ drop tools/ from sys.path before importing torch (tools/profile.py shadows the standard library's profile); functions that take a pydantic model are listed under [tool.beethoven-qa.unproven].
+- The Microsoft 365 connector sends only a draft created first (create, then send); a direct send is refused.
 <!-- cswap:checkpoint:end -->

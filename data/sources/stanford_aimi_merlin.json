@@ -1,0 +1,19 @@
+{
+  "id": "stanford_aimi_merlin",
+  "name": "Stanford AIMI Merlin abdominal CT",
+  "group": "ct",
+  "what": "25,494 CT of 18,317 patients; a gated anomaly-harvest collection (group B7)",
+  "level_truth": "counted by the census pipeline once fetched",
+  "reach": "gated",
+  "status": "an agreement stands in front of the data; none signed",
+  "licence": "a data use agreement (non-commercial)",
+  "link": "https://stanfordaimi.azurewebsites.net/datasets/60b9c7ff-877b-48ce-96c3-0194c8205c40",
+  "how_to_get": [
+    "Sign in to the Stanford AIMI portal and accept the non-commercial research-use agreement on the dataset page (also stanford.redivis.com/datasets/exfv-e8h3kvfhs).",
+    "A time-limited Azure Blob URL is issued; fetch with AzCopy as a job and verify against the portal's file list."
+  ],
+  "grid_path": null,
+  "counts": {},
+  "measured": {},
+  "record": "spine-program 10_data_platform_grid/code/data_platform/DATA_MANIFEST.md group B7; spine-program 10_data_platform_grid acquisition/ACQUISITION_PLAN.md section 7"
+}

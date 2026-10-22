@@ -1,0 +1,22 @@
+{
+  "id": "pediatric_iri",
+  "name": "IRI-VFI: pediatric interventional radiology image sequences (Chongqing)",
+  "group": "video",
+  "what": "95,308 real fluoroscopy images in 1,357 sequences with the lumbar spine in field; pediatric, DSA subtraction frames to be excluded",
+  "level_truth": "none",
+  "reach": "get",
+  "status": "a grain calibration target and an unlabelled pool; 150 to 200 frames would be annotated as a test set; the record is IRI-VFI on IEEE DataPort (doi:10.21227/v4kg-zp42, 1,357 sequences, 95,308 images, angiography, fluoroscopy and subtraction, Children's Hospital of Chongqing Medical University, ChiCTR2200058971); its licence line was not readable from the cloud session",
+  "licence": "not recorded",
+  "link": "https://ieee-dataport.org/documents/iri-vfi-dataset",
+  "how_to_get": [
+    "Open https://ieee-dataport.org/documents/iri-vfi-dataset signed in to an IEEE account (free); read the licence line and whether the files are open access or need a DataPort subscription.",
+    "Fetch to Ceph as a Slurm job; read the terms before any derived label."
+  ],
+  "grid_path": null,
+  "counts": {
+    "images": 95308,
+    "sequences": 1357
+  },
+  "measured": {},
+  "record": "spine-program 01_carm_level_detection/docs/FLUORO_DATASET_STRATEGY.md tier 2"
+}

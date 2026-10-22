@@ -1,0 +1,64 @@
+name: gate
+# beethoven-qa's definition of done on this repository's own package (docs/setup/beethoven-qa.md;
+# beethoven-qa's docs/CONSUMING.md, step 5): the environment reconstructed from the lock alone,
+# the pinned copy checked before anything it reports is believed, then each lane as its own step
+# so a failure names itself. The kit's standards.yml runs the six code standards beside it. The
+# job's name, gate, is a required check of docs/setup/ruleset-main.json beside check; rename
+# both together. No job holds a secret and none reaches the grid.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  # The pixi that produced the committed lock, fetched from its release asset by name and
+  # checked against the sha256 the kit's standards.yml records for it.
+  PIXI_VERSION: 0.81.0
+  PIXI_SHA256: 248510f5f75460a2ae4ec62d761e15c0191dc35db3b1da6f82d9f17c6017051d
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gate-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    name: gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - name: install pixi
+        env:
+          PIXI_VERSION: ${{ env.PIXI_VERSION }}
+          PIXI_SHA256: ${{ env.PIXI_SHA256 }}
+        run: |
+          curl -fsSL -o /tmp/pixi \
+            "https://github.com/prefix-dev/pixi/releases/download/v${PIXI_VERSION}/pixi-x86_64-unknown-linux-musl"
+          echo "${PIXI_SHA256}  /tmp/pixi" | sha256sum -c -
+          install -m 0755 /tmp/pixi /usr/local/bin/pixi
+          pixi --version
+      - name: reconstruct the environment from the lock
+        run: pixi install --locked
+      - name: the pinned copy of beethoven-qa matches its ORIGIN, and the kit is in place
+        run: pixi run --locked vendor-check
+      - name: the interface standard's rules (boundary)
+        run: pixi run --locked boundary
+      - name: lint
+        run: pixi run --locked lint
+      - name: typecheck
+        run: pixi run --locked typecheck
+      - name: tests (typeguard enclave)
+        run: pixi run --locked test
+      - name: symbolic verification (CrossHair and Z3)
+        run: pixi run --locked symbolic
+      - name: shell syntax of the kit
+        # One file per bash -n: with several operands bash parses the first and hands the rest
+        # to it as arguments, so a syntax error in any later file went unseen.
+        run: |
+          for f in .githooks/pre-push .claude/hooks/beethoven-qa-session-start.sh; do bash -n "$f" || exit 1; done

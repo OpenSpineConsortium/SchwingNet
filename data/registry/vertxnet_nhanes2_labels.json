@@ -1,0 +1,15 @@
+{
+  "source": "vertxnet_nhanes2_labels",
+  "identity_level": "patient",
+  "person_key_rule": "nhanes2:<case as grid/banks/vertxnet_nhanes2_labels.json derives it>; one case is one patient",
+  "access": "Zenodo, open; licence to confirm on the record (docs/research/xray-datasets-missing.md)",
+  "modality": "cr",
+  "device_class": "film",
+  "regions": [
+    "cervical",
+    "lumbar"
+  ],
+  "grid_root": "/rs/rs_grp_oschome/go2432/data/vertxnet_nhanes2_labels",
+  "shards": [],
+  "notes": "labels only: VertXNet's radiologist landmarks with vertebral identity and the reference bodies C2 and S1 on the NHANES II films already on the grid; the bank reads the films from the grid's NHANES II copy and the landmarks from raw/, and its persons carry the prefix nhanes2 so a NHANES person is one person across sources; the raw copy is /rs/rs_grp_oschome/go2432/data/vertxnet_nhanes2_labels/raw (grid/fetch-xray.json) and the bank /rs/rs_grp_oschome/go2432/data/vertxnet_nhanes2_labels/bank; no shard until the chain's first run"
+}

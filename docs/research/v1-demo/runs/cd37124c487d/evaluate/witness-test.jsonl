@@ -1,0 +1,5 @@
+{"epoch": 0, "test": [1, 91], "transitional": [0, 28], "sweep": [0, 61]}
+{"epoch": 1, "test": [81, 91], "transitional": [27, 28], "sweep": [52, 61]}
+{"epoch": 2, "test": [36, 91], "transitional": [13, 28], "sweep": [24, 61]}
+{"epoch": 3, "test": [43, 91], "transitional": [10, 28], "sweep": [29, 61]}
+{"epoch": 4, "test": [91, 91], "transitional": [28, 28], "sweep": [61, 61]}

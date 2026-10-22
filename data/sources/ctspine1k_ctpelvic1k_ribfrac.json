@@ -1,0 +1,20 @@
+{
+  "id": "ctspine1k_ctpelvic1k_ribfrac",
+  "name": "CTSpine1K, CTPelvic1K, RibFrac",
+  "group": "ct",
+  "what": "1,005, 172 and 660 CTs",
+  "level_truth": "partial",
+  "reach": "held",
+  "status": "the transitional registry only",
+  "licence": "CTSpine1K derivatives non-commercial",
+  "link": null,
+  "how_to_get": [],
+  "grid_path": null,
+  "counts": {
+    "ctspine1k": 1005,
+    "ctpelvic1k": 172,
+    "ribfrac": 660
+  },
+  "measured": {},
+  "record": "spine-program 01_carm_level_detection/docs/handoff/DATASET_USAGE.md; spine-program 10_data_platform_grid/code/data_platform/DATA_MANIFEST.md"
+}

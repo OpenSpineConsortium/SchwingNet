@@ -1,0 +1,28 @@
+{
+  "id": "open_i_chest",
+  "raw": "/rs/rs_grp_oschome/go2432/data/open_i_chest/raw",
+  "bank": "/rs/rs_grp_oschome/go2432/data/open_i_chest/bank",
+  "images": [
+    "**/CXR*.png"
+  ],
+  "format": "png",
+  "person": {
+    "regex": "(?P<case>CXR\\d+)_"
+  },
+  "view": {
+    "lat_from_ap_deg": "to confirm: frontal and lateral are mixed; null keeps both unbanded, or split the recipe by file name once the naming is read",
+    "gantry_deg": null
+  },
+  "device": {
+    "make": null,
+    "model": null,
+    "detector": "scanned film"
+  },
+  "modality": "cr",
+  "device_class": "film",
+  "split": "train",
+  "labels": null,
+  "synthetic": false,
+  "px_mm": null,
+  "notes": "7,470 frontal and lateral chest films of 3,955 studies (the Indiana collection); the file name CXR<study>_<image>_IM-... carries the study, the person key, since no patient id is given"
+}

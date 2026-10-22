@@ -31,7 +31,8 @@
 #      its check "check" to GitHub Actions, once Actions has reported that
 #      check on the default branch, so a commit status anyone with write
 #      access sets cannot stand in for it (run it again after the first
-#      pull request's check to pin a new copy);
+#      pull request's check to pin a new copy), and turns "Require
+#      branches to be up to date" off where the ruleset has it on;
 #   3. turns on "Automatically delete head branches" and "Allow auto-merge"
 #      (auto-merge does nothing until a pull request asks for it, and team
 #      mode needs it), and adds the repository topic symphony, the sign on
@@ -54,6 +55,14 @@
 #      branch, unless the repository has one of that name, so only the
 #      default branch's Token workflow ever holds the SymphonyBoard App's
 #      token there (Symphony Setup makes it in an adoption too);
+#      then turns on GitHub Pages with GitHub Actions as its source and
+#      sets the variable SYMPHONY_DOCS to pages, so
+#      .github/workflows/docs.yml publishes the living documentation site
+#      (docs/learn/README.md) from its next run on the default branch,
+#      readable only by the repository's readers unless it is public; a
+#      Pages site the repository has already is left as it is, and where
+#      the plan offers no Pages, or no limited one for a repository that
+#      is not public, it says so and goes on;
 #   6. creates or updates the labels, read from LABELS in
 #      tools/template_init.py, so the list lives in one place;
 #   7. sets each repository variable given as --var NAME=VALUE; the one
@@ -86,8 +95,9 @@ Usage: bash scripts/setup-repo.sh [OWNER/NAME] [--var NAME=VALUE]... [--token]
 Sets up the GitHub side of a repository made from this template: the
 default branch's ruleset, delete-branch-on-merge, auto-merge, secret
 scanning with push protection, the setting that lets GitHub Actions open
-pull requests, the labels, the variables asked for and, with --token, the
-secret CLAUDE_CODE_OAUTH_TOKEN; then prints any line of
+pull requests, GitHub Pages built by Actions, the labels, the variables
+asked for and, with --token, the secret CLAUDE_CODE_OAUTH_TOKEN; then
+prints any line of
 .github/CODEOWNERS GitHub cannot resolve. Needs the GitHub CLI signed in
 (gh auth login) with admin rights on the repository. In crowd mode (the
 variable CLAUDE_CROWD is true, or docs/project.md says crowd mode is on)
@@ -132,9 +142,14 @@ for pair in ${VARIABLES[@]+"${VARIABLES[@]}"}; do
   esac
 done
 
-# The check's pin: the step's one line, and a PUT only where GitHub Actions
-# has reported "check" on the default branch and the ruleset does not name
-# a source for it yet. Every failure is reported and the run goes on.
+# The check's pin and the up-to-date rule: one line each, and one PUT only
+# where the ruleset needs either change. The pin is made only where GitHub
+# Actions has reported "check" on the default branch and the ruleset does
+# not name a source for it yet. "Require branches to be up to date" is
+# turned off wherever it is on, since every merge then made each other
+# ready pull request behind, its check run again on a branch that changed
+# nothing it touched, and a copy made before the shipped rulesets dropped
+# it keeps it until this runs. Every failure is reported and the run goes on.
 ACTIONS_APP=15368
 # One read for the step: GitHub's body on standard output, and on a failure
 # gh's first line of standard error alone, since gh prints a refused call's
@@ -152,11 +167,12 @@ pin_read() {
   fi
 }
 pin_check() {
-  local name=$1 id rulesets reported ruleset body answer status
+  local name=$1 id rulesets reported ruleset body answer status pin pinned strict changed
   # The repository's own rulesets alone: an organization's ruleset of the
   # same name is listed too by default, and only its owners edit it.
   if ! rulesets=$(pin_read "repos/$REPO/rulesets?includes_parents=false&per_page=100"); then
     echo "check pin: not changed (could not list the rulesets: $rulesets)"
+    echo "up-to-date rule: not changed (could not list the rulesets)"
     return 0
   fi
   id=$(printf '%s' "$rulesets" | python3 -c 'import json, sys
@@ -167,43 +183,67 @@ except ValueError:
 print(next((str(r["id"]) for r in rulesets if isinstance(r, dict) and r.get("name") == sys.argv[1]), ""))' "$name") || id=""
   if [ -z "$id" ]; then
     echo "check pin: not changed (the repository has no ruleset \"$name\" of its own; an organization's ruleset is pinned by its owners under the organization's Settings, Rules)"
+    echo "up-to-date rule: not changed (no ruleset \"$name\" of the repository's own; an organization's is changed by its owners)"
     return 0
   fi
+  pin=""
   if ! reported=$(pin_read "repos/$REPO/commits/$DEFAULT_BRANCH/check-runs?check_name=check&per_page=100" \
       --jq "[.check_runs[] | select(.app.id == $ACTIONS_APP)] | length"); then
-    echo "check pin: not changed (could not read the default branch's checks: $reported)"
-    return 0
-  fi
-  if [ "$reported" = "0" ] || [ -z "$reported" ]; then
-    echo "check pin: not yet; GitHub Actions has not reported \"check\" on $DEFAULT_BRANCH, so run this again after the first pull request's check"
-    return 0
+    pin="check pin: not changed (could not read the default branch's checks: $reported)"
+    reported=0
+  elif [ "$reported" = "0" ] || [ -z "$reported" ]; then
+    pin="check pin: not yet; GitHub Actions has not reported \"check\" on $DEFAULT_BRANCH, so run this again after the first pull request's check"
+    reported=0
   fi
   if ! ruleset=$(pin_read "repos/$REPO/rulesets/$id"); then
-    echo "check pin: not changed (could not read the ruleset: $ruleset)"
+    echo "${pin:-check pin: not changed (could not read the ruleset: $ruleset)}"
+    echo "up-to-date rule: not changed (could not read the ruleset: $ruleset)"
     return 0
   fi
   status=0
+  changed=$(mktemp)
+  # The script prints the new body, or nothing where nothing changes, and
+  # on standard error the two words that say what it changed.
   body=$(printf '%s' "$ruleset" | python3 -c 'import json, sys
-ruleset, app = json.load(sys.stdin), int(sys.argv[1])
-checks = [check for rule in ruleset.get("rules") or [] if rule.get("type") == "required_status_checks"
-          for check in (rule.get("parameters") or {}).get("required_status_checks") or [] if check.get("context") == "check"]
-if not checks or all(check.get("integration_id") for check in checks):
-    sys.exit(3)
-for check in checks:
+ruleset, app, reported = json.load(sys.stdin), int(sys.argv[1]), sys.argv[2] != "0"
+rules = [rule for rule in ruleset.get("rules") or [] if rule.get("type") == "required_status_checks"]
+checks = [check for rule in rules for check in (rule.get("parameters") or {}).get("required_status_checks") or []
+          if check.get("context") == "check"]
+pinned = reported and any(not check.get("integration_id") for check in checks)
+strict = any((rule.get("parameters") or {}).get("strict_required_status_checks_policy") for rule in rules)
+for check in checks if pinned else []:
     check["integration_id"] = check.get("integration_id") or app
-keys = ("name", "target", "enforcement", "conditions", "rules", "bypass_actors")
-json.dump({key: ruleset[key] for key in keys if key in ruleset}, sys.stdout)' "$ACTIONS_APP") || status=$?
-  if [ "$status" = 3 ]; then
-    echo "check pin: already pinned, or the ruleset requires no check named \"check\""
+for rule in rules if strict else []:
+    rule["parameters"]["strict_required_status_checks_policy"] = False
+print("pinned" if pinned else "same", "unstrict" if strict else "same", file=sys.stderr)
+if pinned or strict:
+    keys = ("name", "target", "enforcement", "conditions", "rules", "bypass_actors")
+    json.dump({key: ruleset[key] for key in keys if key in ruleset}, sys.stdout)' "$ACTIONS_APP" "$reported" 2>"$changed") || status=$?
+  read -r pinned strict <"$changed" || true
+  rm -f "$changed"
+  if [ "$status" != 0 ]; then
+    echo "${pin:-check pin: not changed (the ruleset GitHub gave back could not be read)}"
+    echo "up-to-date rule: not changed (the ruleset GitHub gave back could not be read)"
     return 0
-  elif [ "$status" != 0 ]; then
-    echo "check pin: not changed (the ruleset GitHub gave back could not be read)"
+  fi
+  [ -n "$pin" ] || [ "$pinned" = pinned ] || pin="check pin: already pinned, or the ruleset requires no check named \"check\""
+  if [ -z "$body" ]; then
+    echo "$pin"
+    echo "up-to-date rule: off already"
     return 0
   fi
   if answer=$(printf '%s' "$body" | gh api --method PUT "repos/$REPO/rulesets/$id" --input - --silent 2>&1); then
-    echo "check pin: \"check\" now requires GitHub Actions as its source"
+    [ "$pinned" = pinned ] && pin="check pin: \"check\" now requires GitHub Actions as its source"
+    echo "$pin"
+    if [ "$strict" = unstrict ]; then echo "up-to-date rule: turned off"; else echo "up-to-date rule: off already"; fi
   else
-    echo "check pin: not changed ($answer); pick GitHub Actions as the check's source under https://github.com/$REPO/settings/rules/$id"
+    [ "$pinned" = pinned ] && pin="check pin: not changed ($answer); pick GitHub Actions as the check's source under https://github.com/$REPO/settings/rules/$id"
+    echo "$pin"
+    if [ "$strict" = unstrict ]; then
+      echo "up-to-date rule: not changed ($answer); untick \"Require branches to be up to date before merging\" under https://github.com/$REPO/settings/rules/$id"
+    else
+      echo "up-to-date rule: off already"
+    fi
   fi
 }
 
@@ -231,11 +271,26 @@ if grep -q '^- Crowd mode: on\.' docs/project.md 2>/dev/null; then
   die "crowd mode is on in this clone's docs/project.md: $crowd_refusal"
 fi
 read_error=$(mktemp)
-if crowd=$(gh api "repos/$REPO/actions/variables/CLAUDE_CROWD" --jq .value 2>"$read_error"); then
+if [ "${SYMPHONY_SETTINGS_APP:-}" = 1 ] && [ -n "${SYMPHONY_CROWD_VARIABLE+set}" ]; then
+  # The Settings workflow reads the variable from its own vars context,
+  # which needs no permission, and hands it here, set but empty where the
+  # repository has none.
+  crowd="$SYMPHONY_CROWD_VARIABLE"
+  rm -f "$read_error"
+elif crowd=$(gh api "repos/$REPO/actions/variables/CLAUDE_CROWD" --jq .value 2>"$read_error"); then
   rm -f "$read_error"
 elif grep -q '(HTTP 404)' "$read_error"; then
   crowd=""
   rm -f "$read_error"
+elif [ "${SYMPHONY_SETTINGS_APP:-}" = 1 ]; then
+  # The Settings workflow runs this with the App's token, whose
+  # installation may not have accepted Variables yet: there the mode is
+  # unknown, so auto-merge alone, the one setting crowd mode keeps off that
+  # this run would make, is left off, and nothing else waits on it (the
+  # workflow never stores a token).
+  printf 'crowd mode: unknown (could not read the variable CLAUDE_CROWD: %s), so auto-merge is left as it is\n' "$(head -n 1 "$read_error")"
+  rm -f "$read_error"
+  crowd="" CROWD_UNKNOWN=yes
 else
   reason=$(head -n 1 "$read_error")
   rm -f "$read_error"
@@ -245,16 +300,35 @@ if [ "$(printf '%s' "$crowd" | tr '[:upper:]' '[:lower:]')" = "true" ]; then
   die "crowd mode is on (the variable CLAUDE_CROWD is true): $crowd_refusal"
 fi
 
+# The Settings workflow's weekly and visibility runs (SYMPHONY_SETTINGS_RECHECK)
+# make only what a plan or a visibility may have held back, the
+# environment and the Pages site, both made only when missing: a ruleset
+# is written on any plan and starts to hold by itself once the plan or the
+# visibility allows, and the toggles, the topic, scanning and the Actions
+# box are left as the owner may have set them since.
+RECHECK=no
+[ "${SYMPHONY_SETTINGS_RECHECK:-}" = 1 ] && RECHECK=yes
+if [ "$RECHECK" = yes ]; then
+  echo "recheck: only the environment and Pages, where they are missing"
+fi
+if [ "$RECHECK" = no ]; then
+
 # 2. The ruleset, from the file the docs ship, unless its name is already
 # listed. GitHub would make a second ruleset of the same name, so the check
 # is this script's job.
 name=$(python3 -c 'import json, sys; print(json.load(open(sys.argv[1]))["name"])' "$RULESET")
-existing=$(gh api "repos/$REPO/rulesets" --jq '.[].name')
-if grep -Fxq -- "$name" <<<"$existing"; then
+# A refusal is reported and the run goes on, as the steps below do, since
+# one refused setting is no reason to leave the others undone.
+if ! existing=$(gh api "repos/$REPO/rulesets" --jq '.[].name' 2>&1); then
+  printf 'ruleset "%s": not created (could not list the rulesets: %s); import %s under https://github.com/%s/settings/rules\n' \
+    "$name" "$(head -n 1 <<<"$existing")" "$RULESET" "$REPO"
+elif grep -Fxq -- "$name" <<<"$existing"; then
   printf 'ruleset "%s": exists, skipped\n' "$name"
-else
-  gh api --method POST "repos/$REPO/rulesets" --input "$RULESET" --silent
+elif answer=$(gh api --method POST "repos/$REPO/rulesets" --input "$RULESET" --silent 2>&1); then
   printf 'ruleset "%s": created from %s\n' "$name" "$RULESET"
+else
+  printf 'ruleset "%s": not created (%s); import %s under https://github.com/%s/settings/rules\n' \
+    "$name" "$(head -n 1 <<<"$answer")" "$RULESET" "$REPO"
 fi
 if [ "$VISIBILITY" = "private" ]; then
   echo "  note: on GitHub Free a private repository's ruleset is written but not enforced (docs/setup/tiers.md)"
@@ -265,15 +339,32 @@ fi
 # the check "check" is pinned to GitHub Actions, the app its check runs
 # report under. GitHub takes the pin only once that app has reported the
 # check in the repository, so a new copy is pinned by a run of this script
-# after its first pull request's check; until then the step says so.
+# after its first pull request's check; until then the step says so. The
+# same PUT turns "Require branches to be up to date" off in a ruleset that
+# has it on, as a copy made before the shipped rulesets dropped it does.
 pin_check "$name"
 
-# 3. The two toggles under General. Both are idempotent PATCHes.
-gh repo edit "$REPO" --delete-branch-on-merge --enable-auto-merge
-echo "general: delete head branches on merge, allow auto-merge: on"
+# 3. The two toggles under General. Both are idempotent PATCHes; where gh's
+# own command is refused, as it can be for an App's token, the same PATCH
+# goes through the REST API before the refusal is reported.
+toggles=(--delete-branch-on-merge --enable-auto-merge)
+fields=(-F delete_branch_on_merge=true -F allow_auto_merge=true)
+said="delete head branches on merge, allow auto-merge"
+if [ "${CROWD_UNKNOWN:-}" = yes ]; then
+  toggles=(--delete-branch-on-merge) fields=(-F delete_branch_on_merge=true) said="delete head branches on merge"
+fi
+if gh repo edit "$REPO" "${toggles[@]}" 2>/dev/null \
+   || answer=$(gh api --method PATCH "repos/$REPO" --silent "${fields[@]}" 2>&1); then
+  echo "general: $said: on"
+else
+  printf 'general: %s: not changed (%s); tick them under https://github.com/%s/settings\n' "$said" "$(head -n 1 <<<"$answer")" "$REPO"
+fi
 # The topic keeps the ones already there: --add-topic appends.
-gh repo edit "$REPO" --add-topic symphony
-echo "topic symphony: added"
+if answer=$(gh repo edit "$REPO" --add-topic symphony 2>&1); then
+  echo "topic symphony: added"
+else
+  printf 'topic symphony: not added (%s); add it under About on https://github.com/%s\n' "$(head -n 1 <<<"$answer")" "$REPO"
+fi
 
 # 4. Secret scanning, then push protection. A failure here is the plan or
 # the visibility, not the script, so it is reported and the run goes on;
@@ -283,9 +374,16 @@ echo "topic symphony: added"
 old_gh() {
   printf '%s: this gh (%s) predates the flag; install gh 2.65 or later (https://github.com/cli/cli/blob/trunk/docs/install_linux.md) and run this again\n' "$1" "$(gh --version | head -n 1)"
 }
-if answer=$(gh repo edit "$REPO" --enable-secret-scanning 2>&1); then
+# gh asks GraphQL whether the caller administers the repository before
+# these two, which an App's token may be told no to; the REST PATCH is the
+# same setting, tried before the refusal is reported.
+scanning() {
+  gh repo edit "$REPO" "$1" 2>&1 \
+    || gh api --method PATCH "repos/$REPO" --silent -f "security_and_analysis[$2][status]=enabled" 2>/dev/null
+}
+if answer=$(scanning --enable-secret-scanning secret_scanning); then
   echo "secret scanning: on"
-  if answer=$(gh repo edit "$REPO" --enable-secret-scanning-push-protection 2>&1); then
+  if answer=$(scanning --enable-secret-scanning-push-protection secret_scanning_push_protection); then
     echo "push protection: on"
   elif grep -q "unknown flag" <<<"$answer"; then
     old_gh "push protection"
@@ -372,6 +470,8 @@ else
 fi
 rm -f "$refusal"
 
+fi
+
 # 5b. The environment token-store, limited to the default branch. The Token
 # workflow (.github/workflows/token.yml) saves a lent Claude token there
 # with the SymphonyBoard App's key, and GitHub would make the environment
@@ -408,11 +508,85 @@ else
 fi
 rm -f "$refusal"
 
+# 5c. GitHub Pages, built by GitHub Actions, for the living documentation
+# site: docs.yml deploys it where Pages is set to that source and the
+# variable SYMPHONY_DOCS is pages, and its token cannot turn Pages on itself
+# (creating a site needs admin rights). The script makes the site and sets
+# the variable together. A site the repository has already, from a branch
+# or from Actions, is left as it is and the variable unset, since the owner
+# may publish something else there and docs.yml would deploy over it. On an
+# internal or private repository the new site is limited to the people who
+# can read the repository; where GitHub will not limit it (only Enterprise
+# plans can), the site is removed again rather than left open to anyone. A
+# refusal is reported with the page to set it on, and the run goes on.
+pages_refused() {
+  printf 'pages: not turned on (%s); open https://github.com/%s/settings/pages and, under Build and deployment, choose GitHub Actions as the source, then set the repository variable SYMPHONY_DOCS to pages\n' \
+    "$(head -n 1 <<<"$1")" "$REPO"
+}
+# A limit GitHub accepted is read back before the site counts as limited,
+# so a plan that takes the PUT and keeps the site open is caught.
+pages_limited() {
+  gh api --method PUT "repos/$REPO/pages" --silent -F public=false || return 1
+  local public
+  public=$(gh api "repos/$REPO/pages" --jq .public) || return 1
+  if [ "$public" != false ]; then
+    echo "GitHub took the limit, but the site still reads as public" >&2
+    return 1
+  fi
+}
+# A site that deploys from Actions and has never been published is the one
+# an earlier run made before it could set the variable, since nothing else
+# has deployed there, so it takes the variable now; any other site may be
+# the owner's own and is left alone.
+pages_found() {
+  if [ "$1" != "workflow never" ] || [ -n "${SYMPHONY_DOCS_VARIABLE:-}" ]; then
+    echo "pages: a site is there already, left as it is; docs.yml publishes the documentation site there only once the repository variable SYMPHONY_DOCS is pages"
+  elif ! gh variable set SYMPHONY_DOCS --repo "$REPO" --body pages 2>"$refusal"; then
+    printf 'pages: on, built by GitHub Actions and never published, but the variable SYMPHONY_DOCS was not set (%s); set it to pages at https://github.com/%s/settings/variables/actions\n' \
+      "$(head -n 1 "$refusal")" "$REPO"
+  else
+    echo "pages: on, built by GitHub Actions and never published, so the variable SYMPHONY_DOCS is set to pages; docs.yml publishes the documentation site on its next run on $DEFAULT_BRANCH"
+  fi
+}
+refusal=$(mktemp)
+if [ "$RECHECK" = yes ] && [ -n "${SYMPHONY_DOCS_VARIABLE:-}" ]; then
+  # SYMPHONY_DOCS is written once Pages is on, so set means decided: a site
+  # the owner removed since is not put back.
+  echo "pages: left as it is, since the variable SYMPHONY_DOCS is set"
+elif site=$(gh api "repos/$REPO/pages" --jq '[.build_type, (.status // "never")] | join(" ")' 2>"$refusal"); then
+  pages_found "$site"
+elif ! grep -q '(HTTP 404)' "$refusal"; then
+  pages_refused "$(<"$refusal")"
+elif ! gh api --method POST "repos/$REPO/pages" --silent -f build_type=workflow 2>"$refusal"; then
+  pages_refused "$(<"$refusal")"
+elif [ "$VISIBILITY" != public ] && ! pages_limited 2>"$refusal"; then
+  if gh api --method DELETE "repos/$REPO/pages" --silent 2>/dev/null; then
+    removed="removed again"
+  else
+    removed="and could not be removed again, so turn it off at https://github.com/$REPO/settings/pages"
+  fi
+  printf 'pages: not turned on, since GitHub would not limit the site of this %s repository to its readers (%s) and it would be open to anyone; the site was %s; set it by hand at https://github.com/%s/settings/pages if that is meant\n' \
+    "$VISIBILITY" "$(head -n 1 "$refusal")" "$removed" "$REPO"
+elif ! gh variable set SYMPHONY_DOCS --repo "$REPO" --body pages 2>"$refusal"; then
+  printf 'pages: turned on, built by GitHub Actions, but the variable SYMPHONY_DOCS was not set (%s); set it to pages at https://github.com/%s/settings/variables/actions\n' \
+    "$(head -n 1 "$refusal")" "$REPO"
+else
+  echo "pages: turned on, built by GitHub Actions; docs.yml publishes the documentation site on its next run on $DEFAULT_BRANCH"
+fi
+rm -f "$refusal"
+
+if [ "$RECHECK" = yes ]; then
+  exit 0
+fi
+
 # 6. The labels, from the one list in tools/template_init.py. --force
 # updates a label that exists instead of failing on it.
 while IFS=$'\t' read -r label color description; do
-  gh label create "$label" --repo "$REPO" --color "$color" --description "$description" --force
-  printf 'label %s: created or updated\n' "$label"
+  if answer=$(gh label create "$label" --repo "$REPO" --color "$color" --description "$description" --force 2>&1); then
+    printf 'label %s: created or updated\n' "$label"
+  else
+    printf 'label %s: not made (%s)\n' "$label" "$(head -n 1 <<<"$answer")"
+  fi
 done < <(python3 -c '
 import sys
 sys.path.insert(0, "tools")

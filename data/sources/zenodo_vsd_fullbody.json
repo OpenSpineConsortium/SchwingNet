@@ -1,0 +1,22 @@
+{
+  "id": "zenodo_vsd_fullbody",
+  "name": "VSDFullBody: post-mortem whole-body CT, forensic institutes Bern and Zurich",
+  "group": "ct",
+  "what": "VSDFullBody post-mortem whole-body CT, 100 subjects, forensic institutes Bern and Zurich, Zenodo 8270365 published 2013-11-12, about 116 GB; the mirror notes duplicate CT datasets (100 new of 109 files)",
+  "level_truth": "counted by the census pipeline once fetched",
+  "reach": "get",
+  "status": "planned in the data platform at bf1432f; fetch job in the 2026-10-21 chain",
+  "licence": "CC BY-NC-SA per the record's text (the record's licence field is empty)",
+  "link": "https://zenodo.org/records/8270365",
+  "how_to_get": [
+    "Read the record listing and choose the include pattern, then spinesurg-ct-nnunet's tools/acquisition_fetch.py zenodo --collection vsd_fullbody --record 8270365 --include '<pattern>' (md5-verified) through slurm/acquisition_fetch.sh; then a chain entry with convert arguments, which does not exist yet.",
+    "The route as the manifest prints it: python3 data/reproduce/reacquire/reacquire.py --grid zenodo_vsd_fullbody; on the grid, from ~/spinesurg-ct-nnunet/data_platform/reacquire, sbatch -D \"$PWD\" --export=ALL,IDS=\"zenodo_vsd_fullbody\",MODE=--run reacquire.sbatch, as a Slurm job on the owner's word."
+  ],
+  "grid_path": null,
+  "counts": {
+    "subjects": 100,
+    "size_gb": 116.3
+  },
+  "measured": {},
+  "record": "spinesurg-ct-nnunet data_platform/sources.json bf1432f"
+}

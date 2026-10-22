@@ -1,0 +1,14 @@
+{
+  "source": "isbi2015_cephalograms",
+  "identity_level": "patient",
+  "person_key_rule": "isbi2015_cephalograms:<case as grid/banks/isbi2015_cephalograms.json derives it>; one case is one patient",
+  "access": "the ISBI 2015 challenge set; licence and link to confirm",
+  "modality": "cr",
+  "device_class": "film",
+  "regions": [
+    "cervical"
+  ],
+  "grid_root": "/rs/rs_grp_oschome/go2432/data/isbi2015_cephalograms",
+  "shards": [],
+  "notes": "400 lateral cephalograms with 19 landmarks (no vertebra labels); C2 to C4 in every film; the person is one subject per film; the raw copy is /rs/rs_grp_oschome/go2432/data/isbi2015_cephalograms/raw (grid/fetch-xray.json) and the bank /rs/rs_grp_oschome/go2432/data/isbi2015_cephalograms/bank; no shard until the chain's first run"
+}

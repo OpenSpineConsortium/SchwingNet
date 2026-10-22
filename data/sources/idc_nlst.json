@@ -1,0 +1,23 @@
+{
+  "id": "idc_nlst",
+  "name": "NLST, full (tier 2; 500-person pilot fetched)",
+  "group": "ct",
+  "what": "the National Lung Screening Trial in IDC v24 (TCIA doi:10.7937/tcia.hmq8-j677), full: 24,713 subjects, about 2,305 GB raw plus screen; the 500-person pilot is fetched (the manifest's nlst_pilot, in the harvest)",
+  "level_truth": "counted by the census pipeline once fetched",
+  "reach": "get",
+  "status": "planned in the data platform at bf1432f and refused as it stands by the stopping rule (2.3 TB for about 110 T13 people, its only yield, about 1.5 percent single-labeller calls that all need adjudication); no fetch job until the owner lifts that rule; the ranking's refusals: localizer 65,174, slice over 3.0 mm 21,188, under 60 slices 5,209, not a regularly spaced 3-D volume 3,652",
+  "licence": "CC BY 4.0",
+  "link": "https://doi.org/10.7937/tcia.hmq8-j677",
+  "how_to_get": [
+    "Regenerate manifests/idc_tier2.csv with spinesurg-ct-nnunet's tools/acquisition_census.py --calibration fov_calibration.json --aa3-meta aa3_meta.csv --nbia-fdg fdg_ct_series.json --out ... (the last two inputs are not on local disk), then bash ~/spinesurg-ct-nnunet/slurm/acquisition_submit.sh tier2.",
+    "The route as the manifest prints it: python3 data/reproduce/reacquire/reacquire.py --grid idc_nlst; on the grid, from ~/spinesurg-ct-nnunet/data_platform/reacquire, sbatch -D \"$PWD\" --export=ALL,IDS=\"idc_nlst\",MODE=--run reacquire.sbatch, as a Slurm job on the owner's word."
+  ],
+  "grid_path": null,
+  "counts": {
+    "subjects": 24713,
+    "size_gb": 2305.3,
+    "pilot_subjects_fetched": 500
+  },
+  "measured": {},
+  "record": "spinesurg-ct-nnunet data_platform/sources.json bf1432f"
+}

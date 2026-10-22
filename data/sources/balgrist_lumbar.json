@@ -1,0 +1,18 @@
+{
+  "id": "balgrist_lumbar",
+  "name": "Balgrist ex-vivo lumbar CT plus C-arm (Jecklin)",
+  "group": "fluoro",
+  "what": "cadaver lumbar CT with real C-arm frames",
+  "level_truth": "yes, from the CT",
+  "reach": "none",
+  "status": "refused 2026-10-21 05:52 UTC: Philipp Fuernstahl answered the letter of 2026-10-20 that the ex-vivo dataset was licensed to a startup and is proprietary, so it cannot be shared; the resend through the ROCS contact form is dropped",
+  "licence": "not recorded",
+  "link": "https://rocs.balgrist.ch/en/contact",
+  "how_to_get": [
+    "Nothing: the holder refused on 2026-10-21. A later ask would be to the startup that licensed it, whose name the answer did not give."
+  ],
+  "grid_path": null,
+  "counts": {},
+  "measured": {},
+  "record": "spine-program 01_carm_level_detection/docs/data_requests/balgrist_data_request_2026-09-21.md"
+}

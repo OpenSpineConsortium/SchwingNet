@@ -1,0 +1,14 @@
+{
+  "source": "canine_thoracic_vhs",
+  "identity_level": "patient",
+  "person_key_rule": "canine_thoracic_vhs:<case as grid/banks/canine_thoracic_vhs.json derives it>; one case is one patient",
+  "access": "Mendeley Data ktx4cj55pn, CC BY 4.0 to confirm on the page",
+  "modality": "dx",
+  "device_class": "film",
+  "regions": [
+    "thoracic"
+  ],
+  "grid_root": "/rs/rs_grp_oschome/go2432/data/canine_thoracic_vhs",
+  "shards": [],
+  "notes": "152 lateral thoracic radiographs of dogs (the veterinary direction of 2026-10-20); the person is one dog; the raw copy is /rs/rs_grp_oschome/go2432/data/canine_thoracic_vhs/raw (grid/fetch-xray.json) and the bank /rs/rs_grp_oschome/go2432/data/canine_thoracic_vhs/bank; no shard until the chain's first run"
+}

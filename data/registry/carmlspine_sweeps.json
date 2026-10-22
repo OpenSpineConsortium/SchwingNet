@@ -1,0 +1,12 @@
+{
+  "source": "carmlspine_sweeps",
+  "identity_level": "patient",
+  "person_key_rule": "carmlspine:<case id>, the same key as the spot frames of the same case, so a sweep and its case's frames fall on one side of every split",
+  "access": "CC BY 4.0, public (Zenodo 22768651), the raw CBCT projections of two cases; the same determination as carmlspine",
+  "modality": "cbct_projection",
+  "device_class": "cbct_gantry",
+  "regions": ["lumbar", "sacrum"],
+  "grid_root": "/rs/rs_grp_oschome/go2432/data/carmlspine_sweeps",
+  "shards": [],
+  "notes": "the raw bank is /rs/rs_grp_oschome/go2432/data/realxray/carmlspine_sweep, read by the ingest and never moved; case134 and case39, 301 projections each at quantised gantry angles; the demo's recorded sweeps, so both persons are frozen test persons and no sweep frame is ever trained on"
+}

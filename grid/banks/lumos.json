@@ -1,0 +1,60 @@
+{
+  "id": "lumos",
+  "raw": "/rs/rs_grp_oschome/go2432/data/zenodo_lumos/raw",
+  "bank": "/rs/rs_grp_oschome/go2432/data/lumos/bank",
+  "archives": [
+    "**/lumos_x_*_dcm.zip"
+  ],
+  "images": [
+    "lumos_x_*_*.dcm"
+  ],
+  "format": "dcm",
+  "person": {
+    "regex": "lumos_x_(?P<case>\\d{3})_\\d+\\.dcm$"
+  },
+  "max_frames_per_person": 6,
+  "view": {
+    "lat_from_ap_deg": {
+      "dicom": "ViewPosition",
+      "map": {
+        "AP": 0.0,
+        "PA": 0.0,
+        "LAT": 90.0,
+        "LL": 90.0,
+        "RL": 90.0,
+        "LLAT": 90.0,
+        "RLAT": 90.0,
+        "LATERAL": 90.0
+      },
+      "default": null
+    },
+    "gantry_deg": null
+  },
+  "device": {
+    "make": {
+      "dicom": "Manufacturer"
+    },
+    "model": {
+      "dicom": "ManufacturerModelName"
+    },
+    "detector": {
+      "dicom": "DetectorType"
+    },
+    "kvp": {
+      "dicom": "KVP"
+    },
+    "mas": {
+      "dicom": "mAs"
+    }
+  },
+  "modality": "dx",
+  "device_class": "film",
+  "split": "train",
+  "labels": null,
+  "synthetic": false,
+  "px_mm": {
+    "dicom": "ImagerPixelSpacing",
+    "default": null
+  },
+  "notes": "Read from Zenodo record 18173664 and the authors' README on 2026-10-21 (#44): 803 patients, 1,620 lumbar AP or lateral radiographs as DICOM in eight zips lumos_x_<first>_<last>_dcm.zip (the one named lumos_x_741_670_dcm.zip holds 741 to 770), each lumos_x/lumos_x_<patient>/lumos_x_<patient>_<n>.dcm, patients 001 to 803, beside 280 CTs and an npy zip the bank leaves alone; CC BY-NC 4.0. The X-ray members are read inside the zips, never unpacked a second time. The person is the patient number of the file name, as the README defines it; the view is the header's ViewPosition."
+}

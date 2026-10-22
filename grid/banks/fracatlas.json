@@ -1,0 +1,28 @@
+{
+  "id": "fracatlas",
+  "raw": "/rs/rs_grp_oschome/go2432/data/fracatlas/raw",
+  "bank": "/rs/rs_grp_oschome/go2432/data/fracatlas/bank",
+  "images": [
+    "to confirm: the hip folder's glob, such as **/Hip/*.jpg"
+  ],
+  "format": "to confirm: jpg",
+  "person": {
+    "regex": "to confirm: one file is one patient unless the dataset.csv says otherwise, as (?P<case>IMG\\d+)"
+  },
+  "view": {
+    "lat_from_ap_deg": 0.0,
+    "gantry_deg": null
+  },
+  "device": {
+    "make": null,
+    "model": null,
+    "detector": null
+  },
+  "modality": "dx",
+  "device_class": "film",
+  "split": "train",
+  "labels": null,
+  "synthetic": false,
+  "px_mm": null,
+  "notes": "4,083 musculoskeletal radiographs from three Bangladeshi hospitals; the hip films show the sacrum and L5; only the hip folder enters, no spine labels"
+}

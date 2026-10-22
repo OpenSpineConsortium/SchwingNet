@@ -1,0 +1,22 @@
+{
+  "id": "pittsburgh_swallow",
+  "name": "Pittsburgh videofluoroscopic swallow corpus (Sejdic, Coyle)",
+  "group": "video",
+  "what": "about 1,500 lateral swallow clips at 30 fps captured by video card, 265 patients and 70 volunteers on two machines",
+  "level_truth": "thin: named corner landmarks on C2 and C4 only, no boxes, no other levels",
+  "reach": "get",
+  "status": "request 4 drafted, never sent; a Pitt data use agreement expected",
+  "licence": "by request",
+  "link": "https://doi.org/10.1016/j.media.2021.102218",
+  "how_to_get": [
+    "Send request 4 of spine-program 01_carm_level_detection/docs/data_requests/FLUORO_VIDEO_REQUESTS_READY_2026-09-26.md (04_pittsburgh.eml) citing R01HD074819.",
+    "Expect a University of Pittsburgh data use agreement."
+  ],
+  "grid_path": null,
+  "counts": {
+    "clips": 1500,
+    "subjects": 335
+  },
+  "measured": {},
+  "record": "spine-program 01_carm_level_detection/docs/FLUORO_VIDEO_SOURCES_2026-09-26.md; spine-program 01_carm_level_detection/docs/data_requests/FLUORO_VIDEO_REQUESTS_READY_2026-09-26.md 4"
+}

@@ -1,0 +1,28 @@
+{
+  "id": "canine_thoracic_vhs",
+  "raw": "/rs/rs_grp_oschome/go2432/data/canine_thoracic_vhs/raw",
+  "bank": "/rs/rs_grp_oschome/go2432/data/canine_thoracic_vhs/bank",
+  "images": [
+    "to confirm: the images' glob"
+  ],
+  "format": "to confirm: jpg or png",
+  "person": {
+    "regex": "to confirm: one file is one dog, as (?P<case>[^/]+)\\.(jpe?g|png)$"
+  },
+  "view": {
+    "lat_from_ap_deg": 90.0,
+    "gantry_deg": null
+  },
+  "device": {
+    "make": null,
+    "model": null,
+    "detector": null
+  },
+  "modality": "dx",
+  "device_class": "film",
+  "split": "train",
+  "labels": null,
+  "synthetic": false,
+  "px_mm": null,
+  "notes": "152 lateral thoracic radiographs of dogs (the veterinary direction of 2026-10-20); the person is one dog"
+}

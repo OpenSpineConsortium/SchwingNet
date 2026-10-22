@@ -1,0 +1,22 @@
+{
+  "id": "sof_lateral_spine",
+  "name": "SOF lateral spine radiographs (Study of Osteoporotic Fractures)",
+  "group": "films",
+  "what": "the women's counterpart of MrOS: lateral thoracolumbar films at several visits, about 9,700 women, Genant grading per vertebra; counts to confirm on the page",
+  "level_truth": "Genant grades on named levels, so level truth exists",
+  "reach": "get",
+  "status": "found by the sweep of 2026-10-21; not fetched; the same kind of request as MrOS (to confirm on the page), not sent; with MrOS the largest level-labelled lateral spine film resource that exists",
+  "licence": "a SOF data request agreement; terms to confirm on the page",
+  "link": "https://sofonline.ucsf.edu/",
+  "how_to_get": [
+    "Open https://sofonline.ucsf.edu/ and read the data request route, to confirm on the page.",
+    "The owner files the request in the owner's name and signs whatever agreement follows; a session drafts the proposal text once the owner asks.",
+    "Once granted, fetch by the route the centre gives, as a Slurm job on the owner's word, never on the login node."
+  ],
+  "grid_path": null,
+  "counts": {
+    "women_about": 9700
+  },
+  "measured": {},
+  "record": "docs/research/xray-datasets-missing.md (2026-10-21)"
+}

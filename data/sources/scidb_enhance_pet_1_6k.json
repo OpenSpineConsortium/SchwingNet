@@ -1,0 +1,23 @@
+{
+  "id": "scidb_enhance_pet_1_6k",
+  "name": "ENHANCE.PET 1.6k: whole-/total-body FDG-PET/CT, 1,683 studies (NIfTI)",
+  "group": "ct",
+  "what": "ENHANCE.PET 1.6k, whole- and total-body FDG-PET/CT, 1,683 studies as NIfTI (Science Data Bank doi:10.57760/sciencedb.34150), about 286 GB; multi-centre (Vienna, UC Davis, Careggi, Leipzig, Tuebingen), so Tuebingen may be autoPET and Vienna's healthy controls QUADRA_HC, both tier 1, which the landing dedupe would find; the slice thickness per study is in its CT-details.xlsx, not read",
+  "level_truth": "counted by the census pipeline once fetched",
+  "reach": "get",
+  "status": "the owner's hand: confirm whether Science Data Bank needs a login and read CT-details.xlsx for slice thickness; no fetch route exists in tools/acquisition_fetch.py for Science Data Bank (planned in the data platform at bf1432f)",
+  "licence": "CC BY 4.0",
+  "link": "https://doi.org/10.57760/sciencedb.34150",
+  "how_to_get": [
+    "The owner opens https://doi.org/10.57760/sciencedb.34150, reads whether a login is needed and CT-details.xlsx for slice thickness.",
+    "A Science Data Bank route is written for tools/acquisition_fetch.py before any job.",
+    "The route as the manifest prints it: python3 data/reproduce/reacquire/reacquire.py --grid scidb_enhance_pet_1_6k; on the grid, from ~/spinesurg-ct-nnunet/data_platform/reacquire, sbatch -D \"$PWD\" --export=ALL,IDS=\"scidb_enhance_pet_1_6k\",MODE=--run reacquire.sbatch, as a Slurm job on the owner's word."
+  ],
+  "grid_path": null,
+  "counts": {
+    "studies": 1683,
+    "size_gb": 286.3
+  },
+  "measured": {},
+  "record": "spinesurg-ct-nnunet data_platform/sources.json bf1432f"
+}

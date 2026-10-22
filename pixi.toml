@@ -1,0 +1,104 @@
+# The locked environment beethoven-qa's gate runs in (docs/setup/beethoven-qa.md; beethoven-qa's
+# docs/CONSUMING.md, step 2). The lock beside this file is the record: exact versions, build
+# strings and hashes for the grid's platform, so CI and the pre-push hook reconstruct the same
+# environment with --locked and never re-solve. The template's own checks (scripts/check.sh)
+# run on the system's python3 and need none of this; only the package under src/ and the
+# pinned copy under vendor/beethoven-qa are imported here. The medical stack (torch, the
+# detectors) and the telemetry stack (W&B, Metaflow) come in as features of their own, each in a
+# change that re-locks on purpose (docs/research/retraining-plan.md, section 5).
+
+[workspace]
+name = "schwingnet"
+version = "0.0.0"
+channels = ["conda-forge"]
+# One platform, named apart from its subdirectory because it states a glibc floor: jscpd (the
+# duplication detector, from PyPI) ships manylinux_2_34 wheels only.
+# The CUDA driver is the grid's H200 nodes', assumed here so the train-gpu environment solves on a
+# machine with no GPU; the default and train-cpu environments never load it.
+platforms = [{ name = "linux-64-glibc234", platform = "linux-64", glibc = "2.34", cuda = "12" }]
+# Only while no package comes from both conda-forge and PyPI; beethoven-qa's pixi.toml says why.
+conda-pypi-map = false
+
+[dependencies]
+# The verification stack, the same lines as beethoven-qa's pixi.toml.
+python = "3.11.*"
+pip = "*"
+icontract = ">=2.6"
+pydantic = ">=2"
+beartype = ">=0.18"
+typeguard = ">=4"
+pytest = ">=8"
+ruff = ">=0.6"
+mypy = ">=1.10"
+# The code standards (docs/STANDARDS.md of beethoven-qa), each tool run as its own process.
+complexipy = ">=8"
+radon = ">=6"
+bandit = ">=1.9"
+coverage = ">=7.10"
+pyyaml = ">=6"
+types-pyyaml = ">=6"
+zizmor = ">=1.30"
+lizard = ">=1.24"
+
+[pypi-dependencies]
+crosshair-tool = ">=0.0.60"
+jscpd = ">=5.4"
+
+[activation]
+# The package and the pinned copy, imported without a build step. Absolute, so an ad-hoc
+# `pixi run` started outside the repository's root imports them too.
+env = { PYTHONPATH = "$PIXI_PROJECT_ROOT/src:$PIXI_PROJECT_ROOT/vendor/beethoven-qa/src" }
+
+[tasks]
+# Ruff and mypy are named the repository's own directories only, never the copy and never the
+# template's tools/ and tests/, which scripts/check.sh holds to their own rules.
+lint = "ruff check src tests/schwingnet && ruff format --check src tests/schwingnet"
+typecheck = "mypy src"
+test = "pytest -q"
+symbolic = "python -m beethoven_qa gate"
+standards = "python -m beethoven_qa standards all"
+vendor-check = "python -m beethoven_qa vendor-check"
+boundary = "python -m beethoven_qa boundary"
+report = "python -m beethoven_qa report"
+gate = { depends-on = ["lint", "typecheck", "test", "boundary", "symbolic", "standards", "vendor-check"] }
+hooks = "git config core.hooksPath .githooks"
+
+# The training stack (docs/research/retraining-plan.md, section 5; #11): torch and the image
+# tools, as features so the verification environment stays small. train-cpu is a laptop's and
+# the dry run's; train-gpu is the grid's H200 job, which the same lock pins for CUDA.
+[feature.train.dependencies]
+torchvision = ">=0.18"
+pillow = ">=10"
+numpy = ">=1.26"
+matplotlib = ">=3.8"
+metaflow = ">=2.12"
+# The ONNX export and its parity check (#13): every stage is exported and its outputs compared
+# with PyTorch's on the witness frames before a latency number is written for it.
+onnx = ">=1.16"
+# Reads the DICOM X-ray sets (LUMOS, VinDr) in the bank stage, tools/bank.py (#44).
+pydicom = ">=2.4"
+# The decoders pydicom hands a compressed pixel array to (JPEG baseline, lossless and LS,
+# JPEG 2000), so a set stored compressed banks without a second round trip to the grid.
+pylibjpeg = ">=2"
+pylibjpeg-libjpeg = ">=2"
+pylibjpeg-openjpeg = ">=2"
+wandb = ">=0.18"
+
+[feature.cpu.dependencies]
+pytorch-cpu = ">=2.3"
+onnxruntime = { version = ">=1.18", build = "*cpu*" }
+
+[feature.cuda.dependencies]
+pytorch = { version = ">=2.3", build = "cuda*" }
+cuda-version = ">=12.4"
+onnxruntime = { version = ">=1.18", build = "*cuda*" }
+
+
+# W&B alone, for the flow's push of a step's offline run from a login node with no GPU (#12).
+[feature.telemetry.dependencies]
+wandb = ">=0.18"
+
+[environments]
+train-cpu = { features = ["train", "cpu"], solve-group = "train-cpu" }
+train-gpu = { features = ["train", "cuda"], solve-group = "train-gpu" }
+telemetry = { features = ["telemetry"], solve-group = "telemetry" }

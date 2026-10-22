@@ -1,0 +1,18 @@
+{
+  "id": "csxa",
+  "name": "CSXA cervical lateral films",
+  "group": "films",
+  "what": "4,963 lateral cervical radiographs with corner JSON",
+  "level_truth": "cervical, C1 to C7",
+  "reach": "held",
+  "status": "used fully; every person in the v9 base, so not held out until re-keyed",
+  "licence": "open",
+  "link": null,
+  "how_to_get": [],
+  "grid_path": null,
+  "counts": {
+    "films": 4963
+  },
+  "measured": {},
+  "record": "spine-program 01_carm_level_detection/docs/handoff/DATASET_USAGE.md 2.2"
+}

@@ -1,0 +1,10 @@
+{
+ "key": "none",
+ "offline_runs": [
+  "offline-run-20261021_134120-cd37124c487d-train",
+  "offline-run-20261021_134306-cd37124c487d-evaluate"
+ ],
+ "online_urls": [],
+ "synced": false,
+ "why": "no W&B key: not in WANDB_API_KEY, ~/.wandb/token.env or ~/.netrc"
+}

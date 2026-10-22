@@ -1,0 +1,21 @@
+{
+  "id": "veterinary_pig_levelcheck",
+  "name": "Veterinary: pig CBCT, CT and planar images (Goswami 2020, LevelCheck)",
+  "group": "future",
+  "what": "the LevelCheck pig study's seven zips of CBCT, CT and planar images, about 205 MB, with the paper (IEEE Access 2020), 3D-to-2D intensity-based registration",
+  "level_truth": "from the CT, by registration",
+  "reach": "get",
+  "status": "the owner's future direction of 2026-10-20: expand the workflow into veterinary medicine; the zips sit in spine-program's archive, excluded from the record, and the set is open on IEEE DataPort; the Mendeley canine thoracic set (canine_thoracic_vhs) stands beside it since the sweep of 2026-10-21",
+  "licence": "IEEE DataPort open access",
+  "link": "https://ieee-dataport.org/open-access/pig-data-2d-3d-intensity-based-registration",
+  "how_to_get": [
+    "Download from IEEE DataPort (an IEEE account, no agreement) to Ceph as a job; or restore the seven zips from the archive the record names (spine-program 99_archive/MANIFEST_CODE.md)."
+  ],
+  "grid_path": null,
+  "counts": {
+    "zips": 7,
+    "size_mb": 205
+  },
+  "measured": {},
+  "record": "spine-program 99_archive/MANIFEST_CODE.md; 99_archive/LITERATURE_BY_PATH.md"
+}

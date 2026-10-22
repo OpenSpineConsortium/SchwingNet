@@ -1,0 +1,14 @@
+{
+  "source": "vindr_cxr",
+  "identity_level": "study",
+  "person_key_rule": "vindr_cxr:<the header's PatientID, else its StudyInstanceUID>; a study at worst, since the release keys images and studies only",
+  "access": "PhysioNet Credentialed Health Data License 1.5.0; credentialed, the agreement signed on the page; opt-in only",
+  "modality": "dx",
+  "device_class": "film",
+  "regions": [
+    "thoracic"
+  ],
+  "grid_root": "/rs/rs_grp_oschome/go2432/data/vindr_cxr",
+  "shards": [],
+  "notes": "18,000 adult frontal chest radiographs as DICOM; banked in the train environment, which locks pydicom (#44); the raw copy is /rs/rs_grp_oschome/go2432/data/vindr_cxr/raw (grid/fetch-xray.json) and the bank /rs/rs_grp_oschome/go2432/data/vindr_cxr/bank; no shard until the chain's first run"
+}

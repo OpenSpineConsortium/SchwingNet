@@ -1,0 +1,20 @@
+{
+  "id": "radiopaedia",
+  "name": "Radiopaedia spine cases",
+  "group": "video",
+  "what": "every case whose body system is Spine (and musculoskeletal cases whose images show the spine), in every modality, with the reference articles on vertebral numbering and transitional vertebrae; the seven fluoroscopy cases first identified (rID 24796, rID 90103, rID 21585 and four fluoroscopy-guided injection cases) are within it; the count is Radiopaedia's to state at approval",
+  "level_truth": "named in the case text (L1, L5, S1)",
+  "reach": "gated",
+  "status": "applied for on 2026-10-21: the non-commercial machine-learning licence agreement (v1.3) signed and submitted through Radiopaedia's SignNow form at 03:36 UTC, fee USD 250 paid (receipt 1967-5247), checklist NO/NO/NO, pending Radiopaedia's countersignature; the form cut the Project Aims and Radiopaedia Content answers off, so the full text goes to license@radiopaedia.org in a follow-up; any model that reads these cases is a Model under the agreement (release only under CC BY-NC-SA, no commercial use), which is the lawyer's question before training on them",
+  "licence": "CC BY-NC-SA 3.0 (the site); ML use by application",
+  "link": "https://radiopaedia.org/licence",
+  "how_to_get": [
+    "The application text is /mnt/project-files/data-requests/radiopaedia-application-draft.md (the thread's file); the agreement is SignNow document 2b7a4819d4ea45198cd8e71ba0703993ba89663b, sent to andrew.murphy+ml@radiopaedia.org with license@radiopaedia.org in copy.",
+    "Wait for the countersigned copy and the agreement ID, which every publication must quote; then Radiopaedia says how the export is delivered (bulk export, never scraping).",
+    "A commercial product built from any model that touched these cases needs a negotiated licence first (clause 2b)."
+  ],
+  "grid_path": null,
+  "counts": {},
+  "measured": {},
+  "record": "spine-program 01_carm_level_detection/docs/data_requests/FLUORO_VIDEO_REQUESTS_READY_2026-09-26.md 8; the thread SchwingNet video demo plan, 2026-10-21 (the signed form uploaded at 03:37 UTC)"
+}

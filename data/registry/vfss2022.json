@@ -1,0 +1,14 @@
+{
+  "source": "vfss2022",
+  "identity_level": "study",
+  "person_key_rule": "vfss2022:<case as grid/banks/vfss2022.json derives it>; one case is one study",
+  "access": "TIB, doi:10.57702/w1ye2nim; licence to confirm on the page",
+  "modality": "rf",
+  "device_class": "fixed_c_arm",
+  "regions": [
+    "cervical"
+  ],
+  "grid_root": "/rs/rs_grp_oschome/go2432/data/vfss2022",
+  "shards": [],
+  "notes": "440 videofluoroscopic swallow frames with bolus and pharynx masks; the cervical spine in every frame, no vertebra labels; the person is the swallow study; the raw copy is /rs/rs_grp_oschome/go2432/data/vfss2022/raw (grid/fetch-xray.json) and the bank /rs/rs_grp_oschome/go2432/data/vfss2022/bank; no shard until the chain's first run"
+}

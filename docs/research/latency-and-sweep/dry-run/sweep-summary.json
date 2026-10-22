@@ -1,0 +1,167 @@
+{
+ "name": "case134",
+ "run_id": "2553f50346d4",
+ "code_commit": "d949c4ff8cbab6cdea086062e0e683b43b1c1bb8",
+ "runtime": "onnxruntime",
+ "device": "x86_64 (4 cores visible)",
+ "threads": 4,
+ "box_source": "truth",
+ "fps": 10.3,
+ "frames": 12,
+ "latency_ms": {
+  "frames": 12,
+  "p50": 10.740272000020923,
+  "p95": 18.09164399992369,
+  "p99": 18.09164399992369,
+  "mean": 10.908440333328903,
+  "min": 6.032170000025872,
+  "max": 18.09164399992369
+ },
+ "budget_ms": 97.0,
+ "within_budget": true,
+ "accuracy": {
+  "+0 to +15 deg": {
+   "correct": 2,
+   "total": 3,
+   "fraction": 0.6666666666666666,
+   "ci95": [
+    0.2076549551264879,
+    0.9385096847238394
+   ],
+   "abstained": 0
+  },
+  "+15 to +30 deg": {
+   "correct": 1,
+   "total": 4,
+   "fraction": 0.25,
+   "ci95": [
+    0.045586062644636216,
+    0.6993639475573634
+   ],
+   "abstained": 2
+  },
+  "+30 to +45 deg": {
+   "correct": 2,
+   "total": 4,
+   "fraction": 0.5,
+   "ci95": [
+    0.15003570882017148,
+    0.8499642911798285
+   ],
+   "abstained": 2
+  },
+  "+45 to +60 deg": {
+   "correct": 1,
+   "total": 2,
+   "fraction": 0.5,
+   "ci95": [
+    0.09452865480086614,
+    0.9054713451991339
+   ],
+   "abstained": 1
+  },
+  "+60 to +75 deg": {
+   "correct": 2,
+   "total": 3,
+   "fraction": 0.6666666666666666,
+   "ci95": [
+    0.2076549551264879,
+    0.9385096847238394
+   ],
+   "abstained": 0
+  },
+  "+90 to +105 deg": {
+   "correct": 3,
+   "total": 6,
+   "fraction": 0.5,
+   "ci95": [
+    0.18761280689940868,
+    0.8123871931005913
+   ],
+   "abstained": 1
+  },
+  "-15 to +0 deg": {
+   "correct": 4,
+   "total": 5,
+   "fraction": 0.8,
+   "ci95": [
+    0.3755282641185388,
+    0.9637768390302125
+   ],
+   "abstained": 0
+  },
+  "-30 to -15 deg": {
+   "correct": 2,
+   "total": 5,
+   "fraction": 0.4,
+   "ci95": [
+    0.1176182311592533,
+    0.769280067791163
+   ],
+   "abstained": 3
+  },
+  "-45 to -30 deg": {
+   "correct": 2,
+   "total": 3,
+   "fraction": 0.6666666666666666,
+   "ci95": [
+    0.2076549551264879,
+    0.9385096847238394
+   ],
+   "abstained": 0
+  },
+  "-60 to -45 deg": {
+   "correct": 4,
+   "total": 4,
+   "fraction": 1.0,
+   "ci95": [
+    0.5100999795960008,
+    1.0
+   ],
+   "abstained": 0
+  },
+  "-75 to -60 deg": {
+   "correct": 3,
+   "total": 4,
+   "fraction": 0.75,
+   "ci95": [
+    0.3006360524426366,
+    0.9544139373553637
+   ],
+   "abstained": 0
+  },
+  "-90 to -75 deg": {
+   "correct": 3,
+   "total": 3,
+   "fraction": 1.0,
+   "ci95": [
+    0.43849391955098227,
+    1.0
+   ],
+   "abstained": 0
+  },
+  "all frames": {
+   "correct": 29,
+   "total": 46,
+   "fraction": 0.6304347826086957,
+   "ci95": [
+    0.48599833149184785,
+    0.7547644048569049
+   ],
+   "abstained": 9
+  },
+  "all frames, frame alone (no tracker)": {
+   "correct": 38,
+   "total": 46,
+   "fraction": 0.8260869565217391,
+   "ci95": [
+    0.6927636765607748,
+    0.9091431643111074
+   ],
+   "abstained": 0
+  }
+ },
+ "onnx_sha256": "0cf060843c9c7d2b9d47d6f96d66d9804a220fe2e68b06b1cbd36602aeb7f160",
+ "excludes": "acquisition, file read and decode, drawing and encoding the overlay; timed as tools/latency.py measure times a frame",
+ "video": "<run dir>"
+}

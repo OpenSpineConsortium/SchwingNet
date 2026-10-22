@@ -1,0 +1,48 @@
+{
+ "epoch": 2,
+ "train_loss": 0.0065453099823857015,
+ "validation_accuracy": 0.9926739926739927,
+ "validation_ci": [
+  0.9813160918517653,
+  0.9971475238513755
+ ],
+ "validation_n": 546,
+ "seconds": 65.0,
+ "checkpoint_sha256": "c9e4712f8ccf1b8ab22bf38f86d39e48a86dc5a1b4f77405b4ca36d0c9c0c8e2",
+ "counts": {
+  "train": 4840,
+  "validation": 546,
+  "train_persons": 54,
+  "validation_persons": 6
+ },
+ "levels": [
+  "C1",
+  "C2",
+  "C3",
+  "C4",
+  "C5",
+  "C6",
+  "C7",
+  "T1",
+  "T2",
+  "T3",
+  "T4",
+  "T5",
+  "T6",
+  "T7",
+  "T8",
+  "T9",
+  "T10",
+  "T11",
+  "T12",
+  "T13",
+  "L1",
+  "L2",
+  "L3",
+  "L4",
+  "L5",
+  "L6",
+  "sacrum"
+ ],
+ "size": 64
+}

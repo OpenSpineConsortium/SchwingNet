@@ -1,0 +1,5 @@
+# What a run writes beside the scripts: the Slurm logs and the stage reports, and the last run's job ids.
+logs/*
+!logs/.gitkeep
+LAST_RUN.txt
+LAST_LATENCY.txt

@@ -1,0 +1,5 @@
+{
+  "salt": "schwingnet-2026-10-21",
+  "validation_share": 0.1,
+  "hash": "first 8 bytes, big-endian, of sha256 over the UTF-8 of 'schwingnet-split|' + salt + '|' + person; validation where the value is below validation_share * 2**64, training otherwise; a person on test-persons.json is test whatever the hash says"
+}

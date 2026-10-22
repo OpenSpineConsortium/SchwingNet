@@ -1,0 +1,16 @@
+{
+  "source": "vindr_spinexr",
+  "identity_level": "study",
+  "person_key_rule": "vindr_spinexr:<the header's PatientID, else its StudyInstanceUID>; a study at worst, as the old record's vindr_image_to_study.json keyed it, since the release keys images, series and studies only",
+  "access": "PhysioNet Restricted Health Data License 1.5.0, credentialed, the owner's named-person agreement; covered by WSU IRB HPR 2026-330 (29 Sep 2026)",
+  "modality": "dx",
+  "device_class": "film",
+  "regions": [
+    "cervical",
+    "thoracic",
+    "lumbar"
+  ],
+  "grid_root": "/rs/rs_grp_oschome/go2432/data/vindr_spinexr",
+  "shards": [],
+  "notes": "10,466 DICOM (8,389 train and 2,077 test) in 5,000 studies with lesion boxes and no levels, held complete at /rs/rs_grp_oschome/go2432/data/vindr_spinexr/raw/vindr/1.0.0; banked by grid/banks/vindr_spinexr.json in the train environment (#44) into /rs/rs_grp_oschome/go2432/data/vindr_spinexr/bank; the old C-ArmLSpine fold models saw 2,632 of its crops, which binds no version that starts from declared ImageNet weights; no shard until the chain's first run"
+}
