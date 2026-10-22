@@ -4,6 +4,8 @@ Every artifact in the claude.ai artifacts gallery the owner's accounts made for 
 
 To add the artifacts of another account, open a session on OpenSpineConsortium/symphony-template from that account, with this repository beside it, and run `/export-artifacts <a name for the account>` (symphony-template's .claude/skills/export-artifacts), which sorts each artifact to this repository or to symphony-template and opens one pull request in each; if the command is not found, the skill is not on symphony-template's main yet. By hand it is: list them (Artifact tool, action list), read each page (action read, path index.html, and each other file a scope files listing shows), export each Docs document as Markdown (Claude Docs export), add one folder each here and one row below, in one pull request. Patent material (SchwingNet's methods) goes only to OpenSpineConsortium/SchwingNet, never to a public repository, and the skill never shares any of them.
 
+The folder _synthesis/ is not an artifact: it holds the inventory of every artifact here and in symphony-template, their clusters, their contradictions and the proposed table of contents of the Artifact Textbook (issue #120), rendered from inventory.json; its README says what each file is.
+
 | Artifact | Folder | Link | Account | What it is |
 |---|---|---|---|---|
 | AIDaS Seed Grant Proposal | [aidas-seed-grant-proposal](aidas-seed-grant-proposal/) | https://claude.ai/artifact/UwoqsEAjFPcUJVDutVpFHx | first account | Seed grant proposal, 2026-2027 cycle: exact intraoperative vertebral counting on the hospital's own C-arm, closing the domain gap with in-domain fluoroscopy, phantom, cadaver and shadow-mode validation |
