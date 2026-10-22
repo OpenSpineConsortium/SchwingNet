@@ -332,6 +332,25 @@
         "the share is B2DROP's public Nextcloud link BIMCV sent after the form; the job lists it by WebDAV and checks each file's size, since Nextcloud states no checksum",
         "about 1.02 TB, as the record states; the archives stay packed, and the bank stage waits on a recipe for this set"
       ]
+    },
+    {
+      "id": "kaggle_fracture_multiregion",
+      "route": "kaggle",
+      "source": "https://www.kaggle.com/datasets/bmadushanirodrigo/fracture-multi-region-x-ray-data",
+      "kaggle": "bmadushanirodrigo/fracture-multi-region-x-ray-data",
+      "dest": "/rs/rs_grp_oschome/go2432/data/kaggle_fracture_multiregion/raw",
+      "size_gb": 0.481,
+      "checksum": {
+        "md5": null,
+        "sha256": null
+      },
+      "licence": "PDDL in Kaggle's metadata field and ODC-By 1.0 in its description (read 2026-10-22); the three source uploads' own terms unread, taken on the owner's yes of 2026-10-22",
+      "token_file": "~/.fluorocap/credentials.env",
+      "unpack": true,
+      "confirm": [
+        "10,580 radiographs in fractured and non-fractured folders over lower and upper limbs, lumbar spine, hips and knees; only the lumbar spine folder concerns the bank, whose recipe waits on the folder names",
+        "the origin of the three source uploads, which the page does not state"
+      ]
     }
   ],
   "credentialed": [

@@ -1,0 +1,14 @@
+{
+  "source": "kaggle_fracture_multiregion",
+  "identity_level": "study",
+  "person_key_rule": "kaggle_fracture_multiregion:<case as grid/banks/kaggle_fracture_multiregion.json derives it>; one film is one study until the origin says otherwise",
+  "access": "Kaggle; PDDL in the metadata and ODC-By 1.0 in the description; taken on the owner's yes of 2026-10-22 though the source uploads' origin is unstated",
+  "modality": "dx",
+  "device_class": "film",
+  "regions": [
+    "lumbar"
+  ],
+  "grid_root": "/rs/rs_grp_oschome/go2432/data/kaggle_fracture_multiregion",
+  "shards": [],
+  "notes": "10,580 radiographs over five regions in fractured and non-fractured folders, 481 MB; the raw copy is /rs/rs_grp_oschome/go2432/data/kaggle_fracture_multiregion/raw (grid/fetch-xray.json, the kaggle route) and the bank /rs/rs_grp_oschome/go2432/data/kaggle_fracture_multiregion/bank; no shard until the recipe is filled in"
+}
