@@ -1,0 +1,137 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>SchwingNet Figures</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root { --paper:#f6f8f9; --surface:#fff; --ink:#12181d; --muted:#5c6873; --faint:#8b96a0; --rule:#dbe2e7;
+          --chain:#1f4e79; --chain-w:#e8eff6; --warn:#b4620a; --warn-w:#fdf3e7; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    --paper:#0e1317; --surface:#161d23; --ink:#e6ecf1; --muted:#9aa7b2; --faint:#6d7a86; --rule:#2a343d;
+    --chain:#7db3e0; --chain-w:#16242f; --warn:#e39b4a; --warn-w:#2a2014; } }
+  :root[data-theme="dark"] { --paper:#0e1317; --surface:#161d23; --ink:#e6ecf1; --muted:#9aa7b2; --faint:#6d7a86;
+    --rule:#2a343d; --chain:#7db3e0; --chain-w:#16242f; --warn:#e39b4a; --warn-w:#2a2014; }
+  body { background:var(--paper); color:var(--ink); font-family:"IBM Plex Sans",system-ui,sans-serif; font-size:16px; line-height:1.55; }
+  .wrap { max-width:1100px; margin-inline:auto; padding-inline:20px; padding-block:40px 72px; display:flex; flex-direction:column; gap:36px; }
+  h1,h2 { font-family:Newsreader,Georgia,serif; font-weight:600; margin:0; text-wrap:balance; }
+  h1 { font-size:clamp(1.9rem,5vw,2.6rem); line-height:1.1; }
+  h2 { font-size:1.35rem; }
+  p { margin:0; }
+  .eyebrow { font-family:"IBM Plex Mono",monospace; font-size:.7rem; letter-spacing:.12em; text-transform:uppercase; color:var(--faint); margin-bottom:8px; }
+  .lede { color:var(--muted); font-size:1.05rem; margin-top:10px; max-width:70ch; }
+  .rule { height:1px; background:var(--rule); border:0; }
+  figure { margin:0; display:flex; flex-direction:column; gap:10px; }
+  figure img { width:100%; height:auto; display:block; background:#fff; border:1px solid var(--rule); border-radius:3px; }
+  figcaption { font-size:.88rem; color:var(--muted); max-width:90ch; }
+  figcaption b { color:var(--ink); font-weight:600; }
+  .path { font-family:"IBM Plex Mono",monospace; font-size:.74rem; color:var(--faint); }
+  .tag { display:inline-block; font-family:"IBM Plex Mono",monospace; font-size:.66rem; letter-spacing:.06em; text-transform:uppercase;
+         padding:1px 7px; border-radius:2px; border:1px solid var(--chain); color:var(--chain); margin-right:6px; }
+  .tag.warn { border-color:var(--warn); color:var(--warn); }
+  .grid2 { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:24px; }
+  .note { background:var(--warn-w); border-left:3px solid var(--warn); padding:12px 16px; border-radius:3px; font-size:.92rem; }
+</style>
+<div class="wrap">
+  <header>
+    <p class="eyebrow">spinesurg-ct-nnunet &middot; paper/rsnai/figures &middot; 22 September 2026, 20:12</p>
+    <h1>Every figure on disk tonight</h1>
+    <p class="lede">The composite page, each rebuilt row at full resolution, and the three audit figures. Paths are
+      in the repository on branch <span class="path">L6_Class</span>. The manuscript assembler copies its chosen
+      set into <span class="path">SchwingNet/figures/</span> when it finishes.</p>
+  </header>
+
+  <div class="note">The composite below was stacked at 19:31. Two rows were re-rendered at 20:12 to remove the
+    algebraic rule (anatomy, fluoroscopic localisation); the individual row images further down are the current
+    ones, the composite is not yet restacked.</div>
+
+  <hr class="rule">
+  <section><h2>The composite, tall version for reading on screen</h2></section>
+  <figure>
+    <img src="fig1_story_tall.png" alt="Figure 1 composite, eight rows stacked">
+    <figcaption><span class="tag">composite</span><b>fig1_story_tall.png</b> — the rows as stacked by
+      <span class="path">tools/fig_story_compose.py</span> before the rule removal. The one-page manuscript
+      version is <span class="path">fig1_story.png</span>; for submission this splits into figures of at most
+      four components.</figcaption>
+  </figure>
+
+  <hr class="rule">
+  <section><h2>Each row, current</h2></section>
+
+  <figure><img src="fig1_problem.png" alt="The ambiguity: one field of view, two sets of levels">
+    <figcaption><span class="tag">a</span><b>The ambiguity.</b> The same three-body window holds L4·L3·L2 in an ordinary
+      spine and L5·L4·L3 in one with a lumbarised S1. This is the off-by-one that becomes wrong-level surgery.
+      <span class="path">fig1_problem.png</span></figcaption></figure>
+
+  <figure><img src="fig1_row1_pipeline.png" alt="Processing chain">
+    <figcaption><span class="tag">b</span><b>Processing chain.</b> Expose, detect, link, chain, count, confirm; shaded
+      boxes are learned, the rest is geometry. <span class="path">fig1_row1_pipeline.png</span></figcaption></figure>
+
+  <figure><img src="fig1_row2_anatomy.png" alt="Whole spine, two algorithm states, typical and anomalous columns">
+    <figcaption><span class="tag">c</span><span class="tag warn">re-rendered 20:12</span><b>The count walking up the
+      spine.</b> Two real VerSe columns (verse108, 23 bodies; verse547, 24 with a thirteenth thoracic), the initial
+      window on L2–L5 and the k-th window with the prior windows shingled behind it, the sacral anchor, the skull.
+      The rule annotations are gone; the extra body is now marked directly.
+      <span class="path">fig1_row2_anatomy.png</span></figcaption></figure>
+
+  <figure><img src="fig1_row2_stitch.png" alt="Four exposures stitched into a panorama">
+    <figcaption><span class="tag">c′</span><b>The sweep on a real render.</b> Four overlapping exposures on a prone
+      patient and the panorama counted from the sacrum. <span class="path">fig1_row2_stitch.png</span></figcaption></figure>
+
+  <figure><img src="fig1_row3_overlap.png" alt="Two consecutive windows with the shared vertebrae shaded and measurement lines">
+    <figcaption><span class="tag">d</span><span class="tag warn">millimetres under review</span><b>Matching consecutive
+      acquisitions.</b> The shared bodies shaded in both windows; the window step against the body pitch. The
+      millimetre values come from <span class="path">verse_drr</span>, whose spacing is suspected ~15 % short by
+      the row-spacing defect of 19 September — checklist item A8 — so none of them is quotable yet.
+      <span class="path">fig1_row3_overlap.png</span></figcaption></figure>
+
+  <figure><img src="fig1_row3_confirm.png" alt="Instrument on bone matched onto the chain">
+    <figcaption><span class="tag">e</span><b>Confirmation on a render.</b> Instrument frame, the chain with the located
+      body, and the correlation along the chain with a margin of 0.18 over one body off.
+      <span class="path">fig1_row3_confirm.png</span></figcaption></figure>
+
+  <figure><img src="fig1_row4_fluorohash.png" alt="Limited fluoroscopic field located on the panorama with a text readout">
+    <figcaption><span class="tag">f</span><span class="tag warn">re-rendered 20:12</span><b>Fluoroscopic
+      localisation.</b> The narrow field mapped onto the panorama, with the readout the software gives: the i-th
+      vertebra cranial-to-caudal, the j-th caudal-to-cranial, the assigned level and its confidence. The rule line
+      is gone. <span class="path">fig1_row4_fluorohash.png</span></figcaption></figure>
+
+  <figure><img src="fig1_row6_confirm_fluoro.png" alt="Confirmation on frames styled by a fitted C-arm card, a sixth lumbar vertebra">
+    <figcaption><span class="tag">g</span><b>Confirmation on styled frames.</b> The same confirmation on frames styled by
+      the Cios Fusion card; a sixth lumbar vertebra counted from the sacrum, margin 0.01 — honestly a weak one.
+      <span class="path">fig1_row6_confirm_fluoro.png</span></figcaption></figure>
+
+  <div class="grid2">
+    <figure><img src="fig1_row5_corpus.png" alt="Training corpus as pictograms">
+      <figcaption><span class="tag">h</span><b>What the training data is.</b> CT→X-ray for paired sets, X-ray alone for
+        pure film, a stick-figure spine for phantoms, and a device-settings-only marker for non-spine C-arm data.
+        <span class="path">fig1_row5_corpus.png</span></figcaption></figure>
+    <figure><img src="fig1_row6_arch.png" alt="Detector and localiser architectures">
+      <figcaption><span class="tag">i</span><b>The two networks.</b> The detector (1024 px, CSP backbone, PAN over three
+        scales, decoupled head) and the localiser (96 px crop plus target channel, ResNet-18, BiGRU over two to nine
+        bodies, 27-level posterior). <span class="path">fig1_row6_arch.png</span></figcaption></figure>
+  </div>
+
+  <figure><img src="fig13_feature_cartoon.png" alt="Region-occlusion ablation on a vertebral body stack">
+    <figcaption><span class="tag">j</span><b>Which morphology carries level identity.</b> Accuracy lost at L3 when each
+      region is masked: the target body and the neighbour above matter most; end-plates barely.
+      <span class="path">fig13_feature_cartoon.png</span></figcaption></figure>
+
+  <hr class="rule">
+  <section><h2>The audit figures</h2></section>
+
+  <figure><img src="fig_contribution.png" alt="Held-out device by training set heatmap">
+    <figcaption><span class="tag">new tonight</span><b>Which training data contributes.</b> Held-out device against
+      training set, from the single-device, two-device, all-device and pooled detector runs. This is the figure that
+      answers the DeepFluoro question; its text is in <span class="path">SchwingNet/results/DATA_CONTRIBUTION.md</span>.
+      <span class="path">SchwingNet/figures/fig_contribution.png</span></figcaption></figure>
+
+  <div class="grid2">
+    <figure><img src="fig_device_params.png" alt="Per-device sampling audit">
+      <figcaption><b>What each C-arm card samples.</b> Header distributions in red, fitted marginals in grey, and
+        the band a styled frame reached under the clip in blue — the stacked spikes are the saturation defect.
+        <span class="path">docs/figures/fig_device_params.png</span></figcaption></figure>
+    <figure><img src="fig_device_spread.png" alt="Reachable joint mass against clip width">
+      <figcaption><b>How much of the learned distribution a frame reached.</b> 1.7–5.1 % of the joint at the clip
+        width in code; the typicality gate reaches 99 %. <span class="path">docs/figures/fig_device_spread.png</span></figcaption></figure>
+  </div>
+</div>
+
+</body></html>
