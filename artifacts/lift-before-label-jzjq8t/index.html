@@ -1,0 +1,125 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Lift Before Label?</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#f5f7f7; --paper:#ffffff; --ink:#15201f; --ink2:#3d4a49; --muted:#6b7776; --rule:#d9e0df; --rule2:#e9eeed;
+  --accent:#1f6b6f; --accent-ink:#164f52; --tint:#e6f0f0; --tint2:#f0f5f5;
+  --serif:"Source Serif 4","Iowan Old Style","Palatino Linotype",Georgia,serif;
+  --sans:"IBM Plex Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0f1414; --paper:#151b1b; --ink:#e7ecec; --ink2:#c2cbca; --muted:#8a9796; --rule:#2a3535; --rule2:#1f2929;
+  --accent:#5fb3b6; --accent-ink:#8fd0d2; --tint:#12292a; --tint2:#122121; } }
+:root[data-theme="dark"]{
+  --bg:#0f1414; --paper:#151b1b; --ink:#e7ecec; --ink2:#c2cbca; --muted:#8a9796; --rule:#2a3535; --rule2:#1f2929;
+  --accent:#5fb3b6; --accent-ink:#8fd0d2; --tint:#12292a; --tint2:#122121; }
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--serif);font-size:17px;line-height:1.55;padding-inline:16px;padding-block:0}
+.wrap{max-width:940px;margin:0 auto;padding-block:28px 72px}
+header{border-bottom:2px solid var(--ink);padding-bottom:18px;margin-bottom:8px}
+.eyebrow{font-family:var(--sans);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+h1{font-weight:600;font-size:clamp(30px,4.6vw,44px);line-height:1.08;margin:0;letter-spacing:-.015em;text-wrap:balance}
+.dek{font-size:19px;color:var(--ink2);margin:14px 0 0;max-width:62ch;line-height:1.45}
+section{padding:28px 0 20px;border-bottom:1px solid var(--rule)}
+h2{font-size:26px;font-weight:600;letter-spacing:-.01em;margin:0 0 14px;line-height:1.15;text-wrap:balance}
+h2 .num{font-family:var(--mono);font-size:13px;color:var(--accent);margin-right:12px;vertical-align:middle;letter-spacing:.06em}
+h3{font-family:var(--sans);font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:22px 0 8px;font-weight:600}
+p{margin:0 0 14px;max-width:72ch}
+b{font-weight:600}
+a{color:var(--accent-ink);text-decoration:underline;text-decoration-color:var(--rule);text-underline-offset:2px}
+a:hover{text-decoration-color:var(--accent)}
+.answer{background:var(--tint);border-left:3px solid var(--accent);padding:14px 18px;margin:0 0 16px;border-radius:0 3px 3px 0}
+.answer p{max-width:76ch}
+.answer p:last-child{margin-bottom:0}
+.answer .q{font-family:var(--sans);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent-ink);display:block;margin-bottom:6px}
+.tw{overflow-x:auto;margin:6px 0 20px;border:1px solid var(--rule);background:var(--paper)}
+table{border-collapse:collapse;width:100%;font-family:var(--sans);font-size:13.5px;line-height:1.4;font-variant-numeric:tabular-nums}
+th{background:var(--tint2);text-align:left;font-weight:600;padding:9px 11px;border-bottom:1px solid var(--rule);vertical-align:bottom;color:var(--ink2)}
+td{padding:8px 11px;border-bottom:1px solid var(--rule2);vertical-align:top;min-width:9ch}
+tbody tr:last-child td{border-bottom:none}
+ol.steps{padding-left:22px;max-width:76ch}
+ol.steps li{margin:0 0 10px}
+.note{font-family:var(--sans);font-size:13.5px;color:var(--muted);border:1px dashed var(--rule);padding:10px 14px;margin:14px 0 0;max-width:80ch}
+footer{font-family:var(--sans);font-size:12.5px;color:var(--muted);margin-top:26px;line-height:1.5;max-width:80ch}
+@media (max-width:640px){ body{font-size:16px} .dek{font-size:17px} h2{font-size:23px} }
+</style>
+
+<div class="wrap">
+<header>
+  <p class="eyebrow">FluoroCap &middot; prior art &middot; 15 September 2026</p>
+  <h1>Lift to 3-D before naming the level?</h1>
+  <p class="dek">Three questions, answered from four literature sweeps (173 sourced findings): whether reconstructing the frame in 3-D before classification would beat a direct 2-D identifier, whether the CT-to-fluoroscopy registration route can supply training examples, and whether paired synthetic generation on CT volumes and their DRRs would widen the data.</p>
+</header>
+
+<section id="short">
+  <h2><span class="num">01</span>Short answer</h2>
+  <div class="answer"><span class="q">Reverse 2D&rarr;3D mapping before classification?</span>
+    <p><b>No, not from one view.</b> No paper anywhere reconstructs a radiograph or C-arm frame to 3-D and then classifies, and reports a gain over the 2-D classifier; the only lift-then-decide gain in the whole X-ray-to-CT field is chest X-ray&rarr;CTPA for pulmonary embolism (AUC 0.691&rarr;0.803 with 898 real paired patients and a generator trained on &gt;7,000 disease-bearing CTPAs; <a href="https://www.nature.com/articles/s41746-025-01857-y">X-ray2CTPA, npj Digit Med 2025</a>), and its mechanism does not transfer here because the generator would be trained on the same labelled CTs the classifier already sees. The deciding number is from the closest work to yours: a DRR-trained lumbar reconstruction network scored almost nothing above 0.6 surface score on real Cios Spin frames (one case 8% against 76% on its DRR twin) until it was adapted with 3,317 fiducial-registered real crops, and even then needed three to four calibrated views (<a href="https://arxiv.org/abs/2401.16027">Jecklin 2024</a>). Single-view lifting is a prior-driven completion, and the prior completes an L6, an absent twelfth rib or a corpectomy defect toward the typical spine, which is exactly the feature that decides the label. What does have evidence is putting 3-D knowledge <i>into</i> the 2-D model: two-view fusion when AP and lateral both exist (99.5% vs 97.3% identification on calibrated biplanar DRRs, <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC11858964/">ProVLNet 2025</a>; +15.5% AP and +35.0% lateral on real cadaver long films, <a href="https://www.sciencedirect.com/science/article/abs/pii/S0169260722006034">Huang 2022</a>), CT-derived multi-view correspondence pretraining (+1.4 to +2.0 points on real fracture classification, <a href="https://arxiv.org/abs/2507.00287">Dabboussi 2025</a>), and pose randomisation in the renderer rather than a pose head (a co-trained registration loss doubled landmark error, 8.58&rarr;20.82 mm; it helped only as a late fine-tune, <a href="https://arxiv.org/html/2511.21575">Mo 2025</a>).</p>
+  </div>
+  <div class="answer"><span class="q">Use 3D&ndash;2D registration to provide training examples?</span>
+    <p><b>Yes, and it labels real frames, not DRRs.</b> That is the standard way real intraoperative images get labels: DeepFluoro registered 366 real fluoroscopy frames of six cadavers to CT and forward-projected the 3-D annotations (<a href="https://arxiv.org/abs/1911.07042">Grupp 2020</a>); LevelCheck put the correct level on 20 of 20 clinical radiographs at 200 multistarts and 398 of 398 in the later series. The registered pairs are worth more as labelled fine-tuning data than as anything else: a DRR-only model that collapsed on real frames recovered to F1 0.84 against a 0.86 DRR ceiling with 3,317 registered real crops, and paired pix2pix translation on the same pairs gave the identical 0.84 (Jecklin 2024); where paired and unpaired translation were compared head to head the paired route bought at most one point (86.8% vs 85.8% registration success). The DRR at the registered pose is a by-product you get for free, but training on the real frame beats training on that DRR (4.89 vs 7.83 mm landmarks on DeepFluoro, <a href="https://arxiv.org/abs/2606.21414">Rapuri 2026</a>). No learning curve over the number of registered real frames exists for any spine task; the parity points sit at a few hundred frames from 6&ndash;13 subjects for geometric tasks, and the nearest discrete-label analogue went from 66% to 86&ndash;90% with adaptation on ~10k projections from 43 patients and reached 99.4% only with real-pair supervision. Budget hundreds to low thousands of registered frames over at least 10&ndash;20 patients.</p>
+  </div>
+  <div class="answer"><span class="q">Paired synthetic generation on CTs and their DRRs?</span>
+    <p><b>Partly: proven for hardware, proven in 3-D only for lesions, untested for transitional anatomy and corpectomy.</b> Inserting screws, rods and tools into CT before rendering is mature and validated on real frames (SyntheX tool Dice 0.92 sim-to-real vs 0.41 real-to-real on 264 cadaver frames, <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC10959504/">Gao 2023</a>; FluoroSAM 464 tool models in 1,621 CTs, Dice 0.77 on 1,741 real masks; Doerr 30 screw models through 17 CBCTs, 92.6% precision). Editing CT volumes to add tumours helps 3-D segmentation (+8.6 to +12.3 Dice, <a href="https://arxiv.org/abs/2502.18519">FreeTumor 2025</a>; MAISI +2.5 to +4.5 Dice including bone lesions) but nobody has rendered such volumes to DRRs and measured a 2-D gain, and when 3-D CT diffusion was rendered to DRRs it lost to both real frames and 2-D X-ray diffusion (5.82 vs 4.89 vs 4.40 mm, Rapuri 2026). Fracture synthesis exists only as 2-D slice GANs. Editing a labelled CT to create an L6, a sacralized L5, a thirteenth thoracic vertebra, an absent twelfth rib or a corpectomy defect has not been published by anyone; it would be new, cheap to try with your label maps, and its value can only be shown on real frames with CT-confirmed labels. The warning sign is that recognition gaps are wider than geometric ones: a phase-recognition model on simulated tools and anatomy scored 93.8% simulated and 67.6% on cadaver (<a href="https://arxiv.org/abs/2304.09285">Pelphix 2023</a>).</p>
+  </div>
+</section>
+
+<section id="lift">
+  <h2><span class="num">02</span>Lifting to 3-D before labelling</h2>
+  <p><b>What reconstruction reaches, and on what.</b> Every single-view or biplanar spine reconstruction result found is trained and scored on DRRs with image metrics: X2CT-GAN PSNR 22.3 / SSIM 0.525 single-view against 26.2 / 0.656 biplanar; XctDiff 23.6 / 0.524; TomoRay SSIM 0.947 on VerSe DRRs with the authors stating real validation has not been done (<a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC10992629/">Neurospine 2024</a>); X2BR IoU 0.95 on NLST DRRs with over-smoothed boundaries (<a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC13133211/">2026</a>). The NeurIPS 2023 benchmark of eight encoder-decoders gets vertebra Dice 83.7% from biplanar DRRs and loses 9.7 points on fractured pelves, 11.1 with implants and 8.1 under cohort shift, and finds that Dice gains do not track clinical-parameter error (<a href="https://arxiv.org/abs/2309.13587">Kausch/Shakya 2023</a>): the lift degrades most on the cases this identifier exists for. Model-free lifting from real C-arm frames (Gaussian splatting) needs 20&ndash;30 posed views and 13 minutes (<a href="https://arxiv.org/abs/2504.14699">IXGS 2025</a>). Shape-model fitting from two arbitrary views reaches Dice 0.73 on one cadaver and assumes the level rather than inferring it (<a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC12980022/">Spine-DART 2026</a>).</p>
+  <p><b>The ill-posedness argument, in numbers.</b> A projection sums attenuation along rays; depth ordering, out-of-plane rotation and superimposed structures are not observable from one frame. Knee-implant pose from 106,000 annotated single-plane frames gives 0.75 mm in-plane but about 25 mm out-of-plane error; a pose regressor trained on 48,600 DRRs gives 3.8 mm on DRRs and 9.7 mm on the 366 real frames of the same specimens; DiffPose&rsquo;s authors write that a regressor trained on a million patient-specific DRRs &ldquo;often does not achieve optimal alignment on real images&rdquo; and needs test-time refinement (<a href="https://arxiv.org/html/2312.06358v2">CVPR 2024</a>). Whatever a single-view lifter outputs in the null space is the training prior.</p>
+  <p><b>Evidence for the direct 2-D route.</b> Btrfly-net labels vertebrae from two 2-D projections of CT at 85&ndash;88.5% identification, so the level is recoverable from projections without volumetric processing (<a href="https://arxiv.org/abs/1804.01307">Sekuboyina 2018</a>); the discriminating cues for a level (rib on the crop, sacral morphology, transverse-process shape, end-plate contour) are projected features, not depth-ambiguous ones. The best real-film LSTV classifier is a plain 2-D ResNet at 76.4% against a specialist&rsquo;s 83.9%, limited by its CT/MRI reference labels rather than by architecture (<a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC12610351/">Kwak 2025</a>).</p>
+  <p><b>What 3-D awareness buys, cheapest first.</b> (1) Physics in the renderer: naive DRRs to DeepDRR took landmark error on real cadaver films from 78.2 to 24.7 mm (<a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC7297499/">Unberath 2019</a>); strong domain randomisation on 10,000 DRRs from 20 CTs beat training on the 366 real frames (5.95 vs 6.46 mm) and CycleGAN or ADDA added nothing on top (SyntheX). Your renderer is already here; check its randomisation list against SyntheX&rsquo;s before adding anything. (2) Off-axis view sampling buys robustness to pose without costing clean accuracy (+3 to +15 Dice at &plusmn;20&deg;, <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC11519576/">Fok 2024</a>). (3) Two-view fusion when the second view exists: real gains on cadaver long films (Huang 2022) and on synthetic biplanar (ProVLNet). (4) CT-derived multi-view correspondence pretraining of the crop encoder: +1.4 to +2.0 points on real fracture classification (Dabboussi 2025). (5) A pose head only as a late fine-tune with a small weight (Mo 2025). General computer vision agrees: 3-D-aware pretraining gains are on dense tasks (<a href="https://arxiv.org/abs/2104.11225">Pri3D</a>, <a href="https://arxiv.org/abs/2407.20229">FiT3D</a>), depth-supervised models are worse 3-D probes than DINOv2 (<a href="https://arxiv.org/html/2404.08636">El Banani 2024</a>), and cross-view completion trades semantics for geometry (CroCo, 37.0% ImageNet linear probe, reported second-hand).</p>
+  <p><b>Recommendation.</b> Do not build a reconstruction stage. Keep the direct 2-D identifier, use both views when the C-arm gives both, spend the effort on the renderer&rsquo;s physics and randomisation and on real registered frames, and treat any 3-D representation as a pretraining or auxiliary signal to be measured on real held-out frames before it is kept.</p>
+</section>
+
+<section id="registration">
+  <h2><span class="num">03</span>Registration as a training-data source</h2>
+  <p><b>It labels the real frame.</b> Registering the patient&rsquo;s CT to the intraoperative frame gives the pose; projecting the CT&rsquo;s vertebra labels through that pose puts an exact level on every visible vertebra of the <i>real</i> image. Nobody counted on the image. That is what DeepFluoro did (Dice 0.84&ndash;0.90 leave-one-specimen-out from projected labels), what LevelCheck does clinically (20/20 patients at 17&ndash;72 s; 398/398 within 30 mm in the 178-patient series; surgeons&rsquo; error on hard films 30.4%&rarr;2.4%, <a href="https://pubmed.ncbi.nlm.nih.gov/30051244/">Manbachi 2018</a>), and what a supervised registration net reached when trained on real CBCT projections with known geometry (99.4% success against 66.2% simulation-only, Jaganathan). The DRR at the registered pose comes free, but it is the weaker twin: on DeepFluoro, training on the real frames gave 4.89 mm and training on DRRs rendered from the same CTs at the same poses gave 7.83 mm (Rapuri 2026).</p>
+  <p><b>How the pairs have been used, and what each bought.</b> Supervised fine-tuning of a DRR-pretrained network on the registered real frames: F1 0.84 from a collapsed start (Jecklin, 3,317 crops, 10 specimens); in-plane error 9.4&rarr;4.6 mm on real knees from 49 views (<a href="https://arxiv.org/html/2607.22803">Daems 2026</a>); catheter Dice ~0.1&rarr;0.55 with 240 real frames. Paired pix2pix real&rarr;DRR style transfer: the same 0.84 as fine-tuning (Jecklin); paired versus unpaired translation head to head, at most one point (86.8% vs 85.8%); a forearm study found no difference between GAN-DRR and registration-DRR reconstructions (1.05 vs 1.45 mm). Paired cGAN DRR&rarr;real rendering (<a href="https://pubmed.ncbi.nlm.nih.gov/33039426/">RealDRR 2020</a>) improved image metrics with no downstream number. Patient-agnostic DRR pretraining transfers poorly alone (about 20% registration success) but makes patient-specific fine-tuning 44&times; cheaper (<a href="https://arxiv.org/html/2607.23343">Chen &amp; Kong 2026</a>); xvr trains a patient-specific pose net in five minutes after pretraining on 178 pelvic CTs, with no spine evaluation published (<a href="https://arxiv.org/abs/2503.16309">2025</a>).</p>
+  <p><b>Accuracy needed and failure modes.</b> The LevelCheck failure criterion is a projection-distance error above 20 mm at the detector, about half a thoracolumbar body; multistart and masking take gross failure from 11.5% to 5.6% in clinical cases and from 44% to 19% in the hard subset. Named failure modes: the spine&rsquo;s periodicity (a one-vertebra shift is the characteristic miss), supine-to-prone deformation (rigid registration 22.4 mm worst case, multi-stage 3.9 mm), instrumentation, retractors and bowel gas, and too few vertebrae or poor end-plate edges in the field. Deformable and multi-body registration exist (msLevelCheck; known-component registration for screws at 2.7 mm clinical TRE; PolyPose two-view Dice 0.98&ndash;0.99 on pelvis and femur, untested on spine, <a href="https://arxiv.org/pdf/2505.19256">2025</a>). Registration-derived labels are biased toward registration-friendly frames, so a held-out set labelled independently is still needed.</p>
+  <p><b>Recommendation with counts.</b> Build the route (it is being built: DiffDRR/DiffPose on the grid, synthetic then DeepFluoro), label every real frame that registers, keep the DRR twin only as an augmentation, and fine-tune the identifier on the real frames. Plan for hundreds to low thousands of registered frames from at least 10&ndash;20 patients before expecting the discrete-label gap to close; report the first learning curve over real-frame count, because none exists.</p>
+</section>
+
+<section id="synth">
+  <h2><span class="num">04</span>Paired synthetic generation on CT and DRR</h2>
+  <div class="tw"><table>
+    <thead><tr><th>CT edit</th><th>Published support</th><th>Best number</th><th>What it would add here</th></tr></thead>
+    <tbody>
+      <tr><td>Screws, rods, cages, tools inserted into CT, then rendered</td><td>Mature; validated on real frames</td><td>SyntheX tool Dice 0.92 sim2real vs 0.41 real2real (264 cadaver frames); Doerr 92.6% precision; FluoroSAM Dice 0.77 on 1,741 real masks; Pelphix shows the recognition gap (93.8&rarr;67.6%)</td><td>Keep and extend the implant scheme; expect a 10&ndash;28 point residual until real instrumented frames arrive</td></tr>
+      <tr><td>Tumour or metastasis synthesis in CT</td><td>Proven for 3-D segmentation only</td><td>FreeTumor +12.3 Dice OOD; MAISI +2.5 to +4.5 Dice incl. bone lesions; Saillard femoral metastases from 29 lesions</td><td>Plausible for the tumour stratum; no DRR-downstream evidence; low priority</td></tr>
+      <tr><td>Fracture or collapse simulation</td><td>2-D slice GANs only; a pelvic fracture simulator with no DRR use</td><td>VCF classification 73&rarr;89% (slice GAN)</td><td>Untested as volume editing; Genant-graded VerSe19 renders are the honest source</td></tr>
+      <tr><td>Whole-CT generation with labels (3-D diffusion, MAISI)</td><td>Rendered to DRRs it underperforms</td><td>DiffCT-DRR 5.82 mm vs real 4.89 vs 2-D diffusion 4.40 (Rapuri 2026)</td><td>Not the cheap route today; 2-D X-ray diffusion or real frames win</td></tr>
+      <tr><td>Transitional variants: L6, sacralized L5, T13, absent or lumbar rib</td><td>None found anywhere</td><td>&mdash;</td><td>New. Cheap with your label maps (duplicate a lumbar segment with its disc; fuse L5&ndash;S1; relabel and drop the twelfth rib; add a rib to L1); value only provable on real CT-confirmed frames</td></tr>
+      <tr><td>Corpectomy and body replacement</td><td>None found</td><td>&mdash;</td><td>New; remove the body, insert cage and plate; same caveat</td></tr>
+      <tr><td>Rendering physics and randomisation (not an edit, the baseline)</td><td>Strong</td><td>DeepDRR 78.2&rarr;24.7 mm; strong DR + 10k DRRs beat 366 real frames</td><td>Already in place; audit against SyntheX&rsquo;s list</td></tr>
+    </tbody>
+  </table></div>
+  <p><b>Recommendation.</b> Hardware editing stays. Transitional and corpectomy editing is worth a week because nobody has done it and the labels are already there, but its only meaningful test is on real frames with CT-verified levels, so it waits on the registration route for its evaluation. Do not generate whole CTs; do not expect lesion synthesis to move a 2-D number without measuring it.</p>
+</section>
+
+<section id="order">
+  <h2><span class="num">05</span>What I would do, in order</h2>
+  <ol class="steps">
+    <li><b>Finish the registration harness</b> (running): synthetic capture range on CTSpinoPelvic1K, then real DeepFluoro frames. Evidence: seconds per frame and the pose error at which the level label survives. Cost: days.</li>
+    <li><b>Audit the renderer against SyntheX&rsquo;s randomisation list</b> and add off-axis view sampling and intensifier distortion; measure on the held-out renders. Cost: days; expected gain: robustness, not clean accuracy.</li>
+    <li><b>Two-view fusion</b> in the identifier for frames that come as AP+lateral pairs (the corpus has figure mates; the OR always has both). Evidence: Huang 2022, ProVLNet. Cost: a week.</li>
+    <li><b>Transitional and corpectomy CT editing</b> on the 802 labelled cases, rendered through the physics renderer, evaluated on held-out renders now and on real registered frames later. Cost: a week to build, unknown value until step 6.</li>
+    <li><b>Correspondence pretraining of the crop encoder</b> from DRR pairs of the same CT (Dabboussi-style), a +1&ndash;2 point candidate; only after 1&ndash;4.</li>
+    <li><b>Real registered frames</b> from the retrospective pull (Protocol 1): fine-tune the identifier on real frames, keep DRR twins as augmentation, publish the first learning curve over real-frame count. This is the step that moves the number.</li>
+    <li><b>Do not</b> build a single-view reconstruction stage, a 3-D CT generator, or an img2img translator; the evidence says each costs more than it returns.</li>
+  </ol>
+</section>
+
+<section id="open">
+  <h2><span class="num">06</span>Open questions the sweeps could not settle</h2>
+  <p>How a discrete level label&rsquo;s sim-to-real gap scales with the number of registered real frames (no learning curve exists for any spine task). Whether transitional-variant CT editing transfers at all (no prior work). Whether MAISI or a vertebra-conditioned generator at higher resolution would change the 3-D-generation verdict (Rapuri attributes the deficit to generator resolution and conditioning). Whether a pose-conditioned identifier (C-arm view angle regressed from the frame, 6.4&deg; AP / 8.9&deg; lateral on DRRs, Kausch) helps on real frames. And the one paper that might hold classification-level evidence for 3-D reconstruction pretraining in natural images (PMC10968904) could not be opened.</p>
+  <p class="note">Method and caveat: four independent sweeps (lifting; 3-D-aware representation learning; registration-derived pairs; CT editing and 3-D generation) returned 173 sourced findings on 15 September 2026. The adversarial verification pass and the synthesis agent hit the session&rsquo;s subagent limit before running; this page was written by hand from the sweeps, numbers are as reported by the papers, and the verification pass is scheduled to run when the limit resets, after which any correction is folded in here.</p>
+</section>
+
+<footer>Companion to the <a href="https://claude.ai/code/artifact/5dac8139-48fe-4093-9d7a-9a651a9e4cac">FluoroCap Reality Check</a> and the <a href="https://claude.ai/code/artifact/f5f99771-2544-4a0e-a2c8-5f981c8ef19d">overnight report</a>. Sources are linked inline; the full finding lists with evidence strings sit in the session scratchpad (lift/*.md).</footer>
+</div>
+
+</body></html>

@@ -1,0 +1,358 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Naming Vertebrae Without an Anchor</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --paper:#f5f3ee; --ink:#1d1f23; --ink-2:#4a4d55; --rule:#d9d4c9; --card:#fbfaf7;
+  --anom:#b8432a; --ord:#2b6f9e; --chance:#7a5c00; --ok:#2f6b3a; --warn:#8a5a00; --shade:#efe6cf;
+  --display:"Fraunces",Georgia,"Times New Roman",serif;
+  --body:"IBM Plex Sans","Segoe UI",Helvetica,Arial,sans-serif;
+  --mono:"IBM Plex Mono",Consolas,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --paper:#15171b; --ink:#e8e4dc; --ink-2:#a9a59c; --rule:#2f3238; --card:#1b1e23;
+  --anom:#e06a4f; --ord:#6aa6d6; --chance:#d9b25a; --ok:#6fbf7d; --warn:#e0a640; --shade:#33301f; }}
+:root[data-theme="dark"]{
+  --paper:#15171b; --ink:#e8e4dc; --ink-2:#a9a59c; --rule:#2f3238; --card:#1b1e23;
+  --anom:#e06a4f; --ord:#6aa6d6; --chance:#d9b25a; --ok:#6fbf7d; --warn:#e0a640; --shade:#33301f; }
+html,body{background:var(--paper);color:var(--ink)}
+body{font-family:var(--body);font-size:16px;line-height:1.55;margin:0;padding-inline:16px;padding-block:0 64px}
+.wrap{max-width:72ch;margin:0 auto}
+.full{max-width:1100px;margin:0 auto}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;line-height:1.15;margin:0}
+h1{font-size:clamp(30px,5vw,46px);font-weight:600;letter-spacing:-.01em}
+h2{font-size:clamp(22px,3vw,28px);font-weight:600;margin-top:2.6rem;padding-top:1.1rem;border-top:1px solid var(--rule)}
+h3{font-size:18px;font-weight:600;margin-top:1.6rem}
+.eyebrow{font-family:var(--body);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-2);font-weight:600}
+p{margin:.7rem 0}
+a{color:var(--ord)}
+.byline{color:var(--ink-2);font-size:14px;margin-top:.8rem}
+.tally{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:1.6rem 0 0}
+.tally div{background:var(--card);border:1px solid var(--rule);padding:12px 14px;border-radius:6px}
+.tally b{display:block;font-family:var(--display);font-size:30px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.1}
+.tally span{font-size:13px;color:var(--ink-2)}
+.tally .d b{color:var(--anom)} .tally .c b{color:var(--ok)} .tally .a b{color:var(--warn)}
+figure{margin:1.8rem 0}
+figure img{width:100%;height:auto;display:block;background:#fff;border:1px solid var(--rule);border-radius:4px}
+figcaption{font-size:14px;color:var(--ink-2);margin-top:.6rem}
+figcaption b{color:var(--ink)}
+.abstract{background:var(--card);border:1px solid var(--rule);border-radius:6px;padding:18px 20px;margin-top:1.6rem}
+.abstract p{margin:.5rem 0;font-size:15px}
+.kp{margin:.6rem 0 0 1.1rem;padding:0;font-size:15px}
+.kp li{margin:.35rem 0}
+.tbl{overflow-x:auto;margin:1.2rem 0;border:1px solid var(--rule);border-radius:6px}
+table{border-collapse:collapse;font-size:14px;min-width:640px;width:100%;font-variant-numeric:tabular-nums}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--rule);vertical-align:top}
+th{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2);background:var(--card)}
+td.n{text-align:right}
+.v{font-weight:600;padding:1px 7px;border-radius:4px;font-size:12px;white-space:nowrap}
+.v.d{background:color-mix(in srgb,var(--anom) 16%,transparent);color:var(--anom)}
+.v.c{background:color-mix(in srgb,var(--ok) 16%,transparent);color:var(--ok)}
+.v.a{background:color-mix(in srgb,var(--warn) 18%,transparent);color:var(--warn)}
+.formula{font-family:var(--mono);font-size:14px;background:var(--card);border:1px solid var(--rule);border-radius:6px;padding:12px 14px;overflow-x:auto;margin:1rem 0}
+.callout{border-left:3px solid var(--anom);padding:6px 14px;margin:1.2rem 0;color:var(--ink)}
+.callout.blue{border-color:var(--ord)}
+.limit{font-size:15px}
+.repro{font-family:var(--mono);font-size:13px;background:var(--card);border:1px solid var(--rule);border-radius:6px;padding:12px 14px;overflow-x:auto}
+.foot{font-size:13px;color:var(--ink-2);margin-top:3rem;border-top:1px solid var(--rule);padding-top:1rem}
+@media (max-width:520px){ body{font-size:15px} .tally b{font-size:26px} }
+</style>
+
+<div class="wrap">
+  <p class="eyebrow" style="margin-top:28px">Original research · manuscript in preparation for <i>Radiology: Artificial Intelligence</i></p>
+  <h1>Naming Vertebrae Without an Anchor</h1>
+  <p class="byline">Registration-free level identification on limited-field radiographs, measured on the cases a feasibility report declared impossible.<br>Gregory Schwing, MD PhD · Detroit Medical Center / Wayne State University · September 17, 2026</p>
+
+  <div class="tally">
+    <div class="d"><b>87.2%</b><span>exact name, no anchor in the window's <i>labels</i>, anomalous spine, real film</span></div>
+    <div class="d"><b>91.8% / 66.0%</b><span>interior lumbar windows — no anchor in the <i>pixels</i> — ordinary [89.4, 94.1] / anomalous [39.6, 87.2], film-clustered</span></div>
+    <div class="c"><b>99.3%</b><span>three-vertebra frames through the thoracic spine, mapped onto a sweep (31.1% alone)</span></div>
+    <div class="a"><b>5.1%</b><span>of ordinary real films fall in the report's "normal L5" geometric band</span></div>
+  </div>
+
+  <div class="abstract">
+    <p class="eyebrow">Abstract</p>
+    <p><b>Purpose.</b> To test the claim that registration-free vertebral level identification on a radiograph containing no anatomic anchor (no sacrum, no ribs, no cervical spine) is mathematically underdetermined and must be refused — and to measure whether a short series of overlapping exposures restores what a single exposure cannot hold.</p>
+    <p><b>Materials and Methods.</b> Retrospective study of public data. Border-anomaly ground truth was collected for 1,113 CT spines (CTSpinoPelvic1K, VerSe; lumbosacral and thoracolumbar flags read from label voxels) and 144 real lumbar radiographs (BUU-LSPINE authors' four- and six-lumbar reads). A ResNet-18 encoder over fixed-scale vertebra crops with a bidirectional recurrent head over 2–9 vertebrae was trained on eight sources (v2) and on 14 sources including 76,042 decoder-pseudolabelled crops (v5). Held-out windows were stratified by the report's own field-of-view states and by whether the spine was anomalous. The report's recommended geometric detectors were computed from the dataset's corner keypoints on 3,600 lateral and 3,600 AP films.</p>
+    <p><b>Results.</b> In the isolated-stack state on real film, exact naming was 97.2% [96.9, 97.4] on ordinary spines (n = 14,492) and 87.2% [84.3, 89.7] on anomalous spines (n = 572); pseudolabel training lowered the anomalous figure to 66.8% [62.9, 70.4]. Those strata are defined by the window's labels; on interior windows whose pixels exclude both ends of the annotated stack, with film-clustered intervals, ordinary lumbar naming was 91.8% [89.4, 94.1] (455 films) and anomalous 66.0% [39.6, 87.2] (12 films), against a placement-blind baseline of 0%. L2–L4 scored 86–91%; L6 scored 45–48%. Of errors, 83% were exactly one level. The report's normal-L5 Wigh band contained 5.1% of ordinary films. Lumbosacral and thoracolumbar anomalies co-occurred (OR 3.61 [2.08, 6.27] on 280 fully graded VerSe subjects; 2.1 [0.9, 5.0] where both junctions were in the field).</p>
+    <p><b>And the sweep.</b> At a 9-inch intensifier field with two bodies of overlap, a two-vertebra frame scored 69.6% on its own pixels and 95.1% registered onto a sweep from the sacrum; four-vertebra frames were correct 99% of the time on 82% of frames. Swept downward from C2 on whole-spine renders — the thoracic spine, where a single frame scored 13.4–46.4% — mapped frames scored 97.1–99.3% at full coverage, with the chain complete on 97.4% of spines.</p>
+    <p><b>Conclusion.</b> The isolated stack is not underdetermined; it carries information the report said could not exist, with a measured, anomaly-dependent cost that the report's proposed geometric substitutes do not recover — and that a short series of overlapping exposures recovers without a preoperative CT.</p>
+    <p class="eyebrow" style="margin-top:12px">Key points</p>
+    <ul class="kp">
+      <li>In windows whose labels contain neither sacrum, ribs, nor cervical spine, exact naming was 97.2% on ordinary and 87.2% on anomalous spines; on interior windows whose pixels exclude both ends of the annotated stack, ordinary lumbar naming was 91.8% [89.4, 94.1] and anomalous 66.0% [39.6, 87.2] with film-clustered intervals, against a placement-blind baseline of 0%; mid-lumbar bodies were not exchangeable.</li>
+      <li>The predicted failure mechanism is real but bounded: 83% of errors were a one-level shift; L6 scored 45–48%; training on 76,042 pseudolabelled crops cut anomalous accuracy to 66.8% while leaving ordinary accuracy unchanged.</li>
+      <li>The geometric detectors proposed as a domain-robust alternative did not transfer to real film: the stated normal-L5 squaring band held 5.1% of ordinary films; only sacral slope separated six-lumbar spines (AUC 0.73).</li>
+      <li>The limitation belongs to the exposure, not the network. A sweep of overlapping frames from a landmark, linked into one chain and stitched, raised two-vertebra frames from 69.6% to 95.1% and, through the thoracic spine, from 13.4% to 97.1%; three-vertebra frames there reached 99.3%. Overlap between exposures — not field size, not the encoder — buys the last four points.</li>
+    </ul>
+  </div>
+
+  <h2 style="margin-top:2rem"><span class="eyebrow">Latest · </span>Where this sits, what the data can reach, and what is running tonight</h2>
+
+  <h3>Against every other method that stitches radiographs</h3>
+  <p>All of them import the vertebra names from somewhere else. <b>None names vertebrae from a freehand sweep alone.</b> Most rows below are not performing this task, and the table says so rather than flattering the last line.</p>
+  <div class="tbl"><table>
+    <tr><th>method</th><th>what it requires</th><th>task</th><th>its own figure</th><th>on our films</th></tr>
+    <tr><td>LevelCheck / msLevelCheck</td><td><b>preoperative CT of the patient</b></td><td>registration success, <i>not naming</i></td><td>99.998%; 0.37–0.42 mm</td><td>not runnable without each CT</td></tr>
+    <tr><td>VDVM 2023</td><td><b>the patient's full-length film</b></td><td>match one frame to that film</td><td>0.733 on 31 images</td><td>that reference film is what a sweep builds</td></tr>
+    <tr><td>X23D</td><td>CT-trained 3-D reconstruction</td><td>screw placement</td><td>88–92% Gertzbein A/B</td><td>not a naming method</td></tr>
+    <tr><td>RadGS-Reg</td><td><b>3-D reference volume</b></td><td>6-DoF pose</td><td>sub-second, millimetre</td><td>not a naming method</td></tr>
+    <tr><td>SX-Stitch 2024 / Liu 2026</td><td><b>implanted pedicle screws</b></td><td>stitching</td><td>Cobb agreement 1.95°</td><td>cannot run before instrumentation</td></tr>
+    <tr><td>Radlink Panoramic Fluoro</td><td>—</td><td>stitching only</td><td>sub-mm continuity</td><td>produces no names</td></tr>
+    <tr><td>Wang 2015</td><td><b>radiolucent ruler under the patient</b></td><td>stitching by absolute index</td><td>—</td><td>produces no names</td></tr>
+    <tr><td>MVMS (Huang 2022)</td><td><b>calibrated multi-slot collimator</b></td><td>naming on long-length images</td><td>88.3%</td><td>needs the hardware that makes the views</td></tr>
+    <tr><td>ResNet-Transformer</td><td>serial CT or fluoroscopy slices</td><td>naming</td><td>94.36%, MLE 1.42 mm</td><td>different modality</td></tr>
+    <tr><td><b>this work</b></td><td><b>nothing but the C-arm</b></td><td><b>naming, registration-free</b></td><td>—</td><td><b>95.1%</b> at 2 vertebrae; <b>99.3%</b> at 3 through the thoracic spine</td></tr>
+  </table></div>
+
+  <h3>Why L6 is the worst number, in one table</h3>
+  <p>Distinct <b>patients</b> per level in training — not crops, because a rare class is learned from people and the same few spines are rendered from many poses.</p>
+  <div class="tbl"><table>
+    <tr><th>level</th><th>from CT renders</th><th>counted from a landmark</th><th>human-read film</th><th>pseudolabelled</th><th>total patients</th></tr>
+    <tr><td>L1</td><td>2,947</td><td>3,448</td><td>710</td><td>5,995</td><td>12,361</td></tr>
+    <tr><td>L3</td><td>3,079</td><td>3,449</td><td>765</td><td>6,049</td><td>12,569</td></tr>
+    <tr><td>L5</td><td>2,941</td><td>3,450</td><td>765</td><td>5,829</td><td>12,220</td></tr>
+    <tr><td><b>L6</b></td><td><b>168</b></td><td><b>0</b></td><td><b>0</b></td><td><b>0</b></td><td><b>168</b></td></tr>
+    <tr><td><b>T13</b></td><td><b>13</b></td><td><b>0</b></td><td><b>0</b></td><td><b>0</b></td><td><b>13</b></td></tr>
+  </table></div>
+  <div class="callout"><b>The model has never seen a photograph of a six-lumbar spine.</b> All 168 are CT renders. The pseudolabelled corpus — 30% of the bank — contributes exactly zero, not because its films have none but because the decoder that named them cannot emit one: its alphabet is the ordinary one. Every transitional spine in that corpus is filed as ordinary and is actively teaching the wrong answer. That is the whole explanation of the 57–80% L6 figure, and it is a data problem, not a loss-function problem — the two interventions built for exactly this imbalance, logit adjustment and a transition-role head, both measured as doing nothing.</div>
+
+  <h3>What is running tonight</h3>
+  <p><b>Bank v7</b> adds the two real-radiograph sources that have never been in a bank. FluoroCap's decoded panels: 2,385 converted upright, carrying <b>114 L6 and 78 T13 vertebrae</b>. VinDr: 5,369 pseudolabelled lumbar films, 1,127 with the sacrum boxed. The orientation network's recorded rotation is applied to each panel — the boxes were stored in the rotated frame, and 39 of the first 400 panels needed a half turn. Two encoders train on it, cross-entropy and logit-adjusted, each paired to its own head by hash, each measured on interior windows and on a sweep.</p>
+  <p><b>Two reading queues are live</b> so the pseudolabels can become real labels: plain radiographs (NHANES, VinDr, Mendeley, whole-spine laterals) and FluoroCap panels shown with the article's own caption. Two readers per film, agreement and Cohen's kappa reported live, disagreements to adjudication. The task is one name per film, because the decoder's error is an offset rather than a permutation.</p>
+
+  <h3>Two things that did not work, and one that changed my mind</h3>
+  <p><b>A decline is not a free retake.</b> All 4,792 query frames were shot again from a quarter-vertebra away. The retakes score the same as the frames they replaced — 81.3% against 82.8% at 82% coverage. The difficulty is in the anatomy and the chain, not that exposure. A decline means <i>count, or sweep further</i>, not <i>move and reshoot</i>.</p>
+  <p><b>More exposures is not monotonically better.</b> Four bodies of overlap needs 7.1 exposures instead of 3.1 and <i>loses</i> two points, because every extra frame is another link to get wrong. The knee is at 1.5–2 bodies, about three exposures.</p>
+  <p><b>Six interventions aimed at the transitional number; only the sweep moved it.</b> Logit adjustment buys three points on ordinary spines and nothing on variants, settled on 128 anomalous films. Two-view fusion loses: the anteroposterior view alone scores 40–47% with a lateral-trained encoder, and averaging a weak opinion into a strong one costs more than it adds. The transition-role head changed nothing at three weights. Domain randomisation, pretrain-then-finetune and two pseudolabel-admission rules all failed earlier.</p>
+
+  <h2 style="margin-top:2rem"><span class="eyebrow">0 · </span>What this actually does, per vertebra, at a real C-arm field</h2>
+  <div class="callout"><b>The short answer: no, it is not 99% on every spine.</b> It is <b>93–98% per level on ordinary spines</b>, <b>75–100% on transitional spines</b> depending on the level and the variant, and <b>57–80% when the spine has a sixth lumbar vertebra</b>. 99% is reached only by letting the system decline the frames it is least sure of — at four vertebrae in the frame, 99% correct on 82% of frames.</div>
+  <p>One configuration for everything below: a <b>9-inch image intensifier field (14&nbsp;cm at the spine)</b>, <b>two vertebral bodies of overlap</b> between exposures, sweeping up from the sacrum, on 801 abdominopelvic CT scans rendered as radiographs, each frame independently degraded to look like a separate exposure. Cells are the share of vertebrae given their true name, with a 95% interval and the count.</p>
+  <div class="tbl"><table>
+    <tr><th>true level</th><th>ordinary</th><th>lumbosacral variant</th><th>thoracolumbar variant</th></tr>
+    <tr><td colspan="4"><b>Three vertebrae in the frame</b></td></tr>
+    <tr><td>T11</td><td>94.6% [89.7, 97.2] n=148</td><td>90.0% [59.6, 98.2] n=10</td><td>50.0% [9.5, 90.5] n=2</td></tr>
+    <tr><td>T12</td><td>95.2% [92.6, 96.9] n=393</td><td>90.9% [72.2, 97.5] n=22</td><td>88.9% [56.5, 98.0] n=9</td></tr>
+    <tr><td>L1</td><td>94.8% [92.7, 96.3] n=594</td><td>89.2% [75.3, 95.7] n=37</td><td>92.3% [66.7, 98.6] n=13</td></tr>
+    <tr><td>L2</td><td>95.1% [93.1, 96.5] n=649</td><td>90.3% [75.1, 96.7] n=31</td><td>100% [81.6, 100] n=17</td></tr>
+    <tr><td>L3</td><td>96.3% [94.4, 97.5] n=587</td><td>93.3% [78.7, 98.2] n=30</td><td>100% [78.5, 100] n=14</td></tr>
+    <tr><td>L4</td><td>94.5% [91.8, 96.3] n=399</td><td>93.8% [71.7, 98.9] n=16</td><td>100% [72.2, 100] n=10</td></tr>
+    <tr><td>L5</td><td>94.9% [90.8, 97.2] n=195</td><td>84.6% [57.8, 95.7] n=13</td><td>100% [51.0, 100] n=4</td></tr>
+    <tr><td><b>L6</b></td><td><b>57.1% [25.0, 84.2] n=7</b></td><td>—</td><td>—</td></tr>
+    <tr><td colspan="4"><b>Four vertebrae in the frame — better everywhere</b></td></tr>
+    <tr><td>T11</td><td>95.0% n=200</td><td>100% n=8</td><td>100% n=3</td></tr>
+    <tr><td>T12</td><td>94.5% n=439</td><td>100% n=19</td><td>100% n=7</td></tr>
+    <tr><td>L1</td><td>94.7% n=684</td><td>97.2% n=36</td><td>92.9% n=14</td></tr>
+    <tr><td>L2</td><td>96.0% n=914</td><td>95.6% n=45</td><td>94.7% n=19</td></tr>
+    <tr><td>L3</td><td>96.2% n=717</td><td>94.6% n=37</td><td>93.8% n=16</td></tr>
+    <tr><td>L4</td><td>96.0% n=481</td><td>92.3% n=26</td><td>91.7% n=12</td></tr>
+    <tr><td>L5</td><td>97.9% n=239</td><td>88.9% n=9</td><td>100% n=5</td></tr>
+    <tr><td><b>L6</b></td><td><b>80.0% n=5</b></td><td>—</td><td>—</td></tr>
+  </table></div>
+  <p>With <b>two</b> vertebrae in the frame — the hardest case — ordinary spines score 93–97% per level, lumbosacral variants 75–100% (L3 is the weak cell at 75.0%, n=12), thoracolumbar variants <b>50%</b> at T11 and T12 rising to 100% at L2–L4, and L6 66.7% on n=3.</p>
+  <h3>Where 99% actually is</h3>
+  <div class="tbl"><table>
+    <tr><th>frames the system is allowed to decline</th><th>99% correct on</th><th>98% correct on</th><th>95% correct on</th></tr>
+    <tr><td>4 vertebrae in the frame</td><td><b>82% of frames</b></td><td>91%</td><td>all</td></tr>
+    <tr><td>3 vertebrae in the frame</td><td>75% of frames</td><td>87%</td><td>all</td></tr>
+    <tr><td>2 vertebrae in the frame</td><td>33% of frames</td><td>87%</td><td>all</td></tr>
+  </table></div>
+  <p>With one body of overlap instead of two, the 99% column halves: 42% of frames instead of 82%.</p>
+  <h3>The one place it is 99% without declining anything</h3>
+  <p>Sweeping the <b>whole spine downward from C2</b> — the thoracic spine, where a single frame names 13–46% — three-vertebra frames were named correctly <b>99.3%</b> of the time. That is 76 spines and about 133 vertebrae, so the per-level cells there hold 1–12 vertebrae each and are not worth reading individually. It says the method works where the clinical problem is worst; it is not a large-sample per-level result.</p>
+  <h3>What is weak, stated plainly</h3>
+  <ol>
+    <li><b>A sixth lumbar vertebra is named correctly 57–80% of the time.</b> The worst number in the system, and the sweep does not rescue it: there are only a few dozen such spines to learn from.</li>
+    <li><b>Two vertebrae in the frame on a thoracolumbar-variant spine: 50% at T11–T12.</b> Four vertebrae fixes it (100%), so the protocol asks for four.</li>
+    <li><b>Transitional denominators are 9 to 45 vertebrae per cell.</b> The intervals are wide, and printed rather than smoothed.</li>
+    <li><b>These are CT scans rendered as radiographs.</b> The same arms on real films are running; when they land they replace this table rather than sit beside it.</li>
+  </ol>
+
+  <h2><span class="eyebrow">1 · </span>The field's expectation</h2>
+  <p>Wrong-level spine surgery persists because intraoperative fluoroscopy shows a few vertebrae and a surgeon counts from whatever landmark is visible. Automated level identification on such images has been approached almost entirely by registration to a preoperative CT, which <i>imports</i> the level identity rather than reading it. A registration-free classifier that reads identity from local morphology would remove that dependency—but a technical feasibility analysis of exactly this problem concluded it cannot be done.</p>
+  <p>The report's argument: with neither a cranial nor a caudal anchor in frame (its <i>State C</i>, the isolated stack), the bounding boxes of a five-lumbar spine resemble those of a six-lumbar spine with its top body cropped off,</p>
+  <div class="formula">P(B | M₅)  ≈  P(B \ b₁ | M₆)</div>
+  <p>so absolute level assignment is "mathematically underdetermined," "mid-lumbar bodies (L2, L3, and L4) are largely exchangeable across subjects," and a system in State C "should formally refuse to assign absolute anatomical labels." It proposed geometric indices from corner keypoints instead—an intercrestal-line offset, a Wigh squaring index of the lowest body, sacral slope, a residual S1–S2 disc—arguing they transfer across imaging domains because they are ratios.</p>
+</div>
+<div class="full"><figure><img src="figures/fig1_problem.png" alt="Two schematic spines with the same field of view at the same height; the ordinary spine's box holds L4 L3 L2, the lumbarised spine's holds L5 L4 L3"><figcaption><b>Figure 1 — the claim, drawn.</b> The same field of view at the same height above the sacrum holds L4–L2 in an ordinary spine and L5–L3 in a spine with a lumbarised S1. This is the report's argument, not data.</figcaption></figure></div>
+<div class="wrap">
+  <div class="callout blue"><b>What the argument establishes and what it does not.</b> That no <i>deterministic</i> inverse exists is a statement about a function. That no <i>information</i> exists is a statement about a posterior. A classifier is asked for the second. Whether an anchor-free window carries information about level identity—and how much survives on a spine that actually has an extra or missing segment—is an empirical question with a number attached.</div>
+
+  <h2><span class="eyebrow">2 · </span>Formalisation</h2>
+  <p>A detector returns an ordered stack of vertebra boxes <b>B</b> = (b₁ … b<sub>K</sub>) from one image <b>I</b>. The task is a posterior over joint labelings <b>Y</b> ∈ 𝓛<sup>K</sup>, 𝓛 = {C1…C7, T1…T12, <b>T13</b>, L1…L6, sacrum}, where T13 and L6 are variant classes an ordinary spine skips. The function learned is</p>
+  <div class="formula">f : (I, B) ↦ P(Y | I, B),   with  Y* = argmax P(Y | I, B)  and  abstain if  max P &lt; τ</div>
+  <p>implemented as a per-vertebra encoder <i>e(b<sub>k</sub>)</i> on a fixed-scale crop (96 px per body on a 320 px canvas, with a target-marker channel so the classifier cannot read size as identity), followed by a bidirectional GRU over the sequence <i>e(b₁) … e(b<sub>K</sub>)</i> trained on windows of mixed length so that the film's own span is not a cue. The report's claim is that for windows with no anchor, P(Y | I, B) is flat over adjacent labelings. The measurement below is of that posterior's concentration, on real film, on anomalous spines.</p>
+
+  <h2><span class="eyebrow">3 · </span>Data, and where every label came from</h2>
+  <p>Two ends of the column were labelled separately, because the study's hypotheses concern whether they travel together. For CT, 1,113 spines (802 CTSpinoPelvic1K + 311 VerSe) carry a lumbosacral flag (sixth lumbar body by voxel count, or an adjudicated Castellvi grade) and a thoracolumbar flag (thirteenth thoracic, lumbar rib, or a rib-bearing count ≠ 12 where the field reached the twelfth rib), read from the label volumes—not from any manifest, after a manifest T13 field was found to say 18 where the voxels said 6. For real radiographs, BUU-LSPINE ships its authors' own per-study reading of four-lumbar (129) or six-lumbar (15) anatomy, four corner keypoints per body, S1 end-plate corners on laterals, and a pixel spacing of 0.175 mm. Its negatives are contaminated by construction—a Castellvi I–IV segment on a five-lumbar spine is not recorded—so every specificity or AUC against it is a floor.</p>
+</div>
+<div class="full"><figure><img src="figures/fig8_data.png" alt="Bar chart of crops per source coloured by label origin, and the anomaly manifest by trust tier"><figcaption><b>Figure S1 — the corpus and the anomaly manifest.</b> 253,763 crops in the v5 bank by label origin (human 14.1%, carried from CT 45.8%, counting-inferred 10.2%, our own decoder's pseudolabels 30.0%), and 749 anomalous spines in three trust tiers: 355 certain, 211 pseudolabelled and unverified, 183 literature figures.</figcaption></figure></div>
+<div class="wrap">
+  <div class="tbl"><table>
+    <tr><th>Source</th><th>Domain</th><th>Label origin</th><th class="n">Crops</th><th class="n">Films</th><th>C / T / L</th><th class="n">L6</th><th class="n">T13</th><th class="n">SNR</th></tr>
+    <tr><td>NHANESPS</td><td>real film</td><td>pseudo</td><td class="n">73,921</td><td class="n">15,746</td><td>37,049 / 1,630 / 35,170</td><td class="n">0</td><td class="n">0</td><td class="n">175</td></tr>
+    <tr><td>physics_drr</td><td>CT render</td><td>from CT</td><td class="n">37,556</td><td class="n">7,045</td><td>4,209 / 13,734 / 19,613</td><td class="n">145</td><td class="n">7</td><td class="n">332</td></tr>
+    <tr><td>verse_drr_obl2</td><td>CT render</td><td>from CT</td><td class="n">35,634</td><td class="n">2,989</td><td>4,783 / 18,821 / 12,030</td><td class="n">399</td><td class="n">48</td><td class="n">339</td></tr>
+    <tr><td>csxa</td><td>real film</td><td>human</td><td class="n">24,815</td><td class="n">4,963</td><td>24,815 / 0 / 0</td><td class="n">0</td><td class="n">0</td><td class="n">301</td></tr>
+    <tr><td>ctsp_drr_obl2</td><td>CT render</td><td>from CT</td><td class="n">20,680</td><td class="n">2,511</td><td>0 / 6,321 / 12,030</td><td class="n">399</td><td class="n">48</td><td class="n">344</td></tr>
+    <tr><td>buu_full</td><td>real film</td><td>counting</td><td class="n">18,008</td><td class="n">3,603</td><td>0 / 0 / 18,008</td><td class="n">0</td><td class="n">0</td><td class="n">52</td></tr>
+    <tr><td>aasce</td><td>real film</td><td>counting</td><td class="n">7,769</td><td class="n">457</td><td>0 / 5,484 / 2,285</td><td class="n">0</td><td class="n">0</td><td class="n">213</td></tr>
+    <tr><td>physics_rare</td><td>CT render</td><td>from CT</td><td class="n">7,602</td><td class="n">1,482</td><td>8 / 2,641 / 4,953</td><td class="n">589</td><td class="n">31</td><td class="n">221</td></tr>
+    <tr><td>ctsp_drr</td><td>CT render</td><td>from CT</td><td class="n">7,161</td><td class="n">801</td><td>0 / 2,350 / 4,010</td><td class="n">18</td><td class="n">0</td><td class="n">142</td></tr>
+    <tr><td>verse_drr</td><td>CT render</td><td>from CT</td><td class="n">4,548</td><td class="n">374</td><td>630 / 2,411 / 1,507</td><td class="n">50</td><td class="n">6</td><td class="n">102</td></tr>
+    <tr><td>mendeley</td><td>real film</td><td>human</td><td class="n">3,999</td><td class="n">584</td><td>0 / 573 / 2,842</td><td class="n">0</td><td class="n">0</td><td class="n">76</td></tr>
+    <tr><td>vindr</td><td>real film</td><td>human</td><td class="n">3,679</td><td class="n">744</td><td>3,374 / 1 / 304</td><td class="n">0</td><td class="n">0</td><td class="n">68</td></tr>
+    <tr><td>nhanes</td><td>real film</td><td>human</td><td class="n">3,217</td><td class="n">543</td><td>1,491 / 219 / 1,337</td><td class="n">0</td><td class="n">0</td><td class="n">101</td></tr>
+    <tr><td>nhanes_drr</td><td>CT render</td><td>from CT</td><td class="n">3,053</td><td class="n">543</td><td>1,496 / 219 / 1,338</td><td class="n">0</td><td class="n">0</td><td class="n">133</td></tr>
+    <tr><td>LAT236PS</td><td>real film</td><td>pseudo</td><td class="n">2,121</td><td class="n">212</td><td>147 / 1,079 / 868</td><td class="n">0</td><td class="n">0</td><td class="n">48</td></tr>
+  </table></div>
+  <p style="font-size:14px;color:var(--ink-2)">Table 2. SNR is the median crop-level contrast-to-noise ratio measured on the training crops themselves; it is comparable across rows because every crop is on the same canvas at the same target scale.</p>
+
+  <h2><span class="eyebrow">4 · </span>The breakthrough, measured where it was declared impossible</h2>
+  <p>Every held-out film was cut into eight windows of random length (2–9 vertebrae) at random offsets, and each window was assigned—from its <i>true</i> labels—to the report's states: A (cranial anchor), B (caudal anchor), C (isolated stack). Each was further split by whether the spine was anomalous under the ground truth above and by domain. A film with no anomaly ground truth was <i>dropped</i> from the split rather than assumed ordinary; reading absence of evidence as absence of anomaly manufactures specificity.</p>
+</div>
+<div class="full"><figure><img src="figures/fig2_breakthrough.png" alt="Grouped bars of exact naming accuracy by field-of-view state, split by real film versus CT render and anomalous versus ordinary spine, for banks v2 and v5"><figcaption><b>Figure 2 — exact naming by field-of-view state.</b> Real film versus CT render, anomalous versus ordinary spine, Wilson 95% CIs. Left, bank v2; right, bank v5 (30% pseudolabelled). Dotted line: chance for the scored label distribution, 10.3%. In the isolated stack on real film: ordinary 97.2%, anomalous 87.2% (v2) and 66.8% (v5).</figcaption></figure></div>
+<div class="wrap">
+  <h3>How many vertebrae must be visible</h3>
+  <div class="tbl"><table>
+    <tr><th>K</th><th>Real film · anomalous (v2)</th><th>Real film · ordinary (v2)</th><th>Real film · anomalous (v5)</th><th>Render · anomalous (v2)</th></tr>
+    <tr><td>2</td><td>60.5 [49.3, 70.8] n=76</td><td>92.5 [91.3, 93.5] n=2,130</td><td>41.5 [31.4, 52.3] n=82</td><td>83.3 [64.1, 93.3] n=24</td></tr>
+    <tr><td>3</td><td>82.9 [74.8, 88.8] n=111</td><td>95.6 [94.8, 96.2] n=3,156</td><td>61.8 [53.0, 69.9] n=123</td><td>88.2 [76.6, 94.5] n=51</td></tr>
+    <tr><td>4</td><td>85.0 [78.7, 89.7] n=160</td><td>97.3 [96.8, 97.8] n=4,036</td><td>57.1 [49.6, 64.4] n=168</td><td>83.3 [64.1, 93.3] n=24</td></tr>
+    <tr><td>5</td><td>100.0 n=225 <i>(whole stack — not evidence)</i></td><td>100.0 n=5,170 <i>(whole stack)</i></td><td>85.1 [80.0, 89.1] n=235</td><td>88.0 [76.2, 94.4] n=50</td></tr>
+  </table></div>
+  <p style="font-size:14px;color:var(--ink-2)">Table S1 — label-defined State C by window length. <b>Read with the retraction below:</b> a five-body window on a lumbar film is the whole annotated stack, whose names are fixed by the annotation convention, so the K=5 row is the convention reproduced, not naming. The K=2–4 rows still include windows touching an end of the stack, whose crops show the unlabelled sacrum or C2. The pixel-defined interior figures (<code>tools/eval_interior_windows.py</code>, film-cluster bootstrap, 2,000 resamples): ordinary lumbar 91.8% [89.4, 94.1] on 455 films for v2 (89.8% at two bodies, 93.8% at three) and 93.5% [91.4, 95.5] for v5; cervical 99.6% / 99.8%; anomalous lumbar 66.0% [39.6, 87.2] on 12 films (v2) and 57.3% [29.0, 78.6] on 17 films (v5). A placement-aware baseline that sees the film's edge scores 100% on these lumbar windows because BUU's names are the count; the model, shown interior pixels only, recovers 92–94% of that convention. No held-out film shares a patient stem with training (0.0%). The pseudolabel-trained v5 system loses at every length on anomalous spines while its ordinary curve is unchanged.</p>
+</div>
+<div class="full"><figure><img src="figures/fig3_along_spine.png" alt="Per-level accuracy L1 to L6 inside the isolated stack with the report's exchangeable range shaded"><figcaption><b>Figure 3 — per-level accuracy inside the isolated stack.</b> L1–L5 decline gently (90 → 85%, v2; 92 → 89%, v5) rather than collapsing in the middle; the variant class L6 is where the system fails (44.9% / 48.3%). Shaded: the levels the report called exchangeable.</figcaption></figure></div>
+<div class="full"><figure><img src="figures/fig4_error_structure.png" alt="Histogram of signed ordinal errors and a bar chart of window error shapes"><figcaption><b>Figure 4 — the predicted mechanism, at its rate.</b> 83.0% of isolated-stack errors are exactly one level (52% too low, 31% too high); 44.9% of errored windows carry one coherent offset across every vertebra—the P(B|M₅) ≈ P(B∖b₁|M₆) degeneracy exactly as described—amounting to 8.3% of all isolated-stack windows.</figcaption></figure></div>
+<div class="wrap">
+  <div class="callout"><b>Retracted, and replaced.</b> An earlier version of this page said the decoder chose a variant template only on films that did not reach the junction (65/65 vs 0/1,127). That was a tautology of our own code: the pseudolabelling script clears the supervision tier at and below the junction whenever it flags a variant, and the manifest read only that tier. Read from the decoder's full placement, <b>164 of 191 variant calls (86%) contain a sacrum</b>, and the variant rate is 9.0% [7.8, 10.4] on films with the sacrum in the decode against 0.32% [0.22, 0.46] without — rising to 30–60% at nine or more detected bodies. Against a 4–9% population prevalence, most of those calls are false positives made where the junction was visible. On NHANES the story is different again: 7,394 of its 16,234 films are lumbar and image L1–S1, but the body detector boxed the sacrum on 1.8% of them, so the classifier never saw the junction and zero flags is a detector that cannot fire (31–429 expected). The four continuous detectors at CT-fitted thresholds still fired on 0–100% of NHANES, VinDr and AASCE films: the report predicted 50–65% specificity; the collapse was total.</div>
+
+  <h2><span class="eyebrow">4b · </span>Sweep, don't squint: a registration built out of radiographs</h2>
+  <p>The interior-window result settles the argument and then hands over a real limitation: with no junction in the pixels, a transitional spine is named at about the rate of a coin toss between its two candidate identities. That limitation belongs to <i>one exposure</i>, not to the network. A surgeon's own remedy is not a better look at one picture, it is a series of pictures counted from a landmark — so we automated the series.</p>
+  <p>The radiographer starts with the sacrum at the edge of the field, exposes, moves one field minus about one vertebral body, exposes again, and repeats to the level of interest. The frames are linked by a correlation <i>restricted to the step the protocol asked for</i> — unrestricted, the periodic column locks one body off, which is the single documented failure mode of automatic vertebral localisation and accounted for all 47 failures in Otake 2012 — stitched into a panorama, and named twice: by counting from the landmark, and by the recurrent head over the whole chain with the variant alphabets open. Later limited-field frames register onto the panorama and take their names from the chain nodes they land on. <b>No preoperative CT anywhere in it.</b> A verified search found no published method that chains consecutive frames from a landmark to name what lies between them; the nearest, VDVM 2023, matches one C-arm frame against the same patient's full-length film and scores 0.733 on 31 images.</p>
+  <p>Every arm below uses the field of a <b>9-inch image intensifier, about 14&nbsp;cm at the spine</b> — what a mobile C-arm actually gives, not a whole-spine film.</p>
+  <div class="tbl"><table>
+    <tr><th>801 abdominopelvic renders (sacrum to ~T10) · two bodies of overlap</th><th>2 bodies in frame</th><th>3 bodies</th><th>4 bodies</th></tr>
+    <tr><td>the frame named on its own pixels</td><td>69.6%</td><td>85.9%</td><td>91.2%</td></tr>
+    <tr><td><b>registered onto the sweep</b></td><td><b>95.1%</b></td><td><b>95.0%</b></td><td><b>95.7%</b></td></tr>
+    <tr><td>99% correct on this share of frames</td><td>33%</td><td>75%</td><td><b>82%</b></td></tr>
+    <tr><td>98% correct on this share</td><td>87%</td><td>87%</td><td>91%</td></tr>
+    <tr><td>the registration put the frame in the right place</td><td>96.8%</td><td>97.1%</td><td>96.5%</td></tr>
+  </table></div>
+  <div class="tbl"><table>
+    <tr><th>76 whole-spine renders swept downward from C2 — the thoracic spine</th><th>2 bodies</th><th>3 bodies</th><th>4 bodies</th></tr>
+    <tr><td>the frame named on its own pixels</td><td>13.4%</td><td>31.1%</td><td>46.4%</td></tr>
+    <tr><td><b>registered onto the sweep</b></td><td><b>97.1%</b></td><td><b>99.3%</b></td><td><b>98.6%</b></td></tr>
+  </table></div>
+  <p style="font-size:14px;color:var(--ink-2)">The second table is the one the operating-room problem is stated at, and it is at full coverage with nothing declined. The chain came out complete on 97.4% of those spines and was named at 97.2%; on the nine spines in that set with a transitional vertebra, <b>every</b> mapped frame at every length was named correctly. A single frame there scores 13–46%, because the mid-thoracic spine has no landmark of its own — which is exactly why one centre booked 179 preoperative gold-fiducial placements in 38 months, 176 of them thoracic, purely to name the level.</p>
+  <div class="callout"><b>Overlap is the knob, and it is free.</b> Holding the field and everything else fixed and changing only how far the C-arm moves between exposures, two-vertebra frames score 86.6% at half a body of overlap, 93.6% at one, <b>95.1% at two</b>, 95.2% at three and 93.2% at four. Two is the optimum: below it the linker is working from partial bodies at the seam; above it the extra exposures add links faster than they add evidence, and chain completeness falls from 94.2% to 80.4%. <b>Going from one body of overlap to two more than doubles the coverage at which 99% is reached — from 42% to 82% of four-vertebra frames.</b> The protocol, not the network, buys the last four points. Field size barely moves the naming (94.9 / 93.6 / 93.5% for a collimated, 9-inch and 12-inch field) while chain completeness rises with it (92.5 / 94.1 / 96.5%), because a wider field needs fewer links.</div>
+  <div class="callout blue"><b>The decoder is the lever, and here is its size.</b> Taking each chain node at its own single-crop argmax names 85.8% of the chain. Decoding the same posteriors as one sequence against four alphabets, with the landmark declared, names 95.5% — <b>9.7 points from the decoding step alone, on identical features</b>. Same lever, same order of magnitude, as the +12.8 points a graph decode buys over neighbour-masked classification on CT (Meng 2023) and the +25.8 points a sequence predictor buys over per-vertebra argmax in a whole-spine labeller (VERIDAH 2026). Counting from the landmark names 93.8%: on a chain that reaches a landmark, the shape reading is already at least as good as counting from it.</div>
+  <div class="callout"><b>Two things that did not work.</b> A transition-role head — trained to say which body is the last thoracic, the first lumbar, the last presacral, the encoding both published anomaly-aware systems converged on — reached 89.5% balanced accuracy and 99–100% on "last presacral body", a class in which a sixth lumbar vertebra is 18 of 971 members rather than a class of its own. Added to the alphabet score at three weights it changed nothing, identical to three decimal places, because the competing alphabets already place the junctions at different positions. And the vertebra detector, trained on real radiographs, does not transfer to these degraded CT renders: with its boxes the chain came out complete on 0.4% of spines. The render arms therefore measure the linker and the decoder, not the whole pipeline.</div>
+  <p style="font-size:14px;color:var(--ink-2)">The acquisition protocol, written for the radiographer rather than for us — which landmark, how far to move, how much overlap, and what to do when the system declines — is <code>docs/SWEEP_PROTOCOL.md</code>. Its operating point matches the only clinical stitching series in the literature: four to six exposures with 20–30% intended overlap.</p>
+
+  <h2><span class="eyebrow">5 · </span>The report's geometric substitutes, on real film</h2>
+  <p>From BUU's annotated corners, for every film and body: side heights, the upper end-plate chord, the report's squaring index Q, the height-wedge, and on laterals the sacral slope and the L5–S1 gap. No detector of ours is in the loop; whatever these indices can or cannot do here is a property of the indices on real film.</p>
+</div>
+<div class="full"><figure><img src="figures/fig6_geometry.png" alt="Forest plot of AUC per geometric index and a histogram of the Wigh index with the report's band shaded"><figcaption><b>Figure 6 — geometric detectors, measured.</b> Left: AUC for six-lumbar (n=15) and four-lumbar (n=129) against ordinary, lateral and AP. Right: the Wigh index of the lowest body on 3,456 ordinary lateral films; the report's "normal L5" band of 1.20–1.45 contains 5.1% of them (median 2.08). Only sacral slope separates six-lumbar spines (AUC 0.73 [0.61, 0.84]). The L5–S1 gap's 0.99 on four-lumbar spines is the annotation schema, not anatomy: BUU's authors state that on sacralisation the fifth set of corners lands on S1, so the annotated "L5"–"S1" gap on those films is the S1–S2 junction. The genuine Wigh criterion (superior/inferior end-plate ratio ≤ 1.37, Konin &amp; Walz 2010) fares no better: the ordinary median ratio is 1.02, so the published rule fires on 99.9% of ordinary lateral films, and as a continuous index it is at chance for six-lumbar spines (AUC 0.54 [0.39, 0.68]).</figcaption></figure></div>
+<div class="wrap">
+  <h2><span class="eyebrow">6 · </span>Four spine classes in embedding space, and how far a window is from sorting them</h2>
+  <p>Using the CT flag table, spines were classed as ordinary (902), lumbosacral-only (98), thoracolumbar-only (47), or both (66)—the both-cell was two when the labels came from one cohort of 802 abdominopelvic scans that cannot see the upper ribs. Windows of K = 1…10 vertebrae were embedded with the frozen encoder and mean-pooled so feature dimension is constant across K, and a linear probe's balanced accuracy was measured for windows containing <i>neither</i> junction (the hypothesis) and windows containing one (the ceiling), each against a shuffled-label control.</p>
+</div>
+<div class="full"><figure><img src="figures/fig5_fov_curve.png" alt="Balanced accuracy of a four-class linear probe against window length, junction-free and junction-seen, with shuffled controls and chance"><figcaption><b>Figure 5 — separability against field of view.</b> From a single vertebra containing neither junction the four classes separate at 42.4% balanced accuracy (chance 25.0%, shuffled 23.0%); at three, 49.9%. Beyond three the junction-free window count collapses and the curve is noise. With a junction in frame the curve climbs to 52.6% at ten. Marker size ∝ window count.</figcaption></figure></div>
+<div class="full"><figure><img src="figures/fig7_cooccurrence.png" alt="Two-by-two tables of lumbosacral by thoracolumbar anomaly per cohort with odds ratios"><figcaption><b>Figure S2 — the two border anomalies travel together, less than this table says.</b> These cells use every VerSe row (OR 4.30) and let the two flags share vertebral numbering as an input, which inflates them: an 11-thoracic spine is lumbosacral-positive by arithmetic, and 31 subjects with one flag unknown were scored negative. On the 280 subjects with both ends graded: OR 3.61, exact 95% CI [2.08, 6.27]; with morphology-only flags 3.2 [1.8, 5.8]; on the 115 with both junctions in the field 2.1 [0.9, 5.0]. CTSpinoPelvic1K 4.00 [1.00, 16.03] on a both-cell of two. Published whole-spine series span 1.9–13.7. VerSe base rates are not prevalences; the pooled cross-cohort OR is Simpson's paradox and is not reported.</figcaption></figure></div>
+<div class="wrap">
+  <p>The within-source linear probe for anomalous versus ordinary from one distant vertebra gave AUC 0.65 on VerSe (shuffled 0.53), 0.51 on physics renders (0.49), and an unstable 0.63 on CTSpinoPelvic1K (54 positives). <b>Honest reading:</b> the information is present at K=1 and modest; measured on renders; with an encoder trained for naming, not for this; no field of view was found at which all spines sort. The threshold was not reached.</p>
+
+  <h2><span class="eyebrow">7 · </span>Every network tested</h2>
+  <div class="tbl"><table>
+    <tr><th>Arm</th><th>Backbone</th><th>Loss</th><th>Bank</th><th class="n">Real film</th><th class="n">Render</th><th class="n">BUU</th><th class="n">NHANES</th></tr>
+    <tr><td>r18_ce_v3</td><td>ResNet-18</td><td>CE</td><td>v3</td><td class="n">95.35</td><td class="n">66.99</td><td class="n">90.9</td><td class="n">93.9</td></tr>
+    <tr><td>r18_ce_v4</td><td>ResNet-18</td><td>CE</td><td>v4</td><td class="n">95.31</td><td class="n">67.34</td><td class="n">91.1</td><td class="n">93.3</td></tr>
+    <tr><td>r18_ce (v2)</td><td>ResNet-18</td><td>CE</td><td>v2</td><td class="n">95.09</td><td class="n">65.53</td><td class="n">90.3</td><td class="n">92.7</td></tr>
+    <tr><td>r18_corn_v3</td><td>ResNet-18</td><td>CORN</td><td>v3</td><td class="n">95.09</td><td class="n">66.22</td><td class="n">90.4</td><td class="n">93.5</td></tr>
+    <tr><td>r18_corn_v5</td><td>ResNet-18</td><td>CORN</td><td>v5</td><td class="n">95.09</td><td class="n">65.41</td><td class="n">90.5</td><td class="n">93.3</td></tr>
+    <tr><td>r18_ce_v5</td><td>ResNet-18</td><td>CE</td><td>v5</td><td class="n">95.00</td><td class="n">65.76</td><td class="n">90.1</td><td class="n">94.3</td></tr>
+    <tr><td>r18_corn</td><td>ResNet-18</td><td>CORN</td><td>v2</td><td class="n">94.79</td><td class="n">65.16</td><td class="n">90.0</td><td class="n">93.7</td></tr>
+    <tr><td>r18_ordfocal_v3</td><td>ResNet-18</td><td>ordinal focal</td><td>v3</td><td class="n">93.85</td><td class="n">64.66</td><td class="n">88.5</td><td class="n">92.0</td></tr>
+    <tr><td>r18_ordfocal</td><td>ResNet-18</td><td>ordinal focal</td><td>v2</td><td class="n">92.55</td><td class="n">60.86</td><td class="n">86.6</td><td class="n">89.7</td></tr>
+    <tr><td>r18_ce_8ep</td><td>ResNet-18</td><td>CE, 8 epochs</td><td>v2</td><td class="n">91.91</td><td class="n">54.53</td><td class="n">86.0</td><td class="n">85.9</td></tr>
+    <tr><td>dinov3_frozen</td><td>DINOv3</td><td>CE</td><td>v2</td><td class="n">81.33</td><td class="n">34.75</td><td class="n">73.7</td><td class="n">60.7</td></tr>
+    <tr><td>dinov3_ft</td><td>DINOv3 (fine-tuned)</td><td>CE</td><td>v2</td><td class="n">79.79</td><td class="n">40.03</td><td class="n">67.6</td><td class="n">66.4</td></tr>
+  </table></div>
+  <p style="font-size:14px;color:var(--ink-2)">Table 3. Single crop (K=1) on one common held-out set. The run-level recurrent head over the same ResNet-18 encoder is the deployed system and reaches 99.95% on ordinary unanchored windows of five vertebrae; on anomalous spines its per-length behaviour is Table S1. Every ResNet-18 arm sits within 0.6 points of each other; DINOv3 loses ~15; nothing tested beats the recipe, which is why v6 changes the <i>labels</i>, not the architecture.</p>
+
+  <h2><span class="eyebrow">7b · </span>Against surgeons and prior software</h2>
+  <p>Every published number for vertebral level identification by humans and by software was searched and verified (106 agents, three-vote verification; <code>docs/PRIOR_ART_LEVEL_ID_HUMANS_AND_AI.md</code>). Task: <b>E</b> exact level named; <b>R</b> registration success against a labelled preoperative CT (not naming); <b>S</b> correct-level surgery outcome.</p>
+  <div class="tbl"><table>
+    <tr><th>study</th><th>reader / system</th><th>image, field</th><th>task</th><th>needs CT</th><th>anomalous</th><th class="n">accuracy</th></tr>
+    <tr><td>Manbachi 2018</td><td>5 surgeons, unassisted</td><td>C-arm, single field, 62 hard cases</td><td>E</td><td>no</td><td>included, not stratified</td><td class="n"><b>69.6%</b></td></tr>
+    <tr><td>Manbachi 2018</td><td>surgeons + LevelCheck</td><td>same</td><td>E</td><td><b>yes</b></td><td>included</td><td class="n">97.6%</td></tr>
+    <tr><td>Ammerman 2006</td><td>1 surgeon, prospective</td><td>100 lumbar discectomies</td><td>S</td><td>no</td><td>4 transitional</td><td class="n">85% correct exposure</td></tr>
+    <tr><td>Mody 2008 / Mayer 2014</td><td>surgeon surveys</td><td>career self-report</td><td>S</td><td>no</td><td>error driver</td><td class="n">50–68% ever wrong level</td></tr>
+    <tr><td>Otake 2012 / Lo 2015 / De Silva 2016</td><td>LevelCheck</td><td>fluoroscopy</td><td>R</td><td><b>yes</b></td><td>shown, not stratified</td><td class="n">99.998% / 100% (registration)</td></tr>
+    <tr><td>Huang 2022</td><td>CNN, registration-free</td><td>cadaver long-film, 100 images</td><td>E</td><td>no</td><td>no</td><td class="n">88.3%</td></tr>
+    <tr><td>Cina 2021</td><td>CNN, registration-free</td><td>whole lumbar film, sacrum in frame</td><td>E</td><td>no</td><td>no</td><td class="n">98.4% published · <b>on our films the task is saturated</b>: ours 99.96% [99.9, 100] on 520 films = a sacrum-counting rule 99.96%</td></tr>
+    <tr><td>sacrum-anchored counting (our floor)</td><td>rule</td><td>interior 3-body windows of the same films</td><td>E</td><td>no</td><td>apart</td><td class="n"><b>0%</b> — nothing to anchor on</td></tr>
+    <tr><td>VERIDAH 2026</td><td>DP labeller</td><td>3-D MRI / CT, not radiograph</td><td>E (subject)</td><td>—</td><td>handled, recall only</td><td class="n">98.3% / 99.2%</td></tr>
+    <tr><td><b>this work, v2, limited field</b></td><td>ResNet-18 + BiGRU, registration-free</td><td>interior 3-body windows of the same films</td><td>E</td><td>no</td><td>apart</td><td class="n"><b>92.7% [90.5, 95.0]</b> ordinary · 53.3% [33.3, 75.0] anomalous</td></tr>
+    <tr><td><b>this work, v6, interior</b></td><td>same</td><td>real film, <b>interior window, no anchor in pixels, 128 anomalous films</b></td><td>E</td><td>no</td><td><b>stratified</b></td><td class="n"><b>89.9% [87.1, 92.7]</b> ordinary · <b>49.9% [41.5, 58.9]</b> anomalous · 99.4% cervical</td></tr>
+    <tr><td>this work, v2, interior</td><td>same</td><td>real film, interior window, no anchor in pixels</td><td>E</td><td>no</td><td>stratified</td><td class="n">91.8% [89.4, 94.1] ordinary · 66.0% [39.6, 87.2] anomalous (12 films) · 99.6% cervical</td></tr>
+  </table></div>
+  <p style="font-size:14px;color:var(--ink-2)">Read plainly: on ordinary spines, registration-free interior naming exceeds the only registration-free comparator and unassisted surgeons on hard cases, and sits below LevelCheck-assisted surgeons, who need the CT. On anomalous spines it is the first number of its kind, on a par with unassisted surgeons on difficult cases and with a wide interval that v6's 144-film test set will narrow. Indicative, not head-to-head: images, fields and task definitions differ, and each row says so.</p>
+
+  <h2><span class="eyebrow">8 · </span>What the report got right, wrong, and what stays open</h2>
+  <div class="tbl"><table>
+    <tr><th>ID</th><th>Claim</th><th>Verdict</th><th>Measurement</th></tr>
+    <tr><td>C1</td><td>Isolated stack: absolute naming is underdetermined</td><td><span class="v d">disproved (operational)</span></td><td>real film, anomalous: 87.2% [84.3, 89.7]; 100% at K=5; ordinary 97.2%</td></tr>
+    <tr><td>C2</td><td>L2–L4 largely exchangeable</td><td><span class="v d">disproved</span></td><td>L2 87.6, L3 86.4, L4 86.2% (v2); 91.0 / 89.8 / 88.8 (v5)</td></tr>
+    <tr><td>C3</td><td>The failure is the integer offset P(B|M₅)≈P(B∖b₁|M₆)</td><td><span class="v c">confirmed (mechanism)</span></td><td>83% of errors ±1; 45% of errored windows coherent shifts; 8.3% of all windows</td></tr>
+    <tr><td>C4</td><td>CT-tuned thresholds collapse on film</td><td><span class="v c">confirmed, worse than stated</span></td><td>D1–D4 fire on 0–100% of NHANES / VinDr / AASCE</td></tr>
+    <tr><td>G1</td><td>Normal L5 has Wigh Q in [1.20, 1.45]</td><td><span class="v d">disproved on real film</span></td><td>5.1% of ordinary laterals in band; median 2.08; 0% on AP</td></tr>
+    <tr><td>G2</td><td>Geometric indices transfer and detect LSTV</td><td><span class="v a">partly</span></td><td>six-lumbar: only sacral slope, AUC 0.73; four-lumbar: L5–S1 gap 0.99</td></tr>
+    <tr><td>D1</td><td>BUU keypoints enforce a rigid five-lumbar schema</td><td><span class="v c">confirmed (structure)</span></td><td>all 3,600 films carry L1a–L5b + S1a; the anomaly is a per-patient class on the S1a row (129 L4, 15 L6), not a relabelling; 9 of 15 "L6" reads are aged 7–17. Only "unrecorded" is refuted.</td></tr>
+    <tr><td>D2</td><td>Decoder prefers variants by shifting an unanchored placement</td><td><span class="v d">retracted — a tautology of our code</span></td><td>full decode: 164/191 variant calls contain a sacrum; 9.0% variant rate with the sacrum vs 0.32% without; mostly false positives where the junction was visible</td></tr>
+    <tr><td>H1</td><td>Four classes separable from a junction-free window</td><td><span class="v a">supported at K=1; no threshold</span></td><td>42.4% balanced vs 25% chance, 23% shuffled</td></tr>
+    <tr><td>H2</td><td>A distant vertebra carries a global anomaly signature</td><td><span class="v a">ambiguous</span></td><td>VerSe 0.65 vs 0.53 shuffled; physics 0.51 vs 0.49</td></tr>
+    <tr><td>H3</td><td>LS and TL anomalies co-occur</td><td><span class="v a">supported, smaller than first tabulated</span></td><td>all-rows OR 4.30 was inflated by count-coupling and 31 unknowns scored negative; VerSe 280 fully graded: 3.61 [2.08, 6.27]; morphology-only 3.2 [1.8, 5.8]; both junctions in field 2.1 [0.9, 5.0]; literature 1.9–13.7</td></tr>
+    <tr><th colspan="4">The report's own citations, checked against their sources</th></tr>
+    <tr><td>R1</td><td>VERIDAH: 98.30% MRI / 99.18% CT, DP over a relaxed label graph</td><td><span class="v a">real, exact, but a preprint</span></td><td>arXiv:2601.14066; no radiograph result, no truncated-crop result, no false-positive rate</td></tr>
+    <tr><td>R2</td><td>Stump-rib morphometry: −19.2 vs −13.8 mm, 260.6 vs 563.6 mm², F1 0.84, AUC 0.98</td><td><span class="v d">no source exists</span></td><td>none of the seven numbers appears in any indexed paper; the literature's discriminant is a length threshold</td></tr>
+    <tr><td>R3</td><td>"Wigh squaring index" Q with bands 1.20–1.45 / >1.80 / ≤1.35</td><td><span class="v d">formula and thresholds not in the literature</span></td><td>the real criterion is one number: superior/inferior end-plate AP ratio ≤ 1.37 (Konin &amp; Walz 2010, citing Wigh &amp; Anthony 1981)</td></tr>
+    <tr><td>R4</td><td>Intercrestal line at L4–L5 disc / lower L4 in 86.7%</td><td><span class="v a">real number, wrong definition</span></td><td>86.7% is the L4 spinous process on prone fluoroscopy with LSTV excluded (Chakraverty 2007); against the body it is 72.7% (Walsh 2006)</td></tr>
+    <tr><td>R5</td><td>AASCE is exclusively severe AIS (>40°) with C2 and sacrum visible</td><td><span class="v d">refuted</span></td><td>609 public films split ~evenly mild/moderate/severe; held-out set 70% mild; C2 not in frame (Wang 2021, Table 2)</td></tr>
+    <tr><td>R6</td><td>VinDr: 10,468 films, 13 lesion classes, zero level labels, MONOCHROME1 subset</td><td><span class="v a">partly</span></td><td>release is 10,466 files and 8 shipped lesion types; zero level labels is correct</td></tr>
+    <tr><td>R7</td><td>Prevalence: presacral anomalies 5–10%, LSTV 4–36%, six lumbar 2–5%</td><td><span class="v c">confirmed</span></td><td>8.8% of 3,147 full-length films lack 24 presacral segments (Sabri 2025); 6.7–9.6% across four cohorts</td></tr>
+    <tr><td>R8</td><td>BUU forces five lumbar; "true L6 labelled L5"</td><td><span class="v a">geometry confirmed; mechanism invented</span></td><td>authors: "trained under the assumption that every person's spine consists of five lumbar vertebrae"; on sacralisation the fifth set of corners lands on S1 — which is why the L5–S1 gap "detector" scores 0.99: it measures the schema</td></tr>
+  </table></div>
+
+  <h3>The product limitation, stated plainly</h3>
+  <p class="limit">L6 is named correctly less than half the time (44.9% v2, 48.3% v5). A cranial anchor does not rescue an anomalous spine (81.6% on renders, the lowest anomalous figure of any state). Confidence intervals are on the vertebra and ignore clustering by film; the anomalous real-film test set was 20 films in v2 and 25 in v5. The separability and signature probes used renders. Results dependent on VinDr-SpineXR and AASCE require the reader's own data-use agreement to reproduce.</p>
+
+  <h3>Data-quality interventions (each with its own measurement)</h3>
+  <div class="tbl"><table>
+    <tr><th>intervention</th><th>what changed</th><th>measured</th></tr>
+    <tr><td>BUU schema correction</td><td>the "S1a" line promoted to an L6 box on six-lumbar studies (annotators counted down, so L1–L5 keep their names); L5 flagged sacralised on four-lumbar; all 144 barred from training; reader review package with overlays</td><td>per-study resize fit (scale 0.84–1.17) residual ≤ 1 px on all 15; 15 promoted, 129 flagged, 0 refused</td></tr>
+    <tr><td>film-noise model</td><td>scatter haze, Poisson + read noise, exposure, gamma, MTF blur, contrast window — knobs <b>fitted</b> by grid search to the real films' crop statistics; the bank builder refuses unfitted parameters</td><td>renders before: SNR 327 vs real 164, noise 0.0029 vs 0.0059; a guessed setting overshot (noise 0.049, SNR 20) and was discarded; fitted: sharpness 0.0068 (real 0.0078), noise 0.0073 (0.0059), SNR 136 (164) — inside the real band on 3 of 4 statistics</td></tr>
+    <tr><td>pseudolabel gating</td><td>a film's decoder names kept only when the placement is anchored (sacrum or rib zone ≥ 0.9) and not variant-flagged; the rest go to an annotation queue (11,323 films)</td><td>agreement with the 543 human-labelled NHANES films, matched by box geometry: cervical anchored <b>96.3%</b> (n=970), lumbar anchored <b>89.9%</b> (n=258), lumbar unanchored 100% (n=1,064). Two earlier versions reported 0.23% and 40% — an index zip, then a number-only key that collided a patient's cervical and lumbar films. High agreement on ordinary spines under a shared counting convention is not evidence about anomalous ones, where the pseudolabels cost twenty points.</td></tr>
+    <tr><td>film-look diffusion filter</td><td>SDXL LoRA trained on the <b>public digitised X-ray datasets only</b> (BUU, CSXA, NHANES, VinDr, AASCE, Mendeley, lateral-236), images only, equal weight per dataset × region, FluoroCap excluded by an assertion that aborts the build; applied to DRRs under a Canny ControlNet; renders whose vertebrae flip the encoder's answer on > 20% of bodies are dropped</td><td>training (job 40321779); apply and gate follow</td></tr>
+    <tr><td>synthetic-data scaling</td><td>six banks cut from v2 by film: synthetic fraction 0 / 0.25 / 0.5 / 1 with all real films, real fraction 0.25 / 0.5 with all renders; one 8-epoch encoder and head each; the interior evaluator on identical held-out films</td><td>running (job 40321409); first point, synthetic 0.25: ordinary 87.6%, anomalous 44.7% on 12 films</td></tr>
+    <tr><td>explainability</td><td>named regions of the target crop masked in turn — body, superior and inferior end-plate bands, posterior third, neighbour above, neighbour below — plus the inverse conditions (body only, end-plates only, both neighbours masked); per-level accuracy re-scored through the deployed head</td><td>interior L3 windows, real film (intact 90.0%, n=261): <b>no single region is load-bearing</b> — whole target body masked −2.3 pts; superior end-plate −0.4; inferior end-plate 0; posterior elements −0.4; neighbour above −1.9; neighbour below 0; <b>body only visible 88.9%; end-plates only 90.4%; both neighbours masked 88.5%</b>. C5 (99.7%): no region costs > 0.9. Identity is redundant and distributed; no ratio of two lengths is what the encoder reads — which is why the geometric indices failed on real film</td></tr>
+  </table></div>
+</div>
+<div class="full"><figure><img src="figures/fig13_feature_cartoon.png" alt="Schematic three-body spinal segment painted by the measured accuracy drop when each region is masked"><figcaption><b>Figure S6 — which local morphology carries level identity.</b> A schematic segment painted by the occlusion ablation's measured drop per region for L3, drawn from <code>explain.json</code>, never by hand. Every region is pale because no region is load-bearing: the information is redundant across the body, its end-plates and its neighbours.</figcaption></figure></div>
+<div class="full"><figure><img src="figures/fig10_ablation.png" alt="Heatmap of accuracy drop per level when each named region is masked"><figcaption><b>Figure S4 — the ablation as numbers.</b> Rows are levels with enough interior windows; columns the masked region; cells the accuracy drop in points.</figcaption></figure></div>
+<div class="full"><figure><img src="figures/fig11_filmmatch.png" alt="Crop quality statistics for real films, renders, and renders after the fitted film model"><figcaption><b>Figure S5 — the fitted film-noise model.</b> p10/median/p90 of sharpness, contrast, noise and SNR for real films, raw renders, and renders after the fitted model; the shaded band is the real films' range.</figcaption></figure></div>
+<div class="wrap">
+
+  <h3>Why 87% is not the ceiling, and what v6 changes</h3>
+  <p>BUU's counted names are wrong on 144 of its 3,600 studies by the dataset's own reading, and <b>124 of those 144 sat in the training partition of every bank so far, labelled L1–L5</b>. The 87% figure was therefore measured on a model trained to give the ordinary answer on the siblings of its test films. v6 moves all 144 to the test partition (a 144-film anomalous test set instead of 20), duplicates anomalous CT renders ×4 in training, and changes nothing else—so the ordinary column is a control rather than a moving target. <b>Its number:</b> on 4,026 label-defined State-C windows of real film from all 144 anomalous studies, exact naming is <b>81.3% [80.0, 82.4]</b> (cross-entropy) and 81.4% (CORN), against 97.3% / 97.4% on ordinary spines; by window length 68.5% at two bodies, 63.4% at three, <b>78.4% at four</b> (the five-body row is the whole stack and is not a claim). The 20-film 87% was optimistic by six points; the pseudolabel-trained 67% pessimistic by fourteen; the interval is now two points wide. <b>On interior windows — no anchor in the pixels — v6's 128 anomalous films score 49.9% [41.5, 58.9]</b> against 89.9% [87.1, 92.7] ordinary and 99.4% cervical: with the junction out of the picture an anomalous body is named at a coin toss between its two candidate identities. That is the one place the report's argument holds, and this page says so.</p>
+
+  <h2><span class="eyebrow">9 · </span>Reproduce every number</h2>
+  <div class="repro">sbatch -D ~ ~/spinesurg-ct-nnunet/slurm/reproduce_feasibility.sh   # evaluation only → LEDGER.tsv with sha256 per input/output<br>bash ~/spinesurg-ct-nnunet/slurm/reproduce_all.sh                 # public data → renders → banks → encoders → heads → eval → figures<br>python tools/make_feasibility_figures.py                           # every figure from the stage JSONs; nothing typed in<br>python tools/pipeline_state.py                                     # done / running / ready on the grid</div>
+  <p style="font-size:14px;color:var(--ink-2)">Repository: <a href="https://github.com/Gregory-Schwing-MD-PhD/spinesurg-ct-nnunet">Gregory-Schwing-MD-PhD/spinesurg-ct-nnunet</a>, branch <code>L6_Class</code>. Start at the README pointer, then <code>docs/FEASIBILITY_REPRODUCE.md</code>, which names the origin of every input and the number each stage owns. The manuscript source is <code>paper/rsnai/main.tex</code> (RSNA structure; the journal ships a Word template only) and compiles to 18 pages with zero unresolved references.</p>
+
+  <p class="foot">Every figure on this page was rendered by <code>tools/make_feasibility_figures.py</code> from result JSONs; a missing stage draws a panel that says so. Two things were discarded on the way here and are recorded rather than hidden: a claims run that paired a head with the wrong encoder (0–1% with a +2 offset, a mismatch signature, not a finding), and two separability runs that started before the four-class label file was complete and silently fell back to one cohort.</p>
+</div>
+
+</body></html>

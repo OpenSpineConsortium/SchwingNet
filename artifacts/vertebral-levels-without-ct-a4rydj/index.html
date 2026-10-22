@@ -1,0 +1,530 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Vertebral Levels Without CT</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,600;0,700;1,400&family=Source+Sans+3:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --ground:#f6f7f9; --panel:#ffffff; --ink:#15181e; --ink-2:#565f6d; --ink-3:#7c8494;
+  --rule:#dbe0e8; --rule-2:#eef1f5;
+  --accent:#1b5b76; --accent-soft:#e3eef3;
+  --good:#2b6a50; --good-soft:#e2efe8;
+  --warn:#8d5411; --warn-soft:#f6ecdd;
+  --bad:#963028; --bad-soft:#f7e6e4;
+  --display:"Spectral",Georgia,"Times New Roman",serif;
+  --body:"Source Sans 3","Segoe UI",Helvetica,Arial,sans-serif;
+  --mono:"IBM Plex Mono",Consolas,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --ground:#12151a; --panel:#181c23; --ink:#e7eaef; --ink-2:#a3abb8; --ink-3:#7d8694;
+  --rule:#2b313b; --rule-2:#222831;
+  --accent:#6fb3ce; --accent-soft:#17303b;
+  --good:#7cc3a0; --good-soft:#162c22;
+  --warn:#d7a45c; --warn-soft:#2e2312;
+  --bad:#e08a80; --bad-soft:#331e1c;
+}}
+:root[data-theme="dark"]{
+  --ground:#12151a; --panel:#181c23; --ink:#e7eaef; --ink-2:#a3abb8; --ink-3:#7d8694;
+  --rule:#2b313b; --rule-2:#222831;
+  --accent:#6fb3ce; --accent-soft:#17303b;
+  --good:#7cc3a0; --good-soft:#162c22;
+  --warn:#d7a45c; --warn-soft:#2e2312;
+  --bad:#e08a80; --bad-soft:#331e1c;
+}
+html,body{background:var(--ground);color:var(--ink)}
+body{font-family:var(--body);font-size:17px;line-height:1.6;margin:0;padding-inline:20px;padding-block:0 72px;
+  -webkit-font-smoothing:antialiased}
+.wrap{max-width:68ch;margin:0 auto}
+.wide{max-width:980px;margin:0 auto}
+h1,h2,h3{font-family:var(--display);line-height:1.18;text-wrap:balance;margin:0;font-weight:600}
+h1{font-size:clamp(30px,5.2vw,44px);letter-spacing:-.012em}
+h2{font-size:clamp(21px,2.9vw,27px);margin-top:3rem;padding-top:1.4rem;border-top:1px solid var(--rule)}
+h3{font-size:19px;margin-top:1.9rem;color:var(--ink)}
+p{margin:.85rem 0}
+.kicker{font-family:var(--body);font-size:12px;font-weight:600;letter-spacing:.15em;text-transform:uppercase;
+  color:var(--accent);margin:34px 0 10px}
+.sub{color:var(--ink-2);font-size:16px;margin-top:.9rem}
+.byline{color:var(--ink-3);font-size:14px;margin-top:1.4rem;font-family:var(--mono)}
+.answer{background:var(--panel);border:1px solid var(--rule);border-left:4px solid var(--accent);
+  border-radius:3px;padding:20px 22px;margin:1.9rem 0}
+.answer p:first-child{margin-top:0}.answer p:last-child{margin-bottom:0}
+.answer .q{font-family:var(--display);font-style:italic;font-size:19px;color:var(--ink-2);margin-bottom:.7rem}
+figure{margin:2rem 0}
+figcaption{font-size:14px;color:var(--ink-2);margin-top:.7rem;line-height:1.5}
+.tbl{overflow-x:auto;margin:1.5rem 0;border:1px solid var(--rule);border-radius:3px;background:var(--panel)}
+table{border-collapse:collapse;width:100%;min-width:560px;font-size:15px;font-variant-numeric:tabular-nums}
+th,td{padding:9px 13px;text-align:left;border-bottom:1px solid var(--rule-2);vertical-align:top}
+thead th{font-family:var(--body);font-size:11.5px;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--ink-2);background:var(--rule-2);border-bottom:1px solid var(--rule)}
+tbody tr:last-child td{border-bottom:none}
+td.num{text-align:right;font-family:var(--mono);font-size:14px}
+.up{color:var(--good);font-weight:600}
+.down{color:var(--bad);font-weight:600}
+.pill{display:inline-block;font-size:12px;font-weight:600;padding:2px 8px;border-radius:99px;white-space:nowrap}
+.pill.ct{background:var(--warn-soft);color:var(--warn)}
+.pill.no{background:var(--good-soft);color:var(--good)}
+.pill.naming{background:var(--good-soft);color:var(--good)}
+.pill.notnaming{background:var(--bad-soft);color:var(--bad)}
+.note{font-size:15px;color:var(--ink-2);border-left:2px solid var(--rule);padding-left:15px;margin:1.4rem 0}
+.caution{background:var(--warn-soft);border:1px solid color-mix(in srgb,var(--warn) 25%,transparent);
+  border-radius:3px;padding:16px 18px;margin:1.6rem 0;font-size:16px}
+.caution b{color:var(--warn)}
+.stop{background:var(--bad-soft);border:1px solid color-mix(in srgb,var(--bad) 30%,transparent);
+  border-left:4px solid var(--bad);border-radius:3px;padding:16px 18px;margin:1.6rem 0;font-size:16px}
+.stop b{color:var(--bad)}
+ul,ol{padding-left:1.25rem}
+li{margin:.4rem 0}
+.foot{font-size:13.5px;color:var(--ink-3);margin-top:3.5rem;padding-top:1.2rem;border-top:1px solid var(--rule);
+  line-height:1.6}
+.bars{width:100%;height:auto;display:block}
+.bars text{font-family:var(--body);font-size:12.5px;fill:var(--ink-2)}
+.bars text.v{font-family:var(--mono);font-size:12px}
+.bars text.lab{fill:var(--ink);font-weight:600}
+.bars text.vb{font-family:var(--mono);font-size:13px;font-weight:500}
+.big{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;margin:2rem 0}
+.big .cell{background:var(--panel);border:1px solid var(--rule);border-radius:3px;padding:18px 20px}
+.big .n{font-family:var(--display);font-size:clamp(38px,6vw,52px);font-weight:700;line-height:1;
+  color:var(--accent);letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.big .n small{font-size:.45em;font-weight:600;letter-spacing:0}
+.big .k{font-size:13px;color:var(--ink-2);margin-top:.55rem;line-height:1.45}
+.big .k b{color:var(--ink)}
+.big .was{font-family:var(--mono);font-size:12.5px;color:var(--ink-3);margin-top:.4rem}
+.site{background:var(--panel);border:1px solid var(--rule);border-radius:3px;padding:20px 22px;margin:1.3rem 0}
+.site h3{margin-top:0;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.site .step{font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
+  background:var(--accent);color:#fff;border-radius:99px;padding:3px 10px}
+.site .step.alt{background:var(--ink-3)}
+.site a{color:var(--accent);font-family:var(--mono);font-size:14px;word-break:break-all}
+.site .meta{font-size:13.5px;color:var(--ink-3);font-family:var(--mono);margin:.5rem 0 0}
+.todo{border-left:2px solid var(--rule);padding-left:15px;margin:1.2rem 0}
+.todo h4{margin:.9rem 0 .3rem;font-family:var(--body);font-size:15px;font-weight:600;color:var(--ink)}
+.todo p{margin:.3rem 0;font-size:15px;color:var(--ink-2)}
+.phase{display:grid;grid-template-columns:auto 1fr;gap:0 16px;margin:1.6rem 0}
+.phase .when{font-family:var(--mono);font-size:12.5px;color:var(--accent);font-weight:500;
+  padding-top:.18rem;white-space:nowrap}
+.phase .what{padding-bottom:1.15rem;border-left:1px solid var(--rule);padding-left:16px;margin-left:-1px}
+.phase .what:last-child{border-left-color:transparent}
+.phase .what b{display:block;font-size:16px;color:var(--ink);margin-bottom:.15rem}
+.phase .what span{font-size:15px;color:var(--ink-2)}
+@media (max-width:520px){body{font-size:16px}h2{margin-top:2.4rem}.phase{grid-template-columns:1fr;gap:0}
+  .phase .what{border-left:none;padding-left:0;margin-left:0}}
+</style>
+
+<div class="wrap">
+  <p class="kicker">Intraoperative level identification &middot; internal summary</p>
+  <h1>Naming vertebrae from the C-arm, without a CT</h1>
+  <p class="sub">A short sweep of overlapping fluoroscopic images builds a map of the patient's own spine. Later spot films are matched onto that map and named &mdash; including in the mid-thoracic spine, where there is nothing to count from.</p>
+  <p class="byline">18 September 2026 &middot; every figure measured on held-out data</p>
+
+  <div class="answer">
+    <p class="q">&ldquo;Do you think it'll work for thoracic, where it's hard to count?&rdquo;</p>
+    <p><strong>That is where it looks best</strong>, and the reason is worth stating: the thoracic spine is hard for the same reason it is favourable for this method. It is hard to count because it is far from any landmark, and counting errors grow with that distance. This method never counts &mdash; it matches the spot film onto a map built minutes earlier from the patient's own spine, and a match does not care how far the frame sits from the landmark.</p>
+    <p>On whole-spine studies swept downward from C2, a thoracic spot film showing <strong>two vertebrae</strong> is named correctly <strong>4.3%</strong> of the time from its own pixels and <strong>91.3%</strong> once matched onto the sweep. Three vertebrae: 22.2% alone, 96.3% matched.</p>
+    <p style="margin-bottom:0">That is the largest effect anywhere in this work &mdash; and it rests on <strong>twelve</strong> studies, because that is how many survived a strict exclusion of everything the model was trained on. Treat the direction as solid and the exact figure as provisional.</p>
+  </div>
+</div>
+
+
+<div class="wide">
+  <div class="big">
+    <div class="cell">
+      <div class="n">91.3<small>%</small></div>
+      <div class="k"><b>Thoracic, two vertebrae in view.</b> A spot film with no landmark, matched onto the sweep.</div>
+      <div class="was">4.3% without the sweep &middot; n=12 studies</div>
+    </div>
+    <div class="cell">
+      <div class="n">96.3<small>%</small></div>
+      <div class="k"><b>Thoracic, three vertebrae in view.</b> Same films, one more body in the field.</div>
+      <div class="was">22.2% without the sweep &middot; n=12 studies</div>
+    </div>
+    <div class="cell">
+      <div class="n">93.6<small>%</small></div>
+      <div class="k"><b>Lumbar, two vertebrae, real radiographs.</b> Swept up from the sacrum.</div>
+      <div class="was">78.7% without the sweep &middot; n=25 films</div>
+    </div>
+  </div>
+</div>
+<div class="wide">
+<figure>
+<svg class="bars" viewBox="0 0 900 340" role="img" aria-label="Accuracy by region of the spine, a frame named alone versus the same frame matched onto the sweep, two vertebrae in view">
+<line x1="232" y1="34" x2="232" y2="312" stroke="var(--rule)" stroke-width="1"/>
+<line x1="232" y1="312" x2="812" y2="312" stroke="var(--rule)" stroke-width="1"/>
+<g stroke="var(--rule-2)" stroke-width="1">
+<line x1="377" y1="34" x2="377" y2="312"/>
+<line x1="522" y1="34" x2="522" y2="312"/>
+<line x1="667" y1="34" x2="667" y2="312"/>
+<line x1="812" y1="34" x2="812" y2="312"/>
+</g>
+<g class="v" text-anchor="middle" fill="var(--ink-3)">
+<text x="232" y="330">0%</text>
+<text x="377" y="330">25%</text>
+<text x="522" y="330">50%</text>
+<text x="667" y="330">75%</text>
+<text x="812" y="330">100%</text>
+</g>
+<text class="lab" x="8" y="24">Two vertebrae in the frame &#8212; no landmark in view</text>
+<text x="220" y="69" text-anchor="end">Cervical</text>
+<text class="v" x="220" y="85" text-anchor="end" fill="var(--ink-3)">whole-spine &#183; n=8</text>
+<rect x="232" y="56" width="0" height="15" fill="var(--ink-3)" opacity=".4"/>
+<text class="v" x="239" y="68" fill="var(--ink-2)">0.0% alone</text>
+<rect x="232" y="76" width="580" height="15" fill="var(--accent)"/>
+<text class="vb" x="819" y="88" fill="var(--accent)">100.0% swept</text>
+<text x="220" y="119" text-anchor="end">Upper thoracic</text>
+<text class="v" x="220" y="135" text-anchor="end" fill="var(--ink-3)">whole-spine &#183; n=6</text>
+<rect x="232" y="106" width="0" height="15" fill="var(--ink-3)" opacity=".4"/>
+<text class="v" x="239" y="118" fill="var(--ink-2)">0.0% alone</text>
+<rect x="232" y="126" width="580" height="15" fill="var(--accent)"/>
+<text class="vb" x="819" y="138" fill="var(--accent)">100.0% swept</text>
+<text x="220" y="169" text-anchor="end">Lower thoracic</text>
+<text class="v" x="220" y="185" text-anchor="end" fill="var(--ink-3)">CT renders &#183; n=71</text>
+<rect x="232" y="156" width="334" height="15" fill="var(--ink-3)" opacity=".4"/>
+<text class="v" x="573" y="168" fill="var(--ink-2)">57.6% alone</text>
+<rect x="232" y="176" width="552" height="15" fill="var(--accent)"/>
+<text class="vb" x="791" y="188" fill="var(--accent)">95.2% swept</text>
+<text x="220" y="219" text-anchor="end">Lumbar</text>
+<text class="v" x="220" y="235" text-anchor="end" fill="var(--ink-3)">CT renders &#183; n=118</text>
+<rect x="232" y="206" width="446" height="15" fill="var(--ink-3)" opacity=".4"/>
+<text class="v" x="685" y="218" fill="var(--ink-2)">76.9% alone</text>
+<rect x="232" y="226" width="545" height="15" fill="var(--accent)"/>
+<text class="vb" x="784" y="238" fill="var(--accent)">93.9% swept</text>
+<text x="220" y="269" text-anchor="end">Lumbar</text>
+<text class="v" x="220" y="285" text-anchor="end" fill="var(--ink-3)">real films &#183; n=24</text>
+<rect x="232" y="256" width="456" height="15" fill="var(--ink-3)" opacity=".4"/>
+<text class="v" x="695" y="268" fill="var(--ink-2)">78.7% alone</text>
+<rect x="232" y="276" width="543" height="15" fill="var(--accent)"/>
+<text class="vb" x="782" y="288" fill="var(--accent)">93.6% swept</text>
+</svg>
+<figcaption><strong>The further a frame sits from a landmark, the more the sweep is worth.</strong> Pale bars: the frame judged on its own pixels. Solid bars: the same frame matched onto the sweep. In the cervical and upper thoracic spine a two-vertebra frame is named correctly <em>never</em> on its own &mdash; those vertebrae genuinely look alike &mdash; and essentially always once placed on the map. In the lumbar spine, where a frame carries more shape information of its own, the gain is smaller but still 15 to 17 points. All held out; n is spines, not frames.</figcaption>
+</figure>
+
+<figure>
+<svg class="bars" viewBox="0 0 900 250" role="img" aria-label="Accuracy per vertebra, three in view, held-out CT spines, ordinary anatomy">
+<g stroke="var(--rule-2)" stroke-width="1">
+<line x1="70" y1="190" x2="860" y2="190"/>
+<line x1="70" y1="152" x2="860" y2="152"/>
+<line x1="70" y1="115" x2="860" y2="115"/>
+<line x1="70" y1="78" x2="860" y2="78"/>
+<line x1="70" y1="40" x2="860" y2="40"/>
+</g>
+<g class="v" text-anchor="end" fill="var(--ink-3)">
+<text x="60" y="194">80%</text>
+<text x="60" y="156">85%</text>
+<text x="60" y="119">90%</text>
+<text x="60" y="82">95%</text>
+<text x="60" y="44">100%</text>
+</g>
+<text class="lab" x="8" y="22">Per vertebra &#8212; three in the frame, matched onto the sweep</text>
+<polyline points="70,102 202,66 333,73 465,64 597,67 728,93 860,68" fill="none" stroke="var(--accent)" stroke-width="2.5"/>
+<circle cx="70" cy="102" r="4.5" fill="var(--accent)"/>
+<text class="vb" x="70" y="89" text-anchor="middle" fill="var(--accent)">91.7%</text>
+<text x="70" y="214" text-anchor="middle">T11</text>
+<text class="v" x="70" y="232" text-anchor="middle" fill="var(--ink-3)">n=24</text>
+<circle cx="202" cy="66" r="4.5" fill="var(--accent)"/>
+<text class="vb" x="202" y="53" text-anchor="middle" fill="var(--accent)">96.6%</text>
+<text x="202" y="214" text-anchor="middle">T12</text>
+<text class="v" x="202" y="232" text-anchor="middle" fill="var(--ink-3)">n=59</text>
+<circle cx="333" cy="73" r="4.5" fill="var(--accent)"/>
+<text class="vb" x="333" y="60" text-anchor="middle" fill="var(--accent)">95.6%</text>
+<text x="333" y="214" text-anchor="middle">L1</text>
+<text class="v" x="333" y="232" text-anchor="middle" fill="var(--ink-3)">n=90</text>
+<circle cx="465" cy="64" r="4.5" fill="var(--accent)"/>
+<text class="vb" x="465" y="51" text-anchor="middle" fill="var(--accent)">96.8%</text>
+<text x="465" y="214" text-anchor="middle">L2</text>
+<text class="v" x="465" y="232" text-anchor="middle" fill="var(--ink-3)">n=95</text>
+<circle cx="597" cy="67" r="4.5" fill="var(--accent)"/>
+<text class="vb" x="597" y="54" text-anchor="middle" fill="var(--accent)">96.4%</text>
+<text x="597" y="214" text-anchor="middle">L3</text>
+<text class="v" x="597" y="232" text-anchor="middle" fill="var(--ink-3)">n=84</text>
+<circle cx="728" cy="93" r="4.5" fill="var(--accent)"/>
+<text class="vb" x="728" y="80" text-anchor="middle" fill="var(--accent)">92.9%</text>
+<text x="728" y="214" text-anchor="middle">L4</text>
+<text class="v" x="728" y="232" text-anchor="middle" fill="var(--ink-3)">n=56</text>
+<circle cx="860" cy="68" r="4.5" fill="var(--accent)"/>
+<text class="vb" x="860" y="55" text-anchor="middle" fill="var(--accent)">96.2%</text>
+<text x="860" y="214" text-anchor="middle">L5</text>
+<text class="v" x="860" y="232" text-anchor="middle" fill="var(--ink-3)">n=26</text>
+</svg>
+<figcaption>Per vertebra, held-out CT spines with ordinary anatomy, three vertebrae in the frame, matched onto the sweep. The line is flat &mdash; there is no level at which the method falls away &mdash; and the 95% intervals are 5 to 10 points wide at these counts. Levels above T11 are not shown because this arm sweeps up from the sacrum and rarely reaches them; the thoracic evidence is the whole-spine arm in the chart above.</figcaption>
+</figure>
+</div>
+
+<div class="wrap">
+  <div class="note"><strong>On an earlier version of this page.</strong> It carried larger sample sizes and slightly different numbers. An audit found that the evaluation and the training set overlapped &mdash; the naming component was fitted on a bank carrying a patient-grouped split, and the evaluation scripts read image directories that carry no record of that split, so they quietly scored patients the model had been trained on. Everything here is re-measured with the exclusion enforced by the tool. Reassuringly, the leak had inflated the <em>baseline</em> (a lone frame is exactly what memorising a patient helps) rather than the sweep, so the measured advantage of sweeping is now <em>larger</em>, on smaller samples.</div>
+
+  <h2>What the radiographer has to do</h2>
+  <p>Start with a landmark at the edge of the field &mdash; the sacrum for lumbar and thoracolumbar work, C2 for cervical and upper thoracic. Expose. Move the C-arm toward the level of interest, leaving <strong>two vertebral bodies of the previous image still in view</strong>. Expose again. Repeat until the level of interest is in the field.</p>
+  <p>For most lumbar cases that is <strong>three exposures</strong>. From the sacrum to the mid-thoracic spine it is five or six. Same field size throughout, no zooming part-way.</p>
+
+  <div class="tbl"><table>
+    <thead><tr><th>Overlap between exposures</th><th>Exposures per sweep</th><th>Chain intact</th><th>Accuracy, 2 vertebrae in view</th></tr></thead>
+    <tbody>
+      <tr><td>Half a body</td><td class="num">2.5</td><td class="num">86.7%</td><td class="num">92.1%</td></tr>
+      <tr><td>One body</td><td class="num">2.6</td><td class="num">95.0%</td><td class="num">97.5%</td></tr>
+      <tr><td><strong>Two bodies</strong></td><td class="num">3.0</td><td class="num"><span class="up">96.7%</span></td><td class="num"><span class="up">98.3%</span></td></tr>
+      <tr><td>Four bodies</td><td class="num">6.9</td><td class="num"><span class="down">80.0%</span></td><td class="num"><span class="down">89.8%</span></td></tr>
+    </tbody>
+  </table></div>
+  <p class="note">More pictures is not monotonically better. Past two bodies of overlap the sweep needs more than twice the exposures and loses accuracy, because every extra image is another link in the chain that can be joined wrongly. Two bodies is the working point, and that survived the re-measurement.</p>
+  <p>Field width matters much less than the exposure count it implies. At one body of overlap: a collimated 100&nbsp;mm field needs 3.8 exposures and names at 97.1%; a 9-inch field, 2.6 exposures at 97.5%; a 12-inch field, 2.0 exposures at 97.1%.</p>
+
+  <h2>The two things that do not work yet</h2>
+
+  <div class="stop">
+    <p><b>1. It needs someone to find the vertebrae, and the automatic finder is not good enough.</b> Every figure above uses vertebra boxes from the annotation. With boxes from our own detector, on the same 25 held-out radiographs, the sweep chain survives on 20% of films instead of 100% &mdash; and the sweep then becomes <em>worse than not sweeping</em>: 66.0% against 72.3% at two vertebrae, and 56.2% against 93.8% at four.</p>
+    <p>A frame matched onto a broken map inherits the map's error, and the more context the frame has, the more it loses by trusting a bad map over its own pixels.</p>
+    <p style="margin-bottom:0">The cause is now identified and is more encouraging than it sounds. On real film the detector finds the bone well &mdash; it misses only 2.2% of vertebrae &mdash; but 17.9% come out <em>duplicated</em>, and that duplication traces to a rule in our own linking code, not to the detector: the rule demanded that every shared vertebra between two frames be confirmed, so a single bad box discarded the whole overlap and every shared vertebra was entered twice. A tolerant version of that rule is in testing and already recovers eight points on one dataset. Until that is settled, this is the honest blocker.</p>
+  </div>
+
+  <div class="caution">
+    <p><b>2. Performance on transitional spines is unmeasured.</b> Not poor &mdash; unmeasured. After excluding every spine the model was trained on, <strong>eight</strong> spines with transitional anatomy remain, and exactly <strong>one</strong> with six lumbar vertebrae, which the system named wrongly. Eight spines cannot distinguish 60% from 95%, and I will not quote a figure from them.</p>
+    <p>Nor is there a pile of unused data to fix it with: the rare-variant image set holds 845 spines with a sixth lumbar vertebra, but those images contain no landmark and cannot be swept at all.</p>
+    <p style="margin-bottom:0">A cross-validation over all <strong>376</strong> patients with transitional anatomy is running now &mdash; each round trains without a third of them and tests on exactly that third &mdash; which is the only way to get a real number from the data on hand. The encoder folds have landed and the sequence folds are running; there is no result to quote yet. Separately, the naming component has just improved at the sixth lumbar vertebra for the first time (67% to 73% on 105 held-out patients) after real clinical images of six-lumbar spines entered training. Every previous attempt at that class moved nothing.</p>
+  </div>
+
+  <h2>Against surgeons, and against CT-based systems</h2>
+
+  <p>A verified search of this literature finished today, and its main finding is not a number &mdash; it is that <strong>no two systems in this field report the same quantity</strong>. Eight different measurements circulate, and they get quoted against each other as if they were comparable. Before the table of figures, the table of what those figures <em>are</em>:</p>
+</div>
+
+<div class="wide">
+  <div class="tbl"><table>
+    <thead><tr><th>The number you will see quoted</th><th>What was actually measured</th><th>Is it naming?</th></tr></thead>
+    <tbody>
+      <tr><td><strong>99.998%</strong> &mdash; LevelCheck</td><td>registration converged: the fraction of trials whose mean projection distance was under 5&nbsp;mm. It moves with computing budget &mdash; 100% at 200 restarts, 99.3% at 50 &mdash; which is the signature of a convergence rate</td><td><span class="pill notnaming">no</span></td></tr>
+      <tr><td><strong>100%</strong> &mdash; LevelCheck, clinical</td><td>the projected label landed inside the right vertebral body, <em>given that a human had labelled the CT correctly</em></td><td><span class="pill notnaming">no</span></td></tr>
+      <tr><td><strong>42.2%</strong> &mdash; LevelCheck, utility</td><td>a questionnaire. Three surgeons rating independently; 42.2% is their mean and the range across them was 31.7&ndash;53.3%</td><td><span class="pill notnaming">no</span></td></tr>
+      <tr><td><strong>&gt;96%</strong> &mdash; the registration-free network</td><td>detection F<sub>1</sub> &mdash; whether a vertebra was found, not what it was called. Routinely misquoted as this paper's accuracy</td><td><span class="pill notnaming">no</span></td></tr>
+      <tr><td><strong>97.9&ndash;98.7%</strong> &mdash; 3-D labellers</td><td>identification rate on CT volumes, bundling a localisation tolerance. Not a radiograph</td><td><span class="pill notnaming">no</span></td></tr>
+      <tr><td><strong>97.6%</strong> &mdash; &ldquo;LevelCheck accuracy&rdquo;</td><td>five surgeons on 62 deliberately difficult films: 30.4% error unaided, 2.4% with the overlay. A <em>human-plus-machine</em> figure</td><td><span class="pill naming">yes, with a human</span></td></tr>
+      <tr><td><strong>88.3%</strong> &mdash; cadaveric long films</td><td>the one registration-free, radiograph-only, per-vertebra naming accuracy in the literature</td><td><span class="pill naming">yes</span></td></tr>
+    </tbody>
+  </table></div>
+</div>
+
+<div class="wrap">
+  <div class="answer">
+    <p class="q">&ldquo;If the registration is essentially perfect, why do surgeons still mislabel?&rdquo;</p>
+    <p><strong>Because registration never names a vertebra.</strong> It solves a six-degree-of-freedom pose &mdash; where the CT sits in the radiograph. The name is transferred from a human's reading of the preoperative volume. That is why the 100% is written as conditional on a correctly labelled CT.</p>
+    <p>Two failures therefore survive a perfect registration. A <strong>miscounted CT propagates onto the radiograph faithfully and confidently</strong>, and the overlay looks exactly as convincing as when it is right &mdash; which is the failure mode of a transitional spine, the population where wrong-level surgery actually happens. And the surgeon still has to accept or reject the overlay, which is where the residual 2.4% lives.</p>
+    <p style="margin-bottom:0">So the honest comparison is not &ldquo;beat 97.6%&rdquo;. That is a team score. Machine against machine, the comparator is 88.3% on cadaveric long films at a 64&nbsp;cm field, where the whole spine is visible and counting works &mdash; and that paper comes from <strong>the same laboratory that built LevelCheck</strong>. Human-plus-machine, the comparator is 97.6%, and measuring against it requires a reader study, which is the third website below.</p>
+  </div>
+
+  <p class="note">Two more findings from the same search, both useful and both negative. <strong>No method in this space releases code or weights</strong> &mdash; every comparison in the literature is against a number, not against a running system. And <strong>none of them addresses transitional anatomy</strong>: the only published deep model that engages it on radiographs emits a yes/no flag and does not name levels at all.</p>
+
+  <p>For scale on the clinical cost: half of surveyed neurosurgeons report at least one wrong-level operation in their career, and one prospective series found the initial exposure at the wrong level in 15 of 100 consecutive lumbar discectomies. There is no published wrong-level rate specific to the thoracic spine &mdash; but one quaternary centre performed <strong>179 preoperative percutaneous gold-fiducial placements over 38 months, 176 of them thoracic</strong>, at a mean of 52 minutes and 183 mGy each, purely to mark the level for the surgeon. That is a second invasive procedure, scheduled in advance, because the level was judged un-nameable in theatre.</p>
+
+  <h2>Could this run on the C-arm itself?</h2>
+  <p>The computation is not the obstacle. Finding the vertebrae in one image and naming a handful of them is a fraction of a second on a desktop graphics card, and roughly a quarter to half a second on a single ordinary CPU core. A sweep is three images. The matching step that places a later spot film onto the map is image correlation at reduced resolution &mdash; milliseconds.</p>
+  <p>CT registration is a different order of work: three to five seconds per image on a GPU workstation, and that is after someone has acquired a preoperative CT, segmented it and labelled every vertebra in it.</p>
+
+  <div class="tbl"><table>
+    <thead><tr><th></th><th>This approach</th><th>CT registration</th></tr></thead>
+    <tbody>
+      <tr><td>Preoperative imaging</td><td>none</td><td>labelled CT of that patient</td></tr>
+      <tr><td>Extra hardware in theatre</td><td>an embedded module on the C-arm</td><td>workstation-class GPU</td></tr>
+      <tr><td>Works on a case with no CT</td><td>yes</td><td>no</td></tr>
+      <tr><td>Extra exposures</td><td>2&ndash;5 for the sweep</td><td>none intraoperatively</td></tr>
+      <tr><td>Works before instrumentation</td><td>yes</td><td>yes</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="note"><strong>What I have not done:</strong> run this on an embedded module. The timings above are from desktop hardware. The models are small enough that a current-generation embedded AI module should carry them comfortably, but that sentence is an inference from model size, not a measurement. And the honest sequencing point is that the detector problem has to be solved before the packaging question matters &mdash; there is no use putting a system on a C-arm while automatic vertebra-finding makes it worse than doing nothing.</p>
+
+  <h2>Two things we settled this week</h2>
+
+  <h3>Where a box goes on a spine that is part-fused to the sacrum</h3>
+  <p>This turns out to have no published answer, because every major dataset avoids the case. The largest
+  vertebra dataset states outright that it <em>did not segment</em> vertebrae partly fused to the sacrum.
+  The main lumbar radiograph dataset gives no vertebra a box at all &mdash; it marks endplate lines, and the
+  sacrum gets a single reference line.</p>
+  <p>The avoidance is well founded. Sixteen spine surgeons reading the same films agreed on which endplate
+  belongs to the sacrum only about a third of the time. The fusion itself is not a clean seam: joint-like
+  and solid-bone bridging coexist at the <em>same</em> interface in about a third of cases. And the grade
+  read off a plain film is wrong against CT 35% of the time &mdash; with the two readers <em>agreeing with
+  each other</em> and both wrong.</p>
+  <div class="caution">
+    <p style="margin-bottom:0"><b>So the rule we adopted is: look for the disc, not for the fusion.</b> If a
+    disc still separates the body from the sacrum &mdash; even with a broad transverse process clearly
+    bridging across &mdash; it is a separate vertebra and it counts. If the disc is gone, it is part of the
+    sacrum. A disc between the first and second sacral segments is the same rule pointing the other way: that
+    top segment is separate. The disc is the one thing you can actually see and decide on.</p>
+  </div>
+
+  <h3>Making the automatic vertebra-finder more sensitive makes the system worse</h3>
+  <p>The obvious way to stop missing vertebrae is to lower the detector's confidence threshold. We measured
+  it three ways and it is the wrong lever:</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Threshold</th><th>Vertebrae missed</th><th>Boxes on nothing</th><th>Map intact</th><th>3 in view, named</th></tr></thead>
+    <tbody>
+      <tr><td><strong>0.25 &mdash; what we use</strong></td><td class="num">2.4%</td><td class="num">8.5%</td><td class="num"><span class="up">40%</span></td><td class="num"><span class="up">85.6%</span></td></tr>
+      <tr><td>0.10</td><td class="num">2.4%</td><td class="num">13.9%</td><td class="num">24%</td><td class="num">84.4%</td></tr>
+      <tr><td>0.05</td><td class="num">2.4%</td><td class="num">18.2%</td><td class="num"><span class="down">8%</span></td><td class="num"><span class="down">81.3%</span></td></tr>
+    </tbody>
+  </table></div>
+  <p><strong>The misses never move</strong> &mdash; 2.4% at every setting. They are not sitting just below
+  the threshold, so no threshold recovers them. Everything else falls apart: twice the spurious boxes, and
+  the patient's map survives on 8% of films instead of 40%.</p>
+  <p class="note">This matters beyond the tuning. It means "find more vertebrae" and "make the system safer"
+  are different goals, and chasing the first can cost you the second. The remaining misses are mostly the
+  <strong>sacrum</strong>, which is being given a detector of its own &mdash; because that one is not a
+  vertebra like the others, and losing it does not cost one level, it costs the anchor the whole map is
+  built from.</p>
+
+  <h2>What still has to happen, and what gets it to 100%</h2>
+
+  <p>Two numbers are short of where they need to be, and they are short for different reasons. One is a
+  definition problem that can be fixed this week. The other is a data problem, and that is what the reading
+  programme below is for.</p>
+
+  <div class="todo">
+    <h4>1. Finding the vertebrae &mdash; 99.2%, and the last gap is the sacrum</h4>
+    <p>On held-out radiographs the detector finds <strong>99.2%</strong> of vertebrae. Three misses in 243,
+    and <strong>two of the three are the sacrum</strong>. That is not a model that needs more data; it is a
+    target that needs defining. The sacrum is not a vertebral body with four corners &mdash; it is a large
+    fused triangular mass, and the detector was trained to outline the whole thing. Defining the target as
+    the S1 body between its endplates should close it, and it is the same decision as whether a partially
+    lumbarised S1 deserves its own box. It does. <em>Fixable without new data.</em></p>
+
+    <h4>2. Transitional spines &mdash; still unmeasured</h4>
+    <p>After excluding everything the model trained on, eight spines with transitional anatomy remain, and
+    one with six lumbar vertebrae. Eight spines cannot tell 60% from 95%. A cross-validation over all
+    <strong>376</strong> transitional patients is running, which will give a real number from the data on
+    hand &mdash; but it cannot create examples that do not exist. <em>Needs data.</em></p>
+
+    <h4>3. The one thing that has moved the six-lumbar number</h4>
+    <p>Every clever fix for rare classes was tried and none of them did anything: re-weighting, synthetic
+    oversampling, pretraining on simulated films, two different admission rules for pseudolabels. The
+    number sat still through all of it.</p>
+    <p>Then <strong>83 real clinical images of six-lumbar spines</strong> entered training, and accuracy at
+    that vertebra went from <strong>67.4% to 73.5%</strong> on held-out patients. That is the whole
+    lesson: the model does not need a better algorithm, it needs to have seen the thing. Which is why the
+    next six points are going to come from people, not from code.</p>
+  </div>
+
+  <h2>Three websites &mdash; what we need from you</h2>
+
+  <p>The first two are annotation and are for everyone. <strong>Do them in order:</strong> finish the plain
+  radiographs first, then move to the published figures. They ask the same question and the first set is
+  easier to learn on. The third is a different job for a different group &mdash; it is a reader study for
+  surgeons, not an annotation task.</p>
+
+  <p>Before either annotation site lets you start, there is a <strong>twelve-case quiz</strong> with answers
+  taken from CT. You need nine. It is not a formality: most people have never been shown a transitional
+  spine, and two readers who share the same misconception agree with each other &mdash; and that agreement
+  is what gets written into the training set. You only take it once.</p>
+
+  <div class="site">
+    <h3><span class="step">Start here</span> Plain radiographs</h3>
+    <p><a href="https://huggingface.co/spaces/anonymous-mlhc/CTSpinoPelvic1K-review-spine">huggingface.co/spaces/anonymous-mlhc/CTSpinoPelvic1K-review-spine</a></p>
+    <p><strong>3,000 lumbar and whole-spine radiographs</strong>, already labelled by the model. You name
+    the vertebra in the red box &mdash; one name fixes the whole film &mdash; and say whether either
+    junction is transitional.</p>
+    <p class="meta">two readers per film &middot; Cohen's kappa on the Progress tab &middot; disagreements
+    go to a radiology resident</p>
+  </div>
+
+  <div class="site">
+    <h3><span class="step">Then</span> Published figures</h3>
+    <p><a href="https://huggingface.co/spaces/anonymous-mlhc/CTSpinoPelvic1K-review-ribs">huggingface.co/spaces/anonymous-mlhc/CTSpinoPelvic1K-review-ribs</a></p>
+    <p><strong>1,500 panels harvested from the published literature</strong>, each with the article's own
+    caption shown beneath it. These are harder &mdash; tighter crops, mixed projections, some montages
+    &mdash; but they are where the rare anatomy is: <strong>149 carry a sixth lumbar vertebra and 126 a
+    thirteenth rib-bearing level</strong>, and the queue puts those first.</p>
+    <p class="meta">use the caption for rough location only &mdash; captions are written for a different
+    purpose and are wrong often enough that they cannot be the answer</p>
+  </div>
+
+  <div class="site">
+    <h3><span class="step alt">Surgeons only</span> Reader study</h3>
+    <p><a href="https://huggingface.co/spaces/gregoryschwingmdphd/CTSpinoPelvic1K-review">huggingface.co/spaces/gregoryschwingmdphd/CTSpinoPelvic1K-review</a></p>
+    <p>Not annotation. This is the measurement against the 97.6%: <strong>name the level with the system's
+    suggestion, and without it</strong>. You get a simulated C-arm over a patient on a table &mdash; drag it
+    or use the arrow keys, and you only see bone where the machine is pointing. Every move costs an
+    exposure and the counter is recorded, because reducing the number of shots it takes to be sure is part
+    of the claim.</p>
+    <p>Each film is read twice: once on your own, then much later in the series with the suggestion shown.
+    You are never told the right answer. <strong>The suggestion is sometimes wrong on purpose</strong>
+    &mdash; 33 of the 77 films, against about 3% in ordinary use &mdash; because the number this kind of
+    aid is usually silent about is how often a confident wrong suggestion talks a correct reader out of a
+    correct answer.</p>
+    <p class="meta">needs a reader code, not a review code &middot; you cannot pan to the sacrum: each
+    film's travel is cut short of it, on purpose</p>
+  </div>
+
+  <div class="caution">
+    <p style="margin-bottom:0"><b>One limit of the reader study, stated up front.</b> Ten frames in the
+    entire held-out set are both transitional <em>and</em> misnamed by the system, and all ten are in the
+    study &mdash; that is a census of everything that exists, not a sample. It can establish <em>that</em> a
+    wrong suggestion overturns a correct reading on a transitional spine. It cannot say how often, and no
+    rate should be quoted from it. Nine of the 33 error films are real radiographs and the rest are CT
+    renders. Both limits are the corpus, not the design, and both are exactly what the retrospective
+    collection below exists to lift.</p>
+  </div>
+
+  <p>The two annotation sites tell you, before you answer, <strong>how likely the model thinks that spine is
+  transitional</strong>, and flag any box whose geometry looks wrong &mdash; a vertebra that may be missing,
+  two boxes on the same bone, a body cut off at the edge. Treat both as a prompt to look harder. Neither is
+  an answer, and a film the checks pass is not thereby correct.</p>
+
+  <h2>How this becomes a clinical result</h2>
+
+  <p>Nothing here has been near a patient. The path from the figures above to a claim anyone should act on
+  has four steps, and the reading programme is the first of them.</p>
+
+  <div class="phase">
+    <div class="when">now</div>
+    <div class="what"><b>Reading programme and the reader study</b><span>The two annotation sites supply real
+    transitional examples, which is the one intervention that has ever moved the six-lumbar number. The
+    reader study gives a preliminary answer on whether a surgeon is better with the system than without
+    it &mdash; and, just as importantly, whether a wrong suggestion ever makes them worse.</span></div>
+
+    <div class="when">next</div>
+    <div class="what"><b>Re-implement the published methods and benchmark them here</b><span>None of them
+    releases code or weights, so every cross-method comparison on this page is indicative rather than
+    head-to-head. Rebuilding them from their stated architectures, training them on our data and scoring
+    them with one function on one held-out set is the only way to make that table honest.</span></div>
+
+    <div class="when">then</div>
+    <div class="what"><b>Retrospective collection at DMC</b><span>The binding limitation is that our
+    transitional examples are renders, and our real films come from public collections whose anomaly content
+    is unstated. Consecutive perioperative and intraoperative radiographs pulled from the archive, enriched
+    for transitional anatomy and read against cross-sectional imaging, would give the first set of real
+    transitional films in the domain the system is meant for.</span></div>
+
+    <div class="when">after</div>
+    <div class="what"><b>Prospective study in theatre</b><span>Naming, exposures and reading time against
+    the surgeon's own determination, on real cases. Only answerable once the retrospective set exists; every
+    figure above is the bench work that justifies proposing it.</span></div>
+  </div>
+
+  <h2>Where it stands, plainly</h2>
+  <ul>
+    <li><strong>The core idea works and the effect is large.</strong> A spot film with no landmark in it is
+    named far better by matching it onto a sweep than on its own pixels &mdash; by 87 points in the thoracic
+    spine, 15 in the lumbar. Every arm shows it, and it got bigger, not smaller, when contaminated data was
+    removed.</li>
+    <li><strong>Ordinary spines:</strong> 93&ndash;97% per level from three vertebrae in view.</li>
+    <li><strong>Thoracic:</strong> the strongest case, because a single frame there is nearly useless
+    (4&ndash;22%) and the sweep takes it to 91&ndash;96%. On twelve studies.</li>
+    <li><strong>Against the literature:</strong> the only comparable published figure is 88.3%, on cadavers
+    at a 64&nbsp;cm field where the whole spine is in view. Everything else measures something else &mdash;
+    registration convergence, detection, a questionnaire, or a CT.</li>
+    <li><strong>Finding the vertebrae automatically:</strong> 99.2% of them, and the remaining gap is the
+    sacrum. Earlier today this looked like the blocker &mdash; the sweep was <em>worse</em> than not
+    sweeping with automatic detection. That turned out to be a rule in our own linking code, not the
+    detector: fixing it took naming from 67% to 92%.</li>
+    <li><strong>Transitional spines:</strong> unmeasured, and I would not guess. Cross-validation
+    running.</li>
+    <li><strong>Sample sizes are small</strong> &mdash; 12 to 120 spines per arm &mdash; because everything
+    the model was trained on had to be thrown out. Wide intervals on a true holdout beat tight intervals on
+    a memory test.</li>
+    <li><strong>Nothing here has been used on a patient</strong>, and there is no prospective clinical
+    result.</li>
+  </ul>
+
+  <p class="foot">
+    All figures are measured on spines excluded from training, with the exclusion enforced by the evaluation tool rather than by hand. Thoracic and CT-render figures come from CT studies rendered as radiographs and degraded to look like separate exposures; the lumbar figures are real radiographs. Surgeon and CT-registration figures are from published literature, checked against their sources; where a paper's headline number measures something other than naming, the table says which. Timings are desktop hardware.
+    <br><br>
+    Not for distribution outside the group.
+  </p>
+</div>
+
+</body></html>
