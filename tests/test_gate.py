@@ -1128,6 +1128,26 @@ esac
         for gone in (str(self.runs), "Jane", "abab"):
             self.assertNotIn(gone, section)
 
+    def test_status_shows_the_sample_manifest_whole_before_the_jobs(self):
+        # the manifest once came after the jobs, where status's 400 lines cut it, and its widest row,
+        # the bank root a dozen X-ray sources share, was cut at 200 characters; an unmapped root is
+        # named by its folder under the data root, not withheld as a person key
+        sources = ",".join(f"source_{n:02d}_of_the_bank" for n in range(12))
+        logs = self.repo / "grid" / "logs"
+        logs.mkdir(parents=True, exist_ok=True)
+        (logs / "SAMPLES-STAGE-REPORT.md").write_text(
+            "# Sample manifest\n\n| sources | files |\n| --- | ---: |\n"
+            f"| {sources} | 20269 |\n| unmapped:xr_bank | 368455 |\n\n2 groups, 388724 files, 1.0 GB.\n", encoding="utf-8")
+        self.assertEqual(self.gate("start").returncode, 0)
+        done = self.gate("status")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertLess(done.stdout.index("## SAMPLES-STAGE-REPORT.md"), done.stdout.index("the gate's newest jobs"))
+        self.assertIn("source_11_of_the_bank | 20269 |", done.stdout)
+        self.assertIn("| unmapped xr_bank | 368455 |", done.stdout)
+        self.assertIn("2 groups, 388724 files, 1.0 GB.", done.stdout)
+        self.assertEqual(done.stdout.count("## SAMPLES-STAGE-REPORT.md"), 1)
+        self.assertTrue(all(len(line) <= 202 for line in done.stdout.splitlines()), "a row longer than 200 characters")
+
     def test_on_the_grid_the_stages_keep_their_own_data_paths(self):
         # stage 2 reads a set DATA_ROOT as its off-grid layout, so the gate passes none on the grid,
         # whether the caller sets nothing or the grid's own data root

@@ -428,10 +428,25 @@ word_space() {
   done
 }
 
+samples_report() {  # the sample index's manifest, whole: counts per source and nothing else
+  # (tools/sample_index.py), read up to the 180 lines run-samples.sh's report gives. Status's 400
+  # lines once cut it off, after the jobs, and masked's 200 characters cut its widest rows, the
+  # bank root that a dozen X-ray sources share, so the rows are folded, not cut, after the masks.
+  # A root the manifest and the registry leave unmapped is named by its folder under the data
+  # root, which the report's own path cuts show too; written "unmapped <folder>" here, since
+  # redact.sed withholds "<word>:<value>" as a person key.
+  local report=$LOGS/SAMPLES-STAGE-REPORT.md
+  [ -f "$report" ] || return 0
+  echo "## SAMPLES-STAGE-REPORT.md ($(date -r "$report" '+%F %T'))"
+  head -n 180 "$report" | LC_ALL=C tr -cd '\11\12\40-\176' | sed 's/unmapped:/unmapped /g' \
+    | report_shapes | sed -r -f "$REPO/grid/redact.sed" | fold -w $((LINE_CHARS - 10)) | sed 's/^/  /'
+}
+
 word_status() {
   local ids report run lines shown job name state elapsed code node probe
-  # First, so the status's 400 lines never cut it off.
+  # First, so the status's 400 lines never cut it off; then the sample manifest, whole.
   word_space
+  samples_report
   ids=$(gate_ids | tail -n 60 | tr '\n' ',' | sed 's/,$//')
   if [ -z "$ids" ]; then
     echo "no job submitted by the gate yet; 'start' submits the graph"
@@ -456,11 +471,9 @@ word_status() {
   latency_lines
   for report in "$LOGS"/*STAGE-REPORT.md; do
     [ -f "$report" ] || continue
+    [ "$(basename "$report")" != SAMPLES-STAGE-REPORT.md ] || continue
     echo "## $(basename "$report") ($(date -r "$report" '+%F %T'))"
-    # The sample index's manifest is counts per source and nothing else (tools/sample_index.py),
-    # read whole up to the 180 lines run-samples.sh's report gives; every other report its end.
-    if [ "$(basename "$report")" = SAMPLES-STAGE-REPORT.md ]; then shown=180; else shown=12; fi
-    tail -n "$shown" "$report" | LC_ALL=C tr -cd '\11\12\40-\176' | report_shapes | masked | sed 's/^/  /'
+    tail -n 12 "$report" | LC_ALL=C tr -cd '\11\12\40-\176' | report_shapes | masked | sed 's/^/  /'
   done
   run=$(ls -1dt "$RUNS"/*/ 2>/dev/null | head -n 1)
   if [ -n "$run" ]; then
