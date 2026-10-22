@@ -86,6 +86,7 @@ OWNER_LIST="
 idc_nlst|idc|2305|CC BY 4.0|open|nlst|NOTE=24,713 subjects, 2.3 TB; the owner's yes of 2026-10-22
 ipcai2025_robotic_xray_drive|gdown|0.85|not stated on the file; to ask the authors|open|1pV8qaW4kHGI8wrDWc6wVWS4za5XRWsXA|NOTE=202410191.zip, the data of arXiv 2412.08020 (Killeen and others, language-controlled robotic C-arm; the cadaver study's X-rays), shared with the owner by its author on 2026-10-22 and readable by anyone with the link
 fluorosam_weights_drive|gdown|1.0|per arcadelab/fluorosam; not stated on the file|open|1lJqVIuVFbdc9Bcmj17ac_cha-gW827Q6|NOTE=fluorosam_model_weights.pth, 1,002,351,026 bytes, the weights the FluoroSAM repository's README links, readable by anyone with the link; asked for by the 3D-to-X-ray work on 2026-10-22 as its comparison row
+hf_fluoroseg|hf-token|2650|FluoroSeg data use terms, accepted by the owner on 2026-10-22|gated|--repo benjamindkilleen/fluoroseg --repo-type dataset --include .|TOKEN_FILE=~/.hf/token.env NOTE=the whole set, about 2.65 TB of simulated X-rays with masks, on the owner's yes of 2026-10-22 (12.6 TB free of the 22 TB quota at the time, 6.8 TB of it promised to queued fetches)
 "
 # Never in the chain: the owner's own lines, printed at the end.
 APART="
