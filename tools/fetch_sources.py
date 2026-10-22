@@ -2,8 +2,8 @@
 entry, and record what came.
 
 The list is the deliverable of docs/research/xray-datasets-missing.md turned into entries a job
-can act on: each names its route (zenodo, hf, http, mendeley, figshare, kaggle, physionet or
-manual), its link, its destination `<data_root>/<id>/raw` and what a person confirms on the page
+can act on: each names its route (zenodo, hf, http, mendeley, figshare, nextcloud, kaggle,
+physionet or manual), its link, its destination `<data_root>/<id>/raw` and what a person confirms on the page
 first. The
 downloads themselves are spinesurg-ct-nnunet's data_platform/reacquire/reacquire.py (the copy
 under data/reproduce/reacquire/ is byte for byte the grid's), whose helpers resume a `.part`
@@ -41,6 +41,7 @@ only the login name is passed, as PhysioNet's own documentation passes it. Stand
 """
 
 import argparse
+import base64
 import hashlib
 import json
 import os
@@ -53,7 +54,9 @@ import sys
 import tarfile
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
+import xml.etree.ElementTree as ElementTree
 import zipfile
 from collections import Counter
 from datetime import datetime, timezone
@@ -294,6 +297,74 @@ def figshare_files(api_url, opener=None):
     return found
 
 
+NEXTCLOUD_SHARE = re.compile(r"^(https://[^/?#@]+(?:/[^?#]*?)?)/s/([A-Za-z0-9_-]+)/?$")
+DAV = "{DAV:}"
+NEXTCLOUD_DEPTH = 6
+
+
+def nextcloud_share(share_url):
+    """The install's root and the share's token of a public Nextcloud link, https://host[/prefix]/s/<token>."""
+    match = NEXTCLOUD_SHARE.match(share_url or "")
+    if not match:
+        raise FetchError(f"{share_url}: not a public Nextcloud share link (https://host/.../s/<token>)")
+    return match.group(1), match.group(2)
+
+
+def nextcloud_listing(root, token, folder, opener):
+    """One folder of a public share by WebDAV PROPFIND, the share's token as the user and no
+    password, as Nextcloud's public WebDAV takes it: (files, folders) with each file's size."""
+    url = f"{root}/public.php/webdav" + urllib.parse.quote(folder)
+    auth = base64.b64encode(f"{token}:".encode("ascii")).decode("ascii")
+    request = urllib.request.Request(url, method="PROPFIND", headers={"Depth": "1", "Authorization": f"Basic {auth}"})
+    try:
+        with (opener or urllib.request.urlopen)(request, timeout=120) as response:
+            tree = ElementTree.fromstring(response.read())
+    except urllib.error.URLError as error:
+        raise FetchError(f"{url}: {error}") from error
+    except ElementTree.ParseError as error:
+        raise FetchError(f"{url}: the answer is not WebDAV's XML ({error})") from error
+    base = urllib.parse.urlsplit(url).path.rstrip("/")
+    files, folders = [], []
+    for answer in tree.iter(f"{DAV}response"):
+        path = urllib.parse.unquote(urllib.parse.urlsplit(answer.findtext(f"{DAV}href") or "").path).rstrip("/")
+        if not path.startswith(urllib.parse.unquote(base)) or path == urllib.parse.unquote(base):
+            continue
+        name = path[len(urllib.parse.unquote(base)):].lstrip("/")
+        if not name or "/" in name or name in (".", ".."):
+            continue
+        inner = folder.rstrip("/") + "/" + name
+        if answer.find(f".//{DAV}resourcetype/{DAV}collection") is not None:
+            folders.append(inner)
+        else:
+            size = (answer.findtext(f".//{DAV}getcontentlength") or "").strip()
+            files.append({"path": inner, "size": int(size) if size.isdigit() else None})
+    return files, folders
+
+
+def nextcloud_files(share_url, opener=None):
+    """Every file of a public Nextcloud share (B2DROP's PadChest among them), folders walked to a
+    bounded depth: the path inside the share, the share's own download link for that one file,
+    which needs no login, and the size WebDAV states, which http-get checks. Nextcloud states no
+    checksum, so the sha256 of what came is FETCH.json's alone."""
+    root, token = nextcloud_share(share_url)
+    found, pending = [], [("/", 0)]
+    while pending:
+        folder, depth = pending.pop(0)
+        files, folders = nextcloud_listing(root, token, folder, opener)
+        for item in files:
+            parent, name = item["path"].rsplit("/", 1)
+            query = urllib.parse.urlencode({"path": parent or "/", "files": name})
+            found.append({"name": item["path"].lstrip("/"), "url": f"{root}/s/{token}/download?{query}",
+                          "size": item["size"]})
+        if depth + 1 < NEXTCLOUD_DEPTH:
+            pending += [(inner, depth + 1) for inner in folders]
+        elif folders:
+            raise FetchError(f"{share_url}: folders deeper than {NEXTCLOUD_DEPTH} levels; not walked")
+    if not found:
+        raise FetchError(f"{share_url}: the share lists no file")
+    return found
+
+
 def http_command(python, helper, url, dest, entry, checksum=None, size=None):
     command = [python, str(helper), "http-get", "--url", url, "--dest", dest, "--state", state_dir(entry)]
     for algo in ("md5", "sha256"):
@@ -341,6 +412,8 @@ def plan_entry(entry, python, helper, settings):
         return {"mendeley": entry["api"]}
     if route == "figshare":
         return {"figshare": entry["api"]}
+    if route == "nextcloud":
+        return {"nextcloud": entry["share"]}
     if route == "kaggle":
         return {"commands": [[settings.kaggle_bin, "datasets", "download", "-d", entry["kaggle"], "-p", dest]],
                 "env_from": entry.get("token_file", "~/.fluorocap/credentials.env")}
@@ -447,6 +520,9 @@ def print_plan(entry, plan):
     if "figshare" in plan:
         print(f"   figshare: list {plan['figshare']}, then http-get each file with its md5 and size into {entry['dest']}"
               + (", and unpack each zip there" if entry.get("unpack") else ""))
+    if "nextcloud" in plan:
+        # The share's link is the agreement's to keep inside the organisation, so no log carries it.
+        print(f"   nextcloud: list the entry's share by WebDAV, then http-get each file with its size into {entry['dest']}")
     if "physionet" in plan:
         print(f"   physionet: wget -r -N -c -np --user <login from ~/.netrc> -P {entry['dest']} {plan['physionet']}")
     for index, command in enumerate(plan.get("commands", [])):
@@ -515,6 +591,10 @@ def expand_plan(entry, plan, python, helper, settings):
         files = figshare_files(plan["figshare"])
         plan["commands"] = [http_command(python, helper, f["url"], os.path.join(entry["dest"], f["name"]), entry,
                                          {"md5": f.get("md5")}, f.get("size")) for f in files]
+    if "nextcloud" in plan:
+        files = nextcloud_files(plan["nextcloud"])
+        plan["commands"] = [http_command(python, helper, f["url"], os.path.join(entry["dest"], f["name"]), entry,
+                                         None, f.get("size")) for f in files]
     if "physionet" in plan:
         if Path(os.path.expanduser(settings.netrc)).resolve() != Path(os.path.expanduser("~/.netrc")).resolve():
             raise FetchError(f"{settings.netrc}: wget reads the password only from $HOME/.netrc, so the"

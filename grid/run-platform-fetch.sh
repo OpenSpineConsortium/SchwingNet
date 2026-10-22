@@ -6,8 +6,9 @@
 # behind it, each queued through hpcworker's job submit as a batch job (grid/hpcw.sh; bash 4.2; the
 # login node runs only hpcworker, df and this script). Every landing goes to
 # /rs/rs_grp_oschome/go2432/data/<source id>/raw with a README.yaml. The gated sources run only
-# when named with --only and their token or link file is in place; CT-RATE (21.3 TB) and NLST full
-# (2.3 TB) are never in the chain: their lines are printed at the end for the owner to run or skip.
+# when named with --only and their token or link file is in place; the full NLST (2.3 TB) runs only
+# when named with --only, on the owner's yes of 2026-10-22; CT-RATE (21.3 TB) is never in the chain:
+# its line is printed at the end for the owner to run or skip.
 #
 #   bash grid/run-platform-fetch.sh                       # the open chain, in the order below
 #   bash grid/run-platform-fetch.sh --only aws_stoic2021,zenodo_lumos
@@ -74,14 +75,19 @@ hf_cads_unique|hf-token|123.3|per component; CT-TRI under CADS terms|gated|--rep
 rsna_ratic_abdominal_trauma|curl-link|0|RSNA terms, non-commercial, no redistribution|gated|ratic.zip|LINK_FILE=~/.rsna/ratic_link NOTE=the presigned link is good until 2026-10-28 02:38 UTC
 rsna_rspect_pe|kaggle|0|RSNA terms, non-commercial research|gated|rsna-str-pulmonary-embolism-detection|TOKEN_FILE=~/.fluorocap/credentials.env
 "
+# The owner's yes, one source at a time: never in the chain, fetched only when grid/gate.sh's fetch
+# names it. The full NLST is here since the owner lifted the stopping rule on 2026-10-22 ("yes
+# please add this"), choosing what the volume holds by its tally (status) and not by a yield rule.
+OWNER_LIST="
+idc_nlst|idc|2305|CC BY 4.0|open|nlst|NOTE=24,713 subjects, 2.3 TB; the owner's yes of 2026-10-22
+"
 # Never in the chain: the owner's own lines, printed at the end.
 APART="
 hf_ct_rate|hf-token|21300|CC BY-NC-SA 4.0|gated|--repo ibrahimhamamci/CT-RATE --repo-type dataset --include .|TOKEN_FILE=~/.hf/token.env NOTE=21.3 TB; the owner's TB number first
-idc_nlst|idc|2305|CC BY 4.0|open|nlst|NOTE=24,713 subjects, 2.3 TB; refused as it stands by the stopping rule
 "
 
 if [ "$GATED_IDS" = 1 ]; then
-  sed -n 's/^\([a-z0-9_]*\)|.*/\1/p' <<< "$GATED_LIST"
+  sed -n 's/^\([a-z0-9_]*\)|.*/\1/p' <<< "$GATED_LIST$OWNER_LIST"
   exit 0
 fi
 
@@ -106,7 +112,7 @@ wanted() {  # wanted ID: whether this run takes the source
 }
 TABLE="$OPEN"
 [ "$GATED" = 0 ] || TABLE="$OPEN$GATED_LIST"
-[ -z "$ONLY" ] || TABLE="$OPEN$GATED_LIST"
+[ -z "$ONLY" ] || TABLE="$OPEN$GATED_LIST$OWNER_LIST"
 
 total_gb=0; unknown=""; n=0; missing=""
 while IFS='|' read -r id route size licence access args extra; do

@@ -315,6 +315,23 @@
         "the licence and the citation terms",
         "the image format (BMP in the original release), for the recipe"
       ]
+    },
+    {
+      "id": "padchest",
+      "route": "nextcloud",
+      "source": "https://bimcv.cipf.es/bimcv-projects/padchest/ (PadChest, BIMCV: 160,868 chest films of 67,625 patients, 109 projections, laterals about 30 percent)",
+      "share": "https://b2drop.bsc.es/nextcloud/s/BIMCV-PadChest-FULL",
+      "dest": "/rs/rs_grp_oschome/go2432/data/padchest/raw",
+      "size_gb": 1020,
+      "checksum": {
+        "md5": null,
+        "sha256": null
+      },
+      "licence": "the PadChest Dataset Research Use Agreement, accepted by the owner on 2026-10-22: research use only, no sale or redistribution, the download link not shared outside the organisation",
+      "confirm": [
+        "the share is B2DROP's public Nextcloud link BIMCV sent after the form; the job lists it by WebDAV and checks each file's size, since Nextcloud states no checksum",
+        "about 1.02 TB, as the record states; the archives stay packed, and the bank stage waits on a recipe for this set"
+      ]
     }
   ],
   "credentialed": [

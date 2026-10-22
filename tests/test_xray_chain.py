@@ -261,6 +261,18 @@ class SlurmScriptsTest(unittest.TestCase):
         self.assertIn("nothing to submit", out)
         self.assertNotIn("would submit", out)
 
+    def test_the_full_nlst_runs_only_when_named_on_the_owners_yes(self):
+        code, out = self.dry_run("run-platform-fetch.sh")
+        self.assertNotIn("idc_nlst", out)
+        code, out = self.dry_run("run-platform-fetch.sh", "--gated")
+        self.assertNotIn("idc_nlst: job", out)
+        code, out = self.dry_run("run-platform-fetch.sh", "--only", "idc_nlst")
+        self.assertEqual(code, 0, out)
+        self.assertIn("idc_nlst: job DRY_dp_fetch_idc_nlst", out)
+        self.assertIn("2305 GB stated", out)
+        code, out = self.dry_run("run-platform-fetch.sh", "--gated-ids")
+        self.assertIn("idc_nlst", out.split())
+
     def test_the_platform_chain_keeps_ct_rate_and_nlst_apart(self):
         code, out = self.dry_run("run-platform-fetch.sh")
         self.assertEqual(code, 0, out)
@@ -268,7 +280,7 @@ class SlurmScriptsTest(unittest.TestCase):
         self.assertIn("--after DRY_dp_fetch_aws_stoic2021:any -- platform-fetch.sbatch", out)
         self.assertNotIn("ID=hf_ct_rate ROUTE=hf-token", out.split("Not submitted")[0])
         self.assertIn("ID=hf_ct_rate", out.split("Not submitted")[1])
-        self.assertIn("ID=idc_nlst", out.split("Not submitted")[1])
+        self.assertNotIn("idc_nlst", out)
         self.assertNotIn("rsna_rspect_pe: job", out)
         # a gated source whose token or link file is not in place is left out, the rest still go in
         code, out = self.dry_run("run-platform-fetch.sh", "--gated")
@@ -434,6 +446,82 @@ def torrent_of(files, piece_length=16):
     info = {"name": "ChestXray-NIHCC", "piece length": piece_length, "pieces": pieces,
             "files": [{"length": len(data), "path": [name]} for name, data in files]}
     return bencode({"announce": "http://tracker.invalid/", "info": info})
+
+
+class NextcloudRouteTest(unittest.TestCase):
+    """The nextcloud route, written for PadChest's B2DROP share (2026-10-22): the public share is
+    listed by WebDAV with its token as the user, folders walked, and each file fetched through the
+    share's own download link with the size WebDAV states; no log carries the share's link."""
+
+    SHARE = "https://b2drop.example.org/nextcloud/s/SHARE-Token_1"
+
+    @staticmethod
+    def folder(base, entries):
+        rows = [f"<d:response><d:href>{base}/</d:href><d:propstat><d:prop><d:resourcetype><d:collection/>"
+                "</d:resourcetype></d:prop></d:propstat></d:response>"]
+        for name, size in entries:
+            kind = "<d:collection/>" if size is None else ""
+            length = "" if size is None else f"<d:getcontentlength>{size}</d:getcontentlength>"
+            rows.append(f"<d:response><d:href>{base}/{name}{'/' if size is None else ''}</d:href><d:propstat><d:prop>"
+                        f"<d:resourcetype>{kind}</d:resourcetype>{length}</d:prop></d:propstat></d:response>")
+        return ('<?xml version="1.0"?><d:multistatus xmlns:d="DAV:">' + "".join(rows) + "</d:multistatus>").encode()
+
+    def opener(self, asked):
+        answers = {
+            "/nextcloud/public.php/webdav/": self.folder("/nextcloud/public.php/webdav", [("Images", None), ("PADCHEST%20labels.csv", 12)]),
+            "/nextcloud/public.php/webdav/Images": self.folder("/nextcloud/public.php/webdav/Images", [("0.zip", 2000), ("1.zip", 3000)]),
+        }
+
+        class Response(io.BytesIO):
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+        def answer(request, timeout=0):
+            asked.append((request.get_method(), request.full_url, request.headers))
+            path = request.full_url.split("b2drop.example.org", 1)[1]
+            return Response(answers[path])
+
+        return answer
+
+    def test_the_share_is_walked_and_each_file_has_its_download_link_and_size(self):
+        tool = load("fetch_sources")
+        asked = []
+        files = tool.nextcloud_files(self.SHARE, self.opener(asked))
+        self.assertEqual([(f["name"], f["size"]) for f in files],
+                         [("PADCHEST labels.csv", 12), ("Images/0.zip", 2000), ("Images/1.zip", 3000)])
+        self.assertEqual(files[1]["url"], "https://b2drop.example.org/nextcloud/s/SHARE-Token_1/download?path=%2FImages&files=0.zip")
+        self.assertEqual(files[0]["url"], "https://b2drop.example.org/nextcloud/s/SHARE-Token_1/download?path=%2F&files=PADCHEST+labels.csv")
+        method, _, headers = asked[0]
+        self.assertEqual(method, "PROPFIND")
+        self.assertEqual(headers["Depth"], "1")
+        self.assertEqual(headers["Authorization"], "Basic U0hBUkUtVG9rZW5fMTo=")
+        entry = {"id": "padchest", "dest": "/data/padchest/raw", "route": "nextcloud", "share": self.SHARE}
+        command = tool.http_command("py", "helper.py", files[1]["url"], "/data/padchest/raw/Images/0.zip", entry, None,
+                                    files[1]["size"])
+        self.assertEqual(command[-2:], ["--bytes", "2000"])
+        self.assertNotIn("--md5", command)
+
+    def test_a_link_that_is_no_share_and_an_empty_share_fail_by_name(self):
+        tool = load("fetch_sources")
+        with self.assertRaises(tool.FetchError):
+            tool.nextcloud_files("https://b2drop.example.org/nextcloud/index.php/apps/files")
+        empty_cm = lambda request, timeout=0: type("R", (io.BytesIO,), {"__enter__": lambda s: s, "__exit__": lambda s, *a: False})(self.folder("/nextcloud/public.php/webdav", []))
+        with self.assertRaises(tool.FetchError):
+            tool.nextcloud_files(self.SHARE, empty_cm)
+
+    def test_padchest_is_listed_through_its_share_and_the_dry_run_never_prints_the_link(self):
+        data = json.loads((GRID / "fetch-xray.json").read_text(encoding="utf-8"))
+        entry = {e["id"]: e for e in data["open"]}["padchest"]
+        self.assertEqual(entry["route"], "nextcloud")
+        self.assertTrue(entry["share"].startswith("https://b2drop.bsc.es/nextcloud/s/"))
+        tool = load("fetch_sources")
+        code, out, _ = run_tool(tool, ["--only", "padchest"])
+        self.assertEqual(code, 0, out)
+        self.assertIn("nextcloud: list the entry's share by WebDAV", out)
+        self.assertNotIn("b2drop", out)
 
 
 class TorrentAndTarTest(unittest.TestCase):

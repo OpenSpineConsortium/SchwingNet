@@ -59,6 +59,10 @@ REPO=${SCHWINGNET:-$HOME/SchwingNet}
 SQUEUE=${SQUEUE:-squeue}
 SACCT=${SACCT:-sacct}
 SCANCEL=${SCANCEL:-scancel}
+GETFATTR=${GETFATTR:-getfattr}
+DF=${DF:-df}
+VOLUME=${VOLUME:-/rs/rs_grp_oschome}
+SHARED_DATA=${SHARED_DATA:-/rs/rs_grp_oschome/shared/datasets}
 # DATA_ROOT reaches the jobs only when the caller set it (a test's folder): on the grid each stage
 # keeps its own default, since stage 2 reads a set DATA_ROOT as its off-grid layout
 # (<root>/<id>/raw in place of each recipe's raw folder), where LUMOS and VinDr-SpineXR are not.
@@ -387,8 +391,46 @@ latency_lines() {  # the newest run's parity, latency and sweep numbers, one lin
   awk -f "$REPO/grid/latency-lines.awk" "${files[@]}" | masked | sed 's/^/  /'
 }
 
+# The owner's tally of the lab volume (2026-10-22: "keep a tally of how much space ive used on ceph
+# oschome"), so he chooses which sets stay on it at once and cycles the rest in and out. CephFS keeps
+# each folder's recursive size as the attribute ceph.dir.rbytes, read at once whatever the tree
+# holds, so no du walks millions of files; where the attribute is not there the size reads unknown.
+rbytes_of() {
+  "$GETFATTR" --only-values -n ceph.dir.rbytes "$1" 2>/dev/null | tr -dc '0-9'
+}
+gb_of() {  # whole GB, rounded up, of a byte count
+  awk -v b="$1" 'BEGIN { printf "%d", (b + 999999999) / 1000000000 }'
+}
+space_lines() {  # one folder's sets, largest first: GB and the set's folder name
+  local root=$1 one bytes
+  for one in "$root"/*/; do
+    [ -d "$one" ] || continue
+    bytes=$(rbytes_of "${one%/}")
+    if [ -n "$bytes" ]; then echo "$(gb_of "$bytes") $(basename "$one")"; else echo "? $(basename "$one")"; fi
+  done | sort -k1,1nr
+}
+word_space() {
+  local root label bytes quota avail size
+  # Labels, never paths: status leaves the grid, and its answer names no folder of the volume.
+  echo "## space on the lab volume (CephFS ceph.dir.rbytes; GB rounded up)"
+  avail=$("$DF" -BG --output=avail "$VOLUME" 2>/dev/null | tail -n 1 | tr -dc '0-9')
+  size=$("$DF" -BG --output=size "$VOLUME" 2>/dev/null | tail -n 1 | tr -dc '0-9')
+  echo "  the volume: ${avail:-?} GB free of ${size:-?} GB (df)"
+  quota=$("$GETFATTR" --only-values -n ceph.quota.max_bytes "$VOLUME" 2>/dev/null | tr -dc '0-9')
+  [ -z "$quota" ] || [ "$quota" = 0 ] || echo "  the volume's quota: $(gb_of "$quota") GB"
+  for label in "data" "shared datasets"; do
+    if [ "$label" = data ]; then root=$DATA_ROOT; else root=$SHARED_DATA; fi
+    [ -d "$root" ] || { echo "  $label: not there"; continue; }
+    bytes=$(rbytes_of "$root")
+    if [ -n "$bytes" ]; then echo "  $label: $(gb_of "$bytes") GB in all"; else echo "  $label: ? GB in all"; fi
+    space_lines "$root" | head -n 80 | sed 's/^/    /'
+  done
+}
+
 word_status() {
   local ids report run lines shown job name state elapsed code node probe
+  # First, so the status's 400 lines never cut it off.
+  word_space
   ids=$(gate_ids | tail -n 60 | tr '\n' ',' | sed 's/,$//')
   if [ -z "$ids" ]; then
     echo "no job submitted by the gate yet; 'start' submits the graph"
