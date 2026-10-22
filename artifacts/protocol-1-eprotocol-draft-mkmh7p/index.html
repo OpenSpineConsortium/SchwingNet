@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Protocol 1 — eProtocol draft</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F1F4F3; --sheet:#FFFFFF; --ink:#16212A; --ink2:#4C5C68;
+  --rule:#D4DDE1; --rule-soft:#E6ECEE;
+  --accent:#1E4E5E; --accent-soft:#E3EDF0;
+  --mark-bg:#F8E9BA; --mark-ink:#6A4D08; --mark-edge:#DCC377;
+  --note-bg:#E9EFF1; --note-edge:#BFD0D6;
+  --shadow:0 1px 2px rgba(22,33,42,.06), 0 8px 28px rgba(22,33,42,.05);
+  --sans:"IBM Plex Sans",ui-sans-serif,system-ui,"Segoe UI",Helvetica,Arial,sans-serif;
+  --serif:"Source Serif 4",Georgia,"Times New Roman",serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#10161A; --sheet:#161D22; --ink:#E3EAEC; --ink2:#9BACB5;
+    --rule:#2B353B; --rule-soft:#222B31;
+    --accent:#83C4D5; --accent-soft:#1B2A31;
+    --mark-bg:#3B3113; --mark-ink:#F2D88F; --mark-edge:#5E4D1D;
+    --note-bg:#1B2429; --note-edge:#2E3C43;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.28);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#10161A; --sheet:#161D22; --ink:#E3EAEC; --ink2:#9BACB5;
+  --rule:#2B353B; --rule-soft:#222B31;
+  --accent:#83C4D5; --accent-soft:#1B2A31;
+  --mark-bg:#3B3113; --mark-ink:#F2D88F; --mark-edge:#5E4D1D;
+  --note-bg:#1B2429; --note-edge:#2E3C43;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.28);
+}
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:var(--serif); font-size:17px; line-height:1.62;
+  font-variant-numeric:oldstyle-nums proportional-nums;
+}
+img{max-width:100%}
+a{color:var(--accent)}
+a:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:2px}
+
+/* ---------- masthead ---------- */
+.masthead{
+  border-bottom:1px solid var(--rule);
+  background:var(--sheet);
+}
+.masthead-inner{max-width:1160px;margin:0 auto;padding:40px 24px 30px}
+.kicker{
+  font-family:var(--sans); font-size:.8rem; font-weight:500; color:var(--ink2);
+  margin:0 0 14px; letter-spacing:.01em;
+}
+h1{
+  font-family:var(--serif); font-weight:600; font-size:clamp(1.55rem,3.4vw,2.3rem);
+  line-height:1.2; margin:0; max-width:24ch; letter-spacing:-.01em;
+}
+.subtitle{font-size:1.02rem;color:var(--ink2);margin:.5rem 0 0;max-width:52ch}
+
+/* cover sheet */
+.cover{
+  margin-top:26px; border:1px solid var(--rule); border-radius:3px;
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(168px,1fr));
+  overflow:hidden; background:var(--sheet);
+}
+.cover div{padding:13px 16px;border-right:1px solid var(--rule-soft);border-bottom:1px solid var(--rule-soft)}
+.cover dt{font-family:var(--sans);font-size:.74rem;font-weight:500;color:var(--ink2);margin:0 0 3px}
+.cover dd{margin:0;font-family:var(--sans);font-size:.95rem;font-weight:500;line-height:1.35}
+.cover dd .q{color:var(--mark-ink);background:var(--mark-bg);padding:0 .3em;border-radius:2px}
+
+.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:20px}
+.btn{
+  font-family:var(--sans);font-size:.85rem;font-weight:500;
+  background:var(--sheet);color:var(--ink);border:1px solid var(--rule);
+  padding:7px 13px;border-radius:3px;cursor:pointer;line-height:1.3;
+}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn[aria-pressed="true"]{background:var(--mark-bg);border-color:var(--mark-edge);color:var(--mark-ink)}
+
+/* ---------- layout ---------- */
+.wrap{max-width:1160px;margin:0 auto;padding:0 24px;display:grid;grid-template-columns:232px minmax(0,1fr);gap:48px;align-items:start}
+nav.toc{position:sticky;top:0;max-height:100vh;overflow-y:auto;padding:34px 0 40px}
+nav.toc p{font-family:var(--sans);font-size:.76rem;color:var(--ink2);margin:0 0 10px;font-weight:500}
+nav.toc ol{list-style:none;margin:0;padding:0;counter-reset:pg}
+nav.toc li{counter-increment:pg;margin:0}
+nav.toc a{
+  display:flex;gap:9px;font-family:var(--sans);font-size:.86rem;line-height:1.35;
+  text-decoration:none;color:var(--ink2);padding:5px 8px 5px 0;border-left:2px solid transparent;padding-left:10px;
+}
+nav.toc a::before{content:counter(pg);font-size:.72rem;color:var(--ink2);opacity:.6;min-width:1.1em;padding-top:.15em}
+nav.toc a:hover{color:var(--ink)}
+nav.toc a.active{color:var(--accent);border-left-color:var(--accent);font-weight:500}
+nav.toc li.aside a::before{content:"—";opacity:.45}
+nav.toc .gap{height:12px;border-top:1px solid var(--rule);margin:12px 10px 0}
+
+main{padding:34px 0 90px;max-width:74ch}
+
+/* ---------- sections ---------- */
+section{
+  background:var(--sheet);border:1px solid var(--rule);border-radius:3px;
+  padding:26px 30px 30px;margin:0 0 20px;box-shadow:var(--shadow);scroll-margin-top:16px;
+}
+.sec-head{display:flex;align-items:baseline;gap:14px;justify-content:space-between;border-bottom:1px solid var(--rule);padding-bottom:12px;margin-bottom:18px}
+h2{font-family:var(--sans);font-size:1.22rem;font-weight:600;margin:0;line-height:1.25;letter-spacing:-.005em}
+h3{font-family:var(--sans);font-size:1rem;font-weight:600;margin:24px 0 8px}
+h3:first-child{margin-top:0}
+.copy{
+  font-family:var(--sans);font-size:.76rem;color:var(--ink2);background:transparent;
+  border:1px solid var(--rule);border-radius:3px;padding:4px 9px;cursor:pointer;flex:none;white-space:nowrap;
+}
+.copy:hover{color:var(--accent);border-color:var(--accent)}
+p{margin:0 0 .95em}
+p:last-child{margin-bottom:0}
+strong{font-weight:600}
+code{font-family:var(--mono);font-size:.86em;background:var(--rule-soft);padding:.1em .35em;border-radius:2px}
+
+ul,ol{margin:0 0 .95em;padding-left:1.25em}
+li{margin:0 0 .45em}
+li:last-child{margin-bottom:0}
+
+/* hypothesis / determination lists */
+.hyp{list-style:none;padding:0}
+.hyp li{display:grid;grid-template-columns:2.6rem 1fr;gap:10px;padding:11px 0;border-top:1px solid var(--rule-soft)}
+.hyp li:first-child{border-top:0;padding-top:0}
+.hyp b{font-family:var(--sans);font-size:.85rem;font-weight:600;color:var(--accent);padding-top:.15em}
+
+.det{list-style:none;padding:0;margin:0}
+.det li{display:flex;gap:12px;align-items:flex-start;padding:9px 0;border-top:1px solid var(--rule-soft)}
+.det li:first-child{border-top:0}
+.det .t{flex:1}
+.pill{
+  font-family:var(--sans);font-size:.74rem;font-weight:600;padding:2px 8px;border-radius:2px;
+  border:1px solid var(--rule);color:var(--ink2);flex:none;margin-top:.15em;min-width:2.1rem;text-align:center;
+}
+.pill.no{background:var(--rule-soft)}
+.pill.yes{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+
+/* steps */
+ol.steps{list-style:none;padding:0;counter-reset:s}
+ol.steps li{counter-increment:s;display:grid;grid-template-columns:1.9rem 1fr;gap:12px;padding:12px 0;border-top:1px solid var(--rule-soft)}
+ol.steps li:first-child{border-top:0;padding-top:0}
+ol.steps li::before{content:counter(s);font-family:var(--sans);font-size:.82rem;font-weight:600;color:var(--ink2);padding-top:.2em}
+
+/* table */
+.tablewrap{overflow-x:auto;margin:0 0 .95em;border:1px solid var(--rule);border-radius:3px}
+table{border-collapse:collapse;width:100%;min-width:560px;font-size:.93rem}
+th,td{text-align:left;padding:10px 13px;border-bottom:1px solid var(--rule-soft);vertical-align:top}
+th{font-family:var(--sans);font-size:.78rem;font-weight:600;color:var(--ink2);background:var(--rule-soft)}
+tr:last-child td{border-bottom:0}
+td:first-child{font-family:var(--sans);font-size:.87rem;font-weight:500;width:12rem}
+
+/* open decision marker */
+.open{
+  border-bottom:1px dotted var(--mark-edge); border-radius:2px; padding:0 .15em;
+  scroll-margin-top:24px; transition:background .18s ease;
+}
+body.hl .open{background:var(--mark-bg);color:var(--mark-ink);border-bottom-color:transparent}
+.open:target,.open.flash{background:var(--mark-bg);color:var(--mark-ink);box-shadow:0 0 0 3px var(--mark-bg)}
+
+/* decisions panel */
+#decisions{border-color:var(--mark-edge)}
+#decisions ol{list-style:none;padding:0;counter-reset:d}
+#decisions li{counter-increment:d;display:grid;grid-template-columns:1.8rem 1fr;gap:10px;padding:9px 0;border-top:1px solid var(--rule-soft)}
+#decisions li:first-child{border-top:0;padding-top:0}
+#decisions li::before{content:counter(d);font-family:var(--sans);font-size:.78rem;color:var(--ink2);padding-top:.25em}
+#decisions a{font-family:var(--sans);font-size:.92rem;text-decoration:none;font-weight:500}
+#decisions a:hover{text-decoration:underline}
+#decisions .where{display:block;font-family:var(--sans);font-size:.76rem;color:var(--ink2);font-weight:400;margin-top:1px}
+
+/* notes to PI */
+.aside-block{background:var(--note-bg);border-color:var(--note-edge)}
+.divider{display:flex;align-items:center;gap:14px;margin:40px 0 20px}
+.divider span{font-family:var(--sans);font-size:.82rem;color:var(--ink2)}
+.divider::before,.divider::after{content:"";height:1px;background:var(--rule);flex:1}
+blockquote{
+  margin:0 0 .95em;padding:14px 18px;background:var(--sheet);
+  border:1px solid var(--note-edge);border-left:3px solid var(--accent);border-radius:2px;font-size:.97rem;
+}
+.toast{
+  position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(8px);
+  background:var(--ink);color:var(--paper);font-family:var(--sans);font-size:.85rem;
+  padding:9px 16px;border-radius:3px;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:50;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+@media (max-width:900px){
+  .wrap{grid-template-columns:1fr;gap:0}
+  nav.toc{position:static;max-height:none;padding:22px 0 0;border-bottom:1px solid var(--rule)}
+  nav.toc ol{columns:2;column-gap:18px}
+  main{padding-top:22px}
+  section{padding:22px 20px 24px}
+  .masthead-inner{padding:30px 20px 24px}
+  .wrap{padding:0 20px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+@media print{
+  body{background:#fff}
+  nav.toc,.controls,.copy,#decisions{display:none}
+  section{box-shadow:none;border:0;border-top:1px solid #ccc;border-radius:0;padding:14px 0;page-break-inside:avoid}
+  .wrap{display:block;padding:0}
+}
+</style>
+</head>
+<body class="hl">
+
+<header class="masthead">
+  <div class="masthead-inner">
+    <p class="kicker">Protocol 1 of 2 &nbsp;|&nbsp; WSU eProtocol draft, 15 September 2026</p>
+    <h1>Automated identification of vertebral level and detection of injury on spine and pelvis imaging at the Detroit Medical Center</h1>
+    <p class="subtitle">A retrospective imaging and records study. Sections below follow the order of the WSU eProtocol IRB form, so each block pastes into the matching page.</p>
+
+    <dl class="cover">
+      <div><dt>Review type</dt><dd>Exempt, Category 4 <br>(limited IRB review)</dd></div>
+      <div><dt>Consent</dt><dd>Waiver requested<br>45 CFR 46.116(f)</dd></div>
+      <div><dt>HIPAA authorization</dt><dd>Waiver requested</dd></div>
+      <div><dt>Records requested</dt><dd><span class="q">40,000 studies</span> — unconfirmed</dd></div>
+      <div><dt>Study period</dt><dd>1 Jan 2006 to approval date</dd></div>
+      <div><dt>Needs the PI's decision</dt><dd><span class="q" id="dcount">—</span></dd></div>
+    </dl>
+
+    <div class="controls">
+      <button class="btn" id="hlBtn" aria-pressed="true">Highlight open items</button>
+      <button class="btn" id="jumpBtn">Go to the decision list</button>
+      <button class="btn" id="printBtn">Print or save as PDF</button>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <nav class="toc" aria-label="eProtocol pages">
+    <p>eProtocol pages</p>
+    <ol id="tocList"></ol>
+  </nav>
+
+  <main>
+
+    <section id="decisions">
+      <div class="sec-head"><h2>Open items</h2></div>
+      <p>Every bracketed item in the draft, in the order it appears. Each one links to its place in the text.</p>
+      <ol id="decList"></ol>
+    </section>
+
+    <section id="relationship" data-nav="Scope and context">
+      <div class="sec-head"><h2>Scope and context</h2></div>
+      <p>This is Protocol 1 (retrospective, Exempt Category 4, waiver of consent and of HIPAA authorization) from <code>IRB_two_protocols_summary.pdf</code>, with Aim 2 rewritten so that the intraoperative fluoroscopy–CT pairs are an explicit, named data source and the registration-based reference standard is described. Protocol 2 (prospective silent evaluation) is unchanged and is submitted alongside.</p>
+      <p>The form order follows the eProtocol export for IRB-21-10-4123 (Vaidya, <em>Improving Outcome in Orthopaedics Trauma Care</em>). This file lives under <code>proposals/</code> (gitignored) and is not the public summary.</p>
+    </section>
+
+    <section id="personnel" data-nav="Personnel Information">
+      <div class="sec-head"><h2>Personnel Information</h2><button class="copy">Copy section</button></div>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Role</th><th>Name</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td>Principal Investigator</td><td><span class="open" id="d-pi" data-label="Confirm the PI listing: Gregory Schwing, MD, PhD — PGY-1 Surgery, DMC">Gregory Schwing, MD, PhD — PGY-1 Surgery, DMC</span></td><td>eProtocol requires a faculty sponsor/mentor for a resident PI: <span class="open" id="d-sponsor-who" data-label="Choose the faculty sponsor — Dr Montie or Dr Vaidya">Dr Montie / Dr Vaidya — confirm</span></td></tr>
+            <tr><td>Faculty Sponsor/Mentor</td><td><span class="open" id="d-sponsor" data-label="Faculty sponsor name and department">name, department</span></td><td>Signs the Obligations page</td></tr>
+            <tr><td>Co-Investigator, Neurosurgery</td><td><span class="open" id="d-to" data-label="Confirm Dr To as neurosurgery co-investigator">Dr To</span></td><td>Operating surgeon whose intraoperative fluoroscopy is uploaded to PACS; provides the surgeon-stated level from operative notes; adjudicates level disagreements</td></tr>
+            <tr><td>Co-Investigator, Radiology</td><td><span class="open" id="d-rad" data-label="Name the radiology co-investigator">name</span></td><td>Reference reads; adjudication of level and fracture; LSTV numbering convention</td></tr>
+            <tr><td>Co-Investigator, Orthopaedic Trauma</td><td><span class="open" id="d-vaidya" data-label="Confirm whether Dr Vaidya joins as co-investigator">Dr Vaidya, if agreed</span></td><td>Trauma registry linkage (Aim 4)</td></tr>
+            <tr><td>Key personnel, study staff</td><td><span class="open" id="d-staff" data-label="Name the residents and students who will touch identifiable data">named residents/students who will touch identifiable data</span></td><td>CITI Human Subjects and HIPAA Research current</td></tr>
+            <tr><td>Department sign-off</td><td><span class="open" id="d-chair" data-label="Confirm the Chair or Dean who signs off">Chair, Department of Surgery</span></td><td></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Everyone listed as touching identifiable data must be on the DMC Research Compliance application with the same names.</p>
+    </section>
+
+    <section id="location" data-nav="Study Location">
+      <div class="sec-head"><h2>Study Location</h2><button class="copy">Copy section</button></div>
+      <p>Detroit Medical Center (Detroit Receiving Hospital, Harper University Hospital, Sinai-Grace, Hutzel; Children's Hospital of Michigan excluded for now) for record access and de-identification. Wayne State University High Performance Computing (the WSU research cluster, <code>grid.wayne.edu</code>) for analysis of de-identified data only. No VAMC, no international site, no internet-based recruitment.</p>
+    </section>
+
+    <section id="funding" data-nav="Funding">
+      <div class="sec-head"><h2>Funding</h2><button class="copy">Copy section</button></div>
+      <p><span class="open" id="d-funding" data-label="Decide the funding line: unfunded or departmental">Unfunded / departmental. If NIH or other support is added later, update.</span> No sponsor.</p>
+    </section>
+
+    <section id="details" data-nav="Study Details">
+      <div class="sec-head"><h2>Study Details</h2><button class="copy">Copy section</button></div>
+      <ul>
+        <li>IRB of record: WSU IRB</li>
+        <li>Study type: Medical</li>
+        <li>Review type: <strong>Exempt</strong>, Category 4, with limited IRB review for privacy and confidentiality because identifiable health information is accessed</li>
+      </ul>
+    </section>
+
+    <section id="exempt" data-nav="Exempt Paragraphs">
+      <div class="sec-head"><h2>Exempt Paragraph(s)</h2><button class="copy">Copy section</button></div>
+      <ul class="det">
+        <li><span class="pill no">No</span><span class="t">Item A — more than minimal risk</span></li>
+        <li><span class="pill no">No</span><span class="t">Item B — FDA-regulated drug or device clinical investigation. The software is used on existing images for research; no result returns to the record or to care.</span></li>
+        <li><span class="pill no">No</span><span class="t">Item C — prisoners</span></li>
+        <li><span class="pill">Risk</span><span class="t">Item D — <strong>breach of confidentiality</strong>. Identifiers are used once for linkage and a coded key is retained during the study.</span></li>
+      </ul>
+      <h3>Category 4 boxes</h3>
+      <p>Check <strong>(2)</strong> data recorded such that identity cannot be readily ascertained and no contact or re-identification, and <strong>(3)</strong> data includes identifiable health information protected under HIPAA.</p>
+      <ul class="det">
+        <li><span class="pill no">N</span><span class="t">4a — HIPAA applies; see the HIPAA waiver page</span></li>
+        <li><span class="pill no">N</span><span class="t">4a(i) — contact or re-identification</span></li>
+        <li><span class="pill no">N</span><span class="t">4b — data that is not pre-existing. Records and images run from 1 January 2006 to the IRB approval date; nothing is collected prospectively.</span></li>
+        <li><span class="pill no">N</span><span class="t">4c — biospecimens</span></li>
+      </ul>
+    </section>
+
+    <section id="summary" data-nav="Summary &amp; Purpose">
+      <div class="sec-head"><h2>Summary &amp; Purpose</h2><button class="copy">Copy section</button></div>
+      <h3>1. Summary, in lay language</h3>
+      <p>Surgeons and radiologists locate a vertebra by counting from a landmark. About one person in six has a spine with a different count, an extra or missing rib, or a vertebra fused to the pelvis, and counting goes wrong; operating on the wrong level is the result the field worries about most, and the thoracic spine and the lumbosacral junction are where it happens. Our group has built, from public CT scans, a program that outlines every bone of the spine and pelvis and names each vertebra from its own shape rather than by counting.</p>
+      <p>This study uses images and records that already exist at DMC to:</p>
+      <ol>
+        <li>check that program on DMC patients;</li>
+        <li>build a reference standard for the intraoperative x-ray images surgeons use to confirm the level, by matching each intraoperative image to the same patient's CT with an image-registration algorithm, and use that reference to train and test a program that names the level from the intraoperative image alone;</li>
+        <li>train and test fracture detection on trauma spine and pelvis imaging;</li>
+        <li>relate the imaging findings to treatment and outcome recorded in the trauma registry.</li>
+      </ol>
+      <p>No patient is contacted, treated differently, or has anything returned to the medical record.</p>
+
+      <h3>2a. Purpose and hypotheses</h3>
+      <p>The purpose is to develop and evaluate computer methods that name vertebral levels and detect injury on the spine and pelvis images DMC patients already receive, with an explicit focus on the patients whose anatomy makes counting unreliable.</p>
+      <ul class="hyp">
+        <li><b>H1</b><span>A vertebra-naming program trained on public CT identifies each lumbar and lower thoracic vertebra on DMC CT scans in agreement with the radiology report and with a radiologist's read, and does so in patients with transitional anatomy (sixth lumbar vertebra, sacralized L5, lumbarized S1, thirteenth thoracic vertebra, hypoplastic or absent twelfth rib) as well as in patients with usual anatomy.</span></li>
+        <li><b>H2</b><span>Intraoperative fluoroscopic images can be labelled with vertebral levels by registering them to the same patient's pre- or post-operative CT (three-dimensional to two-dimensional registration), and those labels agree with the level recorded in the operative note and with the CT-verified numbering in at least 98% of vertebrae.</span></li>
+        <li><b>H3</b><span>A program trained on those registration-derived labels identifies the vertebral level on an intraoperative fluoroscopic image <strong>without</strong> a CT, and its per-vertebra accuracy against the registration reference is measurable with a two-sided 95% confidence interval narrower than ±1 percentage point in each pre-specified stratum (usual anatomy, transitional anatomy, instrumented, non-instrumented).</span></li>
+        <li><b>H4</b><span>Fracture detection on trauma spine and pelvis radiographs and CT reaches sensitivity and specificity against the CT-confirmed radiology read that can be compared with the initial clinical read.</span></li>
+        <li><b>H5</b><span>Among trauma patients, imaging findings identified by the programs are associated with the treatment given and the recorded outcome.</span></li>
+      </ul>
+
+      <h3>2b. What the investigators hope to learn</h3>
+      <p>Whether naming a vertebra from its shape survives contact with a real, largely underinsured urban trauma population and its imaging; how often an intraoperative image alone would have led to a wrong level, and in which patients; whether a registration-based reference standard is a practical way to label intraoperative images at scale; and whether fracture detection and level naming change enough management to justify the prospective silent evaluation in Protocol 2.</p>
+    </section>
+
+    <section id="background" data-nav="Background &amp; Rationale (A)">
+      <div class="sec-head"><h2>Background, Rationale and Analysis — Section A</h2><button class="copy">Copy section</button></div>
+
+      <h3>a(i). Current knowledge</h3>
+      <p>Wrong-level spine surgery occurred in 0.12% of 34,544 consecutive cases in a recent single-system series, in 0.42% of thoracic cases, and every event was at L4–5 or L5–S1, with image misinterpretation named in 18.8%. Lumbosacral transitional vertebrae have a pooled prevalence of 15.3% across 83 studies; numerical variants (23 or 25 presacral segments) occur in 7.7% of whole-spine MRIs and cannot be seen on a limited field of view; outpatient level counts were wrong in 54% of patients with transitional anatomy in a surgical series; on radiographs, readers agree on the transitional type only at κ 0.16–0.32.</p>
+      <p>The one validated method for labelling intraoperative radiographs, LevelCheck (Johns Hopkins), registers the patient's preoperative CT to the intraoperative image and placed labels correctly on 398 of 398 intraoperative radiographs from 178 patients; it requires a CT and is not publicly available, but the registration components it relies on are (xReg; DiffDRR/DiffPose). No public dataset of intraoperative spine fluoroscopy with vertebra-level labels exists.</p>
+      <p>Our group has released a public CT dataset of 802 abdominopelvic scans with every vertebra, rib, sacrum and pelvis labelled, including 18 six-lumbar spines and 33 graded transitional cases (Zenodo 10.5281/zenodo.22642578; WSU determination 2026-269, Not Human Participant Research), and a vertebra-naming model trained on it. <span class="open" id="d-cites" data-label="Insert full citations in Section A and complete the reference list">Insert full citations; see the reference list at the end.</span></p>
+
+      <h3>a(ii). Rationale</h3>
+      <p>Level naming from local shape has only been tested on public CT and on rendered images; whether it works on real intraoperative fluoroscopy, on instrumented spines, and in patients with transitional anatomy cannot be learned from public data because no such labelled data exist. Registration to the patient's own CT is the one route that produces exact labels for real intraoperative images without a human counting on the image. DMC archives intraoperative fluoroscopy to PACS for at least one neurosurgical service, and most spine-surgery patients have a pre- or post-operative CT, so the pairs exist.</p>
+
+      <h3>a(iii). Rationale for the participant population</h3>
+      <p>DMC's spine and trauma population is under-represented in public datasets and carries a heavy burden of high-energy injury and of prior surgery; it is the population in which the methods have to work. Adults only in this protocol.</p>
+
+      <h3>a(iv). Inclusion criteria</h3>
+      <p>Any patient aged 18 years or older with at least one of the following at a DMC facility between 1 January 2006 and the date of IRB approval: a CT that includes any part of the spine or pelvis; a radiograph of the spine or pelvis; an MRI of the spine; an intraoperative fluoroscopic image series of the spine or pelvis archived in PACS or in the C-arm or navigation archive; or an entry in the DMC trauma registry with a spine or pelvic injury.</p>
+
+      <h3>a(v). Exclusion criteria</h3>
+      <p>Age under 18 at the time of imaging; imaging that contains no spine or pelvis; studies whose images cannot be de-identified (burned-in identifiers that cannot be removed) are excluded from transfer but counted.</p>
+
+      <h3>b. Statistical methods</h3>
+      <p>Agreement of level names with the reference (radiology report and radiologist read for CT; registration-derived labels for intraoperative images; CT-verified count for radiographs) is reported as per-vertebra exact accuracy with Wilson 95% intervals, within-one-level rate, and the full confusion matrix, stratified by anatomy (usual; transitional with an unchanged count; transitional with a changed count), region (lumbosacral, thoracolumbar, thoracic, cervical), and instrumentation. Registration quality is reported as projected-centroid error and as the rate of level labels changed by adjudication. Fracture detection is reported as sensitivity, specificity and AUC against the CT-confirmed read, with the initial clinical read as comparator. Disagreements between the programs and the reference are adjudicated by a radiologist and a surgeon blinded to the program's output. Associations with treatment and outcome (Aim 4) use logistic regression adjusted for age, sex, injury severity and mechanism. Analyses are pre-specified in a statistical analysis plan filed before the first label is produced.</p>
+
+      <h3>c. Sample size justification</h3>
+      <p>To bound a per-vertebra accuracy of 99% with a 95% interval of ±0.5 percentage points requires about 1,500 verified vertebrae in each primary stratum; four primary strata (usual and transitional anatomy, each instrumented and not) give a target of 6,000 verified vertebrae on intraoperative images, i.e. roughly 1,500–2,500 intraoperative images from 800–1,500 patients, since about 12.9% of lumbar surgical patients have transitional anatomy and enrichment for those cases is deliberate. Trauma fracture detection at an expected sensitivity of 90% ± 3 points needs about 400 fractured studies. Because transitional anatomy and archived intraoperative imaging are both minorities, the records request is broad: <span class="open" id="d-n1" data-label="Fix the records number in Section A(c) — same figure on the WSU form, this draft and the DMC application">40,000 imaging studies from an estimated 25,000 patients — the same number must appear on the WSU form, this document and the DMC application; confirm with a PACS count before submission.</span></p>
+
+      <h3>d, e, f</h3>
+      <p><strong>d.</strong> N/A, retrospective records study. &nbsp;<strong>e.</strong> No follow-up. &nbsp;<strong>f.</strong> N/A.</p>
+    </section>
+
+    <section id="procedures" data-nav="Procedures (B)">
+      <div class="sec-head"><h2>Procedures — Section B</h2><button class="copy">Copy section</button></div>
+      <p><strong>a.</strong> Interaction, intervention, or data collection from participants: <strong>No</strong>.</p>
+      <h3>b. Chronological description</h3>
+      <ol class="steps">
+        <li>DMC Radiology informatics and the neurosurgical service identify eligible studies by modality, body part and date (PACS query), and the trauma registry office identifies registry entries meeting the criteria.</li>
+        <li>Within the DMC secure environment (Citrix), the study team pulls the DICOM studies (CT, radiographs, MRI, and intraoperative fluoroscopy as XA, RF or Secondary Capture objects, including C-arm and navigation-system archives where they exist), the radiology reports, the operative notes, and the registry and EMR variables on the data collection sheet.</li>
+        <li>Medical record number, financial identification number and accession number are used once to link images to reports, notes and registry rows. Each patient receives a study code; each study a study code; the key linking codes to identifiers is kept on DMC Citrix, accessible only to the PI and one designated key holder, and nowhere else.</li>
+        <li>Images are de-identified inside DMC before transfer: DICOM headers are stripped to the DICOM PS3.15 basic de-identification profile with dates shifted per patient and ages retained in years (capped at 89); pixel data are screened for burned-in text with an optical-character-recognition detector on every frame, flagged frames are masked, and 100% of frames are inspected by a study team member before release; frames whose text cannot be masked without destroying the image are excluded and counted. Reports and notes are de-identified with a validated clinical text de-identification tool followed by manual review of a 10% sample.</li>
+        <li>De-identified images and text are transferred by encrypted transfer (SFTP over the WSU VPN, or an encrypted drive carried by the PI) to the WSU research cluster under a project directory readable only by the named study staff.</li>
+        <li>Intraoperative fluoroscopic images are registered to the same patient's pre- or post-operative CT with a three-dimensional to two-dimensional registration algorithm; the CT's vertebra labels are projected into the image to give the reference level of every visible vertebra; registrations that fail their quality gate are flagged for reader labelling. Operative notes supply the surgeon-stated level for comparison.</li>
+        <li>Programs for level naming on CT, level naming on radiographs and intraoperative images, and fracture detection are trained and tested on the de-identified data, with patient-level splits fixed before training.</li>
+        <li>A radiologist and a surgeon adjudicate a stratified sample of level labels and every disagreement between program and reference, blinded to the program's output.</li>
+        <li>Statistical analysis as in Section A(b). Aim 4 links imaging findings to registry treatment and outcome variables through the study codes only.</li>
+      </ol>
+      <h3>c. Who, where, when</h3>
+      <p>Steps 1–4 by the PI and named DMC study staff inside DMC systems; step 5 by the PI; steps 6–9 by the PI and named WSU study staff on the WSU research cluster, over the <span class="open" id="d-years" data-label="Set the study period length — currently drafted as three years">three</span>-year study period.</p>
+      <h3>d. Participant time commitment</h3>
+      <p>None.</p>
+      <h3>e. Non-research procedures</h3>
+      <p>None; all imaging and records were obtained for clinical care.</p>
+    </section>
+
+    <section id="collection" data-nav="Data collection (C)">
+      <div class="sec-head"><h2>Data collection methods — Section C</h2><button class="copy">Copy section</button></div>
+      <p>The attached data collection sheet lists every variable:</p>
+      <ul>
+        <li><strong>Demographics</strong> — age in years, sex, race/ethnicity as recorded, insurance class.</li>
+        <li><strong>Imaging</strong> — modality, body part, date shifted, manufacturer and model, DICOM object type, matrix, bit depth, pixel spacing, view or projection, series description.</li>
+        <li><strong>Radiology report text</strong> — de-identified.</li>
+        <li><strong>Operative note fields</strong> — procedure, levels stated, approach, implants, intraoperative imaging used.</li>
+        <li><strong>Trauma registry fields</strong> — mechanism, ISS, AIS by region, diagnoses, procedures, complications, length of stay, disposition, mortality, follow-up.</li>
+        <li><strong>Derived labels</strong> — vertebra names, fracture flags, registration quality.</li>
+      </ul>
+      <p>Direct identifiers used only for linkage: MRN, FIN, accession number; never transferred.</p>
+    </section>
+
+    <section id="population" data-nav="Participant Population">
+      <div class="sec-head"><h2>Participant Population</h2><button class="copy">Copy section</button></div>
+      <h3>Section A</h3>
+      <p>Adults <strong>18–99</strong>. No participants are directly solicited, consented or completing study visits; records only. Multi-site: <strong>No</strong> (single health system, several hospitals). Records and charts used: <span class="open" id="d-n2" data-label="Fix the records number on the Participant Population page — must match everywhere">40,000 imaging studies; roughly 25,000 patients — one number, everywhere.</span></p>
+      <h3>Section B</h3>
+      <p>Pregnant women are not excluded (records). No selection by race, ethnicity or sex. No vulnerable populations targeted. Children are excluded; pediatric spine anatomy and imaging differ, and a separate protocol will follow if warranted. Prisoners: records of incarcerated patients are not identified as such and are not targeted; if a record is discovered to belong to a prisoner it is handled under WSU policy <span class="open" id="d-prisoner" data-label="Confirm the prisoner-record wording with the IRB office">confirm wording with the IRB office</span>.</p>
+      <h3>Sections C–E</h3>
+      <p>No students, employees or non-English-speaking participants are recruited; records only. A DMC employee's clinical record could be among the records, which is handled by the confidentiality procedures.</p>
+    </section>
+
+    <section id="recruitment" data-nav="Recruitment &amp; Benefits">
+      <div class="sec-head"><h2>Recruitment, Compensation, Costs and Benefits</h2><button class="copy">Copy section</button></div>
+      <p>No recruitment, compensation or cost; records only.</p>
+      <p>No direct benefit to the individuals whose records are used. Potential benefit to future patients from level-confirmation and fracture-detection methods evaluated on this population, and educational benefit from de-identified teaching material.</p>
+    </section>
+
+    <section id="confidentiality" data-nav="Confidentiality">
+      <div class="sec-head"><h2>Procedures to Maintain Confidentiality</h2><button class="copy">Copy section</button></div>
+      <p><strong>Data type: coded.</strong> The key is held on DMC Citrix by the PI and one designated key holder; the coded dataset is kept separately.</p>
+      <h3>a. Shared outside the research team — Yes</h3>
+      <p>De-identified images and derived labels may be shared with other academic institutions under a restricted data use agreement, and trained model weights may be released, in each case only after a separate WSU determination (as for 2026-269) and never with identifiers or the key. Coded data leave DMC only in de-identified form; nothing is shared through consumer cloud services.</p>
+      <h3>b. Data types</h3>
+      <p>Protected Health Information during linkage and de-identification inside DMC; secondary data analysis of imaging, reports, notes and registry; identifiable data (MRN, FIN, accession number, names on burned-in text) used only to link and to remove.</p>
+      <h3>c. Privacy</h3>
+      <p>No contact with patients; the study team accesses records only through DMC's authorized research access path; the number of people who see identifiable data is limited to the named DMC study staff.</p>
+      <h3>d. Confidentiality</h3>
+      <p>Identifiers are replaced by study codes inside DMC; the key is stored on DMC Citrix with access logged; de-identified data are stored on the WSU research cluster in a project directory with permissions limited to named study staff, transferred only by encrypted means; laptops and portable drives used for transfer are full-disk encrypted; no identifiable data are ever placed on personal devices, email, or unencrypted storage; publications and releases contain no identifiers and no free text from records; small-cell counts (n &lt; 10) are suppressed in tables.</p>
+      <h3>e. Retention and destruction</h3>
+      <p>The key is destroyed <span class="open" id="d-retention" data-label="Confirm the key destruction rule against WSU records policy">at study closure or 7 years after IRB approval, whichever is later, per WSU records policy — confirm</span>. De-identified data are retained for research reproducibility.</p>
+      <h3>f. Personnel with access</h3>
+      <p>Listed by name in Personnel Information; all with current CITI Human Subjects and HIPAA modules.</p>
+    </section>
+
+    <section id="consent" data-nav="Consent Information">
+      <div class="sec-head"><h2>Consent Information</h2><button class="copy">Copy section</button></div>
+      <p>Waiver of consent is requested under 45 CFR 46.116(f): the research is minimal risk (records and images only); it could not practicably be carried out without the waiver (tens of thousands of records over twenty years; many patients are deceased, transient or unreachable, and contacting trauma patients about old records would itself be a burden); it could not practicably be carried out without identifiable information because linkage of images to reports, notes and registry requires the identifiers once; the waiver will not adversely affect rights and welfare (no contact, no change to care, coded data, no return of results); and, where appropriate, no additional pertinent information will be provided after participation because there is none.</p>
+    </section>
+
+    <section id="hipaa" data-nav="HIPAA waiver">
+      <div class="sec-head"><h2>HIPAA — Waiver of Authorization</h2><button class="copy">Copy section</button></div>
+      <ol class="steps">
+        <li><strong>Waiver requested: Yes</strong> — to obtain data for a retrospective records and imaging study, and to screen records for eligibility.</li>
+        <li><strong>Minimal risk to privacy.</strong> Identifiers are used once, inside DMC, for linkage; a coded key is kept on DMC Citrix with logged access by the PI and one key holder; images are de-identified in header and pixel data with 100% inspection before leaving DMC; reports and notes are de-identified by tool plus manual sampling; de-identified data are stored on an access-controlled WSU research system.</li>
+        <li><strong>Impracticable without the waiver.</strong> Retrospective study of <span class="open" id="d-n3" data-label="Fix the records number on the HIPAA waiver page — must match everywhere">40,000</span> studies from 2006 onward; authorization from each patient is not feasible.</li>
+        <li><strong>Impracticable without PHI.</strong> Images, reports, operative notes and registry rows must be linked per patient to build the reference standard — a fluoroscopic image is only labelled by the same patient's CT — and dates are needed to order studies within an episode of care.</li>
+        <li><strong>Protection from improper use.</strong> As in Confidentiality (c)–(f); minimum necessary data elements on the data collection sheet; PHI never leaves DMC.</li>
+        <li><strong>Destruction of identifiers.</strong> The key is destroyed <span class="open" id="d-retention2" data-label="Confirm the identifier destruction date on the HIPAA page — must match Confidentiality (e)">at study closure / 7 years — confirm</span>; identifiers are removed from all data at step 4 of the procedures; audit logs are retained as required.</li>
+        <li><strong>No reuse or disclosure</strong> of PHI obtained under the waiver outside the research team except as required by law, for authorized oversight, or for other research for which use or disclosure is permitted under the Privacy Rule: <strong>Yes</strong>.</li>
+      </ol>
+    </section>
+
+    <section id="attachments" data-nav="Attachments">
+      <div class="sec-head"><h2>Attachments to prepare</h2><button class="copy">Copy section</button></div>
+      <ol>
+        <li>Data collection sheet — variables, sources, minimum-necessary justification.</li>
+        <li>De-identification standard operating procedure — DICOM header profile, pixel OCR screening, 100% visual inspection, text de-identification and 10% audit.</li>
+        <li>DMC Research Compliance / Office of Research application and DMC IT data-transfer approval.</li>
+        <li>Letter of support from the Neurosurgery service (Dr To) confirming intraoperative fluoroscopy is archived to PACS and agreeing to co-investigator role; letter from Radiology on the PACS export path, and whether OR C-arm and navigation archives are separate from PACS.</li>
+        <li>WSU determination 2026-269 (Not Human Participant Research, public data) for context.</li>
+        <li>Statistical analysis plan — pre-specified strata, endpoints, sample sizes.</li>
+        <li>CITI certificates; COI disclosures for every investigator.</li>
+        <li>Reference list.</li>
+      </ol>
+    </section>
+
+    <div class="divider"><span>Below here is not part of the eProtocol</span></div>
+
+    <section id="notes" class="aside-block" data-nav="Notes to the PI" data-aside="1">
+      <div class="sec-head"><h2>Notes to the PI</h2></div>
+
+      <h3>The design question you asked — CTs and fluoroscopy together?</h3>
+      <p>Yes, and it is the point of the protocol. Request, per patient: every intraoperative fluoroscopic image (XA, RF and Secondary Capture objects; ask Radiology whether OR C-arm saves and navigation screenshots land in PACS or in a separate archive — at one university centre 90 of 190 consecutive cases had intraoperative images only on film or outside PACS), the pre-operative and any post-operative CT, the radiology reports, the operative note (the surgeon's stated level is the clinical comparator), and whole-spine MRI reports when present, since they carry the numbering convention.</p>
+      <p>The registration-labelled pairs are the reference standard; the registration-free model is the index test; the surgeon's intraoperative level call is the clinical baseline. Also request fluoroscopy from patients <strong>without</strong> a CT: they cannot enter the reference set, but they are the honest test of the registration-free model on cases nobody could register. Ask for post-instrumentation captures explicitly — every fusion case has them — so hardware arrives labelled, and ask for corpectomy cases by CPT code so that stratum is countable.</p>
+
+      <h3>Numbers</h3>
+      <p>Write one number for records on the WSU form, this document and the DMC application. Before you pick it, get a PACS count for: CT with spine or pelvis 2006–present; spine radiographs; intraoperative fluoroscopy series (XA/RF/SC) by service and by year; and how many of those patients have a CT within 6 months. The count for Dr To's cases alone tells you the Tier 0 yield per year.</p>
+
+      <h3>Faculty sponsor and roles</h3>
+      <p>eProtocol needs a faculty PI or a faculty sponsor for a resident. Dr To as co-I for neurosurgery; a radiologist co-I for adjudication; Dr Vaidya as co-I if the trauma registry (Aim 4) stays in this protocol. Everyone on the DMC application by the same names.</p>
+
+      <h3>Disclosure that belongs in the eProtocol and nowhere public</h3>
+      <p>Per <code>IRB_ADDENDUM.md</code> (Edit 1), add to the Purpose and Confidentiality sections of the eProtocol only:</p>
+      <blockquote>Data collected under this protocol may be used for the development, training, testing and validation of computational methods and software, including software that may subsequently be commercialised or submitted for regulatory clearance. De-identified images and derived labels may be shared under a restricted data use agreement, and model weights may be released, each after a Wayne State University determination. Any transfer of data or derived artifacts to a commercial entity will be governed by a separate data use agreement executed with the covered entity, and is not authorised by this protocol alone.</blockquote>
+      <p>Make the COI disclosure accurate on the date it is signed. The DUA with DMC/Tenet legal is a parallel track (Edit 2), not an IRB item.</p>
+
+      <h3>De-identification is the part reviewers will probe</h3>
+      <p>The header flag for burned-in text is optional in DICOM and absent on many C-arm objects, and the shipped CTP pixel scripts have no C-arm signatures; say plainly that every frame is OCR-screened and every frame is looked at. Budget the time: at 1–2 seconds per frame for the OCR pass plus a human look, 5,000 frames is a few days.</p>
+
+      <h3>What to cut if the IRB pushes back on breadth</h3>
+      <p>Aim 4, the registry linkage, is separable. Aims 1–3 are imaging and reports only, and are the core.</p>
+    </section>
+
+    <section id="references" data-nav="References" data-aside="1">
+      <div class="sec-head"><h2>References to be completed</h2></div>
+      <ul>
+        <li>LevelCheck utility study, Spine 2016; clinical translation, Ann Biomed Eng 2018.</li>
+        <li>Wrong-level surgery incidence in 34,544 cases (2025/2026 series); thoracic rate.</li>
+        <li>LSTV prevalence meta-analysis (83 studies, 15.3%); numerical variants on whole-spine MRI (7.7%); outpatient count errors in LSTV surgical patients (54%); radiographic Castellvi typing κ 0.16–0.32.</li>
+        <li>CTSpinoPelvic1K dataset descriptor (Zenodo 10.5281/zenodo.22642578) and WSU determination 2026-269.</li>
+        <li>DICOM PS3.15 de-identification profiles; JIIM 2024 OCR-based burned-in text detection covering XA/RF.</li>
+        <li>xReg (Grupp 2020); DiffDRR/DiffPose (Gopalakrishnan 2024).</li>
+      </ul>
+    </section>
+
+  </main>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+  var sections = Array.prototype.slice.call(document.querySelectorAll('main section[data-nav]'));
+  var toc = document.getElementById('tocList');
+
+  // Table of contents
+  var decLi = document.createElement('li');
+  decLi.className = 'aside';
+  decLi.innerHTML = '<a href="#decisions">Open items</a>';
+  toc.appendChild(decLi);
+  var gap = document.createElement('li');
+  gap.innerHTML = '<div class="gap"></div>';
+  toc.appendChild(gap);
+
+  sections.forEach(function(s){
+    var li = document.createElement('li');
+    if (s.dataset.aside) li.className = 'aside';
+    var a = document.createElement('a');
+    a.href = '#' + s.id;
+    a.textContent = s.dataset.nav;
+    li.appendChild(a);
+    toc.appendChild(li);
+  });
+
+  // Open decisions list
+  var opens = Array.prototype.slice.call(document.querySelectorAll('.open'));
+  var list = document.getElementById('decList');
+  opens.forEach(function(el){
+    var sec = el.closest('section');
+    var li = document.createElement('li');
+    var a = document.createElement('a');
+    a.href = '#' + el.id;
+    a.innerHTML = '';
+    a.appendChild(document.createTextNode(el.dataset.label || el.textContent));
+    var where = document.createElement('span');
+    where.className = 'where';
+    where.textContent = sec ? (sec.dataset.nav || sec.querySelector('h2').textContent) : '';
+    a.appendChild(where);
+    li.appendChild(a);
+    list.appendChild(li);
+  });
+  document.getElementById('dcount').textContent = opens.length + ' items';
+
+  // Flash target on jump
+  document.addEventListener('click', function(e){
+    var a = e.target.closest('a[href^="#d-"]');
+    if (!a) return;
+    var t = document.getElementById(a.getAttribute('href').slice(1));
+    if (!t) return;
+    opens.forEach(function(o){ o.classList.remove('flash'); });
+    setTimeout(function(){ t.classList.add('flash'); }, 60);
+  });
+
+  // Highlight toggle
+  var hlBtn = document.getElementById('hlBtn');
+  hlBtn.addEventListener('click', function(){
+    var on = document.body.classList.toggle('hl');
+    hlBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+  });
+  document.getElementById('jumpBtn').addEventListener('click', function(){
+    document.getElementById('decisions').scrollIntoView({behavior:'smooth', block:'start'});
+  });
+  document.getElementById('printBtn').addEventListener('click', function(){ window.print(); });
+
+  // Copy section as plain text
+  var toast = document.getElementById('toast');
+  function say(msg){
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(say._t);
+    say._t = setTimeout(function(){ toast.classList.remove('show'); }, 1800);
+  }
+  document.querySelectorAll('.copy').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var sec = btn.closest('section').cloneNode(true);
+      sec.querySelectorAll('.copy').forEach(function(b){ b.remove(); });
+      var text = (sec.innerText || sec.textContent).replace(/\n{3,}/g, '\n\n').trim();
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function(){ say('Section copied'); },
+          function(){ say('Copy blocked by the browser'); });
+      } else {
+        say('Copy blocked by the browser');
+      }
+    });
+  });
+
+  // Active section in the contents
+  if ('IntersectionObserver' in window) {
+    var links = {};
+    toc.querySelectorAll('a').forEach(function(a){ links[a.getAttribute('href').slice(1)] = a; });
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(en){
+        var a = links[en.target.id];
+        if (!a) return;
+        if (en.isIntersecting) {
+          Object.keys(links).forEach(function(k){ links[k].classList.remove('active'); });
+          a.classList.add('active');
+        }
+      });
+    }, {rootMargin: '0px 0px -75% 0px', threshold: 0});
+    document.querySelectorAll('main section').forEach(function(s){ io.observe(s); });
+  }
+})();
+</script>
+</body>
+</html>
