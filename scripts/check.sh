@@ -48,6 +48,40 @@ else
   echo "zizmor is not installed here; CI runs it"
 fi
 
+# A pinned copy of OpenSpineConsortium/beethoven-qa (docs/setup/beethoven-qa.md)
+# is checked by its own command, which runs only in the locked pixi
+# environment the copy's gate needs (icontract, beartype, pydantic); this
+# script adds no dependency, so where pixi is not on the path it says so
+# and leaves the copy to the repository's own gate lane, which runs it
+# under pixi on GitHub's machines (beethoven-qa's docs/CONSUMING.md, step 5).
+if [ -f vendor/beethoven-qa/ORIGIN ]; then
+  if command -v pixi >/dev/null 2>&1 && [ -f pixi.lock ]; then
+    pixi run --locked python -m beethoven_qa vendor-check
+  else
+    echo "beethoven-qa copy at vendor/beethoven-qa ($(sed -n 's/^ref: //p' vendor/beethoven-qa/ORIGIN)); pixi is not here, so its vendor-check runs in the gate lane"
+  fi
+fi
+
 # The project's own checks go here: its linter, its test runner, its build.
+# The dataset inventory is rendered from data/sources/ (tools/sources.py); the page
+# and the records must agree. The renderer imports the package, so it runs in the
+# locked environment; where pixi is not here the gate lane's test holds the same
+# (tests/schwingnet/test_sources.py).
+if command -v pixi >/dev/null 2>&1 && [ -f pixi.lock ]; then
+  pixi run --locked python tools/sources.py check
+else
+  echo "data/sources/ against docs/research/datasets-inventory.md: pixi is not here, so the gate lane checks it"
+fi
+
+# The reproduction page (docs/research/datasets-reproduce.md) is rendered from the registry,
+# data/reproduce/map.json and the copied manifest by tools/reproduce_table.py, standard library: the
+# page must match its inputs, every registry record must be in the map, and the copies must carry
+# the SHA-256 that data/reproduce/SHA256SUMS records.
+python3 tools/reproduce_table.py check
+
+# The evaluation page (docs/research/evaluation/README.md) is written from the recorded runs under
+# docs/research/v1-demo/runs/ by tools/eval_page.py, standard library: a run recorded without the
+# page written again, or a page edited by hand, fails here.
+python3 tools/eval_page.py check
 
 echo "checks ok"

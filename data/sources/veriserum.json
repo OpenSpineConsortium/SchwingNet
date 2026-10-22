@@ -1,0 +1,22 @@
+{
+  "id": "veriserum",
+  "name": "Veriserum (ETH Zurich, MICCAI 2025)",
+  "group": "video",
+  "what": "about 110,000 dual-plane fluoroscopic images of knee implant phantoms with registered poses, 200 with manual registration (ETH Research Collection doi:10.3929/ethz-b-000701146)",
+  "level_truth": "none; no spine",
+  "reach": "get",
+  "status": "found by the sweep of 2026-10-21; not fetched; freely accessible per the authors, licence to confirm on the page; real flat-panel fluoroscopy of metal implants at scale, which the project otherwise learns only from simulation",
+  "licence": "to confirm on the page",
+  "link": "https://movement.ethz.ch/data-repository/veriserum.html",
+  "how_to_get": [
+    "Open https://movement.ethz.ch/data-repository/veriserum.html and the ETH Research Collection record doi:10.3929/ethz-b-000701146; read the licence and the file list.",
+    "Fetch as a Slurm job on the owner's word, never on the login node: python3 data/reproduce/reacquire/reacquire.py http-get --url U --dest FILE for each file address the record gives."
+  ],
+  "grid_path": null,
+  "counts": {
+    "images_about": 110000,
+    "manually_registered": 200
+  },
+  "measured": {},
+  "record": "docs/research/xray-datasets-missing.md (2026-10-21)"
+}

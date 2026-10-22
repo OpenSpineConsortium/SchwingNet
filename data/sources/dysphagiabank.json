@@ -1,0 +1,18 @@
+{
+  "id": "dysphagiabank",
+  "name": "DysphagiaBank (TalkBank), UNM corpus",
+  "group": "video",
+  "what": "lateral swallow videofluoroscopy of about 7 to 53 adults, cervical only, non-commercial, by registration",
+  "level_truth": "none named",
+  "reach": "held",
+  "status": "held on the grid since before 2026-10-08 (spine-program 01_carm_level_detection/MANIFEST_GRID.md, ls of 2026-10-08): the UNM corpus, 87 files, 19 GB, fetched after the owner's registration; CC BY-NC-SA, programmatic processing only, no language-model use of its text; never scored",
+  "licence": "CC BY-NC-SA, non-commercial, by registration; no language-model use",
+  "link": "https://dysphagia.talkbank.org/",
+  "how_to_get": [
+    "Already on the grid; a bank recipe reads it from grid_path."
+  ],
+  "grid_path": "/rs/rs_grp_oschome/go2432/data/external/fluoro_video/dysphagiabank_unm",
+  "counts": {},
+  "measured": {},
+  "record": "spine-program 01_carm_level_detection/docs/data_requests/FLUORO_VIDEO_REQUESTS_READY_2026-09-26.md Not drafted"
+}

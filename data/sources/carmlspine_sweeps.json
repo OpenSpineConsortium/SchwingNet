@@ -1,0 +1,19 @@
+{
+  "id": "carmlspine_sweeps",
+  "name": "C-ArmLSpine CBCT projection sweeps (case134, case39)",
+  "group": "video",
+  "what": "the only confirmed consecutive-frame sequences with a paired volume: raw CBCT projections at quantised gantry angles, 301 XA frames each; rotational, not cranio-caudal",
+  "level_truth": "yes: project the CBCT level labels through the known gantry angles",
+  "reach": "held",
+  "status": "the demo's recorded sweep; the 301-frame case134 bank exists (detection only); case39 has no export yet",
+  "licence": "CC BY 4.0",
+  "link": "https://zenodo.org/records/22768651",
+  "how_to_get": [],
+  "grid_path": "/rs/rs_grp_oschome/go2432/data/carmlspine (case134/ori, case39/CBCT); /rs/rs_grp_oschome/go2432/data/realxray/carmlspine_sweep",
+  "counts": {
+    "sweeps": 2,
+    "projections": 602
+  },
+  "measured": {},
+  "record": "spine-program 01_carm_level_detection/docs/FLUORO_VIDEO_SOURCES_2026-09-26.md; spine-program 01_carm_level_detection/DATA.md"
+}

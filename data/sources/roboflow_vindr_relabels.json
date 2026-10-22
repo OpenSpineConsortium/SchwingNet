@@ -1,0 +1,16 @@
+{
+  "id": "roboflow_vindr_relabels",
+  "name": "Roboflow Universe VinDr-SpineXR relabels (rf100-vl)",
+  "group": "films",
+  "what": "object-detection relabels of VinDr-SpineXR (osteophytes, implants, vertebral collapse) under rf100-vl (spinefrxnormalvindr and others)",
+  "level_truth": "none",
+  "reach": "excluded",
+  "status": "found by the sweep of 2026-10-21; never fetched: the pixels are VinDr-SpineXR's, redistributed outside its PhysioNet agreement, under which the project already holds them (vindr_spinexr); the box labels could be read against the held copy only if their licence allows, which is doubtful",
+  "licence": "Roboflow; the images' redistribution is outside VinDr-SpineXR's DUA",
+  "link": "https://universe.roboflow.com/rf100-vl/spinefrxnormalvindr-lt1cn-ryhy",
+  "how_to_get": [],
+  "grid_path": null,
+  "counts": {},
+  "measured": {},
+  "record": "docs/research/xray-datasets-missing.md (2026-10-21)"
+}

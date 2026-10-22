@@ -1,0 +1,25 @@
+{
+  "id": "kub_stonex",
+  "name": "KUB-StoneX (Daffodil International University HIRL)",
+  "group": "films",
+  "what": "2,570 AP kidney-ureter-bladder radiographs of 1,703 patients from two Bangladeshi hospitals, with pixel-level stone masks and radiomic features; a KUB film is a frontal lumbar spine and pelvis radiograph at abdominal exposure, with the iliac crests and the sacrum in field",
+  "level_truth": "none; frontal lumbar spine and pelvis",
+  "reach": "get",
+  "status": "found by the sweep of 2026-10-21; not fetched; an open figshare download (32049369, one zip of 20,765,554,562 bytes), entered in grid/fetch-xray.json as kub_stonex on 2026-10-21 (issue #40); the frontal counterpart of what the registry lacks in volume",
+  "licence": "CC BY 4.0 (the figshare record's licence field, read from the API on 2026-10-21)",
+  "link": "https://doi.org/10.6084/m9.figshare.32049369",
+  "how_to_get": [
+    "The set is figshare article 32049369 (doi 10.6084/m9.figshare.32049369), one file KUB-StoneX.zip with its md5 in the record, 20.8 GB; the record's ethics statement names IRB REC-FSIT-2025/No: 12732 and states every image is de-identified.",
+    "Fetch it as a Slurm job on the owner's word, never on the login node, after df shows the room: bash grid/run-xray-chain.sh --only kub_stonex, whose stage 1 reads the API, runs http-get with the md5 and unpacks the zip (grid/README.md).",
+    "The person rule of grid/banks/kub_stonex.json is written from the unpacked folder's file naming or its <class>_patient/ folders before the bank stage runs, since 1,703 patients hold 2,570 films."
+  ],
+  "grid_path": null,
+  "counts": {
+    "radiographs": 2570,
+    "patients": 1703,
+    "hospitals": 2,
+    "zip_bytes": 20765554562
+  },
+  "measured": {},
+  "record": "docs/research/xray-datasets-missing.md (2026-10-21)"
+}

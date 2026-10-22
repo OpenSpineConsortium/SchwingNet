@@ -1,0 +1,7 @@
+standards: readability, design, duplication, coverage, security, supply-chain on src/schwingnet and .github/workflows, against 9fe369ee867e
+standards: readability: passed: 0 findings over a limit in the tree, 0 of them new or worse
+standards: design: passed: 0 class measures over a limit in the tree, 0 new or worse
+standards: duplication: passed: 0 of 209 new lines lie in a duplicated block (at most 3%)
+standards: coverage: passed: the tests ran 182 of 182 new lines that can run (at least 80%)
+standards: security: passed: 0 weaknesses of medium or high severity in the tree, 0 new or worse; 0 low ones recorded
+standards: supply-chain: passed: 82 workflow findings of the reader and 78 of zizmor's of medium or high severity in the tree, 0 new or worse; 23 low ones recorded

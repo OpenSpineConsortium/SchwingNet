@@ -1,0 +1,133 @@
+{
+ "run_id": "a767a466f5c1",
+ "code_commit": "11546b7e534e56ce89676da17034c1ede65caaaf",
+ "catalog_sha256": "9051dd4f7b35bce40ab7826a48faacbc6b50fe2891dcbe5fbae4863c617216d6",
+ "part": "test",
+ "counts": {
+  "crops": 556,
+  "persons": 5,
+  "frames": 148,
+  "levels": {
+   "L3": 101,
+   "L4": 105,
+   "L5": 79,
+   "sacrum": 48,
+   "L1": 73,
+   "L2": 82,
+   "T12": 44,
+   "T11": 24
+  }
+ },
+ "rows": [
+  {
+   "measure": "accuracy",
+   "stratum": "all levels",
+   "correct": 556,
+   "total": 556,
+   "persons": 5,
+   "run_id": "a767a466f5c1",
+   "code_commit": "11546b7e534e56ce89676da17034c1ede65caaaf",
+   "clean_tree": true,
+   "catalog_sha256": "9051dd4f7b35bce40ab7826a48faacbc6b50fe2891dcbe5fbae4863c617216d6"
+  },
+  {
+   "measure": "accuracy",
+   "stratum": "level L1",
+   "correct": 73,
+   "total": 73,
+   "persons": 5,
+   "run_id": "a767a466f5c1",
+   "code_commit": "11546b7e534e56ce89676da17034c1ede65caaaf",
+   "clean_tree": true,
+   "catalog_sha256": "9051dd4f7b35bce40ab7826a48faacbc6b50fe2891dcbe5fbae4863c617216d6"
+  },
+  {
+   "measure": "accuracy",
+   "stratum": "level L2",
+   "correct": 82,
+   "total": 82,
+   "persons": 5,
+   "run_id": "a767a466f5c1",
+   "code_commit": "11546b7e534e56ce89676da17034c1ede65caaaf",
+   "clean_tree": true,
+   "catalog_sha256": "9051dd4f7b35bce40ab7826a48faacbc6b50fe2891dcbe5fbae4863c617216d6"
+  },
+  {
+   "measure": "accuracy",
+   "stratum": "level L3",
+   "correct": 101,
+   "total": 101,
+   "persons": 5,
+   "run_id": "a767a466f5c1",
+   "code_commit": "11546b7e534e56ce89676da17034c1ede65caaaf",
+   "clean_tree": true,
+   "catalog_sha256": "9051dd4f7b35bce40ab7826a48faacbc6b50fe2891dcbe5fbae4863c617216d6"
+  },
+  {
+   "measure": "accuracy",
+   "stratum": "level L4",
+   "correct": 105,
+   "total": 105,
+   "persons": 5,
+   "run_id": "a767a466f5c1",
+   "code_commit": "11546b7e534e56ce89676da17034c1ede65caaaf",
+   "clean_tree": true,
+   "catalog_sha256": "9051dd4f7b35bce40ab7826a48faacbc6b50fe2891dcbe5fbae4863c617216d6"
+  },
+  {
+   "measure": "accuracy",
+   "stratum": "level L5",
+   "correct": 79,
+   "total": 79,
+   "persons": 5,
+   "run_id": "a767a466f5c1",
+   "code_commit": "11546b7e534e56ce89676da17034c1ede65caaaf",
+   "clean_tree": true,
+   "catalog_sha256": "9051dd4f7b35bce40ab7826a48faacbc6b50fe2891dcbe5fbae4863c617216d6"
+  },
+  {
+   "measure": "accuracy",
+   "stratum": "level T11",
+   "correct": 24,
+   "total": 24,
+   "persons": 5,
+   "run_id": "a767a466f5c1",
+   "code_commit": "11546b7e534e56ce89676da17034c1ede65caaaf",
+   "clean_tree": true,
+   "catalog_sha256": "9051dd4f7b35bce40ab7826a48faacbc6b50fe2891dcbe5fbae4863c617216d6"
+  },
+  {
+   "measure": "accuracy",
+   "stratum": "level T12",
+   "correct": 44,
+   "total": 44,
+   "persons": 5,
+   "run_id": "a767a466f5c1",
+   "code_commit": "11546b7e534e56ce89676da17034c1ede65caaaf",
+   "clean_tree": true,
+   "catalog_sha256": "9051dd4f7b35bce40ab7826a48faacbc6b50fe2891dcbe5fbae4863c617216d6"
+  },
+  {
+   "measure": "accuracy",
+   "stratum": "level sacrum",
+   "correct": 48,
+   "total": 48,
+   "persons": 5,
+   "run_id": "a767a466f5c1",
+   "code_commit": "11546b7e534e56ce89676da17034c1ede65caaaf",
+   "clean_tree": true,
+   "catalog_sha256": "9051dd4f7b35bce40ab7826a48faacbc6b50fe2891dcbe5fbae4863c617216d6"
+  },
+  {
+   "measure": "accuracy",
+   "stratum": "source carmlspine",
+   "correct": 556,
+   "total": 556,
+   "persons": 5,
+   "run_id": "a767a466f5c1",
+   "code_commit": "11546b7e534e56ce89676da17034c1ede65caaaf",
+   "clean_tree": true,
+   "catalog_sha256": "9051dd4f7b35bce40ab7826a48faacbc6b50fe2891dcbe5fbae4863c617216d6"
+  }
+ ]
+}

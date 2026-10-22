@@ -1,0 +1,1 @@
+vendor-check: vendor/beethoven-qa matches its ORIGIN (OpenSpineConsortium/beethoven-qa untagged, 8e5628a32043)

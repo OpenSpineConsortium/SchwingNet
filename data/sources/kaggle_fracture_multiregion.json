@@ -1,0 +1,22 @@
+{
+  "id": "kaggle_fracture_multiregion",
+  "name": "Kaggle bone fracture multi-region X-ray data (bmadushanirodrigo)",
+  "group": "films",
+  "what": "10,580 radiographs in fractured and non-fractured folders over lower limbs, upper limbs, lumbar spine, hips and knees; 481 MB",
+  "level_truth": "none; a lumbar-spine folder and a hip folder from unknown devices",
+  "reach": "get",
+  "status": "found by the sweep of 2026-10-21; not fetched; warning: the licence and the images' origin are unstated in what was read (many Kaggle fracture sets are scraped from teaching sites), to confirm on the page; an exposure-diversity pool only, and not to be fetched until its origin is shown to be redistributable",
+  "licence": "Kaggle; the licence and the images' origin to confirm on the page",
+  "link": "https://www.kaggle.com/datasets/bmadushanirodrigo/fracture-multi-region-x-ray-data",
+  "how_to_get": [
+    "The owner reads the licence and the stated origin on the page; where the origin is not redistributable the record's reach becomes excluded.",
+    "Only then, fetch with the Kaggle API as a Slurm job on the owner's word, never on the login node, the token from the submitter's environment, never from this repository."
+  ],
+  "grid_path": null,
+  "counts": {
+    "radiographs": 10580,
+    "size_mb": 481
+  },
+  "measured": {},
+  "record": "docs/research/xray-datasets-missing.md (2026-10-21)"
+}

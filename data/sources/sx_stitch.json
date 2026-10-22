@@ -1,0 +1,18 @@
+{
+  "id": "sx_stitch",
+  "name": "SX-Stitch intraoperative C-arm series (Li 2024, PUMCH)",
+  "group": "fluoro",
+  "what": "intraoperative C-arm series translated along the spine for stitching",
+  "level_truth": "levels present in the series",
+  "reach": "get",
+  "status": "request drafted 2026-09-19, never sent; the paper's data statement says no datasets, so success is unlikely",
+  "licence": "not recorded",
+  "link": "https://arxiv.org/abs/2409.05681",
+  "how_to_get": [
+    "Send spine-program 01_carm_level_detection/docs/data_requests/SX-Stitch_request.md to the corresponding author (address in the paper)."
+  ],
+  "grid_path": null,
+  "counts": {},
+  "measured": {},
+  "record": "spine-program 01_carm_level_detection/docs/FLUORO_VIDEO_SOURCES_2026-09-26.md; spine-program 01_carm_level_detection/docs/data_requests/SX-Stitch_request.md"
+}

@@ -1,0 +1,24 @@
+{
+  "id": "coronary_angiography",
+  "name": "Coronary angiography sets (CADICA, ARCADE, XCAD, AngioCAD)",
+  "group": "video",
+  "what": "real fluoroscopy video with the thoracic spine in the background: CADICA 42 patients DICOM at 10 fps, ARCADE 3,000 images, XCAD 1,747 images, AngioCAD 413 patients; heavy contrast, LAO/RAO rotation",
+  "level_truth": "none; thoracic in the background",
+  "reach": "get",
+  "status": "the only large real thoracic fluoroscopy without a DUA; the thoracic test would be annotated by hand; CADICA (Universidad de Malaga, 42 patients, over 6,000 images), ARCADE (Scientific Data 2024, 3,000 images), XCAD (ICCV 2021, 1,747 images, the link), AngioCAD (413 patients); each set's own licence is read before fetching; CathAction (cathaction, about 500,000 frames, no DUA) is the larger real-fluoroscopy exposure pool found by the sweep of 2026-10-21, with Guide3D (guide3d) beside it",
+  "licence": "varies by set",
+  "link": "https://github.com/AISIGSJTU/SSVS",
+  "how_to_get": [
+    "Find each set by name: XCAD at the link; CADICA from the Universidad de Malaga (arXiv:2402.00570); ARCADE from its Scientific Data 2024 article; AngioCAD by name.",
+    "Read each licence; fetch to Ceph as a Slurm job where the licence allows research use."
+  ],
+  "grid_path": null,
+  "counts": {
+    "cadica_patients": 42,
+    "arcade_images": 3000,
+    "xcad_images": 1747,
+    "angiocad_patients": 413
+  },
+  "measured": {},
+  "record": "spine-program 01_carm_level_detection/docs/FLUORO_DATASET_STRATEGY.md tier 2"
+}

@@ -1,0 +1,98 @@
+{
+ "epoch": 4,
+ "train_loss": 0.014931480527945584,
+ "validation_accuracy": 0.9957627118644068,
+ "validation_ci": [
+  0.9846833295435986,
+  0.9988372369642478
+ ],
+ "validation_n": 472,
+ "validation_strata": {
+  "level": {
+   "L2": [
+    72,
+    73
+   ],
+   "L3": [
+    74,
+    74
+   ],
+   "L4": [
+    83,
+    83
+   ],
+   "L5": [
+    62,
+    62
+   ],
+   "sacrum": [
+    47,
+    48
+   ],
+   "L1": [
+    66,
+    66
+   ],
+   "T11": [
+    20,
+    20
+   ],
+   "T12": [
+    46,
+    46
+   ]
+  },
+  "source": {
+   "carmlspine": [
+    470,
+    472
+   ]
+  },
+  "transitional": [
+   0,
+   0
+  ]
+ },
+ "witness_validation": [
+  93,
+  93
+ ],
+ "seconds": 85.1,
+ "checkpoint_sha256": "9fdffa7cf6308d5a88477f9ba12ff05012f9f532fd8ccf9ecff3b9067bcc0e6e",
+ "counts": {
+  "train": 2728,
+  "validation": 472,
+  "train_persons": 34,
+  "validation_persons": 6
+ },
+ "levels": [
+  "C1",
+  "C2",
+  "C3",
+  "C4",
+  "C5",
+  "C6",
+  "C7",
+  "T1",
+  "T2",
+  "T3",
+  "T4",
+  "T5",
+  "T6",
+  "T7",
+  "T8",
+  "T9",
+  "T10",
+  "T11",
+  "T12",
+  "T13",
+  "L1",
+  "L2",
+  "L3",
+  "L4",
+  "L5",
+  "L6",
+  "sacrum"
+ ],
+ "size": 64
+}

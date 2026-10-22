@@ -1,0 +1,18 @@
+{
+  "id": "geneva_hip",
+  "name": "Geneva hip phantom (BV Pulsera)",
+  "group": "fluoro",
+  "what": "116 frames of one phantom on a device no model saw",
+  "level_truth": "pelvis",
+  "reach": "held",
+  "status": "the unseen-device test",
+  "licence": "not recorded",
+  "link": null,
+  "how_to_get": [],
+  "grid_path": "/rs/rs_grp_oschome/go2432/data/geneva_hip_src",
+  "counts": {
+    "frames": 116
+  },
+  "measured": {},
+  "record": "spine-program 01_carm_level_detection/DATA.md"
+}

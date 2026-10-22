@@ -1,0 +1,20 @@
+{
+  "id": "cobra_total",
+  "name": "COBRA2026 on the grid, all projections",
+  "group": "projections",
+  "what": "every projection of the 692 public cases",
+  "level_truth": "same",
+  "reach": "held",
+  "status": "808.615 GB on Ceph",
+  "licence": "CC BY-NC 4.0",
+  "link": "https://zenodo.org/records/21322350",
+  "how_to_get": [],
+  "grid_path": "/rs/rs_grp_oschome/go2432/data/cobra2026",
+  "counts": {
+    "cases": 692,
+    "projections": 375618,
+    "size_gb": 808.615
+  },
+  "measured": {},
+  "record": "spine-program 01_carm_level_detection/DATA.md"
+}

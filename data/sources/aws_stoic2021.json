@@ -1,0 +1,22 @@
+{
+  "id": "aws_stoic2021",
+  "name": "STOIC2021 training (AWS Open Data)",
+  "group": "ct",
+  "what": "STOIC2021 training set, 2,000 chest CT as MHA on AWS Open Data (s3://stoic2021-training; LICENCE.txt read 2026-09-23), about 240 GB; also inside CADS (gated) and re-packed as AUC23 'Lung CT COVID-19'",
+  "level_truth": "counted by the census pipeline once fetched",
+  "reach": "get",
+  "status": "planned in the data platform at bf1432f; fetch job in the 2026-10-21 chain",
+  "licence": "CC BY-NC 4.0",
+  "link": "s3://stoic2021-training",
+  "how_to_get": [
+    "spinesurg-ct-nnunet's slurm/acquisition_fetch.sh s3 --collection stoic2021 --bucket s3://stoic2021-training/data/mha --include '\\.mha$', submitted from the harvest's acquisition folder; the check is FETCH_STATUS.json's unresolved_failures at 0, and the 2,000 MHA verified by size.",
+    "The route as the manifest prints it: python3 data/reproduce/reacquire/reacquire.py --grid aws_stoic2021; on the grid, from ~/spinesurg-ct-nnunet/data_platform/reacquire, sbatch -D \"$PWD\" --export=ALL,IDS=\"aws_stoic2021\",MODE=--run reacquire.sbatch, as a Slurm job on the owner's word."
+  ],
+  "grid_path": null,
+  "counts": {
+    "subjects": 2000,
+    "size_gb": 240
+  },
+  "measured": {},
+  "record": "spinesurg-ct-nnunet data_platform/sources.json bf1432f"
+}

@@ -1,0 +1,20 @@
+{
+  "id": "fluorogen_synth_rare",
+  "name": "FluoroGen synth_rare renders",
+  "group": "ct",
+  "what": "12,929 renders with 1,763 L6 and 86 T13",
+  "level_truth": "exact",
+  "reach": "held",
+  "status": "in no bank, no reason written",
+  "licence": "the project's own",
+  "link": null,
+  "how_to_get": [],
+  "grid_path": null,
+  "counts": {
+    "renders": 12929,
+    "l6": 1763,
+    "t13": 86
+  },
+  "measured": {},
+  "record": "spine-program 01_carm_level_detection/docs/handoff/DATASET_USAGE.md"
+}

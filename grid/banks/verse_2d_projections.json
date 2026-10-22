@@ -1,0 +1,28 @@
+{
+  "id": "verse_2d_projections",
+  "raw": "/rs/rs_grp_oschome/go2432/data/verse_2d_projections/raw",
+  "bank": "/rs/rs_grp_oschome/go2432/data/verse_2d_projections/bank",
+  "images": [
+    "to confirm: the projections' glob, such as **/*.png"
+  ],
+  "format": "to confirm: png",
+  "person": {
+    "regex": "to confirm: the VerSe id in the path, as (?P<case>verse\\d{3})"
+  },
+  "view": {
+    "lat_from_ap_deg": "to confirm: 0 or 90 per file, or null",
+    "gantry_deg": null
+  },
+  "device": {
+    "make": "synthetic",
+    "model": "VerSe projection",
+    "detector": null
+  },
+  "modality": "render",
+  "device_class": "synthetic",
+  "split": "train",
+  "labels": null,
+  "synthetic": true,
+  "px_mm": null,
+  "notes": "2D projections of VerSe 19 and 20 vertebrae with soft labels; the persons are VerSe source volumes already in the v9 base, so train-side only"
+}

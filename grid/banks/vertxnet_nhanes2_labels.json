@@ -1,0 +1,41 @@
+{
+  "id": "vertxnet_nhanes2_labels",
+  "raw": "/rs/rs_grp_oschome/go2432/data/vertxnet_nhanes2_labels/raw",
+  "bank": "/rs/rs_grp_oschome/go2432/data/vertxnet_nhanes2_labels/bank",
+  "images": [
+    "to confirm: the NHANES II films' glob under raw/, or a path to the grid's own copy"
+  ],
+  "format": "to confirm: png or jpg",
+  "person": {
+    "regex": "to confirm: the NHANES sequence number in the file name, five digits, as (?P<case>\\d{5})"
+  },
+  "view": {
+    "lat_from_ap_deg": 90.0,
+    "gantry_deg": null
+  },
+  "device": {
+    "make": null,
+    "model": null,
+    "detector": "scanned film"
+  },
+  "modality": "cr",
+  "device_class": "film",
+  "split": "train",
+  "labels": {
+    "kind": "landmarks_csv",
+    "csv": "to confirm: the landmark file in the record",
+    "image_column": "to confirm",
+    "level_column": "to confirm",
+    "x_columns": [
+      "to confirm"
+    ],
+    "y_columns": [
+      "to confirm"
+    ],
+    "key": "name"
+  },
+  "synthetic": false,
+  "px_mm": null,
+  "person_prefix": "nhanes2",
+  "notes": "labels only: VertXNet's radiologist landmarks with vertebral identity and the reference bodies C2 and S1 on the NHANES II films already on the grid; the bank reads the films from the grid's NHANES II copy and the landmarks from raw/, and its persons carry the prefix nhanes2 so a NHANES person is one person across sources"
+}

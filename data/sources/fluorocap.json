@@ -1,0 +1,19 @@
+{
+  "id": "fluorocap",
+  "name": "FluoroCap literature panels",
+  "group": "fluoro",
+  "what": "29,500 figure panels harvested from the literature; 72.8 percent are reproductions with no pixel residual",
+  "level_truth": "pseudo, no patient key",
+  "reach": "held",
+  "status": "out of training by directive D1; a test set at most; still inside the old fold banks",
+  "licence": "the publishers' (figures)",
+  "link": null,
+  "how_to_get": [],
+  "grid_path": "/wsu/home/go/go24/go2432/FluoroCap (HOME, Greg only)",
+  "counts": {
+    "panels": 29500,
+    "size_gb": 316
+  },
+  "measured": {},
+  "record": "spine-program 01_carm_level_detection/DATA.md; spine-program 10_data_platform_grid/code/data_platform/DATA_MANIFEST.md defect 35"
+}

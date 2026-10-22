@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "jscpd",
+          "version": "5.4.2",
+          "informationUri": "https://github.com/kucherenko/jscpd",
+          "rules": [
+            {
+              "id": "duplication/new-lines",
+              "name": "DuplicatedNewLines",
+              "shortDescription": {
+                "text": "At most 3% of the new lines lie in a block of 10 lines and 40 tokens that occurs elsewhere."
+              },
+              "fullDescription": {
+                "text": "Sonar way quality gate (SonarSource): duplicated lines on new code at most 3%; a block is 10 lines, SonarSource's own definition for most languages, holding 40 of jscpd's tokens, the floor derived for Python in this module."
+              },
+              "helpUri": "https://docs.sonarsource.com/sonarqube-server/latest/user-guide/code-metrics/metrics-definition/",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "duplication",
+                  "maintainability"
+                ]
+              }
+            },
+            {
+              "id": "duplication/ignore-marker",
+              "name": "IgnoreMarker",
+              "shortDescription": {
+                "text": "No comment holds jscpd:ignore: nothing a file says takes its code out of the scan."
+              },
+              "fullDescription": {
+                "text": "A suppression comment is refused like every other (ruff's noqa, bandit's nosec): the scan reads a copy with the marker defused, and the comment itself is an error."
+              },
+              "helpUri": "https://github.com/kucherenko/jscpd",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "duplication",
+                  "maintainability"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "automationDetails": {
+        "id": "beethoven-qa/standards/duplication/"
+      },
+      "originalUriBaseIds": {
+        "%SRCROOT%": {
+          "description": {
+            "text": "The root of the repository."
+          }
+        }
+      },
+      "columnKind": "unicodeCodePoints",
+      "results": []
+    }
+  ]
+}

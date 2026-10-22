@@ -1,0 +1,19 @@
+{
+  "id": "ctspinopelvic1k",
+  "name": "CTSpinoPelvic1K (the project's own release v11)",
+  "group": "ct",
+  "what": "802 CTs with vertebra, sacrum and pelvis labels, from TCIA sources",
+  "level_truth": "yes, whole lumbosacral, L6 cases flagged",
+  "reach": "held",
+  "status": "the render banks; the synthetic L6 arm (18 spines by 3 seeds); non-commercial share-alike binds a product",
+  "licence": "CC BY-NC-SA 4.0",
+  "link": "https://zenodo.org/records/22797014",
+  "how_to_get": [],
+  "grid_path": null,
+  "counts": {
+    "ct_volumes": 802,
+    "l6_cases": 18
+  },
+  "measured": {},
+  "record": "spine-program 03_ctspinopelvic1k_dataset; https://huggingface.co/datasets/gschwing/CTSpinoPelvic1K"
+}

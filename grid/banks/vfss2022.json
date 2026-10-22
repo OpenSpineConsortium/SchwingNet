@@ -1,0 +1,28 @@
+{
+  "id": "vfss2022",
+  "raw": "/rs/rs_grp_oschome/go2432/data/vfss2022/raw",
+  "bank": "/rs/rs_grp_oschome/go2432/data/vfss2022/bank",
+  "images": [
+    "to confirm: the frames' glob"
+  ],
+  "format": "to confirm: png",
+  "person": {
+    "regex": "to confirm: the study id in the path, as (?P<case>...)"
+  },
+  "view": {
+    "lat_from_ap_deg": 90.0,
+    "gantry_deg": null
+  },
+  "device": {
+    "make": null,
+    "model": null,
+    "detector": null
+  },
+  "modality": "rf",
+  "device_class": "fixed_c_arm",
+  "split": "train",
+  "labels": null,
+  "synthetic": false,
+  "px_mm": null,
+  "notes": "440 videofluoroscopic swallow frames with bolus and pharynx masks; the cervical spine in every frame, no vertebra labels; the person is the swallow study"
+}

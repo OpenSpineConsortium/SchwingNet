@@ -1,0 +1,21 @@
+{
+  "id": "mayfield_kyphoplasty",
+  "name": "Mayfield Brain and Spine kyphoplasty alignment series",
+  "group": "video",
+  "what": "two native DICOM C-arm alignment series played in OsiriX on YouTube: AP 98 frames, lateral 65 frames; a birth date is burned in",
+  "level_truth": "thoracolumbar, unnamed",
+  "reach": "get",
+  "status": "request 6 drafted, never sent",
+  "licence": "unknown",
+  "link": "https://www.youtube.com/watch?v=fkRFgkESCgQ",
+  "how_to_get": [
+    "Send request 6 of spine-program 01_carm_level_detection/docs/data_requests/FLUORO_VIDEO_REQUESTS_READY_2026-09-26.md (06_mayfield.eml) to the clinic's contact address asking for the two DICOM series, de-identified."
+  ],
+  "grid_path": null,
+  "counts": {
+    "series": 2,
+    "frames": 163
+  },
+  "measured": {},
+  "record": "spine-program 01_carm_level_detection/docs/data_requests/FLUORO_VIDEO_REQUESTS_READY_2026-09-26.md 6"
+}

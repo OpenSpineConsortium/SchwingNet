@@ -1,0 +1,23 @@
+{
+  "id": "padchest",
+  "name": "PadChest (BIMCV, Alicante)",
+  "group": "films",
+  "what": "160,868 chest radiographs of 67,625 patients, 109 projections including lateral (about 30 percent) and some oblique; labels include 174 findings",
+  "level_truth": "none; oblique and lateral thoracic spines",
+  "reach": "gated",
+  "status": "found by the sweep of 2026-10-21; not fetched; a licence form on the page (research use, by request); European devices and film-era digitised plates, the richest set of non-standard chest projections",
+  "licence": "research use by request; a licence form on the page",
+  "link": "https://bimcv.cipf.es/bimcv-projects/padchest/",
+  "how_to_get": [
+    "The owner fills the licence form on https://bimcv.cipf.es/bimcv-projects/padchest/ and signs what follows.",
+    "Fetch by the route BIMCV gives, as a Slurm job on the owner's word, never on the login node."
+  ],
+  "grid_path": null,
+  "counts": {
+    "radiographs": 160868,
+    "patients": 67625,
+    "projections": 109
+  },
+  "measured": {},
+  "record": "docs/research/xray-datasets-missing.md (2026-10-21)"
+}

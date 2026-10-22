@@ -1,0 +1,104 @@
+gate: CrossHair + Z3 over schwingnet: 28 contracted functions and classes, 4 at a time, 20 s per condition
+gate: classes with no contracts, nothing to check: schwingnet.catalog.Device, schwingnet.catalog.DeviceClass, schwingnet.catalog.Exposure, schwingnet.catalog.FrozenPerson, schwingnet.catalog.IdentityLevel, schwingnet.catalog.Item, schwingnet.catalog.Label, schwingnet.catalog.Modality, schwingnet.catalog.Part, schwingnet.catalog.Query, schwingnet.catalog.Region, schwingnet.catalog.RegistryEntry, schwingnet.catalog.ShardKind, schwingnet.catalog.ShardManifest, schwingnet.catalog.ShardRef, schwingnet.catalog.SplitRule, schwingnet.catalog.View, schwingnet.flow.JobRecord, schwingnet.flow.JobSpec, schwingnet.flow.ResultRow, schwingnet.flow.RunRecord, schwingnet.flow.Stage, schwingnet.flow.Step, schwingnet.sources.Group, schwingnet.sources.Reach, schwingnet.sources.Source
+gate: not proven, contracts checked at run time only: schwingnet.flow.result_line: takes a ResultRow, a pydantic model CrossHair cannot construct; its contracts are checked by the tests
+gate: not proven, contracts checked at run time only: schwingnet.slurm.sbatch_script: takes a JobSpec, a pydantic model CrossHair cannot construct; its contracts are checked by the tests
+gate: schwingnet.catalog.band: exit 0
+gate: schwingnet.catalog.band: 0 confirmed over all paths, 2 not confirmed within 20 s, 0 unable to meet a precondition
+/home/user/schwingnet-11/src/schwingnet/catalog.py:194: info: Not confirmed.
+/home/user/schwingnet-11/src/schwingnet/catalog.py:195: info: Not confirmed.
+gate: schwingnet.catalog.best: exit 0
+gate: schwingnet.catalog.best: 0 confirmed over all paths, 2 not confirmed within 20 s, 0 unable to meet a precondition
+/home/user/schwingnet-11/src/schwingnet/catalog.py:231: info: Not confirmed.
+/home/user/schwingnet-11/src/schwingnet/catalog.py:233: info: Not confirmed.
+gate: schwingnet.catalog.content_digest: exit 0
+gate: schwingnet.catalog.content_digest: 0 confirmed over all paths, 2 not confirmed within 20 s, 0 unable to meet a precondition
+/home/user/schwingnet-11/src/schwingnet/catalog.py:273: info: Not confirmed.
+/home/user/schwingnet-11/src/schwingnet/catalog.py:275: info: Not confirmed.
+gate: schwingnet.catalog.cosine: exit 0
+gate: schwingnet.catalog.cosine: 0 confirmed over all paths, 1 not confirmed within 20 s, 0 unable to meet a precondition
+/home/user/schwingnet-11/src/schwingnet/catalog.py:220: info: Not confirmed.
+gate: schwingnet.catalog.hash_part: exit 0
+gate: schwingnet.catalog.hash_part: 0 confirmed over all paths, 2 not confirmed within 20 s, 0 unable to meet a precondition
+/home/user/schwingnet-11/src/schwingnet/catalog.py:135: info: Not confirmed.
+/home/user/schwingnet-11/src/schwingnet/catalog.py:137: info: Not confirmed.
+gate: schwingnet.catalog.is_transitional: exit 0
+gate: schwingnet.catalog.is_transitional: 1 confirmed over all paths, 0 not confirmed within 20 s, 0 unable to meet a precondition
+/home/user/schwingnet-11/src/schwingnet/catalog.py:126: info: Confirmed over all paths.
+gate: schwingnet.catalog.part_of: exit 0
+gate: schwingnet.catalog.part_of: 0 confirmed over all paths, 1 not confirmed within 20 s, 0 unable to meet a precondition
+/home/user/schwingnet-11/src/schwingnet/catalog.py:154: info: Not confirmed.
+gate: schwingnet.catalog.region_of: exit 0
+gate: schwingnet.catalog.region_of: 2 confirmed over all paths, 0 not confirmed within 20 s, 0 unable to meet a precondition
+/home/user/schwingnet-11/src/schwingnet/catalog.py:110: info: Confirmed over all paths.
+/home/user/schwingnet-11/src/schwingnet/catalog.py:114: info: Confirmed over all paths.
+gate: schwingnet.catalog.shard_name: exit 0
+gate: schwingnet.catalog.shard_name: 0 confirmed over all paths, 3 not confirmed within 20 s, 0 unable to meet a precondition
+/home/user/schwingnet-11/src/schwingnet/catalog.py:249: info: Not confirmed.
+/home/user/schwingnet-11/src/schwingnet/catalog.py:250: info: Not confirmed.
+/home/user/schwingnet-11/src/schwingnet/catalog.py:251: info: Not confirmed.
+gate: schwingnet.catalog.view_band: exit 0
+gate: schwingnet.catalog.view_band: 0 confirmed over all paths, 2 not confirmed within 20 s, 0 unable to meet a precondition
+/home/user/schwingnet-11/src/schwingnet/catalog.py:169: info: Not confirmed.
+/home/user/schwingnet-11/src/schwingnet/catalog.py:176: info: Not confirmed.
+gate: schwingnet.catalog.where_clause: exit 0
+gate: schwingnet.catalog.where_clause: 0 confirmed over all paths, 3 not confirmed within 20 s, 0 unable to meet a precondition
+/home/user/schwingnet-11/src/schwingnet/catalog.py:333: info: Not confirmed.
+/home/user/schwingnet-11/src/schwingnet/catalog.py:336: info: Not confirmed.
+/home/user/schwingnet-11/src/schwingnet/catalog.py:338: info: Not confirmed.
+gate: schwingnet.flow.gpu_hours: exit 0
+gate: schwingnet.flow.gpu_hours: 0 confirmed over all paths, 1 not confirmed within 20 s, 0 unable to meet a precondition
+/home/user/schwingnet-11/src/schwingnet/flow.py:156: info: Not confirmed.
+gate: schwingnet.flow.ledger_row: exit 0
+gate: schwingnet.flow.ledger_row: 0 confirmed over all paths, 3 not confirmed within 20 s, 0 unable to meet a precondition
+/home/user/schwingnet-11/src/schwingnet/flow.py:195: info: Not confirmed.
+/home/user/schwingnet-11/src/schwingnet/flow.py:196: info: Not confirmed.
+/home/user/schwingnet-11/src/schwingnet/flow.py:197: info: Not confirmed.
+gate: schwingnet.flow.run_id: exit 0
+gate: schwingnet.flow.run_id: 0 confirmed over all paths, 2 not confirmed within 20 s, 0 unable to meet a precondition
+/home/user/schwingnet-11/src/schwingnet/flow.py:127: info: Not confirmed.
+/home/user/schwingnet-11/src/schwingnet/flow.py:128: info: Not confirmed.
+gate: schwingnet.flow.wall_hours: exit 0
+gate: schwingnet.flow.wall_hours: 0 confirmed over all paths, 1 not confirmed within 20 s, 0 unable to meet a precondition
+/home/user/schwingnet-11/src/schwingnet/flow.py:163: info: Not confirmed.
+gate: schwingnet.flow.wilson: exit 0
+gate: schwingnet.flow.wilson: 0 confirmed over all paths, 2 not confirmed within 20 s, 0 unable to meet a precondition
+/home/user/schwingnet-11/src/schwingnet/flow.py:139: info: Not confirmed.
+/home/user/schwingnet-11/src/schwingnet/flow.py:141: info: Not confirmed.
+gate: schwingnet.measure.better: exit 0
+gate: schwingnet.measure.better: 1 confirmed over all paths, 0 not confirmed within 20 s, 0 unable to meet a precondition
+/home/user/schwingnet-11/src/schwingnet/measure.py:26: info: Confirmed over all paths.
+gate: schwingnet.measure.fraction: exit 0
+gate: schwingnet.measure.fraction: 0 confirmed over all paths, 1 not confirmed within 20 s, 0 unable to meet a precondition
+/home/user/schwingnet-11/src/schwingnet/measure.py:16: info: Not confirmed.
+gate: schwingnet.slurm.elapsed_seconds: exit 0
+gate: schwingnet.slurm.elapsed_seconds: 0 confirmed over all paths, 1 not confirmed within 20 s, 0 unable to meet a precondition
+/home/user/schwingnet-11/src/schwingnet/slurm.py:70: info: Not confirmed.
+gate: schwingnet.slurm.is_finished: exit 0
+gate: schwingnet.slurm.is_finished: 0 confirmed over all paths, 1 not confirmed within 20 s, 0 unable to meet a precondition
+/home/user/schwingnet-11/src/schwingnet/slurm.py:85: info: Not confirmed.
+gate: schwingnet.slurm.job_id_of: exit 0
+gate: schwingnet.slurm.job_id_of: 0 confirmed over all paths, 1 not confirmed within 20 s, 0 unable to meet a precondition
+/home/user/schwingnet-11/src/schwingnet/slurm.py:61: info: Not confirmed.
+gate: schwingnet.slurm.wall_time: exit 0
+gate: schwingnet.slurm.wall_time: 0 confirmed over all paths, 1 not confirmed within 20 s, 0 unable to meet a precondition
+/home/user/schwingnet-11/src/schwingnet/slurm.py:22: info: Not confirmed.
+gate: schwingnet.sources.bar: exit 0
+gate: schwingnet.sources.bar: 0 confirmed over all paths, 1 not confirmed within 20 s, 0 unable to meet a precondition
+/home/user/schwingnet-11/src/schwingnet/sources.py:128: info: Not confirmed.
+gate: schwingnet.sources.counts_cell: exit 0
+gate: schwingnet.sources.counts_cell: 0 confirmed over all paths, 1 not confirmed within 20 s, 0 unable to meet a precondition
+/home/user/schwingnet-11/src/schwingnet/sources.py:106: info: Not confirmed.
+gate: schwingnet.sources.escape_cell: exit 0
+gate: schwingnet.sources.escape_cell: 0 confirmed over all paths, 1 not confirmed within 20 s, 0 unable to meet a precondition
+/home/user/schwingnet-11/src/schwingnet/sources.py:85: info: Not confirmed.
+gate: schwingnet.sources.format_number: exit 0
+gate: schwingnet.sources.format_number: 0 confirmed over all paths, 1 not confirmed within 20 s, 0 unable to meet a precondition
+/home/user/schwingnet-11/src/schwingnet/sources.py:95: info: Not confirmed.
+gate: schwingnet.sources.table_row: exit 0
+gate: schwingnet.sources.table_row: 0 confirmed over all paths, 1 not confirmed within 20 s, 0 unable to meet a precondition
+/home/user/schwingnet-11/src/schwingnet/sources.py:140: info: Not confirmed.
+gate: schwingnet.sources.tally: exit 0
+gate: schwingnet.sources.tally: 0 confirmed over all paths, 1 not confirmed within 20 s, 0 unable to meet a precondition
+/home/user/schwingnet-11/src/schwingnet/sources.py:116: info: Not confirmed.
+gate: conditions: 4 of 42 confirmed over all paths, 38 not confirmed within 20 s per condition, 0 unable to meet a precondition
+gate: no counterexample within 20 s per condition

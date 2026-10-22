@@ -1,0 +1,21 @@
+{
+  "id": "guide3d",
+  "name": "Guide3D (ACCV 2024, AIRVLab)",
+  "group": "video",
+  "what": "more than 8,700 bi-planar fluoroscopic frames of guidewires in a vascular phantom, two guidewires, varied flow",
+  "level_truth": "none; phantom only",
+  "reach": "get",
+  "status": "found by the sweep of 2026-10-21; not fetched; open per the paper, licence to confirm on the page; bi-planar real fluoroscopy geometry from one device, domain and calibration value only",
+  "licence": "to confirm on the page",
+  "link": "https://airvlab.github.io/guide3d/",
+  "how_to_get": [
+    "Open https://airvlab.github.io/guide3d/ and read the download route and the licence.",
+    "Fetch as a Slurm job on the owner's word, never on the login node: python3 data/reproduce/reacquire/reacquire.py http-get --url U --dest FILE, or python3 data/reproduce/reacquire/reacquire.py hf-get --repo X --repo-type dataset --dest DIR where the page names a Hugging Face repository."
+  ],
+  "grid_path": null,
+  "counts": {
+    "frames_over": 8700
+  },
+  "measured": {},
+  "record": "docs/research/xray-datasets-missing.md (2026-10-21)"
+}

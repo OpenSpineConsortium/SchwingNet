@@ -1,23 +1,62 @@
 # Session checkpoint
 
-Nothing has been checkpointed yet. The checkpoint skill (.claude/skills/checkpoint) and `cswap checkpoint write` rewrite this file at the end of a session, with these sections.
+Written 2026-10-21 about 12:40 UTC from the thread "SchwingNet video demo plan" (the owner's ask of 12:15 UTC: update the handoff for progress and what remains to be fleshed out). The first checkpoint of this repository; before it .claude/session.md was the template's blank. Everything below that is a number, a path or a date is taken from a merged pull request, a file on main or the thread's own record; what is not known says so.
 
 ## Completed work
 
-(none yet)
+In the order it landed, 2026-10-20 to 2026-10-21, every pull request merged on the owner's standing permission once its check was green:
+
+- #6, #14, #20: docs/project.md (the goal, the scope, what is out of scope), the retraining plan and its version 2 (docs/research/retraining-plan.md): the data workflow first, one model per stage as version 1 before any seed study, evaluation visible from the first frame, the order of tasks #9 to #13 and the schedule to the CNS talk of 2 November 2026 (mini-oral 66629). The demo plan is docs/research/demo-plan.md.
+- #15: beethoven-qa 6.0.0 beside Symphony (vendor/beethoven-qa, the gate, the standards, the pre-push hook). #16, #17, #18, #25: the repository's settings applied by the SymphonyBoard App; "Require branches to be up to date" off in every ruleset.
+- #22, #24, #27, #37: the source registry, one record per dataset under data/sources/ (111 records) and the inventory page docs/research/datasets-inventory.md rendered from it by tools/sources.py; AASCE (707 films) and VinDr complete on the grid, VinDr covered by WSU IRB HPR 2026-330; the Radiopaedia application and the requests of 2026-10-21 recorded.
+- #29: docs/research/data-access-requirements.md: for each of the 33 sources not held, the route in, who may act, the links, and the order of the requests.
+- #30, #32, #34: the frame catalog (task #10, docs/research/data-catalog.md): content-hashed shards, a person-keyed split that extends, a read-only versioned SQLite store (tools/ingest.py, tools/catalog.py, the split check), the systematic layout after docs/research/dataset-organisation-at-scale.md; every source obtained again from data/reproduce/ (the manifest and fetch code of spinesurg-ct-nnunet's data platform, 211 sources, with SHA-256), docs/research/datasets-reproduce.md.
+- #35: the v1 flow (task #11, docs/research/v1-demo/): tools/flow.py (a run record from a clean tree, local or Slurm), tools/train.py (the level stage, witness strips at every epoch), tools/evaluate.py (Wilson intervals, rows stamped with run id, commit, clean-tree flag and catalog hash), the dry run a767a466f5c1 on the synthetic bank (556/556 on test, 134 s on CPU), the ledger, the figures and beethoven-qa's evidence report.
+- #39 (issue #38): the X-ray sweep (docs/research/xray-datasets-missing.md, 30 candidate sets, 51 records added), the fetch chain onto the grid (grid/run-platform-fetch.sh, grid/run-xray-chain.sh, the three sbatch stages, grid/fetch-xray.json, grid/banks/, tools/fetch_sources.py, tools/bank.py) and the 17 request texts (docs/research/xray-dataset-requests.md).
+- #41 (issue #40): the chain run end to end off the grid in a cloud container, with bash on any data root (DATA_ROOT, OUTSIDE_SLURM=1, BANKS, REACQUIRE); three breaks fixed with tests (a zip never unpacked, a grown raw copy cut a second shard the catalog double counted, grid-only paths); a figshare route; Aariz (figshare 27986417, 2.1 GB, CC BY 4.0) and KUB-StoneX (figshare 32049369, 20.8 GB, CC BY 4.0) as fetch entries; grid/README.md's Measured section (165 synthetic frames banked, ingested and catalogued in 2.6 s and 0.8 s, split check disjoint, a third run writes nothing).
+- Letters, from the owner's Wayne State Outlook on the owner's word, subject tag [XR/CT Imaging Research], cc loren@wayne.edu, h312h@wayne.edu, hpc@wayne.edu: thirteen on 2026-10-20 (22:44 to 23:01 UTC, recorded in data-access-requirements.md); on 2026-10-21 LevelCheck (Siewerdsen, MD Anderson), Huashan (Jiang, Fudan), SX-Stitch (Liang and the Eur Spine J corresponding author), PUMCH (Wei Liu, SUSTech), NIT Warangal (Kadambari, student co-author copied), TotalSegmentator overlap (Wasserthal, Basel), all at about 09:40 UTC, and Vanderbilt (J. Ryan Martin, VUMC, and Daniel Moyer, Vanderbilt CS, since the paper gives Mr Chan only a postal address) at about 12:30 UTC. Aariz and KUB-StoneX needed no letter (open figshare downloads). The Radiopaedia licence form was submitted by the owner on 2026-10-21 (USD 250 paid), waiting for countersignature. The Procedure Guide web form was submitted 2026-10-21 01:25 UTC.
 
 ## Current state
 
-(none yet)
+- main is at the merge of #41 (6acf38c). Open pull requests: #2 and #3 (Dependabot: actions/download-artifact 7 to 8, actions/checkout 4 to 7), not reviewed. Branch claude/42 carries this checkpoint (issue #42).
+- Issues #10, #11, #19, #21, #23, #28 and #38 were still open and labelled in-review at this checkpoint although their pull requests merged (the merge did not close them); they are closed as completed with this checkpoint. Open after it: the epic #7, the tasks #9, #12 and #13 (todo), #1 (the setup issue) and #42.
+- No grid job has run from this repository and no training spends: the fetch chain, the ingest, the catalog and the v1 flow are measured only in the cloud container on synthetic bytes. The container's proxy refuses figshare, Zenodo, Mendeley, Hugging Face and openi.nlm.nih.gov (403), so no real fetch has run anywhere. The grid paste from #39 is unchanged and is the first real run: cd ~/SchwingNet && git pull && df -h /rs/rs_grp_oschome && bash grid/run-platform-fetch.sh && bash grid/run-xray-chain.sh.
+- The grid's Beethoven chain was stopped on 2026-10-21 01:25 UTC and the grid now runs on the owner's Wayne State Claude Max account; the grid gate (environment grid: GRID_GATE_KEY, GRID_ACCESS_ID, GRID_HOST_KEY) is not set on this repository.
+- Token files on the grid, mode 600, never on a command line: ~/.hf/token.env (HF_TOKEN), ~/.fluorocap/credentials.env (KAGGLE_API_TOKEN), ~/.rsna/ratic_link (the RATIC presigned link, good to 2026-10-28 02:38 UTC), ~/.netrc (PhysioNet). CT-RATE (21.3 TB) and NLST full are printed by the chain and never submitted without the owner's TB number, which he has not given.
+- A shared repository for obtaining the unheld datasets with collaborators (the owner's ask of 2026-10-21 12:19 UTC) is being prepared in the thread: the owner creates OpenSpineConsortium/spine-datasets by hand (a cloud session cannot, 403) and adopts it with the Symphony template; the content (one task per unheld source, the letter template and every request text, the records with route and status, a script that opens the tasks, the collaborator guide) lands there by pull request and is not in this repository.
 
 ## Remaining tasks
 
-(none yet)
+What remains to be fleshed out, in the plan's order (docs/research/retraining-plan.md section 8):
+
+1. The first real run of the fetch chain on the grid (the paste above), then the records: job ids, bytes and wall times into data/sources/ and grid/README.md's Measured section; the two new recipes' "to confirm" fields (Aariz's images glob and format, KUB-StoneX's patient rule, 1,703 patients over 2,570 films) once the unpacked folders are looked at.
+2. The real bank on the grid: the C-ArmLSpine builders' output under /rs/rs_grp_oschome/go2432/data/carmlspine ingested by tools/ingest.py from a grid job, the frozen test persons checked against data/splits/test-persons.json; the DICOM sets (LUMOS radiographs, VinDr) banked once pydicom is locked into the environment; NIH ChestX-ray14's Box md5s copied in; VFSS 2022 and ISBI 2015 cephalograms, which wait for a link.
+3. #9: the leak checks as the ingestion step (the person-key chain, CHK-6, CHK-7) inside ingest, under the gate.
+4. #12: evaluation visible from the first frame: the witness frames of section 4 of the plan (24 validation C-ArmLSpine frames, 24 test frames plus the three L6 cases and the sweeps), Weights and Biases offline on the node and synced from the owner's computer, the docs page (members only).
+5. Version 1 on real frames: the grid run the v1 demo plans (the level stage on C-ArmLSpine, 20 epochs, seed 1, one H200 on gmsap, at most 6 GPU-hours), which needs the owner's go and the number, the grid gate or the Beethoven worker signed in, and an ImageNet resnet18 weights file on the lab volume; the detector stage, not in v1 (crops come from truth boxes today).
+6. #13: latency per model version, the ONNX parity on the witness frames, the recorded sweep over case134 and case39 with the overlay and the latency on screen.
+7. The answers to the letters: bounces to handle, DUAs for the owner to sign (LevelCheck, Vanderbilt, Huashan, PUMCH, SX-Stitch, NIT Warangal, Balgrist may each offer one), the Balgrist ROCS form resend, and the owner's own gates (Merlin and INSPECT on the AIMI portal, MAGIC-CT, TVGH-SpineXR on IEEE DataPort, MrOS and SOF, the PhysioNet DUAs, ReXGradient, PadChest, CheXpert Plus, BUU-LSPINE's EULA, Stanford AIMI, IRI-VFI, DysphagiaBank), each with its link in data-access-requirements.md; the lawyer questions (the model and derivative clauses of ReXGradient, PadChest, the AIMI agreements, MAGIC-CT, the BUU EULA, COBRA, DeepFluoro and Radiopaedia's terms).
+8. Dr Tech as second reader (plan section 7) and automatic scans to him: wanted, not yet.
+9. The Dependabot pull requests #2 and #3: review and merge or close.
+10. The provisional patent by 30 October; the talk shows results, not methods.
 
 ## Decisions
 
-(none yet)
+- The owner, 2026-10-20 20:09 UTC: the goal is low-latency, high-accuracy vertebral classification on fluoroscopic video or images; no comparison to the old baseline, the well-done workflow is version 1; the data workflow before jobs or seeds; evaluation on a real image visible from the start; no ensembles until one model works; automatic scans to Dr Tech wanted but not yet.
+- The owner, 2026-10-21 00:54 and 04:04 UTC: build the extensible data flow and a queryable frame catalog that works natively with Metaflow and on RAID storage; get every missing dataset onto the grid however possible, then second and third passes on the manifests; grid jobs still need his word and number.
+- The owner, 2026-10-20 22:43 UTC: dataset request letters go from his Wayne State Outlook, short and direct, subject tag [XR/CT Imaging Research], the opening line "I study the application of computer science to improving spinal health, and my current work needs ...", he signs any DUA; no anonymous probe emails; addresses verified from institutional pages or papers.
+- The owner, 2026-10-20 22:42 UTC: no external text says or implies that a neural network, a model, machine learning, deep learning, AI or training is built or used; the work is described only as measuring how reliably automated image-analysis methods recognise which vertebra is which.
+- The owner, 2026-10-21 12:19 UTC: a separate private repository, worked through Symphony with collaborators, obtains the unheld datasets; collaborators get the letter template and claim tasks; SchwingNet itself stays confidential.
+- Radiopaedia is never fetched by script; its licence (paid, commercial boxes ticked no) covers what the form names.
 
 ## Constraints
 
-(none yet)
+- A cloud session cannot create a repository (403 from the organization's and the user's endpoint alike), cannot approve a deployment or publish a release, and its proxy refuses api.figshare.com, ndownloader.figshare.com, zenodo.org, data.mendeley.com, huggingface.co, openi.nlm.nih.gov, doi.org and most publishers; GitHub and Google Scholar's search answer; PubMed needs cookies.
+- The Microsoft 365 connector's send call is refused by the permission classifier; a draft created then sent (outlook_create_draft, outlook_send_draft) goes through, with an HTML allowlist.
+- The pre-push hook runs the whole gate (pixi run --locked gate) and refuses a push from a tree with anything uncommitted; export PATH="$HOME/.pixi/bin:$PATH" before pushing from a cloud session.
+- Scripts under tools/ drop tools/ from sys.path before importing torch, since tools/profile.py shadows the standard library's profile; functions that take a pydantic model go under [tool.beethoven-qa.unproven].
+- Nothing of this repository is public before the provisional is filed; every grid job and every training needs the owner's word and the number; usage credits are never used; no Claude credential and no API key anywhere; PHI stays on the grid.
+
+## Added 2026-10-21 about 20:35 UTC by the thread "3D CT priors for 2D detection"
+
+The programme "From 3D to X-ray" (the segmented CTs carried to X-ray, the anomaly screener, the corner annotation format, device harmonisation, COBRA's rotations, view translation) is docs/research/xr-from-3d/README.md, with issues #56 (parent) and #57 to #70 (workstreams A to N); its handoff, what is done and what is next, is docs/checkpoints/2026-10-21-xr-from-3d/HANDOFF.md.

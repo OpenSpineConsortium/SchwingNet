@@ -1,0 +1,19 @@
+{
+  "id": "vindr_spinexr",
+  "name": "VinDr-SpineXR",
+  "group": "films",
+  "what": "10,466 DICOM (8,389 train + 2,077 test) in 5,000 studies with lesion boxes",
+  "level_truth": "no levels",
+  "reach": "held",
+  "status": "on the grid under the PhysioNet agreement, covered since 29 Sep 2026 by WSU IRB HPR 2026-330 (the supplement to 2026-269: not human participant research); the C-ArmLSpine fold models carry 2,632 of its crops; the v8 and v9 level banks left it out for comparability, with no criterion; its implant boxes trained yolo_hw; the Roboflow rf100-vl relabels (roboflow_vindr_relabels) redistribute these images outside the agreement and are not to be fetched (the sweep of 2026-10-21)",
+  "licence": "PhysioNet Restricted Health Data License 1.5.0 (credentialed, named-person agreement)",
+  "link": "https://physionet.org/content/vindr-spinexr/1.0.0/",
+  "how_to_get": [],
+  "grid_path": "/rs/rs_grp_oschome/go2432/data/vindr_spinexr/raw/vindr/1.0.0",
+  "counts": {
+    "images": 10466,
+    "studies": 5000
+  },
+  "measured": {},
+  "record": "WSU IRB HPR 2026-330 notice of 29 Sep 2026 (the signed copy stays out of every repository); spinesurg-ct-nnunet data_platform/sources.json, vindr_spinexr (65fb454, 2026-10-10); spine-program 01_carm_level_detection/docs/handoff/DATASET_USAGE.md 2.2 for its training use (its IRB line predates the notice); grid listing 2026-10-20"
+}

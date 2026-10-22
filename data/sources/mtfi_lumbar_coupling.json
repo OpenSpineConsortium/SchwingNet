@@ -1,0 +1,18 @@
+{
+  "id": "mtfi_lumbar_coupling",
+  "name": "Manual Therapy Foundation of India lumbar coupling video",
+  "group": "video",
+  "what": "AP lumbar side-bending with rotation under video fluoroscopy, a view the project lacks",
+  "level_truth": "none named",
+  "reach": "get",
+  "status": "request 12 drafted (address on the site, not decoded), never sent",
+  "licence": "unknown",
+  "link": "https://www.mtfi.net/",
+  "how_to_get": [
+    "Open https://www.mtfi.net/Contact%20Us.html in a browser, copy the address, send request 12 of spine-program 01_carm_level_detection/docs/data_requests/FLUORO_VIDEO_REQUESTS_READY_2026-09-26.md or its WhatsApp line."
+  ],
+  "grid_path": null,
+  "counts": {},
+  "measured": {},
+  "record": "spine-program 01_carm_level_detection/docs/data_requests/FLUORO_VIDEO_REQUESTS_READY_2026-09-26.md 12"
+}

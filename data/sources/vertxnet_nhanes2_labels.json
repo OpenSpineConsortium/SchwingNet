@@ -1,0 +1,22 @@
+{
+  "id": "vertxnet_nhanes2_labels",
+  "name": "VertXNet extra labels for NHANES II (Mo, Papiez, Chen 2023)",
+  "group": "films",
+  "what": "labels only, for films already held: 8 landmarks per vertebral body with vertebral identity on the NHANES II cervical and lumbar laterals, and the reference bodies C2 and S1 annotated by radiologists where visible; the Zenodo record 'NHANES II Spinal X-ray with Extra Labels For Reference Vertebral Bodies (C2, S1)', version 1, 2023, named in the Data availability statement of Scientific Reports 14:3341 (doi:10.1038/s41598-023-49923-3)",
+  "level_truth": "vertebral identity per body, with C2 and S1 as the anchors the level counter needs",
+  "reach": "get",
+  "status": "found by the sweep of 2026-10-21; not fetched; the manifest's nhanes2_zenodo_landmarks already names Zenodo 10223910 (concept 10145564) by the same authors, whose osteophyte annotation zip is the held 543-film landmark set, so whether the C2 and S1 labels are another file of that record or a sibling record under the concept is to confirm on the page; closes the registry's NHANES gap (C3-C7 and L1-L5 only) at no imaging cost",
+  "licence": "Zenodo, open; licence to confirm on the page (the held record of the same authors is CC BY 4.0)",
+  "link": "https://doi.org/10.1038/s41598-023-49923-3",
+  "how_to_get": [
+    "Open the article's Data availability statement at https://doi.org/10.1038/s41598-023-49923-3 and read the Zenodo record it names; check whether it is Zenodo 10223910 (concept 10145564), carded as nhanes2_zenodo_landmarks, or a sibling, and read its licence line.",
+    "Fetch as a Slurm job on the owner's word, never on the login node: python3 data/reproduce/reacquire/reacquire.py zenodo-get --record N --dest DIR, N being the record number read on the page; the labels join the NHANES II films already on the grid and no image is fetched.",
+    "Check the manifest's nhanes_pseudo directory of 16,234 pseudo-labelled films against these labels where the films overlap."
+  ],
+  "grid_path": null,
+  "counts": {
+    "landmarks_per_body": 8
+  },
+  "measured": {},
+  "record": "docs/research/xray-datasets-missing.md (2026-10-21)"
+}

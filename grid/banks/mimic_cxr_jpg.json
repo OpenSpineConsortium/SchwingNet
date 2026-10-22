@@ -1,0 +1,28 @@
+{
+  "id": "mimic_cxr_jpg",
+  "raw": "/rs/rs_grp_oschome/go2432/data/mimic_cxr_jpg/raw",
+  "bank": "/rs/rs_grp_oschome/go2432/data/mimic_cxr_jpg/bank",
+  "images": [
+    "**/files/p*/p*/s*/*.jpg"
+  ],
+  "format": "jpg",
+  "person": {
+    "regex": "/(?P<case>p\\d{8})/s\\d+/"
+  },
+  "view": {
+    "lat_from_ap_deg": "to confirm: per image from mimic-cxr-2.0.0-metadata.csv (ViewPosition), or null to keep every view unbanded",
+    "gantry_deg": null
+  },
+  "device": {
+    "make": null,
+    "model": null,
+    "detector": null
+  },
+  "modality": "dx",
+  "device_class": "film",
+  "split": "train",
+  "labels": null,
+  "synthetic": false,
+  "px_mm": null,
+  "notes": "377,110 chest radiographs as JPG, frontal and lateral; the path files/p1x/p<patient>/s<study>/<image>.jpg carries the patient, the person key; the view per image is in mimic-cxr-2.0.0-metadata.csv"
+}

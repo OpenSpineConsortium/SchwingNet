@@ -24,6 +24,11 @@ SKIPPED_FOLDERS = {".git", "__pycache__"}
 # Where the documents live that must stay ASCII with LF endings.
 PLAIN_TEXT_ROOTS = (".claude", "docs", "tools", ".github")
 PLAIN_TEXT_FILES = (CLAUDE_MD, "README.md")
+# The dataset records are held the same way, because tools/sources.py copies
+# their text into docs/research/; so are the registry and the split files,
+# which tools/catalog.py reads into the catalog and quotes in its answers;
+# the rest of data/ is not a document.
+PLAIN_TEXT_FOLDERS = ("data/sources", "data/registry", "data/splits")
 
 # An import is any "@path" outside code spans and fenced code; Claude Code
 # follows it wherever it stands in the line, so the check must too. The
@@ -189,7 +194,11 @@ def check_secrets(root, files):
 
 def is_plain_text_place(rel):
     """Whether a path is one the ASCII and LF rule covers."""
-    return rel.parts[0] in PLAIN_TEXT_ROOTS or rel.as_posix() in PLAIN_TEXT_FILES
+    return (
+        rel.parts[0] in PLAIN_TEXT_ROOTS
+        or rel.as_posix() in PLAIN_TEXT_FILES
+        or rel.parent.as_posix() in PLAIN_TEXT_FOLDERS
+    )
 
 
 def check_ascii_lf(root, files):
