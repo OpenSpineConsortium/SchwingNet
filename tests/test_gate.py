@@ -903,7 +903,11 @@ esac
         self.live(900, 901, 902)
         done = self.gate("status")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
-        self.assertIn("  fetch of vindr_pcxr (job 900): 1234 files, 4560 MB, last write 40s ago", done.stdout)
+        # The age is counted when status reaches the fetch, after the space block, so a slow runner
+        # may see a few seconds more than the 40 the fake attribute was written with.
+        landed = (r"\n  fetch of vindr_pcxr \(job 900\): 1234 files, 4560 MB, "
+                  r"last write 4[0-9]s ago\n")
+        self.assertRegex(done.stdout, landed)
         self.assertIn("  fetch of padchest (job 901): nothing landed yet", done.stdout)
         self.assertNotIn("job 902", done.stdout)
         self.assertNotIn(str(self.data), done.stdout)
