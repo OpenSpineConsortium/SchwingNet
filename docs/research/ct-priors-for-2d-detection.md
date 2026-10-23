@@ -27,7 +27,7 @@ From datasets-inventory.md section 5 (counts are the records'):
 | Anomaly harvest (family B) | 56 sources on disk | census counts | the rare-class source in 3D |
 | COBRA (Elekta, Varian) | 692 cases, 375,618 real CBCT projections | planning CT registered | lumbosacral; projections are real X-rays with known geometry |
 | DeepFluoro | 6 cadavers, 19 CTs, 2,659 vendor frames | from the CT | 2,293 vendor frames unused |
-| IPCAI 2025 X-ray with CT | 5 CTs with calibrated real X-rays | to confirm | registered in data/registry, not fetched |
+| IPCAI 2025 X-ray with CT | 5 CTs with 50 calibrated real X-rays | contour masks and bone models | the distal femur, not the spine: fetched (still zipped) and taken out of the registry on 2026-10-23 (benchmarks-to-beat.md section 1) |
 | C-ArmLSpine | 149 cases, one CBCT each | level truth already projected from the CBCT | the test device; never a training source for the test persons |
 
 Where the segmentations themselves live (holding.sqlite under the data platform's index, the derived/ folders on Ceph) is recorded in spinesurg-ct-nnunet's data_platform, which this session cannot read; the first job of item 3 below lists them before anything is rendered.
@@ -62,7 +62,7 @@ Effort: 2 to 3 days. Grid: rendering about 100,000 frames (1,000 volumes by 100 
 
 ### 4. Real frames with exact labels, from CTs registered to real projections
 
-What: where a real X-ray comes with its own CT, the CT's segmentation projected through the X-ray's geometry labels the real frame exactly, which is how C-ArmLSpine's truth was made. COBRA is the large case: 692 cases of real CBCT projections with a registered planning CT, so a segmentation of the planning CT (TotalSegmentator) projected through the scanner's known geometry labels every lumbosacral vertebra on 375,618 real frames with no human reading. DeepFluoro's 2,293 unused vendor frames and IPCAI 2025's calibrated X-rays follow the same way, by 2D/3D registration where the geometry is not stored (the LevelCheck method, section 6).
+What: where a real X-ray comes with its own CT, the CT's segmentation projected through the X-ray's geometry labels the real frame exactly, which is how C-ArmLSpine's truth was made. COBRA is the large case: 692 cases of real CBCT projections with a registered planning CT, so a segmentation of the planning CT (TotalSegmentator) projected through the scanner's known geometry labels every lumbosacral vertebra on 375,618 real frames with no human reading. DeepFluoro's 2,293 unused vendor frames follow the same way, by 2D/3D registration where the geometry is not stored (the LevelCheck method, section 6); IPCAI 2025's calibrated X-rays are of the distal femur and serve only as a registration benchmark.
 
 Why: the record's clearest lesson is that detection needs real frames, and this is the only route to many real frames with level labels without a reader. It also feeds the sacrum anchor of items 1 and 3.
 
@@ -119,7 +119,7 @@ Results, not methods: a slide may show the AP accuracy before and after, the per
 
 - Which of items 1 to 3 to run before the talk (the recommendation is all three, in that order).
 - Whether DiffDRR or DeepDRR may be added if the project's renderer is too slow (an issue first, per the writing rule).
-- Grid jobs need no number (the owner, 2026-10-21 13:14 UTC), but they are submitted through the "SchwingNet video demo plan" thread.
+- Grid jobs: the owner said on 2026-10-21 13:14 UTC that they need no number, a rule since superseded: every grid job and every training waits for his word and the number of jobs (CLAUDE.md, docs/project.md), and his project instructions of 2026-10-23 add every fetch (corrected by docs/research/state-of-knowledge.md section 3).
 
 ## 6. Sources read
 
