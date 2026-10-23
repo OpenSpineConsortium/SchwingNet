@@ -237,21 +237,20 @@ def code(text, table=True):
 
 def report(s):
     """The issue's body: what the run found that the stamp had not seen, and the reads waiting;
-    its marker, which changes when the findings do; and whether it finds anything at all, since
-    an issue that says nothing changed is opened for nobody."""
+    its marker, which is what the body says apart from which run wrote it, so that a run that
+    would write the same leaves the issue as it is and any other rewrites it, its own words
+    included; and whether it finds anything at all, since an issue that says nothing changed is
+    opened for nobody."""
     from render_inventory import cell, to_ascii
     w = reads_waiting(s)
     total = w["inventory"] + w["finders"] + w["verdicts"]
-    findings = json.dumps({"c": s["changes"], "s": s["stale"], "l": s["lost_quotes"], "n": [c["key"] for c in s["new_checks"]],
-                           "d": s["delta"]}, sort_keys=True, default=str)
-    marker = hashlib.sha1(findings.encode("utf-8")).hexdigest()[:12]
-    out = [f"<!-- synthesis-report: {marker} -->",
-           "This issue is rewritten by .github/workflows/synthesis.yml daily at 06:41 UTC, on Run workflow, and on a push to"
+    run = f"Written by the run on {s['date']} at " + ", ".join(f"{r} {h[:7]}" for r, h in s["heads"].items() if h)
+    out = ["This issue is rewritten by .github/workflows/synthesis.yml daily at 06:41 UTC, on Run workflow, and on a push to"
            " main that changes an artifact, a research note or a dataset record where a person or an App made the push; a"
            " merge GitHub's auto-merge makes starts no workflow, so the daily run takes what it landed. It lists what the"
            " texts say now that the"
            f" stamp of {s['stamped']} had not seen; artifacts/_synthesis/concepts.md and work/RESUME.md say how each check is made.\n",
-           f"Run on {s['date']} at " + ", ".join(f"{r} {h[:7]}" for r, h in s["heads"].items() if h) + "."
+           f"{run}; a later run that would write the same leaves this issue as it is."
            + (f" Not checked: {', '.join(s['without'])}, whose checkout the run could not make." if s["without"] else "") + "\n",
            f"## Reads waiting: {total}\n"]
     if total:
@@ -317,7 +316,9 @@ def report(s):
         out.append("")
     anything = bool(total or s["changes"] or d["gone"] or d["datasets_new"] or d["datasets_changed"] or d["datasets_gone"]
                     or s["stale"] or s["resolved"] or s["lost_quotes"] or listed or s["gone_checks"])
-    return to_ascii(scrubbed("\n".join(out) + "\n")), marker, anything
+    text = "\n".join(out) + "\n"
+    marker = hashlib.sha1(text.replace(run, "", 1).encode("utf-8")).hexdigest()[:12]
+    return to_ascii(scrubbed(f"<!-- synthesis-report: {marker} -->\n{text}")), marker, anything
 
 
 def write_report(s, path):
