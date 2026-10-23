@@ -20,7 +20,9 @@ and evaluation, each one process, each timed and recorded as a job with what it 
 mode as a subprocess in the train-cpu environment and in slurm mode as one job each in
 train-gpu, queued through hpcworker's job submit as the gpu class (issue #77), polled no faster than once a minute (grid rule 7). `record` copies the run's small
 files, never the checkpoint, into the research folder with one ledger row, so the repository
-holds what ran and what it cost beside the numbers.
+holds what ran and what it cost beside the numbers. After the last step the run's report is
+written beside its files (tools/report.py): the CLAIM 2024 and REFORMS items each answered from the
+run's files or the declared study, and the licences of the data it read.
 
 Before the first step the run's witness.json is written (tools/witness.py): the frozen list in
 data/witness/ where the repository has one, checked against this catalog, else the frames chosen
@@ -75,7 +77,18 @@ def _load_licences():
     return module
 
 
+def _load_report():
+    """tools/report.py by its file, for the reason _load_witness gives."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("schwingnet_tool_report", ROOT / "tools" / "report.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 _licences = _load_licences()
+_report = _load_report()
 
 VERSION_NAME = re.compile(r"catalog-(\d{6})-[0-9a-f]{12}\.sqlite$")
 LEDGER_HEADER = (
@@ -262,6 +275,7 @@ def command_run(args):
     pushed = push_wandb(run_dir, args.environment)
     append_ledger(Path(args.out) / "LEDGER.md", record, activity, f"evaluate/results.md from the test part; split-check.json disjoint; {pushed}")
     print(pushed, file=sys.stderr if "NOT" in pushed else sys.stdout, flush=True)
+    print(write_report(run_dir), flush=True)
     return 0
 
 
@@ -269,6 +283,14 @@ def licence_words(licences):
     """The ledger's few words of the run's data licence: its class and the recipe that cut it."""
     recipe = licences["recipe"]
     return f", data licence {licences['run_class']}" + (f" (recipe {recipe['name']})" if recipe else "")
+
+
+def write_report(run_dir):
+    """The run's CLAIM, REFORMS and licence report, written after the last step (tools/report.py);
+    its last line says how many items are still missing, so a gap is seen, never silent."""
+    _report.write(run_dir)
+    gaps = _report.missing_items(run_dir)
+    return f"report: {run_dir}/REPORT.md, " + (f"{len(gaps)} items missing" if gaps else "complete")
 
 
 def write_witness(run_dir, catalog, catalog_sha256):
@@ -291,7 +313,7 @@ def push_wandb(run_dir, environment=None):
     return lines[-1] if lines else f"W&B NOT PUSHED: the sync step exited {done.returncode}: {said}"
 
 
-KEPT = ("RUN.json", "PROVENANCE.json", "PROVENANCE.md", "split-check.json", "witness.json", "wandb-sync.json", "train/metrics.jsonl", "train/checkpoint.json", "train/MODEL.md", "train/accuracy.png", "evaluate/results.json", "evaluate/results.md", "evaluate/confusion.png", "evaluate/per-level.png", "evaluate/witness-test.jsonl", "evaluate/latency.json")
+KEPT = ("RUN.json", "PROVENANCE.json", "PROVENANCE.md", "split-check.json", "witness.json", "wandb-sync.json", "train/metrics.jsonl", "train/checkpoint.json", "train/MODEL.md", "train/accuracy.png", "evaluate/results.json", "evaluate/results.md", "evaluate/confusion.png", "evaluate/per-level.png", "evaluate/witness-test.jsonl", "evaluate/latency.json", "REPORT.md", "claim.json", "reforms.json")
 # Of each witness frame, the strip and the animation; the sheets of the first and last epoch; the
 # latency thread's arms. Never a checkpoint, and never every epoch's picture, which W&B holds.
 KEPT_GLOBS = ("train/witness/frames/*/strip.jpg", "train/witness/frames/*/anim.gif", "train/witness/frames/sheet-*.jpg", "evaluate/witness/frames/*/strip.jpg", "evaluate/witness/frames/*/anim.gif", "evaluate/witness/frames/sheet-*.jpg", "latency/*.json")

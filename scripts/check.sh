@@ -90,4 +90,10 @@ python3 tools/licences.py check
 # page written again, or a page edited by hand, fails here.
 python3 tools/eval_page.py check
 
+# Every recorded run carries its report (REPORT.md, claim.json, reforms.json), written by
+# tools/report.py from the run's files and data/reporting/study.json, standard library: a run
+# recorded without its report, or a study answer changed without the reports written again
+# (python3 tools/report.py write-recorded), fails here.
+python3 tools/report.py check-recorded
+
 echo "checks ok"

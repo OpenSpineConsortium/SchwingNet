@@ -1,0 +1,302 @@
+{
+ "run_id": "cd37124c487d",
+ "checklist": "REFORMS",
+ "source": "Kapoor et al., REFORMS: consensus-based recommendations for machine-learning-based science, arXiv 2308.07832; the item list and the code-or-declared split of artifacts/reforms-compliance-checklist-bpzdoi",
+ "study_sha256": "2bc3ea9849e75c70fb6a8714478972209ef15af9cde53dc6dca382ecbbe7e22e",
+ "tally": {
+  "met": 13,
+  "declared": 0,
+  "not applicable": 0,
+  "missing": 19
+ },
+ "items": [
+  {
+   "id": "1a",
+   "section": "Study goals",
+   "asks": "Population the claim is about",
+   "basis": "declared",
+   "fact": "population",
+   "state": "missing",
+   "evidence": "needs the owner's answer under \"population\" in data/reporting/study.json"
+  },
+  {
+   "id": "1b",
+   "section": "Study goals",
+   "asks": "Why that population",
+   "basis": "declared",
+   "fact": "population_rationale",
+   "state": "missing",
+   "evidence": "needs the owner's answer under \"population_rationale\" in data/reporting/study.json"
+  },
+  {
+   "id": "1c",
+   "section": "Study goals",
+   "asks": "Why machine learning",
+   "basis": "declared",
+   "fact": "ml_rationale",
+   "state": "missing",
+   "evidence": "needs the owner's answer under \"ml_rationale\" in data/reporting/study.json"
+  },
+  {
+   "id": "2a",
+   "section": "Computational reproducibility",
+   "asks": "Dataset with link or DOI",
+   "basis": "code",
+   "fact": "data_sources",
+   "state": "missing",
+   "evidence": "needs PROVENANCE.json, from tools/licences.py provenance"
+  },
+  {
+   "id": "2b",
+   "section": "Computational reproducibility",
+   "asks": "Code",
+   "basis": "code",
+   "fact": "code_state",
+   "state": "met",
+   "evidence": "commit cf0d3f03d5d974d84e7d026a993ba14503664878 from a clean tree (RUN.json); the run is refused from a dirty one"
+  },
+  {
+   "id": "2c",
+   "section": "Computational reproducibility",
+   "asks": "Computing infrastructure",
+   "basis": "code",
+   "fact": "compute",
+   "state": "met",
+   "evidence": "local mode: split-check on runner, 0 GPU, 1 s, exit 0; train on local, 0 GPU, 99 s, exit 0; evaluate on local, 0 GPU, 19 s, exit 0 (RUN.json jobs)"
+  },
+  {
+   "id": "2d",
+   "section": "Computational reproducibility",
+   "asks": "README with instructions",
+   "basis": "code",
+   "fact": "reproduce",
+   "state": "met",
+   "evidence": "at commit cf0d3f03d5d9: python tools/flow.py run --catalog <catalog sha256 5adfe5ec5715> --mode local --stage level --epochs 4 --seed 1 --out <runs>"
+  },
+  {
+   "id": "2e",
+   "section": "Computational reproducibility",
+   "asks": "Reproduction script",
+   "basis": "code",
+   "fact": "reproduce",
+   "state": "met",
+   "evidence": "at commit cf0d3f03d5d9: python tools/flow.py run --catalog <catalog sha256 5adfe5ec5715> --mode local --stage level --epochs 4 --seed 1 --out <runs>"
+  },
+  {
+   "id": "3a",
+   "section": "Data quality",
+   "asks": "Data sources per split",
+   "basis": "code",
+   "fact": "data_per_split",
+   "state": "missing",
+   "evidence": "needs PROVENANCE.json, from tools/licences.py provenance"
+  },
+  {
+   "id": "3b",
+   "section": "Data quality",
+   "asks": "Sampling frame",
+   "basis": "declared",
+   "fact": "sampling_frame",
+   "state": "missing",
+   "evidence": "needs the owner's answer under \"sampling_frame\" in data/reporting/study.json"
+  },
+  {
+   "id": "3c",
+   "section": "Data quality",
+   "asks": "Why the dataset fits the task",
+   "basis": "declared",
+   "fact": "fitness_rationale",
+   "state": "missing",
+   "evidence": "needs the owner's answer under \"fitness_rationale\" in data/reporting/study.json"
+  },
+  {
+   "id": "3d",
+   "section": "Data quality",
+   "asks": "Outcome variable and its statistics",
+   "basis": "code",
+   "fact": "outcome_counts",
+   "state": "met",
+   "evidence": "test crops per level: L1 53, L2 66, L3 79, L4 86, L5 60, T11 15, T12 33, sacrum 39 (evaluate/results.json)"
+  },
+  {
+   "id": "3e",
+   "section": "Data quality",
+   "asks": "Sample size and outcome frequencies",
+   "basis": "code",
+   "fact": "sample_size",
+   "state": "met",
+   "evidence": "train 2728 crops from 34 persons, validation 472 from 6, test 431 from 5 (train/checkpoint.json, evaluate/results.json)"
+  },
+  {
+   "id": "3f",
+   "section": "Data quality",
+   "asks": "Missing data, by class",
+   "basis": "code",
+   "fact": "missing_data",
+   "state": "missing",
+   "evidence": "needs missing.json, which no step writes yet: missing fields per class from the catalog"
+  },
+  {
+   "id": "3g",
+   "section": "Data quality",
+   "asks": "Representativeness",
+   "basis": "declared",
+   "fact": "representativeness",
+   "state": "missing",
+   "evidence": "needs the owner's answer under \"representativeness\" in data/reporting/study.json"
+  },
+  {
+   "id": "4a",
+   "section": "Data preprocessing",
+   "asks": "Excluded samples, with the reason",
+   "basis": "code",
+   "fact": "exclusions",
+   "state": "missing",
+   "evidence": "needs exclusions.json, which no step writes yet: the ingest and bank builders' excluded and unreadable samples with their reasons"
+  },
+  {
+   "id": "4b",
+   "section": "Data preprocessing",
+   "asks": "Corrupt samples",
+   "basis": "code",
+   "fact": "exclusions",
+   "state": "missing",
+   "evidence": "needs exclusions.json, which no step writes yet: the ingest and bank builders' excluded and unreadable samples with their reasons"
+  },
+  {
+   "id": "4c",
+   "section": "Data preprocessing",
+   "asks": "All transforms, from raw data to the model's input",
+   "basis": "code",
+   "fact": "transforms",
+   "state": "met",
+   "evidence": "train/MODEL.md: torchvision resnet18, 27-way head, crops 64x64, pad 0.15."
+  },
+  {
+   "id": "5a",
+   "section": "Modeling",
+   "asks": "All models trained",
+   "basis": "code",
+   "fact": "models_trained",
+   "state": "met",
+   "evidence": "run cd37124c487d; every run of the flow, failed ones too, has its row in LEDGER.md beside the runs"
+  },
+  {
+   "id": "5b",
+   "section": "Modeling",
+   "asks": "Why these model types",
+   "basis": "declared",
+   "fact": "model_rationale",
+   "state": "missing",
+   "evidence": "needs the owner's answer under \"model_rationale\" in data/reporting/study.json"
+  },
+  {
+   "id": "5c",
+   "section": "Modeling",
+   "asks": "Evaluation method and splits",
+   "basis": "code",
+   "fact": "split_rule",
+   "state": "met",
+   "evidence": "persons assigned to train, validation and test by the catalog's salted person hash, catalog 5adfe5ec5715 version 1 (RUN.json); the test part is read only by the evaluator"
+  },
+  {
+   "id": "5d",
+   "section": "Modeling",
+   "asks": "How the reported model was chosen",
+   "basis": "code",
+   "fact": "model_selection",
+   "state": "met",
+   "evidence": "the epoch of best validation accuracy, epoch 4: 0.996 (0.985 to 0.999, n=472); no test row read in training (train/checkpoint.json)"
+  },
+  {
+   "id": "5e",
+   "section": "Modeling",
+   "asks": "Hyperparameter tuning",
+   "basis": "declared",
+   "fact": "tuning",
+   "state": "missing",
+   "evidence": "needs the owner's answer under \"tuning\" in data/reporting/study.json"
+  },
+  {
+   "id": "5f",
+   "section": "Modeling",
+   "asks": "Appropriate baselines",
+   "basis": "declared",
+   "fact": "baselines",
+   "state": "missing",
+   "evidence": "needs the owner's answer under \"baselines\" in data/reporting/study.json"
+  },
+  {
+   "id": "6a",
+   "section": "Data leakage",
+   "asks": "Preprocessing fit on training data only",
+   "basis": "declared",
+   "fact": "preprocessing_fit",
+   "state": "missing",
+   "evidence": "needs the owner's answer under \"preprocessing_fit\" in data/reporting/study.json"
+  },
+  {
+   "id": "6b",
+   "section": "Data leakage",
+   "asks": "Dependencies and duplicates across splits",
+   "basis": "code",
+   "fact": "split_disjoint",
+   "state": "met",
+   "evidence": "disjoint by person and by frame sha256: no person and no frame in two parts (split-check.json)"
+  },
+  {
+   "id": "6c",
+   "section": "Data leakage",
+   "asks": "Each feature legitimate",
+   "basis": "declared",
+   "fact": "feature_legitimacy",
+   "state": "missing",
+   "evidence": "needs the owner's answer under \"feature_legitimacy\" in data/reporting/study.json"
+  },
+  {
+   "id": "7a",
+   "section": "Metrics and uncertainty",
+   "asks": "All metrics",
+   "basis": "code",
+   "fact": "metrics",
+   "state": "met",
+   "evidence": "accuracy over 10 strata on the test part (evaluate/results.json)"
+  },
+  {
+   "id": "7b",
+   "section": "Metrics and uncertainty",
+   "asks": "Uncertainty and how it was computed",
+   "basis": "code",
+   "fact": "uncertainty",
+   "state": "met",
+   "evidence": "a 95 percent Wilson interval on every row from its correct and n, persons counted per row (evaluate/results.json, evaluate/results.md)"
+  },
+  {
+   "id": "7c",
+   "section": "Metrics and uncertainty",
+   "asks": "Statistical tests and their assumptions",
+   "basis": "declared",
+   "fact": "statistical_tests",
+   "state": "missing",
+   "evidence": "needs the owner's answer under \"statistical_tests\" in data/reporting/study.json"
+  },
+  {
+   "id": "8a",
+   "section": "Generalizability and limitations",
+   "asks": "External validity",
+   "basis": "declared",
+   "fact": "external_validity",
+   "state": "missing",
+   "evidence": "needs the owner's answer under \"external_validity\" in data/reporting/study.json"
+  },
+  {
+   "id": "8b",
+   "section": "Generalizability and limitations",
+   "asks": "Where the findings will not hold",
+   "basis": "declared",
+   "fact": "non_generalization",
+   "state": "missing",
+   "evidence": "needs the owner's answer under \"non_generalization\" in data/reporting/study.json"
+  }
+ ]
+}
