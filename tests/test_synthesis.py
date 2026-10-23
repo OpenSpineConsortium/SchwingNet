@@ -605,6 +605,31 @@ class Report(unittest.TestCase):
         self.assertNotIn(LOGIN, body2)
         self.assertTrue(body2.isascii())
 
+    def test_the_issue_is_rewritten_whenever_what_it_says_changes(self):
+        s = empty_status()
+        s["changes"] = [{"id": ALPHA, "new": False, "hunks": [1], "added": 2, "removed": 1}]
+        body, marker, _ = synth.report(s)
+        later, later_marker, _ = synth.report({**s, "date": "2026-10-25", "heads": {"SchwingNet": "b" * 40}})
+        self.assertNotEqual(body, later, "the run line names the run that wrote the issue")
+        self.assertEqual(marker, later_marker, "a run that would write the same leaves the issue as it is")
+        for change in ({"gone_checks": 1}, {"unread": ["C1|0"]}, {"resolved": [{"row": "C1|1"}]},
+                       {"without": ["symphony-template"]}, {"stamped": "2026-10-24"}):
+            self.assertNotEqual(marker, synth.report({**s, **change})[1], f"{change} changes what the issue says")
+
+    def test_the_marker_is_made_from_the_scrubbed_report(self):
+        def status(text):
+            s = empty_status()
+            s["new_checks"] = [{"key": "k", "concept": "dataset:x:films", "kind": "dataset", "source": ALPHA, "line": 3,
+                                "outcome": "differs", "value": "120", "text": text}]
+            return s
+        body, marker, _ = synth.report(status(f"120 films under {LOGIN}"))
+        self.assertNotIn(LOGIN, body)
+        self.assertEqual(marker, synth.report(status("120 films under [the owner's login]"))[1],
+                         "the marker gives away nothing the scrub took out")
+        rule = ("a word the scrub keeps out from now on", re.compile(r"\bfilms\b"), "[a word]")
+        with mock.patch.object(redact, "RULES", redact.RULES + [rule]):
+            self.assertNotEqual(marker, synth.report(status(f"120 films under {LOGIN}"))[1], "a change to the scrub reaches the issue")
+
 
 class Scrub(unittest.TestCase):
     def test_what_the_folder_s_rule_keeps_out_is_replaced_and_names_and_ids_are_kept(self):

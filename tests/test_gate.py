@@ -1294,6 +1294,44 @@ esac
         self.assertEqual(done.returncode, 75, done.stdout)
         self.assertEqual(len(self.submitted()), 2)
 
+    def test_unpack_queues_once_then_prints_what_it_wrote(self):
+        shutil.copy(GRID / "fetch-xray.json", self.repo / "grid" / "fetch-xray.json")
+        # an id of no list, one with no raw folder yet, and a malformed send are refused and queue nothing
+        self.assertEqual(self.gate("unpack", "no_such_set").returncode, 64)
+        self.assertEqual(self.gate("unpack", "kaggle_scoliosis_yolov5").returncode, 2)
+        self.assertEqual(self.gate("unpack", "a", "b").returncode, 64)
+        (self.data / "kaggle_scoliosis_yolov5" / "raw").mkdir(parents=True)
+        self.assertEqual(self.gate("unpack", "kaggle_scoliosis_yolov5").returncode, 75)
+        self.environments_ready()
+        done = self.gate("unpack", "kaggle_scoliosis_yolov5")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        lines = self.submitted()
+        self.assertEqual(len(lines), 1, lines)
+        self.assertIn("--class batch --name unpack", lines[0])
+        self.assertIn("unpack.sbatch", lines[0])
+        self.assertIn(f"UNPACK_RAW={self.data}/kaggle_scoliosis_yolov5/raw", lines[0])
+        self.assertIn(f"DATA_ROOT={self.data}", lines[0])
+        job = self.recorded()["unpack"]
+        # while it is live, a second unpacking and a deletion of the set's zips are refused
+        self.live(job)
+        self.assertEqual(self.gate("unpack", "kaggle_scoliosis_yolov5").returncode, 75)
+        self.assertEqual(self.gate("dropzip", "kaggle_scoliosis_yolov5").returncode, 75)
+        self.assertEqual(len(self.submitted()), 1)
+        # once it has ended, its report is printed once and nothing is queued
+        (self.fake / "queue").write_text("", encoding="utf-8")
+        report = self.repo / "grid" / "logs" / "UNPACK-kaggle_scoliosis_yolov5.md"
+        report.write_text("# unpack kaggle_scoliosis_yolov5\n  written: 0.5 GB\n", encoding="utf-8")
+        done = self.gate("unpack", "kaggle_scoliosis_yolov5")
+        self.assertEqual(done.returncode, 0, done.stdout)
+        self.assertIn("  written: 0.5 GB", done.stdout)
+        self.assertEqual(len(self.submitted()), 1)
+        self.assertFalse(report.exists())
+        # never beside a deletion of the set's zips
+        self.state_line("4243", "dropzip:kaggle_scoliosis_yolov5", "dropzip")
+        self.live("4243")
+        self.assertEqual(self.gate("unpack", "kaggle_scoliosis_yolov5").returncode, 75)
+        self.assertEqual(len(self.submitted()), 1)
+
     def test_status_shows_the_sample_manifest_whole(self):
         logs = self.repo / "grid" / "logs"
         logs.mkdir(parents=True, exist_ok=True)

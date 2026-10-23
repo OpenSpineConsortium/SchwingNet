@@ -46,6 +46,11 @@
 #                   the owner's word of 2026-10-23): the first send queues one job, which deletes a zip
 #                   only when every file in it sits unpacked beside it at the same size; the next send
 #                   prints its report, logs/DROPZIP-<id>.md, and clears it, so a later send looks again
+#   unpack <id>     the unpacking of a fetched set's download zips beside themselves (tools/unpack.py,
+#                   grid/unpack.sbatch, the owner's word of 2026-10-23 for RSPECT): the first send
+#                   queues one job, which starts writing only when the size rule admits what the
+#                   unpacked files take; the next send prints its report, logs/UNPACK-<id>.md, and
+#                   clears it, so a later send goes on where a job cut short stopped
 #   samples         the sample index (grid/run-samples.sh): plan, scan and merge, refused while one
 #                   of them is live; status shows its MANIFEST.md, aggregates only
 #   stop            cancel the gate's own jobs that are still queued or running, and nothing else
@@ -91,18 +96,18 @@ SWEEP_BANK=${SWEEP_BANK:-$DATA_ROOT/realxray/carmlspine_sweep}
 NETRC=${NETRC:-$HOME/.netrc}
 LOGS=$REPO/grid/logs
 STATE=$LOGS/GATE_JOBS.txt
-WORDS="start status leaks v1 latency fetch explore dropzip samples stop cancel"
+WORDS="start status leaks v1 latency fetch explore dropzip unpack samples stop cancel"
 ENVS="default train-cpu train-gpu telemetry"
 
 word=${1:-}
 id=${2:-}
 # Matched whole, so one argument holding two words ("v1 latency") is refused and never runs nothing.
 case "$word" in
-  start|status|leaks|v1|latency|fetch|explore|dropzip|samples|stop|cancel) ;;
+  start|status|leaks|v1|latency|fetch|explore|dropzip|unpack|samples|stop|cancel) ;;
   "") echo "refusing: no word; one of: $WORDS"; exit 64 ;;
   *) echo "refusing: '$word' is not one of: $WORDS"; exit 64 ;;
 esac
-if [ "$word" = fetch ] || [ "$word" = explore ] || [ "$word" = dropzip ]; then
+if [ "$word" = fetch ] || [ "$word" = explore ] || [ "$word" = dropzip ] || [ "$word" = unpack ]; then
   [ $# -eq 2 ] || { echo "refusing: $word takes exactly one id"; exit 64; }
   case "$id" in ""|*[!a-z0-9_]*) echo "refusing: an id is lower-case letters, digits and _"; exit 64 ;; esac
   [ ${#id} -le 40 ] || { echo "refusing: an id is at most 40 characters"; exit 64; }
@@ -737,12 +742,34 @@ word_dropzip() {
     return 0
   fi
   # Never while the set is still landing or being read: a zip half unpacked has members not yet beside it.
-  busy=$( { live_of xr_fetch "fetch:$id"; live_of "dp_$id"; live_of explore "explore:$id"; } | tr '\n' ' ')
-  [ -z "${busy// /}" ] || { echo "refusing: a fetch or a look at $id is still queued or running (job $busy)"; return 75; }
+  busy=$( { live_of xr_fetch "fetch:$id"; live_of "dp_$id"; live_of explore "explore:$id"; live_of unpack "unpack:$id"; } | tr '\n' ' ')
+  [ -z "${busy// /}" ] || { echo "refusing: a fetch, an unpacking or a look at $id is still queued or running (job $busy)"; return 75; }
   [ -d "$raw" ] || { echo "refusing: $id has no raw folder on the data root yet; fetch it first"; return 2; }
   envs_ready || { echo "refusing: the environments are not ready; 'start' makes them first"; return 75; }
   submit dropzip batch DROPZIP_ID="$id" DROPZIP_RAW="$raw" -- dropzip.sbatch > /dev/null || return 1
   echo "submitted one job. Send dropzip $id again once it ends to read what it deleted."
+}
+
+word_unpack() {
+  local raw report busy
+  raw=$DATA_ROOT/$id/raw report=$LOGS/UNPACK-$id.md
+  grep -q "\"id\": \"$id\"" "$REPO/grid/fetch-xray.json" || gated_platform_id \
+    || { echo "refusing: $id is not an id of grid/fetch-xray.json nor a gated source of grid/run-platform-fetch.sh"; return 64; }
+  busy=$(live_of unpack "unpack:$id")
+  [ -z "$busy" ] || { echo "refusing: the unpacking of $id is still queued or running (job $busy); send unpack $id again once it ends"; return 75; }
+  if [ -f "$report" ]; then
+    echo "## $(basename "$report") ($(date -r "$report" '+%F %T'))"
+    head -n 100 "$report" | LC_ALL=C tr -cd '\11\12\40-\176' | masked | head -c 20000
+    rm -f "$report"
+    return 0
+  fi
+  # Never beside a fetch of the set, a look at it or a deletion of its zips.
+  busy=$( { live_of xr_fetch "fetch:$id"; live_of "dp_$id"; live_of explore "explore:$id"; live_of dropzip "dropzip:$id"; } | tr '\n' ' ')
+  [ -z "${busy// /}" ] || { echo "refusing: a fetch, a deletion or a look at $id is still queued or running (job $busy)"; return 75; }
+  [ -d "$raw" ] || { echo "refusing: $id has no raw folder on the data root yet; fetch it first"; return 2; }
+  envs_ready || { echo "refusing: the environments are not ready; 'start' makes them first"; return 75; }
+  submit unpack batch UNPACK_ID="$id" UNPACK_RAW="$raw" DATA_ROOT="$DATA_ROOT" VOLUME="$VOLUME" -- unpack.sbatch > /dev/null || return 1
+  echo "submitted one job. It starts writing only once the size rule admits it; send unpack $id again once it ends to read what it wrote."
 }
 
 word_samples() {
@@ -807,6 +834,7 @@ case "$word" in
   fetch) word_fetch ;;
   explore) word_explore ;;
   dropzip) word_dropzip ;;
+  unpack) word_unpack ;;
   samples) word_samples ;;
   stop) word_stop ;;
   cancel) word_cancel ;;
