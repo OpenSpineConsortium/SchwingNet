@@ -30,11 +30,17 @@ def quote_status(c, side):
     return STATUS.get(vq.found(c.get("quote_" + side, ""), t, vq.raw_of(aid)), "?")
 
 
+def number_key(v):
+    """A number collision's identity: its two artifacts and its whole quantity. The first 30
+    characters alone gave two pairs of candidates one key, so one verdict of each pair was
+    lost and the other shown on both."""
+    return (tuple(sorted([v["artifact_a"], v["artifact_b"]])), v["quantity"].strip().lower())
+
+
 def number_verdicts(N, extra):
     by = {}
     for v in list(N["verdicts"]) + list(extra):
-        k = (tuple(sorted([v["artifact_a"], v["artifact_b"]])), v["quantity"].lower()[:30])
-        by[k] = v
+        by[number_key(v)] = v
     return by
 
 
@@ -79,7 +85,7 @@ def main(merged, numbers, clustering, inventory, dst, date):
         out.append(f"| {name_cell} | {len(c['candidates'])} | {vc['confirmed']} | {vc['superseded-by-later']} | {vc['refuted']} | {vc['cannot-tell']} | {vc['not read']} | {nf} |")
     nvc = Counter()
     for cnd in N["candidates"]:
-        v = nv.get((tuple(sorted([cnd["artifact_a"], cnd["artifact_b"]])), cnd["quantity"].lower()[:30]))
+        v = nv.get(number_key(cnd))
         nvc[v["verdict"] if v else "not read"] += 1
     out.append(f"| Number collisions (the numbers table) | {len(N['candidates'])} | {nvc['confirmed-contradiction']} | {nvc['updated-later']} | {nvc['same-number-restated'] + nvc['different-quantities'] + nvc['scope-or-unit-differs']} | {nvc['cannot-tell']} | {nvc['not read']} | {sum(1 for x in N['candidates'] if quote_status(x, 'a') == 'not found' or quote_status(x, 'b') == 'not found')} |")
     out.append("")
@@ -99,7 +105,7 @@ def main(merged, numbers, clustering, inventory, dst, date):
         out.append("")
     rows = []
     for cnd in N["candidates"]:
-        v = nv.get((tuple(sorted([cnd["artifact_a"], cnd["artifact_b"]])), cnd["quantity"].lower()[:30]))
+        v = nv.get(number_key(cnd))
         if v and v["verdict"] in CONFIRMED_N:
             rows.append((cnd, v))
     if rows:
@@ -116,7 +122,7 @@ def main(merged, numbers, clustering, inventory, dst, date):
         out.append("| # | Quantity | A | A gives | B | B gives | Quote A | Quote B | Verdict | Why |")
         out.append("|---|---|---|---|---|---|---|---|---|---|")
         for i, c in enumerate(rows, 1):
-            v = nv.get((tuple(sorted([c["artifact_a"], c["artifact_b"]])), c["quantity"].lower()[:30]))
+            v = nv.get(number_key(c))
             verdict = v["verdict"] if v else ""
             why = short(v.get("resolution_hint") or v.get("explanation"), 260) if v else short(c["why"], 200)
             out.append(f"| {i} | {short(c['quantity'], 110)} | {link(c['artifact_a'], titles)} | {short(c['value_a'], 70)} | {link(c['artifact_b'], titles)} | {short(c['value_b'], 70)} | {quote_status(c, 'a')} | {quote_status(c, 'b')} | {verdict} | {why} |")
