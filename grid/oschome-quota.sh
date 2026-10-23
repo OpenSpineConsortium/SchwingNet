@@ -3,8 +3,9 @@
 # owner's ask of 2026-10-23): used, free and total under the CephFS quota of /rs/rs_grp_oschome, its
 # file count and a bar, then what the admitted fetches still running have yet to land and the room
 # that leaves a new fetch. The figures are the folder's own CephFS attributes, read with no walk, the
-# same reading the size rule decides by (grid/size-rule.sh). Runs on the login node with bash,
-# getfattr, squeue and awk alone; the gate word status prints the same lines.
+# same reading the size rule decides by (grid/size-rule.sh), or the folder's size by stat where its
+# use reads as no count (#170). Runs on the login node with bash, getfattr, squeue, awk and coreutils
+# alone; the gate word status prints the same lines.
 #
 #   bash ~/SchwingNet/grid/oschome-quota.sh
 #

@@ -24,6 +24,13 @@
 # ceph.dir.rfiles as 25, and bash's arithmetic wraps such a number without a word, which would
 # have read the use as less than nothing and the room as 2.5 EB, so every fetch would have been
 # admitted. A reading that is no count admits nothing, and the readout says which one it was.
+# The status word then found the same 48 digits on the login node, where every folder under the
+# volume read clean (issue #170). CephFS keeps the use as one 64-bit count and also gives it as the
+# folder's size where the mount reports a folder's recursive size as its size, a path that does not
+# pass through getxattr; so where the volume's attribute is no count, or a count below the data
+# root's, which the volume holds, its use is read by stat, once the data root, inside the volume on
+# its mount and holding at least a gigabyte, shows that stat gives a folder's ceph.dir.rbytes
+# (volume_used). Python cannot be that second reader there, since warrior kills it by name.
 #
 # What each fetch still owes is kept beside its landing, $DATA/<id>/meta:
 #   QUEUED   "<job> <utc>", written when grid/run-platform-fetch.sh submits the job
@@ -41,7 +48,8 @@
 #
 # Sourced by grid/platform-fetch.sbatch (the decision, in the job), grid/run-platform-fetch.sh and
 # grid/run-xray-chain.sh (the room after the running fetches, on the login node). DATA, VOLUME and
-# REPO name the folders; GETFATTR, XATTR_PYTHON and SQUEUE the tools, so a test can stand in for them.
+# REPO name the folders; GETFATTR, XATTR_PYTHON, STAT and SQUEUE the tools, so a test can stand in for
+# them.
 
 xattr_value() {  # xattr_value NAME FOLDER: a CephFS attribute's value up to its first NUL; 2 when no reader runs
   local python=${XATTR_PYTHON:-python3}
@@ -93,10 +101,154 @@ xattr_words() {  # xattr_words NAME FOLDER: what one reading of the attribute ga
   esac
 }
 
+size_by_stat() {  # size_by_stat FOLDER: the size of the folder FOLDER names, links followed, where stat gives a count, else nothing
+  local size
+  # -L, since /rs/rs_grp_oschome may be a link into /.rs/volumes, and a link's own size is the
+  # length of the path it holds, which would read as a volume of a few bytes.
+  size=$("${STAT:-stat}" -L -c %s "$1" 2>/dev/null) || return 0
+  if is_count "$size"; then echo "$size"; fi
+}
+
+device_of() {  # device_of FOLDER: the device stat gives the folder FOLDER names, links followed, where it is a count, else nothing
+  local device
+  device=$("${STAT:-stat}" -L -c %d "$1" 2>/dev/null) || return 0
+  if is_count "$device"; then echo "$device"; fi
+}
+
+data_root_on() {  # data_root_on VOLUME: 0 where DATA names a folder inside VOLUME on its mount; 1 where DATA names no folder, 2 where it lies outside VOLUME, 3 where it lies on another device
+  local volume data device
+  [ -n "${DATA:-}" ] && [ -d "$DATA" ] || return 1
+  # Inside once every link and .. is resolved, so neither can name a folder elsewhere, and with the
+  # slash, so a sibling such as /rs/rs_grp_oschome2 is not inside /rs/rs_grp_oschome.
+  volume=$(readlink -f -- "$1" 2>/dev/null) && data=$(readlink -f -- "$DATA" 2>/dev/null) || return 2
+  case "$data" in "${volume%/}"/?*) ;; *) return 2 ;; esac
+  # And on the same device, since a folder mounted inside the volume shows nothing of the volume's mount.
+  device=$(device_of "$1")
+  [ -n "$device" ] && [ "$(device_of "$DATA")" = "$device" ] || return 3
+}
+
+data_root_bytes() {  # data_root_bytes VOLUME: the data root's ceph.dir.rbytes where the data root lies inside VOLUME on its mount, a floor under VOLUME's use; else nothing
+  data_root_on "$1" || return 0
+  xattr_digits ceph.dir.rbytes "$DATA"
+  return 0
+}
+
+stat_gives_rbytes() {  # stat_gives_rbytes VOLUME: where stat gives a folder's ceph.dir.rbytes as its size on VOLUME's mount, as the data root shows, the data root's bytes, the lower of two readings; else nothing, ending 1
+  local before size after low high
+  # Shown on the data root, which lies inside the volume on the same mount and whose attribute
+  # reads: a mount that gives a folder's entry count as its size, as the kernel client does under
+  # its norbytes option, fails here instead of being read as a volume of a few bytes.
+  data_root_on "$1" || return 1
+  before=$(xattr_digits ceph.dir.rbytes "$DATA") && [ -n "$before" ] || return 1
+  size=$(size_by_stat "$DATA")
+  after=$(xattr_digits ceph.dir.rbytes "$DATA") && [ -n "$after" ] || return 1
+  [ -n "$size" ] || return 1
+  # Between two readings of the attribute, so bytes landing meanwhile never fail the check; and of
+  # at least a gigabyte, more than any folder holds entries, since an empty data root holds as many
+  # bytes as entries, none, and would pass on a mount that gives the count.
+  if [ "$before" -le "$after" ]; then low=$before high=$after; else low=$after high=$before; fi
+  [ "$low" -ge 1000000000 ] && [ "$size" -ge "$low" ] && [ "$size" -le "$high" ] || return 1
+  echo "$low"
+}
+
+volume_used() {  # volume_used VOLUME: "<bytes> attribute" or "<bytes> stat", what VOLUME holds, or nothing where its attribute is not there; 2 when no reader ran, 3 when no reading counts
+  local used rc floor
+  used=$(xattr_digits ceph.dir.rbytes "$1")
+  rc=$?
+  [ "$rc" != 2 ] || return 2
+  [ "$rc" = 3 ] || [ -n "$used" ] || return 0
+  # The volume holds the data root, so a count below the data root's is no reading of the volume,
+  # whatever cut it short, as a NUL among its digits would.
+  if [ "$rc" = 0 ]; then
+    floor=$(data_root_bytes "$1")
+    if [ -z "$floor" ] || [ "$used" -ge "$floor" ]; then
+      echo "$used attribute"
+      return 0
+    fi
+  fi
+  floor=$(stat_gives_rbytes "$1") || return 3
+  used=$(size_by_stat "$1")
+  [ -n "$used" ] && [ "$used" -ge "$floor" ] || return 3
+  echo "$used stat"
+}
+
+getfattr_bytes() {  # getfattr_bytes NAME FOLDER: "<n> bytes, <text>", every byte getfattr gives, one that is no printable ASCII as \ooo, the first 96 shown
+  # The value whole, past any NUL, so the readout shows what the reading rule refused.
+  command -v "${GETFATTR:-getfattr}" > /dev/null 2>&1 || return 0
+  "${GETFATTR:-getfattr}" --only-values -n "$1" "$2" 2>/dev/null | od -An -v -tu1 | awk '
+    { for (i = 1; i <= NF; i++) { n++; b = $i + 0
+        if (n <= 96) text = text ((b > 32 && b < 127 && b != 92) ? sprintf("%c", b) : sprintf("\\%03o", b)) } }
+    END { printf "%d byte%s, %s%s\n", n, (n == 1 ? "" : "s"), text, (n > 96 ? " and more" : "") }'
+}
+
+stat_figure() {  # stat_figure FORMAT FOLDER: what stat gives for FORMAT, links followed, its digits and minus signs alone, the first 40
+  "${STAT:-stat}" -L -c "$1" "$2" 2>/dev/null | LC_ALL=C tr -dc '0-9-' | cut -c 1-40
+}
+
+mount_kind() {  # mount_kind FOLDER: the kind of mount stat names for FOLDER, letters, digits and . / _ - alone, else nothing
+  local kind
+  kind=$("${STAT:-stat}" -f -c %T "$1" 2>/dev/null | LC_ALL=C tr -dc 'a-zA-Z0-9./_-' | cut -c 1-40)
+  echo "${kind:-nothing}"
+}
+
+stat_words() {  # stat_words VOLUME: what stat gives for VOLUME and for the data root, and why the data root shows nothing of the volume's mount where it does not, in words
+  local size said data_size data_bytes device data_device
+  size=$(stat_figure %s "$1")
+  said="stat gives the volume's size as ${size:-nothing}"
+  data_root_on "$1"
+  case $? in
+    0) data_size=$(stat_figure %s "$DATA")
+       data_bytes=$(xattr_digits ceph.dir.rbytes "$DATA")
+       echo "$said and the data root's as ${data_size:-nothing} on a mount it calls $(mount_kind "$1"), where the data root's ceph.dir.rbytes is ${data_bytes:-unread}" ;;
+    3) device=$(stat_figure %d "$1")
+       data_device=$(stat_figure %d "$DATA")
+       echo "$said on a mount it calls $(mount_kind "$1"), device ${device:-nothing}, and the data root lies on device ${data_device:-nothing}, another mount, so it shows nothing of the volume's" ;;
+    2) echo "$said on a mount it calls $(mount_kind "$1"), and the data root, its links and any .. resolved, is no folder inside the volume, so it shows nothing of the volume's mount" ;;
+    *) echo "$said on a mount it calls $(mount_kind "$1"), with no data root to show what stat gives a folder on the volume's mount" ;;
+  esac
+}
+
+rbytes_words() {  # rbytes_words VOLUME: VOLUME's ceph.dir.rbytes in words; 4 where it reads, as no count or as a count below the data root's, and so is no reading of the volume
+  local value floor
+  value=$(xattr_digits ceph.dir.rbytes "$1")
+  case $? in
+    3) xattr_words ceph.dir.rbytes "$1"; return 4 ;;
+    0) [ -n "$value" ] || { xattr_words ceph.dir.rbytes "$1"; return 0; } ;;
+    *) xattr_words ceph.dir.rbytes "$1"; return 0 ;;
+  esac
+  floor=$(data_root_bytes "$1")
+  if [ -n "$floor" ] && [ "$value" -lt "$floor" ]; then
+    echo "ceph.dir.rbytes reads $value, less than the data root's $floor inside it, so it is no reading of the volume"
+    return 4
+  fi
+  echo "ceph.dir.rbytes reads $value"
+}
+
+use_words() {  # use_words VOLUME USED HOW: the use volume_used read, USED by HOW, or why none counts, with what getfattr and stat give where stat was asked
+  local bytes
+  case "$3" in
+    attribute) echo "ceph.dir.rbytes reads $2"; return 0 ;;
+    stat) echo "its use reads $2 as the volume's size by stat"; return 0 ;;
+  esac
+  rbytes_words "$1"
+  [ "$?" = 4 ] || return 0
+  bytes=$(getfattr_bytes ceph.dir.rbytes "$1")
+  [ -z "$bytes" ] || echo "getfattr gives it as $bytes"
+  stat_words "$1"
+}
+
+stat_note() {  # stat_note VOLUME: why the readout's Used is the volume's size by stat, and what shows that stat gives a folder's ceph.dir.rbytes
+  local bytes
+  bytes=$(getfattr_bytes ceph.dir.rbytes "$1")
+  echo "Used is the volume's size by stat, since its $(rbytes_words "$1")${bytes:+; getfattr gives it as $bytes}"
+  echo "On this mount stat gives a folder's ceph.dir.rbytes as its size: the data root's size by stat, $(size_by_stat "$DATA"), matches its own ceph.dir.rbytes read before and after"
+}
+
 volume_free_bytes() {  # volume_free_bytes VOLUME: "<bytes free> quota" or "<bytes free> df", else nothing
   local volume=$1 quota used avail
   quota=$(xattr_digits ceph.quota.max_bytes "$volume") || return 1
-  used=$(xattr_digits ceph.dir.rbytes "$volume") || return 1
+  used=$(volume_used "$volume") || return 1
+  used=${used%% *}
   if [ -n "$quota" ] && [ "$quota" != 0 ]; then
     [ -n "$used" ] || return 1
     echo "$(( quota > used ? quota - used : 0 )) quota"
@@ -349,16 +501,16 @@ mark_queued() {  # mark_queued ID JOB: the QUEUED line of a fetch sent under the
 # reading, so the readout and the rule never disagree. Called by grid/oschome-quota.sh in the owner's
 # shell and by grid/gate.sh's status word, which names no folder, so the title is the caller's.
 quota_readout() {  # quota_readout VOLUME TITLE: the readout; 1 when the volume has no quota that can be read
-  local volume=$1 quota used files files_said="" max_files said owed n unsized
+  local volume=$1 quota used how files files_said="" max_files said owed n unsized
   quota=$(xattr_digits ceph.quota.max_bytes "$volume")
-  used=$(xattr_digits ceph.dir.rbytes "$volume")
+  read -r used how <<< "$(volume_used "$volume")"
   files=$(xattr_digits ceph.dir.rfiles "$volume")
   max_files=$(xattr_digits ceph.quota.max_files "$volume")
   echo "$2"
   if [ -z "$quota" ] || [ "$quota" = 0 ] || [ -z "$used" ]; then
     echo "The CephFS quota or its use could not be read, so the size rule admits no fetch:"
     xattr_words ceph.quota.max_bytes "$volume" | sed 's/^/  /'
-    xattr_words ceph.dir.rbytes "$volume" | sed 's/^/  /'
+    use_words "$volume" "$used" "$how" | sed 's/^/  /'
     return 1
   fi
   # wsuquota's own layout: two decimals, a 96-cell bar filled by the share used, rounded down. A
@@ -375,6 +527,7 @@ quota_readout() {  # quota_readout VOLUME TITLE: the readout; 1 when the volume 
     cells = int(96 * u / q); if (cells > 96) cells = 96
     bar = "["; for (i = 0; i < 96; i++) bar = bar (i < cells ? "#" : "-"); print bar "]"
   }'
+  [ "$how" != stat ] || stat_note "$volume"
   if ! said=$(owed_by_running ""); then
     echo "Owed  =         not known; squeue did not answer, so the size rule admits no fetch now"
     return 0
