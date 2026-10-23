@@ -164,7 +164,8 @@ def status(run, state):
         repo, folder = aid.split("/", 1)
         try:
             old = st.text_at(run.clones[repo], state["artifacts"][aid], folder)
-            new = open(f"{run.text_dir}/{aid}.txt", encoding="utf-8").read()
+            with open(f"{run.text_dir}/{aid}.txt", encoding="utf-8") as f:
+                new = f.read()
             hunks = st.changed_lines(old, new)
         except subprocess.CalledProcessError:  # an old tree this clone lacks: the reader takes the page whole
             hunks = None

@@ -150,15 +150,20 @@ def passages(text):
             start = end
 
 
+def read(path, errors="strict"):
+    with open(path, encoding="utf-8", errors=errors) as f:
+        return f.read()
+
+
 def sources(text_dir, root):
     """Every text the concepts are checked against, by id: each artifact's extracted text
     (repo/folder), each research note (notes:docs/research/...) and each dataset record's own
     words (registry:<id>)."""
-    out = {aid: open(f"{text_dir}/{aid}.txt", encoding="utf-8").read() for aid in vq.artifact_ids(text_dir)}
+    out = {aid: read(f"{text_dir}/{aid}.txt") for aid in vq.artifact_ids(text_dir)}
     for path in sorted(glob.glob(os.path.join(root, "docs", "research", "**", "*.md"), recursive=True)):
-        out["notes:" + os.path.relpath(path, root).replace(os.sep, "/")] = open(path, encoding="utf-8", errors="replace").read()
+        out["notes:" + os.path.relpath(path, root).replace(os.sep, "/")] = read(path, errors="replace")
     for path in sorted(glob.glob(os.path.join(root, "data", "sources", "*.json"))):
-        rec = json.load(open(path, encoding="utf-8"))
+        rec = json.loads(read(path))
         out["registry:" + rec["id"]] = "\n".join(str(rec.get(k) or "") for k in ("what", "status"))
     return out
 
@@ -214,7 +219,7 @@ def dataset_concepts(root, overrides):
     """One concept per numeric count of each dataset record whose key names what it counts."""
     out = []
     for path in sorted(glob.glob(os.path.join(root, "data", "sources", "*.json"))):
-        rec = json.load(open(path, encoding="utf-8"))
+        rec = json.loads(read(path))
         aliases = overrides.get(rec["id"], name_aliases(rec["name"]))
         for key, value in (rec.get("counts") or {}).items():
             noun = noun_of(key)
@@ -230,7 +235,7 @@ def unnamed_records(root, overrides):
     name; the concept page lists them, so a person can name them there."""
     out = []
     for path in sorted(glob.glob(os.path.join(root, "data", "sources", "*.json"))):
-        rec = json.load(open(path, encoding="utf-8"))
+        rec = json.loads(read(path))
         counted = [k for k, v in (rec.get("counts") or {}).items()
                    if noun_of(k) and isinstance(v, (int, float)) and not isinstance(v, bool) and v]
         if counted and not overrides.get(rec["id"], name_aliases(rec["name"])):

@@ -93,11 +93,15 @@ open_pr() {
 }
 
 # Whether owner-ok's latest run on the pull request's head failed: the owner turned it down, or
-# the gate could not pass it, and either way no run builds on it until a person has looked.
+# the gate could not pass it, and either way no run builds on it until a person has looked. A
+# read that fails stops the script, since a Reject it could not see would be built on.
 turned_down() {
   local conclusions
-  conclusions=$(gh api "repos/$repo/commits/$start/check-runs?check_name=owner-ok&filter=latest&per_page=100" \
-    --jq '[.check_runs[].conclusion] | map(select(. != null)) | join(" ")')
+  if ! conclusions=$(gh api "repos/$repo/commits/$start/check-runs?check_name=owner-ok&filter=latest&per_page=100" \
+    --jq '[.check_runs[].conclusion] | map(select(. != null)) | join(" ")'); then
+    echo "owner-ok's check runs on the head of the synthesis pull request #$pr could not be read, so no run builds on it" >&2
+    exit 1
+  fi
   [[ " $conclusions " == *" failure "* ]]
 }
 

@@ -58,7 +58,9 @@ def readme_rows(clone, repo):
     folder, link, account and summary."""
     rows = []
     path = os.path.join(clone, "artifacts", "README.md")
-    for line in open(path, encoding="utf-8"):
+    with open(path, encoding="utf-8") as f:
+        lines = f.read().splitlines()
+    for line in lines:
         m = ROW.match(line.strip())
         if m:
             link = m.group("link")
