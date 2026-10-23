@@ -1139,6 +1139,51 @@ esac
         self.assertEqual(len(self.submitted()), 3)
         self.assertEqual(self.gate("samples", "all").returncode, 64)
 
+    def test_explore_looks_once_then_prints_the_report(self):
+        (self.repo / "tools" / "explore.py").write_text("# the tool\n", encoding="utf-8")
+        shutil.copy(GRID / "fetch-xray.json", self.repo / "grid" / "fetch-xray.json")
+        # an id of no list, and one with no raw folder yet, are refused and queue nothing
+        self.assertEqual(self.gate("explore", "no_such_set").returncode, 64)
+        self.assertEqual(self.gate("explore", "kaggle_scoliosis_yolov5").returncode, 2)
+        self.assertEqual(self.gate("explore", "a", "b").returncode, 64)
+        self.assertEqual(self.gate("explore", "Bad-Id").returncode, 64)
+        for name in ("kaggle_scoliosis_yolov5", "kaggle_fracture_multiregion"):
+            (self.data / name / "raw").mkdir(parents=True)
+        self.assertEqual(self.gate("explore", "kaggle_scoliosis_yolov5").returncode, 75)
+        self.environments_ready()
+        done = self.gate("explore", "kaggle_scoliosis_yolov5")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        lines = self.submitted()
+        self.assertEqual(len(lines), 1, lines)
+        self.assertIn("--class batch --name explore", lines[0])
+        self.assertIn("explore.sbatch", lines[0])
+        self.assertIn(f"EXPLORE_RAW={self.data}/kaggle_scoliosis_yolov5/raw", lines[0])
+        # the scoliosis export is compared with both AASCE copies; the fracture set with nothing
+        self.assertIn(f"AASCE-ke30-mirror={self.data}/thoracic_xr/mirror_zlinzju_ke30_u7_AASCE2019|"
+                      f"AASCE-BoostNet={self.data}/aasce2019_boostnet/raw/aasce", lines[0])
+        job = self.recorded()["explore"]
+        # while its job is live a second send is refused and queues nothing
+        self.live(job)
+        done = self.gate("explore", "kaggle_scoliosis_yolov5")
+        self.assertEqual(done.returncode, 75, done.stdout)
+        self.assertEqual(len(self.submitted()), 1)
+        # once it has ended, the report it wrote is printed and nothing is queued
+        (self.fake / "queue").write_text("", encoding="utf-8")
+        report = self.repo / "grid" / "logs" / "EXPLORE-kaggle_scoliosis_yolov5.md"
+        report.write_text("# explore kaggle_scoliosis_yolov5\n## what the set holds\n  files: 3\n", encoding="utf-8")
+        done = self.gate("explore", "kaggle_scoliosis_yolov5")
+        self.assertEqual(done.returncode, 0, done.stdout)
+        self.assertIn("  files: 3", done.stdout)
+        self.assertEqual(len(self.submitted()), 1)
+        # a change to the tool makes the next send look again
+        (self.repo / "tools" / "explore.py").write_text("# the tool, changed\n", encoding="utf-8")
+        done = self.gate("explore", "kaggle_scoliosis_yolov5")
+        self.assertEqual(done.returncode, 0, done.stdout)
+        self.assertEqual(len(self.submitted()), 2)
+        done = self.gate("explore", "kaggle_fracture_multiregion")
+        self.assertEqual(done.returncode, 0, done.stdout)
+        self.assertIn("EXPLORE_AGAINST= ", self.submitted()[2] + " ")
+
     def test_status_shows_the_sample_manifest_whole(self):
         logs = self.repo / "grid" / "logs"
         logs.mkdir(parents=True, exist_ok=True)
