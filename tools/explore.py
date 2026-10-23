@@ -12,13 +12,14 @@ original film even when the person is the same. The gate word `explore <id>` run
         [--against <label>=<folder> ...] --out <report.md> [--workers N]
 
 The listing reads the raw folder and every zip in it without unpacking: files and bytes by
-extension, each folder to depth three with its file count, the image sizes of a sample, the
-classes a YOLO export's data.yaml names with the boxes its label files hold per class, and each
-CSV's header and row count. The comparison reduces every image of the set, and its mirror image,
-as the leak checks do (tools/leaks.py: the 0.5-99.5 percentile 8-bit reduction squashed to a
-square, so a resize or a stretch to 640 x 640 changes little), finds the pairs within a perceptual
-hash distance by schwingnet.leaks' multi-index search, and confirms each by NCC64 at 0.97, the
-leak checks' threshold; it also matches file names once Roboflow's `_jpg.rf.<hash>` suffix is cut.
+extension, each folder to depth five with its file count, a zip the fetch unpacked beside itself
+counted once, the image sizes of a sample, the classes a YOLO export's data.yaml names with the
+boxes its label files hold per class, and each CSV's header and row count; a name the grid log
+would hide as a token is shown with its underscores as spaces. The comparison reduces every image
+of the set, and its mirror image, as the leak checks do (tools/leaks.py: the 0.5-99.5 percentile
+8-bit reduction squashed to a square, so a resize or a stretch to 640 x 640 changes little), finds
+the pairs within a perceptual hash distance by schwingnet.leaks' multi-index search, and confirms
+each by NCC64 at 0.97, the leak checks' threshold; it also matches file names once Roboflow's `_jpg.rf.<hash>` suffix is cut.
 A crop or a rotation beyond a few degrees escapes both, so the report says what it could not see.
 
 Only counts, the set's own folder and class names and a few example pairs leave the grid; no
@@ -47,8 +48,8 @@ for folder in (ROOT / "vendor" / "beethoven-qa" / "src", ROOT / "src"):
 from schwingnet import leaks  # noqa: E402
 
 IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff"}
-DEPTH = 3
-FOLDER_LINES = 60
+DEPTH = 5
+FOLDER_LINES = 90
 SIZE_SAMPLE = 400
 CSV_FILES = 10
 YAML_LINES = 30
@@ -58,6 +59,9 @@ NCC_NEAR = 0.90
 EXAMPLES = 8
 PAIR_LIMIT = 5_000_000
 ROBOFLOW = re.compile(r"_(jpe?g|png|bmp)\.rf\.[0-9a-f]+$", re.IGNORECASE)
+# The grid log's cleaner (symphony-template tools/grid_accounts.py) hides any run of 32 or more of
+# these characters as a token; a long folder name is shown with breaks so it reaches the reader.
+MASKED_RUN = re.compile(r"[A-Za-z0-9_+=-]{32,}")
 
 
 def load_leaks_tool():
@@ -82,13 +86,31 @@ def members(raw):
         found.append(("disk", relative, path.stat().st_size))
         if path.suffix.lower() == ".zip":
             try:
-                with zipfile.ZipFile(path) as archive:
-                    for info in archive.infolist():
-                        if not info.is_dir():
-                            found.append((relative, info.filename, info.file_size))
+                inside, unpacked = zip_members(path, relative)
             except (OSError, zipfile.BadZipFile) as error:
                 notes.append(f"{relative}: not readable as a zip ({type(error).__name__})")
+                continue
+            found += inside
+            if unpacked:
+                notes.append(f"{relative}: {unpacked:,} members already unpacked beside it, counted once, from disk")
     return found, notes
+
+
+def zip_members(path, relative):
+    """A zip's members as files of the set, less those the fetch already unpacked beside the
+    archive with their full size (tools/fetch_sources.py, unpack_archives), which the walk of
+    the disk counts; and how many those were."""
+    inside, unpacked = [], 0
+    with zipfile.ZipFile(path) as archive:
+        for info in archive.infolist():
+            if info.is_dir():
+                continue
+            twin = path.parent / info.filename
+            if twin.is_file() and twin.stat().st_size == info.file_size:
+                unpacked += 1
+            else:
+                inside.append((relative, info.filename, info.file_size))
+    return inside, unpacked
 
 
 def suffix_of(name):
@@ -105,14 +127,23 @@ def by_extension(files):
     return [f"  {ext}: {counts[ext]:,} files, {sizes[ext] / 1e6:,.1f} MB" for ext, _ in counts.most_common()]
 
 
+def readable(name):
+    """A name as the report shows it: a run the grid log would hide as a token gets its
+    underscores shown as spaces, and is cut every 24 characters if it is still too long."""
+    if not MASKED_RUN.search(name):
+        return name
+    name = name.replace("_", " ")
+    return MASKED_RUN.sub(lambda m: " ".join(m.group(0)[i:i + 24] for i in range(0, len(m.group(0)), 24)), name)
+
+
 def folder_counts(files):
-    """Lines of each folder to depth three with the files below it, in path order, bounded."""
+    """Lines of each folder to depth five with the files below it, in path order, bounded."""
     counts = Counter()
     for _, name, _ in files:
         parts = PurePosixPath(name).parts[:-1]
         for depth in range(1, min(len(parts), DEPTH) + 1):
             counts["/".join(parts[:depth])] += 1
-    lines = [f"  {'  ' * (key.count('/'))}{key.split('/')[-1]}/: {counts[key]:,}" for key in sorted(counts)]
+    lines = [f"  {'  ' * (key.count('/'))}{readable(key.split('/')[-1])}/: {counts[key]:,}" for key in sorted(counts)]
     if len(lines) > FOLDER_LINES:
         lines = lines[:FOLDER_LINES] + [f"  ... {len(lines) - FOLDER_LINES} more folders"]
     return lines
@@ -189,7 +220,7 @@ def listing(raw, files, notes):
     lines = ["## what the set holds", f"  files: {len(files):,}, images: {len(images):,}"]
     lines += [f"  {note}" for note in notes]
     lines += ["## by extension"] + by_extension(files)
-    lines += ["## folders (depth 3; a zip's members under the zip's own folders)"] + folder_counts(files)
+    lines += ["## folders (depth 5; a zip's members under the zip's own folders; a long name's underscores shown as spaces)"] + folder_counts(files)
     lines += ["## image sizes (an even sample)"] + image_sizes(raw, images)
     yolo = yolo_lines(raw, files)
     if yolo:
@@ -213,7 +244,7 @@ def stem_key(name):
 def shown(name):
     """A file name as an example pair shows it: Roboflow's suffix cut, at most 60 characters."""
     path = PurePosixPath(name)
-    return (ROBOFLOW.sub("", path.stem) + path.suffix)[:60]
+    return readable(ROBOFLOW.sub("", path.stem) + path.suffix)[:60]
 
 
 _TOOL = {}
