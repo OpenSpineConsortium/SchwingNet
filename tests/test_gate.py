@@ -37,9 +37,15 @@ if [ -f "$FAKE/sacct.out" ]; then cat "$FAKE/sacct.out"; else echo "101|sn_setup
     "scancel": """#!/bin/bash
 echo "$*" >> "$FAKE/scancel.log"
 """,
+    # df -B1 --output=avail, in bytes, as grid/size-rule.sh asks it where no CephFS quota answers
     "df": """#!/bin/bash
 echo "Avail"
-echo "900000G"
+echo "900000000000000"
+""",
+    # stat -f -c %T as grid/size-rule.sh asks it before df: a mount that is no CephFS, kernel or FUSE,
+    # so the stand-in df may answer for it; named so it never stands in for stat itself
+    "fstype": """#!/bin/bash
+echo "ext2/ext3"
 """,
 }
 
@@ -81,6 +87,7 @@ class GateTest(unittest.TestCase):
                    HPCW_LOG=str(self.fake / "sbatch.log"), HPCW_REFUSE=str(self.fake / "refuse"), HPCW_LOGS=str(self.fake / "joblogs"), SHARED_DATA=str(self.tmp / "shared"))
         for name in ("GETFATTR", "VOLUME", "HPCW_DRY", "HPCW_FIRST", "HPCW_FRAMEWORK", "SBATCH", "SQUEUE", "SACCT", "SCANCEL", "DF", "DEPEND", "PYDRV"):
             env.pop(name, None)
+        env["STAT"] = str(self.fake / "fstype")
         return env
 
     def submitted(self):
@@ -800,9 +807,13 @@ echo "the split is not disjoint; no training step reads this version"; exit 1
         count = len(self.submitted())
         self.assertEqual(self.gate("fetch", "aariz").returncode, 75)
         self.assertEqual(len(self.submitted()), count)
-        # a credentialed set goes in, its catalog job after every catalog still live
+        # a credentialed set goes in, its catalog job after every catalog still live, with the
+        # size the start chain's list stated left for that chain (grid/size-rule.sh)
+        sizes = (self.repo / "grid" / "logs" / "XRAY_SIZES.txt").read_text(encoding="utf-8").split()
+        self.assertEqual(sizes[0], started["xr_fetch"])
         done = self.gate("fetch", "vindr_pcxr")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn(f"{int(sizes[1]) // 10**9} GB of it owed to 1 running fetch", done.stdout)
         catalog = self.line_of("03-catalog.sbatch")[-1]
         self.assertIn(f"afterany:{started['catalog']},afterany:{started['xr_catalog']} ", catalog)
         # the same set again while its fetch is live: refused
@@ -836,28 +847,50 @@ echo "the split is not disjoint; no training step reads this version"; exit 1
         self.assertIn("--format=JobID,JobName,State,Elapsed,ExitCode,NodeList", (self.fake / "sacct.log").read_text(encoding="utf-8"))
 
     def test_status_tallies_the_space_each_set_takes_largest_first(self):
-        # CephFS's recursive size, faked per folder; a folder the attribute is missing on reads unknown
+        # CephFS's attributes, faked per folder: the volume's quota, use and file count, each set's
+        # recursive size; a folder the attribute is missing on reads unknown
         (self.fake / "getfattr").write_text("""#!/bin/bash
 folder=${!#}
-case "$folder" in
+case "$3:$folder" in
+  ceph.quota.max_bytes:/rs/rs_grp_oschome) echo -n 21990232555520 ;;
+  ceph.dir.rbytes:/rs/rs_grp_oschome) echo -n 13146000000000 ;;
+  ceph.dir.rfiles:/rs/rs_grp_oschome) echo -n 7008826 ;;
+  *:/rs/rs_grp_oschome) exit 1 ;;
   */big) echo -n 2500000000000 ;;
   */small) echo -n 1500000000 ;;
   */unread) exit 1 ;;
+  */nul) printf '1500000000\\0999' ;;
+  */long) echo -n 165744388008563119603013828275240916436124852417 ;;
   *) echo -n 2600000000000 ;;
 esac
 """, encoding="utf-8")
         (self.fake / "getfattr").chmod(0o755)
-        for name in ("small", "big", "unread"):
+        for name in ("small", "big", "unread", "nul", "long"):
             (self.data / name).mkdir()
         done = self.gate("status")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         out = done.stdout
         self.assertIn("## space on the lab volume", out)
-        self.assertIn("900000 GB free", out)
-        self.assertIn("the volume's quota: 2600 GB", out)
+        # the room under the quota as the size rule reads it, in wsuquota's layout (#160); never
+        # df's figure, which on CephFS is the whole pool's
+        readout = out[out.index("  Lab Volume Disk Usage"):].splitlines()[:8]
+        self.assertEqual(readout, [
+            "  Lab Volume Disk Usage (CephFS quota; 1 gb = 10^9 bytes)",
+            "  Used  = 59.78%  13146.00gb",
+            "  Free  = 40.22%  8844.23gb",
+            "  Total =         21990.23gb",
+            "  File Count =    7008826",
+            "  [" + "#" * 57 + "-" * 39 + "]",
+            "  Owed  =         0.00gb still to land for 0 running fetches",
+            "  Room  =         8844.23gb for a new fetch, which lands whole or not at all",
+        ])
+        self.assertNotIn("900000", out)
         self.assertIn("  data: 2600 GB in all", out)
-        tally = [line.split() for line in out.splitlines() if line.startswith("    ")][:3]
-        self.assertEqual(tally, [["2500", "big"], ["2", "small"], ["?", "unread"]])
+        tally = [line.split() for line in out.splitlines() if line.startswith("    ")]
+        self.assertEqual(tally[0], ["2500", "big"])
+        # a value ends at its first NUL, and one that is no count of at most 18 digits reads
+        # unknown, never as a figure bash's arithmetic wrapped (#160)
+        self.assertEqual(sorted(tally[1:5]), [["2", "nul"], ["2", "small"], ["?", "long"], ["?", "unread"]])
         self.assertIn("shared datasets: not there", out)
         self.assertNotIn(str(self.tmp), out)
         self.assertLess(out.index("## space"), out.index("## the gate's newest jobs") if "## the gate's" in out else len(out))
@@ -881,7 +914,11 @@ esac
         self.live(900, 901, 902)
         done = self.gate("status")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
-        self.assertIn("  fetch of vindr_pcxr (job 900): 1234 files, 4560 MB, last write 40s ago", done.stdout)
+        # The age is counted when status reaches the fetch, after the space block, so a slow runner
+        # may see a few seconds more than the 40 the fake attribute was written with.
+        landed = (r"\n  fetch of vindr_pcxr \(job 900\): 1234 files, 4560 MB, "
+                  r"last write 4[0-9]s ago\n")
+        self.assertRegex(done.stdout, landed)
         self.assertIn("  fetch of padchest (job 901): nothing landed yet", done.stdout)
         self.assertNotIn("job 902", done.stdout)
         self.assertNotIn(str(self.data), done.stdout)
@@ -891,6 +928,21 @@ esac
         done = self.gate("status")
         self.assertIn("fetch of vindr_pcxr (job 900): the raw folder is there; its size is not readable here", done.stdout)
         self.assertNotIn("job 901", done.stdout)
+        # A size of 48 digits, as the owner's shell printed the volume's, is no count and is not read;
+        # one with more after a NUL is read up to the NUL.
+        for rbytes, said in (("165744388008563119603013828275240916436124852417",
+                              "the raw folder is there; its size is not readable here"),
+                             ("4560000000\\0999", "1234 files, 4560 MB, last write")):
+            (self.fake / "getfattr").write_text(f"""#!/bin/bash
+case "$3" in
+  ceph.dir.rfiles) printf '1234' ;;
+  ceph.dir.rbytes) printf '{rbytes}' ;;
+  ceph.dir.rctime) printf '{now}.5' ;;
+  *) printf '1500000000' ;;
+esac
+""", encoding="utf-8")
+            done = self.gate("status")
+            self.assertIn(f"  fetch of vindr_pcxr (job 900): {said}", done.stdout)
 
     def failed(self, *rows):
         """rows of (id, word, what, job name, state, elapsed, log lines or None): the gate's list, what
@@ -1058,6 +1110,19 @@ esac
         masked = subprocess.run(["sed", "-r", "-f", str(GRID / "redact.sed")], input="scan_19650312.dcm 20201231_19990101\n",
                                 capture_output=True, text=True).stdout
         self.assertEqual(masked, "scan_<date withheld>.dcm <date withheld>_<date withheld>\n")
+
+    def test_status_keeps_a_sources_id_and_masks_a_hugging_face_token(self):
+        # the size rule's lines open with the source's id, hf_fluoroseg, which is no token; a token
+        # is hf_ and 34 letters, built here so no file holds one
+        token = "hf_" + "Ab" * 17
+        lines = ("hf_fluoroseg: refused for space; it needs 2650 gb at 2026-10-23T12:00:00Z\n"
+                 "hf_abdomenatlas2_0_mini: admitted already; job 9 restarted\n"
+                 f"token {token} and HF_TOKEN={token}\n")
+        masked = subprocess.run(["sed", "-r", "-f", str(GRID / "redact.sed")], input=lines,
+                                capture_output=True, text=True).stdout.splitlines()
+        self.assertEqual(masked, ["hf_fluoroseg: refused for space; it needs 2650 gb at 2026-10-23T12:00:00Z",
+                                  "hf_abdomenatlas2_0_mini: admitted already; job 9 restarted",
+                                  "token <withheld> and HF_TOKEN=<withheld>"])
 
     def test_status_finds_the_log_a_job_queued_before_hpcworker_wrote_in_grid_logs(self):
         # a job sbatch queued before issue #77 is in no ledger of hpcworker's; its log is where its

@@ -21,6 +21,13 @@
 #   zenodo-token grid/zenodo_fetch.py ARGS with ZENODO_TOKEN read from TOKEN_FILE: a record that opens only to
 #            the owner's approved account, each file md5-checked against the record
 #   note     print NOTE and exit 0 (a step that needs a repository or a hand step not on the grid yet)
+# Before a route downloads a byte, the owner's size rule decides (grid/size-rule.sh, issue #160): the
+# exact size of what it will land, read from the source (grid/fetch_size.py; for curl-link a one-byte
+# range request), must fit in the room left under the volume's quota after what the running fetches
+# still owe, or the job ends with exit 4 having fetched nothing; no floor stops a fetch part-way, so
+# acquisition_fetch.sh runs with FLOOR_TB=0, and a job Slurm requeues keeps the admission it was
+# given. kaggle, kaggle-dataset, gdown and redivis have no size reader yet and are refused the
+# same way, so no dataset lands without its size known.
 # Secrets are read from files into this job's environment or a mode-0600 config and never echoed.
 set -uo pipefail
 ID=${ID:?the source id}
@@ -68,23 +75,57 @@ hf_verified_files() {  # hf_verified_files STATE: whether hf-get's summary in ST
   summary=$(ls -1t "$1"/hf_*.json 2>/dev/null | head -n 1)
   [ -n "$summary" ] && grep -q '"all_verified": true' "$summary"
 }
+VOLUME=${VOLUME:-/rs/rs_grp_oschome}
+SIZER=${SIZER:-$ACQ_ENV/bin/python $REPO/grid/fetch_size.py}
+# A compute node may have no getfattr and no python3 on the job's PATH; the acq environment's Python
+# reads the quota's attributes there, so the rule never goes without them.
+XATTR_PYTHON=${XATTR_PYTHON:-$ACQ_ENV/bin/python}
+# acquisition_fetch.sh's own floor stops a fetch part-way under 5 TB free; the size rule replaces it.
+export FLOOR_TB=0
+# shellcheck source=grid/size-rule.sh
+. "$REPO/grid/size-rule.sh"
+# The two size readers below are called by name through size_and_admit, which shellcheck cannot follow.
+# shellcheck disable=SC2329
+link_size() {  # link_size LINK_FILE OUTPUT: "<total bytes> <bytes still to land> the link answers", from a one-byte range request
+  local cfg total have=0
+  cfg=/dev/shm/${USER}_${ID}_size_$$.curl
+  ( umask 077; { echo "url = \"$(head -n 1 "$1")\""; echo "range = 0-0"; echo "output = /dev/null"; echo "location"; echo "fail"; } > "$cfg" )
+  total=$("${CURL:-curl}" -sS -K "$cfg" -D - | tr -d '\r' | sed -n 's/^[Cc]ontent-[Rr]ange: bytes 0-0\/\([0-9][0-9]*\)$/\1/p' | tail -n 1)
+  rm -f "$cfg"
+  [ -n "$total" ] || { echo "no exact size; the link answers no range request with its length"; return 3; }
+  is_count "$total" || { echo "no exact size; the length the link answers is no count"; return 3; }
+  [ ! -f "$2" ] || have=$(stat -c %s "$2")
+  echo "$total $(( total > have ? total - have : 0 )) the link answers"
+}
+# shellcheck disable=SC2329
+no_size_reader() {  # the size reader of a route that has none yet: no size, so the rule refuses it
+  echo "no exact size; the $ROUTE route has no size reader yet"
+  return 3
+}
 rc=0
 case "$ROUTE" in
   acq)
     # shellcheck disable=SC2086
-    bash "$SSN/slurm/acquisition_fetch.sh" $ARGS; rc=$? ;;
+    if size_and_admit "$ID" $SIZER acq $ARGS --data-root "$DATA"; then
+      bash "$SSN/slurm/acquisition_fetch.sh" $ARGS; rc=$?
+    else rc=4; fi ;;
   idc)
     export PATH=$ACQ_ENV/bin:$PATH
     manifest=$DATA/$ID/meta/idc_$ARGS.csv
-    python "$REPO/grid/idc_manifest.py" --collection "$ARGS" --out "$manifest" && \
-      bash "$SSN/slurm/acquisition_fetch.sh" idc --collection "$ID" --manifest "$manifest" --batch 50; rc=$? ;;
+    # shellcheck disable=SC2086
+    if ! python "$REPO/grid/idc_manifest.py" --collection "$ARGS" --out "$manifest"; then rc=1
+    elif size_and_admit "$ID" $SIZER idc --manifest "$manifest" --landing "$DATA/$ID"; then
+      bash "$SSN/slurm/acquisition_fetch.sh" idc --collection "$ID" --manifest "$manifest" --batch 50; rc=$?
+    else rc=4; fi ;;
   verify)
     python3 "$SSN/data_platform/reacquire/reacquire.py" --verify "$ID"; rc=$? ;;
   gdown)
-    export PATH=$ACQ_ENV/bin:$PATH
-    scratch=$DATA/$ID/raw/gdown_$(date '+%F')
-    mkdir -p "$scratch" && cd "$scratch" && gdown "$ARGS"; rc=$?
-    file "$scratch"/* 2>/dev/null | tee "$DATA/$ID/meta/file_report.txt" ;;
+    if size_and_admit "$ID" no_size_reader; then
+      export PATH=$ACQ_ENV/bin:$PATH
+      scratch=$DATA/$ID/raw/gdown_$(date '+%F')
+      mkdir -p "$scratch" && cd "$scratch" && gdown "$ARGS"; rc=$?
+      file "$scratch"/* 2>/dev/null | tee "$DATA/$ID/meta/file_report.txt"
+    else rc=4; fi ;;
   probe)
     curl -sSIL --max-time 60 "$ARGS" | tee "$DATA/$ID/meta/probe_$(date '+%F').txt" | grep -i "^HTTP\|location\|www-authenticate" ; rc=0 ;;
   hf-token)
@@ -93,7 +134,9 @@ case "$ROUTE" in
     # Its --include glob is hf-get's to match against the repository, so this shell expands no pattern.
     set -f
     # shellcheck disable=SC2086
-    "$ACQ_ENV/bin/python" "$SSN/data_platform/reacquire/reacquire.py" hf-get $ARGS --dest "$DATA/$ID/raw" --state "$DATA/$ID/meta/fetch-state"; rc=$?
+    if size_and_admit "$ID" $SIZER hf $ARGS --dest "$DATA/$ID/raw"; then
+      "$ACQ_ENV/bin/python" "$SSN/data_platform/reacquire/reacquire.py" hf-get $ARGS --dest "$DATA/$ID/raw" --state "$DATA/$ID/meta/fetch-state"; rc=$?
+    else rc=4; fi
     set +f
     if [ "$rc" = 0 ] && ! hf_verified_files "$DATA/$ID/meta/fetch-state"; then
       # In the shape grid/log-shapes.awk keeps, so the gate word status shows why.
@@ -103,30 +146,40 @@ case "$ROUTE" in
   curl-link)
     link_file=$(eval echo "${LINK_FILE:?}")
     [ "$(stat -c %a "$link_file")" = 600 ] || { echo "$link_file must be mode 600"; exit 2; }
-    cfg=/dev/shm/${USER}_${ID}_$$.curl; umask 077
-    { echo "url = \"$(head -n 1 "$link_file")\""; echo "output = \"$DATA/$ID/raw/$ARGS\""; echo "continue-at = -"; echo "location"; echo "fail"; } > "$cfg"
-    curl -sS -K "$cfg"; rc=$?; rm -f "$cfg" ;;
+    if size_and_admit "$ID" link_size "$link_file" "$DATA/$ID/raw/$ARGS"; then
+      cfg=/dev/shm/${USER}_${ID}_$$.curl; umask 077
+      { echo "url = \"$(head -n 1 "$link_file")\""; echo "output = \"$DATA/$ID/raw/$ARGS\""; echo "continue-at = -"; echo "location"; echo "fail"; } > "$cfg"
+      "${CURL:-curl}" -sS -K "$cfg"; rc=$?; rm -f "$cfg"
+    else rc=4; fi ;;
   kaggle)
-    load_token KAGGLE_API_TOKEN "${TOKEN_FILE:-~/.fluorocap/credentials.env}" || exit 2
-    "${KAGGLE_BIN:-$HOME/mambaforge/envs/spineps/bin/kaggle}" competitions download -c "$ARGS" -p "$DATA/$ID/raw"; rc=$? ;;
+    if size_and_admit "$ID" no_size_reader; then
+      load_token KAGGLE_API_TOKEN "${TOKEN_FILE:-~/.fluorocap/credentials.env}" || exit 2
+      "${KAGGLE_BIN:-$HOME/mambaforge/envs/spineps/bin/kaggle}" competitions download -c "$ARGS" -p "$DATA/$ID/raw"; rc=$?
+    else rc=4; fi ;;
   kaggle-dataset)
-    load_token KAGGLE_API_TOKEN "${TOKEN_FILE:-~/.fluorocap/credentials.env}" || exit 2
-    "${KAGGLE_BIN:-$HOME/mambaforge/envs/spineps/bin/kaggle}" datasets download -d "$ARGS" -p "$DATA/$ID/raw"; rc=$? ;;
+    if size_and_admit "$ID" no_size_reader; then
+      load_token KAGGLE_API_TOKEN "${TOKEN_FILE:-~/.fluorocap/credentials.env}" || exit 2
+      "${KAGGLE_BIN:-$HOME/mambaforge/envs/spineps/bin/kaggle}" datasets download -d "$ARGS" -p "$DATA/$ID/raw"; rc=$?
+    else rc=4; fi ;;
   redivis)
-    load_token REDIVIS_API_TOKEN "${TOKEN_FILE:-~/.redivis/token.env}" || exit 2
-    renv=${REDIVIS_ENV:-/rs/rs_grp_oschome/go2432/envs/redivis}
-    # Under a lock, so two Redivis fetches starting together never build the environment at once.
-    (
-      flock 9
-      "$renv/bin/python" -c 'import redivis' 2>/dev/null ||
-        { "$ACQ_ENV/bin/python" -m venv "$renv" && "$renv/bin/pip" install -q "redivis==${REDIVIS_VERSION:-0.21.1}"; }
-    ) 9> "$renv.lock" || exit 2
-    # shellcheck disable=SC2086
-    "$renv/bin/python" "$REPO/grid/redivis_fetch.py" --dest "$DATA/$ID/raw" --manifest "$DATA/$ID/meta" $ARGS; rc=$? ;;
+    if size_and_admit "$ID" no_size_reader; then
+      load_token REDIVIS_API_TOKEN "${TOKEN_FILE:-~/.redivis/token.env}" || exit 2
+      renv=${REDIVIS_ENV:-/rs/rs_grp_oschome/go2432/envs/redivis}
+      # Under a lock, so two Redivis fetches starting together never build the environment at once.
+      (
+        flock 9
+        "$renv/bin/python" -c 'import redivis' 2>/dev/null ||
+          { "$ACQ_ENV/bin/python" -m venv "$renv" && "$renv/bin/pip" install -q "redivis==${REDIVIS_VERSION:-0.21.1}"; }
+      ) 9> "$renv.lock" || exit 2
+      # shellcheck disable=SC2086
+      "$renv/bin/python" "$REPO/grid/redivis_fetch.py" --dest "$DATA/$ID/raw" --manifest "$DATA/$ID/meta" $ARGS; rc=$?
+    else rc=4; fi ;;
   zenodo-token)
     load_token ZENODO_TOKEN "${TOKEN_FILE:-~/.zenodo/token.env}" || exit 2
     # shellcheck disable=SC2086
-    python3 "$REPO/grid/zenodo_fetch.py" --dest "$DATA/$ID/raw" --manifest "$DATA/$ID/meta" $ARGS; rc=$? ;;
+    if size_and_admit "$ID" $SIZER zenodo-token $ARGS --dest "$DATA/$ID/raw"; then
+      python3 "$REPO/grid/zenodo_fetch.py" --dest "$DATA/$ID/raw" --manifest "$DATA/$ID/meta" $ARGS; rc=$?
+    else rc=4; fi ;;
   note)
     echo "NOTE for $ID: ${NOTE:-see grid/README.md}"; rc=0 ;;
   *) echo "unknown route $ROUTE"; rc=64 ;;
