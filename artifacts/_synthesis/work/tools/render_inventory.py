@@ -30,7 +30,8 @@ def short(s, n):
 
 
 def main(src, dst):
-    inv = json.load(open(src, encoding="utf-8"))
+    with open(src, encoding="utf-8") as f:
+        inv = json.load(f)
     recs = inv["artifacts"]
     since = sorted(r["read_on"] for r in recs if r.get("read_on"))
     out = []
@@ -90,7 +91,8 @@ def main(src, dst):
         out.append("")
     text = "\n".join(out) + "\n"
     text = to_ascii(text)
-    open(dst, "w", encoding="ascii", newline="\n").write(text)
+    with open(dst, "w", encoding="ascii", newline="\n") as f:
+        f.write(text)
     print(dst, len(text), "bytes")
 
 

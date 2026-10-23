@@ -24,8 +24,10 @@ def link(i, titles, up="../"):
 
 
 def main(clustering, inventory, dst):
-    C = json.load(open(clustering))
-    inv = json.load(open(inventory))
+    with open(clustering, encoding="utf-8") as f:
+        C = json.load(f)
+    with open(inventory, encoding="utf-8") as f:
+        inv = json.load(f)
     titles = {f"{r['repo']}/{r['folder']}": r["title"] for r in inv["artifacts"]}
     dates = {f"{r['repo']}/{r['folder']}": r["date"] for r in inv["artifacts"]}
     J = C["judged"]
@@ -82,7 +84,8 @@ def main(clustering, inventory, dst):
             out.append(f"\nNotes: {cell(cl['notes'])}")
         out.append("")
     text = to_ascii("\n".join(out) + "\n")
-    open(dst, "w", encoding="ascii", newline="\n").write(text)
+    with open(dst, "w", encoding="ascii", newline="\n") as f:
+        f.write(text)
     print(dst, len(text), "bytes")
 
 
