@@ -29,7 +29,7 @@ GB = 1000 ** 3
 # from FAKE_XATTRS, a file of "<folder> <attribute> <value>" lines in which a folder ending /* answers
 # for every folder under it not named, the folder * for every folder not named otherwise, and an
 # attribute given no value is not there, as on a folder with no quota, and a ~ in a value is a NUL,
-# as getfattr may print one where CephFS's value ends; squeue lists the job ids in
+# as getfattr may print one where CephFS's value ends, and a ^ a line break; squeue lists the job ids in
 # FAKE_QUEUE, or fails where FAKE_SQUEUE_FAILS is set; the size reader says on stderr what it was
 # asked, prints FAKE_SIZE and ends with FAKE_SIZE_RC.
 STAND_INS = {
@@ -41,7 +41,7 @@ value=$(awk -v f="$folder" -v n="$name" '$2 == n && $1 == f { exact = $3; named 
   $2 == n && $1 == "*" { any = $3 }
   END { printf "%s", (named ? exact : (under != "" ? under : any)) }' "${FAKE_XATTRS:-/dev/null}")
 [ -n "$value" ] || { echo "$folder: $name: No such attribute" >&2; exit 1; }
-printf '%s' "$value" | tr '~' '\\000'
+printf '%s' "$value" | tr '~^' '\\000\\n'
 """,
     "squeue": """#!/bin/bash
 [ -z "${FAKE_SQUEUE_FAILS:-}" ] || { echo "slurm_load_jobs error: Socket timed out" >&2; exit 1; }
@@ -1223,8 +1223,9 @@ class SizeRuleTest(unittest.TestCase):
         self.volume.attribute(path, "ceph.quota.max_bytes", quota)
         self.volume.attribute(path, "ceph.dir.rbytes", "16574438800856~3119603013828275240916436124852417")
         self.assertEqual(self.rule(f'volume_free_bytes "{path}"'), (0, f"{quota - 16574438800856} quota"))
+        # nor is a value that holds a line break, nor one bash's arithmetic would read as a sum or a base
         for value in ("165744388008563119603013828275240916436124852417", "1000000000000000000", "12abc", "-5",
-                      "0123", "~123"):
+                      "0123", "~123", "1657^4438800856", "5+5", "16#ff"):
             self.volume.attribute(path, "ceph.dir.rbytes", value)
             self.assertEqual(self.rule(f'volume_free_bytes "{path}"'), (1, ""), value)
         code, out = self.fetch(1)
@@ -1244,12 +1245,40 @@ class SizeRuleTest(unittest.TestCase):
         self.assertEqual(code, 4, out)
         self.assertNotIn("arg:", out)
         self.assertIn("hf_example: refused; the size reader gave no size at ", shown(out))
-        self.volume.meta("hf_other", "SIZE", "admitted 777 99999999999999999999 0 2026-10-23T12:00:00Z 1")
-        self.volume.live(777)
+        # a link's length with a leading zero, which bash's arithmetic reads as octal
+        code, out = self.fetch(0, FAKE_SIZE="0123 123 the link answers")
+        self.assertEqual(code, 4, out)
+        self.assertIn("hf_example: refused; the size reader gave no size at ", shown(out))
+        unsized = "hf_example: refused; the running fetch of {} states no size so nothing is admitted beside it at "
+        for record in ("admitted 777 99999999999999999999 0 2026-10-23T12:00:00Z 1",
+                       "admitted 777 3000 abc 2026-10-23T12:00:00Z 3000"):
+            self.volume.meta("hf_other", "SIZE", record)
+            self.volume.live(777)
+            code, out = self.fetch(1)
+            self.assertEqual(code, 4, record)
+            self.assertIn(unsized.format("hf other"), shown(out), record)
+        # two admissions that each fit in a count but not together: the sum would wrap
+        for job in (777, 778):
+            self.volume.meta(f"hf_big{job}", "SIZE", f"admitted {job} 600000000000000000 0 2026-10-23T12:00:00Z 1")
+        self.volume.meta("hf_other", "SIZE", "admitted 777 0 0 2026-10-23T12:00:00Z 0")
+        self.volume.live(777, 778)
         code, out = self.fetch(1)
         self.assertEqual(code, 4, out)
-        self.assertIn("hf_example: refused; the running fetch of hf other states no size so nothing is admitted beside "
-                      "it at ", shown(out))
+        self.assertIn(unsized.format("hf big778"), shown(out))
+        # an X-ray fetch whose recorded size is no count is no size, and nothing is admitted beside it
+        repo = repo_copy(self)
+        (repo / "grid" / "logs" / "XRAY_SIZES.txt").write_text("501 99999999999999999999 2026-10-23T09:00:00Z\n",
+                                                               encoding="utf-8")
+        self.volume.live(501)
+        self.assertEqual(self.rule('owed_by_running ""', repo=repo), (0, "0 0 xray_chain"))
+        # a line whose stated size is past a count says no size either
+        repo = repo_copy(self)
+        script = repo / "grid" / "run-platform-fetch.sh"
+        script.write_text(script.read_text(encoding="utf-8").replace("idc_nlst|idc|11139.6|", "idc_nlst|idc|99999999999|"),
+                          encoding="utf-8")
+        gate_jobs(repo, (40711959, "fetch:idc_nlst", "dp_idc_nlst"))
+        self.volume.live(40711959)
+        self.assertEqual(self.rule('owed_by_running ""', repo=repo), (0, "0 0 idc_nlst"))
 
     def test_python_reads_a_value_up_to_its_first_nul_where_no_getfattr_runs(self):
         folder = self.tmp / "landing"
@@ -1257,12 +1286,15 @@ class SizeRuleTest(unittest.TestCase):
         try:
             os.setxattr(folder, "user.rbytes", b"16574438800856\x003119603013828")
             os.setxattr(folder, "user.long", b"165744388008563119603013828275240916436124852417")
+            os.setxattr(folder, "user.broken", b"1657\n4438800856")
         except OSError as error:
             self.skipTest(f"this filesystem keeps no user attributes: {error}")
         tools = dict(GETFATTR=str(self.tmp / "no-such-tool"), XATTR_PYTHON=sys.executable)
         self.assertEqual(self.rule(f'xattr_digits user.rbytes "{folder}"', **tools), (0, "16574438800856"))
         self.assertEqual(self.rule(f'xattr_digits user.long "{folder}"', **tools), (3, ""))
+        self.assertEqual(self.rule(f'xattr_digits user.broken "{folder}"', **tools), (3, ""))
         self.assertEqual(self.rule(f'xattr_digits user.none "{folder}"', **tools), (0, ""))
+
 
 class QuotaReadoutTest(unittest.TestCase):
     """grid/oschome-quota.sh, the owner's readout of the lab volume in the layout of WSU's wsuquota,
@@ -1403,6 +1435,36 @@ class WsuquotaTest(unittest.TestCase):
         code, out, err = self.typed(self.HOOK, f'PATH="{self.bin}:$PATH"', command=False)
         self.assertEqual((code, err), (0, ""), out)
         self.assertEqual(out.splitlines()[:4], ["SOURCED", "Home Directory Disk Usage", "", self.lab()])
+
+    def test_a_shell_that_redefines_cd_or_pwd_still_finds_the_readout(self):
+        # Many a ~/.bashrc makes cd print or list; the hook runs neither, from a path or a bare name.
+        noisy = ('cd() { builtin cd "$@" && echo CD; }', 'alias pwd="echo PWD"')
+        for folder, sourced in ((GRID.parent, "source grid/wsuquota.bash"), (GRID, "source ./wsuquota.bash"),
+                                (GRID, ". wsuquota.bash")):
+            code, out, err = self.typed(*noisy, f'builtin cd "{folder}"', sourced, "builtin cd /")
+            self.assertEqual((code, err), (0, ""), sourced + out)
+            self.assertEqual(out.splitlines()[:4], ["SOURCED", "Home Directory Disk Usage", "", self.lab()], sourced)
+            self.assertFalse({"CD", "PWD"} & set(out.splitlines()), out)
+
+    def test_an_original_function_keeps_its_own_variables_and_its_exit(self):
+        # An owner's function may set status, as many do; the wrapper's own names never meet it, and
+        # its exit comes back after the lab volume has printed.
+        for made, exit_code in (("wsuquota() { status=ok; echo Home Directory Disk Usage; }", 0),
+                                ("wsuquota() { echo Home Directory Disk Usage; return 3; }", 3)):
+            code, out, err = self.typed(made, self.HOOK, command=False)
+            self.assertEqual((code, err), (exit_code, ""), made + out)
+            self.assertEqual(out.splitlines()[:5], ["SOURCED", "Home Directory Disk Usage", "", self.lab(),
+                                                    "Used  = 25.00%  250.00gb"], made)
+
+    def test_an_exported_function_is_wrapped_in_a_child_shell_too(self):
+        # A function the owner exported stays exported once the hook redefines it, so a child shell
+        # runs the wrapper, and with it what the wrapper runs.
+        made = "wsuquota() { echo Home Directory Disk Usage; }"
+        code, out, err = self.typed(made, "export -f wsuquota", self.HOOK, "bash -c wsuquota", command=False)
+        self.assertEqual((code, err), (0, ""), out)
+        self.assertEqual(out.splitlines()[:3], ["Home Directory Disk Usage", "", self.lab()])
+        self.assertEqual(out.count(self.lab()), 2, out)
+        self.assertEqual(out.count("Home Directory Disk Usage"), 2, out)
 
     def test_a_hook_whose_readout_is_gone_says_so(self):
         import shutil

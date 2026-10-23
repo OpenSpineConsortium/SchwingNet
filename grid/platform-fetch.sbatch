@@ -93,6 +93,7 @@ link_size() {  # link_size LINK_FILE OUTPUT: "<total bytes> <bytes still to land
   total=$("${CURL:-curl}" -sS -K "$cfg" -D - | tr -d '\r' | sed -n 's/^[Cc]ontent-[Rr]ange: bytes 0-0\/\([0-9][0-9]*\)$/\1/p' | tail -n 1)
   rm -f "$cfg"
   [ -n "$total" ] || { echo "no exact size; the link answers no range request with its length"; return 3; }
+  is_count "$total" || { echo "no exact size; the length the link answers is no count"; return 3; }
   [ ! -f "$2" ] || have=$(stat -c %s "$2")
   echo "$total $(( total > have ? total - have : 0 )) the link answers"
 }

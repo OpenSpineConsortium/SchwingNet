@@ -928,6 +928,21 @@ esac
         done = self.gate("status")
         self.assertIn("fetch of vindr_pcxr (job 900): the raw folder is there; its size is not readable here", done.stdout)
         self.assertNotIn("job 901", done.stdout)
+        # A size of 48 digits, as the owner's shell printed the volume's, is no count and is not read;
+        # one with more after a NUL is read up to the NUL.
+        for rbytes, said in (("165744388008563119603013828275240916436124852417",
+                              "the raw folder is there; its size is not readable here"),
+                             ("4560000000\\0999", "1234 files, 4560 MB, last write")):
+            (self.fake / "getfattr").write_text(f"""#!/bin/bash
+case "$3" in
+  ceph.dir.rfiles) printf '1234' ;;
+  ceph.dir.rbytes) printf '{rbytes}' ;;
+  ceph.dir.rctime) printf '{now}.5' ;;
+  *) printf '1500000000' ;;
+esac
+""", encoding="utf-8")
+            done = self.gate("status")
+            self.assertIn(f"  fetch of vindr_pcxr (job 900): {said}", done.stdout)
 
     def failed(self, *rows):
         """rows of (id, word, what, job name, state, elapsed, log lines or None): the gate's list, what

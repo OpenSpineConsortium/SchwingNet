@@ -45,10 +45,11 @@
 
 xattr_value() {  # xattr_value NAME FOLDER: a CephFS attribute's value up to its first NUL; 2 when no reader runs
   local python=${XATTR_PYTHON:-python3}
-  # Cut at the first NUL here: bash drops a NUL from what a command prints, and would join whatever
-  # follows it to the digits before it.
+  # Cut at the first NUL here and nowhere else: bash drops a NUL from what a command prints, and
+  # would join whatever follows it to the digits before it; a line break inside is kept, so a value
+  # that holds one is no count rather than the part before it.
   if command -v "${GETFATTR:-getfattr}" > /dev/null 2>&1; then
-    "${GETFATTR:-getfattr}" --only-values -n "$1" "$2" 2>/dev/null | tr '\0' '\n' | head -n 1
+    "${GETFATTR:-getfattr}" --only-values -n "$1" "$2" 2>/dev/null | { IFS= read -r -d '' value; printf '%s' "$value"; }
     return 0
   fi
   # An attribute that is not there is nothing; a Python that does not run is no reading at all.
@@ -66,6 +67,10 @@ is_count() {  # is_count TEXT: whether TEXT is a count bash's arithmetic holds w
   # no leading zero, which bash's arithmetic reads as octal.
   case "$1" in ""|*[!0-9]*|0?*) return 1 ;; esac
   [ "${#1}" -le 18 ]
+}
+
+fits_in_count() {  # fits_in_count SUM ADD: whether SUM + ADD is still a count, for two counts
+  [ "$2" -le $(( 999999999999999999 - $1 )) ]
 }
 
 xattr_digits() {  # xattr_digits NAME FOLDER: a CephFS attribute as a count, or nothing where it is not there; 2 when no reader runs, 3 when it reads as no count
@@ -176,7 +181,10 @@ owed_by_running() {  # owed_by_running SELF: "<bytes> <fetches> [unsized...]" th
     landed=$(landing_bytes "$id")
     [ -n "$landed" ] || landed=$base
     owe=$(( need - (landed - base) ))
-    owed=$(( owed + (owe > 0 ? owe : 0) ))
+    [ "$owe" -gt 0 ] || owe=0
+    # A sum past what a count holds would wrap; records that large say no size this rule can count.
+    if ! fits_in_count "$owed" "$owe"; then unsized="$unsized $id"; continue; fi
+    owed=$(( owed + owe ))
     n=$((n + 1))
   done < <(size_files)
   # An X-ray fetch, at the sizes its list stated when grid/run-xray-chain.sh sent it.
@@ -185,8 +193,11 @@ owed_by_running() {  # owed_by_running SELF: "<bytes> <fetches> [unsized...]" th
       [ "$job" != "$self" ] || continue
       case "$live" in *" $job "*) ;; *) continue ;; esac
       case "$counted" in *" $job "*) continue ;; esac
-      is_count "$need" || continue
       counted="$counted$job "
+      if ! is_count "$need" || ! fits_in_count "$owed" "$need"; then
+        case "$unsized" in *" xray_chain"*) ;; *) unsized="$unsized xray_chain" ;; esac
+        continue
+      fi
       owed=$(( owed + need ))
       n=$((n + 1))
     done < "$REPO/grid/logs/XRAY_SIZES.txt"
@@ -207,7 +218,9 @@ owed_by_running() {  # owed_by_running SELF: "<bytes> <fetches> [unsized...]" th
         landed=$(landing_bytes "$id")
         [ -n "$landed" ] || landed=0
         owe=$(( need - landed ))
-        owed=$(( owed + (owe > 0 ? owe : 0) ))
+        [ "$owe" -gt 0 ] || owe=0
+        if ! fits_in_count "$owed" "$owe"; then unsized="$unsized $id"; continue; fi
+        owed=$(( owed + owe ))
         n=$((n + 1)) ;;
       # sent before its size was recorded: nothing says what it still has to land
       xr_fetch) case "$unsized" in *" xray_chain"*) ;; *) unsized="$unsized xray_chain" ;; esac ;;
