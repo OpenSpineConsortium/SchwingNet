@@ -23,7 +23,9 @@ EVENT_LOG_SUFFIX = ".events.json"
 SKIPPED_FOLDERS = {".git", "__pycache__"}
 # Where the documents live that must stay ASCII with LF endings.
 PLAIN_TEXT_ROOTS = (".claude", "docs", "tools", ".github")
-PLAIN_TEXT_FILES = (CLAUDE_MD, "README.md")
+# grid/fetch-now.txt is a hand-edited list whose whole lines grid/gate.sh compares with a
+# source's id, so a CR or a stray byte in it may never land.
+PLAIN_TEXT_FILES = (CLAUDE_MD, "README.md", "grid/fetch-now.txt")
 # The dataset records are held the same way, because tools/sources.py copies
 # their text into docs/research/; so are the registry and the split files,
 # which tools/catalog.py reads into the catalog and quotes in its answers;

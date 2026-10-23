@@ -315,14 +315,38 @@ class GateTest(unittest.TestCase):
         self.assertNotIn("goes now", done.stdout)
 
     def test_a_source_the_owner_named_in_fetch_now_skips_the_wait(self):
-        # the shipped list names RATIC, whose presigned link dies before the X-ray fetch would end
-        self.live_x_ray_fetches()
-        self.assertIn("rsna_ratic_abdominal_trauma\n", (GRID / "fetch-now.txt").read_text(encoding="utf-8"))
-        done = self.gate_at_home("fetch", "rsna_ratic_abdominal_trauma")
-        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
-        self.assertNotIn("--dependency", self.line_of("platform-fetch.sbatch")[0])
-        self.assertIn("rsna_ratic_abdominal_trauma goes now", done.stdout)
-        self.assertIn("grid/fetch-now.txt", done.stdout)
+        # the list names RATIC, in every shape a hand edit leaves: LF, CRLF, a trailing blank, a note
+        # after the id, no final newline, after comments and blank lines; each goes now, since a silent
+        # wait is the loss the file exists to prevent
+        texts = (
+            "rsna_ratic_abdominal_trauma\n",
+            "rsna_ratic_abdominal_trauma\r\n",
+            "rsna_ratic_abdominal_trauma \t\n",
+            "rsna_ratic_abdominal_trauma  # the link dies 2026-10-28 02:38 UTC\n",
+            "# the comment\n\nhf_cads_unique\nrsna_ratic_abdominal_trauma",
+        )
+        for text in texts:
+            self.live_x_ray_fetches()
+            self.fetch_now(text)
+            done = self.gate_at_home("fetch", "rsna_ratic_abdominal_trauma")
+            self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+            self.assertNotIn("--dependency", self.line_of("platform-fetch.sbatch")[-1], repr(text))
+            self.assertIn("rsna_ratic_abdominal_trauma goes now", done.stdout, repr(text))
+            self.assertIn("grid/fetch-now.txt", done.stdout, repr(text))
+            (self.repo / "grid" / "logs" / "GATE_JOBS.txt").write_text("", encoding="utf-8")
+
+    def test_the_shipped_fetch_now_list_is_plain_and_names_gated_ids_only(self):
+        # the shipped list is read for its shape, never for which set it names today: ASCII, LF, every
+        # line a comment or one of the platform script's gated ids, which is all the gate can act on,
+        # since a line naming anything else is dead weight the gate never reaches
+        data = (GRID / "fetch-now.txt").read_bytes()
+        self.assertTrue(data.isascii() and b"\r" not in data and data.endswith(b"\n"))
+        gated = subprocess.run(["bash", str(GRID / "run-platform-fetch.sh"), "--gated-ids"],
+                               capture_output=True, text=True, check=True).stdout.split()
+        for line in data.decode("ascii").splitlines():
+            name = line.split("#", 1)[0].strip()
+            if name:
+                self.assertIn(name, gated, line)
 
     def test_fetch_now_names_whole_ids_only_and_may_be_missing(self):
         # a comment that spells the id, a line that only contains it, and no file at all: every one waits
@@ -887,7 +911,8 @@ esac
         self.live(900, 901, 902)
         done = self.gate("status")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
-        self.assertIn("  fetch of vindr_pcxr (job 900): 1234 files, 4560 MB, last write 40s ago", done.stdout)
+        # 40 s by the test's clock; the gate reads its own a moment later, so a second or two more under load
+        self.assertRegex(done.stdout, r"  fetch of vindr_pcxr \(job 900\): 1234 files, 4560 MB, last write 4[0-5]s ago")
         self.assertIn("  fetch of padchest (job 901): nothing landed yet", done.stdout)
         self.assertNotIn("job 902", done.stdout)
         self.assertNotIn(str(self.data), done.stdout)

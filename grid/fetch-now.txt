@@ -1,6 +1,10 @@
-# Gated CT sources that go now, with no wait on the live X-ray fetches: one id per line, a line
-# starting with # a comment. The owner's order of 2026-10-21 puts X-ray before CT, and grid/gate.sh
+# Gated CT sources that go now, with no wait on the live X-ray fetches: one id per line, with a
+# note after # where one helps, a line starting with # a comment. The owner's order of 2026-10-21 puts X-ray before CT, and grid/gate.sh
 # makes every gated CT fetch wait on every live X-ray fetch; a line here is the owner's word that one
 # set may not wait, given by the pull request that adds it, because its link or grant would die
-# first. Take the line out once the set is on the grid.
+# first; the pull request is one the owner merges himself or has asked for in words, never one a
+# session merges on the standing permission. Take the line out once the set is on the grid, and a
+# line whose link or grant has died comes out in the pull request that records the outcome.
+# rsna_ratic_abdominal_trauma: the RSNA presigned link dies on 2026-10-28 at 02:38 UTC, before the
+# live VinDr-PCXR fetch 40704982 would end; the word is the owner's own merge of pull request #144.
 rsna_ratic_abdominal_trauma

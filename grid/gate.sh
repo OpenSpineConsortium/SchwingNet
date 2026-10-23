@@ -647,7 +647,15 @@ word_fetch() {
 }
 
 goes_now() {  # whether grid/fetch-now.txt names $id: the owner's word that this set skips the wait on the X-ray fetches
-  [ -f "$REPO/grid/fetch-now.txt" ] && grep -v '^#' "$REPO/grid/fetch-now.txt" | grep -qxF -- "$id"
+  # One awk over the whole file, each line compared after any # comment, its line ending and its
+  # trailing blanks are dropped, so a note beside the id, a CRLF or a trailing space from a hand edit
+  # never makes the owner's word silently false.
+  [ -f "$REPO/grid/fetch-now.txt" ] && awk -v id="$id" '
+    { sub(/#.*$/, ""); sub(/[ \t\r]+$/, "") }
+    $0 == "" { next }
+    $0 == id { found = 1; exit }
+    END { exit !found }
+  ' "$REPO/grid/fetch-now.txt"
 }
 gated_platform_id() {  # whether $id is one of the granted gated CT sources the platform script fetches alone
   bash "$REPO/grid/run-platform-fetch.sh" --gated-ids 2>/dev/null | grep -qxF -- "$id"
