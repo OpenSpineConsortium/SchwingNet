@@ -61,3 +61,10 @@ per_condition_timeout = 20
 "schwingnet.flow.result_line" = "takes a ResultRow, a pydantic model CrossHair cannot construct; its contracts are checked by the tests"
 "schwingnet.slurm.sbatch_script" = "takes a JobSpec, a pydantic model CrossHair cannot construct; its contracts are checked by the tests"
 "schwingnet.leaks.phash" = "takes a square grey reduction of 64 bytes or more, which CrossHair 0.0.111 does not build within the per-condition bound (the gate measured it unable to meet the precondition, 2026-10-21); tests/schwingnet/test_leaks.py checks its contracts at run time, and nothing contracted calls it"
+
+# Findings of the interface standard's rule 1, a sealed tree, that this repository lets stand: the
+# file, what matched there and the reason. The boundary check prints each on every run and fails on
+# one that matches nothing any more, so the list only shrinks; a new entry is a person's decision in
+# a reviewed change, as an unproven one is.
+[tool.beethoven-qa.boundary]
+".github/workflows/synthesis.yml" = { "${{ github.repository_owner }}/symphony-template" = "the synthesis of the artifacts (artifacts/_synthesis/) reads symphony-template's artifacts/, where the Symphony and Beethoven artifacts are kept, so that a change there is checked as one here is; the checkout is read-only, made with an App token scoped to that repository's contents, and this tree keeps of it only the synthesis's records of those artifacts, as it keeps of its own (the owner's choice of 2026-10-23, #166)" }

@@ -1249,6 +1249,48 @@ esac
         self.assertEqual(done.returncode, 0, done.stdout)
         self.assertIn("EXPLORE_AGAINST= ", self.submitted()[2] + " ")
 
+    def test_dropzip_deletes_once_then_prints_what_it_did(self):
+        shutil.copy(GRID / "fetch-xray.json", self.repo / "grid" / "fetch-xray.json")
+        # an id of no list, one with no raw folder yet, and a malformed send are refused and queue nothing
+        self.assertEqual(self.gate("dropzip", "no_such_set").returncode, 64)
+        self.assertEqual(self.gate("dropzip", "kaggle_scoliosis_yolov5").returncode, 2)
+        self.assertEqual(self.gate("dropzip", "a", "b").returncode, 64)
+        self.assertEqual(self.gate("dropzip", "Bad-Id").returncode, 64)
+        (self.data / "kaggle_scoliosis_yolov5" / "raw").mkdir(parents=True)
+        self.assertEqual(self.gate("dropzip", "kaggle_scoliosis_yolov5").returncode, 75)
+        self.environments_ready()
+        done = self.gate("dropzip", "kaggle_scoliosis_yolov5")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        lines = self.submitted()
+        self.assertEqual(len(lines), 1, lines)
+        self.assertIn("--class batch --name dropzip", lines[0])
+        self.assertIn("dropzip.sbatch", lines[0])
+        self.assertIn(f"DROPZIP_RAW={self.data}/kaggle_scoliosis_yolov5/raw", lines[0])
+        job = self.recorded()["dropzip"]
+        # while its job is live a second send is refused and queues nothing
+        self.live(job)
+        self.assertEqual(self.gate("dropzip", "kaggle_scoliosis_yolov5").returncode, 75)
+        self.assertEqual(len(self.submitted()), 1)
+        # once it has ended, its report is printed once and nothing is queued
+        (self.fake / "queue").write_text("", encoding="utf-8")
+        report = self.repo / "grid" / "logs" / "DROPZIP-kaggle_scoliosis_yolov5.md"
+        report.write_text("# dropzip kaggle_scoliosis_yolov5\n  zips: 1\n  freed: 0.5 GB\n", encoding="utf-8")
+        done = self.gate("dropzip", "kaggle_scoliosis_yolov5")
+        self.assertEqual(done.returncode, 0, done.stdout)
+        self.assertIn("  freed: 0.5 GB", done.stdout)
+        self.assertEqual(len(self.submitted()), 1)
+        self.assertFalse(report.exists())
+        # the send after that looks again
+        self.assertEqual(self.gate("dropzip", "kaggle_scoliosis_yolov5").returncode, 0)
+        self.assertEqual(len(self.submitted()), 2)
+        # never while a fetch or a look at the set is live, since a zip half unpacked is missing members
+        (self.fake / "queue").write_text("", encoding="utf-8")
+        self.state_line("4242", "explore:kaggle_scoliosis_yolov5", "explore")
+        self.live("4242")
+        done = self.gate("dropzip", "kaggle_scoliosis_yolov5")
+        self.assertEqual(done.returncode, 75, done.stdout)
+        self.assertEqual(len(self.submitted()), 2)
+
     def test_status_shows_the_sample_manifest_whole(self):
         logs = self.repo / "grid" / "logs"
         logs.mkdir(parents=True, exist_ok=True)

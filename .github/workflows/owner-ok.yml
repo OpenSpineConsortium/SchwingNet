@@ -12,8 +12,12 @@ name: Owner OK
 # notification it sends. Either way the job's check run is named owner-ok,
 # which a ruleset requires (docs/setup/github.md, section 10). The author's
 # role is read from GitHub's collaborator permission with the run's own
-# token, which reads metadata and nothing else; where that read fails, the
-# second job never runs and the check stays missing, so the gate holds.
+# token, which reads metadata and nothing else. A pull request a bot
+# opened, such as the synthesis workflow's, which the SymphonyBoard App
+# opens, asks for the tap whatever the read says, since nobody stands
+# behind a bot's head; and a role the read cannot give asks for it too, so
+# the first job never fails: a job skipped because the job it needs failed
+# reports as skipped, which a required check takes as passing.
 #
 # A draft starts no run, so a worker's pushes to its draft ping no one;
 # GitHub reads the skipped run as passing, and a draft cannot merge anyway.
@@ -49,15 +53,19 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           AUTHOR: ${{ github.event.pull_request.user.login }}
+          KIND: ${{ github.event.pull_request.user.type }}
         run: |
           set -eu
-          role=$(gh api "repos/$REPO/collaborators/$AUTHOR/permission" --jq .permission)
-          if [ "$role" = "admin" ]; then
+          role=unread
+          if [ "$KIND" = User ]; then
+            role=$(gh api "repos/$REPO/collaborators/$AUTHOR/permission" --jq .permission) || role=unread
+          fi
+          if [ "$KIND" = User ] && [ "$role" = "admin" ]; then
             echo "environment=owner-self" >> "$GITHUB_OUTPUT"
           else
             echo "environment=owner-ok" >> "$GITHUB_OUTPUT"
           fi
-          echo "author $AUTHOR has $role"
+          echo "author $AUTHOR ($KIND) has $role"
 
   owner-ok:
     name: owner-ok
