@@ -2,6 +2,8 @@
 
 Source: the project thread "SchwingNet textbook and critique reviews", 2026-10-23, checkpointed at the owner's word when his weekly limit reached 92%. Everything below is committed on the branch claude/166; nothing lives only in the session that wrote it.
 
+Finished: the same thread resumed from this page on 2026-10-23 and carried steps 1 to 5 out in #167, which lands them; steps 6 and 7 are the thread's, the owner's setup steps and the process note in symphony-template. Nothing below is left to do here, and the page stays as the record of the three reviews. Two things below were wrong: step 2's status had two lost quotes before the scrub as after it, not none; and step 6 must also say that the same secret lets the mention workflow, the coordinator and any registered worker run.
+
 ## Where it stopped
 
 The work answers the owner's ask: "make it extensible so i can update it as new knowledge is added or new datasets are added? do something clever with like dynamic updating, dynamic concept checking". The tools, the workflow and the pages were built, three adversarial reviews were run (tools for correctness, the workflow for security, the documents against the code), and this checkpoint commit carries the fixes for every high and medium finding in the code. What is left is tests for those fixes, the document fixes, the check, and landing the pull request.
