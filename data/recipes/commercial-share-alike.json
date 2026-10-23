@@ -1,0 +1,6 @@
+{
+ "name": "commercial-share-alike",
+ "allow": ["open", "share-alike"],
+ "reviewed_only": true,
+ "why": "A commercial network that may carry share-alike data (VerSe's CC BY-SA), if counsel holds that the weights may be offered under the same licence or are no adaptation; confirmed classes only."
+}

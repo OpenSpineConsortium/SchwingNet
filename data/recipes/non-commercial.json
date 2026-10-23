@@ -1,0 +1,6 @@
+{
+ "name": "non-commercial",
+ "allow": ["open", "share-alike", "non-commercial"],
+ "reviewed_only": false,
+ "why": "An academic network that may be published and shared for non-commercial use: Creative Commons non-commercial data with the open data, and no signed agreement whose terms bind further."
+}
