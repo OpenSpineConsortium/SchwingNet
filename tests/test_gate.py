@@ -296,15 +296,48 @@ class GateTest(unittest.TestCase):
         self.assertEqual(self.gate_at_home("fetch", ratic).returncode, 75)
         self.assertEqual(len(self.submitted()), 1)
 
-    def test_a_gated_ct_source_waits_for_a_live_x_ray_fetch(self):
+    def live_x_ray_fetches(self):
         self.state_line(201, "start", "xr_fetch")
         self.state_line(202, "fetch:vindr_pcxr", "xr_fetch")
         self.state_line(203, "start", "xr_fetch")
         self.live(201, 202)
         self.link_file(0o600)
+
+    def fetch_now(self, text):
+        (self.repo / "grid" / "fetch-now.txt").write_text(text, encoding="utf-8")
+
+    def test_a_gated_ct_source_waits_for_a_live_x_ray_fetch(self):
+        self.live_x_ray_fetches()
+        self.fetch_now("# nobody goes now\n")
         done = self.gate_at_home("fetch", "rsna_ratic_abdominal_trauma")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         self.assertIn("--dependency=afterany:201,afterany:202 ", self.line_of("platform-fetch.sbatch")[0])
+        self.assertNotIn("goes now", done.stdout)
+
+    def test_a_source_the_owner_named_in_fetch_now_skips_the_wait(self):
+        # the shipped list names RATIC, whose presigned link dies before the X-ray fetch would end
+        self.live_x_ray_fetches()
+        self.assertIn("rsna_ratic_abdominal_trauma\n", (GRID / "fetch-now.txt").read_text(encoding="utf-8"))
+        done = self.gate_at_home("fetch", "rsna_ratic_abdominal_trauma")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertNotIn("--dependency", self.line_of("platform-fetch.sbatch")[0])
+        self.assertIn("rsna_ratic_abdominal_trauma goes now", done.stdout)
+        self.assertIn("grid/fetch-now.txt", done.stdout)
+
+    def test_fetch_now_names_whole_ids_only_and_may_be_missing(self):
+        # a comment that spells the id, a line that only contains it, and no file at all: every one waits
+        self.live_x_ray_fetches()
+        for text in ("# rsna_ratic_abdominal_trauma\n", "rsna_ratic_abdominal_trauma_two\nhf_cads_unique\n", None):
+            if text is None:
+                (self.repo / "grid" / "fetch-now.txt").unlink()
+            else:
+                self.fetch_now(text)
+            done = self.gate_at_home("fetch", "rsna_ratic_abdominal_trauma")
+            self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+            self.assertIn("--dependency=afterany:201,afterany:202 ", self.line_of("platform-fetch.sbatch")[-1], text)
+            self.assertNotIn("goes now", done.stdout, text)
+            (self.repo / "grid" / "logs" / "GATE_JOBS.txt").write_text("", encoding="utf-8")
+            self.live_x_ray_fetches()
 
     def test_ct_rate_and_an_open_chain_source_are_never_a_fetch_word(self):
         for name in ("hf_ct_rate", "aws_stoic2021"):

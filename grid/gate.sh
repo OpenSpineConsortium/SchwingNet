@@ -36,7 +36,8 @@
 #   fetch <id>      one set of grid/fetch-xray.json, a credentialed one with ~/.netrc, banked and catalogued;
 #                   or one source of grid/run-platform-fetch.sh's --gated-ids (CADS, RSNA RATIC, RSPECT,
 #                   ReXGradient once its token or link file is in place; the full NLST on the owner's yes),
-#                   after any live X-ray fetch
+#                   after any live X-ray fetch, unless grid/fetch-now.txt names the source: the owner's
+#                   word, given by the pull request that added its line, that it goes now
 #   samples         the sample index (grid/run-samples.sh): plan, scan and merge, refused while one
 #                   of them is live; status shows its MANIFEST.md, aggregates only
 #   stop            cancel the gate's own jobs that are still queued or running, and nothing else
@@ -645,6 +646,9 @@ word_fetch() {
   CATALOG_DEPEND=$waits chain "$setup" "${args[@]}"
 }
 
+goes_now() {  # whether grid/fetch-now.txt names $id: the owner's word that this set skips the wait on the X-ray fetches
+  [ -f "$REPO/grid/fetch-now.txt" ] && grep -v '^#' "$REPO/grid/fetch-now.txt" | grep -qxF -- "$id"
+}
 gated_platform_id() {  # whether $id is one of the granted gated CT sources the platform script fetches alone
   bash "$REPO/grid/run-platform-fetch.sh" --gated-ids 2>/dev/null | grep -qxF -- "$id"
 }
@@ -653,10 +657,16 @@ word_fetch_gated() {  # one gated CT source through the platform script, recorde
   # One fetch of a source at a time: two would write the same landing at once.
   busy=$(live_of "dp_$id")
   [ -z "$busy" ] || { echo "refusing: a fetch of $id is still queued or running (job $busy)"; return 75; }
-  # X-ray before CT (the owner's order of 2026-10-21): the CT fetch waits on every X-ray fetch still live.
-  for one in $(awk '$3 == "xr_fetch" { print $1 }' "$STATE" 2>/dev/null | sort -u); do
-    case "$QUEUED" in *" $one "*) xray=$(joined "$xray" "afterany:$one") ;; esac
-  done
+  # X-ray before CT (the owner's order of 2026-10-21): the CT fetch waits on every X-ray fetch still live,
+  # unless grid/fetch-now.txt names the source, which is the owner's word, given by the pull request
+  # that added the line, that this one set goes now because its link or grant would die while it waited.
+  if goes_now; then
+    echo "  $id goes now, with no wait on the X-ray fetches: grid/fetch-now.txt names it"
+  else
+    for one in $(awk '$3 == "xr_fetch" { print $1 }' "$STATE" 2>/dev/null | sort -u); do
+      case "$QUEUED" in *" $one "*) xray=$(joined "$xray" "afterany:$one") ;; esac
+    done
+  fi
   out=$(DEPEND="$xray" bash "$REPO/grid/run-platform-fetch.sh" --only "$id" 2>&1)
   rc=$?
   # The platform script's list of the owner's own lines (CT-RATE, NLST) is not this word's business.

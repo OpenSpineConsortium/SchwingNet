@@ -1,0 +1,6 @@
+# Gated CT sources that go now, with no wait on the live X-ray fetches: one id per line, a line
+# starting with # a comment. The owner's order of 2026-10-21 puts X-ray before CT, and grid/gate.sh
+# makes every gated CT fetch wait on every live X-ray fetch; a line here is the owner's word that one
+# set may not wait, given by the pull request that adds it, because its link or grant would die
+# first. Take the line out once the set is on the grid.
+rsna_ratic_abdominal_trauma
