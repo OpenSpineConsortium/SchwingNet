@@ -2,7 +2,7 @@
 
 Proposed on 2026-10-22 for issue #120 from the inventory, the clusters and the contradictions beside this file; nothing of it is written yet. Each chapter below gives its file under docs/textbook/, what it is for, the questions it answers, the artifacts it reads first and second, the repository files it reads beside them, its confidentiality label and the research phase 2 owes it. Every chapter ends, when written, with 'What we know', 'What we do not know', 'What would change our mind' and a provenance table from each statement to its artifact and evidence grade (Measured, Reported, Inferred, Unverified). The labels: confidential-method marks a chapter that says what a stage does, which stays in this private repository and is copied nowhere; results-only marks one that cites results and rules and no method; symphony-beethoven-separable marks Part S, which can be split out; outreach marks a chapter that names people by role only.
 
-The book is one reference written from the owner's 69 collected artifacts and the SchwingNet repository's own research notes, for whoever plans the next experiment. It is organised in seven parts in reading order, Orientation, Data, Methods, Evaluation, Operations, the Decision log, and Open questions with the ranked backlog, followed by a part labelled separable, Part S, which holds the Symphony and Beethoven material alone (the protocol and its origins, the Claude workers on the grid, the Beethoven repositories, roadmap and store release, the workstation runbook and the Claude-on-Slurm playbook) so it can be split out without touching the rest; Part V keeps only the operations a SchwingNet experiment needs. Chapter files are numbered 01 to 32 across the parts under docs/textbook/, ASCII and LF, each 2,000 to 6,000 words of prose. Every chapter follows one template: a purpose paragraph that says what it settles for a planner; the body, built from the canonical artifacts of its cluster with each superseded or duplicate artifact named and what that older version alone still holds; then four closing sections, 'What we know', 'What we do not know', 'What would change our mind', and a provenance table that maps each statement to the artifact or repository file it comes from and an evidence grade. The grades are Measured (a number read from a result file or computed by tested code on held-out data, with its n and interval), Reported (stated by an artifact or a paper without the file behind it being read), Inferred (a judgment the artifacts draw from measurements, or a design claim, with no outcome measured) and Unverified (asserted with no source, or contradicted by another record); the artifacts' own grades map onto these, Verified to Measured and Open to Unverified. Confidential method material (what each stage does and the method decisions) sits only in Part III, whose chapters are marked confidential-method; results may be shown, mechanism may not, until the provisional is filed. People appear by role only, and no e-mail address, phone number or home address is reproduced anywhere.
+The book is one reference written from the owner's 69 collected artifacts and the SchwingNet repository's own research notes, for whoever plans the next experiment. It is organised in seven parts in reading order, Orientation, Data, Methods, Evaluation, Operations, the Decision log, and Open questions with the ranked backlog, followed by a part labelled separable, Part S, which holds the Symphony and Beethoven material alone (the protocol and its origins, the Claude workers on the grid, the Beethoven repositories, roadmap and store release, the workstation runbook and the Claude-on-Slurm playbook) so it can be split out without touching the rest; Part V keeps only the operations a SchwingNet experiment needs. Chapter files are numbered 01 to 32 across the parts under docs/textbook/, ASCII and LF, each 2,000 to 6,000 words of prose. Every chapter follows one template: a purpose paragraph that says what it settles for a planner; the body, built from the canonical artifacts of its cluster with each superseded or duplicate artifact named and what that older version alone still holds; then four closing sections, 'What we know', 'What we do not know', 'What would change our mind', and a provenance table that maps each statement to the artifact or repository file it comes from and an evidence grade, and may give the artifact's claude.ai link beside its repository path, as the owner allowed on 2026-10-23, saying the artifacts are shared with anyone who has the link. The grades are Measured (a number read from a result file or computed by tested code on held-out data, with its n and interval), Reported (stated by an artifact or a paper without the file behind it being read), Inferred (a judgment the artifacts draw from measurements, or a design claim, with no outcome measured) and Unverified (asserted with no source, or contradicted by another record); the artifacts' own grades map onto these, Verified to Measured and Open to Unverified. A headline number from a superseded or leaked family, such as allspine v2's 99.02 percent, may be quoted as a record and never as a final value: with a direct link to the file or artifact it comes from, so that it can be updated automatically later, and a disclaimer that it is not a final value. That is the owner's answer of 2026-10-23, which revises for the book the decision recorded in the handoff of 2026-10-08 that these families' numbers are never quoted; where the contradictions page says a figure must be run again before it is quoted, that holds for quoting it as a current value. Confidential method material (what each stage does and the method decisions) sits only in Part III, whose chapters are marked confidential-method; results may be shown, mechanism may not, until the provisional is filed. People appear by role only, and no e-mail address, phone number or home address is reproduced anywhere.
 
 8 parts, 32 chapters.
 
@@ -96,7 +96,7 @@ Research phase 2 owes it: Confirm the Castellvi classification and the LSTV prev
 
 File: docs/textbook/03-what-is-measured-and-what-is-claimed.md. Label: schwingnet-internal.
 
-Lays every headline number beside what it rests on, so a planner never quotes a leaked, superseded or render-only figure: the naming numbers on real C-arm laterals (98.2 percent same device, 96.3 percent zero-shot lateral, 37.9 to 43.7 percent AP), the counting exactness (99.17 to 100 percent of walks with correct boxes), detection on a held-out device (90.6 percent whole frame, 36 and 19 percent on crops), the FluoroCap level model's one honest number (98.7 percent on radiograph crops) against its render scores, the record-only numbers from leaked banks (allspine v2, v6, v7, the 99.02 percent), and the count of verified real-frame transitional test persons (zero). It states the rule that RESULTS_CATALOG.md wins where files disagree and that every number before the first grid run is synthetic.
+Lays every headline number beside what it rests on, so a planner never quotes a leaked, superseded or render-only figure as a final value: the naming numbers on real C-arm laterals (98.2 percent same device, 96.3 percent zero-shot lateral, 37.9 to 43.7 percent AP), the counting exactness (99.17 to 100 percent of walks with correct boxes), detection on a held-out device (90.6 percent whole frame, 36 and 19 percent on crops), the FluoroCap level model's one honest number (98.7 percent on radiograph crops) against its render scores, the record-only numbers from leaked banks (allspine v2, v6, v7, the 99.02 percent), and the count of verified real-frame transitional test persons (zero). It states the rule that RESULTS_CATALOG.md wins where files disagree and that every number before the first grid run is synthetic.
 
 Questions it answers:
 
@@ -545,7 +545,7 @@ Artifacts read second: [Research directions from the data holding](../research-d
 
 Repository files beside them: docs/project.md, docs/agents/OWNERSHIP.md, docs/agents/WORKERS.md, docs/agents/PROTOCOL.md, docs/setup/owner-checklist.md, docs/setup/folders-admin-consent.md, docs/research/data-access-requirements.md, docs/memory/the-review-record.md, docs/research/llc/README.md.
 
-Research phase 2 owes it: Check docs/agents/OWNERSHIP.md for the current worker map; confirm the volume's ACL and who is on it, from the owner; check the authorship rule (ICMJE, byline by recorded volume) against the lab recipe as it stands; decide with the owner whether the LLC note's commercial-track boundary belongs here.
+Research phase 2 owes it: Check docs/agents/OWNERSHIP.md for the current worker map; confirm the volume's ACL and who is on it, from the owner; check the authorship rule (ICMJE, byline by recorded volume) against the lab recipe as it stands; cite the LLC note's commercial-track boundary here, as the owner answered on 2026-10-23.
 
 ## Part VI: Decision log
 
@@ -818,17 +818,45 @@ Research phase 2 owes it: Check the REFORMS item list and module numbers against
 
 Artifacts no chapter uses: none.
 
-## Questions for the owner
+## The owner's answers (2026-10-23)
+
+The owner answered in the project thread on 2026-10-23; the words as sent, and how each was matched to its question, are on #121 (https://github.com/OpenSpineConsortium/SchwingNet/pull/121#issuecomment-6361966302). Answers 7 and 8 are carried into the preface above; the others keep the plan as drafted. Two parts of the questions were not answered: the Celebrate Life event's year (question 2), still to be confirmed, and where the seed grant goes (question 3), which stays in chapter 20 as drafted.
 
 1. Whether the method decision log belongs in Part III (chapter 16, marked confidential-method, as planned so that Part VI carries no method) or whether the owner wants it inside Part VI with the whole part then marked confidential.
+
+   Answer: In Part III, chapter 16, marked confidential-method, as planned.
+
 2. Whether the Celebrate Life flyers and the funding page should appear at all in a repository book, or only as the one short chapter 26 planned at the length floor; and whether the event's year (not stated on either flyer) is 2026.
+
+   Answer: In the book, as chapter 26, as planned. The event's year was not answered and is still to be confirmed.
+
 3. Whether the two IRB drafts and the seed grant go to Part IV chapter 20 (as the in-domain validation plan, where this plan puts them) or to Part II as a dataset to be obtained; they are cited from both.
+
+   Answer: The IRB drafts go to Part IV, chapter 20, as planned. The seed grant was not named in the answer and stays in chapter 20 as drafted.
+
 4. Whether the secure RDP workstation runbook belongs in Part S chapter 31 (the owner asked for the workstation runbook in the separable part) even though it holds nothing of Symphony or Beethoven.
+
+   Answer: In Part S, chapter 31, as planned.
+
 5. Whether the LLC research note (docs/research/llc/, confidential) may be cited in chapter 23 as the boundary between the research and commercial tracks, or stays out of the book.
+
+   Answer: Cited in chapter 23, as planned.
+
 6. Whether the taxonomy spec, the REFORMS checklist and the Beethoven encapsulation report, which live in the SchwingNet artifacts folder, are to be kept in Part S (by content, as planned) or with the SchwingNet material (by repository).
+
+   Answer: In Part S, by content, as planned.
+
 7. Whether a chapter may quote the headline numbers from the superseded and leaked families (allspine v2's 99.02 percent) as record-only examples, or whether such numbers are to be named only by family and never printed.
+
+   Answer: A chapter may quote them as records, each with a direct link to the file or artifact it comes from, so that it can be updated automatically later, and a disclaimer that it is not a final value.
+
 8. Whether the book's provenance tables may link the claude.ai artifact URLs beside the repository paths, given that the artifacts are copied under artifacts/ in two repositories.
+
+   Answer: The provenance tables may link the claude.ai artifact URLs beside the repository paths; the owner's reason is that the artifacts are shared with anyone who has the link.
+
 9. Whether the plan's count of 32 chapters is acceptable, or whether the owner prefers the ceiling kept lower by merging chapters 18 and 19 (metrics and valid comparisons) and chapters 29 and 30 (Symphony and its origins).
+
+   Answer: Thirty-two chapters is acceptable, and the owner sets no limit on the number of chapters.
 
 ## Notes on the plan
 

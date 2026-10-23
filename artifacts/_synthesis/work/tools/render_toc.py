@@ -7,6 +7,16 @@ from render_inventory import to_ascii, cell
 from render_clusters import link
 
 
+def owner_section(P):
+    """The questions the plan asks the owner, each followed by the owner's answer once given."""
+    if not P.get("owner_answers"):
+        return ["## Questions for the owner\n", *(f"{i}. {cell(q)}" for i, q in enumerate(P["owner_questions"], 1)), ""]
+    lines = [f"## The owner's answers ({P['answered_on']})\n", cell(P["answers_source"]) + "\n"]
+    for i, (q, a) in enumerate(zip(P["owner_questions"], P["owner_answers"], strict=True), 1):
+        lines += [f"{i}. {cell(q)}", "", " " * len(f"{i}. ") + f"Answer: {cell(a)}", ""]
+    return lines
+
+
 def main(plan, inventory, dst, date):
     P = json.load(open(plan)); inv = json.load(open(inventory))
     titles = {f"{r['repo']}/{r['folder']}": r["title"] for r in inv["artifacts"]}
@@ -48,9 +58,7 @@ def main(plan, inventory, dst, date):
         out.append(f"| {link(row['id'], titles)} | {row['id'].split('/')[0]} | {', '.join(row['chapters'])} |")
     out.append("")
     out.append(f"Artifacts no chapter uses: {', '.join(P['uncovered']) or 'none'}.\n")
-    out.append("## Questions for the owner\n")
-    out.extend(f"{i}. {cell(q)}" for i, q in enumerate(P["owner_questions"], 1))
-    out.append("")
+    out.extend(owner_section(P))
     out.append("## Notes on the plan\n")
     out.append(cell(P["notes"]) + "\n")
     open(dst, "w", newline="\n").write(to_ascii("\n".join(out)))
