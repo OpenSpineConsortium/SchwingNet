@@ -736,11 +736,38 @@ echo "the split is not disjoint; no training step reads this version"; exit 1
         with state.open("a", encoding="utf-8") as out:
             out.write(f"{job} {word} {what} 2026-10-21T20:00:00Z\n")
 
+    def test_cancel_takes_one_job_and_the_live_jobs_its_word_queued_and_nothing_else(self):
+        self.state_line(900, "fetch:vindr_pcxr", "xr_fetch")
+        self.state_line(901, "fetch:vindr_pcxr", "xr_bank")
+        self.state_line(902, "fetch:vindr_pcxr", "xr_catalog")
+        self.state_line(800, "fetch:vindr_pcxr", "xr_fetch")
+        self.state_line(950, "fetch:aariz", "xr_fetch")
+        self.state_line(960, "start", "dp_zenodo_x")
+        self.live(900, 901, 902, 950, 960, 99999)
+        done = self.gate("cancel", "900")
+        self.assertEqual(done.returncode, 0, done.stdout)
+        self.assertEqual(sorted((self.fake / "scancel.log").read_text(encoding="utf-8").split()), ["900", "901", "902"])
+        self.assertIn("cancelled (fetch:vindr_pcxr): 900 901 902", done.stdout)
+
+    def test_cancel_refuses_a_job_not_the_gates_and_leaves_an_ended_one(self):
+        self.state_line(900, "fetch:vindr_pcxr", "xr_fetch")
+        self.live(99999)
+        done = self.gate("cancel", "99999")
+        self.assertEqual(done.returncode, 64, done.stdout)
+        self.assertIn("not one of the gate's", done.stdout)
+        done = self.gate("cancel", "900")
+        self.assertEqual(done.returncode, 0, done.stdout)
+        self.assertIn("no longer queued or running", done.stdout)
+        self.assertFalse((self.fake / "scancel.log").exists())
+        for words in (("cancel",), ("cancel", "9a"), ("cancel", "1", "2"), ("cancel", "1234567890123")):
+            self.assertEqual(self.gate(*words).returncode, 64, words)
+        self.assertFalse((self.fake / "scancel.log").exists())
+
     def test_a_failed_squeue_refuses_every_word_that_submits_or_cancels(self):
         self.environments_ready()
         self.weights_ready()
         (self.fake / "squeue_fails").write_text("", encoding="utf-8")
-        for words in (("start",), ("leaks",), ("v1",), ("latency",), ("fetch", "aariz"), ("stop",)):
+        for words in (("start",), ("leaks",), ("v1",), ("latency",), ("fetch", "aariz"), ("stop",), ("cancel", "101")):
             done = self.gate(*words)
             self.assertEqual(done.returncode, 75, f"{words}: {done.stdout}")
             self.assertIn("squeue failed", done.stdout)
