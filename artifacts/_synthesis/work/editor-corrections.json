@@ -1,0 +1,64 @@
+{
+ "about": "A fourth review found that three notes and two hints misstate a page or what a finding credits to it, and that two notes give one instruction two words. They stand as their readers wrote them, and the editor's words, which no reader of the follow-up wrote, follow each in square brackets: a correction where a note or a hint misstates a page, a note where two notes give one instruction different words. Each names the page it rests on; work/editor-corrections.json holds them and reread_numbers.py correct puts them in the reading.",
+ "items": [
+  {
+   "to": "hint",
+   "kind": "correction",
+   "index": 0,
+   "words": "of the two pages, Research Directions gives the 98.2% (against the count's 97.0%); the handoff gives the count's 97.0% and the 1.2 points the coupling adds, not 98.2% itself",
+   "why": "The fourth review: the hint credits the coupled count's 98.2% to the handoff too, which gives only its parts."
+  },
+  {
+   "to": "hint",
+   "kind": "correction",
+   "index": 104,
+   "words": "of the two pages, Research Directions gives the 98.2% (against the count's 97.0%); the handoff gives the count's 97.0% and the 1.2 points the coupling adds, not 98.2% itself",
+   "why": "The fourth review: the hint credits the coupled count's 98.2% to the handoff too, which gives only its parts."
+  },
+  {
+   "to": "note",
+   "kind": "correction",
+   "group": "held-out-crops",
+   "cluster": "FluoroCap: the corpus, its pipeline and its audits",
+   "index": 36,
+   "words": "the FluoroCap Overnight Report does say \"The films-only model is the one that was deployed on 14 September\"; no page says it is later than the ladder's arms, and the note's differs stands on its other ground, that the Corpus Audit gives 98.7% only for its own model's validation split, with no 8,422",
+   "why": "The fourth review: the note says no page says the model was deployed, which the Overnight Report says."
+  },
+  {
+   "to": "note",
+   "kind": "correction",
+   "group": "scope-the-readers-computed",
+   "cluster": "Detectors, architecture and the training plan",
+   "index": 27,
+   "words": "the finding, row 20's hint, credits the 716 images to the Spine X-ray Data Handoff alone; that the Spine Program Decisions table repeats them is the pages' word, not the finding's",
+   "why": "The fourth review: the note credits the finding with what only the texts say."
+  },
+  {
+   "to": "note",
+   "kind": "correction",
+   "group": "scope-the-readers-computed",
+   "cluster": "Transitional vertebrae and border variants",
+   "index": 34,
+   "words": "the row's own 129 and 15 are the per-patient classes of Naming Vertebrae Without an Anchor (129 L4, 15 L6), the figures the finding takes from the Fluoroscopy Data Atlas's L4L6 sheet; the row differs from the finding in reading the board's counts as lateral-film counts, a scope a reader computed",
+   "why": "The fourth review: the note gives the row's figures to the Atlas, where the row takes them from the Naming page."
+  },
+  {
+   "to": "note",
+   "kind": "note",
+   "group": "lateral-whole-frame",
+   "cluster": "Datasets, holdings and licences",
+   "index": 2,
+   "words": "Programme direction row 22 gives the same instruction on these holding counts and its reader called it agrees; the two readers took the brief's two words for one instruction about the holding, which the finding keeps apart from the scored count, and neither row differs from the finding",
+   "why": "The fourth review: two rows that give one instruction carry two words."
+  },
+  {
+   "to": "note",
+   "kind": "note",
+   "group": "lateral-whole-frame",
+   "cluster": "Programme direction, handoffs and onboarding",
+   "index": 22,
+   "words": "Datasets row 2 gives the same instruction on these holding counts and its reader called it about another quantity; the two readers took the brief's two words for one instruction about the holding, which the finding keeps apart from the scored count, and neither row differs from the finding",
+   "why": "The fourth review: two rows that give one instruction carry two words."
+  }
+ ]
+}

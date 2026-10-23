@@ -22321,7 +22321,7 @@
   ],
   "regroup": {
    "date": "2026-10-23",
-   "about": "On 2026-10-23 a review of the follow-up found that rows reading the same figures or the same pages, ruled one at a time, did not agree with one another, and that two rulings rested on scopes the pages do not state. They were ruled again in five groups: naming on whole lateral C-ArmLSpine frames (rows 0, 5, 6, 104, 105, 106 and 107); the 8,422 held-out crops (rows 61 and 111); the T12 and L1 shape test (rows 52 and 171); the coordbench plan's pairs and arms (rows 226 and 227); scopes the pages state or the readers computed (rows 24 and 31). One judge for each group read all of its rows together, each with both readings, its ruling and its verdict as the follow-up left it, and every source, the artifacts the review cited among them, with the review's points given as claims to check against the texts and never to take as true; the judge kept each row's verdict and hint or ruled it again. The judges' scale was the re-checkers', with cannot-tell glossed \"(the texts do not settle it)\" for a number collision as the re-checkers' scale glosses it for a cluster candidate, and four sentences added, which the re-checkers did not have: \"Apply it exactly.\" \"A scope-or-unit-differs needs the pages themselves to state the scope, subset, denominator, unit, interval, version or date that sets the two apart; a scope that you or an earlier reader only computed or inferred from other figures is not enough, and such a row is a confirmed-contradiction or a cannot-tell, with the inference given in the hint as what a record would have to confirm.\" \"An updated-later needs the later page to be later by its date or to plainly follow the other; a page of the same date that still gives the earlier figure bears on whether the figure was replaced.\" \"A cannot-tell is right when the texts do not settle the question; never choose a figure the texts do not choose.\" Of the 15 rows, 3 kept their verdict and hint and 12 were ruled again; rows 20 and 110, shown to the judges beside them, stand as they were. work/tools/reread_numbers.py writes each judge's input again from the reading and the follow-up's input.",
+   "about": "On 2026-10-23 a review of the follow-up found that rows reading the same figures or the same pages, ruled one at a time, did not agree with one another, and that two rulings rested on scopes the pages do not state. They were ruled again in five groups: naming on whole lateral C-ArmLSpine frames (rows 0, 5, 6, 104, 105, 106 and 107); the 8,422 held-out crops (rows 61 and 111); the T12 and L1 shape test (rows 52 and 171); the coordbench plan's pairs and arms (rows 226 and 227); scopes the pages state or the readers computed (rows 24 and 31). One judge for each group read all of its rows together, each with both readings, its ruling and its verdict as the follow-up left it, and every source, the artifacts the review cited among them, with the review's points given as claims to check against the texts and never to take as true; the judge kept each row's verdict and hint or ruled it again. The judges' scale was the re-checkers', with cannot-tell glossed \"(the texts do not settle it)\" for a number collision as the re-checkers' scale glosses it for a cluster candidate, and four sentences added, which the re-checkers did not have: \"Apply it exactly.\" \"A scope-or-unit-differs needs the pages themselves to state the scope, subset, denominator, unit, interval, version or date that sets the two apart; a scope that you or an earlier reader only computed or inferred from other figures is not enough, and such a row is a confirmed-contradiction or a cannot-tell, with the inference given in the hint as what a record would have to confirm.\" \"An updated-later needs the later page to be later by its date or to plainly follow the other; a page of the same date that still gives the earlier figure bears on whether the figure was replaced.\" \"A cannot-tell is right when the texts do not settle the question; never choose a figure the texts do not choose.\" Of the 15 rows, 3 kept their verdict and hint and 12 were ruled again; rows 20 and 110, shown to the judges beside them, stand as they were in that round. work/tools/reread_numbers.py writes each judge's input again from the reading and the follow-up's input.",
    "groups": [
     {
      "name": "lateral-whole-frame",
@@ -22435,7 +22435,7 @@
   },
   "regroup2": {
    "date": "2026-10-23",
-   "about": "On 2026-10-23 a second review of the follow-up found rows of three groups still at odds with the texts or with one another, the rules added to the judges' scale not stated on this page, and the cluster rows that give the groups' figures marked to be read beside the findings with nothing said of whether they agree. The three groups were ruled a second time: naming on whole lateral C-ArmLSpine frames (rows 0, 5, 6, 104, 105, 106 and 107); the 8,422 held-out crops (rows 61 and 111); scopes the pages state or the readers computed (rows 20, 24, 31 and 176). One judge for each read its rows together as the first group re-rule left them, with that judge's ruling of each and its finding, the rows and cluster rows set beside them and every source, the second review's points given as claims to check against the texts and never to take as true, under the same scale; of the 13 rows, 2 kept their verdict and hint and 11 were ruled again. Then each cluster row the rule below marks was set beside its group's finding as it then stood, by the group's judge for \"the 8,422 held-out crops\" and \"scopes the pages state or the readers computed\" and by readers given the finding for \"naming on whole lateral C-ArmLSpine frames\", \"the T12 and L1 shape test\" and \"the coordbench plan's pairs and arms\", who said whether its instruction agrees with the finding, differs from it or is about another quantity: 24 agree, 20 differ and 5 are about another quantity. The brief added two rules to the first round's: \"Never copy a login or a grid path.\" \"The project's owner has settled which data the project may use and which sets may enter training: do not raise either in a hint, a note or an explanation, and never propose dropping or qualifying a result on that account.\" work/tools/reread_numbers.py writes the second round's input again from the reading and the follow-up's input.",
+   "about": "On 2026-10-23 a second review of the follow-up found rows of three groups still at odds with the texts or with one another, the rules added to the judges' scale not stated on this page, and the cluster rows that give the groups' figures marked to be read beside the findings with nothing said of whether they agree. The three groups were ruled a second time: naming on whole lateral C-ArmLSpine frames (rows 0, 5, 6, 104, 105, 106 and 107); the 8,422 held-out crops (rows 61 and 111); scopes the pages state or the readers computed (rows 20, 24, 31 and 176). One judge for each read its rows together as the first group re-rule left them, with that judge's ruling of each and its finding, the rows and cluster rows set beside them and every source, the second review's points given as claims to check against the texts and never to take as true, under the same scale; of the 13 rows, 2 kept their verdict and hint and 11 were ruled again. Then each cluster row the rule then marked, narrower than the one below, was set beside its group's finding as it then stood, by the group's judge for \"the 8,422 held-out crops\" and \"scopes the pages state or the readers computed\" and by readers given the finding for \"naming on whole lateral C-ArmLSpine frames\", \"the T12 and L1 shape test\" and \"the coordbench plan's pairs and arms\", who said whether its instruction agrees with the finding, differs from it or is about another quantity: 24 agree, 20 differ and 5 are about another quantity. The brief added two rules to the first round's: \"Never copy a login or a grid path.\" \"The project's owner has settled which data the project may use and which sets may enter training: do not raise either in a hint, a note or an explanation, and never propose dropping or qualifying a result on that account.\" work/tools/reread_numbers.py writes the second round's input again from the reading and the follow-up's input.",
    "groups": [
     {
      "name": "lateral-whole-frame",
@@ -23040,6 +23040,226 @@
        "note": "This row is about the status of BUU's transitional truth: unused on the OpenSpine Board of 11 September, the anomalous test partition on Naming Vertebrae Without an Anchor of 17 September. Its hint gives no count, so it does not take a side between 129 and 130 and the finding does not bear on it."
       }
      ]
+    }
+   ]
+  },
+  "notes4": {
+   "date": "2026-10-23",
+   "about": "On 2026-10-23 a fourth review of the follow-up re-ran every step and found them reproduced. It found that the rule read a cluster row's figures in its quotes alone, so a confirmed row whose verdict's explanation and hint give a group's figures, and tell a planner which to carry, was not marked, and that the rule took any run of two digits or more as a figure, so rows were marked on the 12 of T12, the 42 of a time of day or the 20 of a price. The rule now also reads each verdict's explanation and hint, takes a figure only where it stands alone, not joined to a letter, a colon or a date, and needs two of a group's figures where each a row shares is a whole number under 100. This unmarks 14 rows marked before, all of them noted as about another quantity, whose notes stay in the follow-up's reading and leave the page, and adds 5, 3 for naming on whole lateral C-ArmLSpine frames and 2 for scopes the pages state or the readers computed, each set beside its group's finding as it now stands by one reader for the group under the third pass's brief, word for word, with one sentence added to its account of the work: \"A fourth review then found a cluster row whose verdict's explanation and hint give a group's figures that its quotes do not, and rows marked on digits that are not a group's figures, so the rule now also reads each verdict's explanation and hint, takes a figure only where it stands alone, and needs two where each it shares is a whole number under 100.\" Of the 5, 4 agree with the finding, 1 differs from it and none is about another quantity. work/tools/reread_numbers.py writes the readers' input again from the reading and the follow-up's input.",
+   "groups": [
+    {
+     "name": "lateral-whole-frame",
+     "readers": 1,
+     "siblings": [
+      {
+       "cluster": "Detectors, architecture and the training plan",
+       "index": 57,
+       "bears": "agrees",
+       "note": "The sibling's hint carries the shared 97.4% and 74.8% naming lines once, from the 8 October handoff's results catalog, which Research Directions repeats word for word. The finding carries the same 97.4% (whole frame) and 74.8% (one body) from those same pages. The hint does not call the September 98.2% superseded and says nothing about it either way."
+      },
+      {
+       "cluster": "Detectors, architecture and the training plan",
+       "index": 71,
+       "bears": "agrees",
+       "note": "The sibling's hint carries the Any-View plan's 'at the ceiling' line as the page's own inference, from zero-shot 96.4% against 97.4% fine-tuned on the device. That matches the finding: 96.4% (595/617) is from Any-View, and 97.4% is as Research Directions and the handoff first give it, with Any-View repeating it. The hint does not call 97.4% the replacement for the ledger's 98.2%. Its handoff half, the 97.6% comparator, is a power limit and not one of the group's figures."
+      },
+      {
+       "cluster": "Verification benches, overnight audits and OR readiness",
+       "index": 82,
+       "bears": "differs",
+       "note": "The sibling's explanation sets the handoff's 97.4% against the OR Readiness Ledger's 98.2%, and its hint says to take current figures from the handoff's results catalog and not from the ledger. That treats the 8 October 97.4% as the replacement for the 22 September whole-frame 98.2%. The finding leaves that open (rows 5 and 105 are cannot-tell): Research Directions and the handoff give 97.4% for whole-frame naming and 98.2% for the coupled count (97.0% plus 1.2 points), and State of the Literature (8 October) still calls 98.2% (606 of 617) the best number. The row should carry both figures with the pages that give each, and leave the question to the catalog row. Separately, the ledger also uses 98.2% for 'sacrum found' (context row 214), so the pairing in the explanation needs to name which 98.2% it means."
+      }
+     ]
+    },
+    {
+     "name": "scope-the-readers-computed",
+     "readers": 1,
+     "siblings": [
+      {
+       "cluster": "Datasets, holdings and licences",
+       "index": 51,
+       "bears": "agrees",
+       "note": "The hint carries the 3,461 / 15 / 130 BUU split and the '508 of 716' Mendeley line once, credited to the OpenSpine Board of 11 Sep 2026, with the Spine Program Decisions page as its repeat. That fits the finding: the board gives the 130 from the S1a class field on lateral films, and the board ('508 of 716 are re-filtered BUU') and the decisions table ('Mendeley | 716') both give 716 as an image count, not only a name. The hint is only about removing the duplicate, though. When the book carries those lines it should set them beside the Fluoroscopy Data Atlas's 129 four-lumbar (L4L6 sheet) and its 714 jpg, each figure credited to its own page and flagged as not reconciled, as the finding says."
+      },
+      {
+       "cluster": "Detectors, architecture and the training plan",
+       "index": 55,
+       "bears": "agrees",
+       "note": "The hint carries the shared text once from the OpenSpine Board (2026-09-11), including 'BUU: 3,461 normal / 15 lumbar. / 130 sacral.' at 4.0%. It does not call the 130 the later record, and it settles nothing the finding leaves open, so it agrees. The finding's flag still applies wherever the 130 is printed: set it beside the Fluoroscopy Data Atlas's 129 four-lumbar and 15 six-lumbar (L4L6 sheet), with the board's S1a class-field attribution, and mark the one-case gap as not reconciled."
+      }
+     ]
+    }
+   ],
+   "unmarked": [
+    {
+     "group": "coordbench-plan",
+     "cluster": "Beethoven: the research engine and its repositories",
+     "index": 40,
+     "round": "notes3",
+     "bears": "other"
+    },
+    {
+     "group": "coordbench-plan",
+     "cluster": "Symphony's origins: cswap, the primitives and the two Claude surfaces",
+     "index": 3,
+     "round": "notes3",
+     "bears": "other"
+    },
+    {
+     "group": "coordbench-plan",
+     "cluster": "Symphony: the protocol, its evidence and its place",
+     "index": 6,
+     "round": "notes3",
+     "bears": "other"
+    },
+    {
+     "group": "coordbench-plan",
+     "cluster": "Symphony: the protocol, its evidence and its place",
+     "index": 18,
+     "round": "notes3",
+     "bears": "other"
+    },
+    {
+     "group": "coordbench-plan",
+     "cluster": "Symphony: the protocol, its evidence and its place",
+     "index": 31,
+     "round": "notes3",
+     "bears": "other"
+    },
+    {
+     "group": "coordbench-plan",
+     "cluster": "Symphony: the protocol, its evidence and its place",
+     "index": 32,
+     "round": "notes3",
+     "bears": "other"
+    },
+    {
+     "group": "coordbench-plan",
+     "cluster": "Symphony: the protocol, its evidence and its place",
+     "index": 34,
+     "round": "notes3",
+     "bears": "other"
+    },
+    {
+     "group": "coordbench-plan",
+     "cluster": "Symphony: the protocol, its evidence and its place",
+     "index": 35,
+     "round": "notes3",
+     "bears": "other"
+    },
+    {
+     "group": "coordbench-plan",
+     "cluster": "Symphony: the protocol, its evidence and its place",
+     "index": 40,
+     "round": "notes3",
+     "bears": "other"
+    },
+    {
+     "group": "coordbench-plan",
+     "cluster": "Symphony: the protocol, its evidence and its place",
+     "index": 58,
+     "round": "notes3",
+     "bears": "other"
+    },
+    {
+     "group": "t12-l1-shape-test",
+     "cluster": "Transitional vertebrae and border variants",
+     "index": 1,
+     "round": "notes3",
+     "bears": "other"
+    },
+    {
+     "group": "t12-l1-shape-test",
+     "cluster": "Transitional vertebrae and border variants",
+     "index": 19,
+     "round": "notes3",
+     "bears": "other"
+    },
+    {
+     "group": "t12-l1-shape-test",
+     "cluster": "Transitional vertebrae and border variants",
+     "index": 22,
+     "round": "notes3",
+     "bears": "other"
+    },
+    {
+     "group": "t12-l1-shape-test",
+     "cluster": "Verification benches, overnight audits and OR readiness",
+     "index": 55,
+     "round": "notes3",
+     "bears": "other"
+    }
+   ]
+  },
+  "corrections": {
+   "date": "2026-10-23",
+   "about": "A fourth review found that three notes and two hints misstate a page or what a finding credits to it, and that two notes give one instruction two words. They stand as their readers wrote them, and the editor's words, which no reader of the follow-up wrote, follow each in square brackets: a correction where a note or a hint misstates a page, a note where two notes give one instruction different words. Each names the page it rests on; work/editor-corrections.json holds them and reread_numbers.py correct puts them in the reading.",
+   "items": [
+    {
+     "to": "hint",
+     "kind": "correction",
+     "index": 0,
+     "words": "of the two pages, Research Directions gives the 98.2% (against the count's 97.0%); the handoff gives the count's 97.0% and the 1.2 points the coupling adds, not 98.2% itself",
+     "why": "The fourth review: the hint credits the coupled count's 98.2% to the handoff too, which gives only its parts.",
+     "date": "2026-10-23"
+    },
+    {
+     "to": "hint",
+     "kind": "correction",
+     "index": 104,
+     "words": "of the two pages, Research Directions gives the 98.2% (against the count's 97.0%); the handoff gives the count's 97.0% and the 1.2 points the coupling adds, not 98.2% itself",
+     "why": "The fourth review: the hint credits the coupled count's 98.2% to the handoff too, which gives only its parts.",
+     "date": "2026-10-23"
+    },
+    {
+     "to": "note",
+     "kind": "correction",
+     "group": "held-out-crops",
+     "cluster": "FluoroCap: the corpus, its pipeline and its audits",
+     "index": 36,
+     "words": "the FluoroCap Overnight Report does say \"The films-only model is the one that was deployed on 14 September\"; no page says it is later than the ladder's arms, and the note's differs stands on its other ground, that the Corpus Audit gives 98.7% only for its own model's validation split, with no 8,422",
+     "why": "The fourth review: the note says no page says the model was deployed, which the Overnight Report says.",
+     "date": "2026-10-23"
+    },
+    {
+     "to": "note",
+     "kind": "correction",
+     "group": "scope-the-readers-computed",
+     "cluster": "Detectors, architecture and the training plan",
+     "index": 27,
+     "words": "the finding, row 20's hint, credits the 716 images to the Spine X-ray Data Handoff alone; that the Spine Program Decisions table repeats them is the pages' word, not the finding's",
+     "why": "The fourth review: the note credits the finding with what only the texts say.",
+     "date": "2026-10-23"
+    },
+    {
+     "to": "note",
+     "kind": "correction",
+     "group": "scope-the-readers-computed",
+     "cluster": "Transitional vertebrae and border variants",
+     "index": 34,
+     "words": "the row's own 129 and 15 are the per-patient classes of Naming Vertebrae Without an Anchor (129 L4, 15 L6), the figures the finding takes from the Fluoroscopy Data Atlas's L4L6 sheet; the row differs from the finding in reading the board's counts as lateral-film counts, a scope a reader computed",
+     "why": "The fourth review: the note gives the row's figures to the Atlas, where the row takes them from the Naming page.",
+     "date": "2026-10-23"
+    },
+    {
+     "to": "note",
+     "kind": "note",
+     "group": "lateral-whole-frame",
+     "cluster": "Datasets, holdings and licences",
+     "index": 2,
+     "words": "Programme direction row 22 gives the same instruction on these holding counts and its reader called it agrees; the two readers took the brief's two words for one instruction about the holding, which the finding keeps apart from the scored count, and neither row differs from the finding",
+     "why": "The fourth review: two rows that give one instruction carry two words.",
+     "date": "2026-10-23"
+    },
+    {
+     "to": "note",
+     "kind": "note",
+     "group": "lateral-whole-frame",
+     "cluster": "Programme direction, handoffs and onboarding",
+     "index": 22,
+     "words": "Datasets row 2 gives the same instruction on these holding counts and its reader called it about another quantity; the two readers took the brief's two words for one instruction about the holding, which the finding keeps apart from the scored count, and neither row differs from the finding",
+     "why": "The fourth review: two rows that give one instruction carry two words.",
+     "date": "2026-10-23"
     }
    ]
   }
