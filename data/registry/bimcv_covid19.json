@@ -1,0 +1,14 @@
+{
+  "source": "bimcv_covid19",
+  "identity_level": "patient",
+  "person_key_rule": "bimcv_covid19:<the BIDS subject id, sub-S<digits>, from the folder path>",
+  "access": "BIMCV's COVID-19+ research use agreement, accepted by the owner on 2026-10-22; no redistribution, the link kept inside the organisation",
+  "modality": "cr",
+  "device_class": "film",
+  "regions": [
+    "thoracic"
+  ],
+  "grid_root": "/rs/rs_grp_oschome/go2432/data/bimcv_covid19",
+  "shards": [],
+  "notes": "chest films and CTs of COVID-19 patients, iterations 1 to 3, about 389 GB; the raw copy is /rs/rs_grp_oschome/go2432/data/bimcv_covid19/raw (grid/fetch-xray.json, the nextcloud route) and the bank /rs/rs_grp_oschome/go2432/data/bimcv_covid19/bank, whose recipe waits on the unpacked layout; no shard until then"
+}

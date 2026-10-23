@@ -1,0 +1,28 @@
+{
+  "id": "bimcv_covid19",
+  "raw": "/rs/rs_grp_oschome/go2432/data/bimcv_covid19/raw",
+  "bank": "/rs/rs_grp_oschome/go2432/data/bimcv_covid19/bank",
+  "images": [
+    "to confirm: the PNG glob of the films inside the unpacked BIDS folders, which stay packed until the owner says to open them"
+  ],
+  "format": "png",
+  "person": {
+    "regex": "to confirm: the BIDS subject id, sub-S<digits>, in each film's path"
+  },
+  "view": {
+    "lat_from_ap_deg": "to confirm: the sidecar JSON's view field names each film's projection",
+    "gantry_deg": null
+  },
+  "device": {
+    "make": null,
+    "model": null,
+    "detector": "to confirm: the sidecar JSON's Manufacturer field"
+  },
+  "modality": "cr",
+  "device_class": "film",
+  "split": "train",
+  "labels": null,
+  "synthetic": false,
+  "px_mm": null,
+  "notes": "chest films and CTs of COVID-19 patients from the hospitals of the Valencian region (BIMCV COVID-19+, iterations 1 to 3); fetched from the B2DROP share under the research use agreement the owner accepted on 2026-10-22"
+}

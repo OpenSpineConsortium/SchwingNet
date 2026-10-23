@@ -513,6 +513,21 @@ class NextcloudRouteTest(unittest.TestCase):
         with self.assertRaises(tool.FetchError):
             tool.nextcloud_files(self.SHARE, empty_cm)
 
+    def test_a_share_behind_index_php_lists_at_the_root_and_downloads_behind_index_php(self):
+        tool = load("fetch_sources")
+        root, pages, token = tool.nextcloud_share("https://b2drop.example.org/index.php/s/COVID-Share_1")
+        self.assertEqual((root, pages, token), ("https://b2drop.example.org", "https://b2drop.example.org/index.php", "COVID-Share_1"))
+        asked = []
+        listing = self.folder("/public.php/webdav", [("part1.tgz", 10)])
+
+        def answer(request, timeout=0):
+            asked.append(request.full_url)
+            return type("R", (io.BytesIO,), {"__enter__": lambda s: s, "__exit__": lambda s, *a: False})(listing)
+
+        files = tool.nextcloud_files("https://b2drop.example.org/index.php/s/COVID-Share_1", answer)
+        self.assertEqual(asked, ["https://b2drop.example.org/public.php/webdav/"])
+        self.assertEqual(files[0]["url"], "https://b2drop.example.org/index.php/s/COVID-Share_1/download?path=%2F&files=part1.tgz")
+
     def test_padchest_is_listed_through_its_share_and_the_dry_run_never_prints_the_link(self):
         data = json.loads((GRID / "fetch-xray.json").read_text(encoding="utf-8"))
         entry = {e["id"]: e for e in data["open"]}["padchest"]
