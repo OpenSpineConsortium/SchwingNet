@@ -59,3 +59,12 @@ The coordinator opens an epic's tasks as native sub-issues (docs/agents/PROTOCOL
 - A project: open https://github.com/orgs/OpenSpineConsortium/projects/new (for a personal account, "New project" on the Projects tab of your profile), choose Table, name it after the repository, press Create. In the table's header press + and under Hidden fields turn on "Parent issue" and "Sub-issue progress", which show each task's epic and each epic's tasks done over tasks in all; in the project's menu choose Workflows and turn on "Item closed" to Done and "Pull request merged" to Done; add the repository's issues with "Add item", or turn on the "Auto-add to project" workflow, of which the Free plan allows one. The filters is:blocked and blocked-by: work in the project and on the repository's Issues tab.
 
 Neither step touches the repository, so scripts/setup-repo.sh and Symphony Setup leave both to the owner.
+
+## 10. The owner's tap before a merge (optional)
+
+.github/workflows/owner-ok.yml asks the owner to approve each pull request that is not a draft, through an environment, before it merges: GitHub Mobile sends a push notification with Approve and Reject on it, and the web shows "Review deployments" on the pull request. It replaces a required approving review, which the owner can never give on a pull request opened under the owner's own login, as every session's is. It holds only once these are set, all by the owner:
+
+1. The environment: open https://github.com/OpenSpineConsortium/SchwingNet/settings/environments, press "New environment", name it owner-ok and press "Configure environment". Tick "Required reviewers", add yourself, leave "Prevent self-review" unticked, since the deployments start from pushes made under your own login, and press "Save protection rules". Until a reviewer is named, the job passes at once.
+2. The rule: in the repository's ruleset (Settings, Rules, Rulesets), or in an organization ruleset that targets this repository, under "Require status checks to pass" add owner-ok and pick GitHub Actions beside it. Leave the ruleset's bypass list empty if the tap is to hold for merges made through the API too, a session's on your standing permission among them; an admin listed there as "Always" merges without it.
+3. Where an approving review was required for this, set "Required approvals" to 0 in that ruleset's "Require a pull request before merging", so the tap is the one thing asked.
+4. In GitHub Mobile, under Settings, Notifications, keep "Deployment reviews" (or "Actions") on, so the request reaches your phone.
