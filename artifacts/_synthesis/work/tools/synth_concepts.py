@@ -15,10 +15,10 @@ checked by, so one whose evidence the rule does not recognise is listed and not 
 
 Every artifact's text, every research note under docs/research/ and each dataset record's
 own words are then read passage by passage. In a passage that names a dataset, each figure
-goes to the nearest name within 160 characters: equal to one of that set's counts it agrees,
-the same figure written with fewer digits it is rounded, and within a tenth of a count (a
-thirtieth for a size) whose noun follows it, it differs. A dataset record's own words are
-checked against its own counts the same way. A passage that carries at least two of a settled
+goes to the nearest name within 160 characters, or to every name equally near: equal to one
+of those sets' counts it agrees, and where a count's noun follows it, it is rounded when it is
+that count written with fewer digits and differs when it is within a tenth of it (a thirtieth
+for a size). A dataset record's own words are checked against its own counts the same way. A passage that carries at least two of a settled
 figure's anchors, half of their weight by rarity, and one of its values written the same way
 or rounded agrees, is superseded or is open as that value is; a passage in the figure's own
 two artifacts is its evidence and is not checked. Nothing here judges: a check is a script's
@@ -224,6 +224,20 @@ def dataset_concepts(root, overrides):
     return out
 
 
+def unnamed_records(root, overrides):
+    """The dataset records with a count that no text is checked against, since their name gives
+    none of the names the rule reads and work/aliases.json gives them none, by id with their
+    name; the concept page lists them, so a person can name them there."""
+    out = []
+    for path in sorted(glob.glob(os.path.join(root, "data", "sources", "*.json"))):
+        rec = json.load(open(path, encoding="utf-8"))
+        counted = [k for k, v in (rec.get("counts") or {}).items()
+                   if noun_of(k) and isinstance(v, (int, float)) and not isinstance(v, bool) and v]
+        if counted and not overrides.get(rec["id"], name_aliases(rec["name"])):
+            out.append({"dataset": rec["id"], "name": rec["name"], "counts": counted})
+    return out
+
+
 def alias_patterns(by_alias):
     """Each alias as a pattern that finds it between any separators, BUU-LSPINE as BUU LSpine."""
     return [(re.compile(r"(?<![a-z0-9])" + r"[^a-z0-9]+".join(map(re.escape, alias.split())) + r"(?![a-z0-9])"), datasets)
@@ -260,22 +274,28 @@ def noun_after(passage, end):
     return set(plain(passage[end:end + 40]).split()[:4])
 
 
+def key_words(c):
+    """The words of a count's key besides its noun, lateral for lateral_films."""
+    return set(c["key"].lower().split("_")) - {c["noun"]}
+
+
 def count_outcome(value, pct, after, counts):
     """How one figure stands to the counts of the set it is near: agrees with any count it
-    equals; rounded where it is one written shorter and its noun follows; differs where it is
-    within a tenth of one (a thirtieth for a size) and its noun follows; else nothing."""
+    equals; else, of the counts whose noun follows it, those whose key's other words follow it
+    too first, rounded where it is one written shorter and differs where it is within a tenth
+    of one (a thirtieth for a size), so 3,603 lateral films differs from a lateral count of
+    3,610 and is not taken for an AP count of 3,600 rounded; else nothing."""
     if pct:
         return None, None
     equal = [c for c in counts if same(value, Decimal(c["value"]))]
     if equal:
         return "agrees", equal
-    named = [c for c in counts if after & NOUNS[c["noun"]]]
-    for c in named:
-        if rounded(value, Decimal(c["value"])):
-            return "rounded", [c]
+    named = sorted((c for c in counts if after & NOUNS[c["noun"]]), key=lambda c: -len(key_words(c) & after))
     for c in named:
         full = Decimal(c["value"])
         share = Decimal("0.0333") if c["noun"] in SIZE_KEYS else Decimal("0.10")
+        if rounded(value, full):
+            return "rounded", [c]
         if abs(value - full) / full <= share:
             return "differs", [c]
     return None, None
@@ -370,13 +390,16 @@ def value_status(concept, passage):
 
 def figure_concepts(M, N, inventory, weight):
     """One concept for each number verdict that put two values on one quantity, with whether
-    its own quotes pass the rule it is checked by."""
+    its own quotes pass the rule it is checked by. A row a concept check made settles none,
+    since it restates the figure of the row that made it (synth_reads.new_number_row)."""
     dates = {f"{r['repo']}/{r['folder']}": r.get("date") or "" for r in inventory["artifacts"]}
     verdicts = number_verdicts(N, M.get("numbers_extra", []))
     out = []
     for i, x in enumerate(N["candidates"]):
         v = verdicts.get(number_key(x))
         if not v or v["verdict"] not in ("confirmed-contradiction", "updated-later", "cannot-tell", "same-number-restated"):
+            continue
+        if (x.get("delta") or {}).get("concept"):
             continue
         qa, qb = v.get("quote_a") or x["quote_a"], v.get("quote_b") or x["quote_b"]
         sa, sb = statuses(v["verdict"], v, dates, x)
@@ -435,6 +458,7 @@ def build(root, text_dir, inventory, M, N, overrides, date):
     checks = check_datasets(texts, datasets) + check_figures(texts, figures, weight)
     unique = {c["key"]: c for c in checks}
     return {"date": date, "texts": len(texts), "datasets": datasets, "figures": figures,
+            "unnamed": unnamed_records(root, overrides),
             "checks": sorted(unique.values(), key=lambda c: (c["concept"], c["source"], c["line"], c["key"]))}
 
 
@@ -462,12 +486,12 @@ def page(ledger, baseline_date):
     figures = ledger["figures"]
     used = [f for f in figures if not f["unused"]]
     out = ["# Concepts the synthesis has settled, and where every text stands\n",
-           to_ascii(__doc__.strip().split("\n\n")[0].replace("\n", " ")) + "\n",
-           to_ascii(__doc__.strip().split("\n\n")[1].replace("\n", " ")) + "\n",
-           f"Rendered on {ledger['date']} from {ledger['texts']} texts by work/tools/synth.py concepts, which"
-           " .github/workflows/synthesis.yml runs on every push that changes an artifact, a research note or a"
-           " dataset record; the issue labelled synthesis lists what each run found that the stamp of"
-           f" {baseline_date} had not seen. Edit the records and render again rather than editing this file.\n",
+           *(to_ascii(part.replace("\n", " ")) + "\n" for part in __doc__.strip().split("\n\n")[:3]),
+           f"Rendered on {ledger['date']} from {ledger['texts']} texts by work/tools/synth.py concepts, or by the join of a"
+           " run of .github/workflows/synthesis.yml that read something. That workflow checks every text against the"
+           " ledger on every push that changes an artifact, a research note or a dataset record, and the issue labelled"
+           f" synthesis lists what each run found that the stamp of {baseline_date} had not seen. Edit the records and"
+           " render again rather than editing this file.\n",
            "## Summary\n",
            f"- Dataset counts: {len(ledger['datasets'])}, from {len({d['dataset'] for d in ledger['datasets']})} records under data/sources/.",
            f"- Settled figures: {len(figures)}, {len(used)} used and {len(figures) - len(used)} not used (listed at the end).",
@@ -485,6 +509,11 @@ def page(ledger, baseline_date):
 def dataset_section(ledger, by_concept):
     out = ["## Dataset counts\n",
            "Each record's counts with the lines that give one of them otherwise; the lines that agree are counted, not listed.\n"]
+    if ledger.get("unnamed"):
+        out.append("No text is checked against the counts of these records, since their names give none the rule reads; a"
+                   " record's names added under its id in work/aliases.json, by pull request, are checked from the next run on:\n")
+        out += [f"- {d['dataset']}: {cell(to_ascii(d['name']))} ({', '.join(d['counts'])})" for d in ledger["unnamed"]]
+        out.append("")
     by_dataset = collections.defaultdict(list)
     for d in ledger["datasets"]:
         by_dataset[d["dataset"]].append(d)

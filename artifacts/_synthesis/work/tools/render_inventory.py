@@ -1,6 +1,7 @@
 """Render artifacts/_synthesis/inventory.md from inventory.json, so the table and the
 records never disagree: the JSON is the record, the Markdown is read by people."""
 import json
+import re
 import sys
 
 
@@ -20,13 +21,54 @@ def to_ascii(text):
     return text.encode("ascii", "replace").decode("ascii")
 
 
-def cell(s):
+TICKS = re.compile(r"`+")
+# What opens a tag, a comment or an autolink: a bracket before a letter, a slash, a bang or a
+# question mark. A bracket before a space or a figure, as in < 224, opens nothing.
+TAG_OPEN = re.compile(r"<(?=[A-Za-z/!?])")
+
+
+def flat(s):
     return str(s if s is not None else "").replace("|", "\\|").replace("\n", " ").strip()
 
 
+def code_spans(text):
+    """Where the code spans of a line are, as CommonMark matches them: a run of backticks opens
+    one that the next run of the same length closes, and a run no later run closes is text."""
+    runs = [(m.start(), m.end()) for m in TICKS.finditer(text)]
+    spans, i = [], 0
+    while i < len(runs):
+        length = runs[i][1] - runs[i][0]
+        close = next((j for j in range(i + 1, len(runs)) if runs[j][1] - runs[j][0] == length), None)
+        if close is None:
+            i += 1
+        else:
+            spans.append((runs[i][0], runs[close][1]))
+            i = close + 1
+    return spans
+
+
+def inert(text):
+    """The line with every tag's opening bracket and every image's opening written as text
+    outside its code spans, which GitHub draws as they are: the words are a reader's, and a page
+    on GitHub fetches the image or keeps the tag that its words spell out. A line with an escaped
+    backtick is written so whole, since its code spans cannot be told apart safely (#166)."""
+    spans = [] if "\\`" in text else code_spans(text)
+    out, at = [], 0
+    for start, end in spans + [(len(text), len(text))]:
+        out += [TAG_OPEN.sub("&lt;", text[at:start]).replace("![", "!\\["), text[start:end]]
+        at = end
+    return "".join(out)
+
+
+def cell(s):
+    """A record's words as one line of a page: a pipe escaped for a table, a newline a space,
+    and no tag or image left to draw."""
+    return inert(flat(s))
+
+
 def short(s, n):
-    s = cell(s)
-    return s if len(s) <= n else s[: n - 3].rstrip() + "..."
+    s = flat(s)
+    return inert(s if len(s) <= n else s[: n - 3].rstrip() + "...")
 
 
 def main(src, dst):
@@ -47,9 +89,9 @@ def main(src, dst):
     out.append("| # | Artifact | Repository | Account | Kind | Date | Question it answers | Claims | Numbers | Decisions | Confidentiality |")
     out.append("|---|---|---|---|---|---|---|---|---|---|---|")
     for i, r in enumerate(recs, 1):
-        link = f"[{cell(r['title'])}](../../{r['folder']}/)" if r["repo"] == "SchwingNet" else f"[{cell(r['title'])}](https://github.com/OpenSpineConsortium/symphony-template/tree/main/artifacts/{r['folder']}/)"
-        out.append(f"| {i} | {link} | {r['repo']} | {cell(r['account'])} | {r['kind']}, {cell(r['genre'])} | {cell(r['date'])} | "
-                   f"{short(r['question'], 160)} | {len(r['key_claims'])} | {len(r['numbers'])} | {len(r['decisions'])} | {r['confidentiality']} |")
+        link = f"[{cell(r['title'])}](../{r['folder']}/)" if r["repo"] == "SchwingNet" else f"[{cell(r['title'])}](https://github.com/OpenSpineConsortium/symphony-template/tree/main/artifacts/{r['folder']}/)"
+        out.append(f"| {i} | {link} | {r['repo']} | {cell(r['account'])} | {cell(r['kind'])}, {cell(r['genre'])} | {cell(r['date'])} | "
+                   f"{short(r['question'], 160)} | {len(r['key_claims'])} | {len(r['numbers'])} | {len(r['decisions'])} | {cell(r['confidentiality'])} |")
     out.append("\n## Skipped (not copied into the repository; not inventoried)\n")
     for s in inv["skipped"]:
         out.append(f"- {cell(s['title'])} ({cell(s['account'])}): {cell(s['folder_cell'])}")
@@ -57,7 +99,7 @@ def main(src, dst):
     out.append("One block per artifact: the question, the summary, the key claims with their grade hint, the numbers that carry the strongest claims, the decisions, the open questions and the related artifacts. The full lists are in inventory.json.\n")
     for i, r in enumerate(recs, 1):
         out.append(f"### {i}. {cell(r['title'])}\n")
-        out.append(f"- Folder: `{r['repo']}/artifacts/{r['folder']}`; account: {cell(r['account'])}; link id: {cell(r['link_id'])}; {r['kind']}, {cell(r['genre'])}; date: {cell(r['date'])} ({short(r['date_evidence'], 120)}); confidentiality: {r['confidentiality']}.")
+        out.append(f"- Folder: `{r['repo']}/artifacts/{r['folder']}`; account: {cell(r['account'])}; link id: {cell(r['link_id'])}; {cell(r['kind'])}, {cell(r['genre'])}; date: {cell(r['date'])} ({short(r['date_evidence'], 120)}); confidentiality: {cell(r['confidentiality'])}.")
         if r.get("read_on"):
             out.append(f"- Read on {r['read_on']} by .github/workflows/synthesis.yml, "
                        + (f"after its page changed: {short(r['changed'], 400)}" if r.get("changed") else "new since the synthesis."))
@@ -66,7 +108,7 @@ def main(src, dst):
         if r["key_claims"]:
             out.append("- Key claims:")
             for c in r["key_claims"][:12]:
-                out.append(f"  - ({c['grade_hint']}) {cell(c['claim'])}")
+                out.append(f"  - ({cell(c['grade_hint'])}) {cell(c['claim'])}")
         if r["numbers"]:
             out.append(f"- Numbers ({len(r['numbers'])} recorded; the first {min(10, len(r['numbers']))} here):")
             for n in r["numbers"][:10]:
@@ -85,7 +127,7 @@ def main(src, dst):
         if r["stale_markers"]:
             out.append("- Stale markers: " + " / ".join(short(q, 120) for q in r["stale_markers"][:8]))
         if r["related_titles"]:
-            out.append("- Related: " + "; ".join(f"{cell(x['title'])} ({x['relation']})" for x in r["related_titles"][:10]))
+            out.append("- Related: " + "; ".join(f"{cell(x['title'])} ({cell(x['relation'])})" for x in r["related_titles"][:10]))
         if r.get("coverage_notes"):
             out.append(f"- Coverage: {short(r['coverage_notes'], 300)}")
         out.append("")

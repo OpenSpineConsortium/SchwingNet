@@ -4,7 +4,9 @@ The figures the synthesis has settled, and every text checked against them.
 
 A concept is a figure and the words that say what it is a figure of. Two kinds are kept in work/out/concepts.json. A dataset count comes from a record under data/sources/: its name gives the aliases a text calls the set by (work/aliases.json replaces them where the name gives none or the wrong ones), and each count is a figure with the noun that counts it. A settled figure comes from a number verdict of the contradictions record that put two values on one quantity: its anchors are the rarer words its two quotes share, with the quantity's words that either quote carries, and each value is current, superseded or open by the verdict. updated-later makes current the side whose figure the ruling's hint carries, else the later page by the inventory's dates; same-number-restated makes both current; a confirmed contradiction, cannot-tell or an updated-later whose later side neither says leaves both open. A settled figure is used only when its own two quotes pass the rule it is checked by, so one whose evidence the rule does not recognise is listed and not used.
 
-Rendered on 2026-10-23 from 277 texts by work/tools/synth.py concepts, which .github/workflows/synthesis.yml runs on every push that changes an artifact, a research note or a dataset record; the issue labelled synthesis lists what each run found that the stamp of 2026-10-23 had not seen. Edit the records and render again rather than editing this file.
+Every artifact's text, every research note under docs/research/ and each dataset record's own words are then read passage by passage. In a passage that names a dataset, each figure goes to the nearest name within 160 characters, or to every name equally near: equal to one of those sets' counts it agrees, and where a count's noun follows it, it is rounded when it is that count written with fewer digits and differs when it is within a tenth of it (a thirtieth for a size). A dataset record's own words are checked against its own counts the same way. A passage that carries at least two of a settled figure's anchors, half of their weight by rarity, and one of its values written the same way or rounded agrees, is superseded or is open as that value is; a passage in the figure's own two artifacts is its evidence and is not checked. Nothing here judges: a check is a script's match, for a person or a skeptic to read.
+
+Rendered on 2026-10-23 from 277 texts by work/tools/synth.py concepts, or by the join of a run of .github/workflows/synthesis.yml that read something. That workflow checks every text against the ledger on every push that changes an artifact, a research note or a dataset record, and the issue labelled synthesis lists what each run found that the stamp of 2026-10-23 had not seen. Edit the records and render again rather than editing this file.
 
 ## Summary
 
@@ -15,6 +17,18 @@ Rendered on 2026-10-23 from 277 texts by work/tools/synth.py concepts, which .gi
 ## Dataset counts
 
 Each record's counts with the lines that give one of them otherwise; the lines that agree are counted, not listed.
+
+No text is checked against the counts of these records, since their names give none the rule reads; a record's names added under its id in work/aliases.json, by pull request, are checked from the next run on:
+
+- coronary_angiography: Coronary angiography sets (CADICA, ARCADE, XCAD, AngioCAD) (cadica_patients, arcade_images, xcad_images, angiocad_patients)
+- fluoro_video_clips: Public fluoroscopy clips on the grid (size_gb)
+- implant_ct_synthetic: Synthetic hardware CTs: implant_ct (CTSP, deleted), implant_verse, implant_ts (implant_verse_subjects, implant_verse_volumes, implant_verse_size_gb, implant_ts_subjects, implant_ts_volumes, implant_ts_size_gb)
+- jefferson_drg: Jefferson Neurosurgery DRG stimulation video (Hines 2020) (videos)
+- maastricht_cervical: Maastricht UMC+ cervical flexion-extension cine (van Santbrink 2026) (recordings)
+- procedure_guide: The Procedure Guide (Puranik) live fluoroscopy clips (clips)
+- sof_lateral_spine: SOF lateral spine radiographs (Study of Osteoporotic Fractures) (women_about)
+- veriserum: Veriserum (ETH Zurich, MICCAI 2025) (images_about)
+- veterinary_pig_levelcheck: Veterinary: pig lower limb CT, CBCT and planar images (Goswami 2020, IEEE DataPort) (size_mb)
 
 ### Aariz cephalometric benchmark (Khalid, Fraz 2023) and the ISBI 2015 cephalograms (aariz_cephalograms)
 
@@ -487,8 +501,8 @@ same-number-restated; 609 (current, side a); 481 (current, side a); 128 (current
 |---|---|---|---|---|
 | agrees | 609 | [docs/research/datasets-inventory.md](../../docs/research/datasets-inventory.md) | 103 | \| AASCE / BoostNet whole-spine films \| 609 labelled AP whole-spine films (481 BoostNet training + 128 BoostNet test) and 98 challenge-test films whose landmarks the release never published; both copie |
 | agrees | 128 | [docs/research/datasets-inventory.md](../../docs/research/datasets-inventory.md) | 103 | ipped by an unsorted-landmark artefact) and the 128 test films never did; a request-form source; the Kaggle scoliosis YOLOv5 set (kaggle_scoliosis_yolov5) may be a relabel of these films: its hashes a |
-| agrees | 609 | [docs/research/datasets-inventory.md](../../docs/research/datasets-inventory.md) | 202 | \| AASCE / BoostNet whole-spine films \| `[the lab volume's data root]/thoracic_xr/mirror_zlinzju_ke30_u7_AASCE2019; the 579 at [the lab volume's data root]/aasce2019_boostnet/raw/aasce` \| labelled |
-| agrees | 609 | [docs/research/datasets-reproduce.md](../../docs/research/datasets-reproduce.md) | 551 | - Registry: link https://aasce19.github.io/; grid path `[the lab volume's data root]/thoracic_xr/mirror_zlinzju_ke30_u7_AASCE2019; the 579 at [the lab volume's data root]/aasce2019_boostnet/raw/aa |
+| agrees | 609 | [docs/research/datasets-inventory.md](../../docs/research/datasets-inventory.md) | 202 | \| AASCE / BoostNet whole-spine films \| `[the lab volume's data root]/thoracic_xr/mirror_zlinzju_ke30_u7_AASCE2019; the 579 at [the lab volume's data root]/aasce2019_boostnet/raw/aasce` \| labelled film |
+| agrees | 609 | [docs/research/datasets-reproduce.md](../../docs/research/datasets-reproduce.md) | 551 | - Registry: link https://aasce19.github.io/; grid path `[the lab volume's data root]/thoracic_xr/mirror_zlinzju_ke30_u7_AASCE2019; the 579 at [the lab volume's data root]/aasce2019_boostnet/raw/aasce` |
 | agrees | 609 | [docs/research/datasets-reproduce.md](../../docs/research/datasets-reproduce.md) | 557 | - checks: `md5: path ${DEST}/mirror_zlinzju_ke30_u7_AASCE2019/repo.zip, expect fe9430ab5c064c0d102d44810900e612`; `bytes: path ${DEST}/mirror_zlinzju_ke30_u7_AASCE2019/repo.zip, expect 354809072`; `co |
 | agrees | 609 | [data/sources/aasce.json](../../data/sources/aasce.json) | 1 | 609 labelled AP whole-spine films (481 BoostNet training + 128 BoostNet test) and 98 challenge-test films whose landmarks the release never published; both copies are on Ceph: the GitHub mirror holds |
 

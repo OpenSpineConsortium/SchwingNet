@@ -28,6 +28,13 @@ from check_verdict_quotes import rows_of  # noqa: E402
 
 REPOS = ("SchwingNet", "symphony-template")
 FINE = ("own", "empty")
+# A quote its own artifact holds only by one of its 48-character windows is held in part: a
+# change to a figure near either end of a long quote leaves a window whole, so for what changed
+# such a quote is not where it should be, and one held whole at the stamp and in part now is a
+# verdict whose page changed under it. Of the 1,900 verdict quotes of 2026-10-23, four matched
+# only so.
+IN_PART = "own-in-part"
+WHOLE = tuple(h for h in vq.HIT if not h.endswith("window"))
 # A changed artifact's reader is given its changed lines when they are few enough to read
 # beside the old record; past these it reads the whole new text against the old record.
 MAX_HUNKS = 60
@@ -117,12 +124,21 @@ def absent_inventory_quotes(inventory, text_dir):
     return out
 
 
+def quote_place(text_dir, quote, own, other):
+    """Where a verdict's quote is found, as verify_quotes.place says, but own only where its own
+    artifact holds it whole and own-in-part where only a window of it is there."""
+    where = vq.place(text_dir, quote, own, other)
+    if where == "own" and vq.found(quote, vq.text_of(text_dir, own), vq.raw_of(own)) not in WHOLE:
+        return IN_PART
+    return where
+
+
 def verdict_places(M, N, text_dir):
     """Where each verdict's two quotes are found today, keyed stratum|index as the pages count
     rows; own and empty are where they should be, anything else is for a person to read."""
     places = {}
     for stratum, i, a, b, v in rows_of(M, N):
-        places[f"{stratum}|{i}"] = [vq.place(text_dir, v.get("quote_a"), a, b), vq.place(text_dir, v.get("quote_b"), b, a)]
+        places[f"{stratum}|{i}"] = [quote_place(text_dir, v.get("quote_a"), a, b), quote_place(text_dir, v.get("quote_b"), b, a)]
     return places
 
 
@@ -143,14 +159,15 @@ def write(path, state):
         f.write("\n")
 
 
-def delta(state, trees, datasets):
+def delta(state, trees, datasets, recorded=()):
     """What is new, changed or gone among the artifact folders and the dataset records since
-    the state was stamped."""
+    the state was stamped. An artifact is gone while the records hold one whose folder is gone,
+    so it is listed until a person takes its record out, whatever the stamp says."""
     was, had = state.get("artifacts", {}), state.get("datasets", {})
     return {
         "new": sorted(set(trees) - set(was)),
         "changed": sorted(a for a in trees if a in was and trees[a] != was[a]),
-        "gone": sorted(set(was) - set(trees)),
+        "gone": sorted(set(recorded) - set(trees)),
         "datasets_new": sorted(set(datasets) - set(had)),
         "datasets_changed": sorted(d for d in datasets if d in had and datasets[d] != had[d]),
         "datasets_gone": sorted(set(had) - set(datasets)),

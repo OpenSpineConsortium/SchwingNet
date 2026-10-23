@@ -166,7 +166,7 @@ def later_words(v, x):
         return f"found on {found['date']}, " + ("a kind no skeptic reads" if x.get("kind") in UNREAD_KINDS else "not read yet")
     judge = ", ruled by a judge" if "judge" in (d.get("read") or []) else ""
     if d.get("earlier"):
-        return f"read again on {d['date']}, was {d['earlier'].get('verdict')}{judge}"
+        return f"read again on {d['date']}, was {cell(d['earlier'].get('verdict'))}{judge}"
     if found and found.get("date") != d["date"]:
         return f"found on {found['date']}, read on {d['date']}{judge}"
     return f"found on {d['date']}{judge}"
@@ -839,7 +839,7 @@ def later_section(M, N, nv):
     changed = [(s, i, v) for s, i, v in again if v["verdict"] != v["delta"]["earlier"].get("verdict")]
     if changed:
         out.append("The verdicts read again that changed:\n")
-        out += [f"- {where_of({'stratum': s, 'index': i})}: {v['delta']['earlier'].get('verdict')} became {v['verdict']}." for s, i, v in changed]
+        out += [f"- {where_of({'stratum': s, 'index': i})}: {cell(v['delta']['earlier'].get('verdict'))} became {cell(v['verdict'])}." for s, i, v in changed]
         out.append("")
     return out
 
@@ -869,7 +869,7 @@ def confirmed_section(text_dir, clusters, N, nv, followup, marks, later=()):
             out.append(title + "\n")
             for i, x, v in group:
                 tag = f"; {review_cell(v, x)}" if review_cell(v, x) else ""
-                out.append(f"- Row {i}, {x['kind']}, {v['verdict']} ({pair(x)}{tag}): {cell(x['topic'])}. {cell(v.get('resolution_hint'))}"
+                out.append(f"- Row {i}, {cell(x['kind'])}, {cell(v['verdict'])} ({pair(x)}{tag}): {cell(x['topic'])}. {cell(v.get('resolution_hint'))}"
                            + beside(marks.get((c["cluster"], i), []), "How far the verdicts hold, above"))
             out.append("")
     rows = [(j, x, nv[number_key(x)]) for j, x in enumerate(N["candidates"])
@@ -877,7 +877,7 @@ def confirmed_section(text_dir, clusters, N, nv, followup, marks, later=()):
     if rows:
         out.append("### Numbers\n")
         for j, x, v in rows:
-            out.append(f"- Collision {j}, {v['verdict']}{review_tag(v, x)}, {cell(x['quantity'])}: {short_id(x['artifact_a'])} gives {cell(x['value_a'])}, "
+            out.append(f"- Collision {j}, {cell(v['verdict'])}{review_tag(v, x)}, {cell(x['quantity'])}: {short_id(x['artifact_a'])} gives {cell(x['value_a'])}, "
                        f"{short_id(x['artifact_b'])} gives {cell(x['value_b'])}. {with_editor(cell(v.get('resolution_hint') or v.get('explanation')), cell(edits.get(j, '')))}")
         out.append("")
     return out
@@ -895,7 +895,7 @@ def numbers_section(text_dir, N, nv, titles, edits):
             v = nv.get(number_key(x))
             why = with_editor(short(v.get("resolution_hint") or v.get("explanation"), 260), cell(edits.get(j, ""))) if v else short(x["why"], 200)
             out.append(f"| {j} | {short(x['quantity'], 110)} | {link(x['artifact_a'], titles)} | {short(x['value_a'], 70)} | {link(x['artifact_b'], titles)} | {short(x['value_b'], 70)} | "
-                       f"{quote_status(text_dir, x['artifact_a'], x['quote_a'])} | {quote_status(text_dir, x['artifact_b'], x['quote_b'])} | {(v or {}).get('verdict', '')} | {review_cell(v, x)} | {why} |")
+                       f"{quote_status(text_dir, x['artifact_a'], x['quote_a'])} | {quote_status(text_dir, x['artifact_b'], x['quote_b'])} | {cell((v or {}).get('verdict', ''))} | {review_cell(v, x)} | {why} |")
         out.append("")
         out.append("The quotes, by collision:\n")
         for j, x in rows:
@@ -943,9 +943,9 @@ def cluster_page(text_dir, c, titles, date, marks):
            "| # | Kind | Topic | A | B | Reader's quote A | Reader's quote B | Verdict | Review | Explanation |",
            "|---|---|---|---|---|---|---|---|---|---|"]
     for i, (x, v) in enumerate(zip(c["candidates"], c["verdicts"])):
-        out.append(f"| {i} | {x['kind']} | {short(x['topic'], 110)} | {link_or(x['artifact_a'], titles, up)} | {link_or(x.get('artifact_b'), titles, up)} | "
+        out.append(f"| {i} | {cell(x['kind'])} | {short(x['topic'], 110)} | {link_or(x['artifact_a'], titles, up)} | {link_or(x.get('artifact_b'), titles, up)} | "
                    f"{quote_status(text_dir, x['artifact_a'], x.get('quote_a'))} | {quote_status(text_dir, x.get('artifact_b'), x.get('quote_b'))} | "
-                   f"{(v or {}).get('verdict', '')} | {review_cell(v, x)} | {short((v or {}).get('explanation') or x.get('why_it_matters'), 260)} |")
+                   f"{cell((v or {}).get('verdict', ''))} | {review_cell(v, x)} | {short((v or {}).get('explanation') or x.get('why_it_matters'), 260)} |")
     out.append("")
     out.append("What each artifact says, and the words each verdict rests on, in the same order:\n")
     for i, (x, v) in enumerate(zip(c["candidates"], c["verdicts"])):
@@ -959,7 +959,7 @@ def cluster_page(text_dir, c, titles, date, marks):
     if c.get("canonical_check"):
         out.append("The clustering's superseded and duplicate relations, as the reader checked them:\n")
         for y in c["canonical_check"]:
-            out.append(f"- {short_id(y['id'])} {y['relation']} {short_id(y['other'])}: {'agrees' if y['agree'] else 'disagrees'}. {cell(y['why'])}")
+            out.append(f"- {short_id(y['id'])} {cell(y['relation'])} {short_id(y['other'])}: {'agrees' if y['agree'] else 'disagrees'}. {cell(y['why'])}")
         out.append("")
     out.append(f"Unsourced: {cell(c['unsourced_summary'])}\n")
     out.append(f"Stale: {cell(c['stale_summary'])}\n")

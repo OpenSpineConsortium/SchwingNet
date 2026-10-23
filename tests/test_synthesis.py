@@ -259,6 +259,22 @@ class Join(unittest.TestCase):
             _, left = sr.join_inventory(w.args, {"inventory:1": answer}, w.inventory, [], w.clustering, w.rows, "2026-10-24")
             self.assertIn(why, left[GAMMA])
 
+    def test_a_finder_s_words_that_hold_an_address_are_kept_out(self):
+        w = self.world
+        address = "write to reader@example.invalid"
+        found = {"inventory:0": {"record": record(), "changed": "its table"},
+                 "inventory:1": {"record": record(), "cluster": "C1", "cluster_why": address},
+                 "candidates:0": {"cluster_candidates": [{**cluster_candidate(ALPHA, BETA, "held"), "why_it_matters": address}],
+                                  "number_candidates": [{**number_candidate("probably-different-quantities", "frames"), "why": address},
+                                                        {**number_candidate("contradiction", "accuracy"), "quote_b": address}]}}
+        _, left = sr.join_inventory(w.args, found, w.inventory, [], w.clustering, w.rows, "2026-10-24")
+        self.assertIn("keeps out", left[GAMMA], "a new artifact's reason for its cluster is the finder's words too")
+        items, dropped = sr.found_items(w.args, found)
+        self.assertEqual(items, [])
+        self.assertEqual(len(dropped), 3, "a number no skeptic reads is listed as dropped too, since it is kept as a row")
+        self.assertTrue(all("keeps out" in d["why"] for d in dropped))
+        self.assertEqual(sr.kept_numbers(w.args, found, w.N, "2026-10-24"), 0)
+
     def test_a_run_whose_answers_came_back_in_part(self):
         w = self.world
         w.answer("inventory:0", {"record": record(), "changed": "its table"})
@@ -549,6 +565,11 @@ class Pages(unittest.TestCase):
             render_clusters.main(str(SYNTH / "work" / "out" / "clustering.json"), str(SYNTH / "inventory.json"), f"{folder}/clusters.md")
             for name in ("inventory.md", "clusters.md"):
                 self.assertEqual(Path(folder, name).read_text(encoding="utf-8"), (SYNTH / name).read_text(encoding="utf-8"), name)
+
+    def test_the_concept_page_renders_from_the_committed_ledger(self):
+        ledger = synth.load(synth.LEDGER)
+        page = synth.scrubbed(sc.page(ledger, synth.load(synth.STATE)["stamped"]))
+        self.assertEqual(page, synth.PAGE.read_text(encoding="ascii"))
 
     def test_the_committed_records_hold_nothing_the_scrub_would_change(self):
         for path in (SYNTH / "inventory.json", SYNTH / "work" / "out" / "concepts.json", SYNTH / "work" / "out" / "clustering.json"):

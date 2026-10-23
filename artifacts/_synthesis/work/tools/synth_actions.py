@@ -5,7 +5,9 @@ inputs, and the pull request's words.
 
 Usage, as the workflow runs it (paths absolute, as the plan wrote them):
   synth_actions.py admit --status F --marks F --runs F --event E [--switch S] [--crowd C]
-                         [--token true|false] [--app true|false] [--conflict N] [--cap N] --words F
+                         [--token true|false] [--app true|false] [--without W] [--conflict N]
+                         [--foreign N] [--rejected N] [--cap N] --words F
+  synth_actions.py marked --marks F            the runs the last marks name, one id a line
   synth_actions.py matrix PLAN                 the read legs, as reads=[...]
   synth_actions.py args STAGE [--model M] [--fallback M] [--effort E]
   synth_actions.py prompt STAGE PLAN BATCHES K
@@ -70,15 +72,33 @@ def block(name, text, end):
 
 # Whether a run may read.
 
+def artifacts_of(marks):
+    """The marker artifacts of every page the listing gave: gh api --paginate --slurp gives a list
+    of pages, one call a single page."""
+    pages = marks if isinstance(marks, list) else [marks]
+    return [a for page in pages if isinstance(page, dict) for a in page.get("artifacts", [])]
+
+
 def runs_today(marks, today):
     """How many runs have read today, by the marker artifacts they kept."""
-    return sum(1 for a in marks.get("artifacts", []) if (a.get("created_at") or "").startswith(today))
+    return sum(1 for a in artifacts_of(marks) if (a.get("created_at") or "").startswith(today))
+
+
+def marked(marks, n=3):
+    """The ids of the last n runs that kept a mark, newest first, which the workflow then reads
+    one by one, so a day of runs that did not read cannot push them out of a listing."""
+    ids = []
+    for a in sorted(artifacts_of(marks), key=lambda a: a.get("created_at") or "", reverse=True):
+        run = (a.get("workflow_run") or {}).get("id")
+        if isinstance(run, int) and run not in ids:
+            ids.append(run)
+    return ids[:n]
 
 
 def failing(marks, runs, now):
     """Whether the last three runs that read all failed, the last of them less than
     FAILURE_PAUSE ago."""
-    reading = {(a.get("workflow_run") or {}).get("id") for a in marks.get("artifacts", [])}
+    reading = set(marked(marks))
     done = sorted((r for r in runs.get("workflow_runs", []) if r.get("id") in reading and r.get("status") == "completed"),
                   key=lambda r: r.get("created_at") or "", reverse=True)[:3]
     if len(done) < 3 or any(r.get("conclusion") != "failure" for r in done):
@@ -93,7 +113,7 @@ def cap_of(text):
     return min(int(text), MAX_CAP) if text.isdigit() and len(text) <= 3 else DEFAULT_CAP
 
 
-def admission(waiting, switch, crowd, token, conflict, done, cap, stopped, app="true"):
+def admission(waiting, switch, crowd, token, conflict, done, cap, stopped, app="true", without="", foreign="", rejected=""):
     """Whether the run reads, and why, in the order a person would fix them."""
     if not waiting:
         return False, "Nothing waits to be read."
@@ -106,9 +126,20 @@ def admission(waiting, switch, crowd, token, conflict, done, cap, stopped, app="
     if app != "true":
         return False, ("Reads wait, but the variable SDLC_APP_ID or the secret SDLC_APP_PRIVATE_KEY of the SymphonyBoard App is not set,"
                        " so no run could open the pull request with what it read.")
+    if without:
+        return False, (f"Reads wait, but this run could not check out {without}, whose artifacts the synthesis reads too, and a run"
+                       " reads only with both repositories, since a stamp made without one would take its checks as gone; the next"
+                       " run that can check it out reads.")
     if conflict:
         return False, (f"Reads wait, but the open synthesis pull request #{conflict} no longer merges cleanly with main; merge or close it,"
                        " and the next run reads again.")
+    if foreign:
+        return False, (f"Reads wait, but the open synthesis pull request #{foreign} changes a file no join writes, such as a tool or a"
+                       " brief, so no run builds on it; a person reads it and closes it, and the next run opens a new one.")
+    if rejected:
+        return False, (f"Reads wait, but owner-ok failed on the head of the open synthesis pull request #{rejected}, as it does when the"
+                       " owner presses Reject, so no run builds on it; close it to start over, or run its owner-ok job again and"
+                       " approve, and the next run reads.")
     if done >= cap:
         return False, f"Reads wait, but {done} runs have read today, the day's {cap}; the next run after midnight UTC reads."
     if stopped:
@@ -126,7 +157,7 @@ def admit(a):
     now = datetime.datetime.now(datetime.timezone.utc)
     stopped = a.event != "workflow_dispatch" and failing(marks, runs, now)
     ok, why = admission(waiting, a.switch, a.crowd, a.token, a.conflict, runs_today(marks, now.date().isoformat()), cap_of(a.cap),
-                        stopped, a.app)
+                        stopped, a.app, a.without, a.foreign, a.rejected)
     with open(a.words, "w", encoding="utf-8") as f:
         f.write(f"## This run\n\n{why}\n")
     print(f"admit={'true' if ok else 'false'}")
@@ -219,6 +250,16 @@ def answer(stage, k, execution_file, out):
 
 # The verdicts' batches and the files the re-checkers and judges read.
 
+def apart(planned, new):
+    """The items in the groups no batch mixes: the planned items, then each finder's candidates,
+    so what one artifact's text says reaches the skeptic, re-checker and judge of its own
+    finder's rows and nobody else's."""
+    by_finder = {}
+    for it in new:
+        by_finder.setdefault(it["key"].rsplit(":", 2)[0], []).append(it)
+    return [group for group in [planned, *by_finder.values()] if group]
+
+
 def batch(plan, answers, out):
     args = load(os.path.join(plan, "args.json"))
     planned = load(args["items"])["items"]
@@ -226,11 +267,12 @@ def batch(plan, answers, out):
     items = planned + new
     os.makedirs(out, exist_ok=True)
     units = []
-    for b in range(0, len(items), sr.BATCH):
-        chunk = items[b:b + sr.BATCH]
-        path = os.path.join(out, f"skeptic-{len(units)}.json")
-        save(path, {"items": chunk})
-        units.append({"file": path, "keys": [it["key"] for it in chunk]})
+    for group in apart(planned, new):
+        for b in range(0, len(group), sr.BATCH):
+            chunk = group[b:b + sr.BATCH]
+            path = os.path.join(out, f"skeptic-{len(units)}.json")
+            save(path, {"items": chunk})
+            units.append({"file": path, "keys": [it["key"] for it in chunk]})
     save(os.path.join(out, "batches.json"), {"batches": units, "items": {it["key"]: it for it in items}, "dropped": dropped})
     print(f"batches={json.dumps(list(range(len(units))))}")
     print(f"items={len(items)}")
@@ -321,6 +363,8 @@ def run_section(s, url):
     out += listing("Rows the finders found whose verdict did not come back, added with none for the next run to read",
                    [f"{k}: {s['missing'].get(k, 'not read')}" for k in s["unread"]])
     out += listing("Candidates dropped before any skeptic read them", [f"{d['key']}: {d['why']}" for d in s["dropped"]])
+    out += listing("Verdicts placed whose quotes the script does not find in their artifacts, which the pages mark; read the"
+                   " passage before relying on one", s.get("unfound_quotes", []))
     if s["items_waiting"]:
         out += [f"{len(s['items_waiting'])} planned verdict item(s) past this run's limit wait for the next run.", ""]
     if s["already"]:
@@ -335,7 +379,7 @@ After: What the runs below read is in the records: each new or changed artifact'
 
 What: The reads .github/workflows/synthesis.yml ran on this repository's Claude token, and the join of their answers (work/tools/synth.py join).
 
-How: A Claude session read each new or changed artifact into a record and, as the finder, set it against its cluster and the numbers table; each verdict item, planned or found, was read by a skeptic, then by a re-checker told to overturn the skeptic's verdict and its hint, and each dispute by a judge (work/briefs/). The sessions could read and search the checkout and nothing more, every tool that writes, runs a command, fetches or starts another session denied and the checkouts' .git folders too, with no repository instructions and a JSON schema for their answers; the join refuses an answer that holds an e-mail address, a phone number or a credential's shape, replaces a login, the owner's first name or a form's link with an editor's words (work/tools/redact.py), takes a verdict only on its item's scale, and places nothing it cannot name.
+How: A Claude session read each new or changed artifact into a record and, as the finder, set it against its cluster and the numbers table; each verdict item, planned or found, was read by a skeptic, then by a re-checker told to overturn the skeptic's verdict and its hint, and each dispute by a judge (work/briefs/), the planned items and each finder's candidates in batches of their own. The sessions could read and search the checkout and nothing more, every tool that writes, runs a command, fetches or starts another session denied and the checkouts' .git folders too, with no repository instructions and a JSON schema for their answers; the join refuses an answer that holds an e-mail address, a phone number or a credential's shape, replaces a login, the owner's first name or a form's link with an editor's words (work/tools/redact.py), keeps a candidate only where the script finds its quotes in the artifacts it names, takes a verdict only on its item's scale, and places nothing it cannot name. The tools that ran are main's, and this pull request changes the records and the pages rendered from them alone; a run builds on it only while that holds and while owner-ok has not failed on its head. It merges by itself once the checks are green and the owner has tapped owner-ok; where main's rules do not require owner-ok, it is opened as a draft, and turned back into one by each later run, so a person marks it ready.
 
 ## Adversarial review
 
@@ -358,9 +402,10 @@ def main(argv=None):
     a = sub.add_parser("admit")
     for name in ("status", "marks", "runs", "words"):
         a.add_argument(f"--{name}", required=True)
-    for name in ("event", "switch", "crowd", "token", "conflict", "cap"):
+    for name in ("event", "switch", "crowd", "token", "conflict", "cap", "without", "foreign", "rejected"):
         a.add_argument(f"--{name}", default="")
     a.add_argument("--app", default="true")
+    sub.add_parser("marked").add_argument("--marks", required=True)
     sub.add_parser("matrix").add_argument("plan")
     g = sub.add_parser("args")
     g.add_argument("stage", choices=sorted(STAGES))
@@ -389,6 +434,9 @@ def main(argv=None):
     x = p.parse_args(argv)
     if x.command == "admit":
         return admit(x)
+    if x.command == "marked":
+        print("\n".join(str(i) for i in marked(load(x.marks))))
+        return 0
     if x.command == "matrix":
         print(f"reads={json.dumps(list(range(len(load(os.path.join(x.plan, 'args.json'))['inventory']))))}")
         return 0

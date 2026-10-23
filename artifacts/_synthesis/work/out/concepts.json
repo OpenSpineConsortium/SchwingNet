@@ -4613,6 +4613,79 @@
    "unused": "its two quotes share fewer than two rarer words"
   }
  ],
+ "unnamed": [
+  {
+   "dataset": "coronary_angiography",
+   "name": "Coronary angiography sets (CADICA, ARCADE, XCAD, AngioCAD)",
+   "counts": [
+    "cadica_patients",
+    "arcade_images",
+    "xcad_images",
+    "angiocad_patients"
+   ]
+  },
+  {
+   "dataset": "fluoro_video_clips",
+   "name": "Public fluoroscopy clips on the grid",
+   "counts": [
+    "size_gb"
+   ]
+  },
+  {
+   "dataset": "implant_ct_synthetic",
+   "name": "Synthetic hardware CTs: implant_ct (CTSP, deleted), implant_verse, implant_ts",
+   "counts": [
+    "implant_verse_subjects",
+    "implant_verse_volumes",
+    "implant_verse_size_gb",
+    "implant_ts_subjects",
+    "implant_ts_volumes",
+    "implant_ts_size_gb"
+   ]
+  },
+  {
+   "dataset": "jefferson_drg",
+   "name": "Jefferson Neurosurgery DRG stimulation video (Hines 2020)",
+   "counts": [
+    "videos"
+   ]
+  },
+  {
+   "dataset": "maastricht_cervical",
+   "name": "Maastricht UMC+ cervical flexion-extension cine (van Santbrink 2026)",
+   "counts": [
+    "recordings"
+   ]
+  },
+  {
+   "dataset": "procedure_guide",
+   "name": "The Procedure Guide (Puranik) live fluoroscopy clips",
+   "counts": [
+    "clips"
+   ]
+  },
+  {
+   "dataset": "sof_lateral_spine",
+   "name": "SOF lateral spine radiographs (Study of Osteoporotic Fractures)",
+   "counts": [
+    "women_about"
+   ]
+  },
+  {
+   "dataset": "veriserum",
+   "name": "Veriserum (ETH Zurich, MICCAI 2025)",
+   "counts": [
+    "images_about"
+   ]
+  },
+  {
+   "dataset": "veterinary_pig_levelcheck",
+   "name": "Veterinary: pig lower limb CT, CBCT and planar images (Goswami 2020, IEEE DataPort)",
+   "counts": [
+    "size_mb"
+   ]
+  }
+ ],
  "checks": [
   {
    "key": "5c1a72bb9cb45a2e",

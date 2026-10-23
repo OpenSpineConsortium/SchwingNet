@@ -11,7 +11,8 @@ a record and, as the finder, sets it against its cluster and the numbers table;
 synth_actions.py batch then puts the finders' candidates beside the verdict items, and every item
 gets a skeptic, a re-checker told to overturn the skeptic and a judge on each dispute.
 synth.py join puts each record, candidate and verdict in its place, keeping what it replaces,
-and refuses an answer that names a person's address. A read that did not come back waits: an
+and refuses a record, a candidate or a verdict that holds an e-mail address, a phone number or
+a credential's shape (personal_problem). A read that did not come back waits: an
 artifact whose record is missing is not stamped, so the next run reads it again, and a verdict
 item with no verdict keeps waiting the same way. Nothing here runs Claude.
 """
@@ -34,6 +35,11 @@ NUMBER_STRATUM = "Number collisions"
 CLUSTER_KINDS = ("contradiction", "stale", "unsourced-shared-claim", "superseded-number", "duplicate-text")
 NUMBER_KINDS = ("contradiction", "updated-later", "unit-or-scope-mismatch", "probably-different-quantities")
 TO_SKEPTICS = ("contradiction", "updated-later")
+# The fields of a finder's candidate, the only ones a run copies from it, so a field a session
+# adds, such as an earlier verdict it made up, reaches no row (synth_schemas builds its schema
+# from these).
+CLUSTER_FIELDS = ("kind", "topic", "artifact_a", "statement_a", "quote_a", "artifact_b", "statement_b", "quote_b", "why_it_matters")
+NUMBER_FIELDS = ("quantity", "artifact_a", "value_a", "quote_a", "artifact_b", "value_b", "quote_b", "kind", "why")
 CLUSTER_SCALE = ("confirmed", "superseded-by-later", "refuted", "cannot-tell")
 NUMBER_SCALE = ("confirmed-contradiction", "updated-later", "same-number-restated", "scope-or-unit-differs",
                 "different-quantities", "cannot-tell")
@@ -169,12 +175,26 @@ def stale_item(row, M, N, nv, info):
                                  f" as {' and '.join(row['now'])} now: a page it rests on has changed since it was read"}
 
 
+def concept_side(chk, concept):
+    """The side of a settled figure's own verdict that carries the value the check's passage
+    does not give: the current one for a superseded figure, the other open one for an open one."""
+    status = "superseded" if chk["outcome"] == "superseded" else "open"
+    return next((v["side"] for v in concept["values"] if v["status"] == ("current" if status == "superseded" else "open")
+                 and v["figure"] not in chk["value"].replace(",", "")), "a")
+
+
+def concept_row_key(chk, concept):
+    """The number row a concept check's verdict would be: its passage's text against the side
+    of the figure that carries the other value, on the figure's quantity."""
+    k = 0 if concept_side(chk, concept) == "a" else 1
+    return number_key({"artifact_a": concept["artifacts"][k], "artifact_b": chk["source"], "quantity": concept["quantity"]})
+
+
 def concept_item(chk, concept, info):
     """A passage of an artifact that gives a settled figure as superseded or open, set against
     the side of the figure's own verdict that carries the other value."""
     status = "superseded" if chk["outcome"] == "superseded" else "open"
-    side = next((v["side"] for v in concept["values"] if v["status"] == ("current" if status == "superseded" else "open")
-                 and v["figure"] not in chk["value"].replace(",", "")), "a")
+    side = concept_side(chk, concept)
     k = 0 if side == "a" else 1
     return {"key": f"concept:{chk['key']}", "stratum": NUMBER_STRATUM, "index": None, "quantity": concept["quantity"],
             "kind": "updated-later" if status == "superseded" else "contradiction",
@@ -265,14 +285,30 @@ def record_problem(rec):
 
 def left_out(unit, answer, clusters):
     """Why an artifact's answer cannot be joined, or None: no record came back, the record
-    does not hold together, or a new artifact's reader chose no cluster there is."""
+    does not hold together, it or the words that go with it hold what the folder's rule keeps
+    out, or a new artifact's reader chose no cluster there is."""
     rec = (answer or {}).get("record")
     if not isinstance(rec, dict):
         return "no record came back"
-    why = record_problem(rec) or personal_problem(rec) or personal_problem(answer.get("changed"))
+    why = (record_problem(rec) or personal_problem(rec) or personal_problem(answer.get("changed"))
+           or personal_problem(answer.get("cluster_why")))
     if not why and unit["new"] and answer.get("cluster") not in clusters:
-        why = f"its reader chose no cluster of the {len(clusters)} ({answer.get('cluster')!r})"
+        why = f"its reader chose none of the {len(clusters)} clusters"
     return why
+
+
+def trimmed(rec):
+    """A record with only the fields its schema gives, in the entries of its lists too, so a
+    field a session adds is never kept."""
+    import synth_schemas
+    props = synth_schemas.RECORD["properties"]
+    out = {}
+    for k in RECORD_KEYS:
+        value, entry = rec[k], (props[k].get("items") or {}).get("properties")
+        if entry and isinstance(value, list):
+            value = [{f: e.get(f) for f in entry} if isinstance(e, dict) else e for e in value]
+        out[k] = value
+    return out
 
 
 def results_by_label(folder):
@@ -309,7 +345,7 @@ def join_inventory(args, found, inventory, history, clustering, rows, date):
             continue
         rec = answer["record"]
         repo, folder = aid.split("/", 1)
-        new = {"repo": repo, "folder": folder, **{f: readme[aid][f] for f in FROM_README}, **{k2: rec[k2] for k2 in RECORD_KEYS},
+        new = {"repo": repo, "folder": folder, **{f: readme[aid][f] for f in FROM_README}, **trimmed(rec),
                "read_on": date, **({"changed": answer.get("changed")} if aid in by_id else {})}
         if aid in by_id:
             history.append({"id": aid, "replaced_on": date, "record": by_id[aid]})
@@ -370,7 +406,8 @@ def final_verdicts(batches, items, found):
             else:
                 missing[key] = "disputed, and the judge gave no ruling"
             if key in final and final[key].get("verdict") not in scale_of(items[key]["stratum"]):
-                missing[key] = f"its verdict {final.pop(key).get('verdict')!r} is not on its scale"
+                final.pop(key)
+                missing[key] = "its verdict is not on its item's scale"
     return final, missing
 
 
@@ -396,10 +433,24 @@ def pair(a, b):
 
 
 def new_number_row(it, date, unread=None):
+    """A number row for an item that has none. One a concept check made says so in its delta
+    mark, so that its verdict settles no figure of its own (synth_concepts.figure_concepts):
+    it restates a figure the check's own row settled, and a figure of its own would check the
+    same passages again, row after row."""
+    concept = {"concept": it["key"][len("concept:"):]} if it.get("key", "").startswith("concept:") else {}
     return {"quantity": it["quantity"], "artifact_a": it["a"]["id"], "value_a": it["value_a"], "quote_a": it["quote_a"],
             "artifact_b": it["b"]["id"], "value_b": it["value_b"], "quote_b": it["quote_b"], "kind": it["kind"],
             "why": it.get("reader_why") or it["why"], "pair": pair(it["a"]["id"], it["b"]["id"]),
-            "delta": {"date": date, **({"unread": unread} if unread else {})}}
+            "delta": {"date": date, **concept, **({"unread": unread} if unread else {})}}
+
+
+def cluster_key(stratum, x):
+    """What makes a cluster row the same row: its cluster, its two artifacts, its kind and its
+    topic in plain words, so a finder that gives a listed row again, or a join made twice, adds
+    no second copy of it."""
+    sides = sorted([x.get("artifact_a") or "", x.get("artifact_b") or ""])
+    topic = re.sub(r"[^a-z0-9]+", " ", (x.get("topic") or "").lower()).strip()
+    return (stratum, *sides, x.get("kind") or "", topic)
 
 
 def new_cluster_row(it, date, unread=None):
@@ -413,11 +464,12 @@ def join_verdicts(items, final, missing, M, N, date):
     check's or a finder's as a new row at the end of its list, so no row number moves. A
     finder's candidate with no verdict is added as a row with none, which the next run reads; a
     planned item with none waits. Returns how many were placed, the keys already rows, the keys
-    that wait and the keys added as rows with no verdict."""
+    that wait, the keys added as rows with no verdict, and the keys whose verdict was placed."""
     clusters = {c["cluster"]: c for c in M["clusters"]}
     extras = M.setdefault("numbers_extra", [])
     rows = {number_key(x) for x in N["candidates"]}
-    placed, already, waiting, unread = 0, [], [], []
+    listed = {cluster_key(c["cluster"], x) for c in M["clusters"] for x in c["candidates"]}
+    placed, already, waiting, unread, placed_keys = 0, [], [], [], []
     for key, it in sorted(items.items()):
         v = final.get(key)
         if v is not None and personal_problem(v):
@@ -443,19 +495,26 @@ def join_verdicts(items, final, missing, M, N, date):
                     extras.append(verdict)
                 else:
                     extras[at] = verdict
+                N["candidates"][it["index"]].get("delta", {}).pop("unread", None)
         else:
             c = clusters[it["stratum"]]
             if it["index"] is None:
-                c["candidates"].append(new_cluster_row(it, date, None if verdict else missing.get(key)))
+                row = new_cluster_row(it, date, None if verdict else missing.get(key))
+                if cluster_key(it["stratum"], row) in listed:
+                    already.append(key)
+                    continue
+                listed.add(cluster_key(it["stratum"], row))
+                c["candidates"].append(row)
                 c["verdicts"].append(verdict)
             else:
                 c["verdicts"][it["index"]] = verdict
                 c["candidates"][it["index"]].get("delta", {}).pop("unread", None)
         if verdict:
             placed += 1
+            placed_keys.append(key)
         else:
             unread.append(key)
-    return {"placed": placed, "already": already, "waiting": waiting, "unread": unread}
+    return {"placed": placed, "already": already, "waiting": waiting, "unread": unread, "placed_keys": placed_keys}
 
 
 def known_ids(args):
@@ -463,17 +522,38 @@ def known_ids(args):
 
 
 def candidate_problem(x, aid, known, kinds, number):
-    """Why a finder's candidate cannot be read, or None."""
+    """Why a finder's candidate cannot be read, or None: a kind off its list, an artifact the run
+    does not know, neither side the finder's own, no quote, a quote its artifact does not hold,
+    or what the folder's rule keeps out, since its words go into the rows as the finder gave
+    them. The reason never repeats the finder's words, since it is listed in the pull
+    request's body."""
     if x.get("kind") not in kinds:
-        return f"its kind {x.get('kind')!r} is not one of {list(kinds)}"
+        return "its kind is not one its list allows"
     a, b = x.get("artifact_a"), x.get("artifact_b") or ""
     if a not in known or (b and b not in known) or (number and not b):
-        return f"it names an artifact the run does not know ({a!r}, {b!r})"
+        return "it names an artifact the run does not know"
     if aid not in (a, b):
         return f"neither side is {aid}, the artifact its finder read"
     if not (x.get("quote_a") or "").strip():
         return "it quotes nothing from its first artifact"
+    return personal_problem(x) or quote_problem(x)
+
+
+def quote_problem(x):
+    """Which of a candidate's quotes the artifact it names does not hold, by the same match the
+    pages show (verify_quotes), or None: a row's quotes are what a reader trusts it on, so a
+    quote no script finds in its source never becomes one."""
+    import verify_quotes as vq
+    text_dir = os.environ.get("SYNTH_TEXT") or ""
+    for side, quote, aid in (("first", x.get("quote_a"), x.get("artifact_a")), ("second", x.get("quote_b"), x.get("artifact_b"))):
+        if aid and (quote or "").strip() and vq.found(quote, vq.text_of(text_dir, aid), vq.raw_of(aid)) not in vq.HIT:
+            return f"its {side} quote is not in the artifact it names"
     return None
+
+
+def candidate_fields(x, fields):
+    """A candidate with only the fields its schema gives."""
+    return {f: x.get(f) for f in fields}
 
 
 def joined_units(args, found):
@@ -506,7 +586,8 @@ def found_items(args, found):
             if why:
                 dropped.append({"key": f"new:{aid}:cluster:{n}", "why": why})
             else:
-                out.append({**x, "key": f"new:{aid}:cluster:{n}", "stratum": joined[k], "index": None, **side(x), "why": about})
+                out.append({**candidate_fields(x, CLUSTER_FIELDS), "key": f"new:{aid}:cluster:{n}", "stratum": joined[k], "index": None,
+                            **side(x), "why": about})
         to_skeptics = 0
         for n, x in enumerate(result.get("number_candidates", [])):
             why = "its artifact's record is not joined" if k not in joined else candidate_problem(x, aid, known, NUMBER_KINDS, True)
@@ -517,8 +598,8 @@ def found_items(args, found):
             if why:
                 dropped.append({"key": f"new:{aid}:number:{n}", "why": why})
             elif x["kind"] in TO_SKEPTICS:
-                out.append({**x, "key": f"new:{aid}:number:{n}", "stratum": NUMBER_STRATUM, "index": None, **side(x),
-                            "reader_why": x.get("why", ""), "why": about})
+                out.append({**candidate_fields(x, NUMBER_FIELDS), "key": f"new:{aid}:number:{n}", "stratum": NUMBER_STRATUM, "index": None,
+                            **side(x), "reader_why": x.get("why", ""), "why": about})
     return out, dropped
 
 

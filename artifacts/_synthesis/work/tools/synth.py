@@ -8,11 +8,16 @@ Usage, from anywhere, with SYNTH_SYMPHONY naming a checkout of symphony-template
                                   the JSON status --json wrote where F names it
   synth.py plan DIR               the reads' inputs and args.json, for .github/workflows/synthesis.yml
   synth.py join PLAN ANSWERS BATCHES [SUMMARY]
-                                  the reads' answers into the records, every page rendered again
-  synth.py stamp [--at REPO=REF]  record what the records were read from, and what is already known
+                                  the reads' answers into the records, and the inventory, cluster,
+                                  contradictions and concept pages rendered again from them (the
+                                  table of contents is written by hand and is not)
+  synth.py stamp [--at REPO=REF]  record what the records were read from, and what is already
+                                  known; --at names the commit a checkout is at, for the record
   synth.py stamp --checks         take every concept check the texts give now as seen
---without symphony-template checks this repository alone, keeping the stamp's word for the
-other, where no checkout of it can be made (the workflow's App token is missing).
+--without symphony-template lets status and report check this repository alone, where no
+checkout of the other can be made (the workflow's App token is missing), keeping the stamp's
+word for it and checking no concept; concepts, plan, join and stamp refuse it, since they write
+what every text gives.
 
 The SchwingNet checkout is the one this file is in. SYNTH_TEXT, if set, names where the
 artifacts' texts are extracted; else a fresh temporary folder is used, so no run reads
@@ -30,6 +35,7 @@ import datetime
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -145,12 +151,14 @@ def concepts_now(run):
 
 
 def status(run, state):
-    """What changed since the stamp, as a dict the report and plan read."""
+    """What changed since the stamp, as a dict the report and plan read. Without one
+    repository's checkout no concept is checked, since a check weighs each word by how rare it
+    is across every text, and fewer texts would give other checks than the stamp saw."""
     import synth_state as st
     trees = run.trees(state)
     datasets = st.dataset_hashes(ROOT)
-    d = st.delta(state, trees, datasets)
     records = run.records()
+    d = st.delta(state, trees, datasets, recorded={a for a in records if not run.skipped(a)})
     changes = [{"id": a, "new": True, "hunks": None} for a in d["new"]]
     for aid in d["changed"]:
         repo, folder = aid.split("/", 1)
@@ -170,15 +178,27 @@ def status(run, state):
     unread = sr.unread_rows(run.M, run.N)
     absent = st.absent_inventory_quotes({"artifacts": [r for a, r in records.items() if not run.skipped(a)]}, run.text_dir)
     lost = st.newly_absent(state, absent)
-    ledger = concepts_now(run)
+    ledger = concepts_now(run) if not run.without else {"checks": [], "figures": [], "datasets": []}
     seen = state.get("checks", {})
-    fresh = [c for c in ledger["checks"] if c["key"] not in seen]
+    covered = covered_checks(ledger, run.N)
+    fresh = [c for c in ledger["checks"] if c["key"] not in seen and c["key"] not in covered]
     now_keys = {c["key"] for c in ledger["checks"]}
-    gone = [k for k, source in seen.items() if k not in now_keys and not run.skipped(source)]
+    gone = [k for k in seen if k not in now_keys] if not run.without else []
     return {"date": today(), "stamped": state.get("stamped"), "delta": d, "changes": changes, "stale": stale,
             "resolved": resolved, "unread": unread, "lost_quotes": lost, "new_checks": fresh, "gone_checks": len(gone),
             "ledger": ledger, "without": sorted(run.without),
             "heads": {repo: head(clone) for repo, clone in run.clones.items() if repo not in run.without}}
+
+
+def covered_checks(ledger, N):
+    """The keys of the checks a row already answers: a figure check whose verdict would be a
+    number row the numbers table holds, which a read would only find there again."""
+    import synth_reads as sr
+    from render_contradictions2 import number_key
+    rows = {number_key(x) for x in N["candidates"]}
+    by_id = {c["id"]: c for c in ledger["figures"]}
+    return {c["key"] for c in ledger["checks"] if c["kind"] == "figure" and c["outcome"] in ("superseded", "open")
+            and c["concept"] in by_id and sr.concept_row_key(c, by_id[c["concept"]]) in rows}
 
 
 def head(clone):
@@ -199,6 +219,18 @@ def reads_waiting(s):
                and not c["source"].startswith(("notes:", "registry:"))]
     verdicts = len(s["stale"]) + len(concept) + len(s.get("unread", []))
     return {"inventory": artifacts, "finders": artifacts, "verdicts": verdicts, "concept_items": concept}
+
+
+def code(text, table=True):
+    """Words from a text as a code span, which GitHub draws as they are: a mention in them
+    notifies nobody, and a tag or an image in them draws nothing. In a table a pipe is escaped,
+    since GitHub splits a table's cells before it reads their spans."""
+    text = " ".join((text or "").split())
+    if table:
+        text = text.replace("|", "\\|")
+    fence = "`" * (max((len(m) for m in re.findall(r"`+", text)), default=0) + 1)
+    pad = " " if not text or text.startswith("`") or text.endswith("`") else ""
+    return f"{fence}{pad}{text}{pad}{fence}"
 
 
 def report(s):
@@ -235,7 +267,9 @@ def report(s):
     out.append("- Changed since their record was read: " + (", ".join(
         f"{c['id']} ({c['added']} lines added, {c['removed']} removed)" if c["hunks"] is not None else f"{c['id']} (read whole)"
         for c in s["changes"] if not c["new"]) or "none") + ".")
-    out.append(f"- Gone: {', '.join(d['gone']) or 'none'}.\n")
+    out.append(f"- Gone: {', '.join(d['gone']) or 'none'}." + (
+        " A record stands for each of these whose folder is gone; a person takes each one's record out of inventory.json, and"
+        " its name out of clustering.json's members, by pull request, and it is listed no more." if d["gone"] else "") + "\n")
     out.append("## Dataset records\n")
     out.append(f"- New: {', '.join(d['datasets_new']) or 'none'}; changed: {', '.join(d['datasets_changed']) or 'none'};"
                f" gone: {', '.join(d['datasets_gone']) or 'none'}.\n")
@@ -253,20 +287,28 @@ def report(s):
     if s["lost_quotes"]:
         for aid, quotes in sorted(s["lost_quotes"].items()):
             first = next(iter(quotes.values()))
-            out.append(f"- {aid}: {len(quotes)}, the first \"{cell(to_ascii(first))[:160]}\"")
+            out.append(f"- {aid}: {len(quotes)}, the first {code(to_ascii(first)[:160], table=False)}")
         out.append("")
     else:
         out.append("None.\n")
     out.append("## Concept checks the stamp had not seen\n")
+    if s["without"]:
+        out.append(f"Not made, since {', '.join(s['without'])} is not checked out: a check weighs each word by how rare it is across"
+                   " every text, so fewer texts would give other checks than the stamp saw.\n")
     counts = {o: sum(1 for c in s["new_checks"] if c["outcome"] == o) for o in ("differs", "superseded", "open", "rounded", "agrees")}
     out.append(", ".join(f"{n} {o}" for o, n in counts.items()) + f"; {s['gone_checks']} checks of the stamp the texts no longer give.\n")
     listed = [c for c in s["new_checks"] if c["outcome"] != "agrees"]
     if listed:
         out.append("| Outcome | Concept | Gives | Where | Line | Passage |\n|---|---|---|---|---|---|")
         for c in listed[:REPORT_ROWS]:
-            out.append(f"| {c['outcome']} | {cell(c['concept'])} | {cell(c['value'])} | {cell(c['source'])} | {c['line']} | {cell(c['text'][:160])} |")
+            out.append(f"| {c['outcome']} | {cell(c['concept'])} | {cell(c['value'])} | {cell(c['source'])} | {c['line']} | {code(c['text'][:160])} |")
         if len(listed) > REPORT_ROWS:
-            out.append(f"\n{len(listed) - REPORT_ROWS} more in the run's job summary and artifact.")
+            out.append(f"\n{len(listed) - REPORT_ROWS} more, which `synth.py status --json` lists in a checkout.")
+        by_hand = [c for c in listed if c not in w["concept_items"]]
+        if by_hand:
+            out.append(f"\n{len(by_hand)} of these no read settles, since a read takes only an artifact's passage that gives a"
+                       " settled figure as superseded or open: a person changes the text, adds a set's names to work/aliases.json,"
+                       " or takes every check the texts give now as seen with `synth.py stamp --checks` in a pull request.")
         out.append("")
     anything = bool(total or s["changes"] or d["gone"] or d["datasets_new"] or d["datasets_changed"] or d["datasets_gone"]
                     or s["stale"] or s["resolved"] or s["lost_quotes"] or listed or s["gone_checks"])
@@ -282,8 +324,11 @@ def write_report(s, path):
 
 
 def write_concepts(ledger, state):
+    """The ledger and its page, the page rendered from the ledger as it is saved, so that the
+    committed concepts.json renders the committed concepts.md again byte for byte."""
     import synth_concepts as sc
-    save(LEDGER, scrubbed(ledger))
+    ledger = scrubbed(ledger)
+    save(LEDGER, ledger)
     with open(PAGE, "w", encoding="ascii", newline="\n") as f:
         f.write(scrubbed(sc.page(ledger, state.get("stamped") or "none")))
 
@@ -291,7 +336,8 @@ def write_concepts(ledger, state):
 def stamp(run, state, at=None, only=None, checks=None, unstamped=()):
     """Record what the records were read from and what is already known: each artifact's tree
     (only those named, when only is given, so an artifact a run did not read keeps its old tree
-    and the quotes its old text lacked), each dataset record's hash, the quotes the texts do
+    and the quotes its old text lacked, and none for a folder that is gone), each dataset
+    record's hash, the quotes the texts do
     not hold, the verdicts whose quotes are found elsewhere (less the rows in unstamped, stale
     verdicts a run did not read again, which so stay stale), and the concept checks seen, each
     key with the text it was found in, so a run that cannot read one repository keeps that
@@ -302,7 +348,7 @@ def stamp(run, state, at=None, only=None, checks=None, unstamped=()):
     absent_ids = st.absent_ids(absent)
     if only is not None:
         unread = {a for a in trees if a not in only and trees[a] != state["artifacts"].get(a)}
-        trees = {a: (trees[a] if a in only else state["artifacts"].get(a)) for a in set(trees) | set(state.get("artifacts", {}))}
+        trees = {a: (trees[a] if a in only else state["artifacts"].get(a)) for a in trees}
         trees = {a: t for a, t in trees.items() if t}
         absent_ids = {a: q for a, q in absent_ids.items() if a not in unread}
         absent_ids.update({a: q for a, q in state.get("inventory_absent", {}).items() if a in unread})
@@ -341,6 +387,9 @@ def main(argv=None):
     if a.command == "report" and a.status:
         write_report(load(a.status), a.paths[0])
         return
+    if a.without and a.command in ("concepts", "plan", "join", "stamp"):
+        raise SystemExit(f"{a.command} refused: it writes what every text gives, and without {', '.join(a.without)}'s checkout"
+                         " that repository's word in the stamp and the ledger would be lost; status and report check without it")
     run = Run(a.without)
     if a.command == "status":
         s = status(run, state)
@@ -360,24 +409,39 @@ def main(argv=None):
         summary = join_run(run, state, *a.paths[:3])
         if len(a.paths) > 3:
             save(a.paths[3], summary)
-        if not summary["read"] and not summary["placed"]:
+        if not came_back(summary):
             raise SystemExit("join: no record and no verdict came back, so nothing was written")
     elif a.command == "stamp":
         at = dict(x.split("=", 1) for x in a.at)
+        at_head(run, at)
         checks = None
         if a.checks or not state.get("checks"):
-            kept = {k: src for k, src in state.get("checks", {}).items() if run.skipped(src)}
-            checks = {**kept, **{c["key"]: c["source"] for c in concepts_now(run)["checks"]}}
+            checks = {c["key"]: c["source"] for c in concepts_now(run)["checks"]}
         new = stamp(run, state, at=at, checks=checks)
         print(f"stamped {len(new['artifacts'])} artifacts, {len(new['datasets'])} dataset records, {len(new['checks'])} checks")
 
 
+def at_head(run, at):
+    """Stop a stamp whose --at names a commit its checkout is not at: the trees would be taken at
+    that commit and the quotes and verdict places from the checkout's own texts, so what changed
+    between them would be stamped as read."""
+    import synth_state as st
+    for repo, ref in at.items():
+        if repo not in run.clones:
+            raise SystemExit(f"stamp refused: --at names {repo!r}, which is not one of {sorted(run.clones)}")
+        want, have = (st.git(run.clones[repo], "rev-parse", x).strip() for x in (f"{ref}^{{commit}}", "HEAD"))
+        if want != have:
+            raise SystemExit(f"stamp refused: --at {repo}={ref} names {want[:12]}, but its checkout is at {have[:12]}; check out"
+                             " that commit and stamp again, since the quotes are read from the checkout")
+
+
 def seen_after(state, ledger, read, placed, waiting):
-    """The checks a join takes as seen: the stamp's, less those of a text read again that the
-    text no longer gives, with every check of a text read again and every check a verdict was
-    placed for, but none whose verdict item waits, so the next run plans it again."""
+    """The checks a join takes as seen: the stamp's that the texts still give, with every check
+    of a text read again and every check a verdict was placed for, but none whose verdict item
+    waits, so the next run plans it again. A check the texts no longer give is dropped, so the
+    issue does not count it as gone for ever."""
     now = {c["key"]: c["source"] for c in ledger["checks"]}
-    seen = {k: src for k, src in state.get("checks", {}).items() if src not in read or k in now}
+    seen = {k: src for k, src in state.get("checks", {}).items() if k in now}
     seen.update({k: src for k, src in now.items() if (src in read or k in placed) and k not in waiting})
     return seen
 
@@ -397,6 +461,50 @@ def plan_run(run, state, out):
     items = len(load(args["items"])["items"])
     print(f"{len(args['inventory'])} artifacts to read ({len(args['waiting'])} waiting for a later run), {items} verdict items"
           f" ({len(args['items_waiting'])} waiting), and the finders' candidates after them; args at {out}/args.json")
+
+
+def came_back(summary):
+    """Whether a run has anything to write: a record, a verdict placed, or a verdict on a row
+    that was there already, whose concept check it takes as seen."""
+    return bool(summary["read"] or summary["placed"] or summary["already"])
+
+
+def unfound_quotes(run, items, final, keys):
+    """The verdicts placed whose quotes the script does not find where their artifacts are,
+    which the pull request's body lists: the pages mark them, and the stamp keeps where they
+    were found, so no later run flags them again."""
+    import synth_state as st
+    out = []
+    for key in keys:
+        it, v = items[key], final[key]
+        a, b = (it.get("a") or {}).get("id"), (it.get("b") or {}).get("id")
+        places = {st.quote_place(run.text_dir, v.get("quote_a"), a, b), st.quote_place(run.text_dir, v.get("quote_b"), b, a)}
+        if places - set(st.FINE):
+            out.append(key)
+    return out
+
+
+def strings_in(value):
+    if isinstance(value, str):
+        yield value
+    elif isinstance(value, dict):
+        for v in value.values():
+            yield from strings_in(v)
+    elif isinstance(value, list):
+        for v in value:
+            yield from strings_in(v)
+
+
+def refuse_what_the_rule_keeps_out(before, after):
+    """Stop the join before it writes, where a string the records did not hold before holds an
+    e-mail address, a phone number or a credential's shape: every answer is checked where it
+    is taken, and this is the check on the whole, should one path have been missed."""
+    import synth_reads as sr
+    old = {x for value in before for x in strings_in(value)}
+    new = sorted({x for value in after for x in strings_in(value)} - old)
+    why = sr.personal_problem(new)
+    if why:
+        raise SystemExit(f"join refused: a string it would write is new and {why[3:]}, so nothing was written")
 
 
 def join_run(run, state, plan_dir, answers_dir, batches_dir):
@@ -419,10 +527,14 @@ def join_run(run, state, plan_dir, answers_dir, batches_dir):
     kept = sr.kept_numbers(args, found, run.N, args["date"])
     summary = {"date": args["date"], "read": read, "left": left, "waiting_artifacts": args["waiting"], **joined,
                "missing": {k: missing[k] for k in joined["waiting"] + joined["unread"] if k in missing},
-               "items_waiting": args["items_waiting"], "dropped": batched["dropped"], "kept_numbers": kept}
-    if not read and not joined["placed"]:
+               "items_waiting": args["items_waiting"], "dropped": batched["dropped"], "kept_numbers": kept,
+               "unfound_quotes": unfound_quotes(run, batched["items"], final, joined["placed_keys"])}
+    if not came_back(summary):
         return summary
+    before = (load(SYNTH / "inventory.json"), load(OUT / "clustering.json"), load(OUT / "contradictions-merged.json"),
+              load(OUT / "numbers-partial.json"), load(history_path) if history_path.exists() else [])
     run.inventory, run.clustering, run.M, run.N, history = (scrubbed(x) for x in (run.inventory, run.clustering, run.M, run.N, history))
+    refuse_what_the_rule_keeps_out(before, (run.inventory, run.clustering, run.M, run.N, history))
     save(SYNTH / "inventory.json", run.inventory)
     save(history_path, history)
     save(OUT / "clustering.json", run.clustering)

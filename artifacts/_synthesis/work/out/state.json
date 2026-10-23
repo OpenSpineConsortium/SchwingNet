@@ -1122,9 +1122,21 @@
  },
  "stamped": "2026-10-23",
  "verdict_places": {
+  "Detectors, architecture and the training plan|74": [
+   "own",
+   "own-in-part"
+  ],
   "Number collisions|137": [
    "own",
    "elsewhere:SchwingNet/fluorocap-reality-check-czudvb"
+  ],
+  "Transitional vertebrae and border variants|25": [
+   "own-in-part",
+   "own"
+  ],
+  "Transitional vertebrae and border variants|3": [
+   "own-in-part",
+   "own"
   ],
   "Verification benches, overnight audits and OR readiness|88": [
    "own",

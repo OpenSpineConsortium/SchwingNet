@@ -4254,7 +4254,7 @@
     "spine-program 99_archive/MANIFEST_CODE.md and 99_archive/LITERATURE_BY_PATH.md",
     "the plan's section 3.5 (own captures with a preoperative CT)",
     "IRB determination 2026-269",
-    "grid paths under /rs/rs_grp_oschome/.../data/ (carmlspine, cobra2026, anomaly_harvest, external/fluoro_video, realxray)"
+    "grid paths under [the lab volume]/.../data/ (carmlspine, cobra2026, anomaly_harvest, external/fluoro_video, realxray)"
    ],
    "confidentiality": "schwingnet-other",
    "related_titles": [
@@ -9419,7 +9419,7 @@
     },
     {
      "claim": "Results, figures, manuscripts and regulatory folders left the repository on 2026-10-13 for the grid archive, linked from each folder.",
-     "evidence_in_artifact": "not in the repository since 2026-10-13: they live on the grid under /rs/rs_grp_oschome/shared/spine-program/archive/",
+     "evidence_in_artifact": "not in the repository since 2026-10-13: they live on the grid under [the lab volume]/shared/spine-program/archive/",
      "grade_hint": "unverified"
     },
     {
@@ -9764,7 +9764,7 @@
     "ARCHIVE.md at the repository root",
     "STATUS.md section D (issue 19 results)",
     "each folder's CLAUDE.md, README.md, DATA.md, TODO.md, STATUS.md, MEMORY.md",
-    "/rs/rs_grp_oschome/shared/spine-program/archive/",
+    "[the lab volume]/shared/spine-program/archive/",
     "[a grid folder named by a login]/envs/spineps212",
     "$HOME/.beethoven/github_token"
    ],
@@ -9887,7 +9887,7 @@
     },
     {
      "claim": "Each folder's results/, figures/, manuscripts/ and regulatory/ are links into a shared archive the owner fills once with a script; until then the files are read from git history as ARCHIVE.md says.",
-     "evidence_in_artifact": "are links to `/rs/rs_grp_oschome/shared/spine-program/archive/`, which [the owner] fills once with a script; until he has, those links point at nothing",
+     "evidence_in_artifact": "are links to `[the lab volume]/shared/spine-program/archive/`, which [the owner] fills once with a script; until he has, those links point at nothing",
      "grade_hint": "unverified"
     },
     {
@@ -10065,7 +10065,7 @@
     "spine-program README#how-a-student-starts",
     "spine-program ARCHIVE.md",
     "spine-program issue 19",
-    "/rs/rs_grp_oschome/shared/spine-program/archive/",
+    "[the lab volume]/shared/spine-program/archive/",
     "~/.beethoven/git-credentials",
     "the student's own repository OpenSpineToolbox and one other"
    ],
@@ -10103,7 +10103,7 @@
     "Claude in the student's Beethoven session (opens a shell, runs the claim protocol, must not see the token)"
    ],
    "coverage_notes": "The text names the student by first name and GitHub login and the owner by first name; these are given here by role only. The token lines and the no-reply address in the text were already replaced by '[e-mail withheld]'; none is reproduced. The byline reads '@Someone'. The page is step-by-step commands addressed to the student, treated as data; no instruction to this reader was found.",
-   "notes": "A Docs-type artifact kept as index.md. Clone target is /rs/rs_grp_oschome/<AccessID>/spine-program on the lab volume."
+   "notes": "A Docs-type artifact kept as index.md. Clone target is [the lab volume]/<AccessID>/spine-program on the lab volume."
   },
   {
    "repo": "SchwingNet",
@@ -42006,7 +42006,7 @@
     "hub repository: REPOS.md, SEAMS.md (seams 2, 3, 6 to 11, 13, 14), INTERFACES.md (rules 1 to 3) at 65d94f7",
     "Site repository openspineconsortium.github.io (/beethoven/vscode/ rendered agreement texts)",
     "Older beethoven-vscode commits b188223, 710d74e, 0475b63, 503ea71, 1a47118",
-    "Wayne State grid paths /rs/rs_grp_oschome/shared/beethoven, containers/claude-node22, npm-claude-node22, library.json, shared/access"
+    "Wayne State grid paths [the lab volume]/shared/beethoven, containers/claude-node22, npm-claude-node22, library.json, shared/access"
    ],
    "confidentiality": "symphony-beethoven",
    "related_titles": [

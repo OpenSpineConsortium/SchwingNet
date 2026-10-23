@@ -22,8 +22,9 @@ VERDICTS = tuple(dict.fromkeys(sr.CLUSTER_SCALE + sr.NUMBER_SCALE))
 
 
 def obj(fields):
-    """An object whose every field is required. A field the session adds is let through and
-    never read, so an answer is not refused for one."""
+    """An object whose every field is required. A field the session adds is let through, so an
+    answer is not refused for one, and the join keeps only the fields named here
+    (synth_reads.trimmed and candidate_fields)."""
     return {"type": "object", "properties": fields, "required": list(fields)}
 
 
@@ -49,13 +50,11 @@ RECORD = obj({
 })
 assert set(RECORD["properties"]) == set(sr.RECORD_KEYS), "the record schema and RECORD_KEYS differ"
 
-CLUSTER_CANDIDATE = {"kind": one_of(sr.CLUSTER_KINDS), "topic": TEXT, "artifact_a": TEXT, "statement_a": TEXT, "quote_a": TEXT,
-                     "artifact_b": TEXT, "statement_b": TEXT, "quote_b": TEXT, "why_it_matters": TEXT}
+CLUSTER_CANDIDATE = {f: one_of(sr.CLUSTER_KINDS) if f == "kind" else TEXT for f in sr.CLUSTER_FIELDS}
 
 
 def number_candidate(kinds):
-    return {"quantity": TEXT, "artifact_a": TEXT, "value_a": TEXT, "quote_a": TEXT, "artifact_b": TEXT, "value_b": TEXT,
-            "quote_b": TEXT, "kind": one_of(kinds), "why": TEXT}
+    return {f: one_of(kinds) if f == "kind" else TEXT for f in sr.NUMBER_FIELDS}
 
 
 READ = obj({
