@@ -172,6 +172,58 @@ def pair(x):
     return f"{short_id(x['artifact_a'])}{b}"
 
 
+FIGURE = re.compile(r"\d+(?:,\d{3})*(?:\.\d+)?")
+
+
+def figures(text):
+    """The figures a text gives as written, numbers of two digits or more with their thousands
+    commas and decimal point, so a figure rounded or written another way is another figure."""
+    return {f for f in FIGURE.findall(text or "") if sum(ch.isdigit() for ch in f) >= 2}
+
+
+def group_siblings(M, N):
+    """The cluster rows that give figures a group of the follow-up's re-rule read together, on
+    pages its judge read, which no judge read with the group: a row whose quotes give one of
+    the figures the group's rows give and each of whose pages the judge read, or two of them
+    and one of its pages. The judge read the pages of the group's rows and of the rows set
+    beside them, and the sources it was given. Returns, for each group that has any, the group
+    and its rows as (cluster, row, verdict)."""
+    G = (M.get("followup") or {}).get("regroup") or {}
+    found = []
+    for g in G.get("groups", []):
+        rows = [N["candidates"][r] for r in g["rows"] + g.get("context", [])]
+        pages = set(g.get("extra", [])).union(*({x["artifact_a"], x["artifact_b"]} for x in rows))
+        figs = set().union(*(figures(x["value_a"]) | figures(x["value_b"]) for x in rows))
+        mine = []
+        for c in M["clusters"]:
+            for i, (x, v) in enumerate(zip(c["candidates"], c["verdicts"])):
+                own = {a for a in (x["artifact_a"], x.get("artifact_b")) if artifact(a)}
+                given = set().union(*(figures(q) for q in (x.get("quote_a"), x.get("quote_b"), (v or {}).get("quote_a"), (v or {}).get("quote_b"))))
+                if v and own & pages and len(given & figs) >= (1 if own <= pages else 2):
+                    mine.append((c["cluster"], i, v))
+        if mine:
+            found.append((g, mine))
+    return found
+
+
+def marks_of(siblings):
+    """Each marked cluster row's groups, by (cluster, row)."""
+    marks = {}
+    for g, rows in siblings:
+        for c, i, _ in rows:
+            marks.setdefault((c, i), []).append(g["title"])
+    return marks
+
+
+def beside(titles, where):
+    """The words that send a planner from a marked row to its groups' findings."""
+    if not titles:
+        return ""
+    one, named = len(titles) == 1, listed([f'"{t}"' for t in titles])
+    return (f" The follow-up's group {'judge' if one else 'judges'} on {named} read figures this row gives but not this row, "
+            f"so read {'its finding' if one else 'their findings'} ({where}) beside it.")
+
+
 def intro(N, nv, inv, date, followup, whole):
     regrouped = bool((followup or {}).get("regroup"))
     nums = sum(len(a.get("numbers") or []) for a in inv["artifacts"])
@@ -375,15 +427,40 @@ def review_section(M, N, nv):
         out.append(f"{len(again)} number verdicts of #136's first run were cannot-tell because their values were missing from the plain text, which cuts each line of a page's script data at 600 characters. "
                    "A skeptic read them again in the artifacts' own files: " + ", ".join(f"{n} {w}" for w, n in got.most_common())
                    + f" (collisions {', '.join(str(j) for j, _ in again)}). Each says read again in its Review column, with the verdict it replaced.\n")
-    return out + followup_section(F, whole)
+    return out + followup_section(F, whole, group_siblings(M, N))
 
 
-def followup_section(F, whole):
+def siblings_words(siblings):
+    """The cluster rows that give a group's figures on pages its judge read, by group: the
+    cluster skeptics read them and no judge read them with the group, so a planner reads each
+    beside the group's finding."""
+    rows = {(c, i): v for _, mine in siblings for c, i, v in mine}
+    if not rows:
+        return []
+    reviewed = [where_of({"stratum": c, "index": i}) for (c, i), v in sorted(rows.items()) if v.get("review")]
+    also = f", the review {'one' if len(reviewed) == 1 else len(reviewed)} of them too ({'; '.join(reviewed)})," if reviewed else ""
+    out = ["Rows of the cluster pages give these groups' figures too. "
+           "A row is counted for a group when its quotes give one of the figures the group's rows give, written the same way, and each of its pages is one the judge read "
+           "(the pages of the group's rows and of the rows set beside them, and the sources it was given), or two of those figures and one of those pages. "
+           f"{len(rows)} rows are. A cluster's skeptic read each{also} and no group's judge read any of them; "
+           "each is marked on its cluster's page, and in the confirmed list below where it is on it, to be read beside its group's finding:\n"]
+    for g, mine in siblings:
+        by = {}
+        for c, i, _ in mine:
+            by.setdefault(c, []).append(i)
+        where = "; ".join(f"[{cell(c)}](contradictions/{slug(c)}.md) {'row' if len(ix) == 1 else 'rows'} {listed(ix)}" for c, ix in by.items())
+        out.append(f"- {cell(g['title'][:1].upper() + g['title'][1:])}: {where}.")
+    out.append("")
+    return out
+
+
+def followup_section(F, whole, siblings):
     """The follow-up's reading: how many of the verdicts it read held, by the verdict each was,
-    how many stay on the confirmed list, the groups ruled again together and the rows it
-    changed. It read every verdict of one kind rather than a sample, so its counts say how these
-    rows stand, and its rates how far such verdicts held. whole says that no number collision on
-    the confirmed list is left that neither it nor the review read."""
+    how many stay on the confirmed list, the groups ruled again together, the cluster rows that
+    give their figures, and the rows it changed. It read every verdict of one kind rather than a
+    sample, so its counts say how these rows stand, and its rates how far such verdicts held.
+    whole says that no number collision on the confirmed list is left that neither it nor the
+    review read."""
     if not F:
         return []
     items = F["items"]
@@ -399,6 +476,7 @@ def followup_section(F, whole):
                              for c in g.get("context_notes", []))
             out.append(f"- {cell(g['title'][:1].upper() + g['title'][1:])}, rows {listed(g['rows'])}: {cell(g['note'])}{beside}")
         out.append("")
+        out += siblings_words(siblings)
     for first in sorted({x["first"] for x in items}):
         mine = [x for x in items if x["first"] == first]
         out.append(f"- Verdicts that were {first}: {rate(held(mine), len(mine))}, "
@@ -423,7 +501,7 @@ def followup_section(F, whole):
     return out
 
 
-def confirmed_section(text_dir, clusters, N, nv, followup):
+def confirmed_section(text_dir, clusters, N, nv, followup, marks):
     out = ["## Confirmed: what a planner must not take from one artifact alone\n",
            "Every candidate a skeptic confirmed or found revised, by cluster. Disagreements, revisions and stale statements come first; "
            "duplicated texts and shared unsourced claims follow, confirmed in the senses above, which are not disagreements: a duplicated text is one claim and not two confirmations, and a shared unsourced claim has no source on either page. "
@@ -447,7 +525,8 @@ def confirmed_section(text_dir, clusters, N, nv, followup):
             out.append(title + "\n")
             for i, x, v in group:
                 tag = f"; {review_cell(v)}" if review_cell(v) else ""
-                out.append(f"- Row {i}, {x['kind']}, {v['verdict']} ({pair(x)}{tag}): {cell(x['topic'])}. {cell(v.get('resolution_hint'))}")
+                out.append(f"- Row {i}, {x['kind']}, {v['verdict']} ({pair(x)}{tag}): {cell(x['topic'])}. {cell(v.get('resolution_hint'))}"
+                           + beside(marks.get((c["cluster"], i), []), "How far the verdicts hold, above"))
             out.append("")
     rows = [(j, x, nv[number_key(x)]) for j, x in enumerate(N["candidates"])
             if number_key(x) in nv and nv[number_key(x)]["verdict"] in CONFIRMED_N]
@@ -483,11 +562,16 @@ def numbers_section(text_dir, N, nv, titles):
     return out
 
 
-def cluster_page(text_dir, c, titles, date):
+def cluster_page(text_dir, c, titles, date, marks):
     up = "../../"
+    marked = [i for i in range(len(c["candidates"])) if (c["cluster"], i) in marks]
+    one = len(marked) == 1
+    note = (f"{'Row' if one else 'Rows'} {listed(marked)} {'gives' if one else 'give'} figures that a judge of the follow-up's group re-rule read in other rows, by the rule the main page gives, "
+            f"and {'was' if one else 'were'} not read with them; {'it says' if one else 'each says'} so below, and the main page gives what the judge found.\n") if marked else ""
     out = [f"# Contradictions: {c['cluster']}\n",
            f"Part of [the contradictions of the artifacts](../contradictions.md), rendered on {date}. Rows count from 0, as the record and the skeptics' explanations do. "
-           "A blank verdict means no skeptic read that candidate. The Review column says whether the verdict was read again and what it was before; the main page says how the review was run.\n",
+           "A blank verdict means no skeptic read that candidate. The Review column says whether the verdict was read again and what it was before; the main page says how the review was run.\n"
+           + (f"\n{note}" if note else ""),
            f"{len(c['candidates'])} candidates.\n",
            "| # | Kind | Topic | A | B | Reader's quote A | Reader's quote B | Verdict | Review | Explanation |",
            "|---|---|---|---|---|---|---|---|---|---|"]
@@ -502,7 +586,8 @@ def cluster_page(text_dir, c, titles, date):
              if artifact(x.get("artifact_b")) else "")
         carry = f" Carry: {short(v.get('resolution_hint'), 300)}" if v and v.get("resolution_hint") else ""
         out.append(f"- Row {i}. A, {short_id(x['artifact_a'])}: {short(x['statement_a'], 240)} (\"{short(x['quote_a'], 240)}\").{b}"
-                   + skeptic_words(text_dir, x["artifact_a"], x.get("artifact_b"), v) + carry)
+                   + skeptic_words(text_dir, x["artifact_a"], x.get("artifact_b"), v) + carry
+                   + beside(marks.get((c["cluster"], i), []), "the main page, How far the verdicts hold"))
     out.append("")
     if c.get("canonical_check"):
         out.append("The clustering's superseded and duplicate relations, as the reader checked them:\n")
@@ -523,8 +608,9 @@ def main(merged, numbers, inventory, dst, date):
     titles = {f"{r['repo']}/{r['folder']}": r["title"] for r in inv["artifacts"]}
     nv = number_verdicts(N, M.get("numbers_extra", []))
     clusters = M["clusters"]
+    marks = marks_of(group_siblings(M, N))
     page = (intro(N, nv, inv, date, M.get("followup"), reads_every_confirmed_number(M, N, nv)) + definitions() + summary(text_dir, clusters, N, nv) + review_section(M, N, nv)
-            + confirmed_section(text_dir, clusters, N, nv, M.get("followup")) + numbers_section(text_dir, N, nv, titles)
+            + confirmed_section(text_dir, clusters, N, nv, M.get("followup"), marks) + numbers_section(text_dir, N, nv, titles)
             + ["## Cluster by cluster\n",
                "Each swept cluster has a page of its own under contradictions/, linked from the table above: every candidate with its kind, both artifacts, whether a script found the reader's quotes, the verdict, the review's outcome and the skeptic's explanation, "
                "then what each artifact says with the words the verdict rests on, the clustering's superseded relations as the reader checked them, and what the cluster asserts without a source or holds as dated.\n"])
@@ -532,7 +618,7 @@ def main(merged, numbers, inventory, dst, date):
     os.makedirs(sub, exist_ok=True)
     for c in clusters:
         if c["swept"]:
-            open(os.path.join(sub, slug(c["cluster"]) + ".md"), "w", newline="\n").write(to_ascii("\n".join(cluster_page(text_dir, c, titles, date))))
+            open(os.path.join(sub, slug(c["cluster"]) + ".md"), "w", newline="\n").write(to_ascii("\n".join(cluster_page(text_dir, c, titles, date, marks))))
     open(dst, "w", newline="\n").write(to_ascii("\n".join(page)))
 
 
