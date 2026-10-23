@@ -38,6 +38,11 @@
 #                   ReXGradient once its token or link file is in place; the full NLST on the owner's yes),
 #                   after any live X-ray fetch, unless grid/fetch-now.txt names the source: the owner's
 #                   word, given by the pull request that added its line, that it goes now
+#   explore <id>    one look inside a fetched set (tools/explore.py, grid/explore.sbatch): the first send
+#                   queues one job for the listing of its raw folder and zips and, for a set the gate
+#                   names one for (explore_against), the comparison with it by name and content; the
+#                   next send prints the report, logs/EXPLORE-<id>.md, and queues nothing; a new fetch
+#                   of the set or a change to tools/explore.py makes the next send look again
 #   samples         the sample index (grid/run-samples.sh): plan, scan and merge, refused while one
 #                   of them is live; status shows its MANIFEST.md, aggregates only
 #   stop            cancel the gate's own jobs that are still queued or running, and nothing else
@@ -83,19 +88,19 @@ SWEEP_BANK=${SWEEP_BANK:-$DATA_ROOT/realxray/carmlspine_sweep}
 NETRC=${NETRC:-$HOME/.netrc}
 LOGS=$REPO/grid/logs
 STATE=$LOGS/GATE_JOBS.txt
-WORDS="start status leaks v1 latency fetch samples stop cancel"
+WORDS="start status leaks v1 latency fetch explore samples stop cancel"
 ENVS="default train-cpu train-gpu telemetry"
 
 word=${1:-}
 id=${2:-}
 # Matched whole, so one argument holding two words ("v1 latency") is refused and never runs nothing.
 case "$word" in
-  start|status|leaks|v1|latency|fetch|samples|stop|cancel) ;;
+  start|status|leaks|v1|latency|fetch|explore|samples|stop|cancel) ;;
   "") echo "refusing: no word; one of: $WORDS"; exit 64 ;;
   *) echo "refusing: '$word' is not one of: $WORDS"; exit 64 ;;
 esac
-if [ "$word" = fetch ]; then
-  [ $# -eq 2 ] || { echo "refusing: fetch takes exactly one id"; exit 64; }
+if [ "$word" = fetch ] || [ "$word" = explore ]; then
+  [ $# -eq 2 ] || { echo "refusing: $word takes exactly one id"; exit 64; }
   case "$id" in ""|*[!a-z0-9_]*) echo "refusing: an id is lower-case letters, digits and _"; exit 64 ;; esac
   [ ${#id} -le 40 ] || { echo "refusing: an id is at most 40 characters"; exit 64; }
 elif [ "$word" = cancel ]; then
@@ -624,6 +629,8 @@ word_latency() {
 
 word_fetch() {
   local section setup busy waits="" one args=(--only "$id")
+  # A look at the set taken before this fetch no longer says what it holds (word_explore).
+  rm -f "$LOGS/EXPLORE-$id.md" "$LOGS/EXPLORE-$id.md.key"
   section=$(awk -v id="$id" '
     /"credentialed": \[/ { cred = 1 }
     index($0, "\"id\": \"" id "\"") { print (cred ? "credentialed" : "open"); exit }' "$REPO/grid/fetch-xray.json")
@@ -691,6 +698,40 @@ word_fetch_gated() {  # one gated CT source through the platform script, recorde
   return $rc
 }
 
+explore_against() {  # the sets $id is compared with, label=folder joined by |; nothing for most sets
+  # The Kaggle scoliosis export (spine-datasets #23) may be AASCE's films re-exported by Roboflow:
+  # both AASCE copies on the volume, as grid/fetch-xray.json's confirm list for it names them.
+  case "$id" in
+    kaggle_scoliosis_yolov5)
+      echo "AASCE-ke30-mirror=$DATA_ROOT/thoracic_xr/mirror_zlinzju_ke30_u7_AASCE2019|AASCE-BoostNet=$DATA_ROOT/aasce2019_boostnet/raw/aasce" ;;
+  esac
+}
+explore_tool_key() {  # what a report must have been written by to be printed: the tool's own hash
+  sha256sum < "$REPO/tools/explore.py" | cut -c1-12
+}
+word_explore() {
+  local raw report busy against
+  raw=$DATA_ROOT/$id/raw report=$LOGS/EXPLORE-$id.md
+  grep -q "\"id\": \"$id\"" "$REPO/grid/fetch-xray.json" || gated_platform_id \
+    || { echo "refusing: $id is not an id of grid/fetch-xray.json nor a gated source of grid/run-platform-fetch.sh"; return 64; }
+  busy=$(live_of explore "explore:$id")
+  [ -z "$busy" ] || { echo "refusing: the look at $id is still queued or running (job $busy); send explore $id again once it ends"; return 75; }
+  if [ -f "$report" ] && [ "$(cat "$report.key" 2>/dev/null)" = "$(explore_tool_key)" ]; then
+    echo "## $(basename "$report") ($(date -r "$report" '+%F %T'))"
+    head -n 300 "$report" | LC_ALL=C tr -cd '\11\12\40-\176' | masked | head -c 60000
+    return 0
+  fi
+  busy=$( { live_of xr_fetch "fetch:$id"; live_of "dp_$id"; } | tr '\n' ' ')
+  [ -z "${busy// /}" ] || { echo "refusing: a fetch of $id is still queued or running (job $busy)"; return 75; }
+  [ -d "$raw" ] || { echo "refusing: $id has no raw folder on the data root yet; fetch it first"; return 2; }
+  envs_ready || { echo "refusing: the environments are not ready; 'start' makes them first"; return 75; }
+  against=$(explore_against)
+  rm -f "$report" "$report.key"
+  explore_tool_key > "$report.key"
+  submit explore batch EXPLORE_ID="$id" EXPLORE_RAW="$raw" EXPLORE_AGAINST="$against" -- explore.sbatch > /dev/null || return 1
+  echo "submitted one job. Send explore $id again once it ends to read the report."
+}
+
 word_samples() {
   local busy said rc
   busy=$( { live_of samples_plan; live_of samples_scan; live_of samples_merge; } | tr '\n' ' ')
@@ -751,6 +792,7 @@ case "$word" in
   v1) word_v1 ;;
   latency) word_latency ;;
   fetch) word_fetch ;;
+  explore) word_explore ;;
   samples) word_samples ;;
   stop) word_stop ;;
   cancel) word_cancel ;;

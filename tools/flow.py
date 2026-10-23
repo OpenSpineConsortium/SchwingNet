@@ -6,6 +6,12 @@ Usage (from the verification environment, or any python with the package on its 
         --epochs 3 --seed 1 [--max-frames 400] [--size 64] [--weights <file>]
     python tools/flow.py record --run <runs folder>/<run id> --into docs/research/v1-demo/runs
 
+Every run also writes PROVENANCE.json and PROVENANCE.md (tools/licences.py) before its first step:
+each source of the catalog with its licence, its class and its frames in each part, and the run's
+own class and the recipes it fits; `--recipe NAME` refuses a catalog with a source the recipe in
+data/recipes/ does not take, so a catalog meant for a commercial network is cut first with
+`python3 tools/licences.py derive`, and the ledger row names the class and the recipe.
+
 A run is refused from a dirty tree, since its record names the commit; the run id is the hash of
 the commit, the catalog's sha256 and the start, so no two runs share one; RUN.json is written
 before the first step, so the trainer and the evaluator stamp their numbers from it and never
@@ -14,7 +20,9 @@ and evaluation, each one process, each timed and recorded as a job with what it 
 mode as a subprocess in the train-cpu environment and in slurm mode as one job each in
 train-gpu, queued through hpcworker's job submit as the gpu class (issue #77), polled no faster than once a minute (grid rule 7). `record` copies the run's small
 files, never the checkpoint, into the research folder with one ledger row, so the repository
-holds what ran and what it cost beside the numbers.
+holds what ran and what it cost beside the numbers. After the last step the run's report is
+written beside its files (tools/report.py): the CLAIM 2024 and REFORMS items each answered from the
+run's files or the declared study, and the licences of the data it read.
 
 Before the first step the run's witness.json is written (tools/witness.py): the frozen list in
 data/witness/ where the repository has one, checked against this catalog, else the frames chosen
@@ -57,6 +65,30 @@ def _load_witness():
 
 _witness = _load_witness()
 FROZEN, WitnessError, for_run = _witness.FROZEN, _witness.WitnessError, _witness.for_run
+
+
+def _load_licences():
+    """tools/licences.py by its file, for the reason _load_witness gives."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("schwingnet_tool_licences", ROOT / "tools" / "licences.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _load_report():
+    """tools/report.py by its file, for the reason _load_witness gives."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("schwingnet_tool_report", ROOT / "tools" / "report.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+_licences = _load_licences()
+_report = _load_report()
 
 VERSION_NAME = re.compile(r"catalog-(\d{6})-[0-9a-f]{12}\.sqlite$")
 LEDGER_HEADER = (
@@ -205,12 +237,24 @@ def start_record(args):
         raise FlowError(f"refused: {error}; split check {json.dumps(check)}") from error
 
 
+def licence_record(catalog, recipe):
+    """The run's training data provenance, before anything is written: a catalog with a source no
+    licence entry covers, or one outside the recipe the run names, is refused here."""
+    try:
+        return _licences.run_provenance(catalog, recipe)
+    except _licences.LicenceError as error:
+        raise FlowError(f"licences: {error}") from error
+
+
 def command_run(args):
     record, check = start_record(args)
+    licences = licence_record(args.catalog, args.recipe)
     run_dir = Path(args.out) / record.run_id
     run_dir.mkdir(parents=True)
     (run_dir / "split-check.json").write_text(json.dumps(check, indent=1) + "\n", encoding="utf-8")
     write_record(run_dir, record)
+    _licences.write_provenance(run_dir, licences)
+    print(json.dumps({"licence": licences["run_class"], "commercial_use": licences["commercial_use"], "fits_recipes": licences["fits_recipes"]}), flush=True)
     write_witness(run_dir, args.catalog, record.catalog_sha256)
     print(json.dumps({"run_id": record.run_id, "run_dir": str(run_dir), "mode": args.mode}), flush=True)
     jobs = [JobRecord(step=Step.SPLIT_CHECK, job_id=f"local-{os.getpid()}-split-check", partition="runner", qos=None, hours_requested=0.01, seconds_used=1, gpus=0, preemptions=0, exit_code=0)]
@@ -227,11 +271,26 @@ def command_run(args):
         if done.exit_code != 0:
             where = f"{run_dir}/{job.step.value}.log" if args.mode == "local" else f"hpcworker's log of job {done.job_id}"
             raise FlowError(f"{job.step.value} exited {done.exit_code}; see {where}")
-    activity = f"{record.stage.value} stage, {record.epochs} epochs, seed {record.seed}" + (f", {args.max_frames} crops per part" if args.max_frames else "")
+    activity = f"{record.stage.value} stage, {record.epochs} epochs, seed {record.seed}" + (f", {args.max_frames} crops per part" if args.max_frames else "") + licence_words(licences)
     pushed = push_wandb(run_dir, args.environment)
     append_ledger(Path(args.out) / "LEDGER.md", record, activity, f"evaluate/results.md from the test part; split-check.json disjoint; {pushed}")
     print(pushed, file=sys.stderr if "NOT" in pushed else sys.stdout, flush=True)
+    print(write_report(run_dir), flush=True)
     return 0
+
+
+def licence_words(licences):
+    """The ledger's few words of the run's data licence: its class and the recipe that cut it."""
+    recipe = licences["recipe"]
+    return f", data licence {licences['run_class']}" + (f" (recipe {recipe['name']})" if recipe else "")
+
+
+def write_report(run_dir):
+    """The run's CLAIM, REFORMS and licence report, written after the last step (tools/report.py);
+    its last line says how many items are still missing, so a gap is seen, never silent."""
+    _report.write(run_dir)
+    gaps = _report.missing_items(run_dir)
+    return f"report: {run_dir}/REPORT.md, " + (f"{len(gaps)} items missing" if gaps else "complete")
 
 
 def write_witness(run_dir, catalog, catalog_sha256):
@@ -254,7 +313,7 @@ def push_wandb(run_dir, environment=None):
     return lines[-1] if lines else f"W&B NOT PUSHED: the sync step exited {done.returncode}: {said}"
 
 
-KEPT = ("RUN.json", "split-check.json", "witness.json", "wandb-sync.json", "train/metrics.jsonl", "train/checkpoint.json", "train/MODEL.md", "train/accuracy.png", "evaluate/results.json", "evaluate/results.md", "evaluate/confusion.png", "evaluate/per-level.png", "evaluate/witness-test.jsonl", "evaluate/latency.json")
+KEPT = ("RUN.json", "PROVENANCE.json", "PROVENANCE.md", "split-check.json", "witness.json", "wandb-sync.json", "train/metrics.jsonl", "train/checkpoint.json", "train/MODEL.md", "train/accuracy.png", "evaluate/results.json", "evaluate/results.md", "evaluate/confusion.png", "evaluate/per-level.png", "evaluate/witness-test.jsonl", "evaluate/latency.json", "REPORT.md", "claim.json", "reforms.json")
 # Of each witness frame, the strip and the animation; the sheets of the first and last epoch; the
 # latency thread's arms. Never a checkpoint, and never every epoch's picture, which W&B holds.
 KEPT_GLOBS = ("train/witness/frames/*/strip.jpg", "train/witness/frames/*/anim.gif", "train/witness/frames/sheet-*.jpg", "evaluate/witness/frames/*/strip.jpg", "evaluate/witness/frames/*/anim.gif", "evaluate/witness/frames/sheet-*.jpg", "latency/*.json")
@@ -306,6 +365,7 @@ def add_run_arguments(parser):
     parser.add_argument("--size", type=int, default=64)
     parser.add_argument("--max-frames", type=int, default=0)
     parser.add_argument("--weights", default=None)
+    parser.add_argument("--recipe", default=None, help="refuse the run unless every source it trains on is one this recipe in data/recipes/ takes")
     parser.add_argument("--hours", type=float, default=4.0, help="the training job's wall time")
     # A step names hpcworker's gpu class and never a QoS: the site profile gives the GPU partitions,
     # the first with room, and the QoS they take, without which Slurm refused a GPU job (issue #74).

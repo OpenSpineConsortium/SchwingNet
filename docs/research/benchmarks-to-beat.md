@@ -21,20 +21,30 @@ docs/research/xr-from-3d/README.md section 3: Measured is this project's own rec
 shown elsewhere in the source named, Inferred is reasoned here and not shown. What was read for the
 revision is section 9.
 
+Extended again on 2026-10-23 by the thread "Dataset census and roadmap": three comparator rows of
+section 2, Zeng et al. 2024 (CM Spine's own paper), VDVM (Zhang et al. 2023) and the cervical
+corners of Zhang et al. 2021, and the first-time claim narrowed by Huang 2022 and Zeng. They were
+read for docs/research/fluoroscopy-list-prior-art.md, whose section 6 says what was read and whose
+section 7 what its adversarial review changed.
+
 ## 1. The three papers in numbers
 
 ### FluoroSAM (Killeen et al., MICCAI 2025; arXiv 2403.08059)
 
-A Segment-Anything variant trained from scratch on synthetic X-rays with text, point and box prompts.
+A Segment-Anything variant trained from scratch on synthetic X-rays with text, point and mask prompts
+(v3 Methods; the boxes in v3's Table 1 are SAM's and MedSAM's).
 
-- Training data: FluoroSeg, 1,672,969 DRRs in the paper (the released set has 2,953,257 from 1,621
-  CTs: 519 head and neck, 573 torso, 529 lower extremity), rendered by a modified DeepDRR from 1,699
-  CTs (747 New Mexico Decedent Image Database, 108 TotalSegmentator, 844 internal torso scans), with
+- Training data: FluoroSeg. v2 has 1,672,969 DRRs, rendered by a modified DeepDRR from 1,699 CTs
+  (747 New Mexico Decedent Image Database, 108 TotalSegmentator, 844 internal torso scans); v3 and
+  the released set have 2,953,257 from 1,621 CTs, which v3 sources "from the New Mexico Decedent
+  Image Database" (519 head and neck, 573 torso, 529 lower extremity). The renders carry
   TotalSegmentator V2 masks (117 classes plus 11 appendicular bones, 128 organ masks) and 464 tool
-  meshes, up to 15 tools a view; the principal ray sampled on a hemisphere short of 25 degrees from
-  the S/I axis; detector 180 to 500 mm and source-to-detector 700 to 1200 mm (a mini C-arm in 10 % of
-  views). 448 x 448 pixels.
-- Real test: 464 fluoroscopic images of one cadaveric lower torso on a Brainlab Loop-X, angles plus
+  meshes. v2's renders take up to 15 tools a view, the principal ray on a hemisphere short of 25
+  degrees from the S/I axis, detector 180 to 500 mm and source-to-detector 700 to 1200 mm (a mini
+  C-arm in 10 % of views), at 448 x 448 pixels (v2 Methods); v3 renders at 512 x 512 for a 448 x 448
+  input, within 60 degrees of the anterior direction, with a random subset of the 464 tools, and its
+  Methods as read give no detector or distance ranges (v3 Methods).
+- Real test (v2): 464 fluoroscopic images of one cadaveric lower torso on a Brainlab Loop-X, angles plus
   or minus 30 degrees cranial-caudal and plus or minus 90 orbital, truth by 2D/3D registration to the
   CBCT and projection of TotalSegmentator's 3D masks; public chest X-rays for the lung.
 - Numbers: synthetic test (47,190 images) text only 0.43 +/- 0.26 Dice, text and more prompts 0.85
@@ -45,9 +55,13 @@ A Segment-Anything variant trained from scratch on synthetic X-rays with text, p
 - Those numbers are arXiv v2's. The v3 of June 2025 reports others, read in full by the thread
   "Benchmark and priors issues" on 2026-10-22 and matching this programme's own second reading
   (docs/research/lumbosacral-to-cervical-extrapolation.md): on the real cadaver, over 1,741 masks,
-  Dice 0.60 text only, 0.69 with two points or a box, 0.77 with eight points; on synthetic
+  Dice 0.60 text only, 0.69 with two points, 0.77 with eight points; on synthetic
   validation 0.59, 0.70, 0.79; FluoroSeg 2,953,257 DRRs from 1,621 CTs. A comparison on the talk
-  quotes v3.
+  quotes v3. v3's cadaver is a torso from mid-femur to T2, described as the digital twin's is (the
+  same donor, thaw, patient array and stitched CBCTs), though neither paper says it is one specimen;
+  v3 also tests zero-shot on 1,131 real chest X-rays, whole lungs, 0.66 text only and 0.80 with two points, against
+  off-the-shelf SAM's 0.89 with two points and 0.91 with a box and MedSAM's 0.48 with a box; on the
+  cadaver SAM 0.50 with two points and 0.57 with a box, MedSAM 0.55 with a box (read on 2026-10-23 for docs/research/flepp-and-killeen-critique.md).
 - Released: the code, the weights (2.5 GB on Google Drive) and FluoroSeg (2.65 TB on Hugging Face,
   gated, CC BY-NC-SA 4.0; the owner accepted its terms on 2026-10-22). The 464-frame cadaver set of
   v2 is not released under that name; the digital twin's cadaver, below, is.
@@ -113,18 +127,27 @@ patient-specific DRRs, and a contour ICP that matches within a substructure only
 
 | Capability | FluoroSAM / the twin | Contour registration | SchwingNet's claim |
 | --- | --- | --- | --- |
-| Classify, first sense: name each vertebra's level on a real fluoroscopic frame (vertebral classification, the goal's phrase in docs/project.md) | no: 0.04 Dice on levels, the paper's own number (Section 4.1 of arXiv 2412.08020) | no: it has no levels | yes, the product; measured per level on held-out real frames, the evaluation page's rows |
-| Work without a CT of the patient | yes for masks, no for the twin's geometry (CBCT truth) | no: needs the preoperative CT and a fiducial | yes, CT-free at the podium |
-| Any angle | trained on a hemisphere; tested at plus or minus 30 and 90 on one device | two views 45 degrees apart or more | the per-angle curve on real sweeps (C-ArmLSpine, COBRA) is the test |
+| Classify, first sense: name each vertebra's level on a real fluoroscopic frame (vertebral classification, the goal's phrase in docs/project.md) | no: 0.16 to 0.25 Dice for L3 to L5 by name (Table 1) and 0.04 for similar levels told apart (Section 4.1's text), the paper's own numbers (arXiv 2412.08020) | no: it has no levels | yes, the product; measured per level on held-out real frames, the evaluation page's rows |
+| Work without a CT of the patient | yes for masks, no for the twin's geometry (CBCT truth) | no: needs the preoperative CT and a fiducial | yes for the reported stack, which has its own detectors; version 1's sweep is drawn over truth boxes from the case's CBCT until a detector stage exists (docs/research/latency-and-sweep/README.md) |
+| Any angle | trained on a hemisphere (v2) or within 60 degrees of the anterior direction (v3); tested at plus or minus 30 and 90 on one device (v2) | two views 45 degrees apart or more | the per-angle curve on real sweeps (C-ArmLSpine, COBRA) is the test |
 | Classify, second sense: the transitional stratum (T13, L6) and the anomaly calls | no | no | the screener (H, #64) with the counting prior from CT as its prior (F, #62; A); the evaluation page's transitional row, and a per-image call with its interval once H exists |
 | Real fluoroscopy | trained on renders only, tested on one cadaver and one device | trained on renders of the same specimen, tested on the specimen | trained on real films and frames plus renders, tested leave-one-device-out |
 | Latency | not reported | nnU-Net at 18 GB GPU, ICP to converge; no number | the 97 ms budget, measured |
 
 So the first-time claims the talk can make, each with its measurement: level naming on real frames
-with no CT, at any angle, with latency; and anomaly and transitional-anatomy classification from a
-single frame. Segmentation of bone as one class is not a claim to make against FluoroSAM, which does
-it well (vertebrae as one class 0.78 text only on the digital twin's cadaver; 0.60 to 0.77 over all
-structures in v3); the comparison is on levels, where it scores 0.04.
+by a model with its own detector, with no CT, at any angle, with latency; and anomaly and
+transitional-anatomy classification from a single frame. Two rows below already name levels on real
+images with their own detector and no CT: Huang 2022 on AP and lateral Long-Film images of
+cadavers, and Zeng et al. 2024 on AP lumbar images of patients taken during surgery with one G-arm,
+with no latency given. So the first claim holds only as the whole of it, never as level naming on
+real frames alone: what no row shows is a per-level naming rate on real frames at any angle, the
+per-angle curve, with its latency measured (Inferred from the rows). A detector of its own is the
+reported stack's and not yet version 1's, which draws over truth boxes from the case's CBCT (its row
+below); and the latency is a first only while Zeng reports none, so Zeng's code, when it runs here,
+is timed under task #13's rules and the latency becomes a comparison. Segmentation of bone as one
+class is not a claim to make against FluoroSAM, which does it well (vertebrae as one class 0.78 text
+only on the digital twin's cadaver; 0.60 to 0.77 over all structures in v3); the comparison is on
+levels, where it scores 0.16 to 0.25 by name and 0.04 for similar levels told apart.
 
 ### The comparator rows
 
@@ -140,25 +163,32 @@ its second reading, 8.1); the rest were read for this revision (section 9).
 
 | Row | What it reads at test | Data and test set | Number (grade; source) | The same number here |
 | --- | --- | --- | --- | --- |
-| FluoroSAM v2 (arXiv 2403.08059v2) | one real frame and a text, point or box prompt; renders alone in training | 464 Loop-X frames of one cadaveric lower torso | hard tissue Dice 0.39 text only, 0.90 +/- 0.15 with points; overall 0.26 text only (Published; v2's results) | #132: its masks' bounding boxes scored as boxes by tools/evaluate.py on the held C-ArmLSpine test persons, as the all-levels and per-level rows; the weights wait on the owner's word (section 6) |
-| FluoroSAM v3 (arXiv 2403.08059v3) | the same | the real cadaver, 1,741 masks; synthetic validation | Dice 0.60 text only, 0.69 with two points or a box, 0.77 with eight points; synthetic 0.59, 0.70, 0.79 (Published; v3's results) | the same row of #132; v3 is the version a talk quotes |
-| FluoroSAM in the digital twin (arXiv 2412.08020) | one real frame and a text prompt | 80 Loop-X frames of one torso to T2 | vertebrae 0.78 +/- 0.15, lumbar 0.72 +/- 0.18, thoracic 0.64 +/- 0.20; one level 0.04 (Published; Table 1 and Section 4.1) | the same frames: naming accuracy per level on the twin's cadaver as a source row, once OpenSpineConsortium/spine-datasets#170 brings the archive and #127 verifies its masks; its thoracic frames are #135's row |
+| FluoroSAM v2 (arXiv 2403.08059v2) | one real frame and a text, point or mask prompt; renders alone in training | 464 Loop-X frames of one cadaveric lower torso | hard tissue Dice 0.39 text only, 0.90 +/- 0.15 with points; overall 0.26 text only (Published; v2's results) | #132: its masks turned into boxes by a mask-to-box step that #132 adds to tools/evaluate.py (not built yet) and scored on the held C-ArmLSpine test persons, as the all-levels and per-level rows; the weights wait on the owner's word (section 6) |
+| FluoroSAM v3 (arXiv 2403.08059v3) | one real frame and a text, point or mask prompt; renders alone in training | the real cadaver, a torso from mid-femur to T2, 1,741 masks; synthetic validation | Dice 0.60 text only, 0.69 with two points, 0.77 with eight points; synthetic 0.59, 0.70, 0.79 (Published; v3's results) | the same row of #132; v3 is the version a talk quotes |
+| FluoroSAM in the digital twin (arXiv 2412.08020) | one real frame and a text prompt | 80 Loop-X frames of one torso to T2 | vertebrae 0.78 +/- 0.15, lumbar 0.72 +/- 0.18, thoracic 0.64 +/- 0.20; L3, L4 and L5 by name 0.21, 0.16 and 0.25; similar levels told apart 0.04 (Published; Table 1 and Section 4.1's text) | the same frames: naming accuracy per level on the twin's cadaver as a source row, once OpenSpineConsortium/spine-datasets#170 brings the archive and #127 verifies its masks; its thoracic frames are #135's row |
 | Huang 2022, Comput Methods Programs Biomed 227:107222 | one real image, no CT; renders of 297 CTs in training | 50 AP and 50 lateral Long-Film images of 13 cadavers | 88.3 % labelling accuracy on both views, F1 above 96 %, 3.3 mm; 88.9 % with and 91.2 % without instrumentation (Published; the abstract alone, the full text closed, regions not stated) | the all-levels row on held real frames, AP and lateral apart; tools/evaluate.py tallies no view stratum yet, a follow-up for the ladder's first rung (section 4) |
+| Zeng et al. 2024, Electronics 13(11):2137, CM Spine's own paper | one real AP lumbar G-arm image taken during surgery, no CT; a two-stage CenterNet with two added heads, for the visibility of each vertebra's neighbours and its offsets to them | CM Spine: 208 images of one Geelin500-A G-arm, 60 of them to test, 537 vertebrae L1 to L5, with no patient count and no patient split stated; BUU's 400 AP and 400 lateral films, 100 per view to test | per-level COCO AP (IoU 0.5 to 0.95) on CM Spine 13.6 points above CenterNet on average, L3 +20.1 and L4 +25.1; on BUU +1.9 (AP) and +0.8 (lateral) over YOLOv5; the absolute values are in its Tables 3 to 5, not read; no latency (Published; the MDPI text) | naming accuracy per level on CM Spine's 60 test images once OpenSpineConsortium/spine-datasets' cm_spine_drive_file brings them (the owner opens the Drive file first), with no person count to give; and its released code trained and run on the held C-ArmLSpine persons, a training run that waits on the owner's word and number, never copied into this repository, since it carries no licence and no weights |
 | Ahmad, Ali and Jung 2025, HSI 2025 (doi 10.1109/HSI66212.2025.11142408) | multi-view DRRs of VerSe 2019 | not stated in the abstract | no number in the abstract and no real-image test visible (Published method; the abstract alone) | none until read in full; if it holds a real-image number, the AP-and-lateral pair stratum above |
 | LevelCheck, Lo 2015, Spine 40(8):E476 | one radiograph registered to the patient's own CT | 20 thoracolumbar patients, 10,000 trials | 100 % at 25.7 s, 99.3 % at 7.1 s (Published) | the all-levels row on C-ArmLSpine, whose cases carry a CBCT that is never read at inference; its seconds against task #13's p95 under 97 ms |
+| VDVM, Zhang et al. 2023, J X-Ray Sci Technol 31(5):935 | one C-arm image and a DR radiograph of the patient (full-length in training, lumbar in the test set; the abstract does not say which DR image each C-arm image meets at test), matched vertebra by vertebra by visual information fidelity | 382 C-arm and 203 full-length images to learn; 31 C-arm and 31 lumbar DR images to test | vertebra finding mAP 0.87 on C-arm and 0.96 on DR; segment matching accuracy 0.733 on 31 C-arm images, not defined in the abstract (Published; the abstract alone) | the all-levels row on C-ArmLSpine, which reads no second image at inference; like LevelCheck's, its number needs a prior image of the patient |
+| Zhang, Mao, Coyle and Sejdic 2021, Med Image Anal 74:102218 | one real frame of a swallow videofluoroscopy, the patient seated lateral, no CT; a two-stage network that finds the region and then fixed named points, the antero-inferior corner of C2 and the anterior-superior and anterior-inferior corners of C3 and C4 | 1,518 swallows of 265 patients on a Toshiba Ultimax to learn; 70 healthy volunteers on a GE Precision 500D to test, no person in both | 4.20 +/- 5.54 pixels from the annotations against 4.35 +/- 3.12 between human raters; 93 % of points within five pixels; called real time, with no time given (Published; PMC8560570) | the corner error on its 70 test volunteers, with the person count, once OpenSpineConsortium/spine-datasets' pittsburgh_swallow, asked for on 2026-10-20, is granted; #135's cervical row |
 | I-STAR 398 radiographs (De Silva 2016, Spine; Manbachi 2018, Ann Biomed Eng 46(10):1548) | the surgeon reads the radiograph, with and without LevelCheck | 398 radiographs, cervical to lumbar, 62 difficult | median localisation error 30.4 % unassisted, 2.4 % with LevelCheck (Published) | one minus the all-levels accuracy; the unassisted figure is the reader's row, the one a frame-level method is set beside |
 | VerSe (Sekuboyina 2021, Med Image Anal); Payer 2020, VISAPP; Btrfly (Sekuboyina 2020, Radiol Artif Intell) | CT volumes, a 3D labeller | 374 CTs; 80 CTs three-fold; 302 plus 65 CTs | identification 94.3 % (2019) and 96.6 % (2020); Payer cervical 91.1 %, thoracic 89.0 %, lumbar 90.4 %; Btrfly 89.9 %, 86.2 %, 91.4 % (Published; CT, not X-ray) | no row of the evaluation page: the ceiling of the 3D side that the counting prior (A, #57) and the renders' truth stand on; never filed as an X-ray number |
 | FCN and CRF, Sekuboyina and others, ISBI 2023 (doi 10.1109/ISBI53787.2023.10230520; arXiv 2108.06554) | CT volumes | three benchmark CT sets, not named in the abstract | identification rate above 97 %, near 100 % with one interaction (Published; CT, the abstract alone) | the same: CT, no page row; its anatomical-prior CRF is the model for A (docs/research/ct-priors-for-2d-detection.md) |
-| SchwingNet version 1, the evaluation page (#12) | one real frame, no CT, no prompt | the frozen test persons, read once at the version boundary | the row that moves: the two runs recorded so far are the synthetic-bank dry run (cd37124c487d, test 430/431 = 0.998, 5 synthetic persons) and its predecessor, which measure the workflow and not SchwingNet (Measured; the workflow only) | the page itself; every rung of section 4 is one more row |
+| SchwingNet version 1, the evaluation page (#12) | one real frame and a truth box per body, projected from the case's CBCT, since it has no detector stage yet (docs/research/v1-demo/README.md): no text or point prompt, but gold localisation | the frozen test persons, read once at the version boundary | the row that moves: the two runs recorded so far are the synthetic-bank dry run (cd37124c487d, test 430/431 = 0.998, 5 synthetic persons) and its predecessor, which measure the workflow and not SchwingNet (Measured; the workflow only) | the page itself; every rung of section 4 is one more row |
 | The reported stack, context only (spine-program 01_carm_level_detection, 01/STATUS.md; docs/research/demo-plan.md) | one real frame, no CT | C-ArmLSpine, held out, zero-shot | lateral naming 595/617 = 96.4 % [92.3, 98.4], fine-tuned 97.4 %; AP naming 276/631 = 43.7 %; detection recall at 0.74 231/287 = 80.5 % [74.1, 86.8]; a renders-only detector 0.3 % at 0.74 and 31.7 % at 0.25; no frame of the device 7.0 % (Measured by the reported stack) | context beside version 1, which docs/project.md makes the baseline; the latency budget is task #13's p95 under 97 ms |
 
 Read against the owner's three questions. On real fluoroscopy with no CT, the published level-naming
 numbers are Huang's 88.3 % on Long-Film cadaver images and the reported stack's 96.4 % lateral and
 43.7 % AP on C-ArmLSpine, on different test sets, so neither beats the other until one method runs on
-the other's frames, and Huang's code is closed; FluoroSAM's 0.04 per level is a Dice on one cadaver,
-not an accuracy, and meets ours only through #132 on the same frames. Any angle has no published
-level-naming number at all: no row above reports a per-angle curve (Inferred from the rows). Classify
-in the first sense is version 1's own row; in the second sense no row exists anywhere yet.
+the other's frames, and Huang's code is closed; Zeng's per-level AP on CM Spine's intraoperative AP
+images is a third, a detection measure and not an accuracy, from code that is public with no
+licence and no weights; Zhang 2021's pixels to named C2 to C4 corners on swallow videofluoroscopy
+are a localisation error for three fixed bodies, not a naming rate; FluoroSAM's per-level figures
+(0.16 to 0.25 by name, 0.04 for similar levels told apart) are Dice on one cadaver, not accuracies,
+and meet ours only through #132 on the same frames. Any angle has no published level-naming number
+at all: no row above reports a per-angle curve (Inferred from the rows). Classify in the first sense
+is version 1's own row; in the second sense no row exists anywhere yet.
 
 ## 3. How FluoroSAM handles the gap between renders and real fluoroscopy
 
@@ -186,8 +216,9 @@ randomisation and nothing else:
    Dice and the real cadaver 0.39 on hard tissue and 0.26 overall, on one device, the Loop-X. v3 puts
    the two side by side, synthetic validation 0.59, 0.70 and 0.79 against the real cadaver's 0.60,
    0.69 and 0.77, so over all 1,741 masks pooled the gap is within a few points, on that one cadaver
-   and one device; per level it is not reported, and the 0.04 on levels in the digital twin says the
-   randomisation carries bone as a class and not its count.
+   and one device; per level it is not reported, and the digital twin's per-level figures (0.16 to 0.25 by name,
+   0.04 for similar levels) fit the randomisation carrying bone as a class and not its count, though
+   one cadaver cannot tell that from the domain gap (Inferred).
 
 What this means for SchwingNet: the randomisation is the same layer 2 that xr-from-3d's workstream E
 names (SyntheX's recipe), so it is table stakes, not a differentiator. The differentiators are layers
@@ -204,7 +235,7 @@ from the full system, written first here, and the build-up from the published ba
 added per rung. Recommended (the checkpoint of 2026-10-22 on #130; Inferred): build up before the talk,
 since each rung exists as soon as its component does, and leave one out once the full system exists,
 since only then is there a whole to take parts from. Each rung is one run id, one commit and one result
-file, with naming accuracy per level and per source and Wilson intervals on person-keyed n, detection
+file, with naming accuracy per level and per source and correct/n over bodies with a Wilson interval and the person count beside it, on person-keyed splits, detection
 recall, the per-angle curve and task #13's latency; a rung that loses stays in the table as a loss;
 nothing is tuned on a test person; and no rung runs before the owner's word and number for it.
 
@@ -220,10 +251,11 @@ above is one row of the same table:
 3. Minus the per-device correction (E layer 3).
 4. Minus the renders (C): real data only.
 5. Minus the counting prior (A): the classifier alone.
-6. Minus the real data: renders only, which is FluoroSAM's regime; its level Dice of 0.04 is the
-   published floor for this row.
+6. Minus the real data: renders only, which is FluoroSAM's regime; its level Dice, 0.16 to 0.25 by
+   name and 0.04 for similar levels told apart, is the published floor for this row.
 7. FluoroSAM itself on the same frames, prompted "L4 vertebra" and so on, scored by the same corner
-   boxes (tools/evaluate.py reads a mask's bounding box as a box), with and without a point prompt.
+   boxes (a mask-to-box step that #132 adds to tools/evaluate.py, not built yet), with and without a
+   point prompt.
 
 Rows 1 to 6 are runs of tools/flow.py with switches, each with its run id, commit and result file,
 and wait for the owner's word and number like every training. Row 7 needs the FluoroSAM weights
@@ -438,3 +470,10 @@ repository as read; nothing Published).
   docs/research/demo-plan.md, docs/research/evaluation/README.md, tools/evaluate.py, grid/README.md,
   grid/run-platform-fetch.sh, docs/research/data-manifest/MANIFEST.md, and the comments on #70, #130,
   #131 and #135.
+- For the rows of Zeng et al. 2024, VDVM and Zhang et al. 2021 and the first-time claim narrowed by
+  Huang 2022 and Zeng, added by the thread "Dataset census and roadmap" the same day:
+  docs/research/fluoroscopy-list-prior-art.md sections 6 and 7.
+- Corrected the same day from the adversarial review of docs/research/flepp-and-killeen-critique.md
+  (#140, pull request #145): FluoroSAM's prompt types, v2's and v3's datasets and cadavers kept apart,
+  the per-level Dice beside the 0.04, version 1's truth boxes, and the mask-to-box step #132 still has
+  to add to tools/evaluate.py.

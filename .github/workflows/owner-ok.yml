@@ -1,22 +1,28 @@
 name: Owner OK
 
-# The owner's own tap on each pull request before it merges, in place of
-# an approving review, which GitHub never lets the owner give on a pull
-# request opened under the owner's own login, as every session's is. The
-# job deploys to the environment owner-ok, whose required reviewer is the
-# owner, so it waits until the owner presses Approve or Reject, which
-# GitHub Mobile offers on the push notification it sends; the job's check
-# run, named owner-ok, is what a ruleset requires (docs/setup/github.md,
-# section 10). It does nothing else: no checkout, no token, no secret.
+# The owner's own tap on another person's pull request before it merges,
+# in place of an approving review, which GitHub never lets the owner give
+# on a pull request opened under the owner's own login, as every session's
+# is. A pull request whose author administers the repository, the owner
+# and the owner's sessions, deploys to the environment owner-self, which
+# names no reviewer, and passes at once; any other author's, a
+# collaborator's or a worker in Actions', deploys to the environment
+# owner-ok, whose required reviewer is the owner, and waits until the owner
+# presses Approve or Reject, which GitHub Mobile offers on the push
+# notification it sends. Either way the job's check run is named owner-ok,
+# which a ruleset requires (docs/setup/github.md, section 10). The author's
+# role is read from GitHub's collaborator permission with the run's own
+# token, which reads metadata and nothing else; where that read fails, the
+# second job never runs and the check stays missing, so the gate holds.
 #
-# A draft starts no deployment, so a worker's pushes to its draft ping no
-# one; GitHub reads the skipped run as passing, and a draft cannot merge
-# anyway. Marking it ready, and every push after, starts a new run, so the
-# tap always covers the head that merges, and a newer push cancels a run
-# still waiting, so only one request is ever pending per pull request. An
+# A draft starts no run, so a worker's pushes to its draft ping no one;
+# GitHub reads the skipped run as passing, and a draft cannot merge anyway.
+# Marking it ready, and every push after, starts a new run, so the tap
+# always covers the head that merges, and a newer push cancels a run still
+# waiting, so only one request is ever pending per pull request. An
 # environment the owner has not set up yet is made by the first run with
 # no reviewer and passes at once: the gate holds only once the owner has
-# named a reviewer on it.
+# named a reviewer on owner-ok.
 
 on:
   pull_request:
@@ -29,12 +35,39 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  owner-ok:
-    name: owner-ok
+  author:
+    name: author
     if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    environment: owner-ok
+    outputs:
+      environment: ${{ steps.role.outputs.environment }}
     steps:
-      - name: The owner approved this head
-        run: echo "owner-ok for ${{ github.event.pull_request.head.sha }}"
+      - name: Read whether the author administers the repository
+        id: role
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+        run: |
+          set -eu
+          role=$(gh api "repos/$REPO/collaborators/$AUTHOR/permission" --jq .permission)
+          if [ "$role" = "admin" ]; then
+            echo "environment=owner-self" >> "$GITHUB_OUTPUT"
+          else
+            echo "environment=owner-ok" >> "$GITHUB_OUTPUT"
+          fi
+          echo "author $AUTHOR has $role"
+
+  owner-ok:
+    name: owner-ok
+    needs: author
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: ${{ needs.author.outputs.environment }}
+    steps:
+      - name: The owner approved this head, or the author is an admin
+        env:
+          HEAD: ${{ github.event.pull_request.head.sha }}
+          ENVIRONMENT: ${{ needs.author.outputs.environment }}
+        run: echo "owner-ok for $HEAD through $ENVIRONMENT"
