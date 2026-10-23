@@ -1,6 +1,8 @@
 """Render artifacts/_synthesis/clusters.md from clustering.json: the settled clustering, with
 each cluster's canonical, superseded and duplicate artifacts, then the three lens clusterings
-it was settled from, so a reader sees the choice and what each lens contributed."""
+it was settled from, so a reader sees the choice and what each lens contributed. An artifact new
+since the clustering is placed by its reader in a run of .github/workflows/synthesis.yml, and is
+listed under Placed later with the reader's reason."""
 import json
 import sys
 sys.path.insert(0, __import__("os").path.dirname(__file__))
@@ -27,9 +29,13 @@ def main(clustering, inventory, dst):
     titles = {f"{r['repo']}/{r['folder']}": r["title"] for r in inv["artifacts"]}
     dates = {f"{r['repo']}/{r['folder']}": r["date"] for r in inv["artifacts"]}
     J = C["judged"]
+    later = {p["id"]: p for p in J.get("placed_later", [])}
+    members = set().union(*(c["members"] for c in J["clusters"]))
+    unplaced = sorted(set(J["unplaced"]) | (set(titles) - members))
     out = ["# Artifact clusters\n",
-           "The 69 inventoried artifacts sorted into topics by three independent readings (by the question answered, by the stage of the work, by the reader and the decision) and settled by a fourth reader into one clustering, on 2026-10-22, for the Artifact Textbook (issue #120). Each artifact has one primary home and may be a secondary member elsewhere. Within a cluster the canonical artifacts are the ones to read first; a superseded artifact is replaced by a later or fuller one on the same question, with what the older one alone still holds noted where the readers found it; a duplicate is a near-copy. The part says where the cluster goes in the book: schwingnet for the spine work, symphony-beethoven for the material to be kept in a separable part, outreach-and-governance for pages with no method or data.\n",
-           f"{len(J['clusters'])} clusters; every artifact placed; unplaced: {', '.join(J['unplaced']) or 'none'}.\n",
+           f"The {len(members - set(later))} inventoried artifacts sorted into topics by three independent readings (by the question answered, by the stage of the work, by the reader and the decision) and settled by a fourth reader into one clustering, on 2026-10-22, for the Artifact Textbook (issue #120). Each artifact has one primary home and may be a secondary member elsewhere. Within a cluster the canonical artifacts are the ones to read first; a superseded artifact is replaced by a later or fuller one on the same question, with what the older one alone still holds noted where the readers found it; a duplicate is a near-copy. The part says where the cluster goes in the book: schwingnet for the spine work, symphony-beethoven for the material to be kept in a separable part, outreach-and-governance for pages with no method or data.\n",
+           f"{len(J['clusters'])} clusters; " + (f"unplaced: {', '.join(unplaced)}" if unplaced else "every artifact placed; unplaced: none")
+           + (f"; {len(later)} placed later (Placed later, below)" if later else "") + ".\n",
            "## Summary\n",
            "| # | Cluster | Part | Primary members | Canonical | Superseded | Duplicates |",
            "|---|---|---|---|---|---|---|"]
@@ -41,7 +47,7 @@ def main(clustering, inventory, dst):
         out.append(cell(c["description"]) + "\n")
         out.append("Primary members, by date:\n")
         for m in sorted(c["members"], key=lambda m: dates.get(m, "")):
-            tag = " (canonical)" if m in c["canonical"] else ""
+            tag = " (canonical)" if m in c["canonical"] else f" (placed on {later[m]['date']})" if m in later else ""
             out.append(f"- {link(m, titles)}, {cell(dates.get(m, 'undated'))}, `{m}`{tag}")
         if c["superseded"]:
             out.append("\nSuperseded:\n")
@@ -53,6 +59,13 @@ def main(clustering, inventory, dst):
                 out.append(f"- `{short_id(s['id'])}` duplicates `{short_id(s['of'])}`: {cell(s['why'])}")
         if c["secondary_members"]:
             out.append("\nSecondary members: " + ", ".join(f"`{short_id(m)}`" for m in c["secondary_members"]))
+        out.append("")
+    if later:
+        out.append("## Placed later\n")
+        out.append("Artifacts new since the clustering, each placed by its reader in a run of .github/workflows/synthesis.yml in the cluster whose description it fits best, "
+                   "with the reader's reason; none is canonical, superseded or a duplicate until a person rules so in clustering.json.\n")
+        for p in later.values():
+            out.append(f"- {link(p['id'], titles)}, `{p['id']}`, in {cell(p['cluster'])}, on {p['date']}: {cell(p['why'])}")
         out.append("")
     out.append("## How the clustering was settled\n")
     out.append(cell(J["rationale"]) + "\n")
