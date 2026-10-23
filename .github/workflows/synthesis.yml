@@ -30,7 +30,9 @@ name: Synthesis
 # A run reads only when all of these hold, and its job summary says which did not:
 #   - the variable SYNTHESIS_READS is not off (set it to off to stop every read; the look still
 #     runs and the issue still says what waits);
-#   - crowd mode is off (the variable CLAUDE_CROWD), since in crowd mode no workflow runs Claude;
+#   - crowd mode is off (the variable CLAUDE_CROWD), since in crowd mode no workflow runs Claude:
+#     there every job of this workflow is skipped, the look's too, as the crowd check holds every
+#     job of a workflow that reaches Claude to (tests/test_crowd_check.py);
 #   - the repository secret CLAUDE_CODE_OAUTH_TOKEN is set. It is the token `claude setup-token`
 #     makes, so the reads run on that account's plan limits and bill no API. It is the one
 #     exception, the owner's choice of 2026-10-23 that these reads start on their own, to the
@@ -84,7 +86,7 @@ env:
 
 jobs:
   look:
-    if: github.repository == 'OpenSpineConsortium/SchwingNet' && github.ref == 'refs/heads/main'
+    if: vars.CLAUDE_CROWD != 'true' && github.repository == 'OpenSpineConsortium/SchwingNet' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -355,7 +357,7 @@ jobs:
   batch:
     # The skeptics' batches: the planned verdict items, and the candidates the finders found.
     needs: [look, read]
-    if: ${{ !cancelled() && needs.look.result == 'success' && needs.look.outputs.admit == 'true' }}
+    if: vars.CLAUDE_CROWD != 'true' && !cancelled() && needs.look.result == 'success' && needs.look.outputs.admit == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -393,7 +395,7 @@ jobs:
   verdicts:
     # One leg per batch: the skeptic, the re-checker, and the judge where they disagree.
     needs: [look, batch]
-    if: ${{ !cancelled() && needs.batch.result == 'success' && needs.batch.outputs.batches != '[]' }}
+    if: vars.CLAUDE_CROWD != 'true' && !cancelled() && needs.batch.result == 'success' && needs.batch.outputs.batches != '[]'
     runs-on: ubuntu-latest
     timeout-minutes: 240
     permissions:
@@ -587,7 +589,7 @@ jobs:
   join:
     # Whatever came back, into the records, and the pull request.
     needs: [look, read, batch, verdicts]
-    if: ${{ !cancelled() && needs.look.result == 'success' && needs.look.outputs.admit == 'true' && needs.batch.result == 'success' }}
+    if: vars.CLAUDE_CROWD != 'true' && !cancelled() && needs.look.result == 'success' && needs.look.outputs.admit == 'true' && needs.batch.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
