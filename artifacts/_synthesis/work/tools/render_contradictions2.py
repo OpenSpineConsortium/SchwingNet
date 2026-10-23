@@ -10,7 +10,8 @@ from render_inventory import to_ascii, cell, short
 from render_clusters import link, short_id
 import verify_quotes as vq
 
-TEXT_DIR = "/tmp/claude-0/-home-user/1b2f17bd-1fd4-5865-b98a-4797cc8ea3ad/scratchpad/text"
+# Where extract.py wrote the plain texts; SYNTH_TEXT names it in another session.
+TEXT_DIR = __import__("os").environ.get("SYNTH_TEXT", "/tmp/claude-0/-home-user/1b2f17bd-1fd4-5865-b98a-4797cc8ea3ad/scratchpad/text")
 STATUS = {"whole": "yes", "parts": "yes", "window": "partly", "raw-whole": "yes, page data", "raw-parts": "yes, page data",
           "raw-window": "partly, page data", "absent": "not found", "no-text": "no text", "no-quote": "no quote", "none-named": "-"}
 KINDS = [("contradiction", "Same quantity, same scope, different values"),

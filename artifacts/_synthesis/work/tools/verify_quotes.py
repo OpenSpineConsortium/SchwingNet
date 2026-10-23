@@ -23,7 +23,10 @@ def norm(s):
 
 TEXTS = {}
 RAW = {}
-REPOS = {"SchwingNet": "/home/user/SchwingNet/artifacts", "symphony-template": "/home/user/symphony-template/artifacts"}
+# The two checkouts' artifacts/ folders; SYNTH_SCHWINGNET and SYNTH_SYMPHONY name them where
+# the clones are not under /home/user, as in another account's session.
+REPOS = {"SchwingNet": __import__("os").environ.get("SYNTH_SCHWINGNET", "/home/user/SchwingNet") + "/artifacts",
+         "symphony-template": __import__("os").environ.get("SYNTH_SYMPHONY", "/home/user/symphony-template") + "/artifacts"}
 
 
 def text_of(text_dir, aid):

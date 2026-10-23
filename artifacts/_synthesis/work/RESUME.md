@@ -10,13 +10,15 @@ Written 2026-10-22 23:45 UTC by the thread "Artifact Textbook" when the owner's 
 - out/contradictions-all.json: the merge of every sweep so far; out/clusters-verify-0-1-6.json and out/numbers-partial.json: clusters 0, 1 and 6 and the 247 number collisions, 15 of them with a verdict; out/numbers-verify-batches.json: the 87 number candidates in 17 batches still to be read.
 - out/journal-results.json: every agent result the last three runs returned before they were stopped, and the list of those that did not finish.
 
-## What is left of issue #136
+## Where it stands on 2026-10-23
 
-1. Verify the candidates no skeptic has read. Not finished: the verifiers of Datasets, Detectors, Verification benches, the OR study, Programme direction, Symphony, Symphony's origins, Grid operations, Beethoven, Level naming and Renders, and the 17 number batches. Only FluoroCap's and Transitional vertebrae's came back. A skeptic reads both source texts of a candidate and says confirmed, superseded, refuted or cannot tell.
-2. Merge: `python3 -I tools/merge_contradictions.py out/clustering.json out/contradictions-all.json <new results> extra=<number verdicts>`, then render with render_contradictions2.py into artifacts/_synthesis/contradictions.md and contradictions/.
-3. Update the counts in artifacts/_synthesis/README.md and docs/research/artifact-textbook/README.md, delete this work folder or keep it as the record, delete the claim file, run bash scripts/check.sh in a throwaway clone, push, write the adversarial review into #137's body, mark it ready and merge once green.
+Another account's session merged the Outreach sweep and the two verifier results the journal held (tools/merge_resume.py, into out/contradictions-merged.json), re-extracted the texts with extract.py and rendered contradictions.md and contradictions/ with render_contradictions2.py. All 14 clusters are swept: 858 candidates, 97 with a skeptic's verdict (FluoroCap 52, Transitional vertebrae 45); 15 of the 247 number collisions have one. The paths the scripts read are set by SYNTH_TEXT, SYNTH_SCHWINGNET and SYNTH_SYMPHONY.
 
-Run the scripts with python3 -I from a scratch directory; REPOS in verify_quotes.py names the two checkouts' artifacts/ folders and may need the new paths.
+## What is left
+
+1. The skeptic reads of the other 12 clusters (761 candidates) and of the 87 number candidates in out/numbers-verify-batches.json. They spend tokens, so they run only on the owner's word. A verifier returns, per cluster, a list of verdicts in the candidates' order with verdict (confirmed, superseded-by-later, refuted, cannot-tell), explanation and resolution_hint; set them as that cluster's verdicts in out/contradictions-merged.json, and add number verdicts to its numbers_extra.
+2. Render again: `SYNTH_TEXT=<text dir> SYNTH_SCHWINGNET=<clone> SYNTH_SYMPHONY=<clone> python3 -I tools/render_contradictions2.py out/contradictions-merged.json out/numbers-partial.json out/clustering.json ../inventory.json ../contradictions.md <date>`, after `python3 -I tools/extract.py <clone> SchwingNet <text dir>` and the same for symphony-template.
+3. Update the counts in artifacts/_synthesis/README.md and docs/research/artifact-textbook/README.md.
 
 ## After #136
 
