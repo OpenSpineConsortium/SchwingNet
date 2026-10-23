@@ -630,6 +630,22 @@ class Report(unittest.TestCase):
         with mock.patch.object(redact, "RULES", redact.RULES + [rule]):
             self.assertNotEqual(marker, synth.report(status(f"120 films under {LOGIN}"))[1], "a change to the scrub reaches the issue")
 
+    def test_the_run_line_names_the_commit_of_main_the_workflow_gives(self):
+        with tempfile.TemporaryDirectory() as folder:
+            git(folder, "init", "-q", "repo")
+            git(Path(folder, "repo"), "commit", "-q", "--allow-empty", "-m", "the records laid on main, on the runner")
+            local = git(Path(folder, "repo"), "rev-parse", "HEAD").strip()
+            run = types.SimpleNamespace(clones={"SchwingNet": str(Path(folder, "repo")), "symphony-template": str(Path(folder, "repo"))},
+                                        without=set())
+            main = "c" * 40
+            for given, named in ((main, main), ("", local), ("not a commit", local), (main[:7], local)):
+                with mock.patch.dict(os.environ, {"SYNTH_MAIN": given}):
+                    self.assertEqual(synth.heads(run), {"SchwingNet": named, "symphony-template": local}, given)
+            run.without = {"symphony-template"}
+            with mock.patch.dict(os.environ, {"SYNTH_MAIN": main}):
+                self.assertEqual(synth.heads(run), {"SchwingNet": main})
+        self.assertIn("SYNTH_MAIN: ${{ steps.base.outputs.main }}", WORKFLOW.read_text(encoding="utf-8"))
+
 
 class Scrub(unittest.TestCase):
     def test_what_the_folder_s_rule_keeps_out_is_replaced_and_names_and_ids_are_kept(self):
