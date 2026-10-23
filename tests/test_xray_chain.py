@@ -535,6 +535,21 @@ class SlurmScriptsTest(unittest.TestCase):
             self.assertIn("cannot read the free space", out)
             self.assertNotIn("would submit", out)
 
+    def test_the_two_kaggle_datasets_run_only_when_named(self):
+        code, out = self.dry_run("run-platform-fetch.sh", "--gated")
+        self.assertNotIn("kaggle_fracture_multiregion", out)
+        code, out = self.dry_run("run-platform-fetch.sh", "--gated-ids")
+        self.assertIn("kaggle_fracture_multiregion", out.split())
+        self.assertIn("kaggle_scoliosis_yolov5", out.split())
+        secret = self.home / ".fluorocap/credentials.env"
+        secret.parent.mkdir(parents=True, exist_ok=True)
+        secret.write_text("KEY=value\n", encoding="utf-8")
+        secret.chmod(0o600)
+        code, out = self.dry_run("run-platform-fetch.sh", "--only", "kaggle_scoliosis_yolov5")
+        self.assertEqual(code, 0, out)
+        self.assertIn("kaggle_scoliosis_yolov5: job DRY_dp_fetch_kaggle_scoliosis_yolov5", out)
+        self.assertIn("kaggle-dataset", out)
+
 
 if __name__ == "__main__":
     unittest.main()
@@ -1158,10 +1173,12 @@ class SizeRuleTest(unittest.TestCase):
         self.assertEqual(code, 4, out)
         self.assertNotIn("acquisition_fetch:", out)
         # routes with no size reader yet are refused, so no dataset lands without its size known
-        for route in ("gdown", "kaggle", "redivis"):
-            code, out = self.fetch(1, route=route, args="anything", source=f"x_{route}")
+        for route in ("gdown", "kaggle", "kaggle-dataset", "redivis"):
+            # an id as the data platform writes one, and the route's name in the plain words status keeps
+            source, words = "x_" + route.replace("-", "_"), route.replace("-", " ")
+            code, out = self.fetch(1, route=route, args="anything", source=source)
             self.assertEqual(code, 4, f"{route}: {out}")
-            self.assertIn(f"x_{route}: refused; no exact size; the {route} route has no size reader yet at ", shown(out))
+            self.assertIn(f"{source}: refused; no exact size; the {words} route has no size reader yet at ", shown(out))
 
     def test_the_rule_counts_the_fetches_the_gate_sent_before_it(self):
         repo = repo_copy(self)

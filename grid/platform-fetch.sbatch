@@ -15,6 +15,7 @@
 #            --include is a glob, and a run that verified no file fails here with exit 3 (issue #158)
 #   curl-link curl on a presigned link read from LINK_FILE (mode 0600) through a curl config, never on a command line
 #   kaggle   kaggle competitions download with KAGGLE_API_TOKEN read from TOKEN_FILE
+#   kaggle-dataset kaggle datasets download of OWNER/NAME in ARGS, the same token; a plain dataset has no rules to accept
 #   redivis  grid/redivis_fetch.py ARGS with REDIVIS_API_TOKEN read from TOKEN_FILE, in REDIVIS_ENV, a
 #            venv the job makes once from the acq environment's Python with the pinned redivis client
 #   zenodo-token grid/zenodo_fetch.py ARGS with ZENODO_TOKEN read from TOKEN_FILE: a record that opens only to
@@ -25,8 +26,8 @@
 # range request), must fit in the room left under the volume's quota after what the running fetches
 # still owe, or the job ends with exit 4 having fetched nothing; no floor stops a fetch part-way, so
 # acquisition_fetch.sh runs with FLOOR_TB=0, and a job Slurm requeues keeps the admission it was
-# given. kaggle, gdown and redivis have no size reader yet and are refused the same way, so no
-# dataset lands without its size known.
+# given. kaggle, kaggle-dataset, gdown and redivis have no size reader yet and are refused the
+# same way, so no dataset lands without its size known.
 # Secrets are read from files into this job's environment or a mode-0600 config and never echoed.
 set -uo pipefail
 ID=${ID:?the source id}
@@ -153,6 +154,11 @@ case "$ROUTE" in
     if size_and_admit "$ID" no_size_reader; then
       load_token KAGGLE_API_TOKEN "${TOKEN_FILE:-~/.fluorocap/credentials.env}" || exit 2
       "${KAGGLE_BIN:-$HOME/mambaforge/envs/spineps/bin/kaggle}" competitions download -c "$ARGS" -p "$DATA/$ID/raw"; rc=$?
+    else rc=4; fi ;;
+  kaggle-dataset)
+    if size_and_admit "$ID" no_size_reader; then
+      load_token KAGGLE_API_TOKEN "${TOKEN_FILE:-~/.fluorocap/credentials.env}" || exit 2
+      "${KAGGLE_BIN:-$HOME/mambaforge/envs/spineps/bin/kaggle}" datasets download -d "$ARGS" -p "$DATA/$ID/raw"; rc=$?
     else rc=4; fi ;;
   redivis)
     if size_and_admit "$ID" no_size_reader; then
