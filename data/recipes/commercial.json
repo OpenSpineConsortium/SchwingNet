@@ -1,0 +1,6 @@
+{
+ "name": "commercial",
+ "allow": ["open"],
+ "reviewed_only": true,
+ "why": "A network meant to be sold or licensed: only data whose licence allows commercial use and derivatives with at most attribution, each source's class confirmed by the owner."
+}

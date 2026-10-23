@@ -1,0 +1,912 @@
+{
+ "aliases": {
+  "aariz": "aariz_cephalograms",
+  "mimic_cxr_jpg": "mimic_cxr"
+ },
+ "sources": {
+  "aariz_cephalograms": {
+   "licence": "CC BY 4.0 (figshare 27986417, doi 10.6084/m9.figshare.27986417; the record's licence field, read from the API on 2026-10-21); Khalid, Fraz et al., Scientific Data 2025, doi 10.1038/s41597-025-05542-3",
+   "class": "open",
+   "commercial": "yes",
+   "derivatives": "yes",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "aasce": {
+   "licence": "by request form (SpineWeb); the mirror repository is MIT, the images' reuse terms not recorded",
+   "class": "agreement",
+   "commercial": "no",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "anomaly_harvest_b": {
+   "licence": "varies by collection",
+   "class": "unknown",
+   "commercial": "unknown",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "aws_stoic2021": {
+   "licence": "CC BY-NC 4.0",
+   "class": "non-commercial",
+   "commercial": "no",
+   "derivatives": "yes",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "balgrist_lumbar": {
+   "licence": "not recorded",
+   "class": "unknown",
+   "commercial": "unknown",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "bern_myelography": {
+   "licence": "CC BY 4.0 (the article's videos); native DICOM available on reasonable request under Swiss law",
+   "class": "agreement",
+   "commercial": "no",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "bimcv_covid19": {
+   "licence": "BIMCV's COVID-19+ research use agreement, accepted by the owner on 2026-10-22; no redistribution, the link kept inside the organisation",
+   "class": "agreement",
+   "commercial": "no",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "bournemouth_cervical_qf": {
+   "licence": "CC BY 4.0 (the tracks); README.rtf CC BY-ND",
+   "class": "no-derivatives",
+   "commercial": "no",
+   "derivatives": "no",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "bournemouth_lumbar_qf": {
+   "licence": "not recorded (OSF holds derived tables only)",
+   "class": "unknown",
+   "commercial": "unknown",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "buu_lspine": {
+   "licence": "unread by the owner",
+   "class": "unknown",
+   "commercial": "unknown",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "cads": {
+   "licence": "a data use agreement (non-commercial)",
+   "class": "agreement",
+   "commercial": "no",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "canine_thoracic_vhs": {
+   "licence": "Mendeley Data ktx4cj55pn, CC BY 4.0 to confirm on the page",
+   "class": "unknown",
+   "commercial": "unknown",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "carmlspine": {
+   "licence": "CC BY 4.0, public (Zenodo 22768651); real patients, de-identified by the publisher; covered by the IRB umbrella HPR 2026-269 as public de-identified data",
+   "class": "open",
+   "commercial": "yes",
+   "derivatives": "yes",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "carmlspine_sweeps": {
+   "licence": "CC BY 4.0, public (Zenodo 22768651), the raw CBCT projections of two cases; the same determination as carmlspine",
+   "class": "open",
+   "commercial": "yes",
+   "derivatives": "yes",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "cathaction": {
+   "licence": "Hugging Face airvlab/CathAction; licence to confirm on the page",
+   "class": "unknown",
+   "commercial": "unknown",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "cervical_thoracic_intraop": {
+   "licence": "not recorded",
+   "class": "unknown",
+   "commercial": "unknown",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "chexpert_plus": {
+   "licence": "Stanford AIMI research use agreement, non-commercial",
+   "class": "agreement",
+   "commercial": "no",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "cm_spine_drive_file": {
+   "licence": "not recorded",
+   "class": "unknown",
+   "commercial": "unknown",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "cobra_elekta": {
+   "licence": "CC BY-NC 4.0",
+   "class": "non-commercial",
+   "commercial": "no",
+   "derivatives": "yes",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "cobra_embargoed": {
+   "licence": "CC BY-NC 4.0",
+   "class": "non-commercial",
+   "commercial": "no",
+   "derivatives": "yes",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "cobra_total": {
+   "licence": "CC BY-NC 4.0",
+   "class": "non-commercial",
+   "commercial": "no",
+   "derivatives": "yes",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "cobra_varian": {
+   "licence": "CC BY-NC 4.0",
+   "class": "non-commercial",
+   "commercial": "no",
+   "derivatives": "yes",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "coronary_angiography": {
+   "licence": "varies by set",
+   "class": "unknown",
+   "commercial": "unknown",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "csxa": {
+   "licence": "open",
+   "class": "unknown",
+   "commercial": "unknown",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "ct_rate": {
+   "licence": "a data use agreement (non-commercial)",
+   "class": "agreement",
+   "commercial": "no",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "ctspine1k_ctpelvic1k_ribfrac": {
+   "licence": "CTSpine1K derivatives non-commercial",
+   "class": "non-commercial",
+   "commercial": "no",
+   "derivatives": "yes",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "ctspinopelvic1k": {
+   "licence": "CC BY-NC-SA 4.0",
+   "class": "non-commercial",
+   "commercial": "no",
+   "derivatives": "yes",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "daradia_vertebroplasty": {
+   "licence": "unknown",
+   "class": "unknown",
+   "commercial": "unknown",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "deepfluoro": {
+   "licence": "CC BY-NC-SA 4.0",
+   "class": "non-commercial",
+   "commercial": "no",
+   "derivatives": "yes",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "dmx_imaging": {
+   "licence": "unknown",
+   "class": "unknown",
+   "commercial": "unknown",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "dysphagiabank": {
+   "licence": "CC BY-NC-SA, non-commercial, by registration; no language-model use",
+   "class": "agreement",
+   "commercial": "no",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "faubel_painsource": {
+   "licence": "unknown",
+   "class": "unknown",
+   "commercial": "unknown",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "fluoro_video_clips": {
+   "licence": "mixed: CC BY (Bern, PMC), unlicensed re-encodes (YouTube)",
+   "class": "unknown",
+   "commercial": "unknown",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "fluorocap": {
+   "licence": "the publishers' (figures)",
+   "class": "unknown",
+   "commercial": "unknown",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "fluorogen_synth_rare": {
+   "licence": "the project's own",
+   "class": "unknown",
+   "commercial": "unknown",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "fracatlas": {
+   "licence": "CC BY 4.0 (Abedeen 2023); the Hugging Face mirror's page to confirm",
+   "class": "unknown",
+   "commercial": "unknown",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "fraiwan_spine_xray": {
+   "licence": "Mendeley Data xkt857dsxk, CC BY 4.0 to confirm on the page",
+   "class": "unknown",
+   "commercial": "unknown",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "geneva_hip": {
+   "licence": "not recorded",
+   "class": "unknown",
+   "commercial": "unknown",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "guide3d": {
+   "licence": "to confirm on the page",
+   "class": "unknown",
+   "commercial": "unknown",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "hf_abdomenatlas2_0_mini": {
+   "licence": "CC BY-NC-SA 4.0",
+   "class": "non-commercial",
+   "commercial": "no",
+   "derivatives": "yes",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "idc_cptac_lscc": {
+   "licence": "CC BY 4.0",
+   "class": "open",
+   "commercial": "yes",
+   "derivatives": "yes",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "idc_cptac_luad": {
+   "licence": "CC BY 4.0",
+   "class": "open",
+   "commercial": "yes",
+   "derivatives": "yes",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "idc_ldct_and_projection_data": {
+   "licence": "CC BY 4.0",
+   "class": "open",
+   "commercial": "yes",
+   "derivatives": "yes",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "idc_lidc_idri": {
+   "licence": "CC BY 3.0",
+   "class": "open",
+   "commercial": "yes",
+   "derivatives": "yes",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "idc_midrc_ricord_1b": {
+   "licence": "CC BY-NC 4.0",
+   "class": "non-commercial",
+   "commercial": "no",
+   "derivatives": "yes",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "idc_nlst": {
+   "licence": "CC BY 4.0",
+   "class": "open",
+   "commercial": "yes",
+   "derivatives": "yes",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "idc_nsclc_radiogenomics": {
+   "licence": "CC BY 3.0",
+   "class": "open",
+   "commercial": "yes",
+   "derivatives": "yes",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "idc_nsclc_radiomics": {
+   "licence": "CC BY-NC 3.0",
+   "class": "non-commercial",
+   "commercial": "no",
+   "derivatives": "yes",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "idc_prostate_anatomical_edge_cases": {
+   "licence": "CC BY 4.0",
+   "class": "open",
+   "commercial": "yes",
+   "derivatives": "yes",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "idc_spinal_multiple_myeloma_seg": {
+   "licence": "CC BY 4.0",
+   "class": "open",
+   "commercial": "yes",
+   "derivatives": "yes",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "idc_spine_mets_ct_seg": {
+   "licence": "CC BY 4.0",
+   "class": "open",
+   "commercial": "yes",
+   "derivatives": "yes",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "ieee_dataport_lateral_236": {
+   "licence": "not recorded",
+   "class": "unknown",
+   "commercial": "unknown",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "implant_ct_synthetic": {
+   "licence": "inherits the source terms",
+   "class": "unknown",
+   "commercial": "unknown",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "ipcai2025_xray_ct": {
+   "licence": "Research-Only Dataset License (the Zenodo record: redistribution for academic research only, commercial use by written permission, Swiss law); the code is by request under a non-commercial licence, patent pending EP25168706.7",
+   "class": "agreement",
+   "commercial": "no",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "isbi2015_cephalograms": {
+   "licence": "the ISBI 2015 challenge set; licence and link to confirm",
+   "class": "unknown",
+   "commercial": "unknown",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "jefferson_drg": {
+   "licence": "CC BY (YouTube copy); the article text says CC BY-NC-ND while linking CC BY 4.0",
+   "class": "no-derivatives",
+   "commercial": "no",
+   "derivatives": "no",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "kaggle_fracture_multiregion": {
+   "licence": "Kaggle; PDDL in the metadata and ODC-By 1.0 in the description; taken on the owner's yes of 2026-10-22 though the source uploads' origin is unstated",
+   "class": "unknown",
+   "commercial": "unknown",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "kaggle_scoliosis_yolov5": {
+   "licence": "Kaggle; the licence on the page to confirm; provenance unstated, so a relabel of AASCE until the hash check says otherwise",
+   "class": "unknown",
+   "commercial": "unknown",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "konica_ddr": {
+   "licence": "unknown",
+   "class": "unknown",
+   "commercial": "unknown",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "kub_stonex": {
+   "licence": "CC BY 4.0 (figshare 32049369, doi 10.6084/m9.figshare.32049369; the record's licence field, read from the API on 2026-10-21); de-identified per the record, IRB REC-FSIT-2025/No: 12732 of Daffodil International University",
+   "class": "open",
+   "commercial": "yes",
+   "derivatives": "yes",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "ljubljana_2d3d_gs": {
+   "licence": "ND (read-only)",
+   "class": "no-derivatives",
+   "commercial": "no",
+   "derivatives": "no",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "lumos": {
+   "licence": "Zenodo 18173664, open, CC BY-NC 4.0 (read on the record 2026-10-21)",
+   "class": "non-commercial",
+   "commercial": "no",
+   "derivatives": "yes",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "maastricht_cervical": {
+   "licence": "available on request under privacy restrictions; a Dutch WMO/GDPR data transfer agreement is expected",
+   "class": "agreement",
+   "commercial": "no",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "magic_ct": {
+   "licence": "a data use agreement (non-commercial)",
+   "class": "agreement",
+   "commercial": "no",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "mayfield_kyphoplasty": {
+   "licence": "unknown",
+   "class": "unknown",
+   "commercial": "unknown",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "mendeley_5jdfdgp762": {
+   "licence": "not recorded",
+   "class": "unknown",
+   "commercial": "unknown",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "mendeley_ddh_hips": {
+   "licence": "CC BY 4.0 (to confirm on the page)",
+   "class": "unknown",
+   "commercial": "unknown",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "mimic_cxr": {
+   "licence": "PhysioNet Credentialed Health Data License 1.5.0; credentialed, the agreement signed on the page; opt-in only; about 570 GB",
+   "class": "agreement",
+   "commercial": "no",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "mros_lateral_spine": {
+   "licence": "a MrOS data request agreement; terms to confirm on the page",
+   "class": "agreement",
+   "commercial": "no",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "mtfi_lumbar_coupling": {
+   "licence": "unknown",
+   "class": "unknown",
+   "commercial": "unknown",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "neurosurgical_focus_video": {
+   "licence": "CC BY 4.0",
+   "class": "open",
+   "commercial": "yes",
+   "derivatives": "yes",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "nhanes2_annotated": {
+   "licence": "open (NCHS)",
+   "class": "unknown",
+   "commercial": "unknown",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "nhanes2_unannotated": {
+   "licence": "open (NCHS)",
+   "class": "unknown",
+   "commercial": "unknown",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "nih_chestxray14": {
+   "licence": "NIH Clinical Center, open; the Box page's terms to confirm",
+   "class": "unknown",
+   "commercial": "unknown",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "open_i_chest": {
+   "licence": "Open-i (NLM), open, no agreement; the FAQ's terms to confirm",
+   "class": "unknown",
+   "commercial": "unknown",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "padchest": {
+   "licence": "BIMCV's PadChest research use agreement, accepted by the owner on 2026-10-22; no redistribution, the link kept inside the organisation",
+   "class": "agreement",
+   "commercial": "no",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "pediatric_iri": {
+   "licence": "not recorded",
+   "class": "unknown",
+   "commercial": "unknown",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "pengwin_task2_xrays": {
+   "licence": "Zenodo 10913195, CC BY to confirm; the challenge's terms at https://pengwin.grand-challenge.org/",
+   "class": "unknown",
+   "commercial": "unknown",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "pittsburgh_swallow": {
+   "licence": "by request",
+   "class": "agreement",
+   "commercial": "no",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "procedure_guide": {
+   "licence": "CC BY-NC-SA 4.0 (site)",
+   "class": "non-commercial",
+   "commercial": "no",
+   "derivatives": "yes",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "radiopaedia": {
+   "licence": "CC BY-NC-SA 3.0 (the site); ML use by application",
+   "class": "non-commercial",
+   "commercial": "no",
+   "derivatives": "yes",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "rexgradient_160k": {
+   "licence": "a non-commercial data access and use agreement on the Hugging Face page",
+   "class": "agreement",
+   "commercial": "no",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "roboflow_vindr_relabels": {
+   "licence": "Roboflow; the images' redistribution is outside VinDr-SpineXR's DUA",
+   "class": "agreement",
+   "commercial": "no",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "rsna_2022_cervical": {
+   "licence": "Kaggle competition rules (non-commercial)",
+   "class": "agreement",
+   "commercial": "no",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "rsna_ratic": {
+   "licence": "a data use agreement (non-commercial)",
+   "class": "agreement",
+   "commercial": "no",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "rsna_rspect": {
+   "licence": "a data use agreement (non-commercial)",
+   "class": "agreement",
+   "commercial": "no",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "scidb_enhance_pet_1_6k": {
+   "licence": "CC BY 4.0",
+   "class": "open",
+   "commercial": "yes",
+   "derivatives": "yes",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "seattle_science_foundation": {
+   "licence": "unknown; embedding disabled",
+   "class": "unknown",
+   "commercial": "unknown",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "sof_lateral_spine": {
+   "licence": "a SOF data request agreement; terms to confirm on the page",
+   "class": "agreement",
+   "commercial": "no",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "spinal_ai2024": {
+   "licence": "not recorded",
+   "class": "unknown",
+   "commercial": "unknown",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "spinesac": {
+   "licence": "none stated",
+   "class": "unknown",
+   "commercial": "unknown",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "stanford_aimi_inspect": {
+   "licence": "a data use agreement (non-commercial)",
+   "class": "agreement",
+   "commercial": "no",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "stanford_aimi_merlin": {
+   "licence": "a data use agreement (non-commercial)",
+   "class": "agreement",
+   "commercial": "no",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "sx_stitch": {
+   "licence": "not recorded",
+   "class": "unknown",
+   "commercial": "unknown",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "totalsegmentator": {
+   "licence": "CC BY 4.0",
+   "class": "open",
+   "commercial": "yes",
+   "derivatives": "yes",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "tvgh_spinexr": {
+   "licence": "not recorded",
+   "class": "unknown",
+   "commercial": "unknown",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "veriserum": {
+   "licence": "to confirm on the page",
+   "class": "unknown",
+   "commercial": "unknown",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "verse": {
+   "licence": "CC BY-SA 4.0",
+   "class": "share-alike",
+   "commercial": "yes",
+   "derivatives": "yes",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "verse_2d_projections": {
+   "licence": "Zenodo 8115942, open; licence to confirm on the record (VerSe is CC BY-SA 4.0)",
+   "class": "unknown",
+   "commercial": "unknown",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "vertxnet_nhanes2_labels": {
+   "licence": "Zenodo, open; licence to confirm on the record (docs/research/xray-datasets-missing.md)",
+   "class": "unknown",
+   "commercial": "unknown",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "veterinary_pig_levelcheck": {
+   "licence": "IEEE DataPort open access",
+   "class": "unknown",
+   "commercial": "unknown",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "vfss2022": {
+   "licence": "TIB, doi:10.57702/w1ye2nim; licence to confirm on the page",
+   "class": "unknown",
+   "commercial": "unknown",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "vindr_cxr": {
+   "licence": "PhysioNet Credentialed Health Data License 1.5.0; credentialed, the agreement signed on the page; opt-in only",
+   "class": "agreement",
+   "commercial": "no",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "vindr_pcxr": {
+   "licence": "PhysioNet Restricted Health Data License 1.5.0; the data use agreement signed on the page, no CITI training review; opt-in only",
+   "class": "agreement",
+   "commercial": "no",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "vindr_spinexr": {
+   "licence": "PhysioNet Restricted Health Data License 1.5.0, credentialed, the owner's named-person agreement; covered by WSU IRB HPR 2026-330 (29 Sep 2026)",
+   "class": "agreement",
+   "commercial": "no",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "zenodo_lumvbcanseg": {
+   "licence": "CC BY 4.0",
+   "class": "open",
+   "commercial": "yes",
+   "derivatives": "yes",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "zenodo_medpelvis3d": {
+   "licence": "CC BY 4.0",
+   "class": "open",
+   "commercial": "yes",
+   "derivatives": "yes",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "zenodo_tmtv_benchmark": {
+   "licence": "CC BY 4.0",
+   "class": "open",
+   "commercial": "yes",
+   "derivatives": "yes",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "zenodo_ts_task_hip_implant": {
+   "licence": "CC BY 4.0",
+   "class": "open",
+   "commercial": "yes",
+   "derivatives": "yes",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "zenodo_ts_task_liver_lesions": {
+   "licence": "CC BY 4.0",
+   "class": "open",
+   "commercial": "yes",
+   "derivatives": "yes",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "zenodo_ts_task_pleural_effusion": {
+   "licence": "CC BY 4.0",
+   "class": "open",
+   "commercial": "yes",
+   "derivatives": "yes",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "zenodo_unitochest": {
+   "licence": "CC BY 4.0",
+   "class": "open",
+   "commercial": "yes",
+   "derivatives": "yes",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "zenodo_vsd_fullbody": {
+   "licence": "CC BY-NC-SA per the record's text (the record's licence field is empty)",
+   "class": "non-commercial",
+   "commercial": "no",
+   "derivatives": "yes",
+   "reviewed": "rule",
+   "note": ""
+  }
+ }
+}
