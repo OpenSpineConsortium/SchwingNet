@@ -15,9 +15,10 @@ repeated from the record at commit fde5b06:
       [ID=WHAT CHANGED...] [--against out/reread-confirmed-numbers.json]
 
 record joins the re-checkers' and the judges' answers, kept in the workflow's journal, to the
-items they read, and writes the reading in the form apply_review.py --followup applies:
+items in the folder inputs wrote, and writes the reading in the form apply_review.py --followup
+applies, NOTE closing the account of how it was read:
 
-  reread_numbers.py record JOURNAL OUT READING DATE
+  reread_numbers.py record JOURNAL OUT READING DATE [NOTE]
 
 SYNTH_TEXT, SYNTH_SCHWINGNET and SYNTH_SYMPHONY name the texts and the clones, as for
 render_contradictions2.py. With --against, inputs stops unless it selects exactly the rows the
