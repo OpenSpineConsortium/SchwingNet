@@ -106,8 +106,8 @@ patient-specific DRRs, and a contour ICP that matches within a substructure only
   not the spine. On the grid: at /rs/rs_grp_oschome/go2432/data/ipcai2025_xray_ct/raw and still zipped
   (4 files, 6.2 GB, the sample index of 2026-10-22, docs/research/data-manifest/MANIFEST.md); its
   record is data/sources/ipcai2025_xray_ct.json, corrected on 2026-10-23 from "pelvis or spine, to
-  confirm" to the femur, and its registry entry removed, since no spine region fits it and it enters
-  no shard.
+  confirm" to the femur; its registry entry, its line in grid/fetch-xray.json and its bank recipe were
+  removed the same day, since no spine region fits it, it is fetched and it enters no shard.
 
 ## 2. What each of them cannot do, which is the opening
 

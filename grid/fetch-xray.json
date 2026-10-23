@@ -103,23 +103,6 @@
       ]
     },
     {
-      "id": "ipcai2025_xray_ct",
-      "route": "zenodo",
-      "source": "https://zenodo.org/records/15753063 (IPCAI 2025, 'Automatic multi-view X-ray/CT registration using bone substructure contours': real calibrated X-rays with 5 CT scans)",
-      "record": 15753063,
-      "dest": "/rs/rs_grp_oschome/go2432/data/ipcai2025_xray_ct/raw",
-      "size_gb": 6.7,
-      "checksum": {
-        "md5": "the helper reads each file's md5 from the record"
-      },
-      "licence": "to confirm on the Zenodo page",
-      "confirm": [
-        "the licence on the record",
-        "the anatomy (pelvis or spine) and the device, which decide the registry entry's regions and device class",
-        "the image format and whether the X-rays are files or arrays inside a container"
-      ]
-    },
-    {
       "id": "open_i_chest",
       "route": "http",
       "source": "https://openi.nlm.nih.gov/faq (the Indiana chest collection: 7,470 frontal and lateral films with reports)",
