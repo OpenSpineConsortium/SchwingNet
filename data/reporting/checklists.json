@@ -1,0 +1,546 @@
+{
+ "claim": {
+  "name": "CLAIM 2024",
+  "source": "Tejani et al., Checklist for Artificial Intelligence in Medical Imaging (CLAIM): 2024 Update, Radiology: Artificial Intelligence 2024, doi 10.1148/ryai.240300; the short item texts as its checklist table gives them",
+  "items": [
+   {
+    "id": "1",
+    "section": "Title or abstract",
+    "asks": "Identification as a study of AI methodology, specifying the category of technology used (eg, deep learning)",
+    "basis": "declared",
+    "fact": "title"
+   },
+   {
+    "id": "2",
+    "section": "Abstract",
+    "asks": "Summary of study design, methods, results, and conclusions",
+    "basis": "declared",
+    "fact": "abstract"
+   },
+   {
+    "id": "3",
+    "section": "Introduction",
+    "asks": "Scientific and/or clinical background, including the intended use and role of the AI approach",
+    "basis": "declared",
+    "fact": "background"
+   },
+   {
+    "id": "4",
+    "section": "Introduction",
+    "asks": "Study aims, objectives, and hypotheses",
+    "basis": "declared",
+    "fact": "aims"
+   },
+   {
+    "id": "5",
+    "section": "Methods: study design",
+    "asks": "Prospective or retrospective study",
+    "basis": "declared",
+    "fact": "study_design"
+   },
+   {
+    "id": "6",
+    "section": "Methods: study design",
+    "asks": "Study goal",
+    "basis": "declared",
+    "fact": "study_goal"
+   },
+   {
+    "id": "7",
+    "section": "Methods: data",
+    "asks": "Data sources",
+    "basis": "code",
+    "fact": "data_sources"
+   },
+   {
+    "id": "8",
+    "section": "Methods: data",
+    "asks": "Inclusion and exclusion criteria",
+    "basis": "declared",
+    "fact": "inclusion_exclusion"
+   },
+   {
+    "id": "9",
+    "section": "Methods: data",
+    "asks": "Data preprocessing",
+    "basis": "code",
+    "fact": "transforms"
+   },
+   {
+    "id": "10",
+    "section": "Methods: data",
+    "asks": "Selection of data subsets",
+    "basis": "code",
+    "fact": "recipe"
+   },
+   {
+    "id": "11",
+    "section": "Methods: data",
+    "asks": "De-identification methods",
+    "basis": "declared",
+    "fact": "deidentification"
+   },
+   {
+    "id": "12",
+    "section": "Methods: data",
+    "asks": "How missing data were handled",
+    "basis": "code",
+    "fact": "missing_data"
+   },
+   {
+    "id": "13",
+    "section": "Methods: data",
+    "asks": "Image acquisition protocol",
+    "basis": "declared",
+    "fact": "acquisition"
+   },
+   {
+    "id": "14",
+    "section": "Methods: reference standard",
+    "asks": "Definition of method(s) used to obtain reference standard",
+    "basis": "declared",
+    "fact": "reference_standard"
+   },
+   {
+    "id": "15",
+    "section": "Methods: reference standard",
+    "asks": "Rationale for choosing the reference standard",
+    "basis": "declared",
+    "fact": "reference_standard_rationale"
+   },
+   {
+    "id": "16",
+    "section": "Methods: reference standard",
+    "asks": "Source of reference standard annotations",
+    "basis": "declared",
+    "fact": "annotation_source"
+   },
+   {
+    "id": "17",
+    "section": "Methods: reference standard",
+    "asks": "Annotation of test set",
+    "basis": "declared",
+    "fact": "test_annotation"
+   },
+   {
+    "id": "18",
+    "section": "Methods: reference standard",
+    "asks": "Measures of inter- and intrarater variability of features described by the annotators",
+    "basis": "declared",
+    "fact": "rater_variability"
+   },
+   {
+    "id": "19",
+    "section": "Methods: data partitions",
+    "asks": "How data were assigned to partitions",
+    "basis": "code",
+    "fact": "split_rule"
+   },
+   {
+    "id": "20",
+    "section": "Methods: data partitions",
+    "asks": "Level at which partitions are disjoint",
+    "basis": "code",
+    "fact": "split_disjoint"
+   },
+   {
+    "id": "21",
+    "section": "Methods: testing data",
+    "asks": "Intended sample size",
+    "basis": "declared",
+    "fact": "intended_sample_size"
+   },
+   {
+    "id": "22",
+    "section": "Methods: model",
+    "asks": "Detailed description of model",
+    "basis": "code",
+    "fact": "model"
+   },
+   {
+    "id": "23",
+    "section": "Methods: model",
+    "asks": "Software libraries, frameworks, and packages",
+    "basis": "code",
+    "fact": "software"
+   },
+   {
+    "id": "24",
+    "section": "Methods: model",
+    "asks": "Initialization of model parameters",
+    "basis": "code",
+    "fact": "initialization"
+   },
+   {
+    "id": "25",
+    "section": "Methods: training",
+    "asks": "Details of training approach",
+    "basis": "code",
+    "fact": "training"
+   },
+   {
+    "id": "26",
+    "section": "Methods: training",
+    "asks": "Method of selecting the final model",
+    "basis": "code",
+    "fact": "model_selection"
+   },
+   {
+    "id": "27",
+    "section": "Methods: training",
+    "asks": "Ensembling techniques",
+    "basis": "code",
+    "fact": "ensembling"
+   },
+   {
+    "id": "28",
+    "section": "Methods: evaluation",
+    "asks": "Metrics of model performance",
+    "basis": "code",
+    "fact": "metrics"
+   },
+   {
+    "id": "29",
+    "section": "Methods: evaluation",
+    "asks": "Statistical measures of significance and uncertainty",
+    "basis": "code",
+    "fact": "uncertainty"
+   },
+   {
+    "id": "30",
+    "section": "Methods: evaluation",
+    "asks": "Robustness or sensitivity analysis",
+    "basis": "declared",
+    "fact": "robustness"
+   },
+   {
+    "id": "31",
+    "section": "Methods: evaluation",
+    "asks": "Methods for explainability or interpretability",
+    "basis": "declared",
+    "fact": "explainability"
+   },
+   {
+    "id": "32",
+    "section": "Methods: evaluation",
+    "asks": "Evaluation on internal data",
+    "basis": "code",
+    "fact": "internal_evaluation"
+   },
+   {
+    "id": "33",
+    "section": "Methods: evaluation",
+    "asks": "Testing on external data",
+    "basis": "declared",
+    "fact": "external_evaluation"
+   },
+   {
+    "id": "34",
+    "section": "Methods: evaluation",
+    "asks": "Clinical trial registration",
+    "basis": "declared",
+    "fact": "trial_registration"
+   },
+   {
+    "id": "35",
+    "section": "Results: data",
+    "asks": "Numbers of patients or examinations included and excluded",
+    "basis": "code",
+    "fact": "exclusions"
+   },
+   {
+    "id": "36",
+    "section": "Results: data",
+    "asks": "Demographic and clinical characteristics of cases in each partition",
+    "basis": "code",
+    "fact": "covariates"
+   },
+   {
+    "id": "37",
+    "section": "Results: model performance",
+    "asks": "Performance metrics and measures of statistical uncertainty",
+    "basis": "code",
+    "fact": "performance"
+   },
+   {
+    "id": "38",
+    "section": "Results: model performance",
+    "asks": "Estimates of diagnostic performance and their precision",
+    "basis": "code",
+    "fact": "performance"
+   },
+   {
+    "id": "39",
+    "section": "Results: model performance",
+    "asks": "Failure analysis of incorrectly classified cases",
+    "basis": "code",
+    "fact": "failure_analysis"
+   },
+   {
+    "id": "40",
+    "section": "Discussion",
+    "asks": "Study limitations",
+    "basis": "declared",
+    "fact": "limitations"
+   },
+   {
+    "id": "41",
+    "section": "Discussion",
+    "asks": "Implications for practice, including intended use and/or clinical role",
+    "basis": "declared",
+    "fact": "implications"
+   },
+   {
+    "id": "42",
+    "section": "Other information",
+    "asks": "Provide a reference to the full study protocol or to additional technical details",
+    "basis": "declared",
+    "fact": "protocol"
+   },
+   {
+    "id": "43",
+    "section": "Other information",
+    "asks": "Statement about the availability of software, trained model, and/or data",
+    "basis": "declared",
+    "fact": "availability"
+   },
+   {
+    "id": "44",
+    "section": "Other information",
+    "asks": "Sources of funding and other support; role of funders",
+    "basis": "declared",
+    "fact": "funding"
+   }
+  ]
+ },
+ "reforms": {
+  "name": "REFORMS",
+  "source": "Kapoor et al., REFORMS: consensus-based recommendations for machine-learning-based science, arXiv 2308.07832; the item list and the code-or-declared split of artifacts/reforms-compliance-checklist-bpzdoi",
+  "items": [
+   {
+    "id": "1a",
+    "section": "Study goals",
+    "asks": "Population the claim is about",
+    "basis": "declared",
+    "fact": "population"
+   },
+   {
+    "id": "1b",
+    "section": "Study goals",
+    "asks": "Why that population",
+    "basis": "declared",
+    "fact": "population_rationale"
+   },
+   {
+    "id": "1c",
+    "section": "Study goals",
+    "asks": "Why machine learning",
+    "basis": "declared",
+    "fact": "ml_rationale"
+   },
+   {
+    "id": "2a",
+    "section": "Computational reproducibility",
+    "asks": "Dataset with link or DOI",
+    "basis": "code",
+    "fact": "data_sources"
+   },
+   {
+    "id": "2b",
+    "section": "Computational reproducibility",
+    "asks": "Code",
+    "basis": "code",
+    "fact": "code_state"
+   },
+   {
+    "id": "2c",
+    "section": "Computational reproducibility",
+    "asks": "Computing infrastructure",
+    "basis": "code",
+    "fact": "compute"
+   },
+   {
+    "id": "2d",
+    "section": "Computational reproducibility",
+    "asks": "README with instructions",
+    "basis": "code",
+    "fact": "reproduce"
+   },
+   {
+    "id": "2e",
+    "section": "Computational reproducibility",
+    "asks": "Reproduction script",
+    "basis": "code",
+    "fact": "reproduce"
+   },
+   {
+    "id": "3a",
+    "section": "Data quality",
+    "asks": "Data sources per split",
+    "basis": "code",
+    "fact": "data_per_split"
+   },
+   {
+    "id": "3b",
+    "section": "Data quality",
+    "asks": "Sampling frame",
+    "basis": "declared",
+    "fact": "sampling_frame"
+   },
+   {
+    "id": "3c",
+    "section": "Data quality",
+    "asks": "Why the dataset fits the task",
+    "basis": "declared",
+    "fact": "fitness_rationale"
+   },
+   {
+    "id": "3d",
+    "section": "Data quality",
+    "asks": "Outcome variable and its statistics",
+    "basis": "code",
+    "fact": "outcome_counts"
+   },
+   {
+    "id": "3e",
+    "section": "Data quality",
+    "asks": "Sample size and outcome frequencies",
+    "basis": "code",
+    "fact": "sample_size"
+   },
+   {
+    "id": "3f",
+    "section": "Data quality",
+    "asks": "Missing data, by class",
+    "basis": "code",
+    "fact": "missing_data"
+   },
+   {
+    "id": "3g",
+    "section": "Data quality",
+    "asks": "Representativeness",
+    "basis": "declared",
+    "fact": "representativeness"
+   },
+   {
+    "id": "4a",
+    "section": "Data preprocessing",
+    "asks": "Excluded samples, with the reason",
+    "basis": "code",
+    "fact": "exclusions"
+   },
+   {
+    "id": "4b",
+    "section": "Data preprocessing",
+    "asks": "Corrupt samples",
+    "basis": "code",
+    "fact": "exclusions"
+   },
+   {
+    "id": "4c",
+    "section": "Data preprocessing",
+    "asks": "All transforms, from raw data to the model's input",
+    "basis": "code",
+    "fact": "transforms"
+   },
+   {
+    "id": "5a",
+    "section": "Modeling",
+    "asks": "All models trained",
+    "basis": "code",
+    "fact": "models_trained"
+   },
+   {
+    "id": "5b",
+    "section": "Modeling",
+    "asks": "Why these model types",
+    "basis": "declared",
+    "fact": "model_rationale"
+   },
+   {
+    "id": "5c",
+    "section": "Modeling",
+    "asks": "Evaluation method and splits",
+    "basis": "code",
+    "fact": "split_rule"
+   },
+   {
+    "id": "5d",
+    "section": "Modeling",
+    "asks": "How the reported model was chosen",
+    "basis": "code",
+    "fact": "model_selection"
+   },
+   {
+    "id": "5e",
+    "section": "Modeling",
+    "asks": "Hyperparameter tuning",
+    "basis": "declared",
+    "fact": "tuning"
+   },
+   {
+    "id": "5f",
+    "section": "Modeling",
+    "asks": "Appropriate baselines",
+    "basis": "declared",
+    "fact": "baselines"
+   },
+   {
+    "id": "6a",
+    "section": "Data leakage",
+    "asks": "Preprocessing fit on training data only",
+    "basis": "declared",
+    "fact": "preprocessing_fit"
+   },
+   {
+    "id": "6b",
+    "section": "Data leakage",
+    "asks": "Dependencies and duplicates across splits",
+    "basis": "code",
+    "fact": "split_disjoint"
+   },
+   {
+    "id": "6c",
+    "section": "Data leakage",
+    "asks": "Each feature legitimate",
+    "basis": "declared",
+    "fact": "feature_legitimacy"
+   },
+   {
+    "id": "7a",
+    "section": "Metrics and uncertainty",
+    "asks": "All metrics",
+    "basis": "code",
+    "fact": "metrics"
+   },
+   {
+    "id": "7b",
+    "section": "Metrics and uncertainty",
+    "asks": "Uncertainty and how it was computed",
+    "basis": "code",
+    "fact": "uncertainty"
+   },
+   {
+    "id": "7c",
+    "section": "Metrics and uncertainty",
+    "asks": "Statistical tests and their assumptions",
+    "basis": "declared",
+    "fact": "statistical_tests"
+   },
+   {
+    "id": "8a",
+    "section": "Generalizability and limitations",
+    "asks": "External validity",
+    "basis": "declared",
+    "fact": "external_validity"
+   },
+   {
+    "id": "8b",
+    "section": "Generalizability and limitations",
+    "asks": "Where the findings will not hold",
+    "basis": "declared",
+    "fact": "non_generalization"
+   }
+  ]
+ }
+}
