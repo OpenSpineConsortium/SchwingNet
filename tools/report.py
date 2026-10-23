@@ -368,6 +368,7 @@ def licence_section(provenance):
         f"- Commercial use of this network: **{provenance.get('commercial_use', 'unknown')}**; the least permissive class among the sources it trained or chose on: {provenance.get('run_class', 'unknown')}.",
         f"- Recipe: {recipe.get('name') + ' (' + ', '.join(recipe.get('allow') or []) + ')' if recipe else 'none, the whole catalog'}; the recipes this data fits: {', '.join(provenance.get('fits_recipes') or []) or 'none'}.",
         f"- Sources whose licence is not yet classified: {', '.join(provenance.get('unclassified') or []) or 'none'}.",
+        *([f"- Caveat: {provenance['caveat']}"] if provenance.get("caveat") else []),
         "",
         "| source | licence | class | commercial | reviewed | frames by part |",
         "|---|---|---|---|---|---|",

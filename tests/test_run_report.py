@@ -22,7 +22,7 @@ report = load_report()
 RECORD = {"run_id": "a767a466f5c1", "code_commit": "11546b7e534e56ce89676da17034c1ede65caaaf", "clean_tree": True, "catalog_version": 1, "catalog_sha256": "9" * 64, "split_disjoint": True, "stage": "level", "seed": 1, "epochs": 4, "parent_weights": None, "started_at": "2026-10-21T02:36:55Z", "mode": "local", "jobs": [{"step": "train", "partition": "local", "gpus": 0, "seconds_used": 146, "exit_code": 0}]}
 CHECKPOINT = {"epoch": 2, "validation_accuracy": 0.99, "validation_ci": [0.98, 0.997], "validation_n": 546, "counts": {"train": 4840, "validation": 546, "train_persons": 54, "validation_persons": 6}}
 RESULTS = {"part": "test", "counts": {"crops": 556, "persons": 5, "frames": 148, "levels": {"L1": 73}}, "rows": [{"measure": "accuracy", "stratum": "all levels", "correct": 556, "total": 556}]}
-PROVENANCE = {"catalog_sha256": "9" * 64, "recipe": {"name": "commercial", "allow": ["open"], "parent_catalog_sha256": "8" * 64}, "sources": [{"source": "carmlspine", "licence": "CC BY 4.0", "class": "open", "commercial": "yes", "reviewed": "rule", "frames": {"train": 10, "test": 2}}], "run_class": "open", "commercial_use": "yes", "fits_recipes": ["commercial", "research"], "unclassified": []}
+PROVENANCE = {"catalog_sha256": "9" * 64, "recipe": {"name": "commercial", "allow": ["open"], "parent_catalog_sha256": "8" * 64}, "sources": [{"source": "carmlspine", "licence": "CC BY 4.0", "class": "open", "commercial": "yes", "reviewed": "rule", "frames": {"train": 10, "test": 2}}], "run_class": "open", "commercial_use": "yes", "fits_recipes": ["commercial", "research"], "unclassified": [], "caveat": "The classes are proposed by rule until the owner reviews them."}
 
 
 def make_run(folder, provenance=None):
@@ -120,6 +120,7 @@ class LicenceTest(WithStudy):
         self.assertIn("Commercial use of this network: **yes**", text)
         self.assertIn("| carmlspine | CC BY 4.0 | open | yes | rule | test 2, train 10 |", text)
         self.assertIn("Recipe: commercial (open)", text)
+        self.assertIn("- Caveat: The classes are proposed by rule", text)
         claim = self.rows(run, "claim")
         self.assertEqual(claim["10"]["state"], "met")
         self.assertIn("recipe commercial", claim["10"]["evidence"])
