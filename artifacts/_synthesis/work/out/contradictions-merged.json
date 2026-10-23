@@ -19552,15 +19552,23 @@
    "quantity": "zero-shot AP exact-level accuracy on C-ArmLSpine",
    "artifact_a": "SchwingNet/counting-from-the-sacrum",
    "artifact_b": "SchwingNet/any-view-spine-plan",
-   "verdict": "confirmed-contradiction",
+   "verdict": "updated-later",
    "value_a": "37.88%",
    "value_b": "43.7%",
    "quote_a": "Zero-shot, AP | | 37.88%",
    "quote_b": "Naming, AP, zero-shot | | 43.7% | | A one-level cranial shift: a counting error, not an appearance error.",
-   "explanation": "Counting From the Sacrum (2026-09-22) gives 37.88% for zero-shot AP naming on C-ArmLSpine. The Any-View Spine Plan (2026-10-21) gives 43.7% for the same zero-shot AP measure and explains it as a one-level cranial shift. Neither page states a change of model or test set.",
-   "resolution_hint": "The textbook needs the run record of the zero-shot AP evaluation. If Any-View's 43.7% comes from a newer encoder, the page should say so; otherwise cite 37.88% with the n from Counting From the Sacrum.",
+   "explanation": "Counting From The Sacrum (22 September) gives 37.88% zero-shot AP naming on C-ArmLSpine, and the ledger of the same day gives 37.9% with the note 'one-level cranial shift'. The Any-View plan (21 October) gives 43.7% for the same measure with the same cranial-shift reading, and Research Directions (8 October) also says 'AP naming is 43.7 % zero-shot'. No October page still gives 37.9%. This row is on the same two pages as row 106, where every sibling figure moved together, so the later pages by date give a new figure for the same quantity. The current reading held a contradiction because no page states a change of model, but updated-later needs only the later date, and it set this row against row 106.",
+   "resolution_hint": "Carry 43.7% zero-shot AP naming on C-ArmLSpine from the Any-View Spine Plan (21 October), which Research Directions (8 October) also gives; note that the 22 September pages gave 37.88% (Counting From The Sacrum) and 37.9% (the ledger). Neither page names the encoder or the n behind 43.7%, which paper 1's results catalog would confirm.",
    "followup": {
-    "outcome": "held"
+    "outcome": "verdict overturned",
+    "before": {
+     "verdict": "confirmed-contradiction",
+     "quote_a": "Zero-shot, AP | | 37.88%",
+     "quote_b": "Naming, AP, zero-shot | | 43.7% | | A one-level cranial shift: a counting error, not an appearance error.",
+     "explanation": "Counting From the Sacrum (2026-09-22) gives 37.88% for zero-shot AP naming on C-ArmLSpine. The Any-View Spine Plan (2026-10-21) gives 43.7% for the same zero-shot AP measure and explains it as a one-level cranial shift. Neither page states a change of model or test set.",
+     "resolution_hint": "The textbook needs the run record of the zero-shot AP evaluation. If Any-View's 43.7% comes from a newer encoder, the page should say so; otherwise cite 37.88% with the n from Counting From the Sacrum."
+    },
+    "regroup": "lateral-whole-frame"
    }
   },
   {
@@ -19571,9 +19579,9 @@
    "value_a": "98.2%",
    "value_b": "97.4%",
    "quote_a": "98.2% exact level on whole C-ArmLSpine lateral frames, five-fold CV over 148 cases [95.7\u2013100]",
-   "quote_b": "| Naming, lateral, encoder that saw the device only through renders | | 96.4% (595/617) | | Naming transfers from 3D renders. It is within a point of the 97.4% fine-tuned on the device. |",
-   "explanation": "The September ledger gives 98.2% for whole-frame lateral naming fine-tuned on the device, on the same 617 vertebrae. The Any-View plan (21 October) gives 97.4% for that quantity. Research Directions (8 October) and the CTSpinoPelvic1K handoff carry the same figure, '97.4 % of bodies named on a whole lateral frame', with one-body naming at 74.8% against September's 72.8%. That is a consistent later restatement of the same quantity, which is updated-later. The October pages attach 98.2% to the alphabet coupling of count and morphology instead. The skeptic's contradiction overlooks the month between the pages and how consistently the later pages restate the figure.",
-   "resolution_hint": "Carry 97.4% device fine-tuned whole-frame lateral naming (and 74.8% with one body) from the Any-View Spine Plan and Research Directions. Note that the September pages gave 98.2% as the whole-frame figure, and that the October pages give 98.2% to the coupled count.",
+   "quote_b": "It is within a point of the 97.4% fine-tuned on the device.",
+   "explanation": "The ledger (22 September) gives 98.2% exact level on whole lateral C-ArmLSpine frames for a level model fine-tuned on a real:render mix, over 148 cases; it gives no count of vertebrae, so the current explanation's 'same 617 vertebrae' is the sacrum page's figure and Any-View's (595/617), not the ledger's. The Any-View plan (21 October), the latest page in the group, gives 97.4% fine-tuned on the device, as do Research Directions and the handoff (8 October) for whole-frame naming. State of the Literature (8 October) still gives 98.2% (606 of 617), but it is older than Any-View, and no page as late as 21 October keeps 98.2%. The current hint also credits 74.8% to Any-View, which does not give it, and says 'the October pages' put 98.2% on the coupled count, which only Research Directions and the handoff do.",
+   "resolution_hint": "Carry 97.4% device-fine-tuned lateral whole-frame naming from the Any-View Spine Plan (21 October), which Research Directions and the handoff (8 October) also give; note that the 22 September ledger gave 98.2% and State of the Literature (8 October) still gives 98.2% (606 of 617). Confirm against paper 1's results catalog.",
    "followup": {
     "outcome": "verdict overturned",
     "before": {
@@ -19582,20 +19590,21 @@
      "quote_b": "It is within a point of the 97.4% fine-tuned on the device.",
      "explanation": "The OR Readiness Ledger (2026-09-22) gives 98.2% exact level on whole C-ArmLSpine lateral frames, five-fold CV over 148 cases; Counting From the Sacrum says 98.22% on 141 cases and 617 vertebrae. The Any-View Spine Plan (2026-10-21) puts the device-fine-tuned figure at 97.4%. The October pages (Research Directions, the CTSpinoPelvic1K handoff) give 97.4% for whole lateral frames and attach 98.2% to the count plus alphabet coupling on anchored bodies instead. So the pages disagree both on the value and on what 98.2% measures.",
      "resolution_hint": "Settle from the paper-1 results table which run is the whole-frame figure. Until then, carry 97.4% as the later papers' whole-frame number and 98.2% as the coupled count on anchored bodies, and say that the September pages called 98.2% the whole-frame result."
-    }
+    },
+    "regroup": "lateral-whole-frame"
    }
   },
   {
    "quantity": "T12 versus L1 vertebrae used for the AUC 0.990 shape test",
    "artifact_a": "SchwingNet/counting-against-two-anchors-qkktgu",
    "artifact_b": "SchwingNet/research-directions-from-the-data-holding-kcyckb",
-   "verdict": "scope-or-unit-differs",
+   "verdict": "cannot-tell",
    "value_a": "1485 vertebrae",
    "value_b": "1,486 from 798 cases",
-   "quote_a": "T12 separates from L1 at AUC 0.990 and 97.3% accuracy over 1485\n vertebrae, using shape alone with each patient's own size divided out.",
+   "quote_a": "On this corpus,\n T12 separates from L1 at AUC 0.990 and 97.3% accuracy over 1485\n vertebrae, using shape alone with each patient's own size divided out.",
    "quote_b": "**n and power.** Stages 1 and 2: 1,486 T12 and L1 vertebrae from 798 cases, AUC interval about plus or minus 0.006, so a 0.02 difference is decidable.",
-   "explanation": "Counting Against Two Anchors gives 1485 as the n of the reported AUC 0.990 test. Research Directions gives 1,486 from 798 cases as the sample for its planned Stages 1 and 2, which are a ratio-only rerun with the five case-median features dropped and then projection. The same page separates those runs from 'the published 0.990', which divides five features by the case median over three or more levels. Research Directions never gives the n of the published test. The skeptic read 1,486 as that n, which the page does not say, and its hint would attach the planned sample to the reported result.",
-   "resolution_hint": "Carry 1485 vertebrae with AUC 0.990 and 97.3% accuracy, from Counting Against Two Anchors. Carry 1,486 T12 and L1 vertebrae from 798 cases only as Research Directions' planned sample for the ratio-only stages. A recount of the shape table's T12 and L1 rows would explain the one-vertebra gap.",
+   "explanation": "Counting Against Two Anchors (undated) gives 1485 vertebrae as the n of the reported T12-versus-L1 test, AUC 0.990 and 97.3% accuracy, on its corpus of 802 CTSpinoPelvic1K records. Research Directions (2026-10-08) gives 1,486 T12 and L1 vertebrae from 798 cases as the n for its planned Stage 1 (the separability script rerun with the five case-median features dropped) and Stage 2 (projected morphometry on the 802 v11 volumes), and the same 1,486 in its PAR-1 and PAR-2 rows. That page sets the planned runs apart from 'the published 0.990' by their feature set and view, but it never gives the published test's n and never says its planned runs count a different set of vertebrae; a different feature list does not by itself change which vertebrae are counted. The current reading treated the stated difference in analysis as a stated difference in the vertebra set, which neither page says, so scope-or-unit-differs is not earned; row 171 reads the same two passages as cannot-tell, and this row now agrees with it.",
+   "resolution_hint": "Carry 1485 vertebrae with AUC 0.990 and 97.3% accuracy, from Counting Against Two Anchors, and 1,486 T12 and L1 vertebrae from 798 cases only as Research Directions' planned n for Stages 1 and 2. The row count of the separability script's input for the 0.990 run, set beside the T12 and L1 rows the planned stages read, would show whether the two are one set miscounted or two sets.",
    "followup": {
     "outcome": "verdict overturned",
     "before": {
@@ -19604,7 +19613,8 @@
      "quote_b": "1,486 T12 and L1 vertebrae from 798 cases, AUC interval about plus or minus 0.006",
      "explanation": "Counting Against Two Anchors (undated) reports the T12-versus-L1 shape test at AUC 0.990 over 1485 vertebrae. Research Directions (2026-10-08) sizes the same T12 and L1 analysis at 1,486 vertebrae from 798 cases. The counts are one vertebra apart, and neither page explains the difference.",
      "resolution_hint": "A recount of the T12 and L1 rows in the shape table settles it. Until then the textbook can carry about 1,486 T12 and L1 vertebrae from 798 cases, noting the 1485."
-    }
+    },
+    "regroup": "t12-l1-shape-test"
    }
   },
   {
@@ -20122,13 +20132,13 @@
    "quantity": "exact single-vertebra naming on 8,422 held-out real-film crops",
    "artifact_a": "SchwingNet/level-context-ladder-xd7eltc",
    "artifact_b": "SchwingNet/fluorocap-reality-check-czudvb",
-   "verdict": "cannot-tell",
+   "verdict": "scope-or-unit-differs",
    "value_a": "96.7% (99.7% within one)",
    "value_b": "98.7% (99.8% within one)",
-   "quote_a": "| annotated films only, 48 px | | 1 | | 96.7% | | 99.7% | | 97.7% | | 86.4% | | 80.7% | | 91.3% | | 84.0% |",
-   "quote_b": "| 98.7% exact, 99.8% within one (films-only, single crop; run head 99.4%) | | 8,422 crops from 1,653 held-out patients: CSXA 7,440 (99.4%), NHANES 982 (93.6%) |",
-   "explanation": "Both pages use the same test set. The ladder's 'Test crops: CSXA 7,440, NHANES 982' is the reality check's split, so the skeptic was wrong to say the ladder splits it differently. The ladder's 7,900 and 410 are region columns, not a different split. The reality check says only 'films-only, single crop'. It never says one vertebra in view, and it names no rung or model. In the ladder, every one-vertebra arm gives 96.4 to 97.6% exact and 99.6 to 99.7% within one, while the three- and five-vertebra rungs give 98.6 to 99.1% exact and 99.8% within one. So the reality check's 98.7%/99.8% fits a wider-context rung or a later run better than a second one-vertebra figure, but the texts do not say which.",
-   "resolution_hint": "From the Level Context Ladder, carry 96.7% exact (99.7% within one) as the one-vertebra figure on the 8,422 held-out crops (96.9% at 96 px). From the FluoroCap Reality Check, carry 98.7% only as its own 'films-only, single crop' figure, with its context rung unstated, until the source run file names the rung and model.",
+   "quote_a": "Every real-film arm holds out 30% of patients from every annotated source and joins the remaining 70% to the synthetic crops. Three rungs were trained per arm (one, three and five vertebrae visible), collimated field, 320 px canvas.",
+   "quote_b": "98.7% exact, 99.8% within one (films-only, single crop; run head 99.4%) | | 8,422 crops from 1,653 held-out patients: CSXA 7,440 (99.4%), NHANES 982 (93.6%)",
+   "explanation": "Both pages score the same 8,422 held-out crops (CSXA 7,440, NHANES 982). The ladder (13 September 2026) gives 96.7% exact (99.7% within one) for its 'annotated films only, 48 px' arm at one vertebra visible, and says every real-film arm joins the films to the synthetic crops. The reality check (15 September 2026) gives 98.7% exact for the 'films-only' model scored one crop at a time against 99.4% for its run head. The corpus audit (14 September) says this is the same model that scores 35.7% on CT renders, and that its training bank holds films alone, with zero training crops from T2 to T11. So the pages themselves name two different models, which makes this a version difference and not a contradiction. The current cannot-tell missed that difference. No page names the context rung of the films-only model's crops, and no page says the 98.7% is a one-vertebra figure.",
+   "resolution_hint": "From the Level Context Ladder, carry 96.7% exact (99.7% within one) as the one-vertebra figure of its films-plus-synthetic arm on the 8,422 crops (96.9% at 96 px). From the FluoroCap Reality Check and the Corpus Audit, carry 98.7% as the films-only model scored one crop at a time (99.4% for its recurrent run head), with its context rung unstated.",
    "followup": {
     "outcome": "verdict overturned",
     "before": {
@@ -20137,7 +20147,8 @@
      "quote_b": "98.7% exact, 99.8% within one (films-only, single crop; run head 99.4%) | | 8,422 crops from 1,653 held-out patients: CSXA 7,440 (99.4%), NHANES 982 (93.6%)",
      "explanation": "The level-context ladder (2026-09-13) gives 96.7% exact naming from one vertebra on 8,422 held-out real-film crops. The reality check (2026-09-15) gives 98.7% exact on 8,422 crops from 1,653 held-out patients, with a CSXA and NHANES breakdown that weights to 98.7%. The ladder splits its set differently (7,900 cervical, 410 lumbar NHANES), and neither page says the model changed.",
      "resolution_hint": "Carry 98.7% (99.8% within one) from the reality check, which names its run and its breakdown, noting the ladder's earlier 96.7%. The model ids of the two runs would show whether it was a re-run."
-    }
+    },
+    "regroup": "held-out-crops"
    }
   },
   {
@@ -20169,8 +20180,8 @@
    "value_b": "99.7%",
    "quote_a": "98.7% exact, 99.8% within one (films-only, single crop; run head 99.4%)",
    "quote_b": "Within one level: 99.7% at one vertebra in every region; region itself 99.7%.",
-   "explanation": "The ladder ties 99.7% within one level to the one-vertebra rung. On the same 8,422 crops, its own table gives 99.8% within one at three and five vertebrae (98.6-98.8% exact), against 96.7-96.9% exact at one vertebra. The reality check's pair, 98.7% exact and 99.8% within one, matches the ladder's multi-vertebra rows and cannot be the one-vertebra rung. So the two figures are different rungs of one ladder, not one quantity in conflict. The skeptic's contradiction ignores the rung. The re-checker's cannot-tell misses that the ladder's own table already contains 99.8% at the wider rungs.",
-   "resolution_hint": "Carry the ladder's 99.7% within one level at one vertebra (96.7% exact). Present the reality check's 98.7% / 99.8% as a wider-context single-crop run, matching the ladder's three- and five-vertebra rows (99.8% within one), not as the one-vertebra figure.",
+   "explanation": "The ladder (13 September 2026) gives 99.7% within one level at one vertebra, from arms that join films to synthetic crops. The reality check (15 September 2026) gives 99.8% within one for the films-only model scored one crop at a time on the same 8,422 crops. The Corpus Audit says that model's training bank holds films alone. The verdict holds because the pages name different models. The current explanation and hint go further than the texts: they say the reality check's pair matches the ladder's three- and five-vertebra rows and cannot be the one-vertebra rung. No page says this. The figures match no ladder row exactly either: NHANES is 93.6% in the reality check against 92.8%, 94.4% and 93.5% in the ladder, and exact is 98.7% against 98.6% to 99.1%.",
+   "resolution_hint": "From the Level Context Ladder, carry 99.7% within one level at one vertebra (96.7% exact). From the FluoroCap Reality Check, carry 99.8% within one together with its 98.7% exact, as the films-only model scored one crop at a time, with its context rung unstated, not as a three- or five-vertebra figure.",
    "followup": {
     "outcome": "verdict overturned",
     "before": {
@@ -20179,7 +20190,8 @@
      "quote_b": "8,422 held-out crops \u00b7 99.7% within one level",
      "explanation": "Within-one-level accuracy on the same 8,422 held-out crops is 99.8% in the reality check (2026-09-15) and 99.7% in the ladder (2026-09-13). It goes with the exact-level difference above, and no re-run is stated.",
      "resolution_hint": "Carry 99.8% together with the reality check's 98.7% exact, which come from the same run."
-    }
+    },
+    "regroup": "held-out-crops"
    }
   },
   {
@@ -20320,22 +20332,23 @@
    "quantity": "BUU-LSPINE sacralization (four-lumbar) cases",
    "artifact_a": "SchwingNet/fluoroscopy-data-atlas",
    "artifact_b": "SchwingNet/spine-program-decisions-qqhkqz",
-   "verdict": "scope-or-unit-differs",
+   "verdict": "confirmed-contradiction",
    "value_a": "129",
    "value_b": "130",
-   "quote_a": "3,600 patients, 7,200 images (3,600 AP + 3,600 lateral); on disk AP 3,600 jpg + 3,600 csv, LA 3,604 jpg (three exact copies) + 3,606 csv; 18.5 GB\", \"image_quality\": \"8-bit PNG/JPG\", \"annotation_level\": \"keypoints/corners\", \"annotation_detail\": \"... the L4L6 sheet flags 129 four-lumbar and 15 six-lumbar cases.",
+   "quote_a": "the L4L6 sheet flags 129 four-lumbar and 15 six-lumbar cases.",
    "quote_b": "BUU: 3,461 normal / 15 lumbar. / 130 sacral.",
-   "explanation": "The atlas counts BUU-LSPINE as 3,600 patients, with the L4L6 sheet flagging 129 four-lumbar and 15 six-lumbar cases. It also records 3,606 lateral csv files over 3,604 jpgs, three of which are exact copies. The decisions page's 3,461 + 15 + 130 sums to exactly 3,606, the file count, not 3,600 patients. So the two counts are over different totals the pages themselves give, and the extra sacral case sits inside the duplicated files. The skeptic found the 3,606 sum but did not draw that conclusion.",
-   "resolution_hint": "Carry 129 four-lumbar and 15 six-lumbar cases among 3,600 patients (144 anomalous) from the Fluoroscopy Data Atlas. Note that the decisions page's 130 is over 3,606 lateral csv files, duplicates included.",
+   "explanation": "The Fluoroscopy Data Atlas (as of 17 October 2026) describes BUU-LSPINE (3600) as 3,600 patients and says its L4L6 sheet flags 129 four-lumbar and 15 six-lumbar cases; it also lists the lateral folder as 3,604 jpg (three exact copies) and 3,606 csv. The undated Spine Program Decisions page gives BUU as 3,461 normal, 15 lumbarised and 130 sacralised, at 4.0%, and states no total or unit for these counts. The two agree on the 15 and differ by one on the four-lumbar (sacral) count. The current ruling's reading that the 130 counts the 3,606 csv files rests on a sum it computed (3,461 + 15 + 130 = 3,606); neither page says the 130 is over files or that it includes a duplicate, so the scope is inferred, not stated, and the row is a contradiction rather than a scope difference.",
+   "resolution_hint": "Carry 129 four-lumbar and 15 six-lumbar cases among 3,600 patients as the Fluoroscopy Data Atlas gives them, with the Spine Program Decisions page's 130 sacral flagged as not reconciled. That the 130 counts the 3,606 lateral csv files, duplicates included, is an inference from the sum 3,461 + 15 + 130 = 3,606; a recount of the L4L6 sheet by patient, with the duplicated files removed, would confirm or refute it.",
    "followup": {
-    "outcome": "verdict overturned",
+    "outcome": "hint corrected",
     "before": {
      "verdict": "confirmed-contradiction",
      "quote_a": "the L4L6 sheet flags 129 four-lumbar and 15 six-lumbar cases",
      "quote_b": "BUU: 3,461 normal / 15 lumbar. / 130 sacral.",
      "explanation": "The data atlas (2026-10-17) reads the BUU-LSPINE L4L6 sheet as 129 four-lumbar and 15 six-lumbar cases. The undated decisions page gives 130 sacralised and 15 lumbarised. 3,461 + 15 + 130 makes 3,606, the number of lateral CSV files the atlas lists beside 3,604 images that include three exact copies, so the 130 may include a duplicate. Neither page says so.",
      "resolution_hint": "Carry 129 four-lumbar (144 anomalous with the 15 six-lumbar), as the atlas does and as Research Directions' 144 anomalous films implies, unless a recount of the sheet without duplicates gives 130."
-    }
+    },
+    "regroup": "scope-the-readers-computed"
    }
   },
   {
@@ -20357,22 +20370,23 @@
    "quantity": "NHANES annotated zip size",
    "artifact_a": "SchwingNet/spine-x-ray-data-handoff-bddbdd",
    "artifact_b": "SchwingNet/fluoroscopy-data-atlas",
-   "verdict": "scope-or-unit-differs",
+   "verdict": "confirmed-contradiction",
    "value_a": "1.2 GB",
    "value_b": "1,017,496,285 B",
-   "quote_a": "Grid state verified 3 Sep 2026 over ssh: ... nhanes_annotated 2 files / 1.2 GB.",
+   "quote_a": "On grid 1.2 GB zip, md5 875a3228",
    "quote_b": "543 films (275 cervical + 268 lumbar) of 364 persons as pickles; zip 1,017,496,285 B, extracted 159 GB",
-   "explanation": "Both pages name the same Zenodo record 10223910 with the same 543 films. The handoff's only measurement behind its 1.2 GB is its grid check, which gives the nhanes_annotated folder as 2 files totalling 1.2 GB. The atlas gives the zip alone as 1,017,496,285 bytes, which is about 1.02 GB or 0.95 GiB, so no choice of unit makes the zip alone 1.2 GB. The card's 1.2 GB is the two-file folder total, written against the zip. The skeptic did not read the handoff's grid-state footer, which states that scope.",
-   "resolution_hint": "Carry the atlas's 1,017,496,285 bytes (about 1.0 GB) as the size of the NHANES II annotations zip. Read the Spine X-ray Data Handoff's 1.2 GB as the grid folder's two-file total, not the zip's size.",
+   "explanation": "Both pages describe the NHANES II annotations of Zenodo record 10223910, 543 films (275 cervical, 268 lumbar). The Spine X-ray Data Handoff (2026-09-03) calls its on-grid file a 1.2 GB zip; the Fluoroscopy Data Atlas (as of 17 October 2026) gives the zip as 1,017,496,285 bytes, about 1.02 GB or 0.95 GiB, so no rounding or unit makes the two agree. The handoff's footer separately says its grid check of 3 Sep 2026 found nhanes_annotated at 2 files / 1.2 GB, but the card itself names the 1.2 GB as the zip's size and nowhere says it is the folder total. The current ruling's reading that the card wrote the two-file folder total against the zip is an inference from that footer, not a scope the page states, so the row is a contradiction over the zip's size.",
+   "resolution_hint": "Carry the Fluoroscopy Data Atlas's 1,017,496,285 bytes (about 1.0 GB) as the size of the NHANES II annotations zip, with the Spine X-ray Data Handoff's 1.2 GB flagged as not reconciled. That the 1.2 GB is the handoff's own two-file total for the nhanes_annotated folder is an inference; a listing of that folder with each file's size, and the zip's md5 checked against 875a3228, would settle it.",
    "followup": {
-    "outcome": "verdict overturned",
+    "outcome": "hint corrected",
     "before": {
      "verdict": "confirmed-contradiction",
      "quote_a": "On grid 1.2 GB zip",
      "quote_b": "zip 1,017,496,285 B, extracted 159 GB",
      "explanation": "Both pages describe the same NHANES II annotation zip. The handoff (2026-09-03) gives 1.2 GB; the data atlas (2026-10-17) gives 1,017,496,285 bytes, which is 1.02 GB. So 1.2 GB is not a rounding of the atlas's figure.",
      "resolution_hint": "Carry the atlas's exact 1,017,496,285 bytes (about 1.0 GB)."
-    }
+    },
+    "regroup": "scope-the-readers-computed"
    }
   },
   {
@@ -20627,8 +20641,8 @@
    "value_b": "97.4%",
    "quote_a": "98.2% exact level on whole C-ArmLSpine lateral frames, five-fold CV over 148 cases [95.7\u2013100]; 92.9% with three vertebrae in the field, 72.8% with one",
    "quote_b": "it names 97.4 % of bodies on a whole lateral frame and 74.8 % with one body in view",
-   "explanation": "The ledger (22 September) gives 98.2% whole-frame and 72.8% with one vertebra. Research Directions (8 October) gives 97.4% and 74.8%, so both figures moved together. The same page puts 98.2% on the coupling of count and morphology, against the count's 97.0%. The handoff of the same day repeats these figures from a results catalog that, it says, wins wherever another file differs. So the later page carries a new record of the same quantity, not a same-moment disagreement. The skeptic saw the reassignment of 98.2% but did not count the later date and the catalog's precedence as an update.",
-   "resolution_hint": "Carry 97.4% of bodies named on a whole lateral C-ArmLSpine frame, and 74.8% with one body in view, from Research Directions (8 October). Note that the 22 September ledger's 98.2% is now the figure for the coupled count (the count's 97.0% plus 1.2 points). Confirm both against paper 1's results catalog.",
+   "explanation": "The OR Readiness Ledger (22 September) gives 98.2% whole-frame and 72.8% with one vertebra; Research Directions (8 October) gives 97.4% and 74.8%, the handoff of the same day gives the same pair as paper 1's numbers from a results catalog that 'wins' where any other file differs, and the Any-View plan (21 October) again gives 97.4%. Research Directions and the handoff put 98.2% on the alphabet coupling of count and morphology (against the count's 97.0%, the coupling adding 1.2 points). One page weighs against a clean replacement: State of the Literature, also dated 8 October, still calls '98.2 % (606 of 617 lateral vertebrae)' the best C-arm naming number. No page says the September whole-frame 98.2% was withdrawn or that it was the coupled figure under another name, so the current hint's claim that 'the ledger's 98.2% is now the figure for the coupled count' goes beyond the texts.",
+   "resolution_hint": "Carry 97.4% of bodies named on a whole lateral C-ArmLSpine frame (74.8% with one body) from Research Directions and the 8 October handoff, which the 21 October Any-View plan repeats; say the 22 September ledger gave 98.2%, that State of the Literature (8 October) still gives 98.2% (606 of 617), and that Research Directions and the handoff give 98.2% to the coupled count. Confirm against paper 1's results catalog.",
    "followup": {
     "outcome": "verdict overturned",
     "before": {
@@ -20637,7 +20651,8 @@
      "quote_b": "it names 97.4 % of bodies on a whole lateral frame and 74.8 % with one body in view",
      "explanation": "The OR Readiness Ledger (2026-09-22) gives 98.2% exact level on whole C-ArmLSpine lateral frames. Research Directions (2026-10-08) gives 97.4% for a whole lateral frame, and elsewhere on the same page gives 98.2% as the result of the alphabet coupling of count and morphology, against 97.0% for the count alone. The later page assigns 98.2% to a different measure without saying the ledger's figure was wrong.",
      "resolution_hint": "Settle from paper 1's results table which figure is whole-frame naming. Carry 97.4% as the later whole-frame figure, and 98.2% as the coupled count only if that table confirms it."
-    }
+    },
+    "regroup": "lateral-whole-frame"
    }
   },
   {
@@ -20788,12 +20803,20 @@
    "verdict": "updated-later",
    "value_a": "42 gradeable pairs",
    "value_b": "50 pairs from 20 tasks",
-   "quote_a": "42 pairs give 80 percent power only for differences of about 26 to 30 points",
-   "quote_b": "50 pairs from 20 tasks, five arms (sdlc, solo, coop, coop-git, team)",
-   "explanation": "The Symphony handoff (2026-10-13) works from the kit's 42 gradeable pairs. The Symphony in-brief (2026-10-14) cites coordbench's pre-registered plan of 50 pairs from 20 tasks. The pre-registration is the later design for the run.",
-   "resolution_hint": "Carry 50 pairs from 20 tasks from the pre-registered plan, with 42 as the earlier count of gradeable pairs.",
+   "quote_a": "Pairs and arms: every pre-registered flash pair that grades (42 known, up to 50) under solo, coop, coop-git, team and sdlc.",
+   "quote_b": "coordbench's pre-registered run: 50 pairs under five arms, sdlc against coop first. The survey that fixed the pairs is done (tag survey-1",
+   "explanation": "The Symphony Handoff (2026-10-13) plans a free survey to show 'which of the 50 pairs grade on runners', then a first benchmark on 'every pre-registered flash pair that grades (42 known, up to 50)', and sizes it and its power on 42 pairs. So 42 is the handoff's own provisional planning count, not a separate earlier design. Symphony in Brief (2026-10-14), a day later, says the survey that fixed the pairs is done (tag survey-1) and gives coordbench's pre-registered run as 50 pairs from 20 tasks under five arms. The later page settles the count the handoff left open, so updated-later stands; the current hint is right in substance but does not name the artifact or say that 42 was the handoff's planning basis.",
+   "resolution_hint": "Carry 50 pairs from 20 tasks under five arms from Symphony in Brief (2026-10-14, citing coordbench's PLAN.md and the survey tag survey-1); note that the Symphony Handoff (2026-10-13) planned and sized the run on the 42 pairs then known to grade, of up to 50.",
    "followup": {
-    "outcome": "held"
+    "outcome": "hint corrected",
+    "before": {
+     "verdict": "updated-later",
+     "quote_a": "42 pairs give 80 percent power only for differences of about 26 to 30 points",
+     "quote_b": "50 pairs from 20 tasks, five arms (sdlc, solo, coop, coop-git, team)",
+     "explanation": "The Symphony handoff (2026-10-13) works from the kit's 42 gradeable pairs. The Symphony in-brief (2026-10-14) cites coordbench's pre-registered plan of 50 pairs from 20 tasks. The pre-registration is the later design for the run.",
+     "resolution_hint": "Carry 50 pairs from 20 tasks from the pre-registered plan, with 42 as the earlier count of gradeable pairs."
+    },
+    "regroup": "coordbench-plan"
    }
   },
   {
@@ -20803,10 +20826,10 @@
    "verdict": "scope-or-unit-differs",
    "value_a": "four arms, 294 sessions, about $125",
    "value_b": "five arms",
-   "quote_a": "then the first benchmark (solo, coop, coop-git, team, sdlc; about 378 sessions over 42 pairs), pre-registered in bench/cooperbench/PLAN.md",
+   "quote_a": "The kit's own estimate is 294 sessions, about $125, for four arms on the 42 gradeable pairs",
    "quote_b": "50 pairs from 20 tasks, five arms (sdlc, solo, coop, coop-git, team), Claude Sonnet 5.5 for every agent, 120 minutes per agent, one seed",
-   "explanation": "The Symphony handoff itself plans and recommends five arms (solo, coop, coop-git, team and sdlc), with 378 sessions on 42 pairs. It quotes 294 sessions and about $125 for four arms only as the kit's own cost estimate for a four-arm set-up. The in-brief gives the same five arms. So the two pages agree on the plan's arms, and the four-arm figure is a different configuration's estimate, not an earlier design that the in-brief replaces. The skeptic's earlier four-arm design is not in either text.",
-   "resolution_hint": "Carry five arms (sdlc, solo, coop, coop-git, team), which both pages give. For size, carry the handoff's about 378 sessions on 42 gradeable pairs (the in-brief's pre-registered plan says 50 pairs). Keep 294 sessions and about $125 only as the kit's estimate for four arms.",
+   "explanation": "The Symphony Handoff (2026-10-13) itself recommends five arms, 'solo, coop, coop-git, team and sdlc (the authors' four plus Symphony's; 378 sessions on 42 pairs)', and gives 294 sessions and about $125 for four arms only as 'the kit's own estimate', a different configuration's costing. Symphony in Brief (2026-10-14) gives the same five arms. The pages agree on the plan's arms, and the four-arm figure is stated as the kit's estimate, so the scope differs by the page's own words and no four-arm design was replaced. The current hint, though, tells the book to carry 378 sessions on 42 pairs for size, which disagrees with row 226: 42 was the handoff's provisional planning count, and the later in-brief fixes the run at 50 pairs; neither page gives a session count for the 50-pair run.",
+   "resolution_hint": "Carry five arms (sdlc, solo, coop, coop-git, team), which both pages give, and the run's size as 50 pairs from Symphony in Brief (2026-10-14); keep the handoff's 378 sessions as its sizing on the 42 pairs then known to grade and 294 sessions, about $125, only as the kit's four-arm estimate, since no page gives the session count for 50 pairs.",
    "followup": {
     "outcome": "verdict overturned",
     "before": {
@@ -20815,7 +20838,8 @@
      "quote_b": "50 pairs from 20 tasks, five arms (sdlc, solo, coop, coop-git, team)",
      "explanation": "The Symphony handoff (2026-10-13) quotes the kit's estimate for four arms. The Symphony in-brief (2026-10-14) cites the pre-registered plan, which has five arms, team among them.",
      "resolution_hint": "Carry five arms from the pre-registered plan. The handoff's cost estimate belongs to the earlier four-arm design."
-    }
+    },
+    "regroup": "coordbench-plan"
    }
   },
   {
@@ -21032,9 +21056,9 @@
    "value_a": "148 cases",
    "value_b": "141 cases (617 vertebrae)",
    "quote_a": "98.2% exact level on whole C-ArmLSpine lateral frames, five-fold CV over 148 cases [95.7\u2013100]",
-   "quote_b": "| Lateral, whole frame 141 cases, 617 vertebrae, 5-fold CV |",
-   "explanation": "Both pages are dated 22 September 2026 and give the same result: 98.2% / 98.22% exact, lateral whole frame, five-fold CV, lower bound 95.7 / 95.71. The ledger says the CV ran over 148 cases, which matches its own split row (105/15/28). The sacrum page gives 141 cases. Neither page calls 141 a subset or mentions the other count, so this is one result with two case counts. One caution on the re-checker's hint: the literature page's '296 frames, 148 cases' sits in its 'This holding' column, so it gives the size of the holding, not the scored set. It does not show that the 617 vertebrae came from all 148 cases.",
-   "resolution_hint": "Carry 98.2% exact (606 of 617 lateral vertebrae, lower bound 95.7) with five-fold CV over 148 cases, from the OR Readiness Ledger. Flag the sacrum page's '141 cases' as unreconciled until the fold record shows whether seven cases had no scored vertebra.",
+   "quote_b": "Lateral, whole frame 141 cases, 617 vertebrae, 5-fold CV",
+   "explanation": "Both pages are dated 22 September 2026 and give one result: 98.2% (ledger) and 98.22% (sacrum page) exact level on whole lateral C-ArmLSpine frames, five folds, lower bound 95.7 / 95.71. The ledger says the CV ran over 148 cases, matching its own split row (C-ArmLSpine 105/15/28 cases), and gives no count of vertebrae; the sacrum page gives 141 cases and 617 vertebrae. Neither page calls 141 a subset of 148 or mentions the other count. The current hint is wrong in two ways: '606 of 617 lateral vertebrae' is State of the Literature's wording (8 October), not the ledger's, and it picks 148 over 141, which the texts do not do. It also tells the book to carry 98.2% as the whole-frame figure without saying that the October pages give 97.4% for that quantity (row 5).",
+   "resolution_hint": "Carry the 22 September record as 98.2% exact on whole lateral frames, five-fold CV, lower bound 95.7%, with its case count flagged as 148 in the OR Readiness Ledger against 141 in Counting From The Sacrum (which alone gives 617 vertebrae); settle it from the CV fold record of the cases each fold scored. Say that the October pages give 97.4% for whole-frame naming (row 5).",
    "followup": {
     "outcome": "hint corrected",
     "before": {
@@ -21043,7 +21067,8 @@
      "quote_b": "| Lateral, whole frame 141 cases, 617 vertebrae, 5-fold CV | | 98.22% | | 100% |",
      "explanation": "Both texts describe the same evaluation: lateral whole-frame C-ArmLSpine, five-fold CV by case, 98.2%/98.22% exact level, lower CI bound 95.7/95.71. The ledger says the CV ran over 148 cases, which matches its own split table (105/15/28 cases = 148); the sacrum page labels the same row 141 cases, 617 vertebrae. Both pages are dated 22 September 2026 and neither mentions the other's count or says it revises it. 141 could be a subset of 148 (cases with at least one scored vertebra after truth filtering), but neither text says so, so the two stand as different denominators for one result. The sacrum page's separate 'C-ArmLSpine 120' is distinct CT subjects in the census, a different count again.",
      "resolution_hint": null
-    }
+    },
+    "regroup": "lateral-whole-frame"
    }
   },
   {
@@ -21054,9 +21079,9 @@
    "value_a": "148 cases",
    "value_b": "141 cases (617 vertebrae)",
    "quote_a": "98.2% exact level on whole C-ArmLSpine lateral frames, five-fold CV over 148 cases [95.7\u2013100]",
-   "quote_b": "| Lateral, whole frame 141 cases, 617 vertebrae, 5-fold CV | \n | 98.22% | | 100% |",
-   "explanation": "Both pages are dated 22 September 2026 and report one evaluation: whole lateral frames, five folds by case, 98.2% exact, lower bound 95.7, and the same 97.0/92.9/72.8 rows. The ledger gives 148 cases, which matches its own split total of 105/15/28 C-ArmLSpine cases. Counting From The Sacrum gives 141 cases and 617 vertebrae. Neither page says that only 141 of the 148 cases carry scored lateral vertebrae, or that either page revises the other, so the contradiction stands. Both readers chose this verdict, but the skeptic gave no resolution hint, and the re-checker's hint is the one the texts support.",
-   "resolution_hint": "Carry 98.2% exact level on 617 lateral vertebrae, five-fold CV, lower bound 95.7%. Flag the case count as 148 in the OR Readiness Ledger (its split total of 105/15/28) against 141 in Counting From The Sacrum. Settle it from the cross-validation result file's list of the cases each fold scored.",
+   "quote_b": "Lateral, whole frame 141 cases, 617 vertebrae, 5-fold CV",
+   "explanation": "This is the same collision as row 0: both pages, dated 22 September 2026, give one result (98.2% / 98.22% exact, whole lateral frames, five folds by case, lower bound 95.7 / 95.71, and matching 97.0/92.9/72.8 rows), with 148 cases in the ledger, which matches its split row of 105/15/28 C-ArmLSpine cases, and 141 cases with 617 vertebrae on the sacrum page. Neither page reconciles the two or says it revises the other, so the verdict stands. The current hint, though, says to carry 98.2% on 617 vertebrae without saying that 617 is the sacrum page's figure (the ledger gives no vertebra count), and without the October pages' 97.4% whole-frame figure, so it disagrees with rows 5 and 105.",
+   "resolution_hint": "Carry the 22 September record as 98.2% exact on whole lateral frames, five-fold CV, lower bound 95.7%, with the case count flagged as 148 in the OR Readiness Ledger against 141 in Counting From The Sacrum (which alone gives 617 vertebrae); settle it from the CV result file's list of cases each fold scored, and say that the October pages give 97.4% for whole-frame naming (row 5).",
    "followup": {
     "outcome": "hint corrected",
     "before": {
@@ -21065,7 +21090,8 @@
      "quote_b": "| Lateral, whole frame 141 cases, 617 vertebrae, 5-fold CV | | 98.22% | | 100% |",
      "explanation": "Same candidate as the first: one evaluation (five-fold CV by case, lateral whole frames, 98.2% exact, lower bound 95.7) given two case counts, 148 in the ledger (consistent with its 105/15/28 split) and 141 in the sacrum page. The ledger's \u00a72 table repeats 98.2 [95.7\u2013100] without a case count, and the sacrum page's prose repeats 98.2% without one, so neither text reconciles the two; both are dated the same day and neither claims to supersede the other.",
      "resolution_hint": null
-    }
+    },
+    "regroup": "lateral-whole-frame"
    }
   }
  ],
@@ -21599,7 +21625,7 @@
  },
  "followup": {
   "date": "2026-10-23",
-  "about": "On 2026-10-23 every number collision on the confirmed list that the review's sample left out, 55 in all (24 confirmed-contradiction, 31 updated-later), was read again by the review's own method and briefs (issue #155). Five re-checkers, each given every fifth row and told to overturn every verdict in its share and its hint, read both sources of each and gave their own verdict, whether the hint was right and the words they rest on. Where a re-checker overturned a verdict or its hint, one of three judges read both readings and the sources and ruled; of the 20 rulings, 17 with the re-checker, 2 with the skeptic, 1 with neither. work/tools/reread_numbers.py writes the re-checkers' input again from the record as #137 merged it (commit fde5b06), and out/reread-confirmed-numbers.json holds each reading and ruling. The Any-View Spine Plan page changed after the inventory read it (its table of paired X-ray and CT sets and two notes under it, at 23:31 and 23:43 UTC on 2026-10-22, none of its accuracy figures): the re-checkers of rows 105, 106 and 107, which quote it, were told so and read it as it is now, and the page is rendered from the artifacts' text as it is now, so one quote of the Renders cluster, row 45, is no longer found, the page writing 'unused; registration' where it wrote 'unused. Registration'.",
+  "about": "On 2026-10-23 every number collision on the confirmed list that the review's sample left out, 55 in all (24 confirmed-contradiction, 31 updated-later), was read again (issue #155) as the review read its sample, with three differences. Five re-checkers read them, each given every fifth row, where the review gave its confirmed verdicts to three; each artifact whose page changed after the inventory read it was marked so, with what changed; and the re-checkers' brief, otherwise the review's, added one sentence: \"This reading is the follow-up of issue #155: an earlier review drew two of these confirmed number verdicts at random and overturned both, so every one it left out is now read again.\" That sentence told the re-checkers that such verdicts had failed before, which may have made them readier to overturn, so the follow-up's rates are its own and not to be pooled with the review's. Each re-checker, told to overturn every verdict in its share and its hint, read both sources of each row and gave its own verdict, whether the hint was right and the words it rests on. Where a re-checker overturned a verdict or its hint, one of three judges read both readings and the sources and ruled; of the 20 rulings, 17 with the re-checker, 2 with the skeptic, 1 with neither. work/tools/reread_numbers.py writes the re-checkers' input again from the record as #137 merged it (commit fde5b06), and out/reread-confirmed-numbers.json holds each reading and ruling. The Any-View Spine Plan page changed three times after the inventory read it, all on 2026-10-22 and none in an accuracy figure: at 20:03 UTC its census paragraph, the per-region table of its section 4 and the next step of its section 5, and at 23:31 and 23:43 UTC its table of paired X-ray and CT sets and two notes under it. The re-checkers of rows 105, 106 and 107, which quote it, read it as it is now, with a note that named only the last two changes. The page is rendered from the artifacts' text as it is now, so one quote of the Renders cluster, row 45, is no longer found, the page writing 'unused; registration' where it wrote 'unused. Registration'.",
   "items": [
    {
     "stratum": "Number collisions",
@@ -21608,7 +21634,11 @@
     "drawn": "all",
     "first": "confirmed-contradiction",
     "final": "confirmed-contradiction",
-    "outcome": "hint corrected"
+    "outcome": "hint corrected",
+    "regroup": {
+     "group": "lateral-whole-frame",
+     "keep": false
+    }
    },
    {
     "stratum": "Number collisions",
@@ -21626,7 +21656,11 @@
     "drawn": "all",
     "first": "confirmed-contradiction",
     "final": "updated-later",
-    "outcome": "verdict overturned"
+    "outcome": "verdict overturned",
+    "regroup": {
+     "group": "lateral-whole-frame",
+     "keep": false
+    }
    },
    {
     "stratum": "Number collisions",
@@ -21635,7 +21669,11 @@
     "drawn": "all",
     "first": "confirmed-contradiction",
     "final": "updated-later",
-    "outcome": "verdict overturned"
+    "outcome": "verdict overturned",
+    "regroup": {
+     "group": "lateral-whole-frame",
+     "keep": true
+    }
    },
    {
     "stratum": "Number collisions",
@@ -21679,8 +21717,12 @@
     "side": "confirmed",
     "drawn": "all",
     "first": "confirmed-contradiction",
-    "final": "scope-or-unit-differs",
-    "outcome": "verdict overturned"
+    "final": "confirmed-contradiction",
+    "outcome": "hint corrected",
+    "regroup": {
+     "group": "scope-the-readers-computed",
+     "keep": false
+    }
    },
    {
     "stratum": "Number collisions",
@@ -21688,8 +21730,12 @@
     "side": "confirmed",
     "drawn": "all",
     "first": "confirmed-contradiction",
-    "final": "scope-or-unit-differs",
-    "outcome": "verdict overturned"
+    "final": "confirmed-contradiction",
+    "outcome": "hint corrected",
+    "regroup": {
+     "group": "scope-the-readers-computed",
+     "keep": false
+    }
    },
    {
     "stratum": "Number collisions",
@@ -21760,8 +21806,12 @@
     "side": "confirmed",
     "drawn": "all",
     "first": "confirmed-contradiction",
-    "final": "scope-or-unit-differs",
-    "outcome": "verdict overturned"
+    "final": "cannot-tell",
+    "outcome": "verdict overturned",
+    "regroup": {
+     "group": "t12-l1-shape-test",
+     "keep": false
+    }
    },
    {
     "stratum": "Number collisions",
@@ -21787,8 +21837,12 @@
     "side": "confirmed",
     "drawn": "all",
     "first": "confirmed-contradiction",
-    "final": "cannot-tell",
-    "outcome": "verdict overturned"
+    "final": "scope-or-unit-differs",
+    "outcome": "verdict overturned",
+    "regroup": {
+     "group": "held-out-crops",
+     "keep": false
+    }
    },
    {
     "stratum": "Number collisions",
@@ -21842,7 +21896,11 @@
     "drawn": "all",
     "first": "confirmed-contradiction",
     "final": "confirmed-contradiction",
-    "outcome": "hint corrected"
+    "outcome": "hint corrected",
+    "regroup": {
+     "group": "lateral-whole-frame",
+     "keep": false
+    }
    },
    {
     "stratum": "Number collisions",
@@ -21851,7 +21909,11 @@
     "drawn": "all",
     "first": "confirmed-contradiction",
     "final": "updated-later",
-    "outcome": "verdict overturned"
+    "outcome": "verdict overturned",
+    "regroup": {
+     "group": "lateral-whole-frame",
+     "keep": false
+    }
    },
    {
     "stratum": "Number collisions",
@@ -21860,7 +21922,11 @@
     "drawn": "all",
     "first": "confirmed-contradiction",
     "final": "updated-later",
-    "outcome": "verdict overturned"
+    "outcome": "verdict overturned",
+    "regroup": {
+     "group": "lateral-whole-frame",
+     "keep": true
+    }
    },
    {
     "stratum": "Number collisions",
@@ -21868,8 +21934,12 @@
     "side": "confirmed",
     "drawn": "all",
     "first": "confirmed-contradiction",
-    "final": "confirmed-contradiction",
-    "outcome": "held"
+    "final": "updated-later",
+    "outcome": "verdict overturned",
+    "regroup": {
+     "group": "lateral-whole-frame",
+     "keep": false
+    }
    },
    {
     "stratum": "Number collisions",
@@ -21878,7 +21948,11 @@
     "drawn": "all",
     "first": "confirmed-contradiction",
     "final": "scope-or-unit-differs",
-    "outcome": "verdict overturned"
+    "outcome": "verdict overturned",
+    "regroup": {
+     "group": "held-out-crops",
+     "keep": false
+    }
    },
    {
     "stratum": "Number collisions",
@@ -22040,7 +22114,11 @@
     "drawn": "all",
     "first": "confirmed-contradiction",
     "final": "cannot-tell",
-    "outcome": "verdict overturned"
+    "outcome": "verdict overturned",
+    "regroup": {
+     "group": "t12-l1-shape-test",
+     "keep": true
+    }
    },
    {
     "stratum": "Number collisions",
@@ -22067,7 +22145,11 @@
     "drawn": "all",
     "first": "updated-later",
     "final": "updated-later",
-    "outcome": "held"
+    "outcome": "hint corrected",
+    "regroup": {
+     "group": "coordbench-plan",
+     "keep": false
+    }
    },
    {
     "stratum": "Number collisions",
@@ -22076,7 +22158,11 @@
     "drawn": "all",
     "first": "updated-later",
     "final": "scope-or-unit-differs",
-    "outcome": "verdict overturned"
+    "outcome": "verdict overturned",
+    "regroup": {
+     "group": "coordbench-plan",
+     "keep": false
+    }
    },
    {
     "stratum": "Number collisions",
@@ -22096,6 +22182,120 @@
     "final": "updated-later",
     "outcome": "held"
    }
-  ]
+  ],
+  "regroup": {
+   "date": "2026-10-23",
+   "about": "On 2026-10-23 a review of the follow-up found that rows reading the same figures or the same pages, ruled one at a time, did not agree with one another, and that two rulings rested on scopes the pages do not state. They were ruled again in five groups: naming on whole lateral C-ArmLSpine frames (rows 0, 5, 6, 104, 105, 106 and 107); the 8,422 held-out crops (rows 61 and 111); the T12 and L1 shape test (rows 52 and 171); the coordbench plan's pairs and arms (rows 226 and 227); scopes the pages state or the readers computed (rows 24 and 31). One judge for each group read all of its rows together, each with both readings, its ruling and its verdict as the follow-up left it, and every source, the artifacts the review cited among them, with the review's points given as claims to check against the texts and never to take as true; the judge kept each row's verdict and hint or ruled it again. Of the 15 rows, 3 kept their verdict and hint and 12 were ruled again; rows 20 and 110, shown to the judges beside them, stand as they were. work/tools/reread_numbers.py writes each judge's input again from the reading and the follow-up's input.",
+   "groups": [
+    {
+     "name": "lateral-whole-frame",
+     "title": "naming on whole lateral C-ArmLSpine frames",
+     "rows": [
+      0,
+      5,
+      6,
+      104,
+      105,
+      106,
+      107
+     ],
+     "context": [],
+     "extra": [
+      "SchwingNet/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay"
+     ],
+     "points": [
+      "Rows 0 and 104 tell the book to carry 98.2 % as the whole-frame figure, while rows 5 and 105 tell it to carry 97.4 % and say that 98.2 % is now the figure of the coupled count, so a planner reading the rows gets two instructions for one quantity.",
+      "State of the Literature, dated 2026-10-08 like Research Directions and the CTSpinoPelvic1K handoff, calls 98.2 % (606 of 617 lateral vertebrae) the best number; if it does, the later date of the pages that give 97.4 % may not show that 97.4 % replaced 98.2 %.",
+      "Row 105's explanation says the ledger's 98.2 % is on the same 617 vertebrae; the ledger may give 148 cases and no count of vertebrae.",
+      "Row 0's hint puts '606 of 617 lateral vertebrae' in the OR Readiness Ledger; the figure may be State of the Literature's and not the ledger's.",
+      "Row 106 reads the Any-View plan as a later record in which every sibling figure moved together (updated-later), while row 107, on the same two pages, holds a contradiction because neither page states a change of model or test set; the two rows may point opposite ways."
+     ],
+     "note": "The 22 September pages (OR Readiness Ledger, Counting From The Sacrum) carry one set of C-ArmLSpine naming figures: 98.2% whole lateral frame, 72.8% with one vertebra, 96.3% zero-shot lateral, 37.9% zero-shot AP. The October pages (Research Directions and the handoff of 8 October, the Any-View plan of 21 October) carry another: 97.4%, 74.8%, 96.4% (595/617) and 43.7%, and the handoff says its results catalog wins over any other file. So the book should carry the October set as the later record and the September set as earlier, on the same verdict across rows 5, 6, 105, 106 and 107. The one dissent is State of the Literature (8 October), which still calls 98.2% (606 of 617 lateral vertebrae) the best number; that '606 of 617' is its wording, not the ledger's. Research Directions and the handoff give 98.2% to the coupled count (97.0% plus 1.2 points), but no page says whether the September whole-frame 98.2% was the same measure under another name. The September record's case count stays open: 148 in the ledger against 141 with 617 vertebrae on the sacrum page, to be settled from the CV fold record.",
+     "context_notes": []
+    },
+    {
+     "name": "held-out-crops",
+     "title": "the 8,422 held-out crops",
+     "rows": [
+      61,
+      111
+     ],
+     "context": [
+      110
+     ],
+     "extra": [
+      "SchwingNet/fluorocap-corpus-audit-9hjzzs"
+     ],
+     "points": [
+      "Rows 61 and 110 set the same two figures side by side, 96.7 % and 98.7 % exact on the 8,422 held-out crops, from the same two pages, yet row 61 is cannot-tell and row 110 is scope-or-unit-differs.",
+      "Rows 61, 110 and 111 give three accounts of what the reality check's 98.7 % (99.8 % within one) is: a figure whose context rung is unstated (61); the films-only model scored one crop at a time, which matches neither of the ladder's rungs exactly (110); and a wider-context run that matches the ladder's three- and five-vertebra rows (111).",
+      "Row 110 was ruled by #137's review and is shown for comparison; its ruling cites the FluoroCap Corpus Audit, which is given as an extra source."
+     ],
+     "note": "All three pages score the same 8,422 held-out real-film crops, split CSXA 7,440 and NHANES 982. The Level Context Ladder (13 September) gives 96.7% exact and 99.7% within one at one vertebra visible for arms that join films to synthetic crops. The Reality Check (15 September) and the Corpus Audit (14 September) give 98.7% exact and 99.8% within one for a films-only model scored one crop at a time, against 99.4% for its recurrent head; the audit says that model's training bank holds films alone. The book should carry each figure with its model and scope, which makes the three rows scope-or-unit-differs on a stated model difference, and it should not say the 98.7% matches a wider rung of the ladder, which no page states and no row matches exactly. Two questions stay open: the context rung of the films-only model's crops, which the run file or model id would settle, and why the Reality Check says 'no thoracic' when the ladder counts 66 thoracic crops in the same 8,422.",
+     "context_notes": [
+      {
+       "index": 110,
+       "agrees": true,
+       "note": "Its verdict, scope-or-unit-differs, and its hint (98.7% is the films-only model scored one crop at a time against 99.4% for its run head, and no page names that model's context rung) agree with rows 61 and 111. Its explanation says 'single crop' does not mean one vertebra in view, but no page says that. The ruling rests better on the stated model difference: the ladder's arms are films joined to synthetic crops, and the films-only model's bank holds films alone."
+      }
+     ]
+    },
+    {
+     "name": "t12-l1-shape-test",
+     "title": "the T12 and L1 shape test",
+     "rows": [
+      52,
+      171
+     ],
+     "context": [],
+     "extra": [],
+     "points": [
+      "Rows 52 and 171 compare the same two figures on the same two pages, 1485 vertebrae in Counting Against Two Anchors and 1,486 T12 and L1 vertebrae from 798 cases in Research Directions, and their rulings give them different verdicts: scope-or-unit-differs for 52 and cannot-tell for 171."
+     ],
+     "note": "Both rows set the same two passages side by side: 1485 vertebrae behind the reported T12-versus-L1 AUC 0.990 and 97.3% accuracy in Counting Against Two Anchors (undated), and 1,486 T12 and L1 vertebrae from 798 cases as the n and power of the planned Stages 1 and 2 in Research Directions (2026-10-08), which repeats 1,486 in its PAR-1 and PAR-2 rows. Research Directions separates its planned ratio-only and projected runs from the published 0.990 by features and view, but never gives the published test's n and never says its planned runs count a different set of vertebrae, so the one-vertebra gap is not explained by either page; both rows are therefore cannot-tell, and row 52's scope-or-unit-differs is changed to match row 171. The book should carry 1485 with the 0.990 result from Counting Against Two Anchors and 1,486 from 798 cases only as Research Directions' planned sample, never one in place of the other. The open question is whether the 0.990 run's input and the set the planned stages read (on v11 for Stage 2) are the same vertebrae; a row count of each settles it.",
+     "context_notes": []
+    },
+    {
+     "name": "coordbench-plan",
+     "title": "the coordbench plan's pairs and arms",
+     "rows": [
+      226,
+      227
+     ],
+     "context": [],
+     "extra": [],
+     "points": [
+      "Row 226 holds updated-later, to carry 50 pairs from 20 tasks from the pre-registered plan with 42 as the earlier count of gradeable pairs, while row 227's ruling says the handoff itself plans five arms and about 378 sessions on 42 gradeable pairs, which would make 42 part of the handoff's own plan and not an earlier one; the two rows may not agree on whether the in-brief's plan follows the handoff's."
+     ],
+     "note": "The Symphony Handoff (2026-10-13) plans coordbench's first benchmark in three dispatches: a survey of which of the 50 pre-registered flash pairs grade on runners, a pilot, then five arms (solo, coop, coop-git, team, sdlc) on every pair that grades, '42 known, up to 50', sized at 378 sessions and powered on 42 pairs. Its 294 sessions and about $125 for four arms are quoted only as the kit's own estimate. Symphony in Brief (2026-10-14) reports the survey done (tag survey-1) and the pre-registered run as 50 pairs from 20 tasks under the same five arms. So 42 is the handoff's own provisional planning count, which the later in-brief settles at 50, and the arms agree across both pages. The book should carry five arms and 50 pairs from the in-brief, with 42 and 378 sessions as the handoff's earlier sizing; the texts leave open the session count and cost for the 50-pair run, which coordbench's PLAN.md at the cited commit or a run record would have to state.",
+     "context_notes": []
+    },
+    {
+     "name": "scope-the-readers-computed",
+     "title": "scopes the pages state or the readers computed",
+     "rows": [
+      24,
+      31
+     ],
+     "context": [
+      20
+     ],
+     "extra": [],
+     "points": [
+      "The scale's scope-or-unit-differs needs a scope 'as the pages state'. Row 24's ruling rests on a sum it computed, 3,461 + 15 + 130 = 3,606, set beside the atlas's count of 3,606 lateral csv files; whether either page says its 130 counts files and not patients is the question.",
+      "Row 31's ruling reads the handoff's 1.2 GB as the two-file total of its grid folder, from its grid-state lines, while its card calls 1.2 GB the zip's size; whether the page states that scope or the ruling inferred it is the question.",
+      "Row 20, a pair of the same kind (714 and 716 Mendeley images, the atlas listing Mendeley-716 as an alias), held as confirmed-contradiction; whether rows 24 and 31 should be read the same way, as confirmed-contradiction or cannot-tell with their rulings' reasons as the hint, is for the texts to settle."
+     ],
+     "note": "In all three rows the two pages give one fixed quantity of one dataset different values, and the scope that would reconcile them is something a reader worked out, not something either page states. For BUU-LSPINE the atlas gives 129 four-lumbar and 15 six-lumbar among 3,600 patients; the decisions page gives 130 sacral and 15 lumbar with no total, and only a computed sum ties its counts to the atlas's 3,606 lateral csv files. For the NHANES II annotations zip the handoff's card says 1.2 GB and the atlas says 1,017,496,285 bytes; the handoff's footer gives 1.2 GB for a two-file folder, but the card does not say its figure is that total. So rows 24 and 31 are confirmed contradictions, like row 20. The book should carry the atlas's figures, credited to the atlas, with the other values flagged and the inferred explanations noted as what a record has to confirm. Still open: a recount of the L4L6 sheet by patient, a per-file listing of the nhanes_annotated folder, and a count of the Mendeley Dataset.zip by file type.",
+     "context_notes": [
+      {
+       "index": 20,
+       "agrees": true,
+       "note": "Confirmed-contradiction fits: the atlas counts 714 jpg and lists Mendeley-716 as an alias while the handoff gives 716 images (208 + 508), and neither page states a scope that sets them apart. Its hint, a file count of the archive before choosing, matches how rows 24 and 31 are now read."
+      }
+     ]
+    }
+   ]
+  }
  }
 }

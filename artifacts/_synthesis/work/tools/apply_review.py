@@ -16,7 +16,9 @@ Usage: apply_review.py REVIEW NUMBERS MERGED_IN MERGED_OUT
   confirmed number collision the review left out). Each verdict it read gets its outcome under
   followup, with the fields a ruling replaced kept there under before, so a verdict that was
   already overturned or read again keeps its first as well; the reading goes into the record's
-  followup and the review's own items stay as they were."""
+  followup and the review's own items stay as they were. Where the reading holds a group
+  re-rule, a row's group judge, when it does not keep the verdict, has the last word, and the
+  outcome is set against the verdict the follow-up read."""
 import json
 import os
 import sys
@@ -52,23 +54,32 @@ def read_verdict(M, N, it):
 
 
 def ruled(v, it):
-    """One verdict's outcome, with a ruling that does not side with the skeptic put in its place.
-    Returns the outcome and the fields the ruling replaced, or None when nothing was replaced."""
-    ruling = it.get("ruling")
+    """One verdict's outcome. A ruling that does not side with the skeptic is put in its place,
+    and then a group re-rule that does not keep it, so the verdict reads as the last reader to
+    change it has it. The outcome is set against the verdict the reading read: another verdict
+    is overturned, the same verdict in other words a corrected hint. Returns the outcome and the
+    fields replaced, or None when nothing was replaced."""
+    ruling, regroup = it.get("ruling"), it.get("regroup")
     if not ruling:
         require(it["recheck"]["holds"] and it["recheck"]["hint_ok"], f"{it['stratum']} row {it['index']} is disputed with no ruling")
-        return "held", None
-    if ruling["sided_with"] == "skeptic":
+    elif ruling["sided_with"] == "skeptic":
         require(ruling["verdict"] == it["first"], f"{it['stratum']} row {it['index']} sides with the skeptic on another verdict")
-        return "held", None
     before = {f: v.get(f) for f in FIRST_FIELDS}
-    v.update({f: ruling[f] for f in FIRST_FIELDS})
-    return ("verdict overturned" if ruling["verdict"] != it["first"] else "hint corrected"), before
+    if ruling and ruling["sided_with"] != "skeptic":
+        v.update({f: ruling[f] for f in FIRST_FIELDS})
+    if regroup and not regroup["keep"]:
+        v.update({f: regroup[f] for f in FIRST_FIELDS})
+    if all(v.get(f) == before[f] for f in FIRST_FIELDS):
+        return "held", None
+    return ("verdict overturned" if v["verdict"] != it["first"] else "hint corrected"), before
 
 
 def outcome_row(it, v, outcome):
-    return {"stratum": it["stratum"], "index": it["index"], "side": it["side"], "drawn": it["drawn"],
-            "first": it["first"], "final": v["verdict"], "outcome": outcome}
+    row = {"stratum": it["stratum"], "index": it["index"], "side": it["side"], "drawn": it["drawn"],
+           "first": it["first"], "final": v["verdict"], "outcome": outcome}
+    if it.get("regroup"):
+        row["regroup"] = {"group": it["regroup"]["group"], "keep": it["regroup"]["keep"]}
+    return row
 
 
 def apply(review, N, M):
@@ -77,6 +88,7 @@ def apply(review, N, M):
         v = read_verdict(M, N, it)
         outcome, before = ruled(v, it)
         if before:
+            require("first" not in v, f"{it['stratum']} row {it['index']} holds a first verdict already, which this would replace")
             v["first"] = before
         v["review"] = outcome
         summary.append(outcome_row(it, v, outcome))
@@ -91,9 +103,13 @@ def apply_followup(reading, N, M):
         v = read_verdict(M, N, it)
         require("followup" not in v, f"{it['stratum']} row {it['index']} was read in a follow-up already")
         outcome, before = ruled(v, it)
-        v["followup"] = {"outcome": outcome, **({"before": before} if before else {})}
+        regrouped = it.get("regroup") and not it["regroup"]["keep"]
+        v["followup"] = {"outcome": outcome, **({"before": before} if before else {}),
+                         **({"regroup": it["regroup"]["group"]} if regrouped else {})}
         summary.append(outcome_row(it, v, outcome))
     M["followup"] = {"date": reading["date"], "about": reading["about"], "items": summary}
+    if reading.get("regroup"):
+        M["followup"]["regroup"] = reading["regroup"]
     return M
 
 
