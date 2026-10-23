@@ -1,6 +1,6 @@
 # Artifact Textbook: where to resume
 
-Written 2026-10-22 23:45 UTC by the thread "Artifact Textbook" when the owner's account reached its usage limit, so another account's session could carry the work on; rewritten on 2026-10-23 by the thread "SchwingNet textbook and Flepp critiques", which finished it. Issue #136, branch claude/136, pull request #137. Phase 1 (inventory, clusters, contradictions found, proposed table of contents) is merged by #121; its 9 questions for the owner are on #121 and still unanswered.
+Written 2026-10-22 23:45 UTC by the thread "Artifact Textbook" when the owner's account reached its usage limit, so another account's session could carry the work on; rewritten on 2026-10-23 by the thread "SchwingNet textbook and Flepp critiques", which finished it. Issue #136, branch claude/136, pull request #137. Phase 1 (inventory, clusters, contradictions found, proposed table of contents) is merged by #121; its 9 questions for the owner are on #121, where the owner's answers of 2026-10-23 are recorded too (#151).
 
 ## What this folder holds
 
@@ -38,4 +38,4 @@ check_verdict_quotes.py finds each quote the 960 verdicts give in its own artifa
 
 ## After #136
 
-Phases 2 to 4 (sourced research per cluster with every claim graded, the chapters under docs/textbook/, the experiment stubs) start only on the owner's go and his answers to the 9 questions on #121, each under an issue of its own. No grid job, training run or paid usage is part of this work.
+Phases 2 to 4 (sourced research per cluster with every claim graded, the chapters under docs/textbook/, the experiment stubs) start only on the owner's go, each under an issue of its own. The owner's answers of 2026-10-23 to the 9 questions are on #121, and table-of-contents.md gives each beside its question (#151); to render the plan again, from this folder: `python3 -I -B tools/textbook_toc.py > out/toc-hand.json`, then `python3 -I -B tools/render_toc.py out/toc-hand.json ../inventory.json ../table-of-contents.md 2026-10-22`. No grid job, training run or paid usage is part of this work.
