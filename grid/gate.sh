@@ -51,8 +51,8 @@
 # word each job came from, and touch no job it does not name. Which of them are live is read from
 # squeue, as before: hpcworker's `job status` reads every job as ended when neither squeue nor sacct
 # answers, and a gate that took that for "nothing live" would queue a second graph beside the first.
-# HPCWORKER names the hpcworker (the gate's clone hands it here), SQUEUE, SACCT and SCANCEL fakes
-# for the tests; DATA_ROOT, RUNS and MODELS other folders. Exit codes: 0 done, 64 a word
+# HPCWORKER names the hpcworker (the gate's clone hands it here), SQUEUE, SACCT, SCANCEL and
+# GETFATTR fakes for the tests; DATA_ROOT, RUNS and MODELS other folders. Exit codes: 0 done, 64 a word
 # refused, 75 busy (a word still running, or jobs still live), 2 the checkout or a file missing,
 # 1 a submission failed.
 set -uo pipefail
@@ -63,7 +63,6 @@ SQUEUE=${SQUEUE:-squeue}
 SACCT=${SACCT:-sacct}
 SCANCEL=${SCANCEL:-scancel}
 GETFATTR=${GETFATTR:-getfattr}
-DF=${DF:-df}
 VOLUME=${VOLUME:-/rs/rs_grp_oschome}
 SHARED_DATA=${SHARED_DATA:-/rs/rs_grp_oschome/shared/datasets}
 # DATA_ROOT reaches the jobs only when the caller set it (a test's folder): on the grid each stage
@@ -119,6 +118,8 @@ WHO=${USER:-$(id -un)}
 
 # shellcheck source=grid/hpcw.sh
 . "$REPO/grid/hpcw.sh"
+# shellcheck source=grid/size-rule.sh
+. "$REPO/grid/size-rule.sh"
 # status still reads what it can without one (the logs of jobs queued before issue #77 among it)
 [ "$word" = status ] || hpcw_bin > /dev/null || { echo "schwingnet $word: exit 2"; exit 2; }
 
@@ -417,14 +418,12 @@ space_lines() {  # one folder's sets, largest first: GB and the set's folder nam
   done | sort -k1,1nr
 }
 word_space() {
-  local root label bytes quota avail size
+  local root label bytes
   # Labels, never paths: status leaves the grid, and its answer names no folder of the volume.
   echo "## space on the lab volume (CephFS ceph.dir.rbytes; GB rounded up)"
-  avail=$("$DF" -BG --output=avail "$VOLUME" 2>/dev/null | tail -n 1 | tr -dc '0-9')
-  size=$("$DF" -BG --output=size "$VOLUME" 2>/dev/null | tail -n 1 | tr -dc '0-9')
-  echo "  the volume: ${avail:-?} GB free of ${size:-?} GB (df)"
-  quota=$("$GETFATTR" --only-values -n ceph.quota.max_bytes "$VOLUME" 2>/dev/null | tr -dc '0-9')
-  [ -z "$quota" ] || [ "$quota" = 0 ] || echo "  the volume's quota: $(gb_of "$quota") GB"
+  # The room under the quota as the size rule reads it (grid/size-rule.sh, #160), never df, which on
+  # CephFS reports the whole Ceph pool: 5,881,937 GB free on 2026-10-23 beside the lab's 8,845.
+  DATA=$DATA_ROOT quota_readout "$VOLUME" "Lab Volume Disk Usage (CephFS quota; 1 gb = 10^9 bytes)" | sed 's/^/  /'
   for label in "data" "shared datasets"; do
     if [ "$label" = data ]; then root=$DATA_ROOT; else root=$SHARED_DATA; fi
     [ -d "$root" ] || { echo "  $label: not there"; continue; }

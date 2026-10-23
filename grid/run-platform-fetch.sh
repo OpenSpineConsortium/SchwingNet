@@ -4,9 +4,9 @@
 # 1 empty) as one chain of Slurm jobs, one job per source through grid/platform-fetch.sbatch,
 # each submitted --dependency=afterany on the one before, so a source that fails strands nothing
 # behind it, each queued through hpcworker's job submit as a batch job (grid/hpcw.sh; bash 4.2; the
-# login node runs only hpcworker, df and this script). Every landing goes to
+# login node runs only hpcworker, getfattr, squeue, df and this script). Every landing goes to
 # /rs/rs_grp_oschome/go2432/data/<source id>/raw with a README.yaml. The gated sources run only
-# when named with --only and their token or link file is in place; the full NLST (2.3 TB) runs only
+# when named with --only and their token or link file is in place; the full NLST (11.1 TB) runs only
 # when named with --only, on the owner's yes of 2026-10-22; CT-RATE (21.3 TB) is never in the chain:
 # its line is printed at the end for the owner to run or skip.
 #
@@ -14,30 +14,29 @@
 #   bash grid/run-platform-fetch.sh --only aws_stoic2021,zenodo_lumos
 #   bash grid/run-platform-fetch.sh --gated               # the open chain plus the granted gated sources
 #   bash grid/run-platform-fetch.sh --gated-ids           # the granted gated ids, one a line (grid/gate.sh's fetch)
+#   bash grid/run-platform-fetch.sh --stated idc_nlst     # the GB a source's line states (grid/size-rule.sh)
 #   HPCW_DRY=1 bash grid/run-platform-fetch.sh            # dry run
 #
-# The size budget comes first: the stated size of every source in the chain (from the cards'
-# "GB catalogue" and the records) summed against df on /rs/rs_grp_oschome minus a 1 TB margin;
-# a source with no stated size counts as 0 and is named. The margin is 5 TB because
-# acquisition_fetch.sh stops its own job when less than 5 TB is free (--floor-tb 5).
+# Each fetch is admitted or refused whole by the owner's size rule of 2026-10-23 when its job
+# starts (grid/size-rule.sh, issue #160): its exact size, read from the source, must fit in the room
+# left under the volume's CephFS quota after what the running fetches still owe, with no floor and
+# no margin. Nothing is refused here, since a stated size is a guess and a chain holds sources of
+# every size; the budget line says what the lines state, what the quota has left and what the
+# running fetches owe, and each submitted job is marked queued, so an earlier job does not count it.
 set -uo pipefail
 REPO=${SCHWINGNET:-$HOME/SchwingNet}
-DF=${DF:-df}
 VOLUME=${VOLUME:-/rs/rs_grp_oschome}
-# 5 TB, not 1: acquisition_fetch.sh stops its own job under 5 TB free (--floor-tb 5).
-MARGIN_GB=${MARGIN_GB:-5000}
 DATA_ROOT=${DATA_ROOT:-/rs/rs_grp_oschome/go2432/data}
-ONLY=""; GATED=0; GATED_IDS=0
+ONLY=""; GATED=0; GATED_IDS=0; STATED=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --only) ONLY=$2; shift 2 ;;
     --gated) GATED=1; shift ;;
     --gated-ids) GATED_IDS=1; shift ;;
+    --stated) STATED=$2; shift 2 ;;
     *) echo "unknown argument $1"; exit 64 ;;
   esac
 done
-mkdir -p "$REPO/grid/logs"
-export SCHWINGNET="$REPO" DATA_ROOT
 
 # id|route|size_gb (0 = not stated)|licence|access|args|extra environment (VAR=value, space-separated)
 # An hf-token line's args go to reacquire.py hf-get, whose --include is a glob (fnmatch, as huggingface_hub's
@@ -86,7 +85,7 @@ zenodo_magic_ct|zenodo-token|39.1|CC BY 4.0 on the record, under its data use ag
 # names it. The full NLST is here since the owner lifted the stopping rule on 2026-10-22 ("yes
 # please add this"), choosing what the volume holds by its tally (status) and not by a yield rule.
 OWNER_LIST="
-idc_nlst|idc|2305|CC BY 4.0|open|nlst|NOTE=24,713 subjects, 2.3 TB; the owner's yes of 2026-10-22
+idc_nlst|idc|11139.6|CC BY 4.0|open|nlst|NOTE=26,254 people and 203,111 CT series, 11,139,589 MB by idc-index 25.0.5 (series_size_MB, a byte count; the card's 2.3 TB was wrong, issue #160); the owner's yes of 2026-10-22
 ipcai2025_robotic_xray_drive|gdown|0.85|not stated on the file; to ask the authors|open|1pV8qaW4kHGI8wrDWc6wVWS4za5XRWsXA|NOTE=202410191.zip, the data of arXiv 2412.08020 (Killeen and others, language-controlled robotic C-arm; the cadaver study's X-rays), shared with the owner by its author on 2026-10-22 and readable by anyone with the link
 fluorosam_weights_drive|gdown|1.0|per arcadelab/fluorosam; not stated on the file|open|1lJqVIuVFbdc9Bcmj17ac_cha-gW827Q6|NOTE=fluorosam_model_weights.pth, 1,002,351,026 bytes, the weights the FluoroSAM repository's README links, readable by anyone with the link; asked for by the 3D-to-X-ray work on 2026-10-22 as its comparison row
 hf_fluoroseg|hf-token|2650|FluoroSeg data use terms, accepted by the owner on 2026-10-22|gated|--repo benjamindkilleen/fluoroseg --repo-type dataset|TOKEN_FILE=~/.hf/token.env NOTE=the whole set, about 2.65 TB of simulated X-rays with masks, on the owner's yes of 2026-10-22 (12.6 TB free of the 22 TB quota at the time, 6.8 TB of it promised to queued fetches)
@@ -100,6 +99,13 @@ if [ "$GATED_IDS" = 1 ]; then
   sed -n 's/^\([a-z0-9_]*\)|.*/\1/p' <<< "$GATED_LIST$OWNER_LIST"
   exit 0
 fi
+if [ -n "$STATED" ]; then
+  case "$STATED" in *[!a-z0-9_]*) echo "unknown id $STATED"; exit 64 ;; esac
+  sed -n "s/^$STATED|[^|]*|\([^|]*\)|.*/\1/p" <<< "$OPEN$GATED_LIST$OWNER_LIST$APART" | head -n 1
+  exit 0
+fi
+mkdir -p "$REPO/grid/logs"
+export SCHWINGNET="$REPO" DATA_ROOT
 
 secret_file_problem() {  # secret_file_problem EXTRA: why a gated source's token or link file cannot be read yet, or nothing
   # Checked on the login node, before anything is queued, so a missing file is one line now and not
@@ -135,17 +141,23 @@ while IFS='|' read -r id route size licence access args extra; do
   n=$((n + 1))
   if [ "$size" = 0 ]; then unknown="$unknown $id"; else total_gb=$(awk -v a="$total_gb" -v b="$size" 'BEGIN { printf "%d", a + b + 0.999 }'); fi
 done <<< "$TABLE"
-free_gb=$("$DF" -BG --output=avail "$VOLUME" 2>/dev/null | tail -n 1 | tr -dc '0-9')
-[ -n "$free_gb" ] || { echo "cannot read the free space of $VOLUME with df"; exit 2; }
-echo "size budget: $n sources, $total_gb GB stated; $VOLUME has $free_gb GB free, margin $MARGIN_GB GB"
-[ -z "$unknown" ] || echo "no size stated for:${unknown} (counted as 0)" | sed "s/for: */for: /"
+DATA=$DATA_ROOT
+# shellcheck source=grid/size-rule.sh
+. "$REPO/grid/size-rule.sh"
+read -r free_gb free_from <<< "$(volume_free_gb "$VOLUME")"
+[ -n "$free_gb" ] || { echo "cannot read the free space of $VOLUME: neither its CephFS quota nor df answered"; exit 2; }
+if owed=$(owed_by_running ""); then
+  read -r owed_bytes owed_n owed_unsized <<< "$owed"
+  owed="$(gb_up "$owed_bytes") GB of it owed to $(running_fetches "$owed_n")${owed_unsized:+, and the running fetch of $owed_unsized states no size}"
+else
+  owed="what the running fetches owe not read (squeue did not answer)"
+fi
+echo "size budget: $n sources, $total_gb GB stated; $VOLUME has $free_gb GB $(free_space_words "$free_from"), $owed"
+echo "each job starts its fetch only if the exact size its source states fits the room then; one that does not lands nothing (grid/size-rule.sh)"
+[ -z "$unknown" ] || echo "no size stated on the line for:${unknown} (the job reads it from the source)" | sed "s/for: */for: /"
 if [ "$n" = 0 ] && [ -n "$missing" ]; then
   echo "refusing to submit: the token or link file of${missing} is not in place (above); nothing was queued"
   exit 2
-fi
-if [ "$total_gb" -gt $(( free_gb - MARGIN_GB )) ]; then
-  echo "refusing to submit: $total_gb GB exceeds the free space minus the margin; free room or narrow with --only"
-  exit 3
 fi
 
 # shellcheck source=grid/hpcw.sh
@@ -169,6 +181,8 @@ while IFS='|' read -r id route size licence access args extra; do
   done
   [ -z "${HPCW_DRY:-}" ] || echo "would submit $id: ROUTE=$route ARGS='$args'${NOTE:+ NOTE=...}"
   job=$(hpcw_submit "dp_fetch_$id" batch ${HPCW_AFTER[@]+"${HPCW_AFTER[@]}"} -- platform-fetch.sbatch) || { echo "hpcworker refused the fetch of $id"; exit 1; }
+  # Queued under the size rule: a fetch admitted before this one starts does not count it.
+  [ -n "${HPCW_DRY:-}" ] || mark_queued "$id" "$job"
   echo "$id: job $job${dep:+ ($dep)} $route ${size}GB"
   previous=$job; ids="$ids $id=$job"
 done <<< "$TABLE"

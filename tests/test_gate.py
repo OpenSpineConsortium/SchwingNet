@@ -37,9 +37,10 @@ if [ -f "$FAKE/sacct.out" ]; then cat "$FAKE/sacct.out"; else echo "101|sn_setup
     "scancel": """#!/bin/bash
 echo "$*" >> "$FAKE/scancel.log"
 """,
+    # df -B1 --output=avail, in bytes, as grid/size-rule.sh asks it where no CephFS quota answers
     "df": """#!/bin/bash
 echo "Avail"
-echo "900000G"
+echo "900000000000000"
 """,
 }
 
@@ -800,9 +801,13 @@ echo "the split is not disjoint; no training step reads this version"; exit 1
         count = len(self.submitted())
         self.assertEqual(self.gate("fetch", "aariz").returncode, 75)
         self.assertEqual(len(self.submitted()), count)
-        # a credentialed set goes in, its catalog job after every catalog still live
+        # a credentialed set goes in, its catalog job after every catalog still live, with the
+        # size the start chain's list stated left for that chain (grid/size-rule.sh)
+        sizes = (self.repo / "grid" / "logs" / "XRAY_SIZES.txt").read_text(encoding="utf-8").split()
+        self.assertEqual(sizes[0], started["xr_fetch"])
         done = self.gate("fetch", "vindr_pcxr")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn(f"{int(sizes[1]) // 10**9} GB of it owed to 1 running fetch", done.stdout)
         catalog = self.line_of("03-catalog.sbatch")[-1]
         self.assertIn(f"afterany:{started['catalog']},afterany:{started['xr_catalog']} ", catalog)
         # the same set again while its fetch is live: refused
@@ -836,10 +841,15 @@ echo "the split is not disjoint; no training step reads this version"; exit 1
         self.assertIn("--format=JobID,JobName,State,Elapsed,ExitCode,NodeList", (self.fake / "sacct.log").read_text(encoding="utf-8"))
 
     def test_status_tallies_the_space_each_set_takes_largest_first(self):
-        # CephFS's recursive size, faked per folder; a folder the attribute is missing on reads unknown
+        # CephFS's attributes, faked per folder: the volume's quota, use and file count, each set's
+        # recursive size; a folder the attribute is missing on reads unknown
         (self.fake / "getfattr").write_text("""#!/bin/bash
 folder=${!#}
-case "$folder" in
+case "$3:$folder" in
+  ceph.quota.max_bytes:/rs/rs_grp_oschome) echo -n 21990232555520 ;;
+  ceph.dir.rbytes:/rs/rs_grp_oschome) echo -n 13146000000000 ;;
+  ceph.dir.rfiles:/rs/rs_grp_oschome) echo -n 7008826 ;;
+  *:/rs/rs_grp_oschome) exit 1 ;;
   */big) echo -n 2500000000000 ;;
   */small) echo -n 1500000000 ;;
   */unread) exit 1 ;;
@@ -853,8 +863,20 @@ esac
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         out = done.stdout
         self.assertIn("## space on the lab volume", out)
-        self.assertIn("900000 GB free", out)
-        self.assertIn("the volume's quota: 2600 GB", out)
+        # the room under the quota as the size rule reads it, in wsuquota's layout (#160); never
+        # df's figure, which on CephFS is the whole pool's
+        readout = out[out.index("  Lab Volume Disk Usage"):].splitlines()[:8]
+        self.assertEqual(readout, [
+            "  Lab Volume Disk Usage (CephFS quota; 1 gb = 10^9 bytes)",
+            "  Used  = 59.78%  13146.00gb",
+            "  Free  = 40.22%  8844.23gb",
+            "  Total =         21990.23gb",
+            "  File Count =    7008826",
+            "  [" + "#" * 57 + "-" * 39 + "]",
+            "  Owed  =         0.00gb still to land for 0 running fetches",
+            "  Room  =         8844.23gb for a new fetch, which lands whole or not at all",
+        ])
+        self.assertNotIn("900000", out)
         self.assertIn("  data: 2600 GB in all", out)
         tally = [line.split() for line in out.splitlines() if line.startswith("    ")][:3]
         self.assertEqual(tally, [["2500", "big"], ["2", "small"], ["?", "unread"]])

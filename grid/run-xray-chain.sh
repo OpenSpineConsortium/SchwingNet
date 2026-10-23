@@ -1,7 +1,7 @@
 #!/bin/bash
 # Submit the X-ray chain as three dependent Slurm jobs through hpcworker's job submit (grid/hpcw.sh;
-# bash 4.2; the login node runs nothing but hpcworker, df and this script, which is why the size
-# budget is read with awk and not python):
+# bash 4.2; the login node runs nothing but hpcworker, getfattr, squeue, df and this script, which is
+# why the size budget is read with awk and not python):
 #   1. grid/01-fetch.sbatch        every open set of grid/fetch-xray.json to the data root
 #   2. grid/02-bank-ingest.sbatch  each raw copy into a bank, each bank into a shard (afterany:1)
 #   3. grid/03-catalog.sbatch      the catalog rebuilt and split-checked (afterany:2)
@@ -15,17 +15,17 @@
 #   HPCW_DRY=1 bash grid/run-xray-chain.sh            # dry run: print the submissions
 #
 # Before submitting it sums the sizes the list states for the chosen entries and refuses when
-# they exceed the volume's free space minus a 1 TB margin (df on /rs/rs_grp_oschome at submit
-# time); an entry whose size is null counts as 0 and is named, so the owner knows it is unbudgeted.
+# they exceed the room left under the volume's CephFS quota after what the running fetches still
+# owe, read at submit time with no margin (grid/size-rule.sh; df reports the whole Ceph pool there,
+# issue #160); an entry whose size is null counts as 0 and is named, so the owner knows it is
+# unbudgeted. The X-ray sets are not yet sized from their sources one by one, as the CT platform's
+# are in their jobs: until they are, this sum of the list's sizes is their only check.
 # PYDRV: the python the stages run; the repository's pixi environment where pixi installed it,
 # else python3 (then stage 2 and 3 fail at pydantic, and the report says so).
 set -uo pipefail
 REPO=${SCHWINGNET:-$HOME/SchwingNet}
-DF=${DF:-df}
 VOLUME=${VOLUME:-/rs/rs_grp_oschome}
-# 5 TB, not 1: acquisition_fetch.sh stops its own job when the volume falls under 5 TB free
-# (--floor-tb 5), so a chain admitted below that would start and stop at once.
-MARGIN_GB=${MARGIN_GB:-5000}
+DATA=${DATA_ROOT:-/rs/rs_grp_oschome/go2432/data}
 LIST=$REPO/grid/fetch-xray.json
 ONLY=""; CRED=0
 while [ $# -gt 0 ]; do
@@ -65,12 +65,21 @@ fi
 if [ "$count" = 0 ]; then
   echo "refusing: no entry of grid/fetch-xray.json is named by --only ${ONLY:-}; nothing to submit"; exit 64
 fi
-free_gb=$("$DF" -BG --output=avail "$VOLUME" 2>/dev/null | tail -n 1 | tr -dc '0-9')
-[ -n "$free_gb" ] || { echo "cannot read the free space of $VOLUME with df"; exit 2; }
-echo "size budget: $count entries, $total_gb GB stated; $VOLUME has $free_gb GB free, margin $MARGIN_GB GB"
+# shellcheck source=grid/size-rule.sh
+. "$REPO/grid/size-rule.sh"
+read -r free_gb free_from <<< "$(volume_free_gb "$VOLUME")"
+[ -n "$free_gb" ] || { echo "cannot read the free space of $VOLUME: neither its CephFS quota nor df answered"; exit 2; }
+owed=$(owed_by_running "") || { echo "cannot read what the running fetches owe: squeue did not answer; nothing was queued"; exit 2; }
+read -r owed_bytes owed_n owed_unsized <<< "$owed"
+owed_gb=$(gb_up "$owed_bytes")
+echo "size budget: $count entries, $total_gb GB stated; $VOLUME has $free_gb GB $(free_space_words "$free_from"), $owed_gb GB of it owed to $(running_fetches "$owed_n")"
 [ -z "$unknown" ] || echo "no size stated for:${unknown} (counted as 0; read the page)" | sed "s/for: */for: /"
-if [ "$total_gb" -gt $(( free_gb - MARGIN_GB )) ]; then
-  echo "refusing to submit: $total_gb GB exceeds the free space minus the margin; free room or narrow with --only"
+if [ -n "$owed_unsized" ]; then
+  echo "refusing to submit: the running fetch of $owed_unsized states no size, so nothing is admitted beside it"
+  exit 3
+fi
+if [ "$total_gb" -gt $(( free_gb - owed_gb )) ]; then
+  echo "refusing to submit: $total_gb GB exceeds the room the quota has left after the running fetches; free room or narrow with --only"
   exit 3
 fi
 
@@ -100,6 +109,9 @@ j3=$(hpcw_submit xr_catalog batch ${HPCW_AFTER[@]+"${HPCW_AFTER[@]}"} -- 03-cata
 {
   echo "$(date '+%F %T') fetch=$j1 bank=$j2 catalog=$j3 only=${ONLY:-all} credentialed=$CRED size_gb=$total_gb pydrv=$PYDRV"
 } | tee -a "$REPO/grid/LAST_RUN.txt"
+# What the size rule counts the fetch at while it runs (grid/size-rule.sh): the sizes the list
+# states, rounded up past their fractions; a set whose size the list leaves null counts nothing.
+[ -n "${HPCW_DRY:-}" ] || echo "$j1 $(( (total_gb + 1) * 1000000000 )) $(date -u '+%FT%TZ')" >> "$REPO/grid/logs/XRAY_SIZES.txt"
 echo "submitted: 1 fetch $j1 -> 2 bank-ingest $j2 (afterany) -> 3 catalog $j3 (afterany)"
 echo "ETA: stage 1 is network-bound, about 1 hour per 20 GB on a compute node (${total_gb} GB stated, so about $(( total_gb / 20 + 1 )) hours; a 4-day wall time, requeued on preemption); stage 2 minutes per source (hashing and copying; a JPG set converts at a few hundred frames a minute); stage 3 under a minute."
 echo "watch: the gate word status; the reports: $REPO/grid/logs/0*-STAGE-REPORT.md"
