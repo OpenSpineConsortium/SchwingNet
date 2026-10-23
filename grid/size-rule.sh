@@ -34,9 +34,11 @@
 # grid's mount gives a folder's entry count as its size instead (the status word at 17:15 UTC gave
 # the volume 3 and the data root 126; issue #172), so where stat cannot stand in, the use is the sum
 # of what the volume's own entries hold, each folder by its ceph.dir.rbytes, which reads clean below
-# the volume, and each file or link by its own size: taken only where every entry reads whole, they
-# are as many as stat gives as the volume's size, and the sum is no less than the data root's
-# (use_by_entries), so one entry left out or cut short admits nothing.
+# the volume, and each file or link by its own size: taken only where every entry reads whole on the
+# volume's own mount, none of them a mount the mount table lists, they are as many as stat gives as
+# the volume's size, and the one that holds the data root holds no less than the data root's own
+# ceph.dir.rbytes, read whole before them (use_by_entries), so an entry left out, the one that holds
+# the data root cut short, or a folder mounted over one of them admits nothing.
 #
 # What each fetch still owes is kept beside its landing, $DATA/<id>/meta:
 #   QUEUED   "<job> <utc>", written when grid/run-platform-fetch.sh submits the job
@@ -54,8 +56,8 @@
 #
 # Sourced by grid/platform-fetch.sbatch (the decision, in the job), grid/run-platform-fetch.sh and
 # grid/run-xray-chain.sh (the room after the running fetches, on the login node). DATA, VOLUME and
-# REPO name the folders; GETFATTR, XATTR_PYTHON, STAT and SQUEUE the tools, so a test can stand in for
-# them.
+# REPO name the folders; GETFATTR, XATTR_PYTHON, STAT and SQUEUE the tools, and MOUNTINFO the mount
+# table, so a test can stand in for them.
 
 xattr_bytes() {  # xattr_bytes NAME FOLDER: every byte of a CephFS attribute's value, NULs and all; 2 when no reader runs
   local python=${XATTR_PYTHON:-python3}
@@ -101,14 +103,17 @@ xattr_digits() {  # xattr_digits NAME FOLDER: a CephFS attribute as a count, or 
   echo "$value"
 }
 
-xattr_whole() {  # xattr_whole NAME FOLDER: the attribute as a count where every byte of it is a digit, NULs at its end aside; else nothing
-  local value digits
-  # Every byte, past any NUL, so a NUL cannot cut a count short unseen: a NUL becomes z, a z or any
-  # other byte that is no digit x, and nothing but NULs may follow the digits.
-  value=$(xattr_bytes "$1" "$2" | LC_ALL=C tr 'z\000' 'xz' | LC_ALL=C tr -c '0-9z' 'x')
-  digits=${value%%z*}
-  case "${value#"$digits"}" in *[!z]*) return 0 ;; esac
-  if is_count "$digits"; then echo "$digits"; fi
+xattr_whole() {  # xattr_whole NAME FOLDER: the attribute as a count where every byte of it is a digit; else nothing, ending 3 where it is there and no count
+  local value
+  # Every byte, past any NUL, so a NUL cannot cut a count short unseen: a NUL, a line break or any
+  # other byte that is no digit becomes x, and a value that holds one is no count. A NUL after the
+  # digits is no exception: CephFS's kernel client before Linux 5.4 wrote these values with
+  # snprintf, which puts a NUL over the last digit where the reader's buffer is just the value's
+  # length, and the count would read a tenth of what it is.
+  value=$(xattr_bytes "$1" "$2" | LC_ALL=C tr -c '0-9' 'x')
+  [ -n "$value" ] || return 0
+  is_count "$value" || return 3
+  echo "$value"
 }
 
 xattr_words() {  # xattr_words NAME FOLDER: what one reading of the attribute gave, in words, for the readout
@@ -148,10 +153,33 @@ data_root_on() {  # data_root_on VOLUME: 0 where DATA names a folder inside VOLU
   [ -n "$device" ] && [ "$(device_of "$DATA")" = "$device" ] || return 3
 }
 
-data_root_bytes() {  # data_root_bytes VOLUME: the data root's ceph.dir.rbytes where the data root lies inside VOLUME on its mount, a floor under VOLUME's use; else nothing
+data_root_bytes() {  # data_root_bytes VOLUME: the data root's ceph.dir.rbytes, every byte of it a digit, where the data root lies inside VOLUME on its mount, a floor under what VOLUME and its entry that holds the data root hold; else nothing, ending 3 where it lies there and its attribute is there and no count
+  # Read whole, since a floor cut short at a NUL would pass a reading cut short as well.
   data_root_on "$1" || return 0
-  xattr_digits ceph.dir.rbytes "$DATA"
-  return 0
+  xattr_whole ceph.dir.rbytes "$DATA"
+}
+
+holding_entry() {  # holding_entry VOLUME: the name of VOLUME's own entry the data root lies under, every link resolved, where the data root lies inside VOLUME on its mount; else nothing
+  local volume data rest
+  data_root_on "$1" || return 0
+  volume=$(readlink -f -- "$1" 2>/dev/null) && data=$(readlink -f -- "$DATA" 2>/dev/null) || return 0
+  rest=${data#"${volume%/}"/}
+  printf '%s' "${rest%%/*}"
+}
+
+mount_points() {  # mount_points: every mount point the mount table lists, as the kernel writes it there, one a line; fails where the table cannot be read
+  # The kernel writes a space, a tab, a line break and a backslash in a mount point as \ooo, so
+  # every point is one line and its fifth field.
+  awk '{ print $5 }' "${MOUNTINFO:-/proc/self/mountinfo}" 2> /dev/null
+}
+
+is_mount_point() {  # is_mount_point POINTS PATH: whether POINTS, mount_points' list, holds PATH, a path whose links are resolved, as the kernel resolves a mount point's
+  local escaped=${2//\\/\\134}
+  escaped=${escaped// /\\040}
+  escaped=${escaped//$'\t'/\\011}
+  escaped=${escaped//$'\n'/\\012}
+  case $'\n'"$1"$'\n' in *$'\n'"$escaped"$'\n'*) return 0 ;; esac
+  return 1
 }
 
 stat_gives_rbytes() {  # stat_gives_rbytes VOLUME: where stat gives a folder's ceph.dir.rbytes as its size on VOLUME's mount, as the data root shows, the data root's bytes, the lower of two readings; else nothing, ending 1
@@ -198,52 +226,64 @@ entry_bytes() {  # entry_bytes ENTRY DEVICE: what the volume's entry ENTRY holds
   if is_count "$bytes"; then echo "$bytes"; fi
 }
 
-entries_census() {  # entries_census VOLUME: "<entries> <folders> <elsewhere> <unread> <bytes>", VOLUME's own entries, the folders among them, those on another device, those that read no count and what the others hold; 1 where stat gives no device for VOLUME
-  local device entry bytes rc entries=0 folders=0 elsewhere=0 unread=0 sum=0
+entries_census() {  # entries_census VOLUME: "<entries> <folders> <elsewhere> <unread> <bytes> <held>", VOLUME's own entries, the folders among them, those on another mount, those that cannot be read or read no count, what the others hold and what the one that holds the data root holds, - where none reads as it; 1 where stat gives no device for VOLUME, 2 where the mount table cannot be read
+  local device volume points holding entry name bytes rc entries=0 folders=0 elsewhere=0 unread=0 sum=0 held=-
   device=$(device_of "$1")
   [ -n "$device" ] || return 1
+  volume=$(readlink -f -- "$1" 2>/dev/null) || return 1
+  points=$(mount_points) || return 2
+  holding=$(holding_entry "$1")
   while IFS= read -r -d '' entry; do
     entries=$(( entries + 1 ))
     if [ -d "$entry" ] && [ ! -L "$entry" ]; then folders=$(( folders + 1 )); fi
+    name=${entry##*/}
+    # A mount at the entry, which a kernel that gives every CephFS folder the same device hides
+    # from stat, and one on another device apart; one whose count would take the sum past 18
+    # digits, which bash wraps without a word, as one that reads no count.
+    if is_mount_point "$points" "${volume%/}/$name"; then
+      elsewhere=$(( elsewhere + 1 ))
+      continue
+    fi
     bytes=$(entry_bytes "$entry" "$device")
     rc=$?
-    # One on another device apart; one whose count would take the sum past 18 digits, which bash
-    # wraps without a word, as one that reads no count.
     if [ "$rc" = 2 ]; then
       elsewhere=$(( elsewhere + 1 ))
     elif [ -n "$bytes" ] && fits_in_count "$sum" "$bytes"; then
       sum=$(( sum + bytes ))
+      [ "$name" != "$holding" ] || held=$bytes
     else
       unread=$(( unread + 1 ))
     fi
   done < <(volume_entries "$1")
-  echo "$entries $folders $elsewhere $unread $sum"
+  echo "$entries $folders $elsewhere $unread $sum $held"
 }
 
-use_by_entries() {  # use_by_entries VOLUME: what VOLUME holds, the sum of what its own entries hold, where that sum is a reading of it; else nothing, ending 1
-  local entries elsewhere unread sum floor
-  read -r entries _ elsewhere unread sum <<< "$(entries_census "$1")"
-  # Every entry read whole on the volume's mount (a census that failed gives nothing, which is no
-  # 0), and as many entries as the mount counts, where it gives a folder's entry count as its size,
-  # so the listing left none out; and no less than the data root's, which one of them holds, so no
-  # entry cut short reads as less than it.
+use_by_entries() {  # use_by_entries VOLUME: "<bytes> <entries> <folders> <held> <floor>", what VOLUME holds as the sum of what its own entries hold, where that sum is a reading of it, with the figures that show it: its entries, the folders among them, what the one that holds the data root holds and the data root's ceph.dir.rbytes; else nothing, ending 1
+  local floor entries folders elsewhere unread sum held
+  # The data root's figure first, so bytes landing under it while the entries are read can only
+  # raise what the entry that holds it holds above it.
+  floor=$(data_root_bytes "$1")
+  read -r entries folders elsewhere unread sum held <<< "$(entries_census "$1")"
+  # Every entry read whole on the volume's own mount (a census that failed gives nothing, which is
+  # no 0), and as many entries as the mount counts, where it gives a folder's entry count as its
+  # size, so the listing left none out; and the entry that holds the data root, the one entry a
+  # figure of its own can check, holds no less than the data root, so it was not cut short.
   [ "$elsewhere" = 0 ] && [ "$unread" = 0 ] || return 1
   [ "$(size_by_stat "$1")" = "$entries" ] || return 1
-  floor=$(data_root_bytes "$1")
-  [ -n "$floor" ] && [ "$sum" -ge "$floor" ] || return 1
-  echo "$sum"
+  [ -n "$floor" ] && is_count "$held" && [ "$held" -ge "$floor" ] || return 1
+  echo "$sum $entries $folders $held $floor"
 }
 
-volume_used() {  # volume_used VOLUME: "<bytes> attribute", "<bytes> stat" or "<bytes> entries", what VOLUME holds, or nothing where its attribute is not there; 2 when no reader ran, 3 when no reading counts
+volume_used() {  # volume_used VOLUME: "<bytes> attribute", "<bytes> stat" or "<bytes> entries <entries> <folders> <held> <floor>", what VOLUME holds, with the figures use_by_entries checked a sum by, or nothing where its attribute is not there; 2 when no reader ran, 3 when no reading counts
   local used rc floor
   used=$(xattr_digits ceph.dir.rbytes "$1")
   rc=$?
   [ "$rc" != 2 ] || return 2
   [ "$rc" = 3 ] || [ -n "$used" ] || return 0
   # The volume holds the data root, so a count below the data root's is no reading of the volume,
-  # whatever cut it short, as a NUL among its digits would.
-  if [ "$rc" = 0 ]; then
-    floor=$(data_root_bytes "$1")
+  # whatever cut it short, as a NUL among its digits would; nor is one beside a data root whose own
+  # attribute is there and no count, since nothing then shows it was not cut short.
+  if [ "$rc" = 0 ] && floor=$(data_root_bytes "$1"); then
     if [ -z "$floor" ] || [ "$used" -ge "$floor" ]; then
       echo "$used attribute"
       return 0
@@ -259,7 +299,7 @@ volume_used() {  # volume_used VOLUME: "<bytes> attribute", "<bytes> stat" or "<
   # Where stat gives a folder's entry count as its size, as on the grid (#172), what the volume's
   # own entries hold, whose attributes read where the volume's does not.
   used=$(use_by_entries "$1") || return 3
-  echo "$used entries"
+  echo "${used%% *} entries ${used#* }"
 }
 
 getfattr_bytes() {  # getfattr_bytes NAME FOLDER: "<n> bytes, <text>", every byte getfattr gives, one that is no printable ASCII as \ooo, the first 96 shown
@@ -303,35 +343,39 @@ counted() {  # counted N ONE MANY: "1 ONE" or "N MANY"
 }
 
 entries_words() {  # entries_words VOLUME: what the volume's own entries hold and why their sum is no reading of it, in counts and never names, since the status word leaves the grid
-  local entries folders elsewhere unread sum size floor held
-  read -r entries folders elsewhere unread sum <<< "$(entries_census "$1")"
-  if [ -z "$entries" ]; then
-    echo "its own entries cannot be summed, since stat gives it no device"
-    return 0
-  fi
+  local census entries folders elsewhere unread sum held size floor said
+  census=$(entries_census "$1")
+  case $? in
+    1) echo "its own entries cannot be summed, since stat gives it no device"; return 0 ;;
+    2) echo "its own entries cannot be summed, since the mount table cannot be read to show none of them is a mount"; return 0 ;;
+  esac
+  read -r entries folders elsewhere unread sum held <<< "$census"
   if [ "$entries" = 0 ]; then
     echo "its folder lists no entry to sum, as one that cannot be read lists none"
     return 0
   fi
-  held="its own $(counted "$entries" entry entries), $(counted "$folders" "of them a folder" "of them folders"), hold $sum where they read"
+  said="its own $(counted "$entries" entry entries), $(counted "$folders" "of them a folder" "of them folders"), hold $sum where they read"
   size=$(size_by_stat "$1")
   floor=$(data_root_bytes "$1")
   if [ "$elsewhere" != 0 ]; then
-    echo "$held, and $(counted "$elsewhere" lies lie) on another mount, which hides what the volume holds under it, so their sum is no reading of it"
+    echo "$said, and $(counted "$elsewhere" lies lie) on another mount, which hides what the volume holds under it, so their sum is no reading of it"
   elif [ "$unread" != 0 ]; then
-    echo "$held, and $(counted "$unread" reads read) no count, so their sum is no reading of it"
+    echo "$said, and $(counted "$unread" "cannot be read or reads" "cannot be read or read") no count, so their sum is no reading of it"
   elif [ "$size" != "$entries" ]; then
-    echo "$held, and stat gives the volume's size as $(stat_figure %s "$1"), not $entries, so the listing may leave some out"
+    size=$(stat_figure %s "$1")
+    echo "$said, and stat gives the volume's size as ${size:-nothing} where its entries are $entries, so the listing cannot be checked against it"
   elif [ -z "$floor" ]; then
-    echo "$held, with no data root inside it on its mount whose ceph.dir.rbytes reads, to show their sum leaves none short"
-  elif [ "$sum" -lt "$floor" ]; then
-    echo "$held, less than the data root's $floor inside it, so their sum is no reading of it"
+    echo "$said, with no data root inside it on its mount whose ceph.dir.rbytes reads whole as a count, to show their sum leaves none short"
+  elif ! is_count "$held"; then
+    echo "$said, with none of them read as the one that holds the data root, to show their sum leaves none short"
+  elif [ "$held" -lt "$floor" ]; then
+    echo "$said, and the one that holds the data root holds $held, less than the data root's $floor, so their sum is no reading of it"
   else
-    echo "$held"
+    echo "$said"
   fi
 }
 
-rbytes_words() {  # rbytes_words VOLUME: VOLUME's ceph.dir.rbytes in words; 4 where it reads, as no count or as a count below the data root's, and so is no reading of the volume
+rbytes_words() {  # rbytes_words VOLUME: VOLUME's ceph.dir.rbytes in words; 4 where it reads, as no count, as a count below the data root's or beside a data root whose own is no count, and so is no reading of the volume
   local value floor
   value=$(xattr_digits ceph.dir.rbytes "$1")
   case $? in
@@ -339,7 +383,10 @@ rbytes_words() {  # rbytes_words VOLUME: VOLUME's ceph.dir.rbytes in words; 4 wh
     0) [ -n "$value" ] || { xattr_words ceph.dir.rbytes "$1"; return 0; } ;;
     *) xattr_words ceph.dir.rbytes "$1"; return 0 ;;
   esac
-  floor=$(data_root_bytes "$1")
+  if ! floor=$(data_root_bytes "$1"); then
+    echo "ceph.dir.rbytes reads $value, and the data root's inside it reads as no count, so nothing shows it is a reading of the volume"
+    return 4
+  fi
   if [ -n "$floor" ] && [ "$value" -lt "$floor" ]; then
     echo "ceph.dir.rbytes reads $value, less than the data root's $floor inside it, so it is no reading of the volume"
     return 4
@@ -369,12 +416,11 @@ stat_note() {  # stat_note VOLUME: why the readout's Used is the volume's size b
   echo "On this mount stat gives a folder's ceph.dir.rbytes as its size: the data root's size by stat, $(size_by_stat "$DATA"), matches its own ceph.dir.rbytes read before and after"
 }
 
-entries_note() {  # entries_note VOLUME: why the readout's Used is the sum of what the volume's own entries hold, and what shows it leaves none out
-  local entries folders bytes
-  read -r entries folders _ _ _ <<< "$(entries_census "$1")"
+entries_note() {  # entries_note VOLUME ENTRIES FOLDERS HELD FLOOR: why the readout's Used is the sum of what the volume's own entries hold, by the figures use_by_entries checked it by
+  local bytes
   bytes=$(getfattr_bytes ceph.dir.rbytes "$1")
   echo "Used is the sum of what the volume's own entries hold, since its $(rbytes_words "$1")${bytes:+; getfattr gives it as $bytes}"
-  echo "Each of its $(counted "$entries" entry entries), $(counted "$folders" "of them a folder" "of them folders"), read whole on the volume's mount, a folder by its ceph.dir.rbytes and a file or link by its size: stat gives the volume's size as $(stat_figure %s "$1"), its count of entries, and the sum is no less than the data root's ceph.dir.rbytes, $(data_root_bytes "$1")"
+  echo "Each of its $(counted "$2" entry entries), $(counted "$3" "of them a folder" "of them folders"), read whole on the volume's own mount, none of them a mount, a folder by its ceph.dir.rbytes and a file or link by its size: stat gives the volume's size as $2, its count of entries, and the one that holds the data root holds $4, no less than the data root's ceph.dir.rbytes, $5"
 }
 
 volume_free_bytes() {  # volume_free_bytes VOLUME: "<bytes free> quota" or "<bytes free> df", else nothing
@@ -634,9 +680,9 @@ mark_queued() {  # mark_queued ID JOB: the QUEUED line of a fetch sent under the
 # reading, so the readout and the rule never disagree. Called by grid/oschome-quota.sh in the owner's
 # shell and by grid/gate.sh's status word, which names no folder, so the title is the caller's.
 quota_readout() {  # quota_readout VOLUME TITLE: the readout; 1 when the volume has no quota that can be read
-  local volume=$1 quota used how files files_said="" max_files said owed n unsized
+  local volume=$1 quota used how entries folders held floor files files_said="" max_files said owed n unsized
   quota=$(xattr_digits ceph.quota.max_bytes "$volume")
-  read -r used how <<< "$(volume_used "$volume")"
+  read -r used how entries folders held floor <<< "$(volume_used "$volume")"
   files=$(xattr_digits ceph.dir.rfiles "$volume")
   max_files=$(xattr_digits ceph.quota.max_files "$volume")
   echo "$2"
@@ -661,7 +707,7 @@ quota_readout() {  # quota_readout VOLUME TITLE: the readout; 1 when the volume 
     bar = "["; for (i = 0; i < 96; i++) bar = bar (i < cells ? "#" : "-"); print bar "]"
   }'
   [ "$how" != stat ] || stat_note "$volume"
-  [ "$how" != entries ] || entries_note "$volume"
+  [ "$how" != entries ] || entries_note "$volume" "$entries" "$folders" "$held" "$floor"
   if ! said=$(owed_by_running ""); then
     echo "Owed  =         not known; squeue did not answer, so the size rule admits no fetch now"
     return 0
