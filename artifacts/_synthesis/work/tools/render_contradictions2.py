@@ -217,6 +217,66 @@ def held(items):
     return sum(1 for x in items if x["outcome"] != "verdict overturned")
 
 
+def side_of(verdict, confirmed):
+    return "confirmed" if verdict in confirmed else "cannot-tell" if verdict == "cannot-tell" else "dismissed"
+
+
+def drawn_side(x):
+    """A drawn verdict's side; the review's files put cannot-tell with the dismissals."""
+    return "confirmed" if x["side"] == "confirmed" else side_of(x["first"], ())
+
+
+def unreviewed_by_stratum(M, N, nv, reviewed):
+    """How many of the verdicts the review did not read each stratum holds, on each side."""
+    pop = {}
+    for c in M["clusters"]:
+        for i, v in enumerate(c["verdicts"]):
+            if v and (c["cluster"], i) not in reviewed:
+                pop.setdefault(c["cluster"], Counter())[side_of(v["verdict"], CONFIRMED_C)] += 1
+    for j, x in enumerate(N["candidates"]):
+        v = nv.get(number_key(x))
+        if v and ("Number collisions", j) not in reviewed:
+            pop.setdefault("Number collisions", Counter())[side_of(v["verdict"], CONFIRMED_N)] += 1
+    return pop
+
+
+def weighted(drawn, pop, side, by_stratum=True):
+    """Expected verdicts that hold among one side's unreviewed ones: each stratum's held rate
+    times the unreviewed verdicts it holds. Every stratum gave the review the same number of verdicts
+    whatever its size, so the plain rate counts a small stratum as much as a large one. A
+    stratum with none drawn on the side takes the side's pooled rate, and cannot-tell, drawn
+    across all strata, is pooled."""
+    pool = [x for x in drawn if drawn_side(x) == side]
+    require(pool, f"no verdict drawn on the side {side}")
+    pooled = held(pool) / len(pool)
+    if not by_stratum:
+        return {s: p[side] * pooled for s, p in pop.items()}
+    expect = {}
+    for s, p in pop.items():
+        mine = [x for x in pool if x["stratum"] == s]
+        expect[s] = p[side] * (held(mine) / len(mine) if mine else pooled)
+    return expect
+
+
+def weighted_words(drawn, pop):
+    """The weighted rates, and the stratum where the most unreviewed confirmed verdicts may be wrong."""
+    count = {side: sum(p[side] for p in pop.values()) for side in ("confirmed", "dismissed", "cannot-tell")}
+    on = weighted(drawn, pop, "confirmed")
+    off = sum(weighted(drawn, pop, "dismissed").values()) + sum(weighted(drawn, pop, "cannot-tell", by_stratum=False).values())
+    others = count["dismissed"] + count["cannot-tell"]
+    worst = max(pop, key=lambda s: pop[s]["confirmed"] - on[s])
+    mine = [x for x in drawn if x["stratum"] == worst and drawn_side(x) == "confirmed"]
+    name = "the number collisions" if worst == "Number collisions" else cell(worst)
+    why = (f"{len(mine) - held(mine)} of its {len(mine)} drawn were overturned" if mine
+           else "none of its confirmed verdicts was drawn")
+    return (f"These rates are unweighted: every stratum gave the same number of verdicts whatever its size. "
+            f"Weighted by how many of the {count['confirmed'] + others} verdicts the review did not read each stratum holds, "
+            f"about {100 * sum(on.values()) / count['confirmed']:.0f} % of the {count['confirmed']} on the confirmed list and {100 * off / others:.0f} % of the {others} others are expected to hold, "
+            f"with wider intervals than the counts above, since a few drawn verdicts stand for each stratum. "
+            f"Most of the unreviewed confirmed verdicts that may be wrong are in {name}: {why}, "
+            f"and it holds {pop[worst]['confirmed']} of the {count['confirmed']}, so read those first.\n")
+
+
 def review_section(M, N, nv):
     R = M.get("review")
     if not R:
@@ -230,6 +290,7 @@ def review_section(M, N, nv):
     hinted = [x for x in items if x["outcome"] == "hint corrected"]
     lo_on, hi_on = wilson(held(on_list), len(on_list))
     lo_off, hi_off = wilson(held(off_list), len(off_list))
+    pop = unreviewed_by_stratum(M, N, nv, {(x["stratum"], x["index"]) for x in items})
     out = ["## How far the verdicts hold\n", cell(R["about"]) + "\n",
            f"- Verdicts that put a candidate on the confirmed list, drawn at random: {rate(held(on_list), len(on_list))}.",
            f"- Verdicts that kept a candidate off it, drawn at random: {rate(held(off_list), len(off_list))}.",
@@ -237,6 +298,7 @@ def review_section(M, N, nv):
            f"In all {len(over)} verdicts were overturned and {len(hinted)} held with a corrected hint. Each now reads as the ruling has it, with its first verdict in the Review column of its row. "
            f"The rest were not read again: by the draw's rates, between {100 * (1 - hi_on):.0f} and {100 * (1 - lo_on):.0f} % of the other confirmed verdicts may be wrong, "
            f"and between {100 * (1 - hi_off):.0f} and {100 * (1 - lo_off):.0f} % of the others, so read a row before relying on it.\n",
+           weighted_words(drawn, pop),
            "The rows the review changed:\n"]
     for x in sorted(over + hinted, key=lambda x: (x["stratum"], x["index"])):
         where = (f"number collision {x['index']}" if x["stratum"] == "Number collisions"
