@@ -541,10 +541,10 @@
       "topic": "Where the archived files are and whether they exist yet",
       "artifact_a": "SchwingNet/spine-program-student-onboarding",
       "statement_a": "The archived files are not in the repository since 2026-10-13; they live on the grid under the shared spine-program archive.",
-      "quote_a": "not in the repository since 2026-10-13: they live on the grid under /rs/rs_grp_oschome/shared/spine-program/archive/",
+      "quote_a": "not in the repository since 2026-10-13: they live on the grid under [the lab volume]/shared/spine-program/archive/",
       "artifact_b": "SchwingNet/connect-the-grid-to-github",
       "statement_b": "The repository's links point at that archive, which the owner fills once with a script; until then the links point at nothing.",
-      "quote_b": "are links to `/rs/rs_grp_oschome/shared/spine-program/archive/`, which [the owner] fills once with a script; until he has, those links point at nothing",
+      "quote_b": "are links to `[the lab volume]/shared/spine-program/archive/`, which [the owner] fills once with a script; until he has, those links point at nothing",
       "why_it_matters": "A student sent to the archive by the onboarding finds nothing until the owner's script runs; the onboarding states as done what the next day's note calls pending."
      },
      {
@@ -2918,7 +2918,7 @@
       "topic": "Whether the shared spine-program archive on the grid is populated",
       "artifact_a": "SchwingNet/spine-program-student-onboarding",
       "statement_a": "Results, figures, manuscripts and regulatory folders live on the grid under the shared archive, and in a Beethoven session the link opens.",
-      "quote_a": "they live on the grid under /rs/rs_grp_oschome/shared/spine-program/archive/, and the repository holds a link to them in each folder. In a Beethoven session the link opens",
+      "quote_a": "they live on the grid under [the lab volume]/shared/spine-program/archive/, and the repository holds a link to them in each folder. In a Beethoven session the link opens",
       "artifact_b": "SchwingNet/connect-the-grid-to-github",
       "statement_b": "The links point at nothing until the owner fills the archive once with a script; until then the files are read from git history.",
       "quote_b": "which [the owner] fills once with a script; until he has, those links point at nothing and the files are read from git history as ARCHIVE.md says.",

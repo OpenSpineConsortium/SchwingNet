@@ -26,7 +26,9 @@ ALT_RE = re.compile(r'alt="([^"]*)"')
 SRC_RE = re.compile(r'src="([^"]{0,200})')
 TITLE_RE = re.compile(r"<title[^>]*>(.*?)</title>", re.S | re.I)
 META_DESC_RE = re.compile(r'<meta\s+name="description"\s+content="([^"]*)"', re.I)
-EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
+# Bounded as an address is (64 characters before the at sign, 255 after it), so a long run of
+# letters with no at sign is passed in linear time, not tried again from each of its characters.
+EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9.-]{1,255}\.[A-Za-z]{2,63}")
 PHONE_RE = re.compile(r"(?<!\d)(?:\+?1[ .-]?)?\(?\d{3}\)?[ .-]\d{3}[ .-]\d{4}(?!\d)")
 
 
