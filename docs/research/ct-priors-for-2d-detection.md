@@ -62,7 +62,7 @@ Effort: 2 to 3 days. Grid: rendering about 100,000 frames (1,000 volumes by 100 
 
 ### 4. Real frames with exact labels, from CTs registered to real projections
 
-What: where a real X-ray comes with its own CT, the CT's segmentation projected through the X-ray's geometry labels the real frame exactly, which is how C-ArmLSpine's truth was made. COBRA is the large case: 692 cases of real CBCT projections with a registered planning CT, so a segmentation of the planning CT (TotalSegmentator) projected through the scanner's known geometry labels every lumbosacral vertebra on 375,618 real frames with no human reading. DeepFluoro's 2,293 unused vendor frames and IPCAI 2025's calibrated X-rays follow the same way, by 2D/3D registration where the geometry is not stored (the LevelCheck method, section 6).
+What: where a real X-ray comes with its own CT, the CT's segmentation projected through the X-ray's geometry labels the real frame exactly, which is how C-ArmLSpine's truth was made. COBRA is the large case: 692 cases of real CBCT projections with a registered planning CT, so a segmentation of the planning CT (TotalSegmentator) projected through the scanner's known geometry labels every lumbosacral vertebra on 375,618 real frames with no human reading. DeepFluoro's 2,293 unused vendor frames follow the same way, by 2D/3D registration where the geometry is not stored (the LevelCheck method, section 6); IPCAI 2025's calibrated X-rays are of the distal femur and serve only as a registration benchmark.
 
 Why: the record's clearest lesson is that detection needs real frames, and this is the only route to many real frames with level labels without a reader. It also feeds the sacrum anchor of items 1 and 3.
 
@@ -119,7 +119,7 @@ Results, not methods: a slide may show the AP accuracy before and after, the per
 
 - Which of items 1 to 3 to run before the talk (the recommendation is all three, in that order).
 - Whether DiffDRR or DeepDRR may be added if the project's renderer is too slow (an issue first, per the writing rule).
-- Grid jobs: the owner said on 2026-10-21 13:14 UTC that they need no number, a rule since superseded: no fetch, grid job or training runs without his word and the count (docs/project.md and the project's standing instructions of 2026-10-23; corrected by docs/research/state-of-knowledge.md section 3).
+- Grid jobs: the owner said on 2026-10-21 13:14 UTC that they need no number, a rule since superseded: every grid job and every training waits for his word and the number of jobs (CLAUDE.md, docs/project.md), and his project instructions of 2026-10-23 add every fetch (corrected by docs/research/state-of-knowledge.md section 3).
 
 ## 6. Sources read
 
