@@ -52,7 +52,7 @@
   "idc_spine_mets_ct_seg": {"platform": ["idc_spine_mets_ct_seg"], "basis": "the same id in the manifest; the data platform's own unfetched source, recorded 2026-10-21"},
   "ieee_dataport_lateral_236": {"platform": ["ieee_dataport_lateral_fullspine_236"], "basis": "the release"},
   "implant_ct_synthetic": {"platform": ["implant_ct_synthetic"], "basis": "the same id in the manifest; the data platform's own unfetched source, recorded 2026-10-21"},
-  "ipcai2025_xray_ct": {"platform": [], "basis": "found by the sweep of 2026-10-21 (docs/research/xray-datasets-missing.md); nothing fetched, so no manifest record was ever made"},
+  "ipcai2025_xray_ct": {"platform": [], "basis": "found by the sweep of 2026-10-21 (docs/research/xray-datasets-missing.md) and fetched by the X-ray chain (grid/fetch-xray.json), outside the data platform, so no manifest record was made; the distal femur, still zipped"},
   "jefferson_drg": {"platform": ["fluoro_cine_requests_2026_09_26"], "basis": "request 11; the registry says a CC BY copy of the video is usable, and the clip record does not list its PMC id, so that copy is unverified here"},
   "kaggle_fracture_multiregion": {"platform": [], "basis": "found by the sweep of 2026-10-21 (docs/research/xray-datasets-missing.md); nothing fetched, so no manifest record was ever made"},
   "kaggle_scoliosis_yolov5": {"platform": [], "basis": "found by the sweep of 2026-10-21 (docs/research/xray-datasets-missing.md); nothing fetched, so no manifest record was ever made"},

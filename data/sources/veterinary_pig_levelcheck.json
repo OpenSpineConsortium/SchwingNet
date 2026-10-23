@@ -2,7 +2,7 @@
   "id": "veterinary_pig_levelcheck",
   "name": "Veterinary: pig lower limb CT, CBCT and planar images (Goswami 2020, IEEE DataPort)",
   "group": "future",
-  "what": "seven zips, about 205 MB: the CT of a pig lower limb phantom, two CBCTs (with and without soft tissue), 7 C-arm planar projections at different poses in each condition and the registration matrices, from 'A new workflow for image-guided intraoperative electron radiotherapy' (IEEE Access 2020, doi 10.21227/gxpd-d998); not the LevelCheck pig study this record once named, and no spine",
+  "what": "seven zips, about 205 MB: the CT of a pig lower limb phantom, two CBCTs (with and without soft tissue), 7 C-arm planar projections at different poses in each condition and the registration matrices, from 'A new workflow for image-guided intraoperative electron radiotherapy' (Goswami and others, IEEE Access 2020; the doi 10.21227/gxpd-d998 is the IEEE DataPort record's, not the paper's); not the LevelCheck pig study this record once named, and no spine",
   "level_truth": "none; no spine; the pose matrices make it a 2D/3D registration benchmark",
   "reach": "get",
   "status": "the owner's future direction of 2026-10-20: expand the workflow into veterinary medicine; the zips sit in spine-program's archive, excluded from the record, and the set is open on IEEE DataPort; the Mendeley canine thoracic set (canine_thoracic_vhs) stands beside it since the sweep of 2026-10-21; the page read on 2026-10-22 says the phantom is a pig lower limb, so the set tunes the registration code and names no level",
