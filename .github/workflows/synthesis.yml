@@ -1,13 +1,17 @@
 name: Synthesis
 
 # Keeps the synthesis of the artifacts (artifacts/_synthesis/) current as the artifacts, the
-# research notes and the dataset records change, so a change is checked within minutes and read
-# within hours, not by a day of reads by hand (issue #166). artifacts/_synthesis/work/RESUME.md says
-# how it works; in short:
+# research notes and the dataset records change: a change is checked within a day, within minutes
+# where a person or an App merged it, and read by the run that finds it where that run may read,
+# not by a day of reads by hand (issues #166 and #176). artifacts/_synthesis/work/RESUME.md says how
+# it works; in short:
 #
-# The look runs on every push to main that changes an artifact, a research note or a dataset
-# record, daily for symphony-template's artifacts, which change in another repository, and on Run
-# workflow. It runs no Claude. It lays the records of the open synthesis pull request the App
+# The look runs on a push to main that changes an artifact, a research note or a dataset record,
+# daily at 06:41 UTC, and on Run workflow. A push starts it only when a person or an App made it:
+# GitHub starts no workflow for an event the workflow token caused, and automerge.yml arms
+# GitHub's auto-merge with that token, so a merge auto-merge makes starts none, and the daily run
+# looks at what it landed, as it looks at symphony-template's artifacts, which change in another
+# repository. It runs no Claude. It lays the records of the open synthesis pull request the App
 # opened on main (work/tools/synth_base.sh), finds what changed since the stamp
 # (work/out/state.json), checks every verdict's quotes against today's texts and every text
 # against the concept ledger (work/tools/synth.py status), and writes what it found into the open

@@ -246,8 +246,10 @@ def report(s):
                            "d": s["delta"]}, sort_keys=True, default=str)
     marker = hashlib.sha1(findings.encode("utf-8")).hexdigest()[:12]
     out = [f"<!-- synthesis-report: {marker} -->",
-           "This issue is rewritten by .github/workflows/synthesis.yml on every push to main that changes an artifact, a research"
-           " note or a dataset record, and daily for symphony-template's artifacts. It lists what the texts say now that the"
+           "This issue is rewritten by .github/workflows/synthesis.yml daily at 06:41 UTC, on Run workflow, and on a push to"
+           " main that changes an artifact, a research note or a dataset record where a person or an App made the push; a"
+           " merge GitHub's auto-merge makes starts no workflow, so the daily run takes what it landed. It lists what the"
+           " texts say now that the"
            f" stamp of {s['stamped']} had not seen; artifacts/_synthesis/concepts.md and work/RESUME.md say how each check is made.\n",
            f"Run on {s['date']} at " + ", ".join(f"{r} {h[:7]}" for r, h in s["heads"].items() if h) + "."
            + (f" Not checked: {', '.join(s['without'])}, whose checkout the run could not make." if s["without"] else "") + "\n",
