@@ -22,8 +22,8 @@ NONE = does not exist publicly; EXCLUDED = held or seen and set aside for a stat
 111 sources in the registry.
 
 ```
-HAVE      ##########..............................  28
-GET       ######################..................  62
+HAVE      ##########..............................  29
+GET       ######################..................  61
 GATED     #####...................................  15
 EMBARGOED ........................................   1
 NONE      #.......................................   2
@@ -34,7 +34,7 @@ EXCLUDED  #.......................................   3
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Real intraoperative fluoroscopy, stills (the target domain) | 5 | 3 | 0 | 0 | 2 | 1 | 11 |
 | Video and cine (consecutive frames) | 3 | 21 | 1 | 0 | 0 | 0 | 25 |
-| Real projections with a registered CT (the COBRA kind) | 3 | 1 | 0 | 1 | 0 | 0 | 5 |
+| Real projections with a registered CT (the COBRA kind) | 4 | 0 | 0 | 1 | 0 | 0 | 5 |
 | Plain films (lateral or AP radiographs) | 9 | 11 | 7 | 0 | 0 | 2 | 29 |
 | CT collections and their renders (3D truth, synthetic 2D) | 8 | 24 | 7 | 0 | 0 | 0 | 39 |
 | Future directions | 0 | 2 | 0 | 0 | 0 | 0 | 2 |
@@ -92,7 +92,7 @@ EXCLUDED  #.......................................   3
 | COBRA2026 Elekta | kV projections around supine pelvic radiotherapy patients, 504 x 504 at 0.8 mm, 120 kVp, with the planning CT deformably registered | whatever is segmented on the CT: the sacrum today, L5 and L6 possible | HAVE | all 467 cases on Ceph; 145 in a bank of 24 frames each, the rest never exported; the sacrum detector's training | cases 467, in bank 145 | CC BY-NC 4.0 | [link](https://zenodo.org/records/21322350) |
 | COBRA2026 on the grid, all projections | every projection of the 692 public cases | same | HAVE | 808.615 GB on Ceph | cases 692, projections 375,618, size gb 808.615 | CC BY-NC 4.0 | [link](https://zenodo.org/records/21322350) |
 | COBRA2026 Varian | the same kind, from Varian linacs | same | HAVE | geometry solved 2026-09-23; no bank built, no frame looked at | cases 225 | CC BY-NC 4.0 | [link](https://zenodo.org/records/21322350) |
-| IPCAI 2025 paired X-ray and CT set (Zenodo 15753063) | real calibrated X-ray images with 5 CT scans, 6.7 GB, from 'Automatic multi-view X-ray/CT registration using bone substructure contours'; the anatomy, pelvis or spine, to confirm on the page | from the CT by the registration, if spine | GET | found by the sweep of 2026-10-21; not fetched; anatomy to confirm; if spine or pelvis, one more real C-arm set with a registered CT, the COBRA and DeepFluoro kind, from a fourth device | ct scans 5, size gb 6.7 | to confirm on the page | [link](https://zenodo.org/records/15753063) |
+| IPCAI 2025 paired X-ray and CT set of the distal femur (Flepp 2025, Zenodo 15753063) | one zip, dataset_ipcai.zip, 6.7 GB (md5 cc8bf3e445495d2deb6d50dd058dc977): 50 real calibrated X-rays of 5 cadaveric distal femur specimens (ten views each, about 9 degrees apart, Siemens Fluorospot), their 5 CTs at 0.2 mm slices, the poses, the contour masks and the bone models, from 'Automatic multi-view X-ray/CT registration using bone substructure contours' (Flepp and others, IPCAI 2025, arXiv 2506.13292); the femur, no spine | none; no spine; the stored poses make it a 2D/3D registration benchmark (docs/research/benchmarks-to-beat.md, sections 1 and 5) | HAVE | found by the sweep of 2026-10-21 as 'pelvis or spine, to confirm'; fetched by the X-ray chain on 2026-10-21 and still zipped at the sample index of 2026-10-22 (4 files, 6.2 GB, docs/research/data-manifest/MANIFEST.md); the Zenodo page and the paper, read on 2026-10-22 and 2026-10-23, say the distal femur, so it names no level, enters no registry shard (its registry entry, its chain entry and its bank recipe were removed on 2026-10-23) and serves workstream O (#127) as a registration benchmark only | specimens 5, xrays 50, ct scans 5, size gb 6.7 | Research-Only Dataset License (the Zenodo record: redistribution for academic research only, commercial use by written permission, Swiss law); the code is by request under a non-commercial licence, patent pending EP25168706.7 | [link](https://zenodo.org/records/15753063) |
 | COBRA2026 embargoed cases | the challenge's held-back cases | same | EMBARGOED | released on 2032-03-01 | cases 175 | CC BY-NC 4.0 | [link](https://zenodo.org/records/21322350) |
 
 ## 4. Plain films (lateral or AP radiographs)
@@ -177,8 +177,8 @@ EXCLUDED  #.......................................   3
 
 | Source | What it is | Level truth | Reach | Status | Counts | Licence | Link |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Veterinary: canine lateral thoracic radiographs for vertebral heart size (Mendeley ktx4cj55pn) | 152 anonymised lateral thoracic radiographs of dogs; a lateral dog thorax shows T1 to L1 and the VHS method itself counts vertebrae from T4 | none; T4 is the VHS reference vertebra | GET | the owner's veterinary direction of 2026-10-20; found by the sweep of 2026-10-21; not fetched; the only other public veterinary spine radiograph set found beside the pig CBCT (veterinary_pig_levelcheck) | radiographs 152 | CC BY 4.0 (to confirm on the page) | [link](https://data.mendeley.com/datasets/ktx4cj55pn) |
-| Veterinary: pig lower limb CT, CBCT and planar images (Goswami 2020, IEEE DataPort) | seven zips, about 205 MB: the CT of a pig lower limb phantom, two CBCTs (with and without soft tissue), 7 C-arm planar projections at different poses in each condition and the registration matrices, from 'A new workflow for image-guided intraoperative electron radiotherapy' (IEEE Access 2020, doi 10.21227/gxpd-d998); not the LevelCheck pig study this record once named, and no spine | none; no spine; the pose matrices make it a 2D/3D registration benchmark | GET | the owner's future direction of 2026-10-20: expand the workflow into veterinary medicine; the zips sit in spine-program's archive, excluded from the record, and the set is open on IEEE DataPort; the Mendeley canine thoracic set (canine_thoracic_vhs) stands beside it since the sweep of 2026-10-21; the page read on 2026-10-22 says the phantom is a pig lower limb, so the set tunes the registration code and names no level | zips 7, size mb 205 | IEEE DataPort open access | [link](https://ieee-dataport.org/open-access/pig-data-2d-3d-intensity-based-registration) |
+| Veterinary: canine lateral thoracic radiographs for vertebral heart size (Mendeley ktx4cj55pn) | 152 anonymised lateral thoracic radiographs of dogs; a lateral dog thorax shows T1 to L1 and the VHS method itself counts vertebrae from T4 | none; T4 is the VHS reference vertebra | GET | the owner's veterinary direction of 2026-10-20; found by the sweep of 2026-10-21; not fetched; the only public veterinary spine radiograph set found; the pig set beside it (veterinary_pig_levelcheck) is a lower-limb registration phantom with no spine | radiographs 152 | CC BY 4.0 (to confirm on the page) | [link](https://data.mendeley.com/datasets/ktx4cj55pn) |
+| Veterinary: pig lower limb CT, CBCT and planar images (Goswami 2020, IEEE DataPort) | seven zips, about 205 MB: the CT of a pig lower limb phantom, two CBCTs (with and without soft tissue), 7 C-arm planar projections at different poses in each condition and the registration matrices, from 'A new workflow for image-guided intraoperative electron radiotherapy' (Goswami and others, IEEE Access 2020; the doi 10.21227/gxpd-d998 is the IEEE DataPort record's, not the paper's); not the LevelCheck pig study this record once named, and no spine | none; no spine; the pose matrices make it a 2D/3D registration benchmark | GET | the owner's future direction of 2026-10-20: expand the workflow into veterinary medicine; the zips sit in spine-program's archive, excluded from the record, and the set is open on IEEE DataPort; the Mendeley canine thoracic set (canine_thoracic_vhs) stands beside it since the sweep of 2026-10-21; the page read on 2026-10-22 says the phantom is a pig lower limb, so the set tunes the registration code and names no level | zips 7, size mb 205 | IEEE DataPort open access | [link](https://ieee-dataport.org/open-access/pig-data-2d-3d-intensity-based-registration) |
 
 ## Where it sits on the grid
 
@@ -197,6 +197,7 @@ Every held source with a path the record gives, Ceph under /rs/rs_grp_oschome/go
 | COBRA2026 Elekta | `/rs/rs_grp_oschome/go2432/data/cobra2026` | cases 467, in bank 145 |
 | COBRA2026 on the grid, all projections | `/rs/rs_grp_oschome/go2432/data/cobra2026` | cases 692, projections 375,618, size gb 808.615 |
 | COBRA2026 Varian | `/rs/rs_grp_oschome/go2432/data/cobra2026` | cases 225 |
+| IPCAI 2025 paired X-ray and CT set of the distal femur (Flepp 2025, Zenodo 15753063) | `/rs/rs_grp_oschome/go2432/data/ipcai2025_xray_ct/raw` | specimens 5, xrays 50, ct scans 5, size gb 6.7 |
 | Aariz cephalometric benchmark (Khalid, Fraz 2023) and the ISBI 2015 cephalograms | `/rs/rs_grp_oschome/go2432/data/aariz` | films 1,000, devices 7, landmarks 29, isbi 2015 films 400, zip bytes 2,098,209,792 |
 | AASCE / BoostNet whole-spine films | `/rs/rs_grp_oschome/go2432/data/thoracic_xr/mirror_zlinzju_ke30_u7_AASCE2019; the 579 at /rs/rs_grp_oschome/go2432/data/aasce2019_boostnet/raw/aasce` | labelled films 609, challenge test films 98, thoracic test films 608 |
 | VinDr-SpineXR | `/rs/rs_grp_oschome/go2432/data/vindr_spinexr/raw/vindr/1.0.0` | images 10,466, studies 5,000 |
@@ -370,13 +371,6 @@ Link: https://radiopaedia.org/licence. Licence: CC BY-NC-SA 3.0 (the site); ML u
 1. The application text is /mnt/project-files/data-requests/radiopaedia-application-draft.md (the thread's file); the agreement is SignNow document 2b7a4819d4ea45198cd8e71ba0703993ba89663b, sent to andrew.murphy+ml@radiopaedia.org with license@radiopaedia.org in copy.
 2. Wait for the countersigned copy and the agreement ID, which every publication must quote; then Radiopaedia says how the export is delivered (bulk export, never scraping).
 3. A commercial product built from any model that touched these cases needs a negotiated licence first (clause 2b).
-
-### IPCAI 2025 paired X-ray and CT set (Zenodo 15753063) (GET)
-
-Link: https://zenodo.org/records/15753063. Licence: to confirm on the page.
-
-1. Open https://zenodo.org/records/15753063 and read its licence line, the file list and what anatomy the images show.
-2. Fetch as a Slurm job on the owner's word, never on the login node: python3 data/reproduce/reacquire/reacquire.py zenodo-get --record 15753063 --dest DIR.
 
 ### COBRA2026 embargoed cases (EMBARGOED)
 
