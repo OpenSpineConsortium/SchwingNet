@@ -1,33 +1,50 @@
-"""Render artifacts/_synthesis/contradictions.md from the merged sweeps and verdicts: the
-confirmed disagreements first, as a planner needs them, then every candidate cluster by
-cluster and every number collision, each with the reader's kind, whether a script found its
-quotes in the source, and the skeptic's verdict with the value the book should carry."""
+"""Render artifacts/_synthesis/contradictions.md from the merged sweeps and verdicts, with one
+page per cluster under contradictions/. The main page says how the verdicts are read and how
+far they held when they were read again, then lists what a planner must not take from one
+artifact alone, the disagreements apart from the duplicated texts and unsourced claims, then
+every number collision; a cluster's page holds every candidate. Each row gives the reader's
+kind, whether a script found the reader's quotes and the skeptic's in the sources, and the
+skeptic's verdict with the value the book should carry. Rows count from 0, as the record and
+the skeptics' explanations do.
+
+Usage: render_contradictions2.py MERGED NUMBERS INVENTORY DST DATE
+  SYNTH_TEXT names the folder of extracted texts, SYNTH_SCHWINGNET and SYNTH_SYMPHONY the two
+  clones. The run stops when one is missing, since without them every quote would read "no
+  text" and the page would look clean."""
 import json
+import os
+import re
 import sys
 from collections import Counter
-sys.path.insert(0, __import__("os").path.dirname(__file__))
+
+sys.path.insert(0, os.path.dirname(__file__))
 from render_inventory import to_ascii, cell, short
 from render_clusters import link, short_id
 import verify_quotes as vq
 
-# Where extract.py wrote the plain texts; SYNTH_TEXT names it in another session.
-TEXT_DIR = __import__("os").environ.get("SYNTH_TEXT", "/tmp/claude-0/-home-user/1b2f17bd-1fd4-5865-b98a-4797cc8ea3ad/scratchpad/text")
-STATUS = {"whole": "yes", "parts": "yes", "window": "partly", "raw-whole": "yes, page data", "raw-parts": "yes, page data",
-          "raw-window": "partly, page data", "absent": "not found", "no-text": "no text", "no-quote": "no quote", "none-named": "-"}
-KINDS = [("contradiction", "Same quantity, same scope, different values"),
-         ("updated-later", "Revised later: the later artifact gives a new figure or date"),
-         ("unit-or-scope-mismatch", "Same quantity, another unit, denominator, subset or interval"),
-         ("probably-different-quantities", "Alike in name, probably not the same thing")]
+STATUS = {"whole": "yes", "parts": "yes", "window": "partly", "spacing": "yes, spacing aside",
+          "raw-whole": "yes, page data", "raw-parts": "yes, page data", "raw-window": "partly, page data",
+          "raw-spacing": "yes, page data, spacing aside", "absent": "not found", "no-text": "no text",
+          "no-quote": "no quote", "none-named": "-"}
+PLACE = {"own": "found in its own artifact", "other": "found only in the other artifact", "absent": "not found",
+         "empty": "none given", "elsewhere": "found only in {}, which the candidate does not name"}
+NUMBER_KINDS = [("contradiction", "Same quantity, same scope, different values"),
+                ("updated-later", "Revised later: the later artifact gives a new figure or date"),
+                ("unit-or-scope-mismatch", "Same quantity, another unit, denominator, subset or interval"),
+                ("probably-different-quantities", "Alike in name, probably not the same thing")]
 CONFIRMED_C = ("confirmed", "superseded-by-later")
 CONFIRMED_N = ("confirmed-contradiction", "updated-later")
+AGREE_N = ("same-number-restated", "different-quantities", "scope-or-unit-differs")
+# Kinds whose confirmed verdict is no disagreement: one claim carried twice, or a claim with no
+# source; a planner must still not count it twice or take it as sourced.
+NOT_DISAGREEMENTS = ("duplicate-text", "unsourced-shared-claim")
+REVIEW = {"held": "held", "hint corrected": "held, hint corrected", "verdict overturned": "overturned, first {}",
+          "read again": "read again, first {}"}
 
 
-def quote_status(c, side):
-    aid = c.get("artifact_" + side) or ""
-    if "/" not in aid:
-        return "-"
-    t = vq.text_of(TEXT_DIR, aid)
-    return STATUS.get(vq.found(c.get("quote_" + side, ""), t, vq.raw_of(aid)), "?")
+def require(ok, why):
+    if not ok:
+        raise SystemExit("render refused: " + why)
 
 
 def number_key(v):
@@ -38,129 +55,317 @@ def number_key(v):
 
 
 def number_verdicts(N, extra):
+    """Each number verdict by its collision's key. A later verdict replaces an earlier one only
+    where it says it was reviewed or read again; two on one key otherwise, or one that matches
+    no collision, stop the run, since either would drop a verdict from the page without a word."""
+    keys = {number_key(c) for c in N["candidates"]}
     by = {}
-    for v in list(N["verdicts"]) + list(extra):
+    for v in N["verdicts"]:
+        require(number_key(v) not in by, f"two earlier number verdicts on {number_key(v)}")
         by[number_key(v)] = v
+    seen = set()
+    for v in extra:
+        k = number_key(v)
+        require(k not in seen, f"two number verdicts on {k}")
+        require(k not in by or v.get("review"), f"a verdict on {k} replaces an earlier one without saying why")
+        seen.add(k)
+        by[k] = v
+    stray = sorted(k for k in by if k not in keys)
+    require(not stray, f"number verdicts that match no collision: {stray}")
     return by
 
 
-def link_or(aid, titles):
-    return link(aid, titles) if aid and "/" in aid else cell(aid or "-")
+def wilson(k, n, z=1.96):
+    p, d = k / n, 1 + z * z / n
+    centre = (p + z * z / (2 * n)) / d
+    half = z * (p * (1 - p) / n + z * z / (4 * n * n)) ** 0.5 / d
+    return max(0.0, centre - half), min(1.0, centre + half)
+
+
+def rate(k, n):
+    if not n:
+        return "none drawn"
+    lo, hi = wilson(k, n)
+    return f"{k} of {n} held ({100 * k / n:.0f} %, Wilson 95 % interval {100 * lo:.0f} to {100 * hi:.0f} %)"
+
+
+def artifact(aid):
+    return aid if aid and "/" in aid else None
 
 
 def slug(name):
-    import re
     return re.sub(r"[^a-z0-9]+", "-", name.lower().replace("'", "")).strip("-")[:60]
 
 
-def main(merged, numbers, clustering, inventory, dst, date):
-    import os
-    sub = os.path.join(os.path.dirname(dst), "contradictions")
-    os.makedirs(sub, exist_ok=True)
-    M = json.load(open(merged)); N = json.load(open(numbers))
-    inv = json.load(open(inventory))
+def quote_status(text_dir, aid, quote):
+    if not artifact(aid):
+        return "-"
+    return STATUS.get(vq.found(quote or "", vq.text_of(text_dir, aid), vq.raw_of(aid)), "?")
+
+
+def unfound(text_dir, x):
+    return "not found" in (quote_status(text_dir, x["artifact_a"], x.get("quote_a")),
+                           quote_status(text_dir, x.get("artifact_b"), x.get("quote_b")))
+
+
+def skeptic_words(text_dir, a, b, v):
+    """The words a verdict rests on, each with where the script found it."""
+    if not v:
+        return ""
+    words = []
+    for side, own, other, q in (("A", a, b, v.get("quote_a")), ("B", b, a, v.get("quote_b"))):
+        if (q or "").strip():
+            where, _, third = vq.place(text_dir, q, artifact(own), artifact(other)).partition(":")
+            words.append(f"{side} \"{short(q, 300)}\" ({PLACE[where].format(short_id(third))})")
+    return " The skeptic's words: " + "; ".join(words) + "." if words else " The skeptic quoted neither source."
+
+
+def review_cell(v):
+    r = (v or {}).get("review")
+    return REVIEW[r].format(((v or {}).get("first") or {}).get("verdict")) if r else ""
+
+
+def review_tag(v):
+    r = review_cell(v)
+    return f"; {r}" if r else ""
+
+
+def link_or(aid, titles, up="../"):
+    return link(aid, titles, up) if artifact(aid) else cell(aid or "-")
+
+
+def pair(x):
+    b = f" and {short_id(x['artifact_b'])}" if artifact(x.get("artifact_b")) else ""
+    return f"{short_id(x['artifact_a'])}{b}"
+
+
+def intro(N, nv, inv, date):
+    nums = sum(len(a.get("numbers") or []) for a in inv["artifacts"])
+    besides = sum(1 for x in N["candidates"] if nv.get(number_key(x)) and x["kind"] not in ("contradiction", "updated-later"))
+    parts = [int(m.replace(",", "")) for f in N.get("finders", []) for m in re.findall(r"Read all ([\d,]+) rows", f)]
+    read = " and ".join(f"{n:,}" for n in parts)
+    return ["# Contradictions and collisions\n",
+            f"What the inventoried artifacts give differently, found and checked for the Artifact Textbook (issue #120, finished under #136), rendered on {date}. "
+            "Readers went over the inventory's numbers table for every quantity two artifacts give with different values, and over each topic cluster's full records for disagreements, revised figures, stale statements, duplicated texts and shared unsourced claims. "
+            f"The table holds {nums:,} numbers from {len(inv['artifacts'])} artifacts. The number readers' notes record reading two parts of it, {read} rows, {sum(parts):,} in all; "
+            "the parts and the rule that split them are not kept in this repository, so which numbers went unread is not known here.\n",
+            "A script then looked for every reader's quote in the artifact's extracted text and, failing that, in the page's own files. "
+            "It ignores case, punctuation and spacing, and matches around an ellipsis or an editor's words in square brackets; the columns \"Reader's quote A\" and \"B\" say what it found. "
+            "Then a skeptic read both sources of every cluster candidate, and of every number collision a reader classed as a contradiction or a later revision "
+            f"and {besides} others #136's first run took, and gave a verdict with the exact words it rests on, copied from each source. "
+            "Those words are on the cluster pages and under the number tables beside the reader's, with where the script found them. "
+            "Last, a sample of the verdicts was read again by agents told to overturn them (How far the verdicts hold, below).\n",
+            "Rows count from 0, as the record and the skeptics' explanations do, so \"candidate 4\" in an explanation is row 4 of its cluster's page. "
+            "Nothing here is copied from memory. People other than published authors are named by role, and no e-mail address, phone number, or home or street address is reproduced; "
+            "where a quote named a person or carried such a detail, an editor's words in square brackets stand in its place.\n"]
+
+
+def definitions():
+    return ["## How the verdicts are read\n",
+            "For a cluster candidate:\n",
+            "- confirmed: both sources say what the candidate says, which depends on the reader's kind. For a contradiction they disagree. "
+            "For a duplicated text the same text or figure is carried by both, so it is one claim and not two confirmations. "
+            "For a shared unsourced claim the claim is in each source and no source for it is given on those pages. "
+            "For a stale statement a later source, or the artifact's own later section, shows it no longer holds.",
+            "- superseded: one source is later, by its date or because it plainly follows the other, and revises the earlier one.",
+            "- refuted: they agree once read in context, over a different scope, subset, unit, interval or date that the pages state, or a statement or quote is not in its source.",
+            "- cannot tell: the texts do not settle it; the hint says what would.\n",
+            "For a number collision:\n",
+            "- confirmed-contradiction: the same quantity over the same scope, with different values.",
+            "- updated-later: the later source, by its date or because it plainly follows the other, gives a new figure for the same quantity.",
+            "- same-number-restated: the values agree once read, by rounding or another way of writing the figure.",
+            "- scope-or-unit-differs: the same name over a different subset, denominator, unit, interval, version or date, as the pages state.",
+            "- different-quantities: not the same thing at all.",
+            "- cannot-tell: the texts do not settle it; the hint says what would.\n",
+            "A blank verdict means no skeptic read that candidate, and the reader's kind is then all there is.\n"]
+
+
+def column(x, v):
+    """The summary column a cluster candidate's verdict counts under."""
+    w = (v or {}).get("verdict", "not read")
+    if w == "confirmed":
+        return "duplicated or unsourced" if x["kind"] in NOT_DISAGREEMENTS else "disagreement or stale"
+    return w
+
+
+def summary(text_dir, clusters, N, nv):
+    out = ["## Where it stands\n",
+           "| Cluster | Candidates | Disagreements or stale, confirmed | Duplicated or unsourced, confirmed | Superseded | Refuted | Cannot tell | Not read | Reader's quote not found |",
+           "|---|---|---|---|---|---|---|---|---|"]
+    for c in clusters:
+        if not c["swept"]:
+            out.append(f"| {cell(c['cluster'])} | not swept | | | | | | | |")
+            continue
+        vc = Counter(column(x, v) for x, v in zip(c["candidates"], c["verdicts"]))
+        nf = sum(1 for x in c["candidates"] if unfound(text_dir, x))
+        out.append(f"| [{cell(c['cluster'])}](contradictions/{slug(c['cluster'])}.md) | {len(c['candidates'])} | {vc['disagreement or stale']} | {vc['duplicated or unsourced']} | "
+                   f"{vc['superseded-by-later']} | {vc['refuted']} | {vc['cannot-tell']} | {vc['not read']} | {nf} |")
+    nvc = Counter((nv.get(number_key(x)) or {}).get("verdict", "not read") for x in N["candidates"])
+    nf = sum(1 for x in N["candidates"] if unfound(text_dir, x))
+    out.append(f"| Number collisions (the numbers table) | {len(N['candidates'])} | {nvc['confirmed-contradiction']} | - | {nvc['updated-later']} | "
+               f"{sum(nvc[w] for w in AGREE_N)} | {nvc['cannot-tell']} | {nvc['not read']} | {nf} |")
+    swept = [c for c in clusters if c["swept"]]
+    read = sum(1 for c in swept for v in c["verdicts"] if v)
+    out.append("")
+    out.append(f"{sum(len(c['candidates']) for c in swept)} cluster candidates in {len(swept)} of {len(clusters)} clusters, {read} read by a skeptic. "
+               "For the numbers, Refuted counts the three verdicts that find no disagreement (same-number-restated, scope-or-unit-differs and different-quantities), most of which still say to carry both values, each with its scope; "
+               "Not read counts the collisions a reader classed as another scope or another quantity, which no skeptic read, by design.\n")
+    return out
+
+
+def held(items):
+    return sum(1 for x in items if x["outcome"] != "verdict overturned")
+
+
+def review_section(M, N, nv):
+    R = M.get("review")
+    if not R:
+        return []
+    items = R["items"]
+    drawn = [x for x in items if x["drawn"] == "random"]
+    forced = [x for x in items if x["drawn"] != "random"]
+    on_list = [x for x in drawn if x["side"] == "confirmed"]
+    off_list = [x for x in drawn if x["side"] != "confirmed"]
+    over = [x for x in items if x["outcome"] == "verdict overturned"]
+    hinted = [x for x in items if x["outcome"] == "hint corrected"]
+    lo_on, hi_on = wilson(held(on_list), len(on_list))
+    lo_off, hi_off = wilson(held(off_list), len(off_list))
+    out = ["## How far the verdicts hold\n", cell(R["about"]) + "\n",
+           f"- Verdicts that put a candidate on the confirmed list, drawn at random: {rate(held(on_list), len(on_list))}.",
+           f"- Verdicts that kept a candidate off it, drawn at random: {rate(held(off_list), len(off_list))}.",
+           f"- Verdicts drawn because the script could not place one of their own quotes: {len(forced) - held(forced)} of {len(forced)} overturned.\n",
+           f"In all {len(over)} verdicts were overturned and {len(hinted)} held with a corrected hint. Each now reads as the ruling has it, with its first verdict in the Review column of its row. "
+           f"The rest were not read again: by the draw's rates, between {100 * (1 - hi_on):.0f} and {100 * (1 - lo_on):.0f} % of the other confirmed verdicts may be wrong, "
+           f"and between {100 * (1 - hi_off):.0f} and {100 * (1 - lo_off):.0f} % of the others, so read a row before relying on it.\n",
+           "The rows the review changed:\n"]
+    for x in sorted(over + hinted, key=lambda x: (x["stratum"], x["index"])):
+        where = (f"number collision {x['index']}" if x["stratum"] == "Number collisions"
+                 else f"[{cell(x['stratum'])}](contradictions/{slug(x['stratum'])}.md), row {x['index']}")
+        what = f"{x['first']} became {x['final']}" if x["outcome"] == "verdict overturned" else f"{x['final']} held, with a corrected hint"
+        out.append(f"- {where}: {what}.")
+    out.append("")
+    again = []
+    for j, x in enumerate(N["candidates"]):
+        v = nv.get(number_key(x))
+        if v and v.get("review") == "read again":
+            again.append((j, v))
+    if again:
+        got = Counter(v["verdict"] for _, v in again)
+        out.append(f"{len(again)} number verdicts of #136's first run were cannot-tell because their values were missing from the plain text, which cuts each line of a page's script data at 600 characters. "
+                   "A skeptic read them again in the artifacts' own files: " + ", ".join(f"{n} {w}" for w, n in got.most_common())
+                   + f" (collisions {', '.join(str(j) for j, _ in again)}). Each says read again in its Review column, with its first verdict.\n")
+    return out
+
+
+def confirmed_section(text_dir, clusters, N, nv):
+    out = ["## Confirmed: what a planner must not take from one artifact alone\n",
+           "Every candidate a skeptic confirmed or found revised, by cluster. Disagreements, revisions and stale statements come first; "
+           "duplicated texts and shared unsourced claims follow, confirmed in the senses above, which are not disagreements: a duplicated text is one claim and not two confirmations, and a shared unsourced claim has no source on either page. "
+           "Each item gives its row on the cluster's page, its kind, its verdict and the review's outcome where the review read it, the two artifacts, and the value or statement the skeptic says the book should carry. "
+           "The whole candidate, with both readings and both sets of quotes, is on the cluster's page.\n"]
+    for c in clusters:
+        if not c["swept"]:
+            continue
+        rows = [(i, x, v) for i, (x, v) in enumerate(zip(c["candidates"], c["verdicts"])) if v and v["verdict"] in CONFIRMED_C]
+        if not rows:
+            continue
+        out.append(f"### [{cell(c['cluster'])}](contradictions/{slug(c['cluster'])}.md)\n")
+        plain = [r for r in rows if r[2]["verdict"] == "confirmed" and r[1]["kind"] in NOT_DISAGREEMENTS]
+        groups = (("Disagreements, revisions and stale statements:", [r for r in rows if r not in plain]),
+                  ("Duplicated texts and shared unsourced claims:", plain))
+        for title, group in groups:
+            if not group:
+                continue
+            out.append(title + "\n")
+            for i, x, v in group:
+                out.append(f"- Row {i}, {x['kind']}, {v['verdict']}{review_tag(v)} ({pair(x)}): {cell(x['topic'])}. {cell(v.get('resolution_hint'))}")
+            out.append("")
+    rows = [(j, x, nv[number_key(x)]) for j, x in enumerate(N["candidates"])
+            if number_key(x) in nv and nv[number_key(x)]["verdict"] in CONFIRMED_N]
+    if rows:
+        out.append("### Numbers\n")
+        for j, x, v in rows:
+            out.append(f"- Collision {j}, {v['verdict']}{review_tag(v)}: {cell(x['quantity'])}: {short_id(x['artifact_a'])} gives {cell(x['value_a'])}, "
+                       f"{short_id(x['artifact_b'])} gives {cell(x['value_b'])}. {cell(v.get('resolution_hint') or v.get('explanation'))}")
+        out.append("")
+    return out
+
+
+def numbers_section(text_dir, N, nv, titles):
+    out = ["## Number collisions\n",
+           f"{len(N['candidates'])} candidates from the numbers table, by the reader's kind, each under its number in the record.\n"]
+    for kind, title in NUMBER_KINDS:
+        rows = [(j, x) for j, x in enumerate(N["candidates"]) if x["kind"] == kind]
+        out.append(f"### {title} ({len(rows)})\n")
+        out.append("| # | Quantity | A | A gives | B | B gives | Reader's quote A | Reader's quote B | Verdict | Review | Why |")
+        out.append("|---|---|---|---|---|---|---|---|---|---|---|")
+        for j, x in rows:
+            v = nv.get(number_key(x))
+            why = short(v.get("resolution_hint") or v.get("explanation"), 260) if v else short(x["why"], 200)
+            out.append(f"| {j} | {short(x['quantity'], 110)} | {link(x['artifact_a'], titles)} | {short(x['value_a'], 70)} | {link(x['artifact_b'], titles)} | {short(x['value_b'], 70)} | "
+                       f"{quote_status(text_dir, x['artifact_a'], x['quote_a'])} | {quote_status(text_dir, x['artifact_b'], x['quote_b'])} | {(v or {}).get('verdict', '')} | {review_cell(v)} | {why} |")
+        out.append("")
+        out.append("The quotes, by collision:\n")
+        for j, x in rows:
+            v = nv.get(number_key(x))
+            out.append(f"- {j}. The reader's: A, {short_id(x['artifact_a'])}: \"{short(x['quote_a'], 300)}\"; B, {short_id(x['artifact_b'])}: \"{short(x['quote_b'], 300)}\"."
+                       + skeptic_words(text_dir, x["artifact_a"], x["artifact_b"], v))
+        out.append("")
+    return out
+
+
+def cluster_page(text_dir, c, titles, date):
+    up = "../../"
+    out = [f"# Contradictions: {c['cluster']}\n",
+           f"Part of [the contradictions of the artifacts](../contradictions.md), rendered on {date}. Rows count from 0, as the record and the skeptics' explanations do. "
+           "A blank verdict means no skeptic read that candidate. The Review column says whether the verdict was read again and what it was first; the main page says how the review was run.\n",
+           f"{len(c['candidates'])} candidates.\n",
+           "| # | Kind | Topic | A | B | Reader's quote A | Reader's quote B | Verdict | Review | Explanation |",
+           "|---|---|---|---|---|---|---|---|---|---|"]
+    for i, (x, v) in enumerate(zip(c["candidates"], c["verdicts"])):
+        out.append(f"| {i} | {x['kind']} | {short(x['topic'], 110)} | {link_or(x['artifact_a'], titles, up)} | {link_or(x.get('artifact_b'), titles, up)} | "
+                   f"{quote_status(text_dir, x['artifact_a'], x.get('quote_a'))} | {quote_status(text_dir, x.get('artifact_b'), x.get('quote_b'))} | "
+                   f"{(v or {}).get('verdict', '')} | {review_cell(v)} | {short((v or {}).get('explanation') or x.get('why_it_matters'), 260)} |")
+    out.append("")
+    out.append("What each artifact says, and the words each verdict rests on, in the same order:\n")
+    for i, (x, v) in enumerate(zip(c["candidates"], c["verdicts"])):
+        b = (f" B, {short_id(x['artifact_b'])}: {short(x.get('statement_b'), 240)} (\"{short(x.get('quote_b'), 240)}\")."
+             if artifact(x.get("artifact_b")) else "")
+        carry = f" Carry: {short(v.get('resolution_hint'), 300)}" if v and v.get("resolution_hint") else ""
+        out.append(f"- Row {i}. A, {short_id(x['artifact_a'])}: {short(x['statement_a'], 240)} (\"{short(x['quote_a'], 240)}\").{b}"
+                   + skeptic_words(text_dir, x["artifact_a"], x.get("artifact_b"), v) + carry)
+    out.append("")
+    if c.get("canonical_check"):
+        out.append("The clustering's superseded and duplicate relations, as the reader checked them:\n")
+        for y in c["canonical_check"]:
+            out.append(f"- {short_id(y['id'])} {y['relation']} {short_id(y['other'])}: {'agrees' if y['agree'] else 'disagrees'}. {cell(y['why'])}")
+        out.append("")
+    out.append(f"Unsourced: {cell(c['unsourced_summary'])}\n")
+    out.append(f"Stale: {cell(c['stale_summary'])}\n")
+    if c.get("notes"):
+        out.append(f"Notes: {cell(c['notes'])}\n")
+    return out
+
+
+def main(merged, numbers, inventory, dst, date):
+    text_dir = vq.required_dir("SYNTH_TEXT")
+    vq.repos()
+    M, N, inv = json.load(open(merged)), json.load(open(numbers)), json.load(open(inventory))
     titles = {f"{r['repo']}/{r['folder']}": r["title"] for r in inv["artifacts"]}
     nv = number_verdicts(N, M.get("numbers_extra", []))
     clusters = M["clusters"]
-    swept = [c for c in clusters if c["swept"]]
-    total_c = sum(len(c["candidates"]) for c in swept)
-    read_c = sum(1 for c in swept for v in c["verdicts"] if v)
-    out = ["# Contradictions and collisions\n",
-           f"What the inventoried artifacts give differently, found and checked on {date} for the Artifact Textbook (issue #120, finished under #136). "
-           "Readers went over the inventory's numbers table (3,025 numbers from 69 artifacts) for every quantity two artifacts give with different values, and over each topic cluster's full records for disagreements, revised figures, stale statements and shared unsourced claims. "
-           "A script then looked for every candidate's quotes in the artifact's extracted text and, failing that, in the page's own files; the columns 'Quote A' and 'Quote B' say what it found. "
-           "Last, a skeptic read both source texts for each cluster candidate and for each number collision a reader classed as a contradiction or a later revision, and gave a verdict: confirmed (both say what the candidate says and they disagree), superseded (the later one says or plainly implies it revises the earlier), refuted (they agree once read in context, or a statement is not there) or cannot tell. "
-           "A blank verdict means no skeptic read that candidate; the reader's kind is then all there is. "
-           "Nothing here is copied from memory, people are named by role, and no address of any kind is reproduced.\n"]
-    out.append("## Where it stands\n")
-    out.append("| Cluster | Candidates | Confirmed | Superseded | Refuted | Cannot tell | Not read | Quotes not found |")
-    out.append("|---|---|---|---|---|---|---|---|")
+    page = (intro(N, nv, inv, date) + definitions() + summary(text_dir, clusters, N, nv) + review_section(M, N, nv)
+            + confirmed_section(text_dir, clusters, N, nv) + numbers_section(text_dir, N, nv, titles)
+            + ["## Cluster by cluster\n",
+               "Each swept cluster has a page of its own under contradictions/, linked from the table above: every candidate with its kind, both artifacts, whether a script found the reader's quotes, the verdict, the review's outcome and the skeptic's explanation, "
+               "then what each artifact says with the words the verdict rests on, the clustering's superseded relations as the reader checked them, and what the cluster asserts without a source or holds as dated.\n"])
+    sub = os.path.join(os.path.dirname(dst), "contradictions")
+    os.makedirs(sub, exist_ok=True)
     for c in clusters:
-        if not c["swept"]:
-            out.append(f"| {cell(c['cluster'])} | not swept | | | | | | |")
-            continue
-        name_cell = f"[{cell(c['cluster'])}](contradictions/{slug(c['cluster'])}.md)"
-        vc = Counter((v or {}).get("verdict", "not read") for v in c["verdicts"])
-        nf = sum(1 for x in c["candidates"] if quote_status(x, "a") == "not found" or quote_status(x, "b") == "not found")
-        out.append(f"| {name_cell} | {len(c['candidates'])} | {vc['confirmed']} | {vc['superseded-by-later']} | {vc['refuted']} | {vc['cannot-tell']} | {vc['not read']} | {nf} |")
-    nvc = Counter()
-    for cnd in N["candidates"]:
-        v = nv.get(number_key(cnd))
-        nvc[v["verdict"] if v else "not read"] += 1
-    out.append(f"| Number collisions (the numbers table) | {len(N['candidates'])} | {nvc['confirmed-contradiction']} | {nvc['updated-later']} | {nvc['same-number-restated'] + nvc['different-quantities'] + nvc['scope-or-unit-differs']} | {nvc['cannot-tell']} | {nvc['not read']} | {sum(1 for x in N['candidates'] if quote_status(x, 'a') == 'not found' or quote_status(x, 'b') == 'not found')} |")
-    out.append("")
-    out.append(f"{total_c} cluster candidates in {len(swept)} of {len(clusters)} clusters, {read_c} read by a skeptic; for the numbers, 'Refuted' counts the verdicts same number restated, different quantities and scope or unit differs.\n")
-    out.append("## Confirmed: what a planner must not take from one artifact alone\n")
-    out.append("Every disagreement a skeptic confirmed or found revised, with the value or statement it says the book should carry. The full candidate, with both quotes, is in the sections below.\n")
-    k = 0
-    for c in swept:
-        rows = [(x, v) for x, v in zip(c["candidates"], c["verdicts"]) if v and v.get("verdict") in CONFIRMED_C]
-        if not rows:
-            continue
-        out.append(f"### {c['cluster']}\n")
-        for x, v in rows:
-            k += 1
-            b = f" and {short_id(x['artifact_b'])}" if x.get("artifact_b") and "/" in x["artifact_b"] else ""
-            out.append(f"{k}. {cell(x['topic'])} ({v['verdict']}; {short_id(x['artifact_a'])}{b}). {cell(v.get('resolution_hint'))}")
-        out.append("")
-    rows = []
-    for cnd in N["candidates"]:
-        v = nv.get(number_key(cnd))
-        if v and v["verdict"] in CONFIRMED_N:
-            rows.append((cnd, v))
-    if rows:
-        out.append("### Numbers\n")
-        for cnd, v in rows:
-            k += 1
-            out.append(f"{k}. {cell(cnd['quantity'])}: {short_id(cnd['artifact_a'])} gives {cell(cnd['value_a'])}, {short_id(cnd['artifact_b'])} gives {cell(cnd['value_b'])} ({v['verdict']}). {cell(v.get('resolution_hint') or v.get('explanation'))}")
-        out.append("")
-    out.append("## Number collisions\n")
-    out.append(f"{len(N['candidates'])} candidates from the numbers table, by the reader's kind.\n")
-    for kind, title in KINDS:
-        rows = [c for c in N["candidates"] if c["kind"] == kind]
-        out.append(f"### {title} ({len(rows)})\n")
-        out.append("| # | Quantity | A | A gives | B | B gives | Quote A | Quote B | Verdict | Why |")
-        out.append("|---|---|---|---|---|---|---|---|---|---|")
-        for i, c in enumerate(rows, 1):
-            v = nv.get(number_key(c))
-            verdict = v["verdict"] if v else ""
-            why = short(v.get("resolution_hint") or v.get("explanation"), 260) if v else short(c["why"], 200)
-            out.append(f"| {i} | {short(c['quantity'], 110)} | {link(c['artifact_a'], titles)} | {short(c['value_a'], 70)} | {link(c['artifact_b'], titles)} | {short(c['value_b'], 70)} | {quote_status(c, 'a')} | {quote_status(c, 'b')} | {verdict} | {why} |")
-        out.append("")
-        out.append("The quotes, in the same order:\n")
-        for i, c in enumerate(rows, 1):
-            out.append(f"{i}. A, {short_id(c['artifact_a'])}: \"{short(c['quote_a'], 300)}\" B, {short_id(c['artifact_b'])}: \"{short(c['quote_b'], 300)}\"")
-        out.append("")
-    out.append("## Cluster by cluster\n")
-    out.append("Each swept cluster has a page of its own under contradictions/, linked from the table above: every candidate with its kind, both artifacts, whether a script found the quotes, the verdict and the skeptic's explanation, then what each artifact says, the clustering's superseded relations as the reader checked them, and what the cluster asserts without a source or holds as dated.\n")
-    main_out = out
-    for c in clusters:
-        if not c["swept"]:
-            continue
-        out = [f"# Contradictions: {c['cluster']}\n", f"Part of [the contradictions of the artifacts](../contradictions.md), {date}. A blank verdict means no skeptic read that candidate.\n"]
-        out.append(f"{len(c['candidates'])} candidates.\n")
-        out.append("| # | Kind | Topic | A | B | Quote A | Quote B | Verdict | Explanation |")
-        out.append("|---|---|---|---|---|---|---|---|---|")
-        for i, (x, v) in enumerate(zip(c["candidates"], c["verdicts"]), 1):
-            out.append(f"| {i} | {x['kind']} | {short(x['topic'], 110)} | {link_or(x['artifact_a'], titles)} | {link_or(x.get('artifact_b'), titles)} | {quote_status(x, 'a')} | {quote_status(x, 'b')} | {(v or {}).get('verdict', '')} | {short((v or {}).get('explanation') or x.get('why_it_matters'), 260)} |")
-        out.append("")
-        out.append("What each artifact says, in the same order:\n")
-        for i, x in enumerate(c["candidates"], 1):
-            b = f" B, {short_id(x['artifact_b'])}: {short(x.get('statement_b'), 240)} (\"{short(x.get('quote_b'), 240)}\")" if x.get("artifact_b") and "/" in (x.get("artifact_b") or "") else ""
-            out.append(f"{i}. A, {short_id(x['artifact_a'])}: {short(x['statement_a'], 240)} (\"{short(x['quote_a'], 240)}\").{b}")
-        out.append("")
-        if c.get("canonical_check"):
-            out.append("The clustering's superseded and duplicate relations, as the reader checked them:\n")
-            for y in c["canonical_check"]:
-                out.append(f"- {short_id(y['id'])} {y['relation']} {short_id(y['other'])}: {'agrees' if y['agree'] else 'disagrees'}. {cell(y['why'])}")
-            out.append("")
-        out.append(f"Unsourced: {cell(c['unsourced_summary'])}\n")
-        out.append(f"Stale: {cell(c['stale_summary'])}\n")
-        if c.get("notes"):
-            out.append(f"Notes: {cell(c['notes'])}\n")
-        open(os.path.join(sub, slug(c["cluster"]) + ".md"), "w", newline="\n").write(to_ascii("\n".join(out)))
-    open(dst, "w", newline="\n").write(to_ascii("\n".join(main_out)))
+        if c["swept"]:
+            open(os.path.join(sub, slug(c["cluster"]) + ".md"), "w", newline="\n").write(to_ascii("\n".join(cluster_page(text_dir, c, titles, date))))
+    open(dst, "w", newline="\n").write(to_ascii("\n".join(page)))
 
 
 if __name__ == "__main__":
-    main(*sys.argv[1:7])
+    main(*sys.argv[1:6])

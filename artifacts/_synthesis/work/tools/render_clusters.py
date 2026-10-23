@@ -11,11 +11,13 @@ def short_id(i):
     return i.split("/", 1)[1] if "/" in i else i
 
 
-def link(i, titles):
+def link(i, titles, up="../"):
+    """A link to an artifact's folder: up climbs from the page to artifacts/, one level from
+    artifacts/_synthesis/ and two from a page in a folder below it."""
     repo, folder = i.split("/", 1)
     t = titles.get(i, folder)
     if repo == "SchwingNet":
-        return f"[{cell(t)}](../{folder}/)"
+        return f"[{cell(t)}]({up}{folder}/)"
     return f"[{cell(t)}](https://github.com/OpenSpineConsortium/symphony-template/tree/main/artifacts/{folder}/)"
 
 

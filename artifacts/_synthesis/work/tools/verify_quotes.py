@@ -1,8 +1,11 @@
 """Match every candidate's quotes and values against the artifacts' plain texts, so a
 candidate the book carries is one whose words are in the source, not only in a reader's
 memory of it. Matching is by normalised substring: a quote is found when its whole
-normalised text, or its longest 48-character window, is in the normalised text."""
+normalised text, its parts around an ellipsis or an editor's bracketed words, or one of its
+48-character windows is in the normalised text, and last when its parts are there once
+spacing is ignored, since some pages are extracted one character to a line."""
 import json
+import os
 import re
 import sys
 import unicodedata
@@ -23,10 +26,25 @@ def norm(s):
 
 TEXTS = {}
 RAW = {}
-# The two checkouts' artifacts/ folders; SYNTH_SCHWINGNET and SYNTH_SYMPHONY name them where
-# the clones are not under /home/user, as in another account's session.
-REPOS = {"SchwingNet": __import__("os").environ.get("SYNTH_SCHWINGNET", "/home/user/SchwingNet") + "/artifacts",
-         "symphony-template": __import__("os").environ.get("SYNTH_SYMPHONY", "/home/user/symphony-template") + "/artifacts"}
+# An editor's words in square brackets, such as "[the owner]" where a quote named a person,
+# stand for words the source has, so a quote is matched around them as around an ellipsis.
+# A bracket that holds a digit is the source's own, such as an interval, and is matched.
+GAP = re.compile(r"\.\.\.|\u2026|\[[A-Za-z][^\]\d]*\]")
+
+
+def required_dir(var, below=""):
+    """A folder the caller must name: with another session's default path every quote reads
+    "no text" and the page looks clean, so a missing one stops the run instead."""
+    path = os.environ.get(var, "")
+    if not path or not os.path.isdir(path + below):
+        raise SystemExit(f"{var} must name an existing folder{' holding ' + below.strip('/') if below else ''}; it is {path!r}")
+    return path
+
+
+def repos():
+    """The two checkouts' artifacts/ folders, named by SYNTH_SCHWINGNET and SYNTH_SYMPHONY."""
+    return {"SchwingNet": required_dir("SYNTH_SCHWINGNET", "/artifacts") + "/artifacts",
+            "symphony-template": required_dir("SYNTH_SYMPHONY", "/artifacts") + "/artifacts"}
 
 
 def text_of(text_dir, aid):
@@ -38,10 +56,9 @@ def text_of(text_dir, aid):
         except OSError:
             TEXTS[aid] = None
         import html
-        import os
         repo, folder = aid.split("/", 1)
         chunks = []
-        for root, _dirs, files in os.walk(f"{REPOS[repo]}/{folder}"):
+        for root, _dirs, files in os.walk(f"{repos()[repo]}/{folder}"):
             for f in sorted(files):
                 if f.rsplit(".", 1)[-1].lower() in ("html", "htm", "js", "json", "md", "css", "txt", "svg", "csv"):
                     try:
@@ -68,6 +85,33 @@ def found(quote, text, raw=None):
     return r
 
 
+# The answers of found() that put a quote in the text it was looked for in.
+HIT = ("whole", "parts", "window", "spacing", "raw-whole", "raw-parts", "raw-window", "raw-spacing")
+
+
+def artifact_ids(text_dir):
+    """Every artifact that has an extracted text, as repo/folder."""
+    return sorted(f"{repo}/{name[:-4]}" for repo in os.listdir(text_dir) if os.path.isdir(f"{text_dir}/{repo}")
+                  for name in os.listdir(f"{text_dir}/{repo}") if name.endswith(".txt"))
+
+
+def place(text_dir, quote, own, other):
+    """Where a skeptic's quote is: in its own artifact, only in the other one, only in a third
+    ("elsewhere:" and its id, as when a verdict quotes the later page that makes a statement
+    stale), or nowhere. A verdict merged at the wrong index would quote some other candidate's
+    artifacts, so every answer but own and empty is for a person to read."""
+    if not (quote or "").strip():
+        return "empty"
+    if own and found(quote, text_of(text_dir, own), raw_of(own)) in HIT:
+        return "own"
+    if other and found(quote, text_of(text_dir, other), raw_of(other)) in HIT:
+        return "other"
+    for aid in artifact_ids(text_dir):
+        if aid not in (own, other) and found(quote, text_of(text_dir, aid), raw_of(aid)) in HIT:
+            return "elsewhere:" + aid
+    return "absent"
+
+
 def found_in(quote, text):
     if text is None:
         return "no-text"
@@ -76,13 +120,16 @@ def found_in(quote, text):
         return "no-quote"
     if q in text:
         return "whole"
-    parts = [p.strip() for p in re.split(r"\.\.\.|\u2026", quote) if len(norm(p)) >= 12]
-    if parts and all(norm(p) in text for p in parts):
+    parts = [n for n in (norm(p) for p in GAP.split(quote)) if len(n) >= 12]
+    if parts and all(p in text for p in parts):
         return "parts"
     if len(q) > 48:
         for i in range(0, len(q) - 48 + 1, 8):
             if q[i:i + 48] in text:
                 return "window"
+    flat = text.replace(" ", "")
+    if all(p.replace(" ", "") in flat for p in parts or [q]):
+        return "spacing"
     return "absent"
 
 

@@ -323,7 +323,7 @@
        "quote_a": "the grid's outbound IP is captcha-throttled by PMC; WSL is not",
        "artifact_b": "SchwingNet/fluorocap-access-setup-jlvkft",
        "statement_b": "The access setup plans the closed-journal refetch from the grid login node because publishers authenticate by IP.",
-       "quote_b": "The grid is inside the university's address space (141.217.x.x) and publishers authenticate by IP. I will run the closed-journal refetch from the grid login node",
+       "quote_b": "The grid is inside the university's address space ([the university's network range]) and publishers authenticate by IP. I will run the closed-journal refetch from the grid login node",
        "why_it_matters": "The two pages pick opposite hosts for the same reason (IP); the overnight report shows the proxy session, not the grid IP, did the refetch, so the access setup's plan was not what ran."
       },
       {
@@ -554,7 +554,7 @@
        "quote_a": "the grid's outbound IP is captcha-throttled by PMC; WSL is not",
        "artifact_b": "SchwingNet/fluorocap-access-setup-jlvkft",
        "statement_b": "The access setup asserts publishers authenticate by IP inside the university's address space, with no probe cited.",
-       "quote_b": "The grid is inside the university's address space (141.217.x.x) and publishers authenticate by IP.",
+       "quote_b": "The grid is inside the university's address space ([the university's network range]) and publishers authenticate by IP.",
        "why_it_matters": "Both network assumptions decide where the harvest runs and neither is backed by a recorded test; the overnight report shows the refetch went through the proxy session instead."
       },
       {
@@ -612,7 +612,7 @@
      ],
      "unsourced_summary": "The dataset card and the pipeline map both assert that the manifest regenerates byte-identical from the same inputs and that an unbroken SHA-256 chain runs from original figure to weights, naming no command, run or checksum file. The map asserts that the grid's outbound IP is captcha-throttled by PMC while WSL is not, and the access setup asserts that publishers authenticate by IP from the university's address space; neither cites a probe, and the overnight report shows the refetch ran through the proxy session instead. The access setup asserts that video frames are the only 1080 px native source and that Instagram serves posts at 1080 px wide, with no measurement; the reality check says the YouTube panels came capped at 720p. The map's anchor panel asserts that an author's printed label is the strongest anchor there is, with no accuracy measured for printed labels, while the reality check says the caption's label was mostly assigned by counting on a limited field. The atlas and the registry both state that 72.8 percent of the 29,500 panels are reproductions with no pixel residual, naming no duplicate-detection run or threshold. The card's 88% figure-mate number carries no pair count. Lift Before Label asserts the renderer is already at the DeepDRR/SyntheX level with no test, and its own adversarial pass never ran. The adjudication bench asserts that the reader's single read is the only ground truth the panel will ever have, and the level verification bench assumes a whole-run-correct panel is the common case; neither assumption is measured, and the card's protocol promises two blind readers with a third adjudicating. The reality check's claims that 'Castellvi I is two thirds of transitional anatomy' and that registration-derived labels are biased are stated without a source in the records.",
      "stale_summary": "All six primary pages are snapshots of 14 to 15 September 2026 with running work inside them: the card says dataset version 0.2 with 0.3 in progress and reader labels pending for every panel; the pipeline map draws manifest v0.3 and 197k YouTube frames; the access setup says the PMC refetch is running now and worries about a library note of 30 June 2026; the overnight report says round two of the refetch is still running, the FluoroGen array was cancelled at 05:50, the CUT v2 is queued as jobs 40285316/7 and the v2 retrain registered at 08:13; the reality check, read between 06:55 and 07:15, says the v2 weights were destroyed and retrain 40285209 is pending, lists CUT jobs 40285274 and 40285275 as queued, and lays out a 90-day and 12-month plan from 15 September. The Honest 99 report of 16 September says training on the enlarged corpus, the backbone comparison and the render-physics test were still running. Later pages date them: the atlas of 2026-10-17 shows human_qc_status pending on all 21,603 rows and the two benches show 0 of 0 verified as of 2026-10-22, so the card's 'reader labels: none yet' still holds five weeks on; the handoff of 2026-10-08 says 14 cine sources, SX-Stitch and Balgrist requests are drafted and none sent, 0 verified real-frame transitional persons against 35 needed, and the registry of 2026-10-20 still calls VinDr's determination pending although the atlas three days earlier says HPR 2026-330 covers it (notice 2026-09-29) and the YouTube copies unpermitted until a request is answered. The lab recipe of 2026-09-27 says the website shipped weights until 2026-09-14. The CNS talk window (31 October to 4 November 2026) and the Radiopaedia USD 250 fee in the records are unconfirmed as of the records' dates.",
-     "notes": "Quotes for the primary pages, the Honest 99 report, the handoff, the lab recipe, Lift Before Label, the level context ladder, the OR ledger and the three benches were checked against the plain texts; the extracted texts of fluoroscopy-data-atlas and schwingnet-data-registry truncate their embedded JSON and returned no hits for their key numbers, so those two artifacts are quoted from their inventory records only. The '141.217.x.x' in one quote is a university network range, not a personal address; no e-mail address, phone number or home address appears, and people are named by role (the owner, the reader). The FluoroGen 12,896 versus synth_rare 12,929 pair may be two different objects; it is listed because no page says so. The overnight report's 08:30 update postdating the reality check's snapshot is why the clustering's two canonical pages disagree on the v2 model state. Several secondary artifacts (Honest 99, handoff, registry, atlas) carry the later word on the corpus and the directive, so a reader of the canonical set alone would miss the private-forever rule, the leaked-family ruling and the October counts."
+     "notes": "Quotes for the primary pages, the Honest 99 report, the handoff, the lab recipe, Lift Before Label, the level context ladder, the OR ledger and the three benches were checked against the plain texts; the extracted texts of fluoroscopy-data-atlas and schwingnet-data-registry truncate their embedded JSON and returned no hits for their key numbers, so those two artifacts are quoted from their inventory records only. One quote named the university's network range, for which an editor's words now stand; no e-mail address, phone number or home address appears, and people are named by role (the owner, the reader). The FluoroGen 12,896 versus synth_rare 12,929 pair may be two different objects; it is listed because no page says so. The overnight report's 08:30 update postdating the reality check's snapshot is why the clustering's two canonical pages disagree on the v2 model state. Several secondary artifacts (Honest 99, handoff, registry, atlas) carry the later word on the corpus and the directive, so a reader of the canonical set alone would miss the private-forever rule, the leaked-family ruling and the October counts."
     }
    },
    {
@@ -4120,7 +4120,7 @@
        "topic": "Grid schedule to the CNS talk",
        "artifact_a": "SchwingNet/schwingnet-grid-pipeline",
        "statement_a": "Gate words under review in PR #54, one press by the owner outstanding, version 1 trained by 28 Oct, latency by 29 Oct, provisional 30 Oct, talk 2 Nov; RATIC link expires 2026-10-28",
-       "quote_a": "One press by greg remains: Connect GitHub Actions in Beethoven, once beethoven-extension #23 reaches him. Until then no word can run.",
+       "quote_a": "One press by [the owner] remains: Connect GitHub Actions in Beethoven, once beethoven-extension #23 reaches him. Until then no word can run.",
        "artifact_b": "SchwingNet/schwingnet-grid-pipeline",
        "statement_b": "(same artifact)",
        "quote_b": "The RSNA RATIC download link expires 2026-10-28 02:38 UTC.",
@@ -4496,7 +4496,7 @@
        "quote_a": "The array was cancelled at 05:50 after 12,896 images, all kept for inspection, none usable for level training.",
        "quote_b": "synth_rare 12,929 renders over 2,844 cases (T13 86, L6 1,763), 9.0 GB; synth_rare_lowstrength 566; synth_v1 empty",
        "explanation": "The atlas page source files synth_rare under 'FluoroGen diffusion-styled synthetic frames'. Its note repeats the overnight finding: 'SDXL img2img destroys anatomy at strength 0.45-0.65 and barely changes the DRR at 0.2, and synth_rare is in no bank with no written reason.' synth_rare_lowstrength matches the 300-case low-strength sweep. So the atlas does link the two and agrees the images are unused. Only a gap of 33 images (12,896 against 12,929) is unexplained. The registry, however, gives synth_rare a level truth of 'exact', which the overnight finding contradicts.",
-       "resolution_hint": "Carry: synth_rare is the output of the cancelled FluoroGen array, kept for inspection and unusable for level training. Correct the registry's 'exact' level truth and write the reason it is in no bank. A file count under /rs/rs_grp_oschome/go2432/data/fluorogen_synthetic would settle 12,896 against 12,929."
+       "resolution_hint": "Carry: synth_rare is the output of the cancelled FluoroGen array, kept for inspection and unusable for level training. Correct the registry's 'exact' level truth and write the reason it is in no bank. A file count under [the lab volume's data root]/fluorogen_synthetic would settle 12,896 against 12,929."
       },
       {
        "kind": "contradiction",
@@ -4758,7 +4758,7 @@
        "artifact_b": "SchwingNet/fluorocap-access-setup-jlvkft",
        "verdict": "confirmed",
        "quote_a": "the grid's outbound IP is captcha-throttled by PMC; WSL is not",
-       "quote_b": "The grid is inside the university's address space (141.217.x.x) and publishers authenticate by IP.",
+       "quote_b": "The grid is inside the university's address space ([the university's network range]) and publishers authenticate by IP.",
        "explanation": "Neither page cites a recorded test. The access setup says its one probe that day was 'inconclusive only because Wolters Kluwer refuses plain clients outright'. The overnight report shows the refetch went through the proxy session instead.",
        "resolution_hint": "Record a probe (PMC from the grid against WSL, and one publisher from the grid IP) before the book states either claim. Otherwise state only the route that ran: WSL plus the WSU proxy."
       },
@@ -5328,7 +5328,7 @@
        "quote_a": "not in the repository since 2026-10-13: they live on the grid under /rs/rs_grp_oschome/shared/spine-program/archive/",
        "artifact_b": "SchwingNet/connect-the-grid-to-github",
        "statement_b": "The repository's links point at that archive, which the owner fills once with a script; until then the links point at nothing.",
-       "quote_b": "are links to `/rs/rs_grp_oschome/shared/spine-program/archive/`, which Greg fills once with a script; until he has, those links point at nothing",
+       "quote_b": "are links to `/rs/rs_grp_oschome/shared/spine-program/archive/`, which [the owner] fills once with a script; until he has, those links point at nothing",
        "why_it_matters": "A student sent to the archive by the onboarding finds nothing until the owner's script runs; the onboarding states as done what the next day's note calls pending."
       },
       {
@@ -5471,7 +5471,7 @@
        "quote_a": "disclosure submitted 2026-09-25; provisional filing not recorded",
        "artifact_b": "SchwingNet/schwingnet-grid-pipeline",
        "statement_b": "Provisional filed on Friday 30 October, the owner's; any-view marks itself patent material before the provisional.",
-       "quote_b": "Fri 30 Oct Provisional filed. greg's",
+       "quote_b": "Fri 30 Oct Provisional filed. [the owner]'s",
        "why_it_matters": "Everything confidential waits on the filing; the date is a plan, not a record, and the demo cannot be shown until it is recorded as done."
       },
       {
@@ -5512,7 +5512,7 @@
        "topic": "One press remaining in Beethoven",
        "artifact_a": "SchwingNet/schwingnet-grid-pipeline",
        "statement_a": "One press by the owner remains: Connect GitHub Actions in Beethoven, once beethoven-extension #23 reaches him.",
-       "quote_a": "One press by greg remains: Connect GitHub Actions in Beethoven, once beethoven-extension #23 reaches him.",
+       "quote_a": "One press by [the owner] remains: Connect GitHub Actions in Beethoven, once beethoven-extension #23 reaches him.",
        "artifact_b": "symphony-template/grid-and-cloud-claude-workers-review",
        "statement_b": "Nothing has started a second worker yet.",
        "quote_b": "Nothing has started a second worker yet",
@@ -5677,7 +5677,7 @@
        "topic": "The laptop cannot keep several Claude desktops signed in",
        "artifact_a": "symphony-template/several-grid-workers-one-per-project",
        "statement_a": "Stated as the owner's reason for one worker per project.",
-       "quote_a": "greg, 2026-10-21 20:06 UTC: switch between and update projects using several Claude workers on the grid",
+       "quote_a": "[the owner], 2026-10-21 20:06 UTC: switch between and update projects using several Claude workers on the grid",
        "artifact_b": "symphony-template/grid-and-cloud-claude-workers-review",
        "statement_b": "Several workers on one account share its five-hour window and stall together.",
        "quote_b": "Several workers on one account share its five-hour window and stall together",
@@ -6058,7 +6058,7 @@
        "topic": "beethoven-qa's latest tag and main version",
        "artifact_a": "SchwingNet/how-the-beethoven-repositories-are-encapsulated-6h4zq9",
        "statement_a": "beethoven-qa v2.0.0 tagged at its merge commit on 2026-10-07; a session may not create tags.",
-       "quote_a": "Done: [beethoven-qa #4](https://github.com/OpenSpineConsortium/beethoven-qa/pull/4) merged, and greg tagged `v2.0.0` at its merge commit (53d5ae5) on 2026-10-07. A session may not create tags.",
+       "quote_a": "Done: [beethoven-qa #4](https://github.com/OpenSpineConsortium/beethoven-qa/pull/4) merged, and [the owner] tagged `v2.0.0` at its merge commit (53d5ae5) on 2026-10-07. A session may not create tags.",
        "artifact_b": "symphony-template/symphony-handoff",
        "statement_b": "main is at 5.0.0 but only v1.0.0 to v3.0.0 are tagged; beethoven-agents pins v3.0.0, which has no report command; v4.0.0 and v5.0.0 tags are asked of the owner.",
        "quote_b": "main is at 5.0.0, but only v1.0.0 to v3.0.0 are tagged. A consumer can pin only v3.0.0 or an untagged commit, and beethoven-agents runs v3.0.0, which has no report command.",
@@ -6083,7 +6083,7 @@
        "quote_a": "a task is claimed by pushing a branch named after its Linear issue (`claude/LIN-123`). Git accepts only the first push of a new branch, so two accounts cannot both claim one issue.",
        "artifact_b": "symphony-template/sdlc-build-plan-bjzikn",
        "statement_b": "On 2026-10-09 the owner chose GitHub Issues and the repository side first; Linear set aside.",
-       "quote_b": "On 2026-10-09 greg chose GitHub Issues and asked for the repository side first, as a GitHub template repository built from the bottom up with no export or import in its first layer",
+       "quote_b": "On 2026-10-09 [the owner] chose GitHub Issues and asked for the repository side first, as a GitHub template repository built from the bottom up with no export or import in its first layer",
        "why_it_matters": "The shared plan carries the first-push lock idea that survived, but its queue, coordinator, routine caps (30 and 100 fires an hour) and hourly schedule describe a design replaced within days; PROTOCOL.md now puts the coordinator in the board's own run."
       },
       {
@@ -6483,7 +6483,7 @@
        "quote_a": "Linear holds the work queue and the conversation about each task.",
        "artifact_b": "symphony-template/sdlc-build-plan-bjzikn",
        "statement_b": "On 2026-10-09 the owner chose GitHub Issues as the queue and deferred Linear; every later artifact (the ladder, the brief, the taxonomy, the onboarding) has issues as the queue and claude/N as the branch.",
-       "quote_b": "On 2026-10-09 greg chose GitHub Issues and asked for the repository side first, as a GitHub template repository built from the bottom up with no export or import in its first layer (the sdlc-template work in the same thread); Linear and the materializer come later.",
+       "quote_b": "On 2026-10-09 [the owner] chose GitHub Issues and asked for the repository side first, as a GitHub template repository built from the bottom up with no export or import in its first layer (the sdlc-template work in the same thread); Linear and the materializer come later.",
        "why_it_matters": "A planner reading only the 2026-10-08 plan would set up a Linear team, a Claimed state and LIN-numbered branches; Symphony's claim lock, board and release all read GitHub issue numbers, and the Linear connector was never wired."
       },
       {
@@ -6615,7 +6615,7 @@
        "quote_a": "Projects cannot be shared across accounts, which is why the repository is the plane.",
        "artifact_b": "SchwingNet/spine-program-student-onboarding",
        "statement_b": "Told to the student as fact with no source; the primitives spec attributes it to 'document 25', and only the plan of 2026-10-08 quotes the Claude Code documentation page.",
-       "quote_b": "A Project belongs to one account and cannot be shared, so you and Greg each have your own; the repository is the one thing you share",
+       "quote_b": "A Project belongs to one account and cannot be shared, so you and [the owner] each have your own; the repository is the one thing you share",
        "why_it_matters": "The whole architecture rests on this one product fact; it is sourced once (the plan, 2026-10-08, Pro and Max beta) and repeated as established everywhere else, so if sharing arrives on Team or Enterprise nothing in the later artifacts would flag it."
       },
       {
@@ -6802,7 +6802,7 @@
        "quote_a": "The release workflow talks to the store with five values, kept as repository secrets in claude-swap-cloud.",
        "artifact_b": "symphony-template/symphony-handoff",
        "statement_b": "By 2026-10-13 the extension is 'Symphony for Chrome' with its secrets at symphony-extension's settings, releases go through the shared chrome-store-release-kit, and claude-swap-cloud is to delete its own copy of the kit.",
-       "quote_b": "Submit Symphony for Chrome (https://chrome.google.com/webstore/devconsole), then set the five CWS_ secrets and CWS_ON_PUSH at https://github.com/OpenSpineConsortium/symphony-extension/settings/secrets/actions.",
+       "quote_b": "Submit Symphony for Chrome (https://chrome.google.com/webstore/devconsole), then set the five CWS_ secrets and CWS_ON_PUSH at [a repository's Actions secrets page].",
        "why_it_matters": "Following the 2026-10-08 runbook's steps 7 and 8 would put the secrets in the wrong repository and run a script the handoff says is being removed."
       },
       {
@@ -6912,7 +6912,7 @@
        "quote_a": "release claims with no commit for 24 hours; flag two PRs touching the same files; rewrite `STATE.md`; tidy `docs/memory/`",
        "artifact_b": "symphony-template/sdlc-build-plan-bjzikn",
        "statement_b": "The build plan attributes to the same plan a rule that the board Action comments once on a pull request idle for a day, with no release.",
-       "quote_b": "comments once on a pull request idle for a day, the rule in greg's plan of 2026-10-08. No model call in it.",
+       "quote_b": "comments once on a pull request idle for a day, the rule in [the owner]'s plan of 2026-10-08. No model call in it.",
        "why_it_matters": "Commenting leaves the issue held; releasing frees it; later Symphony does both (release after 24 hours, 'main moved' comments), but the build plan's board alone would never free a dead claim."
       },
       {
@@ -7089,7 +7089,7 @@
        "topic": "Whether harvesters and orchestrators may run on, or fetch from, the grid login node",
        "artifact_a": "SchwingNet/fluorocap-access-setup-jlvkft",
        "statement_a": "The access setup (2026-09-14) plans to run the closed-journal refetch from the grid login node because the grid sits in the university's address space, and the FluoroCap map (same day) has 'login-node orchestrators' polling for files and job names.",
-       "quote_a": "The grid is inside the university's address space (141.217.x.x) and publishers authenticate by IP. I will run the closed-journal refetch from the grid login node with a browser-impersonating client before asking you for anything.",
+       "quote_a": "The grid is inside the university's address space ([the university's network range]) and publishers authenticate by IP. I will run the closed-journal refetch from the grid login node with a browser-impersonating client before asking you for anything.",
        "artifact_b": "SchwingNet/the-lab-recipe-1t2gvp",
        "statement_b": "The lab recipe (2026-09-27), citing the 2026-09-21 incident of smoke tests on a node shared by ~95 users, makes downloads jobs and restricts the login node to sbatch, squeue, scancel, ls, tail and git; the roadmap and hpcworker forbid any polling loop on the login node.",
        "quote_b": "The login node runs only `sbatch`, `squeue`, `scancel`, `ls`, `tail`, `git`. Downloads are jobs too; compute nodes have internet.",
@@ -7103,7 +7103,7 @@
        "quote_a": "every network route, GitHub and Hugging Face pushes, the sync | | the grid's outbound IP is captcha-throttled by PMC; WSL is not",
        "artifact_b": "SchwingNet/fluorocap-access-setup-jlvkft",
        "statement_b": "The access setup (same day) ranks 'try the campus IP first, it costs nothing' and plans the closed-journal refetch from the grid because publishers authenticate by IP.",
-       "quote_b": "Try the campus IP first, it costs nothing The grid is inside the university's address space (141.217.x.x) and publishers authenticate by IP.",
+       "quote_b": "Try the campus IP first, it costs nothing The grid is inside the university's address space ([the university's network range]) and publishers authenticate by IP.",
        "why_it_matters": "Two pages of the same day give opposite advice on the grid as a network host; a planner choosing where a fetch chain runs (the SchwingNet X-ray and CT fetches are grid jobs) needs to know whether the grid's address is an asset (IP-authenticated access) or a liability (throttled, and a whole institution's range can be blocked)."
       },
       {
@@ -8101,10 +8101,10 @@
        "topic": "Venue, contacts, registration form and event page repeated across both flyers",
        "artifact_a": "SchwingNet/celebrate-life-flyer-noutom",
        "statement_a": "Detroit City Fieldhouse; two contacts (a Detroit City FC operations assistant and the owner under DMC/WSU General Surgery); the Google Form; the OSC Celebrate Life page.",
-       "quote_a": "Operations Assistant, Detroit City FC ... DMC/WSU General Surgery ... SCAN TO REGISTER ... forms.gle/v2NbizhJ8TpBdVi66 ... openspineconsortium.com/celebrate-life",
+       "quote_a": "[a club staff contact], Detroit City FC ... DMC/WSU General Surgery ... SCAN TO REGISTER ... [the registration form's link] ... openspineconsortium.com/celebrate-life",
        "artifact_b": "SchwingNet/celebrate-life-scoliosis-night-julcos",
        "statement_b": "The same venue, the same two contacts, the same form link and the same event page.",
-       "quote_b": "Operations Assistant, Detroit City FC ... DMC/WSU General Surgery ... Scan to register forms.gle/v2NbizhJ8TpBdVi66 ... openspineconsortium.com/celebrate-life",
+       "quote_b": "[a club staff contact], Detroit City FC ... DMC/WSU General Surgery ... Scan to register [the registration form's link] ... openspineconsortium.com/celebrate-life",
        "why_it_matters": "Both versions send people to one registration form and one page. The superseded oncology flyer still leads to the live form, so sign-ups cannot be told apart by flyer, and the page may describe only one version of the event."
       },
       {
@@ -8335,7 +8335,7 @@
        "quote_a": "The fastest way around that is to have an existing registered organization host the event with OSC as the program, rather than registering OSC itself.",
        "artifact_b": "SchwingNet/celebrate-life-flyer-noutom",
        "statement_b": "The flyers present the event with Detroit City FC (or the Fieldhouse) and the OpenSpine Consortium, with a club staff contact and the owner as contacts, and name no student organization.",
-       "quote_b": "Operations Assistant, Detroit City FC ... @openspineconsortium",
+       "quote_b": "[a club staff contact], Detroit City FC ... @openspineconsortium",
        "why_it_matters": "Sources that require a registered student organization (SAFB, the alumni funds via Student Affairs) cannot fund the event as the flyers present it. A host organization would have to be added before applying."
       }
      ],
@@ -8345,7 +8345,7 @@
        "relation": "superseded",
        "other": "SchwingNet/celebrate-life-scoliosis-night-julcos",
        "agree": true,
-       "why": "The two records describe the same event: same Saturday, October 24, same Detroit City Fieldhouse, same two contacts, same registration form (forms.gle/v2NbizhJ8TpBdVi66) and same event page. Several lines are copied word for word. The export's README calls noutom 'the first Celebrate Life flyer'; julcos is the only other one and is fuller (hours, food rule, watch party, the 'everyone plays' rule). Neither flyer says it replaces the other, so the order rests on the README, not on a dated statement. The rewrite also changed the audience (pediatric hematology/oncology to scoliosis and spine conditions), the time (6:45 PM kickoff to 5:00-7:00 PM), the companion event (outdoor Trunk or Treat to indoor Turf or Treat) and the food promise. The julcos record notes it did not read noutom. Superseded is right for the flyer, but the audience change is undocumented, and the old flyer still points at the live form."
+       "why": "The two records describe the same event: same Saturday, October 24, same Detroit City Fieldhouse, same two contacts, same registration form ([the registration form's link]) and same event page. Several lines are copied word for word. The export's README calls noutom 'the first Celebrate Life flyer'; julcos is the only other one and is fuller (hours, food rule, watch party, the 'everyone plays' rule). Neither flyer says it replaces the other, so the order rests on the README, not on a dated statement. The rewrite also changed the audience (pediatric hematology/oncology to scoliosis and spine conditions), the time (6:45 PM kickoff to 5:00-7:00 PM), the companion event (outdoor Trunk or Treat to indoor Turf or Treat) and the food promise. The julcos record notes it did not read noutom. Superseded is right for the flyer, but the audience change is undocumented, and the old flyer still points at the live form."
       }
      ],
      "unsourced_summary": "Funding page (SchwingNet/osc-outreach-funding-kak2gk): the funder amounts and deadlines are attributed to the funders' own sites by domain only (read in September 2026), and four entries are marked as leads. What has no source at all: OSC's record to cite in every application (802 CT records released, 13 medical students trained, two permanent archives), with no dataset DOI or link given; only the Cureus paper (doi:10.7759/cureus.112661) is cited. Also unsourced: that OSC is not a Registered Student Organization; that the resident cannot apply for 'any student award' (AIDaS ties a narrower version, PI eligibility, to its own call); that a research year 'usually' keeps enrolment; and the $70,000 Community Foundation precedent, credited to 'Wayne State news coverage' with no link. Onboarding (SchwingNet/spine-program-student-onboarding) says the dataset is on Zenodo and Hugging Face as CTSpinoPelvic1K v11, also without a link. Neither artifact lets a reader check the 802 count, and the AIDaS draft's 801 abdominopelvic spines may or may not be the same set. Flyers (SchwingNet/celebrate-life-flyer-noutom and SchwingNet/celebrate-life-scoliosis-night-julcos): every operational promise is the organiser's own statement with no confirming source. That covers the professional coaches from Southeast Michigan (identical text in both), the simultaneous Halloween event (named and staged differently in each), the under-18 eligibility, food provided (first) versus no outside food (second), and the post-event watch party. AIDaS (SchwingNet/aidas-seed-grant-proposal) adds unsourced hardware prices, a $24/h annotation rate and the Joint Commission count; the onboarding adds unsourced student costs (Claude Pro about US$20 a month, paid by the student) and timings.",

@@ -57,12 +57,12 @@
   [
    "SchwingNet/fluoroscopy-data-atlas",
    "52",
-   "\"greg_status\": \"held\" (52 entries in window.ATLAS)"
+   "\"[the owner]_status\": \"held\" (52 entries in window.ATLAS)"
   ],
   [
    "SchwingNet/fluoroscopy-data-atlas",
    "149",
-   "\"greg_status\": \"not held\" (149 entries in window.ATLAS)"
+   "\"[the owner]_status\": \"not held\" (149 entries in window.ATLAS)"
   ],
   [
    "SchwingNet/fluoroscopy-data-atlas",
@@ -97,7 +97,7 @@
   [
    "SchwingNet/ninety-three-pixels",
    "194",
-   "194 GB in u251-xenograft-murine-RNASeq-study, untouched since July"
+   "194 GB in [another group's study folder], untouched since July"
   ],
   [
    "SchwingNet/spine-program-student-onboarding",

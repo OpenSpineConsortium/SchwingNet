@@ -1,0 +1,1069 @@
+{
+ "date": "2026-10-23",
+ "about": "On 2026-10-23 the skeptics' verdicts were themselves read again. The sample was drawn by stratum, the 14 clusters and the numbers, and within each by the lowest SHA-1 of stratum and row, so it can be drawn again: two verdicts that put a candidate on the confirmed list and one that kept a candidate off it, refuted or a number's agreement, from every stratum, then 5 more that kept one off and 4 cannot-tell, 54 in all; and the 4 verdicts whose own quotes the script could not place, 58 in all. Five re-checkers, three for the verdicts that put a candidate on the list and two for the rest, each told to overturn every verdict in its share, read both sources of each and gave their own verdict, whether the hint was right and the words they rest on. Where a re-checker overturned a verdict or its hint, one of three judges read both readings and the sources and ruled; all 11 rulings sided with the re-checker.",
+ "items": [
+  {
+   "stratum": "Beethoven: the research engine and its repositories",
+   "index": 1,
+   "side": "confirmed",
+   "drawn": "random",
+   "first": "superseded-by-later",
+   "recheck": {
+    "holds": true,
+    "hint_ok": true,
+    "verdict": "superseded-by-later",
+    "quote_a": "Which framework version is live on the grid is not established. `docs/guides/LAB_LEAD.md:54` says 10, `docs/V12_STATUS.md:560` says 13 is not deployed, and commit `0c51fb6` records v15 published on 2026-10-03.",
+    "quote_b": "**State today (read at 12:03 UTC, 21 Oct):** the grid answers with framework 22. It lists one worker, `worker`, online on node hao1, and account 1 (your Wayne State Max account) signed in.",
+    "explanation": "The 2026-10-07 plan reads framework 17 in hpcworker's tree at e77863c. It says the version live on the grid is not established, with documents giving 10, 13 and 15. The 2026-10-21 review reads the live grid at 12:03 UTC answering framework 22 (request verify22), with named workers and account slots. The 17 is the repository's version and the 22 is the grid's live one. The later page settles the open question and is two weeks later, so superseded-by-later stands.",
+    "resolution_hint": "Carry framework 22, read live on 2026-10-21, from the grid review. Carry the 07 October plan's framework 17 only as hpcworker's tree version at e77863c."
+   },
+   "ruling": null
+  },
+  {
+   "stratum": "Beethoven: the research engine and its repositories",
+   "index": 10,
+   "side": "dismissed",
+   "drawn": "random",
+   "first": "refuted",
+   "recheck": {
+    "holds": true,
+    "hint_ok": true,
+    "verdict": "refuted",
+    "quote_a": "All seven code repositories this work could change are now sealed.",
+    "quote_b": "The primary sources most claims rest on: ... - The Beethoven repositories (private): hpcworker, beethoven-extension, beethoven-qa, beethoven-agents, beethoven-research",
+    "explanation": "The encapsulation page (2026-10-07) counts seven repositories 'this work could change' and also names beethoven-access and beethoven-vscode, so its seven is scoped and not a full inventory. The spec (2026-10-15) gives its five only in section 12, Sources, as the primary sources its claims rest on. Its part table names beethoven-base and beethoven-sites among other parts but never claims to list every repository. Neither page counts the full set, so they do not contradict. The one open point is beethoven-base: the spec calls it Built, and the earlier page never names it.",
+    "resolution_hint": "Carry each list with its scope: seven sealed repositories as of 2026-10-07 (encapsulation page) and five named sources (spec). For the full set, and for whether beethoven-base existed on 2026-10-07, check the organization's repository listing."
+   },
+   "ruling": null
+  },
+  {
+   "stratum": "Beethoven: the research engine and its repositories",
+   "index": 11,
+   "side": "confirmed",
+   "drawn": "random",
+   "first": "superseded-by-later",
+   "recheck": {
+    "holds": true,
+    "hint_ok": true,
+    "verdict": "superseded-by-later",
+    "quote_a": "whether the VS Code edition gives up its own grid scripts for hpcworker's",
+    "quote_b": "On 2026-10-07 at 22:33Z [the owner] deferred the move, since he is the only person using the VS Code edition and nothing else in the ecosystem depends on it. VS Code keeps its own grid scripts for now, including the builder of the lab's shared image.",
+    "explanation": "The encapsulation report (Oct 7, 2026) lists the move as one of two decisions the owner still had to make, and calls it 'a large change'. The plan's banner, on a page from the same day, records the owner deferring it at 22:33Z, with VS Code keeping its grid scripts. Neither page gives the report a time, so the order within the day rests on the banner being a recorded decision. But a dated decision settles a question the other page leaves open, whatever order they were written in.",
+    "resolution_hint": "Carry the deferral of 2026-10-07 22:33Z from the banner of 'Moving Beethoven for VS Code onto hpcworker': VS Code keeps its own grid scripts, including the builder of the shared image."
+   },
+   "ruling": null
+  },
+  {
+   "stratum": "Beethoven: the research engine and its repositories",
+   "index": 27,
+   "side": "dismissed",
+   "drawn": "random",
+   "first": "cannot-tell",
+   "recheck": {
+    "holds": true,
+    "hint_ok": true,
+    "verdict": "cannot-tell",
+    "quote_a": "Leave it unset until the 20.0.0 upload by hand is done, so the first automatic draft does not land on top of it.",
+    "quote_b": "**Beethoven (23.x).** It has one `worker_name` and one `project_url`. ... 2. Beethoven: the projects list, the switcher and start on press, read through the new contract. This needs a store release.",
+    "explanation": "The store note (2026-10-13) leaves the 20.0.0 hand upload, the five CWS_ secrets and the CWS_ON_PUSH variable to the owner. The worker plan (2026-10-21) puts Beethoven at 23.x and says the next feature needs a store release. It does not say whether 20.0.0 was uploaded or reviewed, or whether automatic releases are switched on. Being at 23.x shows only that the code moved on, not what the store listing holds.",
+    "resolution_hint": "The Chrome Web Store dashboard's item history and the CWS_ON_PUSH variable and CWS_ secrets in beethoven-extension's Actions settings would settle it; until then carry the store note's steps as pending."
+   },
+   "ruling": null
+  },
+  {
+   "stratum": "Datasets, holdings and licences",
+   "index": 26,
+   "side": "confirmed",
+   "drawn": "random",
+   "first": "confirmed",
+   "recheck": {
+    "holds": true,
+    "hint_ok": false,
+    "verdict": "confirmed",
+    "quote_a": "CTSpinoPelvic1K L6: 18 by release label, 16 by the readers' own count, 29 persons in the registry. Seven disagreeing records are out of every truth pool until re-read.",
+    "quote_b": "About 22 of 802 cases carry an L6 at all,",
+    "explanation": "The decisions page never names the dataset, but its 802 cases match CTSpinoPelvic1K's 802, and it counts cases carrying an L6 in the training labels: 'about 22'. The literature-state page (2026-10-08) gives 18 by release label, 16 by the readers and 29 persons in the registry, and elsewhere uses 'readers: L6 16 to 18' and a prevalence of 'L6 2.0 % (Wilson 1.3 to 3.3 %)', which is 16 of 802. Both pages count the same thing over the same 802 cases and get different values, so the contradiction stands. The hint calls 22 an 'earlier' figure, but the decisions page is undated and nothing on it shows it came first. The hint also leaves out that the literature page bases its own prevalence on the readers' 16, not on 18.",
+    "resolution_hint": "From the literature-state page, carry all three counts with their definitions: 18 by release label, 16 by the readers (the basis of its 2.0 % prevalence), 29 persons in the registry. Treat the decisions page's 'about 22' as an approximate count with no date or source, not as an earlier one."
+   },
+   "ruling": {
+    "sided_with": "re-checker",
+    "verdict": "confirmed",
+    "quote_a": "CTSpinoPelvic1K L6: 18 by release label, 16 by the readers' own count, 29 persons in the registry. Seven disagreeing records are out of every truth pool until re-read.",
+    "quote_b": "About 22 of 802 cases carry an L6 at all, roughly 2.7%.",
+    "explanation": "The decisions page never names the dataset. Its 802 cases are CTSpinoPelvic1K's 802 records, and it counts the cases carrying an L6 in the training labels: about 22, or 2.7%. The literature-state page (8 October 2026) counts the same cohort as 18 by release label, 16 by the readers and 29 in the registry, so the values really disagree. The decisions page is undated and nothing on it shows it came first, so the skeptic's word 'earlier' has no support. The literature page's 'L6 2.0 % (Wilson 1.3 to 3.3 %)' is 16 of the 789 lumbosacral-countable CTs, not 16 of 802 as the re-checker said. The 789 figure is from the same page's table: '802; 789 ... readers: L6 16 to 18'.",
+    "resolution_hint": "From the literature-state page, carry all three counts with their definitions: 18 by release label, 16 by the readers, 29 persons in the registry. Give its prevalence as 2.0% (Wilson 1.3 to 3.3%), which is 16 of 789 countable CTs. Carry the decisions page's 'about 22 of 802 (2.7%)' as an undated, approximate count of the training labels, not as an earlier figure."
+   }
+  },
+  {
+   "stratum": "Datasets, holdings and licences",
+   "index": 30,
+   "side": "dismissed",
+   "drawn": "random",
+   "first": "refuted",
+   "recheck": {
+    "holds": true,
+    "hint_ok": true,
+    "verdict": "refuted",
+    "quote_a": "\"status\": \"the sacrum detector's training; 2,293 vendor frames unused with no written criterion\"",
+    "quote_b": "\"annotation_detail\": \"Original images and a rotation table (02_fluoroscopy_rotations.tab); no labels; 2,293 of 2,659 frames have no released pose (some carry the FTRAC fiducial and could be posed).\"",
+    "explanation": "The atlas (2026-10-17) states a property of the frames: they have no released pose. The registry (2026-10-20) says no written criterion excludes them. The atlas never says that the missing pose was recorded as the reason they go unused, so both statements can hold together.",
+    "resolution_hint": "Carry both: 2,293 of 2,659 vendor frames have no released pose and some could be posed from the FTRAC fiducial (atlas), and no written criterion governs leaving them out (registry)."
+   },
+   "ruling": null
+  },
+  {
+   "stratum": "Datasets, holdings and licences",
+   "index": 33,
+   "side": "confirmed",
+   "drawn": "random",
+   "first": "superseded-by-later",
+   "recheck": {
+    "holds": true,
+    "hint_ok": true,
+    "verdict": "superseded-by-later",
+    "quote_a": "Sixteen sources can only be had by asking. Each letter below is ready; eleven of them also exist as unsent Outlook drafts",
+    "quote_b": "todo 52 \u00b7 requested 26 \u00b7 granted 5",
+    "explanation": "The atlas (as of 17 October 2026) calls its sixteen letters ready and says eleven are unsent Outlook drafts. Its letter 8, Radiopaedia, is still an application to file. The pipeline (21 Oct) counts 86 spine-datasets records at commit 7a74bb6: 26 requested, 5 granted. It also says the Radiopaedia licence was 'signed and paid for' and that JHU was asked on 21 Oct. The counts cover different sets (86 records against sixteen letters), but the later page plainly moves the request state past the atlas's, at least for Radiopaedia.",
+    "resolution_hint": "Carry the request state record by record from spine-datasets at 7a74bb6 (pipeline page, 21 Oct). Use the atlas only for the letter texts, not for whether a letter was sent."
+   },
+   "ruling": null
+  },
+  {
+   "stratum": "Datasets, holdings and licences",
+   "index": 63,
+   "side": "dismissed",
+   "drawn": "random",
+   "first": "refuted",
+   "recheck": {
+    "holds": true,
+    "hint_ok": false,
+    "verdict": "refuted",
+    "quote_a": "COBRA2026 809 GB, IDC 706 GB",
+    "quote_b": "808.615 GB on Ceph",
+    "explanation": "The manifest (8 Oct 2026) already counts COBRA2026 among the imaging folders on Ceph that 'stay where they are'. C-ArmLSpine is in none of its home batches. So when the registry (rendered 2026-10-20) lists them at Ceph paths, that says nothing about B00's finalize, B13, the home walk or the licence conflicts. The registry also still puts FluoroCap on the home volume, where B09 had only 'copy queued' on 8 Oct, so it does not show the migration done. The skeptic's hint is wrong on one point: the registry's DeepFluoro path is under the Ceph data folder, and that is the B00 pilot the migration itself moved and cut over, not a folder that was on Ceph before.",
+    "resolution_hint": "Carry the migration state from the manifest's batch table (8 Oct 2026) until a later batch status exists. Note that the registry (2026-10-20) puts DeepFluoro (B00, moved by the pilot) on Ceph and FluoroCap (B09) still on home, so B09 had not cut over by then, as far as the registry shows."
+   },
+   "ruling": {
+    "sided_with": "re-checker",
+    "verdict": "refuted",
+    "quote_a": "| B00 | DeepFluoro H5, the pilot | 1 | 6.2 | cut over; finalize pending |",
+    "quote_b": "\"status\": \"808.615 GB on Ceph\"",
+    "explanation": "The manifest (state on 8 Oct 2026) already lists COBRA2026 (809 GB) among the imaging folders on Ceph that 'stay where they are', and C-ArmLSpine is in none of its home batches. So the registry (rendered 2026-10-20) giving them Ceph paths says nothing about B00's finalize, B13, the home walk or the licence conflicts, and the two pages agree. The registry still puts FluoroCap on the home volume, where the manifest had B09 at 'copy queued', so it shows no migration done there either. The skeptic's hint is wrong on one point: DeepFluoro's registry path is on Ceph because the B00 pilot moved and cut it over, not because the folder was on Ceph before the migration.",
+    "resolution_hint": "Carry the migration state from the manifest's batch table (8 Oct 2026) until a later batch status exists. Note that the registry (2026-10-20) puts DeepFluoro (B00, moved by the pilot) on Ceph and FluoroCap (B09) still on home, so B09 had not cut over by then, as far as the registry shows. The registry does not say whether B00 was finalized."
+   }
+  },
+  {
+   "stratum": "Detectors, architecture and the training plan",
+   "index": 16,
+   "side": "dismissed",
+   "drawn": "random",
+   "first": "refuted",
+   "recheck": {
+    "holds": true,
+    "hint_ok": true,
+    "verdict": "refuted",
+    "quote_a": "| Ljubljana 2D/3D gold standard | | held | | 18 frames, 1 cadaver | | L1\u2013L5 | | Registration accuracy check only. |",
+    "quote_b": "it added the Ljubljana angiographic set (10 patients, 3-D DSA + posed frames) ... | Trixell PIXIUM 4600 (Ljubljana turntable, not a C-arm) | | 18 |",
+    "explanation": "The OR ledger (2026-09-22) names two different Ljubljana sets. One is the 18-frame Trixell turntable set, which matches the any-view plan's 18 frames from 1 cadaver at L1-L5. The other is a 10-patient angiographic set that the dataset census added. The any-view plan (2026-10-21) lists only the held gold standard, which is consistent with the ledger. These are two sets, not two counts of one set.",
+    "resolution_hint": "Carry them as two sets: the 18-frame, one-cadaver 2D/3D gold standard (any-view plan, OR ledger) and the 10-patient angiographic set (OR ledger, census addition, not shown as held)."
+   },
+   "ruling": null
+  },
+  {
+   "stratum": "Detectors, architecture and the training plan",
+   "index": 30,
+   "side": "confirmed",
+   "drawn": "random",
+   "first": "superseded-by-later",
+   "recheck": {
+    "holds": false,
+    "hint_ok": true,
+    "verdict": "refuted",
+    "quote_a": "958 images / 6073 instances / 727 patients",
+    "quote_b": "12,709 films, with no written reason for the other 26,996 held films",
+    "explanation": "The field report describes the stage-1 one-class YOLO11m-pose run 'detect_v1' (its eval command loads runs/pose/runs/detect_v1/weights/best.pt), trained 111 epochs on 958 images from NHANES II, Mendeley and a partial BUU download. The handoff (2026-10-08) names a different model, the body detector detector_v5z_final, trained on 12,709 films from CSXA, BUU and 543 NHANES films. The pages themselves name two different versions, so the handoff does not revise the field report's figure. 958 is still correct for detect_v1, and the skeptic's own explanation calls them different generations. By the scale this is a version difference, not supersession.",
+    "resolution_hint": "Carry 12,709 films for the current body detector (detector_v5z_final), from the handoff. Name the field report's 958 images, 6,073 instances and 727 patients as detect_v1's, so its metrics are never read as the current detector's."
+   },
+   "ruling": {
+    "sided_with": "re-checker",
+    "verdict": "refuted",
+    "quote_a": "958 images \u00b7 6073 instances \u00b7 727 patients \u00b7 ... YOLO11m-pose, one class, four keypoints, 1024 px, AdamW, 111 epochs on one H200. ... python -m src.run_eval --weights runs/pose/runs/detect_v1/weights/best.pt",
+    "quote_b": "| Body detector (YOLO11m-pose) | zoomed film windows from CSXA, BUU AP and lateral, and the 543 annotated NHANES films: 12,709 films, with no written reason for the other 26,996 held films | the naming boxes |",
+    "explanation": "The field report (undated) is a run report for the stage-1 one-class detector detect_v1. That run trained 111 epochs on 958 images from NHANES II, Mendeley and a partial BUU download, at a time when CSXA was still out of reach. The handoff (2026-10-08) gives the training set of a different, later model, detector_v5z_final: 12,709 films including CSXA. It never mentions detect_v1 or the 958 images. The handoff does not revise the field report's figure, which is still true for detect_v1. The two pages describe two model versions, so the candidate's supersession does not hold. The skeptic's own explanation calls them different generations, which is a version difference, not a revision.",
+    "resolution_hint": "From the handoff, carry 12,709 films as the training set of the current body detector, detector_v5z_final. From the field report, carry 958 images, 6,073 instances and 727 patients as detect_v1's, the first one-class stage-1 run, so its metrics are never read as the current detector's."
+   }
+  },
+  {
+   "stratum": "Detectors, architecture and the training plan",
+   "index": 35,
+   "side": "dismissed",
+   "drawn": "random",
+   "first": "refuted",
+   "recheck": {
+    "holds": true,
+    "hint_ok": true,
+    "verdict": "refuted",
+    "quote_a": "Real films, the film-trained detector, coarsened by a factor. One corpus, one detector, everything else held, so only pixel size varies. ... Flat. 836 px to 139 px costs 0.00 points of per-vertebra recall.",
+    "quote_b": "fine-tuned on zoomed windows because collimated frames broke the film-trained scale",
+    "explanation": "Ninety-Three Pixels measures downsampling whole films, so only pixel count changes and the anatomy's share of the field stays the same. The pipeline map's point, and the OR ledger's 36% and 19% on magnified crops, concern magnification: how large the anatomy appears in a collimated field. The ledger says 'Scale is a device-transfer lever of its own'. These are different variables, so the pages do not disagree.",
+    "resolution_hint": "Carry both: pixel resolution costs nothing on whole films (Ninety-Three Pixels), while magnified, collimated fields cost recall unless the detector is trained at that scale (FluoroCap pipeline map, OR ledger)."
+   },
+   "ruling": null
+  },
+  {
+   "stratum": "Detectors, architecture and the training plan",
+   "index": 52,
+   "side": "dismissed",
+   "drawn": "random",
+   "first": "refuted",
+   "recheck": {
+    "holds": true,
+    "hint_ok": true,
+    "verdict": "refuted",
+    "quote_a": "finds the sacrum on 76.9% of 365 real frames pooled over all six specimens (by specimen 47.8\u201396.2%)",
+    "quote_b": "3,094 real frames: COBRA Elekta train and validation (118 cases) and DeepFluoro (5 specimens), initialised from a TotalSegmentator-render detector",
+    "explanation": "The handoff's '5 specimens' is the training share of the detector's data, and the same handoff later calls DeepFluoro 'six pelves'. The OR readiness ledger splits it 4/1/1 by specimen. Ninety-Three Pixels gives the dataset as 366 frames over 6 specimens and scores 365 of them pooled, a one-frame gap the page does not explain. The pages agree once train scope is separated from dataset scope.",
+    "resolution_hint": "Carry DeepFluoro as 6 specimens and 366 frames, 5 specimens in the detector's training (handoff), and 365 frames scored for the 76.9% (Ninety-Three Pixels). Flag the unexplained missing frame."
+   },
+   "ruling": null
+  },
+  {
+   "stratum": "Detectors, architecture and the training plan",
+   "index": 77,
+   "side": "confirmed",
+   "drawn": "random",
+   "first": "confirmed",
+   "recheck": {
+    "holds": true,
+    "hint_ok": true,
+    "verdict": "confirmed",
+    "quote_a": "Whether a release id is a person. CTSpinoPelvic1K is built from CT colonography, which scans each patient both prone and supine. If two ids are one human being then the corpus is mis-split, and that would be larger than either data leak already found and fixed. An audit is running",
+    "quote_b": "A cross-validation over all 376 transitional patients is running:",
+    "explanation": "Counting From The Sacrum (2026-09-22) lists the person audit and the fleet detector (18,906 training frames, 56 test specimens) as running. Naming Vertebrae Without CT (2026-09-18) lists the 376-patient transitional cross-validation as running. Research directions (2026-10-08) gives CTSpinoPelvic1K v11 as '802 records, one per patient; 422 supine, 377 prone', which settles the audit. The handoff (2026-10-08) says nothing after 2026-09-27 changed the banks or models. No later page reports the fleet detector or a cross-validation result tied to these jobs. The skeptic links research directions' '376 held-out renders' to the CV, but that row is an L6 decode figure and no page says it came from the CV.",
+    "resolution_hint": "Mark the 'running' lines as of their own dates. Carry research directions' 'one per patient' answer for the CTSpinoPelvic1K audit. Record the fleet detector's and the 376-patient cross-validation's results as not recorded."
+   },
+   "ruling": null
+  },
+  {
+   "stratum": "FluoroCap: the corpus, its pipeline and its audits",
+   "index": 9,
+   "side": "dismissed",
+   "drawn": "random",
+   "first": "refuted",
+   "recheck": {
+    "holds": true,
+    "hint_ok": true,
+    "verdict": "refuted",
+    "quote_a": "The C-ArmLSpine fold models behind the fine-tuned naming numbers still train on 2,632 VinDr crops and 2,100 FluoroCap crops per fold bank, plus both NHANES copies",
+    "quote_b": "out of training by directive D1; a test set at most; still inside the old fold banks",
+    "explanation": "The plain-text export cuts off the registry's records, so I read the record array in the page source. The FluoroCap record's status reads 'out of training by directive D1; a test set at most; still inside the old fold banks'. That matches the handoff of 2026-10-08, which found 2,100 FluoroCap crops per fold bank in violation of the directive. The candidate quoted only the first half of the status. Both pages say D1 is the rule and the old fold banks still break it.",
+    "resolution_hint": "Carry both facts together: FluoroCap is out of training by D1, and the fine-tuned C-ArmLSpine numbers come from old fold banks that still hold FluoroCap and VinDr crops (handoff 2026-10-08, registry 2026-10-20)."
+   },
+   "ruling": null
+  },
+  {
+   "stratum": "FluoroCap: the corpus, its pipeline and its audits",
+   "index": 16,
+   "side": "confirmed",
+   "drawn": "random",
+   "first": "superseded-by-later",
+   "recheck": {
+    "holds": true,
+    "hint_ok": true,
+    "verdict": "superseded-by-later",
+    "quote_a": "1,489 of 2,901 at 05:47. Gains over the PMC copy: p25 4.0\u00d7, median 6.3\u00d7, p75 16.0\u00d7.",
+    "quote_b": "1,558 of 2,901 figures replaced (53.7%); pixel-area gain p50 6.26\u00d7 (\u2248 2.5\u00d7 linear); new short side p50 1,254 vs old 474; ... round two still running; morning report's 1,489 superseded",
+    "explanation": "Both pages are dated 15 September. The overnight report's 08:30 update points to the Reality Check page, and the Reality Check itself says 'morning report's 1,489 superseded', so it plainly follows and revises the earlier count. Overnight: The Honest 99% (15-16 September) later says 'Round two replaced 2,059 figures with publisher originals at a median of 6.25 times the pixels'. It does not restate the 2,901 denominator or say whether 2,059 is cumulative. All three counts are of a refetch that was still running or not marked final.",
+    "resolution_hint": "Carry 2,059 at a median 6.25x from Overnight: The Honest 99% as the latest count, noting that it is not marked final and does not restate the 2,901 base. Treat 1,489 (05:47) and 1,558 as intermediate readings of refetch_hires.jsonl."
+   },
+   "ruling": null
+  },
+  {
+   "stratum": "FluoroCap: the corpus, its pipeline and its audits",
+   "index": 31,
+   "side": "confirmed",
+   "drawn": "random",
+   "first": "superseded-by-later",
+   "recheck": {
+    "holds": true,
+    "hint_ok": true,
+    "verdict": "superseded-by-later",
+    "quote_a": "Read 400 panels. Nothing else converts an agreement number into an accuracy number.",
+    "quote_b": "Weeks 1-2: two readers read the 545-panel set",
+    "explanation": "Both pages give the same arithmetic: 196 adjudicated panels for \u00b15% and 545 for \u00b13% around 85%. The audit (14 September 2026) chose 400. The reality check (15 September 2026) sets a two-reader, adjudicated read of at least 545 FluoroCap panels as its 'literature-domain check'. Its 1,500 per stratum is a separate target, for bounding a 99% claim on Tier 0 frames; the page says 'images' in one place and 'vertebrae' in its Target paragraph. The later page raises the read target, though it never names the audit.",
+    "resolution_hint": "Carry 545 two-reader, adjudicated FluoroCap reads from the Reality Check as the read target (the literature-domain check), and about 1,500 verified vertebrae per primary stratum for any 99% claim, which is a different target."
+   },
+   "ruling": null
+  },
+  {
+   "stratum": "Grid, workstation and Claude worker operations",
+   "index": 9,
+   "side": "confirmed",
+   "drawn": "random",
+   "first": "confirmed",
+   "recheck": {
+    "holds": true,
+    "hint_ok": true,
+    "verdict": "confirmed",
+    "quote_a": "first catalog and v1 wait \n afterok on it too",
+    "quote_b": "`--dependency=afterany`, never `afterok`; the child reads a file to decide whether the parent succeeded. | an 8 h limit made a whole chain DependencyNeverSatisfied (2026-09-09)",
+    "explanation": "The pipeline page (21 Oct 2026) draws six afterok edges in the start graph, beside afterany ones, and notes that the first catalog and v1 wait afterok on setup. It says no job has run yet. The Lab Recipe (27 Sep 2026) says its rules 'apply to every job' and that rule 3 is afterany, never afterok. Both pages cover the same grid, and the later page gives no reason for breaking the rule, so they disagree. Outside the artifacts, the repository's grid/README.md says v1 waits afterok on purpose, so that an input that fails again cancels it. That supports reading the drawn edges as a deliberate deviation.",
+    "resolution_hint": "Read the --dependency flags in grid/gate.sh word_start (branch claude/53, PR #54). Record the afterok edges as a deliberate departure from the lab's rule 3, with the stated reason, or fix them to afterany."
+   },
+   "ruling": null
+  },
+  {
+   "stratum": "Grid, workstation and Claude worker operations",
+   "index": 19,
+   "side": "confirmed",
+   "drawn": "random",
+   "first": "superseded-by-later",
+   "recheck": {
+    "holds": true,
+    "hint_ok": true,
+    "verdict": "superseded-by-later",
+    "quote_a": "| beethoven-extension (12.0.0) | Chrome side panel, Open OnDemand shell driver, the native ssh bridge, approval check, kill-list, terms flow, mock portal and hermetic CI |",
+    "quote_b": "**Beethoven (23.x).** It has one `worker_name` and one `project_url`. *Open my project* opens that single project page, and the home screen follows that single worker.",
+    "explanation": "The roadmap's table is headed 'What exists (main, 2026-10-03)' and gives beethoven-extension 12.0.0. The plan dated 2026-10-21 gives Beethoven at 23.x. Both are the same extension's version at two stated dates, and the later one is higher. Nothing reconciles them other than the passage of time.",
+    "resolution_hint": "Carry Beethoven at 23.x as of 2026-10-21, from 'Several grid workers, one per project'. Keep 12.0.0 only as the state of main on 2026-10-03."
+   },
+   "ruling": null
+  },
+  {
+   "stratum": "Grid, workstation and Claude worker operations",
+   "index": 22,
+   "side": "dismissed",
+   "drawn": "random",
+   "first": "refuted",
+   "recheck": {
+    "holds": true,
+    "hint_ok": true,
+    "verdict": "refuted",
+    "quote_a": "A Project thread has the clone and GitHub and nothing else: no grid, no ssh, no sbatch. ... Until issue 19 settles whether the grid can reach GitHub, files travel between them through a clone on your own computer.",
+    "quote_b": "One press by [the owner] remains: Connect GitHub Actions in Beethoven, once beethoven-extension #23 reaches him. Until then no word can run.",
+    "explanation": "The pipeline page (2026-10-21) describes the gate-word route from a cloud session through grid-accounts.yml. It also says the route cannot run yet: its header reads 'no job has run yet', and 'no word can run' until the owner's Connect press. So it does not show that the onboarding's no-grid statement (2026-10-13) has stopped holding. The onboarding's other condition, whether the grid reaches GitHub, is answered by the connect-the-grid guide, not by this page.",
+    "resolution_hint": "Keep the onboarding's statement for Project threads. Describe the gate-word route as the owner's planned route, pending the Connect press (beethoven-extension #23). Settle the laptop-shipping step against the connect-the-grid guide separately."
+   },
+   "ruling": null
+  },
+  {
+   "stratum": "Level naming and counting",
+   "index": 25,
+   "side": "confirmed",
+   "drawn": "random",
+   "first": "confirmed",
+   "recheck": {
+    "holds": true,
+    "hint_ok": true,
+    "verdict": "confirmed",
+    "quote_a": "v6 moves all 144 to the test partition (a 144-film anomalous test set instead of 20)... On interior windows \u2014 no anchor in the pixels \u2014 v6's 128 anomalous films score 49.9% [41.5, 58.9] against 89.9% [87.1, 92.7] ordinary",
+    "quote_b": "| All 144 anomalous BUU films held to validation | anomalous interior 49.9 % against ordinary 89.9 % | measured |",
+    "explanation": "Without an Anchor (2026-09-17) and Research directions (2026-10-08) give the same figures: 49.9% on 128 anomalous interior films against 89.9% ordinary (453 ordinary, per Research directions). The first page says v6 moved all 144 to the test partition; the second says they were held to validation and calls the difference 'the one powered transitional statement available'. Neither page says it uses 'validation' loosely, so the partition label really disagrees. The handoff (2026-10-08) says nothing from allspine v2, v6 or v7 may be quoted, which neither page reflects.",
+    "resolution_hint": "Carry 49.9% [41.5, 58.9] against 89.9% on 128 anomalous interior films as record only, per the handoff's leaked-family rule. Note that the partition is given as test on 17 September and validation on 8 October, until a clean-bank re-run."
+   },
+   "ruling": null
+  },
+  {
+   "stratum": "Level naming and counting",
+   "index": 65,
+   "side": "dismissed",
+   "drawn": "random",
+   "first": "refuted",
+   "recheck": {
+    "holds": true,
+    "hint_ok": true,
+    "verdict": "refuted",
+    "quote_a": "which is exactly why one centre booked 179 preoperative gold-fiducial placements in 38 months, 176 of them thoracic, purely to name the level.",
+    "quote_b": "one centre placed 179 preoperative gold fiducials over 38 months, 176 thoracic, at a mean of 51.9 min and 183 mGy each (Siminski et al., AJNR 2023)",
+    "explanation": "The figure has no citation on naming-vertebrae-without-an-anchor; neither its text nor its folder names Siminski or the PMID. The AIDaS proposal gives the same figure and cites Siminski et al., AJNR 2023, and the visual abstract gives the full reference with its PMID. Since one of the two sources does cite it, this is not an unsourced shared claim. The real gap is citation hygiene on the manuscript pages.",
+    "resolution_hint": "Carry the figure with its citation, Siminski et al., AJNR 2023;44(5):618-622 (as the level-counting visual abstract gives it), and add that citation wherever a manuscript page uses the figure."
+   },
+   "ruling": null
+  },
+  {
+   "stratum": "Level naming and counting",
+   "index": 69,
+   "side": "confirmed",
+   "drawn": "random",
+   "first": "confirmed",
+   "recheck": {
+    "holds": true,
+    "hint_ok": true,
+    "verdict": "confirmed",
+    "quote_a": "Wrong-level spine surgery persists because intraoperative fluoroscopy shows a few vertebrae and a surgeon counts from whatever landmark is visible.",
+    "quote_b": "Wrong-level spine surgery persists because a C-arm shows a few vertebrae at a time and the surgeon counts from whatever landmark is visible.",
+    "explanation": "Both pages state the same premise in nearly the same words, and neither cites a source for the mechanism. In the AIDaS proposal the next sentences cite a registry incidence and say intraoperative disorientation was the cause in 81.3% (Furuya et al. 2026). That supports disorientation as a cause, not the claim that surgeons count from whatever landmark is visible.",
+    "resolution_hint": "Present the sentence as the authors' premise, or attach the Furuya 2026 disorientation figure as partial support and say plainly that it does not show the counting mechanism."
+   },
+   "ruling": null
+  },
+  {
+   "stratum": "Level naming and counting",
+   "index": 80,
+   "side": "confirmed",
+   "drawn": "unplaced quote",
+   "first": "confirmed",
+   "recheck": {
+    "holds": false,
+    "hint_ok": false,
+    "verdict": "refuted",
+    "quote_a": "the deep-learning result is from October 2025 and the two systematic reviews are from 2026, so nothing is stale, but the field is moving and a whole-spine-trained level classifier could appear at any time.",
+    "quote_b": "A verified search of this literature finished today",
+    "explanation": "The skeptic's quote is in the feasibility page's HTML, under 'Time-sensitivity', though the text file spreads it one character per line. That page is dated 15 September 2026, and the claim is explicitly a time-sensitivity note about its own sources. Vertebral Levels Without CT (18 September 2026) says only that its search 'finished today', a statement dated by its own page. Neither page contradicts the other, and neither shows the other's currency claim failing. The evidence the skeptic offered, Furuya et al. (Bone Joint J 2026) in the AIDaS proposal, answers a different statement on the feasibility page: 'no surviving claim gives wrong-level incidence'. It says nothing about whether that page's comparators were out of date. Schinz, cited elsewhere, is from 2025.",
+    "resolution_hint": "Carry both currency claims as true as of their own dates (15 and 18 September 2026). Record separately that the feasibility page's 'no surviving claim gives wrong-level incidence' is answered by Furuya et al. 2026 (0.12%), as cited in the AIDaS proposal."
+   },
+   "ruling": {
+    "sided_with": "re-checker",
+    "verdict": "refuted",
+    "quote_a": "Time-sensitivity: the anatomical facts are stable; the deep-learning result is from October 2025 and the two systematic reviews are from 2026, so nothing is stale, but the field is moving and a whole-spine-trained level classifier could appear at any time.",
+    "quote_b": "A verified search of this literature finished today, and its main finding is not a number",
+    "explanation": "The feasibility page (15 September 2026) says nothing is stale, and it means the age of its own cited sources. The quote sits in its caveats list, which the HTML renders one character per list item. Vertebral Levels Without CT (18 September) only dates its own search with 'finished today'. Neither page says the other's currency claim is wrong, and no later page shows that the October 2025 deep-learning result or the 2026 reviews had been overtaken. The skeptic's evidence, the 34,544-operation registry (Furuya, Bone Joint J 2026;108-B(5), so published before 15 September), answers a different line of the feasibility page, 'no surviving claim gives wrong-level incidence'. That shows a gap in that page's search, not a currency claim gone stale.",
+    "resolution_hint": "Carry each currency claim as true on its own date: the feasibility page on 15 September 2026, Vertebral Levels Without CT on 18 September 2026. Separately, record that the feasibility page's 'no surviving claim gives wrong-level incidence' is answered by the registry of 34,544 operations, 0.12% (95% CI 0.09-0.16). The figures are in the AIDaS proposal and the retrospective fluoroscopy protocol, and the level-counting visual abstract cites the paper as Furuya 2026."
+   }
+  },
+  {
+   "stratum": "Number collisions",
+   "index": 30,
+   "side": "dismissed",
+   "drawn": "random",
+   "first": "scope-or-unit-differs",
+   "recheck": {
+    "holds": false,
+    "hint_ok": true,
+    "verdict": "confirmed-contradiction",
+    "quote_a": "NHANES II annotated subset Ingested \u00b7 3,217 instances Images 543 lateral: 275 cervical, 268 lumbar, 1976\u201380 film ... On grid 1.2 GB zip",
+    "quote_b": "of which about 544 carry NLM landmarks for C3-C7 and L1-L5 only and the grid holds 364 annotated films with 3,053 contours",
+    "explanation": "Both pages count the same thing: the annotated NHANES II Zenodo set that the grid holds. The handoff (2026-09-03) gives 543 films and 3,217 instances. The reality check (2026-09-15) gives 364 films and 3,053 contours, and repeats '364 annotated films locally' in its Tier 2 list. The skeptic treated the film counts as a scope that 'differs as stated', but that difference is the contradiction itself. The atlas (2026-10-17) and the naming page both give 543 films ('543 films ... of 364 persons as pickles'), so the reality check seems to have counted persons or pickle files as films. Its 3,053 vertebra count matches no other page. 'Contours' versus 'instances' is not a stated unit difference: both are per-level masks on the same films.",
+    "resolution_hint": "Carry 543 films (364 persons) and 3,217 instances from the handoff and the atlas, and flag the reality check's 364 films and 3,053 contours as a miscount. A count of the masks in the Zenodo pickles on the grid would confirm the instance figure."
+   },
+   "ruling": {
+    "sided_with": "re-checker",
+    "verdict": "confirmed-contradiction",
+    "quote_a": "NHANES II annotated subset Ingested \u00b7 3,217 instances Images 543 lateral: 275 cervical, 268 lumbar, 1976\u201380 film",
+    "quote_b": "of which about 544 carry NLM landmarks for C3-C7 and L1-L5 only and the grid holds 364 annotated films with 3,053 contours",
+    "explanation": "Both pages describe the same thing: the annotated NHANES II Zenodo set held on the grid. The handoff (3 September 2026) gives 543 films and 3,217 instances. The reality check (15 September) gives 364 films and 3,053 contours, and repeats '364 annotated films locally'. Neither page says it counts a different subset or unit, so this is not a stated scope difference. The atlas has '543 films ... of 364 persons as pickles', so 364 is a count of persons. In Naming Vertebrae Without an Anchor, 3,053 is the instance count of the nhanes_drr bank on the same 543 films, which the reality check itself calls 'the NHANES films a second time'. So the re-checker was wrong that 3,053 matches no other page.",
+    "resolution_hint": "From the handoff, the atlas and the bank table in Naming Vertebrae Without an Anchor, carry 543 films (275 cervical, 268 lumbar) of 364 persons, with 3,217 instances in the nhanes bank. Record that the second ingest, nhanes_drr, holds 3,053 on the same 543 films. Mark the reality check's '364 annotated films with 3,053 contours' as persons and the second ingest's count, mislabelled. The gap between 3,217 and 3,053 is unexplained until the masks are counted from the pickles."
+   }
+  },
+  {
+   "stratum": "Number collisions",
+   "index": 110,
+   "side": "confirmed",
+   "drawn": "random",
+   "first": "confirmed-contradiction",
+   "recheck": {
+    "holds": false,
+    "hint_ok": false,
+    "verdict": "scope-or-unit-differs",
+    "quote_a": "98.7% exact, 99.8% within one (films-only, single crop; run head 99.4%) | | 8,422 crops from 1,653 held-out patients: CSXA 7,440 (99.4%), NHANES 982 (93.6%)",
+    "quote_b": "| annotated films only, 48 px | | 1 | | 96.7% | | 99.7% | | 97.7% | | 86.4% | | 80.7% | | 91.3% | | 84.0% |",
+    "explanation": "The two figures use the same 8,422 held-out crops but measure different things. The ladder's 96.7% (2026-09-13) is its one-vertebra-visible rung of the 48 px annotated-films-only arm (99.7% within one, NHANES only 84.0%). The reality check's 98.7% (2026-09-15) is 'single crop' in the corpus audit's sense: 'own validation split, one crop at a time', set against 99.4% for the recurrent head over the run. It is not one vertebra in view. Its 99.8% within one and 93.6% on NHANES match the ladder's three- and five-vertebra rungs (98.8%/99.8%/92.8% and 99.1%/99.8%/94.4%), not the one-vertebra rung. The reader and the skeptic read 'single-crop' as 'one vertebra'.",
+    "resolution_hint": "Carry each with its own scope. 96.7% is exact level with one vertebra visible (Level Context Ladder, annotated films only, 48 px). 98.7% is the films-only model scored one crop at a time on the same 8,422 crops, against 99.4% for its run head (FluoroCap Reality Check and Corpus Audit); neither page names that model's context rung."
+   },
+   "ruling": {
+    "sided_with": "re-checker",
+    "verdict": "scope-or-unit-differs",
+    "quote_a": "98.7% exact, 99.8% within one (films-only, single crop; run head 99.4%) | | 8,422 crops from 1,653 held-out patients: CSXA 7,440 (99.4%), NHANES 982 (93.6%)",
+    "quote_b": "| annotated films only, 48 px | | 1 | | 96.7% | | 99.7% | | 97.7% | | 86.4% | | 80.7% | | 91.3% | | 84.0% |",
+    "explanation": "Both figures are on the same 8,422 held-out crops, but they measure different things. The ladder's 96.7% is the one-vertebra-visible rung of the 48 px annotated-films-only arm. In the reality check, and in the corpus audit it draws on, 'single crop' means 'own validation split, one crop at a time', set against 99.4% for the recurrent head over the run. It does not mean one vertebra in view. The 98.7% row's 99.8% within one and 93.6% NHANES do not fit the one-vertebra rung (99.7%, 84.0%). They come near the ladder's three- and five-vertebra rungs, though they match neither exactly. The skeptic read 'single-crop' as 'one vertebra' and treated two different scopes as one quantity.",
+    "resolution_hint": "Carry each figure with its own scope. 96.7% is exact level with one vertebra visible (Level Context Ladder, annotated films only, 48 px, 99.7% within one). 98.7% is the films-only model scored one crop at a time on the same 8,422 crops, against 99.4% for its recurrent run head (FluoroCap Reality Check, FluoroCap Corpus Audit). Neither page names that model's context rung."
+   }
+  },
+  {
+   "stratum": "Number collisions",
+   "index": 114,
+   "side": "dismissed",
+   "drawn": "random",
+   "first": "different-quantities",
+   "recheck": {
+    "holds": true,
+    "hint_ok": true,
+    "verdict": "different-quantities",
+    "quote_a": "Recall on real film: 99.14% per body for the film-trained detector; 71.67% for the same architecture trained on renders only.",
+    "quote_b": "the C2 failure needs a different explanation \u2014 most likely the render-trained detector itself, at 0.740 recall against the film detector's 0.991.",
+    "explanation": "In Ninety-Three Pixels the 0.740 explains 'the C2 failure', and it equals exactly the recall of 'anchor_c2 v1 done, cranial detector, 9 classes' in the training-arms table. The page warns that every arm in that table is graded on its own degraded validation set. The 71.67% in Counting Levels is the render-only vertebra detector's per-body recall on real film, and Ninety-Three Pixels quotes that figure separately ('Your 71.67% has no peer'). So these are two different detectors and test sets, not one quantity.",
+    "resolution_hint": "Keep both, each attributed: 71.67% is the render-only vertebra detector's per-body recall on real film (Counting Levels), and 0.740 is the C2 arm's cranial detector recall on its own validation set (Ninety-Three Pixels)."
+   },
+   "ruling": null
+  },
+  {
+   "stratum": "Number collisions",
+   "index": 173,
+   "side": "confirmed",
+   "drawn": "random",
+   "first": "updated-later",
+   "recheck": {
+    "holds": false,
+    "hint_ok": false,
+    "verdict": "scope-or-unit-differs",
+    "quote_a": "table II n\n\n563\n\nPI 52.7 \u00b7 SS 33.2 \u00b7 PT 19.7",
+    "quote_b": "| The spinopelvic numbers the estimator note argues from (SS 33.1) against the v11 release table (36.6) | the estimator note predates the 2026-09-11 plate fix | its 3.4-degree gap is 0.1 on v11; the section needs a rewrite |",
+    "explanation": "The board (2026-09-11) shows SS 33.2 as the Table II mean over n 563. That figure sits under its own plate-fix card ('solved', 140 plates rejected, minimum PI 1.0 to 22.4), so it is a post-fix figure. The skeptic said the board did not show whether it came before or after the fix. Research Directions (2026-10-08) calls a different number stale: the estimator note's 33.1, from before the fix. It sets that against the v11 release table's 36.6 on 802 records, and its 0.1-degree gap is to Veilleux, not to the matched supine-CT series (34.1) the board compares with. The two pages give sacral slope over different sets (Table II's 563 against the v11 release), and Research Directions never mentions the board's figure.",
+    "resolution_hint": "Carry both values with their scope: SS 33.2 for Table II's 563 records after the plate fix (OpenSpine Board), and 36.6 for the v11 release table (Research Directions). Redo the comparison with the matched series (34.1) on v11 once CT-2 step 1 recomputes the v11 means."
+   },
+   "ruling": {
+    "sided_with": "re-checker",
+    "verdict": "scope-or-unit-differs",
+    "quote_a": "PI 52.7 \u00b7 SS 33.2 \u00b7 PT 19.7",
+    "quote_b": "| The spinopelvic numbers the estimator note argues from (SS 33.1) against the v11 release table (36.6) | the estimator note predates the 2026-09-11 plate fix | its 3.4-degree gap is 0.1 on v11; the section needs a rewrite |",
+    "explanation": "The board gives SS 33.2 as the Table II mean on n 563. It sits inside the plate-fix card marked solved (140 plates rejected, minimum PI raised), so it is a post-fix figure on a stated 563-record subset. Research Directions calls stale only the estimator note's 33.1, from before the fix. It sets that note against the v11 release table's 36.6, where CT-2 counts 802 records with 756 passing the plate gate, and its 0.1-degree gap is to Veilleux, not to the matched supine-CT series (34.1). The skeptic read the board's 33.2 as the stale pre-fix value and 36.6 as its update, but the pages state different subsets and versions, and Research Directions never mentions the board's figure. One caution stands: the board's claim that the gap to Veilleux is 'cohort, not method' is the very gap Research Directions says may not exist on v11.",
+    "resolution_hint": "Carry both values with their scope: SS 33.2 for Table II's 563 records after the plate fix (OpenSpine Board), and 36.6 for the v11 release table (Research Directions). Flag the board's 'gap to Veilleux is cohort' sentence as pending CT-2 step 1, which recomputes the v11 means beside Veilleux. Redo the matched-series comparison (34.1) on v11 then."
+   }
+  },
+  {
+   "stratum": "Outreach events and student funding",
+   "index": 0,
+   "side": "confirmed",
+   "drawn": "random",
+   "first": "confirmed",
+   "recheck": {
+    "holds": true,
+    "hint_ok": true,
+    "verdict": "confirmed",
+    "quote_a": "Every pediatric hematology and oncology patient under 18. Families welcome on the sideline.",
+    "quote_b": "Every kid under 18 living with scoliosis or a spine condition \u2014 bracing,\n being watched and waited on, or after surgery with your surgeon\u2019s OK.",
+    "explanation": "Both flyers advertise a Saturday, October 24 soccer night at the Detroit City Fieldhouse, with the same organisers and the same registration form. One is for children in treatment for cancer and blood disorders, the other for children with scoliosis. Other details differ too: '6:45 PM KICKOFF' at a 'Trunk or Treat' in the lot, against '5:00 \u2013 7:00 PM' at an indoor 'Turf or Treat'. Neither carries a year or says it replaces the other. The export's index calls the oncology flyer 'The first Celebrate Life flyer', which hints at an order but is no statement of a revision.",
+    "resolution_hint": "Carry the scoliosis-night flyer as current only after the organiser confirms it, and record that the audience, the time and the companion event changed between the two flyers."
+   },
+   "ruling": null
+  },
+  {
+   "stratum": "Outreach events and student funding",
+   "index": 8,
+   "side": "confirmed",
+   "drawn": "random",
+   "first": "confirmed",
+   "recheck": {
+    "holds": true,
+    "hint_ok": true,
+    "verdict": "confirmed",
+    "quote_a": "Professional soccer players from Southeast Michigan, on the field with the kids for the whole game.",
+    "quote_b": "Professional soccer players from Southeast Michigan, on the field with the kids for",
+    "explanation": "Both flyers carry the same coaching promise word for word. Neither names a player or cites a written commitment, so the claim is shared and unsourced. The skeptic was wrong that neither names a team: both pages name Detroit City FC and list the club's [a club staff contact] as a contact beside the surgeon. That makes the club a named partner, but it does not source the promise about the players. The two flyers are also separate events on October 24 at the same Fieldhouse: a paediatric haematology-oncology night with a 6:45 PM kickoff, and a scoliosis night from 5:00 to 7:00 PM. The promise is one copied text, not two independent confirmations.",
+    "resolution_hint": "Get the club's written commitment, from its operations contact, naming which professional players will coach at which event. Until then, carry the coaching line as the flyers' promise, not as a fact."
+   },
+   "ruling": null
+  },
+  {
+   "stratum": "Outreach events and student funding",
+   "index": 21,
+   "side": "dismissed",
+   "drawn": "random",
+   "first": "refuted",
+   "recheck": {
+    "holds": true,
+    "hint_ok": true,
+    "verdict": "refuted",
+    "quote_a": "Why this is the one to aim at: it is the largest award on",
+    "quote_b": "Why this is the serious one: a WSU School of Medicine",
+    "explanation": "Each superlative on the funding page has its own scope. The RSNA student grant ($3,000, $6,000 with the match) is the largest award the student can hold in their own name. The Education Project Award is 'the closest fit' in shape, but the resident or a faculty sponsor applies. The Community Foundation is 'the serious one' because of a $70,000 precedent, and the organisation usually applies. The AOA $9,000 goes to a student team. The 'pick one to do properly' advice compares only the SIR awards with the RSNA student grant, so the page does not name three competing top priorities.",
+    "resolution_hint": "Carry each claim with its scope: the RSNA student grant is the largest award in the student's own name, the Education Project Award is the closest fit with the resident or a faculty sponsor applying, and the Community Foundation has the largest precedent ($70,000) with the organisation applying."
+   },
+   "ruling": null
+  },
+  {
+   "stratum": "Programme direction, handoffs and onboarding",
+   "index": 12,
+   "side": "confirmed",
+   "drawn": "random",
+   "first": "superseded-by-later",
+   "recheck": {
+    "holds": true,
+    "hint_ok": true,
+    "verdict": "superseded-by-later",
+    "quote_a": "Zero-shot , lateral no C-ArmLSpine data in training at all",
+    "quote_b": "| Naming, lateral, encoder that saw the device only through renders | | 96.4% (595/617) | | Naming transfers from 3D renders. It is within a point of the 97.4% fine-tuned on the device. |",
+    "explanation": "Counting From The Sacrum (2026-09-22) gives zero-shot lateral 96.27%, zero-shot AP 37.88% and fine-tuned lateral 98.22% on 617 vertebrae. The Any-View plan (2026-10-21) gives 96.4% (595/617), zero-shot AP 43.7% and fine-tuned 97.4%. The 97.4% matches the handoff of 2026-10-08, whose fine-tuned numbers come from fold models re-initialised from the v9 encoder. The whole table moved, so this is a later evaluation and not a one-case rounding difference, as the skeptic implied. The later page carries the newer set.",
+    "resolution_hint": "Carry 96.4% (595/617) from the Any-View Spine Plan, together with its 43.7% AP and 97.4% fine-tuned figures as one set. Do not mix them with the 22 September table (96.27%, 37.88%, 98.22%)."
+   },
+   "ruling": null
+  },
+  {
+   "stratum": "Programme direction, handoffs and onboarding",
+   "index": 15,
+   "side": "dismissed",
+   "drawn": "random",
+   "first": "cannot-tell",
+   "recheck": {
+    "holds": true,
+    "hint_ok": true,
+    "verdict": "cannot-tell",
+    "quote_a": "802 abdominopelvic CTs with per-level vertebrae, ribs, sacrum, hips and femora",
+    "quote_b": "From the sacrum: 6,234/6,255 (99.66%) on 801 abdominopelvic spines",
+    "explanation": "The handoff counts 802 CTs. The proposal reports walks on 801 spines and never says why. A third page, Counting From The Sacrum (22 Sept), says the CT axis 'named 802 abdominopelvic records' and lists CTSpinoPelvic1K as 801 'by distinct subject' under the split's keying, and it leaves open whether a release id is a person. That suggests 801 is the subject count. But research directions (8 Oct) calls the 802 'one per patient', which conflicts with it, so the pair cannot be settled from the texts.",
+    "resolution_hint": "Carry 802 records or CTs, and 801 distinct subjects under the split's keying (Counting From The Sacrum), and flag the 'one per patient' wording in research directions. The release's person-key table would settle whether two of the 802 records are one person."
+   },
+   "ruling": null
+  },
+  {
+   "stratum": "Programme direction, handoffs and onboarding",
+   "index": 33,
+   "side": "confirmed",
+   "drawn": "random",
+   "first": "superseded-by-later",
+   "recheck": {
+    "holds": true,
+    "hint_ok": true,
+    "verdict": "superseded-by-later",
+    "quote_a": "All rights reserved by default, and GAN-derived from an upstream corpus whose terms it inherits. Do not download.",
+    "quote_b": "all on train in the G3 split; nothing to hold out",
+    "explanation": "The board (2026-09-11) lists Spinal-AI2024 as having no licence file and says do not download. The decisions page records 'Spinal-AI2024 pulled despite having no licence file' with the status revisit, and 'you made the call', and puts it on the research track only. The registry (rendered 2026-10-20) lists it as held: 20,000 machine-generated films from 44 synthetic identities, all on train in G3, licence 'not recorded'. The later pages record that the board's advice was overruled, so the board's status is superseded.",
+    "resolution_hint": "Carry the registry's state as of 2026-10-20: held, 20,000 synthetic films from 44 identities, all on train in G3, licence not recorded (no licence file per the board and decisions), research track only. The licence question is still open, not resolved."
+   },
+   "ruling": null
+  },
+  {
+   "stratum": "Programme direction, handoffs and onboarding",
+   "index": 38,
+   "side": "dismissed",
+   "drawn": "random",
+   "first": "cannot-tell",
+   "recheck": {
+    "holds": true,
+    "hint_ok": true,
+    "verdict": "cannot-tell",
+    "quote_a": "Zenodo 10.5281/zenodo.22139642",
+    "quote_b": "the lab's own release, Zenodo v11 10.5281/zenodo.22797014",
+    "explanation": "Both pages are dated 2026-10-08. The handoff gives 22139642 with no version. The manifest gives 22797014 as v11, and the data registry (2026-10-20) also links the 'release v11' record to 22797014. The eProtocol draft cites a third Zenodo DOI, 22642578, as the dataset descriptor. No page says whether 22139642 is v10, the concept DOI or an error, so the texts do not settle it.",
+    "resolution_hint": "Carry 22797014 as the v11 DOI (manifest 2026-10-08, registry 2026-10-20). The Zenodo records themselves would settle whether 22139642 (handoff) and 22642578 (eProtocol draft) are the v10, concept or descriptor records."
+   },
+   "ruling": null
+  },
+  {
+   "stratum": "Programme direction, handoffs and onboarding",
+   "index": 59,
+   "side": "dismissed",
+   "drawn": "random",
+   "first": "refuted",
+   "recheck": {
+    "holds": true,
+    "hint_ok": true,
+    "verdict": "refuted",
+    "quote_a": "Id 29 (the v10 carved S1) is retired in v11; the public mirror is still v10 on 2026-09-27.",
+    "quote_b": "labels CC BY-NC-SA; the public mirror is v10 with id 29; 801 of 802 are in the v9 lineage through renders",
+    "explanation": "The research directions note (2026-10-08) repeats that the public mirror is v10 with id 29. It also says to rebuild 'from the v11 tree, never the v10 Hugging Face mirror'. A later source restating the fact does not make it stale. The holding manifest of the same date ties Zenodo, not Hugging Face, to v11, so the Hugging Face mirror and the Zenodo record are at different versions.",
+    "resolution_hint": "Carry: the Hugging Face mirror still served v10 (id 29) on 2026-10-08 (research directions), while v11 is on Zenodo. Re-check the mirror before anyone fetches from it."
+   },
+   "ruling": null
+  },
+  {
+   "stratum": "Programme direction, handoffs and onboarding",
+   "index": 79,
+   "side": "dismissed",
+   "drawn": "random",
+   "first": "refuted",
+   "recheck": {
+    "holds": true,
+    "hint_ok": true,
+    "verdict": "refuted",
+    "quote_a": "[the owner], 2026-10-21 20:06 UTC: switch between and update projects using several Claude workers on the grid, because the laptop cannot keep several Claude desktops signed in at once.",
+    "quote_b": "| 7 | Several workers on one account share its five-hour window and stall together |",
+    "explanation": "A shared unsourced claim must appear in each source. The laptop sign-in limit appears only in the several-grid-workers page, as the owner's stated reason in his request of 2026-10-21. The review page makes a different claim, about workers on one account sharing a usage window, and never states the laptop limit. So no single claim is carried by both pages.",
+    "resolution_hint": "Keep them separate: the laptop sign-in limit as the owner's reason (several-grid-workers page), and the shared five-hour window as the review's own point (grid and cloud workers review, item 7)."
+   },
+   "ruling": null
+  },
+  {
+   "stratum": "Renders, physics and the sim-to-real gap",
+   "index": 5,
+   "side": "confirmed",
+   "drawn": "random",
+   "first": "confirmed",
+   "recheck": {
+    "holds": true,
+    "hint_ok": true,
+    "verdict": "confirmed",
+    "quote_a": "A detector trained on renders of DeepFluoro's own CTs finds the sacrum on 90\u201397% of the real frames, six specimens held out in turn.",
+    "quote_b": "A detector trained only on calibrated renders of DeepFluoro's own CTs finds the sacrum on about 96\u201398% of real frames (leave-one-specimen-out).",
+    "explanation": "Counting Levels (September 2026) describes its renderer as calibrated on DeepFluoro and tables population-matched sacrum recall as 90\u201397% over 6 specimens with 3 seeds each. It says every synthetic number comes from the leave-one-specimen-out runs of 21 September 2026, reproduced by tools/deepfluoro_anchor_report.py. The AIDaS proposal (October 2026) gives about 96\u201398% for the same arm. Its other figures match Counting Levels (64\u201377%, the 26-point seed spread, the 5\u201360% prior), and its variance figure (80.9%) is the older one. No page names a later run, so the ranges really disagree. The Retrospective Fluoroscopy Protocol repeats 96\u201398%.",
+    "resolution_hint": "Carry 90\u201397% from Counting Levels Under Fluoroscopy, which names its runs and its report script, unless the output of tools/deepfluoro_anchor_report.py shows 96\u201398%. Correct the AIDaS proposal and the protocol to match."
+   },
+   "ruling": null
+  },
+  {
+   "stratum": "Renders, physics and the sim-to-real gap",
+   "index": 41,
+   "side": "confirmed",
+   "drawn": "random",
+   "first": "confirmed",
+   "recheck": {
+    "holds": true,
+    "hint_ok": true,
+    "verdict": "confirmed",
+    "quote_a": "CycleGAN scored 6.62 mm and ADDA 6.41 against 6.44 for no adaptation at all",
+    "quote_b": "reached parity with training on real frames ( 6.44 vs 6.46 mm hip landmarks) and with CycleGAN ( 6.62 ) and ADDA ( 6.41 ). Under weak randomisation CycleGAN helped ~1 mm; under strong it added nothing",
+    "explanation": "Both pages carry the same published SyntheX result. Ninety-Three Pixels gives 6.44 mm with no real training images against 6.46 for a real-trained control, on 366 real cadaveric C-arm images, and CycleGAN 6.62 and ADDA 6.41 against 6.44. What Is Left After Physics gives the same four numbers on the six DeepFluoro specimens and adds the weak-randomisation note. It is one outside result carried twice, not two confirmations.",
+    "resolution_hint": "Carry it once, cited to SyntheX (Gao et al. 2023), with What Is Left After Physics' note that CycleGAN helped about 1 mm only under weak randomisation."
+   },
+   "ruling": null
+  },
+  {
+   "stratum": "Renders, physics and the sim-to-real gap",
+   "index": 52,
+   "side": "dismissed",
+   "drawn": "random",
+   "first": "refuted",
+   "recheck": {
+    "holds": true,
+    "hint_ok": true,
+    "verdict": "refuted",
+    "quote_a": "The adversarial verification pass and the synthesis agent hit the session's subagent limit before running; this page was written by hand from the sweeps, numbers are as reported by the papers, and the verification pass is scheduled",
+    "quote_b": "Every load-bearing claim from those sweeps (48 in all) was handed to a separate agent told to refute it against the cited source: 36 were confirmed, 12 held in substance with a number or attribution corrected, none were refuted",
+    "explanation": "The Reality Check's refuting pass covered the 48 claims from its own six sweeps (datasets, methods, transfer, edge cases, acquisition, resolution). It did not cover Lift Before Label's four sweeps and 173 findings. No page shows that Lift's scheduled pass ever ran, so Lift's own caveat that it is unverified still holds and is not stale. The two pages do cite some of the same papers; their Jecklin figures, for example, are different metrics (Lift: F1 0.84 against a 0.86 DRR ceiling; Reality Check: surface score 0.63-0.73 against 0.79).",
+    "resolution_hint": "Keep Lift Before Label marked unverified. Where both pages cite the same paper, carry the Reality Check's verified figure, matched metric for metric."
+   },
+   "ruling": null
+  },
+  {
+   "stratum": "Symphony's origins: cswap, the primitives and the two Claude surfaces",
+   "index": 9,
+   "side": "confirmed",
+   "drawn": "random",
+   "first": "confirmed",
+   "recheck": {
+    "holds": true,
+    "hint_ok": true,
+    "verdict": "confirmed",
+    "quote_a": "The two scripts are 6,864 lines and do all of the reading and writing of a Project. The extension and bridge are 14,907 lines of plumbing around them, 2.2 lines for every line of script",
+    "quote_b": "The extension and bridge are already 14,907 lines of plumbing for 6,864 lines of script, Chrome only, one job at a time",
+    "explanation": "The build plan names 'The companion spec, \"SDLC Primitives Spec\"' as its source. It repeats the spec's 14,907 and 6,864 lines and the 19 memory entries from PR #41, so this is one measurement carried twice. The spec's table gives the parts as 9,758, 4,661 and 287, which sum to 14,706, not 14,907. One correction: the routine caps ('Thirty runs an hour per routine') appear only in the build plan, not in the spec, so they are not part of the duplicate.",
+    "resolution_hint": "Carry the size figures once, from the SDLC Primitives Spec, with the extension and bridge total corrected to the sum of its parts (14,706) or to a fresh line count. Keep the routine caps as the build plan's own claim."
+   },
+   "ruling": null
+  },
+  {
+   "stratum": "Symphony's origins: cswap, the primitives and the two Claude surfaces",
+   "index": 13,
+   "side": "confirmed",
+   "drawn": "random",
+   "first": "confirmed",
+   "recheck": {
+    "holds": true,
+    "hint_ok": true,
+    "verdict": "confirmed",
+    "quote_a": "Keep it one account. Rotating accounts or pooling several users' tokens to widen the window is the behaviour Anthropic's terms prohibit; if the workload needs more than one subscription's window, it is a workload for an API key.",
+    "quote_b": "The owner's own several Claude accounts may be coordinated from one orchestrator of the owner's, each worker on one account's token, knowing the terms question.",
+    "explanation": "The playbook (2026-10-03) says 'rotating accounts' to widen the window is prohibited, which covers one person's several accounts, not only several users' tokens. The handoff (2026-10-13) designs a pool of the owner's own accounts that spreads runs across their five-hour limits. It records this as an owner decision taken 'knowing the terms question', notes that Anthropic recommends an API key, and says to re-read the Usage Policy before 2026-11-12. One page says the terms forbid it; the other treats the terms as an open question and goes ahead, so the pages genuinely disagree.",
+    "resolution_hint": "Carry the pool as the owner's recorded decision with the terms question open, limited to the owner's own accounts, beside the playbook's reading that rotating accounts is prohibited. Re-read the Usage Policy taking effect on 2026-11-12 before any pooled run."
+   },
+   "ruling": null
+  },
+  {
+   "stratum": "Symphony's origins: cswap, the primitives and the two Claude surfaces",
+   "index": 33,
+   "side": "dismissed",
+   "drawn": "random",
+   "first": "refuted",
+   "recheck": {
+    "holds": true,
+    "hint_ok": true,
+    "verdict": "refuted",
+    "quote_a": "## 1. Upload 20.0.0 now, by hand",
+    "quote_b": "Working at one site, Wayne State; extension 20.0.0, pre-release",
+    "explanation": "The store note (2026-10-13) leaves the 20.0.0 hand upload to the owner. The spec (2026-10-15) still lists the extension at 20.0.0, pre-release. That agrees with an upload that is pending or in review, and it does not show the note out of date. The spec's beethoven-qa line ('Version 5.0.0 on main, untagged (the last tag, v3.0.0, is what both consumers pin)') has no counterpart in the store note, so the two pages give no conflicting figures for qa either.",
+    "resolution_hint": "Carry 20.0.0 as pre-release on 2026-10-15 (spec) and the hand upload as pending on 2026-10-13 (store note). Whether the upload went through is a separate question; the store dashboard's history settles it."
+   },
+   "ruling": null
+  },
+  {
+   "stratum": "Symphony: the protocol, its evidence and its place",
+   "index": 7,
+   "side": "confirmed",
+   "drawn": "random",
+   "first": "superseded-by-later",
+   "recheck": {
+    "holds": true,
+    "hint_ok": true,
+    "verdict": "superseded-by-later",
+    "quote_a": "A fix that reads GitHub's own record of the push is written but not merged (finding F8)",
+    "quote_b": "The fix merged on main on 2026-10-15 reads GitHub's record of the push; one gap remains, a claim's first push, and the fix is unreleased.",
+    "explanation": "The taxonomy manual (2026-10-15) says the F8 fix is written but not merged. The competitors note (2026-10-16) read symphony-protocol main at b4c3c1a with pull request #35 and says the fix merged on 2026-10-15, is unreleased, and leaves one gap, a claim's first push. It also says 0.4.1 and every copy still read the committer date. The later page reports a later state of the same fix.",
+    "resolution_hint": "Carry the competitors note: the F8 fix (#35) is merged on main as of 2026-10-15 but unreleased, a claim's first push is still uncovered, and 0.4.1 and every adopted copy still read the committer date."
+   },
+   "ruling": null
+  },
+  {
+   "stratum": "Symphony: the protocol, its evidence and its place",
+   "index": 41,
+   "side": "confirmed",
+   "drawn": "random",
+   "first": "confirmed",
+   "recheck": {
+    "holds": true,
+    "hint_ok": true,
+    "verdict": "confirmed",
+    "quote_a": "a 2026 noise-floor study puts single-seed gains under about 15 points inside run-to-run noise (Reported). Section 11 makes this the first research question.",
+    "quote_b": "A 2026 noise-floor study puts single-seed gains under about 15 points inside run-to-run noise (Reported; unnamed in the spec, so not for the grant).",
+    "explanation": "The taxonomy spec (2026-10-15) states the 15-point noise floor, marks it Reported, names no study and gives no source. Its R1 row judges the coordbench run against 'the roughly 15-point noise floor'. The competitors page (2026-10-16) repeats it from the spec, says it is unnamed there, and states that no primary source was opened for it. The claim is the same in both and sourced in neither.",
+    "resolution_hint": "Carry it as Reported with no named source and keep it out of grant text, as the competitors page says. Naming and opening the study would let it be cited."
+   },
+   "ruling": null
+  },
+  {
+   "stratum": "Symphony: the protocol, its evidence and its place",
+   "index": 53,
+   "side": "dismissed",
+   "drawn": "random",
+   "first": "refuted",
+   "recheck": {
+    "holds": true,
+    "hint_ok": true,
+    "verdict": "refuted",
+    "quote_a": "Not checked: only the live canary's check C7, run by hand, measures it, and the canary is not adopted yet",
+    "quote_b": "The canary records a second creation of claude/N, a push that descends from another worker's claim, a forced push with and without a ruleset, the rename on release, and a push after a merge; the clock question of F8 is settled",
+    "explanation": "In the taxonomy spec this line sits in the 'Answered when' column of the research-question table: it is R4's acceptance criterion, what the canary would have to record, not a report that it ran. The spec says a question is answered only when its criteria are met, and R4 is still open. No later page shows the canary adopted or C7 automated, so the brief's 2026-10-14 statement still stands.",
+    "resolution_hint": "Carry: the canary is not adopted and C7 runs only by hand (brief, 2026-10-14), and R4 was still open on 2026-10-15 (taxonomy spec)."
+   },
+   "ruling": null
+  },
+  {
+   "stratum": "The case for the OR study: proposal, seed grant and IRB protocols",
+   "index": 24,
+   "side": "confirmed",
+   "drawn": "random",
+   "first": "confirmed",
+   "recheck": {
+    "holds": true,
+    "hint_ok": true,
+    "verdict": "confirmed",
+    "quote_a": "a target of 6,000 verified vertebrae on intraoperative images, i.e. roughly 1,500\u20132,500 intraoperative images from 800\u20131,500 patients",
+    "quote_b": "Target 3,000-5,000 frames from 800-1,500 patients in twelve months at one centre, planning for about half the cases to be missing from PACS as at Greifswald",
+    "explanation": "Both pages are dated 15 September 2026 and plan a retrospective PACS pull from 800-1,500 patients. The eProtocol draft derives 1,500-2,500 images from 6,000 verified vertebrae (1,500 per stratum). The Reality Check targets 3,000-5,000 frames and elsewhere asks for about 1,500 verified images per stratum, so the two count different units for the same bound. The 'half missing' allowance could reconcile them only if the patient range were counted before the loss, and neither page says so. The Retrospective Fluoroscopy Protocol leaves frames per case '[to confirm: ... from a pilot query of 20 cases]'.",
+    "resolution_hint": "Carry neither yield as settled. The Retrospective Fluoroscopy Protocol's 20-case pilot PACS query (frames per case, share of cases missing) decides it."
+   },
+   "ruling": null
+  },
+  {
+   "stratum": "The case for the OR study: proposal, seed grant and IRB protocols",
+   "index": 37,
+   "side": "dismissed",
+   "drawn": "random",
+   "first": "refuted",
+   "recheck": {
+    "holds": false,
+    "hint_ok": false,
+    "verdict": "confirmed",
+    "quote_a": "No public dataset of intraoperative spine fluoroscopy with vertebra-level labels exists.",
+    "quote_b": "\"name\": \"NIT Warangal / NIMS Hyderabad 2D-3D-sci-registration\" ... \"anatomy\": \"lumbar spine L1-L5, intraoperative AP/LAT (Ziehm C-arm)\" ... \"level_labels\": true ... \"access\": \"open download\" ... \"notes\": \"Nine free level-named patients on a real C-arm, but only as 8-bit overlays beside DRRs",
+    "explanation": "The skeptic is right that the candidate's own examples do not contradict the draft. C-ArmLSpine ships 'No labels and no poses' (its 814 of 910 levels are project-derived), and SX-Stitch is a private request. But the atlas (2026-10-17) holds another record, for the NIT Warangal / NIMS Hyderabad set. That record gives intraoperative lumbar C-arm frames, level_labels true, access 'open download', and 'Nine free level-named patients on a real C-arm'. This contradicts the protocol draft's flat statement of 2026-09-15. The atlas also lists VerSeg-Net lumbar fluoroscopy (50 patients, per-level L1-S1 masks, a sharing statement, route not recorded). Both records are unverified ('verified': null), and the Warangal labels are CT centroids shown beside DRRs as 8-bit overlays. So the contrary record is weak, but the draft's claim of absence does not stand unqualified.",
+    "resolution_hint": "Carry the draft's statement only as qualified: the atlas records an unverified open set of nine level-named intraoperative C-arm patients (NIT Warangal / NIMS Hyderabad, 8-bit overlays, labels from CT centroids) and VerSeg-Net's 50 patients with per-level masks on request. Fetching and reading the Warangal repository would settle whether it qualifies."
+   },
+   "ruling": {
+    "sided_with": "re-checker",
+    "verdict": "confirmed",
+    "quote_a": "No public dataset of intraoperative spine fluoroscopy with vertebra-level labels exists.",
+    "quote_b": "\"anatomy\": \"lumbar spine L1-L5, intraoperative AP/LAT (Ziehm C-arm)\" ... \"level_labels\": true, ... \"access\": \"open download\" ... \"notes\": \"Nine free level-named patients on a real C-arm, but only as 8-bit overlays beside DRRs",
+    "explanation": "The skeptic is right about the candidate's own examples. The atlas says C-ArmLSpine ships 'No labels and no poses', its 814-of-910 agreed levels are derived by the project, and SX-Stitch is a private request with segmentation masks. But the atlas (2026-10-17) also holds the NIT Warangal / NIMS Hyderabad record: intraoperative lumbar C-arm frames, level_labels true, access 'open download', and 'Nine free level-named patients on a real C-arm'. That directly contradicts the protocol draft's flat claim of absence (2026-09-15). The contrary record is weak: it is unverified ('verified': null), its level names are L1-L5 centroids from preoperative CT, and the frames exist only as 8-bit overlays beside DRRs. The atlas also lists VerSeg-Net lumbar fluoroscopy (50 patients, per-level masks), whose sharing route is not recorded. The skeptic missed these records.",
+    "resolution_hint": "Do not carry the protocol draft's statement unqualified. Add from the Fluoroscopy Data Atlas that it records an unverified open download of nine level-named intraoperative C-arm patients (NIT Warangal / NIMS Hyderabad; 8-bit overlays beside DRRs; level names from preoperative CT centroids). Add that it also records VerSeg-Net's 50 lumbar fluoroscopy patients with per-level masks, sharing route not recorded. Note that C-ArmLSpine's level names are derived by the project, not shipped. Reading the Warangal repository would settle whether it meets the draft's definition."
+   }
+  },
+  {
+   "stratum": "The case for the OR study: proposal, seed grant and IRB protocols",
+   "index": 52,
+   "side": "confirmed",
+   "drawn": "random",
+   "first": "confirmed",
+   "recheck": {
+    "holds": true,
+    "hint_ok": true,
+    "verdict": "confirmed",
+    "quote_a": "| from the sacrum, second-institution spines | | 522 | | 7,168 / 7,228 | | 99.17% |",
+    "quote_b": "From the sacrum: 6,234/6,255 (99.66%) on 801 abdominopelvic spines and 7,168/7,228 (99.17%) on 522 second-institution spines",
+    "explanation": "Counting Levels tables five arms (834/834, 1,205/1,209, 6,234/6,255, 7,168/7,228, 99.31% of 5,385) and says twelve arms lie between 99.17 and 100%. The AIDaS proposal gives the same five figures in prose. It adds regional rates, one confidence interval (99.16\u201399.91 for the radiograph arm) and a sixth arm, 98.57% of 6,343 on 501 whole-spine studies. Both cite the manuscript in preparation, so this is one result carried twice. The grant has one interval, not intervals on every arm.",
+    "resolution_hint": "Carry the AIDaS proposal's version, which adds the sixth confirmation arm and the one interval, cited to the manuscript in preparation. Take the other arms' intervals from the manuscript itself."
+   },
+   "ruling": null
+  },
+  {
+   "stratum": "The case for the OR study: proposal, seed grant and IRB protocols",
+   "index": 56,
+   "side": "dismissed",
+   "drawn": "random",
+   "first": "cannot-tell",
+   "recheck": {
+    "holds": true,
+    "hint_ok": true,
+    "verdict": "cannot-tell",
+    "quote_a": "7. Start this week: the WSU C-arm, a phantom, and a cadaver ... Every synthetic-data number here is from the leave-one-specimen-out runs of 21 September 2026",
+    "quote_b": "Grid jobs run 0 every number so far is from synthetic CPU runs grid/README.md l.3; docs/research/v1-demo/",
+    "explanation": "The pipeline page (2026-10-21) counts zero jobs only for the new SchwingNet gate pipeline ('Gate words written ... no job has run yet'). It says nothing about the WSU C-arm, the phantom, the cadaver or the OEHS and DLAR paperwork, which no term on the page mentions. So it neither confirms nor contradicts the September proposal's plan to start this week. Its zero does not cover the proposal's 21 September runs either.",
+    "resolution_hint": "Carry the proposal's numbers dated 21 September 2026. A record of the radiation-safety and DLAR paperwork and of any phantom or cadaver session would settle whether the plan started."
+   },
+   "ruling": null
+  },
+  {
+   "stratum": "Transitional vertebrae and border variants",
+   "index": 6,
+   "side": "confirmed",
+   "drawn": "random",
+   "first": "confirmed",
+   "recheck": {
+    "holds": false,
+    "hint_ok": false,
+    "verdict": "superseded-by-later",
+    "quote_a": "the \u201c4\u201d group from 71 cases (9.0%) to 26 (3.3%).",
+    "quote_b": "| Ribs on the wrong vertebra | | 109 | | 19 |",
+    "explanation": "The border-variants page plainly follows the audit. Its 'Rib numbering, finished alongside this' table starts from the audit's own v5 figures (109 ribs on the wrong vertebra, 16 misnumbered cases, a +1 offset family of 34) and reduces them to 19, 2 and 1 by giving lumbar ribs their own class. Its histogram is over 'Of 796 cases with complete measurements', where the audit's is over 787 determinate cases. The skeptic read 35 and 26 as LSTV-labelled counts, but 734 + 35 + 26 plus one case at zero is 796, so they are the cell totals, loosely worded as 'Labelled LSTV cases sit at four (35)'. On this reading the four-cell rose from 26 to 35 once the renumbering fixed which vertebra bears the last rib, and the comparison with the 33 non-normal labels does not apply. The skeptic missed that the border page names the renumbering and starts from the audit's numbers.",
+    "resolution_hint": "Carry the border-variants page's distribution after renumbering on v5: 734 at five, 35 at four, 26 at six, over 796 complete cases. Give the audit's 26/734/26/1 over 787 determinate as the figure before renumbering, and keep the audit's warning that the distribution largely reflects the labelling convention, not a phenotype prevalence."
+   },
+   "ruling": {
+    "sided_with": "re-checker",
+    "verdict": "superseded-by-later",
+    "quote_a": "| 4 | | 26 | | 3.3% |  | 5 \u2014 usual | | 734 | | 93.3% |  | 6 | | 26 | | 3.3% |  | 0 | | 1 | | 0.1% |  | determinate | | 787 | | 98% |",
+    "quote_b": "Of 796 cases with complete measurements:",
+    "explanation": "The border-variants page plainly follows the audit. Its 'Rib numbering, finished alongside this' table starts from the audit's own v5 state (109 ribs on the wrong vertebra, 16 misnumbered cases, 14 lumbar ribs) and reports them reduced. The five-cell (734) and the six-cell (26) are identical on both pages; only the four-cell moves, from 26 to 35. That is a rise of 9, and 787 + 9 = 796, the border page's complete-measurement count; 734 + 35 + 26 + 1 = 796. So the later histogram covers nine more determinate cases, all of them at four; no case moved out of five. 'Labelled LSTV cases sit at four (35) and six (26)' must mean cell totals, since only 33 of 802 carry a non-normal label. The skeptic missed the denominator arithmetic. The re-checker's mechanism, renumbering moving cases into four, is not what the unchanged 734 shows.",
+    "resolution_hint": "Carry the border-variants page's distribution (v5_final): 734 at five, 35 at four, 26 at six (and, by the arithmetic, one at zero), over 796 complete cases. Give the audit's 26 / 734 / 26 / 1 over 787 determinate cases as the earlier count, the nine extra four-cell cases being ones that became determinate. Describe the 35 and 26 as cell totals, not LSTV-labelled cases. Keep the audit's caveat that the distribution largely recovers the label convention rather than a phenotype prevalence."
+   }
+  },
+  {
+   "stratum": "Transitional vertebrae and border variants",
+   "index": 14,
+   "side": "confirmed",
+   "drawn": "random",
+   "first": "superseded-by-later",
+   "recheck": {
+    "holds": true,
+    "hint_ok": true,
+    "verdict": "superseded-by-later",
+    "quote_a": "| on a different thoracic level \u2014 the defect | \n | 170 | | 109 | | \u221236% |",
+    "quote_b": "| Ribs on the wrong vertebra | | 109 | | 19 |",
+    "explanation": "The Rib Anchor Audit (undated, v4 to v5) reports 170 to 109 ribs on a different thoracic level, and 24 to 16 cases with a consistent misnumbered run. Spinal Border Variants (undated) has a section 'Rib numbering, finished alongside this'. Its 'Before' column is exactly the audit's v5 figures (109, 16), and its 'After' column is 19 and 2, once lumbar ribs got their own class (74/75). Both measure on data/v5_final. Because the later page starts from the audit's end state, it plainly follows and revises it.",
+    "resolution_hint": "Carry 19 ribs on the wrong vertebra and 2 misnumbered cases after the lumbar-rib renumbering (Spinal Border Variants), with the audit's 170 to 109 as the earlier step. Check that the renumbering reached the released labels before treating 19 as the training labels' error count."
+   },
+   "ruling": null
+  },
+  {
+   "stratum": "Transitional vertebrae and border variants",
+   "index": 20,
+   "side": "dismissed",
+   "drawn": "unplaced quote",
+   "first": "refuted",
+   "recheck": {
+    "holds": true,
+    "hint_ok": true,
+    "verdict": "refuted",
+    "quote_a": "a main population near 0.68 and a distinct hypoplastic population near 0.32 . 67 cases fall below 0.30 .",
+    "quote_b": "| Anomaly | | Our CTs | | VerSe | | BUU films | | Usable total | | Verdict | ... | stump / hypoplastic 12th rib | | \u2014 | | 90 | | \u2014 | | 90 | | trainable in count, at chance in result |",
+    "explanation": "The skeptic's quote is in the border-variants page, broken across a line ('67 cases fall below' / '0.30 .'), which is why the script could not place it. That page measures a segmentation-derived length ratio over CTSpinoPelvic1K's 802 cases. The overnight table (2026-09-16) counts usable labelled anomaly cases, and it uses '\u2014' (not '0', which it writes for T13) in the own-CT column. So it records no labelled count, not a count of zero. One page gives a measured ratio, the other labelled positives: different quantities.",
+    "resolution_hint": "Carry both with their definitions: 67 CTSpinoPelvic1K cases below a rib-12 to rib-11 length ratio of 0.30 (border variants, segmentation-derived, not read), and no labelled stump-rib cases in the project's own CTs, with 90 in VerSe (overnight table). Reading the 67 would turn them into usable positives."
+   },
+   "ruling": null
+  },
+  {
+   "stratum": "Transitional vertebrae and border variants",
+   "index": 22,
+   "side": "dismissed",
+   "drawn": "random",
+   "first": "refuted",
+   "recheck": {
+    "holds": true,
+    "hint_ok": true,
+    "verdict": "refuted",
+    "quote_a": "For any target vertebra, the count above it plus the count below it must be 22.",
+    "quote_b": "| n_down | | how many it sits below the lowest rib-bearing vertebra | | every case |",
+    "explanation": "The rule page (2026-09-22) is a whole-column consistency check: count from C2 down and from the sacrum up, with R + C = 22 for an ordinary 23-body column. The two-anchors page is a training design: two ordinal heads counting from the sacrum and from the lowest rib-bearing vertebra, then four morphological anchors. They are different procedures for different fields of view. Neither page states the other's anchors or calls them wrong, so they do not contradict each other.",
+    "resolution_hint": "State each rule with the field it needs: R + C = 22 needs C2 through the sacrum in view, and the two-anchor design needs the sacrum and the lowest rib-bearing vertebra. Do not present them as alternatives for the same field."
+   },
+   "ruling": null
+  },
+  {
+   "stratum": "Verification benches, overnight audits and OR readiness",
+   "index": 29,
+   "side": "confirmed",
+   "drawn": "random",
+   "first": "superseded-by-later",
+   "recheck": {
+    "holds": true,
+    "hint_ok": true,
+    "verdict": "superseded-by-later",
+    "quote_a": "The level model alone is right 38.3% of the time on panels where the caption was held back.",
+    "quote_b": "| 37.9% (level model as sole decider) | | 169 caption-free panels | | caption | | weakest decider; VLM 73.1% on 93, caption 79.5% on 44 |",
+    "explanation": "The Corpus Audit (2026-09-14) gives 38.3%, with n 175 in its chart data, beside vision-language 73.4% on 94 and caption 79.5% on 44. The Reality Check (2026-09-15) re-reads the same decider breakdown as 37.9% on 169, vision-language 73.1% on 93 and caption 79.5% on 44. The later page re-read the same quantity a day later with slightly different counts and gives no reason for the change of n.",
+    "resolution_hint": "Carry 37.9% on 169 caption-free panels from the FluoroCap Reality Check, noting the audit's 38.3% on 175 and that the change of n is unexplained."
+   },
+   "ruling": null
+  },
+  {
+   "stratum": "Verification benches, overnight audits and OR readiness",
+   "index": 30,
+   "side": "confirmed",
+   "drawn": "random",
+   "first": "superseded-by-later",
+   "recheck": {
+    "holds": true,
+    "hint_ok": true,
+    "verdict": "superseded-by-later",
+    "quote_a": "| Caption held out | | 389 | | 56.8% | | 0.34 |",
+    "quote_b": "| 57.1% containment, Jaccard 0.341 | | 380 \"caption-free\" panels | | caption-derived | | not a random hold-out: hard_caption is False exactly when the caption's levels did not fit any contiguous window over the detected boxes |",
+    "explanation": "The audit (14 September 2026) gives 56.8% containment and Jaccard 0.34 on 389 held-out panels, with 1,678 constrained and a hardware split of 286/103. The Reality Check (15 September 2026) reads the files again the next morning: 57.1% and 0.341 on 380, with 1,615 constrained and a split of 283/97. It says several ledgers were still being appended and that where the reports disagree the measurement is given. Every count shifted together, which fits a later re-measurement of the same quantity. Neither page says which nine panels left.",
+    "resolution_hint": "Carry 57.1% containment (Jaccard 0.341) on 380 caption-free panels, from the Reality Check of 15 September 2026. Keep its caveat that this is caption agreement on a subset chosen by caption fit, not accuracy."
+   },
+   "ruling": null
+  },
+  {
+   "stratum": "Verification benches, overnight audits and OR readiness",
+   "index": 37,
+   "side": "confirmed",
+   "drawn": "unplaced quote",
+   "first": "confirmed",
+   "recheck": {
+    "holds": false,
+    "hint_ok": false,
+    "verdict": "refuted",
+    "quote_a": "| 99.998% \u2014 LevelCheck | | registration converged: the fraction of trials whose mean projection distance was under 5 mm. It moves with computing budget \u2014 100% at 200 restarts, 99.3% at 50 \u2014 which is the signature of a convergence rate | | no |",
+    "quote_b": "the 'registration-based tools report near-perfect accuracy' summary (Otake 99.99%, Lo 100%/99.3%, Vaishnav 100%) were both voted down, so the registration-based ceiling and the registration-free floor are both unquantified here",
+    "explanation": "The skeptic's quote_b is in the feasibility study, rendered one character per line. Read in context the pages agree. The feasibility study (2026-09-15) voted down the summary that these figures are near-perfect accuracy and left the ceiling unquantified. Vertebral Levels Without CT (2026-09-18) gives the same figures from 'a verified search', marked 'Is it naming? no' and explained as a registration convergence rate. Both give the clinical 100% as labels inside the correct level (all 398 radiographs, a human-labelled CT), and both give the 42.2% utility as a three-surgeon mean with range 31.7-53.3%. The feasibility study itself explains the 157-versus-168 sum by that averaging. No page treats these as naming accuracy, so nothing is in dispute.",
+    "resolution_hint": "Carry the table from Vertebral Levels Without CT, the later page from a verified search. It gives 99.998%, 100% and 99.3% as registration convergence and the clinical 100% as conditional label placement on 398 radiographs, none of them naming accuracy. The only naming figures are 97.6% with a human on 62 hard films and 88.3% registration-free."
+   },
+   "ruling": {
+    "sided_with": "re-checker",
+    "verdict": "refuted",
+    "quote_a": "| 99.998% \u2014 LevelCheck | | registration converged: the fraction of trials whose mean projection distance was under 5 mm. It moves with computing budget \u2014 100% at 200 restarts, 99.3% at 50 \u2014 which is the signature of a convergence rate | | no |",
+    "quote_b": "the 'registration-based tools report near-perfect accuracy' summary (Otake 99.99%, Lo 100%/99.3%, Vaishnav 100%) were both voted down, so the registration-based ceiling and the registration-free floor are both unquantified here",
+    "explanation": "The feasibility study voted down the reading of these figures as near-perfect identification accuracy, and so left the registration-based ceiling unquantified. Vertebral Levels Without CT, three days later and from a verified search, says the same figures are registration convergence, not naming ('Is it naming? no'). Both pages give the clinical 100% as labels inside the correct level on 398 radiographs, conditional on correct CT labels and after exclusions. Both give the 42.2% utility as a three-surgeon mean with range 31.7 to 53.3%, and the feasibility study explains the 157 versus 168 sum by that averaging. Neither page uses these figures as naming accuracy, so there is no disagreement; the skeptic took the vote against the accuracy reading as a vote against the numbers. One correction to the re-checker's hint: the feasibility study says Huang 2022's 88.3% did not survive verification, so that figure is not settled.",
+    "resolution_hint": "Carry the table from Vertebral Levels Without CT: 99.998%, 100% and 99.3% are registration convergence; the clinical 100% is conditional label placement on 398 radiographs after 21 exclusions; 42.2% is a three-surgeon mean (range 31.7 to 53.3%); none is naming accuracy. The one naming figure with a human is 97.6% on 62 hard films. Carry the registration-free 88.3% only with the feasibility study's note that it did not survive that study's verification."
+   }
+  },
+  {
+   "stratum": "Verification benches, overnight audits and OR readiness",
+   "index": 61,
+   "side": "dismissed",
+   "drawn": "random",
+   "first": "refuted",
+   "recheck": {
+    "holds": true,
+    "hint_ok": true,
+    "verdict": "refuted",
+    "quote_a": "finds the sacrum on 76.9% of 365 real frames pooled over all six specimens ... 160 of 366 real frames are stored upside down",
+    "quote_b": "| DeepFluoro vertebra truth | | test split carries 83 kept and 229 dropped (out-of-field) boxes; older evaluations scored recall against all 312.",
+    "explanation": "Ninety-Three Pixels (2026-09-21) counts DeepFluoro frames: 366 real frames, with a sacrum figure pooled over 365. The OR ledger (2026-09-22) counts vertebra truth boxes in the test split (83 kept, 229 dropped, 312 in all), not frames. The sacrum figure is per frame and does not rest on the vertebra-box denominator. These are different units of the same corpus.",
+    "resolution_hint": "Carry frames (366, of which 365 are scored for the sacrum, Ninety-Three Pixels) and test-split vertebra truth boxes (83 kept of 312, OR ledger) separately."
+   },
+   "ruling": null
+  },
+  {
+   "stratum": "Verification benches, overnight audits and OR readiness",
+   "index": 88,
+   "side": "dismissed",
+   "drawn": "unplaced quote",
+   "first": "cannot-tell",
+   "recheck": {
+    "holds": false,
+    "hint_ok": false,
+    "verdict": "confirmed",
+    "quote_a": "and its accuracy figures (88.3% labelling, 3.3 mm) did not survive verification",
+    "quote_b": "| 88.3% \u2014 cadaveric long films | | the one registration-free, radiograph-only, per-vertebra naming accuracy in the literature | | yes |",
+    "explanation": "The skeptic's quote is in the feasibility page (15 Sept 2026), split one character per line. The skeptic was wrong that no later page re-ran the search. Two later verified searches exist: Naming Vertebrae Without an Anchor (2026-09-17, 106 agents, three-vote verification) and Vertebral Levels Without CT (18 Sept, 'A verified search of this literature finished today'). Both list registration-free per-level naming figures, Huang 2022 at 88.3% on cadaveric long films and Cina 2021 at 98.4% on whole lumbar films. That revises the feasibility page's finding that nothing verified establishes such an accuracy and that Huang's 88.3% did not survive. A page of 18 Sept also says a broader comparator search was still running. No page shows a comparator newer than October 2025.",
+    "resolution_hint": "Carry the later verified comparator table (Naming Vertebrae Without an Anchor, 2026-09-17: Huang 2022 at 88.3%, Cina 2021 at 98.4%), not the feasibility page's 15 Sept 'nothing establishes', and note that the two verification passes disagree on Huang's 88.3%. A dated re-run of the search before 2 November would settle whether anything newer than October 2025 has appeared."
+   },
+   "ruling": {
+    "sided_with": "re-checker",
+    "verdict": "confirmed",
+    "quote_a": "Nothing in the verified set establishes a per-level vertebra-identification accuracy for a registration-free single-frame system on real radiographs or fluoroscopy ... its accuracy figures (88.3% labelling, 3.3 mm) did not survive verification",
+    "quote_b": "| Cina 2021 | | CNN, registration-free | | whole lumbar film, sacrum in frame | | E | | no | | no | | 98.4% published",
+    "explanation": "The feasibility page (15 September 2026) finds that nothing verified gives a registration-free per-level naming accuracy and that Huang's 88.3% did not survive. Naming Vertebrae Without an Anchor (17 September 2026) ran a later verified search (106 agents, three-vote verification) aimed at 'the cases a feasibility report declared impossible'. It lists Huang 2022 at 88.3% and Cina 2021 at 98.4% on whole lumbar films as exact-level, registration-free figures. Vertebral Levels Without CT (18 September) calls 88.3% 'the one registration-free, radiograph-only, per-vertebra naming accuracy in the literature'. So the skeptic was wrong that no later page re-ran the search, and the feasibility page's finding no longer holds. The October 2025 date of the 2-D LSTV model still stands: Research Directions (8 October) names Kwak 2025 as the only 2-D LSTV model, and the 2026 entries in the later table (VERIDAH 2026, Liu 2026) are 3-D or stitching methods.",
+    "resolution_hint": "Carry the later verified comparator table from Naming Vertebrae Without an Anchor (17 September 2026): Huang 2022 at 88.3% on 100 cadaveric long-film images and Cina 2021 at 98.4% on whole lumbar films with the sacrum in frame. Do not carry the feasibility page's 15 September 'nothing establishes'. Note that the two verification passes disagree on whether Huang's 88.3% survived, and that Naming Vertebrae Without CT says a broader search for registration-free comparators was running."
+   }
+  }
+ ]
+}

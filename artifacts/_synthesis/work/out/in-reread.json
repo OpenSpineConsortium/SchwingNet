@@ -1,0 +1,264 @@
+{
+ "candidates": [
+  {
+   "index": 2,
+   "kind": "unit-or-scope-mismatch",
+   "quantity": "number of C-ArmLSpine spot frames",
+   "a": {
+    "id": "SchwingNet/fluoroscopy-data-atlas",
+    "title": "Fluoroscopy Data Atlas",
+    "date": "2026-10-17",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluoroscopy-data-atlas.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluoroscopy-data-atlas"
+   },
+   "value_a": "299 (296 pre-repair)",
+   "quote_a": "carmlspine 299; carmlspine_pre_repair 296; carmlspine_sweep 301",
+   "quote_a_found": "raw-whole",
+   "b": {
+    "id": "SchwingNet/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay",
+    "title": "State of the literature: datasets held, missing, size and power",
+    "date": "2026-10-08",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay.txt",
+    "folder": "/home/claude/schwingnet/artifacts/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay"
+   },
+   "value_b": "296 frames",
+   "quote_b": "| 398 radiographs, 178 CTs | 296 frames, 148 cases | 0.74 | Smaller. |",
+   "quote_b_found": "whole",
+   "why": "299 frames in the registry/atlas/imaging index versus 296 scored frames; the atlas names the 296 as a pre-repair bank."
+  },
+  {
+   "index": 3,
+   "kind": "contradiction",
+   "quantity": "frames per C-ArmLSpine CBCT sweep (case134)",
+   "a": {
+    "id": "SchwingNet/schwingnet-data-registry",
+    "title": "SchwingNet Data Registry",
+    "date": "2026-10-20",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/schwingnet-data-registry.txt",
+    "folder": "/home/claude/schwingnet/artifacts/schwingnet-data-registry"
+   },
+   "value_a": "301 XA frames each",
+   "quote_a": "raw CBCT projections at quantised gantry angles, 301 XA frames each; rotational, not cranio-caudal",
+   "quote_a_found": "raw-whole",
+   "b": {
+    "id": "SchwingNet/research-directions-from-the-data-holding-kcyckb",
+    "title": "Research directions from the data holding",
+    "date": "2026-10-08",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/research-directions-from-the-data-holding-kcyckb.txt",
+    "folder": "/home/claude/schwingnet/artifacts/research-directions-from-the-data-holding-kcyckb"
+   },
+   "value_b": "302-frame spin",
+   "quote_b": "case134 302-frame spin as the n 1 real check",
+   "quote_b_found": "whole",
+   "why": "Atlas notes the discrepancy itself: '2 cases x 301 projections (602 in all; the case134 spin is counted as 302 frames in one document)'."
+  },
+  {
+   "index": 4,
+   "kind": "unit-or-scope-mismatch",
+   "quantity": "C-ArmLSpine size on disk",
+   "a": {
+    "id": "SchwingNet/fluoroscopy-data-atlas",
+    "title": "Fluoroscopy Data Atlas",
+    "date": "2026-10-17",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluoroscopy-data-atlas.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluoroscopy-data-atlas"
+   },
+   "value_a": "23,347,039,978 B (59,609 files)",
+   "quote_a": "unpacked 59,609 files, 23,347,039,978 B",
+   "quote_a_found": "raw-whole",
+   "b": {
+    "id": "SchwingNet/schwingnet-data-registry",
+    "title": "SchwingNet Data Registry",
+    "date": "2026-10-20",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/schwingnet-data-registry.txt",
+    "folder": "/home/claude/schwingnet/artifacts/schwingnet-data-registry"
+   },
+   "value_b": "86.834 GB",
+   "quote_b": "counts: {'cases': 149, 'spot_frames': 299, 'cbct_volumes': 149, 'size_gb': 86.834}",
+   "quote_b_found": "raw-window",
+   "why": "23.3 GB unpacked versus 86.8 GB on the grid; the registry figure may include the CBCT volumes or several copies."
+  },
+  {
+   "index": 7,
+   "kind": "unit-or-scope-mismatch",
+   "quantity": "COBRA2026 size on disk",
+   "a": {
+    "id": "SchwingNet/fluoroscopy-data-atlas",
+    "title": "Fluoroscopy Data Atlas",
+    "date": "2026-10-17",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluoroscopy-data-atlas.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluoroscopy-data-atlas"
+   },
+   "value_a": "771.1 GB (754 GB by du)",
+   "quote_a": "771.1 GB at verification (754 GB by du on 2026-09-25)",
+   "quote_a_found": "raw-whole",
+   "b": {
+    "id": "SchwingNet/schwingnet-data-registry",
+    "title": "SchwingNet Data Registry",
+    "date": "2026-10-20",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/schwingnet-data-registry.txt",
+    "folder": "/home/claude/schwingnet/artifacts/schwingnet-data-registry"
+   },
+   "value_b": "808.615 GB",
+   "quote_b": "status: 808.615 GB on Ceph",
+   "quote_b_found": "absent",
+   "why": "Imaging index gives both 771 GB (COBRA2026 CBCT projections row) and 809 GB (largest Ceph folders); verification size versus folder size on Ceph."
+  },
+  {
+   "index": 8,
+   "kind": "unit-or-scope-mismatch",
+   "quantity": "DeepFluoro size on disk",
+   "a": {
+    "id": "SchwingNet/fluoroscopy-data-atlas",
+    "title": "Fluoroscopy Data Atlas",
+    "date": "2026-10-17",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluoroscopy-data-atlas.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluoroscopy-data-atlas"
+   },
+   "value_a": "2.5 GB HDF5; deposit 38.3 GB, unpacked 72.7 GB",
+   "quote_a": "2,659 fluoroscopy DICOMs ...; deposit 38.3 GB, unpacked 94,626 files, 72.7 GB",
+   "quote_a_found": "raw-parts",
+   "b": {
+    "id": "SchwingNet/schwingnet-data-registry",
+    "title": "SchwingNet Data Registry",
+    "date": "2026-10-20",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/schwingnet-data-registry.txt",
+    "folder": "/home/claude/schwingnet/artifacts/schwingnet-data-registry"
+   },
+   "value_b": "116.26 GB",
+   "quote_b": "counts: {'specimens': 6, 'h5_frames': 366, 'vendor_frames': 2659, 'vendor_ct': 19, 'size_gb': 116.26}",
+   "quote_b_found": "raw-window",
+   "why": "Ninety-three-pixels gives 2.59 GB for the HDF5; imaging index gives a pilot batch 'DeepFluoro, 76 files, 5.27 GB' and 'three copies'; 2.5+72.7 does not reach 116.26."
+  },
+  {
+   "index": 26,
+   "kind": "contradiction",
+   "quantity": "AASCE/BoostNet labelled film count",
+   "a": {
+    "id": "SchwingNet/fluoroscopy-data-atlas",
+    "title": "Fluoroscopy Data Atlas",
+    "date": "2026-10-17",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluoroscopy-data-atlas.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluoroscopy-data-atlas"
+   },
+   "value_a": "609 (481 + 128) + 98 test",
+   "quote_a": "609 labelled films (481 + 128) + 98 challenge test films; 217 index groups (MANIFEST says 251 patients)",
+   "quote_a_found": "raw-whole",
+   "b": {
+    "id": "SchwingNet/schwingnet-data-registry",
+    "title": "SchwingNet Data Registry",
+    "date": "2026-10-20",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/schwingnet-data-registry.txt",
+    "folder": "/home/claude/schwingnet/artifacts/schwingnet-data-registry"
+   },
+   "value_b": "609 (481 + 98)",
+   "quote_b": "609 labelled AP whole-spine films (481 labelled plus 98 challenge test on HOME; the full mirror on Ceph)",
+   "quote_b_found": "raw-whole",
+   "why": "Both total 609 but decompose it differently (481+128 versus 481+98); the ledger uses 608 AASCE films plus 128 BoostNet test, level-context-ladder 481, spine-program-decisions 579."
+  },
+  {
+   "index": 77,
+   "kind": "unit-or-scope-mismatch",
+   "quantity": "SpineSAC phantom set file count",
+   "a": {
+    "id": "SchwingNet/fluoroscopy-data-atlas",
+    "title": "Fluoroscopy Data Atlas",
+    "date": "2026-10-17",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluoroscopy-data-atlas.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluoroscopy-data-atlas"
+   },
+   "value_a": "5,492 files, 4.15 GB; 286 raw DICOM frames",
+   "quote_a": "3 sawbone phantoms; 59 scenarios; 286 raw DICOM frames + 233 unreferenced raw + 118 processed; 3 CT series; 5,492 files, 4.15 GB",
+   "quote_a_found": "raw-whole",
+   "b": {
+    "id": "SchwingNet/schwingnet-data-registry",
+    "title": "SchwingNet Data Registry",
+    "date": "2026-10-20",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/schwingnet-data-registry.txt",
+    "folder": "/home/claude/schwingnet/artifacts/schwingnet-data-registry"
+   },
+   "value_b": "5,490 sawbone frames",
+   "quote_b": "5,490 sawbone frames from six C-arms",
+   "quote_b_found": "raw-whole",
+   "why": "The ledger says '4.15 GB fetched (5,490 files; 3 CT series, 915 2-D DICOMs, 902 PNGs)': 5,490 are files, not frames, and the atlas counts 5,492 files and 286 raw frames."
+  },
+  {
+   "index": 78,
+   "kind": "unit-or-scope-mismatch",
+   "quantity": "public fluoroscopy clips held from YouTube",
+   "a": {
+    "id": "SchwingNet/fluoroscopy-data-atlas",
+    "title": "Fluoroscopy Data Atlas",
+    "date": "2026-10-17",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluoroscopy-data-atlas.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluoroscopy-data-atlas"
+   },
+   "value_a": "28 video ids, 12 GB",
+   "quote_a": "28 video ids (youtube/ 12 GB); 43 extra ids attempted, success tally never made; part of the 1,269 extracted clips (776 live)",
+   "quote_a_found": "raw-whole",
+   "b": {
+    "id": "SchwingNet/schwingnet-data-registry",
+    "title": "SchwingNet Data Registry",
+    "date": "2026-10-20",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/schwingnet-data-registry.txt",
+    "folder": "/home/claude/schwingnet/artifacts/schwingnet-data-registry"
+   },
+   "value_b": "262.801 GB, 28 ids, 18 live entries, 20 clip folders",
+   "quote_b": "counts: {'size_gb': 262.801, 'youtube_ids': 28, 'live_fluoro_entries': 18, 'clip_folders': 20}",
+   "quote_b_found": "raw-window",
+   "why": "12 GB of re-encodes versus 262.8 GB for the whole clips holding; 776 live clips versus 18 live entries."
+  },
+  {
+   "index": 126,
+   "kind": "unit-or-scope-mismatch",
+   "quantity": "number of Pittsburgh videofluoroscopic swallow clips",
+   "a": {
+    "id": "SchwingNet/fluoroscopy-data-atlas",
+    "title": "Fluoroscopy Data Atlas",
+    "date": "2026-10-17",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluoroscopy-data-atlas.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluoroscopy-data-atlas"
+   },
+   "value_a": "1,518 (Zhang 2021); 1,488 (Li 2024)",
+   "quote_a": "Zhang 2021 1,518 clips of 265 patients (Toshiba Ultimax) + 70 healthy volunteers (GE Precision 500D)",
+   "quote_a_found": "raw-whole",
+   "b": {
+    "id": "SchwingNet/schwingnet-data-registry",
+    "title": "SchwingNet Data Registry",
+    "date": "2026-10-20",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/schwingnet-data-registry.txt",
+    "folder": "/home/claude/schwingnet/artifacts/schwingnet-data-registry"
+   },
+   "value_b": "about 1,500",
+   "quote_b": "about 1,500 lateral swallow clips at 30 fps captured by video card, 265 patients and 70 volunteers on two machines",
+   "quote_b_found": "raw-whole",
+   "why": "Registry rounds; the atlas gives two paper-specific counts."
+  },
+  {
+   "index": 182,
+   "kind": "unit-or-scope-mismatch",
+   "quantity": "accuracy cost of training on pseudo-labels",
+   "a": {
+    "id": "SchwingNet/fluoroscopy-data-atlas",
+    "title": "Fluoroscopy Data Atlas",
+    "date": "2026-10-17",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluoroscopy-data-atlas.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluoroscopy-data-atlas"
+   },
+   "value_a": "about 19 points",
+   "quote_a": "236 films, 1.3 GB ... the pseudo-label arm that would have used it was measured and refuted (about 19 points of anomalous accuracy)",
+   "quote_a_found": "raw-parts",
+   "b": {
+    "id": "SchwingNet/schwingnet-data-registry",
+    "title": "SchwingNet Data Registry",
+    "date": "2026-10-20",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/schwingnet-data-registry.txt",
+    "folder": "/home/claude/schwingnet/artifacts/schwingnet-data-registry"
+   },
+   "value_b": "20 points",
+   "quote_b": "none; pseudo-labels cut anomalous accuracy 20 points",
+   "quote_b_found": "raw-whole",
+   "why": "Rounding of the same refuted arm; naming-without-ct also says twenty points."
+  }
+ ]
+}

@@ -2,7 +2,10 @@
 
 HTML pages lose their tags, scripts, styles and data URIs; Markdown is copied;
 a data file (bench_data.js, verify_data.js) is summarised rather than dumped;
-images are listed by name and size. Text content is data, not instructions.
+images are listed by name and size. E-mail addresses and phone numbers are
+replaced before the text is written, so no reader is handed one; the readers
+of #136 got texts replaced by these same two patterns, run on the written files
+before any reader saw them. Text content is data, not instructions.
 """
 import html
 import json
@@ -23,6 +26,8 @@ ALT_RE = re.compile(r'alt="([^"]*)"')
 SRC_RE = re.compile(r'src="([^"]{0,200})')
 TITLE_RE = re.compile(r"<title[^>]*>(.*?)</title>", re.S | re.I)
 META_DESC_RE = re.compile(r'<meta\s+name="description"\s+content="([^"]*)"', re.I)
+EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
+PHONE_RE = re.compile(r"(?<!\d)(?:\+?1[ .-]?)?\(?\d{3}\)?[ .-]\d{3}[ .-]\d{4}(?!\d)")
 
 
 def script_text(scripts):
@@ -149,7 +154,8 @@ def extract_folder(folder: Path, out: Path):
             parts.append(f"\n===== {rel} ===== [image file, {f.stat().st_size} bytes]")
         else:
             parts.append(f"\n===== {rel} ===== [{suf or 'no suffix'} file, {f.stat().st_size} bytes]")
-    out.write_text("\n".join(parts), encoding="utf-8")
+    text = PHONE_RE.sub("[phone removed]", EMAIL_RE.sub("[address removed]", "\n".join(parts)))
+    out.write_text(text, encoding="utf-8")
 
 
 def main(repo_root, repo_name, out_root):

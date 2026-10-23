@@ -2252,8 +2252,8 @@
        {
         "index": 6,
         "verdict": "confirmed",
-        "quote_a": "Operations Assistant, Detroit City FC",
-        "quote_b": "Operations Assistant, Detroit City FC",
+        "quote_a": "[a club staff contact], Detroit City FC",
+        "quote_b": "[a club staff contact], Detroit City FC",
         "explanation": "Both flyers give the same venue address, the same two contacts (the club's operations assistant and the project lead under DMC/WSU General Surgery), the same registration form and the same event page. Sign-ups from either flyer land on one form.",
         "resolution_hint": "Carry the shared details once. Note that the earlier oncology flyer still points to the live form, so it should be withdrawn or the form should record which flyer a sign-up came from."
        },
@@ -2421,7 +2421,7 @@
         "index": 27,
         "verdict": "refuted",
         "quote_a": "The fastest way around that is to have an existing registered organization host the event with OSC as the program, rather than registering OSC itself.",
-        "quote_b": "Operations Assistant, Detroit City FC",
+        "quote_b": "[a club staff contact], Detroit City FC",
         "explanation": "The funding page's advice applies when applying to sources that require a registered student organisation. The flyer names the club and the project as organisers and claims no student-organisation funding. The two pages describe different things and do not disagree.",
         "resolution_hint": "Note that any application for the night to SAFB or to alumni funds would first need a registered student organisation as host, as the funding page advises."
        }

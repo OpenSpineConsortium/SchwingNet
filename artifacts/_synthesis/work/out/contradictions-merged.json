@@ -1214,7 +1214,8 @@
      "quote_a": "89.9% [87.1, 92.7] ordinary \u00b7 49.9% [41.5, 58.9] anomalous \u00b7 99.4% cervical",
      "quote_b": "All 144 anomalous BUU films held to validation | anomalous interior 49.9 % against ordinary 89.9 %",
      "explanation": "Without-an-anchor (2026-09-17) says v6 moves all 144 anomalous BUU studies to the test partition, and reports 49.9% against 89.9% on 128 interior films. Research-directions (2026-10-08) gives the same numbers but says the 144 were held to validation, and calls this the one powered transitional statement. The handoff (2026-10-08) rules every number from allspine v2, v6 and v7 record only.",
-     "resolution_hint": "Carry 49.9% against 89.9% as record only, per the handoff. Note that the partition is given as test on one page and validation on the other, until a clean-bank re-run."
+     "resolution_hint": "Carry 49.9% against 89.9% as record only, per the handoff. Note that the partition is given as test on one page and validation on the other, until a clean-bank re-run.",
+     "review": "held"
     },
     {
      "kind": "contradiction",
@@ -1654,7 +1655,8 @@
      "quote_a": "one centre booked 179 preoperative gold-fiducial placements in 38 months, 176 of them thoracic",
      "quote_b": "one centre placed 179 preoperative gold fiducials over 38 months, 176 thoracic, at a mean of 51.9 min and 183 mGy each (Siminski et al., AJNR 2023)",
      "explanation": "The claim is uncited on without-an-anchor, but the AIDaS proposal cites Siminski et al. 2023, and the visual abstract lists that reference. So the claim is not unsourced on both pages.",
-     "resolution_hint": "Carry it with the Siminski 2023 citation."
+     "resolution_hint": "Carry it with the Siminski 2023 citation.",
+     "review": "held"
     },
     {
      "kind": "unsourced-shared-claim",
@@ -1698,7 +1700,8 @@
      "quote_a": "Wrong-level spine surgery persists because intraoperative fluoroscopy shows a few vertebrae and a surgeon counts from whatever landmark is visible.",
      "quote_b": "Wrong-level spine surgery persists because a C-arm shows a few vertebrae at a time and the surgeon counts from whatever landmark is visible.",
      "explanation": "Both pages state the premise without a source. In the AIDaS proposal it is followed by the registry's 81.3% intraoperative disorientation (Furuya 2026), the nearest support but not the claim itself.",
-     "resolution_hint": "Present it as the authors' premise, or cite Furuya 2026's disorientation figure as partial support."
+     "resolution_hint": "Present it as the authors' premise, or cite Furuya 2026's disorientation figure as partial support.",
+     "review": "held"
     },
     {
      "kind": "unsourced-shared-claim",
@@ -1815,11 +1818,19 @@
      "topic": "'Nothing is stale' and 'a verified search finished today' as of mid-September",
      "artifact_a": "SchwingNet/registration-free-level-id-feasibility-uramo1",
      "artifact_b": "SchwingNet/vertebral-levels-without-ct-a4rydj",
-     "verdict": "confirmed",
-     "quote_a": "the deep-learning result is from October 2025 and the two systematic reviews are from 2026, so nothing is stale",
-     "quote_b": "A verified search of this literature finished today",
-     "explanation": "The feasibility page (2026-09-15) declared nothing stale and said no surviving claim gave the incidence of wrong-level surgery. Later pages cite the Furuya 2026 registry of 34,544 cases for exactly that (AIDaS proposal, visual abstract). Vertebral-levels' 'finished today' (2026-09-18) is itself a dated claim.",
-     "resolution_hint": "Date-stamp both currency claims, and carry the registry figures from the AIDaS proposal."
+     "verdict": "refuted",
+     "quote_a": "Time-sensitivity: the anatomical facts are stable; the deep-learning result is from October 2025 and the two systematic reviews are from 2026, so nothing is stale, but the field is moving and a whole-spine-trained level classifier could appear at any time.",
+     "quote_b": "A verified search of this literature finished today, and its main finding is not a number",
+     "explanation": "The feasibility page (15 September 2026) says nothing is stale, and it means the age of its own cited sources. The quote sits in its caveats list, which the HTML renders one character per list item. Vertebral Levels Without CT (18 September) only dates its own search with 'finished today'. Neither page says the other's currency claim is wrong, and no later page shows that the October 2025 deep-learning result or the 2026 reviews had been overtaken. The skeptic's evidence, the 34,544-operation registry (Furuya, Bone Joint J 2026;108-B(5), so published before 15 September), answers a different line of the feasibility page, 'no surviving claim gives wrong-level incidence'. That shows a gap in that page's search, not a currency claim gone stale.",
+     "resolution_hint": "Carry each currency claim as true on its own date: the feasibility page on 15 September 2026, Vertebral Levels Without CT on 18 September 2026. Separately, record that the feasibility page's 'no surviving claim gives wrong-level incidence' is answered by the registry of 34,544 operations, 0.12% (95% CI 0.09-0.16). The figures are in the AIDaS proposal and the retrospective fluoroscopy protocol, and the level-counting visual abstract cites the paper as Furuya 2026.",
+     "first": {
+      "verdict": "confirmed",
+      "quote_a": "the deep-learning result is from October 2025 and the two systematic reviews are from 2026, so nothing is stale",
+      "quote_b": "A verified search of this literature finished today",
+      "explanation": "The feasibility page (2026-09-15) declared nothing stale and said no surviving claim gave the incidence of wrong-level surgery. Later pages cite the Furuya 2026 registry of 34,544 cases for exactly that (AIDaS proposal, visual abstract). Vertebral-levels' 'finished today' (2026-09-18) is itself a dated claim.",
+      "resolution_hint": "Date-stamp both currency claims, and carry the registry figures from the AIDaS proposal."
+     },
+     "review": "verdict overturned"
     },
     {
      "kind": "stale",
@@ -2447,11 +2458,19 @@
      "topic": "Distribution of the non-rib-bearing vertebra count (cases at four) in CTSpinoPelvic1K",
      "artifact_a": "SchwingNet/rib-anchor-audit-t7wr2h",
      "artifact_b": "SchwingNet/spinal-border-variants-fye5ef",
-     "verdict": "confirmed",
-     "quote_a": "| 4 | | 26 | | 3.3% | | 5 \u2014 usual | | 734 | | 93.3% | | 6 | | 26 | | 3.3% |",
-     "quote_b": "The cohort piles at five ( 734 cases). Labelled LSTV cases sit at four ( 35 ) and six ( 26 ) instead \u2014 sacralization pulling one way, lumbarization the other.",
-     "explanation": "Both pages work on v5 and agree on 734 at five and 26 at six, but the four-cell is 26 in the audit and 35 on the border page. Read as cell totals, 35 conflicts with the audit's 26. Read literally as LSTV-labelled cases, 35 + 26 = 61 exceeds the border page's own 33 non-normal labels. The border page's renumbering ('finished alongside this') might have moved cases into the four-cell, but neither text says so. The research-directions CT-7 cells (26 transitional at counts 4 and 6, 757 normal at 4 and 5, 7 transitional at 5, 9 normal at 6) use yet another partition.",
-     "resolution_hint": "Recompute the count histogram on the current release with the audit's nearest-vertebra rib-bearing rule, crossed with the LSTV label. Carry the audit's caveat that the distribution largely reflects the label convention."
+     "verdict": "superseded-by-later",
+     "quote_a": "| 4 | | 26 | | 3.3% |  | 5 \u2014 usual | | 734 | | 93.3% |  | 6 | | 26 | | 3.3% |  | 0 | | 1 | | 0.1% |  | determinate | | 787 | | 98% |",
+     "quote_b": "Of 796 cases with complete measurements:",
+     "explanation": "The border-variants page plainly follows the audit. Its 'Rib numbering, finished alongside this' table starts from the audit's own v5 state (109 ribs on the wrong vertebra, 16 misnumbered cases, 14 lumbar ribs) and reports them reduced. The five-cell (734) and the six-cell (26) are identical on both pages; only the four-cell moves, from 26 to 35. That is a rise of 9, and 787 + 9 = 796, the border page's complete-measurement count; 734 + 35 + 26 + 1 = 796. So the later histogram covers nine more determinate cases, all of them at four; no case moved out of five. 'Labelled LSTV cases sit at four (35) and six (26)' must mean cell totals, since only 33 of 802 carry a non-normal label. The skeptic missed the denominator arithmetic. The re-checker's mechanism, renumbering moving cases into four, is not what the unchanged 734 shows.",
+     "resolution_hint": "Carry the border-variants page's distribution (v5_final): 734 at five, 35 at four, 26 at six (and, by the arithmetic, one at zero), over 796 complete cases. Give the audit's 26 / 734 / 26 / 1 over 787 determinate cases as the earlier count, the nine extra four-cell cases being ones that became determinate. Describe the 35 and 26 as cell totals, not LSTV-labelled cases. Keep the audit's caveat that the distribution largely recovers the label convention rather than a phenotype prevalence.",
+     "first": {
+      "verdict": "confirmed",
+      "quote_a": "| 4 | | 26 | | 3.3% | | 5 \u2014 usual | | 734 | | 93.3% | | 6 | | 26 | | 3.3% |",
+      "quote_b": "The cohort piles at five ( 734 cases). Labelled LSTV cases sit at four ( 35 ) and six ( 26 ) instead \u2014 sacralization pulling one way, lumbarization the other.",
+      "explanation": "Both pages work on v5 and agree on 734 at five and 26 at six, but the four-cell is 26 in the audit and 35 on the border page. Read as cell totals, 35 conflicts with the audit's 26. Read literally as LSTV-labelled cases, 35 + 26 = 61 exceeds the border page's own 33 non-normal labels. The border page's renumbering ('finished alongside this') might have moved cases into the four-cell, but neither text says so. The research-directions CT-7 cells (26 transitional at counts 4 and 6, 757 normal at 4 and 5, 7 transitional at 5, 9 normal at 6) use yet another partition.",
+      "resolution_hint": "Recompute the count histogram on the current release with the audit's nearest-vertebra rib-bearing rule, crossed with the LSTV label. Carry the audit's caveat that the distribution largely reflects the label convention."
+     },
+     "review": "verdict overturned"
     },
     {
      "kind": "contradiction",
@@ -2539,7 +2558,8 @@
      "quote_a": "| on a different thoracic level \u2014 the defect | | 170 | | 109 | | \u221236% |",
      "quote_b": "| Ribs on the wrong vertebra | | 109 | | 19 |",
      "explanation": "Neither page is dated, but the border page's 'Before' column repeats exactly the audit's v5 'after' values (109 ribs, 16 misnumbered cases). Under 'Rib numbering, finished alongside this' it reports a later renumbering (lumbar-rib classes 74/75) that takes them to 19 and 2. It plainly follows and revises the audit's figures.",
-     "resolution_hint": "Carry 19 ribs on the wrong vertebra and 2 misnumbered cases after the renumbering, with the audit's 170 to 109 as the earlier step. Check that the renumbering reached the released labels (v11) before treating 19 as the training labels' error count."
+     "resolution_hint": "Carry 19 ribs on the wrong vertebra and 2 misnumbered cases after the renumbering, with the audit's 170 to 109 as the earlier step. Check that the renumbering reached the released labels (v11) before treating 19 as the training labels' error count.",
+     "review": "held"
     },
     {
      "kind": "contradiction",
@@ -2605,7 +2625,8 @@
      "quote_a": "67 cases fall below 0.30.",
      "quote_b": "| stump / hypoplastic 12th rib | | \u2014 | | 90 | | \u2014 | | 90 | | trainable in count, at chance in result |",
      "explanation": "The overnight table does not table zero for the project's CTs. It shows '\u2014', and the same table writes '0' where it means zero (T13 vertebra, T13 rib) and '\u2014' for VerSe lumbar rib, which research-directions later counts as 12. So '\u2014' marks no labelled, usable count. The border page's 67 is a segmentation length-ratio measurement, not a label. The two count different things.",
-     "resolution_hint": "The book can carry both with their definitions: 67 CTSpinoPelvic1K cases below a rib-12/rib-11 length ratio of 0.30 (unread, and the audit warns that 57% of ribs are clipped by the field), and no labelled stump-rib cases in the project's CTs. Reading the 67 would make them usable positives."
+     "resolution_hint": "The book can carry both with their definitions: 67 CTSpinoPelvic1K cases below a rib-12/rib-11 length ratio of 0.30 (unread, and the audit warns that 57% of ribs are clipped by the field), and no labelled stump-rib cases in the project's CTs. Reading the 67 would make them usable positives.",
+     "review": "held"
     },
     {
      "kind": "contradiction",
@@ -2627,7 +2648,8 @@
      "quote_a": "For any target vertebra, the count above it plus the count below it must be 22.",
      "quote_b": "| n_down | | how many it sits below the lowest rib-bearing vertebra | | every case |",
      "explanation": "These are two different rules: C2 plus sacrum over a whole column (rule page, 2026-09-22), and sacrum plus lowest rib-bearing body (design page). Neither page claims the other is wrong, and each is internally consistent.",
-     "resolution_hint": "The book should state each rule's field requirement: the R + C = 22 rule needs C2 to the sacrum in view, and the two-anchor design needs the sacrum and the lowest rib in view. It should not present them as alternatives for the same field."
+     "resolution_hint": "The book should state each rule's field requirement: the R + C = 22 rule needs C2 to the sacrum in view, and the two-anchor design needs the sacrum and the lowest rib in view. It should not present them as alternatives for the same field.",
+     "review": "held"
     },
     {
      "kind": "contradiction",
@@ -4047,10 +4069,18 @@
      "artifact_a": "SchwingNet/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay",
      "artifact_b": "SchwingNet/spine-program-decisions-qqhkqz",
      "verdict": "confirmed",
-     "quote_a": "CTSpinoPelvic1K L6: 18 by release label, 16 by the readers' own count, 29 persons in the registry.",
+     "quote_a": "CTSpinoPelvic1K L6: 18 by release label, 16 by the readers' own count, 29 persons in the registry. Seven disagreeing records are out of every truth pool until re-read.",
      "quote_b": "About 22 of 802 cases carry an L6 at all, roughly 2.7%.",
-     "explanation": "The literature-state (8 Oct) records three disagreeing counts for one release and says seven disagreeing records are out of every truth pool. The registry and protocol 1 carry 18. The decisions page (undated) gives about 22 of 802. These are counts of the same quantity, and they differ.",
-     "resolution_hint": "Carry 18 by release label (registry, protocol 1, literature-state), with 16 by the readers' count and 29 in the transitional registry flagged; treat the decisions page's 'about 22' as an approximate earlier figure."
+     "explanation": "The decisions page never names the dataset. Its 802 cases are CTSpinoPelvic1K's 802 records, and it counts the cases carrying an L6 in the training labels: about 22, or 2.7%. The literature-state page (8 October 2026) counts the same cohort as 18 by release label, 16 by the readers and 29 in the registry, so the values really disagree. The decisions page is undated and nothing on it shows it came first, so the skeptic's word 'earlier' has no support. The literature page's 'L6 2.0 % (Wilson 1.3 to 3.3 %)' is 16 of the 789 lumbosacral-countable CTs, not 16 of 802 as the re-checker said. The 789 figure is from the same page's table: '802; 789 ... readers: L6 16 to 18'.",
+     "resolution_hint": "From the literature-state page, carry all three counts with their definitions: 18 by release label, 16 by the readers, 29 persons in the registry. Give its prevalence as 2.0% (Wilson 1.3 to 3.3%), which is 16 of 789 countable CTs. Carry the decisions page's 'about 22 of 802 (2.7%)' as an undated, approximate count of the training labels, not as an earlier figure.",
+     "first": {
+      "verdict": "confirmed",
+      "quote_a": "CTSpinoPelvic1K L6: 18 by release label, 16 by the readers' own count, 29 persons in the registry.",
+      "quote_b": "About 22 of 802 cases carry an L6 at all, roughly 2.7%.",
+      "explanation": "The literature-state (8 Oct) records three disagreeing counts for one release and says seven disagreeing records are out of every truth pool. The registry and protocol 1 carry 18. The decisions page (undated) gives about 22 of 802. These are counts of the same quantity, and they differ.",
+      "resolution_hint": "Carry 18 by release label (registry, protocol 1, literature-state), with 16 by the readers' count and 29 in the transitional registry flagged; treat the decisions page's 'about 22' as an approximate earlier figure."
+     },
+     "review": "hint corrected"
     },
     {
      "kind": "contradiction",
@@ -4094,7 +4124,8 @@
      "quote_a": "2,293 vendor frames unused with no written criterion",
      "quote_b": "2,293 of 2,659 frames have no released pose (some carry the FTRAC fiducial and could be posed)",
      "explanation": "The atlas states a property of the frames: they have no released pose. The registry says no written criterion excludes them. Both can be true, and the atlas does not claim that the missing pose was ever written down as the reason for leaving them out.",
-     "resolution_hint": "Carry both: 2,293 of 2,659 vendor frames have no released pose and some could be posed from the FTRAC fiducial (atlas), and no written criterion excludes them (registry)."
+     "resolution_hint": "Carry both: 2,293 of 2,659 vendor frames have no released pose and some could be posed from the FTRAC fiducial (atlas), and no written criterion excludes them (registry).",
+     "review": "held"
     },
     {
      "kind": "contradiction",
@@ -4127,7 +4158,8 @@
      "quote_a": "Sixteen sources can only be had by asking. Each letter below is ready; eleven of them also exist as unsent Outlook drafts",
      "quote_b": "todo 52 \u00b7 requested 26 \u00b7 granted 5",
      "explanation": "The atlas of 17 Oct lists sixteen ready letters, eleven of them unsent Outlook drafts. The pipeline of 21 Oct counts spine-datasets records as 26 requested and 5 granted, says the LevelCheck cohort was asked on 21 Oct, and says the Radiopaedia licence (the atlas's letter 8) was signed and paid. Those 86 records are a wider set than the atlas's sixteen, so which of the sixteen letters were sent is not shown.",
-     "resolution_hint": "Carry the request state from spine-datasets at 7a74bb6 (21 Oct), record by record; use the atlas for the letter texts, not for their sent state."
+     "resolution_hint": "Carry the request state from spine-datasets at 7a74bb6 (21 Oct), record by record; use the atlas for the letter texts, not for their sent state.",
+     "review": "held"
     },
     {
      "kind": "contradiction",
@@ -4454,10 +4486,18 @@
      "artifact_a": "SchwingNet/imaging-data-holding-manifest-migration-and-index-fqmtjs",
      "artifact_b": "SchwingNet/schwingnet-data-registry",
      "verdict": "refuted",
-     "quote_a": "COBRA2026 809 GB, IDC 706 GB",
-     "quote_b": "808.615 GB on Ceph",
-     "explanation": "The manifest, as of 7 to 8 Oct, already lists COBRA2026 among the largest imaging folders on Ceph that 'stay where they are', and C-ArmLSpine is in none of its home batches. The registry listing these sets at Ceph paths therefore says nothing about the home batches (B00 finalize, B13 and the rest) being done. The pages agree.",
-     "resolution_hint": "Carry the migration state from the manifest's batch table (8 Oct) until a later batch status exists; the registry's Ceph paths are folders that were on Ceph before the migration."
+     "quote_a": "| B00 | DeepFluoro H5, the pilot | 1 | 6.2 | cut over; finalize pending |",
+     "quote_b": "\"status\": \"808.615 GB on Ceph\"",
+     "explanation": "The manifest (state on 8 Oct 2026) already lists COBRA2026 (809 GB) among the imaging folders on Ceph that 'stay where they are', and C-ArmLSpine is in none of its home batches. So the registry (rendered 2026-10-20) giving them Ceph paths says nothing about B00's finalize, B13, the home walk or the licence conflicts, and the two pages agree. The registry still puts FluoroCap on the home volume, where the manifest had B09 at 'copy queued', so it shows no migration done there either. The skeptic's hint is wrong on one point: DeepFluoro's registry path is on Ceph because the B00 pilot moved and cut it over, not because the folder was on Ceph before the migration.",
+     "resolution_hint": "Carry the migration state from the manifest's batch table (8 Oct 2026) until a later batch status exists. Note that the registry (2026-10-20) puts DeepFluoro (B00, moved by the pilot) on Ceph and FluoroCap (B09) still on home, so B09 had not cut over by then, as far as the registry shows. The registry does not say whether B00 was finalized.",
+     "first": {
+      "verdict": "refuted",
+      "quote_a": "COBRA2026 809 GB, IDC 706 GB",
+      "quote_b": "808.615 GB on Ceph",
+      "explanation": "The manifest, as of 7 to 8 Oct, already lists COBRA2026 among the largest imaging folders on Ceph that 'stay where they are', and C-ArmLSpine is in none of its home batches. The registry listing these sets at Ceph paths therefore says nothing about the home batches (B00 finalize, B13 and the rest) being done. The pages agree.",
+      "resolution_hint": "Carry the migration state from the manifest's batch table (8 Oct) until a later batch status exists; the registry's Ceph paths are folders that were on Ceph before the migration."
+     },
+     "review": "hint corrected"
     },
     {
      "kind": "stale",
@@ -4925,7 +4965,7 @@
      "quote_a": "the grid's outbound IP is captcha-throttled by PMC; WSL is not",
      "artifact_b": "SchwingNet/fluorocap-access-setup-jlvkft",
      "statement_b": "The access setup plans the closed-journal refetch from the grid login node because publishers authenticate by IP.",
-     "quote_b": "The grid is inside the university's address space (141.217.x.x) and publishers authenticate by IP. I will run the closed-journal refetch from the grid login node",
+     "quote_b": "The grid is inside the university's address space ([the university's network range]) and publishers authenticate by IP. I will run the closed-journal refetch from the grid login node",
      "why_it_matters": "The two pages pick opposite hosts for the same reason (IP); the overnight report shows the proxy session, not the grid IP, did the refetch, so the access setup's plan was not what ran."
     },
     {
@@ -5156,7 +5196,7 @@
      "quote_a": "the grid's outbound IP is captcha-throttled by PMC; WSL is not",
      "artifact_b": "SchwingNet/fluorocap-access-setup-jlvkft",
      "statement_b": "The access setup asserts publishers authenticate by IP inside the university's address space, with no probe cited.",
-     "quote_b": "The grid is inside the university's address space (141.217.x.x) and publishers authenticate by IP.",
+     "quote_b": "The grid is inside the university's address space ([the university's network range]) and publishers authenticate by IP.",
      "why_it_matters": "Both network assumptions decide where the harvest runs and neither is backed by a recorded test; the overnight report shows the refetch went through the proxy session instead."
     },
     {
@@ -5291,7 +5331,8 @@
      "quote_a": "The C-ArmLSpine fold models behind the fine-tuned naming numbers still train on 2,632 VinDr crops and 2,100 FluoroCap crops per fold bank, plus both NHANES copies, because the v9-initialised fold models reuse fold banks built from allspine\\_v7.",
      "quote_b": "out of training by directive D1; a test set at most; still inside the old fold banks",
      "explanation": "Read whole in the page source (the plain-text export cuts off the record array), the registry's FluoroCap status ends 'still inside the old fold banks'. That is exactly what the handoff found. The candidate quoted only the first half. The two pages agree that D1 is the rule and that the old fold banks still break it.",
-     "resolution_hint": "Carry both: D1 is the rule, and the fine-tuned C-ArmLSpine numbers come from fold banks that still hold FluoroCap and VinDr. Clean fold models exist (the Figure 5b name_fill cells, per the handoff), and retraining the fold models on clean banks closes the gap."
+     "resolution_hint": "Carry both: D1 is the rule, and the fine-tuned C-ArmLSpine numbers come from fold banks that still hold FluoroCap and VinDr. Clean fold models exist (the Figure 5b name_fill cells, per the handoff), and retraining the fold models on clean banks closes the gap.",
+     "review": "held"
     },
     {
      "kind": "contradiction",
@@ -5368,7 +5409,8 @@
      "quote_a": "1,489 of 2,901 figures replaced with the publisher's larger copy, median 6.3\u00d7 the pixels; round two still running",
      "quote_b": "| Publisher-original refetch | | 1,558 of 2,901 figures replaced (53.7%); pixel-area gain p50 6.26\u00d7 (\u2248 2.5\u00d7 linear); new short side p50 1,254 vs old 474; 1,343 misses led by DOI prefixes 10.4103 (158), 10.1097 (123), 10.1186 (81); 931 \"no candidate served\" | | ~/FluoroCap_wsl/refetch_hires.jsonl, round two still running; morning report's 1,489 superseded |",
      "explanation": "The reality check explicitly replaces 1,489 with 1,558, read from refetch_hires.jsonl. The Honest 99 report (16 Sep) then says 'Round two replaced 2,059 figures with publisher originals at a median of 6.25 times the pixels.' All three are counts of a job that was still running.",
-     "resolution_hint": "Carry 2,059 (16 Sep) as the latest count, noting that no page marks it final, and cite refetch_hires.jsonl. Treat 1,489 and 1,558 as intermediate."
+     "resolution_hint": "Carry 2,059 (16 Sep) as the latest count, noting that no page marks it final, and cite refetch_hires.jsonl. Treat 1,489 and 1,558 as intermediate.",
+     "review": "held"
     },
     {
      "kind": "superseded-number",
@@ -5467,7 +5509,7 @@
      "quote_a": "The array was cancelled at 05:50 after 12,896 images, all kept for inspection, none usable for level training.",
      "quote_b": "synth_rare 12,929 renders over 2,844 cases (T13 86, L6 1,763), 9.0 GB; synth_rare_lowstrength 566; synth_v1 empty",
      "explanation": "The atlas page source files synth_rare under 'FluoroGen diffusion-styled synthetic frames'. Its note repeats the overnight finding: 'SDXL img2img destroys anatomy at strength 0.45-0.65 and barely changes the DRR at 0.2, and synth_rare is in no bank with no written reason.' synth_rare_lowstrength matches the 300-case low-strength sweep. So the atlas does link the two and agrees the images are unused. Only a gap of 33 images (12,896 against 12,929) is unexplained. The registry, however, gives synth_rare a level truth of 'exact', which the overnight finding contradicts.",
-     "resolution_hint": "Carry: synth_rare is the output of the cancelled FluoroGen array, kept for inspection and unusable for level training. Correct the registry's 'exact' level truth and write the reason it is in no bank. A file count under /rs/rs_grp_oschome/go2432/data/fluorogen_synthetic would settle 12,896 against 12,929."
+     "resolution_hint": "Carry: synth_rare is the output of the cancelled FluoroGen array, kept for inspection and unusable for level training. Correct the registry's 'exact' level truth and write the reason it is in no bank. A file count under [the lab volume's data root]/fluorogen_synthetic would settle 12,896 against 12,929."
     },
     {
      "kind": "contradiction",
@@ -5533,7 +5575,8 @@
      "quote_a": "Read 400 panels. Nothing else converts an agreement number into an accuracy number.",
      "quote_b": "The QC's own arithmetic says 545 reads for \u00b13% around 85%; bounding 99% within \u00b10.5% takes about 1,500 verified images per stratum you report on (Wilson), and the primary strata are at least four (lumbosacral normal, lumbosacral LSTV, thoracolumbar, hardware).",
      "explanation": "Both pages agree that 196 reads give \u00b15% and 545 give \u00b13%. The audit picked 400 as its action. A day later the reality check sets a two-reader read of the 545-panel set for weeks 1 and 2. Its 1,500 per stratum is a separate target: bounding a 99% claim, which in its design is measured on real Tier 0 frames. The later page raises the FluoroCap read from 400 to 545.",
-     "resolution_hint": "Carry 545 two-reader, adjudicated FluoroCap reads (\u00b13% around 85%) as the read target, and 1,500 verified vertebrae per primary stratum for any 99% claim. Note that the benches built hold 120 and 179 panels."
+     "resolution_hint": "Carry 545 two-reader, adjudicated FluoroCap reads (\u00b13% around 85%) as the read target, and 1,500 verified vertebrae per primary stratum for any 99% claim. Note that the benches built hold 120 and 179 panels.",
+     "review": "held"
     },
     {
      "kind": "contradiction",
@@ -5729,7 +5772,7 @@
      "artifact_b": "SchwingNet/fluorocap-access-setup-jlvkft",
      "verdict": "confirmed",
      "quote_a": "the grid's outbound IP is captcha-throttled by PMC; WSL is not",
-     "quote_b": "The grid is inside the university's address space (141.217.x.x) and publishers authenticate by IP.",
+     "quote_b": "The grid is inside the university's address space ([the university's network range]) and publishers authenticate by IP.",
      "explanation": "Neither page cites a recorded test. The access setup says its one probe that day was 'inconclusive only because Wolters Kluwer refuses plain clients outright'. The overnight report shows the refetch went through the proxy session instead.",
      "resolution_hint": "Record a probe (PMC from the grid against WSL, and one publisher from the grid IP) before the book states either claim. Otherwise state only the route that ran: WSL plus the WSU proxy."
     },
@@ -5788,7 +5831,7 @@
    ],
    "unsourced_summary": "The dataset card and the pipeline map both assert that the manifest regenerates byte-identical from the same inputs and that an unbroken SHA-256 chain runs from original figure to weights, naming no command, run or checksum file. The map asserts that the grid's outbound IP is captcha-throttled by PMC while WSL is not, and the access setup asserts that publishers authenticate by IP from the university's address space; neither cites a probe, and the overnight report shows the refetch ran through the proxy session instead. The access setup asserts that video frames are the only 1080 px native source and that Instagram serves posts at 1080 px wide, with no measurement; the reality check says the YouTube panels came capped at 720p. The map's anchor panel asserts that an author's printed label is the strongest anchor there is, with no accuracy measured for printed labels, while the reality check says the caption's label was mostly assigned by counting on a limited field. The atlas and the registry both state that 72.8 percent of the 29,500 panels are reproductions with no pixel residual, naming no duplicate-detection run or threshold. The card's 88% figure-mate number carries no pair count. Lift Before Label asserts the renderer is already at the DeepDRR/SyntheX level with no test, and its own adversarial pass never ran. The adjudication bench asserts that the reader's single read is the only ground truth the panel will ever have, and the level verification bench assumes a whole-run-correct panel is the common case; neither assumption is measured, and the card's protocol promises two blind readers with a third adjudicating. The reality check's claims that 'Castellvi I is two thirds of transitional anatomy' and that registration-derived labels are biased are stated without a source in the records.",
    "stale_summary": "All six primary pages are snapshots of 14 to 15 September 2026 with running work inside them: the card says dataset version 0.2 with 0.3 in progress and reader labels pending for every panel; the pipeline map draws manifest v0.3 and 197k YouTube frames; the access setup says the PMC refetch is running now and worries about a library note of 30 June 2026; the overnight report says round two of the refetch is still running, the FluoroGen array was cancelled at 05:50, the CUT v2 is queued as jobs 40285316/7 and the v2 retrain registered at 08:13; the reality check, read between 06:55 and 07:15, says the v2 weights were destroyed and retrain 40285209 is pending, lists CUT jobs 40285274 and 40285275 as queued, and lays out a 90-day and 12-month plan from 15 September. The Honest 99 report of 16 September says training on the enlarged corpus, the backbone comparison and the render-physics test were still running. Later pages date them: the atlas of 2026-10-17 shows human_qc_status pending on all 21,603 rows and the two benches show 0 of 0 verified as of 2026-10-22, so the card's 'reader labels: none yet' still holds five weeks on; the handoff of 2026-10-08 says 14 cine sources, SX-Stitch and Balgrist requests are drafted and none sent, 0 verified real-frame transitional persons against 35 needed, and the registry of 2026-10-20 still calls VinDr's determination pending although the atlas three days earlier says HPR 2026-330 covers it (notice 2026-09-29) and the YouTube copies unpermitted until a request is answered. The lab recipe of 2026-09-27 says the website shipped weights until 2026-09-14. The CNS talk window (31 October to 4 November 2026) and the Radiopaedia USD 250 fee in the records are unconfirmed as of the records' dates.",
-   "notes": "Quotes for the primary pages, the Honest 99 report, the handoff, the lab recipe, Lift Before Label, the level context ladder, the OR ledger and the three benches were checked against the plain texts; the extracted texts of fluoroscopy-data-atlas and schwingnet-data-registry truncate their embedded JSON and returned no hits for their key numbers, so those two artifacts are quoted from their inventory records only. The '141.217.x.x' in one quote is a university network range, not a personal address; no e-mail address, phone number or home address appears, and people are named by role (the owner, the reader). The FluoroGen 12,896 versus synth_rare 12,929 pair may be two different objects; it is listed because no page says so. The overnight report's 08:30 update postdating the reality check's snapshot is why the clustering's two canonical pages disagree on the v2 model state. Several secondary artifacts (Honest 99, handoff, registry, atlas) carry the later word on the corpus and the directive, so a reader of the canonical set alone would miss the private-forever rule, the leaked-family ruling and the October counts."
+   "notes": "Quotes for the primary pages, the Honest 99 report, the handoff, the lab recipe, Lift Before Label, the level context ladder, the OR ledger and the three benches were checked against the plain texts; the extracted texts of fluoroscopy-data-atlas and schwingnet-data-registry truncate their embedded JSON and returned no hits for their key numbers, so those two artifacts are quoted from their inventory records only. One quote named the university's network range, for which an editor's words now stand; no e-mail address, phone number or home address appears, and people are named by role (the owner, the reader). The FluoroGen 12,896 versus synth_rare 12,929 pair may be two different objects; it is listed because no page says so. The overnight report's 08:30 update postdating the reality check's snapshot is why the clustering's two canonical pages disagree on the v2 model state. Several secondary artifacts (Honest 99, handoff, registry, atlas) carry the later word on the corpus and the directive, so a reader of the canonical set alone would miss the private-forever rule, the leaked-family ruling and the October counts."
   },
   {
    "cluster": "Verification benches, overnight audits and OR readiness",
@@ -7180,7 +7223,8 @@
      "quote_a": "The level model alone is right 38.3% of the time on panels where the caption was held back.",
      "quote_b": "the level model alone is the weakest term in the decoder on real panels (37.9% on 169)",
      "explanation": "The audit (2026-09-14) gives 38.3%, and its chart data gives n 175. The Reality Check (2026-09-15) gives 37.9% on 169. The Reality Check's decode block (3,294 panels run, 2,528 with a box) matches the audit's decode, so the change in n is not explained by a new decode.",
-     "resolution_hint": "Carry 37.9% on 169 caption-free panels from the Reality Check, noting the unexplained n change from 175."
+     "resolution_hint": "Carry 37.9% on 169 caption-free panels from the Reality Check, noting the unexplained n change from 175.",
+     "review": "held"
     },
     {
      "kind": "superseded-number",
@@ -7191,7 +7235,8 @@
      "quote_a": "56.8% caption-held-out containment, n = 389",
      "quote_b": "57.1% containment, Jaccard 0.341",
      "explanation": "The audit (2026-09-14) gives 56.8% containment and Jaccard 0.34 on 389 caption-held-out panels. The Reality Check (2026-09-15) gives 57.1% and 0.341 on 380, and warns that the set is not a random hold-out, being selected by caption fit. Neither page says which nine panels left.",
-     "resolution_hint": "Carry 57.1% on 380 from the Reality Check with its caveat that this is caption agreement on a non-random subset, not accuracy."
+     "resolution_hint": "Carry 57.1% on 380 from the Reality Check with its caveat that this is caption agreement on a non-random subset, not accuracy.",
+     "review": "held"
     },
     {
      "kind": "superseded-number",
@@ -7264,11 +7309,19 @@
      "topic": "LevelCheck's accuracy as a comparator (100%, 99.998% registration, or voted down)",
      "artifact_a": "SchwingNet/vertebral-levels-without-ct-a4rydj",
      "artifact_b": "SchwingNet/registration-free-level-id-feasibility-uramo1",
-     "verdict": "confirmed",
-     "quote_a": "It moves with computing budget \u2014 100% at 200 restarts, 99.3% at 50 \u2014 which is the signature of a convergence rate",
-     "quote_b": "the 'registration-based tools report near-perfect accuracy' summary (Otake 99.99%, Lo 100%/99.3%, Vaishnav 100%) were both voted down",
-     "explanation": "Vertebral Levels Without CT (2026-09-18) presents LevelCheck's 99.998% and its 100% / 99.3% as registration convergence rates checked against their sources. The feasibility study (2026-09-15; its caveats are rendered one character per line) says that same near-perfect summary was voted down. It keeps only labels within the correct level on all 398 radiographs after 21 exclusions, and a 42.2% helpfulness whose region parts sum to 157, not 168. The pages agree that none of these is naming accuracy but disagree on whether the registration figures survived verification.",
-     "resolution_hint": "Carry the feasibility study's verified LevelCheck facts (labels in the correct level on 398 radiographs after 21 exclusions; helpful in 42.2% as a three-surgeon mean), and keep 99.998%, 100% and 99.3% out unless re-verified."
+     "verdict": "refuted",
+     "quote_a": "| 99.998% \u2014 LevelCheck | | registration converged: the fraction of trials whose mean projection distance was under 5 mm. It moves with computing budget \u2014 100% at 200 restarts, 99.3% at 50 \u2014 which is the signature of a convergence rate | | no |",
+     "quote_b": "the 'registration-based tools report near-perfect accuracy' summary (Otake 99.99%, Lo 100%/99.3%, Vaishnav 100%) were both voted down, so the registration-based ceiling and the registration-free floor are both unquantified here",
+     "explanation": "The feasibility study voted down the reading of these figures as near-perfect identification accuracy, and so left the registration-based ceiling unquantified. Vertebral Levels Without CT, three days later and from a verified search, says the same figures are registration convergence, not naming ('Is it naming? no'). Both pages give the clinical 100% as labels inside the correct level on 398 radiographs, conditional on correct CT labels and after exclusions. Both give the 42.2% utility as a three-surgeon mean with range 31.7 to 53.3%, and the feasibility study explains the 157 versus 168 sum by that averaging. Neither page uses these figures as naming accuracy, so there is no disagreement; the skeptic took the vote against the accuracy reading as a vote against the numbers. One correction to the re-checker's hint: the feasibility study says Huang 2022's 88.3% did not survive verification, so that figure is not settled.",
+     "resolution_hint": "Carry the table from Vertebral Levels Without CT: 99.998%, 100% and 99.3% are registration convergence; the clinical 100% is conditional label placement on 398 radiographs after 21 exclusions; 42.2% is a three-surgeon mean (range 31.7 to 53.3%); none is naming accuracy. The one naming figure with a human is 97.6% on 62 hard films. Carry the registration-free 88.3% only with the feasibility study's note that it did not survive that study's verification.",
+     "first": {
+      "verdict": "confirmed",
+      "quote_a": "It moves with computing budget \u2014 100% at 200 restarts, 99.3% at 50 \u2014 which is the signature of a convergence rate",
+      "quote_b": "the 'registration-based tools report near-perfect accuracy' summary (Otake 99.99%, Lo 100%/99.3%, Vaishnav 100%) were both voted down",
+      "explanation": "Vertebral Levels Without CT (2026-09-18) presents LevelCheck's 99.998% and its 100% / 99.3% as registration convergence rates checked against their sources. The feasibility study (2026-09-15; its caveats are rendered one character per line) says that same near-perfect summary was voted down. It keeps only labels within the correct level on all 398 radiographs after 21 exclusions, and a 42.2% helpfulness whose region parts sum to 157, not 168. The pages agree that none of these is naming accuracy but disagree on whether the registration figures survived verification.",
+      "resolution_hint": "Carry the feasibility study's verified LevelCheck facts (labels in the correct level on 398 radiographs after 21 exclusions; helpful in 42.2% as a three-surgeon mean), and keep 99.998%, 100% and 99.3% out unless re-verified."
+     },
+     "review": "verdict overturned"
     },
     {
      "kind": "unsourced-shared-claim",
@@ -7532,7 +7585,8 @@
      "quote_a": "160 of 366 real frames are stored upside down",
      "quote_b": "test split carries 83 kept and 229 dropped (out-of-field) boxes; older evaluations scored recall against all 312",
      "explanation": "DeepFluoro has 366 real frames; the pooled sacrum figure covers 365, the sum of Ninety-Three Pixels' by-specimen rows. The ledger's 83 kept, 229 dropped and 312 are vertebra truth boxes in the test split, not frames, and sacrum recall is scored per frame. Different units.",
-     "resolution_hint": "Carry frames (366, 365 scored) and vertebra truth boxes (83 kept of 312) separately."
+     "resolution_hint": "Carry frames (366, 365 scored) and vertebra truth boxes (83 kept of 312) separately.",
+     "review": "held"
     },
     {
      "kind": "contradiction",
@@ -7825,11 +7879,19 @@
      "topic": "Registration-free feasibility study's newest comparator",
      "artifact_a": "SchwingNet/registration-free-level-id-feasibility-uramo1",
      "artifact_b": "SchwingNet/registration-free-level-id-feasibility-uramo1",
-     "verdict": "cannot-tell",
-     "quote_a": "the deep-learning result is from October 2025 and the two systematic reviews are from 2026, so nothing is stale, but the field is moving",
-     "quote_b": "Nothing in the verified set establishes a per-level vertebra-identification accuracy for a registration-free single-frame system on real radiographs or fluoroscopy",
-     "explanation": "The feasibility study (2026-09-15; its caveats are rendered one character per line) dates its newest deep-learning comparator to October 2025 and says nothing is stale. Research Directions (2026-10-08) still names Kwak 2025 as the only 2-D LSTV model and lists Li 2016, Li 2017 and ABLSpineLevelCheck 2024 as unread. No later page shows a newer comparator or a re-run search.",
-     "resolution_hint": "A literature search re-run before the talk, with the three unread titles obtained, would settle whether the comparator floor still holds."
+     "verdict": "confirmed",
+     "quote_a": "Nothing in the verified set establishes a per-level vertebra-identification accuracy for a registration-free single-frame system on real radiographs or fluoroscopy ... its accuracy figures (88.3% labelling, 3.3 mm) did not survive verification",
+     "quote_b": "| Cina 2021 | | CNN, registration-free | | whole lumbar film, sacrum in frame | | E | | no | | no | | 98.4% published",
+     "explanation": "The feasibility page (15 September 2026) finds that nothing verified gives a registration-free per-level naming accuracy and that Huang's 88.3% did not survive. Naming Vertebrae Without an Anchor (17 September 2026) ran a later verified search (106 agents, three-vote verification) aimed at 'the cases a feasibility report declared impossible'. It lists Huang 2022 at 88.3% and Cina 2021 at 98.4% on whole lumbar films as exact-level, registration-free figures. Vertebral Levels Without CT (18 September) calls 88.3% 'the one registration-free, radiograph-only, per-vertebra naming accuracy in the literature'. So the skeptic was wrong that no later page re-ran the search, and the feasibility page's finding no longer holds. The October 2025 date of the 2-D LSTV model still stands: Research Directions (8 October) names Kwak 2025 as the only 2-D LSTV model, and the 2026 entries in the later table (VERIDAH 2026, Liu 2026) are 3-D or stitching methods.",
+     "resolution_hint": "Carry the later verified comparator table from Naming Vertebrae Without an Anchor (17 September 2026): Huang 2022 at 88.3% on 100 cadaveric long-film images and Cina 2021 at 98.4% on whole lumbar films with the sacrum in frame. Do not carry the feasibility page's 15 September 'nothing establishes'. Note that the two verification passes disagree on whether Huang's 88.3% survived, and that Naming Vertebrae Without CT says a broader search for registration-free comparators was running.",
+     "first": {
+      "verdict": "cannot-tell",
+      "quote_a": "the deep-learning result is from October 2025 and the two systematic reviews are from 2026, so nothing is stale, but the field is moving",
+      "quote_b": "Nothing in the verified set establishes a per-level vertebra-identification accuracy for a registration-free single-frame system on real radiographs or fluoroscopy",
+      "explanation": "The feasibility study (2026-09-15; its caveats are rendered one character per line) dates its newest deep-learning comparator to October 2025 and says nothing is stale. Research Directions (2026-10-08) still names Kwak 2025 as the only 2-D LSTV model and lists Li 2016, Li 2017 and ABLSpineLevelCheck 2024 as unread. No later page shows a newer comparator or a re-run search.",
+      "resolution_hint": "A literature search re-run before the talk, with the three unread titles obtained, would settle whether the comparator floor still holds."
+     },
+     "review": "verdict overturned"
     },
     {
      "kind": "stale",
@@ -8985,7 +9047,8 @@
      "quote_a": "| Ljubljana 2D/3D gold standard | | held | | 18 frames, 1 cadaver | | L1\u2013L5 |",
      "quote_b": "it added the Ljubljana angiographic set (10 patients, 3-D DSA + posed frames)",
      "explanation": "The OR ledger lists two different Ljubljana sets: an angiographic set of 10 patients, and an 18-pair 'Trixell PIXIUM 4600 (Ljubljana turntable, not a C-arm)'. The any-view plan's 18 frames from 1 cadaver matches the turntable set. Research directions also describes one cadaveric L1 to L5 with gold pose.",
-     "resolution_hint": "Carry them as two sets: the 18-frame, one-cadaver 2D/3D gold standard (any-view, ledger) and the 10-patient angiographic set (ledger)."
+     "resolution_hint": "Carry them as two sets: the 18-frame, one-cadaver 2D/3D gold standard (any-view, ledger) and the 10-patient angiographic set (ledger).",
+     "review": "held"
     },
     {
      "kind": "contradiction",
@@ -9135,11 +9198,19 @@
      "topic": "Detector training-set size",
      "artifact_a": "SchwingNet/vertebra-detector-field-report-1jljc6",
      "artifact_b": "SchwingNet/handoff-schwingnet-ctspinopelvic1k-and-the-imaging-programme-rbcdmf",
-     "verdict": "superseded-by-later",
-     "quote_a": "958 images \u00b7 6073 instances \u00b7 727 patients",
-     "quote_b": "12,709 films, with no written reason for the other 26,996 held films",
-     "explanation": "These are different detector generations. The field report's stage-1 detector trained on 958 images. Decisions gives 4,327 images for the 0.991 model, and ninety-three-pixels cuts its arms from 11,007 labelled films. The handoff (2026-10-08) gives the current body detector as trained on 12,709 films.",
-     "resolution_hint": "Carry 12,709 films for the current body detector, from the handoff, and name the earlier generations with their sizes."
+     "verdict": "refuted",
+     "quote_a": "958 images \u00b7 6073 instances \u00b7 727 patients \u00b7 ... YOLO11m-pose, one class, four keypoints, 1024 px, AdamW, 111 epochs on one H200. ... python -m src.run_eval --weights runs/pose/runs/detect_v1/weights/best.pt",
+     "quote_b": "| Body detector (YOLO11m-pose) | zoomed film windows from CSXA, BUU AP and lateral, and the 543 annotated NHANES films: 12,709 films, with no written reason for the other 26,996 held films | the naming boxes |",
+     "explanation": "The field report (undated) is a run report for the stage-1 one-class detector detect_v1. That run trained 111 epochs on 958 images from NHANES II, Mendeley and a partial BUU download, at a time when CSXA was still out of reach. The handoff (2026-10-08) gives the training set of a different, later model, detector_v5z_final: 12,709 films including CSXA. It never mentions detect_v1 or the 958 images. The handoff does not revise the field report's figure, which is still true for detect_v1. The two pages describe two model versions, so the candidate's supersession does not hold. The skeptic's own explanation calls them different generations, which is a version difference, not a revision.",
+     "resolution_hint": "From the handoff, carry 12,709 films as the training set of the current body detector, detector_v5z_final. From the field report, carry 958 images, 6,073 instances and 727 patients as detect_v1's, the first one-class stage-1 run, so its metrics are never read as the current detector's.",
+     "first": {
+      "verdict": "superseded-by-later",
+      "quote_a": "958 images \u00b7 6073 instances \u00b7 727 patients",
+      "quote_b": "12,709 films, with no written reason for the other 26,996 held films",
+      "explanation": "These are different detector generations. The field report's stage-1 detector trained on 958 images. Decisions gives 4,327 images for the 0.991 model, and ninety-three-pixels cuts its arms from 11,007 labelled films. The handoff (2026-10-08) gives the current body detector as trained on 12,709 films.",
+      "resolution_hint": "Carry 12,709 films for the current body detector, from the handoff, and name the earlier generations with their sizes."
+     },
+     "review": "verdict overturned"
     },
     {
      "kind": "superseded-number",
@@ -9194,7 +9265,8 @@
      "quote_a": "Flat. 836 px to 139 px costs 0.00 points of per-vertebra recall.",
      "quote_b": "fine-tuned on zoomed windows because collimated frames broke the film-trained scale",
      "explanation": "Ninety-three-pixels downsamples whole films, changing the pixel count but not the anatomy's scale in the frame. The FluoroCap map, and the OR ledger's crops at 36% and 19%, concern magnification. The ledger says 'Scale is a device-transfer lever of its own'.",
-     "resolution_hint": "Carry both: resolution costs nothing on films (ninety-three-pixels), while magnified, collimated fields cost recall (FluoroCap map, OR ledger)."
+     "resolution_hint": "Carry both: resolution costs nothing on films (ninety-three-pixels), while magnified, collimated fields cost recall (FluoroCap map, OR ledger).",
+     "review": "held"
     },
     {
      "kind": "contradiction",
@@ -9381,7 +9453,8 @@
      "quote_a": "finds the sacrum on 76.9% of 365 real frames pooled over all six specimens",
      "quote_b": "3,094 real frames: COBRA Elekta train and validation (118 cases) and DeepFluoro (5 specimens), initialised from a TotalSegmentator-render detector",
      "explanation": "The handoff's 5 specimens are what the vertebra and sacrum detector trained on. The dataset is 6 specimens and 366 frames; ninety-three-pixels itself says 366 frames over 6 specimens, and the ledger splits them 4/1/1. The 365 is the pooled count scored in ninety-three-pixels' per-specimen table, which is one frame short and unexplained.",
-     "resolution_hint": "Carry DeepFluoro as 6 specimens and 366 frames, 5 specimens in the detector's training (handoff), and 365 frames scored for the 76.9%."
+     "resolution_hint": "Carry DeepFluoro as 6 specimens and 366 frames, 5 specimens in the detector's training (handoff), and 365 frames scored for the 76.9%.",
+     "review": "held"
     },
     {
      "kind": "contradiction",
@@ -9656,7 +9729,8 @@
      "quote_a": "Whether a release id is a person. CTSpinoPelvic1K is built from CT colonography, which scans each patient both prone and supine. ... An audit is running; it is not assumed to be fine.",
      "quote_b": "A cross-validation over all 376 transitional patients is running",
      "explanation": "Counting-from-the-sacrum (2026-09-22) lists an audit and the fleet detector as running, and the naming note (2026-09-18) the 376-patient CV. Research directions (2026-10-08) states CTSpinoPelvic1K is one record per patient, which settles the audit, and reports results on 376 held-out renders. The handoff (2026-10-08) says nothing after 2026-09-27 changed the banks or models, so these are no longer current. No later page reports the fleet detector's result.",
-     "resolution_hint": "Mark these 'running' lines as of their dates. Carry research directions' one-record-per-patient answer, and record the fleet detector's result as not recorded."
+     "resolution_hint": "Mark these 'running' lines as of their dates. Carry research directions' one-record-per-patient answer, and record the fleet detector's result as not recorded.",
+     "review": "held"
     },
     {
      "kind": "stale",
@@ -10424,7 +10498,8 @@
      "quote_a": "A detector trained on renders of DeepFluoro's own CTs finds the sacrum on 90\u201397% of the real frames, six specimens held out in turn.",
      "quote_b": "A detector trained only on calibrated renders of DeepFluoro's own CTs finds the sacrum on about 96\u201398% of real frames (leave-one-specimen-out).",
      "explanation": "Both pages describe the same population-matched, leave-one-specimen-out detector. Counting Levels (September 2026; table: six specimens, three seeds each) gives 90\u201397%; the AIDaS proposal (October 2026) gives about 96\u201398%. Its neighbouring figures (64\u201377%, the 26-point seed spread, the 5\u201360% prior) are identical to Counting Levels. Neither page says a later run changed the range, so they disagree. The IRB draft repeats 96\u201398%.",
-     "resolution_hint": "Carry 90\u201397% from Counting Levels, which names its runs (21 Sep, tools/deepfluoro_anchor_report.py), unless a later run record shows 96\u201398%. Check that report's output."
+     "resolution_hint": "Carry 90\u201397% from Counting Levels, which names its runs (21 Sep, tools/deepfluoro_anchor_report.py), unless a later run record shows 96\u201398%. Check that report's output.",
+     "review": "held"
     },
     {
      "kind": "contradiction",
@@ -10820,7 +10895,8 @@
      "quote_a": "CycleGAN scored 6.62 mm and ADDA 6.41 against 6.44 for no adaptation at all",
      "quote_b": "reached parity with training on real frames ( 6.44 vs 6.46 mm hip landmarks) and with CycleGAN ( 6.62 ) and ADDA ( 6.41 ).",
      "explanation": "Ninety-Three Pixels and What Is Left carry the same SyntheX figures: CycleGAN 6.62, ADDA 6.41, no adaptation 6.44, real 6.46 mm. What Is Left adds that CycleGAN helped about 1 mm under weak randomisation. This is one published result counted twice.",
-     "resolution_hint": "Carry it once, cited to SyntheX (Gao 2023), with What Is Left's weak-randomisation note."
+     "resolution_hint": "Carry it once, cited to SyntheX (Gao 2023), with What Is Left's weak-randomisation note.",
+     "review": "held"
     },
     {
      "kind": "duplicate-text",
@@ -10941,7 +11017,8 @@
      "quote_a": "The adversarial verification pass and the synthesis agent hit the session\u2019s subagent limit before running; this page was written by hand from the sweeps, numbers are as reported by the papers, and the verification pass is scheduled",
      "quote_b": "Every load-bearing claim from those sweeps (48 in all) was handed to a separate agent told to refute it against the cited source: 36 were confirmed, 12 held in substance with a number or attribution corrected, none were refuted",
      "explanation": "The Reality Check's refuting pass checked the Reality Check's own 48 claims from its own sweeps, not Lift Before Label's 173 findings. No page shows that Lift's scheduled pass ran, so Lift's statement that it is unverified still holds. What the Reality Check does show is verified versions of some papers Lift also cites (Spine-DART, Jecklin, Pelphix).",
-     "resolution_hint": "Keep Lift Before Label marked unverified. Where it and the Reality Check cite the same paper, carry the Reality Check's verified figure."
+     "resolution_hint": "Keep Lift Before Label marked unverified. Where it and the Reality Check cite the same paper, carry the Reality Check's verified figure.",
+     "review": "held"
     },
     {
      "kind": "stale",
@@ -11714,7 +11791,7 @@
      "topic": "Grid schedule to the CNS talk",
      "artifact_a": "SchwingNet/schwingnet-grid-pipeline",
      "statement_a": "Gate words under review in PR #54, one press by the owner outstanding, version 1 trained by 28 Oct, latency by 29 Oct, provisional 30 Oct, talk 2 Nov; RATIC link expires 2026-10-28",
-     "quote_a": "One press by greg remains: Connect GitHub Actions in Beethoven, once beethoven-extension #23 reaches him. Until then no word can run.",
+     "quote_a": "One press by [the owner] remains: Connect GitHub Actions in Beethoven, once beethoven-extension #23 reaches him. Until then no word can run.",
      "artifact_b": "SchwingNet/schwingnet-grid-pipeline",
      "statement_b": "(same artifact)",
      "quote_b": "The RSNA RATIC download link expires 2026-10-28 02:38 UTC.",
@@ -12061,7 +12138,8 @@
      "quote_a": "roughly 1,500\u20132,500 intraoperative images from 800\u20131,500 patients",
      "quote_b": "Target 3,000-5,000 frames from 800-1,500 patients in twelve months at one centre",
      "explanation": "Both pages are dated 15 September 2026 and plan the same retrospective PACS pull from the same 800-1,500 patients. The protocol draft expects 1,500-2,500 images; the FluoroCap note targets 3,000-5,000 frames and plans for about half the cases to be missing from PACS. Neither refers to the other, and the later retrospective protocol leaves frames per case to a 20-case pilot query.",
-     "resolution_hint": "Carry neither as settled. The pilot PACS query of 20 cases named in the Retrospective Fluoroscopy Protocol (frames per case, share missing from PACS) decides the yield."
+     "resolution_hint": "Carry neither as settled. The pilot PACS query of 20 cases named in the Retrospective Fluoroscopy Protocol (frames per case, share missing from PACS) decides the yield.",
+     "review": "held"
     },
     {
      "kind": "contradiction",
@@ -12200,11 +12278,19 @@
      "topic": "Existence of public intraoperative spine fluoroscopy with level labels",
      "artifact_a": "SchwingNet/protocol-1-eprotocol-draft-mkmh7p",
      "artifact_b": "SchwingNet/fluoroscopy-data-atlas",
-     "verdict": "refuted",
+     "verdict": "confirmed",
      "quote_a": "No public dataset of intraoperative spine fluoroscopy with vertebra-level labels exists.",
-     "quote_b": "No labels and no poses ship with the release.",
-     "explanation": "The atlas (17 October 2026) records that C-ArmLSpine ships no labels. Its 814-of-910 agreed levels are project-derived, from TotalSegmentator and SPINEPS on each CBCT, and the record says level_labels false. SX-Stitch is listed as a private request with vertebra masks. The atlas therefore supports the draft's statement rather than contradicting it.",
-     "resolution_hint": "Keep the draft's statement, adding from the atlas that C-ArmLSpine supplies CBCT pairs from which this project derived its own level labels."
+     "quote_b": "\"anatomy\": \"lumbar spine L1-L5, intraoperative AP/LAT (Ziehm C-arm)\" ... \"level_labels\": true, ... \"access\": \"open download\" ... \"notes\": \"Nine free level-named patients on a real C-arm, but only as 8-bit overlays beside DRRs",
+     "explanation": "The skeptic is right about the candidate's own examples. The atlas says C-ArmLSpine ships 'No labels and no poses', its 814-of-910 agreed levels are derived by the project, and SX-Stitch is a private request with segmentation masks. But the atlas (2026-10-17) also holds the NIT Warangal / NIMS Hyderabad record: intraoperative lumbar C-arm frames, level_labels true, access 'open download', and 'Nine free level-named patients on a real C-arm'. That directly contradicts the protocol draft's flat claim of absence (2026-09-15). The contrary record is weak: it is unverified ('verified': null), its level names are L1-L5 centroids from preoperative CT, and the frames exist only as 8-bit overlays beside DRRs. The atlas also lists VerSeg-Net lumbar fluoroscopy (50 patients, per-level masks), whose sharing route is not recorded. The skeptic missed these records.",
+     "resolution_hint": "Do not carry the protocol draft's statement unqualified. Add from the Fluoroscopy Data Atlas that it records an unverified open download of nine level-named intraoperative C-arm patients (NIT Warangal / NIMS Hyderabad; 8-bit overlays beside DRRs; level names from preoperative CT centroids). Add that it also records VerSeg-Net's 50 lumbar fluoroscopy patients with per-level masks, sharing route not recorded. Note that C-ArmLSpine's level names are derived by the project, not shipped. Reading the Warangal repository would settle whether it meets the draft's definition.",
+     "first": {
+      "verdict": "refuted",
+      "quote_a": "No public dataset of intraoperative spine fluoroscopy with vertebra-level labels exists.",
+      "quote_b": "No labels and no poses ship with the release.",
+      "explanation": "The atlas (17 October 2026) records that C-ArmLSpine ships no labels. Its 814-of-910 agreed levels are project-derived, from TotalSegmentator and SPINEPS on each CBCT, and the record says level_labels false. SX-Stitch is listed as a private request with vertebra masks. The atlas therefore supports the draft's statement rather than contradicting it.",
+      "resolution_hint": "Keep the draft's statement, adding from the atlas that C-ArmLSpine supplies CBCT pairs from which this project derived its own level labels."
+     },
+     "review": "verdict overturned"
     },
     {
      "kind": "contradiction",
@@ -12369,7 +12455,8 @@
      "quote_a": "from the sacrum, second-institution spines | | 522 | | 7,168 / 7,228 | | 99.17%",
      "quote_b": "7,168/7,228 (99.17%) on 522 second-institution spines",
      "explanation": "The proposal's table and the grant's paragraph carry the same five arms (834/834, 1,205/1,209, 6,234/6,255, 7,168/7,228, 99.31% of 5,385). The grant adds confidence intervals and the 98.57% of 6,343. Both cite the same manuscript in preparation, so they are one result, not two.",
-     "resolution_hint": "Carry the grant's version, which has intervals and the sixth confirmation arm, cited to the manuscript in preparation."
+     "resolution_hint": "Carry the grant's version, which has intervals and the sixth confirmation arm, cited to the manuscript in preparation.",
+     "review": "held"
     },
     {
      "kind": "duplicate-text",
@@ -12413,7 +12500,8 @@
      "quote_a": "Every synthetic-data number here is from the leave-one-specimen-out runs of 21 September 2026",
      "quote_b": "every number so far is from synthetic CPU runs",
      "explanation": "The grid pipeline page (21 October 2026) counts zero jobs for the new SchwingNet gate pipeline, which waits on one press in Beethoven. The OR readiness ledger shows many earlier grid jobs, so that zero does not mean nothing ran on the grid before. No page records whether the phantom sweeps or the cadaver session that the September proposal said to start 'this week' have begun.",
-     "resolution_hint": "Settle it with a record of the OEHS/DLAR paperwork and of any phantom or cadaver session. Until then, carry the proposal's numbers as dated 21 September 2026."
+     "resolution_hint": "Settle it with a record of the OEHS/DLAR paperwork and of any phantom or cadaver session. Until then, carry the proposal's numbers as dated 21 September 2026.",
+     "review": "held"
     },
     {
      "kind": "stale",
@@ -13079,7 +13167,7 @@
      "quote_a": "not in the repository since 2026-10-13: they live on the grid under /rs/rs_grp_oschome/shared/spine-program/archive/",
      "artifact_b": "SchwingNet/connect-the-grid-to-github",
      "statement_b": "The repository's links point at that archive, which the owner fills once with a script; until then the links point at nothing.",
-     "quote_b": "are links to `/rs/rs_grp_oschome/shared/spine-program/archive/`, which Greg fills once with a script; until he has, those links point at nothing",
+     "quote_b": "are links to `/rs/rs_grp_oschome/shared/spine-program/archive/`, which [the owner] fills once with a script; until he has, those links point at nothing",
      "why_it_matters": "A student sent to the archive by the onboarding finds nothing until the owner's script runs; the onboarding states as done what the next day's note calls pending."
     },
     {
@@ -13222,7 +13310,7 @@
      "quote_a": "disclosure submitted 2026-09-25; provisional filing not recorded",
      "artifact_b": "SchwingNet/schwingnet-grid-pipeline",
      "statement_b": "Provisional filed on Friday 30 October, the owner's; any-view marks itself patent material before the provisional.",
-     "quote_b": "Fri 30 Oct Provisional filed. greg's",
+     "quote_b": "Fri 30 Oct Provisional filed. [the owner]'s",
      "why_it_matters": "Everything confidential waits on the filing; the date is a plan, not a record, and the demo cannot be shown until it is recorded as done."
     },
     {
@@ -13263,7 +13351,7 @@
      "topic": "One press remaining in Beethoven",
      "artifact_a": "SchwingNet/schwingnet-grid-pipeline",
      "statement_a": "One press by the owner remains: Connect GitHub Actions in Beethoven, once beethoven-extension #23 reaches him.",
-     "quote_a": "One press by greg remains: Connect GitHub Actions in Beethoven, once beethoven-extension #23 reaches him.",
+     "quote_a": "One press by [the owner] remains: Connect GitHub Actions in Beethoven, once beethoven-extension #23 reaches him.",
      "artifact_b": "symphony-template/grid-and-cloud-claude-workers-review",
      "statement_b": "Nothing has started a second worker yet.",
      "quote_b": "Nothing has started a second worker yet",
@@ -13428,7 +13516,7 @@
      "topic": "The laptop cannot keep several Claude desktops signed in",
      "artifact_a": "symphony-template/several-grid-workers-one-per-project",
      "statement_a": "Stated as the owner's reason for one worker per project.",
-     "quote_a": "greg, 2026-10-21 20:06 UTC: switch between and update projects using several Claude workers on the grid",
+     "quote_a": "[the owner], 2026-10-21 20:06 UTC: switch between and update projects using several Claude workers on the grid",
      "artifact_b": "symphony-template/grid-and-cloud-claude-workers-review",
      "statement_b": "Several workers on one account share its five-hour window and stall together.",
      "quote_b": "Several workers on one account share its five-hour window and stall together",
@@ -13577,7 +13665,8 @@
      "quote_a": "| Zero-shot , lateral no C-ArmLSpine data in training at all |",
      "quote_b": "| Naming, lateral, encoder that saw the device only through renders | | 96.4% (595/617) |",
      "explanation": "The 2026-09-22 page gives 96.27% zero-shot lateral naming with no C-ArmLSpine data in training, which is 594 of 617. The any-view plan (2026-10-21) gives 96.4% (595/617) for an encoder that saw the device only through renders. It is the same measure, one case apart, and the later page states the fraction.",
-     "resolution_hint": "Carry 96.4% (595/617) from the any-view plan."
+     "resolution_hint": "Carry 96.4% (595/617) from the any-view plan.",
+     "review": "held"
     },
     {
      "kind": "contradiction",
@@ -13610,7 +13699,8 @@
      "quote_a": "802 abdominopelvic CTs with per-level vertebrae",
      "quote_b": "From the sacrum: 6,234/6,255 (99.66%) on 801 abdominopelvic spines",
      "explanation": "The handoff (2026-10-08) describes CTSpinoPelvic1K as 802 CTs. The proposal (October 2026) runs its walks on 801 abdominopelvic spines and does not say why one is missing. Elsewhere the counting page lists CTSpinoPelvic1K as 801 by distinct subject, while the directions note says 802 records, one per patient. Records and persons may differ by one, but neither page a nor page b says so.",
-     "resolution_hint": "This is settled by the release's person-key table: whether two of the 802 records are one person, or whether one record was left out of the counting experiment."
+     "resolution_hint": "This is settled by the release's person-key table: whether two of the 802 records are one person, or whether one record was left out of the counting experiment.",
+     "review": "held"
     },
     {
      "kind": "contradiction",
@@ -13808,7 +13898,8 @@
      "quote_a": "All rights reserved by default, and GAN-derived from an upstream corpus whose terms it inherits. Do not download.",
      "quote_b": "all on train in the G3 split; nothing to hold out",
      "explanation": "The board (2026-09-11) advises not downloading Spinal-AI2024. The decisions page, which follows the board, records that it was pulled anyway on the owner's call, tagged research-track. The registry (2026-10-20) shows 20,000 films held, all on train in the G3 split.",
-     "resolution_hint": "Carry the registry's state: held, 20,000 synthetic films, all on train in G3, research-track, no licence file. The board's advice is superseded."
+     "resolution_hint": "Carry the registry's state: held, 20,000 synthetic films, all on train in G3, research-track, no licence file. The board's advice is superseded.",
+     "review": "held"
     },
     {
      "kind": "contradiction",
@@ -13863,7 +13954,8 @@
      "quote_a": "Zenodo 10.5281/zenodo.22139642",
      "quote_b": "the lab's own release, Zenodo v11 10.5281/zenodo.22797014",
      "explanation": "Both pages are dated 2026-10-08 and give different Zenodo DOIs for CTSpinoPelvic1K. The holding manifest ties 22797014 to v11; the handoff gives 22139642 without a version. One could be the concept DOI or the v10 record, but neither page says so.",
-     "resolution_hint": "This is settled by the two Zenodo records, which show whether 22139642 is the concept DOI, v10, or an error. Carry 22797014 as the v11 DOI meanwhile."
+     "resolution_hint": "This is settled by the two Zenodo records, which show whether 22139642 is the concept DOI, v10, or an error. Carry 22797014 as the v11 DOI meanwhile.",
+     "review": "held"
     },
     {
      "kind": "contradiction",
@@ -14094,7 +14186,8 @@
      "quote_a": "Id 29 (the v10 carved S1) is retired in v11; the public mirror is still v10 on 2026-09-27.",
      "quote_b": "the public mirror is v10 with id 29",
      "explanation": "The directions note (2026-10-08) repeats that the public mirror is still v10 with id 29. The later source therefore confirms the statement still held then; it does not show it to be stale.",
-     "resolution_hint": "Carry 'the Hugging Face mirror still serves v10 (id 29) as of 2026-10-08'."
+     "resolution_hint": "Carry 'the Hugging Face mirror still serves v10 (id 29) as of 2026-10-08'.",
+     "review": "held"
     },
     {
      "kind": "stale",
@@ -14314,7 +14407,8 @@
      "quote_a": "because the laptop cannot keep several Claude desktops signed in at once",
      "quote_b": "Several workers on one account share its five-hour window and stall together",
      "explanation": "The first is the owner's stated reason, attributed to his request of 2026-10-21. The second is the review's own claim about shared usage windows. The two pages make different claims.",
-     "resolution_hint": "Keep them separate: the laptop limit attributed to the owner's request, and the shared-window point to the review."
+     "resolution_hint": "Keep them separate: the laptop limit attributed to the owner's request, and the shared-window point to the review.",
+     "review": "held"
     }
    ],
    "canonical_check": [
@@ -14689,7 +14783,7 @@
      "topic": "beethoven-qa's latest tag and main version",
      "artifact_a": "SchwingNet/how-the-beethoven-repositories-are-encapsulated-6h4zq9",
      "statement_a": "beethoven-qa v2.0.0 tagged at its merge commit on 2026-10-07; a session may not create tags.",
-     "quote_a": "Done: [beethoven-qa #4](https://github.com/OpenSpineConsortium/beethoven-qa/pull/4) merged, and greg tagged `v2.0.0` at its merge commit (53d5ae5) on 2026-10-07. A session may not create tags.",
+     "quote_a": "Done: [beethoven-qa #4](https://github.com/OpenSpineConsortium/beethoven-qa/pull/4) merged, and [the owner] tagged `v2.0.0` at its merge commit (53d5ae5) on 2026-10-07. A session may not create tags.",
      "artifact_b": "symphony-template/symphony-handoff",
      "statement_b": "main is at 5.0.0 but only v1.0.0 to v3.0.0 are tagged; beethoven-agents pins v3.0.0, which has no report command; v4.0.0 and v5.0.0 tags are asked of the owner.",
      "quote_b": "main is at 5.0.0, but only v1.0.0 to v3.0.0 are tagged. A consumer can pin only v3.0.0 or an untagged commit, and beethoven-agents runs v3.0.0, which has no report command.",
@@ -14714,7 +14808,7 @@
      "quote_a": "a task is claimed by pushing a branch named after its Linear issue (`claude/LIN-123`). Git accepts only the first push of a new branch, so two accounts cannot both claim one issue.",
      "artifact_b": "symphony-template/sdlc-build-plan-bjzikn",
      "statement_b": "On 2026-10-09 the owner chose GitHub Issues and the repository side first; Linear set aside.",
-     "quote_b": "On 2026-10-09 greg chose GitHub Issues and asked for the repository side first, as a GitHub template repository built from the bottom up with no export or import in its first layer",
+     "quote_b": "On 2026-10-09 [the owner] chose GitHub Issues and asked for the repository side first, as a GitHub template repository built from the bottom up with no export or import in its first layer",
      "why_it_matters": "The shared plan carries the first-push lock idea that survived, but its queue, coordinator, routine caps (30 and 100 fires an hour) and hourly schedule describe a design replaced within days; PROTOCOL.md now puts the coordinator in the board's own run."
     },
     {
@@ -15146,7 +15240,8 @@
      "quote_a": "A fix that reads GitHub's own record of the push is written but not merged (finding F8)",
      "quote_b": "The fix merged on main on 2026-10-15 reads GitHub's record of the push; one gap remains, a claim's first push, and the fix is unreleased.",
      "explanation": "The manual of 2026-10-15 and the spec's risk 13 say the F8 fix is written but not merged. The competitors note of 2026-10-16 reads symphony-protocol main at b4c3c1a. It says #35 merged on 2026-10-15, is unreleased, and leaves one gap. The later reading revises the earlier status.",
-     "resolution_hint": "Carry the competitors note: the F8 fix (#35) is merged on main as of 2026-10-15 and unreleased, a claim's first push is still open, and 0.4.1 and every copy still read the committer date."
+     "resolution_hint": "Carry the competitors note: the F8 fix (#35) is merged on main as of 2026-10-15 and unreleased, a claim's first push is still open, and 0.4.1 and every copy still read the committer date.",
+     "review": "held"
     },
     {
      "kind": "contradiction",
@@ -15520,7 +15615,8 @@
      "quote_a": "a 2026 noise-floor study puts single-seed gains under about 15 points inside run-to-run noise (Reported)",
      "quote_b": "A 2026 noise-floor study puts single-seed gains under about 15 points inside run-to-run noise (Reported; unnamed in the spec, so not for the grant).",
      "explanation": "Both pages state the 15-point figure, and the spec's question R1 relies on it, but neither names the study or links it. The competitors note says no primary source was opened.",
-     "resolution_hint": "Carry it as Reported with no source. Naming and opening the study would let it be cited."
+     "resolution_hint": "Carry it as Reported with no source. Naming and opening the study would let it be cited.",
+     "review": "held"
     },
     {
      "kind": "unsourced-shared-claim",
@@ -15652,7 +15748,8 @@
      "quote_a": "Not checked: only the live canary's check C7, run by hand, measures it, and the canary is not adopted yet",
      "quote_b": "The canary records a second creation of claude/N, a push that descends from another worker's claim, a forced push with and without a ruleset",
      "explanation": "The spec's line is R4's acceptance criterion, what the canary would have to record, not a report that it ran. The spec keeps R4 open. Nothing later shows the canary adopted, so the brief's statement still stands.",
-     "resolution_hint": "Carry: the canary is not adopted and C7 runs only by hand (brief 2026-10-14), with R4 still open on 2026-10-15."
+     "resolution_hint": "Carry: the canary is not adopted and C7 runs only by hand (brief 2026-10-14), with R4 still open on 2026-10-15.",
+     "review": "held"
     },
     {
      "kind": "stale",
@@ -15796,7 +15893,7 @@
      "quote_a": "Linear holds the work queue and the conversation about each task.",
      "artifact_b": "symphony-template/sdlc-build-plan-bjzikn",
      "statement_b": "On 2026-10-09 the owner chose GitHub Issues as the queue and deferred Linear; every later artifact (the ladder, the brief, the taxonomy, the onboarding) has issues as the queue and claude/N as the branch.",
-     "quote_b": "On 2026-10-09 greg chose GitHub Issues and asked for the repository side first, as a GitHub template repository built from the bottom up with no export or import in its first layer (the sdlc-template work in the same thread); Linear and the materializer come later.",
+     "quote_b": "On 2026-10-09 [the owner] chose GitHub Issues and asked for the repository side first, as a GitHub template repository built from the bottom up with no export or import in its first layer (the sdlc-template work in the same thread); Linear and the materializer come later.",
      "why_it_matters": "A planner reading only the 2026-10-08 plan would set up a Linear team, a Claimed state and LIN-numbered branches; Symphony's claim lock, board and release all read GitHub issue numbers, and the Linear connector was never wired."
     },
     {
@@ -15928,7 +16025,7 @@
      "quote_a": "Projects cannot be shared across accounts, which is why the repository is the plane.",
      "artifact_b": "SchwingNet/spine-program-student-onboarding",
      "statement_b": "Told to the student as fact with no source; the primitives spec attributes it to 'document 25', and only the plan of 2026-10-08 quotes the Claude Code documentation page.",
-     "quote_b": "A Project belongs to one account and cannot be shared, so you and Greg each have your own; the repository is the one thing you share",
+     "quote_b": "A Project belongs to one account and cannot be shared, so you and [the owner] each have your own; the repository is the one thing you share",
      "why_it_matters": "The whole architecture rests on this one product fact; it is sourced once (the plan, 2026-10-08, Pro and Max beta) and repeated as established everywhere else, so if sharing arrives on Team or Enterprise nothing in the later artifacts would flag it."
     },
     {
@@ -16115,7 +16212,7 @@
      "quote_a": "The release workflow talks to the store with five values, kept as repository secrets in claude-swap-cloud.",
      "artifact_b": "symphony-template/symphony-handoff",
      "statement_b": "By 2026-10-13 the extension is 'Symphony for Chrome' with its secrets at symphony-extension's settings, releases go through the shared chrome-store-release-kit, and claude-swap-cloud is to delete its own copy of the kit.",
-     "quote_b": "Submit Symphony for Chrome (https://chrome.google.com/webstore/devconsole), then set the five CWS_ secrets and CWS_ON_PUSH at https://github.com/OpenSpineConsortium/symphony-extension/settings/secrets/actions.",
+     "quote_b": "Submit Symphony for Chrome (https://chrome.google.com/webstore/devconsole), then set the five CWS_ secrets and CWS_ON_PUSH at [a repository's Actions secrets page].",
      "why_it_matters": "Following the 2026-10-08 runbook's steps 7 and 8 would put the secrets in the wrong repository and run a script the handoff says is being removed."
     },
     {
@@ -16225,7 +16322,7 @@
      "quote_a": "release claims with no commit for 24 hours; flag two PRs touching the same files; rewrite `STATE.md`; tidy `docs/memory/`",
      "artifact_b": "symphony-template/sdlc-build-plan-bjzikn",
      "statement_b": "The build plan attributes to the same plan a rule that the board Action comments once on a pull request idle for a day, with no release.",
-     "quote_b": "comments once on a pull request idle for a day, the rule in greg's plan of 2026-10-08. No model call in it.",
+     "quote_b": "comments once on a pull request idle for a day, the rule in [the owner]'s plan of 2026-10-08. No model call in it.",
      "why_it_matters": "Commenting leaves the issue held; releasing frees it; later Symphony does both (release after 24 hours, 'main moved' comments), but the build plan's board alone would never free a dead claim."
     },
     {
@@ -16382,7 +16479,8 @@
      "quote_a": "The two scripts are 6,864 lines and do all of the reading and writing of a Project. The extension and bridge are 14,907 lines of plumbing around them, 2.2 lines for every line of script",
      "quote_b": "The extension and bridge are already 14,907 lines of plumbing for 6,864 lines of script, Chrome only, one job at a time",
      "explanation": "The build plan names the primitives spec as its companion and repeats its figures: 14,907 and 6,864 lines, and the 19 memory entries from PR #41. It is one measurement carried twice, and the 14,907 is the spec's mis-summed total.",
-     "resolution_hint": "Carry the figures once, from the primitives spec, corrected to the parts' sum (14,706) or a fresh wc -l."
+     "resolution_hint": "Carry the figures once, from the primitives spec, corrected to the parts' sum (14,706) or a fresh wc -l.",
+     "review": "held"
     },
     {
      "kind": "duplicate-text",
@@ -16426,7 +16524,8 @@
      "quote_a": "Keep it one account. Rotating accounts or pooling several users' tokens to widen the window is the behaviour Anthropic's terms prohibit; if the workload needs more than one subscription's window, it is a workload for an API key.",
      "quote_b": "The owner's own several Claude accounts may be coordinated from one orchestrator of the owner's, each worker on one account's token, knowing the terms question.",
      "explanation": "The playbook (2026-10-03) calls rotating accounts to widen the window prohibited. The handoff (2026-10-13) builds a pool of the owner's own accounts under an owner decision that leaves the terms question open. The plan of 2026-10-08 calls several accounts a grey zone. The pages disagree.",
-     "resolution_hint": "Carry the pool as the owner's recorded decision with the terms question open, beside the playbook's opposing reading, until Anthropic answers in writing (spec R6)."
+     "resolution_hint": "Carry the pool as the owner's recorded decision with the terms question open, beside the playbook's opposing reading, until Anthropic answers in writing (spec R6).",
+     "review": "held"
     },
     {
      "kind": "contradiction",
@@ -16646,7 +16745,8 @@
      "quote_a": "Upload 20.0.0 now, by hand",
      "quote_b": "Working at one site, Wayne State; extension 20.0.0, pre-release",
      "explanation": "The spec of 2026-10-15 agrees with the store note of 2026-10-13. 20.0.0 is still the current, pre-release version. beethoven-qa is at 5.0.0 on main with v3.0.0 the last tag, as the handoff also says. Nothing here shows the upload done or the note out of date.",
-     "resolution_hint": "Carry 20.0.0 as pre-release on 2026-10-15. The later 23.x version comes from the 2026-10-21 note, outside this candidate."
+     "resolution_hint": "Carry 20.0.0 as pre-release on 2026-10-15. The later 23.x version comes from the 2026-10-21 note, outside this candidate.",
+     "review": "held"
     },
     {
      "kind": "stale",
@@ -16886,7 +16986,7 @@
      "topic": "Whether harvesters and orchestrators may run on, or fetch from, the grid login node",
      "artifact_a": "SchwingNet/fluorocap-access-setup-jlvkft",
      "statement_a": "The access setup (2026-09-14) plans to run the closed-journal refetch from the grid login node because the grid sits in the university's address space, and the FluoroCap map (same day) has 'login-node orchestrators' polling for files and job names.",
-     "quote_a": "The grid is inside the university's address space (141.217.x.x) and publishers authenticate by IP. I will run the closed-journal refetch from the grid login node with a browser-impersonating client before asking you for anything.",
+     "quote_a": "The grid is inside the university's address space ([the university's network range]) and publishers authenticate by IP. I will run the closed-journal refetch from the grid login node with a browser-impersonating client before asking you for anything.",
      "artifact_b": "SchwingNet/the-lab-recipe-1t2gvp",
      "statement_b": "The lab recipe (2026-09-27), citing the 2026-09-21 incident of smoke tests on a node shared by ~95 users, makes downloads jobs and restricts the login node to sbatch, squeue, scancel, ls, tail and git; the roadmap and hpcworker forbid any polling loop on the login node.",
      "quote_b": "The login node runs only `sbatch`, `squeue`, `scancel`, `ls`, `tail`, `git`. Downloads are jobs too; compute nodes have internet.",
@@ -16900,7 +17000,7 @@
      "quote_a": "every network route, GitHub and Hugging Face pushes, the sync | | the grid's outbound IP is captcha-throttled by PMC; WSL is not",
      "artifact_b": "SchwingNet/fluorocap-access-setup-jlvkft",
      "statement_b": "The access setup (same day) ranks 'try the campus IP first, it costs nothing' and plans the closed-journal refetch from the grid because publishers authenticate by IP.",
-     "quote_b": "Try the campus IP first, it costs nothing The grid is inside the university's address space (141.217.x.x) and publishers authenticate by IP.",
+     "quote_b": "Try the campus IP first, it costs nothing The grid is inside the university's address space ([the university's network range]) and publishers authenticate by IP.",
      "why_it_matters": "Two pages of the same day give opposite advice on the grid as a network host; a planner choosing where a fetch chain runs (the SchwingNet X-ray and CT fetches are grid jobs) needs to know whether the grid's address is an asset (IP-authenticated access) or a liability (throttled, and a whole institution's range can be blocked)."
     },
     {
@@ -17354,7 +17454,8 @@
      "quote_a": "One word submits the whole graph with Slurm dependencies.",
      "quote_b": "`--dependency=afterany`, never `afterok`; the child reads a file to decide whether the parent succeeded. | an 8 h limit made a whole chain DependencyNeverSatisfied (2026-09-09)",
      "explanation": "The pipeline page (2026-10-21) labels six edges of the start word's graph afterok, beside afterany ones. Its Setup box says the first catalog and v1 'wait afterok on it too'. It cites grid/gate.sh word_start and the #SBATCH headers, but says no job has run. The lab recipe's grid rule 3 (2026-09-27), repeated as hpcworker's rule in the roadmap, forbids afterok after a time-limit kill left a chain DependencyNeverSatisfied. Both are about the same grid, so they disagree.",
-     "resolution_hint": "Read the --dependency flags in grid/gate.sh word_start on SchwingNet's branch claude/53. Until then, carry the lab rule and flag the drawn afterok edges as a deviation to fix or justify."
+     "resolution_hint": "Read the --dependency flags in grid/gate.sh word_start on SchwingNet's branch claude/53. Until then, carry the lab rule and flag the drawn afterok edges as a deviation to fix or justify.",
+     "review": "held"
     },
     {
      "kind": "contradiction",
@@ -17464,7 +17565,8 @@
      "quote_a": "| beethoven-extension (12.0.0) | Chrome side panel, Open OnDemand shell driver, the native ssh bridge",
      "quote_b": "**Beethoven (23.x).** It has one `worker_name` and one `project_url`.",
      "explanation": "The roadmap has the extension at 12.0.0 on 2026-10-03. The store page (2026-10-13) uploads 20.0.0, and the spec (2026-10-15) has 20.0.0 as a pre-release. The plan of 2026-10-21 has Beethoven at 23.x. The version rose over time.",
-     "resolution_hint": "Carry 23.x as of 2026-10-21, from 'Several grid workers, one per project'."
+     "resolution_hint": "Carry 23.x as of 2026-10-21, from 'Several grid workers, one per project'.",
+     "review": "held"
     },
     {
      "kind": "superseded-number",
@@ -17497,7 +17599,8 @@
      "quote_a": "A Project thread has the clone and GitHub and nothing else: no grid, no ssh, no sbatch.",
      "quote_b": "Until then no word can run.",
      "explanation": "The onboarding (2026-10-13) is about a student's claude.ai Project thread on spine-program. The pipeline page's route (2026-10-21) is for the owner's cloud sessions through symphony-template's grid-accounts.yml. That page says no word can run until the owner presses Connect GitHub Actions in Beethoven. So it does not show that a student's Project thread reaches the grid. The onboarding's other condition, whether the grid reaches GitHub, is answered by the connect guide (candidate 23), not by this page.",
-     "resolution_hint": "Keep the onboarding's statement for students' Project threads. Describe the gate-word route as the owner's, pending the Connect press (beethoven-extension #23)."
+     "resolution_hint": "Keep the onboarding's statement for students' Project threads. Describe the gate-word route as the owner's, pending the Connect press (beethoven-extension #23).",
+     "review": "held"
     },
     {
      "kind": "stale",
@@ -18227,7 +18330,8 @@
      "quote_a": "hpcworker is at framework 17 (`framework/VERSION`; `framework/bin/hpcworker:76`).",
      "quote_b": "the grid answers with framework 22. It lists one worker, `worker`, online on node hao1",
      "explanation": "On 2026-10-07 the plan reads framework 17 in hpcworker's tree and says which version is live on the grid is not established. On 2026-10-21 the review reads the live grid answering framework 22 (request verify22), with named workers and account slots. The later live reading replaces the earlier open question.",
-     "resolution_hint": "Carry framework 22, live on 2026-10-21, from the review. The same day's plan says framework 22-23 for the repository."
+     "resolution_hint": "Carry framework 22, live on 2026-10-21, from the review. The same day's plan says framework 22-23 for the repository.",
+     "review": "held"
     },
     {
      "kind": "superseded-number",
@@ -18326,7 +18430,8 @@
      "quote_a": "All seven code repositories this work could change are now sealed.",
      "quote_b": "The Beethoven repositories (private): hpcworker, beethoven-extension, beethoven-qa, beethoven-agents, beethoven-research",
      "explanation": "The spec's list of five comes from its Sources section, 'The primary sources most claims rest on'; it is not an inventory. The same spec names beethoven-base and beethoven-sites in its table. The encapsulation page's seven are those 'this work could change', and it names beethoven-access and beethoven-vscode besides. Neither is a full count, so the two do not contradict. Only beethoven-base is unexplained: the spec calls it built on 2026-10-15, and the page of 2026-10-07 does not name it.",
-     "resolution_hint": "Carry each list with its scope. The organization's repository listing would settle the full set, and whether beethoven-base existed on 2026-10-07."
+     "resolution_hint": "Carry each list with its scope. The organization's repository listing would settle the full set, and whether beethoven-base existed on 2026-10-07.",
+     "review": "held"
     },
     {
      "kind": "stale",
@@ -18337,7 +18442,8 @@
      "quote_a": "whether the VS Code edition gives up its own grid scripts for hpcworker's",
      "quote_b": "deferred the move, since he is the only person using the VS Code edition and nothing else in the ecosystem depends on it. VS Code keeps its own grid scripts for now, including the builder of the lab's shared image.",
      "explanation": "The encapsulation page (2026-10-07) leaves the move to the owner as one of two open decisions, 'a large change'. The plan's banner records the owner deferring it on 2026-10-07 at 22:33Z, with VS Code keeping its grid scripts. The dated decision resolves the open question.",
-     "resolution_hint": "Carry the deferral of 2026-10-07 22:33Z from the plan's banner."
+     "resolution_hint": "Carry the deferral of 2026-10-07 22:33Z from the plan's banner.",
+     "review": "held"
     },
     {
      "kind": "contradiction",
@@ -18513,7 +18619,8 @@
      "quote_a": "Leave it unset until the 20.0.0 upload by hand is done, so the first automatic draft does not land on top of it.",
      "quote_b": "This needs a store release.",
      "explanation": "The store page (2026-10-13) leaves the 20.0.0 hand upload, and with it the CWS_ON_PUSH switch, to the owner. The plan of 2026-10-21 has Beethoven at 23.x and says its next feature needs a store release. It does not say whether 20.0.0 was uploaded, whether review passed or whether automatic releases are on.",
-     "resolution_hint": "The Chrome Web Store dashboard's item history, and the CWS_ON_PUSH variable in beethoven-extension's settings, settle it."
+     "resolution_hint": "The Chrome Web Store dashboard's item history, and the CWS_ON_PUSH variable in beethoven-extension's settings, settle it.",
+     "review": "held"
     },
     {
      "kind": "stale",
@@ -18811,10 +18918,10 @@
      "topic": "Venue, contacts, registration form and event page repeated across both flyers",
      "artifact_a": "SchwingNet/celebrate-life-flyer-noutom",
      "statement_a": "Detroit City Fieldhouse; two contacts (a Detroit City FC operations assistant and the owner under DMC/WSU General Surgery); the Google Form; the OSC Celebrate Life page.",
-     "quote_a": "Operations Assistant, Detroit City FC ... DMC/WSU General Surgery ... SCAN TO REGISTER ... forms.gle/v2NbizhJ8TpBdVi66 ... openspineconsortium.com/celebrate-life",
+     "quote_a": "[a club staff contact], Detroit City FC ... DMC/WSU General Surgery ... SCAN TO REGISTER ... [the registration form's link] ... openspineconsortium.com/celebrate-life",
      "artifact_b": "SchwingNet/celebrate-life-scoliosis-night-julcos",
      "statement_b": "The same venue, the same two contacts, the same form link and the same event page.",
-     "quote_b": "Operations Assistant, Detroit City FC ... DMC/WSU General Surgery ... Scan to register forms.gle/v2NbizhJ8TpBdVi66 ... openspineconsortium.com/celebrate-life",
+     "quote_b": "[a club staff contact], Detroit City FC ... DMC/WSU General Surgery ... Scan to register [the registration form's link] ... openspineconsortium.com/celebrate-life",
      "why_it_matters": "Both versions send people to one registration form and one page. The superseded oncology flyer still leads to the live form, so sign-ups cannot be told apart by flyer, and the page may describe only one version of the event."
     },
     {
@@ -19045,7 +19152,7 @@
      "quote_a": "The fastest way around that is to have an existing registered organization host the event with OSC as the program, rather than registering OSC itself.",
      "artifact_b": "SchwingNet/celebrate-life-flyer-noutom",
      "statement_b": "The flyers present the event with Detroit City FC (or the Fieldhouse) and the OpenSpine Consortium, with a club staff contact and the owner as contacts, and name no student organization.",
-     "quote_b": "Operations Assistant, Detroit City FC ... @openspineconsortium",
+     "quote_b": "[a club staff contact], Detroit City FC ... @openspineconsortium",
      "why_it_matters": "Sources that require a registered student organization (SAFB, the alumni funds via Student Affairs) cannot fund the event as the flyers present it. A host organization would have to be added before applying."
     }
    ],
@@ -19059,7 +19166,8 @@
      "quote_a": "A soccer night for kids in treatment for cancer and blood disorders",
      "quote_b": "A soccer night for kids with scoliosis",
      "explanation": "Both flyers advertise a Saturday, October 24 soccer night at the Detroit City Fieldhouse with the same contacts and registration form. One is for 'Every pediatric hematology and oncology patient under 18', the other for 'Every kid under 18 living with scoliosis or a spine condition'. Neither carries a year or says which version replaces the other.",
-     "resolution_hint": "Carry the scoliosis flyer as current only after the organiser confirms it; the export's index calls the oncology flyer 'the first'. Record that the audience changed."
+     "resolution_hint": "Carry the scoliosis flyer as current only after the organiser confirms it; the export's index calls the oncology flyer 'the first'. Record that the audience changed.",
+     "review": "held"
     },
     {
      "kind": "superseded-number",
@@ -19122,8 +19230,8 @@
      "artifact_a": "SchwingNet/celebrate-life-flyer-noutom",
      "artifact_b": "SchwingNet/celebrate-life-scoliosis-night-julcos",
      "verdict": "confirmed",
-     "quote_a": "Operations Assistant, Detroit City FC",
-     "quote_b": "Operations Assistant, Detroit City FC",
+     "quote_a": "[a club staff contact], Detroit City FC",
+     "quote_b": "[a club staff contact], Detroit City FC",
      "explanation": "Both flyers give the same venue address, the same two contacts (the club's operations assistant and the project lead under DMC/WSU General Surgery), the same registration form and the same event page. Sign-ups from either flyer land on one form.",
      "resolution_hint": "Carry the shared details once. Note that the earlier oncology flyer still points to the live form, so it should be withdrawn or the form should record which flyer a sign-up came from."
     },
@@ -19147,7 +19255,8 @@
      "quote_a": "Professional soccer players from Southeast Michigan, on the field with the kids for the whole game.",
      "quote_b": "Professional soccer players from Southeast Michigan, on the field with the kids for the whole game.",
      "explanation": "Both flyers promise professional players as coaches. Neither names a player, a team or a written commitment, and no source for the promise appears on either page.",
-     "resolution_hint": "Record the club's written commitment (which players, which team) before the textbook or a funding request cites the coaches."
+     "resolution_hint": "Record the club's written commitment (which players, which team) before the textbook or a funding request cites the coaches.",
+     "review": "held"
     },
     {
      "kind": "unsourced-shared-claim",
@@ -19290,7 +19399,8 @@
      "quote_a": "Why this is the one to aim at: it is the largest award on this entire page that you can hold in your own name",
      "quote_b": "Why this is the closest fit in the whole document",
      "explanation": "Each superlative has its own scope. The RSNA student grant is the largest award the student can hold in their own name. The Education Project Award is the closest fit in shape, with the resident or a faculty sponsor as applicant. The Community Foundation is called 'the serious one' among the slower months group. The A\u03a9A grant goes to a student team, so it is not held in one's own name. The claims do not conflict once their scopes are read.",
-     "resolution_hint": "Carry each claim with its scope: the RSNA student grant is the largest held in the student's own name, the Education Project Award is the closest fit with the resident or faculty applying, and the Community Foundation is the largest precedent."
+     "resolution_hint": "Carry each claim with its scope: the RSNA student grant is the largest held in the student's own name, the Education Project Award is the closest fit with the resident or faculty applying, and the Community Foundation is the largest precedent.",
+     "review": "held"
     },
     {
      "kind": "contradiction",
@@ -19354,7 +19464,7 @@
      "artifact_b": "SchwingNet/celebrate-life-flyer-noutom",
      "verdict": "refuted",
      "quote_a": "The fastest way around that is to have an existing registered organization host the event with OSC as the program, rather than registering OSC itself.",
-     "quote_b": "Operations Assistant, Detroit City FC",
+     "quote_b": "[a club staff contact], Detroit City FC",
      "explanation": "The funding page's advice applies when applying to sources that require a registered student organisation. The flyer names the club and the project as organisers and claims no student-organisation funding. The two pages describe different things and do not disagree.",
      "resolution_hint": "Note that any application for the night to SAFB or to alumni funds would first need a registered student organisation as host, as the funding page advises."
     }
@@ -19365,7 +19475,7 @@
      "relation": "superseded",
      "other": "SchwingNet/celebrate-life-scoliosis-night-julcos",
      "agree": true,
-     "why": "The two records describe the same event: same Saturday, October 24, same Detroit City Fieldhouse, same two contacts, same registration form (forms.gle/v2NbizhJ8TpBdVi66) and same event page. Several lines are copied word for word. The export's README calls noutom 'the first Celebrate Life flyer'; julcos is the only other one and is fuller (hours, food rule, watch party, the 'everyone plays' rule). Neither flyer says it replaces the other, so the order rests on the README, not on a dated statement. The rewrite also changed the audience (pediatric hematology/oncology to scoliosis and spine conditions), the time (6:45 PM kickoff to 5:00-7:00 PM), the companion event (outdoor Trunk or Treat to indoor Turf or Treat) and the food promise. The julcos record notes it did not read noutom. Superseded is right for the flyer, but the audience change is undocumented, and the old flyer still points at the live form."
+     "why": "The two records describe the same event: same Saturday, October 24, same Detroit City Fieldhouse, same two contacts, same registration form ([the registration form's link]) and same event page. Several lines are copied word for word. The export's README calls noutom 'the first Celebrate Life flyer'; julcos is the only other one and is fuller (hours, food rule, watch party, the 'everyone plays' rule). Neither flyer says it replaces the other, so the order rests on the README, not on a dated statement. The rewrite also changed the audience (pediatric hematology/oncology to scoliosis and spine conditions), the time (6:45 PM kickoff to 5:00-7:00 PM), the companion event (outdoor Trunk or Treat to indoor Turf or Treat) and the food promise. The julcos record notes it did not read noutom. Superseded is right for the flyer, but the audience change is undocumented, and the old flyer still points at the live form."
     }
    ],
    "unsourced_summary": "Funding page (SchwingNet/osc-outreach-funding-kak2gk): the funder amounts and deadlines are attributed to the funders' own sites by domain only (read in September 2026), and four entries are marked as leads. What has no source at all: OSC's record to cite in every application (802 CT records released, 13 medical students trained, two permanent archives), with no dataset DOI or link given; only the Cureus paper (doi:10.7759/cureus.112661) is cited. Also unsourced: that OSC is not a Registered Student Organization; that the resident cannot apply for 'any student award' (AIDaS ties a narrower version, PI eligibility, to its own call); that a research year 'usually' keeps enrolment; and the $70,000 Community Foundation precedent, credited to 'Wayne State news coverage' with no link. Onboarding (SchwingNet/spine-program-student-onboarding) says the dataset is on Zenodo and Hugging Face as CTSpinoPelvic1K v11, also without a link. Neither artifact lets a reader check the 802 count, and the AIDaS draft's 801 abdominopelvic spines may or may not be the same set. Flyers (SchwingNet/celebrate-life-flyer-noutom and SchwingNet/celebrate-life-scoliosis-night-julcos): every operational promise is the organiser's own statement with no confirming source. That covers the professional coaches from Southeast Michigan (identical text in both), the simultaneous Halloween event (named and staged differently in each), the under-18 eligibility, food provided (first) versus no outside food (second), and the post-event watch party. AIDaS (SchwingNet/aidas-seed-grant-proposal) adds unsourced hardware prices, a $24/h annotation rate and the Joint Commission count; the onboarding adds unsourced student costs (Claude Pro about US$20 a month, paid by the student) and timings.",
@@ -19516,7 +19626,8 @@
    "quote_a": "Recall on real film: 99.14% per body for the film-trained detector; 71.67% for the same architecture trained on renders only.",
    "quote_b": "anchor_c2 v1 done | | cranial detector, 9 classes | | 60/60 | | | | 0.740 | | 0.760",
    "explanation": "The 0.740 in Ninety-Three Pixels is the figure for the anchor_c2 v1 nine-class cranial detector, in a table that the page warns grades each arm on its own degraded validation set. The 71.67% in Counting Levels Under Fluoroscopy is the render-trained vertebra detector on real film, a figure Ninety-Three Pixels also quotes elsewhere. They are not the same measurement.",
-   "resolution_hint": "Keep both, each attributed: 71.67% as render-only recall on real film, and 0.740 as the cranial detector's in-domain validation score."
+   "resolution_hint": "Keep both, each attributed: 71.67% as render-only recall on real film, and 0.740 as the cranial detector's in-domain validation score.",
+   "review": "held"
   },
   {
    "quantity": "VerSeFusion cases carrying an L6 or T13",
@@ -19870,13 +19981,21 @@
    "quantity": "exact single-crop level accuracy of the films-only model on the 8,422 held-out crops",
    "artifact_a": "SchwingNet/fluorocap-reality-check-czudvb",
    "artifact_b": "SchwingNet/level-context-ladder-xd7eltc",
-   "verdict": "confirmed-contradiction",
+   "verdict": "scope-or-unit-differs",
    "value_a": "98.7%",
    "value_b": "96.7%",
-   "quote_a": "one number, 98.7% single-crop on 8,422 held-out cervical and lumbar radiograph crops at 0.17 mm/px with human labels, and nothing else",
-   "quote_b": "96.7% one vertebra, real films, exact level 8,422 held-out crops",
-   "explanation": "The test set is the same 8,422 held-out real-film crops: 98.7% single-crop in the reality check (2026-09-15), 96.7% from one vertebra in the level-context ladder (2026-09-13). Neither says it supersedes the other. The reality check is two days later and names its films-only model.",
-   "resolution_hint": "Carry 98.7% from the reality check with the model named, noting the ladder's 96.7%."
+   "quote_a": "98.7% exact, 99.8% within one (films-only, single crop; run head 99.4%) | | 8,422 crops from 1,653 held-out patients: CSXA 7,440 (99.4%), NHANES 982 (93.6%)",
+   "quote_b": "| annotated films only, 48 px | | 1 | | 96.7% | | 99.7% | | 97.7% | | 86.4% | | 80.7% | | 91.3% | | 84.0% |",
+   "explanation": "Both figures are on the same 8,422 held-out crops, but they measure different things. The ladder's 96.7% is the one-vertebra-visible rung of the 48 px annotated-films-only arm. In the reality check, and in the corpus audit it draws on, 'single crop' means 'own validation split, one crop at a time', set against 99.4% for the recurrent head over the run. It does not mean one vertebra in view. The 98.7% row's 99.8% within one and 93.6% NHANES do not fit the one-vertebra rung (99.7%, 84.0%). They come near the ladder's three- and five-vertebra rungs, though they match neither exactly. The skeptic read 'single-crop' as 'one vertebra' and treated two different scopes as one quantity.",
+   "resolution_hint": "Carry each figure with its own scope. 96.7% is exact level with one vertebra visible (Level Context Ladder, annotated films only, 48 px, 99.7% within one). 98.7% is the films-only model scored one crop at a time on the same 8,422 crops, against 99.4% for its recurrent run head (FluoroCap Reality Check, FluoroCap Corpus Audit). Neither page names that model's context rung.",
+   "first": {
+    "verdict": "confirmed-contradiction",
+    "quote_a": "one number, 98.7% single-crop on 8,422 held-out cervical and lumbar radiograph crops at 0.17 mm/px with human labels, and nothing else",
+    "quote_b": "96.7% one vertebra, real films, exact level 8,422 held-out crops",
+    "explanation": "The test set is the same 8,422 held-out real-film crops: 98.7% single-crop in the reality check (2026-09-15), 96.7% from one vertebra in the level-context ladder (2026-09-13). Neither says it supersedes the other. The reality check is two days later and names its films-only model.",
+    "resolution_hint": "Carry 98.7% from the reality check with the model named, noting the ladder's 96.7%."
+   },
+   "review": "verdict overturned"
   },
   {
    "quantity": "within-one-level rate on the 8,422 held-out crops",
@@ -19930,13 +20049,21 @@
    "quantity": "NHANES II annotated vertebra instances",
    "artifact_a": "SchwingNet/spine-x-ray-data-handoff-bddbdd",
    "artifact_b": "SchwingNet/fluorocap-reality-check-czudvb",
-   "verdict": "scope-or-unit-differs",
+   "verdict": "confirmed-contradiction",
    "value_a": "3,217",
    "value_b": "3,053",
-   "quote_a": "NHANES II annotated subset Ingested \u00b7 3,217 instances Images 543 lateral: 275 cervical, 268 lumbar",
-   "quote_b": "the grid holds 364 annotated films with 3,053 contours",
-   "explanation": "The spine X-ray handoff (2026-09-03) counts 3,217 instances on 543 lateral films. The reality check (2026-09-15) counts 3,053 contours on 364 annotated films. The film counts differ as stated. The data atlas describes the release as 543 films of 364 persons, so the reality check's 364 may be a count of persons.",
-   "resolution_hint": "Carry 3,217 instances on 543 films (364 persons) from the handoff and the atlas. Check the reality check's 3,053 against the pickles before quoting it."
+   "quote_a": "NHANES II annotated subset Ingested \u00b7 3,217 instances Images 543 lateral: 275 cervical, 268 lumbar, 1976\u201380 film",
+   "quote_b": "of which about 544 carry NLM landmarks for C3-C7 and L1-L5 only and the grid holds 364 annotated films with 3,053 contours",
+   "explanation": "Both pages describe the same thing: the annotated NHANES II Zenodo set held on the grid. The handoff (3 September 2026) gives 543 films and 3,217 instances. The reality check (15 September) gives 364 films and 3,053 contours, and repeats '364 annotated films locally'. Neither page says it counts a different subset or unit, so this is not a stated scope difference. The atlas has '543 films ... of 364 persons as pickles', so 364 is a count of persons. In Naming Vertebrae Without an Anchor, 3,053 is the instance count of the nhanes_drr bank on the same 543 films, which the reality check itself calls 'the NHANES films a second time'. So the re-checker was wrong that 3,053 matches no other page.",
+   "resolution_hint": "From the handoff, the atlas and the bank table in Naming Vertebrae Without an Anchor, carry 543 films (275 cervical, 268 lumbar) of 364 persons, with 3,217 instances in the nhanes bank. Record that the second ingest, nhanes_drr, holds 3,053 on the same 543 films. Mark the reality check's '364 annotated films with 3,053 contours' as persons and the second ingest's count, mislabelled. The gap between 3,217 and 3,053 is unexplained until the masks are counted from the pickles.",
+   "first": {
+    "verdict": "scope-or-unit-differs",
+    "quote_a": "NHANES II annotated subset Ingested \u00b7 3,217 instances Images 543 lateral: 275 cervical, 268 lumbar",
+    "quote_b": "the grid holds 364 annotated films with 3,053 contours",
+    "explanation": "The spine X-ray handoff (2026-09-03) counts 3,217 instances on 543 lateral films. The reality check (2026-09-15) counts 3,053 contours on 364 annotated films. The film counts differ as stated. The data atlas describes the release as 543 films of 364 persons, so the reality check's 364 may be a count of persons.",
+    "resolution_hint": "Carry 3,217 instances on 543 films (364 persons) from the handoff and the atlas. Check the reality check's 3,053 against the pickles before quoting it."
+   },
+   "review": "verdict overturned"
   },
   {
    "quantity": "render-only detector L6 naming accuracy",
@@ -20230,13 +20357,21 @@
    "quantity": "the project's sacral slope against the matched supine-CT series",
    "artifact_a": "SchwingNet/openspine-board-t3gfds",
    "artifact_b": "SchwingNet/research-directions-from-the-data-holding-kcyckb",
-   "verdict": "updated-later",
+   "verdict": "scope-or-unit-differs",
    "value_a": "SS 33.2 (own) vs 34.1 (series)",
    "value_b": "SS 33.1 (note) vs 36.6 (v11 table); gap 0.1 not 3.4 degrees",
-   "quote_a": "the one matched supine-CT series reports 53.4 / 34.1 / 19.2 against your 52.7 / 33.2 / 19.7",
-   "quote_b": "The spinopelvic numbers the estimator note argues from (SS 33.1) against the v11 release table (36.6) | the estimator note predates the 2026-09-11 plate fix | its 3.4-degree gap is 0.1 on v11",
-   "explanation": "The board (2026-09-11) compares the project's 33.2 with the matched series' 34.1. Research Directions (2026-10-08) calls the note's 33.1 stale, from before the plate fix, and gives 36.6 for v11. So the board's comparison rests on the pre-v11 figure, although the board does not say whether its 33.2 was computed before or after the fix.",
-   "resolution_hint": "Carry 36.6 for v11 from Research Directions, and redo the comparison with the matched series once its planned recompute (CT-2 step 1) lands."
+   "quote_a": "PI 52.7 \u00b7 SS 33.2 \u00b7 PT 19.7",
+   "quote_b": "| The spinopelvic numbers the estimator note argues from (SS 33.1) against the v11 release table (36.6) | the estimator note predates the 2026-09-11 plate fix | its 3.4-degree gap is 0.1 on v11; the section needs a rewrite |",
+   "explanation": "The board gives SS 33.2 as the Table II mean on n 563. It sits inside the plate-fix card marked solved (140 plates rejected, minimum PI raised), so it is a post-fix figure on a stated 563-record subset. Research Directions calls stale only the estimator note's 33.1, from before the fix. It sets that note against the v11 release table's 36.6, where CT-2 counts 802 records with 756 passing the plate gate, and its 0.1-degree gap is to Veilleux, not to the matched supine-CT series (34.1). The skeptic read the board's 33.2 as the stale pre-fix value and 36.6 as its update, but the pages state different subsets and versions, and Research Directions never mentions the board's figure. One caution stands: the board's claim that the gap to Veilleux is 'cohort, not method' is the very gap Research Directions says may not exist on v11.",
+   "resolution_hint": "Carry both values with their scope: SS 33.2 for Table II's 563 records after the plate fix (OpenSpine Board), and 36.6 for the v11 release table (Research Directions). Flag the board's 'gap to Veilleux is cohort' sentence as pending CT-2 step 1, which recomputes the v11 means beside Veilleux. Redo the matched-series comparison (34.1) on v11 then.",
+   "first": {
+    "verdict": "updated-later",
+    "quote_a": "the one matched supine-CT series reports 53.4 / 34.1 / 19.2 against your 52.7 / 33.2 / 19.7",
+    "quote_b": "The spinopelvic numbers the estimator note argues from (SS 33.1) against the v11 release table (36.6) | the estimator note predates the 2026-09-11 plate fix | its 3.4-degree gap is 0.1 on v11",
+    "explanation": "The board (2026-09-11) compares the project's 33.2 with the matched series' 34.1. Research Directions (2026-10-08) calls the note's 33.1 stale, from before the plate fix, and gives 36.6 for v11. So the board's comparison rests on the pre-v11 figure, although the board does not say whether its 33.2 was computed before or after the fix.",
+    "resolution_hint": "Carry 36.6 for v11 from Research Directions, and redo the comparison with the matched series once its planned recompute (CT-2 step 1) lands."
+   },
+   "review": "verdict overturned"
   },
   {
    "quantity": "detector training set and planned retraining size",
@@ -20417,6 +20552,734 @@
    "quote_b": "50 pairs from 20 tasks, five arms (sdlc, solo, coop, coop-git, team)",
    "explanation": "The Symphony handoff (2026-10-13) quotes the kit's estimate for four arms. The Symphony in-brief (2026-10-14) cites the pre-registered plan, which has five arms, team among them.",
    "resolution_hint": "Carry five arms from the pre-registered plan. The handoff's cost estimate belongs to the earlier four-arm design."
+  },
+  {
+   "quantity": "number of C-ArmLSpine spot frames",
+   "artifact_a": "SchwingNet/fluoroscopy-data-atlas",
+   "artifact_b": "SchwingNet/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay",
+   "verdict": "scope-or-unit-differs",
+   "value_a": "299 (296 pre-repair)",
+   "value_b": "296 frames",
+   "quote_a": "Every carm_* bank was built from the pre-repair 296-frame bank (case134, case39_LAT2 and the case118 view correction are absent)",
+   "quote_b": "| Registration | LevelCheck (De Silva 2016) | 398 radiographs, 178 CTs | 296 frames, 148 cases | 0.74 | Smaller. |",
+   "explanation": "The atlas (as of 17 October 2026) gives C-ArmLSpine 299 spot frames (AP 149, lateral 149 incl. one repeat, oblique 1) and lists the real-frame banks as 'carmlspine 299; carmlspine_pre_repair 296', the 296-frame bank being the one without case134 and case39_LAT2 from which every carm_* bank was built. The literature page (8 October 2026) also holds '149 cases, 299 spot frames, 602 sweep projections', but sizes its C-arm naming and registration comparisons at '296 frames, 148 cases' and lists '149 cases, 148 cases with 296 frames, or 120 distinct subjects' among files that disagree. The 296 frames over 148 cases match that pre-repair bank, one case short of the release, so the two figures count different versions of the set.",
+   "resolution_hint": "Carry 299 spot frames over 149 cases for the C-ArmLSpine release, from the atlas (the literature page's own holding table agrees); give 296 frames over 148 cases only as the pre-repair bank the carm_* banks were built from, which matches the n of the literature page's comparisons.",
+   "first": {
+    "verdict": "cannot-tell",
+    "quote_a": "window.ATLAS = {\"datasets\": [{\"name\": \"AAPM MATCH phantom\", \"aka\": [], \"category\": \"cbct_projections\", \"anatomy\": \"thorax phantom\", \"size\": \"1 phantom\", \"image_quality\": \"unknown\", \"annotation_level\": null, \"annotation_detail\": \"not recorded\", \"level_labels\": null, \"pose_geometry\": null, \"access\": \"open download\", \"how_to_get\": \"Open; download (not fetched; searcher pass only).\", \"license\": \"not recorded\", \"link\": null, \"paper\": null, \"[the owner]_status\": \"not held\", \"grid_path\": null, \"notes\": \"Single phantom or specimen.\", \"verified\": null, \"found_in\": \"repository\"}, {\"name\": \"ADAPT trial 4D-CBCT ",
+    "quote_b": "| Registration | LevelCheck (De Silva 2016) | 398 radiographs, 178 CTs | 296 frames, 148 cases | 0.74 | Smaller. |",
+    "explanation": "The value is not in artifact A's text at all. The exported atlas text (13,937 bytes of a 298 KB page) holds no occurrence of carmlspine, C-ArmLSpine, 299, 296, 301, pre-repair or spot frame; its window.ATLAS catalog is truncated after the first dataset (AAPM MATCH phantom, then the name ADAPT trial 4D-CBCT cut mid-string), so the C-ArmLSpine entry the candidate quotes (\"carmlspine 299; carmlspine_pre_repair 296; carmlspine_sweep 301\") cannot be verified from this text; quote_a above is the exact truncated line where the catalog stops. Artifact B gives both figures itself: line 21 says \"149 cases, 299 spot frames, 602 sweep projections\" for C-ArmLSpine, while lines 50 and 52 give \"296 frames, 148 cases\" and line 135 lists \"C-ArmLSpine: 149 cases, 148 cases with 296 frames, or 120 distinct subjects\" as a known disagreement between files. That is consistent with the candidate's reading (299 frames in the index versus 296 scored frames, likely a scope difference, 296 being a pre-repair or scored subset) but only one of the two texts states anything, so the pair cannot be judged a contradiction or a scope difference from the texts as given.",
+    "resolution_hint": null
+   },
+   "review": "read again"
+  },
+  {
+   "quantity": "frames per C-ArmLSpine CBCT sweep (case134)",
+   "artifact_a": "SchwingNet/schwingnet-data-registry",
+   "artifact_b": "SchwingNet/research-directions-from-the-data-holding-kcyckb",
+   "verdict": "confirmed-contradiction",
+   "value_a": "301 XA frames each",
+   "value_b": "302-frame spin",
+   "quote_a": "raw CBCT projections at quantised gantry angles, 301 XA frames each; rotational, not cranio-caudal",
+   "quote_b": "renders only; the case134 302-frame spin as the n 1 real check",
+   "explanation": "The registry (rendered 2026-10-20) gives the two C-ArmLSpine sweeps, case134 and case39, as 301 XA frames each, 602 projections in all, and says 'the 301-frame case134 bank exists (detection only)'. The research-directions page (8 October 2026) counts the case134 spin as 302 frames while giving 602 sweep projections in all. The atlas (17 October 2026) records the disagreement, '2 cases x 301 projections (602 in all; the case134 spin is counted as 302 frames in one document)', exports the case134 sweep as a 301-item bank and says to count frames by DICOM Modality and Rows, never by folder; no page says what the 302 counted.",
+   "resolution_hint": "Carry 301 frames per sweep and 602 in all, from the registry, which counts XA frames and agrees with the atlas's 301-item case134 bank and with the 602 total the research-directions page itself gives; a census of the case134 sweep by DICOM Modality and Rows would settle the 302.",
+   "first": {
+    "verdict": "cannot-tell",
+    "quote_a": "{\"id\": \"carmlspine\", \"name\": \"C-ArmLSpine (Surgio-B51)\", \"group\": \"fluoro\", \"what\": \"149 lumbar intraoperative cases from one mobile C-arm: AP and lateral spot frames with a CBCT of the same device\", \"level_truth\": \"yes, lumbar, projected from the CBCT (two labellers agreeing on 814 of 910 bodies); 3 real L6 cases\", \"reach\": \"held\", \"status\": \"the test set and the demo; never trained on in the zero-shot arm; case134 headers carry a real PatientID, never printed\", \"licence\": \"CC BY 4.0\", \"link\": \"https://zenodo.org/records/22768651\", \"how_to_get\": [], \"grid_path\": \"/rs/rs_grp_osch",
+    "quote_b": "| C-ArmLSpine sweep projections and the case134 spin | 602; 302 frames | only one script reads a sweep | export into the real-frame layout |",
+    "explanation": "The candidate's quote_a ('raw CBCT projections at quantised gantry angles, 301 XA frames each; rotational, not cranio-caudal') is not in artifact A's text. The registry export is 5,497 bytes and its DATA array stops mid-string at the first record's grid_path ('/rs/rs_grp_osch'), so the rest of the carmlspine record and all other 59 records are missing from the text; grep finds no '301', 'XA', 'quantised', 'rotational' or 'cranio' anywhere in it. The only C-ArmLSpine figures A does carry are 149 cases, 814 of 910 bodies, 3 real L6 cases and the note that case134 headers carry a PatientID. Artifact B states 302 frames for the case134 spin twice (line 143: 'the case134 302-frame spin as the n 1 real check'; line 204, the quoted row) and beside it 602 for 'C-ArmLSpine sweep projections', which equals 2 x 301, so B is internally consistent with 301 raw projections per sweep while counting the exported case134 spin as 302 frames. That hints the two figures may be different quantities (raw CBCT projections per case versus frames of the exported spin) or an off-by-one in one document, but with A's sentence absent from the exported text the two texts cannot settle it, and neither says it revises the other. The 'why' given in the candidate cites an outside note (Atlas), not either text.",
+    "resolution_hint": null
+   },
+   "review": "read again"
+  },
+  {
+   "quantity": "C-ArmLSpine size on disk",
+   "artifact_a": "SchwingNet/fluoroscopy-data-atlas",
+   "artifact_b": "SchwingNet/schwingnet-data-registry",
+   "verdict": "scope-or-unit-differs",
+   "value_a": "23,347,039,978 B (59,609 files)",
+   "value_b": "86.834 GB",
+   "quote_a": "299 spot frames (AP 149, lateral 149 incl. one repeat, oblique 1) + 602 raw sweep projections + 149 CBCTs (58,706 slices); unpacked 59,609 files, 23,347,039,978 B",
+   "quote_b": "\"counts\": {\"cases\": 149, \"spot_frames\": 299, \"cbct_volumes\": 149, \"size_gb\": 86.834}",
+   "explanation": "The atlas (17 October 2026) sizes the C-ArmLSpine release as one 15,581,614,253-byte zip and an unpacked tree of 59,609 files, 23,347,039,978 B, which holds the spot frames, sweeps and CBCT slices, and it places the project's derived banks and its level and pose files in the same dataset folder. The registry (rendered 2026-10-20) gives one size, 86.834 GB, for its C-ArmLSpine record, whose grid path is that whole dataset folder, and does not say what the figure counts. The zip and the unpacked tree together come to 38.9 GB, so the 86.834 GB counts more than the release, and no page breaks it down.",
+   "resolution_hint": "Carry the atlas's release sizes (zip 15,581,614,253 B; unpacked 59,609 files, 23,347,039,978 B) as the size of C-ArmLSpine, and give the registry's 86.834 GB only as the total of the whole dataset folder on the grid; a size listing of that folder by subfolder would show what it holds.",
+   "first": {
+    "verdict": "cannot-tell",
+    "quote_a": "not in the text",
+    "quote_b": "not in the text",
+    "explanation": "Neither value is in the plain texts. The atlas text keeps only the first 600 characters of its one script-data line (window.ATLAS, line 69, cut inside the second dataset 'ADAPT trial 4D-CBCT'), and the registry text keeps only the first 600 characters of its const DATA line (line 25, cut inside the first record carmlspine at grid_path). The candidate sentences ('unpacked 59,609 files, 23,347,039,978 B'; 'size_gb': 86.834) do occur in the full pages at /home/user/SchwingNet/artifacts/fluoroscopy-data-atlas/index.html and /home/user/SchwingNet/artifacts/schwingnet-data-registry/index.html, whose script-data lines are 266,714 and 46,741 characters long, so the extraction, not the artifacts, dropped them; the texts as given cannot settle the comparison. Re-extracting without the 600-character cut would let it be judged.",
+    "resolution_hint": null
+   },
+   "review": "read again"
+  },
+  {
+   "quantity": "COBRA2026 size on disk",
+   "artifact_a": "SchwingNet/fluoroscopy-data-atlas",
+   "artifact_b": "SchwingNet/schwingnet-data-registry",
+   "verdict": "scope-or-unit-differs",
+   "value_a": "771.1 GB (754 GB by du)",
+   "value_b": "808.615 GB",
+   "quote_a": "692 public training cases of 867 (Elekta A 120, B 107, C 120, D 120; Varian F 92, G 133); 375,618 projections; 771.1 GB at verification (754 GB by du on 2026-09-25)",
+   "quote_b": "808.615 GB on Ceph",
+   "explanation": "The atlas (17 October 2026) and the registry (rendered 2026-10-20) describe the same holding, the 692 public COBRA2026 cases with 375,618 projections, but name three different measurements: 771.1 GB at verification, 754 GB by du on 2026-09-25, and 808.615 GB on Ceph. Neither page states its units: 808.615 GB is 753.1 GiB, which du -h prints as 754G, so the du and Ceph figures may be one size in two units, and what the verification figure summed is not said. The imaging-holding page (8 October 2026) likewise carries both 771 GB for the source and 809 GB for the COBRA2026 folder on Ceph.",
+   "resolution_hint": "Carry 808.615 GB as the size of the COBRA2026 folder on Ceph (registry), and keep the atlas's 771.1 GB only as the size at verification, each with its basis named; a byte count of the folder beside the verified file list would show whether the three figures are one size in different units.",
+   "first": {
+    "verdict": "cannot-tell",
+    "quote_a": "not in the text",
+    "quote_b": "not in the text",
+    "explanation": "Neither value, nor the word COBRA, appears in either plain text; both texts truncate their script-data line at 600 characters (atlas line 69, registry line 25), and every dataset record beyond the first lies past that cut. '771.1 GB' and '808.615' are present in the full index.html files under /home/user/SchwingNet/artifacts/, so they were lost in extraction. The given texts cannot settle whether 771.1 GB at verification and 808.615 GB on Ceph are the same measure.",
+    "resolution_hint": null
+   },
+   "review": "read again"
+  },
+  {
+   "quantity": "DeepFluoro size on disk",
+   "artifact_a": "SchwingNet/fluoroscopy-data-atlas",
+   "artifact_b": "SchwingNet/schwingnet-data-registry",
+   "verdict": "scope-or-unit-differs",
+   "value_a": "2.5 GB HDF5; deposit 38.3 GB, unpacked 72.7 GB",
+   "value_b": "116.26 GB",
+   "quote_a": "6 specimens; 19 deposit files; 2,659 fluoroscopy DICOMs (2,545 cadaver + 36 FTRAC + 78 sawbones); 19 CT scans (21 series folders); deposit 38.3 GB, unpacked 94,626 files, 72.7 GB",
+   "quote_b": "\"counts\": {\"specimens\": 6, \"h5_frames\": 366, \"vendor_frames\": 2659, \"vendor_ct\": 19, \"size_gb\": 116.26}",
+   "explanation": "The atlas (17 October 2026) sizes each DeepFluoro copy apart: the H5 release as 'h5 2,541,608,861 B (about 6.2 GB with zips)', the vendor deposit as 38.3 GB plus an unpacked tree of 94,626 files, 72.7 GB, and a Hugging Face copy whose held bytes are not recorded. The registry (rendered 2026-10-20) has one DeepFluoro record covering the 366 H5 frames and the 2,659-frame vendor deposit, with the H5 and vendor folders as its grid paths and one size, 116.26 GB. The atlas's parts sum to 117.2 GB with its 6.2 GB for the H5 folder, and to 116.27 GB with the 5.27 GB the imaging-holding page (8 October 2026) measured for its DeepFluoro H5 pilot batch; no page states that sum.",
+   "resolution_hint": "Carry the atlas's per-copy figures (H5 file 2,541,608,861 B; vendor deposit 38.3 GB, unpacked 94,626 files, 72.7 GB) and give the registry's 116.26 GB only as the total of the H5 and vendor folders together, never as the size of the H5 release; the Hugging Face copy is outside it.",
+   "first": {
+    "verdict": "cannot-tell",
+    "quote_a": "not in the text",
+    "quote_b": "not in the text",
+    "explanation": "The name DeepFluoro and the values 72.7 GB, 38.3 GB and 116.26 occur nowhere in the plain texts; the records that carry them sit past the 600-character cut of each page's script-data line (atlas line 69, registry line 25). '72.7 GB' is in the full atlas HTML and '116.26' in the full registry HTML at /home/user/SchwingNet/artifacts/, so the extraction dropped them. Nothing in the texts as given settles it.",
+    "resolution_hint": null
+   },
+   "review": "read again"
+  },
+  {
+   "quantity": "AASCE/BoostNet labelled film count",
+   "artifact_a": "SchwingNet/fluoroscopy-data-atlas",
+   "artifact_b": "SchwingNet/schwingnet-data-registry",
+   "verdict": "same-number-restated",
+   "value_a": "609 (481 + 128) + 98 test",
+   "value_b": "609 (481 + 98)",
+   "quote_a": "609 labelled films (481 + 128) + 98 challenge test films; 217 index groups (MANIFEST says 251 patients); grid copy 579 jpg; mirror 820 MB",
+   "quote_b": "609 labelled AP whole-spine films (481 labelled plus 98 challenge test on HOME; the full mirror on Ceph)",
+   "explanation": "Both pages give 609 labelled films: the atlas (17 October 2026) splits them as 481 + 128 and counts 98 challenge test films beside them, and the registry (rendered 2026-10-20) gives 609 labelled AP whole-spine films. The registry's '481 labelled plus 98 challenge test' says what sits on HOME, with the full mirror on Ceph; 481 + 98 is 579, the count the atlas gives for its grid copy, so it is not a split of the 609. Both pages also use 608 films as the thoracic test.",
+   "resolution_hint": "Carry 609 labelled films, 481 training plus 128 labelled BoostNet test, with the 98 challenge test films counted apart (atlas); a copy of 481 + 98 = 579 films, as the registry describes on HOME, leaves out the 128 labelled test films.",
+   "first": {
+    "verdict": "cannot-tell",
+    "quote_a": "not in the text",
+    "quote_b": "not in the text",
+    "explanation": "Neither '609', '481', 'AASCE' nor 'BoostNet' appears in either plain text; the dataset records are cut off by the 600-character truncation of the script-data lines (atlas line 69, registry line 25). '609 labelled' and '481 + 128' are in the full atlas HTML, '609 labelled' and '481 labelled plus 98' in the full registry HTML under /home/user/SchwingNet/artifacts/, so the candidate quotes are real but absent from the given texts. The decomposition question (481+128 versus 481+98) cannot be judged from these texts.",
+    "resolution_hint": null
+   },
+   "review": "read again"
+  },
+  {
+   "quantity": "SpineSAC phantom set file count",
+   "artifact_a": "SchwingNet/fluoroscopy-data-atlas",
+   "artifact_b": "SchwingNet/schwingnet-data-registry",
+   "verdict": "scope-or-unit-differs",
+   "value_a": "5,492 files, 4.15 GB; 286 raw DICOM frames",
+   "value_b": "5,490 sawbone frames",
+   "quote_a": "3 sawbone phantoms; 59 scenarios; 286 raw DICOM frames + 233 unreferenced raw + 118 processed; 3 CT series; 5,492 files, 4.15 GB (5,490 held)",
+   "quote_b": "5,490 sawbone frames from six C-arms",
+   "explanation": "The atlas (17 October 2026) counts SpineSAC as 5,492 files and 4.15 GB, of which 5,490 files are held, and counts its frames separately: 286 raw DICOM frames plus 233 unreferenced raw and 118 processed. The registry (rendered 2026-10-20) gives the same 5,490 but calls them sawbone frames and records them as frames. The OR Readiness Ledger (2026-09-22) also gives '5,490 files' for the 4.15 GB fetch, so the registry's figure is the held file count under the name of frames.",
+   "resolution_hint": "Carry the atlas: 5,492 files and 4.15 GB in the release, 5,490 held, and 286 raw DICOM frames (with 233 unreferenced raw and 118 processed); the registry's '5,490 sawbone frames' should read 5,490 files.",
+   "first": {
+    "verdict": "cannot-tell",
+    "quote_a": "not in the text",
+    "quote_b": "not in the text",
+    "explanation": "SpineSAC, sawbone, 5,492 and 5,490 are all absent from both plain texts, which keep only the first 600 characters of their script-data lines (atlas line 69, registry line 25). '5,492 files' is in the full atlas HTML and '5,490 sawbone' in the full registry HTML at /home/user/SchwingNet/artifacts/, so the extraction dropped the records. The texts as given cannot settle whether 5,490 counts files or frames.",
+    "resolution_hint": null
+   },
+   "review": "read again"
+  },
+  {
+   "quantity": "public fluoroscopy clips held from YouTube",
+   "artifact_a": "SchwingNet/fluoroscopy-data-atlas",
+   "artifact_b": "SchwingNet/schwingnet-data-registry",
+   "verdict": "scope-or-unit-differs",
+   "value_a": "28 video ids, 12 GB",
+   "value_b": "262.801 GB, 28 ids, 18 live entries, 20 clip folders",
+   "quote_a": "28 video ids (youtube/ 12 GB); 43 extra ids attempted, success tally never made; part of the 1,269 extracted clips (776 live)",
+   "quote_b": "\"counts\": {\"size_gb\": 262.801, \"youtube_ids\": 28, \"live_fluoro_entries\": 18, \"clip_folders\": 20}",
+   "explanation": "Both pages count 28 YouTube video ids. The atlas (17 October 2026) gives 12 GB for the YouTube folder alone, while the registry (rendered 2026-10-20) gives 262.801 GB for its record of all public clips on the grid (the Bern videos, three PMC videos, three Wikimedia Commons items and the YouTube re-encodes, across 20 clip folders). The live counts differ in unit as well: the atlas's 776 live are of 1,269 extracted clips, while the registry's 18 are YouTube entries ('18 of 70 YouTube entries show live fluoroscopy').",
+   "resolution_hint": "Carry 28 ids and 12 GB for the YouTube re-encodes (atlas) and 262.801 GB for the whole clip holding (registry), and keep 776 live of 1,269 extracted clips apart from 18 live of 70 YouTube entries; a size listing by folder would show whether 262.801 GB is the clips alone or the whole external folder, which the imaging-holding page of 8 October 2026 gives as 263 GB on Ceph.",
+   "first": {
+    "verdict": "cannot-tell",
+    "quote_a": "not in the text",
+    "quote_b": "not in the text",
+    "explanation": "The atlas text mentions YouTube once, in the pre-send checklist ('YouTube copies. Letters to video uploaders say copies were saved for screening and will be deleted on request.'), which carries no count or size; '28 video ids', '12 GB', '262.801' and 'clip' appear in neither plain text. The records that hold them lie past the 600-character cut of each script-data line (atlas line 69, registry line 25); '28 video ids' is in the full atlas HTML and '262.801' in the full registry HTML under /home/user/SchwingNet/artifacts/. The given texts cannot settle whether 12 GB of re-encodes and 262.8 GB of the whole holding are the same measure.",
+    "resolution_hint": null
+   },
+   "review": "read again"
+  },
+  {
+   "quantity": "number of Pittsburgh videofluoroscopic swallow clips",
+   "artifact_a": "SchwingNet/fluoroscopy-data-atlas",
+   "artifact_b": "SchwingNet/schwingnet-data-registry",
+   "verdict": "same-number-restated",
+   "value_a": "1,518 (Zhang 2021); 1,488 (Li 2024)",
+   "value_b": "about 1,500",
+   "quote_a": "about 1,500 lateral clips at 30 fps: Zhang 2021 1,518 clips of 265 patients (Toshiba Ultimax) + 70 healthy volunteers (GE Precision 500D); Li 2024 1,488 clips, 59,468 frames, 238 subjects",
+   "quote_b": "about 1,500 lateral swallow clips at 30 fps captured by video card, 265 patients and 70 volunteers on two machines",
+   "explanation": "The atlas (17 October 2026) opens its size field with the same 'about 1,500 lateral clips at 30 fps' that the registry (rendered 2026-10-20) gives, and adds the published counts it rounds: 1,518 clips of 265 patients and 70 healthy volunteers in Zhang 2021, and 1,488 clips, 59,468 frames and 238 subjects in Li 2024. The registry's 335 subjects are Zhang 2021's 265 patients plus 70 volunteers, and its 1,500 clips is the rounded figure, not a count of its own.",
+   "resolution_hint": "Carry the published counts from the atlas (Zhang 2021: 1,518 clips, 265 patients and 70 volunteers; Li 2024: 1,488 clips, 238 subjects), with about 1,500 as the rounding both pages share; the corpus is not held, so the project has no count of its own.",
+   "first": {
+    "verdict": "cannot-tell",
+    "quote_a": "not in the text",
+    "quote_b": "not in the text",
+    "explanation": "Pittsburgh, swallow, Zhang, 1,518, 1,488 and 'about 1,500' occur in neither plain text; the records are beyond the 600-character truncation of the script-data lines (atlas line 69, registry line 25). '1,518 clips' is in the full atlas HTML and 'about 1,500 lateral' in both full HTML files under /home/user/SchwingNet/artifacts/, so the extraction dropped them. From the given texts the rounding cannot be confirmed.",
+    "resolution_hint": null
+   },
+   "review": "read again"
+  },
+  {
+   "quantity": "accuracy cost of training on pseudo-labels",
+   "artifact_a": "SchwingNet/fluoroscopy-data-atlas",
+   "artifact_b": "SchwingNet/schwingnet-data-registry",
+   "verdict": "confirmed-contradiction",
+   "value_a": "about 19 points",
+   "value_b": "20 points",
+   "quote_a": "the pseudo-label arm that would have used it was measured and refuted (about 19 points of anomalous accuracy)",
+   "quote_b": "none; pseudo-labels cut anomalous accuracy 20 points",
+   "explanation": "The atlas (17 October 2026), on the IEEE DataPort lateral 236 films, says the pseudo-label arm was measured and refuted at about 19 points of anomalous accuracy; the registry (rendered 2026-10-20) says on its NHANES II unannotated record that pseudo-labels cut anomalous accuracy 20 points, and on its lateral 236 record that 'the pseudo-label arm was refuted'. Neither page gives the accuracies behind its figure. Naming Vertebrae Without an Anchor (17 September 2026) does: pseudolabel training lowered anomalous exact naming in the isolated stack on real film from 87.2% to 66.8%, a drop of 20.4 points, which it and Naming Vertebrae Without CT (18 September 2026) call twenty points; no page read here gives a figure that rounds to 19.",
+   "resolution_hint": "Carry 20 points (registry), with its basis from Naming Vertebrae Without an Anchor: anomalous exact naming on real film 87.2% with bank v2 against 66.8% with the pseudolabelled bank v5; the atlas's 'about 19' should read about 20.",
+   "first": {
+    "verdict": "cannot-tell",
+    "quote_a": "not in the text",
+    "quote_b": "not in the text",
+    "explanation": "Neither 'pseudo-label', 'anomalous', '19 points', '20 points' nor 'twenty' appears in either plain text; the sentences live in dataset records past the 600-character cut of the script-data lines (atlas line 69, registry line 25). 'about 19 points' is in the full atlas HTML and '20 points' in the full registry HTML at /home/user/SchwingNet/artifacts/, so the values exist in the artifacts but not in the texts given. Whether 19 and 20 are one refuted arm rounded differently cannot be judged from these texts.",
+    "resolution_hint": null
+   },
+   "review": "read again"
   }
- ]
+ ],
+ "review": {
+  "date": "2026-10-23",
+  "about": "On 2026-10-23 the skeptics' verdicts were themselves read again. The sample was drawn by stratum, the 14 clusters and the numbers, and within each by the lowest SHA-1 of stratum and row, so it can be drawn again: two verdicts that put a candidate on the confirmed list and one that kept a candidate off it, refuted or a number's agreement, from every stratum, then 5 more that kept one off and 4 cannot-tell, 54 in all; and the 4 verdicts whose own quotes the script could not place, 58 in all. Five re-checkers, three for the verdicts that put a candidate on the list and two for the rest, each told to overturn every verdict in its share, read both sources of each and gave their own verdict, whether the hint was right and the words they rest on. Where a re-checker overturned a verdict or its hint, one of three judges read both readings and the sources and ruled; all 11 rulings sided with the re-checker.",
+  "items": [
+   {
+    "stratum": "Beethoven: the research engine and its repositories",
+    "index": 1,
+    "side": "confirmed",
+    "drawn": "random",
+    "first": "superseded-by-later",
+    "final": "superseded-by-later",
+    "outcome": "held"
+   },
+   {
+    "stratum": "Beethoven: the research engine and its repositories",
+    "index": 10,
+    "side": "dismissed",
+    "drawn": "random",
+    "first": "refuted",
+    "final": "refuted",
+    "outcome": "held"
+   },
+   {
+    "stratum": "Beethoven: the research engine and its repositories",
+    "index": 11,
+    "side": "confirmed",
+    "drawn": "random",
+    "first": "superseded-by-later",
+    "final": "superseded-by-later",
+    "outcome": "held"
+   },
+   {
+    "stratum": "Beethoven: the research engine and its repositories",
+    "index": 27,
+    "side": "dismissed",
+    "drawn": "random",
+    "first": "cannot-tell",
+    "final": "cannot-tell",
+    "outcome": "held"
+   },
+   {
+    "stratum": "Datasets, holdings and licences",
+    "index": 26,
+    "side": "confirmed",
+    "drawn": "random",
+    "first": "confirmed",
+    "final": "confirmed",
+    "outcome": "hint corrected"
+   },
+   {
+    "stratum": "Datasets, holdings and licences",
+    "index": 30,
+    "side": "dismissed",
+    "drawn": "random",
+    "first": "refuted",
+    "final": "refuted",
+    "outcome": "held"
+   },
+   {
+    "stratum": "Datasets, holdings and licences",
+    "index": 33,
+    "side": "confirmed",
+    "drawn": "random",
+    "first": "superseded-by-later",
+    "final": "superseded-by-later",
+    "outcome": "held"
+   },
+   {
+    "stratum": "Datasets, holdings and licences",
+    "index": 63,
+    "side": "dismissed",
+    "drawn": "random",
+    "first": "refuted",
+    "final": "refuted",
+    "outcome": "hint corrected"
+   },
+   {
+    "stratum": "Detectors, architecture and the training plan",
+    "index": 16,
+    "side": "dismissed",
+    "drawn": "random",
+    "first": "refuted",
+    "final": "refuted",
+    "outcome": "held"
+   },
+   {
+    "stratum": "Detectors, architecture and the training plan",
+    "index": 30,
+    "side": "confirmed",
+    "drawn": "random",
+    "first": "superseded-by-later",
+    "final": "refuted",
+    "outcome": "verdict overturned"
+   },
+   {
+    "stratum": "Detectors, architecture and the training plan",
+    "index": 35,
+    "side": "dismissed",
+    "drawn": "random",
+    "first": "refuted",
+    "final": "refuted",
+    "outcome": "held"
+   },
+   {
+    "stratum": "Detectors, architecture and the training plan",
+    "index": 52,
+    "side": "dismissed",
+    "drawn": "random",
+    "first": "refuted",
+    "final": "refuted",
+    "outcome": "held"
+   },
+   {
+    "stratum": "Detectors, architecture and the training plan",
+    "index": 77,
+    "side": "confirmed",
+    "drawn": "random",
+    "first": "confirmed",
+    "final": "confirmed",
+    "outcome": "held"
+   },
+   {
+    "stratum": "FluoroCap: the corpus, its pipeline and its audits",
+    "index": 9,
+    "side": "dismissed",
+    "drawn": "random",
+    "first": "refuted",
+    "final": "refuted",
+    "outcome": "held"
+   },
+   {
+    "stratum": "FluoroCap: the corpus, its pipeline and its audits",
+    "index": 16,
+    "side": "confirmed",
+    "drawn": "random",
+    "first": "superseded-by-later",
+    "final": "superseded-by-later",
+    "outcome": "held"
+   },
+   {
+    "stratum": "FluoroCap: the corpus, its pipeline and its audits",
+    "index": 31,
+    "side": "confirmed",
+    "drawn": "random",
+    "first": "superseded-by-later",
+    "final": "superseded-by-later",
+    "outcome": "held"
+   },
+   {
+    "stratum": "Grid, workstation and Claude worker operations",
+    "index": 9,
+    "side": "confirmed",
+    "drawn": "random",
+    "first": "confirmed",
+    "final": "confirmed",
+    "outcome": "held"
+   },
+   {
+    "stratum": "Grid, workstation and Claude worker operations",
+    "index": 19,
+    "side": "confirmed",
+    "drawn": "random",
+    "first": "superseded-by-later",
+    "final": "superseded-by-later",
+    "outcome": "held"
+   },
+   {
+    "stratum": "Grid, workstation and Claude worker operations",
+    "index": 22,
+    "side": "dismissed",
+    "drawn": "random",
+    "first": "refuted",
+    "final": "refuted",
+    "outcome": "held"
+   },
+   {
+    "stratum": "Level naming and counting",
+    "index": 25,
+    "side": "confirmed",
+    "drawn": "random",
+    "first": "confirmed",
+    "final": "confirmed",
+    "outcome": "held"
+   },
+   {
+    "stratum": "Level naming and counting",
+    "index": 65,
+    "side": "dismissed",
+    "drawn": "random",
+    "first": "refuted",
+    "final": "refuted",
+    "outcome": "held"
+   },
+   {
+    "stratum": "Level naming and counting",
+    "index": 69,
+    "side": "confirmed",
+    "drawn": "random",
+    "first": "confirmed",
+    "final": "confirmed",
+    "outcome": "held"
+   },
+   {
+    "stratum": "Level naming and counting",
+    "index": 80,
+    "side": "confirmed",
+    "drawn": "unplaced quote",
+    "first": "confirmed",
+    "final": "refuted",
+    "outcome": "verdict overturned"
+   },
+   {
+    "stratum": "Number collisions",
+    "index": 30,
+    "side": "dismissed",
+    "drawn": "random",
+    "first": "scope-or-unit-differs",
+    "final": "confirmed-contradiction",
+    "outcome": "verdict overturned"
+   },
+   {
+    "stratum": "Number collisions",
+    "index": 110,
+    "side": "confirmed",
+    "drawn": "random",
+    "first": "confirmed-contradiction",
+    "final": "scope-or-unit-differs",
+    "outcome": "verdict overturned"
+   },
+   {
+    "stratum": "Number collisions",
+    "index": 114,
+    "side": "dismissed",
+    "drawn": "random",
+    "first": "different-quantities",
+    "final": "different-quantities",
+    "outcome": "held"
+   },
+   {
+    "stratum": "Number collisions",
+    "index": 173,
+    "side": "confirmed",
+    "drawn": "random",
+    "first": "updated-later",
+    "final": "scope-or-unit-differs",
+    "outcome": "verdict overturned"
+   },
+   {
+    "stratum": "Outreach events and student funding",
+    "index": 0,
+    "side": "confirmed",
+    "drawn": "random",
+    "first": "confirmed",
+    "final": "confirmed",
+    "outcome": "held"
+   },
+   {
+    "stratum": "Outreach events and student funding",
+    "index": 8,
+    "side": "confirmed",
+    "drawn": "random",
+    "first": "confirmed",
+    "final": "confirmed",
+    "outcome": "held"
+   },
+   {
+    "stratum": "Outreach events and student funding",
+    "index": 21,
+    "side": "dismissed",
+    "drawn": "random",
+    "first": "refuted",
+    "final": "refuted",
+    "outcome": "held"
+   },
+   {
+    "stratum": "Programme direction, handoffs and onboarding",
+    "index": 12,
+    "side": "confirmed",
+    "drawn": "random",
+    "first": "superseded-by-later",
+    "final": "superseded-by-later",
+    "outcome": "held"
+   },
+   {
+    "stratum": "Programme direction, handoffs and onboarding",
+    "index": 15,
+    "side": "dismissed",
+    "drawn": "random",
+    "first": "cannot-tell",
+    "final": "cannot-tell",
+    "outcome": "held"
+   },
+   {
+    "stratum": "Programme direction, handoffs and onboarding",
+    "index": 33,
+    "side": "confirmed",
+    "drawn": "random",
+    "first": "superseded-by-later",
+    "final": "superseded-by-later",
+    "outcome": "held"
+   },
+   {
+    "stratum": "Programme direction, handoffs and onboarding",
+    "index": 38,
+    "side": "dismissed",
+    "drawn": "random",
+    "first": "cannot-tell",
+    "final": "cannot-tell",
+    "outcome": "held"
+   },
+   {
+    "stratum": "Programme direction, handoffs and onboarding",
+    "index": 59,
+    "side": "dismissed",
+    "drawn": "random",
+    "first": "refuted",
+    "final": "refuted",
+    "outcome": "held"
+   },
+   {
+    "stratum": "Programme direction, handoffs and onboarding",
+    "index": 79,
+    "side": "dismissed",
+    "drawn": "random",
+    "first": "refuted",
+    "final": "refuted",
+    "outcome": "held"
+   },
+   {
+    "stratum": "Renders, physics and the sim-to-real gap",
+    "index": 5,
+    "side": "confirmed",
+    "drawn": "random",
+    "first": "confirmed",
+    "final": "confirmed",
+    "outcome": "held"
+   },
+   {
+    "stratum": "Renders, physics and the sim-to-real gap",
+    "index": 41,
+    "side": "confirmed",
+    "drawn": "random",
+    "first": "confirmed",
+    "final": "confirmed",
+    "outcome": "held"
+   },
+   {
+    "stratum": "Renders, physics and the sim-to-real gap",
+    "index": 52,
+    "side": "dismissed",
+    "drawn": "random",
+    "first": "refuted",
+    "final": "refuted",
+    "outcome": "held"
+   },
+   {
+    "stratum": "Symphony's origins: cswap, the primitives and the two Claude surfaces",
+    "index": 9,
+    "side": "confirmed",
+    "drawn": "random",
+    "first": "confirmed",
+    "final": "confirmed",
+    "outcome": "held"
+   },
+   {
+    "stratum": "Symphony's origins: cswap, the primitives and the two Claude surfaces",
+    "index": 13,
+    "side": "confirmed",
+    "drawn": "random",
+    "first": "confirmed",
+    "final": "confirmed",
+    "outcome": "held"
+   },
+   {
+    "stratum": "Symphony's origins: cswap, the primitives and the two Claude surfaces",
+    "index": 33,
+    "side": "dismissed",
+    "drawn": "random",
+    "first": "refuted",
+    "final": "refuted",
+    "outcome": "held"
+   },
+   {
+    "stratum": "Symphony: the protocol, its evidence and its place",
+    "index": 7,
+    "side": "confirmed",
+    "drawn": "random",
+    "first": "superseded-by-later",
+    "final": "superseded-by-later",
+    "outcome": "held"
+   },
+   {
+    "stratum": "Symphony: the protocol, its evidence and its place",
+    "index": 41,
+    "side": "confirmed",
+    "drawn": "random",
+    "first": "confirmed",
+    "final": "confirmed",
+    "outcome": "held"
+   },
+   {
+    "stratum": "Symphony: the protocol, its evidence and its place",
+    "index": 53,
+    "side": "dismissed",
+    "drawn": "random",
+    "first": "refuted",
+    "final": "refuted",
+    "outcome": "held"
+   },
+   {
+    "stratum": "The case for the OR study: proposal, seed grant and IRB protocols",
+    "index": 24,
+    "side": "confirmed",
+    "drawn": "random",
+    "first": "confirmed",
+    "final": "confirmed",
+    "outcome": "held"
+   },
+   {
+    "stratum": "The case for the OR study: proposal, seed grant and IRB protocols",
+    "index": 37,
+    "side": "dismissed",
+    "drawn": "random",
+    "first": "refuted",
+    "final": "confirmed",
+    "outcome": "verdict overturned"
+   },
+   {
+    "stratum": "The case for the OR study: proposal, seed grant and IRB protocols",
+    "index": 52,
+    "side": "confirmed",
+    "drawn": "random",
+    "first": "confirmed",
+    "final": "confirmed",
+    "outcome": "held"
+   },
+   {
+    "stratum": "The case for the OR study: proposal, seed grant and IRB protocols",
+    "index": 56,
+    "side": "dismissed",
+    "drawn": "random",
+    "first": "cannot-tell",
+    "final": "cannot-tell",
+    "outcome": "held"
+   },
+   {
+    "stratum": "Transitional vertebrae and border variants",
+    "index": 6,
+    "side": "confirmed",
+    "drawn": "random",
+    "first": "confirmed",
+    "final": "superseded-by-later",
+    "outcome": "verdict overturned"
+   },
+   {
+    "stratum": "Transitional vertebrae and border variants",
+    "index": 14,
+    "side": "confirmed",
+    "drawn": "random",
+    "first": "superseded-by-later",
+    "final": "superseded-by-later",
+    "outcome": "held"
+   },
+   {
+    "stratum": "Transitional vertebrae and border variants",
+    "index": 20,
+    "side": "dismissed",
+    "drawn": "unplaced quote",
+    "first": "refuted",
+    "final": "refuted",
+    "outcome": "held"
+   },
+   {
+    "stratum": "Transitional vertebrae and border variants",
+    "index": 22,
+    "side": "dismissed",
+    "drawn": "random",
+    "first": "refuted",
+    "final": "refuted",
+    "outcome": "held"
+   },
+   {
+    "stratum": "Verification benches, overnight audits and OR readiness",
+    "index": 29,
+    "side": "confirmed",
+    "drawn": "random",
+    "first": "superseded-by-later",
+    "final": "superseded-by-later",
+    "outcome": "held"
+   },
+   {
+    "stratum": "Verification benches, overnight audits and OR readiness",
+    "index": 30,
+    "side": "confirmed",
+    "drawn": "random",
+    "first": "superseded-by-later",
+    "final": "superseded-by-later",
+    "outcome": "held"
+   },
+   {
+    "stratum": "Verification benches, overnight audits and OR readiness",
+    "index": 37,
+    "side": "confirmed",
+    "drawn": "unplaced quote",
+    "first": "confirmed",
+    "final": "refuted",
+    "outcome": "verdict overturned"
+   },
+   {
+    "stratum": "Verification benches, overnight audits and OR readiness",
+    "index": 61,
+    "side": "dismissed",
+    "drawn": "random",
+    "first": "refuted",
+    "final": "refuted",
+    "outcome": "held"
+   },
+   {
+    "stratum": "Verification benches, overnight audits and OR readiness",
+    "index": 88,
+    "side": "dismissed",
+    "drawn": "unplaced quote",
+    "first": "cannot-tell",
+    "final": "confirmed",
+    "outcome": "verdict overturned"
+   }
+  ]
+ }
 }

@@ -544,7 +544,7 @@
       "quote_a": "not in the repository since 2026-10-13: they live on the grid under /rs/rs_grp_oschome/shared/spine-program/archive/",
       "artifact_b": "SchwingNet/connect-the-grid-to-github",
       "statement_b": "The repository's links point at that archive, which the owner fills once with a script; until then the links point at nothing.",
-      "quote_b": "are links to `/rs/rs_grp_oschome/shared/spine-program/archive/`, which Greg fills once with a script; until he has, those links point at nothing",
+      "quote_b": "are links to `/rs/rs_grp_oschome/shared/spine-program/archive/`, which [the owner] fills once with a script; until he has, those links point at nothing",
       "why_it_matters": "A student sent to the archive by the onboarding finds nothing until the owner's script runs; the onboarding states as done what the next day's note calls pending."
      },
      {
@@ -687,7 +687,7 @@
       "quote_a": "disclosure submitted 2026-09-25; provisional filing not recorded",
       "artifact_b": "SchwingNet/schwingnet-grid-pipeline",
       "statement_b": "Provisional filed on Friday 30 October, the owner's; any-view marks itself patent material before the provisional.",
-      "quote_b": "Fri 30 Oct Provisional filed. greg's",
+      "quote_b": "Fri 30 Oct Provisional filed. [the owner]'s",
       "why_it_matters": "Everything confidential waits on the filing; the date is a plan, not a record, and the demo cannot be shown until it is recorded as done."
      },
      {
@@ -728,7 +728,7 @@
       "topic": "One press remaining in Beethoven",
       "artifact_a": "SchwingNet/schwingnet-grid-pipeline",
       "statement_a": "One press by the owner remains: Connect GitHub Actions in Beethoven, once beethoven-extension #23 reaches him.",
-      "quote_a": "One press by greg remains: Connect GitHub Actions in Beethoven, once beethoven-extension #23 reaches him.",
+      "quote_a": "One press by [the owner] remains: Connect GitHub Actions in Beethoven, once beethoven-extension #23 reaches him.",
       "artifact_b": "symphony-template/grid-and-cloud-claude-workers-review",
       "statement_b": "Nothing has started a second worker yet.",
       "quote_b": "Nothing has started a second worker yet",
@@ -893,7 +893,7 @@
       "topic": "The laptop cannot keep several Claude desktops signed in",
       "artifact_a": "symphony-template/several-grid-workers-one-per-project",
       "statement_a": "Stated as the owner's reason for one worker per project.",
-      "quote_a": "greg, 2026-10-21 20:06 UTC: switch between and update projects using several Claude workers on the grid",
+      "quote_a": "[the owner], 2026-10-21 20:06 UTC: switch between and update projects using several Claude workers on the grid",
       "artifact_b": "symphony-template/grid-and-cloud-claude-workers-review",
       "statement_b": "Several workers on one account share its five-hour window and stall together.",
       "quote_b": "Several workers on one account share its five-hour window and stall together",
@@ -1275,7 +1275,7 @@
       "topic": "beethoven-qa's latest tag and main version",
       "artifact_a": "SchwingNet/how-the-beethoven-repositories-are-encapsulated-6h4zq9",
       "statement_a": "beethoven-qa v2.0.0 tagged at its merge commit on 2026-10-07; a session may not create tags.",
-      "quote_a": "Done: [beethoven-qa #4](https://github.com/OpenSpineConsortium/beethoven-qa/pull/4) merged, and greg tagged `v2.0.0` at its merge commit (53d5ae5) on 2026-10-07. A session may not create tags.",
+      "quote_a": "Done: [beethoven-qa #4](https://github.com/OpenSpineConsortium/beethoven-qa/pull/4) merged, and [the owner] tagged `v2.0.0` at its merge commit (53d5ae5) on 2026-10-07. A session may not create tags.",
       "artifact_b": "symphony-template/symphony-handoff",
       "statement_b": "main is at 5.0.0 but only v1.0.0 to v3.0.0 are tagged; beethoven-agents pins v3.0.0, which has no report command; v4.0.0 and v5.0.0 tags are asked of the owner.",
       "quote_b": "main is at 5.0.0, but only v1.0.0 to v3.0.0 are tagged. A consumer can pin only v3.0.0 or an untagged commit, and beethoven-agents runs v3.0.0, which has no report command.",
@@ -1300,7 +1300,7 @@
       "quote_a": "a task is claimed by pushing a branch named after its Linear issue (`claude/LIN-123`). Git accepts only the first push of a new branch, so two accounts cannot both claim one issue.",
       "artifact_b": "symphony-template/sdlc-build-plan-bjzikn",
       "statement_b": "On 2026-10-09 the owner chose GitHub Issues and the repository side first; Linear set aside.",
-      "quote_b": "On 2026-10-09 greg chose GitHub Issues and asked for the repository side first, as a GitHub template repository built from the bottom up with no export or import in its first layer",
+      "quote_b": "On 2026-10-09 [the owner] chose GitHub Issues and asked for the repository side first, as a GitHub template repository built from the bottom up with no export or import in its first layer",
       "why_it_matters": "The shared plan carries the first-push lock idea that survived, but its queue, coordinator, routine caps (30 and 100 fires an hour) and hourly schedule describe a design replaced within days; PROTOCOL.md now puts the coordinator in the board's own run."
      },
      {
@@ -1701,7 +1701,7 @@
       "quote_a": "Linear holds the work queue and the conversation about each task.",
       "artifact_b": "symphony-template/sdlc-build-plan-bjzikn",
       "statement_b": "On 2026-10-09 the owner chose GitHub Issues as the queue and deferred Linear; every later artifact (the ladder, the brief, the taxonomy, the onboarding) has issues as the queue and claude/N as the branch.",
-      "quote_b": "On 2026-10-09 greg chose GitHub Issues and asked for the repository side first, as a GitHub template repository built from the bottom up with no export or import in its first layer (the sdlc-template work in the same thread); Linear and the materializer come later.",
+      "quote_b": "On 2026-10-09 [the owner] chose GitHub Issues and asked for the repository side first, as a GitHub template repository built from the bottom up with no export or import in its first layer (the sdlc-template work in the same thread); Linear and the materializer come later.",
       "why_it_matters": "A planner reading only the 2026-10-08 plan would set up a Linear team, a Claimed state and LIN-numbered branches; Symphony's claim lock, board and release all read GitHub issue numbers, and the Linear connector was never wired."
      },
      {
@@ -1833,7 +1833,7 @@
       "quote_a": "Projects cannot be shared across accounts, which is why the repository is the plane.",
       "artifact_b": "SchwingNet/spine-program-student-onboarding",
       "statement_b": "Told to the student as fact with no source; the primitives spec attributes it to 'document 25', and only the plan of 2026-10-08 quotes the Claude Code documentation page.",
-      "quote_b": "A Project belongs to one account and cannot be shared, so you and Greg each have your own; the repository is the one thing you share",
+      "quote_b": "A Project belongs to one account and cannot be shared, so you and [the owner] each have your own; the repository is the one thing you share",
       "why_it_matters": "The whole architecture rests on this one product fact; it is sourced once (the plan, 2026-10-08, Pro and Max beta) and repeated as established everywhere else, so if sharing arrives on Team or Enterprise nothing in the later artifacts would flag it."
      },
      {
@@ -2020,7 +2020,7 @@
       "quote_a": "The release workflow talks to the store with five values, kept as repository secrets in claude-swap-cloud.",
       "artifact_b": "symphony-template/symphony-handoff",
       "statement_b": "By 2026-10-13 the extension is 'Symphony for Chrome' with its secrets at symphony-extension's settings, releases go through the shared chrome-store-release-kit, and claude-swap-cloud is to delete its own copy of the kit.",
-      "quote_b": "Submit Symphony for Chrome (https://chrome.google.com/webstore/devconsole), then set the five CWS_ secrets and CWS_ON_PUSH at https://github.com/OpenSpineConsortium/symphony-extension/settings/secrets/actions.",
+      "quote_b": "Submit Symphony for Chrome (https://chrome.google.com/webstore/devconsole), then set the five CWS_ secrets and CWS_ON_PUSH at [a repository's Actions secrets page].",
       "why_it_matters": "Following the 2026-10-08 runbook's steps 7 and 8 would put the secrets in the wrong repository and run a script the handoff says is being removed."
      },
      {
@@ -2130,7 +2130,7 @@
       "quote_a": "release claims with no commit for 24 hours; flag two PRs touching the same files; rewrite `STATE.md`; tidy `docs/memory/`",
       "artifact_b": "symphony-template/sdlc-build-plan-bjzikn",
       "statement_b": "The build plan attributes to the same plan a rule that the board Action comments once on a pull request idle for a day, with no release.",
-      "quote_b": "comments once on a pull request idle for a day, the rule in greg's plan of 2026-10-08. No model call in it.",
+      "quote_b": "comments once on a pull request idle for a day, the rule in [the owner]'s plan of 2026-10-08. No model call in it.",
       "why_it_matters": "Commenting leaves the issue held; releasing frees it; later Symphony does both (release after 24 hours, 'main moved' comments), but the build plan's board alone would never free a dead claim."
      },
      {
@@ -2308,7 +2308,7 @@
       "topic": "Whether harvesters and orchestrators may run on, or fetch from, the grid login node",
       "artifact_a": "SchwingNet/fluorocap-access-setup-jlvkft",
       "statement_a": "The access setup (2026-09-14) plans to run the closed-journal refetch from the grid login node because the grid sits in the university's address space, and the FluoroCap map (same day) has 'login-node orchestrators' polling for files and job names.",
-      "quote_a": "The grid is inside the university's address space (141.217.x.x) and publishers authenticate by IP. I will run the closed-journal refetch from the grid login node with a browser-impersonating client before asking you for anything.",
+      "quote_a": "The grid is inside the university's address space ([the university's network range]) and publishers authenticate by IP. I will run the closed-journal refetch from the grid login node with a browser-impersonating client before asking you for anything.",
       "artifact_b": "SchwingNet/the-lab-recipe-1t2gvp",
       "statement_b": "The lab recipe (2026-09-27), citing the 2026-09-21 incident of smoke tests on a node shared by ~95 users, makes downloads jobs and restricts the login node to sbatch, squeue, scancel, ls, tail and git; the roadmap and hpcworker forbid any polling loop on the login node.",
       "quote_b": "The login node runs only `sbatch`, `squeue`, `scancel`, `ls`, `tail`, `git`. Downloads are jobs too; compute nodes have internet.",
@@ -2322,7 +2322,7 @@
       "quote_a": "every network route, GitHub and Hugging Face pushes, the sync | | the grid's outbound IP is captcha-throttled by PMC; WSL is not",
       "artifact_b": "SchwingNet/fluorocap-access-setup-jlvkft",
       "statement_b": "The access setup (same day) ranks 'try the campus IP first, it costs nothing' and plans the closed-journal refetch from the grid because publishers authenticate by IP.",
-      "quote_b": "Try the campus IP first, it costs nothing The grid is inside the university's address space (141.217.x.x) and publishers authenticate by IP.",
+      "quote_b": "Try the campus IP first, it costs nothing The grid is inside the university's address space ([the university's network range]) and publishers authenticate by IP.",
       "why_it_matters": "Two pages of the same day give opposite advice on the grid as a network host; a planner choosing where a fetch chain runs (the SchwingNet X-ray and CT fetches are grid jobs) needs to know whether the grid's address is an asset (IP-authenticated access) or a liability (throttled, and a whole institution's range can be blocked)."
      },
      {

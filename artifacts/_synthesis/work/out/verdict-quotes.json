@@ -1,38 +1,18 @@
 {
  "tally": {
-  "absent/own": 3,
-  "own/absent": 1,
-  "own/empty": 20,
-  "own/own": 921
+  "own/elsewhere (one artifact)": 1,
+  "own/empty (one artifact)": 12,
+  "own/empty (two artifacts)": 8,
+  "own/own (one artifact)": 47,
+  "own/own (two artifacts)": 892
  },
  "listed": [
   {
-   "cluster": "Level naming and counting",
-   "index": 80,
-   "verdict": "confirmed",
-   "quote_a": "absent",
-   "quote_b": "own"
-  },
-  {
-   "cluster": "Transitional vertebrae and border variants",
-   "index": 20,
-   "verdict": "refuted",
-   "quote_a": "absent",
-   "quote_b": "own"
-  },
-  {
-   "cluster": "Verification benches, overnight audits and OR readiness",
-   "index": 37,
-   "verdict": "confirmed",
-   "quote_a": "own",
-   "quote_b": "absent"
-  },
-  {
    "cluster": "Verification benches, overnight audits and OR readiness",
    "index": 88,
-   "verdict": "cannot-tell",
-   "quote_a": "absent",
-   "quote_b": "own"
+   "verdict": "confirmed",
+   "quote_a": "own",
+   "quote_b": "elsewhere:SchwingNet/naming-vertebrae-without-an-anchor-3dfzmh"
   }
  ]
 }

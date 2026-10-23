@@ -1,0 +1,2266 @@
+{
+ "candidates": [
+  {
+   "index": 0,
+   "kind": "contradiction",
+   "quantity": "sacrum recall on real DeepFluoro frames, detector trained on renders of DeepFluoro's own CTs",
+   "a": {
+    "id": "SchwingNet/aidas-seed-grant-proposal",
+    "title": "AIDaS Seed Grant Proposal",
+    "date": "2026-10",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/aidas-seed-grant-proposal.txt",
+    "folder": "/home/claude/schwingnet/artifacts/aidas-seed-grant-proposal"
+   },
+   "value_a": "96\u201398%",
+   "quote_a": "A detector trained only on calibrated renders of DeepFluoro's own CTs finds the sacrum on about 96\u201398% of real frames (leave-one-specimen-out).",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/counting-levels-under-fluoroscopy",
+    "title": "Counting Levels Under Fluoroscopy",
+    "date": "2026-09",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/counting-levels-under-fluoroscopy.txt",
+    "folder": "/home/claude/schwingnet/artifacts/counting-levels-under-fluoroscopy"
+   },
+   "value_b": "90\u201397%",
+   "quote_b": "A detector trained on renders of DeepFluoro's own CTs finds the sacrum on 90\u201397% of the real frames, six specimens held out in turn.",
+   "quote_b_found": "whole",
+   "why": "Same population-matched arm, same leave-one-out design; the retrospective protocol repeats 96\u201398."
+  },
+  {
+   "index": 1,
+   "kind": "updated-later",
+   "quantity": "share of a real DeepFluoro frame's variance explained by the physics renderer alone",
+   "a": {
+    "id": "SchwingNet/aidas-seed-grant-proposal",
+    "title": "AIDaS Seed Grant Proposal",
+    "date": "2026-10",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/aidas-seed-grant-proposal.txt",
+    "folder": "/home/claude/schwingnet/artifacts/aidas-seed-grant-proposal"
+   },
+   "value_a": "80.9%",
+   "quote_a": "our renderer explains 80.9% of a real frame's variance",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/counting-levels-under-fluoroscopy",
+    "title": "Counting Levels Under Fluoroscopy",
+    "date": "2026-09",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/counting-levels-under-fluoroscopy.txt",
+    "folder": "/home/claude/schwingnet/artifacts/counting-levels-under-fluoroscopy"
+   },
+   "value_b": "86% (not 80)",
+   "quote_b": "read correctly, physics alone explains 86% of a real frame rather than 80%, and the calibrated renderer about 90% of a held-out one.",
+   "quote_b_found": "whole",
+   "why": "Counting-levels says the earlier 80.9/81% came from misreading the log-compressed frames; retrospective protocol, ninety-three-pixels and counting-levels (81%) still carry the old figure."
+  },
+  {
+   "index": 2,
+   "kind": "contradiction",
+   "quantity": "number of real DeepFluoro C-arm frames",
+   "a": {
+    "id": "SchwingNet/aidas-seed-grant-proposal",
+    "title": "AIDaS Seed Grant Proposal",
+    "date": "2026-10",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/aidas-seed-grant-proposal.txt",
+    "folder": "/home/claude/schwingnet/artifacts/aidas-seed-grant-proposal"
+   },
+   "value_a": "366",
+   "quote_a": "On DeepFluoro (366 real C-arm frames of six cadaveric pelves on one Siemens Cios Fusion, with CT and exact pose)",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/ninety-three-pixels",
+    "title": "Ninety-Three Pixels",
+    "date": "2026-09-21",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/ninety-three-pixels.txt",
+    "folder": "/home/claude/schwingnet/artifacts/ninety-three-pixels"
+   },
+   "value_b": "365",
+   "quote_b": "finds the sacrum on 76.9% of 365 real frames pooled over all six specimens (by specimen 47.8\u201396.2%)",
+   "quote_b_found": "whole",
+   "why": "366 appears in many artifacts (ledger, registry, lift, any-view, reality-check); ninety-three-pixels pools 365 frames over all six specimens."
+  },
+  {
+   "index": 3,
+   "kind": "contradiction",
+   "quantity": "zero-shot lateral exact-level accuracy on C-ArmLSpine (no C-ArmLSpine data in training)",
+   "a": {
+    "id": "SchwingNet/counting-from-the-sacrum",
+    "title": "Counting From The Sacrum",
+    "date": "2026-09-22",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/counting-from-the-sacrum.txt",
+    "folder": "/home/claude/schwingnet/artifacts/counting-from-the-sacrum"
+   },
+   "value_a": "96.27%",
+   "quote_a": "| Zero-shot , lateral no C-ArmLSpine data in training at all | | 96.27% | | \u2014 |",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/any-view-spine-plan",
+    "title": "Any-View Spine Plan",
+    "date": "2026-10-21",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/any-view-spine-plan.txt",
+    "folder": "/home/claude/schwingnet/artifacts/any-view-spine-plan"
+   },
+   "value_b": "96.4% (595/617)",
+   "quote_b": "Naming, lateral, encoder that saw the device only through renders | 96.4% (595/617)",
+   "quote_b_found": "whole",
+   "why": "96.27% of 617 is 594 vertebrae; any-view counts 595/617 = 96.4%; one vertebra apart. The ledger's 96.3% rounds either way."
+  },
+  {
+   "index": 4,
+   "kind": "contradiction",
+   "quantity": "zero-shot AP exact-level accuracy on C-ArmLSpine",
+   "a": {
+    "id": "SchwingNet/counting-from-the-sacrum",
+    "title": "Counting From The Sacrum",
+    "date": "2026-09-22",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/counting-from-the-sacrum.txt",
+    "folder": "/home/claude/schwingnet/artifacts/counting-from-the-sacrum"
+   },
+   "value_a": "37.88%",
+   "quote_a": "| Zero-shot, AP | | 37.88% | | \u2014 |",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/any-view-spine-plan",
+    "title": "Any-View Spine Plan",
+    "date": "2026-10-21",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/any-view-spine-plan.txt",
+    "folder": "/home/claude/schwingnet/artifacts/any-view-spine-plan"
+   },
+   "value_b": "43.7%",
+   "quote_b": "Naming, AP, zero-shot | 43.7% | A one-level cranial shift",
+   "quote_b_found": "whole",
+   "why": "Same zero-shot AP quantity with the same one-level cranial shift explanation; the ledger also gives 37.9; any-view gives 43.7."
+  },
+  {
+   "index": 5,
+   "kind": "contradiction",
+   "quantity": "exact-level naming accuracy on C-ArmLSpine lateral frames for the model fine-tuned on the device",
+   "a": {
+    "id": "SchwingNet/or-readiness-ledger",
+    "title": "OR Readiness Ledger",
+    "date": "2026-09-22",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/or-readiness-ledger.txt",
+    "folder": "/home/claude/schwingnet/artifacts/or-readiness-ledger"
+   },
+   "value_a": "98.2%",
+   "quote_a": "98.2% exact level on whole C-ArmLSpine lateral frames, five-fold CV over 148 cases [95.7\u2013100]",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/any-view-spine-plan",
+    "title": "Any-View Spine Plan",
+    "date": "2026-10-21",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/any-view-spine-plan.txt",
+    "folder": "/home/claude/schwingnet/artifacts/any-view-spine-plan"
+   },
+   "value_b": "97.4%",
+   "quote_b": "It is within a point of the 97.4% fine-tuned on the device.",
+   "quote_b_found": "whole",
+   "why": "Both describe the device-fine-tuned lateral figure; 98.2 (also 98.22 in counting-from-the-sacrum) versus 97.4; no scope difference is stated."
+  },
+  {
+   "index": 6,
+   "kind": "contradiction",
+   "quantity": "T12 versus L1 vertebrae used for the AUC 0.990 shape test",
+   "a": {
+    "id": "SchwingNet/counting-against-two-anchors-qkktgu",
+    "title": "Counting Against Two Anchors",
+    "date": "undated",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/counting-against-two-anchors-qkktgu.txt",
+    "folder": "/home/claude/schwingnet/artifacts/counting-against-two-anchors-qkktgu"
+   },
+   "value_a": "1485 vertebrae",
+   "quote_a": "T12 separates from L1 at AUC 0.990 and 97.3% accuracy over 1485 vertebrae, using shape alone with each patient's own size divided out.",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/research-directions-from-the-data-holding-kcyckb",
+    "title": "Research directions from the data holding",
+    "date": "2026-10-08",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/research-directions-from-the-data-holding-kcyckb.txt",
+    "folder": "/home/claude/schwingnet/artifacts/research-directions-from-the-data-holding-kcyckb"
+   },
+   "value_b": "1,486 from 798 cases",
+   "quote_b": "1,486 T12 and L1 vertebrae from 798 cases, AUC interval about plus or minus 0.006, so a 0.02 difference is decidable",
+   "quote_b_found": "whole",
+   "why": "Same test, one vertebra apart."
+  },
+  {
+   "index": 7,
+   "kind": "contradiction",
+   "quantity": "number of T12 and L1 vertebrae in the T12-versus-L1 shape analysis",
+   "a": {
+    "id": "SchwingNet/counting-against-two-anchors-qkktgu",
+    "title": "Counting Against Two Anchors",
+    "date": "undated",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/counting-against-two-anchors-qkktgu.txt",
+    "folder": "/home/claude/schwingnet/artifacts/counting-against-two-anchors-qkktgu"
+   },
+   "value_a": "1485",
+   "quote_a": "T12 separates from L1 at AUC 0.990 and 97.3% accuracy over 1485 vertebrae, using shape alone with each patient's own size divided out.",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/research-directions-from-the-data-holding-kcyckb",
+    "title": "Research directions from the data holding",
+    "date": "2026-10-08",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/research-directions-from-the-data-holding-kcyckb.txt",
+    "folder": "/home/claude/schwingnet/artifacts/research-directions-from-the-data-holding-kcyckb"
+   },
+   "value_b": "1,486 from 798 cases",
+   "quote_b": "1,486 T12 and L1 vertebrae from 798 cases, AUC interval about plus or minus 0.006, so a 0.02 difference is decidable",
+   "quote_b_found": "whole",
+   "why": "One vertebra apart for the same analysis set."
+  },
+  {
+   "index": 8,
+   "kind": "contradiction",
+   "quantity": "exact-level naming with one vertebra in the lateral C-arm field",
+   "a": {
+    "id": "SchwingNet/counting-from-the-sacrum",
+    "title": "Counting From The Sacrum",
+    "date": "2026-09-22",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/counting-from-the-sacrum.txt",
+    "folder": "/home/claude/schwingnet/artifacts/counting-from-the-sacrum"
+   },
+   "value_a": "72.85%",
+   "quote_a": "| Lateral, one vertebra in the field | | 72.85% | | 90.23% |",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/handoff-schwingnet-ctspinopelvic1k-and-the-imaging-programme-rbcdmf",
+    "title": "Handoff: SchwingNet, CTSpinoPelvic1K and the imaging programme",
+    "date": "2026-10-08",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/handoff-schwingnet-ctspinopelvic1k-and-the-imaging-programme-rbcdmf.txt",
+    "folder": "/home/claude/schwingnet/artifacts/handoff-schwingnet-ctspinopelvic1k-and-the-imaging-programme-rbcdmf"
+   },
+   "value_b": "74.8%",
+   "quote_b": "97.4 % of bodies named on a whole lateral frame and 74.8 % with one body in view",
+   "quote_b_found": "whole",
+   "why": "Ledger gives 72.8, counting-from-the-sacrum 72.85, research-directions and the handoff 74.8 for the one-body lateral case."
+  },
+  {
+   "index": 9,
+   "kind": "contradiction",
+   "quantity": "best published registration-free vertebra naming accuracy",
+   "a": {
+    "id": "SchwingNet/counting-from-the-sacrum",
+    "title": "Counting From The Sacrum",
+    "date": "2026-09-22",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/counting-from-the-sacrum.txt",
+    "folder": "/home/claude/schwingnet/artifacts/counting-from-the-sacrum"
+   },
+   "value_a": "73.3%",
+   "quote_a": "The best published registration-free naming is 73.3%, and it imports identity from a preoperative radiograph.",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/naming-vertebrae-without-ct-hjy4vc",
+    "title": "Naming Vertebrae Without CT",
+    "date": "2026-09-18",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/naming-vertebrae-without-ct-hjy4vc.txt",
+    "folder": "/home/claude/schwingnet/artifacts/naming-vertebrae-without-ct-hjy4vc"
+   },
+   "value_b": "88.3%",
+   "quote_b": "Published registration-free network, cadaveric long films no correct level named 88.3%",
+   "quote_b_found": "whole",
+   "why": "Both name 'the' published registration-free comparator; possibly two different papers, but the rows do not say so."
+  },
+  {
+   "index": 10,
+   "kind": "contradiction",
+   "quantity": "per-body recall on real film of the same architecture trained on renders only",
+   "a": {
+    "id": "SchwingNet/counting-levels-under-fluoroscopy",
+    "title": "Counting Levels Under Fluoroscopy",
+    "date": "2026-09",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/counting-levels-under-fluoroscopy.txt",
+    "folder": "/home/claude/schwingnet/artifacts/counting-levels-under-fluoroscopy"
+   },
+   "value_a": "71.67%",
+   "quote_a": "71.67% for the same architecture trained on renders only.",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/ninety-three-pixels",
+    "title": "Ninety-Three Pixels",
+    "date": "2026-09-21",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/ninety-three-pixels.txt",
+    "folder": "/home/claude/schwingnet/artifacts/ninety-three-pixels"
+   },
+   "value_b": "0.740",
+   "quote_b": "the render-trained detector itself, at 0.740 recall against the film detector's 0.991",
+   "quote_b_found": "whole",
+   "why": "Both compare a render-trained detector to the 99.1 film detector; 71.67 (also counting-from-the-sacrum 71.7, retrospective 71.67) versus 74.0."
+  },
+  {
+   "index": 11,
+   "kind": "contradiction",
+   "quantity": "per-body recall on real film of the detector trained on renders only",
+   "a": {
+    "id": "SchwingNet/counting-levels-under-fluoroscopy",
+    "title": "Counting Levels Under Fluoroscopy",
+    "date": "2026-09",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/counting-levels-under-fluoroscopy.txt",
+    "folder": "/home/claude/schwingnet/artifacts/counting-levels-under-fluoroscopy"
+   },
+   "value_a": "71.67%",
+   "quote_a": "71.67% for the same architecture trained on renders only.",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/ninety-three-pixels",
+    "title": "Ninety-Three Pixels",
+    "date": "2026-09-21",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/ninety-three-pixels.txt",
+    "folder": "/home/claude/schwingnet/artifacts/ninety-three-pixels"
+   },
+   "value_b": "0.740",
+   "quote_b": "the render-trained detector itself, at 0.740 recall against the film detector's 0.991",
+   "quote_b_found": "whole",
+   "why": "Both are the render-trained detector scored on real film; 71.67 versus 74.0; the threshold or test set is not stated in either row."
+  },
+  {
+   "index": 12,
+   "kind": "contradiction",
+   "quantity": "VerSeFusion cases carrying an L6 or T13",
+   "a": {
+    "id": "SchwingNet/fluorocap-corpus-audit-9hjzzs",
+    "title": "FluoroCap Corpus Audit",
+    "date": "2026-09-14",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluorocap-corpus-audit-9hjzzs.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluorocap-corpus-audit-9hjzzs"
+   },
+   "value_a": "55",
+   "quote_a": "55 VerSeFusion cases carry an L6 or a T13",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/fluorocap-overnight-report-xnhgdo",
+    "title": "FluoroCap Overnight Report",
+    "date": "2026-09-15",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluorocap-overnight-report-xnhgdo.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluorocap-overnight-report-xnhgdo"
+   },
+   "value_b": "56 (50 with an L6, 6 with a T13)",
+   "quote_b": "The v2 bank oversamples the 56 VerSeFusion (50 with an L6, 6 with a T13) and 34 CTSpinoPelvic1K cases carrying an L6 or a Castellvi variant",
+   "quote_b_found": "whole",
+   "why": "Reality check also uses 56 VerSe L6 cases; one case difference."
+  },
+  {
+   "index": 13,
+   "kind": "updated-later",
+   "quantity": "FluoroCap panel images on disk",
+   "a": {
+    "id": "SchwingNet/fluorocap-corpus-audit-9hjzzs",
+    "title": "FluoroCap Corpus Audit",
+    "date": "2026-09-14",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluorocap-corpus-audit-9hjzzs.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluorocap-corpus-audit-9hjzzs"
+   },
+   "value_a": "11,349",
+   "quote_a": "11,349 panel images on disk",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/fluorocap-overnight-report-xnhgdo",
+    "title": "FluoroCap Overnight Report",
+    "date": "2026-09-15",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluorocap-overnight-report-xnhgdo.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluorocap-overnight-report-xnhgdo"
+   },
+   "value_b": "19,048",
+   "quote_b": "Images on disk went from 11,349 to 19,048: 17,755 figure panels (10,870 before the 1,167 round-one figures were re-split), 927 video panels and 366 medium-confi",
+   "quote_b_found": "whole",
+   "why": "The overnight report states the move from 11,349 to 19,048."
+  },
+  {
+   "index": 14,
+   "kind": "updated-later",
+   "quantity": "number of FluoroCap journal figure panels",
+   "a": {
+    "id": "SchwingNet/fluorocap-corpus-audit-9hjzzs",
+    "title": "FluoroCap Corpus Audit",
+    "date": "2026-09-14",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluorocap-corpus-audit-9hjzzs.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluorocap-corpus-audit-9hjzzs"
+   },
+   "value_a": "10,870",
+   "quote_a": "journal figure panels | | 10,870",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/fluorocap-overnight-report-xnhgdo",
+    "title": "FluoroCap Overnight Report",
+    "date": "2026-09-15",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluorocap-overnight-report-xnhgdo.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluorocap-overnight-report-xnhgdo"
+   },
+   "value_b": "17,755",
+   "quote_b": "17,755 figure panels (10,870 before the 1,167 round-one figures were re-split), 927 video panels and 366 medium-confidence video panels",
+   "quote_b_found": "whole",
+   "why": "The overnight report says 10,870 was the count before the round-one figures were re-split."
+  },
+  {
+   "index": 15,
+   "kind": "updated-later",
+   "quantity": "median FluoroCap panel short side",
+   "a": {
+    "id": "SchwingNet/fluorocap-corpus-audit-9hjzzs",
+    "title": "FluoroCap Corpus Audit",
+    "date": "2026-09-14",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluorocap-corpus-audit-9hjzzs.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluorocap-corpus-audit-9hjzzs"
+   },
+   "value_a": "231 px",
+   "quote_a": "Short side (px) | | 128 | | 181 | | 231 | | 328 | | 600",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/fluorocap-overnight-report-xnhgdo",
+    "title": "FluoroCap Overnight Report",
+    "date": "2026-09-15",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluorocap-overnight-report-xnhgdo.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluorocap-overnight-report-xnhgdo"
+   },
+   "value_b": "320 px",
+   "quote_b": "median panel short side after round one, up from 231; panels at or above 512 px went from 7.9% to 23.4%",
+   "quote_b_found": "whole",
+   "why": "The overnight report states the change after round one."
+  },
+  {
+   "index": 16,
+   "kind": "updated-later",
+   "quantity": "share of FluoroCap panels at or above 512 px",
+   "a": {
+    "id": "SchwingNet/fluorocap-corpus-audit-9hjzzs",
+    "title": "FluoroCap Corpus Audit",
+    "date": "2026-09-14",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluorocap-corpus-audit-9hjzzs.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluorocap-corpus-audit-9hjzzs"
+   },
+   "value_a": "7.9%",
+   "quote_a": "only 7.9% reach 512",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/fluorocap-overnight-report-xnhgdo",
+    "title": "FluoroCap Overnight Report",
+    "date": "2026-09-15",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluorocap-overnight-report-xnhgdo.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluorocap-overnight-report-xnhgdo"
+   },
+   "value_b": "23.4%",
+   "quote_b": "panels at or above 512 px went from 7.9% to 23.4%",
+   "quote_b_found": "whole",
+   "why": "Stated as a before/after of round one."
+  },
+  {
+   "index": 17,
+   "kind": "updated-later",
+   "quantity": "FluoroCap panel images on disk",
+   "a": {
+    "id": "SchwingNet/fluorocap-corpus-audit-9hjzzs",
+    "title": "FluoroCap Corpus Audit",
+    "date": "2026-09-14",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluorocap-corpus-audit-9hjzzs.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluorocap-corpus-audit-9hjzzs"
+   },
+   "value_a": "11,349",
+   "quote_a": "11,349 panel images on disk",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/fluorocap-reality-check-czudvb",
+    "title": "FluoroCap Reality Check",
+    "date": "2026-09-15",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluorocap-reality-check-czudvb.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluorocap-reality-check-czudvb"
+   },
+   "value_b": "19,581 (supersedes 19,048)",
+   "quote_b": "19,581 (18,119 figure panels, 1,096 video, 366 video-medium) | find on ~/FluoroCap; morning report's 19,048 superseded",
+   "quote_b_found": "whole",
+   "why": "Overnight report records 11,349 -> 19,048 (17,755 figure, 927 video, 366 medium); the reality check supersedes it; the atlas/registry later say 29,500."
+  },
+  {
+   "index": 18,
+   "kind": "updated-later",
+   "quantity": "FluoroCap panels decoded / with a vertebra box",
+   "a": {
+    "id": "SchwingNet/fluorocap-corpus-audit-9hjzzs",
+    "title": "FluoroCap Corpus Audit",
+    "date": "2026-09-14",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluorocap-corpus-audit-9hjzzs.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluorocap-corpus-audit-9hjzzs"
+   },
+   "value_a": "3,294 decoded, 2,528 with a box, 11,929 labels",
+   "quote_a": "3,294 panels decoded, 2,528 with a vertebra box",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/fluorocap-reality-check-czudvb",
+    "title": "FluoroCap Reality Check",
+    "date": "2026-09-15",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluorocap-reality-check-czudvb.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluorocap-reality-check-czudvb"
+   },
+   "value_b": "4,218 included panels, 14,072 boxes",
+   "quote_b": "median 49 px (p10 20, p90 128); lumbar 55 px (21-138); \u2248 0.55 mm/px at the median using the 30 mm in-house body height",
+   "quote_b_found": "whole",
+   "why": "Naming-without-anchor gives a third count, '2,385 converted upright, carrying 114 L6 and 78 T13 vertebrae'; the corpus kept growing."
+  },
+  {
+   "index": 19,
+   "kind": "updated-later",
+   "quantity": "L6 render examples in the CT render training distribution",
+   "a": {
+    "id": "SchwingNet/fluorocap-corpus-audit-9hjzzs",
+    "title": "FluoroCap Corpus Audit",
+    "date": "2026-09-14",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluorocap-corpus-audit-9hjzzs.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluorocap-corpus-audit-9hjzzs"
+   },
+   "value_a": "68 L6 across 1,175 rendered cases",
+   "quote_a": "Across 1,175 rendered cases the training distribution holds roughly 1,100 examples of each lumbar level against 68 L6 and 6 T13",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/fluorocap-reality-check-czudvb",
+    "title": "FluoroCap Reality Check",
+    "date": "2026-09-15",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluorocap-reality-check-czudvb.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluorocap-reality-check-czudvb"
+   },
+   "value_b": "802 crops from at most 90 distinct cases",
+   "quote_b": "L6 | 0 panels labelled; 0 real-film crops | 802 crops from at most 90 distinct cases (56 VerSe + 34 CTSP); 13 in val",
+   "quote_b_found": "whole",
+   "why": "Vertebrae versus crops over cases; the handoff's registry says 'registry L6 146 and T13 14'; the atlas synth_rare bank lists 'L6 1,763' cases; vertebral-levels '845 spines with a sixth lumbar vertebra'."
+  },
+  {
+   "index": 20,
+   "kind": "contradiction",
+   "quantity": "caption-held-out containment of the FluoroCap decoder",
+   "a": {
+    "id": "SchwingNet/fluorocap-corpus-audit-9hjzzs",
+    "title": "FluoroCap Corpus Audit",
+    "date": "2026-09-14",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluorocap-corpus-audit-9hjzzs.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluorocap-corpus-audit-9hjzzs"
+   },
+   "value_a": "56.8% (n = 389)",
+   "quote_a": "56.8% caption-held-out containment, n = 389",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/fluorocap-reality-check-czudvb",
+    "title": "FluoroCap Reality Check",
+    "date": "2026-09-15",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluorocap-reality-check-czudvb.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluorocap-reality-check-czudvb"
+   },
+   "value_b": "57.1% (380 panels), Jaccard 0.341",
+   "quote_b": "57.1% containment, Jaccard 0.341 | 380 \"caption-free\" panels | caption-derived | not a random hold-out",
+   "quote_b_found": "whole",
+   "why": "Same measurement with slightly different n and value; likely a re-run but neither says so."
+  },
+  {
+   "index": 21,
+   "kind": "contradiction",
+   "quantity": "accuracy of the level model alone on caption-held-out panels",
+   "a": {
+    "id": "SchwingNet/fluorocap-corpus-audit-9hjzzs",
+    "title": "FluoroCap Corpus Audit",
+    "date": "2026-09-14",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluorocap-corpus-audit-9hjzzs.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluorocap-corpus-audit-9hjzzs"
+   },
+   "value_a": "38.3% (n 175)",
+   "quote_a": "The level model alone is right 38.3% of the time on panels where the caption was held back.",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/fluorocap-reality-check-czudvb",
+    "title": "FluoroCap Reality Check",
+    "date": "2026-09-15",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluorocap-reality-check-czudvb.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluorocap-reality-check-czudvb"
+   },
+   "value_b": "37.9% on 169",
+   "quote_b": "the level model alone is the weakest term in the decoder on real panels (37.9% on 169)",
+   "quote_b_found": "whole",
+   "why": "Same quantity, n 175 versus 169, 38.3 versus 37.9; probably a re-run."
+  },
+  {
+   "index": 22,
+   "kind": "updated-later",
+   "quantity": "number of FluoroCap panels carrying a T13",
+   "a": {
+    "id": "SchwingNet/fluorocap-corpus-audit-9hjzzs",
+    "title": "FluoroCap Corpus Audit",
+    "date": "2026-09-14",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluorocap-corpus-audit-9hjzzs.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluorocap-corpus-audit-9hjzzs"
+   },
+   "value_a": "0",
+   "quote_a": "Lumbar levels outnumber the thoracic spine by five to one, and the two transitional classes are empty.",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/naming-vertebrae-without-ct-hjy4vc",
+    "title": "Naming Vertebrae Without CT",
+    "date": "2026-09-18",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/naming-vertebrae-without-ct-hjy4vc.txt",
+    "folder": "/home/claude/schwingnet/artifacts/naming-vertebrae-without-ct-hjy4vc"
+   },
+   "value_b": "126",
+   "quote_b": "Published figures (FluoroCap) 1,500 panels with the article's own caption 149 with an L6, 126 with a T13",
+   "quote_b_found": "whole",
+   "why": "Empty transitional classes in the 14 Sep audit; later artifacts count T13 panels."
+  },
+  {
+   "index": 23,
+   "kind": "updated-later",
+   "quantity": "FluoroCap video-frame panels",
+   "a": {
+    "id": "SchwingNet/fluorocap-corpus-audit-9hjzzs",
+    "title": "FluoroCap Corpus Audit",
+    "date": "2026-09-14",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluorocap-corpus-audit-9hjzzs.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluorocap-corpus-audit-9hjzzs"
+   },
+   "value_a": "479",
+   "quote_a": "surgical video frames | | 479",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/overnight-the-honest-99-kantj8",
+    "title": "Overnight: The Honest 99%",
+    "date": "2026-09-16",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/overnight-the-honest-99-kantj8.txt",
+    "folder": "/home/claude/schwingnet/artifacts/overnight-the-honest-99-kantj8"
+   },
+   "value_b": "2,535 video frames",
+   "quote_b": "By route: 8,616 PubMed Central figures, 2,535 video frames, 104 Reddit, 84 Commons.",
+   "quote_b_found": "whole",
+   "why": "Overnight report gives 927 then 1,096 video panels (reality check); audit's PMC count 2,034 versus 8,616 PubMed Central figures likewise grew."
+  },
+  {
+   "index": 24,
+   "kind": "updated-later",
+   "quantity": "number of FluoroCap panels decoded",
+   "a": {
+    "id": "SchwingNet/fluorocap-corpus-audit-9hjzzs",
+    "title": "FluoroCap Corpus Audit",
+    "date": "2026-09-14",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluorocap-corpus-audit-9hjzzs.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluorocap-corpus-audit-9hjzzs"
+   },
+   "value_a": "3,294",
+   "quote_a": "3,294 panels decoded, 2,528 with a vertebra box",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/overnight-the-honest-99-kantj8",
+    "title": "Overnight: The Honest 99%",
+    "date": "2026-09-16",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/overnight-the-honest-99-kantj8.txt",
+    "folder": "/home/claude/schwingnet/artifacts/overnight-the-honest-99-kantj8"
+   },
+   "value_b": "20,700",
+   "quote_b": "20,700 panels decoded and 11,377 carrying a level, against 5,789 and 4,614 yesterday morning.",
+   "quote_b_found": "whole",
+   "why": "The honest-99 report dates its figure against the previous morning; the audit's 3,294 is an earlier decode."
+  },
+  {
+   "index": 25,
+   "kind": "updated-later",
+   "quantity": "number of decoded FluoroCap panels carrying a vertebra box/level",
+   "a": {
+    "id": "SchwingNet/fluorocap-corpus-audit-9hjzzs",
+    "title": "FluoroCap Corpus Audit",
+    "date": "2026-09-14",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluorocap-corpus-audit-9hjzzs.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluorocap-corpus-audit-9hjzzs"
+   },
+   "value_a": "2,528",
+   "quote_a": "Panels with at least one vertebra box | | 2,528",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/overnight-the-honest-99-kantj8",
+    "title": "Overnight: The Honest 99%",
+    "date": "2026-09-16",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/overnight-the-honest-99-kantj8.txt",
+    "folder": "/home/claude/schwingnet/artifacts/overnight-the-honest-99-kantj8"
+   },
+   "value_b": "11,377",
+   "quote_b": "20,700 panels decoded and 11,377 carrying a level, against 5,789 and 4,614 yesterday morning.",
+   "quote_b_found": "whole",
+   "why": "Later decode of a larger corpus."
+  },
+  {
+   "index": 26,
+   "kind": "updated-later",
+   "quantity": "captioned FluoroCap panels mentioning a transitional term",
+   "a": {
+    "id": "SchwingNet/fluorocap-corpus-audit-9hjzzs",
+    "title": "FluoroCap Corpus Audit",
+    "date": "2026-09-14",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluorocap-corpus-audit-9hjzzs.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluorocap-corpus-audit-9hjzzs"
+   },
+   "value_a": "2 of 2,815",
+   "quote_a": "Only 2 of 2,815 captioned panels mention any transitional term at all.",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/overnight-the-honest-99-kantj8",
+    "title": "Overnight: The Honest 99%",
+    "date": "2026-09-16",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/overnight-the-honest-99-kantj8.txt",
+    "folder": "/home/claude/schwingnet/artifacts/overnight-the-honest-99-kantj8"
+   },
+   "value_b": "145 caption-named L6 panels",
+   "quote_b": "L6 | 338 | 145 | 193",
+   "quote_b_found": "whole",
+   "why": "The corpus grew between the audit and the honest-99 report; no row explains the jump from 2 to 145 directly."
+  },
+  {
+   "index": 27,
+   "kind": "updated-later",
+   "quantity": "number of FluoroCap panels carrying L3",
+   "a": {
+    "id": "SchwingNet/fluorocap-corpus-audit-9hjzzs",
+    "title": "FluoroCap Corpus Audit",
+    "date": "2026-09-14",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluorocap-corpus-audit-9hjzzs.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluorocap-corpus-audit-9hjzzs"
+   },
+   "value_a": "1,515",
+   "quote_a": "[\"L3\",1515],[\"L4\",1412],[\"L5\",1216],[\"L6\",0],[\"sacrum\",593]",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/overnight-the-honest-99-kantj8",
+    "title": "Overnight: The Honest 99%",
+    "date": "2026-09-16",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/overnight-the-honest-99-kantj8.txt",
+    "folder": "/home/claude/schwingnet/artifacts/overnight-the-honest-99-kantj8"
+   },
+   "value_b": "5,731",
+   "quote_b": "L3 | 5,731 | 2,026 | 3,705",
+   "quote_b_found": "whole",
+   "why": "Later, much larger decode."
+  },
+  {
+   "index": 28,
+   "kind": "updated-later",
+   "quantity": "number of FluoroCap panels carrying the sacrum",
+   "a": {
+    "id": "SchwingNet/fluorocap-corpus-audit-9hjzzs",
+    "title": "FluoroCap Corpus Audit",
+    "date": "2026-09-14",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluorocap-corpus-audit-9hjzzs.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluorocap-corpus-audit-9hjzzs"
+   },
+   "value_a": "593",
+   "quote_a": "[\"L3\",1515],[\"L4\",1412],[\"L5\",1216],[\"L6\",0],[\"sacrum\",593]",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/overnight-the-honest-99-kantj8",
+    "title": "Overnight: The Honest 99%",
+    "date": "2026-09-16",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/overnight-the-honest-99-kantj8.txt",
+    "folder": "/home/claude/schwingnet/artifacts/overnight-the-honest-99-kantj8"
+   },
+   "value_b": "1,570",
+   "quote_b": "sacrum | 1,570 | 956 | 614",
+   "quote_b_found": "whole",
+   "why": "Later decode."
+  },
+  {
+   "index": 29,
+   "kind": "updated-later",
+   "quantity": "number of FluoroCap panels carrying an L6",
+   "a": {
+    "id": "SchwingNet/fluorocap-corpus-audit-9hjzzs",
+    "title": "FluoroCap Corpus Audit",
+    "date": "2026-09-14",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluorocap-corpus-audit-9hjzzs.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluorocap-corpus-audit-9hjzzs"
+   },
+   "value_a": "0",
+   "quote_a": "[\"L3\",1515],[\"L4\",1412],[\"L5\",1216],[\"L6\",0],[\"sacrum\",593]",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/vertebral-levels-without-ct-a4rydj",
+    "title": "Vertebral Levels Without CT",
+    "date": "2026-09-18",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/vertebral-levels-without-ct-a4rydj.txt",
+    "folder": "/home/claude/schwingnet/artifacts/vertebral-levels-without-ct-a4rydj"
+   },
+   "value_b": "149",
+   "quote_b": "1,500 panels harvested from the published literature ... 149 carry a sixth lumbar vertebra and 126 a thirteenth rib-bearing level",
+   "quote_b_found": "parts",
+   "why": "The audit says the two transitional classes are empty; later artifacts report L6 panels; order inferred from corpus growth, not stated."
+  },
+  {
+   "index": 30,
+   "kind": "contradiction",
+   "quantity": "figure mates agreeing on region (decoder)",
+   "a": {
+    "id": "SchwingNet/fluorocap-dataset-card-xwd4wx",
+    "title": "FluoroCap Dataset Card",
+    "date": "2026-09-14",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluorocap-dataset-card-xwd4wx.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluorocap-dataset-card-xwd4wx"
+   },
+   "value_a": "88%",
+   "quote_a": "\"figure mates agreeing on region (decoder)\", \"88%\"",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/fluorocap-reality-check-czudvb",
+    "title": "FluoroCap Reality Check",
+    "date": "2026-09-15",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluorocap-reality-check-czudvb.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluorocap-reality-check-czudvb"
+   },
+   "value_b": "91.5%",
+   "quote_b": "91.5% same region / 68.2% Jaccard \u2265 0.5 (decoder); 52.1% / 30.8% (model alone) | 519 / 468 figure-mate pairs",
+   "quote_b_found": "whole",
+   "why": "Same decoder figure-mate region agreement; 88 versus 91.5."
+  },
+  {
+   "index": 31,
+   "kind": "updated-later",
+   "quantity": "FluoroCap Instagram harvest",
+   "a": {
+    "id": "SchwingNet/fluorocap-overnight-report-xnhgdo",
+    "title": "FluoroCap Overnight Report",
+    "date": "2026-09-15",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluorocap-overnight-report-xnhgdo.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluorocap-overnight-report-xnhgdo"
+   },
+   "value_a": "600 posts, 520 kept, 1,243 images",
+   "quote_a": "Instagram (dedicated session) | | 4 hashtags, 600 posts, 520 kept, 1,243 images | | running, no rate limits yet",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/fluorocap-reality-check-czudvb",
+    "title": "FluoroCap Reality Check",
+    "date": "2026-09-15",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluorocap-reality-check-czudvb.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluorocap-reality-check-czudvb"
+   },
+   "value_b": "1,633 images from 720 posts",
+   "quote_b": "YouTube 541,621 frame records across eight ledgers (7,034 per-file unique videos; union not measured) yielding 1,462 retained panels; Instagram 1,633 images fro",
+   "quote_b_found": "whole",
+   "why": "The overnight run was still running; the reality check reports the later total."
+  },
+  {
+   "index": 32,
+   "kind": "updated-later",
+   "quantity": "FluoroCap panel images on disk",
+   "a": {
+    "id": "SchwingNet/fluorocap-overnight-report-xnhgdo",
+    "title": "FluoroCap Overnight Report",
+    "date": "2026-09-15",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluorocap-overnight-report-xnhgdo.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluorocap-overnight-report-xnhgdo"
+   },
+   "value_a": "19,048",
+   "quote_a": "Images on disk went from 11,349 to 19,048: 17,755 figure panels (10,870 before the 1,167 round-one figures were re-split), 927 video panels and 366 medium-confi",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/fluorocap-reality-check-czudvb",
+    "title": "FluoroCap Reality Check",
+    "date": "2026-09-15",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluorocap-reality-check-czudvb.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluorocap-reality-check-czudvb"
+   },
+   "value_b": "19,581",
+   "quote_b": "19,581 (18,119 figure panels, 1,096 video, 366 video-medium) | find on ~/FluoroCap; morning report's 19,048 superseded",
+   "quote_b_found": "whole",
+   "why": "The reality check says the morning report's 19,048 is superseded."
+  },
+  {
+   "index": 33,
+   "kind": "updated-later",
+   "quantity": "number of FluoroCap figure panels",
+   "a": {
+    "id": "SchwingNet/fluorocap-overnight-report-xnhgdo",
+    "title": "FluoroCap Overnight Report",
+    "date": "2026-09-15",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluorocap-overnight-report-xnhgdo.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluorocap-overnight-report-xnhgdo"
+   },
+   "value_a": "17,755",
+   "quote_a": "17,755 figure panels (10,870 before the 1,167 round-one figures were re-split), 927 video panels and 366 medium-confidence video panels",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/fluorocap-reality-check-czudvb",
+    "title": "FluoroCap Reality Check",
+    "date": "2026-09-15",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluorocap-reality-check-czudvb.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluorocap-reality-check-czudvb"
+   },
+   "value_b": "18,119",
+   "quote_b": "19,581 (18,119 figure panels, 1,096 video, 366 video-medium) | find on ~/FluoroCap; morning report's 19,048 superseded",
+   "quote_b_found": "whole",
+   "why": "The reality check supersedes the morning report."
+  },
+  {
+   "index": 34,
+   "kind": "updated-later",
+   "quantity": "number of FluoroCap video panels",
+   "a": {
+    "id": "SchwingNet/fluorocap-overnight-report-xnhgdo",
+    "title": "FluoroCap Overnight Report",
+    "date": "2026-09-15",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluorocap-overnight-report-xnhgdo.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluorocap-overnight-report-xnhgdo"
+   },
+   "value_a": "927",
+   "quote_a": "17,755 figure panels (10,870 before the 1,167 round-one figures were re-split), 927 video panels and 366 medium-confidence video panels",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/fluorocap-reality-check-czudvb",
+    "title": "FluoroCap Reality Check",
+    "date": "2026-09-15",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluorocap-reality-check-czudvb.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluorocap-reality-check-czudvb"
+   },
+   "value_b": "1,096",
+   "quote_b": "19,581 (18,119 figure panels, 1,096 video, 366 video-medium) | find on ~/FluoroCap; morning report's 19,048 superseded",
+   "quote_b_found": "whole",
+   "why": "Later snapshot; 366 video-medium panels unchanged."
+  },
+  {
+   "index": 35,
+   "kind": "updated-later",
+   "quantity": "Instagram harvest size",
+   "a": {
+    "id": "SchwingNet/fluorocap-reality-check-czudvb",
+    "title": "FluoroCap Reality Check",
+    "date": "2026-09-15",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluorocap-reality-check-czudvb.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluorocap-reality-check-czudvb"
+   },
+   "value_a": "1,633 images from 720 posts",
+   "quote_a": "YouTube 541,621 frame records across eight ledgers (7,034 per-file unique videos; union not measured) yielding 1,462 retained panels; Instagram 1,633 images fro",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/fluorocap-overnight-report-xnhgdo",
+    "title": "FluoroCap Overnight Report",
+    "date": "2026-09-15",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluorocap-overnight-report-xnhgdo.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluorocap-overnight-report-xnhgdo"
+   },
+   "value_b": "600 posts, 520 kept, 1,243 images",
+   "quote_b": "Instagram (dedicated session) | | 4 hashtags, 600 posts, 520 kept, 1,243 images | | running, no rate limits yet",
+   "quote_b_found": "whole",
+   "why": "The overnight row says the session was still running; the reality check is the later total."
+  },
+  {
+   "index": 36,
+   "kind": "updated-later",
+   "quantity": "FluoroCap figure-panel short-side percentiles and size shares",
+   "a": {
+    "id": "SchwingNet/fluorocap-reality-check-czudvb",
+    "title": "FluoroCap Reality Check",
+    "date": "2026-09-15",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluorocap-reality-check-czudvb.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluorocap-reality-check-czudvb"
+   },
+   "value_a": "133/212/320/494/1,043 px; 28.8% < 224; 23.5% >= 512",
+   "quote_a": "p5/25/50/75/95 = 133/212/320/494/1,043 px; 28.8% < 224; 23.5% \u2265 512; 5.2% \u2265 1,024",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/fluorocap-overnight-report-xnhgdo",
+    "title": "FluoroCap Overnight Report",
+    "date": "2026-09-15",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluorocap-overnight-report-xnhgdo.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluorocap-overnight-report-xnhgdo"
+   },
+   "value_b": "133/211/320/493/1,054 px; 29.0% under 224; 23.4% >= 512",
+   "quote_b": "After round one (02:21) | | 133 | | 211 | | 320 | | 493 | | 1,054 | | 29.0% | | 23.4%",
+   "quote_b_found": "whole",
+   "why": "The reality check is the later count (18,068 panels) and supersedes the morning report."
+  },
+  {
+   "index": 37,
+   "kind": "contradiction",
+   "quantity": "region accuracy of the v2 level model at full coverage",
+   "a": {
+    "id": "SchwingNet/overnight-the-honest-99-kantj8",
+    "title": "Overnight: The Honest 99%",
+    "date": "2026-09-16",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/overnight-the-honest-99-kantj8.txt",
+    "folder": "/home/claude/schwingnet/artifacts/overnight-the-honest-99-kantj8"
+   },
+   "value_a": "78.8% exact / 93.4% region",
+   "quote_a": "full coverage | 78.8% | 93.4%",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/fluorocap-overnight-report-xnhgdo",
+    "title": "FluoroCap Overnight Report",
+    "date": "2026-09-15",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluorocap-overnight-report-xnhgdo.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluorocap-overnight-report-xnhgdo"
+   },
+   "value_b": "78.8% exact / 95.9% within one / 97.2% region",
+   "quote_b": "Own validation 78.8% exact, 95.9% within one, 97.2% region; cone-beam renders 62.5% against v1\u2019s 50.0% on their own validation; rare-anatomy renders 52.3%.",
+   "quote_b_found": "whole",
+   "why": "Identical 78.8% exact suggests the same evaluation, yet region accuracy is 93.4 in one and 97.2 in the other."
+  },
+  {
+   "index": 38,
+   "kind": "contradiction",
+   "quantity": "number of FluoroCap manifest rows",
+   "a": {
+    "id": "SchwingNet/fluoroscopy-data-atlas",
+    "title": "Fluoroscopy Data Atlas",
+    "date": "2026-10-17",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluoroscopy-data-atlas.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluoroscopy-data-atlas"
+   },
+   "value_a": "21,603 rows",
+   "quote_a": "29,500 panels (png); manifest 21,603 rows keyed by about 1,197-1,953 source documents (no patient key); frozen v0.1 A 2,531 / B 991 panels; YouTube 298,075 fram",
+   "quote_a_found": "raw-whole",
+   "b": {
+    "id": "SchwingNet/fluorocap-reality-check-czudvb",
+    "title": "FluoroCap Reality Check",
+    "date": "2026-09-15",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluorocap-reality-check-czudvb.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluorocap-reality-check-czudvb"
+   },
+   "value_b": "17,486 rows",
+   "quote_b": "Every fluoroscopy figure is agreement with a caption on panels no human has read (0 of 17,486)",
+   "quote_b_found": "whole",
+   "why": "Two manifest row counts with no statement of which is current."
+  },
+  {
+   "index": 39,
+   "kind": "updated-later",
+   "quantity": "number of YouTube frame records harvested",
+   "a": {
+    "id": "SchwingNet/fluoroscopy-data-atlas",
+    "title": "Fluoroscopy Data Atlas",
+    "date": "2026-10-17",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluoroscopy-data-atlas.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluoroscopy-data-atlas"
+   },
+   "value_a": "298,075 frames",
+   "quote_a": "29,500 panels (png); manifest 21,603 rows keyed by about 1,197-1,953 source documents (no patient key); frozen v0.1 A 2,531 / B 991 panels; YouTube 298,075 fram",
+   "quote_a_found": "raw-whole",
+   "b": {
+    "id": "SchwingNet/fluorocap-reality-check-czudvb",
+    "title": "FluoroCap Reality Check",
+    "date": "2026-09-15",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluorocap-reality-check-czudvb.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluorocap-reality-check-czudvb"
+   },
+   "value_b": "541,621 frame records",
+   "quote_b": "YouTube 541,621 frame records across eight ledgers (7,034 per-file unique videos; union not measured) yielding 1,462 retained panels; Instagram 1,633 images fro",
+   "quote_b_found": "whole",
+   "why": "The harvest grew; the overnight report also records 428,606 frames deleted and 32,702 kept."
+  },
+  {
+   "index": 40,
+   "kind": "contradiction",
+   "quantity": "exact single-vertebra naming on 8,422 held-out real-film crops",
+   "a": {
+    "id": "SchwingNet/level-context-ladder-xd7eltc",
+    "title": "Level Context Ladder",
+    "date": "2026-09-13",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/level-context-ladder-xd7eltc.txt",
+    "folder": "/home/claude/schwingnet/artifacts/level-context-ladder-xd7eltc"
+   },
+   "value_a": "96.7% (99.7% within one)",
+   "quote_a": "96.7% one vertebra, real films, exact level 8,422 held-out crops",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/fluorocap-reality-check-czudvb",
+    "title": "FluoroCap Reality Check",
+    "date": "2026-09-15",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluorocap-reality-check-czudvb.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluorocap-reality-check-czudvb"
+   },
+   "value_b": "98.7% (99.8% within one)",
+   "quote_b": "98.7% exact, 99.8% within one (films-only, single crop; run head 99.4%)",
+   "quote_b_found": "whole",
+   "why": "Same 8,422 crops; naming-without-ct gives 97.0% for 'one frame, no sweep' on 1,653 films; the ladder's 96 px arm gives 96.9."
+  },
+  {
+   "index": 41,
+   "kind": "contradiction",
+   "quantity": "exact single-crop level accuracy of the films-only model on the 8,422 held-out crops",
+   "a": {
+    "id": "SchwingNet/fluorocap-reality-check-czudvb",
+    "title": "FluoroCap Reality Check",
+    "date": "2026-09-15",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluorocap-reality-check-czudvb.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluorocap-reality-check-czudvb"
+   },
+   "value_a": "98.7%",
+   "quote_a": "one number, 98.7% single-crop on 8,422 held-out cervical and lumbar radiograph crops at 0.17 mm/px with human labels, and nothing else",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/level-context-ladder-xd7eltc",
+    "title": "Level Context Ladder",
+    "date": "2026-09-13",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/level-context-ladder-xd7eltc.txt",
+    "folder": "/home/claude/schwingnet/artifacts/level-context-ladder-xd7eltc"
+   },
+   "value_b": "96.7%",
+   "quote_b": "96.7% one vertebra, real films, exact level 8,422 held-out crops",
+   "quote_b_found": "whole",
+   "why": "Identical n (8,422 held-out crops), identical setting (one vertebra, real films), two percentages two points apart; neither says it supersedes the other."
+  },
+  {
+   "index": 42,
+   "kind": "contradiction",
+   "quantity": "within-one-level rate on the 8,422 held-out crops",
+   "a": {
+    "id": "SchwingNet/fluorocap-reality-check-czudvb",
+    "title": "FluoroCap Reality Check",
+    "date": "2026-09-15",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluorocap-reality-check-czudvb.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluorocap-reality-check-czudvb"
+   },
+   "value_a": "99.8%",
+   "quote_a": "98.7% exact, 99.8% within one (films-only, single crop; run head 99.4%)",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/level-context-ladder-xd7eltc",
+    "title": "Level Context Ladder",
+    "date": "2026-09-13",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/level-context-ladder-xd7eltc.txt",
+    "folder": "/home/claude/schwingnet/artifacts/level-context-ladder-xd7eltc"
+   },
+   "value_b": "99.7%",
+   "quote_b": "8,422 held-out crops \u00b7 99.7% within one level",
+   "quote_b_found": "whole",
+   "why": "Same crops, 99.8 versus 99.7 within one level."
+  },
+  {
+   "index": 43,
+   "kind": "contradiction",
+   "quantity": "images or frames needed from the retrospective PACS pull",
+   "a": {
+    "id": "SchwingNet/protocol-1-eprotocol-draft-mkmh7p",
+    "title": "Protocol 1 \u2014 eProtocol draft",
+    "date": "2026-09-15",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/protocol-1-eprotocol-draft-mkmh7p.txt",
+    "folder": "/home/claude/schwingnet/artifacts/protocol-1-eprotocol-draft-mkmh7p"
+   },
+   "value_a": "1,500\u20132,500 intraoperative images from 800\u20131,500 patients",
+   "quote_a": "roughly 1,500\u20132,500 intraoperative images from 800\u20131,500 patients",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/fluorocap-reality-check-czudvb",
+    "title": "FluoroCap Reality Check",
+    "date": "2026-09-15",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluorocap-reality-check-czudvb.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluorocap-reality-check-czudvb"
+   },
+   "value_b": "3,000-5,000 frames from 800-1,500 patients",
+   "quote_b": "Target 3,000-5,000 frames from 800-1,500 patients in twelve months at one centre",
+   "quote_b_found": "whole",
+   "why": "Same patient range, image target differs by about two; counting-levels asks for 'a few thousand annotated in-domain frames'."
+  },
+  {
+   "index": 44,
+   "kind": "contradiction",
+   "quantity": "Huang 2022 CT-free vertebra labelling accuracy on cadaver long films",
+   "a": {
+    "id": "SchwingNet/fluorocap-reality-check-czudvb",
+    "title": "FluoroCap Reality Check",
+    "date": "2026-09-15",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluorocap-reality-check-czudvb.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluorocap-reality-check-czudvb"
+   },
+   "value_a": "88.3% (the best found)",
+   "quote_a": "the best found is 88.3% on 100 cadaver Long-Film images from a network trained only on images synthesised from 297 CTs (Huang 2022",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/registration-free-level-id-feasibility-uramo1",
+    "title": "Registration-Free Level ID Feasibility",
+    "date": "2026-09-15",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/registration-free-level-id-feasibility-uramo1.txt",
+    "folder": "/home/claude/schwingnet/artifacts/registration-free-level-id-feasibility-uramo1"
+   },
+   "value_b": "88.3% (did not survive verification)",
+   "quote_b": "its accuracy figures (88.3% labelling, 3.3 mm) did not survive verification",
+   "quote_b_found": "whole",
+   "why": "Same number, but one artifact treats it as the best verified figure and another says it was refuted on verification (0-3 vote); vertebral-levels and naming-without-ct also use 88.3% as a comparator."
+  },
+  {
+   "index": 45,
+   "kind": "contradiction",
+   "quantity": "number of FluoroCap panel images",
+   "a": {
+    "id": "SchwingNet/schwingnet-data-registry",
+    "title": "SchwingNet Data Registry",
+    "date": "2026-10-20",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/schwingnet-data-registry.txt",
+    "folder": "/home/claude/schwingnet/artifacts/schwingnet-data-registry"
+   },
+   "value_a": "29,500",
+   "quote_a": "29,500 figure panels harvested from the literature; 72.8 percent are reproductions with no pixel residual",
+   "quote_a_found": "raw-whole",
+   "b": {
+    "id": "SchwingNet/fluorocap-reality-check-czudvb",
+    "title": "FluoroCap Reality Check",
+    "date": "2026-09-15",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluorocap-reality-check-czudvb.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluorocap-reality-check-czudvb"
+   },
+   "value_b": "19,581 on disk (18,119 figure panels)",
+   "quote_b": "19,581 (18,119 figure panels, 1,096 video, 366 video-medium) | find on ~/FluoroCap; morning report's 19,048 superseded",
+   "quote_b_found": "whole",
+   "why": "29,500 png panels versus 19,581 images on disk; the near-duplicate groups (11,446 images in 10,233 groups) may explain it but no row says so."
+  },
+  {
+   "index": 46,
+   "kind": "contradiction",
+   "quantity": "NHANES II annotated vertebra instances",
+   "a": {
+    "id": "SchwingNet/spine-x-ray-data-handoff-bddbdd",
+    "title": "Spine X-ray Data Handoff",
+    "date": "2026-09-03",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/spine-x-ray-data-handoff-bddbdd.txt",
+    "folder": "/home/claude/schwingnet/artifacts/spine-x-ray-data-handoff-bddbdd"
+   },
+   "value_a": "3,217",
+   "quote_a": "NHANES II annotated subset Ingested \u00b7 3,217 instances",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/fluorocap-reality-check-czudvb",
+    "title": "FluoroCap Reality Check",
+    "date": "2026-09-15",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluorocap-reality-check-czudvb.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluorocap-reality-check-czudvb"
+   },
+   "value_b": "3,053",
+   "quote_b": "NHANES II (17,075 lateral films, 9,667 cervical and 7,408 lumbar, 12-bit at 146 dpi",
+   "quote_b_found": "whole",
+   "why": "The reality-check context gives '364 annotated films with 3,053 con[tours]' against 3,217 instances in the handoff, the atlas and the field report; could be contours versus boxes."
+  },
+  {
+   "index": 47,
+   "kind": "updated-later",
+   "quantity": "render-only detector L6 naming accuracy",
+   "a": {
+    "id": "SchwingNet/fluorocap-reality-check-czudvb",
+    "title": "FluoroCap Reality Check",
+    "date": "2026-09-15",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluorocap-reality-check-czudvb.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluorocap-reality-check-czudvb"
+   },
+   "value_a": "46.4% (913 crops)",
+   "quote_a": "L6 | 100.0 (13, training cases) | \u2014 | 46.4 (913); 366 called L5",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay",
+    "title": "State of the literature: datasets held, missing, size and power",
+    "date": "2026-10-08",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay.txt",
+    "folder": "/home/claude/schwingnet/artifacts/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay"
+   },
+   "value_b": "56.1 to 72.4%",
+   "quote_b": "render L6 recall 56.1 to 72.4 %, L6 named 44.9 % with no anchor on anomalous films, 49.9 % on anomalous film windows",
+   "quote_b_found": "whole",
+   "why": "Naming-without-anchor gives 57\u201380% on the sweep (57.1% n=7, 80.0% n=5); later banks moved the figure."
+  },
+  {
+   "index": 48,
+   "kind": "contradiction",
+   "quantity": "render L6 recall of the level model",
+   "a": {
+    "id": "SchwingNet/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay",
+    "title": "State of the literature: datasets held, missing, size and power",
+    "date": "2026-10-08",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay.txt",
+    "folder": "/home/claude/schwingnet/artifacts/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay"
+   },
+   "value_a": "56.1 to 72.4%",
+   "quote_a": "render L6 recall 56.1 to 72.4 %, L6 named 44.9 % with no anchor on anomalous films, 49.9 % on anomalous film windows",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/fluorocap-reality-check-czudvb",
+    "title": "FluoroCap Reality Check",
+    "date": "2026-09-15",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluorocap-reality-check-czudvb.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluorocap-reality-check-czudvb"
+   },
+   "value_b": "46.4% (913 crops); 366 called L5",
+   "quote_b": "L6 | 100.0 (13, training cases) | \u2014 | 46.4 (913); 366 called L5",
+   "quote_b_found": "whole",
+   "why": "Both are L6 recall on renders; 46.4 lies below the stated range; model versions are not named."
+  },
+  {
+   "index": 49,
+   "kind": "contradiction",
+   "quantity": "SyntheX hip landmark error, synthetic-trained versus real-trained",
+   "a": {
+    "id": "SchwingNet/what-is-left-after-physics",
+    "title": "What Is Left After Physics",
+    "date": "2026",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/what-is-left-after-physics.txt",
+    "folder": "/home/claude/schwingnet/artifacts/what-is-left-after-physics"
+   },
+   "value_a": "6.44 vs 6.46 mm",
+   "quote_a": "reached parity with training on real frames (6.44 vs 6.46 mm hip landmarks)",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/fluorocap-reality-check-czudvb",
+    "title": "FluoroCap Reality Check",
+    "date": "2026-09-15",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluorocap-reality-check-czudvb.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluorocap-reality-check-czudvb"
+   },
+   "value_b": "5.95 \u00b1 3.52 vs 6.46 \u00b1 8.21 mm",
+   "quote_b": "matched or beat the same network trained on 366 real cadaver frames (5.95 \u00b1 3.52 vs 6.46 \u00b1 8.21 mm",
+   "quote_b_found": "whole",
+   "why": "Ninety-three-pixels repeats 6.44; any-view and lift-before-label use 5.95 (10k DRRs from 20 CTs); the synthetic-arm number differs across artifacts."
+  },
+  {
+   "index": 50,
+   "kind": "contradiction",
+   "quantity": "Ljubljana lumbar gold-standard subjects",
+   "a": {
+    "id": "SchwingNet/fluoroscopy-data-atlas",
+    "title": "Fluoroscopy Data Atlas",
+    "date": "2026-10-17",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluoroscopy-data-atlas.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluoroscopy-data-atlas"
+   },
+   "value_a": "1 donor, 18 radiographs",
+   "quote_a": "1 donor; 18 turntable radiographs; CT and MR crops per vertebra ... fiducial TRE about 0.2 mm",
+   "quote_a_found": "raw-parts",
+   "b": {
+    "id": "SchwingNet/or-readiness-ledger",
+    "title": "OR Readiness Ledger",
+    "date": "2026-09-22",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/or-readiness-ledger.txt",
+    "folder": "/home/claude/schwingnet/artifacts/or-readiness-ledger"
+   },
+   "value_b": "Ljubljana set 10 patients added",
+   "quote_b": "corrected COBRA2026 to six centres and 867 patients (692 public), of which centres F\u2013G are Varian kV imagers",
+   "quote_b_found": "whole",
+   "why": "The ledger's census context says 'Ljubljana set 10 patients added' while registry, atlas and any-view say one cadaver with 18 frames."
+  },
+  {
+   "index": 51,
+   "kind": "contradiction",
+   "quantity": "number of files in the SpineSAC deposit",
+   "a": {
+    "id": "SchwingNet/fluoroscopy-data-atlas",
+    "title": "Fluoroscopy Data Atlas",
+    "date": "2026-10-17",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluoroscopy-data-atlas.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluoroscopy-data-atlas"
+   },
+   "value_a": "5,492 files",
+   "quote_a": "3 sawbone phantoms; 59 scenarios; 286 raw DICOM frames + 233 unreferenced raw + 118 processed; 3 CT series; 5,492 files, 4.15 GB",
+   "quote_a_found": "raw-whole",
+   "b": {
+    "id": "SchwingNet/or-readiness-ledger",
+    "title": "OR Readiness Ledger",
+    "date": "2026-09-22",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/or-readiness-ledger.txt",
+    "folder": "/home/claude/schwingnet/artifacts/or-readiness-ledger"
+   },
+   "value_b": "5,490 files",
+   "quote_b": "4.15 GB fetched (5,490 files; 3 CT series, 915 2-D DICOMs, 902 PNGs)",
+   "quote_b_found": "whole",
+   "why": "Same 4.15 GB and 3 CT series; file count differs by two."
+  },
+  {
+   "index": 52,
+   "kind": "contradiction",
+   "quantity": "number of COBRA2026 cases/exports",
+   "a": {
+    "id": "SchwingNet/fluoroscopy-data-atlas",
+    "title": "Fluoroscopy Data Atlas",
+    "date": "2026-10-17",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluoroscopy-data-atlas.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluoroscopy-data-atlas"
+   },
+   "value_a": "150 Elekta exports",
+   "quote_a": "Project adds two-labeller boxes on 150 Elekta exports and an LSTV screen of the 692 planning CTs (91 calls, unread)",
+   "quote_a_found": "raw-whole",
+   "b": {
+    "id": "SchwingNet/or-readiness-ledger",
+    "title": "OR Readiness Ledger",
+    "date": "2026-09-22",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/or-readiness-ledger.txt",
+    "folder": "/home/claude/schwingnet/artifacts/or-readiness-ledger"
+   },
+   "value_b": "145 cases",
+   "quote_b": "Living radiotherapy patients (COBRA, Elekta XVI, 145 cases) and cadavers (DeepFluoro, six pelves)",
+   "quote_b_found": "whole",
+   "why": "150 exports with boxes versus 145 cases (and 'sacrum agrees on all 144' elsewhere in the ledger); no row reconciles the counts."
+  },
+  {
+   "index": 53,
+   "kind": "contradiction",
+   "quantity": "BUU-LSPINE sacralization (four-lumbar) cases",
+   "a": {
+    "id": "SchwingNet/fluoroscopy-data-atlas",
+    "title": "Fluoroscopy Data Atlas",
+    "date": "2026-10-17",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluoroscopy-data-atlas.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluoroscopy-data-atlas"
+   },
+   "value_a": "129",
+   "quote_a": "the L4L6 sheet flags 129 four-lumbar and 15 six-lumbar cases",
+   "quote_a_found": "raw-whole",
+   "b": {
+    "id": "SchwingNet/spine-program-decisions-qqhkqz",
+    "title": "Spine Program Decisions",
+    "date": "undated",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/spine-program-decisions-qqhkqz.txt",
+    "folder": "/home/claude/schwingnet/artifacts/spine-program-decisions-qqhkqz"
+   },
+   "value_b": "130",
+   "quote_b": "BUU: 3,461 normal / 15 lumbar. / 130 sacral.",
+   "quote_b_found": "whole",
+   "why": "Naming-without-anchor, fluorocap-reality and overnight-honest use 129 (144 anomalous studies); spine-program-decisions and openspine-board use 130 (4.0% prevalence); the anomalous total is 144 in one set and 145 in the other."
+  },
+  {
+   "index": 54,
+   "kind": "contradiction",
+   "quantity": "Mendeley spondylolisthesis lateral lumbar image count",
+   "a": {
+    "id": "SchwingNet/fluoroscopy-data-atlas",
+    "title": "Fluoroscopy Data Atlas",
+    "date": "2026-10-17",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluoroscopy-data-atlas.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluoroscopy-data-atlas"
+   },
+   "value_a": "714 jpg",
+   "quote_a": "714 jpg (494/204/16), 698 annotated, 3,250 boxes; about 500 are BUU persons",
+   "quote_a_found": "raw-whole",
+   "b": {
+    "id": "SchwingNet/spine-x-ray-data-handoff-bddbdd",
+    "title": "Spine X-ray Data Handoff",
+    "date": "2026-09-03",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/spine-x-ray-data-handoff-bddbdd.txt",
+    "folder": "/home/claude/schwingnet/artifacts/spine-x-ray-data-handoff-bddbdd"
+   },
+   "value_b": "716 images",
+   "quote_b": "Images 716 lateral lumbar: 208 Honduran + 508 from BUU",
+   "quote_b_found": "whole",
+   "why": "Registry and imaging index say 714; handoff, spine-program-decisions, openspine-board and the field report say 716; level-context-ladder says 'Mendeley (591)'."
+  },
+  {
+   "index": 55,
+   "kind": "contradiction",
+   "quantity": "NHANES annotated zip size",
+   "a": {
+    "id": "SchwingNet/spine-x-ray-data-handoff-bddbdd",
+    "title": "Spine X-ray Data Handoff",
+    "date": "2026-09-03",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/spine-x-ray-data-handoff-bddbdd.txt",
+    "folder": "/home/claude/schwingnet/artifacts/spine-x-ray-data-handoff-bddbdd"
+   },
+   "value_a": "1.2 GB",
+   "quote_a": "On grid 1.2 GB zip, md5 875a3228\u2026",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/fluoroscopy-data-atlas",
+    "title": "Fluoroscopy Data Atlas",
+    "date": "2026-10-17",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluoroscopy-data-atlas.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluoroscopy-data-atlas"
+   },
+   "value_b": "1,017,496,285 B",
+   "quote_b": "543 films (275 cervical + 268 lumbar) of 364 persons as pickles; zip 1,017,496,285 B, extracted 159 GB",
+   "quote_b_found": "raw-whole",
+   "why": "1.02 GB versus 1.2 GB for the same Zenodo zip; imaging index says 'a 1 GB zip'."
+  },
+  {
+   "index": 56,
+   "kind": "updated-later",
+   "quantity": "real-film vertebra corner corpus size",
+   "a": {
+    "id": "SchwingNet/vertebra-detector-field-report-1jljc6",
+    "title": "Vertebra Detector Field Report",
+    "date": "undated",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/vertebra-detector-field-report-1jljc6.txt",
+    "folder": "/home/claude/schwingnet/artifacts/vertebra-detector-field-report-1jljc6"
+   },
+   "value_a": "958 images, 6,073 instances, 727 patients",
+   "quote_a": "958 images \u00b7 6073 instances \u00b7 727 patients",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/fluoroscopy-data-atlas",
+    "title": "Fluoroscopy Data Atlas",
+    "date": "2026-10-17",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluoroscopy-data-atlas.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluoroscopy-data-atlas"
+   },
+   "value_b": "33,943 instances on 5,401 films",
+   "quote_b": "33,943 vertebra instances on 5,401 films (2026-09-07): BUU 2000-pair subset 19,991, AASCE 8,069, NHANES 3,217, Mendeley 2,666",
+   "quote_b_found": "raw-whole",
+   "why": "The field report and spine-x-ray handoff describe an early manifest (6,073 instances, BUU partial 190); the atlas dates the grown corpus to 2026-09-07."
+  },
+  {
+   "index": 57,
+   "kind": "contradiction",
+   "quantity": "size of the Mendeley standing-radiograph set",
+   "a": {
+    "id": "SchwingNet/fluoroscopy-data-atlas",
+    "title": "Fluoroscopy Data Atlas",
+    "date": "2026-10-17",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/fluoroscopy-data-atlas.txt",
+    "folder": "/home/claude/schwingnet/artifacts/fluoroscopy-data-atlas"
+   },
+   "value_a": "714 jpg",
+   "quote_a": "714 jpg (494/204/16), 698 annotated, 3,250 boxes; about 500 are BUU persons",
+   "quote_a_found": "raw-whole",
+   "b": {
+    "id": "SchwingNet/vertebra-detector-field-report-1jljc6",
+    "title": "Vertebra Detector Field Report",
+    "date": "undated",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/vertebra-detector-field-report-1jljc6.txt",
+    "folder": "/home/claude/schwingnet/artifacts/vertebra-detector-field-report-1jljc6"
+   },
+   "value_b": "716",
+   "quote_b": "| Mendeley 716 standing DR | | 2666 | | lateral | | unknown |",
+   "quote_b_found": "whole",
+   "why": "714 (atlas, state-of-the-literature) versus 716 (field report) for the same corpus."
+  },
+  {
+   "index": 58,
+   "kind": "updated-later",
+   "quantity": "CSXA images on disk",
+   "a": {
+    "id": "SchwingNet/spine-x-ray-data-handoff-bddbdd",
+    "title": "Spine X-ray Data Handoff",
+    "date": "2026-09-03",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/spine-x-ray-data-handoff-bddbdd.txt",
+    "folder": "/home/claude/schwingnet/artifacts/spine-x-ray-data-handoff-bddbdd"
+   },
+   "value_a": "0 on disk",
+   "quote_a": "0 CSXA images on disk \u2014 the largest annotated lateral set, 4,963",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/handoff-schwingnet-ctspinopelvic1k-and-the-imaging-programme-rbcdmf",
+    "title": "Handoff: SchwingNet, CTSpinoPelvic1K and the imaging programme",
+    "date": "2026-10-08",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/handoff-schwingnet-ctspinopelvic1k-and-the-imaging-programme-rbcdmf.txt",
+    "folder": "/home/claude/schwingnet/artifacts/handoff-schwingnet-ctspinopelvic1k-and-the-imaging-programme-rbcdmf"
+   },
+   "value_b": "4,963 in the allspine_v9 bank",
+   "quote_b": "the allspine_v9 bank: CSXA 4,963 films, BUU-LSPINE laterals 3,603",
+   "quote_b_found": "window",
+   "why": "The field report and spine-x-ray handoff predate the SciDB download; the later handoff, board and atlas hold all 4,963."
+  },
+  {
+   "index": 59,
+   "kind": "updated-later",
+   "quantity": "home Panasas volume use against the 4,295 GB quota",
+   "a": {
+    "id": "SchwingNet/ninety-three-pixels",
+    "title": "Ninety-Three Pixels",
+    "date": "2026-09-21",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/ninety-three-pixels.txt",
+    "folder": "/home/claude/schwingnet/artifacts/ninety-three-pixels"
+   },
+   "value_a": "3,966 of 4,295 GB after freeing 260 GB",
+   "quote_a": "Disk freed 260 GB 3966 of 4295 GB soft limit",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/imaging-data-holding-manifest-migration-and-index-fqmtjs",
+    "title": "Imaging data holding: manifest, migration and index",
+    "date": "2026-10-08",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/imaging-data-holding-manifest-migration-and-index-fqmtjs.txt",
+    "folder": "/home/claude/schwingnet/artifacts/imaging-data-holding-manifest-migration-and-index-fqmtjs"
+   },
+   "value_b": "4,050 GB as of 7 October 2026",
+   "quote_b": "the Panasas volume with a 4,295 GB soft quota, held 4,050 GB in 2.9 million files",
+   "quote_b_found": "whole",
+   "why": "The-lab-recipe gives 'home at 97 %' before the 260 GB deletion; different dates."
+  },
+  {
+   "index": 60,
+   "kind": "updated-later",
+   "quantity": "distinct L6 training patients",
+   "a": {
+    "id": "SchwingNet/naming-vertebrae-without-an-anchor-3dfzmh",
+    "title": "Naming Vertebrae Without an Anchor",
+    "date": "2026-09-17",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/naming-vertebrae-without-an-anchor-3dfzmh.txt",
+    "folder": "/home/claude/schwingnet/artifacts/naming-vertebrae-without-an-anchor-3dfzmh"
+   },
+   "value_a": "168, all CT renders",
+   "quote_a": "The model has never seen a photograph of a six-lumbar spine. All 168 are CT renders.",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/naming-vertebrae-without-ct-hjy4vc",
+    "title": "Naming Vertebrae Without CT",
+    "date": "2026-09-18",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/naming-vertebrae-without-ct-hjy4vc.txt",
+    "folder": "/home/claude/schwingnet/artifacts/naming-vertebrae-without-ct-hjy4vc"
+   },
+   "value_b": "213, 83 of them real radiographs",
+   "quote_b": "L6 213 83 of them are real radiographs; the rest are simulated from CT",
+   "quote_b_found": "whole",
+   "why": "Vertebral-levels and naming-without-ct report 83 real six-lumbar images entering training; 213 - 83 = 130 renders, not 168, so the render count also moved."
+  },
+  {
+   "index": 61,
+   "kind": "contradiction",
+   "quantity": "lumbar two-vertebra frame named from its own pixels",
+   "a": {
+    "id": "SchwingNet/naming-vertebrae-without-an-anchor-3dfzmh",
+    "title": "Naming Vertebrae Without an Anchor",
+    "date": "2026-09-17",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/naming-vertebrae-without-an-anchor-3dfzmh.txt",
+    "folder": "/home/claude/schwingnet/artifacts/naming-vertebrae-without-an-anchor-3dfzmh"
+   },
+   "value_a": "69.6%",
+   "quote_a": "a two-vertebra frame scored 69.6% on its own pixels and 95.1% registered onto a sweep from the sacrum",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/naming-vertebrae-without-ct-hjy4vc",
+    "title": "Naming Vertebrae Without CT",
+    "date": "2026-09-18",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/naming-vertebrae-without-ct-hjy4vc.txt",
+    "folder": "/home/claude/schwingnet/artifacts/naming-vertebrae-without-ct-hjy4vc"
+   },
+   "value_b": "85.7%",
+   "quote_b": "against 85.7% judged on its own pixels",
+   "quote_b_found": "whole",
+   "why": "Both are 'the same spot film judged on its own pixels'; naming-without-ct's box-repair row gives 83.0 \u2192 87.2 at two vertebrae, so a different model version is likely but unstated."
+  },
+  {
+   "index": 62,
+   "kind": "contradiction",
+   "quantity": "thoracic two-vertebra spot film named from its own pixels",
+   "a": {
+    "id": "SchwingNet/vertebral-levels-without-ct-a4rydj",
+    "title": "Vertebral Levels Without CT",
+    "date": "2026-09-18",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/vertebral-levels-without-ct-a4rydj.txt",
+    "folder": "/home/claude/schwingnet/artifacts/vertebral-levels-without-ct-a4rydj"
+   },
+   "value_a": "4.3% (12 studies)",
+   "quote_a": "a thoracic spot film showing two vertebrae is named correctly 4.3% of the time from its own pixels and 91.3% once matched",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/naming-vertebrae-without-an-anchor-3dfzmh",
+    "title": "Naming Vertebrae Without an Anchor",
+    "date": "2026-09-17",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/naming-vertebrae-without-an-anchor-3dfzmh.txt",
+    "folder": "/home/claude/schwingnet/artifacts/naming-vertebrae-without-an-anchor-3dfzmh"
+   },
+   "value_b": "13.4% (76 whole-spine renders)",
+   "quote_b": "the thoracic spine, where a single frame scored 13.4\u201346.4%",
+   "quote_b_found": "whole",
+   "why": "Same quantity (thoracic 2-body frame on own pixels) with 4.3 versus 13.4; the n differs (12 studies versus 76 renders) but neither says it revises the other."
+  },
+  {
+   "index": 63,
+   "kind": "contradiction",
+   "quantity": "thoracic two-vertebra frame once registered to the C2-down sweep",
+   "a": {
+    "id": "SchwingNet/vertebral-levels-without-ct-a4rydj",
+    "title": "Vertebral Levels Without CT",
+    "date": "2026-09-18",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/vertebral-levels-without-ct-a4rydj.txt",
+    "folder": "/home/claude/schwingnet/artifacts/vertebral-levels-without-ct-a4rydj"
+   },
+   "value_a": "91.3%",
+   "quote_a": "a thoracic spot film showing two vertebrae is named correctly 4.3% of the time from its own pixels and 91.3% once matched",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/naming-vertebrae-without-an-anchor-3dfzmh",
+    "title": "Naming Vertebrae Without an Anchor",
+    "date": "2026-09-17",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/naming-vertebrae-without-an-anchor-3dfzmh.txt",
+    "folder": "/home/claude/schwingnet/artifacts/naming-vertebrae-without-an-anchor-3dfzmh"
+   },
+   "value_b": "97.1%",
+   "quote_b": "| registered onto the sweep | | 97.1% | | 99.3% | | 98.6% |",
+   "quote_b_found": "whole",
+   "why": "Registered thoracic 2-body accuracy 91.3 versus 97.1 (76 whole-spine renders)."
+  },
+  {
+   "index": 64,
+   "kind": "contradiction",
+   "quantity": "vertebra detector miss rate on real films across confidence thresholds",
+   "a": {
+    "id": "SchwingNet/naming-vertebrae-without-ct-hjy4vc",
+    "title": "Naming Vertebrae Without CT",
+    "date": "2026-09-18",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/naming-vertebrae-without-ct-hjy4vc.txt",
+    "folder": "/home/claude/schwingnet/artifacts/naming-vertebrae-without-ct-hjy4vc"
+   },
+   "value_a": "2.42% at 0.25, 0.10 and 0.05 alike",
+   "quote_a": "the miss rate is 2.42% at confidence 0.25, 0.10 and 0.05 alike",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/ninety-three-pixels",
+    "title": "Ninety-Three Pixels",
+    "date": "2026-09-21",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/ninety-three-pixels.txt",
+    "folder": "/home/claude/schwingnet/artifacts/ninety-three-pixels"
+   },
+   "value_b": "recall 99.14% at 0.05, 98.71% at 0.25 (miss 0.86% / 1.29%)",
+   "quote_b": "| 1\u00d7 | native film | 836 | 99.14% | 98.71% | 6.87% | ... | 6\u00d7 | ts_drr | 139 | 99.14% | 98.28% | 7.73% |",
+   "quote_b_found": "parts",
+   "why": "One says the miss rate is threshold-invariant at 2.42%; the other shows recall moving with threshold and a lower miss rate; possibly different detectors but neither row says so."
+  },
+  {
+   "index": 65,
+   "kind": "updated-later",
+   "quantity": "number of FluoroCap panels carrying a T13",
+   "a": {
+    "id": "SchwingNet/naming-vertebrae-without-ct-hjy4vc",
+    "title": "Naming Vertebrae Without CT",
+    "date": "2026-09-18",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/naming-vertebrae-without-ct-hjy4vc.txt",
+    "folder": "/home/claude/schwingnet/artifacts/naming-vertebrae-without-ct-hjy4vc"
+   },
+   "value_a": "126",
+   "quote_a": "Published figures (FluoroCap) 1,500 panels with the article's own caption 149 with an L6, 126 with a T13",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/overnight-the-honest-99-kantj8",
+    "title": "Overnight: The Honest 99%",
+    "date": "2026-09-16",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/overnight-the-honest-99-kantj8.txt",
+    "folder": "/home/claude/schwingnet/artifacts/overnight-the-honest-99-kantj8"
+   },
+   "value_b": "254 (106 / 148)",
+   "quote_b": "T13 | 254 | 106 | 148",
+   "quote_b_found": "whole",
+   "why": "Larger decode."
+  },
+  {
+   "index": 66,
+   "kind": "contradiction",
+   "quantity": "T13 persons or training patients available",
+   "a": {
+    "id": "SchwingNet/research-directions-from-the-data-holding-kcyckb",
+    "title": "Research directions from the data holding",
+    "date": "2026-10-08",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/research-directions-from-the-data-holding-kcyckb.txt",
+    "folder": "/home/claude/schwingnet/artifacts/research-directions-from-the-data-holding-kcyckb"
+   },
+   "value_a": "7 persons in all sources, 0 real",
+   "quote_a": "T13 | 22 carriers, about 55 people in total | 7 persons in all sources, 0 real | 0",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/naming-vertebrae-without-ct-hjy4vc",
+    "title": "Naming Vertebrae Without CT",
+    "date": "2026-09-18",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/naming-vertebrae-without-ct-hjy4vc.txt",
+    "folder": "/home/claude/schwingnet/artifacts/naming-vertebrae-without-ct-hjy4vc"
+   },
+   "value_b": "73 distinct training patients, 65 real radiographs",
+   "quote_b": "T13 73 65 of them are real radiographs; the rest are simulated from CT",
+   "quote_b_found": "whole",
+   "why": "Naming-without-anchor says 'T13 has 13'; overnight-honest 6 VerSe; fluorocap-reality 44 T13 render crops; 73 with 65 real is far above every other count."
+  },
+  {
+   "index": 67,
+   "kind": "contradiction",
+   "quantity": "vertebra detector miss rate on real film",
+   "a": {
+    "id": "SchwingNet/vertebral-levels-without-ct-a4rydj",
+    "title": "Vertebral Levels Without CT",
+    "date": "2026-09-18",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/vertebral-levels-without-ct-a4rydj.txt",
+    "folder": "/home/claude/schwingnet/artifacts/vertebral-levels-without-ct-a4rydj"
+   },
+   "value_a": "2.2% missed",
+   "quote_a": "it misses only 2.2% of vertebrae",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/naming-vertebrae-without-ct-hjy4vc",
+    "title": "Naming Vertebrae Without CT",
+    "date": "2026-09-18",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/naming-vertebrae-without-ct-hjy4vc.txt",
+    "folder": "/home/claude/schwingnet/artifacts/naming-vertebrae-without-ct-hjy4vc"
+   },
+   "value_b": "97.6% found (2.4% missed)",
+   "quote_b": "On held-out real film it finds 97.6% of bodies.",
+   "quote_b_found": "whole",
+   "why": "Same class-agnostic detector on held-out real film; 97.8 versus 97.6 found."
+  },
+  {
+   "index": 68,
+   "kind": "updated-later",
+   "quantity": "duplicated vertebrae from the frame-linking rule",
+   "a": {
+    "id": "SchwingNet/vertebral-levels-without-ct-a4rydj",
+    "title": "Vertebral Levels Without CT",
+    "date": "2026-09-18",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/vertebral-levels-without-ct-a4rydj.txt",
+    "folder": "/home/claude/schwingnet/artifacts/vertebral-levels-without-ct-a4rydj"
+   },
+   "value_a": "17.9%",
+   "quote_a": "but 17.9% come out duplicated",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/naming-vertebrae-without-ct-hjy4vc",
+    "title": "Naming Vertebrae Without CT",
+    "date": "2026-09-18",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/naming-vertebrae-without-ct-hjy4vc.txt",
+    "folder": "/home/claude/schwingnet/artifacts/naming-vertebrae-without-ct-hjy4vc"
+   },
+   "value_b": "21.8 -> 3.0% across frames; 3.03 -> 0.61% in a frame",
+   "quote_b": "Requiring a majority rather than unanimity took duplication from 21.8% to 3.0%",
+   "quote_b_found": "whole",
+   "why": "Vertebral-levels says a tolerant rule 'already recovers eight points'; naming-without-ct reports the repaired figures."
+  },
+  {
+   "index": 69,
+   "kind": "contradiction",
+   "quantity": "sweep chain survival with the detector's own boxes",
+   "a": {
+    "id": "SchwingNet/vertebral-levels-without-ct-a4rydj",
+    "title": "Vertebral Levels Without CT",
+    "date": "2026-09-18",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/vertebral-levels-without-ct-a4rydj.txt",
+    "folder": "/home/claude/schwingnet/artifacts/vertebral-levels-without-ct-a4rydj"
+   },
+   "value_a": "20% of films (100% with annotation boxes)",
+   "quote_a": "the sweep chain survives on 20% of films instead of 100%",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/naming-vertebrae-without-ct-hjy4vc",
+    "title": "Naming Vertebrae Without CT",
+    "date": "2026-09-18",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/naming-vertebrae-without-ct-hjy4vc.txt",
+    "folder": "/home/claude/schwingnet/artifacts/naming-vertebrae-without-ct-hjy4vc"
+   },
+   "value_b": "40% baseline (8% at the lower threshold)",
+   "quote_b": "twice the spurious boxes and a chain that survives on 8% of films instead of 40%",
+   "quote_b_found": "whole",
+   "why": "Baseline chain survival with detector boxes is 20% in one artifact and 40% in the other; thresholds are not stated in the first."
+  },
+  {
+   "index": 70,
+   "kind": "updated-later",
+   "quantity": "CTSpinoPelvic1K mean sacral slope (SS)",
+   "a": {
+    "id": "SchwingNet/openspine-board-t3gfds",
+    "title": "OpenSpine Board",
+    "date": "2026-09-11",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/openspine-board-t3gfds.txt",
+    "folder": "/home/claude/schwingnet/artifacts/openspine-board-t3gfds"
+   },
+   "value_a": "33.2 (yours) vs 34.1 (matched series)",
+   "quote_a": "the one matched supine-CT series reports 53.4 / 34.1 / 19.2 against your 52.7 / 33.2 / 19.7",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/research-directions-from-the-data-holding-kcyckb",
+    "title": "Research directions from the data holding",
+    "date": "2026-10-08",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/research-directions-from-the-data-holding-kcyckb.txt",
+    "folder": "/home/claude/schwingnet/artifacts/research-directions-from-the-data-holding-kcyckb"
+   },
+   "value_b": "33.1 vs v11 table 36.6",
+   "quote_b": "confirm the gap is 0.1 degrees, not the 3.4 the stale estimator note argues from",
+   "quote_b_found": "whole",
+   "why": "Research-directions context: 'SS 33.1 vs the v11 table's 36.6'; the board gives 33.2; v11's table holds 36.6."
+  },
+  {
+   "index": 71,
+   "kind": "contradiction",
+   "quantity": "the project's sacral slope against the matched supine-CT series",
+   "a": {
+    "id": "SchwingNet/openspine-board-t3gfds",
+    "title": "OpenSpine Board",
+    "date": "2026-09-11",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/openspine-board-t3gfds.txt",
+    "folder": "/home/claude/schwingnet/artifacts/openspine-board-t3gfds"
+   },
+   "value_a": "SS 33.2 (own) vs 34.1 (series)",
+   "quote_a": "the one matched supine-CT series reports 53.4 / 34.1 / 19.2 against your 52.7 / 33.2 / 19.7",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/research-directions-from-the-data-holding-kcyckb",
+    "title": "Research directions from the data holding",
+    "date": "2026-10-08",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/research-directions-from-the-data-holding-kcyckb.txt",
+    "folder": "/home/claude/schwingnet/artifacts/research-directions-from-the-data-holding-kcyckb"
+   },
+   "value_b": "SS 33.1 (note) vs 36.6 (v11 table); gap 0.1 not 3.4 degrees",
+   "quote_b": "confirm the gap is 0.1 degrees, not the 3.4 the stale estimator note argues from",
+   "quote_b_found": "whole",
+   "why": "Own sacral slope given as 33.2, 33.1 and 36.6 across the rows; research-directions calls one note stale but the v11 table value differs from the board's."
+  },
+  {
+   "index": 72,
+   "kind": "contradiction",
+   "quantity": "detector training set and planned retraining size",
+   "a": {
+    "id": "SchwingNet/openspine-board-t3gfds",
+    "title": "OpenSpine Board",
+    "date": "2026-09-11",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/openspine-board-t3gfds.txt",
+    "folder": "/home/claude/schwingnet/artifacts/openspine-board-t3gfds"
+   },
+   "value_a": "4,327 -> ~13,500",
+   "quote_a": "from 4,327 training images toward ~13,500",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/spine-program-decisions-qqhkqz",
+    "title": "Spine Program Decisions",
+    "date": "undated",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/spine-program-decisions-qqhkqz.txt",
+    "folder": "/home/claude/schwingnet/artifacts/spine-program-decisions-qqhkqz"
+   },
+   "value_b": "4,327 -> ~34,000",
+   "quote_b": "trained on 4,327 \u2192 retraining on ~34,000",
+   "quote_b_found": "whole",
+   "why": "Same starting set, different retraining target; one may be a later plan."
+  },
+  {
+   "index": 73,
+   "kind": "contradiction",
+   "quantity": "exact-level naming on a whole lateral C-ArmLSpine frame",
+   "a": {
+    "id": "SchwingNet/or-readiness-ledger",
+    "title": "OR Readiness Ledger",
+    "date": "2026-09-22",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/or-readiness-ledger.txt",
+    "folder": "/home/claude/schwingnet/artifacts/or-readiness-ledger"
+   },
+   "value_a": "98.2%",
+   "quote_a": "98.2% exact level on whole C-ArmLSpine lateral frames, five-fold CV over 148 cases [95.7\u2013100]",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/research-directions-from-the-data-holding-kcyckb",
+    "title": "Research directions from the data holding",
+    "date": "2026-10-08",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/research-directions-from-the-data-holding-kcyckb.txt",
+    "folder": "/home/claude/schwingnet/artifacts/research-directions-from-the-data-holding-kcyckb"
+   },
+   "value_b": "97.4%",
+   "quote_b": "it names 97.4 % of bodies on a whole lateral frame and 74.8 % with one body in view",
+   "quote_b_found": "whole",
+   "why": "Same device, same whole-lateral-frame measure; the handoff repeats 97.4% while the ledger, counting-from-the-sacrum (98.22%) and state-of-the-literature (606 of 617) give 98.2%. Research-directions also gives '98.2 % against the count's 97.0 %', so 97.4 may be an older model."
+  },
+  {
+   "index": 74,
+   "kind": "contradiction",
+   "quantity": "CTSpinoPelvic1K cases with a rib on a lumbar vertebra",
+   "a": {
+    "id": "SchwingNet/spinal-border-variants-fye5ef",
+    "title": "Spinal Border Variants",
+    "date": "undated",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/spinal-border-variants-fye5ef.txt",
+    "folder": "/home/claude/schwingnet/artifacts/spinal-border-variants-fye5ef"
+   },
+   "value_a": "13",
+   "quote_a": "The 13 cases carrying a rib on a lumbar body cluster at four, as they must.",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/overnight-the-honest-99-kantj8",
+    "title": "Overnight: The Honest 99%",
+    "date": "2026-09-16",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/overnight-the-honest-99-kantj8.txt",
+    "folder": "/home/claude/schwingnet/artifacts/overnight-the-honest-99-kantj8"
+   },
+   "value_b": "16",
+   "quote_b": "lumbar rib | 16 | \u2014 | \u2014 | 16",
+   "quote_b_found": "whole",
+   "why": "Fluorocap-reality also says 16 lumbar ribs; rib-anchor-audit says the strict incidence QC 'found only 14 lumbar ribs in the entire cohort' and lists '1 of 14' reader disagreements; 13 versus 14 versus 16."
+  },
+  {
+   "index": 75,
+   "kind": "contradiction",
+   "quantity": "L6 training cases needed before VerSe algorithms found an L6",
+   "a": {
+    "id": "SchwingNet/overnight-the-honest-99-kantj8",
+    "title": "Overnight: The Honest 99%",
+    "date": "2026-09-16",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/overnight-the-honest-99-kantj8.txt",
+    "folder": "/home/claude/schwingnet/artifacts/overnight-the-honest-99-kantj8"
+   },
+   "value_a": "2 (none) / 15 (most)",
+   "quote_a": "with two L6 training cases no algorithm out of about ten identified an L6; with fifteen, most identified some",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay",
+    "title": "State of the literature: datasets held, missing, size and power",
+    "date": "2026-10-08",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay.txt",
+    "folder": "/home/claude/schwingnet/artifacts/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay"
+   },
+   "value_b": "28 in training sufficed",
+   "quote_b": "against the 85 L6 scans in VerSe'20, where 28 in training sufficed to make L6 learnable",
+   "quote_b_found": "whole",
+   "why": "Both describe VerSe's L6 learnability threshold with different counts in training."
+  },
+  {
+   "index": 76,
+   "kind": "updated-later",
+   "quantity": "number of FluoroCap panels carrying an L6",
+   "a": {
+    "id": "SchwingNet/vertebral-levels-without-ct-a4rydj",
+    "title": "Vertebral Levels Without CT",
+    "date": "2026-09-18",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/vertebral-levels-without-ct-a4rydj.txt",
+    "folder": "/home/claude/schwingnet/artifacts/vertebral-levels-without-ct-a4rydj"
+   },
+   "value_a": "149",
+   "quote_a": "1,500 panels harvested from the published literature ... 149 carry a sixth lumbar vertebra and 126 a thirteenth rib-bearing level",
+   "quote_a_found": "parts",
+   "b": {
+    "id": "SchwingNet/overnight-the-honest-99-kantj8",
+    "title": "Overnight: The Honest 99%",
+    "date": "2026-09-16",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/overnight-the-honest-99-kantj8.txt",
+    "folder": "/home/claude/schwingnet/artifacts/overnight-the-honest-99-kantj8"
+   },
+   "value_b": "338 (145 caption-named, 193 caption-free)",
+   "quote_b": "L6 | 338 | 145 | 193",
+   "quote_b_found": "whole",
+   "why": "Larger decode; note 145 caption-named is close to the 149 of the review site."
+  },
+  {
+   "index": 77,
+   "kind": "contradiction",
+   "quantity": "date window of the retrospective fluoroscopy corpus",
+   "a": {
+    "id": "SchwingNet/retrospective-fluoroscopy-protocol",
+    "title": "Retrospective Fluoroscopy Protocol",
+    "date": "2027-01",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/retrospective-fluoroscopy-protocol.txt",
+    "folder": "/home/claude/schwingnet/artifacts/retrospective-fluoroscopy-protocol"
+   },
+   "value_a": "2021\u20132026",
+   "quote_a": "spine operations performed between 2021 and 2026, remove all patient identifiers, and use them to train and test the counting method",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/protocol-1-eprotocol-draft-mkmh7p",
+    "title": "Protocol 1 \u2014 eProtocol draft",
+    "date": "2026-09-15",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/protocol-1-eprotocol-draft-mkmh7p.txt",
+    "folder": "/home/claude/schwingnet/artifacts/protocol-1-eprotocol-draft-mkmh7p"
+   },
+   "value_b": "1 January 2006 to the IRB approval date",
+   "quote_b": "Records and images run from 1 January 2006 to the IRB approval date; nothing is collected prospectively.",
+   "quote_b_found": "whole",
+   "why": "AIDAS proposal and counting-levels also say 2021\u20132026 (five years); protocol 1 reaches back to 2006 and speaks of 'twenty years' of records."
+  },
+  {
+   "index": 78,
+   "kind": "contradiction",
+   "quantity": "CTSpinoPelvic1K cases with a sixth lumbar vertebra",
+   "a": {
+    "id": "SchwingNet/protocol-1-eprotocol-draft-mkmh7p",
+    "title": "Protocol 1 \u2014 eProtocol draft",
+    "date": "2026-09-15",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/protocol-1-eprotocol-draft-mkmh7p.txt",
+    "folder": "/home/claude/schwingnet/artifacts/protocol-1-eprotocol-draft-mkmh7p"
+   },
+   "value_a": "18",
+   "quote_a": "including 18 six-lumbar spines and 33 graded transitional cases",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/spine-program-decisions-qqhkqz",
+    "title": "Spine Program Decisions",
+    "date": "undated",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/spine-program-decisions-qqhkqz.txt",
+    "folder": "/home/claude/schwingnet/artifacts/spine-program-decisions-qqhkqz"
+   },
+   "value_b": "~22 of 802 (2.7%)",
+   "quote_b": "About 22 of 802 cases carry an L6 at all, roughly 2.7%.",
+   "quote_b_found": "whole",
+   "why": "Research-directions: 'L6 18 by label and 16 by the readers'; overnight-honest 18 own CTs; spinal-border-variants 'six (26)'; rib-anchor count '6 | 26'; fluorocap-reality '34 CTSP' L6 cases; rib-anchor radiologist lumbarization 14."
+  },
+  {
+   "index": 79,
+   "kind": "contradiction",
+   "quantity": "CTSpinoPelvic1K cases with four lumbar vertebrae (sacralization)",
+   "a": {
+    "id": "SchwingNet/research-directions-from-the-data-holding-kcyckb",
+    "title": "Research directions from the data holding",
+    "date": "2026-10-08",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/research-directions-from-the-data-holding-kcyckb.txt",
+    "folder": "/home/claude/schwingnet/artifacts/research-directions-from-the-data-holding-kcyckb"
+   },
+   "value_a": "four-lumbar 9",
+   "quote_a": "802 records, one per patient; 422 supine, 377 prone | ... | L6 18 by label and 16 by the readers; four-lumbar 9",
+   "quote_a_found": "parts",
+   "b": {
+    "id": "SchwingNet/spinal-border-variants-fye5ef",
+    "title": "Spinal Border Variants",
+    "date": "undated",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/spinal-border-variants-fye5ef.txt",
+    "folder": "/home/claude/schwingnet/artifacts/spinal-border-variants-fye5ef"
+   },
+   "value_b": "35 at four",
+   "quote_b": "Labelled LSTV cases sit at four ( 35 ) and six ( 26 ) instead",
+   "quote_b_found": "whole",
+   "why": "Overnight-honest: 13 own CTs four lumbar; rib-anchor-audit: 26 (3.3%) cases with 4, radiologist sacralization 7 of 7; each uses a different reader or rule."
+  },
+  {
+   "index": 80,
+   "kind": "updated-later",
+   "quantity": "CTSpinoPelvic1K cases with misnumbered ribs before and after correction",
+   "a": {
+    "id": "SchwingNet/spinal-border-variants-fye5ef",
+    "title": "Spinal Border Variants",
+    "date": "undated",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/spinal-border-variants-fye5ef.txt",
+    "folder": "/home/claude/schwingnet/artifacts/spinal-border-variants-fye5ef"
+   },
+   "value_a": "16 -> 2 misnumbered cases",
+   "quote_a": "| Misnumbered cases | | 16 | | 2 |",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/rib-anchor-audit-t7wr2h",
+    "title": "Rib Anchor Audit",
+    "date": "undated",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/rib-anchor-audit-t7wr2h.txt",
+    "folder": "/home/claude/schwingnet/artifacts/rib-anchor-audit-t7wr2h"
+   },
+   "value_b": "24 -> 16 cases",
+   "quote_b": "24 \u2192 16 cases with a consistent misnumbered run",
+   "quote_b_found": "whole",
+   "why": "Different passes (v4 to v5 versus a later renumbering); ribs on the wrong vertebra 109 -> 19 in one, 'no vertebra within reach' 913 -> 38 -> 12 in the other."
+  },
+  {
+   "index": 81,
+   "kind": "updated-later",
+   "quantity": "number of registry source records in SchwingNet data/sources",
+   "a": {
+    "id": "SchwingNet/schwingnet-data-registry",
+    "title": "SchwingNet Data Registry",
+    "date": "2026-10-20",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/schwingnet-data-registry.txt",
+    "folder": "/home/claude/schwingnet/artifacts/schwingnet-data-registry"
+   },
+   "value_a": "60 (rendered 2026-10-20)",
+   "quote_a": "SchwingNet, data/sources, 60 records, rendered 2026-10-20",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/schwingnet-grid-pipeline",
+    "title": "SchwingNet grid pipeline",
+    "date": "2026-10-21",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/schwingnet-grid-pipeline.txt",
+    "folder": "/home/claude/schwingnet/artifacts/schwingnet-grid-pipeline"
+   },
+   "value_b": "111 (2026-10-21)",
+   "quote_b": "Registry sources 111 get 63 \u00b7 held 27 \u00b7 gated 15 \u00b7 6 other",
+   "quote_b_found": "whole",
+   "why": "Grid pipeline also says spine-datasets' 86 records are '81 copied from SchwingNet plus 5', so the registry grew from 60 past 81 to 111 within a day or the counts cover different files."
+  },
+  {
+   "index": 82,
+   "kind": "contradiction",
+   "quantity": "AASCE/SpineWeb image count",
+   "a": {
+    "id": "SchwingNet/spine-x-ray-data-handoff-bddbdd",
+    "title": "Spine X-ray Data Handoff",
+    "date": "2026-09-03",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/spine-x-ray-data-handoff-bddbdd.txt",
+    "folder": "/home/claude/schwingnet/artifacts/spine-x-ray-data-handoff-bddbdd"
+   },
+   "value_a": "609",
+   "quote_a": "Images 609 standing AP full-spine, EOS",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/spine-program-decisions-qqhkqz",
+    "title": "Spine Program Decisions",
+    "date": "undated",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/spine-program-decisions-qqhkqz.txt",
+    "folder": "/home/claude/schwingnet/artifacts/spine-program-decisions-qqhkqz"
+   },
+   "value_b": "579",
+   "quote_b": "| AASCE / SpineWeb | | 579 | | 68 landmarks (17\u00d74), the Cobb benchmark | | Unknown |",
+   "quote_b_found": "whole",
+   "why": "Same source dataset, same 68-landmark annotation, different counts."
+  },
+  {
+   "index": 83,
+   "kind": "contradiction",
+   "quantity": "BUU-LSPINE patient count",
+   "a": {
+    "id": "SchwingNet/spine-x-ray-data-handoff-bddbdd",
+    "title": "Spine X-ray Data Handoff",
+    "date": "2026-09-03",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/spine-x-ray-data-handoff-bddbdd.txt",
+    "folder": "/home/claude/schwingnet/artifacts/spine-x-ray-data-handoff-bddbdd"
+   },
+   "value_a": "3,600 patients",
+   "quote_a": "BUU-LSPINE full release (3,600 patients)",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay",
+    "title": "State of the literature: datasets held, missing, size and power",
+    "date": "2026-10-08",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay.txt",
+    "folder": "/home/claude/schwingnet/artifacts/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay"
+   },
+   "value_b": "3,600 patients or 1,200 patients",
+   "quote_b": "BUU-LSPINE: 3,600 patients and 7,200 films, or 3,600 films from 1,200 patients; 7,204 films are on disk.",
+   "quote_b_found": "whole",
+   "why": "State-of-the-literature records two readings of the dataset's own description; every other artifact uses 3,600 patients/people/cases."
+  },
+  {
+   "index": 84,
+   "kind": "contradiction",
+   "quantity": "transitional patients available across all sources",
+   "a": {
+    "id": "SchwingNet/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay",
+    "title": "State of the literature: datasets held, missing, size and power",
+    "date": "2026-10-08",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay.txt",
+    "folder": "/home/claude/schwingnet/artifacts/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay"
+   },
+   "value_a": "194 / 190 / 202 / 306",
+   "quote_a": "Transitional persons in all sources: 194, about 190, 202 or 306, by date and definition.",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "SchwingNet/vertebral-levels-without-ct-a4rydj",
+    "title": "Vertebral Levels Without CT",
+    "date": "2026-09-18",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/SchwingNet/vertebral-levels-without-ct-a4rydj.txt",
+    "folder": "/home/claude/schwingnet/artifacts/vertebral-levels-without-ct-a4rydj"
+   },
+   "value_b": "376 patients",
+   "quote_b": "A cross-validation over all 376 patients with transitional anatomy is running now",
+   "quote_b_found": "whole",
+   "why": "Naming-without-ct also says 376; state-of-the-literature's highest count is 306."
+  },
+  {
+   "index": 85,
+   "kind": "updated-later",
+   "quantity": "number of coordbench task pairs",
+   "a": {
+    "id": "symphony-template/symphony-handoff",
+    "title": "Symphony Handoff",
+    "date": "2026-10-13",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/symphony-template/symphony-handoff.txt",
+    "folder": "/home/claude/symphony-template/artifacts/symphony-handoff"
+   },
+   "value_a": "42 gradeable pairs",
+   "quote_a": "42 pairs give 80 percent power only for differences of about 26 to 30 points, 100 pairs about 18 to 20, 300 about 10 to 12, all 652 about 8",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "symphony-template/symphony-in-brief-9cdciz",
+    "title": "Symphony in brief",
+    "date": "2026-10-14",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/symphony-template/symphony-in-brief-9cdciz.txt",
+    "folder": "/home/claude/symphony-template/artifacts/symphony-in-brief-9cdciz"
+   },
+   "value_b": "50 pairs from 20 tasks",
+   "quote_b": "50 pairs from 20 tasks, five arms (sdlc, solo, coop, coop-git, team), Claude Sonnet 5.5 for every agent, 120 minutes per agent, one seed",
+   "quote_b_found": "whole",
+   "why": "The in-brief states a pre-registered run; the handoff's 42 is the earlier gradeable set; no row says which supersedes."
+  },
+  {
+   "index": 86,
+   "kind": "updated-later",
+   "quantity": "number of coordbench arms",
+   "a": {
+    "id": "symphony-template/symphony-handoff",
+    "title": "Symphony Handoff",
+    "date": "2026-10-13",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/symphony-template/symphony-handoff.txt",
+    "folder": "/home/claude/symphony-template/artifacts/symphony-handoff"
+   },
+   "value_a": "four arms, 294 sessions, about $125",
+   "quote_a": "The kit's own estimate is 294 sessions, about $125, for four arms on the 42 gradeable pairs",
+   "quote_a_found": "whole",
+   "b": {
+    "id": "symphony-template/symphony-in-brief-9cdciz",
+    "title": "Symphony in brief",
+    "date": "2026-10-14",
+    "text": "/tmp/claude-0/-home-claude-symphony-template/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/text/symphony-template/symphony-in-brief-9cdciz.txt",
+    "folder": "/home/claude/symphony-template/artifacts/symphony-in-brief-9cdciz"
+   },
+   "value_b": "five arms",
+   "quote_b": "50 pairs from 20 tasks, five arms (sdlc, solo, coop, coop-git, team), Claude Sonnet 5.5 for every agent, 120 minutes per agent, one seed",
+   "quote_b_found": "whole",
+   "why": "A team arm was added to the pre-registered design."
+  }
+ ]
+}
