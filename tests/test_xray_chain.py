@@ -1414,10 +1414,11 @@ class SizeRuleTest(unittest.TestCase):
         self.rule(every, **stray)
         self.assertEqual(set(calls.read_text(encoding="utf-8").split()), {"getfattr", "stat", "squeue", "df"})
         # nor does a call the tests above do not reach: outside the switch the rule reads none of these
-        # names from the environment, and the job takes its size reader, Python and curl there alone
+        # names from the environment, and the jobs take their size reader, Python and curl there alone
         for name, names, pattern in (
                 ("size-rule.sh", "GETFATTR|STAT|SQUEUE|DF|MOUNTINFO|SIZE_RULE_SETTLE", r"\$\{{?({})\b"),
-                ("platform-fetch.sbatch", "SIZER|XATTR_PYTHON|CURL", r"\$\{{({}):?-")):
+                ("platform-fetch.sbatch", "SIZER|XATTR_PYTHON|CURL", r"\$\{{({}):?-"),
+                ("unpack.sbatch", "XATTR_PYTHON", r"\$\{{({}):?-")):
             text = (GRID / name).read_text(encoding="utf-8")
             switch = re.search(r'\nif \[ "\$\{SIZE_RULE_STAND_INS:-\}" = yes \]; then\n.*?\nfi\n', text, re.S)
             self.assertIsNotNone(switch, name)

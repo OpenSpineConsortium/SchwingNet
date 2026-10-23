@@ -17,8 +17,13 @@ id=${UNPACK_ID:?UNPACK_ID names the set}
 raw=${UNPACK_RAW:?UNPACK_RAW names its raw folder}
 DATA=${DATA_ROOT:-/rs/rs_grp_oschome/go2432/data}
 VOLUME=${VOLUME:-/rs/rs_grp_oschome}
-# A compute node may have no getfattr; the job's own python reads the quota's attributes there.
-XATTR_PYTHON=${XATTR_PYTHON:-$PYDRV}
+# A compute node may have no getfattr; the job's own python reads the quota's attributes there,
+# never one the environment it was sent from names, unless a test says so (grid/size-rule.sh, #180).
+if [ "${SIZE_RULE_STAND_INS:-}" = yes ]; then
+  XATTR_PYTHON=${XATTR_PYTHON:-$PYDRV}
+else
+  XATTR_PYTHON=$PYDRV
+fi
 export PYTHONNOUSERSITE=1
 # shellcheck source=grid/size-rule.sh
 . "$REPO/grid/size-rule.sh"
