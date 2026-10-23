@@ -31,7 +31,9 @@ GB = 1000 ** 3
 # attribute given no value is not there, as on a folder with no quota, and a ~ in a value is a NUL,
 # as getfattr may print one where CephFS's value ends, and a ^ a line break; squeue lists the job ids in
 # FAKE_QUEUE, or fails where FAKE_SQUEUE_FAILS is set; the size reader says on stderr what it was
-# asked, prints FAKE_SIZE and ends with FAKE_SIZE_RC.
+# asked, prints FAKE_SIZE and ends with FAKE_SIZE_RC; stat, used where a test names it as STAT, gives
+# a folder's size from its line "<folder> stat.size <bytes>" in FAKE_XATTRS, else the real stat's, a
+# link followed only under -L, as stat follows one, and a mount's kind as FAKE_FS_KIND, ceph unless set.
 STAND_INS = {
     "getfattr": """#!/bin/bash
 name=""; folder=""
@@ -52,6 +54,17 @@ exit 0
 echo "sizer: $*" >&2
 printf '%s\\n' "${FAKE_SIZE:-no exact size; the test gave none}"
 exit "${FAKE_SIZE_RC:-0}"
+""",
+    "stat": """#!/bin/bash
+kind=""; format=""; folder=""; follow=""
+while [ $# -gt 0 ]; do
+  case "$1" in -f) kind=1; shift ;; -L) follow=-L; shift ;; -c) format=$2; shift 2 ;; *) folder=$1; shift ;; esac
+done
+[ -z "$kind" ] || { echo "${FAKE_FS_KIND:-ceph}"; exit 0; }
+[ -z "$follow" ] || [ ! -L "$folder" ] || folder=$(readlink "$folder")
+size=$(awk -v f="$folder" '$1 == f && $2 == "stat.size" { size = $3 } END { printf "%s", size }' "${FAKE_XATTRS:-/dev/null}")
+[ -n "$size" ] || exec stat $follow -c "$format" "$folder"
+echo "$size"
 """,
 }
 
@@ -1367,13 +1380,156 @@ class QuotaReadoutTest(unittest.TestCase):
         self.assertIn("File Count =    not read; ceph.dir.rfiles reads as no count, 25 characters up to its first NUL "
                       "where a count has at most 18 digits\n", out)
         volume.attribute(volume.path, "ceph.dir.rbytes", "165744388008563119603013828275240916436124852417")
-        code, out = self.readout(volume)
+        # stat here gives a folder's entry count as its size, as the kernel client does without its
+        # rbytes option, which the data root shows, so stat cannot stand in for the attribute (#170)
+        volume.attribute(volume.data, "ceph.dir.rbytes", 14062 * GB)
+        volume.attribute(volume.data, "stat.size", 87)
+        volume.attribute(volume.path, "stat.size", 9)
+        code, out = self.readout(volume, STAT=str(volume.tools / "stat"))
         self.assertEqual(code, 2, out)
         self.assertEqual(out.splitlines()[1:], [
             "The CephFS quota or its use could not be read, so the size rule admits no fetch:",
             "  ceph.quota.max_bytes reads 21990232555520",
             "  ceph.dir.rbytes reads as no count, 48 characters up to its first NUL where a count has at most 18 digits",
+            "  getfattr gives it as 48 bytes, 165744388008563119603013828275240916436124852417",
+            "  stat gives its size as 9 on a mount it calls ceph, and the data root's as 87 where that folder's "
+            "ceph.dir.rbytes is 14062000000000",
         ])
+
+    def rule(self, volume, call, **extra):
+        """One function of grid/size-rule.sh, called in bash with the volume's stand-ins."""
+        env = dict(os.environ, DATA=str(volume.data))
+        env.update(volume.env(**extra))
+        done = subprocess.run(["bash", "-c", f'. "{GRID / "size-rule.sh"}"; {call}'], env=env, capture_output=True,
+                              text=True, timeout=60)
+        return done.returncode, done.stdout.strip()
+
+    def test_a_use_that_is_no_count_is_read_by_stat_where_the_mount_gives_a_folders_rbytes(self):
+        # The status word's answer of 2026-10-23 (#170): the volume's ceph.dir.rbytes is 48 digits on
+        # the login node, where warrior kills Python by name, while the data root's reads clean. Where
+        # stat gives the data root's attribute as its size, the volume's size is its use, read by a
+        # path that does not pass through getxattr; the readout says so and shows what getfattr gave.
+        volume = volume_in(self, quota=21990232555520, used="165744388008563119603013828275240916436124852417")
+        volume.attribute(volume.path, "ceph.dir.rfiles", "2363642212733507223600077")
+        volume.attribute(volume.data, "ceph.dir.rbytes", 14062 * GB)
+        volume.attribute(volume.data, "stat.size", 14062 * GB)
+        volume.attribute(volume.path, "stat.size", 16574438800856)
+        stat = str(volume.tools / "stat")
+        code, out = self.readout(volume, STAT=stat)
+        self.assertEqual(code, 0, out)
+        self.assertEqual(out.splitlines()[1:], [
+            "Used  = 75.37%  16574.44gb",
+            "Free  = 24.63%  5415.79gb",
+            "Total =         21990.23gb",
+            "File Count =    not read; ceph.dir.rfiles reads as no count, 25 characters up to its first NUL "
+            "where a count has at most 18 digits",
+            "[" + "#" * 72 + "-" * 24 + "]",
+            "Used is the folder's size by stat, which gives a folder's ceph.dir.rbytes on this mount (the data root's "
+            "agree), since that attribute reads as no count; getfattr gives it as 48 bytes, "
+            "165744388008563119603013828275240916436124852417",
+            "Owed  =         0.00gb still to land for 0 running fetches",
+            "Room  =         5415.79gb for a new fetch, which lands whole or not at all",
+        ])
+        # the size rule decides by the same figure, and by the attribute wherever that is a count
+        room = 21990232555520 - 16574438800856
+        self.assertEqual(self.rule(volume, 'volume_free_bytes "$VOLUME"', STAT=stat), (0, f"{room} quota"))
+        self.assertEqual(self.rule(volume, 'volume_used "$VOLUME"', STAT=stat), (0, "16574438800856 stat"))
+        volume.attribute(volume.path, "ceph.dir.rbytes", 13146 * GB)
+        self.assertEqual(self.rule(volume, 'volume_used "$VOLUME"', STAT=stat), (0, f"{13146 * GB} attribute"))
+
+    def test_stat_stands_in_only_on_the_data_roots_mount_and_only_with_a_count(self):
+        volume = volume_in(self, quota=21990232555520, used="165744388008563119603013828275240916436124852417")
+        volume.attribute(volume.data, "ceph.dir.rbytes", 14062 * GB)
+        volume.attribute(volume.data, "stat.size", 14062 * GB)
+        stat = str(volume.tools / "stat")
+        # a size that is no count, as a negative one or one past 18 digits, is no reading
+        for size in ("-1", "1657443880085631196", ""):
+            volume.attribute(volume.path, "stat.size", size or "x")
+            code, out = self.readout(volume, STAT=stat)
+            self.assertEqual(code, 2, out)
+            self.assertIn("The CephFS quota or its use could not be read, so the size rule admits no fetch:", out)
+            self.assertEqual(self.rule(volume, 'volume_used "$VOLUME"', STAT=stat), (3, ""), size)
+            self.assertEqual(self.rule(volume, 'volume_free_bytes "$VOLUME"', STAT=stat), (1, ""), size)
+        # a data root off the volume shows nothing of the volume's mount
+        import tempfile
+        elsewhere = tempfile.TemporaryDirectory()
+        self.addCleanup(elsewhere.cleanup)
+        volume.attribute(elsewhere.name, "ceph.dir.rbytes", 14062 * GB)
+        volume.attribute(elsewhere.name, "stat.size", 14062 * GB)
+        volume.attribute(volume.path, "stat.size", 16574438800856)
+        code, out = self.readout(volume, STAT=stat, DATA_ROOT=elsewhere.name)
+        self.assertEqual(code, 2, out)
+        self.assertIn("\n  stat gives its size as 16574438800856 on a mount it calls ceph, with no data root on the "
+                      "volume to show what stat gives a folder there\n", out)
+        # nor does one whose own attribute cannot be read
+        volume.attribute(volume.data, "ceph.dir.rbytes", "")
+        code, out = self.readout(volume, STAT=stat)
+        self.assertEqual(code, 2, out)
+        self.assertIn("\n  stat gives its size as 16574438800856 on a mount it calls ceph, and the data root's as "
+                      "14062000000000 where that folder's ceph.dir.rbytes is unread\n", out)
+
+    def test_stat_is_trusted_only_between_two_readings_of_the_data_roots_attribute(self):
+        # A fetch landing between the readings moves the data root's attribute: its size by stat counts
+        # when it lies between the reading before and the one after, in either order, and not outside.
+        volume = volume_in(self, quota=21990232555520)
+        readings = volume.tools / "readings"
+        twice = volume.tools / "getfattr-readings"
+        twice.write_text('#!/bin/bash\nhead -n 1 "$READINGS" | tr -d "\\n"\nsed -i 1d "$READINGS"\n', encoding="utf-8")
+        twice.chmod(0o755)
+        stat = str(volume.tools / "stat")
+        for first, second, size, trusted in ((100, 300, 100, True), (100, 300, 200, True), (100, 300, 300, True),
+                                             (300, 100, 200, True), (100, 300, 99, False), (100, 300, 301, False),
+                                             (100, 100, 100, True), (100, 100, 87, False)):
+            readings.write_text(f"{first}\n{second}\n", encoding="utf-8")
+            volume.attribute(volume.data, "stat.size", size)
+            said = self.rule(volume, 'stat_gives_rbytes "$VOLUME"', STAT=stat, GETFATTR=str(twice),
+                             READINGS=str(readings))
+            # what it gives is the lower reading, the least the data root, and so the volume, holds
+            self.assertEqual(said, (0, str(min(first, second))) if trusted else (1, ""), (first, second, size))
+            self.assertEqual(readings.read_text(encoding="utf-8"), "", "the attribute is read twice")
+
+    def test_a_volume_that_is_a_link_is_read_by_stat_through_it_and_never_below_its_data_root(self):
+        # On the grid /rs/rs_grp_oschome is a link into /.rs/volumes, whose own size is the length of
+        # the path it holds: stat follows it, and a size below the data root's is no reading at all.
+        import tempfile
+        volume = volume_in(self, quota=21990232555520)
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        link = Path(tmp.name) / "rs_grp_oschome"
+        link.symlink_to(volume.path)
+        data = f"{link}/data"
+        volume.attribute(link, "ceph.quota.max_bytes", 21990232555520)
+        volume.attribute(link, "ceph.dir.rbytes", "165744388008563119603013828275240916436124852417")
+        volume.attribute(data, "ceph.dir.rbytes", 14062 * GB)
+        volume.attribute(data, "stat.size", 14062 * GB)
+        volume.attribute(volume.path, "stat.size", 16574438800856)
+        stat = str(volume.tools / "stat")
+        code, out = self.readout(volume, STAT=stat, VOLUME=str(link), DATA_ROOT=data)
+        self.assertEqual(code, 0, out)
+        self.assertIn("\nUsed  = 75.37%  16574.44gb\n", out)
+        self.assertIn("\nUsed is the folder's size by stat, which gives a folder's ceph.dir.rbytes on this mount", out)
+        # the folder the link names holds less than the data root: no reading, and no fetch admitted
+        volume.attribute(volume.path, "stat.size", 14062 * GB - 1)
+        code, out = self.readout(volume, STAT=stat, VOLUME=str(link), DATA_ROOT=data)
+        self.assertEqual(code, 2, out)
+        self.assertIn("\n  stat gives its size as 14061999999999 on a mount it calls ceph, and the data root's as "
+                      "14062000000000 where that folder's ceph.dir.rbytes is 14062000000000\n", out)
+        self.assertEqual(self.rule(volume, 'volume_free_bytes "$VOLUME"', STAT=stat, VOLUME=str(link), DATA=data),
+                         (1, ""))
+
+    def test_every_byte_getfattr_gives_is_shown_where_the_use_is_no_count(self):
+        # past the first NUL, a line break and a backslash as octal escapes, so the readout names what
+        # the reading rule refused
+        volume = volume_in(self, quota=1000 * GB, used="1657^4438800856~~")
+        code, out = self.readout(volume, STAT=str(volume.tools / "stat"))
+        self.assertEqual(code, 2, out)
+        self.assertIn("\n  getfattr gives it as 17 bytes, 1657\\0124438800856\\000\\000\n", out)
+        volume.attribute(volume.path, "ceph.dir.rbytes", "12\\34")
+        code, out = self.readout(volume, STAT=str(volume.tools / "stat"))
+        self.assertIn("\n  getfattr gives it as 5 bytes, 12\\13434\n", out)
+        volume.attribute(volume.path, "ceph.dir.rbytes", "7" * 100)
+        code, out = self.readout(volume, STAT=str(volume.tools / "stat"))
+        self.assertIn("\n  getfattr gives it as 100 bytes, " + "7" * 96 + " and more\n", out)
 
 
 class WsuquotaTest(unittest.TestCase):
