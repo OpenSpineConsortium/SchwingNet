@@ -7,7 +7,7 @@ A class reads the licence's words (tools/licences.py); whether a trained network
 
 | Class | Datasets | Owner-reviewed |
 |---|---|---|
-| open | 23 | 0 |
+| open | 23 | 4 |
 | share-alike | 1 | 0 |
 | non-commercial | 15 | 0 |
 | agreement | 25 | 0 |
@@ -20,18 +20,18 @@ yes: the recipe takes the source now; after review: its class fits, and the reci
 
 | Source | Class | Reviewed | commercial-share-alike | commercial | non-commercial | research-internal |
 |---|---|---|---|---|---|---|
-| aariz | open | rule | after review | after review | yes | yes |
+| aariz | open | owner 2026-10-23 | yes | yes | yes | yes |
 | bimcv_covid19 | agreement | rule | - | - | - | yes |
 | canine_thoracic_vhs | unknown | rule | - | - | - | - |
-| carmlspine | open | rule | after review | after review | yes | yes |
-| carmlspine_sweeps | open | rule | after review | after review | yes | yes |
+| carmlspine | open | owner 2026-10-23 | yes | yes | yes | yes |
+| carmlspine_sweeps | open | owner 2026-10-23 | yes | yes | yes | yes |
 | cathaction | unknown | rule | - | - | - | - |
 | fracatlas | unknown | rule | - | - | - | - |
 | fraiwan_spine_xray | unknown | rule | - | - | - | - |
 | isbi2015_cephalograms | unknown | rule | - | - | - | - |
 | kaggle_fracture_multiregion | unknown | rule | - | - | - | - |
 | kaggle_scoliosis_yolov5 | unknown | rule | - | - | - | - |
-| kub_stonex | open | rule | after review | after review | yes | yes |
+| kub_stonex | open | owner 2026-10-23 | yes | yes | yes | yes |
 | lumos | non-commercial | rule | - | - | yes | yes |
 | mimic_cxr_jpg | agreement | rule | - | - | - | yes |
 | nih_chestxray14 | unknown | rule | - | - | - | - |
@@ -49,7 +49,7 @@ yes: the recipe takes the source now; after review: its class fits, and the reci
 
 | Dataset | Class | Commercial | Reviewed | Licence |
 |---|---|---|---|---|
-| aariz_cephalograms | open | yes | rule | CC BY 4.0 (figshare 27986417, doi 10.6084/m9.figshare.27986417; the record's licence field, read from the API on 2026-10-21); Khalid, Fraz et al., Scientific Data 2025, doi 10.1038/s41597-025-05542-3 |
+| aariz_cephalograms | open | yes | owner 2026-10-23 | CC BY 4.0 (figshare 27986417, doi 10.6084/m9.figshare.27986417; the record's licence field, read from the API on 2026-10-21); Khalid, Fraz et al., Scientific Data 2025, doi 10.1038/s41597-025-05542-3 |
 | aasce | agreement | no | rule | by request form (SpineWeb); the mirror repository is MIT, the images' reuse terms not recorded |
 | anomaly_harvest_b | unknown | unknown | rule | varies by collection |
 | aws_stoic2021 | non-commercial | no | rule | CC BY-NC 4.0 |
@@ -61,8 +61,8 @@ yes: the recipe takes the source now; after review: its class fits, and the reci
 | buu_lspine | unknown | unknown | rule | unread by the owner |
 | cads | agreement | no | rule | a data use agreement (non-commercial) |
 | canine_thoracic_vhs | unknown | unknown | rule | Mendeley Data ktx4cj55pn, CC BY 4.0 to confirm on the page |
-| carmlspine | open | yes | rule | CC BY 4.0, public (Zenodo 22768651); real patients, de-identified by the publisher; covered by the IRB umbrella HPR 2026-269 as public de-identified data |
-| carmlspine_sweeps | open | yes | rule | CC BY 4.0, public (Zenodo 22768651), the raw CBCT projections of two cases; the same determination as carmlspine |
+| carmlspine | open | yes | owner 2026-10-23 | CC BY 4.0, public (Zenodo 22768651); real patients, de-identified by the publisher; covered by the IRB umbrella HPR 2026-269 as public de-identified data |
+| carmlspine_sweeps | open | yes | owner 2026-10-23 | CC BY 4.0, public (Zenodo 22768651), the raw CBCT projections of two cases; the same determination as carmlspine |
 | cathaction | unknown | unknown | rule | Hugging Face airvlab/CathAction; licence to confirm on the page |
 | cervical_thoracic_intraop | unknown | unknown | rule | not recorded |
 | chexpert_plus | agreement | no | rule | Stanford AIMI research use agreement, non-commercial |
@@ -108,7 +108,7 @@ yes: the recipe takes the source now; after review: its class fits, and the reci
 | kaggle_fracture_multiregion | unknown | unknown | rule | Kaggle; PDDL in the metadata and ODC-By 1.0 in the description; taken on the owner's yes of 2026-10-22 though the source uploads' origin is unstated |
 | kaggle_scoliosis_yolov5 | unknown | unknown | rule | Kaggle; the licence on the page to confirm; provenance unstated, so a relabel of AASCE until the hash check says otherwise |
 | konica_ddr | unknown | unknown | rule | unknown |
-| kub_stonex | open | yes | rule | CC BY 4.0 (figshare 32049369, doi 10.6084/m9.figshare.32049369; the record's licence field, read from the API on 2026-10-21); de-identified per the record, IRB REC-FSIT-2025/No: 12732 of Daffodil International University |
+| kub_stonex | open | yes | owner 2026-10-23 | CC BY 4.0 (figshare 32049369, doi 10.6084/m9.figshare.32049369; the record's licence field, read from the API on 2026-10-21); de-identified per the record, IRB REC-FSIT-2025/No: 12732 of Daffodil International University |
 | ljubljana_2d3d_gs | no-derivatives | no | rule | ND (read-only) |
 | lumos | non-commercial | no | rule | Zenodo 18173664, open, CC BY-NC 4.0 (read on the record 2026-10-21) |
 | maastricht_cervical | agreement | no | rule | available on request under privacy restrictions; a Dutch WMO/GDPR data transfer agreement is expected |

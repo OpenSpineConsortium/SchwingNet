@@ -299,6 +299,21 @@ class SlurmScriptsTest(unittest.TestCase):
         self.assertIn("rsna_rspect_pe: job", out)
         self.assertNotIn("left out", out)
 
+    def test_the_two_kaggle_datasets_run_only_when_named(self):
+        code, out = self.dry_run("run-platform-fetch.sh", "--gated")
+        self.assertNotIn("kaggle_fracture_multiregion", out)
+        code, out = self.dry_run("run-platform-fetch.sh", "--gated-ids")
+        self.assertIn("kaggle_fracture_multiregion", out.split())
+        self.assertIn("kaggle_scoliosis_yolov5", out.split())
+        secret = self.home / ".fluorocap/credentials.env"
+        secret.parent.mkdir(parents=True, exist_ok=True)
+        secret.write_text("KEY=value\n", encoding="utf-8")
+        secret.chmod(0o600)
+        code, out = self.dry_run("run-platform-fetch.sh", "--only", "kaggle_scoliosis_yolov5")
+        self.assertEqual(code, 0, out)
+        self.assertIn("kaggle_scoliosis_yolov5: job DRY_dp_fetch_kaggle_scoliosis_yolov5", out)
+        self.assertIn("kaggle-dataset", out)
+
 
 if __name__ == "__main__":
     unittest.main()

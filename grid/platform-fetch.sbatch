@@ -15,6 +15,7 @@
 #            --include is a glob, and a run that verified no file fails here with exit 3 (issue #158)
 #   curl-link curl on a presigned link read from LINK_FILE (mode 0600) through a curl config, never on a command line
 #   kaggle   kaggle competitions download with KAGGLE_API_TOKEN read from TOKEN_FILE
+#   kaggle-dataset kaggle datasets download of OWNER/NAME in ARGS, the same token; a plain dataset has no rules to accept
 #   redivis  grid/redivis_fetch.py ARGS with REDIVIS_API_TOKEN read from TOKEN_FILE, in REDIVIS_ENV, a
 #            venv the job makes once from the acq environment's Python with the pinned redivis client
 #   zenodo-token grid/zenodo_fetch.py ARGS with ZENODO_TOKEN read from TOKEN_FILE: a record that opens only to
@@ -108,6 +109,9 @@ case "$ROUTE" in
   kaggle)
     load_token KAGGLE_API_TOKEN "${TOKEN_FILE:-~/.fluorocap/credentials.env}" || exit 2
     "${KAGGLE_BIN:-$HOME/mambaforge/envs/spineps/bin/kaggle}" competitions download -c "$ARGS" -p "$DATA/$ID/raw"; rc=$? ;;
+  kaggle-dataset)
+    load_token KAGGLE_API_TOKEN "${TOKEN_FILE:-~/.fluorocap/credentials.env}" || exit 2
+    "${KAGGLE_BIN:-$HOME/mambaforge/envs/spineps/bin/kaggle}" datasets download -d "$ARGS" -p "$DATA/$ID/raw"; rc=$? ;;
   redivis)
     load_token REDIVIS_API_TOKEN "${TOKEN_FILE:-~/.redivis/token.env}" || exit 2
     renv=${REDIVIS_ENV:-/rs/rs_grp_oschome/go2432/envs/redivis}
