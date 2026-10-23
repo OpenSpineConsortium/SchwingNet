@@ -1389,16 +1389,16 @@ class SizeRuleTest(unittest.TestCase):
         self.assertEqual(self.rule(f'xattr_whole user.none "{folder}"', **tools), (0, ""))
 
     def test_the_rules_tools_are_its_own_unless_a_test_says_so(self):
-        # A job inherits the environment it was sent from, so a stray GETFATTR, STAT, SQUEUE, DF,
-        # MOUNTINFO or SIZE_RULE_SETTLE there would change what the rule reads, unseen (#180): the
-        # rule takes them from the environment only where SIZE_RULE_STAND_INS is yes.
-        names = 'echo "$RULE_GETFATTR $RULE_STAT $RULE_SQUEUE $RULE_DF $RULE_MOUNTINFO $RULE_SETTLE"'
+        # A job inherits the environment it was sent from, so a stray GETFATTR, XATTR_PYTHON, STAT,
+        # SQUEUE, DF, MOUNTINFO or SIZE_RULE_SETTLE there would change what the rule reads, unseen
+        # (#180): the rule takes them from the environment only where SIZE_RULE_STAND_INS is yes.
+        names = 'echo "$RULE_GETFATTR $RULE_STAT $RULE_SQUEUE $RULE_DF $RULE_MOUNTINFO $RULE_SETTLE $RULE_PYTHON"'
         stray = dict(GETFATTR="/x/getfattr", STAT="/x/stat", SQUEUE="/x/squeue", DF="/x/df", MOUNTINFO="/x/mountinfo",
-                     SIZE_RULE_SETTLE="7")
-        own = (0, "getfattr stat squeue df /proc/self/mountinfo 60")
+                     SIZE_RULE_SETTLE="7", XATTR_PYTHON="/x/python")
+        own = (0, "getfattr stat squeue df /proc/self/mountinfo 60 python3")
         for switch in ("", "no", "Yes", "yes ", "1"):
             self.assertEqual(self.rule(names, SIZE_RULE_STAND_INS=switch, **stray), own, switch)
-        self.assertEqual(self.rule(names, **stray), (0, "/x/getfattr /x/stat /x/squeue /x/df /x/mountinfo 7"))
+        self.assertEqual(self.rule(names, **stray), (0, "/x/getfattr /x/stat /x/squeue /x/df /x/mountinfo 7 /x/python"))
         self.assertEqual(self.rule(names, **{name: "" for name in stray}), own)
         # and with the switch off no function asks a tool the environment names
         calls = self.tmp / "stray.log"
@@ -1407,7 +1407,7 @@ class SizeRuleTest(unittest.TestCase):
             tool.write_text(f'#!/bin/bash\necho {name} >> "{calls}"\nprintf %s "{says}"\n', encoding="utf-8")
             tool.chmod(0o755)
             stray[name.upper()] = str(tool)
-        del stray["SIZE_RULE_SETTLE"]
+        del stray["SIZE_RULE_SETTLE"], stray["XATTR_PYTHON"]
         every = 'quota_readout "$VOLUME" title; volume_free_bytes "$VOLUME"; owed_by_running ""; true'
         self.rule(every, SIZE_RULE_STAND_INS="", **stray)
         self.assertFalse(calls.exists())
@@ -1416,7 +1416,7 @@ class SizeRuleTest(unittest.TestCase):
         # nor does a call the tests above do not reach: outside the switch the rule reads none of these
         # names from the environment, and the jobs take their size reader, Python and curl there alone
         for name, names, pattern in (
-                ("size-rule.sh", "GETFATTR|STAT|SQUEUE|DF|MOUNTINFO|SIZE_RULE_SETTLE", r"\$\{{?({})\b"),
+                ("size-rule.sh", "GETFATTR|XATTR_PYTHON|STAT|SQUEUE|DF|MOUNTINFO|SIZE_RULE_SETTLE", r"\$\{{?({})\b"),
                 ("platform-fetch.sbatch", "SIZER|XATTR_PYTHON|CURL", r"\$\{{({}):?-"),
                 ("unpack.sbatch", "XATTR_PYTHON", r"\$\{{({}):?-")):
             text = (GRID / name).read_text(encoding="utf-8")
@@ -1424,6 +1424,27 @@ class SizeRuleTest(unittest.TestCase):
             self.assertIsNotNone(switch, name)
             rest = text[:switch.start()] + text[switch.end():]
             self.assertEqual(re.findall(pattern.format(names), rest), [], name)
+
+    def test_a_jobs_switch_names_its_own_tools_after_the_rule_is_sourced(self):
+        # Each job's switch, run alone: with SIZE_RULE_STAND_INS anything but yes, a stray SIZER,
+        # XATTR_PYTHON or CURL in the environment it was sent from names none of its tools (#180), the
+        # Python that reads the attributes on a node with no getfattr among them, which no fetch here
+        # reaches where getfattr is installed. The switch comes after the rule is sourced, since the
+        # rule names a Python of its own when sourced.
+        stray = dict(SIZER="/x/sizer", XATTR_PYTHON="/x/python", CURL="/x/curl", ACQ_ENV="/acq", REPO="/repo",
+                     PYDRV="/drv/python")
+        for name, shows, own, stand_ins in (
+                ("platform-fetch.sbatch", 'echo "$SIZER|$RULE_PYTHON|$CURL"',
+                 "/acq/bin/python /repo/grid/fetch_size.py|/acq/bin/python|curl", "/x/sizer|/x/python|/x/curl"),
+                ("unpack.sbatch", 'echo "$RULE_PYTHON"', "/drv/python", "/x/python")):
+            text = (GRID / name).read_text(encoding="utf-8")
+            switch = re.search(r'\nif \[ "\$\{SIZE_RULE_STAND_INS:-\}" = yes \]; then\n.*?\nfi\n', text, re.S)
+            self.assertLess(text.index('\n. "$REPO/grid/size-rule.sh"\n'), switch.start(), name)
+            for setting, said in (("", own), ("no", own), ("yes ", own), ("yes", stand_ins)):
+                env = dict(os.environ, SIZE_RULE_STAND_INS=setting, **stray)
+                done = subprocess.run(["bash", "-c", switch.group(0) + shows], env=env, capture_output=True, text=True,
+                                      timeout=60)
+                self.assertEqual(done.stdout.strip(), said, (name, setting))
 
     def test_a_job_asks_its_own_size_reader_and_curl_unless_a_test_says_so(self):
         # The job inherits the environment it was sent from too, so a stray SIZER or CURL there would
@@ -1558,6 +1579,16 @@ class SizeRuleTest(unittest.TestCase):
         link = self.volume.path.parent / "v"
         link.symlink_to(self.volume.path)
         self.assertEqual(self.rule(f'VOLUME="{link}"; quota_below "$VOLUME"'), (1, ""))
+        # and a data root outside the volume has no folder of the volume's above it: the walk reads no
+        # quota outside the volume, however far down the data root lies
+        import tempfile
+        elsewhere = tempfile.TemporaryDirectory()
+        self.addCleanup(elsewhere.cleanup)
+        outside = Path(elsewhere.name) / "lab" / "go2432" / "data"
+        outside.mkdir(parents=True)
+        self.volume.attribute(outside, "ceph.quota.max_bytes", 9000 * GB)
+        self.assertGreater(len(str(outside)), len(str(self.volume.path)))
+        self.assertEqual(self.rule(f'DATA="{outside}"; quota_below "$VOLUME"'), (1, ""))
 
 
 class QuotaReadoutTest(unittest.TestCase):
@@ -1609,6 +1640,15 @@ class QuotaReadoutTest(unittest.TestCase):
         code, out = self.readout(volume_in(self, quota=1000 * GB))
         self.assertEqual(code, 2, out)
         self.assertIn("The CephFS quota or its use could not be read", out)
+        # the quota is read whole, as the rule reads it: a NUL over its last digit would show a tenth
+        # of it, and the room under it as none, rather than say it was not read (#180)
+        code, out = self.readout(volume_in(self, quota="2199023255552~", used=250 * GB))
+        self.assertEqual(code, 2, out)
+        self.assertEqual(out.splitlines()[1:3], [
+            "The CephFS quota or its use could not be read, so the size rule admits no fetch:",
+            "  ceph.quota.max_bytes reads as no count: 14 bytes, 1 of them no digit, where a count is at most 18 "
+            "digits and nothing else",
+        ])
 
     def test_the_use_is_read_whole_the_file_count_up_to_its_nul_and_no_count_is_named(self):
         # The owner's paste of 2026-10-23: the quota read whole, the use and the file count as 48
@@ -1737,6 +1777,12 @@ class QuotaReadoutTest(unittest.TestCase):
         self.assertEqual(code, 2, out)
         self.assertIn("\n  stat gives the volume's size as 16574438800856 and the data root's as 14062000000000 on a "
                       "mount it calls ceph, where the data root's ceph.dir.rbytes is unread\n", out)
+        # and one whose attribute holds a NUL after its digits is no count, never a figure cut short
+        volume.attribute(volume.data, "ceph.dir.rbytes", "1406200000000~")
+        code, out = self.readout(volume, STAT=stat)
+        self.assertEqual(code, 2, out)
+        self.assertIn("\n  stat gives the volume's size as 16574438800856 and the data root's as 14062000000000 on a "
+                      "mount it calls ceph, where the data root's ceph.dir.rbytes is no count\n", out)
 
     def test_stat_is_trusted_only_between_two_readings_of_the_data_roots_attribute(self):
         # A fetch landing between the readings moves the data root's attribute: its size by stat counts
@@ -1762,6 +1808,16 @@ class QuotaReadoutTest(unittest.TestCase):
             # what it gives is the lower reading, the least the data root, and so the volume, holds
             self.assertEqual(said, (0, str(min(first, second))) if trusted else (1, ""), (first, second, size))
             self.assertEqual(readings.read_text(encoding="utf-8"), "", "the attribute is read twice")
+        # each reading is read whole: a NUL after its digits, which a kernel's snprintf may have written
+        # over the last one, is no reading, never a figure cut short that the size would pass (#180)
+        twice.write_text('#!/bin/bash\nhead -n 1 "$READINGS" | tr -d "\\n" | tr "~" "\\000"\nsed -i 1d "$READINGS"\n',
+                         encoding="utf-8")
+        volume.attribute(volume.data, "stat.size", 200 * GB)
+        for first, second in ((low, high), (f"{low}~", high), (low, f"{high}~"), ("100~000000000", high)):
+            readings.write_text(f"{first}\n{second}\n", encoding="utf-8")
+            said = self.rule(volume, 'stat_gives_rbytes "$VOLUME"', STAT=stat, GETFATTR=str(twice),
+                             READINGS=str(readings))
+            self.assertEqual(said, (0, str(low)) if first == low and second == high else (1, ""), (first, second))
 
     def test_a_volume_that_is_a_link_is_read_by_stat_through_it_and_never_below_its_data_root(self):
         # On the grid /rs/rs_grp_oschome is a link into /.rs/volumes, whose own size is the length of

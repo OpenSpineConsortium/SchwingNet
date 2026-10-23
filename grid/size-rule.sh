@@ -16,7 +16,7 @@
 # statvfs report the whole Ceph pool instead: on 2026-10-23 df said 5,881,937 GB free under a quota
 # of 21,991 GB (20 TiB). CephFS keeps the quota as ceph.quota.max_bytes and what
 # counts against it as ceph.dir.rbytes, attributes of the folder read with no walk: by getfattr on
-# the login node, and by Python's os.getxattr on a node with no getfattr (XATTR_PYTHON, which
+# the login node, and by Python's os.getxattr on a node with no getfattr (RULE_PYTHON, which
 # grid/platform-fetch.sbatch sets to the acq environment's). Where neither runs, nothing is read,
 # and df is never asked in its place on a mount that may be CephFS, kernel or FUSE. Every figure
 # the rule counts, the quota and each ceph.dir.rbytes, is read whole, every byte past any NUL, and
@@ -81,31 +81,33 @@
 #
 # Sourced by grid/platform-fetch.sbatch (the decision, in the job), grid/run-platform-fetch.sh and
 # grid/run-xray-chain.sh (the room after the running fetches, on the login node). DATA, VOLUME and
-# REPO name the folders, and XATTR_PYTHON the Python that reads the attributes where no getfattr
-# runs, which the job sets. The tools, the mount table and the minute between the room's two
-# readings are this file's own: a test stands in for them, through GETFATTR, STAT, SQUEUE, DF,
-# MOUNTINFO and SIZE_RULE_SETTLE, only where it sets SIZE_RULE_STAND_INS=yes, since a job inherits
-# the environment it was sent from, and a stray STAT or MOUNTINFO there would change what the rule
-# reads, unseen (#180).
+# REPO name the folders. The tools, the Python that reads the attributes where no getfattr runs,
+# the mount table and the minute between the room's two readings are this file's own: a test
+# stands in for them, through GETFATTR, XATTR_PYTHON, STAT, SQUEUE, DF, MOUNTINFO and
+# SIZE_RULE_SETTLE, only where it sets SIZE_RULE_STAND_INS=yes, since a job inherits the
+# environment it was sent from, and a stray STAT or MOUNTINFO there would change what the rule
+# reads, unseen (#180). A job whose node may have no getfattr and no python3 names a Python of its
+# own in RULE_PYTHON after sourcing this file, as grid/platform-fetch.sbatch and grid/unpack.sbatch
+# do.
 if [ "${SIZE_RULE_STAND_INS:-}" = yes ]; then
   RULE_GETFATTR=${GETFATTR:-getfattr} RULE_STAT=${STAT:-stat} RULE_SQUEUE=${SQUEUE:-squeue} RULE_DF=${DF:-df}
   RULE_MOUNTINFO=${MOUNTINFO:-/proc/self/mountinfo} RULE_SETTLE=${SIZE_RULE_SETTLE:-60}
+  RULE_PYTHON=${XATTR_PYTHON:-python3}
 else
   RULE_GETFATTR=getfattr RULE_STAT=stat RULE_SQUEUE=squeue RULE_DF=df
-  RULE_MOUNTINFO=/proc/self/mountinfo RULE_SETTLE=60
+  RULE_MOUNTINFO=/proc/self/mountinfo RULE_SETTLE=60 RULE_PYTHON=python3
 fi
 # The file settled_room hands a census from the room's first reading to its second through
 # (entries_census): its own, never the environment's.
 RULE_CENSUS_IN="" RULE_CENSUS_OUT=""
 
 xattr_bytes() {  # xattr_bytes NAME FOLDER: every byte of a CephFS attribute's value, NULs and all; 2 when no reader runs
-  local python=${XATTR_PYTHON:-python3}
   if command -v "$RULE_GETFATTR" > /dev/null 2>&1; then
     "$RULE_GETFATTR" --only-values -n "$1" "$2" 2>/dev/null
     return 0
   fi
   # An attribute that is not there is nothing; a Python that does not run is no reading at all.
-  "$python" -c '
+  "$RULE_PYTHON" -c '
 import os, sys
 try:
     sys.stdout.buffer.write(os.getxattr(sys.argv[2], sys.argv[1]))
@@ -418,7 +420,7 @@ stat_words() {  # stat_words VOLUME: what stat gives for VOLUME and for the data
   data_root_on "$1"
   case $? in
     0) data_size=$(stat_figure %s "$DATA")
-       data_bytes=$(xattr_whole ceph.dir.rbytes "$DATA")
+       data_bytes=$(xattr_whole ceph.dir.rbytes "$DATA") || [ $? != 3 ] || data_bytes="no count"
        echo "$said and the data root's as ${data_size:-nothing} on a mount it calls $(mount_kind "$1"), where the data root's ceph.dir.rbytes is ${data_bytes:-unread}" ;;
     3) device=$(stat_figure %d "$1")
        data_device=$(stat_figure %d "$DATA")

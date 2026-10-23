@@ -76,24 +76,25 @@ hf_verified_files() {  # hf_verified_files STATE: whether hf-get's summary in ST
   [ -n "$summary" ] && grep -q '"all_verified": true' "$summary"
 }
 VOLUME=${VOLUME:-/rs/rs_grp_oschome}
-# The size reader, the Python that reads the quota's attributes and curl are the job's own; a test
-# stands in for them only where it sets SIZE_RULE_STAND_INS=yes, as for the size rule's own tools
-# (grid/size-rule.sh, #180), since the job inherits the environment it was sent from. A compute node
-# may have no getfattr and no python3 on the job's PATH; the acq environment's Python reads the
-# quota's attributes there, so the rule never goes without them.
-if [ "${SIZE_RULE_STAND_INS:-}" = yes ]; then
-  SIZER=${SIZER:-$ACQ_ENV/bin/python $REPO/grid/fetch_size.py}
-  XATTR_PYTHON=${XATTR_PYTHON:-$ACQ_ENV/bin/python}
-  CURL=${CURL:-curl}
-else
-  SIZER="$ACQ_ENV/bin/python $REPO/grid/fetch_size.py"
-  XATTR_PYTHON=$ACQ_ENV/bin/python
-  CURL=curl
-fi
 # acquisition_fetch.sh's own floor stops a fetch part-way under 5 TB free; the size rule replaces it.
 export FLOOR_TB=0
 # shellcheck source=grid/size-rule.sh
 . "$REPO/grid/size-rule.sh"
+# The size reader, the Python that reads the quota's attributes and curl are the job's own; a test
+# stands in for them only where it sets SIZE_RULE_STAND_INS=yes, as for the size rule's own tools
+# (grid/size-rule.sh, #180), since the job inherits the environment it was sent from. A compute node
+# may have no getfattr and no python3 on the job's PATH; the acq environment's Python reads the
+# quota's attributes there, so the rule never goes without them. It is named after the rule is
+# sourced, which names its own.
+if [ "${SIZE_RULE_STAND_INS:-}" = yes ]; then
+  SIZER=${SIZER:-$ACQ_ENV/bin/python $REPO/grid/fetch_size.py}
+  RULE_PYTHON=${XATTR_PYTHON:-$ACQ_ENV/bin/python}
+  CURL=${CURL:-curl}
+else
+  SIZER="$ACQ_ENV/bin/python $REPO/grid/fetch_size.py"
+  RULE_PYTHON=$ACQ_ENV/bin/python
+  CURL=curl
+fi
 # The two size readers below are called by name through size_and_admit, which shellcheck cannot follow.
 # shellcheck disable=SC2329
 link_size() {  # link_size LINK_FILE OUTPUT: "<total bytes> <bytes still to land> the link answers", from a one-byte range request
