@@ -179,7 +179,7 @@ Issue #135's six steps map onto these, with the changes marked:
 | Cervical, film | Aariz 1,000 cephalograms, C2 to C4 by maturation stage | held (on the volume at the census of 2026-10-22, CC BY 4.0) | the top of the counter only |
 | Cervical, fluoro | Bournemouth 252 flexion and extension sequences, level-named corner tracks C0 to T1 | tracks held, no pixels | the cine is a request, drafted and sent onward on 2026-10-21; no CT |
 | Cervical, fluoro | Maastricht 112 lateral recordings, C0 to C7 per frame | no | a request, drafted, never sent; a data transfer agreement expected; no CT |
-| Thoracic, film | AASCE 608 AP films, T1 to L5 corners in order | held | AP only, scoliotic spines |
+| Thoracic, film | AASCE 609 AP films, T1 to L5 corners in order | held | AP only, scoliotic spines |
 | Thoracic and lumbar, fluoro | the digital twin's cadaver, 80 Loop-X frames registered to 4 CTs, mid-femur to T2 | the fetch word ipcai2025_robotic_xray_drive (#124) | one specimen; levels from its CT once segmented (workstream O) |
 | Thoracic, film | MrOS 5,994 men and SOF about 9,700 women, lateral thoracic and lumbar films with grades per named level | no | a data request each, not sent |
 | Thoracic, film | TVGH SpineXR, T1 to L5 labels per its description | no | behind a login on IEEE DataPort |

@@ -305,7 +305,7 @@ real frames with a CT or a model of something else (the femur, the pig limb, the
 and their use is the registration code; the Geneva phantom stays the unseen-device test: a
 2D/3D registration tuned on the femur, the pig limb and the knee, where the truth pose is shipped,
 is then run on LUMOS and the FluoroCap panels, where it is not. Two synthetic pairs stand beside the
-nine: PENGWIN task 2 (50,000 renders of 100 pelvic CTs at real C-arm poses) and FluoroSeg
+ten: PENGWIN task 2 (50,000 renders of 100 pelvic CTs at real C-arm poses) and FluoroSeg
 (2.65 TB of DRRs); FluoroSAM's 464-frame cadaver of v2 is not released under that name.
 
 The plan, as workstream O of the xr-from-3d programme (issue #127 under #56); reaching the cervical and thoracic spine from this lumbosacral gold is workstream P (issue #135), whose prior art and feasibility is docs/research/lumbosacral-to-cervical-extrapolation.md:
