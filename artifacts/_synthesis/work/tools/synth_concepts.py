@@ -495,7 +495,8 @@ def page(ledger, baseline_date):
            *(to_ascii(part.replace("\n", " ")) + "\n" for part in __doc__.strip().split("\n\n")[:3]),
            f"Rendered on {ledger['date']} from {ledger['texts']} texts by work/tools/synth.py concepts, or by the join of a"
            " run of .github/workflows/synthesis.yml that read something. That workflow checks every text against the"
-           " ledger on every push that changes an artifact, a research note or a dataset record, and the issue labelled"
+           " ledger daily, on Run workflow and on a push a person or an App makes that changes an artifact, a research"
+           " note or a dataset record, and the issue labelled"
            f" synthesis lists what each run found that the stamp of {baseline_date} had not seen. Edit the records and"
            " render again rather than editing this file.\n",
            "## Summary\n",

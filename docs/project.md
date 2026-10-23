@@ -14,7 +14,7 @@ In scope: the areas this project owns, each in one line; docs/agents/OWNERSHIP.m
 - The measurement: held-out C-ArmLSpine, the transitional stratum with two readers, the synthetic anomaly arm with exact truth, never pooled with the real one.
 - The demo: the recorded sweep (C-ArmLSpine case134 and case39), the overlay, the measured latency, the slides' figures.
 - The quality gate: new code to beethoven-qa's definition of done; the legacy tools of the reported pipeline listed under unproven, never refactored before the talk, since a refactor voids the parity gate.
-- The synthesis of the artifacts (artifacts/_synthesis/), the record the Artifact Textbook is written from, kept current by .github/workflows/synthesis.yml: it looks with no Claude on every change of an artifact, a research note or a dataset record, and runs the Claude reads a change needs, 10 runs a day unless the variable SYNTHESIS_READS_PER_DAY says otherwise, 50 at most, each adding what it read to the one open synthesis pull request, or opening it (#166).
+- The synthesis of the artifacts (artifacts/_synthesis/), the record the Artifact Textbook is written from, kept current by .github/workflows/synthesis.yml: it looks with no Claude at every change of an artifact, a research note or a dataset record, within minutes of a merge a person or an App makes and at the next daily run for one GitHub's auto-merge makes, and runs the Claude reads a change needs, 10 runs a day unless the variable SYNTHESIS_READS_PER_DAY says otherwise, 50 at most, each adding what it read to the one open synthesis pull request, or opening it (#166).
 
 Out of scope, by decision: what this project does not do, each with the reason, so nobody proposes it again.
 
