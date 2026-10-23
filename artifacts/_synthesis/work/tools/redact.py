@@ -22,7 +22,9 @@ RULES = [
     ("the owner's first name", re.compile(r"\b[Gg]reg(?=_|\b)"), "[the owner]"),
     ("a grid data root that names a login", re.compile(r"/rs/[A-Za-z0-9_]+/[a-z]{2}\d{4}/data/"),
      "[the lab volume's data root]/"),
-    ("a grid folder that names a login", re.compile(r"(?:/[A-Za-z0-9_.-]+)+/" + LOGIN + r"(?=/|\b)"),
+    # At most 32 folders before the login, more than any grid path holds, so a long run of path
+    # parts with no login in it is passed in linear time, not tried again from each slash.
+    ("a grid folder that names a login", re.compile(r"(?:/[A-Za-z0-9_.-]+){1,32}/" + LOGIN + r"(?=/|\b)"),
      "[a grid folder named by a login]"),
     ("a login at the university's mail name", re.compile(r"\b" + LOGIN + r"@wayne(?:\.edu)?\b"), "[the owner's login]"),
     ("a login", re.compile(r"(?<![-/._])\b" + LOGIN + r"\b"), "[the owner's login]"),

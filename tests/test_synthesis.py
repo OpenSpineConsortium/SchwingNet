@@ -569,10 +569,24 @@ class Stamp(unittest.TestCase):
         self.assertIn("join refused", str(stopped.exception))
 
     def test_what_writes_every_text_s_word_refuses_to_run_without_a_checkout(self):
-        for command in ("concepts", "plan", "join", "stamp"):
+        for command, paths in (("concepts", []), ("plan", []), ("join", []), ("stamp", []), ("rekey", ["base"])):
             with self.assertRaises(SystemExit) as stopped, mock.patch.object(synth, "Run", side_effect=AssertionError("it ran")):
-                synth.main([command, "--without", "symphony-template"])
+                synth.main([command, *paths, "--without", "symphony-template"])
             self.assertIn(f"{command} refused", str(stopped.exception))
+
+    def test_a_ledger_or_page_that_holds_an_address_is_not_written(self):
+        ledger, state = synth.load(synth.LEDGER), synth.load(synth.STATE)
+        with tempfile.TemporaryDirectory() as folder, mock.patch.object(synth, "LEDGER", Path(folder, "concepts.json")), \
+                mock.patch.object(synth, "PAGE", Path(folder, "concepts.md")):
+            synth.write_concepts(ledger, state)
+            self.assertEqual(synth.load(synth.LEDGER), ledger)
+            Path(folder, "concepts.json").unlink()
+            Path(folder, "concepts.md").unlink()
+            held = {**ledger, "checks": [{**ledger["checks"][0], "text": "write to reader@example.invalid"}, *ledger["checks"][1:]]}
+            with self.assertRaises(SystemExit) as stopped:
+                synth.write_concepts(held, state)
+            self.assertIn("concepts refused", str(stopped.exception))
+            self.assertEqual(sorted(os.listdir(folder)), [], "neither the ledger nor its page was written")
 
     def test_a_stamp_takes_its_trees_only_at_the_commit_its_checkout_is_at(self):
         with tempfile.TemporaryDirectory() as clone:
@@ -587,6 +601,55 @@ class Stamp(unittest.TestCase):
                 with self.assertRaises(SystemExit) as stopped:
                     synth.at_head(run, at)
                 self.assertIn(words, str(stopped.exception))
+
+
+class Rekey(unittest.TestCase):
+    """synth.py rekey, which carries the stamp's word over a change that renames the concept
+    checks' keys and not what they check, as a change to what the scrub takes out does."""
+
+    def test_the_stamp_s_word_goes_with_each_check_to_its_new_key(self):
+        def ledger(*checks):
+            return {"checks": [{"key": key, "concept": "dataset:x:films", "kind": "dataset", "source": ALPHA, "line": line,
+                                "outcome": "agrees", "value": "100"} for key, line in checks]}
+        # a and b are one check on each side, b under a new key; line 3 gives two checks on each
+        # side, which pair with neither; d is gone and e is new.
+        old = ledger(("a", 1), ("b", 2), ("c1", 3), ("c2", 3), ("d", 4))
+        new = ledger(("a", 1), ("b2", 2), ("c3", 3), ("c4", 3), ("e", 5))
+        pairs = synth.paired(old, new)
+        self.assertEqual(pairs, {"a": "a", "b": "b2"})
+        checks, renamed = synth.rekeyed({"d": ALPHA, "c1": ALPHA, "b": ALPHA, "a": ALPHA}, pairs)
+        self.assertEqual(checks, {"a": ALPHA, "b2": ALPHA, "c1": ALPHA, "d": ALPHA})
+        self.assertEqual(list(checks), sorted(checks), "the stamp's checks stay sorted")
+        self.assertEqual(renamed, 1)
+        with self.assertRaises(SystemExit):
+            synth.rekeyed({"a": ALPHA, "b": ALPHA, "b2": ALPHA}, pairs)
+
+    def test_the_base_s_ledger_comes_from_its_own_tools_and_its_own_texts(self):
+        with tempfile.TemporaryDirectory() as base:
+            tools = Path(base, "artifacts", "_synthesis", "work", "tools")
+            tools.mkdir(parents=True)
+            (tools / "synth.py").write_text(
+                "import os\n"
+                "class Run:\n"
+                "    def __init__(self):\n"
+                "        self.text_dir = os.environ.get('SYNTH_TEXT') or 'a folder of its own'\n"
+                "def concepts_now(run):\n"
+                "    return {'checks': [], 'texts': run.text_dir, 'tools': __file__}\n", encoding="utf-8")
+            with mock.patch.dict(os.environ, {"SYNTH_TEXT": "this checkout's texts"}):
+                got = synth.ledger_of(base)
+            self.assertEqual(got["texts"], "a folder of its own")
+            self.assertEqual(Path(got["tools"]).resolve(), (tools / "synth.py").resolve())
+            (tools / "synth.py").write_text("raise SystemExit(3)\n", encoding="utf-8")
+            with self.assertRaises(SystemExit) as stopped:
+                synth.ledger_of(base)
+            self.assertIn("gave no ledger (exit 3)", str(stopped.exception))
+        with tempfile.TemporaryDirectory() as elsewhere, self.assertRaises(SystemExit) as stopped:
+            synth.ledger_of(elsewhere)
+        self.assertIn("is not a checkout of this repository", str(stopped.exception))
+        with self.assertRaises(SystemExit) as stopped, contextlib.redirect_stderr(io.StringIO()), \
+                mock.patch.object(synth, "Run", side_effect=AssertionError("it ran")):
+            synth.main(["rekey"])
+        self.assertEqual(stopped.exception.code, 2, "rekey takes the base's checkout")
 
 
 class Report(unittest.TestCase):
@@ -664,6 +727,12 @@ class Scrub(unittest.TestCase):
         self.assertIsNone(extract.EMAIL_RE.search("a" * 100_000))
         self.assertLess(time.monotonic() - started, 2, "an unbounded run before the @ took seconds, quadratic in its length")
 
+    def test_the_grid_folder_rule_takes_a_long_run_of_path_parts_in_linear_time(self):
+        self.assertEqual(redact.scrub(f"at /home/lab/{LOGIN}/envs", Counter()), "at [a grid folder named by a login]/envs")
+        started = time.monotonic()
+        self.assertEqual(redact.scrub("/abcde" * 8_000, Counter()), "/abcde" * 8_000)
+        self.assertLess(time.monotonic() - started, 2, "the rule tried every run of path parts again from each slash")
+
     def test_the_report_scrubs_a_passage_and_a_quote_before_it_cuts_them(self):
         for kept in range(2, len(LOGIN)):
             text = ("the run took the night " * 9)[:160 - kept - 1] + f" {LOGIN} and gave every level a count"
@@ -674,6 +743,64 @@ class Scrub(unittest.TestCase):
             body = synth.report(s)[0]
             self.assertIn(" " + "[the owner's login]"[:kept].rstrip() + "`", body, "the scrub's words, cut where the login stood")
             self.assertNotIn(LOGIN[:kept], body, f"the cut at 160 kept {kept} characters of the login")
+
+
+class Extract(unittest.TestCase):
+    """Where extract.py cuts an artifact's text to a length: never through what it or the scrub
+    takes out, an address, a phone number, a login or a grid path, since a piece of one is
+    found by no pattern and would pass every scrub after."""
+
+    ITEMS = (LOGIN, f"/rs/rs_grp_lab/{LOGIN}/data/", "zq@ex.invalid", "(555) 010-0199")
+
+    def test_a_cut_goes_back_to_the_start_of_what_it_would_split(self):
+        self.assertEqual(extract.clip("short", 600), "short")
+        for item in self.ITEMS:
+            text = "the run took the night " * 3 + item + " and the rest"
+            start = text.index(item)
+            for kept in range(1, len(item)):
+                self.assertEqual(extract.clip(text, start + kept), text[:start], f"{kept} characters of {item!r}")
+            self.assertEqual(extract.clip(text, start), text[:start])
+            self.assertEqual(extract.clip(text, start + len(item)), text[:start + len(item)], "a cut after it keeps it whole")
+        # The address goes back to its start, where the folder that names the login stands across
+        # the cut again, so the cut goes back once more.
+        self.assertEqual(extract.clip(f"/home/lab/{LOGIN}@ex.invalid and the rest", 20), "")
+        # The longest grid path the rule takes, 32 folders of 255 characters, is seen whole from a
+        # cut in its first folder.
+        path = "the run " + ("/" + "a" * 255) * 32 + f"/{LOGIN}/data and the rest"
+        self.assertEqual(extract.clip(path, path.index("/") + 100), "the run ")
+
+    def test_a_cut_reads_no_further_past_itself_than_what_it_guards_runs(self):
+        text = "the run took the night " * 200_000
+        started = time.monotonic()
+        self.assertEqual(extract.clip(text, 3000), text[:3000])
+        self.assertLess(time.monotonic() - started, 0.5, "a head of 3,000 characters read the whole data file")
+
+    def test_no_cut_of_an_artifact_s_text_leaves_a_piece_of_what_is_taken_out(self):
+        sites = {
+            "a script's line, cut at 600": lambda b, item: {"page.html": f'<script>\n"{b(599)}{item} and the rest"\n</script>'},
+            "an image's address, cut at 200": lambda b, item: {"page.html": f'<p>a page</p><img src="{b(200)}{item} rest" alt="x">'},
+            "an embedded design file, cut at 200,000": lambda b, item: {"design.html": "<script>" + json.dumps(
+                {"content": {"files": {"notes.md": b(200_000) + item + " and the rest"}}}) + "</script>"},
+            "a data file's head, cut at 3,000": lambda b, item: {"data.js": b(3000) + item + " and the rest"},
+            "a long file, cut at 400,000": lambda b, item: {"notes.md": b(400_000) + item + " and the rest"},
+        }
+        for item in self.ITEMS:
+            kept = len(item) // 2
+
+            def before(n):
+                # So many characters that the item, put after them, starts kept characters before n.
+                return ("the run took the night " * (n // 20 + 2))[:n - kept - 1] + " "
+
+            for site, files in sites.items():
+                with tempfile.TemporaryDirectory() as folder:
+                    for name, text in files(before, item).items():
+                        Path(folder, "artifact").mkdir(exist_ok=True)
+                        Path(folder, "artifact", name).write_text(text, encoding="utf-8")
+                    extract.extract_folder(Path(folder, "artifact"), Path(folder, "out.txt"))
+                    text = Path(folder, "out.txt").read_text(encoding="utf-8")
+                scrubbed = redact.scrub(extract.without_contacts(text), Counter())
+                self.assertIn("the run took the night", scrubbed, f"{site} was read")
+                self.assertNotIn(item[:kept], scrubbed, f"{site} kept {kept} characters of {item!r}")
 
 
 SHARED = [{"id": f"dataset:{d}:films", "dataset": d, "name": d, "key": "films", "value": v, "noun": "films",
@@ -738,11 +865,12 @@ class Concepts(unittest.TestCase):
                 write(Path(root, "data", "sources", "alpha_set.json"), {"id": "alpha_set", "what": lines(item, width)})
                 return sc.check_datasets(sc.sources(str(texts), root), SHARED[:1])
 
-        for item in (LOGIN, f"/rs/rs_grp_lab/{LOGIN}/data/"):
-            words = redact.scrub(item, Counter())
+        for item in Extract.ITEMS:
+            words = redact.scrub(extract.without_contacts(item), Counter())
             found = checks(item, len(item))
             self.assertEqual(len(found), 3 * 2 * (len(item) - 1), "every line gives its check")
-            self.assertFalse([c["text"] for c in found if LOGIN[:2] in c["text"]], item)
+            self.assertFalse([c["text"] for c in found if item[:2] in c["text"]], item)
+            self.assertIsNone(sr.personal_problem(found), item)
             self.assertEqual(found, checks(words, len(item)), "a check's words and key give away nothing the scrub took out")
 
 
@@ -955,6 +1083,10 @@ class Pages(unittest.TestCase):
         ledger = synth.load(synth.LEDGER)
         page = synth.scrubbed(sc.page(ledger, synth.load(synth.STATE)["stamped"]))
         self.assertEqual(page, synth.PAGE.read_text(encoding="ascii"))
+
+    def test_the_committed_records_and_pages_hold_no_address_phone_number_or_credential(self):
+        for path in sorted([*SYNTH.glob("*.json"), *SYNTH.glob("*.md"), *(SYNTH / "work" / "out").glob("*.json")]):
+            self.assertIsNone(sr.personal_problem(path.read_text(encoding="utf-8")), path.name)
 
     def test_the_committed_records_hold_nothing_the_scrub_would_change(self):
         for path in (SYNTH / "inventory.json", SYNTH / "work" / "out" / "concepts.json", SYNTH / "work" / "out" / "clustering.json"):

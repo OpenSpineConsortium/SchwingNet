@@ -14,10 +14,14 @@ Usage, from anywhere, with SYNTH_SYMPHONY naming a checkout of symphony-template
   synth.py stamp [--at REPO=REF]  record what the records were read from, and what is already
                                   known; --at names the commit a checkout is at, for the record
   synth.py stamp --checks         take every concept check the texts give now as seen
+  synth.py rekey BASE             carry the stamp's word over a change that renames the concept
+                                  checks' keys and not what they check, as one to what the scrub
+                                  takes out does; BASE is a checkout of this repository at the
+                                  commit the stamp was made with
 --without symphony-template lets status and report check this repository alone, where no
 checkout of the other can be made (the workflow's App token is missing), keeping the stamp's
-word for it and checking no concept; concepts, plan, join and stamp refuse it, since they write
-what every text gives.
+word for it and checking no concept; concepts, plan, join, stamp and rekey refuse it, since they
+write what every text gives.
 
 The SchwingNet checkout is the one this file is in. SYNTH_TEXT, if set, names where the
 artifacts' texts are extracted; else a fresh temporary folder is used, so no run reads
@@ -332,12 +336,78 @@ def write_report(s, path):
 
 def write_concepts(ledger, state):
     """The ledger and its page, the page rendered from the ledger as it is saved, so that the
-    committed concepts.json renders the committed concepts.md again byte for byte."""
+    committed concepts.json renders the committed concepts.md again byte for byte. Neither is
+    written where either holds an e-mail address, a phone number or a credential's shape, which
+    every text is rid of before a check reads it (synth_concepts.sources)."""
     import synth_concepts as sc
+    import synth_reads as sr
     ledger = scrubbed(ledger)
+    page = scrubbed(sc.page(ledger, state.get("stamped") or "none"))
+    why = sr.personal_problem([ledger, page])
+    if why:
+        raise SystemExit(f"concepts refused: the ledger or its page {why[3:]}, so neither was written")
     save(LEDGER, ledger)
     with open(PAGE, "w", encoding="ascii", newline="\n") as f:
-        f.write(scrubbed(sc.page(ledger, state.get("stamped") or "none")))
+        f.write(page)
+
+
+def rekey(run, state, base):
+    """Carry the stamp's word over a change to the tools that renames the concept checks' keys
+    and not what they check, as a change to what the scrub takes out does, since a key is made
+    from the scrubbed passage: the ledger that the tools of base, a checkout of this repository
+    at the commit the stamp was made with, give is set beside the one this checkout's give, and
+    each key of the stamp's whose check pairs with one of this checkout's takes that check's
+    key. The ledger, its page and the stamp are written again, and nothing else in the stamp
+    changes, so the look counts as new only the checks no pair carries."""
+    import synth_state as st
+    ledger = concepts_now(run)
+    pairs = paired(ledger_of(base), ledger)
+    checks, renamed = rekeyed(state.get("checks", {}), pairs)
+    new = {**state, "checks": checks}
+    write_concepts(ledger, new)
+    st.write(STATE, new)
+    print(f"rekeyed: {len(pairs)} checks paired, {renamed} of the stamp's {len(checks)} keys renamed")
+
+
+def identity(check):
+    return (check["concept"], check["kind"], check["source"], check["line"], check["outcome"], check["value"])
+
+
+def paired(old, new):
+    """Each key of the old ledger's checks with the key of the new ledger's check that is the
+    same check, the same concept, kind, source, line, outcome and value, where those name one
+    check on each side; a line that gives two such checks pairs neither, so a stamp never takes
+    one passage's word for another's."""
+    def unique(ledger):
+        count = Counter(identity(c) for c in ledger["checks"])
+        return {identity(c): c["key"] for c in ledger["checks"] if count[identity(c)] == 1}
+    a, b = unique(old), unique(new)
+    return {a[i]: b[i] for i in sorted(a.keys() & b.keys(), key=repr)}
+
+
+def rekeyed(checks, pairs):
+    """The stamp's checks, each key a pair names renamed, and how many were."""
+    out = {pairs.get(k, k): src for k, src in checks.items()}
+    if len(out) != len(checks):
+        raise SystemExit("rekey refused: two of the stamp's keys would become one, so nothing was written")
+    return dict(sorted(out.items())), sum(1 for k in checks if pairs.get(k, k) != k)
+
+
+def ledger_of(base):
+    """The concept ledger the tools of another checkout of this repository give over its own
+    texts, in a process of its own, so that neither copy's modules meet the other's."""
+    tools = Path(base) / "artifacts" / "_synthesis" / "work" / "tools"
+    if not (tools / "synth.py").is_file():
+        raise SystemExit(f"rekey refused: {base!r} is not a checkout of this repository")
+    code = ("import json, sys; sys.path.insert(0, sys.argv[1]); import synth; "
+            "json.dump(synth.concepts_now(synth.Run()), open(sys.argv[2], 'w', encoding='utf-8'))")
+    env = {k: v for k, v in os.environ.items() if k not in ("SYNTH_TEXT", "SYNTH_SCHWINGNET")}
+    with tempfile.TemporaryDirectory() as folder:
+        out = os.path.join(folder, "ledger.json")
+        done = subprocess.run([sys.executable, "-I", "-B", "-c", code, str(tools), out], env=env, cwd=folder)
+        if done.returncode:
+            raise SystemExit(f"rekey refused: the tools of {base} gave no ledger (exit {done.returncode}), so nothing was written")
+        return load(out)
 
 
 def stamp(run, state, at=None, only=None, checks=None, unstamped=()):
@@ -381,7 +451,7 @@ def stamp(run, state, at=None, only=None, checks=None, unstamped=()):
 
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    p.add_argument("command", choices=["status", "concepts", "report", "plan", "join", "stamp"])
+    p.add_argument("command", choices=["status", "concepts", "report", "plan", "join", "stamp", "rekey"])
     p.add_argument("paths", nargs="*")
     p.add_argument("--json")
     p.add_argument("--at", action="append", default=[])
@@ -394,7 +464,9 @@ def main(argv=None):
     if a.command == "report" and a.status:
         write_report(load(a.status), a.paths[0])
         return
-    if a.without and a.command in ("concepts", "plan", "join", "stamp"):
+    if a.command == "rekey" and len(a.paths) != 1:
+        p.error("rekey takes one path: a checkout of this repository at the commit the stamp was made with")
+    if a.without and a.command in ("concepts", "plan", "join", "stamp", "rekey"):
         raise SystemExit(f"{a.command} refused: it writes what every text gives, and without {', '.join(a.without)}'s checkout"
                          " that repository's word in the stamp and the ledger would be lost; status and report check without it")
     run = Run(a.without)
@@ -418,6 +490,8 @@ def main(argv=None):
             save(a.paths[3], summary)
         if not came_back(summary):
             raise SystemExit("join: no record and no verdict came back, so nothing was written")
+    elif a.command == "rekey":
+        rekey(run, state, a.paths[0])
     elif a.command == "stamp":
         at = dict(x.split("=", 1) for x in a.at)
         at_head(run, at)

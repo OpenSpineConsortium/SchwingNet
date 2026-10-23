@@ -14,9 +14,11 @@ leaves both open. A settled figure is used only when its own two quotes pass the
 checked by, so one whose evidence the rule does not recognise is listed and not used.
 
 Every artifact's text, every research note under docs/research/ and each dataset record's
-own words are then scrubbed of what the folder's rule keeps out of the records (redact.py)
-and read passage by passage, so that no passage, no words a check keeps and no check's key
-holds any of it, whole or cut. In a passage that names a dataset, each figure goes to the
+own words are then rid of e-mail addresses and phone numbers, as extract.py rids an artifact's,
+scrubbed of what the folder's rule keeps out of the records (redact.py) and read passage by
+passage, so that no passage, no words a check keeps and no check's key holds any of it, whole
+or cut; a check's key therefore changes with those patterns, and `synth.py rekey` carries the
+stamp's word over such a change. In a passage that names a dataset, each figure goes to the
 nearest name within 160 characters, or to every name equally near: equal to one
 of those sets' counts it agrees, and where a count's noun follows it, it is rounded when it is
 that count written with fewer digits and differs when it is within a tenth of it (a thirtieth
@@ -38,6 +40,7 @@ import sys
 from decimal import ROUND_HALF_UP, Decimal
 
 sys.path.insert(0, os.path.dirname(__file__))
+import extract  # noqa: E402
 import redact  # noqa: E402
 import verify_quotes as vq  # noqa: E402
 from render_contradictions2 import number_key, number_verdicts  # noqa: E402
@@ -162,14 +165,15 @@ def read(path, errors="strict"):
 def sources(text_dir, root):
     """Every text the concepts are checked against, by id: each artifact's extracted text
     (repo/folder), each research note (notes:docs/research/...) and each dataset record's own
-    words (registry:<id>), each scrubbed as it is read, before any passage of it is cut."""
+    words (registry:<id>), each rid of addresses and phone numbers and scrubbed as it is read,
+    before any passage of it is cut."""
     out = {aid: read(f"{text_dir}/{aid}.txt") for aid in vq.artifact_ids(text_dir)}
     for path in sorted(glob.glob(os.path.join(root, "docs", "research", "**", "*.md"), recursive=True)):
         out["notes:" + os.path.relpath(path, root).replace(os.sep, "/")] = read(path, errors="replace")
     for path in sorted(glob.glob(os.path.join(root, "data", "sources", "*.json"))):
         rec = json.loads(read(path))
         out["registry:" + rec["id"]] = "\n".join(str(rec.get(k) or "") for k in ("what", "status"))
-    return {sid: redact.scrub(text, collections.Counter()) for sid, text in out.items()}
+    return {sid: redact.scrub(extract.without_contacts(text), collections.Counter()) for sid, text in out.items()}
 
 
 def rarity(texts):

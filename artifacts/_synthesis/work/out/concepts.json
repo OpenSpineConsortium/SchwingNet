@@ -5348,7 +5348,7 @@
    "text": "STOIC2021 training set, 2,000 chest CT as MHA on AWS Open Data (s3://stoic2021-training; LICENCE.txt read 2026-09-23), about 240 GB; also inside CADS (gated) and re-packed as AUC23 'Lung CT COVID-19'"
   },
   {
-   "key": "02598452994cdd23",
+   "key": "aa9c4e53fccd0153",
    "concept": "dataset:bournemouth_cervical_qf:people",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-inventory.md",
@@ -5368,7 +5368,7 @@
    "text": "252 lateral flexion and extension sequences from 63 people at 15 fps, 1024 x 1024 16-bit DICOM; the deposit holds the per-frame vertebral corner tracks (.mat, 24 MB) and no pixels"
   },
   {
-   "key": "f6fa852bf2204d8f",
+   "key": "36633810d900db0c",
    "concept": "dataset:bournemouth_cervical_qf:sequences",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-inventory.md",
@@ -5388,7 +5388,7 @@
    "text": "252 lateral flexion and extension sequences from 63 people at 15 fps, 1024 x 1024 16-bit DICOM; the deposit holds the per-frame vertebral corner tracks (.mat, 24 MB) and no pixels"
   },
   {
-   "key": "15c2403af5c2087b",
+   "key": "825db9ccaffc50de",
    "concept": "dataset:bournemouth_lumbar_qf:subjects",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-inventory.md",
@@ -6028,7 +6028,7 @@
    "text": "| Whether C-ArmLSpine's 149 cases are 149 living people, under what ethics approval, and how its pose was obtained | the fourth research pass; the literature state | the person unit of every real-frame interval |"
   },
   {
-   "key": "08ab8957e662a4ab",
+   "key": "80b93330bd057631",
    "concept": "dataset:carmlspine:cases",
    "kind": "dataset",
    "source": "SchwingNet/schwingnet-data-registry",
@@ -6258,7 +6258,7 @@
    "text": "| Whether C-ArmLSpine's 149 cases are 149 living people, under what ethics approval, and how its pose was obtained | the fourth research pass; the literature state | the person unit of every real-frame interval |"
   },
   {
-   "key": "22e0f86e362daa03",
+   "key": "5f991c196c7b9403",
    "concept": "dataset:carmlspine:cbct_volumes",
    "kind": "dataset",
    "source": "SchwingNet/schwingnet-data-registry",
