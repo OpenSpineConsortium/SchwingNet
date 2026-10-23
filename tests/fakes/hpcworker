@@ -27,7 +27,7 @@ submit() {
   done
   case "$class" in cpu|batch|gpu) ;; *) echo "the class is cpu, batch or gpu" >&2; exit 1 ;; esac
   line="--class $class --name $name${after:+ --dependency=$after --kill-on-invalid-dep=yes}${opts[*]+ ${opts[*]}} $*"
-  line="$line | DEPEND=${DEPEND:-} FETCH_ARGS=${FETCH_ARGS:-} DATA_ROOT=${DATA_ROOT:-} PART=${PART:-} RUN=${RUN:-} CATALOG=${CATALOG:-} THREADS=${THREADS:-} SWEEPS=${SWEEPS:-} RUNS=${RUNS:-} WEIGHTS=${WEIGHTS:-} MODELS=${MODELS:-} ID=${ID:-} EXPLORE_ID=${EXPLORE_ID:-} EXPLORE_RAW=${EXPLORE_RAW:-} EXPLORE_AGAINST=${EXPLORE_AGAINST:-}"
+  line="$line | DEPEND=${DEPEND:-} FETCH_ARGS=${FETCH_ARGS:-} DATA_ROOT=${DATA_ROOT:-} PART=${PART:-} RUN=${RUN:-} CATALOG=${CATALOG:-} THREADS=${THREADS:-} SWEEPS=${SWEEPS:-} RUNS=${RUNS:-} WEIGHTS=${WEIGHTS:-} MODELS=${MODELS:-} ID=${ID:-} EXPLORE_ID=${EXPLORE_ID:-} EXPLORE_RAW=${EXPLORE_RAW:-} EXPLORE_AGAINST=${EXPLORE_AGAINST:-} DROPZIP_ID=${DROPZIP_ID:-} DROPZIP_RAW=${DROPZIP_RAW:-}"
   if [ -n "${HPCW_REFUSE:-}" ] && [ -s "$HPCW_REFUSE" ] && [[ $line == *"$(cat "$HPCW_REFUSE")"* ]]; then
     echo "HPCW-JOB refused $name reqp/requeue: Socket timed out"; exit 1
   fi
