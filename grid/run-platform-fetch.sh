@@ -40,6 +40,9 @@ mkdir -p "$REPO/grid/logs"
 export SCHWINGNET="$REPO" DATA_ROOT
 
 # id|route|size_gb (0 = not stated)|licence|access|args|extra environment (VAR=value, space-separated)
+# An hf-token line's args go to reacquire.py hf-get, whose --include is a glob (fnmatch, as huggingface_hub's
+# allow_patterns), never the regular expression the acq and zenodo routes read: "." there matches no file,
+# and a whole repository is no --include at all (issue #158).
 # The order is the chain's: small and spine-first, the large chest and whole-body sets after,
 # so the spine CTs are on disk whatever the night brings; lidc_idri last among the open ones.
 OPEN="
@@ -71,10 +74,10 @@ idc_lidc_idri|idc|123.3|CC BY 3.0|open|lidc_idri|
 "
 # Granted gated sources: the token or link in a mode-0600 file the owner writes, read by the job.
 GATED_LIST="
-hf_cads_unique|hf-token|123.3|per component; CT-TRI under CADS terms|gated|--repo mrmrx/CADS-dataset --repo-type dataset --include CT-TRI/*|TOKEN_FILE=~/.hf/token.env NOTE=parts CT-TRI and VISCERAL only; VISCERAL is a second run with --include VISCERAL*
+hf_cads_unique|hf-token|123.3|per component; CT-TRI under CADS terms|gated|--repo mrmrx/CADS-dataset --repo-type dataset --include *0043_new_ct_tri/*|TOKEN_FILE=~/.hf/token.env NOTE=parts CT-TRI and VISCERAL only, folders 0043_new_ct_tri and 0001 and 0002 of the tree of 2026-09-23 (data/reproduce/sources.json); VISCERAL is a second run with --include *000[12]_visceral*
 rsna_ratic_abdominal_trauma|curl-link|0|RSNA terms, non-commercial, no redistribution|gated|ratic.zip|LINK_FILE=~/.rsna/ratic_link NOTE=the presigned link is good until 2026-10-28 02:38 UTC
 rsna_rspect_pe|kaggle|0|RSNA terms, non-commercial research|gated|rsna-str-pulmonary-embolism-detection|TOKEN_FILE=~/.fluorocap/credentials.env
-hf_rexgradient_160k|hf-token|156|ReXGradient-160K data access and use agreement, non-commercial, no redistribution|gated|--repo rajpurkarlab/ReXGradient-160K --repo-type dataset --include .|TOKEN_FILE=~/.hf/token.env NOTE=the whole repository, about 156 GB, on the owner's choice of 2026-10-22 knowing clause A.5 limits a download to the part the project needs
+hf_rexgradient_160k|hf-token|156|ReXGradient-160K data access and use agreement, non-commercial, no redistribution|gated|--repo rajpurkarlab/ReXGradient-160K --repo-type dataset|TOKEN_FILE=~/.hf/token.env NOTE=the whole repository, about 156 GB, on the owner's choice of 2026-10-22 knowing clause A.5 limits a download to the part the project needs
 aimi_ol3i|redivis|4.3|Stanford AIMI research use agreement, non-commercial|gated|--max-gb 10 --files aimi.ol3i_opportunistic_l3_ct_slices_for_ischemic_heart_disease_risk_assessment:asvh:v1_0.ol3i:n1y3 --csv aimi.ol3i_opportunistic_l3_ct_slices_for_ischemic_heart_disease_risk_assessment:asvh:v1_0.clinical_data:2cqm|TOKEN_FILE=~/.redivis/token.env NOTE=the L3 CT slices in one file and the clinical table, on the owner's choice of 2026-10-22
 chexpert_plus|redivis|0|Stanford AIMI research use agreement, non-commercial|gated|--max-gb 3000 --files aimi.chexpert_plus:5yyj:v1_0.png_train:s6cj --files aimi.chexpert_plus:5yyj:v1_0.png_valid:41v9 --files aimi.chexpert_plus:5yyj:v1_0.chexpert_labels:pmec --files aimi.chexpert_plus:5yyj:v1_0.radgraph_xl_annotations:8wdv --csv aimi.chexpert_plus:5yyj:v1_0.df_chexpert_plus_240401:bavj|TOKEN_FILE=~/.redivis/token.env NOTE=the PNGs, labels, RadGraph-XL annotations and reports, no DICOM, on the owner's choice of 2026-10-22; refuses before downloading above 3000 GB listed
 zenodo_magic_ct|zenodo-token|39.1|CC BY 4.0 on the record, under its data use agreement (non-commercial)|gated|--record 18389015 --max-gb 50|TOKEN_FILE=~/.zenodo/token.env NOTE=MAGIC-CT, 21 files, each md5-checked against the record; the owner's approved access of 2026-10-22
@@ -86,11 +89,11 @@ OWNER_LIST="
 idc_nlst|idc|2305|CC BY 4.0|open|nlst|NOTE=24,713 subjects, 2.3 TB; the owner's yes of 2026-10-22
 ipcai2025_robotic_xray_drive|gdown|0.85|not stated on the file; to ask the authors|open|1pV8qaW4kHGI8wrDWc6wVWS4za5XRWsXA|NOTE=202410191.zip, the data of arXiv 2412.08020 (Killeen and others, language-controlled robotic C-arm; the cadaver study's X-rays), shared with the owner by its author on 2026-10-22 and readable by anyone with the link
 fluorosam_weights_drive|gdown|1.0|per arcadelab/fluorosam; not stated on the file|open|1lJqVIuVFbdc9Bcmj17ac_cha-gW827Q6|NOTE=fluorosam_model_weights.pth, 1,002,351,026 bytes, the weights the FluoroSAM repository's README links, readable by anyone with the link; asked for by the 3D-to-X-ray work on 2026-10-22 as its comparison row
-hf_fluoroseg|hf-token|2650|FluoroSeg data use terms, accepted by the owner on 2026-10-22|gated|--repo benjamindkilleen/fluoroseg --repo-type dataset --include .|TOKEN_FILE=~/.hf/token.env NOTE=the whole set, about 2.65 TB of simulated X-rays with masks, on the owner's yes of 2026-10-22 (12.6 TB free of the 22 TB quota at the time, 6.8 TB of it promised to queued fetches)
+hf_fluoroseg|hf-token|2650|FluoroSeg data use terms, accepted by the owner on 2026-10-22|gated|--repo benjamindkilleen/fluoroseg --repo-type dataset|TOKEN_FILE=~/.hf/token.env NOTE=the whole set, about 2.65 TB of simulated X-rays with masks, on the owner's yes of 2026-10-22 (12.6 TB free of the 22 TB quota at the time, 6.8 TB of it promised to queued fetches)
 "
 # Never in the chain: the owner's own lines, printed at the end.
 APART="
-hf_ct_rate|hf-token|21300|CC BY-NC-SA 4.0|gated|--repo ibrahimhamamci/CT-RATE --repo-type dataset --include .|TOKEN_FILE=~/.hf/token.env NOTE=21.3 TB; the owner's TB number first
+hf_ct_rate|hf-token|21300|CC BY-NC-SA 4.0|gated|--repo ibrahimhamamci/CT-RATE --repo-type dataset|TOKEN_FILE=~/.hf/token.env NOTE=21.3 TB; the owner's TB number first
 "
 
 if [ "$GATED_IDS" = 1 ]; then
