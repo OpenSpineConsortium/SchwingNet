@@ -211,3 +211,25 @@ def test_record_copies_the_small_files_and_appends_one_ledger_row(tmp_path: Path
     assert kept == [f"{run_name}/RUN.json", f"{run_name}/evaluate/results.md", f"{run_name}/train/MODEL.md", f"{run_name}/train/witness/epoch-01.png", f"{run_name}/train/witness/epoch-03.png"]
     ledger = (tmp_path / "docs" / "LEDGER.md").read_text(encoding="utf-8").splitlines()
     assert ledger[0].startswith("| date |") and len(ledger) == 4 and ledger[2] == ledger[3]
+
+
+def test_a_run_refuses_a_catalog_outside_its_recipe_before_it_writes_anything(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    flow = load_tool("flow")
+    catalog = tmp_path / "catalog.sqlite"
+    db = sqlite3.connect(catalog)
+    db.execute("CREATE TABLE source (source TEXT)")
+    db.execute("CREATE TABLE item (sha256 TEXT, person TEXT, part TEXT, source TEXT)")
+    db.executemany("INSERT INTO source VALUES (?)", [("carmlspine",), ("lumos",)])
+    db.executemany("INSERT INTO item VALUES (?, ?, ?, ?)", [("a" * 64, "carmlspine:1", "train", "carmlspine"), ("b" * 64, "lumos:1", "train", "lumos")])
+    db.commit()
+    db.close()
+    monkeypatch.setattr(flow, "tree_state", lambda: (COMMIT, True))
+    record = flow.licence_record(catalog, None)
+    assert record["run_class"] == "non-commercial" and record["commercial_use"] == "no"
+    assert flow.licence_words(record) == ", data licence non-commercial"
+    with pytest.raises(flow.FlowError, match="recipe commercial does not take"):
+        flow.licence_record(catalog, "commercial")
+    out = tmp_path / "runs"
+    with pytest.raises(flow.FlowError, match="licences"):
+        flow.command_run(flow.parse(["run", "--catalog", str(catalog), "--out", str(out), "--recipe", "commercial"]))
+    assert not out.exists()

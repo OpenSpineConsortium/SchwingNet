@@ -1,0 +1,6 @@
+{
+ "name": "research-internal",
+ "allow": ["open", "share-alike", "non-commercial", "agreement", "no-derivatives"],
+ "reviewed_only": false,
+ "why": "The study's own network, kept inside the project under each agreement's terms: every classified source, never one whose licence is unknown; its weights are shared with no one until each agreement and no-derivatives licence is read for it."
+}
