@@ -181,6 +181,12 @@ def pair(x):
 
 
 FIGURE = re.compile(r"\d+(?:,\d{3})*(?:\.\d+)?")
+# The fourth rule's figures stand alone: not joined to a letter, a colon or another figure's
+# point or comma, and not part of a date, so the 12 of T12, the 42 of 00:42 and the 10 of
+# 2026-10-13 are no figures of a group.
+STANDING = re.compile(r"(?<![\w.,:])\d+(?:,\d{3})*(?:\.\d+)?(?![\w:]|[.,]\d)")
+DATE = re.compile(r"(?<!\d)(?:19|20)\d{2}-(?:0[1-9]|1[0-2])(?:-(?:0[1-9]|[12]\d|3[01]))?(?!\d)")
+RULES = ("narrow", "third", "fourth")
 
 
 def figures(text):
@@ -189,7 +195,13 @@ def figures(text):
     return {f for f in FIGURE.findall(text or "") if sum(ch.isdigit() for ch in f) >= 2}
 
 
-NOTE_ROUNDS = ("regroup2", "notes3")
+def standing_figures(text):
+    """The figures a text gives as written that stand alone, as figures() takes them, less
+    any joined to a letter, a colon or a date."""
+    return {f for f in STANDING.findall(DATE.sub(" ", text or "")) if sum(ch.isdigit() for ch in f) >= 2}
+
+
+NOTE_ROUNDS = ("regroup2", "notes3", "notes4")
 
 
 def final_groups(F):
@@ -197,20 +209,24 @@ def final_groups(F):
     the rows set beside them, its sources and its judge's finding taken from the second re-rule
     where that ruled the group again; the cluster rows its judge or readers read beside it in
     the second re-rule, under beside; and the notes on the cluster rows that give the group's
-    figures, the second re-rule's and the third pass's, each with the round that gave it, where
-    any were given."""
+    figures, the second re-rule's, the third pass's and the fourth's, each with the round that
+    gave it and the editor's words on it, if any, where any were given; a note on a row the
+    fourth pass found the rule no longer marks is left out, and stays in the reading."""
     F = F or {}
     first = (F.get("regroup") or {}).get("groups", [])
     later = {k: {g["name"]: g for g in (F.get(k) or {}).get("groups", [])} for k in NOTE_ROUNDS}
     for k, groups in later.items():
         unknown = set(groups) - {g["name"] for g in first}
         require(not unknown, f"{k} names groups the first re-rule has not: {sorted(unknown)}")
+    unmarked = {(u["group"], u["cluster"], u["index"]) for u in (F.get("notes4") or {}).get("unmarked", [])}
+    editor = {(c["group"], c["cluster"], c["index"]): c for c in corrections_of(F) if c["to"] == "note"}
     out = []
     for g in first:
         s = later["regroup2"].get(g["name"], {})
         again = {k: s[k] for k in ("rows", "context", "extra", "note", "context_notes")} if s.get("rule") else {}
         given = [(k, later[k][g["name"]]["siblings"]) for k in NOTE_ROUNDS if "siblings" in later[k].get(g["name"], {})]
-        notes = [{**n, "round": k} for k, ns in given for n in ns] if given else None
+        notes = [{**n, "round": k, **editor_field(editor.get((g["name"], n["cluster"], n["index"])))} for k, ns in given for n in ns
+                 if (g["name"], n["cluster"], n["index"]) not in unmarked] if given else None
         beside = [(n["cluster"], n["index"]) for n in s.get("siblings", [])] + [tuple(c) for c in s.get("cluster_context", [])]
         out.append({**g, **again, "second": bool(again), "notes": notes, "beside": beside})
     return out
@@ -220,37 +236,104 @@ def pages_of(x):
     return {a for a in (x["artifact_a"], x.get("artifact_b")) if artifact(a)}
 
 
-def siblings_of(groups, M, N, wide=True):
+def siblings_of(groups, M, N, rule="fourth"):
     """The cluster rows that give figures a group of the follow-up's re-rule read together, on
-    pages read for the group: a row whose quotes give one of the figures that the group's rows,
-    or the rows set beside them, give in their values or quantities, and one of whose pages is a
-    page of those rows, a source the judge was given, or a page of a cluster row the judge or
-    readers read beside the group in the second re-rule. The narrow rule, which wide False
-    gives and which wrote the second re-rule's input, read no page beside the group and needed
+    pages read for the group: by the fourth rule, the page's, a row whose quotes, or whose
+    verdict's explanation or hint, give one of the figures that the group's rows, or the rows
+    set beside them, give in their values or quantities, written the same way and standing
+    alone, two of them where each it shares is a whole number under 100, and one of whose pages
+    is a page of those rows, a source the judge was given, or a page of a cluster row the judge
+    or readers read beside the group in the second re-rule. The earlier rules are kept so that
+    each round's input can be written again: the third, which wrote the third pass's, read the
+    quotes alone, took any run of two digits or more as a figure and needed one; the narrow
+    rule, which wrote the second re-rule's, read no page beside the group either and needed
     each of a row's pages read, or two of the figures and one of its pages. Returns, for each
     group that has any, the group and its rows as (cluster, row, verdict)."""
+    require(rule in RULES, f"no marking rule {rule!r}; {RULES}")
+    read = standing_figures if rule == "fourth" else figures
     clusters = {c["cluster"]: c for c in M["clusters"]}
     found = []
     for g in groups:
         rows = [N["candidates"][r] for r in g["rows"] + g.get("context", [])]
         pages = set(g.get("extra", [])).union(*({x["artifact_a"], x["artifact_b"]} for x in rows))
-        if wide:
+        if rule != "narrow":
             pages = pages.union(*(pages_of(clusters[c]["candidates"][i]) for c, i in g.get("beside", [])))
-        figs = set().union(*(figures(x["value_a"]) | figures(x["value_b"]) | figures(x["quantity"]) for x in rows))
+        figs = set().union(*(read(x["value_a"]) | read(x["value_b"]) | read(x["quantity"]) for x in rows))
         mine = []
         for c in M["clusters"]:
             for i, (x, v) in enumerate(zip(c["candidates"], c["verdicts"])):
                 own = pages_of(x)
-                given = set().union(*(figures(q) for q in (x.get("quote_a"), x.get("quote_b"), (v or {}).get("quote_a"), (v or {}).get("quote_b"))))
-                if v and own & pages and len(given & figs) >= (1 if wide or own <= pages else 2):
+                if v and own & pages and enough(given_figures(x, v, rule, read) & figs, own <= pages, rule):
                     mine.append((c["cluster"], i, v))
         if mine:
             found.append((g, mine))
     return found
 
 
+def given_figures(x, v, rule, read):
+    """The figures a cluster row gives: in the reader's and the skeptic's quotes, and by the
+    fourth rule in the skeptic's explanation and hint too, which can carry a group's figure
+    that neither quote holds."""
+    texts = [x.get("quote_a"), x.get("quote_b"), v.get("quote_a"), v.get("quote_b")]
+    if rule == "fourth":
+        texts += [v.get("explanation"), v.get("resolution_hint")]
+    return set().union(*(read(t) for t in texts))
+
+
+def enough(shared, every_page_read, rule):
+    """Whether the figures a row shares with a group mark it, by the rule."""
+    if rule == "narrow":
+        return len(shared) >= (1 if every_page_read else 2)
+    if rule == "fourth" and shared and all(f.isdigit() and int(f) < 100 for f in shared):
+        return len(shared) >= 2
+    return len(shared) >= 1
+
+
+def corrections_of(F):
+    """The editor's words on the follow-up's hints and notes, each naming what it is on."""
+    return ((F or {}).get("corrections") or {}).get("items", [])
+
+
+def editor_field(c):
+    return {"editor": f"[Editor's {c['kind']}, {c['date']}: {c['words']}]"} if c else {}
+
+
+def with_editor(text, editor):
+    """A hint or a note with the editor's words after it, where there are any."""
+    return f"{text} {editor}" if editor else text
+
+
+def bears_words(bears):
+    """How many notes agree with a finding, differ from it or are about another quantity, each
+    verb agreeing with its count."""
+    def count(n, one, many):
+        return f"none {one}" if n == 0 else f"{n} {one if n == 1 else many}"
+    return (f"{count(bears['agrees'], 'agrees with the finding', 'agree with the finding')}, "
+            f"{count(bears['differs'], 'differs from it', 'differ from it')} and "
+            f"{count(bears['other'], 'is about another quantity', 'are about another quantity')}")
+
+
+def hint_editor(F):
+    """The editor's words on number collision hints, by row."""
+    return {c["index"]: editor_field(c)["editor"] for c in corrections_of(F) if c["to"] == "hint"}
+
+
+def check_corrections(F, N, nv):
+    """Every editor's word lands: a hint's on a number collision with a verdict, a note's on a
+    note the page shows; one that lands on nothing stops the run, since it would be lost."""
+    shown = {(g["name"], n["cluster"], n["index"]) for g in final_groups(F) for n in g["notes"] or []}
+    for c in corrections_of(F):
+        require(c["kind"] in ("correction", "note"), f"an editor's word is neither a correction nor a note: {c['kind']!r}")
+        if c["to"] == "hint":
+            x = N["candidates"][c["index"]]
+            require(number_key(x) in nv and nv[number_key(x)].get("resolution_hint"), f"the editor's {c['kind']} on collision {c['index']} lands on no hint")
+        else:
+            require(c["to"] == "note" and (c["group"], c["cluster"], c["index"]) in shown,
+                    f"the editor's {c['kind']} on {c['cluster']} row {c['index']} lands on no note of group {c.get('group')!r}")
+
+
 def group_siblings(M, N):
-    return siblings_of(final_groups(M.get("followup")), M, N)
+    return siblings_of(final_groups(M.get("followup")), M, N, "fourth")
 
 
 BEARS = ("agrees", "differs", "other")
@@ -293,7 +376,7 @@ def beside(entries, where):
         if note is None:
             words.append(f" The follow-up's group judge on \"{title}\" read figures this row gives but not this row, so read its finding ({where}) beside it.")
         else:
-            words.append(f" Set beside the follow-up's finding on \"{title}\" ({where}), {BEARS_WORDS[note['bears']]}: {cell(note['note'])}")
+            words.append(f" Set beside the follow-up's finding on \"{title}\" ({where}), {BEARS_WORDS[note['bears']]}: {with_editor(cell(note['note']), cell(note.get('editor', '')))}")
     return "".join(words)
 
 
@@ -515,18 +598,39 @@ def capital(text):
     return text[:1].upper() + text[1:]
 
 
-def by_round(noted):
-    """How many of the marks each round of notes gave."""
-    return Counter(n["round"] for _, _, notes in noted if notes for n in notes.values())
+def round_counts(F):
+    """How many cluster rows each round of notes set beside a finding, as the reading keeps them."""
+    return {k: sum(len(g.get("siblings", [])) for g in ((F or {}).get(k) or {}).get("groups", [])) for k in NOTE_ROUNDS}
 
 
-def siblings_words(siblings):
+def history_words(F):
+    """How the marked rows were set beside the findings, round by round, each round's rule with it."""
+    n = round_counts(F)
+    words = (f": in the second re-rule, by the group's judge or by a reader given the finding, the {n['regroup2']} the rule then marked, "
+             "which counted no page read beside the group and needed each of a row's pages read, or two of the figures and one of those pages")
+    if n["notes3"]:
+        words += (f"; in a third pass, after a third review found rows that rule missed which plainly bear on a finding, by a reader for each group, "
+                  f"the {n['notes3']} a wider rule added, which counted the pages read beside the group and needed one figure, "
+                  "but read the quotes alone and took any two digits or more as a figure")
+    unmarked = ((F or {}).get("notes4") or {}).get("unmarked", [])
+    if n["notes4"] or unmarked:
+        bears = Counter(u["bears"] for u in unmarked)
+        how = ("all of them noted as about another quantity" if set(bears) == {"other"}
+               else ", ".join(f"{k} {b}" for b, k in sorted(bears.items())))
+        words += (f"; and in a fourth pass, after a fourth review found a confirmed row whose figures only its verdict's explanation and hint give, "
+                  f"and rows marked on digits that are not a group's figures, by a reader for each group, the {n['notes4']} the rule's present form adds, "
+                  f"which also unmarks {len(unmarked)} rows marked before, {how}, whose notes stay in the follow-up's reading")
+    return words
+
+
+def siblings_words(siblings, F=None):
     """The cluster rows that give a group's figures on pages read for it, by group. The cluster
     skeptics read them; where notes were given, each row's instruction was set beside its
-    group's finding as it now stands, in the second re-rule the rows the narrow rule marked and
-    in a third pass the rows the rule's present form adds, and the rows whose instruction
-    differs from the finding are listed with what their notes say, so a planner knows which to
-    correct. A row of a group with no notes is to be read beside the finding."""
+    group's finding as it then stood, in the second re-rule the rows the narrow rule marked, in
+    a third pass the rows a wider rule added and in a fourth the rows the rule's present form
+    adds, and the rows whose instruction differs from the finding are listed with what their
+    notes say, so a planner knows which to correct. A row of a group with no notes is to be read
+    beside the finding."""
     rows = {(c, i): v for _, mine in siblings for c, i, v in mine}
     if not rows:
         return []
@@ -534,23 +638,21 @@ def siblings_words(siblings):
     also = f", the review {small(len(reviewed))} of them too ({'; '.join(reviewed)})," if reviewed else ""
     noted = [(g, mine, notes_by_row(g, mine)) for g, mine in siblings]
     bears = Counter(n["bears"] for _, _, notes in noted if notes for n in notes.values())
-    rounds = by_round(noted)
     marks = sum(len(mine) for _, mine, _ in noted)
     plain = [f'"{g["title"]}"' for g, _, notes in noted if notes is None]
     rule = ("Rows of the cluster pages give these groups' figures too. "
-            "A row is counted for a group when its quotes give one of the figures that the group's rows, or the rows set beside them, give in their values or quantities, "
-            "written the same way, and one of its pages was read for the group: a page of those rows, a source the group's judge was given, "
+            "A row is counted for a group when its quotes, or its verdict's explanation or hint, give one of the figures that the group's rows, "
+            "or the rows set beside them, give in their values or quantities, written the same way and standing alone, not joined to a letter, a colon or a date, "
+            "so that the 12 of T12 and the 42 of 00:42 count for nothing, and two of those figures where each it shares is a whole number under 100; "
+            "and one of its pages was read for the group: a page of those rows, a source the group's judge was given, "
             "or a page of a cluster row its judge or readers read beside the group in the second re-rule. "
             + (f"{len(rows)} rows are, {marks} times in all, since a row may give the figures of two groups." if marks > len(rows) else f"{len(rows)} rows are.")
             + f" A cluster's skeptic read each{also} and no group's judge ruled any of them.")
     if bears:
-        third = (f"; a third review then found rows that rule missed which plainly bear on a finding, the rule took its present form, "
-                 f"and a reader for each group given its finding set the {rounds['notes3']} rows it adds beside it" if rounds["notes3"] else "")
-        rule += (f" Each was set beside its group's finding as that now stands"
+        rule += (f" Each was set beside its group's finding as that then stood"
                  + (f" (the rows of {listed(plain)} excepted, which are to be read beside it)" if plain else "")
-                 + f": in the second re-rule, by the group's judge or by a reader given the finding, the {rounds['regroup2']} the rule then marked, "
-                 "which read no page beside the group and needed each of a row's pages read, or two of the figures and one of those pages"
-                 + third + f". In all {bears['agrees']} agree with the finding, {bears['differs']} differ from it and {bears['other']} are about another quantity than the group's. "
+                 + history_words(F)
+                 + f". Of the {len(rows)} marked now, {bears_words(bears)} than the group's. "
                  "Each is marked on its cluster's page, and in the confirmed list below where it is on it, with what its note says; "
                  "by group, with the rows whose instruction differs from the finding:\n")
     else:
@@ -562,7 +664,7 @@ def siblings_words(siblings):
         differ = sorted(((k, n) for k, n in (notes or {}).items() if n["bears"] == "differs"), key=lambda kn: order.index(kn[0]))
         count = "one differs" if len(differ) == 1 else f"{len(differ)} differ"
         out.append(f"- {cell(capital(g['title']))}: {where}." + (f" Of these, {count}:" if differ else ""))
-        out += [f"  - {by_cluster([k])}: {cell(n['note'])}" for k, n in differ]
+        out += [f"  - {by_cluster([k])}: {with_editor(cell(n['note']), cell(n.get('editor', '')))}" for k, n in differ]
     out.append("")
     return out
 
@@ -584,7 +686,8 @@ def skeptic_sided(items):
         return ""
     one = len(rows) == 1
     return (f" A judge who sided with the skeptic's verdict but put the hint in other words leaves a corrected hint, and the row reads as the ruling has it: "
-            f"number {'collision' if one else 'collisions'} {listed(rows)}, which the page counted as held, with the skeptic's words, until the second group re-rule.")
+            f"number {'collision' if one else 'collisions'} {listed(rows)}, which the page counted as held, with the skeptic's words, "
+            f"until apply_review.py was changed to put such a ruling's words in place, with the second group re-rule, which ruled neither {'row' if one else 'of them'}.")
 
 
 def followup_section(F, whole, siblings):
@@ -600,7 +703,7 @@ def followup_section(F, whole, siblings):
     over = [x for x in items if x["outcome"] == "verdict overturned"]
     hinted = [x for x in items if x["outcome"] == "hint corrected"]
     on = [x for x in items if x["final"] in (CONFIRMED_N if x["stratum"] == "Number collisions" else CONFIRMED_C)]
-    G, G2, G3 = F.get("regroup"), F.get("regroup2"), F.get("notes3")
+    G, G2, G3, G4 = F.get("regroup"), F.get("regroup2"), F.get("notes3"), F.get("notes4")
     out = ["### Every confirmed number collision, read again\n" if whole else "### A follow-up reading\n", cell(F["about"]) + "\n"]
     if G:
         out.append(cell(G["about"]) + "\n")
@@ -608,6 +711,10 @@ def followup_section(F, whole, siblings):
             out.append(cell(G2["about"]) + "\n")
         if G3:
             out.append(cell(G3["about"]) + "\n")
+        if G4:
+            out.append(cell(G4["about"]) + "\n")
+        if F.get("corrections"):
+            out.append(cell(F["corrections"]["about"]) + "\n")
         out.append("What each group's judge found" + (", the second judge's finding where the group was ruled a second time" if G2 else "") + ":\n")
         for g in final_groups(F):
             beside = "".join(f" Beside them, row {c['index']} {'agrees' if c['agrees'] else 'does not agree'}: {cell(c['note'])}"
@@ -615,7 +722,7 @@ def followup_section(F, whole, siblings):
             again = ", ruled a second time" if g["second"] else ""
             out.append(f"- {cell(capital(g['title']))}, rows {listed(g['rows'])}{again}: {cell(g['note'])}{beside}")
         out.append("")
-        out += siblings_words(siblings)
+        out += siblings_words(siblings, F)
     for first in sorted({x["first"] for x in items}):
         mine = [x for x in items if x["first"] == first]
         out.append(f"- Verdicts that were {first}: {rate(held(mine), len(mine))}, "
@@ -642,6 +749,7 @@ def followup_section(F, whole, siblings):
 
 
 def confirmed_section(text_dir, clusters, N, nv, followup, marks):
+    edits = hint_editor(followup)
     out = ["## Confirmed: what a planner must not take from one artifact alone\n",
            "Every candidate a skeptic confirmed or found revised, by cluster. Disagreements, revisions and stale statements come first; "
            "duplicated texts and shared unsourced claims follow, confirmed in the senses above, which are not disagreements: a duplicated text is one claim and not two confirmations, and a shared unsourced claim has no source on either page. "
@@ -674,12 +782,12 @@ def confirmed_section(text_dir, clusters, N, nv, followup, marks):
         out.append("### Numbers\n")
         for j, x, v in rows:
             out.append(f"- Collision {j}, {v['verdict']}{review_tag(v)}, {cell(x['quantity'])}: {short_id(x['artifact_a'])} gives {cell(x['value_a'])}, "
-                       f"{short_id(x['artifact_b'])} gives {cell(x['value_b'])}. {cell(v.get('resolution_hint') or v.get('explanation'))}")
+                       f"{short_id(x['artifact_b'])} gives {cell(x['value_b'])}. {with_editor(cell(v.get('resolution_hint') or v.get('explanation')), cell(edits.get(j, '')))}")
         out.append("")
     return out
 
 
-def numbers_section(text_dir, N, nv, titles):
+def numbers_section(text_dir, N, nv, titles, edits):
     out = ["## Number collisions\n",
            f"{len(N['candidates'])} candidates from the numbers table, by the reader's kind, each under its number in the record.\n"]
     for kind, title in NUMBER_KINDS:
@@ -689,7 +797,7 @@ def numbers_section(text_dir, N, nv, titles):
         out.append("|---|---|---|---|---|---|---|---|---|---|---|")
         for j, x in rows:
             v = nv.get(number_key(x))
-            why = short(v.get("resolution_hint") or v.get("explanation"), 260) if v else short(x["why"], 200)
+            why = with_editor(short(v.get("resolution_hint") or v.get("explanation"), 260), cell(edits.get(j, ""))) if v else short(x["why"], 200)
             out.append(f"| {j} | {short(x['quantity'], 110)} | {link(x['artifact_a'], titles)} | {short(x['value_a'], 70)} | {link(x['artifact_b'], titles)} | {short(x['value_b'], 70)} | "
                        f"{quote_status(text_dir, x['artifact_a'], x['quote_a'])} | {quote_status(text_dir, x['artifact_b'], x['quote_b'])} | {(v or {}).get('verdict', '')} | {review_cell(v)} | {why} |")
         out.append("")
@@ -763,8 +871,9 @@ def main(merged, numbers, inventory, dst, date):
     nv = number_verdicts(N, M.get("numbers_extra", []))
     clusters = M["clusters"]
     marks = marks_of(group_siblings(M, N))
+    check_corrections(M.get("followup"), N, nv)
     page = (intro(N, nv, inv, date, M.get("followup"), reads_every_confirmed_number(M, N, nv)) + definitions() + summary(text_dir, clusters, N, nv) + review_section(M, N, nv)
-            + confirmed_section(text_dir, clusters, N, nv, M.get("followup"), marks) + numbers_section(text_dir, N, nv, titles)
+            + confirmed_section(text_dir, clusters, N, nv, M.get("followup"), marks) + numbers_section(text_dir, N, nv, titles, hint_editor(M.get("followup")))
             + ["## Cluster by cluster\n",
                "Each swept cluster has a page of its own under contradictions/, linked from the table above: every candidate with its kind, both artifacts, whether a script found the reader's quotes, the verdict, the review's outcome and the skeptic's explanation, "
                "then what each artifact says with the words the verdict rests on, the clustering's superseded relations as the reader checked them, and what the cluster asserts without a source or holds as dated.\n"])

@@ -58,8 +58,9 @@ def read_verdict(M, N, it):
 
 GROUP_ROUNDS = ("regroup", "regroup2")
 # What a reading holds beside its items and goes into the record's followup with them: the
-# group rounds and the third pass's notes on the cluster rows that give the groups' figures.
-CARRIED = GROUP_ROUNDS + ("notes3",)
+# group rounds, the third and fourth passes' notes on the cluster rows that give the groups'
+# figures, and the editor's words on hints and notes.
+CARRIED = GROUP_ROUNDS + ("notes3", "notes4", "corrections")
 
 
 def standing(fields, it):
