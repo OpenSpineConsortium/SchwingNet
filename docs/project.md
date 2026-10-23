@@ -14,13 +14,13 @@ In scope: the areas this project owns, each in one line; docs/agents/OWNERSHIP.m
 - The measurement: held-out C-ArmLSpine, the transitional stratum with two readers, the synthetic anomaly arm with exact truth, never pooled with the real one.
 - The demo: the recorded sweep (C-ArmLSpine case134 and case39), the overlay, the measured latency, the slides' figures.
 - The quality gate: new code to beethoven-qa's definition of done; the legacy tools of the reported pipeline listed under unproven, never refactored before the talk, since a refactor voids the parity gate.
-- The synthesis of the artifacts (artifacts/_synthesis/), the record the Artifact Textbook is written from, kept current by .github/workflows/synthesis.yml: it looks with no Claude on every change of an artifact, a research note or a dataset record, and runs the Claude reads a change needs, at most 10 runs a day, each opening a pull request (#166).
+- The synthesis of the artifacts (artifacts/_synthesis/), the record the Artifact Textbook is written from, kept current by .github/workflows/synthesis.yml: it looks with no Claude on every change of an artifact, a research note or a dataset record, and runs the Claude reads a change needs, 10 runs a day unless the variable SYNTHESIS_READS_PER_DAY says otherwise, 50 at most, each adding what it read to the one open synthesis pull request, or opening it (#166).
 
 Out of scope, by decision: what this project does not do, each with the reason, so nobody proposes it again.
 
 - Anything public before the provisional is filed: no push to a public repository, no preprint, no slide of the method; the talk shows what SchwingNet does, not how (the owner, 2026-10-20).
 - A live run at the podium: no laptop latency exists and the CPU path took seconds per frame; the demo is a recording of a causal run with its latency on screen.
-- A grid job, a Claude run or a training without the owner's word and the number of jobs; usage credits are never used. The synthesis reads of .github/workflows/synthesis.yml have that word and number: the owner chose on 2026-10-23 that they start on their own, at most 10 runs a day, and the variable SYNTHESIS_READS set to off stops them (#166).
+- A grid job, a Claude run or a training without the owner's word and the number of jobs; usage credits are never used. The synthesis reads of .github/workflows/synthesis.yml have that word and number: the owner chose on 2026-10-23 that they start on their own, 10 runs a day unless the variable SYNTHESIS_READS_PER_DAY says otherwise, 50 at most, and the variable SYNTHESIS_READS set to off stops them (#166).
 - A settings-as-code app (github/safe-settings, or the Repository Settings App reading .github/settings.yml), decided no on 2026-10-11 (symphony-template#18): it is a dependency with admin rights on every repository it covers, and a server of our own in one case, for settings that Symphony Setup applies for one run from the front door, scripts/setup-repo.sh from a clone, and organization rulesets, secrets and variables for what an organization makes.
 
 ## Repositories

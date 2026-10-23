@@ -28,7 +28,8 @@ the concept ledger (synth_concepts.py), and lists what a change needs read again
 (synth_reads.py). status, concepts, report and stamp run anywhere, with no Claude. plan
 writes the inputs of the Claude reads and join takes their answers: .github/workflows/
 synthesis.yml runs both, the reads between them on this repository's Claude token, at most
-the runs a day its variable allows, and opens a pull request with what the join wrote.
+the runs a day its variable allows, and adds what the join wrote to the one open synthesis
+pull request, or opens it.
 """
 import argparse
 import datetime
@@ -257,9 +258,10 @@ def report(s):
                    " verdicts, the concept checks below and the rows a finder found that have no verdict yet"
                    f" ({len(s.get('unread', []))}), and more for whatever the finders find.")
         out.append("- They run in GitHub Actions on this repository's Claude token, a few artifacts and verdict items a run and at most"
-                   " the runs a day the variable SYNTHESIS_READS_PER_DAY allows (10 unless it says otherwise); each run opens or"
-                   " updates one pull request with what it read, and what a run leaves waits for the next. The variable"
-                   " SYNTHESIS_READS set to off stops them; Run workflow on the Synthesis workflow starts one now.\n")
+                   " the runs a day the variable SYNTHESIS_READS_PER_DAY allows (10 unless it says otherwise, 50 at most); a run"
+                   " whose sessions bring something back adds it to the one open synthesis pull request, or opens it,"
+                   " and what a run leaves waits for the next. The variable SYNTHESIS_READS set to off stops them;"
+                   " Run workflow on the Synthesis workflow starts one now.\n")
     else:
         out.append("None.\n")
     out.append("## Artifacts\n")

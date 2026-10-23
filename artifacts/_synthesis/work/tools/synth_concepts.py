@@ -18,10 +18,11 @@ own words are then read passage by passage. In a passage that names a dataset, e
 goes to the nearest name within 160 characters, or to every name equally near: equal to one
 of those sets' counts it agrees, and where a count's noun follows it, it is rounded when it is
 that count written with fewer digits and differs when it is within a tenth of it (a thirtieth
-for a size). A dataset record's own words are checked against its own counts the same way. A passage that carries at least two of a settled
-figure's anchors, half of their weight by rarity, and one of its values written the same way
-or rounded agrees, is superseded or is open as that value is; a passage in the figure's own
-two artifacts is its evidence and is not checked. Nothing here judges: a check is a script's
+for a size). A dataset record's own words are checked against its own counts the same way. A
+passage that carries at least two of a settled figure's anchors, half of their weight by
+rarity, and one of its values written the same way or rounded agrees, is superseded or is
+open as that value is; a passage in the figure's own two artifacts is its evidence and is not
+checked. Nothing here judges: a check is a script's
 match, for a person or a skeptic to read.
 """
 import collections

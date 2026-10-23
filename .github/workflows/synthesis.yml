@@ -53,9 +53,11 @@ name: Synthesis
 #     there every job of this workflow is skipped, the look's too, as the crowd check holds every
 #     job of a workflow that reaches Claude to (tests/test_crowd_check.py);
 #   - the repository secret CLAUDE_CODE_OAUTH_TOKEN is set. It is the token `claude setup-token`
-#     makes, so the reads run on that account's plan limits and bill no API. It is the one
-#     exception, the owner's choice of 2026-10-23 that these reads start on their own, to the
-#     project's rule that no Claude credential is kept anywhere;
+#     makes, so the reads run on that account's plan limits and bill no API. The owner's choice
+#     of 2026-10-23, that these reads start on their own, needs it, as an exception to the
+#     project's rule that no Claude credential is kept anywhere; and since it is the
+#     repository's one Claude token, @claude (claude.yml), the coordinator (coordinator.yml,
+#     weekly and on an epic) and any worker registered in Actions run on it too once it is set;
 #   - the SymphonyBoard App's variable SDLC_APP_ID and secret SDLC_APP_PRIVATE_KEY are set, since
 #     its token reads symphony-template and opens the pull request, and a pull request GITHUB_TOKEN
 #     opens starts no checks;
