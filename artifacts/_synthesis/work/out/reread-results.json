@@ -1,0 +1,84 @@
+{
+ "verdicts": [
+  {
+   "index": 2,
+   "verdict": "scope-or-unit-differs",
+   "quote_a": "Every carm_* bank was built from the pre-repair 296-frame bank (case134, case39_LAT2 and the case118 view correction are absent)",
+   "quote_b": "| Registration | LevelCheck (De Silva 2016) | 398 radiographs, 178 CTs | 296 frames, 148 cases | 0.74 | Smaller. |",
+   "explanation": "The atlas (as of 17 October 2026) gives C-ArmLSpine 299 spot frames (AP 149, lateral 149 incl. one repeat, oblique 1) and lists the real-frame banks as 'carmlspine 299; carmlspine_pre_repair 296', the 296-frame bank being the one without case134 and case39_LAT2 from which every carm_* bank was built. The literature page (8 October 2026) also holds '149 cases, 299 spot frames, 602 sweep projections', but sizes its C-arm naming and registration comparisons at '296 frames, 148 cases' and lists '149 cases, 148 cases with 296 frames, or 120 distinct subjects' among files that disagree. The 296 frames over 148 cases match that pre-repair bank, one case short of the release, so the two figures count different versions of the set.",
+   "resolution_hint": "Carry 299 spot frames over 149 cases for the C-ArmLSpine release, from the atlas (the literature page's own holding table agrees); give 296 frames over 148 cases only as the pre-repair bank the carm_* banks were built from, which matches the n of the literature page's comparisons."
+  },
+  {
+   "index": 3,
+   "verdict": "confirmed-contradiction",
+   "quote_a": "raw CBCT projections at quantised gantry angles, 301 XA frames each; rotational, not cranio-caudal",
+   "quote_b": "renders only; the case134 302-frame spin as the n 1 real check",
+   "explanation": "The registry (rendered 2026-10-20) gives the two C-ArmLSpine sweeps, case134 and case39, as 301 XA frames each, 602 projections in all, and says 'the 301-frame case134 bank exists (detection only)'. The research-directions page (8 October 2026) counts the case134 spin as 302 frames while giving 602 sweep projections in all. The atlas (17 October 2026) records the disagreement, '2 cases x 301 projections (602 in all; the case134 spin is counted as 302 frames in one document)', exports the case134 sweep as a 301-item bank and says to count frames by DICOM Modality and Rows, never by folder; no page says what the 302 counted.",
+   "resolution_hint": "Carry 301 frames per sweep and 602 in all, from the registry, which counts XA frames and agrees with the atlas's 301-item case134 bank and with the 602 total the research-directions page itself gives; a census of the case134 sweep by DICOM Modality and Rows would settle the 302."
+  },
+  {
+   "index": 4,
+   "verdict": "scope-or-unit-differs",
+   "quote_a": "299 spot frames (AP 149, lateral 149 incl. one repeat, oblique 1) + 602 raw sweep projections + 149 CBCTs (58,706 slices); unpacked 59,609 files, 23,347,039,978 B",
+   "quote_b": "\"counts\": {\"cases\": 149, \"spot_frames\": 299, \"cbct_volumes\": 149, \"size_gb\": 86.834}",
+   "explanation": "The atlas (17 October 2026) sizes the C-ArmLSpine release as one 15,581,614,253-byte zip and an unpacked tree of 59,609 files, 23,347,039,978 B, which holds the spot frames, sweeps and CBCT slices, and it places the project's derived banks and its level and pose files in the same dataset folder. The registry (rendered 2026-10-20) gives one size, 86.834 GB, for its C-ArmLSpine record, whose grid path is that whole dataset folder, and does not say what the figure counts. The zip and the unpacked tree together come to 38.9 GB, so the 86.834 GB counts more than the release, and no page breaks it down.",
+   "resolution_hint": "Carry the atlas's release sizes (zip 15,581,614,253 B; unpacked 59,609 files, 23,347,039,978 B) as the size of C-ArmLSpine, and give the registry's 86.834 GB only as the total of the whole dataset folder on the grid; a size listing of that folder by subfolder would show what it holds."
+  },
+  {
+   "index": 7,
+   "verdict": "scope-or-unit-differs",
+   "quote_a": "692 public training cases of 867 (Elekta A 120, B 107, C 120, D 120; Varian F 92, G 133); 375,618 projections; 771.1 GB at verification (754 GB by du on 2026-09-25)",
+   "quote_b": "808.615 GB on Ceph",
+   "explanation": "The atlas (17 October 2026) and the registry (rendered 2026-10-20) describe the same holding, the 692 public COBRA2026 cases with 375,618 projections, but name three different measurements: 771.1 GB at verification, 754 GB by du on 2026-09-25, and 808.615 GB on Ceph. Neither page states its units: 808.615 GB is 753.1 GiB, which du -h prints as 754G, so the du and Ceph figures may be one size in two units, and what the verification figure summed is not said. The imaging-holding page (8 October 2026) likewise carries both 771 GB for the source and 809 GB for the COBRA2026 folder on Ceph.",
+   "resolution_hint": "Carry 808.615 GB as the size of the COBRA2026 folder on Ceph (registry), and keep the atlas's 771.1 GB only as the size at verification, each with its basis named; a byte count of the folder beside the verified file list would show whether the three figures are one size in different units."
+  },
+  {
+   "index": 8,
+   "verdict": "scope-or-unit-differs",
+   "quote_a": "6 specimens; 19 deposit files; 2,659 fluoroscopy DICOMs (2,545 cadaver + 36 FTRAC + 78 sawbones); 19 CT scans (21 series folders); deposit 38.3 GB, unpacked 94,626 files, 72.7 GB",
+   "quote_b": "\"counts\": {\"specimens\": 6, \"h5_frames\": 366, \"vendor_frames\": 2659, \"vendor_ct\": 19, \"size_gb\": 116.26}",
+   "explanation": "The atlas (17 October 2026) sizes each DeepFluoro copy apart: the H5 release as 'h5 2,541,608,861 B (about 6.2 GB with zips)', the vendor deposit as 38.3 GB plus an unpacked tree of 94,626 files, 72.7 GB, and a Hugging Face copy whose held bytes are not recorded. The registry (rendered 2026-10-20) has one DeepFluoro record covering the 366 H5 frames and the 2,659-frame vendor deposit, with the H5 and vendor folders as its grid paths and one size, 116.26 GB. The atlas's parts sum to 117.2 GB with its 6.2 GB for the H5 folder, and to 116.27 GB with the 5.27 GB the imaging-holding page (8 October 2026) measured for its DeepFluoro H5 pilot batch; no page states that sum.",
+   "resolution_hint": "Carry the atlas's per-copy figures (H5 file 2,541,608,861 B; vendor deposit 38.3 GB, unpacked 94,626 files, 72.7 GB) and give the registry's 116.26 GB only as the total of the H5 and vendor folders together, never as the size of the H5 release; the Hugging Face copy is outside it."
+  },
+  {
+   "index": 26,
+   "verdict": "same-number-restated",
+   "quote_a": "609 labelled films (481 + 128) + 98 challenge test films; 217 index groups (MANIFEST says 251 patients); grid copy 579 jpg; mirror 820 MB",
+   "quote_b": "609 labelled AP whole-spine films (481 labelled plus 98 challenge test on HOME; the full mirror on Ceph)",
+   "explanation": "Both pages give 609 labelled films: the atlas (17 October 2026) splits them as 481 + 128 and counts 98 challenge test films beside them, and the registry (rendered 2026-10-20) gives 609 labelled AP whole-spine films. The registry's '481 labelled plus 98 challenge test' says what sits on HOME, with the full mirror on Ceph; 481 + 98 is 579, the count the atlas gives for its grid copy, so it is not a split of the 609. Both pages also use 608 films as the thoracic test.",
+   "resolution_hint": "Carry 609 labelled films, 481 training plus 128 labelled BoostNet test, with the 98 challenge test films counted apart (atlas); a copy of 481 + 98 = 579 films, as the registry describes on HOME, leaves out the 128 labelled test films."
+  },
+  {
+   "index": 77,
+   "verdict": "scope-or-unit-differs",
+   "quote_a": "3 sawbone phantoms; 59 scenarios; 286 raw DICOM frames + 233 unreferenced raw + 118 processed; 3 CT series; 5,492 files, 4.15 GB (5,490 held)",
+   "quote_b": "5,490 sawbone frames from six C-arms",
+   "explanation": "The atlas (17 October 2026) counts SpineSAC as 5,492 files and 4.15 GB, of which 5,490 files are held, and counts its frames separately: 286 raw DICOM frames plus 233 unreferenced raw and 118 processed. The registry (rendered 2026-10-20) gives the same 5,490 but calls them sawbone frames and records them as frames. The OR Readiness Ledger (2026-09-22) also gives '5,490 files' for the 4.15 GB fetch, so the registry's figure is the held file count under the name of frames.",
+   "resolution_hint": "Carry the atlas: 5,492 files and 4.15 GB in the release, 5,490 held, and 286 raw DICOM frames (with 233 unreferenced raw and 118 processed); the registry's '5,490 sawbone frames' should read 5,490 files."
+  },
+  {
+   "index": 78,
+   "verdict": "scope-or-unit-differs",
+   "quote_a": "28 video ids (youtube/ 12 GB); 43 extra ids attempted, success tally never made; part of the 1,269 extracted clips (776 live)",
+   "quote_b": "\"counts\": {\"size_gb\": 262.801, \"youtube_ids\": 28, \"live_fluoro_entries\": 18, \"clip_folders\": 20}",
+   "explanation": "Both pages count 28 YouTube video ids. The atlas (17 October 2026) gives 12 GB for the YouTube folder alone, while the registry (rendered 2026-10-20) gives 262.801 GB for its record of all public clips on the grid (the Bern videos, three PMC videos, three Wikimedia Commons items and the YouTube re-encodes, across 20 clip folders). The live counts differ in unit as well: the atlas's 776 live are of 1,269 extracted clips, while the registry's 18 are YouTube entries ('18 of 70 YouTube entries show live fluoroscopy').",
+   "resolution_hint": "Carry 28 ids and 12 GB for the YouTube re-encodes (atlas) and 262.801 GB for the whole clip holding (registry), and keep 776 live of 1,269 extracted clips apart from 18 live of 70 YouTube entries; a size listing by folder would show whether 262.801 GB is the clips alone or the whole external folder, which the imaging-holding page of 8 October 2026 gives as 263 GB on Ceph."
+  },
+  {
+   "index": 126,
+   "verdict": "same-number-restated",
+   "quote_a": "about 1,500 lateral clips at 30 fps: Zhang 2021 1,518 clips of 265 patients (Toshiba Ultimax) + 70 healthy volunteers (GE Precision 500D); Li 2024 1,488 clips, 59,468 frames, 238 subjects",
+   "quote_b": "about 1,500 lateral swallow clips at 30 fps captured by video card, 265 patients and 70 volunteers on two machines",
+   "explanation": "The atlas (17 October 2026) opens its size field with the same 'about 1,500 lateral clips at 30 fps' that the registry (rendered 2026-10-20) gives, and adds the published counts it rounds: 1,518 clips of 265 patients and 70 healthy volunteers in Zhang 2021, and 1,488 clips, 59,468 frames and 238 subjects in Li 2024. The registry's 335 subjects are Zhang 2021's 265 patients plus 70 volunteers, and its 1,500 clips is the rounded figure, not a count of its own.",
+   "resolution_hint": "Carry the published counts from the atlas (Zhang 2021: 1,518 clips, 265 patients and 70 volunteers; Li 2024: 1,488 clips, 238 subjects), with about 1,500 as the rounding both pages share; the corpus is not held, so the project has no count of its own."
+  },
+  {
+   "index": 182,
+   "verdict": "confirmed-contradiction",
+   "quote_a": "the pseudo-label arm that would have used it was measured and refuted (about 19 points of anomalous accuracy)",
+   "quote_b": "none; pseudo-labels cut anomalous accuracy 20 points",
+   "explanation": "The atlas (17 October 2026), on the IEEE DataPort lateral 236 films, says the pseudo-label arm was measured and refuted at about 19 points of anomalous accuracy; the registry (rendered 2026-10-20) says on its NHANES II unannotated record that pseudo-labels cut anomalous accuracy 20 points, and on its lateral 236 record that 'the pseudo-label arm was refuted'. Neither page gives the accuracies behind its figure. Naming Vertebrae Without an Anchor (17 September 2026) does: pseudolabel training lowered anomalous exact naming in the isolated stack on real film from 87.2% to 66.8%, a drop of 20.4 points, which it and Naming Vertebrae Without CT (18 September 2026) call twenty points; no page read here gives a figure that rounds to 19.",
+   "resolution_hint": "Carry 20 points (registry), with its basis from Naming Vertebrae Without an Anchor: anomalous exact naming on real film 87.2% with bank v2 against 66.8% with the pseudolabelled bank v5; the atlas's 'about 19' should read about 20."
+  }
+ ]
+}

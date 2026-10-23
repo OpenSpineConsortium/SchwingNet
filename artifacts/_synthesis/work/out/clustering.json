@@ -1,0 +1,1959 @@
+{
+ "clusterings": [
+  {
+   "lens": "question",
+   "clusters": [
+    {
+     "name": "Counting levels from an anchor",
+     "description": "Can the vertebral level be counted from an anchor the surgeon trusts (the sacrum or C2) along a short C-arm sweep, with no tracker, CT or registration, how exact is the count when the boxes are right, and what does the manuscript's figure set show? The line runs from the September proposal through the 22 September report, its audit of the synthetic-data pipeline and the two builds of the manuscript figures that evening.",
+     "part": "schwingnet",
+     "members": [
+      "SchwingNet/counting-levels-under-fluoroscopy",
+      "SchwingNet/counting-from-the-sacrum",
+      "SchwingNet/level-counting-visual-abstract",
+      "SchwingNet/schwingnet-figures-jshksq",
+      "SchwingNet/schwingnet-figures-xyz6kr"
+     ],
+     "canonical": [
+      "SchwingNet/counting-from-the-sacrum",
+      "SchwingNet/counting-levels-under-fluoroscopy",
+      "SchwingNet/schwingnet-figures-xyz6kr"
+     ],
+     "superseded": [
+      {
+       "id": "SchwingNet/schwingnet-figures-jshksq",
+       "by": "SchwingNet/schwingnet-figures-xyz6kr",
+       "why": "Same manuscript figure set on the same evening (22 September 2026): the 20:12 gallery lists every file on disk with its captions and says the composite is not yet restacked; the 22:50 build carries the owner's verdict on each of the six figures, the fixes in progress, the result plots offered for the supplement and page 1 of the compiled manuscript, and its folder holds the 20:12 panels too. The captions of rows a to j and the three audit figures are described only in the earlier page."
+      }
+     ],
+     "duplicates": [],
+     "secondary_members": [
+      "SchwingNet/aidas-seed-grant-proposal",
+      "SchwingNet/retrospective-fluoroscopy-protocol",
+      "SchwingNet/vertebral-count-anomaly-rule",
+      "SchwingNet/or-readiness-ledger",
+      "SchwingNet/naming-vertebrae-without-ct-hjy4vc",
+      "SchwingNet/research-directions-from-the-data-holding-kcyckb",
+      "SchwingNet/any-view-spine-plan"
+     ]
+    },
+    {
+     "name": "Naming levels without CT from morphology and a short sweep",
+     "description": "Can a registration-free classifier name the level of a vertebra on a limited-field film that holds no anatomic anchor, how much of the spine must it see, and does a short sweep of overlapping exposures matched onto a map of the patient's own spine recover what one exposure cannot? The literature review of 15 September found no evidence for such a system; the group's own pages of 17 and 18 September measure it on held-out spines and the prior-art page says not to lift to 3-D first.",
+     "part": "schwingnet",
+     "members": [
+      "SchwingNet/naming-vertebrae-without-an-anchor-3dfzmh",
+      "SchwingNet/naming-vertebrae-without-ct-hjy4vc",
+      "SchwingNet/vertebral-levels-without-ct-a4rydj",
+      "SchwingNet/level-context-ladder-xd7eltc",
+      "SchwingNet/registration-free-level-id-feasibility-uramo1",
+      "SchwingNet/lift-before-label-jzjq8t"
+     ],
+     "canonical": [
+      "SchwingNet/naming-vertebrae-without-ct-hjy4vc",
+      "SchwingNet/naming-vertebrae-without-an-anchor-3dfzmh",
+      "SchwingNet/registration-free-level-id-feasibility-uramo1"
+     ],
+     "superseded": [
+      {
+       "id": "SchwingNet/vertebral-levels-without-ct-a4rydj",
+       "by": "SchwingNet/naming-vertebrae-without-ct-hjy4vc",
+       "why": "Both are dated 18 September 2026 and measure the same sweep-and-match chain on held-out spines. The internal summary says the duplicated boxes from the frame-linking rule were 'earlier today' the blocker and that a tolerant rule is in testing; the results page reports that fix measured (cross-frame duplicates 21.8% to 3.0%, chain naming 67.4% to 91.8%) and walks all six steps of the chain. The summary also says it replaced an earlier version of itself whose numbers a train/test leak had inflated."
+      }
+     ],
+     "duplicates": [],
+     "secondary_members": [
+      "SchwingNet/counting-from-the-sacrum",
+      "SchwingNet/or-readiness-ledger",
+      "SchwingNet/overnight-the-honest-99-kantj8",
+      "SchwingNet/fluorocap-reality-check-czudvb",
+      "SchwingNet/research-directions-from-the-data-holding-kcyckb",
+      "SchwingNet/handoff-schwingnet-ctspinopelvic1k-and-the-imaging-programme-rbcdmf",
+      "SchwingNet/any-view-spine-plan"
+     ]
+    },
+    {
+     "name": "Transitional vertebrae and border variants",
+     "description": "How can a column with an extra or missing vertebra be detected and named when the model has seen almost only ordinary anatomy: counting against two anchors (the sacrum and the lowest rib-bearing vertebra) with the disagreement as the anomaly signal, the R + C = 22 rule, and what the CTSpinoPelvic1K segmentation says about rib 12, lumbar ribs and LSTV co-occurrence. The rib anchor audit measures whether the v5 rib review fixed the numbering the anchor depends on.",
+     "part": "schwingnet",
+     "members": [
+      "SchwingNet/counting-against-two-anchors-qkktgu",
+      "SchwingNet/vertebral-count-anomaly-rule",
+      "SchwingNet/spinal-border-variants-fye5ef",
+      "SchwingNet/rib-anchor-audit-t7wr2h"
+     ],
+     "canonical": [
+      "SchwingNet/counting-against-two-anchors-qkktgu",
+      "SchwingNet/spinal-border-variants-fye5ef",
+      "SchwingNet/rib-anchor-audit-t7wr2h"
+     ],
+     "superseded": [],
+     "duplicates": [],
+     "secondary_members": [
+      "SchwingNet/lstv-verification-bench-6m2qhr",
+      "SchwingNet/naming-vertebrae-without-an-anchor-3dfzmh",
+      "SchwingNet/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay",
+      "SchwingNet/research-directions-from-the-data-holding-kcyckb",
+      "SchwingNet/overnight-the-honest-99-kantj8",
+      "SchwingNet/registration-free-level-id-feasibility-uramo1",
+      "SchwingNet/fluorocap-overnight-report-xnhgdo",
+      "SchwingNet/handoff-schwingnet-ctspinopelvic1k-and-the-imaging-programme-rbcdmf",
+      "SchwingNet/schwingnet-figures-jshksq"
+     ]
+    },
+    {
+     "name": "Datasets, holdings, licences and access",
+     "description": "Which fluoroscopy, radiograph, paired CT and X-ray and CT datasets exist, which the lab holds on the grid, which need a request letter or sit behind a gate, under what licence, and how the holding compares in size and power with the published studies. The registry of 20 October is the repository's own record, the atlas of 17 October the wider catalog with the request letters, and the two 8 October reports the CT holding and its power.",
+     "part": "schwingnet",
+     "members": [
+      "SchwingNet/fluoroscopy-data-atlas",
+      "SchwingNet/schwingnet-data-registry",
+      "SchwingNet/spine-x-ray-data-handoff-bddbdd",
+      "SchwingNet/imaging-data-holding-manifest-migration-and-index-fqmtjs",
+      "SchwingNet/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay"
+     ],
+     "canonical": [
+      "SchwingNet/schwingnet-data-registry",
+      "SchwingNet/fluoroscopy-data-atlas",
+      "SchwingNet/imaging-data-holding-manifest-migration-and-index-fqmtjs",
+      "SchwingNet/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay"
+     ],
+     "superseded": [
+      {
+       "id": "SchwingNet/spine-x-ray-data-handoff-bddbdd",
+       "by": "SchwingNet/schwingnet-data-registry",
+       "why": "The 3 September handoff covers nine public radiograph sources and why each download failed; the registry of 20 October records 60 sources, each with its level truth, reach word, licence, grid path and the steps to get it, and the atlas of 17 October lists 217 with their access. The handoff's operational detail (the gdown folder cap, the 400-pair BUU subset on the owner's PC, the VinDr correction) is kept only there."
+      }
+     ],
+     "duplicates": [],
+     "secondary_members": [
+      "SchwingNet/fluorocap-dataset-card-xwd4wx",
+      "SchwingNet/schwingnet-grid-pipeline",
+      "SchwingNet/handoff-schwingnet-ctspinopelvic1k-and-the-imaging-programme-rbcdmf",
+      "SchwingNet/research-directions-from-the-data-holding-kcyckb",
+      "SchwingNet/any-view-spine-plan",
+      "SchwingNet/spine-program-decisions-qqhkqz",
+      "SchwingNet/openspine-board-t3gfds",
+      "SchwingNet/vertebra-detector-field-report-1jljc6",
+      "SchwingNet/protocol-1-eprotocol-draft-mkmh7p",
+      "SchwingNet/the-lab-recipe-1t2gvp"
+     ]
+    },
+    {
+     "name": "FluoroCap: the corpus, its pipeline and what it proves",
+     "description": "What the FluoroCap corpus of published fluoroscopy and radiograph panels holds, how it is harvested, decoded and frozen, what its caption-derived level labels and the level model trained beside it are worth, and what accuracy and coverage the model can honestly promise. The 14 September card, audit and map define it; the 15 September reality check and the overnight pages of 15 and 16 September measure it.",
+     "part": "schwingnet",
+     "members": [
+      "SchwingNet/fluorocap-dataset-card-xwd4wx",
+      "SchwingNet/fluorocap-corpus-audit-9hjzzs",
+      "SchwingNet/fluorocap-pipeline-map-h9rmbs",
+      "SchwingNet/fluorocap-access-setup-jlvkft",
+      "SchwingNet/fluorocap-reality-check-czudvb",
+      "SchwingNet/fluorocap-overnight-report-xnhgdo",
+      "SchwingNet/overnight-the-honest-99-kantj8"
+     ],
+     "canonical": [
+      "SchwingNet/fluorocap-reality-check-czudvb",
+      "SchwingNet/overnight-the-honest-99-kantj8",
+      "SchwingNet/fluorocap-dataset-card-xwd4wx",
+      "SchwingNet/fluorocap-pipeline-map-h9rmbs"
+     ],
+     "superseded": [
+      {
+       "id": "SchwingNet/fluorocap-corpus-audit-9hjzzs",
+       "by": "SchwingNet/fluorocap-reality-check-czudvb",
+       "why": "The 14 September audit measures the corpus and its pseudolabels against the decode of that day; the 15 September reality check re-measures what the corpus and the level model prove (one held-out number, no human-verified panel, the level model the weakest decoder term), ranks the blockers and sets the plan, and the overnight report of 15 September builds on both. The audit's specific figures (56.8% containment, the 320-pixel constraint, 52.1% to 91.5% with constraint decoding) appear only there."
+      }
+     ],
+     "duplicates": [],
+     "secondary_members": [
+      "SchwingNet/level-verification-bench-mkjxsy",
+      "SchwingNet/fluorocap-adjudication-bench-rnsyir",
+      "SchwingNet/lift-before-label-jzjq8t",
+      "SchwingNet/level-context-ladder-xd7eltc",
+      "SchwingNet/schwingnet-data-registry",
+      "SchwingNet/handoff-schwingnet-ctspinopelvic1k-and-the-imaging-programme-rbcdmf",
+      "SchwingNet/the-lab-recipe-1t2gvp",
+      "SchwingNet/fluoroscopy-data-atlas"
+     ]
+    },
+    {
+     "name": "Human verification benches",
+     "description": "What does a person reading the image say about the machine's labels: whether the level names the decode pipeline gave each box on a random or stratified sample of panels are right, and which of the harvested transitional-term figures are usable human X-rays and what finding each shows. All three benches were exported with no verdicts saved, so each is the measurement tool, not a result.",
+     "part": "schwingnet",
+     "members": [
+      "SchwingNet/level-verification-bench-mkjxsy",
+      "SchwingNet/fluorocap-adjudication-bench-rnsyir",
+      "SchwingNet/lstv-verification-bench-6m2qhr"
+     ],
+     "canonical": [
+      "SchwingNet/level-verification-bench-mkjxsy",
+      "SchwingNet/fluorocap-adjudication-bench-rnsyir",
+      "SchwingNet/lstv-verification-bench-6m2qhr"
+     ],
+     "superseded": [],
+     "duplicates": [],
+     "secondary_members": [
+      "SchwingNet/overnight-the-honest-99-kantj8",
+      "SchwingNet/fluorocap-reality-check-czudvb",
+      "SchwingNet/fluorocap-dataset-card-xwd4wx",
+      "SchwingNet/naming-vertebrae-without-ct-hjy4vc",
+      "SchwingNet/vertebral-levels-without-ct-a4rydj",
+      "SchwingNet/counting-against-two-anchors-qkktgu"
+     ]
+    },
+    {
+     "name": "Detectors, synthetic training data and device transfer",
+     "description": "Does the vertebra and anchor detector find bodies on real frames of a C-arm it has never seen, what training data carries it, and how far can fluoroscopy rendered from CT with a calibrated physics model stand in for real frames: the resolution question, what residual is left after physics, the leave-one-device-out measurements of the OR readiness programme, and the plan for detection and naming at any C-arm position.",
+     "part": "schwingnet",
+     "members": [
+      "SchwingNet/vertebra-detector-field-report-1jljc6",
+      "SchwingNet/or-readiness-ledger",
+      "SchwingNet/ninety-three-pixels",
+      "SchwingNet/what-is-left-after-physics",
+      "SchwingNet/any-view-spine-plan"
+     ],
+     "canonical": [
+      "SchwingNet/or-readiness-ledger",
+      "SchwingNet/what-is-left-after-physics",
+      "SchwingNet/any-view-spine-plan"
+     ],
+     "superseded": [
+      {
+       "id": "SchwingNet/vertebra-detector-field-report-1jljc6",
+       "by": "SchwingNet/or-readiness-ledger",
+       "why": "The field report measures the stage-1 detector (detect_v1, 958 public radiographs, in-distribution, no intraoperative data) and says so; the ledger of 22 September measures the later film detector v5z, the pooled and leave-one-device-out real-frame detectors and the render-only detector on held-out C-arm frames with leakage checks, which is the question the field report could not yet answer."
+      },
+      {
+       "id": "SchwingNet/ninety-three-pixels",
+       "by": "SchwingNet/what-is-left-after-physics",
+       "why": "On the question of what is left in a real DeepFluoro frame after the calibrated physics render, the later page decomposes four frames and withdraws the 21 September board's verdict that the residual has 'nothing local to learn' (the 2 to 16 px bands are two to seven times the noise floor), while confirming that the smooth per-frame field is most of the gap. The board's resolution ladder (93 px for a 140 mm field costs 0.00 points of recall) and its eight domain-randomisation arms are reported nowhere else."
+      }
+     ],
+     "duplicates": [],
+     "secondary_members": [
+      "SchwingNet/counting-from-the-sacrum",
+      "SchwingNet/counting-levels-under-fluoroscopy",
+      "SchwingNet/aidas-seed-grant-proposal",
+      "SchwingNet/lift-before-label-jzjq8t",
+      "SchwingNet/fluorocap-reality-check-czudvb",
+      "SchwingNet/fluorocap-overnight-report-xnhgdo",
+      "SchwingNet/spine-program-decisions-qqhkqz",
+      "SchwingNet/handoff-schwingnet-ctspinopelvic1k-and-the-imaging-programme-rbcdmf",
+      "SchwingNet/naming-vertebrae-without-ct-hjy4vc",
+      "SchwingNet/research-directions-from-the-data-holding-kcyckb"
+     ]
+    },
+    {
+     "name": "The retrospective fluoroscopy study: IRB protocols and the seed grant",
+     "description": "What retrospective collection of the medical center's own intraoperative fluoroscopy would let the counting method be measured where it would be used, how the WSU IRB eProtocol for it reads field by field, and what seed funding, budget and federal pathway carry the 2027 validation (phantom, cadaver, frame grabber, shadow-mode study). These pages hold method detail and so stay with the spine work.",
+     "part": "schwingnet",
+     "members": [
+      "SchwingNet/aidas-seed-grant-proposal",
+      "SchwingNet/retrospective-fluoroscopy-protocol",
+      "SchwingNet/protocol-1-eprotocol-draft-mkmh7p"
+     ],
+     "canonical": [
+      "SchwingNet/aidas-seed-grant-proposal",
+      "SchwingNet/retrospective-fluoroscopy-protocol"
+     ],
+     "superseded": [
+      {
+       "id": "SchwingNet/protocol-1-eprotocol-draft-mkmh7p",
+       "by": "SchwingNet/retrospective-fluoroscopy-protocol",
+       "why": "Both are the first of two WSU eProtocols for a retrospective DMC study. The 15 September draft asks Exempt Category 4 for about 40,000 imaging studies (CT, radiographs, registration-labelled fluoroscopy, fracture detection); the later draft, written after the AIDaS proposal of October 2026 and mirroring precedent IRB-21-10-4123, narrows to one neurosurgeon's archived C-arm images and cine loops of 2021 to 2026, requests Expedited Category 5 and builds on the grant's timeline. Protocol 1's aims on CT level naming, registration labels and fracture detection are not carried over."
+      }
+     ],
+     "duplicates": [],
+     "secondary_members": [
+      "SchwingNet/counting-levels-under-fluoroscopy",
+      "SchwingNet/level-counting-visual-abstract",
+      "SchwingNet/vertebral-levels-without-ct-a4rydj",
+      "SchwingNet/lift-before-label-jzjq8t",
+      "SchwingNet/fluorocap-reality-check-czudvb",
+      "SchwingNet/the-lab-recipe-1t2gvp",
+      "SchwingNet/osc-outreach-funding-kak2gk",
+      "SchwingNet/handoff-schwingnet-ctspinopelvic1k-and-the-imaging-programme-rbcdmf"
+     ]
+    },
+    {
+     "name": "Programme direction, decisions, handoffs and onboarding",
+     "description": "Where the spine programme stands and what comes next: the order of work the evidence supports, the decisions taken on the paper, the architecture, the data and governance, what a new student or a fresh Claude project must know and how one joins, the lab's recipe for a paper and its data and grid rules, and the status of the SchwingNet grid run towards the provisional and the CNS talk.",
+     "part": "schwingnet",
+     "members": [
+      "SchwingNet/research-directions-from-the-data-holding-kcyckb",
+      "SchwingNet/spine-program-decisions-qqhkqz",
+      "SchwingNet/openspine-board-t3gfds",
+      "SchwingNet/handoff-schwingnet-ctspinopelvic1k-and-the-imaging-programme-rbcdmf",
+      "SchwingNet/spine-program-student-onboarding",
+      "SchwingNet/the-lab-recipe-1t2gvp",
+      "SchwingNet/schwingnet-grid-pipeline"
+     ],
+     "canonical": [
+      "SchwingNet/schwingnet-grid-pipeline",
+      "SchwingNet/research-directions-from-the-data-holding-kcyckb",
+      "SchwingNet/handoff-schwingnet-ctspinopelvic1k-and-the-imaging-programme-rbcdmf",
+      "SchwingNet/spine-program-student-onboarding",
+      "SchwingNet/the-lab-recipe-1t2gvp"
+     ],
+     "superseded": [
+      {
+       "id": "SchwingNet/openspine-board-t3gfds",
+       "by": "SchwingNet/spine-program-decisions-qqhkqz",
+       "why": "Both records say so: the board of 11 September 2026 reports what moved (the dataset paper's five fixes, fold 4 training, the radiograph corpus growing, the one-backbone-four-heads architecture, the licensing table) and the undated decisions page lists the same items as decisions with a status each (locked, in effect, revisit, done) and the corpus table that followed."
+      }
+     ],
+     "duplicates": [],
+     "secondary_members": [
+      "SchwingNet/connect-the-grid-to-github",
+      "symphony-template/grid-and-cloud-claude-workers-review",
+      "symphony-template/several-grid-workers-one-per-project",
+      "SchwingNet/any-view-spine-plan",
+      "SchwingNet/counting-from-the-sacrum",
+      "SchwingNet/or-readiness-ledger",
+      "SchwingNet/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay",
+      "SchwingNet/imaging-data-holding-manifest-migration-and-index-fqmtjs",
+      "symphony-template/symphony-handoff",
+      "SchwingNet/reforms-compliance-checklist-bpzdoi"
+     ]
+    },
+    {
+     "name": "Symphony: what it is, what it guarantees and how it compares",
+     "description": "What Symphony is (one GitHub repository as the shared state of many Claude Code workers, the first push of claude/N as the lock, no server), which of its guarantees are checked and how, what it costs at each GitHub and Claude price rung, where it and Beethoven sit on a taxonomy of agent systems, and what may honestly be claimed against CooperBench and the other coordinators before any outcome is measured.",
+     "part": "symphony-beethoven",
+     "members": [
+      "symphony-template/symphony-in-brief-9cdciz",
+      "symphony-template/symphony-versus-competitors-lynwzk",
+      "SchwingNet/symphony-and-beethoven-taxonomy-spec-lcbqro",
+      "symphony-template/symphony-and-beethoven-taxonomy-manual-re4jtx",
+      "symphony-template/the-dollar-per-feature-ladder-9ymg61",
+      "symphony-template/symphony-handoff"
+     ],
+     "canonical": [
+      "symphony-template/symphony-in-brief-9cdciz",
+      "symphony-template/symphony-versus-competitors-lynwzk",
+      "SchwingNet/symphony-and-beethoven-taxonomy-spec-lcbqro"
+     ],
+     "superseded": [
+      {
+       "id": "symphony-template/the-dollar-per-feature-ladder-9ymg61",
+       "by": "symphony-template/symphony-handoff",
+       "why": "The ladder of 9 October prices the sdlc-template at each GitHub and Claude rung; the handoff of 13 October attaches free-or-paid.md, which records which GitHub features cost what per plan verified against github/docs at commit 602021b0 of 12 October, and the taxonomy spec of 15 October states what GitHub's free public-repository minutes do and do not cover. The ladder's three pull requests and its 'zero-inference core' are described under their later names in Symphony in brief."
+      }
+     ],
+     "duplicates": [],
+     "secondary_members": [
+      "symphony-template/shared-multi-account-claude-project-plan-rqzwh9",
+      "symphony-template/sdlc-build-plan-bjzikn",
+      "symphony-template/sdlc-primitives-spec-ldx4zd",
+      "symphony-template/grid-and-cloud-claude-workers-review",
+      "symphony-template/several-grid-workers-one-per-project",
+      "symphony-template/claude-chat-vs-claude-code-architectural-analysis-snuzfd",
+      "SchwingNet/spine-program-student-onboarding",
+      "SchwingNet/reforms-compliance-checklist-bpzdoi",
+      "symphony-template/beethoven-build-roadmap-sttvvw"
+     ]
+    },
+    {
+     "name": "A project shared across Claude accounts: cswap, the primitives and the build plan",
+     "description": "How several Claude accounts can work one project as a coordinated whole when no Claude product shares a Project, an agent or a memory across accounts: what cswap and Claude Swap Cloud can export and import of a Project, which route to build (the repository as the shared plane, GitHub Issues as the queue), what Chat and Claude Code each can do, and how the Claude Swap Cloud extension reaches the Chrome Web Store. This is the line of thought that became Symphony.",
+     "part": "symphony-beethoven",
+     "members": [
+      "symphony-template/shared-multi-account-claude-project-plan-rqzwh9",
+      "symphony-template/sdlc-primitives-spec-ldx4zd",
+      "symphony-template/sdlc-build-plan-bjzikn",
+      "symphony-template/claude-chat-vs-claude-code-architectural-analysis-snuzfd",
+      "symphony-template/store-upload-and-repo-move-step-by-step-fpy3fh"
+     ],
+     "canonical": [
+      "symphony-template/sdlc-build-plan-bjzikn",
+      "symphony-template/sdlc-primitives-spec-ldx4zd"
+     ],
+     "superseded": [
+      {
+       "id": "symphony-template/shared-multi-account-claude-project-plan-rqzwh9",
+       "by": "symphony-template/sdlc-build-plan-bjzikn",
+       "why": "The plan of 8 October proposes Linear as the queue and a coordinator routine on the owner's account; the primitives spec builds on it and the build plan builds on the spec, and the build plan records the owner's choice of 9 October (GitHub Issues, the repository side first as a template with no export in its first layer), the route Symphony in brief later describes as built. The plan's failure-mode table from CooperBench is kept only there."
+      }
+     ],
+     "duplicates": [],
+     "secondary_members": [
+      "symphony-template/symphony-in-brief-9cdciz",
+      "symphony-template/symphony-handoff",
+      "symphony-template/beethoven-on-the-chrome-web-store",
+      "symphony-template/the-dollar-per-feature-ladder-9ymg61",
+      "SchwingNet/spine-program-student-onboarding",
+      "SchwingNet/symphony-and-beethoven-taxonomy-spec-lcbqro"
+     ]
+    },
+    {
+     "name": "Claude workers on the grid and reaching the lab's machines",
+     "description": "How Claude Code workers run on the Wayne State Slurm grid and in GitHub Actions under a consumer subscription within Anthropic's terms, how they are started, watched and stopped from the control panel and the Beethoven extension, one per project, how a student's Beethoven session gets a GitHub login without the token reaching Claude, and how the owner's workstation is reached securely. The review of 21 October gives the state and the ten fixes; the playbook gives the site-agnostic scripts.",
+     "part": "symphony-beethoven",
+     "members": [
+      "symphony-template/grid-and-cloud-claude-workers-review",
+      "symphony-template/several-grid-workers-one-per-project",
+      "SchwingNet/connect-the-grid-to-github",
+      "symphony-template/claude-code-on-a-slurm-apptainer-cluster-7dbjwc",
+      "SchwingNet/secure-hybrid-rdp-access-spec-and-setup-runbook-exbt1w"
+     ],
+     "canonical": [
+      "symphony-template/grid-and-cloud-claude-workers-review",
+      "symphony-template/several-grid-workers-one-per-project",
+      "symphony-template/claude-code-on-a-slurm-apptainer-cluster-7dbjwc",
+      "SchwingNet/connect-the-grid-to-github"
+     ],
+     "superseded": [],
+     "duplicates": [],
+     "secondary_members": [
+      "SchwingNet/schwingnet-grid-pipeline",
+      "SchwingNet/spine-program-student-onboarding",
+      "SchwingNet/the-lab-recipe-1t2gvp",
+      "symphony-template/moving-beethoven-for-vs-code-onto-hpcworker-apbd6t",
+      "symphony-template/beethoven-build-roadmap-sttvvw",
+      "SchwingNet/symphony-and-beethoven-taxonomy-spec-lcbqro",
+      "symphony-template/symphony-handoff",
+      "symphony-template/claude-chat-vs-claude-code-architectural-analysis-snuzfd"
+     ]
+    },
+    {
+     "name": "Beethoven: the research engine, its repositories and its releases",
+     "description": "In what phases Beethoven is to be built from a transport layer into a research engine on hpcworker and the extension, which REFORMS reporting items can be enforced as gates and where, how its seven code repositories are sealed from one another, what it would take for the VS Code edition to become a client of hpcworker, and how the extension is released to the Chrome Web Store by hand and from CI.",
+     "part": "symphony-beethoven",
+     "members": [
+      "symphony-template/beethoven-build-roadmap-sttvvw",
+      "SchwingNet/reforms-compliance-checklist-bpzdoi",
+      "SchwingNet/how-the-beethoven-repositories-are-encapsulated-6h4zq9",
+      "symphony-template/moving-beethoven-for-vs-code-onto-hpcworker-apbd6t",
+      "symphony-template/beethoven-on-the-chrome-web-store"
+     ],
+     "canonical": [
+      "SchwingNet/how-the-beethoven-repositories-are-encapsulated-6h4zq9",
+      "symphony-template/beethoven-on-the-chrome-web-store",
+      "symphony-template/beethoven-build-roadmap-sttvvw"
+     ],
+     "superseded": [],
+     "duplicates": [],
+     "secondary_members": [
+      "symphony-template/store-upload-and-repo-move-step-by-step-fpy3fh",
+      "symphony-template/grid-and-cloud-claude-workers-review",
+      "symphony-template/several-grid-workers-one-per-project",
+      "SchwingNet/symphony-and-beethoven-taxonomy-spec-lcbqro",
+      "symphony-template/symphony-and-beethoven-taxonomy-manual-re4jtx",
+      "symphony-template/symphony-handoff",
+      "SchwingNet/the-lab-recipe-1t2gvp",
+      "SchwingNet/handoff-schwingnet-ctspinopelvic1k-and-the-imaging-programme-rbcdmf"
+     ]
+    },
+    {
+     "name": "Outreach events and student funding",
+     "description": "What the OpenSpine Consortium's Celebrate Life soccer night is, for whom, when and where, and how families sign up; and where a medical student in the research year can ask for money to run such outreach, ordered by how fast it can arrive and what each source pays for. None of these pages holds method.",
+     "part": "outreach-and-governance",
+     "members": [
+      "SchwingNet/osc-outreach-funding-kak2gk",
+      "SchwingNet/celebrate-life-flyer-noutom",
+      "SchwingNet/celebrate-life-scoliosis-night-julcos"
+     ],
+     "canonical": [
+      "SchwingNet/osc-outreach-funding-kak2gk",
+      "SchwingNet/celebrate-life-scoliosis-night-julcos"
+     ],
+     "superseded": [
+      {
+       "id": "SchwingNet/celebrate-life-flyer-noutom",
+       "by": "SchwingNet/celebrate-life-scoliosis-night-julcos",
+       "why": "The export's own summary calls this 'the first Celebrate Life flyer'. Both flyers name the same Saturday 24 October at the Detroit City Fieldhouse, the same registration form ([the registration form's link]), the same event page and the same two contacts; the later one re-targets the night from kids in treatment for cancer and blood disorders at a 6:45 PM kickoff to kids with scoliosis from 5:00 to 7:00 PM beside the Turf or Treat event, with the watch party and the facility rules added."
+      }
+     ],
+     "duplicates": [],
+     "secondary_members": [
+      "SchwingNet/aidas-seed-grant-proposal",
+      "SchwingNet/spine-program-student-onboarding"
+     ]
+    }
+   ],
+   "unplaced": [],
+   "notes": "Fourteen clusters: ten schwingnet, three symphony-beethoven, one outreach-and-governance; every one of the 69 ids has exactly one primary home (checked by script) and no id was left unplaced. Hard to place: (1) The two naming pages of 18 September (naming-vertebrae-without-ct, vertebral-levels-without-ct) carry the same day and the same chain with different headline figures; the summary's own words (the linking fix 'in testing', its earlier version leaked) put the results page later, so the summary is marked superseded rather than duplicate. (2) Ninety-three pixels is both a resolution study and the first DRR-calibration board; it is marked superseded by What is left after physics only on the residual question, and the reason records what it alone holds. (3) The 'overnight programmes' were not kept as one cluster, since each overnight page answers a different question: the OR readiness ledger went to device transfer, the FluoroCap overnight pages to FluoroCap. (4) Vertebral count anomaly rule (R + C = 22) was drawn for the counting paper but is the two-anchor disagreement idea, so it lives with transitional vertebrae; the figures pages record that the algebraic rule annotations were removed from the manuscript figures the same evening. (5) Lift before label is FluoroCap prior art but its question (reconstruct before naming, registration as a label source) bears on the naming line, where it is placed with FluoroCap and detectors as secondary homes. (6) The three benches were given a cluster of their own under the question lens (what a human reader says about machine labels) with secondary homes in FluoroCap and transitional; a reader of either topic finds them there. (7) The taxonomy spec sits in the SchwingNet repository only because the export's sort matched a term, so it is placed with Symphony; connect-the-grid-to-github and the REFORMS checklist likewise hold no spine method and go to the grid and Beethoven clusters, while spine-program-student-onboarding and schwingnet-grid-pipeline, which do describe spine-program and SchwingNet work, stay in the programme cluster with the grid cluster as a secondary home, as asked. (8) The secure hybrid RDP runbook (the owner's workstation over Tailscale and Duo) fits no spine or outreach question; it is placed with 'reaching the lab's machines' beside the grid access runbooks, which is where an infrastructure reader would look. (9) Protocol 1 (Exempt Category 4, 40,000 studies) and the later retrospective fluoroscopy protocol (Expedited Category 5, one surgeon's fluoroscopy) are read as two drafts of the same first eProtocol, the later superseding, though Protocol 1's dropped aims are noted; the later protocol's date field (2027-01) is the planned study start, not the writing date. (10) The two flyers are the same event re-targeted (the export calls one 'the first'), so superseded rather than duplicate; the figures pair jshksq (20:12) and xyz6kr (22:50) is settled the same way, the later build holding the earlier panels. (11) The dollar-per-feature ladder is marked superseded by the handoff's free-or-paid.md, a judgment from the dates and the plan-ladder memory rather than from an explicit 'supersedes' in the records. No duplicates in the strict sense (same figures or text at another time) were found."
+  },
+  {
+   "lens": "lifecycle",
+   "clusters": [
+    {
+     "name": "Datasets, licences and holdings",
+     "description": "Which spine imaging datasets exist, which the project holds on the grid, under what licence and access route, how the holding is re-acquired and migrated, and how its size and power compare with the published studies. The data stage of the work: what is held, what is to get, gated or excluded, and what each source's level truth is.",
+     "part": "schwingnet",
+     "members": [
+      "SchwingNet/fluoroscopy-data-atlas",
+      "SchwingNet/schwingnet-data-registry",
+      "SchwingNet/imaging-data-holding-manifest-migration-and-index-fqmtjs",
+      "SchwingNet/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay",
+      "SchwingNet/spine-x-ray-data-handoff-bddbdd"
+     ],
+     "canonical": [
+      "SchwingNet/fluoroscopy-data-atlas",
+      "SchwingNet/schwingnet-data-registry",
+      "SchwingNet/imaging-data-holding-manifest-migration-and-index-fqmtjs",
+      "SchwingNet/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay"
+     ],
+     "superseded": [
+      {
+       "id": "SchwingNet/spine-x-ray-data-handoff-bddbdd",
+       "by": "SchwingNet/imaging-data-holding-manifest-migration-and-index-fqmtjs",
+       "why": "The handoff of 2026-09-03 covers nine radiograph sources, what was obtained and how to get the rest; the holding report of 2026-10-08 cards 212 sources with origin, route, acquisition and a re-acquisition driver, and the atlas (2026-10-17) and registry (2026-10-20) now carry each source's status and grid path."
+      }
+     ],
+     "duplicates": [],
+     "secondary_members": [
+      "SchwingNet/schwingnet-grid-pipeline",
+      "SchwingNet/fluorocap-dataset-card-xwd4wx",
+      "SchwingNet/the-lab-recipe-1t2gvp",
+      "SchwingNet/handoff-schwingnet-ctspinopelvic1k-and-the-imaging-programme-rbcdmf",
+      "SchwingNet/any-view-spine-plan",
+      "SchwingNet/openspine-board-t3gfds"
+     ]
+    },
+    {
+     "name": "FluoroCap corpus and pipeline",
+     "description": "What the FluoroCap collection of published fluoroscopy and radiograph panels is, how it is harvested, licensed, split into panels and decoded, which credentials and publisher routes feed it, and what the corpus and its pseudolabels are worth. The data stage of the mined corpus, from the dataset card to the overnight pipeline state of 15 September 2026.",
+     "part": "schwingnet",
+     "members": [
+      "SchwingNet/fluorocap-dataset-card-xwd4wx",
+      "SchwingNet/fluorocap-pipeline-map-h9rmbs",
+      "SchwingNet/fluorocap-access-setup-jlvkft",
+      "SchwingNet/fluorocap-corpus-audit-9hjzzs",
+      "SchwingNet/fluorocap-overnight-report-xnhgdo"
+     ],
+     "canonical": [
+      "SchwingNet/fluorocap-dataset-card-xwd4wx",
+      "SchwingNet/fluorocap-pipeline-map-h9rmbs",
+      "SchwingNet/fluorocap-overnight-report-xnhgdo"
+     ],
+     "superseded": [],
+     "duplicates": [],
+     "secondary_members": [
+      "SchwingNet/fluorocap-reality-check-czudvb",
+      "SchwingNet/fluorocap-adjudication-bench-rnsyir",
+      "SchwingNet/level-verification-bench-mkjxsy",
+      "SchwingNet/lstv-verification-bench-6m2qhr",
+      "SchwingNet/overnight-the-honest-99-kantj8",
+      "SchwingNet/lift-before-label-jzjq8t",
+      "SchwingNet/fluoroscopy-data-atlas",
+      "SchwingNet/schwingnet-data-registry"
+     ]
+    },
+    {
+     "name": "Counting from an anchor",
+     "description": "How the vertebral level is counted, never named, from the sacrum or C2 along a C-arm sweep: expose, detect, link, chain, count, confirm, with the R + C = 22 anomaly rule and the manuscript's figures. The method stage of the counting line from 22 September 2026, with its verified numbers against the literature.",
+     "part": "schwingnet",
+     "members": [
+      "SchwingNet/counting-from-the-sacrum",
+      "SchwingNet/vertebral-count-anomaly-rule",
+      "SchwingNet/level-counting-visual-abstract",
+      "SchwingNet/schwingnet-figures-jshksq",
+      "SchwingNet/schwingnet-figures-xyz6kr"
+     ],
+     "canonical": [
+      "SchwingNet/counting-from-the-sacrum",
+      "SchwingNet/schwingnet-figures-xyz6kr",
+      "SchwingNet/vertebral-count-anomaly-rule"
+     ],
+     "superseded": [
+      {
+       "id": "SchwingNet/schwingnet-figures-jshksq",
+       "by": "SchwingNet/schwingnet-figures-xyz6kr",
+       "why": "Both are builds of 22 September 2026; jshksq is the inventory of every figure on disk at 20:12 with the composite not yet restacked, while xyz6kr at 22:50 holds the same thirteen row and audit images unreferenced beside the six figures as built, the owner's figure-by-figure verdicts, the fixes running and page 1 of the compiled manuscript."
+      }
+     ],
+     "duplicates": [],
+     "secondary_members": [
+      "SchwingNet/counting-levels-under-fluoroscopy",
+      "SchwingNet/aidas-seed-grant-proposal",
+      "SchwingNet/retrospective-fluoroscopy-protocol",
+      "SchwingNet/counting-against-two-anchors-qkktgu",
+      "SchwingNet/or-readiness-ledger",
+      "SchwingNet/any-view-spine-plan",
+      "SchwingNet/naming-vertebrae-without-ct-hjy4vc"
+     ]
+    },
+    {
+     "name": "Naming by morphology and sweeps",
+     "description": "Whether a registration-free classifier can name a vertebral level from its shape and context on a limited-field film, how much of the spine it must see, and whether a short sweep of overlapping exposures matched as a map recovers what one exposure cannot. The method stage of the naming line of 13 to 18 September 2026, set against the published feasibility evidence it contradicts.",
+     "part": "schwingnet",
+     "members": [
+      "SchwingNet/level-context-ladder-xd7eltc",
+      "SchwingNet/registration-free-level-id-feasibility-uramo1",
+      "SchwingNet/naming-vertebrae-without-an-anchor-3dfzmh",
+      "SchwingNet/vertebral-levels-without-ct-a4rydj",
+      "SchwingNet/naming-vertebrae-without-ct-hjy4vc"
+     ],
+     "canonical": [
+      "SchwingNet/naming-vertebrae-without-ct-hjy4vc",
+      "SchwingNet/naming-vertebrae-without-an-anchor-3dfzmh",
+      "SchwingNet/level-context-ladder-xd7eltc"
+     ],
+     "superseded": [
+      {
+       "id": "SchwingNet/vertebral-levels-without-ct-a4rydj",
+       "by": "SchwingNet/naming-vertebrae-without-ct-hjy4vc",
+       "why": "Both are dated 18 September 2026 on the same sweep-and-match question; a4rydj says the sacrum 'is being given a detector of its own', that the duplicate-box linking rule is 'in testing' and that 'earlier today' the sweep was worse than not sweeping, while hjy4vc reports the sacrum detector measured (98.2% precision, 96.9% recall), the box repair and majority linking landed, and the full six-step chain with per-region and comparator tables."
+      }
+     ],
+     "duplicates": [],
+     "secondary_members": [
+      "SchwingNet/fluorocap-corpus-audit-9hjzzs",
+      "SchwingNet/overnight-the-honest-99-kantj8",
+      "SchwingNet/level-verification-bench-mkjxsy",
+      "SchwingNet/lift-before-label-jzjq8t",
+      "SchwingNet/research-directions-from-the-data-holding-kcyckb",
+      "SchwingNet/handoff-schwingnet-ctspinopelvic1k-and-the-imaging-programme-rbcdmf",
+      "SchwingNet/any-view-spine-plan"
+     ]
+    },
+    {
+     "name": "Transitional vertebrae and border variants",
+     "description": "How transitional anatomy at the thoracolumbar and lumbosacral borders (L6, T13, lumbar ribs, sacralisation) is measured on CTSpinoPelvic1K, whether one border's variant predicts the other's, and how a network can enumerate vertebrae against two anchors when trained on normal spines. The method stage for the anatomy that defeats counting and naming alike.",
+     "part": "schwingnet",
+     "members": [
+      "SchwingNet/spinal-border-variants-fye5ef",
+      "SchwingNet/rib-anchor-audit-t7wr2h",
+      "SchwingNet/counting-against-two-anchors-qkktgu"
+     ],
+     "canonical": [
+      "SchwingNet/spinal-border-variants-fye5ef",
+      "SchwingNet/counting-against-two-anchors-qkktgu"
+     ],
+     "superseded": [],
+     "duplicates": [],
+     "secondary_members": [
+      "SchwingNet/lstv-verification-bench-6m2qhr",
+      "SchwingNet/vertebral-count-anomaly-rule",
+      "SchwingNet/naming-vertebrae-without-an-anchor-3dfzmh",
+      "SchwingNet/registration-free-level-id-feasibility-uramo1",
+      "SchwingNet/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay",
+      "SchwingNet/overnight-the-honest-99-kantj8",
+      "SchwingNet/openspine-board-t3gfds",
+      "SchwingNet/research-directions-from-the-data-holding-kcyckb"
+     ]
+    },
+    {
+     "name": "Detectors, the radiograph corpus and the architecture decisions",
+     "description": "What the vertebra detector was trained on and how it scores per source, which architecture, corpus, licensing and data decisions were locked for the spine program, and what the next detector and classifier must do at any C-arm position. The method stage of the learned component, from the stage-1 field report through the September decisions to the any-view plan of 21 October 2026.",
+     "part": "schwingnet",
+     "members": [
+      "SchwingNet/vertebra-detector-field-report-1jljc6",
+      "SchwingNet/spine-program-decisions-qqhkqz",
+      "SchwingNet/openspine-board-t3gfds",
+      "SchwingNet/any-view-spine-plan"
+     ],
+     "canonical": [
+      "SchwingNet/any-view-spine-plan",
+      "SchwingNet/spine-program-decisions-qqhkqz",
+      "SchwingNet/vertebra-detector-field-report-1jljc6"
+     ],
+     "superseded": [
+      {
+       "id": "SchwingNet/openspine-board-t3gfds",
+       "by": "SchwingNet/spine-program-decisions-qqhkqz",
+       "why": "The records state it: the board of 11 September 2026 is marked superseded-by Spine Program Decisions, whose decision log carries the same architecture (one backbone, four heads, level on a head), licensing table, corpus totals and L6 question with each item's status."
+      }
+     ],
+     "duplicates": [],
+     "secondary_members": [
+      "SchwingNet/counting-from-the-sacrum",
+      "SchwingNet/or-readiness-ledger",
+      "SchwingNet/fluorocap-pipeline-map-h9rmbs",
+      "SchwingNet/handoff-schwingnet-ctspinopelvic1k-and-the-imaging-programme-rbcdmf",
+      "SchwingNet/naming-vertebrae-without-ct-hjy4vc",
+      "SchwingNet/spine-x-ray-data-handoff-bddbdd",
+      "SchwingNet/counting-levels-under-fluoroscopy"
+     ]
+    },
+    {
+     "name": "DRR, physics and the synthetic-to-real gap",
+     "description": "Whether fluoroscopy rendered from CT can train the detector, what a calibrated physics render leaves unexplained in a real DeepFluoro frame, whether render resolution matters, and whether 3-D lifting, registration or synthetic editing should supply training data. The method stage of where the training frames come from and why the CT-to-fluoroscopy map is calibrated rather than learned.",
+     "part": "schwingnet",
+     "members": [
+      "SchwingNet/ninety-three-pixels",
+      "SchwingNet/what-is-left-after-physics",
+      "SchwingNet/lift-before-label-jzjq8t"
+     ],
+     "canonical": [
+      "SchwingNet/what-is-left-after-physics",
+      "SchwingNet/ninety-three-pixels",
+      "SchwingNet/lift-before-label-jzjq8t"
+     ],
+     "superseded": [],
+     "duplicates": [],
+     "secondary_members": [
+      "SchwingNet/counting-from-the-sacrum",
+      "SchwingNet/counting-levels-under-fluoroscopy",
+      "SchwingNet/aidas-seed-grant-proposal",
+      "SchwingNet/or-readiness-ledger",
+      "SchwingNet/fluorocap-overnight-report-xnhgdo",
+      "SchwingNet/any-view-spine-plan",
+      "SchwingNet/schwingnet-figures-jshksq"
+     ]
+    },
+    {
+     "name": "Verification benches and readiness audits",
+     "description": "Whether the numbers are real: the human-read benches over decoded panels and transitional figures, the audits of what the corpus and models actually prove at what coverage, and the overnight adversarial program on whether the method counts in an operating room it has never seen. The evaluation stage, from unbiased samples with no verdicts yet to the OR readiness ledger of 22 September 2026.",
+     "part": "schwingnet",
+     "members": [
+      "SchwingNet/level-verification-bench-mkjxsy",
+      "SchwingNet/lstv-verification-bench-6m2qhr",
+      "SchwingNet/fluorocap-adjudication-bench-rnsyir",
+      "SchwingNet/or-readiness-ledger",
+      "SchwingNet/overnight-the-honest-99-kantj8",
+      "SchwingNet/fluorocap-reality-check-czudvb"
+     ],
+     "canonical": [
+      "SchwingNet/or-readiness-ledger",
+      "SchwingNet/overnight-the-honest-99-kantj8",
+      "SchwingNet/level-verification-bench-mkjxsy",
+      "SchwingNet/lstv-verification-bench-6m2qhr",
+      "SchwingNet/fluorocap-adjudication-bench-rnsyir"
+     ],
+     "superseded": [],
+     "duplicates": [],
+     "secondary_members": [
+      "SchwingNet/counting-from-the-sacrum",
+      "SchwingNet/the-lab-recipe-1t2gvp",
+      "SchwingNet/reforms-compliance-checklist-bpzdoi",
+      "SchwingNet/level-context-ladder-xd7eltc",
+      "SchwingNet/naming-vertebrae-without-ct-hjy4vc",
+      "SchwingNet/vertebral-levels-without-ct-a4rydj",
+      "SchwingNet/handoff-schwingnet-ctspinopelvic1k-and-the-imaging-programme-rbcdmf",
+      "SchwingNet/research-directions-from-the-data-holding-kcyckb"
+     ]
+    },
+    {
+     "name": "Grants, IRB protocols and the case to the department",
+     "description": "What the level-counting work asks of the department, the IRB and a funder: the proposal to the spine surgeon for retrospective PACS fluoroscopy, the two WSU eProtocol drafts for collecting it, and the AIDaS seed grant with its budget, 2027 plan and federal pathway. The governance stage that holds the method's preliminary numbers as the case for in-domain data.",
+     "part": "schwingnet",
+     "members": [
+      "SchwingNet/aidas-seed-grant-proposal",
+      "SchwingNet/retrospective-fluoroscopy-protocol",
+      "SchwingNet/protocol-1-eprotocol-draft-mkmh7p",
+      "SchwingNet/counting-levels-under-fluoroscopy"
+     ],
+     "canonical": [
+      "SchwingNet/aidas-seed-grant-proposal",
+      "SchwingNet/retrospective-fluoroscopy-protocol"
+     ],
+     "superseded": [
+      {
+       "id": "SchwingNet/protocol-1-eprotocol-draft-mkmh7p",
+       "by": "SchwingNet/retrospective-fluoroscopy-protocol",
+       "why": "Protocol 1 of 15 September 2026 asks Exempt Category 4 for 40,000 DMC imaging studies across CT, radiographs, fluoroscopy and fracture detection; the later draft builds on the AIDaS grant, narrows the submission to one surgeon's intraoperative fluoroscopy 2021 to 2026, argues Expedited Category 5 over Exempt 4 because the data may support a 510(k), and moves Protocol 2 to a separate later submission."
+      },
+      {
+       "id": "SchwingNet/counting-levels-under-fluoroscopy",
+       "by": "SchwingNet/aidas-seed-grant-proposal",
+       "why": "The department proposal of September 2026 (runs of 21 September) states the counting method, the twelve-arm 99.17 to 100% exactness, the 99.14 versus 71.67% detector recall and the ask for retrospective fluoroscopy; the grant of October 2026 restates the same method and numbers with a budget, a quarter-by-quarter 2027 plan, phantom, cadaver, prototype and shadow-mode steps and the NIH pathway, and the IRB draft builds on the grant, not the proposal."
+      }
+     ],
+     "duplicates": [],
+     "secondary_members": [
+      "SchwingNet/level-counting-visual-abstract",
+      "SchwingNet/osc-outreach-funding-kak2gk",
+      "SchwingNet/fluoroscopy-data-atlas",
+      "SchwingNet/the-lab-recipe-1t2gvp",
+      "SchwingNet/vertebral-levels-without-ct-a4rydj",
+      "SchwingNet/lift-before-label-jzjq8t",
+      "SchwingNet/fluorocap-reality-check-czudvb"
+     ]
+    },
+    {
+     "name": "Programme status, direction, handoffs and onboarding",
+     "description": "Where the spine programme stands and where it goes next: the handoff of every result and rule to a new student or session, the ordered research directions, the grid pipeline's status and schedule to the provisional and the CNS talk, how a student joins, and the lab's recipe for a paper and its data and grid rules. The governance stage of the programme's own decisions and the record a newcomer reads first.",
+     "part": "schwingnet",
+     "members": [
+      "SchwingNet/handoff-schwingnet-ctspinopelvic1k-and-the-imaging-programme-rbcdmf",
+      "SchwingNet/research-directions-from-the-data-holding-kcyckb",
+      "SchwingNet/schwingnet-grid-pipeline",
+      "SchwingNet/spine-program-student-onboarding",
+      "SchwingNet/the-lab-recipe-1t2gvp"
+     ],
+     "canonical": [
+      "SchwingNet/schwingnet-grid-pipeline",
+      "SchwingNet/handoff-schwingnet-ctspinopelvic1k-and-the-imaging-programme-rbcdmf",
+      "SchwingNet/research-directions-from-the-data-holding-kcyckb",
+      "SchwingNet/spine-program-student-onboarding"
+     ],
+     "superseded": [],
+     "duplicates": [],
+     "secondary_members": [
+      "SchwingNet/openspine-board-t3gfds",
+      "SchwingNet/spine-program-decisions-qqhkqz",
+      "SchwingNet/connect-the-grid-to-github",
+      "SchwingNet/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay",
+      "SchwingNet/fluoroscopy-data-atlas",
+      "SchwingNet/aidas-seed-grant-proposal"
+     ]
+    },
+    {
+     "name": "Grid and Beethoven operations",
+     "description": "How Claude Code workers run on the Wayne State Slurm grid and in GitHub Actions: the playbook for a subscription on a cluster, Beethoven's repositories, roadmap, REFORMS gates, store release and VS Code move, the GitHub login for a grid session, and the review and plan for several named workers per project. The operations stage of the grid tooling, kept apart from the spine work.",
+     "part": "symphony-beethoven",
+     "members": [
+      "symphony-template/grid-and-cloud-claude-workers-review",
+      "symphony-template/several-grid-workers-one-per-project",
+      "SchwingNet/connect-the-grid-to-github",
+      "symphony-template/moving-beethoven-for-vs-code-onto-hpcworker-apbd6t",
+      "symphony-template/beethoven-build-roadmap-sttvvw",
+      "SchwingNet/how-the-beethoven-repositories-are-encapsulated-6h4zq9",
+      "SchwingNet/reforms-compliance-checklist-bpzdoi",
+      "symphony-template/claude-code-on-a-slurm-apptainer-cluster-7dbjwc",
+      "symphony-template/beethoven-on-the-chrome-web-store"
+     ],
+     "canonical": [
+      "symphony-template/grid-and-cloud-claude-workers-review",
+      "symphony-template/several-grid-workers-one-per-project",
+      "SchwingNet/how-the-beethoven-repositories-are-encapsulated-6h4zq9",
+      "symphony-template/beethoven-build-roadmap-sttvvw"
+     ],
+     "superseded": [],
+     "duplicates": [],
+     "secondary_members": [
+      "SchwingNet/schwingnet-grid-pipeline",
+      "SchwingNet/spine-program-student-onboarding",
+      "SchwingNet/the-lab-recipe-1t2gvp",
+      "SchwingNet/fluorocap-pipeline-map-h9rmbs",
+      "SchwingNet/symphony-and-beethoven-taxonomy-spec-lcbqro",
+      "symphony-template/symphony-handoff",
+      "SchwingNet/secure-hybrid-rdp-access-spec-and-setup-runbook-exbt1w",
+      "symphony-template/store-upload-and-repo-move-step-by-step-fpy3fh"
+     ]
+    },
+    {
+     "name": "Symphony: the protocol, its evidence and its place",
+     "description": "What Symphony is, how many Claude Code workers share one GitHub repository through the claim protocol, which of its guarantees are checked, what it costs at each plan rung, where it sits on a taxonomy of agent systems and against every competitor, and how to test any claim about it. The operations stage of the coordination product from the handoff of 13 October to the comparison of 16 October 2026.",
+     "part": "symphony-beethoven",
+     "members": [
+      "symphony-template/symphony-handoff",
+      "symphony-template/symphony-in-brief-9cdciz",
+      "symphony-template/symphony-versus-competitors-lynwzk",
+      "SchwingNet/symphony-and-beethoven-taxonomy-spec-lcbqro",
+      "symphony-template/symphony-and-beethoven-taxonomy-manual-re4jtx",
+      "symphony-template/the-dollar-per-feature-ladder-9ymg61"
+     ],
+     "canonical": [
+      "symphony-template/symphony-in-brief-9cdciz",
+      "symphony-template/symphony-versus-competitors-lynwzk",
+      "SchwingNet/symphony-and-beethoven-taxonomy-spec-lcbqro",
+      "symphony-template/symphony-and-beethoven-taxonomy-manual-re4jtx"
+     ],
+     "superseded": [],
+     "duplicates": [],
+     "secondary_members": [
+      "symphony-template/shared-multi-account-claude-project-plan-rqzwh9",
+      "symphony-template/sdlc-build-plan-bjzikn",
+      "symphony-template/sdlc-primitives-spec-ldx4zd",
+      "symphony-template/grid-and-cloud-claude-workers-review",
+      "symphony-template/several-grid-workers-one-per-project",
+      "SchwingNet/spine-program-student-onboarding"
+     ]
+    },
+    {
+     "name": "The shared multi-account SDLC, cswap and the Claude surfaces",
+     "description": "How several Claude accounts can work one project as a whole when no Claude product shares a Project, what cswap and Claude Swap Cloud can already export and import, which route to build the shared-plane SDLC on, how the extension reaches the Chrome Web Store, and what Claude Chat and Claude Code each can and cannot do. The operations stage of Symphony's origins and the Claude tooling around it, from 3 to 9 October 2026.",
+     "part": "symphony-beethoven",
+     "members": [
+      "symphony-template/shared-multi-account-claude-project-plan-rqzwh9",
+      "symphony-template/sdlc-primitives-spec-ldx4zd",
+      "symphony-template/sdlc-build-plan-bjzikn",
+      "symphony-template/store-upload-and-repo-move-step-by-step-fpy3fh",
+      "symphony-template/claude-chat-vs-claude-code-architectural-analysis-snuzfd"
+     ],
+     "canonical": [
+      "symphony-template/sdlc-build-plan-bjzikn",
+      "symphony-template/sdlc-primitives-spec-ldx4zd",
+      "symphony-template/claude-chat-vs-claude-code-architectural-analysis-snuzfd"
+     ],
+     "superseded": [
+      {
+       "id": "symphony-template/shared-multi-account-claude-project-plan-rqzwh9",
+       "by": "symphony-template/sdlc-build-plan-bjzikn",
+       "why": "The primitives spec builds on the multi-account plan and the build plan builds on the spec, all of 2026-10-08; the build plan records the owner's choice of 2026-10-09 for GitHub Issues and a template repository first, replacing the plan's Linear queue and coordinator routine, and Symphony in brief then describes what was built."
+      }
+     ],
+     "duplicates": [],
+     "secondary_members": [
+      "symphony-template/symphony-in-brief-9cdciz",
+      "symphony-template/symphony-handoff",
+      "symphony-template/claude-code-on-a-slurm-apptainer-cluster-7dbjwc",
+      "symphony-template/beethoven-on-the-chrome-web-store",
+      "symphony-template/the-dollar-per-feature-ladder-9ymg61"
+     ]
+    },
+    {
+     "name": "Outreach, student funding and institutional access",
+     "description": "Where a medical student can ask for money to run OpenSpineConsortium outreach, what the Celebrate Life soccer night is and how families sign up, and how the owner's workstation is reached only over Tailscale with Duo. The governance stage's pages that hold no method: flyers, a funding playbook and one institutional IT runbook.",
+     "part": "outreach-and-governance",
+     "members": [
+      "SchwingNet/osc-outreach-funding-kak2gk",
+      "SchwingNet/celebrate-life-flyer-noutom",
+      "SchwingNet/celebrate-life-scoliosis-night-julcos",
+      "SchwingNet/secure-hybrid-rdp-access-spec-and-setup-runbook-exbt1w"
+     ],
+     "canonical": [
+      "SchwingNet/osc-outreach-funding-kak2gk",
+      "SchwingNet/celebrate-life-scoliosis-night-julcos",
+      "SchwingNet/secure-hybrid-rdp-access-spec-and-setup-runbook-exbt1w"
+     ],
+     "superseded": [
+      {
+       "id": "SchwingNet/celebrate-life-flyer-noutom",
+       "by": "SchwingNet/celebrate-life-scoliosis-night-julcos",
+       "why": "The export calls noutom the first Celebrate Life flyer; both flyers carry the same Saturday October 24 at the Detroit City Fieldhouse, the same registration form link, event page and two contacts, and julcos rewords it for kids with scoliosis (5:00 to 7:00 PM, Turf or Treat, the watch party) in place of the cancer and blood-disorder audience and 6:45 PM kickoff."
+      }
+     ],
+     "duplicates": [],
+     "secondary_members": [
+      "SchwingNet/aidas-seed-grant-proposal",
+      "SchwingNet/spine-program-student-onboarding"
+     ]
+    }
+   ],
+   "unplaced": [],
+   "notes": "Hard to place: (1) schwingnet-grid-pipeline is a spine status page whose substance is grid operations; by the rule given it stays in the spine programme cluster with the grid cluster as a secondary home. (2) connect-the-grid-to-github is written for a spine-program student but is GitHub and Beethoven tooling with no spine content, so it went to the grid cluster with onboarding as a secondary home. (3) secure-hybrid-rdp-access fits none of the three parts well (the owner's workstation, neither grid nor Symphony nor spine); it was put in the outreach-and-governance part as an institutional page with no method, with the grid cluster as a secondary home. (4) spine-program-decisions and openspine-board are decision logs, which the lens lists under governance, but their content is the detector architecture, the radiograph corpus and licensing, so they sit with the detectors; their relation (board superseded by the decisions log) comes from the records. (5) counting-levels-under-fluoroscopy is the fullest early statement of the counting method but is a proposal to the department, so it lives with the grants and protocols, superseded by the AIDaS grant, and is a secondary member of the counting cluster. (6) lift-before-label is FluoroCap prior art about 3-D lifting, registration and synthetic editing; it went to the DRR and synthetic-to-real cluster with FluoroCap as a secondary home. (7) The two 'Without CT' pages share a date; the order was read from their texts (a4rydj: sacrum detector 'being given', linking fix 'in testing', 'earlier today'; hjy4vc: both measured and landed). (8) The two Figures folders: xyz6kr (22:50) holds the thirteen images of the jshksq set (20:12) unreferenced beside the six built figures and page 1, so it supersedes rather than duplicates. (9) The two Celebrate Life flyers share the form link, date, venue and contacts but address different audiences, so the later scoliosis version supersedes the first rather than duplicating it. (10) To stay within fourteen clusters the human-read benches and the readiness and honesty audits were merged into one evaluation cluster; fluorocap-reality-check was kept as a member rather than marked superseded by Overnight: The Honest 99%, which builds on it but asks a narrower question. No artifact was unplaced. The validated JSON is also at /tmp/claude-0/-home-user/1b2f17bd-1fd4-5865-b98a-4797cc8ea3ad/scratchpad/cluster/out.json."
+  },
+  {
+   "lens": "reader",
+   "clusters": [
+    {
+     "name": "Level naming and counting",
+     "part": "schwingnet",
+     "description": "For a model builder deciding whether to count from an anchor or name from morphology, which anchors and chains the method relies on, and what the manuscript figures show. It answers how far naming or counting reaches on held-out film and renders, and where each line of the method was measured.",
+     "members": [
+      "SchwingNet/counting-from-the-sacrum",
+      "SchwingNet/vertebral-count-anomaly-rule",
+      "SchwingNet/naming-vertebrae-without-an-anchor-3dfzmh",
+      "SchwingNet/naming-vertebrae-without-ct-hjy4vc",
+      "SchwingNet/vertebral-levels-without-ct-a4rydj",
+      "SchwingNet/level-context-ladder-xd7eltc",
+      "SchwingNet/registration-free-level-id-feasibility-uramo1",
+      "SchwingNet/schwingnet-figures-jshksq",
+      "SchwingNet/schwingnet-figures-xyz6kr"
+     ],
+     "canonical": [
+      "SchwingNet/counting-from-the-sacrum",
+      "SchwingNet/naming-vertebrae-without-ct-hjy4vc",
+      "SchwingNet/schwingnet-figures-xyz6kr"
+     ],
+     "superseded": [
+      {
+       "id": "SchwingNet/schwingnet-figures-jshksq",
+       "by": "SchwingNet/schwingnet-figures-xyz6kr",
+       "why": "Same evening of 22 September 2026: jshksq is the 20:12 inventory of figure files on disk (composite stacked 19:31, two rows re-rendered, millimetres under review); xyz6kr is the 22:50 build that turns the owner's figure-by-figure verdicts into files, runs the integration pass and closes with page 1 of the compiled manuscript, and its folder carries the 20:12 build's figure files (fig1_row1 to row6, fig1_story_tall, fig_contribution, fig_device_params, fig_device_spread) among its 26 PNGs."
+      },
+      {
+       "id": "SchwingNet/registration-free-level-id-feasibility-uramo1",
+       "by": "SchwingNet/naming-vertebrae-without-an-anchor-3dfzmh",
+       "why": "The 15 September literature verdict (no verified per-level accuracy for a registration-free single-frame system; the anchor-free isolated stack underdetermined) was tested two days later on real film and contradicted (91.8% on ordinary interior windows against a 0% placement-blind baseline); the record marks the relation 'contradicts'. Its literature ceilings (LevelCheck 398 of 398, the Kwak 76.4% LSTV flag, clinicians miscounting in 54% of LSTV patients) are still cited by later pages."
+      }
+     ],
+     "duplicates": [],
+     "secondary_members": [
+      "SchwingNet/counting-against-two-anchors-qkktgu",
+      "SchwingNet/any-view-spine-plan",
+      "SchwingNet/or-readiness-ledger",
+      "SchwingNet/overnight-the-honest-99-kantj8",
+      "SchwingNet/counting-levels-under-fluoroscopy",
+      "SchwingNet/level-counting-visual-abstract",
+      "SchwingNet/aidas-seed-grant-proposal",
+      "SchwingNet/handoff-schwingnet-ctspinopelvic1k-and-the-imaging-programme-rbcdmf",
+      "SchwingNet/research-directions-from-the-data-holding-kcyckb",
+      "SchwingNet/fluorocap-reality-check-czudvb"
+     ]
+    },
+    {
+     "name": "Transitional vertebrae and border variants",
+     "part": "schwingnet",
+     "description": "For a model builder or evaluator deciding how an extra or missing vertebra (L6, T13, LSTV, lumbar ribs, an absent twelfth rib) is detected and which anchors survive it, and for a data steward deciding how far the CTSpinoPelvic1K rib and level labels can be trusted. It answers what the 802-case CT cohort shows about the two borders and how a counting network should be trained against them.",
+     "members": [
+      "SchwingNet/counting-against-two-anchors-qkktgu",
+      "SchwingNet/rib-anchor-audit-t7wr2h",
+      "SchwingNet/spinal-border-variants-fye5ef"
+     ],
+     "canonical": [
+      "SchwingNet/spinal-border-variants-fye5ef",
+      "SchwingNet/counting-against-two-anchors-qkktgu",
+      "SchwingNet/rib-anchor-audit-t7wr2h"
+     ],
+     "superseded": [],
+     "duplicates": [],
+     "secondary_members": [
+      "SchwingNet/vertebral-count-anomaly-rule",
+      "SchwingNet/naming-vertebrae-without-an-anchor-3dfzmh",
+      "SchwingNet/lstv-verification-bench-6m2qhr",
+      "SchwingNet/overnight-the-honest-99-kantj8",
+      "SchwingNet/registration-free-level-id-feasibility-uramo1",
+      "SchwingNet/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay",
+      "SchwingNet/research-directions-from-the-data-holding-kcyckb",
+      "SchwingNet/openspine-board-t3gfds",
+      "SchwingNet/fluorocap-overnight-report-xnhgdo",
+      "SchwingNet/handoff-schwingnet-ctspinopelvic1k-and-the-imaging-programme-rbcdmf"
+     ]
+    },
+    {
+     "name": "Datasets, holdings and licences",
+     "part": "schwingnet",
+     "description": "For a data steward deciding what to request, what is already held on the grid, under which licence and agreement, how a source is re-acquired and how the holding compares in size and power with the published studies. It answers which sources exist for each task, their reach (held, to get, gated, excluded) and which gaps are worth a letter.",
+     "members": [
+      "SchwingNet/fluoroscopy-data-atlas",
+      "SchwingNet/schwingnet-data-registry",
+      "SchwingNet/imaging-data-holding-manifest-migration-and-index-fqmtjs",
+      "SchwingNet/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay",
+      "SchwingNet/spine-x-ray-data-handoff-bddbdd"
+     ],
+     "canonical": [
+      "SchwingNet/schwingnet-data-registry",
+      "SchwingNet/fluoroscopy-data-atlas",
+      "SchwingNet/imaging-data-holding-manifest-migration-and-index-fqmtjs",
+      "SchwingNet/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay"
+     ],
+     "superseded": [
+      {
+       "id": "SchwingNet/spine-x-ray-data-handoff-bddbdd",
+       "by": "SchwingNet/imaging-data-holding-manifest-migration-and-index-fqmtjs",
+       "why": "The 3 September handoff covers nine public radiograph sources for the detector pipeline (6,073 instances from three of them); the 8 October manifest cards 212 sources in five families, the plain-film and harvested 2-D corpora among them, each with origin, route, acquisition date and the re-acquisition driver, and the 20 October registry adds each source's reach word, licence and grid path. The handoff's access specifics (VinDr-SpineXR restricted-access not credentialed, the BUU 2,000-pair zip, CSXA behind a JavaScript login) are not repeated in that detail."
+      }
+     ],
+     "duplicates": [],
+     "secondary_members": [
+      "SchwingNet/fluorocap-dataset-card-xwd4wx",
+      "SchwingNet/schwingnet-grid-pipeline",
+      "SchwingNet/handoff-schwingnet-ctspinopelvic1k-and-the-imaging-programme-rbcdmf",
+      "SchwingNet/research-directions-from-the-data-holding-kcyckb",
+      "SchwingNet/any-view-spine-plan",
+      "SchwingNet/retrospective-fluoroscopy-protocol",
+      "SchwingNet/protocol-1-eprotocol-draft-mkmh7p",
+      "SchwingNet/openspine-board-t3gfds",
+      "SchwingNet/spine-program-decisions-qqhkqz",
+      "SchwingNet/the-lab-recipe-1t2gvp",
+      "SchwingNet/vertebra-detector-field-report-1jljc6"
+     ]
+    },
+    {
+     "name": "FluoroCap: the corpus, its pipeline and its audits",
+     "part": "schwingnet",
+     "description": "For a data steward deciding what the mined corpus of published fluoroscopy and radiograph panels is, how it was assembled and licensed, which credentials its harvesters need, and what it may be used for (a test set, never training, until readers have labelled it). It answers what the corpus and the level model proved as of mid-September 2026 and what blocked a 99% claim.",
+     "members": [
+      "SchwingNet/fluorocap-dataset-card-xwd4wx",
+      "SchwingNet/fluorocap-pipeline-map-h9rmbs",
+      "SchwingNet/fluorocap-access-setup-jlvkft",
+      "SchwingNet/fluorocap-corpus-audit-9hjzzs",
+      "SchwingNet/fluorocap-overnight-report-xnhgdo",
+      "SchwingNet/fluorocap-reality-check-czudvb"
+     ],
+     "canonical": [
+      "SchwingNet/fluorocap-reality-check-czudvb",
+      "SchwingNet/fluorocap-dataset-card-xwd4wx",
+      "SchwingNet/fluorocap-pipeline-map-h9rmbs",
+      "SchwingNet/fluorocap-overnight-report-xnhgdo"
+     ],
+     "superseded": [
+      {
+       "id": "SchwingNet/fluorocap-corpus-audit-9hjzzs",
+       "by": "SchwingNet/fluorocap-reality-check-czudvb",
+       "why": "The 14 September audit of the decode (caption-held-out containment 56.8%, the level model right 38.3% alone, zero thoracic training crops, image size the binding constraint) is taken up by the 15 September validation page, which re-measures the same corpus and model (one held-out number, no human-verified panel, every render figure overlapping training, the level model the weakest decoder term), ranks the blockers and sets the plan; the overnight report of 15 September records the audit's thoracic failure as fixed in all-spine v1."
+      }
+     ],
+     "duplicates": [],
+     "secondary_members": [
+      "SchwingNet/fluorocap-adjudication-bench-rnsyir",
+      "SchwingNet/level-verification-bench-mkjxsy",
+      "SchwingNet/overnight-the-honest-99-kantj8",
+      "SchwingNet/lift-before-label-jzjq8t",
+      "SchwingNet/level-context-ladder-xd7eltc",
+      "SchwingNet/fluoroscopy-data-atlas",
+      "SchwingNet/schwingnet-data-registry",
+      "SchwingNet/handoff-schwingnet-ctspinopelvic1k-and-the-imaging-programme-rbcdmf",
+      "SchwingNet/the-lab-recipe-1t2gvp",
+      "SchwingNet/or-readiness-ledger"
+     ]
+    },
+    {
+     "name": "Detectors, architecture and the training plan",
+     "part": "schwingnet",
+     "description": "For a model builder deciding what to train: the single-class vertebra detector and its corner keypoints, one backbone with masked heads rather than one class list, which sources enter which head, and the any-view plan with the census that must be counted before each model is trained. It answers what the radiograph corpus as it stands can support and which architecture decisions are locked.",
+     "members": [
+      "SchwingNet/vertebra-detector-field-report-1jljc6",
+      "SchwingNet/openspine-board-t3gfds",
+      "SchwingNet/spine-program-decisions-qqhkqz",
+      "SchwingNet/any-view-spine-plan"
+     ],
+     "canonical": [
+      "SchwingNet/any-view-spine-plan",
+      "SchwingNet/spine-program-decisions-qqhkqz",
+      "SchwingNet/vertebra-detector-field-report-1jljc6"
+     ],
+     "superseded": [
+      {
+       "id": "SchwingNet/openspine-board-t3gfds",
+       "by": "SchwingNet/spine-program-decisions-qqhkqz",
+       "why": "The record marks the 11 September board superseded by the decisions page, which carries the same decisions (one backbone with four masked heads, level identity on a head, CSXA added for two-source cervical coverage, licensing enforced in src/licensing.py, L5 withheld, IRB files purged) in their later state with status tags; the board's grid job list and dataset-paper fixes are its own."
+      }
+     ],
+     "duplicates": [],
+     "secondary_members": [
+      "SchwingNet/handoff-schwingnet-ctspinopelvic1k-and-the-imaging-programme-rbcdmf",
+      "SchwingNet/or-readiness-ledger",
+      "SchwingNet/counting-from-the-sacrum",
+      "SchwingNet/spine-x-ray-data-handoff-bddbdd",
+      "SchwingNet/naming-vertebrae-without-ct-hjy4vc",
+      "SchwingNet/fluorocap-pipeline-map-h9rmbs",
+      "SchwingNet/level-context-ladder-xd7eltc",
+      "SchwingNet/research-directions-from-the-data-holding-kcyckb",
+      "SchwingNet/ninety-three-pixels",
+      "SchwingNet/what-is-left-after-physics",
+      "SchwingNet/counting-against-two-anchors-qkktgu"
+     ]
+    },
+    {
+     "name": "Renders, registration and the sim-to-real gap",
+     "part": "schwingnet",
+     "description": "For a model builder deciding whether renders from CT can train the detector, what a calibrated physics renderer leaves unexplained in a real C-arm frame, and whether registration, 3-D lifting or learned translation should supply training frames. It answers that the map should be calibrated rather than learned, that no reconstruction stage should be built, and that registered real frames beat their DRR twins.",
+     "members": [
+      "SchwingNet/ninety-three-pixels",
+      "SchwingNet/what-is-left-after-physics",
+      "SchwingNet/lift-before-label-jzjq8t"
+     ],
+     "canonical": [
+      "SchwingNet/what-is-left-after-physics",
+      "SchwingNet/lift-before-label-jzjq8t"
+     ],
+     "superseded": [
+      {
+       "id": "SchwingNet/ninety-three-pixels",
+       "by": "SchwingNet/what-is-left-after-physics",
+       "why": "The 21 September board's calibration result (physics explains 80.9% of attenuation variance, nine device terms add 4.3 points, 'the residual has nothing local to learn', the GAN route refuted, the detector at 76.9% real-frame recall) is re-read by the later page on the same DeepFluoro frames, which withdraws 'nothing local' (the 2 to 16 px bands sit two to seven times above the noise floor) while keeping the calibrated-not-learned verdict and adding the twelve-coefficient smooth field; the board's resolution ladder (139 px costs 0.00 points) and the void C2 arm are its own."
+      }
+     ],
+     "duplicates": [],
+     "secondary_members": [
+      "SchwingNet/or-readiness-ledger",
+      "SchwingNet/counting-from-the-sacrum",
+      "SchwingNet/counting-levels-under-fluoroscopy",
+      "SchwingNet/aidas-seed-grant-proposal",
+      "SchwingNet/fluorocap-overnight-report-xnhgdo",
+      "SchwingNet/fluorocap-pipeline-map-h9rmbs",
+      "SchwingNet/fluorocap-reality-check-czudvb",
+      "SchwingNet/any-view-spine-plan",
+      "SchwingNet/schwingnet-data-registry",
+      "SchwingNet/schwingnet-figures-xyz6kr",
+      "SchwingNet/level-context-ladder-xd7eltc"
+     ]
+    },
+    {
+     "name": "Verification benches, overnight audits and OR readiness",
+     "part": "schwingnet",
+     "description": "For an evaluator deciding what counts as a verified number and a valid comparison (leakage, box conventions, held-out devices, accuracy paired with coverage) and for the person who will do the reads on the three benches, which the export carries with no verdicts. It answers whether the method is ready for a C-arm it has never seen and what the overnight programmes refuted or left running.",
+     "members": [
+      "SchwingNet/or-readiness-ledger",
+      "SchwingNet/overnight-the-honest-99-kantj8",
+      "SchwingNet/level-verification-bench-mkjxsy",
+      "SchwingNet/lstv-verification-bench-6m2qhr",
+      "SchwingNet/fluorocap-adjudication-bench-rnsyir"
+     ],
+     "canonical": [
+      "SchwingNet/or-readiness-ledger",
+      "SchwingNet/overnight-the-honest-99-kantj8"
+     ],
+     "superseded": [],
+     "duplicates": [],
+     "secondary_members": [
+      "SchwingNet/fluorocap-reality-check-czudvb",
+      "SchwingNet/registration-free-level-id-feasibility-uramo1",
+      "SchwingNet/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay",
+      "SchwingNet/research-directions-from-the-data-holding-kcyckb",
+      "SchwingNet/counting-from-the-sacrum",
+      "SchwingNet/handoff-schwingnet-ctspinopelvic1k-and-the-imaging-programme-rbcdmf",
+      "SchwingNet/the-lab-recipe-1t2gvp",
+      "SchwingNet/reforms-compliance-checklist-bpzdoi",
+      "SchwingNet/naming-vertebrae-without-ct-hjy4vc",
+      "SchwingNet/vertebral-levels-without-ct-a4rydj",
+      "SchwingNet/ninety-three-pixels",
+      "SchwingNet/fluorocap-overnight-report-xnhgdo",
+      "SchwingNet/fluorocap-corpus-audit-9hjzzs"
+     ]
+    },
+    {
+     "name": "Programme decisions, handoffs and onboarding",
+     "part": "schwingnet",
+     "description": "For a programme lead, a new student or a fresh session deciding what is decided, what runs next on the grid and in which order, and how to join the work under its data and grid rules. It answers where every result lives, which numbers are leaked or superseded, how a run starts without the owner typing, and what waits on whom.",
+     "members": [
+      "SchwingNet/handoff-schwingnet-ctspinopelvic1k-and-the-imaging-programme-rbcdmf",
+      "SchwingNet/research-directions-from-the-data-holding-kcyckb",
+      "SchwingNet/the-lab-recipe-1t2gvp",
+      "SchwingNet/spine-program-student-onboarding",
+      "SchwingNet/schwingnet-grid-pipeline"
+     ],
+     "canonical": [
+      "SchwingNet/schwingnet-grid-pipeline",
+      "SchwingNet/handoff-schwingnet-ctspinopelvic1k-and-the-imaging-programme-rbcdmf",
+      "SchwingNet/research-directions-from-the-data-holding-kcyckb",
+      "SchwingNet/spine-program-student-onboarding",
+      "SchwingNet/the-lab-recipe-1t2gvp"
+     ],
+     "superseded": [],
+     "duplicates": [],
+     "secondary_members": [
+      "SchwingNet/spine-program-decisions-qqhkqz",
+      "SchwingNet/openspine-board-t3gfds",
+      "SchwingNet/connect-the-grid-to-github",
+      "symphony-template/several-grid-workers-one-per-project",
+      "symphony-template/grid-and-cloud-claude-workers-review",
+      "symphony-template/symphony-in-brief-9cdciz",
+      "SchwingNet/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay",
+      "SchwingNet/imaging-data-holding-manifest-migration-and-index-fqmtjs",
+      "SchwingNet/schwingnet-data-registry",
+      "SchwingNet/reforms-compliance-checklist-bpzdoi",
+      "SchwingNet/counting-from-the-sacrum"
+     ]
+    },
+    {
+     "name": "The OR programme: proposal, grant and IRB protocols",
+     "part": "schwingnet",
+     "description": "For a surgeon or department head deciding whether to back counting the level on the C-arm the hospital already owns, and for the grant or IRB writer carrying that case into the AIDaS seed proposal and the WSU eProtocol for the retrospective fluoroscopy collection. It answers what wrong-level surgery costs, what the preliminary results claim, and what the IRB form says field by field.",
+     "members": [
+      "SchwingNet/counting-levels-under-fluoroscopy",
+      "SchwingNet/level-counting-visual-abstract",
+      "SchwingNet/aidas-seed-grant-proposal",
+      "SchwingNet/protocol-1-eprotocol-draft-mkmh7p",
+      "SchwingNet/retrospective-fluoroscopy-protocol"
+     ],
+     "canonical": [
+      "SchwingNet/aidas-seed-grant-proposal",
+      "SchwingNet/retrospective-fluoroscopy-protocol",
+      "SchwingNet/counting-levels-under-fluoroscopy",
+      "SchwingNet/level-counting-visual-abstract"
+     ],
+     "superseded": [
+      {
+       "id": "SchwingNet/protocol-1-eprotocol-draft-mkmh7p",
+       "by": "SchwingNet/retrospective-fluoroscopy-protocol",
+       "why": "The 15 September draft (Exempt Category 4, about 40,000 DMC imaging studies across CT, radiographs, registration-labelled fluoroscopy and fracture detection, hypotheses H1 to H5) is replaced by the later draft of the same Protocol 1 of 2, written after the AIDaS proposal it builds on and targeting a January 2027 start: it narrows the collection to one surgeon's 2021 to 2026 intraoperative fluoroscopy to fine-tune and test the detector, requests Expedited Category 5 because the data may support a 510(k) pre-submission, keeps the Exempt 4 paragraphs only as a fallback and describes Protocol 2 as the follow-on. The earlier draft's CT, radiograph and fracture aims are not carried forward."
+      }
+     ],
+     "duplicates": [],
+     "secondary_members": [
+      "SchwingNet/counting-from-the-sacrum",
+      "SchwingNet/or-readiness-ledger",
+      "SchwingNet/what-is-left-after-physics",
+      "SchwingNet/vertebra-detector-field-report-1jljc6",
+      "SchwingNet/registration-free-level-id-feasibility-uramo1",
+      "SchwingNet/research-directions-from-the-data-holding-kcyckb",
+      "SchwingNet/osc-outreach-funding-kak2gk",
+      "SchwingNet/the-lab-recipe-1t2gvp",
+      "SchwingNet/fluoroscopy-data-atlas",
+      "SchwingNet/schwingnet-grid-pipeline",
+      "SchwingNet/lift-before-label-jzjq8t"
+     ]
+    },
+    {
+     "name": "Symphony: protocol, positioning and cost",
+     "part": "symphony-beethoven",
+     "description": "For a Symphony maintainer deciding how the claim protocol works and why it was built on the repository rather than a shared Project, what may honestly be claimed for it against neighbouring systems, which of its guarantees are checked, and what each GitHub and Claude price rung buys. It answers where every Symphony repository, release and design stood on 13 to 16 October 2026 and what is still unproven.",
+     "members": [
+      "symphony-template/shared-multi-account-claude-project-plan-rqzwh9",
+      "symphony-template/sdlc-build-plan-bjzikn",
+      "symphony-template/symphony-handoff",
+      "symphony-template/symphony-in-brief-9cdciz",
+      "SchwingNet/symphony-and-beethoven-taxonomy-spec-lcbqro",
+      "symphony-template/symphony-and-beethoven-taxonomy-manual-re4jtx",
+      "symphony-template/symphony-versus-competitors-lynwzk",
+      "symphony-template/the-dollar-per-feature-ladder-9ymg61"
+     ],
+     "canonical": [
+      "symphony-template/symphony-in-brief-9cdciz",
+      "symphony-template/symphony-versus-competitors-lynwzk",
+      "SchwingNet/symphony-and-beethoven-taxonomy-spec-lcbqro",
+      "symphony-template/symphony-and-beethoven-taxonomy-manual-re4jtx",
+      "symphony-template/symphony-handoff"
+     ],
+     "superseded": [
+      {
+       "id": "symphony-template/shared-multi-account-claude-project-plan-rqzwh9",
+       "by": "symphony-template/symphony-in-brief-9cdciz",
+       "why": "The 8 October plan (Linear as the queue, a coordinator routine on the owner's main account waking on PR events and hourly, STATE.md rewritten by it) is the design Symphony grew from; the build plan records the owner choosing GitHub Issues on 9 October, and the 14 October brief describes the built protocol (issues as the queue, the first push of claude/N as the lock, the board branch, the coordinator as a step of the board's own run, 17 guarantees with 12 checked). The plan's failure-mode table and the February 2026 multi-account warning remain its own."
+      },
+      {
+       "id": "symphony-template/sdlc-build-plan-bjzikn",
+       "by": "symphony-template/symphony-handoff",
+       "why": "The 8 October Route B plan (a 300 to 480 line cswap materializer and six phases measured on the claude-swap Project) was overtaken on 9 October when the owner asked for the repository side first as a template repository with no export or import in its first layer; the 13 October handoff records the template, the 0.4.1 release through the approval gate, the runtime and QA-gate designs and an eleven-phase plan with fourteen owner questions."
+      }
+     ],
+     "duplicates": [],
+     "secondary_members": [
+      "symphony-template/sdlc-primitives-spec-ldx4zd",
+      "symphony-template/claude-chat-vs-claude-code-architectural-analysis-snuzfd",
+      "symphony-template/grid-and-cloud-claude-workers-review",
+      "symphony-template/several-grid-workers-one-per-project",
+      "symphony-template/beethoven-build-roadmap-sttvvw",
+      "SchwingNet/reforms-compliance-checklist-bpzdoi",
+      "SchwingNet/how-the-beethoven-repositories-are-encapsulated-6h4zq9",
+      "SchwingNet/spine-program-student-onboarding",
+      "symphony-template/claude-code-on-a-slurm-apptainer-cluster-7dbjwc",
+      "symphony-template/store-upload-and-repo-move-step-by-step-fpy3fh"
+     ]
+    },
+    {
+     "name": "Beethoven: the research engine and its repositories",
+     "part": "symphony-beethoven",
+     "description": "For a Beethoven maintainer deciding what to build next on hpcworker and the extension (headless runs, the chained-Slurm outer loop, REFORMS gates enforced by code, a student-pressed Publish), how the seven repositories stay sealed from one another, and whether the VS Code edition should give up its own grid scripts. It also answers how the owner releases the extension to the Chrome Web Store by hand and then from CI.",
+     "members": [
+      "symphony-template/beethoven-build-roadmap-sttvvw",
+      "SchwingNet/reforms-compliance-checklist-bpzdoi",
+      "SchwingNet/how-the-beethoven-repositories-are-encapsulated-6h4zq9",
+      "symphony-template/moving-beethoven-for-vs-code-onto-hpcworker-apbd6t",
+      "symphony-template/beethoven-on-the-chrome-web-store"
+     ],
+     "canonical": [
+      "SchwingNet/how-the-beethoven-repositories-are-encapsulated-6h4zq9",
+      "symphony-template/beethoven-build-roadmap-sttvvw",
+      "SchwingNet/reforms-compliance-checklist-bpzdoi",
+      "symphony-template/beethoven-on-the-chrome-web-store"
+     ],
+     "superseded": [],
+     "duplicates": [],
+     "secondary_members": [
+      "SchwingNet/symphony-and-beethoven-taxonomy-spec-lcbqro",
+      "symphony-template/symphony-and-beethoven-taxonomy-manual-re4jtx",
+      "symphony-template/grid-and-cloud-claude-workers-review",
+      "symphony-template/several-grid-workers-one-per-project",
+      "SchwingNet/the-lab-recipe-1t2gvp",
+      "symphony-template/store-upload-and-repo-move-step-by-step-fpy3fh",
+      "symphony-template/claude-code-on-a-slurm-apptainer-cluster-7dbjwc",
+      "SchwingNet/spine-program-student-onboarding",
+      "SchwingNet/connect-the-grid-to-github",
+      "symphony-template/symphony-handoff"
+     ]
+    },
+    {
+     "name": "Grid, workstation and Claude worker operations",
+     "part": "symphony-beethoven",
+     "description": "For a grid operator deciding how Claude Code workers run on the Wayne State Slurm cluster under a consumer subscription, how a Beethoven session on the grid obtains a GitHub login without the token reaching Claude, how many named workers run at once and how they are started, watched and stopped, and how the owner's workstation is reached. It answers how the grid and cloud workers compare with industry practice and which fixes come first.",
+     "members": [
+      "symphony-template/claude-code-on-a-slurm-apptainer-cluster-7dbjwc",
+      "SchwingNet/connect-the-grid-to-github",
+      "symphony-template/grid-and-cloud-claude-workers-review",
+      "symphony-template/several-grid-workers-one-per-project",
+      "SchwingNet/secure-hybrid-rdp-access-spec-and-setup-runbook-exbt1w"
+     ],
+     "canonical": [
+      "symphony-template/grid-and-cloud-claude-workers-review",
+      "symphony-template/several-grid-workers-one-per-project",
+      "SchwingNet/connect-the-grid-to-github"
+     ],
+     "superseded": [],
+     "duplicates": [],
+     "secondary_members": [
+      "SchwingNet/schwingnet-grid-pipeline",
+      "SchwingNet/spine-program-student-onboarding",
+      "SchwingNet/the-lab-recipe-1t2gvp",
+      "symphony-template/moving-beethoven-for-vs-code-onto-hpcworker-apbd6t",
+      "symphony-template/beethoven-build-roadmap-sttvvw",
+      "SchwingNet/how-the-beethoven-repositories-are-encapsulated-6h4zq9",
+      "symphony-template/symphony-handoff",
+      "symphony-template/symphony-in-brief-9cdciz",
+      "SchwingNet/fluorocap-pipeline-map-h9rmbs",
+      "SchwingNet/fluorocap-access-setup-jlvkft",
+      "SchwingNet/reforms-compliance-checklist-bpzdoi",
+      "symphony-template/symphony-and-beethoven-taxonomy-manual-re4jtx"
+     ]
+    },
+    {
+     "name": "Claude Swap Cloud and the two Claude surfaces",
+     "part": "symphony-beethoven",
+     "description": "For a Symphony maintainer or the owner deciding what the cswap tooling can still carry of a claude.ai Project (what exports and imports whole, what the terms forbid), what Claude Chat and Claude Code each do that the other cannot, and how the Claude Swap Cloud extension is released to the Chrome Web Store. It answers which gaps remained before the multi-account SDLC could be built on these primitives.",
+     "members": [
+      "symphony-template/claude-chat-vs-claude-code-architectural-analysis-snuzfd",
+      "symphony-template/sdlc-primitives-spec-ldx4zd",
+      "symphony-template/store-upload-and-repo-move-step-by-step-fpy3fh"
+     ],
+     "canonical": [
+      "symphony-template/sdlc-primitives-spec-ldx4zd",
+      "symphony-template/claude-chat-vs-claude-code-architectural-analysis-snuzfd",
+      "symphony-template/store-upload-and-repo-move-step-by-step-fpy3fh"
+     ],
+     "superseded": [],
+     "duplicates": [],
+     "secondary_members": [
+      "symphony-template/sdlc-build-plan-bjzikn",
+      "symphony-template/shared-multi-account-claude-project-plan-rqzwh9",
+      "symphony-template/beethoven-on-the-chrome-web-store",
+      "symphony-template/symphony-handoff",
+      "symphony-template/the-dollar-per-feature-ladder-9ymg61",
+      "symphony-template/claude-code-on-a-slurm-apptainer-cluster-7dbjwc"
+     ]
+    },
+    {
+     "name": "Outreach: funding and the Celebrate Life flyers",
+     "part": "outreach-and-governance",
+     "description": "For the medical student and the owner deciding where to ask for OpenSpineConsortium outreach money, in what order and with which record to cite, and what the Celebrate Life soccer-night flyers say about when, where, for whom and how to sign up. None of these pages holds method or data.",
+     "members": [
+      "SchwingNet/osc-outreach-funding-kak2gk",
+      "SchwingNet/celebrate-life-flyer-noutom",
+      "SchwingNet/celebrate-life-scoliosis-night-julcos"
+     ],
+     "canonical": [
+      "SchwingNet/osc-outreach-funding-kak2gk",
+      "SchwingNet/celebrate-life-scoliosis-night-julcos",
+      "SchwingNet/celebrate-life-flyer-noutom"
+     ],
+     "superseded": [],
+     "duplicates": [],
+     "secondary_members": [
+      "SchwingNet/aidas-seed-grant-proposal",
+      "SchwingNet/spine-program-student-onboarding"
+     ]
+    }
+   ],
+   "unplaced": [],
+   "notes": "Hard to place: (1) the three reader benches (Level Verification, LSTV Verification, FluoroCap Adjudication) sit between FluoroCap and verification; they went to the verification cluster by reader (the person doing the reads, the evaluator reading what the audits found) with FluoroCap as a secondary home, since the export carries them with no verdicts. (2) Counting Against Two Anchors is both a counting rule and a transitional-anatomy CT design; it went to the transitional cluster beside the two other CTSpinoPelvic1K v5 pages (Rib Anchor Audit, Spinal Border Variants) with level naming secondary. (3) The spine-versus-grid rule: spine-program student onboarding, The Lab Recipe and the SchwingNet grid pipeline describe grid operations but are spine-programme pages, so they are primary in the programme cluster with the grid cluster secondary; Connect the grid to GitHub holds no spine content (a token runbook for a Beethoven session) and went to the grid cluster with the programme cluster secondary; the REFORMS checklist and the Beethoven encapsulation report live in the SchwingNet repository but are Beethoven pages. (4) Secure Hybrid RDP Access names no related artifact and holds no method; it was placed with grid and workstation operations rather than left unplaced, since every id needs a primary home. (5) Naming Vertebrae Without CT and Vertebral Levels Without CT are two same-day (18 September) reports of the same sweep-and-match method with different headline figures (three-vertebra 93.9% vs 85.7%; thoracic two-vertebra 4.3% to 91.3%); neither supersedes the other, so the fuller six-step page is canonical and the internal summary a plain member. (6) The two Celebrate Life flyers share one registration form and event page but address different children (cancer and blood disorders at a 6:45 PM kickoff with Trunk or Treat; scoliosis at 5:00 to 7:00 PM with Turf or Treat) and carry no year, so they are neither duplicates nor ordered; both are canonical. (7) Counting Levels Under Fluoroscopy (September, for the department surgeon) and the AIDaS Seed Grant Proposal (October, for funders) carry the same preliminary results; they answer different questions for different readers, so both are canonical rather than one superseding the other. (8) The 8-member Symphony cluster was kept whole rather than split into origins and positioning to stay within 14 clusters. (9) Undated pages were ordered by shared figures: the Vertebra Detector Field Report's 6,073 instances match the 3 September data handoff; Spine Program Decisions' 4,327 training images match the 11 September board that the record says it supersedes; What Is Left After Physics quotes the 76.9% recall of the 21 September board; the two FluoroCap benches (179 panels of 865 boxes; 120 panels of reading_set_b1) and the LSTV bench (585 figures) are the benches the 15 and 16 September reports say await the owner. (10) The Claude Code on a Slurm cluster playbook (3 October) designs a bespoke launcher that hpcworker's gate replaced in practice, but its compliance conditions and credential model are still cited, so it is a member and not marked superseded."
+  }
+ ],
+ "judged": {
+  "clusters": [
+   {
+    "name": "Level naming and counting",
+    "part": "schwingnet",
+    "description": "For a reader deciding whether to count the level from an anchor (the sacrum or C2) along a C-arm sweep or to name it from morphology on a limited-field film, and how much of the spine either needs to see: one line of work from the context ladder of 13 September through the anchor-free and sweep-and-match pages of 17 and 18 September to the 22 September report and the manuscript's figures. It answers how far naming or counting reaches on held-out film, renders and the one real C-arm set, what the published registration-free literature could and could not show, and what the figure builds of that evening hold.",
+    "members": [
+     "SchwingNet/counting-from-the-sacrum",
+     "SchwingNet/vertebral-count-anomaly-rule",
+     "SchwingNet/naming-vertebrae-without-an-anchor-3dfzmh",
+     "SchwingNet/naming-vertebrae-without-ct-hjy4vc",
+     "SchwingNet/vertebral-levels-without-ct-a4rydj",
+     "SchwingNet/level-context-ladder-xd7eltc",
+     "SchwingNet/registration-free-level-id-feasibility-uramo1",
+     "SchwingNet/schwingnet-figures-jshksq",
+     "SchwingNet/schwingnet-figures-xyz6kr"
+    ],
+    "canonical": [
+     "SchwingNet/counting-from-the-sacrum",
+     "SchwingNet/naming-vertebrae-without-ct-hjy4vc",
+     "SchwingNet/naming-vertebrae-without-an-anchor-3dfzmh",
+     "SchwingNet/schwingnet-figures-xyz6kr",
+     "SchwingNet/level-context-ladder-xd7eltc"
+    ],
+    "superseded": [
+     {
+      "id": "SchwingNet/schwingnet-figures-jshksq",
+      "by": "SchwingNet/schwingnet-figures-xyz6kr",
+      "why": "Two builds of the same manuscript figure set on the same evening, 22 September 2026: jshksq is the 20:12 inventory of every figure file on disk (the composite stacked at 19:31 and not yet restacked, two rows re-rendered to remove the algebraic rule, millimetres under review); xyz6kr is the 22:50 build that turns the owner's figure-by-figure verdicts into files, records the fixes running and closes with page 1 of the compiled manuscript, and its folder carries the 20:12 build's panels (fig1_row1 to fig1_row6, fig1_story_tall, fig_contribution, fig_device_params, fig_device_spread) among its 26 images. The captions of rows a to j and the three audit figures are described only in the 20:12 page."
+     },
+     {
+      "id": "SchwingNet/vertebral-levels-without-ct-a4rydj",
+      "by": "SchwingNet/naming-vertebrae-without-ct-hjy4vc",
+      "why": "Both are dated 18 September 2026 and report the same sweep-and-match chain on held-out spines. The internal summary's own text says the sacrum 'is being given a detector of its own', that a tolerant linking rule 'is in testing' and that 'earlier today' the sweep was worse than not sweeping, and that an earlier version of itself had scored patients the model trained on; the results page reports the sacrum detector measured (98.2% precision, 96.9% recall), box repair and majority linking landed (cross-frame duplicates 21.8% to 3.0%, chain naming 67.4% to 91.8%) and walks all six steps of the chain with per-region tables and comparators."
+     }
+    ],
+    "duplicates": [],
+    "secondary_members": [
+     "SchwingNet/counting-against-two-anchors-qkktgu",
+     "SchwingNet/any-view-spine-plan",
+     "SchwingNet/or-readiness-ledger",
+     "SchwingNet/overnight-the-honest-99-kantj8",
+     "SchwingNet/counting-levels-under-fluoroscopy",
+     "SchwingNet/level-counting-visual-abstract",
+     "SchwingNet/aidas-seed-grant-proposal",
+     "SchwingNet/handoff-schwingnet-ctspinopelvic1k-and-the-imaging-programme-rbcdmf",
+     "SchwingNet/research-directions-from-the-data-holding-kcyckb",
+     "SchwingNet/fluorocap-reality-check-czudvb",
+     "SchwingNet/lift-before-label-jzjq8t",
+     "SchwingNet/vertebra-detector-field-report-1jljc6"
+    ]
+   },
+   {
+    "name": "Transitional vertebrae and border variants",
+    "part": "schwingnet",
+    "description": "For a reader deciding how an extra or missing vertebra (L6, T13, a lumbar rib, an absent twelfth rib, a sacralised L5) is detected and named when the model has seen almost only ordinary anatomy: counting against two anchors with the disagreement as the anomaly signal, and what the 802-case CTSpinoPelvic1K segmentation says about rib 12, lumbar ribs and LSTV co-occurrence. It answers which anchors survive a transitional column, whether the v5 rib review fixed the numbering the rib anchor depends on, and whether a variant at one border predicts one at the other.",
+    "members": [
+     "SchwingNet/counting-against-two-anchors-qkktgu",
+     "SchwingNet/spinal-border-variants-fye5ef",
+     "SchwingNet/rib-anchor-audit-t7wr2h"
+    ],
+    "canonical": [
+     "SchwingNet/counting-against-two-anchors-qkktgu",
+     "SchwingNet/spinal-border-variants-fye5ef",
+     "SchwingNet/rib-anchor-audit-t7wr2h"
+    ],
+    "superseded": [],
+    "duplicates": [],
+    "secondary_members": [
+     "SchwingNet/vertebral-count-anomaly-rule",
+     "SchwingNet/lstv-verification-bench-6m2qhr",
+     "SchwingNet/naming-vertebrae-without-an-anchor-3dfzmh",
+     "SchwingNet/registration-free-level-id-feasibility-uramo1",
+     "SchwingNet/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay",
+     "SchwingNet/research-directions-from-the-data-holding-kcyckb",
+     "SchwingNet/overnight-the-honest-99-kantj8",
+     "SchwingNet/fluorocap-overnight-report-xnhgdo",
+     "SchwingNet/handoff-schwingnet-ctspinopelvic1k-and-the-imaging-programme-rbcdmf",
+     "SchwingNet/openspine-board-t3gfds",
+     "SchwingNet/spine-program-decisions-qqhkqz"
+    ]
+   },
+   {
+    "name": "Datasets, holdings and licences",
+    "part": "schwingnet",
+    "description": "For a data steward deciding which fluoroscopy, radiograph, paired CT-and-X-ray and CT sources exist, which the lab holds on the grid, which need a request letter or sit behind a gate, under what licence and agreement, how a source is re-acquired and migrated, and how the holding compares in size and power with the published studies. The registry of 20 October is the repository's own record, the atlas of 17 October the wider catalog with the request letters, and the two 8 October reports the CT holding and its statistical power.",
+    "members": [
+     "SchwingNet/fluoroscopy-data-atlas",
+     "SchwingNet/schwingnet-data-registry",
+     "SchwingNet/imaging-data-holding-manifest-migration-and-index-fqmtjs",
+     "SchwingNet/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay",
+     "SchwingNet/spine-x-ray-data-handoff-bddbdd"
+    ],
+    "canonical": [
+     "SchwingNet/schwingnet-data-registry",
+     "SchwingNet/fluoroscopy-data-atlas",
+     "SchwingNet/imaging-data-holding-manifest-migration-and-index-fqmtjs",
+     "SchwingNet/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay"
+    ],
+    "superseded": [
+     {
+      "id": "SchwingNet/spine-x-ray-data-handoff-bddbdd",
+      "by": "SchwingNet/imaging-data-holding-manifest-migration-and-index-fqmtjs",
+      "why": "The handoff of 3 September 2026 covers nine public radiograph sources for the detector pipeline (6,073 instances from three of them), why each download failed and how to get the rest; the holding report of 8 October cards 212 sources in five families, its family D carding the same plain-film corpora (CSXA archived 1 to 9 September, BUU-LSPINE with the 2,000 and 400 sets downloaded 9 September, VinDr-SpineXR by credentialed download 7 to 10 September, AASCE, Mendeley 5jdfdgp762 and the IEEE lateral 236 by 16 September), each with origin, route, acquisition date and a re-acquisition driver, and the atlas and registry then carry each source's status and grid path. The handoff's access specifics (the gdown folder cap, the un-ingested 400-pair subset on the owner's PC, CSXA behind a JavaScript login) are kept only there."
+     }
+    ],
+    "duplicates": [],
+    "secondary_members": [
+     "SchwingNet/fluorocap-dataset-card-xwd4wx",
+     "SchwingNet/schwingnet-grid-pipeline",
+     "SchwingNet/handoff-schwingnet-ctspinopelvic1k-and-the-imaging-programme-rbcdmf",
+     "SchwingNet/research-directions-from-the-data-holding-kcyckb",
+     "SchwingNet/any-view-spine-plan",
+     "SchwingNet/protocol-1-eprotocol-draft-mkmh7p",
+     "SchwingNet/retrospective-fluoroscopy-protocol",
+     "SchwingNet/openspine-board-t3gfds",
+     "SchwingNet/spine-program-decisions-qqhkqz",
+     "SchwingNet/the-lab-recipe-1t2gvp",
+     "SchwingNet/vertebra-detector-field-report-1jljc6"
+    ]
+   },
+   {
+    "name": "FluoroCap: the corpus, its pipeline and its audits",
+    "part": "schwingnet",
+    "description": "For a data steward deciding what the mined corpus of published fluoroscopy and radiograph panels is, how it is harvested, decoded, licensed and frozen, which credentials its harvesters need, and what the corpus and the level model trained beside it actually prove (a test set at most, never training, until readers have labelled it). The 14 September card, map and access page define it; the audit of 14 September, the reality check and overnight report of 15 September measure it and set the plan.",
+    "members": [
+     "SchwingNet/fluorocap-dataset-card-xwd4wx",
+     "SchwingNet/fluorocap-pipeline-map-h9rmbs",
+     "SchwingNet/fluorocap-access-setup-jlvkft",
+     "SchwingNet/fluorocap-corpus-audit-9hjzzs",
+     "SchwingNet/fluorocap-overnight-report-xnhgdo",
+     "SchwingNet/fluorocap-reality-check-czudvb"
+    ],
+    "canonical": [
+     "SchwingNet/fluorocap-reality-check-czudvb",
+     "SchwingNet/fluorocap-dataset-card-xwd4wx",
+     "SchwingNet/fluorocap-pipeline-map-h9rmbs",
+     "SchwingNet/fluorocap-overnight-report-xnhgdo"
+    ],
+    "superseded": [
+     {
+      "id": "SchwingNet/fluorocap-corpus-audit-9hjzzs",
+      "by": "SchwingNet/fluorocap-reality-check-czudvb",
+      "why": "The 14 September audit measures the corpus and its pseudolabels against that day's decode (caption-held-out containment 56.8% on 389 panels, the level model alone right 38.3%, zero thoracic training crops, image size the binding constraint); the 15 September reality check re-measures the same corpus and model one day later, correcting the earlier counts (one held-out number, no human-verified panel, every render figure overlapping training, the level model the weakest decoder term at 37.9% on 169 panels), ranks the blockers and sets the plan, and the overnight report of 15 September builds on both and records the audit's thoracic failure as fixed in all-spine v1. The audit's specific figures appear only in it."
+     }
+    ],
+    "duplicates": [],
+    "secondary_members": [
+     "SchwingNet/fluorocap-adjudication-bench-rnsyir",
+     "SchwingNet/level-verification-bench-mkjxsy",
+     "SchwingNet/lstv-verification-bench-6m2qhr",
+     "SchwingNet/overnight-the-honest-99-kantj8",
+     "SchwingNet/lift-before-label-jzjq8t",
+     "SchwingNet/level-context-ladder-xd7eltc",
+     "SchwingNet/fluoroscopy-data-atlas",
+     "SchwingNet/schwingnet-data-registry",
+     "SchwingNet/handoff-schwingnet-ctspinopelvic1k-and-the-imaging-programme-rbcdmf",
+     "SchwingNet/the-lab-recipe-1t2gvp",
+     "SchwingNet/or-readiness-ledger"
+    ]
+   },
+   {
+    "name": "Verification benches, overnight audits and OR readiness",
+    "part": "schwingnet",
+    "description": "For an evaluator deciding what counts as a verified number and a valid comparison (leakage, box conventions, held-out devices, accuracy paired with coverage), and for the person who will do the reads on the three benches, which the export carries with no verdicts saved. It answers whether the method can count on a C-arm it has never seen, what accuracy the level model can honestly promise at what coverage, and what the overnight programmes of 16 and 22 September refuted or left running.",
+    "members": [
+     "SchwingNet/level-verification-bench-mkjxsy",
+     "SchwingNet/lstv-verification-bench-6m2qhr",
+     "SchwingNet/fluorocap-adjudication-bench-rnsyir",
+     "SchwingNet/or-readiness-ledger",
+     "SchwingNet/overnight-the-honest-99-kantj8"
+    ],
+    "canonical": [
+     "SchwingNet/or-readiness-ledger",
+     "SchwingNet/overnight-the-honest-99-kantj8",
+     "SchwingNet/level-verification-bench-mkjxsy",
+     "SchwingNet/lstv-verification-bench-6m2qhr",
+     "SchwingNet/fluorocap-adjudication-bench-rnsyir"
+    ],
+    "superseded": [],
+    "duplicates": [],
+    "secondary_members": [
+     "SchwingNet/fluorocap-reality-check-czudvb",
+     "SchwingNet/fluorocap-corpus-audit-9hjzzs",
+     "SchwingNet/fluorocap-overnight-report-xnhgdo",
+     "SchwingNet/fluorocap-dataset-card-xwd4wx",
+     "SchwingNet/registration-free-level-id-feasibility-uramo1",
+     "SchwingNet/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay",
+     "SchwingNet/research-directions-from-the-data-holding-kcyckb",
+     "SchwingNet/counting-from-the-sacrum",
+     "SchwingNet/naming-vertebrae-without-ct-hjy4vc",
+     "SchwingNet/vertebral-levels-without-ct-a4rydj",
+     "SchwingNet/counting-against-two-anchors-qkktgu",
+     "SchwingNet/ninety-three-pixels",
+     "SchwingNet/handoff-schwingnet-ctspinopelvic1k-and-the-imaging-programme-rbcdmf",
+     "SchwingNet/the-lab-recipe-1t2gvp",
+     "SchwingNet/reforms-compliance-checklist-bpzdoi"
+    ]
+   },
+   {
+    "name": "Detectors, architecture and the training plan",
+    "part": "schwingnet",
+    "description": "For a model builder deciding what to train: the single-class vertebra detector with corner keypoints measured per source, one backbone with masked heads rather than one flat class list, which sources enter which head under which licence, and the any-view plan with the census that must be counted before each model is trained. It answers what the radiograph corpus as it stands can support, which architecture, corpus and governance decisions are locked, and how far detection and naming transfer across C-arm positions and devices.",
+    "members": [
+     "SchwingNet/vertebra-detector-field-report-1jljc6",
+     "SchwingNet/openspine-board-t3gfds",
+     "SchwingNet/spine-program-decisions-qqhkqz",
+     "SchwingNet/any-view-spine-plan"
+    ],
+    "canonical": [
+     "SchwingNet/any-view-spine-plan",
+     "SchwingNet/spine-program-decisions-qqhkqz",
+     "SchwingNet/vertebra-detector-field-report-1jljc6"
+    ],
+    "superseded": [
+     {
+      "id": "SchwingNet/openspine-board-t3gfds",
+      "by": "SchwingNet/spine-program-decisions-qqhkqz",
+      "why": "The records state it: the board of 11 September 2026 is marked superseded-by Spine Program Decisions, and the decisions page is marked supersedes OpenSpine Board. The decisions page carries the same items (one backbone with four masked heads, level identity on a head, CSXA added for two-source cervical coverage, licensing enforced in src/licensing.py, L5 withheld from the end-plate and pedicle panels, IRB files purged) in their later state with a status each, and the same corpus (4,327 training images); the board's grid job list and the dataset paper's five fixes are its own."
+     }
+    ],
+    "duplicates": [],
+    "secondary_members": [
+     "SchwingNet/handoff-schwingnet-ctspinopelvic1k-and-the-imaging-programme-rbcdmf",
+     "SchwingNet/or-readiness-ledger",
+     "SchwingNet/counting-from-the-sacrum",
+     "SchwingNet/spine-x-ray-data-handoff-bddbdd",
+     "SchwingNet/naming-vertebrae-without-ct-hjy4vc",
+     "SchwingNet/fluorocap-pipeline-map-h9rmbs",
+     "SchwingNet/level-context-ladder-xd7eltc",
+     "SchwingNet/research-directions-from-the-data-holding-kcyckb",
+     "SchwingNet/ninety-three-pixels",
+     "SchwingNet/what-is-left-after-physics",
+     "SchwingNet/counting-against-two-anchors-qkktgu",
+     "SchwingNet/counting-levels-under-fluoroscopy",
+     "SchwingNet/aidas-seed-grant-proposal",
+     "SchwingNet/rib-anchor-audit-t7wr2h"
+    ]
+   },
+   {
+    "name": "Renders, physics and the sim-to-real gap",
+    "part": "schwingnet",
+    "description": "For a model builder deciding whether fluoroscopy rendered from CT can train the detector, what a calibrated physics renderer leaves unexplained in a real C-arm frame, whether render resolution matters, and whether registration, 3-D lifting or synthetic editing should supply training frames and labels. It answers that the CT-to-fluoroscopy map is calibrated rather than learned, that no reconstruction stage should be built, and that registered real frames beat their DRR twins as training data.",
+    "members": [
+     "SchwingNet/ninety-three-pixels",
+     "SchwingNet/what-is-left-after-physics",
+     "SchwingNet/lift-before-label-jzjq8t"
+    ],
+    "canonical": [
+     "SchwingNet/what-is-left-after-physics",
+     "SchwingNet/lift-before-label-jzjq8t"
+    ],
+    "superseded": [
+     {
+      "id": "SchwingNet/ninety-three-pixels",
+      "by": "SchwingNet/what-is-left-after-physics",
+      "why": "The later page opens by naming the claim under question, the 21 September board's verdict that 'a learned CT to fluoroscopy model would have nothing local to learn, only a smooth window field per frame', takes it apart on four real DeepFluoro frames and withdraws it (after the twelve-coefficient smooth field the 2 to 16 px bands sit two to seven times above the noise floor), while keeping the board's calibrated-not-learned verdict and the finding that the smooth field is most of the gap. The board's resolution ladder (836 px to 139 px costs 0.00 points of per-vertebra recall), its eight domain-randomisation arms and the void C2 arm are reported nowhere else."
+     }
+    ],
+    "duplicates": [],
+    "secondary_members": [
+     "SchwingNet/or-readiness-ledger",
+     "SchwingNet/counting-from-the-sacrum",
+     "SchwingNet/counting-levels-under-fluoroscopy",
+     "SchwingNet/aidas-seed-grant-proposal",
+     "SchwingNet/retrospective-fluoroscopy-protocol",
+     "SchwingNet/fluorocap-overnight-report-xnhgdo",
+     "SchwingNet/fluorocap-pipeline-map-h9rmbs",
+     "SchwingNet/fluorocap-reality-check-czudvb",
+     "SchwingNet/any-view-spine-plan",
+     "SchwingNet/schwingnet-data-registry",
+     "SchwingNet/schwingnet-figures-xyz6kr",
+     "SchwingNet/level-context-ladder-xd7eltc",
+     "SchwingNet/vertebra-detector-field-report-1jljc6"
+    ]
+   },
+   {
+    "name": "The case for the OR study: proposal, seed grant and IRB protocols",
+    "part": "schwingnet",
+    "description": "For a surgeon or department head deciding whether to back counting the level on the C-arm the hospital already owns, and for the grant and IRB writer carrying that case into the AIDaS seed proposal and the WSU eProtocol for the retrospective collection of the medical center's own intraoperative fluoroscopy. It answers what wrong-level surgery costs, what the preliminary results claim and where synthetic training data stops, what the 2027 validation plan and budget are, and what the IRB form says field by field and why Expedited Category 5 is asked for.",
+    "members": [
+     "SchwingNet/counting-levels-under-fluoroscopy",
+     "SchwingNet/level-counting-visual-abstract",
+     "SchwingNet/aidas-seed-grant-proposal",
+     "SchwingNet/protocol-1-eprotocol-draft-mkmh7p",
+     "SchwingNet/retrospective-fluoroscopy-protocol"
+    ],
+    "canonical": [
+     "SchwingNet/aidas-seed-grant-proposal",
+     "SchwingNet/retrospective-fluoroscopy-protocol",
+     "SchwingNet/counting-levels-under-fluoroscopy"
+    ],
+    "superseded": [
+     {
+      "id": "SchwingNet/protocol-1-eprotocol-draft-mkmh7p",
+      "by": "SchwingNet/retrospective-fluoroscopy-protocol",
+      "why": "Both are drafts of the first of two WSU eProtocols for a retrospective DMC study, and the later one names Protocol 2 as the follow-on 'if Protocol 1 meets its endpoints'. The 15 September draft asks Exempt Category 4 for about 40,000 imaging studies across CT, radiographs, registration-labelled fluoroscopy and fracture detection with hypotheses H1 to H5; the later draft builds on the AIDaS proposal of October 2026 (its Funding section plans the grant and its timeline refers to the grant's Q2 and Q3 steps), narrows the collection to one neurosurgeon's archived C-arm images and cine loops of 2021 to 2026 to fine-tune and test the detector, requests Expedited Category 5 because the data may support an FDA submission, keeps the Exempt 4 paragraphs only as a fallback and moves the shadow-mode study to a separate later submission. Protocol 1's CT level naming, registration-label and fracture aims are not carried forward."
+     }
+    ],
+    "duplicates": [],
+    "secondary_members": [
+     "SchwingNet/counting-from-the-sacrum",
+     "SchwingNet/or-readiness-ledger",
+     "SchwingNet/what-is-left-after-physics",
+     "SchwingNet/vertebra-detector-field-report-1jljc6",
+     "SchwingNet/registration-free-level-id-feasibility-uramo1",
+     "SchwingNet/research-directions-from-the-data-holding-kcyckb",
+     "SchwingNet/osc-outreach-funding-kak2gk",
+     "SchwingNet/the-lab-recipe-1t2gvp",
+     "SchwingNet/fluoroscopy-data-atlas",
+     "SchwingNet/schwingnet-grid-pipeline",
+     "SchwingNet/lift-before-label-jzjq8t",
+     "SchwingNet/vertebral-levels-without-ct-a4rydj",
+     "SchwingNet/fluorocap-reality-check-czudvb",
+     "SchwingNet/handoff-schwingnet-ctspinopelvic1k-and-the-imaging-programme-rbcdmf"
+    ]
+   },
+   {
+    "name": "Programme direction, handoffs and onboarding",
+    "part": "schwingnet",
+    "description": "For a programme lead, a new student or a fresh Claude project deciding what is decided, what runs next on the grid and in which order, where every result lives and which numbers are leaked or superseded, and how to join the work under its data and grid rules. It answers the order of work the evidence supports (measurement first, human reads second, models third), the lab's recipe for a paper, how a student is set up, and where the SchwingNet grid run stands against the provisional and the CNS talk.",
+    "members": [
+     "SchwingNet/handoff-schwingnet-ctspinopelvic1k-and-the-imaging-programme-rbcdmf",
+     "SchwingNet/research-directions-from-the-data-holding-kcyckb",
+     "SchwingNet/the-lab-recipe-1t2gvp",
+     "SchwingNet/spine-program-student-onboarding",
+     "SchwingNet/schwingnet-grid-pipeline"
+    ],
+    "canonical": [
+     "SchwingNet/schwingnet-grid-pipeline",
+     "SchwingNet/handoff-schwingnet-ctspinopelvic1k-and-the-imaging-programme-rbcdmf",
+     "SchwingNet/research-directions-from-the-data-holding-kcyckb",
+     "SchwingNet/spine-program-student-onboarding",
+     "SchwingNet/the-lab-recipe-1t2gvp"
+    ],
+    "superseded": [],
+    "duplicates": [],
+    "secondary_members": [
+     "SchwingNet/spine-program-decisions-qqhkqz",
+     "SchwingNet/openspine-board-t3gfds",
+     "SchwingNet/connect-the-grid-to-github",
+     "symphony-template/several-grid-workers-one-per-project",
+     "symphony-template/grid-and-cloud-claude-workers-review",
+     "symphony-template/claude-code-on-a-slurm-apptainer-cluster-7dbjwc",
+     "symphony-template/symphony-in-brief-9cdciz",
+     "SchwingNet/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay",
+     "SchwingNet/imaging-data-holding-manifest-migration-and-index-fqmtjs",
+     "SchwingNet/schwingnet-data-registry",
+     "SchwingNet/reforms-compliance-checklist-bpzdoi",
+     "SchwingNet/counting-from-the-sacrum",
+     "SchwingNet/aidas-seed-grant-proposal",
+     "SchwingNet/any-view-spine-plan"
+    ]
+   },
+   {
+    "name": "Symphony: the protocol, its evidence and its place",
+    "part": "symphony-beethoven",
+    "description": "For a Symphony maintainer deciding how the claim protocol works (issues as the queue, the first push of claude/N as the lock, no server), which of its guarantees are checked and how, where it and Beethoven sit on a taxonomy of agent systems, what may honestly be claimed against CooperBench and the other coordinators before any outcome is measured, and what each GitHub and Claude price rung buys. It answers where every Symphony repository, release and design stood on 13 to 16 October 2026 and what is still unproven.",
+    "members": [
+     "symphony-template/symphony-in-brief-9cdciz",
+     "symphony-template/symphony-versus-competitors-lynwzk",
+     "SchwingNet/symphony-and-beethoven-taxonomy-spec-lcbqro",
+     "symphony-template/symphony-and-beethoven-taxonomy-manual-re4jtx",
+     "symphony-template/symphony-handoff",
+     "symphony-template/the-dollar-per-feature-ladder-9ymg61"
+    ],
+    "canonical": [
+     "symphony-template/symphony-in-brief-9cdciz",
+     "symphony-template/symphony-versus-competitors-lynwzk",
+     "SchwingNet/symphony-and-beethoven-taxonomy-spec-lcbqro",
+     "symphony-template/symphony-and-beethoven-taxonomy-manual-re4jtx",
+     "symphony-template/symphony-handoff"
+    ],
+    "superseded": [],
+    "duplicates": [],
+    "secondary_members": [
+     "symphony-template/shared-multi-account-claude-project-plan-rqzwh9",
+     "symphony-template/sdlc-build-plan-bjzikn",
+     "symphony-template/sdlc-primitives-spec-ldx4zd",
+     "symphony-template/grid-and-cloud-claude-workers-review",
+     "symphony-template/several-grid-workers-one-per-project",
+     "symphony-template/claude-chat-vs-claude-code-architectural-analysis-snuzfd",
+     "symphony-template/claude-code-on-a-slurm-apptainer-cluster-7dbjwc",
+     "symphony-template/beethoven-build-roadmap-sttvvw",
+     "SchwingNet/reforms-compliance-checklist-bpzdoi",
+     "SchwingNet/how-the-beethoven-repositories-are-encapsulated-6h4zq9",
+     "SchwingNet/spine-program-student-onboarding"
+    ]
+   },
+   {
+    "name": "Symphony's origins: cswap, the primitives and the two Claude surfaces",
+    "part": "symphony-beethoven",
+    "description": "For a maintainer deciding how several Claude accounts can work one project when no Claude product shares a Project, an agent or a memory across accounts: what cswap and Claude Swap Cloud can export and import of a Project, which route to build (the repository as the shared plane, GitHub Issues as the queue), what Claude Chat and Claude Code each do that the other cannot, and how the Claude Swap Cloud extension reaches the Chrome Web Store. It is the line of thought of 3 to 9 October 2026 that became Symphony.",
+    "members": [
+     "symphony-template/shared-multi-account-claude-project-plan-rqzwh9",
+     "symphony-template/sdlc-primitives-spec-ldx4zd",
+     "symphony-template/sdlc-build-plan-bjzikn",
+     "symphony-template/claude-chat-vs-claude-code-architectural-analysis-snuzfd",
+     "symphony-template/store-upload-and-repo-move-step-by-step-fpy3fh"
+    ],
+    "canonical": [
+     "symphony-template/sdlc-build-plan-bjzikn",
+     "symphony-template/sdlc-primitives-spec-ldx4zd",
+     "symphony-template/claude-chat-vs-claude-code-architectural-analysis-snuzfd",
+     "symphony-template/store-upload-and-repo-move-step-by-step-fpy3fh"
+    ],
+    "superseded": [
+     {
+      "id": "symphony-template/shared-multi-account-claude-project-plan-rqzwh9",
+      "by": "symphony-template/sdlc-build-plan-bjzikn",
+      "why": "The chain is recorded in the artifacts: the primitives spec builds on the plan of 8 October (it measures cswap against 'the plan of 2026-10-08') and the build plan builds on the spec. The plan proposes Linear as the queue and a coordinator routine on the owner's account; the build plan records that on 2026-10-09 the owner chose GitHub Issues and asked for the repository side first as a template repository with no export or import in its first layer, the route Symphony in brief later describes as built. The plan's failure-mode table from CooperBench and its February 2026 multi-account warning are kept only there."
+     }
+    ],
+    "duplicates": [],
+    "secondary_members": [
+     "symphony-template/symphony-in-brief-9cdciz",
+     "symphony-template/symphony-handoff",
+     "symphony-template/beethoven-on-the-chrome-web-store",
+     "symphony-template/the-dollar-per-feature-ladder-9ymg61",
+     "SchwingNet/symphony-and-beethoven-taxonomy-spec-lcbqro",
+     "symphony-template/claude-code-on-a-slurm-apptainer-cluster-7dbjwc",
+     "SchwingNet/spine-program-student-onboarding"
+    ]
+   },
+   {
+    "name": "Grid, workstation and Claude worker operations",
+    "part": "symphony-beethoven",
+    "description": "For a grid operator deciding how Claude Code workers run on the Wayne State Slurm cluster and in GitHub Actions under a consumer subscription within Anthropic's terms, how they are started, watched and stopped from the control panel and the Beethoven extension, one per project, how a student's Beethoven session gets a GitHub login without the token reaching Claude, and how the owner's workstation is reached only over Tailscale with Duo. The review of 21 October gives the state and the ten fixes; the playbook of 3 October gives the compliance conditions and the credential model.",
+    "members": [
+     "symphony-template/grid-and-cloud-claude-workers-review",
+     "symphony-template/several-grid-workers-one-per-project",
+     "SchwingNet/connect-the-grid-to-github",
+     "symphony-template/claude-code-on-a-slurm-apptainer-cluster-7dbjwc",
+     "SchwingNet/secure-hybrid-rdp-access-spec-and-setup-runbook-exbt1w"
+    ],
+    "canonical": [
+     "symphony-template/grid-and-cloud-claude-workers-review",
+     "symphony-template/several-grid-workers-one-per-project",
+     "SchwingNet/connect-the-grid-to-github",
+     "symphony-template/claude-code-on-a-slurm-apptainer-cluster-7dbjwc",
+     "SchwingNet/secure-hybrid-rdp-access-spec-and-setup-runbook-exbt1w"
+    ],
+    "superseded": [],
+    "duplicates": [],
+    "secondary_members": [
+     "SchwingNet/schwingnet-grid-pipeline",
+     "SchwingNet/spine-program-student-onboarding",
+     "SchwingNet/the-lab-recipe-1t2gvp",
+     "symphony-template/moving-beethoven-for-vs-code-onto-hpcworker-apbd6t",
+     "symphony-template/beethoven-build-roadmap-sttvvw",
+     "SchwingNet/how-the-beethoven-repositories-are-encapsulated-6h4zq9",
+     "SchwingNet/symphony-and-beethoven-taxonomy-spec-lcbqro",
+     "symphony-template/symphony-handoff",
+     "symphony-template/symphony-in-brief-9cdciz",
+     "symphony-template/claude-chat-vs-claude-code-architectural-analysis-snuzfd",
+     "SchwingNet/fluorocap-pipeline-map-h9rmbs",
+     "SchwingNet/fluorocap-access-setup-jlvkft"
+    ]
+   },
+   {
+    "name": "Beethoven: the research engine and its repositories",
+    "part": "symphony-beethoven",
+    "description": "For a Beethoven maintainer deciding what to build next on hpcworker and the extension (headless runs, the chained-Slurm outer loop, REFORMS gates enforced by code, a student-pressed Publish), how the seven code repositories stay sealed from one another, and whether the VS Code edition should give up its own grid scripts. It also answers how the owner releases the extension to the Chrome Web Store by hand and then from CI.",
+    "members": [
+     "symphony-template/beethoven-build-roadmap-sttvvw",
+     "SchwingNet/reforms-compliance-checklist-bpzdoi",
+     "SchwingNet/how-the-beethoven-repositories-are-encapsulated-6h4zq9",
+     "symphony-template/moving-beethoven-for-vs-code-onto-hpcworker-apbd6t",
+     "symphony-template/beethoven-on-the-chrome-web-store"
+    ],
+    "canonical": [
+     "SchwingNet/how-the-beethoven-repositories-are-encapsulated-6h4zq9",
+     "symphony-template/beethoven-build-roadmap-sttvvw",
+     "SchwingNet/reforms-compliance-checklist-bpzdoi",
+     "symphony-template/beethoven-on-the-chrome-web-store"
+    ],
+    "superseded": [],
+    "duplicates": [],
+    "secondary_members": [
+     "SchwingNet/symphony-and-beethoven-taxonomy-spec-lcbqro",
+     "symphony-template/symphony-and-beethoven-taxonomy-manual-re4jtx",
+     "symphony-template/grid-and-cloud-claude-workers-review",
+     "symphony-template/several-grid-workers-one-per-project",
+     "SchwingNet/the-lab-recipe-1t2gvp",
+     "symphony-template/store-upload-and-repo-move-step-by-step-fpy3fh",
+     "symphony-template/claude-code-on-a-slurm-apptainer-cluster-7dbjwc",
+     "SchwingNet/spine-program-student-onboarding",
+     "SchwingNet/connect-the-grid-to-github",
+     "symphony-template/symphony-handoff"
+    ]
+   },
+   {
+    "name": "Outreach events and student funding",
+    "part": "outreach-and-governance",
+    "description": "For the medical student and the owner deciding where to ask for OpenSpine Consortium outreach money, in what order and with which record to cite, and what the Celebrate Life soccer-night flyers say about when, where, for whom and how to sign up. None of these pages holds method or data.",
+    "members": [
+     "SchwingNet/osc-outreach-funding-kak2gk",
+     "SchwingNet/celebrate-life-flyer-noutom",
+     "SchwingNet/celebrate-life-scoliosis-night-julcos"
+    ],
+    "canonical": [
+     "SchwingNet/osc-outreach-funding-kak2gk",
+     "SchwingNet/celebrate-life-scoliosis-night-julcos"
+    ],
+    "superseded": [
+     {
+      "id": "SchwingNet/celebrate-life-flyer-noutom",
+      "by": "SchwingNet/celebrate-life-scoliosis-night-julcos",
+      "why": "The export's own summary calls noutom 'the first Celebrate Life flyer'. Both flyers carry the same Saturday October 24 at the Detroit City Fieldhouse, the same registration form ([the registration form's link]), the same event page and the same two contacts, so they are one registration and one night; the later flyer re-targets it from kids in treatment for cancer and blood disorders at a 6:45 PM kickoff beside Trunk or Treat to kids with scoliosis from 5:00 to 7:00 PM beside Turf or Treat, with the watch party and the facility rules added."
+     }
+    ],
+    "duplicates": [],
+    "secondary_members": [
+     "SchwingNet/aidas-seed-grant-proposal",
+     "SchwingNet/spine-program-student-onboarding"
+    ]
+   }
+  ],
+  "unplaced": [],
+  "rationale": "The settled clustering takes the reader lens's spine topics (one naming-and-counting cluster, the OR case cluster, the verification cluster), the lifecycle lens's method homes (detectors with the architecture decisions and the any-view plan, DRR physics on its own, the data handoff superseded by the manifest) and the question lens's symphony-beethoven split (Symphony's positioning, its origins, grid operations, Beethoven), with the three benches inside the verification cluster as the lifecycle and reader lenses had them. Fourteen clusters: nine schwingnet, four symphony-beethoven, one outreach-and-governance; every one of the 69 ids has exactly one primary home, checked by script, and none is unplaced. Naming and counting were kept as one cluster because the records show one line of work: the 18 September sweep-and-match pages and the 22 September Counting From The Sacrum report describe the same expose-detect-link-chain-count-confirm chain under two names, and the figures of 22 September illustrate it; a grid-and-Beethoven merge was the alternative way to stay within fourteen, but the spine reader is the one planning an experiment, so the symphony-beethoven part, which is to be split out anyway, carries four clusters instead. Supersessions were checked against the records and texts: the figures pair (xyz6kr's folder carries the 20:12 panels unreferenced; its summary says which supersedes is not stated, so the decision rests on the stamps and the folder contents); a4rydj's own text ('being given a detector of its own', 'in testing', 'earlier today') against hjy4vc's measured sacrum detector and majority linking; What Is Left After Physics opens by quoting the 93 px board's 'nothing local' claim and withdrawing it; the flyers share one form link and the export calls noutom the first; the data handoff's nine sources are carded in the manifest's family D with acquisition dates after the handoff, while the registry's text names none of them, so the manifest is the superseder; the corpus audit is re-measured and corrected by the reality check one day later and the overnight report builds on both; the board-to-decisions relation is explicit in both records; the plan-to-build-plan chain is explicit (builds-on) and the build plan records the owner's choice of 9 October. Dropped as unsupported: the field report superseded by the OR ledger (a per-source radiograph detector against device transfer, 'same-topic' only), the department proposal superseded by the AIDaS grant (different readers, a by-title relation; the proposal is kept canonical beside the grant), the dollar ladder superseded by the handoff (the handoff's free-or-paid.md is to be folded into a memory file, not into the ladder; the ladder stays a plain member since Symphony in brief describes its three pull requests under later names), the feasibility review superseded by the anchor-free page (the records say 'contradicts', and the review's literature ceilings are still cited, so it stays a plain member), and the build plan superseded by the handoff (a different question; the build plan already records its own overtaking). No duplicates in the strict sense were found: no two artifacts carry the same figures or text at another time. Hardest placements: (1) the department proposal and the visual abstract went to the OR case cluster, not to counting, since both are the case to a surgeon, a CFO and a department and the method's own measurement is in the 22 September report, with counting as their secondary home; (2) the anomaly rule R + C = 22 went to naming and counting, since it is a counting rule drawn for the counting paper (the figures page records its annotations removed the same evening), with transitional vertebrae secondary; (3) Lift Before Label went to renders and registration, since its three questions are where training frames and labels come from, with FluoroCap and naming secondary; (4) the honest-99 report went to verification beside the OR ledger, since both are overnight audits of what a number means, with FluoroCap secondary; (5) connect-the-grid, the REFORMS checklist, the Beethoven encapsulation report and the taxonomy spec live in the SchwingNet repository but hold no spine method, so they went to the symphony-beethoven part, while the grid pipeline, the lab recipe and the student onboarding describe spine-programme work and stay in the programme cluster with the grid cluster secondary, as the rule asked; (6) the secure RDP runbook (the owner's workstation over Tailscale and Duo) fits no spine, Symphony or outreach question; it went to the grid and workstation cluster, where an infrastructure reader looks, rather than to governance, which is for IRB, funding and outreach pages. Canonical members are the latest, fullest page of each line of work in a cluster: a superseded page, a narrower companion (the visual abstract beside the proposal and grant, the access-setup runbook beside the FluoroCap card, the deferred VS Code move beside the encapsulation report, the anomaly rule beside the report and figures) and a page whose verdict later pages overturned (the feasibility review) are plain members; where nothing in a cluster replaces anything, every member is canonical.",
+  "lens_summaries": [
+   {
+    "lens": "question",
+    "cluster_count": 14,
+    "strengths": "Separated the counting line from the naming line and gave the three reader benches a cluster of their own, so a reader doing the reads finds the tools together; wrote each supersession with what the earlier page alone still holds (the 20:12 captions, the audit's 56.8% containment, the 93 px resolution ladder); kept Symphony's origins (cswap, the primitives, the build plan) apart from its positioning; placed the taxonomy spec, connect-the-grid and the REFORMS checklist by content rather than by the repository the export put them in.",
+    "weaknesses": "Marked the vertebra detector field report superseded by the OR readiness ledger and the dollar ladder by the Symphony handoff, which the records do not support (different questions, and the handoff's free-or-paid.md is to be folded into a memory file, not the ladder); put the DRR physics pages in with device transfer and the architecture decisions in with the programme, where a model builder would not look; split the FluoroCap level model's honest-99 report from the OR ledger it answers beside; marked the data handoff superseded by the registry, whose text does not card the handoff's radiograph sources."
+   },
+   {
+    "lens": "lifecycle",
+    "cluster_count": 14,
+    "strengths": "The evaluation-stage cluster (benches, the OR ledger, the honest-99 report) matches how an evaluator works; detectors beside the architecture decisions and the any-view plan, and DRR physics as its own cluster, are the right homes for a model builder; the data handoff superseded by the manifest is the record-supported choice (the manifest's family D cards the same plain-film corpora with their acquisition dates); the a4rydj and figures orderings were read from the texts.",
+    "weaknesses": "Marked the department proposal superseded by the AIDaS grant on a by-title relation although they address different readers and the proposal asks for the PACS pull and the phantom start the grant then schedules; put the owner's workstation RDP runbook in outreach-and-governance, where no reader of flyers or funding pages would look; took the reality check away from the FluoroCap pages it corrects; merged grid and Beethoven into one nine-member operations cluster."
+   },
+   {
+    "lens": "reader",
+    "cluster_count": 14,
+    "strengths": "Read naming and counting as one line of work from the context ladder of 13 September to the 22 September report and its figures, which the records bear out (the same six-step chain under both names), and named the counting-versus-naming fork a reader must decide; made the OR case (proposal, visual abstract, grant, IRB drafts) one cluster for the surgeon, grant and IRB readers; kept the grid and Beethoven apart; dated the undated pages by shared figures (6,073 instances, 4,327 images, 76.9% recall).",
+    "weaknesses": "Marked the registration-free feasibility review superseded on a 'contradicts' relation, which is not supersession, and the build plan superseded by the handoff, which answers a different question; left the two flyers unordered although the export calls one the first and both carry one registration form, and the two Without-CT pages unordered although the summary's own text says the linking fix was 'in testing'; kept an eight-member Symphony cluster that mixes the origins with the positioning."
+   }
+  ]
+ }
+}

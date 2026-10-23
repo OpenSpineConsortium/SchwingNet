@@ -1,0 +1,18 @@
+{
+ "tally": {
+  "own/elsewhere (one artifact)": 1,
+  "own/empty (one artifact)": 12,
+  "own/empty (two artifacts)": 8,
+  "own/own (one artifact)": 47,
+  "own/own (two artifacts)": 892
+ },
+ "listed": [
+  {
+   "cluster": "Verification benches, overnight audits and OR readiness",
+   "index": 88,
+   "verdict": "confirmed",
+   "quote_a": "own",
+   "quote_b": "elsewhere:SchwingNet/naming-vertebrae-without-an-anchor-3dfzmh"
+  }
+ ]
+}

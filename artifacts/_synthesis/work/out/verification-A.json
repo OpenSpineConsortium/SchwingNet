@@ -1,0 +1,3001 @@
+{
+ "numbers": [
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "raw-whole",
+   "quote_b": "whole",
+   "value_a": "raw-all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "raw-whole",
+   "quote_b": "whole",
+   "value_a": "raw-all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "raw-whole",
+   "quote_b": "raw-window",
+   "value_a": "raw-all",
+   "value_b": "raw-all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "raw-whole",
+   "quote_b": "absent",
+   "value_a": "raw-all",
+   "value_b": "raw-all"
+  },
+  {
+   "quote_a": "raw-parts",
+   "quote_b": "raw-window",
+   "value_a": "raw-all",
+   "value_b": "raw-all"
+  },
+  {
+   "quote_a": "raw-whole",
+   "quote_b": "whole",
+   "value_a": "raw-all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "raw-whole",
+   "quote_b": "whole",
+   "value_a": "raw-all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "absent",
+   "quote_b": "whole",
+   "value_a": "raw-all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "raw-whole",
+   "quote_b": "whole",
+   "value_a": "raw-all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "raw-whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "raw-whole",
+   "quote_b": "whole",
+   "value_a": "raw-all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "raw-whole",
+   "quote_b": "whole",
+   "value_a": "raw-all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "raw-whole",
+   "quote_b": "raw-whole",
+   "value_a": "raw-all",
+   "value_b": "raw-all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "raw-whole",
+   "quote_b": "whole",
+   "value_a": "raw-all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "raw-whole",
+   "value_a": "all",
+   "value_b": "raw-all"
+  },
+  {
+   "quote_a": "raw-whole",
+   "quote_b": "whole",
+   "value_a": "raw-all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "parts",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "raw-whole",
+   "value_a": "all",
+   "value_b": "raw-all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "window",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "raw-whole",
+   "quote_b": "whole",
+   "value_a": "raw-all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "raw-whole",
+   "quote_b": "whole",
+   "value_a": "raw-all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "raw-whole",
+   "value_a": "all",
+   "value_b": "raw-all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "parts",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "parts",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "raw-whole",
+   "value_a": "all",
+   "value_b": "raw-all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "raw-parts",
+   "quote_b": "whole",
+   "value_a": "raw-all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "raw-whole",
+   "quote_b": "raw-whole",
+   "value_a": "raw-all",
+   "value_b": "raw-all"
+  },
+  {
+   "quote_a": "raw-whole",
+   "quote_b": "raw-window",
+   "value_a": "raw-all",
+   "value_b": "raw-all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "no-number",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "some"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "raw-whole",
+   "quote_b": "whole",
+   "value_a": "raw-all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "window",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "raw-whole",
+   "quote_b": "whole",
+   "value_a": "raw-all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "parts",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "parts",
+   "value_a": "all",
+   "value_b": "some"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "raw-whole",
+   "quote_b": "raw-whole",
+   "value_a": "raw-all",
+   "value_b": "raw-all"
+  },
+  {
+   "quote_a": "raw-whole",
+   "quote_b": "whole",
+   "value_a": "raw-all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "raw-whole",
+   "quote_b": "whole",
+   "value_a": "raw-all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "raw-whole",
+   "quote_b": "whole",
+   "value_a": "raw-all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "raw-whole",
+   "quote_b": "whole",
+   "value_a": "raw-all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "raw-whole",
+   "quote_b": "whole",
+   "value_a": "raw-all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "raw-whole",
+   "quote_b": "whole",
+   "value_a": "raw-all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "raw-whole",
+   "quote_b": "whole",
+   "value_a": "raw-all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "parts",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "parts",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "parts",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "parts",
+   "quote_b": "raw-whole",
+   "value_a": "all",
+   "value_b": "raw-all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "parts",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "parts",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "raw-whole",
+   "quote_b": "whole",
+   "value_a": "raw-all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "raw-whole",
+   "quote_b": "whole",
+   "value_a": "raw-all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "raw-whole",
+   "quote_b": "whole",
+   "value_a": "raw-all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "raw-whole",
+   "quote_b": "whole",
+   "value_a": "raw-all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "parts",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "raw-parts",
+   "quote_b": "raw-whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "no-number",
+   "value_b": "no-number"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "no-number"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "no-number",
+   "value_b": "no-number"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "no-number"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "window",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "parts",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "parts",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "parts",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "no-number"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "no-number",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  },
+  {
+   "quote_a": "whole",
+   "quote_b": "whole",
+   "value_a": "all",
+   "value_b": "all"
+  }
+ ],
+ "clusters": [
+  {
+   "cluster": "Datasets, holdings and licences",
+   "rows": [
+    {
+     "quote_a": "raw-whole",
+     "quote_b": "raw-whole"
+    },
+    {
+     "quote_a": "raw-whole",
+     "quote_b": "raw-whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "raw-whole"
+    },
+    {
+     "quote_a": "raw-whole",
+     "quote_b": "raw-whole"
+    },
+    {
+     "quote_a": "raw-whole",
+     "quote_b": "raw-whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "absent",
+     "quote_b": "raw-parts"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "parts",
+     "quote_b": "window"
+    },
+    {
+     "quote_a": "raw-parts",
+     "quote_b": "raw-whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "absent"
+    },
+    {
+     "quote_a": "parts",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "raw-whole",
+     "quote_b": "raw-whole"
+    },
+    {
+     "quote_a": "raw-whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "raw-whole",
+     "quote_b": "raw-parts"
+    },
+    {
+     "quote_a": "raw-whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "raw-whole",
+     "quote_b": "absent"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "absent"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "raw-parts",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "raw-whole",
+     "quote_b": "absent"
+    },
+    {
+     "quote_a": "raw-whole",
+     "quote_b": "absent"
+    },
+    {
+     "quote_a": "raw-whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "raw-whole"
+    },
+    {
+     "quote_a": "absent",
+     "quote_b": "raw-whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "raw-whole",
+     "quote_b": "absent"
+    },
+    {
+     "quote_a": "raw-parts",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "raw-whole",
+     "quote_b": "raw-whole"
+    },
+    {
+     "quote_a": "raw-whole",
+     "quote_b": "raw-whole"
+    },
+    {
+     "quote_a": "absent",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "parts",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "raw-whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "raw-parts",
+     "quote_b": "absent"
+    },
+    {
+     "quote_a": "raw-whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "raw-whole",
+     "quote_b": "raw-whole"
+    },
+    {
+     "quote_a": "raw-whole",
+     "quote_b": "raw-whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "absent"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "parts"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "raw-whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "absent"
+    },
+    {
+     "quote_a": "raw-whole",
+     "quote_b": "absent"
+    },
+    {
+     "quote_a": "absent",
+     "quote_b": "absent"
+    },
+    {
+     "quote_a": "absent",
+     "quote_b": "absent"
+    },
+    {
+     "quote_a": "absent",
+     "quote_b": "absent"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "absent",
+     "quote_b": "absent"
+    },
+    {
+     "quote_a": "absent",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "raw-parts",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "absent",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "absent",
+     "quote_b": "absent"
+    },
+    {
+     "quote_a": "absent",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "absent"
+    },
+    {
+     "quote_a": "absent",
+     "quote_b": "absent"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "absent"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "window"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "raw-whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "absent"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "absent"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "raw-whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "absent"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "absent",
+     "quote_b": "absent"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "absent"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "raw-whole",
+     "quote_b": "raw-whole"
+    },
+    {
+     "quote_a": "raw-whole",
+     "quote_b": "whole"
+    }
+   ]
+  },
+  {
+   "cluster": "FluoroCap: the corpus, its pipeline and its audits",
+   "rows": [
+    {
+     "quote_a": "window",
+     "quote_b": "parts"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "parts",
+     "quote_b": "parts"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "parts"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "parts"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "raw-whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "parts"
+    },
+    {
+     "quote_a": "parts",
+     "quote_b": "absent"
+    },
+    {
+     "quote_a": "parts",
+     "quote_b": "window"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "parts",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "raw-parts"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "parts"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "absent",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "parts",
+     "quote_b": "parts"
+    },
+    {
+     "quote_a": "parts",
+     "quote_b": "parts"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "raw-whole"
+    },
+    {
+     "quote_a": "absent",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "parts",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "parts",
+     "quote_b": "parts"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "raw-whole",
+     "quote_b": "raw-whole"
+    },
+    {
+     "quote_a": "parts",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "parts",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "parts"
+    },
+    {
+     "quote_a": "absent",
+     "quote_b": "parts"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "parts",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "parts",
+     "quote_b": "raw-whole"
+    },
+    {
+     "quote_a": "parts",
+     "quote_b": "window"
+    },
+    {
+     "quote_a": "parts",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "parts",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "raw-whole",
+     "quote_b": "raw-whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "parts",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    }
+   ]
+  },
+  {
+   "cluster": "Verification benches, overnight audits and OR readiness",
+   "rows": [
+    {
+     "quote_a": "whole",
+     "quote_b": "absent"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "absent"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "absent"
+    },
+    {
+     "quote_a": "window",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "absent"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "window"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "window"
+    },
+    {
+     "quote_a": "parts",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "absent"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "parts",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "absent",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "absent",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "absent"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "absent"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "parts",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "parts"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "parts",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "absent",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "absent",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "window",
+     "quote_b": "absent"
+    },
+    {
+     "quote_a": "absent",
+     "quote_b": "absent"
+    },
+    {
+     "quote_a": "window",
+     "quote_b": "parts"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "window"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "absent"
+    },
+    {
+     "quote_a": "parts",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "window",
+     "quote_b": "window"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "absent"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "window",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "absent"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "absent",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "absent"
+    },
+    {
+     "quote_a": "absent",
+     "quote_b": "window"
+    },
+    {
+     "quote_a": "absent",
+     "quote_b": "window"
+    },
+    {
+     "quote_a": "absent",
+     "quote_b": "absent"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "absent"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "absent"
+    },
+    {
+     "quote_a": "absent",
+     "quote_b": "absent"
+    },
+    {
+     "quote_a": "absent",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "absent"
+    },
+    {
+     "quote_a": "absent",
+     "quote_b": "absent"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "absent"
+    },
+    {
+     "quote_a": "parts",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "absent"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "absent"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "absent",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "absent",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "absent"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "window"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "window"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "parts",
+     "quote_b": "parts"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "absent",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "window",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "parts"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    }
+   ]
+  },
+  {
+   "cluster": "Detectors, architecture and the training plan",
+   "rows": [
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "parts"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "parts"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "absent"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "absent"
+    },
+    {
+     "quote_a": "absent",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "parts"
+    },
+    {
+     "quote_a": "parts",
+     "quote_b": "parts"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "parts"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "parts"
+    },
+    {
+     "quote_a": "parts",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "absent",
+     "quote_b": "absent"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "parts"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "parts"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "parts"
+    },
+    {
+     "quote_a": "parts",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "parts"
+    },
+    {
+     "quote_a": "absent",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "parts"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "parts",
+     "quote_b": "parts"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "parts"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "parts",
+     "quote_b": "parts"
+    },
+    {
+     "quote_a": "parts",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "window"
+    },
+    {
+     "quote_a": "parts",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "parts",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "parts"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "absent",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "parts",
+     "quote_b": "absent"
+    },
+    {
+     "quote_a": "parts",
+     "quote_b": "parts"
+    },
+    {
+     "quote_a": "parts",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "absent",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "parts",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "parts",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "parts",
+     "quote_b": "absent"
+    },
+    {
+     "quote_a": "parts",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "parts"
+    },
+    {
+     "quote_a": "parts",
+     "quote_b": "parts"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "parts"
+    }
+   ]
+  },
+  {
+   "cluster": "The case for the OR study: proposal, seed grant and IRB protocols",
+   "rows": [
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "absent",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "parts",
+     "quote_b": "window"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "absent",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "raw-whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "parts",
+     "quote_b": "absent"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "raw-whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "parts"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "parts",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "window"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "absent"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "whole"
+    },
+    {
+     "quote_a": "whole",
+     "quote_b": "absent"
+    }
+   ]
+  }
+ ]
+}

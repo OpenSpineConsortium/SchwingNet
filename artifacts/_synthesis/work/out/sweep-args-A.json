@@ -1,0 +1,196 @@
+[
+ {
+  "name": "Datasets, holdings and licences",
+  "part": "schwingnet",
+  "description": "For a data steward deciding which fluoroscopy, radiograph, paired CT-and-X-ray and CT sources exist, which the lab holds on the grid, which need a request letter or sit behind a gate, under what licence and agreement, how a source is re-acquired and migrated, and how the holding compares in size and power with the published studies. The registry of 20 October is the repository's own record, the atlas of 17 October the wider catalog with the request letters, and the two 8 October reports the CT holding and its statistical power.",
+  "members": [
+   "SchwingNet/fluoroscopy-data-atlas",
+   "SchwingNet/schwingnet-data-registry",
+   "SchwingNet/imaging-data-holding-manifest-migration-and-index-fqmtjs",
+   "SchwingNet/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay",
+   "SchwingNet/spine-x-ray-data-handoff-bddbdd"
+  ],
+  "secondary_members": [
+   "SchwingNet/fluorocap-dataset-card-xwd4wx",
+   "SchwingNet/schwingnet-grid-pipeline",
+   "SchwingNet/handoff-schwingnet-ctspinopelvic1k-and-the-imaging-programme-rbcdmf",
+   "SchwingNet/research-directions-from-the-data-holding-kcyckb",
+   "SchwingNet/any-view-spine-plan",
+   "SchwingNet/protocol-1-eprotocol-draft-mkmh7p",
+   "SchwingNet/retrospective-fluoroscopy-protocol",
+   "SchwingNet/openspine-board-t3gfds",
+   "SchwingNet/spine-program-decisions-qqhkqz",
+   "SchwingNet/the-lab-recipe-1t2gvp",
+   "SchwingNet/vertebra-detector-field-report-1jljc6"
+  ],
+  "canonical": [
+   "SchwingNet/schwingnet-data-registry",
+   "SchwingNet/fluoroscopy-data-atlas",
+   "SchwingNet/imaging-data-holding-manifest-migration-and-index-fqmtjs",
+   "SchwingNet/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay"
+  ],
+  "superseded": [
+   {
+    "id": "SchwingNet/spine-x-ray-data-handoff-bddbdd",
+    "by": "SchwingNet/imaging-data-holding-manifest-migration-and-index-fqmtjs"
+   }
+  ],
+  "duplicates": []
+ },
+ {
+  "name": "FluoroCap: the corpus, its pipeline and its audits",
+  "part": "schwingnet",
+  "description": "For a data steward deciding what the mined corpus of published fluoroscopy and radiograph panels is, how it is harvested, decoded, licensed and frozen, which credentials its harvesters need, and what the corpus and the level model trained beside it actually prove (a test set at most, never training, until readers have labelled it). The 14 September card, map and access page define it; the audit of 14 September, the reality check and overnight report of 15 September measure it and set the plan.",
+  "members": [
+   "SchwingNet/fluorocap-dataset-card-xwd4wx",
+   "SchwingNet/fluorocap-pipeline-map-h9rmbs",
+   "SchwingNet/fluorocap-access-setup-jlvkft",
+   "SchwingNet/fluorocap-corpus-audit-9hjzzs",
+   "SchwingNet/fluorocap-overnight-report-xnhgdo",
+   "SchwingNet/fluorocap-reality-check-czudvb"
+  ],
+  "secondary_members": [
+   "SchwingNet/fluorocap-adjudication-bench-rnsyir",
+   "SchwingNet/level-verification-bench-mkjxsy",
+   "SchwingNet/lstv-verification-bench-6m2qhr",
+   "SchwingNet/overnight-the-honest-99-kantj8",
+   "SchwingNet/lift-before-label-jzjq8t",
+   "SchwingNet/level-context-ladder-xd7eltc",
+   "SchwingNet/fluoroscopy-data-atlas",
+   "SchwingNet/schwingnet-data-registry",
+   "SchwingNet/handoff-schwingnet-ctspinopelvic1k-and-the-imaging-programme-rbcdmf",
+   "SchwingNet/the-lab-recipe-1t2gvp",
+   "SchwingNet/or-readiness-ledger"
+  ],
+  "canonical": [
+   "SchwingNet/fluorocap-reality-check-czudvb",
+   "SchwingNet/fluorocap-dataset-card-xwd4wx",
+   "SchwingNet/fluorocap-pipeline-map-h9rmbs",
+   "SchwingNet/fluorocap-overnight-report-xnhgdo"
+  ],
+  "superseded": [
+   {
+    "id": "SchwingNet/fluorocap-corpus-audit-9hjzzs",
+    "by": "SchwingNet/fluorocap-reality-check-czudvb"
+   }
+  ],
+  "duplicates": []
+ },
+ {
+  "name": "Verification benches, overnight audits and OR readiness",
+  "part": "schwingnet",
+  "description": "For an evaluator deciding what counts as a verified number and a valid comparison (leakage, box conventions, held-out devices, accuracy paired with coverage), and for the person who will do the reads on the three benches, which the export carries with no verdicts saved. It answers whether the method can count on a C-arm it has never seen, what accuracy the level model can honestly promise at what coverage, and what the overnight programmes of 16 and 22 September refuted or left running.",
+  "members": [
+   "SchwingNet/level-verification-bench-mkjxsy",
+   "SchwingNet/lstv-verification-bench-6m2qhr",
+   "SchwingNet/fluorocap-adjudication-bench-rnsyir",
+   "SchwingNet/or-readiness-ledger",
+   "SchwingNet/overnight-the-honest-99-kantj8"
+  ],
+  "secondary_members": [
+   "SchwingNet/fluorocap-reality-check-czudvb",
+   "SchwingNet/fluorocap-corpus-audit-9hjzzs",
+   "SchwingNet/fluorocap-overnight-report-xnhgdo",
+   "SchwingNet/fluorocap-dataset-card-xwd4wx",
+   "SchwingNet/registration-free-level-id-feasibility-uramo1",
+   "SchwingNet/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay",
+   "SchwingNet/research-directions-from-the-data-holding-kcyckb",
+   "SchwingNet/counting-from-the-sacrum",
+   "SchwingNet/naming-vertebrae-without-ct-hjy4vc",
+   "SchwingNet/vertebral-levels-without-ct-a4rydj",
+   "SchwingNet/counting-against-two-anchors-qkktgu",
+   "SchwingNet/ninety-three-pixels",
+   "SchwingNet/handoff-schwingnet-ctspinopelvic1k-and-the-imaging-programme-rbcdmf",
+   "SchwingNet/the-lab-recipe-1t2gvp",
+   "SchwingNet/reforms-compliance-checklist-bpzdoi"
+  ],
+  "canonical": [
+   "SchwingNet/or-readiness-ledger",
+   "SchwingNet/overnight-the-honest-99-kantj8",
+   "SchwingNet/level-verification-bench-mkjxsy",
+   "SchwingNet/lstv-verification-bench-6m2qhr",
+   "SchwingNet/fluorocap-adjudication-bench-rnsyir"
+  ],
+  "superseded": [],
+  "duplicates": []
+ },
+ {
+  "name": "Detectors, architecture and the training plan",
+  "part": "schwingnet",
+  "description": "For a model builder deciding what to train: the single-class vertebra detector with corner keypoints measured per source, one backbone with masked heads rather than one flat class list, which sources enter which head under which licence, and the any-view plan with the census that must be counted before each model is trained. It answers what the radiograph corpus as it stands can support, which architecture, corpus and governance decisions are locked, and how far detection and naming transfer across C-arm positions and devices.",
+  "members": [
+   "SchwingNet/vertebra-detector-field-report-1jljc6",
+   "SchwingNet/openspine-board-t3gfds",
+   "SchwingNet/spine-program-decisions-qqhkqz",
+   "SchwingNet/any-view-spine-plan"
+  ],
+  "secondary_members": [
+   "SchwingNet/handoff-schwingnet-ctspinopelvic1k-and-the-imaging-programme-rbcdmf",
+   "SchwingNet/or-readiness-ledger",
+   "SchwingNet/counting-from-the-sacrum",
+   "SchwingNet/spine-x-ray-data-handoff-bddbdd",
+   "SchwingNet/naming-vertebrae-without-ct-hjy4vc",
+   "SchwingNet/fluorocap-pipeline-map-h9rmbs",
+   "SchwingNet/level-context-ladder-xd7eltc",
+   "SchwingNet/research-directions-from-the-data-holding-kcyckb",
+   "SchwingNet/ninety-three-pixels",
+   "SchwingNet/what-is-left-after-physics",
+   "SchwingNet/counting-against-two-anchors-qkktgu",
+   "SchwingNet/counting-levels-under-fluoroscopy",
+   "SchwingNet/aidas-seed-grant-proposal",
+   "SchwingNet/rib-anchor-audit-t7wr2h"
+  ],
+  "canonical": [
+   "SchwingNet/any-view-spine-plan",
+   "SchwingNet/spine-program-decisions-qqhkqz",
+   "SchwingNet/vertebra-detector-field-report-1jljc6"
+  ],
+  "superseded": [
+   {
+    "id": "SchwingNet/openspine-board-t3gfds",
+    "by": "SchwingNet/spine-program-decisions-qqhkqz"
+   }
+  ],
+  "duplicates": []
+ },
+ {
+  "name": "The case for the OR study: proposal, seed grant and IRB protocols",
+  "part": "schwingnet",
+  "description": "For a surgeon or department head deciding whether to back counting the level on the C-arm the hospital already owns, and for the grant and IRB writer carrying that case into the AIDaS seed proposal and the WSU eProtocol for the retrospective collection of the medical center's own intraoperative fluoroscopy. It answers what wrong-level surgery costs, what the preliminary results claim and where synthetic training data stops, what the 2027 validation plan and budget are, and what the IRB form says field by field and why Expedited Category 5 is asked for.",
+  "members": [
+   "SchwingNet/counting-levels-under-fluoroscopy",
+   "SchwingNet/level-counting-visual-abstract",
+   "SchwingNet/aidas-seed-grant-proposal",
+   "SchwingNet/protocol-1-eprotocol-draft-mkmh7p",
+   "SchwingNet/retrospective-fluoroscopy-protocol"
+  ],
+  "secondary_members": [
+   "SchwingNet/counting-from-the-sacrum",
+   "SchwingNet/or-readiness-ledger",
+   "SchwingNet/what-is-left-after-physics",
+   "SchwingNet/vertebra-detector-field-report-1jljc6",
+   "SchwingNet/registration-free-level-id-feasibility-uramo1",
+   "SchwingNet/research-directions-from-the-data-holding-kcyckb",
+   "SchwingNet/osc-outreach-funding-kak2gk",
+   "SchwingNet/the-lab-recipe-1t2gvp",
+   "SchwingNet/fluoroscopy-data-atlas",
+   "SchwingNet/schwingnet-grid-pipeline",
+   "SchwingNet/lift-before-label-jzjq8t",
+   "SchwingNet/vertebral-levels-without-ct-a4rydj",
+   "SchwingNet/fluorocap-reality-check-czudvb",
+   "SchwingNet/handoff-schwingnet-ctspinopelvic1k-and-the-imaging-programme-rbcdmf"
+  ],
+  "canonical": [
+   "SchwingNet/aidas-seed-grant-proposal",
+   "SchwingNet/retrospective-fluoroscopy-protocol",
+   "SchwingNet/counting-levels-under-fluoroscopy"
+  ],
+  "superseded": [
+   {
+    "id": "SchwingNet/protocol-1-eprotocol-draft-mkmh7p",
+    "by": "SchwingNet/retrospective-fluoroscopy-protocol"
+   }
+  ],
+  "duplicates": []
+ }
+]
