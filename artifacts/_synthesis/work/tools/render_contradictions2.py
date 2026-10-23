@@ -40,6 +40,8 @@ AGREE_N = ("same-number-restated", "different-quantities", "scope-or-unit-differ
 NOT_DISAGREEMENTS = ("duplicate-text", "unsourced-shared-claim")
 REVIEW = {"held": "held", "hint corrected": "held, hint corrected", "verdict overturned": "overturned, first {}",
           "read again": "read again, first {}"}
+FOLLOWUP = {"held": "follow-up: held", "hint corrected": "follow-up: held, hint corrected",
+            "verdict overturned": "follow-up: overturned, was {}"}
 
 
 def require(ok, why):
@@ -56,8 +58,9 @@ def number_key(v):
 
 def number_verdicts(N, extra):
     """Each number verdict by its collision's key. A later verdict replaces an earlier one only
-    where it says it was reviewed or read again; two on one key otherwise, or one that matches
-    no collision, stop the run, since either would drop a verdict from the page without a word."""
+    where it says it was reviewed, read again or read in a follow-up; two on one key otherwise,
+    or one that matches no collision, stop the run, since either would drop a verdict from the
+    page without a word."""
     keys = {number_key(c) for c in N["candidates"]}
     by = {}
     for v in N["verdicts"]:
@@ -67,7 +70,7 @@ def number_verdicts(N, extra):
     for v in extra:
         k = number_key(v)
         require(k not in seen, f"two number verdicts on {k}")
-        require(k not in by or v.get("review"), f"a verdict on {k} replaces an earlier one without saying why")
+        require(k not in by or v.get("review") or v.get("followup"), f"a verdict on {k} replaces an earlier one without saying why")
         seen.add(k)
         by[k] = v
     stray = sorted(k for k in by if k not in keys)
@@ -87,6 +90,10 @@ def rate(k, n):
         return "none drawn"
     lo, hi = wilson(k, n)
     return f"{k} of {n} held ({100 * k / n:.0f} %, Wilson 95 % interval {100 * lo:.0f} to {100 * hi:.0f} %)"
+
+
+def was(n):
+    return "was" if n == 1 else "were"
 
 
 def artifact(aid):
@@ -121,8 +128,15 @@ def skeptic_words(text_dir, a, b, v):
 
 
 def review_cell(v):
-    r = (v or {}).get("review")
-    return REVIEW[r].format(((v or {}).get("first") or {}).get("verdict")) if r else ""
+    """What the review, and then the follow-up, made of a verdict, each with the verdict it read."""
+    v = v or {}
+    words = []
+    if v.get("review"):
+        words.append(REVIEW[v["review"]].format((v.get("first") or {}).get("verdict")))
+    if v.get("followup"):
+        f = v["followup"]
+        words.append(FOLLOWUP[f["outcome"]].format((f.get("before") or {}).get("verdict")))
+    return "; ".join(words)
 
 
 def review_tag(v):
@@ -139,7 +153,7 @@ def pair(x):
     return f"{short_id(x['artifact_a'])}{b}"
 
 
-def intro(N, nv, inv, date):
+def intro(N, nv, inv, date, followup, whole):
     nums = sum(len(a.get("numbers") or []) for a in inv["artifacts"])
     besides = sum(1 for x in N["candidates"] if nv.get(number_key(x)) and x["kind"] not in ("contradiction", "updated-later"))
     parts = [int(m.replace(",", "")) for f in N.get("finders", []) for m in re.findall(r"Read all ([\d,]+) rows", f)]
@@ -150,11 +164,14 @@ def intro(N, nv, inv, date):
             f"The table holds {nums:,} numbers from {len(inv['artifacts'])} artifacts. The number readers' notes record reading two parts of it, {read} rows, {sum(parts):,} in all; "
             "the parts and the rule that split them are not kept in this repository, so which numbers went unread is not known here.\n",
             "A script then looked for every reader's quote in the artifact's extracted text and, failing that, in the page's own files. "
-            "It ignores case, punctuation and spacing, and matches around an ellipsis or an editor's words in square brackets; the columns \"Reader's quote A\" and \"B\" say what it found. "
+            "It ignores case and spacing, quotation marks, brackets and the marks of tables and Markdown, and reads typographic characters as their plain ones, but other punctuation must match; "
+            "it matches around an ellipsis or an editor's words in square brackets, and the columns \"Reader's quote A\" and \"B\" say what it found. "
             "Then a skeptic read both sources of every cluster candidate, and of every number collision a reader classed as a contradiction or a later revision "
             f"and {besides} others #136's first run took, and gave a verdict with the exact words it rests on, copied from each source. "
             "Those words are on the cluster pages and under the number tables beside the reader's, with where the script found them. "
-            "Last, a sample of the verdicts was read again by agents told to overturn them (How far the verdicts hold, below).\n",
+            "Last, a sample of the verdicts was read again by agents told to overturn them"
+            + ((", and then every number collision on the confirmed list that the sample left out" if whole else ", and then, in a follow-up, more of them") if followup else "")
+            + " (How far the verdicts hold, below).\n",
             "Rows count from 0, as the record and the skeptics' explanations do, so \"candidate 4\" in an explanation is row 4 of its cluster's page. "
             "Nothing here is copied from memory. People other than published authors are named by role, and no e-mail address, phone number, or home or street address is reproduced; "
             "where a quote named a person or carried such a detail, an editor's words in square brackets stand in its place.\n"]
@@ -240,6 +257,16 @@ def unreviewed_by_stratum(M, N, nv, reviewed):
     return pop
 
 
+def reads_every_confirmed_number(M, N, nv):
+    """Whether a follow-up and the review between them read every number collision on the
+    confirmed list, which the page then says in so many words."""
+    F, R = M.get("followup"), M.get("review")
+    if not (F and R):
+        return False
+    read = {(x["stratum"], x["index"]) for x in R["items"] + F["items"]}
+    return not unreviewed_by_stratum(M, N, nv, read).get("Number collisions", Counter())["confirmed"]
+
+
 def weighted(drawn, pop, side, by_stratum=True):
     """Expected verdicts that hold among one side's unreviewed ones: each stratum's held rate
     times the unreviewed verdicts it holds. Every stratum gave the review the same number of verdicts
@@ -258,8 +285,9 @@ def weighted(drawn, pop, side, by_stratum=True):
     return expect
 
 
-def weighted_words(drawn, pop):
-    """The weighted rates, and the stratum where the most unreviewed confirmed verdicts may be wrong."""
+def weighted_words(drawn, pop, followup):
+    """The weighted rates, and the stratum where the most unreviewed confirmed verdicts may be wrong.
+    Verdicts the follow-up read are known, so they leave the unreviewed count."""
     count = {side: sum(p[side] for p in pop.values()) for side in ("confirmed", "dismissed", "cannot-tell")}
     on = weighted(drawn, pop, "confirmed")
     off = sum(weighted(drawn, pop, "dismissed").values()) + sum(weighted(drawn, pop, "cannot-tell", by_stratum=False).values())
@@ -267,10 +295,10 @@ def weighted_words(drawn, pop):
     worst = max(pop, key=lambda s: pop[s]["confirmed"] - on[s])
     mine = [x for x in drawn if x["stratum"] == worst and drawn_side(x) == "confirmed"]
     name = "the number collisions" if worst == "Number collisions" else cell(worst)
-    why = (f"{len(mine) - held(mine)} of its {len(mine)} drawn were overturned" if mine
+    why = (f"{len(mine) - held(mine)} of its {len(mine)} drawn {was(len(mine) - held(mine))} overturned" if mine
            else "none of its confirmed verdicts was drawn")
     return (f"These rates are unweighted: every stratum gave the same number of verdicts whatever its size. "
-            f"Weighted by how many of the {count['confirmed'] + others} verdicts the review did not read each stratum holds, "
+            f"Weighted by how many of the {count['confirmed'] + others} verdicts {'neither the review nor the follow-up' if followup else 'the review did not'} read each stratum holds, "
             f"about {100 * sum(on.values()) / count['confirmed']:.0f} % of the {count['confirmed']} on the confirmed list and {100 * off / others:.0f} % of the {others} others are expected to hold, "
             f"with wider intervals than the counts above, since a few drawn verdicts stand for each stratum. "
             f"Most of the unreviewed confirmed verdicts that may be wrong are in {name}: {why}, "
@@ -290,15 +318,20 @@ def review_section(M, N, nv):
     hinted = [x for x in items if x["outcome"] == "hint corrected"]
     lo_on, hi_on = wilson(held(on_list), len(on_list))
     lo_off, hi_off = wilson(held(off_list), len(off_list))
-    pop = unreviewed_by_stratum(M, N, nv, {(x["stratum"], x["index"]) for x in items})
+    F = M.get("followup")
+    read = {(x["stratum"], x["index"]) for x in items + (F["items"] if F else [])}
+    pop = unreviewed_by_stratum(M, N, nv, read)
+    whole = reads_every_confirmed_number(M, N, nv)
+    unread_on = ("The rest were not read again, but for the confirmed number collisions, which the follow-up below read whole" if whole
+                 else "The rest were not read again, but for the verdicts the follow-up below read" if F else "The rest were not read again")
     out = ["## How far the verdicts hold\n", cell(R["about"]) + "\n",
            f"- Verdicts that put a candidate on the confirmed list, drawn at random: {rate(held(on_list), len(on_list))}.",
            f"- Verdicts that kept a candidate off it, drawn at random: {rate(held(off_list), len(off_list))}.",
            f"- Verdicts drawn because the script could not place one of their own quotes: {len(forced) - held(forced)} of {len(forced)} overturned.\n",
            f"In all {len(over)} verdicts were overturned and {len(hinted)} held with a corrected hint. Each now reads as the ruling has it, with its first verdict in the Review column of its row. "
-           f"The rest were not read again: by the draw's rates, between {100 * (1 - hi_on):.0f} and {100 * (1 - lo_on):.0f} % of the other confirmed verdicts may be wrong, "
+           f"{unread_on}: by the draw's rates, between {100 * (1 - hi_on):.0f} and {100 * (1 - lo_on):.0f} % of the other confirmed verdicts may be wrong, "
            f"and between {100 * (1 - hi_off):.0f} and {100 * (1 - lo_off):.0f} % of the others, so read a row before relying on it.\n",
-           weighted_words(drawn, pop),
+           weighted_words(drawn, pop, F),
            "The rows the review changed:\n"]
     for x in sorted(over + hinted, key=lambda x: (x["stratum"], x["index"])):
         where = (f"number collision {x['index']}" if x["stratum"] == "Number collisions"
@@ -316,14 +349,45 @@ def review_section(M, N, nv):
         out.append(f"{len(again)} number verdicts of #136's first run were cannot-tell because their values were missing from the plain text, which cuts each line of a page's script data at 600 characters. "
                    "A skeptic read them again in the artifacts' own files: " + ", ".join(f"{n} {w}" for w, n in got.most_common())
                    + f" (collisions {', '.join(str(j) for j, _ in again)}). Each says read again in its Review column, with its first verdict.\n")
+    return out + followup_section(F, whole)
+
+
+def followup_section(F, whole):
+    """The follow-up's reading: how many of the verdicts it read held, by the verdict each was,
+    and the rows it changed. It read every verdict of one kind rather than a sample, so its
+    counts say how these rows stand, and its rates how far such verdicts held. whole says that
+    no number collision on the confirmed list is left that neither it nor the review read."""
+    if not F:
+        return []
+    items = F["items"]
+    over = [x for x in items if x["outcome"] == "verdict overturned"]
+    hinted = [x for x in items if x["outcome"] == "hint corrected"]
+    out = ["### Every confirmed number collision, read again\n" if whole else "### A follow-up reading\n", cell(F["about"]) + "\n"]
+    for first in sorted({x["first"] for x in items}):
+        mine = [x for x in items if x["first"] == first]
+        out.append(f"- Verdicts that were {first}: {rate(held(mine), len(mine))}, "
+                   f"{sum(1 for x in mine if x['outcome'] == 'hint corrected')} of them with a corrected hint.")
+    out.append(f"- All {len(items)}: {rate(held(items), len(items))}.\n")
+    out.append(f"In all {len(over)} {'verdict' if len(over) == 1 else 'verdicts'} {was(len(over))} overturned and {len(hinted)} held with a corrected hint. "
+               "Each now reads as its ruling has it, and its Review column gives the follow-up's outcome with the verdict it replaced."
+               + (" With these, every number collision on the confirmed list has been read by a skeptic and then again, by the review or the follow-up." if whole else "")
+               + "\n")
+    if over or hinted:
+        out.append("The rows the follow-up changed:\n")
+        for x in sorted(over + hinted, key=lambda x: x["index"]):
+            what = f"{x['first']} became {x['final']}" if x["outcome"] == "verdict overturned" else f"{x['final']} held, with a corrected hint"
+            out.append(f"- number collision {x['index']}: {what}.")
+        out.append("")
     return out
 
 
-def confirmed_section(text_dir, clusters, N, nv):
+def confirmed_section(text_dir, clusters, N, nv, followup):
     out = ["## Confirmed: what a planner must not take from one artifact alone\n",
            "Every candidate a skeptic confirmed or found revised, by cluster. Disagreements, revisions and stale statements come first; "
            "duplicated texts and shared unsourced claims follow, confirmed in the senses above, which are not disagreements: a duplicated text is one claim and not two confirmations, and a shared unsourced claim has no source on either page. "
-           "Each item gives its row on the cluster's page, its kind, its verdict and the review's outcome where the review read it, the two artifacts, and the value or statement the skeptic says the book should carry. "
+           "Each item gives its row on the cluster's page, its kind, its verdict and "
+           + ("the outcome of the review or the follow-up where either read it" if followup else "the review's outcome where the review read it")
+           + ", the two artifacts, and the value or statement the skeptic says the book should carry. "
            "The whole candidate, with both readings and both sets of quotes, is on the cluster's page.\n"]
     for c in clusters:
         if not c["swept"]:
@@ -416,8 +480,8 @@ def main(merged, numbers, inventory, dst, date):
     titles = {f"{r['repo']}/{r['folder']}": r["title"] for r in inv["artifacts"]}
     nv = number_verdicts(N, M.get("numbers_extra", []))
     clusters = M["clusters"]
-    page = (intro(N, nv, inv, date) + definitions() + summary(text_dir, clusters, N, nv) + review_section(M, N, nv)
-            + confirmed_section(text_dir, clusters, N, nv) + numbers_section(text_dir, N, nv, titles)
+    page = (intro(N, nv, inv, date, M.get("followup"), reads_every_confirmed_number(M, N, nv)) + definitions() + summary(text_dir, clusters, N, nv) + review_section(M, N, nv)
+            + confirmed_section(text_dir, clusters, N, nv, M.get("followup")) + numbers_section(text_dir, N, nv, titles)
             + ["## Cluster by cluster\n",
                "Each swept cluster has a page of its own under contradictions/, linked from the table above: every candidate with its kind, both artifacts, whether a script found the reader's quotes, the verdict, the review's outcome and the skeptic's explanation, "
                "then what each artifact says with the words the verdict rests on, the clustering's superseded relations as the reader checked them, and what the cluster asserts without a source or holds as dated.\n"])

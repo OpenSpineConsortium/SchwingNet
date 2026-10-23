@@ -1,10 +1,12 @@
 {
  "tally": {
+  "own/absent (two artifacts)": 1,
   "own/elsewhere (one artifact)": 1,
+  "own/elsewhere (two artifacts)": 1,
   "own/empty (one artifact)": 12,
   "own/empty (two artifacts)": 8,
   "own/own (one artifact)": 47,
-  "own/own (two artifacts)": 892
+  "own/own (two artifacts)": 890
  },
  "listed": [
   {
@@ -13,6 +15,20 @@
    "verdict": "confirmed",
    "quote_a": "own",
    "quote_b": "elsewhere:SchwingNet/naming-vertebrae-without-an-anchor-3dfzmh"
+  },
+  {
+   "cluster": "Renders, physics and the sim-to-real gap",
+   "index": 45,
+   "verdict": "confirmed",
+   "quote_a": "own",
+   "quote_b": "absent"
+  },
+  {
+   "cluster": "Number collisions",
+   "index": 137,
+   "verdict": "updated-later",
+   "quote_a": "own",
+   "quote_b": "elsewhere:SchwingNet/fluorocap-reality-check-czudvb"
   }
  ]
 }
