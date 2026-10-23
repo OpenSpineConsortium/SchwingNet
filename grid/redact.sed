@@ -15,7 +15,10 @@ s#([?&;](X-Amz-[A-Za-z-]+|Signature|signature|Sig|sig|token|access_token|auth|ke
 s#((password|passwd|pwd|secret|token|api[_-]?key|apikey|authorization|cookie|credential)s?["']?[[:space:]]*[:=][[:space:]]*["']?)[^[:space:]"',;]+#\1<withheld>#Ig
 s#\b(password|passwd)[[:space:]]+[^[:space:]]+#\1 <withheld>#Ig
 s#\b(Bearer|Basic|token)[[:space:]]+[A-Za-z0-9._~+/=-]{8,}#\1 <withheld>#Ig
-s#\b(hf_|ghp_|gho_|ghs_|ghu_|ghr_|github_pat_|glpat-|xox[abprs]-|sk-)[A-Za-z0-9_-]{8,}#<withheld>#g
+s#\b(ghp_|gho_|ghs_|ghu_|ghr_|github_pat_|glpat-|xox[abprs]-|sk-)[A-Za-z0-9_-]{8,}#<withheld>#g
+# A Hugging Face token is hf_ and 34 letters; the data platform's source ids start hf_ too, with
+# underscores between short words (hf_rexgradient_160k), and the size rule's lines name them.
+s#\bhf_[A-Za-z0-9]{20,}#<withheld>#g
 s#\b(AKIA|ASIA)[0-9A-Z]{16}\b#<withheld>#g
 # The person keys bank.py, ingest.py and catalog.py name in their refusals, <source>:<key> or a
 # bank's own key alone, before the shapes below cut a key in two.
