@@ -19,7 +19,9 @@ Usage: apply_review.py REVIEW NUMBERS MERGED_IN MERGED_OUT
   followup and the review's own items stay as they were. Where the reading holds a group
   re-rule, and then a second one, a row's group judge, when it does not keep the verdict, has
   the last word, each round over the one before, and the outcome is set against the verdict
-  the follow-up read."""
+  the follow-up read; the rounds that changed a row are named under followup.rounds, and each
+  outcome row of a ruled verdict says whom its ruling sided with. The reading's group rounds
+  and its notes on the cluster rows go into the record's followup with it."""
 import json
 import os
 import sys
@@ -55,6 +57,9 @@ def read_verdict(M, N, it):
 
 
 GROUP_ROUNDS = ("regroup", "regroup2")
+# What a reading holds beside its items and goes into the record's followup with them: the
+# group rounds and the third pass's notes on the cluster rows that give the groups' figures.
+CARRIED = GROUP_ROUNDS + ("notes3",)
 
 
 def standing(fields, it):
@@ -97,6 +102,15 @@ def outcome_row(it, v, outcome):
     return row
 
 
+def followup_row(it, v, outcome):
+    """A follow-up's outcome row, with whom the row's ruling sided where it was ruled, so the
+    page can name the rows a ruling that sided with the skeptic in other words changed."""
+    row = outcome_row(it, v, outcome)
+    if it.get("ruling"):
+        row["sided_with"] = it["ruling"]["sided_with"]
+    return row
+
+
 def apply(review, N, M):
     summary = []
     for it in review["items"]:
@@ -118,12 +132,12 @@ def apply_followup(reading, N, M):
         v = read_verdict(M, N, it)
         require("followup" not in v, f"{it['stratum']} row {it['index']} was read in a follow-up already")
         outcome, before = ruled(v, it)
-        regrouped = [it[k]["group"] for k in GROUP_ROUNDS if it.get(k) and not it[k]["keep"]]
+        rounds = [k for k in GROUP_ROUNDS if it.get(k) and not it[k]["keep"]]
         v["followup"] = {"outcome": outcome, **({"before": before} if before else {}),
-                         **({"regroup": regrouped[-1]} if regrouped else {})}
-        summary.append(outcome_row(it, v, outcome))
+                         **({"rounds": rounds} if rounds else {})}
+        summary.append(followup_row(it, v, outcome))
     M["followup"] = {"date": reading["date"], "about": reading["about"], "items": summary}
-    for k in GROUP_ROUNDS:
+    for k in CARRIED:
         if reading.get(k):
             M["followup"][k] = reading[k]
     return M

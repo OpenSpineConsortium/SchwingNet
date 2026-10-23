@@ -48,6 +48,20 @@ answers to the reading:
   reread_numbers.py second-inputs READING merged.json out/numbers-partial.json ../inventory.json GROUPS2 IN OUT
   reread_numbers.py second JOURNAL GROUPS2 OUT/args.json READING DATE
 
+The second round marked the cluster rows by a narrow rule, which second-inputs keeps so that
+the round's input can be written again: each of a row's pages read by the group's judge, or two
+of the group's figures and one of those pages. A third review found rows it missed that plainly
+bear on a finding, so the page's rule now also counts as read the pages of the cluster rows the
+second round read beside a group, and needs one figure on one page read for the group.
+notes3-inputs writes, for each group, the rows the rule now marks that the second round did not
+note, in one reader's file with the group's finding as it now stands (one that holds the third
+pass too is read without it); OUT/args.json is the input of
+workflows/more-cluster-rows-confirmed-numbers.js, and notes3 joins the readers' notes to the
+reading, which second must have written first:
+
+  reread_numbers.py notes3-inputs READING merged.json out/numbers-partial.json ../inventory.json IN OUT
+  reread_numbers.py notes3 JOURNAL OUT/args.json READING DATE
+
 SYNTH_TEXT, SYNTH_SCHWINGNET and SYNTH_SYMPHONY name the texts and the clones, as for
 render_contradictions2.py. With --against, inputs stops unless it selects exactly the rows the
 reading holds."""
@@ -57,10 +71,13 @@ import sys
 from collections import Counter
 
 sys.path.insert(0, os.path.dirname(__file__))
+import re
+
 import verify_quotes as vq
+from apply_review import standing
 from merge_skeptics import FIRST_FIELDS, require, results_of
 from prep_verify import where
-from render_contradictions2 import BEARS, artifact, siblings_of
+from render_contradictions2 import BEARS, artifact, final_groups, siblings_of
 from sample_review import NUMBERS, verdicts
 
 CHECKERS = 5
@@ -73,9 +90,13 @@ SMALL = ("no", "one", "two", "three", "four", "five", "six", "seven", "eight", "
 # The one sentence the re-checkers' brief added to the review's, word for word.
 PRIOR = ("This reading is the follow-up of issue #155: an earlier review drew two of these confirmed number verdicts "
          "at random and overturned both, so every one it left out is now read again.")
-# The three rules the group judges' scale added to the re-checkers', word for word as both
+# The four sentences the group judges' scale added to the re-checkers', word for word as both
 # group workflows give them, and the two rules the second round's brief added to the first's.
+# The judges' scale also glossed cannot-tell for a number collision as the re-checkers' scale
+# glosses it for a cluster candidate.
+GLOSS = "(the texts do not settle it)"
 SCALE_ADDED = (
+    "Apply it exactly.",
     "A scope-or-unit-differs needs the pages themselves to state the scope, subset, denominator, unit, interval, version or date that sets the two apart; "
     "a scope that you or an earlier reader only computed or inferred from other figures is not enough, and such a row is a confirmed-contradiction or a cannot-tell, "
     "with the inference given in the hint as what a record would have to confirm.",
@@ -86,6 +107,12 @@ RULES_ADDED = (
     "Never copy a login or a grid path.",
     "The project's owner has settled which data the project may use and which sets may enter training: "
     "do not raise either in a hint, a note or an explanation, and never propose dropping or qualifying a result on that account.")
+# The sentence the third pass's account of the work added to the second round's, word for word,
+# and the parts of the second round's brief its readers were given unchanged.
+HISTORY_ADDED = ("A second review then had three of the groups ruled a second time, and the cluster rows that give a group's figures "
+                 "on the pages its judges read set beside its finding; a third review found more cluster rows that give a group's figures, "
+                 "on pages read beside the group or with one of its figures on a page its judge read, that nobody had set beside the finding.")
+SHARED = ("PAGE", "HISTORY", "READING", "SCALE", "RULES", "SIBLING_TASK")
 WORKFLOWS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "workflows")
 
 
@@ -283,17 +310,27 @@ def quoted(sentences):
     return " ".join(f'"{s}"' for s in sentences)
 
 
+def constant(workflow, name):
+    """A text a workflow script gives as a constant, so a later script can be held to it."""
+    found = re.findall(rf"^const {name} = `([^`]*)`$", open(os.path.join(WORKFLOWS, workflow)).read(), re.M)
+    require(len(found) == 1, f"{workflow} gives {name} {len(found)} times, not once")
+    return found[0]
+
+
 def regroup_about(groups, ruled, date):
     kept = sum(1 for r in ruled.values() if r["keep"])
     names = "; ".join(f"{g['title']} (rows {listed(g['rows'])})" for g in groups)
     shown = sorted({i for g in groups for i in g["context"]})
     added = given_word_for_word("regroup-confirmed-numbers.js", SCALE_ADDED)
+    given_word_for_word("regroup-confirmed-numbers.js", [f"cannot-tell {GLOSS}. Apply it exactly."])
+    given_word_for_word("reread-confirmed-numbers.js", [f"cannot-tell {GLOSS}. For a number collision:", "(not the same thing), cannot-tell.`"])
     return (f"On {date} a review of the follow-up found that rows reading the same figures or the same pages, ruled one at a time, "
             f"did not agree with one another, and that two rulings rested on scopes the pages do not state. "
             f"They were ruled again in {small(len(groups))} groups: {names}. One judge for each group read all of its rows together, "
             f"each with both readings, its ruling and its verdict as the follow-up left it, and every source, the artifacts the review cited among them, "
             f"with the review's points given as claims to check against the texts and never to take as true; the judge kept each row's verdict and hint or ruled it again. "
-            f"The judges' scale was the re-checkers' with {small(len(added))} rules added, which the re-checkers did not have: {quoted(added)} "
+            f"The judges' scale was the re-checkers', with cannot-tell glossed \"{GLOSS}\" for a number collision as the re-checkers' scale glosses it for a cluster candidate, "
+            f"and {small(len(added))} sentences added, which the re-checkers did not have: {quoted(added)} "
             f"Of the {len(ruled)} rows, {kept} kept their verdict and hint and {len(ruled) - kept} were ruled again"
             + (f"; rows {listed(shown)}, shown to the judges beside them, stand as they were." if shown else ".")
             + " work/tools/reread_numbers.py writes each judge's input again from the reading and the follow-up's input.")
@@ -421,7 +458,7 @@ def second_inputs(reading, merged, numbers, inventory, groups2, inputs_dir, out)
     plan = second_groups_of(groups2)
     first = {g["name"]: g for g in R["regroup"]["groups"]}
     require(sorted(first) == sorted(g["name"] for g in plan), "the second round's plan names other groups than the first re-rule")
-    marked = {g["name"]: [(c, i) for c, i, _ in mine] for g, mine in siblings_of(as_groups(R["regroup"]["groups"], plan), M, N)}
+    marked = {g["name"]: [(c, i) for c, i, _ in mine] for g, mine in siblings_of(as_groups(R["regroup"]["groups"], plan), M, N, wide=False)}
     os.makedirs(out, exist_ok=True)
     units = []
     for g in plan:
@@ -535,6 +572,95 @@ def second(journal, groups2, args, reading_path, date):
           "; notes", Counter(n["bears"] for n in every_note))
 
 
+def unnoted(reading, M, N):
+    """For each group, the cluster rows the page's rule marks that no round of notes set beside
+    its finding, with the group as it now stands."""
+    out = []
+    for g, mine in siblings_of(final_groups(reading), M, N):
+        noted = {(n["cluster"], n["index"]) for n in g["notes"] or []}
+        new = [(c, i) for c, i, _ in mine if (c, i) not in noted]
+        if new:
+            out.append((g, new))
+    return out
+
+
+def notes3_inputs(reading, merged, numbers, inventory, inputs_dir, out):
+    """The third pass's files, one reader's for each group the widened rule marks new cluster
+    rows for: the rows, with the group's finding as it now stands (the second judge's where the
+    group was ruled a second time), the group's rows and the rows set beside them, each with
+    its verdict and words as the page carries them after both group re-rules, the cluster rows
+    its judge read beside it and its sources. A reading that holds the third pass already is
+    read without it, so the files can be written again from the reading as it now stands and set
+    beside the ones the readers were given."""
+    place = placer(inventory)
+    R = json.load(open(reading))
+    require("regroup2" in R, "the reading must hold the second group re-rule")
+    R.pop("notes3", None)
+    M, N = json.load(open(merged)), json.load(open(numbers))
+    rows, _ = rows_in(inputs_dir)
+    by_key = {key(x): x for x in R["items"]}
+    others = {key(x): x for x in verdicts(M, N, place)}
+    second = {g["name"]: g for g in R["regroup2"]["groups"]}
+    os.makedirs(out, exist_ok=True)
+    units = []
+    for g, new in unnoted(R, M, N):
+        entry = group_entry(g, rows, by_key, others, place)
+        for r in entry["rows"] + entry["context"]:
+            it = by_key.get(key(r))
+            if it:
+                r["now"] = standing({f: rows[key(r)]["skeptic"].get(f) for f in FIRST_FIELDS}, it)
+        path = f"{out}/notes3-{g['name']}-0.json"
+        body = {"group": g["name"], "title": g["title"], "siblings": [cluster_row(M, place, c, i) for c, i in new],
+                "finding": {"group_note": g["note"], "context_notes": g.get("context_notes", [])},
+                "rows": entry["rows"], "context": entry["context"],
+                "cluster_context": [cluster_row(M, place, c, i) for c, i in second.get(g["name"], {}).get("cluster_context", [])],
+                "extra": entry["extra"]}
+        json.dump(body, open(path, "w"), indent=1)
+        units.append({"name": g["name"], "title": g["title"], "readers": [{"file": path, "siblings": [sibling_key(c, i) for c, i in new]}]})
+        print(g["name"], "new cluster rows", len(new), " ".join(sibling_key(c, i) for c, i in new))
+    json.dump(units, open(f"{out}/args.json", "w"), indent=1)
+
+
+def notes3_about(units, notes, date):
+    second = "second-regroup-confirmed-numbers.js"
+    given_word_for_word("more-cluster-rows-confirmed-numbers.js", [constant(second, k) for k in SHARED])
+    added = given_word_for_word("more-cluster-rows-confirmed-numbers.js", [HISTORY_ADDED])
+    bears = Counter(n["bears"] for n in notes)
+    titles = listed([f"{sum(len(r['siblings']) for r in u['readers'])} for {u['title']}" for u in units])
+    return (f"On {date} a third review of the follow-up found cluster rows that give a group's figures on pages read for the group, "
+            "two of them at odds with a finding, which the rule did not mark, so that nobody had set them beside the findings. "
+            "The rule now also counts as read the pages of the cluster rows the second re-rule's judges or readers read beside a group, "
+            "and marks a row that gives one of the group's figures on one page read for the group, where it needed each of the row's pages read, or two of the figures. "
+            f"Each of the {len(notes)} rows this adds, {titles}, was set beside its group's finding as it now stands by one reader for the group, "
+            "given the finding, the group's rows and the rows set beside them with the words they now carry, the cluster rows its judge read beside it and its sources, "
+            "under the second re-rule's account of the page, reading instructions, scale, rules and task for the cluster rows, word for word, "
+            f"with one sentence added to its account of the work: {quoted(added)} "
+            f"Of the {len(notes)}, {bears['agrees']} agree with the finding, {bears['differs']} differ from it and {bears['other']} are about another quantity. "
+            "work/tools/reread_numbers.py writes the readers' input again from the reading and the follow-up's input.")
+
+
+def notes3(journal, args, reading_path, date):
+    reading = json.load(open(reading_path))
+    require("regroup2" in reading and "notes3" not in reading, "the reading must hold the second group re-rule and not the third pass")
+    units = json.load(open(args))
+    found = {r["label"]: r["result"] for r in results_of(journal)}
+    expected = {f"notes3:{u['name']}:{k}" for u in units for k in range(len(u["readers"]))}
+    require(set(found) == expected, f"no answer from {sorted(expected - set(found))}, or one from {sorted(set(found) - expected)}")
+    groups, every_note = [], []
+    for u in units:
+        notes = []
+        for k, reader in enumerate(u["readers"]):
+            part = found[f"notes3:{u['name']}:{k}"]["siblings"]
+            check_notes(f"{u['name']} (reader {k})", part, reader["siblings"])
+            notes += part
+        siblings = sorted(({f: n[f] for f in ("cluster", "index", "bears", "note")} for n in notes), key=lambda n: (n["cluster"], n["index"]))
+        groups.append({"name": u["name"], "readers": len(u["readers"]), "siblings": siblings})
+        every_note += siblings
+    reading["notes3"] = {"date": date, "about": notes3_about(units, every_note, date), "groups": groups}
+    json.dump(reading, open(reading_path, "w"), indent=1)
+    print(len(every_note), "cluster rows noted;", Counter(n["bears"] for n in every_note))
+
+
 if __name__ == "__main__":
     argv = sys.argv[1:]
     if argv[0] == "inputs":
@@ -553,5 +679,9 @@ if __name__ == "__main__":
         second_inputs(*argv[1:])
     elif argv[0] == "second":
         second(*argv[1:])
+    elif argv[0] == "notes3-inputs":
+        notes3_inputs(*argv[1:])
+    elif argv[0] == "notes3":
+        notes3(*argv[1:])
     else:
-        raise SystemExit(f"unknown mode {argv[0]!r}; inputs, record, regroup-inputs, regroup, second-inputs or second")
+        raise SystemExit(f"unknown mode {argv[0]!r}; inputs, record, regroup-inputs, regroup, second-inputs, second, notes3-inputs or notes3")

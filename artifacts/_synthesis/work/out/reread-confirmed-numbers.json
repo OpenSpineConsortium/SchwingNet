@@ -1335,7 +1335,7 @@
  ],
  "regroup": {
   "date": "2026-10-23",
-  "about": "On 2026-10-23 a review of the follow-up found that rows reading the same figures or the same pages, ruled one at a time, did not agree with one another, and that two rulings rested on scopes the pages do not state. They were ruled again in five groups: naming on whole lateral C-ArmLSpine frames (rows 0, 5, 6, 104, 105, 106 and 107); the 8,422 held-out crops (rows 61 and 111); the T12 and L1 shape test (rows 52 and 171); the coordbench plan's pairs and arms (rows 226 and 227); scopes the pages state or the readers computed (rows 24 and 31). One judge for each group read all of its rows together, each with both readings, its ruling and its verdict as the follow-up left it, and every source, the artifacts the review cited among them, with the review's points given as claims to check against the texts and never to take as true; the judge kept each row's verdict and hint or ruled it again. The judges' scale was the re-checkers' with three rules added, which the re-checkers did not have: \"A scope-or-unit-differs needs the pages themselves to state the scope, subset, denominator, unit, interval, version or date that sets the two apart; a scope that you or an earlier reader only computed or inferred from other figures is not enough, and such a row is a confirmed-contradiction or a cannot-tell, with the inference given in the hint as what a record would have to confirm.\" \"An updated-later needs the later page to be later by its date or to plainly follow the other; a page of the same date that still gives the earlier figure bears on whether the figure was replaced.\" \"A cannot-tell is right when the texts do not settle the question; never choose a figure the texts do not choose.\" Of the 15 rows, 3 kept their verdict and hint and 12 were ruled again; rows 20 and 110, shown to the judges beside them, stand as they were. work/tools/reread_numbers.py writes each judge's input again from the reading and the follow-up's input.",
+  "about": "On 2026-10-23 a review of the follow-up found that rows reading the same figures or the same pages, ruled one at a time, did not agree with one another, and that two rulings rested on scopes the pages do not state. They were ruled again in five groups: naming on whole lateral C-ArmLSpine frames (rows 0, 5, 6, 104, 105, 106 and 107); the 8,422 held-out crops (rows 61 and 111); the T12 and L1 shape test (rows 52 and 171); the coordbench plan's pairs and arms (rows 226 and 227); scopes the pages state or the readers computed (rows 24 and 31). One judge for each group read all of its rows together, each with both readings, its ruling and its verdict as the follow-up left it, and every source, the artifacts the review cited among them, with the review's points given as claims to check against the texts and never to take as true; the judge kept each row's verdict and hint or ruled it again. The judges' scale was the re-checkers', with cannot-tell glossed \"(the texts do not settle it)\" for a number collision as the re-checkers' scale glosses it for a cluster candidate, and four sentences added, which the re-checkers did not have: \"Apply it exactly.\" \"A scope-or-unit-differs needs the pages themselves to state the scope, subset, denominator, unit, interval, version or date that sets the two apart; a scope that you or an earlier reader only computed or inferred from other figures is not enough, and such a row is a confirmed-contradiction or a cannot-tell, with the inference given in the hint as what a record would have to confirm.\" \"An updated-later needs the later page to be later by its date or to plainly follow the other; a page of the same date that still gives the earlier figure bears on whether the figure was replaced.\" \"A cannot-tell is right when the texts do not settle the question; never choose a figure the texts do not choose.\" Of the 15 rows, 3 kept their verdict and hint and 12 were ruled again; rows 20 and 110, shown to the judges beside them, stand as they were. work/tools/reread_numbers.py writes each judge's input again from the reading and the follow-up's input.",
   "groups": [
    {
     "name": "lateral-whole-frame",
@@ -1860,6 +1860,198 @@
       "index": 15,
       "bears": "differs",
       "note": "The sibling rules the taxonomy spec's '35 new pairs under five arms, plus the runs to redo' (2026-10-15) superseded-by-later and has the book carry it in place of the in-brief's 50 pairs. The finding carries 50 pairs from Symphony in Brief (2026-10-14). The spec states no total, does not say it replaces the 50, and records 8 pairs already run as a pilot. So the book should carry the spec's choice beside the 50, not over it, until coordbench's PLAN.md or a run record gives the total. The five arms agree."
+     }
+    ]
+   }
+  ]
+ },
+ "notes3": {
+  "date": "2026-10-23",
+  "about": "On 2026-10-23 a third review of the follow-up found cluster rows that give a group's figures on pages read for the group, two of them at odds with a finding, which the rule did not mark, so that nobody had set them beside the findings. The rule now also counts as read the pages of the cluster rows the second re-rule's judges or readers read beside a group, and marks a row that gives one of the group's figures on one page read for the group, where it needed each of the row's pages read, or two of the figures. Each of the 26 rows this adds, 3 for naming on whole lateral C-ArmLSpine frames, 2 for the 8,422 held-out crops, 5 for the T12 and L1 shape test, 10 for the coordbench plan's pairs and arms and 6 for scopes the pages state or the readers computed, was set beside its group's finding as it now stands by one reader for the group, given the finding, the group's rows and the rows set beside them with the words they now carry, the cluster rows its judge read beside it and its sources, under the second re-rule's account of the page, reading instructions, scale, rules and task for the cluster rows, word for word, with one sentence added to its account of the work: \"A second review then had three of the groups ruled a second time, and the cluster rows that give a group's figures on the pages its judges read set beside its finding; a third review found more cluster rows that give a group's figures, on pages read beside the group or with one of its figures on a page its judge read, that nobody had set beside the finding.\" Of the 26, 3 agree with the finding, 2 differ from it and 21 are about another quantity. work/tools/reread_numbers.py writes the readers' input again from the reading and the follow-up's input.",
+  "groups": [
+   {
+    "name": "lateral-whole-frame",
+    "readers": 1,
+    "siblings": [
+     {
+      "cluster": "Datasets, holdings and licences",
+      "index": 2,
+      "bears": "other",
+      "note": "This row is about the C-ArmLSpine release's sessions and how many people they are. Its hint carries 149 acquisition sessions with the person count unknown and gives no naming figure. It also does not touch the scored case count behind 98.2% (148 in the OR Readiness Ledger, 141 in Counting From The Sacrum), which the finding leaves to the CV fold record. Its reading of State of the Literature's '148 cases with 296 frames' as the pre-repair bank fits the finding, which takes that pair as the holding, not the scored set."
+     },
+     {
+      "cluster": "Programme direction, handoffs and onboarding",
+      "index": 22,
+      "bears": "agrees",
+      "note": "Its hint leaves the C-ArmLSpine holding counts (149 sessions, 148 cases with 296 frames, 120 subjects) to the per-case table and carries no naming figure and no choice between 148 and 141. That fits the finding, which keeps the September scored count open (148 in the ledger, 141 with 617 vertebrae on the sacrum page). A planner should take that scored count from the CV fold record the finding names, not from the per-case table, and should not read the sacrum page's 'C-ArmLSpine 120', a figure in its CT census list, as a count of evaluated cases."
+     },
+     {
+      "cluster": "Renders, physics and the sim-to-real gap",
+      "index": 7,
+      "bears": "other",
+      "note": "This row is about the render-trained detector's pooled sacrum recall on 365 real DeepFluoro frames (76.9% for anchor_none_r2, 64.0% for v2). The 98.2% in its quote from Ninety-Three Pixels is that table's 'anchor called' column, not C-ArmLSpine naming on a whole lateral frame, so the group's finding does not bear on it."
+     }
+    ]
+   },
+   {
+    "name": "held-out-crops",
+    "readers": 1,
+    "siblings": [
+     {
+      "cluster": "Detectors, architecture and the training plan",
+      "index": 60,
+      "bears": "agrees",
+      "note": "Its hint carries the ladder's 96 px one-vertebra row with its 96.9% overall, and leaves the Naming page's 97.0% to the result file. That fits the finding, which gives 96.9% at 96 px from the Level Context Ladder and notes that the Naming page (18 September) still gives 97.0% for one frame beside that regional row. The finding does not choose between 96.9% and 97.0%, and the hint does not tie either figure to the Reality Check's 98.7%. The book can still carry the Naming page's 97.0% for one frame, no sweep, cited to that page."
+     },
+     {
+      "cluster": "Verification benches, overnight audits and OR readiness",
+      "index": 34,
+      "bears": "agrees",
+      "note": "Its hint gives 35.7% to the films-only model and its quoted audit 98.7% is the model's own validation split. The finding says the same: the Corpus Audit (14 September) and the Reality Check (15 September) give that model 35.7% on CT renders, and the audit's 98.7% is its own validation split, not the 8,422 crops. The row is mainly about the render numbers (64.2% held-out for v2, 92.7% a training-set score, from the Overnight Report), which the finding does not touch. The words films-only come from the Overnight Report and the Reality Check, not from the audit itself."
+     }
+    ]
+   },
+   {
+    "name": "t12-l1-shape-test",
+    "readers": 1,
+    "siblings": [
+     {
+      "cluster": "Programme direction, handoffs and onboarding",
+      "index": 15,
+      "bears": "other",
+      "note": "This row's instruction is about the CTSpinoPelvic1K record count, 801 against 802, and how the release's person-key table would settle it. The handoff's quote does mention T12 against L1 AUC 0.990, but it gives no vertebra count, and the group's finding does not rule on 801 against 802. So the instruction neither carries nor rejects anything the finding decides about 1485 against 1,486."
+     },
+     {
+      "cluster": "Transitional vertebrae and border variants",
+      "index": 1,
+      "bears": "other",
+      "note": "This row's instruction is about how many lumbar ribs CTSpinoPelvic1K holds (14, 21 then 25, 10 at or under 50 mm, and CT-8's 30 read positives) and how each should be labelled with its unit and rule. It does not give the 1485 or 1,486 T12 and L1 vertebrae that the group turns on, so the finding has no bearing on it."
+     },
+     {
+      "cluster": "Transitional vertebrae and border variants",
+      "index": 19,
+      "bears": "other",
+      "note": "This row's instruction is about VerSe's L6, T13, sacralised and Castellvi counts, which wait on CT-3's raw-mask count. None of those is the T12 and L1 vertebra count behind the AUC 0.990 test or the planned Stages 1 and 2, so the finding does not touch it."
+     },
+     {
+      "cluster": "Transitional vertebrae and border variants",
+      "index": 22,
+      "bears": "other",
+      "note": "This row's instruction is about which anchors a count runs against and what field of view each needs: R + C = 22 from C2 to the sacrum, or the sacrum and the lowest rib-bearing vertebra. Counting Against Two Anchors appears here only for its anchor design, not for its 1485 vertebrae, so the finding does not bear on it."
+     },
+     {
+      "cluster": "Verification benches, overnight audits and OR readiness",
+      "index": 55,
+      "bears": "other",
+      "note": "This row's instruction is about accuracy on anomalous BUU film windows: 49.9% on 128 anomalous films against 89.9% on 453 ordinary ones, with 144 as the films held to validation. Research Directions appears here for its film gates, not for its 1,486 T12 and L1 vertebrae from 798 cases, so the finding has no bearing on it."
+     }
+    ]
+   },
+   {
+    "name": "coordbench-plan",
+    "readers": 1,
+    "siblings": [
+     {
+      "cluster": "Beethoven: the research engine and its repositories",
+      "index": 40,
+      "bears": "other",
+      "note": "This row is about the REFORMS split into 32 items, 20 checked by code and 12 declared (the checklist and the spec). It has nothing on coordbench's pairs, arms or sessions."
+     },
+     {
+      "cluster": "Symphony's origins: cswap, the primitives and the two Claude surfaces",
+      "index": 3,
+      "bears": "other",
+      "note": "This row is about whether GitHub's scheduled runs fire: the ladder's 750 and 120 minutes against the handoff's 16 of about 87 slots measured. That is another part of the Symphony Handoff than its coordbench plan, so the finding does not bear on it."
+     },
+     {
+      "cluster": "Symphony: the protocol, its evidence and its place",
+      "index": 6,
+      "bears": "other",
+      "note": "This row is about the board's cron fallback: the ladder's 630 billed minutes saved, set against the Symphony Handoff's count of 16 of about 87 hourly slots that ran. That is not coordbench's pairs or arms, so the finding does not bear on its hint."
+     },
+     {
+      "cluster": "Symphony: the protocol, its evidence and its place",
+      "index": 18,
+      "bears": "other",
+      "note": "Its hint is about CooperBench's own results for a shared git remote: 1 to 3 points in the February post, 26% against 56% in the later ablation (50 pairs, one seed, one model; spec and Symphony in Brief). The ablation's 50 pairs belong to CooperBench's experiment, not to coordbench's pre-registered 50-pair, five-arm run, and the hint carries no coordbench count."
+     },
+     {
+      "cluster": "Symphony: the protocol, its evidence and its place",
+      "index": 31,
+      "bears": "other",
+      "note": "This row is about CooperBench's headline counts (GPT-5 315 against 183 of 652; Sonnet 4.5 307 against 168), as the spec and the manual give them. It says nothing on coordbench's planned pairs, arms or sessions."
+     },
+     {
+      "cluster": "Symphony: the protocol, its evidence and its place",
+      "index": 32,
+      "bears": "other",
+      "note": "Its hint carries CooperBench's ablation figures (26, 48, 56, 62 percent) once, from the spec, with the caveat of 50 pairs, one seed and one model. That 50 is the authors' ablation sample, not coordbench's pre-registered run of 50 pairs from 20 tasks, which Symphony in Brief gives in a separate paragraph. Keep the two apart; nothing in this hint goes against the finding."
+     },
+     {
+      "cluster": "Symphony: the protocol, its evidence and its place",
+      "index": 34,
+      "bears": "other",
+      "note": "This row is about GitHub's runner sizes, concurrency limits and included minutes (spec 9.2 to 9.4, repeated in the manual). It does not touch coordbench's pairs or arms."
+     },
+     {
+      "cluster": "Symphony: the protocol, its evidence and its place",
+      "index": 35,
+      "bears": "other",
+      "note": "This row is about the spec's illustrated $90 a month for ten one-hour Claude runs a day on a private Team repository. That is a different cost from the handoff's 294 sessions and about $125, which the kit estimates for four coordbench arms, so the finding does not bear on it."
+     },
+     {
+      "cluster": "Symphony: the protocol, its evidence and its place",
+      "index": 40,
+      "bears": "other",
+      "note": "This row is about Cursor's unsourced report that naive locks collapsed 20 agents to the throughput of two or three. It has no figure for coordbench's pairs or arms."
+     },
+     {
+      "cluster": "Symphony: the protocol, its evidence and its place",
+      "index": 58,
+      "bears": "other",
+      "note": "This row is about how many of Beethoven's REFORMS gates exist: none in the checklist, splits.py alone in the spec. It is not about coordbench's benchmark plan."
+     }
+    ]
+   },
+   {
+    "name": "scope-the-readers-computed",
+    "readers": 1,
+    "siblings": [
+     {
+      "cluster": "Datasets, holdings and licences",
+      "index": 41,
+      "bears": "other",
+      "note": "This row is about the population prior for transitional vertebrae: the board's 4.0% set against Protocol 1's pooled 15.3% and the 9 to 18% priors. Its hint carries 4.0% as BUU's flag rate on lateral films, which matches the board's own statement that the flags are in the S1a class field on lateral films, and it does not settle 129 against 130. The 4.0% holds on either count."
+     },
+     {
+      "cluster": "Detectors, architecture and the training plan",
+      "index": 27,
+      "bears": "differs",
+      "note": "The hint says to carry 716 as the Mendeley set's size. The finding (row 20) carries the Fluoroscopy Data Atlas's 714 jpg (494/204/16), 698 annotated, as its count of Dataset.zip, with the 716 images (208 Honduran + 508 BUU) beside it, given by the Spine X-ray Data Handoff and repeated in the Spine Program Decisions table, credited to those pages and flagged as not reconciled; neither figure is to be carried alone. The hint's other point, that the ladder's manifest would show what its 591 excludes, is outside what the finding rules."
+     },
+     {
+      "cluster": "Detectors, architecture and the training plan",
+      "index": 42,
+      "bears": "other",
+      "note": "This row sets the board's BUU 4.0% against the Rib Anchor Audit's 93.3 / 3.3 / 3.3 distribution, which the audit itself says is not a prevalence. Its hint only says to carry each figure with its cohort and definition. It repeats the board's 3,461 / 15 / 130 as that page's figures but does not set them against the atlas's 129 or choose between them, so the finding does not bear on it."
+     },
+     {
+      "cluster": "Transitional vertebrae and border variants",
+      "index": 33,
+      "bears": "other",
+      "note": "This row is about the population prevalence of transitional vertebrae: whether BUU's 4.0% is a population rate when the cited literature gives 9 to 18%. Its hint names neither 129 nor 130 and does not settle the one-case gap. The 4.0% comes out the same from 145 of 3,606 (the OpenSpine Board's 3,461 / 15 / 130) and from 144 of 3,600 (the atlas's 129 + 15), so the finding does not bear on it."
+     },
+     {
+      "cluster": "Transitional vertebrae and border variants",
+      "index": 34,
+      "bears": "differs",
+      "note": "The hint carries 129 and 15 (144 of 3,600) as the figures and calls the OpenSpine Board's 130 and a 3,606 total lateral-film counts. It also proposes finding which study holds the extra sacralization file. The finding instead carries the Fluoroscopy Data Atlas's 129 four-lumbar / 15 six-lumbar (its L4L6 sheet) with the board's and the Spine Program Decisions page's 130 sacral / 15 lumbar beside them, each credited and flagged as not reconciled. The board says its counts come from the S1a row's class field on lateral films, but it states no 3,606 total: that is a reader's sum of 3,461 + 15 + 130. The correction is a by-patient count of both the L4L6 sheet and the S1a class field over the 3,600 patients, with the three duplicated lateral files removed."
+     },
+     {
+      "cluster": "Transitional vertebrae and border variants",
+      "index": 35,
+      "bears": "other",
+      "note": "This row is about the status of BUU's transitional truth: unused on the OpenSpine Board of 11 September, the anomalous test partition on Naming Vertebrae Without an Anchor of 17 September. Its hint gives no count, so it does not take a side between 129 and 130 and the finding does not bear on it."
      }
     ]
    }
