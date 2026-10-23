@@ -639,6 +639,17 @@ class Scrub(unittest.TestCase):
         self.assertIsNone(extract.EMAIL_RE.search("a" * 100_000))
         self.assertLess(time.monotonic() - started, 2, "an unbounded run before the @ took seconds, quadratic in its length")
 
+    def test_the_report_scrubs_a_passage_and_a_quote_before_it_cuts_them(self):
+        for kept in range(2, len(LOGIN)):
+            text = ("the run took the night " * 9)[:160 - kept - 1] + f" {LOGIN} and gave every level a count"
+            s = empty_status()
+            s["new_checks"] = [{"key": "k", "concept": "dataset:x:films", "kind": "dataset", "source": ALPHA, "line": 3,
+                                "outcome": "differs", "value": "120", "text": text}]
+            s["lost_quotes"] = {ALPHA: {"q": text}}
+            body = synth.report(s)[0]
+            self.assertIn(" " + "[the owner's login]"[:kept].rstrip() + "`", body, "the scrub's words, cut where the login stood")
+            self.assertNotIn(LOGIN[:kept], body, f"the cut at 160 kept {kept} characters of the login")
+
 
 SHARED = [{"id": f"dataset:{d}:films", "dataset": d, "name": d, "key": "films", "value": v, "noun": "films",
            "aliases": ["shared name"]} for d, v in (("alpha_set", "100"), ("beta_set", "200"))]
@@ -680,6 +691,34 @@ class Concepts(unittest.TestCase):
                 write(Path(root, "data", "sources", f"{rid}.json"), {"id": rid, "name": name, "counts": counts})
             self.assertEqual(sc.unnamed_records(root, {}), [{"dataset": "plain_bank", "name": "the bank of films", "counts": ["films"]}])
             self.assertEqual(sc.unnamed_records(root, {"plain_bank": ["the bank"]}), [], "work/aliases.json names it")
+
+    def test_what_the_scrub_keeps_out_reaches_no_check_whole_or_cut(self):
+        filler = "the run took the night and gave every level a count " * 12
+
+        def lines(item, width):
+            # The item starts so many characters before a cut, short of its width: a check's cut at
+            # 300, or the one that splits a line with no sentence's end into passages at 600.
+            at_check = [(f"The Shared Name set holds 100 films; {filler}")[:300 - kept - 1] + f" {item} ends the line"
+                        for kept in range(1, width)]
+            at_passage = [filler[:600 - kept - 1] + f" {item} The Shared Name set holds 100 films" for kept in range(1, width)]
+            return "\n".join(at_check + at_passage) + "\n"
+
+        def checks(item, width):
+            with tempfile.TemporaryDirectory() as root:
+                texts = Path(root, "texts")
+                (texts / "SchwingNet").mkdir(parents=True)
+                (texts / f"{ALPHA}.txt").write_text(lines(item, width), encoding="utf-8")
+                Path(root, "docs", "research").mkdir(parents=True)
+                Path(root, "docs", "research", "note.md").write_text(lines(item, width), encoding="utf-8")
+                write(Path(root, "data", "sources", "alpha_set.json"), {"id": "alpha_set", "what": lines(item, width)})
+                return sc.check_datasets(sc.sources(str(texts), root), SHARED[:1])
+
+        for item in (LOGIN, f"/rs/rs_grp_lab/{LOGIN}/data/"):
+            words = redact.scrub(item, Counter())
+            found = checks(item, len(item))
+            self.assertEqual(len(found), 3 * 2 * (len(item) - 1), "every line gives its check")
+            self.assertFalse([c["text"] for c in found if LOGIN[:2] in c["text"]], item)
+            self.assertEqual(found, checks(words, len(item)), "a check's words and key give away nothing the scrub took out")
 
 
 class Answers(unittest.TestCase):

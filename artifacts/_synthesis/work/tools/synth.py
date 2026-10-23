@@ -292,7 +292,7 @@ def report(s):
     if s["lost_quotes"]:
         for aid, quotes in sorted(s["lost_quotes"].items()):
             first = next(iter(quotes.values()))
-            out.append(f"- {aid}: {len(quotes)}, the first {code(to_ascii(first)[:160], table=False)}")
+            out.append(f"- {aid}: {len(quotes)}, the first {code(to_ascii(scrubbed(first))[:160], table=False)}")
         out.append("")
     else:
         out.append("None.\n")
@@ -306,7 +306,7 @@ def report(s):
     if listed:
         out.append("| Outcome | Concept | Gives | Where | Line | Passage |\n|---|---|---|---|---|---|")
         for c in listed[:REPORT_ROWS]:
-            out.append(f"| {c['outcome']} | {cell(c['concept'])} | {cell(c['value'])} | {cell(c['source'])} | {c['line']} | {code(c['text'][:160])} |")
+            out.append(f"| {c['outcome']} | {cell(c['concept'])} | {cell(c['value'])} | {cell(c['source'])} | {c['line']} | {code(scrubbed(c['text'])[:160])} |")
         if len(listed) > REPORT_ROWS:
             out.append(f"\n{len(listed) - REPORT_ROWS} more, which `synth.py status --json` lists in a checkout.")
         by_hand = [c for c in listed if c not in w["concept_items"]]
