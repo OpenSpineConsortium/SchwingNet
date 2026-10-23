@@ -41,6 +41,8 @@
 #   samples         the sample index (grid/run-samples.sh): plan, scan and merge, refused while one
 #                   of them is live; status shows its MANIFEST.md, aggregates only
 #   stop            cancel the gate's own jobs that are still queued or running, and nothing else
+#   cancel <job>    cancel one of the gate's own live jobs and every other live job its word queued
+#                   with it (a fetch's bank and catalog), and nothing else
 #
 # While a version 1 run lasts, grid/logs/HOLD names its job and commit (grid/v1-driver.sbatch); the
 # gate's side skips its fast-forward while the file is there, and every word but a refused one
@@ -81,14 +83,14 @@ SWEEP_BANK=${SWEEP_BANK:-$DATA_ROOT/realxray/carmlspine_sweep}
 NETRC=${NETRC:-$HOME/.netrc}
 LOGS=$REPO/grid/logs
 STATE=$LOGS/GATE_JOBS.txt
-WORDS="start status leaks v1 latency fetch samples stop"
+WORDS="start status leaks v1 latency fetch samples stop cancel"
 ENVS="default train-cpu train-gpu telemetry"
 
 word=${1:-}
 id=${2:-}
 # Matched whole, so one argument holding two words ("v1 latency") is refused and never runs nothing.
 case "$word" in
-  start|status|leaks|v1|latency|fetch|samples|stop) ;;
+  start|status|leaks|v1|latency|fetch|samples|stop|cancel) ;;
   "") echo "refusing: no word; one of: $WORDS"; exit 64 ;;
   *) echo "refusing: '$word' is not one of: $WORDS"; exit 64 ;;
 esac
@@ -96,6 +98,10 @@ if [ "$word" = fetch ]; then
   [ $# -eq 2 ] || { echo "refusing: fetch takes exactly one id"; exit 64; }
   case "$id" in ""|*[!a-z0-9_]*) echo "refusing: an id is lower-case letters, digits and _"; exit 64 ;; esac
   [ ${#id} -le 40 ] || { echo "refusing: an id is at most 40 characters"; exit 64; }
+elif [ "$word" = cancel ]; then
+  [ $# -eq 2 ] || { echo "refusing: cancel takes exactly one job"; exit 64; }
+  case "$id" in ""|*[!0-9]*) echo "refusing: a job is digits alone"; exit 64 ;; esac
+  [ ${#id} -le 12 ] || { echo "refusing: a job is at most 12 digits"; exit 64; }
 else
   [ $# -eq 1 ] || { echo "refusing: $word takes no argument"; exit 64; }
 fi
@@ -709,6 +715,18 @@ word_stop() {
   "$SCANCEL" $live && echo "cancelled: $live"
 }
 
+word_cancel() {  # the job named, if the gate's and live, with every live job of the same word
+  local from cancel
+  from=$(awk -v job="$id" '$1 == job { print $2; exit }' "$STATE" 2>/dev/null)
+  [ -n "$from" ] || { echo "refusing: job $id is not one of the gate's"; return 64; }
+  case "$QUEUED" in *" $id "*) ;; *) echo "job $id is no longer queued or running; nothing cancelled"; return 0 ;; esac
+  cancel=$(awk -v from="$from" '$2 == from { print $1 }' "$STATE" | sort -u | while read -r job; do
+    case "$QUEUED" in *" $job "*) echo "$job" ;; esac
+  done | tr '\n' ' ')
+  # shellcheck disable=SC2086
+  "$SCANCEL" $cancel && echo "cancelled ($from): $cancel"
+}
+
 release_hold() {  # the version 1 run's hold (grid/v1-driver.sbatch) is cleared once Slurm no longer holds its job
   local job
   [ -f "$LOGS/HOLD" ] || return 0
@@ -735,6 +753,7 @@ case "$word" in
   fetch) word_fetch ;;
   samples) word_samples ;;
   stop) word_stop ;;
+  cancel) word_cancel ;;
 esac
 rc=$?
 echo "schwingnet $word: exit $rc"
