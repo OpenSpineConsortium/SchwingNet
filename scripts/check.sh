@@ -79,6 +79,12 @@ fi
 # the SHA-256 that data/reproduce/SHA256SUMS records.
 python3 tools/reproduce_table.py check
 
+# Every dataset's licence is classified in data/licences.json and every recipe under data/recipes/
+# holds together (tools/licences.py, standard library): a record or registry source with no entry,
+# a licence line changed since it was classified, a class looser than the rule's without the
+# owner's reading, or data/LICENCES.md not what the facts render, fails here.
+python3 tools/licences.py check
+
 # The evaluation page (docs/research/evaluation/README.md) is written from the recorded runs under
 # docs/research/v1-demo/runs/ by tools/eval_page.py, standard library: a run recorded without the
 # page written again, or a page edited by hand, fails here.
