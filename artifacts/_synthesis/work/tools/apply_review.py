@@ -1,10 +1,10 @@
 """Apply the adversarial review of the skeptics' verdicts to the merged record, or a later
 reading of verdicts the review left out. Every verdict the review read again gets its outcome
-under review: held, hint corrected or verdict overturned. A judge's ruling that sides with the
-re-checker, or with neither reader, replaces the skeptic's verdict, words, explanation and
-hint, which are kept under first, so the page can show both; one that sides with the skeptic
-leaves the verdict as it was, held. The sample and its outcomes go into the record's review,
-from which the page counts how far the verdicts held.
+under review: held, hint corrected or verdict overturned. A judge's ruling replaces the
+skeptic's verdict, words, explanation and hint, which are kept under first, so the page can
+show both; one that sides with the skeptic keeps the verdict, and where its words differ from
+the skeptic's the verdict held with a corrected hint. The sample and its outcomes go into the
+record's review, from which the page counts how far the verdicts held.
 
 Usage: apply_review.py REVIEW NUMBERS MERGED_IN MERGED_OUT
        apply_review.py --followup READING NUMBERS MERGED_IN MERGED_OUT
@@ -17,8 +17,9 @@ Usage: apply_review.py REVIEW NUMBERS MERGED_IN MERGED_OUT
   followup, with the fields a ruling replaced kept there under before, so a verdict that was
   already overturned or read again keeps its first as well; the reading goes into the record's
   followup and the review's own items stay as they were. Where the reading holds a group
-  re-rule, a row's group judge, when it does not keep the verdict, has the last word, and the
-  outcome is set against the verdict the follow-up read."""
+  re-rule, and then a second one, a row's group judge, when it does not keep the verdict, has
+  the last word, each round over the one before, and the outcome is set against the verdict
+  the follow-up read."""
 import json
 import os
 import sys
@@ -53,22 +54,35 @@ def read_verdict(M, N, it):
     return v
 
 
+GROUP_ROUNDS = ("regroup", "regroup2")
+
+
+def standing(fields, it):
+    """A verdict's fields as the last reader to change them has them: its ruling's words, then
+    each group re-rule that did not keep the verdict, in turn."""
+    out = dict(fields)
+    if it.get("ruling"):
+        out.update({f: it["ruling"][f] for f in FIRST_FIELDS})
+    for r in (it.get(k) for k in GROUP_ROUNDS):
+        if r and not r["keep"]:
+            out.update({f: r[f] for f in FIRST_FIELDS})
+    return out
+
+
 def ruled(v, it):
-    """One verdict's outcome. A ruling that does not side with the skeptic is put in its place,
-    and then a group re-rule that does not keep it, so the verdict reads as the last reader to
-    change it has it. The outcome is set against the verdict the reading read: another verdict
-    is overturned, the same verdict in other words a corrected hint. Returns the outcome and the
-    fields replaced, or None when nothing was replaced."""
-    ruling, regroup = it.get("ruling"), it.get("regroup")
+    """One verdict's outcome. Its ruling's words are put in its place, and then each group
+    re-rule that did not keep it, so the verdict reads as the last reader to change it has it;
+    a ruling that sides with the skeptic must give the skeptic's verdict. The outcome is set
+    against the verdict the reading read: another verdict is overturned, the same verdict in
+    other words a corrected hint. Returns the outcome and the fields replaced, or None when
+    nothing was replaced."""
+    ruling = it.get("ruling")
     if not ruling:
         require(it["recheck"]["holds"] and it["recheck"]["hint_ok"], f"{it['stratum']} row {it['index']} is disputed with no ruling")
     elif ruling["sided_with"] == "skeptic":
         require(ruling["verdict"] == it["first"], f"{it['stratum']} row {it['index']} sides with the skeptic on another verdict")
     before = {f: v.get(f) for f in FIRST_FIELDS}
-    if ruling and ruling["sided_with"] != "skeptic":
-        v.update({f: ruling[f] for f in FIRST_FIELDS})
-    if regroup and not regroup["keep"]:
-        v.update({f: regroup[f] for f in FIRST_FIELDS})
+    v.update(standing(before, it))
     if all(v.get(f) == before[f] for f in FIRST_FIELDS):
         return "held", None
     return ("verdict overturned" if v["verdict"] != it["first"] else "hint corrected"), before
@@ -77,8 +91,9 @@ def ruled(v, it):
 def outcome_row(it, v, outcome):
     row = {"stratum": it["stratum"], "index": it["index"], "side": it["side"], "drawn": it["drawn"],
            "first": it["first"], "final": v["verdict"], "outcome": outcome}
-    if it.get("regroup"):
-        row["regroup"] = {"group": it["regroup"]["group"], "keep": it["regroup"]["keep"]}
+    for k in GROUP_ROUNDS:
+        if it.get(k):
+            row[k] = {"group": it[k]["group"], "keep": it[k]["keep"]}
     return row
 
 
@@ -103,13 +118,14 @@ def apply_followup(reading, N, M):
         v = read_verdict(M, N, it)
         require("followup" not in v, f"{it['stratum']} row {it['index']} was read in a follow-up already")
         outcome, before = ruled(v, it)
-        regrouped = it.get("regroup") and not it["regroup"]["keep"]
+        regrouped = [it[k]["group"] for k in GROUP_ROUNDS if it.get(k) and not it[k]["keep"]]
         v["followup"] = {"outcome": outcome, **({"before": before} if before else {}),
-                         **({"regroup": it["regroup"]["group"]} if regrouped else {})}
+                         **({"regroup": regrouped[-1]} if regrouped else {})}
         summary.append(outcome_row(it, v, outcome))
     M["followup"] = {"date": reading["date"], "about": reading["about"], "items": summary}
-    if reading.get("regroup"):
-        M["followup"]["regroup"] = reading["regroup"]
+    for k in GROUP_ROUNDS:
+        if reading.get(k):
+            M["followup"][k] = reading[k]
     return M
 
 

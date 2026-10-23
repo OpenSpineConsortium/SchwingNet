@@ -33,6 +33,21 @@ have written first:
   reread_numbers.py regroup-inputs READING merged.json out/numbers-partial.json ../inventory.json GROUPS IN OUT
   reread_numbers.py regroup JOURNAL GROUPS READING DATE
 
+A second review then found rows of three groups still at odds with the texts, and cluster rows
+giving the groups' figures that no judge had set beside the findings. second-inputs writes the
+second round's input from the reading, which regroup must have written first (one that holds
+the second round too is read as the first re-rule left it), the record at fde5b06, the
+follow-up's input folder and GROUPS2 (a file of the second round's groups, or the reading,
+which keeps them): for each group ruled a second time, one judge's file, with the rows as the
+first group re-rule left them; and for every group, the cluster rows the page's rule
+marks for it (render_contradictions2.py), each to be set beside the group's finding as it then
+stands, by the group's judge or by readers given that finding. OUT/args.json is the input of
+workflows/second-regroup-confirmed-numbers.js, which holds the brief; second joins the
+answers to the reading:
+
+  reread_numbers.py second-inputs READING merged.json out/numbers-partial.json ../inventory.json GROUPS2 IN OUT
+  reread_numbers.py second JOURNAL GROUPS2 OUT/args.json READING DATE
+
 SYNTH_TEXT, SYNTH_SCHWINGNET and SYNTH_SYMPHONY name the texts and the clones, as for
 render_contradictions2.py. With --against, inputs stops unless it selects exactly the rows the
 reading holds."""
@@ -45,6 +60,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 import verify_quotes as vq
 from merge_skeptics import FIRST_FIELDS, require, results_of
 from prep_verify import where
+from render_contradictions2 import BEARS, artifact, siblings_of
 from sample_review import NUMBERS, verdicts
 
 CHECKERS = 5
@@ -57,6 +73,20 @@ SMALL = ("no", "one", "two", "three", "four", "five", "six", "seven", "eight", "
 # The one sentence the re-checkers' brief added to the review's, word for word.
 PRIOR = ("This reading is the follow-up of issue #155: an earlier review drew two of these confirmed number verdicts "
          "at random and overturned both, so every one it left out is now read again.")
+# The three rules the group judges' scale added to the re-checkers', word for word as both
+# group workflows give them, and the two rules the second round's brief added to the first's.
+SCALE_ADDED = (
+    "A scope-or-unit-differs needs the pages themselves to state the scope, subset, denominator, unit, interval, version or date that sets the two apart; "
+    "a scope that you or an earlier reader only computed or inferred from other figures is not enough, and such a row is a confirmed-contradiction or a cannot-tell, "
+    "with the inference given in the hint as what a record would have to confirm.",
+    "An updated-later needs the later page to be later by its date or to plainly follow the other; "
+    "a page of the same date that still gives the earlier figure bears on whether the figure was replaced.",
+    "A cannot-tell is right when the texts do not settle the question; never choose a figure the texts do not choose.")
+RULES_ADDED = (
+    "Never copy a login or a grid path.",
+    "The project's owner has settled which data the project may use and which sets may enter training: "
+    "do not raise either in a hint, a note or an explanation, and never propose dropping or qualifying a result on that account.")
+WORKFLOWS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "workflows")
 
 
 def key(x):
@@ -240,15 +270,30 @@ def listed(numbers):
     return words[0] if len(words) == 1 else ", ".join(words[:-1]) + " and " + words[-1]
 
 
+def given_word_for_word(workflow, sentences):
+    """The sentences a brief added, refused unless the workflow still gives each word for word,
+    so the page never quotes a brief the judges were not given."""
+    text = open(os.path.join(WORKFLOWS, workflow)).read()
+    missing = [s[:60] for s in sentences if s not in text]
+    require(not missing, f"{workflow} does not give these word for word: {missing}")
+    return sentences
+
+
+def quoted(sentences):
+    return " ".join(f'"{s}"' for s in sentences)
+
+
 def regroup_about(groups, ruled, date):
     kept = sum(1 for r in ruled.values() if r["keep"])
     names = "; ".join(f"{g['title']} (rows {listed(g['rows'])})" for g in groups)
     shown = sorted({i for g in groups for i in g["context"]})
+    added = given_word_for_word("regroup-confirmed-numbers.js", SCALE_ADDED)
     return (f"On {date} a review of the follow-up found that rows reading the same figures or the same pages, ruled one at a time, "
             f"did not agree with one another, and that two rulings rested on scopes the pages do not state. "
             f"They were ruled again in {small(len(groups))} groups: {names}. One judge for each group read all of its rows together, "
             f"each with both readings, its ruling and its verdict as the follow-up left it, and every source, the artifacts the review cited among them, "
             f"with the review's points given as claims to check against the texts and never to take as true; the judge kept each row's verdict and hint or ruled it again. "
+            f"The judges' scale was the re-checkers' with {small(len(added))} rules added, which the re-checkers did not have: {quoted(added)} "
             f"Of the {len(ruled)} rows, {kept} kept their verdict and hint and {len(ruled) - kept} were ruled again"
             + (f"; rows {listed(shown)}, shown to the judges beside them, stand as they were." if shown else ".")
             + " work/tools/reread_numbers.py writes each judge's input again from the reading and the follow-up's input.")
@@ -287,6 +332,209 @@ def regroup(journal, groups, reading_path, date):
     print(len(ruled), "rows re-ruled;", Counter("kept" if r["keep"] else f"ruled {r['verdict']}" for r in ruled.values()))
 
 
+def sibling_key(c, i):
+    return f"{c}|{i}"
+
+
+def second_groups_of(path):
+    d = json.load(open(path))
+    return d["regroup2"]["groups"] if "regroup2" in d else d["groups"]
+
+
+def after_first(x, it):
+    """A row's verdict and words as the page carries them after the first group re-rule: the
+    skeptic's, then its ruling's where it was ruled, then the first group judge's where that did
+    not keep them. x is the row as the re-checkers were given it, it the reading's item."""
+    out = {f: x["skeptic"].get(f) for f in FIRST_FIELDS}
+    if it.get("ruling"):
+        out.update({f: it["ruling"][f] for f in FIRST_FIELDS})
+    r = it.get("regroup")
+    if r and not r["keep"]:
+        out.update({f: r[f] for f in FIRST_FIELDS})
+    return out
+
+
+def as_groups(first, plan):
+    """The groups as the second round defines them: a group ruled a second time takes its rows,
+    the rows set beside them and its sources from the plan, so the page's rule marks the cluster
+    rows of the groups as they will stand."""
+    by = {g["name"]: g for g in plan}
+    return [{**g, **{k: by[g["name"]][k] for k in ("rows", "context", "extra")}} if by.get(g["name"], {}).get("rule") else g
+            for g in first]
+
+
+def cluster_row(M, place, c, i):
+    """A cluster row as a judge or reader is given it: what the reader found, both artifacts,
+    and the verdict it carries with the words it rests on."""
+    cl = next(x for x in M["clusters"] if x["cluster"] == c)
+    x, v = cl["candidates"][i], cl["verdicts"][i]
+    b = x.get("artifact_b")
+    return {"cluster": c, "index": i, "kind": x["kind"], "topic": x["topic"],
+            "a": place(x["artifact_a"]), "statement_a": x.get("statement_a"), "quote_a": x.get("quote_a"),
+            "b": place(b) if artifact(b) else None, "statement_b": x.get("statement_b"), "quote_b": x.get("quote_b"),
+            "why_it_matters": x.get("why_it_matters"), "verdict": {f: v.get(f) for f in FIRST_FIELDS},
+            "read_by": "a cluster skeptic and #137's review" if v.get("review") else "a cluster skeptic"}
+
+
+def by_clusters(keys, parts):
+    """Rows split into parts with each cluster's rows kept together, the parts as even as whole
+    clusters allow, so a reader sees every row of a page it reads."""
+    clusters = {}
+    for c, i in keys:
+        clusters.setdefault(c, []).append((c, i))
+    out = [[] for _ in range(parts)]
+    for rows in sorted(clusters.values(), key=len, reverse=True):
+        min(out, key=len).extend(rows)
+    return [sorted(p, key=keys.index) for p in out]
+
+
+def standing_entry(g, rows, by_key, others, place):
+    """A group's file as its judge or reader is given it, with the verdict and words of each
+    row, and of each row set beside them that the follow-up read, as the page carries them
+    after the first group re-rule."""
+    entry = group_entry(g, rows, by_key, others, place)
+    for r in entry["rows"] + entry["context"]:
+        it = by_key.get(key(r))
+        if it:
+            r["now"] = after_first(rows[key(r)], it)
+            r["first_regroup"] = it.get("regroup")
+    return entry
+
+
+def second_inputs(reading, merged, numbers, inventory, groups2, inputs_dir, out):
+    """The second round's files: one per group ruled again, for its judge, with each row as the
+    first group re-rule left it, that judge's ruling of it and finding, the rows and cluster rows
+    set beside them and the sources; and the cluster rows the page's rule marks for each group,
+    in the judge's file where the judge notes them, else in files of their own for readers, a
+    reader of a group not ruled again given its finding as the first re-rule left it, and a
+    reader of a group ruled again pointed to the judge's file, whose rows give the standing
+    words of each row the judge keeps. A reading that holds the second round already is read as
+    the first group re-rule left it, so the files can be written again from the reading as it
+    now stands and set beside the ones the round was given."""
+    place = placer(inventory)
+    R = json.load(open(reading))
+    require("regroup" in R, "the reading must hold the first group re-rule")
+    M, N = json.load(open(merged)), json.load(open(numbers))
+    rows, _ = rows_in(inputs_dir)
+    by_key = {key(x): x for x in R["items"]}
+    others = {key(x): x for x in verdicts(M, N, place)}
+    plan = second_groups_of(groups2)
+    first = {g["name"]: g for g in R["regroup"]["groups"]}
+    require(sorted(first) == sorted(g["name"] for g in plan), "the second round's plan names other groups than the first re-rule")
+    marked = {g["name"]: [(c, i) for c, i, _ in mine] for g, mine in siblings_of(as_groups(R["regroup"]["groups"], plan), M, N)}
+    os.makedirs(out, exist_ok=True)
+    units = []
+    for g in plan:
+        f, sib = first[g["name"]], marked.get(g["name"], [])
+        require(g["rule"] or g["readers"], f"group {g['name']} is neither ruled again nor read for its cluster rows")
+        unit = {"name": g["name"], "title": f["title"], "rule": g["rule"], "file": None, "rows": [], "context": [],
+                "siblings": [], "readers": []}
+        if g["rule"]:
+            require(all(number_key_of(i) in by_key for i in g["rows"]), f"group {g['name']} re-rules a row the follow-up did not read")
+            entry = standing_entry({**f, **g}, rows, by_key, others, place)
+            entry["first_finding"] = {"group_note": f["note"], "context_notes": f.get("context_notes", [])}
+            entry["cluster_context"] = [cluster_row(M, place, c, i) for c, i in g.get("cluster_context", [])]
+            if not g["readers"]:
+                entry["siblings"] = [cluster_row(M, place, c, i) for c, i in sib]
+                unit["siblings"] = [sibling_key(c, i) for c, i in sib]
+            unit.update(file=f"{out}/group2-{g['name']}.json", rows=[key(r) for r in entry["rows"]],
+                        context=[key(r) for r in entry["context"]])
+            json.dump(entry, open(unit["file"], "w"), indent=1)
+        else:
+            entry = standing_entry(f, rows, by_key, others, place)
+            entry["finding"] = {"group_note": f["note"], "context_notes": f.get("context_notes", [])}
+        for k, part in enumerate(by_clusters(sib, g["readers"]) if g["readers"] else []):
+            path = f"{out}/notes2-{g['name']}-{k}.json"
+            body = {"group": g["name"], "title": f["title"], "siblings": [cluster_row(M, place, c, i) for c, i in part]}
+            if g["rule"]:
+                body["group_file"] = unit["file"]
+            else:
+                body.update(finding=entry["finding"], rows=entry["rows"], context=entry["context"], extra=entry["extra"])
+            json.dump(body, open(path, "w"), indent=1)
+            unit["readers"].append({"file": path, "siblings": [sibling_key(c, i) for c, i in part]})
+        units.append(unit)
+        print(g["name"], "ruled again" if g["rule"] else "notes only", "rows", *g.get("rows", []), "siblings", len(sib),
+              "readers", [len(r["siblings"]) for r in unit["readers"]])
+    json.dump(units, open(f"{out}/args.json", "w"), indent=1)
+
+
+def check_notes(name, notes, given):
+    got = [sibling_key(n["cluster"], n["index"]) for n in notes]
+    require(sorted(got) == sorted(given) and len(set(got)) == len(got), f"group {name} noted rows {sorted(got)}, not {sorted(given)}")
+    require(all(n["bears"] in BEARS for n in notes), f"a note on group {name} is not one of {BEARS}")
+
+
+def check_second(g, unit, answer):
+    now = {key(r): r["now"] for r in json.load(open(unit["file"]))["rows"]}
+    require(sorted(key(r) for r in answer["rows"]) == sorted(unit["rows"]), f"group {g['name']} answered other rows")
+    require(sorted(number_key_of(c["index"]) for c in answer["context"]) == sorted(unit["context"]), f"group {g['name']} answered other context rows")
+    for r in answer["rows"]:
+        require(r["verdict"] in NUMBER_SCALE, f"row {r['index']} has no number verdict: {r['verdict']}")
+        require(not r["keep"] or r["verdict"] == now[key(r)]["verdict"], f"row {r['index']} keeps its verdict and gives another")
+
+
+def second_about(plan, units, ruled, notes, date):
+    again = [g for g in plan if g["rule"]]
+    kept = sum(1 for r in ruled.values() if r["keep"])
+    titles = {u["name"]: u["title"] for u in units}
+    names = "; ".join(f"{titles[g['name']]} (rows {listed(g['rows'])})" for g in again)
+    by_judge = [f'"{titles[u["name"]]}"' for u in units if u["rule"] and not u["readers"]]
+    by_readers = [f'"{titles[u["name"]]}"' for u in units if u["readers"]]
+    who = " and ".join(w for w in (by_judge and f"by the group's judge for {listed(by_judge)}",
+                                   by_readers and f"by readers given the finding for {listed(by_readers)}") if w)
+    bears = Counter(n["bears"] for n in notes)
+    added = given_word_for_word("second-regroup-confirmed-numbers.js", SCALE_ADDED + RULES_ADDED)[len(SCALE_ADDED):]
+    return (f"On {date} a second review of the follow-up found rows of {small(len(again))} groups still at odds with the texts or with one another, "
+            f"the rules added to the judges' scale not stated on this page, and the cluster rows that give the groups' figures marked to be read beside the findings "
+            f"with nothing said of whether they agree. The {small(len(again))} groups were ruled a second time: {names}. One judge for each read its rows together "
+            f"as the first group re-rule left them, with that judge's ruling of each and its finding, the rows and cluster rows set beside them and every source, "
+            f"the second review's points given as claims to check against the texts and never to take as true, under the same scale; "
+            f"of the {len(ruled)} rows, {kept} kept their verdict and hint and {len(ruled) - kept} were ruled again. "
+            f"Then each cluster row the rule below marks was set beside its group's finding as it then stood, {who}, "
+            f"who said whether its instruction agrees with the finding, differs from it or is about another quantity: "
+            f"{bears['agrees']} agree, {bears['differs']} differ and {bears['other']} are about another quantity. "
+            f"The brief added {small(len(added))} rules to the first round's: {quoted(added)} "
+            "work/tools/reread_numbers.py writes the second round's input again from the reading and the follow-up's input.")
+
+
+def second(journal, groups2, args, reading_path, date):
+    reading = json.load(open(reading_path))
+    require("regroup" in reading and "regroup2" not in reading, "the reading must hold the first group re-rule and not a second")
+    plan, units = second_groups_of(groups2), json.load(open(args))
+    require([g["name"] for g in plan] == [u["name"] for u in units], "the plan and the input name other groups")
+    found = {r["label"]: r["result"] for r in results_of(journal)}
+    expected = ({f"regroup2:{u['name']}" for u in units if u["rule"]}
+                | {f"notes2:{u['name']}:{k}" for u in units for k in range(len(u["readers"]))})
+    require(set(found) == expected, f"no answer from {sorted(expected - set(found))}, or one from {sorted(set(found) - expected)}")
+    by_key = {key(x): x for x in reading["items"]}
+    ruled, groups, every_note = {}, [], []
+    for g, u in zip(plan, units):
+        entry = {"name": g["name"], "rule": g["rule"], "readers": g["readers"]}
+        answer = found.get(f"regroup2:{g['name']}")
+        if g["rule"]:
+            check_second(g, u, answer)
+            for r in answer["rows"]:
+                ruled[key(r)] = {"group": g["name"], "keep": r["keep"], **{f: r[f] for f in FIRST_FIELDS}}
+            entry.update({k: g[k] for k in ("rows", "context", "extra", "points")}, cluster_context=g.get("cluster_context", []),
+                         note=answer["group_note"], context_notes=sorted(answer["context"], key=lambda c: c["index"]))
+        notes = list(answer["siblings"]) if u["siblings"] else []
+        check_notes(g["name"], notes, u["siblings"])
+        for k, reader in enumerate(u["readers"]):
+            part = found[f"notes2:{g['name']}:{k}"]["siblings"]
+            check_notes(f"{g['name']} (reader {k})", part, reader["siblings"])
+            notes += part
+        entry["siblings"] = sorted(({f: n[f] for f in ("cluster", "index", "bears", "note")} for n in notes),
+                                   key=lambda n: (n["cluster"], n["index"]))
+        every_note += entry["siblings"]
+        groups.append(entry)
+    for k, r in ruled.items():
+        by_key[k]["regroup2"] = r
+    reading["regroup2"] = {"date": date, "about": second_about(plan, units, ruled, every_note, date), "groups": groups}
+    json.dump(reading, open(reading_path, "w"), indent=1)
+    print(len(ruled), "rows ruled a second time;", Counter("kept" if r["keep"] else f"ruled {r['verdict']}" for r in ruled.values()),
+          "; notes", Counter(n["bears"] for n in every_note))
+
+
 if __name__ == "__main__":
     argv = sys.argv[1:]
     if argv[0] == "inputs":
@@ -301,5 +549,9 @@ if __name__ == "__main__":
         regroup_inputs(*argv[1:])
     elif argv[0] == "regroup":
         regroup(*argv[1:])
+    elif argv[0] == "second-inputs":
+        second_inputs(*argv[1:])
+    elif argv[0] == "second":
+        second(*argv[1:])
     else:
-        raise SystemExit(f"unknown mode {argv[0]!r}; inputs, record, regroup-inputs or regroup")
+        raise SystemExit(f"unknown mode {argv[0]!r}; inputs, record, regroup-inputs, regroup, second-inputs or second")
