@@ -69,10 +69,19 @@ def scrubbed(value):
     return redact.walk(value, Counter()) if not isinstance(value, str) else redact.scrub(value, Counter())
 
 
-def save(path, data, ascii_only=False):
-    with open(path, "w", encoding="utf-8", newline="\n") as f:
-        json.dump(data, f, indent=1, ensure_ascii=ascii_only)
-        f.write("\n")
+def save(path, data):
+    """A record in the layout the first reading wrote them in, ASCII with escapes and an indent
+    of one, and with a final newline only where the file had one, so a run's diff holds only
+    what it changed."""
+    end = "\n"
+    if os.path.exists(path):
+        with open(path, "rb") as f:
+            f.seek(0, os.SEEK_END)
+            if f.tell():
+                f.seek(-1, os.SEEK_END)
+                end = "\n" if f.read(1) == b"\n" else ""
+    with open(path, "w", encoding="ascii", newline="\n") as f:
+        f.write(json.dumps(data, indent=1, ensure_ascii=True) + end)
 
 
 class Run:
@@ -274,7 +283,7 @@ def write_report(s, path):
 
 def write_concepts(ledger, state):
     import synth_concepts as sc
-    save(LEDGER, scrubbed(ledger), ascii_only=True)
+    save(LEDGER, scrubbed(ledger))
     with open(PAGE, "w", encoding="ascii", newline="\n") as f:
         f.write(scrubbed(sc.page(ledger, state.get("stamped") or "none")))
 

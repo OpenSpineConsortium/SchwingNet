@@ -248,6 +248,10 @@ class Join(unittest.TestCase):
         self.assertEqual(w.inventory["artifacts"][0]["changed"], "its table")
         self.assertIn(GAMMA, w.clustering["judged"]["clusters"][0]["members"])
         self.assertEqual(w.clustering["judged"]["placed_later"][0]["cluster"], "C1")
+        w.inventory["artifacts"].reverse()
+        sr.join_inventory(w.args, {"inventory:0": found["inventory:0"]}, w.inventory, [], w.clustering, w.rows, "2026-10-25")
+        self.assertEqual([f"{r['repo']}/{r['folder']}" for r in w.inventory["artifacts"]], [BETA, GAMMA, ALPHA],
+                         "a record read again keeps its place, whatever the README's order")
         for answer, why in (({"record": {"summary": "x"}}, "the record lacks"),
                             ({"record": record(notes="write to reader@example.invalid")}, "keeps out"),
                             ({"record": record(notes=CREDENTIAL)}, "keeps out"),
@@ -316,12 +320,30 @@ class Join(unittest.TestCase):
 
         later = sr.unread_rows(w.M, w.N)
         self.assertEqual(sorted(later), sorted(["C1|1"] + [f"C1|{2 + topics.index(t)}" for t in ("refused", "unruled")]))
+        kept = w.N["candidates"][-1]
+        self.assertEqual(rc.later_words(None, kept), "found on 2026-10-24, a kind no skeptic reads")
+        words = "\n".join(rc.later_section(w.M, w.N, rc.number_verdicts(w.N, w.M["numbers_extra"])))
+        self.assertIn("read 1 verdict again", words)
+        self.assertIn("3 rows found wait for a verdict", words)
+        self.assertIn("1 number collision of another scope or another quantity was added with none", words)
 
 
 def empty_status():
     return {"changes": [], "stale": [], "resolved": [], "lost_quotes": {}, "new_checks": [], "gone_checks": 0, "unread": [],
             "delta": {k: [] for k in ("new", "gone", "datasets_new", "datasets_changed", "datasets_gone")},
             "stamped": "2026-10-23", "date": "2026-10-24", "heads": {"SchwingNet": "a" * 40}, "without": []}
+
+
+class Records(unittest.TestCase):
+    def test_a_record_is_written_as_the_first_reading_wrote_it(self):
+        with tempfile.TemporaryDirectory() as folder:
+            for name, first in (("ends.json", "{}\n"), ("bare.json", "{}"), ("new.json", None)):
+                path = Path(folder, name)
+                if first is not None:
+                    path.write_text(first, encoding="utf-8")
+                synth.save(path, {"quote": "98.2 % \u2013 100 %"})
+                text = path.read_text(encoding="ascii")
+                self.assertEqual(text, '{\n "quote": "98.2 % \\u2013 100 %"\n}' + ("" if name == "bare.json" else "\n"), name)
 
 
 class Report(unittest.TestCase):

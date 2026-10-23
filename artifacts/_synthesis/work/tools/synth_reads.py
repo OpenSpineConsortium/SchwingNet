@@ -292,11 +292,12 @@ def readme_order(rows):
 
 
 def join_inventory(args, found, inventory, history, clustering, rows, date):
-    """Each artifact's new record in its place in the README order, the record it replaces kept
-    in inventory-history.json, and a new artifact added to the cluster its reader chose. An
-    artifact whose record did not come back, or cannot be placed, is left out, with why, and is
-    read again by the next run, since its tree is not stamped."""
-    by_id = {f"{r['repo']}/{r['folder']}": r for r in inventory["artifacts"]}
+    """Each artifact's new record in the place of the one it replaces, which is kept in
+    inventory-history.json, and a new artifact's at its place in the README order, added to the
+    cluster its reader chose. An artifact whose record did not come back, or cannot be placed,
+    is left out, with why, and is read again by the next run, since its tree is not stamped."""
+    records = inventory["artifacts"]
+    by_id = {f"{r['repo']}/{r['folder']}": r for r in records}
     clusters = {c["name"]: c for c in clustering["judged"]["clusters"]}
     readme = {f"{r['repo']}/{r['folder']}": r for r in rows}
     read, left = [], {}
@@ -312,15 +313,23 @@ def join_inventory(args, found, inventory, history, clustering, rows, date):
                "read_on": date, **({"changed": answer.get("changed")} if aid in by_id else {})}
         if aid in by_id:
             history.append({"id": aid, "replaced_on": date, "record": by_id[aid]})
+            records[records.index(by_id[aid])] = new
         else:
             clusters[answer["cluster"]]["members"].append(aid)
             clustering["judged"].setdefault("placed_later", []).append(
                 {"id": aid, "cluster": answer["cluster"], "date": date, "why": answer.get("cluster_why", "")})
+            place(records, new, readme_order(rows))
         by_id[aid] = new
         read.append(aid)
-    order = readme_order(rows)
-    inventory["artifacts"] = sorted(by_id.values(), key=lambda r: order.get(f"{r['repo']}/{r['folder']}", len(order)))
     return read, left
+
+
+def place(records, new, order):
+    """A new record before the first record the README lists after it, so the records already
+    there keep their order and a run's diff holds only what it read."""
+    rank = order.get(f"{new['repo']}/{new['folder']}", len(order))
+    at = next((i for i, r in enumerate(records) if order.get(f"{r['repo']}/{r['folder']}", len(order)) > rank), len(records))
+    records.insert(at, new)
 
 
 def scale_of(stratum):

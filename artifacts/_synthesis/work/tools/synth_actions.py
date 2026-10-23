@@ -339,7 +339,7 @@ How: A Claude session read each new or changed artifact into a record and, as th
 
 ## Adversarial review
 
-Each verdict here was read three ways before it was placed: by a skeptic, by a re-checker told to overturn it, and, where the re-checker disagreed with the verdict or its hint, by a judge who read both sources and ruled. A record of an artifact was read once, by its reader, and was not read again; a planner reads a row, and the passage it rests on, before relying on it, as the contradictions page says. A person's tap on owner-ok is the last read before this merges.
+Each verdict here was read by a skeptic and then by a re-checker told to overturn it, and, where the re-checker disagreed with the verdict or its hint, by a judge who read both sources and ruled, before it was placed. A record of an artifact was read once, by its reader, and was not read again; a planner reads a row, and the passage it rests on, before relying on it, as the contradictions page says. A person's tap on owner-ok is the last read before this merges.
 """
 
 

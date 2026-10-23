@@ -150,13 +150,20 @@ ROUNDS = {(): "follow-up", ("regroup",): "follow-up, group re-rule", ("regroup2"
           ("regroup", "regroup2"): "follow-up, both group re-rules"}
 
 
+# The kinds of number collision no skeptic reads, by design: another scope or another quantity.
+UNREAD_KINDS = ("unit-or-scope-mismatch", "probably-different-quantities")
+
+
 def later_words(v, x):
     """What a later run of the workflow made of a row: a verdict read again because a page it
-    rests on changed, with the verdict it replaced; a row found and read; or a row found that
-    no skeptic has read yet. A judge's ruling is named, since it stands in the skeptic's place."""
+    rests on changed, with the verdict it replaced; a row found and read; a row found that no
+    skeptic has read yet; or a row found of a kind no skeptic reads. A judge's ruling is named,
+    since it stands in the skeptic's place."""
     d, found = (v or {}).get("delta"), (x or {}).get("delta")
     if not d:
-        return f"found on {found['date']}, not read yet" if found else ""
+        if not found:
+            return ""
+        return f"found on {found['date']}, " + ("a kind no skeptic reads" if x.get("kind") in UNREAD_KINDS else "not read yet")
     judge = ", ruled by a judge" if "judge" in (d.get("read") or []) else ""
     if d.get("earlier"):
         return f"read again on {d['date']}, was {d['earlier'].get('verdict')}{judge}"
@@ -810,21 +817,25 @@ def later_section(M, N, nv):
     rows += [(NUMBER_STRATUM, j, x, nv.get(number_key(x))) for j, x in enumerate(N["candidates"])]
     again = [(s, i, v) for s, i, x, v in rows if (v or {}).get("delta", {}).get("earlier")]
     found = [(s, i, v) for s, i, x, v in rows if (v or {}).get("delta") and not v["delta"].get("earlier")]
-    waiting = [(s, i) for s, i, x, v in rows if x.get("delta") and not v]
-    if not (again or found or waiting):
+    waiting = [(s, i) for s, i, x, v in rows if x.get("delta") and not v and x.get("kind") not in UNREAD_KINDS]
+    kept = [(s, i) for s, i, x, v in rows if x.get("delta") and not v and x.get("kind") in UNREAD_KINDS]
+    if not (again or found or waiting or kept):
         return []
     dates = sorted({v["delta"]["date"] for _, _, v in again + found} | {x["delta"]["date"] for s, i, x, v in rows if x.get("delta")})
     when = f"on {dates[0]}" if len(dates) == 1 else f"from {dates[0]} to {dates[-1]}"
-    kept = sum(1 for _, _, v in again if v["verdict"] == v["delta"]["earlier"].get("verdict"))
+    held = sum(1 for _, _, v in again if v["verdict"] == v["delta"]["earlier"].get("verdict"))
     judged = sum(1 for _, _, v in again + found if "judge" in (v["delta"].get("read") or []))
     out = ["### Read by the workflow since\n",
            f"After the follow-up, the runs of .github/workflows/synthesis.yml {when} read {len(again)} {'verdict' if len(again) == 1 else 'verdicts'} again "
-           f"because a page {'it rests' if len(again) == 1 else 'each rests'} on had changed, {kept} of them keeping the verdict {'it' if len(again) == 1 else 'they'} had, "
+           f"because a page {'it rests' if len(again) == 1 else 'each rests'} on had changed, {held} of them keeping the verdict {'it' if len(again) == 1 else 'they'} had, "
            f"and read {len(found)} {'row' if len(found) == 1 else 'rows'} that their finders or the concept checks found. "
            "Each was read by a skeptic and then by a re-checker told to overturn the skeptic's verdict and its hint, "
            f"and {judged} of the {len(again) + len(found)}, where the two disagreed, by a judge who read both sources and ruled. "
-           f"{len(waiting)} {'row' if len(waiting) == 1 else 'rows'} found {'waits' if len(waiting) == 1 else 'wait'} for a verdict, which the next run reads. "
-           "Each such row's Review column says when it was read and, for a verdict read again, what it was before.\n"]
+           + (f"{len(waiting)} {'row' if len(waiting) == 1 else 'rows'} found {'waits' if len(waiting) == 1 else 'wait'} for a verdict, which the next run reads. "
+              if waiting else "")
+           + (f"{len(kept)} number {'collision' if len(kept) == 1 else 'collisions'} of another scope or another quantity {'was' if len(kept) == 1 else 'were'} "
+              "added with none, as the first readers' were, since no skeptic reads that kind. " if kept else "")
+           + "Each such row's Review column says when it was read and, for a verdict read again, what it was before.\n"]
     changed = [(s, i, v) for s, i, v in again if v["verdict"] != v["delta"]["earlier"].get("verdict")]
     if changed:
         out.append("The verdicts read again that changed:\n")
