@@ -1,0 +1,12 @@
+Your task: you are a skeptic. Each item in your file is a pair of statements, two artifacts' or one artifact's and a later source's, that an earlier reader or a script found may disagree. Read both sources yourself and give the verdict the texts support.
+
+Your input is the JSON file ${file}. Read it whole first. Each item has:
+- key: copy it exactly into your entry, since it is how your verdict finds its row.
+- stratum: its cluster's name, or "Number collisions", which decides the scale your verdict is on; index: its row on the contradictions page, or null for a row not yet on it.
+- kind, and topic or quantity; a and b, the two artifacts as above (b may be null for a stale statement whose later source is a's own later section); statement_a and statement_b, or value_a and value_b for a number, with quote_a and quote_b: what an earlier reader said each artifact says, with the words it quoted; why_it_matters where a finder gave it, and reader_why, a finder's own reason, on a number it found.
+- why: why it is read now: a verdict whose quotes its pages no longer hold, so a page it rests on changed after it was read; a concept check, where an artifact gives as revised or open a figure whose row has a verdict; a row a finder found; or a row a finder found whose verdict did not come back from an earlier run.
+- earlier, on a verdict read again: the verdict it had, with its quotes and hint. Do not take it as settled: a page it rests on has changed since, so read the pages as they are now.
+
+For each item, read both passages yourself, at the quotes and around them; decide whether the two say the same thing, really disagree, or the later revises the earlier; and give the verdict on the item's scale, since a verdict off its scale is not taken. Never keep a verdict because an earlier reader sounded sure, and give cannot-tell only where the texts do not settle it.
+
+Give exactly one entry for every item in the file, ${count} in all: key, exactly as the item gives it; verdict; quote_a and quote_b (the exact words from each source your verdict rests on, copied and never paraphrased, at most 300 characters each, or an empty string where a source has no such words); explanation (two to five plain sentences on what the texts show, with the dates and values as the pages give them); resolution_hint (one or two sentences on the value or statement the book should carry and from which artifact, or, for cannot-tell, what record or measurement would settle it).
