@@ -11,7 +11,8 @@
 #   verify   reacquire.py --verify ID (a copy whose state on disk is unknown; no re-fetch)
 #   gdown    gdown FILE_ID into a scratch folder under the landing, then file(1) on what came
 #   probe    curl -sI on URL: says whether a login is asked, fetches nothing
-#   hf-token reacquire.py hf-get with HF_TOKEN read from TOKEN_FILE (mode 0600) into the environment
+#   hf-token reacquire.py hf-get with HF_TOKEN read from TOKEN_FILE (mode 0600) into the environment; its
+#            --include is a glob, and a run that verified no file fails here with exit 3 (issue #158)
 #   curl-link curl on a presigned link read from LINK_FILE (mode 0600) through a curl config, never on a command line
 #   kaggle   kaggle competitions download with KAGGLE_API_TOKEN read from TOKEN_FILE
 #   redivis  grid/redivis_fetch.py ARGS with REDIVIS_API_TOKEN read from TOKEN_FILE, in REDIVIS_ENV, a
@@ -59,6 +60,13 @@ load_token() {  # load_token VAR FILE: the variable from a KEY=value line of a 0
   [ -n "$value" ] || value=$(head -n 1 "$file")
   export "$1=$value"
 }
+hf_verified_files() {  # hf_verified_files STATE: whether hf-get's summary in STATE verified at least one file
+  # hf-get ends 0 when its --include matches nothing, having verified no file (all_verified false); on
+  # 2026-10-23 FluoroSeg, ReXGradient-160K and CADS each ended so, COMPLETED with nothing fetched.
+  local summary
+  summary=$(ls -1t "$1"/hf_*.json 2>/dev/null | head -n 1)
+  [ -n "$summary" ] && grep -q '"all_verified": true' "$summary"
+}
 rc=0
 case "$ROUTE" in
   acq)
@@ -81,8 +89,16 @@ case "$ROUTE" in
   hf-token)
     load_token HF_TOKEN "${TOKEN_FILE:?}" || exit 2
     # hf-get imports huggingface_hub, which the acq environment holds and the repository's lock does not.
+    # Its --include glob is hf-get's to match against the repository, so this shell expands no pattern.
+    set -f
     # shellcheck disable=SC2086
-    "$ACQ_ENV/bin/python" "$SSN/data_platform/reacquire/reacquire.py" hf-get $ARGS --dest "$DATA/$ID/raw" --state "$DATA/$ID/meta/fetch-state"; rc=$? ;;
+    "$ACQ_ENV/bin/python" "$SSN/data_platform/reacquire/reacquire.py" hf-get $ARGS --dest "$DATA/$ID/raw" --state "$DATA/$ID/meta/fetch-state"; rc=$?
+    set +f
+    if [ "$rc" = 0 ] && ! hf_verified_files "$DATA/$ID/meta/fetch-state"; then
+      # In the shape grid/log-shapes.awk keeps, so the gate word status shows why.
+      echo "$ID: nothing fetched; the include pattern matched no file at $(date -u '+%FT%TZ')"
+      rc=3
+    fi ;;
   curl-link)
     link_file=$(eval echo "${LINK_FILE:?}")
     [ "$(stat -c %a "$link_file")" = 600 ] || { echo "$link_file must be mode 600"; exit 2; }

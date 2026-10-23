@@ -6,6 +6,7 @@ needs pydantic, is tests/schwingnet/test_bank.py."""
 
 import importlib.util
 import io
+import fnmatch
 import hashlib
 import json
 import os
@@ -649,3 +650,86 @@ class TorrentAndTarTest(unittest.TestCase):
         self.assertEqual(entry["names"][0], "images_001.tar.gz")
         self.assertTrue(entry["unpack"])
         self.assertIn("557481faacd824c83fbf57dcf7b6da9383b3235a", entry["torrent"])
+
+
+class HuggingFaceRouteTest(unittest.TestCase):
+    """The hf-token route of grid/platform-fetch.sbatch (#158). reacquire.py hf-get reads --include
+    as a glob, as fnmatch and huggingface_hub's allow_patterns do, never as the regular expression
+    the acq and zenodo routes take, and it ends 0 having verified no file when the glob matches
+    none: FluoroSeg, ReXGradient-160K and CADS each ended so on 2026-10-23, COMPLETED with nothing
+    fetched. The job now fails by name on such a run, and the glob reaches hf-get as written."""
+
+    # Stands in for the acq environment's python running reacquire.py hf-get: it prints each
+    # argument it was given and writes hf-get's summary with FAKE_FILES files verified.
+    FAKE_PYTHON = """#!/bin/bash
+state=""
+while [ $# -gt 0 ]; do
+  case "$1" in --state) state=$2; shift 2 ;; *) printf 'arg: %s\\n' "$1"; shift ;; esac
+done
+mkdir -p "$state"
+verified=false; [ "${FAKE_FILES:-0}" -gt 0 ] && verified=true
+printf '{\\n "repo": "a/b",\\n "files": %s,\\n "failed": 0,\\n "all_verified": %s\\n}' "${FAKE_FILES:-0}" "$verified" > "$state/hf_a_b.json"
+echo "hf a/b@0123: ${FAKE_FILES:-0} files, 0 failed"
+"""
+
+    @staticmethod
+    def hf_token_args():
+        text = (GRID / "run-platform-fetch.sh").read_text(encoding="utf-8")
+        rows = (line.split("|") for line in text.splitlines())
+        return {row[0]: row[5].split() for row in rows if len(row) > 5 and row[1] == "hf-token"}
+
+    def test_no_hf_token_line_gives_hf_get_a_pattern_that_matches_nothing(self):
+        lines = self.hf_token_args()
+        self.assertLessEqual({"hf_cads_unique", "hf_rexgradient_160k", "hf_fluoroseg", "hf_ct_rate"}, set(lines))
+        for source, args in lines.items():
+            if "--include" in args:
+                self.assertNotEqual(args[args.index("--include") + 1], ".", source)
+        # the owner chose these whole, which is no --include at all
+        for whole in ("hf_rexgradient_160k", "hf_fluoroseg", "hf_ct_rate"):
+            self.assertNotIn("--include", lines[whole], whole)
+        cads = lines["hf_cads_unique"]
+        pattern = cads[cads.index("--include") + 1]
+        # CT-TRI's folder in the Hugging Face tree of 2026-09-23 (data/reproduce/sources.json)
+        self.assertTrue(fnmatch.fnmatch("0043_new_ct_tri/images/s0001.nii.gz", pattern))
+        self.assertFalse(fnmatch.fnmatch("0001_visceral_gc/images/s0001.nii.gz", pattern))
+
+    def run_job(self, tmp, files):
+        acq = tmp / "acq" / "bin"
+        acq.mkdir(parents=True)
+        (acq / "python").write_text(self.FAKE_PYTHON, encoding="utf-8")
+        (acq / "python").chmod(0o755)
+        token = tmp / "token.env"
+        token.write_text("HF_TOKEN=not-a-token\n", encoding="utf-8")
+        token.chmod(0o600)
+        work = tmp / "work"
+        work.mkdir()
+        # a file the pattern would name, were this shell to expand it
+        (work / "0043_new_ct_tri-here").write_text("", encoding="utf-8")
+        env = dict(os.environ, ID="hf_example", ROUTE="hf-token", ARGS="--repo a/b --include *0043_new_ct_tri*",
+                   TOKEN_FILE=str(token), ACQ_ENV=str(tmp / "acq"), SSN=str(tmp / "ssn"),
+                   DATA_ROOT=str(tmp / "data"), TMPDIR_OVERRIDE=str(tmp / "tmp"), SCHWINGNET=str(ROOT),
+                   FAKE_FILES=str(files))
+        done = subprocess.run(["bash", str(GRID / "platform-fetch.sbatch")], cwd=work, env=env,
+                              capture_output=True, text=True, timeout=60)
+        return done.returncode, done.stdout + done.stderr
+
+    def test_a_fetch_that_verified_no_file_fails_by_name_and_status_shows_why(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            code, out = self.run_job(Path(tmp), files=0)
+        self.assertEqual(code, 3, out)
+        self.assertIn("arg: *0043_new_ct_tri*", out)
+        self.assertIn("DP_FETCH_RC=3", out)
+        # what the gate word status keeps of the log (grid/gate.sh)
+        shown = subprocess.run(["awk", "-f", str(GRID / "shape-words.awk"), "-f", str(GRID / "log-shapes.awk")],
+                               input=out, capture_output=True, text=True, timeout=60).stdout
+        self.assertIn("hf_example: nothing fetched; the include pattern matched no file at ", shown)
+
+    def test_a_fetch_that_verified_files_passes(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            code, out = self.run_job(Path(tmp), files=2)
+        self.assertEqual(code, 0, out)
+        self.assertIn("arg: *0043_new_ct_tri*", out)
+        self.assertIn("DP_FETCH_RC=0", out)
+        self.assertNotIn("nothing fetched", out)
