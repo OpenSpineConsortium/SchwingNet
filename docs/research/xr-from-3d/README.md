@@ -36,8 +36,9 @@ Feasibility is graded on three counts: the data is held (H), requested (R) or mi
 | M | Physics renderer and its ablation | H | 3 to 5 | 10 to 20 GPU-h | Published (DeepDRR) | no |
 | N | Rare anatomy made in 3D | H | 7 to 10 | modest | Inferred | no |
 | O | Gold masks on the paired CT and X-ray sets, verified, projected and registered | H | 5 to 10, plus the readers' hours | an array job per set, then small | Published (TotalSegmentator, DiffDRR); Measured for C-ArmLSpine's projection | step 1 and the first cases |
+| P | Level naming from the lumbosacral gold to C2 by whole-spine renders, physics noise, denoising and generative translation, measured on real cervical and thoracic films | H | 10 to 15 | 20 to 50 GPU-h render and translate, 10 to 20 GPU-h train | Published for the ingredients (SyntheX, DeepDRR); Inferred for the extrapolation, to be measured by reverse ablation | no |
 
-A, B, C, F, G and J are in the two notes beside this one; O, the owner's ask of 2026-10-22, is docs/research/benchmarks-to-beat.md section 5 and issue #127, and that note sets the benchmarks the whole programme is measured against; A, G's format and J's tool are built. What follows is the three the owner added last, E, D and L, written out, and then the order.
+A, B, C, F, G and J are in the two notes beside this one; O, the owner's ask of 2026-10-22, is docs/research/benchmarks-to-beat.md section 5 and issue #127, and that note sets the benchmarks the whole programme is measured against; P, his ask of 2026-10-22 23:08 UTC (the rest of the spine learned from the lumbosacral gold by renders, physics noise, denoising and generative translation), is issue #135, with its prior art and feasibility in docs/research/lumbosacral-to-cervical-extrapolation.md; A, G's format and J's tool are built. What follows is the three the owner added last, E, D and L, written out, and then the order.
 
 ### E. Device and setting differences without losing shape
 

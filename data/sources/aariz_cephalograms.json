@@ -4,8 +4,8 @@
   "group": "films",
   "what": "1,000 lateral cephalograms from 7 devices with 29 landmarks and a cervical vertebral maturation (CVM) stage per film, C2 to C4 in every image (arXiv:2302.07797; the CEPHA29 challenge at ISBI 2023); the ISBI 2015 set of 400 cephalograms with 19 landmarks and no CVM stage is openly downloadable",
   "level_truth": "C2 to C4 by the CVM stage (named vertebra shapes); no other level",
-  "reach": "get",
-  "status": "found by the sweep of 2026-10-21; not fetched; the 1,000-film set is an open figshare download (27986417, one zip of 2,098,209,792 bytes), entered in grid/fetch-xray.json as aariz on 2026-10-21 (issue #40); the 400-film ISBI 2015 set's link is still to confirm; pediatric anchors for the top of the cervical counter from seven devices",
+  "reach": "held",
+  "status": "on the volume at the census of 2026-10-22 (1,000 images with their sidecars, docs/research/data-manifest/MANIFEST.md); found by the sweep of 2026-10-21; not fetched; the 1,000-film set is an open figshare download (27986417, one zip of 2,098,209,792 bytes), entered in grid/fetch-xray.json as aariz on 2026-10-21 (issue #40); the 400-film ISBI 2015 set's link is still to confirm; pediatric anchors for the top of the cervical counter from seven devices",
   "licence": "CC BY 4.0 (the figshare record's licence field, read from the API on 2026-10-21)",
   "link": "https://doi.org/10.6084/m9.figshare.27986417",
   "how_to_get": [
@@ -13,7 +13,7 @@
     "Fetch it as a Slurm job on the owner's word, never on the login node: bash grid/run-xray-chain.sh --only aariz, whose stage 1 reads the API, runs http-get with the md5 and unpacks the zip (grid/README.md).",
     "The ISBI 2015 set of 400 cephalograms is the entry isbi2015_cephalograms of grid/fetch-xray.json, whose link is still to confirm."
   ],
-  "grid_path": null,
+  "grid_path": "/rs/rs_grp_oschome/go2432/data/aariz",
   "counts": {
     "films": 1000,
     "devices": 7,
