@@ -7,7 +7,8 @@ inputs writes the re-checkers' input files. Each item is the one sample_review.p
 the review, so the re-checkers read the same fields under the same brief; an artifact whose
 page changed after the inventory read it says so under changed_since_inventory, since its text
 and folder are the page as it is now. The items go to five re-checkers by row, every fifth to
-each, and args.json is the workflow's input. The record has moved since, so the selection is
+each, and args.json is the input of the workflow, workflows/reread-confirmed-numbers.js, which
+holds the re-checkers' and the judges' briefs. The record has moved since, so the selection is
 repeated from the record at commit fde5b06, with the words on changed pages taken from the
 reading, which keeps them:
 
@@ -25,8 +26,9 @@ Rows that read the same figures were ruled apart, and a review of the follow-up 
 rulings did not agree, so each group of them was ruled again by one judge who read the
 group's rows together. regroup-inputs writes that judge's input from the reading, the record
 at fde5b06, the follow-up's input folder and GROUPS (a file of groups, or the reading, which
-keeps them); regroup joins the judges' answers to the reading, which record must have written
-first:
+keeps them), and OUT/args.json is the input of workflows/regroup-confirmed-numbers.js, which
+holds the judges' brief; regroup joins the judges' answers to the reading, which record must
+have written first:
 
   reread_numbers.py regroup-inputs READING merged.json out/numbers-partial.json ../inventory.json GROUPS IN OUT
   reread_numbers.py regroup JOURNAL GROUPS READING DATE

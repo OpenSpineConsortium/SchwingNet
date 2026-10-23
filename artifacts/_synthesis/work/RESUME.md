@@ -17,6 +17,7 @@ Written 2026-10-22 23:45 UTC by the thread "Artifact Textbook" when the owner's 
   - redact.py replaces what the folder's rule keeps out of the records and pages with an editor's words in square brackets.
   - render_contradictions2.py writes contradictions.md and one page per cluster under contradictions/.
   - render_inventory.py, render_clusters.py, render_toc.py and textbook_toc.py made the other files.
+- workflows/: the scripts of the follow-up's two workflows, the re-check with its judges (reread-confirmed-numbers.js, whose re-checkers' brief is the review's with the one added sentence and the changed-page note the reading's account names) and the group re-rule (regroup-confirmed-numbers.js), each run with the args.json that reread_numbers.py writes beside its inputs.
 - out/clustering.json: the 14 clusters. out/toc-hand.json: the proposed table of contents.
 - out/sweep-A-raw.json and out/sweep-B-raw.json: the finders' candidates for clusters 2 to 13 (372 and 269 candidates, Outreach included), with whatever verdicts came back first.
 - out/contradictions-all.json: the merge of every sweep; out/clusters-verify-0-1-6.json: clusters 0, 1 and 6 as first verified; out/numbers-partial.json: the 247 number collisions and the 15 verdicts of #136's first run; out/numbers-verify-batches.json: the 87 number candidates the second run read.
