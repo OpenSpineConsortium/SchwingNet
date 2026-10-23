@@ -60,10 +60,14 @@
 # a fetch decides can count twice and refuse it. A running fetch is credited what its own landing
 # shows, never capped by what the folders above it show, since they hold other writers' bytes too
 # and such a cap could still credit bytes they do not show: the minute stands in for it. And
-# CephFS holds a write to every quota on
-# its path, so a byte quota of its own on the data root, or on a folder above it inside the volume,
-# would stop part-way a fetch the volume's quota leaves room for: the rule reads no such quota and
-# admits nothing while one stands (quota_below).
+# CephFS holds a write to every quota on its path, so a byte quota of its own on the data root, on a
+# folder between it and the volume, or on a folder above the volume up to the root of the volume's
+# mount, would stop part-way a fetch the volume's quota leaves room for: the rule reads no such
+# quota and admits nothing while one stands or cannot be read, nor while the data root is no folder
+# inside the volume on its mount, whose quota is then not the one a fetch there meets
+# (quota_below). A VOLUME or DATA_ROOT that names the wrong folder therefore refuses every fetch
+# rather than read another room. A quota on a folder above the root of the mount, which the client
+# does not show, is not read.
 #
 # What each fetch still owes is kept beside its landing, $DATA/<id>/meta:
 #   QUEUED   "<job> <utc>", written when grid/run-platform-fetch.sh submits the job
@@ -86,36 +90,45 @@
 # stands in for them, through GETFATTR, XATTR_PYTHON, STAT, SQUEUE, DF, MOUNTINFO and
 # SIZE_RULE_SETTLE, only where it sets SIZE_RULE_STAND_INS=yes, since a job inherits the
 # environment it was sent from, and a stray STAT or MOUNTINFO there would change what the rule
-# reads, unseen (#180). A job whose node may have no getfattr and no python3 names a Python of its
-# own in RULE_PYTHON after sourcing this file, as grid/platform-fetch.sbatch and grid/unpack.sbatch
-# do.
+# reads, unseen (#180). So is the user whose jobs squeue lists, which a test names through USER, and
+# a shell function the environment exports under the name of a tool the rule runs is dropped, since
+# bash would run it in the tool's place. A job whose node may have no getfattr and no python3 names
+# a Python of its own in RULE_PYTHON after sourcing this file, as grid/platform-fetch.sbatch and
+# grid/unpack.sbatch do.
 if [ "${SIZE_RULE_STAND_INS:-}" = yes ]; then
   RULE_GETFATTR=${GETFATTR:-getfattr} RULE_STAT=${STAT:-stat} RULE_SQUEUE=${SQUEUE:-squeue} RULE_DF=${DF:-df}
   RULE_MOUNTINFO=${MOUNTINFO:-/proc/self/mountinfo} RULE_SETTLE=${SIZE_RULE_SETTLE:-60}
-  RULE_PYTHON=${XATTR_PYTHON:-python3}
+  RULE_PYTHON=${XATTR_PYTHON:-python3} RULE_USER=${USER:-}
 else
   RULE_GETFATTR=getfattr RULE_STAT=stat RULE_SQUEUE=squeue RULE_DF=df
-  RULE_MOUNTINFO=/proc/self/mountinfo RULE_SETTLE=60 RULE_PYTHON=python3
+  RULE_MOUNTINFO=/proc/self/mountinfo RULE_SETTLE=60 RULE_PYTHON=python3 RULE_USER=""
+  unset -f getfattr stat squeue df python3 sleep id awk tr readlink mktemp sed sort rm tail date mkdir cut od
 fi
 # The file settled_room hands a census from the room's first reading to its second through
 # (entries_census): its own, never the environment's.
 RULE_CENSUS_IN="" RULE_CENSUS_OUT=""
 
-xattr_bytes() {  # xattr_bytes NAME FOLDER: every byte of a CephFS attribute's value, NULs and all; 2 when no reader runs
+xattr_bytes() {  # xattr_bytes NAME FOLDER: every byte of a CephFS attribute's value, NULs and all, nothing where it is not there; 2 where no reader runs or the read fails
+  local said
+  # An attribute that is not there is nothing, and so is one on a filesystem that keeps no CephFS
+  # attributes at all, as on a mount df answers for; a read that fails otherwise, as on a folder the
+  # user may not read or where the metadata server does not answer, is no reading at all, never a
+  # quota that is not there. getfattr ends 1 for each, so its own words in C's locale tell them
+  # apart, while the value goes straight on, NULs and all.
   if command -v "$RULE_GETFATTR" > /dev/null 2>&1; then
-    "$RULE_GETFATTR" --only-values -n "$1" "$2" 2>/dev/null
-    return 0
+    { said=$(LC_ALL=C "$RULE_GETFATTR" --only-values -n "$1" "$2" 2>&1 >&3 3>&-) && return 0; } 3>&1
+    case $said in *": $1: No such attribute" | *": $1: Operation not supported") return 0 ;; esac
+    return 2
   fi
-  # An attribute that is not there is nothing; a Python that does not run is no reading at all.
   "$RULE_PYTHON" -c '
-import os, sys
+import errno, os, sys
 try:
     sys.stdout.buffer.write(os.getxattr(sys.argv[2], sys.argv[1]))
-except OSError:
-    pass' "$1" "$2" 2>/dev/null || return 2
+except OSError as error:
+    sys.exit(0 if error.errno in (errno.ENODATA, errno.EOPNOTSUPP) else 3)' "$1" "$2" 2>/dev/null || return 2
 }
 
-xattr_value() {  # xattr_value NAME FOLDER: a CephFS attribute's value up to its first NUL; 2 when no reader runs
+xattr_value() {  # xattr_value NAME FOLDER: a CephFS attribute's value up to its first NUL; 2 where no reader runs or the read fails
   # Cut at the first NUL here and nowhere else: bash drops a NUL from what a command prints, and
   # would join whatever follows it to the digits before it; a line break inside is kept, so a value
   # that holds one is no count rather than the part before it.
@@ -135,7 +148,7 @@ fits_in_count() {  # fits_in_count SUM ADD: whether SUM + ADD is still a count, 
   [ "$2" -le $(( 999999999999999999 - $1 )) ]
 }
 
-xattr_digits() {  # xattr_digits NAME FOLDER: a CephFS attribute as a count, or nothing where it is not there; 2 when no reader runs, 3 when it reads as no count
+xattr_digits() {  # xattr_digits NAME FOLDER: a CephFS attribute as a count, or nothing where it is not there; 2 where no reader runs or the read fails, 3 when it reads as no count
   local value
   value=$(xattr_value "$1" "$2") || return 2
   [ -n "$value" ] || return 0
@@ -144,7 +157,7 @@ xattr_digits() {  # xattr_digits NAME FOLDER: a CephFS attribute as a count, or 
   echo "$value"
 }
 
-xattr_whole() {  # xattr_whole NAME FOLDER: the attribute as a count where every byte of it is a digit; else nothing, ending 2 when no reader runs and 3 where it is there and no count
+xattr_whole() {  # xattr_whole NAME FOLDER: the attribute as a count where every byte of it is a digit; else nothing, ending 2 where no reader runs or the read fails and 3 where it is there and no count
   local value
   # Every byte, past any NUL, so a NUL cannot cut a count short unseen: a NUL, a line break or any
   # other byte that is no digit becomes x, and a value that holds one is no count. A NUL after the
@@ -162,7 +175,7 @@ whole_words() {  # whole_words NAME FOLDER: what one whole reading of the attrib
   local value others
   value=$(xattr_whole "$1" "$2")
   case $? in
-    2) echo "$1 was not read; neither getfattr nor Python ran" ;;
+    2) echo "$1 was not read; no reader ran, or its read failed" ;;
     3) value=$(xattr_bytes "$1" "$2" | LC_ALL=C tr -c '0-9' 'x')
        others=${value//[0-9]/}
        echo "$1 reads as no count: ${#value} bytes, ${#others} of them no digit, where a count is at most 18 digits and nothing else" ;;
@@ -174,7 +187,7 @@ xattr_words() {  # xattr_words NAME FOLDER: what one reading of the attribute ga
   local value
   value=$(xattr_digits "$1" "$2")
   case $? in
-    2) echo "$1 was not read; neither getfattr nor Python ran" ;;
+    2) echo "$1 was not read; no reader ran, or its read failed" ;;
     3) value=$(xattr_value "$1" "$2")
        echo "$1 reads as no count, ${#value} characters up to its first NUL where a count has at most 18 digits" ;;
     *) echo "$1 reads ${value:-as not there}" ;;
@@ -365,7 +378,7 @@ use_by_entries() {  # use_by_entries VOLUME: "<bytes> <entries> <folders> <held>
   echo "$sum $entries $folders $held $floor"
 }
 
-volume_used() {  # volume_used VOLUME: "<bytes> attribute", "<bytes> stat" or "<bytes> entries <entries> <folders> <held> <floor>", what VOLUME holds, with the figures use_by_entries checked a sum by, or nothing where its attribute is not there; 2 when no reader ran, 3 when no reading counts
+volume_used() {  # volume_used VOLUME: "<bytes> attribute", "<bytes> stat" or "<bytes> entries <entries> <folders> <held> <floor>", what VOLUME holds, with the figures use_by_entries checked a sum by, or nothing where its attribute is not there; 2 when no reader ran or its read failed, 3 when no reading counts
   local used rc floor
   # Whole, so a NUL that cut it short reads as no count, never as a tenth of the use (#180).
   used=$(xattr_whole ceph.dir.rbytes "$1")
@@ -518,17 +531,27 @@ entries_note() {  # entries_note VOLUME ENTRIES FOLDERS HELD FLOOR: why the read
   echo "Each of its $(counted "$2" entry entries), $(counted "$3" "of them a folder" "of them folders"), read whole on the volume's own mount, none of them a mount, a folder by its ceph.dir.rbytes and a file or link by its size: stat gives the volume's size as $2, its count of entries, and the one that holds the data root holds $4, no less than the data root's ceph.dir.rbytes, $5"
 }
 
-quota_below() {  # quota_below VOLUME: 0 where the data root, or a folder above it inside VOLUME, carries a byte quota of its own; 1 where none does or the data root lies inside no VOLUME on its mount; 2 where one of their quotas cannot be read whole
-  local volume folder value
-  data_root_on "$1" || return 1
+quota_below() {  # quota_below VOLUME: 1 where VOLUME's is the one byte quota on the data root's path up to the root of VOLUME's mount; else 0 where the data root, or a folder above it inside VOLUME, carries one of its own, 2 where one of theirs cannot be read whole, 3 where a folder above VOLUME on its mount carries one, 4 where one of theirs, or the mount table, cannot be read, 5 where the data root is no folder inside VOLUME on its mount
+  local volume folder value points
+  data_root_on "$1" || return 5
   volume=$(readlink -f -- "$1" 2>/dev/null) && folder=$(readlink -f -- "$DATA" 2>/dev/null) || return 2
   volume=${volume%/}
-  # From the data root up, every link resolved, to VOLUME's own folder and no further: VOLUME's
-  # quota is the one the rule reads, and a quota above it is no folder of the volume's. 0 is none.
+  # From the data root up, every link resolved, to VOLUME's own folder, whose quota is the one the
+  # rule reads. 0 is none.
   while [ "$folder" != "$volume" ] && [ "${#folder}" -gt "${#volume}" ]; do
     value=$(xattr_whole ceph.quota.max_bytes "$folder") || return 2
     [ -z "$value" ] || [ "$value" = 0 ] || return 0
     folder=${folder%/*}
+  done
+  # Then on above VOLUME to the root of its mount, the root among them, where the mount table puts
+  # it: a quota there binds a fetch as well.
+  points=$(mount_points) || return 4
+  folder=$volume
+  until is_mount_point "$points" "${folder:-/}"; do
+    [ -n "$folder" ] || return 4
+    folder=${folder%/*}
+    value=$(xattr_whole ceph.quota.max_bytes "${folder:-/}") || return 4
+    [ -z "$value" ] || [ "$value" = 0 ] || return 3
   done
   return 1
 }
@@ -589,6 +612,9 @@ quota_below_words() {  # quota_below_words VOLUME: in words, why a quota below V
   case $? in
     0) echo "the data root or a folder above it inside the volume carries a quota of its own, which the size rule does not read" ;;
     2) echo "a quota on the data root or a folder above it inside the volume could not be read" ;;
+    3) echo "a folder above the volume on its mount carries a quota of its own, which the size rule does not read" ;;
+    4) echo "a quota on a folder above the volume on its mount could not be read" ;;
+    5) echo "the data root is no folder inside the volume on its mount, so the volume's quota is not the one a fetch there meets" ;;
   esac
 }
 
@@ -620,7 +646,7 @@ running_fetches() {  # running_fetches N: "1 running fetch" or "N running fetche
 
 live_job_ids() {  # the jobs Slurm holds for the user, queued or running, one a line; fails when squeue does
   local out
-  out=$("$RULE_SQUEUE" -h -u "${USER:-$(id -un)}" -o '%i' 2>/dev/null) || return 1
+  out=$("$RULE_SQUEUE" -h -u "${RULE_USER:-$(id -un)}" -o '%i' 2>/dev/null) || return 1
   printf '%s\n' "$out" | sed 's/_.*//' | sort -u
 }
 

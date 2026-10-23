@@ -42,10 +42,12 @@ echo "$*" >> "$FAKE/scancel.log"
 echo "Avail"
 echo "900000000000000"
 """,
-    # stat -f -c %T as grid/size-rule.sh asks it before df: a mount that is no CephFS, kernel or FUSE,
-    # so the stand-in df may answer for it; named so it never stands in for stat itself
+    # stat as grid/size-rule.sh asks it: -f -c %T, before df, names a mount that is no CephFS, kernel
+    # or FUSE, so the stand-in df may answer for it, and every other question, the devices that show
+    # the data root inside the volume on its mount among them, goes to stat itself; named so it never
+    # stands in for stat on PATH
     "fstype": """#!/bin/bash
-echo "ext2/ext3"
+case " $* " in *" -f "*) echo "ext2/ext3" ;; *) exec stat "$@" ;; esac
 """,
 }
 
@@ -88,6 +90,9 @@ class GateTest(unittest.TestCase):
         for name in ("GETFATTR", "VOLUME", "HPCW_DRY", "HPCW_FIRST", "HPCW_FRAMEWORK", "SBATCH", "SQUEUE", "SACCT", "SCANCEL", "DF", "DEPEND", "PYDRV"):
             env.pop(name, None)
         env["STAT"] = str(self.fake / "fstype")
+        # The lab volume is the test's own folder, which holds the data root as /rs/rs_grp_oschome
+        # holds go2432/data: the size rule reads no room where the data root lies outside the volume (#180).
+        env["VOLUME"] = str(self.tmp)
         # the size rule reads these fakes only where a test says so, and waits no minute here (#180)
         env.update(SIZE_RULE_STAND_INS="yes", SIZE_RULE_SETTLE="0")
         return env
@@ -854,10 +859,10 @@ echo "the split is not disjoint; no training step reads this version"; exit 1
         (self.fake / "getfattr").write_text("""#!/bin/bash
 folder=${!#}
 case "$3:$folder" in
-  ceph.quota.max_bytes:/rs/rs_grp_oschome) echo -n 21990232555520 ;;
-  ceph.dir.rbytes:/rs/rs_grp_oschome) echo -n 13146000000000 ;;
-  ceph.dir.rfiles:/rs/rs_grp_oschome) echo -n 7008826 ;;
-  *:/rs/rs_grp_oschome) exit 1 ;;
+  ceph.quota.max_bytes:"$VOLUME") echo -n 21990232555520 ;;
+  ceph.dir.rbytes:"$VOLUME") echo -n 13146000000000 ;;
+  ceph.dir.rfiles:"$VOLUME") echo -n 7008826 ;;
+  ceph.quota.*|*:"$VOLUME") echo "$folder: $3: No such attribute" >&2; exit 1 ;;
   */big) echo -n 2500000000000 ;;
   */small) echo -n 1500000000 ;;
   */unread) exit 1 ;;
