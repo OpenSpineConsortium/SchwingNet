@@ -8,12 +8,16 @@ the way each route lands its files:
 
     hf            reacquire.py hf-get: the files of a Hugging Face repository whose path matches
                   the --include glob (huggingface_hub's allow_patterns), landed as they are
-    acq hf, acq zenodo, acq s3
+    acq hf, acq zenodo
                   spinesurg-ct-nnunet's acquisition_fetch.py: the files whose path matches the
                   --include regular expression; a zip or a tar is unpacked into raw/ and then
                   deleted, so it needs its members' bytes, read from a zip's central directory by
                   HTTP range requests or bounded by a plain tar's own size, and room for the
-                  largest archive while it unpacks; a compressed tar states no unpacked size
+                  largest archive while it unpacks; a compressed tar states no unpacked size, and
+                  tarfile.open decompresses whatever it is given, so a .tar is taken as plain only
+                  when its first block, read by a range request, shows a tar and no compressor
+    acq s3        acquisition_fetch.py s3: every object under the bucket's prefix, since s5cmd
+                  syncs the whole prefix and --include narrows only what is verified afterwards
     idc           acquisition_fetch.py idc: the series_bytes column of grid/idc_manifest.py's
                   manifest, idc-index's series_size_MB in units of 10**6 bytes
     zenodo-token  grid/zenodo_fetch.py: the files of a record read with the owner's token, as
@@ -57,6 +61,15 @@ HUB_KINDS = {"dataset": "datasets", "model": "models", "space": "spaces"}
 COMPRESSED_TARS = (".tar.gz", ".tgz")
 PLAIN_TAR = ".tar"
 ZIP = ".zip"
+# What a compressed stream begins with, for the compressors tarfile.open reads on its own.
+COMPRESSOR_MAGIC = (
+    (b"\x1f\x8b", "gzip"),
+    (b"BZh", "bzip2"),
+    (b"\xfd7zXZ\x00", "xz"),
+    (b"\x28\xb5\x2f\xfd", "zstd"),
+)
+TAR_BLOCK = 512
+USTAR_AT = 257
 
 
 class NoSize(Exception):
@@ -186,12 +199,29 @@ def zip_members_bytes(url, size, fetch=get):
         raise NoSize("a zip whose central directory cannot be read") from None
 
 
+def check_plain_tar(url, size, fetch=get):
+    """Refuse a file named .tar that is not a plain tar: acquisition_fetch.py opens it with
+    tarfile.open's default mode, which decompresses a gzip, bzip2, xz or zstd stream it finds, and
+    then its members may pass its own size."""
+    if size == 0:
+        return
+    head, _ = fetch(url, "", (0, min(size, TAR_BLOCK) - 1))
+    for magic, compressor in COMPRESSOR_MAGIC:
+        if head.startswith(magic):
+            raise NoSize(f"a .tar compressed with {compressor} states no unpacked size")
+    if head[USTAR_AT : USTAR_AT + 5] != b"ustar":
+        raise NoSize("a .tar whose first block is no ustar header")
+
+
 def unpacked(name, size, url, fetch=get):
     """What one listed file becomes in raw/ under acquisition_fetch.py's unpack: (bytes, archive)"""
     if name.endswith(COMPRESSED_TARS):
         raise NoSize("a compressed tar states no unpacked size")
     if name.endswith(PLAIN_TAR):
-        # A tar's members, headers and padding aside, are no larger than the tar itself.
+        check_plain_tar(url, size, fetch)
+        # A plain tar's members, headers and padding aside, are no larger than the tar itself, save
+        # a sparse member, which unpacks larger than it is stored, and a hard link tarfile copies
+        # where it cannot link; neither is read here.
         return size, True
     if name.endswith(ZIP):
         return zip_members_bytes(url, size, fetch), True
@@ -236,9 +266,9 @@ def acq_listing(args, fetch=get):
                         )
                     )
         return rows
-    return [
-        (key, key, size, "") for key, size in s3_objects(args.bucket, fetch) if wanted.search(key)
-    ]
+    # s5cmd syncs every object under the prefix whatever --include says; the pattern only narrows
+    # what acquisition_fetch.py verifies afterwards, so every object lands and counts.
+    return [(key, key, size, "") for key, size in s3_objects(args.bucket, fetch)]
 
 
 def s3_objects(bucket_url, fetch=get):
@@ -273,6 +303,8 @@ def size_acq(args, fetch=get):
         raise NoSize(f"no size reader for the {args.route} route of the acquisition fetcher")
     landing = (args.root or args.data_root) / args.collection
     rows = acq_listing(args, fetch)
+    if not rows and args.route == "s3":
+        raise NoSize("the bucket lists no object under its prefix")
     if not rows:
         raise NoSize("no file of the source matches the include pattern")
     if args.route == "s3":

@@ -2,20 +2,23 @@
 comes (issue #160), with stand-in answers in place of the Hub, Zenodo and S3: a Hub repository is
 summed over the files its glob takes, page by page, less the files already landed whole; a zip is
 counted by its members, read from its central directory by range requests alone, and a plain tar by
-its own size, each with room for the largest archive while it opens, and a compressed tar states
-no size; an S3 bucket is listed page by page; an IDC manifest is summed less the series already
-verified; a record read with the owner's token is summed as it lands. Every answer that gives no
+its own size once its first block shows it is one, each with room for the largest archive while it
+opens, and a compressed tar states no size, whatever its name; an S3 bucket is listed page by page,
+every object under its prefix, as s5cmd syncs them; an IDC manifest is summed less the series
+already verified; a record read with the owner's token is summed as it lands. Every answer that gives no
 exact size ends 3 and every source that does not answer ends 2, so the size rule refuses the
 fetch. The one HTTP read is checked against a local server: a range is asked and refused when the
 server ignores it, and a token is never carried through a redirect. grid/idc_manifest.py's byte
 column is checked too. Standard library only, so the required check runs it."""
 
 import csv
+import gzip
 import http.server
 import importlib.util
 import io
 import json
 import os
+import tarfile
 import tempfile
 import threading
 import unittest
@@ -63,6 +66,17 @@ def zip_of(members):
     with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_STORED) as archive:
         for name, data in members:
             archive.writestr(name, data)
+    return buffer.getvalue()
+
+
+def tar_of(members):
+    """A plain tar of (name, bytes) pairs, in the POSIX format whose first block says ustar."""
+    buffer = io.BytesIO()
+    with tarfile.open(fileobj=buffer, mode="w", format=tarfile.PAX_FORMAT) as archive:
+        for name, data in members:
+            info = tarfile.TarInfo(name)
+            info.size = len(data)
+            archive.addfile(info, io.BytesIO(data))
     return buffer.getvalue()
 
 
@@ -164,11 +178,23 @@ class FetchSizeTest(unittest.TestCase):
         self.assertEqual(out.split()[1], str(lands + len(archive)))
 
     def test_a_tar_is_bounded_by_its_size_and_a_compressed_tar_states_none(self):
-        self.zenodo([("part.tar", b"t" * 4096)])
-        self.assertEqual(self.acq_zenodo(), (0, "8192 8192 1 files listed by zenodo with 0 zips read"))
+        plain = tar_of([("set/a.bin", os.urandom(3000)), ("set/b.bin", os.urandom(5000))])
+        self.zenodo([("part.tar", plain)])
+        both = 2 * len(plain)
+        self.assertEqual(self.acq_zenodo(), (0, f"{both} {both} 1 files listed by zenodo with 0 zips read"))
+        # only its first block is read, to see that it is a plain tar
+        reads = [r for url, _, r in self.source.asked if url.endswith("part.tar/content")]
+        self.assertEqual(reads, [(0, 511)])
         for name in ("part.tar.gz", "part.tgz"):
             self.zenodo([(name, b"z" * 4096)])
             self.assertEqual(self.acq_zenodo(), (3, "no exact size; a compressed tar states no unpacked size"))
+        # tarfile.open decompresses what it is given, so a .tar compressed inside could unpack
+        # past its own size: whatever its name, it states no size
+        self.zenodo([("part.tar", gzip.compress(plain))])
+        self.assertEqual(self.acq_zenodo(), (3, "no exact size; a .tar compressed with gzip states no unpacked size"))
+        for body in (b"t" * 4096, plain[:200]):
+            self.zenodo([("part.tar", body)])
+            self.assertEqual(self.acq_zenodo(), (3, "no exact size; a .tar whose first block is no ustar header"))
 
     def test_a_server_that_reads_no_range_or_a_broken_zip_states_no_size(self):
         self.zenodo([("set.zip", zip_of([("a", b"a")]))])
@@ -207,10 +233,14 @@ class FetchSizeTest(unittest.TestCase):
         self.source.add(first + "&continuation-token=tok", page([("3.mha", 300)], False))
         s3 = ("acq", "s3", "--collection", "aws_x", "--bucket", "s3://stoic2021-training/data/mha",
               "--include", r"\.mha$", "--data-root", str(self.tmp))
-        self.assertEqual(self.size(*s3), (0, "400 400 2 objects listed by s3"))
+        # s5cmd syncs every object under the prefix, so the include pattern, which narrows only
+        # what is verified afterwards, narrows nothing here
+        self.assertEqual(self.size(*s3), (0, "450 450 3 objects listed by s3"))
         (self.tmp / "aws_x" / "raw").mkdir(parents=True)
         (self.tmp / "aws_x" / "raw" / "1.mha").write_bytes(b"m" * 100)
-        self.assertEqual(self.size(*s3), (0, "400 300 2 objects listed by s3"))
+        self.assertEqual(self.size(*s3), (0, "450 350 3 objects listed by s3"))
+        self.source.add(first, page([], False))
+        self.assertEqual(self.size(*s3), (3, "no exact size; the bucket lists no object under its prefix"))
 
     def test_an_idc_manifest_is_summed_less_the_series_verified(self):
         manifest = self.tmp / "idc.csv"

@@ -42,6 +42,11 @@ echo "$*" >> "$FAKE/scancel.log"
 echo "Avail"
 echo "900000000000000"
 """,
+    # stat -f -c %T as grid/size-rule.sh asks it before df: a mount that is no CephFS, kernel or FUSE,
+    # so the stand-in df may answer for it; named so it never stands in for stat itself
+    "fstype": """#!/bin/bash
+echo "ext2/ext3"
+""",
 }
 
 
@@ -82,6 +87,7 @@ class GateTest(unittest.TestCase):
                    HPCW_LOG=str(self.fake / "sbatch.log"), HPCW_REFUSE=str(self.fake / "refuse"), HPCW_LOGS=str(self.fake / "joblogs"), SHARED_DATA=str(self.tmp / "shared"))
         for name in ("GETFATTR", "VOLUME", "HPCW_DRY", "HPCW_FIRST", "HPCW_FRAMEWORK", "SBATCH", "SQUEUE", "SACCT", "SCANCEL", "DF", "DEPEND", "PYDRV"):
             env.pop(name, None)
+        env["STAT"] = str(self.fake / "fstype")
         return env
 
     def submitted(self):
@@ -1084,6 +1090,19 @@ esac
         masked = subprocess.run(["sed", "-r", "-f", str(GRID / "redact.sed")], input="scan_19650312.dcm 20201231_19990101\n",
                                 capture_output=True, text=True).stdout
         self.assertEqual(masked, "scan_<date withheld>.dcm <date withheld>_<date withheld>\n")
+
+    def test_status_keeps_a_sources_id_and_masks_a_hugging_face_token(self):
+        # the size rule's lines open with the source's id, hf_fluoroseg, which is no token; a token
+        # is hf_ and 34 letters, built here so no file holds one
+        token = "hf_" + "Ab" * 17
+        lines = ("hf_fluoroseg: refused for space; it needs 2650 gb at 2026-10-23T12:00:00Z\n"
+                 "hf_abdomenatlas2_0_mini: admitted already; job 9 restarted\n"
+                 f"token {token} and HF_TOKEN={token}\n")
+        masked = subprocess.run(["sed", "-r", "-f", str(GRID / "redact.sed")], input=lines,
+                                capture_output=True, text=True).stdout.splitlines()
+        self.assertEqual(masked, ["hf_fluoroseg: refused for space; it needs 2650 gb at 2026-10-23T12:00:00Z",
+                                  "hf_abdomenatlas2_0_mini: admitted already; job 9 restarted",
+                                  "token <withheld> and HF_TOKEN=<withheld>"])
 
     def test_status_finds_the_log_a_job_queued_before_hpcworker_wrote_in_grid_logs(self):
         # a job sbatch queued before issue #77 is in no ledger of hpcworker's; its log is where its

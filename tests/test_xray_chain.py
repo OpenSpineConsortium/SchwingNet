@@ -26,16 +26,19 @@ SCRIPTS = ("run-xray-chain.sh", "run-platform-fetch.sh", "size-rule.sh", "oschom
 GB = 1000 ** 3
 
 # Stand-ins for what the size rule reads (#160), so no test reaches CephFS or Slurm. getfattr answers
-# from FAKE_XATTRS, a file of "<folder> <attribute> <value>" lines in which the folder * answers for
-# every folder not named, and an attribute given no value is not there, as on a folder with no
-# quota; squeue lists the job ids in FAKE_QUEUE, or fails where FAKE_SQUEUE_FAILS is set; the size
-# reader says on stderr what it was asked, prints FAKE_SIZE and ends with FAKE_SIZE_RC.
+# from FAKE_XATTRS, a file of "<folder> <attribute> <value>" lines in which a folder ending /* answers
+# for every folder under it not named, the folder * for every folder not named otherwise, and an
+# attribute given no value is not there, as on a folder with no quota; squeue lists the job ids in
+# FAKE_QUEUE, or fails where FAKE_SQUEUE_FAILS is set; the size reader says on stderr what it was
+# asked, prints FAKE_SIZE and ends with FAKE_SIZE_RC.
 STAND_INS = {
     "getfattr": """#!/bin/bash
 name=""; folder=""
 while [ $# -gt 0 ]; do case "$1" in -n) name=$2; shift 2 ;; -*) shift ;; *) folder=$1; shift ;; esac; done
-value=$(awk -v f="$folder" -v n="$name" '$2 == n && $1 == f { exact = $3 } $2 == n && $1 == "*" { any = $3 }
-  END { printf "%s", (exact != "" ? exact : any) }' "${FAKE_XATTRS:-/dev/null}")
+value=$(awk -v f="$folder" -v n="$name" '$2 == n && $1 == f { exact = $3; named = 1 }
+  $2 == n && $1 ~ /[/][*]$/ && index(f, substr($1, 1, length($1) - 1)) == 1 { under = $3 }
+  $2 == n && $1 == "*" { any = $3 }
+  END { printf "%s", (named ? exact : (under != "" ? under : any)) }' "${FAKE_XATTRS:-/dev/null}")
 [ -n "$value" ] || { echo "$folder: $name: No such attribute" >&2; exit 1; }
 printf '%s' "$value"
 """,
@@ -74,6 +77,8 @@ class Volume:
             self.attribute(self.path, "ceph.quota.max_bytes", quota)
         if used is not None:
             self.attribute(self.path, "ceph.dir.rbytes", used)
+        # every landing reads as holding nothing until a test says otherwise
+        self.attribute(f"{self.data}/*", "ceph.dir.rbytes", 0)
 
     def attribute(self, folder, name, value):
         with self.xattrs.open("a", encoding="utf-8") as handle:
@@ -94,9 +99,11 @@ class Volume:
             self.attribute(self.data / source, "ceph.dir.rbytes", landed)
 
     def env(self, **extra):
-        return dict(GETFATTR=str(self.tools / "getfattr"), SQUEUE=str(self.tools / "squeue"),
-                    SIZER=str(self.tools / "sizer"), FAKE_XATTRS=str(self.xattrs), FAKE_QUEUE=str(self.queue),
-                    VOLUME=str(self.path), DATA_ROOT=str(self.data), USER="go2432", **extra)
+        env = dict(GETFATTR=str(self.tools / "getfattr"), SQUEUE=str(self.tools / "squeue"),
+                   SIZER=str(self.tools / "sizer"), FAKE_XATTRS=str(self.xattrs), FAKE_QUEUE=str(self.queue),
+                   VOLUME=str(self.path), DATA_ROOT=str(self.data), USER="go2432")
+        env.update(extra)
+        return env
 
 
 def volume_in(test, quota=None, used=None):
@@ -355,7 +362,7 @@ class SlurmScriptsTest(unittest.TestCase):
         self.assertIn("-- 01-fetch.sbatch", out)
         self.assertIn("--name xr_bank --class batch --dir " + str(ROOT / "grid") + " --after DRY_xr_fetch:any -- 02-bank-ingest.sbatch", out)
         self.assertIn("--after DRY_xr_bank:any -- 03-catalog.sbatch", out)
-        self.assertIn("size budget: 2 entries, 14 GB stated", out)
+        self.assertIn("size budget: 2 entries, 14.2 GB stated, counted as 15 GB;", out)
         self.assertIn("no size stated for: fracatlas", out)
         self.assertIn("ETA:", out)
         code, out = self.dry_run("run-xray-chain.sh", free="10G")
@@ -422,15 +429,16 @@ class SlurmScriptsTest(unittest.TestCase):
         self.assertIn("each job starts its fetch only if the exact size its source states fits the room then", out)
         self.assertIn("idc_nlst: job DRY_dp_fetch_idc_nlst", out)
         # the X-ray chain is refused at submit when its stated sizes pass the room, with no margin:
-        # 14 GB stated does not fit in 11 GB and does in 14, so the quota can be filled to the byte
-        code, out = self.dry_run("run-xray-chain.sh", "--only", "cathaction,fracatlas", free=pool, quota=quota,
-                                 used=21980 * GB)
-        self.assertEqual(code, 3, out)
-        self.assertIn("has 11 GB free under its quota, 0 GB of it owed to 0 running fetches", out)
-        self.assertIn("refusing to submit: 14 GB exceeds the room the quota has left", out)
-        self.assertNotIn("would submit", out)
+        # 14.2 GB stated, counted as 15, does not fit in 14 GB and does in 15, so the quota can be
+        # filled to the GB, and a fraction is never cut off to make a chain fit
         code, out = self.dry_run("run-xray-chain.sh", "--only", "cathaction,fracatlas", free=pool, quota=quota,
                                  used=21977 * GB)
+        self.assertEqual(code, 3, out)
+        self.assertIn("has 14 GB free under its quota, 0 GB of it owed to 0 running fetches", out)
+        self.assertIn("refusing to submit: 15 GB exceeds the room the quota has left", out)
+        self.assertNotIn("would submit", out)
+        code, out = self.dry_run("run-xray-chain.sh", "--only", "cathaction,fracatlas", free=pool, quota=quota,
+                                 used=21976 * GB)
         self.assertEqual(code, 0, out)
         self.assertIn("would submit", out)
 
@@ -489,6 +497,32 @@ class SlurmScriptsTest(unittest.TestCase):
         self.assertIn("aws_stoic2021: job 101", done.stdout)
         self.assertEqual((volume.data / "aws_stoic2021" / "meta" / "QUEUED").read_text(encoding="utf-8").split()[0], "101")
         self.assertEqual((volume.data / "zenodo_lumos" / "meta" / "QUEUED").read_text(encoding="utf-8").split()[0], "102")
+
+    def test_the_xray_chain_holds_the_size_check_until_its_sizes_are_recorded(self):
+        import fcntl
+        volume = volume_in(self, quota=21991 * GB, used=13146 * GB)
+        repo = repo_copy(self)
+        env = dict(os.environ, SCHWINGNET=str(repo), HOME=str(self.home), HPCWORKER=str(ROOT / "tests" / "fakes" / "hpcworker"),
+                   HPCW_LOG=str(volume.tools / "submitted.log"), **volume.env(SIZE_RULE_WAIT="1"))
+        env.pop("HPCW_DRY", None)
+        sizes = repo / "grid" / "logs" / "XRAY_SIZES.txt"
+
+        def submit():
+            return subprocess.run(["bash", str(repo / "grid" / "run-xray-chain.sh"), "--only", "cathaction"],
+                                  env=env, capture_output=True, text=True, timeout=60)
+
+        # while a fetch job decides, the chain waits its turn and queues nothing when it does not come
+        with open(volume.data / ".size-rule.lock", "w") as held:
+            fcntl.flock(held, fcntl.LOCK_EX)
+            done = submit()
+        self.assertEqual(done.returncode, 3, done.stdout + done.stderr)
+        self.assertIn("refusing to submit: another fetch held the size check for 1 seconds; nothing was queued", done.stdout)
+        self.assertFalse(sizes.exists())
+        # its turn come, it is sent and counted at its stated sum rounded up, before the next decision
+        done = submit()
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        job, need = sizes.read_text(encoding="utf-8").split()[:2]
+        self.assertEqual((job, need), ("101", str(15 * GB)))
 
     def test_a_volume_with_no_quota_is_read_with_df_and_an_unread_quota_refuses(self):
         code, out = self.dry_run("run-platform-fetch.sh", "--only", "idc_nlst", free="9000G")
@@ -1017,6 +1051,61 @@ class SizeRuleTest(unittest.TestCase):
         self.assertEqual(code, 0, out)
         self.assertIn("6345 gb is free under the quota after 2500 gb owed to 1 running fetch at ", shown(out))
 
+    def test_a_requeued_job_keeps_its_admission_and_another_job_decides_anew(self):
+        # job 900 was admitted to land 5,000 GB into an empty landing, landed 3,000 and was
+        # preempted. Requeued under its own id, it goes on under its admission without asking its
+        # source again; deciding anew would count the 3,000 twice and could leave them stranded.
+        self.volume.admitted("hf_example", 900, need=5000 * GB, base=0, landed=3000 * GB)
+        self.volume.live(900)
+        code, out = self.fetch(9000, SLURM_RESTART_COUNT="1")
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("sizer:", out)
+        self.assertIn("arg: *0043_new_ct_tri*", out)
+        self.assertIn("hf_example: admitted already; job 900 restarted and keeps the room it was given at ", shown(out))
+        # a job that has not been restarted decides, even under an id an old admission names, as
+        # one Slurm hands out again once its counter wraps
+        code, out = self.fetch(9000)
+        self.assertEqual(code, 4, out)
+        self.assertIn("sizer:", out)
+        # the admission another job holds is no admission of this one's: it decides by the room left
+        # after the 2,000 GB that job still owes
+        self.volume.admitted("hf_example", 777, need=5000 * GB, base=0, landed=3000 * GB)
+        self.volume.live(777, 900)
+        code, out = self.fetch(6846, SLURM_RESTART_COUNT="1")
+        self.assertEqual(code, 4, out)
+        self.assertIn("only 6845 gb is free under the quota after 2000 gb owed to 1 running fetch at ", shown(out))
+        self.assertEqual((self.volume.data / "hf_example" / "meta" / "SIZE").read_text(encoding="utf-8").split()[1], "777")
+
+    def test_a_landing_whose_bytes_cannot_be_read_is_refused(self):
+        # the growth of a landing is measured from what it held when its fetch was admitted, so an
+        # unread start would count every byte already there as the fetch's own
+        self.volume.attribute(self.volume.data / "hf_example", "ceph.dir.rbytes", "")
+        code, out = self.fetch(1)
+        self.assertEqual(code, 4, out)
+        self.assertNotIn("arg:", out)
+        self.assertIn("hf_example: refused; what its landing holds could not be read at ", shown(out))
+        self.assertFalse((self.volume.data / "hf_example" / "meta" / "SIZE").exists())
+
+    def test_a_volume_no_reader_can_read_or_on_a_fuse_mount_is_never_read_with_df(self):
+        # df gives the whole Ceph pool on the lab volume; it answers only for a mount that names a
+        # kind other than CephFS, and never in the place of attributes no reader could read
+        tools = self.volume.tools
+        (tools / "df").write_text(f"#!/bin/bash\necho Avail\necho {5881937 * GB}\n", encoding="utf-8")
+        (tools / "df").chmod(0o755)
+        bare = self.tmp / "bare"
+        bare.mkdir()
+        missing = str(self.tmp / "no-such-tool")
+        tools_for = dict(GETFATTR=missing, DF=str(tools / "df"), STAT=str(tools / "stat"))
+        call = f'volume_free_bytes "{bare}"'
+        for kind, said in (("ext2/ext3", (0, f"{5881937 * GB} df")), ("xfs", (0, f"{5881937 * GB} df")),
+                           ("ceph", (1, "")), ("fuseblk", (1, "")), ("fuse", (1, "")), ("", (1, ""))):
+            (tools / "stat").write_text(f"#!/bin/bash\necho '{kind}'\n", encoding="utf-8")
+            (tools / "stat").chmod(0o755)
+            # with no getfattr, Python reads the attributes, and a folder with none is read by df
+            self.assertEqual(self.rule(call, XATTR_PYTHON=sys.executable, **tools_for), said, kind)
+            # with no Python that runs either, nothing is read and nothing is asked of df
+            self.assertEqual(self.rule(call, XATTR_PYTHON=missing, **tools_for), (1, ""), kind)
+
     def test_a_refusal_never_overwrites_an_admission_that_still_runs(self):
         self.volume.admitted("hf_example", 777, need=8000 * GB)
         self.volume.live(777, 900)
@@ -1134,6 +1223,16 @@ class QuotaReadoutTest(unittest.TestCase):
             "Owed  =         2050.00gb still to land for 1 running fetch",
             "Room  =         6794.23gb for a new fetch, which lands whole or not at all",
         ])
+
+    def test_a_file_limit_is_shown_where_the_quota_sets_one(self):
+        volume = volume_in(self, quota=1000 * GB, used=250 * GB)
+        volume.attribute(volume.path, "ceph.dir.rfiles", 4000)
+        code, out = self.readout(volume)
+        self.assertNotIn("File Limit", out)
+        volume.attribute(volume.path, "ceph.quota.max_files", 5000)
+        code, out = self.readout(volume)
+        self.assertEqual(code, 0, out)
+        self.assertIn("File Count =    4000\nFile Limit =    5000, which the size rule does not count\n", out)
 
     def test_an_unknown_owed_is_said_and_an_unread_quota_ends_2(self):
         volume = volume_in(self, quota=1000 * GB, used=250 * GB)

@@ -4,14 +4,21 @@
 # all or nothing datasets". A fetch reads its exact size from its source before it downloads a byte
 # (grid/fetch_size.py), and starts only when what it still has to land fits in the room left under
 # the lab volume's CephFS quota after what every admitted fetch still running has yet to land. There
-# is no floor and no margin, so the quota can be filled to the byte, and no fetch is stopped part-way
-# for space: each lands whole, or is refused before it starts and lands nothing.
+# is no floor and no margin, so the quota can be filled to the byte, and the rule stops no fetch
+# part-way: each is admitted whole, or refused before it starts and lands nothing. A job Slurm
+# requeues keeps its admission and goes on. What the rule does not see can still fill the volume
+# under a running fetch: writes no admission counts (the X-ray chain's banks and shards, the jobs'
+# TMPDIR on the volume, the group's other users), a file quota (ceph.quota.max_files, which the
+# readout shows and the rule does not count) and the lag with which CephFS adds new bytes to
+# ceph.dir.rbytes.
 #
 # The room is read where the limit binds. The volume is a CephFS folder under a quota, and df and
 # statvfs report the whole Ceph pool instead: on 2026-10-23 df said 5,881,937 GB free while the lab's
 # quota of 21,991 GB had about 8,800 GB left. CephFS keeps the quota as ceph.quota.max_bytes and what
 # counts against it as ceph.dir.rbytes, attributes of the folder read with no walk: by getfattr on
-# the login node, and by Python's os.getxattr on a node with no getfattr.
+# the login node, and by Python's os.getxattr on a node with no getfattr (XATTR_PYTHON, which
+# grid/platform-fetch.sbatch sets to the acq environment's). Where neither runs, nothing is read,
+# and df is never asked in its place on a mount that may be CephFS, kernel or FUSE.
 #
 # What each fetch still owes is kept beside its landing, $DATA/<id>/meta:
 #   QUEUED   "<job> <utc>", written when grid/run-platform-fetch.sh submits the job
@@ -31,29 +38,39 @@
 # grid/run-xray-chain.sh (the room after the running fetches, on the login node). DATA, VOLUME and
 # REPO name the folders; GETFATTR, XATTR_PYTHON and SQUEUE the tools, so a test can stand in for them.
 
-xattr_digits() {  # xattr_digits NAME FOLDER: a CephFS attribute's leading digits, or nothing
-  local value
+xattr_digits() {  # xattr_digits NAME FOLDER: a CephFS attribute's leading digits, or nothing; 2 when no reader runs
+  local value python=${XATTR_PYTHON:-python3}
   if command -v "${GETFATTR:-getfattr}" > /dev/null 2>&1; then
     value=$("${GETFATTR:-getfattr}" --only-values -n "$1" "$2" 2>/dev/null)
   else
-    value=$("${XATTR_PYTHON:-python3}" -c 'import os, sys; sys.stdout.write(os.getxattr(sys.argv[2], sys.argv[1]).decode())' "$1" "$2" 2>/dev/null)
+    # An attribute that is not there is nothing; a Python that does not run is no reading at all.
+    value=$("$python" -c '
+import os, sys
+try:
+    sys.stdout.write(os.getxattr(sys.argv[2], sys.argv[1]).decode())
+except OSError:
+    pass' "$1" "$2" 2>/dev/null) || return 2
   fi
   printf '%s' "$value" | sed -n 's/^\([0-9][0-9]*\).*/\1/p'
 }
 
 volume_free_bytes() {  # volume_free_bytes VOLUME: "<bytes free> quota" or "<bytes free> df", else nothing
   local volume=$1 quota used avail
-  quota=$(xattr_digits ceph.quota.max_bytes "$volume")
-  used=$(xattr_digits ceph.dir.rbytes "$volume")
+  quota=$(xattr_digits ceph.quota.max_bytes "$volume") || return 1
+  used=$(xattr_digits ceph.dir.rbytes "$volume") || return 1
   if [ -n "$quota" ] && [ "$quota" != 0 ]; then
     [ -n "$used" ] || return 1
     echo "$(( quota > used ? quota - used : 0 )) quota"
     return 0
   fi
   # A CephFS folder with no quota of its own would be read from df as the whole pool, which is the
-  # error this rule fixes; it is no answer, so VOLUME must name the quota's own folder.
+  # error this rule fixes; it is no answer, so VOLUME must name the quota's own folder. A FUSE
+  # mount, as ceph-fuse makes, says only fuse or fuseblk, and a type stat cannot read may be
+  # either, so df answers only for a mount that names another kind.
   [ -z "$used" ] || return 1
-  [ "$("${STAT:-stat}" -f -c %T "$volume" 2>/dev/null)" != ceph ] || return 1
+  case "$("${STAT:-stat}" -f -c %T "$volume" 2>/dev/null)" in
+    ""|ceph|fuse|fuseblk|fuse.*) return 1 ;;
+  esac
   avail=$("${DF:-df}" -B1 --output=avail "$volume" 2>/dev/null | tail -n 1 | tr -dc '0-9')
   [ -n "$avail" ] || return 1
   echo "$avail df"
@@ -210,8 +227,14 @@ admit_fetch() {  # admit_fetch ID TOTAL NEED HOW: 0 when the fetch may start, 4 
     return
   fi
   free=$(( room > owed ? room - owed : 0 ))
+  # What the landing holds now is the base its growth is measured from; read as nothing, every
+  # byte already there would later count as this fetch's and leave its owed short.
   base=$(landing_bytes "$id")
-  [ -n "$base" ] || base=0
+  if [ -z "$base" ]; then
+    exec 8>&-
+    size_refused "$id" "what its landing holds could not be read"
+    return
+  fi
   if [ "$need" -le "$free" ]; then
     verdict=admitted
     echo "admitted $job $need $base $(date -u '+%FT%TZ') $total" > "$DATA/$id/meta/SIZE"
@@ -220,17 +243,36 @@ admit_fetch() {  # admit_fetch ID TOTAL NEED HOW: 0 when the fetch may start, 4 
     echo "$job $need $free $(date -u '+%FT%TZ') $total" > "$DATA/$id/meta/REFUSED"
   fi
   exec 8>&-
+  # Both figures rounded the same way, up, so a need that fits never reads as more than the room;
+  # a refusal rounds the need up and the room down, so it never reads as fitting.
   if [ "$verdict" = admitted ]; then
-    echo "$id: admitted; it needs $(gb_up "$need") gb of its $(gb_up "$total") gb by $how and $(gb_down "$free") gb is free $(room_words "$from") after $(gb_up "$owed") gb owed to $(running_fetches "$n") at $(date -u '+%FT%TZ')"
+    echo "$id: admitted; it needs $(gb_up "$need") gb of its $(gb_up "$total") gb by $how and $(gb_up "$free") gb is free $(room_words "$from") after $(gb_up "$owed") gb owed to $(running_fetches "$n") at $(date -u '+%FT%TZ')"
     return 0
   fi
   echo "$id: refused for space; it needs $(gb_up "$need") gb of its $(gb_up "$total") gb by $how and only $(gb_down "$free") gb is free $(room_words "$from") after $(gb_up "$owed") gb owed to $(running_fetches "$n") at $(date -u '+%FT%TZ')"
   return 4
 }
 
+admitted_before() {  # admitted_before ID: whether this job, restarted by Slurm, holds the admission of ID
+  # The restart count as well as the id, so a job id Slurm hands out again once its counter wraps
+  # never inherits an old admission.
+  local state job
+  [ "${SLURM_RESTART_COUNT:-0}" != 0 ] && [ -n "${SLURM_JOB_ID:-}" ] && [ -f "$DATA/$1/meta/SIZE" ] || return 1
+  read -r state job _ < "$DATA/$1/meta/SIZE"
+  [ "$state" = admitted ] && [ "$job" = "$SLURM_JOB_ID" ]
+}
+
 size_and_admit() {  # size_and_admit ID COMMAND...: the exact size COMMAND reads, then the rule's decision (0 go, 4 refused)
   local id=$1 said rc total need how
   shift
+  # A job Slurm requeued, after a preemption or a node's failure, runs this script again under its
+  # own id. The room it was admitted to is still held for it, at what it had to land less what its
+  # landing has grown by since, so it goes on under that admission: deciding again would count the
+  # part it landed twice, and a refusal then would leave that part stranded.
+  if admitted_before "$id"; then
+    echo "$id: admitted already; job $SLURM_JOB_ID restarted and keeps the room it was given at $(date -u '+%FT%TZ')"
+    return 0
+  fi
   said=$("$@")
   rc=$?
   said=$(printf '%s\n' "$said" | tail -n 1)
@@ -257,22 +299,25 @@ mark_queued() {  # mark_queued ID JOB: the QUEUED line of a fetch sent under the
 # reading, so the readout and the rule never disagree. Called by grid/oschome-quota.sh in the owner's
 # shell and by grid/gate.sh's status word, which names no folder, so the title is the caller's.
 quota_readout() {  # quota_readout VOLUME TITLE: the readout; 1 when the volume has no quota that can be read
-  local volume=$1 quota used files said owed n unsized
+  local volume=$1 quota used files max_files said owed n unsized
   quota=$(xattr_digits ceph.quota.max_bytes "$volume")
   used=$(xattr_digits ceph.dir.rbytes "$volume")
   files=$(xattr_digits ceph.dir.rfiles "$volume")
+  max_files=$(xattr_digits ceph.quota.max_files "$volume")
   echo "$2"
   if [ -z "$quota" ] || [ "$quota" = 0 ] || [ -z "$used" ]; then
     echo "The CephFS quota or its use could not be read (ceph.quota.max_bytes, ceph.dir.rbytes)"
     return 1
   fi
-  # wsuquota's own layout: two decimals, a 96-cell bar filled by the share used, rounded down.
-  awk -v q="$quota" -v u="$used" -v f="$files" 'BEGIN {
+  # wsuquota's own layout: two decimals, a 96-cell bar filled by the share used, rounded down. A
+  # limit on the number of files, where the quota sets one, is shown and not counted by the rule.
+  awk -v q="$quota" -v u="$used" -v f="$files" -v mf="$max_files" 'BEGIN {
     free = q > u ? q - u : 0
     printf "Used  = %.2f%%  %.2fgb\n", 100 * u / q, u / 1e9
     printf "Free  = %.2f%%  %.2fgb\n", 100 * free / q, free / 1e9
     printf "Total =         %.2fgb\n", q / 1e9
     if (f != "") printf "File Count =    %.0f\n", f
+    if (mf != "" && mf != 0) printf "File Limit =    %.0f, which the size rule does not count\n", mf
     cells = int(96 * u / q); if (cells > 96) cells = 96
     bar = "["; for (i = 0; i < 96; i++) bar = bar (i < cells ? "#" : "-"); print bar "]"
   }'

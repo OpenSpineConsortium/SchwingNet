@@ -24,8 +24,9 @@
 # exact size of what it will land, read from the source (grid/fetch_size.py; for curl-link a one-byte
 # range request), must fit in the room left under the volume's quota after what the running fetches
 # still owe, or the job ends with exit 4 having fetched nothing; no floor stops a fetch part-way, so
-# acquisition_fetch.sh runs with FLOOR_TB=0. kaggle, gdown and redivis have no size reader yet and are
-# refused the same way, so no dataset lands without its size known.
+# acquisition_fetch.sh runs with FLOOR_TB=0, and a job Slurm requeues keeps the admission it was
+# given. kaggle, gdown and redivis have no size reader yet and are refused the same way, so no
+# dataset lands without its size known.
 # Secrets are read from files into this job's environment or a mode-0600 config and never echoed.
 set -uo pipefail
 ID=${ID:?the source id}
@@ -75,6 +76,9 @@ hf_verified_files() {  # hf_verified_files STATE: whether hf-get's summary in ST
 }
 VOLUME=${VOLUME:-/rs/rs_grp_oschome}
 SIZER=${SIZER:-$ACQ_ENV/bin/python $REPO/grid/fetch_size.py}
+# A compute node may have no getfattr and no python3 on the job's PATH; the acq environment's Python
+# reads the quota's attributes there, so the rule never goes without them.
+XATTR_PYTHON=${XATTR_PYTHON:-$ACQ_ENV/bin/python}
 # acquisition_fetch.sh's own floor stops a fetch part-way under 5 TB free; the size rule replaces it.
 export FLOOR_TB=0
 # shellcheck source=grid/size-rule.sh
