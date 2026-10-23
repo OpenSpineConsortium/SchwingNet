@@ -422,7 +422,7 @@ word_space() {
   # Labels, never paths: status leaves the grid, and its answer names no folder of the volume.
   echo "## space on the lab volume (CephFS ceph.dir.rbytes; GB rounded up)"
   # The room under the quota as the size rule reads it (grid/size-rule.sh, #160), never df, which on
-  # CephFS reports the whole Ceph pool: 5,881,937 GB free on 2026-10-23 beside the lab's 8,845.
+  # CephFS reports the whole Ceph pool: 5,881,937 GB free on 2026-10-23 under a quota of 21,991 GB.
   DATA=$DATA_ROOT quota_readout "$VOLUME" "Lab Volume Disk Usage (CephFS quota; 1 gb = 10^9 bytes)" | sed 's/^/  /'
   for label in "data" "shared datasets"; do
     if [ "$label" = data ]; then root=$DATA_ROOT; else root=$SHARED_DATA; fi

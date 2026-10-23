@@ -13,8 +13,8 @@
 # ceph.dir.rbytes.
 #
 # The room is read where the limit binds. The volume is a CephFS folder under a quota, and df and
-# statvfs report the whole Ceph pool instead: on 2026-10-23 df said 5,881,937 GB free while the lab's
-# quota of 21,991 GB had about 8,800 GB left. CephFS keeps the quota as ceph.quota.max_bytes and what
+# statvfs report the whole Ceph pool instead: on 2026-10-23 df said 5,881,937 GB free under a quota
+# of 21,991 GB (20 TiB). CephFS keeps the quota as ceph.quota.max_bytes and what
 # counts against it as ceph.dir.rbytes, attributes of the folder read with no walk: by getfattr on
 # the login node, and by Python's os.getxattr on a node with no getfattr (XATTR_PYTHON, which
 # grid/platform-fetch.sbatch sets to the acq environment's). Where neither runs, nothing is read,

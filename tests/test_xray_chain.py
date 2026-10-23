@@ -414,8 +414,8 @@ class SlurmScriptsTest(unittest.TestCase):
         self.assertNotIn("left out", out)
 
     def test_the_budgets_read_the_room_under_the_quota_not_the_pool(self):
-        # On CephFS df reports the whole pool: 5,881,937 GB free on 2026-10-23, while the lab's
-        # quota of 21,991 GB had about 8,800 GB left, so a budget read from df never refused (#160).
+        # On CephFS df reports the whole pool, 5,881,937 GB free on 2026-10-23 under a quota of
+        # 21,991 GB, so a budget read from df never refused (#160). The use is the test's own.
         pool, quota = "5881937G", 21991 * GB
         code, out = self.dry_run("run-platform-fetch.sh", "--only", "idc_nlst", free=pool, quota=quota, used=13146 * GB)
         self.assertEqual(code, 0, out)
@@ -1001,7 +1001,7 @@ class SizeRuleTest(unittest.TestCase):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         self.tmp = Path(tmp.name)
-        # 21,991 GB of quota with 13,146 used leaves 8,845 GB, as on 2026-10-23
+        # The quota of 2026-10-23, 21,991 GB, with a use of the test's own: 13,146 GB leaves 8,845
         self.volume = Volume(self.tmp, quota=21991 * GB, used=13146 * GB)
 
     def fetch(self, need_gb, route="hf-token", args=HF_ARGS, **extra):
