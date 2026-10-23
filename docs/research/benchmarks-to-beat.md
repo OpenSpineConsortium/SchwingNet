@@ -33,9 +33,11 @@ A Segment-Anything variant trained from scratch on synthetic X-rays with text, p
   the released set have 2,953,257 from 1,621 CTs, which v3 sources "from the New Mexico Decedent
   Image Database" (519 head and neck, 573 torso, 529 lower extremity). The renders carry
   TotalSegmentator V2 masks (117 classes plus 11 appendicular bones, 128 organ masks) and 464 tool
-  meshes, up to 15 tools a view; the principal ray sampled on a hemisphere short of 25 degrees from
-  the S/I axis; detector 180 to 500 mm and source-to-detector 700 to 1200 mm (a mini C-arm in 10 % of
-  views). 448 x 448 pixels.
+  meshes. v2's renders take up to 15 tools a view, the principal ray on a hemisphere short of 25
+  degrees from the S/I axis, detector 180 to 500 mm and source-to-detector 700 to 1200 mm (a mini
+  C-arm in 10 % of views), at 448 x 448 pixels (v2 Methods); v3 renders at 512 x 512 for a 448 x 448
+  input, within 60 degrees of the anterior direction, with a random subset of the 464 tools, and its
+  Methods as read give no detector or distance ranges (v3 Methods).
 - Real test (v2): 464 fluoroscopic images of one cadaveric lower torso on a Brainlab Loop-X, angles plus
   or minus 30 degrees cranial-caudal and plus or minus 90 orbital, truth by 2D/3D registration to the
   CBCT and projection of TotalSegmentator's 3D masks; public chest X-rays for the lung.
@@ -51,8 +53,9 @@ A Segment-Anything variant trained from scratch on synthetic X-rays with text, p
   validation 0.59, 0.70, 0.79; FluoroSeg 2,953,257 DRRs from 1,621 CTs. A comparison on the talk
   quotes v3. v3's cadaver is a torso from mid-femur to T2, described as the digital twin's is (the
   same donor, thaw, patient array and stitched CBCTs), though neither paper says it is one specimen;
-  v3 also tests zero-shot on 1,131 real chest X-rays, whole lungs, 0.66 text only against MedSAM's
-  0.48 with a box (read on 2026-10-23 for docs/research/flepp-and-killeen-critique.md).
+  v3 also tests zero-shot on 1,131 real chest X-rays, whole lungs, 0.66 text only and 0.80 with two points, against
+  off-the-shelf SAM's 0.89 with two points and 0.91 with a box and MedSAM's 0.48 with a box; on the
+  cadaver SAM 0.50 with two points and 0.57 with a box, MedSAM 0.55 with a box (read on 2026-10-23 for docs/research/flepp-and-killeen-critique.md).
 - Released: the code, the weights (2.5 GB on Google Drive) and FluoroSeg (2.65 TB on Hugging Face,
   gated, CC BY-NC-SA 4.0; the owner accepted its terms on 2026-10-22). The 464-frame cadaver set of
   v2 is not released under that name; the digital twin's cadaver, below, is.
@@ -119,14 +122,14 @@ patient-specific DRRs, and a contour ICP that matches within a substructure only
 | Capability | FluoroSAM / the twin | Contour registration | SchwingNet's claim |
 | --- | --- | --- | --- |
 | Classify, first sense: name each vertebra's level on a real fluoroscopic frame (vertebral classification, the goal's phrase in docs/project.md) | no: 0.16 to 0.25 Dice for L3 to L5 by name (Table 1) and 0.04 for similar levels told apart (Section 4.1's text), the paper's own numbers (arXiv 2412.08020) | no: it has no levels | yes, the product; measured per level on held-out real frames, the evaluation page's rows |
-| Work without a CT of the patient | yes for masks, no for the twin's geometry (CBCT truth) | no: needs the preoperative CT and a fiducial | yes, CT-free at the podium |
-| Any angle | trained on a hemisphere; tested at plus or minus 30 and 90 on one device | two views 45 degrees apart or more | the per-angle curve on real sweeps (C-ArmLSpine, COBRA) is the test |
+| Work without a CT of the patient | yes for masks, no for the twin's geometry (CBCT truth) | no: needs the preoperative CT and a fiducial | yes for the reported stack, which has its own detectors; version 1's sweep is drawn over truth boxes from the case's CBCT until a detector stage exists (docs/research/latency-and-sweep/README.md) |
+| Any angle | trained on a hemisphere (v2) or within 60 degrees of the anterior direction (v3); tested at plus or minus 30 and 90 on one device (v2) | two views 45 degrees apart or more | the per-angle curve on real sweeps (C-ArmLSpine, COBRA) is the test |
 | Classify, second sense: the transitional stratum (T13, L6) and the anomaly calls | no | no | the screener (H, #64) with the counting prior from CT as its prior (F, #62; A); the evaluation page's transitional row, and a per-image call with its interval once H exists |
 | Real fluoroscopy | trained on renders only, tested on one cadaver and one device | trained on renders of the same specimen, tested on the specimen | trained on real films and frames plus renders, tested leave-one-device-out |
 | Latency | not reported | nnU-Net at 18 GB GPU, ICP to converge; no number | the 97 ms budget, measured |
 
 So the first-time claims the talk can make, each with its measurement: level naming on real frames
-with no CT, at any angle, with latency; and anomaly and transitional-anatomy classification from a
+by a model with its own detector, with no CT, at any angle, with latency; and anomaly and transitional-anatomy classification from a
 single frame. Segmentation of bone as one class is not a claim to make against FluoroSAM, which does
 it well (vertebrae as one class 0.78 text only on the digital twin's cadaver; 0.60 to 0.77 over all
 structures in v3); the comparison is on levels, where it scores 0.16 to 0.25 by name and 0.04 for
@@ -146,7 +149,7 @@ its second reading, 8.1); the rest were read for this revision (section 9).
 
 | Row | What it reads at test | Data and test set | Number (grade; source) | The same number here |
 | --- | --- | --- | --- | --- |
-| FluoroSAM v2 (arXiv 2403.08059v2) | one real frame and a text, point or box prompt; renders alone in training | 464 Loop-X frames of one cadaveric lower torso | hard tissue Dice 0.39 text only, 0.90 +/- 0.15 with points; overall 0.26 text only (Published; v2's results) | #132: its masks' bounding boxes scored as boxes by tools/evaluate.py on the held C-ArmLSpine test persons, as the all-levels and per-level rows; the weights wait on the owner's word (section 6) |
+| FluoroSAM v2 (arXiv 2403.08059v2) | one real frame and a text, point or mask prompt; renders alone in training | 464 Loop-X frames of one cadaveric lower torso | hard tissue Dice 0.39 text only, 0.90 +/- 0.15 with points; overall 0.26 text only (Published; v2's results) | #132: its masks turned into boxes by a mask-to-box step that #132 adds to tools/evaluate.py (not built yet) and scored on the held C-ArmLSpine test persons, as the all-levels and per-level rows; the weights wait on the owner's word (section 6) |
 | FluoroSAM v3 (arXiv 2403.08059v3) | one real frame and a text, point or mask prompt; renders alone in training | the real cadaver, a torso from mid-femur to T2, 1,741 masks; synthetic validation | Dice 0.60 text only, 0.69 with two points, 0.77 with eight points; synthetic 0.59, 0.70, 0.79 (Published; v3's results) | the same row of #132; v3 is the version a talk quotes |
 | FluoroSAM in the digital twin (arXiv 2412.08020) | one real frame and a text prompt | 80 Loop-X frames of one torso to T2 | vertebrae 0.78 +/- 0.15, lumbar 0.72 +/- 0.18, thoracic 0.64 +/- 0.20; L3, L4 and L5 by name 0.21, 0.16 and 0.25; similar levels told apart 0.04 (Published; Table 1 and Section 4.1's text) | the same frames: naming accuracy per level on the twin's cadaver as a source row, once OpenSpineConsortium/spine-datasets#170 brings the archive and #127 verifies its masks; its thoracic frames are #135's row |
 | Huang 2022, Comput Methods Programs Biomed 227:107222 | one real image, no CT; renders of 297 CTs in training | 50 AP and 50 lateral Long-Film images of 13 cadavers | 88.3 % labelling accuracy on both views, F1 above 96 %, 3.3 mm; 88.9 % with and 91.2 % without instrumentation (Published; the abstract alone, the full text closed, regions not stated) | the all-levels row on held real frames, AP and lateral apart; tools/evaluate.py tallies no view stratum yet, a follow-up for the ladder's first rung (section 4) |
@@ -212,7 +215,7 @@ from the full system, written first here, and the build-up from the published ba
 added per rung. Recommended (the checkpoint of 2026-10-22 on #130; Inferred): build up before the talk,
 since each rung exists as soon as its component does, and leave one out once the full system exists,
 since only then is there a whole to take parts from. Each rung is one run id, one commit and one result
-file, with naming accuracy per level and per source and Wilson intervals on person-keyed n, detection
+file, with naming accuracy per level and per source and correct/n over bodies with a Wilson interval and the person count beside it, on person-keyed splits, detection
 recall, the per-angle curve and task #13's latency; a rung that loses stays in the table as a loss;
 nothing is tuned on a test person; and no rung runs before the owner's word and number for it.
 

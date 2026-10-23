@@ -68,7 +68,7 @@ it describes methods.
 | Thoracic and lumbar vertebrae, 2D/3D registration on clinical cone-beam CT | Jaganathan 2023, WACV, arXiv 2210.07611 | 3.78 mm, 10 % success plain; 2.97 mm, 66 % randomised; 1.83 mm, 90 % with translation (CUT) and feature alignment | 0.65 mm, 99.4 % (a comparison method retrained on paired real X-rays) | n/a | a gap of about three times stays |
 | Lumbar vertebrae, 3D reconstruction from real fluoroscopy of ex-vivo specimens | Jecklin 2024, arXiv 2401.16027 | almost no sample above surface score 0.6 from bone-only renders; 0.62, F1 0.84 with Pix2Pix translation (estimated origin) | 0.63, F1 0.84 after fine-tuning on real | 0.69, F1 0.86 | translation equals fine-tuning |
 | T1 to L5 vertebra segmentation | Inigo 2025 (Spine-DART), arXiv 2512.05803 | Dice 0.82 on 35 real Loop-X frames of one cadaver | n/a | Dice 0.89 | about 0.07 Dice lost from renders to real |
-| Structures by text prompt, about 3 million renders of 1,621 CTs | Killeen (FluoroSAM), arXiv 2403.08059 v3 | Dice 0.60 text only, 0.69 two points, 0.77 eight points, over 1,741 masks of a cadaver from mid-femur to T2 | n/a | 0.59, 0.70, 0.79 | pooled over structures; v2 printed 0.26 overall text only against 0.43 on renders; levels pooled at 0.04 Dice in arXiv 2412.08020 |
+| Structures by text prompt, about 3 million renders of 1,621 CTs | Killeen (FluoroSAM), arXiv 2403.08059 v3 | Dice 0.60 text only, 0.69 two points, 0.77 eight points, over 1,741 masks of a cadaver from mid-femur to T2 | n/a | 0.59, 0.70, 0.79 | pooled over structures; v2 printed 0.26 overall text only against 0.43 on renders; L3 to L5 by name at 0.16 to 0.25 Dice (Table 1) and 0.04 for telling similar levels apart (Section 4.1's text) in arXiv 2412.08020 |
 | Surgical phase from renders | Killeen 2023 (Pelphix), MICCAI | 67.6 % mean, the view class 51 % | n/a | 93.8 % | the largest losses are on categories the simulation defined by hand |
 | Bone and organs on topograms, DRRs translated | Zhang 2018 (TD-GAN), MICCAI | bone Dice 0.401 untranslated, 0.835 translated | 0.871 supervised | n/a | unpaired translation recovers most of the gap |
 
@@ -118,9 +118,9 @@ What this says for P:
   it on another. In P that study is the ablation arm "no renders above L1"; the main design trains
   on whole-spine renders, as Huang did, so it is not itself a cross-region study.
 - Naming levels on single real C-arm frames from renders alone, with no CT of the patient, has been
-  done, and badly: FluoroSAM through the digital-twin paper scored 0.04 Dice on levels pooled, over a
-  hemisphere of angles. What is open is a usable per-level rate on single C-arm spot frames at any
-  angle, set against that 0.04, with the latency, and the measured transfer of a correction learned
+  done, and badly: FluoroSAM through the digital-twin paper scored 0.16 to 0.25 Dice on L3 to L5 by
+  name and 0.04 for telling similar levels apart, on 80 frames from 46 viewpoints of one cadaver. What is open is a usable per-level rate on single C-arm spot frames at any
+  angle, set against FluoroSAM scored on the same frames (#132), with the latency, and the measured transfer of a correction learned
   on one region to the others.
 - No per-region identification rate on real cervical or thoracic C-arm fluoroscopy exists. One public
   set of real C-arm frames reaches above L1 with the specimen's CT: the digital twin's cadaver (80
@@ -208,10 +208,11 @@ Two arms, cheapest first, none run before the owner's word:
 ## 7. What it means for the claims at the talk
 
 - Huang 2022 already labelled vertebrae on real intraoperative Long-Film images from renders alone
-  at 88.3 %, and FluoroSAM named levels on single real C-arm frames from renders at 0.04 Dice, so
+  at 88.3 %, and FluoroSAM segmented single levels by name on real C-arm frames from renders at 0.16 to 0.25
+  Dice, so
   neither "first to learn level naming from renders" nor "first to try it on C-arm frames" is open.
   What is open is a usable per-level rate on single C-arm spot frames at any angle, with no CT of the
-  patient, with the latency on screen, set against FluoroSAM's 0.04; and the measured transfer of a
+  patient, with the latency on screen, set against FluoroSAM scored on the same frames (#132); and the measured transfer of a
   render-to-real correction learned on one region to the others.
 - Every cervical or thoracic number shown before a real C-arm test above L1 is scored is a number on
   films, and says so on the slide.
