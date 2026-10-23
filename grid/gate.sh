@@ -403,8 +403,8 @@ latency_lines() {  # the newest run's parity, latency and sweep numbers, one lin
 # oschome"), so he chooses which sets stay on it at once and cycles the rest in and out. CephFS keeps
 # each folder's recursive size as the attribute ceph.dir.rbytes, read at once whatever the tree
 # holds, so no du walks millions of files; where the attribute is not there the size reads unknown.
-rbytes_of() {
-  "$GETFATTR" --only-values -n ceph.dir.rbytes "$1" 2>/dev/null | tr -dc '0-9'
+rbytes_of() {  # the size rule's own reading (grid/size-rule.sh), so a value that is no count reads unknown
+  xattr_digits ceph.dir.rbytes "$1"
 }
 gb_of() {  # whole GB, rounded up, of a byte count
   awk -v b="$1" 'BEGIN { printf "%d", (b + 999999999) / 1000000000 }'
@@ -447,8 +447,12 @@ samples_report() {  # the sample index's manifest, whole: counts per source and 
     | report_shapes | sed -r -f "$REPO/grid/redact.sed" | fold -w $((LINE_CHARS - 10)) | sed 's/^/  /'
 }
 
-attr_digits() {  # attr_digits NAME FOLDER: one CephFS attribute's leading digits, or nothing
-  "$GETFATTR" --only-values -n "$1" "$2" 2>/dev/null | sed -n 's/^\([0-9][0-9]*\).*/\1/p'
+attr_digits() {  # attr_digits NAME FOLDER: one CephFS attribute's leading digits up to its first NUL, or nothing
+  # Leading digits, since ceph.dir.rctime is seconds and nanoseconds; as a count only, as the size
+  # rule takes one (is_count), since an age is worked out from them in bash's arithmetic.
+  local digits
+  digits=$(xattr_value "$1" "$2" | sed -n 's/^\([0-9][0-9]*\).*/\1/p')
+  if is_count "$digits"; then echo "$digits"; fi
 }
 fetch_progress() {  # one line per live fetch of one set: what its raw folder holds, read with no walk
   # A fetch runs for hours and status shows a job's log only once it has ended, so until this nobody

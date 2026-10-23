@@ -18,7 +18,12 @@
 # counts against it as ceph.dir.rbytes, attributes of the folder read with no walk: by getfattr on
 # the login node, and by Python's os.getxattr on a node with no getfattr (XATTR_PYTHON, which
 # grid/platform-fetch.sbatch sets to the acq environment's). Where neither runs, nothing is read,
-# and df is never asked in its place on a mount that may be CephFS, kernel or FUSE.
+# and df is never asked in its place on a mount that may be CephFS, kernel or FUSE. A value is
+# taken up to its first NUL and only as a count of at most 18 digits (is_count): on 2026-10-23
+# getfattr in the owner's shell printed the volume's ceph.dir.rbytes as 48 digits and its
+# ceph.dir.rfiles as 25, and bash's arithmetic wraps such a number without a word, which would
+# have read the use as less than nothing and the room as 2.5 EB, so every fetch would have been
+# admitted. A reading that is no count admits nothing, and the readout says which one it was.
 #
 # What each fetch still owes is kept beside its landing, $DATA/<id>/meta:
 #   QUEUED   "<job> <utc>", written when grid/run-platform-fetch.sh submits the job
@@ -38,20 +43,49 @@
 # grid/run-xray-chain.sh (the room after the running fetches, on the login node). DATA, VOLUME and
 # REPO name the folders; GETFATTR, XATTR_PYTHON and SQUEUE the tools, so a test can stand in for them.
 
-xattr_digits() {  # xattr_digits NAME FOLDER: a CephFS attribute's leading digits, or nothing; 2 when no reader runs
-  local value python=${XATTR_PYTHON:-python3}
+xattr_value() {  # xattr_value NAME FOLDER: a CephFS attribute's value up to its first NUL; 2 when no reader runs
+  local python=${XATTR_PYTHON:-python3}
+  # Cut at the first NUL here: bash drops a NUL from what a command prints, and would join whatever
+  # follows it to the digits before it.
   if command -v "${GETFATTR:-getfattr}" > /dev/null 2>&1; then
-    value=$("${GETFATTR:-getfattr}" --only-values -n "$1" "$2" 2>/dev/null)
-  else
-    # An attribute that is not there is nothing; a Python that does not run is no reading at all.
-    value=$("$python" -c '
+    "${GETFATTR:-getfattr}" --only-values -n "$1" "$2" 2>/dev/null | tr '\0' '\n' | head -n 1
+    return 0
+  fi
+  # An attribute that is not there is nothing; a Python that does not run is no reading at all.
+  "$python" -c '
 import os, sys
 try:
-    sys.stdout.write(os.getxattr(sys.argv[2], sys.argv[1]).decode())
+    sys.stdout.write(os.getxattr(sys.argv[2], sys.argv[1]).split(b"\0")[0].decode("ascii", "replace"))
 except OSError:
-    pass' "$1" "$2" 2>/dev/null) || return 2
-  fi
-  printf '%s' "$value" | sed -n 's/^\([0-9][0-9]*\).*/\1/p'
+    pass' "$1" "$2" 2>/dev/null || return 2
+}
+
+is_count() {  # is_count TEXT: whether TEXT is a count bash's arithmetic holds whole, with any sum of a few
+  # At most 18 digits, under the 19 of the largest 64-bit integer, since bash wraps a longer number
+  # without a word (on 2026-10-23 a 48-digit reading would have left more room than the pool has);
+  # no leading zero, which bash's arithmetic reads as octal.
+  case "$1" in ""|*[!0-9]*|0?*) return 1 ;; esac
+  [ "${#1}" -le 18 ]
+}
+
+xattr_digits() {  # xattr_digits NAME FOLDER: a CephFS attribute as a count, or nothing where it is not there; 2 when no reader runs, 3 when it reads as no count
+  local value
+  value=$(xattr_value "$1" "$2") || return 2
+  [ -n "$value" ] || return 0
+  # Never part of a value taken as the whole: what is no count is no reading.
+  is_count "$value" || return 3
+  echo "$value"
+}
+
+xattr_words() {  # xattr_words NAME FOLDER: what one reading of the attribute gave, in words, for the readout
+  local value
+  value=$(xattr_digits "$1" "$2")
+  case $? in
+    2) echo "$1 was not read; neither getfattr nor Python ran" ;;
+    3) value=$(xattr_value "$1" "$2")
+       echo "$1 reads as no count, ${#value} characters up to its first NUL where a count has at most 18 digits" ;;
+    *) echo "$1 reads ${value:-as not there}" ;;
+  esac
 }
 
 volume_free_bytes() {  # volume_free_bytes VOLUME: "<bytes free> quota" or "<bytes free> df", else nothing
@@ -72,7 +106,7 @@ volume_free_bytes() {  # volume_free_bytes VOLUME: "<bytes free> quota" or "<byt
     ""|ceph|fuse|fuseblk|fuse.*) return 1 ;;
   esac
   avail=$("${DF:-df}" -B1 --output=avail "$volume" 2>/dev/null | tail -n 1 | tr -dc '0-9')
-  [ -n "$avail" ] || return 1
+  is_count "$avail" || return 1
   echo "$avail df"
 }
 
@@ -136,7 +170,7 @@ owed_by_running() {  # owed_by_running SELF: "<bytes> <fetches> [unsized...]" th
     [ "$state" = admitted ] && [ "$job" != "$self" ] || continue
     case "$live" in *" $job "*) ;; *) continue ;; esac
     counted="$counted$job "
-    case "$need$base" in ""|*[!0-9]*) unsized="$unsized $id"; continue ;; esac
+    if ! is_count "$need" || ! is_count "$base"; then unsized="$unsized $id"; continue; fi
     # Owed: what it had to land less what its landing has grown by since, so files already there
     # before it, another part of the same set, count for nothing; unreadable, the whole of it.
     landed=$(landing_bytes "$id")
@@ -151,7 +185,7 @@ owed_by_running() {  # owed_by_running SELF: "<bytes> <fetches> [unsized...]" th
       [ "$job" != "$self" ] || continue
       case "$live" in *" $job "*) ;; *) continue ;; esac
       case "$counted" in *" $job "*) continue ;; esac
-      case "$need" in ""|*[!0-9]*) continue ;; esac
+      is_count "$need" || continue
       counted="$counted$job "
       owed=$(( owed + need ))
       n=$((n + 1))
@@ -169,7 +203,7 @@ owed_by_running() {  # owed_by_running SELF: "<bytes> <fetches> [unsized...]" th
         # Sent under this rule and not started yet: it decides for itself when it starts.
         [ "$(awk '{ print $1; exit }' "$DATA/$id/meta/QUEUED" 2>/dev/null)" != "$job" ] || continue
         need=$(stated_bytes "$id")
-        [ -n "$need" ] || { unsized="$unsized $id"; continue; }
+        is_count "$need" || { unsized="$unsized $id"; continue; }
         landed=$(landing_bytes "$id")
         [ -n "$landed" ] || landed=0
         owe=$(( need - landed ))
@@ -281,7 +315,10 @@ size_and_admit() {  # size_and_admit ID COMMAND...: the exact size COMMAND reads
     return
   fi
   read -r total need how <<< "$said"
-  case "$total$need" in ""|*[!0-9]*) size_refused "$id" "the size reader gave no size"; return ;; esac
+  if ! is_count "$total" || ! is_count "$need"; then
+    size_refused "$id" "the size reader gave no size"
+    return
+  fi
   admit_fetch "$id" "$total" "$need" "$how"
 }
 
@@ -299,24 +336,28 @@ mark_queued() {  # mark_queued ID JOB: the QUEUED line of a fetch sent under the
 # reading, so the readout and the rule never disagree. Called by grid/oschome-quota.sh in the owner's
 # shell and by grid/gate.sh's status word, which names no folder, so the title is the caller's.
 quota_readout() {  # quota_readout VOLUME TITLE: the readout; 1 when the volume has no quota that can be read
-  local volume=$1 quota used files max_files said owed n unsized
+  local volume=$1 quota used files files_said="" max_files said owed n unsized
   quota=$(xattr_digits ceph.quota.max_bytes "$volume")
   used=$(xattr_digits ceph.dir.rbytes "$volume")
   files=$(xattr_digits ceph.dir.rfiles "$volume")
   max_files=$(xattr_digits ceph.quota.max_files "$volume")
   echo "$2"
   if [ -z "$quota" ] || [ "$quota" = 0 ] || [ -z "$used" ]; then
-    echo "The CephFS quota or its use could not be read (ceph.quota.max_bytes, ceph.dir.rbytes)"
+    echo "The CephFS quota or its use could not be read, so the size rule admits no fetch:"
+    xattr_words ceph.quota.max_bytes "$volume" | sed 's/^/  /'
+    xattr_words ceph.dir.rbytes "$volume" | sed 's/^/  /'
     return 1
   fi
   # wsuquota's own layout: two decimals, a 96-cell bar filled by the share used, rounded down. A
   # limit on the number of files, where the quota sets one, is shown and not counted by the rule.
-  awk -v q="$quota" -v u="$used" -v f="$files" -v mf="$max_files" 'BEGIN {
+  [ -n "$files" ] || files_said=$(xattr_words ceph.dir.rfiles "$volume")
+  awk -v q="$quota" -v u="$used" -v f="$files" -v fw="$files_said" -v mf="$max_files" 'BEGIN {
     free = q > u ? q - u : 0
     printf "Used  = %.2f%%  %.2fgb\n", 100 * u / q, u / 1e9
     printf "Free  = %.2f%%  %.2fgb\n", 100 * free / q, free / 1e9
     printf "Total =         %.2fgb\n", q / 1e9
     if (f != "") printf "File Count =    %.0f\n", f
+    else if (fw ~ /no count|not read/) printf "File Count =    not read; %s\n", fw
     if (mf != "" && mf != 0) printf "File Limit =    %.0f, which the size rule does not count\n", mf
     cells = int(96 * u / q); if (cells > 96) cells = 96
     bar = "["; for (i = 0; i < 96; i++) bar = bar (i < cells ? "#" : "-"); print bar "]"

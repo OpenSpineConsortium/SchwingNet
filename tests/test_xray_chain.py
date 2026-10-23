@@ -22,13 +22,14 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parent.parent
 GRID = ROOT / "grid"
 SBATCH_FILES = ("01-fetch.sbatch", "02-bank-ingest.sbatch", "03-catalog.sbatch", "platform-fetch.sbatch")
-SCRIPTS = ("run-xray-chain.sh", "run-platform-fetch.sh", "size-rule.sh", "oschome-quota.sh")
+SCRIPTS = ("run-xray-chain.sh", "run-platform-fetch.sh", "size-rule.sh", "oschome-quota.sh", "wsuquota.bash")
 GB = 1000 ** 3
 
 # Stand-ins for what the size rule reads (#160), so no test reaches CephFS or Slurm. getfattr answers
 # from FAKE_XATTRS, a file of "<folder> <attribute> <value>" lines in which a folder ending /* answers
 # for every folder under it not named, the folder * for every folder not named otherwise, and an
-# attribute given no value is not there, as on a folder with no quota; squeue lists the job ids in
+# attribute given no value is not there, as on a folder with no quota, and a ~ in a value is a NUL,
+# as getfattr may print one where CephFS's value ends; squeue lists the job ids in
 # FAKE_QUEUE, or fails where FAKE_SQUEUE_FAILS is set; the size reader says on stderr what it was
 # asked, prints FAKE_SIZE and ends with FAKE_SIZE_RC.
 STAND_INS = {
@@ -40,7 +41,7 @@ value=$(awk -v f="$folder" -v n="$name" '$2 == n && $1 == f { exact = $3; named 
   $2 == n && $1 == "*" { any = $3 }
   END { printf "%s", (named ? exact : (under != "" ? under : any)) }' "${FAKE_XATTRS:-/dev/null}")
 [ -n "$value" ] || { echo "$folder: $name: No such attribute" >&2; exit 1; }
-printf '%s' "$value"
+printf '%s' "$value" | tr '~' '\\000'
 """,
     "squeue": """#!/bin/bash
 [ -z "${FAKE_SQUEUE_FAILS:-}" ] || { echo "slurm_load_jobs error: Socket timed out" >&2; exit 1; }
@@ -1213,6 +1214,56 @@ class SizeRuleTest(unittest.TestCase):
         self.assertIn("only 5845 gb is free under the quota after 3000 gb owed to 1 running fetch at ", shown(out))
 
 
+    def test_a_value_is_read_up_to_its_first_nul_and_only_as_a_count(self):
+        # On 2026-10-23 getfattr in the owner's shell printed the volume's ceph.dir.rbytes as 48
+        # digits, and bash's arithmetic wraps such a number without a word: the use read as less
+        # than nothing and the room as 2.5 EB, so every fetch would have been admitted. A value ends
+        # at its first NUL, and what is then no count of at most 18 digits is no reading at all.
+        quota, path = 21990232555520, self.volume.path
+        self.volume.attribute(path, "ceph.quota.max_bytes", quota)
+        self.volume.attribute(path, "ceph.dir.rbytes", "16574438800856~3119603013828275240916436124852417")
+        self.assertEqual(self.rule(f'volume_free_bytes "{path}"'), (0, f"{quota - 16574438800856} quota"))
+        for value in ("165744388008563119603013828275240916436124852417", "1000000000000000000", "12abc", "-5",
+                      "0123", "~123"):
+            self.volume.attribute(path, "ceph.dir.rbytes", value)
+            self.assertEqual(self.rule(f'volume_free_bytes "{path}"'), (1, ""), value)
+        code, out = self.fetch(1)
+        self.assertEqual(code, 4, out)
+        self.assertNotIn("arg:", out)
+        self.assertIn("hf_example: refused; the room under the quota could not be read at ", shown(out))
+        # 18 digits is a count, and the sum of a few of them still holds in bash's arithmetic
+        self.volume.attribute(path, "ceph.dir.rbytes", "999999999999999999")
+        self.assertEqual(self.rule(f'xattr_digits ceph.dir.rbytes "{path}"'), (0, "999999999999999999"))
+        self.assertEqual(self.rule(f'xattr_digits ceph.dir.rbytes "{path}"; echo $(( 999999999999999999 * 9 ))'),
+                         (0, "999999999999999999\n8999999999999999991"))
+
+    def test_a_size_reader_or_a_record_that_gives_no_count_admits_nothing(self):
+        # a size past 18 digits, an admission whose figures are no count and a stated size too
+        # large for bash's arithmetic are each no size, never a figure that wraps
+        code, out = self.fetch(0, FAKE_SIZE="99999999999999999999 99999999999999999999 by a broken source")
+        self.assertEqual(code, 4, out)
+        self.assertNotIn("arg:", out)
+        self.assertIn("hf_example: refused; the size reader gave no size at ", shown(out))
+        self.volume.meta("hf_other", "SIZE", "admitted 777 99999999999999999999 0 2026-10-23T12:00:00Z 1")
+        self.volume.live(777)
+        code, out = self.fetch(1)
+        self.assertEqual(code, 4, out)
+        self.assertIn("hf_example: refused; the running fetch of hf other states no size so nothing is admitted beside "
+                      "it at ", shown(out))
+
+    def test_python_reads_a_value_up_to_its_first_nul_where_no_getfattr_runs(self):
+        folder = self.tmp / "landing"
+        folder.mkdir()
+        try:
+            os.setxattr(folder, "user.rbytes", b"16574438800856\x003119603013828")
+            os.setxattr(folder, "user.long", b"165744388008563119603013828275240916436124852417")
+        except OSError as error:
+            self.skipTest(f"this filesystem keeps no user attributes: {error}")
+        tools = dict(GETFATTR=str(self.tmp / "no-such-tool"), XATTR_PYTHON=sys.executable)
+        self.assertEqual(self.rule(f'xattr_digits user.rbytes "{folder}"', **tools), (0, "16574438800856"))
+        self.assertEqual(self.rule(f'xattr_digits user.long "{folder}"', **tools), (3, ""))
+        self.assertEqual(self.rule(f'xattr_digits user.none "{folder}"', **tools), (0, ""))
+
 class QuotaReadoutTest(unittest.TestCase):
     """grid/oschome-quota.sh, the owner's readout of the lab volume in the layout of WSU's wsuquota,
     which reads only the home directory (2026-10-23), from the same reading the size rule decides by."""
@@ -1262,3 +1313,103 @@ class QuotaReadoutTest(unittest.TestCase):
         code, out = self.readout(volume_in(self, quota=1000 * GB))
         self.assertEqual(code, 2, out)
         self.assertIn("The CephFS quota or its use could not be read", out)
+
+    def test_a_value_after_a_nul_is_left_out_and_one_that_is_no_count_is_named(self):
+        # The owner's paste of 2026-10-23: the quota read whole, the use and the file count as 48
+        # and 25 digits. Cut at a NUL the readout is the volume's; with none it takes nothing for a
+        # count, says which attribute it was and ends 2, so no wrapped figure is shown or decided by.
+        volume = volume_in(self, quota=21990232555520, used="16574438800856~3119603013828275240916436124852417")
+        volume.attribute(volume.path, "ceph.dir.rfiles", "23636422~12733507223600077")
+        code, out = self.readout(volume)
+        self.assertEqual(code, 0, out)
+        self.assertEqual(out.splitlines()[1:6], [
+            "Used  = 75.37%  16574.44gb",
+            "Free  = 24.63%  5415.79gb",
+            "Total =         21990.23gb",
+            "File Count =    23636422",
+            "[" + "#" * 72 + "-" * 24 + "]",
+        ])
+        volume.attribute(volume.path, "ceph.dir.rfiles", "2363642212733507223600077")
+        code, out = self.readout(volume)
+        self.assertEqual(code, 0, out)
+        self.assertIn("File Count =    not read; ceph.dir.rfiles reads as no count, 25 characters up to its first NUL "
+                      "where a count has at most 18 digits\n", out)
+        volume.attribute(volume.path, "ceph.dir.rbytes", "165744388008563119603013828275240916436124852417")
+        code, out = self.readout(volume)
+        self.assertEqual(code, 2, out)
+        self.assertEqual(out.splitlines()[1:], [
+            "The CephFS quota or its use could not be read, so the size rule admits no fetch:",
+            "  ceph.quota.max_bytes reads 21990232555520",
+            "  ceph.dir.rbytes reads as no count, 48 characters up to its first NUL where a count has at most 18 digits",
+        ])
+
+
+class WsuquotaTest(unittest.TestCase):
+    """grid/wsuquota.bash, sourced from the owner's ~/.bashrc: wsuquota prints WSU's home-directory
+    readout as it did and the lab volume's after it, whatever wsuquota was in that shell (2026-10-23:
+    "always print it when i type wsuquota")."""
+
+    HOOK = f'source "{GRID / "wsuquota.bash"}"'
+
+    def setUp(self):
+        import tempfile
+        self.volume = volume_in(self, quota=1000 * GB, used=250 * GB)
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.bin = Path(tmp.name)
+        # WSU's command, as it stands on the login node's PATH
+        (self.bin / "wsuquota").write_text('#!/bin/bash\necho "Home Directory Disk Usage" "$@"\n', encoding="utf-8")
+        (self.bin / "wsuquota").chmod(0o755)
+
+    def typed(self, *lines, command=True):
+        """LINES as an interactive shell's ~/.bashrc runs them, then wsuquota typed at its prompt."""
+        script = "\n".join(("shopt -s expand_aliases",) + lines + ("echo SOURCED", "wsuquota"))
+        env = dict(os.environ, SCHWINGNET=str(ROOT), **self.volume.env())
+        if command:
+            env["PATH"] = f"{self.bin}:{env['PATH']}"
+        done = subprocess.run(["bash", "-c", script], env=env, capture_output=True, text=True, timeout=60)
+        return done.returncode, done.stdout, done.stderr
+
+    def lab(self):
+        return f"Lab Volume Disk Usage, {self.volume.path} (CephFS quota; 1 gb = 10^9 bytes)"
+
+    def test_wsus_command_prints_first_and_the_lab_volume_after_it(self):
+        code, out, err = self.typed(self.HOOK)
+        self.assertEqual((code, err), (0, ""), out)
+        # sourcing it printed nothing
+        self.assertEqual(out.splitlines()[:5], ["SOURCED", "Home Directory Disk Usage", "", self.lab(),
+                                                "Used  = 25.00%  250.00gb"])
+
+    def test_an_alias_or_a_function_is_wrapped_once_however_often_bashrc_runs(self):
+        for made in ('alias wsuquota="echo Home Directory Disk Usage"', "wsuquota() { echo Home Directory Disk Usage; }"):
+            # a second `source ~/.bashrc` makes the alias or the function again before the hook
+            code, out, err = self.typed(made, self.HOOK, made, self.HOOK, command=False)
+            self.assertEqual((code, err), (0, ""), made)
+            self.assertEqual(out.splitlines()[:4], ["SOURCED", "Home Directory Disk Usage", "", self.lab()], made)
+            self.assertEqual(out.count("Disk Usage"), 2, out)
+            code, out, err = self.typed(made, self.HOOK, self.HOOK, command=False)
+            self.assertEqual(out.count("Disk Usage"), 2, out)
+
+    def test_an_alias_that_names_the_command_reaches_it_once(self):
+        code, out, err = self.typed('alias wsuquota="wsuquota --all"', self.HOOK)
+        self.assertEqual((code, err), (0, ""), out)
+        self.assertEqual(out.splitlines()[:4], ["SOURCED", "Home Directory Disk Usage --all", "", self.lab()])
+
+    def test_with_no_wsuquota_the_lab_volume_alone_prints(self):
+        code, out, err = self.typed(self.HOOK, command=False)
+        self.assertEqual((code, err), (0, ""), out)
+        self.assertEqual(out.splitlines()[:2], ["SOURCED", self.lab()])
+        # a command is looked up when wsuquota is typed, so one that comes on the PATH later is run
+        code, out, err = self.typed(self.HOOK, f'PATH="{self.bin}:$PATH"', command=False)
+        self.assertEqual((code, err), (0, ""), out)
+        self.assertEqual(out.splitlines()[:4], ["SOURCED", "Home Directory Disk Usage", "", self.lab()])
+
+    def test_a_hook_whose_readout_is_gone_says_so(self):
+        import shutil
+        lone = self.bin / "lone"
+        lone.mkdir()
+        shutil.copy(GRID / "wsuquota.bash", lone)
+        code, out, err = self.typed(f'source "{lone / "wsuquota.bash"}"')
+        self.assertEqual(code, 1, out + err)
+        self.assertIn("Home Directory Disk Usage\n\nThe lab volume's readout is not there: "
+                      f"{lone / 'oschome-quota.sh'}\n", out)

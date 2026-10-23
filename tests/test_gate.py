@@ -859,11 +859,13 @@ case "$3:$folder" in
   */big) echo -n 2500000000000 ;;
   */small) echo -n 1500000000 ;;
   */unread) exit 1 ;;
+  */nul) printf '1500000000\\0999' ;;
+  */long) echo -n 165744388008563119603013828275240916436124852417 ;;
   *) echo -n 2600000000000 ;;
 esac
 """, encoding="utf-8")
         (self.fake / "getfattr").chmod(0o755)
-        for name in ("small", "big", "unread"):
+        for name in ("small", "big", "unread", "nul", "long"):
             (self.data / name).mkdir()
         done = self.gate("status")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
@@ -884,8 +886,11 @@ esac
         ])
         self.assertNotIn("900000", out)
         self.assertIn("  data: 2600 GB in all", out)
-        tally = [line.split() for line in out.splitlines() if line.startswith("    ")][:3]
-        self.assertEqual(tally, [["2500", "big"], ["2", "small"], ["?", "unread"]])
+        tally = [line.split() for line in out.splitlines() if line.startswith("    ")]
+        self.assertEqual(tally[0], ["2500", "big"])
+        # a value ends at its first NUL, and one that is no count of at most 18 digits reads
+        # unknown, never as a figure bash's arithmetic wrapped (#160)
+        self.assertEqual(sorted(tally[1:5]), [["2", "nul"], ["2", "small"], ["?", "long"], ["?", "unread"]])
         self.assertIn("shared datasets: not there", out)
         self.assertNotIn(str(self.tmp), out)
         self.assertLess(out.index("## space"), out.index("## the gate's newest jobs") if "## the gate's" in out else len(out))
