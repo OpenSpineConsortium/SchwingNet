@@ -146,13 +146,20 @@ done <<< "$TABLE"
 DATA=$DATA_ROOT
 # shellcheck source=grid/size-rule.sh
 . "$REPO/grid/size-rule.sh"
-read -r free_gb free_from <<< "$(volume_free_gb "$VOLUME")"
-[ -n "$free_gb" ] || { echo "cannot read the free space of $VOLUME: neither its CephFS quota nor df answered"; exit 2; }
+# What the running fetches owe first and the room after it, in the order a fetch job's decision
+# reads them (grid/size-rule.sh, admit_fetch, #180); this line only reports them, since each job
+# decides when it starts.
 if owed=$(owed_by_running ""); then
   read -r owed_bytes owed_n owed_unsized <<< "$owed"
   owed="$(gb_up "$owed_bytes") GB of it owed to $(running_fetches "$owed_n")${owed_unsized:+, and the running fetch of $owed_unsized states no size}"
 else
   owed="what the running fetches owe not read (squeue did not answer)"
+fi
+read -r free_gb free_from <<< "$(volume_free_gb "$VOLUME")"
+if [ -z "$free_gb" ]; then
+  why=$(quota_below_words "$VOLUME")
+  echo "cannot read the free space of $VOLUME: ${why:-neither its CephFS quota nor df answered}"
+  exit 2
 fi
 echo "size budget: $n sources, $total_gb GB stated; $VOLUME has $free_gb GB $(free_space_words "$free_from"), $owed"
 echo "each job starts its fetch only if the exact size its source states fits the room then; one that does not lands nothing (grid/size-rule.sh)"

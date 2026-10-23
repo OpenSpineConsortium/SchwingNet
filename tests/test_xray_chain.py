@@ -10,6 +10,7 @@ import fnmatch
 import hashlib
 import json
 import os
+import re
 import struct
 import subprocess
 import sys
@@ -126,11 +127,38 @@ class Volume:
             self.attribute(self.data / source, "ceph.dir.rbytes", landed)
 
     def env(self, **extra):
+        # The rule takes its tools from the environment only where SIZE_RULE_STAND_INS says so, and
+        # waits no minute between the room's two readings here (#180).
         env = dict(GETFATTR=str(self.tools / "getfattr"), SQUEUE=str(self.tools / "squeue"),
                    SIZER=str(self.tools / "sizer"), FAKE_XATTRS=str(self.xattrs), FAKE_QUEUE=str(self.queue),
-                   MOUNTINFO=str(self.mountinfo), VOLUME=str(self.path), DATA_ROOT=str(self.data), USER="go2432")
+                   MOUNTINFO=str(self.mountinfo), VOLUME=str(self.path), DATA_ROOT=str(self.data), USER="go2432",
+                   SIZE_RULE_STAND_INS="yes", SIZE_RULE_SETTLE="0")
         env.update(extra)
         return env
+
+    def logged(self):
+        """getfattr and squeue that note each call, in order, before answering as the stand-ins do: the
+        log, and the tools to hand the rule."""
+        log = self.tools / "calls.log"
+        tools = {}
+        for name in ("getfattr", "squeue"):
+            wrapper = self.tools / f"{name}-logged"
+            wrapper.write_text(f'#!/bin/bash\necho "{name} $* " >> "{log}"\nexec "{self.tools / name}" "$@"\n',
+                               encoding="utf-8")
+            wrapper.chmod(0o755)
+            tools[name.upper()] = str(wrapper)
+        return log, tools
+
+    def read_after_owed(self, test, log, times):
+        """That the calls in LOG asked squeue what the running fetches owe before the volume's quota or
+        use was read, and read the use TIMES times."""
+        calls = log.read_text(encoding="utf-8").splitlines()
+        quota, use = f" -n ceph.quota.max_bytes {self.path} ", f" -n ceph.dir.rbytes {self.path} "
+        owed = [index for index, call in enumerate(calls) if call.startswith("squeue ")]
+        room = [index for index, call in enumerate(calls) if call.endswith((quota, use))]
+        test.assertTrue(owed and room, calls)
+        test.assertLess(owed[0], room[0], calls)
+        test.assertEqual(sum(call.endswith(use) for call in calls), times, calls)
 
 
 def volume_in(test, quota=None, used=None):
@@ -560,6 +588,27 @@ class SlurmScriptsTest(unittest.TestCase):
             code, out = self.dry_run(script, "--only", only, free="5881937G", quota=21991 * GB)
             self.assertEqual(code, 2, out)
             self.assertIn("cannot read the free space", out)
+            self.assertNotIn("would submit", out)
+
+    def test_both_scripts_read_what_the_running_fetches_owe_before_the_room(self):
+        # in the order a fetch job's decision reads them, the chain's room twice as the job's is (#180)
+        volume = volume_in(self, quota=21991 * GB, used=13146 * GB)
+        log, tools = volume.logged()
+        for script, only, times in (("run-xray-chain.sh", "cathaction", 2), ("run-platform-fetch.sh", "idc_nlst", 1)):
+            log.unlink(missing_ok=True)
+            code, out = self.dry_run(script, "--only", only, volume=volume, **tools)
+            self.assertEqual(code, 0, out)
+            volume.read_after_owed(self, log, times)
+
+    def test_both_scripts_refuse_beside_a_quota_below_the_volumes(self):
+        # a byte quota of its own on the data root binds a fetch the volume's leaves room for (#180)
+        volume = volume_in(self, quota=21991 * GB, used=13146 * GB)
+        volume.attribute(volume.data, "ceph.quota.max_bytes", 9000 * GB)
+        for script, only in (("run-xray-chain.sh", "cathaction"), ("run-platform-fetch.sh", "idc_nlst")):
+            code, out = self.dry_run(script, "--only", only, volume=volume)
+            self.assertEqual(code, 2, out)
+            self.assertIn(f"cannot read the free space of {volume.path}: the data root or a folder above it inside the "
+                          "volume carries a quota of its own, which the size rule does not read", out)
             self.assertNotIn("would submit", out)
 
     def test_the_two_kaggle_datasets_run_only_when_named(self):
@@ -1240,17 +1289,22 @@ class SizeRuleTest(unittest.TestCase):
         self.assertIn("only 5845 gb is free under the quota after 3000 gb owed to 1 running fetch at ", shown(out))
 
 
-    def test_a_value_is_read_up_to_its_first_nul_and_only_as_a_count(self):
+    def test_a_value_is_read_whole_and_only_as_a_count(self):
         # On 2026-10-23 getfattr in the owner's shell printed the volume's ceph.dir.rbytes as 48
         # digits, and bash's arithmetic wraps such a number without a word: the use read as less
-        # than nothing and the room as 2.5 EB, so every fetch would have been admitted. A value ends
-        # at its first NUL, and what is then no count of at most 18 digits is no reading at all.
+        # than nothing and the room as 2.5 EB, so every fetch would have been admitted. A figure the
+        # rule counts is read whole, past any NUL, and what is then no count of at most 18 digits is
+        # no reading at all (#180): cut at a NUL, the use would read as a part of itself and the room
+        # as more than there is, as a kernel client through Linux 5.2 could leave it, a NUL over the
+        # last digit.
         quota, path = 21990232555520, self.volume.path
         self.volume.attribute(path, "ceph.quota.max_bytes", quota)
-        self.volume.attribute(path, "ceph.dir.rbytes", "16574438800856~3119603013828275240916436124852417")
+        self.volume.attribute(path, "ceph.dir.rbytes", "16574438800856")
         self.assertEqual(self.rule(f'volume_free_bytes "{path}"'), (0, f"{quota - 16574438800856} quota"))
-        # nor is a value that holds a line break, nor one bash's arithmetic would read as a sum or a base
-        for value in ("165744388008563119603013828275240916436124852417", "1000000000000000000", "12abc", "-5",
+        # nor is a value with a NUL anywhere in it, nor one that holds a line break, nor one bash's
+        # arithmetic would read as a sum or a base
+        for value in ("16574438800856~3119603013828275240916436124852417", "1657443880085~", "~16574438800856",
+                      "165744388008563119603013828275240916436124852417", "1000000000000000000", "12abc", "-5",
                       "0123", "~123", "1657^4438800856", "5+5", "16#ff"):
             self.volume.attribute(path, "ceph.dir.rbytes", value)
             self.assertEqual(self.rule(f'volume_free_bytes "{path}"'), (1, ""), value)
@@ -1258,10 +1312,15 @@ class SizeRuleTest(unittest.TestCase):
         self.assertEqual(code, 4, out)
         self.assertNotIn("arg:", out)
         self.assertIn("hf_example: refused; the room under the quota could not be read at ", shown(out))
+        # the quota is read the same way: a NUL over its last digit would read it a tenth of itself
+        self.volume.attribute(path, "ceph.dir.rbytes", "16574438800856")
+        self.volume.attribute(path, "ceph.quota.max_bytes", "2199023255552~")
+        self.assertEqual(self.rule(f'volume_free_bytes "{path}"'), (1, ""))
+        self.volume.attribute(path, "ceph.quota.max_bytes", quota)
         # 18 digits is a count, and the sum of a few of them still holds in bash's arithmetic
         self.volume.attribute(path, "ceph.dir.rbytes", "999999999999999999")
-        self.assertEqual(self.rule(f'xattr_digits ceph.dir.rbytes "{path}"'), (0, "999999999999999999"))
-        self.assertEqual(self.rule(f'xattr_digits ceph.dir.rbytes "{path}"; echo $(( 999999999999999999 * 9 ))'),
+        self.assertEqual(self.rule(f'xattr_whole ceph.dir.rbytes "{path}"'), (0, "999999999999999999"))
+        self.assertEqual(self.rule(f'xattr_whole ceph.dir.rbytes "{path}"; echo $(( 999999999999999999 * 9 ))'),
                          (0, "999999999999999999\n8999999999999999991"))
 
     def test_a_size_reader_or_a_record_that_gives_no_count_admits_nothing(self):
@@ -1329,6 +1388,176 @@ class SizeRuleTest(unittest.TestCase):
             self.assertEqual(self.rule(f'xattr_whole {name} "{folder}"', **tools), (3, ""), name)
         self.assertEqual(self.rule(f'xattr_whole user.none "{folder}"', **tools), (0, ""))
 
+    def test_the_rules_tools_are_its_own_unless_a_test_says_so(self):
+        # A job inherits the environment it was sent from, so a stray GETFATTR, STAT, SQUEUE, DF,
+        # MOUNTINFO or SIZE_RULE_SETTLE there would change what the rule reads, unseen (#180): the
+        # rule takes them from the environment only where SIZE_RULE_STAND_INS is yes.
+        names = 'echo "$RULE_GETFATTR $RULE_STAT $RULE_SQUEUE $RULE_DF $RULE_MOUNTINFO $RULE_SETTLE"'
+        stray = dict(GETFATTR="/x/getfattr", STAT="/x/stat", SQUEUE="/x/squeue", DF="/x/df", MOUNTINFO="/x/mountinfo",
+                     SIZE_RULE_SETTLE="7")
+        own = (0, "getfattr stat squeue df /proc/self/mountinfo 60")
+        for switch in ("", "no", "Yes", "yes ", "1"):
+            self.assertEqual(self.rule(names, SIZE_RULE_STAND_INS=switch, **stray), own, switch)
+        self.assertEqual(self.rule(names, **stray), (0, "/x/getfattr /x/stat /x/squeue /x/df /x/mountinfo 7"))
+        self.assertEqual(self.rule(names, **{name: "" for name in stray}), own)
+        # and with the switch off no function asks a tool the environment names
+        calls = self.tmp / "stray.log"
+        for name, says in (("getfattr", ""), ("stat", "xfs"), ("squeue", ""), ("df", "")):
+            tool = self.tmp / f"stray-{name}"
+            tool.write_text(f'#!/bin/bash\necho {name} >> "{calls}"\nprintf %s "{says}"\n', encoding="utf-8")
+            tool.chmod(0o755)
+            stray[name.upper()] = str(tool)
+        del stray["SIZE_RULE_SETTLE"]
+        every = 'quota_readout "$VOLUME" title; volume_free_bytes "$VOLUME"; owed_by_running ""; true'
+        self.rule(every, SIZE_RULE_STAND_INS="", **stray)
+        self.assertFalse(calls.exists())
+        self.rule(every, **stray)
+        self.assertEqual(set(calls.read_text(encoding="utf-8").split()), {"getfattr", "stat", "squeue", "df"})
+        # nor does a call the tests above do not reach: outside the switch the rule reads none of these
+        # names from the environment, and the job takes its size reader, Python and curl there alone
+        for name, names, pattern in (
+                ("size-rule.sh", "GETFATTR|STAT|SQUEUE|DF|MOUNTINFO|SIZE_RULE_SETTLE", r"\$\{{?({})\b"),
+                ("platform-fetch.sbatch", "SIZER|XATTR_PYTHON|CURL", r"\$\{{({}):?-")):
+            text = (GRID / name).read_text(encoding="utf-8")
+            switch = re.search(r'\nif \[ "\$\{SIZE_RULE_STAND_INS:-\}" = yes \]; then\n.*?\nfi\n', text, re.S)
+            self.assertIsNotNone(switch, name)
+            rest = text[:switch.start()] + text[switch.end():]
+            self.assertEqual(re.findall(pattern.format(names), rest), [], name)
+
+    def test_a_job_asks_its_own_size_reader_and_curl_unless_a_test_says_so(self):
+        # The job inherits the environment it was sent from too, so a stray SIZER or CURL there would
+        # say how much a fetch needs, unseen (#180): the job takes them only under the switch. Its own
+        # size reader here is the acq environment's stand-in, which gives no size.
+        code, out = self.fetch(1, SIZE_RULE_STAND_INS="")
+        self.assertEqual(code, 4, out)
+        self.assertNotIn("sizer:", out)
+        self.assertIn("hf_example: refused; the size reader gave no size at ", shown(out))
+        link = self.tmp / "link"
+        link.write_text(f"file://{self.tmp}/no-such-file\n", encoding="utf-8")
+        link.chmod(0o600)
+        curl = self.volume.tools / "curl"
+        curl.write_text('#!/bin/bash\necho "curl stand-in: $*" >&2\nprintf "Content-Range: bytes 0-0/1000\\r\\n"\n',
+                        encoding="utf-8")
+        curl.chmod(0o755)
+        route = dict(route="curl-link", args="file.bin", LINK_FILE=str(link), CURL=str(curl))
+        code, out = self.fetch(0, **route)
+        self.assertEqual(code, 0, out)
+        self.assertIn("curl stand-in:", out)
+        self.assertIn("hf_example: admitted; it needs 1 gb of its 1 gb by the link answers and 8845 gb is free ", shown(out))
+        (self.volume.data / "hf_example" / "meta" / "SIZE").unlink()
+        # curl's own answer: the file the link names is not there, so no size and no fetch
+        code, out = self.fetch(0, SIZE_RULE_STAND_INS="", **route)
+        self.assertEqual(code, 4, out)
+        self.assertNotIn("curl stand-in:", out)
+        self.assertIn("hf_example: refused; no exact size; the link answers no range request with its length at ",
+                      shown(out))
+
+    def test_the_room_is_the_smaller_of_two_readings_a_settle_apart_from_one_figure(self):
+        # CephFS carries new bytes, and each half of a move, up to the volume with a lag of seconds, so
+        # a fetch's decision reads the room twice, a minute apart, and keeps the smaller; a second
+        # reading that fails, or comes from another figure, admits nothing (#180).
+        rooms, calls, scratch = self.tmp / "rooms", self.tmp / "calls", self.tmp / "scratch"
+        scratch.mkdir()
+        stubs = (f'volume_free_bytes() {{ echo read >> "{calls}"; head -n 1 "{rooms}"; sed -i 1d "{rooms}"; }}; '
+                 f'sleep() {{ echo "slept $1" >> "{calls}"; }}; ')
+        for first, second, said in (("500 quota", "400 quota", (0, "400 quota")),
+                                    ("400 quota", "500 quota", (0, "400 quota")),
+                                    ("400 quota", "400 quota", (0, "400 quota")),
+                                    ("0 quota", "400 quota", (0, "0 quota")),
+                                    ("400 df", "300 df", (0, "300 df")),
+                                    ("400 quota", "300 df", (1, "")),
+                                    ("400 df", "300 quota", (1, "")),
+                                    ("400 quota", "", (1, ""))):
+            rooms.write_text(f"{first}\n{second}\n", encoding="utf-8")
+            calls.write_text("", encoding="utf-8")
+            self.assertEqual(self.rule(stubs + 'settled_room "$VOLUME"', SIZE_RULE_SETTLE="7", TMPDIR=str(scratch)),
+                             said, (first, second))
+            self.assertEqual(calls.read_text(encoding="utf-8"), "read\nslept 7\nread\n", (first, second))
+            # the file that carried the first census to the second is gone, whatever the answer
+            self.assertEqual(list(scratch.iterdir()), [], (first, second))
+        # a first reading that fails is the answer, with no wait
+        rooms.write_text("\n400 quota\n", encoding="utf-8")
+        calls.write_text("", encoding="utf-8")
+        self.assertEqual(self.rule(stubs + 'settled_room "$VOLUME"', TMPDIR=str(scratch)), (1, ""))
+        self.assertEqual(calls.read_text(encoding="utf-8"), "read\n")
+        self.assertEqual(list(scratch.iterdir()), [])
+        # and where no file can be made to carry the census, nothing is read and nothing admitted
+        rooms.write_text("400 quota\n400 quota\n", encoding="utf-8")
+        calls.write_text("", encoding="utf-8")
+        self.assertEqual(self.rule(stubs + 'settled_room "$VOLUME"', TMPDIR=str(self.tmp / "none")), (1, ""))
+        self.assertEqual(calls.read_text(encoding="utf-8"), "")
+
+    def test_what_the_running_fetches_owe_is_read_before_the_room(self):
+        # A byte a landing shows when it is read is no longer owed, so the room is read after it, and
+        # read twice: the other way round, a byte landing between the two would count neither as owed
+        # nor as used (#180).
+        self.volume.admitted("hf_other", 777, need=3000 * GB, base=0, landed=1000 * GB)
+        self.volume.live(777)
+        log, tools = self.volume.logged()
+        code, out = self.fetch(1, **tools)
+        self.assertEqual(code, 0, out)
+        self.volume.read_after_owed(self, log, times=2)
+
+    def test_a_landing_cut_short_is_no_reading_of_what_it_holds(self):
+        # What a landing holds is read whole too (#180): a base cut short at a NUL would credit the
+        # fetch with bytes that were there before it and leave what it owes short.
+        self.volume.attribute(self.volume.data / "hf_example", "ceph.dir.rbytes", "100000000000~")
+        code, out = self.fetch(1)
+        self.assertEqual(code, 4, out)
+        self.assertNotIn("arg:", out)
+        self.assertIn("hf_example: refused; what its landing holds could not be read at ", shown(out))
+        self.assertFalse((self.volume.data / "hf_example" / "meta" / "SIZE").exists())
+        # and a running fetch whose landing reads so owes the whole of what it had to land
+        self.volume.admitted("hf_other", 777, need=3000 * GB, base=1000 * GB, landed="150000000000~")
+        self.volume.live(777)
+        self.assertEqual(self.rule('owed_by_running ""'), (0, f"{3000 * GB} 1"))
+        self.volume.attribute(self.volume.data / "hf_other", "ceph.dir.rbytes", 1500 * GB)
+        self.assertEqual(self.rule('owed_by_running ""'), (0, f"{2500 * GB} 1"))
+
+    def test_a_quota_below_the_volumes_admits_nothing(self):
+        # CephFS holds a write to every quota on its path, so a byte quota of its own on the data root,
+        # or on a folder above it inside the volume, would stop part-way a fetch the volume's quota
+        # leaves room for; the rule reads no such quota, so while one stands it admits nothing (#180).
+        own = ("the data root or a folder above it inside the volume carries a quota of its own which the size "
+               "rule does not read")
+        unread = "a quota on the data root or a folder above it inside the volume could not be read"
+        data = self.volume.data
+        self.volume.attribute(data, "ceph.quota.max_bytes", 9000 * GB)
+        code, out = self.fetch(1)
+        self.assertEqual(code, 4, out)
+        self.assertNotIn("arg:", out)
+        self.assertIn(f"hf_example: refused; {own} at ", shown(out))
+        self.assertEqual(self.rule('quota_below "$VOLUME"'), (0, ""))
+        # 0 is no quota, as CephFS reads it
+        self.volume.attribute(data, "ceph.quota.max_bytes", 0)
+        code, out = self.fetch(1)
+        self.assertEqual(code, 0, out)
+        # one that is no count, or that no reader can read, is not known to be none
+        for value in ("9000~", "x", "1~"):
+            self.volume.attribute(data, "ceph.quota.max_bytes", value)
+            code, out = self.fetch(1)
+            self.assertEqual(code, 4, out)
+            self.assertIn(f"hf_example: refused; {unread} at ", shown(out))
+        missing = str(self.tmp / "no-such-tool")
+        self.assertEqual(self.rule('quota_below "$VOLUME"', GETFATTR=missing, XATTR_PYTHON=missing), (2, ""))
+        self.volume.attribute(data, "ceph.quota.max_bytes", "")
+        self.assertEqual(self.rule('volume_free_bytes "$VOLUME"'), (0, f"{8845 * GB} quota"))
+        # a folder between the volume and a data root two folders down
+        deep = self.volume.path / "go2432" / "data"
+        deep.mkdir(parents=True)
+        self.volume.attribute(self.volume.path / "go2432", "ceph.quota.max_bytes", 9000 * GB)
+        self.assertEqual(self.rule(f'DATA="{deep}"; quota_below "$VOLUME"'), (0, ""))
+        self.assertEqual(self.rule(f'DATA="{deep}"; volume_free_bytes "$VOLUME"'), (1, ""))
+        # the volume's own quota, one above the volume and one off the data root's path are none below it
+        self.volume.attribute(self.volume.path.parent, "ceph.quota.max_bytes", 100 * GB)
+        self.assertEqual(self.rule('quota_below "$VOLUME"'), (1, ""))
+        self.assertEqual(self.rule('volume_free_bytes "$VOLUME"'), (0, f"{8845 * GB} quota"))
+        # nor is the volume's own where it is named through a link, as /rs/rs_grp_oschome may be, and
+        # the data root by the folder the link leads to: the walk stops at the volume, links resolved
+        link = self.volume.path.parent / "v"
+        link.symlink_to(self.volume.path)
+        self.assertEqual(self.rule(f'VOLUME="{link}"; quota_below "$VOLUME"'), (1, ""))
+
 
 class QuotaReadoutTest(unittest.TestCase):
     """grid/oschome-quota.sh, the owner's readout of the lab volume in the layout of WSU's wsuquota,
@@ -1380,11 +1609,13 @@ class QuotaReadoutTest(unittest.TestCase):
         self.assertEqual(code, 2, out)
         self.assertIn("The CephFS quota or its use could not be read", out)
 
-    def test_a_value_after_a_nul_is_left_out_and_one_that_is_no_count_is_named(self):
+    def test_the_use_is_read_whole_the_file_count_up_to_its_nul_and_no_count_is_named(self):
         # The owner's paste of 2026-10-23: the quota read whole, the use and the file count as 48
-        # and 25 digits. Cut at a NUL the readout is the volume's; with none it takes nothing for a
-        # count, says which attribute it was and ends 2, so no wrapped figure is shown or decided by.
-        volume = volume_in(self, quota=21990232555520, used="16574438800856~3119603013828275240916436124852417")
+        # and 25 digits. The file count, which the rule does not count, is read up to its first NUL;
+        # the use, which it does, is read whole (#180), so a NUL anywhere in it, as past 18 digits,
+        # leaves no count: the readout says which attribute it was and ends 2, so no wrapped or cut
+        # figure is shown or decided by.
+        volume = volume_in(self, quota=21990232555520, used="16574438800856")
         volume.attribute(volume.path, "ceph.dir.rfiles", "23636422~12733507223600077")
         code, out = self.readout(volume)
         self.assertEqual(code, 0, out)
@@ -1400,25 +1631,33 @@ class QuotaReadoutTest(unittest.TestCase):
         self.assertEqual(code, 0, out)
         self.assertIn("File Count =    not read; ceph.dir.rfiles reads as no count, 25 characters up to its first NUL "
                       "where a count has at most 18 digits\n", out)
-        volume.attribute(volume.path, "ceph.dir.rbytes", "165744388008563119603013828275240916436124852417")
         # stat here gives a folder's entry count as its size, as the kernel client does without its
         # rbytes option, which the data root shows, so stat cannot stand in for the attribute (#170);
         # and the volume's one entry is not the nine stat counts, so neither can its entries (#172)
         volume.attribute(volume.data, "ceph.dir.rbytes", 14062 * GB)
         volume.attribute(volume.data, "stat.size", 87)
         volume.attribute(volume.path, "stat.size", 9)
-        code, out = self.readout(volume, STAT=str(volume.tools / "stat"))
-        self.assertEqual(code, 2, out)
-        self.assertEqual(out.splitlines()[1:], [
-            "The CephFS quota or its use could not be read, so the size rule admits no fetch:",
-            "  ceph.quota.max_bytes reads 21990232555520",
-            "  ceph.dir.rbytes reads as no count, 48 characters up to its first NUL where a count has at most 18 digits",
-            "  getfattr gives it as 48 bytes, 165744388008563119603013828275240916436124852417",
+        unread = [
             "  stat gives the volume's size as 9 and the data root's as 87 on a mount it calls ceph, where the data "
             "root's ceph.dir.rbytes is 14062000000000",
             "  its own 1 entry, 1 of them a folder, hold 14062000000000 where they read, and stat gives the volume's "
             "size as 9 where its entries are 1, so the listing cannot be checked against it",
-        ])
+        ]
+        for used, said, given in (
+                ("165744388008563119603013828275240916436124852417", "48 bytes, 0 of them no digit",
+                 "48 bytes, 165744388008563119603013828275240916436124852417"),
+                ("16574438800856~3119603013828275240916436124852417", "49 bytes, 1 of them no digit",
+                 "49 bytes, 16574438800856\\0003119603013828275240916436124852417"),
+                ("1657443880085~", "14 bytes, 1 of them no digit", "14 bytes, 1657443880085\\000")):
+            volume.attribute(volume.path, "ceph.dir.rbytes", used)
+            code, out = self.readout(volume, STAT=str(volume.tools / "stat"))
+            self.assertEqual(code, 2, out)
+            self.assertEqual(out.splitlines()[1:], [
+                "The CephFS quota or its use could not be read, so the size rule admits no fetch:",
+                "  ceph.quota.max_bytes reads 21990232555520",
+                f"  ceph.dir.rbytes reads as no count: {said}, where a count is at most 18 digits and nothing else",
+                f"  getfattr gives it as {given}",
+            ] + unread, used)
 
     def rule(self, volume, call, **extra):
         """One function of grid/size-rule.sh, called in bash with the volume's stand-ins."""
@@ -1448,8 +1687,8 @@ class QuotaReadoutTest(unittest.TestCase):
             "File Count =    not read; ceph.dir.rfiles reads as no count, 25 characters up to its first NUL "
             "where a count has at most 18 digits",
             "[" + "#" * 72 + "-" * 24 + "]",
-            "Used is the volume's size by stat, since its ceph.dir.rbytes reads as no count, 48 characters up to its "
-            "first NUL where a count has at most 18 digits; getfattr gives it as 48 bytes, "
+            "Used is the volume's size by stat, since its ceph.dir.rbytes reads as no count: 48 bytes, 0 of them no "
+            "digit, where a count is at most 18 digits and nothing else; getfattr gives it as 48 bytes, "
             "165744388008563119603013828275240916436124852417",
             "On this mount stat gives a folder's ceph.dir.rbytes as its size: the data root's size by stat, "
             "14062000000000, matches its own ceph.dir.rbytes read before and after",
@@ -1553,10 +1792,11 @@ class QuotaReadoutTest(unittest.TestCase):
                          (1, ""))
 
     def test_a_count_below_the_data_roots_is_no_reading_of_the_volume(self):
-        # The volume holds the data root, so a count of its use below the data root's is cut short,
-        # as a NUL after its fourth digit would leave it: stat reads the use where it can, and where
-        # it cannot nothing is admitted, never a room of almost the whole quota.
-        volume = volume_in(self, quota=21990232555520, used="1657~4438800856")
+        # The volume holds the data root, so a count of its use below the data root's is no reading of
+        # it, whatever left it so, a figure cut short or one the metadata server has not carried up
+        # yet: stat reads the use where it can, and where it cannot nothing is admitted, never a room
+        # of almost the whole quota. A NUL among the digits leaves no count at all (#180).
+        volume = volume_in(self, quota=21990232555520, used="1657")
         volume.attribute(volume.data, "ceph.dir.rbytes", 14062 * GB)
         volume.attribute(volume.data, "stat.size", 14062 * GB)
         volume.attribute(volume.path, "stat.size", 16574438800856)
@@ -1565,9 +1805,17 @@ class QuotaReadoutTest(unittest.TestCase):
         self.assertEqual(code, 0, out)
         self.assertIn("\nUsed  = 75.37%  16574.44gb\n", out)
         self.assertIn("\nUsed is the volume's size by stat, since its ceph.dir.rbytes reads 1657, less than the data "
-                      "root's 14062000000000 inside it, so it is no reading of the volume; getfattr gives it as 15 "
+                      "root's 14062000000000 inside it, so it is no reading of the volume; getfattr gives it as 4 "
+                      "bytes, 1657\n", out)
+        self.assertEqual(self.rule(volume, 'volume_used "$VOLUME"', STAT=stat), (0, "16574438800856 stat"))
+        volume.attribute(volume.path, "ceph.dir.rbytes", "1657~4438800856")
+        code, out = self.readout(volume, STAT=stat)
+        self.assertEqual(code, 0, out)
+        self.assertIn("\nUsed is the volume's size by stat, since its ceph.dir.rbytes reads as no count: 15 bytes, 1 of "
+                      "them no digit, where a count is at most 18 digits and nothing else; getfattr gives it as 15 "
                       "bytes, 1657\\0004438800856\n", out)
         self.assertEqual(self.rule(volume, 'volume_used "$VOLUME"', STAT=stat), (0, "16574438800856 stat"))
+        volume.attribute(volume.path, "ceph.dir.rbytes", "1657")
         # on a mount that gives a folder's entry count, and with fewer entries than it counts, nothing
         volume.attribute(volume.data, "stat.size", 87)
         volume.attribute(volume.path, "stat.size", 9)
@@ -1578,7 +1826,7 @@ class QuotaReadoutTest(unittest.TestCase):
             "  ceph.quota.max_bytes reads 21990232555520",
             "  ceph.dir.rbytes reads 1657, less than the data root's 14062000000000 inside it, so it is no reading "
             "of the volume",
-            "  getfattr gives it as 15 bytes, 1657\\0004438800856",
+            "  getfattr gives it as 4 bytes, 1657",
             "  stat gives the volume's size as 9 and the data root's as 87 on a mount it calls ceph, where the data "
             "root's ceph.dir.rbytes is 14062000000000",
             "  its own 1 entry, 1 of them a folder, hold 14062000000000 where they read, and stat gives the volume's "
@@ -1689,9 +1937,9 @@ class QuotaReadoutTest(unittest.TestCase):
             "File Count =    not read; ceph.dir.rfiles reads as no count, 25 characters up to its first NUL "
             "where a count has at most 18 digits",
             "[" + "#" * 62 + "-" * 34 + "]",
-            "Used is the sum of what the volume's own entries hold, since its ceph.dir.rbytes reads as no count, "
-            "48 characters up to its first NUL where a count has at most 18 digits; getfattr gives it as 48 bytes, "
-            "165744388008563119603013828275240916436124852417",
+            "Used is the sum of what the volume's own entries hold, since its ceph.dir.rbytes reads as no count: 48 "
+            "bytes, 0 of them no digit, where a count is at most 18 digits and nothing else; getfattr gives it as 48 "
+            "bytes, 165744388008563119603013828275240916436124852417",
             "Each of its 3 entries, 2 of them folders, read whole on the volume's own mount, none of them a mount, a "
             "folder by its ceph.dir.rbytes and a file or link by its size: stat gives the volume's size as 3, its "
             "count of entries, and the one that holds the data root holds 14200000000000, no less than the data "
@@ -1820,6 +2068,123 @@ class QuotaReadoutTest(unittest.TestCase):
         self.assertEqual(code, 0, out)
         self.assertIn("hf_example: admitted; it needs 7654 gb of its 7654 gb by 3 files listed by the hub and 7655 gb "
                       "is free under the quota after 0 gb owed to 0 running fetches at ", shown(out))
+
+    def moved_twice(self, volume):
+        """Two moves of one set from the data root to shared/ (#180): 2,000 GB just before the room's
+        first reading, which the data root and go2432 show gone and shared/ not yet, and 1,000 GB just
+        before the second, a minute later, when shared/ shows the first move and not the second; the
+        volume holds 14,336 GB and 10 bytes throughout. The first state, and the second as lines for
+        the stand-in for sleep to add."""
+        home, shared = volume.path / "go2432", volume.path / "shared"
+        first = (f"{home} ceph.dir.rbytes {12200 * GB}\n{volume.data} ceph.dir.rbytes 12061320335387\n"
+                 f"{shared} ceph.dir.rbytes {136 * GB}\n")
+        second = (f"{home} ceph.dir.rbytes {11200 * GB}\n{volume.data} ceph.dir.rbytes 11061320335387\n"
+                  f"{shared} ceph.dir.rbytes {2136 * GB}\n")
+        return first, second
+
+    def test_a_set_moved_between_entries_counts_at_each_entrys_larger_reading(self):
+        # The second review of #173 (#180): a set moved between two of the volume's own entries lowers
+        # their sum while CephFS shows it gone from one and not yet in the other, and two moves the
+        # same way, one before each of the room's two readings, defeat the smaller of two sums (13,336
+        # GB at the second, 1,000 GB short). The second reading counts each entry at the larger of its
+        # two readings, so every byte the volume holds counts.
+        volume = self.grid_volume()
+        stat = str(volume.tools / "stat")
+        first, second = self.moved_twice(volume)
+        room = 21990232555520 - (14336 * GB + 10)
+        with volume.xattrs.open("a", encoding="utf-8") as handle:
+            handle.write(first)
+        later = volume.path.parent / "later"
+        later.write_text(second, encoding="utf-8")
+        moving = f'sleep() {{ cat "{later}" >> "$FAKE_XATTRS"; }}; '
+        self.assertEqual(self.rule(volume, moving + 'settled_room "$VOLUME"', STAT=stat), (0, f"{room} quota"))
+        # a census taken alone, as the readout takes it, holds no reading of an earlier one, even
+        # after a decision in the same shell
+        self.assertEqual(self.rule(volume, 'entries_census "$VOLUME"', STAT=stat),
+                         (0, f"3 2 0 0 {13336 * GB + 10} {11200 * GB}"))
+        with volume.xattrs.open("a", encoding="utf-8") as handle:
+            handle.write(first)
+        self.assertEqual(self.rule(volume, moving + 'settled_room "$VOLUME" > /dev/null; entries_census "$VOLUME"',
+                                   STAT=stat), (0, f"3 2 0 0 {13336 * GB + 10} {11200 * GB}"))
+
+    def test_the_fetch_job_counts_a_moved_set_once_at_least(self):
+        # The same two moves under platform-fetch.sbatch: the first census is carried to the second in
+        # the job's own TMPDIR, which the job makes, and is gone after the decision.
+        volume = self.grid_volume()
+        volume.attribute(f"{volume.data}/*", "ceph.dir.rbytes", 0)
+        stat = str(volume.tools / "stat")
+        tmp = volume.path.parent
+        first, second = self.moved_twice(volume)
+        later = tmp / "later"
+        later.write_text(second, encoding="utf-8")
+        tools = tmp / "bin"
+        tools.mkdir()
+        (tools / "sleep").write_text(f'#!/bin/bash\ncat "{later}" >> "{volume.xattrs}"\n', encoding="utf-8")
+        (tools / "sleep").chmod(0o755)
+
+        def fetch(need_gb):
+            with volume.xattrs.open("a", encoding="utf-8") as handle:
+                handle.write(first)
+            return run_fetch_job(tmp, volume, "hf-token", HF_ARGS, STAT=stat, FAKE_FILES="2",
+                                 PATH=f"{tools}:{os.environ['PATH']}",
+                                 FAKE_SIZE=f"{need_gb * GB} {need_gb * GB} 3 files listed by the hub")
+
+        code, out = fetch(7655)
+        self.assertEqual(code, 4, out)
+        self.assertIn("hf_example: refused for space; it needs 7655 gb of its 7655 gb by 3 files listed by the hub and "
+                      "only 7654 gb is free under the quota after 0 gb owed to 0 running fetches at ", shown(out))
+        code, out = fetch(7654)
+        self.assertEqual(code, 0, out)
+        self.assertIn("hf_example: admitted; it needs 7654 gb of its 7654 gb by 3 files listed by the hub and 7655 gb "
+                      "is free under the quota after 0 gb owed to 0 running fetches at ", shown(out))
+        self.assertEqual(list((tmp / "tmp").glob("size-rule-census.*")), [])
+
+    def test_the_census_carried_between_the_readings_is_the_rules_own_and_read_whole(self):
+        volume = self.grid_volume()
+        stat = str(volume.tools / "stat")
+        tmp = volume.path.parent
+        census, used = tmp / "census", 14200 * GB + 136 * GB + 10
+        plain = (0, f"3 2 0 0 {used} {14200 * GB}")
+        # The first reading keeps each entry's name and count, each ended by a NUL, so a name may hold
+        # any byte but NUL
+        self.assertEqual(self.rule(volume, f'RULE_CENSUS_OUT="{census}"; entries_census "$VOLUME"', STAT=stat), plain)
+        fields = census.read_bytes().split(b"\0")
+        self.assertEqual(fields[-1], b"")
+        self.assertEqual(sorted(zip(fields[0:-1:2], fields[1:-1:2])),
+                         [(b".keep", b"10"), (b"go2432", str(14200 * GB).encode()), (b"shared", str(136 * GB).encode())])
+
+        def second(*fields, **extra):
+            census.write_bytes(b"".join(field.encode("utf-8") for field in fields))
+            return self.rule(volume, f'RULE_CENSUS_IN="{census}"; entries_census "$VOLUME"', STAT=stat, **extra)
+
+        # the second counts each entry at the larger of its two readings, the one that holds the data
+        # root too, and one gone since at its first, whatever its name holds
+        self.assertEqual(second("go2432\0", f"{15000 * GB}\0", "shared\0", f"{100 * GB}\0"),
+                         (0, f"3 2 0 0 {used + 800 * GB} {15000 * GB}"))
+        self.assertEqual(second("go2432\0", f"{15000 * GB}\0", "go2432\0", f"{100 * GB}\0"),
+                         (0, f"3 2 0 0 {used + 800 * GB} {15000 * GB}"))
+        self.assertEqual(second(f"a]$(touch {tmp}/made)\nb\0", f"{5 * GB}\0", "@\0", "7\0"),
+                         (0, f"3 2 0 0 {used + 5 * GB + 7} {14200 * GB}"))
+        self.assertFalse((tmp / "made").exists())
+        # a record cut short or that is no count, or a first census that cannot be read, leaves an
+        # entry unread, and so no reading of the volume
+        for fields in (("shared\0",), ("shared\0", "136"), ("sha",), ("shared\0", "12x\0"),
+                       ("shared\0", "1234567890123456789\0")):
+            self.assertEqual(second(*fields), (0, f"3 2 0 1 {used} {14200 * GB}"), fields)
+        census.unlink()
+        self.assertEqual(self.rule(volume, f'RULE_CENSUS_IN="{census}"; entries_census "$VOLUME"', STAT=stat),
+                         (0, f"3 2 0 1 {used} {14200 * GB}"))
+        census.write_bytes(b"sha")
+        self.assertEqual(self.rule(volume, f'RULE_CENSUS_IN="{census}"; volume_used "$VOLUME"', STAT=stat), (3, ""))
+        # an entry the first reading cannot keep is unread
+        self.assertEqual(self.rule(volume, f'RULE_CENSUS_OUT="{tmp}/none/census"; entries_census "$VOLUME"', STAT=stat),
+                         (0, "3 2 0 3 0 -"))
+        # and neither file is ever taken from the environment the job inherits
+        census.write_bytes(f"go2432\0{20000 * GB}\0".encode())
+        kept = tmp / "kept"
+        self.assertEqual(self.rule(volume, 'entries_census "$VOLUME"', STAT=stat, RULE_CENSUS_IN=str(census),
+                                   RULE_CENSUS_OUT=str(kept)), plain)
+        self.assertFalse(kept.exists())
 
     def test_the_one_that_holds_the_data_root_holds_no_less_than_it_to_the_byte(self):
         # The review of #173: the folder that holds the data root read 14,000 GB, below the data root's
@@ -1951,12 +2316,74 @@ exec "{volume.tools}/getfattr" "$@"
         volume.attribute(volume.data, "ceph.dir.rbytes", 14061320335387)
         self.assertEqual(self.rule(volume, 'data_root_bytes "$VOLUME"'), (0, "14061320335387"))
         self.assertEqual(self.rule(volume, 'volume_used "$VOLUME"'), (0, "16574438800856 attribute"))
+        # nor is a count beside a data root no reader could read, as where Python fails between two reads
+        unread = 'data_root_bytes() { return 2; }; '
+        self.assertEqual(self.rule(volume, unread + 'volume_used "$VOLUME"'), (3, ""))
+        self.assertEqual(self.rule(volume, unread + 'rbytes_words "$VOLUME"'),
+                         (4, "ceph.dir.rbytes reads 16574438800856, and the data root's inside it was not read, so "
+                             "nothing shows it is a reading of the volume"))
         volume.attribute(volume.data, "ceph.dir.rbytes", "1406132033538~")
         elsewhere = tempfile.TemporaryDirectory()
         self.addCleanup(elsewhere.cleanup)
         self.assertEqual(self.rule(volume, 'volume_used "$VOLUME"', DATA=elsewhere.name), (0, "16574438800856 attribute"))
         volume.attribute(volume.data, "ceph.dir.rbytes", "")
         self.assertEqual(self.rule(volume, 'volume_used "$VOLUME"'), (0, "16574438800856 attribute"))
+
+    def test_a_quota_below_the_volumes_leaves_no_room_for_a_new_fetch(self):
+        # The size rule admits nothing while the data root, or a folder above it inside the volume,
+        # carries a byte quota of its own (#180), and the readout says so where it gives the room.
+        volume = volume_in(self, quota=21990232555520, used=13146 * GB)
+        volume.attribute(volume.data, "ceph.quota.max_bytes", 9000 * GB)
+        code, out = self.readout(volume)
+        self.assertEqual(code, 0, out)
+        self.assertEqual(out.splitlines()[1:], [
+            "Used  = 59.78%  13146.00gb",
+            "Free  = 40.22%  8844.23gb",
+            "Total =         21990.23gb",
+            "[" + "#" * 57 + "-" * 39 + "]",
+            "Owed  =         0.00gb still to land for 0 running fetches",
+            "Room  =         none for a new fetch, since the data root or a folder above it inside the volume "
+            "carries a quota of its own, which the size rule does not read",
+        ])
+        volume.attribute(volume.data, "ceph.quota.max_bytes", "9000~")
+        code, out = self.readout(volume)
+        self.assertEqual(code, 0, out)
+        self.assertIn("\nRoom  =         none for a new fetch, since a quota on the data root or a folder above it "
+                      "inside the volume could not be read\n", out)
+        # where the volume's own quota cannot be read either, the readout names both
+        volume.attribute(volume.data, "ceph.quota.max_bytes", 9000 * GB)
+        volume.attribute(volume.path, "ceph.quota.max_bytes", "")
+        code, out = self.readout(volume)
+        self.assertEqual(code, 2, out)
+        self.assertEqual(out.splitlines()[1:], [
+            "The CephFS quota or its use could not be read, so the size rule admits no fetch:",
+            "  ceph.quota.max_bytes reads as not there",
+            "  ceph.dir.rbytes reads 13146000000000",
+            "  and the data root or a folder above it inside the volume carries a quota of its own, which the size "
+            "rule does not read",
+        ])
+        # a folder between the volume and a data root two folders down, and none on the data root's path
+        volume.attribute(volume.data, "ceph.quota.max_bytes", "")
+        volume.attribute(volume.path, "ceph.quota.max_bytes", 21990232555520)
+        deep = volume.path / "go2432" / "data"
+        deep.mkdir(parents=True)
+        volume.attribute(volume.path / "go2432", "ceph.quota.max_bytes", 9000 * GB)
+        code, out = self.readout(volume, DATA_ROOT=str(deep))
+        self.assertIn("\nRoom  =         none for a new fetch, since the data root or a folder above it inside the "
+                      "volume carries a quota of its own, which the size rule does not read\n", out)
+        code, out = self.readout(volume)
+        self.assertIn("\nRoom  =         8844.23gb for a new fetch, which lands whole or not at all\n", out)
+
+    def test_the_readout_reads_what_the_running_fetches_owe_before_the_use(self):
+        # once, in the order a fetch's decision reads them (#180)
+        volume = volume_in(self, quota=21990232555520, used=13146 * GB)
+        volume.admitted("hf_other", 777, need=3000 * GB, base=0, landed=1000 * GB)
+        volume.live(777)
+        log, tools = volume.logged()
+        code, out = self.readout(volume, **tools)
+        self.assertEqual(code, 0, out)
+        self.assertIn("\nOwed  =         2000.00gb still to land for 1 running fetch\n", out)
+        volume.read_after_owed(self, log, times=1)
 
     def test_an_empty_folder_or_one_with_no_device_has_no_sum(self):
         volume = volume_in(self, quota=1000 * GB)

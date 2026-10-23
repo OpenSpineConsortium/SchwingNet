@@ -88,6 +88,8 @@ class GateTest(unittest.TestCase):
         for name in ("GETFATTR", "VOLUME", "HPCW_DRY", "HPCW_FIRST", "HPCW_FRAMEWORK", "SBATCH", "SQUEUE", "SACCT", "SCANCEL", "DF", "DEPEND", "PYDRV"):
             env.pop(name, None)
         env["STAT"] = str(self.fake / "fstype")
+        # the size rule reads these fakes only where a test says so, and waits no minute here (#180)
+        env.update(SIZE_RULE_STAND_INS="yes", SIZE_RULE_SETTLE="0")
         return env
 
     def submitted(self):
@@ -888,9 +890,10 @@ esac
         self.assertIn("  data: 2600 GB in all", out)
         tally = [line.split() for line in out.splitlines() if line.startswith("    ")]
         self.assertEqual(tally[0], ["2500", "big"])
-        # a value ends at its first NUL, and one that is no count of at most 18 digits reads
-        # unknown, never as a figure bash's arithmetic wrapped (#160)
-        self.assertEqual(sorted(tally[1:5]), [["2", "nul"], ["2", "small"], ["?", "long"], ["?", "unread"]])
+        # a value is read whole, so one with a NUL in it, which a NUL could have cut short, reads
+        # unknown (#180), as one that is no count of at most 18 digits does, never as a figure bash's
+        # arithmetic wrapped (#160)
+        self.assertEqual(sorted(tally[1:5]), [["2", "small"], ["?", "long"], ["?", "nul"], ["?", "unread"]])
         self.assertIn("shared datasets: not there", out)
         self.assertNotIn(str(self.tmp), out)
         self.assertLess(out.index("## space"), out.index("## the gate's newest jobs") if "## the gate's" in out else len(out))
