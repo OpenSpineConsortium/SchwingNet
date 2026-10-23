@@ -241,12 +241,19 @@ def alias_spans(passage, patterns):
 
 
 def nearest(spans, start, end):
-    best = None
+    """The sets whose alias stands nearest the figure, within NEAR characters: more than one
+    where an alias names several, or aliases of several stand as near, sorted, so a run gives
+    the same checks whatever order Python's hash seed gives a set."""
+    best, names = None, set()
     for s, e, d in spans:
         gap = start - e if start >= e else (s - end if s >= end else 0)
-        if gap <= NEAR and (best is None or gap < best[0]):
-            best = (gap, d)
-    return best[1] if best else None
+        if gap > NEAR:
+            continue
+        if best is None or gap < best:
+            best, names = gap, {d}
+        elif gap == best:
+            names.add(d)
+    return sorted(names)
 
 
 def noun_after(passage, end):
@@ -290,10 +297,10 @@ def check_datasets(texts, concepts):
             if not own and not spans:
                 continue
             for value, pct, start, end, written in figures_in(passage):
-                dataset = own or nearest(spans, start, end)
-                if not dataset or dataset not in by_dataset:
+                counts = [c for d in ([own] if own else nearest(spans, start, end)) for c in by_dataset.get(d, [])]
+                if not counts:
                     continue
-                outcome, hit = count_outcome(value, pct, noun_after(passage, end), by_dataset[dataset])
+                outcome, hit = count_outcome(value, pct, noun_after(passage, end), counts)
                 for c in hit or []:
                     checks.append(check(c["id"], "dataset", sid, line, outcome, written, passage))
     return checks

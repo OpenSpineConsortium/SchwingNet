@@ -34,6 +34,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from collections import Counter
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -57,6 +58,15 @@ def today():
 def load(path):
     with open(path, encoding="utf-8") as f:
         return json.load(f)
+
+
+def scrubbed(value):
+    """The value with what the folder's rule keeps out of its records and pages, a login, the
+    owner's first name, a form's link and the like, replaced by an editor's words in square
+    brackets (redact.py), so what a run writes holds none of them even where an artifact or a
+    dataset record prints one; the quote checks match around those words."""
+    import redact
+    return redact.walk(value, Counter()) if not isinstance(value, str) else redact.scrub(value, Counter())
 
 
 def save(path, data, ascii_only=False):
@@ -251,7 +261,7 @@ def report(s):
         out.append("")
     anything = bool(total or s["changes"] or d["gone"] or d["datasets_new"] or d["datasets_changed"] or d["datasets_gone"]
                     or s["stale"] or s["resolved"] or s["lost_quotes"] or listed or s["gone_checks"])
-    return to_ascii("\n".join(out) + "\n"), marker, anything
+    return to_ascii(scrubbed("\n".join(out) + "\n")), marker, anything
 
 
 def write_report(s, path):
@@ -264,9 +274,9 @@ def write_report(s, path):
 
 def write_concepts(ledger, state):
     import synth_concepts as sc
-    save(LEDGER, ledger, ascii_only=True)
+    save(LEDGER, scrubbed(ledger), ascii_only=True)
     with open(PAGE, "w", encoding="ascii", newline="\n") as f:
-        f.write(sc.page(ledger, state.get("stamped") or "none"))
+        f.write(scrubbed(sc.page(ledger, state.get("stamped") or "none")))
 
 
 def stamp(run, state, at=None, only=None, checks=None, unstamped=()):
@@ -403,6 +413,7 @@ def join_run(run, state, plan_dir, answers_dir, batches_dir):
                "items_waiting": args["items_waiting"], "dropped": batched["dropped"], "kept_numbers": kept}
     if not read and not joined["placed"]:
         return summary
+    run.inventory, run.clustering, run.M, run.N, history = (scrubbed(x) for x in (run.inventory, run.clustering, run.M, run.N, history))
     save(SYNTH / "inventory.json", run.inventory)
     save(history_path, history)
     save(OUT / "clustering.json", run.clustering)

@@ -26,9 +26,11 @@ import os
 import re
 import string
 import sys
+from collections import Counter
 from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(__file__))
+import redact  # noqa: E402
 import synth_reads as sr  # noqa: E402
 
 BRIEFS = Path(__file__).resolve().parent.parent / "briefs"
@@ -282,7 +284,7 @@ def message(summary, carried=False):
     text = f"Synthesis: what the run of {s['date']} read\n\n{counts(s)}."
     if carried:
         text += " The commit carries the reads of the earlier runs its pull request lists too, laid on main again."
-    return text + "\n"
+    return redact.scrub(text + "\n", Counter())
 
 
 RUN_MARK = re.compile(r"^<!-- synthesis-run: (?P<id>[^ ]+) -->$")
@@ -333,7 +335,7 @@ After: What the runs below read is in the records: each new or changed artifact'
 
 What: The reads .github/workflows/synthesis.yml ran on this repository's Claude token, and the join of their answers (work/tools/synth.py join).
 
-How: A Claude session read each new or changed artifact into a record and, as the finder, set it against its cluster and the numbers table; each verdict item, planned or found, was read by a skeptic, then by a re-checker told to overturn the skeptic's verdict and its hint, and each dispute by a judge (work/briefs/). The sessions had the Read, Grep and Glob tools alone, no repository instructions and a JSON schema for their answers; the join refuses an answer that holds an e-mail address or a phone number, takes a verdict only on its item's scale, and places nothing it cannot name.
+How: A Claude session read each new or changed artifact into a record and, as the finder, set it against its cluster and the numbers table; each verdict item, planned or found, was read by a skeptic, then by a re-checker told to overturn the skeptic's verdict and its hint, and each dispute by a judge (work/briefs/). The sessions could read and search the checkout and nothing more, every tool that writes, runs a command, fetches or starts another session denied and the checkouts' .git folders too, with no repository instructions and a JSON schema for their answers; the join refuses an answer that holds an e-mail address, a phone number or a credential's shape, replaces a login, the owner's first name or a form's link with an editor's words (work/tools/redact.py), takes a verdict only on its item's scale, and places nothing it cannot name.
 
 ## Adversarial review
 
@@ -347,7 +349,7 @@ def body(summary, url, old=None):
     mine = run_section(s, url)
     marker = mine.splitlines()[0]
     sections = [x for x in earlier if x.splitlines()[0] != marker] + [mine]
-    return HEADER + "\n## The runs\n\n" + "\n\n".join(sections) + "\n"
+    return redact.scrub(HEADER + "\n## The runs\n\n" + "\n\n".join(sections) + "\n", Counter())
 
 
 def main(argv=None):

@@ -12,10 +12,19 @@ import re
 import sys
 from collections import Counter
 
+# A login is two lowercase letters and four digits, as the university gives them. Two letters and
+# a year (ai2024) are a name's, not a login, and a token after a hyphen is the random end of an
+# artifact's folder name, which an id holds and a redaction must never change.
+LOGIN = r"[a-z]{2}(?!(?:19|20)\d\d\b)\d{4}"
+
 RULES = [
     ("the owner's first name", re.compile(r"\b[Gg]reg(?=_|\b)"), "[the owner]"),
     ("a grid data root that names a login", re.compile(r"/rs/[A-Za-z0-9_]+/[a-z]{2}\d{4}/data/"),
      "[the lab volume's data root]/"),
+    ("a grid folder that names a login", re.compile(r"(?:/[A-Za-z0-9_.-]+)+/" + LOGIN + r"(?=/|\b)"),
+     "[a grid folder named by a login]"),
+    ("a login at the university's mail name", re.compile(r"\b" + LOGIN + r"@wayne(?:\.edu)?\b"), "[the owner's login]"),
+    ("a login", re.compile(r"(?<![-/._])\b" + LOGIN + r"\b"), "[the owner's login]"),
     ("the university's network range", re.compile(r"\b\d{1,3}\.\d{1,3}\.x\.x\b"), "[the university's network range]"),
     ("a form's short link", re.compile(r"(?:https?://)?forms\.gle/[A-Za-z0-9]+"), "[the registration form's link]"),
     ("a staff title beside its employer", re.compile(r"\bOperations Assistant\b"), "[a club staff contact]"),
