@@ -2,7 +2,7 @@
 
 Label: schwingnet-internal. This chapter gives results and the rules for reporting them to the members of this private repository, names each method only by what it is for and what it achieved, and leaves how any stage works to Part III; nothing of it is copied anywhere before the provisional is filed.
 
-A planner who designs the next experiment needs to know, before it runs, which number it will produce, in which stratum, with which interval, and by what path that number may reach the evaluation page, a manuscript or a slide. This chapter settles them from the September artifacts that set the reporting rules, the October records that re-ruled their numbers, and the repository's code and evaluation page. It takes the plan's four questions in order: which metric answers which question, how an interval is computed when the vertebrae of one case are not independent, how a number travels from a run to a table, and what the witness frames are. Where the code and the rules differ, it says so, because each difference is work owed before version 1's numbers are quoted.
+A planner who designs the next experiment needs to know, before it runs, which number it will produce, in which stratum, with which interval, and by what path that number may reach the evaluation page, a manuscript or a slide. This chapter settles them from the September artifacts that set the reporting rules, the October records that re-ruled their numbers, and the repository's code and evaluation page, taking the plan's four questions in order. Where the code and the rules differ, it says so, because each difference is work owed before version 1's numbers are quoted.
 
 ## Which number answers which question
 
