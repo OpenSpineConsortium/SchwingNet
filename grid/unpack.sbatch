@@ -17,11 +17,17 @@ id=${UNPACK_ID:?UNPACK_ID names the set}
 raw=${UNPACK_RAW:?UNPACK_RAW names its raw folder}
 DATA=${DATA_ROOT:-/rs/rs_grp_oschome/go2432/data}
 VOLUME=${VOLUME:-/rs/rs_grp_oschome}
-# A compute node may have no getfattr; the job's own python reads the quota's attributes there.
-XATTR_PYTHON=${XATTR_PYTHON:-$PYDRV}
 export PYTHONNOUSERSITE=1
 # shellcheck source=grid/size-rule.sh
 . "$REPO/grid/size-rule.sh"
+# A compute node may have no getfattr; the job's own python reads the quota's attributes there,
+# never one the environment it was sent from names, unless a test says so (grid/size-rule.sh, #180).
+# It is named after the rule is sourced, which names its own.
+if [ "${SIZE_RULE_STAND_INS:-}" = yes ]; then
+  RULE_PYTHON=${XATTR_PYTHON:-$PYDRV}
+else
+  RULE_PYTHON=$PYDRV
+fi
 mkdir -p logs
 echo "UNPACK start $id $(date '+%F %T') on $(hostname) job ${SLURM_JOB_ID:-}"
 if ! size_and_admit "$id" "$PYDRV" "$REPO/tools/unpack.py" size --raw "$raw"; then

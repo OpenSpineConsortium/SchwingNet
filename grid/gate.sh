@@ -66,7 +66,8 @@
 # squeue, as before: hpcworker's `job status` reads every job as ended when neither squeue nor sacct
 # answers, and a gate that took that for "nothing live" would queue a second graph beside the first.
 # HPCWORKER names the hpcworker (the gate's clone hands it here), SQUEUE, SACCT, SCANCEL and
-# GETFATTR fakes for the tests; DATA_ROOT, RUNS and MODELS other folders. Exit codes: 0 done, 64 a word
+# GETFATTR fakes for the tests, GETFATTR read by the size rule only where SIZE_RULE_STAND_INS=yes
+# says so (grid/size-rule.sh); DATA_ROOT, RUNS and MODELS other folders. Exit codes: 0 done, 64 a word
 # refused, 75 busy (a word still running, or jobs still live), 2 the checkout or a file missing,
 # 1 a submission failed.
 set -uo pipefail
@@ -417,8 +418,8 @@ latency_lines() {  # the newest run's parity, latency and sweep numbers, one lin
 # oschome"), so he chooses which sets stay on it at once and cycles the rest in and out. CephFS keeps
 # each folder's recursive size as the attribute ceph.dir.rbytes, read at once whatever the tree
 # holds, so no du walks millions of files; where the attribute is not there the size reads unknown.
-rbytes_of() {  # the size rule's own reading (grid/size-rule.sh), so a value that is no count reads unknown
-  xattr_digits ceph.dir.rbytes "$1"
+rbytes_of() {  # the size rule's own reading (grid/size-rule.sh), read whole, so a value with a NUL or that is no count reads unknown
+  xattr_whole ceph.dir.rbytes "$1"
 }
 gb_of() {  # whole GB, rounded up, of a byte count
   awk -v b="$1" 'BEGIN { printf "%d", (b + 999999999) / 1000000000 }'

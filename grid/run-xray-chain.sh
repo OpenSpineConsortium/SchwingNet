@@ -83,10 +83,17 @@ if [ -z "${HPCW_DRY:-}" ] && [ -d "$DATA" ]; then
     exit 3
   }
 fi
-read -r free_gb free_from <<< "$(volume_free_gb "$VOLUME")"
-[ -n "$free_gb" ] || { echo "cannot read the free space of $VOLUME: neither its CephFS quota nor df answered"; exit 2; }
+# What the running fetches owe first and the room after it, read twice a minute apart, as a fetch
+# job's own decision reads them (grid/size-rule.sh, admit_fetch and settled_room, #180).
 owed=$(owed_by_running "") || { echo "cannot read what the running fetches owe: squeue did not answer; nothing was queued"; exit 2; }
 read -r owed_bytes owed_n owed_unsized <<< "$owed"
+read -r free_bytes free_from <<< "$(settled_room "$VOLUME")"
+if [ -z "$free_bytes" ]; then
+  why=$(quota_below_words "$VOLUME")
+  echo "cannot read the free space of $VOLUME: ${why:-neither its CephFS quota nor df answered}; nothing was queued"
+  exit 2
+fi
+free_gb=$(gb_down "$free_bytes")
 owed_gb=$(gb_up "$owed_bytes")
 counted=""
 [ "$stated_gb" = "$total_gb" ] || counted=", counted as $total_gb GB"
