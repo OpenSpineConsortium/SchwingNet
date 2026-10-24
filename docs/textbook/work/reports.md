@@ -134,3 +134,7 @@ The chapter 19 review said no source prints a fraction for the 80.5 percent held
 ## Review of chapter 29
 
 17 changes of about 70 statements: 3 numbers, 3 grades, 5 argument, 3 provenance sources, 2 scope, 1 stale memory. Most serious: the Locks section and the advise switch were placed in SchwingNet's PROTOCOL.md where only symphony-template's has them; the search figures were read as superseding each other where rows 8 and 12 are refuted (two separate searches, the deep ones on 14 October), only the mutant count grew; overclaims hedged ("no published taxonomy", "ran out of budget" for U4 alone, root causes cited to spec 7.1). Unsettled: CooperBench counts rest on the spec's reading, no recomputation of the seventeen guarantees at a tag, no record of 0.5.1's approval, plan prices, benchmark figures held.
+
+## Review of chapter 31
+
+19 changes of about 95 statements: 9 argument, 3 superseded marks, 5 provenance rows reworded or rescoped, 1 scope. Most serious: the claim that any session with the panel may start or stop a worker rested on the unbuilt several-workers plan, now the owner presses today; the owner's decision on their own accounts was misdated 13 October, and the grid's signed-in slots were implied to be the token pool; contradictions row 11 was cited for the runner-chain gate it does not compare. Unsettled: the research owed on terms, vendor dates and framework version; whether a second worker has run; git on the login node, the 10-runs cap, the 90-minute limit, the workstation's state.
