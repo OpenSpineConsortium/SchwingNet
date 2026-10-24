@@ -124,10 +124,10 @@ the record once a piece is added.
   in each stage's 1x1 convolution where torchvision's resnet50 strides in the 3x3, with a
   squeeze-and-excitation gate on every block, so fewer than torchvision's resnet50's 334 despite
   the gates, since the strided 3x3 runs on a quarter of the positions) and se-resnext50 (348
-  million: the same with its bottlenecks twice as wide and their 3x3 convolutions in 32 groups of
-  4, ResNeXt's 32x4d, which is why it costs more and not less); none carries dropout, so they
-  reproduce on any device,
-  and monai is imported only when one of them is built, so a run of a torchvision name never
+  million: the same gates on ResNeXt's 32x4d bottlenecks, twice as wide, their 3x3 convolutions
+  in 32 groups of 4 and carrying the stride, as torchvision's resnets do, which is why it costs
+  more and not less); none carries dropout, so they reproduce on any device, and monai is
+  imported only when one of them is built, so a run of a torchvision name never
   loads it. densenet121 reads torchvision's densenet121 ImageNet file in either of its spellings
   (the published file's "norm.1", a saved state_dict's "norm1"), mapped to MONAI's names as
   MONAI's own loader maps the published file; the two SE networks read a file in MONAI's own

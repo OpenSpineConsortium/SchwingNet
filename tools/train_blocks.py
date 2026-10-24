@@ -266,10 +266,11 @@ def se_resnet50(outputs, weights):
 
 
 def se_resnext50(outputs, weights):
-    """MONAI's SEResNext50, se_resnet50 with its bottlenecks twice as wide and their 3x3
-    convolutions in 32 groups of 4 (ResNeXt's 32x4d), which is why it costs more and not less:
-    about 2.3 times resnet18's multiply-adds (348 million at 64 px) in 26 million parameters; the
-    rest as se_resnet50."""
+    """MONAI's SEResNext50, se_resnet50's gates on ResNeXt's 32x4d bottlenecks: twice as wide,
+    their 3x3 convolutions in 32 groups of 4 and carrying each stage's stride, as torchvision's
+    resnets do and se_resnet50's 1x1 does, which is why it costs more and not less: about 2.3
+    times resnet18's multiply-adds (348 million at 64 px) in 26 million parameters; the rest as
+    se_resnet50."""
     return _se_net(_monai_nets().SEResNext50, outputs, weights, "se-resnext50")
 
 

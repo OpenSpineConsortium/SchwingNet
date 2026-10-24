@@ -100,8 +100,10 @@ class BlocksTest(unittest.TestCase):
 
         folder = Path(tempfile.mkdtemp())
         saved = models.densenet121(weights=None).state_dict()
-        # The published file's spelling (download.pytorch.org): "norm.1" where a saved state_dict says "norm1".
-        published = {re.sub(r"\.(norm|relu|conv)([12])\.", r".\1.\2.", k) if "denselayer" in k else k: v for k, v in saved.items()}
+        # The published file's spelling (download.pytorch.org): "norm.1" where a saved state_dict says "norm1",
+        # and no num_batches_tracked, which the file predates and BatchNorm fills in when it is missing.
+        published = {re.sub(r"\.(norm|relu|conv)([12])\.", r".\1.\2.", k) if "denselayer" in k else k: v
+                     for k, v in saved.items() if not k.endswith("num_batches_tracked")}
         self.assertNotEqual(set(saved), set(published))
         for spelling, state in (("saved", saved), ("published", published)):
             with self.subTest(spelling=spelling):
@@ -448,6 +450,44 @@ class RunWithSamplesArchitectureAndDenoiseTest(unittest.TestCase):
 
 
 FLOW_NEEDS = ("beartype", "icontract", "pydantic")
+
+
+@unittest.skipIf(MISSING, f"needs the train environment ({', '.join(MISSING)} missing)")
+class RunWithAMonaiArchitectureTest(unittest.TestCase):
+    """One short run with a MONAI network (#211), densenet121, the smallest of the three: the card
+    names the library, every reader builds MONAI's class from the record, and the ONNX parity
+    holds, so a MONAI name goes end to end as a torchvision name does and not only through
+    build_model."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = Path(tempfile.mkdtemp())
+        cls.catalog = RunWithEveryBlockTest.make_catalog(cls.tmp)
+        cls.run_dir = cls.tmp / "runs" / "2026" / "monai"
+        cls.run_dir.mkdir(parents=True)
+        record = {"run_id": "monai0000000", "code_commit": "0" * 40, "catalog_sha256": "0" * 64, "catalog_version": 1, "clean_tree": True}
+        (cls.run_dir / "RUN.json").write_text(json.dumps(record), encoding="utf-8")
+        args = ["--catalog", str(cls.catalog), "--out", str(cls.run_dir), "--epochs", "1", "--seed", "1", "--size", "32",
+                "--device", "cpu", "--witness", "2", "--keep-epochs", "0", "--block", "architecture=densenet121"]
+        with mock.patch.dict(os.environ, {"SCHWINGNET_WANDB": "off"}):
+            cls.rc = load("train").main(args)
+
+    def test_the_card_and_the_record_name_monais_network(self):
+        self.assertEqual(self.rc, 0)
+        facts = json.loads((self.run_dir / "train" / "checkpoint.json").read_text(encoding="utf-8"))
+        self.assertEqual(facts["blocks"]["architecture"], "densenet121")
+        card = (self.run_dir / "train" / "MODEL.md").read_text(encoding="utf-8")
+        self.assertIn("- Architecture: MONAI densenet121, 27-way head", card)
+        self.assertNotIn("torchvision densenet121", card)
+
+    def test_every_reader_builds_monais_class_and_the_onnx_parity_holds(self):
+        latency = load("latency")
+        model, facts = latency.load_torch_model(self.run_dir, "cpu")
+        self.assertEqual(type(model).__name__, "DenseNet121")
+        self.assertEqual(type(model).__module__.split(".")[0], "monai")
+        latency.export(self.run_dir)
+        verdict = latency.parity(self.run_dir, self.catalog, "validation", 8, "onnxruntime", "cpu", 1)
+        self.assertTrue(verdict["passed"], verdict)
 
 
 @unittest.skipIf([n for n in FLOW_NEEDS if importlib.util.find_spec(n) is None], "needs the package's checkers")
