@@ -146,3 +146,7 @@ The chapter 19 review said no source prints a fraction for the 80.5 percent held
 ## Review of chapter 32
 
 10 changes of about 75 statements: 2 numbers, 4 grades, 2 links, 2 argument. Most serious: the gates firing after the run were given as "3d to 6a", which takes in 5b, 5c and 5f; hpcworker's framework "11 on 3 October" was stated as fact where the contradictions page holds it cannot-tell; "23.x on 21 October" was credited to the grid review instead of the several-workers plan. Unsettled: whether phase 0's probe ran, the VS Code 5.0.0 credential fix, the hand upload of 20.0.0, store review of 22.0.0 and 23.0.0, beethoven-qa's current tags, the REFORMS list against Kapoor 2024, Google's token lifetimes.
+
+## Review of chapter 27
+
+21 changes of about 75 statements: 6 numbers, 2 grades, 3 open marks, 1 canonical version, 5 argument, 2 mechanism, 2 links. Most serious: held-out detection given as 80.5 percent "the answer" where the programme contradictions page holds it cannot-tell against 90.6 (row 13), now both, neither current; the detection ladder misstated (it runs 0.3, 80.5, 84.0 percent); the shared dataset folder marked closed where only the status word's readout reads it. Unsettled: the 376-patient transitional cross-validation, saved bench verdicts, the C-ArmLSpine person count, the VerSe L6 count.
