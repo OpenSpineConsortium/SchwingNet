@@ -1,5 +1,7 @@
 # Handoff: the Artifact Textbook, stopped at the weekly limit
 
+Resolved 2026-10-24: the thread "Finish the SchwingNet textbook" resumed from this page, wrote and reviewed all thirty-two chapters and finished pull request #194; docs/research/artifact-textbook/README.md says where the programme stands. The rest of this page is the record of the stop.
+
 Written 2026-10-24 about 06:15 UTC from the thread "SchwingNet textbook and critique reviews", at the owner's word to stop, checkpoint and push. The account reached its weekly limit at about 06:00 UTC (it resets 2026-10-29 21:00 UTC), which stopped every writer and reviewer mid-task; nothing is running.
 
 ## What is done
