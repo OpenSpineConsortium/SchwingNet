@@ -1,0 +1,53 @@
+{
+ "id": "35/power-calculator",
+ "title": "Persons needed for each detection and classification task",
+ "caption": "A calculator for five tasks (detection recall, level naming, transitional naming, counting exactness, anomaly classification): Wilson-interval precision, a Wilson lower bound reached with power, or two proportions compared, inflated by the design effect, set beside the persons each corpus holds for the task.",
+ "chapter": "35",
+ "grade": "Inferred",
+ "status": "a record, not a final value",
+ "source": {
+  "kind": "script",
+  "artifact": "artifacts/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay/",
+  "artifact_url": "https://claude.ai/artifact/8Hg1AyjzCf7VhCjPAQw8sY",
+  "made_by": "tools/data_figures.py",
+  "commit": null,
+  "data": [
+   "data/sources/",
+   "data/registry/",
+   "data/licences.json",
+   "docs/textbook/figures/35/corpora-overlay.json",
+   "docs/textbook/figures/35/corpora.json",
+   "artifacts/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay/"
+  ],
+  "run": null,
+  "notes": "Drawn new from committed files. The counts are the records' own (Reported); the data type, the span along the spine and the tried status of each corpus are the chapter's reading of each record, written into corpora-overlay.json (Inferred); the script refuses any count its record or the overlay's note does not give. Some counts drawn are held open by the contradictions pages or the concept ledger (C-ArmLSpine's 149 cases, TotalSegmentator v3's 1,935 scans, NHANES II's 16,531 films), so the figure is a record, not a final value, and its notes say so beside each. The artifact named is the earlier rendering of the same records and the source of the power targets and holdings."
+ },
+ "explore": [
+  {
+   "label": "The script",
+   "href": "tools/data_figures.py"
+  },
+  {
+   "label": "The table it draws from",
+   "href": "docs/textbook/figures/35/corpora.json"
+  },
+  {
+   "label": "The judgments per corpus",
+   "href": "docs/textbook/figures/35/corpora-overlay.json"
+  },
+  {
+   "label": "The dataset records",
+   "href": "data/sources/"
+  },
+  {
+   "label": "The chapter",
+   "href": "docs/textbook/35-how-the-workflow-is-built.md"
+  }
+ ],
+ "rerun": {
+  "where": "actions",
+  "command": "python3 tools/data_figures.py write",
+  "cost": "CPU, a few seconds",
+  "needs_owner_word": false
+ }
+}
