@@ -1,0 +1,47 @@
+{
+  "id": "34/overlap-chain-completion-records",
+  "title": "Chain complete against overlap, three recorded sets",
+  "caption": "The share of held-out sweeps whose chain came out complete at each overlap, in the canonical 18 September page, the superseded summary of the same day and the sweep_v3 ladder of 19 September, all with the annotation's boxes on renders. Every set peaks at two bodies; none is a settled value.",
+  "chapter": "34",
+  "grade": "Reported",
+  "status": "a record, not a final value",
+  "source": {
+    "kind": "script",
+    "artifact": null,
+    "artifact_url": null,
+    "made_by": "tools/overlap_figures.py",
+    "commit": null,
+    "data": [
+      "tools/overlap_records.json",
+      "artifacts/naming-vertebrae-without-ct-hjy4vc/",
+      "artifacts/vertebral-levels-without-ct-a4rydj/",
+      "OpenSpineConsortium/spine-program:01_carm_level_detection/memory/sweep-map-replaces-registration.md"
+    ],
+    "run": "OpenSpineConsortium/spine-program results catalog C3.4 (sweep_v3, grid job 40384843)",
+    "notes": "Drawn from numbers copied into tools/overlap_records.json from the two 18 September artifacts and spine-program's sweep_v3 note. The level-naming contradictions (row 15) flag the chain-intact column of the two 18 September pages; spine-program's results catalog marks sweep_v3 RECORD ONLY. The result files of the runs are on the grid and were not read."
+  },
+  "explore": [
+    {
+      "label": "The script",
+      "href": "tools/overlap_figures.py"
+    },
+    {
+      "label": "The recorded numbers",
+      "href": "tools/overlap_records.json"
+    },
+    {
+      "label": "The chapter",
+      "href": "docs/textbook/34-the-optimal-overlap.md"
+    },
+    {
+      "label": "The simulator that produced the record",
+      "href": "https://github.com/OpenSpineConsortium/spine-program/blob/main/01_carm_level_detection/code/sweep_map.py"
+    }
+  ],
+  "rerun": {
+    "where": "actions",
+    "command": "python3 tools/overlap_figures.py docs/textbook/figures/34",
+    "cost": "CPU, under a minute",
+    "needs_owner_word": false
+  }
+}
