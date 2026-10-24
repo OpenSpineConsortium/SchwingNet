@@ -237,10 +237,12 @@ def _densenet_names(state):
 
 def densenet121(outputs, weights):
     """MONAI's DenseNet121 in two dimensions, dense connections in place of residual ones: about
-    1.6 times resnet18's multiply-adds (231 against 148 million at 64 px, counted as the module
-    docstring of tools/train_blocks.py's siblings says) in 7 million parameters, the fewest here;
-    no dropout, so it reproduces on any device. Its ImageNet file is torchvision's densenet121, in
-    either of torchvision's spellings (_densenet_names)."""
+    1.6 times resnet18's multiply-adds (231 against 148 million at 64 px, counted over the
+    convolutions and linear layers with forward hooks, as mobilenet_v3_small's docstring says) in
+    7 million parameters, fewer than any resnet here (only mobilenet-v3-small, 1.5 million, and
+    efficientnet-b0, 4.0 million, are smaller); no dropout, so it reproduces on any device. Its
+    ImageNet file is torchvision's densenet121, in either of torchvision's spellings
+    (_densenet_names)."""
     model = _monai_nets().DenseNet121(spatial_dims=2, in_channels=3, out_channels=outputs)
     _load_backbone(model, weights, "densenet121", _densenet_names)
     return model
@@ -253,18 +255,21 @@ def _se_net(builder, outputs, weights, name):
 
 
 def se_resnet50(outputs, weights):
-    """MONAI's SEResNet50, resnet50 with a squeeze-and-excitation gate on every block: about 2.1
-    times resnet18's multiply-adds (317 against 148 million at 64 px; resnet50 is 334) in 26
-    million parameters; no dropout, so it reproduces on any device. No ImageNet file is read for it
-    but one in MONAI's own names, since its published weights live on a third-party site in
-    another naming, so it starts from scratch or from a parent (--init)."""
+    """MONAI's SEResNet50, resnet50 in its Caffe layout (the stride in each stage's 1x1
+    convolution, where torchvision's resnet50 strides in the 3x3) with a squeeze-and-excitation
+    gate on every block: about 2.1 times resnet18's multiply-adds (317 against 148 million at 64
+    px, fewer than torchvision's resnet50's 334 despite the gates, since the strided 3x3 runs on a
+    quarter of the positions) in 26 million parameters; no dropout, so it reproduces on any device.
+    No ImageNet file is read for it but one in MONAI's own names, since its published weights live
+    on a third-party site in another naming, so it starts from scratch or from a parent (--init)."""
     return _se_net(_monai_nets().SEResNet50, outputs, weights, "se-resnet50")
 
 
 def se_resnext50(outputs, weights):
-    """MONAI's SEResNext50, se_resnet50 with its convolutions in 32 groups: about 2.3 times
-    resnet18's multiply-adds (348 million at 64 px) in 26 million parameters; the rest as
-    se_resnet50."""
+    """MONAI's SEResNext50, se_resnet50 with its bottlenecks twice as wide and their 3x3
+    convolutions in 32 groups of 4 (ResNeXt's 32x4d), which is why it costs more and not less:
+    about 2.3 times resnet18's multiply-adds (348 million at 64 px) in 26 million parameters; the
+    rest as se_resnet50."""
     return _se_net(_monai_nets().SEResNext50, outputs, weights, "se-resnext50")
 
 

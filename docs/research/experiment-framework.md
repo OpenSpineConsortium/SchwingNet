@@ -119,18 +119,24 @@ the record once a piece is added.
   replacement of those modules is one more function if a grid run ever needs a CPU rerun. Since
   #211 three of MONAI's networks are names too, built in two dimensions with the 27-way head:
   densenet121 (about 1.6 times resnet18's multiply-adds, 231 million at 64 px, in 7 million
-  parameters, the fewest of the eight), se-resnet50 (317 million, resnet50 with a
-  squeeze-and-excitation gate on every block; resnet50 is 334) and se-resnext50 (348 million, the
-  same with its convolutions in 32 groups); none carries dropout, so they reproduce on any device,
+  parameters, fewer than any resnet; only mobilenet-v3-small, 1.5 million, and efficientnet-b0,
+  4.0 million, are smaller), se-resnet50 (317 million: resnet50 in its Caffe layout, the stride
+  in each stage's 1x1 convolution where torchvision's resnet50 strides in the 3x3, with a
+  squeeze-and-excitation gate on every block, so fewer than torchvision's resnet50's 334 despite
+  the gates, since the strided 3x3 runs on a quarter of the positions) and se-resnext50 (348
+  million: the same with its bottlenecks twice as wide and their 3x3 convolutions in 32 groups of
+  4, ResNeXt's 32x4d, which is why it costs more and not less); none carries dropout, so they
+  reproduce on any device,
   and monai is imported only when one of them is built, so a run of a torchvision name never
   loads it. densenet121 reads torchvision's densenet121 ImageNet file in either of its spellings
   (the published file's "norm.1", a saved state_dict's "norm1"), mapped to MONAI's names as
   MONAI's own loader maps the published file; the two SE networks read a file in MONAI's own
   names only, since their published ImageNet weights live on a third-party site in another
-  naming, so a sweep that includes them starts every run from scratch or from a parent, as `plan`
-  requires of a sweep (section 1, step 2). SENet154, which section 4 named, is left out at about
-  five times resnet50's multiply-adds (Hu et al. 2018, Table 3), and MONAI's EfficientNet family
-  too, since torchvision's efficientnet-b0 stands for it.
+  naming, so a sweep that includes them starts every run from scratch, since `plan` refuses a
+  sweep that mixes an ImageNet start with none (section 1, step 2) and carries no --init; a run
+  from a parent is tools/flow.py run --init by hand. SENet154, which section 4 named, is left out
+  at about five times resnet50's multiply-adds (Hu et al. 2018, Table 3), and MONAI's EfficientNet
+  family too, since torchvision's efficientnet-b0 stands for it.
 - **denoise: a filter inside the model.** gaussian (one spread, 0.7 pixels) and median (3 by 3)
   are forward pre-hooks registered before the normalise hook, so the crop is filtered and then
   scaled inside the model and whatever calls the model, including the ONNX export the latency
@@ -171,8 +177,9 @@ repository's rules):
   a number is a transcript, not a commit.
 - Dependencies are an issue first (.claude/rules/writing.md), and a new package in the train
   environment is a re-lock of pixi.lock made on purpose (docs/research/retraining-plan.md,
-  section 5). The train feature holds torch, torchvision, Pillow, numpy, matplotlib, onnx and
-  pydicom, and monai since #211, one noarch package the lock took with nothing else moving.
+  section 5). The train feature holds, among others, torchvision, Pillow, numpy, matplotlib,
+  metaflow, onnx, pydicom with its pylibjpeg decoders and wandb, torch through the cpu and cuda
+  features, and monai since #211, one noarch package the lock took with nothing else moving.
 
 What does fit a block (Inferred):
 
