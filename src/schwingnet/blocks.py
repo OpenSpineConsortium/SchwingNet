@@ -27,6 +27,7 @@ doing a part is one name added to its tuple here and one function there.
 import math
 from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass, fields, replace
+from typing import Any
 
 from beartype import beartype
 from beethoven_qa.contracts import ensure, require
@@ -91,7 +92,10 @@ def problems(blocks: Blocks) -> list[str]:
     if not (math.isfinite(blocks.backbone_lr_scale) and 0.0 < blocks.backbone_lr_scale <= 1.0):
         found.append("backbone_lr_scale is above 0 and at most 1")
     if blocks.weight_decay > 0.0 and blocks.optimiser == "adam":
-        found.append("weight_decay is for adamw; adam's would be L2 in the gradient, which this trainer does not offer")
+        found.append(
+            "weight_decay is for adamw; adam's would be L2 in the gradient,"
+            " which this trainer does not offer"
+        )
     return found
 
 
@@ -115,12 +119,15 @@ def _value(name: str, text: str) -> object:
 def parse(pairs: Sequence[str]) -> Blocks:
     """The run's blocks from KEY=VALUE words, each key at most once, refused whole on any fault."""
     names = {f.name for f in fields(Blocks)}
-    chosen: dict[str, object] = {}
+    # Any, since each key's value has its own field's type, which _value checked by name.
+    chosen: dict[str, Any] = {}
     for pair in pairs:
         key, sep, text = pair.partition("=")
         name = key.strip().replace("-", "_")
         if not sep or name not in names:
-            raise BlockError(f"{pair!r}: a block is KEY=VALUE with KEY one of {', '.join(sorted(names))}")
+            raise BlockError(
+                f"{pair!r}: a block is KEY=VALUE with KEY one of {', '.join(sorted(names))}"
+            )
         if name in chosen:
             raise BlockError(f"{name} is named twice")
         chosen[name] = _value(name, text.strip())
@@ -184,7 +191,9 @@ def inverse_frequency(counts: Mapping[str, int]) -> dict[str, float]:
 
 @beartype
 @require(
-    lambda per_level: all(len(cell) == 2 and 0 <= cell[0] <= cell[1] for cell in per_level.values()),
+    lambda per_level: all(
+        len(cell) == 2 and 0 <= cell[0] <= cell[1] for cell in per_level.values()
+    ),
     "each level is right and total, right at most total",
 )
 @ensure(lambda result: 0.0 <= result <= 1.0, "a share")
