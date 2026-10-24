@@ -7,10 +7,12 @@ It needs torch, onnx, onnxruntime, Pillow and the package's checkers, so it runs
 environment (`pixi run -e train-cpu python -m unittest tests.test_train_blocks`) and skips under the
 required check's plain python3."""
 
+import contextlib
 import hashlib
 import importlib.util
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -330,9 +332,28 @@ class RunWithSamplesArchitectureAndDenoiseTest(unittest.TestCase):
         counts = facts["counts"]
         self.assertLess(counts["train"], counts["train_offered"])
         self.assertLessEqual(counts["train"], 2 * counts["train_persons"])
+        self.assertEqual((counts["train_seen"], counts["validation_offered"]), (counts["train"], counts["validation"]))
         card = (self.run_dir / "train" / "MODEL.md").read_text(encoding="utf-8")
         self.assertIn("torchvision mobilenet-v3-small", card)
         self.assertIn(f"Training crops {counts['train']} of the {counts['train_offered']}", card)
+        self.assertIn(f"validation crops {counts['validation']}, the whole part", card)
+
+    def test_a_source_the_train_part_lacks_is_refused_and_a_cap_is_told_apart_from_the_block(self):
+        train = load("train")
+        crops = train.read_crops(self.catalog, train.TRAIN_PARTS)
+        with self.assertRaises(train.TrainError) as refused:
+            train.training_crops(crops, train.parse_blocks(["samples=drop-sources", "sources=carmlspine,vindr"]))
+        self.assertIn("sources=vindr: not in the catalog's train part", str(refused.exception))
+        counts = {"train": 3, "train_seen": 7, "train_offered": 176, "train_persons": 2,
+                  "validation": 3, "validation_offered": 29, "validation_persons": 1}
+        capped = train.from_record({"samples": "cap-per-person", "per_person": 1})
+        self.assertEqual(train.seen_words(counts, capped),
+                         "7 of the 176 the catalog's train part holds (samples cap-per-person), capped to 3 by --max-frames, from 2 persons")
+        self.assertEqual(train.validation_words(counts), "3, of the 29 the part holds, capped by --max-frames, from 1 persons")
+        sweep_tool = load("block_sweep")
+        self.assertEqual(sweep_tool.crops_text({"train_crops": 3, "train_seen": 7, "train_offered": 176}), "7 of 176, capped to 3")
+        self.assertEqual(sweep_tool.crops_text({"train_crops": 10, "train_seen": None, "train_offered": None}), "10")
+        self.assertEqual(sweep_tool.parent_text({"file": "best.pt", "sha256": "ab" * 32, "run_id": None}), "file best.pt (sha256 abababababab)")
 
     def test_every_reader_builds_the_recorded_model_and_the_onnx_parity_holds(self):
         latency = load("latency")
@@ -354,6 +375,25 @@ class RunWithSamplesArchitectureAndDenoiseTest(unittest.TestCase):
         self.assertIn("| architecture | resnet18, resnet34, resnet50, mobilenet-v3-small, efficientnet-b0 | resnet18 |", sweep_tool.parts_table())
         with self.assertRaises(sweep_tool.BlockError):
             sweep_tool.ledger(self.tmp / "nowhere", "accuracy")
+        linked = self.tmp / "linked"
+        linked.mkdir()
+        (linked / "to-runs").symlink_to(self.tmp / "runs")
+        (linked / "again").symlink_to(self.tmp / "runs")
+        (linked / "back").symlink_to(self.tmp)
+        self.assertEqual([row["run"] for row in sweep_tool.ledger(linked, "accuracy")], ["capped"])
+        with contextlib.chdir(self.run_dir):
+            self.assertEqual(sweep_tool.compare(["."], "accuracy")[0]["run"], "capped")
+        broken = self.tmp / "broken" / "halfway" / "train"
+        broken.mkdir(parents=True)
+        shutil.copy(self.run_dir / "train" / "checkpoint.json", broken / "checkpoint.json")
+        (broken / "metrics.jsonl").write_text('{"epoch": 0}\n', encoding="utf-8")
+        with self.assertRaises(sweep_tool.BlockError) as refused:
+            sweep_tool.ledger(self.tmp / "broken", "accuracy")
+        self.assertIn("halfway", str(refused.exception))
+        self.assertIn("holds no epoch 1", str(refused.exception))
+        (broken / "checkpoint.json").write_text('{"epoch": 1, "blocks": {"architecture": null}}', encoding="utf-8")
+        (broken / "metrics.jsonl").write_text('{"epoch": 1}\n', encoding="utf-8")
+        self.assertEqual(sweep_tool.main(["ledger", str(self.tmp / "broken")]), 1)
 
     def test_a_samples_block_that_leaves_nothing_stops_the_run_in_words(self):
         out = self.tmp / "runs" / "empty"
@@ -402,6 +442,20 @@ class FlowBlocksTest(unittest.TestCase):
         self.assertTrue(all(c.startswith("python3 tools/flow.py run") for c in planned["commands"]))
         self.assertIn("--block augment=box-jitter,intensity --block sampler=balanced", planned["commands"][3])
         self.assertEqual(sweep_tool.main(["plan", "--catalog", "c", "--out", "r", "--epochs", "1", "--vary", "colour=red"]), 1)
+
+    def test_a_sweep_over_architectures_takes_one_imagenet_file_each_or_none(self):
+        sweep_tool = load("block_sweep")
+        head = ["plan", "--catalog", "c", "--out", "r", "--epochs", "1", "--vary", "architecture=resnet18/mobilenet-v3-small"]
+        with self.assertRaises(sweep_tool.BlockError):
+            sweep_tool.plan(sweep_tool.parse_args([*head, "--weights", "r18.pth"]))
+        commands = sweep_tool.plan(sweep_tool.parse_args([*head, "--weights", "r18.pth", "--weights", "mobilenet-v3-small=mnv3.pth"]))["commands"]
+        self.assertTrue(commands[0].endswith("--weights r18.pth"), commands[0])
+        self.assertTrue(commands[1].endswith("--weights mnv3.pth --block architecture=mobilenet-v3-small"), commands[1])
+        self.assertEqual(sweep_tool.plan(sweep_tool.parse_args(head))["commands"][1].count("--weights"), 0)
+        for words in (["resnet19=x.pth"], ["r18.pth", "resnet18=again.pth"], ["mobilenet-v3-small="]):
+            with self.subTest(words=words), self.assertRaises(sweep_tool.BlockError):
+                sweep_tool.weights_files(words)
+        self.assertEqual(sweep_tool.weights_files(["/models/a=b/r18.pth"]), {"resnet18": "/models/a=b/r18.pth"})
 
 
 if __name__ == "__main__":

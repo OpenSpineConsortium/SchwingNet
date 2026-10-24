@@ -47,6 +47,8 @@ def test_words_choose_each_part_and_round_trip_through_the_record():
                               "architecture=mobilenet-v3-small", "denoise=median"]
     capped = parse(["samples=cap-per-person", "per-person=3"])
     assert capped.per_person == 3 and from_record(as_record(capped)) == capped
+    pasted = parse(["samples=only-sources", "sources=carmlspine, vindr"])
+    assert pasted.sources == ("carmlspine", "vindr")
 
 
 @pytest.mark.parametrize(

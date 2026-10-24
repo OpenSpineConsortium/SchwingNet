@@ -11,9 +11,13 @@ The denoisers and the normalisers are forward pre-hooks on the model, registered
 so a crop is filtered and then scaled inside the model: the evaluator, the latency tool, the chain
 evaluation and the ONNX export all call the model and so all see the crop the trainer saw.
 
-Every random draw takes the run's own generator, on the CPU, so a run's draws are fixed by its
-seed whatever the device; and DEFAULT draws nothing beyond what version 1's trainer drew, so a run
-naming no block trains to the same weights as before.
+Every random draw the blocks make takes the run's own generator, on the CPU, so their draws are
+fixed by the seed whatever the device. torchvision's networks draw on their own account too:
+mobilenet-v3-small's classifier holds a Dropout and efficientnet-b0 Dropout and StochasticDepth,
+which in training draw from the device's global generator, the one seed_everything seeds, so a
+run of those two reproduces on the same kind of device, while the three resnets, which draw
+nothing of their own, reproduce on any. DEFAULT draws nothing beyond what version 1's trainer
+drew, so a run naming no block trains to the same weights as before.
 """
 
 import math
@@ -170,7 +174,8 @@ def resnet50(outputs, weights):
 
 
 def mobilenet_v3_small(outputs, weights):
-    """The latency candidate: a tenth of resnet18's multiply-adds at the same input."""
+    """The latency candidate: a tenth of resnet18's multiply-adds at the same input; its classifier's
+    dropout draws from the device's global generator (the module docstring)."""
     model = models.mobilenet_v3_small(weights=None)
     _load_backbone(model, weights, "mobilenet-v3-small")
     model.classifier[3] = nn.Linear(model.classifier[3].in_features, outputs)
@@ -178,6 +183,8 @@ def mobilenet_v3_small(outputs, weights):
 
 
 def efficientnet_b0(outputs, weights):
+    """Between the two in cost; its dropout and stochastic depth draw from the device's global
+    generator (the module docstring)."""
     model = models.efficientnet_b0(weights=None)
     _load_backbone(model, weights, "efficientnet-b0")
     model.classifier[1] = nn.Linear(model.classifier[1].in_features, outputs)

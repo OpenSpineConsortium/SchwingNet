@@ -23,17 +23,26 @@ bit. The loop that optimises them is:
 2. `python3 tools/block_sweep.py plan --catalog ... --out ... --epochs ... --base KEY=VALUE --vary
    KEY=V1/V2`: the tools/flow.py command of every combination, the number of runs and jobs and the
    GPU-hours they ask for. It submits nothing; the owner reads the count and gives the word, as
-   docs/project.md requires of every grid job.
+   docs/project.md requires of every grid job. An ImageNet file is one architecture's, so
+   `--weights [ARCHITECTURE=]FILE` is given once per architecture the sweep names (a bare file
+   is resnet18's), each command carries its own, and a sweep in which one run would start from
+   ImageNet and another from nothing is refused, since its rows would compare the start and not
+   the block; the grid holds resnet18's file alone today (grid/gate.sh), so a sweep over
+   architecture fetches the others first or starts every run from scratch.
 3. The runs, each one tools/flow.py run: RUN.json from a clean tree first, train, evaluate, the
    witness frames drawn at every epoch, checkpoint.json recording the blocks, the parent and the
    counts of crops seen and offered, and MODEL.md saying the same in words.
 4. `python3 tools/block_sweep.py ledger <runs folder>`: every run under the folder, found by its
-   train/checkpoint.json however deep, in one table: the blocks that differ from version 1, the
-   training crops seen of those offered, the parent run, the best epoch, the validation accuracy
+   train/checkpoint.json however deep and behind links, in one table: the blocks that differ from
+   version 1, the training crops the samples block kept of those offered (a --max-frames cap
+   told apart, so a dry run's cut is never read as a block's), the parent run, or its file with
+   its hash, the best epoch, the validation accuracy
    with its Wilson interval, the balanced accuracy, the validation witness score and the latency
    headline where one was measured. It reads validation and latency only, never evaluate/: the
    choice of the next plan is made from the validation part, and the test part is read once for the
-   chosen run (docs/research/retraining-plan.md, section 4). The next plan is step 2 again.
+   chosen run (docs/research/retraining-plan.md, section 4). A run whose record cannot be read
+   stops the ledger naming it, so a folder written halfway names itself. The next plan is step 2
+   again.
 
 Adding a piece is two lines: a name in its part's tuple in src/schwingnet/blocks.py and a function
 in that part's table in tools/train_blocks.py. tests/test_train_blocks.py fails when a table and
@@ -73,10 +82,13 @@ the record once a piece is added.
   so a cap is the same crops in every run and nothing random enters the choice. The validation
   part is never cut: every run of a comparison scores the same crops, or the comparison says
   nothing. A setting that would act on nothing (sources with samples=all, per_person with
-  only-sources) is refused in words, since it is most likely a mistake. checkpoint.json and the
-  card record the crops seen of the crops offered, so the ledger shows a run that saw fewer crops
-  beside one that saw them all, and a samples block that leaves no crop stops the run before any
-  tensor is made. A licence recipe (data/recipes/, tools/licences.py) cuts the catalog before any
+  only-sources) is refused in words, since it is most likely a mistake, and so is a source the
+  catalog's train part does not hold, since the cut it names would otherwise be recorded and
+  never made (the adversarial review of #208). checkpoint.json and the card record the crops the
+  block kept of the crops offered, and apart from them what a dry run's --max-frames cap took, so
+  the ledger shows a run that saw fewer crops beside one that saw them all and credits no block
+  with a cap; the validation count says whether the whole part was read; and a samples block
+  that leaves no crop stops the run before any tensor is made. A licence recipe (data/recipes/, tools/licences.py) cuts the catalog before any
   of this; samples cuts within the catalog a run was given.
 - **architecture: the backbone.** resnet18 is version 1; resnet34 and resnet50 are the same family
   wider and deeper; mobilenet-v3-small is the latency candidate, about a tenth of resnet18's
@@ -86,7 +98,12 @@ the record once a piece is added.
   ImageNet file of another network is refused in words, whether its names or its shapes differ.
   Every reader builds the model from the checkpoint's record (train.model_for): the evaluator, the
   latency tool, the chain evaluation and the ONNX export follow a run's architecture without a
-  flag, and a checkpoint from before the blocks existed is resnet18 as before.
+  flag, and a checkpoint from before the blocks existed is resnet18 as before. One thing the
+  resnets lack: mobilenet-v3-small's classifier holds a Dropout and efficientnet-b0 Dropout and
+  StochasticDepth, torchvision's own, which in training draw from the device's global generator
+  (seeded by seed_everything) and not from the run's CPU generator the blocks draw from, so a
+  run of those two reproduces on the same kind of device, a resnet run on any; a seeded
+  replacement of those modules is one more function if a grid run ever needs a CPU rerun.
 - **denoise: a filter inside the model.** gaussian (one spread, 0.7 pixels) and median (3 by 3)
   are forward pre-hooks registered before the normalise hook, so the crop is filtered and then
   scaled inside the model and whatever calls the model, including the ONNX export the latency

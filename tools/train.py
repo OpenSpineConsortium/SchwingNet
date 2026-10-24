@@ -301,6 +301,25 @@ def accuracy_curve(history, path):
     plt.close(figure)
 
 
+def seen_words(counts, blocks):
+    """The training crops the samples block kept of those the catalog offered, and what a
+    --max-frames cap then cut, apart, so the record never credits the block with a dry run's
+    cut."""
+    text = f"{counts['train_seen']} of the {counts['train_offered']} the catalog's train part holds (samples {blocks.samples})"
+    if counts["train"] < counts["train_seen"]:
+        text += f", capped to {counts['train']} by --max-frames"
+    return text + f", from {counts['train_persons']} persons"
+
+
+def validation_words(counts):
+    """The validation crops read: the whole part, or what --max-frames left of it."""
+    if counts["validation"] == counts["validation_offered"]:
+        part = "the whole part"
+    else:
+        part = f"of the {counts['validation_offered']} the part holds, capped by --max-frames"
+    return f"{counts['validation']}, {part}, from {counts['validation_persons']} persons"
+
+
 def sha256_of(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
@@ -331,7 +350,7 @@ def model_card(out, args, run, counts, best, elapsed, blocks, parent=None):
         f"- Initial weights: {start_line(args, parent)}.",
         f"- Seed {args.seed}; epochs {args.epochs}; batch {args.batch}; learning rate {args.lr}; device {args.device}.",
         "- Blocks: " + "; ".join(f"{k} {','.join(v) if isinstance(v, list) else v}" for k, v in as_record(blocks).items()) + ".",
-        f"- Training crops {counts['train']} of the {counts['train_offered']} the catalog's train part holds (samples {blocks.samples}), from {counts['train_persons']} persons; validation crops {counts['validation']} from {counts['validation_persons']} persons, the whole part; no test row was read.",
+        f"- Training crops {seen_words(counts, blocks)}; validation crops {validation_words(counts)}; no test row was read.",
         f"- Best epoch {best['epoch']}: validation accuracy {best['validation_accuracy']:.3f} ({best['validation_ci'][0]:.3f} to {best['validation_ci'][1]:.3f}, n={best['validation_n']}).",
         f"- Checkpoint best.pt sha256 {best['checkpoint_sha256']}; wall time {elapsed:.0f} s.",
         "- Levels: " + ", ".join(LEVELS) + f"; transitional {', '.join(TRANSITIONAL)}.",
@@ -375,8 +394,14 @@ def pick(crops, part, cap, seed):
 
 def training_crops(crops, blocks):
     """The train part as the samples block leaves it, in the catalog's order, with the count the
-    part held before, so the record says what the run saw of what it could have seen."""
+    part held before, so the record says what the run saw of what it could have seen. A source
+    the part does not hold is refused, since a cut named for it would be recorded and never
+    made (kept cannot know the catalog; here the offered crops are in hand)."""
     offered = [c for c in crops if c["part"] == "train"]
+    present = {c["source"] for c in offered}
+    absent = [s for s in blocks.sources if s not in present]
+    if absent:
+        raise TrainError(f"sources={','.join(absent)}: not in the catalog's train part, whose sources are {', '.join(sorted(present)) or 'none'}")
     keep = kept(blocks, [c["source"] for c in offered], [c["person"] for c in offered])
     return [c for c, k in zip(offered, keep, strict=True) if k], len(offered)
 
@@ -551,8 +576,10 @@ def run(args):
     accuracy_curve(history, folder / "accuracy.png")
     counts = {
         "train": len(train_crops),
+        "train_seen": len(seen),
         "train_offered": offered,
         "validation": len(val_crops),
+        "validation_offered": sum(c["part"] == "validation" for c in crops),
         "train_persons": person_count(train_crops),
         "validation_persons": person_count(val_crops),
     }

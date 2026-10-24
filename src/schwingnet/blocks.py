@@ -173,7 +173,8 @@ def problems(blocks: Blocks) -> list[str]:
 def _value(name: str, text: str) -> object:
     """One KEY=VALUE's value as its field's type."""
     if name in LISTS:
-        return tuple(part for part in text.split(",") if part and part != "none")
+        parts_named = (part.strip() for part in text.split(","))
+        return tuple(part for part in parts_named if part and part != "none")
     if name in NUMBERS:
         try:
             return float(text)
