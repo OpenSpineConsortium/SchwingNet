@@ -1,0 +1,63 @@
+{
+ "id": "22/storage",
+ "title": "The storage panel: drive use and the sets that fit under the target",
+ "caption": "The lab volume's and the owner's home's use as spine-datasets' feed read them, every set the feed knows with its size, licence and state, and the choices (keep, remove, add, place on the lab or the home) that build a selection the planner's check admits under the target; the interactive figure trials combinations and asks for the changes only through storage.yml, whose run opens a request pull request the owner merges.",
+ "chapter": "22",
+ "grade": "Reported",
+ "status": "current",
+ "source": {
+  "kind": "script",
+  "artifact": null,
+  "artifact_url": null,
+  "made_by": "tools/storage_panel.py",
+  "commit": null,
+  "data": [
+   "docs/textbook/figures/22/storage-plan.json",
+   "OpenSpineConsortium/spine-datasets PLAN.json at ref storage-feed"
+  ],
+  "run": null,
+  "notes": "Drawn from a committed snapshot of OpenSpineConsortium/spine-datasets's PLAN.json on its branch storage-feed, built 2026-10-24T20:52:07Z from that repository's records, with the lab volume read 2026-10-24T17:15:28Z by the grid's status word; the snapshot's sha256 is fcdd7bfe2cacd74283b0b4318044f5c777c2816782d352d0129e50dad81b6792. The sizes are the feed's own, measured where a set is frozen and stated by its source otherwise, and the home's use is null until a grid word reads it. .github/workflows/docs.yml refreshes the snapshot with the App's read token before each site build and builds the page from the committed snapshot when the feed is unreachable; a reading is dated, never a final value, and the page shows its age."
+ },
+ "feed": {
+  "repo": "OpenSpineConsortium/spine-datasets",
+  "path": "PLAN.json",
+  "ref": "storage-feed",
+  "format": "spine-datasets/storage 1",
+  "built_at": "2026-10-24T20:52:07Z",
+  "read_at": "2026-10-24T17:15:28Z",
+  "sha256": "fcdd7bfe2cacd74283b0b4318044f5c777c2816782d352d0129e50dad81b6792",
+  "sets": 166
+ },
+ "explore": [
+  {
+   "label": "The script",
+   "href": "tools/storage_panel.py"
+  },
+  {
+   "label": "The snapshot of the feed it draws from",
+   "href": "docs/textbook/figures/22/storage-plan.json"
+  },
+  {
+   "label": "The feed on its branch",
+   "href": "https://github.com/OpenSpineConsortium/spine-datasets/blob/storage-feed/PLAN.json"
+  },
+  {
+   "label": "The workflow the panel dispatches",
+   "href": "https://github.com/OpenSpineConsortium/spine-datasets/actions/workflows/storage.yml"
+  },
+  {
+   "label": "The size rule",
+   "href": "docs/memory/the-size-rule.md"
+  },
+  {
+   "label": "The chapter",
+   "href": "docs/textbook/22-quotas-cost-and-the-budget-of-a-run.md"
+  }
+ ],
+ "rerun": {
+  "where": "actions",
+  "command": "python3 tools/storage_panel.py build",
+  "cost": "CPU, a second: it redraws the page from the committed snapshot, which docs.yml refreshes from the feed before each site build",
+  "needs_owner_word": false
+ }
+}

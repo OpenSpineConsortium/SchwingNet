@@ -101,4 +101,9 @@ python3 tools/eval_page.py check
 # (python3 tools/report.py write-recorded), fails here.
 python3 tools/report.py check-recorded
 
+# The textbook's storage panel (docs/textbook/figures/22/, chapter 22) is drawn by tools/storage_panel.py from
+# the committed snapshot of spine-datasets' feed, standard library: a snapshot refreshed without the page built
+# again, or a page edited by hand, fails here.
+python3 tools/storage_panel.py check
+
 echo "checks ok"
