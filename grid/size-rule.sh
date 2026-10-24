@@ -73,11 +73,11 @@
 # its own entries with the folder below it counted at the use read for that one, the listing
 # checked complete as the volume's is (use_above, sum_with_child); its attribute alone only where
 # no sum can be made and it holds at least what the folder below it holds; and where neither
-# reads, or a quota up there cannot be read, nothing is admitted. A quota on a folder above the
-# root of the mount, which the client does not show, is not read. Where a quota above the volume
-# stands or cannot be read, the readout shows each folder up to the root of the mount, by how far
-# above the volume it lies and never by its path, with its quota and what it holds (#188), and
-# what each quota leaves as the rule counts it (#190).
+# reads, a quota up there cannot be read, or one read a moment before reads as gone, nothing is
+# admitted. A quota on a folder above the root of the mount, which the client does not show, is
+# not read. Where a quota above the volume stands or cannot be read, the readout shows each folder
+# up to the root of the mount, by how far above the volume it lies and never by its path, with its
+# quota and what it holds (#188), and what each quota leaves as the rule counts it (#190).
 #
 # What each fetch still owes is kept beside its landing, $DATA/<id>/meta:
 #   QUEUED   "<job> <utc>", written when grid/run-platform-fetch.sh submits the job
@@ -590,10 +590,14 @@ sum_with_child() {  # sum_with_child FOLDER CHILD USE: what FOLDER holds as the 
   # them hides what lies under it; CHILD, which holds the volume, at the use already read for it,
   # since its own attribute may read as no count as the volume's does. The listing must hold CHILD
   # and as many entries as stat gives as FOLDER's size, which on the grid's mount is its count of
-  # entries, so a listing cut short admits nothing. No entry is held at the larger of the room's
-  # two readings, as the volume's are (settled_room): CephFS moves nothing between two quota realms,
-  # a move between them being a copy and a deletion, and a move between two of FOLDER's own entries
-  # leaves FOLDER's own ceph.dir.rbytes, the other figure use_above reads, as it was.
+  # entries, so a listing cut short admits nothing. CHILD's use is the one the reading took for
+  # it, so the second of settled_room's readings counts each of the volume's own entries at the
+  # larger of its two here too. FOLDER's other entries are not held so: they are the storage's own
+  # folders beside the volume's, as a group's other subvolumes, which a fetch never writes. Since
+  # Linux 5.6 CephFS's kernel client renames a set between two quota realms rather than copying it,
+  # so two moves between such a folder and the volume, one before each reading, could each go
+  # uncounted, as #180's moves between the volume's own entries could before its census; on the
+  # grid the group's folder holds the volume's alone (the status word of 2026-10-24), so none can.
   device=$(device_of "$2")
   [ -n "$device" ] || return 1
   points=$(mount_points) || return 1
@@ -682,10 +686,14 @@ volume_free_bytes() {  # volume_free_bytes VOLUME: "<bytes free> quota", "<bytes
     [ -n "$used" ] || return 1
     free=$(( quota > used ? quota - used : 0 ))
     if [ "$below" = 3 ]; then
-      # One read since that no longer stands leaves the volume's own quota the least.
+      # A quota quota_below read a moment ago and room_above no longer finds is no reading of the
+      # room, never the volume's alone: CephFS's kernel client gives a quota's attribute only while
+      # it holds the folder as the root of its quota realm (ceph_vxattrcb_quota_exists), so one
+      # that stands can read as not there (the second review of #190).
       above=$(room_above "$volume" "$used") || return 1
       read -r above at <<< "$above"
-      if [ -n "$above" ] && [ "$above" -lt "$free" ]; then
+      [ -n "$above" ] || return 1
+      if [ "$above" -lt "$free" ]; then
         echo "$above quota-$at"
         return 0
       fi

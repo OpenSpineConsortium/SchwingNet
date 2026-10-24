@@ -1695,6 +1695,23 @@ class SizeRuleTest(unittest.TestCase):
         self.assertRegex(shown(out), "hf_example: admitted; it needs 7800 gb of its 7800 gb by 3 files listed by the "
                          "hub and 7800 gb is free under a quota above the volume after 0 gb owed to 0 running "
                          "fetches" + time)
+        # one read and then not there a moment later, as CephFS's client may give a quota that stands,
+        # is no reading of the room, never the volume's alone: here getfattr gives the folder's quota
+        # once, while the flag is there, and then says it is not there
+        flag = self.tmp / "quota-read-once"
+        stand_in = self.volume.tools / "getfattr"
+        once = self.volume.tools / "getfattr-once"
+        once.write_text("#!/bin/bash\n"
+                        f'if [ "$3" = ceph.quota.max_bytes ] && [ "${{*: -1}}" = "{parent}" ] &&\n'
+                        f'   ! rm "{flag}" 2>/dev/null; then\n'
+                        f'  FAKE_XATTRS=/dev/null exec "{stand_in}" "$@"\n'
+                        "fi\n"
+                        f'exec "{stand_in}" "$@"\n', encoding="utf-8")
+        once.chmod(0o755)
+        for call in ('volume_free_bytes "$VOLUME"', 'settled_room "$VOLUME"'):
+            flag.write_text("", encoding="utf-8")
+            self.assertEqual(self.rule(call, GETFATTR=str(once)), (1, ""), call)
+        self.assertEqual(self.rule('volume_free_bytes "$VOLUME"'), (0, f"{7800 * GB} quota-1"))
         # where the volume's own quota leaves less, or as little, it is the one read
         for quota in (30000, 13200 + 8845):
             self.volume.attribute(parent, "ceph.quota.max_bytes", quota * GB)
@@ -2320,12 +2337,17 @@ class QuotaReadoutTest(unittest.TestCase):
             "  its use reads 16574438800856 as the volume's size by stat",
         ])
 
-    def grid_volume(self):
+    def grid_volume(self, folder=None):
         """The lab volume as the status word of 2026-10-23 17:15 UTC found it (#172): its own
         ceph.dir.rbytes and ceph.dir.rfiles no count, a mount that gives a folder's entry count as its
         size (the volume 3, the data root 126), and three entries whose attributes read, a hidden
-        file among them, with the data root two folders down."""
-        volume = volume_in(self, quota=21990232555520, used="165744388008563119603013828275240916436124852417")
+        file among them, with the data root two folders down; in FOLDER, where one is given, else in
+        a folder of the test's own."""
+        used = "165744388008563119603013828275240916436124852417"
+        if folder is None:
+            volume = volume_in(self, quota=21990232555520, used=used)
+        else:
+            volume = Volume(folder, quota=21990232555520, used=used)
         volume.attribute(volume.path, "ceph.dir.rfiles", "2363642212733507223600077")
         volume.data.rmdir()
         home, shared = volume.path / "go2432", volume.path / "shared"
@@ -2556,6 +2578,60 @@ class QuotaReadoutTest(unittest.TestCase):
         self.assertIn("hf_example: admitted; it needs 7654 gb of its 7654 gb by 3 files listed by the hub and 7655 gb "
                       "is free under the quota after 0 gb owed to 0 running fetches at ", shown(out))
         self.assertEqual(list((tmp / "tmp").glob("size-rule-census.*")), [])
+
+    def test_the_fetch_job_counts_a_moved_set_under_a_quota_above_that_binds(self):
+        # The grid's layout once its group's quota binds (#190, the second review's gaps): the volume's
+        # use is the sum of its own entries; the folder above it holds it beside entries of its own and
+        # is read by their sum, as is the group's folder, which holds that folder alone, carries the
+        # quota and is the root of the mount. The two moves of #180 lower the volume's sum at each
+        # reading, and the second reading's census carries up through both folders, so the room is
+        # what the group's quota leaves after every byte the volume holds, less what a running fetch
+        # still owes.
+        import tempfile
+        holder = tempfile.TemporaryDirectory()
+        self.addCleanup(holder.cleanup)
+        group = Path(holder.name) / "group"
+        sub = group / "sub"
+        sub.mkdir(parents=True)
+        volume = self.grid_volume(sub)
+        volume.attribute(f"{volume.data}/*", "ceph.dir.rbytes", 0)
+        volume.attribute(volume.tools, "ceph.dir.rbytes", 0)
+        volume.mount(group)
+        for folder, entries in ((sub, len(list(sub.iterdir()))), (group, 1)):
+            volume.attribute(folder, "ceph.dir.rbytes", "1" * 48)
+            volume.attribute(folder, "stat.size", entries)
+        # 1,500 GB above what the volume holds, and a megabyte more than the stand-ins' own files
+        # beside it hold
+        volume.attribute(group, "ceph.quota.max_bytes", 14336 * GB + 10 + 1500 * GB + 1000 ** 2)
+        volume.admitted("hf_other", 777, need=600 * GB, base=0, landed=100 * GB)
+        volume.live(777)
+        stat = str(volume.tools / "stat")
+        tmp = Path(holder.name) / "job"
+        tmp.mkdir()
+        first, second = self.moved_twice(volume)
+        later = tmp / "later"
+        later.write_text(second, encoding="utf-8")
+        tools = tmp / "bin"
+        tools.mkdir()
+        (tools / "sleep").write_text(f'#!/bin/bash\ncat "{later}" >> "{volume.xattrs}"\n', encoding="utf-8")
+        (tools / "sleep").chmod(0o755)
+
+        def fetch(need_gb):
+            with volume.xattrs.open("a", encoding="utf-8") as handle:
+                handle.write(first)
+            return run_fetch_job(tmp, volume, "hf-token", HF_ARGS, STAT=stat, FAKE_FILES="2",
+                                 PATH=f"{tools}:{os.environ['PATH']}",
+                                 FAKE_SIZE=f"{need_gb * GB} {need_gb * GB} 3 files listed by the hub")
+
+        code, out = fetch(1001)
+        self.assertEqual(code, 4, out)
+        self.assertIn("hf_example: refused for space; it needs 1001 gb of its 1001 gb by 3 files listed by the hub and "
+                      "only 1000 gb is free under a quota above the volume after 500 gb owed to 1 running fetch",
+                      shown(out))
+        code, out = fetch(1000)
+        self.assertEqual(code, 0, out)
+        self.assertIn("hf_example: admitted; it needs 1000 gb of its 1000 gb by 3 files listed by the hub and 1001 gb "
+                      "is free under a quota above the volume after 500 gb owed to 1 running fetch", shown(out))
 
     def test_the_census_carried_between_the_readings_is_the_rules_own_and_read_whole(self):
         volume = self.grid_volume()
