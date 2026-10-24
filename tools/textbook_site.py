@@ -657,7 +657,7 @@ MESSAGE_JS = """
       if (r.ok) show("Dispatched as you: " + esc(d.workflow) + " on " + esc(d.repo) + "."
                      + (d.label === "experiment" ? " The experiment workflow opens the issue and answers it with the gate word." : ""));
       else if (r.error !== "repository not allowed" && r.error !== "workflow not allowed" && r.error !== "no connector")
-        show("Not dispatched (" + esc(r.error) + ")." + (d.fallbackUrl ? " " + link(d.fallbackUrl, "Open the request as an issue instead") + "." : ""));
+        show("Not dispatched (" + esc(r.error) + ")." + (d.fallbackUrl ? " " + link(d.fallbackUrl, d.label === "experiment" ? "Open the request as an issue instead" : "Do it by hand instead") + "." : ""));
     });
   }
   window.schwingnetConnector = connector;
