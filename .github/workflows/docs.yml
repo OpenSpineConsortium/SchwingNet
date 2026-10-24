@@ -1,7 +1,13 @@
 # The living documentation site (docs/learn/README.md): the lessons, the
 # capabilities page, a reference made from the code's own docstrings and the
 # test suite's results, built by tools/living_docs.py on every push to the
-# default branch and published with GitHub Pages. The lessons' commands
+# default branch and published with GitHub Pages. The Artifact Textbook is
+# built into the same site, under textbook/, by tools/textbook_site.py: a page
+# for each chapter and each artifact, laid out from the artifacts and the
+# synthesis's records (issue #196). A merge GitHub's auto-merge makes starts
+# no workflow, and the synthesis's pull requests merge that way, so the site
+# is also built once a day, after the synthesis's daily look at 06:41 UTC, so
+# that what such a merge brought reaches the textbook within a day. The lessons' commands
 # already ran in the required check before the merge; they run again here,
 # so a page is published only from a commit whose examples still print what
 # the pages say. The test report is written even when a test fails, so the
@@ -16,6 +22,8 @@ name: Docs
 
 on:
   push:
+  schedule:
+    - cron: "23 8 * * *"
   workflow_dispatch:
 
 permissions:
@@ -28,7 +36,8 @@ concurrency:
 
 jobs:
   build:
-    if: github.ref_name == github.event.repository.default_branch
+    # a scheduled run's event carries no repository, and always runs on the default branch
+    if: github.event_name == 'schedule' || github.ref_name == github.event.repository.default_branch
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -56,6 +65,11 @@ jobs:
         env:
           SHA: ${{ github.sha }}
         run: python3 tools/living_docs.py site "$RUNNER_TEMP/site" --tests "$RUNNER_TEMP/tests.json" --repo "$GITHUB_REPOSITORY" --sha "$SHA"
+
+      - name: Build the textbook into the site
+        env:
+          SHA: ${{ github.sha }}
+        run: python3 tools/textbook_site.py "$RUNNER_TEMP/site/textbook" --repo "$GITHUB_REPOSITORY" --sha "$SHA"
 
       - uses: actions/upload-pages-artifact@v5
         with:
