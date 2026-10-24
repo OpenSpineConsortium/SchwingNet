@@ -1,0 +1,45 @@
+{
+  "id": "11/naming-by-field-of-view-state",
+  "title": "Exact naming by field-of-view state",
+  "caption": "Exact naming by field-of-view state, real film against CT render and anomalous against ordinary spine, with Wilson 95% intervals, for banks v2 and v5; the dotted line is chance. The label-defined numbers were later superseded by the pixel-defined interior windows.",
+  "chapter": "11",
+  "grade": "Reported",
+  "status": "a record, not a final value",
+  "source": {
+    "kind": "artifact",
+    "artifact": "artifacts/naming-vertebrae-without-an-anchor-3dfzmh/",
+    "artifact_url": "https://claude.ai/artifact/3DFZMHt4oAnrDVHwxdZnyf",
+    "made_by": "spinesurg-ct-nnunet:tools/make_feasibility_figures.py",
+    "commit": null,
+    "data": [
+      "~/model_night (feasibility results)",
+      "allspine_v2_fov96_ctx and allspine_v5_fov96_ctx banks"
+    ],
+    "run": "grid jobs 40321409 and 40321779",
+    "notes": "Byte-identical (263,243 bytes) to manuscripts/superseded/rsnai/figures/fig2_breakthrough.png in spine-program's MANIFEST_LOCAL.md. The artifact names tools/make_feasibility_figures.py and jobs 40321409 and 40321779; RECIPES.md gives the command; FEASIBILITY_REPRODUCE.md says stage 8 (interior windows) supersedes the label-defined 98.32% and 87.2%."
+  },
+  "explore": [
+    {
+      "label": "The artifact's page and files",
+      "href": "artifacts/naming-vertebrae-without-an-anchor-3dfzmh/"
+    },
+    {
+      "label": "The artifact on claude.ai",
+      "href": "https://claude.ai/artifact/3DFZMHt4oAnrDVHwxdZnyf"
+    },
+    {
+      "label": "How every feasibility number is reproduced",
+      "href": "https://github.com/OpenSpineConsortium/spine-program/blob/88398813308aba7dc2b4ee823385ea0ca2665f0d/01_carm_level_detection/docs/FEASIBILITY_REPRODUCE.md"
+    },
+    {
+      "label": "The recipe",
+      "href": "https://github.com/OpenSpineConsortium/spine-program/blob/88398813308aba7dc2b4ee823385ea0ca2665f0d/07_plain_film_level_id/docs/handoff/RECIPES.md"
+    }
+  ],
+  "rerun": {
+    "where": "grid",
+    "command": "python tools/make_feasibility_figures.py --results ~/model_night --out ~/model_night/figures_feasibility",
+    "cost": "CPU, in a job on the grid, over the stored results",
+    "needs_owner_word": true
+  }
+}

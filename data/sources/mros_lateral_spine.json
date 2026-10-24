@@ -5,7 +5,7 @@
   "what": "lateral thoracic and lumbar films of 5,994 men at six US centres, two visits (2000-2002 and about 4.6 years later), with Genant semi-quantitative vertebral fracture grades per vertebra; one deep-learning study used 4,461 subjects and 15,524 films; the image counts and the request steps to confirm on the page",
   "level_truth": "Genant grades on named levels, so level truth exists",
   "reach": "get",
-  "status": "found by the sweep of 2026-10-21; not fetched; a research data request through the MrOS coordinating centre (an online application with a proposal), not sent; the images are not on dbGaP, whose phs000373 covers genotypes (to confirm on the page); older osteoporotic spines with compression fractures, the anatomy the C-arm sees in kyphoplasty",
+  "status": "found by the sweep of 2026-10-21; asked MrOS's data team on 2026-10-22 for leave to register; they answered the same day that MrOS Online is closed to registrations while it is changed for new NIH requirements, and that the study images are going to the NIA Aging Research Biobank (agingresearchbiobank.nia.nih.gov), which gives the timeline, transfer, fees and terms; no request there yet; older osteoporotic spines with compression fractures, the anatomy the C-arm sees in kyphoplasty",
   "licence": "a MrOS data request agreement; terms to confirm on the page",
   "link": "https://mrosonline.ucsf.edu/",
   "how_to_get": [

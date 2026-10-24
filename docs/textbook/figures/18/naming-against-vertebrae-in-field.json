@@ -1,0 +1,44 @@
+{
+  "id": "18/naming-against-vertebrae-in-field",
+  "title": "Level naming on C-ArmLSpine",
+  "caption": "Exact level against vertebrae in the field for both fold groupings and the zero-shot model with case-cluster intervals, and the abstention sweep of coverage against accuracy.",
+  "chapter": "18",
+  "grade": "Reported",
+  "status": "a record, not a final value",
+  "source": {
+    "kind": "artifact",
+    "artifact": "artifacts/schwingnet-figures-xyz6kr/",
+    "artifact_url": "https://claude.ai/artifact/XyZ6krXFYezkdkpj2kAKPw",
+    "made_by": "spinesurg-ct-nnunet: the SchwingNet assembler (builder not named)",
+    "commit": null,
+    "data": [
+      "SchwingNet/figures/fig3_naming.png (spinesurg-ct-nnunet)"
+    ],
+    "run": null,
+    "notes": "Byte-identical (236,895 bytes) to figures/schwingnet/fig3_naming.png in spine-program's MANIFEST_LOCAL.md (line 868). The resume calls it the assembler's pick and names no builder; it was moved to the supplement."
+  },
+  "explore": [
+    {
+      "label": "The artifact's page and files",
+      "href": "artifacts/schwingnet-figures-xyz6kr/"
+    },
+    {
+      "label": "The artifact on claude.ai",
+      "href": "https://claude.ai/artifact/XyZ6krXFYezkdkpj2kAKPw"
+    },
+    {
+      "label": "The local manifest",
+      "href": "https://github.com/OpenSpineConsortium/spine-program/blob/88398813308aba7dc2b4ee823385ea0ca2665f0d/01_carm_level_detection/MANIFEST_LOCAL.md"
+    },
+    {
+      "label": "The figure set (22 September resume)",
+      "href": "https://github.com/OpenSpineConsortium/spine-program/blob/88398813308aba7dc2b4ee823385ea0ca2665f0d/99_archive/docs/checkpoints/RESUME_2026-09-22_PM.md"
+    }
+  ],
+  "rerun": {
+    "where": "none",
+    "command": null,
+    "cost": "nothing to run: no command is recorded for it",
+    "needs_owner_word": false
+  }
+}

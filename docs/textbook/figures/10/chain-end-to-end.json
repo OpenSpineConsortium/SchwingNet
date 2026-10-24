@@ -1,0 +1,34 @@
+{
+  "id": "10/chain-end-to-end",
+  "title": "The chain, end to end",
+  "caption": "The processing chain, end to end and without a branch; only the shaded stage is learned, and the count consumes box positions and never reads a class.",
+  "chapter": "10",
+  "grade": "Reported",
+  "status": "current",
+  "source": {
+    "kind": "artifact",
+    "artifact": "artifacts/counting-levels-under-fluoroscopy/",
+    "artifact_url": "https://claude.ai/artifact/8uhYki72Jf355qdfLM5N96",
+    "made_by": null,
+    "commit": null,
+    "data": [],
+    "run": null,
+    "notes": "An image embedded in the artifact page (a data URI); the page names no builder for it, and its bytes, re-encoded on embedding, cannot be matched against spine-program's manifests. It matches in content the rsnai Figure 1 row (a)."
+  },
+  "explore": [
+    {
+      "label": "The artifact's page and files",
+      "href": "artifacts/counting-levels-under-fluoroscopy/"
+    },
+    {
+      "label": "The artifact on claude.ai",
+      "href": "https://claude.ai/artifact/8uhYki72Jf355qdfLM5N96"
+    }
+  ],
+  "rerun": {
+    "where": "none",
+    "command": null,
+    "cost": "nothing to run: no command is recorded for it",
+    "needs_owner_word": false
+  }
+}

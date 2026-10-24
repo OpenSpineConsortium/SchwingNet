@@ -75,6 +75,9 @@ The pre-stated gates are Wilson lower bounds on persons. With no error the bound
 
 Version 1's interval is the evaluation gate's Wilson rule in [src/schwingnet/flow.py](../../src/schwingnet/flow.py), a correct score interval with contracts on its bounds, rechecked here against the page's numbers. But [tools/evaluate.py](../../tools/evaluate.py) computes it over vertebrae and only counts the persons beside each row, and no bootstrap, design effect or clustered interval exists anywhere in the repository's tools, src, tests, grid or scripts folders. The retraining plan asks for "Wilson intervals on person-keyed n", and the dry run's REFORMS item 7b (Kapoor 2023) is marked met by "a 95 percent Wilson interval on every row from its correct and n, persons counted per row", while item 7c, statistical tests and their assumptions, is missing and waits on the owner's answer ([the run's report](../../docs/research/v1-demo/runs/cd37124c487d/REPORT.md)). The interval the page prints today is therefore the naive one the September record warned about. The first dry run shows the size of the gap: its test row reads 556/556 = 1.000 (0.993 to 1.000) over five persons, while five persons all right give a Wilson interval of 0.566 to 1.000 on persons. A real run's truth lies between, at the design effect its errors have, so the clustered interval is owed before version 1's test row is quoted.
 
+![Level naming on C-ArmLSpine](figures/18/naming-against-vertebrae-in-field.png)
+*Figure 18.1. Exact level against vertebrae in the field for both fold groupings and the zero-shot model with case-cluster intervals, and the abstention sweep of coverage against accuracy. Source: [record](figures/18/naming-against-vertebrae-in-field.json).*
+
 ## From a result to a table or a slide
 
 ### The result row and the run record

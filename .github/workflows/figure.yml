@@ -1,0 +1,136 @@
+name: Figure re-run
+# The textbook's Re-run button (tools/textbook_site.py) opens an issue labelled figure-rerun whose body
+# carries one line, figure-rerun-id: NN/slug. This workflow answers it with tools/figure_run.py: it reads
+# that id and nothing else from the issue, refuses an issue whose author may not write to the repository,
+# and does what the figure's committed record (docs/textbook/figures/NN/slug.json) says. A figure the
+# record says runs on a runner is redrawn here from committed files and comes back as a pull request; a
+# grid figure gets the exact command and the link to grid.yml, and nothing is submitted, since a grid job
+# waits for the owner's word (docs/project.md); a figure with no command gets its Explore links. Nothing of
+# Claude's runs here and no secret but GitHub's own token is used.
+on:
+  issues:
+    types: [opened, labeled]
+
+permissions:
+  contents: read
+
+# One answer per issue: an issue opened with the label sends both events, and the second run finds the
+# first one's answer and stops.
+concurrency:
+  group: figure-rerun-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+env:
+  # The pixi that produced the committed lock, as gate.yml installs it, for a recorded command that
+  # runs in one of the lock's environments.
+  PIXI_VERSION: 0.81.0
+  PIXI_SHA256: 248510f5f75460a2ae4ec62d761e15c0191dc35db3b1da6f82d9f17c6017051d
+
+jobs:
+  plan:
+    if: >-
+      github.event.repository.fork == false &&
+      (github.event.action == 'opened' || github.event.label.name == 'figure-rerun')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    outputs:
+      # a second run for an issue already answered does nothing more
+      action: ${{ steps.answer.outputs.answered == 'yes' && 'skip' || steps.plan.outputs.action }}
+      id: ${{ steps.plan.outputs.id }}
+      branch: ${{ steps.plan.outputs.branch }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: decide from the issue's id line and the figure's committed record
+        id: plan
+        env:
+          REPO: ${{ github.repository }}
+          RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          python3 tools/figure_run.py plan --event "$GITHUB_EVENT_PATH" --repo "$REPO" \
+            --run-number "$RUN_NUMBER" --comment "$RUNNER_TEMP/comment.md"
+      - name: answer the issue once
+        id: answer
+        if: steps.plan.outputs.action != 'skip'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          ISSUE: ${{ github.event.issue.number }}
+        run: |
+          set -eu
+          answered=$(gh api "repos/$REPO/issues/$ISSUE/comments" --paginate \
+            --jq '[.[] | select(.user.login == "github-actions[bot]" and (.body | startswith("<!-- figure-rerun -->")))] | length' \
+            | awk '{s += $1} END {print s + 0}')
+          if [ "$answered" -gt 0 ]; then
+            echo "already answered" >> "$GITHUB_STEP_SUMMARY"
+            echo "answered=yes" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          gh issue comment "$ISSUE" --repo "$REPO" --body-file "$RUNNER_TEMP/comment.md"
+
+  rerun:
+    needs: plan
+    if: needs.plan.outputs.action == 'actions'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The runner's own python3 is used, as ci.yml does (3.12 on ubuntu-latest).
+      - name: install pixi where the recorded command uses it
+        env:
+          FIGURE: ${{ needs.plan.outputs.id }}
+        run: |
+          set -eu
+          if python3 -c 'import json,sys; r=json.load(open(sys.argv[1])); sys.exit(0 if r["rerun"]["command"].startswith("pixi ") else 1)' \
+            "docs/textbook/figures/$FIGURE.json"; then
+            curl -fsSL -o /tmp/pixi \
+              "https://github.com/prefix-dev/pixi/releases/download/v${PIXI_VERSION}/pixi-x86_64-unknown-linux-musl"
+            echo "${PIXI_SHA256}  /tmp/pixi" | sha256sum -c -
+            install -m 0755 /tmp/pixi /usr/local/bin/pixi
+          fi
+      - name: run the figure's recorded command
+        env:
+          FIGURE: ${{ needs.plan.outputs.id }}
+        run: python3 tools/figure_run.py run --id "$FIGURE"
+      - name: open a pull request with what it drew
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          ISSUE: ${{ github.event.issue.number }}
+          FIGURE: ${{ needs.plan.outputs.id }}
+          BRANCH: ${{ needs.plan.outputs.branch }}
+        run: |
+          set -eu
+          if [ -z "$(git status --porcelain)" ]; then
+            gh issue comment "$ISSUE" --repo "$REPO" --body "The recorded command for \`$FIGURE\` ran and drew the same files: nothing changed, so no pull request."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # The recorded command ran in this job before the token was in reach: the commit runs no hook
+          # it might have left, and the push reads no configuration it might have written.
+          git switch --no-track -c "$BRANCH"
+          git add -A -- docs/textbook/figures
+          git -c core.hooksPath=/dev/null commit --no-verify -q -m "Redraw figure $FIGURE from its recorded command" -m "Asked for in #$ISSUE."
+          GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 git -c core.hooksPath=/dev/null push --no-verify -q "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git" "HEAD:refs/heads/$BRANCH"
+          url=$(gh pr create --repo "$REPO" --head "$BRANCH" --title "Redraw figure $FIGURE" \
+            --body "The figure's recorded command, run on a GitHub runner from committed files, as #$ISSUE asked. Read the figure before merging; the record says how it was made.")
+          gh issue comment "$ISSUE" --repo "$REPO" --body "Redrawn: $url"
+      - name: say so when the run failed
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          ISSUE: ${{ github.event.issue.number }}
+          RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: gh issue comment "$ISSUE" --repo "$REPO" --body "The re-run failed; its log is at $RUN."

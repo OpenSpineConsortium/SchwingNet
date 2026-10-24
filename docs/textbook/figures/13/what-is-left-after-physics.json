@@ -1,0 +1,36 @@
+{
+  "id": "13/what-is-left-after-physics",
+  "title": "The decomposition on real frames",
+  "caption": "A six-column decomposition of four real DeepFluoro frames against their renders; the red and blue panels share one symmetric scale per row.",
+  "chapter": "13",
+  "grade": "Reported",
+  "status": "current",
+  "source": {
+    "kind": "artifact",
+    "artifact": "artifacts/what-is-left-after-physics/",
+    "artifact_url": "https://claude.ai/artifact/AL3mndDMgZGLGDGxJ87ghR",
+    "made_by": null,
+    "commit": null,
+    "data": [
+      "DeepFluoro frames 17-1882/000, 17-1882/050, 18-1109/047, 18-2800/016"
+    ],
+    "run": null,
+    "notes": "Embedded image; the record names the four frames it shows but no builder."
+  },
+  "explore": [
+    {
+      "label": "The artifact's page and files",
+      "href": "artifacts/what-is-left-after-physics/"
+    },
+    {
+      "label": "The artifact on claude.ai",
+      "href": "https://claude.ai/artifact/AL3mndDMgZGLGDGxJ87ghR"
+    }
+  ],
+  "rerun": {
+    "where": "none",
+    "command": null,
+    "cost": "nothing to run: no command is recorded for it",
+    "needs_owner_word": false
+  }
+}

@@ -5,7 +5,7 @@
   "what": "TotalSegmentator task data 'liver_lesions', 842 CT, Zenodo 20272572 published 2026-05-18, about 38.9 GB; the same institution as TotalSegmentator v2/v3 (on disk) with no subject map",
   "level_truth": "counted by the census pipeline once fetched",
   "reach": "get",
-  "status": "the owner's hand: ask the TotalSegmentator authors whether these subjects overlap the public v2/v3 release (planned in the data platform at bf1432f)",
+  "status": "asked the TotalSegmentator authors on 2026-10-21 whether these subjects overlap the public v2/v3 release; Jakob Wasserthal answered on 2026-10-22 only that v2 is a complete subset of v3 with the same ids; whether the task sets overlap v2/v3 is still unanswered, so they are counted as overlapping until shown otherwise",
   "licence": "CC BY 4.0",
   "link": "https://zenodo.org/records/20272572",
   "how_to_get": [

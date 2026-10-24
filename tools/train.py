@@ -346,7 +346,7 @@ def model_card(out, args, run, counts, best, elapsed, blocks, parent=None):
         "",
         f"- Run: {run['run_id']} (commit {run['code_commit']}, catalog sha256 {run['catalog_sha256'][:12]})",
         f"- Stage: level classifier over truth boxes; the detector stage is not in this checkpoint.",
-        f"- Architecture: torchvision {blocks.architecture}, {len(LEVELS)}-way head, crops {args.size}x{args.size}, pad {PAD}.",
+        f"- Architecture: {BLOCKS.architecture_words(blocks.architecture)}, {len(LEVELS)}-way head, crops {args.size}x{args.size}, pad {PAD}.",
         f"- Initial weights: {start_line(args, parent)}.",
         f"- Seed {args.seed}; epochs {args.epochs}; batch {args.batch}; learning rate {args.lr}; device {args.device}.",
         "- Blocks: " + "; ".join(f"{k} {','.join(v) if isinstance(v, list) else v}" for k, v in as_record(blocks).items()) + ".",

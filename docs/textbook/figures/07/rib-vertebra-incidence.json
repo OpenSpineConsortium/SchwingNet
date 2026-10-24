@@ -1,0 +1,41 @@
+{
+  "id": "07/rib-vertebra-incidence",
+  "title": "Rib-vertebra incidence in v5",
+  "caption": "Six panels of v5's rib-vertebra incidence: the composition per rib number, the offset delta where a spike is a renumber and a spread is segmentation noise, and the gap to the claimed vertebra against the 10 mm anchor.",
+  "chapter": "07",
+  "grade": "Reported",
+  "status": "a record, not a final value",
+  "source": {
+    "kind": "artifact",
+    "artifact": "artifacts/rib-anchor-audit-t7wr2h/",
+    "artifact_url": "https://claude.ai/artifact/T7wr2H41C4dfFUduW6zwms",
+    "made_by": "CTSpinoPelvic1K tools: qc_rib_vertebra_incidence.py and analyze_rib_incidence.py (named by the artifact)",
+    "commit": null,
+    "data": [
+      "data/v5_final (grid)",
+      "Lumbosac.csv"
+    ],
+    "run": "slurm/build_v5.sh",
+    "notes": "Embedded image. The artifact names qc_rib_vertebra_incidence.py, qc_vertebra_grouping.py, analyze_rib_incidence.py, analyze_vertebra_grouping.py and slurm/build_v5.sh; spine-program's RECIPES.md gives the gate as python scripts/qc_rib_vertebra_incidence.py --labels <v11> --workers N --out <dir>, with placeholders, so no exact command is recorded."
+  },
+  "explore": [
+    {
+      "label": "The artifact's page and files",
+      "href": "artifacts/rib-anchor-audit-t7wr2h/"
+    },
+    {
+      "label": "The artifact on claude.ai",
+      "href": "https://claude.ai/artifact/T7wr2H41C4dfFUduW6zwms"
+    },
+    {
+      "label": "The recipe",
+      "href": "https://github.com/OpenSpineConsortium/spine-program/blob/88398813308aba7dc2b4ee823385ea0ca2665f0d/07_plain_film_level_id/docs/handoff/RECIPES.md"
+    }
+  ],
+  "rerun": {
+    "where": "none",
+    "command": null,
+    "cost": "nothing to run: no command is recorded for it",
+    "needs_owner_word": false
+  }
+}

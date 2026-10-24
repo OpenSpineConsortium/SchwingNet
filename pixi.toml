@@ -4,8 +4,8 @@
 # environment with --locked and never re-solve. The template's own checks (scripts/check.sh)
 # run on the system's python3 and need none of this; only the package under src/ and the
 # pinned copy under vendor/beethoven-qa are imported here. The medical stack (torch, the
-# detectors) and the telemetry stack (W&B, Metaflow) come in as features of their own, each in a
-# change that re-locks on purpose (docs/research/retraining-plan.md, section 5).
+# detectors) and the telemetry stack (W&B, Metaflow) come in as features of their own
+# (docs/research/retraining-plan.md, section 3.5), each in a change that re-locks on purpose.
 
 [workspace]
 name = "schwingnet"
@@ -63,7 +63,7 @@ report = "python -m beethoven_qa report"
 gate = { depends-on = ["lint", "typecheck", "test", "boundary", "symbolic", "standards", "vendor-check"] }
 hooks = "git config core.hooksPath .githooks"
 
-# The training stack (docs/research/retraining-plan.md, section 5; #11): torch and the image
+# The training stack (docs/research/retraining-plan.md, section 3.5; #11): torch and the image
 # tools, as features so the verification environment stays small. train-cpu is a laptop's and
 # the dry run's; train-gpu is the grid's H200 job, which the same lock pins for CUDA.
 [feature.train.dependencies]
@@ -75,6 +75,9 @@ metaflow = ">=2.12"
 # The ONNX export and its parity check (#13): every stage is exported and its outputs compared
 # with PyTorch's on the witness frames before a latency number is written for it.
 onnx = ">=1.16"
+# MONAI's classification networks as architecture blocks, tools/train_blocks.py (#211, on the
+# owner's word of 2026-10-24).
+monai = ">=1.5"
 # Reads the DICOM X-ray sets (LUMOS, VinDr) in the bank stage, tools/bank.py (#44).
 pydicom = ">=2.4"
 # The decoders pydicom hands a compressed pixel array to (JPEG baseline, lossless and LS,

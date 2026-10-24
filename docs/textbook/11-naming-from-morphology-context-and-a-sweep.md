@@ -14,11 +14,17 @@ A detector returns an ordered stack of vertebral-body boxes. A ResNet-18 encoder
 
 The thesis of 18 September was that nothing counts: the landmark fixes the chain and each bone is named by its appearance. [The level-naming contradictions](../../artifacts/_synthesis/contradictions/level-naming-and-counting.md) read the record as successive designs (row 13): naming from morphology on 18 September, then counting from the detected anchor ([Counting From The Sacrum](../../artifacts/counting-from-the-sacrum/), 22 September), with the handoff's combined model as the current state: a body detector, `detector_v5z_final`, for the naming boxes; a vertebra and sacrum detector, `rx_lodo_carmlspine_1024`, for the anchor; the `allspine_v9` encoder and its BiGRU head; fold models fine-tuned for the C-ArmLSpine cross-validation; and a count and coupling with no learned parameters that give the ordinal from the sacrum and the stop signal. Research directions' design names from morphology, keeps the count as a second mechanism and takes their disagreement as the stop signal; this chapter is its naming half. The handoff and Research directions, both of 8 October, restate the same figures, so their agreement is not independent confirmation (row 61).
 
+![Which local morphology carries level identity](figures/11/which-morphology-carries-level-identity.png)
+*Figure 11.1. A schematic segment painted by the occlusion ablation's measured drop per region for L3, drawn from the explanation results; every region is pale because no single region is load-bearing. Source: [record](figures/11/which-morphology-carries-level-identity.json).*
+
 ## How much of the spine a model must see
 
 ### The ladder, and what moved the headline
 
 The [Level Context Ladder](../../artifacts/level-context-ladder-xd7eltc/) of 12 and 13 September scaled the target vertebra to the same pixel height in every crop, so that size could not be used, and shrank the visible context from five vertebrae to one on a collimated field, holding out 30 percent of the patients of every annotated source. On 8,422 held-out real-film crops (CSXA 7,440 and NHANES 982; 410 lumbar, 46 sacrum and 66 thoracic among them), one vertebra was named exactly in 96.7 percent and within one level in 99.7 percent, with no interval given. Cervical reached 97.7 percent at one vertebra and 99.3 at three (the headline chip's 99.5 is the table's figure at five, row 52), lumbar 91.9 at three; the thoracic and sacrum columns are bands, not rankings.
+
+![Exact level against vertebrae visible](figures/11/exact-level-against-vertebrae-visible.png)
+*Figure 11.2. Exact-level accuracy against the number of vertebrae visible on real films, by region, with the CT-only reference. Source: [record](figures/11/exact-level-against-vertebrae-visible.json).*
 
 The page credits the move from 84 to 97 percent in one night to 4,963 CSXA cervical patients and 7,200 BUU lumbar films entering training. Its table shows what moved: the NHANES-only column, the old 84.2 percent headline, read 84.0 in the same 48 px arm, while CSXA, 7,440 of the 8,422 crops, entered training and test together. The move is mostly a change in the population scored, toward cervical films with ample annotated data, not a gain on the lumbar films the old figure measured; 96 px targets lifted the NHANES-only column to 88.6. Read 96.7 as a cervical-weighted figure and 81 to 85 percent as the September bound on a lumbar vertebra seen alone.
 
@@ -32,11 +38,20 @@ On CT projections with the whole scan visible, exact naming was 82.7 percent on 
 
 A single-crop figure needs its model named. The ladder's 96.7 percent comes from arms that join films to synthetic crops; the [FluoroCap Reality Check](../../artifacts/fluorocap-reality-check-czudvb/) of 15 September gives 98.7 percent on the same crops for a films-only model, its context rung not stated and its person-disjointness cannot-tell, a record, not a final value; and the 18 September page gives 97.0 percent for one frame of its own system beside the ladder's 96 px regional row (cervical 97.6, thoracic 95.5, lumbar 85.4, sacrum 93.5). [The contradictions page](../../artifacts/_synthesis/contradictions.md#how-far-the-verdicts-hold) carries each with its model and page, neither replacing the other.
 
+![The occlusion ablation as numbers](figures/11/ablation-as-numbers.png)
+*Figure 11.3. Accuracy drop in points when each named region is masked, for the levels with enough interior windows. Source: [record](figures/11/ablation-as-numbers.json).*
+
 ## The isolated stack is not underdetermined
 
 ### The claim and the test
 
 A feasibility report, not among the artifacts, argued that with no anchor in frame (its State C, the isolated stack) a five-lumbar stack resembles a six-lumbar one with its top body cropped off, so that naming there is "mathematically underdetermined", L2 to L4 are "largely exchangeable", and a system "should formally refuse" and use geometric indices. [Naming Vertebrae Without an Anchor](../../artifacts/naming-vertebrae-without-an-anchor-3dfzmh/) of 17 September answered that the lack of a deterministic inverse says nothing about whether the posterior carries information, and measured that posterior on real film, against 1,113 CT spines with junction flags read from the label voxels and the BUU-LSPINE authors' reads of 144 radiographs (129 four-lumbar, 15 six-lumbar). Its models were trained on bank v2 and on bank v5, 30 percent of whose 253,763 crops were the decoder's own pseudolabels; both banks carry the NHANES duplicate, so every model figure in this section is a record, not a final value, read from that page.
+
+![Exact naming by field-of-view state](figures/11/naming-by-field-of-view-state.png)
+*Figure 11.4. Exact naming by field-of-view state, real film against CT render and anomalous against ordinary spine, with Wilson 95% intervals, for banks v2 and v5; the dotted line is chance. The label-defined numbers were later superseded by the pixel-defined interior windows. Source: [record](figures/11/naming-by-field-of-view-state.json).*
+
+![Separability against field of view](figures/11/separability-against-field-of-view.png)
+*Figure 11.5. Balanced accuracy of a four-class linear probe against window length, junction-free and junction-seen, beside shuffled controls and chance. Source: [record](figures/11/separability-against-field-of-view.json).*
 
 ### Labels against pixels
 
@@ -52,6 +67,9 @@ The report named the mechanism correctly and its size wrongly. Of isolated-stack
 
 Bank v6 moved all 144 anomalous BUU studies out of training (124 had sat there as L1 to L5), duplicated the anomalous CT renders four times in training, and changed nothing else. On 4,026 label-defined State C windows from all 144 studies it named 81.3 percent [80.0, 82.4] against 97.3 on ordinary spines, so the page judged the 20-film 87 percent optimistic by six points and the pseudolabelled 67 percent pessimistic by fourteen. On interior windows it named 49.9 percent [41.5, 58.9] on 128 anomalous films against 89.9 percent [87.1, 92.7] ordinary: with no junction in the pixels, one exposure names a transitional spine at about a coin toss between its two candidate identities. [Research directions](../../artifacts/research-directions-from-the-data-holding-kcyckb/) gives the same pair but calls the 144 a validation set, and the contradictions page leaves the partition unsettled (row 25). All are records, not final values.
 
+![Interior windows by class](figures/11/windows-by-class-interior.png)
+*Figure 11.6. The interior-window evaluation by spine class; a file in the artifact's folder that its page does not draw. Source: [record](figures/11/windows-by-class-interior.json).*
+
 So the isolated stack is not underdetermined on an ordinary spine, where interior pixels carry identity far above the 0 percent floor. On an anomalous spine one exposure costs about 25 to 40 points in these records (91.8 against 66.0 percent, 89.9 against 49.9), on few films and leaked banks, and nothing has re-run the measurement on G3. That cost, not underdetermination, is what the sweep was built to remove.
 
 ### What else the page settled
@@ -62,9 +80,21 @@ The report's geometric substitutes did worse than the network. Its "normal L5" s
 
 The page's remedy was the surgeon's own: exposures from a landmark, here at a 9-inch field, about 14 cm at the spine, linked by a correlation restricted to the step the protocol asked for, since unrestricted the periodic column locks one body off, the failure the page says caused all 47 failures in Otake 2012. On 801 abdominopelvic renders a two-body frame scored 69.6 percent alone and 95.1 registered; on 76 whole-spine renders swept from C2, a thoracic three-body frame went from 31.1 to 99.3 percent, on about 133 vertebrae. Decoding the chain as one sequence against four alphabets beat per-node argmax by 9.7 points (95.5 against 85.8), and counting from the landmark gave 93.8. Field size barely moved naming (94.9, 93.6 and 93.5 percent for a collimated, a 9-inch and a 12-inch field) while chain completeness rose with it (92.5, 94.1 and 96.5), since a wider field needs fewer links; overlap bought the last four points. The render arms measured the linker and the decoder, not the whole pipeline, since the real-film detector's boxes completed the chain on 0.4 percent of these degraded renders. These are records, not final values ([Naming Vertebrae Without an Anchor](../../artifacts/naming-vertebrae-without-an-anchor-3dfzmh/)). The contradictions page carries the 18 September held-out figures in their place (rows 15 to 17), reading onto them the superseded summary's audit of an earlier version of itself, which had scored training patients from image directories that carry no record of the split, a leak that inflated the lone-frame baseline rather than the sweep ([Vertebral Levels Without CT](../../artifacts/vertebral-levels-without-ct-a4rydj/)). The page's search found no published method that chains frames from a landmark to name what lies between them, a claim about naming, not stitching; its operating point matches the one clinical stitching series, four to six exposures at 20 to 30 percent overlap (row 54).
 
+![What the sweep is worth, by region](figures/11/what-the-sweep-is-worth.png)
+*Figure 11.7. A two-vertebra frame named alone and matched onto the sweep, by region: the further the frame sits from a landmark, the more the sweep is worth. Source: [record](figures/11/what-the-sweep-is-worth.json).*
+
+![What the sweep is worth, the earlier page](figures/11/sweep-worth-earlier-page.png)
+*Figure 11.8. The earlier page's version of the same bars, pale for the frame on its own pixels and solid for the frame matched onto the sweep; that page was superseded after the leak audit. Source: [record](figures/11/sweep-worth-earlier-page.json).*
+
+![Per vertebra, three in the frame, on the sweep](figures/11/per-vertebra-on-the-sweep.png)
+*Figure 11.9. Per vertebra on held-out CT spines with ordinary anatomy, three vertebrae in the frame and matched onto the sweep, with 95% intervals; the line is flat. Source: [record](figures/11/per-vertebra-on-the-sweep.json).*
+
 ## The sweep-and-match chain of 18 September
 
 [Naming Vertebrae Without CT](../../artifacts/naming-vertebrae-without-ct-hjy4vc/) walks all six steps with a before and after for each, on held-out spines. A spot film showing three vertebrae and no landmark is named correctly 93.9 percent of the time once matched onto the sweep, against 85.7 percent alone, and 90.4 percent with the automatic detector in place of human boxes. The page says steps 1 and 5 carry the advantage and steps 2 to 4 must simply not fail; it gives n for its regional arms and no intervals.
+
+![From exposure to a named vertebra](figures/11/naming-chain-from-exposure.png)
+*Figure 11.10. The chain from exposure to a named vertebra: for each step, what it does, what can go wrong and the measured before and after; steps 1 and 5 carry the method's advantage. Source: [record](figures/11/naming-chain-from-exposure.json).*
 
 | Step | What it does | Before | After |
 |---|---|---|---|
@@ -186,6 +216,9 @@ The reported stack's held-out C-arm result, as [docs/research/demo-plan.md](../.
 
 Transitional spines, above all L6, are the first and largest failure. Rendered L6 spines fail mostly by a whole-run shift one level cranial on 26 to 28 percent of films, the sixth lumbar body taking the fifth's name, exactly the error a count catches ([Research directions](../../artifacts/research-directions-from-the-data-holding-kcyckb/)). The naming component's L6 accuracy moved once, from 67.4 to 73.5 percent, when 83 real six-lumbar images entered training, after re-weighting, oversampling, simulated pretraining and two pseudolabel rules had moved nothing; each L6 figure belongs to its own setting (row 23). The record settles the thin counts as far as it can. For L6 it carries the 18 September count, 213 distinct training patients with 83 real, over the previous day's 168, all renders, the training manifest to show why the render count fell ([collision 56](../../artifacts/_synthesis/contradictions.md#number-collisions); row 22). For T13 it carries Research directions' seven persons in all sources, none real, as the latest count, and the 18 September page's 73 with 65 real as unexplained until the bank's person keys are checked (row 24). The repository counts three real L6 persons, all frozen test persons ([docs/research/ct-priors-for-2d-detection.md](../../docs/research/ct-priors-for-2d-detection.md)), and the latest L6 figure is Research directions' rendered L6 recall of 56.1 to 72.4 percent on ten held-out persons (row 23). The mechanisms tried since fell short (the table below); as Research directions puts it, every mechanism that reads morphology alone has measured below the ordinary-spine accuracy, every one that counts has been measured only on ordinary spines or renders, and the two have never been coupled on a real transitional frame with a verified read.
 
+![Per-level accuracy inside the isolated stack](figures/11/per-level-accuracy-in-the-isolated-stack.png)
+*Figure 11.11. Per-level accuracy inside the isolated stack: L1 to L5 decline gently rather than collapse in the middle, and the variant class L6 is where the system fails. Source: [record](figures/11/per-level-accuracy-in-the-isolated-stack.json).*
+
 | Mechanism for L6 | What it returned | Research directions' status |
 |---|---|---|
 | Anchored decode with T13 and L6 columns | 39.8 percent of L6 bodies called L6 on 376 renders, against 63.0 single-crop | measured |
@@ -198,6 +231,9 @@ Transitional spines, above all L6, are the first and largest failure. Rendered L
 Duplicated boxes are the second failure: an extra node in the chain cost 24 points before the fix, and 0.61 percent within a frame and 3.0 percent across frames remain. A thoracic frame alone is the third: two cervical or upper thoracic vertebrae are essentially never named on their own pixels, Research directions reports a one-body T12 against L1 accuracy of 41.2 percent on the real C-arm, and only the sweep rescues such frames, on renders and twelve unsettled studies. Projection is the fourth: oblique renders complete the chain on 74.2 percent of spines and name about 58 percent, Research directions gives 82.1 percent at trained angles against 52.8 elsewhere, AP naming on the C-arm is 43.7 percent, and no real oblique sweep exists. The anchor is the fifth: two of the three counted misses were the sacrum, repair never invents one, and a partially lumbarised S1 has no label anywhere, 5,110 images carrying a sacrum box and none an S1 box.
 
 Supervision is the sixth. Training on the decoder's own pseudolabels cost about twenty points of anomalous accuracy, 87.2 against 66.8 percent on label-defined windows in banks v2 and v5, the size [collision 182](../../artifacts/_synthesis/contradictions.md#number-collisions) carries over the Fluoroscopy Data Atlas's 19; from leaked banks and the 20-film set the v6 page later judged, it is a record, not a final value, and the ledger lists both values as open ([the concept ledger, row 182](../../artifacts/_synthesis/concepts.md#row-182-accuracy-cost-of-training-on-pseudo-labels)). Label 25 meant L6 in one scheme and T13 in another, and the overnight page found that an abstention rule requiring L5 or L6 in frame abstained on exactly the sacralised patients it protects, four Castellvi IIIb patients with no L5 at all, so the rule now asks for the lowest mobile lumbar segment by position, never by name. The seventh is that no transitional number exists. Ninety-two of 97 transitional validation and test persons sit in the current encoder's training lineage, so [Research directions](../../artifacts/research-directions-from-the-data-holding-kcyckb/) starts a clean encoder from ImageNet on G3 training persons only, and the version 1 plan reports the transitional stratum as its own rows, never pooled ([docs/research/retraining-plan.md](../../docs/research/retraining-plan.md)); the CT-prior chain decoder's dry run on the synthetic catalog with an untrained model, 14 of 68 against 11 of 68 for the crops alone, tests plumbing, not accuracy ([docs/research/xr-from-3d/README.md](../../docs/research/xr-from-3d/README.md)).
+
+![Single-vertebra accuracy against real films in training](figures/11/single-vertebra-accuracy-against-real-films.png)
+*Figure 11.12. Single-vertebra accuracy against the number of real films of that region in training: the lumbar side of the chart is the argument for real films. Source: [record](figures/11/single-vertebra-accuracy-against-real-films.json).*
 
 ## What we know
 
