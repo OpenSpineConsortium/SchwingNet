@@ -7,8 +7,10 @@ pieces") and the owner's question of 08:14 UTC with the upload of arXiv 2610.284
 Unberath, "A Multi-Agent Framework for Automated Machine Learning with Evidence-based Planning for
 Medical Image Analysis", MedicalMLOmni, 20 October 2026): "why not use one of the packages in this
 paper? or can i fit into one of the blocks?". Confidential with the rest of this repository. Issue
-#207, pull request #208; it follows #203 (the first seven blocks) and #206 (the warm start). No grid
-job, fetch or training was started; every test here runs on the synthetic catalog on a CPU.
+#207, pull request #208; it follows #203 (the first seven blocks) and #206 (the warm start), and
+#211 (the owner's word of 15:56 UTC, "can you insert these monai packages?") added monai to the
+train environment and three of its networks as architecture names (section 3). No grid job, fetch
+or training was started; every test here runs on the synthetic catalog on a CPU.
 
 ## 1. The loop, in four commands
 
@@ -77,7 +79,7 @@ earlier wording, "two lines" and "`parts` lists it by itself", short of all thre
 | samples | all, only-sources, drop-sources, cap-per-person | all |
 | sources | the catalog's sources, comma-separated, with samples=only-sources or drop-sources | none |
 | per_person | crops kept per person, 1 or more, with samples=cap-per-person | 0 |
-| architecture | resnet18, resnet34, resnet50, mobilenet-v3-small, efficientnet-b0 | resnet18 |
+| architecture | resnet18, resnet34, resnet50, mobilenet-v3-small, efficientnet-b0, densenet121, se-resnet50, se-resnext50 | resnet18 |
 | denoise | none, gaussian, median | none |
 | prior | none, level-map | none |
 | prior_weight | the prior loss's weight beside the level loss, above 0, with prior=level-map | 0.0 |
@@ -116,7 +118,27 @@ the record once a piece is added.
   StochasticDepth, torchvision's own, which in training draw from the device's global generator
   (seeded by seed_everything) and not from the run's CPU generator the blocks draw from, so a
   run of those two reproduces on the same kind of device, a resnet run on any; a seeded
-  replacement of those modules is one more function if a grid run ever needs a CPU rerun.
+  replacement of those modules is one more function if a grid run ever needs a CPU rerun. Since
+  #211 three of MONAI's networks are names too, built in two dimensions with the 27-way head:
+  densenet121 (about 1.6 times resnet18's multiply-adds, 231 million at 64 px, in 7 million
+  parameters, fewer than any resnet; only mobilenet-v3-small, 1.5 million, and efficientnet-b0,
+  4.0 million, are smaller), se-resnet50 (317 million: resnet50 in its Caffe layout, the stride
+  in each stage's 1x1 convolution where torchvision's resnet50 strides in the 3x3, with a
+  squeeze-and-excitation gate on every block, so fewer than torchvision's resnet50's 334 despite
+  the gates, since the strided 3x3 runs on a quarter of the positions) and se-resnext50 (348
+  million: the same gates on ResNeXt's 32x4d bottlenecks, twice as wide, their 3x3 convolutions
+  in 32 groups of 4 and carrying the stride, as torchvision's resnets do, which is why it costs
+  more and not less); none carries dropout, so they reproduce on any device, and monai is
+  imported only when one of them is built, so a run of a torchvision name never
+  loads it. densenet121 reads torchvision's densenet121 ImageNet file in either of its spellings
+  (the published file's "norm.1", a saved state_dict's "norm1"), mapped to MONAI's names as
+  MONAI's own loader maps the published file; the two SE networks read a file in MONAI's own
+  names only, since their published ImageNet weights live on a third-party site in another
+  naming, so a sweep that includes them starts every run from scratch, since `plan` refuses a
+  sweep that mixes an ImageNet start with none (section 1, step 2) and carries no --init; a run
+  from a parent is tools/flow.py run --init by hand. SENet154, which section 4 named, is left out
+  at about five times resnet50's multiply-adds (Hu et al. 2018, Table 3), and MONAI's EfficientNet
+  family too, since torchvision's efficientnet-b0 stands for it.
 - **denoise: a filter inside the model.** gaussian (one spread, 0.7 pixels) and median (3 by 3)
   are forward pre-hooks registered before the normalise hook, so the crop is filtered and then
   scaled inside the model and whatever calls the model, including the ONNX export the latency
@@ -156,9 +178,11 @@ repository's rules):
   writes the training code per run and retries it is the opposite design: the code that produced
   a number is a transcript, not a commit.
 - Dependencies are an issue first (.claude/rules/writing.md), and a new package in the train
-  environment is a re-lock of pixi.lock made on purpose (docs/research/retraining-plan.md,
-  section 5). The train feature holds torch, torchvision, Pillow, numpy, matplotlib, onnx and
-  pydicom; MONAI is not in it.
+  environment is a re-lock of pixi.lock made on purpose (pixi.toml's header; the training stack
+  as a pixi feature is docs/research/retraining-plan.md, section 3.5). The train feature holds,
+  among others, torchvision, Pillow, numpy, matplotlib, metaflow, onnx, pydicom with its pylibjpeg
+  decoders and wandb, torch through the cpu and cuda features, and monai since #211, one noarch
+  package the lock took with nothing else moving.
 
 What does fit a block (Inferred):
 
@@ -166,10 +190,12 @@ What does fit a block (Inferred):
   RandAdjustContrast onto intensity, RandGaussianSmooth onto blur, RandGaussianNoise onto noise.
   The torch versions here already do the same in a few lines each, seeded by the run's own
   generator, so there is nothing to gain by swapping them.
-- MONAI's classification networks (DenseNet121, SENet154, its EfficientNet family) would each be
-  one more architecture name: one function in ARCHITECTURES and one HEADS entry, once monai is in
-  the train environment's lock. That is the whole change. It is not made here, since no part of
-  version 1 asks for one of them yet and the lock is changed on purpose.
+- MONAI's classification networks (DenseNet121, SENet154, its EfficientNet family) are each one
+  more architecture name: one function in ARCHITECTURES and one HEADS entry, once monai is in the
+  train environment's lock. #208 left it unmade, since no part of version 1 asked for one and the
+  lock is changed on purpose; #211 made it on the owner's word for DenseNet121, SEResNet50 and
+  SEResNext50 (section 3), which was the whole change as said, plus the name mapping of
+  torchvision's densenet file.
 
 What is worth taking (Inferred): the structure of its HPO. Its agents each own one category, and
 the categories (architecture, augmentation, regularisation, schedule) are parts of
@@ -192,8 +218,11 @@ eight segmentation benchmarks), so the loop is worth having even without the ret
    one person help or merely repeat), architecture (mobilenet-v3-small against resnet18 for the
    latency row), denoise (median against none on the noisiest source).
 3. The planner worker of section 4, once two or three ledger rows exist to read.
-4. MONAI entries in ARCHITECTURES, if a sweep points at a network torchvision lacks, as an issue
-   that re-locks the train environment.
+4. Done in #211 on the owner's word: monai in the lock and three of its networks as names
+   (section 3). The next MONAI pieces, if a run asks for them, are two of its transforms that the
+   augment names lack, RandCoarseDropout for the instruments that occlude a vertebra in theatre
+   and RandHistogramShift for a device's response curve, each one augment name seeded from the
+   run's generator.
 5. The prior block's rung of the reverse ablation (section 6): the render shards of #59 with
    their level maps, prior=level-map against prior=none on the same catalog, once the owner
    gives the word and the count for the renders.
@@ -225,7 +254,8 @@ renders, the CT's segmentation projected").
 - **What the trainer does.** `prior=level-map` with `prior_weight` above 0 (the two go together,
   and a weight with no prior or a prior with no weight is refused) puts a head on the backbone's
   last feature map before the pooling, FEATURES in tools/train_blocks.py naming the module per
-  architecture (layer4 for the resnets, features for mobilenet-v3-small and efficientnet-b0): one
+  architecture (layer4 for the torchvision resnets and MONAI's se-resnet50 and se-resnext50, features
+  for mobilenet-v3-small, efficientnet-b0 and densenet121): one
   1 by 1 convolution to 28 classes, upsampled to the crop's size and scored by cross-entropy
   against the crop's map, cut and resized nearest as the crop is cut, every pixel of a crop whose
   frame has no map ignored. The loss is the level loss plus prior_weight times the map loss. The
