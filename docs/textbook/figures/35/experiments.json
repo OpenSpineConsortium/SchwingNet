@@ -1,0 +1,67 @@
+{
+ "id": "35/experiments",
+ "title": "The experiments panel: every recorded run by its data input, its blocks and its outcome",
+ "caption": "Every recorded run with what it was given (the catalog, the recipe, the sources, the bank), the blocks it chose with version 1's defaults spelled out, its loss by epoch, its accuracy with its interval, its model, its reproducibility record and its W&B link; filters by data input and by block, a correlation view that groups accuracy by a block's value, and a panel that names a new combination's exact command and opens its request.",
+ "chapter": "35",
+ "grade": "Measured",
+ "status": "a record, not a final value",
+ "source": {
+  "kind": "script",
+  "artifact": null,
+  "artifact_url": null,
+  "made_by": "tools/experiments_panel.py",
+  "commit": null,
+  "data": [
+   "docs/research/v1-demo/LEDGER.md",
+   "docs/research/v1-demo/runs/",
+   "data/recipes/",
+   "src/schwingnet/blocks.py"
+  ],
+  "run": null,
+  "notes": "Drawn new from committed files by tools/experiments_panel.py: the 2 recorded runs under docs/research/ (RUN.json, train/checkpoint.json, train/metrics.jsonl, train/MODEL.md, evaluate/results.json, split-check.json, reforms.json, claim.json, REPORT.md, wandb-sync.json, PROVENANCE.json and NOTE.md where each exists), the ledger, the recipes under data/recipes/ and the blocks of src/schwingnet/blocks.py. Every one of them is a dry run on the synthetic bank (tools/synthetic_bank.py), which measures the workflow and not SchwingNet, so every number drawn is a record, not a final value. The blocks of a run recorded before the blocks existed are version 1's defaults, spelled out as schwingnet.blocks.from_record reads them. A run's W&B column says offline where no key was found when it ran. The page requests a new combination as an issue labelled experiment and runs nothing: a grid job waits for the owner's word and the number of jobs. The rendering is tested (tests/test_experiments_panel.py); the loop that fills the panel with runs is a plan."
+ },
+ "explore": [
+  {
+   "label": "The script",
+   "href": "tools/experiments_panel.py"
+  },
+  {
+   "label": "The recorded runs",
+   "href": "docs/research/v1-demo/runs/"
+  },
+  {
+   "label": "The ledger",
+   "href": "docs/research/v1-demo/LEDGER.md"
+  },
+  {
+   "label": "The evaluation page, drawn from the same runs",
+   "href": "docs/research/evaluation/README.md"
+  },
+  {
+   "label": "The blocks",
+   "href": "src/schwingnet/blocks.py"
+  },
+  {
+   "label": "The recipes",
+   "href": "data/recipes/"
+  },
+  {
+   "label": "The loop the panel serves",
+   "href": "docs/research/experiment-framework.md"
+  },
+  {
+   "label": "The note on this panel",
+   "href": "docs/research/experiments-panel.md"
+  },
+  {
+   "label": "The chapter",
+   "href": "docs/textbook/35-how-the-workflow-is-built.md"
+  }
+ ],
+ "rerun": {
+  "where": "actions",
+  "command": "python3 tools/experiments_panel.py write",
+  "cost": "CPU, a second",
+  "needs_owner_word": false
+ }
+}
