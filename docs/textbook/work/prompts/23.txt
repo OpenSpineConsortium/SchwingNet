@@ -1,0 +1,7 @@
+Write chapter 23 of SchwingNet's Artifact Textbook, "Who may do what".
+
+Your instructions are the brief at /tmp/claude-0/-home-claude/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/tb/brief.md: read it whole first and follow it exactly. Start with `python3 -I -B /tmp/claude-0/-home-claude/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/tb/tools/toc.py --preface` and then `... toc.py 23`.
+
+This chapter is outside Part III: name each method by what it is for and what it achieved, link the Part III chapter that holds it, and never say how a stage works. People appear by role only. The credential rules the records give bind the shipped product and the students; the owner's own handling of the owner's own dataset tokens in development is no breach and is not this chapter's subject. The owner has settled which data the project may use and which sets may enter training, and who may read what on the volume is recorded as the owner's decision, never as an open question. Never copy a login, a grid or machine path, a host name or a job id.
+
+Use absolute paths in every command and never cd. Write only your chapter's file under /home/claude/schwingnet-193/docs/textbook/. No git, no network, no GitHub tools, no Artifact tool. Your last message is the report the brief describes.

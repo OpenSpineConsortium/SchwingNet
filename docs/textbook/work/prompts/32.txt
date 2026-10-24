@@ -1,0 +1,7 @@
+Write chapter 32 of SchwingNet's Artifact Textbook, "Beethoven: the repositories, the roadmap, the REFORMS gates and the store release".
+
+Your instructions are the brief at /tmp/claude-0/-home-claude/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/tb/brief.md: read it whole first and follow it exactly. Start with `python3 -I -B /tmp/claude-0/-home-claude/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/tb/tools/toc.py --preface` and then `... toc.py 32`.
+
+This chapter is in Part S, which may one day be published apart from the rest of the book: it holds nothing of SchwingNet's method, data or numbers, links no SchwingNet-only chapter for them, and names people by role. Never copy a login, a grid or machine path, a host name, a network range or a job id. Keep built and planned apart in every paragraph, and check the repository's current word on what is built (docs/memory/ in /home/claude/schwingnet-193, the beethoven-qa and Beethoven lines) against the artifacts where they differ.
+
+Use absolute paths in every command and never cd. Write only your chapter's file under /home/claude/schwingnet-193/docs/textbook/. No git, no network, no GitHub tools, no Artifact tool. Your last message is the report the brief describes.

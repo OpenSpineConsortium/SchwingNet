@@ -1,0 +1,7 @@
+Write chapter 31 of SchwingNet's Artifact Textbook, "Claude workers on the grid and the lab's machines".
+
+Your instructions are the brief at /tmp/claude-0/-home-claude/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/tb/brief.md: read it whole first and follow it exactly. Start with `python3 -I -B /tmp/claude-0/-home-claude/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/tb/tools/toc.py --preface` and then `... toc.py 31`.
+
+This chapter is in Part S, which may one day be published apart from the rest of the book: it holds nothing of SchwingNet's method, data or numbers, links no SchwingNet-only chapter for them, and names people by role. Never copy a login, a grid or machine path, a host name, a network range or a job id. Name each place by its role (the login node, a compute node, the gate, the workstation), give no security setting that would help someone reach a machine (no address, port, host name, user name or network range), and keep the workstation runbook to what it requires. Where the playbook's credential model differs from what the owner later decided for the owner's own accounts (the token pool, in the repository's docs/memory/the-token-pool.md and docs/memory/the-token-wizard.md in /home/claude/schwingnet-193), give both with their dates, the later as current, and judge neither.
+
+Use absolute paths in every command and never cd. Write only your chapter's file under /home/claude/schwingnet-193/docs/textbook/. No git, no network, no GitHub tools, no Artifact tool. Your last message is the report the brief describes.
