@@ -67,7 +67,9 @@
 # inside the volume on its mount, whose quota is then not the one a fetch there meets
 # (quota_below). A VOLUME or DATA_ROOT that names the wrong folder therefore refuses every fetch
 # rather than read another room. A quota on a folder above the root of the mount, which the client
-# does not show, is not read.
+# does not show, is not read. Where one above the volume stands or cannot be read, the readout shows
+# each folder up to the root of the mount, by how far above the volume it lies, with its quota and
+# what it holds, the figures a rule that counts such a quota would read (#188).
 #
 # What each fetch still owes is kept beside its landing, $DATA/<id>/meta:
 #   QUEUED   "<job> <utc>", written when grid/run-platform-fetch.sh submits the job
@@ -624,6 +626,52 @@ room_unread_words() {  # room_unread_words VOLUME: why the room under VOLUME's q
   echo "${why:-the room under the quota could not be read}"
 }
 
+listed_entries() {  # listed_entries FOLDER: "<entries> <folders>", how many entries FOLDER's own listing holds, hidden ones too, and how many of them are folders; none where it cannot be read
+  local entry entries=0 folders=0
+  while IFS= read -r -d '' entry; do
+    entries=$(( entries + 1 ))
+    if [ -d "$entry" ] && [ ! -L "$entry" ]; then folders=$(( folders + 1 )); fi
+  done < <(volume_entries "$1")
+  echo "$entries $folders"
+}
+
+above_words() {  # above_words VOLUME: each folder from VOLUME's parent up to the root of VOLUME's mount, by how far above VOLUME it lies and never by its path: its quota and what it holds, each read whole, the room that quota leaves by that figure, its size by stat and how many entries it lists, in words
+  local volume points folder at label quota held size entries folders height=0
+  # What a rule that counts such a quota would read (#188): the folder's own ceph.dir.rbytes, which
+  # may read as no count as the volume's does, and whether go2432 may list the folder, should what
+  # it holds have to be summed from its entries as the volume's is. The same walk as quota_below's;
+  # each folder named by its height, since the status word leaves the grid and names no folder.
+  volume=$(readlink -f -- "$1" 2>/dev/null) || { echo "the volume's own path cannot be resolved"; return 0; }
+  points=$(mount_points) || { echo "the mount table cannot be read"; return 0; }
+  folder=${volume%/}
+  until is_mount_point "$points" "${folder:-/}"; do
+    if [ -z "$folder" ]; then
+      echo "the mount table lists no mount on the volume's path, not even the root of all"
+      return 0
+    fi
+    folder=${folder%/*}
+    at=${folder:-/}
+    height=$(( height + 1 ))
+    label="$height up"
+    if is_mount_point "$points" "$at"; then label="$label, the root of its mount"; fi
+    quota=$(xattr_whole ceph.quota.max_bytes "$at")
+    held=$(xattr_whole ceph.dir.rbytes "$at")
+    if [ -n "$quota" ] && [ "$quota" != 0 ] && [ -n "$held" ]; then
+      echo "$label: ceph.quota.max_bytes reads $quota, which leaves $(awk -v b=$(( quota > held ? quota - held : 0 )) 'BEGIN { printf "%.2f", b / 1e9 }')gb by its ceph.dir.rbytes"
+    else
+      echo "$label: $(whole_words ceph.quota.max_bytes "$at")"
+    fi
+    echo "$label: $(whole_words ceph.dir.rbytes "$at")"
+    size=$(stat_figure %s "$at")
+    read -r entries folders <<< "$(listed_entries "$at")"
+    if [ "$entries" = 0 ]; then
+      echo "$label: stat gives its size as ${size:-nothing}, and it lists no entry, as one that cannot be read lists none"
+    else
+      echo "$label: stat gives its size as ${size:-nothing}, and it lists $(counted "$entries" entry entries), $(counted "$folders" "of them a folder" "of them folders")"
+    fi
+  done
+}
+
 volume_free_gb() {  # volume_free_gb VOLUME: "<whole GB free> quota" or "... df", else nothing
   local bytes from
   read -r bytes from <<< "$(volume_free_bytes "$1")"
@@ -864,9 +912,9 @@ mark_queued() {  # mark_queued ID JOB: the QUEUED line of a fetch sent under the
 # reads once, what the running fetches owe first and the use after it, as a fetch's decision does;
 # the decision reads the room again a minute later and keeps the smaller (settled_room), which a
 # readout typed at the shell does not wait for, so while data lands or moves the two can differ by
-# what moved in that minute. Called by grid/oschome-quota.sh in the owner's shell and by
-# grid/gate.sh's status word, which names no folder, so the title is the caller's.
-quota_readout() {  # quota_readout VOLUME TITLE: the readout; 1 when the volume has no quota that can be read
+# what moved in that minute. quota_readout, below, prints it for grid/oschome-quota.sh in the
+# owner's shell and for grid/gate.sh's status word, which names no folder, so the title is the caller's.
+room_readout() {  # room_readout VOLUME TITLE: the readout's title, use and room; 1 when the volume has no quota that can be read
   local volume=$1 quota used how entries folders held floor files files_said="" max_files said owed_read owed n unsized below
   said=$(owed_by_running "")
   owed_read=$?
@@ -914,4 +962,18 @@ quota_readout() {  # quota_readout VOLUME TITLE: the readout; 1 when the volume 
     if (why != "") printf "Room  =         none for a new fetch, since %s\n", why
     else printf "Room  =         %.2fgb for a new fetch, which lands whole or not at all\n", room / 1e9
   }'
+}
+
+quota_readout() {  # quota_readout VOLUME TITLE: the readout, then each folder above the volume where one of them carries a quota or one of theirs cannot be read; 1 when the volume has no quota that can be read
+  local rc
+  room_readout "$@"
+  rc=$?
+  # The rule admits nothing while such a quota stands unread (quota_below), so the readout shows
+  # what it and its folder give, the figures a rule that counts it would read (#188).
+  quota_below "$1"
+  case $? in
+    3|4) echo "Above the volume, up to the root of its mount, each folder by how far above the volume it lies:"
+         above_words "$1" | sed 's/^/  /' ;;
+  esac
+  return "$rc"
 }
