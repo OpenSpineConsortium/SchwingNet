@@ -2,7 +2,7 @@
 
 Usage (inside the train-cpu or train-gpu environment):
     python tools/train.py --catalog <catalog.sqlite> --out <run dir> --epochs N --seed S
-        [--weights <imagenet resnet18 state_dict>] [--size 64] [--batch 64] [--max-frames N]
+        [--weights <imagenet state_dict of the architecture>] [--size 64] [--batch 64] [--max-frames N]
         [--witness 12] [--device cpu|cuda] [--keep-epochs 1]
 
 The stage is the level classifier of docs/research/retraining-plan.md, section 3.4: a vertebral
@@ -46,16 +46,16 @@ import time  # noqa: E402
 import numpy as np  # noqa: E402
 import torch  # noqa: E402
 from PIL import Image, ImageDraw  # noqa: E402
-from schwingnet.blocks import BlockError, as_record, balanced_accuracy, from_record, lr_factor  # noqa: E402
+from schwingnet.blocks import BlockError, as_record, balanced_accuracy, from_record, kept, lr_factor, words_of  # noqa: E402
 from schwingnet.blocks import parse as parse_blocks  # noqa: E402
 from schwingnet.catalog import LEVELS, TRANSITIONAL  # noqa: E402
 from schwingnet.flow import wilson  # noqa: E402
 from schwingnet.witness import ROLE_VALIDATION  # noqa: E402
 from torch import nn  # noqa: E402
-from torchvision.models import resnet18  # noqa: E402
 
 PAD = 0.15
 TRAIN_PARTS = ("train", "validation")
+SAMPLE_WORDS = ("samples", "sources", "per_person")
 CROP_SQL = """
 SELECT l.level, l.x0, l.y0, l.x1, l.y1, i.sha256, i.part, i.person, i.source, i.path, s.manifest
 FROM label l
@@ -168,26 +168,30 @@ def seed_everything(seed):
     torch.use_deterministic_algorithms(True, warn_only=True)
 
 
-def build_model(weights, device, normalise="none"):
-    """A resnet18 with a 27-way head; ImageNet weights come from a file, never a download.
+def build_model(weights, device, normalise="none", architecture="resnet18", denoise="none"):
+    """The named backbone with a 27-way head; ImageNet weights come from a file, never a download.
 
-    normalise is the run's block of that name (src/schwingnet/blocks.py): "imagenet" scales the
-    input inside the model, so whatever calls the model scales it the same way."""
-    model = resnet18(weights=None)
-    if weights:
-        state = torch.load(weights, map_location="cpu", weights_only=True)
-        state = {k: v for k, v in state.items() if not k.startswith("fc.")}
-        missing, unexpected = model.load_state_dict(state, strict=False)
-        if unexpected or [k for k in missing if not k.startswith("fc.")]:
-            raise TrainError(f"{weights}: not a resnet18 state_dict ({unexpected} {missing})")
-    model.fc = nn.Linear(model.fc.in_features, len(LEVELS))
+    The three are the run's blocks of those names (src/schwingnet/blocks.py): the architecture's
+    table entry builds the network, and denoise and normalise are hooks inside the model, in that
+    order, so whatever calls the model filters and scales the input the same way."""
+    try:
+        model = BLOCKS.ARCHITECTURES[architecture](len(LEVELS), weights)
+    except BLOCKS.ArchitectureError as error:
+        raise TrainError(str(error)) from error
+    model = BLOCKS.DENOISERS[denoise](model)
     return BLOCKS.NORMALISERS[normalise](model).to(device)
 
 
 def model_for(facts, device):
     """An untrained model shaped as a run's checkpoint.json says, its weights to be loaded; a
     checkpoint from before the blocks existed names none and gets version 1's model."""
-    return build_model(None, device, from_record(facts.get("blocks")).normalise)
+    blocks = from_record(facts.get("blocks"))
+    return build_model(None, device, blocks.normalise, blocks.architecture, blocks.denoise)
+
+
+# What a parent checkpoint must share with the run that starts from it: its weights are only right
+# for the network they were trained in and for the input that network saw.
+INHERITED = ("architecture", "denoise", "normalise")
 
 
 def parent_of(path):
@@ -208,9 +212,10 @@ def warm_start(model, path, parent, blocks, size):
     its input differently: another scaling or another crop size would make its features wrong."""
     facts = parent["facts"]
     if facts is not None:
-        theirs = from_record(facts.get("blocks")).normalise
-        if theirs != blocks.normalise:
-            raise TrainError(f"the parent was trained with normalise={theirs}, this run names normalise={blocks.normalise}")
+        theirs = from_record(facts.get("blocks"))
+        for name in INHERITED:
+            if getattr(theirs, name) != getattr(blocks, name):
+                raise TrainError(f"the parent was trained with {name}={getattr(theirs, name)}, this run names {name}={getattr(blocks, name)}")
         if int(facts.get("size", size)) != size:
             raise TrainError(f"the parent was trained on {facts['size']}-pixel crops, this run on {size}")
     state = torch.load(path, map_location="cpu", weights_only=True)
@@ -296,6 +301,25 @@ def accuracy_curve(history, path):
     plt.close(figure)
 
 
+def seen_words(counts, blocks):
+    """The training crops the samples block kept of those the catalog offered, and what a
+    --max-frames cap then cut, apart, so the record never credits the block with a dry run's
+    cut."""
+    text = f"{counts['train_seen']} of the {counts['train_offered']} the catalog's train part holds (samples {blocks.samples})"
+    if counts["train"] < counts["train_seen"]:
+        text += f", capped to {counts['train']} by --max-frames"
+    return text + f", from {counts['train_persons']} persons"
+
+
+def validation_words(counts):
+    """The validation crops read: the whole part, or what --max-frames left of it."""
+    if counts["validation"] == counts["validation_offered"]:
+        part = "the whole part"
+    else:
+        part = f"of the {counts['validation_offered']} the part holds, capped by --max-frames"
+    return f"{counts['validation']}, {part}, from {counts['validation_persons']} persons"
+
+
 def sha256_of(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
@@ -322,11 +346,11 @@ def model_card(out, args, run, counts, best, elapsed, blocks, parent=None):
         "",
         f"- Run: {run['run_id']} (commit {run['code_commit']}, catalog sha256 {run['catalog_sha256'][:12]})",
         f"- Stage: level classifier over truth boxes; the detector stage is not in this checkpoint.",
-        f"- Architecture: torchvision resnet18, {len(LEVELS)}-way head, crops {args.size}x{args.size}, pad {PAD}.",
+        f"- Architecture: torchvision {blocks.architecture}, {len(LEVELS)}-way head, crops {args.size}x{args.size}, pad {PAD}.",
         f"- Initial weights: {start_line(args, parent)}.",
         f"- Seed {args.seed}; epochs {args.epochs}; batch {args.batch}; learning rate {args.lr}; device {args.device}.",
         "- Blocks: " + "; ".join(f"{k} {','.join(v) if isinstance(v, list) else v}" for k, v in as_record(blocks).items()) + ".",
-        f"- Training crops {counts['train']} from {counts['train_persons']} persons; validation crops {counts['validation']} from {counts['validation_persons']} persons; no test row was read.",
+        f"- Training crops {seen_words(counts, blocks)}; validation crops {validation_words(counts)}; no test row was read.",
         f"- Best epoch {best['epoch']}: validation accuracy {best['validation_accuracy']:.3f} ({best['validation_ci'][0]:.3f} to {best['validation_ci'][1]:.3f}, n={best['validation_n']}).",
         f"- Checkpoint best.pt sha256 {best['checkpoint_sha256']}; wall time {elapsed:.0f} s.",
         "- Levels: " + ", ".join(LEVELS) + f"; transitional {', '.join(TRANSITIONAL)}.",
@@ -346,7 +370,7 @@ def parse(argv):
     parser.add_argument("--out", required=True, help="the run directory tools/flow.py made")
     parser.add_argument("--epochs", type=int, required=True)
     parser.add_argument("--seed", type=int, required=True)
-    parser.add_argument("--weights", default=None, help="an ImageNet resnet18 state_dict file")
+    parser.add_argument("--weights", default=None, help="an ImageNet state_dict file of the run's architecture block (resnet18 unless --block architecture=... says otherwise)")
     parser.add_argument("--size", type=int, default=64)
     parser.add_argument("--batch", type=int, default=64)
     parser.add_argument("--lr", type=float, default=1e-3)
@@ -366,6 +390,20 @@ def pick(crops, part, cap, seed):
         random.Random(seed).shuffle(chosen)
         chosen = chosen[:cap]
     return chosen
+
+
+def training_crops(crops, blocks):
+    """The train part as the samples block leaves it, in the catalog's order, with the count the
+    part held before, so the record says what the run saw of what it could have seen. A source
+    the part does not hold is refused, since a cut named for it would be recorded and never
+    made (kept cannot know the catalog; here the offered crops are in hand)."""
+    offered = [c for c in crops if c["part"] == "train"]
+    present = {c["source"] for c in offered}
+    absent = [s for s in blocks.sources if s not in present]
+    if absent:
+        raise TrainError(f"sources={','.join(absent)}: not in the catalog's train part, whose sources are {', '.join(sorted(present)) or 'none'}")
+    keep = kept(blocks, [c["source"] for c in offered], [c["person"] for c in offered])
+    return [c for c, k in zip(offered, keep, strict=True) if k], len(offered)
 
 
 def strata_of(crops, guesses):
@@ -494,8 +532,11 @@ def run(args):
     parent = parent_of(args.init) if args.init else None
     seed_everything(args.seed)
     crops = read_crops(args.catalog, TRAIN_PARTS)
-    train_crops = pick(crops, "train", args.max_frames, args.seed)
+    seen, offered = training_crops(crops, blocks)
+    train_crops = pick(seen, "train", args.max_frames, args.seed)
     val_crops = pick(crops, "validation", args.max_frames, args.seed + 1)
+    if offered and not seen:
+        raise TrainError(f"the samples block ({' '.join(w for w in words_of(blocks) if w.split('=')[0] in SAMPLE_WORDS)}) leaves none of the {offered} training crops")
     if not train_crops or not val_crops:
         raise TrainError("the catalog has no labelled train or validation crops")
     cache = {}
@@ -505,7 +546,7 @@ def run(args):
     frames = Witness(out, [c for c in crops if c["part"] == "validation"], args.size)
     folder = out / "train"
     (folder / "witness").mkdir(parents=True, exist_ok=True)
-    model = build_model(args.weights, args.device, blocks.normalise)
+    model = build_model(args.weights, args.device, blocks.normalise, blocks.architecture, blocks.denoise)
     if parent:
         warm_start(model, args.init, parent, blocks, args.size)
     optimiser = BLOCKS.OPTIMISERS[blocks.optimiser](model, args.lr, blocks)
@@ -535,7 +576,10 @@ def run(args):
     accuracy_curve(history, folder / "accuracy.png")
     counts = {
         "train": len(train_crops),
+        "train_seen": len(seen),
+        "train_offered": offered,
         "validation": len(val_crops),
+        "validation_offered": sum(c["part"] == "validation" for c in crops),
         "train_persons": person_count(train_crops),
         "validation_persons": person_count(val_crops),
     }

@@ -15,13 +15,25 @@ part (docs/research/training-review.md, section 1):
 - sampler: "uniform" (every crop once an epoch) or "balanced" (drawn so every level present is
   as likely as any other);
 - loss_weights: "none" or "inverse-frequency" over the levels the training part holds;
-- select: what chooses the checkpoint, "accuracy" or "balanced-accuracy" over the validation part.
+- select: what chooses the checkpoint, "accuracy" or "balanced-accuracy" over the validation part;
+- samples: which training crops the run sees (#207), "all", "only-sources" or "drop-sources" with
+  sources=a,b naming the catalog's sources, or "cap-per-person" with per_person=N keeping the
+  first N crops of each person in the catalog's order; the validation part is never cut, so every
+  run of a comparison scores the same crops;
+- architecture: the backbone, "resnet18" (version 1), "resnet34", "resnet50",
+  "mobilenet-v3-small" or "efficientnet-b0", each with its own head and its own ImageNet file;
+- denoise: a filter on the crop inside the model, before the scaling, "none", "gaussian" or
+  "median", so the evaluator, the latency measurement and the ONNX export carry it.
 
 DEFAULT is version 1's training exactly, so a run that names no block trains as before and the
 recorded runs stay reproducible. The choices are kept here, with the arithmetic that needs no
-torch (the schedule's factor, the class weights, the balanced accuracy); tools/train_blocks.py
-holds the torch side, one function per name, and its tests hold the two lists equal. A new way of
-doing a part is one name added to its tuple here and one function there.
+torch (the schedule's factor, the class weights, the balanced accuracy, which crops a samples
+block keeps); tools/train_blocks.py holds the torch side, one function per name, and its tests
+hold the two lists equal. A new way of doing a part is one name added to its tuple here and one
+function there, plus the entry the part keys by name where it has one (HEADS for an
+architecture, AUGMENT_ORDER for an augment change, a branch in _keeps for a samples choice); a
+new part is a field with version 1's default and its entry in CHOICES or SETTINGS, which
+`problems` checks and `parts` reads to list every part with its names for tools/block_sweep.py.
 """
 
 import math
@@ -39,6 +51,12 @@ SCHEDULE = ("constant", "cosine")
 SAMPLER = ("uniform", "balanced")
 LOSS_WEIGHTS = ("none", "inverse-frequency")
 SELECT = ("accuracy", "balanced-accuracy")
+SAMPLES = ("all", "only-sources", "drop-sources", "cap-per-person")
+ARCHITECTURE = ("resnet18", "resnet34", "resnet50", "mobilenet-v3-small", "efficientnet-b0")
+DENOISE = ("none", "gaussian", "median")
+# The samples choices that take a list of sources, and the one that takes a count per person.
+BY_SOURCE = ("only-sources", "drop-sources")
+BY_PERSON = "cap-per-person"
 
 
 class BlockError(ValueError):
@@ -59,6 +77,11 @@ class Blocks:
     sampler: str = "uniform"
     loss_weights: str = "none"
     select: str = "accuracy"
+    samples: str = "all"
+    sources: tuple[str, ...] = ()
+    per_person: int = 0
+    architecture: str = "resnet18"
+    denoise: str = "none"
 
 
 DEFAULT = Blocks()
@@ -69,7 +92,22 @@ CHOICES = {
     "sampler": SAMPLER,
     "loss_weights": LOSS_WEIGHTS,
     "select": SELECT,
+    "samples": SAMPLES,
+    "architecture": ARCHITECTURE,
+    "denoise": DENOISE,
 }
+# The settings a choice takes, each with its range in words, for `parts` and the command line.
+SETTINGS = {
+    "augment": "any of " + ", ".join(AUGMENT) + ", comma-separated, or none",
+    "weight_decay": "a finite number, 0 or more, with optimiser=adamw",
+    "warmup_epochs": "whole epochs, 0 or more",
+    "backbone_lr_scale": "above 0 and at most 1",
+    "sources": "the catalog's sources, comma-separated, with samples=only-sources or drop-sources",
+    "per_person": "crops kept per person, 1 or more, with samples=cap-per-person",
+}
+LISTS = ("augment", "sources")
+NUMBERS = ("weight_decay", "backbone_lr_scale")
+COUNTS = ("warmup_epochs", "per_person")
 
 
 FIELDS = tuple(f.name for f in fields(Blocks))
@@ -82,11 +120,7 @@ def _plain(value: object) -> bool:
     return isinstance(value, (str, int, float))
 
 
-@beartype
-@ensure(lambda result: all(isinstance(line, str) and line for line in result), "each said in words")
-@ensure(lambda result, blocks: blocks != DEFAULT or not result, "version 1's training holds")
-def problems(blocks: Blocks) -> list[str]:
-    """Every way the choices fall outside what exists, in words; empty when they hold."""
+def _choice_problems(blocks: Blocks) -> list[str]:
     found = []
     for name, allowed in CHOICES.items():
         value = getattr(blocks, name)
@@ -97,6 +131,11 @@ def problems(blocks: Blocks) -> list[str]:
             found.append(f"augment {change!r} is not one of {', '.join(AUGMENT)}")
     if len(set(blocks.augment)) != len(blocks.augment):
         found.append("augment names a change twice")
+    return found
+
+
+def _number_problems(blocks: Blocks) -> list[str]:
+    found = []
     if not (math.isfinite(blocks.weight_decay) and blocks.weight_decay >= 0.0):
         found.append("weight_decay is a finite number, 0 or more")
     if blocks.warmup_epochs < 0:
@@ -111,18 +150,42 @@ def problems(blocks: Blocks) -> list[str]:
     return found
 
 
+def _sample_problems(blocks: Blocks) -> list[str]:
+    # A setting that would act on nothing is refused too, since it is most likely a mistake: the
+    # sources go with only-sources or drop-sources, the count with cap-per-person, and nowhere else.
+    found = []
+    if (blocks.samples in BY_SOURCE) != bool(blocks.sources):
+        found.append("sources=a,b goes with samples=only-sources or drop-sources, and only there")
+    if len(set(blocks.sources)) != len(blocks.sources):
+        found.append("sources names a source twice")
+    if (blocks.samples == BY_PERSON) != (blocks.per_person > 0):
+        found.append("per_person of 1 or more goes with samples=cap-per-person, and only there")
+    if blocks.per_person < 0:
+        found.append("per_person is 0 or more")
+    return found
+
+
+@beartype
+@ensure(lambda result: all(isinstance(line, str) and line for line in result), "each said in words")
+@ensure(lambda result, blocks: blocks != DEFAULT or not result, "version 1's training holds")
+def problems(blocks: Blocks) -> list[str]:
+    """Every way the choices fall outside what exists, in words; empty when they hold."""
+    return _choice_problems(blocks) + _number_problems(blocks) + _sample_problems(blocks)
+
+
 def _value(name: str, text: str) -> object:
     """One KEY=VALUE's value as its field's type."""
-    if name == "augment":
-        return tuple(part for part in text.split(",") if part and part != "none")
-    if name in ("weight_decay", "backbone_lr_scale"):
+    if name in LISTS:
+        parts_named = (part.strip() for part in text.split(","))
+        return tuple(part for part in parts_named if part and part != "none")
+    if name in NUMBERS:
         try:
             return float(text)
         except ValueError as error:
             raise BlockError(f"{name}={text!r} is not a number") from error
-    if name == "warmup_epochs":
-        if not (text.isascii() and text.isdigit() and len(text) <= 4):
-            raise BlockError(f"warmup_epochs={text!r} is not a whole number of at most 4 digits")
+    if name in COUNTS:
+        if not (text.isascii() and text.isdigit() and len(text) <= 6):
+            raise BlockError(f"{name}={text!r} is not a whole number of at most 6 digits")
         return int(text)
     return text
 
@@ -158,11 +221,12 @@ def parse(pairs: Sequence[str]) -> Blocks:
 
 @beartype
 @ensure(lambda result: set(result) == set(FIELDS), "every block, and nothing else")
-@ensure(lambda result: isinstance(result["augment"], list), "augment as a list, as JSON keeps it")
+@ensure(lambda result: all(isinstance(result[n], list) for n in LISTS), "lists, as JSON keeps them")
 def as_record(blocks: Blocks) -> dict[str, object]:
-    """The blocks as the checkpoint and the card write them, augment as a list."""
+    """The blocks as the checkpoint and the card write them, augment and sources as lists."""
     record = asdict(blocks)
-    record["augment"] = list(blocks.augment)
+    for name in LISTS:
+        record[name] = list(getattr(blocks, name))
     return record
 
 
@@ -202,6 +266,52 @@ def lr_factor(epoch: int, epochs: int, warmup: int, schedule: str) -> float:
         return 1.0
     span = max(1, epochs - warmup)
     return 0.5 * (1.0 + math.cos(math.pi * (epoch - warmup - 1) / span))
+
+
+def _keeps(blocks: Blocks, source: str, nth: int) -> bool:
+    """Whether the nth crop of its person, from the named source, is one the run trains on."""
+    if blocks.samples == "only-sources":
+        return source in blocks.sources
+    if blocks.samples == "drop-sources":
+        return source not in blocks.sources
+    if blocks.samples == BY_PERSON:
+        return nth <= blocks.per_person
+    return True
+
+
+@beartype
+@require(lambda sources, persons: len(sources) == len(persons), "one source and one person a crop")
+@ensure(lambda result, sources: len(result) == len(sources), "one answer a crop, in order")
+@ensure(lambda result, blocks: blocks.samples != "all" or all(result), "all keeps every crop")
+def kept(blocks: Blocks, sources: Sequence[str], persons: Sequence[str]) -> list[bool]:
+    """Which training crops the run sees, one answer per crop in the catalog's order.
+
+    The crops come in the catalog's order, by frame hash and then level, which is fixed and
+    arbitrary, so cap-per-person keeps the same first crops of each person in every run and a
+    comparison between runs changes one thing at a time. The validation part never comes here.
+    """
+    seen: dict[str, int] = {}
+    answers = []
+    for source, person in zip(sources, persons, strict=True):
+        seen[person] = seen.get(person, 0) + 1
+        answers.append(_keeps(blocks, source, seen[person]))
+    return answers
+
+
+@beartype
+@ensure(lambda result: [row["part"] for row in result] == list(FIELDS), "every part once, in order")
+@ensure(lambda result: all(set(r) == {"part", "choices", "default"} for r in result), "3 columns")
+def parts() -> list[dict[str, str]]:
+    """Every plug-in point: the part, what it may be, and version 1's choice; what the owner reads
+    before planning a sweep, and what a new block must appear in."""
+    default = as_record(DEFAULT)
+    rows = []
+    for name in FIELDS:
+        choices = ", ".join(CHOICES[name]) if name in CHOICES else SETTINGS[name]
+        value = default[name]
+        shown = (",".join(value) or "none") if isinstance(value, list) else str(value)
+        rows.append({"part": name, "choices": choices, "default": shown})
+    return rows
 
 
 @beartype
