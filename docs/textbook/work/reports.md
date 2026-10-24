@@ -138,3 +138,7 @@ The chapter 19 review said no source prints a fraction for the 80.5 percent held
 ## Review of chapter 31
 
 19 changes of about 95 statements: 9 argument, 3 superseded marks, 5 provenance rows reworded or rescoped, 1 scope. Most serious: the claim that any session with the panel may start or stop a worker rested on the unbuilt several-workers plan, now the owner presses today; the owner's decision on their own accounts was misdated 13 October, and the grid's signed-in slots were implied to be the token pool; contradictions row 11 was cited for the runner-chain gate it does not compare. Unsettled: the research owed on terms, vendor dates and framework version; whether a second worker has run; git on the login node, the 10-runs cap, the 90-minute limit, the workstation's state.
+
+## Review of chapter 28
+
+31 changes of about 75 statements: 7 numbers, 6 grades, 4 superseded or open marks, 2 canonical versions, 7 mechanism, 3 argument, 2 links. Most serious: 80.5 percent, the renders-only 1 of 287 and the 145 banked COBRA cases were quoted as current where the contradictions pages hold them open; four reported-stack figures sourced only to demo-plan.md were graded Measured, now Reported or Unverified; gendered pronouns, a wrong row cited for the cross-validation, two physics tests need no training (not one), and mechanism cut from entries 4, 5, 8, 9 and 11. Unsettled: which entries wait on the owner's word, whether the September jobs produced results, the version 1 GPU bound.
