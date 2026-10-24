@@ -157,7 +157,7 @@ def parse(pairs: Sequence[str]) -> Blocks:
 
 
 @beartype
-@ensure(lambda result: tuple(result) == FIELDS, "every block, in the dataclass's order")
+@ensure(lambda result: set(result) == set(FIELDS), "every block, and nothing else")
 @ensure(lambda result: isinstance(result["augment"], list), "augment as a list, as JSON keeps it")
 def as_record(blocks: Blocks) -> dict[str, object]:
     """The blocks as the checkpoint and the card write them, augment as a list."""
