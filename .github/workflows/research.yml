@@ -1,0 +1,173 @@
+name: Research loop
+
+# The textbook's research loop (issue #220): every four hours a Claude session takes the
+# best-ranked item of the claims register (docs/textbook/claims.json, chapter 33) that nobody
+# holds, opens or carries on its issue labelled research, claims it as the worker research-loop
+# and works it to a pull request the owner merges, under the standing brief
+# .github/symphony/research.md. The owner asked for it on 2026-10-24 ("CONTINUE THESE TYPES OF
+# REQUESTS AUTONOMOUSLY FOR LEADING THE REASAEARCH FURTHER") and gave it "full command to direct
+# autonmous research": it starts grid work, fetches and training without asking, within the rules
+# the brief states (the size rule, no CT-RATE without the owner's terabytes, no Radiopaedia by
+# script, no usage credits, the claim protocol, nothing public). docs/project.md records the
+# exception, and docs/memory/research-loop.md says how it works.
+#
+# A run works only when all of these hold, and its job summary names the first that does not:
+#   - the variable RESEARCH_LOOP is not off (set it to off to stop the loop);
+#   - crowd mode is off: in crowd mode (the variable CLAUDE_CROWD) no workflow runs Claude, and
+#     the job never starts;
+#   - the repository secret CLAUDE_CODE_OAUTH_TOKEN is set, the subscription token `claude
+#     setup-token` makes, so the runs draw on that account's plan and bill no API;
+#   - fewer runs than the variable RESEARCH_RUNS_PER_DAY (6 unless it says otherwise, 50 at most)
+#     have started today, in UTC, counted by the marker artifact research-runs each admitted run
+#     keeps, as synthesis.yml counts its reads;
+#   - the last three admitted runs did not all fail, the last less than six hours ago; Run
+#     workflow always tries.
+# One run at a time (the concurrency group research). Before Claude, tools/research_loop.py pick
+# reads the register and the open issues and pull requests labelled research, so no item is
+# started twice: the loop's own open issue is carried on first, and an item another worker, a
+# block, a review or an act of the owner's holds is skipped.
+#
+# The session reaches the grid only through tools/research_loop.py grid, gate, runs and log, which
+# dispatch grid.yml and grid-gate.yml on main, or read their runs, with this job's own token in
+# RESEARCH_DISPATCH_TOKEN: GitHub lets the workflow token start a workflow_dispatch, and the job
+# grants it actions: write and only reads besides. The session's own GitHub token is the one
+# Claude's action mints from id-token, as in claude.yml, so its pushes and pull requests start
+# the checks. grid.yml runs a command on a compute node inside the runner's container, with no
+# lab volume and no Slurm; the gate words of grid/gate.sh, which queue the Slurm jobs, are sent
+# through symphony-template's grid-accounts.yml by an admin, which this loop cannot reach, so the
+# brief has it ask the owner for such a word in an issue. After the session the job records what
+# it spent, as claude.yml does, for metrics.yml.
+
+on:
+  schedule:
+    - cron: "23 */4 * * *"
+  workflow_dispatch:
+    inputs:
+      item:
+        description: "An item id of docs/textbook/claims.json to work (E07); empty lets the loop pick"
+        required: false
+        default: ""
+
+# Nothing at the top; the job asks for what it needs.
+permissions: {}
+
+concurrency:
+  group: research
+  cancel-in-progress: false
+
+jobs:
+  research:
+    if: vars.CLAUDE_CROWD != 'true' && github.repository == 'OpenSpineConsortium/SchwingNet'
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    permissions:
+      contents: read # the checkout; the session pushes with the token Claude's action mints
+      issues: read # the open issues labelled research, for the pick
+      pull-requests: read # the open pull requests labelled research, for the pick
+      actions: write # the day's marks, and the dispatch of grid.yml and grid-gate.yml
+      id-token: write # Claude's action mints its own GitHub token from it, as in claude.yml
+    env:
+      HAVE_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Whether this run may work
+        id: admit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          EVENT: ${{ github.event_name }}
+          SWITCH: ${{ vars.RESEARCH_LOOP }}
+          CROWD: ${{ vars.CLAUDE_CROWD }}
+          CAP: ${{ vars.RESEARCH_RUNS_PER_DAY }}
+        run: |
+          set -euo pipefail
+          gh api --paginate --slurp "repos/$REPO/actions/artifacts?name=research-runs&per_page=100" > "$RUNNER_TEMP/marks.json"
+          python3 tools/research_loop.py marked --marks "$RUNNER_TEMP/marks.json" > "$RUNNER_TEMP/marked.txt"
+          while read -r id; do
+            if [ -n "$id" ]; then gh api "repos/$REPO/actions/runs/$id"; fi
+          done < "$RUNNER_TEMP/marked.txt" | jq -s '{workflow_runs: .}' > "$RUNNER_TEMP/runs.json"
+          python3 tools/research_loop.py admit --marks "$RUNNER_TEMP/marks.json" --runs "$RUNNER_TEMP/runs.json" \
+            --switch "$SWITCH" --crowd "$CROWD" --token "$HAVE_TOKEN" --cap "$CAP" --event "$EVENT" \
+            --words "$RUNNER_TEMP/words.md" >> "$GITHUB_OUTPUT"
+          cat "$RUNNER_TEMP/words.md" >> "$GITHUB_STEP_SUMMARY"
+      - name: Pick the item
+        id: pick
+        if: steps.admit.outputs.admit == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          ITEM: ${{ inputs.item }}
+        run: |
+          set -euo pipefail
+          { echo '### The register'"'"'s next items'; echo '```json'; python3 tools/claims_rank.py next; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          python3 tools/research_loop.py pick --repo "$REPO" --item "$ITEM" --out "$RUNNER_TEMP/pick.json" > /dev/null
+          mode=$(jq -r .mode "$RUNNER_TEMP/pick.json")
+          echo "mode=$mode" >> "$GITHUB_OUTPUT"
+          { echo '### This run'"'"'s choice'; echo '```json'; cat "$RUNNER_TEMP/pick.json"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - name: Mark the run as one that works, for the day's count
+        if: steps.admit.outputs.admit == 'true' && steps.pick.outputs.mode != 'none'
+        env:
+          WHY: ${{ steps.admit.outputs.why }}
+        run: printf '%s\n' "$WHY" > "$RUNNER_TEMP/research-runs.txt"
+      - name: Keep the mark
+        if: steps.admit.outputs.admit == 'true' && steps.pick.outputs.mode != 'none'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: research-runs
+          path: ${{ runner.temp }}/research-runs.txt
+          retention-days: 2
+          if-no-files-found: error
+      - name: The prompt, and a copy of the usage recorder, which the run cannot move
+        id: brief
+        if: steps.admit.outputs.admit == 'true' && steps.pick.outputs.mode != 'none'
+        env:
+          SETTINGS: ${{ vars.SYMPHONY_CLAUDE_SETTINGS }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          cp tools/usage.py "$RUNNER_TEMP/usage.py"
+          cp -r tools/profile.py tools/economics.py tools/sdlc_protocol "$RUNNER_TEMP/" || true
+          python3 tools/research_loop.py prompt --brief .github/symphony/research.md --pick "$RUNNER_TEMP/pick.json" \
+            --run "$RUN_URL" >> "$GITHUB_OUTPUT"
+          # the model, effort and fallback the Tokens tab's main tile sets; a variable that does
+          # not hold together leaves Claude's own defaults
+          python3 tools/pool.py settings --slot main --settings "$SETTINGS" >> "$GITHUB_OUTPUT" || true
+      - name: The research session
+        id: claude
+        if: steps.admit.outputs.admit == 'true' && steps.pick.outputs.mode != 'none'
+        uses: anthropics/claude-code-action@34968b5981d5d170904281aa3df6f3c0d4a28855 # v1.0.249
+        env:
+          # the workflow token, which may dispatch grid.yml and grid-gate.yml; only
+          # tools/research_loop.py reads it
+          RESEARCH_DISPATCH_TOKEN: ${{ github.token }}
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          allowed_bots: "github-actions,claude"
+          prompt: ${{ steps.brief.outputs.prompt }}
+          claude_args: |
+            --max-turns ${{ vars.RESEARCH_MAX_TURNS || '300' }}
+            ${{ steps.brief.outputs.model != '' && format('--model {0}', steps.brief.outputs.model) || '' }}
+            ${{ steps.brief.outputs.effort != '' && format('--effort {0}', steps.brief.outputs.effort) || '' }}
+            ${{ steps.brief.outputs.fallback != '' && format('--fallback-model {0}', steps.brief.outputs.fallback) || '' }}
+            --allowedTools "Read,Write,Edit,MultiEdit,Glob,Grep,WebSearch,WebFetch,Bash(git:*),Bash(gh:*),Bash(python3:*),Bash(bash:*),Bash(jq:*),Bash(ls:*),Bash(cat:*),Bash(head:*),Bash(tail:*),Bash(wc:*),Bash(sort:*),Bash(diff:*),Bash(mkdir:*),Bash(rm:*),Bash(mv:*),Bash(cp:*)"
+      - name: Record what the run spent, for the field metrics
+        if: always() && steps.claude.outcome != 'skipped'
+        continue-on-error: true
+        env:
+          EXECUTION_FILE: ${{ steps.claude.outputs.execution_file }}
+          SDLC_METRICS: ${{ vars.SDLC_METRICS }}
+        run: >-
+          python3 "$RUNNER_TEMP/usage.py" actions --root "$GITHUB_WORKSPACE"
+          --execution-file "${EXECUTION_FILE:-$RUNNER_TEMP/claude-execution-output.json}"
+          --out "$RUNNER_TEMP/symphony-usage/record.json" --workflow research --job research
+      - name: Keep the record where the metrics workflow reads it
+        if: always() && steps.claude.outcome != 'skipped'
+        continue-on-error: true
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: symphony-usage-${{ github.run_id }}-${{ github.run_attempt }}-research
+          path: ${{ runner.temp }}/symphony-usage/record.json
+          if-no-files-found: ignore
