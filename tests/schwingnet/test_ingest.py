@@ -463,3 +463,123 @@ def test_the_case134_sweep_bank_is_read_at_its_spin_angles(
         (-51.5, -51.5, 75.0),
         (122.0, 122.0, 75.0),
     ]
+
+
+def paeth(left: int, up: int, up_left: int) -> int:
+    estimate = left + up - up_left
+    near = (abs(estimate - left), abs(estimate - up), abs(estimate - up_left))
+    if near[0] <= near[1] and near[0] <= near[2]:
+        return left
+    return up if near[1] <= near[2] else up_left
+
+
+def grey_png(rows: list[list[int]], colour: int = 0) -> bytes:
+    """An 8-bit greyscale PNG whose rows use each of the five filters in turn, so the ingest's
+    own decoder is held to all of them; colour type 2 writes the same bytes under an RGB header."""
+    raw = bytearray()
+    previous = [0] * len(rows[0])
+    for y, row in enumerate(rows):
+        kind = y % 5
+        raw.append(kind)
+        for x, value in enumerate(row):
+            left, up, up_left = (row[x - 1] if x else 0), previous[x], (previous[x - 1] if x else 0)
+            guess = (0, left, up, (left + up) >> 1, paeth(left, up, up_left))[kind]
+            raw.append((value - guess) & 255)
+        previous = row
+
+    def chunk(kind: bytes, data: bytes) -> bytes:
+        body = kind + data
+        return (
+            struct.pack(">I", len(data)) + body + struct.pack(">I", zlib.crc32(body) & 0xFFFFFFFF)
+        )
+
+    header = struct.pack(">IIBBBBB", len(rows[0]), len(rows), 8, colour, 0, 0, 0)
+    return (
+        b"\x89PNG\r\n\x1a\n"
+        + chunk(b"IHDR", header)
+        + chunk(b"IDAT", zlib.compress(bytes(raw)))
+        + chunk(b"IEND", b"")
+    )
+
+
+def map_rows(width: int, height: int, code: int) -> list[list[int]]:
+    rows = [[0] * width for _ in range(height)]
+    for y in range(2, height - 2):
+        for x in range(4, 30):
+            rows[y][x] = code
+    return rows
+
+
+def with_map(bank: Path, stem: str, data: bytes, projector: str = "registered") -> None:
+    (bank / "maps").mkdir(exist_ok=True)
+    (bank / "maps" / f"{stem}.png").write_bytes(data)
+    meta_path = bank / "meta" / f"{stem}.json"
+    meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    meta.update({"level_map": f"maps/{stem}.png", "level_map_from": projector})
+    meta_path.write_text(json.dumps(meta), encoding="utf-8")
+
+
+def test_a_frames_level_map_rides_in_the_shard_and_a_wrong_one_is_refused(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    ingest = load("ingest")
+    bank, root = tmp_path / "bank", tmp_path / "grid" / "carmlspine"
+    frame(bank, "train", "case7_f1", "case7", 1, [box("L4")])
+    frame(bank, "train", "case7_f2", "case7", 2, [box("L5")])
+    good = grey_png(map_rows(40, 20, 23))
+    decoded = [list(row) for row in ingest.png_grey_rows(good)]
+    assert decoded == map_rows(40, 20, 23), "every filter decodes"
+    with_map(bank, "case7_f1", good)
+    assert ingest.main(argv(bank, root, "train", "train")) == 0
+    report = json.loads(capsys.readouterr().out)
+    assert report["level_maps"] == 1 and report["verified"] == 2 and report["frames_kept"] == 2
+    folder = Path(report["folder"])
+    written = json.loads((folder / "MANIFEST.json").read_text(encoding="utf-8"))
+    manifest = ShardManifest.model_validate(written)
+    assert manifest.schema_version == 2 and sum("level_map" in i for i in written["items"]) == 1
+    (carried,) = [i for i in manifest.items if i.level_map]
+    assert carried.level_map is not None
+    assert (carried.level_map.projector, carried.level_map.labeller) == ("registered", "projected")
+    copied = folder / carried.level_map.path
+    assert copied.stat().st_mode & 0o777 == 0o444
+    assert hashlib.sha256(copied.read_bytes()).hexdigest() == carried.level_map.sha256
+    assert carried.level_map.sha256 == hashlib.sha256(good).hexdigest()
+    assert carried.level_map.path == frame_path(carried.level_map.sha256, "png")
+    assert ingest.main(argv(bank, root, "train", "train")) == 0
+    assert json.loads(capsys.readouterr().out)["outcome"] == "already there"
+    # A bank without maps writes the manifest the tool wrote before maps existed.
+    plain = tmp_path / "plain"
+    frame(plain, "train", "case8_f1", "case8", 3, [box("L4")])
+    assert ingest.main(argv(plain, tmp_path / "grid2" / "carmlspine", "train", "train")) == 0
+    first = json.loads(
+        Path(json.loads(capsys.readouterr().out)["folder"], "MANIFEST.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert first["schema_version"] == 1 and all("level_map" not in i for i in first["items"])
+    # What is refused, each by name, before anything is written.
+    wrong = [
+        (grey_png(map_rows(40, 21, 23)), "registered", "the level map is 40x21, the frame 40x20"),
+        (grey_png(map_rows(40, 20, 28)), "render", "holds the value 28; a level's code is 1 to 27"),
+        (
+            grey_png(map_rows(40, 20, 23), colour=2),
+            "render",
+            "8-bit greyscale PNG without interlace",
+        ),
+        (b"not a png", "render", "not a PNG"),
+        (good, "guessed", "not one of render, registered"),
+    ]
+    for data, projector, words in wrong:
+        with_map(bank, "case7_f1", data, projector)
+        assert ingest.main(argv(bank, tmp_path / "grid3" / "carmlspine", "train", "train")) == 1
+        assert words in capsys.readouterr().err
+    meta_path = bank / "meta" / "case7_f1.json"
+    meta = dict(json.loads(meta_path.read_text(encoding="utf-8")), level_map_from="render")
+    for named in ("../maps/case7_f1.png", "/maps/case7_f1.png", "", 3):
+        meta_path.write_text(json.dumps(dict(meta, level_map=named)), encoding="utf-8")
+        assert ingest.main(argv(bank, tmp_path / "grid3" / "carmlspine", "train", "train")) == 1
+        assert "not a path inside the bank" in capsys.readouterr().err
+    meta_path.write_text(json.dumps(dict(meta, level_map="maps/elsewhere.png")), encoding="utf-8")
+    assert ingest.main(argv(bank, tmp_path / "grid3" / "carmlspine", "train", "train")) == 1
+    assert "the level map elsewhere.png" in capsys.readouterr().err
+    assert not (tmp_path / "grid3").exists()

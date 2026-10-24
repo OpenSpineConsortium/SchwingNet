@@ -19,6 +19,16 @@ showed, so a case spelt otherwise than the frozen list spells it is seen before 
 box with no trusted level (null in the bank) is kept as a frame fact and dropped as a label, as the
 spec says, so a detector can still train on it while no level score counts it.
 
+A frame may bring a projected level map (#228), the 3D prior the trainer's prior block learns
+from: the meta names it as `level_map`, a path inside the bank, with `level_map_from` saying
+whether the render's own geometry (`render`) or a pose registered to a real frame (`registered`)
+projected it. The map is an 8-bit greyscale PNG of the frame's own size, 0 where no vertebra is
+and 1 to 27 for the catalog's levels in order (schwingnet.catalog.LEVELS), decoded here with the
+standard library and refused by name where it is anything else; it rides in the shard at its own
+content address beside the frame, and the manifest's item carries its path, digest and projector.
+A frame without one is as before, and a manifest whose items carry none is byte for byte the
+manifest this tool wrote before maps existed, so a bank already ingested reads as unchanged.
+
     pixi run --locked python tools/ingest.py plan --bank <dir> --source carmlspine --kind train
     pixi run --locked python tools/ingest.py run --bank <dir> --source carmlspine --kind train \\
         --split test --date 2026-10-21 --code-commit <sha> [--supersedes <shard name>] [--grid-root <dir>]
@@ -48,6 +58,7 @@ import shutil
 import struct
 import sys
 import tempfile
+import zlib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -59,6 +70,7 @@ import catalog as catalog_tool  # noqa: E402  (tools/catalog.py, the reading and
 from beethoven_qa.contracts import ViolationError  # noqa: E402
 from schwingnet.catalog import (  # noqa: E402
     LEVELS,
+    MANIFEST_SCHEMA,
     DeviceClass,
     Item,
     Modality,
@@ -75,6 +87,9 @@ MANIFEST = "MANIFEST.json"
 REPORT = "INGEST.json"
 # What a bank's meta calls a level, mapped onto the catalog's 27 classes where the spelling differs.
 LEVEL_NAMES = {"S1": "sacrum", "Sacrum": "sacrum", "SACRUM": "sacrum"}
+# The meta's keys for a frame's projected level map and what projected it (the module docstring).
+MAP_KEY, MAP_FROM_KEY = "level_map", "level_map_from"
+PROJECTORS = ("render", "registered")
 
 
 class IngestError(Exception):
@@ -89,6 +104,114 @@ def png_size(data):
     if width == 0 or height == 0:
         raise IngestError("a PNG of zero size")
     return width, height
+
+
+def png_chunks(data):
+    """Each chunk's type and bytes, in order; the signature and sizes were checked by png_size."""
+    at = 8
+    while at + 8 <= len(data):
+        length = struct.unpack(">I", data[at : at + 4])[0]
+        kind = data[at + 4 : at + 8]
+        yield kind, data[at + 8 : at + 8 + length]
+        at += 12 + length
+
+
+def paeth(left, up, up_left):
+    """The PNG Paeth predictor: whichever neighbour is nearest the gradient's estimate."""
+    estimate = left + up - up_left
+    near_left, near_up, near_up_left = abs(estimate - left), abs(estimate - up), abs(estimate - up_left)
+    if near_left <= near_up and near_left <= near_up_left:
+        return left
+    return up if near_up <= near_up_left else up_left
+
+
+def unfiltered(raw, width, height):
+    """The rows of one-byte pixels under the five PNG filters, each row undone against the last."""
+    stride = width + 1
+    if len(raw) != stride * height:
+        raise IngestError("the PNG's pixel data is not one byte per pixel over its size")
+    rows, previous = [], bytes(width)
+    for y in range(height):
+        kind, line = raw[y * stride], bytearray(raw[y * stride + 1 : (y + 1) * stride])
+        if kind == 1:
+            for x in range(1, width):
+                line[x] = (line[x] + line[x - 1]) & 255
+        elif kind == 2:
+            line = bytearray((a + b) & 255 for a, b in zip(line, previous, strict=True))
+        elif kind == 3:
+            for x in range(width):
+                line[x] = (line[x] + (((line[x - 1] if x else 0) + previous[x]) >> 1)) & 255
+        elif kind == 4:
+            for x in range(width):
+                left, up_left = (line[x - 1], previous[x - 1]) if x else (0, 0)
+                line[x] = (line[x] + paeth(left, previous[x], up_left)) & 255
+        elif kind != 0:
+            raise IngestError(f"a PNG filter type {kind} does not exist")
+        previous = bytes(line)
+        rows.append(previous)
+    return rows
+
+
+def png_grey_rows(data):
+    """The pixel rows of an 8-bit greyscale PNG without interlace, which is what a level map is,
+    decoded with the standard library, since this tool runs where no image library is; any other
+    PNG is refused by name rather than guessed at."""
+    width, height = png_size(data)
+    depth, colour, interlace = data[24], data[25], data[28]
+    if (depth, colour, interlace) != (8, 0, 0):
+        raise IngestError(
+            f"a level map is an 8-bit greyscale PNG without interlace, not bit depth {depth},"
+            f" colour type {colour}, interlace {interlace}"
+        )
+    try:
+        raw = zlib.decompress(b"".join(body for kind, body in png_chunks(data) if kind == b"IDAT"))
+    except zlib.error as error:
+        raise IngestError(f"the PNG's pixel data does not decompress: {error}") from error
+    return unfiltered(raw, width, height)
+
+
+def check_map(data, width, height):
+    """A level map's bytes are the frame's own size with every value 0 or a level's code."""
+    rows = png_grey_rows(data)
+    if (len(rows[0]), len(rows)) != (width, height):
+        raise IngestError(
+            f"the level map is {len(rows[0])}x{len(rows)}, the frame {width}x{height}"
+        )
+    highest = max(max(row) for row in rows)
+    if highest > len(LEVELS):
+        raise IngestError(f"the level map holds the value {highest}; a level's code is 1 to {len(LEVELS)}")
+
+
+def map_file(meta, bank):
+    """The level map's path inside the bank and what projected it, where the meta names one."""
+    named = meta.get(MAP_KEY)
+    if named is None:
+        return None, None
+    parts = Path(named).parts if isinstance(named, str) and named else ()
+    if not parts or Path(named).is_absolute() or ".." in parts:
+        raise IngestError(f"meta's {MAP_KEY} is not a path inside the bank")
+    projector = meta.get(MAP_FROM_KEY)
+    if projector not in PROJECTORS:
+        raise IngestError(f"meta's {MAP_FROM_KEY} is {projector!r}, not one of {', '.join(PROJECTORS)}")
+    return bank / named, projector
+
+
+def level_map_of(meta, bank, width, height, labeller):
+    """The frame's projected level map as the manifest's row, checked against the frame, and the
+    file it comes from; a pair of None where the meta names none."""
+    path, projector = map_file(meta, bank)
+    if path is None:
+        return None, None
+    try:
+        data = path.read_bytes()
+    except OSError as error:
+        raise IngestError(f"the level map {path.name}: {error}") from error
+    try:
+        check_map(data, width, height)
+    except IngestError as error:
+        raise IngestError(f"the level map {path.name}: {error}") from error
+    sha = hashlib.sha256(data).hexdigest()
+    return {"path": frame_path(sha, "png"), "sha256": sha, "projector": projector, "labeller": labeller}, path
 
 
 def unit_box(box, width, height):
@@ -185,7 +308,7 @@ def exposure_of(meta):
     return {"kvp": kvp, "mas": device.get("mas"), "px_mm": meta.get("px_mm")}
 
 
-def item_of(meta, sha, extension, width, height, settings):
+def item_of(meta, sha, extension, width, height, settings, level_map=None):
     """One manifest row from one frame's meta; the person is the bank's case under the key rule."""
     case = meta.get("case")
     if not case:
@@ -193,6 +316,7 @@ def item_of(meta, sha, extension, width, height, settings):
     lat_from_ap_deg, gantry_deg = view_of(meta)
     labels, dropped = labels_of(meta, width, height, settings.labeller)
     row = {
+        "level_map": level_map,
         "path": frame_path(sha, extension),
         "sha256": sha,
         "person": f"{settings.person_prefix}:{case}",
@@ -223,14 +347,17 @@ def frames_of(bank, split):
         yield image.stem, image, meta
 
 
-def read_frame(image, meta_path, settings):
+def read_frame(image, meta_path, settings, bank):
+    """The frame's item, how many boxes it dropped, and the level map's file where it has one."""
     data = image.read_bytes()
     sha = hashlib.sha256(data).hexdigest()
     width, height = png_size(data)
     meta = json.loads(meta_path.read_text(encoding="utf-8"))
     if not isinstance(meta, dict):
         raise IngestError(f"{meta_path.name} is not a JSON object")
-    return item_of(meta, sha, image.suffix.lstrip(".").lower(), width, height, settings)
+    level_map, map_path = level_map_of(meta, bank, width, height, settings.labeller)
+    item, dropped = item_of(meta, sha, image.suffix.lstrip(".").lower(), width, height, settings, level_map)
+    return item, dropped, map_path
 
 
 def plan_shard(bank, settings, inputs):
@@ -238,7 +365,7 @@ def plan_shard(bank, settings, inputs):
     kept, sources, duplicates, dropped, persons = {}, {}, [], 0, set()
     first_seen, left_out = {}, set()
     for stem, image, meta_path in frames_of(bank, settings.split):
-        item, dropped_here = checked_frame(image, meta_path, settings)
+        item, dropped_here, map_path = checked_frame(image, meta_path, settings, bank)
         # The same bytes under two persons are refused across the whole bank, before --persons
         # leaves any frame out, so splitting a bank in two never hides one.
         first_item, first_image = first_seen.setdefault(item.sha256, (item, image))
@@ -252,6 +379,8 @@ def plan_shard(bank, settings, inputs):
             duplicates.append({"stem": stem, "same_bytes_as": sources[item.sha256].name, "sha256": item.sha256})
             continue
         kept[item.sha256], sources[item.sha256] = item, image
+        if item.level_map:
+            sources[item.level_map.sha256] = map_path
     # Every person the bank named is checked, the duplicates' too, never only the kept items'.
     refuse_test_persons(frozenset(persons), settings, inputs)
     if not kept:
@@ -260,9 +389,9 @@ def plan_shard(bank, settings, inputs):
     return items, sources, shard_report(items, duplicates, dropped, persons | left_out, left_out, settings, inputs)
 
 
-def checked_frame(image, meta_path, settings):
+def checked_frame(image, meta_path, settings, bank):
     try:
-        return read_frame(image, meta_path, settings)
+        return read_frame(image, meta_path, settings, bank)
     except (IngestError, ValueError, KeyError) as error:
         raise IngestError(f"{image}: {error}") from error
 
@@ -279,7 +408,8 @@ def shard_report(items, duplicates, dropped, seen, left_out, settings, inputs):
             "persons": len({i.person for i in items}),
             "persons_filter": settings.persons, "persons_left_out": len(left_out),
             "frozen_persons_not_seen": frozen_not_seen(frozenset(seen), settings, inputs),
-            "labels": sum(len(i.labels) for i in items)}
+            "labels": sum(len(i.labels) for i in items),
+            "level_maps": sum(1 for i in items if i.level_map)}
 
 
 def refuse_two_persons(item, first, first_image, image):
@@ -328,10 +458,36 @@ def manifest_of(items, settings):
         # it keeps what the head supersedes; a changed bank supersedes the head.
         head, head_supersedes = latest_shard(settings.grid_root)
         settings.supersedes = head_supersedes if head == name else head
-    data = {"schema_version": 1, "name": name, "source": settings.source, "kind": settings.kind.value,
+    rows = [item_record(i) for i in items]
+    schema = MANIFEST_SCHEMA if any(i.level_map for i in items) else 1
+    data = {"schema_version": schema, "name": name, "source": settings.source, "kind": settings.kind.value,
             "ingest_date": settings.date, "code_commit": settings.code_commit,
-            "supersedes": settings.supersedes, "items": [json.loads(i.model_dump_json()) for i in items]}
+            "supersedes": settings.supersedes, "items": rows}
     return ShardManifest.model_validate(data), data
+
+
+def item_record(item):
+    """The item as the manifest writes it: a frame without a level map carries no key for one, so
+    a shard ingested before maps existed (#228) is written byte for byte as it was, and a bank
+    ingested again is "already there" and not a manifest that differs."""
+    record = json.loads(item.model_dump_json())
+    if record.get("level_map") is None:
+        record.pop("level_map", None)
+    return record
+
+
+def shard_files(items, sources):
+    """Every file the shard holds with where it comes from, each path once: the frames and, where
+    an item carries one, its level map; two frames may share one map's bytes, which is one file."""
+    seen = set()
+    for item in items:
+        pairs = [(item.path, sources[item.sha256])]
+        if item.level_map:
+            pairs.append((item.level_map.path, sources[item.level_map.sha256]))
+        for path, source in pairs:
+            if path not in seen:
+                seen.add(path)
+                yield path, source
 
 
 def write_shard(folder, items, sources, data, report):
@@ -346,10 +502,10 @@ def write_shard(folder, items, sources, data, report):
     staging = Path(tempfile.mkdtemp(dir=final.parent, prefix=f".ingest-{final.name}-"))
     try:
         os.chmod(staging, 0o755)  # mkdtemp makes it private; a shard is read by the whole lab
-        for item in items:
-            target = staging / item.path
+        for path, source in shard_files(items, sources):
+            target = staging / path
             target.parent.mkdir(exist_ok=True)
-            shutil.copyfile(sources[item.sha256], target)
+            shutil.copyfile(source, target)
             os.chmod(target, 0o444)
         (staging / MANIFEST).write_text(json.dumps(data, indent=1, sort_keys=True) + "\n", encoding="utf-8")
         (staging / REPORT).write_text(json.dumps(report, indent=1, sort_keys=True) + "\n", encoding="utf-8")
@@ -384,11 +540,16 @@ def finish_existing(final, data):
 
 
 def verify_shard(folder, manifest):
-    """Every frame of the manifest is in place with the bytes its name promises."""
+    """Every frame of the manifest, and every level map, is in place with the bytes its name
+    promises; the count returned is the frames'."""
     for item in manifest.items:
-        path = Path(folder) / item.path
-        if hashlib.sha256(path.read_bytes()).hexdigest() != item.sha256:
-            raise IngestError(f"{path}: the bytes do not match the name")
+        named = [(item.path, item.sha256)]
+        if item.level_map:
+            named.append((item.level_map.path, item.level_map.sha256))
+        for relative, sha in named:
+            path = Path(folder) / relative
+            if hashlib.sha256(path.read_bytes()).hexdigest() != sha:
+                raise IngestError(f"{path}: the bytes do not match the name")
     return len(manifest.items)
 
 

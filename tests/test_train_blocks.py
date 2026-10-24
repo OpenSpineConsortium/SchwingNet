@@ -10,6 +10,7 @@ required check's plain python3."""
 import contextlib
 import hashlib
 import importlib.util
+import io
 import json
 import os
 import shutil
@@ -62,6 +63,7 @@ class BlocksTest(unittest.TestCase):
         self.assertEqual(set(self.blocks.SAMPLERS), set(blocks.SAMPLER))
         self.assertEqual(set(self.blocks.ARCHITECTURES), set(blocks.ARCHITECTURE))
         self.assertEqual(set(self.blocks.HEADS), set(blocks.ARCHITECTURE))
+        self.assertEqual(set(self.blocks.FEATURES), set(blocks.ARCHITECTURE))
         self.assertEqual(set(self.blocks.DENOISERS), set(blocks.DENOISE))
 
     def test_every_architecture_builds_a_27_way_head_that_the_imagenet_file_leaves_alone(self):
@@ -151,6 +153,58 @@ class BlocksTest(unittest.TestCase):
                 self.assertLessEqual(float(first.max()), 1.0 + 1e-6)
         moved = self.blocks.augment(self.batch(), ("box-jitter",), torch.Generator().manual_seed(4))
         self.assertFalse(torch.equal(moved, self.batch()))
+
+    def test_the_prior_head_reads_every_architectures_feature_map_and_leaves_the_model_alone(self):
+        import torch
+        from schwingnet import blocks
+
+        maps = torch.full((6, 32, 32), self.blocks.IGNORED, dtype=torch.long)
+        maps[1:, 8:20, 8:20] = 5
+        for name in blocks.ARCHITECTURE:
+            with self.subTest(architecture=name):
+                model = self.train.build_model(None, "cpu", architecture=name)
+                keys = list(model.state_dict())
+                head = self.blocks.PriorHead(model, name, 32, 28)
+                self.assertTrue(model.training, "the dry forward leaves the model as it found it")
+                model(self.batch())
+                self.assertEqual(tuple(head.logits().shape), (6, 28, 32, 32))
+                nothing = head.loss(torch.full_like(maps, self.blocks.IGNORED))
+                self.assertEqual(float(nothing), 0.0)
+                self.assertIsNone(head.mean_and_reset())
+                loss = head.loss(maps)
+                self.assertTrue(bool(torch.isfinite(loss)) and float(loss) > 0.0)
+                loss.backward()
+                self.assertIsNotNone(head.conv.weight.grad)
+                self.assertAlmostEqual(head.mean_and_reset(), float(loss))
+                self.assertEqual(list(model.state_dict()), keys, "the head is not in the model")
+                chosen = blocks.parse([f"architecture={name}", "backbone_lr_scale=0.5"])
+                groups = self.blocks.OPTIMISERS["adam"](model, 1e-3, chosen, head.parameters()).param_groups
+                self.assertEqual(len(groups), 2)
+                self.assertTrue(any(p is head.conv.weight for p in groups[1]["params"]))
+                self.assertFalse(any(p is head.conv.weight for p in groups[0]["params"]))
+
+    def test_the_jitter_moves_a_map_with_its_crop_and_draws_as_without_one(self):
+        import torch
+
+        maps = torch.zeros(6, 32, 32, dtype=torch.long)
+        maps[1:, 8:20, 10:22] = 5
+        maps[0] = self.blocks.IGNORED
+        batch = (maps == 5).float().unsqueeze(1).repeat(1, 3, 1, 1)
+        names = ("box-jitter", "intensity")
+        moved, moved_maps = self.blocks.augment_with_maps(batch, maps, names, torch.Generator().manual_seed(4))
+        alone = self.blocks.augment(batch, names, torch.Generator().manual_seed(4))
+        self.assertTrue(torch.equal(moved, alone), "the crops come out as without maps")
+        self.assertEqual(moved_maps.dtype, torch.long)
+        self.assertTrue(torch.equal(moved_maps[0], torch.full((32, 32), self.blocks.IGNORED)))
+        self.assertEqual(set(moved_maps[1:].unique().tolist()), {0, 5})
+        self.assertFalse(torch.equal(moved_maps[1:], maps[1:]))
+        # The image is its own map's body, so where the moved map says body the moved crop is the
+        # bright level and not elsewhere, up to the edge pixels the two samplings round apart.
+        body = moved_maps[1:] == 5
+        bright = moved[1:, 0] > moved[1:, 0].mean(dim=(1, 2), keepdim=True)
+        self.assertGreater(float((body == bright).float().mean()), 0.9)
+        same, same_maps = self.blocks.augment_with_maps(batch, maps, ("intensity",), torch.Generator().manual_seed(4))
+        self.assertTrue(torch.equal(same_maps, maps), "a change of intensity alone leaves the maps")
 
     def test_imagenet_scaling_keeps_the_weights_names(self):
         import torch
@@ -242,7 +296,7 @@ class RunWithEveryBlockTest(unittest.TestCase):
         (cls.run_dir / "RUN.json").write_text(json.dumps(record), encoding="utf-8")
         words = ["normalise=imagenet", "augment=box-jitter,intensity,blur,noise", "optimiser=adamw", "weight_decay=0.01",
                  "schedule=cosine", "warmup_epochs=1", "backbone_lr_scale=0.5", "sampler=balanced",
-                 "loss_weights=inverse-frequency", "select=balanced-accuracy"]
+                 "loss_weights=inverse-frequency", "select=balanced-accuracy", "prior=level-map", "prior_weight=0.5"]
         args = ["--catalog", str(cls.catalog), "--out", str(cls.run_dir), "--epochs", "3", "--seed", "1", "--size", "32",
                 "--device", "cpu", "--witness", "2", "--keep-epochs", "0"]
         for word in words:
@@ -251,8 +305,9 @@ class RunWithEveryBlockTest(unittest.TestCase):
             cls.rc = load("train").main(args)
 
     @classmethod
-    def make_catalog(cls, tmp):
-        python(ROOT / "tools" / "synthetic_bank.py", tmp / "bank-train", "--frames", "60", "--cases", "8", "--seed", "3")
+    def make_catalog(cls, tmp, map_share=None):
+        share = [] if map_share is None else ["--map-share", str(map_share)]
+        python(ROOT / "tools" / "synthetic_bank.py", tmp / "bank-train", "--frames", "60", "--cases", "8", "--seed", "3", *share)
         seen = set()
         for image in sorted((tmp / "bank-train" / "images").rglob("*.png")):
             digest = hashlib.sha256(image.read_bytes()).hexdigest()
@@ -281,6 +336,27 @@ class RunWithEveryBlockTest(unittest.TestCase):
         self.assertLess(rates[3], rates[2])
         self.assertTrue(all("validation_balanced_accuracy" in line for line in lines))
         self.assertIn("- Blocks: normalise imagenet", (self.run_dir / "train" / "MODEL.md").read_text(encoding="utf-8"))
+
+    def test_the_prior_block_learns_the_map_and_stays_out_of_the_checkpoint(self):
+        import torch
+
+        self.assertEqual(self.rc, 0)
+        facts = json.loads((self.run_dir / "train" / "checkpoint.json").read_text(encoding="utf-8"))
+        self.assertEqual((facts["blocks"]["prior"], facts["blocks"]["prior_weight"]), ("level-map", 0.5))
+        self.assertGreater(facts["counts"]["train_with_map"], 0)
+        self.assertLess(facts["counts"]["train_with_map"], facts["counts"]["train"], "crops without a map train beside them")
+        lines = [json.loads(line) for line in (self.run_dir / "train" / "metrics.jsonl").read_text(encoding="utf-8").splitlines()]
+        self.assertIsNone(lines[0]["train_prior_loss"])
+        self.assertTrue(all(line["train_prior_loss"] > 0 for line in lines[1:]))
+        self.assertTrue(all(0.0 <= line["validation_map_pixel_accuracy"] <= 1.0 for line in lines))
+        head = self.run_dir / "train" / "prior_head.pt"
+        self.assertEqual(hashlib.sha256(head.read_bytes()).hexdigest(), facts["prior_head_sha256"])
+        self.assertEqual(set(torch.load(head, weights_only=True)), {"conv.weight", "conv.bias"})
+        best = torch.load(self.run_dir / "train" / "best.pt", weights_only=True)
+        self.assertFalse(any(k.startswith("conv.") for k in best))
+        card = (self.run_dir / "train" / "MODEL.md").read_text(encoding="utf-8")
+        self.assertIn("- Prior: level-map head on layer4 (28 classes at every pixel of the crop, weight 0.5)", card)
+        self.assertIn("prior level-map; prior_weight 0.5", card)
 
     def test_the_latency_tool_loads_the_scaled_model_and_onnx_keeps_the_scaling(self):
         latency = load("latency")
@@ -401,6 +477,24 @@ class RunWithSamplesArchitectureAndDenoiseTest(unittest.TestCase):
         (out / "RUN.json").write_text((self.run_dir / "RUN.json").read_text(encoding="utf-8"), encoding="utf-8")
         args = ["--catalog", str(self.catalog), "--out", str(out), "--epochs", "1", "--seed", "1", "--block", "samples=only-sources", "--block", "sources=nowhere"]
         self.assertEqual(load("train").main(args), 1)
+
+    def test_a_prior_on_a_catalog_whose_train_part_has_no_map_is_refused_in_words(self):
+        tmp = Path(tempfile.mkdtemp())
+        catalog = RunWithEveryBlockTest.make_catalog(tmp, map_share=0)
+        run_dir = tmp / "run"
+        run_dir.mkdir()
+        record = {"run_id": "nomaps000000", "code_commit": "0" * 40, "catalog_sha256": "0" * 64, "catalog_version": 1, "clean_tree": True}
+        (run_dir / "RUN.json").write_text(json.dumps(record), encoding="utf-8")
+        args = ["--catalog", str(catalog), "--out", str(run_dir), "--epochs", "1", "--seed", "1", "--size", "32", "--device", "cpu"]
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err), mock.patch.dict(os.environ, {"SCHWINGNET_WANDB": "off"}):
+            self.assertEqual(load("train").main(args + ["--block", "prior=level-map", "--block", "prior_weight=1"]), 1)
+            self.assertEqual(load("train").main(args + ["--block", "prior=level-map"]), 1)
+        self.assertIn("no training crop comes from a frame with a level map", err.getvalue())
+        self.assertIn("prior_weight above 0 goes with prior=level-map", err.getvalue())
+        self.assertFalse((run_dir / "train" / "best.pt").exists())
+        crops = load("train").read_crops(catalog, ("train", "validation"))
+        self.assertTrue(crops and all(crop["map"] is None for crop in crops))
 
     def test_a_warm_start_from_another_architecture_is_refused(self):
         train = load("train")

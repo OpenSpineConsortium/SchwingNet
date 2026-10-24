@@ -32,19 +32,40 @@ def test_no_words_are_version_1s_training():
 
 
 def test_words_choose_each_part_and_round_trip_through_the_record():
-    blocks = parse(["normalise=imagenet", "augment=box-jitter,noise", "optimiser=adamw", "weight-decay=0.05",
-                    "schedule=cosine", "warmup_epochs=2", "backbone_lr_scale=0.1", "sampler=balanced",
-                    "loss_weights=inverse-frequency", "select=balanced-accuracy"])
+    blocks = parse(
+        [
+            "normalise=imagenet",
+            "augment=box-jitter,noise",
+            "optimiser=adamw",
+            "weight-decay=0.05",
+            "schedule=cosine",
+            "warmup_epochs=2",
+            "backbone_lr_scale=0.1",
+            "sampler=balanced",
+            "loss_weights=inverse-frequency",
+            "select=balanced-accuracy",
+        ]
+    )
     assert blocks.augment == ("box-jitter", "noise")
     assert blocks.weight_decay == 0.05 and blocks.warmup_epochs == 2
     assert from_record(as_record(blocks)) == blocks
-    more = parse(["samples=drop-sources", "sources=vindr,lumos", "architecture=mobilenet-v3-small",
-                  "denoise=median"])
+    more = parse(
+        [
+            "samples=drop-sources",
+            "sources=vindr,lumos",
+            "architecture=mobilenet-v3-small",
+            "denoise=median",
+        ]
+    )
     assert more.sources == ("vindr", "lumos") and more.per_person == 0
     assert as_record(more)["sources"] == ["vindr", "lumos"]
     assert from_record(as_record(more)) == more
-    assert words_of(more) == ["samples=drop-sources", "sources=vindr,lumos",
-                              "architecture=mobilenet-v3-small", "denoise=median"]
+    assert words_of(more) == [
+        "samples=drop-sources",
+        "sources=vindr,lumos",
+        "architecture=mobilenet-v3-small",
+        "denoise=median",
+    ]
     capped = parse(["samples=cap-per-person", "per-person=3"])
     assert capped.per_person == 3 and from_record(as_record(capped)) == capped
     pasted = parse(["samples=only-sources", "sources=carmlspine, vindr"])
@@ -80,6 +101,13 @@ def test_words_choose_each_part_and_round_trip_through_the_record():
         ["samples=cap-per-person", "per_person=1234567"],
         ["architecture=resnet19"],
         ["denoise=wavelet"],
+        ["prior=anchors"],
+        ["prior=level-map"],
+        ["prior_weight=0.5"],
+        ["prior=level-map", "prior_weight=0"],
+        ["prior=level-map", "prior_weight=-1"],
+        ["prior=level-map", "prior_weight=inf"],
+        ["prior=none", "prior_weight=1"],
     ],
 )
 def test_a_fault_is_refused_whole(words):
@@ -87,18 +115,47 @@ def test_a_fault_is_refused_whole(words):
         parse(words)
 
 
+def test_the_prior_goes_with_its_weight_and_is_off_by_default():
+    assert (DEFAULT.prior, DEFAULT.prior_weight) == ("none", 0.0)
+    chosen = parse(["prior=level-map", "prior_weight=0.5"])
+    assert (chosen.prior, chosen.prior_weight) == ("level-map", 0.5)
+    assert as_record(chosen)["prior_weight"] == 0.5
+    assert from_record(as_record(chosen)) == chosen
+    assert "prior" in CHOICES and "prior_weight" in SETTINGS
+
+
 def test_kept_keeps_everything_by_default_and_cuts_by_source_or_by_person():
     sources = ["a", "b", "a", "b", "a"]
     persons = ["p1", "p1", "p2", "p1", "p2"]
     assert kept(DEFAULT, sources, persons) == [True] * 5
     assert kept(parse(["samples=only-sources", "sources=a"]), sources, persons) == [
-        True, False, True, False, True]
+        True,
+        False,
+        True,
+        False,
+        True,
+    ]
     assert kept(parse(["samples=drop-sources", "sources=a"]), sources, persons) == [
-        False, True, False, True, False]
+        False,
+        True,
+        False,
+        True,
+        False,
+    ]
     assert kept(parse(["samples=cap-per-person", "per_person=1"]), sources, persons) == [
-        True, False, True, False, False]
+        True,
+        False,
+        True,
+        False,
+        False,
+    ]
     assert kept(parse(["samples=cap-per-person", "per_person=2"]), sources, persons) == [
-        True, True, True, False, True]
+        True,
+        True,
+        True,
+        False,
+        True,
+    ]
     assert kept(DEFAULT, [], []) == []
 
 
@@ -146,12 +203,23 @@ def test_balanced_accuracy_weighs_each_level_alike():
 
 
 def test_a_sweep_plans_every_combination_in_a_fixed_order():
-    runs = sweep(["normalise=imagenet"], {"sampler": ["uniform", "balanced"], "augment": ["none", "box-jitter,noise"]})
+    runs = sweep(
+        ["normalise=imagenet"],
+        {"sampler": ["uniform", "balanced"], "augment": ["none", "box-jitter,noise"]},
+    )
     assert len(runs) == 4
     assert all(r.normalise == "imagenet" for r in runs)
-    assert [(r.augment, r.sampler) for r in runs] == [((), "uniform"), ((), "balanced"),
-                                                     (("box-jitter", "noise"), "uniform"), (("box-jitter", "noise"), "balanced")]
-    assert words_of(runs[3]) == ["normalise=imagenet", "augment=box-jitter,noise", "sampler=balanced"]
+    assert [(r.augment, r.sampler) for r in runs] == [
+        ((), "uniform"),
+        ((), "balanced"),
+        (("box-jitter", "noise"), "uniform"),
+        (("box-jitter", "noise"), "balanced"),
+    ]
+    assert words_of(runs[3]) == [
+        "normalise=imagenet",
+        "augment=box-jitter,noise",
+        "sampler=balanced",
+    ]
     assert words_of(DEFAULT) == []
 
 
@@ -161,7 +229,13 @@ def test_a_sweep_plans_every_combination_in_a_fixed_order():
         ([], {"optimiser": ["adam"], "weight_decay": ["0.1"]}),
         (["sampler=balanced"], {"sampler": ["uniform"]}),
         ([], {"select": []}),
-        ([], {"warmup_epochs": [str(n) for n in range(9)], "weight_decay": [str(n) for n in range(9)]}),
+        (
+            [],
+            {
+                "warmup_epochs": [str(n) for n in range(9)],
+                "weight_decay": [str(n) for n in range(9)],
+            },
+        ),
     ],
 )
 def test_a_sweep_that_cannot_run_whole_is_refused(base, vary):

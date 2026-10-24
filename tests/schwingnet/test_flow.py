@@ -11,6 +11,7 @@ from types import ModuleType
 import pytest
 from pydantic import ValidationError
 
+from schwingnet.catalog import LEVELS
 from schwingnet.flow import (
     JobClass,
     JobRecord,
@@ -85,8 +86,26 @@ def test_the_wilson_interval_holds_the_point_and_narrows_with_n() -> None:
 
 def jobs() -> tuple[JobRecord, ...]:
     return (
-        JobRecord(step=Step.TRAIN, job_id="1", partition="gmsap", hours_requested=4, seconds_used=3600, gpus=1, preemptions=0, exit_code=0),
-        JobRecord(step=Step.EVALUATE, job_id="2", partition="gmsap", hours_requested=1, seconds_used=1800, gpus=1, preemptions=1, exit_code=0),
+        JobRecord(
+            step=Step.TRAIN,
+            job_id="1",
+            partition="gmsap",
+            hours_requested=4,
+            seconds_used=3600,
+            gpus=1,
+            preemptions=0,
+            exit_code=0,
+        ),
+        JobRecord(
+            step=Step.EVALUATE,
+            job_id="2",
+            partition="gmsap",
+            hours_requested=1,
+            seconds_used=1800,
+            gpus=1,
+            preemptions=1,
+            exit_code=0,
+        ),
     )
 
 
@@ -99,35 +118,94 @@ def test_the_spend_is_summed_from_the_jobs_and_the_ledger_row_is_one_line() -> N
 
 
 def test_a_result_row_is_stamped_and_its_line_carries_the_interval() -> None:
-    row = ResultRow(measure="accuracy", stratum="all levels", correct=9, total=10, persons=3, run_id=run_id(COMMIT, SHA, START), code_commit=COMMIT, clean_tree=True, catalog_sha256=SHA)
+    row = ResultRow(
+        measure="accuracy",
+        stratum="all levels",
+        correct=9,
+        total=10,
+        persons=3,
+        run_id=run_id(COMMIT, SHA, START),
+        code_commit=COMMIT,
+        clean_tree=True,
+        catalog_sha256=SHA,
+    )
     line = result_line(row)
     assert "9/10" in line and "0.900" in line and " to " in line and line.count("|") == 10
     with pytest.raises(ValidationError):
-        ResultRow(measure="accuracy", stratum="s", correct=11, total=10, persons=1, run_id=row.run_id, code_commit=COMMIT, clean_tree=True, catalog_sha256=SHA)
+        ResultRow(
+            measure="accuracy",
+            stratum="s",
+            correct=11,
+            total=10,
+            persons=1,
+            run_id=row.run_id,
+            code_commit=COMMIT,
+            clean_tree=True,
+            catalog_sha256=SHA,
+        )
     with pytest.raises(ValidationError, match="dirty"):
-        ResultRow(measure="accuracy", stratum="s", correct=1, total=10, persons=1, run_id=row.run_id, code_commit=COMMIT, clean_tree=False, catalog_sha256=SHA)
+        ResultRow(
+            measure="accuracy",
+            stratum="s",
+            correct=1,
+            total=10,
+            persons=1,
+            run_id=row.run_id,
+            code_commit=COMMIT,
+            clean_tree=False,
+            catalog_sha256=SHA,
+        )
 
 
 def test_the_batch_script_carries_the_grid_rules_and_nothing_secret_or_placed() -> None:
     # issue #77: the script says what the step needs; where it runs is hpcworker's job submit's,
     # from the site profile, so no partition, QoS, GPU request or log line is written here
-    job = JobSpec(step=Step.TRAIN, command="python tools/train.py --out /runs/x", job_class=JobClass.GPU, cpus=4, memory_gb=32, gpus=1, hours=2.5, environment="train-gpu")
+    job = JobSpec(
+        step=Step.TRAIN,
+        command="python tools/train.py --out /runs/x",
+        job_class=JobClass.GPU,
+        cpus=4,
+        memory_gb=32,
+        gpus=1,
+        hours=2.5,
+        environment="train-gpu",
+    )
     text = sbatch_script(job, "/home/me/schwingnet")
-    assert "#SBATCH --time=02:30:00" in text and "#SBATCH --cpus-per-task=4" in text and "#SBATCH --mem=32G" in text
-    assert "exec pixi run --locked -e train-gpu python" in text and "cd /home/me/schwingnet\n" in text
-    assert all(f"#SBATCH --{word}" not in text for word in ("partition", "qos", "gres", "output", "job-name"))
+    assert (
+        "#SBATCH --time=02:30:00" in text
+        and "#SBATCH --cpus-per-task=4" in text
+        and "#SBATCH --mem=32G" in text
+    )
+    assert (
+        "exec pixi run --locked -e train-gpu python" in text and "cd /home/me/schwingnet\n" in text
+    )
+    assert all(
+        f"#SBATCH --{word}" not in text
+        for word in ("partition", "qos", "gres", "output", "job-name")
+    )
     with pytest.raises(ValidationError):
         job.model_validate({**job.model_dump(), "qos": "gpu"})
     with pytest.raises(ValidationError):
         job.model_validate({**job.model_dump(), "partition": "gmsap; rm"})
     assert wall_time(0.01) == "00:01:00" and wall_time(25.0) == "25:00:00"
-    said = "HPCW-JOB submitted 123456 flow_train gmsap,gvohp,galhp/gpu log /x/flow_train_123456.out\n"
+    said = (
+        "HPCW-JOB submitted 123456 flow_train gmsap,gvohp,galhp/gpu log /x/flow_train_123456.out\n"
+    )
     assert submitted_of(said) == ("123456", "gmsap,gvohp,galhp", "gpu")
-    assert submitted_of("HPCW-JOB submitted 7 flow_train secp/none log /x/a.out") == ("7", "secp", None)
+    assert submitted_of("HPCW-JOB submitted 7 flow_train secp/none log /x/a.out") == (
+        "7",
+        "secp",
+        None,
+    )
     assert submitted_of("HPCW-JOB refused flow_train gmsap/gpu: Invalid qos specification") is None
     assert submitted_of("Submitted batch job 123456") is None
     assert elapsed_seconds("1-02:03:04") == 93784 and elapsed_seconds("00:00:30") == 30
-    assert is_finished("COMPLETED") and is_finished("CANCELLED by 1234") and not is_finished("RUNNING") and not is_finished("")
+    assert (
+        is_finished("COMPLETED")
+        and is_finished("CANCELLED by 1234")
+        and not is_finished("RUNNING")
+        and not is_finished("")
+    )
 
 
 def test_the_synthetic_bank_is_learnable_and_repeats_a_frame(tmp_path: Path) -> None:
@@ -138,10 +216,24 @@ def test_the_synthetic_bank_is_learnable_and_repeats_a_frame(tmp_path: Path) -> 
     metas = sorted((tmp_path / "meta").glob("*.json"))
     assert len(images) == 120 and len(metas) == 120
     digests = {p.read_bytes() for p in images}
-    assert len(digests) == 119, "frame 50 repeats an earlier frame of its own case under another stem"
+    assert len(digests) == 119, (
+        "frame 50 repeats an earlier frame of its own case under another stem"
+    )
     meta = json.loads(metas[0].read_text(encoding="utf-8"))
     assert meta["boxes"] and all(len(b["box"]) == 4 for b in meta["boxes"])
     assert any(p.parent.name == "val" for p in images)
+    # Three in four frames bring a projected level map named in their meta, in the catalog's codes.
+    maps = sorted((tmp_path / "maps").glob("*.png"))
+    named = [json.loads(m.read_text(encoding="utf-8")) for m in metas]
+    named = [m for m in named if "level_map" in m]
+    assert 60 <= len(maps) == len(named) == counts["maps"] < 120
+    assert all(
+        m["level_map_from"] == "render" and (tmp_path / m["level_map"]).is_file() for m in named
+    )
+    assert bank.CATALOG_LEVELS == LEVELS
+    rows = bank.map_rows([([10.0, 10.0, 30.0, 30.0], "L4")])
+    assert rows[20][20] == LEVELS.index("L4") + 1 and rows[10][10] == 0 and rows[29][29] == 0
+    assert bank.write_bank(tmp_path / "plain", 5, 2, 1, [], map_share=0)["maps"] == 0
 
 
 def write_catalog(path: Path, rows: list[tuple[str, str, str]]) -> None:
@@ -152,35 +244,68 @@ def write_catalog(path: Path, rows: list[tuple[str, str, str]]) -> None:
     db.close()
 
 
-def test_the_flow_tool_reads_the_split_and_refuses_a_dirty_tree(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_the_flow_tool_reads_the_split_and_refuses_a_dirty_tree(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     flow = load_tool("flow")
     clean = tmp_path / "catalog-000003-abcdefabcdef.sqlite"
     write_catalog(clean, [("a" * 64, "p1", "train"), ("b" * 64, "p2", "test")])
-    assert flow.split_disjoint(clean) == {"disjoint": True, "persons_in_two_parts": [], "frames_in_two_parts": []}
+    assert flow.split_disjoint(clean) == {
+        "disjoint": True,
+        "persons_in_two_parts": [],
+        "frames_in_two_parts": [],
+    }
     assert flow.catalog_facts(clean)[1] == 3
     leaky = tmp_path / "leaky.sqlite"
     write_catalog(leaky, [("a" * 64, "p1", "train"), ("a" * 64, "p2", "test")])
     assert flow.split_disjoint(leaky)["frames_in_two_parts"] == ["a" * 64]
     assert flow.catalog_facts(leaky)[1] == 1
     monkeypatch.setattr(flow, "tree_state", lambda: (COMMIT, False))
-    args = flow.parse(["run", "--catalog", str(clean), "--out", str(tmp_path / "runs"), "--epochs", "1"])
+    args = flow.parse(
+        ["run", "--catalog", str(clean), "--out", str(tmp_path / "runs"), "--epochs", "1"]
+    )
     with pytest.raises(flow.FlowError, match="dirty tree"):
         flow.start_record(args)
     monkeypatch.setattr(flow, "tree_state", lambda: (COMMIT, True))
-    args = flow.parse(["run", "--catalog", str(leaky), "--out", str(tmp_path / "runs"), "--epochs", "1"])
+    args = flow.parse(
+        ["run", "--catalog", str(leaky), "--out", str(tmp_path / "runs"), "--epochs", "1"]
+    )
     with pytest.raises(flow.FlowError, match="not disjoint"):
         flow.start_record(args)
-    made, check = flow.start_record(flow.parse(["run", "--catalog", str(clean), "--out", str(tmp_path / "runs"), "--epochs", "2", "--seed", "7"]))
+    made, check = flow.start_record(
+        flow.parse(
+            [
+                "run",
+                "--catalog",
+                str(clean),
+                "--out",
+                str(tmp_path / "runs"),
+                "--epochs",
+                "2",
+                "--seed",
+                "7",
+            ]
+        )
+    )
     assert made.catalog_version == 3 and made.epochs == 2 and made.seed == 7 and check["disjoint"]
     plan = flow.job_specs(flow.parse(["plan", "--mode", "slurm", "--hours", "4"]))
-    assert [j.step for j in plan] == [Step.TRAIN, Step.EVALUATE] and plan[0].gpus == 1 and plan[0].environment == "train-gpu"
+    assert (
+        [j.step for j in plan] == [Step.TRAIN, Step.EVALUATE]
+        and plan[0].gpus == 1
+        and plan[0].environment == "train-gpu"
+    )
     # issues #74 and #77: a GPU step names the gpu class, whose QoS the site profile gives
     assert all(j.job_class is JobClass.GPU and j.partition is None for j in plan)
     monkeypatch.setenv("HPCWORKER", "/lab/hpcworker/framework/bin/hpcworker")
     call = flow.submit_call(plan[0], tmp_path / "run", tmp_path / "run" / "train.sbatch")
     assert call[:4] == ["bash", "/lab/hpcworker/framework/bin/hpcworker", "job", "submit"]
-    assert call[call.index("--class") + 1] == "gpu" and "--no-requeue" in call and "--qos" not in call
-    assert call[call.index("--dir") + 1] == str(tmp_path / "run") and call[-2:] == ["--", str(tmp_path / "run" / "train.sbatch")]
+    assert (
+        call[call.index("--class") + 1] == "gpu" and "--no-requeue" in call and "--qos" not in call
+    )
+    assert call[call.index("--dir") + 1] == str(tmp_path / "run") and call[-2:] == [
+        "--",
+        str(tmp_path / "run" / "train.sbatch"),
+    ]
     narrowed = flow.job_specs(flow.parse(["plan", "--mode", "slurm", "--partition", "gmsap"]))[0]
     narrowed_call = flow.submit_call(narrowed, tmp_path, tmp_path / "t.sbatch")
     assert narrowed_call[narrowed_call.index("--partition") + 1] == "gmsap"
@@ -189,7 +314,12 @@ def test_the_flow_tool_reads_the_split_and_refuses_a_dirty_tree(tmp_path: Path, 
     with pytest.raises(flow.FlowError, match="HPCWORKER"):
         flow.submit_call(plan[0], tmp_path, tmp_path / "t.sbatch")
     local = flow.job_specs(flow.parse(["plan", "--mode", "local"]))
-    assert local[0].gpus == 0 and local[0].environment == "train-cpu" and local[0].job_class is JobClass.CPU and local[0].partition is None
+    assert (
+        local[0].gpus == 0
+        and local[0].environment == "train-cpu"
+        and local[0].job_class is JobClass.CPU
+        and local[0].partition is None
+    )
 
 
 def test_record_copies_the_small_files_and_appends_one_ledger_row(tmp_path: Path) -> None:
@@ -204,23 +334,67 @@ def test_record_copies_the_small_files_and_appends_one_ledger_row(tmp_path: Path
     for n in (1, 2, 3):
         (run_dir / "train" / "witness" / f"epoch-{n:02d}.png").write_bytes(b"png")
     into = tmp_path / "docs" / "runs"
-    assert flow.main(["record", "--run", str(run_dir), "--into", str(into), "--activity", "smoke", "--verified", "by hand"]) == 0
-    assert flow.main(["record", "--run", str(run_dir), "--into", str(into), "--activity", "smoke", "--verified", "by hand"]) == 0
+    assert (
+        flow.main(
+            [
+                "record",
+                "--run",
+                str(run_dir),
+                "--into",
+                str(into),
+                "--activity",
+                "smoke",
+                "--verified",
+                "by hand",
+            ]
+        )
+        == 0
+    )
+    assert (
+        flow.main(
+            [
+                "record",
+                "--run",
+                str(run_dir),
+                "--into",
+                str(into),
+                "--activity",
+                "smoke",
+                "--verified",
+                "by hand",
+            ]
+        )
+        == 0
+    )
     kept = sorted(str(p.relative_to(into)) for p in into.rglob("*") if p.is_file())
     run_name = record().run_id
-    assert kept == [f"{run_name}/RUN.json", f"{run_name}/evaluate/results.md", f"{run_name}/train/MODEL.md", f"{run_name}/train/witness/epoch-01.png", f"{run_name}/train/witness/epoch-03.png"]
+    assert kept == [
+        f"{run_name}/RUN.json",
+        f"{run_name}/evaluate/results.md",
+        f"{run_name}/train/MODEL.md",
+        f"{run_name}/train/witness/epoch-01.png",
+        f"{run_name}/train/witness/epoch-03.png",
+    ]
     ledger = (tmp_path / "docs" / "LEDGER.md").read_text(encoding="utf-8").splitlines()
     assert ledger[0].startswith("| date |") and len(ledger) == 4 and ledger[2] == ledger[3]
 
 
-def test_a_run_refuses_a_catalog_outside_its_recipe_before_it_writes_anything(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_a_run_refuses_a_catalog_outside_its_recipe_before_it_writes_anything(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     flow = load_tool("flow")
     catalog = tmp_path / "catalog.sqlite"
     db = sqlite3.connect(catalog)
     db.execute("CREATE TABLE source (source TEXT)")
     db.execute("CREATE TABLE item (sha256 TEXT, person TEXT, part TEXT, source TEXT)")
     db.executemany("INSERT INTO source VALUES (?)", [("carmlspine",), ("lumos",)])
-    db.executemany("INSERT INTO item VALUES (?, ?, ?, ?)", [("a" * 64, "carmlspine:1", "train", "carmlspine"), ("b" * 64, "lumos:1", "train", "lumos")])
+    db.executemany(
+        "INSERT INTO item VALUES (?, ?, ?, ?)",
+        [
+            ("a" * 64, "carmlspine:1", "train", "carmlspine"),
+            ("b" * 64, "lumos:1", "train", "lumos"),
+        ],
+    )
     db.commit()
     db.close()
     monkeypatch.setattr(flow, "tree_state", lambda: (COMMIT, True))
@@ -231,5 +405,9 @@ def test_a_run_refuses_a_catalog_outside_its_recipe_before_it_writes_anything(tm
         flow.licence_record(catalog, "commercial")
     out = tmp_path / "runs"
     with pytest.raises(flow.FlowError, match="licences"):
-        flow.command_run(flow.parse(["run", "--catalog", str(catalog), "--out", str(out), "--recipe", "commercial"]))
+        flow.command_run(
+            flow.parse(
+                ["run", "--catalog", str(catalog), "--out", str(out), "--recipe", "commercial"]
+            )
+        )
     assert not out.exists()

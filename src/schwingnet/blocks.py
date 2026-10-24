@@ -23,7 +23,11 @@ part (docs/research/training-review.md, section 1):
 - architecture: the backbone, "resnet18" (version 1), "resnet34", "resnet50",
   "mobilenet-v3-small" or "efficientnet-b0", each with its own head and its own ImageNet file;
 - denoise: a filter on the crop inside the model, before the scaling, "none", "gaussian" or
-  "median", so the evaluator, the latency measurement and the ONNX export carry it.
+  "median", so the evaluator, the latency measurement and the ONNX export carry it;
+- prior: a second supervision from 3D (#228), "none" or "level-map", where a head on the
+  backbone's last feature map predicts the frame's projected level map, the segmented CT's
+  voxels mapped onto the X-ray by the render's geometry or a registered pose, and its loss is
+  added with prior_weight; the head is training-only, so the exported classifier is unchanged.
 
 DEFAULT is version 1's training exactly, so a run that names no block trains as before and the
 recorded runs stay reproducible. The choices are kept here, with the arithmetic that needs no
@@ -54,6 +58,7 @@ SELECT = ("accuracy", "balanced-accuracy")
 SAMPLES = ("all", "only-sources", "drop-sources", "cap-per-person")
 ARCHITECTURE = ("resnet18", "resnet34", "resnet50", "mobilenet-v3-small", "efficientnet-b0")
 DENOISE = ("none", "gaussian", "median")
+PRIOR = ("none", "level-map")
 # The samples choices that take a list of sources, and the one that takes a count per person.
 BY_SOURCE = ("only-sources", "drop-sources")
 BY_PERSON = "cap-per-person"
@@ -82,6 +87,8 @@ class Blocks:
     per_person: int = 0
     architecture: str = "resnet18"
     denoise: str = "none"
+    prior: str = "none"
+    prior_weight: float = 0.0
 
 
 DEFAULT = Blocks()
@@ -95,6 +102,7 @@ CHOICES = {
     "samples": SAMPLES,
     "architecture": ARCHITECTURE,
     "denoise": DENOISE,
+    "prior": PRIOR,
 }
 # The settings a choice takes, each with its range in words, for `parts` and the command line.
 SETTINGS = {
@@ -104,9 +112,10 @@ SETTINGS = {
     "backbone_lr_scale": "above 0 and at most 1",
     "sources": "the catalog's sources, comma-separated, with samples=only-sources or drop-sources",
     "per_person": "crops kept per person, 1 or more, with samples=cap-per-person",
+    "prior_weight": "the prior loss's weight beside the level loss, above 0, with prior=level-map",
 }
 LISTS = ("augment", "sources")
-NUMBERS = ("weight_decay", "backbone_lr_scale")
+NUMBERS = ("weight_decay", "backbone_lr_scale", "prior_weight")
 COUNTS = ("warmup_epochs", "per_person")
 
 
@@ -147,6 +156,12 @@ def _number_problems(blocks: Blocks) -> list[str]:
             "weight_decay is for adamw; adam's would be L2 in the gradient,"
             " which this trainer does not offer"
         )
+    # The prior's weight goes with the prior and nowhere else, as a setting that would act on
+    # nothing is most likely a mistake; a prior with no weight would train its head for nothing.
+    if not (math.isfinite(blocks.prior_weight) and blocks.prior_weight >= 0.0):
+        found.append("prior_weight is a finite number, 0 or more")
+    elif (blocks.prior != "none") != (blocks.prior_weight > 0.0):
+        found.append("prior_weight above 0 goes with prior=level-map, and only there")
     return found
 
 

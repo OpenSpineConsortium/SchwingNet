@@ -5,7 +5,10 @@ ARCHITECTURES, DENOISERS, NORMALISERS, AUGMENTERS, OPTIMISERS and SAMPLERS, and
 tests/test_train_blocks.py fails when a table and its tuple in blocks.py disagree. A new way of
 doing a part is one name in blocks.py and one function in the table here; tools/train.py calls
 only the tables, so it never changes for one. The samples block has no torch side: which crops a
-run sees is decided by schwingnet.blocks.kept before any tensor is made.
+run sees is decided by schwingnet.blocks.kept before any tensor is made. The prior block's torch
+side is PriorHead, a training-only head over the feature map FEATURES names per architecture,
+which scores the backbone against the crop's projected level map (#228) and leaves the model,
+and so every reader of best.pt, as it is.
 
 The denoisers and the normalisers are forward pre-hooks on the model, registered in that order,
 so a crop is filtered and then scaled inside the model: the evaluator, the latency tool, the chain
@@ -199,20 +202,106 @@ ARCHITECTURES = {
     "mobilenet-v3-small": mobilenet_v3_small,
     "efficientnet-b0": efficientnet_b0,
 }
+# The module of each architecture whose output is the last feature map before the pooling, where
+# the prior block's head reads the backbone: the map still says where in the crop each feature was
+# found, which the pooled vector the classifier reads no longer does.
+FEATURES = {
+    "resnet18": "layer4",
+    "resnet34": "layer4",
+    "resnet50": "layer4",
+    "mobilenet-v3-small": "features",
+    "efficientnet-b0": "features",
+}
+# The value of a map pixel no map labels: every pixel of a crop whose frame has no level map, which
+# the prior's loss and its accuracy leave out.
+IGNORED = -1
 
 
-def box_jitter(batch, generator):
-    """Each crop moved and resized a little, as a tracker's or a detector's box would be: an
-    affine resample of the padded crop, its edge repeated where the move uncovers it."""
-    count = batch.shape[0]
+class PriorHead(nn.Module):
+    """The level-map head of the prior block (schwingnet.blocks PRIOR): the 3D prior as a second
+    supervision. A render's or a registered frame's shard carries a projected level map beside the
+    frame, the segmented CT's voxels mapped onto the X-ray, 0 where no vertebra is and 1 to 27 for
+    the levels; the head reads the backbone's last feature map through a forward hook, names one of
+    28 classes at every position with a 1 by 1 convolution, upsamples to the crop's size and scores
+    that against the crop's map, so the backbone is asked to keep where each level falls in the
+    crop and how the bodies' projections overlap, not only which level the crop centres on. The
+    head is not part of the model: best.pt, the evaluator, the latency measurement and the ONNX
+    export carry the classifier alone, and its own weights go to prior_head.pt beside best.pt."""
+
+    def __init__(self, model, architecture, size, classes):
+        super().__init__()
+        self.features = None
+        self.size = size
+        self.handle = model.get_submodule(FEATURES[architecture]).register_forward_hook(self._keep)
+        self.conv = nn.Conv2d(self._channels(model, architecture), classes, kernel_size=1)
+        self.total, self.batches = 0.0, 0
+
+    def _keep(self, module, args, output):
+        self.features = output
+
+    def _channels(self, model, architecture):
+        """How many channels the feature map has, read from one forward of a blank crop with the
+        model as it is, so no table of channel counts can go stale."""
+        was_training = model.training
+        model.eval()
+        with torch.no_grad():
+            model(torch.zeros(1, 3, self.size, self.size, device=next(model.parameters()).device))
+        model.train(was_training)
+        if self.features is None or self.features.dim() != 4:
+            raise ArchitectureError(f"{architecture}'s {FEATURES[architecture]} gives no feature map")
+        return self.features.shape[1]
+
+    def logits(self):
+        """The 28-way prediction at every pixel of the crops the model saw last."""
+        dense = self.conv(self.features)
+        return F.interpolate(dense, size=(self.size, self.size), mode="bilinear", align_corners=False)
+
+    def loss(self, maps):
+        """Cross-entropy over the labelled pixels of the batch's maps, counted into the epoch's
+        mean; a batch with no labelled pixel costs nothing, since a mean over none is not a number."""
+        if not bool((maps != IGNORED).any()):
+            return self.conv.weight.sum() * 0.0
+        value = F.cross_entropy(self.logits(), maps, ignore_index=IGNORED)
+        self.total += float(value.detach())
+        self.batches += 1
+        return value
+
+    def mean_and_reset(self):
+        """The epoch's mean prior loss over the batches that carried a map, None where none did."""
+        mean = self.total / self.batches if self.batches else None
+        self.total, self.batches = 0.0, 0
+        return mean
+
+
+def jitter_theta(count, generator):
+    """One small move and resize per crop, the draw box_jitter makes, as an affine matrix."""
     scale = 1.0 + _uniform(generator, count, -JITTER_SCALE, JITTER_SCALE)
     shift = _uniform(generator, count * 2, -JITTER_SHIFT, JITTER_SHIFT).view(count, 2) * 2.0
     theta = torch.zeros(count, 2, 3)
     theta[:, 0, 0] = scale
     theta[:, 1, 1] = scale
     theta[:, :, 2] = shift
+    return theta
+
+
+def resample(batch, theta, mode):
     grid = F.affine_grid(theta.to(batch.device, batch.dtype), list(batch.shape), align_corners=False)
-    return F.grid_sample(batch, grid, mode="bilinear", padding_mode="border", align_corners=False)
+    return F.grid_sample(batch, grid, mode=mode, padding_mode="border", align_corners=False)
+
+
+def box_jitter(batch, generator):
+    """Each crop moved and resized a little, as a tracker's or a detector's box would be: an
+    affine resample of the padded crop, its edge repeated where the move uncovers it."""
+    return resample(batch, jitter_theta(batch.shape[0], generator), "bilinear")
+
+
+def jitter_with_maps(batch, maps, generator):
+    """box_jitter on the crops and the same move on their level maps, sampled nearest so a map
+    stays level codes and the ignore mark, so the map still says where each level falls in the
+    moved crop; the draw is box_jitter's own, so the crops come out as they would without maps."""
+    theta = jitter_theta(batch.shape[0], generator)
+    moved = resample(maps.unsqueeze(1).to(batch.dtype), theta, "nearest")
+    return resample(batch, theta, "bilinear"), moved.squeeze(1).round().to(maps.dtype)
 
 
 def intensity(batch, generator):
@@ -257,23 +346,38 @@ def augment(batch, names, generator):
     return batch
 
 
-def _groups(model, lr, blocks):
+def augment_with_maps(batch, maps, names, generator):
+    """augment on crops that carry level maps: the box jitter moves each map with its crop, and
+    the other changes, which alter intensity alone, leave the maps as they are."""
+    for name in AUGMENT_ORDER:
+        if name not in names:
+            continue
+        if name == "box-jitter":
+            batch, maps = jitter_with_maps(batch, maps, generator)
+        else:
+            batch = AUGMENTERS[name](batch, generator)
+    return batch, maps
+
+
+def _groups(model, lr, blocks, extra=()):
     """One group of every parameter at the base rate, as version 1 had, unless the pretrained
-    layers take a smaller rate than the new head, whose names HEADS gives per architecture."""
+    layers take a smaller rate than the new head, whose names HEADS gives per architecture; the
+    extra parameters, the prior head's, are new as the head is and train at its rate."""
+    extra = list(extra)
     if blocks.backbone_lr_scale == 1.0:
-        return [{"params": list(model.parameters()), "lr": lr}]
+        return [{"params": list(model.parameters()) + extra, "lr": lr}]
     prefix = HEADS[blocks.architecture]
     head = [p for name, p in model.named_parameters() if name.startswith(prefix)]
     body = [p for name, p in model.named_parameters() if not name.startswith(prefix)]
-    return [{"params": body, "lr": lr * blocks.backbone_lr_scale}, {"params": head, "lr": lr}]
+    return [{"params": body, "lr": lr * blocks.backbone_lr_scale}, {"params": head + extra, "lr": lr}]
 
 
-def adam(model, lr, blocks):
-    return torch.optim.Adam(_groups(model, lr, blocks), lr=lr)
+def adam(model, lr, blocks, extra=()):
+    return torch.optim.Adam(_groups(model, lr, blocks, extra), lr=lr)
 
 
-def adamw(model, lr, blocks):
-    return torch.optim.AdamW(_groups(model, lr, blocks), lr=lr, weight_decay=blocks.weight_decay)
+def adamw(model, lr, blocks, extra=()):
+    return torch.optim.AdamW(_groups(model, lr, blocks, extra), lr=lr, weight_decay=blocks.weight_decay)
 
 
 OPTIMISERS = {"adam": adam, "adamw": adamw}
