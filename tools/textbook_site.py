@@ -43,6 +43,14 @@ on claude.ai, where the owner has shared it by its link, or in the repository,
 since an artifact's own text holds what the records leave out and its scripts
 would run at the site's own address.
 
+The book's figures live under docs/textbook/figures/<chapter>/, each an image (or an interactive
+page of the same name) beside its record, a JSON file that says where it came from: the artifact,
+the script, the data, the commit and the run, as far as the record goes (the figure spec of #215).
+A chapter places one with an image line and an italic caption line; the site shows the figure there
+with its grade and status and a source panel read from its record, with two buttons: Explore, the
+links to the method and the data, and Re-run, a prefilled issue that .github/workflows/figure.yml
+answers (tools/figure_run.py). The page figures.html lists every figure with how far it is traced.
+
     python3 tools/textbook_site.py OUT [--repo OWNER/NAME] [--sha SHA] [--root PATH]
 """
 
@@ -55,6 +63,7 @@ import re
 import shutil
 import subprocess
 import sys
+import urllib.parse
 from pathlib import Path
 
 TOOLS = Path(__file__).resolve().parent
@@ -68,6 +77,12 @@ WORK = SYNTHESIS / "work" / "out"
 LEDGER_TOOLS = SYNTHESIS / "work" / "tools"
 ST_TREE = "https://github.com/OpenSpineConsortium/symphony-template/tree/main/artifacts/"
 MARKER = ".textbook"
+FIGURES = BOOK / "figures"
+DEFAULT_REPO = "OpenSpineConsortium/SchwingNet"
+RERUN_LINE = "figure-rerun-id"
+FIGURE_IMAGE = re.compile(r"^!\[([^\]]+)\]\((figures/(\d\d)/([a-z0-9-]+)\.(?:png|svg))\)$")
+FIGURE_CAPTION = re.compile(r"^\*Figure (\d+\.\d+)\. (.*)\*$")
+SCRIPT_NAME = re.compile(r"\.(py|sh|sbatch|tex|js)\b")
 
 LABELS = {
     "confidential-method": "Results may be shown, mechanism may not, until the provisional is filed; this chapter stays in this private repository.",
@@ -195,6 +210,7 @@ class Book:
         self.state = load_json(self.root / WORK / "state.json")
         privacy = Privacy(self.root, self.inventory["artifacts"])
         self.records = {f"{r['repo']}/{r['folder']}": privacy.record(r) for r in self.inventory["artifacts"]}
+        self.figures = load_figures(self.root, privacy)
         self.chapters = [(part, c) for part in self.plan["parts"] for c in part["chapters"]]
         self.readers = collections.defaultdict(list)  # artifact id -> [(chapter number, first or second)]
         for _part, c in self.chapters:
@@ -308,6 +324,65 @@ class Book:
         return [c["number"] for _p, c in self.chapters if canon & set(c["artifacts_primary"])]
 
 
+def load_figures(root, privacy):
+    """Every figure record under docs/textbook/figures/, by its id, with the image and the
+    interactive page beside it where they exist; the records' prose goes through the same privacy
+    pass as the artifacts' records."""
+    out = {}
+    base = Path(root) / FIGURES
+    for path in sorted(base.glob("*/*.json")) if base.is_dir() else []:
+        try:
+            rec = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if not isinstance(rec, dict):
+            continue
+        rec = {k: (v if k in ("id", "chapter", "explore", "rerun") else privacy.record(v)) for k, v in rec.items()}
+        rel = path.relative_to(Path(root) / BOOK).with_suffix("")
+        rec["_stem"] = rel.as_posix()
+        rec["_image"] = next((f"{rec['_stem']}{ext}" for ext in (".svg", ".png") if path.with_suffix(ext).exists()), None)
+        rec["_html"] = f"{rec['_stem']}.html" if path.with_suffix(".html").exists() else None
+        out[rec.get("id") or rec["_stem"].split("/", 1)[1]] = rec
+    return out
+
+
+def traced(rec):
+    """How far a figure's record traces it: to the script that drew it, to the data only, or to
+    the artifact alone."""
+    source = rec.get("source") or {}
+    if SCRIPT_NAME.search(source.get("made_by") or ""):
+        return "script"
+    if source.get("data") or source.get("run"):
+        return "data"
+    return "artifact"
+
+
+def rerun_url(repo, rec):
+    """A new issue on the repository, labelled figure-rerun, whose body carries the figure's id on a
+    line of its own, the one line .github/workflows/figure.yml reads."""
+    fid = rec.get("id", "")
+    title = f"Re-run figure {fid}"
+    body = (f"{RERUN_LINE}: {fid}\n\nOpened from the textbook's Re-run button for \"{rec.get('title', '')}\". "
+            "The workflow reads only the id above and runs only what the figure's committed record says.")
+    query = urllib.parse.urlencode({"labels": "figure-rerun", "title": title, "body": body})
+    return f"https://github.com/{repo}/issues/new?{query}"
+
+
+def rerun_words(rec):
+    """What the Re-run button will do, and what it costs, from the record's rerun field."""
+    rerun = rec.get("rerun") or {}
+    where, cost = rerun.get("where"), rerun.get("cost") or "not recorded"
+    if where == "actions":
+        return (f"Opening the issue runs the recorded command on a GitHub runner from committed files and opens a pull "
+                f"request with the figure it draws. Cost: {cost}; no grid job and no Claude.")
+    if where == "grid":
+        return (f"When the owner opens the issue, that is the owner's word for this one run; a collaborator's issue only "
+                f"asks. The workflow answers with the exact grid command and the link to the grid workflow and submits "
+                f"nothing itself. Cost: {cost}.")
+    return ("No command is recorded that redraws this figure, so opening the issue answers with the links to explore "
+            "its method instead. Cost: nothing.")
+
+
 def chapter_ids(chapter):
     return list(chapter["artifacts_primary"]) + list(chapter.get("artifacts_secondary", []))
 
@@ -378,6 +453,18 @@ details summary { cursor:pointer; color:var(--accent); }
 input.filter { width:100%; padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:var(--panel);
                color:var(--fg); font-size:15px; margin:8px 0 4px; }
 .count { color:var(--muted); font-size:14px; }
+figure.fig { margin:18px 0; padding:12px; border:1px solid var(--line); border-radius:10px; background:var(--soft); }
+figure.fig img { display:block; margin:0 auto; max-width:100%; }
+figure.fig iframe { width:100%; height:520px; border:0; background:#fff; border-radius:8px; }
+figure.fig figcaption { margin-top:8px; font-size:14.5px; }
+.source { font-size:13.5px; margin-top:8px; }
+.source dt { font-weight:600; margin-top:4px; }
+.source dd { margin:0 0 2px 14px; }
+.buttons { display:flex; gap:10px; flex-wrap:wrap; margin-top:8px; align-items:flex-start; }
+.button, .buttons summary { display:inline-block; border:1px solid var(--accent); color:var(--accent); border-radius:6px;
+                            padding:3px 12px; font-size:13.5px; text-decoration:none; cursor:pointer; list-style:none; }
+.buttons details { margin:0; }
+.buttons details[open] { flex-basis:100%; }
 """
 
 FILTER_JS = """
@@ -417,6 +504,7 @@ def nav_html(book, pending_count, here):
         return f'<a class="{cls}{mark}" href="{name}">{esc(label)}</a>'
 
     out = ["<h4>The book</h4>", link("index.html", "Front page"), link("artifacts.html", "Every artifact"),
+           link("figures.html", f"Every figure ({len(book.figures)})"),
            link("pending.html", f"Not yet in the book ({pending_count})")]
     for part in book.plan["parts"]:
         out.append(f"<h4>{esc(part['label'])}: {esc(part['title'])}</h4>")
@@ -469,6 +557,113 @@ class Builder:
 
     def markdown(self, text, source):
         return living_docs.markdown_html(text, self.linker(source))
+
+    # figures
+
+    def narrative_html(self, text, source):
+        """A chapter's narrative with each figure (an image line and its italic caption on the next
+        line) laid out from its record in place of the two lines."""
+        lines, blocks, out, i = text.splitlines(), [], [], 0
+        while i < len(lines):
+            found = FIGURE_IMAGE.match(lines[i])
+            if found:
+                caption = FIGURE_CAPTION.match(lines[i + 1]) if i + 1 < len(lines) else None
+                blocks.append((found, caption))
+                out += ["", f"FIGUREBLOCK{len(blocks) - 1}END", ""]
+                i += 2 if caption else 1
+                continue
+            out.append(lines[i])
+            i += 1
+        rendered = self.markdown("\n".join(out), source)
+        for k, (found, caption) in enumerate(blocks):
+            rendered = rendered.replace(f"<p>FIGUREBLOCK{k}END</p>", self.figure_html(found, caption, source))
+        return rendered
+
+    def figure_html(self, found, caption, source):
+        alt, rel, chapter, stem = found.groups()
+        rec = self.book.figures.get(f"{chapter}/{stem}")
+        number = caption.group(1) if caption else ""
+        if rec is None:
+            text = self.markdown(caption.group(2), source) if caption else ""
+            return (f'<figure class="fig"><img src="{esc(rel)}" alt="{esc(alt)}"><figcaption>'
+                    f"<strong>Figure {esc(number)}.</strong> {text}"
+                    '<p class="notice warn">This figure has no record yet: where it came from is not written down.</p>'
+                    "</figcaption></figure>")
+        return self.figure_block(rec, number, alt)
+
+    def figure_block(self, rec, number="", alt=""):
+        if rec.get("_html"):
+            shown = f'<iframe src="{esc(rec["_html"])}" title="{esc(rec.get("title"))}" loading="lazy"></iframe>'
+        elif rec.get("_image"):
+            shown = f'<img src="{esc(rec["_image"])}" alt="{esc(alt or rec.get("title"))}" loading="lazy">'
+        else:
+            shown = '<p class="notice warn">The image named by this record is not in the repository.</p>'
+        status = rec.get("status") or "unstated"
+        chips = (f'<span class="chip">{esc(rec.get("grade") or "ungraded")}</span>'
+                 f'<span class="chip {"ok" if status == "current" else "warn"}">{esc(status)}</span>'
+                 f'<span class="chip">traced to the {esc(traced(rec))}</span>')
+        label = f"<strong>Figure {esc(number)}.</strong> " if number else ""
+        anchor = "fig-" + slug(rec.get("id", ""))
+        return (f'<figure class="fig" id="{anchor}">{shown}<figcaption>{label}{esc(rec.get("caption"))}'
+                f'<div class="chips">{chips}</div>{self.source_panel(rec)}</figcaption></figure>')
+
+    def href(self, target):
+        """A record's link: a web address as it is, an artifact's folder to its page, any other
+        repository path to the file on GitHub."""
+        if re.match(r"^https://", target):
+            return target
+        rel = target.strip("/")
+        if rel in self.book.pages:
+            return self.book.pages[rel]
+        return self.github(rel, target.endswith("/"))
+
+    def source_panel(self, rec):
+        source = rec.get("source") or {}
+        rows = [("Artifact", source.get("artifact")), ("Made by", source.get("made_by")), ("Commit", source.get("commit")),
+                ("Data", "; ".join(source.get("data") or []) or None), ("Run", source.get("run")),
+                ("How it was traced", source.get("notes"))]
+        items = "".join(f"<dt>{esc(k)}</dt><dd>{esc(v)}</dd>" for k, v in rows if v)
+        explore = [e for e in rec.get("explore") or [] if isinstance(e, dict) and e.get("href")]
+        links = "".join(f'<li><a href="{esc(self.href(e["href"]))}">{esc(e.get("label") or e["href"])}</a></li>'
+                        for e in explore)
+        rerun = rec.get("rerun") or {}
+        command = f"<p>Command: <code>{esc(rerun['command'])}</code></p>" if rerun.get("command") else ""
+        record_link = f'<a class="button" href="{esc(rec["_stem"] + ".json")}">The record</a>'
+        return (f'<div class="source"><dl>{items}</dl><div class="buttons">'
+                f"<details><summary>Explore</summary><ul>{links or '<li>No link is recorded beyond the artifact.</li>'}</ul>"
+                f"<p>The method: {esc(source.get('made_by') or 'not recorded')}.</p></details>"
+                f'<a class="button" href="{esc(rerun_url(self.repo or DEFAULT_REPO, rec))}">Re-run</a>{record_link}</div>'
+                f'<p class="count">Re-run: {esc(rerun_words(rec))}</p>{command}</div>')
+
+    def every_figure(self):
+        b = self.book
+        titles = {c["number"]: c["title"] for _p, c in b.chapters}
+        rows, counts = [], collections.Counter()
+        for fid, rec in sorted(b.figures.items()):
+            level = traced(rec)
+            counts[level] += 1
+            chapter = rec.get("chapter") or fid.split("/", 1)[0]
+            where = (rec.get("rerun") or {}).get("where") or "none"
+            find = " ".join(str(x) for x in (fid, rec.get("title"), chapter, level, where, rec.get("status"))).lower()
+            rows.append(f'<tr data-find="{esc(find)}"><td><a href="{chapter_page(chapter)}#fig-{slug(fid)}">{esc(rec.get("title"))}</a>'
+                        f"<br><code>{esc(fid)}</code></td><td>{esc(chapter)} {esc(titles.get(chapter, ''))}</td>"
+                        f"<td>{esc(level)}</td><td>{esc(where)}</td><td>{esc(rec.get('status'))}</td>"
+                        f"<td>{esc((rec.get('source') or {}).get('made_by') or 'not recorded')}</td></tr>")
+        body = ["<h1>Every figure</h1>",
+                f"<p>{len(rows)} figures, each with its record. Traced to the script that drew it: {counts['script']}; "
+                f"to its data or run only: {counts['data']}; to the artifact alone: {counts['artifact']}. Re-run says "
+                "where a figure can be drawn again: actions on a GitHub runner, grid on the lab's cluster with the owner's "
+                "word, none where no command is recorded.</p>",
+                f'<p class="count"><span id="shown">{len(rows)}</span> shown.</p>',
+                '<input id="filter" class="filter" type="search" placeholder="Filter by any word: a chapter, script, grid, none">',
+                '<div class="table"><table><thead><tr><th>Figure</th><th>Chapter</th><th>Traced to</th><th>Re-run</th>'
+                "<th>Status</th><th>Made by</th></tr></thead><tbody>" + "".join(rows) + "</tbody></table></div>"]
+        self.write("figures.html", "Every figure", "\n".join(body), FILTER_JS)
+
+    def copy_figures(self):
+        base = self.book.root / FIGURES
+        if base.is_dir():
+            shutil.copytree(base, self.out / "figures")
 
     def artifact_links(self, aid):
         """Where the artifact itself opens: on claude.ai, and as files in its repository; the site
@@ -621,7 +816,7 @@ class Builder:
         else:
             lines = text.splitlines()
             rest = "\n".join(lines[1:] if lines and lines[0].startswith("# ") else lines)
-            body.append(self.markdown(rest, c["file"]))
+            body.append(self.narrative_html(rest, c["file"]))
             body.append(f"<details><summary>The plan for this chapter</summary>{plan}</details>")
             body.append(self.narrative_checks(c, text))
         body.append("<h2>The artifacts this chapter reads</h2>")
@@ -866,6 +1061,8 @@ class Builder:
         for aid in self.book.records:
             self.artifact(aid)
         self.every_artifact()
+        self.every_figure()
+        self.copy_figures()
         self.pending_page()
         self.record_pages()
         (self.out / MARKER).write_text("built by tools/textbook_site.py\n", encoding="utf-8")

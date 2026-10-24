@@ -1,0 +1,40 @@
+{
+  "id": "08/card-devices-named",
+  "title": "Devices named in the caption",
+  "caption": "Devices named in the captions of the two releases.",
+  "chapter": "08",
+  "grade": "Reported",
+  "status": "current",
+  "source": {
+    "kind": "artifact",
+    "artifact": "artifacts/fluorocap-dataset-card-xwd4wx/",
+    "artifact_url": "https://claude.ai/artifact/XWD4wxc9ufnki6FCB8pEGQ",
+    "made_by": "spinesurg-ct-nnunet:tools/fluorocap_report_stats.py (the statistics); the chart is drawn by the card's own script",
+    "commit": null,
+    "data": [
+      "manifest.csv (FluoroCap manifest 1.1, embedded in the card as its statistics block)"
+    ],
+    "run": null,
+    "notes": "Drawn at load time by the card's script from the statistics block embedded in the page (manifest 1.1, dataset_version 0.2, generated 2026-09-14 09:43), captured by rendering the page in headless Chromium. The page's script declares a top-level const named top, which a plain browser refuses as a redeclaration of window.top, so it was wrapped in a block for the capture and nothing else changed. The card names tools/fluorocap_report_stats.py and docs/FLUOROCAP_PROTOCOL.md; spine-program's fluorocap-dataset memory names the same tool."
+  },
+  "explore": [
+    {
+      "label": "The artifact's page and files",
+      "href": "artifacts/fluorocap-dataset-card-xwd4wx/"
+    },
+    {
+      "label": "The artifact on claude.ai",
+      "href": "https://claude.ai/artifact/XWD4wxc9ufnki6FCB8pEGQ"
+    },
+    {
+      "label": "The FluoroCap dataset note",
+      "href": "https://github.com/OpenSpineConsortium/spine-program/blob/88398813308aba7dc2b4ee823385ea0ca2665f0d/01_carm_level_detection/docs/handoff/context/fluorocap-dataset.md"
+    }
+  ],
+  "rerun": {
+    "where": "none",
+    "command": null,
+    "cost": "nothing to run: no command is recorded for it",
+    "needs_owner_word": false
+  }
+}

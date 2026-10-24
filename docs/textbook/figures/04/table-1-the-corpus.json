@@ -1,0 +1,40 @@
+{
+  "id": "04/table-1-the-corpus",
+  "title": "Table 1, the corpus",
+  "caption": "The manuscript's corpus table as it fit the column on 22 September; the artifact lists three corrections being made to it.",
+  "chapter": "04",
+  "grade": "Reported",
+  "status": "a record, not a final value",
+  "source": {
+    "kind": "artifact",
+    "artifact": "artifacts/schwingnet-figures-xyz6kr/",
+    "artifact_url": "https://claude.ai/artifact/XyZ6krXFYezkdkpj2kAKPw",
+    "made_by": "spinesurg-ct-nnunet:SchwingNet/tables/tab_corpus.tex (a hand table)",
+    "commit": null,
+    "data": [
+      "tables/tab_corpus.sources.md (spinesurg-ct-nnunet)"
+    ],
+    "run": null,
+    "notes": "The caption names SchwingNet/tables/tab_corpus.tex; the manuscripts note says Table 1 is a hand table whose cells are sourced in tab_corpus.sources.md."
+  },
+  "explore": [
+    {
+      "label": "The artifact's page and files",
+      "href": "artifacts/schwingnet-figures-xyz6kr/"
+    },
+    {
+      "label": "The artifact on claude.ai",
+      "href": "https://claude.ai/artifact/XyZ6krXFYezkdkpj2kAKPw"
+    },
+    {
+      "label": "The manuscript's figure and table map",
+      "href": "https://github.com/OpenSpineConsortium/spine-program/blob/88398813308aba7dc2b4ee823385ea0ca2665f0d/07_plain_film_level_id/docs/handoff/working_notes/topic4_manuscripts.md"
+    }
+  ],
+  "rerun": {
+    "where": "none",
+    "command": null,
+    "cost": "nothing to run: no command is recorded for it",
+    "needs_owner_word": false
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "id": "11/naming-chain-from-exposure",
+  "title": "From exposure to a named vertebra",
+  "caption": "The chain from exposure to a named vertebra: for each step, what it does, what can go wrong and the measured before and after; steps 1 and 5 carry the method's advantage.",
+  "chapter": "11",
+  "grade": "Reported",
+  "status": "current",
+  "source": {
+    "kind": "artifact",
+    "artifact": "artifacts/naming-vertebrae-without-ct-hjy4vc/",
+    "artifact_url": "https://claude.ai/artifact/HJY4VC3VUVh7oNH4C7YEpR",
+    "made_by": null,
+    "commit": null,
+    "data": [],
+    "run": null,
+    "notes": "An inline SVG drawn in the artifact page itself, captured here as a PNG by rendering the page in headless Chromium. The page names no script or result file behind its numbers."
+  },
+  "explore": [
+    {
+      "label": "The artifact's page and files",
+      "href": "artifacts/naming-vertebrae-without-ct-hjy4vc/"
+    },
+    {
+      "label": "The artifact on claude.ai",
+      "href": "https://claude.ai/artifact/HJY4VC3VUVh7oNH4C7YEpR"
+    }
+  ],
+  "rerun": {
+    "where": "none",
+    "command": null,
+    "cost": "nothing to run: no command is recorded for it",
+    "needs_owner_word": false
+  }
+}

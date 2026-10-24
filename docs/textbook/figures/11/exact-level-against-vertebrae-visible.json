@@ -1,0 +1,40 @@
+{
+  "id": "11/exact-level-against-vertebrae-visible",
+  "title": "Exact level against vertebrae visible",
+  "caption": "Exact-level accuracy against the number of vertebrae visible on real films, by region, with the CT-only reference.",
+  "chapter": "11",
+  "grade": "Reported",
+  "status": "a record, not a final value",
+  "source": {
+    "kind": "artifact",
+    "artifact": "artifacts/level-context-ladder-xd7eltc/",
+    "artifact_url": "https://claude.ai/artifact/Xd7ELTcKW1yXaC7KtKma9z",
+    "made_by": "spinesurg-ct-nnunet:tools/collect_context_curve.py (the numbers); the chart is drawn by the artifact's own script",
+    "commit": null,
+    "data": [
+      "~/tmp/ladder_summary.json (grid)"
+    ],
+    "run": "grid jobs 40215523 and 40215525",
+    "notes": "Drawn at load time by the artifact's script from numbers typed into it, captured by rendering the page in headless Chromium. The artifact names tools/collect_context_curve.py, ladder_summary.json and jobs 40215523 and 40215525; spine-program's note level-id-2d-results-2026-09-13.md gives the call as tools/collect_context_curve.py --runs <arm>/runs per arm, without the arms' paths, so no exact command is recorded."
+  },
+  "explore": [
+    {
+      "label": "The artifact's page and files",
+      "href": "artifacts/level-context-ladder-xd7eltc/"
+    },
+    {
+      "label": "The artifact on claude.ai",
+      "href": "https://claude.ai/artifact/Xd7ELTcKW1yXaC7KtKma9z"
+    },
+    {
+      "label": "The context-curve note",
+      "href": "https://github.com/OpenSpineConsortium/spine-program/blob/88398813308aba7dc2b4ee823385ea0ca2665f0d/01_carm_level_detection/docs/handoff/context/level-id-2d-results-2026-09-13.md"
+    }
+  ],
+  "rerun": {
+    "where": "none",
+    "command": null,
+    "cost": "nothing to run: no command is recorded for it",
+    "needs_owner_word": false
+  }
+}

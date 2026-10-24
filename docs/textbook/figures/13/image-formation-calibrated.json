@@ -1,0 +1,38 @@
+{
+  "id": "13/image-formation-calibrated",
+  "title": "Image formation, calibrated on real fluoroscopy",
+  "caption": "Image formation calibrated on real fluoroscopy, beside the geometry convention settled by reprojecting the shipped landmarks.",
+  "chapter": "13",
+  "grade": "Reported",
+  "status": "a record, not a final value",
+  "source": {
+    "kind": "artifact",
+    "artifact": "artifacts/ninety-three-pixels/",
+    "artifact_url": "https://claude.ai/artifact/KXtF9YQpjYmfBtw81yLXEX",
+    "made_by": null,
+    "commit": null,
+    "data": [],
+    "run": null,
+    "notes": "Embedded image of a superseded artifact (ninety-three-pixels, superseded by what-is-left-after-physics). The page names tools/deepfluoro_anchor_report.py and tools/holdout.py, at branch L6_Class commit 08cd48b, for its numbers, not a builder for this picture."
+  },
+  "explore": [
+    {
+      "label": "The artifact's page and files",
+      "href": "artifacts/ninety-three-pixels/"
+    },
+    {
+      "label": "The artifact on claude.ai",
+      "href": "https://claude.ai/artifact/KXtF9YQpjYmfBtw81yLXEX"
+    },
+    {
+      "label": "The results catalog",
+      "href": "https://github.com/OpenSpineConsortium/spine-program/blob/88398813308aba7dc2b4ee823385ea0ca2665f0d/07_plain_film_level_id/docs/handoff/RESULTS_CATALOG.md"
+    }
+  ],
+  "rerun": {
+    "where": "none",
+    "command": null,
+    "cost": "nothing to run: no command is recorded for it",
+    "needs_owner_word": false
+  }
+}

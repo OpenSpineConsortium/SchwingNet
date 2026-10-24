@@ -1,0 +1,34 @@
+{
+  "id": "11/what-the-sweep-is-worth",
+  "title": "What the sweep is worth, by region",
+  "caption": "A two-vertebra frame named alone and matched onto the sweep, by region: the further the frame sits from a landmark, the more the sweep is worth.",
+  "chapter": "11",
+  "grade": "Reported",
+  "status": "a record, not a final value",
+  "source": {
+    "kind": "artifact",
+    "artifact": "artifacts/naming-vertebrae-without-ct-hjy4vc/",
+    "artifact_url": "https://claude.ai/artifact/HJY4VC3VUVh7oNH4C7YEpR",
+    "made_by": null,
+    "commit": null,
+    "data": [],
+    "run": null,
+    "notes": "Inline SVG of the artifact page, captured by rendering it. The page gives the counts (n per region) but names no result file."
+  },
+  "explore": [
+    {
+      "label": "The artifact's page and files",
+      "href": "artifacts/naming-vertebrae-without-ct-hjy4vc/"
+    },
+    {
+      "label": "The artifact on claude.ai",
+      "href": "https://claude.ai/artifact/HJY4VC3VUVh7oNH4C7YEpR"
+    }
+  ],
+  "rerun": {
+    "where": "none",
+    "command": null,
+    "cost": "nothing to run: no command is recorded for it",
+    "needs_owner_word": false
+  }
+}

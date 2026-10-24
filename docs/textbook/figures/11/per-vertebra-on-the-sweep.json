@@ -1,0 +1,34 @@
+{
+  "id": "11/per-vertebra-on-the-sweep",
+  "title": "Per vertebra, three in the frame, on the sweep",
+  "caption": "Per vertebra on held-out CT spines with ordinary anatomy, three vertebrae in the frame and matched onto the sweep, with 95% intervals; the line is flat.",
+  "chapter": "11",
+  "grade": "Reported",
+  "status": "a record, not a final value",
+  "source": {
+    "kind": "artifact",
+    "artifact": "artifacts/vertebral-levels-without-ct-a4rydj/",
+    "artifact_url": "https://claude.ai/artifact/A4rydJAxQurBkPKrvfAUQs",
+    "made_by": null,
+    "commit": null,
+    "data": [],
+    "run": null,
+    "notes": "Inline SVG of a superseded artifact, captured by rendering. No result file is named."
+  },
+  "explore": [
+    {
+      "label": "The artifact's page and files",
+      "href": "artifacts/vertebral-levels-without-ct-a4rydj/"
+    },
+    {
+      "label": "The artifact on claude.ai",
+      "href": "https://claude.ai/artifact/A4rydJAxQurBkPKrvfAUQs"
+    }
+  ],
+  "rerun": {
+    "where": "none",
+    "command": null,
+    "cost": "nothing to run: no command is recorded for it",
+    "needs_owner_word": false
+  }
+}

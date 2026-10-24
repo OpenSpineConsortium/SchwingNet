@@ -16,11 +16,17 @@ The card's account of a panel is the canonical one. Each source figure is fetche
 
 The licence is judged per row, not per source. Anything not clearly Creative Commons goes to tier E and waits in a review queue until a person reads the article's licence statement, and no panel with an unresolved licence enters Dataset B; on 14 September that queue held 166, a count the card's sentence calls figures and that matches Dataset A's 166 tier-E panels. The card's legend sets tier A for CC0 and public domain, B for CC BY, C for CC BY-SA, D for non-commercial and E for other or unknown, but its own counts do not follow the legend. Dataset A's tiers read A 1,117, C 901, D 631 and E 166, with no tier B at all, although 1,099 of Dataset B's panels carry a CC BY licence (1,094 of them under the plain string "cc by"); the counted tier A takes in those CC BY panels with 15 CC0 and 3 public-domain ones, which together make Dataset B's 1,117. Whoever filters on the tier column should read the coding from the manifest itself.
 
+![Licence tiers](figures/08/card-licence-tiers.png)
+*Figure 8.1. The research release's panels by licence tier. Source: [record](figures/08/card-licence-tiers.json).*
+
 De-identification rests on the source: these are figures already published. The card says no patient record, DICOM header or institutional image was accessed; it marks every included panel as re-encoded with no metadata carried, and its scan of the captions for identifiers found none on the 2,815 included panels. The contradictions page limits that sentence to what the card describes, the v0.2 manifest of journal figures, since the corpus on disk also holds video frames, closed-journal copies fetched through the institutional library proxy, and Instagram and Reddit images (rows 4 and 5); the runbook's Instagram route keeps each post's caption, poster and date.
 
 ### Inclusion and exclusion
 
 Four inclusion criteria must all hold: an open-access source or an aggregator of the PMC open-access subset (I1); a caption that states fluoroscopy, C-arm or intraoperative imaging, or plain radiography (I2); a caption that names the spine (I3); and a vertebral level named for the figure or for the panel (I4). Exclusions are recorded with their reasons rather than silently dropped: no level named for the panel (E1), a panel segment that names another modality (E2), a non-human subject (E3), a screening classifier's judgement that the panel is not a spine radiograph (E5), a short side below 128 pixels (E6), and a hit in the caption's identifier scan that waits for review (E7). The card calls cadaver, phantom or model subjects (E4) and licence problems (E8) flags for review at that version, not exclusions, and 459 of Dataset A's panels carry the cadaver-or-phantom flag; yet its own exclusion counts list E4 on 89 excluded rows, as the only reason on 24 of them, so its prose and its counts disagree here too. On the [card](../../artifacts/fluorocap-dataset-card-xwd4wx/)'s counts, a record, not a final value, the 10,281 rows of 14 September gave 2,815 panels from 2,090 figures in 1,199 articles to Dataset A and 1,117 panels from 826 figures in 529 articles to Dataset B; the 7,466 rows excluded were led by the screening judgement and a missing level, alone or together. The search protocol, with its query strings in eleven languages, is written down.
+
+![Levels named in the captions](figures/08/card-levels-named.png)
+*Figure 8.2. Panels naming each vertebral level in their captions, for the research and the clean release. Source: [record](figures/08/card-levels-named.json).*
 
 ### What the pipeline map adds
 
@@ -80,13 +86,28 @@ The runbook's test on 21 figures replaced 18 with publisher originals, at gains 
 
 The latest size distribution in the record is the reality check's, read from the panel index on 18,068 figure panels, with 51 files on disk that have no entry. The short side runs 133, 212, 320, 494 and 1,043 pixels at the same percentiles; 28.8 percent are below 224, 23.5 percent at least 512 and 5.2 percent at least 1,024. The ledger marks the [median of 320](../../artifacts/_synthesis/concepts.md#row-157-median-fluorocap-panel-short-side) current and the audit's 231 superseded. Video panels run 180, 320, 435, 640 and 720 pixels, none at or above 768, because the sources were 720p; the runbook's premise that video is the one source at 1080 pixels native is not what the harvest delivered (row 29). Native C-arm frames are 1,536 to 1,954 pixels across on a flat panel and about 1,000 on an image intensifier, so the median panel is three to six times coarser linearly; a detected lumbar vertebra is a median 55 pixels tall on the 4,218 included panels; and the panels' bit depth was never measured, while every panel is an 8-bit window the author chose from a 12- to 16-bit frame. The reality check's verdict puts the refetch in its place: the binding constraint is labelled real intraoperative images, not pixels, and the mined figures cannot supply them.
 
+![Panel short side](figures/08/panel-short-side.png)
+*Figure 8.3. Distribution of the panels' short side in pixels; the dashed line marks the 320-pixel crop the level classifier reads. Source: [record](figures/08/panel-short-side.json).*
+
+![Anatomic region](figures/08/card-anatomic-region.png)
+*Figure 8.4. Panels by anatomic region in the two releases. Source: [record](figures/08/card-anatomic-region.json).*
+
+![Panel resolution](figures/08/card-panel-resolution.png)
+*Figure 8.5. Panel resolution, the short side in pixels, in the two releases. Source: [record](figures/08/card-panel-resolution.json).*
+
 ## What the labels are worth
 
 Every level in FluoroCap is caption-derived: the level the author stated, or a machine proposal attached to it ([chapter 15](15-fluorocaps-evidence-decoder-and-the-level-model.md)), which the card calls a proposal for the readers, not ground truth. Every row says so. The `ground_truth_status` field reads caption-derived (author-stated level), reader labels pending, and `human_qc_status` reads pending, on all 2,815 included panels on 14 September and on all 17,486 manifest rows on 15 September, and on 17 October the atlas finds the same on all 21,603.
 
+![Panels carrying each level](figures/08/panels-per-level.png)
+*Figure 8.6. Panels carrying each level: lumbar levels outnumber the thoracic spine, and the two transitional classes are empty. Source: [record](figures/08/panels-per-level.json).*
+
 ### What the 14 September audit alone holds
 
 The [FluoroCap Corpus Audit](../../artifacts/fluorocap-corpus-audit-9hjzzs/) is superseded by the [FluoroCap Reality Check](../../artifacts/fluorocap-reality-check-czudvb/) of the next morning, and its specific figures appear only in it, so each is quoted here as a record, not a final value. Three of them still frame the corpus. The first is agreement with the caption. On the 389 caption-held-out panels, where agreement with the caption is a test (on 1,678 others it is not, for reasons chapter 15 gives), the proposal's level set and the caption's nested one inside the other on 56.8 percent, with a mean Jaccard of 0.34 and no interval. The reality check measured it again at 57.1 percent, Jaccard 0.341, on 380 caption-free panels, also with no interval, and warned that they are not a random hold-out, since they were selected by whether the caption fitted; the contradictions page carries that later pair with its caveat and calls neither pair an accuracy (row 3). The audit's own reading is the one to keep: agreement between two automatic sources bounds error from one side only, because two sources can agree and both be wrong. The second is size, the half of the corpus below the level model's window, which the refetch addressed. The third is that T13 and L6 had never been assigned to a single real panel, taken up below.
+
+![Devices named in the caption](figures/08/card-devices-named.png)
+*Figure 8.7. Devices named in the captions of the two releases. Source: [record](figures/08/card-devices-named.json).*
 
 ### Why nothing may train on them
 

@@ -1,0 +1,37 @@
+{
+  "id": "07/border-variants-vary-together",
+  "title": "Both ends of the spine vary together",
+  "caption": "Eight panels from the segmentation alone, not from the numbering: sacralisation, foramina, non-rib-bearing vertebrae, disc ratio, the rib 12 to 11 length ratio, the Castellvi space, rib counts and co-occurrence.",
+  "chapter": "07",
+  "grade": "Reported",
+  "status": "a record, not a final value",
+  "source": {
+    "kind": "artifact",
+    "artifact": "artifacts/spinal-border-variants-fye5ef/",
+    "artifact_url": "https://claude.ai/artifact/FyE5Ef7bZjrUJkgE5wEnok",
+    "made_by": null,
+    "commit": null,
+    "data": [
+      "data/v5_final (grid)",
+      "morphometrics/ (figure and per-case values)"
+    ],
+    "run": null,
+    "notes": "Embedded image; the record names morphometrics/ as holding the figure and per-case values on the grid, but no script."
+  },
+  "explore": [
+    {
+      "label": "The artifact's page and files",
+      "href": "artifacts/spinal-border-variants-fye5ef/"
+    },
+    {
+      "label": "The artifact on claude.ai",
+      "href": "https://claude.ai/artifact/FyE5Ef7bZjrUJkgE5wEnok"
+    }
+  ],
+  "rerun": {
+    "where": "none",
+    "command": null,
+    "cost": "nothing to run: no command is recorded for it",
+    "needs_owner_word": false
+  }
+}

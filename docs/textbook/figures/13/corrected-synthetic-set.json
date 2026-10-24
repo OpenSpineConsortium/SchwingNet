@@ -1,0 +1,34 @@
+{
+  "id": "13/corrected-synthetic-set",
+  "title": "The corrected synthetic set",
+  "caption": "The corrected synthetic set on which a two-class detector, vertebra and sacrum, was trained before its first test on real frames.",
+  "chapter": "13",
+  "grade": "Reported",
+  "status": "a record, not a final value",
+  "source": {
+    "kind": "artifact",
+    "artifact": "artifacts/ninety-three-pixels/",
+    "artifact_url": "https://claude.ai/artifact/KXtF9YQpjYmfBtw81yLXEX",
+    "made_by": null,
+    "commit": null,
+    "data": [],
+    "run": null,
+    "notes": "Embedded image of a superseded artifact; no builder named."
+  },
+  "explore": [
+    {
+      "label": "The artifact's page and files",
+      "href": "artifacts/ninety-three-pixels/"
+    },
+    {
+      "label": "The artifact on claude.ai",
+      "href": "https://claude.ai/artifact/KXtF9YQpjYmfBtw81yLXEX"
+    }
+  ],
+  "rerun": {
+    "where": "none",
+    "command": null,
+    "cost": "nothing to run: no command is recorded for it",
+    "needs_owner_word": false
+  }
+}
