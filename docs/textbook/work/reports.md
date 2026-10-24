@@ -65,3 +65,6 @@ About 270 checked, 38 changed (number 9, grade 3, superseded 4, canonical 1, sco
 
 ## 05 review
 About 95 checked, 12 changed (mechanism 1, pronoun 4, number 4, argument 3), one row added. Worst: the requests note drafts five letters, not six (15f, CM Spine, has no paper or address); "he/his" for the owner in three places; the two labelling tools and their agreement rule named outside Part III (cut, 814 of 910 kept, chapter 13 linked). case134 sweep carried as 301 frames (302 in Research directions). Open: Balgrist's 13 or 6 specimens (moot, refused); which of the 16 letters are among spine-datasets' 26 requests; release-page licence texts. 5,948 words, lint ok.
+
+## 03 review
+About 115 checked, 7 changed (superseded 3, argument 2, grade 1, number 1). Worst: 17,486 manifest panels quoted as current (ledger row 136 makes 21,603 current); v1's first real-frame score set against 96.4% without saying both must be scored the same way, and "all 35 frozen at-risk persons" (35 is the sample size); the contradictions re-read sample graded Measured (now Reported); crop recalls marked records. Open: 97.4 vs 98.2 and 148 vs 141; 90.6 vs 80.5; DeepFluoro sacrum 90-97 vs 96-98; variance explained 80.9 vs 86; comparators unchecked against their papers. Lint ok.
