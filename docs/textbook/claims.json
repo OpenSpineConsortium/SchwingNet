@@ -293,7 +293,7 @@
           "chapter": "33",
           "source": "spine-program 01_carm_level_detection/docs/handoff/RESULTS_CATALOG.md rows C3.5 and C3.6",
           "grade": "Unverified",
-          "note": "the catalog marks the boxes-given counting figures RECORD ONLY, prints 1,204 of 1,209 where the grant has 1,205, and marks counting with render-detector boxes (30.06 percent) REFUTED as deployable"
+          "note": "the catalog marks the boxes-given counting figures RECORD ONLY and prints 1,204 of 1,209 where the grant has 1,205, though its own 99.67 percent fits 1,205 (1,204 of 1,209 is 99.59 percent), so the row is inconsistent with itself; counting with render-detector boxes (30.06 percent) is REFUTED as deployable"
         }
       ],
       "action": "narrow"
@@ -317,9 +317,9 @@
         },
         {
           "chapter": "33",
-          "source": "spine-program 01_carm_level_detection/docs/handoff/RESULTS_CATALOG.md rows A6.1, A6.2 and A6.4",
+          "source": "spine-program 01_carm_level_detection/docs/handoff/RESULTS_CATALOG.md rows A6.1, A6.2, A6.4, A6.5 and A6.13",
           "grade": "Unverified",
-          "note": "one held-out detector: 80.5 percent at confidence 0.74 and 90.6 percent at 0.25 on the same 287 vertebrae, short of the pre-stated 97 percent; the record contradicts the claim"
+          "note": "one held-out detector: 80.5 percent at confidence 0.74 (an operating point chosen after a result was seen, marked [THR]; 236 of 287 when re-scored on the rebuilt truth, A6.5) and 90.6 percent at 0.25 on the same 287 vertebrae, short of the pre-stated 97 percent, which no held-out cell meets (A6.13); the record contradicts the claim"
         }
       ],
       "action": "narrow"
@@ -370,6 +370,12 @@
           "source": "docs/textbook/28-the-ranked-experiment-backlog.md",
           "grade": "Inferred",
           "note": "entry 8 waits on the canal-closing fix, the pre-registration freeze and readers for the disputed records"
+        },
+        {
+          "chapter": "14",
+          "source": "artifacts/research-directions-from-the-data-holding-kcyckb/",
+          "grade": "Inferred",
+          "note": "CT-7 is unrun; its receiver operating curve set is 26 transitional-labelled records against 757 normal-labelled ones"
         }
       ]
     },
@@ -495,9 +501,9 @@
         },
         {
           "chapter": "33",
-          "source": "spine-program 01_carm_level_detection/docs/handoff/RESULTS_CATALOG.md row C1.6",
+          "source": "spine-program 01_carm_level_detection/docs/handoff/RESULTS_CATALOG.md rows C1.6 and C1.2",
           "grade": "Unverified",
-          "note": "the clean per-source CSXA and BUU figures sit on the deliberately absent list"
+          "note": "C1.6: the clean per-source CSXA and BUU figures are on the list of numbers deliberately absent from paper 1's numbers file (sn:NUMBERS.md), as the row says; C1.2: a recurrent head's 98.69 percent on n 8,422, likely the same figure as the 98.7 percent (same n, an Inferred match), is RECORD ONLY and marked wrong-bank"
         }
       ],
       "action": "narrow"
@@ -522,7 +528,7 @@
           "chapter": "33",
           "source": "spine-program 01_carm_level_detection/docs/handoff/RESULTS_CATALOG.md rows C4.1 and C4.2",
           "grade": "Unverified",
-          "note": "both DeepFluoro numbers RECORD ONLY"
+          "note": "the renderer's 80.9 percent is RECORD ONLY (C4.2); the catalog's render-only DeepFluoro sacrum row, 76.9 percent, is RECORD ONLY (C4.1) and sits in the grant's lower range of about 64 to 77 percent; the grant's 96 to 98 percent on renders of DeepFluoro's own CTs has no row in the parts read"
         }
       ],
       "action": "narrow"
@@ -549,7 +555,8 @@
           "grade": "Unverified",
           "note": "the lineage behind the arms is ruled leaked and record only; the promised replacement is not recorded"
         }
-      ]
+      ],
+      "action": "narrow"
     },
     {
       "id": "F15",
@@ -745,7 +752,7 @@
         "grant",
         "paper-1"
       ],
-      "grade": "Inferred",
+      "grade": "Unverified",
       "evidence": [
         {
           "chapter": "03",
@@ -756,10 +763,11 @@
         {
           "chapter": "33",
           "source": "spine-program 01_carm_level_detection/docs/handoff/RESULTS_CATALOG.md",
-          "grade": "Reported",
-          "note": "read in part for chapter 33: rows A2, A3, A5, A6, B, C1, C3, C4"
+          "grade": "Unverified",
+          "note": "read in part for chapter 33 (rows A2, A3, A5, A6, B, C1, C3, C4): the grant as submitted quotes figures the catalog marks RECORD ONLY, the boxes-given counting arms (C3.5) and the renderer's 80.9 percent (C4.2), so the claim is contradicted for the grant and holds at most for what is said next"
         }
-      ]
+      ],
+      "action": "narrow"
     },
     {
       "id": "I10",
