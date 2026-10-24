@@ -1018,6 +1018,57 @@
    "reach": "held",
    "tried": "no",
    "why": "registry entry only: chest films and CTs, raw copy fetched, no bank yet"
+  },
+  "cm_spine_garm": {
+   "type": "annotated",
+   "span": "L1-L5",
+   "basis": "stated",
+   "images": 208,
+   "images_unit": "G-arm images",
+   "tried": "no",
+   "why": "L1 to L5 labelled per vertebra; the file no longer opens"
+  },
+  "huashan_intraop_lumbar": {
+   "type": "paired",
+   "span": "L1-S1",
+   "basis": "inferred",
+   "persons": 140,
+   "tried": "no",
+   "why": "lumbar films with the same patient's CT; asked, no answer yet"
+  },
+  "levelcheck_clinical": {
+   "type": "paired",
+   "span": null,
+   "basis": "unknown",
+   "persons": 178,
+   "persons_note": "178 CTs, one per patient",
+   "tried": "no",
+   "why": "levels registered from the labelled CT; the owners declined to share"
+  },
+  "nitw_2d3d_registration": {
+   "type": "paired",
+   "span": "L1-L5",
+   "basis": "stated",
+   "persons": 9,
+   "tried": "no",
+   "why": "L1 to L5 centroids per frame with the CTs on request"
+  },
+  "tvgh_as_spine": {
+   "type": "annotated",
+   "span": null,
+   "basis": "unknown",
+   "tried": "no",
+   "why": "behind a login; labels not recorded"
+  },
+  "vanderbilt_tha_fluoro": {
+   "type": "annotated",
+   "span": "L5-S1",
+   "basis": "stated",
+   "persons": 146,
+   "images": 336,
+   "images_unit": "frames",
+   "tried": "no",
+   "why": "L5/S1 marked on pelvic fluoroscopy, the anchor counting starts from"
   }
  },
  "tasks": {
