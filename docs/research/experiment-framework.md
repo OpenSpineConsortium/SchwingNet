@@ -77,7 +77,7 @@ the record once a piece is added.
 ## 3. The three parts this change adds, and the decisions in them
 
 - **samples: which training crops a run sees.** `only-sources` and `drop-sources` take the
-  catalog's source names (`sources=carmlspine,vindr`); `cap-per-person` keeps the first N crops of
+  catalog's source names (`sources=carmlspine,vindr_spinexr`, the catalog's own ids); `cap-per-person` keeps the first N crops of
   each person in the catalog's order, which is by frame hash and then level, fixed and arbitrary,
   so a cap is the same crops in every run and nothing random enters the choice. The validation
   part is never cut: every run of a comparison scores the same crops, or the comparison says
