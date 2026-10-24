@@ -47,3 +47,9 @@ About 270 checked, 38 changed (number 9, grade 3, superseded 4, canonical 1, sco
 
 ## 25 writer
 5,523 words, 46 rows, lint ok; 41 decisions in six families (R1-R10, V1-V6, P1-P5, O1-O11, G1-G5, N1-N4), method decisions by M-number only. Open: paper states against spine-program's STATUS.md (not readable here); whether the recipe's 27 Sep gaps closed in the student templates; whether the 8 Oct order of work still binds before the talk (cannot-tell, given as inferred). Found: the gate's v1 path uses afterok, which the recipe forbids, with no recorded decision. Records only: 99.02 and 99 at 35.7. Source privacy: names, grid paths, a login, a host; none reproduced.
+
+## 28 writer
+5,998 words (cut from 6,698), 39 rows, lint ok. Open: which entries wait on the owner's word today (the chapter says all do); grid estimates are the record's own, the ledger settles no grid cost; no outcome recorded for the September jobs (clean DeepFluoro retrain, LODO trainings, real-film sweep arms, 376-patient CV). Records only: DeepFluoro render-trained sacrum 96-98 vs 90-97; 90.6 vs 80.5; transitional patients 190-376; the unsourced 6 GPU-hour v1 bound. Source privacy: names in the grant and protocol, an outside author, grid paths, a login and job ids; none copied.
+
+## 30 writer
+5,903 words, 36 rows, lint ok. Open: Anthropic's current consumer terms (last reads 10 and 13 Oct); whether cswap v0.27.0b1 reached PyPI and Claude Swap Cloud was submitted (row 30); project memory write never tried live; Claude Code features since 3 Oct. Carried: extension 14,706 lines (spec says 14,907, its parts sum to 14,706); privacy statement version 16 (runbook says 15). Not current: Windows minute multiplier (2 vs 1.7), ladder minute costs and $4 prices, the organisation's plan; refresh-token lifetimes Unverified. Source privacy: the owner's name and login, another person's login, the store item id; none in the chapter.
