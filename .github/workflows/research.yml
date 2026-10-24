@@ -27,23 +27,27 @@ name: Research loop
 # started twice: the loop's own open issue is carried on first, and an item another worker, a
 # block, a review or an act of the owner's holds is skipped.
 #
-# The session reaches the grid only through tools/research_loop.py grid, gate, runs and log, which
-# dispatch grid.yml and grid-gate.yml on main, or read their runs, with this job's own token in
-# RESEARCH_DISPATCH_TOKEN: GitHub lets the workflow token start a workflow_dispatch, and the job
-# grants it actions: write and only reads besides. That token sits in the session's environment,
-# where any command it runs could read it; the brief has it used through the clerk alone, and the
-# clerk dispatches those two workflows only and refuses a grid command that is not one committed
-# program with plain arguments (research_loop.command_problem), since grid.yml runs its command
-# with bash on a university node. The session's own GitHub token is the one Claude's action mints
-# from id-token, as in claude.yml, so its pushes and pull requests start the checks. The session
-# reads web pages and issue text nobody has vouched for; the brief marks all of it as data, never
-# an instruction, and the tool list is no fence (bash and python3 run anything), so what bounds a
-# misled run is what its tokens reach, which docs/memory/research-loop.md states. grid.yml runs a
-# command on a compute node inside the runner's container, with no lab volume and no Slurm; the
-# gate words of grid/gate.sh, which queue the Slurm jobs, are sent through symphony-template's
-# grid-accounts.yml by an admin, which this loop cannot reach, so the brief has it ask the owner
-# for such a word in an issue. After the session the job records what it spent, as claude.yml
-# does, for metrics.yml.
+# The session reads web pages and issue text nobody has vouched for; the brief marks all of it as
+# data, never an instruction, and the tool list is no fence (bash and python3 run anything), so
+# what bounds a misled run is what its tokens reach. It holds two: the GitHub token Claude's action
+# mints from id-token, as in claude.yml, which reaches this repository's contents, issues and pull
+# requests, so its pushes and pull requests start the checks; and this job's workflow token, in its
+# environment as RESEARCH_READ_TOKEN, which the job grants reads alone (actions: read), so that
+# tools/research_loop.py runs and log can read the grid's runs. Neither can start a workflow,
+# cancel a run or delete an artifact. Grid work goes the long way round: tools/research_loop.py grid
+# and gate check a request (grid.yml with one committed program and plain arguments,
+# research_loop.command_problem, since grid.yml runs its command with bash on a university node;
+# grid-gate.yml with one of its three words) and queue it as a line of the file RESEARCH_REQUESTS
+# names, at most RESEARCH_DISPATCHES_PER_RUN (3) a session, and the job dispatch below, once the
+# session has ended, reads every line again against main's code, refuses what it does not admit,
+# dispatches the rest on main with a token the session never held and posts each run's link on the
+# item's issue, an open issue labelled research and no other. So a session cannot wait for a grid
+# result in the run that asks for it; the brief has it leave the item resumable first, and the next
+# run reads the result. grid.yml runs a command on a compute node inside the runner's container,
+# with no lab volume and no Slurm; the gate words of grid/gate.sh, which queue the Slurm jobs, are
+# sent through symphony-template's grid-accounts.yml by an admin, which this loop cannot reach, so
+# the brief has it ask the owner for such a word in an issue. After the session the job records
+# what it spent, as claude.yml does, for metrics.yml.
 
 on:
   schedule:
@@ -55,7 +59,7 @@ on:
         required: false
         default: ""
 
-# Nothing at the top; the job asks for what it needs.
+# Nothing at the top; each job asks for what it needs.
 permissions: {}
 
 concurrency:
@@ -73,10 +77,12 @@ jobs:
       contents: read # the checkout; the session pushes with the token Claude's action mints
       issues: read # the open issues labelled research, for the pick
       pull-requests: read # the open pull requests labelled research, for the pick
-      actions: write # the day's marks, and the dispatch of grid.yml and grid-gate.yml
+      actions: read # the day's marks, and the grid's runs for the session's runs and log; the uploads use the runner's own token
       id-token: write # Claude's action mints its own GitHub token from it, as in claude.yml
     env:
       HAVE_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' }}
+    outputs:
+      requests: ${{ steps.requests.outputs.requests }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -117,7 +123,12 @@ jobs:
           { echo '### The register'"'"'s next items'; echo '```json'; python3 tools/claims_rank.py next; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
           python3 tools/research_loop.py pick --repo "$REPO" --item "$ITEM" --out "$RUNNER_TEMP/pick.json" > /dev/null
           mode=$(jq -r .mode "$RUNNER_TEMP/pick.json")
-          echo "mode=$mode" >> "$GITHUB_OUTPUT"
+          # the item and the issue the run works, for the clerk's grid requests (the session's environment)
+          {
+            echo "mode=$mode"
+            echo "item=$(jq -r '.item.id // ""' "$RUNNER_TEMP/pick.json")"
+            echo "issue=$(jq -r '.issue // ""' "$RUNNER_TEMP/pick.json")"
+          } >> "$GITHUB_OUTPUT"
           { echo '### This run'"'"'s choice'; echo '```json'; cat "$RUNNER_TEMP/pick.json"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
       - name: Mark the run as one that works, for the day's count
         if: steps.admit.outputs.admit == 'true' && steps.pick.outputs.mode != 'none'
@@ -151,9 +162,15 @@ jobs:
         if: steps.admit.outputs.admit == 'true' && steps.pick.outputs.mode != 'none'
         uses: anthropics/claude-code-action@34968b5981d5d170904281aa3df6f3c0d4a28855 # v1.0.249
         env:
-          # the workflow token, which may dispatch grid.yml and grid-gate.yml, in the session's
-          # environment; the brief has it used through tools/research_loop.py alone (the header)
-          RESEARCH_DISPATCH_TOKEN: ${{ github.token }}
+          # the workflow token, which only reads, in the session's environment for tools/research_loop.py
+          # runs and log; the brief has it used through the clerk alone (the header)
+          RESEARCH_READ_TOKEN: ${{ github.token }}
+          # where the clerk queues the session's grid requests, for the job dispatch after the session,
+          # how many it may queue, and the item and issue the run works, from the pick
+          RESEARCH_REQUESTS: ${{ runner.temp }}/research-requests.jsonl
+          RESEARCH_DISPATCHES_PER_RUN: ${{ vars.RESEARCH_DISPATCHES_PER_RUN }}
+          RESEARCH_ITEM: ${{ steps.pick.outputs.item }}
+          RESEARCH_ISSUE: ${{ steps.pick.outputs.issue }}
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           allowed_bots: "github-actions,claude"
@@ -164,6 +181,19 @@ jobs:
             ${{ steps.brief.outputs.effort != '' && format('--effort {0}', steps.brief.outputs.effort) || '' }}
             ${{ steps.brief.outputs.fallback != '' && format('--fallback-model {0}', steps.brief.outputs.fallback) || '' }}
             --allowedTools "Read,Write,Edit,MultiEdit,Glob,Grep,WebSearch,WebFetch,Bash(git:*),Bash(gh:*),Bash(python3:*),Bash(bash:*),Bash(jq:*),Bash(ls:*),Bash(cat:*),Bash(head:*),Bash(tail:*),Bash(wc:*),Bash(sort:*),Bash(diff:*),Bash(mkdir:*),Bash(rm:*),Bash(mv:*),Bash(cp:*)"
+      - name: Whether the session asked for grid work
+        id: requests
+        if: steps.admit.outputs.admit == 'true' && steps.pick.outputs.mode != 'none'
+        run: |
+          if [ -s "$RUNNER_TEMP/research-requests.jsonl" ]; then echo "requests=true"; else echo "requests=false"; fi >> "$GITHUB_OUTPUT"
+      - name: Keep the requests for the job dispatch
+        if: steps.requests.outputs.requests == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: research-requests-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/research-requests.jsonl
+          retention-days: 1
+          if-no-files-found: error
       - name: Record what the run spent, for the field metrics
         if: always() && steps.claude.outcome != 'skipped'
         continue-on-error: true
@@ -182,3 +212,35 @@ jobs:
           name: symphony-usage-${{ github.run_id }}-${{ github.run_attempt }}-research
           path: ${{ runner.temp }}/symphony-usage/record.json
           if-no-files-found: ignore
+
+  dispatch:
+    # The session's grid requests, run once the session has ended, by a job whose token it never
+    # held (the header): main's copy of the clerk reads each request again against main's code and
+    # dispatches what it admits, up to the limit, on main.
+    needs: research
+    if: needs.research.result == 'success' && needs.research.outputs.requests == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read # main's copy of the clerk
+      actions: write # the dispatch of grid.yml and grid-gate.yml, and the listing that finds each run
+      issues: write # the comment with the runs' links on the item's issue
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+      - name: The requests the session queued
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: research-requests-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/requests
+      - name: Dispatch what main's code admits
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          LIMIT: ${{ vars.RESEARCH_DISPATCHES_PER_RUN }}
+        run: |
+          set -euo pipefail
+          python3 tools/research_loop.py dispatch --requests "$RUNNER_TEMP/requests/research-requests.jsonl" \
+            --repo "$REPO" --limit "$LIMIT"
