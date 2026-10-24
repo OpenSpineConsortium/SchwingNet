@@ -12,23 +12,29 @@ code, not Claude, so that the cap, the switch and the choice of item can be test
     python3 tools/research_loop.py admit --marks M --runs R --switch S --crowd C --token T --cap N --event E --words F
     python3 tools/research_loop.py pick [--issues I --pulls P | --repo OWNER/NAME] [--item ID] [--out F]
     python3 tools/research_loop.py prompt --brief .github/symphony/research.md --pick F --run URL
-    python3 tools/research_loop.py grid --command CMD [--start] [--python|--no-python]
-    python3 tools/research_loop.py gate status|start|stop
+    python3 tools/research_loop.py grid --command CMD --issue N [--item ID] [--start] [--python|--no-python]
+    python3 tools/research_loop.py gate status|start|stop --issue N [--item ID]
     python3 tools/research_loop.py runs [--limit N]
     python3 tools/research_loop.py log RUN_ID
+    python3 tools/research_loop.py dispatch --requests FILE --repo OWNER/NAME [--limit N]
 
 admit counts the day's runs by the marker artifact research-runs each admitted run keeps, as
 synthesis.yml counts its reads, and stops after three failures in a row for six hours. pick chooses
 the work: an open issue labelled research that the loop may carry on comes first, best ranked first,
 then the best-ranked ready item of docs/textbook/claims.json that no open issue or pull request
 labelled research names; an item is named by the marker `<!-- research-item: E07 -->` in a body or
-by a title that begins `Research E07`. grid, gate, runs and log are the session's one route to the grid's
-workflows: they dispatch grid.yml or grid-gate.yml on main, or list their runs, with the workflow
-token in RESEARCH_DISPATCH_TOKEN, which the session's own GitHub token cannot do. A grid command is
-one committed program with plain arguments (command_problem): grid.yml runs whatever it is given with
-bash on a university node, in a checkout of main, and the session that asks for it has read web pages
-and issue text it cannot vouch for, so a shell operator, a substitution, an inline program (-c) or a
-file that is not on main is refused here, before the dispatch. Standard library only.
+by a title that begins `Research E07`. grid and gate are the session's one route to the grid's
+workflows, and neither starts anything: each checks its request and appends it as one JSON line to
+the file RESEARCH_REQUESTS names, at most RESEARCH_DISPATCHES_PER_RUN a session, and after the session
+has ended the workflow's second job runs dispatch, which reads every line again against main's code,
+refuses what it does not admit, dispatches the rest on main up to the limit and posts each run's link
+on the item's issue, an open issue labelled research and no other. So the session holds no token that
+can start a workflow: it reads web pages and issue text it cannot vouch for, and its workflow token in
+RESEARCH_READ_TOKEN only reads the grid's runs, for runs and log. A grid command is one committed
+program with plain arguments (command_problem): grid.yml runs whatever it is given with bash on a
+university node, in a checkout of main, so a shell operator, a substitution, an inline program (-c)
+or a file that is not on main is refused, at the queue and again at the dispatch. Standard library
+only.
 """
 
 import argparse
@@ -40,6 +46,7 @@ import secrets
 import shlex
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 
@@ -59,6 +66,17 @@ ITEM_MARKER = re.compile(r"<!--\s*research-item:\s*(E\d{1,4})\s*-->")
 ITEM_TITLE = re.compile(r"^\s*Research\s+(E\d{1,4})\b")
 GATE_WORDS = ("status", "start", "stop")
 GRID_WORKFLOWS = ("grid.yml", "grid-gate.yml")
+WORKFLOW_TITLES = {"grid.yml": "Grid", "grid-gate.yml": "Grid gate"}
+# The session's grid requests: the file the workflow names, how many one session may queue, and
+# the first line of the dispatch job's comment, by which the next run finds the runs' links.
+REQUESTS_ENV = "RESEARCH_REQUESTS"
+DISPATCHES_ENV = "RESEARCH_DISPATCHES_PER_RUN"
+DEFAULT_DISPATCHES = 3
+MAX_DISPATCHES = 10
+DISPATCH_MARKER = "<!-- research-loop: dispatched -->"
+ITEM_ID = re.compile(r"^E\d{1,4}$")
+# An issue's number as the claim protocol bounds one: one to nine ASCII digits, no leading zero.
+ISSUE_NUMBER = re.compile(r"^[1-9][0-9]{0,8}$")
 # The shape of a grid command: a program the checkout holds, run by bash or python3, with
 # arguments of plain characters. The operators and substitutions bash would act on are refused
 # in the whole command, since grid.yml hands it to bash -c as one string.
@@ -290,12 +308,85 @@ def prompt(args):
 
 # The route to the grid's workflows.
 
-def dispatch_env():
-    """gh's environment with the workflow token, which may dispatch, in place of the session's own."""
-    token = os.environ.get("RESEARCH_DISPATCH_TOKEN", "")
+def read_env():
+    """gh's environment with the workflow token, which reads the grid's runs and nothing more, in
+    place of the session's own, which may not read them."""
+    token = os.environ.get("RESEARCH_READ_TOKEN", "")
     if not token:
-        raise SystemExit("RESEARCH_DISPATCH_TOKEN is not set: only a run of research.yml may dispatch the grid's workflows")
+        raise SystemExit("RESEARCH_READ_TOKEN is not set: only a run of research.yml reads the grid's runs this way")
     return dict(os.environ, GH_TOKEN=token)
+
+
+def dispatches_per_run(text=None):
+    """How many grid requests one session may queue, and the dispatch job runs: the variable's whole
+    number from 1 up to MAX_DISPATCHES, else the default."""
+    text = (os.environ.get(DISPATCHES_ENV, "") if text is None else text or "").strip()
+    if text.isdigit() and len(text) <= 2 and int(text) > 0:
+        return min(int(text), MAX_DISPATCHES)
+    return DEFAULT_DISPATCHES
+
+
+def issue_number(text):
+    """An issue's number from text a session or a request line gives, or None."""
+    text = str(text if text is not None else "").strip()
+    return int(text) if ISSUE_NUMBER.match(text) else None
+
+
+def requests_in(path, most=100):
+    """The request lines of the file, each parsed where it is JSON and kept as text where it is not,
+    so the dispatch job refuses it with a reason, and how many more the file holds beyond the first
+    most, which are not read: a session queues at most MAX_DISPATCHES, so a longer file was written
+    some other way, and the job's comment stays a page. A file not there holds none."""
+    lines, dropped = [], 0
+    if not path or not Path(path).is_file():
+        return lines, dropped
+    for raw in Path(path).read_text(encoding="utf-8", errors="replace").splitlines():
+        if not raw.strip():
+            continue
+        if len(lines) >= most:
+            dropped += 1
+            continue
+        try:
+            lines.append(json.loads(raw))
+        except ValueError:
+            lines.append(raw)
+    return lines, dropped
+
+
+def describe(line):
+    """One request in a few words: the workflow and its command or word."""
+    inputs = line.get("inputs") or {}
+    what = inputs.get("command") if line.get("workflow") == "grid.yml" else inputs.get("word")
+    return f"{line.get('workflow')} `{what}`"
+
+
+def queue(workflow, inputs, args):
+    """Append one request to the file RESEARCH_REQUESTS names, for the dispatch job after the session,
+    and say so. The request names the item's issue, since that is where the dispatch job posts the
+    run's link and where the next run reads it: a session opens the issue before it asks."""
+    path = os.environ.get(REQUESTS_ENV, "")
+    if not path:
+        raise SystemExit(f"{REQUESTS_ENV} is not set: only a run of research.yml queues the grid's workflows")
+    issue = issue_number(args.issue or os.environ.get("RESEARCH_ISSUE", ""))
+    if issue is None:
+        raise SystemExit("the request needs the item's issue: open the issue first (the brief's step 2) and pass --issue N")
+    item = (args.item or os.environ.get("RESEARCH_ITEM", "")).strip()
+    if item and not ITEM_ID.match(item):
+        raise SystemExit(f"{item} is not an item id of the register (E07)")
+    cap = dispatches_per_run()
+    lines, dropped = requests_in(path)
+    queued = len(lines) + dropped
+    if queued >= cap:
+        raise SystemExit(f"this session has queued {queued} grid requests, the run's {cap} ({DISPATCHES_ENV}); "
+                         "the next run may ask again")
+    asked = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    line = {"workflow": workflow, "inputs": inputs, "item": item, "issue": issue, "asked": asked}
+    with open(path, "a", encoding="utf-8") as f:
+        f.write(json.dumps(line) + "\n")
+    print(f"Queued request {queued + 1} of at most {cap}: {describe(line)}. It runs after this session ends, "
+          f"from this run's dispatch job, which posts the run's link on issue #{issue} in a comment beginning "
+          f"{DISPATCH_MARKER}; the next run reads it there and with runs and log.")
+    return 0
 
 
 def main_ref():
@@ -371,30 +462,76 @@ def command_problem(command, committed=None):
 
 
 def grid_inputs(command, start, python, committed=None):
-    """grid.yml's inputs as gh workflow run takes them, each a string as the dispatch API reads them;
-    -f, since -F would read a command that begins with @ as a file. A command that is not one
-    committed program with plain arguments is refused (command_problem)."""
+    """grid.yml's inputs by name, each a string as the dispatch API reads them. A command that is not
+    one committed program with plain arguments is refused (command_problem)."""
     problem = command_problem(command, committed)
     if problem:
         raise SystemExit(f"grid refuses the command: {problem}")
-    return ["-f", f"command={command}", "-f", f"start={'true' if start else 'false'}",
-            "-f", f"python={'true' if python else 'false'}"]
+    return {"command": command, "start": "true" if start else "false", "python": "true" if python else "false"}
 
 
 def gate_inputs(word):
     """grid-gate.yml's input, one of its three words."""
     if word not in GATE_WORDS:
         raise SystemExit(f"the gate's word is one of {', '.join(GATE_WORDS)}, not {word}")
-    return ["-f", f"word={word}"]
+    return {"word": word}
 
 
-def newest_run(workflow, since, env, repo):
-    """The id and address of the first run of the workflow dispatched at or after since, waiting
-    up to a minute for GitHub to list it."""
+def flags(inputs):
+    """The inputs as gh workflow run takes them: -f, since -F would read a command that begins with
+    @ as a file."""
+    return [flag for name, value in inputs.items() for flag in ("-f", f"{name}={value}")]
+
+
+# The dispatch job, after the session.
+
+def request_problem(line, committed=None):
+    """Why the dispatch job refuses a request line, or None. The file was written in the session's
+    environment, where any command could have written to it, so every line is read again here against
+    main's code, as if the session had never checked it."""
+    if not isinstance(line, dict):
+        return "the line is not a request"
+    workflow, inputs = line.get("workflow"), line.get("inputs")
+    if workflow not in GRID_WORKFLOWS:
+        return f"the loop dispatches only {', '.join(GRID_WORKFLOWS)}, not {workflow!r}"
+    if not isinstance(inputs, dict) or not all(isinstance(k, str) and isinstance(v, str) for k, v in inputs.items()):
+        return "the inputs are not strings by name"
+    if issue_number(line.get("issue")) is None:
+        return "the request names no issue"
+    item = line.get("item") or ""
+    if not isinstance(item, str) or (item and not ITEM_ID.match(item)):
+        return "the item is not an id of the register"
+    if workflow == "grid-gate.yml":
+        if set(inputs) != {"word"} or inputs["word"] not in GATE_WORDS:
+            return f"the gate's word is one of {', '.join(GATE_WORDS)}"
+        return None
+    if set(inputs) != {"command", "start", "python"}:
+        return "grid.yml takes command, start and python"
+    if inputs["start"] not in ("true", "false") or inputs["python"] not in ("true", "false"):
+        return "start and python are true or false"
+    return command_problem(inputs["command"], committed)
+
+
+def research_issue(repo, number, env=None):
+    """Whether the number is an open issue of the repository labelled research, read with gh. The
+    comment with the runs' links goes there and nowhere else, so a forged line cannot write on another
+    issue, and a request for an issue that is not the loop's open work is not run, since its result
+    would reach nobody."""
+    try:
+        issue = gh_json_env(["api", f"repos/{repo}/issues/{number}"], env or dict(os.environ))
+    except (subprocess.CalledProcessError, ValueError):
+        return False
+    return (isinstance(issue, dict) and "pull_request" not in issue and issue.get("state") == "open"
+            and LABEL in label_names(issue))
+
+
+def newest_run(workflow, since, env, repo, seen=()):
+    """The id and address of the first run of the workflow dispatched at or after since and not yet
+    seen, waiting up to a minute for GitHub to list it."""
     for _ in range(12):
         runs = gh_json_env(["run", "list", "--repo", repo, "--workflow", workflow, "--event", "workflow_dispatch",
                             "--limit", "10", "--json", "databaseId,createdAt,url,status"], env)
-        fresh = [r for r in runs if (r.get("createdAt") or "") >= since]
+        fresh = [r for r in runs if (r.get("createdAt") or "") >= since and r.get("databaseId") not in seen]
         if fresh:
             run = min(fresh, key=lambda r: r["createdAt"])
             return run["databaseId"], run["url"]
@@ -408,21 +545,107 @@ def gh_json_env(args, env):
     return json.loads(out or "[]")
 
 
-def dispatch(workflow, inputs, repo):
-    """Dispatch one of the grid's workflows on main and print its run's address."""
-    if workflow not in GRID_WORKFLOWS:
-        raise SystemExit(f"the loop dispatches only {', '.join(GRID_WORKFLOWS)}")
-    env = dispatch_env()
+def start_run(workflow, inputs, repo, env=None, seen=()):
+    """Dispatch one of the grid's workflows on main and return its run's id and address."""
+    env = env or dict(os.environ)
     since = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    subprocess.run(["gh", "workflow", "run", workflow, "--repo", repo, "--ref", "main", *inputs], check=True, env=env)
-    run_id, url = newest_run(workflow, since, env, repo)
-    print(json.dumps({"workflow": workflow, "run": run_id, "url": url}))
-    return 0
+    subprocess.run(["gh", "workflow", "run", workflow, "--repo", repo, "--ref", "main", *flags(inputs)],
+                   check=True, capture_output=True, text=True, env=env)
+    return newest_run(workflow, since, env, repo, seen)
+
+
+def settle(lines, repo, limit, committed=None, issue_check=None, starter=None):
+    """What the dispatch job does with each request line, in order: the rows {line, issue, url, run,
+    refused}, and for each issue the lines name whether it is the loop's open work. A line main's code
+    does not admit, or whose issue is not such work, is refused with its reason; the admitted ones are
+    dispatched up to the limit, and the rest refused as over it. Each issue is asked about once, and
+    the gh calls are given so a test can stand them in."""
+    issue_check = issue_check or research_issue
+    starter = starter or start_run
+    rows, standing, seen, started = [], {}, [], 0
+    for line in lines:
+        row = {"line": line, "issue": issue_number(line.get("issue")) if isinstance(line, dict) else None,
+               "url": None, "run": None, "refused": request_problem(line, committed)}
+        rows.append(row)
+        if row["issue"] is not None and row["issue"] not in standing:
+            standing[row["issue"]] = issue_check(repo, row["issue"])
+        if row["refused"]:
+            continue
+        if not standing[row["issue"]]:
+            row["refused"] = f"issue #{row['issue']} is not an open issue labelled {LABEL}, so nothing is run for it"
+            continue
+        if started >= limit:
+            row["refused"] = f"over this run's limit of {limit} requests ({DISPATCHES_ENV})"
+            continue
+        try:
+            row["run"], row["url"] = starter(line["workflow"], line["inputs"], repo, seen=seen)
+        except subprocess.CalledProcessError as why:
+            words = (why.stderr or why.stdout or "").strip().splitlines()
+            row["refused"] = "gh workflow run failed: " + (words[0] if words else f"exit {why.returncode}")
+            continue
+        started += 1
+        if row["run"] is not None:
+            seen.append(row["run"])
+    return rows, standing
+
+
+def report(rows, run_url="", dropped=0):
+    """The dispatch job's words for the issue and the job summary: the marker first, then each request
+    with its run's link or its refusal and the reason."""
+    lines = [DISPATCH_MARKER, "The research loop's grid requests" + (f" (run {run_url})" if run_url else "")
+             + ", read again against main's code after the session ended:", ""]
+    for row in rows:
+        what = describe(row["line"]) if isinstance(row["line"], dict) else "a line that is no request"
+        if row["refused"]:
+            lines.append(f"- refused {what}: {row['refused']}")
+        elif row["url"]:
+            lines.append(f"- dispatched {what}: {row['url']}")
+        else:
+            lines.append(f"- dispatched {what}: GitHub did not list its run within a minute; "
+                         "`python3 tools/research_loop.py runs` finds it")
+    if dropped:
+        lines.append(f"- {dropped} more lines were not read: a session queues at most {MAX_DISPATCHES} requests")
+    if not rows and not dropped:
+        lines.append("- no request")
+    return "\n".join(lines) + "\n"
+
+
+def comment(repo, number, text, env=None):
+    """Post the words on the issue, from a file, since a body is text and not an argument."""
+    with tempfile.NamedTemporaryFile("w", encoding="utf-8", suffix=".md", delete=False) as f:
+        f.write(text)
+    try:
+        subprocess.run(["gh", "issue", "comment", str(number), "--repo", repo, "--body-file", f.name],
+                       check=True, capture_output=True, text=True, env=env or dict(os.environ))
+    finally:
+        os.unlink(f.name)
+
+
+def dispatch(args):
+    """The second job's command: read the session's requests, settle each against main's code, run
+    the admitted ones and say what happened, on each item's issue and in the job summary."""
+    repo = args.repo or os.environ.get("GITHUB_REPOSITORY", "")
+    lines, dropped = requests_in(args.requests)
+    rows, standing = settle(lines, repo, dispatches_per_run(args.limit))
+    run_id = os.environ.get("GITHUB_RUN_ID", "")
+    run_url = f"{os.environ.get('GITHUB_SERVER_URL', 'https://github.com')}/{repo}/actions/runs/{run_id}" if run_id else ""
+    text = report(rows, run_url, dropped)
+    print(text, end="")
+    summary = os.environ.get("GITHUB_STEP_SUMMARY")
+    if summary:
+        with open(summary, "a", encoding="utf-8") as f:
+            f.write(text)
+    # each issue the loop works hears of its own requests, the refused ones too, so the next run
+    # learns what main's code would not run; an issue that is not the loop's open work hears nothing
+    for number, ok in sorted(standing.items()):
+        if ok:
+            comment(repo, number, report([row for row in rows if row["issue"] == number], run_url))
+    return 1 if any((row["refused"] or "").startswith("gh workflow run failed") for row in rows) else 0
 
 
 def runs(args):
-    """The last runs of the grid's two workflows, so a job is checked before it is sent again."""
-    env = dispatch_env()
+    """The last runs of the grid's two workflows, so a job is checked before it is asked for again."""
+    env = read_env()
     repo = args.repo or os.environ.get("GITHUB_REPOSITORY", "")
     listed = {}
     for workflow in GRID_WORKFLOWS:
@@ -434,12 +657,12 @@ def runs(args):
 
 def log(args):
     """The whole log of one run of the grid's workflows, which the session's own token may not read."""
-    env = dispatch_env()
+    env = read_env()
     repo = args.repo or os.environ.get("GITHUB_REPOSITORY", "")
     view = subprocess.run(["gh", "run", "view", str(args.run), "--repo", repo, "--json", "workflowName"],
                           check=True, capture_output=True, text=True, env=env).stdout
     name = json.loads(view or "{}").get("workflowName", "")
-    if name not in ("Grid", "Grid gate"):
+    if name not in WORKFLOW_TITLES.values():
         raise SystemExit(f"run {args.run} is {name or 'no run'}, not one of the grid's")
     subprocess.run(["gh", "run", "view", str(args.run), "--repo", repo, "--log"], check=True, env=env)
     return 0
@@ -476,16 +699,23 @@ def parser():
     g.add_argument("--command", dest="grid_command", required=True)
     g.add_argument("--start", action="store_true")
     g.add_argument("--python", action=argparse.BooleanOptionalAction, default=True)
-    g.add_argument("--repo", default="")
     w = sub.add_parser("gate")
     w.add_argument("word")
-    w.add_argument("--repo", default="")
+    for asks in (g, w):
+        # the issue the run's link is posted on, and the item it works; RESEARCH_ISSUE and
+        # RESEARCH_ITEM, which the workflow sets from the pick, stand in where they are not given
+        asks.add_argument("--issue", default="")
+        asks.add_argument("--item", default="")
     r = sub.add_parser("runs")
     r.add_argument("--limit", type=int, default=10)
     r.add_argument("--repo", default="")
     lg = sub.add_parser("log")
     lg.add_argument("run", type=int)
     lg.add_argument("--repo", default="")
+    d = sub.add_parser("dispatch")
+    d.add_argument("--requests", required=True)
+    d.add_argument("--repo", default="")
+    d.add_argument("--limit", default="")
     return top
 
 
@@ -505,10 +735,11 @@ def main(argv=None):
         return runs(args)
     if args.command == "log":
         return log(args)
-    repo = args.repo or os.environ.get("GITHUB_REPOSITORY", "")
+    if args.command == "dispatch":
+        return dispatch(args)
     if args.command == "grid":
-        return dispatch("grid.yml", grid_inputs(args.grid_command, args.start, args.python), repo)
-    return dispatch("grid-gate.yml", gate_inputs(args.word), repo)
+        return queue("grid.yml", grid_inputs(args.grid_command, args.start, args.python), args)
+    return queue("grid-gate.yml", gate_inputs(args.word), args)
 
 
 if __name__ == "__main__":
