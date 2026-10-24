@@ -666,7 +666,8 @@ class Rekey(unittest.TestCase):
         git(folder, "init", "-q")
         for key, value in QUIET.items():
             git(folder, "config", key, value)
-        for name, text in {**files, "artifacts/_synthesis/work/tools/synth.py": "# the tools\n"}.items():
+        records = {name: "{}\n" for name in synth.CONCEPT_RECORDS}
+        for name, text in {**records, **files, "artifacts/_synthesis/work/tools/synth.py": "# the tools\n"}.items():
             Path(folder, name).parent.mkdir(parents=True, exist_ok=True)
             Path(folder, name).write_text(text, encoding="utf-8")
         git(folder, "add", "-A")
@@ -684,16 +685,52 @@ class Rekey(unittest.TestCase):
                 mock.patch.object(synth, "ledger_of", side_effect=AssertionError("the base's ledger was made")):
             for folder in (here, base):
                 self.checkout(folder, self.TEXTS)
-            self.assertEqual(sorted(synth.text_trees(here)), ["SchwingNet/alpha-page", "data/sources", "docs/research"])
+            self.assertEqual(sorted(synth.text_trees(here, "here")),
+                             sorted(["SchwingNet/alpha-page", "data/sources", "docs/research", *synth.CONCEPT_RECORDS]))
             Path(here, "artifacts", "_synthesis", "state.json").write_text("{}\n", encoding="utf-8")
+            os.symlink("../inventory.json", Path(here, "artifacts", "_synthesis", "work", "linked.json"))
+            git(here, "add", "artifacts/_synthesis/work/linked.json")
+            git(here, "commit", "-q", "-m", "a link among the records, which are no text")
             synth.same_texts(base)
             for path, key in (("artifacts/alpha-page/index.md", "SchwingNet/alpha-page"), ("docs/research/note.md", "docs/research"),
                               ("data/sources/x.json", "data/sources")):
                 Path(here, path).write_text("edited in place\n", encoding="utf-8")
-                self.refused(base, "this checkout holds a change to the texts the checks read that is not committed")
+                self.refused(base, "this checkout holds a change to the texts the checks read, or to the records")
                 git(here, "commit", "-q", "-am", "an edit")
                 self.refused(base, f"differ between this checkout and {base} in {key};")
                 git(here, "reset", "-q", "--hard", "HEAD~1")
+            numbers = "artifacts/_synthesis/work/out/numbers-partial.json"
+            self.assertIn(numbers, synth.CONCEPT_RECORDS)
+            Path(here, numbers).write_text('{"candidates": []}\n', encoding="utf-8")
+            self.refused(base, "this checkout holds a change to the texts the checks read, or to the records")
+            git(here, "commit", "-q", "-am", "the figures numbered again")
+            self.refused(base, f"in {numbers};")
+            git(here, "reset", "-q", "--hard", "HEAD~1")
+            Path(here, "outside.md").write_text("a text no tree of the texts holds\n", encoding="utf-8")
+            for link, to in (("artifacts/alpha-page/linked.md", "../../outside.md"), ("artifacts/linked-page", "../docs"),
+                             ("docs/research/linked.md", "../../outside.md")):
+                os.symlink(to, Path(here, link))
+                git(here, "add", link)
+                git(here, "commit", "-q", "-m", "a link")
+                self.refused(base, "this checkout holds 1 links or submodules among the texts")
+                git(here, "reset", "-q", "--hard", "HEAD~1")
+            git(here, "update-index", "--add", "--cacheinfo", f"160000,{git(here, 'rev-parse', 'HEAD')},artifacts/a-submodule")
+            Path(here, "artifacts", "a-submodule").mkdir()
+            git(here, "commit", "-q", "-m", "a submodule")
+            self.refused(base, "this checkout holds 1 links or submodules among the texts")
+            git(here, "reset", "-q", "--hard", "HEAD~1")
+            if Path(here, "artifacts", "a-submodule").exists():  # git may leave the empty folder behind
+                Path(here, "artifacts", "a-submodule").rmdir()
+            Path(here, "outside.md").unlink()
+            git(base, "mv", "docs", "elsewhere")
+            os.symlink("elsewhere", Path(base, "docs"))
+            git(base, "add", "-A")
+            git(base, "commit", "-q", "-m", "the notes behind a link")
+            self.refused(base, f"{base} holds no tree at docs/research")
+            git(base, "reset", "-q", "--hard", "HEAD~1")
+            Path(base, "artifacts", "an-empty-page").mkdir()
+            self.refused(base, f"{base} holds 1 folders under artifacts/ that no tree holds")
+            Path(base, "artifacts", "an-empty-page").rmdir()
             Path(base, "artifacts", "alpha-page", "extra.md").write_text("a file of its own\n", encoding="utf-8")
             self.refused(base, f"{base} holds a change to the texts")
             Path(base, ".gitignore").write_text("*.pyc\n", encoding="utf-8")
@@ -713,6 +750,15 @@ class Rekey(unittest.TestCase):
             with tempfile.TemporaryDirectory() as elsewhere:
                 for folder in (inner, elsewhere):
                     self.refused(str(folder), "is not a checkout of this repository")
+
+    def test_a_run_names_its_checkouts_and_texts_by_whole_paths(self):
+        with tempfile.TemporaryDirectory() as folder, mock.patch.dict(os.environ, {"SYNTH_TEXT": "texts", "SYNTH_SYMPHONY": "symphony"}):
+            Path(folder, "symphony", "artifacts").mkdir(parents=True)
+            with contextlib.chdir(folder):
+                run = synth.Run(without={"SchwingNet"})
+            for path in (run.clones["symphony-template"], run.text_dir, os.environ["SYNTH_SYMPHONY"], os.environ["SYNTH_TEXT"]):
+                self.assertTrue(os.path.isabs(path), "a process that starts in another folder, as rekey's base does, finds it")
+            self.assertTrue(os.path.samefile(run.clones["symphony-template"], Path(folder, "symphony")))
 
     def test_the_base_s_ledger_comes_from_its_own_tools_and_its_own_texts(self):
         mine = {"SYNTH_TEXT": "this checkout's texts", "SYNTH_SCHWINGNET": "this checkout"}
@@ -798,6 +844,9 @@ class Scrub(unittest.TestCase):
             (f"{FIRST}'s decision of 21 Oct", "[the owner]'s decision of 21 Oct"),
             ("register at forms.gle/AbC123xyz", "register at [the registration form's link]"),
             ("apply at https://docs.google.com/forms/d/e/1FAIpQLSe-x_y/viewform?usp=sf_link today",
+             "apply at [a form's link] today"),
+            # A prefilled link carries its answers in the link, so a long one is taken out whole.
+            ("apply at https://docs.google.com/forms/d/e/1FAIpQLSe-x_y/viewform?usp=pp_url&entry.1=" + "a" * 6_000 + " today",
              "apply at [a form's link] today"),
             ("the volume /rs/rs_grp_lab/shared/x", "the volume [the lab volume]/shared/x"),
             ("Spinal ai2024 has 20000 films", "Spinal ai2024 has 20000 films"),

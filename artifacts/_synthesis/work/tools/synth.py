@@ -17,7 +17,8 @@ Usage, from anywhere, with SYNTH_SYMPHONY naming a checkout of symphony-template
   synth.py rekey BASE             carry the stamp's word over a change that renames the concept
                                   checks' keys and not what they check, as one to what the scrub
                                   takes out does; BASE is a checkout of main, and this checkout
-                                  is up to date with it and changes none of the texts
+                                  is up to date with it and changes none of the texts and none
+                                  of the records the concepts are made from
 --without symphony-template lets status and report check this repository alone, where no
 checkout of the other can be made (the workflow's App token is missing), keeping the stamp's
 word for it and checking no concept; concepts, plan, join, stamp and rekey refuse it, since they
@@ -107,8 +108,11 @@ class Run:
             os.makedirs(os.path.join(symphony, "artifacts"))
         elif not symphony or not os.path.isdir(os.path.join(symphony, "artifacts")):
             raise SystemExit(f"SYNTH_SYMPHONY must name a checkout of symphony-template holding artifacts/; it is {symphony!r}")
+        # Whole paths, since the processes a run starts read them from the environment and may
+        # start in another folder, as rekey's base does.
+        symphony = os.path.abspath(symphony)
         self.clones = {"SchwingNet": str(ROOT), "symphony-template": symphony}
-        self.text_dir = os.environ.get("SYNTH_TEXT") or tempfile.mkdtemp(prefix="synth-text-")
+        self.text_dir = os.path.abspath(os.environ.get("SYNTH_TEXT") or tempfile.mkdtemp(prefix="synth-text-"))
         for repo, clone in self.clones.items():
             if repo not in self.without:
                 self.extract(extract, repo, clone)
@@ -363,10 +367,10 @@ def rekey(run, state, base):
     from the scrubbed passage: the ledger that the tools of base, a checkout of main, give is
     set beside the one this checkout's give, and each key of the stamp's whose check pairs with
     one of this checkout's takes that check's key. This checkout is up to date with main and
-    changes none of the texts the checks read, so a check that pairs differs from its old self
-    only in what the tools made of its passage. The ledger, its page and the stamp are written
-    again, and nothing else in the stamp changes, so the look counts as new only the checks no
-    pair carries."""
+    changes none of the texts the checks read and none of the records the concepts are made
+    from, so a check that pairs differs from its old self only in what the tools made of its
+    passage. The ledger, its page and the stamp are written again, and nothing else in the stamp
+    changes, so the look counts as new only the checks no pair carries."""
     import synth_state as st
     same_texts(base)
     ledger = concepts_now(run)
@@ -405,6 +409,10 @@ def rekeyed(checks, pairs):
 # What the concept checks read in this repository beside the artifacts' folders: the research
 # notes and the dataset records (synth_concepts.sources).
 NOTES_AND_RECORDS = ("docs/research", "data/sources")
+# The records the concepts are made from (concepts_now): a figure's id is its place in the
+# numbers table's list, so a check is the same check on both sides only over the same records.
+CONCEPT_RECORDS = tuple(path.relative_to(ROOT).as_posix() for path in
+                        (SYNTH / "inventory.json", OUT / "contradictions-merged.json", OUT / "numbers-partial.json", ALIASES))
 
 
 def tools_of(base):
@@ -420,36 +428,58 @@ def tools_of(base):
     return tools
 
 
-def text_trees(checkout):
-    """The git tree of each artifact's folder, of the research notes and of the dataset records
-    in a checkout, or None where the checkout holds a change to them that is not committed,
-    which no tree shows and which its tools would read."""
+def rekey_refused(why):
+    raise SystemExit(f"rekey refused: {why}, so nothing was written")
+
+
+def tree_entries(checkout, *args):
+    """git ls-tree's entries at HEAD as (mode, kind, object, path), read with -z so that no path
+    comes back quoted."""
     import synth_state as st
-    paths = ["artifacts", *NOTES_AND_RECORDS, ":(exclude)artifacts/_*"]
-    if st.git(checkout, "status", "--porcelain", "--untracked-files=all", "--ignored", "--", *paths).strip():
-        return None
+    entries = st.git(checkout, "ls-tree", "-z", *args).split("\0")
+    return [(*meta.split(), path) for meta, path in (entry.split("\t", 1) for entry in entries if entry)]
+
+
+def text_trees(checkout, where):
+    """The git object of each text the concept checks read in a checkout, every artifact's
+    folder, the research notes and the dataset records, and of each record the concepts are
+    made from. A rekey stops where they hold a change that is not committed, a link or a
+    submodule, or a folder no tree holds, since a tree shows none of those as the tools read
+    them."""
+    import synth_state as st
+    texts = ("artifacts", *NOTES_AND_RECORDS)
+    status = ("status", "--porcelain", "--untracked-files=all", "--ignored", "--")
+    if (st.git(checkout, *status, *texts, ":(exclude)artifacts/_*") + st.git(checkout, *status, *CONCEPT_RECORDS)).strip():
+        rekey_refused(f"{where} holds a change to the texts the checks read, or to the records the concepts are made from,"
+                      " that is not committed, which no tree shows; commit it or take it out")
+    tops = {path for _mode, kind, _sha, path in tree_entries(checkout, "HEAD", "--", *texts) if kind == "tree"}
+    if tops != set(texts):
+        rekey_refused(f"{where} holds no tree at {', '.join(sorted(set(texts) - tops))}, where its tools read texts")
+    links = [path for mode, _kind, _sha, path in tree_entries(checkout, "-r", "HEAD", "--", *texts)
+             if mode in ("120000", "160000") and not path.startswith("artifacts/_")]
+    if links:
+        rekey_refused(f"{where} holds {len(links)} links or submodules among the texts the checks read, whose trees do not"
+                      " change when what they lead to does")
     trees = st.folder_trees(checkout, "SchwingNet")
-    for line in st.git(checkout, "ls-tree", "HEAD", "--", *NOTES_AND_RECORDS).splitlines():
-        meta, path = line.split("\t", 1)
-        trees[path] = meta.split()[2]
+    folders = {f"SchwingNet/{p.name}" for p in Path(checkout, "artifacts").iterdir() if p.is_dir() and not p.name.startswith("_")}
+    if folders != set(trees):
+        rekey_refused(f"{where} holds {len(folders ^ set(trees))} folders under artifacts/ that no tree holds as its tools"
+                      " read them")
+    trees.update({path: sha for _mode, _kind, sha, path in tree_entries(checkout, "HEAD", "--", *NOTES_AND_RECORDS, *CONCEPT_RECORDS)})
     return trees
 
 
 def same_texts(base):
-    """Stop a rekey whose base is not a checkout of this repository or reads other texts than
-    this checkout: a check pairs by its concept, kind, source, line, outcome and value and not
-    by its passage, so a passage edited in place would take the stamp's word unread."""
+    """Stop a rekey whose base is not a checkout of this repository, or reads other texts or
+    other concepts than this checkout: a check pairs by its concept, kind, source, line, outcome
+    and value and not by its passage, so a passage edited in place, or a figure that another
+    took the place of, would take the stamp's word unread."""
     tools_of(base)
-    mine, theirs = text_trees(ROOT), text_trees(base)
-    for where, trees in (("this checkout", mine), (str(base), theirs)):
-        if trees is None:
-            raise SystemExit(f"rekey refused: {where} holds a change to the texts the checks read that is not committed,"
-                             " which no tree shows; commit it or take it out, so nothing was written")
+    mine, theirs = text_trees(ROOT, "this checkout"), text_trees(base, str(base))
     differ = sorted(k for k in mine.keys() | theirs.keys() if mine.get(k) != theirs.get(k))
     if differ:
-        raise SystemExit(f"rekey refused: the texts the checks read differ between this checkout and {base} in"
-                         f" {', '.join(differ)}; bring main in and change no text in the same pull request, so nothing"
-                         " was written")
+        rekey_refused(f"the texts the checks read or the records the concepts are made from differ between this checkout and"
+                      f" {base} in {', '.join(differ)}; bring main in, and change neither in the pull request that runs rekey")
 
 
 def ledger_of(base):
@@ -524,7 +554,8 @@ def main(argv=None):
         write_report(load(a.status), a.paths[0])
         return
     if a.command == "rekey" and len(a.paths) != 1:
-        p.error("rekey takes one path: a checkout of main, with this checkout up to date with it and changing none of the texts")
+        p.error("rekey takes one path: a checkout of main, with this checkout up to date with it and changing none of the texts"
+                " and none of the records the concepts are made from")
     if a.without and a.command in ("concepts", "plan", "join", "stamp", "rekey"):
         raise SystemExit(f"{a.command} refused: it writes what every text gives, and without {', '.join(a.without)}'s checkout"
                          " that repository's word in the stamp and the ledger would be lost; status and report check without it")

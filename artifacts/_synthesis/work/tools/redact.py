@@ -32,7 +32,7 @@ RULES = [
     ("a login", re.compile(r"(?<![-/._])\b" + LOGIN + r"\b"), "[the owner's login]"),
     ("the university's network range", re.compile(r"\b\d{1,3}\.\d{1,3}\.x\.x\b"), "[the university's network range]"),
     ("a form's short link", re.compile(r"(?:https?://)?forms\.gle/[A-Za-z0-9]{1,255}"), "[the registration form's link]"),
-    ("a form's long link", re.compile(r"(?:https?://)?docs\.google\.com/forms/[^\s\"'<>)\]]{1,2048}"), "[a form's link]"),
+    ("a form's long link", re.compile(r"(?:https?://)?docs\.google\.com/forms/[^\s\"'<>)\]]{1,8000}"), "[a form's link]"),
     # The research storage's group volumes, named or not by a login: the rules above take a path
     # that names one, and this one the volume of any other, since no grid path is kept.
     ("a grid volume", re.compile(r"/rs/rs_grp_[A-Za-z0-9_]{1,255}"), "[the lab volume]"),
