@@ -17,6 +17,7 @@ from schwingnet.catalog import (
     DeviceClass,
     FrozenPerson,
     Item,
+    LevelMap,
     Modality,
     Part,
     Query,
@@ -678,3 +679,43 @@ def test_a_vector_with_no_direction_is_refused_before_it_is_stored(tmp_path: Pat
     db.execute("INSERT INTO embedding VALUES (?, 'v1', 2, ?)", ("a" * 64, tool.pack([0.0, 0.0])))
     with pytest.raises(tool.CatalogError, match="no direction for a{64}"):
         tool.similar(db, "v1", "a" * 64, 5)
+
+
+def test_a_level_map_sits_at_its_digest_and_the_catalog_says_where_it_is(tmp_path: Path) -> None:
+    tool = load_tool()
+    map_sha = "e" * 64
+    level_map = {
+        "path": frame_path(map_sha, "png"),
+        "sha256": map_sha,
+        "projector": "render",
+        "labeller": "cbct",
+    }
+    with_map = dict(item("carmlspine:case7", "L5", "a" * 64), level_map=level_map)
+    assert Item.model_validate(with_map).level_map == LevelMap.model_validate(level_map)
+    assert Item.model_validate(item("carmlspine:case7", "L5", "a" * 64)).level_map is None
+    with pytest.raises(ValidationError, match="its digest puts it at"):
+        LevelMap.model_validate(dict(level_map, path=frame_path("f" * 64, "png")))
+    with pytest.raises(ValidationError):
+        LevelMap.model_validate(dict(level_map, projector="guessed"))
+    with pytest.raises(ValidationError):
+        LevelMap.model_validate(dict(level_map, path=frame_path(map_sha, "jpg")))
+    with pytest.raises(ValidationError):
+        LevelMap.model_validate(dict(level_map, labeller=""))
+    # A manifest of schema 2 may carry maps, one above it is refused, and the catalog's item row
+    # says where each frame's map is and what projected it, null for a frame without one.
+    data = dict(
+        manifest("train", [with_map, item("carmlspine:case8", "L4", "b" * 64)]), schema_version=2
+    )
+    with pytest.raises(ValidationError):
+        ShardManifest.model_validate(dict(data, schema_version=3))
+    train = write(tmp_path, "train", data)
+    store = tmp_path / "store"
+    tool.build(store, [train], tool.load_inputs(), "0123abc", "2026-10-24")
+    db = tool.open_catalog(store)
+    rows = sorted(
+        tuple(row) for row in db.execute("SELECT sha256, level_map, level_map_from FROM item")
+    )
+    assert rows == [("a" * 64, frame_path(map_sha, "png"), "render"), ("b" * 64, None, None)]
+    assert len(tool.ITEM_COLUMNS) == len(
+        tool.item_row(Item.model_validate(with_map), ShardManifest.model_validate(data), Part.TRAIN)
+    )

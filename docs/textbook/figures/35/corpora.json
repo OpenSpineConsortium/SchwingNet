@@ -32,6 +32,34 @@
   {
    "aggregate": false,
    "human": true,
+   "id": "nitw_2d3d_registration",
+   "images": null,
+   "images_unit": "",
+   "levels": [
+    "L1",
+    "L2",
+    "L3",
+    "L4",
+    "L5"
+   ],
+   "licence": "agreement",
+   "name": "2D-3D-sci-registration C-arm frames and CTs (NIT Warangal, NIMS)",
+   "persons": 9,
+   "persons_note": "",
+   "reach": "get",
+   "sources": [
+    "data/sources/nitw_2d3d_registration.json",
+    "docs/textbook/figures/35/corpora-overlay.json"
+   ],
+   "span_basis": "stated",
+   "status": "will be tried once obtained",
+   "tried": "no",
+   "type": "paired",
+   "why": "L1 to L5 centroids per frame with the CTs on request"
+  },
+  {
+   "aggregate": false,
+   "human": true,
    "id": "balgrist_lumbar",
    "images": null,
    "images_unit": "",
@@ -281,6 +309,35 @@
   {
    "aggregate": false,
    "human": true,
+   "id": "huashan_intraop_lumbar",
+   "images": null,
+   "images_unit": "",
+   "levels": [
+    "L1",
+    "L2",
+    "L3",
+    "L4",
+    "L5",
+    "S1"
+   ],
+   "licence": "agreement",
+   "name": "Huashan intraoperative lumbar films with preoperative CT (Shao 2024, Fudan)",
+   "persons": 140,
+   "persons_note": "",
+   "reach": "get",
+   "sources": [
+    "data/sources/huashan_intraop_lumbar.json",
+    "docs/textbook/figures/35/corpora-overlay.json"
+   ],
+   "span_basis": "inferred",
+   "status": "will be tried once obtained",
+   "tried": "no",
+   "type": "paired",
+   "why": "lumbar films with the same patient's CT; asked, no answer yet"
+  },
+  {
+   "aggregate": false,
+   "human": true,
    "id": "ipcai2025_xray_ct",
    "images": 50,
    "images_unit": "X-rays",
@@ -299,6 +356,28 @@
    "tried": "no",
    "type": "paired",
    "why": "no spine; a registration benchmark"
+  },
+  {
+   "aggregate": false,
+   "human": true,
+   "id": "levelcheck_clinical",
+   "images": null,
+   "images_unit": "",
+   "levels": [],
+   "licence": "unknown",
+   "name": "LevelCheck clinical cohort (De Silva 2016, Johns Hopkins)",
+   "persons": 178,
+   "persons_note": "178 CTs, one per patient",
+   "reach": "none",
+   "sources": [
+    "data/sources/levelcheck_clinical.json",
+    "docs/textbook/figures/35/corpora-overlay.json"
+   ],
+   "span_basis": "unknown",
+   "status": "not on the way",
+   "tried": "no",
+   "type": "paired",
+   "why": "levels registered from the labelled CT; the owners declined to share"
   },
   {
    "aggregate": false,
@@ -505,6 +584,34 @@
    "tried": "yes",
    "type": "annotated",
    "why": "laterals in the v8 and v9 banks; APs never used"
+  },
+  {
+   "aggregate": false,
+   "human": true,
+   "id": "cm_spine_garm",
+   "images": 208,
+   "images_unit": "G-arm images",
+   "levels": [
+    "L1",
+    "L2",
+    "L3",
+    "L4",
+    "L5"
+   ],
+   "licence": "unknown",
+   "name": "CM Spine intraoperative G-arm lumbar images (Zeng 2024, Electronics 13, 2137)",
+   "persons": null,
+   "persons_note": "",
+   "reach": "get",
+   "sources": [
+    "data/sources/cm_spine_garm.json",
+    "docs/textbook/figures/35/corpora-overlay.json"
+   ],
+   "span_basis": "stated",
+   "status": "will be tried once obtained",
+   "tried": "no",
+   "type": "annotated",
+   "why": "L1 to L5 labelled per vertebra; the file no longer opens"
   },
   {
    "aggregate": false,
@@ -912,6 +1019,28 @@
   {
    "aggregate": false,
    "human": true,
+   "id": "tvgh_as_spine",
+   "images": null,
+   "images_unit": "",
+   "levels": [],
+   "licence": "unknown",
+   "name": "Spine X-Ray Images Dataset for Ankylosing Spondylitis (Taipei Veterans General Hospital)",
+   "persons": null,
+   "persons_note": "",
+   "reach": "gated",
+   "sources": [
+    "data/sources/tvgh_as_spine.json",
+    "docs/textbook/figures/35/corpora-overlay.json"
+   ],
+   "span_basis": "unknown",
+   "status": "will be tried once obtained",
+   "tried": "no",
+   "type": "annotated",
+   "why": "behind a login; labels not recorded"
+  },
+  {
+   "aggregate": false,
+   "human": true,
    "id": "sx_stitch",
    "images": null,
    "images_unit": "",
@@ -952,6 +1081,31 @@
    "tried": "no",
    "type": "annotated",
    "why": "behind a login; labels not recorded"
+  },
+  {
+   "aggregate": false,
+   "human": true,
+   "id": "vanderbilt_tha_fluoro",
+   "images": 336,
+   "images_unit": "frames",
+   "levels": [
+    "L5",
+    "S1"
+   ],
+   "licence": "agreement",
+   "name": "Vanderbilt THA intraoperative fluoroscopy with bony landmarks (J Arthroplasty 2025;40:2092)",
+   "persons": 146,
+   "persons_note": "",
+   "reach": "get",
+   "sources": [
+    "data/sources/vanderbilt_tha_fluoro.json",
+    "docs/textbook/figures/35/corpora-overlay.json"
+   ],
+   "span_basis": "stated",
+   "status": "will be tried once obtained",
+   "tried": "no",
+   "type": "annotated",
+   "why": "L5/S1 marked on pelvic fluoroscopy, the anchor counting starts from"
   },
   {
    "aggregate": false,
