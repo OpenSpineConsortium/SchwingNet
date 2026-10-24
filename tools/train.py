@@ -103,7 +103,11 @@ def read_crops(catalog, parts):
 
 def crop_pixels(frame, box, size):
     """The body's crop as a size-by-size float array in 0..1, padded a little around the box."""
-    image = Image.open(frame).convert("L")
+    return crop_of_image(Image.open(frame).convert("L"), box, size)
+
+
+def crop_of_image(image, box, size):
+    """crop_pixels on a frame already decoded, so a frame's bodies share one decode."""
     width, height = image.size
     x0, y0, x1, y1 = box
     pad_x, pad_y = (x1 - x0) * PAD, (y1 - y0) * PAD
@@ -118,10 +122,20 @@ def crop_pixels(frame, box, size):
 
 
 def load_crops(crops, size, frames_cache):
-    """A tensor of crops and a tensor of level indices; frames are opened once each."""
+    """A tensor of crops and a tensor of level indices.
+
+    A frame is decoded once for a run of its bodies: read_crops orders the crops by frame, and a
+    frame holds several bodies, so decoding it per body did the same work several times over.
+    Only the last frame is kept, so a shuffled list (pick's dry-run cap) costs no more memory
+    than before. frames_cache counts the crops read and the frames decoded.
+    """
     arrays, targets = [], []
+    current, image = None, None
     for crop in crops:
-        arrays.append(crop_pixels(crop["frame"], crop["box"], size))
+        if crop["frame"] != current:
+            current, image = crop["frame"], Image.open(crop["frame"]).convert("L")
+            frames_cache["decoded"] = frames_cache.get("decoded", 0) + 1
+        arrays.append(crop_of_image(image, crop["box"], size))
         targets.append(LEVELS.index(crop["level"]))
     stack = torch.from_numpy(np.stack(arrays)).unsqueeze(1).repeat(1, 3, 1, 1)
     frames_cache["opened"] = frames_cache.get("opened", 0) + len(crops)
