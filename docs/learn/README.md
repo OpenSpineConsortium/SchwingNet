@@ -38,4 +38,4 @@ The tests behind all of it accumulate in [tests/](../../tests/): every test any 
 1. The repository's Settings, Pages, Build and deployment, Source: GitHub Actions.
 2. The repository's Settings, Secrets and variables, Actions, Variables tab, New repository variable: name `SYMPHONY_DOCS`, value `pages`.
 
-Then run the Docs workflow once from the Actions tab (Run workflow). On an internal or private repository, Pages is visible only to people who can read the repository (inferred from GitHub's rules for Pages on such repositories). To preview the site locally: `python3 tools/living_docs.py site _site`, then open `_site/index.html`.
+Then run the Docs workflow once from the Actions tab (Run workflow). On an internal or private repository, Pages can be limited to people who can read the repository, and the deploy job checks that it is: before every deploy it asks GitHub whether the site is public, and deploys nothing unless the answer is that it is not. To preview the site locally: `python3 tools/living_docs.py site _site`, then open `_site/index.html`.
