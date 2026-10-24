@@ -15,7 +15,7 @@ source's current shard, or one no other shard supersedes, holds exactly the mani
 makes, apart from the date, the commit and what it supersedes, the run answers "already there" with
 that shard and cuts no dated twin; and where an earlier run, of a bank whose every file had the same
 path, size and modification time, with the same settings, the same frozen persons, the same registry
-entry and the same ingest code, noted its report under `<grid root>/shards/.reuse/`, and the shard
+entry and the same ingest code, noted its report under `<grid root>/.reuse/`, and the shard
 that note names is still one no other supersedes, the run reads no frame of the bank at all and
 answers from the note, checking only that every file the manifest names is in place. A bank changed
 in any file, a map added or a frame removed, is read again. A frame of more than 8 bits of grey is
@@ -580,7 +580,7 @@ def reuse_key(bank, settings, inputs):
 
 
 def reuse_note(grid_root, key):
-    return Path(grid_root) / "shards" / REUSE / f"{key}.json"
+    return Path(grid_root) / REUSE / f"{key}.json"
 
 
 def manifest_sha256(data):
@@ -589,8 +589,8 @@ def manifest_sha256(data):
 
 def record_reuse(grid_root, key, report, folder):
     """Note the report a run with this key gave and the manifest its shard holds, in a dot folder
-    beside the shards that no reader takes for one, so the next run with the same key is answered
-    without reading the bank. It is written for a shard found already there as for one written,
+    of the source's own beside shards/, which therefore holds shards alone, so the next run with
+    the same key is answered without reading the bank. It is written for a shard found already there as for one written,
     so a shard cut before the note existed, or under another key, is answered from the second run
     on."""
     data = json.loads((Path(folder) / MANIFEST).read_text(encoding="utf-8"))

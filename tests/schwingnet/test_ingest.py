@@ -144,7 +144,7 @@ def test_a_bank_becomes_one_shard_at_its_content_addresses(
         1.0,
     )
     assert (folder / "MANIFEST.json").stat().st_mode & 0o777 == 0o444
-    assert [p.name for p in root.joinpath("shards").iterdir() if p.name.startswith(".")] == [".reuse"]
+    assert [p.name for p in root.joinpath("shards").iterdir() if p.name.startswith(".")] == []
     assert ingest.main(argv(bank, root, "train", "train")) == 0
     assert json.loads(capsys.readouterr().out)["outcome"] == "already there"
     assert ingest.main(argv(bank, root, "train", "val")) == 0
@@ -239,7 +239,7 @@ def test_a_second_ingest_that_loses_the_rename_keeps_the_first_shard(
     monkeypatch.setattr(ingest.os, "rename", rename_after_a_sibling_landed)
     assert ingest.main(argv(bank, root, "train", "val")) == 0
     assert json.loads(capsys.readouterr().out)["outcome"] == "already there"
-    assert [p.name for p in (root / "shards").iterdir() if p.name.startswith(".")] == [".reuse"]
+    assert [p.name for p in (root / "shards").iterdir() if p.name.startswith(".")] == []
     # Another run's staging folder, whatever it is called, is never removed.
     stale = root / "shards" / f".ingest-2026-10-21-000000000000-{ingest.os.getpid()}"
     stale.mkdir()
@@ -710,7 +710,7 @@ def test_a_16_bit_grey_frame_is_refused_by_name(
         (bank / "images" / "val" / "case9_f1.png").write_bytes(sixteen_bit_png(40, 20, colour))
         assert ingest.main(argv(bank, root, "train", "val")) == 0
         capsys.readouterr()
-    assert [p.name for p in root.glob("shards/.*")] == [".reuse"]
+    assert not [p for p in root.glob("shards/.*")]
 
 
 def test_a_staging_folder_is_no_shard_and_a_stale_one_is_cleared(
@@ -758,7 +758,7 @@ def test_a_bank_already_ingested_is_not_read_again_until_a_file_of_it_changes(
     assert ingest.main(first_run) == 0
     first = json.loads(capsys.readouterr().out)
     assert first["outcome"] == "written" and len(first["reuse_key"]) == 64 and reads == [1]
-    assert (root / "shards" / ".reuse" / f"{first['reuse_key']}.json").is_file()
+    assert (root / ".reuse" / f"{first['reuse_key']}.json").is_file()
     # The same bank, on another day at another commit too, and with a stamp tools/bank.py wrote
     # since, which the key leaves out, is answered from the note without reading a frame.
     (bank / "BANK.json").write_text('{"stamp": {}}\n', encoding="utf-8")
@@ -794,7 +794,7 @@ def test_a_shard_cut_before_the_note_is_answered_from_the_second_run_on(
     bank, root = bank_of(tmp_path), tmp_path / "grid" / "carmlspine"
     assert ingest.main(argv(bank, root, "train", "train")) == 0
     shard = json.loads(capsys.readouterr().out)["shard"]
-    for note in (root / "shards" / ".reuse").iterdir():
+    for note in (root / ".reuse").iterdir():
         note.unlink()
     # The shards on the grid were cut before #260 and carry no note: the first run reads the
     # bank, finds the shard already there and notes it, and the next reads nothing.
@@ -811,7 +811,7 @@ def test_a_note_whose_shard_changed_reads_the_bank_and_one_missing_a_file_is_ref
     bank, root = bank_of(tmp_path), tmp_path / "grid" / "carmlspine"
     assert ingest.main(argv(bank, root, "train", "train")) == 0
     first = json.loads(capsys.readouterr().out)
-    note = root / "shards" / ".reuse" / f"{first['reuse_key']}.json"
+    note = root / ".reuse" / f"{first['reuse_key']}.json"
     written = json.loads(note.read_text(encoding="utf-8"))
     for broken in ("not json", json.dumps(dict(written, key="0" * 64)), json.dumps({"key": first["reuse_key"]})):
         note.write_text(broken, encoding="utf-8")
