@@ -130,3 +130,7 @@ About 120 checked, 41 changed (number 9, grade 3, record marks 3, canonical 4, s
 ## Cross-book correction: 80.5 percent
 
 The chapter 19 review said no source prints a fraction for the 80.5 percent held-out-device recall. docs/research/demo-plan.md, section 3, prints it: 231 of 287 on C-ArmLSpine at confidence 0.74, [74.1, 86.8], 93.9 percent on the repaired denominator, citing spine-program STATUS.md A6.1 and A6.5. Chapter 19 now carries it as Reported, with only the box convention unsettled; the other chapters already agreed.
+
+## Review of chapter 29
+
+17 changes of about 70 statements: 3 numbers, 3 grades, 5 argument, 3 provenance sources, 2 scope, 1 stale memory. Most serious: the Locks section and the advise switch were placed in SchwingNet's PROTOCOL.md where only symphony-template's has them; the search figures were read as superseding each other where rows 8 and 12 are refuted (two separate searches, the deep ones on 14 October), only the mutant count grew; overclaims hedged ("no published taxonomy", "ran out of budget" for U4 alone, root causes cited to spec 7.1). Unsettled: CooperBench counts rest on the spec's reading, no recomputation of the seventeen guarantees at a tag, no record of 0.5.1's approval, plan prices, benchmark figures held.
