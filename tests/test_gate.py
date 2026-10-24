@@ -1257,6 +1257,36 @@ esac
         self.assertEqual(done.returncode, 0, done.stdout)
         self.assertIn("EXPLORE_AGAINST= ", self.submitted()[2] + " ")
 
+    def test_nodequota_reads_a_node_once_then_prints_what_it_read(self):
+        # an argument is refused, and nothing is queued before the environments are made
+        self.assertEqual(self.gate("nodequota", "x").returncode, 64)
+        self.assertEqual(self.gate("nodequota").returncode, 75)
+        self.environments_ready()
+        done = self.gate("nodequota")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        lines = self.submitted()
+        self.assertEqual(len(lines), 1, lines)
+        self.assertIn("--class batch --name nodequota", lines[0])
+        self.assertIn("nodequota.sbatch", lines[0])
+        job = self.recorded()["nodequota"]
+        # while its job is live a second send is refused and queues nothing
+        self.live(job)
+        self.assertEqual(self.gate("nodequota").returncode, 75)
+        self.assertEqual(len(self.submitted()), 1)
+        # once it has ended, its report is printed once and nothing is queued
+        (self.fake / "queue").write_text("", encoding="utf-8")
+        report = self.repo / "grid" / "logs" / "NODEQUOTA.md"
+        report.write_text("# The lab volume as compute node n1 reads it\n  2 up: ceph.quota.max_bytes reads 1\n",
+                          encoding="utf-8")
+        done = self.gate("nodequota")
+        self.assertEqual(done.returncode, 0, done.stdout)
+        self.assertIn("2 up: ceph.quota.max_bytes reads 1", done.stdout)
+        self.assertEqual(len(self.submitted()), 1)
+        self.assertFalse(report.exists())
+        # the send after that reads a node again
+        self.assertEqual(self.gate("nodequota").returncode, 0)
+        self.assertEqual(len(self.submitted()), 2)
+
     def test_dropzip_deletes_once_then_prints_what_it_did(self):
         shutil.copy(GRID / "fetch-xray.json", self.repo / "grid" / "fetch-xray.json")
         # an id of no list, one with no raw folder yet, and a malformed send are refused and queue nothing

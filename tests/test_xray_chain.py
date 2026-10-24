@@ -1463,7 +1463,8 @@ class SizeRuleTest(unittest.TestCase):
                 ("size-rule.sh", "GETFATTR|XATTR_PYTHON|STAT|SQUEUE|DF|MOUNTINFO|SIZE_RULE_SETTLE|USER",
                  r"\$\{{?({})\b"),
                 ("platform-fetch.sbatch", "SIZER|XATTR_PYTHON|CURL", r"\$\{{({}):?-"),
-                ("unpack.sbatch", "XATTR_PYTHON", r"\$\{{({}):?-")):
+                ("unpack.sbatch", "XATTR_PYTHON", r"\$\{{({}):?-"),
+                ("nodequota.sbatch", "XATTR_PYTHON", r"\$\{{({}):?-")):
             text = (GRID / name).read_text(encoding="utf-8")
             switch = re.search(r'\nif \[ "\$\{SIZE_RULE_STAND_INS:-\}" = yes \]; then\n.*?\nfi\n', text, re.S)
             self.assertIsNotNone(switch, name)
@@ -1481,7 +1482,8 @@ class SizeRuleTest(unittest.TestCase):
         for name, shows, own, stand_ins in (
                 ("platform-fetch.sbatch", 'echo "$SIZER|$RULE_PYTHON|$CURL"',
                  "/acq/bin/python /repo/grid/fetch_size.py|/acq/bin/python|curl", "/x/sizer|/x/python|/x/curl"),
-                ("unpack.sbatch", 'echo "$RULE_PYTHON"', "/drv/python", "/x/python")):
+                ("unpack.sbatch", 'echo "$RULE_PYTHON"', "/drv/python", "/x/python"),
+                ("nodequota.sbatch", 'echo "$RULE_PYTHON"', "/drv/python", "/x/python")):
             text = (GRID / name).read_text(encoding="utf-8")
             switch = re.search(r'\nif \[ "\$\{SIZE_RULE_STAND_INS:-\}" = yes \]; then\n.*?\nfi\n', text, re.S)
             self.assertLess(text.index('\n. "$REPO/grid/size-rule.sh"\n'), switch.start(), name)
@@ -1996,6 +1998,25 @@ class QuotaReadoutTest(unittest.TestCase):
             "Owed  =         2050.00gb still to land for 1 running fetch",
             "Room  =         6794.23gb for a new fetch, which lands whole or not at all",
         ])
+
+    def test_the_node_job_writes_the_same_readout_to_its_report(self):
+        # grid/nodequota.sbatch, the gate word nodequota's job: the readout a compute node reads,
+        # the status word's lines, into logs/NODEQUOTA.md, and nothing else on the volume.
+        volume = volume_in(self, quota=21990232555520, used=13146 * GB)
+        import tempfile
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        logs = Path(tmp.name)
+        env = dict(os.environ, SCHWINGNET=str(ROOT), **volume.env())
+        done = subprocess.run(["bash", str(GRID / "nodequota.sbatch")], env=env, cwd=logs, capture_output=True,
+                              text=True, timeout=60)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("NODEQUOTA_RC=0", done.stdout)
+        report = (logs / "logs" / "NODEQUOTA.md").read_text(encoding="utf-8")
+        self.assertIn("Used  = 59.78%  13146.00gb", report)
+        self.assertIn("readout exit 0", report)
+        self.assertIn("Above the volume, whatever the rule decides", report)
+        self.assertEqual(sorted(p.name for p in (logs / "logs").iterdir()), ["NODEQUOTA.md"])
 
     def test_a_file_limit_is_shown_where_the_quota_sets_one(self):
         volume = volume_in(self, quota=1000 * GB, used=250 * GB)
