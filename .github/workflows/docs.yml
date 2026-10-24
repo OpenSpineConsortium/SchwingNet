@@ -87,5 +87,19 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      # The site holds confidential work, the textbook's method chapters among
+      # it, so it is deployed only while GitHub says the Pages site is private:
+      # a site turned public, or an answer that cannot be read, stops the deploy
+      # (docs/project.md: nothing public before the provisional is filed).
+      - name: Deploy only to a private site
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          public="$(gh api "repos/$GITHUB_REPOSITORY/pages" --jq '.public' || true)"
+          if [ "$public" != "false" ]; then
+            echo "::error::GitHub does not report this repository's Pages site as private (public: ${public:-not read}), so nothing is deployed"
+            exit 1
+          fi
+
       - id: deployment
         uses: actions/deploy-pages@v5

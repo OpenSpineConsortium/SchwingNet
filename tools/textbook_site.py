@@ -1,7 +1,7 @@
 """The Artifact Textbook as a website: a page for each chapter of the table
-of contents and for each artifact, laid out from the artifacts themselves and
-the synthesis's records of them, so the book a reader opens is the book this
-commit holds (issue #196).
+of contents and for each artifact, laid out from the synthesis's records of the
+artifacts, so the book a reader opens is the book this commit holds (issue
+#196).
 
 The plan is the table of contents' JSON (artifacts/_synthesis/work/out/
 toc-hand.json); the records are artifacts/_synthesis/inventory.json; an
@@ -32,8 +32,16 @@ chapter once the table of contents places it.
 
 The site is built into the docs site by .github/workflows/docs.yml and
 published with it, on Pages that only people who can read the repository
-open; nothing of it may be copied to a public place before the provisional is
-filed (docs/project.md), and a public edition waits for the owner's word.
+open, and the deploy stops unless GitHub reports the site private; nothing of
+it may be copied to a public place before the provisional is filed
+(docs/project.md), and a public edition waits for the owner's word. Its pages
+hold what the synthesis's records hold, with what the records' own rules leave
+out (artifacts/_synthesis/work/tools/redact.py) left out again, and the
+owner's account names and a person named by title as well, since the book
+names people by role. The site serves no copy of an artifact: each one opens
+on claude.ai, where the owner has shared it by its link, or in the repository,
+since an artifact's own text holds what the records leave out and its scripts
+would run at the site's own address.
 
     python3 tools/textbook_site.py OUT [--repo OWNER/NAME] [--sha SHA] [--root PATH]
 """
@@ -55,6 +63,7 @@ sys.path.insert(0, str(TOOLS))
 import living_docs  # noqa: E402
 
 SYNTHESIS = Path("artifacts/_synthesis")
+BOOK = Path("docs/textbook")
 WORK = SYNTHESIS / "work" / "out"
 LEDGER_TOOLS = SYNTHESIS / "work" / "tools"
 ST_TREE = "https://github.com/OpenSpineConsortium/symphony-template/tree/main/artifacts/"
@@ -85,6 +94,11 @@ OUTCOMES = {
     "open": "gives a value the record has not settled",
 }
 DISCLAIMER = re.compile(r"not a final value|not settled|has not settled|open in the record|superseded", re.I)
+# A record's fields that name things rather than say them, left as they are by the privacy pass:
+# they are matched against other records, folders and links.
+NAMING_FIELDS = {"repo", "folder", "link", "link_id", "account", "date", "kind", "genre", "confidentiality"}
+TITLED_PERSON = re.compile(r"\bDr\.?\s+[A-Z][a-z]+(?:-[A-Z][a-z]+)?")
+ACCOUNT_SHAPE = re.compile(r"[A-Za-z0-9][A-Za-z0-9-]{3,38}")
 
 
 def load_json(path):
@@ -112,6 +126,61 @@ def newest_first(records):
     return [aid for _k, aid in sorted(dated, reverse=True)] + [aid for _k, aid in sorted(undated)]
 
 
+def ledger_tools():
+    """The synthesis's own modules, from this repository: its extraction, its redaction and its
+    concept ledger."""
+    tools = str(ROOT / LEDGER_TOOLS)
+    if tools not in sys.path:
+        sys.path.insert(0, tools)
+    import extract  # noqa: E402
+    import redact  # noqa: E402
+    import synth_concepts  # noqa: E402
+    return extract, redact, synth_concepts
+
+
+def code_owners(root):
+    """The logins .github/CODEOWNERS names, the owner's among them; a team's name is left out."""
+    path = Path(root) / ".github" / "CODEOWNERS"
+    if not path.exists():
+        return set()
+    text = "\n".join(line.split("#", 1)[0] for line in path.read_text(encoding="utf-8").splitlines())
+    return set(re.findall(r"@([A-Za-z0-9][A-Za-z0-9-]*)(?![/A-Za-z0-9-])", text))
+
+
+class Privacy:
+    """What a page leaves out of a record: what the synthesis's own rules leave out (redact.RULES
+    and extract.without_contacts), which a record read before a rule was added may still hold, and
+    two things those rules do not take: the owner's account names, from the records' own account
+    field and the code owners' file, and a person named by title, whom the book names by role."""
+
+    def __init__(self, root, records):
+        self.extract, self.redact, _concepts = ledger_tools()
+        names = {r.get("account") or "" for r in records} | code_owners(root)
+        names = sorted((n for n in names if ACCOUNT_SHAPE.fullmatch(n)), key=len, reverse=True)
+        self.accounts = None
+        if names:
+            alternatives = "|".join(map(re.escape, names))
+            self.accounts = re.compile(rf"(?<![A-Za-z0-9-])(?:{alternatives})(?![A-Za-z0-9-])", re.I)
+
+    def text(self, text):
+        text = self.redact.scrub(self.extract.without_contacts(text), collections.Counter())
+        if self.accounts:
+            text = self.accounts.sub("[the owner's account]", text)
+        return TITLED_PERSON.sub("[a colleague]", text)
+
+    def record(self, value, key=None):
+        """Every string of a record but the fields that name it, as redact.walk goes through one."""
+        if key in NAMING_FIELDS:
+            return value
+        if isinstance(value, str):
+            return self.text(value)
+        if isinstance(value, list):
+            return [self.record(v) for v in value]
+        if isinstance(value, dict):
+            return {k: self.record(v, k) for k, v in value.items()}
+        return value
+
+
 # What a build reads
 
 class Book:
@@ -124,7 +193,8 @@ class Book:
         self.clusters = load_json(self.root / WORK / "clustering.json")["judged"]["clusters"]
         self.ledger = load_json(self.root / WORK / "concepts.json")
         self.state = load_json(self.root / WORK / "state.json")
-        self.records = {f"{r['repo']}/{r['folder']}": r for r in self.inventory["artifacts"]}
+        privacy = Privacy(self.root, self.inventory["artifacts"])
+        self.records = {f"{r['repo']}/{r['folder']}": privacy.record(r) for r in self.inventory["artifacts"]}
         self.chapters = [(part, c) for part in self.plan["parts"] for c in part["chapters"]]
         self.readers = collections.defaultdict(list)  # artifact id -> [(chapter number, first or second)]
         for _part, c in self.chapters:
@@ -196,15 +266,16 @@ class Book:
         return [c for c in self.ledger["checks"] if c["source"] in sources and c["outcome"] != "agrees"]
 
     def folders(self):
-        """The artifact folders on this commit, with each one's git tree where git can say."""
+        """The artifact folders on this commit, with each one's git tree where git can say;
+        git names each path whole, quoting none, as -z asks."""
         base = self.root / "artifacts"
         names = sorted(p.name for p in base.iterdir() if p.is_dir() and not p.name.startswith("_"))
         trees = {}
         try:
-            listed = subprocess.run(["git", "-C", str(self.root), "ls-tree", "HEAD", "artifacts/"],
+            listed = subprocess.run(["git", "-C", str(self.root), "ls-tree", "-z", "HEAD", "artifacts/"],
                                     capture_output=True, text=True, check=True).stdout
-            for line in listed.splitlines():
-                meta, _, path = line.partition("\t")
+            for entry in listed.split("\0"):
+                meta, _, path = entry.partition("\t")
                 if meta.split()[1:2] == ["tree"]:
                     trees[path.split("/", 1)[1]] = meta.split()[2]
         except (OSError, subprocess.CalledProcessError):
@@ -213,15 +284,22 @@ class Book:
 
     def pending(self):
         """What the book does not hold yet: folders with no record, artifacts changed since
-        their record was read, and records no chapter reads."""
+        their record was read, records no chapter reads, records whose folder is gone, and
+        chapter files the plan does not name."""
         names, trees = self.folders()
         unread = [n for n in names if f"SchwingNet/{n}" not in self.records]
+        gone = [aid for aid, r in self.records.items() if r["repo"] == "SchwingNet" and r["folder"] not in names]
         changed = []
         if trees is not None:
             stamp = self.state.get("artifacts", {})
-            changed = [n for n in names if f"SchwingNet/{n}" in stamp and trees.get(n) not in (None, stamp[f"SchwingNet/{n}"])]
+            changed = [n for n in names if f"SchwingNet/{n}" in self.records and f"SchwingNet/{n}" in stamp
+                       and trees.get(n) not in (None, stamp[f"SchwingNet/{n}"])]
         unplaced = [aid for aid in self.records if aid not in self.readers]
-        return {"unread": unread, "changed": changed, "unplaced": unplaced, "git": trees is not None}
+        planned = {c["file"] for _p, c in self.chapters}
+        stray = sorted(rel for rel in (p.relative_to(self.root).as_posix() for p in (self.root / BOOK).glob("*.md"))
+                       if rel not in planned and not rel.endswith("/README.md"))
+        return {"unread": unread, "changed": changed, "unplaced": unplaced, "gone": gone, "stray": stray,
+                "git": trees is not None}
 
     def likely_chapters(self, aid):
         """The chapters that read first a canonical artifact of one of this artifact's
@@ -247,16 +325,6 @@ def contradictions_page(path):
     return f"contradictions-{Path(path).stem}.html"
 
 
-def main_file(folder):
-    """The file that opens an artifact copied here: its page, its document, or the first
-    page it holds, as a Design artifact keeps its canvas in a project folder."""
-    for name in ("index.html", "index.md"):
-        if (folder / name).exists():
-            return name
-    pages = sorted(p.relative_to(folder).as_posix() for p in folder.rglob("*.html"))
-    return pages[0] if pages else None
-
-
 # Checking a chapter's words against the ledger
 
 class Ledger:
@@ -264,22 +332,21 @@ class Ledger:
     ledger's code from this repository and its figures from the book being built."""
 
     def __init__(self, book):
-        tools = str(ROOT / LEDGER_TOOLS)
-        if tools not in sys.path:
-            sys.path.insert(0, tools)
-        import extract  # noqa: E402
-        import redact  # noqa: E402
-        import synth_concepts  # noqa: E402
-        self.extract, self.redact, self.concepts = extract, redact, synth_concepts
+        self.extract, self.redact, self.concepts = ledger_tools()
         self.book = book
 
     def check(self, source, text):
+        """Each check with the whole line it was found on, since a check keeps only the start of
+        its passage and a disclaimer may stand at the line's end."""
         clean = self.redact.scrub(self.extract.without_contacts(text), collections.Counter())
+        lines = clean.splitlines()
         texts = {source: clean}
         equal = collections.defaultdict(lambda: 1.0)
         found = (self.concepts.check_datasets(texts, self.book.ledger["datasets"])
                  + self.concepts.check_figures(texts, self.book.ledger["figures"], equal))
         unique = {c["key"]: c for c in found}
+        for c in unique.values():
+            c["line_text"] = lines[c["line"] - 1] if 0 < c["line"] <= len(lines) else c["text"]
         return sorted(unique.values(), key=lambda c: (c["line"], c["concept"]))
 
 
@@ -305,7 +372,6 @@ nav a.ch { font-size:13.5px; line-height:1.35; padding:3px 0; }
 .links { display:flex; gap:14px; flex-wrap:wrap; font-size:14px; margin-top:8px; }
 .notice { border-left:4px solid var(--accent); background:var(--panel); padding:10px 14px; border-radius:6px; margin:14px 0; }
 .notice.warn { border-color:var(--warn); }
-iframe.artifact { width:100%; height:80vh; border:1px solid var(--line); border-radius:8px; background:#fff; margin-top:10px; }
 details { margin:10px 0; }
 details summary { cursor:pointer; color:var(--accent); }
 .pager { display:flex; justify-content:space-between; gap:12px; margin-top:40px; border-top:1px solid var(--line); padding-top:14px; }
@@ -366,7 +432,7 @@ class Builder:
     def __init__(self, book, out, repo, sha):
         self.book, self.out, self.repo, self.sha = book, Path(out), repo, sha
         self.pending = book.pending()
-        self.pending_count = sum(len(self.pending[k]) for k in ("unread", "changed", "unplaced"))
+        self.pending_count = sum(len(self.pending[k]) for k in ("unread", "changed", "unplaced", "gone", "stray"))
         commit = f"commit {sha[:7]}, " if sha else ""
         self.meta = esc(f"built from {commit}the records stamped {book.state.get('stamped', 'undated')}")
         self.ledger = Ledger(book)
@@ -405,18 +471,17 @@ class Builder:
         return living_docs.markdown_html(text, self.linker(source))
 
     def artifact_links(self, aid):
+        """Where the artifact itself opens: on claude.ai, and as files in its repository; the site
+        serves no copy of it (the module's docstring says why)."""
         r = self.book.records[aid]
         repo, folder = aid.split("/", 1)
         out = []
-        if repo == "SchwingNet":
-            opened = main_file(self.book.root / "artifacts" / folder)
-            if opened:
-                out.append(f'<a href="files/{esc(folder)}/{esc(served_name(opened))}">Open the artifact</a>')
-            out.append(f'<a href="{esc(self.github("artifacts/" + folder, True))}">Its files in the repository</a>')
-        else:
-            out.append(f'<a href="{esc(ST_TREE + folder)}/">Its files in symphony-template</a>')
         if r.get("link", "").startswith("https://claude.ai/"):
-            out.append(f'<a href="{esc(r["link"])}">On claude.ai</a>')
+            out.append(f'<a href="{esc(r["link"])}">Open it on claude.ai</a>')
+        if repo != "SchwingNet":
+            out.append(f'<a href="{esc(ST_TREE + folder)}/">Its files in symphony-template</a>')
+        elif (self.book.root / "artifacts" / folder).is_dir():
+            out.append(f'<a href="{esc(self.github("artifacts/" + folder, True))}">Its files in the repository</a>')
         return '<div class="links">' + "".join(out) + "</div>"
 
     # pieces
@@ -473,12 +538,14 @@ class Builder:
         return ('<div class="table"><table><thead><tr><th>Quantity</th><th>Verdict</th><th>What each artifact gives</th>'
                 "</tr></thead><tbody>" + "".join(rows) + "</tbody></table></div>")
 
-    def checks_table(self, checks, source_name=None, show_source=False):
+    def checks_table(self, checks, show_source=False):
+        """The checks as a table; a narrative's superseded or open figure whose line carries no
+        disclaimer is marked, as the brief for the chapters asks one to carry it."""
         rows = []
         for c in checks:
             where = esc(c["source"]) if show_source else f"line {c['line']}"
             flag = ""
-            if c["outcome"] in ("superseded", "open") and not DISCLAIMER.search(c["text"]):
+            if c["outcome"] in ("superseded", "open") and "line_text" in c and not DISCLAIMER.search(c["line_text"]):
                 flag = ' <span class="chip warn">no disclaimer in the passage</span>'
             rows.append(f"<tr><td>{where}</td><td>{esc(OUTCOMES.get(c['outcome'], c['outcome']))}{flag}</td>"
                         f"<td><code>{esc(c['value'])}</code></td><td>{esc(c['concept'])}</td><td>{esc(c['text'])}</td></tr>")
@@ -498,8 +565,8 @@ class Builder:
         repos = collections.Counter(r["repo"] for r in b.records.values())
         body = ["<h1>The SchwingNet textbook</h1>",
                 "<p>The Artifact Textbook as a website: one page for each chapter of the book's plan and one for each "
-                "artifact, laid out on every build from the artifacts themselves and the synthesis's records of them. "
-                "A chapter shows its written narrative once there is one, and below it every artifact it reads, with "
+                "artifact, laid out on every build from the synthesis's records of the artifacts; each artifact itself "
+                "opens on claude.ai, where it was shared by its link, or in its repository. A chapter shows its written narrative once there is one, and below it every artifact it reads, with "
                 "its record, its place in its cluster and the figures the record has settled. Nothing here is written "
                 "at build time: the records come from the synthesis's reads, and the narratives from the chapters "
                 "under docs/textbook/, both merged by pull request.</p>",
@@ -624,7 +691,6 @@ class Builder:
     def artifact(self, aid):
         b = self.book
         r = b.records[aid]
-        repo, folder = aid.split("/", 1)
         body = [f"<h1>{esc(r['title'])}</h1>", self.chips_for(aid), self.artifact_links(aid)]
         old = b.superseded_by(aid)
         if old:
@@ -649,19 +715,12 @@ class Builder:
                 f"<li>{esc(p['cluster'])}: {esc(p['role'])}" + (
                     f" by {esc(b.records.get(p['by'], {}).get('title', p['by']))}: {esc(p.get('why', ''))}" if p.get("by") else "")
                 + "</li>" for p in places) + "</ul>")
-        body.append(self.record_tables(r))
+        body.append(self.record_tables(aid, r))
         body.append("<h2>Figures the record has settled</h2>" + self.figure_rows(b.figures_of([aid]), side_of=aid))
         body.append(self.read_notes(r))
-        if repo == "SchwingNet":
-            opened = main_file(b.root / "artifacts" / folder)
-            if opened:
-                body.append("<h2>The artifact</h2><details><summary>Show it here</summary>"
-                            f'<iframe class="artifact" loading="lazy" sandbox="allow-scripts allow-popups '
-                            f'allow-popups-to-escape-sandbox" src="files/{esc(folder)}/{esc(served_name(opened))}" '
-                            f'title="{esc(r["title"])}"></iframe></details>')
         self.write(artifact_page(aid), r["title"], "\n".join(body))
 
-    def record_tables(self, r):
+    def record_tables(self, aid, r):
         out = []
         claims = r.get("key_claims") or []
         if claims:
@@ -695,12 +754,26 @@ class Builder:
                 f"<li>{esc(s.get('title'))}: {self.maybe_link(s.get('url_or_citation'))}</li>" for s in sources) + "</ul>")
         related = r.get("related_titles") or []
         if related:
-            by_title = {x["title"]: aid for aid, x in self.book.records.items()}
-            out.append("<h2>Related artifacts</h2><ul>" + "".join(
-                "<li>" + (f'<a href="{artifact_page(by_title[x["title"]])}">{esc(x["title"])}</a>' if x.get("title") in by_title
-                          else esc(x.get("title"))) + f" ({esc(x.get('relation'))}): {esc(x.get('why'))}</li>" for x in related)
-                + "</ul>")
+            by_title = collections.defaultdict(list)
+            for other, x in self.book.records.items():
+                by_title[x["title"]].append(other)
+            out.append("<h2>Related artifacts</h2><ul>" + "".join(self.related_item(aid, x, by_title) for x in related)
+                       + "</ul>")
         return "\n".join(out)
+
+    def related_item(self, aid, related, by_title):
+        """A related artifact named by its title, linked where one other record holds that title;
+        where several do, as two versions of one artifact may, each is linked by its date."""
+        title = related.get("title")
+        others = [a for a in by_title.get(title, []) if a != aid]
+        if len(others) == 1:
+            name = f'<a href="{artifact_page(others[0])}">{esc(title)}</a>'
+        elif others:
+            name = esc(title) + " (" + ", ".join(
+                f'<a href="{artifact_page(a)}">{esc(self.book.records[a].get("date") or a)}</a>' for a in others) + ")"
+        else:
+            name = esc(title)
+        return f"<li>{name} ({esc(related.get('relation'))}): {esc(related.get('why'))}</li>"
 
     @staticmethod
     def maybe_link(text):
@@ -759,6 +832,14 @@ class Builder:
             body.append("".join(self.card(a) for a in p["unplaced"]))
         else:
             body.append("<p>None: every artifact in the record has a chapter.</p>")
+        body.append("<h2>Recorded, but its folder is gone</h2>")
+        body.append("".join(self.card(a) for a in p["gone"]) if p["gone"] else "<p>None.</p>")
+        body.append("<h2>Chapter files the plan does not name</h2>")
+        if p["stray"]:
+            body.append("<p>A chapter's page shows only the file the plan names for it.</p><ul>" + "".join(
+                f'<li><a href="{esc(self.github(rel))}"><code>{esc(rel)}</code></a></li>' for rel in p["stray"]) + "</ul>")
+        else:
+            body.append("<p>None.</p>")
         skipped = len(b.inventory.get("skipped") or [])
         if skipped:
             body.append(f"<p class=\"count\">{skipped} artifacts the index marks as not copied, since they hold personal "
@@ -778,28 +859,7 @@ class Builder:
             text = path.read_text(encoding="utf-8")
             self.write(contradictions_page(path), living_docs.title_of(text), self.markdown(text, rel))
 
-    def files(self):
-        """Each artifact copied here, served beside its page; a document kept as Markdown is
-        served as a page of its own."""
-        for aid, r in self.book.records.items():
-            if r["repo"] != "SchwingNet":
-                continue
-            src = self.book.root / "artifacts" / r["folder"]
-            if not src.is_dir():
-                continue
-            dst = self.out / "files" / r["folder"]
-            shutil.copytree(src, dst)
-            if (src / "index.md").exists() and not (src / "index.html").exists():
-                text = (src / "index.md").read_text(encoding="utf-8")
-                body = living_docs.markdown_html(text, lambda t: t)
-                (dst / "index.html").write_text(
-                    "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" "
-                    "content=\"width=device-width, initial-scale=1\"><meta name=\"robots\" content=\"noindex, nofollow\">"
-                    f"<title>{esc(r['title'])}</title><style>{living_docs.CSS} main {{ margin:0 auto; }}</style></head>"
-                    f"<body><main>{body}</main></body></html>\n", encoding="utf-8")
-
     def build(self):
-        self.files()
         self.front()
         for i in range(len(self.book.chapters)):
             self.chapter(i)
@@ -809,11 +869,6 @@ class Builder:
         self.pending_page()
         self.record_pages()
         (self.out / MARKER).write_text("built by tools/textbook_site.py\n", encoding="utf-8")
-
-
-def served_name(name):
-    """The file a link opens: a document kept as index.md is served as index.html."""
-    return "index.html" if name == "index.md" else name
 
 
 def prepare(out):
