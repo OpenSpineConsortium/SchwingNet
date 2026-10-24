@@ -12,7 +12,7 @@ requests, the lab volume's quota and use (datasets against everything else) with
 the home's quota and use (null until a grid word reads it), and one entry per set with its id, name,
 group, reach, whether it can be fetched, its status, where it is (lab, home or none), its bytes (the
 measured size once frozen, else what its source states, else null), its licence class and the sets it
-overlaps with, each with the patients, series, identical scans and bytes the two share. The panel never reads the feed at view time: `build` inlines the committed snapshot
+overlaps with, each with the patients, series, matching scans and bytes the two share. The panel never reads the feed at view time: `build` inlines the committed snapshot
 docs/textbook/figures/22/storage-plan.json into the page, `fetch` refreshes that snapshot from GitHub's
 contents API with the token in STORAGE_FEED_TOKEN (else GITHUB_TOKEN), following no redirect so the
 token reaches no other address, and exits non-zero with one sentence when the feed is unreachable, so
@@ -167,8 +167,9 @@ def totals(plan, choices):
 def overlaps(plan, choices):
     """Each pair of sets that both end up held and that the feed says share patients, series or
     scans, once per pair, in the feed's order; read from the sets' own overlap lists, never all
-    pairs. same_scans is the volumes the two hold with identical voxel values, the count that says
-    how many scans a selection holds twice; a feed written before it is null there (issue #272)."""
+    pairs. same_scans is the volumes the two hold that match by geometry, voxel count and the sum
+    of scaled values, the same scan perhaps in another axis order or number type, the count that
+    says how many scans a selection holds twice; a feed written before it is null there (#272)."""
     active = {s["id"] for s in plan["sets"] if final_location(s, choices.get(s["id"]) or {}) != "none"}
     seen, out = set(), []
     for s in plan["sets"]:
@@ -624,6 +625,23 @@ UI_JS = r"""
     $("shown").textContent = shown + " of " + PLAN.sets.length + " shown";
   }
 
+  // One overlap pair in words, each count only where the feed gives one above zero: a set kept as NIfTI
+  // records no patients or series, so a zero there says nothing was read, not that nothing is shared.
+  // same_scans matches volumes by geometry (sizes and spacings, in any axis order), voxel count and the
+  // sum of scaled values: the same scan, perhaps stored in another axis order or number type, and not a
+  // claim that the voxels are identical byte for byte (issue #272).
+  function above(n) { return typeof n === "number" && n > 0; }
+  function counted(n, one, many) { return esc(n.toLocaleString("en-US")) + " " + (n === 1 ? one : many); }
+  function overlapLine(p) {
+    const shared = [], parts = [];
+    if (above(p.patients)) shared.push(counted(p.patients, "patient", "patients"));
+    if (above(p.series)) shared.push(counted(p.series, "series", "series"));
+    if (shared.length) parts.push(shared.join(" and ") + " in common");
+    if (above(p.same_scans)) parts.push(counted(p.same_scans, "scan holds", "scans hold") + " the same images (matched by size, spacing and voxel values)");
+    if (above(p.same_bytes)) parts.push('<span title="' + esc(exact(p.same_bytes)) + '">' + Model.tb(p.same_bytes) + " of identical files</span>");
+    return "<li><code>" + esc(p.a) + "</code> and <code>" + esc(p.b) + "</code>: " +
+      (parts.length ? parts.join("; ") : "listed by the feed, with no count above zero") + "</li>";
+  }
   function drawTotals(t, refused, pairs) {
     const labOver = t.lab_after > t.target || t.lab_after > t.lab_quota;
     $("t-lab").className = "total" + (labOver ? " over" : "");
@@ -642,12 +660,7 @@ UI_JS = r"""
       $("refusals").innerHTML = sel ? '<p class="ok">The planner\'s check would admit this selection; its run opens a request pull request for the owner to merge.</p>' : '<p class="muted">No choice differs from the feed.</p>';
     }
     if (pairs.length) {
-      $("overlaps").innerHTML = "<p><b>Overlap among the kept sets:</b></p><ul class=\"notes\">" + pairs.map(function (p) {
-        return "<li><code>" + esc(p.a) + "</code> and <code>" + esc(p.b) + "</code> share " + (p.patients === null ? "an unrecorded number of" : esc(p.patients.toLocaleString("en-US"))) + " patients and " +
-          (p.series === null ? "an unrecorded number of" : esc(p.series.toLocaleString("en-US"))) + " series" +
-          (p.same_scans === null ? "" : ", " + esc(p.same_scans.toLocaleString("en-US")) + (p.same_scans === 1 ? " scan" : " scans") + " identical voxel for voxel") +
-          (p.same_bytes === null ? "" : ', <span title="' + esc(exact(p.same_bytes)) + '">' + Model.tb(p.same_bytes) + " the same</span>") + "</li>";
-      }).join("") + "</ul>";
+      $("overlaps").innerHTML = "<p><b>Overlap among the kept sets:</b></p><ul class=\"notes\">" + pairs.map(overlapLine).join("") + "</ul>";
     } else {
       $("overlaps").innerHTML = '<p class="muted">The feed records no shared patients, series or scans among the kept sets.</p>';
     }
