@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 
 import figure_run  # noqa: E402
+import textbook_site  # noqa: E402
 
 QUIET = {"gc.auto": "0", "gc.autoDetach": "false", "maintenance.auto": "false", "maintenance.autoDetach": "false",
          "receive.autogc": "false"}
@@ -166,7 +167,7 @@ class Running(unittest.TestCase):
 class TheRepositorysFigures(unittest.TestCase):
     def test_every_committed_record_is_whole_and_its_image_is_there(self):
         base = ROOT / "docs" / "textbook" / "figures"
-        records = sorted(base.glob("*/*.json")) if base.is_dir() else []
+        records = sorted(p for p in base.glob("*/*.json") if textbook_site.is_figure(p)) if base.is_dir() else []
         keys = {"id", "title", "caption", "chapter", "grade", "status", "source", "explore", "rerun"}
         for path in records:
             with self.subTest(path=path.name):

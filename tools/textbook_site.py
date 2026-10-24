@@ -327,8 +327,14 @@ class Book:
         return [c["number"] for _p, c in self.chapters if canon & set(c["artifacts_primary"])]
 
 
+def is_figure(path):
+    """A JSON under figures/ is a figure's record when an image or a page of its own name stands
+    beside it; any other JSON there is data a figure is drawn from, as chapter 35's corpora are."""
+    return any(path.with_suffix(ext).exists() for ext in (".svg", ".png", ".html"))
+
+
 def load_figures(root, privacy):
-    """Every figure record under docs/textbook/figures/, by its id, with the image and the
+    """Every figure record under docs/textbook/figures/ (is_figure), by its id, with the image and the
     interactive page beside it where they exist; the records' prose goes through the same privacy
     pass as the artifacts' records."""
     out = {}
@@ -338,7 +344,7 @@ def load_figures(root, privacy):
             rec = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, ValueError):
             continue
-        if not isinstance(rec, dict):
+        if not isinstance(rec, dict) or not is_figure(path):
             continue
         rec = {k: (v if k in ("id", "chapter", "explore", "rerun") else privacy.record(v)) for k, v in rec.items()}
         rel = path.relative_to(Path(root) / BOOK).with_suffix("")
