@@ -36,7 +36,13 @@ succeeds or of how much a result would move a number; chapter 33 says what that 
     python3 tools/claims_rank.py table      # the ranked items, as a Markdown table
     python3 tools/claims_rank.py claims     # the claims by kind, as a Markdown table
     python3 tools/claims_rank.py next       # the top ready item with and without the owner's word, as JSON
+    python3 tools/claims_rank.py queue      # every item not done, ranked, with its status, as JSON
     python3 tools/claims_rank.py check      # the register holds together
+
+Each item has a status: open (nobody works on it), doing (a run of the research loop,
+.github/workflows/research.yml, or a person has taken it and its issue is open) or done. An item
+with no status is open. `next` offers only open items, so a second run never starts what a first
+has under way; `queue` lists open and doing items, which the textbook's Research loop page shows.
 
 Every command takes --file to read another register. Standard library only.
 """
@@ -50,6 +56,7 @@ ROOT = Path(__file__).resolve().parents[1]
 REGISTER = ROOT / "docs" / "textbook" / "claims.json"
 
 GRADE_RANK = {"Unverified": 0, "Inferred": 1, "Reported": 2, "Measured": 3}
+STATUSES = ("open", "doing", "done")
 KINDS = ("novelty", "functionality", "integrity")
 
 # What falls if a claim fails, and how much it weighs. The patent is filed once and cannot be
@@ -141,9 +148,14 @@ def cost_factor(item):
     return factor
 
 
+def status_of(item):
+    """An item's status, open where the record gives none."""
+    return item.get("status") or "open"
+
+
 def open_items(register):
-    """The items not yet done."""
-    return [item for item in register["items"] if item.get("status", "open") != "done"]
+    """The items not yet done, open or under way."""
+    return [item for item in register["items"] if status_of(item) != "done"]
 
 
 def dependents(items):
@@ -174,7 +186,7 @@ def weights(register):
 
 def is_ready(item, register):
     """Whether everything the item waits on is done."""
-    done = {other["id"] for other in register["items"] if other.get("status") == "done"}
+    done = {other["id"] for other in register["items"] if status_of(other) == "done"}
     return all(needed in done for needed in item["depends_on"])
 
 
@@ -263,18 +275,26 @@ def summary(row, register):
         ],
         "issue": item.get("issue"),
         "cost": item["cost"],
+        "status": status_of(item),
+        "ready": row["ready"],
     }
 
 
 def next_items(register):
-    """The top ready item that needs no word of the owner's, and the top that does."""
-    rows = [row for row in ranked(register) if row["ready"]]
+    """The top ready open item that needs no word of the owner's, and the top that does; an item
+    under way (doing) is never offered, so two runs never start the same work."""
+    rows = [row for row in ranked(register) if row["ready"] and status_of(row["item"]) == "open"]
     free = next((row for row in rows if not row["item"]["needs_owner_word"]), None)
     asked = next((row for row in rows if row["item"]["needs_owner_word"]), None)
     return {
         "without_owner_word": summary(free, register) if free else None,
         "with_owner_word": summary(asked, register) if asked else None,
     }
+
+
+def queue(register):
+    """Every item not done, best first, as the JSON the research loop and the site read."""
+    return [dict(summary(row, register), rank=rank) for rank, row in enumerate(ranked(register), 1)]
 
 
 def problems(register):
@@ -358,6 +378,8 @@ def item_problems(register):
         iid = item.get("id")
         if ids.count(iid) > 1:
             found.append(f"item {iid}: id used twice")
+        if "status" in item and item["status"] not in STATUSES:
+            found.append(f"item {iid}: status {item['status']!r} is not one of {', '.join(STATUSES)}")
         if not isinstance(item.get("needs_owner_word"), bool):
             found.append(f"item {iid}: needs_owner_word must be true or false")
         for bearing in item.get("bears_on", []):
@@ -401,7 +423,7 @@ def cycle_problems(register):
 def main(argv=None):
     """Run one command over the register."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("command", choices=["table", "claims", "next", "check"])
+    parser.add_argument("command", choices=["table", "claims", "next", "queue", "check"])
     parser.add_argument("--file", default=str(REGISTER), help="the register to read")
     args = parser.parse_args(argv)
     register = load(args.file)
@@ -418,6 +440,8 @@ def main(argv=None):
         print(table(register))
     elif args.command == "claims":
         print(claims_table(register))
+    elif args.command == "queue":
+        print(json.dumps(queue(register), indent=2))
     else:
         print(json.dumps(next_items(register), indent=2))
     return 0
