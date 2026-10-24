@@ -1,0 +1,361 @@
+name: Textbook artifact
+
+# Publishes the Artifact Textbook as one private claude.ai artifact and republishes it to the
+# same link after each merge to main that changes the book (issue #236). The owner decided on
+# 2026-10-24 that the book goes to claude.ai this way, from an Action and not from anyone's
+# machine, a slash command or a routine: a live claude.ai artifact cannot be framed by any other
+# site, the members-only Pages site included (its page answers content-security-policy
+# frame-ancestors 'self' and two extension ids), so the whole site is published as one
+# multi-page artifact, where the exported artifact pages open as pages of their own and an Ask
+# Claude box answers from each page through the artifact runtime, on the viewer's own account
+# (docs/research/textbook-as-an-artifact.md, docs/memory/the-textbook-artifact.md).
+#
+# The run starts on a push to main that changes what the book is built from (the paths below,
+# the same list tools/textbook_publish.py fingerprints), every half hour, and on Run workflow.
+# The schedule is there because a merge GitHub's auto-merge makes starts no workflow
+# (automerge.yml arms it with the workflow token), and most of this repository's pull requests
+# merge that way; a scheduled run reads the record first and stops before building when the
+# book's inputs are the ones already published, so it costs a few seconds while nothing changed.
+# A new run cancels one still publishing, since the newer commit is the one to publish; a
+# publish cut short leaves the record as it was, and the next run publishes the whole edition
+# again to the same artifact.
+#
+# Three jobs. values learns whether the Claude token is set, checking nothing out and running
+# nothing of the repository's (ci.yml's values says why). edition reads the record, decides
+# whether this run may publish, builds the site (tools/textbook_site.py) and the edition
+# (tools/textbook_artifact.py), plans what changed since the record by hashing the files
+# (tools/textbook_publish.py plan) and, where anything did, has a Claude session publish it with
+# the Artifact tool, in batches under the tool's limits, from a prompt that carries paths and
+# nothing of the book's text; that job holds a read-only token, so the session, allowed the
+# Artifact and Read tools alone, can write nothing here. record, the one job with contents:
+# write and no session, writes the record, state.json on the branch textbook-artifact, by a
+# fast-forward commit on the branch's head with GITHUB_TOKEN: the artifact's link, the commit the
+# edition was built from, its date, the fingerprint of the inputs and the sha256 of every
+# published path; it never replaces a branch that holds anything else. The day's publishes are
+# counted from that branch's commits, one per publish.
+#
+# A run publishes only when all of these hold, and its job summary names the first that does not:
+#   - the variable TEXTBOOK_ARTIFACT is not off (set it to off to stop the publishes);
+#   - crowd mode is off (the variable CLAUDE_CROWD): in crowd mode no workflow runs Claude, and
+#     every job here is skipped, as the crowd check holds every job of a workflow that reaches
+#     Claude to (tests/test_crowd_check.py);
+#   - the repository secret CLAUDE_CODE_OAUTH_TOKEN is set, the token `claude setup-token`
+#     makes, so the publish runs on that account's plan, bills no API, and lands in that
+#     account's artifact gallery, private until that account shares it;
+#   - the book's inputs changed since the published edition (Run workflow builds anyway);
+#   - fewer than TEXTBOOK_PUBLISHES_PER_DAY publishes (12 unless the variable says otherwise,
+#     50 at most) were recorded today, in UTC.
+#
+# The session runs with the user's settings alone (--setting-sources user), after every
+# CLAUDE.md, CLAUDE.local.md, .mcp.json and .claude folder of the checkout is deleted, so no
+# repository instruction or hook loads. If the Artifact tool is not among its tools it says so
+# (ARTIFACT_TOOL_MISSING) and the run fails loudly, since the publish cannot run from Actions
+# then. What the session spent is kept as a symphony-usage-* artifact for metrics.yml. On a
+# private repository the runner minutes count against the account's Actions minutes.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/textbook/**"
+      - "artifacts/**"
+      - "tools/textbook_site.py"
+      - "tools/textbook_artifact.py"
+      - "tools/living_docs.py"
+      - ".github/CODEOWNERS"
+  schedule:
+    - cron: "13,43 * * * *"
+  workflow_dispatch:
+
+# Nothing at the top; each job asks for what it needs.
+permissions: {}
+
+# The newest commit is the one to publish: a new run cancels one still at work.
+concurrency:
+  group: textbook-artifact
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  STATE_BRANCH: textbook-artifact
+
+jobs:
+  values:
+    # Whether the Claude token is set, learnt by a job that checks nothing out, runs nothing of
+    # the repository's and uses no action, so the job that runs the repository's code names the
+    # secret only where the session takes it.
+    if: vars.CLAUDE_CROWD != 'true' && github.repository == 'OpenSpineConsortium/SchwingNet' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    outputs:
+      token: ${{ steps.set.outputs.token }}
+    steps:
+      - name: Whether the Claude token is set
+        id: set
+        env:
+          TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' }}
+        run: echo "token=$TOKEN" >> "$GITHUB_OUTPUT"
+
+  edition:
+    # The record, the decision, the build, the plan and the session; a read-only token.
+    needs: values
+    if: vars.CLAUDE_CROWD != 'true' && github.repository == 'OpenSpineConsortium/SchwingNet' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: read # the checkout, and the record on the branch textbook-artifact through the API
+    outputs:
+      record: ${{ steps.handoff.outputs.record }}
+      sha: ${{ steps.edition.outputs.sha }}
+      built: ${{ steps.edition.outputs.built }}
+      inputs: ${{ steps.edition.outputs.inputs }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # main's copy of the book and of this workflow's tools, whatever started the run
+          ref: main
+          persist-credentials: false
+      - name: The record as the branch holds it, and the day's publishes
+        id: state
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          # A branch or a file not there yet is an empty record; any other failure stops the run,
+          # since a record read wrong would publish everything again or nothing.
+          read_or_none() {
+            if gh api "$1" -H "Accept: application/vnd.github.raw+json" > "$2" 2> "$RUNNER_TEMP/api.err"; then
+              return 0
+            elif grep -q "HTTP 404" "$RUNNER_TEMP/api.err"; then
+              return 1
+            fi
+            cat "$RUNNER_TEMP/api.err" >&2
+            exit 1
+          }
+          if read_or_none "repos/$REPO/contents/state.json?ref=$STATE_BRANCH" "$RUNNER_TEMP/state.json"; then
+            echo "state=$RUNNER_TEMP/state.json" >> "$GITHUB_OUTPUT"
+          else
+            rm -f "$RUNNER_TEMP/state.json"
+            echo "state=" >> "$GITHUB_OUTPUT"
+          fi
+          today=$(date -u +%F)
+          if ! read_or_none "repos/$REPO/commits?sha=$STATE_BRANCH&since=${today}T00:00:00Z&per_page=100" "$RUNNER_TEMP/commits.json"; then
+            echo '[]' > "$RUNNER_TEMP/commits.json"
+          fi
+      - name: The edition's commit, its date and the fingerprint of the book's inputs
+        id: edition
+        run: |
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "built=$(git show -s --format=%cI HEAD)" >> "$GITHUB_OUTPUT"
+          python3 tools/textbook_publish.py inputs --root . --sha HEAD >> "$GITHUB_OUTPUT"
+      - name: Whether this run may publish
+        id: admit
+        env:
+          STATE: ${{ steps.state.outputs.state }}
+          INPUTS: ${{ steps.edition.outputs.inputs }}
+          EVENT: ${{ github.event_name }}
+          SWITCH: ${{ vars.TEXTBOOK_ARTIFACT }}
+          CROWD: ${{ vars.CLAUDE_CROWD }}
+          HAVE_TOKEN: ${{ needs.values.outputs.token }}
+          CAP: ${{ vars.TEXTBOOK_PUBLISHES_PER_DAY }}
+        run: |
+          python3 tools/textbook_publish.py admit --state "$STATE" --inputs "$INPUTS" --event "$EVENT" \
+            --switch "$SWITCH" --crowd "$CROWD" --token "$HAVE_TOKEN" --cap "$CAP" \
+            --commits "$RUNNER_TEMP/commits.json" --words "$RUNNER_TEMP/words.md" >> "$GITHUB_OUTPUT"
+          cat "$RUNNER_TEMP/words.md" >> "$GITHUB_STEP_SUMMARY"
+      - name: Build the site, and the edition from it
+        if: steps.admit.outputs.admit == 'true'
+        env:
+          REPO: ${{ github.repository }}
+          SHA: ${{ steps.edition.outputs.sha }}
+          BUILT: ${{ steps.edition.outputs.built }}
+        run: |
+          python3 tools/textbook_site.py "$RUNNER_TEMP/site" --repo "$REPO" --sha "$SHA"
+          python3 tools/textbook_artifact.py "$RUNNER_TEMP/site" textbook-out --repo "$REPO" --sha "$SHA" --built "$BUILT"
+      - name: Plan the publish, what changed since the record
+        id: plan
+        if: steps.admit.outputs.admit == 'true'
+        env:
+          STATE: ${{ steps.state.outputs.state }}
+        run: |
+          python3 tools/textbook_publish.py plan --out textbook-out --state "$STATE" --plan "$RUNNER_TEMP/plan.json" \
+            | tee -a "$GITHUB_OUTPUT"
+          cp "$RUNNER_TEMP/plan.json" textbook-out/plan.json
+      - name: The session's instructions and arguments, with no repository instruction left to load
+        id: brief
+        if: steps.admit.outputs.admit == 'true' && steps.plan.outputs.nothing != 'true'
+        env:
+          SHA: ${{ steps.edition.outputs.sha }}
+          SETTINGS: ${{ vars.SYMPHONY_CLAUDE_SETTINGS }}
+        run: |
+          # the model, effort and fallback the Tokens tab's main tile sets; a variable that does
+          # not hold together leaves Claude's own defaults
+          python3 tools/pool.py settings --slot main --settings "$SETTINGS" > "$RUNNER_TEMP/settings.txt" || true
+          value() { sed -n "s/^$1=//p" "$RUNNER_TEMP/settings.txt" | head -n 1; }
+          {
+            python3 tools/textbook_publish.py prompt --plan "$RUNNER_TEMP/plan.json" --sha "$SHA" \
+              --folder "$GITHUB_WORKSPACE/textbook-out"
+            python3 tools/textbook_publish.py args --model "$(value model)" --effort "$(value effort)" \
+              --fallback "$(value fallback)"
+          } >> "$GITHUB_OUTPUT"
+          find . \( -name CLAUDE.md -o -name CLAUDE.local.md -o -name .mcp.json \) -type f -delete
+          find . -name .claude -type d -prune -exec rm -rf {} +
+          rm -f "$RUNNER_TEMP/claude-execution-output.json"
+      - name: Publish the edition
+        id: claude
+        if: steps.admit.outputs.admit == 'true' && steps.plan.outputs.nothing != 'true'
+        continue-on-error: true
+        uses: anthropics/claude-code-action@34968b5981d5d170904281aa3df6f3c0d4a28855 # v1.0.249
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ github.token }}
+          prompt: ${{ steps.brief.outputs.prompt }}
+          claude_args: ${{ steps.brief.outputs.args }}
+      - name: Record what the session spent, for the field metrics
+        if: always() && steps.claude.outcome != 'skipped'
+        continue-on-error: true
+        env:
+          EXECUTION_FILE: ${{ steps.claude.outputs.execution_file }}
+          SDLC_METRICS: ${{ vars.SDLC_METRICS }}
+        run: >-
+          python3 tools/usage.py actions --root "$GITHUB_WORKSPACE"
+          --execution-file "${EXECUTION_FILE:-$RUNNER_TEMP/claude-execution-output.json}"
+          --out "$RUNNER_TEMP/symphony-usage/record.json" --workflow textbook-artifact --job edition
+      - name: Keep the record where the metrics workflow reads it
+        if: always() && steps.claude.outcome != 'skipped'
+        continue-on-error: true
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: symphony-usage-${{ github.run_id }}-${{ github.run_attempt }}-textbook-artifact
+          path: ${{ runner.temp }}/symphony-usage/record.json
+          if-no-files-found: ignore
+      - name: What the session's answer says
+        id: answer
+        if: always() && steps.claude.outcome != 'skipped'
+        env:
+          EXECUTION_FILE: ${{ steps.claude.outputs.execution_file }}
+        # the link and the markers alone leave this job; a missing tool or no link fails it here
+        run: >-
+          python3 tools/textbook_publish.py answer
+          --execution-file "${EXECUTION_FILE:-$RUNNER_TEMP/claude-execution-output.json}"
+          --out "$RUNNER_TEMP/answer.json" >> "$GITHUB_OUTPUT"
+      - name: What the record takes, the plan, the answer and the record as it was
+        id: handoff
+        if: always() && steps.plan.outcome == 'success'
+        env:
+          NOTHING: ${{ steps.plan.outputs.nothing }}
+          ANSWERED: ${{ steps.answer.outcome }}
+          STATE: ${{ steps.state.outputs.state }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/handoff"
+          cp "$RUNNER_TEMP/plan.json" "$RUNNER_TEMP/handoff/plan.json"
+          if [ -n "$STATE" ]; then cp "$STATE" "$RUNNER_TEMP/handoff/state.json"; fi
+          if [ "$NOTHING" = true ]; then
+            echo '{"nothing": true}' > "$RUNNER_TEMP/handoff/answer.json"
+            echo "record=true" >> "$GITHUB_OUTPUT"
+          elif [ "$ANSWERED" = success ]; then
+            cp "$RUNNER_TEMP/answer.json" "$RUNNER_TEMP/handoff/answer.json"
+            echo "record=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "record=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Keep them for the record
+        if: always() && steps.handoff.outputs.record == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: textbook-record-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/handoff/
+          retention-days: 1
+          if-no-files-found: error
+
+  record:
+    # The one job that may write, and it runs no session: the record onto the branch.
+    needs: edition
+    if: vars.CLAUDE_CROWD != 'true' && needs.edition.outputs.record == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write # the branch textbook-artifact, by fast-forward commits, and nothing else
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: textbook-record-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/handoff
+      - name: The record this run leaves
+        id: record
+        env:
+          SHA: ${{ needs.edition.outputs.sha }}
+          BUILT: ${{ needs.edition.outputs.built }}
+          INPUTS: ${{ needs.edition.outputs.inputs }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          state=""
+          if [ -f "$RUNNER_TEMP/handoff/state.json" ]; then state="$RUNNER_TEMP/handoff/state.json"; fi
+          python3 tools/textbook_publish.py record --state "$state" --plan "$RUNNER_TEMP/handoff/plan.json" \
+            --answer "$RUNNER_TEMP/handoff/answer.json" --sha "$SHA" --built "$BUILT" --inputs "$INPUTS" \
+            --run "$RUN_URL" --write "$RUNNER_TEMP/new-state.json" --message "$RUNNER_TEMP/message.txt" >> "$GITHUB_OUTPUT"
+      - name: Write it to the branch
+        env:
+          TOKEN: ${{ github.token }}
+          GIT_AUTHOR_NAME: github-actions[bot]
+          GIT_AUTHOR_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+          GIT_COMMITTER_NAME: github-actions[bot]
+          GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+        run: |
+          set -euo pipefail
+          basic=$(printf 'x-access-token:%s' "$TOKEN" | base64 -w0)
+          echo "::add-mask::$basic"
+          auth="AUTHORIZATION: basic $basic"
+          # One attempt: the branch as it is now, a commit on its head holding the one file, and
+          # a push that goes through only while the branch is still that head. A branch that
+          # holds anything but state.json is the project's own and is never replaced (2); a lease
+          # that failed (1) is worth one more attempt.
+          write_record() {
+            previous=""
+            git update-ref -d "refs/remotes/origin/$STATE_BRANCH" 2>/dev/null || true
+            if git -c http.extraheader="$auth" fetch --quiet --no-tags origin \
+                "+refs/heads/$STATE_BRANCH:refs/remotes/origin/$STATE_BRANCH" 2>/dev/null; then
+              previous=$(git rev-parse "refs/remotes/origin/$STATE_BRANCH") || return 1
+            fi
+            if [ -n "$previous" ] && foreign=$(git ls-tree --name-only "$previous" | grep -v -x state.json); then
+              echo "::error::the branch $STATE_BRANCH holds files this workflow did not write ($foreign); it is the project's own and stays as it is, so nothing was recorded; rename it and the next run starts a branch of its own"
+              return 2
+            fi
+            blob=$(git hash-object -w "$RUNNER_TEMP/new-state.json") || return 1
+            tree=$(printf '100644 blob %s\tstate.json\n' "$blob" | git mktree) || return 1
+            parent=()
+            if [ -n "$previous" ]; then parent=(-p "$previous"); fi
+            commit=$(git commit-tree "$tree" "${parent[@]}" -F "$RUNNER_TEMP/message.txt") || return 1
+            git -c http.extraheader="$auth" push --quiet origin "$commit:refs/heads/$STATE_BRANCH" \
+              --force-with-lease="refs/heads/$STATE_BRANCH:$previous" || return 1
+            echo "record written as $commit"
+          }
+          status=0
+          write_record || status=$?
+          if [ "$status" -eq 0 ]; then
+            exit 0
+          elif [ "$status" -eq 2 ]; then
+            exit 1
+          fi
+          echo "the branch $STATE_BRANCH moved during this run; reading it again"
+          write_record
+      - name: Say where the book is
+        env:
+          URL: ${{ steps.record.outputs.url }}
+        run: |
+          {
+            echo "### The textbook artifact"
+            echo
+            cat "$RUNNER_TEMP/message.txt"
+            echo
+            echo "$URL"
+          } >> "$GITHUB_STEP_SUMMARY"
