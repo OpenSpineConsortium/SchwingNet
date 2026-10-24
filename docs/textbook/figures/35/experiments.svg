@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="152" viewBox="0 0 760 152" role="img" aria-label="Accuracy of every recorded run with its interval">
+<style>text{font:11px system-ui,sans-serif;fill:#0b0b0b}.ink3{fill:#7d7c77}.rule{stroke:#e1e0db}.test{fill:#2a78d6;stroke:#2a78d6;stroke-width:2}.val{fill:#fcfcfb;stroke:#c2410c;stroke-width:2}.bg{fill:#fcfcfb}@media (prefers-color-scheme:dark){text{fill:#f0efec}.ink3{fill:#8f8e87}.rule{stroke:#36352f}.test{fill:#5b9cf0;stroke:#5b9cf0}.val{fill:#1a1a19;stroke:#f08a5a}.bg{fill:#1a1a19}}</style>
+<rect class="bg" x="0" y="0" width="760" height="152"/>
+<text x="300" y="18" font-weight="600">Every recorded run: accuracy with its 95% Wilson interval</text>
+<text x="300" y="32" class="ink3">every run is a dry run on the synthetic bank: a record of the workflow, not of SchwingNet</text>
+<line class="rule" x1="300.0" x2="300.0" y1="44" y2="124"/>
+<text class="ink3" x="300.0" y="40" text-anchor="middle">0%</text>
+<line class="rule" x1="409.0" x2="409.0" y1="44" y2="124"/>
+<text class="ink3" x="409.0" y="40" text-anchor="middle">25%</text>
+<line class="rule" x1="518.0" x2="518.0" y1="44" y2="124"/>
+<text class="ink3" x="518.0" y="40" text-anchor="middle">50%</text>
+<line class="rule" x1="627.0" x2="627.0" y1="44" y2="124"/>
+<text class="ink3" x="627.0" y="40" text-anchor="middle">75%</text>
+<line class="rule" x1="736.0" x2="736.0" y1="44" y2="124"/>
+<text class="ink3" x="736.0" y="40" text-anchor="middle">100%</text>
+<text x="292" y="67.0" text-anchor="end">a767a466f5c1 version 1</text>
+<line class="test" x1="733.0" x2="736.0" y1="57.0" y2="57.0"/>
+<circle class="test" cx="736.0" cy="57.0" r="4.5"/>
+<line class="val" x1="727.9" x2="734.8" y1="70.0" y2="70.0"/>
+<circle class="val" cx="732.8" cy="70.0" r="4.5"/>
+<text x="292" y="97.0" text-anchor="end">cd37124c487d version 1</text>
+<line class="test" x1="730.3" x2="735.8" y1="87.0" y2="87.0"/>
+<circle class="test" cx="735.0" cy="87.0" r="4.5"/>
+<line class="val" x1="729.3" x2="735.5" y1="100.0" y2="100.0"/>
+<circle class="val" cx="734.2" cy="100.0" r="4.5"/>
+<text class="ink3" x="300" y="142">test accuracy over all levels (filled) and the best epoch's validation accuracy (hollow); the interactive figure has the loss curves, the blocks and the request panel</text>
+</svg>

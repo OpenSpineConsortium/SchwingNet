@@ -575,11 +575,58 @@ document.addEventListener("DOMContentLoaded", function () {
 """
 
 
+# A figure framed on a page runs under sandbox="allow-scripts": it can neither open a link nor leave its
+# frame, so it posts the link, or the combination its panel names, to the page around it, which shows it
+# in a bar a person can click (docs/research/experiments-panel.md, section 4). A sandboxed frame's message
+# arrives with origin "null", so the source is checked against the page's own figure frames, never the
+# origin; a request to act (dispatch, read) is answered "no connector" here, since this site has none.
+MESSAGE_JS = """
+<script>
+(function () {
+  function own(source) {
+    var frames = document.querySelectorAll("figure.fig iframe");
+    for (var i = 0; i < frames.length; i++) { if (frames[i].contentWindow === source) return true; }
+    return false;
+  }
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return {"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]; }); }
+  function link(href, label) { return '<a href="' + esc(href) + '" target="_blank" rel="noopener">' + esc(label || href) + '</a>'; }
+  var bar = null;
+  function show(html) {
+    if (!bar) { bar = document.createElement("div"); bar.className = "figure-bar"; bar.setAttribute("role", "status"); document.body.appendChild(bar); }
+    bar.innerHTML = '<span>' + html + '</span><button type="button" class="close" aria-label="Dismiss">Dismiss</button>';
+    bar.querySelector(".close").onclick = function () { bar.remove(); bar = null; };
+  }
+  window.addEventListener("message", function (e) {
+    var d = e.data;
+    if (!d || typeof d.type !== "string" || !own(e.source)) return;
+    var https = function (u) { return typeof u === "string" && u.indexOf("https://") === 0; };
+    if (d.type === "schwingnet.open" && https(d.href)) {
+      show("The figure asks to open " + link(d.href, d.label) + ".");
+    } else if (d.type === "schwingnet.experiment" && https(d.issueUrl)) {
+      show((d.ok ? "Request this run: " + link(d.issueUrl, d.title || "the prefilled issue") : "The combination does not hold yet: " + esc((d.problems || []).join("; ")))
+           + "<code>" + esc(d.command || "") + "</code>");
+    } else if (d.type === "schwingnet.dispatch" || d.type === "schwingnet.read") {
+      e.source.postMessage({type: d.type + ".result", id: d.id, label: d.label, ok: false, error: "no connector"}, "*");
+    }
+  });
+})();
+</script>
+"""
+
+MESSAGE_CSS = """
+.figure-bar { position:fixed; left:0; right:0; bottom:0; z-index:9; display:flex; gap:12px; align-items:center; padding:10px 16px;
+              background:var(--panel, #f3f2ee); border-top:1px solid var(--line, #ddd); font-size:14px; box-shadow:0 -2px 8px rgba(0,0,0,.08); }
+.figure-bar span { flex:1; min-width:0; }
+.figure-bar code { display:block; margin-top:4px; font-size:12px; overflow-wrap:anywhere; }
+.figure-bar .close { flex:none; }
+"""
+
+
 def page(title, body, nav, meta, script=""):
     return f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>{esc(title)} - The SchwingNet textbook</title><style>{living_docs.CSS}{CSS}</style>{script}</head>
+<title>{esc(title)} - The SchwingNet textbook</title><style>{living_docs.CSS}{CSS}{MESSAGE_CSS}</style>{script}{MESSAGE_JS}</head>
 <body><div class="banner">Members only. Confidential until the provisional is filed: nothing on this site may be copied to a public place.</div>
 <header><a class="brand" href="index.html">The SchwingNet textbook</a><span class="meta">{meta}</span></header>
 <div class="wrap"><nav>{nav}</nav><main>{body}</main></div></body></html>
