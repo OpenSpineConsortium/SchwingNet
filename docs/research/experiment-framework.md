@@ -176,10 +176,11 @@ repository's rules):
   writes the training code per run and retries it is the opposite design: the code that produced
   a number is a transcript, not a commit.
 - Dependencies are an issue first (.claude/rules/writing.md), and a new package in the train
-  environment is a re-lock of pixi.lock made on purpose (docs/research/retraining-plan.md,
-  section 5). The train feature holds, among others, torchvision, Pillow, numpy, matplotlib,
-  metaflow, onnx, pydicom with its pylibjpeg decoders and wandb, torch through the cpu and cuda
-  features, and monai since #211, one noarch package the lock took with nothing else moving.
+  environment is a re-lock of pixi.lock made on purpose (pixi.toml's header; the training stack
+  as a pixi feature is docs/research/retraining-plan.md, section 3.5). The train feature holds,
+  among others, torchvision, Pillow, numpy, matplotlib, metaflow, onnx, pydicom with its pylibjpeg
+  decoders and wandb, torch through the cpu and cuda features, and monai since #211, one noarch
+  package the lock took with nothing else moving.
 
 What does fit a block (Inferred):
 

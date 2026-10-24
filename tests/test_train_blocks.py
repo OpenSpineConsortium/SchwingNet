@@ -62,6 +62,9 @@ class BlocksTest(unittest.TestCase):
         self.assertEqual(set(self.blocks.SAMPLERS), set(blocks.SAMPLER))
         self.assertEqual(set(self.blocks.ARCHITECTURES), set(blocks.ARCHITECTURE))
         self.assertEqual(set(self.blocks.HEADS), set(blocks.ARCHITECTURE))
+        self.assertEqual(set(self.blocks.LIBRARIES), set(blocks.ARCHITECTURE))
+        self.assertEqual(self.blocks.architecture_words("resnet18"), "torchvision resnet18")
+        self.assertEqual(self.blocks.architecture_words("se-resnet50"), "MONAI se-resnet50")
         self.assertEqual(set(self.blocks.DENOISERS), set(blocks.DENOISE))
 
     def test_every_architecture_builds_a_27_way_head_that_the_imagenet_file_leaves_alone(self):

@@ -202,11 +202,11 @@ def efficientnet_b0(outputs, weights):
 
 def _monai_nets():
     """MONAI's networks, imported by the three names that need them and by nothing else, so a run
-    of a torchvision name never loads monai; its import under torch 2.14 warns once that
-    torch.jit.interface is deprecated, MONAI's own to mend, so the warning is kept out of a run's
-    log."""
+    of a torchvision name never loads monai; its import under torch 2.14 warns (twice, from
+    monai's dints.py) that torch.jit.interface is deprecated, MONAI's own to mend, so that one
+    warning, named by its message, is kept out of a run's log and any other still shows."""
     with warnings.catch_warnings():
-        warnings.simplefilter("ignore", FutureWarning)
+        warnings.filterwarnings("ignore", message=r"`torch\.jit\.interface` is deprecated", category=FutureWarning)
         from monai.networks import nets
     return nets
 
@@ -238,11 +238,11 @@ def _densenet_names(state):
 def densenet121(outputs, weights):
     """MONAI's DenseNet121 in two dimensions, dense connections in place of residual ones: about
     1.6 times resnet18's multiply-adds (231 against 148 million at 64 px, counted over the
-    convolutions and linear layers with forward hooks, as mobilenet_v3_small's docstring says) in
-    7 million parameters, fewer than any resnet here (only mobilenet-v3-small, 1.5 million, and
-    efficientnet-b0, 4.0 million, are smaller); no dropout, so it reproduces on any device. Its
-    ImageNet file is torchvision's densenet121, in either of torchvision's spellings
-    (_densenet_names)."""
+    convolutions and linear layers with forward hooks, as docs/research/experiment-framework.md,
+    section 3, counts them) in 7 million parameters, fewer than any resnet here (only
+    mobilenet-v3-small, 1.5 million, and efficientnet-b0, 4.0 million, are smaller); no dropout, so
+    it reproduces on any device. Its ImageNet file is torchvision's densenet121, in either of
+    torchvision's spellings (_densenet_names)."""
     model = _monai_nets().DenseNet121(spatial_dims=2, in_channels=3, out_channels=outputs)
     _load_backbone(model, weights, "densenet121", _densenet_names)
     return model
@@ -283,6 +283,25 @@ ARCHITECTURES = {
     "se-resnet50": se_resnet50,
     "se-resnext50": se_resnext50,
 }
+
+# The library each architecture comes from, for the model card: torchvision has no se-resnet50 and
+# lays its densenet121 out unlike MONAI's, so the name alone would send a reader of a checkpoint to
+# the wrong class.
+LIBRARIES = {
+    "resnet18": "torchvision",
+    "resnet34": "torchvision",
+    "resnet50": "torchvision",
+    "mobilenet-v3-small": "torchvision",
+    "efficientnet-b0": "torchvision",
+    "densenet121": "MONAI",
+    "se-resnet50": "MONAI",
+    "se-resnext50": "MONAI",
+}
+
+
+def architecture_words(name):
+    """The model card's words for an architecture, the library before the name."""
+    return f"{LIBRARIES[name]} {name}"
 
 
 def box_jitter(batch, generator):
