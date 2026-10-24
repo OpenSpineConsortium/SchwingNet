@@ -1,0 +1,42 @@
+{
+  "id": "21/how-a-run-starts",
+  "title": "How a run starts",
+  "caption": "Claude dispatches a GitHub Actions job, which hands the word to the Beethoven gate on the grid's login node; the gate runs grid/gate.sh, which submits Slurm jobs, and the output comes back on a branch for Claude to read.",
+  "chapter": "21",
+  "grade": "Reported",
+  "status": "current",
+  "source": {
+    "kind": "artifact",
+    "artifact": "artifacts/schwingnet-grid-pipeline/",
+    "artifact_url": "https://claude.ai/artifact/UMnwCkV9SQm2kokkCXWUKA",
+    "made_by": null,
+    "commit": null,
+    "data": [],
+    "run": null,
+    "notes": "An inline SVG diagram of the artifact, captured by rendering it in headless Chromium after the owner's name in its text was replaced by the owner, as the book names people by role. It describes this repository's grid path: docs/setup/grid.md and grid/."
+  },
+  "explore": [
+    {
+      "label": "The artifact's page and files",
+      "href": "artifacts/schwingnet-grid-pipeline/"
+    },
+    {
+      "label": "The artifact on claude.ai",
+      "href": "https://claude.ai/artifact/UMnwCkV9SQm2kokkCXWUKA"
+    },
+    {
+      "label": "The grid's setup",
+      "href": "docs/setup/grid.md"
+    },
+    {
+      "label": "The grid workflow",
+      "href": ".github/workflows/grid.yml"
+    }
+  ],
+  "rerun": {
+    "where": "none",
+    "command": null,
+    "cost": "nothing to run: no command is recorded for it",
+    "needs_owner_word": false
+  }
+}

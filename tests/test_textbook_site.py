@@ -6,8 +6,11 @@ without its disclaimer on its line flagged; what the book does not hold yet
 listed, a folder with no record, a record no chapter reads (beside the
 chapter that reads its cluster's canonical artifact), a record whose folder is
 gone and a chapter file the plan does not name; the owner's account names and
-a person named by title kept off the pages; and no copy of an artifact
-served, each one opening on claude.ai."""
+a person named by title kept off the pages; no copy of an artifact
+served, each one opening on claude.ai; and each figure a chapter places
+shown with its record's grade, status and source panel, Explore and Re-run,
+an interactive figure in place of its image, one with no record said to have
+none, and every figure listed with how far it is traced."""
 
 import json
 import os
@@ -36,7 +39,28 @@ The first page gave 98.2% exact level on whole lateral frames of the set.
 The second page gives 97.4% exact level on whole lateral frames of the set.
 
 {LONG_LINE}
+
+The figures follow.
+
+![A figure](figures/01/a-figure.png)
+*Figure 1.1. A drawn figure. Source: [record](figures/01/a-figure.json).*
+
+![A moving figure](figures/01/a-moving-figure.png)
+*Figure 1.2. A figure one can move. Source: [record](figures/01/a-moving-figure.json).*
+
+![An untraced figure](figures/01/untraced.png)
+*Figure 1.3. A figure with no record yet.*
 """
+
+
+def figure_record(fid, where, command=None, made_by=None, data=()):
+    return {"id": fid, "title": f"Title of {fid}", "caption": f"Caption of {fid}, drawn for someacct.", "chapter": "01",
+            "grade": "Reported", "status": "a record, not a final value",
+            "source": {"kind": "artifact", "artifact": "artifacts/second/", "artifact_url": None, "made_by": made_by,
+                       "commit": None, "data": list(data), "run": None, "notes": "Traced from the manifest."},
+            "explore": [{"label": "The artifact", "href": "artifacts/second/"},
+                        {"label": "The method", "href": "docs/method.md"}],
+            "rerun": {"where": where, "command": command, "cost": "one GPU job", "needs_owner_word": where == "grid"}}
 # No git of the test's runs gc or maintenance on its own, as tests/test_claim_skill.py says why.
 QUIET = {"gc.auto": "0", "gc.autoDetach": "false", "maintenance.auto": "false", "maintenance.autoDetach": "false",
          "receive.autogc": "false"}
@@ -102,6 +126,13 @@ def small_book(root):
         write(root / "artifacts" / folder / "index.html", f"<p>{folder}</p>")
     write(root / ".github" / "CODEOWNERS", "# Every file asks the owner.\n* @owner-login\n")
     write(root / "docs" / "textbook" / "01-one.md", NARRATIVE)
+    figures = root / "docs" / "textbook" / "figures" / "01"
+    write(figures / "a-figure.json", figure_record("01/a-figure", "grid", "sbatch slurm/draw.sh", "tools/draw.py"))
+    write(figures / "a-figure.png", "not really a png")
+    write(figures / "a-moving-figure.json", figure_record("01/a-moving-figure", "none", data=["data/x.json"]))
+    write(figures / "a-moving-figure.png", "fallback")
+    write(figures / "a-moving-figure.html", "<!doctype html><p>moves</p>")
+    write(figures / "untraced.png", "no record")
     write(root / "docs" / "textbook" / "02-unplanned.md", "# 02 Unplanned\n\nA chapter the plan does not name.\n")
     git(root, "init", "-q")
     git(root, "add", "-A")
@@ -200,6 +231,66 @@ class ASmallBook(unittest.TestCase):
             with self.assertRaises(SystemExit):
                 textbook_site.prepare(tmp)
             self.assertTrue((Path(tmp) / "keep.txt").exists())
+
+
+    # the figures (issue #215)
+
+    def figure(self, fid):
+        page = self.read("chapter-01.html")
+        start = page.index(f'id="fig-{fid}"')
+        return page[start:page.index("</figure>", start)]
+
+    def test_a_figure_shows_its_image_caption_grade_and_status(self):
+        block = self.figure("01-a-figure")
+        self.assertIn('<img src="figures/01/a-figure.png"', block)
+        self.assertIn("<strong>Figure 1.1.</strong> Caption of 01/a-figure", block)
+        self.assertIn("Reported", block)
+        self.assertIn("a record, not a final value", block)
+        self.assertIn("traced to the script", block)
+        self.assertNotIn("*Figure", self.read("chapter-01.html"))
+
+    def test_its_source_panel_explores_and_reruns(self):
+        block = self.figure("01-a-figure")
+        self.assertIn('href="artifact-second.html"', block)
+        self.assertIn('href="https://github.com/OWNER/NAME/blob/abc1234/docs/method.md"', block)
+        self.assertIn("https://github.com/OWNER/NAME/issues/new?labels=figure-rerun", block)
+        self.assertIn("figure-rerun-id%3A+01%2Fa-figure", block)
+        self.assertIn("Opening the issue only asks", block)
+        self.assertNotIn("word for this one run", block)
+        self.assertIn("sbatch slurm/draw.sh", block)
+        self.assertIn('href="figures/01/a-figure.json"', block)
+
+    def test_an_interactive_figure_shows_in_place_of_its_image(self):
+        block = self.figure("01-a-moving-figure")
+        self.assertIn('<iframe src="figures/01/a-moving-figure.html"', block)
+        self.assertIn('sandbox="allow-scripts"', block)
+        self.assertNotIn("allow-same-origin", block)
+        self.assertNotIn("<img", block)
+        self.assertIn("traced to the data", block)
+        self.assertIn("No command is recorded", block)
+
+    def test_a_figure_with_no_record_says_so(self):
+        page = self.read("chapter-01.html")
+        self.assertIn('<img src="figures/01/untraced.png"', page)
+        self.assertIn("This figure has no record yet", page)
+
+    def test_the_figures_are_served_and_listed_with_their_provenance(self):
+        self.assertTrue((self.out / "figures" / "01" / "a-figure.png").exists())
+        self.assertTrue((self.out / "figures" / "01" / "a-moving-figure.html").exists())
+        listing = self.read("figures.html")
+        self.assertIn("2 figures", listing)
+        self.assertIn("Traced to the script that drew it: 1; to its data or run only: 1; to the artifact alone: 0", listing)
+        self.assertIn('href="chapter-01.html#fig-01-a-figure"', listing)
+        self.assertIn('href="figures.html"', self.read("index.html"))
+
+    def test_a_script_that_made_only_the_numbers_traces_to_the_data(self):
+        made = {"made_by": "elsewhere:tools/stats.py (the numbers); the chart is drawn by the artifact's own script"}
+        self.assertEqual(textbook_site.traced({"source": made}), "data")
+        self.assertEqual(textbook_site.traced({"source": {"made_by": "x:tables/t.tex (a hand table)"}}), "data")
+        self.assertEqual(textbook_site.traced({"source": {"made_by": "x:tools/draw.py"}}), "script")
+
+    def test_a_record_s_prose_goes_through_the_privacy_pass(self):
+        self.assertNotIn("someacct", self.read("chapter-01.html"))
 
 
 class TheRepositorysOwnBook(unittest.TestCase):

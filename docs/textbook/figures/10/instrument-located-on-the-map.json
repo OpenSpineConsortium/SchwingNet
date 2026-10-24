@@ -1,0 +1,34 @@
+{
+  "id": "10/instrument-located-on-the-map",
+  "title": "The instrument located on the map",
+  "caption": "Left, the confirming exposure with the instrument on bone; right, the map from the anchor with the touched body in red, node 4 from the anchor.",
+  "chapter": "10",
+  "grade": "Reported",
+  "status": "current",
+  "source": {
+    "kind": "artifact",
+    "artifact": "artifacts/counting-levels-under-fluoroscopy/",
+    "artifact_url": "https://claude.ai/artifact/8uhYki72Jf355qdfLM5N96",
+    "made_by": null,
+    "commit": null,
+    "data": [],
+    "run": null,
+    "notes": "Embedded image; no builder or data file is named on the page."
+  },
+  "explore": [
+    {
+      "label": "The artifact's page and files",
+      "href": "artifacts/counting-levels-under-fluoroscopy/"
+    },
+    {
+      "label": "The artifact on claude.ai",
+      "href": "https://claude.ai/artifact/8uhYki72Jf355qdfLM5N96"
+    }
+  ],
+  "rerun": {
+    "where": "none",
+    "command": null,
+    "cost": "nothing to run: no command is recorded for it",
+    "needs_owner_word": false
+  }
+}

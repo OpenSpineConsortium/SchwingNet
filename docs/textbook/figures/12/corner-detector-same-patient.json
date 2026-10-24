@@ -1,0 +1,38 @@
+{
+  "id": "12/corner-detector-same-patient",
+  "title": "The AP and lateral of one patient",
+  "caption": "The lateral of the same patient: both films sit in the test split together, since splitting by image rather than by patient would put one spine on both sides.",
+  "chapter": "12",
+  "grade": "Reported",
+  "status": "a record, not a final value",
+  "source": {
+    "kind": "artifact",
+    "artifact": "artifacts/vertebra-detector-field-report-1jljc6/",
+    "artifact_url": "https://claude.ai/artifact/1jLJC6zVJpcSw1VCCFbJPR",
+    "made_by": "spine-detector: src/run_eval",
+    "commit": null,
+    "data": [],
+    "run": "runs/pose/runs/detect_v1",
+    "notes": "Embedded image of the page. Status set to a record, not a final value on review: The contradictions mark the field report as an earlier stage-1 snapshot whose scores are an early in-distribution result (level-naming row 82, detectors row 31, renders row 55)."
+  },
+  "explore": [
+    {
+      "label": "The artifact's page and files",
+      "href": "artifacts/vertebra-detector-field-report-1jljc6/"
+    },
+    {
+      "label": "The artifact on claude.ai",
+      "href": "https://claude.ai/artifact/1jLJC6zVJpcSw1VCCFbJPR"
+    },
+    {
+      "label": "The detector's source snapshot",
+      "href": "https://github.com/OpenSpineConsortium/spine-program/blob/88398813308aba7dc2b4ee823385ea0ca2665f0d/01_carm_level_detection/code/spine_detector_src_snapshot/src/run_eval.py"
+    }
+  ],
+  "rerun": {
+    "where": "none",
+    "command": null,
+    "cost": "nothing to run: no command is recorded for it",
+    "needs_owner_word": false
+  }
+}

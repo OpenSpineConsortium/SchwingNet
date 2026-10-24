@@ -1,0 +1,40 @@
+{
+  "id": "10/the-method-in-one-page",
+  "title": "The method in one page",
+  "caption": "Expose, detect, link, chain, count, confirm: a six-row figure in which only the shaded boxes are learned, a real sweep is counted from the sacral anchor and an instrument frame is placed on that chain.",
+  "chapter": "10",
+  "grade": "Reported",
+  "status": "a record, not a final value",
+  "source": {
+    "kind": "artifact",
+    "artifact": "artifacts/counting-from-the-sacrum/",
+    "artifact_url": "https://claude.ai/artifact/WSW2UJAR4ar2PjmbymLVRf",
+    "made_by": "spinesurg-ct-nnunet:tools/fig_row2_anatomy.py and the other fig_row*.py tools (composed as paper/rsnai/figures/fig1_story.png)",
+    "commit": null,
+    "data": [
+      "paper/rsnai/figures/fig1_story.{png,pdf} (spinesurg-ct-nnunet)"
+    ],
+    "run": "grid job 40415108",
+    "notes": "The artifact's own figure. Its size (1,618,675 bytes) matches no row of spine-program's manifests; the 22 September resume says the six-row Figure 1 was composed by grid job 40415108 from the fig_row*.py tools into paper/rsnai/figures/fig1_story.{png,pdf}. That draft (rsnai) was superseded by the SchwingNet manuscript the same evening, so its numbers are records."
+  },
+  "explore": [
+    {
+      "label": "The artifact's page and files",
+      "href": "artifacts/counting-from-the-sacrum/"
+    },
+    {
+      "label": "The artifact on claude.ai",
+      "href": "https://claude.ai/artifact/WSW2UJAR4ar2PjmbymLVRf"
+    },
+    {
+      "label": "The figure's history (22 September resume)",
+      "href": "https://github.com/OpenSpineConsortium/spine-program/blob/88398813308aba7dc2b4ee823385ea0ca2665f0d/99_archive/docs/checkpoints/RESUME_2026-09-22_PM.md"
+    }
+  ],
+  "rerun": {
+    "where": "none",
+    "command": null,
+    "cost": "nothing to run: no command is recorded for it",
+    "needs_owner_word": false
+  }
+}

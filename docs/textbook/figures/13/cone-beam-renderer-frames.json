@@ -1,0 +1,34 @@
+{
+  "id": "13/cone-beam-renderer-frames",
+  "title": "Six frames from the cone-beam renderer",
+  "caption": "Six unretouched frames from the cone-beam renderer, with hardware, bowel gas, collimation and quantum noise, after two defects in the sampler were found and fixed.",
+  "chapter": "13",
+  "grade": "Reported",
+  "status": "a record, not a final value",
+  "source": {
+    "kind": "artifact",
+    "artifact": "artifacts/fluorocap-corpus-audit-9hjzzs/",
+    "artifact_url": "https://claude.ai/artifact/9HjZzs5DXZq1cwT94v1SNx",
+    "made_by": null,
+    "commit": null,
+    "data": [],
+    "run": null,
+    "notes": "Embedded image of a superseded artifact (fluorocap-corpus-audit, superseded by fluorocap-reality-check); no builder named."
+  },
+  "explore": [
+    {
+      "label": "The artifact's page and files",
+      "href": "artifacts/fluorocap-corpus-audit-9hjzzs/"
+    },
+    {
+      "label": "The artifact on claude.ai",
+      "href": "https://claude.ai/artifact/9HjZzs5DXZq1cwT94v1SNx"
+    }
+  ],
+  "rerun": {
+    "where": "none",
+    "command": null,
+    "cost": "nothing to run: no command is recorded for it",
+    "needs_owner_word": false
+  }
+}

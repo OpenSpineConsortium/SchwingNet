@@ -1,0 +1,40 @@
+{
+  "id": "20/corruption-curves",
+  "title": "Corruption curves on C-ArmLSpine",
+  "caption": "On 56 C-ArmLSpine test frames, pooled and render-only detectors: vertebra recall, sacrum found and exact naming against severity.",
+  "chapter": "20",
+  "grade": "Reported",
+  "status": "a record, not a final value",
+  "source": {
+    "kind": "artifact",
+    "artifact": "artifacts/or-readiness-ledger/",
+    "artifact_url": "https://claude.ai/artifact/TUNtAawdAQh2vvRT9kWNf2",
+    "made_by": null,
+    "commit": null,
+    "data": [
+      "or_ready/ (the OR-readiness result tree, grid)"
+    ],
+    "run": null,
+    "notes": "Embedded image of the OR-readiness ledger. The page names its tools (tools/realxray_robustness.py, tools/or_lodo_rescore_outline.py, tools/device_census.py and others) and many jobs, but not which drew this picture. spine-program keeps device_census.py."
+  },
+  "explore": [
+    {
+      "label": "The artifact's page and files",
+      "href": "artifacts/or-readiness-ledger/"
+    },
+    {
+      "label": "The artifact on claude.ai",
+      "href": "https://claude.ai/artifact/TUNtAawdAQh2vvRT9kWNf2"
+    },
+    {
+      "label": "device_census.py",
+      "href": "https://github.com/OpenSpineConsortium/spine-program/blob/88398813308aba7dc2b4ee823385ea0ca2665f0d/01_carm_level_detection/code/device_census.py"
+    }
+  ],
+  "rerun": {
+    "where": "none",
+    "command": null,
+    "cost": "nothing to run: no command is recorded for it",
+    "needs_owner_word": false
+  }
+}
