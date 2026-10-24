@@ -6,15 +6,20 @@ import pytest
 
 from schwingnet.blocks import (
     AUGMENT,
+    CHOICES,
     DEFAULT,
+    FIELDS,
+    SETTINGS,
     BlockError,
     Blocks,
     as_record,
     balanced_accuracy,
     from_record,
     inverse_frequency,
+    kept,
     lr_factor,
     parse,
+    parts,
     sweep,
     words_of,
 )
@@ -33,6 +38,15 @@ def test_words_choose_each_part_and_round_trip_through_the_record():
     assert blocks.augment == ("box-jitter", "noise")
     assert blocks.weight_decay == 0.05 and blocks.warmup_epochs == 2
     assert from_record(as_record(blocks)) == blocks
+    more = parse(["samples=drop-sources", "sources=vindr,lumos", "architecture=mobilenet-v3-small",
+                  "denoise=median"])
+    assert more.sources == ("vindr", "lumos") and more.per_person == 0
+    assert as_record(more)["sources"] == ["vindr", "lumos"]
+    assert from_record(as_record(more)) == more
+    assert words_of(more) == ["samples=drop-sources", "sources=vindr,lumos",
+                              "architecture=mobilenet-v3-small", "denoise=median"]
+    capped = parse(["samples=cap-per-person", "per-person=3"])
+    assert capped.per_person == 3 and from_record(as_record(capped)) == capped
 
 
 @pytest.mark.parametrize(
@@ -53,11 +67,52 @@ def test_words_choose_each_part_and_round_trip_through_the_record():
         ["colour=red"],
         ["normalise"],
         ["schedule=cosine", "schedule=constant"],
+        ["samples=some"],
+        ["samples=only-sources"],
+        ["sources=vindr"],
+        ["samples=drop-sources", "sources=vindr,vindr"],
+        ["samples=cap-per-person"],
+        ["samples=cap-per-person", "per_person=0"],
+        ["per_person=2"],
+        ["samples=only-sources", "sources=vindr", "per_person=2"],
+        ["samples=cap-per-person", "per_person=1234567"],
+        ["architecture=resnet19"],
+        ["denoise=wavelet"],
     ],
 )
 def test_a_fault_is_refused_whole(words):
     with pytest.raises(BlockError):
         parse(words)
+
+
+def test_kept_keeps_everything_by_default_and_cuts_by_source_or_by_person():
+    sources = ["a", "b", "a", "b", "a"]
+    persons = ["p1", "p1", "p2", "p1", "p2"]
+    assert kept(DEFAULT, sources, persons) == [True] * 5
+    assert kept(parse(["samples=only-sources", "sources=a"]), sources, persons) == [
+        True, False, True, False, True]
+    assert kept(parse(["samples=drop-sources", "sources=a"]), sources, persons) == [
+        False, True, False, True, False]
+    assert kept(parse(["samples=cap-per-person", "per_person=1"]), sources, persons) == [
+        True, False, True, False, False]
+    assert kept(parse(["samples=cap-per-person", "per_person=2"]), sources, persons) == [
+        True, True, True, False, True]
+    assert kept(DEFAULT, [], []) == []
+
+
+def test_parts_lists_every_field_once_with_its_choices_and_version_1():
+    rows = parts()
+    assert [row["part"] for row in rows] == list(FIELDS)
+    by_part = {row["part"]: row for row in rows}
+    for name, allowed in CHOICES.items():
+        assert by_part[name]["choices"] == ", ".join(allowed)
+        assert by_part[name]["default"] in allowed
+    for name, words in SETTINGS.items():
+        assert by_part[name]["choices"] == words
+    assert by_part["augment"]["default"] == "none"
+    assert by_part["architecture"]["default"] == "resnet18"
+    assert by_part["per_person"]["default"] == "0"
+    assert set(CHOICES) | set(SETTINGS) == set(FIELDS)
 
 
 def test_augment_none_names_nothing():

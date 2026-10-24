@@ -1,20 +1,26 @@
-"""Plan a sweep over the trainer's building blocks, and compare the runs it made, on validation only.
+"""List the trainer's building blocks, plan a sweep over them, and compare the runs made, on validation only.
 
 Usage:
+    python3 tools/block_sweep.py parts
     python3 tools/block_sweep.py plan --catalog <catalog.sqlite> --out <runs folder> --epochs 20 \
         --seed 1 --hours 4 [--weights <file>] [--base KEY=VALUE ...] --vary KEY=V1/V2 [--vary ...]
     python3 tools/block_sweep.py compare <run dir> [<run dir> ...] [--by accuracy|balanced-accuracy]
+    python3 tools/block_sweep.py ledger <runs folder> [--by accuracy|balanced-accuracy]
 
-The search an AutoML system makes over settings (docs/research/training-review.md) is, here, a
-plan over the blocks of src/schwingnet/blocks.py: `plan` writes the tools/flow.py command of every
-combination, the number of runs and the GPU-hours they would ask for, and starts nothing, since no
-grid job is sent without the owner's word and the count. `vary` separates values with "/", so an
-augment value keeps its commas: `--vary augment=none/box-jitter,intensity`.
+The loop the owner asked for on 2026-10-24, optimising which samples, architecture, denoising and
+augmentation a run uses as plug-and-play pieces (docs/research/experiment-framework.md), is these
+four commands over the blocks of src/schwingnet/blocks.py. `parts` prints every part, its names
+and version 1's choice: the one list of the plug-in points. `plan` writes the tools/flow.py
+command of every combination, the number of runs and the GPU-hours they would ask for, and starts
+nothing, since no grid job is sent without the owner's word and the count; `vary` separates values
+with "/", so an augment value keeps its commas: `--vary augment=none/box-jitter,intensity`.
 
-`compare` reads each run's train/checkpoint.json and train/metrics.jsonl, never its evaluate/
-folder: the runs are ranked by the validation part and its witness frames alone, so choosing among
-them never reads a test person (docs/research/retraining-plan.md, section 4). The chosen run is
-then evaluated once on the test part, as any run is.
+`compare` and `ledger` read each run's train/checkpoint.json and train/metrics.jsonl, and its
+latency headline where one was measured, never its evaluate/ results: the runs are ranked by the
+validation part and its witness frames alone, so choosing among them never reads a test person
+(docs/research/retraining-plan.md, section 4). The chosen run is then evaluated once on the test
+part, as any run is. `ledger` finds every run under a folder by itself, so the next plan is made
+from the whole record and not from the directories someone remembered to name.
 """
 
 import argparse
@@ -25,7 +31,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
-from schwingnet.blocks import BlockError, from_record, sweep, words_of  # noqa: E402
+from schwingnet.blocks import BlockError, from_record, parts, sweep, words_of  # noqa: E402
 
 EVALUATE_HOURS = 1.0
 
@@ -65,38 +71,88 @@ def plan(args):
 
 
 def best_line(run_dir):
-    """The run's blocks and the metrics line of the epoch its checkpoint names."""
+    """The run's checkpoint facts, its blocks and the metrics line of the epoch the checkpoint names."""
     facts = json.loads((run_dir / "train" / "checkpoint.json").read_text(encoding="utf-8"))
     lines = [json.loads(line) for line in (run_dir / "train" / "metrics.jsonl").read_text(encoding="utf-8").splitlines() if line.strip()]
     best = next(line for line in lines if line["epoch"] == facts["epoch"])
-    return from_record(facts.get("blocks")), best
+    return facts, from_record(facts.get("blocks")), best
+
+
+def latency_of(run_dir):
+    """The run's latency headline, the fastest arm whose parity holds (tools/latency.py), as
+    "<p95> ms (<arm>)", or "not measured"; a number, not a test score, so a ledger may read it."""
+    headline = run_dir / "evaluate" / "latency.json"
+    if not headline.is_file():
+        return "not measured"
+    arm = json.loads(headline.read_text(encoding="utf-8"))
+    return f"{arm['ms_per_frame_p95']:.1f} ms ({arm['arm']})"
+
+
+def row_of(run_dir):
+    """One run as the ledger shows it: its blocks that differ from version 1, what it trained on,
+    where it began, its best validation numbers and its latency where measured."""
+    facts, blocks, line = best_line(run_dir)
+    witness = line.get("witness_validation")
+    counts, parent = facts.get("counts", {}), facts.get("parent") or {}
+    return {
+        "run": run_dir.name,
+        "blocks": " ".join(words_of(blocks)) or "version 1 (no block named)",
+        "train_crops": counts.get("train"),
+        "train_offered": counts.get("train_offered"),
+        "parent": parent.get("run_id") or ("file " + parent["file"] if parent else "none"),
+        "epoch": line["epoch"],
+        "accuracy": line["validation_accuracy"],
+        "ci": line["validation_ci"],
+        "n": line["validation_n"],
+        "balanced_accuracy": line.get("validation_balanced_accuracy"),
+        "witness": f"{witness[0]}/{witness[1]}" if witness else "not drawn",
+        "latency": latency_of(run_dir),
+    }
 
 
 def compare(run_dirs, by):
-    rows = []
-    for run_dir in map(Path, run_dirs):
-        blocks, line = best_line(run_dir)
-        witness = line.get("witness_validation")
-        rows.append({
-            "run": run_dir.name,
-            "blocks": " ".join(words_of(blocks)) or "version 1 (no block named)",
-            "epoch": line["epoch"],
-            "accuracy": line["validation_accuracy"],
-            "ci": line["validation_ci"],
-            "n": line["validation_n"],
-            "balanced_accuracy": line.get("validation_balanced_accuracy"),
-            "witness": f"{witness[0]}/{witness[1]}" if witness else "not drawn",
-        })
+    """The named runs ranked by the chosen validation number, best first, unrecorded last."""
+    rows = [row_of(Path(run_dir)) for run_dir in run_dirs]
     key = "balanced_accuracy" if by == "balanced-accuracy" else "accuracy"
     rows.sort(key=lambda row: (row[key] is None, -(row[key] or 0.0)))
     return rows
 
 
+def runs_under(folder):
+    """Every run directory under a folder: one that holds train/checkpoint.json and
+    train/metrics.jsonl, however deep, so a runs folder of a year is read whole."""
+    found = sorted(p.parent.parent for p in Path(folder).rglob("checkpoint.json") if p.parent.name == "train")
+    return [run for run in found if (run / "train" / "metrics.jsonl").is_file()]
+
+
+def ledger(folder, by):
+    """compare over every run under the folder."""
+    runs = runs_under(folder)
+    if not runs:
+        raise BlockError(f"{folder}: no run with train/checkpoint.json and train/metrics.jsonl under it")
+    return compare(runs, by)
+
+
+def crops_text(row):
+    seen, offered = row["train_crops"], row["train_offered"]
+    if seen is None:
+        return "not recorded"
+    return str(seen) if offered in (None, seen) else f"{seen} of {offered}"
+
+
 def table(rows):
-    out = ["| run | blocks | best epoch | validation | 95% interval | balanced | validation witness |", "|---|---|---|---|---|---|---|"]
+    out = ["| run | blocks | training crops | parent | best epoch | validation | 95% interval | balanced | validation witness | latency p95 |",
+           "|---|---|---|---|---|---|---|---|---|---|"]
     for row in rows:
         balanced = "not recorded" if row["balanced_accuracy"] is None else f"{row['balanced_accuracy']:.3f}"
-        out.append(f"| {row['run']} | {row['blocks']} | {row['epoch']} | {row['accuracy']:.3f} (n={row['n']}) | {row['ci'][0]:.3f} to {row['ci'][1]:.3f} | {balanced} | {row['witness']} |")
+        out.append(f"| {row['run']} | {row['blocks']} | {crops_text(row)} | {row['parent']} | {row['epoch']} | {row['accuracy']:.3f} (n={row['n']}) | {row['ci'][0]:.3f} to {row['ci'][1]:.3f} | {balanced} | {row['witness']} | {row['latency']} |")
+    return "\n".join(out)
+
+
+def parts_table():
+    """Every plug-in point as a table: the part, what it may be, version 1's choice."""
+    out = ["| part | choices | version 1 |", "|---|---|---|"]
+    out += [f"| {row['part']} | {row['choices']} | {row['default']} |" for row in parts()]
     return "\n".join(out)
 
 
@@ -115,14 +171,22 @@ def parse_args(argv):
     compare_p = sub.add_parser("compare")
     compare_p.add_argument("runs", nargs="+")
     compare_p.add_argument("--by", choices=["accuracy", "balanced-accuracy"], default="accuracy")
+    ledger_p = sub.add_parser("ledger")
+    ledger_p.add_argument("folder")
+    ledger_p.add_argument("--by", choices=["accuracy", "balanced-accuracy"], default="accuracy")
+    sub.add_parser("parts")
     return parser.parse_args(argv)
 
 
 def main(argv=None):
     args = parse_args(argv)
     try:
-        if args.command == "plan":
+        if args.command == "parts":
+            print(parts_table())
+        elif args.command == "plan":
             print(json.dumps(plan(args), indent=1))
+        elif args.command == "ledger":
+            print(table(ledger(args.folder, args.by)))
         else:
             print(table(compare(args.runs, args.by)))
     except (BlockError, OSError, KeyError, StopIteration, json.JSONDecodeError) as error:

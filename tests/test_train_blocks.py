@@ -58,6 +58,82 @@ class BlocksTest(unittest.TestCase):
         self.assertEqual(tuple(self.blocks.AUGMENT_ORDER), tuple(blocks.AUGMENT))
         self.assertEqual(set(self.blocks.OPTIMISERS), set(blocks.OPTIMISER))
         self.assertEqual(set(self.blocks.SAMPLERS), set(blocks.SAMPLER))
+        self.assertEqual(set(self.blocks.ARCHITECTURES), set(blocks.ARCHITECTURE))
+        self.assertEqual(set(self.blocks.HEADS), set(blocks.ARCHITECTURE))
+        self.assertEqual(set(self.blocks.DENOISERS), set(blocks.DENOISE))
+
+    def test_every_architecture_builds_a_27_way_head_that_the_imagenet_file_leaves_alone(self):
+        import torch
+        from schwingnet.blocks import ARCHITECTURE
+        from schwingnet.catalog import LEVELS
+
+        for name in ARCHITECTURE:
+            with self.subTest(name=name):
+                model = self.train.build_model(None, "cpu", architecture=name)
+                model.eval()
+                with torch.no_grad():
+                    self.assertEqual(tuple(model(self.batch()).shape), (6, len(LEVELS)))
+                prefix = self.blocks.HEADS[name]
+                head = [n for n, _ in model.named_parameters() if n.startswith(prefix)]
+                self.assertEqual(len(head), 2, prefix)
+                # An ImageNet file of this architecture: the untrained network's own state with
+                # its 1000-way head, which the loader must drop and the rest of which must fit.
+                pretrained = self.blocks.ARCHITECTURES[name](1000, None).state_dict()
+                file = Path(tempfile.mkdtemp()) / "imagenet.pt"
+                torch.save(pretrained, file)
+                loaded = self.train.build_model(str(file), "cpu", architecture=name)
+                body = next(k for k in pretrained if not k.startswith(prefix))
+                self.assertTrue(torch.equal(loaded.state_dict()[body], pretrained[body]))
+                other = next(n for n in ARCHITECTURE if n != name)
+                with self.assertRaises(self.train.TrainError):
+                    self.train.build_model(str(file), "cpu", architecture=other)
+
+    def test_each_denoise_keeps_shape_and_range_and_smooths_noise(self):
+        import torch
+        from schwingnet.blocks import DENOISE
+
+        flat = torch.full((2, 3, 16, 16), 0.5)
+        speckled = flat.clone()
+        speckled[:, :, 5, 7] = 1.0
+        for name in DENOISE:
+            with self.subTest(name=name):
+                model = self.train.build_model(None, "cpu", denoise=name)
+                hooks = list(model._forward_pre_hooks.values())
+                self.assertEqual(len(hooks), 0 if name == "none" else 1)
+                if not hooks:
+                    continue
+                (out,) = hooks[0](model, (speckled,))
+                self.assertEqual(tuple(out.shape), (2, 3, 16, 16))
+                self.assertTrue(torch.allclose(hooks[0](model, (flat,))[0], flat))
+                self.assertLess(float(out[0, 0, 5, 7]), 1.0)
+                self.assertGreaterEqual(float(out.min()), 0.5 - 1e-6)
+                self.assertLessEqual(float(out.max()), 1.0 + 1e-6)
+        median = self.train.build_model(None, "cpu", denoise="median")
+        (out,) = list(median._forward_pre_hooks.values())[0](median, (speckled,))
+        self.assertTrue(torch.equal(out, flat))
+
+    def test_denoise_then_scaling_survive_the_onnx_export_for_every_architecture(self):
+        import numpy as np
+        import onnxruntime as ort
+        import torch
+        from schwingnet.blocks import ARCHITECTURE, DENOISE
+
+        latency = load("latency")
+        cases = [("resnet18", name) for name in DENOISE] + [(name, "median") for name in ARCHITECTURE if name != "resnet18"]
+        folder = Path(tempfile.mkdtemp())
+        for architecture, denoise in cases:
+            with self.subTest(architecture=architecture, denoise=denoise):
+                torch.manual_seed(1)
+                model = self.train.build_model(None, "cpu", "imagenet", architecture, denoise).eval()
+                path = folder / f"{architecture}-{denoise}.onnx"
+                torch.onnx.export(model, (torch.zeros(1, 3, 32, 32),), str(path), input_names=["crops"], output_names=["logits"],
+                                  dynamic_axes={"crops": {0: "boxes"}, "logits": {0: "boxes"}}, opset_version=latency.OPSET, dynamo=False)
+                batch = self.batch(2)
+                with torch.no_grad():
+                    expected = model(batch).numpy()
+                session = ort.InferenceSession(str(path), providers=["CPUExecutionProvider"])
+                (got,) = session.run(None, {"crops": batch.numpy()})
+                np.testing.assert_allclose(got, expected, rtol=1e-3, atol=1e-4)
 
     def test_each_change_keeps_a_grey_crop_grey_in_range_and_seeded(self):
         import torch
@@ -222,6 +298,81 @@ class RunWithEveryBlockTest(unittest.TestCase):
     def test_a_block_that_does_not_exist_stops_the_run_in_words(self):
         args = ["--catalog", str(self.catalog), "--out", str(self.run_dir), "--epochs", "1", "--seed", "1", "--block", "normalise=zscore"]
         self.assertEqual(load("train").main(args), 1)
+
+
+@unittest.skipIf(MISSING, f"needs the train environment ({', '.join(MISSING)} missing)")
+class RunWithSamplesArchitectureAndDenoiseTest(unittest.TestCase):
+    """One short run with the three parts of #207 on: the crops it saw are recorded against the
+    crops offered, every reader builds the same model from the record, the ONNX parity holds with
+    the median filter inside the model, and the ledger finds the run under its folder."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = Path(tempfile.mkdtemp())
+        cls.catalog = RunWithEveryBlockTest.make_catalog(cls.tmp)
+        cls.run_dir = cls.tmp / "runs" / "2026" / "capped"
+        cls.run_dir.mkdir(parents=True)
+        record = {"run_id": "capped000000", "code_commit": "0" * 40, "catalog_sha256": "0" * 64, "catalog_version": 1, "clean_tree": True}
+        (cls.run_dir / "RUN.json").write_text(json.dumps(record), encoding="utf-8")
+        cls.words = ["samples=cap-per-person", "per_person=2", "architecture=mobilenet-v3-small", "denoise=median"]
+        args = ["--catalog", str(cls.catalog), "--out", str(cls.run_dir), "--epochs", "1", "--seed", "1", "--size", "32",
+                "--device", "cpu", "--witness", "2", "--keep-epochs", "0"]
+        for word in cls.words:
+            args += ["--block", word]
+        with mock.patch.dict(os.environ, {"SCHWINGNET_WANDB": "off"}):
+            cls.rc = load("train").main(args)
+
+    def test_the_record_says_what_the_run_saw_of_what_it_was_offered(self):
+        self.assertEqual(self.rc, 0)
+        facts = json.loads((self.run_dir / "train" / "checkpoint.json").read_text(encoding="utf-8"))
+        self.assertEqual(facts["blocks"]["samples"], "cap-per-person")
+        self.assertEqual(facts["blocks"]["architecture"], "mobilenet-v3-small")
+        counts = facts["counts"]
+        self.assertLess(counts["train"], counts["train_offered"])
+        self.assertLessEqual(counts["train"], 2 * counts["train_persons"])
+        card = (self.run_dir / "train" / "MODEL.md").read_text(encoding="utf-8")
+        self.assertIn("torchvision mobilenet-v3-small", card)
+        self.assertIn(f"Training crops {counts['train']} of the {counts['train_offered']}", card)
+
+    def test_every_reader_builds_the_recorded_model_and_the_onnx_parity_holds(self):
+        latency = load("latency")
+        model, facts = latency.load_torch_model(self.run_dir, "cpu")
+        self.assertEqual(len(model._forward_pre_hooks), 1)
+        self.assertEqual(type(model).__name__, "MobileNetV3")
+        latency.export(self.run_dir)
+        verdict = latency.parity(self.run_dir, self.catalog, "validation", 8, "onnxruntime", "cpu", 1)
+        self.assertTrue(verdict["passed"], verdict)
+
+    def test_the_ledger_finds_the_run_under_its_folder_and_parts_lists_the_new_parts(self):
+        sweep_tool = load("block_sweep")
+        rows = sweep_tool.ledger(self.tmp / "runs", "accuracy")
+        self.assertEqual([row["run"] for row in rows], ["capped"])
+        self.assertEqual(rows[0]["blocks"], " ".join(self.words))
+        self.assertEqual(rows[0]["parent"], "none")
+        self.assertEqual(rows[0]["latency"], "not measured")
+        self.assertIn(f"| {rows[0]['train_crops']} of {rows[0]['train_offered']} |", sweep_tool.table(rows))
+        self.assertIn("| architecture | resnet18, resnet34, resnet50, mobilenet-v3-small, efficientnet-b0 | resnet18 |", sweep_tool.parts_table())
+        with self.assertRaises(sweep_tool.BlockError):
+            sweep_tool.ledger(self.tmp / "nowhere", "accuracy")
+
+    def test_a_samples_block_that_leaves_nothing_stops_the_run_in_words(self):
+        out = self.tmp / "runs" / "empty"
+        out.mkdir()
+        (out / "RUN.json").write_text((self.run_dir / "RUN.json").read_text(encoding="utf-8"), encoding="utf-8")
+        args = ["--catalog", str(self.catalog), "--out", str(out), "--epochs", "1", "--seed", "1", "--block", "samples=only-sources", "--block", "sources=nowhere"]
+        self.assertEqual(load("train").main(args), 1)
+
+    def test_a_warm_start_from_another_architecture_is_refused(self):
+        train = load("train")
+        out = self.tmp / "runs" / "child"
+        out.mkdir()
+        (out / "RUN.json").write_text((self.run_dir / "RUN.json").read_text(encoding="utf-8"), encoding="utf-8")
+        args = ["--catalog", str(self.catalog), "--out", str(out), "--epochs", "1", "--seed", "1", "--init", str(self.run_dir / "train" / "best.pt")]
+        self.assertEqual(train.main(args), 1)
+        parent = train.parent_of(self.run_dir / "train" / "best.pt")
+        with self.assertRaises(train.TrainError) as refused:
+            train.warm_start(train.build_model(None, "cpu"), self.run_dir / "train" / "best.pt", parent, train.from_record(None), 32)
+        self.assertIn("architecture=mobilenet-v3-small", str(refused.exception))
 
 
 
