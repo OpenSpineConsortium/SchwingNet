@@ -83,7 +83,7 @@ from schwingnet.catalog import (  # the path above makes the package importable
 REGISTRY = ROOT / "data" / "registry"
 TEST_PERSONS = ROOT / "data" / "splits" / "test-persons.json"
 RULE = ROOT / "data" / "splits" / "rule.json"
-CATALOG_SCHEMA = 1
+CATALOG_SCHEMA = 2  # 2 since #228: item carries level_map and level_map_from, null for a frame without one
 # PRAGMA application_id of every version file: "SCWN", so `file` and SQLite's own tools name it.
 APPLICATION_ID = 0x5343574E
 TABLES = ("build", "source", "shard", "person", "item", "label", "embedding")
@@ -153,6 +153,8 @@ CREATE TABLE item (
     view TEXT,
     acquired TEXT,
     label_count INTEGER NOT NULL,
+    level_map TEXT,
+    level_map_from TEXT,
     PRIMARY KEY (shard, sha256)
 );
 CREATE TABLE label (
@@ -187,7 +189,7 @@ CREATE INDEX label_region ON label(region);
 ITEM_COLUMNS = (
     "sha256", "shard", "path", "source", "person", "part", "modality", "device_class", "make",
     "model", "detector", "kvp", "mas", "px_mm", "lat_from_ap_deg", "gantry_deg", "view",
-    "acquired", "label_count",
+    "acquired", "label_count", "level_map", "level_map_from",
 )
 
 
@@ -306,11 +308,16 @@ def refuse_superseded(loaded):
 
 def item_row(item, manifest, part):
     view = None if item.lat_from_ap_deg is None else view_band(item.lat_from_ap_deg).value
+    # The projected level map, where the frame has one (#228): its path in the shard and whether
+    # the render's own geometry or a registered pose projected it; the trainer's prior block reads
+    # the path beside the frame's as a crop reads its frame.
+    level_map = item.level_map
     return (
         item.sha256, manifest.name, item.path, manifest.source, item.person, part.value,
         item.modality.value, item.device.device_class.value, item.device.make, item.device.model,
         item.device.detector, item.exposure.kvp, item.exposure.mas, item.exposure.px_mm,
         item.lat_from_ap_deg, item.gantry_deg, view, item.acquired, len(item.labels),
+        level_map.path if level_map else None, level_map.projector if level_map else None,
     )
 
 

@@ -25,15 +25,19 @@ part (docs/research/training-review.md, section 1):
   "se-resnext50" from MONAI (#211), each with its own head and, where one is read, its own
   ImageNet file;
 - denoise: a filter on the crop inside the model, before the scaling, "none", "gaussian" or
-  "median", so the evaluator, the latency measurement and the ONNX export carry it.
+  "median", so the evaluator, the latency measurement and the ONNX export carry it;
+- prior: a second supervision from 3D (#228), "none" or "level-map", where a head on the
+  backbone's last feature map predicts the frame's projected level map, the segmented CT's
+  voxels mapped onto the X-ray by the render's geometry or a registered pose, and its loss is
+  added with prior_weight; the head is training-only, so the exported classifier is unchanged.
 
 DEFAULT is version 1's training exactly, so a run that names no block trains as before and the
 recorded runs stay reproducible. The choices are kept here, with the arithmetic that needs no
 torch (the schedule's factor, the class weights, the balanced accuracy, which crops a samples
 block keeps); tools/train_blocks.py holds the torch side, one function per name, and its tests
 hold the two lists equal. A new way of doing a part is one name added to its tuple here and one
-function there, plus the entry the part keys by name where it has one (HEADS for an
-architecture, AUGMENT_ORDER for an augment change, a branch in _keeps for a samples choice); a
+function there, plus the entry the part keys by name where it has one (HEADS and FEATURES for
+an architecture, AUGMENT_ORDER for an augment change, a branch in _keeps for a samples choice); a
 new part is a field with version 1's default and its entry in CHOICES or SETTINGS, which
 `problems` checks and `parts` reads to list every part with its names for tools/block_sweep.py.
 """
@@ -65,6 +69,7 @@ ARCHITECTURE = (
     "se-resnext50",
 )
 DENOISE = ("none", "gaussian", "median")
+PRIOR = ("none", "level-map")
 # The samples choices that take a list of sources, and the one that takes a count per person.
 BY_SOURCE = ("only-sources", "drop-sources")
 BY_PERSON = "cap-per-person"
@@ -93,6 +98,8 @@ class Blocks:
     per_person: int = 0
     architecture: str = "resnet18"
     denoise: str = "none"
+    prior: str = "none"
+    prior_weight: float = 0.0
 
 
 DEFAULT = Blocks()
@@ -106,6 +113,7 @@ CHOICES = {
     "samples": SAMPLES,
     "architecture": ARCHITECTURE,
     "denoise": DENOISE,
+    "prior": PRIOR,
 }
 # The settings a choice takes, each with its range in words, for `parts` and the command line.
 SETTINGS = {
@@ -115,9 +123,10 @@ SETTINGS = {
     "backbone_lr_scale": "above 0 and at most 1",
     "sources": "the catalog's sources, comma-separated, with samples=only-sources or drop-sources",
     "per_person": "crops kept per person, 1 or more, with samples=cap-per-person",
+    "prior_weight": "the prior loss's weight beside the level loss, above 0, with prior=level-map",
 }
 LISTS = ("augment", "sources")
-NUMBERS = ("weight_decay", "backbone_lr_scale")
+NUMBERS = ("weight_decay", "backbone_lr_scale", "prior_weight")
 COUNTS = ("warmup_epochs", "per_person")
 
 
@@ -158,6 +167,12 @@ def _number_problems(blocks: Blocks) -> list[str]:
             "weight_decay is for adamw; adam's would be L2 in the gradient,"
             " which this trainer does not offer"
         )
+    # The prior's weight goes with the prior and nowhere else, as a setting that would act on
+    # nothing is most likely a mistake; a prior with no weight would train its head for nothing.
+    if not (math.isfinite(blocks.prior_weight) and blocks.prior_weight >= 0.0):
+        found.append("prior_weight is a finite number, 0 or more")
+    elif (blocks.prior != "none") != (blocks.prior_weight > 0.0):
+        found.append("prior_weight above 0 goes with prior=level-map, and only there")
     return found
 
 

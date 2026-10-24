@@ -10,6 +10,7 @@ required check's plain python3."""
 import contextlib
 import hashlib
 import importlib.util
+import io
 import json
 import os
 import shutil
@@ -62,6 +63,7 @@ class BlocksTest(unittest.TestCase):
         self.assertEqual(set(self.blocks.SAMPLERS), set(blocks.SAMPLER))
         self.assertEqual(set(self.blocks.ARCHITECTURES), set(blocks.ARCHITECTURE))
         self.assertEqual(set(self.blocks.HEADS), set(blocks.ARCHITECTURE))
+        self.assertEqual(set(self.blocks.FEATURES), set(blocks.ARCHITECTURE))
         self.assertEqual(set(self.blocks.LIBRARIES), set(blocks.ARCHITECTURE))
         self.assertEqual(self.blocks.architecture_words("resnet18"), "torchvision resnet18")
         self.assertEqual(self.blocks.architecture_words("se-resnet50"), "MONAI se-resnet50")
@@ -184,6 +186,104 @@ class BlocksTest(unittest.TestCase):
         moved = self.blocks.augment(self.batch(), ("box-jitter",), torch.Generator().manual_seed(4))
         self.assertFalse(torch.equal(moved, self.batch()))
 
+    def test_the_prior_head_reads_every_architectures_feature_map_and_leaves_the_model_alone(self):
+        import torch
+        from schwingnet import blocks
+
+        maps = torch.full((6, 32, 32), self.blocks.IGNORED, dtype=torch.long)
+        maps[1:, 8:20, 8:20] = 5
+        for name in blocks.ARCHITECTURE:
+            with self.subTest(architecture=name):
+                model = self.train.build_model(None, "cpu", architecture=name)
+                keys = list(model.state_dict())
+                wide = self.blocks.PriorHead(model, name, 64, 28)
+                wide.handle.remove()
+                self.assertGreaterEqual(min(wide.cells), self.blocks.CELLS, "eight cells across a 64-pixel crop")
+                self.assertIn(wide.stage, self.blocks.FEATURES[name][1:], "not the last map, which is 2 by 2 at 64")
+                head = self.blocks.PriorHead(model, name, 32, 28)
+                self.assertTrue(model.training, "the dry forward leaves the model as it found it")
+                self.assertEqual(head.cells, (8, 8))
+                self.assertIn(head.stage, self.blocks.FEATURES[name])
+                model(self.batch())
+                self.assertEqual(head.conv.in_channels, head.features.shape[1])
+                self.assertEqual(tuple(head.features.shape[2:]), (8, 8))
+                self.assertEqual(tuple(head.logits().shape), (6, 28, 32, 32))
+                nothing = head.loss(torch.full_like(maps, self.blocks.IGNORED))
+                self.assertEqual(float(nothing), 0.0)
+                self.assertIsNone(head.mean_and_reset())
+                loss = head.loss(maps)
+                self.assertTrue(bool(torch.isfinite(loss)) and float(loss) > 0.0)
+                loss.backward()
+                self.assertIsNotNone(head.conv.weight.grad)
+                self.assertAlmostEqual(head.mean_and_reset(), float(loss))
+                self.assertEqual(list(model.state_dict()), keys, "the head is not in the model")
+                chosen = blocks.parse([f"architecture={name}", "backbone_lr_scale=0.5"])
+                groups = self.blocks.OPTIMISERS["adam"](model, 1e-3, chosen, head.parameters()).param_groups
+                self.assertEqual(len(groups), 2)
+                self.assertTrue(any(p is head.conv.weight for p in groups[1]["params"]))
+                self.assertFalse(any(p is head.conv.weight for p in groups[0]["params"]))
+
+    def test_the_prior_head_refuses_a_crop_too_small_for_its_cells_and_learns_where_a_body_is(self):
+        import torch
+
+        model = self.train.build_model(None, "cpu", architecture="resnet18")
+        with self.assertRaises(self.blocks.ArchitectureError) as refused:
+            self.blocks.PriorHead(model, "resnet18", 16, 28)
+        self.assertIn("no stage of resnet18 keeps 8 cells across the crop", str(refused.exception))
+        self.assertIn("layer1, gives 4 by 4", str(refused.exception))
+        self.assertFalse(any(m._forward_hooks for m in model.modules()), "the dry forward's hooks are gone")
+        dense = self.train.build_model(None, "cpu", architecture="densenet121")
+        with self.assertRaises(self.blocks.ArchitectureError) as failed:
+            self.blocks.PriorHead(dense, "densenet121", 16, 28)
+        self.assertIn("densenet121 cannot forward a 16-pixel crop", str(failed.exception))
+        self.assertFalse(any(m._forward_hooks for m in dense.modules()), "the hooks go even when the forward fails")
+        self.assertTrue(dense.training, "and the model is as it was")
+        # One batch of a bright body on a dark field, overfitted: the head names the body's pixels
+        # and the field's apart, which a head collapsed to background never does.
+        torch.manual_seed(0)
+        maps = torch.zeros(6, 32, 32, dtype=torch.long)
+        maps[:, 8:20, 8:20] = 5
+        batch = (maps > 0).float().unsqueeze(1).repeat(1, 3, 1, 1)
+        head = self.blocks.PriorHead(model, "resnet18", 32, 28)
+        self.assertEqual((head.stage, head.cells), ("layer1", (8, 8)))
+        optimiser = torch.optim.Adam(list(model.parameters()) + list(head.parameters()), lr=1e-2)
+        model.train()
+        for _ in range(60):
+            optimiser.zero_grad()
+            model(batch)
+            head.loss(maps).backward()
+            optimiser.step()
+        model.eval()
+        with torch.no_grad():
+            model(batch)
+            guess = head.logits().argmax(dim=1)
+        body = maps > 0
+        self.assertGreater(float((guess[body] == 5).float().mean()), 0.9, "the body's pixels are named")
+        self.assertGreater(float((guess[~body] == 0).float().mean()), 0.9, "and the field's")
+
+    def test_the_jitter_moves_a_map_with_its_crop_and_draws_as_without_one(self):
+        import torch
+
+        maps = torch.zeros(6, 32, 32, dtype=torch.long)
+        maps[1:, 8:20, 10:22] = 5
+        maps[0] = self.blocks.IGNORED
+        batch = (maps == 5).float().unsqueeze(1).repeat(1, 3, 1, 1)
+        names = ("box-jitter", "intensity")
+        moved, moved_maps = self.blocks.augment_with_maps(batch, maps, names, torch.Generator().manual_seed(4))
+        alone = self.blocks.augment(batch, names, torch.Generator().manual_seed(4))
+        self.assertTrue(torch.equal(moved, alone), "the crops come out as without maps")
+        self.assertEqual(moved_maps.dtype, torch.long)
+        self.assertTrue(torch.equal(moved_maps[0], torch.full((32, 32), self.blocks.IGNORED)))
+        self.assertEqual(set(moved_maps[1:].unique().tolist()), {0, 5})
+        self.assertFalse(torch.equal(moved_maps[1:], maps[1:]))
+        # The image is its own map's body, so where the moved map says body the moved crop is the
+        # bright level and not elsewhere, up to the edge pixels the two samplings round apart.
+        body = moved_maps[1:] == 5
+        bright = moved[1:, 0] > moved[1:, 0].mean(dim=(1, 2), keepdim=True)
+        self.assertGreater(float((body == bright).float().mean()), 0.9)
+        same, same_maps = self.blocks.augment_with_maps(batch, maps, ("intensity",), torch.Generator().manual_seed(4))
+        self.assertTrue(torch.equal(same_maps, maps), "a change of intensity alone leaves the maps")
+
     def test_imagenet_scaling_keeps_the_weights_names(self):
         import torch
 
@@ -274,7 +374,7 @@ class RunWithEveryBlockTest(unittest.TestCase):
         (cls.run_dir / "RUN.json").write_text(json.dumps(record), encoding="utf-8")
         words = ["normalise=imagenet", "augment=box-jitter,intensity,blur,noise", "optimiser=adamw", "weight_decay=0.01",
                  "schedule=cosine", "warmup_epochs=1", "backbone_lr_scale=0.5", "sampler=balanced",
-                 "loss_weights=inverse-frequency", "select=balanced-accuracy"]
+                 "loss_weights=inverse-frequency", "select=balanced-accuracy", "prior=level-map", "prior_weight=0.5"]
         args = ["--catalog", str(cls.catalog), "--out", str(cls.run_dir), "--epochs", "3", "--seed", "1", "--size", "32",
                 "--device", "cpu", "--witness", "2", "--keep-epochs", "0"]
         for word in words:
@@ -283,8 +383,9 @@ class RunWithEveryBlockTest(unittest.TestCase):
             cls.rc = load("train").main(args)
 
     @classmethod
-    def make_catalog(cls, tmp):
-        python(ROOT / "tools" / "synthetic_bank.py", tmp / "bank-train", "--frames", "60", "--cases", "8", "--seed", "3")
+    def make_catalog(cls, tmp, map_share=None):
+        share = [] if map_share is None else ["--map-share", str(map_share)]
+        python(ROOT / "tools" / "synthetic_bank.py", tmp / "bank-train", "--frames", "60", "--cases", "8", "--seed", "3", *share)
         seen = set()
         for image in sorted((tmp / "bank-train" / "images").rglob("*.png")):
             digest = hashlib.sha256(image.read_bytes()).hexdigest()
@@ -313,6 +414,29 @@ class RunWithEveryBlockTest(unittest.TestCase):
         self.assertLess(rates[3], rates[2])
         self.assertTrue(all("validation_balanced_accuracy" in line for line in lines))
         self.assertIn("- Blocks: normalise imagenet", (self.run_dir / "train" / "MODEL.md").read_text(encoding="utf-8"))
+
+    def test_the_prior_block_learns_the_map_and_stays_out_of_the_checkpoint(self):
+        import torch
+
+        self.assertEqual(self.rc, 0)
+        facts = json.loads((self.run_dir / "train" / "checkpoint.json").read_text(encoding="utf-8"))
+        self.assertEqual((facts["blocks"]["prior"], facts["blocks"]["prior_weight"]), ("level-map", 0.5))
+        self.assertGreater(facts["counts"]["train_with_map"], 0)
+        self.assertLess(facts["counts"]["train_with_map"], facts["counts"]["train"], "crops without a map train beside them")
+        lines = [json.loads(line) for line in (self.run_dir / "train" / "metrics.jsonl").read_text(encoding="utf-8").splitlines()]
+        self.assertIsNone(lines[0]["train_prior_loss"])
+        self.assertTrue(all(line["train_prior_loss"] > 0 for line in lines[1:]))
+        self.assertTrue(all(0.0 <= line["validation_map_pixel_accuracy"] <= 1.0 for line in lines))
+        self.assertTrue(all(0.0 <= line["validation_map_body_accuracy"] <= 1.0 for line in lines))
+        self.assertEqual((facts["prior_stage"], facts["prior_cells"]), ("layer1", [8, 8]), "eight cells of a 32-pixel crop")
+        head = self.run_dir / "train" / "prior_head.pt"
+        self.assertEqual(hashlib.sha256(head.read_bytes()).hexdigest(), facts["prior_head_sha256"])
+        self.assertEqual(set(torch.load(head, weights_only=True)), {"conv.weight", "conv.bias"})
+        best = torch.load(self.run_dir / "train" / "best.pt", weights_only=True)
+        self.assertFalse(any(k.startswith("conv.") for k in best))
+        card = (self.run_dir / "train" / "MODEL.md").read_text(encoding="utf-8")
+        self.assertIn("- Prior: level-map head on layer1 (8 by 8 cells of the 32-pixel crop, 28 classes at every pixel, weight 0.5)", card)
+        self.assertIn("prior level-map; prior_weight 0.5", card)
 
     def test_the_latency_tool_loads_the_scaled_model_and_onnx_keeps_the_scaling(self):
         latency = load("latency")
@@ -434,6 +558,24 @@ class RunWithSamplesArchitectureAndDenoiseTest(unittest.TestCase):
         (out / "RUN.json").write_text((self.run_dir / "RUN.json").read_text(encoding="utf-8"), encoding="utf-8")
         args = ["--catalog", str(self.catalog), "--out", str(out), "--epochs", "1", "--seed", "1", "--block", "samples=only-sources", "--block", "sources=nowhere"]
         self.assertEqual(load("train").main(args), 1)
+
+    def test_a_prior_on_a_catalog_whose_train_part_has_no_map_is_refused_in_words(self):
+        tmp = Path(tempfile.mkdtemp())
+        catalog = RunWithEveryBlockTest.make_catalog(tmp, map_share=0)
+        run_dir = tmp / "run"
+        run_dir.mkdir()
+        record = {"run_id": "nomaps000000", "code_commit": "0" * 40, "catalog_sha256": "0" * 64, "catalog_version": 1, "clean_tree": True}
+        (run_dir / "RUN.json").write_text(json.dumps(record), encoding="utf-8")
+        args = ["--catalog", str(catalog), "--out", str(run_dir), "--epochs", "1", "--seed", "1", "--size", "32", "--device", "cpu"]
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err), mock.patch.dict(os.environ, {"SCHWINGNET_WANDB": "off"}):
+            self.assertEqual(load("train").main(args + ["--block", "prior=level-map", "--block", "prior_weight=1"]), 1)
+            self.assertEqual(load("train").main(args + ["--block", "prior=level-map"]), 1)
+        self.assertIn("no training crop comes from a frame with a level map", err.getvalue())
+        self.assertIn("prior_weight above 0 goes with prior=level-map", err.getvalue())
+        self.assertFalse((run_dir / "train" / "best.pt").exists())
+        crops = load("train").read_crops(catalog, ("train", "validation"))
+        self.assertTrue(crops and all(crop["map"] is None for crop in crops))
 
     def test_a_warm_start_from_another_architecture_is_refused(self):
         train = load("train")
