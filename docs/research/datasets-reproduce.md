@@ -12,7 +12,7 @@ ${DP} are the ones reacquire.py resolves, and its dry run prints them resolved),
 place on the grid, and its licence and access. "not recorded" means the manifest is silent, and "none" that the
 registry record holds no such field.
 
-111 registry records: 82 are held by 84 manifest records between them, one is the anomaly harvest with its 144 records of family B, and 28 have no manifest record and say why. The manifest was generated 2026-10-08; its roots are HOME `/wsu/home/go/go24/go2432` and CEPH `/rs/rs_grp_oschome/go2432`.
+117 registry records: 82 are held by 84 manifest records between them, one is the anomaly harvest with its 144 records of family B, and 34 have no manifest record and say why. The manifest was generated 2026-10-08; its roots are HOME `/wsu/home/go/go24/go2432` and CEPH `/rs/rs_grp_oschome/go2432`.
 
 ## How to run it
 
@@ -108,6 +108,12 @@ registry record holds no such field.
     - on the grid: `/rs/rs_grp_oschome/go2432/data/ljubljana`
     - licence: CC BY-NC-ND (research record and manifest); the page shows a generic CC link (audit verifier); access: open
 
+### CM Spine intraoperative G-arm lumbar images (Zeng 2024, Electronics 13, 2137) (`cm_spine_garm`, GET)
+
+- Registry: link https://doi.org/10.3390/electronics13112137; grid path none; counts images 208, vertebrae 537.
+- Manifest records: none. found in the dataset mail of 2026-10-24 (docs/research/data-access-requirements.md); its one link, a Google Drive file, no longer opens, so no manifest record was ever made; very likely the same file as cm_spine_drive_file.
+- The registry's steps: Wait for the authors or the editorial office; if the Drive file is restored, it is fetched as the record cm_spine_drive_file says, on the owner's word.
+
 ### cm_spine: one Google Drive file described only as 'intraoperative' (empty download) (`cm_spine_drive_file`, GET)
 
 - Registry: link none recorded; grid path none; counts none.
@@ -143,6 +149,12 @@ registry record holds no such field.
     - checks: none recorded
     - on the grid: `/rs/rs_grp_oschome/go2432/data/sx_stitch_request`
     - licence: request / DUA per source; access: request
+
+### Vanderbilt THA intraoperative fluoroscopy with bony landmarks (J Arthroplasty 2025;40:2092) (`vanderbilt_tha_fluoro`, GET)
+
+- Registry: link none recorded; grid path none; counts frames 336, patients 146.
+- Manifest records: none. found in the dataset mail of 2026-10-24 (docs/research/data-access-requirements.md); asked of the authors, nothing fetched, so no manifest record was ever made.
+- The registry's steps: Wait for the answer to the letter of 2026-10-21; any agreement is the owner's to sign.
 
 ### Balgrist ex-vivo lumbar CT plus C-arm (Jecklin) (`balgrist_lumbar`, NONE)
 
@@ -526,6 +538,18 @@ registry record holds no such field.
 - Manifest records: none. found by the sweep of 2026-10-21 (docs/research/xray-datasets-missing.md) and fetched by the X-ray chain on 2026-10-21, outside the data platform, so no manifest record was made; the distal femur, still zipped, taken out of the chain's list on 2026-10-23 since it enters no shard.
 - The registry's steps: Open https://zenodo.org/records/15753063: open access, no login; one file, dataset_ipcai.zip, 6.7 GB, md5 cc8bf3e445495d2deb6d50dd058dc977. Already fetched: the X-ray chain's run of 2026-10-21 brought the zip to the grid path below (its entry in grid/fetch-xray.json and its recipe grid/banks/ipcai2025_xray_ct.json were removed on 2026-10-23, since the set is there and enters no shard); to fetch it again, as a Slurm job on the owner's word and never on the login node: python3 data/reproduce/reacquire/reacquire.py zenodo-get --record 15753063 --dest DIR. Unzip as a job and read the file layout before any use; nothing of the set enters a shard, since it holds no spine, so no bank recipe reads it.
 
+### 2D-3D-sci-registration C-arm frames and CTs (NIT Warangal, NIMS) (`nitw_2d3d_registration`, GET)
+
+- Registry: link none recorded; grid path none; counts patients 9.
+- Manifest records: none. found in the dataset mail of 2026-10-24 (docs/research/data-access-requirements.md); the CTs and raw X-rays are on request, nothing fetched, so no manifest record was ever made.
+- The registry's steps: Wait for the answer to the letter of 2026-10-21; the published centroid files and overlays can be read from the repository meanwhile, on the owner's word.
+
+### Huashan intraoperative lumbar films with preoperative CT (Shao 2024, Fudan) (`huashan_intraop_lumbar`, GET)
+
+- Registry: link none recorded; grid path none; counts patients 140.
+- Manifest records: none. found in the dataset mail of 2026-10-24 (docs/research/data-access-requirements.md); asked of the authors, nothing fetched, so no manifest record was ever made.
+- The registry's steps: Wait for the answer to the letter of 2026-10-21; any agreement is the owner's to sign.
+
 ### COBRA2026 embargoed cases (`cobra_embargoed`, EMBARGOED)
 
 - Registry: link https://zenodo.org/records/21322350; grid path none; counts cases 175.
@@ -537,6 +561,12 @@ registry record holds no such field.
     - checks: `exists: path ${DATA}/cobra2026/COBRA_COMPLETE.md`; `note: text COBRA_COMPLETE.md reads 692 of 692 with every catalogued file at its catalogued size; per-centre 120/107/120/120/92/133; about 771 GB`
     - on the grid: `/rs/rs_grp_oschome/go2432/data/cobra2026`
     - licence: CC BY-NC 4.0; access: open (training split); validation and test embargoed until 2032-03-01
+
+### LevelCheck clinical cohort (De Silva 2016, Johns Hopkins) (`levelcheck_clinical`, NONE)
+
+- Registry: link none recorded; grid path none; counts ct 178, radiographs 398, reader images 62.
+- Manifest records: none. found in the dataset mail of 2026-10-24 (docs/research/data-access-requirements.md); the owners declined to share, so no manifest record was ever made.
+- The registry's steps: None: the holder refused on 2026-10-23. The alternative Uneri named is the Harms Study Group; ask him for the introduction, or read hsg.settingscoliosisstraight.org first, on the owner's word.
 
 ## 4. Plain films (lateral or AP radiographs)
 
@@ -786,6 +816,12 @@ registry record holds no such field.
 - Registry: link https://huggingface.co/datasets/rajpurkarlab/ReXGradient-160K; grid path none; counts studies 160,000, patients 109,487, sites 79.
 - Manifest records: none. found by the sweep of 2026-10-21 (docs/research/xray-datasets-missing.md); nothing fetched, so no manifest record was ever made.
 - The registry's steps: The owner accepts the data access and use agreement on https://huggingface.co/datasets/rajpurkarlab/ReXGradient-160K under the owner's Hugging Face account. Fetch as a Slurm job on the owner's word, never on the login node: python3 data/reproduce/reacquire/reacquire.py hf-get --repo rajpurkarlab/ReXGradient-160K --repo-type dataset --dest DIR; HF_TOKEN from the submitter's environment, never from this repository.
+
+### Spine X-Ray Images Dataset for Ankylosing Spondylitis (Taipei Veterans General Hospital) (`tvgh_as_spine`, GATED)
+
+- Registry: link https://data.dmc.nycu.edu.tw/dataset/d08-x-ray; grid path none; counts none.
+- Manifest records: none. found in the dataset mail of 2026-10-24 (docs/research/data-access-requirements.md); behind the portal's login, nothing fetched, so no manifest record was ever made.
+- The registry's steps: Wait for the answer to the letter of 2026-10-21; any agreement is the owner's to sign through Wayne State.
 
 ### TVGH-SpineXR (`tvgh_spinexr`, GATED)
 
@@ -1557,23 +1593,29 @@ Registry records with no manifest record:
 - `cathaction`: found by the sweep of 2026-10-21 (docs/research/xray-datasets-missing.md); nothing fetched, so no manifest record was ever made. Steps: Open https://huggingface.co/datasets/airvlab/CathAction and read the licence line. Fetch as a Slurm job on the owner's word, never on the login node: python3 data/reproduce/reacquire/reacquire.py hf-get --repo airvlab/CathAction --repo-type dataset --dest DIR.
 - `cervical_thoracic_intraop`: no public set exists (the registry's reach is NONE); the plan is the project's own captures. Steps: none recorded
 - `chexpert_plus`: found by the sweep of 2026-10-21 (docs/research/xray-datasets-missing.md); nothing fetched, so no manifest record was ever made. Steps: The owner signs the research use agreement on https://stanfordaimi.azurewebsites.net/ (the CheXpert entries), one per dataset. A time-limited Azure Blob address follows; fetch it with AzCopy as a Slurm job on the owner's word, never on the login node, as the stanford_aimi records say.
+- `cm_spine_garm`: found in the dataset mail of 2026-10-24 (docs/research/data-access-requirements.md); its one link, a Google Drive file, no longer opens, so no manifest record was ever made; very likely the same file as cm_spine_drive_file. Steps: Wait for the authors or the editorial office; if the Drive file is restored, it is fetched as the record cm_spine_drive_file says, on the owner's word.
 - `coronary_angiography`: XCAD, CADICA, ARCADE and AngioCAD were never fetched and have no manifest record; the registry's link and steps are all there is. Steps: Find each set by name: XCAD at the link; CADICA from the Universidad de Malaga (arXiv:2402.00570); ARCADE from its Scientific Data 2024 article; AngioCAD by name. Read each licence; fetch to Ceph as a Slurm job where the licence allows research use.
 - `fracatlas`: found by the sweep of 2026-10-21 (docs/research/xray-datasets-missing.md); nothing fetched, so no manifest record was ever made. Steps: Open https://figshare.com/articles/dataset/The_dataset/22363012 (to confirm) or the Hugging Face mirror yh0701/FracAtlas_dataset and read the file list. Fetch as a Slurm job on the owner's word, never on the login node: python3 data/reproduce/reacquire/reacquire.py http-get --url U --dest FILE from figshare, or python3 data/reproduce/reacquire/reacquire.py hf-get --repo yh0701/FracAtlas_dataset --repo-type dataset --dest DIR.
 - `fraiwan_spine_xray`: found by the sweep of 2026-10-21 (docs/research/xray-datasets-missing.md); nothing fetched, so no manifest record was ever made. Steps: Open https://data.mendeley.com/datasets/xkt857dsxk and read the licence line, the version and the file list. Fetch as a Slurm job on the owner's word, never on the login node: python3 data/reproduce/reacquire/reacquire.py http-get --url U --dest FILE, U being the public-files address the page gives, as the manifest's mendeley_5jdfdgp762 route does.
 - `guide3d`: found by the sweep of 2026-10-21 (docs/research/xray-datasets-missing.md); nothing fetched, so no manifest record was ever made. Steps: Open https://airvlab.github.io/guide3d/ and read the download route and the licence. Fetch as a Slurm job on the owner's word, never on the login node: python3 data/reproduce/reacquire/reacquire.py http-get --url U --dest FILE, or python3 data/reproduce/reacquire/reacquire.py hf-get --repo X --repo-type dataset --dest DIR where the page names a Hugging Face repository.
+- `huashan_intraop_lumbar`: found in the dataset mail of 2026-10-24 (docs/research/data-access-requirements.md); asked of the authors, nothing fetched, so no manifest record was ever made. Steps: Wait for the answer to the letter of 2026-10-21; any agreement is the owner's to sign.
 - `ipcai2025_xray_ct`: found by the sweep of 2026-10-21 (docs/research/xray-datasets-missing.md) and fetched by the X-ray chain on 2026-10-21, outside the data platform, so no manifest record was made; the distal femur, still zipped, taken out of the chain's list on 2026-10-23 since it enters no shard. Steps: Open https://zenodo.org/records/15753063: open access, no login; one file, dataset_ipcai.zip, 6.7 GB, md5 cc8bf3e445495d2deb6d50dd058dc977. Already fetched: the X-ray chain's run of 2026-10-21 brought the zip to the grid path below (its entry in grid/fetch-xray.json and its recipe grid/banks/ipcai2025_xray_ct.json were removed on 2026-10-23, since the set is there and enters no shard); to fetch it again, as a Slurm job on the owner's word and never on the login node: python3 data/reproduce/reacquire/reacquire.py zenodo-get --record 15753063 --dest DIR. Unzip as a job and read the file layout before any use; nothing of the set enters a shard, since it holds no spine, so no bank recipe reads it.
 - `kaggle_fracture_multiregion`: found by the sweep of 2026-10-21 (docs/research/xray-datasets-missing.md); nothing fetched, so no manifest record was ever made. Steps: The owner reads the licence and the stated origin on the page; where the origin is not redistributable the record's reach becomes excluded. Only then, fetch with the Kaggle API as a Slurm job on the owner's word, never on the login node, the token from the submitter's environment, never from this repository.
 - `kaggle_scoliosis_yolov5`: found by the sweep of 2026-10-21 (docs/research/xray-datasets-missing.md); nothing fetched, so no manifest record was ever made. Steps: The owner's Kaggle account; read the licence and the stated source on the page. Fetch with the Kaggle API as a Slurm job on the owner's word, never on the login node, the token from the submitter's environment, never from this repository. Hash every image against the AASCE copy at /rs/rs_grp_oschome/go2432/data/thoracic_xr/mirror_zlinzju_ke30_u7_AASCE2019 before any use; a match makes it a relabel, and the aasce record then says so.
 - `kub_stonex`: found by the sweep of 2026-10-21 (docs/research/xray-datasets-missing.md); nothing fetched, so no manifest record was ever made. Steps: The set is figshare article 32049369 (doi 10.6084/m9.figshare.32049369), one file KUB-StoneX.zip with its md5 in the record, 20.8 GB; the record's ethics statement names IRB REC-FSIT-2025/No: 12732 and states every image is de-identified. Fetch it as a Slurm job on the owner's word, never on the login node, after df shows the room: bash grid/run-xray-chain.sh --only kub_stonex, whose stage 1 reads the API, runs http-get with the md5 and unpacks the zip (grid/README.md). The person rule of grid/banks/kub_stonex.json is written from the unpacked folder's file naming or its <class>_patient/ folders before the bank stage runs, since 1,703 patients hold 2,570 films.
+- `levelcheck_clinical`: found in the dataset mail of 2026-10-24 (docs/research/data-access-requirements.md); the owners declined to share, so no manifest record was ever made. Steps: None: the holder refused on 2026-10-23. The alternative Uneri named is the Harms Study Group; ask him for the introduction, or read hsg.settingscoliosisstraight.org first, on the owner's word.
 - `mendeley_ddh_hips`: found by the sweep of 2026-10-21 (docs/research/xray-datasets-missing.md); nothing fetched, so no manifest record was ever made. Steps: Open https://data.mendeley.com/datasets/jf3pv98m9g and https://data.mendeley.com/datasets/4gvcb6gmh2 and read each licence line, version and file list. Fetch each as a Slurm job on the owner's word, never on the login node: python3 data/reproduce/reacquire/reacquire.py http-get --url U --dest FILE, U being the public-files address the page gives.
 - `mimic_cxr`: found by the sweep of 2026-10-21 (docs/research/xray-datasets-missing.md); nothing fetched, so no manifest record was ever made. Steps: The owner's PhysioNet credentialing (CITI training on file) and the data use agreement on the record page, signed by the owner, the route VinDr-SpineXR took. Then a recursive wget with the owner's PhysioNet login as a Slurm job on the owner's word, never on the login node, as the manifest's vindr_spinexr route does, and sha256sum -c SHA256SUMS.txt on the copy. An IRB determination before any training reads it, as for VinDr-SpineXR.
 - `mros_lateral_spine`: found by the sweep of 2026-10-21 (docs/research/xray-datasets-missing.md); nothing fetched, so no manifest record was ever made. Steps: Open https://mrosonline.ucsf.edu/ and read the data request route (an online application with a proposal), to confirm on the page. The owner files the request in the owner's name and signs whatever agreement follows; a session drafts the proposal text once the owner asks. Once granted, fetch by the route the centre gives, as a Slurm job on the owner's word, never on the login node; no fetch helper applies until the route is known.
 - `nih_chestxray14`: found by the sweep of 2026-10-21 (docs/research/xray-datasets-missing.md); nothing fetched, so no manifest record was ever made. Steps: Open https://nihcc.app.box.com/v/ChestXray-NIHCC and read the archive list and its batch download script. Fetch as a Slurm job on the owner's word, never on the login node: python3 data/reproduce/reacquire/reacquire.py http-get --url U --dest FILE for each archive address the page gives. The RSNA subset (https://www.kaggle.com/competitions/rsna-pneumonia-detection-challenge) needs a Kaggle account and the competition rules accepted by the owner; the Kaggle API token comes from the submitter's environment, never from this repository.
+- `nitw_2d3d_registration`: found in the dataset mail of 2026-10-24 (docs/research/data-access-requirements.md); the CTs and raw X-rays are on request, nothing fetched, so no manifest record was ever made. Steps: Wait for the answer to the letter of 2026-10-21; the published centroid files and overlays can be read from the repository meanwhile, on the owner's word.
 - `open_i_chest`: found by the sweep of 2026-10-21 (docs/research/xray-datasets-missing.md); nothing fetched, so no manifest record was ever made. Steps: Read the download route on https://openi.nlm.nih.gov/faq. Fetch as a Slurm job on the owner's word, never on the login node: python3 data/reproduce/reacquire/reacquire.py http-get --url U --dest FILE for each archive address the page gives.
 - `padchest`: found by the sweep of 2026-10-21 (docs/research/xray-datasets-missing.md); nothing fetched, so no manifest record was ever made. Steps: The owner fills the licence form on https://bimcv.cipf.es/bimcv-projects/padchest/ and signs what follows. Fetch by the route BIMCV gives, as a Slurm job on the owner's word, never on the login node.
 - `pediatric_iri`: IRI-VFI on IEEE DataPort was never fetched and has no manifest record; the registry's link and steps are all there is. Steps: Open https://ieee-dataport.org/documents/iri-vfi-dataset signed in to an IEEE account (free); read the licence line and whether the files are open access or need a DataPort subscription. Fetch to Ceph as a Slurm job; read the terms before any derived label.
 - `rexgradient_160k`: found by the sweep of 2026-10-21 (docs/research/xray-datasets-missing.md); nothing fetched, so no manifest record was ever made. Steps: The owner accepts the data access and use agreement on https://huggingface.co/datasets/rajpurkarlab/ReXGradient-160K under the owner's Hugging Face account. Fetch as a Slurm job on the owner's word, never on the login node: python3 data/reproduce/reacquire/reacquire.py hf-get --repo rajpurkarlab/ReXGradient-160K --repo-type dataset --dest DIR; HF_TOKEN from the submitter's environment, never from this repository.
 - `sof_lateral_spine`: found by the sweep of 2026-10-21 (docs/research/xray-datasets-missing.md); nothing fetched, so no manifest record was ever made. Steps: Open https://sofonline.ucsf.edu/ and read the data request route, to confirm on the page. The owner files the request in the owner's name and signs whatever agreement follows; a session drafts the proposal text once the owner asks. Once granted, fetch by the route the centre gives, as a Slurm job on the owner's word, never on the login node.
+- `tvgh_as_spine`: found in the dataset mail of 2026-10-24 (docs/research/data-access-requirements.md); behind the portal's login, nothing fetched, so no manifest record was ever made. Steps: Wait for the answer to the letter of 2026-10-21; any agreement is the owner's to sign through Wayne State.
+- `vanderbilt_tha_fluoro`: found in the dataset mail of 2026-10-24 (docs/research/data-access-requirements.md); asked of the authors, nothing fetched, so no manifest record was ever made. Steps: Wait for the answer to the letter of 2026-10-21; any agreement is the owner's to sign.
 - `veriserum`: found by the sweep of 2026-10-21 (docs/research/xray-datasets-missing.md); nothing fetched, so no manifest record was ever made. Steps: Open https://movement.ethz.ch/data-repository/veriserum.html and the ETH Research Collection record doi:10.3929/ethz-b-000701146; read the licence and the file list. Fetch as a Slurm job on the owner's word, never on the login node: python3 data/reproduce/reacquire/reacquire.py http-get --url U --dest FILE for each file address the record gives.
 - `verse_2d_projections`: found by the sweep of 2026-10-21 (docs/research/xray-datasets-missing.md); nothing fetched, so no manifest record was ever made. Steps: Open https://zenodo.org/records/8115942 and read its licence line and file list. Fetch as a Slurm job on the owner's word, never on the login node: python3 data/reproduce/reacquire/reacquire.py zenodo-get --record 8115942 --dest DIR.
 - `veterinary_pig_levelcheck`: the zips sit in spine-program's archive and the set is open on IEEE DataPort; no manifest record was ever made. Steps: Download from IEEE DataPort (an IEEE account, no agreement) to Ceph as a job; or restore the seven zips from the archive the record names (spine-program 99_archive/MANIFEST_CODE.md).

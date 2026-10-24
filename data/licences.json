@@ -148,6 +148,14 @@
    "reviewed": "rule",
    "note": ""
   },
+  "cm_spine_garm": {
+   "licence": "not recorded",
+   "class": "unknown",
+   "commercial": "unknown",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
   "cobra_elekta": {
    "licence": "CC BY-NC 4.0",
    "class": "non-commercial",
@@ -324,6 +332,14 @@
    "reviewed": "rule",
    "note": ""
   },
+  "huashan_intraop_lumbar": {
+   "licence": "by request",
+   "class": "agreement",
+   "commercial": "no",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
   "idc_cptac_lscc": {
    "licence": "CC BY 4.0",
    "class": "open",
@@ -484,6 +500,14 @@
    "reviewed": "owner 2026-10-23",
    "note": ""
   },
+  "levelcheck_clinical": {
+   "licence": "not shared (Johns Hopkins IRB approval expired)",
+   "class": "unknown",
+   "commercial": "unknown",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
   "ljubljana_2d3d_gs": {
    "licence": "ND (read-only)",
    "class": "no-derivatives",
@@ -592,6 +616,14 @@
    "licence": "NIH Clinical Center, open; the Box page's terms to confirm",
    "class": "unknown",
    "commercial": "unknown",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "nitw_2d3d_registration": {
+   "licence": "by request",
+   "class": "agreement",
+   "commercial": "no",
    "derivatives": "unknown",
    "reviewed": "rule",
    "note": ""
@@ -764,10 +796,26 @@
    "reviewed": "rule",
    "note": ""
   },
+  "tvgh_as_spine": {
+   "licence": "not recorded",
+   "class": "unknown",
+   "commercial": "unknown",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
   "tvgh_spinexr": {
    "licence": "not recorded",
    "class": "unknown",
    "commercial": "unknown",
+   "derivatives": "unknown",
+   "reviewed": "rule",
+   "note": ""
+  },
+  "vanderbilt_tha_fluoro": {
+   "licence": "by request",
+   "class": "agreement",
+   "commercial": "no",
    "derivatives": "unknown",
    "reviewed": "rule",
    "note": ""

@@ -26,14 +26,14 @@ The letters above went out from the owner's Wayne State Outlook between 2026-10-
 | MAGIC-CT (magic_ct), AbdomenAtlas 2.0 Mini case list (hf_abdomenatlas2_0_mini) | 2026-10-22 | none |
 | ReXGradient-160K (rexgradient_160k) | 2026-10-24 | none yet |
 
-Six letters went to sets that have no record under data/sources/, so the inventory does not list them yet:
+Six letters went to sets that had no record under data/sources/ until #234 gave each one, named here in brackets:
 
-- The LevelCheck clinical cohort (De Silva et al., Spine 2016; Johns Hopkins), sent to Siewerdsen and Uneri on 2026-10-21: refused. Siewerdsen has left Hopkins; Uneri answered on 2026-10-23 that the cohort's IRB approval expired years ago and Hopkins' IRB now restricts sharing across institutions, and suggested the Harms Study Group (hsg.settingscoliosisstraight.org), offering to introduce the owner to its administrators.
-- The Huashan intraoperative lumbar series with preoperative CT, 2026-10-21: no answer.
-- The 2D-3D-sci-registration C-arm frames and CTs (Kadambari), 2026-10-21: no answer.
-- The intraoperative frames with bony landmarks of J Arthroplasty 2025;40:2092 (Martin, Moyer), 2026-10-21: no answer.
-- The Taiwan Medical AI and Data Portal spine X-ray set for ankylosing spondylitis (Tsai), 2026-10-21: no answer.
-- The CM Spine images of Electronics 2024, 13, 2137 (Cheng, Song, and the journal's editorial office), 2026-10-23: no answer.
+- The LevelCheck clinical cohort (De Silva et al., Spine 2016; Johns Hopkins), sent to Siewerdsen and Uneri on 2026-10-21 (levelcheck_clinical): refused. Siewerdsen has left Hopkins; Uneri answered on 2026-10-23 that the cohort's IRB approval expired years ago and Hopkins' IRB now restricts sharing across institutions, and suggested the Harms Study Group (hsg.settingscoliosisstraight.org), offering to introduce the owner to its administrators.
+- The Huashan intraoperative lumbar series with preoperative CT, 2026-10-21 (huashan_intraop_lumbar): no answer.
+- The 2D-3D-sci-registration C-arm frames and CTs (Kadambari), 2026-10-21 (nitw_2d3d_registration): no answer.
+- The intraoperative frames with bony landmarks of J Arthroplasty 2025;40:2092 (Martin, Moyer), 2026-10-21 (vanderbilt_tha_fluoro): no answer.
+- The Taiwan Medical AI and Data Portal spine X-ray set for ankylosing spondylitis (Tsai), 2026-10-21 (tvgh_as_spine): no answer.
+- The CM Spine images of Electronics 2024, 13, 2137 (Cheng, Song, and the journal's editorial office), 2026-10-23 (cm_spine_garm): no answer.
 
 ## Who acts
 

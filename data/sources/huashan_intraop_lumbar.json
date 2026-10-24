@@ -1,0 +1,20 @@
+{
+  "id": "huashan_intraop_lumbar",
+  "name": "Huashan intraoperative lumbar films with preoperative CT (Shao 2024, Fudan)",
+  "group": "projections",
+  "what": "140 patients with a preoperative CT and intraoperative anteroposterior and lateral lumbar films (Shao et al. 2024, Huashan Hospital, Fudan University); the C-arm, whether DICOM headers exist and the frames per patient are not known",
+  "level_truth": "levels derivable from the paired CT; whether the authors labelled them is not known",
+  "reach": "get",
+  "status": "asked Professor Jiang's team on 2026-10-21 09:39 UTC for the de-identified films and CTs under a data use agreement, and for the C-arm, the format and the frames per patient; no answer by 2026-10-24",
+  "licence": "by request",
+  "link": null,
+  "how_to_get": [
+    "Wait for the answer to the letter of 2026-10-21; any agreement is the owner's to sign."
+  ],
+  "grid_path": null,
+  "counts": {
+    "patients": 140
+  },
+  "measured": {},
+  "record": "SchwingNet docs/research/data-access-requirements.md, Where each request stands (2026-10-24); the letter in the owner's Wayne State Outlook, subject tag [XR/CT Imaging Research]"
+}
