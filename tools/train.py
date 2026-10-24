@@ -38,6 +38,7 @@ sys.path[0] = str(ROOT / "src")
 import argparse  # noqa: E402
 import hashlib  # noqa: E402
 import json  # noqa: E402
+import os  # noqa: E402
 import random  # noqa: E402
 import sqlite3  # noqa: E402
 import time  # noqa: E402
@@ -103,7 +104,11 @@ def read_crops(catalog, parts):
 
 def crop_pixels(frame, box, size):
     """The body's crop as a size-by-size float array in 0..1, padded a little around the box."""
-    image = Image.open(frame).convert("L")
+    return crop_of_image(Image.open(frame).convert("L"), box, size)
+
+
+def crop_of_image(image, box, size):
+    """crop_pixels on a frame already decoded, so a frame's bodies share one decode."""
     width, height = image.size
     x0, y0, x1, y1 = box
     pad_x, pad_y = (x1 - x0) * PAD, (y1 - y0) * PAD
@@ -118,21 +123,43 @@ def crop_pixels(frame, box, size):
 
 
 def load_crops(crops, size, frames_cache):
-    """A tensor of crops and a tensor of level indices; frames are opened once each."""
+    """A tensor of crops and a tensor of level indices.
+
+    A frame is decoded once for a run of its bodies: read_crops orders the crops by frame, and a
+    frame holds several bodies, so decoding it per body did the same work several times over.
+    Only the last frame is kept, so a shuffled list (pick's dry-run cap) costs no more memory
+    than before. frames_cache counts the crops read and the frames decoded.
+    """
     arrays, targets = [], []
+    current, image = None, None
     for crop in crops:
-        arrays.append(crop_pixels(crop["frame"], crop["box"], size))
+        if crop["frame"] != current:
+            current, image = crop["frame"], Image.open(crop["frame"]).convert("L")
+            frames_cache["decoded"] = frames_cache.get("decoded", 0) + 1
+        arrays.append(crop_of_image(image, crop["box"], size))
         targets.append(LEVELS.index(crop["level"]))
     stack = torch.from_numpy(np.stack(arrays)).unsqueeze(1).repeat(1, 3, 1, 1)
     frames_cache["opened"] = frames_cache.get("opened", 0) + len(crops)
     return stack, torch.tensor(targets, dtype=torch.long)
 
 
+# cuBLAS gives the same sums run to run only with a fixed workspace, set before CUDA starts; without
+# it use_deterministic_algorithms, here only warning, lets a GPU run differ in its last bits.
+CUBLAS_WORKSPACE = ":4096:8"
+
+
 def seed_everything(seed):
-    """One seed for python, numpy and torch, and deterministic kernels where torch has them."""
+    """One seed for python, numpy and torch, and deterministic kernels where torch has them.
+
+    Called before the model reaches the device, so the cuBLAS workspace is fixed before CUDA
+    starts; a value the caller's environment already sets is kept. cuDNN's benchmark search,
+    which may pick a different kernel each run, stays off.
+    """
+    os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", CUBLAS_WORKSPACE)
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
+    torch.backends.cudnn.benchmark = False
     torch.use_deterministic_algorithms(True, warn_only=True)
 
 
