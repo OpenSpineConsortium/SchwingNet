@@ -150,3 +150,7 @@ The chapter 19 review said no source prints a fraction for the 80.5 percent held
 ## Review of chapter 27
 
 21 changes of about 75 statements: 6 numbers, 2 grades, 3 open marks, 1 canonical version, 5 argument, 2 mechanism, 2 links. Most serious: held-out detection given as 80.5 percent "the answer" where the programme contradictions page holds it cannot-tell against 90.6 (row 13), now both, neither current; the detection ladder misstated (it runs 0.3, 80.5, 84.0 percent); the shared dataset folder marked closed where only the status word's readout reads it. Unsettled: the 376-patient transitional cross-validation, saved bench verdicts, the C-ArmLSpine person count, the VerSe L6 count.
+
+## Cross-book pass
+
+14 headline figures checked across all chapters, 14 chapters edited. 12 provenance rows sourced only to demo-plan.md went from Measured to Reported (and chapter 3's grading paragraph now says nothing on a real frame is Measured in this book); the census row citing MANIFEST.md went to Measured. 80.5, renders-only 0.3, 97.4 and FluoroCap's 98.7 are marked "a record, not a final value" wherever they were stated plainly; 145 banked COBRA cases carries 150 beside it. Already consistent: 76.9 / 64.0, the VerSe L6 count, the C-ArmLSpine counts, 74.8, 43.7, 97.0 and the census. No mechanism outside chapters 10 to 16 and no privacy fault found.
