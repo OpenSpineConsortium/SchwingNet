@@ -89,8 +89,8 @@ owed=$(owed_by_running "") || { echo "cannot read what the running fetches owe: 
 read -r owed_bytes owed_n owed_unsized <<< "$owed"
 read -r free_bytes free_from <<< "$(settled_room "$VOLUME")"
 if [ -z "$free_bytes" ]; then
-  why=$(quota_below_words "$VOLUME")
-  echo "cannot read the free space of $VOLUME: ${why:-neither its CephFS quota nor df answered}; nothing was queued"
+  why=$(room_unread_words "$VOLUME" "neither its CephFS quota nor df answered")
+  echo "cannot read the free space of $VOLUME: $why; nothing was queued"
   exit 2
 fi
 free_gb=$(gb_down "$free_bytes")

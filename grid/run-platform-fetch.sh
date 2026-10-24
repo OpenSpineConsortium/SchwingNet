@@ -157,8 +157,8 @@ else
 fi
 read -r free_gb free_from <<< "$(volume_free_gb "$VOLUME")"
 if [ -z "$free_gb" ]; then
-  why=$(quota_below_words "$VOLUME")
-  echo "cannot read the free space of $VOLUME: ${why:-neither its CephFS quota nor df answered}"
+  why=$(room_unread_words "$VOLUME" "neither its CephFS quota nor df answered")
+  echo "cannot read the free space of $VOLUME: $why"
   exit 2
 fi
 echo "size budget: $n sources, $total_gb GB stated; $VOLUME has $free_gb GB $(free_space_words "$free_from"), $owed"
