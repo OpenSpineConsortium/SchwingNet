@@ -3,7 +3,7 @@
   "floor": {
     "recall_at_5": 0.8,
     "mrr": 0.7,
-    "set_from": "version 1 reached a recall at 5 of 0.877 and an MRR of 0.766 over these 54 questions on 2026-10-24; the floor sits about 0.07 below both, so an edit of a chapter does not fail the check while a broken search does"
+    "set_from": "version 1 reached a recall at 5 of 0.877 and an MRR of 0.764 over these 54 questions on 2026-10-24, as docs/textbook/rag/eval.json records; the floor sits about 0.07 below both, so an edit of a chapter does not fail the check while a broken search does"
   },
   "questions": [
     {
