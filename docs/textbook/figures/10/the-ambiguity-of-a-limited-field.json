@@ -1,0 +1,44 @@
+{
+  "id": "10/the-ambiguity-of-a-limited-field",
+  "title": "The ambiguity of a limited field",
+  "caption": "The same field of view at the same height above the sacrum holds L4 to L2 in an ordinary spine and L5 to L3 in a spine with a lumbarised S1: the count from the sacrum is undetermined in a limited field. A drawn argument, not data.",
+  "chapter": "10",
+  "grade": "Reported",
+  "status": "current",
+  "source": {
+    "kind": "artifact",
+    "artifact": "artifacts/schwingnet-figures-xyz6kr/",
+    "artifact_url": "https://claude.ai/artifact/XyZ6krXFYezkdkpj2kAKPw",
+    "made_by": "spinesurg-ct-nnunet:paper/rsnai/figures/fig1_problem.png (builder not named in the record)",
+    "commit": null,
+    "data": [
+      "paper/rsnai/figures/fig1_problem.png (spinesurg-ct-nnunet)"
+    ],
+    "run": "grid job 40415108",
+    "notes": "Byte-identical (same size, 202,621 bytes) to manuscripts/superseded/rsnai/figures/fig1_problem.png in spine-program's 01_carm_level_detection/MANIFEST_LOCAL.md, which records it as copied from the private spinesurg-ct-nnunet checkout's paper/rsnai/figures/. The 22 September resume names the builder: one tool per row (tools/fig_row2_anatomy.py, fig_row3_overlap.py, fig_row4_fluorohash.py, fig_row5_corpus.py, fig_row6_arch.py) composed into fig1_story by grid job 40415108. spinesurg-ct-nnunet is not cloned here and the builder's commit is not recorded; the figure folder in spine-program is a link to the grid's archive, so the file itself cannot be read from this container. The draft it belonged to was superseded the same evening by the SchwingNet manuscript. The resume says this panel was already in the repository before the rebuild, and names no builder for it; the feasibility report (naming-vertebrae-without-an-anchor) carries the same bytes as its Figure 1. Also in the earlier gallery schwingnet-figures-jshksq, superseded by this one."
+  },
+  "explore": [
+    {
+      "label": "The artifact's page and files",
+      "href": "artifacts/schwingnet-figures-xyz6kr/"
+    },
+    {
+      "label": "The artifact on claude.ai",
+      "href": "https://claude.ai/artifact/XyZ6krXFYezkdkpj2kAKPw"
+    },
+    {
+      "label": "The figure's history (22 September resume)",
+      "href": "https://github.com/OpenSpineConsortium/spine-program/blob/88398813308aba7dc2b4ee823385ea0ca2665f0d/99_archive/docs/checkpoints/RESUME_2026-09-22_PM.md"
+    },
+    {
+      "label": "The local manifest row",
+      "href": "https://github.com/OpenSpineConsortium/spine-program/blob/88398813308aba7dc2b4ee823385ea0ca2665f0d/01_carm_level_detection/MANIFEST_LOCAL.md"
+    }
+  ],
+  "rerun": {
+    "where": "none",
+    "command": null,
+    "cost": "nothing to run: no command is recorded for it",
+    "needs_owner_word": false
+  }
+}

@@ -426,8 +426,10 @@ something better exists, and how it could fit into my current workflow", answere
 rare anatomy made in 3D) by the thread "Benchmark and priors issues" on 2026-10-22 23:43 UTC and
 carried here as it stands:
 
-- What it is: one commit (773fc5e, 2025-03-20, author Rapuris, message "changes") on the ashleve
-  Lightning-Hydra template. The README is the template's, unchanged. There is no LICENSE, no paper, no
+- What it is: ten commits (2025-03-04 to 2025-03-20, author Rapuris, the last 773fc5e, message
+  "changes"; this line said one commit until a full clone on 2026-10-24 showed ten,
+  docs/research/vertebral-diffusion.md) on the ashleve Lightning-Hydra template. The README is the
+  template's, unchanged. There is no LICENSE, no paper, no
   weights, no data and no results. The code is a 3D VQ-GAN taken from TATS and a 3D DDPM taken from
   lucidrains' video-diffusion-pytorch, trained directly on voxels on 128^3 per-vertebra NIfTI crops of
   NMDID CTs, at hard-coded Johns Hopkins paths. The data module splits 20 / 10 / 70 with a shuffle that

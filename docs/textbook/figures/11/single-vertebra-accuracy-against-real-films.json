@@ -1,0 +1,38 @@
+{
+  "id": "11/single-vertebra-accuracy-against-real-films",
+  "title": "Single-vertebra accuracy against real films in training",
+  "caption": "Single-vertebra accuracy against the number of real films of that region in training: the lumbar side of the chart is the argument for real films.",
+  "chapter": "11",
+  "grade": "Reported",
+  "status": "a record, not a final value",
+  "source": {
+    "kind": "artifact",
+    "artifact": "artifacts/level-context-ladder-xd7eltc/",
+    "artifact_url": "https://claude.ai/artifact/Xd7ELTcKW1yXaC7KtKma9z",
+    "made_by": "the artifact's own script, from numbers typed into it",
+    "commit": null,
+    "data": [],
+    "run": "grid jobs 40215523 and 40215525",
+    "notes": "Drawn at load time by the artifact's script, captured by rendering. The numbers are the arms of the context ladder; no result file per arm is named."
+  },
+  "explore": [
+    {
+      "label": "The artifact's page and files",
+      "href": "artifacts/level-context-ladder-xd7eltc/"
+    },
+    {
+      "label": "The artifact on claude.ai",
+      "href": "https://claude.ai/artifact/Xd7ELTcKW1yXaC7KtKma9z"
+    },
+    {
+      "label": "The context-curve note",
+      "href": "https://github.com/OpenSpineConsortium/spine-program/blob/88398813308aba7dc2b4ee823385ea0ca2665f0d/01_carm_level_detection/docs/handoff/context/level-id-2d-results-2026-09-13.md"
+    }
+  ],
+  "rerun": {
+    "where": "none",
+    "command": null,
+    "cost": "nothing to run: no command is recorded for it",
+    "needs_owner_word": false
+  }
+}

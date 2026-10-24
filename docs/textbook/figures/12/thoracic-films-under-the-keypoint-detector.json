@@ -1,0 +1,36 @@
+{
+  "id": "12/thoracic-films-under-the-keypoint-detector",
+  "title": "Thoracic films under the keypoint detector",
+  "caption": "Eight AASCE films under the film keypoint detector, red found, green truth, magenta missed and yellow false; L5 is the weak level where the pelvis overlaps it.",
+  "chapter": "12",
+  "grade": "Reported",
+  "status": "a record, not a final value",
+  "source": {
+    "kind": "artifact",
+    "artifact": "artifacts/or-readiness-ledger/",
+    "artifact_url": "https://claude.ai/artifact/TUNtAawdAQh2vvRT9kWNf2",
+    "made_by": null,
+    "commit": null,
+    "data": [
+      "or_ready/thoracic/tables.md (grid)"
+    ],
+    "run": null,
+    "notes": "Embedded image of the OR-readiness ledger; the page names or_ready/thoracic/tables.md for the numbers but no builder for the picture."
+  },
+  "explore": [
+    {
+      "label": "The artifact's page and files",
+      "href": "artifacts/or-readiness-ledger/"
+    },
+    {
+      "label": "The artifact on claude.ai",
+      "href": "https://claude.ai/artifact/TUNtAawdAQh2vvRT9kWNf2"
+    }
+  ],
+  "rerun": {
+    "where": "none",
+    "command": null,
+    "cost": "nothing to run: no command is recorded for it",
+    "needs_owner_word": false
+  }
+}

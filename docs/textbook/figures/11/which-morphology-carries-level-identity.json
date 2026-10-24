@@ -1,0 +1,40 @@
+{
+  "id": "11/which-morphology-carries-level-identity",
+  "title": "Which local morphology carries level identity",
+  "caption": "A schematic segment painted by the occlusion ablation's measured drop per region for L3, drawn from the explanation results; every region is pale because no single region is load-bearing.",
+  "chapter": "11",
+  "grade": "Reported",
+  "status": "a record, not a final value",
+  "source": {
+    "kind": "artifact",
+    "artifact": "artifacts/naming-vertebrae-without-an-anchor-3dfzmh/",
+    "artifact_url": "https://claude.ai/artifact/3DFZMHt4oAnrDVHwxdZnyf",
+    "made_by": "spinesurg-ct-nnunet:tools/render_feature_cartoon.py",
+    "commit": null,
+    "data": [
+      "model_night/explain/explain.json (grid)"
+    ],
+    "run": null,
+    "notes": "Byte-identical (208,286 bytes) to manuscripts/superseded/rsnai/figures/fig13_feature_cartoon.png (MANIFEST_LOCAL.md line 1094); the same bytes are in both schwingnet-figures galleries. spine-program's path inventory records tools/render_feature_cartoon.py reading model_night/explain/explain.json, which FEASIBILITY_REPRODUCE.md stage 15 writes with tools/explain_level_model.py (slurm/explain.sh). The builder's own arguments are not recorded."
+  },
+  "explore": [
+    {
+      "label": "The artifact's page and files",
+      "href": "artifacts/naming-vertebrae-without-an-anchor-3dfzmh/"
+    },
+    {
+      "label": "The artifact on claude.ai",
+      "href": "https://claude.ai/artifact/3DFZMHt4oAnrDVHwxdZnyf"
+    },
+    {
+      "label": "Stage 15, explainability",
+      "href": "https://github.com/OpenSpineConsortium/spine-program/blob/88398813308aba7dc2b4ee823385ea0ca2665f0d/01_carm_level_detection/docs/FEASIBILITY_REPRODUCE.md"
+    }
+  ],
+  "rerun": {
+    "where": "none",
+    "command": null,
+    "cost": "nothing to run: no command is recorded for it",
+    "needs_owner_word": false
+  }
+}

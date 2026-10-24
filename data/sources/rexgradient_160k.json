@@ -5,7 +5,7 @@
   "what": "160,000 chest radiograph studies with reports from 109,487 patients at 79 US sites; several images per study, so laterals are likely included (to confirm on the page)",
   "level_truth": "none; the thoracic spine behind the heart, and laterals if present",
   "reach": "gated",
-  "status": "found by the sweep of 2026-10-21; not fetched; Hugging Face gated behind a non-commercial data access and use agreement signed on the page; 79 sites means 79 exposure recipes",
+  "status": "found by the sweep of 2026-10-21; not fetched; asked Dr Zhang on 2026-10-24 for leave to download all image parts; no answer by 2026-10-24; Hugging Face gated behind a non-commercial data access and use agreement signed on the page; 79 sites means 79 exposure recipes",
   "licence": "a non-commercial data access and use agreement on the Hugging Face page",
   "link": "https://huggingface.co/datasets/rajpurkarlab/ReXGradient-160K",
   "how_to_get": [

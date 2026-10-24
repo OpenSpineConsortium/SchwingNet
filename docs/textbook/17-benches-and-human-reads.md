@@ -42,6 +42,15 @@ The [FluoroCap Adjudication Bench](../../artifacts/fluorocap-adjudication-bench-
 
 The reader reads the film first and reveals the caption only if it is needed, the reveal being recorded, and chooses correct, off by one, wrong by more than one, cannot tell or not a spine radiograph, with the correct levels and a note. On a caption-free panel the page tells the reader that this read is the only ground truth the panel will ever have. But the page shows what the pipeline decided, so the read is not blind, and it keeps one record per panel, keyed by the image, in a store every reader shares and merges on opening, so a second reader would overwrite the first. The FluoroCap contradictions confirm that the bench is single-read (row 30): it can keep neither two blind reads nor an adjudication, and its reads must be keyed by reader and an adjudication pass added before agreement can be reported. Whether instructions outside the page asked for two readers is not recorded (benches contradictions, row 45).
 
+![A bench frame, lumbar, decided by the level model](figures/17/adjudication-frame-1.png)
+*Figure 17.1. A lumbar panel with no caption whose levels the level model decided, as a reader sees it on the adjudication bench. Source: [record](figures/17/adjudication-frame-1.json).*
+
+![A bench frame, cervical, decided by the caption](figures/17/adjudication-frame-2.png)
+*Figure 17.2. A cervical panel whose levels its caption decided, as a reader sees it on the bench. Source: [record](figures/17/adjudication-frame-2.json).*
+
+![A bench frame, thoracic, decided by a figure mate](figures/17/adjudication-frame-3.png)
+*Figure 17.3. A thoracic panel with no caption whose levels a panel of the same figure decided. Source: [record](figures/17/adjudication-frame-3.json).*
+
 Batch b1 also predates the refetch's re-split of the corpus, so any verdict on it applies to that decode alone (benches contradictions, row 81). And 120 panels over 31 strata can show which evidence fails, not how often: near 85 percent the bench gives a Wilson interval of 77.5 to 90.3 percent, four of four in a stratum has a lower bound of 51 percent, and three of four spans 30 to 95. Neither a per-stratum accuracy nor a bound near 99 percent is possible (benches contradictions, row 44), and the bench claims neither.
 
 ### What the three share

@@ -10,6 +10,9 @@ Four sources carry the CT side. The [imaging data holding report](../../artifact
 
 Every count on the rib audit and the border page was measured on CTSpinoPelvic1K's fifth label generation, a local tree that was never pushed. The release is v11, with a public mirror that research directions still found at v10 on 8 October and whose current revision no record gives ([the transitional contradictions](../../artifacts/_synthesis/contradictions/transitional-vertebrae-and-border-variants.md), row 25; [the datasets contradictions](../../artifacts/_synthesis/contradictions/datasets-holdings-and-licences.md), row 72). So every audit and border count here is a v5 count, and none should become a denominator until it is recomputed on v11. The reads, flags and expectations date from 8 October.
 
+![Both ends of the spine vary together](figures/07/border-variants-vary-together.png)
+*Figure 7.1. Eight panels from the segmentation alone, not from the numbering: sacralisation, foramina, non-rib-bearing vertebrae, disc ratio, the rib 12 to 11 length ratio, the Castellvi space, rib counts and co-occurrence. Source: [record](figures/07/border-variants-vary-together.json).*
+
 ## What is held
 
 ### CTSpinoPelvic1K, the project's own release
@@ -79,6 +82,9 @@ Ribs on a lumbar vertebra rose from 21 to 25, so the review kept anomalies rathe
 
 [Spinal Border Variants](../../artifacts/spinal-border-variants-fye5ef/) then finished the job: ribs on the wrong vertebra fell from 109 to 19, misnumbered cases from 16 to 2, lumbar ribs still labelled rib 12 from 14 to 1, and the +1 offset family, which the review had left at 34, to 1. The cause was the rib labels' origin: TotalSegmentator numbered the cages from the bottom, so a thirteenth rib on L1 took the T12 rib's identifier until lumbar ribs got classes of their own (`rib_left_lumbar` and `rib_right_lumbar`, 74 and 75). The border page's before column repeats the audit's after column, so for these counts it supersedes the audit, 170 to 109 staying the record of the first step (transitional row 14). The misnumbered-case count is settled for v5: the number verdict, held when read again, carries 2 as the later page's update in the chain 24, 16, 2 (number collision 51 on the contradictions page), though [the concept ledger](../../artifacts/_synthesis/concepts.md)'s row 51 lists only the 24 and the 16, both open. v11 is not settled: no record says whether the renumbering reached the release, so 19 and 2 are not yet the error counts of the labels a model trains on.
 
+![Rib-vertebra incidence in v5](figures/07/rib-vertebra-incidence.png)
+*Figure 7.2. Six panels of v5's rib-vertebra incidence: the composition per rib number, the offset delta where a spike is a renumber and a spread is segmentation noise, and the gap to the claimed vertebra against the 10 mm anchor. Source: [record](figures/07/rib-vertebra-incidence.json).*
+
 ### Truncation is the larger defect
 
 The audit's main finding about the data is that 57 percent of the ribs in CTSpinoPelvic1K are clipped by the field of view. Its first pass found unequal left and right rib counts in 230 of 801 cases, far above any anatomical rate, and the pattern showed why:
@@ -117,6 +123,9 @@ The variants are counted under definitions that change from page to page, and th
 
 L6 in CTSpinoPelvic1K has three counts, each with its definition: 18 by release label, 16 by the readers' own count, and 29 persons in the registry of calls, the anomaly scan's list of labeller calls; seven records on which label and readers disagree are out of every truth pool until re-read (the literature-state page). The record settles the release's figure at 18: the data registry gives 802 CTs and 18 L6, with 31 agreeing passages (the concept ledger), research directions gives Dataset813 18 L6, and the verdicts carry 18 by release label with 16 by the readers (number collision 47, held when read again; transitional row 16; datasets row 26). The ledger does not use that collision, its quote from the decisions page carrying too few anchors, so it neither confirms nor overturns it, and the anatomical count waits on the re-reads. The decisions page's "about 22 of 802, roughly 2.7 percent" is an undated, approximate count of the training labels, not an earlier value of this figure, to be quoted only with its label version (datasets row 26). Where read, L6 is 2.0 percent (Wilson 1.3 to 3.3 percent; 16 of 789 countable), against a prior of 3.2 percent (Sun 2025); the unsourced "roughly 2 percent of people" on [Counting Against Two Anchors](../../artifacts/counting-against-two-anchors-qkktgu/) is the corpus rate, not a prior (transitional row 15). The overnight page's 31 Castellvi II to IV and 34 flag positives may be nested within the 33 records with a non-normal LSTV label rather than rival counts; no record gives their membership (transitional row 18).
 
+![The rib-bearing phenotype](figures/07/rib-bearing-phenotype.png)
+*Figure 7.3. The count between the anchors, the automated count against the radiologist's own column, by Castellvi type, the rib-bearing burden in the field, by sex, and whether the review moved the phenotype. Source: [record](figures/07/rib-bearing-phenotype.json).*
+
 Lumbar ribs have no settled count. The border page gives 13 cases (v5, renumbered), Counting Against Two Anchors sixteen from a release it does not name, and the overnight page tables 16 while warning that its source disagrees with its review sheet; the ledger holds the figure open (row 49). Other figures count other things: 14 lumbar ribs by the audit's strict incidence check, 21 and then 25 ribs on a lumbar vertebra, and 10 lumbar ribs at or under 50 mm (transitional row 1). None of these is a denominator yet.
 
 Rib 12 is bimodal. As a fraction of rib 11 its length falls into a main mode near 0.68 and a hypoplastic mode near 0.32, with 67 cases below 0.30, the shape a discrete developmental variant should take. But those 67 are a measurement, not a label: nobody has read them, the project's CTs hold no labelled stump-rib case, and with 57 percent of ribs clipped some are short only because the field cut them (transitional row 20).
@@ -126,6 +135,9 @@ The handoff adds a finding: a 3-D shape test separates T12 from L1 at AUC 0.990,
 ### Co-occurrence across the two borders
 
 The border page's headline is an odds ratio of 19.6: of 796 complete cases, 667 are typical at both ends, 60 have a thoracolumbar variant only, 25 a lumbosacral variant only and 44 both, where independence predicts 9. The page calls this an association in segmentation-derived measures, not a causal or clinical result, and never states how it defines a thoracolumbar variant. [Naming Vertebrae Without an Anchor](../../artifacts/naming-vertebrae-without-an-anchor-3dfzmh/) of 17 September asked the same question with flags read from label voxels and found co-occurrence "supported, smaller than first tabulated":
+
+![The two border anomalies travel together](figures/07/border-anomalies-co-occur.png)
+*Figure 7.4. Two-by-two tables of lumbosacral by thoracolumbar anomaly per cohort with odds ratios; the artifact says these all-row cells inflate the association. Source: [record](figures/07/border-anomalies-co-occur.json).*
 
 - CTSpinoPelvic1K: 4.00 [1.00, 16.03], on a both-cell of two;
 - 280 fully graded VerSe subjects: 3.61 (exact 95 percent interval 2.08 to 6.27);
