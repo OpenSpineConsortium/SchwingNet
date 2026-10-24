@@ -41,3 +41,6 @@ About 270 checked, 38 changed (number 9, grade 3, superseded 4, canonical 1, sco
 
 ## 27 writer
 5,988 words, 40 rows, lint ok; about sixty open questions in seven themes, each with source, state on 24 Oct, who can close it and the chapter it would change. Open: whether the September 376-patient transitional cross-validation finished; whether any bench verdicts were saved; how the C-arm route to the grid opened. Not stated as current: C-ArmLSpine persons (120 vs 149 cases), VerSe L6 (85/47/50/87), TotalSegmentator counts, held-out detection 90.6 vs 80.5 (only the demo plan's 80.5, Reported). Source privacy: the owner's first name, a login, grid paths, an outside researcher's name; none copied.
+
+## 29 writer
+5,310 words, 45 rows, lint ok. Open: the 17-guarantee tally at a release tag (the repository vendors 0.5.1, carrying F8, F2, F17 and F19's fixes; the chapter says "carries the fixes"); no record of the owner approving 0.5.1; CooperBench counts from the taxonomy spec's reading, not the paper; GitHub plan prices from free-or-paid.md of 13 Oct. Left out: every coordbench and flowbench outcome (the owner's hold); one board run's API calls. Source privacy: the owner's first name and the university's compliance rules; roles only.
