@@ -174,7 +174,8 @@ def resnet50(outputs, weights):
 
 
 def mobilenet_v3_small(outputs, weights):
-    """The latency candidate: a tenth of resnet18's multiply-adds at the same input; its classifier's
+    """The latency candidate: about a thirtieth of resnet18's multiply-adds at the same input (5.5
+    against 148 million at 64 px, counted over the convolutions and linear layers); its classifier's
     dropout draws from the device's global generator (the module docstring)."""
     model = models.mobilenet_v3_small(weights=None)
     _load_backbone(model, weights, "mobilenet-v3-small")

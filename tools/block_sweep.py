@@ -20,7 +20,8 @@ file being resnet18's, and a sweep in which one run would start from ImageNet an
 nothing is refused, since its rows would compare the start and not the block.
 
 `compare` and `ledger` read each run's train/checkpoint.json and train/metrics.jsonl, and its
-latency headline where one was measured, never its evaluate/ results: the runs are ranked by the
+latency headline where one was measured (evaluate/latency.json, a timing and no score), never
+evaluate/results.json: the runs are ranked by the
 validation part and its witness frames alone, so choosing among them never reads a test person
 (docs/research/retraining-plan.md, section 4). The chosen run is then evaluated once on the test
 part, as any run is. `ledger` finds every run under a folder by itself, so the next plan is made

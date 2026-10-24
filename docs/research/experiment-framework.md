@@ -38,18 +38,27 @@ bit. The loop that optimises them is:
    told apart, so a dry run's cut is never read as a block's), the parent run, or its file with
    its hash, the best epoch, the validation accuracy
    with its Wilson interval, the balanced accuracy, the validation witness score and the latency
-   headline where one was measured. It reads validation and latency only, never evaluate/: the
+   headline where one was measured. It reads train/checkpoint.json, train/metrics.jsonl and the latency headline
+   evaluate/latency.json, a timing measured on test frames and no score, never
+   evaluate/results.json: the
    choice of the next plan is made from the validation part, and the test part is read once for the
    chosen run (docs/research/retraining-plan.md, section 4). A run whose record cannot be read
    stops the ledger naming it, so a folder written halfway names itself. The next plan is step 2
    again.
 
-Adding a piece is two lines: a name in its part's tuple in src/schwingnet/blocks.py and a function
-in that part's table in tools/train_blocks.py. tests/test_train_blocks.py fails when a table and
-its tuple disagree, tests/schwingnet/test_blocks.py holds the pure side under the gate's contracts,
-and tools/train.py calls only the tables, so it never changes for a new piece. A new part is a
-field on Blocks with a default that is version 1's choice, a tuple, a table, and its line in
-`problems` where it has a range; `parts` lists it by itself.
+Adding a piece is a name in its part's tuple in src/schwingnet/blocks.py and a function in that
+part's table in tools/train_blocks.py, plus the one place that part keys by name where it has
+one: a HEADS entry for an architecture (its head's parameter prefix, which the ImageNet loader
+and backbone_lr_scale read), a place in AUGMENT_ORDER for an augment change (augment applies
+the order's names, so one outside it would be accepted and never applied), a branch in `_keeps`
+for a samples choice. tests/test_train_blocks.py fails when a table, HEADS or AUGMENT_ORDER and
+its tuple disagree, tests/schwingnet/test_blocks.py holds the pure side under the gate's
+contracts, and tools/train.py calls only the tables, so it never changes for a new piece. A new
+part is a field on Blocks with a default that is version 1's choice and either its tuple entered
+in CHOICES, which `problems` checks and `parts` prints, or, for a setting with a range, its
+range in words in SETTINGS and its line in `problems`; test_blocks.py holds that every field is
+in one of the two, and `parts` lists it from there (the adversarial review of #208 found the
+earlier wording, "two lines" and "`parts` lists it by itself", short of all three).
 
 ## 2. The parts, as of this change
 
@@ -91,8 +100,10 @@ the record once a piece is added.
   that leaves no crop stops the run before any tensor is made. A licence recipe (data/recipes/, tools/licences.py) cuts the catalog before any
   of this; samples cuts within the catalog a run was given.
 - **architecture: the backbone.** resnet18 is version 1; resnet34 and resnet50 are the same family
-  wider and deeper; mobilenet-v3-small is the latency candidate, about a tenth of resnet18's
-  multiply-adds at the same input; efficientnet-b0 sits between. Each entry builds the network
+  wider and deeper; mobilenet-v3-small is the latency candidate, about a thirtieth of resnet18's
+  multiply-adds at the same input (5.5 against 148 million at 64 px, 56 against 1,814 at 224 px,
+  convolutions and linear layers counted with forward hooks; torchvision publishes 0.06 against
+  1.81 GFLOPS); efficientnet-b0 sits between, at about a fifth. Each entry builds the network
   with a 27-way head of its own (HEADS in tools/train_blocks.py names the head's parameters, so
   the ImageNet file loads without it and backbone_lr_scale gives the rest a smaller rate), and an
   ImageNet file of another network is refused in words, whether its names or its shapes differ.
