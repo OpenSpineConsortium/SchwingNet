@@ -484,6 +484,23 @@ def test_the_dry_run_submits_one_array_task_a_shard_and_the_join_after_it(tmp_pa
     ]
 
 
+def test_a_staging_folder_is_never_listed_even_under_a_root_inside_a_shards_folder(
+    tmp_path: Path,
+) -> None:
+    # find's -path lets a wildcard cross a slash, so a pattern alone would match a `shards` in
+    # the data root's own path; the staging folder is left out by its own name.
+    root = tmp_path / "shards" / "data"
+    for name in ("src/shards/2026-10-21-aaaaaaaaaaaa", "src/shards/.ingest-2026-10-21-aaaaaaaaaaaa-x"):
+        (root / name).mkdir(parents=True)
+        (root / name / "MANIFEST.json").write_text("{}", encoding="utf-8")
+    done = run_leaks(root, HPCW_DRY="1", LEAKS_OUT=str(tmp_path / "_leaks"))
+    assert done.returncode == 0, done.stdout + done.stderr
+    (listing,) = (tmp_path / "_leaks" / "runs").glob("*/shards.txt")
+    assert listing.read_text(encoding="utf-8").splitlines() == [
+        str(root / "src/shards/2026-10-21-aaaaaaaaaaaa")
+    ]
+
+
 def test_the_submit_refuses_a_data_root_with_no_shard(tmp_path: Path) -> None:
     done = run_leaks(tmp_path, HPCW_DRY="1", LEAKS_OUT=str(tmp_path / "_leaks"))
     assert done.returncode == 64 and "nothing to check" in done.stdout

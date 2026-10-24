@@ -18,11 +18,12 @@ The conversion is deterministic (the files in path order, one stem per relative 
 with sorted keys) and writes only under the recipe's bank folder: a file already there with the
 same bytes is left, one with other bytes is refused, and nothing is ever deleted, so a changed
 raw copy is a person's decision and a rerun is idempotent. An 8-bit PNG is copied byte for byte
-(the ingest hashes the bytes, so a copy keeps the shard's name stable). A frame of more than 8 bits,
-a 16-bit PNG or a 16-bit, 32-bit or float image read through Pillow, is cut to 8 bits by the same
-0.5 to 99.5 percentile window the DICOM path uses (#260): the trainer reads every frame as 8-bit
-grey, and Pillow's conversion of a 16-bit frame clips every value above 255, so such a frame
-reached the trainer white. JPEG, TIFF and BMP are read through Pillow where it can be imported
+(the ingest hashes the bytes, so a copy keeps the shard's name stable). A grey frame of more than
+8 bits, a 16-bit grey PNG or a 16-bit, 32-bit or float image read through Pillow, is cut to 8 bits
+by the same 0.5 to 99.5 percentile window the DICOM path uses (#260): the trainer reads every frame
+as 8-bit grey, and Pillow's conversion of a 16-bit grey frame clips every value above 255, so such a
+frame reached the trainer white. A 16-bit PNG of colour, or of grey with alpha, Pillow reads at 8
+bits a channel, which clips nothing; it is converted to grey here as the trainer converted it. JPEG, TIFF and BMP are read through Pillow where it can be imported
 (the train environment, `pixi run -e train-cpu`), and refused with the way to get it otherwise. DICOM is read through pydicom, numpy and Pillow, all in
 the train environment's lock (#44), with pylibjpeg's decoders for a compressed pixel array: the
 modality LUT applied, MONOCHROME1 inverted, and the 0.5 to 99.5 percentile window cut to 8 bits,
@@ -37,11 +38,14 @@ or less there is a blank, not a value. A person key that holds more frames than 
 whole set one person; only MONOCHROME1 and MONOCHROME2 pixels are banked, and every file is
 written as a .part first and renamed, so a preempted job leaves no short frame. `--workers N` decodes in N processes and writes in path order, so the bank
 is the same bytes whatever N is. A finished run writes `<bank>/BANK.json`, the stamp of what made the
-bank: the recipe, every file under the raw folder by its path, size and modification time, this
-tool's own bytes and the decoders' versions; a later run whose stamp is the same decodes and reads
-nothing and says the bank is unchanged (#260), so a rerun of the chain costs a listing of the raw
-folder and not a decode of the set. Any change to any of them, a file fetched again among them, makes
-a full run, which is idempotent as before. Standard library only, Pillow, numpy and pydicom optional.
+bank and of what it holds: the recipe, every file under the raw folder by its path, size and
+modification time, through linked folders as the recipe's globs go and with each link's target,
+this tool's own bytes, the decoders' versions, and the same listing of the bank itself. A later run
+whose stamp is the same and whose bank lists the same decodes and reads nothing and says the bank
+is unchanged (#260), so a rerun of the chain costs a listing of the two folders and not a decode of
+the set. Any change to any of them, a file fetched again or a frame removed from the bank among
+them, makes a full run, which is idempotent as before; a full run removes the old stamp first, so
+a run refused or killed part way leaves no stamp to trust. Standard library only, Pillow, numpy and pydicom optional.
 """
 
 import argparse
@@ -521,19 +525,57 @@ def keys_of(persons, relatives, headers):
     return keys, tag, len(by_study)
 
 
-def raw_listing(raw):
-    """Every file under the raw folder as path, size and modification time in nanoseconds, in path
-    order: what the stamp says the bank was made from. A file rewritten with the same bytes has a
-    new time, so the stamp errs towards a full run, never towards a skip."""
-    raw = Path(raw)
-    lines = []
-    for folder, folders, files in os.walk(raw):
+def link_target(path):
+    """Where a link points, as the link holds it; empty for a file that is no link."""
+    try:
+        return os.readlink(path) if path.is_symlink() else ""
+    except OSError:
+        return ""
+
+
+def entry_line(path, root):
+    """One file's line in a listing: its path, its size and modification time in nanoseconds read
+    through any link, and the link's own target where it is one. A link that leads nowhere, or a
+    file gone between the walk and the look, is listed as missing, so it stops nothing and a look
+    that later finds it changes the listing."""
+    relative = path.relative_to(root).as_posix()
+    target = link_target(path)
+    try:
+        info = path.stat()
+    except OSError:
+        return f"{relative}\tmissing\t{target}"
+    return f"{relative}\t{info.st_size}\t{info.st_mtime_ns}\t{target}"
+
+
+def tree_listing(root, skip=()):
+    """Every file under a folder as listing lines in path order, the names in skip at its top left
+    out. A linked folder is walked, as the recipes' globs walk it, and listed with its target too,
+    so a new copy behind the same link changes the listing; a folder reached a second time, a link
+    back up the tree among them, is walked once. A file rewritten with the same bytes has a new
+    time, so a listing errs towards a full run, never towards a skip."""
+    root = Path(root)
+    lines, seen = [], set()
+    for folder, folders, files in os.walk(root, followlinks=True):
+        here = Path(folder)
+        real = os.path.realpath(here)
+        if real in seen:
+            folders[:] = []
+            continue
+        seen.add(real)
         folders.sort()
-        for name in sorted(files):
-            path = Path(folder) / name
-            info = path.stat()
-            lines.append(f"{path.relative_to(raw).as_posix()}\t{info.st_size}\t{info.st_mtime_ns}")
+        lines.extend(f"{(here / name).relative_to(root).as_posix()}/\tlink\t{link_target(here / name)}"
+                     for name in folders if (here / name).is_symlink())
+        lines.extend(entry_line(here / name, root) for name in sorted(files) if not (here == root and name in skip))
     return sorted(lines)
+
+
+def listing_sha256(lines):
+    return hashlib.sha256(("\n".join(lines) + "\n").encode("utf-8")).hexdigest()
+
+
+def bank_listing(bank):
+    """What a bank holds, its own stamp left out: what the ingest reads and the stamp checks."""
+    return tree_listing(bank, skip=(STAMP, STAMP + ".part"))
 
 
 def decoder_versions():
@@ -550,22 +592,25 @@ def decoder_versions():
 
 def stamp_of(recipe, raw):
     """What made a bank, as the hashes BANK.json holds and a rerun compares."""
-    text = "\n".join(raw_listing(raw)) + "\n"
     return {
         "recipe_sha256": hashlib.sha256(json.dumps(recipe, sort_keys=True).encode("utf-8")).hexdigest(),
-        "raw_sha256": hashlib.sha256(text.encode("utf-8")).hexdigest(),
+        "raw_sha256": listing_sha256(tree_listing(raw)),
         "code_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         "decoders": decoder_versions(),
     }
 
 
 def unchanged_counts(bank, stamp):
-    """The counts the stamp recorded when the bank was made from the same inputs, else None."""
+    """The counts the stamp recorded when the bank was made from the same inputs and still holds
+    every file it held then, as they were; else None. A bank a person has thinned or edited since
+    is made again, which writes back what is missing and refuses what was changed."""
     try:
         recorded = json.loads((Path(bank) / STAMP).read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return None
     if not isinstance(recorded, dict) or recorded.get("stamp") != stamp:
+        return None
+    if recorded.get("bank_sha256") != listing_sha256(bank_listing(bank)):
         return None
     counts = dict(recorded.get("counts") or {})
     counts.update(written=0, kept=counts.get("frames", 0), unchanged=True)
@@ -573,9 +618,11 @@ def unchanged_counts(bank, stamp):
 
 
 def write_stamp(bank, stamp, counts):
-    """Record what made the bank, last, so a bank cut short has no stamp and runs again."""
+    """Record what made the bank and what it holds, last, so a bank cut short has no stamp and
+    runs again."""
     kept = {key: value for key, value in counts.items() if key not in ("written", "kept")}
-    text = json.dumps({"stamp": stamp, "counts": kept}, indent=1, sort_keys=True) + "\n"
+    record = {"stamp": stamp, "counts": kept, "bank_sha256": listing_sha256(bank_listing(bank))}
+    text = json.dumps(record, indent=1, sort_keys=True) + "\n"
     path = Path(bank) / STAMP
     part = path.with_name(path.name + ".part")
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -584,11 +631,14 @@ def write_stamp(bank, stamp, counts):
 
 
 def run_once(recipe, raw, bank, workers=1):
-    """Write the bank unless its stamp says the same inputs made it; the counts either way."""
+    """Write the bank unless its stamp says the same inputs made it as it is; the counts either
+    way. The old stamp goes before a full run, so a run refused or killed part way leaves a bank
+    with no stamp, which the next run makes again in full."""
     stamp = stamp_of(recipe, raw)
     counts = unchanged_counts(bank, stamp)
     if counts is not None:
         return counts
+    (Path(bank) / STAMP).unlink(missing_ok=True)
     counts = convert(recipe, raw, bank, True, workers)
     write_stamp(bank, stamp, counts)
     return counts

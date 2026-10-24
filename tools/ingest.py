@@ -6,19 +6,21 @@ docs/REAL_XRAY_DATASETS_SPEC.md): `images/<split>/<stem>.png`, `meta/<stem>.json
 the device, the view and the boxes with their level names. This tool reads one bank, hashes every
 frame, and writes the shard `<grid root>/shards/<date>-<12 hex>/`: each frame as `<aa>/<sha256>.png`
 (schwingnet.catalog.frame_path), the manifest in the shape schwingnet.catalog.ShardManifest, and
-INGEST.json with the counts. The shard's name is its content, so the same bank ingested twice is
-the same shard and the second run writes nothing; a bank that changed is a new shard that names the
-old one as superseded. Nothing is deleted and nothing outside the shard is written, but for the
-staging folders a killed ingest left behind, which are cleared once they are older than the
-stage's time limit. Reuse does not depend on the date or the commit (#260): where the source's
-current shard, or one no other shard supersedes, holds exactly the manifest this bank makes, apart
-from the date, the commit and what it supersedes, the run answers "already there" with that
-shard and cuts no dated twin; and where the bank carries the stamp tools/bank.py writes
-(BANK.json) and such a shard's own report holds the same stamp with the same settings, the same
-frozen persons, the same registry entry and the same ingest code, the run reads no frame of the
-bank at all and answers from that report, checking only that every file the manifest names is
-in place. A frame of more than 8 bits of grey is refused by name, since the trainer's 8-bit
-reading would clip it white and tools/bank.py windows it; the bank is made again.
+INGEST.json with the counts. The shard's name is its content, so the same bank ingested twice is the
+same shard and the second run writes nothing; a bank that changed is a new shard that names the old
+one as superseded. Nothing is deleted and nothing outside the shard is written, but for the staging
+folders a killed ingest left behind, which are cleared once they are older than the stage's time
+limit, and the reuse notes below. Reuse does not depend on the date or the commit (#260): where the
+source's current shard, or one no other shard supersedes, holds exactly the manifest this bank
+makes, apart from the date, the commit and what it supersedes, the run answers "already there" with
+that shard and cuts no dated twin; and where an earlier run, of a bank whose every file had the same
+path, size and modification time, with the same settings, the same frozen persons, the same registry
+entry and the same ingest code, noted its report under `<grid root>/shards/.reuse/`, and the shard
+that note names is still one no other supersedes, the run reads no frame of the bank at all and
+answers from the note, checking only that every file the manifest names is in place. A bank changed
+in any file, a map added or a frame removed, is read again. A frame of more than 8 bits of grey is
+refused by name, since the trainer's 8-bit reading would clip it white and tools/bank.py windows it;
+the bank is made again.
 
 Before anything is written the frames are checked: a frame's bytes seen twice in the bank under
 one person count once (the second stem is reported as a duplicate, never silently kept, since two
@@ -83,6 +85,7 @@ sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "tools"))
 sys.path.insert(0, str(ROOT / "vendor" / "beethoven-qa" / "src"))
 
+import bank as bank_tool  # noqa: E402  (tools/bank.py, whose listing of a folder the reuse key is made from)
 import catalog as catalog_tool  # noqa: E402  (tools/catalog.py, the reading and writing around the rules)
 from beethoven_qa.contracts import ViolationError  # noqa: E402
 from schwingnet.catalog import (  # noqa: E402
@@ -102,7 +105,7 @@ from schwingnet.catalog import (  # noqa: E402
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 MANIFEST = "MANIFEST.json"
 REPORT = "INGEST.json"
-BANK_STAMP = "BANK.json"
+REUSE = ".reuse"
 # A staging folder older than the bank stage's time limit (two days) and a margin is a killed
 # ingest's, never one still being filled.
 STALE_STAGING_SECONDS = 3 * 24 * 3600
@@ -556,15 +559,17 @@ def file_sha256(path):
 
 
 def reuse_key(bank, settings, inputs):
-    """The hash of everything a shard's manifest follows from when the bank carries a stamp: the
-    stamp, the settings, the frozen persons, the source's registry entry and the ingest code;
-    None for a bank without a stamp, which is always read."""
-    stamp = Path(bank) / BANK_STAMP
-    if not stamp.is_file():
+    """The hash of everything a shard's manifest follows from: every file of the bank by its path,
+    size and modification time (tools/bank.py's listing, the bank's own stamp left out), the
+    settings, the frozen persons, the source's registry entry and the ingest code; None for an
+    empty or missing bank, which is read and refused. A bank changed in any file, a level map
+    added, a frame removed or a meta edited, has another key and is read again."""
+    listing = bank_tool.bank_listing(bank)
+    if not listing:
         return None
     entry = inputs.registry[settings.source]
     facts = {
-        "bank_stamp_sha256": file_sha256(stamp),
+        "bank_listing_sha256": bank_tool.listing_sha256(listing),
         "settings": [settings.source, settings.kind.value, settings.split, settings.persons, settings.person_prefix,
                      settings.labeller, settings.modality.value, settings.device_class.value],
         "test_persons_sha256": inputs.test_persons_sha256,
@@ -574,27 +579,56 @@ def reuse_key(bank, settings, inputs):
     return hashlib.sha256(json.dumps(facts, sort_keys=True).encode("utf-8")).hexdigest()
 
 
+def reuse_note(grid_root, key):
+    return Path(grid_root) / "shards" / REUSE / f"{key}.json"
+
+
+def manifest_sha256(data):
+    return hashlib.sha256(json.dumps(data, sort_keys=True).encode("utf-8")).hexdigest()
+
+
+def record_reuse(grid_root, key, report, folder):
+    """Note the report a run with this key gave and the manifest its shard holds, in a dot folder
+    beside the shards that no reader takes for one, so the next run with the same key is answered
+    without reading the bank. It is written for a shard found already there as for one written,
+    so a shard cut before the note existed, or under another key, is answered from the second run
+    on."""
+    data = json.loads((Path(folder) / MANIFEST).read_text(encoding="utf-8"))
+    note = {"key": key, "manifest_sha256": manifest_sha256(data), "report": report}
+    path = reuse_note(grid_root, key)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    part = path.with_name(f"{path.name}.{os.getpid()}.part")
+    part.write_text(json.dumps(note, indent=1, sort_keys=True) + "\n", encoding="utf-8")
+    os.replace(part, path)
+
+
 def reused_by_stamp(grid_root, key):
-    """The report of a shard no other supersedes that was cut from the same stamped bank with the
-    same inputs, answered without reading the bank; None where there is none. Every file its
-    manifest names must be in place, which costs a look at each and no read."""
+    """The report a run with the same key gave, answered without reading the bank, where the
+    shard it names is still one no other supersedes and holds the manifest it held then; None
+    otherwise. Every file the shard's manifest names must be in place, which costs a look at
+    each and no read."""
     if key is None:
         return None
-    for _, folder, data in reversed(heads(grid_root)):
-        try:
-            report = json.loads((folder / REPORT).read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            continue
-        if report.get("reuse_key") != key:
-            continue
-        manifest = ShardManifest.model_validate(data)
-        missing = [p for p in present_paths(manifest) if not (folder / p).is_file()]
-        if missing:
-            raise IngestError(f"{folder}: {len(missing)} files its manifest names are missing (first {missing[0]})")
-        report.update({"outcome": "already there", "verified": len(manifest.items),
-                       "verified_by": "presence: the bank's stamp, the settings and the inputs are unchanged"})
-        return report
-    return None
+    try:
+        note = json.loads(reuse_note(grid_root, key).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    report = note.get("report") if isinstance(note, dict) else None
+    if not isinstance(report, dict) or note.get("key") != key:
+        return None
+    found = {name: (folder, data) for name, folder, data in heads(grid_root)}
+    if report.get("shard") not in found:
+        return None
+    folder, data = found[report["shard"]]
+    if manifest_sha256(data) != note.get("manifest_sha256"):
+        return None
+    manifest = ShardManifest.model_validate(data)
+    missing = [p for p in present_paths(manifest) if not (folder / p).is_file()]
+    if missing:
+        raise IngestError(f"{folder}: {len(missing)} files its manifest names are missing (first {missing[0]})")
+    report.update({"outcome": "already there", "verified": len(manifest.items), "folder": str(folder),
+                   "verified_by": "presence: the bank's files, the settings and the inputs are unchanged"})
+    return report
 
 
 def present_paths(manifest):
@@ -803,7 +837,18 @@ def ingest(args, settings, inputs, key, cleared):
         report["outcome"] = write_shard(folder, items, sources, data, report)
         report["verified"] = verify_shard(folder, manifest)
         report["staging_cleared"] = cleared
+        if key is not None:
+            note_reuse(settings.grid_root, key, report, folder)
     return report
+
+
+def note_reuse(grid_root, key, report, folder):
+    """The note is a saving and no part of the shard: where it cannot be written, the run says so
+    and the next one reads the bank."""
+    try:
+        record_reuse(grid_root, key, report, folder)
+    except (OSError, ValueError) as error:
+        report["reuse_note"] = f"not written: {error}"
 
 
 def main(argv=None):

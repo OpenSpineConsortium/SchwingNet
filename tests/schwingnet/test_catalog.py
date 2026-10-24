@@ -744,3 +744,34 @@ def test_a_build_that_differs_only_in_the_code_commit_is_no_new_version(tmp_path
     latest = store / "versions" / second.file
     assert tool.same_but_the_commit(fresh, latest)
     assert not tool.same_but_the_commit(store / "versions" / first.file, latest)
+
+
+def test_a_dropped_build_mends_a_stale_current_and_an_unreadable_latest_is_no_equal(
+    tmp_path: Path,
+) -> None:
+    tool = load_tool()
+    train = write(tmp_path, "train", manifest("train", TRAIN_ITEMS))
+    test = write(tmp_path, "test", manifest("test", TEST_ITEMS))
+    store = tmp_path / "store"
+    first, _ = tool.build(store, [train], tool.load_inputs(), "0123abc")
+    second, _ = tool.build(store, [train, test], tool.load_inputs(), "0123abc")
+    # A build killed between the log's line and CURRENT's rename leaves CURRENT a version behind;
+    # the next build of the same shards at a new commit adds nothing and points CURRENT again.
+    current = store / "CURRENT"
+    current.write_text(first.file + "\n", encoding="utf-8")
+    with pytest.raises(tool.CatalogError, match="but the log's last line is"):
+        tool.version_path(store)
+    again, new = tool.build(store, [train, test], tool.load_inputs(), "4567def")
+    assert not new and again == second and current.read_text(encoding="utf-8") == second.file + "\n"
+    assert tool.version_path(store)[0].name == second.file
+    # A latest gone or broken is no equal of a fresh build, which is written as a new version
+    # in place of a traceback.
+    latest = store / "versions" / second.file
+    latest.chmod(0o644)
+    latest.write_bytes(latest.read_bytes()[:100])
+    third, new = tool.build(store, [train, test], tool.load_inputs(), "89abcde")
+    assert new and third.version == 3
+    (store / "versions" / third.file).chmod(0o644)
+    (store / "versions" / third.file).unlink()
+    fourth, new = tool.build(store, [train, test], tool.load_inputs(), "fedcba9")
+    assert new and fourth.version == 4

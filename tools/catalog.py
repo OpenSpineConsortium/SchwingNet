@@ -537,8 +537,9 @@ def store_lock(store):
 def write_version(store, writer, reason, code_commit=None, as_of=None, same=None):
     """Write a new version through `writer(path)` and record it; a version whose bytes the
     latest already has, or that `same(fresh, latest file)` calls the latest's equal, is dropped
-    and the latest returned, so the store never holds two of one thing. Returns the record and
-    whether it is new."""
+    and the latest returned, so the store never holds two of one thing, and CURRENT is made to
+    name it, so a store a killed build left half written is mended by the next build as it was
+    before #260. Returns the record and whether it is new."""
     folder, log, current = store_paths(store)
     folder.mkdir(parents=True, exist_ok=True)
     with store_lock(store):
@@ -548,7 +549,8 @@ def write_version(store, writer, reason, code_commit=None, as_of=None, same=None
         try:
             writer(fresh)
             digest = file_sha256(fresh)
-            if latest is not None and (latest.sha256 == digest or same and same(fresh, folder / latest.file)):
+            if latest is not None and (latest.sha256 == digest or same_as_latest(same, fresh, folder, latest)):
+                point_current(current, latest)
                 return latest, False
             record = describe(fresh, len(records) + 1, digest, latest, reason, code_commit, as_of)
             refuse_moved_store(store, records)
@@ -575,12 +577,39 @@ def refuse_moved_store(store, records):
         raise CatalogError(f"{store}: another build landed while this one was written; build again")
 
 
+def same_as_latest(same, fresh, folder, latest):
+    """Whether `same` calls the fresh build the latest's equal, the latest read only where it is
+    in place with the bytes it was sealed with: a latest gone, replaced or unreadable is no equal,
+    and the build writes a new version, as every build did before #260."""
+    if same is None:
+        return False
+    try:
+        refuse_changed_file(folder / latest.file, latest.sha256)
+        return same(fresh, folder / latest.file)
+    except (OSError, CatalogError, sqlite3.Error):
+        return False
+
+
 def append_record(log, current, record):
     with log.open("a", encoding="utf-8") as handle:
         handle.write(record.model_dump_json(exclude_none=True) + "\n")
+    write_current(current, record)
+
+
+def write_current(current, record):
     point = current.with_name(current.name + ".new")
     point.write_text(record.file + "\n", encoding="utf-8")
     os.replace(point, current)
+
+
+def point_current(current, record):
+    """CURRENT names the record, written only where it names another or cannot be read."""
+    try:
+        named = current.read_text(encoding="utf-8").strip()
+    except OSError:
+        named = None
+    if named != record.file:
+        write_current(current, record)
 
 
 def seal(fresh, final):
