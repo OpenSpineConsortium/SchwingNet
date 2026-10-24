@@ -1,0 +1,461 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 469" width="900" height="469" role="img" aria-label="Where along the spine each held corpus lies">
+<style>.bg{fill:#fcfcfb}text{fill:#52514e;font:11px system-ui,sans-serif}.head{fill:#0b0b0b;font-weight:600}.rule{stroke:#e4e3df}.ink3{fill:#8a8984}.need-line{stroke:#e34948}text.need-text{fill:#e34948}.t-paired{fill:#2a78d6}.o-paired{stroke:#2a78d6}.t-annotated{fill:#eb6834}.o-annotated{stroke:#eb6834}.t-synthetic{fill:#1baf7a}.o-synthetic{stroke:#1baf7a}.t-ct{fill:#eda100}.o-ct{stroke:#eda100}.t-unannotated{fill:#e87ba4}.o-unannotated{stroke:#e87ba4}@media (prefers-color-scheme:dark){.bg{fill:#1a1a19}text{fill:#c3c2b7;font:11px system-ui,sans-serif}.head{fill:#f0efec;font-weight:600}.rule{stroke:#34332f}.ink3{fill:#8f8e87}.need-line{stroke:#e66767}text.need-text{fill:#e66767}.t-paired{fill:#3987e5}.o-paired{stroke:#3987e5}.t-annotated{fill:#d95926}.o-annotated{stroke:#d95926}.t-synthetic{fill:#199e70}.o-synthetic{stroke:#199e70}.t-ct{fill:#c98500}.o-ct{stroke:#c98500}.t-unannotated{fill:#d55181}.o-unannotated{stroke:#d55181}}</style>
+<rect class="bg" width="900" height="469"/>
+<text x="10" y="16">Held corpora of people, C1 to the coccyx; the band counts the corpora reaching each level.</text>
+<rect x="251.0" y="43.0" width="22.6" height="39.0" rx="2" class="ink3"/>
+<text x="262.3" y="39.0" text-anchor="middle">13</text>
+<text x="262.3" y="94.0" text-anchor="middle">C1</text>
+<rect x="275.6" y="37.0" width="22.6" height="45.0" rx="2" class="ink3"/>
+<text x="286.9" y="33.0" text-anchor="middle">15</text>
+<text x="286.9" y="94.0" text-anchor="middle">C2</text>
+<rect x="300.2" y="37.0" width="22.6" height="45.0" rx="2" class="ink3"/>
+<text x="311.5" y="33.0" text-anchor="middle">15</text>
+<text x="311.5" y="94.0" text-anchor="middle">C3</text>
+<rect x="324.8" y="37.0" width="22.6" height="45.0" rx="2" class="ink3"/>
+<text x="336.2" y="33.0" text-anchor="middle">15</text>
+<text x="336.2" y="94.0" text-anchor="middle">C4</text>
+<rect x="349.5" y="43.0" width="22.6" height="39.0" rx="2" class="ink3"/>
+<text x="360.8" y="39.0" text-anchor="middle">13</text>
+<text x="360.8" y="94.0" text-anchor="middle">C5</text>
+<rect x="374.1" y="43.0" width="22.6" height="39.0" rx="2" class="ink3"/>
+<text x="385.4" y="39.0" text-anchor="middle">13</text>
+<text x="385.4" y="94.0" text-anchor="middle">C6</text>
+<rect x="398.7" y="43.0" width="22.6" height="39.0" rx="2" class="ink3"/>
+<text x="410.0" y="39.0" text-anchor="middle">13</text>
+<text x="410.0" y="94.0" text-anchor="middle">C7</text>
+<rect x="423.3" y="49.0" width="22.6" height="33.0" rx="2" class="ink3"/>
+<text x="434.6" y="45.0" text-anchor="middle">11</text>
+<text x="434.6" y="94.0" text-anchor="middle">T1</text>
+<rect x="447.9" y="49.0" width="22.6" height="33.0" rx="2" class="ink3"/>
+<text x="459.2" y="45.0" text-anchor="middle">11</text>
+<text x="459.2" y="94.0" text-anchor="middle">T2</text>
+<rect x="472.5" y="49.0" width="22.6" height="33.0" rx="2" class="ink3"/>
+<text x="483.8" y="45.0" text-anchor="middle">11</text>
+<text x="483.8" y="94.0" text-anchor="middle">T3</text>
+<rect x="497.2" y="49.0" width="22.6" height="33.0" rx="2" class="ink3"/>
+<text x="508.5" y="45.0" text-anchor="middle">11</text>
+<text x="508.5" y="94.0" text-anchor="middle">T4</text>
+<rect x="521.8" y="49.0" width="22.6" height="33.0" rx="2" class="ink3"/>
+<text x="533.1" y="45.0" text-anchor="middle">11</text>
+<text x="533.1" y="94.0" text-anchor="middle">T5</text>
+<rect x="546.4" y="49.0" width="22.6" height="33.0" rx="2" class="ink3"/>
+<text x="557.7" y="45.0" text-anchor="middle">11</text>
+<text x="557.7" y="94.0" text-anchor="middle">T6</text>
+<rect x="571.0" y="49.0" width="22.6" height="33.0" rx="2" class="ink3"/>
+<text x="582.3" y="45.0" text-anchor="middle">11</text>
+<text x="582.3" y="94.0" text-anchor="middle">T7</text>
+<rect x="595.6" y="49.0" width="22.6" height="33.0" rx="2" class="ink3"/>
+<text x="606.9" y="45.0" text-anchor="middle">11</text>
+<text x="606.9" y="94.0" text-anchor="middle">T8</text>
+<rect x="620.2" y="49.0" width="22.6" height="33.0" rx="2" class="ink3"/>
+<text x="631.5" y="45.0" text-anchor="middle">11</text>
+<text x="631.5" y="94.0" text-anchor="middle">T9</text>
+<rect x="644.8" y="46.0" width="22.6" height="36.0" rx="2" class="ink3"/>
+<text x="656.2" y="42.0" text-anchor="middle">12</text>
+<text x="656.2" y="94.0" text-anchor="middle">T10</text>
+<rect x="669.5" y="46.0" width="22.6" height="36.0" rx="2" class="ink3"/>
+<text x="680.8" y="42.0" text-anchor="middle">12</text>
+<text x="680.8" y="94.0" text-anchor="middle">T11</text>
+<rect x="694.1" y="46.0" width="22.6" height="36.0" rx="2" class="ink3"/>
+<text x="705.4" y="42.0" text-anchor="middle">12</text>
+<text x="705.4" y="94.0" text-anchor="middle">T12</text>
+<rect x="718.7" y="28.0" width="22.6" height="54.0" rx="2" class="ink3"/>
+<text x="730.0" y="24.0" text-anchor="middle">18</text>
+<text x="730.0" y="94.0" text-anchor="middle">L1</text>
+<rect x="743.3" y="28.0" width="22.6" height="54.0" rx="2" class="ink3"/>
+<text x="754.6" y="24.0" text-anchor="middle">18</text>
+<text x="754.6" y="94.0" text-anchor="middle">L2</text>
+<rect x="767.9" y="28.0" width="22.6" height="54.0" rx="2" class="ink3"/>
+<text x="779.2" y="24.0" text-anchor="middle">18</text>
+<text x="779.2" y="94.0" text-anchor="middle">L3</text>
+<rect x="792.5" y="22.0" width="22.6" height="60.0" rx="2" class="ink3"/>
+<text x="803.8" y="18.0" text-anchor="middle">20</text>
+<text x="803.8" y="94.0" text-anchor="middle">L4</text>
+<rect x="817.2" y="22.0" width="22.6" height="60.0" rx="2" class="ink3"/>
+<text x="828.5" y="18.0" text-anchor="middle">20</text>
+<text x="828.5" y="94.0" text-anchor="middle">L5</text>
+<rect x="841.8" y="28.0" width="22.6" height="54.0" rx="2" class="ink3"/>
+<text x="853.1" y="24.0" text-anchor="middle">18</text>
+<text x="853.1" y="94.0" text-anchor="middle">S</text>
+<rect x="866.4" y="64.0" width="22.6" height="18.0" rx="2" class="ink3"/>
+<text x="877.7" y="60.0" text-anchor="middle">6</text>
+<text x="877.7" y="94.0" text-anchor="middle">Co</text>
+<text x="244" y="110" text-anchor="end">C-ArmLSpine</text>
+<rect x="718.7" y="101" width="22.6" height="11" rx="2" fill-opacity="0.60" class="t-paired"/>
+<rect x="743.3" y="101" width="22.6" height="11" rx="2" fill-opacity="0.60" class="t-paired"/>
+<rect x="767.9" y="101" width="22.6" height="11" rx="2" fill-opacity="0.60" class="t-paired"/>
+<rect x="792.5" y="101" width="22.6" height="11" rx="2" fill-opacity="0.60" class="t-paired"/>
+<rect x="817.2" y="101" width="22.6" height="11" rx="2" fill-opacity="0.60" class="t-paired"/>
+<rect x="841.8" y="101" width="22.6" height="11" rx="2" fill-opacity="0.60" class="t-paired"/>
+<text x="244" y="123" text-anchor="end">C-ArmLSpine CBCT projection sweeps</text>
+<rect x="718.7" y="114" width="22.6" height="11" rx="2" fill-opacity="0.63" class="t-paired"/>
+<rect x="743.3" y="114" width="22.6" height="11" rx="2" fill-opacity="0.63" class="t-paired"/>
+<rect x="767.9" y="114" width="22.6" height="11" rx="2" fill-opacity="0.63" class="t-paired"/>
+<rect x="792.5" y="114" width="22.6" height="11" rx="2" fill-opacity="0.63" class="t-paired"/>
+<rect x="817.2" y="114" width="22.6" height="11" rx="2" fill-opacity="0.63" class="t-paired"/>
+<rect x="841.8" y="114" width="22.6" height="11" rx="2" fill-opacity="0.63" class="t-paired"/>
+<text x="244" y="136" text-anchor="end">COBRA2026 on the grid, all projec...</text>
+<rect x="792.5" y="127" width="22.6" height="11" rx="2" fill-opacity="0.53" class="t-paired"/>
+<rect x="817.2" y="127" width="22.6" height="11" rx="2" fill-opacity="0.53" class="t-paired"/>
+<rect x="841.8" y="127" width="22.6" height="11" rx="2" fill-opacity="0.53" class="t-paired"/>
+<rect x="866.4" y="127" width="22.6" height="11" rx="2" fill-opacity="0.53" class="t-paired"/>
+<text x="244" y="149" text-anchor="end">DeepFluoro</text>
+<rect x="792.5" y="140" width="22.6" height="11" rx="2" fill-opacity="0.72" class="t-paired"/>
+<rect x="817.2" y="140" width="22.6" height="11" rx="2" fill-opacity="0.72" class="t-paired"/>
+<rect x="841.8" y="140" width="22.6" height="11" rx="2" fill-opacity="0.72" class="t-paired"/>
+<rect x="866.4" y="140" width="22.6" height="11" rx="2" fill-opacity="0.72" class="t-paired"/>
+<text x="244" y="162" text-anchor="end">Geneva hip phantom</text>
+<rect x="841.8" y="153" width="22.6" height="11" rx="2" fill-opacity="0.55" class="t-paired"/>
+<rect x="866.4" y="153" width="22.6" height="11" rx="2" fill-opacity="0.55" class="t-paired"/>
+<text x="244" y="175" text-anchor="end">Ljubljana 2D-3D-GS</text>
+<rect x="718.7" y="166" width="22.6" height="11" rx="2" fill-opacity="0.45" class="t-paired"/>
+<rect x="743.3" y="166" width="22.6" height="11" rx="2" fill-opacity="0.45" class="t-paired"/>
+<rect x="767.9" y="166" width="22.6" height="11" rx="2" fill-opacity="0.45" class="t-paired"/>
+<rect x="792.5" y="166" width="22.6" height="11" rx="2" fill-opacity="0.45" class="t-paired"/>
+<rect x="817.2" y="166" width="22.6" height="11" rx="2" fill-opacity="0.45" class="t-paired"/>
+<text x="244" y="188" text-anchor="end">Aariz cephalometric benchmark</text>
+<rect x="275.6" y="179" width="22.6" height="11" rx="2" fill-opacity="0.66" class="t-annotated"/>
+<rect x="300.2" y="179" width="22.6" height="11" rx="2" fill-opacity="0.66" class="t-annotated"/>
+<rect x="324.8" y="179" width="22.6" height="11" rx="2" fill-opacity="0.66" class="t-annotated"/>
+<text x="244" y="201" text-anchor="end">AASCE / BoostNet whole-spine films</text>
+<rect x="423.3" y="192" width="22.6" height="11" rx="2" fill-opacity="0.64" class="t-annotated"/>
+<rect x="447.9" y="192" width="22.6" height="11" rx="2" fill-opacity="0.64" class="t-annotated"/>
+<rect x="472.5" y="192" width="22.6" height="11" rx="2" fill-opacity="0.64" class="t-annotated"/>
+<rect x="497.2" y="192" width="22.6" height="11" rx="2" fill-opacity="0.64" class="t-annotated"/>
+<rect x="521.8" y="192" width="22.6" height="11" rx="2" fill-opacity="0.64" class="t-annotated"/>
+<rect x="546.4" y="192" width="22.6" height="11" rx="2" fill-opacity="0.64" class="t-annotated"/>
+<rect x="571.0" y="192" width="22.6" height="11" rx="2" fill-opacity="0.64" class="t-annotated"/>
+<rect x="595.6" y="192" width="22.6" height="11" rx="2" fill-opacity="0.64" class="t-annotated"/>
+<rect x="620.2" y="192" width="22.6" height="11" rx="2" fill-opacity="0.64" class="t-annotated"/>
+<rect x="644.8" y="192" width="22.6" height="11" rx="2" fill-opacity="0.64" class="t-annotated"/>
+<rect x="669.5" y="192" width="22.6" height="11" rx="2" fill-opacity="0.64" class="t-annotated"/>
+<rect x="694.1" y="192" width="22.6" height="11" rx="2" fill-opacity="0.64" class="t-annotated"/>
+<rect x="718.7" y="192" width="22.6" height="11" rx="2" fill-opacity="0.64" class="t-annotated"/>
+<rect x="743.3" y="192" width="22.6" height="11" rx="2" fill-opacity="0.64" class="t-annotated"/>
+<rect x="767.9" y="192" width="22.6" height="11" rx="2" fill-opacity="0.64" class="t-annotated"/>
+<rect x="792.5" y="192" width="22.6" height="11" rx="2" fill-opacity="0.64" class="t-annotated"/>
+<rect x="817.2" y="192" width="22.6" height="11" rx="2" fill-opacity="0.64" class="t-annotated"/>
+<text x="244" y="214" text-anchor="end">BUU-LSPINE</text>
+<rect x="718.7" y="205" width="22.6" height="11" rx="2" fill-opacity="0.76" class="t-annotated"/>
+<rect x="743.3" y="205" width="22.6" height="11" rx="2" fill-opacity="0.76" class="t-annotated"/>
+<rect x="767.9" y="205" width="22.6" height="11" rx="2" fill-opacity="0.76" class="t-annotated"/>
+<rect x="792.5" y="205" width="22.6" height="11" rx="2" fill-opacity="0.76" class="t-annotated"/>
+<rect x="817.2" y="205" width="22.6" height="11" rx="2" fill-opacity="0.76" class="t-annotated"/>
+<rect x="841.8" y="205" width="22.6" height="11" rx="2" fill-opacity="0.76" class="t-annotated"/>
+<text x="244" y="227" text-anchor="end">CSXA cervical lateral films</text>
+<rect x="251.0" y="218" width="22.6" height="11" rx="2" fill-opacity="0.74" class="t-annotated"/>
+<rect x="275.6" y="218" width="22.6" height="11" rx="2" fill-opacity="0.74" class="t-annotated"/>
+<rect x="300.2" y="218" width="22.6" height="11" rx="2" fill-opacity="0.74" class="t-annotated"/>
+<rect x="324.8" y="218" width="22.6" height="11" rx="2" fill-opacity="0.74" class="t-annotated"/>
+<rect x="349.5" y="218" width="22.6" height="11" rx="2" fill-opacity="0.74" class="t-annotated"/>
+<rect x="374.1" y="218" width="22.6" height="11" rx="2" fill-opacity="0.74" class="t-annotated"/>
+<rect x="398.7" y="218" width="22.6" height="11" rx="2" fill-opacity="0.74" class="t-annotated"/>
+<text x="244" y="240" text-anchor="end">NHANES II annotated films</text>
+<rect x="251.0" y="231" width="22.6" height="11" rx="2" fill-opacity="0.63" class="t-annotated"/>
+<rect x="275.6" y="231" width="22.6" height="11" rx="2" fill-opacity="0.63" class="t-annotated"/>
+<rect x="300.2" y="231" width="22.6" height="11" rx="2" fill-opacity="0.63" class="t-annotated"/>
+<rect x="324.8" y="231" width="22.6" height="11" rx="2" fill-opacity="0.63" class="t-annotated"/>
+<rect x="349.5" y="231" width="22.6" height="11" rx="2" fill-opacity="0.63" class="t-annotated"/>
+<rect x="374.1" y="231" width="22.6" height="11" rx="2" fill-opacity="0.63" class="t-annotated"/>
+<rect x="398.7" y="231" width="22.6" height="11" rx="2" fill-opacity="0.63" class="t-annotated"/>
+<rect x="718.7" y="231" width="22.6" height="11" rx="2" fill-opacity="0.63" class="t-annotated"/>
+<rect x="743.3" y="231" width="22.6" height="11" rx="2" fill-opacity="0.63" class="t-annotated"/>
+<rect x="767.9" y="231" width="22.6" height="11" rx="2" fill-opacity="0.63" class="t-annotated"/>
+<rect x="792.5" y="231" width="22.6" height="11" rx="2" fill-opacity="0.63" class="t-annotated"/>
+<rect x="817.2" y="231" width="22.6" height="11" rx="2" fill-opacity="0.63" class="t-annotated"/>
+<rect x="841.8" y="231" width="22.6" height="11" rx="2" fill-opacity="0.63" class="t-annotated"/>
+<text x="244" y="253" text-anchor="end">VinDr-SpineXR</text>
+<rect x="251.0" y="244" width="22.6" height="11" rx="2" fill-opacity="0.78" class="t-annotated"/>
+<rect x="275.6" y="244" width="22.6" height="11" rx="2" fill-opacity="0.78" class="t-annotated"/>
+<rect x="300.2" y="244" width="22.6" height="11" rx="2" fill-opacity="0.78" class="t-annotated"/>
+<rect x="324.8" y="244" width="22.6" height="11" rx="2" fill-opacity="0.78" class="t-annotated"/>
+<rect x="349.5" y="244" width="22.6" height="11" rx="2" fill-opacity="0.78" class="t-annotated"/>
+<rect x="374.1" y="244" width="22.6" height="11" rx="2" fill-opacity="0.78" class="t-annotated"/>
+<rect x="398.7" y="244" width="22.6" height="11" rx="2" fill-opacity="0.78" class="t-annotated"/>
+<rect x="423.3" y="244" width="22.6" height="11" rx="2" fill-opacity="0.78" class="t-annotated"/>
+<rect x="447.9" y="244" width="22.6" height="11" rx="2" fill-opacity="0.78" class="t-annotated"/>
+<rect x="472.5" y="244" width="22.6" height="11" rx="2" fill-opacity="0.78" class="t-annotated"/>
+<rect x="497.2" y="244" width="22.6" height="11" rx="2" fill-opacity="0.78" class="t-annotated"/>
+<rect x="521.8" y="244" width="22.6" height="11" rx="2" fill-opacity="0.78" class="t-annotated"/>
+<rect x="546.4" y="244" width="22.6" height="11" rx="2" fill-opacity="0.78" class="t-annotated"/>
+<rect x="571.0" y="244" width="22.6" height="11" rx="2" fill-opacity="0.78" class="t-annotated"/>
+<rect x="595.6" y="244" width="22.6" height="11" rx="2" fill-opacity="0.78" class="t-annotated"/>
+<rect x="620.2" y="244" width="22.6" height="11" rx="2" fill-opacity="0.78" class="t-annotated"/>
+<rect x="644.8" y="244" width="22.6" height="11" rx="2" fill-opacity="0.78" class="t-annotated"/>
+<rect x="669.5" y="244" width="22.6" height="11" rx="2" fill-opacity="0.78" class="t-annotated"/>
+<rect x="694.1" y="244" width="22.6" height="11" rx="2" fill-opacity="0.78" class="t-annotated"/>
+<rect x="718.7" y="244" width="22.6" height="11" rx="2" fill-opacity="0.78" class="t-annotated"/>
+<rect x="743.3" y="244" width="22.6" height="11" rx="2" fill-opacity="0.78" class="t-annotated"/>
+<rect x="767.9" y="244" width="22.6" height="11" rx="2" fill-opacity="0.78" class="t-annotated"/>
+<rect x="792.5" y="244" width="22.6" height="11" rx="2" fill-opacity="0.78" class="t-annotated"/>
+<rect x="817.2" y="244" width="22.6" height="11" rx="2" fill-opacity="0.78" class="t-annotated"/>
+<text x="244" y="266" text-anchor="end">FluoroGen synth_rare renders</text>
+<rect x="644.8" y="257" width="22.6" height="11" rx="2" fill-opacity="0.44" class="t-synthetic"/>
+<rect x="669.5" y="257" width="22.6" height="11" rx="2" fill-opacity="0.44" class="t-synthetic"/>
+<rect x="694.1" y="257" width="22.6" height="11" rx="2" fill-opacity="0.44" class="t-synthetic"/>
+<rect x="718.7" y="257" width="22.6" height="11" rx="2" fill-opacity="0.44" class="t-synthetic"/>
+<rect x="743.3" y="257" width="22.6" height="11" rx="2" fill-opacity="0.44" class="t-synthetic"/>
+<rect x="767.9" y="257" width="22.6" height="11" rx="2" fill-opacity="0.44" class="t-synthetic"/>
+<rect x="792.5" y="257" width="22.6" height="11" rx="2" fill-opacity="0.44" class="t-synthetic"/>
+<rect x="817.2" y="257" width="22.6" height="11" rx="2" fill-opacity="0.44" class="t-synthetic"/>
+<rect x="841.8" y="257" width="22.6" height="11" rx="2" fill-opacity="0.44" class="t-synthetic"/>
+<text x="244" y="279" text-anchor="end">Spinal-AI2024</text>
+<rect x="251.0" y="270" width="22.6" height="11" rx="2" fill-opacity="0.45" class="t-synthetic"/>
+<rect x="275.6" y="270" width="22.6" height="11" rx="2" fill-opacity="0.45" class="t-synthetic"/>
+<rect x="300.2" y="270" width="22.6" height="11" rx="2" fill-opacity="0.45" class="t-synthetic"/>
+<rect x="324.8" y="270" width="22.6" height="11" rx="2" fill-opacity="0.45" class="t-synthetic"/>
+<rect x="349.5" y="270" width="22.6" height="11" rx="2" fill-opacity="0.45" class="t-synthetic"/>
+<rect x="374.1" y="270" width="22.6" height="11" rx="2" fill-opacity="0.45" class="t-synthetic"/>
+<rect x="398.7" y="270" width="22.6" height="11" rx="2" fill-opacity="0.45" class="t-synthetic"/>
+<rect x="423.3" y="270" width="22.6" height="11" rx="2" fill-opacity="0.45" class="t-synthetic"/>
+<rect x="447.9" y="270" width="22.6" height="11" rx="2" fill-opacity="0.45" class="t-synthetic"/>
+<rect x="472.5" y="270" width="22.6" height="11" rx="2" fill-opacity="0.45" class="t-synthetic"/>
+<rect x="497.2" y="270" width="22.6" height="11" rx="2" fill-opacity="0.45" class="t-synthetic"/>
+<rect x="521.8" y="270" width="22.6" height="11" rx="2" fill-opacity="0.45" class="t-synthetic"/>
+<rect x="546.4" y="270" width="22.6" height="11" rx="2" fill-opacity="0.45" class="t-synthetic"/>
+<rect x="571.0" y="270" width="22.6" height="11" rx="2" fill-opacity="0.45" class="t-synthetic"/>
+<rect x="595.6" y="270" width="22.6" height="11" rx="2" fill-opacity="0.45" class="t-synthetic"/>
+<rect x="620.2" y="270" width="22.6" height="11" rx="2" fill-opacity="0.45" class="t-synthetic"/>
+<rect x="644.8" y="270" width="22.6" height="11" rx="2" fill-opacity="0.45" class="t-synthetic"/>
+<rect x="669.5" y="270" width="22.6" height="11" rx="2" fill-opacity="0.45" class="t-synthetic"/>
+<rect x="694.1" y="270" width="22.6" height="11" rx="2" fill-opacity="0.45" class="t-synthetic"/>
+<rect x="718.7" y="270" width="22.6" height="11" rx="2" fill-opacity="0.45" class="t-synthetic"/>
+<rect x="743.3" y="270" width="22.6" height="11" rx="2" fill-opacity="0.45" class="t-synthetic"/>
+<rect x="767.9" y="270" width="22.6" height="11" rx="2" fill-opacity="0.45" class="t-synthetic"/>
+<rect x="792.5" y="270" width="22.6" height="11" rx="2" fill-opacity="0.45" class="t-synthetic"/>
+<rect x="817.2" y="270" width="22.6" height="11" rx="2" fill-opacity="0.45" class="t-synthetic"/>
+<rect x="841.8" y="270" width="22.6" height="11" rx="2" fill-opacity="0.45" class="t-synthetic"/>
+<text x="244" y="292" text-anchor="end">Synthetic hardware CTs: implant_ct</text>
+<rect x="423.3" y="283" width="22.6" height="11" rx="2" fill-opacity="0.71" class="t-synthetic"/>
+<rect x="447.9" y="283" width="22.6" height="11" rx="2" fill-opacity="0.71" class="t-synthetic"/>
+<rect x="472.5" y="283" width="22.6" height="11" rx="2" fill-opacity="0.71" class="t-synthetic"/>
+<rect x="497.2" y="283" width="22.6" height="11" rx="2" fill-opacity="0.71" class="t-synthetic"/>
+<rect x="521.8" y="283" width="22.6" height="11" rx="2" fill-opacity="0.71" class="t-synthetic"/>
+<rect x="546.4" y="283" width="22.6" height="11" rx="2" fill-opacity="0.71" class="t-synthetic"/>
+<rect x="571.0" y="283" width="22.6" height="11" rx="2" fill-opacity="0.71" class="t-synthetic"/>
+<rect x="595.6" y="283" width="22.6" height="11" rx="2" fill-opacity="0.71" class="t-synthetic"/>
+<rect x="620.2" y="283" width="22.6" height="11" rx="2" fill-opacity="0.71" class="t-synthetic"/>
+<rect x="644.8" y="283" width="22.6" height="11" rx="2" fill-opacity="0.71" class="t-synthetic"/>
+<rect x="669.5" y="283" width="22.6" height="11" rx="2" fill-opacity="0.71" class="t-synthetic"/>
+<rect x="694.1" y="283" width="22.6" height="11" rx="2" fill-opacity="0.71" class="t-synthetic"/>
+<rect x="718.7" y="283" width="22.6" height="11" rx="2" fill-opacity="0.71" class="t-synthetic"/>
+<rect x="743.3" y="283" width="22.6" height="11" rx="2" fill-opacity="0.71" class="t-synthetic"/>
+<rect x="767.9" y="283" width="22.6" height="11" rx="2" fill-opacity="0.71" class="t-synthetic"/>
+<rect x="792.5" y="283" width="22.6" height="11" rx="2" fill-opacity="0.71" class="t-synthetic"/>
+<rect x="817.2" y="283" width="22.6" height="11" rx="2" fill-opacity="0.71" class="t-synthetic"/>
+<rect x="841.8" y="283" width="22.6" height="11" rx="2" fill-opacity="0.71" class="t-synthetic"/>
+<text x="244" y="305" text-anchor="end">CTSpine1K, CTPelvic1K, RibFrac</text>
+<rect x="251.0" y="296" width="22.6" height="11" rx="2" fill-opacity="0.38" class="t-ct"/>
+<rect x="275.6" y="296" width="22.6" height="11" rx="2" fill-opacity="0.38" class="t-ct"/>
+<rect x="300.2" y="296" width="22.6" height="11" rx="2" fill-opacity="0.38" class="t-ct"/>
+<rect x="324.8" y="296" width="22.6" height="11" rx="2" fill-opacity="0.38" class="t-ct"/>
+<rect x="349.5" y="296" width="22.6" height="11" rx="2" fill-opacity="0.38" class="t-ct"/>
+<rect x="374.1" y="296" width="22.6" height="11" rx="2" fill-opacity="0.38" class="t-ct"/>
+<rect x="398.7" y="296" width="22.6" height="11" rx="2" fill-opacity="0.38" class="t-ct"/>
+<rect x="423.3" y="296" width="22.6" height="11" rx="2" fill-opacity="0.38" class="t-ct"/>
+<rect x="447.9" y="296" width="22.6" height="11" rx="2" fill-opacity="0.38" class="t-ct"/>
+<rect x="472.5" y="296" width="22.6" height="11" rx="2" fill-opacity="0.38" class="t-ct"/>
+<rect x="497.2" y="296" width="22.6" height="11" rx="2" fill-opacity="0.38" class="t-ct"/>
+<rect x="521.8" y="296" width="22.6" height="11" rx="2" fill-opacity="0.38" class="t-ct"/>
+<rect x="546.4" y="296" width="22.6" height="11" rx="2" fill-opacity="0.38" class="t-ct"/>
+<rect x="571.0" y="296" width="22.6" height="11" rx="2" fill-opacity="0.38" class="t-ct"/>
+<rect x="595.6" y="296" width="22.6" height="11" rx="2" fill-opacity="0.38" class="t-ct"/>
+<rect x="620.2" y="296" width="22.6" height="11" rx="2" fill-opacity="0.38" class="t-ct"/>
+<rect x="644.8" y="296" width="22.6" height="11" rx="2" fill-opacity="0.38" class="t-ct"/>
+<rect x="669.5" y="296" width="22.6" height="11" rx="2" fill-opacity="0.38" class="t-ct"/>
+<rect x="694.1" y="296" width="22.6" height="11" rx="2" fill-opacity="0.38" class="t-ct"/>
+<rect x="718.7" y="296" width="22.6" height="11" rx="2" fill-opacity="0.38" class="t-ct"/>
+<rect x="743.3" y="296" width="22.6" height="11" rx="2" fill-opacity="0.38" class="t-ct"/>
+<rect x="767.9" y="296" width="22.6" height="11" rx="2" fill-opacity="0.38" class="t-ct"/>
+<rect x="792.5" y="296" width="22.6" height="11" rx="2" fill-opacity="0.38" class="t-ct"/>
+<rect x="817.2" y="296" width="22.6" height="11" rx="2" fill-opacity="0.38" class="t-ct"/>
+<rect x="841.8" y="296" width="22.6" height="11" rx="2" fill-opacity="0.38" class="t-ct"/>
+<rect x="866.4" y="296" width="22.6" height="11" rx="2" fill-opacity="0.38" class="t-ct"/>
+<text x="244" y="318" text-anchor="end">CTSpinoPelvic1K</text>
+<rect x="718.7" y="309" width="22.6" height="11" rx="2" fill-opacity="0.65" class="t-ct"/>
+<rect x="743.3" y="309" width="22.6" height="11" rx="2" fill-opacity="0.65" class="t-ct"/>
+<rect x="767.9" y="309" width="22.6" height="11" rx="2" fill-opacity="0.65" class="t-ct"/>
+<rect x="792.5" y="309" width="22.6" height="11" rx="2" fill-opacity="0.65" class="t-ct"/>
+<rect x="817.2" y="309" width="22.6" height="11" rx="2" fill-opacity="0.65" class="t-ct"/>
+<rect x="841.8" y="309" width="22.6" height="11" rx="2" fill-opacity="0.65" class="t-ct"/>
+<rect x="866.4" y="309" width="22.6" height="11" rx="2" fill-opacity="0.65" class="t-ct"/>
+<text x="244" y="331" text-anchor="end">RSNA 2022 cervical spine fracture...</text>
+<rect x="251.0" y="322" width="22.6" height="11" rx="2" fill-opacity="0.69" class="t-ct"/>
+<rect x="275.6" y="322" width="22.6" height="11" rx="2" fill-opacity="0.69" class="t-ct"/>
+<rect x="300.2" y="322" width="22.6" height="11" rx="2" fill-opacity="0.69" class="t-ct"/>
+<rect x="324.8" y="322" width="22.6" height="11" rx="2" fill-opacity="0.69" class="t-ct"/>
+<rect x="349.5" y="322" width="22.6" height="11" rx="2" fill-opacity="0.69" class="t-ct"/>
+<rect x="374.1" y="322" width="22.6" height="11" rx="2" fill-opacity="0.69" class="t-ct"/>
+<rect x="398.7" y="322" width="22.6" height="11" rx="2" fill-opacity="0.69" class="t-ct"/>
+<text x="244" y="344" text-anchor="end">TotalSegmentator v2 and v3</text>
+<rect x="251.0" y="335" width="22.6" height="11" rx="2" fill-opacity="0.39" class="t-ct"/>
+<rect x="275.6" y="335" width="22.6" height="11" rx="2" fill-opacity="0.39" class="t-ct"/>
+<rect x="300.2" y="335" width="22.6" height="11" rx="2" fill-opacity="0.39" class="t-ct"/>
+<rect x="324.8" y="335" width="22.6" height="11" rx="2" fill-opacity="0.39" class="t-ct"/>
+<rect x="349.5" y="335" width="22.6" height="11" rx="2" fill-opacity="0.39" class="t-ct"/>
+<rect x="374.1" y="335" width="22.6" height="11" rx="2" fill-opacity="0.39" class="t-ct"/>
+<rect x="398.7" y="335" width="22.6" height="11" rx="2" fill-opacity="0.39" class="t-ct"/>
+<rect x="423.3" y="335" width="22.6" height="11" rx="2" fill-opacity="0.39" class="t-ct"/>
+<rect x="447.9" y="335" width="22.6" height="11" rx="2" fill-opacity="0.39" class="t-ct"/>
+<rect x="472.5" y="335" width="22.6" height="11" rx="2" fill-opacity="0.39" class="t-ct"/>
+<rect x="497.2" y="335" width="22.6" height="11" rx="2" fill-opacity="0.39" class="t-ct"/>
+<rect x="521.8" y="335" width="22.6" height="11" rx="2" fill-opacity="0.39" class="t-ct"/>
+<rect x="546.4" y="335" width="22.6" height="11" rx="2" fill-opacity="0.39" class="t-ct"/>
+<rect x="571.0" y="335" width="22.6" height="11" rx="2" fill-opacity="0.39" class="t-ct"/>
+<rect x="595.6" y="335" width="22.6" height="11" rx="2" fill-opacity="0.39" class="t-ct"/>
+<rect x="620.2" y="335" width="22.6" height="11" rx="2" fill-opacity="0.39" class="t-ct"/>
+<rect x="644.8" y="335" width="22.6" height="11" rx="2" fill-opacity="0.39" class="t-ct"/>
+<rect x="669.5" y="335" width="22.6" height="11" rx="2" fill-opacity="0.39" class="t-ct"/>
+<rect x="694.1" y="335" width="22.6" height="11" rx="2" fill-opacity="0.39" class="t-ct"/>
+<rect x="718.7" y="335" width="22.6" height="11" rx="2" fill-opacity="0.39" class="t-ct"/>
+<rect x="743.3" y="335" width="22.6" height="11" rx="2" fill-opacity="0.39" class="t-ct"/>
+<rect x="767.9" y="335" width="22.6" height="11" rx="2" fill-opacity="0.39" class="t-ct"/>
+<rect x="792.5" y="335" width="22.6" height="11" rx="2" fill-opacity="0.39" class="t-ct"/>
+<rect x="817.2" y="335" width="22.6" height="11" rx="2" fill-opacity="0.39" class="t-ct"/>
+<rect x="841.8" y="335" width="22.6" height="11" rx="2" fill-opacity="0.39" class="t-ct"/>
+<rect x="866.4" y="335" width="22.6" height="11" rx="2" fill-opacity="0.39" class="t-ct"/>
+<text x="244" y="357" text-anchor="end">VerSe 19 and 20</text>
+<rect x="251.0" y="348" width="22.6" height="11" rx="2" fill-opacity="0.61" class="t-ct"/>
+<rect x="275.6" y="348" width="22.6" height="11" rx="2" fill-opacity="0.61" class="t-ct"/>
+<rect x="300.2" y="348" width="22.6" height="11" rx="2" fill-opacity="0.61" class="t-ct"/>
+<rect x="324.8" y="348" width="22.6" height="11" rx="2" fill-opacity="0.61" class="t-ct"/>
+<rect x="349.5" y="348" width="22.6" height="11" rx="2" fill-opacity="0.61" class="t-ct"/>
+<rect x="374.1" y="348" width="22.6" height="11" rx="2" fill-opacity="0.61" class="t-ct"/>
+<rect x="398.7" y="348" width="22.6" height="11" rx="2" fill-opacity="0.61" class="t-ct"/>
+<rect x="423.3" y="348" width="22.6" height="11" rx="2" fill-opacity="0.61" class="t-ct"/>
+<rect x="447.9" y="348" width="22.6" height="11" rx="2" fill-opacity="0.61" class="t-ct"/>
+<rect x="472.5" y="348" width="22.6" height="11" rx="2" fill-opacity="0.61" class="t-ct"/>
+<rect x="497.2" y="348" width="22.6" height="11" rx="2" fill-opacity="0.61" class="t-ct"/>
+<rect x="521.8" y="348" width="22.6" height="11" rx="2" fill-opacity="0.61" class="t-ct"/>
+<rect x="546.4" y="348" width="22.6" height="11" rx="2" fill-opacity="0.61" class="t-ct"/>
+<rect x="571.0" y="348" width="22.6" height="11" rx="2" fill-opacity="0.61" class="t-ct"/>
+<rect x="595.6" y="348" width="22.6" height="11" rx="2" fill-opacity="0.61" class="t-ct"/>
+<rect x="620.2" y="348" width="22.6" height="11" rx="2" fill-opacity="0.61" class="t-ct"/>
+<rect x="644.8" y="348" width="22.6" height="11" rx="2" fill-opacity="0.61" class="t-ct"/>
+<rect x="669.5" y="348" width="22.6" height="11" rx="2" fill-opacity="0.61" class="t-ct"/>
+<rect x="694.1" y="348" width="22.6" height="11" rx="2" fill-opacity="0.61" class="t-ct"/>
+<rect x="718.7" y="348" width="22.6" height="11" rx="2" fill-opacity="0.61" class="t-ct"/>
+<rect x="743.3" y="348" width="22.6" height="11" rx="2" fill-opacity="0.61" class="t-ct"/>
+<rect x="767.9" y="348" width="22.6" height="11" rx="2" fill-opacity="0.61" class="t-ct"/>
+<rect x="792.5" y="348" width="22.6" height="11" rx="2" fill-opacity="0.61" class="t-ct"/>
+<rect x="817.2" y="348" width="22.6" height="11" rx="2" fill-opacity="0.61" class="t-ct"/>
+<rect x="841.8" y="348" width="22.6" height="11" rx="2" fill-opacity="0.61" class="t-ct"/>
+<text x="244" y="370" text-anchor="end">bimcv_covid19</text>
+<rect x="423.3" y="361" width="22.6" height="11" rx="2" fill-opacity="0.00" class="t-unannotated o-unannotated" stroke-width="1.2"/>
+<rect x="447.9" y="361" width="22.6" height="11" rx="2" fill-opacity="0.00" class="t-unannotated o-unannotated" stroke-width="1.2"/>
+<rect x="472.5" y="361" width="22.6" height="11" rx="2" fill-opacity="0.00" class="t-unannotated o-unannotated" stroke-width="1.2"/>
+<rect x="497.2" y="361" width="22.6" height="11" rx="2" fill-opacity="0.00" class="t-unannotated o-unannotated" stroke-width="1.2"/>
+<rect x="521.8" y="361" width="22.6" height="11" rx="2" fill-opacity="0.00" class="t-unannotated o-unannotated" stroke-width="1.2"/>
+<rect x="546.4" y="361" width="22.6" height="11" rx="2" fill-opacity="0.00" class="t-unannotated o-unannotated" stroke-width="1.2"/>
+<rect x="571.0" y="361" width="22.6" height="11" rx="2" fill-opacity="0.00" class="t-unannotated o-unannotated" stroke-width="1.2"/>
+<rect x="595.6" y="361" width="22.6" height="11" rx="2" fill-opacity="0.00" class="t-unannotated o-unannotated" stroke-width="1.2"/>
+<rect x="620.2" y="361" width="22.6" height="11" rx="2" fill-opacity="0.00" class="t-unannotated o-unannotated" stroke-width="1.2"/>
+<rect x="644.8" y="361" width="22.6" height="11" rx="2" fill-opacity="0.00" class="t-unannotated o-unannotated" stroke-width="1.2"/>
+<rect x="669.5" y="361" width="22.6" height="11" rx="2" fill-opacity="0.00" class="t-unannotated o-unannotated" stroke-width="1.2"/>
+<rect x="694.1" y="361" width="22.6" height="11" rx="2" fill-opacity="0.00" class="t-unannotated o-unannotated" stroke-width="1.2"/>
+<text x="244" y="383" text-anchor="end">DysphagiaBank</text>
+<rect x="251.0" y="374" width="22.6" height="11" rx="2" fill-opacity="0.00" class="t-unannotated o-unannotated" stroke-width="1.2"/>
+<rect x="275.6" y="374" width="22.6" height="11" rx="2" fill-opacity="0.00" class="t-unannotated o-unannotated" stroke-width="1.2"/>
+<rect x="300.2" y="374" width="22.6" height="11" rx="2" fill-opacity="0.00" class="t-unannotated o-unannotated" stroke-width="1.2"/>
+<rect x="324.8" y="374" width="22.6" height="11" rx="2" fill-opacity="0.00" class="t-unannotated o-unannotated" stroke-width="1.2"/>
+<rect x="349.5" y="374" width="22.6" height="11" rx="2" fill-opacity="0.00" class="t-unannotated o-unannotated" stroke-width="1.2"/>
+<rect x="374.1" y="374" width="22.6" height="11" rx="2" fill-opacity="0.00" class="t-unannotated o-unannotated" stroke-width="1.2"/>
+<rect x="398.7" y="374" width="22.6" height="11" rx="2" fill-opacity="0.00" class="t-unannotated o-unannotated" stroke-width="1.2"/>
+<text x="244" y="396" text-anchor="end">FluoroCap literature panels</text>
+<rect x="251.0" y="387" width="22.6" height="11" rx="2" fill-opacity="0.46" class="t-unannotated"/>
+<rect x="275.6" y="387" width="22.6" height="11" rx="2" fill-opacity="0.46" class="t-unannotated"/>
+<rect x="300.2" y="387" width="22.6" height="11" rx="2" fill-opacity="0.46" class="t-unannotated"/>
+<rect x="324.8" y="387" width="22.6" height="11" rx="2" fill-opacity="0.46" class="t-unannotated"/>
+<rect x="349.5" y="387" width="22.6" height="11" rx="2" fill-opacity="0.46" class="t-unannotated"/>
+<rect x="374.1" y="387" width="22.6" height="11" rx="2" fill-opacity="0.46" class="t-unannotated"/>
+<rect x="398.7" y="387" width="22.6" height="11" rx="2" fill-opacity="0.46" class="t-unannotated"/>
+<rect x="423.3" y="387" width="22.6" height="11" rx="2" fill-opacity="0.46" class="t-unannotated"/>
+<rect x="447.9" y="387" width="22.6" height="11" rx="2" fill-opacity="0.46" class="t-unannotated"/>
+<rect x="472.5" y="387" width="22.6" height="11" rx="2" fill-opacity="0.46" class="t-unannotated"/>
+<rect x="497.2" y="387" width="22.6" height="11" rx="2" fill-opacity="0.46" class="t-unannotated"/>
+<rect x="521.8" y="387" width="22.6" height="11" rx="2" fill-opacity="0.46" class="t-unannotated"/>
+<rect x="546.4" y="387" width="22.6" height="11" rx="2" fill-opacity="0.46" class="t-unannotated"/>
+<rect x="571.0" y="387" width="22.6" height="11" rx="2" fill-opacity="0.46" class="t-unannotated"/>
+<rect x="595.6" y="387" width="22.6" height="11" rx="2" fill-opacity="0.46" class="t-unannotated"/>
+<rect x="620.2" y="387" width="22.6" height="11" rx="2" fill-opacity="0.46" class="t-unannotated"/>
+<rect x="644.8" y="387" width="22.6" height="11" rx="2" fill-opacity="0.46" class="t-unannotated"/>
+<rect x="669.5" y="387" width="22.6" height="11" rx="2" fill-opacity="0.46" class="t-unannotated"/>
+<rect x="694.1" y="387" width="22.6" height="11" rx="2" fill-opacity="0.46" class="t-unannotated"/>
+<rect x="718.7" y="387" width="22.6" height="11" rx="2" fill-opacity="0.46" class="t-unannotated"/>
+<rect x="743.3" y="387" width="22.6" height="11" rx="2" fill-opacity="0.46" class="t-unannotated"/>
+<rect x="767.9" y="387" width="22.6" height="11" rx="2" fill-opacity="0.46" class="t-unannotated"/>
+<rect x="792.5" y="387" width="22.6" height="11" rx="2" fill-opacity="0.46" class="t-unannotated"/>
+<rect x="817.2" y="387" width="22.6" height="11" rx="2" fill-opacity="0.46" class="t-unannotated"/>
+<rect x="841.8" y="387" width="22.6" height="11" rx="2" fill-opacity="0.46" class="t-unannotated"/>
+<text x="244" y="409" text-anchor="end">IEEE DataPort lateral whole-spine...</text>
+<rect x="251.0" y="400" width="22.6" height="11" rx="2" fill-opacity="0.58" class="t-unannotated"/>
+<rect x="275.6" y="400" width="22.6" height="11" rx="2" fill-opacity="0.58" class="t-unannotated"/>
+<rect x="300.2" y="400" width="22.6" height="11" rx="2" fill-opacity="0.58" class="t-unannotated"/>
+<rect x="324.8" y="400" width="22.6" height="11" rx="2" fill-opacity="0.58" class="t-unannotated"/>
+<rect x="349.5" y="400" width="22.6" height="11" rx="2" fill-opacity="0.58" class="t-unannotated"/>
+<rect x="374.1" y="400" width="22.6" height="11" rx="2" fill-opacity="0.58" class="t-unannotated"/>
+<rect x="398.7" y="400" width="22.6" height="11" rx="2" fill-opacity="0.58" class="t-unannotated"/>
+<rect x="423.3" y="400" width="22.6" height="11" rx="2" fill-opacity="0.58" class="t-unannotated"/>
+<rect x="447.9" y="400" width="22.6" height="11" rx="2" fill-opacity="0.58" class="t-unannotated"/>
+<rect x="472.5" y="400" width="22.6" height="11" rx="2" fill-opacity="0.58" class="t-unannotated"/>
+<rect x="497.2" y="400" width="22.6" height="11" rx="2" fill-opacity="0.58" class="t-unannotated"/>
+<rect x="521.8" y="400" width="22.6" height="11" rx="2" fill-opacity="0.58" class="t-unannotated"/>
+<rect x="546.4" y="400" width="22.6" height="11" rx="2" fill-opacity="0.58" class="t-unannotated"/>
+<rect x="571.0" y="400" width="22.6" height="11" rx="2" fill-opacity="0.58" class="t-unannotated"/>
+<rect x="595.6" y="400" width="22.6" height="11" rx="2" fill-opacity="0.58" class="t-unannotated"/>
+<rect x="620.2" y="400" width="22.6" height="11" rx="2" fill-opacity="0.58" class="t-unannotated"/>
+<rect x="644.8" y="400" width="22.6" height="11" rx="2" fill-opacity="0.58" class="t-unannotated"/>
+<rect x="669.5" y="400" width="22.6" height="11" rx="2" fill-opacity="0.58" class="t-unannotated"/>
+<rect x="694.1" y="400" width="22.6" height="11" rx="2" fill-opacity="0.58" class="t-unannotated"/>
+<rect x="718.7" y="400" width="22.6" height="11" rx="2" fill-opacity="0.58" class="t-unannotated"/>
+<rect x="743.3" y="400" width="22.6" height="11" rx="2" fill-opacity="0.58" class="t-unannotated"/>
+<rect x="767.9" y="400" width="22.6" height="11" rx="2" fill-opacity="0.58" class="t-unannotated"/>
+<rect x="792.5" y="400" width="22.6" height="11" rx="2" fill-opacity="0.58" class="t-unannotated"/>
+<rect x="817.2" y="400" width="22.6" height="11" rx="2" fill-opacity="0.58" class="t-unannotated"/>
+<rect x="841.8" y="400" width="22.6" height="11" rx="2" fill-opacity="0.58" class="t-unannotated"/>
+<text x="244" y="422" text-anchor="end">isbi2015_cephalograms</text>
+<rect x="275.6" y="413" width="22.6" height="11" rx="2" fill-opacity="0.34" class="t-unannotated"/>
+<rect x="300.2" y="413" width="22.6" height="11" rx="2" fill-opacity="0.34" class="t-unannotated"/>
+<rect x="324.8" y="413" width="22.6" height="11" rx="2" fill-opacity="0.34" class="t-unannotated"/>
+<text x="244" y="435" text-anchor="end">NHANES II unannotated films</text>
+<rect x="251.0" y="426" width="22.6" height="11" rx="2" fill-opacity="0.80" class="t-unannotated"/>
+<rect x="275.6" y="426" width="22.6" height="11" rx="2" fill-opacity="0.80" class="t-unannotated"/>
+<rect x="300.2" y="426" width="22.6" height="11" rx="2" fill-opacity="0.80" class="t-unannotated"/>
+<rect x="324.8" y="426" width="22.6" height="11" rx="2" fill-opacity="0.80" class="t-unannotated"/>
+<rect x="349.5" y="426" width="22.6" height="11" rx="2" fill-opacity="0.80" class="t-unannotated"/>
+<rect x="374.1" y="426" width="22.6" height="11" rx="2" fill-opacity="0.80" class="t-unannotated"/>
+<rect x="398.7" y="426" width="22.6" height="11" rx="2" fill-opacity="0.80" class="t-unannotated"/>
+<rect x="718.7" y="426" width="22.6" height="11" rx="2" fill-opacity="0.80" class="t-unannotated"/>
+<rect x="743.3" y="426" width="22.6" height="11" rx="2" fill-opacity="0.80" class="t-unannotated"/>
+<rect x="767.9" y="426" width="22.6" height="11" rx="2" fill-opacity="0.80" class="t-unannotated"/>
+<rect x="792.5" y="426" width="22.6" height="11" rx="2" fill-opacity="0.80" class="t-unannotated"/>
+<rect x="817.2" y="426" width="22.6" height="11" rx="2" fill-opacity="0.80" class="t-unannotated"/>
+<rect x="841.8" y="426" width="22.6" height="11" rx="2" fill-opacity="0.80" class="t-unannotated"/>
+<text x="244" y="448" text-anchor="end">Public fluoroscopy clips on the g...</text>
+<rect x="251.0" y="439" width="22.6" height="11" rx="2" fill-opacity="0.55" class="t-unannotated"/>
+<rect x="275.6" y="439" width="22.6" height="11" rx="2" fill-opacity="0.55" class="t-unannotated"/>
+<rect x="300.2" y="439" width="22.6" height="11" rx="2" fill-opacity="0.55" class="t-unannotated"/>
+<rect x="324.8" y="439" width="22.6" height="11" rx="2" fill-opacity="0.55" class="t-unannotated"/>
+<rect x="349.5" y="439" width="22.6" height="11" rx="2" fill-opacity="0.55" class="t-unannotated"/>
+<rect x="374.1" y="439" width="22.6" height="11" rx="2" fill-opacity="0.55" class="t-unannotated"/>
+<rect x="398.7" y="439" width="22.6" height="11" rx="2" fill-opacity="0.55" class="t-unannotated"/>
+<rect x="423.3" y="439" width="22.6" height="11" rx="2" fill-opacity="0.55" class="t-unannotated"/>
+<rect x="447.9" y="439" width="22.6" height="11" rx="2" fill-opacity="0.55" class="t-unannotated"/>
+<rect x="472.5" y="439" width="22.6" height="11" rx="2" fill-opacity="0.55" class="t-unannotated"/>
+<rect x="497.2" y="439" width="22.6" height="11" rx="2" fill-opacity="0.55" class="t-unannotated"/>
+<rect x="521.8" y="439" width="22.6" height="11" rx="2" fill-opacity="0.55" class="t-unannotated"/>
+<rect x="546.4" y="439" width="22.6" height="11" rx="2" fill-opacity="0.55" class="t-unannotated"/>
+<rect x="571.0" y="439" width="22.6" height="11" rx="2" fill-opacity="0.55" class="t-unannotated"/>
+<rect x="595.6" y="439" width="22.6" height="11" rx="2" fill-opacity="0.55" class="t-unannotated"/>
+<rect x="620.2" y="439" width="22.6" height="11" rx="2" fill-opacity="0.55" class="t-unannotated"/>
+<rect x="644.8" y="439" width="22.6" height="11" rx="2" fill-opacity="0.55" class="t-unannotated"/>
+<rect x="669.5" y="439" width="22.6" height="11" rx="2" fill-opacity="0.55" class="t-unannotated"/>
+<rect x="694.1" y="439" width="22.6" height="11" rx="2" fill-opacity="0.55" class="t-unannotated"/>
+<rect x="718.7" y="439" width="22.6" height="11" rx="2" fill-opacity="0.55" class="t-unannotated"/>
+<rect x="743.3" y="439" width="22.6" height="11" rx="2" fill-opacity="0.55" class="t-unannotated"/>
+<rect x="767.9" y="439" width="22.6" height="11" rx="2" fill-opacity="0.55" class="t-unannotated"/>
+<rect x="792.5" y="439" width="22.6" height="11" rx="2" fill-opacity="0.55" class="t-unannotated"/>
+<rect x="817.2" y="439" width="22.6" height="11" rx="2" fill-opacity="0.55" class="t-unannotated"/>
+<rect x="841.8" y="439" width="22.6" height="11" rx="2" fill-opacity="0.55" class="t-unannotated"/>
+<text x="10" y="463">Solid: region stated by the record; lighter: read from the body part; outline: no image count. python3 tools/data_figures.py write</text>
+</svg>

@@ -1,0 +1,52 @@
+{
+ "id": "35/spine-coverage",
+ "title": "Where along the spine each corpus lies",
+ "caption": "One strip per corpus from C1 to the coccyx, shaded by the corpus's image count where its record gives one and outlined where only the region is known, with a band counting the corpora at each level. Read where the holding is thick (lumbar, sacrum) and where it is thin (cervical and thoracic on real frames).",
+ "chapter": "35",
+ "grade": "Inferred",
+ "status": "current",
+ "source": {
+  "kind": "script",
+  "artifact": "artifacts/schwingnet-data-registry/",
+  "artifact_url": "https://claude.ai/artifact/L4pJez6yLFzaX8x5jiA3JL",
+  "made_by": "tools/data_figures.py",
+  "commit": null,
+  "data": [
+   "data/sources/",
+   "data/registry/",
+   "data/licences.json",
+   "docs/textbook/figures/35/corpora-overlay.json",
+   "docs/textbook/figures/35/corpora.json"
+  ],
+  "run": null,
+  "notes": "Drawn new from committed files. The counts are the records' own (Reported); the data type, the span along the spine and the tried status of each corpus are the chapter's reading of each record, written into corpora-overlay.json (Inferred); the script refuses any count its record or the overlay's note does not give. The artifact named is the earlier rendering of the same records."
+ },
+ "explore": [
+  {
+   "label": "The script",
+   "href": "tools/data_figures.py"
+  },
+  {
+   "label": "The table it draws from",
+   "href": "docs/textbook/figures/35/corpora.json"
+  },
+  {
+   "label": "The judgments per corpus",
+   "href": "docs/textbook/figures/35/corpora-overlay.json"
+  },
+  {
+   "label": "The dataset records",
+   "href": "data/sources/"
+  },
+  {
+   "label": "The chapter",
+   "href": "docs/textbook/35-how-the-workflow-is-built.md"
+  }
+ ],
+ "rerun": {
+  "where": "actions",
+  "command": "python3 tools/data_figures.py write",
+  "cost": "CPU, a few seconds",
+  "needs_owner_word": false
+ }
+}
