@@ -2,8 +2,9 @@
 .github/workflows/synthesis.yml): the Claude sessions' arguments, schemas and briefs, whether a
 run may read, a run whose answers come back in part and how the join places them, what the join
 and the stamp take as read, the issue's report, the step that lays the open synthesis pull
-request on main, the scrub of what the folder's rule keeps out, the concept checks, the pages,
-which render from the committed records as they are committed, and the owner's gate the
+request on main, the scrub of what the folder's rule keeps out and where a text is cut, the
+concept checks and the rekey that carries the stamp's word over a change to the scrub, the
+pages, which render from the committed records as they are committed, and the owner's gate the
 synthesis's pull requests meet. No Claude, no network and no GitHub: the sessions' answers are
 written here by hand, gh is the suite's fake and the remote is a bare repository in a scratch
 folder.
@@ -459,6 +460,24 @@ class Join(unittest.TestCase):
                                      {"artifacts": []}, {})
         self.assertEqual([f["row"] for f in figures], [1])
 
+    def test_a_join_whose_ledger_would_hold_an_address_writes_nothing(self):
+        w = self.world
+        w.answer("inventory:0", {"record": record(), "changed": "its table"})
+        ledger = synth.load(synth.LEDGER)
+        held = {**ledger, "checks": [{**ledger["checks"][0], "text": "write to reader@example.invalid"}, *ledger["checks"][1:]]}
+        records = Path(self.scratch.name, "records")
+        for name, data in (("inventory.json", w.inventory), ("clustering.json", w.clustering),
+                           ("contradictions-merged.json", w.M), ("numbers-partial.json", w.N)):
+            write(records / name, data)
+        run = types.SimpleNamespace(inventory=w.inventory, clustering=w.clustering, M=w.M, N=w.N, text_dir=self.text_dir,
+                                    without=set())
+        with mock.patch.object(synth, "SYNTH", records), mock.patch.object(synth, "OUT", records), \
+                mock.patch.object(synth, "readme_rows", return_value=w.rows), mock.patch.object(synth, "concepts_now", return_value=held), \
+                mock.patch.object(synth, "save", side_effect=AssertionError("a record was written")), \
+                self.assertRaises(SystemExit) as stopped:
+            synth.join_run(run, {}, str(w.plan), str(w.answers), str(w.batches))
+        self.assertIn("concepts refused", str(stopped.exception))
+
     def test_the_pull_request_s_body_holds_no_answer_s_words(self):
         w, mark = self.world, "Quokka"
         w.answer("inventory:0", {"record": record(summary=f"{mark} read again", notes=f"{mark} notes"), "changed": f"{mark} changed"})
@@ -624,21 +643,96 @@ class Rekey(unittest.TestCase):
         with self.assertRaises(SystemExit):
             synth.rekeyed({"a": ALPHA, "b": ALPHA, "b2": ALPHA}, pairs)
 
+    def test_a_check_pairs_only_with_one_that_is_the_same_in_all_but_its_key(self):
+        old = {"key": "a", "concept": "figure:x", "kind": "figure", "source": ALPHA, "line": 1, "outcome": "superseded",
+               "value": "98.2%"}
+        self.assertEqual(synth.paired({"checks": [old]}, {"checks": [{**old, "key": "b"}]}), {"a": "b"})
+        for field, other in (("concept", "figure:y"), ("kind", "dataset"), ("source", BETA), ("line", 2), ("outcome", "open"),
+                             ("value", "97.4%")):
+            self.assertEqual(synth.paired({"checks": [old]}, {"checks": [{**old, "key": "b", field: other}]}), {}, field)
+
+    TEXTS = {"artifacts/alpha-page/index.md": "98.2% of frames\n", "docs/research/note.md": "a note\n",
+             "data/sources/x.json": "{}\n"}
+
+    def clean_git(self):
+        """The process's environment with no git variable but the suite's own, as a hook that runs
+        the tests may set one that names another repository."""
+        return mock.patch.dict(os.environ, {**{k: v for k, v in os.environ.items() if not k.startswith("GIT_")}, **GIT_ENV},
+                               clear=True)
+
+    def checkout(self, folder, files):
+        """A checkout of this repository's shape, the files given and the tools' entry point in
+        it, everything committed."""
+        git(folder, "init", "-q")
+        for key, value in QUIET.items():
+            git(folder, "config", key, value)
+        for name, text in {**files, "artifacts/_synthesis/work/tools/synth.py": "# the tools\n"}.items():
+            Path(folder, name).parent.mkdir(parents=True, exist_ok=True)
+            Path(folder, name).write_text(text, encoding="utf-8")
+        git(folder, "add", "-A")
+        git(folder, "commit", "-q", "-m", "texts")
+
+    def refused(self, base, words):
+        with self.assertRaises(SystemExit) as stopped:
+            synth.rekey(None, {}, base)
+        self.assertIn(words, str(stopped.exception))
+
+    def test_a_rekey_reads_the_same_texts_on_both_sides_or_writes_nothing(self):
+        with tempfile.TemporaryDirectory() as here, tempfile.TemporaryDirectory() as base, self.clean_git(), \
+                mock.patch.object(synth, "ROOT", Path(here)), \
+                mock.patch.object(synth, "concepts_now", side_effect=AssertionError("this checkout's ledger was made")), \
+                mock.patch.object(synth, "ledger_of", side_effect=AssertionError("the base's ledger was made")):
+            for folder in (here, base):
+                self.checkout(folder, self.TEXTS)
+            self.assertEqual(sorted(synth.text_trees(here)), ["SchwingNet/alpha-page", "data/sources", "docs/research"])
+            Path(here, "artifacts", "_synthesis", "state.json").write_text("{}\n", encoding="utf-8")
+            synth.same_texts(base)
+            for path, key in (("artifacts/alpha-page/index.md", "SchwingNet/alpha-page"), ("docs/research/note.md", "docs/research"),
+                              ("data/sources/x.json", "data/sources")):
+                Path(here, path).write_text("edited in place\n", encoding="utf-8")
+                self.refused(base, "this checkout holds a change to the texts the checks read that is not committed")
+                git(here, "commit", "-q", "-am", "an edit")
+                self.refused(base, f"differ between this checkout and {base} in {key};")
+                git(here, "reset", "-q", "--hard", "HEAD~1")
+            Path(base, "artifacts", "alpha-page", "extra.md").write_text("a file of its own\n", encoding="utf-8")
+            self.refused(base, f"{base} holds a change to the texts")
+            Path(base, ".gitignore").write_text("*.pyc\n", encoding="utf-8")
+            Path(base, "artifacts", "alpha-page", "extra.md").rename(Path(base, "artifacts", "alpha-page", "extra.pyc"))
+            self.refused(base, f"{base} holds a change to the texts")
+            Path(base, "artifacts", "alpha-page", "extra.pyc").unlink()
+            Path(base, "artifacts", "beta-page").mkdir()
+            Path(base, "artifacts", "beta-page", "index.md").write_text("a page main has\n", encoding="utf-8")
+            git(base, "add", "-A")
+            git(base, "commit", "-q", "-m", "a page")
+            self.refused(base, "in SchwingNet/beta-page;")
+            git(base, "reset", "-q", "--hard", "HEAD~1")
+            synth.same_texts(base)
+            inner = Path(here, "copy")
+            (inner / "artifacts" / "_synthesis" / "work" / "tools").mkdir(parents=True)
+            (inner / "artifacts" / "_synthesis" / "work" / "tools" / "synth.py").write_text("# the tools\n", encoding="utf-8")
+            with tempfile.TemporaryDirectory() as elsewhere:
+                for folder in (inner, elsewhere):
+                    self.refused(str(folder), "is not a checkout of this repository")
+
     def test_the_base_s_ledger_comes_from_its_own_tools_and_its_own_texts(self):
-        with tempfile.TemporaryDirectory() as base:
+        mine = {"SYNTH_TEXT": "this checkout's texts", "SYNTH_SCHWINGNET": "this checkout"}
+        with tempfile.TemporaryDirectory() as base, self.clean_git(), mock.patch.dict(os.environ, mine):
+            self.checkout(base, {})
             tools = Path(base, "artifacts", "_synthesis", "work", "tools")
-            tools.mkdir(parents=True)
             (tools / "synth.py").write_text(
-                "import os\n"
+                "import os, tempfile\n"
                 "class Run:\n"
                 "    def __init__(self):\n"
-                "        self.text_dir = os.environ.get('SYNTH_TEXT') or 'a folder of its own'\n"
+                "        self.text_dir = os.environ.get('SYNTH_TEXT') or tempfile.mkdtemp(prefix='synth-text-')\n"
+                "        os.makedirs(self.text_dir, exist_ok=True)\n"
                 "def concepts_now(run):\n"
-                "    return {'checks': [], 'texts': run.text_dir, 'tools': __file__}\n", encoding="utf-8")
-            with mock.patch.dict(os.environ, {"SYNTH_TEXT": "this checkout's texts"}):
-                got = synth.ledger_of(base)
-            self.assertEqual(got["texts"], "a folder of its own")
+                "    return {'checks': [], 'texts': run.text_dir, 'tools': __file__,\n"
+                "            'checkout': os.environ.get('SYNTH_SCHWINGNET')}\n", encoding="utf-8")
+            got = synth.ledger_of(base)
+            self.assertIsNone(got["checkout"], "the base's tools name their own checkout, not this one")
             self.assertEqual(Path(got["tools"]).resolve(), (tools / "synth.py").resolve())
+            self.assertEqual(Path(got["texts"]).name, "texts", "the base's texts are extracted where ledger_of says")
+            self.assertFalse(Path(got["texts"]).exists(), "and go with its ledger")
             (tools / "synth.py").write_text("raise SystemExit(3)\n", encoding="utf-8")
             with self.assertRaises(SystemExit) as stopped:
                 synth.ledger_of(base)
@@ -733,6 +827,13 @@ class Scrub(unittest.TestCase):
         self.assertEqual(redact.scrub("/abcde" * 8_000, Counter()), "/abcde" * 8_000)
         self.assertLess(time.monotonic() - started, 2, "the rule tried every run of path parts again from each slash")
 
+    def test_the_secrets_page_rule_takes_a_long_run_of_links_in_linear_time(self):
+        page = "https://github.com/o/r/settings/secrets/actions"
+        self.assertEqual(redact.scrub(f"add it at {page} today", Counter()), "add it at [a repository's Actions secrets page] today")
+        started = time.monotonic()
+        self.assertEqual(redact.scrub("https://github.com/o/r" * 16_000, Counter()), "https://github.com/o/r" * 16_000)
+        self.assertLess(time.monotonic() - started, 2, "the rule read the rest of the run again from each link")
+
     def test_the_report_scrubs_a_passage_and_a_quote_before_it_cuts_them(self):
         for kept in range(2, len(LOGIN)):
             text = ("the run took the night " * 9)[:160 - kept - 1] + f" {LOGIN} and gave every level a count"
@@ -768,6 +869,24 @@ class Extract(unittest.TestCase):
         # cut in its first folder.
         path = "the run " + ("/" + "a" * 255) * 32 + f"/{LOGIN}/data and the rest"
         self.assertEqual(extract.clip(path, path.index("/") + 100), "the run ")
+
+    def test_nothing_a_cut_guards_runs_as_far_as_the_cut_looks(self):
+        for pattern in extract.TAKEN_OUT:
+            longest = re._parser.parse(pattern.pattern, pattern.flags).getwidth()[1]
+            self.assertLess(longest, extract.REACH, pattern.pattern)
+
+    def test_a_folder_s_text_holds_no_address_and_no_phone_number(self):
+        with tempfile.TemporaryDirectory() as folder:
+            artifact = Path(folder, "artifact")
+            artifact.mkdir()
+            (artifact / "page.html").write_text("<p>write to zq@ex.invalid or call (555) 010-0199</p>", encoding="utf-8")
+            (artifact / "notes.md").write_text("zq@ex.invalid, (555) 010-0199\n", encoding="utf-8")
+            (artifact / "from-zq@ex.invalid.txt").write_text("a note\n", encoding="utf-8")
+            extract.extract_folder(artifact, Path(folder, "out.txt"))
+            text = Path(folder, "out.txt").read_text(encoding="utf-8")
+        self.assertIn("write to [address removed] or call [phone removed]", text)
+        self.assertNotIn("zq@", text)
+        self.assertNotIn("010-0199", text)
 
     def test_a_cut_reads_no_further_past_itself_than_what_it_guards_runs(self):
         text = "the run took the night " * 200_000
@@ -1085,7 +1204,7 @@ class Pages(unittest.TestCase):
         self.assertEqual(page, synth.PAGE.read_text(encoding="ascii"))
 
     def test_the_committed_records_and_pages_hold_no_address_phone_number_or_credential(self):
-        for path in sorted([*SYNTH.glob("*.json"), *SYNTH.glob("*.md"), *(SYNTH / "work" / "out").glob("*.json")]):
+        for path in sorted([*SYNTH.rglob("*.json"), *SYNTH.rglob("*.md")]):
             self.assertIsNone(sr.personal_problem(path.read_text(encoding="utf-8")), path.name)
 
     def test_the_committed_records_hold_nothing_the_scrub_would_change(self):

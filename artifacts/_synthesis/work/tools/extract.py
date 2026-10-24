@@ -37,9 +37,10 @@ META_DESC_RE = re.compile(r'<meta\s+name="description"\s+content="([^"]*)"', re.
 EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9.-]{1,255}\.[A-Za-z]{2,63}")
 PHONE_RE = re.compile(r"(?<!\d)(?:\+?1[ .-]?)?\(?\d{3}\)?[ .-]\d{3}[ .-]\d{4}(?!\d)")
 TAKEN_OUT = (EMAIL_RE, PHONE_RE, *(pattern for _name, pattern, _words in redact.RULES))
-# How far past a cut what stands across it is looked for: further than an address (64, 1, 255
-# and 63 characters) or a grid path (32 folders of at most 255) runs, so a data file of
-# megabytes is not read whole for a head of 3,000 characters.
+# How far past a cut what stands across it is looked for: further than anything TAKEN_OUT
+# names runs, since every one of its patterns is bounded (the longest, a grid path of 32
+# folders of at most 255 characters, runs to 8,199), so a data file of megabytes is not read
+# whole for a head of 3,000 characters.
 REACH = 16_384
 
 

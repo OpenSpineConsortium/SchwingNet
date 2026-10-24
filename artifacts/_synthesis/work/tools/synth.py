@@ -16,8 +16,8 @@ Usage, from anywhere, with SYNTH_SYMPHONY naming a checkout of symphony-template
   synth.py stamp --checks         take every concept check the texts give now as seen
   synth.py rekey BASE             carry the stamp's word over a change that renames the concept
                                   checks' keys and not what they check, as one to what the scrub
-                                  takes out does; BASE is a checkout of this repository at the
-                                  commit the stamp was made with
+                                  takes out does; BASE is a checkout of main, and this checkout
+                                  is up to date with it and changes none of the texts
 --without symphony-template lets status and report check this repository alone, where no
 checkout of the other can be made (the workflow's App token is missing), keeping the stamp's
 word for it and checking no concept; concepts, plan, join, stamp and rekey refuse it, since they
@@ -334,18 +334,24 @@ def write_report(s, path):
     print(f"anything={'true' if anything else 'false'}")
 
 
-def write_concepts(ledger, state):
-    """The ledger and its page, the page rendered from the ledger as it is saved, so that the
-    committed concepts.json renders the committed concepts.md again byte for byte. Neither is
-    written where either holds an e-mail address, a phone number or a credential's shape, which
-    every text is rid of before a check reads it (synth_concepts.sources)."""
+def concepts_written(ledger, stamped):
+    """The ledger and its page as they are written, the page rendered from the ledger as it is
+    saved, so that the committed concepts.json renders the committed concepts.md again byte for
+    byte. A run stops before it writes anything where either holds an e-mail address or a phone
+    number, which every text is rid of before a check reads it (synth_concepts.sources), or a
+    credential's shape, which no text is rid of and no record may hold."""
     import synth_concepts as sc
     import synth_reads as sr
     ledger = scrubbed(ledger)
-    page = scrubbed(sc.page(ledger, state.get("stamped") or "none"))
+    page = scrubbed(sc.page(ledger, stamped or "none"))
     why = sr.personal_problem([ledger, page])
     if why:
-        raise SystemExit(f"concepts refused: the ledger or its page {why[3:]}, so neither was written")
+        raise SystemExit(f"concepts refused: the ledger or its page {why[3:]}, so nothing was written")
+    return ledger, page
+
+
+def write_concepts(ledger, state):
+    ledger, page = concepts_written(ledger, state.get("stamped"))
     save(LEDGER, ledger)
     with open(PAGE, "w", encoding="ascii", newline="\n") as f:
         f.write(page)
@@ -354,12 +360,15 @@ def write_concepts(ledger, state):
 def rekey(run, state, base):
     """Carry the stamp's word over a change to the tools that renames the concept checks' keys
     and not what they check, as a change to what the scrub takes out does, since a key is made
-    from the scrubbed passage: the ledger that the tools of base, a checkout of this repository
-    at the commit the stamp was made with, give is set beside the one this checkout's give, and
-    each key of the stamp's whose check pairs with one of this checkout's takes that check's
-    key. The ledger, its page and the stamp are written again, and nothing else in the stamp
-    changes, so the look counts as new only the checks no pair carries."""
+    from the scrubbed passage: the ledger that the tools of base, a checkout of main, give is
+    set beside the one this checkout's give, and each key of the stamp's whose check pairs with
+    one of this checkout's takes that check's key. This checkout is up to date with main and
+    changes none of the texts the checks read, so a check that pairs differs from its old self
+    only in what the tools made of its passage. The ledger, its page and the stamp are written
+    again, and nothing else in the stamp changes, so the look counts as new only the checks no
+    pair carries."""
     import synth_state as st
+    same_texts(base)
     ledger = concepts_now(run)
     pairs = paired(ledger_of(base), ledger)
     checks, renamed = rekeyed(state.get("checks", {}), pairs)
@@ -393,17 +402,67 @@ def rekeyed(checks, pairs):
     return dict(sorted(out.items())), sum(1 for k in checks if pairs.get(k, k) != k)
 
 
+# What the concept checks read in this repository beside the artifacts' folders: the research
+# notes and the dataset records (synth_concepts.sources).
+NOTES_AND_RECORDS = ("docs/research", "data/sources")
+
+
+def tools_of(base):
+    """The synthesis's tools in base, which must be the top of a checkout of this repository."""
+    import synth_state as st
+    tools = Path(base) / "artifacts" / "_synthesis" / "work" / "tools"
+    try:
+        top = st.git(base, "rev-parse", "--show-toplevel").strip()
+    except (OSError, subprocess.CalledProcessError):
+        top = None
+    if not (tools / "synth.py").is_file() or top is None or not os.path.samefile(top, base):
+        raise SystemExit(f"rekey refused: {base!r} is not a checkout of this repository")
+    return tools
+
+
+def text_trees(checkout):
+    """The git tree of each artifact's folder, of the research notes and of the dataset records
+    in a checkout, or None where the checkout holds a change to them that is not committed,
+    which no tree shows and which its tools would read."""
+    import synth_state as st
+    paths = ["artifacts", *NOTES_AND_RECORDS, ":(exclude)artifacts/_*"]
+    if st.git(checkout, "status", "--porcelain", "--untracked-files=all", "--ignored", "--", *paths).strip():
+        return None
+    trees = st.folder_trees(checkout, "SchwingNet")
+    for line in st.git(checkout, "ls-tree", "HEAD", "--", *NOTES_AND_RECORDS).splitlines():
+        meta, path = line.split("\t", 1)
+        trees[path] = meta.split()[2]
+    return trees
+
+
+def same_texts(base):
+    """Stop a rekey whose base is not a checkout of this repository or reads other texts than
+    this checkout: a check pairs by its concept, kind, source, line, outcome and value and not
+    by its passage, so a passage edited in place would take the stamp's word unread."""
+    tools_of(base)
+    mine, theirs = text_trees(ROOT), text_trees(base)
+    for where, trees in (("this checkout", mine), (str(base), theirs)):
+        if trees is None:
+            raise SystemExit(f"rekey refused: {where} holds a change to the texts the checks read that is not committed,"
+                             " which no tree shows; commit it or take it out, so nothing was written")
+    differ = sorted(k for k in mine.keys() | theirs.keys() if mine.get(k) != theirs.get(k))
+    if differ:
+        raise SystemExit(f"rekey refused: the texts the checks read differ between this checkout and {base} in"
+                         f" {', '.join(differ)}; bring main in and change no text in the same pull request, so nothing"
+                         " was written")
+
+
 def ledger_of(base):
     """The concept ledger the tools of another checkout of this repository give over its own
-    texts, in a process of its own, so that neither copy's modules meet the other's."""
-    tools = Path(base) / "artifacts" / "_synthesis" / "work" / "tools"
-    if not (tools / "synth.py").is_file():
-        raise SystemExit(f"rekey refused: {base!r} is not a checkout of this repository")
+    texts, in a process of its own, so that neither copy's modules meet the other's, and with
+    its texts extracted into a folder that goes when the ledger is read."""
+    tools = tools_of(base)
     code = ("import json, sys; sys.path.insert(0, sys.argv[1]); import synth; "
             "json.dump(synth.concepts_now(synth.Run()), open(sys.argv[2], 'w', encoding='utf-8'))")
     env = {k: v for k, v in os.environ.items() if k not in ("SYNTH_TEXT", "SYNTH_SCHWINGNET")}
     with tempfile.TemporaryDirectory() as folder:
         out = os.path.join(folder, "ledger.json")
+        env["SYNTH_TEXT"] = os.path.join(folder, "texts")
         done = subprocess.run([sys.executable, "-I", "-B", "-c", code, str(tools), out], env=env, cwd=folder)
         if done.returncode:
             raise SystemExit(f"rekey refused: the tools of {base} gave no ledger (exit {done.returncode}), so nothing was written")
@@ -465,7 +524,7 @@ def main(argv=None):
         write_report(load(a.status), a.paths[0])
         return
     if a.command == "rekey" and len(a.paths) != 1:
-        p.error("rekey takes one path: a checkout of this repository at the commit the stamp was made with")
+        p.error("rekey takes one path: a checkout of main, with this checkout up to date with it and changing none of the texts")
     if a.without and a.command in ("concepts", "plan", "join", "stamp", "rekey"):
         raise SystemExit(f"{a.command} refused: it writes what every text gives, and without {', '.join(a.without)}'s checkout"
                          " that repository's word in the stamp and the ledger would be lost; status and report check without it")
@@ -616,6 +675,8 @@ def join_run(run, state, plan_dir, answers_dir, batches_dir):
               load(OUT / "numbers-partial.json"), load(history_path) if history_path.exists() else [])
     run.inventory, run.clustering, run.M, run.N, history = (scrubbed(x) for x in (run.inventory, run.clustering, run.M, run.N, history))
     refuse_what_the_rule_keeps_out(before, (run.inventory, run.clustering, run.M, run.N, history))
+    ledger = concepts_now(run)
+    concepts_written(ledger, today())
     save(SYNTH / "inventory.json", run.inventory)
     save(history_path, history)
     save(OUT / "clustering.json", run.clustering)
@@ -627,7 +688,6 @@ def join_run(run, state, plan_dir, answers_dir, batches_dir):
                                 str(SYNTH / "inventory.json"), str(SYNTH / "contradictions.md"), args["date"])
     __import__("check_verdict_quotes").main(str(OUT / "contradictions-merged.json"), str(OUT / "numbers-partial.json"),
                                             str(OUT / "verdict-quotes.json"))
-    ledger = concepts_now(run)
     later = joined["waiting"] + args["items_waiting"]
     waiting = {k[len("concept:"):] for k in later if k.startswith("concept:")}
     placed = {k[len("concept:"):] for k in final if k.startswith("concept:")} - waiting
