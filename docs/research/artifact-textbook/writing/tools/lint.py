@@ -18,6 +18,10 @@ ST_FOLDERS = {r["folder"] for r in INV["artifacts"] if r["repo"] == "symphony-te
 CHAPTERS = {c["number"]: c for p in PLAN["parts"] for c in p["chapters"]}
 SECTIONS = ["What we know", "What we do not know", "What would change our mind", "Provenance"]
 LINK = re.compile(r"(!?)\[([^\]]+)\]\(([^)\s]+)\)")
+# A figure, as the figure spec places it: an image line of its own under figures/NN/, then an italic
+# caption line. The site renders that pair; nothing else may use an image or italics.
+FIGURE = re.compile(r"^!\[[^\]]+\]\(figures/\d\d/[\w.-]+\.(svg|png)\)$")
+CAPTION = re.compile(r"^\*Figure \d+\.\d+\. [^*]+\*$")
 PRIVACY = [
     (re.compile(r"[\w.+-]+@[\w-]+\.[\w.]+"), "an e-mail address"),
     (re.compile(r"\(?\b\d{3}\)?[ .-]\d{3}[ .-]\d{4}\b"), "a phone number"),
@@ -80,11 +84,12 @@ def problems(path):
         if fenced:
             continue
         bare = re.sub(r"`[^`]*`", "", l)
+        figure = FIGURE.match(l) or (CAPTION.match(l) and i > 1 and FIGURE.match(lines[i - 2]))
         if re.match(r"^\s*>", l):
             out.append(f"line {i}: a blockquote, which the site does not render")
         if re.match(r"^\s{2,}([-*]|\d+\.) ", l):
             out.append(f"line {i}: a nested list, which the site does not render")
-        if re.search(r"(?<![*\w])\*(?!\*)[^*\n]+\*(?!\*)", bare) or re.search(r"(?<![\w_])_[^_\n]+_(?![\w_])", bare):
+        if not figure and (re.search(r"(?<![*\w])\*(?!\*)[^*\n]+\*(?!\*)", bare) or re.search(r"(?<![\w_])_[^_\n]+_(?![\w_])", bare)):
             out.append(f"line {i}: italics, which the site does not render")
         if re.search(r"<[A-Za-z/!][^>]*>", bare):
             out.append(f"line {i}: raw HTML or an angle bracket tag")
@@ -94,7 +99,7 @@ def problems(path):
             if rx.search(l):
                 out.append(f"line {i}: {what}: {rx.search(l).group(0)!r}")
         for bang, label, target in LINK.findall(l):
-            if bang:
+            if bang and not figure:
                 out.append(f"line {i}: an image, which the brief does not use")
             out.extend(f"line {i}: {p}" for p in link_problems(path, target))
     return out
