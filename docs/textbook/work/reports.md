@@ -44,3 +44,6 @@ About 270 checked, 38 changed (number 9, grade 3, superseded 4, canonical 1, sco
 
 ## 29 writer
 5,310 words, 45 rows, lint ok. Open: the 17-guarantee tally at a release tag (the repository vendors 0.5.1, carrying F8, F2, F17 and F19's fixes; the chapter says "carries the fixes"); no record of the owner approving 0.5.1; CooperBench counts from the taxonomy spec's reading, not the paper; GitHub plan prices from free-or-paid.md of 13 Oct. Left out: every coordbench and flowbench outcome (the owner's hold); one board run's API calls. Source privacy: the owner's first name and the university's compliance rules; roles only.
+
+## 25 writer
+5,523 words, 46 rows, lint ok; 41 decisions in six families (R1-R10, V1-V6, P1-P5, O1-O11, G1-G5, N1-N4), method decisions by M-number only. Open: paper states against spine-program's STATUS.md (not readable here); whether the recipe's 27 Sep gaps closed in the student templates; whether the 8 Oct order of work still binds before the talk (cannot-tell, given as inferred). Found: the gate's v1 path uses afterok, which the recipe forbids, with no recorded decision. Records only: 99.02 and 99 at 35.7. Source privacy: names, grid paths, a login, a host; none reproduced.
