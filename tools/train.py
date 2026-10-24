@@ -190,6 +190,36 @@ def model_for(facts, device):
     return build_model(None, device, from_record(facts.get("blocks")).normalise)
 
 
+def parent_of(path):
+    """What a parent checkpoint is: its sha256, and, where it sits in a run directory as
+    <run>/train/best.pt or <run>/train/epochs/epoch-NN.pt, that run's id and blocks."""
+    path = Path(path)
+    if not path.is_file():
+        raise TrainError(f"{path}: no parent checkpoint there")
+    folder = path.parent.parent if path.parent.name == "epochs" else path.parent
+    run_file, facts_file = folder.parent / "RUN.json", folder / "checkpoint.json"
+    run_id = json.loads(run_file.read_text(encoding="utf-8")).get("run_id") if run_file.is_file() else None
+    facts = json.loads(facts_file.read_text(encoding="utf-8")) if facts_file.is_file() else None
+    return {"file": path.name, "sha256": sha256_of(path), "run_id": run_id, "facts": facts}
+
+
+def warm_start(model, path, parent, blocks, size):
+    """The parent's weights in place of ImageNet's, refused where the parent was trained to see
+    its input differently: another scaling or another crop size would make its features wrong."""
+    facts = parent["facts"]
+    if facts is not None:
+        theirs = from_record(facts.get("blocks")).normalise
+        if theirs != blocks.normalise:
+            raise TrainError(f"the parent was trained with normalise={theirs}, this run names normalise={blocks.normalise}")
+        if int(facts.get("size", size)) != size:
+            raise TrainError(f"the parent was trained on {facts['size']}-pixel crops, this run on {size}")
+    state = torch.load(path, map_location="cpu", weights_only=True)
+    try:
+        model.load_state_dict(state)
+    except RuntimeError as error:
+        raise TrainError(f"{path}: not a level stage of this shape ({str(error).splitlines()[0]})") from error
+
+
 def predict(model, inputs, device, batch):
     """Predicted level indices for a tensor of crops, in batches, with no gradient."""
     model.eval()
@@ -270,7 +300,22 @@ def sha256_of(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
-def model_card(out, args, run, counts, best, elapsed, blocks):
+def parent_record(parent):
+    """The parent as checkpoint.json keeps it, None for a run from ImageNet or from scratch."""
+    return None if parent is None else {"file": parent["file"], "sha256": parent["sha256"], "run_id": parent["run_id"]}
+
+
+def start_line(args, parent):
+    """Where the weights began: a parent run (an incremental run), ImageNet or nothing."""
+    if parent:
+        named = f"run {parent['run_id']}, " if parent["run_id"] else ""
+        return f"parent checkpoint ({named}{parent['file']}, sha256 {parent['sha256'][:12]}): an incremental run"
+    if args.weights:
+        return "ImageNet file " + sha256_of(args.weights)[:12] + ": a rebase"
+    return "none (from scratch): a rebase"
+
+
+def model_card(out, args, run, counts, best, elapsed, blocks, parent=None):
     """MODEL.md: what the checkpoint is, what it saw, what it scored, and what it is not."""
     lines = [
         "# SchwingNet v1, level stage",
@@ -278,7 +323,7 @@ def model_card(out, args, run, counts, best, elapsed, blocks):
         f"- Run: {run['run_id']} (commit {run['code_commit']}, catalog sha256 {run['catalog_sha256'][:12]})",
         f"- Stage: level classifier over truth boxes; the detector stage is not in this checkpoint.",
         f"- Architecture: torchvision resnet18, {len(LEVELS)}-way head, crops {args.size}x{args.size}, pad {PAD}.",
-        f"- Initial weights: {'ImageNet file ' + sha256_of(args.weights)[:12] if args.weights else 'none (from scratch)'}.",
+        f"- Initial weights: {start_line(args, parent)}.",
         f"- Seed {args.seed}; epochs {args.epochs}; batch {args.batch}; learning rate {args.lr}; device {args.device}.",
         "- Blocks: " + "; ".join(f"{k} {','.join(v) if isinstance(v, list) else v}" for k, v in as_record(blocks).items()) + ".",
         f"- Training crops {counts['train']} from {counts['train_persons']} persons; validation crops {counts['validation']} from {counts['validation_persons']} persons; no test row was read.",
@@ -309,6 +354,7 @@ def parse(argv):
     parser.add_argument("--witness", type=int, default=12)
     parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     parser.add_argument("--keep-epochs", type=int, default=1, help="1 keeps every epoch's weights for the evaluator's test witness frames")
+    parser.add_argument("--init", default=None, help="a parent checkpoint (best.pt or an epoch's weights) to start from instead of ImageNet: an incremental run (docs/research/retraining-plan.md, section 3.4)")
     parser.add_argument("--block", action="append", default=[], metavar="KEY=VALUE", help="one choice of a building block (src/schwingnet/blocks.py), such as normalise=imagenet or augment=box-jitter,intensity; none gives version 1's training")
     return parser.parse_args(argv)
 
@@ -443,6 +489,9 @@ def run(args):
         blocks = parse_blocks(args.block)
     except BlockError as error:
         raise TrainError(f"blocks: {error}") from error
+    if args.init and args.weights:
+        raise TrainError("a run starts from ImageNet (--weights) or from a parent (--init), not both")
+    parent = parent_of(args.init) if args.init else None
     seed_everything(args.seed)
     crops = read_crops(args.catalog, TRAIN_PARTS)
     train_crops = pick(crops, "train", args.max_frames, args.seed)
@@ -457,11 +506,13 @@ def run(args):
     folder = out / "train"
     (folder / "witness").mkdir(parents=True, exist_ok=True)
     model = build_model(args.weights, args.device, blocks.normalise)
+    if parent:
+        warm_start(model, args.init, parent, blocks, args.size)
     optimiser = BLOCKS.OPTIMISERS[blocks.optimiser](model, args.lr, blocks)
     base_rates = [group["lr"] for group in optimiser.param_groups]
     loss_fn = BLOCKS.loss_function(blocks, train_y, LEVELS).to(args.device)
     generator = torch.Generator().manual_seed(args.seed)
-    telemetry = load_tool("wandb_log").Telemetry(out, record, "train", {"epochs": args.epochs, "seed": args.seed, "size": args.size, "batch": args.batch, "lr": args.lr, "weights": bool(args.weights), "train_crops": len(train_crops), "validation_crops": len(val_crops), "witness_frames": len(frames.frames), "blocks": as_record(blocks)})
+    telemetry = load_tool("wandb_log").Telemetry(out, record, "train", {"epochs": args.epochs, "seed": args.seed, "size": args.size, "batch": args.batch, "lr": args.lr, "weights": bool(args.weights), "train_crops": len(train_crops), "validation_crops": len(val_crops), "witness_frames": len(frames.frames), "blocks": as_record(blocks), "parent": parent_record(parent)})
     history, best, started = [], None, time.monotonic()
     with (folder / "metrics.jsonl").open("w", encoding="utf-8") as metrics:
         for epoch in range(0, args.epochs + 1):
@@ -488,8 +539,8 @@ def run(args):
         "train_persons": person_count(train_crops),
         "validation_persons": person_count(val_crops),
     }
-    (folder / "checkpoint.json").write_text(json.dumps(dict(best, counts=counts, levels=list(LEVELS), size=args.size, blocks=as_record(blocks)), indent=1) + "\n", encoding="utf-8")
-    model_card(folder, args, record, counts, best, time.monotonic() - started, blocks)
+    (folder / "checkpoint.json").write_text(json.dumps(dict(best, counts=counts, levels=list(LEVELS), size=args.size, blocks=as_record(blocks), parent=parent_record(parent)), indent=1) + "\n", encoding="utf-8")
+    model_card(folder, args, record, counts, best, time.monotonic() - started, blocks, parent)
     telemetry.log(telemetry.images({"accuracy": folder / "accuracy.png"}) | telemetry.videos({f"witness/validation_video/{f['key']}": frames.folder / f["key"] / "anim.gif" for f in frames.frames}))
     telemetry.summary({"best_epoch": best["epoch"], "best_validation_accuracy": best["validation_accuracy"], "checkpoint_sha256": best["checkpoint_sha256"]})
     telemetry.finish()

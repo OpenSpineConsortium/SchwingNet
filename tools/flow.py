@@ -157,6 +157,7 @@ def job_specs(args):
         f"python tools/train.py --catalog {args.catalog} --out {{run_dir}} --epochs {args.epochs}"
         f" --seed {args.seed} --size {args.size}"
         + (f" --weights {args.weights}" if args.weights else "")
+        + (f" --init {args.init}" if args.init else "")
         + (f" --max-frames {args.max_frames}" if args.max_frames else "")
         + block_words(args.block)
     )
@@ -380,6 +381,7 @@ def add_run_arguments(parser):
     parser.add_argument("--size", type=int, default=64)
     parser.add_argument("--max-frames", type=int, default=0)
     parser.add_argument("--weights", default=None)
+    parser.add_argument("--init", default=None, help="a parent checkpoint to start the trainer from: an incremental run")
     parser.add_argument("--recipe", default=None, help="refuse the run unless every source it trains on is one this recipe in data/recipes/ takes")
     parser.add_argument("--hours", type=float, default=4.0, help="the training job's wall time")
     parser.add_argument("--block", action="append", default=[], metavar="KEY=VALUE", help="one building block for the trainer (src/schwingnet/blocks.py), passed to tools/train.py; none gives version 1's training")
