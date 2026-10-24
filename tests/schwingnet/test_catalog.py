@@ -597,9 +597,11 @@ def test_a_replaced_file_a_forged_log_and_a_stale_current_are_refused(tmp_path: 
     tool = load_tool()
     inputs = tool.load_inputs()
     a = write(tmp_path, "a", manifest("train", TRAIN_ITEMS[:1]))
+    b = write(tmp_path, "b", manifest("train", TRAIN_ITEMS[2:]))
     store = tmp_path / "store"
     first, _ = tool.build(store, [a], inputs)
-    second, _ = tool.build(store, [a], inputs, "abcdef0")
+    # A second version needs other content: a build that differs only in its commit is none.
+    second, _ = tool.build(store, [a, b], inputs, "abcdef0")
     log = store / "VERSIONS.jsonl"
     lines = log.read_text(encoding="utf-8").splitlines()
     # A line whose number or parent is not the line before it.
@@ -719,3 +721,26 @@ def test_a_level_map_sits_at_its_digest_and_the_catalog_says_where_it_is(tmp_pat
     assert len(tool.ITEM_COLUMNS) == len(
         tool.item_row(Item.model_validate(with_map), ShardManifest.model_validate(data), Part.TRAIN)
     )
+
+
+def test_a_build_that_differs_only_in_the_code_commit_is_no_new_version(tmp_path: Path) -> None:
+    tool = load_tool()
+    train = write(tmp_path, "train", manifest("train", TRAIN_ITEMS))
+    test = write(tmp_path, "test", manifest("test", TEST_ITEMS))
+    store = tmp_path / "store"
+    first, new = tool.build(store, [train], tool.load_inputs(), "0123abc")
+    assert new
+    again, new = tool.build(store, [train], tool.load_inputs(), "4567def")
+    assert not new and again == first and len(tool.read_versions(store)) == 1
+    assert (store / "CURRENT").read_text(encoding="utf-8") == first.file + "\n"
+    second, new = tool.build(store, [train, test], tool.load_inputs(), "4567def")
+    assert new and second.version == 2 and second.code_commit == "4567def"
+    fresh = tmp_path / "fresh.sqlite"
+    db = sqlite3.connect(fresh)
+    tool.fill(db, [train, test], tool.load_inputs(), "89abcde")
+    db.commit()
+    tool.stamp(db)
+    db.close()
+    latest = store / "versions" / second.file
+    assert tool.same_but_the_commit(fresh, latest)
+    assert not tool.same_but_the_commit(store / "versions" / first.file, latest)

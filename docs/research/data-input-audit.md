@@ -1,0 +1,39 @@
+# The data input, audited: every format the pipeline takes, what preprocessing may meet, and what a rerun reuses
+
+Source: the thread "Build plug-and-play training experiment framework", 2026-10-24, on the owner's ask of 21:13 UTC ("also audit the data input for formats and any issues that may be encountered during preprocessing, also preprocessed data steps in the workflow should be checkpointed and resumed from the latest possible step that reuses as much as possible"). Read from main at c5f254d: tools/bank.py, tools/ingest.py, tools/catalog.py, src/schwingnet/catalog.py, tools/synthetic_bank.py, tools/leaks.py, the grid's stage scripts 00 to 05 and the chain's runner, the 22 recipes under grid/banks/, the registry and splits under data/, docs/research/data-catalog.md and docs/research/data-manifest/ (the census of 2026-10-22). Three small experiments ran in a scratch copy and changed nothing in either repository: one bank ingested under two dates and then built; Pillow 13.0.0, the train environment's, converting a 16-bit PNG to 8-bit grey; and the bank and the ingest run on a 16-bit PNG, an RGB PNG and a 16-bit TIFF, then read as the trainer and the leak fingerprint read them. Issue #260 fixed what is marked fixed below, and issue #267 holds the rest.
+
+## What the bank and the ingest take
+
+- **The bank (tools/bank.py) is the one place a raw file is decoded.** A recipe names one format of png, jpg, jpeg, tif, tiff, bmp and dcm, and refuses anything else by name. An 8-bit PNG is copied byte for byte. JPEG, TIFF and BMP are decoded through Pillow, refused with the way to get it where Pillow is missing. DICOM is decoded through pydicom with the modality lookup applied, MONOCHROME1 inverted and the 0.5 to 99.5 percentile window cut to 8 bits; colour, palette and multi-frame DICOM are refused by name; compressed transfer syntaxes decode through pylibjpeg (JPEG baseline, extended, lossless, LS and 2000) and pydicom itself (RLE, deflate), and a plan lists every syntax before any decode.
+- **The ingest (tools/ingest.py) reads banks only.** It reads each PNG's header for its size, hashes the bytes, keeps a frame seen twice under one person once and reports it, refuses the same bytes under two persons and a frozen test person in a train shard, and keeps a box with no trusted level as a frame fact and not as a label. A level map is decoded and held to the frame's size and the 27 codes.
+- **The readers downstream fix what a frame must be.** The trainer reads every frame with Pillow's conversion to 8-bit grey; the leak fingerprint windows it itself.
+
+## What a preprocessing run may meet
+
+- **16-bit frames (fixed in #260).** A 16-bit PNG passed the bank untouched and a 16-bit TIFF was saved as a 16-bit PNG; the trainer's conversion then clipped every value above 255, and a 16-bit gradient read back as a white frame with a mean of 254.5 (measured). The bank now windows every grey frame of more than 8 bits by the DICOM path's window, and the ingest refuses a 16-bit grey frame by name as a second fence. Sixteen bits of colour, or of grey with alpha, Pillow reads at 8 bits a channel, which clips nothing (measured), so those are converted to grey and not refused.
+- **JPEG.** Handled through Pillow; the lossless PNG the bank writes is larger than the JPEG (14.2 MB of JPEG noise became 23.1 MB, grid/README.md); EXIF orientation is not applied and 12-bit JPEG does not decode (one line naming it). Open in #267.
+- **Colour.** DICOM colour is refused; a colour image through Pillow is converted to grey; an 8-bit colour PNG is copied and converted only when read, which costs three channels of bank for nothing but changes no frame.
+- **Inverted films.** MONOCHROME1 is handled; an inverted PNG or JPEG export cannot be told. Open in #267.
+- **Mixed formats in one set.** A recipe names one format, and Aariz (JPEG and PNG), fluorocap and the spine detector corpus mix them. Open in #267.
+- **Sizes.** Frames of different sizes are fine (crops are resized); a level map must match its frame; the catalog keeps no width or height column. Open in #267.
+- **Duplicates.** Within a person kept once and reported; across persons refused; across shards refused by the build, and listed by the split check; near-duplicates across the split are the leak checks' job.
+- **Missing or placeholder person ids.** Refused by name in the bank and the ingest; a DICOM source keys every file by one tag, never mixing tags.
+- **Paths.** Characters a shell would quote become `_` in the stem and collisions are refused; a CSV of labels is keyed by the raw name.
+- **Large files.** Read whole, with at most four decoded frames a worker in flight; not yet measured on full-size films.
+- **Storage.** A PNG source sits on the volume three times, raw, bank and shard, and the size rule counts none of the bank and shard copies. Open in #267.
+- **Unknown level spellings.** Dropped without a word as "no trusted level". Open in #267.
+- **Identity.** The person key is the raw id with a source prefix, not hashed, which is safe for a publisher's pseudonym and not for a clinical source. Open in #267.
+- **Preemption and partial writes.** The bank writes each file as a .part and renames it, so a requeue keeps finished frames. The ingest stages a shard in a folder the system names and renames it; a killed ingest left that folder behind, and pathlib's glob, which the ingest used to find the source's current shard, matched it (measured), as did the leak list's find. Both now skip names that start with a dot, and the next ingest clears a staging folder older than three days (fixed in #260).
+
+## What a rerun reused, step by step, and what it reuses now
+
+- **The fetch** resumes its .part files and skips units already verified, then hashes every raw file again to write the same FETCH.json; open in #267.
+- **The bank** was idempotent by bytes with no stamp: a rerun decoded every raw file again to find nothing to write (about twelve minutes for VinDr-SpineXR). It now writes BANK.json, a stamp of the recipe, the raw listing, its own code and the decoders' versions, and a rerun whose stamp matches decodes nothing (fixed in #260).
+- **The ingest** named a shard by its date and content, and the chain passes today's date with `--supersedes latest`, so an unchanged bank ingested on a later day became a full dated copy superseding the identical shard (measured: the same date was "already there", a later date "written"). A shard of the same name and another commit was refused. Now the same frames and facts on any date or commit answer "already there" with the head shard, and a stamped bank whose head shard holds the same stamp and inputs is not read at all (fixed in #260).
+- **The catalog** dropped a build equal to the latest, but the build table records the code commit, so every merge to main made a new version from unchanged shards, moved CURRENT and asked for a new split check (measured). A build that differs only in the commit is now dropped (fixed in #260).
+- **The leak checks** keep a fingerprint per manifest and redo only unfinished chunks; the join is recomputed every time and gates nothing (#257, #258).
+- **Metaflow** now carries the bank, the ingest and the catalog as flows whose resume continues a run that did not finish (#252); the reuse above is what makes a second, finished run cost nothing.
+
+## What the synthetic bank does not cover
+
+It writes 8-bit grey PNGs of one size and one lateral view, eight levels from T11 to the sacrum, planted duplicates and level maps. It does not write 16-bit or colour frames, JPEG, compressed or multi-frame DICOM, real-size films, mixed formats, CSV labels or landmarks, frontal views, cervical levels, T13 or L6, a bank across two dates, or non-ASCII paths; the tests of #260 add the 16-bit frames and the two dates.

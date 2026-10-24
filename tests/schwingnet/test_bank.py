@@ -2,6 +2,7 @@
 
 import importlib.util
 import json
+import os
 import struct
 import zlib
 from pathlib import Path
@@ -75,3 +76,39 @@ def test_a_bank_from_a_raw_folder_plans_as_a_train_shard(
     assert (planned["frames_kept"], planned["persons"], planned["labels"]) == (3, 2, 0)
     assert planned["shard"].startswith("nih_chestxray14/2026-10-21-")
     assert not (tmp_path / "grid").exists()
+
+
+def test_a_bank_made_again_from_the_same_raw_copy_reads_nothing(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    bank_tool = load("bank")
+    raw = tmp_path / "raw" / "images_001" / "images"
+    raw.mkdir(parents=True)
+    for index, name in enumerate(["00000001_000", "00000001_001", "00000002_000"]):
+        (raw / f"{name}.png").write_bytes(png(40, 30, index))
+    recipe = json.loads(
+        (ROOT / "grid" / "banks" / "nih_chestxray14.json").read_text(encoding="utf-8")
+    )
+    recipe["raw"], recipe["bank"] = str(tmp_path / "raw"), str(tmp_path / "bank")
+    path = tmp_path / "recipe.json"
+    path.write_text(json.dumps(recipe), encoding="utf-8")
+    assert bank_tool.main(["--recipe", str(path), "--run"]) == 0
+    first = json.loads(capsys.readouterr().out)
+    assert first["written"] == 3 and "unchanged" not in first
+    stamp = json.loads((tmp_path / "bank" / "BANK.json").read_text(encoding="utf-8"))
+    assert stamp["counts"]["frames"] == 3 and len(stamp["stamp"]["raw_sha256"]) == 64
+    assert bank_tool.main(["--recipe", str(path), "--run"]) == 0
+    again = json.loads(capsys.readouterr().out)
+    assert again["unchanged"] is True and (again["written"], again["kept"]) == (0, 3)
+    assert again["persons"] == first["persons"]
+    # A raw file written again, even with the same bytes, makes a full run, which keeps the bank.
+    touched = raw / "00000001_000.png"
+    touched.write_bytes(touched.read_bytes())
+    later = touched.stat().st_mtime_ns + 10**9
+    os.utime(touched, ns=(later, later))
+    assert bank_tool.main(["--recipe", str(path), "--run"]) == 0
+    full = json.loads(capsys.readouterr().out)
+    assert "unchanged" not in full and (full["written"], full["kept"]) == (0, 3)
+    # A plan neither reads nor writes the stamp.
+    assert bank_tool.main(["--recipe", str(path)]) == 0
+    assert json.loads(capsys.readouterr().out)["mode"] == "plan"

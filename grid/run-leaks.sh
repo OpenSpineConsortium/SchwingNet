@@ -39,8 +39,9 @@ RUN=$(mktemp -d "$LEAKS_OUT/runs/$(date '+%Y%m%d-%H%M%S')-XXXX") || exit 2
 LIST=$RUN/shards.txt
 # -L and the trailing slash follow a data root or a source folder that is a symbolic link, as a
 # source kept on another volume would be; without them find lists none of its shards, and the
-# join, which checks only the list, would pass without having seen them.
-find -L "$DATA_ROOT/" -mindepth 4 -maxdepth 4 -path '*/shards/*/MANIFEST.json' 2>/dev/null \
+# join, which checks only the list, would pass without having seen them. A folder whose name
+# starts with a dot is an ingest's staging folder and no shard (#260), as 03-catalog reads it.
+find -L "$DATA_ROOT/" -mindepth 4 -maxdepth 4 -path '*/shards/[!.]*/MANIFEST.json' 2>/dev/null \
   | sed -e 's|/MANIFEST.json$||' -e 's|//*|/|g' | sort > "$LIST"
 count=$(wc -l < "$LIST" | tr -dc '0-9')
 if [ "$count" = 0 ]; then
