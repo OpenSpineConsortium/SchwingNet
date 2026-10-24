@@ -38,6 +38,7 @@ sys.path[0] = str(ROOT / "src")
 import argparse  # noqa: E402
 import hashlib  # noqa: E402
 import json  # noqa: E402
+import os  # noqa: E402
 import random  # noqa: E402
 import sqlite3  # noqa: E402
 import time  # noqa: E402
@@ -142,11 +143,23 @@ def load_crops(crops, size, frames_cache):
     return stack, torch.tensor(targets, dtype=torch.long)
 
 
+# cuBLAS gives the same sums run to run only with a fixed workspace, set before CUDA starts; without
+# it use_deterministic_algorithms, here only warning, lets a GPU run differ in its last bits.
+CUBLAS_WORKSPACE = ":4096:8"
+
+
 def seed_everything(seed):
-    """One seed for python, numpy and torch, and deterministic kernels where torch has them."""
+    """One seed for python, numpy and torch, and deterministic kernels where torch has them.
+
+    Called before the model reaches the device, so the cuBLAS workspace is fixed before CUDA
+    starts; a value the caller's environment already sets is kept. cuDNN's benchmark search,
+    which may pick a different kernel each run, stays off.
+    """
+    os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", CUBLAS_WORKSPACE)
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
+    torch.backends.cudnn.benchmark = False
     torch.use_deterministic_algorithms(True, warn_only=True)
 
 
