@@ -26,15 +26,18 @@ write what every text gives.
 
 The SchwingNet checkout is the one this file is in. SYNTH_TEXT, if set, names where the
 artifacts' texts are extracted; else a fresh temporary folder is used, so no run reads
-another's texts. The state (work/out/state.json) says, for every artifact, the git tree its
-inventory record was read from; a run compares today's trees with it (synth_state.py),
-checks every verdict's and record's quotes against today's texts, checks every text against
-the concept ledger (synth_concepts.py), and lists what a change needs read again
-(synth_reads.py). status, concepts, report and stamp run anywhere, with no Claude. plan
+another's texts. SYNTH_MAIN, where the workflow sets it to a commit hash, is the commit the
+report names for this checkout in place of its HEAD: the commit of main that the look's base
+step built on, since the commit that step makes when it lays an open synthesis pull request's
+records on main exists only on the runner. The state (work/out/state.json) says, for every
+artifact, the git tree its inventory record was read from; a run compares today's trees with it
+(synth_state.py), checks every verdict's and record's quotes against today's texts, checks
+every text against the concept ledger (synth_concepts.py), and lists what a change needs read
+again (synth_reads.py). status, concepts, report and stamp run anywhere, with no Claude. plan
 writes the inputs of the Claude reads and join takes their answers: .github/workflows/
-synthesis.yml runs both, the reads between them on this repository's Claude token, at most
-the runs a day its variable allows, and adds what the join wrote to the one open synthesis
-pull request, or opens it.
+synthesis.yml runs both, the reads between them on this repository's Claude token, at most the
+runs a day its variable allows, and adds what the join wrote to the one open synthesis pull
+request, or opens it.
 """
 import argparse
 import datetime
@@ -197,7 +200,7 @@ def status(run, state):
     return {"date": today(), "stamped": state.get("stamped"), "delta": d, "changes": changes, "stale": stale,
             "resolved": resolved, "unread": unread, "lost_quotes": lost, "new_checks": fresh, "gone_checks": len(gone),
             "ledger": ledger, "without": sorted(run.without),
-            "heads": {repo: head(clone) for repo, clone in run.clones.items() if repo not in run.without}}
+            "heads": heads(run)}
 
 
 def covered_checks(ledger, N):
@@ -209,6 +212,15 @@ def covered_checks(ledger, N):
     by_id = {c["id"]: c for c in ledger["figures"]}
     return {c["key"] for c in ledger["checks"] if c["kind"] == "figure" and c["outcome"] in ("superseded", "open")
             and c["concept"] in by_id and sr.concept_row_key(c, by_id[c["concept"]]) in rows}
+
+
+def heads(run):
+    """The commit each checkout was read at, as the report names it: SchwingNet's is SYNTH_MAIN
+    where that is a commit hash, and each checkout's HEAD otherwise."""
+    out = {repo: head(clone) for repo, clone in run.clones.items() if repo not in run.without}
+    if re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", os.environ.get("SYNTH_MAIN", "")):
+        out["SchwingNet"] = os.environ["SYNTH_MAIN"]
+    return out
 
 
 def head(clone):

@@ -224,6 +224,9 @@ jobs:
         id: status
         env:
           WITHOUT: ${{ steps.symphony.outputs.without }}
+          # main's commit, which the report names: where an open synthesis pull request's records
+          # are laid on main, the checkout's HEAD is a commit made on this runner alone
+          SYNTH_MAIN: ${{ steps.base.outputs.main }}
         run: |
           without=()
           if [ -n "$WITHOUT" ]; then without=(--without "$WITHOUT"); fi
