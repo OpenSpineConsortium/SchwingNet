@@ -104,9 +104,9 @@ class IngestError(Exception):
 
 def png_size(data):
     """The width and height of a PNG from its header, the only thing of a frame this tool reads;
-    a file shorter than a whole IHDR chunk, 33 bytes, is no PNG, so every later read of the header
-    finds its byte."""
-    if len(data) < 33 or data[:8] != PNG_SIGNATURE or data[12:16] != b"IHDR":
+    a file shorter than a whole IHDR chunk, 33 bytes, or whose IHDR is not the 13 bytes the format
+    gives it, is no PNG, so every later read of the header finds its byte where it belongs."""
+    if len(data) < 33 or data[:8] != PNG_SIGNATURE or data[8:16] != b"\x00\x00\x00\x0dIHDR":
         raise IngestError("not a PNG")
     width, height = struct.unpack(">II", data[16:24])
     if width == 0 or height == 0:
@@ -116,8 +116,9 @@ def png_size(data):
 
 def png_chunks(data):
     """Each chunk's type and bytes, in order up to IEND, each whole and under its own checksum, so
-    a map this tool keeps is one the trainer's image library reads too, which refuses a chunk with
-    a wrong checksum and reads nothing after IEND; the signature was checked by png_size."""
+    a map this tool keeps is one the trainer's image library reads too: Pillow checks the checksums
+    of the chunks before the first IDAT and stops at IEND, and this tool holds every chunk to its
+    checksum, which is stricter; the signature was checked by png_size."""
     at = 8
     while at + 12 <= len(data):
         length = struct.unpack(">I", data[at : at + 4])[0]
@@ -181,8 +182,18 @@ def png_grey_rows(data):
             f" method 0, not bit depth {depth}, colour type {colour}, compression {compression},"
             f" filter {filtering}, interlace {interlace}"
         )
+    bodies, closed = [], False
+    for kind, body in png_chunks(data):
+        if kind == b"IDAT":
+            if closed:
+                raise IngestError("the PNG's IDAT chunks are not consecutive")
+            bodies.append(body)
+        elif bodies:
+            # The format keeps the IDAT chunks together, and Pillow stops reading pixel data at
+            # the first other chunk after them, so a map with a chunk between them is refused here.
+            closed = True
     try:
-        raw = zlib.decompress(b"".join(body for kind, body in png_chunks(data) if kind == b"IDAT"))
+        raw = zlib.decompress(b"".join(bodies))
     except zlib.error as error:
         raise IngestError(f"the PNG's pixel data does not decompress: {error}") from error
     return unfiltered(raw, width, height)

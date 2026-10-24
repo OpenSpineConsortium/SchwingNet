@@ -337,7 +337,9 @@ def train_epoch(model, optimiser, inputs, targets, device, batch, generator, blo
 
 class MapTally:
     """The prior head's score over the validation maps, counted batch by batch on the forward
-    predict makes, so the validation part is seen once an epoch: the share of the labelled pixels
+    predict makes, so the validation tensor is forwarded once an epoch for the prediction and the
+    tally (the witness frames, validation crops the Witness holds as tensors of its own, are the
+    one other forward): the share of the labelled pixels
     the head names right, and the share of the vertebral pixels, codes 1 to 27, it names right,
     which a head that says background at every pixel scores 0 on while its pixel accuracy is the
     background's share, so the two together tell learning from collapse. Numbers for the curve,

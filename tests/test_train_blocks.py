@@ -231,6 +231,13 @@ class BlocksTest(unittest.TestCase):
             self.blocks.PriorHead(model, "resnet18", 16, 28)
         self.assertIn("no stage of resnet18 keeps 8 cells across the crop", str(refused.exception))
         self.assertIn("layer1, gives 4 by 4", str(refused.exception))
+        self.assertFalse(any(m._forward_hooks for m in model.modules()), "the dry forward's hooks are gone")
+        dense = self.train.build_model(None, "cpu", architecture="densenet121")
+        with self.assertRaises(self.blocks.ArchitectureError) as failed:
+            self.blocks.PriorHead(dense, "densenet121", 16, 28)
+        self.assertIn("densenet121 cannot forward a 16-pixel crop", str(failed.exception))
+        self.assertFalse(any(m._forward_hooks for m in dense.modules()), "the hooks go even when the forward fails")
+        self.assertTrue(dense.training, "and the model is as it was")
         # One batch of a bright body on a dark field, overfitted: the head names the body's pixels
         # and the field's apart, which a head collapsed to background never does.
         torch.manual_seed(0)

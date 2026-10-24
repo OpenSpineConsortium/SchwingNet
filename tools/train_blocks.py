@@ -6,7 +6,7 @@ tests/test_train_blocks.py fails when a table and its tuple in blocks.py disagre
 doing a part is one name in blocks.py and one function in the table here; tools/train.py calls
 only the tables, so it never changes for one. The samples block has no torch side: which crops a
 run sees is decided by schwingnet.blocks.kept before any tensor is made. The prior block's torch
-side is PriorHead, a training-only head over the feature map FEATURES names per architecture,
+side is PriorHead, a training-only head over one of the feature maps FEATURES lists per architecture, the deepest that keeps CELLS cells across the crop,
 which scores the backbone against the crop's projected level map (#228) and leaves the model,
 and so every reader of best.pt, as it is.
 
@@ -372,11 +372,18 @@ class PriorHead(nn.Module):
         ]
         was_training = model.training
         model.eval()
-        with torch.no_grad():
-            model(torch.zeros(1, 3, self.size, self.size, device=next(model.parameters()).device))
-        model.train(was_training)
-        for handle in handles:
-            handle.remove()
+        try:
+            with torch.no_grad():
+                model(torch.zeros(1, 3, self.size, self.size, device=next(model.parameters()).device))
+        except RuntimeError as error:
+            # MONAI's densenet121 cannot pool a 16-pixel crop at all; the refusal is the same words.
+            raise ArchitectureError(
+                f"{architecture} cannot forward a {self.size}-pixel crop ({str(error).splitlines()[0]}); take a larger crop"
+            ) from error
+        finally:
+            model.train(was_training)
+            for handle in handles:
+                handle.remove()
         for name in FEATURES[architecture]:
             output = seen.get(name)
             if output is not None and output.dim() == 4 and min(output.shape[2:]) >= CELLS:

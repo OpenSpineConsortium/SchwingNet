@@ -260,11 +260,13 @@ renders, the CT's segmentation projected").
   tools/train_blocks.py lists each architecture's stages deepest first (layer4 to layer1 for the
   resnets, slices of features for the others) and PriorHead picks by one forward of a blank crop at
   the run's size, layer1 at 32 pixels, layer2 at 64, layer3 at 128 and 14 by 14 cells of layer3 at
-  224, refusing in words a crop too small for eight cells. The last map before the pooling, where
-  the first build of this change read, is 2 by 2 on a 64-pixel crop for every architecture, four
-  blended positions that cannot say where a level falls; the review of this change found the first
-  smoke run's head had learnt to say background at every pixel, its pixel accuracy of 0.48 being
-  the background's share, which that stage and a single accuracy could not show. The head is one
+  224, refusing in words a crop too small for eight cells (and a crop the architecture cannot
+  forward at all, as MONAI's densenet121 cannot a 16-pixel one). The last map before the pooling,
+  where the first build of this change read, is 1 by 1 on a 32-pixel crop and 2 by 2 on a 64-pixel
+  one for every architecture, one cell or four blended positions that cannot say where a level
+  falls; the review of this change found the first smoke run's head, on that one cell at 32
+  pixels, had learnt to say background at every pixel, its pixel accuracy of 0.48 being the
+  background's share, which that stage and a single accuracy could not show. The head is one
   1 by 1 convolution to 28 classes, each cell repeated over the pixels it covers (nearest, since the
   bilinear upsample's backward is on torch's list of kernels that differ run to run on CUDA and the
   nearest one's is not) and scored by cross-entropy against the crop's map, cut and resized nearest
@@ -281,7 +283,9 @@ renders, the CT's segmentation projected").
   the vertebral pixels alone (codes 1 to 27), which a head that says background everywhere scores
   0 on while its pixel accuracy is the background's share, so the two apart tell learning from
   collapse; both are counted on the forward the validation prediction makes, so the validation
-  part is seen once an epoch. With the prior on, train_loss (metrics.jsonl, checkpoint.json, the
+  tensor is forwarded once an epoch for the prediction and the tally (the witness frames,
+  validation crops the Witness holds as tensors of its own, are the one other forward). With the
+  prior on, train_loss (metrics.jsonl, checkpoint.json, the
   accuracy curve and the evaluation page's column) is the level loss plus prior_weight times the
   map loss, which the card says, so the column is not the control run's level loss. The counts
   train_with_map and validation_with_map say how many crops carried a map, and
@@ -304,10 +308,12 @@ renders, the CT's segmentation projected").
   the synthetic bank, a dry run and no result. The first smoke run of this change (60 frames, two
   epochs, 32-pixel crops, the head on the last feature map) took the head's pixel accuracy to
   0.48, which the review showed to be the background's share: the head said background at every
-  pixel, and one accuracy over a 2 by 2 grid could not tell. After the fix (the head on the
-  deepest stage with eight cells, layer2 at 64 pixels; the vertebral-pixel accuracy beside the
-  pixel one) a 12-epoch run on 240 synthetic frames (805 training crops, 576 of them with a map,
-  69 validation crops, seed 1, box jitter and intensity, no schedule) took the head's validation
+  pixel, and one accuracy over a single cell (the last map is 1 by 1 at 32 pixels) could not
+  tell. After the fix (the head on the deepest stage with eight cells, layer2 at 64 pixels; the
+  vertebral-pixel accuracy beside the pixel one) a 12-epoch run on 238 synthetic frames (240
+  written with the bank's seed 3, the two that repeat a frame's bytes taken out before the
+  ingest; 805 training crops, 576 of them with a map, 69 validation crops, the trainer's seed 1,
+  prior_weight 0.5, box jitter and intensity, no schedule) took the head's validation
   pixel accuracy from 0.08 untrained to 0.84 and its vertebral-pixel accuracy from 0.13 to 0.80
   at its best epoch, and the prior loss from 1.96 to 0.46, while the classifier's validation
   accuracy reached 0.986 (balanced 0.99) against 0.913 (0.83) for the same run with prior=none.

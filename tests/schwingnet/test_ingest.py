@@ -581,6 +581,20 @@ def test_a_frames_level_map_rides_in_the_shard_and_a_wrong_one_is_refused(
             "filter method 0, not",
         ),
         (good[:33] + png_chunk(b"IEND", b"") + good[33:-12], "render", "does not decompress"),
+        (
+            good[:8] + png_chunk(b"IHDR", struct.pack(">IIBBBB", 40, 20, 8, 0, 0, 0)) + good[33:],
+            "render",
+            "not a PNG",
+        ),
+        (
+            good[:33]
+            + png_chunk(b"IDAT", good[41:46])
+            + png_chunk(b"tEXt", b"k\x00v")
+            + png_chunk(b"IDAT", good[46:-16])
+            + png_chunk(b"IEND", b""),
+            "render",
+            "IDAT chunks are not consecutive",
+        ),
         (good, "guessed", "not one of render, registered"),
     ]
     for data, projector, words in wrong:
