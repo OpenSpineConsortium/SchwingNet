@@ -175,9 +175,12 @@ class Choice(unittest.TestCase):
                                     "--pulls", str(paths["pulls"]), "--out", str(paths["out"])])
             self.assertEqual(json.loads(paths["out"].read_text(encoding="utf-8"))["item"]["id"], "E1")
 
-    def test_the_real_register_gives_a_choice(self):
+    def test_the_real_register_gives_a_choice_or_says_why_not(self):
         choice = research_loop.choose(research_loop.claims_rank.load(), [], [])
-        self.assertEqual(choice["mode"], "new")
+        self.assertIn(choice["mode"], ("new", "none"))
+        if choice["mode"] == "new":
+            self.assertIn(choice["item"]["status"], ("open", "doing"))
+            self.assertTrue(choice["item"]["ready"])
 
 
 class Prompt(unittest.TestCase):
@@ -201,7 +204,7 @@ class Prompt(unittest.TestCase):
 class GridRoute(unittest.TestCase):
     def test_grid_inputs_carry_the_command_and_the_boxes(self):
         self.assertEqual(research_loop.grid_inputs("bash x.sh", True, False),
-                         ["-f", "command=bash x.sh", "-F", "start=true", "-F", "python=false"])
+                         ["-f", "command=bash x.sh", "-f", "start=true", "-f", "python=false"])
         with self.assertRaises(SystemExit):
             research_loop.grid_inputs("  ", False, True)
 

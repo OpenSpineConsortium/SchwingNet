@@ -285,11 +285,12 @@ def dispatch_env():
 
 
 def grid_inputs(command, start, python):
-    """grid.yml's inputs as gh workflow run takes them."""
+    """grid.yml's inputs as gh workflow run takes them, each a string as the dispatch API reads them;
+    -f, since -F would read a command that begins with @ as a file."""
     if not command.strip():
         raise SystemExit("grid needs a command")
-    return ["-f", f"command={command}", "-F", f"start={'true' if start else 'false'}",
-            "-F", f"python={'true' if python else 'false'}"]
+    return ["-f", f"command={command}", "-f", f"start={'true' if start else 'false'}",
+            "-f", f"python={'true' if python else 'false'}"]
 
 
 def gate_inputs(word):
