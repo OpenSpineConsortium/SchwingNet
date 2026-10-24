@@ -1,0 +1,43 @@
+{
+  "id": "34/overlap-exposures",
+  "title": "Exposures per sweep against overlap",
+  "caption": "Exposures a sweep from the sacrum takes at each overlap: the records' values beside the count the simulation's geometry gives for a 9-inch field from the sacrum to T10. More overlap means more exposures and so more links.",
+  "chapter": "34",
+  "grade": "Inferred",
+  "status": "a record, not a final value",
+  "source": {
+    "kind": "script",
+    "artifact": null,
+    "artifact_url": null,
+    "made_by": "tools/overlap_figures.py",
+    "commit": null,
+    "data": [
+      "tools/overlap_records.json",
+      "artifacts/vertebral-levels-without-ct-a4rydj/",
+      "artifacts/naming-vertebrae-without-an-anchor-3dfzmh/",
+      "OpenSpineConsortium/spine-program:01_carm_level_detection/docs/SWEEP_PROTOCOL.md"
+    ],
+    "run": null,
+    "notes": "The recorded exposures are Reported and each a record, not a final value; the simulated line is Inferred from the geometry alone (field 140 mm, pitch 34 mm lumbar and 27 mm thoracic), and at four bodies it reaches the half-body step floor, since four bodies nearly fill a 9-inch field."
+  },
+  "explore": [
+    {
+      "label": "The script",
+      "href": "tools/overlap_figures.py"
+    },
+    {
+      "label": "The recorded numbers",
+      "href": "tools/overlap_records.json"
+    },
+    {
+      "label": "The chapter",
+      "href": "docs/textbook/34-the-optimal-overlap.md"
+    }
+  ],
+  "rerun": {
+    "where": "actions",
+    "command": "python3 tools/overlap_figures.py docs/textbook/figures/34",
+    "cost": "CPU, under a minute",
+    "needs_owner_word": false
+  }
+}

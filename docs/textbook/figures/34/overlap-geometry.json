@@ -1,0 +1,40 @@
+{
+  "id": "34/overlap-geometry",
+  "title": "The geometry at half, one, two and four bodies of overlap",
+  "caption": "One sweep from the sacrum at each overlap with the step exactly as commanded: the frames, and each body coloured by how many frames hold it. At half a body a body falls between frames; at one most bodies are seen once; at two most are seen twice; at four the sweep takes eleven exposures.",
+  "chapter": "34",
+  "grade": "Inferred",
+  "status": "current",
+  "source": {
+    "kind": "simulation",
+    "artifact": null,
+    "artifact_url": null,
+    "made_by": "tools/overlap_figures.py",
+    "commit": null,
+    "data": [
+      "tools/overlap_figures.py"
+    ],
+    "run": null,
+    "notes": "Drawn by the simulation's own geometry (field 140 mm, pitches 34 and 27 mm, the in-frame rule of sweep_map.py), not by hand."
+  },
+  "explore": [
+    {
+      "label": "The script",
+      "href": "tools/overlap_figures.py"
+    },
+    {
+      "label": "The recorded numbers",
+      "href": "tools/overlap_records.json"
+    },
+    {
+      "label": "The chapter",
+      "href": "docs/textbook/34-the-optimal-overlap.md"
+    }
+  ],
+  "rerun": {
+    "where": "actions",
+    "command": "python3 tools/overlap_figures.py docs/textbook/figures/34",
+    "cost": "CPU, under a minute",
+    "needs_owner_word": false
+  }
+}
