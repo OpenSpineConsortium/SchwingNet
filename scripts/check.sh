@@ -85,6 +85,11 @@ python3 tools/reproduce_table.py check
 # owner's reading, or data/LICENCES.md not what the facts render, fails here.
 python3 tools/licences.py check
 
+# The claims register (docs/textbook/claims.json, chapter 33) must hold together (tools/claims_rank.py,
+# standard library): every claim an item bears on exists, every grade is one of the four and each
+# claim's grade is its weakest link, no item waits on an item that is not there or on itself.
+python3 tools/claims_rank.py check
+
 # The evaluation page (docs/research/evaluation/README.md) is written from the recorded runs under
 # docs/research/v1-demo/runs/ by tools/eval_page.py, standard library: a run recorded without the
 # page written again, or a page edited by hand, fails here.
