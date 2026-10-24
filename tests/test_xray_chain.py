@@ -1804,19 +1804,19 @@ class SizeRuleTest(unittest.TestCase):
             self.volume.attribute(parent, "ceph.dir.rbytes", use)
             self.assertEqual(self.rule(call, **stat), (0, f"{use} attribute"), (name, value))
             self.volume.attribute(parent, "ceph.dir.rbytes", "")
-            self.volume.attribute(tools, name, "")
-        self.volume.attribute(tools, "ceph.dir.rbytes", 2 * GB)
-        self.assertEqual(self.rule(call, **stat), (0, f"{summed()} entries"))
+            # each case alone: the other entry reads a count again before the next
+            self.volume.attribute(tools, name, 2 * GB if name == "ceph.dir.rbytes" else "")
+            self.assertEqual(self.rule(call, **stat), (0, f"{summed()} entries"), (name, value))
         for size in (len(list(parent.iterdir())) + 1, len(list(parent.iterdir())) - 1):
             self.volume.attribute(parent, "stat.size", size)
             self.assertEqual(self.rule(call, **stat), (1, ""), size)
         self.volume.attribute(parent, "stat.size", len(list(parent.iterdir())))
         self.volume.mount(tools)
         self.assertEqual(self.rule(call, **stat), (1, ""))
-        # nor where the folder does not hold the one below it
+        # nor where the folder does not list the one below it, though that one is there on its device
         self.volume.mountinfo.write_text("22 1 253:0 / / rw,relatime shared:1 - xfs /dev/vda1 rw\n", encoding="utf-8")
         self.assertEqual(self.rule(call, **stat), (0, f"{summed()} entries"))
-        self.assertEqual(self.rule(f'use_above "{parent}" "{parent / "elsewhere"}" {use}', **stat), (1, ""))
+        self.assertEqual(self.rule(f'use_above "{parent}" "{self.volume.data}" {use}', **stat), (1, ""))
 
     def test_every_quota_up_to_the_root_of_the_mount_is_counted_the_least_room_binding(self):
         # Each folder from the volume's parent up to the root of its mount holds the one below it, so
@@ -1863,6 +1863,50 @@ class SizeRuleTest(unittest.TestCase):
         self.volume.attribute(grand, "ceph.dir.rbytes", "!Permission_denied")
         self.volume.attribute(grand.parent, "ceph.quota.max_bytes", 1)
         self.assertEqual(self.rule('volume_free_bytes "$VOLUME"', **stat), (0, f"{7800 * GB} quota-1"))
+
+    def test_the_grids_layout_reads_each_folder_by_the_sum_where_its_figure_is_no_count(self):
+        # The grid's layout (the status word of 2026-10-24 01:18 UTC): the volume in its subvolume's
+        # folder beside other entries, that folder alone in its group's, which carries the one quota
+        # above the volume, on a mount whose root lies higher. Here no folder's own figure reads as a
+        # count, so what each holds is the sum of its own entries, the one that holds the folder
+        # below counted at what that holds, from the volume's use up (#190).
+        import tempfile
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        top = Path(tmp.name)
+        group = top / "group"
+        sub = group / "sub"
+        sub.mkdir(parents=True)
+        volume = Volume(sub, quota=21991 * GB, used=13146 * GB)
+        volume.mount(top)
+        volume.attribute(volume.tools, "ceph.dir.rbytes", 1 * GB)
+        for folder, entries in ((sub, len(list(sub.iterdir()))), (group, 1), (top, 1)):
+            volume.attribute(folder, "ceph.dir.rbytes", "1" * 48)
+            volume.attribute(folder, "stat.size", entries)
+        volume.attribute(group, "ceph.quota.max_bytes", 13500 * GB)
+        env = dict(os.environ, REPO=str(ROOT), DATA=str(volume.data), **volume.env(STAT=str(volume.tools / "stat")))
+
+        def rule(call):
+            done = subprocess.run(["bash", "-c", f'. "{ROOT}/grid/size-rule.sh"; {call}'], env=env,
+                                  capture_output=True, text=True, timeout=60)
+            return done.returncode, done.stdout.strip()
+
+        def held():
+            # the files are read as they are at the call, the attributes' own file among them
+            return 13146 * GB + 1 * GB + sum(entry.stat().st_size for entry in sub.iterdir() if entry.is_file())
+
+        self.assertEqual(rule(f'path_quotas "$VOLUME" {13146 * GB}'), (0, f"2 {13500 * GB} {held()} entries"))
+        self.assertEqual(rule('volume_free_bytes "$VOLUME"'), (0, f"{13500 * GB - held()} quota-2"))
+        # another entry of the group's folder, as another subvolume, counts by its own figure
+        other = group / "other"
+        other.mkdir()
+        volume.attribute(other, "ceph.dir.rbytes", 300 * GB)
+        volume.attribute(group, "stat.size", 2)
+        self.assertEqual(rule('volume_free_bytes "$VOLUME"'), (0, f"{13500 * GB - held() - 300 * GB} quota-2"))
+        # and one whose figure is no count leaves the room under the group's quota unknown
+        volume.attribute(other, "ceph.dir.rbytes", "1" * 48)
+        self.assertEqual(rule(f'path_quotas "$VOLUME" {13146 * GB}'), (2, "unread 2"))
+        self.assertEqual(rule('volume_free_bytes "$VOLUME"'), (1, ""))
 
     def test_a_read_that_fails_is_no_reading(self):
         # getfattr ends 1 both where an attribute is not there and where its read fails, as on a folder
@@ -2830,6 +2874,15 @@ exec "{volume.tools}/getfattr" "$@"
             "holds 13200.00gb by its ceph.dir.rbytes",
             least + "of the quotas on its path the volume's own leaves the least",
         ])
+        # one that leaves as little as the volume's own leaves no less, so the volume's is named, as
+        # the rule names it
+        volume.attribute(parent, "ceph.quota.max_bytes", 13200 * GB + 21990232555520 - 13146 * GB)
+        self.assertEqual(above_lines(), [
+            "Above =         8844.23gb free under the quota of the folder 1 level above the volume, 22044.23gb, which "
+            "holds 13200.00gb by its ceph.dir.rbytes",
+            least + "of the quotas on its path the volume's own leaves the least",
+        ])
+        volume.attribute(parent, "ceph.quota.max_bytes", 25000 * GB)
         # a figure that is no count, or whose read fails, is named as it is, and leaves no room said
         volume.attribute(parent, "ceph.dir.rbytes", "1" * 48)
         self.assertEqual(above(none + "what the folder 1 level above the volume holds could not be read, so the "
