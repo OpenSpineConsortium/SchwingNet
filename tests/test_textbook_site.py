@@ -143,6 +143,7 @@ def small_book(root):
     write(figures / "a-moving-figure.png", "fallback")
     write(figures / "a-moving-figure.html", "<!doctype html><p>moves</p>")
     write(figures / "untraced.png", "no record")
+    write(root / "docs" / "textbook" / "claims.json", CLAIMS)
     write(root / "docs" / "textbook" / "02-unplanned.md", "# 02 Unplanned\n\nA chapter the plan does not name.\n")
     git(root, "init", "-q")
     git(root, "add", "-A")
@@ -151,6 +152,22 @@ def small_book(root):
     write(syn / "work" / "out" / "state.json", {"stamped": "2026-10-24", "artifacts": {
         "SchwingNet/first": git(root, "rev-parse", "HEAD:artifacts/first"),
         "SchwingNet/second": "0" * 40, "SchwingNet/third": "1" * 40}})
+
+
+# A register of one claim and two items, the first under way, for the research loop's page (#220).
+CLAIMS = {
+    "stakes": {"talk": "the talk"},
+    "claims": [{"id": "F1", "kind": "functionality", "statement": "works", "stakes": ["talk"], "grade": "Inferred",
+                "evidence": [{"chapter": "01", "source": "a page", "grade": "Inferred"}]}],
+    "items": [
+        {"id": "E1", "title": "Render the sweep", "what": "render", "needs_owner_word": True,
+         "bears_on": [{"claim": "F1", "to": "Reported"}], "cost": {"cpu_hours": 1, "basis": "estimate"},
+         "depends_on": [], "status": "doing"},
+        {"id": "E2", "title": "Train the stage", "what": "train", "needs_owner_word": True,
+         "bears_on": [{"claim": "F1", "to": "Measured"}], "cost": {"gpu_hours": 4, "basis": "estimate"},
+         "depends_on": ["E1"], "status": "open"},
+    ],
+}
 
 
 class ASmallBook(unittest.TestCase):
@@ -327,6 +344,40 @@ class ASmallBook(unittest.TestCase):
         self.assertEqual(textbook_site.traced({"source": made}), "data")
         self.assertEqual(textbook_site.traced({"source": {"made_by": "x:tables/t.tex (a hand table)"}}), "data")
         self.assertEqual(textbook_site.traced({"source": {"made_by": "x:tools/draw.py"}}), "script")
+
+    # Ask Claude and the research loop (issue #220)
+
+    def test_every_chapter_asks_claude_in_a_new_issue_that_begins_with_the_mention(self):
+        page = self.read("chapter-01.html")
+        self.assertIn('class="button ask" href="https://github.com/OWNER/NAME/issues/new?title=Ask+Claude', page)
+        self.assertIn("body=%40claude%0A%0AAbout%3A+chapter+01+One", page)
+        self.assertIn("docs%2Ftextbook%2F01-one.md", page)
+
+    def test_every_figure_asks_claude_naming_its_record(self):
+        for fid, record in (("01-a-figure", "docs%2Ftextbook%2Ffigures%2F01%2Fa-figure.json"),
+                            ("01-a-moving-figure", "docs%2Ftextbook%2Ffigures%2F01%2Fa-moving-figure.json")):
+            block = self.figure(fid)
+            self.assertIn("Ask Claude", block)
+            self.assertIn(record, block)
+        page = self.read("chapter-01.html")
+        untraced = page[page.index('<img src="figures/01/untraced.png"'):]
+        self.assertIn("docs%2Ftextbook%2Ffigures%2F01%2Funtraced.png", untraced[:untraced.index("</figure>")])
+
+    def test_the_ask_url_puts_the_mention_first(self):
+        url = textbook_site.ask_url("O/N", "chapter 09", "docs/textbook/09.md", ["one more line"])
+        body = textbook_site.urllib.parse.parse_qs(url.split("?", 1)[1])["body"][0]
+        self.assertTrue(body.startswith("@claude\n"))
+        self.assertIn("one more line", body)
+
+    def test_the_research_loop_page_shows_the_queue_and_the_switch(self):
+        page = self.read("research.html")
+        self.assertIn("RESEARCH_LOOP", page)
+        self.assertIn("RESEARCH_RUNS_PER_DAY", page)
+        self.assertIn("https://github.com/OWNER/NAME/actions/workflows/research.yml", page)
+        self.assertIn("<code>E1</code>", page)
+        self.assertIn("doing", page)
+        self.assertIn("waits on another item", page)
+        self.assertIn('href="research.html"', self.read("index.html"))
 
     def test_a_record_s_prose_goes_through_the_privacy_pass(self):
         self.assertNotIn("someacct", self.read("chapter-01.html"))

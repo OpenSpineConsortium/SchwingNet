@@ -64,6 +64,12 @@ with its grade and status and a source panel read from its record, with two butt
 links to the method and the data, and Re-run, a prefilled issue that .github/workflows/figure.yml
 answers (tools/figure_run.py). The page figures.html lists every figure with how far it is traced.
 
+Every chapter and every figure carries Ask Claude, a prefilled new issue whose body begins "@claude"
+and names what the reader is looking at and its record, which .github/workflows/claude.yml answers
+for the owner, members and collaborators; and research.html shows the research loop
+(.github/workflows/research.yml, issue #220) with the claims register's queue (tools/claims_rank.py
+queue), its switch and its cap.
+
     python3 tools/textbook_site.py OUT [--repo OWNER/NAME] [--sha SHA] [--root PATH]
 """
 
@@ -83,6 +89,7 @@ TOOLS = Path(__file__).resolve().parent
 ROOT = TOOLS.parent
 sys.path.insert(0, str(TOOLS))
 import living_docs  # noqa: E402
+import claims_rank  # noqa: E402
 
 SYNTHESIS = Path("artifacts/_synthesis")
 BOOK = Path("docs/textbook")
@@ -432,6 +439,20 @@ def rerun_url(repo, rec):
     return f"https://github.com/{repo}/issues/new?{query}"
 
 
+def ask_url(repo, subject, record, extra=()):
+    """A new issue on the repository whose body begins "@claude", names what the reader is looking at
+    and its record, and leaves a line for the question: .github/workflows/claude.yml answers an issue
+    opened so, for the repository's owner, its organization's members and its collaborators."""
+    body = "\n".join(["@claude", "", f"About: {subject}", f"Its record: {record}", *extra, "",
+                      "My question or request (type it here, in place of this line, before you submit):", ""])
+    query = urllib.parse.urlencode({"title": f"Ask Claude: {subject}", "body": body})
+    return f"https://github.com/{repo}/issues/new?{query}"
+
+
+def ask_button(repo, subject, record, extra=()):
+    return f'<a class="button ask" href="{esc(ask_url(repo, subject, record, extra))}">Ask Claude</a>'
+
+
 def rerun_words(rec):
     """What the Re-run button will do, and what it costs, from the record's rerun field."""
     rerun = rec.get("rerun") or {}
@@ -530,6 +551,8 @@ figure.fig figcaption { margin-top:8px; font-size:14.5px; }
                             padding:3px 12px; font-size:13.5px; text-decoration:none; cursor:pointer; list-style:none; }
 .buttons details { margin:0; }
 .buttons details[open] { flex-basis:100%; }
+.button.ask { border-color:var(--ok); color:var(--ok); }
+.asks { margin:4px 0 14px; }
 """
 
 FILTER_JS = """
@@ -616,7 +639,7 @@ def nav_html(book, pending_count, here):
         return f'<a class="{cls}{mark}" href="{name}">{esc(label)}</a>'
 
     out = ["<h4>The book</h4>", link("index.html", "Front page"), link("artifacts.html", "Every artifact"),
-           link("figures.html", f"Every figure ({len(book.figures)})"),
+           link("figures.html", f"Every figure ({len(book.figures)})"), link("research.html", "Research loop"),
            link("pending.html", f"Not yet in the book ({pending_count})")]
     for part in book.plan["parts"]:
         out.append(f"<h4>{esc(part['label'])}: {esc(part['title'])}</h4>")
@@ -700,6 +723,7 @@ class Builder:
             return (f'<figure class="fig"><img src="{esc(rel)}" alt="{esc(alt)}"><figcaption>'
                     f"<strong>Figure {esc(number)}.</strong> {text}"
                     '<p class="notice warn">This figure has no record yet: where it came from is not written down.</p>'
+                    f'<div class="buttons">{ask_button(self.repo or DEFAULT_REPO, f"figure {chapter}/{stem}", (BOOK / rel).as_posix())}</div>'
                     "</figcaption></figure>")
         return self.figure_block(rec, number, alt)
 
@@ -747,7 +771,7 @@ class Builder:
                 f"<details><summary>Explore</summary><ul>{links or '<li>No link is recorded beyond the artifact.</li>'}</ul>"
                 f"<p>The method: {esc(source.get('made_by') or 'not recorded')}.</p></details>"
                 f'<a class="button" href="{esc(rerun_url(self.repo or DEFAULT_REPO, rec))}">Re-run</a>{record_link}'
-                f"{self.open_button(rec)}</div>"
+                f"{self.open_button(rec)}{self.figure_ask(rec)}</div>"
                 f'<p class="count">Re-run: {esc(rerun_words(rec))}</p>{command}</div>')
 
     def open_button(self, rec):
@@ -768,6 +792,72 @@ class Builder:
                 f'loading="lazy" sandbox="{EXPORT_SANDBOX}"></iframe><figcaption>The artifact&#x27;s own page as it '
                 f'was exported to the repository, interactive where it was; <a href="{esc(src)}">open it full-page</a>.'
                 "</figcaption></figure>")
+
+    def figure_ask(self, rec):
+        """The Ask Claude button of a figure, naming its id, its chapter and its record's file."""
+        fid = rec.get("id", "")
+        chapter = rec.get("chapter") or fid.split("/", 1)[0]
+        record = (FIGURES / f"{fid}.json").as_posix()
+        return ask_button(self.repo or DEFAULT_REPO, f"figure {fid} ({rec.get('title', '')})", record,
+                          [f"In chapter {chapter}: {self.github(self.book_file(chapter))}"])
+
+    def book_file(self, number):
+        """The chapter file the plan names for a chapter number, or the book's folder."""
+        for _part, c in self.book.chapters:
+            if c["number"] == number:
+                return c["file"]
+        return BOOK.as_posix()
+
+    def research_page(self):
+        """The research loop: what it is, its switch and cap, and the register's queue as it stands."""
+        path = self.book.root / BOOK / "claims.json"
+        rows = []
+        if path.exists():
+            register = claims_rank.load(path)
+            for entry in claims_rank.queue(register):
+                ready = "ready" if entry["ready"] else "waits on another item"
+                status = entry["status"]
+                find = " ".join(str(x) for x in (entry["id"], entry["title"], status, ready)).lower()
+                rows.append(f'<tr data-find="{esc(find)}"><td>{entry["rank"]}</td><td><code>{esc(entry["id"])}</code></td>'
+                            f'<td>{esc(entry["title"])}</td><td><span class="chip {"ok" if status == "open" else "warn"}">'
+                            f'{esc(status)}</span></td><td>{esc(ready)}</td><td>{entry["score"]}</td>'
+                            f'<td>{"yes" if entry["needs_owner_word"] else "no"}</td></tr>')
+        repo = self.repo or DEFAULT_REPO
+        workflow = f"https://github.com/{repo}/actions/workflows/research.yml"
+        variables = f"https://github.com/{repo}/settings/variables/actions"
+        issues = f"https://github.com/{repo}/issues?q=is%3Aopen+label%3Aresearch"
+        owner = f"https://github.com/{repo}/issues?q=is%3Aopen+label%3Aowner-act"
+        body = ["<h1>The research loop</h1>",
+                "<p>Every four hours a Claude session takes the best-ranked item of the claims register that nobody "
+                "holds, opens or carries on its issue labelled research, claims it under the claim protocol as the worker "
+                "research-loop, works it, and opens a pull request that updates the register and the chapter the result "
+                "changes; the owner merges. The owner gave it full command of grid work, fetches and training on 24 "
+                "October 2026; it still keeps the size rule, refuses CT-RATE without the owner's terabytes and "
+                "Radiopaedia by script, uses no usage credits and puts nothing in a public place. Letters, e-mails, "
+                "counsel, the IRB and the grid's gate words, which it cannot reach, become issues labelled owner-act "
+                f'assigned to the owner. Its brief is <a href="{esc(self.github(".github/symphony/research.md"))}">'
+                ".github/symphony/research.md</a>.</p>",
+                '<div class="notice"><p><strong>The switch.</strong> The repository variable <code>RESEARCH_LOOP</code> '
+                "set to <code>off</code> stops it; <code>RESEARCH_RUNS_PER_DAY</code> caps its runs a day (6 unless it "
+                f'says otherwise, 50 at most). <a href="{esc(variables)}">The variables</a> &middot; '
+                f'<a href="{esc(workflow)}">Its runs, and Run workflow to start one now</a> &middot; '
+                f'<a href="{esc(issues)}">Its open issues</a> &middot; <a href="{esc(owner)}">What waits on the owner</a>'
+                "</p></div>",
+                "<h2>The queue</h2>",
+                "<p>Every item not done, ranked by the weight of the claims it bears on over its cost "
+                f'(<a href="{chapter_page("33")}">chapter 33</a>). An item under way is marked doing; the loop starts '
+                "only open items that are ready, and skips an item an open issue or pull request labelled research "
+                "already holds. Owner's word is what the register recorded before the owner's decision of 24 October; "
+                "the loop no longer waits on it for grid work, fetches or training.</p>"]
+        if rows:
+            body += [f'<p class="count"><span id="shown">{len(rows)}</span> shown.</p>',
+                     '<input id="filter" class="filter" type="search" placeholder="Filter by any word: an id, open, doing, ready">',
+                     '<div class="table"><table><thead><tr><th>Rank</th><th>Item</th><th>What</th><th>Status</th>'
+                     "<th>Ready</th><th>Score</th><th>Owner's word</th></tr></thead><tbody>" + "".join(rows)
+                     + "</tbody></table></div>"]
+        else:
+            body.append("<p>The register, docs/textbook/claims.json, is not on this commit.</p>")
+        self.write("research.html", "Research loop", "\n".join(body), FILTER_JS)
 
     def every_figure(self):
         b = self.book
@@ -948,7 +1038,9 @@ class Builder:
                 f'<div class="chips"><span class="chip">{esc(part["label"])}: {esc(part["title"])}</span>'
                 f'<span class="chip {label_cls}">{esc(c["confidentiality"])}</span>'
                 f'<span class="chip">{len(ids)} artifacts</span></div>',
-                f'<p class="count">{esc(LABELS.get(c["confidentiality"], ""))}</p>']
+                f'<p class="count">{esc(LABELS.get(c["confidentiality"], ""))}</p>',
+                '<div class="buttons asks">' + ask_button(self.repo or DEFAULT_REPO, f"chapter {c['number']} {c['title']}",
+                                                          c["file"]) + "</div>"]
         plan = (f"<p>{esc(c['purpose'])}</p><p><strong>Questions it answers</strong></p><ul>"
                 + "".join(f"<li>{esc(q)}</li>" for q in c["questions_answered"]) + "</ul>")
         if text is None:
@@ -1206,6 +1298,7 @@ class Builder:
             self.artifact(aid)
         self.every_artifact()
         self.every_figure()
+        self.research_page()
         self.copy_figures()
         self.copy_exports()
         self.pending_page()

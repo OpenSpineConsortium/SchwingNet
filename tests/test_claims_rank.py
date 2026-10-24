@@ -105,6 +105,42 @@ class Next(unittest.TestCase):
         self.assertEqual(json.loads(out.getvalue())["without_owner_word"]["bears_on"][0]["claim"], "N1")
 
 
+class Status(unittest.TestCase):
+    def test_an_item_under_way_is_not_next_but_stays_ranked(self):
+        data = register()
+        data["items"][0]["status"] = "doing"
+        chosen = claims_rank.next_items(data)
+        self.assertIsNone(chosen["without_owner_word"])
+        self.assertIn("E1", [row["item"]["id"] for row in claims_rank.ranked(data)])
+
+    def test_an_item_with_no_status_is_open(self):
+        data = register()
+        del data["items"][0]["status"]
+        self.assertEqual(claims_rank.next_items(data)["without_owner_word"]["id"], "E1")
+        self.assertEqual(claims_rank.problems(data), [])
+
+    def test_a_done_item_is_not_in_the_queue_and_an_item_under_way_is(self):
+        data = register()
+        data["items"][0]["status"] = "doing"
+        data["items"][2]["status"] = "done"
+        listed = {entry["id"]: entry for entry in claims_rank.queue(data)}
+        self.assertEqual(set(listed), {"E1", "E2"})
+        self.assertEqual(listed["E1"]["status"], "doing")
+        self.assertTrue(listed["E2"]["ready"])
+        self.assertEqual(sorted(entry["rank"] for entry in listed.values()), [1, 2])
+
+    def test_a_status_outside_the_three_is_caught(self):
+        data = register()
+        data["items"][0]["status"] = "paused"
+        found = claims_rank.problems(data)
+        self.assertTrue(any("is not one of open, doing, done" in problem for problem in found), found)
+
+    def test_the_register_itself_holds_together_and_gives_every_item_a_status(self):
+        data = claims_rank.load()
+        self.assertEqual(claims_rank.problems(data), [])
+        self.assertTrue(all(item.get("status") in claims_rank.STATUSES for item in data["items"]))
+
+
 class TheChecks(unittest.TestCase):
     def assert_problem(self, data, words):
         found = claims_rank.problems(data)
