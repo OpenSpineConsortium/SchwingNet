@@ -208,6 +208,59 @@ class Prompt(unittest.TestCase):
         self.assertNotIn("RESEARCH_DISPATCH_TOKEN", brief)
 
 
+class Why(unittest.TestCase):
+    """why: what a run that ended in error says, from the action's execution file."""
+
+    def why_of(self, messages):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "claude-execution-output.json"
+            path.write_text(json.dumps(messages), encoding="utf-8")
+            out = io.StringIO()
+            with redirect_stdout(out):
+                code = research_loop.main(["why", str(path)])
+        self.assertEqual(code, 0)
+        return out.getvalue()
+
+    def test_result_fields_and_last_words_with_the_secret_masked(self):
+        token = "sk-ant-oat01-" + "a" * 60
+        text = self.why_of([
+            {"type": "system", "subtype": "init", "model": "claude-sonnet-5-5"},
+            {"type": "result", "subtype": "success", "is_error": True, "num_turns": 1, "duration_ms": 314,
+             "result": f"Invalid API key \u00b7 Please run /login (Authorization: Bearer {token})"},
+        ])
+        self.assertIn("### Why the session ended", text)
+        self.assertIn("is_error: True, subtype: success, turns: 1, duration: 314 ms", text)
+        self.assertIn("Invalid API key", text)
+        self.assertIn("[masked]", text)
+        self.assertNotIn(token, text)
+        self.assertNotIn("a" * 40, text)
+
+    def test_the_last_assistant_text_stands_in_for_an_empty_result(self):
+        text = self.why_of([
+            {"type": "assistant", "message": {"content": [{"type": "text", "text": "Claude AI usage limit reached|1792900800"}]}},
+            {"type": "result", "subtype": "error_during_execution", "is_error": True, "num_turns": 1,
+             "duration_ms": 420, "result": ""},
+        ])
+        self.assertIn("usage limit reached", text)
+        self.assertIn("subtype: error_during_execution", text)
+
+    def test_long_words_are_cut_and_a_silent_session_is_said(self):
+        text = self.why_of([{"type": "result", "subtype": "success", "is_error": True, "num_turns": 3,
+                             "duration_ms": 9, "result": "x " * 600}])
+        self.assertLess(len(text), 700)
+        text = self.why_of([{"type": "result", "subtype": "success", "is_error": False, "num_turns": 2}])
+        self.assertIn("The session said nothing.", text)
+
+    def test_no_result_and_no_file_are_said_plainly(self):
+        self.assertIn("left no result", self.why_of([{"type": "system", "subtype": "init"}]))
+        self.assertIn("left no result", self.why_of({"type": "system"}))
+        out = io.StringIO()
+        with redirect_stdout(out):
+            code = research_loop.main(["why", "/nonexistent/claude-execution-output.json"])
+        self.assertEqual(code, 0)
+        self.assertIn("No execution file could be read", out.getvalue())
+
+
 def committed(path):
     """A stand-in for main's tree: the files a grid command may name in these tests."""
     return path in ("x.sh", "scripts/check.sh", "tools/claims_rank.py", "grid/run-leaks.sh")
