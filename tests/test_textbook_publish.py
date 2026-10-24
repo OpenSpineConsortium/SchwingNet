@@ -216,7 +216,7 @@ class Prompt(unittest.TestCase):
     def plans(self, folder):
         out = edition(Path(folder) / "out", dict(FILES, **{"a.html": "SECRETWORD-ZXQ in a page"}))
         first = tp.plan(out, {})
-        state = {"schema": tp.SCHEMA, "url": URL, "files": first["files"]}
+        state = {"schema": tp.SCHEMA, "url": URL, "files": first["files"], "capabilities": tp.CAPABILITIES}
         write(out / "a.html", "A changed")
         (out / "figures" / "01" / "x.png").unlink()
         return first, tp.plan(out, state)
@@ -225,7 +225,8 @@ class Prompt(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             first, _later = self.plans(folder)
             text = tp.prompt(first, "abc1234def", "/w/textbook-out")
-        self.assertIn('capabilities {"sample": {}}', text)
+        self.assertIn(f"capabilities {json.dumps(tp.CAPABILITIES)}", text)
+        self.assertIn('"mcp": {"servers": [{"server": "GitHub", "tools": ["actions_run_trigger", "get_file_contents"]}]}', text)
         self.assertIn("icon book", text)
         self.assertIn('label "Edition abc1234"', text)
         self.assertIn('title "SchwingNet Textbook"', text)
@@ -252,6 +253,24 @@ class Prompt(unittest.TestCase):
         self.assertIn("Batch 1 of 1: 1 files, 9 bytes, 1 to remove\n  a.html\n  remove: figures/01/x.png\n", text)
         self.assertIn("Pass no capabilities, icon, title or description", text)
         self.assertNotIn('capabilities {"sample"', text)
+
+    def test_a_record_with_other_capabilities_or_none_passes_them_once_on_the_first_batch(self):
+        # An artifact published before the connector was declared, or under another list, takes the
+        # current list on its next publish and keeps it after that.
+        with tempfile.TemporaryDirectory() as folder:
+            out = edition(Path(folder) / "out", FILES)
+            first = tp.plan(out, {})
+            write(out / "a.html", "A changed")
+            for recorded in ({}, {"capabilities": {"sample": {}}}):
+                state = dict({"schema": tp.SCHEMA, "url": URL, "files": first["files"]}, **recorded)
+                later = tp.plan(out, state)
+                self.assertEqual(later["capabilities"], tp.CAPABILITIES)
+                text = tp.prompt(later, "abc1234def")
+                self.assertIn(f"on the first of them alone capabilities {json.dumps(tp.CAPABILITIES)}", text)
+                self.assertNotIn("Pass no capabilities", text)
+            same = tp.plan(out, {"schema": tp.SCHEMA, "url": URL, "files": first["files"], "capabilities": tp.CAPABILITIES})
+            self.assertIsNone(same["capabilities"])
+        self.assertEqual(first["capabilities"], tp.CAPABILITIES)
 
     def test_nothing_of_the_books_text_is_in_the_prompt_or_the_plan(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -309,7 +328,7 @@ class Record(unittest.TestCase):
     def test_a_whole_publish_records_the_edition_and_every_hash(self):
         new, message = tp.record({}, self.PLAN, self.WHOLE, "abc1234def", "2026-10-24T18:42:00Z", "i" * 64, RUN)
         self.assertEqual(new, {"schema": tp.SCHEMA, "url": URL, "sha": "abc1234def", "built": "2026-10-24T18:42:00Z",
-                               "inputs": "i" * 64, "run": RUN, "files": self.PLAN["files"]})
+                               "inputs": "i" * 64, "run": RUN, "files": self.PLAN["files"], "capabilities": tp.CAPABILITIES})
         self.assertEqual(message, "Edition abc1234: 3 files published, 1 removed, 2 unchanged")
 
     def test_a_publish_that_stopped_partway_records_the_link_with_nothing_published(self):

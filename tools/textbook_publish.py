@@ -48,6 +48,10 @@ FILTER = ["docs/textbook/**", "artifacts/**", "tools/textbook_site.py", "tools/t
           "tools/living_docs.py", ".github/CODEOWNERS"]
 INPUTS = [path.removesuffix("/**") for path in FILTER]
 SCHEMA = "textbook-artifact/1"
+# What the pages may use of the viewer's: Ask Claude's sample, and the GitHub connector's two tools behind
+# Run as me and a panel's read (docs/research/experiments-panel.md, section 4). A redeploy that passes none
+# keeps what the artifact has, so they go with the first publish and again only when the record's differ.
+CAPABILITIES = {"sample": {}, "mcp": {"servers": [{"server": "GitHub", "tools": ["actions_run_trigger", "get_file_contents"]}]}}
 BRANCH = "textbook-artifact"
 STATE_FILE = "state.json"
 PAGE = "index.html"
@@ -193,7 +197,9 @@ def plan(out, state):
     batches = [] if nothing else batched(changed, sizes, removed)
     if not nothing and not batches:
         batches = [{"n": 1, "files": [], "remove": [], "bytes": 0}]
-    return {"first": not state.get("url"), "url": state.get("url", ""), "page": PAGE, "root": OUT_REL,
+    first = not state.get("url")
+    capabilities = CAPABILITIES if first or state.get("capabilities") != CAPABILITIES else None
+    return {"first": first, "url": state.get("url", ""), "page": PAGE, "root": OUT_REL, "capabilities": capabilities,
             "nothing": nothing, "batches": batches, "changed": len(changed) + int(page_changed),
             "removed": len(removed), "unchanged": len(files) - len(changed) - int(page_changed),
             "total_files": len(files), "total_bytes": sum(sizes.values()),
@@ -226,19 +232,24 @@ def prompt(plan_, sha, folder=""):
         lines += [
             "This is the first publish, so there is no artifact yet.",
             f"1. Publish batch 1: action publish, file_path {page}, root {root}, title \"{TITLE}\", icon book,",
-            f"   description \"{DESCRIPTION}\", capabilities {{\"sample\": {{}}}}, label \"{label}\", and files",
+            f"   description \"{DESCRIPTION}\", capabilities {json.dumps(CAPABILITIES)}, label \"{label}\", and files",
             "   mapping each path of batch 1 to itself. The result gives the artifact's url; use it in every later call.",
             "2. For each later batch, in order: action publish with that url, the same file_path and root, the",
             "   label, and files mapping each path of the batch to itself; no icon, title, description or capabilities.",
         ]
     else:
+        if plan_.get("capabilities"):
+            keep = [f"   null, and on the first of them alone capabilities {json.dumps(plan_['capabilities'])}, since the",
+                    "   artifact's capabilities changed; pass no icon, title or description, so the artifact keeps what it has. If a"]
+        else:
+            keep = ["   null. Pass no capabilities, icon, title or description, so the artifact keeps what it has. If a"]
         lines += [
             f"The artifact exists: {plan_['url']}",
             "1. Action read with that url (a publish to an artifact this session has not read is refused).",
             "2. Action list with scope files and that url, so the paths about to be replaced are ones you listed.",
             f"3. For each batch, in order: action publish with that url, file_path {page}, root {root}, label",
             f"   \"{label}\", and files mapping each path of the batch to itself, with each path to remove mapped to",
-            "   null. Pass no capabilities, icon, title or description, so the artifact keeps what it has. If a",
+            *keep,
             "   publish is refused for paths you have not read or listed, publish that batch again with those paths,",
             "   and only those, in overwrite_unread.",
         ]
@@ -335,7 +346,7 @@ def record(state, plan_, answer, sha, built, inputs, run):
                "incomplete": answer["incomplete"]}
         return new, f"Edition {sha[:7]}: incomplete ({answer['incomplete']}); the next run publishes it whole"
     new = {"schema": SCHEMA, "url": url, "sha": sha, "built": built, "inputs": inputs, "run": run,
-           "files": plan_["files"]}
+           "files": plan_["files"], "capabilities": CAPABILITIES}
     message = (f"Edition {sha[:7]}: {plan_['changed']} files published, {plan_['removed']} removed, "
                f"{plan_['unchanged']} unchanged")
     return new, message

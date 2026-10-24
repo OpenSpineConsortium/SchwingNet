@@ -1,0 +1,175 @@
+name: Experiment
+# A run request: a new combination of data and blocks asked for from the textbook's experiments panel (its
+# Request this run link, or Run as me, which dispatches this workflow through the viewer's GitHub connector
+# and opens the issue from here), from the Experiment issue form or from the Claude box's answer. The issue
+# is the record and the owner's click queues the run. This workflow runs main's code only:
+# tools/experiment_run.py reads the request's lines and nothing else from the issue, refuses a request from
+# someone who may not write to the repository, checks every value against data/recipes/ and
+# src/schwingnet/blocks.py (tools/experiments_panel.py check --request), answers with the exact flow command,
+# the gate word that queues it and the owner's exact click, labels the issue owner-act and records the
+# request as <issue>.request on the branch experiments, where grid/gate.sh's word experiment <issue> reads
+# it. Nothing runs on the grid from here: a grid job waits for the owner's word and the number of jobs
+# (docs/project.md), and the click is that word. Nothing of Claude's runs here and no secret but GitHub's
+# own token is used.
+on:
+  issues:
+    types: [opened, labeled]
+  workflow_dispatch:
+    inputs:
+      recipe:
+        description: "The licence cut of the catalog (data/recipes/), or none"
+        default: none
+      epochs:
+        description: "1 to 200"
+        default: "20"
+      seed:
+        description: "0 or more"
+        default: "1"
+      hours:
+        description: "The training job's wall time, above 0 and at most 48"
+        default: "4"
+      blocks:
+        description: "KEY=VALUE words separated by spaces, one per block that differs from version 1 (src/schwingnet/blocks.py)"
+        default: ""
+
+permissions:
+  contents: read
+
+# One answer per issue: an issue opened with the label sends both events, and the second run finds the
+# first one's answer and stops; a dispatch has no issue yet and runs alone.
+concurrency:
+  group: experiment-${{ github.event.issue.number || github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  request:
+    if: >-
+      github.event.repository.fork == false &&
+      (github.event_name == 'workflow_dispatch' || github.event.action == 'opened' || github.event.label.name == 'experiment')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: open the issue for a combination pressed in the book
+        id: opened
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          INPUT_RECIPE: ${{ inputs.recipe }}
+          INPUT_EPOCHS: ${{ inputs.epochs }}
+          INPUT_SEED: ${{ inputs.seed }}
+          INPUT_HOURS: ${{ inputs.hours }}
+          INPUT_BLOCKS: ${{ inputs.blocks }}
+        run: |
+          set -eu
+          # A dispatch whose inputs do not hold fails here and opens no issue.
+          python3 tools/experiment_run.py request --body "$RUNNER_TEMP/body.md" --title "$RUNNER_TEMP/title.txt"
+          gh label create experiment --repo "$REPO" --color 1D76DB \
+            --description "A combination of data and blocks asked for as one run (experiment.yml)" 2>/dev/null || true
+          url=$(gh issue create --repo "$REPO" --label experiment --title "$(cat "$RUNNER_TEMP/title.txt")" --body-file "$RUNNER_TEMP/body.md")
+          number=${url##*/}
+          case "$number" in ''|*[!0-9]*) echo "::error::no issue number in $url"; exit 1 ;; esac
+          gh api "repos/$REPO/issues/$number" > "$RUNNER_TEMP/issue.json"
+          echo "number=$number" >> "$GITHUB_OUTPUT"
+      - name: decide from the request's lines and the committed lists
+        id: plan
+        env:
+          REPO: ${{ github.repository }}
+          EVENT: ${{ github.event_name }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          set -eu
+          if [ "$EVENT" = workflow_dispatch ]; then
+            python3 tools/experiment_run.py plan --issue-json "$RUNNER_TEMP/issue.json" --actor "$ACTOR" --repo "$REPO" \
+              --comment "$RUNNER_TEMP/comment.md" --request "$RUNNER_TEMP/request.txt" --readme "$RUNNER_TEMP/README.md"
+          else
+            python3 tools/experiment_run.py plan --event "$GITHUB_EVENT_PATH" --repo "$REPO" \
+              --comment "$RUNNER_TEMP/comment.md" --request "$RUNNER_TEMP/request.txt" --readme "$RUNNER_TEMP/README.md"
+          fi
+      - name: answer the issue once
+        id: answer
+        if: steps.plan.outputs.action != 'skip'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          ISSUE: ${{ steps.plan.outputs.issue }}
+        run: |
+          set -eu
+          answered=$(gh api "repos/$REPO/issues/$ISSUE/comments" --paginate \
+            --jq '[.[] | select(.user.login == "github-actions[bot]" and (.body | startswith("<!-- schwingnet-experiment:")))] | length' \
+            | awk '{s += $1} END {print s + 0}')
+          if [ "$answered" -gt 0 ]; then
+            echo "already answered" >> "$GITHUB_STEP_SUMMARY"
+            echo "answered=yes" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          gh issue comment "$ISSUE" --repo "$REPO" --body-file "$RUNNER_TEMP/comment.md"
+      - name: hold the issue for the owner's click
+        if: steps.plan.outputs.action == 'record' && steps.answer.outputs.answered != 'yes'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          ISSUE: ${{ steps.plan.outputs.issue }}
+        run: |
+          set -eu
+          # The label experiment goes on here too: the form names it, but GitHub puts a template's label on
+          # only where it exists, and a request opened from the panel's link may come without it.
+          gh label create experiment --repo "$REPO" --color 1D76DB \
+            --description "A combination of data and blocks asked for as one run (experiment.yml)" 2>/dev/null || true
+          gh label create owner-act --repo "$REPO" --color D93F0B --description "Waits on an act of the owner's (research loop)" 2>/dev/null || true
+          gh issue edit "$ISSUE" --repo "$REPO" --add-label experiment,owner-act
+      - name: record the request on the branch experiments
+        if: steps.plan.outputs.action == 'record' && steps.answer.outputs.answered != 'yes'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          ISSUE: ${{ steps.plan.outputs.issue }}
+          TITLE: ${{ steps.plan.outputs.title }}
+        run: |
+          set -eu
+          # The branch holds request files and its README and nothing else: a branch of the same name holding
+          # other files is someone's and is left as it is. The commit is built from the files alone (hash-object,
+          # a scratch index, write-tree, commit-tree) and pushed as a fast-forward, which git refuses when another
+          # run moved the branch first; one more try reads it again.
+          remote="https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git"
+          for try in 1 2; do
+            base=""
+            if git fetch --quiet --no-tags "$remote" "+refs/heads/experiments:refs/remotes/origin/experiments" 2>/dev/null; then
+              base=$(git rev-parse refs/remotes/origin/experiments)
+              if git ls-tree -r --name-only "$base" | grep -qvE '^([1-9][0-9]{0,8}\.request|README\.md)$'; then
+                echo "::error::the branch experiments holds other files than requests; nothing was recorded"
+                exit 1
+              fi
+            fi
+            export GIT_INDEX_FILE="$RUNNER_TEMP/experiments.index"
+            rm -f "$GIT_INDEX_FILE"
+            if [ -n "$base" ]; then git read-tree "$base"; else git read-tree --empty; fi
+            git update-index --add --cacheinfo "100644,$(git hash-object -w "$RUNNER_TEMP/request.txt"),$ISSUE.request"
+            git update-index --add --cacheinfo "100644,$(git hash-object -w "$RUNNER_TEMP/README.md"),README.md"
+            tree=$(git write-tree)
+            commit=$(git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit-tree "$tree" ${base:+-p "$base"} -m "Experiment #$ISSUE: $TITLE")
+            if GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 git -c core.hooksPath=/dev/null push --no-verify --quiet "$remote" "$commit:refs/heads/experiments"; then
+              echo "recorded $ISSUE.request on the branch experiments" >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            echo "the branch moved; reading it again"
+          done
+          echo "::error::the branch experiments could not be written in two tries; nothing was recorded"
+          exit 1
+      - name: say so when the run failed
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          ISSUE: ${{ github.event.issue.number || steps.opened.outputs.number }}
+          RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          [ -n "$ISSUE" ] || exit 0
+          gh issue comment "$ISSUE" --repo "$REPO" --body "The experiment workflow failed before it could finish; its log is at $RUN. Nothing was queued."

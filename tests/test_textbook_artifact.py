@@ -89,6 +89,19 @@ class AnEdition(unittest.TestCase):
         self.assertIn('window.claude.use("sample")', script)
         self.assertIn("ask-fig", script)
 
+    def test_the_box_turns_an_experiment_line_in_an_answer_into_a_request(self):
+        # The Claude prompt path: the rules ask for one experiment: line when a run is asked for, the box reads
+        # it into the panel's request lines, offers the prefilled issue always and Run as me only through the
+        # page's dispatcher where the viewer's connector resolves (tools/textbook_site.py MESSAGE_JS).
+        script = self.read("ask.js")
+        for word in ("experiment: recipe=<name> epochs=<n> seed=<n> hours=<h> KEY=VALUE", "write no such line otherwise",
+                     '/^experiment:[ \\t]*(.+?)[ \\t]*$/m', "<!-- schwingnet-experiment -->", 'labels: "experiment"',
+                     "Request this run", "Run as me", "window.schwingnetConnector", "window.schwingnetDispatch",
+                     'workflow: "experiment.yml", ref: "main"', "blocks: r.blocks.join(\" \")", "offerRun(null)"):
+            self.assertIn(word, script, word)
+        self.assertNotIn("callTool", script, "the box dispatches through the page's dispatcher alone")
+        self.assertNotIn('use("mcp")', script)
+
     def test_no_record_is_among_the_files_and_the_record_points_at_github(self):
         files = hashes(self.out)
         self.assertNotIn("figures/01/a-figure.json", files)

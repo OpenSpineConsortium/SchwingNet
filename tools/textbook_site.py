@@ -583,6 +583,15 @@ document.addEventListener("DOMContentLoaded", function () {
 MESSAGE_JS = """
 <script>
 (function () {
+  // A figure framed in this page with sandbox="allow-scripts" cannot open a link, read a file or start a run, so
+  // it posts to this page and this page answers it (docs/research/experiments-panel.md, section 4). A message is
+  // taken only from the contentWindow of one of the page's own figure frames, never by origin, since a sandboxed
+  // frame's origin is null. A dispatch or a read goes through the viewer's own GitHub connector where the artifact
+  // runtime serves one (window.claude.use("mcp"), the artifact edition's pages) and is answered "no connector"
+  // everywhere else, this site included; a run is dispatched only when the viewer presses Run as me.
+  var ALLOWED = {"OpenSpineConsortium/SchwingNet": true, "OpenSpineConsortium/spine-datasets": true};
+  var SERVER = "GitHub";
+  var mcp;
   function own(source) {
     var frames = document.querySelectorAll("figure.fig iframe");
     for (var i = 0; i < frames.length; i++) { if (frames[i].contentWindow === source) return true; }
@@ -596,6 +605,111 @@ MESSAGE_JS = """
     bar.innerHTML = '<span>' + html + '</span><button type="button" class="close" aria-label="Dismiss">Dismiss</button>';
     bar.querySelector(".close").onclick = function () { bar.remove(); bar = null; };
   }
+  function reply(source, message) { try { source.postMessage(message, "*"); } catch (e) {} }
+  var pending = null;
+  function connector() {
+    // Resolves the mcp namespace, or null where this page cannot act: no window.claude within two seconds (this
+    // site, a saved copy), or a viewer that does not serve the capability to this page. One lookup is shared by
+    // every request and never made twice once it has settled; a request is answered null after six seconds
+    // whatever the lookup does, since a figure waits only so long before it shows its fallback.
+    if (mcp !== undefined) return Promise.resolve(mcp);
+    if (!pending) {
+      pending = new Promise(function (resolve) {
+        var tries = 0;
+        (function wait() {
+          if (window.claude && typeof window.claude.use === "function") {
+            window.claude.use("mcp").then(function (m) { mcp = m || null; resolve(mcp); }, function () { mcp = null; resolve(null); });
+            return;
+          }
+          if (++tries < 20) { setTimeout(wait, 100); return; }
+          mcp = null; resolve(null);
+        })();
+      });
+    }
+    return Promise.race([pending, new Promise(function (resolve) { setTimeout(function () { resolve(null); }, 6000); })]);
+  }
+  function allowed(repo) { var p = String(repo || "").split("/"); return p.length === 2 && ALLOWED[repo] ? p : null; }
+  function why(e) { return e && (e.code || e.message) ? String(e.code || e.message) : "error"; }
+  function run(d) {
+    // The dispatch itself, a promise of {ok, error}: a figure asks for it with schwingnet.dispatch, and a script
+    // of the page (the artifact edition's Ask box) as window.schwingnetDispatch. Every input goes as a string,
+    // since a workflow's inputs are strings.
+    var parts = allowed(d.repo);
+    if (!parts) return Promise.resolve({ok: false, error: "repository not allowed"});
+    return connector().then(function (m) {
+      if (!m) return {ok: false, error: "no connector"};
+      var inputs = {}, given = d.inputs || {};
+      Object.keys(given).forEach(function (k) { inputs[k] = String(given[k]); });
+      return m.callTool(SERVER, "actions_run_trigger", {method: "run_workflow", owner: parts[0], repo: parts[1],
+                                                        workflow_id: String(d.workflow || ""), ref: String(d.ref || "main"), inputs: inputs})
+        .then(function () { return {ok: true}; }, function (e) { return {ok: false, error: why(e)}; });
+    });
+  }
+  function dispatch(d, source) {
+    run(d).then(function (r) {
+      reply(source, {type: "schwingnet.dispatch.result", label: d.label, ok: r.ok, error: r.error});
+      if (r.ok) show("Dispatched as you: " + esc(d.workflow) + " on " + esc(d.repo) + "."
+                     + (d.label === "experiment" ? " The experiment workflow opens the issue and answers it with the gate word." : ""));
+      else if (r.error !== "repository not allowed" && r.error !== "no connector")
+        show("Not dispatched (" + esc(r.error) + ")." + (d.fallbackUrl ? " " + link(d.fallbackUrl, "Open the request as an issue instead") + "." : ""));
+    });
+  }
+  window.schwingnetConnector = connector;
+  window.schwingnetDispatch = run;
+  function utf8(b64) { return new TextDecoder().decode(Uint8Array.from(atob(String(b64).replace(/\\s+/g, "")), function (c) { return c.charCodeAt(0); })); }
+  function textOf(payload) {
+    // The file's own text out of what the runtime hands back for get_file_contents, which a figure parses as
+    // it would the file (the storage panel reads PLAN.json this way): a string; the API's envelope {content,
+    // encoding: "base64"}; a tool result {content: [blocks]}; a content block, {type: "text", text} or
+    // {type: "resource", resource: {text | blob}}, or a list of them, a resource before a text, since the GitHub
+    // server says "successfully downloaded" in a text block beside the file's resource. Anything else is its JSON.
+    if (payload == null) return "";
+    if (typeof payload === "string") return payload;
+    if (Array.isArray(payload)) {
+      var resources = payload.filter(function (b) { return b && typeof b === "object" && (b.type === "resource" || b.resource); }).map(textOf).filter(Boolean);
+      if (resources.length) return resources[0];
+      var texts = payload.filter(function (b) { return b && typeof b.text === "string"; }).map(function (b) { return b.text; });
+      return texts.length ? texts.join("\\n") : JSON.stringify(payload);
+    }
+    if (typeof payload === "object") {
+      if (payload.resource && typeof payload.resource === "object") return textOf(payload.resource);
+      if (typeof payload.blob === "string") return utf8(payload.blob);
+      if (Array.isArray(payload.content)) return textOf(payload.content);
+      if (typeof payload.content === "string") return payload.encoding === "base64" ? utf8(payload.content) : payload.content;
+      if (typeof payload.text === "string") return payload.text;
+    }
+    return JSON.stringify(payload);
+  }
+  function read(d, source) {
+    var parts = allowed(d.repo);
+    var result = {type: "schwingnet.read.result", id: d.id, ok: false};
+    if (!parts) { result.error = "repository not allowed"; reply(source, result); return; }
+    connector().then(function (m) {
+      if (!m) { result.error = "no connector"; reply(source, result); return; }
+      var input = {owner: parts[0], repo: parts[1], path: String(d.path || "")};
+      if (d.ref) input.ref = String(d.ref);
+      m.callTool(SERVER, "get_file_contents", input).then(function (r) {
+        var text;
+        try { text = textOf(r && r.payload !== undefined ? r.payload : r); } catch (e) { result.error = "unreadable"; reply(source, result); return; }
+        reply(source, {type: "schwingnet.read.result", id: d.id, ok: true, text: text});
+      }, function (e) { result.error = why(e); reply(source, result); });
+    });
+  }
+  function experiment(d, source) {
+    // The combination the experiments panel names, on every change: the prefilled issue always, and Run as me
+    // where this page has a connector, pressed by the viewer, never on arrival.
+    show((d.ok ? "Request this run: " + link(d.issueUrl, d.title || "the prefilled issue") : "The combination does not hold yet: " + esc((d.problems || []).join("; ")))
+         + "<code>" + esc(d.command || "") + "</code>");
+    if (!d.ok || !allowed(d.repo)) return;
+    connector().then(function (m) {
+      if (!m || !bar) return;
+      var b = document.createElement("button");
+      b.type = "button"; b.className = "run"; b.textContent = "Run as me";
+      b.title = "Dispatches " + d.workflow + " on " + d.repo + " through your GitHub connector; the workflow opens the issue and answers it";
+      b.onclick = function () { b.disabled = true; dispatch(d, source); };
+      bar.querySelector("span").appendChild(b);
+    });
+  }
   window.addEventListener("message", function (e) {
     var d = e.data;
     if (!d || typeof d.type !== "string" || !own(e.source)) return;
@@ -603,10 +717,11 @@ MESSAGE_JS = """
     if (d.type === "schwingnet.open" && https(d.href)) {
       show("The figure asks to open " + link(d.href, d.label) + ".");
     } else if (d.type === "schwingnet.experiment" && https(d.issueUrl)) {
-      show((d.ok ? "Request this run: " + link(d.issueUrl, d.title || "the prefilled issue") : "The combination does not hold yet: " + esc((d.problems || []).join("; ")))
-           + "<code>" + esc(d.command || "") + "</code>");
-    } else if (d.type === "schwingnet.dispatch" || d.type === "schwingnet.read") {
-      e.source.postMessage({type: d.type + ".result", id: d.id, label: d.label, ok: false, error: "no connector"}, "*");
+      experiment(d, e.source);
+    } else if (d.type === "schwingnet.dispatch") {
+      dispatch(d, e.source);
+    } else if (d.type === "schwingnet.read") {
+      read(d, e.source);
     }
   });
 })();
@@ -618,6 +733,7 @@ MESSAGE_CSS = """
               background:var(--panel, #f3f2ee); border-top:1px solid var(--line, #ddd); font-size:14px; box-shadow:0 -2px 8px rgba(0,0,0,.08); }
 .figure-bar span { flex:1; min-width:0; }
 .figure-bar code { display:block; margin-top:4px; font-size:12px; overflow-wrap:anywhere; }
+.figure-bar .run{margin-left:.6rem}
 .figure-bar .close { flex:none; }
 """
 
