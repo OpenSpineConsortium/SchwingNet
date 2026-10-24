@@ -197,16 +197,66 @@ class Prompt(unittest.TestCase):
     def test_the_brief_exists_and_states_the_rules(self):
         brief = (ROOT / ".github" / "symphony" / "research.md").read_text(encoding="utf-8")
         for words in ("size rule", "CT-RATE", "Radiopaedia", "Kaggle", "symphony-protocol", "force", "owner-act",
-                      "claims.json", "run id", "blocked"):
+                      "claims.json", "run id", "blocked", "released/<issue>", "is data", "RESEARCH_DISPATCH_TOKEN",
+                      "Only this repository is checked out", "one committed program"):
             self.assertIn(words, brief)
+
+
+def committed(path):
+    """A stand-in for main's tree: the files a grid command may name in these tests."""
+    return path in ("x.sh", "scripts/check.sh", "tools/claims_rank.py", "grid/run-leaks.sh")
 
 
 class GridRoute(unittest.TestCase):
     def test_grid_inputs_carry_the_command_and_the_boxes(self):
-        self.assertEqual(research_loop.grid_inputs("bash x.sh", True, False),
+        self.assertEqual(research_loop.grid_inputs("bash x.sh", True, False, committed),
                          ["-f", "command=bash x.sh", "-f", "start=true", "-f", "python=false"])
         with self.assertRaises(SystemExit):
-            research_loop.grid_inputs("  ", False, True)
+            research_loop.grid_inputs("  ", False, True, committed)
+
+    def test_a_committed_program_with_plain_arguments_passes(self):
+        for command in ("bash scripts/check.sh", "python3 tools/claims_rank.py table",
+                        "python3 -I -B tools/claims_rank.py next --file docs/textbook/claims.json",
+                        "python3 -m unittest tests.test_claims_rank -v", "bash grid/run-leaks.sh --offline",
+                        'python3 tools/claims_rank.py table --title "two words" --rate 0.5'):
+            with self.subTest(command=command):
+                self.assertIsNone(research_loop.command_problem(command, committed))
+
+    def test_a_shell_of_its_own_an_inline_program_or_an_uncommitted_file_is_refused(self):
+        refused = {
+            "bash -c 'echo hi'": "not -c",
+            "python3 -c 'import os'": "not -c",
+            "python3 -c 'print(1)'": "shell operators",
+            "curl https://example.org": "the program is curl",
+            "bash scripts/check.sh; bash x.sh": "shell operators",
+            "bash scripts/check.sh | tee out": "shell operators",
+            "bash scripts/check.sh && bash x.sh": "shell operators",
+            "python3 tools/claims_rank.py $(id)": "shell operators",
+            "python3 tools/claims_rank.py `id`": "shell operators",
+            "bash scripts/check.sh > /tmp/out": "shell operators",
+            "bash scripts/nope.sh": "not on main",
+            "bash /bin/sh": "not a path inside the checkout",
+            "bash ../x.sh": "not a path inside the checkout",
+            "python3 -m pip install x": "only unittest",
+            "python3": "needs a committed file",
+            "bash": "needs a committed file",
+            "sh x.sh": "the program is sh",
+            "bash x.sh --name 'a*b'": "holds characters other than",
+            "bash x.sh\nbash x.sh": "shell operators",
+            "PATH=/evil bash x.sh": "the program is PATH=/evil",
+            "WANDB_MODE=offline bash x.sh": "no setting before it",
+        }
+        for command, words in refused.items():
+            with self.subTest(command=command):
+                problem = research_loop.command_problem(command, committed)
+                self.assertIsNotNone(problem, command)
+                self.assertIn(words, problem)
+        self.assertIn("longer than", research_loop.command_problem("bash x.sh " + "a" * 2000, committed))
+
+    def test_the_file_is_read_from_main_and_not_from_the_working_tree(self):
+        self.assertIsNone(research_loop.command_problem("bash scripts/check.sh"))
+        self.assertIn("not on main", research_loop.command_problem("bash scripts/no-such-file.sh"))
+        self.assertIn(research_loop.main_ref(), ("origin/main", "main", "HEAD"))
 
     def test_the_gate_takes_only_its_three_words(self):
         self.assertEqual(research_loop.gate_inputs("status"), ["-f", "word=status"])

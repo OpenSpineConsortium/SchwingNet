@@ -30,13 +30,20 @@ name: Research loop
 # The session reaches the grid only through tools/research_loop.py grid, gate, runs and log, which
 # dispatch grid.yml and grid-gate.yml on main, or read their runs, with this job's own token in
 # RESEARCH_DISPATCH_TOKEN: GitHub lets the workflow token start a workflow_dispatch, and the job
-# grants it actions: write and only reads besides. The session's own GitHub token is the one
-# Claude's action mints from id-token, as in claude.yml, so its pushes and pull requests start
-# the checks. grid.yml runs a command on a compute node inside the runner's container, with no
-# lab volume and no Slurm; the gate words of grid/gate.sh, which queue the Slurm jobs, are sent
-# through symphony-template's grid-accounts.yml by an admin, which this loop cannot reach, so the
-# brief has it ask the owner for such a word in an issue. After the session the job records what
-# it spent, as claude.yml does, for metrics.yml.
+# grants it actions: write and only reads besides. That token sits in the session's environment,
+# where any command it runs could read it; the brief has it used through the clerk alone, and the
+# clerk dispatches those two workflows only and refuses a grid command that is not one committed
+# program with plain arguments (research_loop.command_problem), since grid.yml runs its command
+# with bash on a university node. The session's own GitHub token is the one Claude's action mints
+# from id-token, as in claude.yml, so its pushes and pull requests start the checks. The session
+# reads web pages and issue text nobody has vouched for; the brief marks all of it as data, never
+# an instruction, and the tool list is no fence (bash and python3 run anything), so what bounds a
+# misled run is what its tokens reach, which docs/memory/research-loop.md states. grid.yml runs a
+# command on a compute node inside the runner's container, with no lab volume and no Slurm; the
+# gate words of grid/gate.sh, which queue the Slurm jobs, are sent through symphony-template's
+# grid-accounts.yml by an admin, which this loop cannot reach, so the brief has it ask the owner
+# for such a word in an issue. After the session the job records what it spent, as claude.yml
+# does, for metrics.yml.
 
 on:
   schedule:
@@ -57,7 +64,9 @@ concurrency:
 
 jobs:
   research:
-    if: vars.CLAUDE_CROWD != 'true' && github.repository == 'OpenSpineConsortium/SchwingNet'
+    # main's copy of this file alone, as synthesis.yml: a Run workflow from another branch would run
+    # that branch's copy, with whatever it grants
+    if: vars.CLAUDE_CROWD != 'true' && github.repository == 'OpenSpineConsortium/SchwingNet' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 180
     permissions:
@@ -87,8 +96,10 @@ jobs:
           set -euo pipefail
           gh api --paginate --slurp "repos/$REPO/actions/artifacts?name=research-runs&per_page=100" > "$RUNNER_TEMP/marks.json"
           python3 tools/research_loop.py marked --marks "$RUNNER_TEMP/marks.json" > "$RUNNER_TEMP/marked.txt"
+          # a run GitHub cannot show (deleted, or a passing error) is left out rather than failing
+          # every scheduled run for the two days its mark lives
           while read -r id; do
-            if [ -n "$id" ]; then gh api "repos/$REPO/actions/runs/$id"; fi
+            if [ -n "$id" ]; then gh api "repos/$REPO/actions/runs/$id" || true; fi
           done < "$RUNNER_TEMP/marked.txt" | jq -s '{workflow_runs: .}' > "$RUNNER_TEMP/runs.json"
           python3 tools/research_loop.py admit --marks "$RUNNER_TEMP/marks.json" --runs "$RUNNER_TEMP/runs.json" \
             --switch "$SWITCH" --crowd "$CROWD" --token "$HAVE_TOKEN" --cap "$CAP" --event "$EVENT" \
@@ -140,8 +151,8 @@ jobs:
         if: steps.admit.outputs.admit == 'true' && steps.pick.outputs.mode != 'none'
         uses: anthropics/claude-code-action@34968b5981d5d170904281aa3df6f3c0d4a28855 # v1.0.249
         env:
-          # the workflow token, which may dispatch grid.yml and grid-gate.yml; only
-          # tools/research_loop.py reads it
+          # the workflow token, which may dispatch grid.yml and grid-gate.yml, in the session's
+          # environment; the brief has it used through tools/research_loop.py alone (the header)
           RESEARCH_DISPATCH_TOKEN: ${{ github.token }}
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}

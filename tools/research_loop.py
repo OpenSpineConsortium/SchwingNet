@@ -1,8 +1,9 @@
 """The research loop's clerk: whether a run may start, which item it works, and its prompt.
 
-Source: issue #220, 2026-10-24. The owner asked for "a Claude integration directly into the textbook"
-that carries the research on "independently of human interaction", and then, told the loop would ask
-before any grid job, fetch or training, gave it "full command to direct autonomous research".
+Source: issue #220, 2026-10-24. The owner asked for "A CLAUDE INTEGRATION DIRECTLY INTO THE TEXTBOOK"
+that carries the research on "INDEPDENTLY OF HUMAN INTERACTION", and then, told the loop would ask
+before any grid job, fetch or training, gave it "full command to direct autonmous research" (the
+owner's spelling, quoted as written).
 .github/workflows/research.yml runs it every four hours on the repository's one Claude token; the
 standing brief the session follows is .github/symphony/research.md. This module is the part that is
 code, not Claude, so that the cap, the switch and the choice of item can be tested.
@@ -23,8 +24,11 @@ then the best-ranked ready item of docs/textbook/claims.json that no open issue 
 labelled research names; an item is named by the marker `<!-- research-item: E07 -->` in a body or
 by a title that begins `Research E07`. grid, gate, runs and log are the session's one route to the grid's
 workflows: they dispatch grid.yml or grid-gate.yml on main, or list their runs, with the workflow
-token in RESEARCH_DISPATCH_TOKEN, which the session's own GitHub token cannot do. Standard library
-only.
+token in RESEARCH_DISPATCH_TOKEN, which the session's own GitHub token cannot do. A grid command is
+one committed program with plain arguments (command_problem): grid.yml runs whatever it is given with
+bash on a university node, in a checkout of main, and the session that asks for it has read web pages
+and issue text it cannot vouch for, so a shell operator, a substitution, an inline program (-c) or a
+file that is not on main is refused here, before the dispatch. Standard library only.
 """
 
 import argparse
@@ -33,12 +37,14 @@ import json
 import os
 import re
 import secrets
+import shlex
 import subprocess
 import sys
 import time
 from pathlib import Path
 
 TOOLS = Path(__file__).resolve().parent
+ROOT = TOOLS.parent
 sys.path.insert(0, str(TOOLS))
 import claims_rank  # noqa: E402
 
@@ -53,6 +59,14 @@ ITEM_MARKER = re.compile(r"<!--\s*research-item:\s*(E\d{1,4})\s*-->")
 ITEM_TITLE = re.compile(r"^\s*Research\s+(E\d{1,4})\b")
 GATE_WORDS = ("status", "start", "stop")
 GRID_WORKFLOWS = ("grid.yml", "grid-gate.yml")
+# The shape of a grid command: a program the checkout holds, run by bash or python3, with
+# arguments of plain characters. The operators and substitutions bash would act on are refused
+# in the whole command, since grid.yml hands it to bash -c as one string.
+PROGRAMS = ("bash", "python3")
+PYTHON_FLAGS = ("-I", "-B", "-u", "-E", "-s")
+SHELL_CHARS = frozenset(";&|<>$`(){}\n\r\\")
+ARGUMENT = re.compile(r"^[A-Za-z0-9_./=:,+%@ -]+$")
+COMMAND_LENGTH = 2000
 
 
 # Whether a run may start.
@@ -284,11 +298,85 @@ def dispatch_env():
     return dict(os.environ, GH_TOKEN=token)
 
 
-def grid_inputs(command, start, python):
-    """grid.yml's inputs as gh workflow run takes them, each a string as the dispatch API reads them;
-    -f, since -F would read a command that begins with @ as a file."""
+def main_ref():
+    """The name main goes by in this checkout: origin/main where the clone has it, as the workflow's
+    checkout and a claim branch made from it do, else main, else HEAD."""
+    for ref in ("origin/main", "main", "HEAD"):
+        found = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "--verify", "--quiet", ref + "^{commit}"],
+                               capture_output=True, text=True)
+        if found.returncode == 0:
+            return ref
+    return "HEAD"
+
+
+def on_main(path):
+    """Whether main holds the file, read from git and not from the working tree, since grid.yml checks
+    main out and a file the session wrote on its branch is not there."""
+    shown = subprocess.run(["git", "-C", str(ROOT), "cat-file", "-e", f"{main_ref()}:{path}"], capture_output=True)
+    return shown.returncode == 0
+
+
+def file_problem(program, target, committed):
+    """Why the file a grid command names is refused, or None."""
+    if target is None:
+        return f"{program} needs a committed file to run"
+    if target.startswith("-"):
+        return f"{program} takes a committed file, not {target}: no inline program and nothing from stdin"
+    if target.startswith("/") or ".." in Path(target).parts:
+        return f"{target} is not a path inside the checkout"
+    if not committed(target):
+        return f"{target} is not on main, which grid.yml checks out; a new program lands by pull request first"
+    return None
+
+
+def command_problem(command, committed=None):
+    """Why a grid command is refused, or None when it is one committed program with plain arguments:
+    bash FILE, or python3 [-I -B -u -E -s] FILE or -m unittest, each argument of letters, digits and
+    _ . / = : , + % @ -, with no shell operator or substitution. No NAME=value before the program
+    either, since PATH, BASH_ENV or PYTHONPATH would change what the committed file does; a program
+    that needs a setting takes a flag."""
+    committed = committed or on_main
     if not command.strip():
-        raise SystemExit("grid needs a command")
+        return "grid needs a command"
+    if len(command) > COMMAND_LENGTH:
+        return f"the command is longer than {COMMAND_LENGTH} characters"
+    found = sorted(set(command) & SHELL_CHARS)
+    if found:
+        return ("the command holds shell operators or substitutions (" + " ".join(repr(c) for c in found)
+                + "): send one committed program with plain arguments")
+    try:
+        words = shlex.split(command)
+    except ValueError as why:
+        return f"the command does not split into words: {why}"
+    if not words:
+        return "the command names no program"
+    program, rest = words[0], words[1:]
+    if program not in PROGRAMS:
+        return f"the program is {program}; grid.yml runs {' or '.join(PROGRAMS)} with a committed file, and no setting before it"
+    if program == "python3":
+        while rest and rest[0] in PYTHON_FLAGS:
+            rest.pop(0)
+    if program == "python3" and rest[:1] == ["-m"]:
+        if rest[1:2] != ["unittest"]:
+            return "python3 -m runs only unittest here; any other program is a committed file"
+        rest = rest[2:]
+    else:
+        problem = file_problem(program, rest.pop(0) if rest else None, committed)
+        if problem:
+            return problem
+    for word in rest:
+        if not ARGUMENT.match(word):
+            return f"the argument {word!r} holds characters other than letters, digits and _ . / = : , + % @ -"
+    return None
+
+
+def grid_inputs(command, start, python, committed=None):
+    """grid.yml's inputs as gh workflow run takes them, each a string as the dispatch API reads them;
+    -f, since -F would read a command that begins with @ as a file. A command that is not one
+    committed program with plain arguments is refused (command_problem)."""
+    problem = command_problem(command, committed)
+    if problem:
+        raise SystemExit(f"grid refuses the command: {problem}")
     return ["-f", f"command={command}", "-f", f"start={'true' if start else 'false'}",
             "-f", f"python={'true' if python else 'false'}"]
 
