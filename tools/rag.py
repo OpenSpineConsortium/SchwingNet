@@ -373,10 +373,10 @@ def print_passages(found):
 
 
 def print_results(results, questions):
-    print(f"{'set':42} {'passages':>8} {'recall@5':>8} {'MRR':>6} {'fig@5':>6} misses")
+    print(f"{'set':52} {'passages':>8} {'recall@5':>8} {'MRR':>6} {'fig@5':>6} misses")
     for r in results:
         fig = "-" if r["figure_at_5"] is None else f"{r['figure_at_5']:.3f}"
-        print(f"{r['set'][:42]:42} {r['passages']:>8} {r['recall_at_5']:>8.3f} {r['mrr']:>6.3f} {fig:>6} "
+        print(f"{r['set'][:52]:52} {r['passages']:>8} {r['recall_at_5']:>8.3f} {r['mrr']:>6.3f} {fig:>6} "
               f"{len(r['misses'])}")
     by_id = {q["id"]: q for q in questions}
     for r in results:
@@ -652,6 +652,7 @@ BOX_JS = r"""// Ask the book (tools/rag.py): the search box of the textbook's pa
     sample(SchwingRag.prompt(book.index.instructions, question, found), options).then(function (r) {
       if (mine !== turn) return;
       said.innerHTML = cite(r.text, given);
+      status.textContent = "Claude's answer, from the " + given.length + " passages listed under Sources.";
       note.textContent = r.truncated ? "The answer was cut short; ask for less at a time." : "";
     }, function (e) {
       if (mine !== turn) return;
