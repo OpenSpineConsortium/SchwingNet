@@ -148,7 +148,7 @@ The field report's 6,073 instances on 958 images (727 patients) from NHANES II, 
 | BUU-LSPINE | 7,204 | end-plate lines, AP and lateral paired, with transitional and slip grades | inferred from position |
 | the project's own renders | 6,416 | four corners and the pelvis, the level known from the CT | from the 3D labels |
 | CSXA | 4,963 | 24,815 named C3 to C7 quadrilaterals | annotated |
-| Mendeley | 716 | lateral lumbar, 208 independent and 508 BUU | unknown |
+| Mendeley | 714 or 716 (open) | lateral lumbar, 208 independent and 508 BUU | unknown |
 | AASCE / SpineWeb | 579 | 68 landmarks per film | inferred from position |
 | NHANES II | 543 | per-vertebra masks keyed by name | annotated |
 

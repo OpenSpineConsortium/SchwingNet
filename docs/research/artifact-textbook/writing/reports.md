@@ -154,3 +154,7 @@ The chapter 19 review said no source prints a fraction for the 80.5 percent held
 ## Cross-book pass
 
 14 headline figures checked across all chapters, 14 chapters edited. 12 provenance rows sourced only to demo-plan.md went from Measured to Reported (and chapter 3's grading paragraph now says nothing on a real frame is Measured in this book); the census row citing MANIFEST.md went to Measured. 80.5, renders-only 0.3, 97.4 and FluoroCap's 98.7 are marked "a record, not a final value" wherever they were stated plainly; 145 banked COBRA cases carries 150 beside it. Already consistent: 76.9 / 64.0, the VerSe L6 count, the C-ArmLSpine counts, 74.8, 43.7, 97.0 and the census. No mechanism outside chapters 10 to 16 and no privacy fault found.
+
+## The site's ledger check
+
+The site build's ledger check flagged 144 passages giving an unsettled or superseded ledger figure with no disclaimer in the passage. 11 were real and were marked (Mendeley 714 or 716, the 1485 count, 17,486 then and 21,603 now, BUU-LSPINE's 3,600 or 1,200 people in chapters 12 and 28, 86 superseded by 80.9, the 18,119 panels since superseded, chapter 20's "about 97 percent"); 133 were false matches: denominators, film counts sharing digits with patient counts, other quantities with the same digits, dated counts, and passages already marked in the same or next sentence.
