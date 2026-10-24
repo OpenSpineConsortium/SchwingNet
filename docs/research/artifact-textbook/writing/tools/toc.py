@@ -9,7 +9,7 @@ import json
 import sys
 from pathlib import Path
 
-WT = Path("/home/claude/schwingnet-193")
+WT = Path(__file__).resolve().parents[5]
 SCRATCH = Path(__file__).resolve().parent.parent
 SYN = WT / "artifacts" / "_synthesis"
 PLAN = json.loads((SYN / "work" / "out" / "toc-hand.json").read_text())

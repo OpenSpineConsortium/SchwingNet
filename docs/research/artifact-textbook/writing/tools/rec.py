@@ -8,7 +8,7 @@ import json
 import sys
 from pathlib import Path
 
-INV = json.loads(Path("/home/claude/schwingnet-193/artifacts/_synthesis/inventory.json").read_text())
+INV = json.loads((Path(__file__).resolve().parents[5] / "artifacts/_synthesis/inventory.json").read_text())
 RECORDS = {f"{r['repo']}/{r['folder']}": r for r in INV["artifacts"]}
 
 

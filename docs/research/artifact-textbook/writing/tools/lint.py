@@ -2,14 +2,14 @@
 lines, the four closing sections, the length, the Markdown the site renders,
 links that resolve, and the privacy shapes. Prints each problem; exits 1 if any.
 
-    python3 -I -B lint.py /home/claude/schwingnet-193/docs/textbook/NN-slug.md
+    python3 -I -B lint.py $W/docs/textbook/NN-slug.md
 """
 import json
 import re
 import sys
 from pathlib import Path
 
-WT = Path("/home/claude/schwingnet-193")
+WT = Path(__file__).resolve().parents[5]
 SYN = WT / "artifacts" / "_synthesis"
 PLAN = json.loads((SYN / "work" / "out" / "toc-hand.json").read_text())
 INV = json.loads((SYN / "inventory.json").read_text())

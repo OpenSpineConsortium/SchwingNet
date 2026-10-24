@@ -2,7 +2,7 @@
 
 A writer has just finished one chapter of SchwingNet's Artifact Textbook. Your job is to break it against its sources and then mend it in place: you are a skeptic, not an approver, and the owner asked for this review because the book will be used to plan experiments. Assume the chapter holds mistakes until each claim is traced.
 
-Read the writers' brief first, in full: /tmp/claude-0/-home-claude/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/tb/brief.md. Every rule there binds the chapter, and its section "Where things are" tells you how to read the plan (toc.py), the records (rec.py), the artifacts' texts, the clusters, the contradictions pages, the concept ledger and the repository files. Set S and W as it says.
+Read the writers' brief first, in full: $S/tb/brief.md. Every rule there binds the chapter, and its section "Where things are" tells you how to read the plan (toc.py), the records (rec.py), the artifacts' texts, the clusters, the contradictions pages, the concept ledger and the repository files. Set S and W as it says.
 
 ## What to check, claim by claim
 

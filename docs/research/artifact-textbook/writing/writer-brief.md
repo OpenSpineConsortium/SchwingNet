@@ -1,12 +1,12 @@
 # Writing one chapter of the Artifact Textbook
 
-You write one chapter of SchwingNet's Artifact Textbook: a reference built from the owner's 69 collected artifacts and the repository's own research notes, for whoever plans the next experiment. The book's plan is the table of contents at /home/claude/schwingnet-193/artifacts/_synthesis/table-of-contents.md; its preface and the owner's nine answers bind every chapter.
+You write one chapter of SchwingNet's Artifact Textbook: a reference built from the owner's 69 collected artifacts and the repository's own research notes, for whoever plans the next experiment. The book's plan is the table of contents at $W/artifacts/_synthesis/table-of-contents.md; its preface and the owner's nine answers bind every chapter.
 
 Your chapter is shown on SchwingNet's members-only website as its own page. Below your text the page lists every artifact the chapter reads, each with its full record (summary, claims, numbers, decisions, open questions), its status in its cluster and the figures the concept ledger has settled for it. So your text is the chapter's argument, not a copy of the records: say what the artifacts establish together, where they disagree, which version holds and why, and what a planner should take from them, and link each artifact where you use it.
 
 ## Where things are
 
-Set S=/tmp/claude-0/-home-claude/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad and W=/home/claude/schwingnet-193.
+Set S to a scratch folder holding the artifacts' extracted texts and W to the repository root.
 
 - Your chapter's plan: `python3 -I -B $S/tb/tools/toc.py NN` prints its purpose, the questions it answers, the artifacts it reads first and second (each with its title, date, claude.ai link, the path of its extracted text, the link to use from docs/textbook/ and its status in each cluster: canonical, member, superseded by what and why), the repository files beside them and the research the plan says it still owes. `python3 -I -B $S/tb/tools/toc.py --preface` prints the preface, the owner's answers and the plan's notes; read it first. `--list` lists all 32 chapters with their files, for links between chapters.
 - The records: `python3 -I -B $S/tb/tools/rec.py SchwingNet/<folder> ...` prints inventory records as JSON (`--fields numbers,key_claims` narrows them; `--all --fields decisions` reads every record).

@@ -1,7 +1,0 @@
-Write chapter 29 of SchwingNet's Artifact Textbook, "Symphony: the protocol, its guarantees, its comparison and its cost".
-
-Your instructions are the brief at /tmp/claude-0/-home-claude/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/tb/brief.md: read it whole first and follow it exactly. Start with `python3 -I -B /tmp/claude-0/-home-claude/45e744a4-b763-5c84-b486-e47a3461a873/scratchpad/tb/tools/toc.py --preface` and then `... toc.py 29`.
-
-This chapter is in Part S, which may one day be published apart from the rest of the book: it holds nothing of SchwingNet's method, data or numbers, links no SchwingNet-only chapter for them, and names people by role. Never copy a login, a grid or machine path, a host name, a network range or a job id. The comparison's claims stay graded as the records grade them (better by design, Inferred, no outcome measured yet), and coordbench's numbers stay out of the chapter altogether until the owner lifts that hold; say only that they are held back. Check the repository's current word against the artifacts where they differ: docs/memory/symphony-versus-competitors.md and docs/memory/the-plan-ladder.md in /home/claude/schwingnet-193.
-
-Use absolute paths in every command and never cd. Write only your chapter's file under /home/claude/schwingnet-193/docs/textbook/. No git, no network, no GitHub tools, no Artifact tool. Your last message is the report the brief describes.
