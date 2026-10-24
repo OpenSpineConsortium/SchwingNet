@@ -453,6 +453,13 @@ def ask_button(repo, subject, record, extra=()):
     return f'<a class="button ask" href="{esc(ask_url(repo, subject, record, extra))}">Ask Claude</a>'
 
 
+def rag_tool():
+    """tools/rag.py, the book's search (issue #250): the Ask the book box on the front page and on
+    every chapter, and the index it reads, built into the site's rag/ folder."""
+    import rag
+    return rag
+
+
 def rerun_words(rec):
     """What the Re-run button will do, and what it costs, from the record's rerun field."""
     rerun = rec.get("rerun") or {}
@@ -984,6 +991,16 @@ class Builder:
         nav = nav_html(self.book, self.pending_count, name)
         (self.out / name).write_text(page(title, body, nav, self.meta, script), encoding="utf-8")
 
+    def ask_book(self, subject, record):
+        """The Ask the book box, with the page's Ask Claude button in its row."""
+        repo = self.repo or DEFAULT_REPO
+        return rag_tool().box_html(repo, subject, record, ask_button(repo, subject, record))
+
+    def ask_book_files(self):
+        """The index of the chapters the plan names, with the box's script, mirror and style."""
+        files = {c["file"] for _p, c in self.book.chapters}
+        rag_tool().write_site(self.out / "rag", self.book.root, files, list(self.book.figures.values()))
+
     def front(self):
         b = self.book
         written = [c for _p, c in b.chapters if b.narrative(c) is not None]
@@ -1013,6 +1030,7 @@ class Builder:
                 "a link to where it comes from so the page follows it when the record changes.</p>",
                 "<p>Each chapter carries its label:</p><ul>" + "".join(
                     f"<li><strong>{esc(k)}</strong>: {esc(v)}</li>" for k, v in LABELS.items()) + "</ul>"]
+        body.insert(2, self.ask_book("the textbook", BOOK.as_posix()))
         for part in b.plan["parts"]:
             body.append(f"<h2>{esc(part['label'])}: {esc(part['title'])}</h2>")
             if part.get("purpose"):
@@ -1039,8 +1057,7 @@ class Builder:
                 f'<span class="chip {label_cls}">{esc(c["confidentiality"])}</span>'
                 f'<span class="chip">{len(ids)} artifacts</span></div>',
                 f'<p class="count">{esc(LABELS.get(c["confidentiality"], ""))}</p>',
-                '<div class="buttons asks">' + ask_button(self.repo or DEFAULT_REPO, f"chapter {c['number']} {c['title']}",
-                                                          c["file"]) + "</div>"]
+                self.ask_book(f"chapter {c['number']} {c['title']}", c["file"])]
         plan = (f"<p>{esc(c['purpose'])}</p><p><strong>Questions it answers</strong></p><ul>"
                 + "".join(f"<li>{esc(q)}</li>" for q in c["questions_answered"]) + "</ul>")
         if text is None:
@@ -1301,6 +1318,7 @@ class Builder:
         self.research_page()
         self.copy_figures()
         self.copy_exports()
+        self.ask_book_files()
         self.pending_page()
         self.record_pages()
         (self.out / MARKER).write_text("built by tools/textbook_site.py\n", encoding="utf-8")
