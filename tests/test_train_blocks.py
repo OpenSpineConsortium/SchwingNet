@@ -90,6 +90,33 @@ class BlocksTest(unittest.TestCase):
                 with self.assertRaises(self.train.TrainError):
                     self.train.build_model(str(file), "cpu", architecture=other)
 
+    def test_torchvisions_densenet_file_loads_into_monais_in_either_spelling_and_monai_loads_lazily(self):
+        import re
+        import torch
+        from torchvision import models
+
+        folder = Path(tempfile.mkdtemp())
+        saved = models.densenet121(weights=None).state_dict()
+        # The published file's spelling (download.pytorch.org): "norm.1" where a saved state_dict says "norm1".
+        published = {re.sub(r"\.(norm|relu|conv)([12])\.", r".\1.\2.", k) if "denselayer" in k else k: v for k, v in saved.items()}
+        self.assertNotEqual(set(saved), set(published))
+        for spelling, state in (("saved", saved), ("published", published)):
+            with self.subTest(spelling=spelling):
+                file = folder / f"{spelling}.pt"
+                torch.save(state, file)
+                model = self.train.build_model(str(file), "cpu", architecture="densenet121")
+                loaded = model.state_dict()
+                self.assertTrue(torch.equal(loaded["features.denseblock1.denselayer1.layers.conv1.weight"], saved["features.denseblock1.denselayer1.conv1.weight"]))
+                self.assertTrue(torch.equal(loaded["features.norm5.weight"], saved["features.norm5.weight"]))
+                self.assertEqual(tuple(loaded["class_layers.out.weight"].shape), (27, 1024))
+                with self.assertRaises(self.train.TrainError):
+                    self.train.build_model(str(file), "cpu", architecture="se-resnet50")
+        # A run of a torchvision name never imports monai: the three MONAI names import it when built.
+        code = ("import importlib.util, sys; spec = importlib.util.spec_from_file_location('tb', sys.argv[1]); "
+                "m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m); m.ARCHITECTURES['resnet18'](27, None); "
+                "print('monai' in sys.modules); m.ARCHITECTURES['se-resnext50'](27, None); print('monai' in sys.modules)")
+        self.assertEqual(python("-c", code, ROOT / "tools" / "train_blocks.py").split(), ["False", "True"])
+
     def test_each_denoise_keeps_shape_and_range_and_smooths_noise(self):
         import torch
         from schwingnet.blocks import DENOISE
@@ -372,7 +399,8 @@ class RunWithSamplesArchitectureAndDenoiseTest(unittest.TestCase):
         self.assertEqual(rows[0]["parent"], "none")
         self.assertEqual(rows[0]["latency"], "not measured")
         self.assertIn(f"| {rows[0]['train_crops']} of {rows[0]['train_offered']} |", sweep_tool.table(rows))
-        self.assertIn("| architecture | resnet18, resnet34, resnet50, mobilenet-v3-small, efficientnet-b0 | resnet18 |", sweep_tool.parts_table())
+        self.assertIn("| architecture | resnet18, resnet34, resnet50, mobilenet-v3-small, efficientnet-b0, densenet121, se-resnet50, se-resnext50 | resnet18 |",
+                      sweep_tool.parts_table())
         with self.assertRaises(sweep_tool.BlockError):
             sweep_tool.ledger(self.tmp / "nowhere", "accuracy")
         linked = self.tmp / "linked"

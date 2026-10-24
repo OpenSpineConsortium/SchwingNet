@@ -16,11 +16,15 @@ fixed by the seed whatever the device. torchvision's networks draw on their own 
 mobilenet-v3-small's classifier holds a Dropout and efficientnet-b0 Dropout and StochasticDepth,
 which in training draw from the device's global generator, the one seed_everything seeds, so a
 run of those two reproduces on the same kind of device, while the three resnets, which draw
-nothing of their own, reproduce on any. DEFAULT draws nothing beyond what version 1's trainer
+nothing of their own, reproduce on any, and so do MONAI's three (densenet121, se-resnet50 and
+se-resnext50, #211), which carry no dropout; monai is imported only when one of them is built, so
+a run of a torchvision name never loads it. DEFAULT draws nothing beyond what version 1's trainer
 drew, so a run naming no block trains to the same weights as before.
 """
 
 import math
+import re
+import warnings
 
 import torch
 from torch import nn
@@ -135,15 +139,19 @@ HEADS = {
     "resnet50": "fc.",
     "mobilenet-v3-small": "classifier.3.",
     "efficientnet-b0": "classifier.1.",
+    "densenet121": "class_layers.out.",
+    "se-resnet50": "last_linear.",
+    "se-resnext50": "last_linear.",
 }
 
 
-def _load_backbone(model, weights, name):
-    """The ImageNet file's weights but the head's; a file of another network is refused."""
+def _load_backbone(model, weights, name, rename=lambda state: state):
+    """The ImageNet file's weights but the head's; a file of another network is refused. rename
+    turns the file's names into the network's where a published file spells them otherwise."""
     if not weights:
         return
     head = HEADS[name]
-    state = torch.load(weights, map_location="cpu", weights_only=True)
+    state = rename(torch.load(weights, map_location="cpu", weights_only=True))
     state = {k: v for k, v in state.items() if not k.startswith(head)}
     try:
         missing, unexpected = model.load_state_dict(state, strict=False)
@@ -192,12 +200,83 @@ def efficientnet_b0(outputs, weights):
     return model
 
 
+def _monai_nets():
+    """MONAI's networks, imported by the three names that need them and by nothing else, so a run
+    of a torchvision name never loads monai; its import under torch 2.14 warns once that
+    torch.jit.interface is deprecated, MONAI's own to mend, so the warning is kept out of a run's
+    log."""
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", FutureWarning)
+        from monai.networks import nets
+    return nets
+
+
+# torchvision's densenet names against MONAI's. The published ImageNet file
+# (download.pytorch.org, densenet121-a639ec97.pth) spells a dense layer's modules "norm.1" and
+# "conv.2", a state_dict saved from torchvision's model today "norm1" and "conv2", and MONAI nests
+# them under "layers" and calls the classifier class_layers.out. MONAI's own loader
+# (monai.networks.nets.densenet, _load_state_dict) maps the first spelling when it downloads that
+# file; both are mapped here, so either file is read, and a file already in MONAI's names, a
+# parent's or a sibling run's, passes through unchanged, since neither pattern matches it.
+_DENSE_PUBLISHED = re.compile(r"^(.*denselayer\d+)\.(norm|relu|conv)\.([12])\.(.+)$")
+_DENSE_SAVED = re.compile(r"^(.*denselayer\d+)\.(norm|relu|conv)([12])\.(.+)$")
+
+
+def _densenet_names(state):
+    renamed = {}
+    for key, value in state.items():
+        match = _DENSE_PUBLISHED.match(key) or _DENSE_SAVED.match(key)
+        if match:
+            block, module, index, rest = match.groups()
+            key = f"{block}.layers.{module}{index}.{rest}"
+        elif key.startswith("classifier."):
+            key = "class_layers.out." + key[len("classifier.") :]
+        renamed[key] = value
+    return renamed
+
+
+def densenet121(outputs, weights):
+    """MONAI's DenseNet121 in two dimensions, dense connections in place of residual ones: about
+    1.6 times resnet18's multiply-adds (231 against 148 million at 64 px, counted as the module
+    docstring of tools/train_blocks.py's siblings says) in 7 million parameters, the fewest here;
+    no dropout, so it reproduces on any device. Its ImageNet file is torchvision's densenet121, in
+    either of torchvision's spellings (_densenet_names)."""
+    model = _monai_nets().DenseNet121(spatial_dims=2, in_channels=3, out_channels=outputs)
+    _load_backbone(model, weights, "densenet121", _densenet_names)
+    return model
+
+
+def _se_net(builder, outputs, weights, name):
+    model = builder(spatial_dims=2, in_channels=3, num_classes=outputs)
+    _load_backbone(model, weights, name)
+    return model
+
+
+def se_resnet50(outputs, weights):
+    """MONAI's SEResNet50, resnet50 with a squeeze-and-excitation gate on every block: about 2.1
+    times resnet18's multiply-adds (317 against 148 million at 64 px; resnet50 is 334) in 26
+    million parameters; no dropout, so it reproduces on any device. No ImageNet file is read for it
+    but one in MONAI's own names, since its published weights live on a third-party site in
+    another naming, so it starts from scratch or from a parent (--init)."""
+    return _se_net(_monai_nets().SEResNet50, outputs, weights, "se-resnet50")
+
+
+def se_resnext50(outputs, weights):
+    """MONAI's SEResNext50, se_resnet50 with its convolutions in 32 groups: about 2.3 times
+    resnet18's multiply-adds (348 million at 64 px) in 26 million parameters; the rest as
+    se_resnet50."""
+    return _se_net(_monai_nets().SEResNext50, outputs, weights, "se-resnext50")
+
+
 ARCHITECTURES = {
     "resnet18": resnet18,
     "resnet34": resnet34,
     "resnet50": resnet50,
     "mobilenet-v3-small": mobilenet_v3_small,
     "efficientnet-b0": efficientnet_b0,
+    "densenet121": densenet121,
+    "se-resnet50": se_resnet50,
+    "se-resnext50": se_resnext50,
 }
 
 

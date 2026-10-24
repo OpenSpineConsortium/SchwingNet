@@ -21,7 +21,9 @@ part (docs/research/training-review.md, section 1):
   first N crops of each person in the catalog's order; the validation part is never cut, so every
   run of a comparison scores the same crops;
 - architecture: the backbone, "resnet18" (version 1), "resnet34", "resnet50",
-  "mobilenet-v3-small" or "efficientnet-b0", each with its own head and its own ImageNet file;
+  "mobilenet-v3-small" or "efficientnet-b0" from torchvision, or "densenet121", "se-resnet50" or
+  "se-resnext50" from MONAI (#211), each with its own head and, where one is read, its own
+  ImageNet file;
 - denoise: a filter on the crop inside the model, before the scaling, "none", "gaussian" or
   "median", so the evaluator, the latency measurement and the ONNX export carry it.
 
@@ -52,7 +54,16 @@ SAMPLER = ("uniform", "balanced")
 LOSS_WEIGHTS = ("none", "inverse-frequency")
 SELECT = ("accuracy", "balanced-accuracy")
 SAMPLES = ("all", "only-sources", "drop-sources", "cap-per-person")
-ARCHITECTURE = ("resnet18", "resnet34", "resnet50", "mobilenet-v3-small", "efficientnet-b0")
+ARCHITECTURE = (
+    "resnet18",
+    "resnet34",
+    "resnet50",
+    "mobilenet-v3-small",
+    "efficientnet-b0",
+    "densenet121",
+    "se-resnet50",
+    "se-resnext50",
+)
 DENOISE = ("none", "gaussian", "median")
 # The samples choices that take a list of sources, and the one that takes a count per person.
 BY_SOURCE = ("only-sources", "drop-sources")

@@ -75,6 +75,8 @@ metaflow = ">=2.12"
 # The ONNX export and its parity check (#13): every stage is exported and its outputs compared
 # with PyTorch's on the witness frames before a latency number is written for it.
 onnx = ">=1.16"
+# MONAI's classification networks as architecture blocks (tools/train_blocks.py).
+monai = ">=1.5"
 # Reads the DICOM X-ray sets (LUMOS, VinDr) in the bank stage, tools/bank.py (#44).
 pydicom = ">=2.4"
 # The decoders pydicom hands a compressed pixel array to (JPEG baseline, lossless and LS,
