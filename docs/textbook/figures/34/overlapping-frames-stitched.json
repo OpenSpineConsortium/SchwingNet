@@ -15,7 +15,7 @@
       "artifacts/counting-levels-under-fluoroscopy/index.html"
     ],
     "run": null,
-    "notes": "Extracted from the second image embedded in the artifact's page (alt text 'overlapping frames stitched'), downscaled from 1,734 to 1,400 pixels wide. The page names no script for it; the 20:12 figures page captions the same panel 'The sweep on a real render', so it is render work."
+    "notes": "Extracted from the second image embedded in the artifact's page (alt text 'overlapping frames stitched'), downscaled from 1,734 to 1,400 pixels wide. The page names no script for it; the 20:12 figures page shows the same sweep laid out in one row (fig1_row2_stitch.png, row c') and captions it 'The sweep on a real render', so it is render work."
   },
   "explore": [
     {

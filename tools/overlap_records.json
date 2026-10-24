@@ -57,7 +57,8 @@
       {"arm": "CTSpinoPelvic1K from the sacrum", "spines": 801, "two": {"exact": 0.9966, "walks": 6255, "wrong": 21}, "three": {"exact": 0.9976, "walks": 6229, "wrong": 15}},
       {"arm": "CTSpinoPelvic1K, 79 detector-val cases, from the sacrum", "spines": 79, "two": {"exact": 1.0, "walks": 618, "wrong": 0}, "three": null},
       {"arm": "Real lumbar films from the sacrum", "spines": 16, "two": {"exact": 1.0, "walks": 95, "wrong": 0}, "three": null},
-      {"arm": "Real films from C2, detector-val cases", "spines": 24, "two": {"exact": 1.0, "walks": 110, "wrong": 0}, "three": {"exact": 1.0, "walks": 110, "wrong": 0}}
+      {"arm": "Real films from C2, detector-val cases", "spines": 24, "two": {"exact": 1.0, "walks": 110, "wrong": 0}, "three": {"exact": 1.0, "walks": 110, "wrong": 0}},
+      {"arm": "Real films from C2, all", "spines": "262; 264 at three", "two": {"exact": 0.9967, "walks": 1209, "wrong": 4}, "three": {"exact": 0.9942, "walks": 1217, "wrong": 7}}
     ]
   }
 }

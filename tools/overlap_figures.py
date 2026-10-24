@@ -151,7 +151,9 @@ def repair(held, kept, max_insert=2):
 
 def failure(nodes, n_bodies):
     """Why a chain is not complete: a node carrying two bodies, a body entered twice, or a body
-    in no node."""
+    in no node. Stricter than sweep_map's scorer on one point: sweep_map counts a body as missed only
+    when some frame held it, so a body that falls between frames does not fail its chain_complete,
+    while here it does, because it leaves every count above it one short."""
     if any(len(n["truth"]) > 1 for n in nodes):
         return "conflict"
     seen = [next(iter(n["truth"])) for n in nodes]
