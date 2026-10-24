@@ -567,7 +567,8 @@ def spine_svg(table: dict) -> str:
         for i, a in enumerate(axis):
             if a in r["levels"]:
                 stroke = "" if known else f' class="t-{r["type"]} o-{r["type"]}" stroke-width="1.2"'
-                lines.append(f'<rect x="{left + i * cell + 1:.1f}" y="{y + 1}" width="{cell - 2:.1f}" height="{row - 2}" rx="2" fill-opacity="{shade:.2f}"{stroke or f' class="t-{r["type"]}"'}/>')
+                fill_class = stroke or ' class="t-' + r["type"] + '"'
+                lines.append(f'<rect x="{left + i * cell + 1:.1f}" y="{y + 1}" width="{cell - 2:.1f}" height="{row - 2}" rx="2" fill-opacity="{shade:.2f}"{fill_class}/>')
     lines.append(f'<text x="10" y="{height - 6}">Solid: region stated by the record; lighter: read from the body part; outline: no image count. {COMMAND}</text>')
     lines.append("</svg>")
     return "\n".join(lines) + "\n"
@@ -635,7 +636,7 @@ def record_of(slug: str, spec: dict) -> dict:
         "caption": spec["caption"],
         "chapter": "35",
         "grade": "Inferred",
-        "status": "current",
+        "status": "a record, not a final value",
         "source": {
             "kind": "script",
             "artifact": "artifacts/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay/" if slug == "power-calculator" else "artifacts/schwingnet-data-registry/",
@@ -644,7 +645,7 @@ def record_of(slug: str, spec: dict) -> dict:
             "commit": None,
             "data": data,
             "run": None,
-            "notes": "Drawn new from committed files. The counts are the records' own (Reported); the data type, the span along the spine and the tried status of each corpus are the chapter's reading of each record, written into corpora-overlay.json (Inferred); the script refuses any count its record or the overlay's note does not give. The artifact named is the earlier rendering of the same records" + (" and the source of the power targets and holdings" if slug == "power-calculator" else "") + ".",
+            "notes": "Drawn new from committed files. The counts are the records' own (Reported); the data type, the span along the spine and the tried status of each corpus are the chapter's reading of each record, written into corpora-overlay.json (Inferred); the script refuses any count its record or the overlay's note does not give. Some counts drawn are held open by the contradictions pages or the concept ledger (C-ArmLSpine's 149 cases, TotalSegmentator v3's 1,935 scans, NHANES II's 16,531 films), so the figure is a record, not a final value, and its notes say so beside each. The artifact named is the earlier rendering of the same records" + (" and the source of the power targets and holdings" if slug == "power-calculator" else "") + ".",
         },
         "explore": [
             {"label": "The script", "href": "tools/data_figures.py"},

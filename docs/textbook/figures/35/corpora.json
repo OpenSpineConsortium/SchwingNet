@@ -75,7 +75,7 @@
    "licence": "open",
    "name": "C-ArmLSpine (Surgio-B51)",
    "persons": 149,
-   "persons_note": "149 cases; 148 cases or 120 subjects in other files (concept ledger)",
+   "persons_note": "149 cases; 148 cases or 120 subjects in other files (concept ledger); a record, not a final value",
    "reach": "held",
    "sources": [
     "data/sources/carmlspine.json",
@@ -494,7 +494,7 @@
    "licence": "unknown",
    "name": "BUU-LSPINE",
    "persons": 3600,
-   "persons_note": "3,600 by the release and the registry; 1,200 by another reading (contradictions page, datasets row 14)",
+   "persons_note": "3,600 by the release and the registry; an older reading of 1,200 is refuted (contradictions page, datasets row 14)",
    "reach": "held",
    "sources": [
     "data/sources/buu_lspine.json",
@@ -2315,7 +2315,7 @@
    "human": true,
    "id": "totalsegmentator",
    "images": 3163,
-   "images_unit": "scans (1,228 v2 + 1,935 v3)",
+   "images_unit": "scans (1,228 v2 + 1,935 v3; v3 a record, not a final value)",
    "levels": [
     "C1",
     "C2",
@@ -3283,7 +3283,7 @@
    "human": true,
    "id": "nhanes2_unannotated",
    "images": 16531,
-   "images_unit": "films",
+   "images_unit": "films (17,073 TIFFs on disk; a record, not a final value)",
    "levels": [
     "C1",
     "C2",
@@ -3954,7 +3954,7 @@
     {
      "kind": "real C-arm frames",
      "label": "C-ArmLSpine cases",
-     "note": "149 cases; 148 or 120 in other files",
+     "note": "149 cases; 148 or 120 in other files; a record, not a final value",
      "persons": 149,
      "reach": "held",
      "source": "data/sources/carmlspine.json"
@@ -3998,7 +3998,7 @@
     {
      "kind": "real C-arm frames",
      "label": "C-ArmLSpine cases",
-     "note": "level truth from two automatic labellers",
+     "note": "level truth from two automatic labellers; 149 a record, not a final value",
      "persons": 149,
      "reach": "held",
      "source": "data/sources/carmlspine.json"
@@ -4006,7 +4006,7 @@
     {
      "kind": "real films with levels",
      "label": "BUU-LSPINE persons",
-     "note": "3,600 or 1,200 by another reading",
+     "note": "3,600; an older reading of 1,200 is refuted (contradictions page, datasets row 14)",
      "persons": 3600,
      "reach": "held",
      "source": "data/sources/buu_lspine.json"

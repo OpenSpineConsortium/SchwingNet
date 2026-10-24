@@ -93,7 +93,7 @@
    "span": "L1-S1",
    "basis": "stated",
    "persons": 3600,
-   "persons_note": "3,600 by the release and the registry; 1,200 by another reading (contradictions page, datasets row 14)",
+   "persons_note": "3,600 by the release and the registry; an older reading of 1,200 is refuted (contradictions page, datasets row 14)",
    "images": 7203,
    "images_unit": "films (3,603 lateral + 3,600 AP)",
    "tried": "yes",
@@ -124,7 +124,7 @@
    "span": "L1-S1",
    "basis": "stated",
    "persons": 149,
-   "persons_note": "149 cases; 148 cases or 120 subjects in other files (concept ledger)",
+   "persons_note": "149 cases; 148 cases or 120 subjects in other files (concept ledger); a record, not a final value",
    "images": 299,
    "images_unit": "spot frames",
    "tried": "yes",
@@ -651,7 +651,7 @@
    "span": "C1-C7,L1-S1",
    "basis": "stated",
    "images": 16531,
-   "images_unit": "films",
+   "images_unit": "films (17,073 TIFFs on disk; a record, not a final value)",
    "images_from": "16,531 by the record; 17,073 TIFFs on disk (contradictions page, datasets row 9)",
    "tried": "yes",
    "why": "a pseudo-label arm, which the record says cut anomalous accuracy by 20 points"
@@ -857,7 +857,7 @@
    "span": "C1-Co",
    "basis": "inferred",
    "images": 3163,
-   "images_unit": "scans (1,228 v2 + 1,935 v3)",
+   "images_unit": "scans (1,228 v2 + 1,935 v3; v3 a record, not a final value)",
    "images_from": "the record; v3 is 1,939 in the manifest and 1,936 in the census",
    "tried": "yes",
    "why": "renders; v3 is the device corpus"
@@ -1041,7 +1041,7 @@
      "kind": "real C-arm frames",
      "reach": "held",
      "source": "data/sources/carmlspine.json",
-     "note": "149 cases; 148 or 120 in other files"
+     "note": "149 cases; 148 or 120 in other files; a record, not a final value"
     },
     {
      "label": "DeepFluoro specimens",
@@ -1081,7 +1081,7 @@
      "kind": "real C-arm frames",
      "reach": "held",
      "source": "data/sources/carmlspine.json",
-     "note": "level truth from two automatic labellers"
+     "note": "level truth from two automatic labellers; 149 a record, not a final value"
     },
     {
      "label": "BUU-LSPINE persons",
@@ -1089,7 +1089,7 @@
      "kind": "real films with levels",
      "reach": "held",
      "source": "data/sources/buu_lspine.json",
-     "note": "3,600 or 1,200 by another reading"
+     "note": "3,600; an older reading of 1,200 is refuted (contradictions page, datasets row 14)"
     },
     {
      "label": "NHANES II landmarked persons",

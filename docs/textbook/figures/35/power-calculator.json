@@ -4,7 +4,7 @@
  "caption": "A calculator for five tasks (detection recall, level naming, transitional naming, counting exactness, anomaly classification): Wilson-interval precision, a Wilson lower bound reached with power, or two proportions compared, inflated by the design effect, set beside the persons each corpus holds for the task.",
  "chapter": "35",
  "grade": "Inferred",
- "status": "current",
+ "status": "a record, not a final value",
  "source": {
   "kind": "script",
   "artifact": "artifacts/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay/",
@@ -20,7 +20,7 @@
    "artifacts/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay/"
   ],
   "run": null,
-  "notes": "Drawn new from committed files. The counts are the records' own (Reported); the data type, the span along the spine and the tried status of each corpus are the chapter's reading of each record, written into corpora-overlay.json (Inferred); the script refuses any count its record or the overlay's note does not give. The artifact named is the earlier rendering of the same records and the source of the power targets and holdings."
+  "notes": "Drawn new from committed files. The counts are the records' own (Reported); the data type, the span along the spine and the tried status of each corpus are the chapter's reading of each record, written into corpora-overlay.json (Inferred); the script refuses any count its record or the overlay's note does not give. Some counts drawn are held open by the contradictions pages or the concept ledger (C-ArmLSpine's 149 cases, TotalSegmentator v3's 1,935 scans, NHANES II's 16,531 films), so the figure is a record, not a final value, and its notes say so beside each. The artifact named is the earlier rendering of the same records and the source of the power targets and holdings."
  },
  "explore": [
   {
