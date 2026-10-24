@@ -234,6 +234,16 @@ def test_the_synthetic_bank_is_learnable_and_repeats_a_frame(tmp_path: Path) -> 
     rows = bank.map_rows([([10.0, 10.0, 30.0, 30.0], "L4")])
     assert rows[20][20] == LEVELS.index("L4") + 1 and rows[10][10] == 0 and rows[29][29] == 0
     assert bank.write_bank(tmp_path / "plain", 5, 2, 1, [], map_share=0)["maps"] == 0
+    # The maps are drawn from a generator of their own, so a seed's frames and metas are the same
+    # with every frame mapped, with none, and as they were before maps existed.
+    assert bank.write_bank(tmp_path / "full", 5, 2, 1, [], map_share=1)["maps"] == 5
+    for image in sorted((tmp_path / "plain" / "images").rglob("*.png")):
+        twin = tmp_path / "full" / image.relative_to(tmp_path / "plain")
+        assert twin.read_bytes() == image.read_bytes()
+    for meta_path in sorted((tmp_path / "plain" / "meta").glob("*.json")):
+        mapped = json.loads((tmp_path / "full" / "meta" / meta_path.name).read_text(encoding="utf-8"))
+        plain = json.loads(meta_path.read_text(encoding="utf-8"))
+        assert {k: v for k, v in mapped.items() if not k.startswith("level_map")} == plain
 
 
 def write_catalog(path: Path, rows: list[tuple[str, str, str]]) -> None:

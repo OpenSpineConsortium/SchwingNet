@@ -36,8 +36,8 @@ recorded runs stay reproducible. The choices are kept here, with the arithmetic 
 torch (the schedule's factor, the class weights, the balanced accuracy, which crops a samples
 block keeps); tools/train_blocks.py holds the torch side, one function per name, and its tests
 hold the two lists equal. A new way of doing a part is one name added to its tuple here and one
-function there, plus the entry the part keys by name where it has one (HEADS for an
-architecture, AUGMENT_ORDER for an augment change, a branch in _keeps for a samples choice); a
+function there, plus the entry the part keys by name where it has one (HEADS and FEATURES for
+an architecture, AUGMENT_ORDER for an augment change, a branch in _keeps for a samples choice); a
 new part is a field with version 1's default and its entry in CHOICES or SETTINGS, which
 `problems` checks and `parts` reads to list every part with its names for tools/block_sweep.py.
 """

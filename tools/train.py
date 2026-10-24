@@ -174,7 +174,8 @@ def read_map(crop):
     image = Image.open(crop["map"])
     if image.mode != "L":
         raise TrainError(f"{crop['map']}: a level map is an 8-bit greyscale PNG, not mode {image.mode}")
-    frame_size = Image.open(crop["frame"]).size
+    with Image.open(crop["frame"]) as frame:
+        frame_size = frame.size
     if image.size != frame_size:
         raise TrainError(f"{crop['map']}: the level map is {image.size}, the frame {frame_size}")
     highest = image.getextrema()[1]
@@ -187,8 +188,9 @@ def load_maps(crops, size):
     """The crops' level maps as one tensor of level codes, 0 for no vertebra and 1 to 27 for
     LEVELS in order, and IGNORED at every pixel of a crop whose frame has no map, which the
     prior's loss leaves out; a map is decoded once for a run of its frame's bodies, as load_crops
-    decodes a frame once."""
-    maps = np.full((len(crops), size, size), BLOCKS.IGNORED, dtype=np.int64)
+    decodes a frame once. The codes are held in a byte each, since 100,000 crops at 64 pixels
+    would hold 3 GB of maps as eight-byte integers; a batch is widened on the device."""
+    maps = np.full((len(crops), size, size), BLOCKS.IGNORED, dtype=np.int8)
     current, image = None, None
     for n, crop in enumerate(crops):
         if not crop.get("map"):
@@ -281,14 +283,18 @@ def warm_start(model, path, parent, blocks, size):
         raise TrainError(f"{path}: not a level stage of this shape ({str(error).splitlines()[0]})") from error
 
 
-def predict(model, inputs, device, batch):
-    """Predicted level indices for a tensor of crops, in batches, with no gradient."""
+def predict(model, inputs, device, batch, after_batch=None):
+    """Predicted level indices for a tensor of crops, in batches, with no gradient; after_batch,
+    where given, is called with each batch's first and last index once the model has seen it,
+    which is how the prior head scores its maps on the same forward (MapTally)."""
     model.eval()
     guesses = []
     with torch.no_grad():
         for start in range(0, len(inputs), batch):
             logits = model(inputs[start : start + batch].to(device))
             guesses.append(logits.argmax(dim=1).cpu())
+            if after_batch is not None:
+                after_batch(start, start + len(logits))
     return torch.cat(guesses) if guesses else torch.zeros(0, dtype=torch.long)
 
 
@@ -321,30 +327,43 @@ def train_epoch(model, optimiser, inputs, targets, device, batch, generator, blo
         index = order[start : start + batch]
         optimiser.zero_grad()
         crops = inputs[index].to(device)
-        batch_maps = maps[index].to(device) if prior is not None else None
+        batch_maps = maps[index].to(device).long() if prior is not None else None
         loss = batch_loss(model, loss_fn, crops, targets[index].to(device), batch_maps, generator, blocks, prior)
         loss.backward()
         optimiser.step()
-        total += float(loss) * len(index)
+        total += float(loss.detach()) * len(index)
     return total / max(1, len(order))
 
 
-def map_accuracy(model, prior, inputs, maps, device, batch):
-    """The share of the labelled map pixels of these crops the prior head names right, with no
-    gradient; None where no crop carries a map. A number for the curve, choosing nothing."""
-    model.eval()
-    right = total = 0
-    with torch.no_grad():
-        for start in range(0, len(inputs), batch):
-            labels = maps[start : start + batch].to(device)
-            mask = labels != BLOCKS.IGNORED
-            if not bool(mask.any()):
-                continue
-            model(inputs[start : start + batch].to(device))
-            guess = prior.logits().argmax(dim=1)
-            right += int((guess[mask] == labels[mask]).sum())
-            total += int(mask.sum())
-    return right / total if total else None
+class MapTally:
+    """The prior head's score over the validation maps, counted batch by batch on the forward
+    predict makes, so the validation part is seen once an epoch: the share of the labelled pixels
+    the head names right, and the share of the vertebral pixels, codes 1 to 27, it names right,
+    which a head that says background at every pixel scores 0 on while its pixel accuracy is the
+    background's share, so the two together tell learning from collapse. Numbers for the curve,
+    choosing nothing; None where no crop carries a map."""
+
+    def __init__(self, prior, maps, device):
+        self.prior, self.maps, self.device = prior, maps, device
+        self.right = self.total = self.body_right = self.body_total = 0
+
+    def __call__(self, start, stop):
+        labels = self.maps[start:stop].to(self.device).long()
+        mask = labels != BLOCKS.IGNORED
+        if not bool(mask.any()):
+            return
+        hit = self.prior.logits().argmax(dim=1) == labels
+        body = labels > 0
+        self.right += int(hit[mask].sum())
+        self.total += int(mask.sum())
+        self.body_right += int(hit[body].sum())
+        self.body_total += int(body.sum())
+
+    def numbers(self):
+        return {
+            "validation_map_pixel_accuracy": self.right / self.total if self.total else None,
+            "validation_map_body_accuracy": self.body_right / self.body_total if self.body_total else None,
+        }
 
 
 def witness_strip(crops, inputs, guesses, path):
@@ -438,7 +457,7 @@ def model_card(out, args, run, counts, best, elapsed, blocks, parent=None):
         f"- Seed {args.seed}; epochs {args.epochs}; batch {args.batch}; learning rate {args.lr}; device {args.device}.",
         "- Blocks: " + "; ".join(f"{k} {','.join(v) if isinstance(v, list) else v}" for k, v in as_record(blocks).items()) + ".",
         f"- Training crops {seen_words(counts, blocks)}; validation crops {validation_words(counts)}; no test row was read.",
-        *prior_lines(blocks, counts),
+        *prior_lines(blocks, counts, best, args.size, parent),
         f"- Best epoch {best['epoch']}: validation accuracy {best['validation_accuracy']:.3f} ({best['validation_ci'][0]:.3f} to {best['validation_ci'][1]:.3f}, n={best['validation_n']}).",
         f"- Checkpoint best.pt sha256 {best['checkpoint_sha256']}; wall time {elapsed:.0f} s.",
         "- Levels: " + ", ".join(LEVELS) + f"; transitional {', '.join(TRANSITIONAL)}.",
@@ -448,16 +467,22 @@ def model_card(out, args, run, counts, best, elapsed, blocks, parent=None):
     (out / "MODEL.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-def prior_lines(blocks, counts):
-    """The card's line on the prior block where the run used it: what the head read, its weight,
-    and how many crops carried a map, since a crop without one taught the head nothing."""
+def prior_lines(blocks, counts, best, size, parent=None):
+    """The card's line on the prior block where the run used it: what the head read and how many
+    cells it kept across the crop, its weight, how many crops carried a map, since a crop without
+    one taught the head nothing, that train_loss holds the map loss too, so the column is not the
+    control run's, and under --init that the head began from scratch, since warm_start reads the
+    parent's best.pt alone and a parent's prior_head.pt is not read."""
     if blocks.prior == "none":
         return []
+    cells = best["prior_cells"]
+    fresh = "; the head began from scratch, since a parent's prior_head.pt is not read" if parent else ""
     return [
-        f"- Prior: level-map head on {BLOCKS.FEATURES[blocks.architecture]} ({len(LEVELS) + 1} classes at every pixel"
-        f" of the crop, weight {blocks.prior_weight}); {counts['train_with_map']} of the {counts['train']} training crops"
-        f" and {counts['validation_with_map']} of the {counts['validation']} validation crops carried a map;"
-        " the head is not in best.pt (prior_head.pt beside it)."
+        f"- Prior: level-map head on {best['prior_stage']} ({cells[0]} by {cells[1]} cells of the {size}-pixel crop,"
+        f" {len(LEVELS) + 1} classes at every pixel, weight {blocks.prior_weight}); {counts['train_with_map']} of the"
+        f" {counts['train']} training crops and {counts['validation_with_map']} of the {counts['validation']} validation"
+        " crops carried a map; the head is not in best.pt (prior_head.pt beside it); train_loss is the level loss plus"
+        f" {blocks.prior_weight} times the map loss, not the control run's level loss alone{fresh}."
     ]
 
 
@@ -584,18 +609,18 @@ def epoch_line(epoch, loss, guesses, val_y, val_crops, started, witness_score, l
     }
 
 
-def prior_line(prior, model, val_x, val_maps, device, batch):
-    """The prior block's two numbers for the epoch's line: the mean prior loss of the training
-    batches that carried a map (None at epoch 0 and where none did) and the head's pixel accuracy
-    over the validation crops' maps; nothing where the run has no prior."""
+def prior_line(prior, tally):
+    """The prior block's numbers for the epoch's line: the mean prior loss of the training batches
+    that carried a map (None at epoch 0 and where none did) and the head's pixel and vertebral-pixel
+    accuracy over the validation crops' maps (MapTally); nothing where the run has no prior."""
     if prior is None:
         return None
-    return {"train_prior_loss": prior.mean_and_reset(), "validation_map_pixel_accuracy": map_accuracy(model, prior, val_x, val_maps, device, batch)}
+    return {"train_prior_loss": prior.mean_and_reset(), **tally.numbers()}
 
 
 def wandb_values(line):
     """The epoch's numbers as flat W&B keys."""
-    values = {"train/loss": line["train_loss"], "train/learning_rate": line.get("learning_rate"), "validation/balanced_accuracy": line.get("validation_balanced_accuracy"), "validation/accuracy": line["validation_accuracy"], "validation/ci_low": line["validation_ci"][0], "validation/ci_high": line["validation_ci"][1], "train/prior_loss": line.get("train_prior_loss"), "validation/map_pixel_accuracy": line.get("validation_map_pixel_accuracy")}
+    values = {"train/loss": line["train_loss"], "train/learning_rate": line.get("learning_rate"), "validation/balanced_accuracy": line.get("validation_balanced_accuracy"), "validation/accuracy": line["validation_accuracy"], "validation/ci_low": line["validation_ci"][0], "validation/ci_high": line["validation_ci"][1], "train/prior_loss": line.get("train_prior_loss"), "validation/map_pixel_accuracy": line.get("validation_map_pixel_accuracy"), "validation/map_body_accuracy": line.get("validation_map_body_accuracy")}
     for kind in ("level", "source"):
         for name, (right, total) in line["validation_strata"][kind].items():
             values[f"validation/{kind}/{name}"] = right / total
@@ -645,11 +670,12 @@ def prior_of(blocks, model, train_crops, val_crops, args):
 
 
 def head_checkpoint(prior, folder):
-    """The prior head's weights beside best.pt, with their digest for the record; nothing with no prior."""
+    """The prior head's weights beside best.pt, with their digest, the stage it read and the cells
+    it kept for the record; nothing with no prior."""
     if prior is None:
         return {}
     torch.save(prior.state_dict(), folder / "prior_head.pt")
-    return {"prior_head_sha256": sha256_of(folder / "prior_head.pt")}
+    return {"prior_head_sha256": sha256_of(folder / "prior_head.pt"), "prior_stage": prior.stage, "prior_cells": list(prior.cells)}
 
 
 def run(args):
@@ -699,8 +725,9 @@ def run(args):
             if epoch:
                 rate = set_rate(optimiser, base_rates, lr_factor(epoch, args.epochs, blocks.warmup_epochs, blocks.schedule))
             loss = train_epoch(model, optimiser, train_x, train_y, args.device, args.batch, generator, blocks, loss_fn, maps, prior) if epoch else None
-            guesses = predict(model, val_x, args.device, args.batch)
-            numbers = prior_line(prior, model, val_x, val_maps, args.device, args.batch)
+            tally = MapTally(prior, val_maps, args.device) if prior is not None else None
+            guesses = predict(model, val_x, args.device, args.batch, tally)
+            numbers = prior_line(prior, tally)
             line = epoch_line(epoch, loss, guesses, val_y, val_crops, started, frames.draw(model, args.device, args.batch, epoch), rate, numbers)
             witness_strip([val_crops[i] for i in witness], val_x[witness], guesses[witness], folder / "witness" / f"epoch-{epoch:02d}.png")
             checkpoint(model, folder, epoch, args.keep_epochs)

@@ -42,6 +42,11 @@ def plant_copies(bank_a, bank_b):
         data = source.read_bytes()
         meta = json.loads((bank_a / "meta" / f"{source.stem}.json").read_text(encoding="utf-8"))
         meta["case"] = case
+        # The copy is another bank's frame: the map the source's meta names is a path in bank A,
+        # and in B it would reach another frame's map or none (the synthetic bank maps about three
+        # frames in four since #228), so the copy carries no map.
+        meta.pop("level_map", None)
+        meta.pop("level_map_from", None)
         if change:
             image = Image.open(io.BytesIO(data))
             image = image.resize((image.width * 3 // 4, image.height * 3 // 4), Image.Resampling.LANCZOS)
@@ -94,7 +99,10 @@ class LeakPipelineTest(unittest.TestCase):
 
     def test_a_frame_whose_bytes_changed_fails_the_check(self):
         (folder,) = sorted((self.data / "carmlspine" / "shards").iterdir())
-        frame = sorted(folder.glob("*/*.png"))[0]
+        # A frame of the manifest's, since the shard holds the level maps at content addresses of
+        # their own (#228) and the fingerprint reads the frames alone.
+        manifest = json.loads((folder / "MANIFEST.json").read_text(encoding="utf-8"))
+        frame = folder / manifest["items"][0]["path"]
         os.chmod(frame, 0o644)
         frame.write_bytes(frame.read_bytes() + b"\0")
         done = self.run_leaks()

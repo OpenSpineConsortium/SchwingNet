@@ -50,11 +50,12 @@ bit. The loop that optimises them is:
 
 Adding a piece is a name in its part's tuple in src/schwingnet/blocks.py and a function in that
 part's table in tools/train_blocks.py, plus the one place that part keys by name where it has
-one: a HEADS entry for an architecture (its head's parameter prefix, which the ImageNet loader
-and backbone_lr_scale read), a place in AUGMENT_ORDER for an augment change (augment applies
+one: HEADS and FEATURES entries for an architecture (its head's parameter prefix, which the
+ImageNet loader and backbone_lr_scale read, and its stages deepest first, which the prior head
+hooks), a place in AUGMENT_ORDER for an augment change (augment applies
 the order's names, so one outside it would be accepted and never applied), a branch in `_keeps`
-for a samples choice. tests/test_train_blocks.py fails when a table, HEADS or AUGMENT_ORDER and
-its tuple disagree, tests/schwingnet/test_blocks.py holds the pure side under the gate's
+for a samples choice. tests/test_train_blocks.py fails when a table, HEADS, FEATURES or
+AUGMENT_ORDER and its tuple disagree, tests/schwingnet/test_blocks.py holds the pure side under the gate's
 contracts, and tools/train.py calls only the tables, so it never changes for a new piece. A new
 part is a field on Blocks with a default that is version 1's choice and either its tuple entered
 in CHOICES, which `problems` checks and `parts` prints, or, for a setting with a range, its
@@ -233,7 +234,7 @@ The owner's ask of 2026-10-24: a 3D prior for training the 2D network, "3d class
 directly mapped onto 2D X-rays by deterministic registration", as one of the reverse-ablation
 steps, since it is in the owner's words the gold standard for supervised learning and should
 teach the network how the 3D bones collapse into the 2D image. VertebralDiffusion, which the
-owner pointed at, holds no such code (the note of #214: it is a 3D generator template, with no
+owner pointed at, holds no such code (the note of #212, docs/research/vertebral-diffusion.md: it is a 3D generator template, with no
 projection, registration or 2D training), so the piece is built here from the project's own plan
 (docs/research/ct-priors-for-2d-detection.md, items 3 and 4; docs/research/xr-from-3d/README.md,
 workstream E's fourth layer, "a head predicts an anatomy map ... supervised exactly by the
@@ -244,28 +245,46 @@ renders, the CT's segmentation projected").
   made by the render's own geometry (projector `render`) or by a pose registered to a real frame
   (`registered`). A bank names it in the frame's meta (`level_map`, a path inside the bank, and
   `level_map_from`); tools/ingest.py decodes it with the standard library, since it runs where no
-  image library is, holds it to the frame's size and the codes, and copies it into the shard at
+  image library is, holds it to the frame's size and the codes and each chunk to its checksum, so a
+  map it keeps is one the trainer's image library reads, and copies it into the shard at
   its own content address beside the frame; the manifest's item carries its path, digest,
   projector and labeller (schwingnet.catalog.LevelMap, manifest schema 2; a manifest whose items
   carry no map is still written as schema 1, byte for byte as before, so every shard on the grid
   reads as unchanged); the catalog's item row gained level_map and level_map_from, null for a
-  frame without one (catalog schema 2). The synthetic bank writes a map for three frames in four,
-  so the dry run exercises the block and the crops without a map beside it.
+  frame without one (catalog schema 2). The synthetic bank writes a map for about three frames in
+  four (a seeded draw at --map-share 0.75, from a generator of its own so a seed's frames are what
+  they were), so the dry run exercises the block and the crops without a map beside it.
 - **What the trainer does.** `prior=level-map` with `prior_weight` above 0 (the two go together,
-  and a weight with no prior or a prior with no weight is refused) puts a head on the backbone's
-  last feature map before the pooling, FEATURES in tools/train_blocks.py naming the module per
-  architecture (layer4 for the torchvision resnets and MONAI's se-resnet50 and se-resnext50, features
-  for mobilenet-v3-small, efficientnet-b0 and densenet121): one
-  1 by 1 convolution to 28 classes, upsampled to the crop's size and scored by cross-entropy
-  against the crop's map, cut and resized nearest as the crop is cut, every pixel of a crop whose
-  frame has no map ignored. The loss is the level loss plus prior_weight times the map loss. The
+  and a weight with no prior or a prior with no weight is refused) puts a head on one of the
+  backbone's feature maps, the deepest that keeps eight cells across the crop: FEATURES in
+  tools/train_blocks.py lists each architecture's stages deepest first (layer4 to layer1 for the
+  resnets, slices of features for the others) and PriorHead picks by one forward of a blank crop at
+  the run's size, layer1 at 32 pixels, layer2 at 64, layer3 at 128 and 14 by 14 cells of layer3 at
+  224, refusing in words a crop too small for eight cells. The last map before the pooling, where
+  the first build of this change read, is 2 by 2 on a 64-pixel crop for every architecture, four
+  blended positions that cannot say where a level falls; the review of this change found the first
+  smoke run's head had learnt to say background at every pixel, its pixel accuracy of 0.48 being
+  the background's share, which that stage and a single accuracy could not show. The head is one
+  1 by 1 convolution to 28 classes, each cell repeated over the pixels it covers (nearest, since the
+  bilinear upsample's backward is on torch's list of kernels that differ run to run on CUDA and the
+  nearest one's is not) and scored by cross-entropy against the crop's map, cut and resized nearest
+  as the crop is cut, every pixel of a crop whose frame has no map ignored; the stage and its cells
+  are recorded as prior_stage and prior_cells in checkpoint.json and on the card's Prior line. The
+  loss is the level loss plus prior_weight times the map loss. The
   box jitter moves the map with its crop, sampled nearest so a map stays level codes, and the
   intensity changes leave it; the crops come out as they would without maps, so a run with and
   one without the prior see the same pictures. The head is training-only: best.pt, train.model_for,
   the evaluator, the latency measurement and the ONNX export carry the 27-way classifier alone,
   unchanged, and the head's weights go to prior_head.pt beside best.pt with their digest in
-  checkpoint.json. metrics.jsonl carries train_prior_loss and validation_map_pixel_accuracy per
-  epoch, the counts train_with_map and validation_with_map say how many crops carried a map, and
+  checkpoint.json. metrics.jsonl carries train_prior_loss, validation_map_pixel_accuracy and
+  validation_map_body_accuracy per epoch, the second over every labelled pixel and the third over
+  the vertebral pixels alone (codes 1 to 27), which a head that says background everywhere scores
+  0 on while its pixel accuracy is the background's share, so the two apart tell learning from
+  collapse; both are counted on the forward the validation prediction makes, so the validation
+  part is seen once an epoch. With the prior on, train_loss (metrics.jsonl, checkpoint.json, the
+  accuracy curve and the evaluation page's column) is the level loss plus prior_weight times the
+  map loss, which the card says, so the column is not the control run's level loss. The counts
+  train_with_map and validation_with_map say how many crops carried a map, and
   the card's Prior line says what the head read and at what weight. A run that names the prior on
   a catalog whose train part has no map is refused in words, since the head would learn from
   nothing and the record would say the prior was on.
@@ -282,11 +301,24 @@ renders, the CT's segmentation projected").
   case's CBCT, but the builders kept boxes alone; the renders of #59 carry a map by construction;
   COBRA's registered planning CTs (#127) give maps for real frames. Rendering is a grid job and
   waits for the owner's word and the count, as every job does. Until then the block is tested on
-  the synthetic bank: the smoke run of this change (60 frames, two epochs, 32-pixel crops, a dry
-  run and no result) took the head's validation pixel accuracy from 0.27 untrained to 0.48 and
-  the prior loss from 2.78 to 1.97, so the head learns from the maps and the wiring holds.
-- **In the reverse ablation.** The build-up rung "renders with projected anchors" of
-  docs/research/benchmarks-to-beat.md, section 4, is a run on the render shards with
-  `prior=level-map`; the leave-one-out row "minus the shape head" is the same run with
-  `prior=none`; `python3 tools/block_sweep.py plan --vary prior=none,level-map` with the weight
-  fixed plans the pair, and `ledger` reads it.
+  the synthetic bank, a dry run and no result. The first smoke run of this change (60 frames, two
+  epochs, 32-pixel crops, the head on the last feature map) took the head's pixel accuracy to
+  0.48, which the review showed to be the background's share: the head said background at every
+  pixel, and one accuracy over a 2 by 2 grid could not tell. After the fix (the head on the
+  deepest stage with eight cells, layer2 at 64 pixels; the vertebral-pixel accuracy beside the
+  pixel one) a 12-epoch run on 240 synthetic frames (805 training crops, 576 of them with a map,
+  69 validation crops, seed 1, box jitter and intensity, no schedule) took the head's validation
+  pixel accuracy from 0.08 untrained to 0.84 and its vertebral-pixel accuracy from 0.13 to 0.80
+  at its best epoch, and the prior loss from 1.96 to 0.46, while the classifier's validation
+  accuracy reached 0.986 (balanced 0.99) against 0.913 (0.83) for the same run with prior=none.
+  Both curves swing from epoch to epoch on so few frames, and bright rectangles say nothing of
+  real frames, so the number that counts is the ablation on the render shards.
+- **In the reverse ablation.** The block is the shape head of the leave-one-out row "minus the
+  shape head" in docs/research/benchmarks-to-beat.md, section 4: the run on the render shards with
+  `prior=level-map` against the same run with `prior=none`. The build-up rung "renders with
+  projected anchors" is run with `prior=level-map` until `prior=anchors` exists, since its own head
+  is the anchors' and is not built. The pair is two plans, since the weight rule refuses a plan
+  that holds `prior=none` beside a weight above 0: `python3 tools/block_sweep.py plan --base
+  prior=level-map --base prior_weight=0.5 ...` for the rung and the same command with no prior
+  words for the control, which is version 1's row; `ledger` reads both. (`--vary` separates values
+  with `/`, so `--vary prior_weight=0.1/0.5` under `--base prior=level-map` plans the weights.)

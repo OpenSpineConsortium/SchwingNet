@@ -11,11 +11,13 @@ its level's index among the levels below, over noise, so a trainer that reads th
 learn the level and a trainer that reads nothing scores chance: a dry run whose accuracy stays
 at chance is a broken workflow, not a hard dataset. Every frame's bytes differ, and a few frames
 repeat an earlier frame's bytes of the same case under another stem, which the ingest must count as duplicates.
-A share of the frames (--map-share, three in four unless said otherwise) bring a projected level
+A share of the frames (--map-share, a seeded draw at 0.75 unless said otherwise) bring a projected level
 map as a render's frame would (#228): maps/<stem>.png, each body's catalog level code over the
 rectangle it fills and 0 elsewhere, named in the meta as level_map with level_map_from "render",
 so the dry run exercises the trainer's prior block too and the rest of the frames exercise the
-crops without a map. Standard library only, so it runs where the verification environment runs.
+crops without a map; which frames is drawn from a generator of its own, so a seed's frames and
+metas are what they were before maps existed and the recorded dry runs' banks come out again.
+Standard library only, so it runs where the verification environment runs.
 """
 
 import argparse
@@ -146,6 +148,7 @@ def meta_for(case, index, split, boxes, rnd, level_map=None):
 def write_bank(bank, frames, cases, seed, test_cases, map_share=MAP_SHARE):
     """Write the bank and return its counts; map_share of the frames bring a level map."""
     rnd = random.Random(seed)
+    map_rnd = random.Random(f"maps-{seed}")
     for split in ("train", "val", "test"):
         (bank / "images" / split).mkdir(parents=True, exist_ok=True)
     (bank / "meta").mkdir(exist_ok=True)
@@ -162,7 +165,7 @@ def write_bank(bank, frames, cases, seed, test_cases, map_share=MAP_SHARE):
         data = last[case] if (index % 97 == 50 and case in last) else png(frame_rows(rnd, boxes))
         (bank / "images" / split / f"{stem}.png").write_bytes(data)
         level_map = None
-        if rnd.random() < map_share:
+        if map_rnd.random() < map_share:
             level_map = f"maps/{stem}.png"
             (bank / level_map).write_bytes(png(map_rows(boxes)))
             maps += 1

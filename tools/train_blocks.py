@@ -287,19 +287,26 @@ ARCHITECTURES = {
     "se-resnet50": se_resnet50,
     "se-resnext50": se_resnext50,
 }
-# The module of each architecture whose output is the last feature map before the pooling, where
-# the prior block's head reads the backbone: the map still says where in the crop each feature was
-# found, which the pooled vector the classifier reads no longer does.
+# The modules of each architecture whose output is a feature map, the deepest first, where the
+# prior block's head may read the backbone: a map still says where in the crop each feature was
+# found, which the pooled vector the classifier reads no longer does. The head takes the deepest
+# whose map keeps CELLS cells across the crop (PriorHead): on a 64-pixel crop the last map of every
+# one of them is 2 by 2, a blend of four positions and no picture of where a level falls, under
+# which a head trained to say background everywhere scores the background's share and looks dense.
 FEATURES = {
-    "resnet18": "layer4",
-    "resnet34": "layer4",
-    "resnet50": "layer4",
-    "mobilenet-v3-small": "features",
-    "efficientnet-b0": "features",
-    "densenet121": "features",
-    "se-resnet50": "layer4",
-    "se-resnext50": "layer4",
+    "resnet18": ("layer4", "layer3", "layer2", "layer1"),
+    "resnet34": ("layer4", "layer3", "layer2", "layer1"),
+    "resnet50": ("layer4", "layer3", "layer2", "layer1"),
+    "mobilenet-v3-small": ("features", "features.8", "features.3", "features.1"),
+    "efficientnet-b0": ("features", "features.5", "features.3", "features.2"),
+    "densenet121": ("features", "features.denseblock3", "features.denseblock2", "features.denseblock1"),
+    "se-resnet50": ("layer4", "layer3", "layer2", "layer1"),
+    "se-resnext50": ("layer4", "layer3", "layer2", "layer1"),
 }
+# The fewest cells the head's map keeps across the crop: FCN-16s's grid on an ImageNet crop, 14 of
+# 224, rounded down to a power of two, so a 64-pixel crop reads a stride-8 stage and a 32-pixel
+# crop a stride-4 one; fewer cells and the per-pixel supervision is a label with a blur on it.
+CELLS = 8
 # The value of a map pixel no map labels: every pixel of a crop whose frame has no level map, which
 # the prior's loss and its accuracy leave out.
 IGNORED = -1
@@ -328,40 +335,65 @@ class PriorHead(nn.Module):
     """The level-map head of the prior block (schwingnet.blocks PRIOR): the 3D prior as a second
     supervision. A render's or a registered frame's shard carries a projected level map beside the
     frame, the segmented CT's voxels mapped onto the X-ray, 0 where no vertebra is and 1 to 27 for
-    the levels; the head reads the backbone's last feature map through a forward hook, names one of
-    28 classes at every position with a 1 by 1 convolution, upsamples to the crop's size and scores
-    that against the crop's map, so the backbone is asked to keep where each level falls in the
-    crop and how the bodies' projections overlap, not only which level the crop centres on. The
-    head is not part of the model: best.pt, the evaluator, the latency measurement and the ONNX
-    export carry the classifier alone, and its own weights go to prior_head.pt beside best.pt."""
+    the levels; the head reads one of the backbone's feature maps through a forward hook, the
+    deepest that keeps CELLS cells across the crop (FEATURES, chosen by the crop size at the start
+    of the run and recorded as the run's prior_stage), names one of 28 classes at every cell with
+    a 1 by 1 convolution, repeats each cell over the crop's pixels it covers and scores that
+    against the crop's map, so the backbone is asked to keep where each level falls in the crop
+    and how the bodies' projections overlap, not only which level the crop centres on. The cells
+    are repeated rather than blended since the bilinear upsample's backward is on torch's list of
+    kernels that give different sums run to run on CUDA, and the nearest one's is not. The head is
+    not part of the model: best.pt, the evaluator, the latency measurement and the ONNX export
+    carry the classifier alone, and its own weights go to prior_head.pt beside best.pt."""
 
     def __init__(self, model, architecture, size, classes):
         super().__init__()
         self.features = None
         self.size = size
-        self.handle = model.get_submodule(FEATURES[architecture]).register_forward_hook(self._keep)
-        self.conv = nn.Conv2d(self._channels(model, architecture), classes, kernel_size=1)
+        self.stage, self.cells, channels = self._stage(model, architecture)
+        self.handle = model.get_submodule(self.stage).register_forward_hook(self._keep)
+        self.conv = nn.Conv2d(channels, classes, kernel_size=1)
         self.total, self.batches = 0.0, 0
 
     def _keep(self, module, args, output):
         self.features = output
 
-    def _channels(self, model, architecture):
-        """How many channels the feature map has, read from one forward of a blank crop with the
-        model as it is, so no table of channel counts can go stale."""
+    def _stage(self, model, architecture):
+        """The deepest stage of FEATURES whose map keeps CELLS cells across the crop, with the
+        cells it keeps and its channels, read from one forward of a blank crop with the model as
+        it is, so no table of strides or channel counts can go stale; refused in words where no
+        stage keeps them, since a head on fewer cells would record a dense prior that is a label."""
+        if architecture not in FEATURES:
+            raise ArchitectureError(f"{architecture}: no feature map is named for the prior's head (FEATURES)")
+        seen = {}
+        handles = [
+            model.get_submodule(name).register_forward_hook(lambda module, args, output, name=name: seen.__setitem__(name, output))
+            for name in FEATURES[architecture]
+        ]
         was_training = model.training
         model.eval()
         with torch.no_grad():
             model(torch.zeros(1, 3, self.size, self.size, device=next(model.parameters()).device))
         model.train(was_training)
-        if self.features is None or self.features.dim() != 4:
-            raise ArchitectureError(f"{architecture}'s {FEATURES[architecture]} gives no feature map")
-        return self.features.shape[1]
+        for handle in handles:
+            handle.remove()
+        for name in FEATURES[architecture]:
+            output = seen.get(name)
+            if output is not None and output.dim() == 4 and min(output.shape[2:]) >= CELLS:
+                return name, (int(output.shape[2]), int(output.shape[3])), int(output.shape[1])
+        shallowest = FEATURES[architecture][-1]
+        output = seen.get(shallowest)
+        given = f"{output.shape[2]} by {output.shape[3]}" if output is not None and output.dim() == 4 else "no feature map"
+        raise ArchitectureError(
+            f"at {self.size}-pixel crops no stage of {architecture} keeps {CELLS} cells across the crop for"
+            f" the prior's head; the shallowest, {shallowest}, gives {given}; take a larger crop"
+        )
 
     def logits(self):
-        """The 28-way prediction at every pixel of the crops the model saw last."""
+        """The 28-way prediction at every pixel of the crops the model saw last, each cell's
+        over the pixels it covers."""
         dense = self.conv(self.features)
-        return F.interpolate(dense, size=(self.size, self.size), mode="bilinear", align_corners=False)
+        return F.interpolate(dense, size=(self.size, self.size), mode="nearest")
 
     def loss(self, maps):
         """Cross-entropy over the labelled pixels of the batch's maps, counted into the epoch's

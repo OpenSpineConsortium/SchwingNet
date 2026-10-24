@@ -502,6 +502,11 @@ def grey_png(rows: list[list[int]], colour: int = 0) -> bytes:
     )
 
 
+def png_chunk(kind: bytes, data: bytes) -> bytes:
+    body = kind + data
+    return struct.pack(">I", len(data)) + body + struct.pack(">I", zlib.crc32(body) & 0xFFFFFFFF)
+
+
 def map_rows(width: int, height: int, code: int) -> list[list[int]]:
     rows = [[0] * width for _ in range(height)]
     for y in range(2, height - 2):
@@ -567,6 +572,15 @@ def test_a_frames_level_map_rides_in_the_shard_and_a_wrong_one_is_refused(
             "8-bit greyscale PNG without interlace",
         ),
         (b"not a png", "render", "not a PNG"),
+        (good[:26], "render", "not a PNG"),
+        (good[:29] + bytes([good[29] ^ 1]) + good[30:], "render", "IHDR chunk fails its checksum"),
+        (good[:-13], "render", "IDAT chunk is cut short"),
+        (
+            good[:8] + png_chunk(b"IHDR", struct.pack(">IIBBBBB", 40, 20, 8, 0, 0, 1, 0)) + good[33:],
+            "render",
+            "filter method 0, not",
+        ),
+        (good[:33] + png_chunk(b"IEND", b"") + good[33:-12], "render", "does not decompress"),
         (good, "guessed", "not one of render, registered"),
     ]
     for data, projector, words in wrong:
@@ -583,3 +597,25 @@ def test_a_frames_level_map_rides_in_the_shard_and_a_wrong_one_is_refused(
     assert ingest.main(argv(bank, tmp_path / "grid3" / "carmlspine", "train", "train")) == 1
     assert "the level map elsewhere.png" in capsys.readouterr().err
     assert not (tmp_path / "grid3").exists()
+
+
+def test_a_duplicate_frames_level_map_is_named_in_the_report(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    ingest = load("ingest")
+    bank = tmp_path / "bank"
+    frame(bank, "train", "case7_f1", "case7", 1, [box("L4")])
+    frame(bank, "train", "case7_f2", "case7", 1, [box("L4")])
+    good = grey_png(map_rows(40, 20, 23))
+    with_map(bank, "case7_f2", good)
+    assert ingest.main(argv(bank, tmp_path / "grid" / "carmlspine", "train", "train")) == 0
+    report = json.loads(capsys.readouterr().out)
+    assert (report["frames_kept"], report["level_maps"]) == (1, 0)
+    (duplicate,) = report["duplicates"]
+    assert duplicate["stem"] == "case7_f2" and duplicate["same_bytes_as"] == "case7_f1.png"
+    assert duplicate["level_map_dropped"] == hashlib.sha256(good).hexdigest()
+    # The same map on both stems loses nothing, so the report says nothing.
+    with_map(bank, "case7_f1", good)
+    assert ingest.main(argv(bank, tmp_path / "grid2" / "carmlspine", "train", "train")) == 0
+    report = json.loads(capsys.readouterr().out)
+    assert report["level_maps"] == 1 and "level_map_dropped" not in report["duplicates"][0]

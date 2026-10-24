@@ -25,9 +25,15 @@ whether the render's own geometry (`render`) or a pose registered to a real fram
 projected it. The map is an 8-bit greyscale PNG of the frame's own size, 0 where no vertebra is
 and 1 to 27 for the catalog's levels in order (schwingnet.catalog.LEVELS), decoded here with the
 standard library and refused by name where it is anything else; it rides in the shard at its own
-content address beside the frame, and the manifest's item carries its path, digest and projector.
+content address beside the frame, and the manifest's item carries its path, digest, projector and
+labeller.
 A frame without one is as before, and a manifest whose items carry none is byte for byte the
-manifest this tool wrote before maps existed, so a bank already ingested reads as unchanged.
+manifest this tool wrote before maps existed, so a bank already ingested reads as unchanged. A map
+added to a bank already ingested changes the manifest and not the shard's name, which is the
+frames' hashes alone, so it is ingested under a new date with `--supersedes latest`, as a bank that
+grew is; the same date is refused, since a shard of that name is there with another manifest. A
+duplicate frame's map, where the kept copy of the bytes carries none or another, is named in the
+report's duplicates as level_map_dropped.
 
     pixi run --locked python tools/ingest.py plan --bank <dir> --source carmlspine --kind train
     pixi run --locked python tools/ingest.py run --bank <dir> --source carmlspine --kind train \\
@@ -97,8 +103,10 @@ class IngestError(Exception):
 
 
 def png_size(data):
-    """The width and height of a PNG from its header, the only thing of the image this tool reads."""
-    if len(data) < 24 or data[:8] != PNG_SIGNATURE or data[12:16] != b"IHDR":
+    """The width and height of a PNG from its header, the only thing of a frame this tool reads;
+    a file shorter than a whole IHDR chunk, 33 bytes, is no PNG, so every later read of the header
+    finds its byte."""
+    if len(data) < 33 or data[:8] != PNG_SIGNATURE or data[12:16] != b"IHDR":
         raise IngestError("not a PNG")
     width, height = struct.unpack(">II", data[16:24])
     if width == 0 or height == 0:
@@ -107,12 +115,21 @@ def png_size(data):
 
 
 def png_chunks(data):
-    """Each chunk's type and bytes, in order; the signature and sizes were checked by png_size."""
+    """Each chunk's type and bytes, in order up to IEND, each whole and under its own checksum, so
+    a map this tool keeps is one the trainer's image library reads too, which refuses a chunk with
+    a wrong checksum and reads nothing after IEND; the signature was checked by png_size."""
     at = 8
-    while at + 8 <= len(data):
+    while at + 12 <= len(data):
         length = struct.unpack(">I", data[at : at + 4])[0]
         kind = data[at + 4 : at + 8]
-        yield kind, data[at + 8 : at + 8 + length]
+        if at + 12 + length > len(data):
+            raise IngestError(f"the PNG's {kind.decode('ascii', 'replace')} chunk is cut short")
+        body = data[at + 8 : at + 8 + length]
+        if struct.unpack(">I", data[at + 8 + length : at + 12 + length])[0] != zlib.crc32(kind + body) & 0xFFFFFFFF:
+            raise IngestError(f"the PNG's {kind.decode('ascii', 'replace')} chunk fails its checksum")
+        yield kind, body
+        if kind == b"IEND":
+            return
         at += 12 + length
 
 
@@ -157,11 +174,12 @@ def png_grey_rows(data):
     decoded with the standard library, since this tool runs where no image library is; any other
     PNG is refused by name rather than guessed at."""
     width, height = png_size(data)
-    depth, colour, interlace = data[24], data[25], data[28]
-    if (depth, colour, interlace) != (8, 0, 0):
+    depth, colour, compression, filtering, interlace = data[24:29]
+    if (depth, colour, compression, filtering, interlace) != (8, 0, 0, 0, 0):
         raise IngestError(
-            f"a level map is an 8-bit greyscale PNG without interlace, not bit depth {depth},"
-            f" colour type {colour}, interlace {interlace}"
+            f"a level map is an 8-bit greyscale PNG without interlace, compression method 0 and filter"
+            f" method 0, not bit depth {depth}, colour type {colour}, compression {compression},"
+            f" filter {filtering}, interlace {interlace}"
         )
     try:
         raw = zlib.decompress(b"".join(body for kind, body in png_chunks(data) if kind == b"IDAT"))
@@ -376,7 +394,7 @@ def plan_shard(bank, settings, inputs):
         dropped += dropped_here
         persons.add(item.person)
         if item.sha256 in kept:
-            duplicates.append({"stem": stem, "same_bytes_as": sources[item.sha256].name, "sha256": item.sha256})
+            duplicates.append(duplicate_entry(stem, item, kept[item.sha256], sources[item.sha256]))
             continue
         kept[item.sha256], sources[item.sha256] = item, image
         if item.level_map:
@@ -387,6 +405,16 @@ def plan_shard(bank, settings, inputs):
         raise IngestError(f"{bank}: --persons {settings.persons} leaves no frame of the bank")
     items = list(kept.values())
     return items, sources, shard_report(items, duplicates, dropped, persons | left_out, left_out, settings, inputs)
+
+
+def duplicate_entry(stem, item, first, first_image):
+    """The report's line on a duplicate frame: which kept stem holds its bytes and, where it
+    brought a level map the kept copy does not carry, that map's digest, so a registered map
+    attached to the second stem of a repeated frame is not lost without a word."""
+    entry = {"stem": stem, "same_bytes_as": first_image.name, "sha256": item.sha256}
+    if item.level_map and (first.level_map is None or first.level_map.sha256 != item.level_map.sha256):
+        entry["level_map_dropped"] = item.level_map.sha256
+    return entry
 
 
 def checked_frame(image, meta_path, settings, bank):
@@ -608,7 +636,7 @@ def parser():
         p.add_argument("--code-commit", required=True, help="the commit of the code that made the bank")
         p.add_argument("--supersedes", default=None, help="the shard this one replaces; 'latest' names the source's current one")
         p.add_argument("--person-prefix", default=None, help="the person key's prefix; the source id unless named")
-        p.add_argument("--labeller", default="projected", help="who drew the boxes, as the manifest records it")
+        p.add_argument("--labeller", default="projected", help="who drew the boxes and made the level maps, as the manifest records it")
         p.add_argument("--persons", default="all", choices=["all", "frozen", "unfrozen"],
                        help="only the frozen test persons' frames, only the others', or every frame")
         p.add_argument("--modality", default=None)
