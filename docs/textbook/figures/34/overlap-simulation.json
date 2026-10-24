@@ -1,0 +1,44 @@
+{
+  "id": "34/overlap-simulation",
+  "title": "A sweep simulated against overlap",
+  "caption": "Chains complete in a small geometric simulation of a sweep from the sacrum to T10, against overlap: left, at three per-body detector miss rates; right, at a 2.4 percent miss rate with a per-link error rate added. Below two bodies, bodies seen in one frame only are lost to a single miss; above two, more links and long shared blocks break the pairing and duplicate bodies.",
+  "chapter": "34",
+  "grade": "Inferred",
+  "status": "current",
+  "source": {
+    "kind": "simulation",
+    "artifact": null,
+    "artifact_url": null,
+    "made_by": "tools/overlap_figures.py",
+    "commit": null,
+    "data": [
+      "tools/overlap_figures.py"
+    ],
+    "run": null,
+    "notes": "Written for this chapter because spine-program holds the simulator (01_carm_level_detection/code/sweep_map.py) but no per-spine result, which is on the grid. It copies that simulator's field, pitches, step jitter, in-frame rule (centre +/- 0.3 pitch), box repair (gaps of at most two, never past the ends) and robust pairing rule; it takes the image shift as found exactly and models no pixel, parallax or patient motion, so the curves show mechanisms and no measured rate. The miss rates are 2.4 percent (held-out film, naming-vertebrae-without-ct-hjy4vc) and 9.4 percent (1 - 0.906, the held-out C-arm recall of the OR readiness ledger, a record); the per-link error rates are illustrative. 4,000 seeded sweeps per point; the numbers are printed by --table."
+  },
+  "explore": [
+    {
+      "label": "The script",
+      "href": "tools/overlap_figures.py"
+    },
+    {
+      "label": "The recorded numbers",
+      "href": "tools/overlap_records.json"
+    },
+    {
+      "label": "The chapter",
+      "href": "docs/textbook/34-the-optimal-overlap.md"
+    },
+    {
+      "label": "The simulator it follows",
+      "href": "https://github.com/OpenSpineConsortium/spine-program/blob/main/01_carm_level_detection/code/sweep_map.py"
+    }
+  ],
+  "rerun": {
+    "where": "actions",
+    "command": "python3 tools/overlap_figures.py docs/textbook/figures/34",
+    "cost": "CPU, under a minute",
+    "needs_owner_word": false
+  }
+}

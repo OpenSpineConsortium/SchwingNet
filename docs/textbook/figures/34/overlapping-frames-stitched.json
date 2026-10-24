@@ -1,0 +1,36 @@
+{
+  "id": "34/overlapping-frames-stitched",
+  "title": "Overlapping exposures linked from the anchor into one map",
+  "caption": "From the September proposal: four overlapping exposures of a render, the first with the sacral anchor in the field, and the panorama they make, every body a node counted from the anchor 0 to 8.",
+  "chapter": "34",
+  "grade": "Reported",
+  "status": "current",
+  "source": {
+    "kind": "artifact",
+    "artifact": "artifacts/counting-levels-under-fluoroscopy/",
+    "artifact_url": "https://claude.ai/artifact/8uhYki72Jf355qdfLM5N96",
+    "made_by": null,
+    "commit": null,
+    "data": [
+      "artifacts/counting-levels-under-fluoroscopy/index.html"
+    ],
+    "run": null,
+    "notes": "Extracted from the second image embedded in the artifact's page (alt text 'overlapping frames stitched'), downscaled from 1,734 to 1,400 pixels wide. The page names no script for it; the 20:12 figures page captions the same panel 'The sweep on a real render', so it is render work."
+  },
+  "explore": [
+    {
+      "label": "The artifact",
+      "href": "artifacts/counting-levels-under-fluoroscopy/"
+    },
+    {
+      "label": "The simulator",
+      "href": "https://github.com/OpenSpineConsortium/spine-program/blob/main/01_carm_level_detection/code/sweep_map.py"
+    }
+  ],
+  "rerun": {
+    "where": "none",
+    "command": null,
+    "cost": "needs the renders on the grid and a script the page does not name",
+    "needs_owner_word": true
+  }
+}

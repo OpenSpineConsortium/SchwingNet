@@ -613,6 +613,40 @@
      ],
      "confidentiality": "confidential-method",
      "research_needed": "Consolidate the records' 512 decision entries into distinct decisions, dating undated ones from the artifact's date and naming the owner by role; check each against the retraining plan (version 2, 2026-10-20), which supersedes earlier choices where they differ."
+    },
+    {
+     "number": "34",
+     "file": "docs/textbook/34-the-optimal-overlap.md",
+     "title": "The optimal overlap",
+     "purpose": "The owner's work on the overlap between consecutive exposures of a sweep, alone: what reached 100 percent at two vertebral bodies of overlap, on which generated pans and with which boxes; why two bodies, from the sources' own reasons and from figures drawn from the records and from a small simulation of what goes wrong below and above two; and a pre-registered plan to test it on a video pan, on full-spine radiographs cut into overlapping fields and on pans rendered from segmented CTs with normal and anomalous columns.",
+     "questions_answered": [
+      "What exactly reached 100 percent at two bodies of overlap, on what, and with which boxes?",
+      "Why two bodies: what goes wrong with less overlap and what with more?",
+      "Which overlap figures may be quoted, and which are records only?",
+      "How would the overlap be tested on a real or synthetic pan with normal and anomalous spines, with what sample, pass line and cost?"
+     ],
+     "artifacts_primary": [
+      "SchwingNet/naming-vertebrae-without-ct-hjy4vc",
+      "SchwingNet/vertebral-levels-without-ct-a4rydj",
+      "SchwingNet/naming-vertebrae-without-an-anchor-3dfzmh",
+      "SchwingNet/counting-levels-under-fluoroscopy",
+      "SchwingNet/level-counting-visual-abstract",
+      "SchwingNet/counting-from-the-sacrum",
+      "SchwingNet/schwingnet-figures-jshksq",
+      "SchwingNet/schwingnet-figures-xyz6kr"
+     ],
+     "artifacts_secondary": [
+      "SchwingNet/aidas-seed-grant-proposal",
+      "SchwingNet/or-readiness-ledger"
+     ],
+     "repository_sources": [
+      "src/schwingnet/chain.py",
+      "docs/research/latency-and-sweep/README.md",
+      "docs/research/xray-dataset-requests.md",
+      "tools/overlap_figures.py"
+     ],
+     "confidentiality": "confidential-method",
+     "research_needed": "Read the sweep_v3 and counting result files on the grid, so the overlap ladder and the 100 percent arms can be graded Measured; run the pre-registered arms on the owner's word."
     }
    ]
   },
