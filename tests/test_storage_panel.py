@@ -51,11 +51,11 @@ def plan_fixture():
         "home": {"quota_bytes": 4 * TB, "used_bytes": None, "read_at": None},
         "sets": [
             a_set("big_ct", bytes=980_000_000_000, licence="restricted",
-                  overlap=[{"with": "twin_ct", "patients": 120, "series": 400, "same_bytes": 50_000_000_000}]),
+                  overlap=[{"with": "twin_ct", "patients": 120, "series": 400, "same_scans": 90, "same_bytes": 50_000_000_000}]),
             a_set("small_films", group="films", bytes=6_338_426_763),
             a_set("twin_ct", reach="get", fetchable=True, status="todo", location="none", bytes=300_000_000_000,
                   bytes_known=False, frozen=False,
-                  overlap=[{"with": "big_ct", "patients": 120, "series": 400, "same_bytes": 50_000_000_000}]),
+                  overlap=[{"with": "big_ct", "patients": 120, "series": 400, "same_scans": 90, "same_bytes": 50_000_000_000}]),
             a_set("no_size_yet", reach="get", fetchable=True, status="requested", location="none", bytes=None,
                   bytes_known=False, frozen=False, licence="unknown"),
             a_set("gated_set", reach="gated", fetchable=False, status="needs-owner", location="none", bytes=None,
@@ -158,7 +158,14 @@ class TheOverlaps(unittest.TestCase):
 
     def test_a_pair_both_held_is_noted_once(self):
         self.assertEqual(panel.overlaps(self.plan, {"twin_ct": {"action": "add"}}),
-                         [{"a": "big_ct", "b": "twin_ct", "patients": 120, "series": 400, "same_bytes": 50_000_000_000}])
+                         [{"a": "big_ct", "b": "twin_ct", "patients": 120, "series": 400, "same_scans": 90,
+                           "same_bytes": 50_000_000_000}])
+
+    def test_a_feed_written_before_same_scans_gives_none(self):
+        for s in self.plan["sets"]:
+            for o in s["overlap"]:
+                del o["same_scans"]
+        self.assertIsNone(panel.overlaps(self.plan, {"twin_ct": {"action": "add"}})[0]["same_scans"])
 
     def test_a_pair_with_one_side_gone_is_no_overlap(self):
         self.assertEqual(panel.overlaps(self.plan, {}), [])
@@ -384,6 +391,11 @@ process.stdout.write(JSON.stringify(cases.map(function (choices) {
                  {"twin_ct": {"action": "add"}}, {"gated_set": {"action": "add"}, "small_films": {"action": "remove", "place": "home"}}]
         self.compare(plan, cases)
         self.compare(read_home, cases)
+        older_feed = copy.deepcopy(plan)
+        for s in older_feed["sets"]:
+            for o in s["overlap"]:
+                del o["same_scans"]
+        self.compare(older_feed, cases)
 
     def test_the_committed_snapshot(self):
         plan = json.loads(panel.SNAPSHOT.read_text(encoding="utf-8"))

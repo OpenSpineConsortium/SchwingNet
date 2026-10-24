@@ -141,7 +141,8 @@ const Model = (function () {
         if (seen[key]) return;
         seen[key] = true;
         out.push({ a: pair[0], b: pair[1], patients: o.patients === undefined ? null : o.patients,
-          series: o.series === undefined ? null : o.series, same_bytes: o.same_bytes === undefined ? null : o.same_bytes });
+          series: o.series === undefined ? null : o.series, same_scans: o.same_scans === undefined ? null : o.same_scans,
+          same_bytes: o.same_bytes === undefined ? null : o.same_bytes });
       });
     });
     return out;
@@ -312,11 +313,13 @@ const Model = (function () {
     }
     if (pairs.length) {
       $("overlaps").innerHTML = "<p><b>Overlap among the kept sets:</b></p><ul class=\"notes\">" + pairs.map(function (p) {
-        return "<li><code>" + esc(p.a) + "</code> and <code>" + esc(p.b) + "</code> share " + (p.patients === null ? "an unrecorded number of" : p.patients.toLocaleString("en-US")) + " patients and " +
-          (p.series === null ? "an unrecorded number of" : p.series.toLocaleString("en-US")) + " series" + (p.same_bytes === null ? "" : ', <span title="' + esc(exact(p.same_bytes)) + '">' + Model.tb(p.same_bytes) + " the same</span>") + "</li>";
+        return "<li><code>" + esc(p.a) + "</code> and <code>" + esc(p.b) + "</code> share " + (p.patients === null ? "an unrecorded number of" : esc(p.patients.toLocaleString("en-US"))) + " patients and " +
+          (p.series === null ? "an unrecorded number of" : esc(p.series.toLocaleString("en-US"))) + " series" +
+          (p.same_scans === null ? "" : ", " + esc(p.same_scans.toLocaleString("en-US")) + (p.same_scans === 1 ? " scan" : " scans") + " identical voxel for voxel") +
+          (p.same_bytes === null ? "" : ', <span title="' + esc(exact(p.same_bytes)) + '">' + Model.tb(p.same_bytes) + " the same</span>") + "</li>";
       }).join("") + "</ul>";
     } else {
-      $("overlaps").innerHTML = '<p class="muted">The feed records no shared patients or series among the kept sets.</p>';
+      $("overlaps").innerHTML = '<p class="muted">The feed records no shared patients, series or scans among the kept sets.</p>';
     }
     $("selection").value = sel;
     const apply = $("apply");
