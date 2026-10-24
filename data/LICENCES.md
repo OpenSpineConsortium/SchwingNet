@@ -10,9 +10,9 @@ A class reads the licence's words (tools/licences.py); whether a trained network
 | open | 23 | 4 |
 | share-alike | 1 | 0 |
 | non-commercial | 15 | 0 |
-| agreement | 25 | 0 |
+| agreement | 28 | 0 |
 | no-derivatives | 3 | 0 |
-| unknown | 46 | 0 |
+| unknown | 49 | 0 |
 
 ## Recipes over the trainable sources (data/registry/)
 
@@ -67,6 +67,7 @@ yes: the recipe takes the source now; after review: its class fits, and the reci
 | cervical_thoracic_intraop | unknown | unknown | rule | not recorded |
 | chexpert_plus | agreement | no | rule | Stanford AIMI research use agreement, non-commercial |
 | cm_spine_drive_file | unknown | unknown | rule | not recorded |
+| cm_spine_garm | unknown | unknown | rule | not recorded |
 | cobra_elekta | non-commercial | no | rule | CC BY-NC 4.0 |
 | cobra_embargoed | non-commercial | no | rule | CC BY-NC 4.0 |
 | cobra_total | non-commercial | no | rule | CC BY-NC 4.0 |
@@ -89,6 +90,7 @@ yes: the recipe takes the source now; after review: its class fits, and the reci
 | geneva_hip | unknown | unknown | rule | not recorded |
 | guide3d | unknown | unknown | rule | to confirm on the page |
 | hf_abdomenatlas2_0_mini | non-commercial | no | rule | CC BY-NC-SA 4.0 |
+| huashan_intraop_lumbar | agreement | no | rule | by request |
 | idc_cptac_lscc | open | yes | rule | CC BY 4.0 |
 | idc_cptac_luad | open | yes | rule | CC BY 4.0 |
 | idc_ldct_and_projection_data | open | yes | rule | CC BY 4.0 |
@@ -109,6 +111,7 @@ yes: the recipe takes the source now; after review: its class fits, and the reci
 | kaggle_scoliosis_yolov5 | unknown | unknown | rule | Kaggle; the licence on the page to confirm; provenance unstated, so a relabel of AASCE until the hash check says otherwise |
 | konica_ddr | unknown | unknown | rule | unknown |
 | kub_stonex | open | yes | owner 2026-10-23 | CC BY 4.0 (figshare 32049369, doi 10.6084/m9.figshare.32049369; the record's licence field, read from the API on 2026-10-21); de-identified per the record, IRB REC-FSIT-2025/No: 12732 of Daffodil International University |
+| levelcheck_clinical | unknown | unknown | rule | not shared (Johns Hopkins IRB approval expired) |
 | ljubljana_2d3d_gs | no-derivatives | no | rule | ND (read-only) |
 | lumos | non-commercial | no | rule | Zenodo 18173664, open, CC BY-NC 4.0 (read on the record 2026-10-21) |
 | maastricht_cervical | agreement | no | rule | available on request under privacy restrictions; a Dutch WMO/GDPR data transfer agreement is expected |
@@ -123,6 +126,7 @@ yes: the recipe takes the source now; after review: its class fits, and the reci
 | nhanes2_annotated | unknown | unknown | rule | open (NCHS) |
 | nhanes2_unannotated | unknown | unknown | rule | open (NCHS) |
 | nih_chestxray14 | unknown | unknown | rule | NIH Clinical Center, open; the Box page's terms to confirm |
+| nitw_2d3d_registration | agreement | no | rule | by request |
 | open_i_chest | unknown | unknown | rule | Open-i (NLM), open, no agreement; the FAQ's terms to confirm |
 | padchest | agreement | no | rule | BIMCV's PadChest research use agreement, accepted by the owner on 2026-10-22; no redistribution, the link kept inside the organisation |
 | pediatric_iri | unknown | unknown | rule | not recorded |
@@ -144,7 +148,9 @@ yes: the recipe takes the source now; after review: its class fits, and the reci
 | stanford_aimi_merlin | agreement | no | rule | a data use agreement (non-commercial) |
 | sx_stitch | unknown | unknown | rule | not recorded |
 | totalsegmentator | open | yes | rule | CC BY 4.0 |
+| tvgh_as_spine | unknown | unknown | rule | not recorded |
 | tvgh_spinexr | unknown | unknown | rule | not recorded |
+| vanderbilt_tha_fluoro | agreement | no | rule | by request |
 | veriserum | unknown | unknown | rule | to confirm on the page |
 | verse | share-alike | yes | rule | CC BY-SA 4.0 |
 | verse_2d_projections | unknown | unknown | rule | Zenodo 8115942, open; licence to confirm on the record (VerSe is CC BY-SA 4.0) |

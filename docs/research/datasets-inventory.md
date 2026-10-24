@@ -19,23 +19,23 @@ NONE = does not exist publicly; EXCLUDED = held or seen and set aside for a stat
 
 ## Totals
 
-111 sources in the registry.
+117 sources in the registry.
 
 ```
 HAVE      ##########..............................  29
-GET       ######################..................  61
-GATED     #####...................................  15
+GET       ######################..................  65
+GATED     #####...................................  16
 EMBARGOED ........................................   1
-NONE      #.......................................   2
+NONE      #.......................................   3
 EXCLUDED  #.......................................   3
 ```
 
 | Table | HAVE | GET | GATED | EMBARGOED | NONE | EXCLUDED | All |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Real intraoperative fluoroscopy, stills (the target domain) | 5 | 3 | 0 | 0 | 2 | 1 | 11 |
+| Real intraoperative fluoroscopy, stills (the target domain) | 5 | 5 | 0 | 0 | 2 | 1 | 13 |
 | Video and cine (consecutive frames) | 3 | 21 | 1 | 0 | 0 | 0 | 25 |
-| Real projections with a registered CT (the COBRA kind) | 4 | 0 | 0 | 1 | 0 | 0 | 5 |
-| Plain films (lateral or AP radiographs) | 9 | 11 | 7 | 0 | 0 | 2 | 29 |
+| Real projections with a registered CT (the COBRA kind) | 4 | 2 | 0 | 1 | 1 | 0 | 8 |
+| Plain films (lateral or AP radiographs) | 9 | 11 | 8 | 0 | 0 | 2 | 30 |
 | CT collections and their renders (3D truth, synthetic 2D) | 8 | 24 | 7 | 0 | 0 | 0 | 39 |
 | Future directions | 0 | 2 | 0 | 0 | 0 | 0 | 2 |
 
@@ -48,9 +48,11 @@ EXCLUDED  #.......................................   3
 | FluoroCap literature panels | 29,500 figure panels harvested from the literature; 72.8 percent are reproductions with no pixel residual | pseudo, no patient key | HAVE | out of training by directive D1; a test set at most; still inside the old fold banks | panels 29,500, size gb 316 | the publishers' (figures) | not recorded |
 | Geneva hip phantom (BV Pulsera) | 116 frames of one phantom on a device no model saw | pelvis | HAVE | the unseen-device test | frames 116 | not recorded | not recorded |
 | Ljubljana 2D-3D-GS (PIXIUM 4600) | 18 frames of one cadaver, L1 to L5, with CT and pose | yes, up to 90 level boxes possible from the pose | HAVE | parameters read, no truth bank built; read-only under its ND licence | frames 18 | ND (read-only) | not recorded |
+| CM Spine intraoperative G-arm lumbar images (Zeng 2024, Electronics 13, 2137) | 208 anteroposterior lumbar images from a Geelin500-A mobile G-arm taken during surgery, 537 vertebrae labelled L1 to L5; the paper's data statement points to a GitHub repository whose README linked the set as one Google Drive file, and the repository is no longer public and the file does not open; the record cm_spine_drive_file is very likely that same file | yes, L1 to L5 per vertebra | GET | asked the corresponding authors, Dr Cheng and Dr Song, on 2026-09-10, 2026-09-20 and 2026-10-23, and on 2026-10-23 asked the journal's editorial office to have the data restored or the data statement corrected under MDPI's data policy; no answer from either by 2026-10-24 | images 208, vertebrae 537 | not recorded | [link](https://doi.org/10.3390/electronics13112137) |
 | cm_spine: one Google Drive file described only as 'intraoperative' (empty download) | one Google Drive file, id 1r9wX1802gkU4-EQHMMlyAlEiWXGWLhhJ, described only as 'intraoperative' by download_sources.py's get_cm_spine(); the download was empty and what the file is has never been established | unknown | GET | empty in the data platform at bf1432f; the owner's hand: gdown into a scratch directory, inspect, then decide |  | not recorded | not recorded |
 | LUMOS (Zhejiang University) | 803 living patients: 1,620 lumbar AP or lateral radiographs and 280 non-contrast lumbar CTs, anonymised DICOM and NPY; diagnostic radiography, not C-arm fluoroscopy; no pose given | levels readable from the paired CT after a 2D/3D registration | GET | open on Zenodo; never fetched; still open on Zenodo at the sweep of 2026-10-21, never fetched; queued in the fetch chain of #38 | patients 803, radiographs 1,620, ct volumes 280, size gb 46.4 | not recorded on the card; to confirm on the record | [link](https://zenodo.org/records/18173664) |
 | SX-Stitch intraoperative C-arm series (Li 2024, PUMCH) | intraoperative C-arm series translated along the spine for stitching | levels present in the series | GET | asked 2026-10-20 22:59 UTC and again 2026-10-21 09:39 UTC, with a letter for the PUMCH stitching series beside it; no answer by 2026-10-24; the paper's data statement says no datasets, so success is unlikely |  | not recorded | [link](https://arxiv.org/abs/2409.05681) |
+| Vanderbilt THA intraoperative fluoroscopy with bony landmarks (J Arthroplasty 2025;40:2092) | 336 intraoperative pelvic fluoroscopy frames from 146 total hip arthroplasty patients, with midline L5/S1 and both sacroiliac joints marked (the cup landmarks are not asked for) | thin: the L5/S1 junction marked, the anchor lumbar counting starts from; no level named above it | GET | asked Dr Martin and Dr Moyer on 2026-10-21 12:25 UTC for the de-identified frames with the bony landmarks under a Vanderbilt data use agreement; no answer by 2026-10-24 | frames 336, patients 146 | by request | not recorded |
 | Balgrist ex-vivo lumbar CT plus C-arm (Jecklin) | cadaver lumbar CT with real C-arm frames | yes, from the CT | NONE | refused 2026-10-21 05:52 UTC: Philipp Fuernstahl answered the letter of 2026-10-20 that the ex-vivo dataset was licensed to a startup and is proprietary, so it cannot be shared; the copy to Sascha Jecklin bounced; the resend through the ROCS contact form is dropped |  | not recorded | [link](https://rocs.balgrist.ch/en/contact) |
 | Real cervical or thoracic intraoperative frames with level truth | the gap: no public set of real cervical or thoracic C-arm frames with named levels | none public | NONE | your own captures with a preoperative CT are the way (the plan's section 3.5) |  | not recorded | not recorded |
 | SpineSAC | 5,490 sawbone frames from six C-arms | none: the masks are empty on sawbone CT | EXCLUDED | 0 frames scored; no licence stated | frames 5,490 | none stated | [link](https://github.com/IGRS-Imaging/SpineSAC) |
@@ -93,7 +95,10 @@ EXCLUDED  #.......................................   3
 | COBRA2026 on the grid, all projections | every projection of the 692 public cases | same | HAVE | 808.615 GB on Ceph | cases 692, projections 375,618, size gb 808.615 | CC BY-NC 4.0 | [link](https://zenodo.org/records/21322350) |
 | COBRA2026 Varian | the same kind, from Varian linacs | same | HAVE | geometry solved 2026-09-23; no bank built, no frame looked at | cases 225 | CC BY-NC 4.0 | [link](https://zenodo.org/records/21322350) |
 | IPCAI 2025 paired X-ray and CT set of the distal femur (Flepp 2025, Zenodo 15753063) | one zip, dataset_ipcai.zip, 6.7 GB (md5 cc8bf3e445495d2deb6d50dd058dc977): 50 real calibrated X-rays of 5 cadaveric distal femur specimens (ten views each, about 9 degrees apart, Siemens Fluorospot), their 5 CTs at 0.2 mm slices, the poses, the contour masks and the bone models, from 'Automatic multi-view X-ray/CT registration using bone substructure contours' (Flepp and others, IPCAI 2025, arXiv 2506.13292); the femur, no spine | none; no spine; the stored poses make it a 2D/3D registration benchmark (docs/research/benchmarks-to-beat.md, sections 1 and 5) | HAVE | found by the sweep of 2026-10-21 as 'pelvis or spine, to confirm'; fetched by the X-ray chain on 2026-10-21 and still zipped at the sample index of 2026-10-22 (4 files, 6.2 GB, docs/research/data-manifest/MANIFEST.md); the Zenodo page and the paper, read on 2026-10-22 and 2026-10-23, say the distal femur, so it names no level, enters no registry shard (its registry entry, its chain entry and its bank recipe were removed on 2026-10-23) and serves workstream O (#127) as a registration benchmark only | specimens 5, xrays 50, ct scans 5, size gb 6.7 | Research-Only Dataset License (the Zenodo record: redistribution for academic research only, commercial use by written permission, Swiss law); the code is by request under a non-commercial licence, patent pending EP25168706.7 | [link](https://zenodo.org/records/15753063) |
+| 2D-3D-sci-registration C-arm frames and CTs (NIT Warangal, NIMS) | intraoperative lumbar C-arm frames (Ziehm) of nine patients with their CTs; the repository publishes level-named L1 to L5 centroid files and overlay images, and says the CTs and raw X-rays are available on request from the NIMS team | L1 to L5 centroids named per frame (the published files) | GET | asked Professor Kadambari and Mr Gangolu on 2026-10-21 09:39 UTC for the raw anteroposterior and lateral frames at original depth, the CTs and the projection geometry, for the nine patients and the manuscript's two; no answer by 2026-10-24 | patients 9 | by request | not recorded |
+| Huashan intraoperative lumbar films with preoperative CT (Shao 2024, Fudan) | 140 patients with a preoperative CT and intraoperative anteroposterior and lateral lumbar films (Shao et al. 2024, Huashan Hospital, Fudan University); the C-arm, whether DICOM headers exist and the frames per patient are not known | levels derivable from the paired CT; whether the authors labelled them is not known | GET | asked Professor Jiang's team on 2026-10-21 09:39 UTC for the de-identified films and CTs under a data use agreement, and for the C-arm, the format and the frames per patient; no answer by 2026-10-24 | patients 140 | by request | not recorded |
 | COBRA2026 embargoed cases | the challenge's held-back cases | same | EMBARGOED | released on 2032-03-01 | cases 175 | CC BY-NC 4.0 | [link](https://zenodo.org/records/21322350) |
+| LevelCheck clinical cohort (De Silva 2016, Johns Hopkins) | intraoperative spine radiographs with the same patient's preoperative CT, the vertebral levels placed on each radiograph by registration to the labelled CT (De Silva et al., Spine 2016; Ketcha et al. 2017; the reader images of Manbachi et al. 2018) | yes, every vertebra's level registered from the labelled CT | NONE | refused: asked Jeffrey Siewerdsen on 2026-10-21, who answered the same day that the data are held at Johns Hopkins, which he has left, and pointed to Ali Uneri; asked Uneri on 2026-10-21, who answered on 2026-10-23 that the cohort's IRB approval expired years ago and that Hopkins' IRB now restricts sharing patient data across institutions; he suggested the Harms Study Group (hsg.settingscoliosisstraight.org), a multi-institution scoliosis dataset whose imaging he could not vouch for, and offered to introduce the owner to its administrators | ct 178, radiographs 398, reader images 62 | not shared (Johns Hopkins IRB approval expired) | not recorded |
 
 ## 4. Plain films (lateral or AP radiographs)
 
@@ -123,6 +128,7 @@ EXCLUDED  #.......................................   3
 | MIMIC-CXR and MIMIC-CXR-JPG (PhysioNet) | 377,110 chest radiographs of 227,835 studies, 65,379 patients, Beth Israel Deaconess; frontal and lateral views, the lateral share roughly a third (to confirm from the metadata CSV) | none; the thoracic spine T1 to about L1 in a lateral chest film | GATED | found by the sweep of 2026-10-21; not fetched; PhysioNet credentialed access (CITI training and the data use agreement, as VinDr-SpineXR needed); the largest source of lateral chest films, hence of thoracic spine laterals, free of charge once credentialed | radiographs 377,110, studies 227,835, patients 65,379 | PhysioNet credentialed health data licence; to confirm on the page | [link](https://physionet.org/content/mimic-cxr/2.1.0/) |
 | PadChest (BIMCV, Alicante) | 160,868 chest radiographs of 67,625 patients, 109 projections including lateral (about 30 percent) and some oblique; labels include 174 findings | none; oblique and lateral thoracic spines | GATED | found by the sweep of 2026-10-21; not fetched; a licence form on the page (research use, by request); European devices and film-era digitised plates, the richest set of non-standard chest projections | radiographs 160,868, patients 67,625, projections 109 | research use by request; a licence form on the page | [link](https://bimcv.cipf.es/bimcv-projects/padchest/) |
 | ReXGradient-160K (Rajpurkar lab and Gradient Health, 2025) | 160,000 chest radiograph studies with reports from 109,487 patients at 79 US sites; several images per study, so laterals are likely included (to confirm on the page) | none; the thoracic spine behind the heart, and laterals if present | GATED | found by the sweep of 2026-10-21; not fetched; asked Dr Zhang on 2026-10-24 for leave to download all image parts; no answer by 2026-10-24; Hugging Face gated behind a non-commercial data access and use agreement signed on the page; 79 sites means 79 exposure recipes | studies 160,000, patients 109,487, sites 79 | a non-commercial data access and use agreement on the Hugging Face page | [link](https://huggingface.co/datasets/rajpurkarlab/ReXGradient-160K) |
+| Spine X-Ray Images Dataset for Ankylosing Spondylitis (Taipei Veterans General Hospital) | paired cervical and lumbar radiograph series in DICOM from Taipei Veterans General Hospital, of ankylosing spondylitis, whose fused and bridged spines are among the hardest to count; on the Taiwan Medical AI and Data Portal, which shows no files to a visitor | not recorded | GATED | asked Dr Tsai on 2026-10-21 19:56 UTC whether the radiographs can be shared for non-commercial research and on what terms, with TVGH-SpineXR asked about under the same terms; no answer by 2026-10-24 |  | not recorded | [link](https://data.dmc.nycu.edu.tw/dataset/d08-x-ray) |
 | TVGH-SpineXR | a Taiwanese spine radiograph set behind a login | not recorded | GATED | requested by e-mail to the authors 2026-10-21 19:54 UTC; no answer by 2026-10-24; the record is on IEEE DataPort (doi:10.21227/x6bb-7r75) behind a login, with T1-L5 per-vertebra level labels, masks and end-plates per its description, never seen |  | not recorded | [link](https://ieee-dataport.org/documents/tvgh-spinexr) |
 | VinDr-CXR (PhysioNet) | 18,000 adult frontal chest radiographs from two Vietnamese hospitals with radiologist boxes; the same institutions and devices as VinDr-SpineXR | none; the frontal thoracic spine on known hardware | GATED | found by the sweep of 2026-10-21; not fetched; PhysioNet credentialed access, the route VinDr-SpineXR already took | radiographs 18,000, hospitals 2 | PhysioNet credentialed health data licence; to confirm on the page | [link](https://physionet.org/content/vindr-cxr/1.0.0/) |
 | VinDr-PCXR (PhysioNet) | 9,125 pediatric frontal chest radiographs from the VinDr hospitals with radiologist boxes; the only sizeable public pediatric spine-bearing radiograph source found | none; the pediatric frontal thoracic spine | GATED | found by the sweep of 2026-10-21; the owner's data use agreement is on file (spine-datasets 7a74bb6, 2026-10-21); the first fetch, Slurm job 40697734 on 2026-10-21 (the gate's answer for the request schwingnet-fetch-vindr_pcxr-first), ended with wget exit 8 and 0 files, and the next fetch's report names PhysioNet's answer | radiographs 9,125 | PhysioNet Restricted Health Data License 1.5.0: a data use agreement signed on the page, with no CITI training review (spine-datasets 7a74bb6, 2026-10-21, which records the files open to the owner's account, 34.1 GB uncompressed) | [link](https://physionet.org/content/vindr-pcxr/1.0.0/) |
@@ -208,6 +214,12 @@ Every held source with a path the record gives, Ceph under /rs/rs_grp_oschome/go
 
 Every source whose reach is GET, GATED or EMBARGOED, with the steps the record gives; a request with a draft number is in spine-program's data_requests folder, written and never sent.
 
+### CM Spine intraoperative G-arm lumbar images (Zeng 2024, Electronics 13, 2137) (GET)
+
+Link: https://doi.org/10.3390/electronics13112137. Licence: not recorded.
+
+1. Wait for the authors or the editorial office; if the Drive file is restored, it is fetched as the record cm_spine_drive_file says, on the owner's word.
+
 ### cm_spine: one Google Drive file described only as 'intraoperative' (empty download) (GET)
 
 Link: not recorded. Licence: not recorded.
@@ -227,6 +239,12 @@ Link: https://zenodo.org/records/18173664. Licence: not recorded on the card; to
 Link: https://arxiv.org/abs/2409.05681. Licence: not recorded.
 
 1. Send spine-program 01_carm_level_detection/docs/data_requests/SX-Stitch_request.md to the corresponding author (address in the paper).
+
+### Vanderbilt THA intraoperative fluoroscopy with bony landmarks (J Arthroplasty 2025;40:2092) (GET)
+
+Link: not recorded. Licence: by request.
+
+1. Wait for the answer to the letter of 2026-10-21; any agreement is the owner's to sign.
 
 ### Bournemouth cervical quantitative fluoroscopy (BORDaR 385) (GET)
 
@@ -372,6 +390,18 @@ Link: https://radiopaedia.org/licence. Licence: CC BY-NC-SA 3.0 (the site); ML u
 2. Wait for the countersigned copy and the agreement ID, which every publication must quote; then Radiopaedia says how the export is delivered (bulk export, never scraping).
 3. A commercial product built from any model that touched these cases needs a negotiated licence first (clause 2b).
 
+### 2D-3D-sci-registration C-arm frames and CTs (NIT Warangal, NIMS) (GET)
+
+Link: not recorded. Licence: by request.
+
+1. Wait for the answer to the letter of 2026-10-21; the published centroid files and overlays can be read from the repository meanwhile, on the owner's word.
+
+### Huashan intraoperative lumbar films with preoperative CT (Shao 2024, Fudan) (GET)
+
+Link: not recorded. Licence: by request.
+
+1. Wait for the answer to the letter of 2026-10-21; any agreement is the owner's to sign.
+
 ### COBRA2026 embargoed cases (EMBARGOED)
 
 Link: https://zenodo.org/records/21322350. Licence: CC BY-NC 4.0.
@@ -489,6 +519,12 @@ Link: https://huggingface.co/datasets/rajpurkarlab/ReXGradient-160K. Licence: a 
 
 1. The owner accepts the data access and use agreement on https://huggingface.co/datasets/rajpurkarlab/ReXGradient-160K under the owner's Hugging Face account.
 2. Fetch as a Slurm job on the owner's word, never on the login node: python3 data/reproduce/reacquire/reacquire.py hf-get --repo rajpurkarlab/ReXGradient-160K --repo-type dataset --dest DIR; HF_TOKEN from the submitter's environment, never from this repository.
+
+### Spine X-Ray Images Dataset for Ankylosing Spondylitis (Taipei Veterans General Hospital) (GATED)
+
+Link: https://data.dmc.nycu.edu.tw/dataset/d08-x-ray. Licence: not recorded.
+
+1. Wait for the answer to the letter of 2026-10-21; any agreement is the owner's to sign through Wayne State.
 
 ### TVGH-SpineXR (GATED)
 
