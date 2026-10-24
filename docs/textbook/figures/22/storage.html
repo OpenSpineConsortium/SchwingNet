@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>The storage panel</title><style>
+:root{color-scheme:light;--bg:#fcfcfb;--ink:#0b0b0b;--ink2:#52514e;--ink3:#8a8984;--rule:#e4e3df;--panel:#f3f1ec;
+--data:#2a78d6;--other:#b3b1aa;--target:#d98c00;--red:#c2362e;--redbg:#fbe9e7;--ok:#1f8a55;--home:#7a52c7;--link:#1f5fbf}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){color-scheme:dark;--bg:#1a1a19;--ink:#f0efec;--ink2:#c3c2b7;
+--ink3:#8f8e87;--rule:#34332f;--panel:#242422;--data:#4a8fe8;--other:#6c6b66;--target:#f0b23a;--red:#f07167;--redbg:#3a2220;
+--ok:#5fc48f;--home:#a98ae8;--link:#7fb0ff}}
+:root[data-theme=dark]{color-scheme:dark;--bg:#1a1a19;--ink:#f0efec;--ink2:#c3c2b7;--ink3:#8f8e87;--rule:#34332f;--panel:#242422;
+--data:#4a8fe8;--other:#6c6b66;--target:#f0b23a;--red:#f07167;--redbg:#3a2220;--ok:#5fc48f;--home:#a98ae8;--link:#7fb0ff}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1100px;margin:0 auto;padding:16px}
+h1{font-size:18px;margin:0 0 4px}h2{font-size:15px;margin:18px 0 6px}h3{font-size:14px;margin:0 0 6px}
+p{margin:6px 0}p.sub{color:var(--ink2);margin:0 0 10px}a{color:var(--link)}
+.badge{display:inline-block;border:1px solid var(--rule);border-radius:10px;padding:0 8px;font-size:12px;color:var(--ink2);
+margin-left:6px;vertical-align:middle;font-weight:400}
+.badge.warn{border-color:var(--target);color:var(--target)}.badge.red{border-color:var(--red);color:var(--red)}
+.drives{display:grid;grid-template-columns:1fr;gap:12px}@media (min-width:760px){.drives{grid-template-columns:1fr 1fr}}
+.drive{border:1px solid var(--rule);border-radius:8px;padding:10px 12px;background:var(--panel)}
+.band{position:relative;height:22px;background:var(--bg);border:1px solid var(--rule);border-radius:4px}
+.band .seg{position:absolute;top:0;bottom:0}.band .seg.data{background:var(--data)}.band .seg.other{background:var(--other)}
+.band .seg.home{background:var(--home)}.band .mark{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--target)}
+.band.after{height:10px;margin-top:6px}.band.after .seg{background:var(--data);opacity:.85}.band.after.over .seg{background:var(--red)}
+.band .empty{position:absolute;left:8px;top:0;line-height:20px;font-size:12px;color:var(--ink3)}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;color:var(--ink2);font-size:12px;margin-top:8px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+.controls{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;margin:10px 0}
+.controls label{display:inline-flex;gap:4px;align-items:center}
+input[type=search],select,textarea,button{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--rule);
+border-radius:6px;padding:4px 8px}input[type=search]{min-width:200px;flex:1}
+button{cursor:pointer}button:disabled{cursor:not-allowed;opacity:.55}button.primary{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.wrap{overflow-x:auto;max-height:70vh;overflow-y:auto;border:1px solid var(--rule);border-radius:8px}
+table{border-collapse:collapse;font-size:12.5px;width:100%;min-width:720px}
+td,th{padding:4px 6px;border-bottom:1px solid var(--rule);text-align:left;vertical-align:top}
+th{color:var(--ink2);font-weight:600;position:sticky;top:0;background:var(--panel);z-index:1}
+tr.head td{font-weight:600;color:var(--ink2);background:var(--panel);padding-top:8px}
+tr.changed td{background:var(--panel)}tr.changed td:first-child{box-shadow:inset 3px 0 0 var(--data)}
+td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}td.set{min-width:220px}
+.choice label{display:inline-flex;gap:3px;align-items:center;margin-right:8px;white-space:nowrap}
+.choice input:disabled+span{color:var(--ink3)}
+.muted{color:var(--ink3)}.red{color:var(--red)}.ok{color:var(--ok)}code{font:12.5px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.totals{display:grid;grid-template-columns:1fr;gap:8px;margin:12px 0}@media (min-width:760px){.totals{grid-template-columns:1fr 1fr}}
+.total{border:1px solid var(--rule);border-radius:8px;padding:8px 12px}.total.over{border-color:var(--red);background:var(--redbg)}
+.refusals{border-left:3px solid var(--red);padding:6px 10px;margin:8px 0;background:var(--redbg)}.refusals p{margin:2px 0}
+ul.notes{margin:6px 0;padding-left:18px}
+textarea.sel{width:100%;min-height:54px;font:12.5px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;resize:vertical}
+.actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0}
+.status{color:var(--ink2);font-size:13px;margin:6px 0;min-height:1.4em}
+.fallback{border:1px solid var(--target);border-radius:8px;padding:8px 12px;margin:8px 0;background:var(--panel)}
+.fallback a{word-break:break-all}
+.fallback code.paste{display:block;white-space:pre-wrap;word-break:break-all;margin:6px 0;padding:6px;background:var(--bg);border-radius:4px}
+@media (max-width:600px){.opt{display:none}table{min-width:560px}}
+</style></head><body><main>
+<h1>The storage panel</h1>
+<p class="sub">What the lab volume and the owner's home hold, every set spine-datasets knows, and a selection that fits under the target.
+Feed built <span id="built"></span><span id="built-age" class="badge"></span></p>
+<section class="drives"><div class="drive" id="lab"></div><div class="drive" id="home"></div></section>
+<h2>Pending requests</h2><div id="requests"></div>
+<h2>The sets</h2>
+<div class="controls"><input id="filter" type="search" placeholder="Filter by name, id or group" aria-label="Filter the sets">
+<label><input type="checkbox" id="changed-only"> changed only</label><span id="shown" class="muted"></span>
+<button id="reset" type="button" title="Put every set back as the feed has it">Reset the choices</button></div>
+<div class="wrap"><table id="sets"><thead><tr><th>Set</th><th class="opt">Group</th><th>Status</th><th>Where</th><th>Size</th>
+<th class="opt">Licence</th><th class="opt">Frozen</th><th>Choice</th><th>Place</th></tr></thead><tbody id="rows"></tbody></table></div>
+<h2>After the choices</h2>
+<div class="totals"><div class="total" id="t-lab"></div><div class="total" id="t-home"></div></div>
+<div id="refusals"></div><div id="overlaps"></div>
+<h2>The selection</h2>
+<p class="sub">In the planner's grammar: <code>-id</code> removes a set, <code>+id</code> adds one, <code>id@home</code> and <code>id@lab</code> place one.</p>
+<textarea id="selection" class="sel" readonly aria-label="The selection"></textarea>
+<div class="actions"><button id="copy" type="button">Copy</button><button id="apply" type="button" class="primary">Apply through storage.yml</button>
+<button id="refresh" type="button" title="Ask the page's host to read the feed again">Refresh from the feed</button></div>
+<p class="status" id="status"></p><div class="fallback" id="fallback" hidden></div>
+<p class="muted">Nothing runs from this page. Apply asks the page's host to dispatch spine-datasets' workflow storage.yml, whose check
+refuses an over-cap or sizeless fetch and whose run only opens a request pull request that waits for the owner's merge.
+Source: <code>python3 tools/storage_panel.py build</code> over the committed snapshot of the feed.</p>
+</main>
+<script type="application/json" id="constants">{"feed_page": "https://github.com/OpenSpineConsortium/spine-datasets/blob/storage-feed/PLAN.json", "feed_path": "PLAN.json", "feed_ref": "storage-feed", "format": "spine-datasets/storage 1", "repo": "OpenSpineConsortium/spine-datasets", "workflow": "storage.yml", "workflow_url": "https://github.com/OpenSpineConsortium/spine-datasets/actions/workflows/storage.yml"}</script>
+<script type="application/json" id="plan">{"built_at": "2026-10-24T20:52:07Z", "format": "spine-datasets/storage 1", "home": {"quota_bytes": 4000000000000, "read_at": null, "used_bytes": null}, "read_at": "2026-10-24T17:15:28Z", "requests": [], "sets": [{"bytes": 6338426763, "bytes_known": true, "fetchable": false, "frozen": true, "group": "films", "id": "aariz_cephalograms", "licence": "open", "location": "lab", "name": "Aariz cephalometric benchmark (Khalid, Fraz 2023) and the ISBI 2015 cephalograms", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": null, "bytes_known": false, "fetchable": false, "frozen": false, "group": "films", "id": "aasce", "licence": "restricted", "location": "lab", "name": "AASCE 2019 / BoostNet AP whole-spine films", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 570557160234, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "abdomenatlas3_mini", "licence": "restricted", "location": "lab", "name": "AbdomenAtlas 3.0 Mini (= AbdomenAtlas 1.1 images)", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 102615496477, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "amos22", "licence": "open", "location": "lab", "name": "AMOS22 CT, unlabelled (ids 5000-6899) and labelled", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 15929004557, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "aortaseg60", "licence": "open", "location": "lab", "name": "AortaSeg-60", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 264277371447, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "aws_stoic2021", "licence": "restricted", "location": "lab", "name": "STOIC2021 training (AWS Open Data)", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": null, "bytes_known": false, "fetchable": true, "frozen": false, "group": "fluoro", "id": "balgrist_lumbar", "licence": "unknown", "location": "none", "name": "Balgrist ex-vivo lumbar CT plus C-arm (Jecklin)", "overlap": [], "reach": "get", "rebuild": true, "status": "refused"}, {"bytes": 20313374662, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "barts_crl", "licence": "open", "location": "lab", "name": "Barts CRL (colorectal-cancer staging CT)", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": null, "bytes_known": false, "fetchable": true, "frozen": false, "group": "video", "id": "bern_myelography", "licence": "restricted", "location": "none", "name": "Inselspital Bern dynamic myelography (Piechowiak 2021)", "overlap": [], "reach": "get", "rebuild": true, "status": "requested"}, {"bytes": null, "bytes_known": false, "fetchable": true, "frozen": false, "group": "films", "id": "bimcv_covid19", "licence": "unknown", "location": "none", "name": "BIMCV COVID-19+ chest films (IEEE DataPort)", "overlap": [], "reach": "get", "rebuild": true, "status": "needs-owner"}, {"bytes": null, "bytes_known": false, "fetchable": true, "frozen": false, "group": "video", "id": "bournemouth_cervical_qf", "licence": "restricted", "location": "none", "name": "Bournemouth cervical quantitative fluoroscopy (BORDaR 385)", "overlap": [], "reach": "get", "rebuild": true, "status": "requested"}, {"bytes": null, "bytes_known": false, "fetchable": true, "frozen": false, "group": "video", "id": "bournemouth_lumbar_qf", "licence": "unknown", "location": "none", "name": "Bournemouth lumbar quantitative fluoroscopy (Breen 2021)", "overlap": [], "reach": "get", "rebuild": true, "status": "requested"}, {"bytes": null, "bytes_known": false, "fetchable": false, "frozen": false, "group": "films", "id": "brax", "licence": "restricted", "location": "none", "name": "BRAX Brazilian chest films (PhysioNet)", "overlap": [], "reach": "gated", "rebuild": true, "status": "needs-owner"}, {"bytes": 35225321802, "bytes_known": true, "fetchable": false, "frozen": true, "group": "films", "id": "buu_lspine", "licence": "restricted", "location": "lab", "name": "BUU-LSPINE (Klinwichit et al., Applied Sciences 2023)", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 3076112179, "bytes_known": true, "fetchable": false, "frozen": true, "group": "video", "id": "cadica", "licence": "open", "location": "lab", "name": "CADICA invasive coronary angiography sequences (Mendeley p9bpx9ctcv)", "overlap": [], "reach": "held", "rebuild": true, "status": "fetched"}, {"bytes": null, "bytes_known": false, "fetchable": true, "frozen": false, "group": "ct", "id": "cads", "licence": "restricted", "location": "none", "name": "CADS CT (unique cases)", "overlap": [], "reach": "gated", "rebuild": true, "status": "granted"}, {"bytes": null, "bytes_known": false, "fetchable": false, "frozen": false, "group": "video", "id": "cams_knee", "licence": "restricted", "location": "none", "name": "CAMS-Knee (ETH Zurich and Charite Berlin, J Biomech 2017)", "overlap": [], "reach": "gated", "rebuild": true, "status": "needs-owner"}, {"bytes": null, "bytes_known": false, "fetchable": true, "frozen": false, "group": "future", "id": "canine_thoracic_vhs", "licence": "open", "location": "none", "name": "Veterinary: canine lateral thoracic radiographs for vertebral heart size (Mendeley ktx4cj55pn)", "overlap": [], "reach": "get", "rebuild": true, "status": "todo"}, {"bytes": 103686719641, "bytes_known": true, "fetchable": false, "frozen": true, "group": "fluoro", "id": "carmlspine", "licence": "open", "location": "lab", "name": "C-ArmLSpine (Zhang et al., Medical Image Analysis 2024)", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 56183481264, "bytes_known": true, "fetchable": false, "frozen": true, "group": "video", "id": "cathaction", "licence": "restricted", "location": "lab", "name": "CathAction (Jianu et al. 2024, AIRVLab)", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": null, "bytes_known": false, "fetchable": false, "frozen": false, "group": "films", "id": "chexpert_plus", "licence": "restricted", "location": "none", "name": "CheXpert and CheXpert Plus (Stanford AIMI)", "overlap": [], "reach": "gated", "rebuild": true, "status": "todo"}, {"bytes": null, "bytes_known": false, "fetchable": true, "frozen": false, "group": "fluoro", "id": "cm_spine_drive_file", "licence": "unknown", "location": "none", "name": "CM Spine (Zeng et al., Electronics 2024): 208 intraoperative lumbar G-arm images", "overlap": [], "reach": "get", "rebuild": true, "status": "requested"}, {"bytes": 808617728644, "bytes_known": true, "fetchable": false, "frozen": true, "group": "projections", "id": "cobra2026", "licence": "restricted", "location": "lab", "name": "COBRA2026 public cases (Elekta and Varian)", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": null, "bytes_known": false, "fetchable": false, "frozen": false, "group": "projections", "id": "cobra_embargoed", "licence": "restricted", "location": "none", "name": "COBRA2026 embargoed cases", "overlap": [], "reach": "embargoed", "rebuild": true, "status": "todo"}, {"bytes": null, "bytes_known": false, "fetchable": true, "frozen": false, "group": "video", "id": "coronary_angiography", "licence": "unknown", "location": "none", "name": "Coronary angiography sets (CADICA, ARCADE, XCAD, AngioCAD)", "overlap": [], "reach": "get", "rebuild": true, "status": "todo"}, {"bytes": 6640702200, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "csi2014", "licence": "open", "location": "lab", "name": "CSI 2014 spine CT", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 3691537837, "bytes_known": true, "fetchable": false, "frozen": true, "group": "films", "id": "csxa", "licence": "open", "location": "lab", "name": "CSXA, the Cervical Spine X-ray Atlas V3.0 (Ran et al., Scientific Data 2024)", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": null, "bytes_known": false, "fetchable": true, "frozen": false, "group": "ct", "id": "ct_rate", "licence": "restricted", "location": "none", "name": "CT-RATE chest CT", "overlap": [], "reach": "gated", "rebuild": true, "status": "granted"}, {"bytes": null, "bytes_known": false, "fetchable": false, "frozen": false, "group": "ct", "id": "ctpelvic1k", "licence": "restricted", "location": "lab", "name": "CTPelvic1K", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 162350473572, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "ctspine1k", "licence": "restricted", "location": "lab", "name": "CTSpine1K", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 202680383788, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "ctspinopelvic1k", "licence": "restricted", "location": "lab", "name": "CTSpinoPelvic1K v11 (the consortium's own release)", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 29993980558, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "curvas", "licence": "open", "location": "lab", "name": "CURVAS 2024", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 16878618437, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "curvas_pdacvi", "licence": "open", "location": "lab", "name": "CURVAS-PDACVI (MICCAI 2025)", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": null, "bytes_known": false, "fetchable": true, "frozen": false, "group": "video", "id": "daradia_vertebroplasty", "licence": "unknown", "location": "none", "name": "DARADIA vertebroplasty video (Kolkata)", "overlap": [], "reach": "get", "rebuild": true, "status": "requested"}, {"bytes": 24253086312, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "deep_psma", "licence": "restricted", "location": "lab", "name": "DEEP-PSMA (PSMA + FDG PET/CT, mCRPC)", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 116260000000, "bytes_known": false, "fetchable": false, "frozen": false, "group": "fluoro", "id": "deepfluoro", "licence": "restricted", "location": "lab", "name": "DeepFluoro (Grupp et al., IPCAI 2020): the H5 release and the vendor DICOMs", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": null, "bytes_known": false, "fetchable": true, "frozen": false, "group": "video", "id": "dmx_imaging", "licence": "unknown", "location": "none", "name": "DMX Imaging digital motion X-ray", "overlap": [], "reach": "get", "rebuild": true, "status": "requested"}, {"bytes": 19557720024, "bytes_known": true, "fetchable": false, "frozen": true, "group": "video", "id": "dysphagiabank", "licence": "restricted", "location": "lab", "name": "DysphagiaBank (TalkBank), UNM corpus", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": null, "bytes_known": false, "fetchable": true, "frozen": false, "group": "video", "id": "faubel_painsource", "licence": "unknown", "location": "none", "name": "ThePainSource (Faubel) fluoroscopy clips", "overlap": [], "reach": "get", "rebuild": true, "status": "requested"}, {"bytes": null, "bytes_known": false, "fetchable": true, "frozen": false, "group": "films", "id": "fracatlas", "licence": "open", "location": "none", "name": "FracAtlas (Abedeen 2023, Scientific Data)", "overlap": [], "reach": "get", "rebuild": true, "status": "todo"}, {"bytes": 85596630, "bytes_known": true, "fetchable": false, "frozen": true, "group": "films", "id": "fraiwan_spine_xray", "licence": "open", "location": "lab", "name": "Fraiwan spine X-ray set (Mendeley xkt857dsxk)", "overlap": [], "reach": "held", "rebuild": true, "status": "fetched"}, {"bytes": 1110686125, "bytes_known": true, "fetchable": false, "frozen": true, "group": "fluoro", "id": "geneva_hip", "licence": "open", "location": "lab", "name": "Geneva hip phantom (BV Pulsera; D'Isidoro et al., Medical Physics 2021)", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": null, "bytes_known": false, "fetchable": true, "frozen": false, "group": "video", "id": "guide3d", "licence": "restricted", "location": "none", "name": "Guide3D (ACCV 2024, AIRVLab)", "overlap": [], "reach": "get", "rebuild": true, "status": "needs-owner"}, {"bytes": 620400000000, "bytes_known": false, "fetchable": true, "frozen": false, "group": "ct", "id": "hf_abdomenatlas2_0_mini", "licence": "restricted", "location": "none", "name": "AbdomenAtlas 2.0 Mini (10,135 CT)", "overlap": [], "reach": "get", "rebuild": true, "status": "requested"}, {"bytes": null, "bytes_known": false, "fetchable": false, "frozen": false, "group": "films", "id": "hsg_ais_registry", "licence": "unknown", "location": "none", "name": "Harms Study Group registries (adolescent idiopathic scoliosis and other pediatric spinal deformity)", "overlap": [], "reach": "gated", "rebuild": true, "status": "requested"}, {"bytes": null, "bytes_known": false, "fetchable": true, "frozen": false, "group": "fluoro", "id": "huashan_fudan", "licence": "restricted", "location": "none", "name": "Huashan Hospital, Fudan University, intraoperative lumbar films with preoperative CT (Shao et al. 2024)", "overlap": [], "reach": "get", "rebuild": true, "status": "requested"}, {"bytes": 2820716228, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "idc_acrin_flt_breast", "licence": "open", "location": "lab", "name": "IDC `acrin_flt_breast`", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 15803448804, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "idc_acrin_nsclc_fdg_pet", "licence": "open", "location": "lab", "name": "IDC `acrin_nsclc_fdg_pet`", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 3554260496, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "idc_adrenal_acc_ki67_seg", "licence": "open", "location": "lab", "name": "IDC `adrenal_acc_ki67_seg`", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 4255529904, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "idc_anti_pd_1_lung", "licence": "open", "location": "lab", "name": "IDC `anti_pd_1_lung`", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 2592712452, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "idc_cmb_brca", "licence": "open", "location": "lab", "name": "IDC `cmb_brca`", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 5415090502, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "idc_cmb_crc", "licence": "open", "location": "lab", "name": "IDC `cmb_crc`", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 10016371716, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "idc_cmb_lca", "licence": "open", "location": "lab", "name": "IDC `cmb_lca`", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 2182027164, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "idc_cmb_mel", "licence": "open", "location": "lab", "name": "IDC `cmb_mel`", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 2325630444, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "idc_cmb_mml", "licence": "open", "location": "lab", "name": "IDC `cmb_mml`", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 1046667648, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "idc_cmb_ov", "licence": "open", "location": "lab", "name": "IDC `cmb_ov`", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 6306640878, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "idc_colorectal_liver_metastases", "licence": "open", "location": "lab", "name": "IDC `colorectal_liver_metastases` (Colorectal-Liver-Metastases)", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 5663331196, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "idc_covid_19_ar", "licence": "open", "location": "lab", "name": "IDC `covid_19_ar`", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 64665429890, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "idc_covid_19_ny_sbu", "licence": "open", "location": "lab", "name": "IDC `covid_19_ny_sbu` (COVID-19-NY-SBU)", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 7899579642, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "idc_cptac_ccrcc", "licence": "open", "location": "lab", "name": "IDC `cptac_ccrcc`", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 4231397264, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "idc_cptac_cm", "licence": "open", "location": "lab", "name": "IDC `cptac_cm`", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 29521912984, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "idc_cptac_lscc", "licence": "open", "location": "lab", "name": "IDC `cptac_lscc` (tier 2)", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 38946321618, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "idc_cptac_luad", "licence": "open", "location": "lab", "name": "IDC `cptac_luad` (tier 2)", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 10052805748, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "idc_cptac_pda", "licence": "open", "location": "lab", "name": "IDC `cptac_pda`", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 3091957308, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "idc_cptac_sar", "licence": "open", "location": "lab", "name": "IDC `cptac_sar`", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 7112447934, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "idc_cptac_stad", "licence": "open", "location": "lab", "name": "IDC `cptac_stad`", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 10535515130, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "idc_cptac_ucec", "licence": "open", "location": "lab", "name": "IDC `cptac_ucec`", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 1792570632, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "idc_ct_vs_pet_ventilation_imaging", "licence": "open", "location": "lab", "name": "IDC `ct_vs_pet_ventilation_imaging`", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 6163724386, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "idc_ctpred_sunitinib_pannet", "licence": "open", "location": "lab", "name": "IDC `ctpred_sunitinib_pannet`", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 37225661636, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "idc_eay131", "licence": "open", "location": "lab", "name": "IDC `eay131` (EAY131 (NCI-MATCH))", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 5119552398, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "idc_hcc_tace_seg", "licence": "open", "location": "lab", "name": "IDC `hcc_tace_seg` (HCC-TACE-Seg)", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 862724923831, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "idc_ldct_and_projection_data", "licence": "open", "location": "lab", "name": "IDC `ldct_and_projection_data` (tier 2)", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 123300000000, "bytes_known": false, "fetchable": true, "frozen": false, "group": "ct", "id": "idc_lidc_idri", "licence": "open", "location": "none", "name": "IDC `lidc_idri` (tier 2)", "overlap": [], "reach": "get", "rebuild": true, "status": "todo"}, {"bytes": 29895161732, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "idc_lung_pet_ct_dx", "licence": "open", "location": "lab", "name": "IDC `lung_pet_ct_dx` (Lung-PET-CT-Dx)", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 25695564010, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "idc_mediastinal_lymph_node_seg", "licence": "open", "location": "lab", "name": "IDC `mediastinal_lymph_node_seg`", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 6690856480, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "idc_midrc_ricord_1a", "licence": "restricted", "location": "lab", "name": "IDC `midrc_ricord_1a`", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 8668721317, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "idc_midrc_ricord_1b", "licence": "restricted", "location": "lab", "name": "IDC `midrc_ricord_1b` (tier 2)", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 2305300000000, "bytes_known": false, "fetchable": true, "frozen": false, "group": "ct", "id": "idc_nlst", "licence": "open", "location": "none", "name": "NLST, full (tier 2; 500-person pilot fetched)", "overlap": [], "reach": "get", "rebuild": true, "status": "todo"}, {"bytes": 90920028002, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "idc_nsclc_radiogenomics", "licence": "open", "location": "lab", "name": "IDC `nsclc_radiogenomics` (tier 2)", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 26952714219, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "idc_nsclc_radiomics", "licence": "restricted", "location": "lab", "name": "IDC `nsclc_radiomics` (tier 2)", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 2957497980, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "idc_pancreatic_ct_cbct_seg", "licence": "open", "location": "lab", "name": "IDC `pancreatic_ct_cbct_seg`", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 56902381622, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "idc_pediatric_ct_seg", "licence": "open", "location": "lab", "name": "IDC `pediatric_ct_seg` (Pediatric-CT-SEG)", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 4499041132, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "idc_pelvic_reference_data", "licence": "open", "location": "lab", "name": "IDC `pelvic_reference_data`", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 16600000000, "bytes_known": false, "fetchable": true, "frozen": false, "group": "ct", "id": "idc_prostate_anatomical_edge_cases", "licence": "open", "location": "none", "name": "IDC `prostate_anatomical_edge_cases` (tier 2)", "overlap": [], "reach": "get", "rebuild": true, "status": "todo"}, {"bytes": 63139697062, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "idc_psma_pet_ct_lesions", "licence": "open", "location": "lab", "name": "IDC `psma_pet_ct_lesions` (PSMA-PET-CT-Lesions (autoPET III))", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 18537943612, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "idc_rider_lung_pet_ct", "licence": "open", "location": "lab", "name": "IDC `rider_lung_pet_ct`", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 297769275017, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "idc_spinal_multiple_myeloma_seg", "licence": "open", "location": "lab", "name": "IDC `spinal_multiple_myeloma_seg` (tier 2)", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 18724919264, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "idc_spine_mets_ct_seg", "licence": "open", "location": "lab", "name": "IDC `spine_mets_ct_seg` (tier 2)", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 10284999264, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "idc_tcga_blca", "licence": "open", "location": "lab", "name": "IDC `tcga_blca`", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 2501238054, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "idc_tcga_esca", "licence": "open", "location": "lab", "name": "IDC `tcga_esca`", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 9966507748, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "idc_tcga_kirc", "licence": "open", "location": "lab", "name": "IDC `tcga_kirc`", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 4976751636, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "idc_tcga_lihc", "licence": "open", "location": "lab", "name": "IDC `tcga_lihc`", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 2474408344, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "idc_tcga_ov", "licence": "open", "location": "lab", "name": "IDC `tcga_ov`", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 6437945576, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "idc_tcga_stad", "licence": "open", "location": "lab", "name": "IDC `tcga_stad`", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 4171151216, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "idc_tcga_ucec", "licence": "open", "location": "lab", "name": "IDC `tcga_ucec`", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 5483126018, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "idc_varepop_apollo", "licence": "open", "location": "lab", "name": "IDC `varepop_apollo`", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 1300000000, "bytes_known": false, "fetchable": false, "frozen": false, "group": "films", "id": "ieee_dataport_lateral_236", "licence": "unknown", "location": "none", "name": "IEEE DataPort lateral full-spine X-ray dataset (236 films)", "overlap": [], "reach": "held", "rebuild": true, "status": "needs-owner"}, {"bytes": 6670978774, "bytes_known": true, "fetchable": false, "frozen": true, "group": "projections", "id": "ipcai2025_xray_ct", "licence": "restricted", "location": "lab", "name": "IPCAI 2025 paired X-ray and CT set of the distal femur (Flepp 2025, Zenodo 15753063)", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": null, "bytes_known": false, "fetchable": true, "frozen": false, "group": "video", "id": "jefferson_drg", "licence": "restricted", "location": "none", "name": "Jefferson Neurosurgery DRG stimulation video (Hines 2020)", "overlap": [], "reach": "get", "rebuild": true, "status": "requested"}, {"bytes": 481000000, "bytes_known": false, "fetchable": true, "frozen": false, "group": "films", "id": "kaggle_fracture_multiregion", "licence": "open", "location": "none", "name": "Kaggle bone fracture multi-region X-ray data (bmadushanirodrigo)", "overlap": [], "reach": "get", "rebuild": true, "status": "todo"}, {"bytes": null, "bytes_known": false, "fetchable": true, "frozen": false, "group": "films", "id": "kaggle_scoliosis_yolov5", "licence": "open", "location": "none", "name": "Kaggle scoliosis YOLOv5 annotated spine X-ray set (salmankey)", "overlap": [], "reach": "get", "rebuild": true, "status": "needs-owner"}, {"bytes": 75937730899, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "kidney_thoraxabdomen", "licence": "open", "location": "lab", "name": "Kidney abnormality segmentation in thorax-abdomen CT", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": null, "bytes_known": false, "fetchable": true, "frozen": false, "group": "video", "id": "konica_ddr", "licence": "unknown", "location": "none", "name": "Konica Minolta dynamic digital radiography sequences", "overlap": [], "reach": "get", "rebuild": true, "status": "requested"}, {"bytes": 55328666242, "bytes_known": true, "fetchable": false, "frozen": true, "group": "films", "id": "kub_stonex", "licence": "open", "location": "lab", "name": "KUB-StoneX (Daffodil International University HIRL)", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": null, "bytes_known": false, "fetchable": true, "frozen": false, "group": "fluoro", "id": "levelcheck_jhu", "licence": "restricted", "location": "none", "name": "LevelCheck clinical cohort (Johns Hopkins, Siewerdsen group)", "overlap": [], "reach": "get", "rebuild": true, "status": "refused"}, {"bytes": 306504065, "bytes_known": true, "fetchable": false, "frozen": true, "group": "fluoro", "id": "ljubljana_2d3d_gs", "licence": "restricted", "location": "lab", "name": "Ljubljana 2D/3D registration gold standard (PIXIUM 4600)", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 76386234420, "bytes_known": true, "fetchable": false, "frozen": true, "group": "fluoro", "id": "lumos", "licence": "restricted", "location": "lab", "name": "LUMOS (Zhejiang University)", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": null, "bytes_known": false, "fetchable": true, "frozen": false, "group": "video", "id": "maastricht_cervical", "licence": "restricted", "location": "none", "name": "Maastricht UMC+ cervical flexion-extension cine (van Santbrink 2026)", "overlap": [], "reach": "get", "rebuild": true, "status": "requested"}, {"bytes": null, "bytes_known": false, "fetchable": false, "frozen": false, "group": "ct", "id": "magic_ct", "licence": "restricted", "location": "none", "name": "MAGIC-CT (Zenodo)", "overlap": [], "reach": "gated", "rebuild": true, "status": "needs-owner"}, {"bytes": null, "bytes_known": false, "fetchable": true, "frozen": false, "group": "video", "id": "mayfield_kyphoplasty", "licence": "unknown", "location": "none", "name": "Mayfield Brain and Spine kyphoplasty alignment series", "overlap": [], "reach": "get", "rebuild": true, "status": "requested"}, {"bytes": null, "bytes_known": false, "fetchable": true, "frozen": false, "group": "films", "id": "mendeley_ddh_hips", "licence": "open", "location": "none", "name": "Mendeley DDH hip sets (jf3pv98m9g and 4gvcb6gmh2)", "overlap": [], "reach": "get", "rebuild": true, "status": "todo"}, {"bytes": null, "bytes_known": false, "fetchable": false, "frozen": false, "group": "films", "id": "mimic_cxr", "licence": "restricted", "location": "none", "name": "MIMIC-CXR and MIMIC-CXR-JPG (PhysioNet)", "overlap": [], "reach": "gated", "rebuild": true, "status": "requested"}, {"bytes": null, "bytes_known": false, "fetchable": true, "frozen": false, "group": "films", "id": "mros_lateral_spine", "licence": "restricted", "location": "none", "name": "MrOS lateral spine radiographs (Osteoporotic Fractures in Men)", "overlap": [], "reach": "get", "rebuild": true, "status": "needs-owner"}, {"bytes": null, "bytes_known": false, "fetchable": true, "frozen": false, "group": "video", "id": "mtfi_lumbar_coupling", "licence": "unknown", "location": "none", "name": "Manual Therapy Foundation of India lumbar coupling video", "overlap": [], "reach": "get", "rebuild": true, "status": "requested"}, {"bytes": null, "bytes_known": false, "fetchable": true, "frozen": false, "group": "video", "id": "neurosurgical_focus_video", "licence": "open", "location": "none", "name": "Neurosurgical Focus: Video (every article CC BY 4.0)", "overlap": [], "reach": "get", "rebuild": true, "status": "todo"}, {"bytes": 3284647651, "bytes_known": true, "fetchable": false, "frozen": true, "group": "films", "id": "nhanes2_annotated", "licence": "open", "location": "lab", "name": "NHANES II spinal films with landmarks (Mo, Papiez, Chen et al., Zenodo)", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 138377968433, "bytes_known": true, "fetchable": false, "frozen": true, "group": "films", "id": "nhanes2_unannotated", "licence": "open", "location": "lab", "name": "NHANES II cervical and lumbar spine films (NCHS, 1976 to 1980)", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 45079872841, "bytes_known": true, "fetchable": false, "frozen": true, "group": "films", "id": "nih_chestxray14", "licence": "unknown", "location": "lab", "name": "NIH ChestX-ray14 and the RSNA pneumonia subset", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": null, "bytes_known": false, "fetchable": true, "frozen": false, "group": "fluoro", "id": "nit_warangal_nims", "licence": "restricted", "location": "none", "name": "NIT Warangal and NIMS Hyderabad intraoperative C-arm sets (2D-3D-sci-registration)", "overlap": [], "reach": "get", "rebuild": true, "status": "requested"}, {"bytes": 73543991208, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "nlst_pilot", "licence": "open", "location": "lab", "name": "NLST, the seeded 500-person pilot", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": null, "bytes_known": false, "fetchable": true, "frozen": false, "group": "films", "id": "open_i_chest", "licence": "restricted", "location": "none", "name": "Open-i Indiana chest collection", "overlap": [], "reach": "get", "rebuild": true, "status": "needs-owner"}, {"bytes": null, "bytes_known": false, "fetchable": false, "frozen": false, "group": "films", "id": "padchest", "licence": "restricted", "location": "none", "name": "PadChest (BIMCV, Alicante)", "overlap": [], "reach": "gated", "rebuild": true, "status": "todo"}, {"bytes": 194439363448, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "panorama", "licence": "restricted", "location": "lab", "name": "PANORAMA public set (pancreas CE-CT)", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": null, "bytes_known": false, "fetchable": true, "frozen": false, "group": "video", "id": "pediatric_iri", "licence": "unknown", "location": "none", "name": "IRI-VFI: pediatric interventional radiology image sequences (Chongqing)", "overlap": [], "reach": "get", "rebuild": true, "status": "requested"}, {"bytes": 83498925109, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "pengwin2026", "licence": "restricted", "location": "lab", "name": "PENGWIN 2026 peripelvic fracture CT (the public cases)", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 34950751395, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "pengwin_task2_xrays", "licence": "open", "location": "lab", "name": "PENGWIN 2024 Task 2 synthetic X-rays", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": null, "bytes_known": false, "fetchable": true, "frozen": false, "group": "video", "id": "pittsburgh_swallow", "licence": "restricted", "location": "none", "name": "Pittsburgh videofluoroscopic swallow corpus (Sejdic, Coyle)", "overlap": [], "reach": "get", "rebuild": true, "status": "requested"}, {"bytes": null, "bytes_known": false, "fetchable": true, "frozen": false, "group": "video", "id": "procedure_guide", "licence": "restricted", "location": "none", "name": "The Procedure Guide (Puranik) live fluoroscopy clips", "overlap": [], "reach": "get", "rebuild": true, "status": "requested"}, {"bytes": null, "bytes_known": false, "fetchable": true, "frozen": false, "group": "fluoro", "id": "pumch_stitching", "licence": "restricted", "location": "none", "name": "PUMCH stitching series (Liu et al., Eur Spine J 2026)", "overlap": [], "reach": "get", "rebuild": true, "status": "requested"}, {"bytes": 20413498578, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "quadra_hc", "licence": "open", "location": "lab", "name": "QUADRA_HC total-body FDG-PET/CT, healthy controls", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": null, "bytes_known": false, "fetchable": true, "frozen": false, "group": "video", "id": "radiopaedia", "licence": "restricted", "location": "none", "name": "Radiopaedia spine cases", "overlap": [], "reach": "gated", "rebuild": true, "status": "granted"}, {"bytes": null, "bytes_known": false, "fetchable": false, "frozen": false, "group": "films", "id": "rexgradient_160k", "licence": "restricted", "location": "lab", "name": "ReXGradient-160K (Rajpurkar lab and Gradient Health, 2025)", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 156899015256, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "ribfrac", "licence": "restricted", "location": "lab", "name": "RibFrac (MICCAI 2020) chest CT", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 203321991870, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "rsna_2022_cervical", "licence": "restricted", "location": "lab", "name": "RSNA 2022 cervical spine fracture CT (Kaggle)", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": null, "bytes_known": false, "fetchable": true, "frozen": false, "group": "ct", "id": "rsna_ratic", "licence": "restricted", "location": "none", "name": "RSNA abdominal trauma CT (RATIC)", "overlap": [], "reach": "gated", "rebuild": true, "status": "granted"}, {"bytes": 980237210056, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "rsna_rspect", "licence": "restricted", "location": "lab", "name": "RSNA pulmonary embolism CT (RSPECT)", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 286300000000, "bytes_known": false, "fetchable": true, "frozen": false, "group": "ct", "id": "scidb_enhance_pet_1_6k", "licence": "open", "location": "none", "name": "ENHANCE.PET 1.6k: whole-/total-body FDG-PET/CT, 1,683 studies (NIfTI)", "overlap": [], "reach": "get", "rebuild": true, "status": "todo"}, {"bytes": 4053482052, "bytes_known": true, "fetchable": false, "frozen": true, "group": "films", "id": "scidb_mtddh", "licence": "open", "location": "lab", "name": "MTDDH paediatric pelvic X-rays with hip dysplasia key points (Qi et al., Science Data Bank 2025)", "overlap": [], "reach": "held", "rebuild": true, "status": "fetched"}, {"bytes": null, "bytes_known": false, "fetchable": true, "frozen": false, "group": "video", "id": "seattle_science_foundation", "licence": "unknown", "location": "none", "name": "Seattle Science Foundation spine videos", "overlap": [], "reach": "get", "rebuild": true, "status": "requested"}, {"bytes": null, "bytes_known": false, "fetchable": true, "frozen": false, "group": "films", "id": "sof_lateral_spine", "licence": "restricted", "location": "none", "name": "SOF lateral spine radiographs (Study of Osteoporotic Fractures)", "overlap": [], "reach": "get", "rebuild": true, "status": "needs-owner"}, {"bytes": null, "bytes_known": false, "fetchable": false, "frozen": false, "group": "ct", "id": "stanford_aimi_inspect", "licence": "restricted", "location": "none", "name": "Stanford AIMI INSPECT chest CT", "overlap": [], "reach": "gated", "rebuild": true, "status": "needs-owner"}, {"bytes": null, "bytes_known": false, "fetchable": false, "frozen": false, "group": "ct", "id": "stanford_aimi_merlin", "licence": "restricted", "location": "none", "name": "Stanford AIMI Merlin abdominal CT", "overlap": [], "reach": "gated", "rebuild": true, "status": "needs-owner"}, {"bytes": null, "bytes_known": false, "fetchable": true, "frozen": false, "group": "fluoro", "id": "sx_stitch", "licence": "unknown", "location": "none", "name": "SX-Stitch intraoperative C-arm series (Li 2024, PUMCH)", "overlap": [], "reach": "get", "rebuild": true, "status": "requested"}, {"bytes": 393872197196, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "tcia_fdg_pet_ct_lesions", "licence": "open", "location": "lab", "name": "FDG-PET-CT-Lesions (autoPET), TCIA through NBIA", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": null, "bytes_known": false, "fetchable": false, "frozen": false, "group": "ct", "id": "totalsegmentator", "licence": "open", "location": "lab", "name": "TotalSegmentator datasets v2.0.1 and v3.0.0", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": null, "bytes_known": false, "fetchable": false, "frozen": false, "group": "films", "id": "tvgh_as_spine_xray", "licence": "unknown", "location": "none", "name": "TVGH ankylosing spondylitis cervical and lumbar spine films", "overlap": [], "reach": "gated", "rebuild": true, "status": "requested"}, {"bytes": null, "bytes_known": false, "fetchable": false, "frozen": false, "group": "films", "id": "tvgh_spinexr", "licence": "unknown", "location": "none", "name": "TVGH-SpineXR", "overlap": [], "reach": "gated", "rebuild": true, "status": "requested"}, {"bytes": null, "bytes_known": false, "fetchable": true, "frozen": false, "group": "fluoro", "id": "vanderbilt_tha_fluoro", "licence": "restricted", "location": "none", "name": "Vanderbilt intraoperative THA fluoroscopy (Chan et al., J Arthroplasty 2025)", "overlap": [], "reach": "get", "rebuild": true, "status": "requested"}, {"bytes": null, "bytes_known": false, "fetchable": true, "frozen": false, "group": "video", "id": "veriserum", "licence": "restricted", "location": "none", "name": "Veriserum (ETH Zurich, MICCAI 2025)", "overlap": [], "reach": "get", "rebuild": true, "status": "needs-owner"}, {"bytes": 52189925577, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "verse", "licence": "open", "location": "lab", "name": "VerSe 2019 and 2020", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 4417086105, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "verse_2d_projections", "licence": "unknown", "location": "lab", "name": "VerSe 2D projections with soft labels (Zenodo 8115942)", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": null, "bytes_known": false, "fetchable": true, "frozen": false, "group": "films", "id": "vertxnet_nhanes2_labels", "licence": "unknown", "location": "none", "name": "VertXNet extra labels for NHANES II (Mo, Papiez, Chen 2023)", "overlap": [], "reach": "get", "rebuild": true, "status": "todo"}, {"bytes": 205012607, "bytes_known": true, "fetchable": false, "frozen": true, "group": "future", "id": "veterinary_pig_levelcheck", "licence": "open", "location": "lab", "name": "Veterinary: pig lower limb CT, CBCT and planar images (Goswami 2020, IEEE DataPort)", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": null, "bytes_known": false, "fetchable": true, "frozen": false, "group": "video", "id": "vfss2022", "licence": "unknown", "location": "none", "name": "VFSS2022 videofluoroscopic swallow frames (TIB)", "overlap": [], "reach": "get", "rebuild": true, "status": "todo"}, {"bytes": null, "bytes_known": false, "fetchable": false, "frozen": false, "group": "films", "id": "vindr_cxr", "licence": "restricted", "location": "none", "name": "VinDr-CXR (PhysioNet)", "overlap": [], "reach": "gated", "rebuild": true, "status": "requested"}, {"bytes": null, "bytes_known": false, "fetchable": true, "frozen": false, "group": "films", "id": "vindr_pcxr", "licence": "restricted", "location": "none", "name": "VinDr-PCXR (PhysioNet)", "overlap": [], "reach": "gated", "rebuild": true, "status": "granted"}, {"bytes": 114749095458, "bytes_known": true, "fetchable": false, "frozen": true, "group": "films", "id": "vindr_spinexr", "licence": "restricted", "location": "lab", "name": "VinDr-SpineXR (Nguyen et al., MICCAI 2021)", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 47150828519, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "waw_tace", "licence": "open", "location": "lab", "name": "WAW-TACE (HCC multiphase CT, Warsaw)", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 10075438693, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "zenodo_lumvbcanseg", "licence": "open", "location": "lab", "name": "LumVBCanSeg lumbar CT (185, ShengJing Hospital)", "overlap": [], "reach": "held", "rebuild": true, "status": "fetched"}, {"bytes": 31351310903, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "zenodo_medpelvis3d", "licence": "open", "location": "lab", "name": "MedPelvis3D pelvic CT (99, PLA General Hospital)", "overlap": [], "reach": "held", "rebuild": true, "status": "fetched"}, {"bytes": 6846084599, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "zenodo_tmtv_benchmark", "licence": "open", "location": "lab", "name": "International TMTV Benchmark, lymphoma FDG PET/CT (60)", "overlap": [], "reach": "held", "rebuild": true, "status": "fetched"}, {"bytes": 9129987506, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "zenodo_ts_task_hip_implant", "licence": "open", "location": "lab", "name": "TotalSegmentator task data 'hip_implant' (71 CT)", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 39039571028, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "zenodo_ts_task_liver_lesions", "licence": "open", "location": "lab", "name": "TotalSegmentator task data 'liver_lesions' (842 CT)", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 9012772615, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "zenodo_ts_task_pleural_effusion", "licence": "open", "location": "lab", "name": "TotalSegmentator task data 'pleural_pericard_effusion' (600 CT)", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}, {"bytes": 84067545368, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "zenodo_unitochest", "licence": "open", "location": "lab", "name": "UniToChest chest CT (623 patients; distributed as slices)", "overlap": [], "reach": "held", "rebuild": true, "status": "fetched"}, {"bytes": 252158307717, "bytes_known": true, "fetchable": false, "frozen": true, "group": "ct", "id": "zenodo_vsd_fullbody", "licence": "restricted", "location": "lab", "name": "VSDFullBody: post-mortem whole-body CT, forensic institutes Bern and Zurich", "overlap": [], "reach": "held", "rebuild": true, "status": "held"}], "target_bytes": 20000000000000, "volume": {"datasets_bytes": 7626035136479, "other_bytes": 9927214863521, "quota_bytes": 21990230000000, "read_at": "2026-10-24T17:15:28Z", "used_bytes": 17553250000000}}</script>
+<script>
+const Model = (function () {
+  const PLACES = ["lab", "home"];
+  function tb(n) {
+    if (n === null || n === undefined) return "size unknown";
+    const tenths = Math.floor((n + 50000000000) / 100000000000);
+    return Math.floor(tenths / 10) + "." + (tenths % 10) + " TB";
+  }
+  function isHeld(s) { return PLACES.indexOf(s.location) >= 0; }
+  function finalLocation(s, choice) {
+    const action = choice.action || "keep", place = choice.place;
+    if (isHeld(s)) {
+      if (action === "remove") return "none";
+      return PLACES.indexOf(place) >= 0 ? place : s.location;
+    }
+    if (action === "add" && s.fetchable) return PLACES.indexOf(place) >= 0 ? place : "lab";
+    return "none";
+  }
+  function tokens(plan, choices) {
+    const out = [];
+    plan.sets.forEach(function (s) {
+      const before = isHeld(s) ? s.location : "none", after = finalLocation(s, choices[s.id] || {});
+      if (before === after) return;
+      if (after === "none") out.push("-" + s.id);
+      else if (before === "none") { out.push("+" + s.id); if (after === "home") out.push(s.id + "@home"); }
+      else out.push(s.id + "@" + after);
+    });
+    return out;
+  }
+  function selection(plan, choices) { return tokens(plan, choices).join(" "); }
+  function totals(plan, choices) {
+    const volume = plan.volume, home = plan.home;
+    let lab = volume.used_bytes, datasets = volume.datasets_bytes, homeDelta = 0;
+    const out = { removed: [], added: [], moved: [], to_home: [], unsized: [] };
+    plan.sets.forEach(function (s) {
+      const before = isHeld(s) ? s.location : "none", after = finalLocation(s, choices[s.id] || {});
+      if (before === after) return;
+      out[before === "none" ? "added" : after === "none" ? "removed" : "moved"].push(s.id);
+      if (after === "home") out.to_home.push(s.id);
+      if (s.bytes === null || s.bytes === undefined) { out.unsized.push(s.id); return; }
+      if (before === "lab") { lab -= s.bytes; datasets -= s.bytes; }
+      if (before === "home") homeDelta -= s.bytes;
+      if (after === "lab") { lab += s.bytes; datasets += s.bytes; }
+      if (after === "home") homeDelta += s.bytes;
+    });
+    const homeBefore = home.used_bytes === undefined ? null : home.used_bytes;
+    out.lab_before = volume.used_bytes; out.lab_after = lab; out.datasets_after = datasets;
+    out.lab_quota = volume.quota_bytes; out.target = plan.target_bytes;
+    out.home_before = homeBefore; out.home_delta = homeDelta;
+    out.home_after = homeBefore === null ? null : homeBefore + homeDelta; out.home_quota = home.quota_bytes;
+    return out;
+  }
+  function overlaps(plan, choices) {
+    const active = {};
+    plan.sets.forEach(function (s) { if (finalLocation(s, choices[s.id] || {}) !== "none") active[s.id] = true; });
+    const seen = {}, out = [];
+    plan.sets.forEach(function (s) {
+      if (!active[s.id]) return;
+      (s.overlap || []).forEach(function (o) {
+        if (!active[o.with] || o.with === s.id) return;
+        const pair = [s.id, o.with].sort(), key = pair[0] + "\n" + pair[1];
+        if (seen[key]) return;
+        seen[key] = true;
+        out.push({ a: pair[0], b: pair[1], patients: o.patients === undefined ? null : o.patients,
+          series: o.series === undefined ? null : o.series, same_bytes: o.same_bytes === undefined ? null : o.same_bytes });
+      });
+    });
+    return out;
+  }
+  function refusals(plan, t) {
+    const out = [];
+    if (t.unsized.length) {
+      out.push(t.unsized.join(", ") + " " + (t.unsized.length > 1 ? "have" : "has") + " no measured size, so the planner refuses " +
+        "the fetch or the move: the size rule reads a set's exact size before a byte lands.");
+    }
+    if (t.to_home.length && (plan.home.used_bytes === null || plan.home.used_bytes === undefined)) {
+      out.push("The home's use has not been read yet, so the planner refuses any move to it until a grid word reads it.");
+    }
+    if (t.lab_after > t.target) {
+      out.push("The lab volume would hold " + tb(t.lab_after) + ", over the target of " + tb(t.target) + " by " + tb(t.lab_after - t.target) + ".");
+    }
+    if (t.lab_after > t.lab_quota) {
+      out.push("The lab volume would hold " + tb(t.lab_after) + ", over its quota of " + tb(t.lab_quota) + ": the size rule would refuse the fetch whole.");
+    }
+    if (t.home_after !== null && t.home_after > t.home_quota) {
+      out.push("The home would hold " + tb(t.home_after) + ", over its quota of " + tb(t.home_quota) + ".");
+    }
+    return out;
+  }
+  return { tb: tb, isHeld: isHeld, finalLocation: finalLocation, tokens: tokens, selection: selection,
+    totals: totals, overlaps: overlaps, refusals: refusals };
+})();
+</script>
+<script>
+(function () {
+  const C = JSON.parse(document.getElementById("constants").textContent);
+  let PLAN = JSON.parse(document.getElementById("plan").textContent);
+  let choices = {};
+  const HOST = window.parent !== window ? window.parent : null;
+  const $ = function (id) { return document.getElementById(id); };
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  function exact(n) { return n === null || n === undefined ? "the feed gives no size" : n.toLocaleString("en-US") + " bytes"; }
+  function pct(n, q) { return Math.max(0, Math.min(100, 100 * n / q)); }
+  function ageWords(iso) {
+    if (!iso) return null;
+    const ms = Date.now() - Date.parse(iso);
+    if (isNaN(ms)) return null;
+    const h = Math.floor(ms / 3600000);
+    if (h < 1) return "less than an hour ago";
+    if (h < 48) return h + (h === 1 ? " hour ago" : " hours ago");
+    return Math.floor(h / 24) + " days ago";
+  }
+  function ageBadge(iso, verb) {
+    const words = ageWords(iso);
+    if (!words) return '<span class="badge red">' + verb + ' at no recorded time</span>';
+    const days = (Date.now() - Date.parse(iso)) / 86400000;
+    return '<span class="badge ' + (days > 7 ? "red" : days > 2 ? "warn" : "") + '" title="' + esc(iso) + '">' + verb + " " + words + "</span>";
+  }
+  function homeUnread() { return PLAN.home.used_bytes === null || PLAN.home.used_bytes === undefined; }
+
+  function drawDrives(t) {
+    const v = PLAN.volume, q = v.quota_bytes, over = t.lab_after > t.target;
+    $("lab").innerHTML = "<h3>Lab volume" + ageBadge(v.read_at, "read") + "</h3>" +
+      '<div class="band" title="' + esc(exact(v.used_bytes)) + ' used of ' + esc(exact(q)) + '">' +
+      '<span class="seg data" style="left:0;width:' + pct(v.datasets_bytes, q) + '%"></span>' +
+      '<span class="seg other" style="left:' + pct(v.datasets_bytes, q) + "%;width:" + pct(v.other_bytes, q) + '%"></span>' +
+      '<span class="mark" style="left:' + pct(PLAN.target_bytes, q) + '%" title="target ' + esc(exact(PLAN.target_bytes)) + '"></span></div>' +
+      '<div class="band after' + (over ? " over" : "") + '" title="after the choices: ' + esc(exact(t.lab_after)) + '">' +
+      '<span class="seg" style="left:0;width:' + pct(t.lab_after, q) + '%"></span></div>' +
+      '<div class="legend"><span><i style="background:var(--data)"></i>datasets <b title="' + esc(exact(v.datasets_bytes)) + '">' + Model.tb(v.datasets_bytes) + "</b></span>" +
+      '<span><i style="background:var(--other)"></i>other <b title="' + esc(exact(v.other_bytes)) + '">' + Model.tb(v.other_bytes) + "</b></span>" +
+      '<span>used <b title="' + esc(exact(v.used_bytes)) + '">' + Model.tb(v.used_bytes) + '</b> of <b title="' + esc(exact(q)) + '">' + Model.tb(q) + "</b></span>" +
+      '<span><i style="background:var(--target)"></i>target <b title="' + esc(exact(PLAN.target_bytes)) + '">' + Model.tb(PLAN.target_bytes) + "</b></span>" +
+      '<span class="' + (over ? "red" : "") + '">after the choices <b title="' + esc(exact(t.lab_after)) + '">' + Model.tb(t.lab_after) + "</b></span></div>";
+    const h = PLAN.home, hq = h.quota_bytes;
+    let band, legend;
+    if (homeUnread()) {
+      band = '<div class="band"><span class="empty">not read yet</span></div>';
+      legend = '<span>quota <b title="' + esc(exact(hq)) + '">' + Model.tb(hq) + "</b></span><span>nothing can be placed here until a grid word reads its use</span>";
+    } else {
+      const hover = t.home_after > hq;
+      band = '<div class="band" title="' + esc(exact(h.used_bytes)) + ' used of ' + esc(exact(hq)) + '"><span class="seg home" style="left:0;width:' + pct(h.used_bytes, hq) + '%"></span></div>' +
+        '<div class="band after' + (hover ? " over" : "") + '" title="after the choices: ' + esc(exact(t.home_after)) + '"><span class="seg" style="left:0;width:' + pct(t.home_after, hq) + '%"></span></div>';
+      legend = '<span><i style="background:var(--home)"></i>used <b title="' + esc(exact(h.used_bytes)) + '">' + Model.tb(h.used_bytes) + '</b> of <b title="' + esc(exact(hq)) + '">' + Model.tb(hq) + "</b></span>" +
+        '<span class="' + (hover ? "red" : "") + '">after the choices <b title="' + esc(exact(t.home_after)) + '">' + Model.tb(t.home_after) + "</b></span>";
+    }
+    $("home").innerHTML = "<h3>The owner's home" + (homeUnread() ? '<span class="badge warn">not read yet</span>' : ageBadge(h.read_at, "read")) + "</h3>" + band + '<div class="legend">' + legend + "</div>";
+  }
+
+  function drawRequests() {
+    const list = PLAN.requests || [];
+    if (!list.length) { $("requests").innerHTML = '<p class="muted">No request is pending.</p>'; return; }
+    $("requests").innerHTML = '<ul class="notes">' + list.map(function (r) {
+      return "<li><a href=\"" + esc(r.url) + '" target="_blank" rel="noopener">#' + esc(r.number) + "</a>: <code>" + esc(r.selection) + "</code></li>";
+    }).join("") + "</ul>";
+  }
+
+  function radio(name, value, text, checked, disabled, title) {
+    return '<label title="' + esc(title || "") + '"><input type="radio" name="' + esc(name) + '" value="' + esc(value) + '"' +
+      (checked ? " checked" : "") + (disabled ? " disabled" : "") + "><span>" + esc(text) + "</span></label>";
+  }
+  function rowFor(s) {
+    const c = choices[s.id] || {}, held = Model.isHeld(s);
+    const sizeTitle = s.bytes === null || s.bytes === undefined ? "the feed gives no size" : exact(s.bytes) + (s.bytes_known ? ", measured" : ", stated by its source, not measured");
+    let choice, place;
+    if (held) {
+      choice = radio("c-" + s.id, "keep", "keep", (c.action || "keep") !== "remove", false, "leave the set where it is") +
+        radio("c-" + s.id, "remove", "remove", c.action === "remove", false, "take the set off the drive: -" + s.id);
+    } else if (s.fetchable) {
+      choice = radio("c-" + s.id, "keep", "leave", c.action !== "add", false, "do not fetch it") +
+        radio("c-" + s.id, "add", "add", c.action === "add", false, "fetch it: +" + s.id);
+    } else {
+      choice = '<span class="muted" title="the feed says this set cannot be fetched yet: its status is ' + esc(s.status) + ", its reach " + esc(s.reach) + '">no control: ' + esc(s.status) + "</span>";
+    }
+    if (held || s.fetchable) {
+      const at = c.place || (held ? s.location : "lab"), unread = homeUnread();
+      place = radio("p-" + s.id, "lab", "lab", at === "lab", false, "on the lab volume") +
+        radio("p-" + s.id, "home", "home", at === "home", unread, unread ? "the home's use has not been read yet, so nothing can be placed there" : "on the owner's 4 TB home");
+    } else {
+      place = '<span class="muted">-</span>';
+    }
+    const find = (s.name + " " + s.id + " " + s.group + " " + s.status + " " + s.location).toLowerCase();
+    return '<tr data-id="' + esc(s.id) + '" data-find="' + esc(find) + '"><td class="set" title="' + esc(s.group + "; licence " + s.licence + "; " + (s.frozen ? "frozen" : "not frozen")) + '">' + esc(s.name) + "<br><code>" + esc(s.id) + "</code></td>" +
+      '<td class="opt">' + esc(s.group) + "</td><td>" + esc(s.status) + (s.reach === s.status ? "" : ' <span class="muted">(' + esc(s.reach) + ")</span>") + "</td><td>" + esc(s.location) + "</td>" +
+      '<td class="num" title="' + esc(sizeTitle) + '">' + (s.bytes === null || s.bytes === undefined ? '<span class="red">size unknown</span>' : Model.tb(s.bytes) + (s.bytes_known ? "" : ' <span class="muted">stated</span>')) + "</td>" +
+      '<td class="opt">' + esc(s.licence) + '</td><td class="opt">' + (s.frozen ? "yes" : "no") + '</td><td class="choice">' + choice + '</td><td class="choice">' + place + "</td></tr>";
+  }
+  function section(title, sets) {
+    if (!sets.length) return "";
+    return '<tr class="head" data-head="1"><td colspan="9">' + esc(title) + " (" + sets.length + ")</td></tr>" + sets.map(rowFor).join("");
+  }
+  function drawTable() {
+    const held = PLAN.sets.filter(Model.isHeld), fetchable = PLAN.sets.filter(function (s) { return !Model.isHeld(s) && s.fetchable; });
+    const rest = PLAN.sets.filter(function (s) { return !Model.isHeld(s) && !s.fetchable; });
+    $("rows").innerHTML = section("On the drives", held) + section("Can be fetched", fetchable) + section("Not fetchable yet", rest);
+  }
+
+  function changedIds() {
+    const out = {};
+    Model.tokens(PLAN, choices).forEach(function (tok) { out[tok.replace(/^[-+]/, "").replace(/@(lab|home)$/, "")] = true; });
+    return out;
+  }
+  function applyFilter() {
+    const words = $("filter").value.toLowerCase().split(/\s+/).filter(Boolean), only = $("changed-only").checked, changed = changedIds();
+    let shown = 0, headRow = null, headShown = 0;
+    Array.prototype.forEach.call($("rows").rows, function (row) {
+      if (row.dataset.head) { if (headRow) headRow.hidden = headShown === 0; headRow = row; headShown = 0; return; }
+      const text = row.dataset.find, hit = words.every(function (w) { return text.indexOf(w) >= 0; }) && (!only || changed[row.dataset.id]);
+      row.hidden = !hit;
+      row.classList.toggle("changed", !!changed[row.dataset.id]);
+      if (hit) { shown++; headShown++; }
+    });
+    if (headRow) headRow.hidden = headShown === 0;
+    $("shown").textContent = shown + " of " + PLAN.sets.length + " shown";
+  }
+
+  function drawTotals(t, refused, pairs) {
+    const labOver = t.lab_after > t.target || t.lab_after > t.lab_quota;
+    $("t-lab").className = "total" + (labOver ? " over" : "");
+    $("t-lab").innerHTML = "<b>Lab volume after the choices:</b> <span title=\"" + esc(exact(t.lab_after)) + '" class="' + (labOver ? "red" : "") + '">' + Model.tb(t.lab_after) + "</span> of a " + Model.tb(t.lab_quota) + " quota, target " + Model.tb(t.target) +
+      "; datasets " + Model.tb(t.datasets_after) + "<br>" + t.removed.length + " removed, " + t.added.length + " added, " + t.moved.length + " moved" +
+      (t.unsized.length ? ', <span class="red">' + t.unsized.length + " with no size</span>" : "");
+    const homeOver = t.home_after !== null && t.home_after > t.home_quota;
+    $("t-home").className = "total" + (homeOver || (t.to_home.length && homeUnread()) ? " over" : "");
+    $("t-home").innerHTML = "<b>Home after the choices:</b> " + (homeUnread()
+      ? '<span class="muted">not read yet</span>' + (t.to_home.length ? ', <span class="red">' + t.to_home.length + " placed here anyway</span>" : "") + "; quota " + Model.tb(t.home_quota)
+      : '<span title="' + esc(exact(t.home_after)) + '" class="' + (homeOver ? "red" : "") + '">' + Model.tb(t.home_after) + "</span> of a " + Model.tb(t.home_quota) + " quota; " + t.to_home.length + " placed here");
+    const sel = Model.selection(PLAN, choices);
+    if (refused.length) {
+      $("refusals").innerHTML = '<div class="refusals"><p><b>The planner\'s check would refuse this selection:</b></p>' + refused.map(function (r) { return "<p>" + esc(r) + "</p>"; }).join("") + "</div>";
+    } else {
+      $("refusals").innerHTML = sel ? '<p class="ok">The planner\'s check would admit this selection; its run opens a request pull request for the owner to merge.</p>' : '<p class="muted">No choice differs from the feed.</p>';
+    }
+    if (pairs.length) {
+      $("overlaps").innerHTML = "<p><b>Overlap among the kept sets:</b></p><ul class=\"notes\">" + pairs.map(function (p) {
+        return "<li><code>" + esc(p.a) + "</code> and <code>" + esc(p.b) + "</code> share " + (p.patients === null ? "an unrecorded number of" : p.patients.toLocaleString("en-US")) + " patients and " +
+          (p.series === null ? "an unrecorded number of" : p.series.toLocaleString("en-US")) + " series" + (p.same_bytes === null ? "" : ', <span title="' + esc(exact(p.same_bytes)) + '">' + Model.tb(p.same_bytes) + " the same</span>") + "</li>";
+      }).join("") + "</ul>";
+    } else {
+      $("overlaps").innerHTML = '<p class="muted">The feed records no shared patients or series among the kept sets.</p>';
+    }
+    $("selection").value = sel;
+    const apply = $("apply");
+    apply.disabled = !sel || refused.length > 0;
+    apply.title = !sel ? "nothing to apply: no choice differs from the feed" : refused.length ? "the planner's check would refuse this selection: " + refused[0] : "ask the host to dispatch storage.yml with this selection";
+    $("copy").disabled = !sel;
+    $("copy").title = sel ? "copy the selection" : "nothing to copy yet";
+  }
+  function recompute() {
+    const t = Model.totals(PLAN, choices);
+    drawDrives(t);
+    drawTotals(t, Model.refusals(PLAN, t), Model.overlaps(PLAN, choices));
+    applyFilter();
+  }
+  function drawAll() {
+    $("built").textContent = PLAN.built_at || "at no recorded time";
+    $("built-age").outerHTML = ageBadge(PLAN.built_at, "built").replace('class="badge', 'id="built-age" class="badge');
+    drawRequests();
+    drawTable();
+    recompute();
+  }
+
+  function status(text, cls) { $("status").textContent = text; $("status").className = "status " + (cls || ""); }
+  function fallback(html) { $("fallback").hidden = false; $("fallback").innerHTML = html; }
+  // A sandboxed frame cannot open a link, so the page also asks the page around it to show the link in
+  // its own bar (schwingnet.open, the site's convention), once when the fallback appears and again on
+  // each click of a link in it.
+  function askOpen(href, label) { if (HOST) HOST.postMessage({ type: "schwingnet.open", href: href, label: label }, "*"); }
+  $("fallback").addEventListener("click", function (e) {
+    const a = e.target && e.target.closest ? e.target.closest("a") : null;
+    if (a && a.href) askOpen(a.href, a.textContent);
+  });
+  function dispatchFallback(why) {
+    status("Not dispatched: " + why + ".", "red");
+    askOpen(C.workflow_url, "storage.yml on spine-datasets");
+    fallback("<p><b>Run it by hand.</b> Open storage.yml on spine-datasets, <a href=\"" + esc(C.workflow_url) + '" target="_blank" rel="noopener">' + esc(C.workflow_url) + "</a>, press Run workflow and paste this into its <code>selection</code> input:</p>" +
+      '<code class="paste">' + esc($("selection").value) + "</code><p>The run checks the selection and opens a request pull request, which waits for the owner's merge; nothing is fetched or removed before that.</p>");
+  }
+  function readFallback(why) {
+    status("Not refreshed: " + why + ".", "red");
+    askOpen(C.feed_page, "PLAN.json on spine-datasets' branch storage-feed");
+    fallback("<p>This page shows the snapshot of the feed built " + esc(PLAN.built_at) + ". The feed itself is PLAN.json on spine-datasets' branch storage-feed, <a href=\"" + esc(C.feed_page) + '" target="_blank" rel="noopener">' + esc(C.feed_page) + "</a>; the site builds this page from it again before each deploy.</p>");
+  }
+  let timer = null, readId = 0;
+  addEventListener("message", function (e) {
+    if (!HOST || e.source !== HOST || !e.data || typeof e.data !== "object") return;
+    const m = e.data;
+    if (m.type === "schwingnet.dispatch.result" && m.label === "storage") {
+      clearTimeout(timer);
+      if (m.ok) {
+        $("fallback").hidden = true;
+        status("Dispatched. The run checks the selection and opens a request pull request, which waits for the owner's merge.", "ok");
+      } else dispatchFallback(m.error ? String(m.error) : "the host could not dispatch it");
+    }
+    if (m.type === "schwingnet.read.result" && m.id === "storage-" + readId) {
+      clearTimeout(timer);
+      if (!m.ok) { readFallback(m.error ? String(m.error) : "the host could not read the feed"); return; }
+      let plan = null;
+      try { plan = JSON.parse(m.text); } catch (err) { plan = null; }
+      if (!plan || plan.format !== C.format || !Array.isArray(plan.sets)) { readFallback("the host's answer was not the feed's format"); return; }
+      PLAN = plan;
+      const ids = {}; PLAN.sets.forEach(function (s) { ids[s.id] = true; });
+      Object.keys(choices).forEach(function (id) { if (!ids[id]) delete choices[id]; });
+      $("fallback").hidden = true;
+      drawAll();
+      status("Refreshed from the feed built " + PLAN.built_at + ".", "ok");
+    }
+  });
+  $("apply").addEventListener("click", function () {
+    const sel = $("selection").value;
+    if (!sel) return;
+    if (!HOST) { dispatchFallback("this page has no host window to dispatch through"); return; }
+    $("fallback").hidden = true;
+    status("Asking the page's host to dispatch storage.yml ...");
+    HOST.postMessage({ type: "schwingnet.dispatch", repo: C.repo, workflow: C.workflow, ref: "main", inputs: { selection: sel }, label: "storage", fallbackUrl: C.workflow_url }, "*");
+    clearTimeout(timer);
+    timer = setTimeout(function () { dispatchFallback("no answer came within 8 seconds"); }, 8000);
+  });
+  $("refresh").addEventListener("click", function () {
+    if (!HOST) { readFallback("this page has no host window to read through"); return; }
+    readId++;
+    $("fallback").hidden = true;
+    status("Asking the page's host to read the feed ...");
+    HOST.postMessage({ type: "schwingnet.read", id: "storage-" + readId, repo: C.repo, path: C.feed_path, ref: C.feed_ref }, "*");
+    clearTimeout(timer);
+    timer = setTimeout(function () { readFallback("no answer came within 8 seconds"); }, 8000);
+  });
+  function selectText() {
+    const box = $("selection");
+    box.focus(); box.select();
+    status("Copy is not allowed here, so the selection is highlighted: press Ctrl+C or Cmd+C.");
+  }
+  $("copy").addEventListener("click", function () {
+    const text = $("selection").value;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { status("Copied.", "ok"); }, selectText);
+    } else selectText();
+  });
+  $("rows").addEventListener("change", function (e) {
+    const input = e.target;
+    if (!input || input.type !== "radio") return;
+    const id = input.name.slice(2), key = input.name.charAt(0) === "c" ? "action" : "place";
+    choices[id] = choices[id] || {};
+    choices[id][key] = input.value;
+    recompute();
+  });
+  $("filter").addEventListener("input", applyFilter);
+  $("changed-only").addEventListener("change", applyFilter);
+  $("reset").addEventListener("click", function () { choices = {}; drawTable(); recompute(); status(""); $("fallback").hidden = true; });
+  drawAll();
+})();
+</script></body></html>
