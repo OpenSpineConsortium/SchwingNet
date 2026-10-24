@@ -1138,6 +1138,42 @@
      ],
      "confidentiality": "schwingnet-internal",
      "research_needed": "Reconcile the ranking with the fourteen workstreams A to N of docs/research/xr-from-3d/README.md and the issue numbers #56 to #70, #9 to #13 and #76; check each entry's grid estimate against the ledger and the owner's stated job numbers; confirm with the owner which entries wait on his word today."
+    },
+    {
+     "number": "33",
+     "file": "docs/textbook/33-what-to-run-next-by-the-weight-of-the-claims.md",
+     "title": "What to run next, by the weight of the claims",
+     "purpose": "Sets every claim SchwingNet makes or means to make (novelty, functionality, integrity) beside the evidence it stands on, its grade and what falls if it fails, in the register docs/textbook/claims.json, and ranks the outstanding experiments and open questions by how far each could move the claims that matter most, against what it costs, with tools/claims_rank.py; names the claims the record cannot support today and the formula's limits.",
+     "questions_answered": [
+      "Which claims does SchwingNet make or mean to make, of what kind, on what evidence and at what grade?",
+      "Which experiment or question bears most on the claims that matter most, for what it costs?",
+      "What can a session do next without the owner's word, and what is the top item that waits on it?",
+      "Which claims can the record not support today?"
+     ],
+     "artifacts_primary": [
+      "SchwingNet/research-directions-from-the-data-holding-kcyckb",
+      "SchwingNet/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay",
+      "SchwingNet/handoff-schwingnet-ctspinopelvic1k-and-the-imaging-programme-rbcdmf",
+      "SchwingNet/registration-free-level-id-feasibility-uramo1",
+      "SchwingNet/or-readiness-ledger",
+      "SchwingNet/aidas-seed-grant-proposal"
+     ],
+     "artifacts_secondary": [
+      "SchwingNet/retrospective-fluoroscopy-protocol",
+      "SchwingNet/counting-against-two-anchors-qkktgu",
+      "SchwingNet/counting-from-the-sacrum",
+      "SchwingNet/any-view-spine-plan"
+     ],
+     "repository_sources": [
+      "docs/textbook/claims.json",
+      "tools/claims_rank.py",
+      "docs/research/benchmarks-to-beat.md",
+      "docs/research/unberath-lab-items-prior-art.md",
+      "docs/research/fluoroscopy-list-prior-art.md",
+      "docs/research/state-of-knowledge.md"
+     ],
+     "confidentiality": "schwingnet-internal",
+     "research_needed": "Read the earlier programme's results catalog in full against every claim (item E01); give the formula a term for dates and for the chance an item succeeds once the owner says how to weigh them; ask the owner which stakes weigh most."
     }
    ]
   },
