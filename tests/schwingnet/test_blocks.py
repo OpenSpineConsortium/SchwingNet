@@ -15,6 +15,8 @@ from schwingnet.blocks import (
     inverse_frequency,
     lr_factor,
     parse,
+    sweep,
+    words_of,
 )
 
 
@@ -84,3 +86,27 @@ def test_balanced_accuracy_weighs_each_level_alike():
     assert balanced_accuracy({"L1": (90, 100), "L6": (0, 2), "T13": (0, 0)}) == pytest.approx(0.45)
     assert balanced_accuracy({}) == 0.0
     assert math.isclose(balanced_accuracy({"L1": (1, 1)}), 1.0)
+
+
+def test_a_sweep_plans_every_combination_in_a_fixed_order():
+    runs = sweep(["normalise=imagenet"], {"sampler": ["uniform", "balanced"], "augment": ["none", "box-jitter,noise"]})
+    assert len(runs) == 4
+    assert all(r.normalise == "imagenet" for r in runs)
+    assert [(r.augment, r.sampler) for r in runs] == [((), "uniform"), ((), "balanced"),
+                                                     (("box-jitter", "noise"), "uniform"), (("box-jitter", "noise"), "balanced")]
+    assert words_of(runs[3]) == ["normalise=imagenet", "augment=box-jitter,noise", "sampler=balanced"]
+    assert words_of(DEFAULT) == []
+
+
+@pytest.mark.parametrize(
+    "base, vary",
+    [
+        ([], {"optimiser": ["adam"], "weight_decay": ["0.1"]}),
+        (["sampler=balanced"], {"sampler": ["uniform"]}),
+        ([], {"select": []}),
+        ([], {"warmup_epochs": [str(n) for n in range(9)], "weight_decay": [str(n) for n in range(9)]}),
+    ],
+)
+def test_a_sweep_that_cannot_run_whole_is_refused(base, vary):
+    with pytest.raises(BlockError):
+        sweep(base, vary)

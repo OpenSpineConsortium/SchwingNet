@@ -212,6 +212,13 @@ class RunWithEveryBlockTest(unittest.TestCase):
         verdict = latency.parity(self.run_dir, self.catalog, "validation", 8, "onnxruntime", "cpu", 1)
         self.assertTrue(verdict["passed"], verdict)
 
+    def test_compare_ranks_the_run_by_validation_and_names_its_blocks(self):
+        sweep_tool = load("block_sweep")
+        rows = sweep_tool.compare([self.run_dir], "balanced-accuracy")
+        self.assertEqual(len(rows), 1)
+        self.assertIn("normalise=imagenet", rows[0]["blocks"])
+        self.assertIn("| blocksrun000 |".replace("blocksrun000", self.run_dir.name), sweep_tool.table(rows))
+
     def test_a_block_that_does_not_exist_stops_the_run_in_words(self):
         args = ["--catalog", str(self.catalog), "--out", str(self.run_dir), "--epochs", "1", "--seed", "1", "--block", "normalise=zscore"]
         self.assertEqual(load("train").main(args), 1)
@@ -233,6 +240,17 @@ class FlowBlocksTest(unittest.TestCase):
         for words in (["normalise=zscore"], ["augment=noise, blur"], ["sampler=balanced", "sampler=uniform"]):
             with self.subTest(words=words), self.assertRaises(flow.FlowError):
                 flow.block_words(words)
+
+    def test_a_sweep_plan_counts_its_runs_and_starts_nothing(self):
+        sweep_tool = load("block_sweep")
+        args = sweep_tool.parse_args(["plan", "--catalog", "c.sqlite", "--out", "runs", "--epochs", "20", "--hours", "4",
+                                      "--base", "normalise=imagenet", "--vary", "augment=none/box-jitter,intensity",
+                                      "--vary", "sampler=uniform/balanced"])
+        planned = sweep_tool.plan(args)
+        self.assertEqual((planned["runs"], planned["jobs"], planned["gpu_hours_requested"]), (4, 8, 20.0))
+        self.assertTrue(all(c.startswith("python3 tools/flow.py run") for c in planned["commands"]))
+        self.assertIn("--block augment=box-jitter,intensity --block sampler=balanced", planned["commands"][3])
+        self.assertEqual(sweep_tool.main(["plan", "--catalog", "c", "--out", "r", "--epochs", "1", "--vary", "colour=red"]), 1)
 
 
 if __name__ == "__main__":

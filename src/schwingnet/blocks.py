@@ -183,9 +183,47 @@ def inverse_frequency(counts: Mapping[str, int]) -> dict[str, float]:
 
 
 @beartype
-@require(lambda per_level: all(0 <= r <= t for r, t in per_level.values()), "right is at most total")
+@require(
+    lambda per_level: all(len(cell) == 2 and 0 <= cell[0] <= cell[1] for cell in per_level.values()),
+    "each level is right and total, right at most total",
+)
 @ensure(lambda result: 0.0 <= result <= 1.0, "a share")
 def balanced_accuracy(per_level: Mapping[str, Sequence[int]]) -> float:
     """The mean of each level's accuracy over the levels with at least one crop; 0 with none."""
-    shares = [r / t for r, t in per_level.values() if t > 0]
+    shares = [cell[0] / cell[1] for cell in per_level.values() if cell[1] > 0]
     return sum(shares) / len(shares) if shares else 0.0
+
+
+# How many runs one sweep may plan: a grid of choices grows fast, and every run is a job the owner
+# counts before it is sent.
+SWEEP_LIMIT = 64
+
+
+@beartype
+def sweep(base: Sequence[str], vary: Mapping[str, Sequence[str]]) -> list[Blocks]:
+    """Every combination of the varied blocks over the base, each checked, in a fixed order.
+
+    `vary` maps a block to the values to try (augment values are comma lists, as on the command
+    line). A combination that does not hold, such as adam with weight decay, is refused with the
+    rest, never skipped, so the plan the owner approves is the plan that runs.
+    """
+    plans: list[list[str]] = [list(base)]
+    for name in sorted(vary):
+        values = list(vary[name])
+        if not values:
+            raise BlockError(f"{name}: a varied block needs at least one value")
+        plans = [words + [f"{name}={value}"] for words in plans for value in values]
+        if len(plans) > SWEEP_LIMIT:
+            raise BlockError(f"the sweep plans more than {SWEEP_LIMIT} runs; vary fewer blocks")
+    return [parse(words) for words in plans]
+
+
+@beartype
+def words_of(blocks: Blocks) -> list[str]:
+    """The KEY=VALUE words that name these blocks, only those that differ from DEFAULT."""
+    record, default = as_record(blocks), as_record(DEFAULT)
+    out = []
+    for name, value in record.items():
+        if value != default[name]:
+            out.append(f"{name}={','.join(value) if isinstance(value, list) else value}")
+    return out

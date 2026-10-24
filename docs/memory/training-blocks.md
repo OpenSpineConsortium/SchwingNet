@@ -5,4 +5,5 @@ The trainer's building blocks: each part of training is chosen by name with --bl
 - A new way of doing a part is one name added to its tuple in blocks.py and one function in its table in train_blocks.py; tools/train.py calls only the tables.
 - tools/train.py takes --block KEY=VALUE, repeated; tools/flow.py takes the same and refuses a wrong one before any step. checkpoint.json and MODEL.md record the blocks, and the evaluator, the latency tool and the chain evaluation build the model with train.model_for(checkpoint facts), so a checkpoint from before the blocks loads as version 1's model.
 - normalise=imagenet is a forward pre-hook on the model, not a layer, so the weights' names do not change and the ONNX export carries the scaling (parity tested).
+- tools/block_sweep.py plan prints the tools/flow.py command of every combination of the varied blocks, the runs, jobs and GPU-hours, and submits nothing; compare ranks finished runs by their validation part and witness frames only, never reading evaluate/.
 - Which blocks a run uses is the owner's word with the run; no block changes a run that names none.
