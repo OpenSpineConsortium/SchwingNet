@@ -1,0 +1,189 @@
+name: Experiment
+description: "A new combination of data and blocks for one run on the grid: the workflow checks every value, answers with the exact flow command and the gate word that queues it, and the owner's click runs it."
+# Written by `python3 tools/experiments_panel.py write` from data/recipes/ and src/schwingnet/blocks.py and held
+# current by `check`; change those files, not this one. The workflow reads each field under its heading.
+title: "Experiment: "
+labels: ["experiment"]
+body:
+  - type: markdown
+    attributes:
+      value: "Each field is one part of training (src/schwingnet/blocks.py); leave a field as it is for version 1's choice. Nothing runs from this form: the workflow answers with the command and the gate word, and the owner's click queues the one job."
+  - type: dropdown
+    id: recipe
+    attributes:
+      label: recipe
+      description: "The licence cut of the catalog (data/recipes/); none is the catalog as it stands."
+      options:
+        - none
+        - commercial
+        - commercial-share-alike
+        - non-commercial
+        - research-internal
+      default: 0
+    validations:
+      required: true
+  - type: input
+    id: epochs
+    attributes:
+      label: epochs
+      description: "1 to 200"
+      value: "20"
+    validations:
+      required: true
+  - type: input
+    id: seed
+    attributes:
+      label: seed
+      description: "0 or more"
+      value: "1"
+    validations:
+      required: true
+  - type: input
+    id: hours
+    attributes:
+      label: hours
+      description: "the training job's wall time, above 0 and at most 48"
+      value: "4"
+    validations:
+      required: true
+  - type: dropdown
+    id: normalise
+    attributes:
+      label: normalise
+      options:
+        - none
+        - imagenet
+      default: 0
+  - type: checkboxes
+    id: augment
+    attributes:
+      label: augment
+      description: "any of box-jitter, intensity, blur, noise, comma-separated, or none"
+      options:
+        - label: box-jitter
+        - label: intensity
+        - label: blur
+        - label: noise
+  - type: dropdown
+    id: optimiser
+    attributes:
+      label: optimiser
+      options:
+        - adam
+        - adamw
+      default: 0
+  - type: input
+    id: weight_decay
+    attributes:
+      label: weight_decay
+      description: "a finite number, 0 or more, with optimiser=adamw"
+      value: "0.0"
+  - type: dropdown
+    id: schedule
+    attributes:
+      label: schedule
+      options:
+        - constant
+        - cosine
+      default: 0
+  - type: input
+    id: warmup_epochs
+    attributes:
+      label: warmup_epochs
+      description: "whole epochs, 0 or more"
+      value: "0"
+  - type: input
+    id: backbone_lr_scale
+    attributes:
+      label: backbone_lr_scale
+      description: "above 0 and at most 1"
+      value: "1.0"
+  - type: dropdown
+    id: sampler
+    attributes:
+      label: sampler
+      options:
+        - uniform
+        - balanced
+      default: 0
+  - type: dropdown
+    id: loss_weights
+    attributes:
+      label: loss_weights
+      options:
+        - none
+        - inverse-frequency
+      default: 0
+  - type: dropdown
+    id: select
+    attributes:
+      label: select
+      options:
+        - accuracy
+        - balanced-accuracy
+      default: 0
+  - type: dropdown
+    id: samples
+    attributes:
+      label: samples
+      options:
+        - all
+        - only-sources
+        - drop-sources
+        - cap-per-person
+      default: 0
+  - type: input
+    id: sources
+    attributes:
+      label: sources
+      description: "the catalog's sources, comma-separated, with samples=only-sources or drop-sources"
+  - type: input
+    id: per_person
+    attributes:
+      label: per_person
+      description: "crops kept per person, 1 or more, with samples=cap-per-person"
+      value: "0"
+  - type: dropdown
+    id: architecture
+    attributes:
+      label: architecture
+      options:
+        - resnet18
+        - resnet34
+        - resnet50
+        - mobilenet-v3-small
+        - efficientnet-b0
+        - densenet121
+        - se-resnet50
+        - se-resnext50
+      default: 0
+  - type: dropdown
+    id: denoise
+    attributes:
+      label: denoise
+      options:
+        - none
+        - gaussian
+        - median
+      default: 0
+  - type: dropdown
+    id: prior
+    attributes:
+      label: prior
+      options:
+        - none
+        - level-map
+      default: 0
+  - type: input
+    id: prior_weight
+    attributes:
+      label: prior_weight
+      description: "the prior loss's weight beside the level loss, above 0, with prior=level-map"
+      value: "0.0"
+  - type: textarea
+    id: note
+    attributes:
+      label: note
+      description: "Why this combination, in a sentence or two (optional)."
+    validations:
+      required: false

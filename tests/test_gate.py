@@ -21,7 +21,7 @@ ROOT = Path(__file__).resolve().parent.parent
 GRID = ROOT / "grid"
 FAKE_HPCWORKER = ROOT / "tests" / "fakes" / "hpcworker"
 NEW_SCRIPTS = ("gate.sh", "hpcw.sh", "box.sh", "bin/pixi", "bin/train-cpu-python", "00-setup.sbatch", "00-weights.sbatch",
-               "00-carmlspine.sbatch", "v1-driver.sbatch", "run-xray-chain.sh", "run-platform-fetch.sh")
+               "00-carmlspine.sbatch", "v1-driver.sbatch", "experiment-driver.sbatch", "run-xray-chain.sh", "run-platform-fetch.sh")
 ENVS = ("default", "train-cpu", "train-gpu", "telemetry")
 
 FAKES = {
@@ -348,6 +348,89 @@ class GateTest(unittest.TestCase):
         self.assertNotIn("--dependency", line)
         self.assertIn(f"RUNS={self.runs} WEIGHTS={self.models}/resnet18-f37072fd.pth", line)
         self.assertIn("catalog: catalog-000002-0123456789ab.sqlite qualifies for the run (grid/v1-version.sh); no job", done.stdout)
+
+    REQUEST = "recipe: none\nepochs: 12\nseed: 3\nhours: 2.5\nblock: architecture=resnet34\nblock: optimiser=adamw\n"
+
+    def experiment(self, *words, requests):
+        """The gate with EXPERIMENTS_DIR standing in for the branch experiments, as a test must."""
+        env = self.gate_env()
+        env["EXPERIMENTS_DIR"] = str(requests)
+        return subprocess.run(["bash", str(self.repo / "grid" / "gate.sh"), *words], env=env, capture_output=True, text=True, timeout=120)
+
+    def test_experiment_runs_the_recorded_request_as_one_gpu_job_once_the_inputs_are_there(self):
+        requests = self.tmp / "requests"
+        requests.mkdir()
+        (requests / "250.request").write_text(self.REQUEST, encoding="utf-8")
+        for words in (("experiment",), ("experiment", "x"), ("experiment", "01"), ("experiment", "0"), ("experiment", "1", "2"), ("experiment", "1" * 10)):
+            done = self.experiment(*words, requests=requests)
+            self.assertEqual(done.returncode, 64, f"{words}: {done.stdout}{done.stderr}")
+        done = self.experiment("experiment", "251", requests=requests)
+        self.assertEqual(done.returncode, 75, done.stdout + done.stderr)
+        self.assertIn("no 251.request on the branch experiments", done.stdout)
+        # the version 1 inputs come first: the word submits nothing until v1 made them
+        done = self.experiment("experiment", "250", requests=requests)
+        self.assertEqual(done.returncode, 75, done.stdout + done.stderr)
+        self.assertIn("'start' makes them first", done.stdout)
+        self.environments_ready()
+        done = self.experiment("experiment", "250", requests=requests)
+        self.assertEqual(done.returncode, 75, done.stdout + done.stderr)
+        self.assertIn("'v1' makes them first", done.stdout)
+        self.weights_ready()
+        self.carmlspine_shards()
+        self.catalog_ready(version=2)
+        self.assertEqual(self.submitted(), [])
+        done = self.experiment("experiment", "250", requests=requests)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(len(self.submitted()), 1, self.submitted())
+        line = self.line_of("experiment-driver.sbatch")[0]
+        self.assertIn("ISSUE=250", line)
+        self.assertIn(f"REQUEST={self.repo}/grid/logs/experiment-250.request", line)
+        self.assertIn(f"RUNS={self.runs} WEIGHTS={self.models}/resnet18-f37072fd.pth", line)
+        self.assertIn("--no-requeue", line)
+        self.assertIn("gpu", line)
+        # 2.5 hours of training fit the driver's own 24 hours, which stay the floor
+        self.assertIn("--time 24:00:00", line)
+        self.assertIn("catalog: catalog-000002-0123456789ab.sqlite qualifies for the run", done.stdout)
+        self.assertIn("request: recipe: none epochs: 12 seed: 3 hours: 2.5 block: architecture=resnet34 block: optimiser=adamw", done.stdout)
+        self.assertEqual((self.repo / "grid" / "logs" / "experiment-250.request").read_text(encoding="utf-8"), self.REQUEST)
+        job = self.recorded()["experiment_250"]
+        (self.fake / "queue").write_text(job + "\n", encoding="utf-8")
+        done = self.experiment("experiment", "250", requests=requests)
+        self.assertEqual(done.returncode, 75, done.stdout + done.stderr)
+        self.assertIn(f"already queued or running (job {job})", done.stdout)
+        self.assertEqual(len(self.submitted()), 1)
+        # a longer training asks for its hours, the evaluation's quarter of them and an hour more
+        (requests / "252.request").write_text(self.REQUEST.replace("hours: 2.5", "hours: 40"), encoding="utf-8")
+        done = self.experiment("experiment", "252", requests=requests)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("--time 51:00:00", self.line_of("experiment-driver.sbatch")[1])
+        self.assertIn("wall time: 51:00:00 for 40 hours of training", done.stdout)
+
+    def test_experiment_refuses_a_request_with_a_strange_line_before_anything_is_submitted(self):
+        self.environments_ready()
+        self.weights_ready()
+        self.carmlspine_shards()
+        self.catalog_ready(version=2)
+        requests = self.tmp / "requests"
+        requests.mkdir()
+        strange = {
+            "260": "recipe: none\nepochs: 12\nseed: 3\nhours: 2\nblock: architecture=resnet34; rm -rf /\n",
+            "261": "recipe: none\nrecipe: none\nepochs: 12\nseed: 3\nhours: 2\n",
+            "262": "recipe: none\nepochs: 12\nseed: 3\n",
+            "263": "recipe: none\nepochs: 0x\nseed: 3\nhours: 2\n",
+            "264": "recipe: none\nepochs: 12\nseed: 3\nhours: 2\nsomething else\n",
+            "265": "recipe: none\nepochs: 12\nseed: 3\nhours: 2\nblock: " + "a" * 120 + "=b\n",
+            "266": "".join(f"block: architecture=resnet34\n" for _ in range(41)) + "recipe: none\nepochs: 1\nseed: 1\nhours: 1\n",
+            "267": "recipe: none\nepochs: 12\nseed: 3\nhours: 2.5.1\n",
+            "268": "recipe: none\nepochs: 12\nseed: 3\nhours: 4h\n",
+        }
+        for number, body in strange.items():
+            (requests / f"{number}.request").write_text(body, encoding="utf-8")
+            done = self.experiment("experiment", number, requests=requests)
+            self.assertEqual(done.returncode, 64, f"{number}: {done.stdout}{done.stderr}")
+            self.assertIn("refusing:", done.stdout)
+            self.assertFalse((self.repo / "grid" / "logs" / f"experiment-{number}.request").exists(), number)
+        self.assertEqual(self.submitted(), [])
 
     def test_v1_from_nothing_submits_every_input_and_the_run_afterok_on_each(self):
         done = self.gate("v1")

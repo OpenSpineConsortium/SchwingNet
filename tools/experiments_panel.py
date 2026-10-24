@@ -17,6 +17,7 @@ standard library (the package imports beartype, which the required check's envir
     python3 tools/experiments_panel.py write   # docs/textbook/figures/35/experiments.{html,json,svg}
     python3 tools/experiments_panel.py check   # exit 1 when a written file is not what the records give
     python3 tools/experiments_panel.py runs    # the rows the page is drawn from, as JSON
+    python3 tools/experiments_panel.py check --request FILE   # exit 1 with why when a request does not hold
 
 The page inlines its data as JSON and loads nothing, since the textbook shows a figure inside an
 iframe sandboxed to scripts alone: it can neither fetch nor open another origin, so a link it offers
@@ -26,6 +27,13 @@ site turns into a bar with the link and the artifact edition into "Run as me" (t
 note). A new combination is requested as an issue labelled experiment whose body carries the lines
 `issue_body` writes, the form the experiment workflow reads; nothing here runs anything, since a grid
 job waits for the owner's word and the number of jobs.
+
+A request is checked here and nowhere else (`check --request`): the experiment workflow
+(.github/workflows/experiment.yml, tools/experiment_run.py) runs it on main's code before it answers an
+issue, and grid/experiment-driver.sbatch runs it again inside the container before anything trains,
+so a value outside data/recipes/ and src/schwingnet/blocks.py never reaches the trainer. The
+Experiment issue form, .github/ISSUE_TEMPLATE/experiment.yml, is written from the same lists by
+`write` and held current by `check`, so its dropdowns are the trainer's choices.
 """
 
 import argparse
@@ -57,6 +65,15 @@ ISSUE_MARKER = "<!-- schwingnet-experiment -->"
 ISSUE_LABEL = "experiment"
 EPOCHS_MOST = 200
 FLOW_HEAD = "python3 tools/flow.py run --catalog <catalog> --out <runs> --mode slurm"
+# What grid/experiment-driver.sbatch runs for a request, inside the container on the GPU Slurm gave it,
+# on the catalog version grid/v1-version.sh chooses and with the ImageNet weights, as v1-driver.sbatch does.
+DRIVER_HEAD = "python3 tools/flow.py run --catalog <catalog> --out <runs> --mode local --environment train-gpu"
+DRIVER_TAIL = "--weights <weights>"
+# A request's four settings beside its blocks, and the bounds the validator holds them to: the hours are
+# the training job's wall time, which flow.py takes, and a job on the grid's GPU partitions ends within two days.
+REQUEST_KEYS = ("recipe", "epochs", "seed", "hours")
+HOURS_MOST = 48.0
+FORM = ".github/ISSUE_TEMPLATE/experiment.yml"
 # A source trained or validated on counts as the run's data; a test-only source is listed, not counted
 # (tools/licences.py TRAINING_PARTS).
 TRAINING_PARTS = ("train", "validation")
@@ -419,8 +436,10 @@ def request_title(named, epochs):
     return f"Experiment: {' '.join(named) if named else 'version 1 (no block named)'}, {epochs} epochs"
 
 
-def flow_command(named, epochs, seed, hours, recipe):
-    words = [FLOW_HEAD, f"--epochs {epochs}", f"--seed {seed}", f"--hours {hours}"]
+def flow_command(named, epochs, seed, hours, recipe, head=FLOW_HEAD, tail=""):
+    words = [head, f"--epochs {epochs}", f"--seed {seed}", f"--hours {hours}"]
+    if tail:
+        words.append(tail)
     if recipe and recipe != "none":
         words.append(f"--recipe {recipe}")
     words += [f"--block {word}" for word in named]
@@ -443,6 +462,265 @@ def issue_body(named, epochs, seed, hours, recipe):
 def issue_url(named, epochs, seed, hours, recipe):
     query = urllib.parse.urlencode({"title": request_title(named, epochs), "labels": ISSUE_LABEL, "body": issue_body(named, epochs, seed, hours, recipe)})
     return f"https://github.com/{REPO}/issues/new?{query}"
+
+
+# A request as the workflow and the driver read it: the panel's and the Claude box's `key: value` lines,
+# or the issue form's `### key` sections. Each value is letters, digits and . _ , - and at most 80
+# characters, since it becomes one word of a command line on the grid; a whole number has at most nine
+# digits, so no reader meets a number it cannot hold (docs/memory, the int() bound).
+LINE = re.compile(r"^(recipe|epochs|seed|hours|block):[ \t]*(\S.*?)[ \t]*$")
+SECTION = re.compile(r"^### ([a-z][a-z0-9_]{0,31})[ \t]*$")
+VALUE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._,-]{0,79}$")
+WORD = re.compile(r"^([a-z][a-z0-9_]{0,31})=(.+)$")
+SOURCE = re.compile(r"^[a-z0-9_]{1,40}$")
+WHOLE = re.compile(r"^[0-9]{1,9}$")
+NUMBER = re.compile(r"^[0-9]{1,9}(\.[0-9]{1,6})?$")
+NO_RESPONSE = "_No response_"
+MOST_LINES = 400
+
+
+def parse_request(text, catalog):
+    """The request a body carries, as (fields, words, problems): the `recipe:`, `epochs:`, `seed:` and
+    `hours:` lines and the `block: KEY=VALUE` lines the panel writes, read before any `### ` heading,
+    or the issue form's sections, `### key` with the value below it, a checkbox list as its ticked
+    boxes and `_No response_` as nothing; a setting given twice is a problem, and a heading that is
+    neither a setting nor a block (the form's note) is prose."""
+    fields, words, problems = {}, [], []
+    lines = (text or "").replace("\r\n", "\n").split("\n")
+    if len(lines) > MOST_LINES:
+        problems.append(f"the body has more than {MOST_LINES} lines")
+        lines = lines[:MOST_LINES]
+    section, sections = None, {}
+    for line in lines:
+        heading = SECTION.match(line)
+        if heading:
+            section = heading.group(1)
+            sections.setdefault(section, [])
+            continue
+        if section is not None:
+            if line.strip():
+                sections[section].append(line.strip())
+            continue
+        found = LINE.match(line)
+        if not found:
+            continue
+        key, value = found.groups()
+        if key == "block":
+            words.append(value)
+        elif key in fields:
+            problems.append(f"{key} is given twice")
+        else:
+            fields[key] = value
+    for key, values in sections.items():
+        if any(v.startswith("- [") for v in values):
+            value = ",".join(v[5:].strip() for v in values if v[:5] in ("- [x]", "- [X]"))
+        else:
+            value = " ".join(v for v in values if v != NO_RESPONSE)
+        if not value:
+            continue
+        if key in REQUEST_KEYS:
+            if key in fields:
+                problems.append(f"{key} is given twice")
+            fields[key] = value
+        elif key in catalog["fields"]:
+            words.append(f"{key}={value}")
+    return fields, words, problems
+
+
+def whole(text):
+    """A whole number of at most nine digits, else None."""
+    return int(text) if isinstance(text, str) and WHOLE.match(text) else None
+
+
+def number(text):
+    """A plain decimal number, no sign and no exponent, else None."""
+    return float(text) if isinstance(text, str) and NUMBER.match(text) else None
+
+
+def block_value(name, value, catalog):
+    """One block's value as the trainer would take it, and the problem when it would not."""
+    if not VALUE.match(value):
+        return None, f"{name}={value[:40]} holds a character outside letters, digits and . _ , - or is over 80 characters"
+    if name in catalog["choices"]:
+        if value not in catalog["choices"][name]:
+            return None, f"{name}={value} is not one of {', '.join(catalog['choices'][name])}"
+        return value, None
+    if name in catalog["lists"]:
+        parts = [] if value == "none" else value.split(",")
+        allowed = catalog["options"].get(name)
+        for part in parts:
+            if allowed is not None and part not in allowed:
+                return None, f"{name} {part} is not one of {', '.join(allowed)}"
+            if allowed is None and not SOURCE.match(part):
+                return None, f"{name} {part} is not a source's name (lower-case letters, digits and _)"
+        if len(set(parts)) != len(parts):
+            return None, f"{name} names one part twice"
+        return parts, None
+    if name in catalog["counts"]:
+        count = whole(value)
+        if count is None:
+            return None, f"{name} is a whole number, 0 or more, not {value}"
+        return count, None
+    if name in catalog["numbers"]:
+        amount = number(value)
+        if amount is None:
+            return None, f"{name} is a plain number, 0 or more, not {value}"
+        if name == "backbone_lr_scale" and not 0 < amount <= 1:
+            return None, "backbone_lr_scale is above 0 and at most 1"
+        return amount, None
+    return None, f"{name} is a block this reader does not know how to check"
+
+
+def block_rules(blocks, catalog):
+    """The ways a whole choice of blocks does not hold, in the trainer's words (schwingnet.blocks.problems),
+    each rule applied only where blocks.py has both of its parts."""
+    problems = []
+    has = blocks.__contains__
+    if has("weight_decay") and has("optimiser") and blocks["weight_decay"] > 0 and blocks["optimiser"] == "adam":
+        problems.append("weight_decay is for adamw; adam's would be L2 in the gradient, which this trainer does not offer")
+    if has("prior") and has("prior_weight") and (blocks["prior"] != "none") != (blocks["prior_weight"] > 0):
+        problems.append("prior_weight above 0 goes with prior=level-map, and only there")
+    if has("samples") and has("sources") and (blocks["samples"] in catalog["by_source"]) != bool(blocks["sources"]):
+        problems.append("sources=a,b goes with samples=only-sources or drop-sources, and only there")
+    if has("samples") and has("per_person") and (blocks["samples"] == catalog["by_person"]) != (blocks["per_person"] > 0):
+        problems.append("per_person of 1 or more goes with samples=cap-per-person, and only there")
+    return problems
+
+
+def request_problems(fields, words, catalog, recipe_names):
+    """The request as (record, problems): the record normalised, its blocks only those that differ from
+    version 1 in the fields' order, and every way the request does not hold, one line each, so a person
+    reads them all at once; a record is given only when nothing is wrong."""
+    problems = [f"{key} is missing" for key in REQUEST_KEYS if key not in fields]
+    recipe = fields.get("recipe")
+    if recipe is not None and recipe != "none" and recipe not in recipe_names:
+        problems.append(f"recipe {recipe[:40]} is not none nor one of data/recipes/: {', '.join(recipe_names)}")
+    epochs = whole(fields.get("epochs", ""))
+    if "epochs" in fields and not (epochs is not None and 1 <= epochs <= EPOCHS_MOST):
+        problems.append(f"epochs is a whole number from 1 to {EPOCHS_MOST}, not {fields['epochs'][:40]}")
+    seed = whole(fields.get("seed", ""))
+    if "seed" in fields and seed is None:
+        problems.append(f"seed is a whole number, 0 or more, not {fields['seed'][:40]}")
+    hours = number(fields.get("hours", ""))
+    if "hours" in fields and not (hours is not None and 0 < hours <= HOURS_MOST):
+        problems.append(f"hours is a number above 0 and at most {HOURS_MOST:g}, not {fields['hours'][:40]}")
+    blocks = fill_blocks(None, catalog)
+    named = set()
+    for word in words:
+        found = WORD.match(word)
+        if not found:
+            problems.append(f"block {word[:40]} is not KEY=VALUE")
+            continue
+        name, value = found.groups()
+        if name not in catalog["fields"]:
+            problems.append(f"{name} is not a block; the blocks are {', '.join(catalog['fields'])}")
+            continue
+        if name in named:
+            problems.append(f"block {name} is named twice")
+            continue
+        named.add(name)
+        parsed, problem = block_value(name, value, catalog)
+        if problem:
+            problems.append(problem)
+        else:
+            blocks[name] = parsed
+    if not problems:
+        problems += block_rules(blocks, catalog)
+    if problems:
+        return None, problems
+    return {"recipe": recipe, "epochs": epochs, "seed": seed, "hours": hours, "blocks": named_words(blocks, catalog)}, []
+
+
+def check_request(text, root=ROOT):
+    """A body's request against this checkout's recipes and blocks: (record, problems)."""
+    catalog = block_catalog(root)
+    fields, words, problems = parse_request(text, catalog)
+    record, more = request_problems(fields, words, catalog, [r["name"] for r in recipes(root)])
+    return (None if problems else record), problems + more
+
+
+def hours_word(hours):
+    return f"{hours:g}"
+
+
+def request_lines(record):
+    """The normalised request as the file on the branch experiments and the lines the answer quotes."""
+    lines = [f"recipe: {record['recipe']}", f"epochs: {record['epochs']}", f"seed: {record['seed']}", f"hours: {hours_word(record['hours'])}"]
+    return "\n".join(lines + [f"block: {word}" for word in record["blocks"]]) + "\n"
+
+
+def request_command(record):
+    """The flow command the request names, as the panel shows it."""
+    return flow_command(record["blocks"], record["epochs"], record["seed"], hours_word(record["hours"]), record["recipe"])
+
+
+def driver_command(record):
+    """What grid/experiment-driver.sbatch runs for the request, with the catalog, the runs folder and the
+    weights as the grid holds them."""
+    return flow_command(record["blocks"], record["epochs"], record["seed"], hours_word(record["hours"]), record["recipe"], DRIVER_HEAD, DRIVER_TAIL)
+
+
+def yaml_text(value):
+    """A scalar as the issue form's YAML takes it: JSON's double-quoted string is a YAML string."""
+    return json.dumps(str(value))
+
+
+def form_text(catalog, recipe_names):
+    """The Experiment issue form, written from the recipes and the blocks so that its lists are the
+    trainer's own: a dropdown with version 1's choice preselected for each part that has a list, the
+    augmentations as checkboxes, an input for a number, a count or the sources, and the four settings;
+    each field's label is the key the validator reads under its `### key` heading."""
+    lines = [
+        "name: Experiment",
+        'description: ' + yaml_text("A new combination of data and blocks for one run on the grid: the workflow checks every value, "
+                                     "answers with the exact flow command and the gate word that queues it, and the owner's click runs it."),
+        '# Written by `python3 tools/experiments_panel.py write` from data/recipes/ and src/schwingnet/blocks.py and held',
+        '# current by `check`; change those files, not this one. The workflow reads each field under its heading.',
+        'title: "Experiment: "',
+        'labels: ["experiment"]',
+        "body:",
+        "  - type: markdown",
+        "    attributes:",
+        "      value: " + yaml_text("Each field is one part of training (src/schwingnet/blocks.py); leave a field as it is for version 1's "
+                                    "choice. Nothing runs from this form: the workflow answers with the command and the gate word, and the "
+                                    "owner's click queues the one job."),
+        "  - type: dropdown",
+        "    id: recipe",
+        "    attributes:",
+        "      label: recipe",
+        "      description: " + yaml_text("The licence cut of the catalog (data/recipes/); none is the catalog as it stands."),
+        "      options:",
+    ]
+    lines += [f"        - {name}" for name in ["none"] + list(recipe_names)]
+    lines += ["      default: 0", "    validations:", "      required: true"]
+    settings = (("epochs", f"1 to {EPOCHS_MOST}", "20"), ("seed", "0 or more", "1"), ("hours", f"the training job's wall time, above 0 and at most {HOURS_MOST:g}", "4"))
+    for key, description, value in settings:
+        lines += ["  - type: input", f"    id: {key}", "    attributes:", f"      label: {key}", f"      description: {yaml_text(description)}",
+                  f"      value: {yaml_text(value)}", "    validations:", "      required: true"]
+    for name in catalog["fields"]:
+        default = catalog["defaults"][name]
+        note = catalog["settings"].get(name, "")
+        if name in catalog["choices"]:
+            choices = catalog["choices"][name]
+            lines += ["  - type: dropdown", f"    id: {name}", "    attributes:", f"      label: {name}"]
+            if note:
+                lines.append(f"      description: {yaml_text(note)}")
+            lines += ["      options:"] + [f"        - {choice}" for choice in choices] + [f"      default: {choices.index(default)}"]
+        elif catalog["options"].get(name):
+            lines += ["  - type: checkboxes", f"    id: {name}", "    attributes:", f"      label: {name}",
+                      f"      description: {yaml_text(note or 'any of these, in this order; none is version 1')}", "      options:"]
+            lines += [f"        - label: {option}" for option in catalog["options"][name]]
+        else:
+            if name in catalog["lists"]:
+                description = note or "comma-separated source names; empty is version 1"
+            else:
+                description = note or ("a whole number, 0 or more" if name in catalog["counts"] else "a plain number, 0 or more")
+            lines += ["  - type: input", f"    id: {name}", "    attributes:", f"      label: {name}", f"      description: {yaml_text(description)}"]
+            if name not in catalog["lists"]:
+                lines.append(f"      value: {yaml_text(word_of(default))}")
+    lines += ["  - type: textarea", "    id: note", "    attributes:", "      label: note",
+              "      description: " + yaml_text("Why this combination, in a sentence or two (optional)."), "    validations:", "      required: false"]
+    return "\n".join(lines) + "\n"
 
 
 def esc(text):
@@ -679,6 +957,9 @@ repo:D.repo,workflow:D.workflow,ref:"main",inputs:{recipe:recipe,epochs:String(e
 // posted on a person's change and on Request, never on the first draw, so a page that embeds the figure offers nothing until asked
 if(event)post(R.payload)}
 $("request").addEventListener("click",e=>{if(framed){e.preventDefault();post(Object.assign({},R.payload,{type:"schwingnet.open",href:R.payload.issueUrl,label:"Request this run: "+R.payload.title}))}});
+// The page that embeds this figure answers a dispatch it made for the viewer (docs/research/experiments-panel.md, section 4).
+addEventListener("message",e=>{let d=e.data;if(!framed||e.source!==window.parent||!d||d.type!=="schwingnet.dispatch.result")return;
+$("req-note").textContent=d.ok?"Dispatched as you: the workflow opens the issue, checks the lines and answers with the gate word.":"Not dispatched ("+(d.error||"no reason given")+"); Request this run still works."});
 update();draw();addEventListener("resize",draw);
 """
 
@@ -792,31 +1073,52 @@ def outputs(root=ROOT):
     return {f"{FIGURE}.html": html_page(data), f"{FIGURE}.json": json.dumps(figure_record(data), indent=1) + "\n", f"{FIGURE}.svg": svg_chart(data)}
 
 
+def written(root=ROOT):
+    """Every file the tool writes, by path from the root: the figure's three files and the issue form."""
+    files = {f"{OUT}/{name}": text for name, text in outputs(root).items()}
+    files[FORM] = form_text(block_catalog(root), [r["name"] for r in recipes(root)])
+    return files
+
+
 def stale(root=ROOT):
-    """The written files that are not what the records give now, or are missing."""
-    folder = Path(root) / OUT
-    return [name for name, text in outputs(root).items() if not (folder / name).is_file() or (folder / name).read_text(encoding="utf-8") != text]
+    """The written files that are not what the records give now, or are missing: the figure's files by
+    name and the issue form by its path."""
+    old = []
+    for rel, text in written(root).items():
+        path = Path(root) / rel
+        if not path.is_file() or path.read_text(encoding="utf-8") != text:
+            old.append(rel[len(OUT) + 1:] if rel.startswith(OUT + "/") else rel)
+    return old
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("command", choices=["write", "check", "runs"])
     parser.add_argument("--root", default=str(ROOT), help="the repository to read and write (a worktree, for a test)")
+    parser.add_argument("--request", help="check: a file holding an issue's body or a request's lines; prints the normalised lines and the command, or exits 1 with why")
     args = parser.parse_args(argv)
     root = Path(args.root)
+    if args.command == "check" and args.request:
+        record, problems = check_request(Path(args.request).read_text(encoding="utf-8"), root)
+        for problem in problems:
+            print(f"refused: {problem}", file=sys.stderr)
+        if problems:
+            return 1
+        sys.stdout.write(request_lines(record))
+        print(request_command(record))
+        return 0
     if args.command == "runs":
         print(json.dumps(panel_data(root)["runs"], indent=1, sort_keys=True))
         return 0
     if args.command == "write":
-        folder = root / OUT
-        folder.mkdir(parents=True, exist_ok=True)
-        for name, text in outputs(root).items():
-            (folder / name).write_text(text, encoding="utf-8")
-            print(f"wrote {OUT}/{name}")
+        for rel, text in written(root).items():
+            (root / rel).parent.mkdir(parents=True, exist_ok=True)
+            (root / rel).write_text(text, encoding="utf-8")
+            print(f"wrote {rel}")
         return 0
     old = stale(root)
     if old:
-        print(f"{OUT}: {', '.join(old)} not what the records give; run python3 tools/experiments_panel.py write", file=sys.stderr)
+        print(f"{', '.join(old)}: not what the records give; run python3 tools/experiments_panel.py write", file=sys.stderr)
         return 1
     print(f"{OUT}/{FIGURE}: current")
     return 0
