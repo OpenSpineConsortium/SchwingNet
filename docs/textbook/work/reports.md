@@ -62,3 +62,6 @@ About 270 checked, 38 changed (number 9, grade 3, superseded 4, canonical 1, sco
 
 ## 32 writer
 5,971 words, 40 rows, lint ok. Open: whether phase 0's headless probe ran; whether the VS Code 5.0.0 credential path was fixed (Unverified); whether 20.0.0 was uploaded by hand and 22.0.0 or 23.0.0 passed store review; which beethoven-qa tag exists (the pinned copy records 6.0.0 at an untagged commit); the REFORMS list against Kapoor 2024 and Google's refresh-token lifetimes (Reported, no network). Version numbers only as dated and superseded; the 3 Oct framework number not as current (cannot-tell). Source privacy: a student's name and login, grid paths, a node name, the store item id, a mock test account, the owner's words quoted verbatim; none copied.
+
+## 05 review
+About 95 checked, 12 changed (mechanism 1, pronoun 4, number 4, argument 3), one row added. Worst: the requests note drafts five letters, not six (15f, CM Spine, has no paper or address); "he/his" for the owner in three places; the two labelling tools and their agreement rule named outside Part III (cut, 814 of 910 kept, chapter 13 linked). case134 sweep carried as 301 frames (302 in Research directions). Open: Balgrist's 13 or 6 specimens (moot, refused); which of the 16 letters are among spine-datasets' 26 requests; release-page licence texts. 5,948 words, lint ok.
