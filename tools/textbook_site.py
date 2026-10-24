@@ -38,10 +38,23 @@ it may be copied to a public place before the provisional is filed
 hold what the synthesis's records hold, with what the records' own rules leave
 out (artifacts/_synthesis/work/tools/redact.py) left out again, and the
 owner's account names and a person named by title as well, since the book
-names people by role. The site serves no copy of an artifact: each one opens
-on claude.ai, where the owner has shared it by its link, or in the repository,
-since an artifact's own text holds what the records leave out and its scripts
-would run at the site's own address.
+names people by role. Each artifact also opens on claude.ai, where the owner
+has shared it by its link, and in the repository.
+
+The artifacts' own pages are in the book too (issue #233, the owner's ask of
+2026-10-24: the artifacts themselves, interactive, not screenshots). Every
+folder under artifacts/ whose export holds a page, index.html, is copied into
+the site under artifacts/<folder>/ with its tree, dotfiles and Markdown left
+out; the artifact's own page shows it in an iframe above the record, with a
+link that opens it full-page, and a figure whose record traces it to such an
+artifact gets a button that opens the page beside Explore and Re-run. A Docs
+artifact, exported as index.md alone, keeps its links. The iframe is sandboxed
+without the site's origin (EXPORT_SANDBOX says what the pages were checked
+for), so a page's script cannot reach the site's other pages or storage. The
+first version served no copy, since an artifact's own text holds what the
+records' privacy pass leaves out and its scripts would run at the site's own
+address (PR #197); the owner weighed that against seeing the artifacts as they
+are, on a members-only site of the owner's own pages, and chose the pages.
 
 The book's figures live under docs/textbook/figures/<chapter>/, each an image (or an interactive
 page of the same name) beside its record, a JSON file that says where it came from: the artifact,
@@ -117,6 +130,15 @@ DISCLAIMER = re.compile(r"not a final value|not settled|has not settled|open in 
 NAMING_FIELDS = {"repo", "folder", "link", "link_id", "account", "date", "kind", "genre", "confidentiality"}
 TITLED_PERSON = re.compile(r"\bDr\.?\s+[A-Z][a-z]+(?:-[A-Z][a-z]+)?")
 ACCOUNT_SHAPE = re.compile(r"[A-Za-z0-9][A-Za-z0-9-]{3,38}")
+# The sandbox of an exported artifact's page shown in the site. Of the twelve exported pages that
+# carry a script (2026-10-24), three touch localStorage or sessionStorage, each inside try/catch, so
+# they render without storage; one, a design canvas, fetches its own source only for an editor's
+# save, which needs the artifact runtime the site does not have; none uses XMLHttpRequest. So no
+# page needs the site's origin and allow-same-origin stays off, since with it a page's script could
+# read the site's other pages and its storage; allow-popups lets a page's links open a new tab. The
+# book's own interactive figures keep their stricter sandbox in figure_block.
+EXPORT_SANDBOX = "allow-scripts allow-popups"
+EXPORT_PAGE = "index.html"
 
 
 def load_json(path):
@@ -154,6 +176,35 @@ def ledger_tools():
     import redact  # noqa: E402
     import synth_concepts  # noqa: E402
     return extract, redact, synth_concepts
+
+
+def exported_pages(root):
+    """The folders under artifacts/ whose export holds a page, index.html, sorted by name; a Docs
+    artifact, exported as index.md alone, has none, and the synthesis's folder is left out with any
+    folder whose name starts with an underscore or a dot, as Book.folders leaves them out."""
+    base = Path(root) / "artifacts"
+    if not base.is_dir():
+        return []
+    return sorted(p.name for p in base.iterdir()
+                  if p.is_dir() and not p.name.startswith(("_", ".")) and (p / EXPORT_PAGE).is_file())
+
+
+def exported_folder(target):
+    """The folder a record's artifact path names, artifacts/<folder>/, or None for any other path
+    and for a web address."""
+    found = re.fullmatch(r"artifacts/([^/]+)/?", (target or "").strip())
+    return found.group(1) if found else None
+
+
+def export_page(folder):
+    """Where an exported artifact's page is in the site."""
+    return f"artifacts/{folder}/{EXPORT_PAGE}"
+
+
+def leave_out(_directory, names):
+    """What a copied export leaves behind at any depth: dotfiles and Markdown files, which are the
+    export's notes and a Docs artifact's text, not its page."""
+    return [n for n in names if n.startswith(".") or n.endswith(".md")]
 
 
 def code_owners(root):
@@ -214,6 +265,7 @@ class Book:
         privacy = Privacy(self.root, self.inventory["artifacts"])
         self.records = {f"{r['repo']}/{r['folder']}": privacy.record(r) for r in self.inventory["artifacts"]}
         self.figures = load_figures(self.root, privacy)
+        self.exported = exported_pages(self.root)
         self.chapters = [(part, c) for part in self.plan["parts"] for c in part["chapters"]]
         self.readers = collections.defaultdict(list)  # artifact id -> [(chapter number, first or second)]
         for _part, c in self.chapters:
@@ -468,6 +520,7 @@ input.filter { width:100%; padding:8px 10px; border:1px solid var(--line); borde
 figure.fig { margin:18px 0; padding:12px; border:1px solid var(--line); border-radius:10px; background:var(--soft); }
 figure.fig img { display:block; margin:0 auto; max-width:100%; }
 figure.fig iframe { width:100%; height:520px; border:0; background:#fff; border-radius:8px; }
+figure.embed iframe { height:76vh; min-height:420px; }
 figure.fig figcaption { margin-top:8px; font-size:14.5px; }
 .source { font-size:13.5px; margin-top:8px; }
 .source dt { font-weight:600; margin-top:4px; }
@@ -646,8 +699,28 @@ class Builder:
         return (f'<div class="source"><dl>{items}</dl><div class="buttons">'
                 f"<details><summary>Explore</summary><ul>{links or '<li>No link is recorded beyond the artifact.</li>'}</ul>"
                 f"<p>The method: {esc(source.get('made_by') or 'not recorded')}.</p></details>"
-                f'<a class="button" href="{esc(rerun_url(self.repo or DEFAULT_REPO, rec))}">Re-run</a>{record_link}</div>'
+                f'<a class="button" href="{esc(rerun_url(self.repo or DEFAULT_REPO, rec))}">Re-run</a>{record_link}'
+                f"{self.open_button(rec)}</div>"
                 f'<p class="count">Re-run: {esc(rerun_words(rec))}</p>{command}</div>')
+
+    def open_button(self, rec):
+        """The button that opens the exported page of the artifact a figure's record traces it to,
+        where that artifact's export holds one; a figure traced to a Docs artifact, to one not
+        exported here or to no artifact gets none."""
+        folder = exported_folder((rec.get("source") or {}).get("artifact"))
+        if folder not in self.book.exported:
+            return ""
+        return f'<a class="button" href="{esc(export_page(folder))}">Open the artifact&#x27;s page</a>'
+
+    def embed(self, folder, title):
+        """An artifact's own exported page, shown above its record in an iframe sandboxed without
+        the site's origin (EXPORT_SANDBOX), loaded when scrolled to, with the link that opens it
+        full-page."""
+        src = export_page(folder)
+        return (f'<figure class="fig embed"><iframe src="{esc(src)}" title="{esc(title)}: the artifact&#x27;s own page" '
+                f'loading="lazy" sandbox="{EXPORT_SANDBOX}"></iframe><figcaption>The artifact&#x27;s own page as it '
+                f'was exported to the repository, interactive where it was; <a href="{esc(src)}">open it full-page</a>.'
+                "</figcaption></figure>")
 
     def every_figure(self):
         b = self.book
@@ -679,9 +752,16 @@ class Builder:
         if base.is_dir():
             shutil.copytree(base, self.out / "figures")
 
+    def copy_exports(self):
+        """Each exported artifact that has a page, copied whole under artifacts/<folder>/ with its
+        tree, so the page's own scripts, styles, data and images are beside it as they are in the
+        repository; dotfiles and Markdown stay behind (leave_out)."""
+        for folder in self.book.exported:
+            shutil.copytree(self.book.root / "artifacts" / folder, self.out / "artifacts" / folder, ignore=leave_out)
+
     def artifact_links(self, aid):
-        """Where the artifact itself opens: on claude.ai, and as files in its repository; the site
-        serves no copy of it (the module's docstring says why)."""
+        """Where the artifact itself opens: on claude.ai, and as files in its repository; an
+        artifact exported as a page shows that page on its own page here (Builder.embed)."""
         r = self.book.records[aid]
         repo, folder = aid.split("/", 1)
         out = []
@@ -774,8 +854,9 @@ class Builder:
         repos = collections.Counter(r["repo"] for r in b.records.values())
         body = ["<h1>The SchwingNet textbook</h1>",
                 "<p>The Artifact Textbook as a website: one page for each chapter of the book's plan and one for each "
-                "artifact, laid out on every build from the synthesis's records of the artifacts; each artifact itself "
-                "opens on claude.ai, where it was shared by its link, or in its repository. A chapter shows its written narrative once there is one, and below it every artifact it reads, with "
+                "artifact, laid out on every build from the synthesis's records of the artifacts; an artifact exported "
+                "as a page shows that page, interactive, on its own page here, and each artifact opens on claude.ai, "
+                "where it was shared by its link, or in its repository. A chapter shows its written narrative once there is one, and below it every artifact it reads, with "
                 "its record, its place in its cluster and the figures the record has settled. Nothing here is written "
                 "at build time: the records come from the synthesis's reads, and the narratives from the chapters "
                 "under docs/textbook/, both merged by pull request.</p>",
@@ -906,6 +987,8 @@ class Builder:
             by = b.records.get(old["by"], {}).get("title", old["by"])
             body.append(f'<div class="notice warn">Superseded by <a href="{artifact_page(old["by"])}">{esc(by)}</a>. '
                         f"Its numbers are records, not final values. {esc(old.get('why', ''))}</div>")
+        if r["repo"] == "SchwingNet" and r["folder"] in b.exported:
+            body.append(self.embed(r["folder"], r["title"]))
         body.append(f"<h2>What it answers</h2><p class=\"question\">{esc(r.get('question'))}</p><p>{esc(r.get('summary'))}</p>")
         readers = b.readers.get(aid, [])
         if readers:
@@ -1077,6 +1160,7 @@ class Builder:
         self.every_artifact()
         self.every_figure()
         self.copy_figures()
+        self.copy_exports()
         self.pending_page()
         self.record_pages()
         (self.out / MARKER).write_text("built by tools/textbook_site.py\n", encoding="utf-8")

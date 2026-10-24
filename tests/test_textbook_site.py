@@ -6,11 +6,14 @@ without its disclaimer on its line flagged; what the book does not hold yet
 listed, a folder with no record, a record no chapter reads (beside the
 chapter that reads its cluster's canonical artifact), a record whose folder is
 gone and a chapter file the plan does not name; the owner's account names and
-a person named by title kept off the pages; no copy of an artifact
-served, each one opening on claude.ai; and each figure a chapter places
-shown with its record's grade, status and source panel, Explore and Re-run,
-an interactive figure in place of its image, one with no record said to have
-none, and every figure listed with how far it is traced."""
+a person named by title kept off the pages; each artifact opening on
+claude.ai, and one exported as a page copied into the site with its tree and
+shown on its own page in a sandboxed iframe, a Docs artifact keeping its
+links alone; and each figure a chapter places shown with its record's grade,
+status and source panel, Explore and Re-run, a button that opens the
+exported page of the artifact it is traced to, an interactive figure in
+place of its image, one with no record said to have none, and every figure
+listed with how far it is traced."""
 
 import json
 import os
@@ -53,10 +56,10 @@ The figures follow.
 """
 
 
-def figure_record(fid, where, command=None, made_by=None, data=()):
+def figure_record(fid, where, command=None, made_by=None, data=(), artifact="artifacts/second/"):
     return {"id": fid, "title": f"Title of {fid}", "caption": f"Caption of {fid}, drawn for someacct.", "chapter": "01",
             "grade": "Reported", "status": "a record, not a final value",
-            "source": {"kind": "artifact", "artifact": "artifacts/second/", "artifact_url": None, "made_by": made_by,
+            "source": {"kind": "artifact", "artifact": artifact, "artifact_url": None, "made_by": made_by,
                        "commit": None, "data": list(data), "run": None, "notes": "Traced from the manifest."},
             "explore": [{"label": "The artifact", "href": "artifacts/second/"},
                         {"label": "The method", "href": "docs/method.md"}],
@@ -91,8 +94,9 @@ def git(root, *args):
 def small_book(root):
     """A repository with one chapter reading the canonical artifact, the artifact it superseded
     read by no chapter, a folder the synthesis has not read, two artifacts that share a title, a
-    record whose folder is gone and a chapter file no chapter of the plan names, committed, with
-    two of its folders stamped as they were when their records were read."""
+    record whose folder is gone, a Docs artifact exported as index.md alone and a chapter file no
+    chapter of the plan names, committed, with two of its folders stamped as they were when their
+    records were read; the canonical artifact's export holds a nested file, a dotfile and a note."""
     syn = root / "artifacts" / "_synthesis"
     for name in ("clusters.md", "concepts.md", "contradictions.md", "table-of-contents.md"):
         write(syn / name, f"# {name}\n\nSee [the second](../second/).\n")
@@ -110,7 +114,8 @@ def small_book(root):
         record("fourth", "Fourth", "2026-10-02", related_titles=shared),
         record("fifth", "Shared", "2026-09-01", related_titles=shared),
         record("sixth", "Shared", "2026-09-05"),
-        record("seventh", "Seventh", "2026-09-07")], "skipped": []})
+        record("seventh", "Seventh", "2026-09-07"),
+        record("eighth", "Eighth", "2026-09-08", kind="document")], "skipped": []})
     write(syn / "work" / "out" / "clustering.json", {"judged": {"clusters": [{
         "name": "One", "part": "schwingnet", "members": ["SchwingNet/first", "SchwingNet/second"],
         "canonical": ["SchwingNet/second"], "secondary_members": [], "duplicates": [],
@@ -124,12 +129,17 @@ def small_book(root):
                    {"figure": "97.4", "percent": True, "status": "current", "side": "b"}]}]})
     for folder in ("first", "second", "third", "fourth", "fifth", "sixth"):
         write(root / "artifacts" / folder / "index.html", f"<p>{folder}</p>")
+    write(root / "artifacts" / "second" / "data" / "table.js", "window.rows = [];")
+    write(root / "artifacts" / "second" / ".export.json", "{}")
+    write(root / "artifacts" / "second" / "README.md", "# Notes on the export\n")
+    write(root / "artifacts" / "eighth" / "index.md", "# Eighth\n\nA Docs document, exported as text.\n")
     write(root / ".github" / "CODEOWNERS", "# Every file asks the owner.\n* @owner-login\n")
     write(root / "docs" / "textbook" / "01-one.md", NARRATIVE)
     figures = root / "docs" / "textbook" / "figures" / "01"
     write(figures / "a-figure.json", figure_record("01/a-figure", "grid", "sbatch slurm/draw.sh", "tools/draw.py"))
     write(figures / "a-figure.png", "not really a png")
-    write(figures / "a-moving-figure.json", figure_record("01/a-moving-figure", "none", data=["data/x.json"]))
+    write(figures / "a-moving-figure.json", figure_record("01/a-moving-figure", "none", data=["data/x.json"],
+                                                          artifact="artifacts/eighth/"))
     write(figures / "a-moving-figure.png", "fallback")
     write(figures / "a-moving-figure.html", "<!doctype html><p>moves</p>")
     write(figures / "untraced.png", "no record")
@@ -201,11 +211,32 @@ class ASmallBook(unittest.TestCase):
         self.assertIn("Superseded by", page)
         self.assertIn("not final values", page)
 
-    def test_an_artifact_opens_on_claude_ai_and_no_copy_is_served(self):
-        self.assertFalse((self.out / "files").exists())
+    def test_an_artifact_opens_on_claude_ai_and_its_exported_page_is_embedded_above_its_record(self):
         page = self.read("artifact-second.html")
         self.assertIn('href="https://claude.ai/artifact/second"', page)
+        embed = page[page.index('<figure class="fig embed">'):page.index("</figure>")]
+        self.assertIn('<iframe src="artifacts/second/index.html"', embed)
+        self.assertIn('sandbox="allow-scripts allow-popups"', embed)
+        self.assertNotIn("allow-same-origin", embed)
+        self.assertIn('loading="lazy"', embed)
+        self.assertIn('<a href="artifacts/second/index.html">open it full-page</a>', embed)
+        self.assertLess(page.index('<figure class="fig embed">'), page.index("<h2>What it answers</h2>"))
+
+    def test_a_docs_artifact_has_no_embed_and_keeps_its_links(self):
+        page = self.read("artifact-eighth.html")
         self.assertNotIn("<iframe", page)
+        self.assertIn('href="https://claude.ai/artifact/eighth"', page)
+        self.assertIn("Its files in the repository", page)
+        self.assertFalse((self.out / "artifacts" / "eighth").exists())
+
+    def test_the_exported_pages_are_copied_with_their_trees_and_nothing_else_is(self):
+        copied = self.out / "artifacts"
+        self.assertTrue((copied / "second" / "index.html").exists())
+        self.assertTrue((copied / "second" / "data" / "table.js").exists())
+        self.assertFalse((copied / "second" / ".export.json").exists())
+        self.assertFalse((copied / "second" / "README.md").exists())
+        self.assertFalse((copied / "_synthesis").exists())
+        self.assertEqual(sorted(p.name for p in copied.iterdir()), ["fifth", "first", "fourth", "second", "sixth", "third"])
 
     def test_account_names_and_a_person_named_by_title_are_kept_off_the_pages(self):
         first, second = self.read("artifact-first.html"), self.read("artifact-second.html")
@@ -268,6 +299,14 @@ class ASmallBook(unittest.TestCase):
         self.assertNotIn("<img", block)
         self.assertIn("traced to the data", block)
         self.assertIn("No command is recorded", block)
+
+    def test_a_figure_traced_to_an_exported_page_opens_it_and_one_traced_to_a_docs_artifact_does_not(self):
+        block = self.figure("01-a-figure")
+        buttons = block[block.index('<div class="buttons">'):]
+        self.assertIn('<a class="button" href="artifacts/second/index.html">Open the artifact&#x27;s page</a>', buttons)
+        self.assertNotIn("Open the artifact", self.figure("01-a-moving-figure"))
+        self.assertIsNone(textbook_site.exported_folder("https://claude.ai/artifact/x"))
+        self.assertEqual(textbook_site.exported_folder("artifacts/second"), "second")
 
     def test_a_figure_with_no_record_says_so(self):
         page = self.read("chapter-01.html")
