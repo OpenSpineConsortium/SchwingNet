@@ -4,6 +4,37 @@ Source: the thread "SchwingNet video demo plan", 2026-10-20, the owner's ask ("r
 
 What the cloud session can and cannot reach (2026-10-20): web search answers, but every host page tried was refused by name (PMC, arXiv, Zenodo, IEEE DataPort, Hugging Face, PhysioNet, TalkBank, RSNA MIRA, Stanford AIMI, the university and clinic sites), so a licence line or an address that only a page shows is marked "to confirm on the page". Radiopaedia was not fetched by choice: its terms bar automated access.
 
+## Where each request stands (2026-10-24)
+
+The letters above went out from the owner's Wayne State Outlook between 2026-10-20 and 2026-10-24, all under the subject tag [XR/CT Imaging Research]; the table below is that mail as read on 2026-10-24 (thread "Paired CT and X-ray datasets", issue #229), and each record's status under data/sources/ says the same. Where this section and the table below disagree, this section is newer: rows of the table that say a letter was never sent are out of date.
+
+| Request (record) | Sent | Answer |
+|---|---|---|
+| Bournemouth cervical and lumbar QF (bournemouth_cervical_qf, bournemouth_lumbar_qf) | 2026-10-20 | Branney 2026-10-22, Breen 2026-10-24: about 1,180 events, 500 to 800 GB, original frames with corner templates, under a data sharing agreement, one Wayne State prepares being quickest; the MAID (OSF z2jby) licence is with Budka; the owner replied 2026-10-24; the copy to one co-author (Portsmouth) bounced |
+| Maastricht cervical and lumbar (maastricht_cervical) | 2026-10-20 | none |
+| Bern dynamic myelography DICOM (bern_myelography) | 2026-10-20 | none |
+| Pittsburgh swallow corpus (pittsburgh_swallow) | 2026-10-20 | Sejdic 2026-10-21: he has left Pitt and cannot share; the IRB never covered sharing; Coyle may know; none from Coyle |
+| Balgrist ex-vivo lumbar (balgrist_lumbar) | 2026-10-20 | refused 2026-10-21, licensed to a startup; Jecklin's address bounced |
+| SX-Stitch and the PUMCH stitching series (sx_stitch) | 2026-10-20, again 2026-10-21 | none |
+| Seattle Science Foundation, Mayfield, DMX, Jefferson DRG, Konica Minolta DDR, MTFI (their records) | 2026-10-20 | none |
+| DARADIA vertebroplasty (daradia_vertebroplasty) | 2026-10-20 | 2026-10-21: reviewing the recording, consent and permissions with Dr Das; nothing since |
+| ThePainSource (faubel_painsource) | 2026-10-21 | none |
+| Radiopaedia (radiopaedia) | 2026-10-21 | approved 2026-10-23 for phase 1, recognising and classifying spinal anatomy; later multimodal or generative use needs written confirmation first; no export or DICOM, images collected from the site by hand; the countersigned copy is still to come |
+| TotalSegmentator task sets (zenodo_ts_task_*) | 2026-10-21 | Wasserthal 2026-10-22: v2 is a complete subset of v3 with the same ids; the task sets' overlap is not answered, so they stay counted as overlapping |
+| IRI-VFI (pediatric_iri), TVGH-SpineXR (tvgh_spinexr) | 2026-10-21 | none |
+| SOF and MrOS lateral spine films (sof_lateral_spine, mros_lateral_spine) | 2026-10-22 | the same day: the Online sites are closed to registration for new NIH requirements; the images go to the NIA Aging Research Biobank, where the request now goes; not yet asked there |
+| MAGIC-CT (magic_ct), AbdomenAtlas 2.0 Mini case list (hf_abdomenatlas2_0_mini) | 2026-10-22 | none |
+| ReXGradient-160K (rexgradient_160k) | 2026-10-24 | none yet |
+
+Six letters went to sets that have no record under data/sources/, so the inventory does not list them yet:
+
+- The LevelCheck clinical cohort (De Silva et al., Spine 2016; Johns Hopkins), sent to Siewerdsen and Uneri on 2026-10-21: refused. Siewerdsen has left Hopkins; Uneri answered on 2026-10-23 that the cohort's IRB approval expired years ago and Hopkins' IRB now restricts sharing across institutions, and suggested the Harms Study Group (hsg.settingscoliosisstraight.org), offering to introduce the owner to its administrators.
+- The Huashan intraoperative lumbar series with preoperative CT, 2026-10-21: no answer.
+- The 2D-3D-sci-registration C-arm frames and CTs (Kadambari), 2026-10-21: no answer.
+- The intraoperative frames with bony landmarks of J Arthroplasty 2025;40:2092 (Martin, Moyer), 2026-10-21: no answer.
+- The Taiwan Medical AI and Data Portal spine X-ray set for ankylosing spondylitis (Tsai), 2026-10-21: no answer.
+- The CM Spine images of Electronics 2024, 13, 2137 (Cheng, Song, and the journal's editorial office), 2026-10-23: no answer.
+
 ## Who acts
 
 Four kinds of step, by who may take them:

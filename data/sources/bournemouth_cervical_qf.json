@@ -5,7 +5,7 @@
   "what": "252 lateral flexion and extension sequences from 63 people at 15 fps, 1024 x 1024 16-bit DICOM; the deposit holds the per-frame vertebral corner tracks (.mat, 24 MB) and no pixels",
   "level_truth": "level-named corner tracks C0 to T1 on every frame (geometry only until the cine arrives)",
   "reach": "get",
-  "status": "the tracks are on the grid; the DICOM cine is request 1, drafted, never sent; the letter (request 1) was forwarded to ckaching.cheung@polyu.edu.hk on 2026-10-21 03:57 UTC",
+  "status": "the tracks are on the grid; the letter (request 1) went to the Bournemouth team on 2026-10-20 22:44 UTC; Jonny Branney answered on 2026-10-22 and Alex Breen on 2026-10-24: about 1,180 image events, cervical and lumbar together, 500 to 800 GB, the stored DICOM being the original frames (row 1 of a corner template is the mean of frames 1 and 2), with the corner templates; a data sharing agreement is required and one Wayne State prepares would be quickest; Marcin Budka, chief investigator of MAID, was copied for the licence of the MAID images (OSF z2jby), which Breen is unsure of; the owner replied on 2026-10-24 asking for the agreement and that licence; waits on the agreement",
   "licence": "CC BY 4.0 (the tracks); README.rtf CC BY-ND",
   "link": "https://bordar.bournemouth.ac.uk/385/",
   "how_to_get": [

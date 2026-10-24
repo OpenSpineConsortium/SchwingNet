@@ -5,7 +5,7 @@
   "what": "cadaver lumbar CT with real C-arm frames",
   "level_truth": "yes, from the CT",
   "reach": "none",
-  "status": "refused 2026-10-21 05:52 UTC: Philipp Fuernstahl answered the letter of 2026-10-20 that the ex-vivo dataset was licensed to a startup and is proprietary, so it cannot be shared; the resend through the ROCS contact form is dropped",
+  "status": "refused 2026-10-21 05:52 UTC: Philipp Fuernstahl answered the letter of 2026-10-20 that the ex-vivo dataset was licensed to a startup and is proprietary, so it cannot be shared; the copy to Sascha Jecklin bounced; the resend through the ROCS contact form is dropped",
   "licence": "not recorded",
   "link": "https://rocs.balgrist.ch/en/contact",
   "how_to_get": [
