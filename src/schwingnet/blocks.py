@@ -72,7 +72,19 @@ CHOICES = {
 }
 
 
+FIELDS = tuple(f.name for f in fields(Blocks))
+
+
+def _plain(value: object) -> bool:
+    # A value a checkpoint's record can hold for a block: a word, a number or a list of words.
+    if isinstance(value, list):
+        return all(isinstance(part, str) for part in value)
+    return isinstance(value, (str, int, float))
+
+
 @beartype
+@ensure(lambda result: all(isinstance(line, str) and line for line in result), "each said in words")
+@ensure(lambda result, blocks: blocks != DEFAULT or not result, "version 1's training holds")
 def problems(blocks: Blocks) -> list[str]:
     """Every way the choices fall outside what exists, in words; empty when they hold."""
     found = []
@@ -116,9 +128,15 @@ def _value(name: str, text: str) -> object:
 
 
 @beartype
+@ensure(lambda result: not problems(result), "the blocks returned hold")
+@ensure(lambda result, pairs: pairs or result == DEFAULT, "no word is version 1's training")
 def parse(pairs: Sequence[str]) -> Blocks:
-    """The run's blocks from KEY=VALUE words, each key at most once, refused whole on any fault."""
-    names = {f.name for f in fields(Blocks)}
+    """The run's blocks from KEY=VALUE words, each key at most once, refused whole on any fault.
+
+    :raises BlockError: a word that names no block, a block named twice, or choices that do not
+        hold, said in words.
+    """
+    names = set(FIELDS)
     # Any, since each key's value has its own field's type, which _value checked by name.
     chosen: dict[str, Any] = {}
     for pair in pairs:
@@ -139,6 +157,8 @@ def parse(pairs: Sequence[str]) -> Blocks:
 
 
 @beartype
+@ensure(lambda result: tuple(result) == FIELDS, "every block, in the dataclass's order")
+@ensure(lambda result: isinstance(result["augment"], list), "augment as a list, as JSON keeps it")
 def as_record(blocks: Blocks) -> dict[str, object]:
     """The blocks as the checkpoint and the card write them, augment as a list."""
     record = asdict(blocks)
@@ -147,8 +167,17 @@ def as_record(blocks: Blocks) -> dict[str, object]:
 
 
 @beartype
+@require(
+    lambda record: record is None or all(_plain(v) for v in record.values()),
+    "a record as JSON gives it: words, numbers and lists of words",
+)
+@ensure(lambda result: not problems(result), "the blocks returned hold")
+@ensure(lambda result, record: record or result == DEFAULT, "no record is version 1's training")
 def from_record(record: Mapping[str, object] | None) -> Blocks:
-    """The blocks a checkpoint names; a checkpoint written before blocks existed is DEFAULT."""
+    """The blocks a checkpoint names; a checkpoint written before blocks existed is DEFAULT.
+
+    :raises BlockError: a record naming a block that does not exist or choices that do not hold.
+    """
     if not record:
         return DEFAULT
     words = [f"{k}={','.join(v) if isinstance(v, list) else v}" for k, v in record.items()]
@@ -209,12 +238,17 @@ SWEEP_LIMIT = 64
 
 
 @beartype
+@ensure(lambda result: 1 <= len(result) <= SWEEP_LIMIT, "one run at least, never past the limit")
+@ensure(lambda result: all(not problems(b) for b in result), "every run planned holds")
 def sweep(base: Sequence[str], vary: Mapping[str, Sequence[str]]) -> list[Blocks]:
     """Every combination of the varied blocks over the base, each checked, in a fixed order.
 
     `vary` maps a block to the values to try (augment values are comma lists, as on the command
     line). A combination that does not hold, such as adam with weight decay, is refused with the
     rest, never skipped, so the plan the owner approves is the plan that runs.
+
+    :raises BlockError: a varied block with no value, a plan of more than SWEEP_LIMIT runs, or a
+        combination that does not hold.
     """
     plans: list[list[str]] = [list(base)]
     for name in sorted(vary):
@@ -228,6 +262,8 @@ def sweep(base: Sequence[str], vary: Mapping[str, Sequence[str]]) -> list[Blocks
 
 
 @beartype
+@ensure(lambda result: all("=" in word for word in result), "each word is KEY=VALUE")
+@ensure(lambda result, blocks: blocks != DEFAULT or not result, "version 1 needs no word")
 def words_of(blocks: Blocks) -> list[str]:
     """The KEY=VALUE words that name these blocks, only those that differ from DEFAULT."""
     record, default = as_record(blocks), as_record(DEFAULT)
