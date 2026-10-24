@@ -46,6 +46,8 @@ import time  # noqa: E402
 import numpy as np  # noqa: E402
 import torch  # noqa: E402
 from PIL import Image, ImageDraw  # noqa: E402
+from schwingnet.blocks import BlockError, as_record, balanced_accuracy, from_record, lr_factor  # noqa: E402
+from schwingnet.blocks import parse as parse_blocks  # noqa: E402
 from schwingnet.catalog import LEVELS, TRANSITIONAL  # noqa: E402
 from schwingnet.flow import wilson  # noqa: E402
 from schwingnet.witness import ROLE_VALIDATION  # noqa: E402
@@ -72,6 +74,9 @@ def load_tool(name):
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+BLOCKS = load_tool("train_blocks")
 
 
 class TrainError(Exception):
@@ -163,8 +168,11 @@ def seed_everything(seed):
     torch.use_deterministic_algorithms(True, warn_only=True)
 
 
-def build_model(weights, device):
-    """A resnet18 with a 27-way head; ImageNet weights come from a file, never a download."""
+def build_model(weights, device, normalise="none"):
+    """A resnet18 with a 27-way head; ImageNet weights come from a file, never a download.
+
+    normalise is the run's block of that name (src/schwingnet/blocks.py): "imagenet" scales the
+    input inside the model, so whatever calls the model scales it the same way."""
     model = resnet18(weights=None)
     if weights:
         state = torch.load(weights, map_location="cpu", weights_only=True)
@@ -173,7 +181,13 @@ def build_model(weights, device):
         if unexpected or [k for k in missing if not k.startswith("fc.")]:
             raise TrainError(f"{weights}: not a resnet18 state_dict ({unexpected} {missing})")
     model.fc = nn.Linear(model.fc.in_features, len(LEVELS))
-    return model.to(device)
+    return BLOCKS.NORMALISERS[normalise](model).to(device)
+
+
+def model_for(facts, device):
+    """An untrained model shaped as a run's checkpoint.json says, its weights to be loaded; a
+    checkpoint from before the blocks existed names none and gets version 1's model."""
+    return build_model(None, device, from_record(facts.get("blocks")).normalise)
 
 
 def predict(model, inputs, device, batch):
@@ -187,16 +201,24 @@ def predict(model, inputs, device, batch):
     return torch.cat(guesses) if guesses else torch.zeros(0, dtype=torch.long)
 
 
-def train_epoch(model, optimiser, inputs, targets, device, batch, generator):
-    """One pass over the training crops in a seeded order; returns the mean loss."""
+def train_epoch(model, optimiser, inputs, targets, device, batch, generator, blocks=None, loss_fn=None):
+    """One pass over the training crops in an order the sampler draws; returns the mean loss.
+
+    With no blocks, version 1's epoch: every crop once in a seeded order, no change to a crop,
+    plain cross-entropy. The run's blocks choose the sampler, the changes made to each batch and
+    the loss (tools/train_blocks.py)."""
     model.train()
-    loss_fn = nn.CrossEntropyLoss()
-    order = torch.randperm(len(inputs), generator=generator)
+    blocks = blocks or from_record(None)
+    loss_fn = loss_fn or nn.CrossEntropyLoss()
+    order = BLOCKS.SAMPLERS[blocks.sampler](targets, generator)
     total = 0.0
     for start in range(0, len(order), batch):
         index = order[start : start + batch]
         optimiser.zero_grad()
-        loss = loss_fn(model(inputs[index].to(device)), targets[index].to(device))
+        crops = inputs[index].to(device)
+        if blocks.augment:
+            crops = BLOCKS.augment(crops, blocks.augment, generator)
+        loss = loss_fn(model(crops), targets[index].to(device))
         loss.backward()
         optimiser.step()
         total += float(loss) * len(index)
@@ -248,7 +270,7 @@ def sha256_of(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
-def model_card(out, args, run, counts, best, elapsed):
+def model_card(out, args, run, counts, best, elapsed, blocks):
     """MODEL.md: what the checkpoint is, what it saw, what it scored, and what it is not."""
     lines = [
         "# SchwingNet v1, level stage",
@@ -257,7 +279,8 @@ def model_card(out, args, run, counts, best, elapsed):
         f"- Stage: level classifier over truth boxes; the detector stage is not in this checkpoint.",
         f"- Architecture: torchvision resnet18, {len(LEVELS)}-way head, crops {args.size}x{args.size}, pad {PAD}.",
         f"- Initial weights: {'ImageNet file ' + sha256_of(args.weights)[:12] if args.weights else 'none (from scratch)'}.",
-        f"- Seed {args.seed}; epochs {args.epochs}; batch {args.batch}; device {args.device}.",
+        f"- Seed {args.seed}; epochs {args.epochs}; batch {args.batch}; learning rate {args.lr}; device {args.device}.",
+        "- Blocks: " + "; ".join(f"{k} {','.join(v) if isinstance(v, list) else v}" for k, v in as_record(blocks).items()) + ".",
         f"- Training crops {counts['train']} from {counts['train_persons']} persons; validation crops {counts['validation']} from {counts['validation_persons']} persons; no test row was read.",
         f"- Best epoch {best['epoch']}: validation accuracy {best['validation_accuracy']:.3f} ({best['validation_ci'][0]:.3f} to {best['validation_ci'][1]:.3f}, n={best['validation_n']}).",
         f"- Checkpoint best.pt sha256 {best['checkpoint_sha256']}; wall time {elapsed:.0f} s.",
@@ -286,6 +309,7 @@ def parse(argv):
     parser.add_argument("--witness", type=int, default=12)
     parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     parser.add_argument("--keep-epochs", type=int, default=1, help="1 keeps every epoch's weights for the evaluator's test witness frames")
+    parser.add_argument("--block", action="append", default=[], metavar="KEY=VALUE", help="one choice of a building block (src/schwingnet/blocks.py), such as normalise=imagenet or augment=box-jitter,intensity; none gives version 1's training")
     return parser.parse_args(argv)
 
 
@@ -354,17 +378,20 @@ class Witness:
         return named
 
 
-def epoch_line(epoch, loss, guesses, val_y, val_crops, started, witness_score):
+def epoch_line(epoch, loss, guesses, val_y, val_crops, started, witness_score, learning_rate=None):
     """One line of metrics.jsonl: the whole validation part, its strata and the witness score."""
     correct = int((guesses == val_y).sum())
     low, high = wilson(correct, len(val_y))
+    strata = strata_of(val_crops, guesses)
     return {
         "epoch": epoch,
         "train_loss": loss,
+        "learning_rate": learning_rate,
         "validation_accuracy": correct / len(val_y),
+        "validation_balanced_accuracy": balanced_accuracy(strata["level"]),
         "validation_ci": [low, high],
         "validation_n": len(val_y),
-        "validation_strata": strata_of(val_crops, guesses),
+        "validation_strata": strata,
         "witness_validation": witness_score,
         "seconds": round(time.monotonic() - started, 1),
     }
@@ -372,7 +399,7 @@ def epoch_line(epoch, loss, guesses, val_y, val_crops, started, witness_score):
 
 def wandb_values(line):
     """The epoch's numbers as flat W&B keys."""
-    values = {"train/loss": line["train_loss"], "validation/accuracy": line["validation_accuracy"], "validation/ci_low": line["validation_ci"][0], "validation/ci_high": line["validation_ci"][1]}
+    values = {"train/loss": line["train_loss"], "train/learning_rate": line.get("learning_rate"), "validation/balanced_accuracy": line.get("validation_balanced_accuracy"), "validation/accuracy": line["validation_accuracy"], "validation/ci_low": line["validation_ci"][0], "validation/ci_high": line["validation_ci"][1]}
     for kind in ("level", "source"):
         for name, (right, total) in line["validation_strata"][kind].items():
             values[f"validation/{kind}/{name}"] = right / total
@@ -380,6 +407,21 @@ def wandb_values(line):
         right, total = line["witness_validation"]
         values["witness/validation_correct"] = right / max(1, total)
     return {k: v for k, v in values.items() if v is not None}
+
+
+def set_rate(optimiser, base_rates, factor):
+    """Each group's rate at its base times the schedule's factor; returns the head's rate, the
+    last group's, which is the base rate itself before the factor."""
+    for group, base in zip(optimiser.param_groups, base_rates, strict=True):
+        group["lr"] = base * factor
+    return optimiser.param_groups[-1]["lr"]
+
+
+def chosen_by(line, blocks):
+    """The number the select block chooses the checkpoint by; ties keep the earlier epoch."""
+    if blocks.select == "balanced-accuracy":
+        return line["validation_balanced_accuracy"]
+    return line["validation_accuracy"]
 
 
 def checkpoint(model, folder, epoch, keep):
@@ -397,6 +439,10 @@ def run(args):
     record = json.loads(run_file.read_text(encoding="utf-8"))
     if args.epochs < 1:
         raise TrainError("a run trains at least one epoch; epoch 0 is the untrained network, drawn before it")
+    try:
+        blocks = parse_blocks(args.block)
+    except BlockError as error:
+        raise TrainError(f"blocks: {error}") from error
     seed_everything(args.seed)
     crops = read_crops(args.catalog, TRAIN_PARTS)
     train_crops = pick(crops, "train", args.max_frames, args.seed)
@@ -410,19 +456,24 @@ def run(args):
     frames = Witness(out, [c for c in crops if c["part"] == "validation"], args.size)
     folder = out / "train"
     (folder / "witness").mkdir(parents=True, exist_ok=True)
-    model = build_model(args.weights, args.device)
-    optimiser = torch.optim.Adam(model.parameters(), lr=args.lr)
+    model = build_model(args.weights, args.device, blocks.normalise)
+    optimiser = BLOCKS.OPTIMISERS[blocks.optimiser](model, args.lr, blocks)
+    base_rates = [group["lr"] for group in optimiser.param_groups]
+    loss_fn = BLOCKS.loss_function(blocks, train_y, LEVELS).to(args.device)
     generator = torch.Generator().manual_seed(args.seed)
-    telemetry = load_tool("wandb_log").Telemetry(out, record, "train", {"epochs": args.epochs, "seed": args.seed, "size": args.size, "batch": args.batch, "lr": args.lr, "weights": bool(args.weights), "train_crops": len(train_crops), "validation_crops": len(val_crops), "witness_frames": len(frames.frames)})
+    telemetry = load_tool("wandb_log").Telemetry(out, record, "train", {"epochs": args.epochs, "seed": args.seed, "size": args.size, "batch": args.batch, "lr": args.lr, "weights": bool(args.weights), "train_crops": len(train_crops), "validation_crops": len(val_crops), "witness_frames": len(frames.frames), "blocks": as_record(blocks)})
     history, best, started = [], None, time.monotonic()
     with (folder / "metrics.jsonl").open("w", encoding="utf-8") as metrics:
         for epoch in range(0, args.epochs + 1):
-            loss = train_epoch(model, optimiser, train_x, train_y, args.device, args.batch, generator) if epoch else None
+            rate = None
+            if epoch:
+                rate = set_rate(optimiser, base_rates, lr_factor(epoch, args.epochs, blocks.warmup_epochs, blocks.schedule))
+            loss = train_epoch(model, optimiser, train_x, train_y, args.device, args.batch, generator, blocks, loss_fn) if epoch else None
             guesses = predict(model, val_x, args.device, args.batch)
-            line = epoch_line(epoch, loss, guesses, val_y, val_crops, started, frames.draw(model, args.device, args.batch, epoch))
+            line = epoch_line(epoch, loss, guesses, val_y, val_crops, started, frames.draw(model, args.device, args.batch, epoch), rate)
             witness_strip([val_crops[i] for i in witness], val_x[witness], guesses[witness], folder / "witness" / f"epoch-{epoch:02d}.png")
             checkpoint(model, folder, epoch, args.keep_epochs)
-            if epoch and (best is None or line["validation_accuracy"] > best["validation_accuracy"]):
+            if epoch and (best is None or chosen_by(line, blocks) > chosen_by(best, blocks)):
                 torch.save(model.state_dict(), folder / "best.pt")
                 best = dict(line, checkpoint_sha256=sha256_of(folder / "best.pt"))
             history.append(line)
@@ -437,8 +488,8 @@ def run(args):
         "train_persons": person_count(train_crops),
         "validation_persons": person_count(val_crops),
     }
-    (folder / "checkpoint.json").write_text(json.dumps(dict(best, counts=counts, levels=list(LEVELS), size=args.size), indent=1) + "\n", encoding="utf-8")
-    model_card(folder, args, record, counts, best, time.monotonic() - started)
+    (folder / "checkpoint.json").write_text(json.dumps(dict(best, counts=counts, levels=list(LEVELS), size=args.size, blocks=as_record(blocks)), indent=1) + "\n", encoding="utf-8")
+    model_card(folder, args, record, counts, best, time.monotonic() - started, blocks)
     telemetry.log(telemetry.images({"accuracy": folder / "accuracy.png"}) | telemetry.videos({f"witness/validation_video/{f['key']}": frames.folder / f["key"] / "anim.gif" for f in frames.frames}))
     telemetry.summary({"best_epoch": best["epoch"], "best_validation_accuracy": best["validation_accuracy"], "checkpoint_sha256": best["checkpoint_sha256"]})
     telemetry.finish()
