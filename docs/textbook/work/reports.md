@@ -53,3 +53,6 @@ About 270 checked, 38 changed (number 9, grade 3, superseded 4, canonical 1, sco
 
 ## 30 writer
 5,903 words, 36 rows, lint ok. Open: Anthropic's current consumer terms (last reads 10 and 13 Oct); whether cswap v0.27.0b1 reached PyPI and Claude Swap Cloud was submitted (row 30); project memory write never tried live; Claude Code features since 3 Oct. Carried: extension 14,706 lines (spec says 14,907, its parts sum to 14,706); privacy statement version 16 (runbook says 15). Not current: Windows minute multiplier (2 vs 1.7), ladder minute costs and $4 prices, the organisation's plan; refresh-token lifetimes Unverified. Source privacy: the owner's name and login, another person's login, the store item id; none in the chapter.
+
+## 24 writer
+5,989 words, 38 rows, lint ok. Open: who decided each item (the record's attribution only); undated decisions dated from their artifact or record (D1 23 Sep, D6 22 Sep). Unsettled: Mendeley 714/716; whether the twenty-point cut from machine labels is NHANES's or the IEEE 236's (datasets row 23); the CTSpinoPelvic1K person audit. Corrected: VinDr's "IRB pending" is stale (HPR 2026-330, the owner's word of 14 Oct); the veterinary "LevelCheck pig set" is the Goswami 2020 pig-limb phantom (22 Oct). Source privacy: grid paths with a login, e-mail addresses, a payment receipt number, the owner's first name; none copied.
