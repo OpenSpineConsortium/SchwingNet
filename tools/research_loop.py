@@ -17,6 +17,7 @@ code, not Claude, so that the cap, the switch and the choice of item can be test
     python3 tools/research_loop.py runs [--limit N]
     python3 tools/research_loop.py log RUN_ID
     python3 tools/research_loop.py dispatch --requests FILE --repo OWNER/NAME [--limit N]
+    python3 tools/research_loop.py why EXECUTION_FILE   # the result and the session's last words, secrets masked
 
 admit counts the day's runs by the marker artifact research-runs each admitted run keeps, as
 synthesis.yml counts its reads, and stops after three failures in a row for six hours. pick chooses
@@ -33,8 +34,9 @@ can start a workflow: it reads web pages and issue text it cannot vouch for, and
 RESEARCH_READ_TOKEN only reads the grid's runs, for runs and log. A grid command is one committed
 program with plain arguments (command_problem): grid.yml runs whatever it is given with bash on a
 university node, in a checkout of main, so a shell operator, a substitution, an inline program (-c)
-or a file that is not on main is refused, at the queue and again at the dispatch. Standard library
-only.
+or a file that is not on main is refused, at the queue and again at the dispatch. why reads the
+action's execution file when the session step fails, since the action hides the session's output
+and a run refused before its first turn would otherwise say only is_error. Standard library only.
 """
 
 import argparse
@@ -303,6 +305,72 @@ def prompt(args):
     """Print prompt= for GITHUB_OUTPUT."""
     brief = Path(args.brief).read_text(encoding="utf-8")
     print(block("prompt", prompt_text(brief, load_json(args.pick), args.run)))
+    return 0
+
+
+# Why a session ended in error. claude-code-action shows the session's output only whole, so a
+# run that fails before its first turn (a token refused, a limit reached) leaves a log that says
+# only is_error:true; the execution file it writes, which the usage recorder reads too, holds the
+# result and the session's last words.
+
+SECRET_SHAPES = re.compile(r"sk-ant-[A-Za-z0-9_-]{8,}|gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}"
+                           r"|[A-Za-z0-9+/_=-]{40,}")
+WHY_MOST = 400
+
+
+def masked(text):
+    """Text with the shapes of common secrets replaced, since an error can quote a header."""
+    return SECRET_SHAPES.sub("[masked]", text)
+
+
+def last_result(messages):
+    """The session's last result message, or None when it ended before one."""
+    return next((m for m in reversed(messages) if isinstance(m, dict) and m.get("type") == "result"), None)
+
+
+def last_words(messages, result):
+    """What the session said last: the result's text, else the last assistant text."""
+    said = result.get("result") if isinstance(result.get("result"), str) else ""
+    if said.strip():
+        return said.strip()
+    for entry in reversed(messages):
+        if not (isinstance(entry, dict) and entry.get("type") == "assistant"):
+            continue
+        content = (entry.get("message") or {}).get("content") or []
+        texts = [c.get("text", "") for c in content if isinstance(c, dict) and c.get("type") == "text"]
+        if any(t.strip() for t in texts):
+            return "\n".join(t for t in texts if t.strip()).strip()
+    return ""
+
+
+def why_text(messages):
+    """The lines of the step summary: the result's fields and the session's last words, masked."""
+    result = last_result(messages)
+    if result is None:
+        return ("- The session left no result: it ended before Claude answered "
+                "(a start-up failure, a timeout or a cancel).")
+    lines = [f"- is_error: {bool(result.get('is_error'))}, subtype: {result.get('subtype', '')}, "
+             f"turns: {result.get('num_turns', '')}, duration: {result.get('duration_ms', '')} ms"]
+    said = last_words(messages, result)
+    if said:
+        lines.append("- The session's last words: " + masked(said)[:WHY_MOST])
+    else:
+        lines.append("- The session said nothing.")
+    return "\n".join(lines)
+
+
+def why(args):
+    """Print why the session ended, from the action's execution file, for the step summary."""
+    path = Path(args.file)
+    try:
+        messages = json.loads(path.read_text(encoding="utf-8", errors="replace"))
+    except (OSError, ValueError):
+        print(f"### Why the session ended\n\n- No execution file could be read at {path.name}: "
+              "the action ended before writing one.")
+        return 0
+    if not isinstance(messages, list):
+        messages = [messages]
+    print("### Why the session ended\n\n" + why_text(messages))
     return 0
 
 
@@ -695,6 +763,8 @@ def parser():
     q.add_argument("--brief", required=True)
     q.add_argument("--pick", required=True)
     q.add_argument("--run", default="")
+    y = sub.add_parser("why")
+    y.add_argument("file")
     g = sub.add_parser("grid")
     g.add_argument("--command", dest="grid_command", required=True)
     g.add_argument("--start", action="store_true")
@@ -731,6 +801,8 @@ def main(argv=None):
         return pick(args)
     if args.command == "prompt":
         return prompt(args)
+    if args.command == "why":
+        return why(args)
     if args.command == "runs":
         return runs(args)
     if args.command == "log":

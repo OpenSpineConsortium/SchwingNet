@@ -152,6 +152,8 @@ jobs:
         run: |
           cp tools/usage.py "$RUNNER_TEMP/usage.py"
           cp -r tools/profile.py tools/economics.py tools/sdlc_protocol "$RUNNER_TEMP/" || true
+          # the clerk's why, read after the session from this copy, since the session can edit tools/
+          cp tools/research_loop.py tools/claims_rank.py "$RUNNER_TEMP/"
           python3 tools/research_loop.py prompt --brief .github/symphony/research.md --pick "$RUNNER_TEMP/pick.json" \
             --run "$RUN_URL" >> "$GITHUB_OUTPUT"
           # the model, effort and fallback the Tokens tab's main tile sets; a variable that does
@@ -181,6 +183,17 @@ jobs:
             ${{ steps.brief.outputs.effort != '' && format('--effort {0}', steps.brief.outputs.effort) || '' }}
             ${{ steps.brief.outputs.fallback != '' && format('--fallback-model {0}', steps.brief.outputs.fallback) || '' }}
             --allowedTools "Read,Write,Edit,MultiEdit,Glob,Grep,WebSearch,WebFetch,Bash(git:*),Bash(gh:*),Bash(python3:*),Bash(bash:*),Bash(jq:*),Bash(ls:*),Bash(cat:*),Bash(head:*),Bash(tail:*),Bash(wc:*),Bash(sort:*),Bash(diff:*),Bash(mkdir:*),Bash(rm:*),Bash(mv:*),Bash(cp:*)"
+      - name: Why the session ended, when it ended in error
+        # the action shows the session's output only whole, so a run refused before its first turn
+        # (a token no longer valid, a limit reached) would otherwise leave a log that says only
+        # is_error; the result's fields and the session's last words go to the log and the summary,
+        # with the shapes of secrets masked
+        if: always() && steps.claude.outcome == 'failure'
+        env:
+          EXECUTION_FILE: ${{ steps.claude.outputs.execution_file }}
+        run: >-
+          python3 "$RUNNER_TEMP/research_loop.py" why
+          "${EXECUTION_FILE:-$RUNNER_TEMP/claude-execution-output.json}" | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Whether the session asked for grid work
         id: requests
         if: steps.admit.outputs.admit == 'true' && steps.pick.outputs.mode != 'none'
