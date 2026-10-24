@@ -4,7 +4,7 @@ The figures the synthesis has settled, and every text checked against them.
 
 A concept is a figure and the words that say what it is a figure of. Two kinds are kept in work/out/concepts.json. A dataset count comes from a record under data/sources/: its name gives the aliases a text calls the set by (work/aliases.json replaces them where the name gives none or the wrong ones), and each count is a figure with the noun that counts it. A settled figure comes from a number verdict of the contradictions record that put two values on one quantity: its anchors are the rarer words its two quotes share, with the quantity's words that either quote carries, and each value is current, superseded or open by the verdict. updated-later makes current the side whose figure the ruling's hint carries, else the later page by the inventory's dates; same-number-restated makes both current; a confirmed contradiction, cannot-tell or an updated-later whose later side neither says leaves both open. A settled figure is used only when its own two quotes pass the rule it is checked by, so one whose evidence the rule does not recognise is listed and not used.
 
-Every artifact's text, every research note under docs/research/ and each dataset record's own words are then read passage by passage. In a passage that names a dataset, each figure goes to the nearest name within 160 characters, or to every name equally near: equal to one of those sets' counts it agrees, and where a count's noun follows it, it is rounded when it is that count written with fewer digits and differs when it is within a tenth of it (a thirtieth for a size). A dataset record's own words are checked against its own counts the same way. A passage that carries at least two of a settled figure's anchors, half of their weight by rarity, and one of its values written the same way or rounded agrees, is superseded or is open as that value is; a passage in the figure's own two artifacts is its evidence and is not checked. Nothing here judges: a check is a script's match, for a person or a skeptic to read.
+Every artifact's text, every research note under docs/research/ and each dataset record's own words are then rid of e-mail addresses and phone numbers, as extract.py rids an artifact's, scrubbed of what the folder's rule keeps out of the records (redact.py) and read passage by passage, so that no passage, no words a check keeps and no check's key holds any of it, whole or cut; a check's key therefore changes with those patterns, and `synth.py rekey` carries the stamp's word over such a change. In a passage that names a dataset, each figure goes to the nearest name within 160 characters, or to every name equally near: equal to one of those sets' counts it agrees, and where a count's noun follows it, it is rounded when it is that count written with fewer digits and differs when it is within a tenth of it (a thirtieth for a size). A dataset record's own words are checked against its own counts the same way. A passage that carries at least two of a settled figure's anchors, half of their weight by rarity, and one of its values written the same way or rounded agrees, is superseded or is open as that value is; a passage in the figure's own two artifacts is its evidence and is not checked. Nothing here judges: a check is a script's match, for a person or a skeptic to read.
 
 Rendered on 2026-10-23 from 277 texts by work/tools/synth.py concepts, or by the join of a run of .github/workflows/synthesis.yml that read something. That workflow checks every text against the ledger daily, on Run workflow and on a push a person or an App makes that changes an artifact, a research note or a dataset record, and the issue labelled synthesis lists what each run found that the stamp of 2026-10-23 had not seen. Edit the records and render again rather than editing this file.
 
@@ -12,7 +12,7 @@ Rendered on 2026-10-23 from 277 texts by work/tools/synth.py concepts, or by the
 
 - Dataset counts: 175, from 86 records under data/sources/.
 - Settled figures: 63, 33 used and 30 not used (listed at the end).
-- Checks: 797 agrees, 3 rounded, 3 superseded, 52 open, 24 differs.
+- Checks: 802 agrees, 3 rounded, 3 superseded, 52 open, 24 differs.
 
 ## Dataset counts
 
@@ -150,7 +150,7 @@ Called 'xkt857dsxk'; counts subjects 338, classes 3; 4 lines agree.
 
 ### Geneva hip phantom (BV Pulsera) (geneva_hip)
 
-Called 'geneva hip'; counts frames 116; 7 lines agree.
+Called 'geneva hip'; counts frames 116; 8 lines agree.
 
 ### Guide3D (ACCV 2024, AIRVLab) (guide3d)
 
@@ -240,7 +240,7 @@ Called '2d 3d gs'; counts frames 18; 4 lines agree.
 
 ### LUMOS (Zhejiang University) (lumos)
 
-Called 'lumos'; counts patients 803, radiographs 1620, ct_volumes 280, size_gb 46.4; 24 lines agree.
+Called 'lumos'; counts patients 803, radiographs 1620, ct_volumes 280, size_gb 46.4; 28 lines agree.
 
 ### Maastricht UMC+ cervical flexion-extension cine (van Santbrink 2026) (maastricht_cervical)
 

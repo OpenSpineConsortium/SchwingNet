@@ -4718,7 +4718,7 @@
    "text": "6-10-21; not fetched; the 1,000-film set is an open figshare download (27986417, one zip of 2,098,209,792 bytes), entered in grid/fetch-xray.json as aariz on 2026-10-21 (issue #40); the 400-film ISBI 2015 set's link is still to confirm; pediatric anchors for the top of the cervical counter from seve"
   },
   {
-   "key": "fa7eeb9037e080b7",
+   "key": "c40372c248bc5384",
    "concept": "dataset:aariz_cephalograms:films",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-inventory.md",
@@ -4728,7 +4728,7 @@
    "text": "| Aariz cephalometric benchmark (Khalid, Fraz 2023) and the ISBI 2015 cephalograms | `[the lab volume's data root]/aariz` | films 1,000, devices 7, landmarks 29, isbi 2015 films 400, zip bytes 2,098,209,792 |"
   },
   {
-   "key": "abf96d0b9cf7b84d",
+   "key": "b6facce680a37ee8",
    "concept": "dataset:aariz_cephalograms:films",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-reproduce.md",
@@ -4788,7 +4788,7 @@
    "text": "6-10-21; not fetched; the 1,000-film set is an open figshare download (27986417, one zip of 2,098,209,792 bytes), entered in grid/fetch-xray.json as aariz on 2026-10-21 (issue #40); the 400-film ISBI 2015 set's link is still to confirm; pediatric anchors for the top of the cervical counter from seve"
   },
   {
-   "key": "ee27913c3fef12bc",
+   "key": "5c7e6294d4d190e4",
    "concept": "dataset:aariz_cephalograms:isbi_2015_films",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-inventory.md",
@@ -4798,7 +4798,7 @@
    "text": "| Aariz cephalometric benchmark (Khalid, Fraz 2023) and the ISBI 2015 cephalograms | `[the lab volume's data root]/aariz` | films 1,000, devices 7, landmarks 29, isbi 2015 films 400, zip bytes 2,098,209,792 |"
   },
   {
-   "key": "1602110cbd0fcd13",
+   "key": "1e591c15d44b4b75",
    "concept": "dataset:aariz_cephalograms:isbi_2015_films",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-reproduce.md",
@@ -4888,7 +4888,7 @@
    "text": "6-10-21; not fetched; the 1,000-film set is an open figshare download (27986417, one zip of 2,098,209,792 bytes), entered in grid/fetch-xray.json as aariz on 2026-10-21 (issue #40); the 400-film ISBI 2015 set's link is still to confirm; pediatric anchors for the top of the cervical counter from seve"
   },
   {
-   "key": "711de048a48358f5",
+   "key": "09776400c023b0d3",
    "concept": "dataset:aariz_cephalograms:landmarks",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-inventory.md",
@@ -4898,7 +4898,7 @@
    "text": "| Aariz cephalometric benchmark (Khalid, Fraz 2023) and the ISBI 2015 cephalograms | `[the lab volume's data root]/aariz` | films 1,000, devices 7, landmarks 29, isbi 2015 films 400, zip bytes 2,098,209,792 |"
   },
   {
-   "key": "2686b18ff0fe7cda",
+   "key": "6b8601c1d05304cb",
    "concept": "dataset:aariz_cephalograms:landmarks",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-reproduce.md",
@@ -4928,7 +4928,7 @@
    "text": "6-10-21; not fetched; the 1,000-film set is an open figshare download (27986417, one zip of 2,098,209,792 bytes), entered in grid/fetch-xray.json as aariz on 2026-10-21 (issue #40); the 400-film ISBI 2015 set's link is still to confirm; pediatric anchors for the top of the cervical counter from seve"
   },
   {
-   "key": "436d32040641954b",
+   "key": "f37eddcbda1d4bf2",
    "concept": "dataset:aariz_cephalograms:zip_bytes",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-inventory.md",
@@ -4938,7 +4938,7 @@
    "text": "| Aariz cephalometric benchmark (Khalid, Fraz 2023) and the ISBI 2015 cephalograms | `[the lab volume's data root]/aariz` | films 1,000, devices 7, landmarks 29, isbi 2015 films 400, zip bytes 2,098,209,792 |"
   },
   {
-   "key": "bdb6f7175fd801a6",
+   "key": "1e68fb6901d94fdc",
    "concept": "dataset:aariz_cephalograms:zip_bytes",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-reproduce.md",
@@ -4968,7 +4968,7 @@
    "text": "| AASCE / BoostNet whole-spine films | 609 labelled AP whole-spine films (481 BoostNet training + 128 BoostNet test) and 98 challenge-test films whose landmarks the release never published; both copies are on Ceph: the GitHub mirror holds all 707, and an older request-form copy holds 481 + 98 = 579 "
   },
   {
-   "key": "97d97ec92b4f2f72",
+   "key": "dd55af6ca80a7bd8",
    "concept": "dataset:aasce:challenge_test_films",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-inventory.md",
@@ -4978,7 +4978,7 @@
    "text": "| AASCE / BoostNet whole-spine films | `[the lab volume's data root]/thoracic_xr/mirror_zlinzju_ke30_u7_AASCE2019; the 579 at [the lab volume's data root]/aasce2019_boostnet/raw/aasce` | labelled films 609, challenge test films 98, thoracic test films 608 |"
   },
   {
-   "key": "f897b42950f97571",
+   "key": "6990942078e1323d",
    "concept": "dataset:aasce:challenge_test_films",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-reproduce.md",
@@ -5012,7 +5012,7 @@
    "concept": "dataset:aasce:labelled_films",
    "kind": "dataset",
    "source": "SchwingNet/any-view-spine-plan",
-   "line": 114,
+   "line": 126,
    "outcome": "agrees",
    "value": "609",
    "text": "| Thoracic | | AASCE 609 | | AASCE 294; chest sets not unpacked | | none held | | none held | | CTSpine1K; VerSe; TotalSeg; RibFrac 660 |"
@@ -5088,7 +5088,7 @@
    "text": "| AASCE / BoostNet whole-spine films | 609 labelled AP whole-spine films (481 BoostNet training + 128 BoostNet test) and 98 challenge-test films whose landmarks the release never published; both copies are on Ceph: the GitHub mirror holds all 707, and an older request-form copy holds 481 + 98 = 579 "
   },
   {
-   "key": "ebf1d2ca651e4a6c",
+   "key": "c897863e399e5f57",
    "concept": "dataset:aasce:labelled_films",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-inventory.md",
@@ -5098,7 +5098,7 @@
    "text": "| AASCE / BoostNet whole-spine films | `[the lab volume's data root]/thoracic_xr/mirror_zlinzju_ke30_u7_AASCE2019; the 579 at [the lab volume's data root]/aasce2019_boostnet/raw/aasce` | labelled films 609, challenge test films 98, thoracic test films 608 |"
   },
   {
-   "key": "874edc3141a9813a",
+   "key": "e879fdf633e38765",
    "concept": "dataset:aasce:labelled_films",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-reproduce.md",
@@ -5188,7 +5188,7 @@
    "text": "| aasce2019_boostnet | 1853 | 120.3 MB | 634 | 608 | 26 | json 611, txt 608, png 608 | release_labels |"
   },
   {
-   "key": "f6bec8e46d86d736",
+   "key": "4554427bd6d5f964",
    "concept": "dataset:aasce:thoracic_test_films",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-inventory.md",
@@ -5198,7 +5198,7 @@
    "text": "| AASCE / BoostNet whole-spine films | `[the lab volume's data root]/thoracic_xr/mirror_zlinzju_ke30_u7_AASCE2019; the 579 at [the lab volume's data root]/aasce2019_boostnet/raw/aasce` | labelled films 609, challenge test films 98, thoracic test films 608 |"
   },
   {
-   "key": "904eb637dd320f33",
+   "key": "0e4c374761000058",
    "concept": "dataset:aasce:thoracic_test_films",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-reproduce.md",
@@ -5348,7 +5348,7 @@
    "text": "STOIC2021 training set, 2,000 chest CT as MHA on AWS Open Data (s3://stoic2021-training; LICENCE.txt read 2026-09-23), about 240 GB; also inside CADS (gated) and re-packed as AUC23 'Lung CT COVID-19'"
   },
   {
-   "key": "02598452994cdd23",
+   "key": "aa9c4e53fccd0153",
    "concept": "dataset:bournemouth_cervical_qf:people",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-inventory.md",
@@ -5368,7 +5368,7 @@
    "text": "252 lateral flexion and extension sequences from 63 people at 15 fps, 1024 x 1024 16-bit DICOM; the deposit holds the per-frame vertebral corner tracks (.mat, 24 MB) and no pixels"
   },
   {
-   "key": "f6fa852bf2204d8f",
+   "key": "36633810d900db0c",
    "concept": "dataset:bournemouth_cervical_qf:sequences",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-inventory.md",
@@ -5388,7 +5388,7 @@
    "text": "252 lateral flexion and extension sequences from 63 people at 15 fps, 1024 x 1024 16-bit DICOM; the deposit holds the per-frame vertebral corner tracks (.mat, 24 MB) and no pixels"
   },
   {
-   "key": "15c2403af5c2087b",
+   "key": "825db9ccaffc50de",
    "concept": "dataset:bournemouth_lumbar_qf:subjects",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-inventory.md",
@@ -5958,21 +5958,21 @@
    "text": "You have more real pairs than the report assumed. BUU-LSPINE is held: 3,600 people with an AP and a lateral lumbar film each, with end-plate lines. That is on the scale of LatXGen's 2,611 training pairs. C-ArmLSpine adds 149 cases with AP and lateral frames and the CBCT of the same patient. COBRA ad"
   },
   {
-   "key": "4972ed6e7b70b295",
+   "key": "d1fc1e26fc0e8804",
    "concept": "dataset:carmlspine:cases",
    "kind": "dataset",
    "source": "SchwingNet/any-view-spine-plan",
    "line": 92,
    "outcome": "agrees",
    "value": "149",
-   "text": "| C-ArmLSpine | | held | | 149 cases, 299 spot frames, 149 CBCT | | Lumbar | | Gold truth already projected. It is the test device, so its test persons stay out of every training. |"
+   "text": "| C-ArmLSpine | | held | | 149 cases, 299 spot frames, 149 CBCT | | Lumbar | | Level names on the CBCT from two automatic labellers (TotalSegmentator and SPINEPS/VERIDAH, agreeing on 814 of 910 bodies), no body masks: ITK-SNAP adds them. It is the test device, so its test persons stay out of every t"
   },
   {
    "key": "7d864bcc6f6ca44b",
    "concept": "dataset:carmlspine:cases",
    "kind": "dataset",
    "source": "SchwingNet/any-view-spine-plan",
-   "line": 116,
+   "line": 128,
    "outcome": "agrees",
    "value": "149",
    "text": "| Lumbar | | BUU 7,203 films (3,600 people); BUU 2000 relabel 2,000; C-ArmLSpine 297 spots; NHANES II 543 landmarked | | NHANES II part of 16,531; FluoroCap 322,914 panels; fluoro clips 690,554 frames; C-ArmLSpine 51,429 frames | | 3,600 (BUU) | | 149 (C-ArmLSpine) + COBRA | | CTSpinoPelvic1K 802; C"
@@ -6028,7 +6028,7 @@
    "text": "| Whether C-ArmLSpine's 149 cases are 149 living people, under what ethics approval, and how its pose was obtained | the fourth research pass; the literature state | the person unit of every real-frame interval |"
   },
   {
-   "key": "baf9d3867568a351",
+   "key": "80b93330bd057631",
    "concept": "dataset:carmlspine:cases",
    "kind": "dataset",
    "source": "SchwingNet/schwingnet-data-registry",
@@ -6128,7 +6128,7 @@
    "text": "| C-ArmLSpine (Surgio-B51) | 149 lumbar intraoperative cases from one mobile C-arm: AP and lateral spot frames with a CBCT of the same device | yes, lumbar, projected from the CBCT (two labellers agreeing on 814 of 910 bodies); 3 real L6 cases | HAVE | the test set and the demo; never trained on in "
   },
   {
-   "key": "faa609144a7b8190",
+   "key": "dd8c47baa055ffc9",
    "concept": "dataset:carmlspine:cases",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-inventory.md",
@@ -6198,21 +6198,21 @@
    "text": "You have more real pairs than the report assumed. BUU-LSPINE is held: 3,600 people with an AP and a lateral lumbar film each, with end-plate lines. That is on the scale of LatXGen's 2,611 training pairs. C-ArmLSpine adds 149 cases with AP and lateral frames and the CBCT of the same patient. COBRA ad"
   },
   {
-   "key": "7519dc8634f8af30",
+   "key": "e13798f4ead0adc3",
    "concept": "dataset:carmlspine:cbct_volumes",
    "kind": "dataset",
    "source": "SchwingNet/any-view-spine-plan",
    "line": 92,
    "outcome": "agrees",
    "value": "149",
-   "text": "| C-ArmLSpine | | held | | 149 cases, 299 spot frames, 149 CBCT | | Lumbar | | Gold truth already projected. It is the test device, so its test persons stay out of every training. |"
+   "text": "| C-ArmLSpine | | held | | 149 cases, 299 spot frames, 149 CBCT | | Lumbar | | Level names on the CBCT from two automatic labellers (TotalSegmentator and SPINEPS/VERIDAH, agreeing on 814 of 910 bodies), no body masks: ITK-SNAP adds them. It is the test device, so its test persons stay out of every t"
   },
   {
    "key": "1e634e5344d8636a",
    "concept": "dataset:carmlspine:cbct_volumes",
    "kind": "dataset",
    "source": "SchwingNet/any-view-spine-plan",
-   "line": 116,
+   "line": 128,
    "outcome": "agrees",
    "value": "149",
    "text": "| Lumbar | | BUU 7,203 films (3,600 people); BUU 2000 relabel 2,000; C-ArmLSpine 297 spots; NHANES II 543 landmarked | | NHANES II part of 16,531; FluoroCap 322,914 panels; fluoro clips 690,554 frames; C-ArmLSpine 51,429 frames | | 3,600 (BUU) | | 149 (C-ArmLSpine) + COBRA | | CTSpinoPelvic1K 802; C"
@@ -6258,7 +6258,7 @@
    "text": "| Whether C-ArmLSpine's 149 cases are 149 living people, under what ethics approval, and how its pose was obtained | the fourth research pass; the literature state | the person unit of every real-frame interval |"
   },
   {
-   "key": "ec703df32f70a439",
+   "key": "5f991c196c7b9403",
    "concept": "dataset:carmlspine:cbct_volumes",
    "kind": "dataset",
    "source": "SchwingNet/schwingnet-data-registry",
@@ -6338,7 +6338,7 @@
    "text": "| C-ArmLSpine (Surgio-B51) | 149 lumbar intraoperative cases from one mobile C-arm: AP and lateral spot frames with a CBCT of the same device | yes, lumbar, projected from the CBCT (two labellers agreeing on 814 of 910 bodies); 3 real L6 cases | HAVE | the test set and the demo; never trained on in "
   },
   {
-   "key": "4f81a9a0ab9af24e",
+   "key": "10e395478f30aeee",
    "concept": "dataset:carmlspine:cbct_volumes",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-inventory.md",
@@ -6428,7 +6428,7 @@
    "text": "1. #10, retitled: the registry, the shards and the splits (sections 3.1 to 3.3), with the ingestion checks and the Split tests; C-ArmLSpine and the sweeps registered first. CPU jobs only."
   },
   {
-   "key": "67d14454f77b4b3d",
+   "key": "10b84c6337d8ccbd",
    "concept": "dataset:carmlspine:size_gb",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-inventory.md",
@@ -6438,14 +6438,14 @@
    "text": "| C-ArmLSpine (Surgio-B51) | `[the lab volume's data root]/carmlspine` | cases 149, spot frames 299, cbct volumes 149, size gb 86.834, l6 cases 3 |"
   },
   {
-   "key": "62cd0393e6da6566",
+   "key": "9ff6432cce859429",
    "concept": "dataset:carmlspine:spot_frames",
    "kind": "dataset",
    "source": "SchwingNet/any-view-spine-plan",
    "line": 92,
    "outcome": "agrees",
    "value": "299",
-   "text": "| C-ArmLSpine | | held | | 149 cases, 299 spot frames, 149 CBCT | | Lumbar | | Gold truth already projected. It is the test device, so its test persons stay out of every training. |"
+   "text": "| C-ArmLSpine | | held | | 149 cases, 299 spot frames, 149 CBCT | | Lumbar | | Level names on the CBCT from two automatic labellers (TotalSegmentator and SPINEPS/VERIDAH, agreeing on 814 of 910 bodies), no body masks: ITK-SNAP adds them. It is the test device, so its test persons stay out of every t"
   },
   {
    "key": "3bc4394816126ac2",
@@ -6508,7 +6508,7 @@
    "text": "and renders among them) and its 2000 relabel (2,000 of 4,000 JPEG), C-ArmLSpine 299 spot frames"
   },
   {
-   "key": "b887c88ada34f952",
+   "key": "783ab1e88471a586",
    "concept": "dataset:carmlspine:spot_frames",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-inventory.md",
@@ -6548,7 +6548,7 @@
    "text": "| C-ArmLSpine CBCT projection sweeps (case134, case39) | the only confirmed consecutive-frame sequences with a paired volume: raw CBCT projections at quantised gantry angles, 301 XA frames each; rotational, not cranio-caudal | yes: project the CBCT level labels through the known gantry angles | HAVE"
   },
   {
-   "key": "5f416b8b7bf3d509",
+   "key": "23f5a04d57777771",
    "concept": "dataset:carmlspine_sweeps:projections",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-inventory.md",
@@ -6558,7 +6558,7 @@
    "text": "| C-ArmLSpine CBCT projection sweeps (case134, case39) | `[the lab volume's data root]/carmlspine (case134/ori, case39/CBCT); [the lab volume's data root]/realxray/carmlspine_sweep` | sweeps 2, projections 602 |"
   },
   {
-   "key": "1997e4b18e7bccf0",
+   "key": "e71ca9000905b0e4",
    "concept": "dataset:carmlspine_sweeps:projections",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-reproduce.md",
@@ -6568,7 +6568,7 @@
    "text": "- Registry: link https://zenodo.org/records/22768651; grid path `[the lab volume's data root]/carmlspine (case134/ori, case39/CBCT); [the lab volume's data root]/realxray/carmlspine_sweep`; counts sweeps 2, projections 602."
   },
   {
-   "key": "d4b809453fa79eb6",
+   "key": "3d395eedf105a025",
    "concept": "dataset:carmlspine_sweeps:projections",
    "kind": "dataset",
    "source": "notes:docs/research/demo-plan.md",
@@ -6948,7 +6948,7 @@
    "text": "| COBRA2026 on the grid, all projections | every projection of the 692 public cases | same | HAVE | 808.615 GB on Ceph | cases 692, projections 375,618, size gb 808.615 | CC BY-NC 4.0 | [link](https://zenodo.org/records/21322350) |"
   },
   {
-   "key": "9a66edc9ebe9e144",
+   "key": "edad55c0e2cc6de2",
    "concept": "dataset:cobra_total:cases",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-inventory.md",
@@ -6958,7 +6958,7 @@
    "text": "| COBRA2026 on the grid, all projections | `[the lab volume's data root]/cobra2026` | cases 692, projections 375,618, size gb 808.615 |"
   },
   {
-   "key": "4c1f6dd2b0c5d92e",
+   "key": "1b0efed614854b72",
    "concept": "dataset:cobra_total:cases",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-reproduce.md",
@@ -7028,7 +7028,7 @@
    "text": "| COBRA2026 on the grid, all projections | every projection of the 692 public cases | same | HAVE | 808.615 GB on Ceph | cases 692, projections 375,618, size gb 808.615 | CC BY-NC 4.0 | [link](https://zenodo.org/records/21322350) |"
   },
   {
-   "key": "02411b1f257aed84",
+   "key": "31e1f72dd1dec04c",
    "concept": "dataset:cobra_total:projections",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-inventory.md",
@@ -7038,7 +7038,7 @@
    "text": "| COBRA2026 on the grid, all projections | `[the lab volume's data root]/cobra2026` | cases 692, projections 375,618, size gb 808.615 |"
   },
   {
-   "key": "7822fd588e3d719a",
+   "key": "2b9e6c5b2478cd22",
    "concept": "dataset:cobra_total:projections",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-reproduce.md",
@@ -7068,7 +7068,7 @@
    "text": "| COBRA2026 on the grid, all projections | every projection of the 692 public cases | same | HAVE | 808.615 GB on Ceph | cases 692, projections 375,618, size gb 808.615 | CC BY-NC 4.0 | [link](https://zenodo.org/records/21322350) |"
   },
   {
-   "key": "7ab6a0e4960c58ca",
+   "key": "cc93784228827402",
    "concept": "dataset:cobra_total:size_gb",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-inventory.md",
@@ -7078,7 +7078,7 @@
    "text": "| COBRA2026 on the grid, all projections | `[the lab volume's data root]/cobra2026` | cases 692, projections 375,618, size gb 808.615 |"
   },
   {
-   "key": "6e744fb629963c6e",
+   "key": "20dbf8c41db7e057",
    "concept": "dataset:cobra_total:size_gb",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-reproduce.md",
@@ -7382,7 +7382,7 @@
    "concept": "dataset:ctspinopelvic1k:ct_volumes",
    "kind": "dataset",
    "source": "SchwingNet/any-view-spine-plan",
-   "line": 116,
+   "line": 128,
    "outcome": "agrees",
    "value": "802",
    "text": "| Lumbar | | BUU 7,203 films (3,600 people); BUU 2000 relabel 2,000; C-ArmLSpine 297 spots; NHANES II 543 landmarked | | NHANES II part of 16,531; FluoroCap 322,914 panels; fluoro clips 690,554 frames; C-ArmLSpine 51,429 frames | | 3,600 (BUU) | | 149 (C-ArmLSpine) + COBRA | | CTSpinoPelvic1K 802; C"
@@ -7392,7 +7392,7 @@
    "concept": "dataset:ctspinopelvic1k:ct_volumes",
    "kind": "dataset",
    "source": "SchwingNet/any-view-spine-plan",
-   "line": 118,
+   "line": 130,
    "outcome": "agrees",
    "value": "802",
    "text": "| Sacral / lumbosacral | | DeepFluoro 36 frames; Geneva hip 234 (pelvis) | | DeepFluoro 94,566 vendor frames; KUB-StoneX 6,810 | | none held | | COBRA 692; DeepFluoro 6 specimens; Ljubljana 18 frames | | CTSpinoPelvic1K 802; CTPelvic1K 178; PENGWIN 680 |"
@@ -7632,7 +7632,7 @@
    "concept": "dataset:ctspinopelvic1k:l6_cases",
    "kind": "dataset",
    "source": "SchwingNet/any-view-spine-plan",
-   "line": 118,
+   "line": 130,
    "outcome": "agrees",
    "value": "18",
    "text": "| Sacral / lumbosacral | | DeepFluoro 36 frames; Geneva hip 234 (pelvis) | | DeepFluoro 94,566 vendor frames; KUB-StoneX 6,810 | | none held | | COBRA 692; DeepFluoro 6 specimens; Ljubljana 18 frames | | CTSpinoPelvic1K 802; CTPelvic1K 178; PENGWIN 680 |"
@@ -7718,14 +7718,14 @@
    "text": "The deployment risk is detection, not counting. A detector trained on real films reaches 99.14% per-body recall on real radiographs; the same architecture trained on renders only reaches 71.67%, and with its boxes exactness fell from 100% to 30.06% on 79 held-out spines. On DeepFluoro (366 real C-ar"
   },
   {
-   "key": "d9eda758683c72c2",
+   "key": "69ef44886bc60a01",
    "concept": "dataset:deepfluoro:h5_frames",
    "kind": "dataset",
    "source": "SchwingNet/any-view-spine-plan",
    "line": 94,
    "outcome": "agrees",
    "value": "366",
-   "text": "| DeepFluoro | | held | | 6 cadavers, 366 + 2,659 frames, 19 CT | | Pelvis and hip, some lumbar | | 2,293 vendor frames unused. Registration gives their truth. |"
+   "text": "| DeepFluoro | | held | | 6 cadavers, 366 + 2,659 frames, 19 CT | | Pelvis and hip, some lumbar | | Seven-class labels ship, the vertebrae as one class: ITK-SNAP splits them into named lumbar bodies. 2,293 vendor frames unused; registration gives their truth. |"
   },
   {
    "key": "b099e9f1b8394daa",
@@ -7838,7 +7838,7 @@
    "text": "| DeepFluoro (Cios Fusion) | 6 cadaver specimens: 366 H5 frames with CTs, and a vendor DICOM deposit of 2,659 frames and 19 CTs | pelvis and lower lumbar, from the CT | HAVE | the sacrum detector's training; 2,293 vendor frames unused with no written criterion | specimens 6, h5 frames 366, vendor fr"
   },
   {
-   "key": "10c39df6135c8ea8",
+   "key": "07479b468d993148",
    "concept": "dataset:deepfluoro:h5_frames",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-inventory.md",
@@ -7848,7 +7848,7 @@
    "text": "| DeepFluoro (Cios Fusion) | `[the lab volume's data root]/deepfluoro_h5/raw/deepfluoro; [the lab volume's data root]/deepfluoro_vendor` | specimens 6, h5 frames 366, vendor frames 2,659, vendor ct 19, size gb 116.26 |"
   },
   {
-   "key": "5533d857fe50f2b7",
+   "key": "ecac58cc4b24e4e4",
    "concept": "dataset:deepfluoro:h5_frames",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-reproduce.md",
@@ -7888,7 +7888,7 @@
    "text": "6 cadaver specimens: 366 H5 frames with CTs, and a vendor DICOM deposit of 2,659 frames and 19 CTs"
   },
   {
-   "key": "f79c64c3f944c278",
+   "key": "27661644695ee949",
    "concept": "dataset:deepfluoro:size_gb",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-inventory.md",
@@ -7898,7 +7898,7 @@
    "text": "| DeepFluoro (Cios Fusion) | `[the lab volume's data root]/deepfluoro_h5/raw/deepfluoro; [the lab volume's data root]/deepfluoro_vendor` | specimens 6, h5 frames 366, vendor frames 2,659, vendor ct 19, size gb 116.26 |"
   },
   {
-   "key": "70dba9d7839e4f9d",
+   "key": "36562c41d696df08",
    "concept": "dataset:deepfluoro:size_gb",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-reproduce.md",
@@ -7948,14 +7948,14 @@
    "text": "- checks: `bytes: path ${DEST}/deepfluoro/unpacked_full/ipcai_2020_full_res_data.h5, expect 2541608861`; `list_sha256: path ${DEST}/deepfluoro/unpacked_full, expect 2ccfdf83da9f4dc2d73862c707f2ecad1eff7c0ba435c6c3ee140f511d16ef59, files 2, bytes 2541609955, basis docs/RSNAI_DATA_MANIFEST.json roots "
   },
   {
-   "key": "286e3962b6e79df5",
+   "key": "afbde2a70704883f",
    "concept": "dataset:deepfluoro:vendor_frames",
    "kind": "dataset",
    "source": "SchwingNet/any-view-spine-plan",
    "line": 94,
    "outcome": "agrees",
    "value": "2,659",
-   "text": "| DeepFluoro | | held | | 6 cadavers, 366 + 2,659 frames, 19 CT | | Pelvis and hip, some lumbar | | 2,293 vendor frames unused. Registration gives their truth. |"
+   "text": "| DeepFluoro | | held | | 6 cadavers, 366 + 2,659 frames, 19 CT | | Pelvis and hip, some lumbar | | Seven-class labels ship, the vertebrae as one class: ITK-SNAP splits them into named lumbar bodies. 2,293 vendor frames unused; registration gives their truth. |"
   },
   {
    "key": "753fcb632e0cbcfd",
@@ -7998,7 +7998,7 @@
    "text": "| DeepFluoro (Cios Fusion) | 6 cadaver specimens: 366 H5 frames with CTs, and a vendor DICOM deposit of 2,659 frames and 19 CTs | pelvis and lower lumbar, from the CT | HAVE | the sacrum detector's training; 2,293 vendor frames unused with no written criterion | specimens 6, h5 frames 366, vendor fr"
   },
   {
-   "key": "0f034e83a18b5d81",
+   "key": "a71c18cd659f1276",
    "concept": "dataset:deepfluoro:vendor_frames",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-inventory.md",
@@ -8008,7 +8008,7 @@
    "text": "| DeepFluoro (Cios Fusion) | `[the lab volume's data root]/deepfluoro_h5/raw/deepfluoro; [the lab volume's data root]/deepfluoro_vendor` | specimens 6, h5 frames 366, vendor frames 2,659, vendor ct 19, size gb 116.26 |"
   },
   {
-   "key": "0c835b142d232d41",
+   "key": "8e02e46289c85ea0",
    "concept": "dataset:deepfluoro:vendor_frames",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-reproduce.md",
@@ -8078,7 +8078,7 @@
    "text": "| FluoroCap literature panels | 29,500 figure panels harvested from the literature; 72.8 percent are reproductions with no pixel residual | pseudo, no patient key | HAVE | out of training by directive D1; a test set at most; still inside the old fold banks | panels 29,500, size gb 316 | the publishe"
   },
   {
-   "key": "5f807bbd464b76f4",
+   "key": "d34cca568894c616",
    "concept": "dataset:fluorocap:panels",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-inventory.md",
@@ -8088,7 +8088,7 @@
    "text": "| FluoroCap literature panels | `[a grid folder named by a login]/FluoroCap (HOME, [the owner] only)` | panels 29,500, size gb 316 |"
   },
   {
-   "key": "55a542a57eb0fde0",
+   "key": "b9eb466d95615eec",
    "concept": "dataset:fluorocap:panels",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-reproduce.md",
@@ -8128,7 +8128,7 @@
    "text": "| Spondylolisthesis and pathology films | Mendeley 5jdfdgp762, FluoroCap reproductions | 714; 316 GB of harvested panels | corners; none | FluoroCap dropped from training |"
   },
   {
-   "key": "530176e5b8f1e4f7",
+   "key": "0fc379534aada74f",
    "concept": "dataset:fluorocap:size_gb",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-inventory.md",
@@ -8138,7 +8138,7 @@
    "text": "| FluoroCap literature panels | `[a grid folder named by a login]/FluoroCap (HOME, [the owner] only)` | panels 29,500, size gb 316 |"
   },
   {
-   "key": "10e7e611570a2fa4",
+   "key": "f53ae4a5c6650bf7",
    "concept": "dataset:fluorocap:size_gb",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-reproduce.md",
@@ -8198,14 +8198,14 @@
    "text": "| FracAtlas (Abedeen 2023, Scientific Data) | 4,083 musculoskeletal radiographs from three Bangladeshi hospitals (hand, leg, hip, shoulder), 717 with 922 fracture instances, boxes and masks; the hip and pelvis films show the sacrum and L5 | none; no spine labels | GET | found by the sweep of 2026-10"
   },
   {
-   "key": "c75ae68133a7d8d1",
+   "key": "0494ae8196d39d7d",
    "concept": "dataset:fracatlas:radiographs",
    "kind": "dataset",
    "source": "notes:docs/research/xray-datasets-missing.md",
    "line": 46,
    "outcome": "agrees",
    "value": "4,083",
-   "text": "| FracAtlas (Abedeen 2023, Scientific Data) | 4,083 musculoskeletal radiographs from three Bangladeshi hospitals (hand, leg, hip, shoulder), 717 with 922 fracture instances; boxes and masks | https://figshare.com/articles/dataset/The_dataset/22363012 (to confirm; also mirrored on Hugging Face as yh0"
+   "text": "| FracAtlas (Abedeen 2023, Scientific Data) | 4,083 musculoskeletal radiographs from three Bangladeshi hospitals (hand, leg, hip, shoulder), 717 with 922 fracture instances; boxes and masks | https://figshare.com/articles/dataset/The_dataset/22363012 (to confirm; also mirrored on Hugging Face as [th"
   },
   {
    "key": "aa237e5703da097c",
@@ -8258,6 +8258,16 @@
    "text": "338 subjects' spine radiographs from King Abdullah University Hospital, Jordan, in three classes (scoliosis, spondylolisthesis, normal), original and resized (Fraiwan et al. 2022); views to confirm on the page"
   },
   {
+   "key": "b2afd1a1d15538d9",
+   "concept": "dataset:geneva_hip:frames",
+   "kind": "dataset",
+   "source": "SchwingNet/any-view-spine-plan",
+   "line": 102,
+   "outcome": "agrees",
+   "value": "116",
+   "text": "| Geneva hip phantom | | held | | 116 frames, 1 phantom | | Pelvis | | The unseen-device test; a phantom CT and gold poses ship. |"
+  },
+  {
    "key": "61aaf414ea0cfcec",
    "concept": "dataset:geneva_hip:frames",
    "kind": "dataset",
@@ -8298,7 +8308,7 @@
    "text": "| Geneva hip phantom (BV Pulsera) | 116 frames of one phantom on a device no model saw | pelvis | HAVE | the unseen-device test | frames 116 | not recorded | not recorded |"
   },
   {
-   "key": "fcb12cb94e62a252",
+   "key": "91a517297044c1b7",
    "concept": "dataset:geneva_hip:frames",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-inventory.md",
@@ -8308,7 +8318,7 @@
    "text": "| Geneva hip phantom (BV Pulsera) | `[the lab volume's data root]/geneva_hip_src` | frames 116 |"
   },
   {
-   "key": "e7d88b3d905b5b76",
+   "key": "600956380bdb01ff",
    "concept": "dataset:geneva_hip:frames",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-reproduce.md",
@@ -8458,7 +8468,7 @@
    "text": "- `hf_abdomenatlas2_0_mini`: AbdomenAtlas 2.0 Mini (10,135 CT); kind upstream_release, family B; route `hf`, mode manual; status planned."
   },
   {
-   "key": "43612112a69d3c15",
+   "key": "6619258b86d2c2ed",
    "concept": "dataset:hf_abdomenatlas2_0_mini:volumes",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-reproduce.md",
@@ -8698,7 +8708,7 @@
    "text": "- `idc_nlst`: NLST, full (tier 2; 500-person pilot fetched); kind upstream_release, family B; route `idc`, mode manual; status planned."
   },
   {
-   "key": "3ce0665580bad9c7",
+   "key": "99be57e1e49dd74b",
    "concept": "dataset:idc_nlst:pilot_subjects_fetched",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-reproduce.md",
@@ -8708,7 +8718,7 @@
    "text": "| idc_nlst | NLST, full (tier 2; 500-person pilot fetched) | upstream_release | idc / manual | planned | [the lab volume's data root]/idc_tier2 | 10.7937/tcia.hmq8-j677 |"
   },
   {
-   "key": "539e4987be75a3ae",
+   "key": "447dc6e710ddb57f",
    "concept": "dataset:idc_nlst:pilot_subjects_fetched",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-reproduce.md",
@@ -9168,16 +9178,6 @@
    "text": "on_disk_partial in the data platform at bf1432f: implant_ct deleted, implant_verse complete (1,119 = 373 x 3), implant_ts unfinished (355 subjects never processed), cases 0394 and 0405 produced nothing and verse116 is missing; the owner's hand: a rebuild on a GPU partition with a resume guard first,"
   },
   {
-   "key": "7864b8bafdfabf50",
-   "concept": "dataset:ipcai2025_xray_ct:size_gb",
-   "kind": "dataset",
-   "source": "SchwingNet/any-view-spine-plan",
-   "line": 98,
-   "outcome": "agrees",
-   "value": "6.7",
-   "text": "| IPCAI 2025 X-ray with CT | | not yet | | 5 CT, 6.7 GB | | To confirm | | Calibrated real X-rays. |"
-  },
-  {
    "key": "fc820a297af83053",
    "concept": "dataset:ipcai2025_xray_ct:size_gb",
    "kind": "dataset",
@@ -9206,6 +9206,16 @@
    "outcome": "agrees",
    "value": "6.7",
    "text": "one zip, dataset_ipcai.zip, 6.7 GB (md5 cc8bf3e445495d2deb6d50dd058dc977): 50 real calibrated X-rays of 5 cadaveric distal femur specimens (ten views each, about 9 degrees apart, Siemens Fluorospot), their 5 CTs at 0.2 mm slices, the poses, the contour masks and the bone models, from 'Automatic mult"
+  },
+  {
+   "key": "d31761a43b2f5f78",
+   "concept": "dataset:ipcai2025_xray_ct:xrays",
+   "kind": "dataset",
+   "source": "SchwingNet/any-view-spine-plan",
+   "line": 104,
+   "outcome": "agrees",
+   "value": "50",
+   "text": "| IPCAI 2025 X-ray with CT | | fetched, zipped (6.2 GB) | | 50 X-rays, 5 CT | | Femur | | Not spine: calibrated pairs with contour masks that tune and check the registration code. |"
   },
   {
    "key": "e955dd503c379af1",
@@ -9238,7 +9248,7 @@
    "text": "| IPCAI 2025 paired X-ray and CT set of the distal femur (Flepp 2025, Zenodo 15753063) | one zip, dataset_ipcai.zip, 6.7 GB (md5 cc8bf3e445495d2deb6d50dd058dc977): 50 real calibrated X-rays of 5 cadaveric distal femur specimens (ten views each, about 9 degrees apart, Siemens Fluorospot), their 5 CTs"
   },
   {
-   "key": "1c45379f5c33e75d",
+   "key": "ae1ce79293e0f1a0",
    "concept": "dataset:ipcai2025_xray_ct:xrays",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-inventory.md",
@@ -9448,7 +9458,7 @@
    "text": "| Ljubljana 2D-3D-GS (PIXIUM 4600) | 18 frames of one cadaver, L1 to L5, with CT and pose | yes, up to 90 level boxes possible from the pose | HAVE | parameters read, no truth bank built; read-only under its ND licence | frames 18 | ND (read-only) | not recorded |"
   },
   {
-   "key": "e60d10751257389f",
+   "key": "214475bfdbd98ef6",
    "concept": "dataset:ljubljana_2d3d_gs:frames",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-inventory.md",
@@ -9476,6 +9486,16 @@
    "outcome": "agrees",
    "value": "18",
    "text": "18 frames of one cadaver, L1 to L5, with CT and pose"
+  },
+  {
+   "key": "9efd9fe1b533dccd",
+   "concept": "dataset:lumos:ct_volumes",
+   "kind": "dataset",
+   "source": "SchwingNet/any-view-spine-plan",
+   "line": 100,
+   "outcome": "agrees",
+   "value": "280",
+   "text": "| LUMOS | | not yet (46.4 GB, Zenodo) | | 1,620 films, 280 CT, 803 patients | | Lumbar | | Diagnostic radiographs, 280 of 803 patients with a CT, no pose, CC BY-NC 4.0: the registration code gives the pose, ITK-SNAP the masks. |"
   },
   {
    "key": "90fb4eebbd1e7a6f",
@@ -9528,7 +9548,7 @@
    "text": "- `zenodo_lumos`: LUMOS lumbar osteoporosis dataset: 280 lumbar CT (+1,620 radiographs); kind upstream_release, family B; route `zenodo`, mode manual; status planned."
   },
   {
-   "key": "aca80409ec332f2b",
+   "key": "abef173b2c7d927b",
    "concept": "dataset:lumos:ct_volumes",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-reproduce.md",
@@ -9576,6 +9596,16 @@
    "outcome": "agrees",
    "value": "280",
    "text": "803 living patients: 1,620 lumbar AP or lateral radiographs and 280 non-contrast lumbar CTs, anonymised DICOM and NPY; diagnostic radiography, not C-arm fluoroscopy; no pose given"
+  },
+  {
+   "key": "9c5651f97f4fb65a",
+   "concept": "dataset:lumos:patients",
+   "kind": "dataset",
+   "source": "SchwingNet/any-view-spine-plan",
+   "line": 100,
+   "outcome": "agrees",
+   "value": "803",
+   "text": "| LUMOS | | not yet (46.4 GB, Zenodo) | | 1,620 films, 280 CT, 803 patients | | Lumbar | | Diagnostic radiographs, 280 of 803 patients with a CT, no pose, CC BY-NC 4.0: the registration code gives the pose, ITK-SNAP the masks. |"
   },
   {
    "key": "9bae9acf671718a6",
@@ -9628,6 +9658,16 @@
    "text": "803 living patients: 1,620 lumbar AP or lateral radiographs and 280 non-contrast lumbar CTs, anonymised DICOM and NPY; diagnostic radiography, not C-arm fluoroscopy; no pose given"
   },
   {
+   "key": "d051ba08b2c00605",
+   "concept": "dataset:lumos:radiographs",
+   "kind": "dataset",
+   "source": "SchwingNet/any-view-spine-plan",
+   "line": 100,
+   "outcome": "agrees",
+   "value": "1,620",
+   "text": "| LUMOS | | not yet (46.4 GB, Zenodo) | | 1,620 films, 280 CT, 803 patients | | Lumbar | | Diagnostic radiographs, 280 of 803 patients with a CT, no pose, CC BY-NC 4.0: the registration code gives the pose, ITK-SNAP the masks. |"
+  },
+  {
    "key": "a10a77149a9cb81c",
    "concept": "dataset:lumos:radiographs",
    "kind": "dataset",
@@ -9678,7 +9718,7 @@
    "text": "- `zenodo_lumos`: LUMOS lumbar osteoporosis dataset: 280 lumbar CT (+1,620 radiographs); kind upstream_release, family B; route `zenodo`, mode manual; status planned."
   },
   {
-   "key": "39d0ecc7d7994a6e",
+   "key": "f56b1f8847b6a2db",
    "concept": "dataset:lumos:radiographs",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-reproduce.md",
@@ -9696,6 +9736,16 @@
    "outcome": "agrees",
    "value": "1,620",
    "text": "803 living patients: 1,620 lumbar AP or lateral radiographs and 280 non-contrast lumbar CTs, anonymised DICOM and NPY; diagnostic radiography, not C-arm fluoroscopy; no pose given"
+  },
+  {
+   "key": "302ea8d715e78c75",
+   "concept": "dataset:lumos:size_gb",
+   "kind": "dataset",
+   "source": "SchwingNet/any-view-spine-plan",
+   "line": 100,
+   "outcome": "agrees",
+   "value": "46.4",
+   "text": "| LUMOS | | not yet (46.4 GB, Zenodo) | | 1,620 films, 280 CT, 803 patients | | Lumbar | | Diagnostic radiographs, 280 of 803 patients with a CT, no pose, CC BY-NC 4.0: the registration code gives the pose, ITK-SNAP the masks. |"
   },
   {
    "key": "924f7c228bd15979",
@@ -10082,7 +10132,7 @@
    "concept": "dataset:nhanes2_annotated:films",
    "kind": "dataset",
    "source": "SchwingNet/any-view-spine-plan",
-   "line": 116,
+   "line": 128,
    "outcome": "agrees",
    "value": "543",
    "text": "| Lumbar | | BUU 7,203 films (3,600 people); BUU 2000 relabel 2,000; C-ArmLSpine 297 spots; NHANES II 543 landmarked | | NHANES II part of 16,531; FluoroCap 322,914 panels; fluoro clips 690,554 frames; C-ArmLSpine 51,429 frames | | 3,600 (BUU) | | 149 (C-ArmLSpine) + COBRA | | CTSpinoPelvic1K 802; C"
@@ -10232,7 +10282,7 @@
    "concept": "dataset:nhanes2_unannotated:films",
    "kind": "dataset",
    "source": "SchwingNet/any-view-spine-plan",
-   "line": 112,
+   "line": 124,
    "outcome": "agrees",
    "value": "16,531",
    "text": "| Cervical | | CSXA 4,962; Aariz 1,000 | | NHANES II part of 16,531 | | none held | | none held | | CTSpine1K 1,005; VerSe 374; TotalSeg 3,567; RSNA 2022 cervical 2,019 (zipped) |"
@@ -11012,7 +11062,7 @@
    "concept": "dataset:rsna_2022_cervical:studies",
    "kind": "dataset",
    "source": "SchwingNet/any-view-spine-plan",
-   "line": 112,
+   "line": 124,
    "outcome": "agrees",
    "value": "2,019",
    "text": "| Cervical | | CSXA 4,962; Aariz 1,000 | | NHANES II part of 16,531 | | none held | | none held | | CTSpine1K 1,005; VerSe 374; TotalSeg 3,567; RSNA 2022 cervical 2,019 (zipped) |"
@@ -11188,7 +11238,7 @@
    "text": "- `scidb_enhance_pet_1_6k`: ENHANCE.PET 1.6k: whole-/total-body FDG-PET/CT, 1,683 studies (NIfTI); kind upstream_release, family B; route `Science Data Bank`, mode manual; status planned."
   },
   {
-   "key": "0449e9c09cd624ee",
+   "key": "8c420b1aeab0e835",
    "concept": "dataset:scidb_enhance_pet_1_6k:studies",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-reproduce.md",
@@ -11338,7 +11388,7 @@
    "text": "| SpineSAC | 5,490 sawbone frames from six C-arms | none: the masks are empty on sawbone CT | EXCLUDED | 0 frames scored; no licence stated | frames 5,490 | none stated | [link](https://github.com/IGRS-Imaging/SpineSAC) |"
   },
   {
-   "key": "d5dc2ff88972acf4",
+   "key": "81b10f3a1a8f4f3d",
    "concept": "dataset:spinesac:frames",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-reproduce.md",
@@ -11682,7 +11732,7 @@
    "concept": "dataset:vindr_spinexr:images",
    "kind": "dataset",
    "source": "SchwingNet/any-view-spine-plan",
-   "line": 120,
+   "line": 132,
    "outcome": "agrees",
    "value": "10,466",
    "text": "| Unsplit by region | | VinDr-SpineXR 10,466 (boxes, no levels); Spinal-AI2024 20,001 | | FluoroCap and NHANES II above | | - | | - | | - |"
@@ -11798,7 +11848,7 @@
    "text": "| VinDr-SpineXR | 10,466 DICOM (8,389 train + 2,077 test) in 5,000 studies with lesion boxes | no levels | HAVE | on the grid under the PhysioNet agreement, covered since 29 Sep 2026 by WSU IRB HPR 2026-330 (the supplement to 2026-269: not human participant research); the C-ArmLSpine fold models car"
   },
   {
-   "key": "1c9ca96b39fce700",
+   "key": "65c8e8ead9c6ee3b",
    "concept": "dataset:vindr_spinexr:images",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-inventory.md",
@@ -11808,7 +11858,7 @@
    "text": "| VinDr-SpineXR | `[the lab volume's data root]/vindr_spinexr/raw/vindr/1.0.0` | images 10,466, studies 5,000 |"
   },
   {
-   "key": "b65423c643ed28d5",
+   "key": "98ce966c7077ea91",
    "concept": "dataset:vindr_spinexr:images",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-reproduce.md",
@@ -11878,7 +11928,7 @@
    "text": "10,466, studies 5,000 | PhysioNet Restricted Health Data License 1.5.0 (credentialed, named-person agreement) | [link](https://physionet.org/content/vindr-spinexr/1.0.0/) |"
   },
   {
-   "key": "84ee239b0a2e2a02",
+   "key": "431c4cb0b6026355",
    "concept": "dataset:vindr_spinexr:studies",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-inventory.md",
@@ -11888,7 +11938,7 @@
    "text": "| VinDr-SpineXR | `[the lab volume's data root]/vindr_spinexr/raw/vindr/1.0.0` | images 10,466, studies 5,000 |"
   },
   {
-   "key": "e0cd340ecdc7b4d3",
+   "key": "c696ead8f002399a",
    "concept": "dataset:vindr_spinexr:studies",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-reproduce.md",
@@ -11988,7 +12038,7 @@
    "text": "- `zenodo_lumvbcanseg`: LumVBCanSeg lumbar CT (185, ShengJing Hospital); kind upstream_release, family B; route `zenodo`, mode manual; status planned."
   },
   {
-   "key": "808bcfc3aad6578c",
+   "key": "996eee591b914b27",
    "concept": "dataset:zenodo_lumvbcanseg:subjects",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-reproduce.md",
@@ -12078,7 +12128,7 @@
    "text": "- `zenodo_medpelvis3d`: MedPelvis3D pelvic CT (99, PLA General Hospital); kind upstream_release, family B; route `zenodo`, mode manual; status planned."
   },
   {
-   "key": "563729b8a0dc7681",
+   "key": "b4eb646978ca5d90",
    "concept": "dataset:zenodo_medpelvis3d:subjects",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-reproduce.md",
@@ -12178,7 +12228,7 @@
    "text": "- `zenodo_tmtv_benchmark`: International TMTV Benchmark, lymphoma FDG PET/CT (60); kind upstream_release, family B; route `zenodo`, mode manual; status planned."
   },
   {
-   "key": "b7ecfbf11698b557",
+   "key": "4f4bca341890ee3a",
    "concept": "dataset:zenodo_tmtv_benchmark:subjects",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-reproduce.md",
@@ -12298,7 +12348,7 @@
    "text": "- `zenodo_ts_task_hip_implant`: TotalSegmentator task data 'hip_implant' (71 CT); kind upstream_release, family B; route `zenodo`, mode manual; status planned."
   },
   {
-   "key": "5f3710c33e90beab",
+   "key": "2018dec175c6663b",
    "concept": "dataset:zenodo_ts_task_hip_implant:subjects",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-reproduce.md",
@@ -12408,7 +12458,7 @@
    "text": "- `zenodo_ts_task_liver_lesions`: TotalSegmentator task data 'liver_lesions' (842 CT); kind upstream_release, family B; route `zenodo`, mode manual; status planned."
   },
   {
-   "key": "9a350277e1c5c6bf",
+   "key": "cf77f3fc11bd81c5",
    "concept": "dataset:zenodo_ts_task_liver_lesions:subjects",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-reproduce.md",
@@ -12528,7 +12578,7 @@
    "text": "- `zenodo_ts_task_pleural_effusion`: TotalSegmentator task data 'pleural_pericard_effusion' (600 CT); kind upstream_release, family B; route `zenodo`, mode manual; status planned."
   },
   {
-   "key": "9139b45d201954d7",
+   "key": "20984c86ca5527fa",
    "concept": "dataset:zenodo_ts_task_pleural_effusion:subjects",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-reproduce.md",
@@ -12608,7 +12658,7 @@
    "text": "- `zenodo_unitochest`: UniToChest chest CT (623 patients; distributed as slices); kind upstream_release, family B; route `zenodo`, mode manual; status planned."
   },
   {
-   "key": "f698a6d708c7e102",
+   "key": "a4c4feab5b299984",
    "concept": "dataset:zenodo_unitochest:subjects",
    "kind": "dataset",
    "source": "notes:docs/research/datasets-reproduce.md",
@@ -12818,7 +12868,7 @@
    "text": "| COBRA2026 Elekta | kV projections around supine pelvic radiotherapy patients, 504 x 504 at 0.8 mm, 120 kVp, with the planning CT deformably registered | whatever is segmented on the CT: the sacrum today, L5 and L6 possible | HAVE | all 467 cases on Ceph; 145 in a bank of 24 frames each, the rest n"
   },
   {
-   "key": "2602bf59cb916f03",
+   "key": "ccfd1bcd9803977c",
    "concept": "figure:129",
    "kind": "figure",
    "source": "notes:docs/research/datasets-inventory.md",
@@ -13318,7 +13368,7 @@
    "text": "ipped by an unsorted-landmark artefact) and the 128 test films never did; a request-form source; the Kaggle scoliosis YOLOv5 set (kaggle_scoliosis_yolov5) may be a relabel of these films: its hashes are checked against this copy before it counts as new people (the sweep of 2026-10-21) | labelled fil"
   },
   {
-   "key": "e9a40485c3575082",
+   "key": "6203f7deed56760e",
    "concept": "figure:26",
    "kind": "figure",
    "source": "notes:docs/research/datasets-inventory.md",
@@ -13328,7 +13378,7 @@
    "text": "| AASCE / BoostNet whole-spine films | `[the lab volume's data root]/thoracic_xr/mirror_zlinzju_ke30_u7_AASCE2019; the 579 at [the lab volume's data root]/aasce2019_boostnet/raw/aasce` | labelled films 609, challenge test films 98, thoracic test films 608 |"
   },
   {
-   "key": "5f855c56651f64fe",
+   "key": "874acf227eb3d87f",
    "concept": "figure:26",
    "kind": "figure",
    "source": "notes:docs/research/datasets-reproduce.md",

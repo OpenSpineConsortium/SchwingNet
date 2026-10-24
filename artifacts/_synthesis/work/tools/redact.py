@@ -18,24 +18,28 @@ from collections import Counter
 # artifact's folder name, which an id holds and a redaction must never change.
 LOGIN = r"[a-z]{2}(?!(?:19|20)\d\d\b)\d{4}"
 
+# Every rule is bounded, a folder's name at 255 characters as a file system bounds it, a path at
+# 32 folders, more than any grid path holds, and a link at the lengths below, so a long run of
+# what a rule could take is passed in linear time, not tried again from each of its characters,
+# and no match is longer than the 16,384 characters past a cut that extract.clip looks for one.
 RULES = [
     ("the owner's first name", re.compile(r"\b[Gg]reg(?=_|\b)"), "[the owner]"),
-    ("a grid data root that names a login", re.compile(r"/rs/[A-Za-z0-9_]+/[a-z]{2}\d{4}/data/"),
+    ("a grid data root that names a login", re.compile(r"/rs/[A-Za-z0-9_]{1,255}/[a-z]{2}\d{4}/data/"),
      "[the lab volume's data root]/"),
-    ("a grid folder that names a login", re.compile(r"(?:/[A-Za-z0-9_.-]+)+/" + LOGIN + r"(?=/|\b)"),
+    ("a grid folder that names a login", re.compile(r"(?:/[A-Za-z0-9_.-]{1,255}){1,32}/" + LOGIN + r"(?=/|\b)"),
      "[a grid folder named by a login]"),
     ("a login at the university's mail name", re.compile(r"\b" + LOGIN + r"@wayne(?:\.edu)?\b"), "[the owner's login]"),
     ("a login", re.compile(r"(?<![-/._])\b" + LOGIN + r"\b"), "[the owner's login]"),
     ("the university's network range", re.compile(r"\b\d{1,3}\.\d{1,3}\.x\.x\b"), "[the university's network range]"),
-    ("a form's short link", re.compile(r"(?:https?://)?forms\.gle/[A-Za-z0-9]+"), "[the registration form's link]"),
-    ("a form's long link", re.compile(r"(?:https?://)?docs\.google\.com/forms/[^\s\"'<>)\]]+"), "[a form's link]"),
+    ("a form's short link", re.compile(r"(?:https?://)?forms\.gle/[A-Za-z0-9]{1,255}"), "[the registration form's link]"),
+    ("a form's long link", re.compile(r"(?:https?://)?docs\.google\.com/forms/[^\s\"'<>)\]]{1,8000}"), "[a form's link]"),
     # The research storage's group volumes, named or not by a login: the rules above take a path
     # that names one, and this one the volume of any other, since no grid path is kept.
-    ("a grid volume", re.compile(r"/rs/rs_grp_[A-Za-z0-9_]+"), "[the lab volume]"),
+    ("a grid volume", re.compile(r"/rs/rs_grp_[A-Za-z0-9_]{1,255}"), "[the lab volume]"),
     ("a staff title beside its employer", re.compile(r"\bOperations Assistant\b"), "[a club staff contact]"),
-    ("an Actions secrets settings page", re.compile(r"https?://github\.com/[^\s\"')]+/settings/secrets/actions/?"),
+    ("an Actions secrets settings page", re.compile(r"https?://github\.com/[^\s\"')]{1,512}/settings/secrets/actions/?"),
      "[a repository's Actions secrets page]"),
-    ("another group's study folder", re.compile(r"\bu\d{3}-[A-Za-z]+(?:-[A-Za-z]+)*-study\b"),
+    ("another group's study folder", re.compile(r"\bu\d{3}-[A-Za-z]{1,64}(?:-[A-Za-z]{1,64}){0,16}-study\b"),
      "[another group's study folder]"),
 ]
 
