@@ -4,7 +4,7 @@
   "caption": "Panels naming each vertebral level in their captions, for the research and the clean release.",
   "chapter": "08",
   "grade": "Reported",
-  "status": "current",
+  "status": "a record, not a final value",
   "source": {
     "kind": "artifact",
     "artifact": "artifacts/fluorocap-dataset-card-xwd4wx/",
@@ -15,7 +15,7 @@
       "manifest.csv (FluoroCap manifest 1.1, embedded in the card as its statistics block)"
     ],
     "run": null,
-    "notes": "Drawn at load time by the card's script from the statistics block embedded in the page (manifest 1.1, dataset_version 0.2, generated 2026-09-14 09:43), captured by rendering the page in headless Chromium. The page's script declares a top-level const named top, which a plain browser refuses as a redeclaration of window.top, so it was wrapped in a block for the capture and nothing else changed. The card names tools/fluorocap_report_stats.py and docs/FLUOROCAP_PROTOCOL.md; spine-program's fluorocap-dataset memory names the same tool."
+    "notes": "Drawn at load time by the card's script from the statistics block embedded in the page (manifest 1.1, dataset_version 0.2, generated 2026-09-14 09:43), captured by rendering the page in headless Chromium. The page's script declares a top-level const named top, which a plain browser refuses as a redeclaration of window.top, so it was wrapped in a block for the capture and nothing else changed. The card names tools/fluorocap_report_stats.py and docs/FLUOROCAP_PROTOCOL.md; spine-program's fluorocap-dataset memory names the same tool. Status set to a record, not a final value on review: The contradictions mark the card's counts superseded and stale (datasets row 6, FluoroCap row 18, benches row 87): quote them only with the card's generation time of 14 September."
   },
   "explore": [
     {

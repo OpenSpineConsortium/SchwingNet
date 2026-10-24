@@ -9,8 +9,8 @@ record's rerun.where:
 - actions: the record's command runs on the runner from committed files, and the workflow opens a pull
   request with what it redrew; a run that changes anything outside the figure's own chapter folder fails.
 - grid: nothing is submitted. The answer gives the exact command and the link to the grid workflow, since
-  a grid job waits for the owner's word and count (docs/project.md); the owner opening the issue is that
-  word for one run, which the owner then starts.
+  a grid job waits for the owner's word and the number of jobs (docs/project.md), which an issue is not;
+  the owner starts it by hand.
 - none: the answer lists the figure's Explore links, the method and the data, since no command is known.
 
     python3 tools/figure_run.py plan --event EVENT.json --repo OWNER/NAME --run-number N --comment OUT.md
@@ -112,8 +112,8 @@ def decide(event, root, repo, run_number):
         grid = f"https://github.com/{repo}/actions/workflows/grid.yml"
         return {"action": "grid", "id": fid, "comment": (
             f"{head}\n\nThis figure is drawn on the grid, from its data or on a GPU, so nothing is submitted from here: "
-            "a grid job waits for the owner's word and count (docs/project.md). An issue the owner opens is that word "
-            "for this one run. The command the record gives:\n\n"
+            "a grid job waits for the owner's word and the number of jobs (docs/project.md), and this issue is not that "
+            "word. The command the record gives:\n\n"
             f"```\n{command}\n```\n\nCost: {rerun.get('cost') or 'not recorded'}.\n\n"
             f"To run it through this repository, open [the grid workflow]({grid}), press Run workflow and paste the "
             "command. That runner works in a checkout of this repository inside a container, with no lab volume and no "

@@ -4,7 +4,7 @@
   "caption": "The chain from exposure to a named vertebra: for each step, what it does, what can go wrong and the measured before and after; steps 1 and 5 carry the method's advantage.",
   "chapter": "11",
   "grade": "Reported",
-  "status": "current",
+  "status": "a record, not a final value",
   "source": {
     "kind": "artifact",
     "artifact": "artifacts/naming-vertebrae-without-ct-hjy4vc/",
@@ -13,7 +13,7 @@
     "commit": null,
     "data": [],
     "run": null,
-    "notes": "An inline SVG drawn in the artifact page itself, captured here as a PNG by rendering the page in headless Chromium. The page names no script or result file behind its numbers."
+    "notes": "An inline SVG drawn in the artifact page itself, captured here as a PNG by rendering the page in headless Chromium. The page names no script or result file behind its numbers. Status set to a record, not a final value on review: The level-naming contradictions set naming from morphology before counting from the anchor as successive designs (row 13), and several of this page's counts and recalls are confirmed contradictions (level-naming rows 18 and 50)."
   },
   "explore": [
     {

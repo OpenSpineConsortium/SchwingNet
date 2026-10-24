@@ -83,6 +83,7 @@ class Planning(unittest.TestCase):
         self.assertIn("sbatch slurm/draw.sh", got["comment"])
         self.assertIn("https://github.com/OWNER/NAME/actions/workflows/grid.yml", got["comment"])
         self.assertIn("nothing is submitted", got["comment"])
+        self.assertIn("this issue is not that word", got["comment"])
         self.assertNotIn("command", {k for k in got if k != "comment"})
 
     def test_a_figure_with_no_command_gets_its_explore_links(self):

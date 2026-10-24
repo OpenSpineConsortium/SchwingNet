@@ -4,7 +4,7 @@
   "caption": "The job graph the start word submits, each edge an afterok or afterany dependency, from the fetch chains through the catalog to version 1's steps.",
   "chapter": "21",
   "grade": "Reported",
-  "status": "current",
+  "status": "a record, not a final value",
   "source": {
     "kind": "artifact",
     "artifact": "artifacts/schwingnet-grid-pipeline/",
@@ -13,7 +13,7 @@
     "commit": null,
     "data": [],
     "run": null,
-    "notes": "An inline SVG diagram of the artifact, captured by rendering it in headless Chromium after the owner's name in its text was replaced by the owner, as the book names people by role. It describes this repository's grid path: docs/setup/grid.md and grid/."
+    "notes": "An inline SVG diagram of the artifact, captured by rendering it in headless Chromium after the owner's name in its text was replaced by the owner, as the book names people by role. It describes this repository's grid path: docs/setup/grid.md and grid/. Status set to a record, not a final value on review: The grid-operations contradictions confirm the afterok against afterany disagreement with the lab recipe (row 9) and ask that the drawn afterok edges be flagged until grid/gate.sh is read."
   },
   "explore": [
     {

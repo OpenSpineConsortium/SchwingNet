@@ -83,6 +83,9 @@ RERUN_LINE = "figure-rerun-id"
 FIGURE_IMAGE = re.compile(r"^!\[([^\]]+)\]\((figures/(\d\d)/([a-z0-9-]+)\.(?:png|svg))\)$")
 FIGURE_CAPTION = re.compile(r"^\*Figure (\d+\.\d+)\. (.*)\*$")
 SCRIPT_NAME = re.compile(r"\.(py|sh|sbatch|tex|js)\b")
+# A record whose script made the numbers, the statistics or the matrix, while the artifact's own page
+# drew the figure, or whose file is a table set by hand, is traced to its data, not to what drew it.
+NOT_THE_DRAWING = re.compile(r"\(the (numbers|statistics|matrix)\)|a hand table|drawn by the (card|artifact)", re.I)
 
 LABELS = {
     "confidential-method": "Results may be shown, mechanism may not, until the provisional is filed; this chapter stays in this private repository.",
@@ -350,8 +353,11 @@ def traced(rec):
     """How far a figure's record traces it: to the script that drew it, to the data only, or to
     the artifact alone."""
     source = rec.get("source") or {}
-    if SCRIPT_NAME.search(source.get("made_by") or ""):
+    made_by = source.get("made_by") or ""
+    if SCRIPT_NAME.search(made_by) and not NOT_THE_DRAWING.search(made_by):
         return "script"
+    if SCRIPT_NAME.search(made_by):
+        return "data"
     if source.get("data") or source.get("run"):
         return "data"
     return "artifact"
@@ -376,9 +382,9 @@ def rerun_words(rec):
         return (f"Opening the issue runs the recorded command on a GitHub runner from committed files and opens a pull "
                 f"request with the figure it draws. Cost: {cost}; no grid job and no Claude.")
     if where == "grid":
-        return (f"When the owner opens the issue, that is the owner's word for this one run; a collaborator's issue only "
-                f"asks. The workflow answers with the exact grid command and the link to the grid workflow and submits "
-                f"nothing itself. Cost: {cost}.")
+        return (f"Opening the issue only asks: the workflow answers with the exact grid command and the link to the grid "
+                f"workflow and submits nothing, since a grid job waits for the owner's word and the number of jobs. "
+                f"Cost: {cost}.")
     return ("No command is recorded that redraws this figure, so opening the issue answers with the links to explore "
             "its method instead. Cost: nothing.")
 
@@ -593,7 +599,9 @@ class Builder:
 
     def figure_block(self, rec, number="", alt=""):
         if rec.get("_html"):
-            shown = f'<iframe src="{esc(rec["_html"])}" title="{esc(rec.get("title"))}" loading="lazy"></iframe>'
+            # sandboxed without same-origin, so a figure's script cannot reach the site's pages or storage
+            shown = (f'<iframe src="{esc(rec["_html"])}" title="{esc(rec.get("title"))}" sandbox="allow-scripts" '
+                     'loading="lazy"></iframe>')
         elif rec.get("_image"):
             shown = f'<img src="{esc(rec["_image"])}" alt="{esc(alt or rec.get("title"))}" loading="lazy">'
         else:

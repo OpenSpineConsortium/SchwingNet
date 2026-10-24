@@ -4,7 +4,7 @@
   "caption": "On an AP film the four corner slots are the left and right ends of each endplate, the same slots decoded differently.",
   "chapter": "12",
   "grade": "Reported",
-  "status": "current",
+  "status": "a record, not a final value",
   "source": {
     "kind": "artifact",
     "artifact": "artifacts/vertebra-detector-field-report-1jljc6/",
@@ -13,7 +13,7 @@
     "commit": null,
     "data": [],
     "run": "runs/pose/runs/detect_v1",
-    "notes": "Embedded image of the page."
+    "notes": "Embedded image of the page. Status set to a record, not a final value on review: The contradictions mark the field report as an earlier stage-1 snapshot whose scores are an early in-distribution result (level-naming row 82, detectors row 31, renders row 55)."
   },
   "explore": [
     {

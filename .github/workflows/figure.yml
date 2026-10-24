@@ -85,9 +85,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.12"
+      # The runner's own python3 is used, as ci.yml does (3.12 on ubuntu-latest).
       - name: install pixi where the recorded command uses it
         env:
           FIGURE: ${{ needs.plan.outputs.id }}
@@ -119,10 +117,12 @@ jobs:
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # The recorded command ran in this job before the token was in reach: the commit runs no hook
+          # it might have left, and the push reads no configuration it might have written.
           git switch --no-track -c "$BRANCH"
           git add -A -- docs/textbook/figures
-          git commit -q -m "Redraw figure $FIGURE from its recorded command" -m "Asked for in #$ISSUE."
-          git push -q "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git" "HEAD:refs/heads/$BRANCH"
+          git -c core.hooksPath=/dev/null commit --no-verify -q -m "Redraw figure $FIGURE from its recorded command" -m "Asked for in #$ISSUE."
+          GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 git -c core.hooksPath=/dev/null push --no-verify -q "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git" "HEAD:refs/heads/$BRANCH"
           url=$(gh pr create --repo "$REPO" --head "$BRANCH" --title "Redraw figure $FIGURE" \
             --body "The figure's recorded command, run on a GitHub runner from committed files, as #$ISSUE asked. Read the figure before merging; the record says how it was made.")
           gh issue comment "$ISSUE" --repo "$REPO" --body "Redrawn: $url"

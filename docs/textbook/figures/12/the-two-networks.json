@@ -4,7 +4,7 @@
   "caption": "Figure 6 of the manuscript as built on 22 September: the detector and the localiser; the artifact marks this version as failing inspection for its arrows.",
   "chapter": "12",
   "grade": "Reported",
-  "status": "current",
+  "status": "a record, not a final value",
   "source": {
     "kind": "artifact",
     "artifact": "artifacts/schwingnet-figures-xyz6kr/",
@@ -13,7 +13,7 @@
     "commit": null,
     "data": [],
     "run": null,
-    "notes": "The caption names SchwingNet/figures/fig6_arch.png; the resume (line 3172) names tools/fig6_arch.py, later renamed fig1c. Bytes not listed in spine-program's manifest; commit not recorded."
+    "notes": "The caption names SchwingNet/figures/fig6_arch.png; the resume (line 3172) names tools/fig6_arch.py, later renamed fig1c. Bytes not listed in spine-program's manifest; commit not recorded. Status set to a record, not a final value on review: The artifact marks this build as failing inspection, and the 22 September checkpoint in spine-program records fig6_arch as FAILED."
   },
   "explore": [
     {

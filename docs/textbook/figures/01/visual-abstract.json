@@ -4,7 +4,7 @@
   "caption": "The one-page case for counting the level on the C-arm the hospital already owns: the never event, operating-room time, what a wrong level costs, navigation's price, and a per-hospital model with every input labelled.",
   "chapter": "01",
   "grade": "Reported",
-  "status": "current",
+  "status": "a record, not a final value",
   "source": {
     "kind": "artifact",
     "artifact": "artifacts/level-counting-visual-abstract/",
@@ -13,7 +13,7 @@
     "commit": null,
     "data": [],
     "run": null,
-    "notes": "The whole artifact page, rendered in headless Chromium and captured as one image; its numbers carry its own reference list. Its icons are decoration and are not kept apart."
+    "notes": "The whole artifact page, rendered in headless Chromium and captured as one image; its numbers carry its own reference list. Its icons are decoration and are not kept apart. Status set to a record, not a final value on review: The OR-study contradictions confirm a disagreement on where the registry's events occurred (row 9) and on what the fiducial cost means (row 14), and call the navigation absence claims unsourced (row 44)."
   },
   "explore": [
     {

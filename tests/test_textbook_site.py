@@ -255,13 +255,16 @@ class ASmallBook(unittest.TestCase):
         self.assertIn('href="https://github.com/OWNER/NAME/blob/abc1234/docs/method.md"', block)
         self.assertIn("https://github.com/OWNER/NAME/issues/new?labels=figure-rerun", block)
         self.assertIn("figure-rerun-id%3A+01%2Fa-figure", block)
-        self.assertIn("owner&#x27;s word for this one run", block)
+        self.assertIn("Opening the issue only asks", block)
+        self.assertNotIn("word for this one run", block)
         self.assertIn("sbatch slurm/draw.sh", block)
         self.assertIn('href="figures/01/a-figure.json"', block)
 
     def test_an_interactive_figure_shows_in_place_of_its_image(self):
         block = self.figure("01-a-moving-figure")
         self.assertIn('<iframe src="figures/01/a-moving-figure.html"', block)
+        self.assertIn('sandbox="allow-scripts"', block)
+        self.assertNotIn("allow-same-origin", block)
         self.assertNotIn("<img", block)
         self.assertIn("traced to the data", block)
         self.assertIn("No command is recorded", block)
@@ -279,6 +282,12 @@ class ASmallBook(unittest.TestCase):
         self.assertIn("Traced to the script that drew it: 1; to its data or run only: 1; to the artifact alone: 0", listing)
         self.assertIn('href="chapter-01.html#fig-01-a-figure"', listing)
         self.assertIn('href="figures.html"', self.read("index.html"))
+
+    def test_a_script_that_made_only_the_numbers_traces_to_the_data(self):
+        made = {"made_by": "elsewhere:tools/stats.py (the numbers); the chart is drawn by the artifact's own script"}
+        self.assertEqual(textbook_site.traced({"source": made}), "data")
+        self.assertEqual(textbook_site.traced({"source": {"made_by": "x:tables/t.tex (a hand table)"}}), "data")
+        self.assertEqual(textbook_site.traced({"source": {"made_by": "x:tools/draw.py"}}), "script")
 
     def test_a_record_s_prose_goes_through_the_privacy_pass(self):
         self.assertNotIn("someacct", self.read("chapter-01.html"))
