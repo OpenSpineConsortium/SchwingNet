@@ -142,3 +142,7 @@ The chapter 19 review said no source prints a fraction for the 80.5 percent held
 ## Review of chapter 28
 
 31 changes of about 75 statements: 7 numbers, 6 grades, 4 superseded or open marks, 2 canonical versions, 7 mechanism, 3 argument, 2 links. Most serious: 80.5 percent, the renders-only 1 of 287 and the 145 banked COBRA cases were quoted as current where the contradictions pages hold them open; four reported-stack figures sourced only to demo-plan.md were graded Measured, now Reported or Unverified; gendered pronouns, a wrong row cited for the cross-validation, two physics tests need no training (not one), and mechanism cut from entries 4, 5, 8, 9 and 11. Unsettled: which entries wait on the owner's word, whether the September jobs produced results, the version 1 GPU bound.
+
+## Review of chapter 32
+
+10 changes of about 75 statements: 2 numbers, 4 grades, 2 links, 2 argument. Most serious: the gates firing after the run were given as "3d to 6a", which takes in 5b, 5c and 5f; hpcworker's framework "11 on 3 October" was stated as fact where the contradictions page holds it cannot-tell; "23.x on 21 October" was credited to the grid review instead of the several-workers plan. Unsettled: whether phase 0's probe ran, the VS Code 5.0.0 credential fix, the hand upload of 20.0.0, store review of 22.0.0 and 23.0.0, beethoven-qa's current tags, the REFORMS list against Kapoor 2024, Google's token lifetimes.
