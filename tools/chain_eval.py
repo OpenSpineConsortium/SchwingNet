@@ -169,7 +169,7 @@ def run(args):
     out = Path(args.run)
     record = json.loads((out / "RUN.json").read_text(encoding="utf-8"))
     checkpoint = json.loads((out / "train" / "checkpoint.json").read_text(encoding="utf-8"))
-    model = train.build_model(None, args.device)
+    model = train.model_for(checkpoint, args.device)
     model.load_state_dict(torch.load(out / "train" / "best.pt", map_location=args.device, weights_only=True))
     size = int(checkpoint["size"])
     prior = load_prior(args.prior)

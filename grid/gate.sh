@@ -51,6 +51,9 @@
 #                   queues one job, which starts writing only when the size rule admits what the
 #                   unpacked files take; the next send prints its report, logs/UNPACK-<id>.md, and
 #                   clears it, so a later send goes on where a job cut short stopped
+#   nodequota       the volume's readout as a compute node reads it (grid/nodequota.sbatch, the owner's yes
+#                   of 2026-10-24): the first send queues one job, the next prints logs/NODEQUOTA.md and
+#                   clears it, so the send after that looks again
 #   samples         the sample index (grid/run-samples.sh): plan, scan and merge, refused while one
 #                   of them is live; status shows its MANIFEST.md, aggregates only
 #   stop            cancel the gate's own jobs that are still queued or running, and nothing else
@@ -96,14 +99,14 @@ SWEEP_BANK=${SWEEP_BANK:-$DATA_ROOT/realxray/carmlspine_sweep}
 NETRC=${NETRC:-$HOME/.netrc}
 LOGS=$REPO/grid/logs
 STATE=$LOGS/GATE_JOBS.txt
-WORDS="start status leaks v1 latency fetch explore dropzip unpack samples stop cancel"
+WORDS="start status leaks v1 latency fetch explore dropzip unpack nodequota samples stop cancel"
 ENVS="default train-cpu train-gpu telemetry"
 
 word=${1:-}
 id=${2:-}
 # Matched whole, so one argument holding two words ("v1 latency") is refused and never runs nothing.
 case "$word" in
-  start|status|leaks|v1|latency|fetch|explore|dropzip|unpack|samples|stop|cancel) ;;
+  start|status|leaks|v1|latency|fetch|explore|dropzip|unpack|nodequota|samples|stop|cancel) ;;
   "") echo "refusing: no word; one of: $WORDS"; exit 64 ;;
   *) echo "refusing: '$word' is not one of: $WORDS"; exit 64 ;;
 esac
@@ -772,6 +775,22 @@ word_unpack() {
   echo "submitted one job. It starts writing only once the size rule admits it; send unpack $id again once it ends to read what it wrote."
 }
 
+word_nodequota() {
+  local report=$LOGS/NODEQUOTA.md busy
+  busy=$(live_of nodequota)
+  [ -z "$busy" ] || { echo "refusing: the node's readout is still queued or running (job $busy); send nodequota again once it ends"; return 75; }
+  if [ -f "$report" ]; then
+    # Printed once, so the send after it reads a node again.
+    echo "## $(basename "$report") ($(date -r "$report" '+%F %T'))"
+    head -n 100 "$report" | LC_ALL=C tr -cd '\11\12\40-\176' | masked | head -c 20000
+    rm -f "$report"
+    return 0
+  fi
+  envs_ready || { echo "refusing: the environments are not ready; 'start' makes them first"; return 75; }
+  submit nodequota batch -- nodequota.sbatch > /dev/null || return 1
+  echo "submitted one job. Send nodequota again once it ends to read what the node read."
+}
+
 word_samples() {
   local busy said rc
   busy=$( { live_of samples_plan; live_of samples_scan; live_of samples_merge; } | tr '\n' ' ')
@@ -835,6 +854,7 @@ case "$word" in
   explore) word_explore ;;
   dropzip) word_dropzip ;;
   unpack) word_unpack ;;
+  nodequota) word_nodequota ;;
   samples) word_samples ;;
   stop) word_stop ;;
   cancel) word_cancel ;;
