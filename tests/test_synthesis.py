@@ -644,6 +644,11 @@ class Report(unittest.TestCase):
             run.without = {"symphony-template"}
             with mock.patch.dict(os.environ, {"SYNTH_MAIN": main}):
                 self.assertEqual(synth.heads(run), {"SchwingNet": main})
+            # The look names them so, read here from records that hold nothing.
+            run.trees, run.records, run.skipped = (lambda state, at=None: {}), dict, (lambda aid: aid.startswith("symphony-template/"))
+            run.M, run.N, run.text_dir = {"clusters": [], "numbers_extra": []}, {"candidates": [], "verdicts": [], "finders": []}, folder
+            with mock.patch.dict(os.environ, {"SYNTH_MAIN": main}):
+                self.assertEqual(synth.status(run, {})["heads"], {"SchwingNet": main})
         self.assertIn("SYNTH_MAIN: ${{ steps.base.outputs.main }}", WORKFLOW.read_text(encoding="utf-8"))
 
 

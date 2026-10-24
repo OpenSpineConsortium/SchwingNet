@@ -24,15 +24,15 @@ artifacts' texts are extracted; else a fresh temporary folder is used, so no run
 another's texts. SYNTH_MAIN, where the workflow sets it to a commit hash, is the commit the
 report names for this checkout in place of its HEAD: the commit of main that the look's base
 step built on, since the commit that step makes when it lays an open synthesis pull request's
-records on main exists only on the runner. The state (work/out/state.json) says, for every artifact, the git tree its
-inventory record was read from; a run compares today's trees with it (synth_state.py),
-checks every verdict's and record's quotes against today's texts, checks every text against
-the concept ledger (synth_concepts.py), and lists what a change needs read again
-(synth_reads.py). status, concepts, report and stamp run anywhere, with no Claude. plan
+records on main exists only on the runner. The state (work/out/state.json) says, for every
+artifact, the git tree its inventory record was read from; a run compares today's trees with it
+(synth_state.py), checks every verdict's and record's quotes against today's texts, checks
+every text against the concept ledger (synth_concepts.py), and lists what a change needs read
+again (synth_reads.py). status, concepts, report and stamp run anywhere, with no Claude. plan
 writes the inputs of the Claude reads and join takes their answers: .github/workflows/
-synthesis.yml runs both, the reads between them on this repository's Claude token, at most
-the runs a day its variable allows, and adds what the join wrote to the one open synthesis
-pull request, or opens it.
+synthesis.yml runs both, the reads between them on this repository's Claude token, at most the
+runs a day its variable allows, and adds what the join wrote to the one open synthesis pull
+request, or opens it.
 """
 import argparse
 import datetime
