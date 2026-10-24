@@ -226,5 +226,8 @@ repo:D.repo,workflow:D.workflow,ref:"main",inputs:{recipe:recipe,epochs:String(e
 // posted on a person's change and on Request, never on the first draw, so a page that embeds the figure offers nothing until asked
 if(event)post(R.payload)}
 $("request").addEventListener("click",e=>{if(framed){e.preventDefault();post(Object.assign({},R.payload,{type:"schwingnet.open",href:R.payload.issueUrl,label:"Request this run: "+R.payload.title}))}});
+// The page that embeds this figure answers a dispatch it made for the viewer (docs/research/experiments-panel.md, section 4).
+addEventListener("message",e=>{let d=e.data;if(!framed||e.source!==window.parent||!d||d.type!=="schwingnet.dispatch.result")return;
+$("req-note").textContent=d.ok?"Dispatched as you: the workflow opens the issue, checks the lines and answers with the gate word.":"Not dispatched ("+(d.error||"no reason given")+"); Request this run still works."});
 update();draw();addEventListener("resize",draw);
 </script></body></html>
