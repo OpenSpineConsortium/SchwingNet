@@ -95,6 +95,12 @@ python3 tools/claims_rank.py check
 # page written again, or a page edited by hand, fails here.
 python3 tools/eval_page.py check
 
+# The experiments panel (docs/textbook/figures/35/experiments.html, .json and .svg) is written from
+# the same recorded runs, the recipes and the blocks by tools/experiments_panel.py, standard library:
+# a run recorded without the panel written again (python3 tools/experiments_panel.py write), or a
+# page edited by hand, fails here.
+python3 tools/experiments_panel.py check
+
 # Every recorded run carries its report (REPORT.md, claim.json, reforms.json), written by
 # tools/report.py from the run's files and data/reporting/study.json, standard library: a run
 # recorded without its report, or a study answer changed without the reports written again
