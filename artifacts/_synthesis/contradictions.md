@@ -1,6 +1,6 @@
 # Contradictions and collisions
 
-What the inventoried artifacts give differently, found and checked for the Artifact Textbook (issue #120, finished under #136), rendered on 2026-10-23. Readers went over the inventory's numbers table for every quantity two artifacts give with different values, and over each topic cluster's full records for disagreements, revised figures, stale statements, duplicated texts and shared unsourced claims. The table holds 3,025 numbers from 69 artifacts. The number readers' notes record reading two parts of it, 1,231 and 956 rows, 2,187 in all; the parts and the rule that split them are not kept in this repository, so which numbers went unread is not known here.
+What the inventoried artifacts give differently, found and checked for the Artifact Textbook (issue #120, finished under #136), rendered on 2026-10-24. Readers went over the inventory's numbers table for every quantity two artifacts give with different values, and over each topic cluster's full records for disagreements, revised figures, stale statements, duplicated texts and shared unsourced claims. The table holds 3,016 numbers from 69 artifacts. The number readers' notes record reading two parts of it, 1,231 and 956 rows, 2,187 in all; the parts and the rule that split them are not kept in this repository, so which numbers went unread is not known here.
 
 A script then looked for every reader's quote in the artifact's extracted text and, failing that, in the page's own files. It ignores case and spacing, quotation marks, square and round brackets and the marks of tables and Markdown (the bar, asterisk, underscore, backtick, hash and greater-than sign), and reads typographic characters and a few accented letters as their plain ones; every other mark, braces and the less-than sign among them, must match. It matches around an ellipsis or an editor's words in square brackets, leaving unchecked any part shorter than 12 characters, and a quote longer than 48 characters that it finds neither whole nor in parts counts as partly found when one of its 48-character stretches, those that start at every eighth character, is in the text; the columns "Reader's quote A" and "B" say what it found. Then a skeptic read both sources of every cluster candidate, and of every number collision a reader classed as a contradiction or a later revision and 11 others #136's first run took, and gave a verdict with the exact words it rests on, copied from each source. Those words are on the cluster pages and under the number tables beside the reader's, with where the script found them. Last, a sample of the verdicts was read again by agents told to overturn them, and then every number collision on the confirmed list that the sample left out, with the rows that read the same figures ruled again together (How far the verdicts hold, below).
 
@@ -35,7 +35,7 @@ A blank verdict means no skeptic read that candidate, and the reader's kind is t
 | [Datasets, holdings and licences](contradictions/datasets-holdings-and-licences.md) | 76 | 13 | 13 | 10 | 22 | 18 | 0 | 29 |
 | [FluoroCap: the corpus, its pipeline and its audits](contradictions/fluorocap-the-corpus-its-pipeline-and-its-audits.md) | 52 | 7 | 9 | 25 | 7 | 4 | 0 | 4 |
 | [Verification benches, overnight audits and OR readiness](contradictions/verification-benches-overnight-audits-and-or-readiness.md) | 96 | 21 | 14 | 16 | 32 | 13 | 0 | 26 |
-| [Detectors, architecture and the training plan](contradictions/detectors-architecture-and-the-training-plan.md) | 80 | 16 | 11 | 13 | 27 | 13 | 0 | 8 |
+| [Detectors, architecture and the training plan](contradictions/detectors-architecture-and-the-training-plan.md) | 81 | 17 | 11 | 13 | 27 | 13 | 0 | 8 |
 | [Renders, physics and the sim-to-real gap](contradictions/renders-physics-and-the-sim-to-real-gap.md) | 60 | 9 | 8 | 5 | 21 | 17 | 0 | 2 |
 | [The case for the OR study: proposal, seed grant and IRB protocols](contradictions/the-case-for-the-or-study-proposal-seed-grant-and-irb-protoc.md) | 68 | 11 | 11 | 7 | 23 | 16 | 0 | 5 |
 | [Programme direction, handoffs and onboarding](contradictions/programme-direction-handoffs-and-onboarding.md) | 80 | 8 | 7 | 13 | 37 | 15 | 0 | 11 |
@@ -46,7 +46,7 @@ A blank verdict means no skeptic read that candidate, and the reader's kind is t
 | [Outreach events and student funding](contradictions/outreach-events-and-student-funding.md) | 28 | 8 | 6 | 0 | 5 | 9 | 0 | 1 |
 | Number collisions (the numbers table) | 247 | 14 | - | 31 | 42 | 15 | 145 | 1 |
 
-858 cluster candidates in 14 of 14 clusters, 858 read by a skeptic. For the numbers, Refuted counts the three verdicts that find no disagreement (same-number-restated, scope-or-unit-differs and different-quantities), most of which still say to carry both values, each with its scope; Not read counts the collisions a reader classed as another scope or another quantity, which no skeptic read, by design.
+859 cluster candidates in 14 of 14 clusters, 859 read by a skeptic. For the numbers, Refuted counts the three verdicts that find no disagreement (same-number-restated, scope-or-unit-differs and different-quantities), most of which still say to carry both values, each with its scope; Not read counts the collisions a reader classed as another scope or another quantity, which no skeptic read, by design.
 
 ## How far the verdicts hold
 
@@ -58,7 +58,7 @@ On 2026-10-23 the skeptics' verdicts were themselves read again, the earlier acc
 
 In all 9 verdicts were overturned and 2 held with a corrected hint. Each now reads as the ruling has it, with the verdict it replaced in the Review column of its row. The rest were not read again, but for the confirmed number collisions, which the follow-up below read whole: by the rates of the draws from the strata that still hold them (26 of 28 and 22 of 24 held), between 2 and 23 % of the other confirmed verdicts may be wrong, and between 2 and 26 % of the others, so read a row before relying on it.
 
-These rates are unweighted: every stratum gave the same number of verdicts whatever its size. Weighted by how many of the 847 verdicts neither the review nor the follow-up read each stratum holds, about 92 % of the 416 on the confirmed list and 91 % of the 431 others are expected to hold, with wider intervals than the counts above, since a few drawn verdicts stand for each stratum. Most of the unreviewed confirmed verdicts that may be wrong are in Detectors, architecture and the training plan: 1 of its 2 drawn was overturned, and it holds 39 of the 416, so read those first.
+These rates are unweighted: every stratum gave the same number of verdicts whatever its size. Weighted by how many of the 845 verdicts neither the review nor the follow-up read each stratum holds, about 92 % of the 415 on the confirmed list and 91 % of the 430 others are expected to hold, with wider intervals than the counts above, since a few drawn verdicts stand for each stratum. Most of the unreviewed confirmed verdicts that may be wrong are in Detectors, architecture and the training plan: 1 of its 2 drawn was overturned, and it holds 39 of the 415, so read those first.
 
 The rows the review changed:
 
@@ -135,7 +135,7 @@ Rows of the cluster pages give these groups' figures too. A row is counted for a
 
 The counts are exact for these rows, since every one was read; the intervals take the 55 as a sample of the verdicts such skeptics give, so they say how well that rate is known, not how many of these rows may be wrong. Of the 55, 44 stay on the confirmed list and 11 left it.
 
-In all 14 verdicts were overturned and 9 held with a corrected hint. Each now reads as its ruling has it, or its group's judge where a group re-rule ruled it again, the second judge over the first, and its Review column gives the follow-up's outcome with the verdict it replaced. A judge who sided with the skeptic's verdict but put the hint in other words leaves a corrected hint, and the row reads as the ruling has it: number collisions 12 and 154, which the page counted as held, with the skeptic's words, until apply_review.py was changed to put such a ruling's words in place, with the second group re-rule, which ruled neither of them. With these, every number collision on the confirmed list has been read by a skeptic and then again, by the review or the follow-up.
+In all 14 verdicts were overturned and 9 held with a corrected hint. Each now reads as its ruling has it, or its group's judge where a group re-rule ruled it again, the second judge over the first, and its Review column gives the follow-up's outcome with the verdict it replaced. A judge who sided with the skeptic's verdict but put the hint in other words leaves a corrected hint, and the row reads as the ruling has it: number collisions 12 and 154, which the page counted as held, with the skeptic's words, until apply_review.py was changed to put such a ruling's words in place, with the second group re-rule, which ruled neither of them. With these, every number collision on the confirmed list has been read by a skeptic and then again, by the review or the follow-up or, since, by a later run's re-checker.
 
 The rows the follow-up changed:
 
@@ -162,6 +162,10 @@ The rows the follow-up changed:
 - number collision 176: confirmed-contradiction became different-quantities, in the second group re-rule.
 - number collision 226: updated-later held, with a corrected hint, in the group re-rule.
 - number collision 227: updated-later became scope-or-unit-differs, in the group re-rule.
+
+### Read by the workflow since
+
+After the follow-up, the runs of .github/workflows/synthesis.yml on 2026-10-24 read 2 verdicts again because a page each rests on had changed, 2 of them keeping the verdict they had, and read 1 row that their finders or the concept checks found. Each was read by a skeptic and then by a re-checker told to overturn the skeptic's verdict and its hint, and 0 of the 3, where the two disagreed, by a judge who read both sources and ruled. Each such row's Review column says when it was read and, for a verdict read again, what it was before.
 
 ## Confirmed: what a planner must not take from one artifact alone
 
@@ -440,6 +444,7 @@ Disagreements, revisions and stale statements:
 - Row 76, stale, confirmed (openspine-board-t3gfds and spine-program-decisions-qqhkqz): Board asks the owner to purge IRB files; decisions records it done. Carry the purge as done (decisions), with the GitHub cache-purge request still the owner's to do.
 - Row 77, stale, confirmed (counting-from-the-sacrum and naming-vertebrae-without-ct-hjy4vc; review: held): Running jobs and pending audits dated 2026-09-13 to 2026-09-22. Mark these 'running' lines as of their dates. Carry research directions' one-record-per-patient answer, and record the fleet detector's result as not recorded.
 - Row 78, stale, confirmed (any-view-spine-plan and handoff-schwingnet-ctspinopelvic1k-and-the-imaging-programme-rbcdmf): Pending items in the October artifacts. Carry from the any-view plan's section 4 that the census ran on 2026-10-22. Keep the provisional as not recorded as filed.
+- Row 80, stale, confirmed (any-view-spine-plan; found on 2026-10-24): Census status inside the any-view plan: pending in the intro, run in section 4. Carry the census as run on 2026-10-22 (140 groups, 7,008,826 files, 7.3 TB) per section 4, and treat the intro's "goes to the grid next" as stale. Per-region counts for NHANES II, VinDr-SpineXR and FluoroCap are still pending the next run.
 
 Duplicated texts and shared unsourced claims:
 
@@ -481,7 +486,7 @@ Duplicated texts and shared unsourced claims:
 - Row 42, duplicate-text, confirmed (aidas-seed-grant-proposal and retrospective-fluoroscopy-protocol): Preliminary-results paragraph (99.17-100% walks, 99.14 vs 71.67% recall, 80.9%, 93.9/99.5%, 96-98%, 64-77%, 26 points, 5-60%). Treat it as one source. Carry 99.14%/71.67%/30.06% from the manuscript record, and take the DeepFluoro figures from Counting Levels (86%, 90-97%) instead of the copied ones.
 - Row 43, duplicate-text, confirmed (aidas-seed-grant-proposal and retrospective-fluoroscopy-protocol): Wrong-level surgery registry and fiducial-cost paragraph (34,544 operations, 0.12%, 81.3%, 51.9 min, 183 mGy, $1,750-1,950). Carry it once with its citations (Furuya 2026 for the registry, Siminski 2023 and Childers 2018 for the fiducial cost), as the IRB draft gives them.
 - Row 44, duplicate-text, confirmed (lift-before-label-jzjq8t and fluorocap-reality-check-czudvb): LevelCheck's effect on surgeons' error on hard radiographs (30.4% to 2.4%). Carry it once from the Reality Check's fuller wording (median error, 62 hard radiographs), cited as Manbachi 2018.
-- Row 45, duplicate-text, confirmed (schwingnet-data-registry and any-view-spine-plan): DeepFluoro vendor frames left unused (2,293). Carry 2,293 of 2,659 vendor frames unused, with no written criterion, once, from the registry.
+- Row 45, duplicate-text, confirmed (schwingnet-data-registry and any-view-spine-plan; read again on 2026-10-24, was confirmed): DeepFluoro vendor frames left unused (2,293). Carry 2,293 of 2,659 DeepFluoro vendor frames unused once, from the registry, with its 'no written criterion' note; the plan's mention is a restatement.
 - Row 46, unsourced-shared-claim, confirmed (aidas-seed-grant-proposal and retrospective-fluoroscopy-protocol): Synthetic fluoroscopy from CT is 'close in physics but tuned to one C-arm and one cadaveric population'. Carry it once, as the project's own inference from the DeepFluoro runs. Note that the ledger's later cross-device results (for example 32% on the image intensifier) bear on it.
 - Row 48, unsourced-shared-claim, confirmed (lift-before-label-jzjq8t and lift-before-label-jzjq8t): Registration-derived labels are biased toward registration-friendly frames. Carry it as an unsourced caution from Lift Before Label. A measurement of label accuracy on frames that register poorly, or a citation, would turn it into a finding.
 
