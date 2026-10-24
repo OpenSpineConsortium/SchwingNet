@@ -2598,6 +2598,83 @@ exec "{volume.tools}/getfattr" "$@"
             "  ceph.quota.max_bytes was not read; no reader ran, or its read failed",
         ])
 
+    def test_each_folder_above_the_volume_is_shown_where_a_quota_there_stands_or_is_not_read(self):
+        # The rule admits nothing while a quota above the volume stands or cannot be read (#180), so
+        # the readout then shows each folder from the volume's parent up to the root of its mount, by
+        # how far above the volume it lies and never by its path, with what a rule that counts the
+        # quota would read: its quota and what it holds, read whole, the room left by that figure,
+        # its size by stat and how many entries it lists (#188).
+        volume = volume_in(self, quota=21990232555520, used=13146 * GB)
+        parent = volume.path.parent
+        stat = str(volume.tools / "stat")
+        code, out = self.readout(volume, STAT=stat)
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("Above the volume", out)
+        volume.mount(parent)
+        volume.attribute(parent, "ceph.quota.max_bytes", 25000 * GB)
+        volume.attribute(parent, "ceph.dir.rbytes", 13200 * GB)
+        volume.attribute(parent, "stat.size", 7)
+        listed = list(parent.iterdir())
+        folders = sum(1 for entry in listed if entry.is_dir() and not entry.is_symlink())
+        here = "  1 up, the root of its mount: "
+        listing = f"stat gives its size as 7, and it lists {len(listed)} entries, {folders} of them folders"
+
+        def above(**extra):
+            code, out = self.readout(volume, STAT=stat, **extra)
+            self.assertEqual(code, 0, out)
+            lines = out.splitlines()
+            at = lines.index("Above the volume, up to the root of its mount, each folder by how far above the volume "
+                             "it lies:")
+            self.assertTrue(lines[at - 1].startswith("Room  =         none for a new fetch, since "), out)
+            self.assertFalse([line for line in lines[at:] if str(parent) in line], out)
+            return lines[at + 1:]
+
+        self.assertEqual(above(), [
+            f"{here}ceph.quota.max_bytes reads {25000 * GB}, which leaves 11800.00gb by its ceph.dir.rbytes",
+            f"{here}ceph.dir.rbytes reads {13200 * GB}",
+            f"{here}{listing}",
+        ])
+        # a figure that is no count, or whose read fails, is named as it is, and leaves no room said
+        volume.attribute(parent, "ceph.dir.rbytes", "1" * 48)
+        self.assertEqual(above()[:2], [
+            f"{here}ceph.quota.max_bytes reads {25000 * GB}",
+            f"{here}ceph.dir.rbytes reads as no count: 48 bytes, 0 of them no digit, where a count is at most 18 "
+            "digits and nothing else",
+        ])
+        volume.attribute(parent, "ceph.quota.max_bytes", "!Permission_denied")
+        self.assertEqual(above()[0], f"{here}ceph.quota.max_bytes was not read; no reader ran, or its read failed")
+        # a quota the figure passes leaves no room, never less than none
+        volume.attribute(parent, "ceph.quota.max_bytes", 13000 * GB)
+        volume.attribute(parent, "ceph.dir.rbytes", 13200 * GB)
+        self.assertEqual(above()[0], f"{here}ceph.quota.max_bytes reads {13000 * GB}, which leaves 0.00gb by its "
+                                     "ceph.dir.rbytes")
+        # 0 is no quota, so with none above the volume nothing is shown
+        volume.attribute(parent, "ceph.quota.max_bytes", 0)
+        code, out = self.readout(volume, STAT=stat)
+        self.assertIn("\nRoom  =         8844.23gb for a new fetch, which lands whole or not at all\n", out)
+        self.assertNotIn("Above the volume", out)
+        # the walk goes on to the root of the mount, a folder each line, as quota_below's does
+        volume.mountinfo.write_text("22 1 253:0 / / rw,relatime shared:1 - xfs /dev/vda1 rw\n", encoding="utf-8")
+        volume.mount(parent.parent)
+        volume.attribute(parent.parent, "ceph.quota.max_bytes", 30000 * GB)
+        lines = above()
+        self.assertEqual(lines[:3], [
+            "  1 up: ceph.quota.max_bytes reads 0",
+            f"  1 up: ceph.dir.rbytes reads {13200 * GB}",
+            f"  1 up: {listing}",
+        ])
+        self.assertEqual([line.split(":")[0] for line in lines[3:]], ["  2 up, the root of its mount"] * 3)
+        self.assertEqual(lines[3], "  2 up, the root of its mount: ceph.quota.max_bytes reads 30000000000000")
+        # a listing that cannot be read lists no entry
+        self.assertEqual(self.rule(volume, f'listed_entries "{volume.path / "no-such-folder"}"'), (0, "0 0"))
+        # and the mount table, where it cannot be read or lists no mount on the path, says so
+        missing = str(volume.tools / "no-such-table")
+        self.assertEqual(above(MOUNTINFO=missing), ["  the mount table cannot be read"])
+        empty = volume.tools / "empty-table"
+        empty.write_text("", encoding="utf-8")
+        self.assertEqual(above(MOUNTINFO=str(empty))[-1],
+                         "  the mount table lists no mount on the volume's path, not even the root of all")
+
     def test_the_readout_reads_what_the_running_fetches_owe_before_the_use(self):
         # once, in the order a fetch's decision reads them (#180)
         volume = volume_in(self, quota=21990232555520, used=13146 * GB)
