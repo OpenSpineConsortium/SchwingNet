@@ -25,9 +25,12 @@ The selection the panel builds is the planner's own grammar: `-id` removes a set
 window, through postMessage, to dispatch spine-datasets' workflow storage.yml with that selection;
 `python3 tools/storage.py check` there refuses an over-cap or sizeless fetch, and any move to the home
 while its use is unread, and the run only opens a request pull request the owner merges, so nothing is
-fetched or removed from this page alone. Where no host answers within eight seconds, as on the Pages
-site, the page shows the workflow's link and the selection to paste. The host's side of that protocol
-is tools/textbook_artifact.py's ask.js; this file implements only the figure's side.
+fetched or removed from this page alone. Where no host answers within eight seconds, or the host
+answers that it cannot, the page shows the workflow's link and the selection to paste, and asks the
+page around it to show the link in its own bar (schwingnet.open), since a sandboxed frame cannot open
+one. The site's host (tools/textbook_site.py, MESSAGE_JS) answers every dispatch and read "no
+connector" and shows the link; the artifact edition's host carries the connector. This file implements
+only the figure's side.
 
 The arithmetic the page does (the final place of each set, the selection string, the totals after the
 choices, the overlaps among the kept sets and the refusals the planner's check would make) is written
@@ -666,13 +669,23 @@ UI_JS = r"""
 
   function status(text, cls) { $("status").textContent = text; $("status").className = "status " + (cls || ""); }
   function fallback(html) { $("fallback").hidden = false; $("fallback").innerHTML = html; }
+  // A sandboxed frame cannot open a link, so the page also asks the page around it to show the link in
+  // its own bar (schwingnet.open, the site's convention), once when the fallback appears and again on
+  // each click of a link in it.
+  function askOpen(href, label) { if (HOST) HOST.postMessage({ type: "schwingnet.open", href: href, label: label }, "*"); }
+  $("fallback").addEventListener("click", function (e) {
+    const a = e.target && e.target.closest ? e.target.closest("a") : null;
+    if (a && a.href) askOpen(a.href, a.textContent);
+  });
   function dispatchFallback(why) {
     status("Not dispatched: " + why + ".", "red");
+    askOpen(C.workflow_url, "storage.yml on spine-datasets");
     fallback("<p><b>Run it by hand.</b> Open storage.yml on spine-datasets, <a href=\"" + esc(C.workflow_url) + '" target="_blank" rel="noopener">' + esc(C.workflow_url) + "</a>, press Run workflow and paste this into its <code>selection</code> input:</p>" +
       '<code class="paste">' + esc($("selection").value) + "</code><p>The run checks the selection and opens a request pull request, which waits for the owner's merge; nothing is fetched or removed before that.</p>");
   }
   function readFallback(why) {
     status("Not refreshed: " + why + ".", "red");
+    askOpen(C.feed_page, "PLAN.json on spine-datasets' branch storage-feed");
     fallback("<p>This page shows the snapshot of the feed built " + esc(PLAN.built_at) + ". The feed itself is PLAN.json on spine-datasets' branch storage-feed, <a href=\"" + esc(C.feed_page) + '" target="_blank" rel="noopener">' + esc(C.feed_page) + "</a>; the site builds this page from it again before each deploy.</p>");
   }
   let timer = null, readId = 0;

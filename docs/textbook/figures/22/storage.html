@@ -341,13 +341,23 @@ const Model = (function () {
 
   function status(text, cls) { $("status").textContent = text; $("status").className = "status " + (cls || ""); }
   function fallback(html) { $("fallback").hidden = false; $("fallback").innerHTML = html; }
+  // A sandboxed frame cannot open a link, so the page also asks the page around it to show the link in
+  // its own bar (schwingnet.open, the site's convention), once when the fallback appears and again on
+  // each click of a link in it.
+  function askOpen(href, label) { if (HOST) HOST.postMessage({ type: "schwingnet.open", href: href, label: label }, "*"); }
+  $("fallback").addEventListener("click", function (e) {
+    const a = e.target && e.target.closest ? e.target.closest("a") : null;
+    if (a && a.href) askOpen(a.href, a.textContent);
+  });
   function dispatchFallback(why) {
     status("Not dispatched: " + why + ".", "red");
+    askOpen(C.workflow_url, "storage.yml on spine-datasets");
     fallback("<p><b>Run it by hand.</b> Open storage.yml on spine-datasets, <a href=\"" + esc(C.workflow_url) + '" target="_blank" rel="noopener">' + esc(C.workflow_url) + "</a>, press Run workflow and paste this into its <code>selection</code> input:</p>" +
       '<code class="paste">' + esc($("selection").value) + "</code><p>The run checks the selection and opens a request pull request, which waits for the owner's merge; nothing is fetched or removed before that.</p>");
   }
   function readFallback(why) {
     status("Not refreshed: " + why + ".", "red");
+    askOpen(C.feed_page, "PLAN.json on spine-datasets' branch storage-feed");
     fallback("<p>This page shows the snapshot of the feed built " + esc(PLAN.built_at) + ". The feed itself is PLAN.json on spine-datasets' branch storage-feed, <a href=\"" + esc(C.feed_page) + '" target="_blank" rel="noopener">' + esc(C.feed_page) + "</a>; the site builds this page from it again before each deploy.</p>");
   }
   let timer = null, readId = 0;
