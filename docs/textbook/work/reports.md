@@ -32,3 +32,6 @@ About 270 checked, 38 changed (number 9, grade 3, superseded 4, canonical 1, sco
 
 ## 26 writer
 2,888 words, 34 rows, lint ok. Open: funders' terms are a September 2026 snapshot (Reported); event year and registration page unconfirmed; research-year enrolment, the AOA slot and the on-campus rule open; AIDaS submission (01 review says the revised packet was sent 16 Oct). Left out: whether the RSNA cycles opened, the student-annotator count (13 in September), the resident's department name. Source privacy: names, phones, e-mails, venue address, form link, social handles; none reproduced; Cureus paper cited by DOI.
+
+## 23 writer
+5,389 words, 43 rows, lint ok. Open: the volume's access roster today (policy and first pass of 8 Oct given as the owner's decision); the lab recipe's ICMJE byline rule unconfirmed after 27 Sep (Unverified); the retrospective protocol's PI, annotators and storage "to confirm"; the LLC note on unconfirmed defaults. FluoroCap release plan (cannot-tell) only as "carried as private". The lead session removed the paragraph and row on a plain-text token in the owner's home, which the brief keeps out of the book. Source privacy: names, logins and volume paths in the recipe, onboarding, grid runbook, handoff and protocol; third-party contacts and a receipt number in data-access-requirements.md; an app client id in folders-admin-consent.md.
