@@ -122,3 +122,11 @@ About 95 checked, 22 changed (argument 12, scope 2, settled matters 1, number 1,
 
 ## 19 review
 About 120 checked, 41 changed (number 9, grade 3, record marks 3, canonical 4, scope 2, mechanism 3, privacy 1, argument 13, link 3). Worst: "two comparisons are decided" (the State of the Literature decides only held-out vs same-device detection; the film difference is powered, not decided); 80.5% given as "231 of 287" with no source holding that fraction and the cannot-tell rulings skipped (now Unverified, both verdicts stated); the superseded Vertebral Levels page said to hold 88.3% alone (the canonical naming page tables it too); "five surgeons", the "is not naming" quote, "section 7" and the "seventh device" corrected. Every power figure recomputed and reproduced; "never at a true 98%" needs about 11,000 persons for 80% power. Open: the convention behind 80.5; 148 vs 141; the sources of 73.3 and 82.2; Manbachi's denominator and reader count; LevelCheck's regional 157 vs 168. 6,126 words, lint ok.
+
+## Review of chapter 30
+
+16 changes of about 120 statements checked: 1 number, 4 superseded marks, 2 canonical versions, 5 argument, 2 scope, 1 grade, 1 privacy (a build number the lint read as an address). Most serious: the 8 October plan's hourly coordinator and the board's hourly fallback (six-hourly from 9 October) had been merged into one, now separated (contradictions row 2); the privacy statement's version 16 was stated as settled where the record only infers it; what the superseded plan alone holds was incomplete (added the nine setup steps and the three-reviewer source check). Unsettled: cswap on PyPI, the store submission, a live Project memory write, the current Consumer Terms, the Windows minute multiplier, the organization's plan, the build plan's later phases.
+
+## Cross-book correction: 80.5 percent
+
+The chapter 19 review said no source prints a fraction for the 80.5 percent held-out-device recall. docs/research/demo-plan.md, section 3, prints it: 231 of 287 on C-ArmLSpine at confidence 0.74, [74.1, 86.8], 93.9 percent on the repaired denominator, citing spine-program STATUS.md A6.1 and A6.5. Chapter 19 now carries it as Reported, with only the box convention unsettled; the other chapters already agreed.
