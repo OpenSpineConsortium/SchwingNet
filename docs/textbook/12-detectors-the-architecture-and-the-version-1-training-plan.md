@@ -8,9 +8,24 @@ This chapter settles, for whoever plans the next training run, what each learned
 
 The record holds two descriptions of the architecture. The first is a design. [Spine Program Decisions](../../artifacts/spine-program-decisions-qqhkqz/), undated but later than the board of 11 September, locks "one network, four heads": a shared backbone carrying vertebra detection with four corner keypoints, a level head, a lesion head and later Cobb landmarks, with each head's loss masked to zero on images not annotated for it. The second is what was trained. The [handoff](../../artifacts/handoff-schwingnet-ctspinopelvic1k-and-the-imaging-programme-rbcdmf/) of 8 October says "the SchwingNet model" is five pieces: a film-trained keypoint body detector, a real-frame vertebra and sacrum detector, a level encoder, its recurrent head and, for the fine-tuned numbers only, five fold models re-initialised from the encoder. Beside them sit a count and its coupling to the names, which learn nothing. The contradictions page confirms the conflict between the locked design and the separate models actually built (row 2); no artifact reports the shared backbone trained, so every result below comes from separate models, and version 1 inherits the separate stages.
 
+![The two networks](figures/12/the-two-networks.png)
+*Figure 12.1. Figure 6 of the manuscript as built on 22 September: the detector and the localiser; the artifact marks this version as failing inspection for its arrows. Source: [record](figures/12/the-two-networks.json).*
+
 ### The body detector, from detect_v1 to the film detector the stack uses
 
 The first detector described in full is `detect_v1`, stage 1 of the [Vertebra Detector Field Report](../../artifacts/vertebra-detector-field-report-1jljc6/): a YOLO11m-pose model with one class and four keypoints at the body's corners, trained at 1024 px with AdamW for 111 epochs on one H200. It trained on 958 images, 6,073 instances and 727 patients, nearly all lateral, from NHANES II, the Mendeley set and a partial BUU-LSPINE download, split by patient. Three lessons from it still bind any corner detector. Horizontal flipping is off, because a flip silently swaps the anterior and posterior corner slots and the keypoint head then fails to converge. Two parsing bugs were caught (BUU's edge lines pair at a step of two, and Roboflow's duplicate exports had made 107 duplicated instances). And 25 unit tests hold the corner geometry, including a slot order invariant to rotation and winding.
+
+![The corner detector's training](figures/12/detector-training-curve.png)
+*Figure 12.2. Box mAP@50 and corner mAP@50-95 by epoch: the box score passes 0.90 by epoch 20 and settles at 0.980, and the corners reach 0.901. Source: [record](figures/12/detector-training-curve.json).*
+
+![Corner predictions on a lumbar lateral film](figures/12/corner-detector-lumbar-lateral.png)
+*Figure 12.3. Six bodies detected on a lumbar lateral film; the predicted quadrilaterals track the ground truth through the lordotic curve. Source: [record](figures/12/corner-detector-lumbar-lateral.json).*
+
+![Corner predictions on a lumbar AP film](figures/12/corner-detector-lumbar-ap.png)
+*Figure 12.4. On an AP film the four corner slots are the left and right ends of each endplate, the same slots decoded differently. Source: [record](figures/12/corner-detector-lumbar-ap.json).*
+
+![The AP and lateral of one patient](figures/12/corner-detector-same-patient.png)
+*Figure 12.5. The lateral of the same patient: both films sit in the test split together, since splitting by image rather than by patient would put one spine on both sides. Source: [record](figures/12/corner-detector-same-patient.json).*
 
 The report scores per source, by box and by corner, never as one pooled recall. Validation box mAP50 is 0.980 and corner mAP50 is 0.922. On the held-out test of 558 instances, AP50 is 0.957, and PCK, the share of corners within 0.1 and 0.2 of the vertebra's own body height, is 0.768 and 0.917. The table gives the sources; the page gives no intervals, and BUU's 15 instances make its row no measurement.
 
@@ -25,11 +40,26 @@ Recall is not reported globally, because a "missed" vertebra on a partially labe
 
 The detector then grew. The decisions page gives mAP50 0.991 and PCK at 0.1 of 0.812, on a split it does not name, for a class-agnostic model trained on 4,327 images; the contradictions page reads it as superseding the [field report's](../../artifacts/vertebra-detector-field-report-1jljc6/) 0.957, which is therefore a record, not a final value (row 31). Retraining was planned on about 34,000, the target that replaced the board's 13,500 (row 38). The stack uses `detector_v5z_final`, a YOLO11m-pose body detector trained on zoomed film windows from CSXA, BUU AP and lateral films and the 543 annotated NHANES films, 12,709 films in all (row 30). The [naming page](../../artifacts/naming-vertebrae-without-ct-hjy4vc/) of 18 September reports the class-agnostic detector of its day finding 97.6 percent of bodies on held-out real film. Two of its three misses in 243 were the sacrum, and its miss rate is 2.42 percent at confidence 0.25, 0.10 and 0.05 alike. The [OR readiness ledger](../../artifacts/or-readiness-ledger/) sums up the film keypoint detector v5z as finding 97.7 percent of thoracic bodies on AASCE's 608 films at confidence 0.25, but its table pools films the detector trained on. On the 128 BoostNet test films and the 180 films outside its training and validation lists, recall by thoracic band runs 95.0 to 99.0 percent. L5 is weakest, at 83.6 percent, where the pelvis overlaps it on erect AP films. None of these figures has an interval.
 
+![The two networks, first draft](figures/12/architectures-first-draft.png)
+*Figure 12.6. Row (f) of the superseded Figure 1: the detector and the localiser drawn as blocks whose size stands for the feature map's resolution, with skips as arcs. Source: [record](figures/12/architectures-first-draft.json).*
+
+![The learned stage on real radiographs](figures/12/detector-boxes-on-radiographs.png)
+*Figure 12.7. Thin green, the annotation; red, the detector's calls at confidence 0.25 with their scores. One cervical film loses its lowest body and one carries an extra call. Source: [record](figures/12/detector-boxes-on-radiographs.json).*
+
+![Thoracic films under the keypoint detector](figures/12/thoracic-films-under-the-keypoint-detector.png)
+*Figure 12.8. Eight AASCE films under the film keypoint detector, red found, green truth, magenta missed and yellow false; L5 is the weak level where the pelvis overlaps it. Source: [record](figures/12/thoracic-films-under-the-keypoint-detector.json).*
+
 ### The sacrum detector and the real-frame detector
 
 Two of the three misses were the sacrum, the count's anchor, so the naming page gives the sacrum its own single-class detector, split by patient, at precision 98.2 percent and recall 96.9 percent with no interval. The page says 4,526 training images in one place and 5,110 in another, so the count is open (row 50). It is the later design, against the single network (row 3).
 
 The stack's real-frame detector, `rx_lodo_carmlspine_1024`, is a YOLO11m box detector for the vertebra and the sacrum. It was trained on 3,094 real frames, from 118 COBRA Elekta cases and five DeepFluoro specimens, and initialised from a detector trained on TotalSegmentator renders. The [demo plan](../../docs/research/demo-plan.md) counts its model card's training set as 5,408 synthetic and 896 real entries, a unit the record does not reconcile with 3,094 frames. Real C-arm data is barely used: the handoff counts only 145 of COBRA's 692 cases, all Elekta, in any frame bank (150 on the atlas's annotation line, a count the [concept ledger](../../artifacts/_synthesis/concepts.md#row-129-number-of-cobra2026-casesexports) leaves open), and the [retraining plan](../../docs/research/retraining-plan.md) has the sacrum on only 18.2 percent of 609 COBRA test frames.
+
+![Which training source carries the detector, first version](figures/12/earlier-contribution-matrix.png)
+*Figure 12.9. The held-out device by training set matrix from the single-device and pooled arms, the version the owner called too technical. Source: [record](figures/12/earlier-contribution-matrix.json).*
+
+![Which source carries the detector](figures/12/which-source-carries-the-detector.png)
+*Figure 12.10. The matrix behind the reversed DeepFluoro answer: adding the arc-spanning Elekta source gains 71.8 points on the held-out device and adding the near-AP cadaver source changes it by -2.1, as the artifact reports. Source: [record](figures/12/which-source-carries-the-detector.json).*
 
 ### Box repair between the detector and the names
 

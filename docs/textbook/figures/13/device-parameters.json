@@ -1,0 +1,44 @@
+{
+  "id": "13/device-parameters",
+  "title": "Image-formation parameters per device",
+  "caption": "The device cards' fitted image-formation parameters; the spikes in the histograms are the clip the spread sweep measured.",
+  "chapter": "13",
+  "grade": "Reported",
+  "status": "a record, not a final value",
+  "source": {
+    "kind": "artifact",
+    "artifact": "artifacts/schwingnet-figures-xyz6kr/",
+    "artifact_url": "https://claude.ai/artifact/XyZ6krXFYezkdkpj2kAKPw",
+    "made_by": null,
+    "commit": null,
+    "data": [
+      "docs/devices/*.json (the device cards, spinesurg-ct-nnunet)"
+    ],
+    "run": null,
+    "notes": "Byte-identical (530,395 bytes) to 08_render_devices figures/docs_figures/fig_device_params.png in spine-program, copied from spinesurg-ct-nnunet docs/figures/. device_spread_sweep.py refers to it; which script drew it is not recorded; tools/device_fit.py at 097933a, which draws the cards' other figures, is the likeliest."
+  },
+  "explore": [
+    {
+      "label": "The artifact's page and files",
+      "href": "artifacts/schwingnet-figures-xyz6kr/"
+    },
+    {
+      "label": "The artifact on claude.ai",
+      "href": "https://claude.ai/artifact/XyZ6krXFYezkdkpj2kAKPw"
+    },
+    {
+      "label": "The device parameter audit",
+      "href": "https://github.com/OpenSpineConsortium/spine-program/blob/88398813308aba7dc2b4ee823385ea0ca2665f0d/08_render_devices/docs/DEVICE_PARAM_AUDIT.md"
+    },
+    {
+      "label": "The fitting code at 097933a",
+      "href": "https://github.com/OpenSpineConsortium/spine-program/blob/88398813308aba7dc2b4ee823385ea0ca2665f0d/08_render_devices/code/ssn_097933a/tools/device_fit.py"
+    }
+  ],
+  "rerun": {
+    "where": "none",
+    "command": null,
+    "cost": "nothing to run: no command is recorded for it",
+    "needs_owner_word": false
+  }
+}

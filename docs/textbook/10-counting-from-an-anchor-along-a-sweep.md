@@ -8,6 +8,12 @@ This chapter states SchwingNet's counting line whole: a level found by counting 
 
 The radiographer puts the anchor at the edge of the first field, the sacrum when sweeping up and C2 when sweeping down, and exposes, then moves the C-arm toward the target by one field minus two vertebral bodies, so two bodies of the previous image stay in view, and exposes again until the target is in the field. A detector, the one learned stage, finds the bodies and the anchor in each frame. Consecutive frames are linked by normalised cross-correlation restricted to within 0.6 of a body of the commanded step and form one chain, a panorama with one node per body; the target is the k-th node from the anchor, and the method asserts "four from the sacrum", never "L4". A last exposure with an instrument on bone is correlated along the chain: the body under the peak is the level, and the drop to the peak one body away is its confidence. When a frame fails to link or the anchor is not found, the walk is declined rather than guessed.
 
+![The spine prone, and the count in two states](figures/10/anatomy-and-two-states.png)
+*Figure 10.1. Row (b) of the superseded Figure 1: a cartoon prone spine from the sacrum to C2 with the sacrum marked as the anchor, and the counting window in its first state and its k-th state over the earlier windows. Source: [record](figures/10/anatomy-and-two-states.json).*
+
+![Frames linked from the anchor](figures/10/frames-linked-from-the-anchor.png)
+*Figure 10.2. Overlapping exposures linked from the anchor into one map; every body is a node of the chain. Source: [record](figures/10/frames-linked-from-the-anchor.json).*
+
 That is the method of the September proposal, [Counting Levels Under Fluoroscopy](../../artifacts/counting-levels-under-fluoroscopy/). The October [AIDaS Seed Grant Proposal](../../artifacts/aidas-seed-grant-proposal/) and the [Level Counting Visual Abstract](../../artifacts/level-counting-visual-abstract/) carry the same paragraph and figures, read as one description by [the OR-study contradictions](../../artifacts/_synthesis/contradictions/the-case-for-the-or-study-proposal-seed-grant-and-irb-protoc.md) (rows 51 and 52) and [the level-naming contradictions](../../artifacts/_synthesis/contradictions/level-naming-and-counting.md) (row 58). The proposal is cited here for the method and the grant, which adds intervals and regional figures, for the results.
 
 ## The chain, stage by stage
@@ -28,21 +34,39 @@ A column of vertebrae is periodic at the body pitch, and the matcher, as row d o
 
 The line searches only a band of +/- 0.6 of a body around the commanded step. Row d marks the margin itself: the alias peaks lie a whole body either side of the true match, so 0.4 of a body separates the band's edge from each alias, and because the step is commanded and not measured, a move off by more than that lets the alias in and the frame may lock one body off, a wrong-level operation. A planner should read the window's tolerance as 0.4 of a body of step error, not 0.6: between the two, the true peak and one alias both lie in the band and only their heights separate them, and past 0.6 only the alias is left.
 
+![Overlap and the one-body alias](figures/10/overlap-and-alias.png)
+*Figure 10.3. Row (c) of the superseded Figure 1: the overlapping vertebrae shaded in two successive crops, with the window's translation set against the vertebral body height; an alias here is an off-by-one. Source: [record](figures/10/overlap-and-alias.json).*
+
 The project's largest single error was here: the first linking rule accepted a block of shared bodies only if every pair was confirmed, so one bad box collapsed the overlap and every shared body was entered again as new. Requiring a majority took cross-frame duplicates from 21.8% to 3.0% and chain naming from 67.4% to 91.8%; with a human's boxes the two rules agree to the second decimal.
 
 ### Chain and count
 
 The linked frames make one chain, one node per body, and the count is an integer traversal of it from the anchor; in the proposal's testable words, the count consumes box positions and never reads a class. The artifacts number the chain differently. The 22 September composite numbers the sacrum 0 and the bodies above it 1 to 8; the 22:50 build's Figure 3 numbers 23 bodies from the sacral anchor; the [Vertebral Count Anomaly Rule](../../artifacts/vertebral-count-anomaly-rule/) counts C2 as the first body, making T1 the 7th and L1 the 19th; and another page counts C1 and puts T1 at the 8th (level-naming row 42). Every count in a test, a table or a readout must state its convention, or two correct counts will differ by one.
 
+![The method in one page](figures/10/the-method-in-one-page.png)
+*Figure 10.4. Expose, detect, link, chain, count, confirm: a six-row figure in which only the shaded boxes are learned, a real sweep is counted from the sacral anchor and an instrument frame is placed on that chain. Source: [record](figures/10/the-method-in-one-page.json).*
+
+![The chain, end to end](figures/10/chain-end-to-end.png)
+*Figure 10.5. The processing chain, end to end and without a branch; only the shaded stage is learned, and the count consumes box positions and never reads a class. Source: [record](figures/10/chain-end-to-end.json).*
+
 ### Confirm: the instrument frame and its margin
 
 A final exposure with an instrument on bone is placed on the chain by correlation. In the 22:50 build's Figure 4 the instrument frame, three bodies wide, is correlated with the panorama at every position; the peak gives the body by its count from the anchor, 4, and the margin, the drop to the alias peak one body away, is 0.18. Row f of the 20:12 build says why the margin is the confidence: on a periodic column the peak is always high, and what places the field is how far it stands above the best peak one body away, there 0.11 under a peak of 0.96.
+
+![Confirmation with the mechanism strip](figures/10/confirmation-with-the-mechanism-strip.png)
+*Figure 10.6. The instrument crop slid along the chain, with the peak under the matched body, the one-body-off peaks a pitch away and the search window shaded. The artifact marks this version as failed inspection and being re-laid out. Source: [record](figures/10/confirmation-with-the-mechanism-strip.json).*
 
 ## Which stage is learned, version by version
 
 The artifacts give three answers, successive designs rather than an open disagreement (level-naming row 13). On 17 and 18 September the answer was a name. The 17 September report decoded a linked chain as one sequence at 95.5%, against 85.8% for each node's own argmax and 93.8% for counting from the landmark (a record, not a final value), and judged the shape reading at least as good as counting; the 18 September results page said nothing counts from the landmark, which only fixes the chain, and the superseded [Vertebral Levels Without CT](../../artifacts/vertebral-levels-without-ct-a4rydj/) summary that the method never counts (OR-study row 36).
 
 From the runs of 21 September the proposal, then the grant, reversed that: only the detector is learned and nothing learned decides the level. The 22 September report, [Counting From The Sacrum](../../artifacts/counting-from-the-sacrum/), sits between. Its composite shades detect and count as learned, labels count "ordinal from the anchor; named by the level model", and draws that model in row e, a ResNet-18 encoder over a crop of each body and a bidirectional recurrent head over two to nine vertebrae, with a posterior over 27 levels; the 20:12 build's row b shades detect alone. The 8 October handoff holds the current state: two learned detectors, a learned level encoder and recurrent head, and a count and coupling with no learned parameters, giving the ordinal from the detected sacrum and a stop signal. [Chapter 11](11-naming-from-morphology-context-and-a-sweep.md) holds the naming line and [chapter 16](16-method-decisions-and-what-would-reverse-them.md) how the two coexist.
+
+![The processing chain, first draft](figures/10/processing-chain-first-draft.png)
+*Figure 10.7. Row (a) of the superseded six-row Figure 1: the chain from exposure to confirmation, with the learned stages shaded. Source: [record](figures/10/processing-chain-first-draft.json).*
+
+![The processing chain](figures/10/processing-chain.png)
+*Figure 10.8. Figure 2 of the SchwingNet manuscript as built on 22 September: the same chain with its type raised for print and the boxes shrunk to their text. Source: [record](figures/10/processing-chain.json).*
 
 ## Why the count is exact wherever the boxes are right
 
@@ -88,9 +112,15 @@ The rule is unmeasured. No artifact gives a decline rate at any operating point,
 
 The [Vertebral Count Anomaly Rule](../../artifacts/vertebral-count-anomaly-rule/), a canvas stamped 20:40 UTC on 22 September, makes counting check itself. With C1 left out, as the datasets leave it, an ordinary column holds 23 bodies, C2 to L5, and for any target the bodies above it to C2, R, plus those below it, C, must number 22. A sixth lumbar or thirteenth thoracic body gives 23 and a missing body 21; either is reported as an anomaly, with the ordinal from C2 and from the sacrum and no name, because a transitional column cannot be named by counting alone.
 
+![The numbered full-spine panorama](figures/10/numbered-panorama.png)
+*Figure 10.9. All 23 bodies along lordosis, kyphosis and lordosis, prone, head left, numbered from the sacral anchor and not named. Source: [record](figures/10/numbered-panorama.json).*
+
 The page states its limits: it cannot say which vertebra is extra, so it flags the column and not the level; a column with both an extra and a missing vertebra sums to 22 and passes; and its error is the counting error compounded over the whole column. Two more follow from the arithmetic: it needs both ends counted along one chain, which only a whole-column sweep or a whole-spine film gives, so a lumbar sweep from the sacrum, observing C and never R, cannot apply it; and it inherits every detector miss across 23 bodies, not the few between anchor and target.
 
 Whether the rule is in the method is not settled (level-naming row 41). The composite stacked at 19:31 drew it on an ordinary column and on one with a thirteenth thoracic body, flagged at 23; at 20:12 the figures page re-rendered those rows to remove it; the canvas's stamp is UTC and the pages give no zone, so the two cannot be ordered; and no later page read, the 22:50 build, the proposal, the grant or the handoff, mentions it. Its flag rates are unmeasured. The two-anchor design of the sacrum and the lowest rib-bearing body belongs to [chapter 14](14-transitional-anatomy-two-anchors-disagreement-and-abstention.md); [the transitional contradictions](../../artifacts/_synthesis/contradictions/transitional-vertebrae-and-border-variants.md) rule the two different rules, not rival claims (rows 22 and 23).
+
+![A fluoroscopic field located on the map](figures/10/fluoroscopic-field-hashed-onto-the-map.png)
+*Figure 10.10. Row (d) of the superseded Figure 1: a limited fluoroscopic field located on the panoramic map of a synthetic full spine with a transitional vertebra, with the readout of the i-th vertebra from each end and the anomaly flag. Source: [record](figures/10/fluoroscopic-field-hashed-onto-the-map.json).*
 
 ## The sweep protocol and what its knobs were measured to do
 
@@ -100,6 +130,9 @@ Overlap is the knob. On held-out spines the canonical 18 September page gives th
 
 The superseded summary alone keeps the exposures and two-vertebra accuracy beside each overlap, the table row 15 carries for those columns: 2.5 exposures and 92.1% at half a body, 2.6 and 97.5% at one, 3.0 and 98.3% at two, 6.9 and 89.8% at four. It alone keeps the field-width trade-off at one body of overlap, 3.8 exposures for a collimated 100 mm field at 97.1%, 2.6 for a 9-inch field at 97.5% and 2.0 for a 12-inch field at 97.1%, so width matters less than the exposures it implies. The 17 September report alone holds two-vertebra naming at five overlaps, 86.6%, 93.6%, 95.1%, 95.2% and 93.2% from half a body to four, with its knee at 1.5 to 2 bodies; it is the protocol's operating point, not the knee, that matches the only clinical stitching series, four to six exposures at 20 to 30% intended overlap (row 54). All of these are a record, not a final value.
 
+![Overlapping exposures stitched](figures/10/overlapping-exposures-stitched.png)
+*Figure 10.11. Four overlapping C-arm exposures stitched into one map from the anchor; the row the six-row figure first carried as (b). Source: [record](figures/10/overlapping-exposures-stitched.json).*
+
 Four vertebrae in the frame answers the thoracolumbar junction: on the 17 September renders a thoracolumbar-variant spine was named at 50% at T11 and T12 with two vertebrae in view and 100% with four, in cells of 3 and 7 vertebrae from the evaluation re-measured the next day, so the rule rests on a record, not a final value.
 
 Whether a person can hold the step is unmeasured. The grant lists the distribution of manual step error from the phantom sweeps, tested against the 0.6-body window, among its deliverables (OR-study row 51); by row d's geometry the test should be made against 0.4 of a body.
@@ -108,9 +141,21 @@ Whether a person can hold the step is unmeasured. The grant lists the distributi
 
 The 22 September report's composite shows the chain, four overlapping exposures counted from the sacrum into nodes 0 to 8, an instrument frame placed on that chain (body 4 read as L2 against truth L2, margin 0.18), a pending row, the corpus and the networks, and the same confirmation on frames styled by a fitted Cios Fusion card (body 1 read as L6 against truth L6, margin 0.01). The report calls the sweep real, but the 20:12 page captions that panel "The sweep on a real render" and the confirmation "Confirmation on a render": the composite's counting is render work.
 
+![Confirmation on a render](figures/10/confirmation-on-a-render.png)
+*Figure 10.12. The confirming exposure placed on the chain: the instrument crop matched to one body of the map. Dropped from the paper as the render-only confirmation. Source: [record](figures/10/confirmation-on-a-render.json).*
+
+![Confirmation on styled C-arm frames](figures/10/confirmation-on-styled-c-arm-frames.png)
+*Figure 10.13. A sixth lumbar vertebra counted from the sacrum on frames styled by one device card; the artifact says its 0.01 margin is weak. Source: [record](figures/10/confirmation-on-styled-c-arm-frames.json).*
+
+![The instrument located on the map](figures/10/instrument-located-on-the-map.png)
+*Figure 10.14. Left, the confirming exposure with the instrument on bone; right, the map from the anchor with the touched body in red, node 4 from the anchor. Source: [record](figures/10/instrument-located-on-the-map.json).*
+
 The 20:12 page, which [the clusters](../../artifacts/_synthesis/clusters.md) mark superseded by the 22:50 page whose folder carries all fifteen of its images (level-naming row 60), alone captions rows a to j and the three audit figures: among them the count walking up VerSe columns of 23 and 24 bodies (c), a narrow field located on a panorama from C2 with a render's labelled bodies as its boxes (f), the styled sixth lumbar body, "honestly a weak one" (g), and an occlusion study of which morphology carries level identity (j).
 
 The 22:50 build turns the owner's verdicts into six figures. Figure 1, the ambiguity, was kept, captioned that the count from the sacrum is undetermined in a limited field and that the paper's objective is the network that resolves it; that does not contradict the line, since one window with no anchor in view is not a linked sweep (level-naming row 14). Figure 2, the chain, met; Figure 3, the 23 bodies numbered from the sacral anchor with no names, met with small fixes running; Figure 4, the confirmation, failed on text under 5 pt and colliding labels; Figure 5, the sixth lumbar body, was kept; Figure 6, the two networks, failed on its arrows. Table 1 met but was being corrected, a footnote saying 149 cases where its cell says 148; the case count itself stays open, 148 in the OR Readiness Ledger against 141 in the report ([the concept ledger](../../artifacts/_synthesis/concepts.md#row-104-number-of-c-armlspine-cases-in-the-five-fold-cross-validation-behind-the-982-exact-level-figure), rows 0 and 104). No later build is in the record, so the unfinished 22:50 state is the one to carry (row 77).
+
+![The ambiguity of a limited field](figures/10/the-ambiguity-of-a-limited-field.png)
+*Figure 10.15. The same field of view at the same height above the sacrum holds L4 to L2 in an ordinary spine and L5 to L3 in a spine with a lumbarised S1: the count from the sacrum is undetermined in a limited field. A drawn argument, not data. Source: [record](figures/10/the-ambiguity-of-a-limited-field.json).*
 
 Two figures are not quotable. Row d's millimetres come from verse_drr, a VerSe render bank whose row spacing the 20:12 page suspected to be about 15% short, the defect of 19 September it calls checklist item A8, so row d is used here only in body units. The data manifest copied into this repository ([data/reproduce/sources.json](../../data/reproduce/sources.json), generated on 8 October) still records the defect on that bank, row spacing wrong on 181 of its 374 soft-tissue renders, to be re-rendered or retired. A8 was therefore open on 8 October; the manifest does not say whether row d's case is among the 181, and row f, a VerSe case too, is used without its millimetres. The second is Figure 5's margin. Every caption gives 0.01, as does the grainy styled frame in the 22 September composite, but the file both builds carry as row g and Figure 5 reads 0.37 on a frame with no such styling: the weak 0.01 belongs to the styled confirmation the captions describe, and the record does not say which image the manuscript will carry.
 

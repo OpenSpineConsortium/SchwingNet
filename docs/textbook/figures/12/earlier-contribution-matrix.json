@@ -1,0 +1,44 @@
+{
+  "id": "12/earlier-contribution-matrix",
+  "title": "Which training source carries the detector, first version",
+  "caption": "The held-out device by training set matrix from the single-device and pooled arms, the version the owner called too technical.",
+  "chapter": "12",
+  "grade": "Reported",
+  "status": "a record, not a final value",
+  "source": {
+    "kind": "artifact",
+    "artifact": "artifacts/schwingnet-figures-xyz6kr/",
+    "artifact_url": "https://claude.ai/artifact/XyZ6krXFYezkdkpj2kAKPw",
+    "made_by": "spinesurg-ct-nnunet:SchwingNet/tools/contribution_matrix.py (the matrix)",
+    "commit": null,
+    "data": [
+      "SchwingNet/results/contribution_matrix.json (spinesurg-ct-nnunet)"
+    ],
+    "run": "grid jobs 40415588 and 40415691",
+    "notes": "The resume (line 2931) lists figures/fig_contribution.png with results/contribution_matrix.{json,md}; RESULTS_CATALOG.md names the jobs. RECIPES.md 1.7 says the JSON is authoritative and DATA_CONTRIBUTION.md's prose predates the rerun."
+  },
+  "explore": [
+    {
+      "label": "The artifact's page and files",
+      "href": "artifacts/schwingnet-figures-xyz6kr/"
+    },
+    {
+      "label": "The artifact on claude.ai",
+      "href": "https://claude.ai/artifact/XyZ6krXFYezkdkpj2kAKPw"
+    },
+    {
+      "label": "The recipe (section 1.7)",
+      "href": "https://github.com/OpenSpineConsortium/spine-program/blob/88398813308aba7dc2b4ee823385ea0ca2665f0d/07_plain_film_level_id/docs/handoff/RECIPES.md"
+    },
+    {
+      "label": "The results catalog",
+      "href": "https://github.com/OpenSpineConsortium/spine-program/blob/88398813308aba7dc2b4ee823385ea0ca2665f0d/07_plain_film_level_id/docs/handoff/RESULTS_CATALOG.md"
+    }
+  ],
+  "rerun": {
+    "where": "grid",
+    "command": "sbatch SchwingNet/slurm/contrib_matrix_cpu.sh",
+    "cost": "one CPU job on the grid; needs each arm's realxray_eval.py --dump-raw output",
+    "needs_owner_word": true
+  }
+}

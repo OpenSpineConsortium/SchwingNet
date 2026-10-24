@@ -5,7 +5,7 @@
   "what": "intraoperative C-arm series translated along the spine for stitching",
   "level_truth": "levels present in the series",
   "reach": "get",
-  "status": "request drafted 2026-09-19, never sent; the paper's data statement says no datasets, so success is unlikely",
+  "status": "asked 2026-10-20 22:59 UTC and again 2026-10-21 09:39 UTC, with a letter for the PUMCH stitching series beside it; no answer by 2026-10-24; the paper's data statement says no datasets, so success is unlikely",
   "licence": "not recorded",
   "link": "https://arxiv.org/abs/2409.05681",
   "how_to_get": [

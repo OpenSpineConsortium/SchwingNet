@@ -1,0 +1,44 @@
+{
+  "id": "13/device-spread",
+  "title": "How much of each device's joint the clip reached",
+  "caption": "The clip against the full copula: what share of each device's joint distribution of image-formation terms a renderer reaches.",
+  "chapter": "13",
+  "grade": "Reported",
+  "status": "a record, not a final value",
+  "source": {
+    "kind": "artifact",
+    "artifact": "artifacts/schwingnet-figures-xyz6kr/",
+    "artifact_url": "https://claude.ai/artifact/XyZ6krXFYezkdkpj2kAKPw",
+    "made_by": "spinesurg-ct-nnunet:tools/device_spread_sweep.py",
+    "commit": "097933a",
+    "data": [
+      "the committed device cards (spinesurg-ct-nnunet docs/devices)"
+    ],
+    "run": null,
+    "notes": "Byte-identical (199,615 bytes, md5 6afb1336) to 08_render_devices figures/fig_device_spread.png; spine-program keeps the script at commit 097933a, whose docstring says it writes docs/figures/fig_device_spread.png from the cards alone, no frame read, exactly reproducible. It runs in the spinesurg-ct-nnunet checkout, which this repository does not hold, so it cannot run in this repository's Actions."
+  },
+  "explore": [
+    {
+      "label": "The artifact's page and files",
+      "href": "artifacts/schwingnet-figures-xyz6kr/"
+    },
+    {
+      "label": "The artifact on claude.ai",
+      "href": "https://claude.ai/artifact/XyZ6krXFYezkdkpj2kAKPw"
+    },
+    {
+      "label": "The script at 097933a",
+      "href": "https://github.com/OpenSpineConsortium/spine-program/blob/88398813308aba7dc2b4ee823385ea0ca2665f0d/08_render_devices/code/ssn_097933a/tools/device_spread_sweep.py"
+    },
+    {
+      "label": "The sweep's report",
+      "href": "https://github.com/OpenSpineConsortium/spine-program/blob/88398813308aba7dc2b4ee823385ea0ca2665f0d/08_render_devices/docs/DEVICE_SPREAD_SWEEP.md"
+    }
+  ],
+  "rerun": {
+    "where": "grid",
+    "command": "python tools/device_spread_sweep.py --out docs --figure",
+    "cost": "CPU, minutes; cards only, in the spinesurg-ct-nnunet checkout on the grid",
+    "needs_owner_word": true
+  }
+}

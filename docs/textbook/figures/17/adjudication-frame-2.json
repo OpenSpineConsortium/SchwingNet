@@ -1,0 +1,34 @@
+{
+  "id": "17/adjudication-frame-2",
+  "title": "A bench frame, cervical, decided by the caption",
+  "caption": "A cervical panel whose levels its caption decided, as a reader sees it on the bench.",
+  "chapter": "17",
+  "grade": "Reported",
+  "status": "current",
+  "source": {
+    "kind": "artifact",
+    "artifact": "artifacts/fluorocap-adjudication-bench-rnsyir/",
+    "artifact_url": "https://claude.ai/artifact/RnsYiR7HZZsgW3UkY7jB5e",
+    "made_by": null,
+    "commit": null,
+    "data": [],
+    "run": null,
+    "notes": "One of the 120 panel images the bench ships in its img/ folder, copied as it is; the bench page records for it the panel path, the decoded levels with their confidences and which evidence decided them. Three were taken as representatives, one per region."
+  },
+  "explore": [
+    {
+      "label": "The artifact's page and files",
+      "href": "artifacts/fluorocap-adjudication-bench-rnsyir/"
+    },
+    {
+      "label": "The artifact on claude.ai",
+      "href": "https://claude.ai/artifact/RnsYiR7HZZsgW3UkY7jB5e"
+    }
+  ],
+  "rerun": {
+    "where": "none",
+    "command": null,
+    "cost": "nothing to run: no command is recorded for it",
+    "needs_owner_word": false
+  }
+}

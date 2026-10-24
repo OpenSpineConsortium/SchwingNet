@@ -40,6 +40,9 @@ Qwen2.5-VL-7B makes a blind read of type, view, region and devices that never se
 
 OWLv2 draws implant boxes zero-shot and flags which vertebrae carry metal, and the caption parser turns "screws in L3 and L4" into facts about single vertebrae rather than a set of levels. The audit counted such device-to-level constraints on 1,886 of 2,815 captioned panels and found the zero-shot implant detector, checked by hand on a strip of unrecorded size, at 33 percent recall with 28 percent false positives; each is a record, not a final value. Hardware does not make a panel easier: caption-free agreement was 55.1 percent on 283 panels with hardware against 62.9 percent on 97 without.
 
+![Recall per level, caption held out](figures/15/recall-per-level-caption-held-out.png)
+*Figure 15.1. Recall of each level named in a held-back caption against the corpus mean; levels with fewer than five panels are left out, and T13 and L6 have none. Source: [record](figures/15/recall-per-level-caption-held-out.json).*
+
 ### Anatomical anchors
 
 A YOLO11 anchor detector trained on more than 3,000 rendered views, DRRs from the labels of CTSpinoPelvic1K, VerSeFusion and TotalSegmentator, finds the sacrum, the femoral heads, the twelfth rib, a lumbar rib and the skull. In the map's design a visible sacrum names L5 without counting, which on a six-lumbar spine names the wrong body. The line decided one panel of 3,294, and its bank, `anchor_drr`, put 301 of 801 CTSpinoPelvic1K persons on both sides of its split, so its scores are a record, not a final value. The sacrum, which the anchors should make easy, shows the gap to real panels: the level model names it on 100 percent of renders that overlap training, while the decode recalls it on 11.9 percent of 67 caption-free real panels.
@@ -58,11 +61,17 @@ Decoder v2 is a deterministic function of its input files that runs on a CPU in 
 
 Hard containment makes the constrained panels useless as a test: on 1,615 of them the run and the caption nest 100 percent of the time (mean Jaccard 0.522), by construction. The test has to be the rest, and the rest is not random, because `hard_caption` is false exactly when the caption's levels fit no contiguous window over the detected boxes: when, for example, the detector missed vertebrae, the caption describes another panel, or the panel is not what the caption says. The caption-free subset is selected by detector failure and caption misfit, and its labels are still captions. On the reality check's 380 such panels the run and the caption nest 57.1 percent of the time (mean Jaccard 0.341); the [audit's](../../artifacts/fluorocap-corpus-audit-9hjzzs/) 56.8 percent on 389 is the earlier record, a record, not a final value. Neither is an accuracy.
 
+![Which evidence term carries the corpus](figures/15/evidence-term-carrying-the-corpus.png)
+*Figure 15.2. Caption-held-out containment by the evidence term that moved the answer; every outside source beats the level model on its own. Source: [record](figures/15/evidence-term-carrying-the-corpus.json).*
+
 ### Who decided, and how well
 
 On the decode of 14 September the term that moved the answer was the model on 1,166 panels, the caption on 1,100, nothing on 803, the vision-language read on 94, OCR on 53, a figure mate on 43, hardware on 34 and an anchor on one. Against the withheld caption on caption-free panels the deciders rank the other way: the soft caption term 79.5 percent on 44, the vision-language read 73.1 percent on 93, the level model alone 37.9 percent on 169. The [audit's](../../artifacts/fluorocap-corpus-audit-9hjzzs/) ranking of the day before, a record, not a final value, puts figure mates at 80.0 percent on 10, hardware at 69.6 on 23, OCR at 53.8 on 13 and the model last at 38.3 on 175. The commonest decider is the weakest, every outside line beats it, and constraint decoding is doing real work. By level, caption-free recall was 63.5 to 72.2 percent at L1 to L4, 52.2 at L5 and 48.5 at T12, on 33 to 138 panels a level, and 0.0 to 41.9 at T2 to T11, on 15 to 47: a lumbar system.
 
 Between panels of one figure, with no caption used, the decoder's runs agree on region 91.5 percent of the time over 519 pairs against 52.1 percent over 468 for the model alone, and overlap substantially (Jaccard at least 0.5) 68.2 against 30.8 percent; these are agreements, not accuracy. The [FluoroCap Dataset Card](../../artifacts/fluorocap-dataset-card-xwd4wx/) prints 88 percent for the decoder, a number typed into its script with no pair count and defined over mates that share the caption's levels, which the card itself says the shared caption partly induces; [the FluoroCap contradictions](../../artifacts/_synthesis/contradictions/fluorocap-the-corpus-its-pipeline-and-its-audits.md) read it as a different quantity from the caption-free 91.5 percent (rows 0 and 32), and the ledger leaves the decoder's figure-mate agreement out of its settled values (row 154), so the 88 percent is not to be quoted.
+
+![The decoder without any caption](figures/15/decoder-without-caption.png)
+*Figure 15.3. Agreement between panels of the same figure with no caption used, for the constraint decoder and for the model alone. Source: [record](figures/15/decoder-without-caption.json).*
 
 ### The T13 and L6 columns
 

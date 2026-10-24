@@ -1,0 +1,38 @@
+{
+  "id": "13/real-against-calibrated-render",
+  "title": "Real frames beside calibrated and refined renders",
+  "caption": "Real frames of the held-out specimen at three lateral tilts in the centre column, the calibrated render of that specimen's own CT under the same pose on the left, and the refined render on the right.",
+  "chapter": "13",
+  "grade": "Reported",
+  "status": "a record, not a final value",
+  "source": {
+    "kind": "artifact",
+    "artifact": "artifacts/counting-levels-under-fluoroscopy/",
+    "artifact_url": "https://claude.ai/artifact/8uhYki72Jf355qdfLM5N96",
+    "made_by": null,
+    "commit": null,
+    "data": [],
+    "run": null,
+    "notes": "Embedded image; the page names tools/deepfluoro_anchor_report.py for the renders' numbers (RESULTS_CATALOG.md C4.4, record only), not for the picture."
+  },
+  "explore": [
+    {
+      "label": "The artifact's page and files",
+      "href": "artifacts/counting-levels-under-fluoroscopy/"
+    },
+    {
+      "label": "The artifact on claude.ai",
+      "href": "https://claude.ai/artifact/8uhYki72Jf355qdfLM5N96"
+    },
+    {
+      "label": "The results catalog, C4.4",
+      "href": "https://github.com/OpenSpineConsortium/spine-program/blob/88398813308aba7dc2b4ee823385ea0ca2665f0d/07_plain_film_level_id/docs/handoff/RESULTS_CATALOG.md"
+    }
+  ],
+  "rerun": {
+    "where": "none",
+    "command": null,
+    "cost": "nothing to run: no command is recorded for it",
+    "needs_owner_word": false
+  }
+}

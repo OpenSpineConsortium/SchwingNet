@@ -70,7 +70,8 @@ def problems(path):
     for l in lines:
         if l.startswith("## Provenance"):
             in_table = True
-        if not in_table and not l.lstrip().startswith("|"):
+        # a figure's image and caption lines are not prose, so a figure costs a chapter none of its length
+        if not in_table and not l.lstrip().startswith("|") and not (FIGURE.match(l) or CAPTION.match(l)):
             prose.append(l)
     words = len(re.findall(r"[A-Za-z0-9][A-Za-z0-9'.,%-]*", "\n".join(prose)))
     floor, ceiling = (1800, 6500) if number != "26" else (1500, 3500)

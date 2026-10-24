@@ -1,0 +1,42 @@
+{
+  "id": "15/recall-per-level-caption-held-out",
+  "title": "Recall per level, caption held out",
+  "caption": "Recall of each level named in a held-back caption against the corpus mean; levels with fewer than five panels are left out, and T13 and L6 have none.",
+  "chapter": "15",
+  "grade": "Reported",
+  "status": "a record, not a final value",
+  "source": {
+    "kind": "artifact",
+    "artifact": "artifacts/fluorocap-corpus-audit-9hjzzs/",
+    "artifact_url": "https://claude.ai/artifact/9HjZzs5DXZq1cwT94v1SNx",
+    "made_by": "spinesurg-ct-nnunet:tools/fluorocap_qc.py (the numbers); the chart is drawn by the artifact's own script",
+    "commit": null,
+    "data": [
+      "decode_v2_v2.jsonl",
+      "panels.jsonl",
+      "hardware_constraints.jsonl (FluoroCap, grid)"
+    ],
+    "run": null,
+    "notes": "Drawn at load time by the artifact's own script from numbers typed into it, captured here by rendering the page in headless Chromium. spine-program's FLUOROCAP_QC_2026-09-14.md says the audit was produced by tools/fluorocap_qc.py against decode_v2_v2.jsonl, panels.jsonl and hardware_constraints.jsonl, without the exact command. The artifact is superseded by fluorocap-reality-check, so its numbers are records."
+  },
+  "explore": [
+    {
+      "label": "The artifact's page and files",
+      "href": "artifacts/fluorocap-corpus-audit-9hjzzs/"
+    },
+    {
+      "label": "The artifact on claude.ai",
+      "href": "https://claude.ai/artifact/9HjZzs5DXZq1cwT94v1SNx"
+    },
+    {
+      "label": "The QC report it came from",
+      "href": "https://github.com/OpenSpineConsortium/spine-program/blob/88398813308aba7dc2b4ee823385ea0ca2665f0d/99_archive/docs/fluorocap/FLUOROCAP_QC_2026-09-14.md"
+    }
+  ],
+  "rerun": {
+    "where": "none",
+    "command": null,
+    "cost": "nothing to run: no command is recorded for it",
+    "needs_owner_word": false
+  }
+}
