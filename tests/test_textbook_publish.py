@@ -296,7 +296,7 @@ class Args(unittest.TestCase):
 class Answer(unittest.TestCase):
     def test_the_link_is_read_from_the_last_line_alone(self):
         found = tp.answer_of(f"Published two batches.\nARTIFACT_URL={URL}\n")
-        self.assertEqual(found, {"url": URL, "missing_tool": False, "incomplete": ""})
+        self.assertEqual(found, {"url": URL, "missing_tool": False, "incomplete": "", "capabilities_refused": False})
         self.assertEqual(tp.answer_of(f"ARTIFACT_URL={URL}\nand more")["url"], "")
         self.assertEqual(tp.answer_of("ARTIFACT_URL=https://example.com/artifact/x")["url"], "")
         self.assertEqual(tp.answer_of("ARTIFACT_URL=https://claude.ai/artifact/x; rm")["url"], "")
@@ -304,7 +304,7 @@ class Answer(unittest.TestCase):
                          "https://claude.ai/code/artifact/0f0e-1a")
         found = tp.answer_of(f"PUBLISH_INCOMPLETE=2 of 3\nARTIFACT_URL={URL}")
         self.assertEqual((found["incomplete"], found["url"]), ("2 of 3", URL))
-        self.assertEqual(tp.answer_of("ARTIFACT_TOOL_MISSING"), {"url": "", "missing_tool": True, "incomplete": ""})
+        self.assertEqual(tp.answer_of("ARTIFACT_TOOL_MISSING"), {"url": "", "missing_tool": True, "incomplete": "", "capabilities_refused": False})
         self.assertEqual(tp.answer_of("")["url"], "")
 
     def test_the_answer_comes_from_the_execution_files_last_result(self):
@@ -323,13 +323,37 @@ class Answer(unittest.TestCase):
 
 class Record(unittest.TestCase):
     PLAN = {"files": {"index.html": "h1", "a.html": "h2"}, "changed": 3, "removed": 1, "unchanged": 2}
-    WHOLE = {"url": URL, "missing_tool": False, "incomplete": ""}
+    WHOLE = {"url": URL, "missing_tool": False, "incomplete": "", "capabilities_refused": False}
 
     def test_a_whole_publish_records_the_edition_and_every_hash(self):
         new, message = tp.record({}, self.PLAN, self.WHOLE, "abc1234def", "2026-10-24T18:42:00Z", "i" * 64, RUN)
         self.assertEqual(new, {"schema": tp.SCHEMA, "url": URL, "sha": "abc1234def", "built": "2026-10-24T18:42:00Z",
                                "inputs": "i" * 64, "run": RUN, "files": self.PLAN["files"], "capabilities": tp.CAPABILITIES})
         self.assertEqual(message, "Edition abc1234: 3 files published, 1 removed, 2 unchanged")
+
+    def test_a_refused_connector_publishes_with_ask_claude_alone_and_is_offered_again(self):
+        # The connector's entry may be refused where the account has no GitHub connector; the session then
+        # publishes with sample alone and says so, the record keeps what was applied, and the next plan
+        # offers the connector again on its first batch.
+        found = tp.answer_of(f"Published.\n{tp.REFUSED}\nARTIFACT_URL={URL}\n")
+        self.assertTrue(found["capabilities_refused"])
+        self.assertEqual(found["url"], URL)
+        new, _message = tp.record({}, self.PLAN, found, "abc1234def", "d", "i" * 64, RUN)
+        self.assertEqual(new["capabilities"], tp.BASIC_CAPABILITIES)
+        new, _message = tp.record({}, self.PLAN, self.WHOLE, "abc1234def", "d", "i" * 64, RUN)
+        self.assertEqual(new["capabilities"], tp.CAPABILITIES)
+
+    def test_the_prompt_says_what_to_do_when_the_connector_is_refused_only_where_capabilities_go(self):
+        with tempfile.TemporaryDirectory() as folder:
+            out = Path(folder) / "out"
+            write(out / "index.html", "page")
+            first = tp.plan(out, {})
+            again = tp.plan(out, {"schema": tp.SCHEMA, "url": URL, "files": {}, "capabilities": tp.BASIC_CAPABILITIES})
+            kept = tp.plan(out, {"schema": tp.SCHEMA, "url": URL, "files": {}, "capabilities": tp.CAPABILITIES})
+        for plan_, says in ((first, True), (again, True), (kept, False)):
+            text = tp.prompt(plan_, "abc1234def", "/w/textbook-out")
+            self.assertEqual(tp.REFUSED in text, says, text)
+            self.assertEqual(f"capabilities {json.dumps(tp.BASIC_CAPABILITIES)} instead" in text, says)
 
     def test_a_publish_that_stopped_partway_records_the_link_with_nothing_published(self):
         state = {"schema": tp.SCHEMA, "url": URL, "sha": "old", "inputs": "o", "files": {"index.html": "x"}}

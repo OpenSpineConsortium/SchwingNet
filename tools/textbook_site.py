@@ -590,6 +590,11 @@ MESSAGE_JS = """
   // runtime serves one (window.claude.use("mcp"), the artifact edition's pages) and is answered "no connector"
   // everywhere else, this site included; a run is dispatched only when the viewer presses Run as me.
   var ALLOWED = {"OpenSpineConsortium/SchwingNet": true, "OpenSpineConsortium/spine-datasets": true};
+  // The workflows a page may start as the viewer, each a request that only the owner's own act completes: the
+  // experiment workflow answers an issue and queues nothing, the storage planner's opens a pull request the
+  // owner merges. A figure is framed content and some figures are exported artifacts, so no other workflow
+  // of either repository is started from a page, whatever a message names.
+  var WORKFLOWS = {"OpenSpineConsortium/SchwingNet": {"experiment.yml": true}, "OpenSpineConsortium/spine-datasets": {"storage.yml": true}};
   var SERVER = "GitHub";
   var mcp;
   function own(source) {
@@ -636,6 +641,7 @@ MESSAGE_JS = """
     // since a workflow's inputs are strings.
     var parts = allowed(d.repo);
     if (!parts) return Promise.resolve({ok: false, error: "repository not allowed"});
+    if (!Object.prototype.hasOwnProperty.call(WORKFLOWS[d.repo], String(d.workflow || ""))) return Promise.resolve({ok: false, error: "workflow not allowed"});
     return connector().then(function (m) {
       if (!m) return {ok: false, error: "no connector"};
       var inputs = {}, given = d.inputs || {};
@@ -650,7 +656,7 @@ MESSAGE_JS = """
       reply(source, {type: "schwingnet.dispatch.result", label: d.label, ok: r.ok, error: r.error});
       if (r.ok) show("Dispatched as you: " + esc(d.workflow) + " on " + esc(d.repo) + "."
                      + (d.label === "experiment" ? " The experiment workflow opens the issue and answers it with the gate word." : ""));
-      else if (r.error !== "repository not allowed" && r.error !== "no connector")
+      else if (r.error !== "repository not allowed" && r.error !== "workflow not allowed" && r.error !== "no connector")
         show("Not dispatched (" + esc(r.error) + ")." + (d.fallbackUrl ? " " + link(d.fallbackUrl, "Open the request as an issue instead") + "." : ""));
     });
   }

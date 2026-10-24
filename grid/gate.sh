@@ -811,8 +811,15 @@ experiment_lines_ok() {  # experiment_lines_ok FILE: every line has the shape th
     [ "$(grep -c "^$key: " "$1")" = 1 ] || { echo "refusing: the request names $key once, not $(grep -c "^$key: " "$1") times"; return 1; }
   done
 }
+experiment_wall() {  # experiment_wall HOURS: the job's wall time as Slurm takes it, H:MM:00
+  # The request's hours are the training's (the panel's "the training job's wall time"); in this one job the
+  # evaluation follows the training, given a quarter of its hours as flow.py's slurm mode gives it, and an
+  # hour more holds the checks and the container's start. Never less than the driver's own 24 hours, which
+  # the version 1 run proved, so a short request runs as v1 did and a long one gets the time it asked for.
+  awk -v h="$1" 'BEGIN { m = int((h * 1.25 + 1) * 60 + 0.999); if (m < 1440) m = 1440; printf "%d:%02d:00\n", int(m / 60), m % 60 }'
+}
 word_experiment() {
-  local req=$LOGS/experiment-$id.request busy version
+  local req=$LOGS/experiment-$id.request busy version hours wall
   busy=$(live_of "experiment_$id")
   [ -z "$busy" ] || { echo "refusing: the run for #$id is already queued or running (job $busy)"; return 75; }
   if ! experiment_request "$id" > "$req.new" || [ ! -s "$req.new" ]; then
@@ -822,13 +829,17 @@ word_experiment() {
   fi
   mv "$req.new" "$req"
   experiment_lines_ok "$req" || { rm -f "$req"; return 64; }
+  hours=$(sed -n 's/^hours: //p' "$req")
+  case "$hours" in ''|*[!0-9.]*|*.*.*|.*|*.) rm -f "$req"; echo "refusing: hours is a number such as 4 or 2.5, not ${hours:-nothing}"; return 64 ;; esac
+  wall=$(experiment_wall "$hours")
   envs_ready || { echo "refusing: the environments are not ready; 'start' makes them first"; return 75; }
   weights_ready || { echo "refusing: no ImageNet weights at $WEIGHTS; 'v1' makes them first"; return 75; }
   carmlspine_ready || { echo "refusing: C-ArmLSpine's train and test shards are not on the data root; 'v1' makes them first"; return 75; }
   version=$(v1_version) || { echo "refusing: no catalog version qualifies (grid/v1-version.sh); 'v1' builds one first"; return 75; }
   echo "  catalog: $version qualifies for the run (grid/v1-version.sh); no job"
   echo "  request: $(tr '\n' ' ' < "$req")"
-  submit "experiment_$id" gpu REQUEST="$req" ISSUE="$id" RUNS="$RUNS" WEIGHTS="$WEIGHTS" --no-requeue -- experiment-driver.sbatch > /dev/null || return 1
+  echo "  wall time: $wall for $hours hours of training"
+  submit "experiment_$id" gpu REQUEST="$req" ISSUE="$id" RUNS="$RUNS" WEIGHTS="$WEIGHTS" --no-requeue --time "$wall" -- experiment-driver.sbatch > /dev/null || return 1
   echo "submitted one job. 'status' shows it; its report is logs/experiment-$id-STAGE-REPORT.md"
 }
 word_nodequota() {

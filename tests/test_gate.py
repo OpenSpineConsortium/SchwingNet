@@ -388,6 +388,8 @@ class GateTest(unittest.TestCase):
         self.assertIn(f"RUNS={self.runs} WEIGHTS={self.models}/resnet18-f37072fd.pth", line)
         self.assertIn("--no-requeue", line)
         self.assertIn("gpu", line)
+        # 2.5 hours of training fit the driver's own 24 hours, which stay the floor
+        self.assertIn("--time 24:00:00", line)
         self.assertIn("catalog: catalog-000002-0123456789ab.sqlite qualifies for the run", done.stdout)
         self.assertIn("request: recipe: none epochs: 12 seed: 3 hours: 2.5 block: architecture=resnet34 block: optimiser=adamw", done.stdout)
         self.assertEqual((self.repo / "grid" / "logs" / "experiment-250.request").read_text(encoding="utf-8"), self.REQUEST)
@@ -397,6 +399,12 @@ class GateTest(unittest.TestCase):
         self.assertEqual(done.returncode, 75, done.stdout + done.stderr)
         self.assertIn(f"already queued or running (job {job})", done.stdout)
         self.assertEqual(len(self.submitted()), 1)
+        # a longer training asks for its hours, the evaluation's quarter of them and an hour more
+        (requests / "252.request").write_text(self.REQUEST.replace("hours: 2.5", "hours: 40"), encoding="utf-8")
+        done = self.experiment("experiment", "252", requests=requests)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("--time 51:00:00", self.line_of("experiment-driver.sbatch")[1])
+        self.assertIn("wall time: 51:00:00 for 40 hours of training", done.stdout)
 
     def test_experiment_refuses_a_request_with_a_strange_line_before_anything_is_submitted(self):
         self.environments_ready()
@@ -413,6 +421,8 @@ class GateTest(unittest.TestCase):
             "264": "recipe: none\nepochs: 12\nseed: 3\nhours: 2\nsomething else\n",
             "265": "recipe: none\nepochs: 12\nseed: 3\nhours: 2\nblock: " + "a" * 120 + "=b\n",
             "266": "".join(f"block: architecture=resnet34\n" for _ in range(41)) + "recipe: none\nepochs: 1\nseed: 1\nhours: 1\n",
+            "267": "recipe: none\nepochs: 12\nseed: 3\nhours: 2.5.1\n",
+            "268": "recipe: none\nepochs: 12\nseed: 3\nhours: 4h\n",
         }
         for number, body in strange.items():
             (requests / f"{number}.request").write_text(body, encoding="utf-8")

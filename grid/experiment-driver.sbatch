@@ -11,7 +11,9 @@
 # and ISSUE in the environment, after checking the lines' shapes; this job checks the values themselves
 # against the checkout's own blocks module and recipes (tools/experiments_panel.py check --request) before
 # anything is read, so a request that no longer holds at this commit fails here and trains nothing. Not
-# requeued (--no-requeue): a requeued job would start a second run beside the first.
+# requeued (--no-requeue): a requeued job would start a second run beside the first. The header's 24 hours
+# are the floor: the gate asks for the request's hours with the evaluation's quarter and an hour more (--time)
+# when that is longer, since the training, the evaluation and the checks all run in this one job.
 # The report is logs/experiment-<issue>-STAGE-REPORT.md: the request, the GPU, the run directory and the W&B lines.
 set -uo pipefail
 REPO=${SCHWINGNET:-$HOME/SchwingNet}
