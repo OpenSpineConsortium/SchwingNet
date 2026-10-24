@@ -14,10 +14,15 @@ Usage, from anywhere, with SYNTH_SYMPHONY naming a checkout of symphony-template
   synth.py stamp [--at REPO=REF]  record what the records were read from, and what is already
                                   known; --at names the commit a checkout is at, for the record
   synth.py stamp --checks         take every concept check the texts give now as seen
+  synth.py rekey BASE             carry the stamp's word over a change that renames the concept
+                                  checks' keys and not what they check, as one to what the scrub
+                                  takes out does; BASE is a checkout of main, and this checkout
+                                  is up to date with it and changes none of the texts and none
+                                  of the records the concepts are made from
 --without symphony-template lets status and report check this repository alone, where no
 checkout of the other can be made (the workflow's App token is missing), keeping the stamp's
-word for it and checking no concept; concepts, plan, join and stamp refuse it, since they write
-what every text gives.
+word for it and checking no concept; concepts, plan, join, stamp and rekey refuse it, since they
+write what every text gives.
 
 The SchwingNet checkout is the one this file is in. SYNTH_TEXT, if set, names where the
 artifacts' texts are extracted; else a fresh temporary folder is used, so no run reads
@@ -103,8 +108,11 @@ class Run:
             os.makedirs(os.path.join(symphony, "artifacts"))
         elif not symphony or not os.path.isdir(os.path.join(symphony, "artifacts")):
             raise SystemExit(f"SYNTH_SYMPHONY must name a checkout of symphony-template holding artifacts/; it is {symphony!r}")
+        # Whole paths, since the processes a run starts read them from the environment and may
+        # start in another folder, as rekey's base does.
+        symphony = os.path.abspath(symphony)
         self.clones = {"SchwingNet": str(ROOT), "symphony-template": symphony}
-        self.text_dir = os.environ.get("SYNTH_TEXT") or tempfile.mkdtemp(prefix="synth-text-")
+        self.text_dir = os.path.abspath(os.environ.get("SYNTH_TEXT") or tempfile.mkdtemp(prefix="synth-text-"))
         for repo, clone in self.clones.items():
             if repo not in self.without:
                 self.extract(extract, repo, clone)
@@ -292,7 +300,7 @@ def report(s):
     if s["lost_quotes"]:
         for aid, quotes in sorted(s["lost_quotes"].items()):
             first = next(iter(quotes.values()))
-            out.append(f"- {aid}: {len(quotes)}, the first {code(to_ascii(first)[:160], table=False)}")
+            out.append(f"- {aid}: {len(quotes)}, the first {code(to_ascii(scrubbed(first))[:160], table=False)}")
         out.append("")
     else:
         out.append("None.\n")
@@ -306,7 +314,7 @@ def report(s):
     if listed:
         out.append("| Outcome | Concept | Gives | Where | Line | Passage |\n|---|---|---|---|---|---|")
         for c in listed[:REPORT_ROWS]:
-            out.append(f"| {c['outcome']} | {cell(c['concept'])} | {cell(c['value'])} | {cell(c['source'])} | {c['line']} | {code(c['text'][:160])} |")
+            out.append(f"| {c['outcome']} | {cell(c['concept'])} | {cell(c['value'])} | {cell(c['source'])} | {c['line']} | {code(scrubbed(c['text'])[:160])} |")
         if len(listed) > REPORT_ROWS:
             out.append(f"\n{len(listed) - REPORT_ROWS} more, which `synth.py status --json` lists in a checkout.")
         by_hand = [c for c in listed if c not in w["concept_items"]]
@@ -330,14 +338,165 @@ def write_report(s, path):
     print(f"anything={'true' if anything else 'false'}")
 
 
-def write_concepts(ledger, state):
-    """The ledger and its page, the page rendered from the ledger as it is saved, so that the
-    committed concepts.json renders the committed concepts.md again byte for byte."""
+def concepts_written(ledger, stamped):
+    """The ledger and its page as they are written, the page rendered from the ledger as it is
+    saved, so that the committed concepts.json renders the committed concepts.md again byte for
+    byte. A run stops before it writes anything where either holds an e-mail address or a phone
+    number, which every text is rid of before a check reads it (synth_concepts.sources), or a
+    credential's shape, which no text is rid of and no record may hold."""
     import synth_concepts as sc
+    import synth_reads as sr
     ledger = scrubbed(ledger)
+    page = scrubbed(sc.page(ledger, stamped or "none"))
+    why = sr.personal_problem([ledger, page])
+    if why:
+        raise SystemExit(f"concepts refused: the ledger or its page {why[3:]}, so nothing was written")
+    return ledger, page
+
+
+def write_concepts(ledger, state):
+    ledger, page = concepts_written(ledger, state.get("stamped"))
     save(LEDGER, ledger)
     with open(PAGE, "w", encoding="ascii", newline="\n") as f:
-        f.write(scrubbed(sc.page(ledger, state.get("stamped") or "none")))
+        f.write(page)
+
+
+def rekey(run, state, base):
+    """Carry the stamp's word over a change to the tools that renames the concept checks' keys
+    and not what they check, as a change to what the scrub takes out does, since a key is made
+    from the scrubbed passage: the ledger that the tools of base, a checkout of main, give is
+    set beside the one this checkout's give, and each key of the stamp's whose check pairs with
+    one of this checkout's takes that check's key. This checkout is up to date with main and
+    changes none of the texts the checks read and none of the records the concepts are made
+    from, so a check that pairs differs from its old self only in what the tools made of its
+    passage. The ledger, its page and the stamp are written again, and nothing else in the stamp
+    changes, so the look counts as new only the checks no pair carries."""
+    import synth_state as st
+    same_texts(base)
+    ledger = concepts_now(run)
+    pairs = paired(ledger_of(base), ledger)
+    checks, renamed = rekeyed(state.get("checks", {}), pairs)
+    new = {**state, "checks": checks}
+    write_concepts(ledger, new)
+    st.write(STATE, new)
+    print(f"rekeyed: {len(pairs)} checks paired, {renamed} of the stamp's {len(checks)} keys renamed")
+
+
+def identity(check):
+    return (check["concept"], check["kind"], check["source"], check["line"], check["outcome"], check["value"])
+
+
+def paired(old, new):
+    """Each key of the old ledger's checks with the key of the new ledger's check that is the
+    same check, the same concept, kind, source, line, outcome and value, where those name one
+    check on each side; a line that gives two such checks pairs neither, so a stamp never takes
+    one passage's word for another's."""
+    def unique(ledger):
+        count = Counter(identity(c) for c in ledger["checks"])
+        return {identity(c): c["key"] for c in ledger["checks"] if count[identity(c)] == 1}
+    a, b = unique(old), unique(new)
+    return {a[i]: b[i] for i in sorted(a.keys() & b.keys(), key=repr)}
+
+
+def rekeyed(checks, pairs):
+    """The stamp's checks, each key a pair names renamed, and how many were."""
+    out = {pairs.get(k, k): src for k, src in checks.items()}
+    if len(out) != len(checks):
+        raise SystemExit("rekey refused: two of the stamp's keys would become one, so nothing was written")
+    return dict(sorted(out.items())), sum(1 for k in checks if pairs.get(k, k) != k)
+
+
+# What the concept checks read in this repository beside the artifacts' folders: the research
+# notes and the dataset records (synth_concepts.sources).
+NOTES_AND_RECORDS = ("docs/research", "data/sources")
+# The records the concepts are made from (concepts_now): a figure's id is its place in the
+# numbers table's list, so a check is the same check on both sides only over the same records.
+CONCEPT_RECORDS = tuple(path.relative_to(ROOT).as_posix() for path in
+                        (SYNTH / "inventory.json", OUT / "contradictions-merged.json", OUT / "numbers-partial.json", ALIASES))
+
+
+def tools_of(base):
+    """The synthesis's tools in base, which must be the top of a checkout of this repository."""
+    import synth_state as st
+    tools = Path(base) / "artifacts" / "_synthesis" / "work" / "tools"
+    try:
+        top = st.git(base, "rev-parse", "--show-toplevel").strip()
+    except (OSError, subprocess.CalledProcessError):
+        top = None
+    if not (tools / "synth.py").is_file() or top is None or not os.path.samefile(top, base):
+        raise SystemExit(f"rekey refused: {base!r} is not a checkout of this repository")
+    return tools
+
+
+def rekey_refused(why):
+    raise SystemExit(f"rekey refused: {why}, so nothing was written")
+
+
+def tree_entries(checkout, *args):
+    """git ls-tree's entries at HEAD as (mode, kind, object, path), read with -z so that no path
+    comes back quoted."""
+    import synth_state as st
+    entries = st.git(checkout, "ls-tree", "-z", *args).split("\0")
+    return [(*meta.split(), path) for meta, path in (entry.split("\t", 1) for entry in entries if entry)]
+
+
+def text_trees(checkout, where):
+    """The git object of each text the concept checks read in a checkout, every artifact's
+    folder, the research notes and the dataset records, and of each record the concepts are
+    made from. A rekey stops where they hold a change that is not committed, a link or a
+    submodule, or a folder no tree holds, since a tree shows none of those as the tools read
+    them."""
+    import synth_state as st
+    texts = ("artifacts", *NOTES_AND_RECORDS)
+    status = ("status", "--porcelain", "--untracked-files=all", "--ignored", "--")
+    if (st.git(checkout, *status, *texts, ":(exclude)artifacts/_*") + st.git(checkout, *status, *CONCEPT_RECORDS)).strip():
+        rekey_refused(f"{where} holds a change to the texts the checks read, or to the records the concepts are made from,"
+                      " that is not committed, which no tree shows; commit it or take it out")
+    tops = {path for _mode, kind, _sha, path in tree_entries(checkout, "HEAD", "--", *texts) if kind == "tree"}
+    if tops != set(texts):
+        rekey_refused(f"{where} holds no tree at {', '.join(sorted(set(texts) - tops))}, where its tools read texts")
+    links = [path for mode, _kind, _sha, path in tree_entries(checkout, "-r", "HEAD", "--", *texts)
+             if mode in ("120000", "160000") and not path.startswith("artifacts/_")]
+    if links:
+        rekey_refused(f"{where} holds {len(links)} links or submodules among the texts the checks read, whose trees do not"
+                      " change when what they lead to does")
+    trees = st.folder_trees(checkout, "SchwingNet")
+    folders = {f"SchwingNet/{p.name}" for p in Path(checkout, "artifacts").iterdir() if p.is_dir() and not p.name.startswith("_")}
+    if folders != set(trees):
+        rekey_refused(f"{where} holds {len(folders ^ set(trees))} folders under artifacts/ that no tree holds as its tools"
+                      " read them")
+    trees.update({path: sha for _mode, _kind, sha, path in tree_entries(checkout, "HEAD", "--", *NOTES_AND_RECORDS, *CONCEPT_RECORDS)})
+    return trees
+
+
+def same_texts(base):
+    """Stop a rekey whose base is not a checkout of this repository, or reads other texts or
+    other concepts than this checkout: a check pairs by its concept, kind, source, line, outcome
+    and value and not by its passage, so a passage edited in place, or a figure that another
+    took the place of, would take the stamp's word unread."""
+    tools_of(base)
+    mine, theirs = text_trees(ROOT, "this checkout"), text_trees(base, str(base))
+    differ = sorted(k for k in mine.keys() | theirs.keys() if mine.get(k) != theirs.get(k))
+    if differ:
+        rekey_refused(f"the texts the checks read or the records the concepts are made from differ between this checkout and"
+                      f" {base} in {', '.join(differ)}; bring main in, and change neither in the pull request that runs rekey")
+
+
+def ledger_of(base):
+    """The concept ledger the tools of another checkout of this repository give over its own
+    texts, in a process of its own, so that neither copy's modules meet the other's, and with
+    its texts extracted into a folder that goes when the ledger is read."""
+    tools = tools_of(base)
+    code = ("import json, sys; sys.path.insert(0, sys.argv[1]); import synth; "
+            "json.dump(synth.concepts_now(synth.Run()), open(sys.argv[2], 'w', encoding='utf-8'))")
+    env = {k: v for k, v in os.environ.items() if k not in ("SYNTH_TEXT", "SYNTH_SCHWINGNET")}
+    with tempfile.TemporaryDirectory() as folder:
+        out = os.path.join(folder, "ledger.json")
+        env["SYNTH_TEXT"] = os.path.join(folder, "texts")
+        done = subprocess.run([sys.executable, "-I", "-B", "-c", code, str(tools), out], env=env, cwd=folder)
+        if done.returncode:
+            raise SystemExit(f"rekey refused: the tools of {base} gave no ledger (exit {done.returncode}), so nothing was written")
+        return load(out)
 
 
 def stamp(run, state, at=None, only=None, checks=None, unstamped=()):
@@ -381,7 +540,7 @@ def stamp(run, state, at=None, only=None, checks=None, unstamped=()):
 
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    p.add_argument("command", choices=["status", "concepts", "report", "plan", "join", "stamp"])
+    p.add_argument("command", choices=["status", "concepts", "report", "plan", "join", "stamp", "rekey"])
     p.add_argument("paths", nargs="*")
     p.add_argument("--json")
     p.add_argument("--at", action="append", default=[])
@@ -394,7 +553,10 @@ def main(argv=None):
     if a.command == "report" and a.status:
         write_report(load(a.status), a.paths[0])
         return
-    if a.without and a.command in ("concepts", "plan", "join", "stamp"):
+    if a.command == "rekey" and len(a.paths) != 1:
+        p.error("rekey takes one path: a checkout of main, with this checkout up to date with it and changing none of the texts"
+                " and none of the records the concepts are made from")
+    if a.without and a.command in ("concepts", "plan", "join", "stamp", "rekey"):
         raise SystemExit(f"{a.command} refused: it writes what every text gives, and without {', '.join(a.without)}'s checkout"
                          " that repository's word in the stamp and the ledger would be lost; status and report check without it")
     run = Run(a.without)
@@ -418,6 +580,8 @@ def main(argv=None):
             save(a.paths[3], summary)
         if not came_back(summary):
             raise SystemExit("join: no record and no verdict came back, so nothing was written")
+    elif a.command == "rekey":
+        rekey(run, state, a.paths[0])
     elif a.command == "stamp":
         at = dict(x.split("=", 1) for x in a.at)
         at_head(run, at)
@@ -542,6 +706,8 @@ def join_run(run, state, plan_dir, answers_dir, batches_dir):
               load(OUT / "numbers-partial.json"), load(history_path) if history_path.exists() else [])
     run.inventory, run.clustering, run.M, run.N, history = (scrubbed(x) for x in (run.inventory, run.clustering, run.M, run.N, history))
     refuse_what_the_rule_keeps_out(before, (run.inventory, run.clustering, run.M, run.N, history))
+    ledger = concepts_now(run)
+    concepts_written(ledger, today())
     save(SYNTH / "inventory.json", run.inventory)
     save(history_path, history)
     save(OUT / "clustering.json", run.clustering)
@@ -553,7 +719,6 @@ def join_run(run, state, plan_dir, answers_dir, batches_dir):
                                 str(SYNTH / "inventory.json"), str(SYNTH / "contradictions.md"), args["date"])
     __import__("check_verdict_quotes").main(str(OUT / "contradictions-merged.json"), str(OUT / "numbers-partial.json"),
                                             str(OUT / "verdict-quotes.json"))
-    ledger = concepts_now(run)
     later = joined["waiting"] + args["items_waiting"]
     waiting = {k[len("concept:"):] for k in later if k.startswith("concept:")}
     placed = {k[len("concept:"):] for k in final if k.startswith("concept:")} - waiting
