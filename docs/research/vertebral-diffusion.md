@@ -82,8 +82,8 @@ still needs).
 - Training: batch size 1 ("12 orig"), gradient accumulation 1, no mixed precision, 10 to 100
   epochs; the default callbacks watch `val/acc`, which the diffusion module never logs (it logs
   `train/loss`, `val/loss` and `test/loss`), so the checkpoint and early-stopping callbacks have
-  nothing to read. The author's last commit message says the run stopped on memory. No checkpoint,
-  sample, metric, figure or evaluation beyond the loss is in the repository.
+  nothing to read. The author's commit message of 2025-03-15 says the run stopped on memory. No
+  checkpoint, sample, metric, figure or evaluation beyond the loss is in the repository.
 - Tests and requirements: the template's tests, with five of the six training tests commented out
   and the MNIST data-module test rewritten to open the lab's data path; the requirements and
   environment files are the template's unchanged (hydra pinned, torch bounded below), naming none
