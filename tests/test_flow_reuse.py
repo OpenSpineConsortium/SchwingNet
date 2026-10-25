@@ -2,8 +2,9 @@
 
 The run id is the hash of the commit, the catalog and the run's configuration (CONFIGURATION.json),
 so the same configuration names the same folder, and started again the flow runs only what that
-folder still needs: nothing once the evaluation finished, the evaluation where training wrote its
-checkpoint.json, training with --resume where it left train/last.pt (issue #252). A sweep's row
+folder still needs: nothing once it wrote FINISHED.json, its last file; the last push, the ledger
+row (once) and the report where it was cut after its evaluation; the evaluation where training
+wrote its checkpoint.json, training with --resume where it left train/last.pt (issue #252). A sweep's row
 names its folder with --slug, and a folder holding another run is refused and left as it was. A
 start cut while it writes its record or witness list, or before its record, is started again.
 
@@ -337,6 +338,43 @@ class FlowReuseTest(unittest.TestCase):
         self.log.unlink()
         rc, lines, err = self.run_flow()
         self.assertEqual((rc, self.said(lines)["reused"], self.calls()), (0, "finished", []))
+
+    def test_a_run_cut_after_its_evaluation_is_finished_by_the_next_start_once(self):
+        # Cut at the push right after the evaluation, as a Slurm limit or SIGTERM cuts the driver:
+        # the record says the evaluation ended, and nothing after it was done.
+        real, pushes = self.flow.push_wandb, []
+
+        def push_then_cut(*args):
+            pushes.append(args)
+            if len(pushes) == 2:
+                raise Killed("cut during the push after the evaluation")
+            return real(*args)
+
+        with mock.patch.object(self.flow, "push_wandb", push_then_cut), self.assertRaises(Killed):
+            self.run_flow("--slug", "row-a")
+        run_dir = self.out / "row-a"
+        self.assertEqual([job["step"] for job in self.record(run_dir)["jobs"]], ["split-check", "train", "evaluate"])
+        self.assertEqual((self.ledger_rows(), (run_dir / "REPORT.md").exists()), ([], False))
+        self.log.unlink()
+        rc, lines, err = self.run_flow("--slug", "row-a")
+        self.assertEqual(rc, 0, err)
+        self.assertEqual(self.said(lines)["reused"], "evaluated")
+        self.assertEqual(self.tools_called(), ["wandb_log"], "only the last push: nothing is trained or evaluated again")
+        self.assertEqual([job["step"] for job in self.record(run_dir)["jobs"]], ["split-check", "train", "evaluate"])
+        self.assertEqual(len(self.ledger_rows()), 1)
+        self.assertTrue((run_dir / "REPORT.md").is_file())
+        self.assertEqual(json.loads((run_dir / "FINISHED.json").read_text(encoding="utf-8"))["run_id"], self.said(lines)["run_id"])
+        self.log.unlink()
+        rc, lines, _ = self.run_flow("--slug", "row-a")
+        self.assertEqual((rc, self.said(lines)["reused"], self.calls()), (0, "finished", []))
+        # Cut after its ledger row and before its report: the row is not written twice.
+        with mock.patch.object(self.flow, "write_report", side_effect=Killed("cut before the report")), self.assertRaises(Killed):
+            self.run_flow("--slug", "row-b", "--seed", "2")
+        self.assertEqual(len(self.ledger_rows()), 2)
+        rc, lines, err = self.run_flow("--slug", "row-b", "--seed", "2")
+        self.assertEqual((rc, self.said(lines)["reused"]), (0, "evaluated"), err)
+        self.assertEqual(len(self.ledger_rows()), 2, "one ledger row a run")
+        self.assertTrue((self.out / "row-b" / "REPORT.md").is_file() and (self.out / "row-b" / "FINISHED.json").is_file())
 
     def test_a_folder_holding_another_run_is_refused_and_left_as_it_was(self):
         rc, lines, err = self.run_flow("--slug", "row-a")

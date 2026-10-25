@@ -32,10 +32,12 @@ long it runs; it is written to CONFIGURATION.json and its sha256 names the run w
 the catalog (schwingnet.flow.configured_run_id), so no clock enters the name. The run's folder is
 <out>/<run id>, or <out>/<slug> with `--slug`, so a sweep finds each row's folder by the row's
 name. Started again on a folder that holds its record, the flow runs only what is left: nothing
-where the evaluation finished (and no second ledger row), the evaluation alone where training
-wrote its checkpoint.json, training carried on from its last epoch (`tools/train.py --resume`)
-where it left train/last.pt, else training from the start; RUN.json keeps its first start and
-its earlier jobs and gains a job for each step run now. A folder that holds another run's record
+where the run wrote FINISHED.json, its last file, after its report; only the last push, the
+ledger row where the ledger has none for the run, the report and FINISHED.json where the
+evaluation ended and the run was cut after it; the evaluation alone where training wrote its
+checkpoint.json, training carried on from its last epoch (`tools/train.py --resume`) where it
+left train/last.pt, else training from the start; RUN.json keeps its first start and its
+earlier jobs and gains a job for each step run now. A folder that holds another run's record
 is refused and left as it is. The flow writes its own files whole and renames them into place,
 so a start cut while it writes one leaves the one before, and a folder a start left before its
 record, holding no more than the split check and this configuration, is started again.
@@ -121,7 +123,9 @@ MIN_POLL = 60
 # A run folder's name where the caller gives one: a sweep's row names it, so the folder is found by
 # the row; no slash, no leading dot, so it stays one folder inside --out.
 SLUG = re.compile(r"[a-z0-9][a-z0-9.-]{0,79}")
-FINISHED, TRAINED, RESUMED, RESTARTED = "finished", "trained", "resumed", "restarted"
+FINISHED, EVALUATED, TRAINED, RESUMED, RESTARTED = "finished", "evaluated", "trained", "resumed", "restarted"
+# The run's last file, written once everything after its evaluation is done (finish).
+FINISHED_MARK = "FINISHED.json"
 
 
 class FlowError(Exception):
@@ -336,6 +340,16 @@ def append_ledger(path, record, activity, verified):
     path.write_text(text + ledger_row(record, activity, verified) + "\n", encoding="utf-8")
 
 
+def ledger_holds(path, run_id):
+    """Whether the ledger has a row for the run already, its second cell the run's id: a run cut
+    after its row and started again writes none of its own."""
+    path = Path(path)
+    if not path.is_file():
+        return False
+    cells = ([cell.strip() for cell in line.strip().strip("|").split("|")] for line in path.read_text(encoding="utf-8").splitlines())
+    return any(len(row) > 1 and row[1] == run_id for row in cells)
+
+
 def start_record(args, configuration=None):
     """RUN.json before the first step: the facts from the tree, the catalog and the split check,
     named by the commit, the catalog and the configuration's hash."""
@@ -379,12 +393,16 @@ def earlier_record(run_dir, record):
 
 def what_is_left(run_dir, held):
     """What a run started before still needs, from its folder, the furthest step first: nothing
-    once its evaluation finished, the evaluation where training wrote checkpoint.json (which the
-    trainer writes last), training carried on where it left train/last.pt, else all of it."""
+    once it wrote FINISHED.json, its last file; what comes after the evaluation (finish) where the
+    record holds an evaluation that ended well and its results are there; the evaluation where
+    training wrote checkpoint.json (which the trainer writes last), training carried on where it
+    left train/last.pt, else all of it."""
     run_dir = Path(run_dir)
+    if (run_dir / FINISHED_MARK).is_file():
+        return FINISHED
     evaluated = any(job.step is Step.EVALUATE and job.exit_code == 0 for job in held.jobs)
     if evaluated and (run_dir / "evaluate" / "results.json").is_file():
-        return FINISHED
+        return EVALUATED
     if (run_dir / "train" / "checkpoint.json").is_file():
         return TRAINED
     if (run_dir / "train" / "last.pt").is_file():
@@ -442,10 +460,11 @@ def command_run(args):
     held = earlier_record(run_dir, record)
     reused = what_is_left(run_dir, held) if held else None
     said = {"run_id": record.run_id, "run_dir": str(run_dir), "mode": args.mode, **({"reused": reused} if reused else {})}
-    if reused == FINISHED:
+    if reused in (FINISHED, EVALUATED):
         # Finished before: nothing runs and no second ledger row is written for the same run.
+        # Evaluated before and cut after: only what comes after the evaluation.
         print(json.dumps(said), flush=True)
-        return 0
+        return 0 if reused == FINISHED else finish(args, run_dir, held, licences)
     if held:
         record = held
     else:
@@ -472,11 +491,23 @@ def command_run(args):
         if done.exit_code != 0:
             where = f"{run_dir}/{job.step.value}.log" if args.mode == "local" else f"hpcworker's log of job {done.job_id}"
             raise FlowError(f"{job.step.value} exited {done.exit_code}; see {where}")
+    return finish(args, run_dir, record, licences)
+
+
+def finish(args, run_dir, record, licences):
+    """What a run does once its evaluation is recorded: the last W&B push, its ledger row, its
+    report, and last of all FINISHED.json, so a run cut anywhere before it, at a push that hung or
+    by a time limit, is finished by its next start, which writes the ledger row only where the
+    ledger has none for the run."""
     activity = f"{record.stage.value} stage, {record.epochs} epochs, seed {record.seed}" + (f", {args.max_frames} crops per part" if args.max_frames else "") + licence_words(licences)
     pushed = push_wandb(run_dir, args.environment)
-    append_ledger(Path(args.out) / "LEDGER.md", record, activity, f"evaluate/results.md from the test part; split-check.json disjoint; {pushed}")
+    ledger = Path(args.out) / "LEDGER.md"
+    if not ledger_holds(ledger, record.run_id):
+        append_ledger(ledger, record, activity, f"evaluate/results.md from the test part; split-check.json disjoint; {pushed}")
     print(pushed, file=sys.stderr if "NOT" in pushed else sys.stdout, flush=True)
-    print(write_report(run_dir), flush=True)
+    report = write_report(run_dir)
+    print(report, flush=True)
+    write_whole(Path(run_dir) / FINISHED_MARK, json.dumps({"run_id": record.run_id, "finished_at": now(), "wandb": pushed, "report": report}, indent=1) + "\n")
     return 0
 
 
