@@ -1406,7 +1406,9 @@ esac
         (run / "samples.sqlite").write_bytes(b"")
         (self.data / "_samples" / "CURRENT").write_text(run.name + "\n", encoding="utf-8")
         self.assertEqual(self.gate("folders").returncode, 75)
+        # environments made from an older pixi.lock are enough, since the report is standard library alone
         self.environments_ready()
+        (self.repo / ".pixi" / "SETUP.sha256").write_text("stale\n", encoding="utf-8")
         done = self.gate("folders")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         lines = self.submitted()
