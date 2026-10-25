@@ -9,23 +9,27 @@ The owner's goal, in their words of 04:14 UTC: "an automated process, determinis
 - whether thoracic and cervical fluoroscopy is held;
 - whether every set maps to a known dataset and matches its paper;
 - at 04:53 UTC, "make sure every dataset on the grid maps to a task ... on the repo which has all those, for accounting purposes" (OpenSpineConsortium/spine-datasets).
+- at 14:33 UTC, an explanation of how each dataset's directory on the grid is structured, its format and its quality, with a link to the underlying video where one exists, not only to the top directory, which holds several subdirectories (open item 8).
 
 ## Done
 
 - The chooser: tools/choose_data.py and data/choice/ (#291, #292); docs/research/dataset-chooser.md.
 - Every spine-datasets record names its task (spine-datasets #331, accounting issues #254 to #329).
 - The folder report: tools/folder_report.py and grid/folders.sbatch, through the gate word `folders`, made to run and to read whole (#296 to #301). Its last run was grid job 40780668. No page is left on the grid, so another `folders` send queues a new job, which needs the owner's word.
-- grid/folders.json in spine-datasets: all 110 data-root folders, each with its records or its task (#333 to #368). This is spine-datasets #369, with auto-merge on.
-- The answer to the thoracic and cervical question, and six records set beside their papers: docs/research/held-fluoroscopy-by-region.md (#302, auto-merge on).
+- grid/folders.json in spine-datasets: all 110 data-root folders, each with its records or its task (#333 to #368). This is spine-datasets #369, merged.
+- The answer to the thoracic and cervical question, and six records set beside their papers: docs/research/held-fluoroscopy-by-region.md (#302, merged).
+- The inclusion audit and the recipe page from the full census (2026-10-25, 11:34 UTC ask): spine-datasets docs/research/dataset-inclusion-audit.md (spine-datasets #370) and Figure 16.1, docs/textbook/figures/16/dataset-recipe.html, whose new section The ledger lists every record on the grid or not and the folders that are no dataset's (this repository's pull request from docs/recipe-ledger-2026-10-25). The census: 111 folders, 14.04 TB; 112 of 166 records on the grid; 52 kept sets held in 8.63 TB, 43 to obtain. The project files storage/dataset-inclusion-audit.md and storage/dataset-recipe.html are the same text.
 
 ## Open
 
-1. #302 here and spine-datasets #369: check that both merged. If the check failed, fix it per the PR's own failure. The memory line on the test_crowd_check flake applies to spine-datasets.
+1. spine-datasets #370 and this repository's recipe-ledger pull request: check that both merged; if not, merge once green (the org's owner-approval ruleset leaves auto-merge blocked, so merge directly). The memory line on the test_crowd_check flake applies to spine-datasets.
+7. cadica, scidb_mtddh and veterinary_pig_levelcheck: their records say held but the census finds no folder in the data root; find where they are, or correct the records.
 2. spine-datasets #360, #363 and the other open `unrecorded` tasks (spinal_ai2024, mendeley_5jdfdgp762, spinesac, fluorocap, ieee_dataport_lateral_fullspine_236): write each record from its paper and source page, then close the task. SchwingNet's data/sources/<id>.json holds a start for four of them.
 3. spine-datasets #368: name the 17 GB data-root folder the readout masks. Any grid listing works, as long as it does not pass through symphony-template tools/grid_accounts.py, which masks runs of 32 or more name characters as [hidden].
 4. Settle the two count gaps in the research note: NHANES II (17,073 TIFF against 16,531 in the record) and KUB StoneX (6,810 images against 2,570 radiographs).
 5. Re-run tools/choose_data.py once the new records land. The chooser reads only records, so held sets with no record stay invisible to it until then.
 6. Older items from earlier in the thread, still waiting on the owner: the NLST decision card, the storage.sh traceback, and the moves to the 4 TB home.
+8. For every dataset on the grid, write how its directory is structured, its format and its quality, and link the underlying video files where the set has any (fluoroscopy, cine, videofluoroscopy), not just the top directory. The owner asked for this at 14:33 UTC. Per dataset: the subdirectory tree to the depth where the files are, with file counts and sizes per level; the format (container, codec, frame rate, resolution and bit depth for video; DICOM, NIfTI, PNG, JPEG or TIFF for images; what the labels are and where they sit); the quality (resolution, compression, missing or corrupt files, label completeness against the paper); and the path or paths of the videos themselves. Read what the census and the sample index already hold first: samples.sqlite on the grid (views sample, sample_meta and sample_header; numbers may be stored as text, so cast them), docs/research/data-manifest/MANIFEST.md, and spine-datasets grid/folders.json and datasets/<id>.json. A listing deeper than those needs one read-only grid job, which needs the owner's word and the count first. Write the result in spine-datasets, as docs/research/dataset-directories.md plus a `layout` field in each record, so that the census and the recipe page can link the videos.
 
 ## How to work here
 
@@ -35,4 +39,4 @@ The owner's goal, in their words of 04:14 UTC: "an automated process, determinis
 
 ## First prompt for the next account
 
-"Continue the dataset accounting handoff in SchwingNet docs/checkpoints/2026-10-25-dataset-accounting/HANDOFF.md: confirm #302 and spine-datasets #369 merged, then write the records for the five unrecorded held sets (spine-datasets tasks with the label todo from #333 to #368), each from its paper, and re-run tools/choose_data.py. No grid job without my word and the count."
+"Continue the dataset accounting handoff in SchwingNet docs/checkpoints/2026-10-25-dataset-accounting/HANDOFF.md: confirm spine-datasets #370 and the recipe-ledger pull request merged, then write the records for the five unrecorded held sets (spine-datasets tasks with the label todo from #333 to #368), each from its paper, and re-run tools/choose_data.py. Then do open item 8: for every dataset on the grid, how its directory is structured, its format and quality, and the paths of its videos, from samples.sqlite and the records first. No grid job without my word and the count."
