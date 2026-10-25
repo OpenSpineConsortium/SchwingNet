@@ -54,7 +54,8 @@ such. The plan files under grid/sweeps/ are these commands' output, and a test m
 byte for byte, so a plan is a function of the code. `synthetic` builds the synthetic catalog the
 synthetic plan runs on. The plans are run only by the Metaflow flow flows/sweep.py, whose resume
 is the one way a sweep is continued: it calls `prepare` once, which writes the plan's state folder
-`<smoke root>/<plan>/<commit 7>-<catalog sha256 8>/` with the plan resolved against the catalog,
+`<smoke root>/<plan>/<commit 7>-<catalog sha256 8>/` (`-e<N>` after it for N epochs in place of
+the plan's) with the plan resolved against the catalog,
 the check's verdicts and the results so far, then `row` for each row, which runs tools/flow.py
 with the row's slug as its folder and records what came of it, and `results` at the end. Every
 file of the state is written whole and renamed into place, and the three result files under a
@@ -721,10 +722,13 @@ def synthetic_catalog(into, frames=600, cases=40, test_frames=100, unlabelled_fr
 
 # The state of a sweep: prepare, row and results.
 
-def state_folder(out, plan_name, catalog):
-    """`<out>/<plan>/<commit 7>-<catalog sha256 first 8>`; grid/sweep-driver.sbatch makes the same
+def state_folder(out, plan_name, catalog, epochs=None):
+    """`<out>/<plan>/<commit 7>-<catalog sha256 first 8>`, then `-e<N>` where the rows train for N
+    epochs in place of the plan's, so a sweep with another epoch count never meets the folders
+    of the plan's own; grid/sweep-driver.sbatch, which never changes the epochs, makes the same
     path in bash from git and sha256sum, so this formula is kept exactly."""
-    return Path(out) / plan_name / f"{git_head(short=True)}-{file_sha256(catalog)[:8]}"
+    name = f"{git_head(short=True)}-{file_sha256(catalog)[:8]}"
+    return Path(out) / plan_name / (f"{name}-e{epochs}" if epochs else name)
 
 
 def resolved_words(row, facts):
@@ -747,9 +751,11 @@ def command_prepare(args):
         raise BlockError(f"{args.plan}: no plan name a state folder can carry")
     catalog = Path(args.catalog).resolve()
     facts, files = read_facts(catalog), weights_files(args.weights)
-    state = state_folder(args.out, plan["plan"], catalog)
+    epochs = args.epochs if args.epochs and args.epochs != plan.get("epochs") else None
+    state = state_folder(args.out, plan["plan"], catalog, epochs)
     check = check_document(catalog, facts, plan, files)
-    resolved_plan = {**plan, "catalog_file": str(catalog), "catalog_sha256": check["catalog_sha256"], "catalog_version": catalog_version(catalog),
+    resolved_plan = {**plan, "epochs": epochs or plan.get("epochs"),
+                     "catalog_file": str(catalog), "catalog_sha256": check["catalog_sha256"], "catalog_version": catalog_version(catalog),
                      "commit": git_head(), "state": str(state),
                      "rows": [{**row, "planned_blocks": row["blocks"], "blocks": resolved_words(row, facts)} for row in plan["rows"]]}
     write_if_changed(state / "PLAN.json", json_text(resolved_plan))
@@ -850,7 +856,7 @@ def observed(state, slug, returncode):
 def row_flow_command(state, plan, row, args, files):
     """tools/flow.py's command for one row, in its slug's folder under the state."""
     words = [sys.executable, str(ROOT / "tools" / "flow.py"), "run", "--catalog", str(Path(args.catalog).resolve()), "--out", str(state),
-             "--slug", row["slug"], "--mode", "local", "--environment", args.environment, "--epochs", str(args.epochs or plan["epochs"]),
+             "--slug", row["slug"], "--mode", "local", "--environment", args.environment, "--epochs", str(plan["epochs"]),
              "--seed", str(plan["seed"]), "--size", str(row["size"])]
     if row["weights"]:
         words += ["--weights", files[row["weights"]]]
@@ -880,6 +886,8 @@ def command_row(args):
     prediction = next((r for r in check["rows"] if r["slug"] == args.slug), None)
     if row is None or prediction is None:
         raise RowFault(f"{state}: the plan holds no row {args.slug}")
+    if args.epochs and args.epochs != plan["epochs"]:
+        raise RowFault(f"{state}: its rows train for {plan['epochs']} epochs, not {args.epochs}; prepare with --epochs {args.epochs} for a state of its own")
     files = weights_files(args.weights)
     if prediction["predicted"] == NOT_APPLICABLE:
         entry = entry_of(row, prediction, NOT_APPLICABLE, None, prediction["why"], state)
@@ -1030,12 +1038,13 @@ def add_smoke_commands(sub):
     prepare_p.add_argument("--catalog", required=True)
     prepare_p.add_argument("--out", required=True, help="the smoke root")
     prepare_p.add_argument("--weights", action="append", default=[], metavar="ARCHITECTURE=FILE", help=weights_help)
+    prepare_p.add_argument("--epochs", type=int, default=0, help="epochs per row in place of the plan's, in a state folder of their own")
     row_p = sub.add_parser("row", help="run one row of a state's plan and record what came of it")
     row_p.add_argument("--state", required=True)
     row_p.add_argument("--slug", required=True)
     row_p.add_argument("--catalog", required=True)
     row_p.add_argument("--environment", default="train-gpu")
-    row_p.add_argument("--epochs", type=int, default=0, help="the plan's unless given")
+    row_p.add_argument("--epochs", type=int, default=0, help="the state's; another count is refused")
     row_p.add_argument("--weights", action="append", default=[], metavar="ARCHITECTURE=FILE", help=weights_help)
     row_p.add_argument("--keep-epoch-weights", action="store_true", help="keep train/epochs/*.pt of a row that ran")
     results_p = sub.add_parser("results", help="results.json, RESULTS.md and PROGRESS.txt again from a state's rows")

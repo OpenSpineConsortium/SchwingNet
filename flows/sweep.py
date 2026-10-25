@@ -251,6 +251,7 @@ class SweepFlow(FlowSpec):
         plan = read_json(self.plan_file) or {}
         self.plan_epochs = self.epochs or (plan.get("epochs") if isinstance(plan.get("epochs"), int) else 0)
         args = ["prepare", "--plan", self.plan_file, "--catalog", self.catalog_file, "--out", self.out_root]
+        args += ["--epochs", str(self.epochs)] if self.epochs > 0 else []
         done = block_sweep(args + [part for word in self.weights_words for part in ("--weights", word)])
         prepared = json_line(done.stdout, "state") if done.returncode == 0 else None
         if prepared is None:

@@ -379,7 +379,8 @@ docs/research/block-smoke/.
 - **Predictable folders.** The run id was the hash of the commit, the catalog and the start, so
   no run could be found again from its configuration. It is now the hash of the commit, the
   catalog and the run's configuration, written once to CONFIGURATION.json; a legacy RUN.json still
-  validates. A sweep's state is `<smoke root>/<plan>/<commit 7>-<catalog sha256 8>/`, each row
+  validates. A sweep's state is `<smoke root>/<plan>/<commit 7>-<catalog sha256 8>/`, with
+  `-e<N>` after it where the sweep was asked for N epochs in place of the plan's, each row
   under its slug, `<architecture>-<size>px-<8 hex of the row's configuration>`, with results.json,
   RESULTS.md and PROGRESS.txt at the state's root. On the grid the smoke root is
   /rs/rs_grp_oschome/go2432/smoke.

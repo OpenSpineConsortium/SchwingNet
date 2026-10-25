@@ -270,6 +270,25 @@ class CheckTest(unittest.TestCase):
         self.assertEqual(stamps, {name: (state / name).stat().st_mtime_ns for name in names})
         self.assertEqual((state / "rows" / "kept-by-hand.json").read_text(encoding="utf-8"), "{}")
 
+    def test_another_epoch_count_gets_a_state_of_its_own_and_a_row_asked_for_another_is_refused(self):
+        out = self.tmp / "smoke-epochs"
+        plan = ROOT / "grid" / "sweeps" / "synthetic.json"
+        code, printed, err = said(self.sweep, "prepare", "--plan", plan, "--catalog", self.catalog, "--out", out)
+        self.assertEqual(code, 0, err)
+        own = Path(json.loads(printed)["state"])
+        code, same, err = said(self.sweep, "prepare", "--plan", plan, "--catalog", self.catalog, "--out", out, "--epochs", "3")
+        self.assertEqual((code, Path(json.loads(same)["state"])), (0, own), "the plan's own count names the plan's folder")
+        code, printed, err = said(self.sweep, "prepare", "--plan", plan, "--catalog", self.catalog, "--out", out, "--epochs", "2")
+        self.assertEqual(code, 0, err)
+        other = Path(json.loads(printed)["state"])
+        self.assertEqual(other, own.with_name(own.name + "-e2"))
+        self.assertEqual(json.loads((other / "PLAN.json").read_text(encoding="utf-8"))["epochs"], 2)
+        self.assertEqual(json.loads((own / "PLAN.json").read_text(encoding="utf-8"))["epochs"], 3)
+        slug = json.loads(printed)["first"][0]
+        code, _, err = said(self.sweep, "row", "--state", own, "--slug", slug, "--catalog", self.catalog, "--epochs", "2")
+        self.assertEqual(code, 2)
+        self.assertIn("prepare with --epochs 2", err)
+
     def test_a_row_that_cannot_be_run_exits_two(self):
         code, _, err = said(self.sweep, "row", "--state", self.tmp / "no-state", "--slug", "x", "--catalog", self.catalog)
         self.assertEqual(code, 2)
