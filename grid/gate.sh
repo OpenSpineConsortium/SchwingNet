@@ -84,13 +84,19 @@
 #                   count of 2026-10-25): flexray_carmlspine, flexray_deepfluoro or xvr_deepfluoro, each one
 #                   GPU job (grid/bench.sbatch, tools/bench_public.py) once its fetch has landed; the next
 #                   send prints logs/BENCH-<name>.md, and every later one prints it again and queues nothing
+#   anomaly <stage> one stage of the SPINEPS to FleXray anomaly route (#398, the owner's word and count of
+#                   2026-10-25 21:22 UTC: seven jobs, two CPU and five GPU, docs/research/spineps-anomaly-route.md),
+#                   queued once as one job (grid/anomaly.sbatch, tools/anomaly_route.py) once the stage's code has
+#                   merged; the next send prints logs/ANOMALY-<stage>.md, and every later one prints it again and
+#                   queues nothing. Built so far: select, the inventory, the two-labeller call, the holdout's
+#                   score and the selection, one CPU job over masks that already exist
 #   stop            cancel the gate's own jobs that are still queued or running, and nothing else
 #   cancel <job>    cancel one of the gate's own live jobs and every other live job its word queued
 #                   with it (a fetch's bank and catalog), and nothing else
 #
-# While a version 1 run, a sweep, an experiment run or a benchmark lasts, grid/logs/HOLD names its
-# job and commit (grid/v1-driver.sbatch, grid/sweep-driver.sbatch, grid/experiment-driver.sbatch,
-# grid/bench.sbatch); the gate's side skips its fast-forward while the file is there, and every word but a refused one
+# While a version 1 run, a sweep, an experiment run, a benchmark or an anomaly stage lasts, grid/logs/HOLD
+# names its job and commit (grid/v1-driver.sbatch, grid/sweep-driver.sbatch, grid/experiment-driver.sbatch,
+# grid/bench.sbatch, grid/anomaly.sbatch); the gate's side skips its fast-forward while the file is there, and every word but a refused one
 # clears a hold whose job Slurm no longer holds, so the run's later steps run the code it
 # recorded. One file holds one job, so each run that takes it waits afterany on every other one
 # still live (checkout_holders) rather than run beside it.
@@ -133,18 +139,18 @@ SWEEP_BANK=${SWEEP_BANK:-$DATA_ROOT/realxray/carmlspine_sweep}
 NETRC=${NETRC:-$HOME/.netrc}
 LOGS=$REPO/grid/logs
 STATE=$LOGS/GATE_JOBS.txt
-WORDS="start status leaks v1 latency fetch explore dropzip unpack nodequota folders samples sweep bank experiment bench stop cancel"
+WORDS="start status leaks v1 latency fetch explore dropzip unpack nodequota folders samples sweep bank experiment bench anomaly stop cancel"
 ENVS="default train-cpu train-gpu telemetry"
 
 word=${1:-}
 id=${2:-}
 # Matched whole, so one argument holding two words ("v1 latency") is refused and never runs nothing.
 case "$word" in
-  start|status|leaks|v1|latency|fetch|explore|dropzip|unpack|nodequota|folders|samples|sweep|bank|experiment|bench|stop|cancel) ;;
+  start|status|leaks|v1|latency|fetch|explore|dropzip|unpack|nodequota|folders|samples|sweep|bank|experiment|bench|anomaly|stop|cancel) ;;
   "") echo "refusing: no word; one of: $WORDS"; exit 64 ;;
   *) echo "refusing: '$word' is not one of: $WORDS"; exit 64 ;;
 esac
-if [ "$word" = fetch ] || [ "$word" = explore ] || [ "$word" = dropzip ] || [ "$word" = unpack ] || [ "$word" = sweep ] || [ "$word" = bank ] || [ "$word" = bench ]; then
+if [ "$word" = fetch ] || [ "$word" = explore ] || [ "$word" = dropzip ] || [ "$word" = unpack ] || [ "$word" = sweep ] || [ "$word" = bank ] || [ "$word" = bench ] || [ "$word" = anomaly ]; then
   [ $# -eq 2 ] || { echo "refusing: $word takes exactly one id"; exit 64; }
   case "$id" in ""|*[!a-z0-9_]*) echo "refusing: an id is lower-case letters, digits and _"; exit 64 ;; esac
   [ ${#id} -le 40 ] || { echo "refusing: an id is at most 40 characters"; exit 64; }
@@ -276,13 +282,13 @@ chain() {  # chain DEPEND [run-xray-chain.sh arguments...]: the X-ray chain afte
   record "$XR_FETCH" xr_fetch; record "$(value_of bank "$after")" xr_bank; record "$XR_CATALOG" xr_catalog
 }
 checkout_holders() {  # afterany:<job> for every live job of the gate's that holds the checkout while it runs, comma-joined
-  # A version 1 run, a sweep, an experiment run and a benchmark each write grid/logs/HOLD, one file
+  # A version 1 run, a sweep, an experiment run, a benchmark and an anomaly stage each write grid/logs/HOLD, one file
   # naming one job, and the first of two side by side to end would clear it while the other still
   # runs, whose end check then finds the checkout moved and throws the run away; so each waits for
   # the others, a sweep sent while a benchmark lasts up to its 12 hours among them.
   local job waits=""
   [ -f "$STATE" ] || return 0
-  for job in $(awk '$3 == "v1_driver" || $3 == "sweep" || $3 ~ /^experiment_[0-9]+$/ || $3 ~ /^bench_[a-z_]+$/ { print $1 }' "$STATE" | sort -u); do
+  for job in $(awk '$3 == "v1_driver" || $3 == "sweep" || $3 ~ /^experiment_[0-9]+$/ || $3 ~ /^bench_[a-z_]+$/ || $3 ~ /^anomaly_[a-z_]+$/ { print $1 }' "$STATE" | sort -u); do
     case "$QUEUED" in *" $job "*) waits=$(joined "$waits" "afterany:$job") ;; esac
   done
   echo "$waits"
@@ -1060,6 +1066,44 @@ word_bench() {  # one public model's benchmark (#287): queued once, its report p
   echo "submitted the benchmark. Send bench $id again once it ends to read its report, logs/BENCH-$id.md."
 }
 
+anomaly_class() {  # the job class a built stage of the anomaly route runs as, else nothing
+  case "$1" in
+    select) echo batch ;;
+  esac
+}
+anomaly_inputs_missing() {  # what anomaly $id still lacks, one line, or nothing
+  case "$id" in
+    select)
+      [ -f "$REPO/data/splits/anomaly-holdout.json" ] || echo "the frozen holdout, data/splits/anomaly-holdout.json" ;;
+  esac
+}
+word_anomaly() {  # one stage of the SPINEPS to FleXray anomaly route (#398): queued once, its report printed on every later send
+  local report=$LOGS/ANOMALY-$id.md class busy missing holds opts setup
+  class=$(anomaly_class "$id")
+  [ -n "$class" ] || { echo "refusing: anomaly takes select; the stages timing, pack, render, figure, tune and eval are not built yet, and each comes by pull request first"; return 64; }
+  busy=$(live_of "anomaly_$id")
+  [ -z "$busy" ] || { echo "refusing: the anomaly stage $id is still queued or running (job $busy); send anomaly $id again once it ends"; return 75; }
+  if [ -f "$report" ]; then
+    # Kept, so the owner's count of one job a stage holds: a report that stands queues nothing.
+    echo "## $(basename "$report") ($(date -r "$report" '+%F %T'))"
+    head -n 200 "$report" | LC_ALL=C tr -cd '\11\12\40-\176' | masked | head -c 30000
+    bench_failed_on_older_code "$report" || return 0
+    # A stage that failed decided nothing, so once a fix has moved the checkout it is queued once
+    # more, its report kept under its job's number, as a benchmark's is; the same commit queues nothing.
+    mv "$report" "$LOGS/ANOMALY-$id-$(bench_job_of "$report").md" || return 1
+    echo "  the report above ended in failure on older code: queueing the stage again at $commit"
+  fi
+  missing=$(anomaly_inputs_missing)
+  [ -z "$missing" ] || { echo "refusing: anomaly $id needs $missing"; return 2; }
+  setup=$(setup_dependency) || return 1
+  [ -z "$setup" ] || echo "  the environments: after the setup job that rebuilds them (${setup#afterok:})"
+  holds=$(checkout_holders)
+  [ -z "$holds" ] || echo "  the checkout: after the live runs that hold it ($holds)"
+  depend_on "$(joined "$setup" "$holds")" || return 1
+  submit "anomaly_$id" "$class" STAGE="$id" DATA_ROOT="$DATA_ROOT" ${opts[@]+"${opts[@]}"} --no-requeue -- anomaly.sbatch > /dev/null || return 1
+  echo "submitted the anomaly stage $id. Send anomaly $id again once it ends to read its report, logs/ANOMALY-$id.md."
+}
+
 word_samples() {
   local busy said rc
   busy=$( { live_of samples_plan; live_of samples_scan; live_of samples_merge; } | tr '\n' ' ')
@@ -1328,7 +1372,7 @@ word_cancel() {  # the job named, if the gate's and live, with every live job of
   "$SCANCEL" $cancel && echo "cancelled ($from): $cancel"
 }
 
-release_hold() {  # a run's hold (grid/v1-driver.sbatch, grid/sweep-driver.sbatch, grid/experiment-driver.sbatch, grid/bench.sbatch) is cleared once Slurm no longer holds its job
+release_hold() {  # a run's hold (grid/v1-driver.sbatch, grid/sweep-driver.sbatch, grid/experiment-driver.sbatch, grid/bench.sbatch, grid/anomaly.sbatch) is cleared once Slurm no longer holds its job
   local job
   [ -f "$LOGS/HOLD" ] || return 0
   job=$(awk '{ print $1; exit }' "$LOGS/HOLD")
@@ -1374,6 +1418,7 @@ case "$word" in
   folders) word_folders ;;
   experiment) word_experiment ;;
   bench) word_bench ;;
+  anomaly) word_anomaly ;;
   samples) word_samples ;;
   sweep) word_sweep ;;
   bank) word_bank ;;
