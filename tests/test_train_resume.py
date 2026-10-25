@@ -337,7 +337,17 @@ class UnreadableLastTest(unittest.TestCase):
         return folder, spoiled
 
     def test_a_truncated_or_empty_last_pt_is_moved_aside_and_the_run_starts_again(self):
-        for name, spoil in (("truncated", lambda data: data[: len(data) // 2]), ("emptied", lambda data: b"")):
+        import torch
+
+        foreign = io.BytesIO()
+        torch.save({"epoch": 1}, foreign)
+        # Each spoil but the last makes torch.load raise another way: a zip cut short, nothing, two
+        # kinds of pickle that is no pickle (one stops at an opcode, one pops an empty stack), and
+        # zeroes; the last is a file torch reads that holds no run's state.
+        spoils = (("truncated", lambda data: data[: len(data) // 2]), ("emptied", lambda data: b""),
+                  ("overwritten", lambda data: b"not a torch file"), ("scribbled", lambda data: b"the epoch"),
+                  ("zeroed", lambda data: bytes(len(data))), ("foreign", lambda data: foreign.getvalue()))
+        for name, spoil in spoils:
             with self.subTest(name):
                 folder, spoiled = self.cut_and_spoil(name, spoil)
                 rc, out, err = train(self.catalog, folder, *self.config, "--resume")
@@ -371,6 +381,28 @@ class ResumeRefusalsTest(unittest.TestCase):
         self.assertEqual(rc, 1)
         self.assertIn("nothing to resume", err)
         self.assertFalse((folder / "train" / "metrics.jsonl").exists())
+
+    def test_a_second_trainer_in_a_folder_another_holds_is_refused_and_touches_nothing(self):
+        # A flow started again after the flow of a live Slurm training job died sends a second
+        # trainer into the same folder; it must stop before it settles pending/ or opens a file.
+        import fcntl
+
+        folder = new_run(self.tmp / "held", "heldrun00000")
+        train_dir = folder / "train"
+        (train_dir / "pending").mkdir(parents=True)
+        (train_dir / "last.pt").write_bytes(b"the live run's epoch")
+        (train_dir / "pending" / "best.pt").write_bytes(b"staged by the live run")
+        before = {str(p.relative_to(folder)): p.read_bytes() for p in folder.rglob("*") if p.is_file()}
+        with (train_dir / ".lock").open("a+", encoding="utf-8") as live:
+            fcntl.flock(live, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            live.write("pid 4242 on node-a, Slurm job 777\n")
+            live.flush()
+            catalog = blocks_tests.RunWithEveryBlockTest.make_catalog(self.tmp / "catalog")
+            rc, _, err = train(catalog, folder, "--epochs", "1", "--resume", module=self.train)
+        self.assertEqual(rc, 1)
+        self.assertIn(f"train: {train_dir} is in progress: another trainer holds {train_dir / '.lock'} (pid 4242 on node-a, Slurm job 777)", err)
+        after = {str(p.relative_to(folder)): p.read_bytes() for p in folder.rglob("*") if p.is_file()}
+        self.assertEqual(after, before)
 
     def test_a_staged_best_moves_in_only_where_the_record_names_it(self):
         folder = self.tmp / "settle" / "train"

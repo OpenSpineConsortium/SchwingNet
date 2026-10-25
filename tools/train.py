@@ -68,6 +68,7 @@ import os  # noqa: E402
 import pickle  # noqa: E402
 import random  # noqa: E402
 import sqlite3  # noqa: E402
+import struct  # noqa: E402
 import time  # noqa: E402
 
 import numpy as np  # noqa: E402
@@ -917,6 +918,14 @@ def refuse_nothing_to_resume(folder):
         raise TrainError(f"--resume: {path} is not there, so there is nothing to resume (a run writes it after every epoch and deletes it once checkpoint.json is written); start the run without --resume")
 
 
+# What torch.load raised on a last.pt cut at 400 places, on random bytes and on a saved file with
+# bytes overwritten, measured with the locked torch (2026-10-25); and the keys last_state writes,
+# without which a file torch did read is no run's state.
+UNREADABLE = (OSError, EOFError, RuntimeError, ValueError, IndexError, KeyError, struct.error, pickle.UnpicklingError)
+LAST_KEYS = ("epoch", "model", "optimiser", "prior", "generator", "torch_rng", "cuda_rng", "numpy_rng", "python_rng",
+             "best", "history", "witness_epochs", "arguments", "resumed_after")
+
+
 def read_last(path):
     """last.pt as torch reads it, or None where it cannot be read: cut short or emptied, as a node
     that died before the rename reached the disk may leave it. Such a file is moved aside to
@@ -925,12 +934,12 @@ def read_last(path):
     wherever last.pt is."""
     try:
         state = torch.load(path, map_location="cpu", weights_only=True)
-    except (OSError, EOFError, RuntimeError, pickle.UnpicklingError) as error:
+    except UNREADABLE as error:
         why = type(error).__name__
     else:
-        if isinstance(state, dict):
+        if isinstance(state, dict) and all(key in state for key in LAST_KEYS):
             return state
-        why = f"a {type(state).__name__}, not a run's state"
+        why = f"a {type(state).__name__} that is not a run's state"
     aside = path.with_name(f"{LAST}.unreadable")
     os.replace(path, aside)
     print(json.dumps({"restarted_from_epoch": 0, "unreadable": str(aside), "why": why}), flush=True)
