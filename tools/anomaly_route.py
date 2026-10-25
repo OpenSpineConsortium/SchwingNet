@@ -1,7 +1,7 @@
 """The SPINEPS to FleXray anomaly route's clerk (#398): the frozen holdout, the CT finder's score, the selection.
 
 Usage (standard library only; the grid runs it inside the container through grid/anomaly.sbatch):
-    python tools/anomaly_route.py freeze --screen <verse screened.csv> --table <verse_suppl_table1.csv> --out data/splits/anomaly-holdout.json
+    python tools/anomaly_route.py freeze --screen <verse screened.csv> --table <verse_suppl_table1.csv> --registry <registry.csv> --out data/splits/anomaly-holdout.json
     python tools/anomaly_route.py score --screen <verse screened.csv> [--holdout data/splits/anomaly-holdout.json]
     python tools/anomaly_route.py select --registry <registry.csv> --harvest <anomaly_harvest root> --holdout <file> --out <dir>
     python tools/anomaly_route.py check --holdout <file> --list <csv with a patient_key column>
@@ -14,9 +14,10 @@ A's count and B's rib-contact count from T1 are the same; a variant is called on
 both stand behind. VERIDAH alone is scored beside it, because the record shows it over-calls.
 
 The truth is the readers' table (Loeffler 2021, Supplementary Table 1), as the screen file carries
-it in read_structure, C/T/L/S. A scan whose review note says the release mask or labeller A
-contradicts the read, that the release mask carries an L6 against a normal read (verse707), or
-that the mask's ids are out of order, is disputed: it is neither scored nor held out nor trained.
+it in read_structure, C/T/L/S. A scan whose release mask contradicts the read (the disposition's
+CONTRADICTED clause names the mask), whose mask carries an L6 against a normal read (verse707), or
+whose mask's ids are out of order, is disputed: it is neither scored nor held out nor trained. A
+read that only labeller A or B contradicts is scored, since those are the finder's own errors.
 
 The holdout is drawn by rank, the first 8 bytes of sha256 over 'schwingnet-anomaly-holdout|' +
 SALT + '|' + person, lowest first, so the same inputs give the same list on any machine. A few
@@ -39,7 +40,18 @@ CTSP_READER_L6 = ("0005", "0097", "0208", "0234", "0244", "0268", "0302", "0366"
                   "0376", "0486", "0565", "0831", "0950", "0960", "0999", "1053")
 CTSP_DISPUTED = ("0008", "0021", "0033", "0049", "0176", "0179", "0196")
 CTSP_HOLD_L6 = 5
-DISPUTED_REVIEW = ("contradicts the published read", "release mask carries an L6", "release mask id order broken")
+CTSP_HOLD_NORMAL = 5
+# The cross-validation of the fine-tune (the owner's yes of 2026-10-25 22:30 UTC): the clean read VerSe
+# L6 persons the holdout leaves are dealt into four folds, each one held from its own fine-tune.
+FOLDS = 4
+# A scan is disputed where something other than the labellers under test contradicts the read: the
+# release mask's own count, an L6 in the mask of a normal read, or ids out of order. A read that only
+# labeller A or B contradicts is scored against the read, since leaving it out would drop exactly the
+# finder's own errors from its score (the review of #398).
+MASK_DISPUTES = ("release mask carries an L6", "release mask id order broken")
+CONTRADICTED = re.compile(r"CONTRADICTED by ([^(]*)")
+# Harvest collections that screen again a stream the registry already holds, under another key.
+KEY_ALIASES = {"totalsegmentator_v2": "ts"}
 VARIANTS = ("L6", "T13", "four_lumbar", "eleven")
 # The real-frame persons are test only (the harvest directive): their projections test a model and never train one.
 TEST_ONLY_SOURCES = {"cobra2026", "carmlspine", "deepfluoro", "geneva", "spinesac", "ljubljana"}
@@ -127,7 +139,10 @@ def veridah_call(row):
 
 
 def disputed(row):
-    return any(words in row.get("review", "") for words in DISPUTED_REVIEW)
+    if any(words in row.get("review", "") for words in MASK_DISPUTES):
+        return True
+    against = CONTRADICTED.search(row.get("disposition", ""))
+    return bool(against) and "mask" in against.group(1)
 
 
 def verse_number(case):
@@ -205,7 +220,28 @@ def stratum_of(person_info):
     return person_info["first"].get("read_subtype", "") or "normal"
 
 
-def freeze(screen, table):
+def ctsp_normals(registry):
+    """The registry's CTSpinoPelvic1K persons with a read normal count and both junctions in the field."""
+    rows = [row for row in read_csv(registry) if row["patient_key"].startswith("ctsp:")]
+    return [row["patient_key"] for row in rows if variant_of(row) == "normal" and row.get("truth_tier") == "read"
+            and whole_count_in_field(row) and not test_only(row, row.get("winning_source", ""))
+            and row["patient_key"].split(":", 1)[1] not in CTSP_DISPUTED]
+
+
+def deal_folds(people, release_of):
+    """Each person a fold from 1 to FOLDS, dealt in rank order within each release, so every fold has its share of each."""
+    folds, turn = {}, 0
+    by_release = defaultdict(list)
+    for person in people:
+        by_release[release_of(person)].append(person)
+    for release in sorted(by_release):
+        for person in sorted(by_release[release], key=rank):
+            folds[person] = turn % FOLDS + 1
+            turn += 1
+    return folds
+
+
+def freeze(screen, table, registry):
     screen_rows, table_rows = read_csv(screen), read_csv(table)
     persons, release_by_number = persons_of(screen_rows), releases(table_rows)
 
@@ -228,6 +264,12 @@ def freeze(screen, table):
     for person in sorted(ctsp, key=rank)[:CTSP_HOLD_L6]:
         held.append({"person": person, "variant": "L6", "release": "ctspinopelvic1k", "stratum": "reader-confirmed L6",
                      "scans": [person.split(":", 1)[1]]})
+    registry_rows = {row["patient_key"]: row for row in read_csv(registry)}
+    for person in sorted(ctsp_normals(registry), key=rank)[:CTSP_HOLD_NORMAL]:
+        held.append({"person": person, "variant": "normal", "release": "ctspinopelvic1k",
+                     "stratum": registry_rows[person].get("subtype", ""), "scans": [person.split(":", 1)[1]]})
+    held_people = {entry["person"] for entry in held}
+    folds = deal_folds([p for p, info in clean.items() if info["truth"] == "L6" and p not in held_people], release_of)
     return {
         "frozen": SALT,
         "why": "the SPINEPS to FleXray anomaly route (docs/research/spineps-anomaly-route.md, #398): no checkpoint of the "
@@ -239,14 +281,20 @@ def freeze(screen, table):
                      f"four-lumbar, each split over the VerSe releases in proportion to its candidates; {HOLD['normal']} normal counts "
                      "with both junctions in the field of every scan, any Castellvi grade or lumbar rib, split over the releases "
                      "in proportion to the positives held",
-            "disputed": "a scan whose screen review says: " + "; ".join(DISPUTED_REVIEW),
-            "ctspinopelvic1k": f"{CTSP_HOLD_L6} of the 16 reader-confirmed L6 records, none of the seven disputed "
-                               f"({', '.join(CTSP_DISPUTED)}); its normals are drawn by the same rank by the select stage "
-                               "and added here by pull request before any render reads this file",
+            "disputed": "a scan whose screen review says " + " or ".join(f"'{words}'" for words in MASK_DISPUTES)
+                        + ", or whose disposition's 'CONTRADICTED by' clause names the mask; a read only labeller A or B "
+                          "contradicts is scored, not disputed",
+            "ctspinopelvic1k": f"{CTSP_HOLD_L6} of the 16 reader-confirmed L6 records and {CTSP_HOLD_NORMAL} of the registry's "
+                               "read normal counts with both junctions in the field, by the same rank, none of the seven "
+                               f"disputed ({', '.join(CTSP_DISPUTED)})",
+            "folds": f"the clean read VerSe L6 persons not held, dealt into {FOLDS} folds in rank order within each release; "
+                     "each fold's fine-tune never trains on that fold, and every person here is tested once by it",
         },
         "inputs": {"screen": {"name": Path(screen).name, "sha256": sha256_of(screen)},
-                   "table": {"name": Path(table).name, "sha256": sha256_of(table)}},
+                   "table": {"name": Path(table).name, "sha256": sha256_of(table)},
+                   "registry": {"name": Path(registry).name, "sha256": sha256_of(registry)}},
         "persons": held,
+        "folds": [{"person": person, "fold": fold} for person, fold in sorted(folds.items(), key=lambda item: (item[1], rank(item[0])))],
         "disputed": sorted({person for person, info in persons.items() if info["disputed"]}
                            | {f"ctsp:{record}" for record in CTSP_DISPUTED}),
     }
@@ -346,8 +394,15 @@ def candidates(registry, harvest):
     for row in read_csv(registry):
         seen.setdefault(row["patient_key"], (row.get("winning_source", ""), row.get("winning_case", ""), row))
     for collection, row in harvest_rows(harvest):
-        seen.setdefault(row.get("patient_key") or f"{collection}:{row.get('case', '')}", (collection, row.get("case", ""), row))
+        seen.setdefault(registry_key(row.get("patient_key") or f"{collection}:{row.get('case', '')}"),
+                        (collection, row.get("case", ""), row))
     return seen
+
+
+def registry_key(key):
+    """A harvest key in the registry's spelling, so a stream screened twice is one person."""
+    prefix, _, rest = key.partition(":")
+    return f"{KEY_ALIASES[prefix]}:{rest}" if rest and prefix in KEY_ALIASES else key
 
 
 def refused_people(holdout):
@@ -356,8 +411,13 @@ def refused_people(holdout):
     return {entry["person"] for entry in frozen["persons"]}, set(frozen.get("disputed", []))
 
 
+def folds_of(holdout):
+    return {entry["person"]: entry["fold"] for entry in json.loads(Path(holdout).read_text(encoding="utf-8")).get("folds", [])}
+
+
 def select(registry, harvest, holdout):
     held, disputed_people = refused_people(holdout)
+    folds = folds_of(holdout)
     chosen, left_out = [], Counter()
     negatives = defaultdict(list)
     for person, (collection, case, row) in candidates(registry, harvest).items():
@@ -381,6 +441,8 @@ def select(registry, harvest, holdout):
     for collection, people in sorted(negatives.items()):
         for person, case in sorted(people, key=lambda item: rank(item[0]))[: parts[collection]]:
             chosen.append({"person": person, "collection": collection, "case": case, "variant": "normal", "tier": "", "role": "train"})
+    for entry in chosen:
+        entry["fold"] = folds.get(entry["person"], "")
     overlap = sorted((held | disputed_people) & {entry["person"] for entry in chosen})
     if overlap:
         raise SystemExit(f"refusing: the selection holds {len(overlap)} held-out or disputed persons")
@@ -396,6 +458,9 @@ def selection_lines(chosen, left_out):
              f"{CROP_BYTES / 2**20:.0f} MiB, {len(chosen) * CROP_BYTES / 2**30:.1f} GiB.", "",
              "| role | variant | collection | CTs |", "|---|---|---|---|"]
     lines += [f"| {role} | {variant} | {collection} | {count} |" for (role, variant, collection), count in sorted(table.items())]
+    in_folds = Counter(entry["fold"] for entry in train if entry.get("fold"))
+    lines += ["", "Cross-validation folds of the read VerSe L6 in the training list: "
+              + (", ".join(f"fold {fold} {in_folds[fold]}" for fold in sorted(in_folds)) or "none")]
     lines += ["", "Left out:", ""] + [f"- {why}: {count}" for why, count in left_out.most_common()]
     return lines + [""]
 
@@ -411,6 +476,7 @@ def main(argv=None):
     one = sub.add_parser("freeze")
     one.add_argument("--screen", required=True)
     one.add_argument("--table", required=True)
+    one.add_argument("--registry", required=True)
     one.add_argument("--out", required=True)
     one = sub.add_parser("score")
     one.add_argument("--screen", required=True)
@@ -425,7 +491,7 @@ def main(argv=None):
     one.add_argument("--list", required=True)
     args = parser.parse_args(argv)
     if args.command == "freeze":
-        Path(args.out).write_text(json.dumps(freeze(args.screen, args.table), indent=1) + "\n", encoding="utf-8")
+        Path(args.out).write_text(json.dumps(freeze(args.screen, args.table, args.registry), indent=1) + "\n", encoding="utf-8")
     elif args.command == "score":
         print(score(args.screen, args.holdout))
     elif args.command == "select":
@@ -433,7 +499,8 @@ def main(argv=None):
         out = Path(args.out)
         out.mkdir(parents=True, exist_ok=True)
         with open(out / "selection.csv", "w", newline="", encoding="utf-8") as handle:
-            writer = csv.DictWriter(handle, fieldnames=["person", "collection", "case", "variant", "tier", "role"], extrasaction="ignore")
+            writer = csv.DictWriter(handle, fieldnames=["person", "collection", "case", "variant", "tier", "role", "fold"],
+                                    extrasaction="ignore")
             writer.writeheader()
             writer.writerows(chosen)
         print("\n".join(selection_lines(chosen, left_out)))

@@ -1580,7 +1580,7 @@ esac
         self.assertIn("# anomaly select: job 779", report.splitlines()[0])
         self.assertIn("NOTE: the grid's VerSe screen", report)
         self.assertIn("| L6: sensitivity | 4 of 4", report)
-        self.assertIn("no held-out person in", report)
+        self.assertIn("no held-out or disputed person in", report)
         self.assertIn("- exit 0 at ", report)
         self.assertFalse((self.repo / "grid" / "logs" / "HOLD").exists())
         self.assertTrue((self.tmp / "go2432" / "anomaly" / "select" / "selection.csv").exists())

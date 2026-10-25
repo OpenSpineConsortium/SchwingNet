@@ -1,6 +1,6 @@
 # SPINEPS to FleXray: finding anomalous spines, testing the finding, and fine-tuning for it
 
-Source: the thread "Plan the FleXray audit for #391", 2026-10-25, from the owner's message of 21:00 UTC and the owner's Go of 21:22 UTC for seven jobs, two CPU and five GPU, sent stage by stage. Confidential with the rest of SchwingNet's method: it names the record's anomaly counts and the counting line's use of them. The public half of #391 is symphony-template's docs/research/flexray-audit-plan-2026-10-25.md. This note changes two of its items: items 7 and 8 share this route's pack and render (section 5), so both now wait on stage 1's selection and on the frozen holdout. It also brings item 14's fine-tune forward on the owner's Go, as research use only (section 7).
+Source: the thread "Plan the FleXray audit for #391", 2026-10-25, from the owner's message of 21:00 UTC, the owner's Go of 21:22 UTC for seven jobs, two CPU and five GPU, sent stage by stage, and the owner's yes of 22:30 UTC to eight more GPU jobs for a four-fold cross-validation of the fine-tune (section 5). Confidential with the rest of SchwingNet's method: it names the record's anomaly counts and the counting line's use of them. The public half of #391 is symphony-template's docs/research/flexray-audit-plan-2026-10-25.md. This note changes two of its items: items 7 and 8 share this route's pack and render (section 5), so both now wait on stage 1's selection and on the frozen holdout. It also brings item 14's fine-tune forward on the owner's Go, as research use only (section 7).
 
 ## 1. What was asked, and how it is read
 
@@ -45,49 +45,54 @@ So the finder is two labellers agreeing, TotalSegmentator's count against SPINEP
 
 ## 3. What the records already say: the finder against the readers
 
-"See if it finds anomalous spines" needs no grid job for the CT finder: spinesurg-ct-nnunet's VerSe screen (SchwingNet/results/transitional_registry/verse/screened.csv, sha256 a0cb756c2ef7) carries both labellers' counts for every VerSe scan beside the readers' structure (Loeffler 2021, Supplementary Table 1). `python3 tools/anomaly_route.py score` reads it. Each person is scored once, by its first scan; 325 read persons, 16 disputed and left out, 309 scored. A no_count, a single labeller or a discordant pair on a variant is a miss, and on a normal count it is no normal call. Wilson intervals at 95 percent.
+"See if it finds anomalous spines" needs no grid job for the CT finder: spinesurg-ct-nnunet's VerSe screen (SchwingNet/results/transitional_registry/verse/screened.csv, sha256 a0cb756c2ef7) carries both labellers' counts for every VerSe scan beside the readers' structure (Loeffler 2021, Supplementary Table 1). `python3 tools/anomaly_route.py score` reads it. Each person is scored once, by its first scan; 325 read persons, 6 disputed and left out, 319 scored. A no_count, a single labeller or a discordant pair on a variant is a miss, and on a normal count it is no normal call. Wilson intervals at 95 percent.
+
+A scan is disputed only where something other than the labellers under test contradicts the read: the release mask's own count, an L6 in the mask of a normal read (verse707), or mask ids out of order. The first draft also left out every read that labeller A alone contradicted, ten persons with the mask supporting the read, verse588 and verse601 among them; that dropped exactly the finder's own errors from its score, so they are scored now (the review of #398).
 
 | | Two labellers agreeing | VERIDAH alone |
 | --- | --- | --- |
-| L6 found (sensitivity) | 21 of 78, 26.9 % (18.3 to 37.7) | 34 of 78, 43.6 % (33.1 to 54.6) |
-| T13 found | 2 of 4 (15.0 to 85.0) | 4 of 4 (51.0 to 100) |
+| L6 found (sensitivity) | 22 of 83, 26.5 % (18.2 to 36.9) | 36 of 83, 43.4 % (33.2 to 54.1) |
+| T13 found | 2 of 6 (9.7 to 70.0) | 4 of 6 (30.0 to 90.3) |
 | four lumbar found | 2 of 2 (34.2 to 100) | 2 of 2 (34.2 to 100) |
-| No L6 or T13 on a normal count (specificity) | 225 of 225 (98.3 to 100) | 224 of 225 (97.5 to 99.9) |
-| Normal counts called normal (coverage) | 120 of 225 (46.8 to 59.7) | 135 of 225 (53.5 to 66.2) |
-| L6 calls right (precision) | 21 of 21 (84.5 to 100) | 34 of 34 (89.8 to 100) |
-| T13 calls right | 2 of 2 (34.2 to 100) | 4 of 15 (10.9 to 52.0); 10 of the wrong ones are L6 spines |
-| four-lumbar calls right | 2 of 12 (4.7 to 44.8) | 2 of 17 (3.3 to 34.3) |
+| No L6 or T13 on a normal count (specificity) | 228 of 228 (98.3 to 100) | 225 of 228 (96.2 to 99.6) |
+| Normal counts called normal (coverage) | 120 of 228 (46.2 to 59.0) | 135 of 228 (52.7 to 65.4) |
+| L6 calls right (precision) | 22 of 22 (85.1 to 100) | 36 of 38 (82.7 to 98.5) |
+| T13 calls right | 2 of 2 (34.2 to 100) | 4 of 16 (10.2 to 49.5); 11 of the wrong ones are L6 spines |
+| four-lumbar calls right | 2 of 14 (4.0 to 39.9) | 2 of 20 (2.8 to 30.1) |
 
 CTSpinoPelvic1K tells the same story on a second set of readers (spinesurg-ct-nnunet SchwingNet/results/transitional_registry/cobra/labeller_validation_ctsp.md): the two-labeller L6 calls are 7 of 7 right (64.6 to 100), and they find 7 of the 29 registry L6 (12.2 to 42.1).
 
 What this means for the route:
 
-- The CT finder is precise and insensitive. When both labellers call an L6 or a T13 it is right in every case on record, and it never calls either on a normal count; it finds about a quarter of the L6 spines. Most L6 misses are the two labellers disagreeing (30 of 57), not a wrong agreed call.
+- The CT finder is precise and insensitive. When both labellers call an L6 or a T13 it is right in every case on record, and it never calls either on a normal count; it finds about a quarter of the L6 spines. Most L6 misses are the two labellers disagreeing (34 of 61), not a wrong agreed call.
 - Its calls are therefore good training labels with a low yield, and a poor screen. The selection takes reads first and two-labeller calls second, and never a one-labeller call.
-- Its four-lumbar calls are wrong 10 times in 12, so four-lumbar enters the selection from reads only.
-- VERIDAH alone finds more L6 but calls T13 on ten L6 spines: the textbook's warning, measured.
+- Its four-lumbar calls are wrong 12 times in 14, so four-lumbar enters the selection from reads only.
+- VERIDAH alone finds more L6 but calls T13 on eleven L6 spines: the textbook's warning, measured.
 
 ## 4. The holdout, frozen before anything runs
 
 Chapter 9 defines held out: no checkpoint in the lineage saw the person, and derived images inherit their source's person. The list is data/splits/anomaly-holdout.json, written by `python3 tools/anomaly_route.py freeze` from the committed VerSe screen and the Loeffler table, whose sha256 it records. Nothing about it is chosen by hand.
 
 - **The rank.** Each person's place is the first 8 bytes of sha256 over "schwingnet-anomaly-holdout|2026-10-25|" and the person, lowest first, so the list is the same on any machine and nobody picked the easy cases. Each variant is split over the VerSe releases in proportion to its candidates, and a release short of candidates is topped up from the others.
-- **Disputed persons are out of everything.** A scan whose screen review says the release mask or labeller A contradicts the published read, that the release mask carries an L6 against a normal read (verse707), or that the mask's ids are out of order, is disputed: neither scored, held nor trained. That is 16 VerSe persons, verse588 and verse601 among them, and the seven CTSpinoPelvic1K records chapter 7 keeps out of truth (0008, 0021, 0033, 0049, 0176, 0179, 0196).
-- **T13: 2 held, 2 left to train.** Of the six read T13 persons, verse588 and verse601 are disputed. The rank holds verse547 and verse602 and leaves verse582 and verse631 to train, with 3 two-labeller T13 from TotalSegmentator; the local trial of the selection on the committed registry has 5 T13 to train on. Holding all six, as the first draft did, would have left the T13 channel nothing verified to learn from.
+- **Disputed persons are out of everything,** neither scored, held nor trained: the 6 VerSe persons of section 3's rule (verse026, 417, 559, 707, 753 and 765) and the seven CTSpinoPelvic1K records chapter 7 keeps out of truth (0008, 0021, 0033, 0049, 0176, 0179, 0196).
+- **T13: 2 held, 4 left to train.** The rank holds verse547 and verse601 of the six read T13 persons and leaves verse582, 588, 602 and 631 to train, with 3 two-labeller T13 from TotalSegmentator: 7 T13 to train on in the local trial. Holding all six, as the first draft did, would have left the T13 channel nothing verified to learn from.
 - **L6: 10 held,** 9 from VerSe'20 and 1 from VerSe'19. Spines with and without id 25 in the release mask are reported as separate strata (6 with, 4 without), since the ones the release masked as their own vertebra are the easier cases.
 - **Four lumbar: 1 held,** verse549, so the figure's four-lumbar spine is a held one.
-- **Normals: 20 held,** count-normal spines of any Castellvi grade, lumbar ribs and sacralised L5 included and reported as their own strata (13 plain, 5 unassigned subtype, 2 sacralised L5), with both junctions in the field of every scan. Leaving out the hard negatives would flatter the specificity.
-- **CTSpinoPelvic1K: 5 of its 16 reader-confirmed L6 held** (0376, 0366, 0005, 0302, 0234), by the same rank. Its normals are drawn by the select stage and added to the list by pull request before any render reads it. VERIDAH comes from the group that made VerSe and its paper names no training set (arXiv 2601.14066, read through its index pages), so a VerSe result much better than this one points to leakage, not skill.
+- **Normals: 20 held,** count-normal spines of any Castellvi grade, lumbar ribs and sacralised L5 included and reported as their own strata (12 plain, 5 unassigned subtype, 2 sacralised L5, 1 Castellvi I to II), with both junctions in the field of every scan. Leaving out the hard negatives would flatter the specificity.
+- **CTSpinoPelvic1K: 5 of its 16 reader-confirmed L6 held** (0376, 0366, 0005, 0302, 0234) **and 5 read normal counts** (0875, 0151, 0156, 0170, 0760: four sacralised L5 and one Castellvi I to II), by the same rank, frozen now so the select stage can never list them for training; the registry holds only CTSpinoPelvic1K persons with something transitional, so its normals are all hard negatives. VERIDAH comes from the group that made VerSe and its paper names no training set (arXiv 2601.14066, read through its index pages), so a VerSe result much better than this one points to leakage, not skill.
+- **Four folds for the cross-validation.** The 73 clean read VerSe L6 persons the holdout leaves are dealt into four folds of 19, 18, 18 and 18, in rank order within each release, and written into the same file. Each fold's fine-tune trains on everything the main one does except its own fold, and is scored on that fold; with the 10 held, which the main fine-tune is scored on, every one of the 83 is tested once by a model that never saw it.
 
-What these few can show, as Wilson intervals at 95 percent if every one is found: 2 of 2 T13, 34 to 100 percent; 10 of 10 L6, 72 to 100; 5 of 5 CTSpinoPelvic1K L6, 57 to 100; 20 of 20 normals, specificity 84 to 100. Chapter 14 sets 22 carriers with no miss for an 85 percent claim, and only 7 T13 persons exist in all sources, so these describe the method on these spines and are no claim of its sensitivity. The finder itself on the holdout alone finds 1 of 10 L6, 1 of 2 T13 and the four-lumbar spine, with no variant called on the 20 normals.
+What these few can show, as Wilson intervals at 95 percent if every one is found: 2 of 2 T13, 34 to 100 percent; 10 of 10 L6, 72 to 100; 5 of 5 CTSpinoPelvic1K L6, 57 to 100; 20 of 20 normals, specificity 84 to 100. Chapter 14 sets 22 carriers with no miss for an 85 percent claim, and only 7 T13 persons exist in all sources, so these describe the method on these spines and are no claim of its sensitivity. The finder itself on the holdout alone finds 1 of 10 L6, 1 of 2 T13 and the four-lumbar spine, with no L6 or T13 called on the 20 normals (two of them called four-lumbar).
+
+The cross-validation is what gives L6 a usable number: pooled over the four folds and the holdout, 83 spines. Found in 75 of them (90 percent), the interval would be about 82 to 95. The pooled figure describes the recipe, not one model, since five fine-tunes make it. T13 stays a case series, since 7 T13 persons are all the sources hold.
 
 How the list is held:
 
-- `select` refuses a held or disputed person and fails if one reaches its list; `check` reads any list with a patient_key or person column and fails on one. The pack and the fine-tune words run `check` on their lists before they write (section 5), since fxr-train runs outside the catalog and data/splits/test-persons.json, which the catalog reads, accepts only registered sources and VerSe and CTSpinoPelvic1K are not registered.
+- `select` refuses a held or disputed person and fails if one reaches its list; `check` reads any list with a patient_key or person column and fails on one. A harvest collection that screens a registry stream again under another key (validation_ts writes totalsegmentator_v2:sNNNN for the registry's ts:sNNNN) is read in the registry's spelling, so one CT is never two persons. The pack and the fine-tune words run `check` on their lists before they write (section 5), since fxr-train runs outside the catalog and data/splits/test-persons.json, which the catalog reads, accepts only registered sources and VerSe and CTSpinoPelvic1K are not registered.
 - The holdout is packed and rendered apart, as a test package, never into a training shard.
 - **Lineage is unresolved for FleXray as released.** FleXray's configs do not list MOOSE 3.0's sites, and the MOOSE spec carries vertebra_l6. Until item 6's census by file finds none of these persons in MOOSE 3.0 or FluXray, stages 5 to 7 report "lineage unresolved" beside every holdout number, as chapter 9 says unknown is not clean.
 
-## 5. The stages: seven words, one job each
+## 5. The stages: seven words, one job each, and the folds
 
 Every stage is a gate word `schwingnet-anomaly-<stage>`, one job through hpcworker's job submit with its class, sent once its code has merged and the stage before looks sane. Only `select` is built; the others are refused by the gate until their pull requests land.
 
@@ -95,8 +100,9 @@ Every stage is a gate word `schwingnet-anomaly-<stage>`, one job through hpcwork
    - Truth order: a read, then two labellers; never one. four_lumbar from reads only.
    - Normal counts are the subtypes none, ordinary, castellvi_I_II, sacralised_L5_fused and lumbar_rib with both junctions in the field.
    - Paired real-frame sources (cobra2026, carmlspine, deepfluoro, geneva, spinesac, ljubljana) are test-only.
-   - Normals are drawn by the holdout's rank until variants are 30 percent of the training CTs, by the choice of CTs and never by duplication (chapter 14). Collections are ranked by n times P(junction countable) times prevalence (the anomaly-harvest directive of 2026-09-23, symphony-template topic memory).
-   - The local trial on the committed registry, with no harvest rows: 377 training CTs at 30.0 percent variants (108 L6, 5 T13, 1 four-lumbar), 114 test-only paired CTs, a pack bound of 92 GiB at 192 MiB a crop. The grid adds the harvest collections' rows.
+   - Normals are drawn by the holdout's rank until variants are 30 percent of the training CTs, by the choice of CTs and never by duplication (chapter 14), split over the collections in proportion to their eligible normal counts. Which collections were harvested at all was the anomaly-harvest directive's ranking by n times P(junction countable) times prevalence (2026-09-23, symphony-template topic memory).
+   - Each training row carries its cross-validation fold, where it has one.
+   - The local trial on the committed registry, with no harvest rows: 400 training CTs at 30.0 percent variants (112 L6, 7 T13, 1 four-lumbar), 114 test-only paired CTs, a pack bound of 96 GiB at 192 MiB a crop. The grid adds the harvest collections' rows.
 2. **timing (gpu).** SPINEPS on ten paired CTs that lack it, as chapter 21 asks a timing run before a production array; the job first lists which paired CTs lack a mask (COBRA's 546, LUMOS once #207 proves its pairing, DeepFluoro if unsegmented). Its step 0 checks the GPU and exits with one line on a Blackwell node (ymh3, ymh4). The production array is not approved and is asked later with its number.
 3. **pack (batch).** fxr-dataset pack in FleXray's ct-seg preprocessing (a 512 by 512 by 256 crop, HU clipped to -1000 to 2000, float16), shared with items 7 and 8 so no second pack runs.
    - VerSe and CTSpinoPelvic1K are packed with their release masks. A CT with SPINEPS masks only has its bodies renamed from the agreed column, counted from the sacrum, and passes the spineps_ids.py guard; raw ids are never mapped by a spec.
@@ -110,12 +116,15 @@ Every stage is a gate word `schwingnet-anomaly-<stage>`, one job through hpcwork
    - The row-wise copy is item 12's, a pull request in OpenSpineConsortium/FleXray installed on the grid at its commit in place of the flexray==1.0.2 pin; or a SchwingNet tool that writes a local 63-channel bundle (weights, model config and label_schema.json in the extended order), loaded with --init-from and no --replace-head. fxr-train itself offers only a strict copy or --replace-head, which discards the whole head.
    - The config: dataloader.proportions holds the new pack and real frames with a few level masks (paired sets, non-test persons), both on the partial_labeled_seg route, since a pack with vertebra labels only, routed as standard_seg, trains every other channel as background, and chapters 14 and 16 found renders alone lost 25.6 anomalous points against renders and films mixed in every batch. base.yml's eleven absent sets are dropped, since DatasetRoutedLoss refuses a configured set with no route.
    - The pull request states epochs times iterations, --time and an estimate, and runs --no-requeue or resumes with fxr-train --resume.
+   - **The cross-validation, four more fine-tunes** (words tune_f1 to tune_f4), the same recipe less the fold's persons, each sent only once the main fine-tune and its eval look sane.
 7. **eval (gpu).** The fine-tuned model is scored on:
    - the holdout's test package: per-body naming, and per-spine sensitivity and specificity for the variant, each with "lineage unresolved" until item 6;
    - C-ArmLSpine's transitional cases case42, case121 and case136 on real frames, reported as agreement with one labeller's read, never as correctness;
    - the 1,627 truth boxes FleXray was first scored on, so the fine-tune's cost on ordinary spines is seen;
    - the counting line with the fine-tuned names in place of the released ones, a research measurement reported apart from SchwingNet's numbers.
    
+   **The folds' evals** (words eval_f1 to eval_f4) score each fold's fine-tune on its own fold's L6 spines, and the L6 sensitivity is reported pooled over the four folds and the holdout, 83 spines, and per fold.
+
    It needs item 12's checkpoint-to-bundle exporter, or a loader of last.pt's EMA state into fxr.models.UNet with the extended label list, and T13 between T12 and L1 in tools/bench_public.py's LEVEL_ORDER, which raises ValueError on vertebra_t13 today.
 
 ## 6. The counting figure on a real anomalous spine
@@ -149,9 +158,11 @@ The PNG stays on the lab volume, and only the job's text summary comes back thro
 | 5 FleXray as released, and the figure | figure | 0 | 0 | 1 | new; reads item 9's output where it has run |
 | 6 Fine-tune | tune | 0 | 0 | 1 | item 14's, brought forward on the owner's Go |
 | 7 Evaluate | eval | 0 | 0 | 1 | new |
-| **Total** | | **0** | **2** | **5** | the owner's Go of 21:22 UTC |
+| 6b Cross-validation fine-tunes | tune_f1 to tune_f4 | 0 | 0 | 4 | new, the owner's yes of 22:30 UTC |
+| 7b Their evals | eval_f1 to eval_f4 | 0 | 0 | 4 | new, the owner's yes of 22:30 UTC |
+| **Total** | | **0** | **2** | **13** | the owner's Go of 21:22 UTC and yes of 22:30 UTC |
 
-No fetch is needed for these seven. SPINEPS and its weights are on the grid, and FleXray's released bundle is there from the public benchmark (bench flexray_carmlspine). Item 6's fetch and census, which resolves the lineage, is the #391 plan's own and is not counted here.
+No fetch is needed for these fifteen. SPINEPS and its weights are on the grid, and FleXray's released bundle is there from the public benchmark (bench flexray_carmlspine). Item 6's fetch and census, which resolves the lineage, is the #391 plan's own and is not counted here.
 
 The fine-tune's weights inherit FleXray's CC BY-NC 4.0, and VerSe is CC BY-SA 4.0 in the registry. The #391 plan made item 14 wait on item 15; the owner's Go counts it now as research use. Item 15, the owner's licence decision, still decides whether those weights or their names reach any SchwingNet network, the demo or a reported number, and it never blocks the audit.
 
@@ -162,10 +173,10 @@ Two counts another thread handed to this plan, with the owner's word to do what 
 
 ## 8. What each stage's pull request brings
 
-- **select (this pull request):** the holdout and its hash, tools/anomaly_route.py (freeze, score, select, check), grid/anomaly.sbatch, the gate word, and the pass-through in hpcworker's grid gate (hpcworker #49) and in symphony-template's grid-accounts (symphony-template #491).
+- **select (this pull request):** the holdout, the CTSpinoPelvic1K normals and the four folds, with the hashes of the three records they were drawn from, tools/anomaly_route.py (freeze, score, select, check), grid/anomaly.sbatch, the gate word, and the pass-through in hpcworker's grid gate (hpcworker #49) and in symphony-template's grid-accounts (symphony-template #491).
 - **timing:** the SPINEPS job and the list of paired CTs without a mask.
 - **pack:** the relabel to contiguous canonical ids, the protocol and model label list with L6 and T13, the validation split, the G3 exclusion, the size admission.
 - **render:** the training and test presets, the size admission.
 - **figure:** the whole-column renderer from sweep_map.py, the figure tool, and the image's way back.
-- **tune:** the row-wise head copy (item 12, a FleXray fork pull request, or the local bundle writer), the config, the length.
-- **eval:** the exporter or loader, LEVEL_ORDER with T13, the scoring.
+- **tune:** the row-wise head copy (item 12, a FleXray fork pull request, or the local bundle writer), the config, the length, and the fold words, which drop a fold's persons from the training list.
+- **eval:** the exporter or loader, LEVEL_ORDER with T13, the scoring, and the pooled cross-validation.
