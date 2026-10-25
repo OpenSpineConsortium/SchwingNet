@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 412" font-family="system-ui,sans-serif" font-size="13">
+<rect width="860" height="412" fill="#ffffff"/>
+<text x="16" y="26" font-size="16" font-weight="600" fill="#101418">Sets by stratum and call (count of sets)</text>
+<rect x="16" y="36" width="10" height="10" fill="#1d7f55"/><text x="30" y="45" fill="#4a535c" font-size="12">keep</text>
+<rect x="96" y="36" width="10" height="10" fill="#c08a10"/><text x="110" y="45" fill="#4a535c" font-size="12">maybe</text>
+<rect x="176" y="36" width="10" height="10" fill="#b8433a"/><text x="190" y="45" fill="#4a535c" font-size="12">drop</text>
+<rect x="256" y="36" width="10" height="10" fill="#5a54b8"/><text x="270" y="45" fill="#4a535c" font-size="12">acquire</text>
+<rect x="336" y="36" width="10" height="10" fill="#8a9399"/><text x="350" y="45" fill="#4a535c" font-size="12">defer</text>
+<text x="320" y="76" text-anchor="end" fill="#101418">Real X-ray with a CT of the same body</text>
+<rect x="330.0" y="62" width="58.0" height="20" fill="#1d7f55"/>
+<text x="359.0" y="76" text-anchor="middle" fill="#ffffff" font-size="11">5</text>
+<rect x="388.0" y="62" width="46.4" height="20" fill="#5a54b8"/>
+<text x="411.1" y="76" text-anchor="middle" fill="#ffffff" font-size="11">4</text>
+<rect x="434.3" y="62" width="11.6" height="20" fill="#8a9399"/>
+<text x="320" y="110" text-anchor="end" fill="#101418">CT with level truth, C1 to S1</text>
+<rect x="330.0" y="96" width="81.1" height="20" fill="#1d7f55"/>
+<text x="370.6" y="110" text-anchor="middle" fill="#ffffff" font-size="11">7</text>
+<rect x="411.1" y="96" width="11.6" height="20" fill="#c08a10"/>
+<rect x="422.7" y="96" width="11.6" height="20" fill="#b8433a"/>
+<text x="320" y="144" text-anchor="end" fill="#101418">CT that carries the anomalies</text>
+<rect x="330.0" y="130" width="498.4" height="20" fill="#1d7f55"/>
+<text x="579.2" y="144" text-anchor="middle" fill="#ffffff" font-size="11">43</text>
+<rect x="828.4" y="130" width="11.6" height="20" fill="#c08a10"/>
+<text x="320" y="178" text-anchor="end" fill="#101418">Whole-body, thoracic and cervical CT, automatic labels</text>
+<rect x="330.0" y="164" width="46.4" height="20" fill="#1d7f55"/>
+<text x="353.2" y="178" text-anchor="middle" fill="#ffffff" font-size="11">4</text>
+<rect x="376.4" y="164" width="150.7" height="20" fill="#c08a10"/>
+<text x="451.7" y="178" text-anchor="middle" fill="#ffffff" font-size="11">13</text>
+<rect x="527.0" y="164" width="92.7" height="20" fill="#8a9399"/>
+<text x="573.4" y="178" text-anchor="middle" fill="#ffffff" font-size="11">8</text>
+<text x="320" y="212" text-anchor="end" fill="#101418">Real fluoroscopy with level truth, no CT</text>
+<rect x="330.0" y="198" width="34.8" height="20" fill="#1d7f55"/>
+<text x="347.4" y="212" text-anchor="middle" fill="#ffffff" font-size="11">3</text>
+<rect x="364.8" y="198" width="92.7" height="20" fill="#c08a10"/>
+<text x="411.1" y="212" text-anchor="middle" fill="#ffffff" font-size="11">8</text>
+<rect x="457.5" y="198" width="46.4" height="20" fill="#5a54b8"/>
+<text x="480.7" y="212" text-anchor="middle" fill="#ffffff" font-size="11">4</text>
+<rect x="503.9" y="198" width="11.6" height="20" fill="#8a9399"/>
+<text x="320" y="246" text-anchor="end" fill="#101418">Real films with level truth, no CT</text>
+<rect x="330.0" y="232" width="69.5" height="20" fill="#1d7f55"/>
+<text x="364.8" y="246" text-anchor="middle" fill="#ffffff" font-size="11">6</text>
+<rect x="399.5" y="232" width="69.5" height="20" fill="#c08a10"/>
+<text x="434.3" y="246" text-anchor="middle" fill="#ffffff" font-size="11">6</text>
+<rect x="469.1" y="232" width="34.8" height="20" fill="#5a54b8"/>
+<text x="486.5" y="246" text-anchor="middle" fill="#ffffff" font-size="11">3</text>
+<text x="320" y="280" text-anchor="end" fill="#101418">Real images with the spine in view, no levels</text>
+<rect x="330.0" y="266" width="69.5" height="20" fill="#1d7f55"/>
+<text x="364.8" y="280" text-anchor="middle" fill="#ffffff" font-size="11">6</text>
+<rect x="399.5" y="266" width="11.6" height="20" fill="#c08a10"/>
+<rect x="411.1" y="266" width="11.6" height="20" fill="#5a54b8"/>
+<rect x="422.7" y="266" width="81.1" height="20" fill="#8a9399"/>
+<text x="463.3" y="280" text-anchor="middle" fill="#ffffff" font-size="11">7</text>
+<text x="320" y="314" text-anchor="end" fill="#101418">Non-spine pairs and fluoroscopy</text>
+<rect x="330.0" y="300" width="23.2" height="20" fill="#1d7f55"/>
+<text x="341.6" y="314" text-anchor="middle" fill="#ffffff" font-size="11">2</text>
+<rect x="353.2" y="300" width="34.8" height="20" fill="#c08a10"/>
+<text x="370.6" y="314" text-anchor="middle" fill="#ffffff" font-size="11">3</text>
+<text x="320" y="348" text-anchor="end" fill="#101418">Recommended to drop</text>
+<rect x="330.0" y="334" width="313.0" height="20" fill="#b8433a"/>
+<text x="486.5" y="348" text-anchor="middle" fill="#ffffff" font-size="11">27</text>
+<text x="16" y="396" fill="#7d868f" font-size="12">The interactive figure trials keeping or dropping each set, with sizes, coverage along the spine and warnings.</text></svg>
