@@ -407,8 +407,9 @@ docs/research/block-smoke/.
   held throughout) and SweepFlow (prepare, the rows with no parent as one foreach, the warm starts
   as a second, then the results). One launcher, flows/launch.py, starts them all: it names a run
   by a key of the flow, the code it runs, the parameters and what it reads beyond them (bank's
-  recipes and raw copies, the sweep's plan), and before it starts a new run it resumes
-  the newest run of that key that did not succeed, with Metaflow's own `resume`, which clones
+  recipes and raw copies, catalog's shard manifests, the sweep's plan), and before it starts a
+  new run it resumes the newest run of that key that did not succeed, runs no more and had its
+  parameters saved by Metaflow, with Metaflow's own `resume`, which clones
   every finished step and every finished branch of a foreach and reruns only the rest (measured
   here with Metaflow 2.19.39 after an exception and after a SIGKILL, as a Slurm timeout kills a
   job). grid/02-bank-ingest.sbatch and grid/03-catalog.sbatch hand themselves to the launcher
