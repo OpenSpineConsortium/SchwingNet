@@ -743,6 +743,11 @@ word_fetch() {
   busy=$(live_of xr_fetch "fetch:$id")
   [ "$section" = credentialed ] || busy=$busy$(live_of xr_fetch start)
   [ -z "$busy" ] || { echo "refusing: a fetch that holds $id is still queued or running (job $busy)"; return 75; }
+  # Nor beside the bank word's job of the set (word_bank refuses the other way round): this chain's
+  # bank half would write the same bank folder, and the fetch's admission would take the place of
+  # the bank's in the set's meta/SIZE.
+  busy=$(live_of bank "bank:$id")
+  [ -z "$busy" ] || { echo "refusing: a bank of $id is still queued or running (job $busy), and this fetch's chain banks the same folder"; return 75; }
   # One catalog build at a time: this chain's catalog job waits for every one still live.
   for one in $(awk '$3 == "catalog" || $3 == "xr_catalog" { print $1 }' "$STATE" 2>/dev/null | sort -u); do
     case "$QUEUED" in *" $one "*) waits=$(joined "$waits" "afterany:$one") ;; esac

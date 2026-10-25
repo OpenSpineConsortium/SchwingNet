@@ -925,6 +925,23 @@ echo "the split is not disjoint; no training step reads this version"; exit 1
         self.assertEqual(self.gate("fetch", "vindr_pcxr").returncode, 75)
         self.assertEqual(len(self.submitted()), count)
 
+    def test_a_fetch_is_refused_while_a_bank_of_the_same_set_is_live(self):
+        # the chain's bank half would bank the folder the bank word's job is writing, and the
+        # fetch's admission would replace the bank's in the set's meta/SIZE
+        self.environments_ready()
+        self.state_line(960, "bank:aariz", "bank")
+        self.live(960)
+        done = self.gate("fetch", "aariz")
+        self.assertEqual(done.returncode, 75, done.stdout)
+        self.assertIn("a bank of aariz is still queued or running (job 960)", done.stdout)
+        self.assertEqual(self.submitted(), [])
+        # a bank of another set stands in the way of nothing
+        self.netrc.write_text("machine physionet.org login x password y\n", encoding="utf-8")
+        self.netrc.chmod(0o600)
+        done = self.gate("fetch", "vindr_pcxr")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(len(self.line_of("01-fetch.sbatch")), 1)
+
     def test_leaks_and_latency_refuse_while_their_own_jobs_are_live(self):
         self.environments_ready()
         self.state_line(500, "leaks", "leaks_fingerprint")
