@@ -289,6 +289,18 @@ def test_the_batch_script_carries_the_grid_rules_and_nothing_secret_or_placed() 
     )
 
 
+def test_every_state_slurm_ends_a_job_in_counts_as_over() -> None:
+    # The flow polls a job until sacct calls it over, and a start finds a job an earlier start
+    # submitted and waits on it too (#252), so an end state left out is polled for ever by every
+    # start. Every job goes in with --no-requeue, so a preempted one never runs again.
+    for state in ("COMPLETED", "FAILED", "CANCELLED by 1234", "TIMEOUT", "OUT_OF_MEMORY", "NODE_FAIL"):
+        assert is_finished(state), state
+    for state in ("PREEMPTED", "BOOT_FAIL", "DEADLINE"):
+        assert is_finished(state), state
+    for state in ("PENDING", "RUNNING", "REQUEUED", "RESIZING", "SUSPENDED", ""):
+        assert not is_finished(state), state
+
+
 def test_the_synthetic_bank_is_learnable_and_repeats_a_frame(tmp_path: Path) -> None:
     bank = load_tool("synthetic_bank")
     counts = bank.write_bank(tmp_path, 120, 6, 1, [])
