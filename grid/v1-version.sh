@@ -11,13 +11,18 @@
 #     so a version checked against an older freeze is checked again before any run reads it,
 #   - and whose file is under $STORE/versions.
 # With a fourth argument SOURCE, the version must also hold SOURCE's train part, as the block smoke
-# test's two_source plan needs (grid/sweep-driver.sbatch, issue #252); with three it chooses as above.
+# test's two_source plan needs (grid/sweep-driver.sbatch, issue #252); with --alone in its place, it
+# must hold no other source's frames in the parts a run trains and selects on, train and validation,
+# as the plans on catalog version 1 of C-ArmLSpine need (real and trials), so that real is never
+# run on the two-source catalog it is set against; with three it chooses as above.
 # Prints the file's name and exits 0, or says on stderr why no version qualifies and exits 1. Runs on
 # the login node, so bash, grep, sed, awk and sha256sum only (warrior kills python by name).
 #
-#   v1-version.sh STORE DATA_ROOT REPO [SOURCE]
+#   v1-version.sh STORE DATA_ROOT REPO [SOURCE | --alone]
 set -uo pipefail
-STORE=$1 DATA_ROOT=$2 REPO=$3 SOURCE=${4:-}
+[ $# -le 4 ] || { echo "no catalog version is chosen for more than one choice: $*" >&2; exit 1; }
+STORE=$1 DATA_ROOT=$2 REPO=$3 SOURCE=${4:-} ALONE=""
+[ "$SOURCE" != --alone ] || { ALONE=yes SOURCE=""; }
 # A source is an id, lower-case letters, digits and _; anything else names no source a version holds.
 case "$SOURCE" in *[!a-z0-9_]*) echo "no catalog version is chosen for '$SOURCE', which is no source id" >&2; exit 1 ;; esac
 
@@ -39,6 +44,14 @@ marked() {  # marked FILE: the split check passed on FILE against today's freeze
   [ -f "$marker" ] \
     && grep -qx "test-persons $persons" "$marker" \
     && grep -qx "rule $rule" "$marker"
+}
+
+others_trained_on() {  # others_trained_on LINE: the sources beside C-ArmLSpine with frames in a part a run reads, space-separated
+  # tools/catalog.py keys the line's counts "<source>|<part>", and a run trains on train and
+  # selects its checkpoint on validation (tools/train.py's TRAIN_PARTS); the test part, read by no
+  # run, does not count.
+  echo "$1" | grep -o '"frames_by_source_and_part":{[^}]*}' | grep -oE '"[^"|]+\|(train|validation)":' \
+    | sed 's/^"//; s/|.*//' | grep -vx carmlspine | sort -u | tr '\n' ' ' | sed 's/ $//'
 }
 
 holds_heads() {  # holds_heads LINE: every head shard is in the line's shards list
@@ -65,6 +78,8 @@ while IFS= read -r line; do
   [ -n "$file" ] || continue
   if [ -n "$SOURCE" ] && [[ $line != *"\"$SOURCE|train\":"* ]]; then
     because "the newest version with C-ArmLSpine ($file) holds no $SOURCE train part"
+  elif [ -n "$ALONE" ] && others=$(others_trained_on "$line") && [ -n "$others" ]; then
+    because "the newest version with C-ArmLSpine ($file) holds frames of $others to train or select on beside C-ArmLSpine's"
   elif ! holds_heads "$line"; then
     because "the newest version with C-ArmLSpine ($file) lacks a C-ArmLSpine shard now on the volume"
   elif ! marked "$file"; then

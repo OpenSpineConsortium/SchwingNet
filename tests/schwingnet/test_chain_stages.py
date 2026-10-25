@@ -42,11 +42,17 @@ def write_films(raw: Path, patients: range) -> None:
             (folder / f"{patient:08d}_{follow:03d}.png").write_bytes(png(48, 32, patient * 2 + follow))
 
 
+# Inside a Slurm shell (srun, salloc, a batch job that runs the checks) a stage with SLURM_JOB_ID
+# set hands itself to the launcher, flows/launch.py, and never runs the body this test is about.
+LAUNCHER_SWITCHES = ("SLURM_JOB_ID", "SCHWINGNET_FLOW_STEP")
+
+
 def stage(name: str, cwd: Path, env: dict[str, str]) -> tuple[int, str]:
+    inherited = {k: v for k, v in os.environ.items() if k not in LAUNCHER_SWITCHES}
     done = subprocess.run(
         ["bash", str(GRID / name)],
         cwd=cwd,
-        env={**os.environ, **env},
+        env={**inherited, **env},
         capture_output=True,
         text=True,
         timeout=600,

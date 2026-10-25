@@ -7,10 +7,10 @@
 # is no floor and no margin, so the quota can be filled to the byte, and the rule stops no fetch
 # part-way: each is admitted whole, or refused before it starts and lands nothing. A job Slurm
 # requeues keeps its admission and goes on. What the rule does not see can still fill the volume
-# under a running fetch: writes no admission counts (the X-ray chain's banks and shards, the jobs'
-# TMPDIR on the volume, the group's other users), a file quota (ceph.quota.max_files, which the
-# readout shows and the rule does not count) and the lag with which CephFS adds new bytes to
-# ceph.dir.rbytes.
+# under a running fetch: writes no admission counts (the X-ray chain's banks and shards, though
+# grid/gate.sh's bank word holds its own, the jobs' TMPDIR on the volume, the group's other users),
+# a file quota (ceph.quota.max_files, which the readout shows and the rule does not count) and the
+# lag with which CephFS adds new bytes to ceph.dir.rbytes.
 #
 # The room is read where the limit binds. The volume is a CephFS folder under a quota, and df and
 # statvfs report the whole Ceph pool instead: on 2026-10-23 df said 5,881,937 GB free under a quota
@@ -82,7 +82,10 @@
 # What each fetch still owes is kept beside its landing, $DATA/<id>/meta:
 #   QUEUED   "<job> <utc>", written when grid/run-platform-fetch.sh submits the job
 #   SIZE     "admitted <job> <bytes to land> <bytes the landing held then> <utc> <total>", written
-#            by the job when its size fits
+#            by the job when its size fits; by grid/gate.sh's word `bank <id>` when it queues the
+#            bank job, for what the bank and its shard may write under the set's folder, and again
+#            by that job when it starts; "settled ..." in place of "admitted" once the job has
+#            ended (settle_admission), which counts for nothing
 #   REFUSED  "<job> <bytes to land> <bytes free> <utc> <total>", written by the job when it does not,
 #            and never over an admission another job holds
 # A job counts against the room while Slurm holds it (squeue): admitted, the bytes it had to land
@@ -1023,6 +1026,18 @@ admitted_before() {  # admitted_before ID: whether this job, restarted by Slurm,
   [ "${SLURM_RESTART_COUNT:-0}" != 0 ] && [ -n "${SLURM_JOB_ID:-}" ] && [ -f "$DATA/$1/meta/SIZE" ] || return 1
   read -r state job _ < "$DATA/$1/meta/SIZE"
   [ "$state" = admitted ] && [ "$job" = "$SLURM_JOB_ID" ]
+}
+
+settle_admission() {  # settle_admission ID JOB: the admission of ID that JOB holds marked settled, so it holds no room once JOB has ended
+  # Only an admission JOB still holds: one another job wrote since is left as it is. owed_by_running
+  # and admitted_before read an admitted line alone, so a settled one counts for nothing, even
+  # where Slurm hands JOB's id out again once its counter wraps. Written whole and renamed into
+  # place, so a decision never reads half of it.
+  local file=$DATA/$1/meta/SIZE state job rest
+  [ -f "$file" ] || return 0
+  read -r state job rest < "$file"
+  [ "$state" = admitted ] && [ "$job" = "$2" ] || return 0
+  echo "settled $job $rest" > "$file.new" && mv -f "$file.new" "$file"
 }
 
 size_and_admit() {  # size_and_admit ID COMMAND...: the exact size COMMAND reads, then the rule's decision (0 go, 4 refused)

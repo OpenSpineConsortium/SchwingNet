@@ -558,7 +558,10 @@ class GateTest(unittest.TestCase):
     def run_catalog_job(self, pydrv):
         env = dict(os.environ, SCHWINGNET=str(self.repo), PYDRV=str(pydrv), DATA_ROOT=str(self.data), FAKE=str(self.fake),
                    TMPDIR_OVERRIDE=str(self.tmp / "t"), BUILD_LOCK_WAIT="60")
-        env.pop("STORE", None)
+        # Inside a Slurm shell the stage would hand itself to the launcher and never run the body
+        # this test is about, as tests/test_flows.py's base_env says too.
+        for name in ("STORE", "SLURM_JOB_ID", "SCHWINGNET_FLOW_STEP"):
+            env.pop(name, None)
         return subprocess.Popen(["bash", str(self.repo / "grid" / "03-catalog.sbatch")], cwd=self.repo / "grid", env=env,
                                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
 
@@ -1619,11 +1622,13 @@ esac
 
     def test_sweep_waits_on_the_setup_the_weights_a_live_catalog_and_every_run_that_holds_the_checkout(self):
         self.plan("real", "v1", weights=True)
-        self.state_line(700, "bank:vindr_spinexr", "catalog")
+        # start's first catalog, which may make a version of C-ArmLSpine alone; a bank's never does
+        self.state_line(700, "start", "catalog")
         self.state_line(701, "v1", "v1_driver")
         self.state_line(702, "sweep:synthetic", "sweep")
         self.state_line(703, "start", "xr_catalog")
-        self.live(700, 701, 702, 703)
+        self.state_line(704, "experiment:250", "experiment_250")
+        self.live(700, 701, 702, 703, 704)
         done = self.gate("sweep", "real")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         lines = self.submitted()
@@ -1632,8 +1637,8 @@ esac
         jobs = self.recorded()
         sweep = self.line_of("sweep-driver.sbatch")[0]
         self.assertTrue(sweep.startswith("--class gpu --name sweep "), sweep)
-        self.assertIn(f"--dependency=afterok:{jobs['setup']},afterok:{jobs['weights']},afterok:700,afterany:701,afterany:702 ",
-                      sweep)
+        self.assertIn(f"--dependency=afterok:{jobs['setup']},afterok:{jobs['weights']},afterok:700,afterany:701,afterany:702,"
+                      "afterany:704 ", sweep)
         self.assertIn("--kill-on-invalid-dep=yes", sweep)
         self.assertIn(" --no-requeue sweep-driver.sbatch", sweep)
         # the X-ray chain's catalog follows a fetch of days and is never waited on
@@ -1719,6 +1724,41 @@ esac
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         self.assertIn("--dependency=afterany:900 ", self.line_of("v1-driver.sbatch")[0])
 
+    def test_an_experiment_run_and_the_runs_beside_it_each_wait_for_the_others_that_hold_the_checkout(self):
+        # experiment-driver.sbatch writes and clears grid/logs/HOLD as v1-driver and sweep-driver do,
+        # so each of the three waits afterany on every other one still live, whichever came first
+        self.environments_ready()
+        self.weights_ready()
+        self.carmlspine_shards()
+        self.catalog_ready(version=2)
+        self.plan("synthetic", "synthetic")
+        requests = self.tmp / "requests"
+        requests.mkdir()
+        for number in ("250", "251"):
+            (requests / f"{number}.request").write_text(self.REQUEST, encoding="utf-8")
+        self.state_line(600, "experiment:250", "experiment_250")
+        self.live(600)
+        done = self.gate("sweep", "synthetic")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("--dependency=afterany:600 ", self.line_of("sweep-driver.sbatch")[0])
+        done = self.gate("v1")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("--dependency=afterany:600 ", self.line_of("v1-driver.sbatch")[0])
+        # an experiment sent while a sweep, a version 1 run and another experiment are live
+        self.state_line(601, "sweep:real", "sweep")
+        self.state_line(602, "v1", "v1_driver")
+        self.live(600, 601, 602)
+        done = self.experiment("experiment", "251", requests=requests)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        line = self.line_of("experiment-driver.sbatch")[0]
+        self.assertIn("--dependency=afterany:600,afterany:601,afterany:602 ", line)
+        self.assertIn("the checkout: after the live runs that hold it", done.stdout)
+        # none live: no wait at all
+        self.live()
+        done = self.experiment("experiment", "250", requests=requests)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertNotIn("--dependency", self.line_of("experiment-driver.sbatch")[1])
+
     def ceph_fake(self, raw_bytes=None):
         """CephFS's attributes, faked by folder: the volume's quota, use and file count; a raw folder's
         size from $FAKE/raw_bytes; every other folder the same size; no quota anywhere else."""
@@ -1762,7 +1802,7 @@ esac
         self.ceph_fake(raw_bytes=5000 * 10**9)
         done = self.gate_with_ceph("bank", "vindr_spinexr")
         self.assertEqual(done.returncode, 75, done.stdout)
-        self.assertIn("raw copy: 5000 GB; the bank and its shard: at most 10000 GB", done.stdout)
+        self.assertIn("raw copy: 5000 GB of dcm, which bank.py windows to an 8-bit PNG; the bank and its shard: at most 10000 GB", done.stdout)
         self.assertIn("room: 8844 GB free under its quota after 0 GB owed to 0 running fetches", done.stdout)
         self.assertIn("refusing: the bank and its shard need 10000 GB and the room is 8844 GB", done.stdout)
         self.assertEqual(self.submitted(), [])
@@ -1775,7 +1815,7 @@ esac
         self.ceph_fake(raw_bytes=100 * 10**9)
         done = self.gate_with_ceph("bank", "vindr_spinexr")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
-        self.assertIn("raw copy: 100 GB; the bank and its shard: at most 200 GB", done.stdout)
+        self.assertIn("raw copy: 100 GB of dcm, which bank.py windows to an 8-bit PNG; the bank and its shard: at most 200 GB", done.stdout)
         jobs = self.recorded()
         lines = self.submitted()
         self.assertEqual([line.split(" | ")[0].split()[-1] for line in lines],
@@ -1805,6 +1845,144 @@ esac
         done = self.gate("sweep", "two_source")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         self.assertIn(f"afterok:{jobs['catalog']}", self.line_of("sweep-driver.sbatch")[0])
+
+    def test_bank_holds_its_room_while_its_job_is_live_and_settles_it_once_the_job_has_ended(self):
+        # The size rule counts what a running job owes from its admission (grid/size-rule.sh,
+        # owed_by_running): the bank word writes one for its bank job, $DATA/<id>/meta/SIZE, so a
+        # fetch or an unpacking admitted after it counts the bank's room as taken (finding 23).
+        raw = self.data / "vindr_spinexr" / "raw"
+        raw.mkdir(parents=True)
+        (raw / "a.dicom").write_bytes(b"d")
+        self.ceph_fake(raw_bytes=100 * 10**9)
+        done = self.gate_with_ceph("bank", "vindr_spinexr")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        bank = self.recorded()["bank"]
+        size = self.data / "vindr_spinexr" / "meta" / "SIZE"
+        record = size.read_text(encoding="utf-8").split()
+        # admitted <job> <bytes to write> <bytes the landing held then> <utc> <total>, as a fetch's
+        self.assertEqual(record[:4] + record[5:], ["admitted", bank, str(200 * 10**9), "2600000000000", str(200 * 10**9)])
+        line = self.line_of("02-bank-ingest.sbatch")[0]
+        self.assertIn(f" BANK_NEED={200 * 10**9}", line)
+        self.assertIn(f" VOLUME={self.tmp} ", line)
+        # while the job is queued or running, every decision counts it
+        self.live(bank)
+        done = self.gate_with_ceph("status")
+        self.assertIn("  Owed  =         200.00gb still to land for 1 running fetch\n", done.stdout)
+        self.assertTrue(size.read_text(encoding="utf-8").startswith(f"admitted {bank} "))
+        # once Slurm no longer holds it, the next word settles the record, which then counts nothing
+        self.live()
+        done = self.gate_with_ceph("status")
+        self.assertIn("  Owed  =         0.00gb still to land for 0 running fetches\n", done.stdout)
+        self.assertTrue(size.read_text(encoding="utf-8").startswith(f"settled {bank} 200000000000 "))
+
+    def test_bank_budgets_by_the_format_the_recipe_names(self):
+        # tools/bank.py copies a PNG and windows a DICOM to an 8-bit PNG, at most the raw copy's size,
+        # but turns JPEG, TIFF and BMP into PNG, which a q95 JPEG radiograph grows 1.8 to 2.5 times
+        # into; its shard then copies the bank once more (finding 24)
+        self.environments_ready()
+        recipe = (GRID / "banks" / "nih_chestxray14.json").read_text(encoding="utf-8")
+        for name, image_format in (("a_jpg_set", "jpg"), ("a_tiff_set", "tiff"), ("a_webp_set", "webp")):
+            (self.repo / "grid" / "banks" / f"{name}.json").write_text(
+                recipe.replace('"id": "nih_chestxray14"', f'"id": "{name}"').replace('"format": "png"', f'"format": "{image_format}"'),
+                encoding="utf-8")
+            (self.data / name / "raw").mkdir(parents=True)
+            (self.data / name / "raw" / "a").write_bytes(b"x")
+        self.ceph_fake(raw_bytes=1500 * 10**9)
+        done = self.gate_with_ceph("bank", "a_jpg_set")
+        self.assertEqual(done.returncode, 75, done.stdout)
+        self.assertIn("raw copy: 1500 GB of jpg, which bank.py turns into PNG; the bank and its shard: at most 9000 GB", done.stdout)
+        self.assertIn("refusing: the bank and its shard need 9000 GB and the room is 8844 GB", done.stdout)
+        self.assertEqual(self.submitted(), [])
+        self.ceph_fake(raw_bytes=1000 * 10**9)
+        done = self.gate_with_ceph("bank", "a_tiff_set")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("the bank and its shard: at most 6000 GB", done.stdout)
+        self.assertIn(f" BANK_NEED={6000 * 10**9}", self.line_of("02-bank-ingest.sbatch")[0])
+        # a format bank.py takes in no recipe here is never budgeted by a guess
+        self.live()
+        done = self.gate_with_ceph("bank", "a_webp_set")
+        self.assertEqual(done.returncode, 2, done.stdout)
+        self.assertIn("refusing: grid/banks/a_webp_set.json names the format 'webp', which the bank word has no budget for", done.stdout)
+        # the shipped recipes' png and dcm keep twice the raw copy
+        self.assertEqual(self.gate_with_ceph("bank", "nih_chestxray14").returncode, 2, "no raw copy of it here")
+        (self.data / "nih_chestxray14" / "raw").mkdir(parents=True)
+        (self.data / "nih_chestxray14" / "raw" / "a.png").write_bytes(b"p")
+        self.live()
+        done = self.gate_with_ceph("bank", "nih_chestxray14")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("raw copy: 1000 GB of png, which bank.py copies; the bank and its shard: at most 2000 GB", done.stdout)
+
+    def test_bank_and_unpack_of_one_set_never_run_side_by_side(self):
+        # both hold their room through the set's one admission file, and a bank of a raw folder still
+        # being unpacked would read half of it
+        self.environments_ready()
+        (self.data / "nih_chestxray14" / "raw").mkdir(parents=True)
+        (self.data / "nih_chestxray14" / "raw" / "a.png").write_bytes(b"p")
+        self.ceph_fake(raw_bytes=10**9)
+        self.state_line(960, "unpack:nih_chestxray14", "unpack")
+        self.live(960)
+        done = self.gate_with_ceph("bank", "nih_chestxray14")
+        self.assertEqual(done.returncode, 75, done.stdout)
+        self.assertIn("an unpacking of nih_chestxray14 is still queued or running (job 960)", done.stdout)
+        self.state_line(961, "bank:nih_chestxray14", "bank")
+        self.live(961)
+        done = self.gate("unpack", "nih_chestxray14")
+        self.assertEqual(done.returncode, 75, done.stdout)
+        self.assertIn("job 961", done.stdout)
+        self.assertEqual(self.submitted(), [])
+
+    def bank_job(self, **extra):
+        """grid/02-bank-ingest.sbatch as Slurm starts the bank word's job: its admission checked under
+        the size rule before the launcher, which a fake python stands in for, is handed the job."""
+        pydrv = self.fake / "pydrv"
+        pydrv.write_text('#!/bin/bash\ncase "$1" in */flows/launch.py) printf \'%s\\n\' "$@" > "$FAKE/launched" ;; esac\n', encoding="utf-8")
+        pydrv.chmod(0o755)
+        (self.fake / "launched").unlink(missing_ok=True)
+        env = dict(self.gate_env(), GETFATTR=str(self.fake / "getfattr"), PYDRV=str(pydrv), SLURM_JOB_ID="4242", ONLY="vindr_spinexr",
+                   BANK_NEED=str(200 * 10**9), VOLUME=str(self.tmp))
+        env.update(extra)
+        env.pop("SCHWINGNET_FLOW_STEP", None)
+        done = subprocess.run(["bash", str(self.repo / "grid" / "02-bank-ingest.sbatch")], cwd=self.repo / "grid", env=env,
+                              capture_output=True, text=True, timeout=60)
+        launched = (self.fake / "launched").read_text(encoding="utf-8").split() if (self.fake / "launched").exists() else None
+        return done, launched
+
+    def test_the_bank_job_checks_the_room_again_before_it_writes_and_keeps_it_when_requeued(self):
+        self.ceph_fake(raw_bytes=100 * 10**9)
+        size = self.data / "vindr_spinexr" / "meta" / "SIZE"
+        size.parent.mkdir(parents=True)
+        size.write_text("admitted 4242 200000000000 2600000000000 2026-10-25T00:00:00Z 200000000000\n", encoding="utf-8")
+        # a fetch admitted while the bank job waited in the queue now owes 8700 GB of the 8844 GB room
+        other = self.data / "other_set" / "meta"
+        other.mkdir(parents=True)
+        (other / "SIZE").write_text("admitted 555 8700000000000 2600000000000 2026-10-25T00:00:00Z 8700000000000\n", encoding="utf-8")
+        self.live(555, 4242)
+        done, launched = self.bank_job()
+        self.assertEqual(done.returncode, 4, done.stdout + done.stderr)
+        self.assertIn("vindr_spinexr: refused for space; it needs 200 gb", done.stdout)
+        self.assertIn("XR_BANK_RC=4", done.stdout)
+        self.assertIsNone(launched, "nothing was banked")
+        self.assertTrue((self.data / "vindr_spinexr" / "meta" / "REFUSED").exists())
+        # its admission is settled, so it holds no room once the job has ended
+        self.assertTrue(size.read_text(encoding="utf-8").startswith("settled 4242 "))
+        # with the room there, the job is admitted again under its own id and hands itself to the launcher
+        self.live(4242)
+        done, launched = self.bank_job()
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("vindr_spinexr: admitted; it needs 200 gb", done.stdout)
+        self.assertEqual(launched[1:3], ["bank", "--max-workers"])
+        self.assertTrue(size.read_text(encoding="utf-8").startswith("admitted 4242 200000000000 2600000000000 "))
+        # requeued by Slurm after a preemption, it keeps the room it was given rather than decide again
+        self.live(555, 4242)
+        done, launched = self.bank_job(SLURM_RESTART_COUNT="1")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("vindr_spinexr: admitted already; job 4242 restarted", done.stdout)
+        self.assertIsNotNone(launched)
+        # a need that is no count, or more than one recipe, is refused before anything is read
+        for extra in ({"BANK_NEED": "2e11"}, {"ONLY": "vindr_spinexr lumos"}):
+            done, launched = self.bank_job(**extra)
+            self.assertEqual(done.returncode, 4, f"{extra}: {done.stdout}")
+            self.assertIsNone(launched)
 
     def progress(self, plan, folder, lines, age=0):
         state = self.smoke / plan / folder
@@ -1844,6 +2022,46 @@ esac
         self.assertEqual(out.count("to-come -"), 21, out)
         self.assertIn("  (5 more rows not yet matched; the state folder's PROGRESS.txt holds them)", out)
 
+    def test_status_shows_every_sweeps_progress_even_when_the_other_sections_fill_the_page(self):
+        # A status of the grid's size, every earlier section at the most it shows: 80 sets on each
+        # root, the committed sample manifest, 60 jobs with two failed logs, eight stage reports and
+        # a results table of 30 lines. The sweeps' progress, the one live view of a sweep, once came
+        # last and was cut by the 400 lines; now it comes before everything the cut can reach.
+        self.ceph_fake(raw_bytes=10**9)
+        (self.tmp / "shared").mkdir()
+        for n in range(80):
+            (self.data / f"set_{n:02d}").mkdir()
+            (self.tmp / "shared" / f"shared_{n:02d}").mkdir()
+        logs = self.repo / "grid" / "logs"
+        logs.mkdir(parents=True, exist_ok=True)
+        shutil.copy(ROOT / "docs" / "research" / "data-manifest" / "MANIFEST.md", logs / "SAMPLES-STAGE-REPORT.md")
+        for n in range(58):
+            self.state_line(2000 + n, "start", f"job_{n}")
+        self.failed(*[(2100 + n, "start", "setup", "sn_setup", "FAILED", "00:01:00", [f"error line {i}" for i in range(20)])
+                      for n in range(2)])
+        for n in range(8):
+            (logs / f"0{n}-STAGE-REPORT.md").write_text("".join(f"- line {i}\n" for i in range(13)), encoding="utf-8")
+        run = self.runs / "newest"
+        (run / "evaluate").mkdir(parents=True)
+        (run / "evaluate" / "results.md").write_text("".join(f"| row {i} |\n" for i in range(30)), encoding="utf-8")
+        plans = ("real", "synthetic", "trials", "two_source")
+        for plan in plans:
+            self.progress(plan, "abc1234-0123abcd", [f"plan {plan} rows 25 to_come 25"]
+                          + [f"row resnet18-64px-{n:08x} to-come -" for n in range(25)]
+                          + [f"wandb https://wandb.ai/lab/schwingnet/runs/{plan}{n}" for n in range(5)])
+        done = self.gate_with_ceph("status")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        out = done.stdout
+        self.assertLessEqual(len(out.splitlines()), 402)
+        for plan in plans:
+            self.assertIn(f"## sweep {plan}, abc1234-0123abcd (", out)
+            self.assertIn(f"  plan {plan} rows 25 to_come 25", out)
+            self.assertIn(f"  wandb https://wandb.ai/lab/schwingnet/runs/{plan}3", out)
+        self.assertEqual(out.count("  (5 more rows not yet matched; the state folder's PROGRESS.txt holds them)"), 4)
+        # after the space it reads beside, before the job list and every section that grows with the jobs
+        self.assertLess(out.index("## space on the lab volume"), out.index("## sweep real"))
+        self.assertLess(out.index("## sweep two_source"), out.index("## SAMPLES-STAGE-REPORT.md"))
+
     def test_status_shows_the_newest_failed_sweep_of_each_plan_by_its_shapes(self):
         self.failed((1001, "sweep:real", "sweep", "sweep", "FAILED", "04:00:00", ["person carmlspine:case042 seen", "SN_SWEEP_RC=1"]),
                     (1002, "sweep:synthetic", "sweep", "sweep", "TIMEOUT", "04:00:00", ["SN_SWEEP_RC=3"]))
@@ -1870,6 +2088,104 @@ esac
         self.assertEqual(self.chosen("vindr_spinexr")[0], 1)
         for odd in ("vindr*", "../x", "Vindr"):
             self.assertEqual(self.chosen(odd)[0], 1, odd)
+
+    def test_the_chooser_alone_wants_c_armlspine_as_the_only_source_a_run_trains_or_selects_on(self):
+        # the v1 plan's catalog: C-ArmLSpine's train and validation parts and no other source's,
+        # since real is set against two_source, the same plan with VinDr-SpineXR beside it (#252)
+        self.carmlspine_shards()
+        self.catalog_ready(version=2)
+        self.catalog_ready(version=3, also=("vindr_spinexr",))
+        self.assertEqual(self.chosen(), (0, "catalog-000003-0123456789ab.sqlite"))
+        self.assertEqual(self.chosen("--alone"), (0, "catalog-000002-0123456789ab.sqlite"))
+        # another source's validation part counts as much as its train part; its test part does not
+        log = self.data / "_catalog" / "VERSIONS.jsonl"
+        lines = log.read_text(encoding="utf-8").splitlines()
+        lines[0] = lines[0].replace('"carmlspine|train":50', '"carmlspine|train":50,"lumos|validation":3,"lumos|test":2')
+        log.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        code, said = self.chosen("--alone")
+        self.assertEqual(code, 1)
+        self.assertIn("(catalog-000003-0123456789ab.sqlite) holds frames of vindr_spinexr to train or select on beside C-ArmLSpine's",
+                      said)
+        lines[0] = lines[0].replace(',"lumos|validation":3', "")
+        log.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        self.assertEqual(self.chosen("--alone"), (0, "catalog-000002-0123456789ab.sqlite"))
+        # every other test still holds: an unmarked version is passed over
+        (self.data / "_catalog" / "checked" / "catalog-000002-0123456789ab.sqlite").unlink()
+        self.assertEqual(self.chosen("--alone")[0], 1)
+        self.assertEqual(self.chosen("--alone", "vindr_spinexr")[0], 1, "one choice at a time")
+
+    def test_the_v1_plan_takes_the_version_that_qualifies_now_and_never_a_banks_build(self):
+        self.environments_ready()
+        self.carmlspine_shards()
+        self.catalog_ready(version=2)
+        self.plan("real", "v1")
+        self.plan("two_source", "with:vindr_spinexr")
+        self.state_line(700, "bank:vindr_spinexr", "bank")
+        self.state_line(701, "bank:vindr_spinexr", "catalog")
+        self.live(700, 701)
+        done = self.gate("sweep", "real")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("catalog-000002-0123456789ab.sqlite qualifies", done.stdout)
+        self.assertNotIn("--dependency", self.line_of("sweep-driver.sbatch")[0])
+        # with the bank's two-source version in, real still finds the one of C-ArmLSpine alone
+        self.live()
+        self.catalog_ready(version=3, also=("vindr_spinexr",))
+        done = self.gate("sweep", "real")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("catalog-000002-0123456789ab.sqlite qualifies", done.stdout)
+        # no version of C-ArmLSpine alone: the bank's build never makes one, so it is not waited on
+        (self.data / "_catalog" / "checked" / "catalog-000002-0123456789ab.sqlite").unlink()
+        self.live(701)
+        count = len(self.submitted())
+        done = self.gate("sweep", "real")
+        self.assertEqual(done.returncode, 75, done.stdout)
+        self.assertIn("refusing: no catalog version holds C-ArmLSpine alone for the v1 plan", done.stdout)
+        self.assertIn("holds frames of vindr_spinexr to train or select on", done.stdout)
+        self.assertEqual(len(self.submitted()), count)
+        # start's or v1's build may make one while C-ArmLSpine's are the only shards on the data root
+        self.state_line(702, "v1", "catalog")
+        self.live(701, 702)
+        done = self.gate("sweep", "real")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("--dependency=afterok:702 ", self.line_of("sweep-driver.sbatch")[-1])
+        # and never once another source's shard is there, which every build takes in
+        self.live(702)
+        shard = self.data / "vindr_spinexr" / "shards" / "2026-10-25-0a0b0c0d0e0f"
+        shard.mkdir(parents=True)
+        (shard / "MANIFEST.json").write_text("{}\n", encoding="utf-8")
+        count = len(self.submitted())
+        done = self.gate("sweep", "real")
+        self.assertEqual(done.returncode, 75, done.stdout)
+        self.assertIn("only while C-ArmLSpine's are the only shards on the data root", done.stdout)
+        self.assertEqual(len(self.submitted()), count)
+
+    def test_a_second_source_plan_waits_only_on_a_build_that_can_hold_that_source(self):
+        self.environments_ready()
+        self.carmlspine_shards()
+        self.catalog_ready(version=2)
+        self.plan("two_source", "with:vindr_spinexr")
+        # start's build is live but nothing of vindr_spinexr is banked: it will not hold the source
+        self.state_line(800, "start", "catalog")
+        self.live(800)
+        done = self.gate("sweep", "two_source")
+        self.assertEqual(done.returncode, 75, done.stdout)
+        self.assertIn("bank vindr_spinexr first", done.stdout)
+        self.assertEqual(self.submitted(), [])
+        # once its shard is on the data root, every build holds it
+        shard = self.data / "vindr_spinexr" / "shards" / "2026-10-25-0a0b0c0d0e0f"
+        shard.mkdir(parents=True)
+        (shard / "MANIFEST.json").write_text("{}\n", encoding="utf-8")
+        done = self.gate("sweep", "two_source")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("--dependency=afterok:800 ", self.line_of("sweep-driver.sbatch")[0])
+        # a version that holds it now: no wait, though a bank of it is live
+        self.catalog_ready(version=3, also=("vindr_spinexr",))
+        self.state_line(801, "bank:vindr_spinexr", "catalog")
+        self.live(800, 801)
+        done = self.gate("sweep", "two_source")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("catalog-000003-0123456789ab.sqlite qualifies", done.stdout)
+        self.assertNotIn("afterok:80", self.line_of("sweep-driver.sbatch")[1])
 
     def sweep_box(self):
         """box.sh as a fake for the sweep driver: it logs what it was asked and where the hold was,
@@ -1979,6 +2295,35 @@ esac
         self.assertFalse((self.repo / "grid" / "logs" / "HOLD").exists())
         # a plan's name that is no id never reaches a path
         self.assertEqual(self.sweep_driver("../real").returncode, 2)
+
+
+    def test_the_sweep_driver_runs_the_v1_plan_on_c_armlspine_alone_and_the_second_source_plan_beside_it(self):
+        # the comparison the plans are for: real on the version of C-ArmLSpine alone, two_source on
+        # the newer one the bank word built with VinDr-SpineXR beside it, never both on the same file
+        self.git_repo()
+        self.sweep_box()
+        self.carmlspine_shards()
+        self.catalog_ready(version=2)
+        self.catalog_ready(version=3, also=("vindr_spinexr",))
+        self.plan("real", "v1")
+        self.plan("two_source", "with:vindr_spinexr")
+        catalogs = {}
+        for plan in ("real", "two_source"):
+            (self.fake / "box.log").unlink(missing_ok=True)
+            done = self.sweep_driver(plan)
+            self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+            launch = [line for line in self.boxed() if "flows/launch.py" in line]
+            catalogs[plan] = launch[0].split("--catalog ", 1)[1].split()[0]
+        self.assertEqual(catalogs, {"real": f"{self.data}/_catalog/versions/catalog-000002-0123456789ab.sqlite",
+                                    "two_source": f"{self.data}/_catalog/versions/catalog-000003-0123456789ab.sqlite"})
+        # with no version of C-ArmLSpine alone, real runs nothing rather than the two-source one
+        (self.data / "_catalog" / "checked" / "catalog-000002-0123456789ab.sqlite").unlink()
+        (self.fake / "box.log").unlink()
+        done = self.sweep_driver("real")
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("no catalog version to run on: the newest version with C-ArmLSpine (catalog-000003-0123456789ab.sqlite) holds frames "
+                      "of vindr_spinexr to train or select on beside C-ArmLSpine's", done.stdout)
+        self.assertEqual(self.boxed(), [])
 
 
 if __name__ == "__main__":
