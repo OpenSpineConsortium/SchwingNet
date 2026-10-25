@@ -42,9 +42,10 @@ PAGE = "reader.html"                # the page's name in the work folder, where 
 SCHEMA = "textbook-reader-page/1"
 # The Claude project whose files hold the book: the project the textbook thread runs in, which
 # tools/textbook_reader.py stage copies the book into. A project member publishes; a viewer who
-# cannot open the project's files reads nothing. On 2026-10-25 the work moved to another Claude
-# account and its own project, so the id is that project's; the old account's reader keeps the old one.
-PROJECT = "chan_017oGDcW5qgxYtogE2Rbh26i"
+# cannot open the project's files reads nothing. The id moves with the work: on 2026-10-25 it took
+# the second account's project in the evening and, at 23:36 UTC, the project the work went on in
+# from the checkpoint of 22:35 UTC; a reader published before a move keeps the project it named.
+PROJECT = "chan_014WUU19NHgHPhf7QetT9cbS"
 # What the reader uses of the viewer's: the project's files, and sample, which the book's own pages
 # reach through the reader for Ask Claude and Ask the book. No connector: a figure's Run as me
 # answers "no connector" here and its prefilled issue still works.
