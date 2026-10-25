@@ -4,7 +4,7 @@
   "group": "ct",
   "what": "IDC v24 collection nsclc_radiogenomics (TCIA doi:10.7937/k9/tcia.2017.7hs46erv), tier 2 of the anomaly harvest: 188 subjects, about 28 GB raw plus screen; chest, abdomen, pelvis and whole body",
   "level_truth": "counted by the census pipeline once fetched",
-  "reach": "get",
+  "reach": "held",
   "status": "planned in the data platform at bf1432f; fetch job in the 2026-10-21 chain after idc_tier2.csv is regenerated; the ranking's refusals: slice over 3.0 mm 235, non-axial reformat 123, localizer 100, reformat or MIP series 37",
   "licence": "CC BY 3.0",
   "link": "https://doi.org/10.7937/k9/tcia.2017.7hs46erv",
@@ -12,7 +12,7 @@
     "Regenerate the tier-2 manifest idc_tier2.csv with spinesurg-ct-nnunet's tools/acquisition_census.py (its inputs aa3_meta.csv and fdg_ct_series.json are not on local disk), then slurm/acquisition_submit.sh tier2; or this one collection alone, filtering that manifest on its first column as the tier-1 cards do.",
     "The route as the manifest prints it: python3 data/reproduce/reacquire/reacquire.py --grid idc_nsclc_radiogenomics; on the grid, from ~/spinesurg-ct-nnunet/data_platform/reacquire, sbatch -D \"$PWD\" --export=ALL,IDS=\"idc_nsclc_radiogenomics\",MODE=--run reacquire.sbatch, as a Slurm job on the owner's word."
   ],
-  "grid_path": null,
+  "grid_path": "/rs/rs_grp_oschome/go2432/data/idc_nsclc_radiogenomics",
   "counts": {
     "subjects": 188,
     "size_gb": 28

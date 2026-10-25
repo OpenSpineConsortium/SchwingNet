@@ -6,9 +6,9 @@
    "why": "licence unknown: classify it in data/licences.json first"
   },
   {
-   "group": "films",
-   "id": "buu_lspine",
-   "why": "licence unknown: classify it in data/licences.json first"
+   "group": "ct",
+   "id": "aws_stoic2021",
+   "why": "no level truth and no use as a render source"
   },
   {
    "group": "video",
@@ -16,8 +16,8 @@
    "why": "never trained on: the two recorded sweeps are the demo persons case134 and case39, never trained on (data/splits/test-persons.json)"
   },
   {
-   "group": "films",
-   "id": "csxa",
+   "group": "video",
+   "id": "cathaction",
    "why": "licence unknown: classify it in data/licences.json first"
   },
   {
@@ -36,14 +36,44 @@
    "why": "licence unknown: classify it in data/licences.json first"
   },
   {
-   "group": "fluoro",
-   "id": "geneva_hip",
-   "why": "licence unknown: classify it in data/licences.json first"
+   "group": "ct",
+   "id": "idc_cptac_lscc",
+   "why": "no level truth and no use as a render source"
   },
   {
-   "group": "films",
-   "id": "ieee_dataport_lateral_236",
-   "why": "licence unknown: classify it in data/licences.json first"
+   "group": "ct",
+   "id": "idc_cptac_luad",
+   "why": "no level truth and no use as a render source"
+  },
+  {
+   "group": "ct",
+   "id": "idc_ldct_and_projection_data",
+   "why": "no level truth and no use as a render source"
+  },
+  {
+   "group": "ct",
+   "id": "idc_midrc_ricord_1b",
+   "why": "no level truth and no use as a render source"
+  },
+  {
+   "group": "ct",
+   "id": "idc_nsclc_radiogenomics",
+   "why": "no level truth and no use as a render source"
+  },
+  {
+   "group": "ct",
+   "id": "idc_nsclc_radiomics",
+   "why": "no level truth and no use as a render source"
+  },
+  {
+   "group": "ct",
+   "id": "idc_spinal_multiple_myeloma_seg",
+   "why": "no level truth and no use as a render source"
+  },
+  {
+   "group": "ct",
+   "id": "idc_spine_mets_ct_seg",
+   "why": "no level truth and no use as a render source"
   },
   {
    "group": "ct",
@@ -52,32 +82,58 @@
   },
   {
    "group": "films",
-   "id": "nhanes2_annotated",
+   "id": "nih_chestxray14",
    "why": "licence unknown: classify it in data/licences.json first"
   },
   {
-   "group": "films",
-   "id": "nhanes2_unannotated",
+   "group": "ct",
+   "id": "pengwin_task2_xrays",
    "why": "licence unknown: classify it in data/licences.json first"
+  },
+  {
+   "group": "ct",
+   "id": "rsna_rspect",
+   "why": "no level truth and no use as a render source"
   },
   {
    "group": "films",
    "id": "spinal_ai2024",
    "why": "licence unknown: classify it in data/licences.json first"
+  },
+  {
+   "group": "ct",
+   "id": "verse_2d_projections",
+   "why": "licence unknown: classify it in data/licences.json first"
+  },
+  {
+   "group": "future",
+   "id": "veterinary_pig_levelcheck",
+   "why": "licence unknown: classify it in data/licences.json first"
+  },
+  {
+   "group": "ct",
+   "id": "zenodo_ts_task_hip_implant",
+   "why": "no level truth and no use as a render source"
+  },
+  {
+   "group": "ct",
+   "id": "zenodo_ts_task_liver_lesions",
+   "why": "no level truth and no use as a render source"
+  },
+  {
+   "group": "ct",
+   "id": "zenodo_ts_task_pleural_effusion",
+   "why": "no level truth and no use as a render source"
+  },
+  {
+   "group": "ct",
+   "id": "zenodo_vsd_fullbody",
+   "why": "no level truth and no use as a render source"
   }
  ],
  "fill": [
   {
-   "closes_the_gap": true,
-   "group": "fluoro",
-   "id": "lumos",
-   "level_truth": "levels readable from the paired CT after a 2D/3D registration",
-   "licence": "non-commercial",
-   "people": 803,
-   "reach": "get"
-  },
-  {
-   "closes_the_gap": true,
+   "closes_the_gap": false,
    "group": "projections",
    "id": "cobra_embargoed",
    "level_truth": "same",
@@ -114,11 +170,11 @@
   }
  ],
  "inputs": {
-  "licences": "143955ed7d88a02c90cc6afe96ca6d72bcd9bf98c623b94759f486ad6485720e",
+  "licences": "02f3f787fc45ed0cedc8cbc7da5a1c178e5ef35da9afbb389aba61a64ce5b7ce",
   "recipe": "e8eb14349cdcec98ad1c07ce6969cdbf710095464482607ad2951202a2eeba3d",
   "rule": "4f26dbc75ea43b3cb8605204b343e6144f9e99b027654e6f126158e4ba3634c3",
   "settings": "7abbc73ea0cacad43bfcf9cc6f0abd1ff20d354eaa8845a4993f5246d1daa3df",
-  "sources": "9310dd07217cb10f36f250213866504de6098227eb8ca9c7026b885bb0bfa775",
+  "sources": "51079906c109e2ecd6b2e1e742503f18046b900438b36ac3f6f5481cd1840ebf",
   "test_persons": "4c57462fb8d4fa4591fb73d10e506957b5f00f66c25c2e7f07731f2f073cb59d"
  },
  "power": {
@@ -216,6 +272,13 @@
    "role": "real films with levels"
   },
   {
+   "group": "films",
+   "id": "buu_lspine",
+   "level_truth": "read",
+   "licence": "agreement",
+   "role": "real films with levels"
+  },
+  {
    "group": "fluoro",
    "id": "carmlspine",
    "level_truth": "read",
@@ -243,6 +306,13 @@
    "level_truth": "partial",
    "licence": "non-commercial",
    "role": "real frames with some levels or anchors"
+  },
+  {
+   "group": "films",
+   "id": "csxa",
+   "level_truth": "read",
+   "licence": "open",
+   "role": "real films with levels"
   },
   {
    "group": "ct",
@@ -274,10 +344,31 @@
    "role": "appearance: real frames with no levels"
   },
   {
+   "group": "fluoro",
+   "id": "geneva_hip",
+   "level_truth": "none",
+   "licence": "share-alike",
+   "role": "appearance: real frames with no levels"
+  },
+  {
+   "group": "films",
+   "id": "ieee_dataport_lateral_236",
+   "level_truth": "none",
+   "licence": "agreement",
+   "role": "appearance: real frames with no levels"
+  },
+  {
    "group": "projections",
    "id": "ipcai2025_xray_ct",
    "level_truth": "none",
    "licence": "agreement",
+   "role": "appearance: real frames with no levels"
+  },
+  {
+   "group": "films",
+   "id": "kub_stonex",
+   "level_truth": "none",
+   "licence": "open",
    "role": "appearance: real frames with no levels"
   },
   {
@@ -286,6 +377,34 @@
    "level_truth": "read",
    "licence": "no-derivatives",
    "role": "real device frames with levels"
+  },
+  {
+   "group": "fluoro",
+   "id": "lumos",
+   "level_truth": "derivable",
+   "licence": "non-commercial",
+   "role": "real frames whose levels a registration to the paired CT must name first"
+  },
+  {
+   "group": "films",
+   "id": "nhanes2_annotated",
+   "level_truth": "read",
+   "licence": "open",
+   "role": "real films with levels"
+  },
+  {
+   "group": "films",
+   "id": "nhanes2_unannotated",
+   "level_truth": "none",
+   "licence": "open",
+   "role": "appearance: real frames with no levels"
+  },
+  {
+   "group": "films",
+   "id": "rexgradient_160k",
+   "level_truth": "none",
+   "licence": "agreement",
+   "role": "appearance: real frames with no levels"
   },
   {
    "group": "ct",

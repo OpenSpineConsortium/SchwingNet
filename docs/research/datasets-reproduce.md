@@ -108,6 +108,18 @@ registry record holds no such field.
     - on the grid: `/rs/rs_grp_oschome/go2432/data/ljubljana`
     - licence: CC BY-NC-ND (research record and manifest); the page shows a generic CC link (audit verifier); access: open
 
+### LUMOS (Zhejiang University) (`lumos`, HAVE)
+
+- Registry: link https://zenodo.org/records/18173664; grid path `/rs/rs_grp_oschome/go2432/data/zenodo_lumos`; counts patients 803, radiographs 1,620, ct volumes 280, size gb 46.4.
+- Manifest records (the Zenodo record, planned and not fetched):
+  - `zenodo_lumos`: LUMOS lumbar osteoporosis dataset: 280 lumbar CT (+1,620 radiographs); kind upstream_release, family B; route `zenodo`, mode manual; status planned.
+    - acquired: zenodo (not acquired)
+    - origin: none recorded
+    - fetch: manual: `acquisition_fetch.py zenodo --collection lumos --record 18173663 --include '<CT zips>'`, then a zipped-DICOM convert route (not written) (acquisition/ACQUISITION_PLAN.md section 4b; tools/acquisition_fetch.py)
+    - checks: none recorded
+    - on the grid: `/rs/rs_grp_oschome/go2432/data/lumos`
+    - licence: CC BY-NC 4.0; access: open
+
 ### CM Spine intraoperative G-arm lumbar images (Zeng 2024, Electronics 13, 2137) (`cm_spine_garm`, GET)
 
 - Registry: link https://doi.org/10.3390/electronics13112137; grid path none; counts images 208, vertebrae 537.
@@ -125,18 +137,6 @@ registry record holds no such field.
     - checks: none recorded
     - on the grid: `/rs/rs_grp_oschome/go2432/data/cm_spine_drive_file`
     - licence: not recorded; access: not recorded
-
-### LUMOS (Zhejiang University) (`lumos`, GET)
-
-- Registry: link https://zenodo.org/records/18173664; grid path none; counts patients 803, radiographs 1,620, ct volumes 280, size gb 46.4.
-- Manifest records (the Zenodo record, planned and not fetched):
-  - `zenodo_lumos`: LUMOS lumbar osteoporosis dataset: 280 lumbar CT (+1,620 radiographs); kind upstream_release, family B; route `zenodo`, mode manual; status planned.
-    - acquired: zenodo (not acquired)
-    - origin: none recorded
-    - fetch: manual: `acquisition_fetch.py zenodo --collection lumos --record 18173663 --include '<CT zips>'`, then a zipped-DICOM convert route (not written) (acquisition/ACQUISITION_PLAN.md section 4b; tools/acquisition_fetch.py)
-    - checks: none recorded
-    - on the grid: `/rs/rs_grp_oschome/go2432/data/lumos`
-    - licence: CC BY-NC 4.0; access: open
 
 ### SX-Stitch intraoperative C-arm series (Li 2024, PUMCH) (`sx_stitch`, GET)
 
@@ -207,6 +207,12 @@ registry record holds no such field.
     - on the grid: `/rs/rs_grp_oschome/go2432/data/realxray`
     - licence: not distributed; each source keeps its own licence; access: project
 
+### CathAction (Jianu et al. 2024, AIRVLab) (`cathaction`, HAVE)
+
+- Registry: link https://huggingface.co/datasets/airvlab/CathAction; grid path `/rs/rs_grp_oschome/go2432/data/cathaction`; counts frames about 500,000, zip 1 gb 4.35, zip 2 gb 9.88.
+- Manifest records: none. found by the sweep of 2026-10-21 (docs/research/xray-datasets-missing.md); nothing fetched, so no manifest record was ever made.
+- The registry's steps: Open https://huggingface.co/datasets/airvlab/CathAction and read the licence line. Fetch as a Slurm job on the owner's word, never on the login node: python3 data/reproduce/reacquire/reacquire.py hf-get --repo airvlab/CathAction --repo-type dataset --dest DIR.
+
 ### DysphagiaBank (TalkBank), UNM corpus (`dysphagiabank`, HAVE)
 
 - Registry: link https://dysphagia.talkbank.org/; grid path `/rs/rs_grp_oschome/go2432/data/external/fluoro_video/dysphagiabank_unm`; counts none.
@@ -261,12 +267,6 @@ registry record holds no such field.
     - checks: none recorded
     - on the grid: `/rs/rs_grp_oschome/go2432/data/fluoro_cine_requests_2026_09_26`
     - licence: request / DUA per source; access: request
-
-### CathAction (Jianu et al. 2024, AIRVLab) (`cathaction`, GET)
-
-- Registry: link https://huggingface.co/datasets/airvlab/CathAction; grid path none; counts frames about 500,000, zip 1 gb 4.35, zip 2 gb 9.88.
-- Manifest records: none. found by the sweep of 2026-10-21 (docs/research/xray-datasets-missing.md); nothing fetched, so no manifest record was ever made.
-- The registry's steps: Open https://huggingface.co/datasets/airvlab/CathAction and read the licence line. Fetch as a Slurm job on the owner's word, never on the login node: python3 data/reproduce/reacquire/reacquire.py hf-get --repo airvlab/CathAction --repo-type dataset --dest DIR.
 
 ### Coronary angiography sets (CADICA, ARCADE, XCAD, AngioCAD) (`coronary_angiography`, GET)
 
@@ -659,6 +659,12 @@ registry record holds no such field.
     - on the grid: `/rs/rs_grp_oschome/go2432/data/ieee_dataport_lateral_fullspine_236`
     - licence: not recorded; access: subscription (IEEE DataPort)
 
+### KUB-StoneX (Daffodil International University HIRL) (`kub_stonex`, HAVE)
+
+- Registry: link https://doi.org/10.6084/m9.figshare.32049369; grid path `/rs/rs_grp_oschome/go2432/data/kub_stonex`; counts radiographs 2,570, patients 1,703, hospitals 2, zip bytes 20,765,554,562.
+- Manifest records: none. found by the sweep of 2026-10-21 (docs/research/xray-datasets-missing.md); nothing fetched, so no manifest record was ever made.
+- The registry's steps: The set is figshare article 32049369 (doi 10.6084/m9.figshare.32049369), one file KUB-StoneX.zip with its md5 in the record, 20.8 GB; the record's ethics statement names IRB REC-FSIT-2025/No: 12732 and states every image is de-identified. Fetch it as a Slurm job on the owner's word, never on the login node, after df shows the room: bash grid/run-xray-chain.sh --only kub_stonex, whose stage 1 reads the API, runs http-get with the md5 and unpacks the zip (grid/README.md). The person rule of grid/banks/kub_stonex.json is written from the unpacked folder's file naming or its <class>_patient/ folders before the bank stage runs, since 1,703 patients hold 2,570 films.
+
 ### NHANES II annotated films (`nhanes2_annotated`, HAVE)
 
 - Registry: link https://wwwn.cdc.gov/nchs/data/nhanes2/NH2_Xray.htm; grid path none; counts films 543, persons 364.
@@ -689,6 +695,18 @@ registry record holds no such field.
     - checks: `count: path ${DEST}/nhanes_full, glob *.tiff, expect 17073, nonempty True`; `note: text exactly L00452 and L00456 empty at the source (HEAD shows Content-Length 0); smallest file >= 1.5 MB; this recipe is the card's proposed equivalent and has not been run`
     - on the grid: `/rs/rs_grp_oschome/go2432/data/nhanes2_cdc_films`
     - licence: US government work, public domain; access: open
+
+### NIH ChestX-ray14 and the RSNA pneumonia subset (`nih_chestxray14`, HAVE)
+
+- Registry: link https://nihcc.app.box.com/v/ChestXray-NIHCC; grid path `/rs/rs_grp_oschome/go2432/data/nih_chestxray14`; counts films 112,120, patients 30,805, rsna subset films 30,000.
+- Manifest records: none. found by the sweep of 2026-10-21 (docs/research/xray-datasets-missing.md); nothing fetched, so no manifest record was ever made.
+- The registry's steps: Open https://nihcc.app.box.com/v/ChestXray-NIHCC and read the archive list and its batch download script. Fetch as a Slurm job on the owner's word, never on the login node: python3 data/reproduce/reacquire/reacquire.py http-get --url U --dest FILE for each archive address the page gives. The RSNA subset (https://www.kaggle.com/competitions/rsna-pneumonia-detection-challenge) needs a Kaggle account and the competition rules accepted by the owner; the Kaggle API token comes from the submitter's environment, never from this repository.
+
+### ReXGradient-160K (Rajpurkar lab and Gradient Health, 2025) (`rexgradient_160k`, HAVE)
+
+- Registry: link https://huggingface.co/datasets/rajpurkarlab/ReXGradient-160K; grid path `/rs/rs_grp_oschome/go2432/data/hf_rexgradient_160k`; counts studies 160,000, patients 109,487, sites 79.
+- Manifest records: none. found by the sweep of 2026-10-21 (docs/research/xray-datasets-missing.md); nothing fetched, so no manifest record was ever made.
+- The registry's steps: The owner accepts the data access and use agreement on https://huggingface.co/datasets/rajpurkarlab/ReXGradient-160K under the owner's Hugging Face account. Fetch as a Slurm job on the owner's word, never on the login node: python3 data/reproduce/reacquire/reacquire.py hf-get --repo rajpurkarlab/ReXGradient-160K --repo-type dataset --dest DIR; HF_TOKEN from the submitter's environment, never from this repository.
 
 ### Spinal-AI2024 (`spinal_ai2024`, HAVE)
 
@@ -745,12 +763,6 @@ registry record holds no such field.
 - Manifest records: none. found by the sweep of 2026-10-21 (docs/research/xray-datasets-missing.md); nothing fetched, so no manifest record was ever made.
 - The registry's steps: The owner's Kaggle account; read the licence and the stated source on the page. Fetch with the Kaggle API as a Slurm job on the owner's word, never on the login node, the token from the submitter's environment, never from this repository. Hash every image against the AASCE copy at /rs/rs_grp_oschome/go2432/data/thoracic_xr/mirror_zlinzju_ke30_u7_AASCE2019 before any use; a match makes it a relabel, and the aasce record then says so.
 
-### KUB-StoneX (Daffodil International University HIRL) (`kub_stonex`, GET)
-
-- Registry: link https://doi.org/10.6084/m9.figshare.32049369; grid path none; counts radiographs 2,570, patients 1,703, hospitals 2, zip bytes 20,765,554,562.
-- Manifest records: none. found by the sweep of 2026-10-21 (docs/research/xray-datasets-missing.md); nothing fetched, so no manifest record was ever made.
-- The registry's steps: The set is figshare article 32049369 (doi 10.6084/m9.figshare.32049369), one file KUB-StoneX.zip with its md5 in the record, 20.8 GB; the record's ethics statement names IRB REC-FSIT-2025/No: 12732 and states every image is de-identified. Fetch it as a Slurm job on the owner's word, never on the login node, after df shows the room: bash grid/run-xray-chain.sh --only kub_stonex, whose stage 1 reads the API, runs http-get with the md5 and unpacks the zip (grid/README.md). The person rule of grid/banks/kub_stonex.json is written from the unpacked folder's file naming or its <class>_patient/ folders before the bank stage runs, since 1,703 patients hold 2,570 films.
-
 ### Mendeley DDH hip sets (jf3pv98m9g and 4gvcb6gmh2) (`mendeley_ddh_hips`, GET)
 
 - Registry: link https://data.mendeley.com/datasets/jf3pv98m9g; grid path none; counts jf3pv98m9g subjects 354, av ddh films 2,417.
@@ -762,12 +774,6 @@ registry record holds no such field.
 - Registry: link https://mrosonline.ucsf.edu/; grid path none; counts men 5,994, centres 6, visits 2.
 - Manifest records: none. found by the sweep of 2026-10-21 (docs/research/xray-datasets-missing.md); nothing fetched, so no manifest record was ever made.
 - The registry's steps: Open https://mrosonline.ucsf.edu/ and read the data request route (an online application with a proposal), to confirm on the page. The owner files the request in the owner's name and signs whatever agreement follows; a session drafts the proposal text once the owner asks. Once granted, fetch by the route the centre gives, as a Slurm job on the owner's word, never on the login node; no fetch helper applies until the route is known.
-
-### NIH ChestX-ray14 and the RSNA pneumonia subset (`nih_chestxray14`, GET)
-
-- Registry: link https://nihcc.app.box.com/v/ChestXray-NIHCC; grid path none; counts films 112,120, patients 30,805, rsna subset films 30,000.
-- Manifest records: none. found by the sweep of 2026-10-21 (docs/research/xray-datasets-missing.md); nothing fetched, so no manifest record was ever made.
-- The registry's steps: Open https://nihcc.app.box.com/v/ChestXray-NIHCC and read the archive list and its batch download script. Fetch as a Slurm job on the owner's word, never on the login node: python3 data/reproduce/reacquire/reacquire.py http-get --url U --dest FILE for each archive address the page gives. The RSNA subset (https://www.kaggle.com/competitions/rsna-pneumonia-detection-challenge) needs a Kaggle account and the competition rules accepted by the owner; the Kaggle API token comes from the submitter's environment, never from this repository.
 
 ### Open-i Indiana chest collection (`open_i_chest`, GET)
 
@@ -810,12 +816,6 @@ registry record holds no such field.
 - Registry: link https://bimcv.cipf.es/bimcv-projects/padchest/; grid path none; counts radiographs 160,868, patients 67,625, projections 109.
 - Manifest records: none. found by the sweep of 2026-10-21 (docs/research/xray-datasets-missing.md); nothing fetched, so no manifest record was ever made.
 - The registry's steps: The owner fills the licence form on https://bimcv.cipf.es/bimcv-projects/padchest/ and signs what follows. Fetch by the route BIMCV gives, as a Slurm job on the owner's word, never on the login node.
-
-### ReXGradient-160K (Rajpurkar lab and Gradient Health, 2025) (`rexgradient_160k`, GATED)
-
-- Registry: link https://huggingface.co/datasets/rajpurkarlab/ReXGradient-160K; grid path none; counts studies 160,000, patients 109,487, sites 79.
-- Manifest records: none. found by the sweep of 2026-10-21 (docs/research/xray-datasets-missing.md); nothing fetched, so no manifest record was ever made.
-- The registry's steps: The owner accepts the data access and use agreement on https://huggingface.co/datasets/rajpurkarlab/ReXGradient-160K under the owner's Hugging Face account. Fetch as a Slurm job on the owner's word, never on the login node: python3 data/reproduce/reacquire/reacquire.py hf-get --repo rajpurkarlab/ReXGradient-160K --repo-type dataset --dest DIR; HF_TOKEN from the submitter's environment, never from this repository.
 
 ### Spine X-Ray Images Dataset for Ankylosing Spondylitis (Taipei Veterans General Hospital) (`tvgh_as_spine`, GATED)
 
@@ -944,6 +944,114 @@ registry record holds no such field.
     - on the grid: `/rs/rs_grp_oschome/go2432/data/fluorogen_synthetic`
     - licence: SDXL base CreativeML Open RAIL++-M; outputs inherit the CT terms; access: project
 
+### IDC `cptac_lscc` (tier 2) (`idc_cptac_lscc`, HAVE)
+
+- Registry: link https://doi.org/10.7937/k9/tcia.2018.6emub5l2; grid path `/rs/rs_grp_oschome/go2432/data/idc_cptac_lscc`; counts subjects 32, size gb 8.3.
+- Manifest records (the same id in the manifest; the data platform's own unfetched source, recorded 2026-10-21):
+  - `idc_cptac_lscc`: IDC `cptac_lscc` (tier 2); kind upstream_release, family B; route `idc`, mode manual; status planned.
+    - acquired: idc (not acquired)
+    - origin: 10.7937/k9/tcia.2018.6emub5l2
+    - fetch: manual: regenerate `idc_tier2.csv` with tools/acquisition_census.py (needs `aa3_meta.csv` and `fdg_ct_series.json`, not on local disk), then `acquisition_submit.sh tier2`; or one collection: filter that manifest with awk on column 1 as in the tier-1 cards (tools/acquisition_census.py; slurm/acquisition_submit.sh)
+    - checks: none recorded
+    - on the grid: `/rs/rs_grp_oschome/go2432/data/idc_tier2`
+    - licence: CC BY 4.0; access: open
+
+### IDC `cptac_luad` (tier 2) (`idc_cptac_luad`, HAVE)
+
+- Registry: link https://doi.org/10.7937/k9/tcia.2018.pat12tbs; grid path `/rs/rs_grp_oschome/go2432/data/idc_cptac_luad`; counts subjects 32, size gb 7.
+- Manifest records (the same id in the manifest; the data platform's own unfetched source, recorded 2026-10-21):
+  - `idc_cptac_luad`: IDC `cptac_luad` (tier 2); kind upstream_release, family B; route `idc`, mode manual; status planned.
+    - acquired: idc (not acquired)
+    - origin: 10.7937/k9/tcia.2018.pat12tbs
+    - fetch: manual: regenerate `idc_tier2.csv` with tools/acquisition_census.py (needs `aa3_meta.csv` and `fdg_ct_series.json`, not on local disk), then `acquisition_submit.sh tier2`; or one collection: filter that manifest with awk on column 1 as in the tier-1 cards (tools/acquisition_census.py; slurm/acquisition_submit.sh)
+    - checks: none recorded
+    - on the grid: `/rs/rs_grp_oschome/go2432/data/idc_tier2`
+    - licence: CC BY 4.0; access: open
+
+### IDC `ldct_and_projection_data` (tier 2) (`idc_ldct_and_projection_data`, HAVE)
+
+- Registry: link https://doi.org/10.7937/9npb-2637; grid path `/rs/rs_grp_oschome/go2432/data/idc_ldct_and_projection_data`; counts subjects 99, size gb 16.5.
+- Manifest records (the same id in the manifest; the data platform's own unfetched source, recorded 2026-10-21):
+  - `idc_ldct_and_projection_data`: IDC `ldct_and_projection_data` (tier 2); kind upstream_release, family B; route `idc`, mode manual; status planned.
+    - acquired: idc (not acquired)
+    - origin: 10.7937/9npb-2637
+    - fetch: manual: regenerate `idc_tier2.csv` with tools/acquisition_census.py (needs `aa3_meta.csv` and `fdg_ct_series.json`, not on local disk), then `acquisition_submit.sh tier2`; or one collection: filter that manifest with awk on column 1 as in the tier-1 cards (tools/acquisition_census.py; slurm/acquisition_submit.sh)
+    - checks: none recorded
+    - on the grid: `/rs/rs_grp_oschome/go2432/data/idc_tier2`
+    - licence: CC BY 4.0; access: open
+
+### IDC `midrc_ricord_1b` (tier 2) (`idc_midrc_ricord_1b`, HAVE)
+
+- Registry: link https://doi.org/10.7937/31v8-4a40; grid path `/rs/rs_grp_oschome/go2432/data/idc_midrc_ricord_1b`; counts subjects 91, size gb 7.
+- Manifest records (the same id in the manifest; the data platform's own unfetched source, recorded 2026-10-21):
+  - `idc_midrc_ricord_1b`: IDC `midrc_ricord_1b` (tier 2); kind upstream_release, family B; route `idc`, mode manual; status planned.
+    - acquired: idc (not acquired)
+    - origin: 10.7937/31v8-4a40
+    - fetch: manual: regenerate `idc_tier2.csv` with tools/acquisition_census.py (needs `aa3_meta.csv` and `fdg_ct_series.json`, not on local disk), then `acquisition_submit.sh tier2`; or one collection: filter that manifest with awk on column 1 as in the tier-1 cards (tools/acquisition_census.py; slurm/acquisition_submit.sh)
+    - checks: none recorded
+    - on the grid: `/rs/rs_grp_oschome/go2432/data/idc_tier2`
+    - licence: CC BY-NC 4.0; access: open
+
+### IDC `nsclc_radiogenomics` (tier 2) (`idc_nsclc_radiogenomics`, HAVE)
+
+- Registry: link https://doi.org/10.7937/k9/tcia.2017.7hs46erv; grid path `/rs/rs_grp_oschome/go2432/data/idc_nsclc_radiogenomics`; counts subjects 188, size gb 28.
+- Manifest records (the same id in the manifest; the data platform's own unfetched source, recorded 2026-10-21):
+  - `idc_nsclc_radiogenomics`: IDC `nsclc_radiogenomics` (tier 2); kind upstream_release, family B; route `idc`, mode manual; status planned.
+    - acquired: idc (not acquired)
+    - origin: 10.7937/k9/tcia.2017.7hs46erv
+    - fetch: manual: regenerate `idc_tier2.csv` with tools/acquisition_census.py (needs `aa3_meta.csv` and `fdg_ct_series.json`, not on local disk), then `acquisition_submit.sh tier2`; or one collection: filter that manifest with awk on column 1 as in the tier-1 cards (tools/acquisition_census.py; slurm/acquisition_submit.sh)
+    - checks: none recorded
+    - on the grid: `/rs/rs_grp_oschome/go2432/data/idc_tier2`
+    - licence: CC BY 3.0; access: open
+
+### IDC `nsclc_radiomics` (tier 2) (`idc_nsclc_radiomics`, HAVE)
+
+- Registry: link https://doi.org/10.7937/k9/tcia.2015.pf0m9rei; grid path `/rs/rs_grp_oschome/go2432/data/idc_nsclc_radiomics`; counts subjects 415, size gb 25.8.
+- Manifest records (the same id in the manifest; the data platform's own unfetched source, recorded 2026-10-21):
+  - `idc_nsclc_radiomics`: IDC `nsclc_radiomics` (tier 2); kind upstream_release, family B; route `idc`, mode manual; status planned.
+    - acquired: idc (not acquired)
+    - origin: 10.7937/k9/tcia.2015.pf0m9rei
+    - fetch: manual: regenerate `idc_tier2.csv` with tools/acquisition_census.py (needs `aa3_meta.csv` and `fdg_ct_series.json`, not on local disk), then `acquisition_submit.sh tier2`; or one collection: filter that manifest with awk on column 1 as in the tier-1 cards (tools/acquisition_census.py; slurm/acquisition_submit.sh)
+    - checks: none recorded
+    - on the grid: `/rs/rs_grp_oschome/go2432/data/idc_tier2`
+    - licence: CC BY-NC 3.0; access: open
+
+### IDC `spinal_multiple_myeloma_seg` (tier 2) (`idc_spinal_multiple_myeloma_seg`, HAVE)
+
+- Registry: link https://doi.org/10.7937/k4qv-hh78; grid path `/rs/rs_grp_oschome/go2432/data/idc_spinal_multiple_myeloma_seg`; counts subjects 67, size gb 33.8.
+- Manifest records (the same id in the manifest; the data platform's own unfetched source, recorded 2026-10-21):
+  - `idc_spinal_multiple_myeloma_seg`: IDC `spinal_multiple_myeloma_seg` (tier 2); kind upstream_release, family B; route `idc`, mode manual; status planned.
+    - acquired: idc (not acquired)
+    - origin: 10.7937/k4qv-hh78
+    - fetch: manual: regenerate `idc_tier2.csv` with tools/acquisition_census.py (needs `aa3_meta.csv` and `fdg_ct_series.json`, not on local disk), then `acquisition_submit.sh tier2`; or one collection: filter that manifest with awk on column 1 as in the tier-1 cards (tools/acquisition_census.py; slurm/acquisition_submit.sh)
+    - checks: none recorded
+    - on the grid: `/rs/rs_grp_oschome/go2432/data/idc_tier2`
+    - licence: CC BY 4.0; access: open
+
+### IDC `spine_mets_ct_seg` (tier 2) (`idc_spine_mets_ct_seg`, HAVE)
+
+- Registry: link https://doi.org/10.7937/kh36-ds04; grid path `/rs/rs_grp_oschome/go2432/data/idc_spine_mets_ct_seg`; counts subjects 54, size gb 17.2.
+- Manifest records (the same id in the manifest; the data platform's own unfetched source, recorded 2026-10-21):
+  - `idc_spine_mets_ct_seg`: IDC `spine_mets_ct_seg` (tier 2); kind upstream_release, family B; route `idc`, mode manual; status planned.
+    - acquired: idc (not acquired)
+    - origin: 10.7937/kh36-ds04
+    - fetch: manual: regenerate `idc_tier2.csv` with tools/acquisition_census.py (needs `aa3_meta.csv` and `fdg_ct_series.json`, not on local disk), then `acquisition_submit.sh tier2`; or one collection: filter that manifest with awk on column 1 as in the tier-1 cards (tools/acquisition_census.py; slurm/acquisition_submit.sh)
+    - checks: none recorded
+    - on the grid: `/rs/rs_grp_oschome/go2432/data/idc_tier2`
+    - licence: CC BY 4.0; access: open
+
+### PENGWIN 2024 Task 2 synthetic X-rays (`pengwin_task2_xrays`, HAVE)
+
+- Registry: link https://pengwin.grand-challenge.org/; grid path `/rs/rs_grp_oschome/go2432/data/pengwin_task2_xrays`; counts images 50,000, cts 100, poses per ct 500.
+- Manifest records (the Task 1 CTs' manifest record, already fetched; the Task 2 X-rays themselves have no manifest record):
+  - `pengwin2026`: PENGWIN 2026 peripelvic fracture CT (training); kind upstream_release, family B; route `zenodo`, mode submit; status on_disk.
+    - acquired: zenodo (2026-09-24)
+    - origin: none recorded
+    - fetch: `D=${ACQ}; mkdir -p $D/logs; sbatch -D $D --job-name=acq_fetch_pengwin2026 ${REPO}/slurm/acquisition_fetch.sh zenodo --collection pengwin2026 --record 19732767 --include '^PENGWIN26_task1_2_train_part[1-4]\.zip$'`
+    - checks: `json_field: path ${DATA}/pengwin2026/fetch/FETCH_STATUS.json, field unresolved_failures, expect 0`; `note: text must verify 4 training zips by md5 and 340 'image.mha'`
+    - on the grid: `/rs/rs_grp_oschome/go2432/data/pengwin2026`
+    - licence: CC BY-NC-SA 4.0; access: open
+
 ### RSNA 2022 cervical spine fracture CT (`rsna_2022_cervical`, HAVE)
 
 - Registry: link https://www.kaggle.com/competitions/rsna-2022-cervical-spine-fracture-detection; grid path none; counts studies 2,019, size gb 203.
@@ -955,6 +1063,30 @@ registry record holds no such field.
     - checks: `bytes: path ${DEST}/rsna_cspine/rsna-2022-cervical-spine-fracture-detection.zip, expect 203318086447`; `note: text unzip -t on the archive`
     - on the grid: `/rs/rs_grp_oschome/go2432/data/rsna_2022_cspine`
     - licence: Kaggle competition rules accepted; terms for derived labels not recorded; access: registration (Kaggle account + rules)
+
+### RSNA pulmonary embolism CT (RSPECT) (`rsna_rspect`, HAVE)
+
+- Registry: link https://www.kaggle.com/competitions/rsna-str-pulmonary-embolism-detection; grid path `/rs/rs_grp_oschome/go2432/data/rsna_rspect_pe/raw`; counts none.
+- Manifest records (the RSNA record):
+  - `rsna_rspect_pe`: RSNA-STR Pulmonary Embolism CT, RSPECT (7,279 training studies); kind upstream_release, family B; route `RSNA MIRA / Kaggle`, mode manual; status gated.
+    - acquired: RSNA MIRA / Kaggle (not acquired)
+    - origin: none recorded
+    - fetch: manual: manual: Kaggle account and acceptance of the rsna-str-pulmonary-embolism-detection competition rules (acquisition/ACQUISITION_PLAN.md section 7)
+    - checks: none recorded
+    - on the grid: `/rs/rs_grp_oschome/go2432/data/rsna_rspect_pe`
+    - licence: RSNA terms: non-commercial research; access: registration
+
+### STOIC2021 training (AWS Open Data) (`aws_stoic2021`, HAVE)
+
+- Registry: link s3://stoic2021-training; grid path `/rs/rs_grp_oschome/go2432/data/aws_stoic2021`; counts subjects 2,000, size gb 240.
+- Manifest records (the same id in the manifest; the data platform's own unfetched source, recorded 2026-10-21):
+  - `aws_stoic2021`: STOIC2021 training (AWS Open Data); kind upstream_release, family B; route `s3`, mode submit; status planned.
+    - acquired: s3 (not acquired)
+    - origin: none recorded
+    - fetch: `D=${ACQ}; mkdir -p $D/logs; sbatch -D $D --job-name=acq_fetch_stoic2021 ${REPO}/slurm/acquisition_fetch.sh s3 --collection stoic2021 --bucket s3://stoic2021-training/data/mha --include '\.mha$'`
+    - checks: `json_field: path ${DATA}/stoic2021/fetch/FETCH_STATUS.json, field unresolved_failures, expect 0`; `note: text must verify 2,000 MHA by size`
+    - on the grid: `/rs/rs_grp_oschome/go2432/data/stoic2021`
+    - licence: CC BY-NC 4.0; access: open
 
 ### Synthetic hardware CTs: implant_ct (CTSP, deleted), implant_verse, implant_ts (`implant_ct_synthetic`, HAVE)
 
@@ -972,6 +1104,42 @@ registry record holds no such field.
 
 - Registry: link none recorded; grid path `/rs/rs_grp_oschome/go2432/data/anomaly_harvest`; counts sources 144, on disk 56, planned 23, gated 7, excluded 58.
 - Manifest records: the 144 sources of family B (the registry counts 144 sources screened; the manifest's family B is those 144); the table below lists them.
+
+### TotalSegmentator task data 'hip_implant' (71 CT) (`zenodo_ts_task_hip_implant`, HAVE)
+
+- Registry: link https://zenodo.org/records/20272031; grid path `/rs/rs_grp_oschome/go2432/data/zenodo_ts_task_hip_implant`; counts subjects 71, size gb 9.03.
+- Manifest records (the same id in the manifest; the data platform's own unfetched source, recorded 2026-10-21):
+  - `zenodo_ts_task_hip_implant`: TotalSegmentator task data 'hip_implant' (71 CT); kind upstream_release, family B; route `zenodo`, mode manual; status planned.
+    - acquired: zenodo (not acquired)
+    - origin: none recorded
+    - fetch: manual: as liver_lesions, record 20272031 (acquisition/ACQUISITION_PLAN.md section 4b; tools/acquisition_fetch.py)
+    - checks: none recorded
+    - on the grid: `/rs/rs_grp_oschome/go2432/data/zenodo_ts_task_hip_implant`
+    - licence: CC BY 4.0; access: open
+
+### TotalSegmentator task data 'liver_lesions' (842 CT) (`zenodo_ts_task_liver_lesions`, HAVE)
+
+- Registry: link https://zenodo.org/records/20272572; grid path `/rs/rs_grp_oschome/go2432/data/zenodo_ts_task_liver_lesions`; counts subjects 842, size gb 38.87.
+- Manifest records (the same id in the manifest; the data platform's own unfetched source, recorded 2026-10-21):
+  - `zenodo_ts_task_liver_lesions`: TotalSegmentator task data 'liver_lesions' (842 CT); kind upstream_release, family B; route `zenodo`, mode manual; status planned.
+    - acquired: zenodo (not acquired)
+    - origin: none recorded
+    - fetch: manual: manual first: ask the TotalSegmentator authors whether these subjects overlap the public v2/v3 release (Greg to send); then `acquisition_fetch.py zenodo --collection ts_task_liver_lesions --record 20272572 --include '.'` (acquisition/ACQUISITION_PLAN.md section 4b; tools/acquisition_fetch.py)
+    - checks: none recorded
+    - on the grid: `/rs/rs_grp_oschome/go2432/data/ts_task_liver_lesions`
+    - licence: CC BY 4.0; access: open
+
+### TotalSegmentator task data 'pleural_pericard_effusion' (600 CT) (`zenodo_ts_task_pleural_effusion`, HAVE)
+
+- Registry: link https://zenodo.org/records/20272295; grid path `/rs/rs_grp_oschome/go2432/data/zenodo_ts_task_pleural_effusion`; counts subjects 600, size gb 8.99.
+- Manifest records (the same id in the manifest; the data platform's own unfetched source, recorded 2026-10-21):
+  - `zenodo_ts_task_pleural_effusion`: TotalSegmentator task data 'pleural_pericard_effusion' (600 CT); kind upstream_release, family B; route `zenodo`, mode manual; status planned.
+    - acquired: zenodo (not acquired)
+    - origin: none recorded
+    - fetch: manual: as liver_lesions, record 20272295 (acquisition/ACQUISITION_PLAN.md section 4b; tools/acquisition_fetch.py)
+    - checks: none recorded
+    - on the grid: `/rs/rs_grp_oschome/go2432/data/zenodo_ts_task_pleural_effusion`
+    - licence: CC BY 4.0; access: open
 
 ### TotalSegmentator v2 and v3 (`totalsegmentator`, HAVE)
 
@@ -1053,6 +1221,24 @@ registry record holds no such field.
     - on the grid: `/rs/rs_grp_oschome/go2432/data/versefusion/derived/ctsp_drr_obl`
     - licence: inherits the sources' terms; access: project
 
+### VerSe 2D projections with soft labels (Zenodo 8115942) (`verse_2d_projections`, HAVE)
+
+- Registry: link https://zenodo.org/records/8115942; grid path `/rs/rs_grp_oschome/go2432/data/verse_2d_projections`; counts none.
+- Manifest records: none. found by the sweep of 2026-10-21 (docs/research/xray-datasets-missing.md); nothing fetched, so no manifest record was ever made.
+- The registry's steps: Open https://zenodo.org/records/8115942 and read its licence line and file list. Fetch as a Slurm job on the owner's word, never on the login node: python3 data/reproduce/reacquire/reacquire.py zenodo-get --record 8115942 --dest DIR.
+
+### VSDFullBody: post-mortem whole-body CT, forensic institutes Bern and Zurich (`zenodo_vsd_fullbody`, HAVE)
+
+- Registry: link https://zenodo.org/records/8270365; grid path `/rs/rs_grp_oschome/go2432/data/zenodo_vsd_fullbody`; counts subjects 100, size gb 116.3.
+- Manifest records (the same id in the manifest; the data platform's own unfetched source, recorded 2026-10-21):
+  - `zenodo_vsd_fullbody`: VSDFullBody: post-mortem whole-body CT, forensic institutes Bern and Zurich; kind upstream_release, family B; route `zenodo`, mode manual; status planned.
+    - acquired: zenodo (not acquired)
+    - origin: none recorded
+    - fetch: manual: `acquisition_fetch.py zenodo --collection vsd_fullbody --record 8270365 --include '<pattern to be chosen from the record listing>'` (md5-verified), then a `chain` entry with convert arguments, which does not exist yet (tools/acquisition_fetch.py; slurm/acquisition_submit.sh)
+    - checks: none recorded
+    - on the grid: `/rs/rs_grp_oschome/go2432/data/vsd_fullbody`
+    - licence: CC BY-NC-SA per the record's text (the record's licence field is empty); access: open
+
 ### AbdomenAtlas 2.0 Mini (10,135 CT) (`hf_abdomenatlas2_0_mini`, GET)
 
 - Registry: link https://huggingface.co/datasets/AbdomenAtlas/AbdomenAtlas2.0Mini; grid path none; counts volumes 10,135, tars 21, size gb 620.4.
@@ -1077,42 +1263,6 @@ registry record holds no such field.
     - on the grid: `/rs/rs_grp_oschome/go2432/data/scidb_enhance_pet_1_6k`
     - licence: CC BY 4.0; access: open
 
-### IDC `cptac_lscc` (tier 2) (`idc_cptac_lscc`, GET)
-
-- Registry: link https://doi.org/10.7937/k9/tcia.2018.6emub5l2; grid path none; counts subjects 32, size gb 8.3.
-- Manifest records (the same id in the manifest; the data platform's own unfetched source, recorded 2026-10-21):
-  - `idc_cptac_lscc`: IDC `cptac_lscc` (tier 2); kind upstream_release, family B; route `idc`, mode manual; status planned.
-    - acquired: idc (not acquired)
-    - origin: 10.7937/k9/tcia.2018.6emub5l2
-    - fetch: manual: regenerate `idc_tier2.csv` with tools/acquisition_census.py (needs `aa3_meta.csv` and `fdg_ct_series.json`, not on local disk), then `acquisition_submit.sh tier2`; or one collection: filter that manifest with awk on column 1 as in the tier-1 cards (tools/acquisition_census.py; slurm/acquisition_submit.sh)
-    - checks: none recorded
-    - on the grid: `/rs/rs_grp_oschome/go2432/data/idc_tier2`
-    - licence: CC BY 4.0; access: open
-
-### IDC `cptac_luad` (tier 2) (`idc_cptac_luad`, GET)
-
-- Registry: link https://doi.org/10.7937/k9/tcia.2018.pat12tbs; grid path none; counts subjects 32, size gb 7.
-- Manifest records (the same id in the manifest; the data platform's own unfetched source, recorded 2026-10-21):
-  - `idc_cptac_luad`: IDC `cptac_luad` (tier 2); kind upstream_release, family B; route `idc`, mode manual; status planned.
-    - acquired: idc (not acquired)
-    - origin: 10.7937/k9/tcia.2018.pat12tbs
-    - fetch: manual: regenerate `idc_tier2.csv` with tools/acquisition_census.py (needs `aa3_meta.csv` and `fdg_ct_series.json`, not on local disk), then `acquisition_submit.sh tier2`; or one collection: filter that manifest with awk on column 1 as in the tier-1 cards (tools/acquisition_census.py; slurm/acquisition_submit.sh)
-    - checks: none recorded
-    - on the grid: `/rs/rs_grp_oschome/go2432/data/idc_tier2`
-    - licence: CC BY 4.0; access: open
-
-### IDC `ldct_and_projection_data` (tier 2) (`idc_ldct_and_projection_data`, GET)
-
-- Registry: link https://doi.org/10.7937/9npb-2637; grid path none; counts subjects 99, size gb 16.5.
-- Manifest records (the same id in the manifest; the data platform's own unfetched source, recorded 2026-10-21):
-  - `idc_ldct_and_projection_data`: IDC `ldct_and_projection_data` (tier 2); kind upstream_release, family B; route `idc`, mode manual; status planned.
-    - acquired: idc (not acquired)
-    - origin: 10.7937/9npb-2637
-    - fetch: manual: regenerate `idc_tier2.csv` with tools/acquisition_census.py (needs `aa3_meta.csv` and `fdg_ct_series.json`, not on local disk), then `acquisition_submit.sh tier2`; or one collection: filter that manifest with awk on column 1 as in the tier-1 cards (tools/acquisition_census.py; slurm/acquisition_submit.sh)
-    - checks: none recorded
-    - on the grid: `/rs/rs_grp_oschome/go2432/data/idc_tier2`
-    - licence: CC BY 4.0; access: open
-
 ### IDC `lidc_idri` (tier 2) (`idc_lidc_idri`, GET)
 
 - Registry: link https://doi.org/10.7937/k9/tcia.2015.lo9ql9sx; grid path none; counts subjects 997, size gb 123.3.
@@ -1125,42 +1275,6 @@ registry record holds no such field.
     - on the grid: `/rs/rs_grp_oschome/go2432/data/idc_tier2`
     - licence: CC BY 3.0; access: open
 
-### IDC `midrc_ricord_1b` (tier 2) (`idc_midrc_ricord_1b`, GET)
-
-- Registry: link https://doi.org/10.7937/31v8-4a40; grid path none; counts subjects 91, size gb 7.
-- Manifest records (the same id in the manifest; the data platform's own unfetched source, recorded 2026-10-21):
-  - `idc_midrc_ricord_1b`: IDC `midrc_ricord_1b` (tier 2); kind upstream_release, family B; route `idc`, mode manual; status planned.
-    - acquired: idc (not acquired)
-    - origin: 10.7937/31v8-4a40
-    - fetch: manual: regenerate `idc_tier2.csv` with tools/acquisition_census.py (needs `aa3_meta.csv` and `fdg_ct_series.json`, not on local disk), then `acquisition_submit.sh tier2`; or one collection: filter that manifest with awk on column 1 as in the tier-1 cards (tools/acquisition_census.py; slurm/acquisition_submit.sh)
-    - checks: none recorded
-    - on the grid: `/rs/rs_grp_oschome/go2432/data/idc_tier2`
-    - licence: CC BY-NC 4.0; access: open
-
-### IDC `nsclc_radiogenomics` (tier 2) (`idc_nsclc_radiogenomics`, GET)
-
-- Registry: link https://doi.org/10.7937/k9/tcia.2017.7hs46erv; grid path none; counts subjects 188, size gb 28.
-- Manifest records (the same id in the manifest; the data platform's own unfetched source, recorded 2026-10-21):
-  - `idc_nsclc_radiogenomics`: IDC `nsclc_radiogenomics` (tier 2); kind upstream_release, family B; route `idc`, mode manual; status planned.
-    - acquired: idc (not acquired)
-    - origin: 10.7937/k9/tcia.2017.7hs46erv
-    - fetch: manual: regenerate `idc_tier2.csv` with tools/acquisition_census.py (needs `aa3_meta.csv` and `fdg_ct_series.json`, not on local disk), then `acquisition_submit.sh tier2`; or one collection: filter that manifest with awk on column 1 as in the tier-1 cards (tools/acquisition_census.py; slurm/acquisition_submit.sh)
-    - checks: none recorded
-    - on the grid: `/rs/rs_grp_oschome/go2432/data/idc_tier2`
-    - licence: CC BY 3.0; access: open
-
-### IDC `nsclc_radiomics` (tier 2) (`idc_nsclc_radiomics`, GET)
-
-- Registry: link https://doi.org/10.7937/k9/tcia.2015.pf0m9rei; grid path none; counts subjects 415, size gb 25.8.
-- Manifest records (the same id in the manifest; the data platform's own unfetched source, recorded 2026-10-21):
-  - `idc_nsclc_radiomics`: IDC `nsclc_radiomics` (tier 2); kind upstream_release, family B; route `idc`, mode manual; status planned.
-    - acquired: idc (not acquired)
-    - origin: 10.7937/k9/tcia.2015.pf0m9rei
-    - fetch: manual: regenerate `idc_tier2.csv` with tools/acquisition_census.py (needs `aa3_meta.csv` and `fdg_ct_series.json`, not on local disk), then `acquisition_submit.sh tier2`; or one collection: filter that manifest with awk on column 1 as in the tier-1 cards (tools/acquisition_census.py; slurm/acquisition_submit.sh)
-    - checks: none recorded
-    - on the grid: `/rs/rs_grp_oschome/go2432/data/idc_tier2`
-    - licence: CC BY-NC 3.0; access: open
-
 ### IDC `prostate_anatomical_edge_cases` (tier 2) (`idc_prostate_anatomical_edge_cases`, GET)
 
 - Registry: link https://doi.org/10.7937/qstf-st65; grid path none; counts subjects 131, size gb 16.6.
@@ -1168,30 +1282,6 @@ registry record holds no such field.
   - `idc_prostate_anatomical_edge_cases`: IDC `prostate_anatomical_edge_cases` (tier 2); kind upstream_release, family B; route `idc`, mode manual; status planned.
     - acquired: idc (not acquired)
     - origin: 10.7937/qstf-st65
-    - fetch: manual: regenerate `idc_tier2.csv` with tools/acquisition_census.py (needs `aa3_meta.csv` and `fdg_ct_series.json`, not on local disk), then `acquisition_submit.sh tier2`; or one collection: filter that manifest with awk on column 1 as in the tier-1 cards (tools/acquisition_census.py; slurm/acquisition_submit.sh)
-    - checks: none recorded
-    - on the grid: `/rs/rs_grp_oschome/go2432/data/idc_tier2`
-    - licence: CC BY 4.0; access: open
-
-### IDC `spinal_multiple_myeloma_seg` (tier 2) (`idc_spinal_multiple_myeloma_seg`, GET)
-
-- Registry: link https://doi.org/10.7937/k4qv-hh78; grid path none; counts subjects 67, size gb 33.8.
-- Manifest records (the same id in the manifest; the data platform's own unfetched source, recorded 2026-10-21):
-  - `idc_spinal_multiple_myeloma_seg`: IDC `spinal_multiple_myeloma_seg` (tier 2); kind upstream_release, family B; route `idc`, mode manual; status planned.
-    - acquired: idc (not acquired)
-    - origin: 10.7937/k4qv-hh78
-    - fetch: manual: regenerate `idc_tier2.csv` with tools/acquisition_census.py (needs `aa3_meta.csv` and `fdg_ct_series.json`, not on local disk), then `acquisition_submit.sh tier2`; or one collection: filter that manifest with awk on column 1 as in the tier-1 cards (tools/acquisition_census.py; slurm/acquisition_submit.sh)
-    - checks: none recorded
-    - on the grid: `/rs/rs_grp_oschome/go2432/data/idc_tier2`
-    - licence: CC BY 4.0; access: open
-
-### IDC `spine_mets_ct_seg` (tier 2) (`idc_spine_mets_ct_seg`, GET)
-
-- Registry: link https://doi.org/10.7937/kh36-ds04; grid path none; counts subjects 54, size gb 17.2.
-- Manifest records (the same id in the manifest; the data platform's own unfetched source, recorded 2026-10-21):
-  - `idc_spine_mets_ct_seg`: IDC `spine_mets_ct_seg` (tier 2); kind upstream_release, family B; route `idc`, mode manual; status planned.
-    - acquired: idc (not acquired)
-    - origin: 10.7937/kh36-ds04
     - fetch: manual: regenerate `idc_tier2.csv` with tools/acquisition_census.py (needs `aa3_meta.csv` and `fdg_ct_series.json`, not on local disk), then `acquisition_submit.sh tier2`; or one collection: filter that manifest with awk on column 1 as in the tier-1 cards (tools/acquisition_census.py; slurm/acquisition_submit.sh)
     - checks: none recorded
     - on the grid: `/rs/rs_grp_oschome/go2432/data/idc_tier2`
@@ -1245,66 +1335,6 @@ registry record holds no such field.
     - on the grid: `/rs/rs_grp_oschome/go2432/data/idc_tier2`
     - licence: CC BY 4.0; access: open
 
-### PENGWIN 2024 Task 2 synthetic X-rays (`pengwin_task2_xrays`, GET)
-
-- Registry: link https://pengwin.grand-challenge.org/; grid path none; counts images 50,000, cts 100, poses per ct 500.
-- Manifest records (the Task 1 CTs' manifest record, already fetched; the Task 2 X-rays themselves have no manifest record):
-  - `pengwin2026`: PENGWIN 2026 peripelvic fracture CT (training); kind upstream_release, family B; route `zenodo`, mode submit; status on_disk.
-    - acquired: zenodo (2026-09-24)
-    - origin: none recorded
-    - fetch: `D=${ACQ}; mkdir -p $D/logs; sbatch -D $D --job-name=acq_fetch_pengwin2026 ${REPO}/slurm/acquisition_fetch.sh zenodo --collection pengwin2026 --record 19732767 --include '^PENGWIN26_task1_2_train_part[1-4]\.zip$'`
-    - checks: `json_field: path ${DATA}/pengwin2026/fetch/FETCH_STATUS.json, field unresolved_failures, expect 0`; `note: text must verify 4 training zips by md5 and 340 'image.mha'`
-    - on the grid: `/rs/rs_grp_oschome/go2432/data/pengwin2026`
-    - licence: CC BY-NC-SA 4.0; access: open
-
-### STOIC2021 training (AWS Open Data) (`aws_stoic2021`, GET)
-
-- Registry: link s3://stoic2021-training; grid path none; counts subjects 2,000, size gb 240.
-- Manifest records (the same id in the manifest; the data platform's own unfetched source, recorded 2026-10-21):
-  - `aws_stoic2021`: STOIC2021 training (AWS Open Data); kind upstream_release, family B; route `s3`, mode submit; status planned.
-    - acquired: s3 (not acquired)
-    - origin: none recorded
-    - fetch: `D=${ACQ}; mkdir -p $D/logs; sbatch -D $D --job-name=acq_fetch_stoic2021 ${REPO}/slurm/acquisition_fetch.sh s3 --collection stoic2021 --bucket s3://stoic2021-training/data/mha --include '\.mha$'`
-    - checks: `json_field: path ${DATA}/stoic2021/fetch/FETCH_STATUS.json, field unresolved_failures, expect 0`; `note: text must verify 2,000 MHA by size`
-    - on the grid: `/rs/rs_grp_oschome/go2432/data/stoic2021`
-    - licence: CC BY-NC 4.0; access: open
-
-### TotalSegmentator task data 'hip_implant' (71 CT) (`zenodo_ts_task_hip_implant`, GET)
-
-- Registry: link https://zenodo.org/records/20272031; grid path none; counts subjects 71, size gb 9.03.
-- Manifest records (the same id in the manifest; the data platform's own unfetched source, recorded 2026-10-21):
-  - `zenodo_ts_task_hip_implant`: TotalSegmentator task data 'hip_implant' (71 CT); kind upstream_release, family B; route `zenodo`, mode manual; status planned.
-    - acquired: zenodo (not acquired)
-    - origin: none recorded
-    - fetch: manual: as liver_lesions, record 20272031 (acquisition/ACQUISITION_PLAN.md section 4b; tools/acquisition_fetch.py)
-    - checks: none recorded
-    - on the grid: `/rs/rs_grp_oschome/go2432/data/zenodo_ts_task_hip_implant`
-    - licence: CC BY 4.0; access: open
-
-### TotalSegmentator task data 'liver_lesions' (842 CT) (`zenodo_ts_task_liver_lesions`, GET)
-
-- Registry: link https://zenodo.org/records/20272572; grid path none; counts subjects 842, size gb 38.87.
-- Manifest records (the same id in the manifest; the data platform's own unfetched source, recorded 2026-10-21):
-  - `zenodo_ts_task_liver_lesions`: TotalSegmentator task data 'liver_lesions' (842 CT); kind upstream_release, family B; route `zenodo`, mode manual; status planned.
-    - acquired: zenodo (not acquired)
-    - origin: none recorded
-    - fetch: manual: manual first: ask the TotalSegmentator authors whether these subjects overlap the public v2/v3 release (Greg to send); then `acquisition_fetch.py zenodo --collection ts_task_liver_lesions --record 20272572 --include '.'` (acquisition/ACQUISITION_PLAN.md section 4b; tools/acquisition_fetch.py)
-    - checks: none recorded
-    - on the grid: `/rs/rs_grp_oschome/go2432/data/ts_task_liver_lesions`
-    - licence: CC BY 4.0; access: open
-
-### TotalSegmentator task data 'pleural_pericard_effusion' (600 CT) (`zenodo_ts_task_pleural_effusion`, GET)
-
-- Registry: link https://zenodo.org/records/20272295; grid path none; counts subjects 600, size gb 8.99.
-- Manifest records (the same id in the manifest; the data platform's own unfetched source, recorded 2026-10-21):
-  - `zenodo_ts_task_pleural_effusion`: TotalSegmentator task data 'pleural_pericard_effusion' (600 CT); kind upstream_release, family B; route `zenodo`, mode manual; status planned.
-    - acquired: zenodo (not acquired)
-    - origin: none recorded
-    - fetch: manual: as liver_lesions, record 20272295 (acquisition/ACQUISITION_PLAN.md section 4b; tools/acquisition_fetch.py)
-    - checks: none recorded
-    - on the grid: `/rs/rs_grp_oschome/go2432/data/zenodo_ts_task_pleural_effusion`
-    - licence: CC BY 4.0; access: open
-
 ### UniToChest chest CT (623 patients; distributed as slices) (`zenodo_unitochest`, GET)
 
 - Registry: link https://zenodo.org/records/5797912; grid path none; counts subjects 623, size gb 84.07.
@@ -1316,24 +1346,6 @@ registry record holds no such field.
     - checks: none recorded
     - on the grid: `/rs/rs_grp_oschome/go2432/data/unitochest`
     - licence: CC BY 4.0; access: open
-
-### VerSe 2D projections with soft labels (Zenodo 8115942) (`verse_2d_projections`, GET)
-
-- Registry: link https://zenodo.org/records/8115942; grid path none; counts none.
-- Manifest records: none. found by the sweep of 2026-10-21 (docs/research/xray-datasets-missing.md); nothing fetched, so no manifest record was ever made.
-- The registry's steps: Open https://zenodo.org/records/8115942 and read its licence line and file list. Fetch as a Slurm job on the owner's word, never on the login node: python3 data/reproduce/reacquire/reacquire.py zenodo-get --record 8115942 --dest DIR.
-
-### VSDFullBody: post-mortem whole-body CT, forensic institutes Bern and Zurich (`zenodo_vsd_fullbody`, GET)
-
-- Registry: link https://zenodo.org/records/8270365; grid path none; counts subjects 100, size gb 116.3.
-- Manifest records (the same id in the manifest; the data platform's own unfetched source, recorded 2026-10-21):
-  - `zenodo_vsd_fullbody`: VSDFullBody: post-mortem whole-body CT, forensic institutes Bern and Zurich; kind upstream_release, family B; route `zenodo`, mode manual; status planned.
-    - acquired: zenodo (not acquired)
-    - origin: none recorded
-    - fetch: manual: `acquisition_fetch.py zenodo --collection vsd_fullbody --record 8270365 --include '<pattern to be chosen from the record listing>'` (md5-verified), then a `chain` entry with convert arguments, which does not exist yet (tools/acquisition_fetch.py; slurm/acquisition_submit.sh)
-    - checks: none recorded
-    - on the grid: `/rs/rs_grp_oschome/go2432/data/vsd_fullbody`
-    - licence: CC BY-NC-SA per the record's text (the record's licence field is empty); access: open
 
 ### CADS CT (unique cases) (`cads`, GATED)
 
@@ -1383,18 +1395,6 @@ registry record holds no such field.
     - on the grid: `/rs/rs_grp_oschome/go2432/data/rsna_ratic_abdominal_trauma`
     - licence: RSNA terms: non-commercial, no redistribution of any portion; access: registration
 
-### RSNA pulmonary embolism CT (RSPECT) (`rsna_rspect`, GATED)
-
-- Registry: link https://www.kaggle.com/competitions/rsna-str-pulmonary-embolism-detection; grid path none; counts none.
-- Manifest records (the RSNA record):
-  - `rsna_rspect_pe`: RSNA-STR Pulmonary Embolism CT, RSPECT (7,279 training studies); kind upstream_release, family B; route `RSNA MIRA / Kaggle`, mode manual; status gated.
-    - acquired: RSNA MIRA / Kaggle (not acquired)
-    - origin: none recorded
-    - fetch: manual: manual: Kaggle account and acceptance of the rsna-str-pulmonary-embolism-detection competition rules (acquisition/ACQUISITION_PLAN.md section 7)
-    - checks: none recorded
-    - on the grid: `/rs/rs_grp_oschome/go2432/data/rsna_rspect_pe`
-    - licence: RSNA terms: non-commercial research; access: registration
-
 ### Stanford AIMI INSPECT chest CT (`stanford_aimi_inspect`, GATED)
 
 - Registry: link https://stanfordaimi.azurewebsites.net/; grid path none; counts none.
@@ -1421,17 +1421,17 @@ registry record holds no such field.
 
 ## 6. Future directions
 
+### Veterinary: pig lower limb CT, CBCT and planar images (Goswami 2020, IEEE DataPort) (`veterinary_pig_levelcheck`, HAVE)
+
+- Registry: link https://ieee-dataport.org/open-access/pig-data-2d-3d-intensity-based-registration; grid path `/rs/rs_grp_oschome/shared/datasets/veterinary_pig_levelcheck`; counts zips 7, size mb 205.
+- Manifest records: none. the zips sit in spine-program's archive and the set is open on IEEE DataPort; no manifest record was ever made.
+- The registry's steps: Download from IEEE DataPort (an IEEE account, no agreement) to Ceph as a job; or restore the seven zips from the archive the record names (spine-program 99_archive/MANIFEST_CODE.md).
+
 ### Veterinary: canine lateral thoracic radiographs for vertebral heart size (Mendeley ktx4cj55pn) (`canine_thoracic_vhs`, GET)
 
 - Registry: link https://data.mendeley.com/datasets/ktx4cj55pn; grid path none; counts radiographs 152.
 - Manifest records: none. found by the sweep of 2026-10-21 (docs/research/xray-datasets-missing.md); nothing fetched, so no manifest record was ever made.
 - The registry's steps: Open https://data.mendeley.com/datasets/ktx4cj55pn and read the licence line and the file list. Fetch as a Slurm job on the owner's word, never on the login node: python3 data/reproduce/reacquire/reacquire.py http-get --url U --dest FILE, U being the public-files address the page gives.
-
-### Veterinary: pig lower limb CT, CBCT and planar images (Goswami 2020, IEEE DataPort) (`veterinary_pig_levelcheck`, GET)
-
-- Registry: link https://ieee-dataport.org/open-access/pig-data-2d-3d-intensity-based-registration; grid path none; counts zips 7, size mb 205.
-- Manifest records: none. the zips sit in spine-program's archive and the set is open on IEEE DataPort; no manifest record was ever made.
-- The registry's steps: Download from IEEE DataPort (an IEEE account, no agreement) to Ceph as a job; or restore the seven zips from the archive the record names (spine-program 99_archive/MANIFEST_CODE.md).
 
 ## Family B: the anomaly harvest's sources
 

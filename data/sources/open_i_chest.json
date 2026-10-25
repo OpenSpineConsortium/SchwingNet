@@ -6,7 +6,7 @@
   "level_truth": "none; the thoracic spine in a lateral chest film",
   "reach": "get",
   "status": "found by the sweep of 2026-10-21; not fetched; open, no agreement; small but frictionless lateral chest films for a thoracic-lateral probe before the gated sets arrive",
-  "licence": "open, no agreement (the Open-i FAQ); to confirm on the page",
+  "licence": "CC BY-NC-ND 4.0 as two mirrors state (Hugging Face ykumards/open-i and Kaggle raddar/chest-xrays-indiana-university, read 2026-10-22); the Open-i FAQ itself was under maintenance, to confirm on the page",
   "link": "https://openi.nlm.nih.gov/faq",
   "how_to_get": [
     "Read the download route on https://openi.nlm.nih.gov/faq.",

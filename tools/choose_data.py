@@ -42,6 +42,7 @@ CHOICE = ROOT / "data" / "choice" / "CHOICE.json"
 
 PEOPLE_KEYS = ("patients", "subjects", "people", "persons", "cases", "specimens")
 NO_TRUTH = re.compile(r"^(none|no levels|unknown|counted by|assumed|pseudo|almost never)", re.IGNORECASE)
+DERIVABLE = re.compile(r"after a (2D/3D )?registration|derivable|registered from", re.IGNORECASE)
 PARTIAL = re.compile(r"^(partial|same$|whatever)|anchors", re.IGNORECASE)
 LEVEL_WORDS = re.compile(r"\b(yes|exact|C[1-7]|T1[0-2]|T[1-9]|L[1-6]|S1|lumbar|thoracic|cervical|levels?|"
                          r"from the (source )?CT)\b", re.IGNORECASE)
@@ -103,10 +104,13 @@ def reached_half_width(n, power):
 # What a record says.
 
 def truth_of(text):
-    """read where people named levels, partial where only some or an anchor, none otherwise."""
+    """read where people named levels, derivable where a registration to a paired CT must name them
+    first, partial where only some or an anchor, none otherwise."""
     text = (text or "").strip()
     if not text or NO_TRUTH.match(text):
         return "none"
+    if DERIVABLE.search(text):
+        return "derivable"
     if PARTIAL.search(text):
         return "partial"
     return "read" if LEVEL_WORDS.search(text) else "none"
@@ -159,6 +163,8 @@ def training_role(record, truth):
         return "real device frames with levels" if record["group"] in REAL_FRAMES else "real films with levels"
     if truth == "partial":
         return "real frames with some levels or anchors"
+    if truth == "derivable":
+        return "real frames whose levels a registration to the paired CT must name first"
     return "appearance: real frames with no levels"
 
 

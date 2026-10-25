@@ -291,7 +291,7 @@
     "S1",
     "Co"
    ],
-   "licence": "unknown",
+   "licence": "share-alike",
    "name": "Geneva hip phantom (BV Pulsera)",
    "persons": 1,
    "persons_note": "one phantom",
@@ -425,14 +425,14 @@
    "name": "LUMOS (Zhejiang University)",
    "persons": 803,
    "persons_note": "",
-   "reach": "get",
+   "reach": "held",
    "sources": [
     "data/sources/lumos.json",
     "data/registry/lumos.json",
     "docs/textbook/figures/35/corpora-overlay.json"
    ],
    "span_basis": "stated",
-   "status": "will be tried once obtained",
+   "status": "can be tried",
    "tried": "no",
    "type": "paired",
    "why": "open download; which film goes with which CT is not stated"
@@ -448,13 +448,13 @@
    "name": "Veterinary: pig lower limb CT, CBCT and planar images (Goswami 2020, IEEE DataPort)",
    "persons": null,
    "persons_note": "",
-   "reach": "get",
+   "reach": "held",
    "sources": [
     "data/sources/veterinary_pig_levelcheck.json",
     "docs/textbook/figures/35/corpora-overlay.json"
    ],
    "span_basis": "stated",
-   "status": "will be tried once obtained",
+   "status": "can be tried",
    "tried": "no",
    "type": "paired",
    "why": "a pig lower limb; no spine"
@@ -570,7 +570,7 @@
     "L5",
     "S1"
    ],
-   "licence": "unknown",
+   "licence": "agreement",
    "name": "BUU-LSPINE",
    "persons": 3600,
    "persons_note": "3,600 by the release and the registry; an older reading of 1,200 is refuted (contradictions page, datasets row 14)",
@@ -628,7 +628,7 @@
     "C6",
     "C7"
    ],
-   "licence": "unknown",
+   "licence": "open",
    "name": "CSXA cervical lateral films",
    "persons": null,
    "persons_note": "",
@@ -846,7 +846,7 @@
     "L5",
     "S1"
    ],
-   "licence": "unknown",
+   "licence": "open",
    "name": "NHANES II annotated films",
    "persons": 364,
    "persons_note": "",
@@ -1239,14 +1239,14 @@
    "name": "PENGWIN 2024 Task 2 synthetic X-rays",
    "persons": 100,
    "persons_note": "source CTs",
-   "reach": "get",
+   "reach": "held",
    "sources": [
     "data/sources/pengwin_task2_xrays.json",
     "data/registry/pengwin_task2_xrays.json",
     "docs/textbook/figures/35/corpora-overlay.json"
    ],
    "span_basis": "inferred",
-   "status": "will be tried once obtained",
+   "status": "can be tried",
    "tried": "no",
    "type": "synthetic",
    "why": "pelvic-fracture renders at C-arm poses"
@@ -1377,14 +1377,14 @@
    "name": "VerSe 2D projections with soft labels (Zenodo 8115942)",
    "persons": null,
    "persons_note": "",
-   "reach": "get",
+   "reach": "held",
    "sources": [
     "data/sources/verse_2d_projections.json",
     "data/registry/verse_2d_projections.json",
     "docs/textbook/figures/35/corpora-overlay.json"
    ],
    "span_basis": "stated",
-   "status": "will be tried once obtained",
+   "status": "can be tried",
    "tried": "no",
    "type": "synthetic",
    "why": "projections of VerSe vertebrae; count to confirm"
@@ -1632,13 +1632,13 @@
    "name": "IDC `cptac_lscc` (tier 2)",
    "persons": 32,
    "persons_note": "",
-   "reach": "get",
+   "reach": "held",
    "sources": [
     "data/sources/idc_cptac_lscc.json",
     "docs/textbook/figures/35/corpora-overlay.json"
    ],
    "span_basis": "inferred",
-   "status": "will be tried once obtained",
+   "status": "can be tried",
    "tried": "no",
    "type": "ct",
    "why": "chest CT"
@@ -1668,13 +1668,13 @@
    "name": "IDC `cptac_luad` (tier 2)",
    "persons": 32,
    "persons_note": "",
-   "reach": "get",
+   "reach": "held",
    "sources": [
     "data/sources/idc_cptac_luad.json",
     "docs/textbook/figures/35/corpora-overlay.json"
    ],
    "span_basis": "inferred",
-   "status": "will be tried once obtained",
+   "status": "can be tried",
    "tried": "no",
    "type": "ct",
    "why": "chest CT"
@@ -1704,13 +1704,13 @@
    "name": "IDC `ldct_and_projection_data` (tier 2)",
    "persons": 99,
    "persons_note": "",
-   "reach": "get",
+   "reach": "held",
    "sources": [
     "data/sources/idc_ldct_and_projection_data.json",
     "docs/textbook/figures/35/corpora-overlay.json"
    ],
    "span_basis": "stated",
-   "status": "will be tried once obtained",
+   "status": "can be tried",
    "tried": "no",
    "type": "ct",
    "why": "chest"
@@ -1776,13 +1776,13 @@
    "name": "IDC `midrc_ricord_1b` (tier 2)",
    "persons": 91,
    "persons_note": "",
-   "reach": "get",
+   "reach": "held",
    "sources": [
     "data/sources/idc_midrc_ricord_1b.json",
     "docs/textbook/figures/35/corpora-overlay.json"
    ],
    "span_basis": "inferred",
-   "status": "will be tried once obtained",
+   "status": "can be tried",
    "tried": "no",
    "type": "ct",
    "why": "chest CT"
@@ -1812,13 +1812,13 @@
    "name": "IDC `nsclc_radiogenomics` (tier 2)",
    "persons": 188,
    "persons_note": "",
-   "reach": "get",
+   "reach": "held",
    "sources": [
     "data/sources/idc_nsclc_radiogenomics.json",
     "docs/textbook/figures/35/corpora-overlay.json"
    ],
    "span_basis": "inferred",
-   "status": "will be tried once obtained",
+   "status": "can be tried",
    "tried": "no",
    "type": "ct",
    "why": "chest CT"
@@ -1848,13 +1848,13 @@
    "name": "IDC `nsclc_radiomics` (tier 2)",
    "persons": 415,
    "persons_note": "",
-   "reach": "get",
+   "reach": "held",
    "sources": [
     "data/sources/idc_nsclc_radiomics.json",
     "docs/textbook/figures/35/corpora-overlay.json"
    ],
    "span_basis": "inferred",
-   "status": "will be tried once obtained",
+   "status": "can be tried",
    "tried": "no",
    "type": "ct",
    "why": "chest CT"
@@ -1923,13 +1923,13 @@
    "name": "IDC `spinal_multiple_myeloma_seg` (tier 2)",
    "persons": 67,
    "persons_note": "",
-   "reach": "get",
+   "reach": "held",
    "sources": [
     "data/sources/idc_spinal_multiple_myeloma_seg.json",
     "docs/textbook/figures/35/corpora-overlay.json"
    ],
    "span_basis": "stated",
-   "status": "will be tried once obtained",
+   "status": "can be tried",
    "tried": "no",
    "type": "ct",
    "why": "spine"
@@ -1965,13 +1965,13 @@
    "name": "IDC `spine_mets_ct_seg` (tier 2)",
    "persons": 54,
    "persons_note": "",
-   "reach": "get",
+   "reach": "held",
    "sources": [
     "data/sources/idc_spine_mets_ct_seg.json",
     "docs/textbook/figures/35/corpora-overlay.json"
    ],
    "span_basis": "stated",
-   "status": "will be tried once obtained",
+   "status": "can be tried",
    "tried": "no",
    "type": "ct",
    "why": "spine, abdomen and pelvis"
@@ -2226,13 +2226,13 @@
    "name": "RSNA pulmonary embolism CT (RSPECT)",
    "persons": 7279,
    "persons_note": "",
-   "reach": "gated",
+   "reach": "held",
    "sources": [
     "data/sources/rsna_rspect.json",
     "docs/textbook/figures/35/corpora-overlay.json"
    ],
    "span_basis": "inferred",
-   "status": "will be tried once obtained",
+   "status": "can be tried",
    "tried": "no",
    "type": "ct",
    "why": "chest CT; gated"
@@ -2330,13 +2330,13 @@
    "name": "STOIC2021 training (AWS Open Data)",
    "persons": null,
    "persons_note": "",
-   "reach": "get",
+   "reach": "held",
    "sources": [
     "data/sources/aws_stoic2021.json",
     "docs/textbook/figures/35/corpora-overlay.json"
    ],
    "span_basis": "inferred",
-   "status": "will be tried once obtained",
+   "status": "can be tried",
    "tried": "no",
    "type": "ct",
    "why": "chest CT"
@@ -2388,13 +2388,13 @@
    "name": "TotalSegmentator task data 'hip_implant' (71 CT)",
    "persons": 71,
    "persons_note": "",
-   "reach": "get",
+   "reach": "held",
    "sources": [
     "data/sources/zenodo_ts_task_hip_implant.json",
     "docs/textbook/figures/35/corpora-overlay.json"
    ],
    "span_basis": "inferred",
-   "status": "will be tried once obtained",
+   "status": "can be tried",
    "tried": "no",
    "type": "ct",
    "why": "pelvic CT"
@@ -2417,13 +2417,13 @@
    "name": "TotalSegmentator task data 'liver_lesions' (842 CT)",
    "persons": 842,
    "persons_note": "",
-   "reach": "get",
+   "reach": "held",
    "sources": [
     "data/sources/zenodo_ts_task_liver_lesions.json",
     "docs/textbook/figures/35/corpora-overlay.json"
    ],
    "span_basis": "inferred",
-   "status": "will be tried once obtained",
+   "status": "can be tried",
    "tried": "no",
    "type": "ct",
    "why": "abdominal CT"
@@ -2453,13 +2453,13 @@
    "name": "TotalSegmentator task data 'pleural_pericard_effusion' (600 CT)",
    "persons": 600,
    "persons_note": "",
-   "reach": "get",
+   "reach": "held",
    "sources": [
     "data/sources/zenodo_ts_task_pleural_effusion.json",
     "docs/textbook/figures/35/corpora-overlay.json"
    ],
    "span_basis": "inferred",
-   "status": "will be tried once obtained",
+   "status": "can be tried",
    "tried": "no",
    "type": "ct",
    "why": "chest CT"
@@ -2635,13 +2635,13 @@
    "name": "VSDFullBody: post-mortem whole-body CT, forensic institutes Bern and Zurich",
    "persons": 100,
    "persons_note": "",
-   "reach": "get",
+   "reach": "held",
    "sources": [
     "data/sources/zenodo_vsd_fullbody.json",
     "docs/textbook/figures/35/corpora-overlay.json"
    ],
    "span_basis": "inferred",
-   "status": "will be tried once obtained",
+   "status": "can be tried",
    "tried": "no",
    "type": "ct",
    "why": "post-mortem whole-body CT"
@@ -2733,14 +2733,14 @@
    "name": "CathAction (Jianu et al. 2024, AIRVLab)",
    "persons": null,
    "persons_note": "",
-   "reach": "get",
+   "reach": "held",
    "sources": [
     "data/sources/cathaction.json",
     "data/registry/cathaction.json",
     "docs/textbook/figures/35/corpora-overlay.json"
    ],
    "span_basis": "inferred",
-   "status": "will be tried once obtained",
+   "status": "can be tried",
    "tried": "no",
    "type": "unannotated",
    "why": "endovascular frames, no spine labels, much of it animal"
@@ -2999,7 +2999,7 @@
    "images": 8700,
    "images_unit": "frames (more than)",
    "levels": [],
-   "licence": "unknown",
+   "licence": "non-commercial",
    "name": "Guide3D (ACCV 2024, AIRVLab)",
    "persons": null,
    "persons_note": "",
@@ -3047,7 +3047,7 @@
     "L5",
     "S1"
    ],
-   "licence": "unknown",
+   "licence": "agreement",
    "name": "IEEE DataPort lateral whole-spine 236",
    "persons": null,
    "persons_note": "",
@@ -3254,14 +3254,14 @@
    "name": "KUB-StoneX (Daffodil International University HIRL)",
    "persons": 1703,
    "persons_note": "",
-   "reach": "get",
+   "reach": "held",
    "sources": [
     "data/sources/kub_stonex.json",
     "data/registry/kub_stonex.json",
     "docs/textbook/figures/35/corpora-overlay.json"
    ],
    "span_basis": "stated",
-   "status": "will be tried once obtained",
+   "status": "can be tried",
    "tried": "no",
    "type": "unannotated",
    "why": "stone masks, no spine labels"
@@ -3453,7 +3453,7 @@
     "L5",
     "S1"
    ],
-   "licence": "unknown",
+   "licence": "open",
    "name": "NHANES II unannotated films",
    "persons": null,
    "persons_note": "",
@@ -3492,14 +3492,14 @@
    "name": "NIH ChestX-ray14 and the RSNA pneumonia subset",
    "persons": 30805,
    "persons_note": "",
-   "reach": "get",
+   "reach": "held",
    "sources": [
     "data/sources/nih_chestxray14.json",
     "data/registry/nih_chestxray14.json",
     "docs/textbook/figures/35/corpora-overlay.json"
    ],
    "span_basis": "stated",
-   "status": "will be tried once obtained",
+   "status": "can be tried",
    "tried": "no",
    "type": "unannotated",
    "why": "frontal chest films"
@@ -3700,13 +3700,13 @@
    "name": "ReXGradient-160K (Rajpurkar lab and Gradient Health, 2025)",
    "persons": 109487,
    "persons_note": "",
-   "reach": "gated",
+   "reach": "held",
    "sources": [
     "data/sources/rexgradient_160k.json",
     "docs/textbook/figures/35/corpora-overlay.json"
    ],
    "span_basis": "stated",
-   "status": "will be tried once obtained",
+   "status": "can be tried",
    "tried": "no",
    "type": "unannotated",
    "why": "chest films"
@@ -3816,7 +3816,7 @@
    "images": 110000,
    "images_unit": "images (about)",
    "levels": [],
-   "licence": "unknown",
+   "licence": "agreement",
    "name": "Veriserum (ETH Zurich, MICCAI 2025)",
    "persons": null,
    "persons_note": "",

@@ -4,7 +4,7 @@
   "group": "ct",
   "what": "IDC v24 collection midrc_ricord_1b (TCIA doi:10.7937/31v8-4a40), tier 2 of the anomaly harvest: 91 subjects, about 7 GB raw plus screen; chest, abdomen and pelvis",
   "level_truth": "counted by the census pipeline once fetched",
-  "reach": "get",
+  "reach": "held",
   "status": "planned in the data platform at bf1432f; fetch job in the 2026-10-21 chain after idc_tier2.csv is regenerated; the ranking's refusals: non-axial reformat 25, not a regularly spaced 3-D volume 1, under 60 slices 1",
   "licence": "CC BY-NC 4.0",
   "link": "https://doi.org/10.7937/31v8-4a40",
@@ -12,7 +12,7 @@
     "Regenerate the tier-2 manifest idc_tier2.csv with spinesurg-ct-nnunet's tools/acquisition_census.py (its inputs aa3_meta.csv and fdg_ct_series.json are not on local disk), then slurm/acquisition_submit.sh tier2; or this one collection alone, filtering that manifest on its first column as the tier-1 cards do.",
     "The route as the manifest prints it: python3 data/reproduce/reacquire/reacquire.py --grid idc_midrc_ricord_1b; on the grid, from ~/spinesurg-ct-nnunet/data_platform/reacquire, sbatch -D \"$PWD\" --export=ALL,IDS=\"idc_midrc_ricord_1b\",MODE=--run reacquire.sbatch, as a Slurm job on the owner's word."
   ],
-  "grid_path": null,
+  "grid_path": "/rs/rs_grp_oschome/go2432/data/idc_midrc_ricord_1b",
   "counts": {
     "subjects": 91,
     "size_gb": 7

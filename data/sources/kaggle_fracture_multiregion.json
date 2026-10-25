@@ -6,7 +6,7 @@
   "level_truth": "none; a lumbar-spine folder and a hip folder from unknown devices",
   "reach": "get",
   "status": "found by the sweep of 2026-10-21; not fetched; warning: the licence and the images' origin are unstated in what was read (many Kaggle fracture sets are scraped from teaching sites), to confirm on the page; an exposure-diversity pool only, and not to be fetched until its origin is shown to be redistributable",
-  "licence": "Kaggle; the licence and the images' origin to confirm on the page",
+  "licence": "ODC Public Domain Dedication and Licence (PDDL) in the Kaggle metadata field, while the description names ODC Attribution (ODC-By) 1.0 (both read from Kaggle's dataset API on 2026-10-22); the three source sets' own terms are not read yet",
   "link": "https://www.kaggle.com/datasets/bmadushanirodrigo/fracture-multi-region-x-ray-data",
   "how_to_get": [
     "The owner reads the licence and the stated origin on the page; where the origin is not redistributable the record's reach becomes excluded.",

@@ -4,7 +4,7 @@
   "group": "films",
   "what": "112,120 frontal chest films of 30,805 patients; the RSNA pneumonia detection challenge on Kaggle used 30,000 of them",
   "level_truth": "none; the frontal thoracic spine behind the mediastinum",
-  "reach": "get",
+  "reach": "held",
   "status": "found by the sweep of 2026-10-21; not fetched; open (NIH) and Kaggle competition rules (RSNA); volume with no agreement, no laterals",
   "licence": "open (NIH); Kaggle competition rules for the RSNA subset",
   "link": "https://nihcc.app.box.com/v/ChestXray-NIHCC",
@@ -13,7 +13,7 @@
     "Fetch as a Slurm job on the owner's word, never on the login node: python3 data/reproduce/reacquire/reacquire.py http-get --url U --dest FILE for each archive address the page gives.",
     "The RSNA subset (https://www.kaggle.com/competitions/rsna-pneumonia-detection-challenge) needs a Kaggle account and the competition rules accepted by the owner; the Kaggle API token comes from the submitter's environment, never from this repository."
   ],
-  "grid_path": null,
+  "grid_path": "/rs/rs_grp_oschome/go2432/data/nih_chestxray14",
   "counts": {
     "films": 112120,
     "patients": 30805,

@@ -4,7 +4,7 @@
   "group": "ct",
   "what": "IDC v24 collection spinal_multiple_myeloma_seg (TCIA doi:10.7937/k4qv-hh78), tier 2 of the anomaly harvest: 67 subjects, about 33.8 GB raw plus screen; spine",
   "level_truth": "counted by the census pipeline once fetched",
-  "reach": "get",
+  "reach": "held",
   "status": "planned in the data platform at bf1432f; fetch job in the 2026-10-21 chain after idc_tier2.csv is regenerated; the ranking's refusals: non-HU reconstruction (spectral map or suppression) 288",
   "licence": "CC BY 4.0",
   "link": "https://doi.org/10.7937/k4qv-hh78",
@@ -12,7 +12,7 @@
     "Regenerate the tier-2 manifest idc_tier2.csv with spinesurg-ct-nnunet's tools/acquisition_census.py (its inputs aa3_meta.csv and fdg_ct_series.json are not on local disk), then slurm/acquisition_submit.sh tier2; or this one collection alone, filtering that manifest on its first column as the tier-1 cards do.",
     "The route as the manifest prints it: python3 data/reproduce/reacquire/reacquire.py --grid idc_spinal_multiple_myeloma_seg; on the grid, from ~/spinesurg-ct-nnunet/data_platform/reacquire, sbatch -D \"$PWD\" --export=ALL,IDS=\"idc_spinal_multiple_myeloma_seg\",MODE=--run reacquire.sbatch, as a Slurm job on the owner's word."
   ],
-  "grid_path": null,
+  "grid_path": "/rs/rs_grp_oschome/go2432/data/idc_spinal_multiple_myeloma_seg",
   "counts": {
     "subjects": 67,
     "size_gb": 33.8

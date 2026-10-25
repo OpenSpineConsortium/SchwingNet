@@ -47,7 +47,8 @@ class Truth(unittest.TestCase):
     def test_words(self):
         cases = {"yes, lumbar, projected from the CBCT": "read", "none; no spine": "none", "pelvis": "none",
                  "partial": "partial", "fractures; C1, C2, C7 anchors": "partial", "exact": "read",
-                 "pseudo, no patient key": "none", "": "none", "pelvis and lower lumbar, from the CT": "read"}
+                 "pseudo, no patient key": "none", "": "none", "pelvis and lower lumbar, from the CT": "read",
+                 "levels readable from the paired CT after a 2D/3D registration": "derivable"}
         for text, word in cases.items():
             with self.subTest(text=text):
                 self.assertEqual(choose_data.truth_of(text), word)
@@ -81,6 +82,12 @@ class TheChoice(unittest.TestCase):
         self.assertEqual({e["id"]: e["why"][:12] for e in out["excluded"]},
                          {"nd": "licence clas", "sweeps": "never traine", "u": "licence unkn"})
         self.assertEqual(out["training"], [])
+
+    def test_levels_a_registration_must_name_first_are_no_test(self):
+        out = self.choose([record("lumos", truth="levels readable from the paired CT after a 2D/3D registration",
+                                  patients=803)], {"lumos": "non-commercial"})
+        self.assertEqual(out["test"]["sources"], [])
+        self.assertEqual(out["training"][0]["level_truth"], "derivable")
 
     def test_ct_without_levels_is_no_render_source(self):
         out = self.choose([record("ct1", group="ct", truth="none"), record("ct2", group="ct", truth="yes")],

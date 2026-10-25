@@ -6,7 +6,7 @@
   "level_truth": "yes, up to 90 level boxes possible from the pose",
   "reach": "held",
   "status": "parameters read, no truth bank built; read-only under its ND licence",
-  "licence": "ND (read-only)",
+  "licence": "CC BY-NC-ND, as the source's page gives it (read 2026-10-23); the user guide that comes with the set says the data are used only under an agreement form between the user and the Laboratory of Imaging Technologies, and never redistributed",
   "link": null,
   "how_to_get": [],
   "grid_path": "/rs/rs_grp_oschome/go2432/data/ljubljana",
