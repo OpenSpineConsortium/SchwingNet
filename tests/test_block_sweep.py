@@ -125,6 +125,18 @@ class PlanTest(unittest.TestCase):
         for source in ("Nat Mach Intell 5:294", "MICCAI 2025", "J Clin Med 14:7671"):
             self.assertIn(source, plan["about"])
 
+    def test_each_source_is_cited_for_what_it_did(self):
+        # Kwak, Ro and Kang 2025 trained with AdamW, a cosine schedule and a warm-up and chose by
+        # the highest accuracy, with no balanced sampling or balanced accuracy anywhere, so their
+        # paper stands behind the third arm's recipe and not behind the balanced arms.
+        about = json.loads((ROOT / "grid" / "sweeps" / "trials.json").read_text(encoding="utf-8"))["about"]
+        clauses = about.split("; ")
+        tuned = next(clause for clause in clauses if "AdamW" in clause)
+        balanced = next(clause for clause in clauses if "balanced sampling" in clause)
+        self.assertIn("Kwak, Ro and Kang 2025", tuned)
+        self.assertIn("224 pixels", tuned, "and it says how the arm differs from their recipe")
+        self.assertNotIn("Kwak", balanced)
+
     def test_a_plan_with_a_name_or_catalog_the_gate_cannot_take_is_refused(self):
         for argv in (("cover", "--name", "Real", "--catalog", "v1"), ("cover", "--name", "real", "--catalog", "v2"),
                      ("cover", "--name", "real", "--catalog", "with:VinDr")):

@@ -937,9 +937,10 @@ def trials() -> list[Row]:
     """The six arms of the literature trials, each resnet18 from its ImageNet file, in order: the
     control (version 1's training at 64 pixels); the ImageNet scaling with every augment change,
     the strong one among them (SyntheX's and FluoroSAM's randomisation); that with AdamW, its
-    decay, a warm-up, a cosine schedule and a tenth of the rate for the pretrained layers; the
-    second arm at 96 pixels; the second with the balanced sampler and the checkpoint chosen by
-    balanced accuracy; and the third with those two."""
+    decay, a warm-up, a cosine schedule and a tenth of the rate for the pretrained layers (Kwak,
+    Ro and Kang's recipe, shorter and smaller); the second arm at 96 pixels; the second with the
+    balanced sampler and the checkpoint chosen by balanced accuracy, for which no source is
+    cited; and the third with those two."""
     strong = replace(DEFAULT, normalise="imagenet", augment=AUGMENT)
     tuned = replace(
         strong,
