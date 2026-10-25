@@ -5,10 +5,29 @@ name: gate
 # so a failure names itself. The kit's standards.yml runs the six code standards beside it. The
 # job's name, gate, is a required check of docs/setup/ruleset-main.json beside check; rename
 # both together. No job holds a secret and none reaches the grid.
+#
+# The symbolic lane is nearly all of the job's time, 31 of its 32 minutes on 2026-10-25, and its
+# verdict depends only on what it reads: the package under src/, the gated tests under
+# tests/schwingnet/ and a conftest.py at the root, the [tool.beethoven-qa] and pytest tables of
+# pyproject.toml, the environment pixi.toml and pixi.lock make, the pinned copy under vendor/, and
+# this file. So a run first asks GitHub, with its own read-only token, for the newest commit of
+# main this workflow passed on a push, and runs the lane only where one of those paths differs
+# between that commit and the commit checked out, which on a pull request is GitHub's test merge.
+# Where none differs the lane would read what it already proved, so its step is skipped and says
+# so, and every other lane still runs. Of the 85 pull-request runs of 2026-10-25, 76 were on pull
+# requests that changed none of those paths, and they spent about 1,480 minutes proving a package
+# they had not changed. A commit that passed with the lane skipped reads as the commit it was
+# compared with, so the newest pass of either kind is a sound place to start from; where GitHub
+# names no such commit, or git cannot read it, the lane runs. Once a day the lane runs in full on
+# main whatever changed, in a concurrency group of its own so that a push cannot cancel it, since
+# a new runner image, or the prover's own search within its time bound, may find what the last
+# full run did not.
 on:
   push:
     branches: [main]
   pull_request:
+  schedule:
+    - cron: "37 4 * * *"
   workflow_dispatch:
 
 env:
@@ -19,9 +38,12 @@ env:
 
 permissions:
   contents: read
+  # to list this workflow's runs on main, for the commit the lane last passed on
+  actions: read
 
 concurrency:
-  group: gate-${{ github.workflow }}-${{ github.ref }}
+  # the daily full run in a group of its own, so a push to main cannot cancel it
+  group: gate-${{ github.ref }}${{ github.event_name == 'schedule' && '-daily' || '' }}
   cancel-in-progress: true
 
 jobs:
@@ -32,7 +54,39 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
+          # the commit the lane last passed on is compared with this one by git
+          fetch-depth: 0
           persist-credentials: false
+      - name: whether the symbolic lane reads anything this change touched
+        id: scope
+        # A failure here leaves the output unset, and the lane then runs as it always did.
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -u
+          reads='^(src/|tests/schwingnet/|vendor/|conftest\.py$|pyproject\.toml$|pixi\.toml$'
+          reads="$reads|pixi\.lock\$|\.github/workflows/gate\.yml\$)"
+          full() {
+            echo "symbolic=full" >> "$GITHUB_OUTPUT"
+            echo "the symbolic lane runs in full: $1"
+            exit 0
+          }
+          if [ "$EVENT" != push ] && [ "$EVENT" != pull_request ]; then
+            full "a $EVENT run proves the package whatever changed"
+          fi
+          runs="repos/$REPO/actions/workflows/gate.yml/runs?branch=main&event=push&status=success"
+          base=$(gh api "$runs&per_page=1" --jq '.workflow_runs[0].head_sha // empty') || base=
+          [ -n "$base" ] || full "GitHub names no commit of main this workflow passed on a push"
+          git cat-file -e "$base^{commit}" 2>/dev/null || full "git cannot read $base"
+          changed=$(git diff --name-only "$base" HEAD) || full "git cannot compare $base with HEAD"
+          touched=$(grep -E "$reads" <<< "$changed" | head -n 5 | tr '\n' ' ' || true)
+          [ -z "$touched" ] || full "since $base, the newest commit of main it passed, $touched"
+          echo "symbolic=skip" >> "$GITHUB_OUTPUT"
+          echo "the symbolic lane is skipped: nothing it reads differs from $base,"
+          echo "the newest commit of main this workflow passed on a push"
       - name: install pixi
         env:
           PIXI_VERSION: ${{ env.PIXI_VERSION }}
@@ -56,6 +110,7 @@ jobs:
       - name: tests (typeguard enclave)
         run: pixi run --locked test
       - name: symbolic verification (CrossHair and Z3)
+        if: steps.scope.outputs.symbolic != 'skip'
         run: pixi run --locked symbolic
       - name: shell syntax of the kit
         # One file per bash -n: with several operands bash parses the first and hands the rest
