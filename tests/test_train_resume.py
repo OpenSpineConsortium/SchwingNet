@@ -345,6 +345,18 @@ class SingleCropBatchTest(unittest.TestCase):
         self.assertIn("train: one training crop: resnet18 cannot take a training step", err)
         self.assertFalse((folder / "train" / "metrics.jsonl").exists())
 
+    def test_a_batch_of_one_that_cannot_train_on_one_is_refused_in_the_same_words(self):
+        # Every batch then holds one crop, so there is nothing to join; at 64 pixels it trains.
+        folder = new_run(self.tmp / "batch-one", "batchonerun0")
+        rc, _, err = train(self.catalog, folder, "--epochs", "1", "--size", "32", "--batch", "1", "--max-frames", "3", module=self.train)
+        self.assertEqual(rc, 1)
+        self.assertIn("train: --batch 1: every batch holds one crop, and resnet18 cannot take a training step on a batch"
+                      " of one 32-pixel crop, since batch norm needs more than one value per channel there", err)
+        self.assertFalse((folder / "train" / "metrics.jsonl").exists())
+        folder = new_run(self.tmp / "batch-one-64", "batchone6400")
+        rc, _, err = train(self.catalog, folder, "--epochs", "1", "--size", "64", "--batch", "1", "--max-frames", "3", module=self.train)
+        self.assertEqual(rc, 0, err)
+
 
 class FakeWandb(types.ModuleType):
     """wandb as Telemetry calls it, keeping each init's keywords; online starts fail where asked."""

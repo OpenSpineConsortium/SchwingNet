@@ -44,7 +44,8 @@ training crops are one more than a whole number of batches, so the run asks once
 model trains on one crop at its size (trains_on_one_crop) and, where it cannot, joins such a last
 batch to the batch before it; checkpoint.json then says "single_crop_batch": "joined" and the card
 says so. Where it can, the batches are as they always were, so a run that trained before trains
-to the same weights; a run of exactly one training crop that cannot train on one is refused.
+to the same weights; a run of exactly one training crop that cannot train on one is refused, and
+so is --batch 1, whose every batch holds one crop.
 """
 
 import sys
@@ -377,15 +378,21 @@ def batch_bounds(count, batch, join_single=False):
     return list(zip(starts, stops, strict=True))
 
 
-def refuse_one_crop(count, join_single, architecture, size):
-    """A training part of exactly one crop where the model cannot train on one is refused before
-    any epoch, since there is no batch to join it to and its first step would fail."""
-    if count == 1 and join_single:
-        raise TrainError(
-            f"one training crop: {architecture} cannot take a training step on a batch of one {size}-pixel crop,"
-            " since batch norm needs more than one value per channel there; take more crops, or 64-pixel crops,"
-            " on which every architecture here trains on one"
-        )
+def refuse_one_crop(count, batch, join_single, why):
+    """A training part of exactly one crop, or --batch 1, where the model cannot train on one is
+    refused before any epoch, since there is no batch to join the crop to and the first step would
+    fail; why is the model's reason (one_crop_words), the same in both refusals."""
+    if not join_single:
+        return
+    if count == 1:
+        raise TrainError(f"one training crop: {why}; take more crops, or 64-pixel crops, on which every architecture here trains on one")
+    if batch == 1:
+        raise TrainError(f"--batch 1: every batch holds one crop, and {why}; take a batch of 2 or more, or 64-pixel crops, on which every architecture here trains on one")
+
+
+def one_crop_words(architecture, size):
+    """Why the model cannot train on one crop, in the words both refusals give."""
+    return f"{architecture} cannot take a training step on a batch of one {size}-pixel crop, since batch norm needs more than one value per channel there"
 
 
 def train_epoch(model, optimiser, inputs, targets, device, batch, generator, blocks=None, loss_fn=None, maps=None, prior=None, join_single=False):
@@ -966,7 +973,7 @@ def run(args):
         warm_start(model, args.init, parent, blocks, args.size)
     join_single = not trains_on_one_crop(model, args.size)
     maps, val_maps, prior = prior_of(blocks, model, train_crops, val_crops, args)
-    refuse_one_crop(len(train_crops), join_single, blocks.architecture, args.size)
+    refuse_one_crop(len(train_crops), args.batch, join_single, one_crop_words(blocks.architecture, args.size))
     optimiser = BLOCKS.OPTIMISERS[blocks.optimiser](model, args.lr, blocks, prior.parameters() if prior else ())
     base_rates = [group["lr"] for group in optimiser.param_groups]
     loss_fn = BLOCKS.loss_function(blocks, train_y, LEVELS).to(args.device)
