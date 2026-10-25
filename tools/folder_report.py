@@ -39,7 +39,10 @@ NOTE_LINES = 12
 NOTES_PER_GROUP = 3
 NOTE_DEPTH = 2
 PAGE_BYTES = 55_000
-ROWS = """SELECT r.sources, f.rel, f.path, f.role, f.format, f.size, f.width, f.height, f.frames,
+# The index keeps what each reader gave, so a number can be stored as text (a header's "1" for
+# NumberOfFrames); SQL casts each to an integer, and anything not a number to 0, before Python compares.
+ROWS = """SELECT r.sources, COALESCE(f.rel, ''), f.path, f.role, f.format, CAST(f.size AS INTEGER),
+                 CAST(f.width AS INTEGER), CAST(f.height AS INTEGER), CAST(f.frames AS INTEGER),
                  f.modality, f.manufacturer, f.model
           FROM file f JOIN root r ON r.id = f.root_id WHERE r.sources LIKE 'unmapped:%'"""
 
@@ -159,7 +162,8 @@ def data_root_folders(db, data_root):
     it, mapped or not, so each folder can be set beside the dataset record that accounts for it."""
     prefix = data_root.rstrip("/") + "/"
     folders = defaultdict(Counter)
-    query = "SELECT r.path, r.sources, COUNT(f.id), COALESCE(SUM(f.size), 0) FROM root r LEFT JOIN file f ON f.root_id = r.id GROUP BY r.id"
+    query = ("SELECT r.path, r.sources, COUNT(f.id), COALESCE(SUM(CAST(f.size AS INTEGER)), 0) "
+             "FROM root r LEFT JOIN file f ON f.root_id = r.id GROUP BY r.id")
     for path, sources, files, size in db.execute(query):
         if path.startswith(prefix):
             name = path[len(prefix):].split("/")[0]

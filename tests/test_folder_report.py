@@ -68,6 +68,22 @@ class FolderReport(unittest.TestCase):
         self.assertEqual(folder_report.main(["--db", str(self.db), "--out", str(out), "--data-root", str(self.tmp / "data")]), 0)
         self.assertIn("| \\u8170\\u690e | 1 |", (out.parent / "FOLDERS-1.md").read_text(encoding="ascii"))
 
+    def test_numbers_stored_as_text_are_counted_not_fatal(self):
+        db = sqlite3.connect(self.db)
+        db.execute("""INSERT INTO file (path, root_id, rel, role, format, size, width, height, frames)
+                      VALUES (?, 1, 'carm/b.dcm', 'image', 'dicom', '25', '2048', '2048', '12')""",
+                   (str(self.tmp / "data" / "realxray" / "carm" / "b.dcm"),))
+        db.execute("""INSERT INTO file (path, root_id, rel, role, format, size, frames)
+                      VALUES (?, 1, 'carm/c.dcm', 'image', 'dicom', 'n/a', 'unknown')""",
+                   (str(self.tmp / "data" / "realxray" / "carm" / "c.dcm"),))
+        db.commit()
+        db.close()
+        out = self.tmp / "logs" / "FOLDERS.md"
+        out.parent.mkdir()
+        self.assertEqual(folder_report.main(["--db", str(self.db), "--out", str(out), "--data-root", str(self.tmp / "data")]), 0)
+        text = (out.parent / "FOLDERS-1.md").read_text(encoding="ascii")
+        self.assertIn("| carm | 4 | 425 B | 4 | dicom 3, png 1 | 512-2048 x 480-2048 | 2 |", text)
+
     def test_a_long_report_is_cut_into_pages_under_the_limit(self):
         sections = ["head\n"] + [f"## g{n}\n" + "x" * 300 + "\n" for n in range(10)]
         pages = folder_report.pages(sections, 1000)
