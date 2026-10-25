@@ -22,6 +22,14 @@ Three places were tried or weighed.
 
 What the Action cannot prove before it runs: that claude-code-action's headless session carries the Artifact tool at all. The tool is part of Claude Code's cloud and desktop surfaces; whether a `claude -p` run in Actions under a subscription token has it is answered by the first run. The prompt tells the session to print ARTIFACT_TOOL_MISSING if it does not, the helper fails the run on that line, and nothing is recorded, so a missing tool costs one failed run and the design falls back to the owner's machine.
 
+## What the first run found, 2026-10-25
+
+The owner's Run workflow at 01:42 UTC (run 40151692244) built the edition, planned three batches (442 files) and started its session, Claude Code 2.1.299, which claude-code-action v1.0.249 runs through the Agent SDK with the Artifact and Read tools allowed and the user's settings alone. The session answered ARTIFACT_TOOL_MISSING in one turn: the tool was not among its tools, allowed or not. Nothing was published and nothing recorded. Grade: Measured.
+
+Claude Code's own documentation gives the reason (code.claude.com/docs/en/artifacts.md, section Availability, read on 2026-10-25): artifacts need a session backed by a claude.ai account on a paid plan, the Anthropic API as the provider, an organization without CMEK, HIPAA or zero data retention, and a surface that carries them, the CLI, the desktop app, Claude Tag or a remote-control session the person started; they are off by default in the Agent SDK, the GitHub Action, MCP-server contexts and `claude -p` run from one's own scripts. The settings reference says `enableArtifact: true` is the same as leaving the key unset, so no setting turns the tool on where the surface leaves it off, and claude-code-action's action.yml has no input for it. So no workflow publishes the book, from this repository or any other. Grade: Documented, and agreeing with the measurement.
+
+What can publish it is a Claude Code session signed in to the owner's account: on the owner's computer, the first plan of #236, or a scheduled task on that account, whose cloud sessions run in auto mode and may publish an artifact once the classifier allows it (code.claude.com/docs/en/routines.md). A publish that declares runtime capabilities, as the edition's first publish does for the Ask Claude box, is asked of the person, or in auto mode put to the classifier, which refused this publish in the cloud session of 2026-10-24; a new artifact published in answer to a prompt the person types needs neither (artifacts.md, When Claude Code asks before publishing). Which of the two is the owner's choice, put on a decision card on 2026-10-25.
+
 ## Why an Action, and why a schedule beside it
 
 The repository is the source of the book, and the artifact is a copy that must not fall behind it, so the copy is republished by the thing that knows when the source moved. A push to main that changes the book starts the run; a merge GitHub's auto-merge makes starts no workflow, because automerge.yml arms it with the workflow token, and most of this repository's pull requests merge that way, so a schedule every half hour is the fallback that catches them, as synthesis.yml and docs.yml run daily for the same reason. The schedule is kept cheap by a fingerprint: the sha256 of git's listing of the book's inputs at the commit (the chapters and figures, artifacts/ with the synthesis's records, the site's and the edition's code, the stylesheet, CODEOWNERS), kept in the record, so a scheduled run that finds the fingerprint already published stops before building. The day is capped (TEXTBOOK_PUBLISHES_PER_DAY, 12, at most 50) and the switch TEXTBOOK_ARTIFACT set to off stops it.
@@ -36,7 +44,7 @@ The Ask Claude box on every page asks the artifact runtime's sample capability (
 
 ## What is not settled
 
-- Whether the Artifact tool is in the Action's session (above); the first run answers it.
+- Which session publishes the book, now that the Action cannot (What the first run found, above); the owner's choice.
 - Whether the frame origin resolves the supporting pages' relative links and fetches exactly as the tool's contract says; the first edition shows it.
 - A run cancelled during a first publish, before the session has answered, can leave an artifact the record never learns of; the owner deletes it from the gallery, and the next run makes the one the record keeps.
 - The tool's read of the existing artifact, required before a publish to it, returns the front page's HTML into the session; that is the one text of the book a run's session sees, and it is the book's own front page on the owner's own account.

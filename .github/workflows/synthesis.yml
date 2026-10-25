@@ -11,7 +11,13 @@ name: Synthesis
 # GitHub starts no workflow for an event the workflow token caused, and automerge.yml arms
 # GitHub's auto-merge with that token, so a merge auto-merge makes starts none, and the daily run
 # looks at what it landed, as it looks at symphony-template's artifacts, which change in another
-# repository. It runs no Claude. It lays the records of the open synthesis pull request the App
+# repository. A push's own run does one thing, the job relay: it starts this workflow on main by
+# Run workflow with relayed set to push, and that run looks and reads, admitted as the push would
+# have been (issue #274), since claude-code-action takes no push event and stops at "Unsupported
+# event type: push", while GitHub starts a run for a Run workflow the workflow token asks for. A
+# scheduled run and the stand-in are both started by the Actions bot, which every session's step
+# names in allowed_bots, since the action refuses a run no person started unless its actor is
+# listed there. The look runs no Claude. It lays the records of the open synthesis pull request the App
 # opened on main (work/tools/synth_base.sh), finds what changed since the stamp
 # (work/out/state.json), checks every verdict's quotes against today's texts and every text
 # against the concept ledger (work/tools/synth.py status), and writes what it found into the open
@@ -72,7 +78,8 @@ name: Synthesis
 #   - fewer runs than the variable SYNTHESIS_READS_PER_DAY (10 unless it says otherwise, 50 at
 #     most) have read today, in UTC, by the marker artifact synthesis-reads each reading run keeps;
 #   - the last three runs that read did not all fail, the last less than six hours ago, so a token
-#     at its limit or a broken brief does not spend the day; Run workflow always tries.
+#     at its limit or a broken brief does not spend the day; Run workflow by hand always tries,
+#     and a push's stand-in does not.
 #
 # The sessions run with the user's settings alone (--setting-sources user), after every CLAUDE.md,
 # CLAUDE.local.md, .mcp.json and .claude folder of the checkouts is deleted, so no repository
@@ -97,14 +104,21 @@ on:
   schedule:
     - cron: "41 6 * * *"
   workflow_dispatch:
+    inputs:
+      relayed:
+        description: "Leave empty. A push's run sets it to push, and the run is admitted as that push would be."
+        type: string
+        required: false
+        default: ""
 
 # Nothing at the top; each job asks for what it needs.
 permissions: {}
 
 # One run at a time, so two joins never write over each other; a run waiting behind another reads
-# what the other left.
+# what the other left. A push's relay has a group of its own, so it dispatches at once instead of
+# waiting behind a run that reads.
 concurrency:
-  group: synthesis
+  group: ${{ github.event_name == 'push' && format('synthesis-relay-{0}', github.run_id) || 'synthesis' }}
   cancel-in-progress: false
 
 defaults:
@@ -115,11 +129,26 @@ env:
   TOOLS: artifacts/_synthesis/work/tools
 
 jobs:
+  relay:
+    # A push's run starts this workflow on main by Run workflow, which the sessions can run in,
+    # and does nothing else: no checkout, no secret, and the one right a dispatch needs.
+    if: vars.CLAUDE_CROWD != 'true' && github.event_name == 'push' && github.repository == 'OpenSpineConsortium/SchwingNet' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write # the dispatch of this workflow, and nothing else
+    steps:
+      - name: Start this workflow on main, standing in for the push
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: gh workflow run synthesis.yml --repo "$REPO" --ref main -f relayed=push
+
   values:
     # Which secrets are set, learnt by a job that checks nothing out, runs nothing of the
     # repository's and uses no action, so no job that runs the synthesis's tools names a secret
     # only to compare it with nothing (ci.yml's values says why).
-    if: vars.CLAUDE_CROWD != 'true' && github.repository == 'OpenSpineConsortium/SchwingNet' && github.ref == 'refs/heads/main'
+    if: vars.CLAUDE_CROWD != 'true' && github.event_name != 'push' && github.repository == 'OpenSpineConsortium/SchwingNet' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions: {}
@@ -138,7 +167,7 @@ jobs:
 
   look:
     needs: values
-    if: vars.CLAUDE_CROWD != 'true' && github.repository == 'OpenSpineConsortium/SchwingNet' && github.ref == 'refs/heads/main'
+    if: vars.CLAUDE_CROWD != 'true' && github.event_name != 'push' && github.repository == 'OpenSpineConsortium/SchwingNet' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -262,7 +291,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
-          EVENT: ${{ github.event_name }}
+          # a push's stand-in is admitted as the push, so three failed runs still pause it
+          EVENT: ${{ inputs.relayed == 'push' && 'push' || github.event_name }}
           SWITCH: ${{ vars.SYNTHESIS_READS }}
           CROWD: ${{ vars.CLAUDE_CROWD }}
           CAP: ${{ vars.SYNTHESIS_READS_PER_DAY }}
@@ -362,6 +392,8 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ github.token }}
+          # the scheduled run and a push's stand-in are the Actions bot's, not a person's
+          allowed_bots: "github-actions"
           prompt: ${{ steps.brief.outputs.prompt }}
           claude_args: ${{ steps.brief.outputs.args }}
       - name: Take the reader's answer
@@ -492,6 +524,8 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ github.token }}
+          # the scheduled run and a push's stand-in are the Actions bot's, not a person's
+          allowed_bots: "github-actions"
           prompt: ${{ steps.skeptic-brief.outputs.prompt }}
           claude_args: ${{ steps.skeptic-brief.outputs.args }}
       - name: Take the skeptic's answer
@@ -537,6 +571,8 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ github.token }}
+          # the scheduled run and a push's stand-in are the Actions bot's, not a person's
+          allowed_bots: "github-actions"
           prompt: ${{ steps.recheck-brief.outputs.prompt }}
           claude_args: ${{ steps.recheck-brief.outputs.args }}
       - name: Take the re-checker's answer
@@ -582,6 +618,8 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ github.token }}
+          # the scheduled run and a push's stand-in are the Actions bot's, not a person's
+          allowed_bots: "github-actions"
           prompt: ${{ steps.judge-brief.outputs.prompt }}
           claude_args: ${{ steps.judge-brief.outputs.args }}
       - name: Take the judge's answer
