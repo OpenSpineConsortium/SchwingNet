@@ -4,7 +4,8 @@ The run id is the hash of the commit, the catalog and the run's configuration (C
 so the same configuration names the same folder, and started again the flow runs only what that
 folder still needs: nothing once the evaluation finished, the evaluation where training wrote its
 checkpoint.json, training with --resume where it left train/last.pt (issue #252). A sweep's row
-names its folder with --slug, and a folder holding another run is refused and left as it was.
+names its folder with --slug, and a folder holding another run is refused and left as it was. A
+start cut while it writes its record or witness list, or before its record, is started again.
 
 The flow runs in-process against a real synthetic catalog built by the tools, with a fake `pixi`
 on PATH standing in for the trainer, the evaluator and the W&B sync: it writes the files the flow
@@ -121,6 +122,27 @@ def load_flow():
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+class Killed(Exception):
+    """What a patched write raises, as a job killed at that write would stop."""
+
+
+def write_cut_short(names, at):
+    """Path.write_text made to write half its text to a file of these names and stop, at the
+    at-th write to them, as a full volume or a kill mid-write leaves a file; every other write is
+    the real one."""
+    real, seen = Path.write_text, []
+
+    def write_half(path, text, *args, **kwargs):
+        if path.name in names:
+            seen.append(path.name)
+            if len(seen) == at:
+                real(path, text[: len(text) // 2], *args, **kwargs)
+                raise Killed(f"cut while writing {path.name}")
+        return real(path, text, *args, **kwargs)
+
+    return mock.patch.object(Path, "write_text", write_half)
 
 
 def snapshot(folder):
@@ -345,6 +367,38 @@ class FlowReuseTest(unittest.TestCase):
         self.assertIn("holds notes.txt and no RUN.json", err)
         self.assertEqual(sorted(p.name for p in stray.iterdir()), ["notes.txt"])
         self.assertEqual(self.calls(), [])
+
+    def test_a_start_cut_between_its_configuration_and_its_record_starts_again(self):
+        with mock.patch.object(self.flow, "write_record", side_effect=Killed("cut before RUN.json")), self.assertRaises(Killed):
+            self.run_flow("--slug", "row-a")
+        self.assertEqual(sorted(p.name for p in (self.out / "row-a").iterdir() if p.name != ".lock"), ["CONFIGURATION.json", "split-check.json"])
+        rc, lines, err = self.run_flow("--slug", "row-a")
+        self.assertEqual(rc, 0, err)
+        self.assertNotIn("reused", self.said(lines))
+        self.assertEqual(self.tools_called(), ["train", "wandb_log", "evaluate", "wandb_log", "wandb_log"])
+        # One the start of another configuration left is not this run's and is refused.
+        (self.out / "row-b").mkdir()
+        shutil.copyfile(self.out / "row-a" / "CONFIGURATION.json", self.out / "row-b" / "CONFIGURATION.json")
+        self.log.unlink()
+        rc, _, err = self.run_flow("--slug", "row-b", "--seed", "2")
+        self.assertEqual(rc, 1)
+        self.assertIn("holds CONFIGURATION.json of another configuration and no RUN.json", err)
+        self.assertEqual(self.calls(), [])
+
+    def test_a_record_or_witness_list_cut_while_written_leaves_the_one_before(self):
+        # RUN.json is rewritten after the training step; a cut there must leave the first one.
+        with write_cut_short(("RUN.json", "RUN.json.tmp"), 2), self.assertRaises(Killed):
+            self.run_flow("--slug", "row-a")
+        json.loads((self.out / "row-a" / "RUN.json").read_text(encoding="utf-8"))
+        self.log.unlink()
+        rc, lines, err = self.run_flow("--slug", "row-a")
+        self.assertEqual(rc, 0, err)
+        self.assertEqual((self.said(lines)["reused"], self.tools_called()), ("trained", ["evaluate", "wandb_log", "wandb_log"]))
+        with write_cut_short(("witness.json", "witness.json.tmp"), 1), self.assertRaises(Killed):
+            self.run_flow("--slug", "row-b")
+        rc, lines, err = self.run_flow("--slug", "row-b")
+        self.assertEqual(rc, 0, err)
+        json.loads((self.out / "row-b" / "witness.json").read_text(encoding="utf-8"))
 
     def test_the_slug_places_the_folder_and_a_bad_slug_is_refused(self):
         rc, lines, err = self.run_flow("--slug", "resnet18-64px-0123abcd")

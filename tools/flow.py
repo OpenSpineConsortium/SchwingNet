@@ -36,7 +36,9 @@ where the evaluation finished (and no second ledger row), the evaluation alone w
 wrote its checkpoint.json, training carried on from its last epoch (`tools/train.py --resume`)
 where it left train/last.pt, else training from the start; RUN.json keeps its first start and
 its earlier jobs and gains a job for each step run now. A folder that holds another run's record
-is refused and left as it is.
+is refused and left as it is. The flow writes its own files whole and renames them into place,
+so a start cut while it writes one leaves the one before, and a folder a start left before its
+record, holding no more than the split check and this configuration, is started again.
 
 Before the first step the run's witness.json is written (tools/witness.py): the frozen list in
 data/witness/ where the repository has one, checked against this catalog, else the frames chosen
@@ -213,12 +215,28 @@ def configuration_sha256(configuration):
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
+def configuration_text(configuration):
+    """CONFIGURATION.json's text: the configuration sorted, one key a line."""
+    return json.dumps(configuration, indent=1, sort_keys=True) + "\n"
+
+
 def write_configuration(run_dir, configuration):
     """CONFIGURATION.json, written once: a run started again has the same configuration, since
     its hash is in the run's name."""
     path = Path(run_dir) / "CONFIGURATION.json"
     if not path.is_file():
-        path.write_text(json.dumps(configuration, indent=1, sort_keys=True) + "\n", encoding="utf-8")
+        write_whole(path, configuration_text(configuration))
+
+
+def write_whole(path, text):
+    """A file written beside its place and renamed into it, as tools/train.py writes its own, so a
+    start cut while writing it, by a kill or a full volume, leaves the one before and never half
+    of one: RUN.json is written again after every step, and a half one would make the folder no
+    run's for good."""
+    path = Path(path)
+    temporary = path.with_name(path.name + ".tmp")
+    temporary.write_text(text, encoding="utf-8")
+    os.replace(temporary, path)
 
 
 def job_specs(args, resume=False):
@@ -308,7 +326,7 @@ def run_slurm(job, run_dir, poll):
 
 
 def write_record(run_dir, record):
-    (Path(run_dir) / "RUN.json").write_text(record.model_dump_json(indent=1) + "\n", encoding="utf-8")
+    write_whole(Path(run_dir) / "RUN.json", record.model_dump_json(indent=1) + "\n")
 
 
 def append_ledger(path, record, activity, verified):
@@ -374,16 +392,30 @@ def what_is_left(run_dir, held):
     return RESTARTED
 
 
-def new_folder(run_dir):
+# What a start leaves before it writes RUN.json, each written whole (write_whole), so a start cut
+# there leaves at most these and their temporary files; CONFIGURATION.json only where it is this
+# configuration's (new_folder).
+BEFORE_RECORD = ("split-check.json", "CONFIGURATION.json", "RUN.json")
+
+
+def new_folder(run_dir, configuration):
     """A new run's folder. One a start left before it wrote the record holds at most the split
-    check, which is written again; anything else there is no run of this flow's, so it is
-    refused and left as it is."""
+    check and the configuration, which must be this run's, and their temporary files, all written
+    again; anything else there is no run of this flow's, so it is refused and left as it is."""
     run_dir = Path(run_dir)
     if run_dir.exists():
-        strays = sorted(p.name for p in run_dir.iterdir() if p.name != "split-check.json") if run_dir.is_dir() else [run_dir.name]
+        strays = sorted(p.name for p in run_dir.iterdir() if not left_by_a_start(p.name)) if run_dir.is_dir() else [run_dir.name]
         if strays:
             raise FlowError(f"{run_dir} holds {', '.join(strays[:5])} and no RUN.json, so it is no run of this flow's; nothing is touched")
+        held = run_dir / "CONFIGURATION.json"
+        if held.is_file() and held.read_text(encoding="utf-8") != configuration_text(configuration):
+            raise FlowError(f"{run_dir} holds CONFIGURATION.json of another configuration and no RUN.json, so it is no start of this run's; nothing is touched")
     run_dir.mkdir(parents=True, exist_ok=True)
+
+
+def left_by_a_start(name):
+    """Whether a file of this name is one a start writes before RUN.json, or its temporary file."""
+    return name.removesuffix(".tmp") in BEFORE_RECORD
 
 
 def steps_for(args, reused):
@@ -417,8 +449,8 @@ def command_run(args):
     if held:
         record = held
     else:
-        new_folder(run_dir)
-    (run_dir / "split-check.json").write_text(json.dumps(check, indent=1) + "\n", encoding="utf-8")
+        new_folder(run_dir, configuration)
+    write_whole(run_dir / "split-check.json", json.dumps(check, indent=1) + "\n")
     write_configuration(run_dir, configuration)
     jobs = [*record.jobs, JobRecord(step=Step.SPLIT_CHECK, job_id=f"local-{os.getpid()}-split-check", partition="runner", qos=None, hours_requested=0.01, seconds_used=1, gpus=0, preemptions=0, exit_code=0)]
     record = record.model_copy(update={"jobs": tuple(jobs)})
@@ -482,7 +514,7 @@ def write_witness(run_dir, catalog, catalog_sha256):
         document, how = for_run(catalog, catalog_sha256)
     except WitnessError as error:
         raise FlowError(f"witness frames: {error}") from error
-    (Path(run_dir) / "witness.json").write_text(json.dumps(document, indent=1) + "\n", encoding="utf-8")
+    write_whole(Path(run_dir) / "witness.json", json.dumps(document, indent=1) + "\n")
     print(json.dumps({"witness": how, "frames": len(document["frames"]), "missing": document["missing"]}), flush=True)
 
 
