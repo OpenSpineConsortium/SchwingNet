@@ -6,9 +6,21 @@ docs/REAL_XRAY_DATASETS_SPEC.md): `images/<split>/<stem>.png`, `meta/<stem>.json
 the device, the view and the boxes with their level names. This tool reads one bank, hashes every
 frame, and writes the shard `<grid root>/shards/<date>-<12 hex>/`: each frame as `<aa>/<sha256>.png`
 (schwingnet.catalog.frame_path), the manifest in the shape schwingnet.catalog.ShardManifest, and
-INGEST.json with the counts. The shard's name is its content, so the same bank ingested twice is
-the same shard and the second run writes nothing; a bank that changed is a new shard that names the
-old one as superseded. Nothing is deleted and nothing outside the shard is written.
+INGEST.json with the counts. The shard's name is its content, so the same bank ingested twice is the
+same shard and the second run writes nothing; a bank that changed is a new shard that names the old
+one as superseded. Nothing is deleted and nothing outside the shard is written, but for the staging
+folders a killed ingest left behind, which are cleared once they are older than the stage's time
+limit, and the reuse notes below. Reuse does not depend on the date or the commit (#260): where the
+source's current shard, or one no other shard supersedes, holds exactly the manifest this bank
+makes, apart from the date, the commit and what it supersedes, the run answers "already there" with
+that shard and cuts no dated twin; and where an earlier run, of a bank whose every file had the same
+path, size and modification time, with the same settings, the same frozen persons, the same registry
+entry and the same ingest code, noted its report under `<grid root>/.reuse/`, and the shard
+that note names is still one no other supersedes, the run reads no frame of the bank at all and
+answers from the note, checking only that every file the manifest names is in place. A bank changed
+in any file, a map added or a frame removed, is read again. A frame of more than 8 bits of grey is
+refused by name, since the trainer's 8-bit reading would clip it white and tools/bank.py windows it;
+the bank is made again.
 
 Before anything is written the frames are checked: a frame's bytes seen twice in the bank under
 one person count once (the second stem is reported as a duplicate, never silently kept, since two
@@ -64,6 +76,7 @@ import shutil
 import struct
 import sys
 import tempfile
+import time
 import zlib
 from pathlib import Path
 
@@ -72,6 +85,7 @@ sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "tools"))
 sys.path.insert(0, str(ROOT / "vendor" / "beethoven-qa" / "src"))
 
+import bank as bank_tool  # noqa: E402  (tools/bank.py, whose listing of a folder the reuse key is made from)
 import catalog as catalog_tool  # noqa: E402  (tools/catalog.py, the reading and writing around the rules)
 from beethoven_qa.contracts import ViolationError  # noqa: E402
 from schwingnet.catalog import (  # noqa: E402
@@ -91,6 +105,12 @@ from schwingnet.catalog import (  # noqa: E402
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 MANIFEST = "MANIFEST.json"
 REPORT = "INGEST.json"
+REUSE = ".reuse"
+# A staging folder older than the bank stage's time limit (two days) and a margin is a killed
+# ingest's, never one still being filled.
+STALE_STAGING_SECONDS = 3 * 24 * 3600
+# What may differ between two manifests of the same frames with nothing else changed.
+CIRCUMSTANCE = ("name", "ingest_date", "code_commit", "supersedes")
 # What a bank's meta calls a level, mapped onto the catalog's 27 classes where the spelling differs.
 LEVEL_NAMES = {"S1": "sacrum", "Sacrum": "sacrum", "SACRUM": "sacrum"}
 # The meta's keys for a frame's projected level map and what projected it (the module docstring).
@@ -112,6 +132,16 @@ def png_size(data):
     if width == 0 or height == 0:
         raise IngestError("a PNG of zero size")
     return width, height
+
+
+def refuse_wide_grey(data):
+    """A frame of 16 bits of grey (colour type 0) is refused by name: the trainer's image library
+    reads it as 16-bit integers and its conversion to 8-bit grey clips every value above 255, so
+    the frame would train white (#260); tools/bank.py windows such a frame to 8 bits. Sixteen bits
+    of colour, or of grey with alpha, the library reads at 8 bits a channel, which is no clip."""
+    if data[24] == 16 and data[25] == 0:
+        raise IngestError("a 16-bit grey frame, which the trainer's 8-bit reading clips white; bank it"
+                          " again with tools/bank.py, which windows it to 8 bits (#260)")
 
 
 def png_chunks(data):
@@ -381,6 +411,7 @@ def read_frame(image, meta_path, settings, bank):
     data = image.read_bytes()
     sha = hashlib.sha256(data).hexdigest()
     width, height = png_size(data)
+    refuse_wide_grey(data)
     meta = json.loads(meta_path.read_text(encoding="utf-8"))
     if not isinstance(meta, dict):
         raise IngestError(f"{meta_path.name} is not a JSON object")
@@ -474,12 +505,145 @@ def frozen_not_seen(persons, settings, inputs):
     return sorted(p for p in inputs.test_persons if p.startswith(prefix) and p not in persons)
 
 
+def shard_manifests(grid_root):
+    """Every shard's MANIFEST.json under `<grid root>/shards/`, in name order, never one inside a
+    folder whose name starts with a dot, which is a staging folder and no shard (pathlib's glob
+    matches such names)."""
+    found = Path(grid_root).glob("shards/*/" + MANIFEST)
+    return sorted(path for path in found if not path.parent.name.startswith("."))
+
+
+def heads(grid_root):
+    """Every shard of the source that no other shard there supersedes, by name, with its folder
+    and its manifest as written; a manifest that cannot be read is refused, as latest_shard does."""
+    manifests = {}
+    for path in shard_manifests(grid_root):
+        try:
+            manifests[path.parent] = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as error:
+            raise IngestError(f"{path}: not a readable manifest: {error}") from error
+    superseded = {data.get("supersedes") for data in manifests.values()}
+    return sorted((data["name"], folder, data) for folder, data in manifests.items() if data["name"] not in superseded)
+
+
+def same_frames_and_facts(one, other):
+    """Whether two manifests hold the same frames, labels and facts, whatever their date, commit
+    and the shard they supersede, which are circumstances of the run and not the shard's content."""
+    def content(data):
+        return {key: value for key, value in data.items() if key not in CIRCUMSTANCE}
+    return content(one) == content(other)
+
+
+def equivalent_head(grid_root, data):
+    """A shard no other supersedes whose manifest is this one in all but its circumstances, the
+    newest by name where there are several; None where there is none. A shard that something
+    supersedes is never reused, since the catalog reads only the head of a chain."""
+    found = [(name, existing) for name, _, existing in heads(grid_root) if same_frames_and_facts(existing, data)]
+    return found[-1][1] if found else None
+
+
+def clear_stale_staging(grid_root, now=None):
+    """Remove the staging folders a killed ingest left under shards/, those older than the stage's
+    time limit; the number removed."""
+    now = time.time() if now is None else now
+    cleared = 0
+    for folder in sorted(Path(grid_root).glob("shards/.ingest-*")):
+        if folder.is_dir() and now - folder.stat().st_mtime > STALE_STAGING_SECONDS:
+            shutil.rmtree(folder, ignore_errors=True)
+            cleared += not folder.exists()
+    return cleared
+
+
+def file_sha256(path):
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def reuse_key(bank, settings, inputs):
+    """The hash of everything a shard's manifest follows from: every file of the bank by its path,
+    size and modification time (tools/bank.py's listing, the bank's own stamp left out), the
+    settings, the frozen persons, the source's registry entry and the ingest code; None for an
+    empty or missing bank, which is read and refused. A bank changed in any file, a level map
+    added, a frame removed or a meta edited, has another key and is read again."""
+    listing = bank_tool.bank_listing(bank)
+    if not listing:
+        return None
+    entry = inputs.registry[settings.source]
+    facts = {
+        "bank_listing_sha256": bank_tool.listing_sha256(listing),
+        "settings": [settings.source, settings.kind.value, settings.split, settings.persons, settings.person_prefix,
+                     settings.labeller, settings.modality.value, settings.device_class.value],
+        "test_persons_sha256": inputs.test_persons_sha256,
+        "registry_entry": json.loads(entry.model_dump_json()),
+        "code_sha256": [file_sha256(Path(__file__)), file_sha256(ROOT / "src" / "schwingnet" / "catalog.py")],
+    }
+    return hashlib.sha256(json.dumps(facts, sort_keys=True).encode("utf-8")).hexdigest()
+
+
+def reuse_note(grid_root, key):
+    return Path(grid_root) / REUSE / f"{key}.json"
+
+
+def manifest_sha256(data):
+    return hashlib.sha256(json.dumps(data, sort_keys=True).encode("utf-8")).hexdigest()
+
+
+def record_reuse(grid_root, key, report, folder):
+    """Note the report a run with this key gave and the manifest its shard holds, in a dot folder
+    of the source's own beside shards/, which therefore holds shards alone, so the next run with
+    the same key is answered without reading the bank. It is written for a shard found already there as for one written,
+    so a shard cut before the note existed, or under another key, is answered from the second run
+    on."""
+    data = json.loads((Path(folder) / MANIFEST).read_text(encoding="utf-8"))
+    note = {"key": key, "manifest_sha256": manifest_sha256(data), "report": report}
+    path = reuse_note(grid_root, key)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    part = path.with_name(f"{path.name}.{os.getpid()}.part")
+    part.write_text(json.dumps(note, indent=1, sort_keys=True) + "\n", encoding="utf-8")
+    os.replace(part, path)
+
+
+def reused_by_stamp(grid_root, key):
+    """The report a run with the same key gave, answered without reading the bank, where the
+    shard it names is still one no other supersedes and holds the manifest it held then; None
+    otherwise. Every file the shard's manifest names must be in place, which costs a look at
+    each and no read."""
+    if key is None:
+        return None
+    try:
+        note = json.loads(reuse_note(grid_root, key).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    report = note.get("report") if isinstance(note, dict) else None
+    if not isinstance(report, dict) or note.get("key") != key:
+        return None
+    found = {name: (folder, data) for name, folder, data in heads(grid_root)}
+    if report.get("shard") not in found:
+        return None
+    folder, data = found[report["shard"]]
+    if manifest_sha256(data) != note.get("manifest_sha256"):
+        return None
+    manifest = ShardManifest.model_validate(data)
+    missing = [p for p in present_paths(manifest) if not (folder / p).is_file()]
+    if missing:
+        raise IngestError(f"{folder}: {len(missing)} files its manifest names are missing (first {missing[0]})")
+    report.update({"outcome": "already there", "verified": len(manifest.items), "folder": str(folder),
+                   "verified_by": "presence: the bank's files, the settings and the inputs are unchanged"})
+    return report
+
+
+def present_paths(manifest):
+    for item in manifest.items:
+        yield item.path
+        if item.level_map:
+            yield item.level_map.path
+
+
 def latest_shard(grid_root):
     """The head of the source's shard chain, with what it supersedes: the shard under
     `<grid root>/shards/` that none of the others there supersedes, the newest by name where the
     chain forked; a pair of None with no shard."""
     manifests = {}
-    for path in sorted(Path(grid_root).glob("shards/*/" + MANIFEST)):
+    for path in shard_manifests(grid_root):
         try:
             data = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, ValueError) as error:
@@ -657,6 +821,46 @@ def parser():
     return top
 
 
+def ingest(args, settings, inputs, key, cleared, motion=None):
+    """Read the bank and plan the shard, or write it with `run`; the report. A shard already there
+    under another date or commit with the same content is the answer, and no twin is cut."""
+    items, sources, report = plan_shard(Path(args.bank), settings, inputs)
+    manifest, data = manifest_of(items, settings)
+    existing = equivalent_head(settings.grid_root, data)
+    if existing is not None:
+        manifest, data = ShardManifest.model_validate(existing), existing
+    folder = shard_folder(settings.grid_root, manifest.name)
+    report.update({"shard": manifest.name, "folder": folder, "kind": manifest.kind.value})
+    if key is not None:
+        report["reuse_key"] = key
+    if args.command == "run":
+        report["outcome"] = write_shard(folder, items, sources, data, report)
+        report["verified"] = verify_shard(folder, manifest)
+        report["staging_cleared"] = cleared
+        if key is not None:
+            note_reuse(Path(args.bank), motion, settings.grid_root, key, report, folder)
+    return report
+
+
+def bank_motion_sha256(bank):
+    return bank_tool.listing_sha256(bank_tool.bank_motion(bank))
+
+
+def note_reuse(bank, motion, grid_root, key, report, folder):
+    """The note is a saving and no part of the shard: where it cannot be written, or the bank moved
+    while it was read, an entry of it added, removed, renamed or written, even one put back as it
+    was, so the shard may hold another state of it than the key names, the run says so and the next
+    one reads the bank. The motion is taken before the key's listing and again here; the code the
+    key hashes is the code this run ran, so a merge landing meanwhile changes nothing here."""
+    try:
+        if motion is None or bank_motion_sha256(bank) != motion:
+            report["reuse_note"] = "not written: the bank changed while it was read"
+            return
+        record_reuse(grid_root, key, report, folder)
+    except (OSError, ValueError) as error:
+        report["reuse_note"] = f"not written: {error}"
+
+
 def main(argv=None):
     args = parser().parse_args(argv)
     try:
@@ -664,14 +868,15 @@ def main(argv=None):
         if args.source not in inputs.registry:
             raise IngestError(f"{args.source} has no registry entry")
         settings = Settings(args, inputs.registry[args.source])
-        items, sources, report = plan_shard(Path(args.bank), settings, inputs)
-        manifest, data = manifest_of(items, settings)
-        folder = shard_folder(settings.grid_root, manifest.name)
-        report.update({"shard": manifest.name, "folder": folder, "kind": manifest.kind.value})
-        if args.command == "run":
-            report["outcome"] = write_shard(folder, items, sources, data, report)
-            report["verified"] = verify_shard(folder, manifest)
-        print(json.dumps(report, indent=1, sort_keys=True))
+        motion = bank_motion_sha256(args.bank) if args.command == "run" else None
+        key = reuse_key(args.bank, settings, inputs)
+        cleared = clear_stale_staging(settings.grid_root) if args.command == "run" else 0
+        reused = reused_by_stamp(settings.grid_root, key) if args.command == "run" else None
+        if reused is not None:
+            reused["staging_cleared"] = cleared
+            print(json.dumps(reused, indent=1, sort_keys=True))
+            return 0
+        print(json.dumps(ingest(args, settings, inputs, key, cleared, motion), indent=1, sort_keys=True))
         return 0
     except (catalog_tool.CatalogError, IngestError, OSError, ValueError, ViolationError) as error:
         # A pydantic ValidationError is a ValueError; a ViolationError is a rule of the catalog
