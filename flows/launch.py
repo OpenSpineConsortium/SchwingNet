@@ -14,11 +14,13 @@ digest of the files the flow's kind executes (code_of), not the commit: main mer
 day and most merges change nothing a flow runs, so a job cut short and queued again after one
 carries its run on, where a key with the commit in it started the run over (issue #252, finding
 27). What it reads is listed by the flow's own key_reads (reads_of): for bank every recipe it
-lists with its raw folder's state, for sweep the plan file's bytes. Every run carries the key as
-a tag, and the newest run with that key decides (schwingnet.pipeline.decide): one that did not
-succeed is resumed, else a new run starts. A job queued again with the same words therefore
-continues where the killed one stopped, and a change of code, of configuration, of a plan or of
-a raw copy starts afresh. A new run is given the checkout's --commit, which resume clones with
+lists with its raw folder's state, for catalog every shard manifest the build would read with
+its size and sha256, for sweep the plan file's bytes. Every run carries the key as a tag, and the
+newest run with that key decides (schwingnet.pipeline.decide): one that did not succeed is
+resumed where Metaflow saved its parameters, else a new run starts. A job queued again with the
+same words therefore continues where the killed one stopped, and a change of code, of
+configuration, of a plan, of a raw copy or of a shard starts afresh. A new run is given the
+checkout's --commit, which resume clones with
 the other parameters, so a resumed run names the commit it was first started on, which holds
 the same code; its tags name the commit that launched it and the code's digest beside the key.
 Bank's --date is in the key when the caller gave it, so a job
@@ -35,12 +37,20 @@ and a launch of the same key then starts a run of its own beside it, as two jobs
 before Metaflow, the stage's own locks, catalog's BUILD.lock among them, ordering what may not
 overlap. A beat left by a launcher killed with its job counts no more once it is LIVE_SECONDS
 old, at once where it names this very Slurm job, which Slurm queued again, and at once where it
-names a process on this host that is gone.
+names a process on this host that is gone. The runs are listed before the beats are read, each
+by one read of its end task, and the newest is read again before it is resumed (decision_of), so
+a run that ended well in the meantime is never resumed as one that had not.
 
 The first line on stdout is the decision, as JSON, flushed before the flow starts, with "live"
-the id of a newest run passed over as live; the last says which run it was and how it ended; the
-exit code is the flow's own where it failed, else the end step's verdict (0 all well, 1
-otherwise), so a job's afterok means what it meant before.
+the id of a newest run passed over as live; after the flow's own lines a second JSON line says
+which run it was and how it ended. The exit code is the flow's own where it failed, else the end
+step's verdict (0 all well, 1 otherwise), so a job's afterok means what it meant before. A
+refusal is the line LaunchError: <words> on stderr, before any flow starts, with the exit code 64
+for words the launcher does not take, 69 for what the node lacks and 70 for a rule of
+schwingnet.pipeline the runs broke; anything else that stops it prints its traceback and exits 1.
+Whatever the end, the last line on stdout is the flow's word in RC_WORDS with the exit code and
+the time, as XR_CATALOG_RC=0 2026-10-25 12:00:00: the gate's status keeps that line and
+withholds the words of every other, so a job's log shows how the launcher ended wherever it ended.
 
 The datastore is local, on the lab volume: --root, else $SCHWINGNET_METAFLOW, else
 /rs/rs_grp_oschome/go2432/metaflow. The flow runs with that folder as its working directory:
@@ -63,13 +73,15 @@ import sys
 import tempfile
 import threading
 import time
-from datetime import date
+import traceback
+from datetime import date, datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "vendor" / "beethoven-qa" / "src"))
 
+from beethoven_qa.contracts import ViolationError  # noqa: E402
 from schwingnet.pipeline import RESUME, Beat, RunState, decide, marked_live, run_key  # noqa: E402
 
 FLOWS = {"bank": "BankFlow", "catalog": "CatalogFlow", "sweep": "SweepFlow"}
@@ -80,7 +92,14 @@ NO_METAFLOW = (
 )
 EX_USAGE = 64
 EX_UNAVAILABLE = 69
+EX_SOFTWARE = 70
 BEAT_SECONDS = 60
+# The word of the line every exit of the launcher ends with: the one the bank and catalog stages'
+# scripts end with when they run straight, and for the sweep one apart from the SN_SWEEP_RC its
+# driver prints after the launcher's. The gate's status keeps such a line and withholds every other
+# the launcher prints, so a job shows how it ended wherever it ended (the second review of #252,
+# finding 6).
+RC_WORDS = {"bank": "XR_BANK_RC", "catalog": "XR_CATALOG_RC", "sweep": "SWEEP_RC"}
 USAGE = "usage: python flows/launch.py {bank|catalog|sweep} [--max-workers N] [--root DIR] -- <flow parameters>"
 
 
@@ -199,6 +218,36 @@ def require_metaflow():
         raise LaunchError(f"{NO_METAFLOW} ({type(error).__name__}: {error})", EX_UNAVAILABLE) from error
 
 
+def end_state(run):
+    """Whether the run finished and whether it succeeded, from one read of its end task. Metaflow
+    registers a task's artifacts a file at a time once it has marked the attempt done, its success
+    and its ok among them, so two reads of a run, as its two properties make, can fall on either
+    side of one of those files: a run that succeeded read as not finished broke decide's rule and
+    ended the launch in a traceback (the second review of #252, finding 3). The success is read
+    first, and counts as finished, since Metaflow sets it only with the ok."""
+    end = run.end_task
+    if end is None:
+        return False, False
+    successful = bool(end.successful)
+    return successful or bool(end.finished), successful
+
+
+def parameters_saved(run):
+    """Whether Metaflow saved the run's parameters, its _parameters task done, as it is before any
+    step runs and in a resume that got that far: a run killed after Metaflow registered it and
+    before then has no such task, or one not done, and Metaflow refuses to resume it."""
+    try:
+        task = run["_parameters"].task
+    except KeyError:
+        return False
+    return task is not None and bool(task.finished)
+
+
+def run_state(run):
+    finished, successful = end_state(run)
+    return RunState(run.id, finished, successful, parameters_saved=parameters_saved(run))
+
+
 def runs_with_key(flow_class, key):
     """The runs of the flow tagged with the key, newest first; none where the flow never ran."""
     from metaflow import Flow, namespace
@@ -210,7 +259,15 @@ def runs_with_key(flow_class, key):
     except MetaflowNotFound:
         return []
     runs.sort(key=lambda run: (run.created_at, run.id), reverse=True)
-    return [RunState(run.id, bool(run.finished), bool(run.successful)) for run in runs]
+    return [run_state(run) for run in runs]
+
+
+def read_again(flow_class, run):
+    """The run as Metaflow has it now, marked live as it was."""
+    from metaflow import Run, namespace
+
+    namespace(None)
+    return run_state(Run(f"{flow_class}/{run.run_id}"))._replace(live=run.live)
 
 
 def beats_folder(root, flow_class, key):
@@ -322,6 +379,22 @@ class Heartbeat:
             self.said = True
 
 
+def decision_of(flow_class, key, folder):
+    """Run anew or resume, and the runs that says it, newest first. The runs are listed before the
+    beats are read, so a run listed was made after its launcher's beat was written; and the newest
+    is read again after them before it is resumed, since a run that ended well after the listing,
+    its launcher gone before the beats were read, would be resumed as one that had not, every step
+    of it cloned (the second review of #252, finding 3)."""
+    host, _, job = this_launcher()
+    runs = runs_with_key(flow_class, key)
+    runs = marked_live(runs, read_beats(folder, host), job, time.time())
+    decision, origin = decide(runs)
+    if decision == RESUME:
+        runs = [read_again(flow_class, runs[0]), *runs[1:]]
+        decision, origin = decide(runs)
+    return runs, decision, origin
+
+
 def run_tags(key, commit, code):
     """What every run is tagged with: the key that finds it, the commit of the checkout that
     launched it and the code's digest, as Metaflow's UI and client filter runs by."""
@@ -390,11 +463,7 @@ def launch(argv):
     key = run_key(name, code, words, reads_of(name, repo, words))
     flow_class = FLOWS[name]
     folder = beats_folder(root, flow_class, key)
-    host, _, job = this_launcher()
-    # the runs before the beats: a run listed was made after its launcher's beat was written
-    runs = runs_with_key(flow_class, key)
-    runs = marked_live(runs, read_beats(folder, host), job, time.time())
-    decision, origin = decide(runs)
+    runs, decision, origin = decision_of(flow_class, key, folder)
     live = runs[0].run_id if runs and runs[0].live and not runs[0].successful else None
     say({"code": code, "decision": decision, "flow": name, "key": key, "live": live, "origin": origin, "root": str(root)})
     with tempfile.TemporaryDirectory(prefix="launch-") as scratch:
@@ -410,12 +479,32 @@ def launch(argv):
     return exit_code(flow_code, verdict)
 
 
+def refused(error):
+    """A refusal in words, as the line LaunchError: <words>, whose words the gate's status withholds."""
+    print(f"LaunchError: {error}", file=sys.stderr, flush=True)
+    return error.code
+
+
+def say_ended(argv, code):
+    """The launcher's last line: its stage's word, the exit code and the time, and no value of a run."""
+    word = RC_WORDS.get(argv[0] if argv else "", "LAUNCH_RC")
+    print(f"{word}={code} {datetime.now():%Y-%m-%d %H:%M:%S}", flush=True)
+
+
 def main(argv=None):
+    argv = sys.argv[1:] if argv is None else argv
     try:
-        return launch(sys.argv[1:] if argv is None else argv)
+        code = launch(argv)
     except LaunchError as error:
-        print(f"launch: {error}", file=sys.stderr, flush=True)
-        return error.code
+        code = refused(error)
+    except ViolationError as error:
+        code = refused(LaunchError(f"a rule of schwingnet.pipeline was broken, so no run was started or resumed: {error}",
+                                   EX_SOFTWARE))
+    except Exception:  # anything else ends the job as Python ends it, with its traceback, and then the line
+        traceback.print_exc()
+        code = 1
+    say_ended(argv, code)
+    return code
 
 
 if __name__ == "__main__":

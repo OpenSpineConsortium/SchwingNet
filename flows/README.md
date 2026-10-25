@@ -23,8 +23,9 @@ Metaflow's own resume rather than by anything written around it.
   bank cloned.
 - `catalog.py`, CatalogFlow: stage 3, the catalog's build and its split check, in one step that
   runs grid/03-catalog.sbatch whole, since the build lock is held from the listing of the
-  manifests to the marker (issue #80); a kill reruns it whole, which costs under a minute. Its
-  verdict is the stage's XR_CATALOG_RC.
+  manifests to the marker (issue #80); a kill in it reruns it whole, which costs under a minute,
+  and a kill in end, once the build is done, clones the build, but only while the manifests are
+  as the key names them (below). Its verdict is the stage's XR_CATALOG_RC.
 - `sweep.py`, SweepFlow: one plan of the block smoke test (grid/sweeps/<plan>.json). start runs
   `tools/block_sweep.py prepare`, a foreach over the rows with no parent runs `block_sweep.py row`
   for each, a second foreach the warm starts, which read a parent's train/best.pt, and end runs
@@ -57,7 +58,15 @@ by its own key_reads: for bank a line per recipe start would list with the recip
 raw folder's state, every file by path, size and modification time as tools/bank.py's BANK.json
 stamp lists it, since a resume clones start's listing of what has a raw copy and every bank step
 that finished: a raw copy fetched, grown or changed since the cut, or a recipe edited, names
-another key and so a new run, while raw copies as they were resume; for sweep the plan file's
+another key and so a new run, while raw copies as they were resume; for catalog a line per
+manifest the stage would build from, each `<source>/shards/<shard>/MANIFEST.json` under the data
+root as its find lists them, by its path, size and sha256, since a resume of a run cut in end
+clones its build: a shard landed, gone or rewritten since names another key and so a new run
+that builds from what is there, while manifests as they were carry the cut run on (the second
+review of #252, finding 2; resuming from the catalog step, Metaflow's `resume catalog`, would
+rebuild on every resume, with nothing new as well). The step lists the manifests again under the
+build lock, so a shard that lands between the launch and that listing is in the build and not in
+the key, and the next launch, whose key names it, runs anew. For sweep it is the plan file's
 sha256, since start makes the state folder and its lists of rows from the plan. Every run it
 starts or resumes carries the tags `key:<key>`, `commit:<7>`, the checkout that launched it, and
 `code:<12>`; a new run is given the checkout's `--commit`, which resume clones with the other
@@ -65,14 +74,22 @@ parameters, so a resumed run names the commit it was first started on, which hol
 code. It lists the runs of the flow carrying the key, newest first,
 and the newest decides (schwingnet.pipeline.decide): a newest run that did not succeed, killed
 or failed, is resumed (`resume --origin-run-id`, with the same --max-workers and no parameters,
-which resume clones); else a new run starts. A job queued again with the same words therefore
-continues where the killed one stopped; a change of the code it runs, of words, of a plan or of
-a raw copy starts afresh, and so does a launch after a success, where the tools' own
-content addressing finds the finished work (an ingest's "already there", a run folder tools/flow.py
-reuses). Bank's ingest date is the caller's `--date`, in the key like any word, so a job asking
-for another date runs anew under it; where the words name none, the launcher chooses today for a
-new run, after the key is taken, and resume keeps it, so a resumed ingest writes the shard its
-first half meant, on whatever day the job is queued again.
+which resume clones), unless Metaflow never saved its parameters; else a new run starts.
+Metaflow registers a run, with its tags, before it saves the parameters, and refuses to resume a
+run that has none, after registering the resume as one more such run of the key, so a run killed
+between the two holds no work, and resuming it made every later launch of the key fail in turn
+(the second review of #252, finding 1). Each run's end task is read once for whether it finished
+and whether it succeeded, a success counting as finished, since Metaflow writes the two flags one
+after the other, and the newest is read again, after the beats, before it is resumed, so a run
+that ended well in the meantime is not resumed as one that had not (finding 3). A job queued
+again with the same words therefore continues where the killed one stopped; a change of the code
+it runs, of words, of a plan, of a raw copy or of a shard starts afresh, and so does a launch
+after a success, where the tools' own content addressing finds the finished work (an ingest's
+"already there", a run folder tools/flow.py reuses). Bank's ingest date is the caller's
+`--date`, in the key like any word, so a job asking for another date runs anew under it; where
+the words name none, the launcher chooses today for a new run, after the key is taken, and
+resume keeps it, so a resumed ingest writes the shard its first half meant, on whatever day the
+job is queued again.
 
 A run still running is never resumed, since a resume clones what it has done so far, a catalog
 built before the shards that landed since among them. While its flow lasts the launcher keeps a
@@ -91,13 +108,22 @@ this host that is gone.
 
 Its first line on stdout is the decision, `{"code", "decision", "flow", "key", "live", "origin",
 "root"}`, with `code` the code's digest and `live` the id of a newest run passed over as live,
-else null, and its last `{"flow", "run":
-"Class/ID", "successful", "verdict"}`; the flow's own output passes
-through between them. It exits with the flow's own code where that is not 0 (128 plus the
-signal where the flow was killed), else with the verdict, so a job's afterok means what it meant
-before Metaflow. It refuses, exit 69, where Metaflow cannot be imported or the datastore's parent
-folder is missing, and, exit 64, a flow it does not know or a --commit among the words, which it
-passes itself.
+else null, and the flow's own output passes through after it, followed by `{"flow", "run":
+"Class/ID", "successful", "verdict"}`. It exits with the flow's own code where that is not 0 (128
+plus the signal where the flow was killed), else with the verdict, so a job's afterok means what
+it meant before Metaflow. A refusal comes before any flow starts, as the line `LaunchError:
+<words>` on stderr: exit 69 where Metaflow cannot be imported, the datastore's parent folder is
+missing or the commit or the code cannot be named; exit 64 for a flow it does not know,
+a --max-workers that is no whole number from 1 to 9999 or a --commit among the words, which it
+passes itself; and exit 70 where the runs Metaflow lists break a rule of schwingnet.pipeline.
+Anything else that stops it prints its traceback and exits 1. Whatever the end, its last line on
+stdout is the flow's
+`XR_BANK_RC=<code> <date> <time>`, `XR_CATALOG_RC=` or `SWEEP_RC=` (`LAUNCH_RC=` for a flow it
+does not know), since the gate's status keeps such a line and withholds the words of every other:
+a job's log shows how it ended, a refusal's included (the second review of #252, finding 6). A
+bank or catalog job whose flow ran so logs two such lines, the stage's own, behind Metaflow's
+prefix, and the launcher's, last, with the job's exit code; a sweep job's driver prints its
+SN_SWEEP_RC after the launcher's SWEEP_RC.
 
 The stage scripts call it: grid/02-bank-ingest.sbatch and grid/03-catalog.sbatch exec it whenever
 Slurm runs them (SLURM_JOB_ID set and SCHWINGNET_FLOW_STEP not), passing only what the caller
@@ -105,7 +131,8 @@ gave, and the flows' steps run the same scripts again with SCHWINGNET_FLOW_STEP=
 their bodies; a direct bash call, as the tests make, runs the body as before. grid/sweep-driver.sbatch
 runs every row through `launch.py sweep`, and calls block_sweep itself only for what runs no row:
 `synthetic`, the synthetic catalog, and `state`, the state folder's path for its report. PYDRV on
-the grid is grid/bin/train-cpu-python, which carries Metaflow.
+the grid is grid/bin/train-cpu-python, which carries Metaflow and execs grid/box.sh; every tool
+of a bank or catalog step runs through the two, so both are in those kinds' code digests.
 
 ## The datastore
 

@@ -1,20 +1,27 @@
 """CatalogFlow: stage 3 of the X-ray chain, the catalog's build and split check, under Metaflow.
 
 Started only by flows/launch.py (python flows/launch.py catalog -- --data-root ... --store ...),
-which resumes the newest run of the same words and code that did not finish.
-grid/03-catalog.sbatch execs that launcher whenever Slurm runs it (issue #252).
+which resumes the newest run of the same words, code and shard manifests that did not finish.
+grid/03-catalog.sbatch execs that launcher whenever Slurm runs it (issue #252). A resume clones
+every step that finished, the build among them where the run was cut in end, so the launcher keys
+the run by every manifest the stage would build from, its path, size and sha256 (key_reads,
+below): a shard landed, gone or rewritten since names another key, and the job starts a new run
+that builds from what is there, while manifests as they were carry the cut run on, its build
+cloned (the second review of #252, finding 2).
 
 One working step, since the build lock is held from the listing of the manifests to the marker
 (issue #80): the step runs grid/03-catalog.sbatch with SCHWINGNET_FLOW_STEP=1 in the launcher's
 working folder, so its lock, its report (logs/03-catalog-STAGE-REPORT.md) and its marker are
-where they always were. A kill reruns the step whole on resume, which costs under a minute. The
-stage's own refusal, a build or a split check that failed, is recorded and not raised, and the
+where they always were. A kill in the step reruns it whole on resume, which costs under a minute,
+and a kill in end clones it under the key above. The stage's own refusal, a build or a split check that failed, is recorded and not raised, and the
 end step's verdict carries it from the stage's XR_CATALOG_RC line, so the job's exit means what
 it meant before.
 """
 
+import hashlib
 import os
 import re
+import stat
 import subprocess
 from pathlib import Path
 
@@ -24,6 +31,8 @@ from metaflow.cards import Markdown
 REPO = Path(os.environ.get("SCHWINGNET") or Path(__file__).resolve().parent.parent)
 STAGE = REPO / "grid" / "03-catalog.sbatch"
 REPORT = Path("logs") / "03-catalog-STAGE-REPORT.md"
+# The stage's own data root where the words name none, as grid/03-catalog.sbatch sets it.
+DATA_ROOT = "/rs/rs_grp_oschome/go2432/data"
 RC_LINE = re.compile(r"^XR_CATALOG_RC=([0-9]{1,3}) ", re.M)
 
 
@@ -32,9 +41,76 @@ def launcher_folder():
     return Path(os.environ.get("SCHWINGNET_WORKDIR") or os.getcwd())
 
 
-def from_launcher(path):
+def from_launcher(path, folder=None):
     """A path parameter as the caller meant it: a relative one is read from the launcher's folder."""
-    return str(launcher_folder() / path) if path and not Path(path).is_absolute() else path
+    return str((folder or launcher_folder()) / path) if path and not Path(path).is_absolute() else path
+
+
+def word_value(words, flag):
+    """The value the words give a flag, the last one as click takes it; '' where they give none."""
+    value, rest = "", list(words)
+    while rest:
+        word = rest.pop(0)
+        if word == flag and rest:
+            value = rest.pop(0)
+        elif word.startswith(flag + "="):
+            value = word[len(flag) + 1:]
+    return value
+
+
+def real_folder(path):
+    """Whether a path is a folder itself, not a link to one, as find walks only into such."""
+    try:
+        return stat.S_ISDIR(os.lstat(path).st_mode)
+    except OSError:
+        return False
+
+
+def folders_in(folder):
+    """The names of the folders find walks into under a folder, in order: real ones, never a link
+    to one; none where the folder cannot be read, of which find's listing says nothing."""
+    try:
+        with os.scandir(folder) as entries:
+            return sorted(entry.name for entry in entries if entry.is_dir(follow_symlinks=False))
+    except OSError:
+        return []
+
+
+def manifests_listed(data_root):
+    """The manifests the stage builds from, as its find and awk list them: each
+    <source>/shards/<shard>/MANIFEST.json under the data root, of any kind, reached through no
+    link, where neither the source's name nor the shard's starts with a dot."""
+    listed = []
+    for source in folders_in(data_root):
+        if source.startswith(".") or not real_folder(data_root / source / "shards"):
+            continue
+        for shard in folders_in(data_root / source / "shards"):
+            manifest = data_root / source / "shards" / shard / "MANIFEST.json"
+            if not shard.startswith(".") and os.path.lexists(manifest):
+                listed.append(manifest)
+    return listed
+
+
+def manifest_line(data_root, manifest):
+    """A manifest as the key names it: its path under the data root, its size and its sha256, read
+    in one pass; 'unreadable' where it cannot be read, as the build would then refuse it."""
+    name = manifest.relative_to(data_root).as_posix()
+    try:
+        with manifest.open("rb") as handle:
+            sha256 = hashlib.file_digest(handle, "sha256").hexdigest()
+            return f"{name} {handle.tell()} {sha256}"
+    except OSError:
+        return f"{name} unreadable"
+
+
+def key_reads(words, folder):
+    """What a run of these words reads that the words do not name, for the launcher's key: a line
+    per manifest the stage would build from. Read in the launcher, before the run, from the
+    launcher's folder, as the catalog step reads the same words. The step lists the manifests
+    again under the build lock, so a shard that lands between the two is in the build and not in
+    the key, and the next launch, whose key names it, runs anew rather than resume that run."""
+    data_root = Path(from_launcher(word_value(words, "--data-root"), folder) or DATA_ROOT)
+    return [manifest_line(data_root, manifest) for manifest in manifests_listed(data_root)]
 
 
 def stage_rc(output):

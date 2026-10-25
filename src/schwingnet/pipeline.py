@@ -8,8 +8,9 @@ names a launch by the flow, the code it runs, the flow's own parameters and what
 them, so a job queued again with the same words on the same inputs finds the run it began, and a
 change of code, of configuration or of an input starts afresh; the decision then looks at the
 runs carrying that key, newest first, and never resumes one that is still running, which every
-launcher says by a heartbeat while its flow lasts. Nothing here reads a file, starts a process or
-asks Metaflow; the launcher does, and hands the runs over as RunState and the beats as Beat.
+launcher says by a heartbeat while its flow lasts, nor one whose parameters Metaflow never saved,
+which Metaflow cannot resume. Nothing here reads a file, starts a process or asks Metaflow; the
+launcher does, and hands the runs over as RunState and the beats as Beat.
 """
 
 import hashlib
@@ -35,13 +36,15 @@ def _is_hex(text: str) -> bool:
 
 
 class RunState(NamedTuple):
-    """What Metaflow says of one earlier run of the flow: its id, and whether it ended well; and
-    whether a launcher still runs it, which marked_live says."""
+    """What Metaflow says of one earlier run of the flow: its id, and whether it ended well;
+    whether a launcher still runs it, which marked_live says; and whether Metaflow saved its
+    parameters, which it does after it has registered the run and before any step runs."""
 
     run_id: str
     finished: bool
     successful: bool
     live: bool = False
+    parameters_saved: bool = True
 
 
 class Beat(NamedTuple):
@@ -73,7 +76,9 @@ def is_live(beat: Beat, job: str, now: float) -> bool:
 @beartype
 @require(lambda runs: all(len(run.run_id) > 0 for run in runs), "every run has an id")
 @ensure(
-    lambda result, runs: [run[:3] for run in result] == [run[:3] for run in runs],
+    lambda result, runs: (
+        [run._replace(live=False) for run in result] == [run._replace(live=False) for run in runs]
+    ),
     "only whether a run is live is marked",
 )
 @ensure(
@@ -152,15 +157,20 @@ def run_key(flow: str, code: str, words: Sequence[str], reads: Sequence[str] = (
 )
 @ensure(
     lambda result, runs: (
-        (len(runs) > 0 and not runs[0].successful and not runs[0].live) or result == (RUN, None)
+        (len(runs) > 0 and not runs[0].successful and not runs[0].live and runs[0].parameters_saved)
+        or result == (RUN, None)
     ),
-    "no run yet, a newest run that succeeded or one still running starts a new run",
+    "no run yet, or a newest run that succeeded, runs still or saved no parameters, starts anew",
 )
 @ensure(
     lambda result, runs: (
-        len(runs) == 0 or runs[0].successful or runs[0].live or result == (RESUME, runs[0].run_id)
+        len(runs) == 0
+        or runs[0].successful
+        or runs[0].live
+        or not runs[0].parameters_saved
+        or result == (RESUME, runs[0].run_id)
     ),
-    "a newest run that did not succeed and runs no more is resumed by its id",
+    "a newest run that did not succeed, runs no more and saved its parameters is resumed by its id",
 )
 def decide(runs: Sequence[RunState]) -> tuple[str, str | None]:
     """Run anew or resume, from the runs carrying the launch's key, newest first.
@@ -173,7 +183,12 @@ def decide(runs: Sequence[RunState]) -> tuple[str, str | None]:
     would clone the steps it has done so far, a catalog built before the shards that landed
     since among them, so the launch runs anew beside it, as two jobs of a stage ran before
     Metaflow, the stage's own locks, catalog's BUILD.lock among them, ordering what may not overlap.
+    Nor is a newest run whose parameters Metaflow never saved, killed after Metaflow registered it
+    and before it saved them: it ran no step, and Metaflow refuses to resume it, after registering
+    the resume as one more such run of the key, so resuming it failed every later launch of the
+    key in turn (the second review of #252, finding 1); the launch runs anew instead.
     """
-    if runs and not runs[0].successful and not runs[0].live:
-        return (RESUME, runs[0].run_id)
+    newest = runs[0] if runs else None
+    if newest and not newest.successful and not newest.live and newest.parameters_saved:
+        return (RESUME, newest.run_id)
     return (RUN, None)
