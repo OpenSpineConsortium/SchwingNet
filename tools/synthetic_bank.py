@@ -1,7 +1,7 @@
 """Write a synthetic bank in the real X-ray builders' format, learnable enough for a dry run.
 
 Usage: python3 tools/synthetic_bank.py <bank> --frames N --cases N [--seed S] [--test-cases a,b]
-    [--map-share 0.75]
+    [--map-share 0.75] [--unlabelled]
 
 The bank has the layout tools/ingest.py reads (images/<split>/<stem>.png, meta/<stem>.json with
 the case, the device, the view and the boxes), so the dry run of the flow exercises the same
@@ -17,6 +17,11 @@ rectangle it fills and 0 elsewhere, named in the meta as level_map with level_ma
 so the dry run exercises the trainer's prior block too and the rest of the frames exercise the
 crops without a map; which frames is drawn from a generator of its own, so a seed's frames and
 metas are what they were before maps existed and the recorded dry runs' banks come out again.
+`--unlabelled` writes an unannotated bank instead, as VinDr-SpineXR enters the bank: the same
+frames, bodies drawn, but every meta's boxes empty and no level map, so the ingest keeps each frame
+as a frame fact with no label and the trainer finds no crop in it; the block smoke test's two-source
+catalog routes it beside a labelled bank (tools/block_sweep.py synthetic). A labelled bank is
+written exactly as before for a given seed.
 Standard library only, so it runs where the verification environment runs.
 """
 
@@ -145,8 +150,9 @@ def meta_for(case, index, split, boxes, rnd, level_map=None):
     }
 
 
-def write_bank(bank, frames, cases, seed, test_cases, map_share=MAP_SHARE):
-    """Write the bank and return its counts; map_share of the frames bring a level map."""
+def write_bank(bank, frames, cases, seed, test_cases, map_share=MAP_SHARE, unlabelled=False):
+    """Write the bank and return its counts; map_share of the frames bring a level map, and an
+    unlabelled bank's frames bring no box and no map (unannotated_meta)."""
     rnd = random.Random(seed)
     map_rnd = random.Random(f"maps-{seed}")
     for split in ("train", "val", "test"):
@@ -165,15 +171,25 @@ def write_bank(bank, frames, cases, seed, test_cases, map_share=MAP_SHARE):
         data = last[case] if (index % 97 == 50 and case in last) else png(frame_rows(rnd, boxes))
         (bank / "images" / split / f"{stem}.png").write_bytes(data)
         level_map = None
-        if map_rnd.random() < map_share:
+        if not unlabelled and map_rnd.random() < map_share:
             level_map = f"maps/{stem}.png"
             (bank / level_map).write_bytes(png(map_rows(boxes)))
             maps += 1
+        meta = meta_for(case, index, split, boxes, rnd, level_map)
         (bank / "meta" / f"{stem}.json").write_text(
-            json.dumps(meta_for(case, index, split, boxes, rnd, level_map)), encoding="utf-8"
+            json.dumps(unannotated_meta(meta) if unlabelled else meta), encoding="utf-8"
         )
         last[case] = data
-    return {"bank": str(bank), "frames": frames, "cases": cases or len(test_cases), "maps": maps}
+    counts = {"bank": str(bank), "frames": frames, "cases": cases or len(test_cases), "maps": maps}
+    return {**counts, "unlabelled": True} if unlabelled else counts
+
+
+def unannotated_meta(meta):
+    """A frame's meta as an unannotated set brings it: the frame, its person, device and view, and
+    no box, so no level is named anywhere in it. The meta is drawn first as a labelled frame's,
+    so the frame's pixels and the generator's draws are the labelled bank's, and only what is
+    written differs."""
+    return {**meta, "boxes": [], "label_source": "none"}
 
 
 def main(argv=None):
@@ -184,13 +200,14 @@ def main(argv=None):
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--test-cases", default="", help="comma-separated; every frame is theirs")
     parser.add_argument("--map-share", type=float, default=MAP_SHARE, help="the share of frames with a level map, 0 to 1")
+    parser.add_argument("--unlabelled", action="store_true", help="an unannotated bank: no box and no level map in any meta")
     args = parser.parse_args(argv)
     test_cases = [c for c in args.test_cases.split(",") if c]
     if not test_cases and args.cases < 1:
         parser.error("--cases is needed unless --test-cases names the cases")
     if not 0.0 <= args.map_share <= 1.0:
         parser.error("--map-share is a share, 0 to 1")
-    print(json.dumps(write_bank(args.bank, args.frames, args.cases, args.seed, test_cases, args.map_share)))
+    print(json.dumps(write_bank(args.bank, args.frames, args.cases, args.seed, test_cases, args.map_share, args.unlabelled)))
     return 0
 
 

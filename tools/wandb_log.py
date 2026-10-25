@@ -21,7 +21,9 @@ silently.
 The project is SchwingNet unless WANDB_PROJECT says otherwise, private as the plan asks; the
 entity is the key's default unless WANDB_ENTITY names one. SCHWINGNET_WANDB=off turns logging
 off for a run, and the record says so. Each step is a W&B run of its own, grouped by the run id,
-so the trainer's epochs and the evaluator's tables sit side by side.
+so the trainer's epochs and the evaluator's tables sit side by side. A step that goes on after a
+cut (tools/train.py --resume) starts its W&B run with resume="allow" under the same id, online or
+offline, so the epochs after the cut join the epochs before it rather than open a run of their own.
 """
 
 import argparse
@@ -78,15 +80,17 @@ class Telemetry:
     """One step's W&B run; every call is a no-op where W&B is off, absent or broken.
 
     Nothing W&B does may stop a training run: a failure at any call is caught, logging stops for
-    the step, and the reason is written to wandb-mode.json and said by the flow.
+    the step, and the reason is written to wandb-mode.json and said by the flow. resume is for a
+    step that goes on after a cut: its W&B run continues under the id it had (the module docstring).
     """
 
-    def __init__(self, run_dir, record, step, config):
+    def __init__(self, run_dir, record, step, config, resume=False):
         self.run = None
         self.mode = "off"
         self.reason = None
         self.modes = Path(run_dir) / "wandb-mode.json"
         self.step = step
+        self.resume = resume
         if not enabled():
             self.reason = "SCHWINGNET_WANDB=off"
         else:
@@ -116,6 +120,9 @@ class Telemetry:
             dir=str(folder),
             config=dict(config, run_id=record["run_id"], code_commit=record["code_commit"], catalog_sha256=record["catalog_sha256"], catalog_version=record["catalog_version"], clean_tree=record["clean_tree"]),
         )
+        if self.resume:
+            # Both starts below take it, so the cut step's run goes on whichever start it had.
+            options["resume"] = "allow"
         self.mode, self.reason = "offline", f"no W&B key ({where})"
         if where != "none" and os.environ.get("SCHWINGNET_WANDB_MODE", "online") == "online":
             try:

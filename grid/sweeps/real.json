@@ -1,0 +1,385 @@
+{
+ "about": "The block smoke test's covering set on catalog version 1 of C-ArmLSpine, real frames: every option of every part and every pair of parts whose code meets, with the prior off and on, then a run from the ImageNet file, two warm starts and the four refusals the check predicts, 3 epochs each, every row set against tools/block_sweep.py check's prediction for it (#252).",
+ "catalog": "v1",
+ "epochs": 3,
+ "plan": "real",
+ "rows": [
+  {
+   "blocks": [],
+   "init": null,
+   "role": "cover",
+   "size": 64,
+   "slug": "resnet18-64px-78311e7a",
+   "weights": null
+  },
+  {
+   "blocks": [
+    "normalise=imagenet",
+    "augment=box-jitter,intensity,blur,noise,strong",
+    "optimiser=adamw",
+    "weight_decay=0.01",
+    "schedule=cosine",
+    "warmup_epochs=1",
+    "backbone_lr_scale=0.1",
+    "sampler=balanced",
+    "loss_weights=inverse-frequency",
+    "select=balanced-accuracy",
+    "samples=only-sources",
+    "sources=@labelled",
+    "architecture=resnet34",
+    "denoise=gaussian"
+   ],
+   "init": null,
+   "role": "cover",
+   "size": 32,
+   "slug": "resnet34-32px-3e69d17e",
+   "weights": null
+  },
+  {
+   "blocks": [
+    "schedule=cosine",
+    "loss_weights=inverse-frequency",
+    "samples=cap-per-person",
+    "per_person=1",
+    "architecture=resnet50",
+    "denoise=median"
+   ],
+   "init": null,
+   "role": "cover",
+   "size": 96,
+   "slug": "resnet50-96px-61a3266e",
+   "weights": null
+  },
+  {
+   "blocks": [
+    "normalise=imagenet",
+    "augment=box-jitter,intensity,blur,noise,strong",
+    "optimiser=adamw",
+    "weight_decay=0.01",
+    "warmup_epochs=1",
+    "backbone_lr_scale=0.1",
+    "sampler=balanced",
+    "select=balanced-accuracy",
+    "architecture=mobilenet-v3-small"
+   ],
+   "init": null,
+   "role": "cover",
+   "size": 128,
+   "slug": "mobilenet-v3-small-128px-e0f33f11",
+   "weights": null
+  },
+  {
+   "blocks": [
+    "samples=only-sources",
+    "sources=@labelled",
+    "architecture=efficientnet-b0",
+    "denoise=gaussian"
+   ],
+   "init": null,
+   "role": "cover",
+   "size": 64,
+   "slug": "efficientnet-b0-64px-1f54fa0c",
+   "weights": null
+  },
+  {
+   "blocks": [
+    "normalise=imagenet",
+    "augment=box-jitter,intensity,blur,noise,strong",
+    "optimiser=adamw",
+    "weight_decay=0.01",
+    "schedule=cosine",
+    "warmup_epochs=1",
+    "backbone_lr_scale=0.1",
+    "sampler=balanced",
+    "loss_weights=inverse-frequency",
+    "select=balanced-accuracy",
+    "samples=cap-per-person",
+    "per_person=1",
+    "architecture=densenet121",
+    "denoise=median"
+   ],
+   "init": null,
+   "role": "cover",
+   "size": 32,
+   "slug": "densenet121-32px-e56d1e60",
+   "weights": null
+  },
+  {
+   "blocks": [
+    "architecture=se-resnet50"
+   ],
+   "init": null,
+   "role": "cover",
+   "size": 96,
+   "slug": "se-resnet50-96px-32f7e4bf",
+   "weights": null
+  },
+  {
+   "blocks": [
+    "normalise=imagenet",
+    "augment=box-jitter,intensity,blur,noise,strong",
+    "optimiser=adamw",
+    "weight_decay=0.01",
+    "schedule=cosine",
+    "warmup_epochs=1",
+    "backbone_lr_scale=0.1",
+    "sampler=balanced",
+    "loss_weights=inverse-frequency",
+    "select=balanced-accuracy",
+    "samples=only-sources",
+    "sources=@labelled",
+    "architecture=se-resnext50",
+    "denoise=gaussian"
+   ],
+   "init": null,
+   "role": "cover",
+   "size": 128,
+   "slug": "se-resnext50-128px-e80c6710",
+   "weights": null
+  },
+  {
+   "blocks": [
+    "samples=drop-sources",
+    "sources=@unlabelled"
+   ],
+   "init": null,
+   "role": "cover",
+   "size": 64,
+   "slug": "resnet18-64px-030f0789",
+   "weights": null
+  },
+  {
+   "blocks": [
+    "prior=level-map",
+    "prior_weight=0.5"
+   ],
+   "init": null,
+   "role": "cover",
+   "size": 64,
+   "slug": "resnet18-64px-4de97de5",
+   "weights": null
+  },
+  {
+   "blocks": [
+    "normalise=imagenet",
+    "augment=box-jitter,intensity,blur,noise,strong",
+    "optimiser=adamw",
+    "weight_decay=0.01",
+    "schedule=cosine",
+    "warmup_epochs=1",
+    "backbone_lr_scale=0.1",
+    "sampler=balanced",
+    "loss_weights=inverse-frequency",
+    "select=balanced-accuracy",
+    "samples=only-sources",
+    "sources=@labelled",
+    "architecture=resnet34",
+    "denoise=gaussian",
+    "prior=level-map",
+    "prior_weight=0.5"
+   ],
+   "init": null,
+   "role": "cover",
+   "size": 32,
+   "slug": "resnet34-32px-58e64ab8",
+   "weights": null
+  },
+  {
+   "blocks": [
+    "schedule=cosine",
+    "loss_weights=inverse-frequency",
+    "samples=cap-per-person",
+    "per_person=1",
+    "architecture=resnet50",
+    "denoise=median",
+    "prior=level-map",
+    "prior_weight=0.5"
+   ],
+   "init": null,
+   "role": "cover",
+   "size": 96,
+   "slug": "resnet50-96px-ce5150c2",
+   "weights": null
+  },
+  {
+   "blocks": [
+    "normalise=imagenet",
+    "augment=box-jitter,intensity,blur,noise,strong",
+    "optimiser=adamw",
+    "weight_decay=0.01",
+    "warmup_epochs=1",
+    "backbone_lr_scale=0.1",
+    "sampler=balanced",
+    "select=balanced-accuracy",
+    "architecture=mobilenet-v3-small",
+    "prior=level-map",
+    "prior_weight=0.5"
+   ],
+   "init": null,
+   "role": "cover",
+   "size": 128,
+   "slug": "mobilenet-v3-small-128px-dda0db48",
+   "weights": null
+  },
+  {
+   "blocks": [
+    "samples=only-sources",
+    "sources=@labelled",
+    "architecture=efficientnet-b0",
+    "denoise=gaussian",
+    "prior=level-map",
+    "prior_weight=0.5"
+   ],
+   "init": null,
+   "role": "cover",
+   "size": 64,
+   "slug": "efficientnet-b0-64px-34140bc9",
+   "weights": null
+  },
+  {
+   "blocks": [
+    "normalise=imagenet",
+    "augment=box-jitter,intensity,blur,noise,strong",
+    "optimiser=adamw",
+    "weight_decay=0.01",
+    "schedule=cosine",
+    "warmup_epochs=1",
+    "backbone_lr_scale=0.1",
+    "sampler=balanced",
+    "loss_weights=inverse-frequency",
+    "select=balanced-accuracy",
+    "samples=cap-per-person",
+    "per_person=1",
+    "architecture=densenet121",
+    "denoise=median",
+    "prior=level-map",
+    "prior_weight=0.5"
+   ],
+   "init": null,
+   "role": "cover",
+   "size": 32,
+   "slug": "densenet121-32px-b01024a6",
+   "weights": null
+  },
+  {
+   "blocks": [
+    "architecture=se-resnet50",
+    "prior=level-map",
+    "prior_weight=0.5"
+   ],
+   "init": null,
+   "role": "cover",
+   "size": 96,
+   "slug": "se-resnet50-96px-87cc4ab4",
+   "weights": null
+  },
+  {
+   "blocks": [
+    "normalise=imagenet",
+    "augment=box-jitter,intensity,blur,noise,strong",
+    "optimiser=adamw",
+    "weight_decay=0.01",
+    "schedule=cosine",
+    "warmup_epochs=1",
+    "backbone_lr_scale=0.1",
+    "sampler=balanced",
+    "loss_weights=inverse-frequency",
+    "select=balanced-accuracy",
+    "samples=only-sources",
+    "sources=@labelled",
+    "architecture=se-resnext50",
+    "denoise=gaussian",
+    "prior=level-map",
+    "prior_weight=0.5"
+   ],
+   "init": null,
+   "role": "cover",
+   "size": 128,
+   "slug": "se-resnext50-128px-acd6ade8",
+   "weights": null
+  },
+  {
+   "blocks": [
+    "samples=drop-sources",
+    "sources=@unlabelled",
+    "prior=level-map",
+    "prior_weight=0.5"
+   ],
+   "init": null,
+   "role": "cover",
+   "size": 64,
+   "slug": "resnet18-64px-fe3ccf78",
+   "weights": null
+  },
+  {
+   "blocks": [
+    "normalise=imagenet"
+   ],
+   "init": null,
+   "role": "imagenet",
+   "size": 64,
+   "slug": "imagenet-resnet18-64px-6915edfc",
+   "weights": "resnet18"
+  },
+  {
+   "blocks": [],
+   "init": "resnet18-64px-78311e7a",
+   "role": "init",
+   "size": 64,
+   "slug": "init-resnet18-64px-53342468",
+   "weights": null
+  },
+  {
+   "blocks": [
+    "prior=level-map",
+    "prior_weight=0.5"
+   ],
+   "init": "resnet18-64px-78311e7a",
+   "role": "init",
+   "size": 64,
+   "slug": "init-resnet18-64px-d9278249",
+   "weights": null
+  },
+  {
+   "blocks": [
+    "samples=drop-sources",
+    "sources=@labelled"
+   ],
+   "init": null,
+   "role": "refuse",
+   "size": 64,
+   "slug": "refuse-resnet18-64px-ac1f423e",
+   "weights": null
+  },
+  {
+   "blocks": [
+    "samples=only-sources",
+    "sources=@unlabelled"
+   ],
+   "init": null,
+   "role": "refuse",
+   "size": 64,
+   "slug": "refuse-resnet18-64px-93129504",
+   "weights": null
+  },
+  {
+   "blocks": [
+    "architecture=resnet34"
+   ],
+   "init": "resnet18-64px-78311e7a",
+   "role": "refuse",
+   "size": 64,
+   "slug": "refuse-resnet34-64px-7da32a40",
+   "weights": null
+  },
+  {
+   "blocks": [],
+   "init": "resnet18-64px-78311e7a",
+   "role": "refuse",
+   "size": 64,
+   "slug": "refuse-resnet18-64px-69509b67",
+   "weights": "resnet18"
+  }
+ ],
+ "seed": 1
+}

@@ -40,6 +40,64 @@ def python(*args):
     return done.stdout
 
 
+def tile_equaliser(levels, limit, bins=256):
+    """One tile's equaliser written out as OpenCV's clahe.cpp computes it, loop by loop: the
+    histogram clipped at the limit, the excess spread evenly, the remainder one each from the first
+    bin on at a step of bins over the remainder, and the running sum over the tile's pixels."""
+    histogram = [0] * bins
+    for level in levels:
+        histogram[level] += 1
+    excess = 0
+    for i in range(bins):
+        if histogram[i] > limit:
+            excess += histogram[i] - limit
+            histogram[i] = limit
+    histogram = [count + excess // bins for count in histogram]
+    remainder = excess % bins
+    if remainder:
+        step, i = max(bins // remainder, 1), 0
+        while i < bins and remainder > 0:
+            histogram[i] += 1
+            i, remainder = i + step, remainder - 1
+    running, out = 0, []
+    for count in histogram:
+        running += count
+        out.append(running / len(levels))
+    return out
+
+
+def reference_clahe(image, clip, tiles=8, bins=256):
+    """CLAHE of one plane, a list of rows of 0..1 values, pixel by pixel in plain python: the plane
+    padded by repeating its edge to whole tiles, OpenCV's clip limit from clip, and each pixel's
+    level mapped by the four nearest tile centres' equalisers, bilinear between them."""
+    height, width = len(image), len(image[0])
+    tall, wide = -(-height // tiles) * tiles, -(-width // tiles) * tiles
+    rows = [image[min(y, height - 1)] for y in range(tall)]
+    levels = [[round(min(max(row[min(x, width - 1)], 0.0), 1.0) * (bins - 1)) for x in range(wide)] for row in rows]
+    tile_tall, tile_wide = tall // tiles, wide // tiles
+    limit = max(int(clip * tile_tall * tile_wide / bins), 1)
+    maps = [[tile_equaliser([levels[y][x] for y in range(r * tile_tall, (r + 1) * tile_tall) for x in range(c * tile_wide, (c + 1) * tile_wide)], limit, bins)
+             for c in range(tiles)] for r in range(tiles)]
+
+    def between(position, tile):
+        place = min(max((position + 0.5) / tile - 0.5, 0.0), tiles - 1)
+        first = int(place)
+        return first, min(first + 1, tiles - 1), place - first
+
+    out = []
+    for y in range(height):
+        top, bottom, down = between(y, tile_tall)
+        line = []
+        for x in range(width):
+            left, right, across = between(x, tile_wide)
+            level = levels[y][x]
+            upper = (1 - across) * maps[top][left][level] + across * maps[top][right][level]
+            lower = (1 - across) * maps[bottom][left][level] + across * maps[bottom][right][level]
+            line.append((1 - down) * upper + down * lower)
+        out.append(line)
+    return out
+
+
 @unittest.skipIf(MISSING, f"needs the train environment ({', '.join(MISSING)} missing)")
 class BlocksTest(unittest.TestCase):
     @classmethod
@@ -283,6 +341,133 @@ class BlocksTest(unittest.TestCase):
         self.assertGreater(float((body == bright).float().mean()), 0.9)
         same, same_maps = self.blocks.augment_with_maps(batch, maps, ("intensity",), torch.Generator().manual_seed(4))
         self.assertTrue(torch.equal(same_maps, maps), "a change of intensity alone leaves the maps")
+
+    def grey(self, count, size, seed=0):
+        import torch
+
+        crops = torch.rand(count, 1, size, size, generator=torch.Generator().manual_seed(seed))
+        return crops.repeat(1, 3, 1, 1)
+
+    def test_each_strong_transform_keeps_a_grey_crop_grey_in_range_and_seeded(self):
+        import torch
+
+        self.assertEqual(self.blocks.STRONG_ORDER, tuple(self.blocks.STRONG))
+        self.assertEqual(len(self.blocks.STRONG), 16)
+        self.assertLessEqual(set(self.blocks.STRONG_WARPS), set(self.blocks.STRONG))
+        # 37 pixels is no multiple of CLAHE's eight tiles and odd for the pooling's 2 by 2 cells.
+        for size in (32, 37, 64):
+            crops = self.grey(6, size)
+            for name, change in self.blocks.STRONG.items():
+                with self.subTest(name=name, size=size):
+                    first = change(crops, torch.Generator().manual_seed(4))
+                    again = change(crops, torch.Generator().manual_seed(4))
+                    self.assertEqual(tuple(first.shape), (6, 3, size, size))
+                    self.assertTrue(torch.equal(first, again), "the same seed draws the same change")
+                    self.assertTrue(torch.equal(first[:, 0], first[:, 1]) and torch.equal(first[:, 0], first[:, 2]))
+                    self.assertGreaterEqual(float(first.min()), 0.0)
+                    self.assertLessEqual(float(first.max()), 1.0)
+                    self.assertFalse(torch.equal(first, crops), "it changes the crops")
+                    self.assertTrue(torch.equal(crops, self.grey(6, size)), "and leaves its input as it was")
+
+    def test_the_strong_transforms_do_what_their_names_say(self):
+        import torch
+
+        def seeded():
+            return torch.Generator().manual_seed(4)
+
+        crops = self.grey(6, 32)
+        self.assertTrue(torch.allclose(self.blocks.invert(crops, seeded()), 1.0 - crops))
+        for name in ("dropout", "impulse-noise"):
+            out = self.blocks.STRONG[name](crops, seeded())
+            changed = out != crops
+            self.assertTrue(bool(changed.any()), name)
+            self.assertTrue(set(out[changed].unique().tolist()) <= {0.0, 1.0}, f"{name} sets pixels to black or white")
+        hit = float((self.blocks.impulse_noise(crops, seeded()) != crops).float().mean())
+        self.assertAlmostEqual(hit, self.blocks.IMPULSE_SHARE, delta=0.02)
+        for name in ("gaussian-blur", "average-blur"):
+            self.assertLess(float(self.blocks.STRONG[name](crops, seeded()).var()), float(crops.var()), f"{name} smooths")
+        pooled = self.blocks.pooling(crops, seeded())
+        self.assertTrue(torch.equal(pooled[..., ::2, ::2], pooled[..., 1::2, 1::2]), "each 2 by 2 cell takes one value")
+        stretched = self.blocks.gaussian_contrast(crops, seeded())
+        self.assertTrue(torch.allclose(stretched.amin(dim=(1, 2, 3)), torch.zeros(6), atol=1e-6))
+        self.assertTrue(torch.allclose(stretched.amax(dim=(1, 2, 3)), torch.ones(6), atol=1e-6))
+        flat = torch.full((6, 3, 32, 32), 0.4)
+        self.assertTrue(bool((self.blocks.emboss(flat, seeded()) >= flat).all()), "the emboss is added, not blended")
+        for name in self.blocks.STRONG_WARPS:
+            self.assertTrue(torch.allclose(self.blocks.STRONG[name](flat, seeded()), flat, atol=1e-6), f"{name} moves, not shades")
+
+    def test_clahe_clips_and_spreads_each_tiles_histogram_as_opencv_does_and_blends_between_tiles(self):
+        import torch
+
+        for size in (32, 37):
+            crops = (self.grey(3, size, seed=size) ** 2).double()
+            clips = self.blocks._uniform(torch.Generator().manual_seed(4), 3, *self.blocks.CLAHE_CLIP).tolist()
+            out = self.blocks.clahe(crops, torch.Generator().manual_seed(4))
+            for n in range(3):
+                with self.subTest(size=size, crop=n):
+                    expected = torch.tensor(reference_clahe(crops[n, 0].tolist(), clips[n]), dtype=torch.float64)
+                    self.assertTrue(torch.allclose(out[n, 0], expected, rtol=0, atol=1e-12))
+        flat = torch.full((2, 3, 32, 32), 0.3)
+        out = self.blocks.clahe(flat, torch.Generator().manual_seed(4))
+        self.assertTrue(torch.allclose(out, out[:, :, :1, :1].expand_as(out), rtol=0, atol=1e-6), "a flat crop stays flat")
+
+    def test_strong_takes_none_one_or_two_different_transforms_per_crop_uniformly(self):
+        from collections import Counter
+
+        import torch
+
+        picks = self.blocks.strong_picks(3000, torch.Generator().manual_seed(1))
+        self.assertEqual(picks, self.blocks.strong_picks(3000, torch.Generator().manual_seed(1)))
+        how_many = Counter(len(pick) for pick in picks)
+        self.assertEqual(set(how_many), {0, 1, 2})
+        self.assertTrue(all(900 < n < 1100 for n in how_many.values()), how_many)
+        self.assertTrue(all(len(set(pick)) == len(pick) for pick in picks), "without replacement")
+        taken = Counter(name for pick in picks for name in pick)
+        self.assertEqual(set(taken), set(self.blocks.STRONG))
+        # 3000 crops take 3000 transforms in all, about 187 of each of the sixteen.
+        self.assertTrue(all(130 < n < 250 for n in taken.values()), taken)
+
+    def test_the_strong_warps_move_a_map_with_its_crop_and_the_rest_leave_it(self):
+        import torch
+
+        maps = torch.zeros(6, 32, 32, dtype=torch.long)
+        maps[1:, 8:20, 10:22] = 5
+        maps[0] = self.blocks.IGNORED
+        batch = (maps == 5).float().unsqueeze(1).repeat(1, 3, 1, 1)
+        for name, with_maps in self.blocks.STRONG_WARPS.items():
+            with self.subTest(name=name):
+                moved, moved_maps = with_maps(batch, maps, torch.Generator().manual_seed(4))
+                alone = self.blocks.STRONG[name](batch, torch.Generator().manual_seed(4))
+                self.assertTrue(torch.equal(moved, alone), "the crops come out as without maps")
+                self.assertEqual(moved_maps.dtype, torch.long)
+                self.assertTrue(torch.equal(moved_maps[0], torch.full((32, 32), self.blocks.IGNORED)))
+                self.assertEqual(set(moved_maps[1:].unique().tolist()), {0, 5})
+                self.assertFalse(torch.equal(moved_maps[1:], maps[1:]))
+                body = moved_maps[1:] == 5
+                bright = moved[1:, 0] > moved[1:, 0].mean(dim=(1, 2), keepdim=True)
+                self.assertGreater(float((body == bright).float().mean()), 0.9)
+        # The block as a whole: the crops come out as without maps, and only the crops whose picks
+        # hold a warp have their maps moved.
+        many = torch.zeros(40, 32, 32, dtype=torch.long)
+        many[:, 8:20, 10:22] = 5
+        crops = (many == 5).float().unsqueeze(1).repeat(1, 3, 1, 1)
+        picks = self.blocks.strong_picks(40, torch.Generator().manual_seed(6))
+        out, out_maps = self.blocks.augment_with_maps(crops, many, ("strong",), torch.Generator().manual_seed(6))
+        self.assertTrue(torch.equal(out, self.blocks.augment(crops, ("strong",), torch.Generator().manual_seed(6))))
+        warped = [n for n, pick in enumerate(picks) if set(pick) & set(self.blocks.STRONG_WARPS)]
+        self.assertTrue(0 < len(warped) < 40, picks)
+        self.assertTrue(all(torch.equal(out_maps[n], many[n]) for n in range(40) if n not in warped))
+        self.assertTrue(any(not torch.equal(out_maps[n], many[n]) for n in warped))
+
+    def test_strong_comes_last_so_the_other_changes_draw_as_before(self):
+        import torch
+
+        others = ("box-jitter", "intensity", "blur", "noise")
+        generator = torch.Generator().manual_seed(4)
+        expected = self.blocks.strong(self.blocks.augment(self.batch(), others, generator), generator)
+        got = self.blocks.augment(self.batch(), ("strong", *others), torch.Generator().manual_seed(4))
+        self.assertTrue(torch.equal(got, expected))
+        self.assertEqual(self.blocks.AUGMENT_ORDER[-1], "strong")
 
     def test_imagenet_scaling_keeps_the_weights_names(self):
         import torch
@@ -630,6 +815,45 @@ class RunWithAMonaiArchitectureTest(unittest.TestCase):
         latency.export(self.run_dir)
         verdict = latency.parity(self.run_dir, self.catalog, "validation", 8, "onnxruntime", "cpu", 1)
         self.assertTrue(verdict["passed"], verdict)
+
+
+@unittest.skipIf(MISSING, f"needs the train environment ({', '.join(MISSING)} missing)")
+class RunWithTheStrongBlockTest(unittest.TestCase):
+    """One epoch with the strong block, SyntheX's and FluoroSAM's randomisation, at the two crop
+    sizes the plans start from: at 32 pixels with the prior block on, so its two warps move the
+    level maps the head is scored against inside the trainer, and at 64 pixels with it alone."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = Path(tempfile.mkdtemp())
+        cls.catalog = RunWithEveryBlockTest.make_catalog(cls.tmp)
+
+    def run_with(self, name, size, words):
+        run_dir = self.tmp / name
+        run_dir.mkdir()
+        record = {"run_id": f"{name}-000", "code_commit": "0" * 40, "catalog_sha256": "0" * 64, "catalog_version": 1, "clean_tree": True}
+        (run_dir / "RUN.json").write_text(json.dumps(record), encoding="utf-8")
+        args = ["--catalog", str(self.catalog), "--out", str(run_dir), "--epochs", "1", "--seed", "1", "--size", str(size),
+                "--device", "cpu", "--witness", "2", "--keep-epochs", "0"]
+        for word in words:
+            args += ["--block", word]
+        with mock.patch.dict(os.environ, {"SCHWINGNET_WANDB": "off"}):
+            self.assertEqual(load("train").main(args), 0)
+        facts = json.loads((run_dir / "train" / "checkpoint.json").read_text(encoding="utf-8"))
+        lines = [json.loads(line) for line in (run_dir / "train" / "metrics.jsonl").read_text(encoding="utf-8").splitlines()]
+        self.assertEqual(facts["blocks"]["augment"], ["strong"])
+        self.assertEqual(facts["size"], size)
+        self.assertEqual([line["epoch"] for line in lines], [0, 1])
+        self.assertTrue(lines[1]["train_loss"] > 0 and lines[1]["train_loss"] < float("inf"))
+        self.assertIn("augment strong", (run_dir / "train" / "MODEL.md").read_text(encoding="utf-8"))
+        return lines
+
+    def test_one_epoch_at_32_pixels_with_the_prior_trains(self):
+        lines = self.run_with("strong-32", 32, ["augment=strong", "prior=level-map", "prior_weight=0.5"])
+        self.assertGreater(lines[1]["train_prior_loss"], 0)
+
+    def test_one_epoch_at_64_pixels_trains(self):
+        self.run_with("strong-64", 64, ["augment=strong"])
 
 
 @unittest.skipIf([n for n in FLOW_NEEDS if importlib.util.find_spec(n) is None], "needs the package's checkers")

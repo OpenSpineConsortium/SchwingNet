@@ -13,13 +13,35 @@
 # (issue #40) DATA_ROOT puts each source's raw, bank and shards under <root>/<id>/ in place of the
 # recipe's and the registry's paths, and BANKS names another recipe folder, so a test runs the
 # stage on a filled-in copy of a recipe without touching the shipped one.
+#
+# Under Slurm the stage runs as Metaflow's BankFlow (issue #252): a job with SLURM_JOB_ID set,
+# and no SCHWINGNET_FLOW_STEP, execs flows/launch.py bank with what the caller gave (ONLY,
+# DATA_ROOT, BANKS, INGEST_DATE), so a job cut short and queued again resumes the newest run of
+# the same words and commit, every recipe that finished cloned and a cut ingest run again with
+# its bank cloned. The flow's steps run this script again with SCHWINGNET_FLOW_STEP=1, one recipe
+# (ONLY) and one half (PART=bank or PART=ingest) at a time, on the date the run chose once
+# (INGEST_DATE); a direct bash call, as the tests make, runs the body as before, both halves.
+# PYDRV must then carry Metaflow too, as grid/bin/train-cpu-python does.
 set -uo pipefail
 REPO=${SCHWINGNET:-$HOME/SchwingNet}
 PYDRV=${PYDRV:-python3}
+if [ -n "${SLURM_JOB_ID:-}" ] && [ -z "${SCHWINGNET_FLOW_STEP:-}" ]; then
+  words=()
+  [ -z "${ONLY:-}" ] || words+=(--sources "$ONLY")
+  [ -z "${DATA_ROOT:-}" ] || words+=(--data-root "$DATA_ROOT")
+  [ -z "${BANKS:-}" ] || words+=(--banks "$BANKS")
+  [ -z "${INGEST_DATE:-}" ] || words+=(--date "$INGEST_DATE")
+  exec "$PYDRV" "$REPO/flows/launch.py" bank --max-workers 1 -- ${words[@]+"${words[@]}"}
+fi
 ONLY=${ONLY:-}
 DATA_ROOT=${DATA_ROOT:-}
 BANKS=${BANKS:-$REPO/grid/banks}
-DATE=$(date '+%F')
+DATE=${INGEST_DATE:-$(date '+%F')}
+PART=${PART:-}
+case "$PART" in
+  ""|bank|ingest) ;;
+  *) echo "PART is bank, ingest or unset for both, not $PART; nothing ran"; echo "XR_BANK_RC=2 $(date '+%F %T')"; exit 2 ;;
+esac
 # The bank tool decodes in as many processes as the job has cores (DICOM and JPEG are the slow
 # part); the bank is the same bytes whatever the number (tools/bank.py --workers).
 export BANK_WORKERS=${BANK_WORKERS:-${SLURM_CPUS_PER_TASK:-1}}
@@ -50,10 +72,13 @@ for recipe in "$BANKS"/*.json; do
   if [ ! -d "$raw" ] || [ -z "$(ls -A "$raw" 2>/dev/null)" ]; then
     echo "- $id: skipped, nothing fetched under $raw" >> "$REPORT"; continue
   fi
-  if ! out=$("$PYDRV" "$REPO/tools/bank.py" --recipe "$recipe" --raw "$raw" --bank "$bank" --run 2>&1); then
-    echo "$out"; echo "- $id: bank refused: $(echo "$out" | tail -n 1)" >> "$REPORT"; failed=1; continue
+  if [ "$PART" != ingest ]; then
+    if ! out=$("$PYDRV" "$REPO/tools/bank.py" --recipe "$recipe" --raw "$raw" --bank "$bank" --run 2>&1); then
+      echo "$out"; echo "- $id: bank refused: $(echo "$out" | tail -n 1)" >> "$REPORT"; failed=1; continue
+    fi
+    echo "$out"
   fi
-  echo "$out"
+  [ "$PART" != bank ] || continue
   if ! out=$("$PYDRV" "$REPO/tools/ingest.py" run --bank "$bank" --source "$id" --kind train --split train \
         --date "$DATE" --code-commit "$COMMIT" --person-prefix "$prefix" --supersedes latest ${root_args[@]+"${root_args[@]}"} 2>&1); then
     echo "$out"; echo "- $id: ingest refused: $(echo "$out" | tail -n 1)" >> "$REPORT"; failed=1; continue

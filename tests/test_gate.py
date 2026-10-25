@@ -4,9 +4,11 @@ id that is not a plain name are refused before anything is submitted; start subm
 with its Slurm dependencies, leaving out the setup and weights jobs when their results are there;
 start refuses while one of the gate's jobs is live; stop cancels the gate's jobs and nothing else;
 a credentialed fetch needs ~/.netrc at mode 600 with a PhysioNet line; v1 and latency find their
-catalog. Every job goes through hpcworker's job submit with a class (issue #77): the fake hpcworker
-under tests/fakes/ records what would be queued, and fake squeue, sacct, scancel and df on PATH
-answer for Slurm; nothing reaches a scheduler. Standard library only, so the required check runs it."""
+catalog; sweep runs a plan of the block smoke test after what it needs, and bank one recipe with
+its catalog build (issue #252). Every job goes through hpcworker's job submit with a class (issue
+#77): the fake hpcworker under tests/fakes/ records what would be queued, and fake squeue, sacct,
+scancel and df on PATH answer for Slurm; nothing reaches a scheduler. Standard library only, so the
+required check runs it."""
 
 import hashlib
 import os
@@ -21,7 +23,8 @@ ROOT = Path(__file__).resolve().parent.parent
 GRID = ROOT / "grid"
 FAKE_HPCWORKER = ROOT / "tests" / "fakes" / "hpcworker"
 NEW_SCRIPTS = ("gate.sh", "hpcw.sh", "box.sh", "bin/pixi", "bin/train-cpu-python", "00-setup.sbatch", "00-weights.sbatch",
-               "00-carmlspine.sbatch", "v1-driver.sbatch", "run-xray-chain.sh", "run-platform-fetch.sh")
+               "00-carmlspine.sbatch", "v1-driver.sbatch", "run-xray-chain.sh", "run-platform-fetch.sh",
+               "sweep-driver.sbatch", "v1-version.sh")
 ENVS = ("default", "train-cpu", "train-gpu", "telemetry")
 
 FAKES = {
@@ -72,6 +75,7 @@ class GateTest(unittest.TestCase):
         self.data = self.tmp / "data"
         self.runs = self.tmp / "runs"
         self.models = self.tmp / "models"
+        self.smoke = self.tmp / "smoke"
         for folder in (self.data, self.runs, self.models):
             folder.mkdir()
         self.netrc = self.tmp / "netrc"
@@ -85,7 +89,7 @@ class GateTest(unittest.TestCase):
     def gate_env(self, data_root=None):
         env = dict(os.environ, PATH=f"{self.fake}:{os.environ['PATH']}", FAKE=str(self.fake), SCHWINGNET=str(self.repo),
                    DATA_ROOT=str(self.data) if data_root is None else data_root, RUNS=str(self.runs), MODELS=str(self.models),
-                   NETRC=str(self.netrc), USER="go2432", HPCWORKER=str(FAKE_HPCWORKER),
+                   NETRC=str(self.netrc), USER="go2432", HPCWORKER=str(FAKE_HPCWORKER), SMOKE=str(self.smoke),
                    HPCW_LOG=str(self.fake / "sbatch.log"), HPCW_REFUSE=str(self.fake / "refuse"), HPCW_LOGS=str(self.fake / "joblogs"), SHARED_DATA=str(self.tmp / "shared"))
         for name in ("GETFATTR", "VOLUME", "HPCW_DRY", "HPCW_FIRST", "HPCW_FRAMEWORK", "SBATCH", "SQUEUE", "SACCT", "SCANCEL", "DF", "DEPEND", "PYDRV"):
             env.pop(name, None)
@@ -121,16 +125,18 @@ class GateTest(unittest.TestCase):
 
     SHARDS = ("2026-10-21-c8ea18032437", "2026-10-21-2f554446fe70")
 
-    def catalog_ready(self, version=3, carmlspine_test=True, shards=SHARDS, checked=True):
+    def catalog_ready(self, version=3, carmlspine_test=True, shards=SHARDS, checked=True, also=()):
         """A version in the store as tools/catalog.py writes one: its file, its line in VERSIONS.jsonl
         (compact, as pydantic writes it) and CURRENT naming it, and, when checked, the split-check
-        marker grid/03-catalog.sbatch writes for today's freeze and rule."""
+        marker grid/03-catalog.sbatch writes for today's freeze and rule. Each source of also adds
+        its train part."""
         store = self.data / "_catalog"
         versions = store / "versions"
         versions.mkdir(parents=True, exist_ok=True)
         name = f"catalog-{version:06d}-0123456789ab.sqlite"
         (versions / name).write_bytes(b"")
         parts = '"carmlspine|test":59,"carmlspine|train":50' if carmlspine_test else '"vindr_pcxr|train":7'
+        parts += "".join(f',"{source}|train":11' for source in also)
         listed = ",".join(f'"{shard}"' for shard in shards)
         with (store / "VERSIONS.jsonl").open("a", encoding="utf-8") as log:
             log.write(f'{{"version":{version},"file":"{name}","sha256":"{"0" * 64}","shards":[{listed}],'
@@ -162,10 +168,11 @@ class GateTest(unittest.TestCase):
             f'{{\n "items": [\n  {{\n   "name": "frame"\n  }}\n ],\n "kind": "{kind}",\n "name": "{name}",\n'
             f' "source": "carmlspine",\n "supersedes": {later}\n}}\n', encoding="utf-8")
 
-    def chosen(self):
-        """What grid/v1-version.sh chooses now: its exit code and what it said."""
+    def chosen(self, *source):
+        """What grid/v1-version.sh chooses now, with the source given as its fourth argument: its exit
+        code and what it said."""
         done = subprocess.run(["bash", str(self.repo / "grid" / "v1-version.sh"), str(self.data / "_catalog"), str(self.data),
-                               str(self.repo)], capture_output=True, text=True, timeout=60)
+                               str(self.repo), *source], capture_output=True, text=True, timeout=60)
         return done.returncode, (done.stdout + done.stderr).strip()
 
     def line_of(self, script):
@@ -1494,6 +1501,401 @@ esac
         self.assertEqual(self.gate("status").returncode, 0)
         self.assertEqual(self.gate("stop").returncode, 75)
         self.assertTrue(hold.exists())
+
+
+    # The block smoke test's words (issue #252): sweep <plan> and bank <id>.
+
+    def plan(self, name, catalog, weights=False):
+        """A plan under grid/sweeps/ as tools/block_sweep.py cover writes one: indent 1, sorted keys."""
+        import json
+        rows = [{"blocks": ["denoise=none"], "init": None, "role": "cover", "size": 64, "slug": "resnet18-64px-0123abcd",
+                 "weights": None}]
+        if weights:
+            rows.append({"blocks": ["normalise=imagenet"], "init": None, "role": "imagenet", "size": 64,
+                         "slug": "imagenet-resnet18-64px-89abcdef", "weights": "resnet18"})
+        record = {"about": "A plan for the tests.", "catalog": catalog, "epochs": 3, "plan": name, "rows": rows, "seed": 1}
+        folder = self.repo / "grid" / "sweeps"
+        folder.mkdir(parents=True, exist_ok=True)
+        (folder / f"{name}.json").write_text(json.dumps(record, indent=1, sort_keys=True) + "\n", encoding="utf-8")
+        return folder / f"{name}.json"
+
+    def test_sweep_and_bank_each_take_exactly_one_plain_id(self):
+        for words in (("sweep",), ("sweep", "a", "b"), ("sweep", "Real"), ("sweep", "../real"), ("bank",),
+                      ("bank", "vindr-spinexr"), ("bank", "a" * 41), ("sweep real",)):
+            done = self.gate(*words)
+            self.assertEqual(done.returncode, 64, f"{words}: {done.stdout}")
+        self.assertEqual(self.submitted(), [])
+
+    def test_sweep_refuses_a_plan_that_is_not_under_grid_sweeps(self):
+        self.plan("real", "v1")
+        done = self.gate("sweep", "no_such_plan")
+        self.assertEqual(done.returncode, 64, done.stdout)
+        self.assertIn("no_such_plan is not a plan under grid/sweeps/", done.stdout)
+        self.assertIn("real", done.stdout)
+        self.assertEqual(self.submitted(), [])
+
+    def test_sweep_waits_on_the_setup_the_weights_a_live_catalog_and_every_run_that_holds_the_checkout(self):
+        self.plan("real", "v1", weights=True)
+        self.state_line(700, "bank:vindr_spinexr", "catalog")
+        self.state_line(701, "v1", "v1_driver")
+        self.state_line(702, "sweep:synthetic", "sweep")
+        self.state_line(703, "start", "xr_catalog")
+        self.live(700, 701, 702, 703)
+        done = self.gate("sweep", "real")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        lines = self.submitted()
+        self.assertEqual([line.split(" | ")[0].split()[-1] for line in lines],
+                         ["00-setup.sbatch", "00-weights.sbatch", "sweep-driver.sbatch"], lines)
+        jobs = self.recorded()
+        sweep = self.line_of("sweep-driver.sbatch")[0]
+        self.assertTrue(sweep.startswith("--class gpu --name sweep "), sweep)
+        self.assertIn(f"--dependency=afterok:{jobs['setup']},afterok:{jobs['weights']},afterok:700,afterany:701,afterany:702 ",
+                      sweep)
+        self.assertIn("--kill-on-invalid-dep=yes", sweep)
+        self.assertIn(" --no-requeue sweep-driver.sbatch", sweep)
+        # the X-ray chain's catalog follows a fetch of days and is never waited on
+        self.assertNotIn(":703", sweep)
+        self.assertIn(f"DATA_ROOT={self.data} ", sweep)
+        self.assertIn(f"WEIGHTS={self.models}/resnet18-f37072fd.pth MODELS={self.models} ", sweep)
+        self.assertIn(f"PLAN=real SMOKE={self.smoke} ", sweep)
+        state = (self.repo / "grid" / "logs" / "GATE_JOBS.txt").read_text(encoding="utf-8")
+        self.assertIn(f"{jobs['sweep']} sweep:real sweep ", state)
+
+    def test_sweep_needs_nothing_where_everything_is_there(self):
+        self.environments_ready()
+        self.weights_ready()
+        self.plan("synthetic", "synthetic", weights=True)
+        done = self.gate("sweep", "synthetic")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(len(self.submitted()), 1, self.submitted())
+        self.assertNotIn("--dependency", self.submitted()[0])
+        # a real catalog that qualifies now, and no ImageNet row: no wait and no weights job either
+        (self.models / "resnet18-f37072fd.pth").unlink()
+        self.plan("real", "v1")
+        self.carmlspine_shards()
+        self.catalog_ready(version=2)
+        done = self.gate("sweep", "real")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("catalog-000002-0123456789ab.sqlite qualifies", done.stdout)
+        self.assertEqual(len(self.submitted()), 2, self.submitted())
+        self.assertNotIn("--dependency", self.submitted()[1])
+        self.assertEqual(self.line_of("00-weights.sbatch"), [])
+
+    def test_sweep_is_refused_while_the_same_plan_is_live_and_another_plan_waits_for_it(self):
+        self.environments_ready()
+        self.plan("synthetic", "synthetic")
+        self.plan("trials", "synthetic")
+        self.state_line(800, "sweep:synthetic", "sweep")
+        self.live(800)
+        done = self.gate("sweep", "synthetic")
+        self.assertEqual(done.returncode, 75, done.stdout)
+        self.assertIn("already queued or running (job 800)", done.stdout)
+        self.assertEqual(self.submitted(), [])
+        done = self.gate("sweep", "trials")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("--dependency=afterany:800 ", self.line_of("sweep-driver.sbatch")[0])
+
+    def test_a_real_plan_with_no_catalog_to_come_is_refused_and_queues_nothing(self):
+        self.plan("real", "v1")
+        self.plan("two_source", "with:vindr_spinexr")
+        done = self.gate("sweep", "real")
+        self.assertEqual(done.returncode, 75, done.stdout)
+        self.assertIn("the v1 word or start makes the catalog first", done.stdout)
+        # a version that holds C-ArmLSpine and not the second source
+        self.carmlspine_shards()
+        self.catalog_ready(version=2)
+        done = self.gate("sweep", "two_source")
+        self.assertEqual(done.returncode, 75, done.stdout)
+        self.assertIn("bank vindr_spinexr first", done.stdout)
+        # refused before the setup job the environments would need, so nothing at all is queued
+        self.assertEqual(self.submitted(), [])
+        self.catalog_ready(version=3, also=("vindr_spinexr",))
+        done = self.gate("sweep", "two_source")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("catalog-000003-0123456789ab.sqlite qualifies", done.stdout)
+        # a plan whose catalog is none the sweep knows
+        self.plan("odd", "elsewhere")
+        self.assertEqual(self.gate("sweep", "odd").returncode, 2)
+
+    def test_a_failed_squeue_refuses_sweep_and_bank(self):
+        self.plan("synthetic", "synthetic")
+        (self.fake / "squeue_fails").write_text("", encoding="utf-8")
+        for words in (("sweep", "synthetic"), ("bank", "vindr_spinexr")):
+            done = self.gate(*words)
+            self.assertEqual(done.returncode, 75, f"{words}: {done.stdout}")
+        self.assertEqual(self.submitted(), [])
+
+    def test_v1_waits_on_a_live_sweep_since_both_hold_the_checkout(self):
+        self.environments_ready()
+        self.weights_ready()
+        self.carmlspine_shards()
+        self.catalog_ready(version=2)
+        self.state_line(900, "sweep:synthetic", "sweep")
+        self.live(900)
+        done = self.gate("v1")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("--dependency=afterany:900 ", self.line_of("v1-driver.sbatch")[0])
+
+    def ceph_fake(self, raw_bytes=None):
+        """CephFS's attributes, faked by folder: the volume's quota, use and file count; a raw folder's
+        size from $FAKE/raw_bytes; every other folder the same size; no quota anywhere else."""
+        if raw_bytes is not None:
+            (self.fake / "raw_bytes").write_text(str(raw_bytes), encoding="utf-8")
+        (self.fake / "getfattr").write_text("""#!/bin/bash
+folder=${!#}
+case "$3:$folder" in
+  ceph.quota.max_bytes:"$VOLUME") echo -n 21990232555520 ;;
+  ceph.dir.rbytes:"$VOLUME") echo -n 13146000000000 ;;
+  ceph.dir.rfiles:"$VOLUME") echo -n 7008826 ;;
+  ceph.quota.*|*:"$VOLUME") echo "$folder: $3: No such attribute" >&2; exit 1 ;;
+  ceph.dir.rbytes:*/raw) cat "$FAKE/raw_bytes" ;;
+  *) echo -n 2600000000000 ;;
+esac
+""", encoding="utf-8")
+        (self.fake / "getfattr").chmod(0o755)
+
+    def gate_with_ceph(self, *words):
+        return subprocess.run(["bash", str(self.repo / "grid" / "gate.sh"), *words], env=dict(self.gate_env(), GETFATTR=str(self.fake / "getfattr")),
+                              capture_output=True, text=True, timeout=120)
+
+    def test_bank_is_refused_for_an_unknown_id_an_unconfirmed_recipe_a_missing_raw_copy_and_no_room(self):
+        self.environments_ready()
+        self.assertEqual(self.gate("bank", "no_such_recipe").returncode, 64)
+        done = self.gate("bank", "aariz")
+        self.assertEqual(done.returncode, 2, done.stdout)
+        self.assertIn('still has a field spelled "to confirm"', done.stdout)
+        done = self.gate("bank", "vindr_spinexr")
+        self.assertEqual(done.returncode, 2, done.stdout)
+        self.assertIn("raw copy is not on the volume", done.stdout)
+        raw = self.data / "vindr_spinexr" / "raw"
+        raw.mkdir(parents=True)
+        self.assertEqual(self.gate("bank", "vindr_spinexr").returncode, 2, "an empty raw folder is no raw copy")
+        (raw / "a.dicom").write_bytes(b"d")
+        # no CephFS attribute on the raw folder: its size is not known, so nothing is queued
+        done = self.gate("bank", "vindr_spinexr")
+        self.assertEqual(done.returncode, 2, done.stdout)
+        self.assertIn("what vindr_spinexr's raw copy holds could not be read", done.stdout)
+        # 5000 GB of raw copy: the bank and its shard may take 10000 GB, more than the 8844 GB of room
+        self.ceph_fake(raw_bytes=5000 * 10**9)
+        done = self.gate_with_ceph("bank", "vindr_spinexr")
+        self.assertEqual(done.returncode, 75, done.stdout)
+        self.assertIn("raw copy: 5000 GB; the bank and its shard: at most 10000 GB", done.stdout)
+        self.assertIn("room: 8844 GB free under its quota after 0 GB owed to 0 running fetches", done.stdout)
+        self.assertIn("refusing: the bank and its shard need 10000 GB and the room is 8844 GB", done.stdout)
+        self.assertEqual(self.submitted(), [])
+        self.assertNotIn(str(raw), done.stdout)
+
+    def test_bank_submits_the_bank_and_a_catalog_build_afterok_on_it_and_waits_its_turn(self):
+        raw = self.data / "vindr_spinexr" / "raw"
+        raw.mkdir(parents=True)
+        (raw / "a.dicom").write_bytes(b"d")
+        self.ceph_fake(raw_bytes=100 * 10**9)
+        done = self.gate_with_ceph("bank", "vindr_spinexr")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("raw copy: 100 GB; the bank and its shard: at most 200 GB", done.stdout)
+        jobs = self.recorded()
+        lines = self.submitted()
+        self.assertEqual([line.split(" | ")[0].split()[-1] for line in lines],
+                         ["00-setup.sbatch", "02-bank-ingest.sbatch", "03-catalog.sbatch"], lines)
+        bank, catalog = self.line_of("02-bank-ingest.sbatch")[0], self.line_of("03-catalog.sbatch")[0]
+        self.assertTrue(bank.startswith("--class batch --name bank "), bank)
+        self.assertIn(f"--dependency=afterok:{jobs['setup']} ", bank)
+        self.assertIn(" ONLY=vindr_spinexr", bank)
+        self.assertTrue(catalog.startswith("--class batch --name catalog "), catalog)
+        self.assertIn(f"--dependency=afterok:{jobs['bank']} ", catalog)
+        state = (self.repo / "grid" / "logs" / "GATE_JOBS.txt").read_text(encoding="utf-8")
+        self.assertIn(f"{jobs['bank']} bank:vindr_spinexr bank ", state)
+        self.assertIn(f"{jobs['catalog']} bank:vindr_spinexr catalog ", state)
+        # while its bank or catalog job is live, or the X-ray chain's bank, the word is refused
+        count = len(self.submitted())
+        for job in (jobs["bank"], jobs["catalog"]):
+            self.live(job)
+            done = self.gate_with_ceph("bank", "vindr_spinexr")
+            self.assertEqual(done.returncode, 75, done.stdout)
+        self.state_line(950, "start", "xr_bank")
+        self.live(950)
+        self.assertEqual(self.gate_with_ceph("bank", "lumos").returncode, 75)
+        self.assertEqual(len(self.submitted()), count)
+        # a sweep of the second source waits on the build the bank word queued
+        self.live(jobs["catalog"])
+        self.plan("two_source", "with:vindr_spinexr")
+        done = self.gate("sweep", "two_source")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn(f"afterok:{jobs['catalog']}", self.line_of("sweep-driver.sbatch")[0])
+
+    def progress(self, plan, folder, lines, age=0):
+        state = self.smoke / plan / folder
+        state.mkdir(parents=True)
+        (state / "PROGRESS.txt").write_text("".join(f"{line}\n" for line in lines), encoding="utf-8")
+        if age:
+            stamp = time.time() - age
+            os.utime(state / "PROGRESS.txt", (stamp, stamp))
+        return state
+
+    def test_status_shows_each_plans_newest_progress_rows_not_yet_matched_and_its_wandb_links(self):
+        self.progress("synthetic", "0000000-00000000", ["plan synthetic state old rows 1", "row old-row failed no"], age=3600)
+        state = self.smoke / "synthetic" / "abc1234-0123abcd"
+        self.progress("synthetic", "abc1234-0123abcd", [
+            f"plan synthetic state {state} rows 5 ran 2 refused 1 not_applicable 0 failed 1 to_come 1 mismatched 1 updated 2026-10-24T22:00:00Z",
+            "row resnet18-64px-1a2b3c4d ran yes",
+            "row refuse-resnet18-64px-00ff00ff refused yes",
+            "row densenet121-32px-5e6f7a8b failed no",
+            "row mobilenet-96px-9c0d1e2f ran no",
+            "row seresnet50-128px-31415926 to-come -",
+            *[f"wandb https://wandb.ai/lab/schwingnet/runs/run{n}" for n in range(5)]])
+        # the synthetic catalog beside the state folders holds no PROGRESS.txt and is passed over
+        (self.smoke / "synthetic" / "catalog").mkdir()
+        self.progress("real", "abc1234-89abcdef", ["plan real state x rows 30 to_come 30"]
+                      + [f"row resnet18-64px-{n:08x} to-come -" for n in range(25)])
+        done = self.gate("status")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        out = done.stdout
+        self.assertIn("## sweep synthetic, abc1234-0123abcd (", out)
+        self.assertIn("  plan synthetic state <smoke>/synthetic/abc1234-0123abcd rows 5 ran 2", out)
+        for shown in ("  row densenet121-32px-5e6f7a8b failed no", "  row mobilenet-96px-9c0d1e2f ran no",
+                      "  row seresnet50-128px-31415926 to-come -", "  wandb https://wandb.ai/lab/schwingnet/runs/run3"):
+            self.assertIn(shown, out)
+        for gone in ("resnet18-64px-1a2b3c4d", "refuse-resnet18", "run4", "old-row", str(self.smoke)):
+            self.assertNotIn(gone, out)
+        self.assertIn("## sweep real, abc1234-89abcdef (", out)
+        self.assertEqual(out.count("to-come -"), 21, out)
+        self.assertIn("  (5 more rows not yet matched; the state folder's PROGRESS.txt holds them)", out)
+
+    def test_status_shows_the_newest_failed_sweep_of_each_plan_by_its_shapes(self):
+        self.failed((1001, "sweep:real", "sweep", "sweep", "FAILED", "04:00:00", ["person carmlspine:case042 seen", "SN_SWEEP_RC=1"]),
+                    (1002, "sweep:synthetic", "sweep", "sweep", "TIMEOUT", "04:00:00", ["SN_SWEEP_RC=3"]))
+        done = self.gate("status")
+        self.assertEqual(done.returncode, 0, done.stdout)
+        self.assertIn("## 1001 (sweep) ended FAILED after 04:00:00", done.stdout)
+        self.assertIn("## 1002 (sweep) ended TIMEOUT after 04:00:00", done.stdout)
+        self.assertIn("    SN_SWEEP_RC=1", done.stdout)
+        self.assertNotIn("case042", done.stdout)
+
+    def test_the_chooser_with_a_source_also_wants_that_sources_train_part(self):
+        self.carmlspine_shards()
+        self.catalog_ready(version=2, also=("vindr_spinexr",))
+        self.catalog_ready(version=3)
+        # three arguments choose as before: the newest that holds C-ArmLSpine
+        self.assertEqual(self.chosen(), (0, "catalog-000003-0123456789ab.sqlite"))
+        # with the source, the newest that holds its train part too, the reason the newest one's
+        self.assertEqual(self.chosen("vindr_spinexr"), (0, "catalog-000002-0123456789ab.sqlite"))
+        code, said = self.chosen("lumos")
+        self.assertEqual(code, 1)
+        self.assertIn("(catalog-000003-0123456789ab.sqlite) holds no lumos train part", said)
+        # a source's part needs every other test too: an unmarked version is passed over
+        (self.data / "_catalog" / "checked" / "catalog-000002-0123456789ab.sqlite").unlink()
+        self.assertEqual(self.chosen("vindr_spinexr")[0], 1)
+        for odd in ("vindr*", "../x", "Vindr"):
+            self.assertEqual(self.chosen(odd)[0], 1, odd)
+
+    def sweep_box(self):
+        """box.sh as a fake for the sweep driver: it logs what it was asked and where the hold was,
+        names $FAKE_CATALOG as the synthetic catalog, fails a split check while $FAKE/split_fails is
+        there, and answers for the launcher as flows/launch.py does, its exit code $FAKE/launch_rc."""
+        (self.repo / "grid" / "box.sh").write_text(r"""#!/bin/bash
+echo "$* hold=$(cat "$SCHWINGNET/grid/logs/HOLD" 2>/dev/null)" >> "$FAKE/box.log"
+case "$*" in
+  *"block_sweep.py synthetic"*) echo "built a bank" >&2; echo "{\"catalog\": \"$FAKE_CATALOG\", \"reused\": false}" ;;
+  *split-check*) [ ! -f "$FAKE/split_fails" ] || exit 1 ;;
+  *"flows/launch.py"*)
+    echo '{"decision": "run", "flow": "sweep", "key": "0123456789abcdef", "origin": null, "root": "/m"}'
+    echo "a row ran"
+    echo '{"flow": "sweep", "run": "SweepFlow/12", "successful": true, "verdict": 0}'
+    exit "$(cat "$FAKE/launch_rc" 2>/dev/null || echo 0)" ;;
+  *"import torch"*) echo "torch 2.5 cuda available False" ;;
+esac
+""", encoding="utf-8")
+
+    def git_repo(self):
+        git = ["git", "-c", "gc.auto=0", "-c", "maintenance.auto=false", "-c", "user.name=t", "-c", "user.email=t@t",
+               "-C", str(self.repo)]
+        subprocess.run([*git, "init", "-q"], check=True)
+        subprocess.run([*git, "add", "pixi.lock"], check=True)
+        subprocess.run([*git, "commit", "-q", "-m", "c"], check=True)
+        return subprocess.run([*git, "rev-parse", "--short=7", "HEAD"], check=True, capture_output=True, text=True).stdout.strip()
+
+    def sweep_driver(self, plan, **extra):
+        env = dict(os.environ, SCHWINGNET=str(self.repo), DATA_ROOT=str(self.data), SMOKE=str(self.smoke), FAKE=str(self.fake),
+                   MODELS=str(self.models), PLAN=plan, SLURM_JOB_ID="777", **extra)
+        for name in ("STORE", "WEIGHTS"):
+            env.pop(name, None)
+        return subprocess.run(["bash", str(self.repo / "grid" / "sweep-driver.sbatch")], cwd=self.repo / "grid", env=env,
+                              capture_output=True, text=True, timeout=60)
+
+    def test_the_sweep_driver_builds_the_synthetic_catalog_checks_its_split_and_runs_the_launcher(self):
+        commit = self.git_repo()
+        self.weights_ready()
+        self.sweep_box()
+        plan = self.plan("synthetic", "synthetic")
+        catalog = self.smoke / "synthetic" / "catalog" / "_catalog" / "versions" / "catalog-000001-0123456789ab.sqlite"
+        catalog.parent.mkdir(parents=True)
+        catalog.write_bytes(b"a synthetic catalog")
+        state = self.smoke / "synthetic" / f"{commit}-{hashlib.sha256(b'a synthetic catalog').hexdigest()[:8]}"
+        state.mkdir(parents=True)
+        (state / "RESULTS.md").write_text("# Sweep synthetic\n\n22 rows: 20 ran, 2 refused, all matched.\n\n| slug | outcome |\n|---|---|\n"
+                                          "| a | ran |\n", encoding="utf-8")
+        (state / "PROGRESS.txt").write_text("plan synthetic rows 22\nrow a ran yes\nwandb https://wandb.ai/lab/schwingnet/runs/x1\n",
+                                            encoding="utf-8")
+        done = self.sweep_driver("synthetic", FAKE_CATALOG=str(catalog))
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("SN_SWEEP_RC=0", done.stdout)
+        boxed = self.boxed()
+        check = [i for i, line in enumerate(boxed) if "tools/catalog.py split-check" in line]
+        launch = [i for i, line in enumerate(boxed) if "flows/launch.py" in line]
+        self.assertTrue(check and launch and check[0] < launch[0], boxed)
+        self.assertIn(f"tools/block_sweep.py synthetic --into {self.smoke}/synthetic/catalog hold=777 ", boxed[0])
+        self.assertIn(f"split-check {catalog.parent.parent} --version 1 hold=777 ", boxed[check[0]])
+        self.assertIn(f"pixi run --locked -e train-gpu python flows/launch.py sweep --max-workers 1 -- --plan {plan} "
+                      f"--catalog {catalog} --out {self.smoke} --environment train-gpu "
+                      f"--weights resnet18={self.models}/resnet18-f37072fd.pth hold=777", boxed[launch[0]])
+        report = (self.repo / "grid" / "logs" / "sweep-synthetic-STAGE-REPORT.md").read_text(encoding="utf-8")
+        for line in (f"- state folder: {state}\n", "- catalog: the synthetic one (built now)\n",
+                     '- launcher: {"decision": "run", "flow": "sweep"',
+                     "- results: # Sweep synthetic\n", "- results: 22 rows: 20 ran, 2 refused, all matched.\n",
+                     "- W&B: https://wandb.ai/lab/schwingnet/runs/x1\n", '- Metaflow: {"flow": "sweep", "run": "SweepFlow/12"',
+                     "- launcher exited 0\n"):
+            self.assertIn(line, report)
+        self.assertNotIn("| a | ran |", report)
+        self.assertFalse((self.repo / "grid" / "logs" / "HOLD").exists())
+        # the launcher's own exit code is the job's
+        (self.fake / "launch_rc").write_text("1", encoding="utf-8")
+        done = self.sweep_driver("synthetic", FAKE_CATALOG=str(catalog))
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("SN_SWEEP_RC=1", done.stdout)
+        # a failed split check: the launcher never runs
+        (self.fake / "box.log").unlink()
+        (self.fake / "split_fails").write_text("1", encoding="utf-8")
+        done = self.sweep_driver("synthetic", FAKE_CATALOG=str(catalog))
+        self.assertEqual(done.returncode, 1)
+        self.assertIn("FAILED: the split check of version 1 failed; no sweep reads it", done.stdout)
+        self.assertFalse([line for line in self.boxed() if "flows/launch.py" in line])
+
+    def test_the_sweep_driver_takes_the_version_its_catalog_names_and_refuses_one_that_lacks_a_source(self):
+        self.git_repo()
+        self.sweep_box()
+        self.carmlspine_shards()
+        self.catalog_ready(version=2)
+        self.catalog_ready(version=3, carmlspine_test=False)
+        self.plan("real", "v1")
+        done = self.sweep_driver("real")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        launch = [line for line in self.boxed() if "flows/launch.py" in line]
+        self.assertIn(f"--catalog {self.data}/_catalog/versions/catalog-000002-0123456789ab.sqlite ", launch[0])
+        # no weights file: the launcher is given none, and the report says why
+        self.assertNotIn("--weights", launch[0])
+        self.assertIn("weights: none at", done.stdout)
+        self.assertIn("CURRENT names catalog-000003-0123456789ab.sqlite; the sweep takes catalog-000002-0123456789ab.sqlite", done.stdout)
+        # the second source's plan: no version holds its train part, so nothing runs
+        (self.fake / "box.log").unlink()
+        self.plan("two_source", "with:vindr_spinexr")
+        done = self.sweep_driver("two_source")
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("no catalog version to run on: the newest version with C-ArmLSpine (catalog-000002-0123456789ab.sqlite) "
+                      "holds no vindr_spinexr train part (the gate's v1 word or bank vindr_spinexr makes one)", done.stdout)
+        self.assertEqual(self.boxed(), [])
+        self.assertFalse((self.repo / "grid" / "logs" / "HOLD").exists())
+        # a plan's name that is no id never reaches a path
+        self.assertEqual(self.sweep_driver("../real").returncode, 2)
 
 
 if __name__ == "__main__":

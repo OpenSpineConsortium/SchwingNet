@@ -1,0 +1,86 @@
+{
+ "about": "The six literature trials on catalog version 1 of C-ArmLSpine, real frames, each resnet18 from its ImageNet file for 20 epochs: version 1's training as the control; the ImageNet scaling with every augment change, the strong one being SyntheX's strong domain randomisation (Gao, Killeen et al. 2023, Nat Mach Intell 5:294) with the transforms FluoroSAM adds (Killeen et al., MICCAI 2025); that with AdamW, its decay, a warm-up, a cosine schedule and a tenth of the rate for the pretrained layers; the second arm at 96 pixels; the second with balanced sampling and the checkpoint chosen by balanced accuracy, for the rare transitional levels (Kwak, Ro and Kang 2025, J Clin Med 14:7671); and the third with that sampling and selection.",
+ "catalog": "v1",
+ "epochs": 20,
+ "plan": "trials",
+ "rows": [
+  {
+   "blocks": [],
+   "init": null,
+   "role": "trial",
+   "size": 64,
+   "slug": "trial-resnet18-64px-b5888752",
+   "weights": "resnet18"
+  },
+  {
+   "blocks": [
+    "normalise=imagenet",
+    "augment=box-jitter,intensity,blur,noise,strong"
+   ],
+   "init": null,
+   "role": "trial",
+   "size": 64,
+   "slug": "trial-resnet18-64px-0bdc27d6",
+   "weights": "resnet18"
+  },
+  {
+   "blocks": [
+    "normalise=imagenet",
+    "augment=box-jitter,intensity,blur,noise,strong",
+    "optimiser=adamw",
+    "weight_decay=0.01",
+    "schedule=cosine",
+    "warmup_epochs=1",
+    "backbone_lr_scale=0.1"
+   ],
+   "init": null,
+   "role": "trial",
+   "size": 64,
+   "slug": "trial-resnet18-64px-4f585a05",
+   "weights": "resnet18"
+  },
+  {
+   "blocks": [
+    "normalise=imagenet",
+    "augment=box-jitter,intensity,blur,noise,strong"
+   ],
+   "init": null,
+   "role": "trial",
+   "size": 96,
+   "slug": "trial-resnet18-96px-9c90963e",
+   "weights": "resnet18"
+  },
+  {
+   "blocks": [
+    "normalise=imagenet",
+    "augment=box-jitter,intensity,blur,noise,strong",
+    "sampler=balanced",
+    "select=balanced-accuracy"
+   ],
+   "init": null,
+   "role": "trial",
+   "size": 64,
+   "slug": "trial-resnet18-64px-ede3daa6",
+   "weights": "resnet18"
+  },
+  {
+   "blocks": [
+    "normalise=imagenet",
+    "augment=box-jitter,intensity,blur,noise,strong",
+    "optimiser=adamw",
+    "weight_decay=0.01",
+    "schedule=cosine",
+    "warmup_epochs=1",
+    "backbone_lr_scale=0.1",
+    "sampler=balanced",
+    "select=balanced-accuracy"
+   ],
+   "init": null,
+   "role": "trial",
+   "size": 64,
+   "slug": "trial-resnet18-64px-8606ec55",
+   "weights": "resnet18"
+  }
+ ],
+ "seed": 1
+}

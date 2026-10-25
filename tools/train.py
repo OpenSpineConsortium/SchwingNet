@@ -3,7 +3,7 @@
 Usage (inside the train-cpu or train-gpu environment):
     python tools/train.py --catalog <catalog.sqlite> --out <run dir> --epochs N --seed S
         [--weights <imagenet state_dict of the architecture>] [--size 64] [--batch 64] [--max-frames N]
-        [--witness 12] [--device cpu|cuda] [--keep-epochs 1]
+        [--witness 12] [--device cpu|cuda] [--keep-epochs 1] [--resume]
 
 The stage is the level classifier of docs/research/retraining-plan.md, section 3.4: a vertebral
 body crop in, one of the 27 level names out. The crops come from the catalog's labels, so the
@@ -25,6 +25,26 @@ validation numbers per level, per source and for the transitional stratum; and t
 and pictures go to Weights and Biases offline (tools/wandb_log.py), pushed by the flow once the
 step is done. The checkpoint is chosen on the whole validation part, never on the witness frames
 alone, which are a small subset of it, and never on epoch 0.
+
+A run that is cut, a Slurm job timed out or preempted, goes on where it stopped. After every
+epoch, epoch 0 included, train/last.pt holds the weights, the optimiser's state, the prior head,
+every random state the run draws from (its own generator, torch's, CUDA's, numpy's and python's)
+and the lines so far, written whole and renamed into place; --resume, given with the arguments
+the run was started with, builds the run as a fresh start does and then takes those states back,
+so on the CPU a resumed run ends on the same lines, best.pt and checkpoint.json as one that went
+through, the seconds apart. best.pt and prior_head.pt are written under train/pending/ and moved
+into place only once last.pt records them, so a cut between the two never leaves weights the
+record does not name. last.pt goes once checkpoint.json is written, the step's last file and the
+one tools/flow.py takes as its end, since it holds the optimiser's state and is only for resuming.
+
+Batch norm in training needs more than one value per channel, and a batch of one small crop ends
+on a map that gives it one: no architecture here can take a step on one 32-pixel crop, nor
+densenet121 on one 48-pixel crop, while every one of them can on one 64-pixel crop. An epoch's last batch holds one crop whenever the
+training crops are one more than a whole number of batches, so the run asks once whether its
+model trains on one crop at its size (trains_on_one_crop) and, where it cannot, joins such a last
+batch to the batch before it; checkpoint.json then says "single_crop_batch": "joined" and the card
+says so. Where it can, the batches are as they always were, so a run that trained before trains
+to the same weights; a run of exactly one training crop that cannot train on one is refused.
 """
 
 import sys
@@ -36,9 +56,11 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path[0] = str(ROOT / "src")
 
 import argparse  # noqa: E402
+import copy  # noqa: E402
 import hashlib  # noqa: E402
 import json  # noqa: E402
 import os  # noqa: E402
+import pickle  # noqa: E402
 import random  # noqa: E402
 import sqlite3  # noqa: E402
 import time  # noqa: E402
@@ -54,6 +76,11 @@ from schwingnet.witness import ROLE_VALIDATION  # noqa: E402
 from torch import nn  # noqa: E402
 
 PAD = 0.15
+# What --resume reads (written after every epoch, deleted once checkpoint.json is written), and the
+# folder best.pt and prior_head.pt wait in until last.pt records them.
+LAST = "last.pt"
+PENDING = "pending"
+STAGED = (("best.pt", "checkpoint_sha256"), ("prior_head.pt", "prior_head_sha256"))
 TRAIN_PARTS = ("train", "validation")
 SAMPLE_WORDS = ("samples", "sources", "per_person")
 CROP_SQL = """
@@ -311,20 +338,71 @@ def batch_loss(model, loss_fn, crops, labels, maps, generator, blocks, prior):
     return loss
 
 
-def train_epoch(model, optimiser, inputs, targets, device, batch, generator, blocks=None, loss_fn=None, maps=None, prior=None):
+def trains_on_one_crop(model, size):
+    """Whether the model takes a training step on a batch of one crop of this size.
+
+    Batch norm in training needs more than one value per channel, and one small crop's deepest map
+    is 1 by 1, which gives it one: measured on CPU, every architecture here raises on one 32-pixel
+    crop and densenet121 on one 48-pixel crop too, while all of them train on one 64-pixel crop. Asked
+    of a deep copy in training mode, with no gradient and inside fork_rng, since a dropout draws in
+    training, so neither the model nor any random state the run draws from moves. A model that
+    cannot forward a crop of this size at all is not this question: it fails where it failed
+    before, in the prior head's words or at its first batch."""
+    device = next(model.parameters()).device
+    devices = [device.index if device.index is not None else torch.cuda.current_device()] if device.type == "cuda" else []
+    probe = copy.deepcopy(model).train()
+    try:
+        with torch.random.fork_rng(devices=devices), torch.no_grad():
+            probe(torch.zeros(1, 3, size, size, device=device))
+    except ValueError:
+        return False
+    except RuntimeError:
+        return True
+    return True
+
+
+def ends_on_one(count, batch):
+    """Whether an epoch over count crops ends on a batch of one: one more than whole batches."""
+    return count > batch and count % batch == 1
+
+
+def batch_bounds(count, batch, join_single=False):
+    """Each training batch's first and past-last place in the sampler's order: batch crops at a
+    time and the rest last, as version 1 cut them, and where join_single, a last batch of one crop
+    joined to the batch before it, for a model that cannot train on one (trains_on_one_crop)."""
+    starts = list(range(0, count, batch))
+    if join_single and ends_on_one(count, batch):
+        starts.pop()
+    stops = [*starts[1:], count] if starts else []
+    return list(zip(starts, stops, strict=True))
+
+
+def refuse_one_crop(count, join_single, architecture, size):
+    """A training part of exactly one crop where the model cannot train on one is refused before
+    any epoch, since there is no batch to join it to and its first step would fail."""
+    if count == 1 and join_single:
+        raise TrainError(
+            f"one training crop: {architecture} cannot take a training step on a batch of one {size}-pixel crop,"
+            " since batch norm needs more than one value per channel there; take more crops, or 64-pixel crops,"
+            " on which every architecture here trains on one"
+        )
+
+
+def train_epoch(model, optimiser, inputs, targets, device, batch, generator, blocks=None, loss_fn=None, maps=None, prior=None, join_single=False):
     """One pass over the training crops in an order the sampler draws; returns the mean loss.
 
     With no blocks, version 1's epoch: every crop once in a seeded order, no change to a crop,
     plain cross-entropy. The run's blocks choose the sampler, the changes made to each batch and
     the loss (tools/train_blocks.py); with the prior block on, maps are the crops' level maps
-    (load_maps) and prior the head that scores the backbone against them."""
+    (load_maps) and prior the head that scores the backbone against them. join_single joins a last
+    batch of one crop to the one before (batch_bounds); without it the batches are version 1's."""
     model.train()
     blocks = blocks or from_record(None)
     loss_fn = loss_fn or nn.CrossEntropyLoss()
     order = BLOCKS.SAMPLERS[blocks.sampler](targets, generator)
     total = 0.0
-    for start in range(0, len(order), batch):
-        index = order[start : start + batch]
+    for start, stop in batch_bounds(len(order), batch, join_single):
+        index = order[start:stop]
         optimiser.zero_grad()
         crops = inputs[index].to(device)
         batch_maps = maps[index].to(device).long() if prior is not None else None
@@ -447,8 +525,10 @@ def start_line(args, parent):
     return "none (from scratch): a rebase"
 
 
-def model_card(out, args, run, counts, best, elapsed, blocks, parent=None):
-    """MODEL.md: what the checkpoint is, what it saw, what it scored, and what it is not."""
+def model_card(out, args, run, counts, best, elapsed, blocks, parent=None, notes=()):
+    """MODEL.md: what the checkpoint is, what it saw, what it scored, and what it is not; notes are
+    the lines on how this run's training differed in its batches or was resumed (batch_lines,
+    resume_lines)."""
     lines = [
         "# SchwingNet v1, level stage",
         "",
@@ -460,6 +540,7 @@ def model_card(out, args, run, counts, best, elapsed, blocks, parent=None):
         "- Blocks: " + "; ".join(f"{k} {','.join(v) if isinstance(v, list) else v}" for k, v in as_record(blocks).items()) + ".",
         f"- Training crops {seen_words(counts, blocks)}; validation crops {validation_words(counts)}; no test row was read.",
         *prior_lines(blocks, counts, best, args.size, parent),
+        *notes,
         f"- Best epoch {best['epoch']}: validation accuracy {best['validation_accuracy']:.3f} ({best['validation_ci'][0]:.3f} to {best['validation_ci'][1]:.3f}, n={best['validation_n']}).",
         f"- Checkpoint best.pt sha256 {best['checkpoint_sha256']}; wall time {elapsed:.0f} s.",
         "- Levels: " + ", ".join(LEVELS) + f"; transitional {', '.join(TRANSITIONAL)}.",
@@ -488,6 +569,28 @@ def prior_lines(blocks, counts, best, size, parent=None):
     ]
 
 
+def batch_lines(joined, blocks, args):
+    """The card's line on a joined batch where the run joined one: why its last batch is larger."""
+    if not joined:
+        return []
+    return [
+        f"- Batches: {blocks.architecture} cannot train on one {args.size}-pixel crop (batch norm needs more than one"
+        f" value per channel), so each epoch's last batch of one crop joined the batch before it, which then held {args.batch + 1}."
+    ]
+
+
+def resume_lines(resumed):
+    """The card's line on the cuts the run was resumed after, where it was."""
+    if not resumed:
+        return []
+    word = "epoch" if len(resumed) == 1 else "epochs"
+    return [
+        f"- Resumed after {word} {', '.join(str(epoch) for epoch in resumed)}: continued from train/last.pt (the weights,"
+        " the optimiser's state, the prior head and every random state the run draws from), so the epochs after a cut"
+        " drew what an uncut run draws."
+    ]
+
+
 def person_count(crops):
     return len({c["person"] for c in crops})
 
@@ -508,6 +611,7 @@ def parse(argv):
     parser.add_argument("--keep-epochs", type=int, default=1, help="1 keeps every epoch's weights for the evaluator's test witness frames")
     parser.add_argument("--init", default=None, help="a parent checkpoint (best.pt or an epoch's weights) to start from instead of ImageNet: an incremental run (docs/research/retraining-plan.md, section 3.4)")
     parser.add_argument("--block", action="append", default=[], metavar="KEY=VALUE", help="one choice of a building block (src/schwingnet/blocks.py), such as normalise=imagenet or augment=box-jitter,intensity; none gives version 1's training")
+    parser.add_argument("--resume", action="store_true", help="go on from train/last.pt where a cut run stopped, given the arguments the run was started with")
     return parser.parse_args(argv)
 
 
@@ -680,6 +784,150 @@ def head_checkpoint(prior, folder):
     return {"prior_head_sha256": sha256_of(folder / "prior_head.pt"), "prior_stage": prior.stage, "prior_cells": list(prior.cells)}
 
 
+def stage_best(model, prior, folder, line):
+    """The epoch's line as the new best, its weights and the prior head's saved under pending/ by
+    the names they will have in place, so their bytes and digests are those best.pt and
+    prior_head.pt will hold (torch.save names its archive after the file); settle moves them in
+    once last.pt records them."""
+    pending = folder / PENDING
+    pending.mkdir(exist_ok=True)
+    torch.save(model.state_dict(), pending / "best.pt")
+    return dict(line, checkpoint_sha256=sha256_of(pending / "best.pt"), **head_checkpoint(prior, pending))
+
+
+def settle(folder, best):
+    """Each staged file moved into place where the best line names its digest, and dropped where
+    it does not: a run cut after staging and before last.pt landed redoes that epoch, and one cut
+    after last.pt landed and before the move finds the move still to make."""
+    for name, key in STAGED:
+        staged = folder / PENDING / name
+        if not staged.is_file():
+            continue
+        if best is not None and best.get(key) == sha256_of(staged):
+            os.replace(staged, folder / name)
+        else:
+            staged.unlink()
+
+
+def check_best(folder, best):
+    """On resuming, best.pt must be the weights the record names, or the run would end on a
+    checkpoint.json that names weights it does not have."""
+    path = folder / "best.pt"
+    if best is not None and (not path.is_file() or sha256_of(path) != best["checkpoint_sha256"]):
+        raise TrainError(f"--resume: {path} is not the checkpoint {folder / LAST} records (sha256 {best['checkpoint_sha256'][:12]}); start the run again without --resume")
+
+
+def drop_pending(folder):
+    """The emptied pending/ folder, once the run is done."""
+    try:
+        (folder / PENDING).rmdir()
+    except OSError:
+        pass
+
+
+def arguments_of(args, blocks):
+    """What a resumed run must share with the run it goes on from: everything that shapes what it
+    trains on and how, the schedule's length among them. The device is left out, since a job put
+    back in the queue may land on another card, and the catalog's path too, which RUN.json binds by
+    its digest."""
+    return {
+        "epochs": args.epochs, "seed": args.seed, "size": args.size, "batch": args.batch, "lr": args.lr,
+        "max_frames": args.max_frames, "witness": args.witness, "keep_epochs": args.keep_epochs,
+        "weights": args.weights, "init": args.init, "blocks": as_record(blocks),
+    }
+
+
+def numpy_state():
+    """numpy's global state in plain numbers, which torch's weights-only loader reads back."""
+    name, keys, position, has_gauss, cached = np.random.get_state()
+    return [name, keys.tolist(), int(position), int(has_gauss), float(cached)]
+
+
+def set_numpy_state(saved):
+    name, keys, position, has_gauss, cached = saved
+    np.random.set_state((name, np.array(keys, dtype=np.uint32), position, has_gauss, cached))
+
+
+def last_state(epoch, model, optimiser, prior, generator, progress):
+    """train/last.pt after an epoch: the weights, the optimiser's state, the prior head, every
+    random state the run draws from, and progress, the best line, the lines so far, the epochs the
+    witness frames were drawn at, the arguments the run was started with and the epochs it was
+    resumed after."""
+    return {
+        "epoch": epoch,
+        "model": model.state_dict(),
+        "optimiser": optimiser.state_dict(),
+        "prior": prior.state_dict() if prior is not None else None,
+        "generator": generator.get_state(),
+        "torch_rng": torch.get_rng_state(),
+        "cuda_rng": torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None,
+        "numpy_rng": numpy_state(),
+        "python_rng": random.getstate(),
+        **progress,
+    }
+
+
+def save_last(folder, state):
+    """train/last.pt written whole beside its place and renamed into it, so a run cut while writing
+    it keeps the one before."""
+    temporary = folder / f"{LAST}.tmp"
+    torch.save(state, temporary)
+    os.replace(temporary, folder / LAST)
+
+
+def load_last(folder, arguments):
+    """train/last.pt for --resume, refused in words where there is none, where it cannot be read,
+    or where the run that wrote it was started with other arguments; the files staged under
+    pending/ are then settled as its best line says, and best.pt held to that line, before
+    anything of the run starts."""
+    path = folder / LAST
+    if not path.is_file():
+        raise TrainError(f"--resume: {path} is not there, so there is nothing to resume (a run writes it after every epoch and deletes it once checkpoint.json is written); start the run without --resume")
+    try:
+        state = torch.load(path, map_location="cpu", weights_only=True)
+    except (OSError, EOFError, RuntimeError, pickle.UnpicklingError) as error:
+        raise TrainError(f"--resume: {path} cannot be read ({type(error).__name__}); start the run again without --resume") from error
+    theirs = state.get("arguments") or {}
+    changed = [f"{name} was {theirs.get(name)!r}, now {value!r}" for name, value in arguments.items() if theirs.get(name) != value]
+    if changed:
+        raise TrainError(f"--resume: {path} was written by a run started otherwise ({'; '.join(changed)}); resume with the arguments the run was started with")
+    settle(folder, state["best"])
+    check_best(folder, state["best"])
+    return state
+
+
+def restore(saved, model, optimiser, prior, generator):
+    """The cut run's weights, optimiser state and random states in place of the fresh run's."""
+    model.load_state_dict(saved["model"])
+    optimiser.load_state_dict(saved["optimiser"])
+    if prior is not None:
+        prior.load_state_dict(saved["prior"])
+    generator.set_state(saved["generator"])
+    torch.set_rng_state(saved["torch_rng"])
+    if saved["cuda_rng"] is not None and torch.cuda.is_available():
+        torch.cuda.set_rng_state_all(saved["cuda_rng"])
+    set_numpy_state(saved["numpy_rng"])
+    random.setstate(saved["python_rng"])
+
+
+def resume_into(saved, model, optimiser, prior, generator, frames):
+    """A cut run taken back into the one built afresh, after everything a fresh start builds and
+    draws, so the next epoch draws what it would have drawn had the run gone through; returns the
+    epoch to go on from, the lines so far, the best line and the epochs it was resumed after."""
+    restore(saved, model, optimiser, prior, generator)
+    frames.epochs = list(saved["witness_epochs"])
+    print(json.dumps({"resumed_after_epoch": saved["epoch"]}), flush=True)
+    return saved["epoch"] + 1, list(saved["history"]), saved["best"], [*saved["resumed_after"], saved["epoch"]]
+
+
+def write_whole(path, text):
+    """A file written beside its place and renamed into it, so no reader sees half of it:
+    tools/flow.py takes checkpoint.json as the end of the training step."""
+    temporary = path.with_name(path.name + ".tmp")
+    temporary.write_text(text, encoding="utf-8")
+    os.replace(temporary, path)
+
+
 def run(args):
     out = Path(args.out)
     run_file = out / "RUN.json"
@@ -694,6 +942,9 @@ def run(args):
         raise TrainError(f"blocks: {error}") from error
     if args.init and args.weights:
         raise TrainError("a run starts from ImageNet (--weights) or from a parent (--init), not both")
+    folder = out / "train"
+    arguments = arguments_of(args, blocks)
+    saved = load_last(folder, arguments) if args.resume else None
     parent = parent_of(args.init) if args.init else None
     seed_everything(args.seed)
     crops = read_crops(args.catalog, TRAIN_PARTS)
@@ -709,24 +960,31 @@ def run(args):
     val_x, val_y = load_crops(val_crops, args.size, cache)
     witness = list(range(min(args.witness, len(val_crops))))
     frames = Witness(out, [c for c in crops if c["part"] == "validation"], args.size)
-    folder = out / "train"
     (folder / "witness").mkdir(parents=True, exist_ok=True)
     model = build_model(args.weights, args.device, blocks.normalise, blocks.architecture, blocks.denoise)
     if parent:
         warm_start(model, args.init, parent, blocks, args.size)
+    join_single = not trains_on_one_crop(model, args.size)
     maps, val_maps, prior = prior_of(blocks, model, train_crops, val_crops, args)
+    refuse_one_crop(len(train_crops), join_single, blocks.architecture, args.size)
     optimiser = BLOCKS.OPTIMISERS[blocks.optimiser](model, args.lr, blocks, prior.parameters() if prior else ())
     base_rates = [group["lr"] for group in optimiser.param_groups]
     loss_fn = BLOCKS.loss_function(blocks, train_y, LEVELS).to(args.device)
     generator = torch.Generator().manual_seed(args.seed)
-    telemetry = load_tool("wandb_log").Telemetry(out, record, "train", {"epochs": args.epochs, "seed": args.seed, "size": args.size, "batch": args.batch, "lr": args.lr, "weights": bool(args.weights), "train_crops": len(train_crops), "validation_crops": len(val_crops), "witness_frames": len(frames.frames), "blocks": as_record(blocks), "parent": parent_record(parent)})
-    history, best, started = [], None, time.monotonic()
+    telemetry = load_tool("wandb_log").Telemetry(out, record, "train", {"epochs": args.epochs, "seed": args.seed, "size": args.size, "batch": args.batch, "lr": args.lr, "weights": bool(args.weights), "train_crops": len(train_crops), "validation_crops": len(val_crops), "witness_frames": len(frames.frames), "blocks": as_record(blocks), "parent": parent_record(parent)}, resume=args.resume)
+    history, best, resumed, first, started = [], None, [], 0, time.monotonic()
+    if saved is not None:
+        # Last of all, after the telemetry's start, so whatever a fresh start draws is drawn over.
+        first, history, best, resumed = resume_into(saved, model, optimiser, prior, generator, frames)
+        started -= history[-1]["seconds"]
+    joined = join_single and ends_on_one(len(train_y), args.batch)
     with (folder / "metrics.jsonl").open("w", encoding="utf-8") as metrics:
-        for epoch in range(0, args.epochs + 1):
+        metrics.writelines(json.dumps(line) + "\n" for line in history)
+        for epoch in range(first, args.epochs + 1):
             rate = None
             if epoch:
                 rate = set_rate(optimiser, base_rates, lr_factor(epoch, args.epochs, blocks.warmup_epochs, blocks.schedule))
-            loss = train_epoch(model, optimiser, train_x, train_y, args.device, args.batch, generator, blocks, loss_fn, maps, prior) if epoch else None
+            loss = train_epoch(model, optimiser, train_x, train_y, args.device, args.batch, generator, blocks, loss_fn, maps, prior, join_single=join_single) if epoch else None
             tally = MapTally(prior, val_maps, args.device) if prior is not None else None
             guesses = predict(model, val_x, args.device, args.batch, tally)
             numbers = prior_line(prior, tally)
@@ -734,12 +992,14 @@ def run(args):
             witness_strip([val_crops[i] for i in witness], val_x[witness], guesses[witness], folder / "witness" / f"epoch-{epoch:02d}.png")
             checkpoint(model, folder, epoch, args.keep_epochs)
             if epoch and (best is None or chosen_by(line, blocks) > chosen_by(best, blocks)):
-                torch.save(model.state_dict(), folder / "best.pt")
-                best = dict(line, checkpoint_sha256=sha256_of(folder / "best.pt"), **head_checkpoint(prior, folder))
+                best = stage_best(model, prior, folder, line)
             history.append(line)
             metrics.write(json.dumps(line) + "\n")
             print(json.dumps({k: v for k, v in line.items() if k != "validation_strata"}), flush=True)
             telemetry.log(dict(wandb_values(line), **telemetry.images(frames.media(epoch)), **telemetry.images({"witness/crops": folder / "witness" / f"epoch-{epoch:02d}.png"})), step=epoch)
+            progress = {"best": best, "history": history, "witness_epochs": frames.epochs, "arguments": arguments, "resumed_after": resumed}
+            save_last(folder, last_state(epoch, model, optimiser, prior, generator, progress))
+            settle(folder, best)
     frames.finish()
     accuracy_curve(history, folder / "accuracy.png")
     counts = {
@@ -753,8 +1013,15 @@ def run(args):
         "train_with_map": with_map(train_crops),
         "validation_with_map": with_map(val_crops),
     }
-    (folder / "checkpoint.json").write_text(json.dumps(dict(best, counts=counts, levels=list(LEVELS), size=args.size, blocks=as_record(blocks), parent=parent_record(parent)), indent=1) + "\n", encoding="utf-8")
-    model_card(folder, args, record, counts, best, time.monotonic() - started, blocks, parent)
+    notes = batch_lines(joined, blocks, args) + resume_lines(resumed)
+    model_card(folder, args, record, counts, best, time.monotonic() - started, blocks, parent, notes)
+    joins = {"single_crop_batch": "joined"} if joined else {}
+    facts = dict(best, counts=counts, levels=list(LEVELS), size=args.size, blocks=as_record(blocks), parent=parent_record(parent), **joins)
+    # The step's last file, since tools/flow.py takes it as the step's end; last.pt goes after it.
+    write_whole(folder / "checkpoint.json", json.dumps(facts, indent=1) + "\n")
+    (folder / LAST).unlink(missing_ok=True)
+    (folder / f"{LAST}.tmp").unlink(missing_ok=True)
+    drop_pending(folder)
     telemetry.log(telemetry.images({"accuracy": folder / "accuracy.png"}) | telemetry.videos({f"witness/validation_video/{f['key']}": frames.folder / f["key"] / "anim.gif" for f in frames.frames}))
     telemetry.summary({"best_epoch": best["epoch"], "best_validation_accuracy": best["validation_accuracy"], "checkpoint_sha256": best["checkpoint_sha256"]})
     telemetry.finish()

@@ -10,12 +10,16 @@
 #     check passed, naming the sha256 of data/splits/test-persons.json and rule.json as they are now,
 #     so a version checked against an older freeze is checked again before any run reads it,
 #   - and whose file is under $STORE/versions.
+# With a fourth argument SOURCE, the version must also hold SOURCE's train part, as the block smoke
+# test's two_source plan needs (grid/sweep-driver.sbatch, issue #252); with three it chooses as above.
 # Prints the file's name and exits 0, or says on stderr why no version qualifies and exits 1. Runs on
 # the login node, so bash, grep, sed, awk and sha256sum only (warrior kills python by name).
 #
-#   v1-version.sh STORE DATA_ROOT REPO
+#   v1-version.sh STORE DATA_ROOT REPO [SOURCE]
 set -uo pipefail
-STORE=$1 DATA_ROOT=$2 REPO=$3
+STORE=$1 DATA_ROOT=$2 REPO=$3 SOURCE=${4:-}
+# A source is an id, lower-case letters, digits and _; anything else names no source a version holds.
+case "$SOURCE" in *[!a-z0-9_]*) echo "no catalog version is chosen for '$SOURCE', which is no source id" >&2; exit 1 ;; esac
 
 digest() { sha256sum < "$1" 2>/dev/null | cut -d' ' -f1; }
 
@@ -59,7 +63,9 @@ while IFS= read -r line; do
   case "$line" in *'"carmlspine|train":'*) ;; *) continue ;; esac
   file=$(echo "$line" | sed -n 's/.*"file": *"\(catalog-[0-9]*-[0-9a-f]*\.sqlite\)".*/\1/p')
   [ -n "$file" ] || continue
-  if ! holds_heads "$line"; then
+  if [ -n "$SOURCE" ] && [[ $line != *"\"$SOURCE|train\":"* ]]; then
+    because "the newest version with C-ArmLSpine ($file) holds no $SOURCE train part"
+  elif ! holds_heads "$line"; then
     because "the newest version with C-ArmLSpine ($file) lacks a C-ArmLSpine shard now on the volume"
   elif ! marked "$file"; then
     because "the newest version with C-ArmLSpine ($file) has no passed split check against the current test persons and rule"

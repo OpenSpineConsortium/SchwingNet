@@ -3,7 +3,7 @@
 Usage (from the verification environment, or any python with the package on its path):
     python tools/flow.py plan --mode slurm --epochs 20 --hours 4
     python tools/flow.py run --catalog <catalog.sqlite> --out <runs folder> --mode local \
-        --epochs 3 --seed 1 [--max-frames 400] [--size 64] [--weights <file>]
+        --epochs 3 --seed 1 [--max-frames 400] [--size 64] [--weights <file>] [--slug <name>]
     python tools/flow.py record --run <runs folder>/<run id> --into docs/research/v1-demo/runs
 
 Every run also writes PROVENANCE.json and PROVENANCE.md (tools/licences.py) before its first step:
@@ -13,9 +13,10 @@ data/recipes/ does not take, so a catalog meant for a commercial network is cut 
 `python3 tools/licences.py derive`, and the ledger row names the class and the recipe.
 
 A run is refused from a dirty tree, since its record names the commit; the run id is the hash of
-the commit, the catalog's sha256 and the start, so no two runs share one; RUN.json is written
-before the first step, so the trainer and the evaluator stamp their numbers from it and never
-type a fact of their own. The steps are the split check (SQL over the catalog, here), training
+the commit, the catalog's sha256 and the run's configuration (below), so the same configuration
+on the same commit and catalog always names the same run; RUN.json is written before the first
+step, so the trainer and the evaluator stamp their numbers from it and never type a fact of
+their own. The steps are the split check (SQL over the catalog, here), training
 and evaluation, each one process, each timed and recorded as a job with what it cost, in local
 mode as a subprocess in the train-cpu environment and in slurm mode as one job each in
 train-gpu, queued through hpcworker's job submit as the gpu class (issue #77), polled no faster than once a minute (grid rule 7). `record` copies the run's small
@@ -24,12 +25,27 @@ holds what ran and what it cost beside the numbers. After the last step the run'
 written beside its files (tools/report.py): the CLAIM 2024 and REFORMS items each answered from the
 run's files or the declared study, and the licences of the data it read.
 
+The run's configuration is every argument that changes what the steps compute (the stage, the
+epochs, the seed, the crop size, the frame cap, the blocks, the sha256 of the weights or of the
+parent it starts from, the recipe and the environment) and nothing that only says where or how
+long it runs; it is written to CONFIGURATION.json and its sha256 names the run with the commit and
+the catalog (schwingnet.flow.configured_run_id), so no clock enters the name. The run's folder is
+<out>/<run id>, or <out>/<slug> with `--slug`, so a sweep finds each row's folder by the row's
+name. Started again on a folder that holds its record, the flow runs only what is left: nothing
+where the evaluation finished (and no second ledger row), the evaluation alone where training
+wrote its checkpoint.json, training carried on from its last epoch (`tools/train.py --resume`)
+where it left train/last.pt, else training from the start; RUN.json keeps its first start and
+its earlier jobs and gains a job for each step run now. A folder that holds another run's record
+is refused and left as it is.
+
 Before the first step the run's witness.json is written (tools/witness.py): the frozen list in
 data/witness/ where the repository has one, checked against this catalog, else the frames chosen
-from it now. After the last step the flow pushes the steps' offline Weights and Biases files from
-where it runs (tools/wandb_log.py sync; on the grid that is the login node, which has a route
-out), and its last line and the ledger say whether they were pushed, never silently. `record
---freeze` makes the run's witness list the frozen one, for the first run on real frames only.
+from it now; a run started again keeps the list its folder holds, so every step of one run draws
+the same frames. After the last step the flow pushes the steps' offline Weights and Biases files
+from where it runs (tools/wandb_log.py sync; on the grid that is the login node, which has a
+route out), and its last line and the ledger say whether they were pushed, never silently.
+`record --freeze` makes the run's witness list the frozen one, for the first run on real frames
+only.
 """
 
 import argparse
@@ -48,9 +64,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
-from schwingnet.blocks import BlockError  # noqa: E402
+from schwingnet.blocks import BlockError, as_record  # noqa: E402
 from schwingnet.blocks import parse as parse_blocks  # noqa: E402
-from schwingnet.flow import JobClass, JobRecord, JobSpec, RunRecord, Stage, Step, ledger_row, run_id  # noqa: E402
+from schwingnet.flow import JobClass, JobRecord, JobSpec, RunRecord, Stage, Step, configured_run_id, ledger_row  # noqa: E402
 from schwingnet.slurm import elapsed_seconds, is_finished, sbatch_script, submitted_of  # noqa: E402
 
 
@@ -100,6 +116,10 @@ LEDGER_HEADER = (
 PERSON_LEAK = "SELECT person FROM item GROUP BY person HAVING COUNT(DISTINCT part) > 1"
 FRAME_LEAK = "SELECT sha256 FROM item GROUP BY sha256 HAVING COUNT(DISTINCT part) > 1"
 MIN_POLL = 60
+# A run folder's name where the caller gives one: a sweep's row names it, so the folder is found by
+# the row; no slash, no leading dot, so it stays one folder inside --out.
+SLUG = re.compile(r"[a-z0-9][a-z0-9.-]{0,79}")
+FINISHED, TRAINED, RESUMED, RESTARTED = "finished", "trained", "resumed", "restarted"
 
 
 class FlowError(Exception):
@@ -139,20 +159,71 @@ def now():
     return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def block_words(words):
-    """The trainer's blocks as the command passes them, refused here before any step starts: a
-    word that names no block, and any space, since the command is split on spaces."""
+def parsed_blocks(words):
+    """The trainer's blocks from the command's words, refused here before any step starts: a word
+    that names no block, and any space, since the command is split on spaces."""
     if any(any(c.isspace() for c in word) for word in words):
         raise FlowError("a block is KEY=VALUE with no space in it")
     try:
-        parse_blocks(words)
+        return parse_blocks(words)
     except BlockError as error:
         raise FlowError(f"blocks: {error}") from error
+
+
+def block_words(words):
+    """The trainer's blocks as the command passes them, each word checked first."""
+    parsed_blocks(words)
     return "".join(f" --block {word}" for word in words)
 
 
-def job_specs(args):
-    """What each step asks for; the plan a person approves before any job is submitted."""
+def file_sha256(path, what, missing="no file there"):
+    """The sha256 of a file the run starts from, so the configuration names its bytes and not
+    where it lies; refused in words where there is none."""
+    path = Path(path)
+    if not path.is_file():
+        raise FlowError(f"{what} {path}: {missing}")
+    with path.open("rb") as handle:
+        return hashlib.file_digest(handle, "sha256").hexdigest()
+
+
+def run_configuration(args):
+    """What the run computes, as CONFIGURATION.json records it and its hash names the run: the
+    blocks as the checkpoint writes them, keyed by block, so the order of the --block words
+    changes nothing, and the files it starts from by their bytes. The mode, the partition, the hours, the CPUs and the
+    poll only say where and how long it runs, so they are left out, and a run started on another
+    node is still the same run."""
+    return {
+        "stage": args.stage,
+        "epochs": args.epochs,
+        "seed": args.seed,
+        "size": args.size,
+        "max_frames": args.max_frames,
+        "blocks": as_record(parsed_blocks(args.block)),
+        "weights_sha256": file_sha256(args.weights, "--weights") if args.weights else None,
+        # Said as the trainer says it, which would refuse the same missing parent a step later.
+        "init_sha256": file_sha256(args.init, "--init", "no parent checkpoint there") if args.init else None,
+        "recipe": args.recipe,
+        "environment": args.environment,
+    }
+
+
+def configuration_sha256(configuration):
+    """The configuration's hash, over its one canonical text: sorted keys and no spaces."""
+    text = json.dumps(configuration, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def write_configuration(run_dir, configuration):
+    """CONFIGURATION.json, written once: a run started again has the same configuration, since
+    its hash is in the run's name."""
+    path = Path(run_dir) / "CONFIGURATION.json"
+    if not path.is_file():
+        path.write_text(json.dumps(configuration, indent=1, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def job_specs(args, resume=False):
+    """What each step asks for; the plan a person approves before any job is submitted. resume
+    carries training on from the epoch its last.pt holds, with the same arguments otherwise."""
     train_command = (
         f"python tools/train.py --catalog {args.catalog} --out {{run_dir}} --epochs {args.epochs}"
         f" --seed {args.seed} --size {args.size}"
@@ -160,6 +231,7 @@ def job_specs(args):
         + (f" --init {args.init}" if args.init else "")
         + (f" --max-frames {args.max_frames}" if args.max_frames else "")
         + block_words(args.block)
+        + (" --resume" if resume else "")
     )
     evaluate_command = f"python tools/evaluate.py --catalog {args.catalog} --run {{run_dir}}"
     gpus = 1 if args.mode == "slurm" else 0
@@ -171,11 +243,16 @@ def job_specs(args):
     )
 
 
-def run_local(job, run_dir):
-    """One step as a subprocess in the locked environment; what it cost is measured, not estimated."""
+def run_local(job, run_dir, again=None):
+    """One step as a subprocess in the locked environment; what it cost is measured, not estimated.
+    A step run again in a run started before adds to its log under a line that says so, so the
+    output of the attempt that was cut short is kept above the one that carries it on."""
     command = ["pixi", "run", "--locked", "-e", job.environment, *job.command.format(run_dir=run_dir).split()]
     started = time.monotonic()
-    with (Path(run_dir) / f"{job.step.value}.log").open("w", encoding="utf-8") as log:
+    with (Path(run_dir) / f"{job.step.value}.log").open("a" if again else "w", encoding="utf-8") as log:
+        if again:
+            log.write(f"\n=== {job.step.value} run again at {now()}, the run's folder held: {again} ===\n")
+            log.flush()
         done = subprocess.run(command, cwd=ROOT, stdout=log, stderr=subprocess.STDOUT, check=False)
     return JobRecord(step=job.step, job_id=f"local-{os.getpid()}-{job.step.value}", partition="local", qos=None, hours_requested=job.hours, seconds_used=int(time.monotonic() - started) + 1, gpus=0, preemptions=0, exit_code=done.returncode)
 
@@ -241,16 +318,78 @@ def append_ledger(path, record, activity, verified):
     path.write_text(text + ledger_row(record, activity, verified) + "\n", encoding="utf-8")
 
 
-def start_record(args):
-    """RUN.json before the first step: the facts from the tree, the catalog and the split check."""
+def start_record(args, configuration=None):
+    """RUN.json before the first step: the facts from the tree, the catalog and the split check,
+    named by the commit, the catalog and the configuration's hash."""
+    configuration = run_configuration(args) if configuration is None else configuration
     commit, clean = tree_state()
     sha256, version = catalog_facts(args.catalog)
     check = split_disjoint(args.catalog)
-    started = now()
+    named = configuration_sha256(configuration)
     try:
-        return RunRecord(run_id=run_id(commit, sha256, started), code_commit=commit, clean_tree=clean, catalog_version=version, catalog_sha256=sha256, split_disjoint=check["disjoint"], stage=Stage(args.stage), seed=args.seed, epochs=args.epochs, parent_weights=hashlib.sha256(Path(args.weights).read_bytes()).hexdigest() if args.weights else None, started_at=started, mode=args.mode), check
+        return RunRecord(run_id=configured_run_id(commit, sha256, named), code_commit=commit, clean_tree=clean, catalog_version=version, catalog_sha256=sha256, split_disjoint=check["disjoint"], stage=Stage(args.stage), seed=args.seed, epochs=args.epochs, parent_weights=configuration["weights_sha256"], configuration_sha256=named, started_at=now(), mode=args.mode), check
     except ValueError as error:
         raise FlowError(f"refused: {error}; split check {json.dumps(check)}") from error
+
+
+def checked_slug(slug):
+    """The run folder's name a caller gives, refused in words unless it is one plain folder name."""
+    if slug is not None and not SLUG.fullmatch(slug):
+        raise FlowError(f"--slug {slug!r}: a slug is lower-case letters, digits, dots and hyphens, starts with a letter or a digit and is at most 80 characters")
+    return slug
+
+
+def earlier_record(run_dir, record):
+    """The record the run's folder already holds, or None where it holds none: the same run,
+    started before, whose name must be this run's, or the folder is another run's and is refused
+    before anything in it is touched."""
+    run_file = Path(run_dir) / "RUN.json"
+    if not run_file.is_file():
+        return None
+    try:
+        held = json.loads(run_file.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as error:
+        raise FlowError(f"{run_file}: not a run record ({error}); nothing is touched") from error
+    held_id = held.get("run_id") if isinstance(held, dict) else None
+    if held_id != record.run_id:
+        raise FlowError(f"{run_dir} holds run {held_id}, and this configuration on this commit and catalog names run {record.run_id}; nothing is touched")
+    try:
+        return RunRecord.model_validate(held)
+    except ValueError as error:
+        raise FlowError(f"{run_file}: {error}; nothing is touched") from error
+
+
+def what_is_left(run_dir, held):
+    """What a run started before still needs, from its folder, the furthest step first: nothing
+    once its evaluation finished, the evaluation where training wrote checkpoint.json (which the
+    trainer writes last), training carried on where it left train/last.pt, else all of it."""
+    run_dir = Path(run_dir)
+    evaluated = any(job.step is Step.EVALUATE and job.exit_code == 0 for job in held.jobs)
+    if evaluated and (run_dir / "evaluate" / "results.json").is_file():
+        return FINISHED
+    if (run_dir / "train" / "checkpoint.json").is_file():
+        return TRAINED
+    if (run_dir / "train" / "last.pt").is_file():
+        return RESUMED
+    return RESTARTED
+
+
+def new_folder(run_dir):
+    """A new run's folder. One a start left before it wrote the record holds at most the split
+    check, which is written again; anything else there is no run of this flow's, so it is
+    refused and left as it is."""
+    run_dir = Path(run_dir)
+    if run_dir.exists():
+        strays = sorted(p.name for p in run_dir.iterdir() if p.name != "split-check.json") if run_dir.is_dir() else [run_dir.name]
+        if strays:
+            raise FlowError(f"{run_dir} holds {', '.join(strays[:5])} and no RUN.json, so it is no run of this flow's; nothing is touched")
+    run_dir.mkdir(parents=True, exist_ok=True)
+
+
+def steps_for(args, reused):
+    """The steps a run still runs, by what its folder held."""
+    train, evaluate = job_specs(args, resume=reused == RESUMED)
+    return (evaluate,) if reused == TRAINED else (train, evaluate)
 
 
 def licence_record(catalog, recipe):
@@ -263,19 +402,33 @@ def licence_record(catalog, recipe):
 
 
 def command_run(args):
-    record, check = start_record(args)
+    slug = checked_slug(args.slug)
+    configuration = run_configuration(args)
+    record, check = start_record(args, configuration)
     licences = licence_record(args.catalog, args.recipe)
-    run_dir = Path(args.out) / record.run_id
-    run_dir.mkdir(parents=True)
+    run_dir = Path(args.out) / (slug or record.run_id)
+    held = earlier_record(run_dir, record)
+    reused = what_is_left(run_dir, held) if held else None
+    said = {"run_id": record.run_id, "run_dir": str(run_dir), "mode": args.mode, **({"reused": reused} if reused else {})}
+    if reused == FINISHED:
+        # Finished before: nothing runs and no second ledger row is written for the same run.
+        print(json.dumps(said), flush=True)
+        return 0
+    if held:
+        record = held
+    else:
+        new_folder(run_dir)
     (run_dir / "split-check.json").write_text(json.dumps(check, indent=1) + "\n", encoding="utf-8")
+    write_configuration(run_dir, configuration)
+    jobs = [*record.jobs, JobRecord(step=Step.SPLIT_CHECK, job_id=f"local-{os.getpid()}-split-check", partition="runner", qos=None, hours_requested=0.01, seconds_used=1, gpus=0, preemptions=0, exit_code=0)]
+    record = record.model_copy(update={"jobs": tuple(jobs)})
     write_record(run_dir, record)
     _licences.write_provenance(run_dir, licences)
     print(json.dumps({"licence": licences["run_class"], "commercial_use": licences["commercial_use"], "fits_recipes": licences["fits_recipes"]}), flush=True)
-    write_witness(run_dir, args.catalog, record.catalog_sha256)
-    print(json.dumps({"run_id": record.run_id, "run_dir": str(run_dir), "mode": args.mode}), flush=True)
-    jobs = [JobRecord(step=Step.SPLIT_CHECK, job_id=f"local-{os.getpid()}-split-check", partition="runner", qos=None, hours_requested=0.01, seconds_used=1, gpus=0, preemptions=0, exit_code=0)]
-    for job in job_specs(args):
-        done = run_local(job, run_dir) if args.mode == "local" else run_slurm(job, run_dir, args.poll)
+    keep_witness(run_dir, args.catalog, record.catalog_sha256)
+    print(json.dumps(said), flush=True)
+    for job in steps_for(args, reused):
+        done = run_local(job, run_dir, reused) if args.mode == "local" else run_slurm(job, run_dir, args.poll)
         jobs.append(done)
         record = record.model_copy(update={"jobs": tuple(jobs)})
         write_record(run_dir, record)
@@ -309,6 +462,20 @@ def write_report(run_dir):
     return f"report: {run_dir}/REPORT.md, " + (f"{len(gaps)} items missing" if gaps else "complete")
 
 
+def keep_witness(run_dir, catalog, catalog_sha256):
+    """The witness list a run started before already holds is kept as it is, so a step run again
+    draws the frames the steps before it drew; a new run writes its own."""
+    listing = Path(run_dir) / "witness.json"
+    if not listing.is_file():
+        write_witness(run_dir, catalog, catalog_sha256)
+        return
+    try:
+        document = json.loads(listing.read_text(encoding="utf-8"))
+        print(json.dumps({"witness": "kept", "frames": len(document["frames"]), "missing": document["missing"]}), flush=True)
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        raise FlowError(f"{listing}: the run's witness list cannot be read ({error}); it is kept, not chosen again, so fix or remove it by hand") from error
+
+
 def write_witness(run_dir, catalog, catalog_sha256):
     """The run's witness list, before any step, so both steps draw the same frames."""
     try:
@@ -329,7 +496,7 @@ def push_wandb(run_dir, environment=None):
     return lines[-1] if lines else f"W&B NOT PUSHED: the sync step exited {done.returncode}: {said}"
 
 
-KEPT = ("RUN.json", "PROVENANCE.json", "PROVENANCE.md", "split-check.json", "witness.json", "wandb-sync.json", "train/metrics.jsonl", "train/checkpoint.json", "train/MODEL.md", "train/accuracy.png", "evaluate/results.json", "evaluate/results.md", "evaluate/confusion.png", "evaluate/per-level.png", "evaluate/witness-test.jsonl", "evaluate/latency.json", "REPORT.md", "claim.json", "reforms.json")
+KEPT = ("RUN.json", "CONFIGURATION.json", "PROVENANCE.json", "PROVENANCE.md", "split-check.json", "witness.json", "wandb-sync.json", "train/metrics.jsonl", "train/checkpoint.json", "train/MODEL.md", "train/accuracy.png", "evaluate/results.json", "evaluate/results.md", "evaluate/confusion.png", "evaluate/per-level.png", "evaluate/witness-test.jsonl", "evaluate/latency.json", "REPORT.md", "claim.json", "reforms.json")
 # Of each witness frame, the strip and the animation; the sheets of the first and last epoch; the
 # latency thread's arms. Never a checkpoint, and never every epoch's picture, which W&B holds.
 KEPT_GLOBS = ("train/witness/frames/*/strip.jpg", "train/witness/frames/*/anim.gif", "train/witness/frames/sheet-*.jpg", "evaluate/witness/frames/*/strip.jpg", "evaluate/witness/frames/*/anim.gif", "evaluate/witness/frames/sheet-*.jpg", "latency/*.json")
@@ -402,6 +569,7 @@ def parse(argv):
     run_p = sub.add_parser("run")
     add_run_arguments(run_p)
     run_p.add_argument("--out", required=True)
+    run_p.add_argument("--slug", default=None, help="the run folder's name under --out, in place of the run id: lower-case letters, digits, dots and hyphens, at most 80")
     record_p = sub.add_parser("record")
     record_p.add_argument("--run", required=True)
     record_p.add_argument("--into", required=True)

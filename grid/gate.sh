@@ -56,13 +56,22 @@
 #                   clears it, so the send after that looks again
 #   samples         the sample index (grid/run-samples.sh): plan, scan and merge, refused while one
 #                   of them is live; status shows its MANIFEST.md, aggregates only
+#   sweep <plan>    one plan of grid/sweeps/ (issue #252): the block smoke test on one GPU through
+#                   the Metaflow flow (grid/sweep-driver.sbatch), after the setup, the weights and a
+#                   live catalog build where the plan needs them, and afterany every live run that
+#                   holds the checkout; status shows each plan's PROGRESS.txt under SMOKE
+#   bank <id>       one recipe of grid/banks/ banked and ingested (grid/02-bank-ingest.sbatch with
+#                   ONLY=<id>) and a catalog build afterok on it: two CPU jobs, once its held raw
+#                   copy is there and the room under the quota takes what they write
 #   stop            cancel the gate's own jobs that are still queued or running, and nothing else
 #   cancel <job>    cancel one of the gate's own live jobs and every other live job its word queued
 #                   with it (a fetch's bank and catalog), and nothing else
 #
-# While a version 1 run lasts, grid/logs/HOLD names its job and commit (grid/v1-driver.sbatch); the
-# gate's side skips its fast-forward while the file is there, and every word but a refused one
-# clears a hold whose job Slurm no longer holds, so the run's later steps run the code it recorded.
+# While a version 1 run or a sweep lasts, grid/logs/HOLD names its job and commit
+# (grid/v1-driver.sbatch, grid/sweep-driver.sbatch); the gate's side skips its fast-forward while
+# the file is there, and every word but a refused one clears a hold whose job Slurm no longer holds,
+# so the run's later steps run the code it recorded. One file holds one job, so each run that takes
+# it waits afterany on every other one still live (checkout_holders) rather than run beside it.
 # Every submission is one line of grid/logs/GATE_JOBS.txt (<job id> <word> <what> <when>) as well
 # as of hpcworker's ledger for the project; status and stop read the gate's file, which knows the
 # word each job came from, and touch no job it does not name. Which of them are live is read from
@@ -70,9 +79,9 @@
 # answers, and a gate that took that for "nothing live" would queue a second graph beside the first.
 # HPCWORKER names the hpcworker (the gate's clone hands it here), SQUEUE, SACCT, SCANCEL and
 # GETFATTR fakes for the tests, GETFATTR read by the size rule only where SIZE_RULE_STAND_INS=yes
-# says so (grid/size-rule.sh); DATA_ROOT, RUNS and MODELS other folders. Exit codes: 0 done, 64 a word
-# refused, 75 busy (a word still running, or jobs still live), 2 the checkout or a file missing,
-# 1 a submission failed.
+# says so (grid/size-rule.sh); DATA_ROOT, RUNS, SMOKE and MODELS other folders. Exit codes: 0 done,
+# 64 a word refused, 75 busy (a word still running, or jobs still live), 2 the checkout or a file
+# missing, 1 a submission failed.
 set -uo pipefail
 # One stream, in order: what the jobs were and why a word was refused reach the gate together.
 exec 2>&1
@@ -93,24 +102,26 @@ export -n DATA_ROOT 2>/dev/null
 DATA_ROOT=${DATA_ROOT:-$GRID_DATA}
 STORE=$DATA_ROOT/_catalog
 RUNS=${RUNS:-/rs/rs_grp_oschome/go2432/runs}
+# The block smoke test's results (issue #252): <plan>/<commit 7>-<catalog sha256 first 8>/ per sweep.
+SMOKE=${SMOKE:-/rs/rs_grp_oschome/go2432/smoke}
 MODELS=${MODELS:-/rs/rs_grp_oschome/go2432/models}
 WEIGHTS=$MODELS/resnet18-f37072fd.pth
 SWEEP_BANK=${SWEEP_BANK:-$DATA_ROOT/realxray/carmlspine_sweep}
 NETRC=${NETRC:-$HOME/.netrc}
 LOGS=$REPO/grid/logs
 STATE=$LOGS/GATE_JOBS.txt
-WORDS="start status leaks v1 latency fetch explore dropzip unpack nodequota samples stop cancel"
+WORDS="start status leaks v1 latency fetch explore dropzip unpack nodequota samples sweep bank stop cancel"
 ENVS="default train-cpu train-gpu telemetry"
 
 word=${1:-}
 id=${2:-}
 # Matched whole, so one argument holding two words ("v1 latency") is refused and never runs nothing.
 case "$word" in
-  start|status|leaks|v1|latency|fetch|explore|dropzip|unpack|nodequota|samples|stop|cancel) ;;
+  start|status|leaks|v1|latency|fetch|explore|dropzip|unpack|nodequota|samples|sweep|bank|stop|cancel) ;;
   "") echo "refusing: no word; one of: $WORDS"; exit 64 ;;
   *) echo "refusing: '$word' is not one of: $WORDS"; exit 64 ;;
 esac
-if [ "$word" = fetch ] || [ "$word" = explore ] || [ "$word" = dropzip ] || [ "$word" = unpack ]; then
+if [ "$word" = fetch ] || [ "$word" = explore ] || [ "$word" = dropzip ] || [ "$word" = unpack ] || [ "$word" = sweep ] || [ "$word" = bank ]; then
   [ $# -eq 2 ] || { echo "refusing: $word takes exactly one id"; exit 64; }
   case "$id" in ""|*[!a-z0-9_]*) echo "refusing: an id is lower-case letters, digits and _"; exit 64 ;; esac
   [ ${#id} -le 40 ] || { echo "refusing: an id is at most 40 characters"; exit 64; }
@@ -237,9 +248,19 @@ chain() {  # chain DEPEND [run-xray-chain.sh arguments...]: the X-ray chain afte
   XR_FETCH=$(value_of fetch "$after"); XR_CATALOG=$(value_of catalog "$after")
   record "$XR_FETCH" xr_fetch; record "$(value_of bank "$after")" xr_bank; record "$XR_CATALOG" xr_catalog
 }
-v1_driver() {  # v1_driver DEPS: the version 1 run after DEPS
+checkout_holders() {  # afterany:<job> for every live job of the gate's that holds the checkout while it runs, comma-joined
+  # A version 1 run and a sweep each write grid/logs/HOLD, one file naming one job, and the first of
+  # two side by side to end would clear it while the other still runs; so each waits for the others.
+  local job waits=""
+  [ -f "$STATE" ] || return 0
+  for job in $(awk '$3 == "v1_driver" || $3 == "sweep" { print $1 }' "$STATE" | sort -u); do
+    case "$QUEUED" in *" $job "*) waits=$(joined "$waits" "afterany:$job") ;; esac
+  done
+  echo "$waits"
+}
+v1_driver() {  # v1_driver DEPS: the version 1 run after DEPS and after every live run that holds the checkout
   local opts
-  depend_on "$1" || return 1
+  depend_on "$(joined "$1" "$(checkout_holders)")" || return 1
   # ${a[@]+"${a[@]}"}: the grid's bash 4.2 calls an empty array unbound under set -u
   submit v1_driver gpu RUNS="$RUNS" WEIGHTS="$WEIGHTS" ${opts[@]+"${opts[@]}"} --no-requeue -- v1-driver.sbatch >/dev/null
 }
@@ -316,8 +337,8 @@ SHOWN_JOBS=6 ARRAY_TASKS=2 TAIL_LINES=15 SHAPE_LINES=400 LINE_CHARS=200
 OPEN_LOGS=" setup weights "
 newest_jobs() {  # " <id> <id> ... ": the newest job the gate submitted for each thing it makes
   # Keyed by what was made, so a v1 that ran the ingest again hides start's failed one; an X-ray
-  # job's key carries its word, so each fetch's chain is its own.
-  echo " $(tac "$STATE" 2>/dev/null | awk '{ key = $3; if (key ~ /^xr_/) key = $2 " " key; if (!(key in seen)) { seen[key] = 1; print $1 } }' | tr '\n' ' ') "
+  # job's key carries its word, so each fetch's chain is its own, and so does a sweep's, each plan's.
+  echo " $(tac "$STATE" 2>/dev/null | awk '{ key = $3; if (key ~ /^xr_/ || key == "sweep") key = $2 " " key; if (!(key in seen)) { seen[key] = 1; print $1 } }' | tr '\n' ' ') "
 }
 what_of() {  # what_of ID: what the gate recorded job ID as
   awk -v j="$1" '$1 == j { what = $3 } END { print what }' "$STATE" 2>/dev/null
@@ -544,6 +565,40 @@ word_status() {
     [ -f "$run/wandb-sync.json" ] && grep -o 'https://wandb\.ai/[^" ]*' "$run/wandb-sync.json" | sort -u | sed 's/^/  W\&B /' | head -n 4
     [ -f "$run/evaluate/results.md" ] && head -n 30 "$run/evaluate/results.md" | sed 's/^/  /'
   fi
+  sweep_progress
+}
+
+SWEEP_ROWS_SHOWN=20 SWEEP_WANDB_SHOWN=4
+smoke_paths() {  # every line with the smoke folder's path cut to <smoke>, matched as text and not as a pattern
+  awk -v smoke="$SMOKE" '{
+    while (smoke != "" && (at = index($0, smoke)) > 0) $0 = substr($0, 1, at - 1) "<smoke>" substr($0, at + length(smoke))
+    print }'
+}
+progress_lines() {  # progress_lines FILE: a sweep's PROGRESS.txt as status shows it
+  # Its headline, the rows that have not matched their prediction yet (failed, mismatched or still
+  # to come; the rows that matched are counted on the headline) and its W&B links. tools/block_sweep.py
+  # writes the file whole and renames it into place, so it never reads half written.
+  local unmatched count
+  head -n 1 "$1"
+  unmatched=$(tail -n +2 "$1" | awk '$1 == "row" && ($3 == "failed" || $3 == "to-come" || $3 == "to_come" ||
+                                                    $4 == "no" || $4 == "false" || $4 == "mismatched")')
+  count=$(printf '%s' "$unmatched" | grep -c '^row ')
+  [ -z "$unmatched" ] || printf '%s\n' "$unmatched" | head -n "$SWEEP_ROWS_SHOWN"
+  [ "$count" -le "$SWEEP_ROWS_SHOWN" ] \
+    || echo "($((count - SWEEP_ROWS_SHOWN)) more rows not yet matched; the state folder's PROGRESS.txt holds them)"
+  tail -n +2 "$1" | awk '$1 == "wandb"' | head -n "$SWEEP_WANDB_SHOWN"
+}
+sweep_progress() {  # for each plan under SMOKE, its newest sweep's PROGRESS.txt (issue #252)
+  local plan progress
+  for plan in "$SMOKE"/*/; do
+    [ -d "$plan" ] || continue
+    # A state folder is one that holds PROGRESS.txt, so the synthetic plan's catalog beside them is passed over.
+    progress=$(ls -1t "$plan"*/PROGRESS.txt 2>/dev/null | head -n 1)
+    [ -n "$progress" ] || continue
+    echo "## sweep $(basename "$plan"), $(basename "$(dirname "$progress")") ($(date -r "$progress" '+%F %T'))" \
+      | LC_ALL=C tr -cd '\11\12\40-\176' | masked
+    progress_lines "$progress" | LC_ALL=C tr -cd '\11\12\40-\176' | smoke_paths | masked | sed 's/^/  /'
+  done
 }
 
 word_leaks() {
@@ -807,6 +862,139 @@ word_samples() {
   echo "submitted. 'status' shows the index's MANIFEST.md (counts per source) once the merge ends."
 }
 
+# The block smoke test (issue #252). A plan is a file tools/block_sweep.py wrote with indent 1 and
+# sorted keys, so its own keys are the lines one space in and a row's sit deeper; the login node
+# runs no python, so sed and grep read it.
+sweep_plans() {  # the plans under grid/sweeps/, by name
+  local one names=""
+  for one in "$REPO"/grid/sweeps/*.json; do [ -f "$one" ] && names="$names $(basename "$one" .json)"; done
+  echo "${names# }"
+}
+plan_catalog() {  # plan_catalog FILE: the plan's catalog: synthetic, v1 or with:<source>
+  sed -n 's/^ "catalog": "\([^"]*\)",\{0,1\}$/\1/p' "$1" | head -n 1
+}
+plan_names_weights() {  # plan_names_weights FILE: whether a row of the plan starts from an ImageNet file
+  grep -q '^  *"weights": "[^"]' "$1"
+}
+CATALOG_DEP=""
+sweep_catalog() {  # sweep_catalog CATALOG: the wait a plan's real catalog needs, in CATALOG_DEP; 75 with the reason where none can come
+  # A live catalog build of the gate's goes first, start's, v1's or a bank's, since the version the
+  # run reads is chosen when it starts (grid/v1-version.sh); else a version that qualifies now.
+  local source="" job version
+  CATALOG_DEP=""
+  case "$1" in with:*) source=${1#with:} ;; esac
+  job=$(live_of catalog)
+  if [ -n "$job" ]; then
+    CATALOG_DEP="afterok:$job"
+    echo "  catalog: after the live catalog build, job $job"
+    return 0
+  fi
+  if version=$(bash "$REPO/grid/v1-version.sh" "$STORE" "$DATA_ROOT" "$REPO" ${source:+"$source"} 2>/dev/null); then
+    echo "  catalog: $version qualifies (grid/v1-version.sh $1); no job"
+    return 0
+  fi
+  if [ -z "$source" ]; then
+    echo "refusing: no catalog version qualifies for the v1 plan and no catalog build of the gate's is live; the v1 word or start makes the catalog first"
+  else
+    echo "refusing: no catalog version holds $source's train part beside C-ArmLSpine's and no catalog build of the gate's is live; bank $source first"
+  fi
+  return 75
+}
+word_sweep() {
+  local plan=$REPO/grid/sweeps/$id.json catalog source running setup job weights_dep="" holds opts
+  [ -f "$plan" ] || { echo "refusing: $id is not a plan under grid/sweeps/ (the plans: $(sweep_plans))"; return 64; }
+  running=$(live_of sweep "sweep:$id")
+  [ -z "$running" ] || { echo "refusing: a sweep of $id is already queued or running (job $running); 'status' follows it"; return 75; }
+  # Every refusal before any job is queued, so a refused word leaves nothing behind.
+  catalog=$(plan_catalog "$plan")
+  case "$catalog" in
+    synthetic) CATALOG_DEP=""; echo "  catalog: the synthetic one, which the run builds once under the smoke folder or finds there" ;;
+    v1) sweep_catalog v1 || return ;;
+    with:*)
+      source=${catalog#with:}
+      case "$source" in ""|*[!a-z0-9_]*) echo "refusing: grid/sweeps/$id.json names the catalog '$catalog', whose source is no id"; return 2 ;; esac
+      sweep_catalog "$catalog" || return ;;
+    *) echo "refusing: grid/sweeps/$id.json names no catalog the sweep knows ('$catalog'; synthetic, v1 or with:<source>)"; return 2 ;;
+  esac
+  setup=$(setup_dependency) || return 1
+  [ -n "$setup" ] || echo "  setup: the environments match pixi.lock; no job"
+  if plan_names_weights "$plan" && ! weights_ready; then
+    job=$(live_of weights)
+    [ -n "$job" ] || job=$(submit weights batch MODELS="$MODELS" -- 00-weights.sbatch) || return 1
+    weights_dep="afterok:$job"
+  fi
+  # Queued after every run that holds the checkout rather than refused, so the sweeps the owner
+  # sends together run one after another, each on the code it records.
+  holds=$(checkout_holders)
+  [ -z "$holds" ] || echo "  the checkout: after the live runs that hold it ($holds)"
+  depend_on "$(joined "$setup" "$weights_dep" "$CATALOG_DEP" "$holds")" || return 1
+  # Not requeued: the word sent again resumes the cut sweep through the launcher (flows/launch.py),
+  # and a requeue racing that word would start a second launcher on the same flow run.
+  submit sweep gpu PLAN="$id" SMOKE="$SMOKE" DATA_ROOT="$DATA_ROOT" WEIGHTS="$WEIGHTS" MODELS="$MODELS" \
+    ${opts[@]+"${opts[@]}"} --no-requeue -- sweep-driver.sbatch > /dev/null || return 1
+  echo "submitted. 'status' shows the plan's PROGRESS.txt once the sweep writes it; the same word again after a cut sweep ends resumes it."
+}
+
+unconfirmed_fields() {  # unconfirmed_fields FILE: how many of a recipe's values still start "to confirm", its notes aside
+  # As tools/bank.py's unconfirmed() counts them, a string value starting so in any case, which it
+  # refuses before banking a frame; the recipes keep one value a line, so grep counts them.
+  grep -v '^  "notes":' "$1" | grep -ciE '(^|[^\\])"[[:space:]]*to confirm'
+}
+recipe_raw() {  # recipe_raw FILE: the raw folder a recipe of grid/banks/ names, as stage 2 reads it
+  # Off the grid stage 2 reads <data root>/<id>/raw in place of the recipe's path (issue #40), and
+  # the gate hands the stage a data root only where its caller gave one.
+  if [ -n "$DATA_ROOT_GIVEN" ]; then echo "$DATA_ROOT/$id/raw"; return 0; fi
+  sed -n 's/^ *"raw": *"\([^"]*\)".*/\1/p' "$1" | head -n 1
+}
+bank_room() {  # bank_room NEED: 0 where the room under the quota takes NEED bytes after what the running fetches owe, saying both
+  # The room the fetch word's chain decides against (grid/size-rule.sh, run-xray-chain.sh): what the
+  # running fetches owe first, then the room twice a minute apart, the smaller kept.
+  local DATA=$DATA_ROOT owed owed_bytes owed_n unsized free free_from room
+  owed=$(owed_by_running "") || { echo "refusing: squeue did not answer, so what the running fetches owe is not known; nothing was queued"; return 75; }
+  read -r owed_bytes owed_n unsized <<< "$owed"
+  [ -z "$unsized" ] || { echo "refusing: the running fetch of $unsized states no size, so the room after it is not known; nothing was queued"; return 75; }
+  read -r free free_from <<< "$(settled_room "$VOLUME")"
+  if [ -z "$free" ]; then
+    echo "refusing: the room on the lab volume could not be read: $(room_unread_words "$VOLUME"); nothing was queued"
+    return 2
+  fi
+  room=$(( free > owed_bytes ? free - owed_bytes : 0 ))
+  echo "  room: $(gb_down "$room") GB $(free_space_words "$free_from") after $(gb_up "$owed_bytes") GB owed to $(running_fetches "$owed_n")"
+  [ "$1" -le "$room" ] || { echo "refusing: the bank and its shard need $(gb_up "$1") GB and the room is $(gb_down "$room") GB; nothing was queued"; return 75; }
+}
+word_bank() {
+  local recipe=$REPO/grid/banks/$id.json busy raw bytes need setup bank opts
+  [ -f "$recipe" ] || { echo "refusing: $id is not a recipe under grid/banks/"; return 64; }
+  # One bank and one build at a time: two banks of one set write the same bank folder, and the X-ray
+  # chain's stage 2 banks every recipe its fetch names, start's every one there is.
+  busy=$( { live_of bank; live_of catalog; live_of xr_bank; } | tr '\n' ' ')
+  [ -z "${busy// /}" ] || { echo "refusing: a bank or a catalog build of the gate's is still queued or running (jobs $busy)"; return 75; }
+  [ "$(unconfirmed_fields "$recipe")" = 0 ] \
+    || { echo "refusing: grid/banks/$id.json still has a field spelled \"to confirm\"; stage 2 refuses it until the page is read and the field filled in"; return 2; }
+  raw=$(recipe_raw "$recipe")
+  [ -n "$raw" ] && [ -d "$raw" ] && [ -n "$(ls -A "$raw" 2>/dev/null | head -n 1)" ] \
+    || { echo "refusing: $id's raw copy is not on the volume (its recipe's raw folder is missing or empty); fetch it first"; return 2; }
+  # What the raw copy holds, read with no walk as the size rule reads a folder, whole: the bank is at
+  # most the raw copy's size for the formats here, and its shard copies the bank's frames once more,
+  # so the two jobs write at most twice the raw copy.
+  bytes=$(xattr_whole ceph.dir.rbytes "$raw")
+  [ -n "$bytes" ] || { echo "refusing: what $id's raw copy holds could not be read (ceph.dir.rbytes); nothing was queued"; return 2; }
+  need=$(( 2 * bytes ))
+  echo "  raw copy: $(gb_up "$bytes") GB; the bank and its shard: at most $(gb_up "$need") GB"
+  bank_room "$need" || return
+  setup=$(setup_dependency) || return 1
+  [ -n "$setup" ] || echo "  setup: the environments match pixi.lock; no job"
+  depend_on "$setup" || return 1
+  bank=$(submit bank batch ONLY="$id" ${opts[@]+"${opts[@]}"} -- 02-bank-ingest.sbatch) || return 1
+  # Recorded as catalog, so v1 and sweep wait on it as on any build of the gate's.
+  depend_on "afterok:$bank" || return 1
+  submit catalog batch ${opts[@]+"${opts[@]}"} -- 03-catalog.sbatch > /dev/null || {
+    "$SCANCEL" "$bank" && echo "  cancelled the bank job $bank, so no bank runs that no catalog build follows"
+    return 1
+  }
+  echo "submitted. 'status' shows the stage reports; a sweep sent while the build is live waits on it."
+}
+
 word_stop() {
   local live
   live=$(live_ids | tr '\n' ' ')
@@ -827,12 +1015,12 @@ word_cancel() {  # the job named, if the gate's and live, with every live job of
   "$SCANCEL" $cancel && echo "cancelled ($from): $cancel"
 }
 
-release_hold() {  # the version 1 run's hold (grid/v1-driver.sbatch) is cleared once Slurm no longer holds its job
+release_hold() {  # a run's hold (grid/v1-driver.sbatch, grid/sweep-driver.sbatch) is cleared once Slurm no longer holds its job
   local job
   [ -f "$LOGS/HOLD" ] || return 0
   job=$(awk '{ print $1; exit }' "$LOGS/HOLD")
   case "$QUEUED" in
-    *" $job "*) echo "  the checkout holds still at $(awk '{ print substr($2, 1, 7); exit }' "$LOGS/HOLD") while the version 1 run (job $job) lasts" ;;
+    *" $job "*) echo "  the checkout holds still at $(awk '{ print substr($2, 1, 7); exit }' "$LOGS/HOLD") while the run that took it (job $job) lasts" ;;
     *) rm -f "$LOGS/HOLD" ;;
   esac
 }
@@ -856,6 +1044,8 @@ case "$word" in
   unpack) word_unpack ;;
   nodequota) word_nodequota ;;
   samples) word_samples ;;
+  sweep) word_sweep ;;
+  bank) word_bank ;;
   stop) word_stop ;;
   cancel) word_cancel ;;
 esac

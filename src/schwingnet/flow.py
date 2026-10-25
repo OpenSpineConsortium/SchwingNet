@@ -100,7 +100,11 @@ class RunRecord(BaseModel):
 
     A dirty tree is refused at the boundary, so no number can be written against code git does
     not hold; the catalog version is named by its sha256, so two runs that cite the same hash
-    read the same bytes.
+    read the same bytes. A run that names the sha256 of its configuration is named by it
+    (configured_run_id), so the same configuration on the same commit and catalog is always the
+    same run and a cut-short run can be carried on in its own folder; a record without one was
+    written before configurations were named, and its id is still the hash of its start (run_id),
+    so every RUN.json written before keeps validating.
     """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
@@ -115,6 +119,7 @@ class RunRecord(BaseModel):
     seed: int = Field(ge=0)
     epochs: int = Field(ge=1)
     parent_weights: HexDigest | None = None
+    configuration_sha256: HexDigest | None = None
     started_at: Instant
     mode: str = Field(pattern=r"^(local|slurm)$")
     jobs: tuple[JobRecord, ...] = ()
@@ -126,7 +131,15 @@ class RunRecord(BaseModel):
             raise ValueError("a run from a dirty tree is refused")
         if not self.split_disjoint:
             raise ValueError("a run on a split that is not disjoint is refused")
-        if self.run_id != run_id(self.code_commit, self.catalog_sha256, self.started_at):
+        if self.configuration_sha256 is not None:
+            named = configured_run_id(
+                self.code_commit, self.catalog_sha256, self.configuration_sha256
+            )
+            if self.run_id != named:
+                raise ValueError(
+                    "the run id is not the hash of its commit, catalog and configuration"
+                )
+        elif self.run_id != run_id(self.code_commit, self.catalog_sha256, self.started_at):
             raise ValueError("the run id is not the hash of its commit, catalog and start")
         return self
 
@@ -140,8 +153,38 @@ class RunRecord(BaseModel):
 @ensure(lambda result: len(result) == RUN_ID_LENGTH, "a run id is twelve hex digits")
 @ensure(lambda result: _is_hex(result), "a run id is hex")
 def run_id(commit: str, catalog_sha256: str, started_at: str) -> str:
-    """The run's name: a hash of what it ran on and when, so no two runs share one."""
+    """The name of a run recorded before configurations were named: a hash of what it ran on and
+    when, so no two such runs share one. tools/flow.py names every run since by configured_run_id;
+    this one stays so that the records written before keep validating."""
     text = f"{commit}\n{catalog_sha256}\n{started_at}\n"
+    return hashlib.sha256(text.encode("ascii")).hexdigest()[:RUN_ID_LENGTH]
+
+
+@beartype
+@require(
+    lambda commit: 7 <= len(commit) <= 40 and commit.isascii(), "a commit is 7 to 40 hex digits"
+)
+@require(lambda catalog_sha256: len(catalog_sha256) == 64 and catalog_sha256.isascii(), "a sha256")
+# The configuration's digest is held to 64 ASCII characters, as the catalog's is, and not to hex:
+# CrossHair 0.0.111 met no hex form of this precondition beside the other two within the gate's
+# 20 s (a regular expression, a test of each character, sets, 2026-10-24), and a precondition no
+# input meets fails the gate. RunRecord's HexDigest holds the digest to hex where it is recorded.
+@require(
+    lambda configuration_sha256: len(configuration_sha256) == 64 and configuration_sha256.isascii(),
+    "the configuration's sha256",
+)
+@ensure(lambda result: len(result) == RUN_ID_LENGTH, "a run id is twelve hex digits")
+@ensure(lambda result: _is_hex(result), "a run id is hex")
+def configured_run_id(commit: str, catalog_sha256: str, configuration_sha256: str) -> str:
+    """The run's name from what it ran: the commit, the catalog and the configuration's hash.
+
+    No clock enters it, so a run started again with the same configuration on the same commit and
+    catalog finds its own folder and carries on what is done there instead of training a second
+    time beside it. The third line says configuration where a legacy id's third line is an
+    instant, so the text hashed here is never the text run_id hashes for the same commit and
+    catalog.
+    """
+    text = f"{commit}\n{catalog_sha256}\nconfiguration {configuration_sha256}\n"
     return hashlib.sha256(text.encode("ascii")).hexdigest()[:RUN_ID_LENGTH]
 
 
