@@ -20,7 +20,7 @@ The simulation side does not carry over: it shapes images rendered from CT, and 
 
 ## The strong block
 
-The fifth augment block, `strong`, takes the image-level strong set of both papers. Per crop it draws how many of the transforms to apply, none, one or two, and which, every draw from the run's own generator on the CPU so a run reproduces on any device. The two geometric ones, the affine and the piecewise warp, move a crop's level map with it. SyntheX's transform names match the augmenters of the imgaug library, though the paper does not say it used imgaug; where SyntheX names a transform but gives no range, the block takes imgaug's default for the augmenter of that name, and tools/train_blocks.py says which range is the paper's and which is imgaug's.
+The fifth augment block, `strong`, takes the image-level strong set of both papers. Per crop it draws how many of the transforms to apply, none, one or two, and which, every draw from the run's own generator on the CPU so a run reproduces on any device. The two geometric ones, the affine and the piecewise warp, move a crop's level map with it. SyntheX's transform names match the augmenters of the imgaug library, though the paper does not say it used imgaug; where SyntheX names a transform but gives no range, the block takes a range from imgaug's augmenter of that name, the ranges imgaug's documentation shows, which are not all the library's defaults and were not checked against the library itself, and tools/train_blocks.py says which range is the paper's and which is imgaug's.
 
 ## The caveat the trials carry
 
