@@ -497,6 +497,7 @@ SIGMOID_GAIN = (3.0, 10.0)
 SIGMOID_CUTOFF = (0.3, 0.6)
 STRONG_BLUR_SIGMA = (0.0, 3.0)
 AVERAGE_KERNEL = (2, 7)
+POOL_KERNEL = (2, 4)
 BOXES = (1, 4)
 BOX_SIDE = (0.05, 0.20)
 BOX_SPREAD = 0.5
@@ -507,7 +508,6 @@ SHARPEN_LIGHTNESS = (0.75, 1.5)
 EMBOSS_ALPHA = (0.0, 1.0)
 EMBOSS_STRENGTH = (0.5, 1.5)
 MULTIPLY = (0.5, 1.5)
-BRIGHTNESS_SHIFT = 0.2
 WARP_CELLS = 4
 WARP_SHIFT = 0.05
 GAUSSIAN_SPREAD = (0.2, 1.0)
@@ -704,14 +704,15 @@ def emboss(batch, generator):
     return (batch + alpha * embossed).clamp(0.0, 1.0)
 
 
-def _pool(crops, kind):
-    """One of the four poolings over 2 by 2 cells, each cell's value given back to its four
-    pixels, so the size is kept; an odd side's last row or column is repeated first. The median
-    of four is the mean of the middle two, as numpy's is."""
+def _pool(crops, kind, kernel):
+    """One of the four poolings over kernel by kernel cells from the top left, each cell's value
+    given back to its pixels, so the size is kept; a side that is no multiple of the kernel has its
+    last row or column repeated to fill its last cells first. The median of an even count is the
+    mean of the middle two, as numpy's is."""
     count, channels, height, width = crops.shape
-    padded = F.pad(crops, (0, width % 2, 0, height % 2), mode="replicate")
-    rows, columns = padded.shape[-2] // 2, padded.shape[-1] // 2
-    cells = padded.view(count, channels, rows, 2, columns, 2).permute(0, 1, 2, 4, 3, 5).reshape(count, channels, rows, columns, 4)
+    padded = F.pad(crops, (0, -width % kernel, 0, -height % kernel), mode="replicate")
+    rows, columns, area = padded.shape[-2] // kernel, padded.shape[-1] // kernel, kernel * kernel
+    cells = padded.reshape(count, channels, rows, kernel, columns, kernel).permute(0, 1, 2, 4, 3, 5).reshape(count, channels, rows, columns, area)
     if kind == 0:
         pooled = cells.mean(dim=-1)
     elif kind == 1:
@@ -719,29 +720,39 @@ def _pool(crops, kind):
     elif kind == 2:
         pooled = cells.amin(dim=-1)
     else:
-        pooled = cells.sort(dim=-1).values[..., 1:3].mean(dim=-1)
-    return pooled.repeat_interleave(2, dim=-2).repeat_interleave(2, dim=-1)[..., :height, :width]
+        pooled = cells.sort(dim=-1).values[..., (area - 1) // 2 : area // 2 + 1].mean(dim=-1)
+    return pooled.repeat_interleave(kernel, dim=-2).repeat_interleave(kernel, dim=-1)[..., :height, :width]
 
 
 def pooling(batch, generator):
-    """SyntheX's pooling, one of average, max, min and median drawn per crop."""
-    kinds = torch.randint(0, 4, (batch.shape[0],), generator=generator)
+    """SyntheX's pooling, one of average, max, min and median over square cells of a side drawn in
+    POOL_KERNEL, its "between 2 x 2 and 4 x 4", the kind and the side drawn per crop and the crops
+    that drew the same two pooled together."""
+    count = batch.shape[0]
+    kinds = torch.randint(0, 4, (count,), generator=generator)
+    low, high = POOL_KERNEL
+    kernels = torch.randint(low, high + 1, (count,), generator=generator)
     out = batch.clone()
     for kind in range(4):
-        chosen = (kinds == kind).nonzero().flatten().to(batch.device)
-        if len(chosen):
-            out[chosen] = _pool(batch[chosen], kind)
+        for kernel in range(low, high + 1):
+            chosen = ((kinds == kind) & (kernels == kernel)).nonzero().flatten().to(batch.device)
+            if len(chosen):
+                out[chosen] = _pool(batch[chosen], kind, kernel)
     return out
 
 
 def multiply(batch, generator):
-    """SyntheX's multiply of MULTIPLY times, or its brightness change, a shift of up to
-    BRIGHTNESS_SHIFT, the way drawn per crop; every crop draws both settings."""
+    """SyntheX's multiply, which "either changed brightness or multiplied x element wise with
+    50-150% of the original value": the crop times MULTIPLY, the way drawn per crop, either one
+    factor for the whole crop, its change of brightness, or one per pixel, element wise, as
+    SyntheX's code takes imgaug's Multiply or MultiplyElementwise of 0.5 to 1.5. A pixel's factor
+    is shared by its channels, so a grey crop stays grey; every crop draws both settings."""
     count = batch.shape[0]
-    by_shift = _ways(generator, count, 2, batch) == 1
-    factor = _per_crop(generator, count, *MULTIPLY, batch)
-    shift = _per_crop(generator, count, -BRIGHTNESS_SHIFT, BRIGHTNESS_SHIFT, batch)
-    return torch.where(by_shift, batch + shift, batch * factor).clamp(0.0, 1.0)
+    element_wise = _ways(generator, count, 2, batch) == 1
+    whole = _per_crop(generator, count, *MULTIPLY, batch)
+    low, high = MULTIPLY
+    each = low + (high - low) * _field(generator, batch)
+    return (batch * torch.where(element_wise, each, whole)).clamp(0.0, 1.0)
 
 
 def warp_grid(count, height, width, generator):
@@ -931,18 +942,25 @@ def strong(batch, generator):
     The ranges in SyntheX's own words: inversion as max minus x; impulse, pepper or salt noise on
     10 percent of the pixels; a Gaussian blur of spread 3, which the block draws up to; an average
     blur of kernel 2 to 7; dropout of 1 to 10 percent of the pixels or of one rectangle of 2 to 5
-    percent of the image; a multiply of 50 to 150 percent or a brightness change; and an emboss
-    added rather than blended. SyntheX names the rest with no range. The contrast curves, sharpen
-    and emboss take theirs from imgaug's augmenters of the same names (LinearContrast,
-    LogContrast, SigmoidContrast, Sharpen, Emboss), whose names SyntheX's match, though the paper
-    does not say it used imgaug, and whose curves and kernels they write on 0 to 1; the affine's
-    move, turn, shear and zoom, the boxes' count, size and noise, the brightness change's shift,
-    the pooling's 2 by 2 cells and the warp's grid are this module's, chosen mild enough to leave
-    a level readable. FluoroSAM gives no range either, so the Gaussian contrast's spread, the
-    window's width and CLAHE's clip limit are this module's too, and CLAHE's 8 by 8 tiles are
-    OpenCV's default. Both papers randomise simulated images to carry training to real ones; here
-    it is a test of robustness on real frames. Only the two warps move a crop's level map
-    (strong_with_maps)."""
+    percent of the image; an emboss that "added the sharpened version rather than blending it";
+    pooling whose "kernel sizes were between 2 x 2 and 4 x 4", which the block draws per crop as
+    2, 3 or 4; and a multiply that "either changed brightness or multiplied x element wise with
+    50-150% of the original value", which SyntheX's own code (github.com/arcadelab/SyntheX) writes
+    as imgaug's Multiply and MultiplyElementwise of 0.5 to 1.5, so the block's change of brightness
+    is one factor for the whole crop and its element-wise multiply one factor per pixel, both 50 to
+    150 percent. SyntheX names the rest with no range. The contrast curves, sharpen and emboss take
+    theirs from imgaug's augmenters of the same names (LinearContrast, LogContrast,
+    SigmoidContrast, Sharpen, Emboss), the library SyntheX's code uses though the paper does not
+    name it, as imgaug's documentation shows them, and write their curves and kernels on 0 to 1.
+    SyntheX's code sets several ranges apart from both the paper's words and these, which the
+    block does not follow (docs/research/strong-domain-randomisation.md lists them). The affine's
+    move, turn, shear and zoom, the boxes' count, size and noise and the warp's grid are this
+    module's, chosen mild enough to leave a level readable. FluoroSAM's paper gives no range
+    either, and the ranges its code draws (docs/research/benchmarks-to-beat.md, section 3) are not
+    taken, so the Gaussian contrast's spread, the window's width and CLAHE's clip limit are this
+    module's too, and CLAHE's 8 by 8 tiles are OpenCV's default. Both papers randomise simulated
+    images to carry training to real ones; here it is a test of robustness on real frames. Only
+    the two warps move a crop's level map (strong_with_maps)."""
     return _strong(batch, None, generator)[0]
 
 

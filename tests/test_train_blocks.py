@@ -14,6 +14,7 @@ import io
 import json
 import os
 import shutil
+import statistics
 import subprocess
 import sys
 import tempfile
@@ -96,6 +97,37 @@ def reference_clahe(image, clip, tiles=8, bins=256):
             line.append((1 - down) * upper + down * lower)
         out.append(line)
     return out
+
+
+def reference_pool(plane, kind, kernel):
+    """One plane, a list of rows, pooled cell by cell in plain python: kernel by kernel cells from
+    the top left, the last row and column repeated to fill the last cells, and each cell's mean,
+    maximum, minimum or median (statistics.median, the mean of the middle two of an even count)
+    given to its pixels."""
+    height, width = len(plane), len(plane[0])
+    reduce = (statistics.fmean, max, min, statistics.median)[kind]
+    out = [[0.0] * width for _ in range(height)]
+    for top in range(0, height, kernel):
+        for left in range(0, width, kernel):
+            value = reduce([plane[min(y, height - 1)][min(x, width - 1)] for y in range(top, top + kernel) for x in range(left, left + kernel)])
+            for y in range(top, min(top + kernel, height)):
+                for x in range(left, min(left + kernel, width)):
+                    out[y][x] = value
+    return out
+
+
+def pooled_kernel(crop):
+    """The widest kernel, 4, 3 or 2 pixels, over whose cells from the top left a pooled crop is
+    constant, or 0 where there is none."""
+    import torch
+    from torch.nn import functional as F
+
+    for kernel in (4, 3, 2):
+        highest = F.max_pool2d(crop[None], kernel, ceil_mode=True)
+        lowest = -F.max_pool2d(-crop[None], kernel, ceil_mode=True)
+        if torch.equal(highest, lowest):
+            return kernel
+    return 0
 
 
 @unittest.skipIf(MISSING, f"needs the train environment ({', '.join(MISSING)} missing)")
@@ -354,7 +386,7 @@ class BlocksTest(unittest.TestCase):
         self.assertEqual(self.blocks.STRONG_ORDER, tuple(self.blocks.STRONG))
         self.assertEqual(len(self.blocks.STRONG), 16)
         self.assertLessEqual(set(self.blocks.STRONG_WARPS), set(self.blocks.STRONG))
-        # 37 pixels is no multiple of CLAHE's eight tiles and odd for the pooling's 2 by 2 cells.
+        # 37 pixels is no multiple of CLAHE's eight tiles, nor of any pooling kernel from 2 to 4.
         for size in (32, 37, 64):
             crops = self.grey(6, size)
             for name, change in self.blocks.STRONG.items():
@@ -386,8 +418,6 @@ class BlocksTest(unittest.TestCase):
         self.assertAlmostEqual(hit, self.blocks.IMPULSE_SHARE, delta=0.02)
         for name in ("gaussian-blur", "average-blur"):
             self.assertLess(float(self.blocks.STRONG[name](crops, seeded()).var()), float(crops.var()), f"{name} smooths")
-        pooled = self.blocks.pooling(crops, seeded())
-        self.assertTrue(torch.equal(pooled[..., ::2, ::2], pooled[..., 1::2, 1::2]), "each 2 by 2 cell takes one value")
         stretched = self.blocks.gaussian_contrast(crops, seeded())
         self.assertTrue(torch.allclose(stretched.amin(dim=(1, 2, 3)), torch.zeros(6), atol=1e-6))
         self.assertTrue(torch.allclose(stretched.amax(dim=(1, 2, 3)), torch.ones(6), atol=1e-6))
@@ -395,6 +425,38 @@ class BlocksTest(unittest.TestCase):
         self.assertTrue(bool((self.blocks.emboss(flat, seeded()) >= flat).all()), "the emboss is added, not blended")
         for name in self.blocks.STRONG_WARPS:
             self.assertTrue(torch.allclose(self.blocks.STRONG[name](flat, seeded()), flat, atol=1e-6), f"{name} moves, not shades")
+
+    def test_pooling_draws_a_kernel_of_two_to_four_pixels_per_crop_as_synthex_says(self):
+        import torch
+
+        # SyntheX's Methods: "All of the pooling kernel sizes were between 2 x 2 and 4 x 4."
+        for size in (32, 37):
+            pooled = self.blocks.pooling(self.grey(24, size, seed=size), torch.Generator().manual_seed(4))
+            kernels = [pooled_kernel(crop) for crop in pooled]
+            self.assertEqual(set(kernels), {2, 3, 4}, f"each crop pooled over one kernel of 2 to 4 at {size} pixels: {kernels}")
+        plane = self.grey(1, 7, seed=7).double()
+        for kind in range(4):
+            for kernel in (2, 3, 4):
+                with self.subTest(kind=kind, kernel=kernel):
+                    expected = torch.tensor(reference_pool(plane[0, 0].tolist(), kind, kernel), dtype=torch.float64)
+                    got = self.blocks._pool(plane, kind, kernel)
+                    self.assertEqual(tuple(got.shape), (1, 3, 7, 7))
+                    self.assertTrue(torch.allclose(got[0, 0], expected, rtol=0, atol=1e-12))
+
+    def test_multiply_takes_the_crop_or_each_pixel_by_half_to_one_and_a_half_as_synthex_does(self):
+        import torch
+
+        # SyntheX's Methods: "either changed brightness or multiplied x element wise with 50-150% of
+        # the original value", which its code writes as imgaug's Multiply((0.5, 1.5)), "Change
+        # brightness of images (50-150% of original value)", or MultiplyElementwise((0.5, 1.5)).
+        ramp = torch.linspace(0.1, 0.6, 32 * 32).view(1, 1, 32, 32).repeat(12, 3, 1, 1)
+        factor = self.blocks.multiply(ramp, torch.Generator().manual_seed(4)) / ramp
+        self.assertTrue(bool(((factor >= 0.5 - 1e-6) & (factor <= 1.5 + 1e-6)).all()), "every pixel 50 to 150 percent of itself")
+        spread = factor.amax(dim=(1, 2, 3)) - factor.amin(dim=(1, 2, 3))
+        whole = spread < 1e-5
+        self.assertTrue(bool(whole.any()), "some crops take one factor, a change of brightness")
+        self.assertTrue(bool((~whole).any()), "and some a factor per pixel, element wise")
+        self.assertTrue(bool((spread[~whole] > 0.9).all()), "each pixel's factor drawn on its own over the range")
 
     def test_clahe_clips_and_spreads_each_tiles_histogram_as_opencv_does_and_blends_between_tiles(self):
         import torch
