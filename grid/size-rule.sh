@@ -81,17 +81,23 @@
 #
 # What each fetch still owes is kept beside its landing, $DATA/<id>/meta:
 #   QUEUED   "<job> <utc>", written when grid/run-platform-fetch.sh submits the job
-#   SIZE     "admitted <job> <bytes to land> <bytes the landing held then> <utc> <total>", written
-#            by the job when its size fits; by grid/gate.sh's word `bank <id>` when it queues the
-#            bank job, for what the bank and its shard may write under the set's folder, and again
-#            by that job when it starts; "settled ..." in place of "admitted" once the job has
-#            ended (settle_admission), which counts for nothing
+#   SIZE     "admitted <job> <bytes to land> <bytes the landing held then> <utc> <total> [<mark>]",
+#            written by the job when its size fits; by grid/gate.sh's word `bank <id>` when it
+#            queues the bank job, for what the bank and its shard may write under the set's folder,
+#            and again by that job when it starts; by the X-ray fetch job for each set in turn
+#            (grid/admit.sh, issue #163), with the set's bank in it, marked unpack where it was
+#            decided again for the set's compressed tars once they landed, and, once the set has
+#            landed, handed to the chain's bank job for the bank alone, marked hold, which that job
+#            has not decided yet and decides when it banks the set; "settled ..." in place of
+#            "admitted" once the job has ended (settle_admission), which counts for nothing
 #   REFUSED  "<job> <bytes to land> <bytes free> <utc> <total>", written by the job when it does not,
 #            and never over an admission another job holds
 # A job counts against the room while Slurm holds it (squeue): admitted, the bytes it had to land
 # less what its landing has grown by since; queued and not yet started, nothing, since it decides
-# against what is admitted when it starts; an X-ray fetch, at the sizes its list stated when
-# grid/run-xray-chain.sh sent it (grid/logs/XRAY_SIZES.txt), whole while it runs; a fetch the gate
+# against what is admitted when it starts; an X-ray fetch sent since #163, by its sets' own
+# admissions alone, since it decides each set when it reaches it (grid/logs/XRAY_SIZES.txt says
+# "<job> sets <utc> <bank job>"); one sent before, at the sizes its list stated when
+# grid/run-xray-chain.sh sent it ("<job> <bytes> <utc>"), whole while it runs; a fetch the gate
 # sent before this rule, at the size its line in grid/run-platform-fetch.sh states less what its
 # landing holds. A running fetch whose size nothing states, an X-ray fetch sent before its size was
 # recorded or a line that states none, cannot be counted, so nothing is admitted beside it.
@@ -872,16 +878,24 @@ size_files() {  # every admission's SIZE file under DATA, one a line, globbed ev
   [ -z "$noglob" ] || set -f
 }
 
-owed_by_running() {  # owed_by_running SELF: "<bytes> <fetches> [unsized...]" the fetches Slurm holds, SELF aside, have yet to land
-  local self=${1:-} ids live file id state job need base landed owe owed=0 n=0 unsized="" counted=" " what
+owed_by_running() {  # owed_by_running SELF [SET]: "<bytes> <fetches> [unsized...]" the fetches Slurm holds, SELF aside, have yet to land
+  # With SET, SELF is set aside only for SET's own admission, which the decision about SET replaces,
+  # and so is a hold on SET, which that decision takes in: a job that decides set by set, the X-ray
+  # fetch or the chain's bank job, holds the room of its other sets while it decides one.
+  local self=${1:-} set=${2:-} ids live file id state job need base mark landed owe owed=0 n=0 unsized="" counted=" " what
   ids=$(live_job_ids) || return 1
   live=" $(printf '%s' "$ids" | tr '\n' ' ') "
   while read -r file; do
     [ -f "$file" ] || continue
     id=${file%/meta/SIZE}
     id=${id##*/}
-    read -r state job need base _ < "$file"
-    [ "$state" = admitted ] && [ "$job" != "$self" ] || continue
+    read -r state job need base _ _ mark _ < "$file"
+    [ "$state" = admitted ] || continue
+    if [ -z "$set" ]; then
+      [ "$job" != "$self" ] || continue
+    elif [ "$id" = "$set" ]; then
+      [ "$job" != "$self" ] && [ "$mark" != hold ] || continue
+    fi
     case "$live" in *" $job "*) ;; *) continue ;; esac
     counted="$counted$job "
     if ! is_count "$need" || ! is_count "$base"; then unsized="$unsized $id"; continue; fi
@@ -896,13 +910,15 @@ owed_by_running() {  # owed_by_running SELF: "<bytes> <fetches> [unsized...]" th
     owed=$(( owed + owe ))
     n=$((n + 1))
   done < <(size_files)
-  # An X-ray fetch, at the sizes its list stated when grid/run-xray-chain.sh sent it.
+  # An X-ray fetch, at the sizes its list stated when grid/run-xray-chain.sh sent it; one that
+  # decides set by set, by its sets' admissions above alone.
   if [ -f "$REPO/grid/logs/XRAY_SIZES.txt" ]; then
     while read -r job need _; do
       [ "$job" != "$self" ] || continue
       case "$live" in *" $job "*) ;; *) continue ;; esac
       case "$counted" in *" $job "*) continue ;; esac
       counted="$counted$job "
+      [ "$need" != sets ] || continue
       if ! is_count "$need" || ! fits_in_count "$owed" "$need"; then
         case "$unsized" in *" xray_chain"*) ;; *) unsized="$unsized xray_chain" ;; esac
         continue
@@ -958,8 +974,8 @@ room_words() {  # room_words FROM: where the free figure was read, in lower-case
   esac
 }
 
-admit_fetch() {  # admit_fetch ID TOTAL NEED HOW: 0 when the fetch may start, 4 when it is refused, with one line either way
-  local id=$1 total=$2 need=$3 how job=${SLURM_JOB_ID:-none} said room from owed n unsized free base verdict
+admit_fetch() {  # admit_fetch ID TOTAL NEED HOW [MARK]: 0 when the fetch may start, 4 when it is refused, with one line either way
+  local id=$1 total=$2 need=$3 how mark=${5:-} job=${SLURM_JOB_ID:-none} said room from owed n unsized free base verdict
   how=$(plain_words "$4")
   mkdir -p "$DATA/$id/meta"
   # One decision at a time, so two fetches starting together never each find the other unadmitted.
@@ -973,7 +989,7 @@ admit_fetch() {  # admit_fetch ID TOTAL NEED HOW: 0 when the fetch may start, 4 
   # it is read is no longer owed, so the room is read after it, and again a minute later, for the
   # use to hold that byte; read the other way round, a byte landing between the two reads would
   # count neither as owed nor as used.
-  if ! said=$(owed_by_running "$job"); then
+  if ! said=$(owed_by_running "$job" "$id"); then
     exec 8>&-
     size_refused "$id" "the queue of slurm could not be read so what the running fetches owe is not known"
     return
@@ -1003,7 +1019,7 @@ admit_fetch() {  # admit_fetch ID TOTAL NEED HOW: 0 when the fetch may start, 4 
   fi
   if [ "$need" -le "$free" ]; then
     verdict=admitted
-    echo "admitted $job $need $base $(date -u '+%FT%TZ') $total" > "$DATA/$id/meta/SIZE"
+    echo "admitted $job $need $base $(date -u '+%FT%TZ') $total${mark:+ $mark}" > "$DATA/$id/meta/SIZE"
   else
     verdict=refused
     echo "$job $need $free $(date -u '+%FT%TZ') $total" > "$DATA/$id/meta/REFUSED"
@@ -1019,13 +1035,14 @@ admit_fetch() {  # admit_fetch ID TOTAL NEED HOW: 0 when the fetch may start, 4 
   return 4
 }
 
-admitted_before() {  # admitted_before ID: whether this job, restarted by Slurm, holds the admission of ID
+admitted_before() {  # admitted_before ID [MARK]: whether this job, restarted by Slurm, holds the admission of ID it decided, MARK unpack for the one decided for its compressed tars
   # The restart count as well as the id, so a job id Slurm hands out again once its counter wraps
-  # never inherits an old admission.
-  local state job
+  # never inherits an old admission. A hold is not one: the job was handed it and decides it yet.
+  local state job mark
   [ "${SLURM_RESTART_COUNT:-0}" != 0 ] && [ -n "${SLURM_JOB_ID:-}" ] && [ -f "$DATA/$1/meta/SIZE" ] || return 1
-  read -r state job _ < "$DATA/$1/meta/SIZE"
-  [ "$state" = admitted ] && [ "$job" = "$SLURM_JOB_ID" ]
+  read -r state job _ _ _ _ mark _ < "$DATA/$1/meta/SIZE"
+  [ "$state" = admitted ] && [ "$job" = "$SLURM_JOB_ID" ] && [ "$mark" != hold ] || return 1
+  [ "${2:-}" != unpack ] || [ "$mark" = unpack ]
 }
 
 settle_admission() {  # settle_admission ID JOB: the admission of ID that JOB holds marked settled, so it holds no room once JOB has ended
@@ -1071,6 +1088,51 @@ mark_queued() {  # mark_queued ID JOB: the QUEUED line of a fetch sent under the
   # unmarked and counted at its line's stated size, which errs toward refusing.
   [ -d "$DATA" ] || return 0
   mkdir -p "$DATA/$1/meta" && echo "$2 $(date -u '+%FT%TZ')" > "$DATA/$1/meta/QUEUED"
+}
+
+unconfirmed_fields() {  # unconfirmed_fields FILE: how many of a recipe's values still start "to confirm", its notes aside
+  # As tools/bank.py's unconfirmed() counts them, a string value starting so in any case, which it
+  # refuses before banking a frame; the recipes keep one value a line, so grep counts them.
+  grep -v '^  "notes":' "$1" | grep -ciE '(^|[^\\])"[[:space:]]*to confirm'
+}
+recipe_format() {  # recipe_format FILE: the image format a recipe of grid/banks/ names
+  sed -n 's/^ *"format": *"\([^"]*\)".*/\1/p' "$1" | head -n 1
+}
+bank_factor() {  # bank_factor FORMAT: "<times> <words>", how many times the raw copy the bank and its shard are held for while the job waits, and why; status 1 where no budget is known
+  # tools/bank.py copies a PNG byte for byte, and its shard, which copies every frame of the bank
+  # once more (tools/ingest.py), as much again: twice the raw copy. It decodes a DICOM frame and
+  # writes it as an 8-bit PNG, which an uncompressed or losslessly compressed film keeps under its
+  # file (202 MB of uncompressed DICOM became 104 MB of PNG, grid/README.md; RLE and lossless JPEG
+  # 2000 films at 0.31 to 0.64 of their files, the second review of #252), so twice the raw copy
+  # too. A lossy film, JPEG or lossy JPEG 2000, takes about two to four times its file as PNG, and
+  # bank.py re-encodes JPEG, TIFF and BMP as lossless PNG, which grows a radiograph: the review of
+  # #252 measured a q95 JPEG of a 2500 x 3000 8-bit film at 1.77 to 2.53 times its size as PNG
+  # through bank.py's own path, so three times the raw copy for the bank and three again for its
+  # shard, while a lower quality grows more, to 5.5 times at q75 (the second review). No figure read
+  # from the bytes on the login node sees that, so these hold the room while the job waits, and the
+  # job, where python runs, bounds the bank and its shard by their frames' pixels before it writes
+  # and is admitted for the larger (grid/02-bank-ingest.sbatch, tools/bank.py --bound). TIFF and BMP
+  # are not measured and may hold JPEG-compressed data, so they take JPEG's budget; an uncompressed
+  # one is budgeted more than it writes, which can refuse a bank that would fit and never admits
+  # one that overflows.
+  case "$1" in
+    png) echo "2 which bank.py copies" ;;
+    dcm) echo "2 which bank.py windows to an 8-bit PNG" ;;
+    jpg|jpeg|tif|tiff|bmp) echo "6 which bank.py turns into PNG" ;;
+    *) return 1 ;;
+  esac
+}
+bank_budget() {  # bank_budget ID BYTES: "<bytes> <times>", what the bank and its shard of the recipe grid/banks/ID.json may write of a raw copy of BYTES; "0 0" where no bank of it is made yet
+  # A recipe still spelled "to confirm", one whose format has no budget or none at all writes
+  # nothing yet, since tools/bank.py refuses it before a frame: the bank stage decides for itself
+  # once it is filled in (grid/02-bank-ingest.sbatch). Status 1 where the budget is more than a
+  # count holds.
+  local recipe=${BANKS:-$REPO/grid/banks}/$1.json factor
+  if [ ! -f "$recipe" ] || [ "$(unconfirmed_fields "$recipe")" != 0 ]; then echo "0 0"; return 0; fi
+  read -r factor _ <<< "$(bank_factor "$(recipe_format "$recipe")")"
+  [ -n "$factor" ] || { echo "0 0"; return 0; }
+  [ "$2" -le $(( 999999999999999999 / factor )) ] || return 1
+  echo "$(( factor * $2 )) $factor"
 }
 
 # The owner's readout of the volume (2026-10-23: "is there something similar to my oschome drive? if

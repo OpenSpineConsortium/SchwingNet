@@ -1193,11 +1193,6 @@ word_sweep() {
   echo "submitted. 'status' shows the plan's PROGRESS.txt once the sweep writes it; the same word again after a cut sweep ends resumes it."
 }
 
-unconfirmed_fields() {  # unconfirmed_fields FILE: how many of a recipe's values still start "to confirm", its notes aside
-  # As tools/bank.py's unconfirmed() counts them, a string value starting so in any case, which it
-  # refuses before banking a frame; the recipes keep one value a line, so grep counts them.
-  grep -v '^  "notes":' "$1" | grep -ciE '(^|[^\\])"[[:space:]]*to confirm'
-}
 recipe_raw() {  # recipe_raw FILE: the raw folder a recipe of grid/banks/ names, as stage 2 reads it
   # Off the grid stage 2 reads <data root>/<id>/raw in place of the recipe's path (issue #40), and
   # the gate hands the stage a data root only where its caller gave one.
@@ -1212,33 +1207,6 @@ landing_of() {  # landing_of RAW: the folder under the data root that holds RAW,
   landing=${rest%%/*}
   case "$landing" in ""|*[!a-z0-9_]*) return 1 ;; esac
   echo "$landing"
-}
-recipe_format() {  # recipe_format FILE: the image format a recipe of grid/banks/ names
-  sed -n 's/^ *"format": *"\([^"]*\)".*/\1/p' "$1" | head -n 1
-}
-bank_factor() {  # bank_factor FORMAT: "<times> <words>", how many times the raw copy the bank and its shard are held for while the job waits, and why; status 1 where no budget is known
-  # tools/bank.py copies a PNG byte for byte, and its shard, which copies every frame of the bank
-  # once more (tools/ingest.py), as much again: twice the raw copy. It decodes a DICOM frame and
-  # writes it as an 8-bit PNG, which an uncompressed or losslessly compressed film keeps under its
-  # file (202 MB of uncompressed DICOM became 104 MB of PNG, grid/README.md; RLE and lossless JPEG
-  # 2000 films at 0.31 to 0.64 of their files, the second review of #252), so twice the raw copy
-  # too. A lossy film, JPEG or lossy JPEG 2000, takes about two to four times its file as PNG, and
-  # bank.py re-encodes JPEG, TIFF and BMP as lossless PNG, which grows a radiograph: the review of
-  # #252 measured a q95 JPEG of a 2500 x 3000 8-bit film at 1.77 to 2.53 times its size as PNG
-  # through bank.py's own path, so three times the raw copy for the bank and three again for its
-  # shard, while a lower quality grows more, to 5.5 times at q75 (the second review). No figure read
-  # from the bytes on the login node sees that, so these hold the room while the job waits, and the
-  # job, where python runs, bounds the bank and its shard by their frames' pixels before it writes
-  # and is admitted for the larger (grid/02-bank-ingest.sbatch, tools/bank.py --bound). TIFF and BMP
-  # are not measured and may hold JPEG-compressed data, so they take JPEG's budget; an uncompressed
-  # one is budgeted more than it writes, which can refuse a bank that would fit and never admits
-  # one that overflows.
-  case "$1" in
-    png) echo "2 which bank.py copies" ;;
-    dcm) echo "2 which bank.py windows to an 8-bit PNG" ;;
-    jpg|jpeg|tif|tiff|bmp) echo "6 which bank.py turns into PNG" ;;
-    *) return 1 ;;
-  esac
 }
 bank_room() {  # bank_room NEED: 0 where the room under the quota takes NEED bytes after what the running fetches owe, saying both
   # The room the fetch word's chain decides against (grid/size-rule.sh, run-xray-chain.sh): what the

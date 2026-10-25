@@ -35,8 +35,16 @@
 # login node, cannot see (the second review of #252). Refused, or where the bound cannot be read,
 # it writes nothing, settles the admission and exits 4, and the catalog build afterok on it is
 # cancelled with it; requeued by Slurm, it keeps the room it was given. Once a job, before the
-# launcher, so the flow's steps (SCHWINGNET_FLOW_STEP) never decide again; with no BANK_NEED, as
-# from the X-ray chain and the tests, nothing is decided here.
+# launcher, so the flow's steps (SCHWINGNET_FLOW_STEP) never decide again. The X-ray chain's bank
+# job, sent with no BANK_NEED, decides in each recipe's bank step instead (issue #163): for the
+# format's budget of what its raw copy holds, as the word reckons it, and the frames' bound, against
+# the room as it is then, the hold the fetch job left for the recipe's set (grid/admit.sh) set aside
+# for it and every other set's still counted; refused, that recipe writes nothing and its report
+# line says why, and the recipe's admission is settled once its ingest half has run or its bank
+# half failed. A recipe still spelled "to confirm" is not decided, since tools/bank.py refuses it
+# before a frame. A bank made before is counted again, as the word counts it, which errs toward
+# refusing; what the catalog build writes is not counted. A direct bash call, as the tests make,
+# decides nothing.
 set -uo pipefail
 REPO=${SCHWINGNET:-$HOME/SchwingNet}
 PYDRV=${PYDRV:-python3}
@@ -80,6 +88,37 @@ bank_admitted() {  # 0 where the size rule admits the one recipe ONLY names for 
   size_and_admit "$id" bank_need "$id" && return 0
   settle_admission "$id" "${SLURM_JOB_ID:-none}"
   return 4
+}
+chain_step() {  # whether this is a step of the X-ray chain's bank job, which decides each recipe in its bank step
+  [ -n "${SLURM_JOB_ID:-}" ] && [ -n "${SCHWINGNET_FLOW_STEP:-}" ] && [ -z "${BANK_NEED:-}" ]
+}
+rule_sourced() {  # the size rule, for one recipe of a step of the chain's bank job
+  DATA=${DATA_ROOT:-/rs/rs_grp_oschome/go2432/data} VOLUME=${VOLUME:-/rs/rs_grp_oschome}
+  # shellcheck source=grid/size-rule.sh
+  . "$REPO/grid/size-rule.sh"
+  if [ "${SIZE_RULE_STAND_INS:-}" = yes ]; then RULE_PYTHON=${XATTR_PYTHON:-$PYDRV}; else RULE_PYTHON=$PYDRV; fi
+}
+bank_decided() {  # bank_decided ID RECIPE RAW: 0 where the chain's bank job may bank ID, else its report line written and 4
+  local factor bytes out BANK_NEED
+  rule_sourced
+  [ "$(unconfirmed_fields "$2")" = 0 ] || return 0
+  read -r factor _ <<< "$(bank_factor "$(recipe_format "$2")")"
+  bytes=$(xattr_whole ceph.dir.rbytes "$3")
+  if [ -z "$factor" ] || ! is_count "$bytes" || [ "$bytes" -gt $(( 999999999999999999 / factor )) ]; then
+    out=$(size_refused "$1" "the room its bank needs could not be reckoned from its recipe and raw copy")
+    echo "$out"; echo "- $1: bank refused: $out" >> "$REPORT"
+    settle_admission "$1" "$SLURM_JOB_ID"
+    return 4
+  fi
+  BANK_NEED=$(( factor * bytes ))
+  out=$(bank_admitted) && { echo "$out"; return 0; }
+  echo "$out"; echo "- $1: bank refused: $(printf '%s\n' "$out" | tail -n 1)" >> "$REPORT"
+  return 4
+}
+chain_settled() {  # chain_settled ID: the recipe's admission settled once the chain's bank job is done with it
+  chain_step || return 0
+  rule_sourced
+  settle_admission "$1" "$SLURM_JOB_ID"
 }
 if [ -n "${BANK_NEED:-}" ] && [ -z "${SCHWINGNET_FLOW_STEP:-}" ]; then
   bank_admitted || { echo "XR_BANK_RC=4 $(date '+%F %T')"; exit 4; }
@@ -132,16 +171,20 @@ for recipe in "$BANKS"/*.json; do
     echo "- $id: skipped, nothing fetched under $raw" >> "$REPORT"; continue
   fi
   if [ "$PART" != ingest ]; then
+    if chain_step && ! bank_decided "$id" "$recipe" "$raw"; then failed=1; continue; fi
     if ! out=$("$PYDRV" "$REPO/tools/bank.py" --recipe "$recipe" --raw "$raw" --bank "$bank" --run 2>&1); then
-      echo "$out"; echo "- $id: bank refused: $(echo "$out" | tail -n 1)" >> "$REPORT"; failed=1; continue
+      echo "$out"; echo "- $id: bank refused: $(echo "$out" | tail -n 1)" >> "$REPORT"; failed=1
+      chain_settled "$id"; continue
     fi
     echo "$out"
   fi
   [ "$PART" != bank ] || continue
   if ! out=$("$PYDRV" "$REPO/tools/ingest.py" run --bank "$bank" --source "$id" --kind train --split train \
         --date "$DATE" --code-commit "$COMMIT" --person-prefix "$prefix" --supersedes latest ${root_args[@]+"${root_args[@]}"} 2>&1); then
-    echo "$out"; echo "- $id: ingest refused: $(echo "$out" | tail -n 1)" >> "$REPORT"; failed=1; continue
+    echo "$out"; echo "- $id: ingest refused: $(echo "$out" | tail -n 1)" >> "$REPORT"; failed=1
+    chain_settled "$id"; continue
   fi
+  chain_settled "$id"
   echo "$out"
   shard=$(echo "$out" | "$PYDRV" -c "import json,sys; d=json.load(sys.stdin); print(d['shard'], d['outcome'], d['frames_kept'], 'frames,', d['persons'], 'persons,', d['labels'], 'labels')")
   echo "- $id: $shard" >> "$REPORT"

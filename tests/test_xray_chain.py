@@ -14,10 +14,13 @@ import re
 import struct
 import subprocess
 import sys
+import tarfile
 import unittest
+import zipfile
 import zlib
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
+from types import SimpleNamespace
 from unittest import mock
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -423,11 +426,13 @@ class SlurmScriptsTest(unittest.TestCase):
         self.assertIn("--name xr_bank --class batch --dir " + str(ROOT / "grid") + " --after DRY_xr_fetch:any -- 02-bank-ingest.sbatch", out)
         self.assertIn("--after DRY_xr_bank:any -- 03-catalog.sbatch", out)
         self.assertIn("size budget: 2 entries, 14.2 GB stated, counted as 15 GB;", out)
-        self.assertIn("no size stated for: fracatlas", out)
+        self.assertIn("no size stated in the list for: fracatlas (the job reads it from the source)", out)
         self.assertIn("ETA:", out)
+        # nothing is refused at submit: the fetch job decides each set by the size its source states
         code, out = self.dry_run("run-xray-chain.sh", free="10G")
-        self.assertEqual(code, 3)
-        self.assertIn("refusing to submit", out)
+        self.assertEqual(code, 0, out)
+        self.assertIn("each set starts its fetch only if the exact size its source states, with its bank, fits", out)
+        self.assertNotIn("refusing", out)
         code, out = self.dry_run("run-xray-chain.sh", "--only", "mimic_cxr_jpg")
         self.assertEqual(code, 64)
         self.assertIn("credentialed list", out)
@@ -488,18 +493,12 @@ class SlurmScriptsTest(unittest.TestCase):
         self.assertIn("has 2991 GB free under its quota", out)
         self.assertIn("each job starts its fetch only if the exact size its source states fits the room then", out)
         self.assertIn("idc_nlst: job DRY_dp_fetch_idc_nlst", out)
-        # the X-ray chain is refused at submit when its stated sizes pass the room, with no margin:
-        # 14.2 GB stated, counted as 15, does not fit in 14 GB and does in 15, so the quota can be
-        # filled to the GB, and a fraction is never cut off to make a chain fit
+        # nor is the X-ray chain since #163: its stated 15 GB pass the 14 GB left, and its fetch job
+        # decides each set by the size its source states when it reaches it
         code, out = self.dry_run("run-xray-chain.sh", "--only", "cathaction,fracatlas", free=pool, quota=quota,
                                  used=21977 * GB)
-        self.assertEqual(code, 3, out)
-        self.assertIn("has 14 GB free under its quota, 0 GB of it owed to 0 running fetches", out)
-        self.assertIn("refusing to submit: 15 GB exceeds the room the quota has left", out)
-        self.assertNotIn("would submit", out)
-        code, out = self.dry_run("run-xray-chain.sh", "--only", "cathaction,fracatlas", free=pool, quota=quota,
-                                 used=21976 * GB)
         self.assertEqual(code, 0, out)
+        self.assertIn("has 14 GB free under its quota, 0 GB of it owed to 0 running fetches", out)
         self.assertIn("would submit", out)
 
     def test_the_xray_chain_leaves_room_for_what_the_running_fetches_still_owe(self):
@@ -509,35 +508,35 @@ class SlurmScriptsTest(unittest.TestCase):
         volume.live(7001)
         only = ("--only", "cathaction,fracatlas")
         code, out = self.dry_run("run-xray-chain.sh", *only, volume=volume)
-        self.assertEqual(code, 3, out)
+        self.assertEqual(code, 0, out)
         self.assertIn("has 91 GB free under its quota, 80 GB of it owed to 1 running fetch", out)
-        self.assertIn("refusing to submit", out)
         # ended, it owes nothing
         volume.live()
         code, out = self.dry_run("run-xray-chain.sh", *only, volume=volume)
         self.assertEqual(code, 0, out)
         self.assertIn("0 GB of it owed to 0 running fetches", out)
-        # an X-ray fetch sent before its size was kept states none, so nothing is sent beside it
+        # an X-ray fetch sent before its size was kept states none, which the budget line says
         repo = repo_copy(self)
         gate_jobs(repo, (7002, "start", "xr_fetch"))
         volume.live(7002)
         code, out = self.dry_run("run-xray-chain.sh", *only, volume=volume, repo=repo)
-        self.assertEqual(code, 3, out)
-        self.assertIn("refusing to submit: the running fetch of xray_chain states no size", out)
-        # one sent since is counted at the sizes its list stated
+        self.assertEqual(code, 0, out)
+        self.assertIn("and the running fetch of xray_chain states no size", out)
+        # one sent before #163 is counted at the sizes its list stated
         (repo / "grid" / "logs" / "XRAY_SIZES.txt").write_text(f"7002 {80 * GB} 2026-10-23T09:00:00Z\n", encoding="utf-8")
         code, out = self.dry_run("run-xray-chain.sh", *only, volume=volume, repo=repo)
-        self.assertEqual(code, 3, out)
         self.assertIn("80 GB of it owed to 1 running fetch", out)
-        (repo / "grid" / "logs" / "XRAY_SIZES.txt").write_text(f"7002 {70 * GB} 2026-10-23T09:00:00Z\n", encoding="utf-8")
+        # one sent since by its sets' own admissions alone, here one set with 30 GB still to land
+        (repo / "grid" / "logs" / "XRAY_SIZES.txt").write_text("7002 sets 2026-10-23T09:00:00Z 7003\n", encoding="utf-8")
         code, out = self.dry_run("run-xray-chain.sh", *only, volume=volume, repo=repo)
-        self.assertEqual(code, 0, out)
-        self.assertIn("70 GB of it owed to 1 running fetch", out)
-        # and where squeue does not answer, what the running fetches owe is not known
+        self.assertIn("0 GB of it owed to 0 running fetches", out)
+        volume.admitted("cathaction", 7002, need=30 * GB)
+        code, out = self.dry_run("run-xray-chain.sh", *only, volume=volume, repo=repo)
+        self.assertIn("30 GB of it owed to 1 running fetch", out)
+        # and where squeue does not answer, the budget line says what the running fetches owe is not known
         code, out = self.dry_run("run-xray-chain.sh", *only, volume=volume, FAKE_SQUEUE_FAILS="1")
-        self.assertEqual(code, 2, out)
-        self.assertIn("squeue did not answer; nothing was queued", out)
-        self.assertNotIn("would submit", out)
+        self.assertEqual(code, 0, out)
+        self.assertIn("what the running fetches owe not read (squeue did not answer)", out)
         # the platform script only reports it, since its jobs decide when they start
         code, out = self.dry_run("run-platform-fetch.sh", "--only", "aws_stoic2021", volume=volume,
                                  FAKE_SQUEUE_FAILS="1")
@@ -558,7 +557,7 @@ class SlurmScriptsTest(unittest.TestCase):
         self.assertEqual((volume.data / "aws_stoic2021" / "meta" / "QUEUED").read_text(encoding="utf-8").split()[0], "101")
         self.assertEqual((volume.data / "zenodo_lumos" / "meta" / "QUEUED").read_text(encoding="utf-8").split()[0], "102")
 
-    def test_the_xray_chain_holds_the_size_check_until_its_sizes_are_recorded(self):
+    def test_the_xray_chain_holds_the_size_check_until_its_chain_is_recorded(self):
         import fcntl
         volume = volume_in(self, quota=21991 * GB, used=13146 * GB)
         repo = repo_copy(self)
@@ -578,11 +577,12 @@ class SlurmScriptsTest(unittest.TestCase):
         self.assertEqual(done.returncode, 3, done.stdout + done.stderr)
         self.assertIn("refusing to submit: another fetch held the size check for 1 seconds; nothing was queued", done.stdout)
         self.assertFalse(sizes.exists())
-        # its turn come, it is sent and counted at its stated sum rounded up, before the next decision
+        # its turn come, it is sent and recorded as deciding set by set, beside the bank job its sets'
+        # bank room passes to, before the next decision
         done = submit()
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
-        job, need = sizes.read_text(encoding="utf-8").split()[:2]
-        self.assertEqual((job, need), ("101", str(15 * GB)))
+        job, word, _, bank = sizes.read_text(encoding="utf-8").split()
+        self.assertEqual((job, word, bank), ("101", "sets", "102"))
 
     def test_a_volume_with_no_quota_is_read_with_df_and_an_unread_quota_refuses(self):
         code, out = self.dry_run("run-platform-fetch.sh", "--only", "idc_nlst", free="9000G")
@@ -596,10 +596,10 @@ class SlurmScriptsTest(unittest.TestCase):
             self.assertNotIn("would submit", out)
 
     def test_both_scripts_read_what_the_running_fetches_owe_before_the_room(self):
-        # in the order a fetch job's decision reads them, the chain's room twice as the job's is (#180)
+        # in the order a fetch job's decision reads them, once, since both only report the room (#180, #163)
         volume = volume_in(self, quota=21991 * GB, used=13146 * GB)
         log, tools = volume.logged()
-        for script, only, times in (("run-xray-chain.sh", "cathaction", 2), ("run-platform-fetch.sh", "idc_nlst", 1)):
+        for script, only, times in (("run-xray-chain.sh", "cathaction", 1), ("run-platform-fetch.sh", "idc_nlst", 1)):
             log.unlink(missing_ok=True)
             code, out = self.dry_run(script, "--only", only, volume=volume, **tools)
             self.assertEqual(code, 0, out)
@@ -2022,6 +2022,462 @@ class SizeRuleTest(unittest.TestCase):
         bare.mkdir()
         self.assertEqual(self.rule(f'xattr_bytes ceph.quota.max_bytes "{bare}"', **python), (0, ""))
         self.assertEqual(self.rule(f'xattr_bytes ceph.quota.max_bytes "{bare}/no-such-folder"', **python), (2, ""))
+
+
+def recipe_file(banks, source, image_format, confirmed=True):
+    """A recipe of grid/banks/ for SOURCE, one value a line as the shipped ones are written, which is
+    how the size rule reads a recipe's format (grid/size-rule.sh, recipe_format)."""
+    recipe = {"id": source, "raw": f"/data/{source}/raw", "bank": f"/data/{source}/bank",
+              "images": [f"**/*.{image_format}"], "format": image_format,
+              "split": "train" if confirmed else "to confirm on the page"}
+    (banks / f"{source}.json").write_text(json.dumps(recipe, indent=2) + "\n", encoding="utf-8")
+
+
+def outside_slurm_env():
+    return {name: value for name, value in os.environ.items() if not name.startswith("SLURM_")}
+
+
+class AdmitTest(unittest.TestCase):
+    """grid/admit.sh, the size rule's word on each set of the X-ray fetch job (#163): a set's exact
+    size, with what its bank and shard may write, admitted whole or refused whole against the room
+    as it is when the job reaches the set, and the bank's room handed to the chain's bank job once
+    the set has landed. The room is 8,845 GB, as under the quota of 2026-10-23."""
+
+    def setUp(self):
+        import tempfile
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.tmp = Path(tmp.name)
+        self.volume = Volume(self.tmp, quota=21991 * GB, used=13146 * GB)
+        self.repo = repo_copy(self)
+        self.banks = self.tmp / "banks"
+        self.banks.mkdir()
+        recipe_file(self.banks, "x_png", "png")
+        recipe_file(self.banks, "x_jpg", "jpg")
+        recipe_file(self.banks, "x_open", "png", confirmed=False)
+
+    def env(self, job, extra):
+        return dict(outside_slurm_env(), SCHWINGNET=str(self.repo), REPO=str(self.repo), DATA=str(self.volume.data),
+                    BANKS=str(self.banks), SLURM_JOB_ID=job, **self.volume.env(**extra))
+
+    def admit(self, *words, job="900", **extra):
+        done = subprocess.run(["bash", str(GRID / "admit.sh"), *map(str, words)], env=self.env(job, extra),
+                              capture_output=True, text=True, timeout=60)
+        return done.returncode, done.stdout.strip()
+
+    def rule(self, call, job="900", **extra):
+        done = subprocess.run(["bash", "-c", f'. "{self.repo}/grid/size-rule.sh"; {call}'], env=self.env(job, extra),
+                              capture_output=True, text=True, timeout=60)
+        return done.returncode, done.stdout.strip()
+
+    def size_line(self, source):
+        return (self.volume.data / source / "meta" / "SIZE").read_text(encoding="utf-8").split()
+
+    def test_a_set_is_admitted_with_what_its_bank_may_write_or_refused_whole(self):
+        # x_png banks as PNG, which bank.py copies and its shard copies again: twice the set
+        code, out = self.admit("admit", "x_png", 2949 * GB, 2949 * GB, "3 files zenodo lists")
+        self.assertEqual(code, 4, out)
+        self.assertIn("x_png: refused for space; it needs 8847 gb of its 8847 gb by 3 files zenodo lists and its bank "
+                      "at 2 times and only 8845 gb is free under the quota after 0 gb owed to 0 running fetches", shown(out))
+        self.assertFalse((self.volume.data / "x_png" / "meta" / "SIZE").exists())
+        code, out = self.admit("admit", "x_png", 2948 * GB, 2948 * GB, "3 files zenodo lists")
+        self.assertEqual(code, 0, out)
+        self.assertIn("x_png: admitted; it needs 8844 gb of its 8844 gb by 3 files zenodo lists and its bank at 2 times "
+                      "and 8845 gb is free under the quota", shown(out))
+        line = self.size_line("x_png")
+        self.assertEqual(line[:4] + line[5:], ["admitted", "900", str(8844 * GB), "0", str(8844 * GB)])
+        # a JPEG set grows as PNG, six times the set for the bank and its shard, reckoned on the
+        # whole set while the need is what is still to land
+        code, out = self.admit("admit", "x_jpg", 1000 * GB, 400 * GB, "1 file their servers state")
+        self.assertEqual(code, 0, out)
+        self.assertIn("x_jpg: admitted; it needs 6400 gb of its 7000 gb by 1 file their servers state and its bank at 6 "
+                      "times", out)
+        # a recipe still to confirm, or none, banks nothing yet: the set alone
+        for source in ("x_open", "x_none"):
+            code, out = self.admit("admit", source, 8845 * GB, 8845 * GB, "the version physionet states")
+            self.assertEqual(code, 0, f"{source}: {out}")
+            self.assertIn(f"{source}: admitted; it needs 8845 gb of its 8845 gb by the version physionet states and 8845 gb",
+                          out)
+        # a bank past what a count holds, and a size that is no count, admit nothing
+        code, out = self.admit("admit", "x_jpg", 999999999999999999, 1, "1 file")
+        self.assertEqual(code, 4, out)
+        self.assertIn("x_jpg: refused; its bank would need more than the size rule counts at ", shown(out))
+        code, out = self.admit("admit", "x_png", "1e9", 1, "1 file")
+        self.assertEqual(code, 4, out)
+        self.assertIn("x_png: refused; the size reader gave no size at ", shown(out))
+
+    def test_a_job_deciding_set_by_set_counts_its_other_sets_and_replaces_its_own(self):
+        # the fetch job 900 still runs and holds 3,000 GB for x_a, which it is fetching
+        self.volume.admitted("x_a", 900, need=3000 * GB)
+        self.volume.live(900)
+        code, out = self.admit("admit", "x_b", 5846 * GB, 5846 * GB, "2 files the hub lists")
+        self.assertEqual(code, 4, out)
+        self.assertIn("only 5845 gb is free under the quota after 3000 gb owed to 1 running fetch at ", shown(out))
+        code, out = self.admit("admit", "x_b", 5845 * GB, 5845 * GB, "2 files the hub lists")
+        self.assertEqual(code, 0, out)
+        # deciding x_a anew, as a job not restarted does, replaces its own admission of x_a and
+        # still counts the one of x_b
+        code, out = self.admit("admit", "x_a", 3000 * GB, 3000 * GB, "1 file zenodo lists")
+        self.assertEqual(code, 0, out)
+        self.assertIn("3000 gb is free under the quota after 5845 gb owed to 1 running fetch at ", shown(out))
+
+    def test_a_restarted_job_keeps_its_download_and_decides_its_unpacking_once(self):
+        self.volume.admitted("x_a", 900, need=3000 * GB, landed=1000 * GB)
+        self.volume.live(900)
+        restarted = {"SLURM_RESTART_COUNT": "1"}
+        code, out = self.admit("admit", "x_a", 9000 * GB, 9000 * GB, "1 file zenodo lists", **restarted)
+        self.assertEqual(code, 0, out)
+        self.assertIn("x_a: admitted already; job 900 restarted and keeps the room it was given at ", shown(out))
+        # its compressed tars have landed: their members are decided against the room, its own
+        # download's admission set aside, which the decision replaces
+        code, out = self.admit("unpack", "x_a", 9000 * GB, 8846 * GB, "the members of its archives", **restarted)
+        self.assertEqual(code, 4, out)
+        self.assertIn("x_a: refused for space; it needs 8846 gb of its 9000 gb by the members of its archives and only "
+                      "8845 gb is free", out)
+        self.assertEqual(self.size_line("x_a")[:3], ["admitted", "900", str(3000 * GB)])
+        code, out = self.admit("unpack", "x_a", 5000 * GB, 2000 * GB, "the members of its archives", **restarted)
+        self.assertEqual(code, 0, out)
+        self.assertIn("x_a: admitted; it needs 2000 gb of its 5000 gb by the members of its archives", out)
+        line = self.size_line("x_a")
+        self.assertEqual(line[:4] + line[-1:], ["admitted", "900", str(2000 * GB), str(1000 * GB), "unpack"])
+        # requeued again, it keeps both decisions
+        for word in ("admit", "unpack"):
+            code, out = self.admit(word, "x_a", 9000 * GB, 9000 * GB, "1 file", **restarted)
+            self.assertEqual(code, 0, f"{word}: {out}")
+            self.assertIn("x_a: admitted already; job 900 restarted", out)
+
+    def test_a_set_that_landed_hands_its_banks_room_to_the_chains_bank_job(self):
+        (self.repo / "grid" / "logs" / "XRAY_SIZES.txt").write_text("900 sets 2026-10-25T21:00:00Z 901\n", encoding="utf-8")
+        self.volume.live(900, 901)
+        code, out = self.admit("admit", "x_png", 100 * GB, 100 * GB, "1 file zenodo lists")
+        self.assertEqual(code, 0, out)
+        self.volume.attribute(self.volume.data / "x_png", "ceph.dir.rbytes", 100 * GB)
+        code, out = self.admit("landed", "x_png", 100 * GB)
+        self.assertEqual(code, 0, out)
+        self.assertIn("x_png: landed; 200 gb held for its bank at 2 times by job 901 at ", shown(out))
+        line = self.size_line("x_png")
+        self.assertEqual(line[:4] + line[5:], ["admitted", "901", str(200 * GB), str(100 * GB), str(200 * GB), "hold"])
+        # every other decision counts the hold while the bank job runs: another job's, the fetch
+        # job's about its next set and the bank job's about another recipe
+        for call, job in (("owed_by_running 950", "950"), ("owed_by_running 900 x_other", "900"),
+                          ("owed_by_running 901 x_lumos", "901")):
+            self.assertEqual(self.rule(call, job=job), (0, f"{200 * GB} 1"), call)
+        # the bank job's decision about the set takes the hold in, and a hold is no admission a
+        # requeued bank job keeps, since it decides the set yet
+        self.assertEqual(self.rule("owed_by_running 901 x_png", job="901"), (0, "0 0"))
+        self.assertEqual(self.rule("admitted_before x_png", job="901", SLURM_RESTART_COUNT="1")[0], 1)
+        # a landing reported by a job that no longer holds the set changes nothing
+        self.assertEqual(self.admit("landed", "x_png", 100 * GB), (0, ""))
+        self.assertEqual(self.size_line("x_png")[1], "901")
+        # with nothing to bank, or no bank job recorded beside the fetch job, the admission is settled
+        for source, job in (("x_none", "900"), ("x_jpg", "904")):
+            self.assertEqual(self.admit("admit", source, 10 * GB, 10 * GB, "1 file", job=job)[0], 0)
+            code, out = self.admit("landed", source, 10 * GB, job=job)
+            self.assertEqual(code, 0, out)
+            self.assertIn(f"{source}: landed; its admission settled with no bank to hold at ", shown(out))
+            self.assertEqual(self.size_line(source)[:2], ["settled", job])
+
+    def test_settle_and_refuse_say_so_in_the_shape_status_keeps(self):
+        self.volume.admitted("x_a", 900, need=10 * GB)
+        self.volume.admitted("x_b", 777, need=10 * GB)
+        code, out = self.admit("settle", "x_a")
+        self.assertEqual(code, 0, out)
+        self.assertIn("x_a: settled; job 900 holds no room for it at ", shown(out))
+        self.assertEqual(self.size_line("x_a")[:2], ["settled", "900"])
+        # another job's admission is left as it is
+        self.admit("settle", "x_b")
+        self.assertEqual(self.size_line("x_b")[:2], ["admitted", "777"])
+        code, out = self.admit("refuse", "x_c", "no exact size; Zenodo did not answer (HTTP 503)")
+        self.assertEqual(code, 4, out)
+        self.assertIn("x_c: refused; no exact size; zenodo did not answer http 503 at ", shown(out))
+        self.assertTrue((self.volume.data / "x_c" / "meta" / "REFUSED").exists())
+        for words in (("admit", "x_a", 1, 1), ("landed", "x_a"), ("settle",), ("bank", "x_a"), ()):
+            code, out = self.admit(*words)
+            self.assertEqual(code, 64, f"{words}: {out}")
+
+
+class FakeWeb:
+    """The addresses a sizing asks, answered as grid/fetch_size.py's get answers them: a file's bytes
+    by range with its total beside them, a listing's body, else no answer."""
+
+    def __init__(self, readers, files=None, pages=None):
+        self.readers, self.files, self.pages, self.asked = readers, dict(files or {}), dict(pages or {}), []
+
+    def __call__(self, url, token="", byte_range=None, timeout=0):
+        self.asked.append(url)
+        if url in self.files:
+            body = self.files[url]
+            if byte_range is None:
+                return body, {}
+            start, end = byte_range
+            return body[start:end + 1], {"Content-Range": f"bytes {start}-{min(end, len(body) - 1)}/{len(body)}"}
+        if url in self.pages:
+            return json.dumps(self.pages[url]).encode("utf-8"), {}
+        raise self.readers.NoAnswer("http 404")
+
+
+class Admissions:
+    """grid/admit.sh as fetch_sources.py's Admission asks it, answering every admission OK or not."""
+
+    def __init__(self, ok):
+        self.ok, self.calls = ok, []
+
+    def admit(self, entry, size, word="admit"):
+        self.calls.append((word, size))
+        return self.ok, f"{entry['id']}: {'admitted' if self.ok else 'refused for space'}"
+
+    def refuse(self, entry, reason):
+        self.calls.append(("refuse", reason))
+        return f"{entry['id']}: refused; {reason}"
+
+
+class SizedFetchTest(unittest.TestCase):
+    """What tools/fetch_sources.py reads of each X-ray set before its first byte lands (#163): what
+    each helper adds to the landing by its own rules for what it keeps and what it resumes, every
+    archive's members where they are unpacked, and the set refused whole where a size cannot be
+    read; and a run in a Slurm job asks the size rule for every set."""
+
+    SETTINGS = SimpleNamespace(acq_python="acq-python", kaggle_bin="kaggle")
+
+    def setUp(self):
+        import tempfile
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.tmp = Path(tmp.name)
+        self.tool = load("fetch_sources")
+        self.readers = self.tool.size_readers()
+
+    def entry(self, source, route, **more):
+        return dict({"id": source, "route": route, "dest": str(self.tmp / "data" / source / "raw")}, **more)
+
+    def size(self, entry, plan, env=None, fetch=None, post=None):
+        return self.tool.size_entry(entry, plan, plan["commands"], env, fetch=fetch, post=post)
+
+    def test_an_http_file_is_sized_by_its_server_and_a_whole_checked_copy_is_kept(self):
+        entry = self.entry("x_http", "http")
+        body = bytes(range(256)) * 4
+        url = "https://files.example.org/a.png"
+        web = FakeWeb(self.readers, files={url: body})
+        plan = {"commands": [self.tool.http_command("python3", "reacquire.py", url, f"{entry['dest']}/a.png", entry,
+                                                    {"md5": hashlib.md5(body).hexdigest()})]}
+        commands, size = self.size(entry, plan, fetch=web)
+        # the size its server states goes to http-get, which then checks it and keeps a whole file
+        self.assertEqual(commands[0][-2:], ["--bytes", "1024"])
+        self.assertEqual((size["total"], size["need"], size["how"]), (1024, 1024, "1 file their servers state"))
+        dest = Path(entry["dest"]) / "a.png"
+        dest.parent.mkdir(parents=True)
+        Path(f"{dest}.part").write_bytes(body[:400])
+        self.assertEqual(self.size(entry, plan, fetch=web)[1]["need"], 624)
+        Path(f"{dest}.part").unlink()
+        dest.write_bytes(body)
+        self.assertEqual(self.size(entry, plan, fetch=web)[1]["need"], 0)
+        # a copy of that size that fails its check is fetched again whole
+        dest.write_bytes(bytes(1024))
+        self.assertEqual(self.size(entry, plan, fetch=web)[1]["need"], 1024)
+        # a size the listing gave asks the server nothing
+        web.asked.clear()
+        listed = {"commands": [self.tool.http_command("python3", "reacquire.py", url, f"{entry['dest']}/b.png", entry,
+                                                      None, 2048)]}
+        commands, size = self.size(entry, listed, fetch=web)
+        self.assertEqual((commands, size["total"], web.asked), (listed["commands"], 2048, []))
+        # a server that does not answer leaves no size
+        gone = {"commands": [self.tool.http_command("python3", "reacquire.py", "https://files.example.org/gone.png",
+                                                    f"{entry['dest']}/gone.png", entry)]}
+        with self.assertRaises(self.readers.NoAnswer):
+            self.size(entry, gone, fetch=web)
+
+    def test_a_zenodo_record_counts_what_was_verified_and_a_fallback_unsized_is_dropped(self):
+        entry = self.entry("x_zen", "zenodo", record=123, fallback={"route": "hf", "repo": "o/r"})
+        plan = self.tool.plan_entry(entry, "python3", "reacquire.py", self.SETTINGS)
+        record = f"{self.readers.ZENODO}/123"
+        listing = {"files": [{"key": "a.zip", "size": 500, "links": {"self": f"{record}/files/a.zip/content"}},
+                             {"key": "b.csv", "size": 20, "links": {"self": f"{record}/files/b.csv/content"}}]}
+        hub = f"{self.readers.HUB}/api/datasets/o/r/tree/main?recursive=true"
+        hub_tree = [{"type": "file", "path": "c.png", "size": 7}, {"type": "directory", "path": "d"}]
+        # the hub silent, Zenodo's route alone is sized and alone runs
+        commands, size = self.size(entry, plan, fetch=FakeWeb(self.readers, pages={record: listing}))
+        self.assertEqual([command[2] for command in commands], ["zenodo-get"])
+        self.assertEqual((size["total"], size["need"], size["how"]), (520, 520, "2 files zenodo lists"))
+        # a file it verified at the size it has, or one there at the record's size, it keeps
+        state, dest = Path(self.tool.state_dir(entry)), Path(entry["dest"])
+        state.mkdir(parents=True)
+        dest.mkdir(parents=True)
+        (state / "verified.jsonl").write_text(json.dumps({"unit": "zenodo:123/b.csv", "size": 20}) + "\n", encoding="utf-8")
+        (dest / "b.csv").write_bytes(b"x" * 20)
+        self.assertEqual(self.size(entry, plan, fetch=FakeWeb(self.readers, pages={record: listing}))[1]["need"], 500)
+        (dest / "a.zip").write_bytes(b"z" * 500)
+        self.assertEqual(self.size(entry, plan, fetch=FakeWeb(self.readers, pages={record: listing}))[1]["need"], 0)
+        # Zenodo silent and the hub answering, the fallback alone runs, at the hub's sizes
+        commands, size = self.size(entry, plan, fetch=FakeWeb(self.readers, pages={hub: hub_tree}))
+        self.assertEqual([command[2] for command in commands], ["hf-get"])
+        self.assertEqual((size["total"], size["need"], size["how"]), (7, 7, "1 file the hub lists"))
+        # both answering, both count, since a first route cut short leaves what it landed
+        commands, size = self.size(entry, plan, fetch=FakeWeb(self.readers, pages={record: listing, hub: hub_tree}))
+        self.assertEqual(len(commands), 2)
+        self.assertEqual((size["total"], size["how"]), (527, "3 files zenodo and the hub list"))
+        # neither, no size; a plan with no fallback is never cut to what answered
+        with self.assertRaises(self.readers.NoAnswer):
+            self.size(entry, plan, fetch=FakeWeb(self.readers))
+        alone = self.tool.plan_entry(dict(entry, fallback=None), "python3", "reacquire.py", self.SETTINGS)
+        with self.assertRaises(self.readers.NoAnswer):
+            self.size(entry, alone, fetch=FakeWeb(self.readers))
+
+    def test_a_kaggle_archive_is_sized_through_the_api_with_the_members_it_unpacks_to(self):
+        entry = self.entry("x_kag", "kaggle", kaggle="owner/slug", unpack=True)
+        plan = self.tool.plan_entry(entry, "python3", "reacquire.py", self.SETTINGS)
+        archive = io.BytesIO()
+        with zipfile.ZipFile(archive, "w") as made:
+            made.writestr("images/", b"")
+            made.writestr("images/a.png", b"a" * 300)
+            made.writestr("images/b.png", b"b" * 200)
+        body = archive.getvalue()
+        location = "https://storage.example.org/slug.zip?signed"
+        web, asked = FakeWeb(self.readers, files={location: body}), []
+
+        def post(url, token, payload):
+            asked.append((url, token, payload))
+            return location
+
+        commands, size = self.size(entry, plan, {"KAGGLE_API_TOKEN": "a-test-token"}, web, post)
+        self.assertEqual(asked, [(f"{self.readers.KAGGLE_API}/datasets.DatasetApiService/DownloadDataset", "a-test-token",
+                                  {"ownerSlug": "owner", "datasetSlug": "slug"})])
+        self.assertEqual(commands, plan["commands"])
+        self.assertEqual((size["total"], size["need"], size["downloads"], size["tars"]),
+                         (len(body) + 500, len(body) + 500, len(body), False))
+        self.assertEqual(size["how"], "1 file the kaggle storage states and 2 zip members")
+        # landed whole, the zip is read from the disk, and a member there at its size is kept
+        dest = Path(entry["dest"])
+        (dest / "images").mkdir(parents=True)
+        (dest / "slug.zip").write_bytes(body)
+        (dest / "images" / "a.png").write_bytes(b"a" * 300)
+        web.asked.clear()
+        commands, size = self.size(entry, plan, {"KAGGLE_API_TOKEN": "a-test-token"}, web, post)
+        self.assertEqual((size["total"], size["need"]), (len(body) + 500, 200))
+        self.assertEqual(web.asked, [location], "one range request, for the archive's total")
+        # with no token there is nothing to ask
+        with self.assertRaises(self.readers.NoSize):
+            self.size(entry, plan, None, web, post)
+
+    def test_a_physionet_version_is_sized_from_its_api_and_its_listing_pages_count_for_nothing(self):
+        url = "https://physionet.org/files/vindr-pcxr/1.0.0/"
+        entry = self.entry("x_pn", "physionet", url=url)
+        command = self.tool.physionet_commands(entry, "a-login")[0]
+        self.assertEqual(command[:8], ["wget", "-r", "-N", "-c", "-np", "-R", "index.html*", "--user"])
+        api = self.tool.PHYSIONET_API.format("vindr-pcxr", "1.0.0")
+        web = FakeWeb(self.readers, files={self.tool.PHYSIONET_ROBOTS: b"r" * 30}, pages={api: {"main_storage_size": 5000}})
+        spied = []
+
+        def spider(address, login):
+            spied.append((address, login))
+            return 64
+
+        # the version's files, its checksum file and the robots.txt a recursive wget saves
+        self.assertEqual(self.tool.size_physionet(command, web, spider=spider)[1:], (5094, 5094, []))
+        self.assertEqual(spied, [(url + "SHA256SUMS.txt", "a-login")])
+        version = Path(entry["dest"]) / "physionet.org" / "files" / "vindr-pcxr" / "1.0.0"
+        version.mkdir(parents=True)
+        (version / "a.dicom").write_bytes(b"d" * 1000)
+        (version / "index.html").write_bytes(b"<html>" * 100)
+        (version / "index.html?C=N;O=D").write_bytes(b"x")
+        (Path(entry["dest"]) / "physionet.org" / "robots.txt").write_bytes(b"r" * 30)
+        self.assertEqual(self.tool.size_physionet(command, web, spider=spider)[1:3], (5094, 4064))
+        # the checksum file's length is read from wget's own default lines, asked with the login alone
+        tools = self.tmp / "bin"
+        tools.mkdir()
+        (tools / "wget").write_text('#!/bin/bash\necho "$*" > "$WGET_ASKED"\necho "Spider mode enabled."\n'
+                                    'echo "Length: 64 (64) [text/plain]"\nexit "${WGET_RC:-0}"\n', encoding="utf-8")
+        (tools / "wget").chmod(0o755)
+        asked = self.tmp / "asked"
+        with mock.patch.dict(os.environ, {"PATH": f"{tools}:{os.environ['PATH']}", "WGET_ASKED": str(asked)}):
+            self.assertEqual(self.tool.spider_length(url + "SHA256SUMS.txt", "a-login"), 64)
+            self.assertEqual(asked.read_text(encoding="utf-8").split(), ["--spider", "--user", "a-login", url + "SHA256SUMS.txt"])
+            with mock.patch.dict(os.environ, {"WGET_RC": "6"}):
+                with self.assertRaises(self.readers.NoAnswer):
+                    self.tool.spider_length(url + "SHA256SUMS.txt", "a-login")
+        # an address that names no version, or a version with no stated storage, has no size
+        with self.assertRaises(self.readers.NoSize):
+            self.tool.size_physionet(command[:-1] + ["https://physionet.org/content/vindr-pcxr/"], web, spider=spider)
+        with self.assertRaises(self.readers.NoSize):
+            self.tool.size_physionet(command, FakeWeb(self.readers, pages={api: {"main_storage_size": None}}), spider=spider)
+
+    def test_compressed_tars_are_decided_again_once_they_have_landed(self):
+        entry = self.entry("x_tar", "http", unpack=True)
+        dest = Path(entry["dest"])
+        dest.mkdir(parents=True)
+        # a tar still to land states no members: the set goes in for its downloads, marked to be
+        # decided again
+        landed = [(dest / "images_001.tar.gz", 900, "https://files.example.org/images_001.tar.gz")]
+        self.assertEqual(self.tool.unpack_size(entry["dest"], landed, None), (0, 0, 0, True))
+        with tarfile.open(dest / "images_001.tar.gz", "w:gz") as made:
+            for name, data in (("images/a.png", b"a" * 300), ("images/b.png", b"b" * 200)):
+                member = tarfile.TarInfo(name)
+                member.size = len(data)
+                made.addfile(member, io.BytesIO(data))
+        (dest / "images").mkdir()
+        (dest / "images" / "a.png").write_bytes(b"a" * 300)
+        for ok in (True, False):
+            admissions, outcome = Admissions(ok), {"status": "done", "size": {"downloads": 900}}
+            self.assertEqual(self.tool.unpack_admitted(entry, outcome, admissions), ok)
+            self.assertEqual(admissions.calls, [("unpack", {"total": 1400, "need": 200, "how": "the members of its archives"})])
+            self.assertEqual(outcome["status"], "done" if ok else "refused")
+        self.assertEqual(outcome["error"], "x_tar: refused for space")
+        # a tar that cannot be listed is refused, nothing of it unpacked
+        (dest / "broken.tgz").write_bytes(b"not a tar")
+        admissions, outcome = Admissions(True), {"status": "done", "size": {"downloads": 900}}
+        self.assertFalse(self.tool.unpack_admitted(entry, outcome, admissions))
+        self.assertEqual(admissions.calls, [("refuse", "its tars could not be listed (ReadError)")])
+        self.assertEqual(outcome["status"], "refused")
+
+    def test_a_run_asks_the_rule_for_every_set_and_a_set_refused_lands_nothing(self):
+        script = self.tmp / "admit.sh"
+        log = self.tmp / "admit.log"
+        script.write_text(f'#!/bin/bash\necho "$*" >> "{log}"\n'
+                          'case "$1:$2" in admit:x_big) echo "$2: refused for space; it needs 1000 gb"; exit 4 ;;\n'
+                          '  admit:*) echo "$2: admitted; it needs 1 gb" ;; *) echo "$2: $1" ;; esac\n', encoding="utf-8")
+        helper = self.tmp / "reacquire.py"
+        fetched = self.tmp / "fetched.log"
+        helper.write_text("import sys\nargs = sys.argv[1:]\nvalue = lambda flag: args[args.index(flag) + 1]\n"
+                          f"open({str(fetched)!r}, 'a').write(value('--url') + '\\n')\n"
+                          "open(value('--dest'), 'wb').write(b'x' * int(value('--bytes')))\n", encoding="utf-8")
+        plans = []
+        for source, size in (("x_small", 10), ("x_big", 10 ** 12)):
+            entry = self.entry(source, "http")
+            plans.append((entry, {"commands": [self.tool.http_command(sys.executable, helper, f"https://e.org/{source}",
+                                                                      f"{entry['dest']}/a.bin", entry, None, size)]}))
+        report = self.tmp / "report.md"
+        args = SimpleNamespace(admit=f"bash {script}", report=str(report), python=sys.executable, netrc="~/.netrc")
+        out = io.StringIO()
+        with redirect_stdout(out):
+            code = self.tool.run_all(plans, args, helper)
+        self.assertEqual(code, 1, out.getvalue())
+        self.assertEqual(log.read_text(encoding="utf-8").splitlines(), [
+            "admit x_small 10 10 1 file their servers state", "landed x_small 10",
+            f"admit x_big {10 ** 12} {10 ** 12} 1 file their servers state", "settle x_big"])
+        self.assertEqual(fetched.read_text(encoding="utf-8").split(), ["https://e.org/x_small"])
+        self.assertFalse((self.tmp / "data" / "x_big" / "raw" / "a.bin").exists())
+        text = report.read_text(encoding="utf-8")
+        self.assertIn("- x_small: done; exit codes 0; 1 files, 0.00 GB under", text)
+        self.assertIn("- x_big: refused, nothing fetched; x_big: refused for space; it needs 1000 gb", text)
+        self.assertIn("Refused by the size rule: x_big.", text)
+        self.assertEqual(json.loads((self.tmp / "data" / "x_big" / "FETCH.json").read_text(encoding="utf-8"))["status"], "refused")
+        # a set whose size cannot be read is refused by the rule's own word, and asks nothing more
+        log.unlink()
+        entry = self.entry("x_silent", "http")
+        silent = [(entry, {"commands": [self.tool.http_command(sys.executable, helper, "https://e.org/x_silent",
+                                                               f"{entry['dest']}/a.bin", entry)]})]
+        with redirect_stdout(io.StringIO()), mock.patch.object(self.readers, "get", FakeWeb(self.readers)):
+            self.assertEqual(self.tool.run_all(silent, args, helper), 1)
+        self.assertEqual(log.read_text(encoding="utf-8").splitlines(),
+                         ["refuse x_silent the source did not answer; http 404"])
+
+    def test_a_run_in_a_slurm_job_is_refused_without_the_size_rule(self):
+        with mock.patch.object(self.tool.socket, "gethostname", return_value="wsu123"), \
+                mock.patch.dict(os.environ, dict(outside_slurm_env(), SLURM_JOB_ID="900"), clear=True):
+            code, _, err = run_tool(self.tool, ["--run", "--only", "fracatlas"])
+        self.assertEqual(code, 3)
+        self.assertIn("refusing to fetch in a Slurm job without --admit: the size rule decides each set first", err)
+        text = (GRID / "01-fetch.sbatch").read_text(encoding="utf-8")
+        self.assertIn('ADMIT=(--admit "bash $REPO/grid/admit.sh")', text)
 
 
 class QuotaReadoutTest(unittest.TestCase):

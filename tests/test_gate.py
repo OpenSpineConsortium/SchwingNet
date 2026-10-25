@@ -907,13 +907,14 @@ echo "the split is not disjoint; no training step reads this version"; exit 1
         count = len(self.submitted())
         self.assertEqual(self.gate("fetch", "aariz").returncode, 75)
         self.assertEqual(len(self.submitted()), count)
-        # a credentialed set goes in, its catalog job after every catalog still live, with the
-        # size the start chain's list stated left for that chain (grid/size-rule.sh)
+        # a credentialed set goes in, its catalog job after every catalog still live; the start
+        # chain is recorded with its bank job and counts only by its sets' own admissions, none
+        # of which it has made yet (grid/size-rule.sh, grid/admit.sh)
         sizes = (self.repo / "grid" / "logs" / "XRAY_SIZES.txt").read_text(encoding="utf-8").split()
-        self.assertEqual(sizes[0], started["xr_fetch"])
+        self.assertEqual([sizes[0], sizes[1], sizes[3]], [started["xr_fetch"], "sets", started["xr_bank"]])
         done = self.gate("fetch", "vindr_pcxr")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
-        self.assertIn(f"{int(sizes[1]) // 10**9} GB of it owed to 1 running fetch", done.stdout)
+        self.assertIn("0 GB of it owed to 0 running fetches", done.stdout)
         catalog = self.line_of("03-catalog.sbatch")[-1]
         self.assertIn(f"afterany:{started['catalog']},afterany:{started['xr_catalog']} ", catalog)
         # the same set again while its fetch is live: refused
@@ -2322,6 +2323,84 @@ esac
         self.assertIn("00000003_000.png: not a PNG", done.stderr)
         self.assertIsNone(launched)
         self.assertTrue(size.read_text(encoding="utf-8").startswith("settled 4242 500000 "))
+
+    def chain_bank_step(self, part, **extra):
+        """One step of the X-ray chain's bank job, 4242, as BankFlow runs it: one recipe and one half,
+        with stand-ins for the bank tool, whose frames' bound is a byte, and the ingest."""
+        pydrv = self.fake / "step-pydrv"
+        pydrv.write_text('#!/bin/bash\ncase "$1" in\n'
+                         '  */tools/bank.py) case " $* " in *" --run "*) echo "$*" >> "$FAKE/banked"; echo "{}" ;;'
+                         ' *) echo \'{"most_bytes": 1}\' ;; esac ;;\n'
+                         '  */tools/ingest.py) echo \'{"shard": "s1", "outcome": "new", "frames_kept": 3, "persons": 2, '
+                         '"labels": 0}\' ;;\n  *) exec python3 "$@" ;;\nesac\n', encoding="utf-8")
+        pydrv.chmod(0o755)
+        env = dict(self.gate_env(), GETFATTR=str(self.fake / "getfattr"), PYDRV=str(pydrv), SLURM_JOB_ID="4242",
+                   SCHWINGNET_FLOW_STEP="1", ONLY="nih_chestxray14", PART=part, VOLUME=str(self.tmp))
+        env.pop("BANK_NEED", None)
+        env.update(extra)
+        return subprocess.run(["bash", str(self.repo / "grid" / "02-bank-ingest.sbatch")], cwd=self.repo / "grid", env=env,
+                              capture_output=True, text=True, timeout=60)
+
+    def test_the_chains_bank_job_decides_each_recipe_in_its_bank_step_against_its_hold(self):
+        # #163: the fetch job left 200 GB held for the set's bank with the chain's bank job, 4242,
+        # twice the 100 GB the PNG set landed; the job decides the recipe when it banks it, the hold
+        # set aside for it and every other set still counted
+        self.ceph_fake(raw_bytes=100 * 10**9)
+        (self.data / "nih_chestxray14" / "raw").mkdir(parents=True)
+        (self.data / "nih_chestxray14" / "raw" / "a.png").write_bytes(b"p")
+        size = self.data / "nih_chestxray14" / "meta" / "SIZE"
+        size.parent.mkdir(parents=True)
+        hold = "admitted 4242 200000000000 2600000000000 2026-10-25T21:00:00Z 200000000000 hold\n"
+        size.write_text(hold, encoding="utf-8")
+        # a fetch admitted since owes 8600 GB of the 8844 GB room: 244 GB left, which the hold
+        # would leave 44 of were it counted against its own recipe
+        other = self.data / "other_set" / "meta"
+        other.mkdir(parents=True)
+        (other / "SIZE").write_text("admitted 555 8600000000000 2600000000000 2026-10-25T00:00:00Z 8600000000000\n",
+                                    encoding="utf-8")
+        self.live(555, 4242)
+        report = self.repo / "grid" / "logs" / "02-bank-ingest-STAGE-REPORT.md"
+        done = self.chain_bank_step("bank")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("nih_chestxray14: admitted; it needs 200 gb of its 200 gb by the bank and its shard and 245 gb is free",
+                      done.stdout)
+        self.assertEqual(len((self.fake / "banked").read_text(encoding="utf-8").splitlines()), 1)
+        self.assertTrue(size.read_text(encoding="utf-8").startswith("admitted 4242 200000000000 2600000000000 "))
+        self.assertNotIn("hold", size.read_text(encoding="utf-8"))
+        # requeued by Slurm, the step keeps what it was given
+        done = self.chain_bank_step("bank", SLURM_RESTART_COUNT="1")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("nih_chestxray14: admitted already; job 4242 restarted", done.stdout)
+        self.assertEqual(len((self.fake / "banked").read_text(encoding="utf-8").splitlines()), 2)
+        # the ingest half done, the recipe holds no more room
+        done = self.chain_bank_step("ingest")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertTrue(size.read_text(encoding="utf-8").startswith("settled 4242 "))
+        self.assertIn("- nih_chestxray14: s1 new 3 frames, 2 persons, 0 labels", report.read_text(encoding="utf-8"))
+        # another recipe's hold by the same job counts: 50 GB more leaves 194 GB, and the recipe is
+        # refused, banks nothing and frees its hold, while the other hold stands
+        size.write_text(hold, encoding="utf-8")
+        lumos = self.data / "lumos" / "meta"
+        lumos.mkdir(parents=True)
+        (lumos / "SIZE").write_text("admitted 4242 50000000000 2600000000000 2026-10-25T21:00:00Z 50000000000 hold\n",
+                                    encoding="utf-8")
+        done = self.chain_bank_step("bank")
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("nih_chestxray14: refused for space; it needs 200 gb of its 200 gb by the bank and its shard and only "
+                      "194 gb is free", done.stdout)
+        self.assertIn("- nih_chestxray14: bank refused: nih_chestxray14: refused for space;", report.read_text(encoding="utf-8"))
+        self.assertEqual(len((self.fake / "banked").read_text(encoding="utf-8").splitlines()), 2)
+        self.assertTrue(size.read_text(encoding="utf-8").startswith("settled 4242 "))
+        self.assertTrue((lumos / "SIZE").read_text(encoding="utf-8").endswith(" hold\n"))
+        # a raw copy whose size cannot be read is refused before anything is banked
+        size.write_text(hold, encoding="utf-8")
+        (self.fake / "raw_bytes").write_text("", encoding="utf-8")
+        done = self.chain_bank_step("bank")
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("nih_chestxray14: refused; the room its bank needs could not be reckoned from its recipe and raw copy",
+                      done.stdout)
+        self.assertTrue(size.read_text(encoding="utf-8").startswith("settled 4242 "))
+        self.assertEqual(len((self.fake / "banked").read_text(encoding="utf-8").splitlines()), 2)
 
     def progress(self, plan, folder, lines, age=0):
         state = self.smoke / plan / folder
