@@ -979,7 +979,10 @@ def run(args):
         started -= history[-1]["seconds"]
     joined = join_single and ends_on_one(len(train_y), args.batch)
     with (folder / "metrics.jsonl").open("w", encoding="utf-8") as metrics:
+        # Flushed after every write, so the lines are on disk while the run goes on: the sweep's
+        # card reads the last one as the row's progress, and a killed job flushes nothing.
         metrics.writelines(json.dumps(line) + "\n" for line in history)
+        metrics.flush()
         for epoch in range(first, args.epochs + 1):
             rate = None
             if epoch:
@@ -995,6 +998,7 @@ def run(args):
                 best = stage_best(model, prior, folder, line)
             history.append(line)
             metrics.write(json.dumps(line) + "\n")
+            metrics.flush()
             print(json.dumps({k: v for k, v in line.items() if k != "validation_strata"}), flush=True)
             telemetry.log(dict(wandb_values(line), **telemetry.images(frames.media(epoch)), **telemetry.images({"witness/crops": folder / "witness" / f"epoch-{epoch:02d}.png"})), step=epoch)
             progress = {"best": best, "history": history, "witness_epochs": frames.epochs, "arguments": arguments, "resumed_after": resumed}

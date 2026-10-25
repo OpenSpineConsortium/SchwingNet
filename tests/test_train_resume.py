@@ -91,6 +91,18 @@ def cut_after(module, writes):
     return mock.patch.object(module, "save_last", save_then_stop)
 
 
+def lines_on_disk(module, seen):
+    """The trainer's save of last.pt, made to note first how many whole lines metrics.jsonl holds
+    on disk, read through a handle of its own, as the sweep's card reads it while the step runs."""
+    real = module.save_last
+
+    def note_then_save(folder, state):
+        seen.append((folder / "metrics.jsonl").read_bytes().count(b"\n"))
+        real(folder, state)
+
+    return mock.patch.object(module, "save_last", note_then_save)
+
+
 def train(catalog, folder, *extra, module=None):
     """The trainer's main on a short CPU run, its output kept; returns the exit code, stdout and stderr."""
     args = ["--catalog", str(catalog), "--out", str(folder), "--seed", "1", "--device", "cpu", "--witness", "2",
@@ -115,7 +127,9 @@ class ResumeCase:
         witness = load("witness").freeze(cls.catalog, "0" * 64)
         cls.config = ["--epochs", "3", "--size", "32", *(w for word in cls.words for w in ("--block", word))]
         cls.through = new_run(cls.tmp / "through", "throughrun00", witness)
-        cls.through_rc = train(cls.catalog, cls.through, *cls.config)[0]
+        cls.through_on_disk, module = [], load("train")
+        with lines_on_disk(module, cls.through_on_disk):
+            cls.through_rc = train(cls.catalog, cls.through, *cls.config, module=module)[0]
         cls.cut = new_run(cls.tmp / "cut", "cutrun000000", witness)
         module = load("train")
         with cut_after(module, 2):
@@ -128,7 +142,9 @@ class ResumeCase:
         cls.last_digest = digest(cls.cut / "train" / "last.pt")
         cls.mismatch = train(cls.catalog, cls.cut, *[w if w != "3" else "4" for w in cls.config], "--resume")
         cls.mismatch_left = digest(cls.cut / "train" / "last.pt")
-        cls.resumed_rc, cls.resumed_out, _ = train(cls.catalog, cls.cut, *cls.config, "--resume")
+        cls.resumed_on_disk, module = [], load("train")
+        with lines_on_disk(module, cls.resumed_on_disk):
+            cls.resumed_rc, cls.resumed_out, _ = train(cls.catalog, cls.cut, *cls.config, "--resume", module=module)
 
     @classmethod
     def tearDownClass(cls):
@@ -157,6 +173,12 @@ class ResumeCase:
         self.assertEqual(mine, theirs)
         sheets = sorted(name for name in mine if "sheet-epoch-" in name)
         self.assertEqual(sheets, ["witness/frames/sheet-epoch-00.jpg", "witness/frames/sheet-epoch-03.jpg"], "the witness epochs before the cut are taken back")
+
+    def test_every_epoch_line_is_on_disk_once_its_epoch_ends(self):
+        # The sweep's card reads the last line every 15 s; a line left in the writer's buffer
+        # would show no epoch until the step ends, and a kill would lose it.
+        self.assertEqual(self.through_on_disk, [1, 2, 3, 4])
+        self.assertEqual(self.resumed_on_disk, [3, 4], "the lines before the cut are on disk with the first new one")
 
     def test_last_pt_is_gone_after_a_finished_run(self):
         for folder in (self.through, self.cut):
