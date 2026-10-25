@@ -358,7 +358,7 @@ class PushTest(unittest.TestCase):
     def test_a_push_no_server_answers_is_given_up_after_the_bound_and_said(self):
         self.half("run0-train", 0, 2)
         started = time.monotonic()
-        with mock.patch.object(self.tool, "SYNC_SECONDS", 5, create=True):
+        with mock.patch.object(self.tool, "SYNC_SECONDS", 5):
             outcome, _ = self.push(f"http://127.0.0.1:{closed_port()}")
         self.assertLess(time.monotonic() - started, 60)
         self.assertFalse(outcome["synced"], outcome)
