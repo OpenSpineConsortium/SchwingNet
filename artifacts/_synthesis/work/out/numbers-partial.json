@@ -2967,6 +2967,22 @@
    "kind": "unit-or-scope-mismatch",
    "why": "Rounding.",
    "pair": "SchwingNet/counting-levels-under-fluoroscopy|SchwingNet/retrospective-fluoroscopy-protocol"
+  },
+  {
+   "quantity": "sacrum recall on real DeepFluoro frames, detector trained on renders of DeepFluoro's own CTs",
+   "artifact_a": "SchwingNet/aidas-seed-grant-proposal",
+   "value_a": "96%, 98%",
+   "quote_a": "A detector trained only on calibrated renders of DeepFluoro's own CTs finds the sacrum on about 96\u201398% of real frames (leave-one-specimen-out).",
+   "artifact_b": "SchwingNet/or-readiness-ledger",
+   "value_b": "97.7",
+   "quote_b": "C2 on a real image is not demonstrated. The real-film corpus holds 25 labelled C2 instances in val + test and the real-trained arm finds 0-8% of them; render-trained arms find 85-88% of C2 on renders and none on film. The AASCE-labelled thoracic films show the same split: a keypoint detector trained",
+   "kind": "contradiction",
+   "why": "a concept check: line 223 of SchwingNet/or-readiness-ledger gives 97.7, which number collision 10 (confirmed-contradiction) carries as open",
+   "pair": "SchwingNet/aidas-seed-grant-proposal|SchwingNet/or-readiness-ledger",
+   "delta": {
+    "date": "2026-10-25",
+    "concept": "dbc3f85b52e6d65c"
+   }
   }
  ],
  "verdicts": [

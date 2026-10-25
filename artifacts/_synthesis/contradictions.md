@@ -1,6 +1,6 @@
 # Contradictions and collisions
 
-What the inventoried artifacts give differently, found and checked for the Artifact Textbook (issue #120, finished under #136), rendered on 2026-10-24. Readers went over the inventory's numbers table for every quantity two artifacts give with different values, and over each topic cluster's full records for disagreements, revised figures, stale statements, duplicated texts and shared unsourced claims. The table holds 3,016 numbers from 69 artifacts. The number readers' notes record reading two parts of it, 1,231 and 956 rows, 2,187 in all; the parts and the rule that split them are not kept in this repository, so which numbers went unread is not known here.
+What the inventoried artifacts give differently, found and checked for the Artifact Textbook (issue #120, finished under #136), rendered on 2026-10-25. Readers went over the inventory's numbers table for every quantity two artifacts give with different values, and over each topic cluster's full records for disagreements, revised figures, stale statements, duplicated texts and shared unsourced claims. The table holds 3,016 numbers from 69 artifacts. The number readers' notes record reading two parts of it, 1,231 and 956 rows, 2,187 in all; the parts and the rule that split them are not kept in this repository, so which numbers went unread is not known here.
 
 A script then looked for every reader's quote in the artifact's extracted text and, failing that, in the page's own files. It ignores case and spacing, quotation marks, square and round brackets and the marks of tables and Markdown (the bar, asterisk, underscore, backtick, hash and greater-than sign), and reads typographic characters and a few accented letters as their plain ones; every other mark, braces and the less-than sign among them, must match. It matches around an ellipsis or an editor's words in square brackets, leaving unchecked any part shorter than 12 characters, and a quote longer than 48 characters that it finds neither whole nor in parts counts as partly found when one of its 48-character stretches, those that start at every eighth character, is in the text; the columns "Reader's quote A" and "B" say what it found. Then a skeptic read both sources of every cluster candidate, and of every number collision a reader classed as a contradiction or a later revision and 11 others #136's first run took, and gave a verdict with the exact words it rests on, copied from each source. Those words are on the cluster pages and under the number tables beside the reader's, with where the script found them. Last, a sample of the verdicts was read again by agents told to overturn them, and then every number collision on the confirmed list that the sample left out, with the rows that read the same figures ruled again together (How far the verdicts hold, below).
 
@@ -44,7 +44,7 @@ A blank verdict means no skeptic read that candidate, and the reader's kind is t
 | [Grid, workstation and Claude worker operations](contradictions/grid-workstation-and-claude-worker-operations.md) | 40 | 6 | 7 | 6 | 13 | 8 | 0 | 0 |
 | [Beethoven: the research engine and its repositories](contradictions/beethoven-the-research-engine-and-its-repositories.md) | 43 | 10 | 6 | 9 | 15 | 3 | 0 | 0 |
 | [Outreach events and student funding](contradictions/outreach-events-and-student-funding.md) | 28 | 8 | 6 | 0 | 5 | 9 | 0 | 1 |
-| Number collisions (the numbers table) | 247 | 14 | - | 31 | 42 | 15 | 145 | 1 |
+| Number collisions (the numbers table) | 248 | 14 | - | 31 | 43 | 15 | 145 | 1 |
 
 859 cluster candidates in 14 of 14 clusters, 859 read by a skeptic. For the numbers, Refuted counts the three verdicts that find no disagreement (same-number-restated, scope-or-unit-differs and different-quantities), most of which still say to carry both values, each with its scope; Not read counts the collisions a reader classed as another scope or another quantity, which no skeptic read, by design.
 
@@ -165,7 +165,7 @@ The rows the follow-up changed:
 
 ### Read by the workflow since
 
-After the follow-up, the runs of .github/workflows/synthesis.yml on 2026-10-24 read 2 verdicts again because a page each rests on had changed, 2 of them keeping the verdict they had, and read 1 row that their finders or the concept checks found. Each was read by a skeptic and then by a re-checker told to overturn the skeptic's verdict and its hint, and 0 of the 3, where the two disagreed, by a judge who read both sources and ruled. Each such row's Review column says when it was read and, for a verdict read again, what it was before.
+After the follow-up, the runs of .github/workflows/synthesis.yml from 2026-10-24 to 2026-10-25 read 2 verdicts again because a page each rests on had changed, 2 of them keeping the verdict they had, and read 2 rows that their finders or the concept checks found. Each was read by a skeptic and then by a re-checker told to overturn the skeptic's verdict and its hint, and 0 of the 4, where the two disagreed, by a judge who read both sources and ruled. Each such row's Review column says when it was read and, for a verdict read again, what it was before.
 
 ## Confirmed: what a planner must not take from one artifact alone
 
@@ -779,9 +779,9 @@ Duplicated texts and shared unsourced claims:
 
 ## Number collisions
 
-247 candidates from the numbers table, by the reader's kind, each under its number in the record.
+248 candidates from the numbers table, by the reader's kind, each under its number in the record.
 
-### Same quantity, same scope, different values (55)
+### Same quantity, same scope, different values (56)
 
 | # | Quantity | A | A gives | B | B gives | Reader's quote A | Reader's quote B | Verdict | Review | Why |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -840,6 +840,7 @@ Duplicated texts and shared unsourced claims:
 | 202 | lumbar two-vertebra frame named from its own pixels | [Naming Vertebrae Without an Anchor](../naming-vertebrae-without-an-anchor-3dfzmh/) | 69.6% | [Naming Vertebrae Without CT](../naming-vertebrae-without-ct-hjy4vc/) | 85.7% | yes | yes | scope-or-unit-differs |  | Carry each with the number of vertebrae in view: 69.6% with two, 85.7% with three. |
 | 206 | sweep chain survival with the detector's own boxes | [Vertebral Levels Without CT](../vertebral-levels-without-ct-a4rydj/) | 20% of films (100% with annotation boxes) | [Naming Vertebrae Without CT](../naming-vertebrae-without-ct-hjy4vc/) | 40% baseline (8% at the lower threshold) | yes | yes | cannot-tell |  | The run log of the chain-survival evaluation (threshold, box repair on or off, film list) would settle 20% against 40%. |
 | 219 | region accuracy of the v2 level model at full coverage | [Overnight: The Honest 99%](../overnight-the-honest-99-kantj8/) | 78.8% exact / 93.4% region | [FluoroCap Overnight Report](../fluorocap-overnight-report-xnhgdo/) | 78.8% exact / 95.9% within one / 97.2% region | yes | yes | cannot-tell |  | Set the honest-99 risk-coverage run's model, test set and region definition beside the v2 validation JSON to settle it. |
+| 247 | sacrum recall on real DeepFluoro frames, detector trained on renders of DeepFluoro's own CTs | [AIDaS Seed Grant Proposal](../aidas-seed-grant-proposal/) | 96%, 98% | [OR Readiness Ledger](../or-readiness-ledger/) | 97.7 | yes | yes | different-quantities | found on 2026-10-25 | Drop 97.7 from the sacrum-on-DeepFluoro collision and carry it as thoracic keypoint recall on AASCE films. The sacrum quantity should be compared against the ledger's DeepFluoro sacrum rows and the proposal's 96-98%. |
 
 The quotes, by collision:
 
@@ -898,6 +899,7 @@ The quotes, by collision:
 - 202. The reader's: A, naming-vertebrae-without-an-anchor-3dfzmh: "a two-vertebra frame scored 69.6% on its own pixels and 95.1% registered onto a sweep from the sacrum"; B, naming-vertebrae-without-ct-hjy4vc: "against 85.7% judged on its own pixels". The skeptic's words: A "a two-vertebra frame scored 69.6% on its own pixels and 95.1% registered onto a sweep from the sacrum" (found in its own artifact); B "a spot film showing three vertebrae and containing no landmark is named correctly 93.9% of the time once matched onto the sweep, against 85.7% judged on its own pixels" (found in its own artifact).
 - 206. The reader's: A, vertebral-levels-without-ct-a4rydj: "the sweep chain survives on 20% of films instead of 100%"; B, naming-vertebrae-without-ct-hjy4vc: "twice the spurious boxes and a chain that survives on 8% of films instead of 40%". The skeptic's words: A "With boxes from our own detector, on the same 25 held-out radiographs, the sweep chain survives on 20% of films instead of 100%" (found in its own artifact); B "What a lower threshold does buy is twice the spurious boxes and a chain that survives on 8% of films instead of 40%." (found in its own artifact).
 - 219. The reader's: A, overnight-the-honest-99-kantj8: "full coverage \| 78.8% \| 93.4%"; B, fluorocap-overnight-report-xnhgdo: "Own validation 78.8% exact, 95.9% within one, 97.2% region; cone-beam renders 62.5% against v1's 50.0% on their own validation; rare-anatomy renders 52.3%.". The skeptic's words: A "full coverage \| \| 78.8% \| \| 93.4%" (found in its own artifact); B "Own validation 78.8% exact, 95.9% within one, 97.2% region" (found in its own artifact).
+- 247. The reader's: A, aidas-seed-grant-proposal: "A detector trained only on calibrated renders of DeepFluoro's own CTs finds the sacrum on about 96-98% of real frames (leave-one-specimen-out)."; B, or-readiness-ledger: "C2 on a real image is not demonstrated. The real-film corpus holds 25 labelled C2 instances in val + test and the real-trained arm finds 0-8% of them; render-trained arms find 85-88% of C2 on renders and none on film. The AASCE-labelled thoracic films show the same split: a keypoint detector trained". The skeptic's words: A "A detector trained only on calibrated renders of DeepFluoro's own CTs finds the sacrum on about 96-98% of real frames (leave-one-specimen-out)." (found in its own artifact); B "Thoracic T1-T12 on real films: 97.7% (keypoint detector)" (found in its own artifact).
 
 ### Revised later: the later artifact gives a new figure or date (36)
 

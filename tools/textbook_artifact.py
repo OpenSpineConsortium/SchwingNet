@@ -1,6 +1,7 @@
 """The textbook site as the files of one claude.ai artifact: the edition a
-session publishes, private, on the owner's account, and republishes to the
-same link after each merge (issue #236).
+Claude Code session on the owner's computer publishes, private, on the
+owner's account, and republishes to the same link when the book has changed
+(issues #236 and #277).
 
 The members-only Pages site is built by tools/textbook_site.py. A claude.ai
 artifact page cannot be framed by any other site, the Pages site included:
@@ -46,8 +47,8 @@ own file_path; a whole version must stay under 511 files and 256 MB, a
 binary file under 15 MB and a text file under 16 MB, and the script says so
 when one does not. The edition line carries the built commit's own date,
 given as --built, never the clock, so building one commit twice gives the
-same bytes and the publish workflow (.github/workflows/textbook-artifact.yml,
-tools/textbook_publish.py) can tell what changed by hashing the files.
+same bytes and the publish (tools/textbook_publish.py local, run on the
+owner's computer) can tell what changed by hashing the files.
 
     python3 tools/textbook_artifact.py SITE OUT --repo OWNER/NAME --sha SHA --built DATE
 """
@@ -359,8 +360,8 @@ def record_links(text, repo, sha):
 
 def edition_line(repo, sha, built):
     return (f'<p class="edition">This edition was built from <a href="https://github.com/{esc(repo)}/commit/{esc(sha)}">'
-            f'{esc(sha[:7])}</a> on {esc(built)}; the repository is the source and this copy is republished after each merge to '
-            f'its default branch. A figure that came from an exported artifact opens that artifact&#x27;s own page here, and '
+            f'{esc(sha[:7])}</a> on {esc(built)}; the repository is the source, and this copy is republished from it when the '
+            f'book changes. A figure that came from an exported artifact opens that artifact&#x27;s own page here, and '
             f'Ask Claude answers from the page you are on.</p>')
 
 
