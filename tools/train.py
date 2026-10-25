@@ -305,10 +305,13 @@ INHERITED = ("architecture", "denoise", "normalise")
 
 def parent_of(path):
     """What a parent checkpoint is: its sha256, and, where it sits in a run directory as
-    <run>/train/best.pt or <run>/train/epochs/epoch-NN.pt, that run's id and blocks."""
-    path = Path(path)
-    if not path.is_file():
-        raise TrainError(f"{path}: no parent checkpoint there")
+    <run>/train/best.pt or <run>/train/epochs/epoch-NN.pt, that run's id and blocks. The path is
+    read where it leads, so a link to the file finds the run it is in, as its real path does,
+    where read beside the link it named no run and warm_start checked none of the parent's blocks."""
+    typed = Path(path)
+    if not typed.is_file():
+        raise TrainError(f"{typed}: no parent checkpoint there")
+    path = typed.resolve()
     folder = path.parent.parent if path.parent.name == "epochs" else path.parent
     run_file, facts_file = folder.parent / "RUN.json", folder / "checkpoint.json"
     run_id = json.loads(run_file.read_text(encoding="utf-8")).get("run_id") if run_file.is_file() else None

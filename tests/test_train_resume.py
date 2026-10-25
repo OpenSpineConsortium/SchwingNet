@@ -334,6 +334,21 @@ class ResumeBindingTest(unittest.TestCase):
         self.assertEqual(rc, 0, err)
         self.assertIn('"resumed_after_epoch": 1', out)
 
+    def test_a_link_to_the_parent_file_is_read_as_the_file_it_names(self):
+        # A link to the file itself sits in a folder with no RUN.json or checkpoint.json beside it;
+        # read there, the parent named no run and warm_start checked none of its blocks, so a
+        # parent trained on other crops warm-started without a word.
+        link = self.tmp / "parent.pt"
+        link.symlink_to(self.parent)
+        trainer = load("train")
+        through_link = trainer.parent_of(link)
+        self.assertEqual(through_link, trainer.parent_of(self.parent))
+        self.assertEqual((through_link["file"], through_link["run_id"], through_link["facts"]["size"]), ("best.pt", "parentrun000", 32))
+        folder = new_run(self.tmp / "linked", "linkedrun000")
+        rc, _, err = train(self.catalog, folder, "--epochs", "1", "--size", "64", "--init", str(link), module=trainer)
+        self.assertEqual(rc, 1)
+        self.assertIn("train: the parent was trained on 32-pixel crops, this run on 64", err)
+
     def test_a_file_replaced_at_the_same_path_is_refused(self):
         import torch
         import torchvision
