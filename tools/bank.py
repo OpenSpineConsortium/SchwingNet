@@ -17,10 +17,14 @@ seen is spelled that way on purpose.
 The conversion is deterministic (the files in path order, one stem per relative path, the meta
 with sorted keys) and writes only under the recipe's bank folder: a file already there with the
 same bytes is left, one with other bytes is refused, and nothing is ever deleted, so a changed
-raw copy is a person's decision and a rerun is idempotent. PNG is copied byte for byte (the
-ingest hashes the bytes, so a copy keeps the shard's name stable). JPEG, TIFF and BMP are read
-through Pillow where it can be imported (the train environment, `pixi run -e train-cpu`), and
-refused with the way to get it otherwise. DICOM is read through pydicom, numpy and Pillow, all in
+raw copy is a person's decision and a rerun is idempotent. An 8-bit PNG is copied byte for byte
+(the ingest hashes the bytes, so a copy keeps the shard's name stable). A grey frame of more than
+8 bits, a 16-bit grey PNG or a 16-bit, 32-bit or float image read through Pillow, is cut to 8 bits
+by the same 0.5 to 99.5 percentile window the DICOM path uses (#260): the trainer reads every frame
+as 8-bit grey, and Pillow's conversion of a 16-bit grey frame clips every value above 255, so such a
+frame reached the trainer white. A 16-bit PNG of colour, or of grey with alpha, Pillow reads at 8
+bits a channel, which clips nothing; it is converted to grey here as the trainer converted it. JPEG, TIFF and BMP are read through Pillow where it can be imported
+(the train environment, `pixi run -e train-cpu`), and refused with the way to get it otherwise. DICOM is read through pydicom, numpy and Pillow, all in
 the train environment's lock (#44), with pylibjpeg's decoders for a compressed pixel array: the
 modality LUT applied, MONOCHROME1 inverted, and the 0.5 to 99.5 percentile window cut to 8 bits,
 the reduction LEAKAGE.md's pixel key is defined on. Identity comes from the header first: a
@@ -33,7 +37,15 @@ or less there is a blank, not a value. A person key that holds more frames than 
 `max_frames_per_person` is refused, since a blank tag filled with one constant would make the
 whole set one person; only MONOCHROME1 and MONOCHROME2 pixels are banked, and every file is
 written as a .part first and renamed, so a preempted job leaves no short frame. `--workers N` decodes in N processes and writes in path order, so the bank
-is the same bytes whatever N is. Standard library only, Pillow, numpy and pydicom optional.
+is the same bytes whatever N is. A finished run writes `<bank>/BANK.json`, the stamp of what made the
+bank and of what it holds: the recipe, every file under the raw folder by its path, size and
+modification time, through linked folders as the recipe's globs go and with each link's target,
+this tool's own bytes, the decoders' versions, and the same listing of the bank itself. A later run
+whose stamp is the same and whose bank lists the same decodes and reads nothing and says the bank
+is unchanged (#260), so a rerun of the chain costs a listing of the two folders and not a decode of
+the set. Any change to any of them, a file fetched again or a frame removed from the bank among
+them, makes a full run, which is idempotent as before; a full run removes the old stamp first, so
+a run refused or killed part way leaves no stamp to trust. Standard library only, Pillow, numpy and pydicom optional.
 """
 
 import argparse
@@ -50,6 +62,9 @@ from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
+STAMP = "BANK.json"
+# Pillow's modes for a grey frame of more than 8 bits, which the window cuts to 8 (#260).
+WIDE_MODES = ("I;16", "I;16L", "I;16B", "I;16N", "I", "F")
 TO_CONFIRM = "to confirm"
 REQUIRED = ("id", "raw", "bank", "images", "format", "person", "view", "device", "split", "labels")
 FORMATS = ("png", "jpg", "jpeg", "tif", "tiff", "bmp", "dcm")
@@ -191,6 +206,13 @@ def png_size(data):
     return struct.unpack(">II", data[16:24])
 
 
+def png_depth(data):
+    """The bits per sample a PNG's header gives, read after png_size has checked the header."""
+    if len(data) < 25:
+        raise BankError("not a PNG")
+    return data[24]
+
+
 def pillow():
     try:
         from PIL import Image
@@ -202,19 +224,44 @@ def pillow():
 
 
 def as_png(data, image_format):
-    """The frame's bytes as a PNG with its width and height; PNG passes through untouched."""
+    """The frame's bytes as a PNG with its width and height; an 8-bit PNG passes through
+    untouched, so a bank written before #260 is the same bytes."""
     if image_format == "png":
         width, height = png_size(data)
-        return data, width, height
+        if png_depth(data) <= 8:
+            return data, width, height
     if image_format == "dcm":
         data, width, height, _ = dicom_as_png(data)
         return data, width, height
-    image = pillow().open(io.BytesIO(data))
-    if image.mode not in ("L", "I;16", "I"):
-        image = image.convert("L")
+    image = grey_8bit(pillow().open(io.BytesIO(data)))
     out = io.BytesIO()
     image.save(out, format="PNG")
     return out.getvalue(), image.width, image.height
+
+
+def numpy_module():
+    try:
+        import numpy
+    except ImportError as error:
+        raise BankError("a frame of more than 8 bits needs numpy to be windowed, which the train environment"
+                        " holds: run the bank stage with PYDRV=<repo>/.pixi/envs/train-cpu/bin/python"
+                        " (pixi install --locked -e train-cpu)") from error
+    return numpy
+
+
+def grey_8bit(image):
+    """An image as the 8-bit grey frame the trainer reads. A grey frame of more than 8 bits is
+    windowed as a DICOM film is, since Pillow's own conversion clips it; any other mode is
+    converted by Pillow, as the trainer would convert it, and an 8-bit grey frame is kept."""
+    if image.mode == "L":
+        return image
+    if image.mode not in WIDE_MODES:
+        return image.convert("L")
+    numpy = numpy_module()
+    pixels = numpy.asarray(image, dtype=numpy.float64)
+    if pixels.ndim != 2:
+        raise BankError(f"the {image.mode} image has shape {pixels.shape}; a grey film is two dimensional")
+    return pillow().fromarray(window_8bit(numpy, pixels), mode="L")
 
 
 def dicom_modules():
@@ -411,7 +458,8 @@ def write_once(path, data):
     if path.exists():
         if path.read_bytes() == data:
             return "kept"
-        raise BankError(f"{path}: already there with other bytes; the raw copy changed, which is a person's call")
+        raise BankError(f"{path}: already there with other bytes; the raw copy changed, which is a person's call,"
+                        " or an older tools/bank.py wrote it (a frame of more than 8 bits is windowed since #260)")
     path.parent.mkdir(parents=True, exist_ok=True)
     part = path.with_name(path.name + ".part")
     part.write_bytes(data)
@@ -475,6 +523,161 @@ def keys_of(persons, relatives, headers):
         raise BankError(f"{len(split)} studies fall under more than one person key (first {split[0]}); the key is"
                         " finer than the study, so the recipe is read again")
     return keys, tag, len(by_study)
+
+
+def link_target(path):
+    """Where a link points, as the link holds it; empty for a file that is no link."""
+    try:
+        return os.readlink(path) if path.is_symlink() else ""
+    except OSError:
+        return ""
+
+
+def entry_line(path, root):
+    """One file's line in a listing: its path, its size and modification time in nanoseconds read
+    through any link, and the link's own target where it is one. A link that leads nowhere, or a
+    file gone between the walk and the look, is listed as missing, so it stops nothing and a look
+    that later finds it changes the listing."""
+    relative = path.relative_to(root).as_posix()
+    target = link_target(path)
+    try:
+        info = path.stat()
+    except OSError:
+        return f"{relative}\tmissing\t{target}"
+    return f"{relative}\t{info.st_size}\t{info.st_mtime_ns}\t{target}"
+
+
+def walked(root):
+    """os.walk through linked folders, as the recipes' globs walk them, each real folder once, so a
+    link back up the tree is walked once; folders and files in name order."""
+    seen = set()
+    for folder, folders, files in os.walk(root, followlinks=True):
+        real = os.path.realpath(folder)
+        if real in seen:
+            folders[:] = []
+            continue
+        seen.add(real)
+        folders.sort()
+        yield Path(folder), folders, sorted(files)
+
+
+def tree_listing(root, skip=()):
+    """Every file under a folder as listing lines in path order, the names in skip at its top left
+    out. A linked folder is walked and listed with its target too, so a new copy behind the same
+    link changes the listing. A file rewritten with the same bytes has a new time, so a listing
+    errs towards a full run, never towards a skip."""
+    root = Path(root)
+    lines = []
+    for here, folders, files in walked(root):
+        lines.extend(f"{(here / name).relative_to(root).as_posix()}/\tlink\t{link_target(here / name)}"
+                     for name in folders if (here / name).is_symlink())
+        lines.extend(entry_line(here / name, root) for name in files if not (here == root and name in skip))
+    return sorted(lines)
+
+
+def tree_motion(root, skip=()):
+    """The listing with what a change leaves behind even once it is undone: every folder's own
+    modification time, which an entry added, removed or renamed in it moves, and every file's
+    change time, which a write or a rename moves and no tool sets back. Two equal motions taken
+    around a read say nothing in the tree moved during it, where two equal listings do not: a
+    frame moved out and back, or a file added and removed, lists as it did."""
+    root = Path(root)
+    lines = []
+    for here, _, files in walked(root):
+        lines.append(f"{here.relative_to(root).as_posix()}/\t{stat_time(here, 'st_mtime_ns')}")
+        lines.extend(f"{entry_line(here / name, root)}\t{stat_time(here / name, 'st_ctime_ns')}"
+                     for name in files if not (here == root and name in skip))
+    return sorted(lines)
+
+
+def stat_time(path, field):
+    try:
+        return getattr(path.stat(), field)
+    except OSError:
+        return "missing"
+
+
+def listing_sha256(lines):
+    """The listing's hash over the bytes the file system holds: a name that is not UTF-8, as an
+    archive made on Windows unpacks to, is hashed as it is and stops no source."""
+    return hashlib.sha256(("\n".join(lines) + "\n").encode("utf-8", "surrogateescape")).hexdigest()
+
+
+def bank_listing(bank):
+    """What a bank holds, its own stamp left out: what the ingest reads and the stamp checks."""
+    return tree_listing(bank, skip=(STAMP, STAMP + ".part"))
+
+
+def bank_motion(bank):
+    """The bank's motion (tree_motion), its own stamp left out, which the ingest takes around its
+    read of the bank."""
+    return tree_motion(bank, skip=(STAMP, STAMP + ".part"))
+
+
+def decoder_versions():
+    """The versions of the decoders this python holds, since a new decoder may decode a frame
+    to other bytes."""
+    versions = {}
+    for name, module in (("Pillow", "PIL"), ("numpy", "numpy"), ("pydicom", "pydicom")):
+        try:
+            versions[name] = getattr(__import__(module), "__version__", "unknown")
+        except ImportError:
+            versions[name] = None
+    return versions
+
+
+def stamp_of(recipe, raw):
+    """What made a bank, as the hashes BANK.json holds and a rerun compares."""
+    return {
+        "recipe_sha256": hashlib.sha256(json.dumps(recipe, sort_keys=True).encode("utf-8")).hexdigest(),
+        "raw_sha256": listing_sha256(tree_listing(raw)),
+        "code_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+        "decoders": decoder_versions(),
+    }
+
+
+def unchanged_counts(bank, stamp):
+    """The counts the stamp recorded when the bank was made from the same inputs and still holds
+    every file it held then, as they were; else None. A bank a person has thinned or edited since
+    is made again, which writes back what is missing and refuses what was changed."""
+    try:
+        recorded = json.loads((Path(bank) / STAMP).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    if not isinstance(recorded, dict) or recorded.get("stamp") != stamp:
+        return None
+    if recorded.get("bank_sha256") != listing_sha256(bank_listing(bank)):
+        return None
+    counts = dict(recorded.get("counts") or {})
+    counts.update(written=0, kept=counts.get("frames", 0), unchanged=True)
+    return counts
+
+
+def write_stamp(bank, stamp, counts):
+    """Record what made the bank and what it holds, last, so a bank cut short has no stamp and
+    runs again."""
+    kept = {key: value for key, value in counts.items() if key not in ("written", "kept")}
+    record = {"stamp": stamp, "counts": kept, "bank_sha256": listing_sha256(bank_listing(bank))}
+    text = json.dumps(record, indent=1, sort_keys=True) + "\n"
+    path = Path(bank) / STAMP
+    part = path.with_name(path.name + ".part")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    part.write_text(text, encoding="utf-8")
+    os.replace(part, path)
+
+
+def run_once(recipe, raw, bank, workers=1):
+    """Write the bank unless its stamp says the same inputs made it as it is; the counts either
+    way. The old stamp goes before a full run, so a run refused or killed part way leaves a bank
+    with no stamp, which the next run makes again in full."""
+    stamp = stamp_of(recipe, raw)
+    counts = unchanged_counts(bank, stamp)
+    if counts is not None:
+        return counts
+    (Path(bank) / STAMP).unlink(missing_ok=True)
+    counts = convert(recipe, raw, bank, True, workers)
+    write_stamp(bank, stamp, counts)
+    return counts
 
 
 def convert(recipe, raw, bank, run, workers=1):
@@ -544,7 +747,11 @@ def main(argv=None):
     args = parser().parse_args(argv)
     try:
         recipe = load_recipe(args.recipe)
-        counts = convert(recipe, args.raw or recipe["raw"], args.bank or recipe["bank"], args.run, args.workers)
+        raw, bank = args.raw or recipe["raw"], args.bank or recipe["bank"]
+        if args.run:
+            counts = run_once(recipe, raw, bank, args.workers)
+        else:
+            counts = convert(recipe, raw, bank, False, args.workers)
         counts.update({"id": recipe["id"], "bank": args.bank or recipe["bank"], "mode": "run" if args.run else "plan",
                        "split": recipe["split"], "person_prefix": recipe.get("person_prefix", recipe["id"])})
         print(json.dumps(counts, indent=1, sort_keys=True))

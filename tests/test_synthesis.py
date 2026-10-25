@@ -1293,6 +1293,56 @@ class Workflow(unittest.TestCase):
             self.assertTrue((TOOLS / name).exists(), name)
         self.assertTrue((ROOT / "tools" / "usage.py").exists())
 
+    def jobs(self):
+        """The workflow's jobs, each as its text: a job starts two spaces in under the key jobs."""
+        found, current = {}, None
+        for line in WORKFLOW.read_text(encoding="utf-8").split("\njobs:\n", 1)[1].split("\n"):
+            start = re.match(r"^  ([A-Za-z0-9_-]+):\s*$", line)
+            if start:
+                current = start.group(1)
+                found[current] = []
+            elif current is not None:
+                found[current].append(line)
+        return {name: "\n".join(lines) for name, lines in found.items()}
+
+    def test_a_push_only_starts_the_workflow_again_by_run_workflow(self):
+        # claude-code-action stops at "Unsupported event type: push" (issue #274), so a push's run
+        # hands the look and the reads to a run the action takes, and nothing else of it runs.
+        text, jobs = WORKFLOW.read_text(encoding="utf-8"), self.jobs()
+        relay = jobs["relay"]
+        self.assertIn("    if: vars.CLAUDE_CROWD != 'true' && github.event_name == 'push' && "
+                      "github.repository == 'OpenSpineConsortium/SchwingNet' && github.ref == 'refs/heads/main'\n", relay)
+        self.assertEqual(re.findall(r"^      (\w+): ", relay.split("    permissions:\n", 1)[1], re.M), ["actions"])
+        self.assertIn("      actions: write", relay)
+        self.assertIn('gh workflow run synthesis.yml --repo "$REPO" --ref main -f relayed=push', relay)
+        for absent in ("secrets.", "actions/checkout", "uses:", "contents:"):
+            self.assertNotIn(absent, relay, absent)
+        for name in ("values", "look"):
+            self.assertIn("github.event_name != 'push'", jobs[name], name)
+        for name in ("batch", "verdicts", "join"):
+            self.assertIn("needs.", jobs[name].split("    if: ", 1)[1].split("\n", 1)[0], name)
+        self.assertIn("concurrency:\n  group: ${{ github.event_name == 'push' && "
+                      "format('synthesis-relay-{0}', github.run_id) || 'synthesis' }}\n  cancel-in-progress: false\n", text)
+
+    def test_the_stand_in_is_admitted_as_the_push(self):
+        # so three failed reading runs pause it, as they pause a push, and a run by hand still tries
+        text = WORKFLOW.read_text(encoding="utf-8")
+        dispatch = text.split("  workflow_dispatch:\n", 1)[1].split("\n\n", 1)[0]
+        self.assertIn("      relayed:\n", dispatch)
+        self.assertIn('        default: ""', dispatch)
+        self.assertEqual(text.count("EVENT: ${{"), 1)
+        self.assertIn("EVENT: ${{ inputs.relayed == 'push' && 'push' || github.event_name }}", text)
+
+    def test_every_session_takes_runs_the_actions_bot_starts(self):
+        text = WORKFLOW.read_text(encoding="utf-8")
+        steps = text.split("uses: anthropics/claude-code-action@")[1:]
+        self.assertEqual(len(steps), 4)
+        for step in steps:
+            options = step.split("      - name:", 1)[0]
+            self.assertIn('allowed_bots: "github-actions"\n', options)
+        self.assertNotIn('allowed_bots: "*"', text)
+        self.assertNotIn("allowed_non_write_users", text)
+
 
 class OwnerGate(unittest.TestCase):
     """owner-ok.yml's first job, which the synthesis's pull requests meet: an admin's own pull
