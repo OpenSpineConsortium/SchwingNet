@@ -14,12 +14,13 @@ digest of the files the flow's kind executes (code_of), not the commit: main mer
 day and most merges change nothing a flow runs, so a job cut short and queued again after one
 carries its run on, where a key with the commit in it started the run over (issue #252, finding
 27). What it reads is listed by the flow's own key_reads (reads_of): for bank every recipe it
-lists with its raw folder's state, for sweep the plan file's bytes. Every run carries the key as
-a tag, and the newest run with that key decides (schwingnet.pipeline.decide): one that did not
-succeed is resumed where Metaflow saved its parameters, else a new run starts. A job queued again
-with the same words therefore continues where the killed one stopped, and a change of code, of
-configuration, of a plan or of a raw copy starts afresh. A new run is given the checkout's
---commit, which resume clones with
+lists with its raw folder's state, for catalog every shard manifest the build would read with
+its size and sha256, for sweep the plan file's bytes. Every run carries the key as a tag, and the
+newest run with that key decides (schwingnet.pipeline.decide): one that did not succeed is
+resumed where Metaflow saved its parameters, else a new run starts. A job queued again with the
+same words therefore continues where the killed one stopped, and a change of code, of
+configuration, of a plan, of a raw copy or of a shard starts afresh. A new run is given the
+checkout's --commit, which resume clones with
 the other parameters, so a resumed run names the commit it was first started on, which holds
 the same code; its tags name the commit that launched it and the code's digest beside the key.
 Bank's --date is in the key when the caller gave it, so a job

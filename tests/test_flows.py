@@ -9,6 +9,7 @@ skips the file; run it with the train-cpu environment, as tests/test_train_resum
 """
 
 import base64
+import hashlib
 import importlib.util
 import io
 import json
@@ -894,10 +895,12 @@ echo '{"file": "catalog-000001-0123456789ab.sqlite", "new": true, "version": 1}'
 FLOW_HOOK = '''"""A launch's processes as the grid can cut them, once, where FLOW_TEST_HOOK says.
 
 persist: the flow's runtime exits 137 as Metaflow is about to save the run's parameters, a kill
-landing after Metaflow registered the run and before it saved them. pause: the launcher says it
-has listed the runs, then waits for the test's word before it reads the beats.
+landing after Metaflow registered the run and before it saved them. end: the end step's task kills
+the runtime and itself as it begins, as Slurm ends a job, every step before it done. pause: the
+launcher says it has listed the runs, then waits for the test's word before it reads the beats.
 """
 import os
+import signal
 import sys
 import time
 from pathlib import Path
@@ -916,6 +919,16 @@ def once():
     return True
 
 
+def ancestor(test):
+    pid = os.getppid()
+    while pid > 1:
+        command = Path(f"/proc/{pid}/cmdline").read_bytes().replace(b"\\0", b" ").decode()
+        if test(command):
+            return pid
+        pid = int(Path(f"/proc/{pid}/stat").read_text().rsplit(")", 1)[1].split()[1])
+    return None
+
+
 def exit_as_the_parameters_are_saved():
     from metaflow import runtime
 
@@ -927,6 +940,14 @@ def exit_as_the_parameters_are_saved():
         return saved(self, task_id)
 
     runtime.NativeRuntime.persist_constants = persist_constants
+
+
+def kill_the_job():
+    if once():
+        flow = ancestor(lambda command: SCRIPT in command and " step " not in command)
+        if flow:
+            os.kill(flow, signal.SIGKILL)
+        os._exit(137)
 
 
 def pause_before_the_beats():
@@ -943,6 +964,8 @@ def pause_before_the_beats():
 in_a_flow = "/flows/" in SCRIPT and not SCRIPT.endswith("/launch.py")
 if WHERE == "persist" and in_a_flow and " step " not in WORDS:
     exit_as_the_parameters_are_saved()
+elif WHERE == "end" and in_a_flow and " step end " in WORDS:
+    kill_the_job()
 elif WHERE == "pause" and SCRIPT.endswith("/flows/launch.py"):
     pause_before_the_beats()
 '''
@@ -992,10 +1015,9 @@ class CatalogFlowTest(unittest.TestCase):
         self.addCleanup(self.release.touch)
         wait_for(self.held)
 
-        # a shard lands while the first build, which listed one manifest, still holds the lock; a
-        # second job of the same words starts a run of its own, which waits on the lock and then
-        # builds with both, where a resume of the live run would carry its build on
-        self.shard("b")
+        # the first build still holds the lock: a second job of the same words on the same shards
+        # starts a run of its own, which waits on the lock and then builds, where a resume of the
+        # live run would carry its build on
         second = start_launch(self.words, self.work, env, self.root)
         self.addCleanup(second.kill)
         decision = json.loads(second.stdout.readline())
@@ -1006,7 +1028,7 @@ class CatalogFlowTest(unittest.TestCase):
         code, said, out = finish(second)
         self.assertEqual((code, said[-1]["verdict"]), (0, 0), out)
         self.assertEqual(decision["live"], first_said[-1]["run"].split("/")[1])
-        self.assertEqual(self.built(), ["1", "2"])
+        self.assertEqual(self.built(), ["1", "1"])
 
     def test_a_run_killed_before_metaflow_saved_its_parameters_is_never_resumed(self):
         # Finding [1] of the second review of #252: Metaflow registers a run, its key tag with it,
@@ -1027,6 +1049,33 @@ class CatalogFlowTest(unittest.TestCase):
         # the cut job's log, which held no line the gate's status keeps, ends with the launcher's own
         self.assertRegex(gate_shows(cut_log)[-2], r"^XR_CATALOG_RC=137 [0-9-]+ [0-9:]+$", cut_log)
 
+    def test_a_build_cut_in_end_is_carried_on_only_while_no_shard_has_landed(self):
+        # Finding [2] of the second review of #252: a run cut after its build, resumed, clones the
+        # build, so the manifests the build read are in the key
+        self.shard("a")
+        self.release.touch()
+        code, said, log = finish(start_launch(self.words, self.work, self.hooked("end"), self.root))
+        self.assertEqual((code, said[-1]["successful"]), (137, False), log)
+        self.assertEqual(self.built(), ["1"])
+
+        # a shard lands before the job is sent again: the cut build lacks it, so a run of its own builds both
+        self.shard("b")
+        code, said, log = finish(start_launch(self.words, self.work, self.builder(), self.root))
+        self.assertEqual(code, 0, log)
+        self.assertEqual((said[0]["decision"], said[0]["origin"], said[-1]["verdict"]), ("run", None, 0), log)
+        self.assertEqual(self.built(), ["1", "2"])
+
+        # cut after its build again, and sent again with nothing new on the data root: the cut run
+        # is carried on, its build cloned
+        (self.tmp / "end-done").unlink()
+        code, said, log = finish(start_launch(self.words, self.work, self.hooked("end"), self.root))
+        self.assertEqual((code, said[0]["decision"]), (137, "run"), log)
+        cut = said[-1]["run"].split("/")[1]
+        code, said, log = finish(start_launch(self.words, self.work, self.builder(), self.root))
+        self.assertEqual(code, 0, log)
+        self.assertEqual((said[0]["decision"], said[0]["origin"], said[-1]["verdict"]), ("resume", cut, 0), log)
+        self.assertEqual(self.built(), ["1", "2", "2"])
+
     def test_a_success_read_between_the_end_tasks_two_flags_starts_a_new_run(self):
         # Finding [3] of the second review of #252: Metaflow writes the end task's ok and success as
         # two files, one after the other, so a read between them saw a run that succeeded and had
@@ -1043,6 +1092,43 @@ class CatalogFlowTest(unittest.TestCase):
         code, said, log = finish(start_launch(self.words, self.work, self.builder(), self.root))
         self.assertEqual(code, 0, log)
         self.assertEqual((said[0]["decision"], said[0]["origin"]), ("run", None), log)
+
+    def test_the_key_reads_every_manifest_the_stage_builds_from_and_no_other(self):
+        # Finding [2] of the second review of #252: the key names the manifests by the stage's own
+        # listing, at the one depth, through no link and in no dot folder, each by its path, size and
+        # sha256, a name the build cannot read among them
+        data_root = self.tmp / "volume" / "shards" / "data"
+        for folder in ("carmlspine/shards/a", "carmlspine/shards/.ingest-a-x1y2", ".staging/shards/b", "carmlspine/.reuse/k1",
+                       "lumos/shards/c", "lumos/shards/c/deeper", "elsewhere/shards/d"):
+            (data_root / folder).mkdir(parents=True)
+            (data_root / folder / "MANIFEST.json").write_text(json.dumps({"shard": folder}) + "\n", encoding="utf-8")
+        (data_root / "linked").symlink_to(data_root / "elsewhere")
+        (data_root / "lumos" / "shards" / "e").symlink_to(data_root / "carmlspine" / "shards" / "a")
+        (data_root / "lumos" / "shards" / "f").mkdir()
+        (data_root / "lumos" / "shards" / "f" / "MANIFEST.json").symlink_to(self.tmp / "nowhere.json")
+        builds = self.tmp / "builds"
+        pydrv = self.tmp / "build-pydrv"
+        pydrv.write_text('#!/bin/bash\n[ "$2" = build ] && printf "%s\\n" "$@" >> "$FLOW_TEST_BUILDS"\nexit 0\n', encoding="utf-8")
+        pydrv.chmod(0o755)
+        env = base_env(PYDRV=str(pydrv), FLOW_TEST_BUILDS=str(builds), DATA_ROOT=str(data_root), TMPDIR_OVERRIDE=str(self.tmp / "t"),
+                       BUILD_LOCK_WAIT="10")
+        stage("03-catalog.sbatch", self.work, env)
+        args = builds.read_text(encoding="utf-8").splitlines()
+        built = sorted(str(Path(args[at + 1]).relative_to(data_root)) for at, word in enumerate(args) if word == "--manifest")
+        self.assertEqual(built, ["carmlspine/shards/a/MANIFEST.json", "elsewhere/shards/d/MANIFEST.json",
+                                 "lumos/shards/c/MANIFEST.json", "lumos/shards/f/MANIFEST.json"])
+
+        flow = load(ROOT / "flows" / "catalog.py", "catalog_flow_under_test")
+        reads = flow.key_reads(["--data-root", str(data_root)], self.work)
+        self.assertEqual(sorted(line.split()[0] for line in reads), built)
+        manifest = data_root / "carmlspine" / "shards" / "a" / "MANIFEST.json"
+        data = manifest.read_bytes()
+        self.assertIn(f"carmlspine/shards/a/MANIFEST.json {len(data)} {hashlib.sha256(data).hexdigest()}", reads)
+        self.assertIn("lumos/shards/f/MANIFEST.json unreadable", reads)
+        # a relative data root is read from the launcher's folder, and a rewritten manifest is another read
+        self.assertEqual(flow.key_reads(["--data-root=../volume/shards/data"], self.work), reads)
+        manifest.write_text(json.dumps({"shard": "carmlspine/shards/a", "frames": 2}) + "\n", encoding="utf-8")
+        self.assertNotEqual(flow.key_reads(["--data-root", str(data_root)], self.work), reads)
 
     def test_a_run_that_ended_well_after_the_listing_is_read_again_and_not_resumed(self):
         # Finding [3] of the second review of #252: a second job lists the first's run while it
