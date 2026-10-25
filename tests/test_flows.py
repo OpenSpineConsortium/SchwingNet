@@ -88,6 +88,13 @@ def base_env(**extra):
     return env
 
 
+def load_run_code():
+    spec = importlib.util.spec_from_file_location("run_code_under_test", ROOT / "tools" / "run_code.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def launch(words, cwd, env, root):
     """flows/launch.py with the test's own datastore: its exit code, its JSON lines and its output."""
     done = subprocess.run([sys.executable, str(LAUNCH), words[0], "--root", str(root), *words[1:]], cwd=cwd, env=env,
@@ -567,12 +574,26 @@ class SweepFlowTest(unittest.TestCase):
         (self.repo / "tools").mkdir()
         shutil.copy(ROOT / "flows" / "sweep.py", self.repo / "flows" / "sweep.py")
         (self.repo / "tools" / "block_sweep.py").write_text(STUB_BLOCK_SWEEP, encoding="utf-8")
-        git = ["git", "-C", str(self.repo), "-c", "user.name=flow test", "-c", "user.email=flow@test", "-c", "commit.gpgsign=false",
-               "-c", "gc.auto=0", "-c", "maintenance.auto=false"]
-        for args in (["init", "-q"], ["add", "."], ["commit", "-q", "-m", "the stub"]):
-            subprocess.run(git + args, check=True, capture_output=True, timeout=60)
+        # The launcher names the run by the code the sweep runs (tools/run_code.py), so every file
+        # of that list is here, the two above and a line of stand-in for each of the rest.
+        shutil.copy(ROOT / "tools" / "run_code.py", self.repo / "tools" / "run_code.py")
+        for name in load_run_code().KINDS["sweep"]:
+            path = self.repo / name
+            if not path.exists():
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(f"# {name}, a stand-in\n", encoding="utf-8")
+        subprocess.run(self.git("init", "-q"), check=True, capture_output=True, timeout=60)
+        self.commit("the stub")
         self.root, self.out, self.work = self.tmp / "metaflow", self.tmp / "smoke", self.tmp / "work"
         self.work.mkdir()
+
+    def git(self, *words):
+        return ["git", "-C", str(self.repo), "-c", "user.name=flow test", "-c", "user.email=flow@test", "-c", "commit.gpgsign=false",
+                "-c", "gc.auto=0", "-c", "gc.autoDetach=false", "-c", "maintenance.auto=false", "-c", "maintenance.autoDetach=false", *words]
+
+    def commit(self, message):
+        for words in (["add", "-A"], ["commit", "-q", "-m", message]):
+            subprocess.run(self.git(*words), check=True, capture_output=True, timeout=60)
 
     def sweep_launch(self, plan, n, **extra):
         """The words and the environment of a launch of a plan whose rows the stub runs, and the
@@ -678,6 +699,42 @@ class SweepFlowTest(unittest.TestCase):
             shown = card_data((state / "cards" / name).read_text(encoding="utf-8"))
             self.assertIn("validation accuracy 0.75", shown, name)
             self.assertIn("Outcome: ran, matched the check.", shown, name)
+
+    def test_a_merge_that_changes_nothing_the_sweep_runs_carries_the_cut_run_on_and_one_that_does_not(self):
+        # Finding 27 of #252: main merges many times a day, most merges change nothing a sweep
+        # runs, and a key with the commit in it started every cut sweep over after one.
+        plan = {"plan": "merged", "first": ["a", "b"], "second": []}
+        code, said, out, _ = self.sweep(plan, 1, FLOW_TEST_KILL="b")
+        self.assertEqual(code, 137, out)
+        first_run, first_key = said[-1]["run"].split("/")[1], said[0]["key"]
+        self.assertEqual(said[0]["code"], load_run_code().digest("sweep", self.repo), out)
+        (self.repo / "docs").mkdir()
+        (self.repo / "docs" / "note.md").write_text("a page no sweep runs\n", encoding="utf-8")
+        self.commit("a merge that changes nothing the sweep runs")
+        code, said, out, calls = self.sweep(plan, 2)
+        self.assertEqual(code, 0, out)
+        self.assertEqual((said[0]["decision"], said[0]["origin"], said[0]["key"]), ("resume", first_run, first_key), out)
+        self.assertEqual(calls, ["row b", "results"])
+
+        (self.tmp / "killed").unlink()
+        code, said, out, _ = self.sweep(plan, 3, FLOW_TEST_KILL="b")
+        self.assertEqual((code, said[0]["decision"]), (137, "run"), out)
+        with (self.repo / "tools" / "train.py").open("a", encoding="utf-8") as trainer:
+            trainer.write("# the trainer, changed\n")
+        self.commit("a change to the trainer, which every row runs")
+        code, said, out, calls = self.sweep(plan, 4)
+        self.assertEqual(code, 0, out)
+        self.assertEqual((said[0]["decision"], said[0]["origin"]), ("run", None), out)
+        self.assertNotEqual(said[0]["key"], first_key)
+        self.assertEqual(calls, ["prepare", "row a", "row b", "results"])
+
+        # an edited plan is no plan the cut run was making: its bytes are in the key too
+        (self.tmp / "killed").unlink()
+        code, said, out, _ = self.sweep(plan, 5, FLOW_TEST_KILL="b")
+        self.assertEqual(code, 137, out)
+        code, said, out, calls = self.sweep({**plan, "about": "edited"}, 6)
+        self.assertEqual((said[0]["decision"], said[0]["origin"]), ("run", None), out)
+        self.assertEqual(calls, ["prepare", "row a", "row b", "results"])
 
     def test_a_row_that_cannot_be_recorded_is_retried_once_then_caught_and_the_rest_still_run(self):
         code, said, out, calls = self.sweep({"plan": "faulty", "first": ["bad", "ok"], "second": []}, 1, FLOW_TEST_FAULT="bad")

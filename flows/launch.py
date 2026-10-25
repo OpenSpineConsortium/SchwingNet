@@ -7,13 +7,21 @@ The grid ends jobs from outside, a Slurm time limit or a preemption killing the 
 the gate word that queued it queues it again. Metaflow carries a run that did not finish on with
 `resume --origin-run-id`, cloning every step and every branch of a foreach that finished and
 running only the rest, but it must be told which run. So every job of a pipeline stage starts
-here: the launch is named by a key, the hash of the flow, the commit, the flow's parameters as
-given and, for bank, every recipe it lists with its raw folder's state (reads_of), since resume
-clones steps made from inputs the words do not name (schwingnet.pipeline.run_key); every run
-carries the key as a tag, and the newest run with that key decides (schwingnet.pipeline.decide):
-one that did not succeed is resumed, else a new run starts. A job queued again with the same
-words therefore continues where the killed one stopped, and a change of code, of configuration
-or of a raw copy starts afresh. Bank's --date is in the key when the caller gave it, so a job
+here: the launch is named by a key, the hash of the flow, the code it runs, the flow's parameters
+as given and what the flow reads that they do not name, since resume clones steps made from
+inputs the words do not name (schwingnet.pipeline.run_key). The code is tools/run_code.py's
+digest of the files the flow's kind executes (code_of), not the commit: main merges many times a
+day and most merges change nothing a flow runs, so a job cut short and queued again after one
+carries its run on, where a key with the commit in it started the run over (issue #252, finding
+27). What it reads is listed by the flow's own key_reads (reads_of): for bank every recipe it
+lists with its raw folder's state, for sweep the plan file's bytes. Every run carries the key as
+a tag, and the newest run with that key decides (schwingnet.pipeline.decide): one that did not
+succeed is resumed, else a new run starts. A job queued again with the same words therefore
+continues where the killed one stopped, and a change of code, of configuration, of a plan or of
+a raw copy starts afresh. A new run is given the checkout's --commit, which resume clones with
+the other parameters, so a resumed run names the commit it was first started on, which holds
+the same code; its tags name the commit that launched it and the code's digest beside the key.
+Bank's --date is in the key when the caller gave it, so a job
 asking for another date runs anew under it; where the words name none, the launcher chooses
 today for a new run, after the key is taken, and resume keeps it with the other parameters, so
 the same words on another day still continue the cut run.
@@ -136,7 +144,7 @@ def repository():
 
 
 def commit_of(repo):
-    """The checkout's full commit, which the key and the flow's --commit carry."""
+    """The checkout's full commit, which a new run's --commit and every run's tag carry."""
     try:
         done = subprocess.run(["git", "-C", str(repo), "rev-parse", "HEAD"], capture_output=True, text=True)
     except OSError as error:  # no git where the launcher runs, a box without it among them
@@ -147,17 +155,31 @@ def commit_of(repo):
     return commit
 
 
+def code_of(repo, name):
+    """The digest of the code the flow runs, by the checkout's own tools/run_code.py and its list
+    for the flow's kind, read from the checkout's tracked files."""
+    spec = importlib.util.spec_from_file_location("schwingnet_tool_run_code", repo / "tools" / "run_code.py")
+    tool = importlib.util.module_from_spec(spec)
+    try:
+        spec.loader.exec_module(tool)
+    except OSError as error:
+        raise LaunchError(f"no tools/run_code.py in {repo} to name the {name} flow's code by: {error}", EX_UNAVAILABLE) from error
+    try:
+        return tool.digest(name, repo)
+    except tool.RunCodeError as error:
+        raise LaunchError(f"the code the {name} flow runs cannot be named: {error}", EX_UNAVAILABLE) from error
+
+
 def reads_of(name, repo, words):
-    """What the flow reads that its words do not name, for the key: bank's recipes and raw copies,
-    listed by the flow's own file in the checkout (flows/bank.py's key_reads), so the launcher
-    lists them exactly as start will; nothing for the other flows. Loaded once Metaflow is set
-    up, since that file imports it."""
-    if name != "bank":
-        return []
-    spec = importlib.util.spec_from_file_location("schwingnet_bank_flow", repo / "flows" / "bank.py")
+    """What the flow reads that its words do not name, for the key, listed by the flow's own file
+    in the checkout (its key_reads), so the launcher lists them exactly as the flow will: bank's
+    recipes and raw copies, the sweep's plan; nothing for a flow with no key_reads. Loaded once
+    Metaflow is set up, since those files import it."""
+    spec = importlib.util.spec_from_file_location(f"schwingnet_{name}_flow", repo / "flows" / f"{name}.py")
     flow = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(flow)
-    return flow.key_reads(words, Path.cwd())
+    key_reads = getattr(flow, "key_reads", None)
+    return key_reads(words, Path.cwd()) if key_reads else []
 
 
 def point_metaflow_at(root):
@@ -300,10 +322,15 @@ class Heartbeat:
             self.said = True
 
 
-def flow_command(name, repo, decision, origin, options, words, key, commit, run_id_file, today):
+def run_tags(key, commit, code):
+    """What every run is tagged with: the key that finds it, the commit of the checkout that
+    launched it and the code's digest, as Metaflow's UI and client filter runs by."""
+    return [word for tag in (f"key:{key}", f"commit:{commit[:7]}", f"code:{code[:12]}") for word in ("--tag", tag)]
+
+
+def flow_command(name, repo, decision, origin, options, words, tags, commit, run_id_file, today):
     """The flow's command line: a new run with the words, or a resume, which clones them."""
     command = [sys.executable, str(repo / "flows" / f"{name}.py"), "--quiet"]
-    tags = ["--tag", f"key:{key}", "--tag", f"commit:{commit[:7]}"]
     workers = ["--max-workers", str(options["max_workers"])]
     if decision == RESUME:
         return command + ["resume", "--origin-run-id", origin, *workers, *tags, "--run-id-file", run_id_file]
@@ -359,8 +386,8 @@ def launch(argv):
     require_parent(root)
     (root / ".metaflow").mkdir(parents=True, exist_ok=True)
     repo = repository()
-    commit = commit_of(repo)
-    key = run_key(name, commit, words, reads_of(name, repo, words))
+    commit, code = commit_of(repo), code_of(repo, name)
+    key = run_key(name, code, words, reads_of(name, repo, words))
     flow_class = FLOWS[name]
     folder = beats_folder(root, flow_class, key)
     host, _, job = this_launcher()
@@ -369,11 +396,11 @@ def launch(argv):
     runs = marked_live(runs, read_beats(folder, host), job, time.time())
     decision, origin = decide(runs)
     live = runs[0].run_id if runs and runs[0].live and not runs[0].successful else None
-    say({"decision": decision, "flow": name, "key": key, "live": live, "origin": origin, "root": str(root)})
+    say({"code": code, "decision": decision, "flow": name, "key": key, "live": live, "origin": origin, "root": str(root)})
     with tempfile.TemporaryDirectory(prefix="launch-") as scratch:
         run_id_file = Path(scratch) / "run-id"
-        command = flow_command(name, repo, decision, origin, options, words, key, commit, str(run_id_file),
-                               date.today().isoformat())
+        command = flow_command(name, repo, decision, origin, options, words, run_tags(key, commit, code), commit,
+                               str(run_id_file), date.today().isoformat())
         with Heartbeat(folder, key, run_id_file):
             flow_code = run_flow(command, root, repo)
         run_id = run_id_file.read_text(encoding="utf-8").strip() if run_id_file.is_file() else ""

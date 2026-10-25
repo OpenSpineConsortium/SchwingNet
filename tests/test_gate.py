@@ -2207,13 +2207,24 @@ esac
     def sweep_box(self):
         """box.sh as a fake for the sweep driver: it logs what it was asked and where the hold was,
         names $FAKE_CATALOG as the synthetic catalog, fails a split check while $FAKE/split_fails is
-        there, and answers for the launcher as flows/launch.py does, its exit code $FAKE/launch_rc."""
+        there, names the state folder as block_sweep's state does with $FAKE/code, else c0dec0de,
+        for the code's part, and answers for the launcher as flows/launch.py does, its exit code
+        $FAKE/launch_rc, after a commit to the checkout that leaves the code $FAKE/move names where
+        that file is there."""
         (self.repo / "grid" / "box.sh").write_text(r"""#!/bin/bash
 echo "$* hold=$(cat "$SCHWINGNET/grid/logs/HOLD" 2>/dev/null)" >> "$FAKE/box.log"
 case "$*" in
   *"block_sweep.py synthetic"*) echo "built a bank" >&2; echo "{\"catalog\": \"$FAKE_CATALOG\", \"reused\": false}" ;;
+  *"block_sweep.py state"*)
+    while [ $# -gt 0 ]; do case "$1" in --plan) p=$2; shift 2 ;; --catalog) c=$2; shift 2 ;; --out) o=$2; shift 2 ;; *) shift ;; esac; done
+    name=$(sed -n 's/^ "plan": "\([^"]*\)",\{0,1\}$/\1/p' "$p" | head -n 1)
+    echo "$o/$name/$(cat "$FAKE/code" 2>/dev/null || echo c0dec0de)-$(sha256sum < "$c" | cut -c1-8)" ;;
   *split-check*) [ ! -f "$FAKE/split_fails" ] || exit 1 ;;
   *"flows/launch.py"*)
+    if [ -f "$FAKE/move" ]; then
+      git -C "$SCHWINGNET" -c user.name=t -c user.email=t@t -c gc.auto=0 -c maintenance.auto=false commit -q --allow-empty -m "main moved"
+      cp "$FAKE/move" "$FAKE/code"
+    fi
     echo '{"decision": "run", "flow": "sweep", "key": "0123456789abcdef", "origin": null, "root": "/m"}'
     echo "a row ran"
     echo '{"flow": "sweep", "run": "SweepFlow/12", "successful": true, "verdict": 0}'
@@ -2238,15 +2249,19 @@ esac
         return subprocess.run(["bash", str(self.repo / "grid" / "sweep-driver.sbatch")], cwd=self.repo / "grid", env=env,
                               capture_output=True, text=True, timeout=60)
 
-    def test_the_sweep_driver_builds_the_synthetic_catalog_checks_its_split_and_runs_the_launcher(self):
-        commit = self.git_repo()
-        self.weights_ready()
-        self.sweep_box()
-        plan = self.plan("synthetic", "synthetic")
+    def synthetic_catalog(self):
         catalog = self.smoke / "synthetic" / "catalog" / "_catalog" / "versions" / "catalog-000001-0123456789ab.sqlite"
         catalog.parent.mkdir(parents=True)
         catalog.write_bytes(b"a synthetic catalog")
-        state = self.smoke / "synthetic" / f"{commit}-{hashlib.sha256(b'a synthetic catalog').hexdigest()[:8]}"
+        return catalog
+
+    def test_the_sweep_driver_builds_the_synthetic_catalog_checks_its_split_and_runs_the_launcher(self):
+        self.git_repo()
+        self.weights_ready()
+        self.sweep_box()
+        plan = self.plan("synthetic", "synthetic")
+        catalog = self.synthetic_catalog()
+        state = self.smoke / "synthetic" / f"c0dec0de-{hashlib.sha256(b'a synthetic catalog').hexdigest()[:8]}"
         state.mkdir(parents=True)
         (state / "RESULTS.md").write_text("# Sweep synthetic\n\n22 rows: 20 ran, 2 refused, all matched.\n\n| slug | outcome |\n|---|---|\n"
                                           "| a | ran |\n", encoding="utf-8")
@@ -2261,6 +2276,7 @@ esac
         self.assertTrue(check and launch and check[0] < launch[0], boxed)
         self.assertIn(f"tools/block_sweep.py synthetic --into {self.smoke}/synthetic/catalog hold=777 ", boxed[0])
         self.assertIn(f"split-check {catalog.parent.parent} --version 1 hold=777 ", boxed[check[0]])
+        self.assertTrue([line for line in boxed if f"python tools/block_sweep.py state --plan {plan} --catalog {catalog} --out {self.smoke} " in line], boxed)
         self.assertIn(f"pixi run --locked -e train-gpu python flows/launch.py sweep --max-workers 1 -- --plan {plan} "
                       f"--catalog {catalog} --out {self.smoke} --environment train-gpu "
                       f"--weights resnet18={self.models}/resnet18-f37072fd.pth hold=777", boxed[launch[0]])
@@ -2285,6 +2301,23 @@ esac
         self.assertEqual(done.returncode, 1)
         self.assertIn("FAILED: the split check of version 1 failed; no sweep reads it", done.stdout)
         self.assertFalse([line for line in self.boxed() if "flows/launch.py" in line])
+
+    def test_a_sweep_whose_checkout_moved_is_used_only_where_the_code_its_rows_run_stayed_the_same(self):
+        # The state folder is named by the code the rows run (#252, finding 27), so a merge that
+        # landed during the sweep and changed none of it leaves every row the code its folder names.
+        self.git_repo()
+        self.sweep_box()
+        self.plan("synthetic", "synthetic")
+        catalog = self.synthetic_catalog()
+        (self.fake / "move").write_text("c0dec0de", encoding="utf-8")
+        done = self.sweep_driver("synthetic", FAKE_CATALOG=str(catalog))
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("during the sweep, with none of the code its rows run changed", done.stdout)
+        (self.fake / "move").write_text("0dd0c0de", encoding="utf-8")
+        done = self.sweep_driver("synthetic", FAKE_CATALOG=str(catalog))
+        self.assertEqual(done.returncode, 3, done.stdout + done.stderr)
+        self.assertIn("SN_SWEEP_RC=3", done.stdout)
+        self.assertIn(f"changed the code its rows run (state folder now {self.smoke}/synthetic/0dd0c0de-", done.stdout)
 
     def test_the_sweep_driver_takes_the_version_its_catalog_names_and_refuses_one_that_lacks_a_source(self):
         self.git_repo()

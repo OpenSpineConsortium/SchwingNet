@@ -4,8 +4,8 @@ The grid's jobs are killed from outside: a Slurm time limit or a preemption ends
 and the gate word that queued it queues it again. Metaflow carries a run that did not finish
 on with `resume --origin-run-id`, which clones every step that finished and runs only the rest,
 but only when it is told which run to carry on. flows/launch.py asks these two rules: the key
-names a launch by the flow, the commit, the flow's own parameters and what it reads beyond them,
-so a job queued again with the same words on the same inputs finds the run it began, and a
+names a launch by the flow, the code it runs, the flow's own parameters and what it reads beyond
+them, so a job queued again with the same words on the same inputs finds the run it began, and a
 change of code, of configuration or of an input starts afresh; the decision then looks at the
 runs carrying that key, newest first, and never resumes one that is still running, which every
 launcher says by a heartbeat while its flow lasts. Nothing here reads a file, starts a process or
@@ -117,23 +117,29 @@ def marked_live(
 @beartype
 @require(lambda flow: len(flow) > 0, "a flow has a name")
 @require(
-    lambda commit: 7 <= len(commit) <= 40 and _is_hex(commit), "a commit is 7 to 40 hex digits"
+    lambda code: 7 <= len(code) <= 64 and _is_hex(code), "the code is named by 7 to 64 hex digits"
 )
 @ensure(lambda result: len(result) == RUN_KEY_LENGTH, "a key is sixteen hex digits")
 @ensure(lambda result: _is_hex(result), "a key is hex")
-def run_key(flow: str, commit: str, words: Sequence[str], reads: Sequence[str] = ()) -> str:
-    """The launch's name: a hash of the flow, the commit, the flow's parameters as given and
+def run_key(flow: str, code: str, words: Sequence[str], reads: Sequence[str] = ()) -> str:
+    """The launch's name: a hash of the flow, the code it runs, the flow's parameters as given and
     what the flow reads that its parameters do not name.
 
-    Canonical JSON of them, ASCII-escaped, so two launches name the same key exactly when they
-    ran the same code with the same words on the same inputs, whatever characters a word holds.
-    The reads are a line per input the launcher can look at before the run, such as each
-    recipe's raw folder for bank, so a resume never clones a step made from an input that has
-    changed since; with none, the key is the hash of the first three alone, and a list of four
-    never hashes as a list of three. What the launcher chooses for a new run and resume keeps,
-    such as the date bank is given where the words name none, is in neither.
+    The code is the digest of the files the flow executes, 64 hex digits from tools/run_code.py,
+    and not the commit, so a merge that changes none of those files keeps the key and a job
+    queued again after it carries the cut run on (issue #252, finding 27); the precondition
+    holds it to hex of a commit's length or a digest's, the shorter of which CrossHair meets
+    within the gate's time.
+
+    Canonical JSON of them, ASCII-escaped, so two launches name the same key exactly when they ran
+    the same code with the same words on the same inputs, whatever characters a word holds. The
+    reads are a line per input the launcher can look at before the run, such as each recipe's raw
+    folder for bank and the plan for sweep, so a resume never clones a step made from an input that
+    has changed since; with none, the key is the hash of the first three alone, and a list of four
+    never hashes as a list of three. What the launcher chooses for a new run and resume keeps, such
+    as the date bank is given where the words name none, is in neither.
     """
-    parts = [flow, commit, list(words)] + ([list(reads)] if reads else [])
+    parts = [flow, code, list(words)] + ([list(reads)] if reads else [])
     text = json.dumps(parts, ensure_ascii=True, separators=(",", ":"))
     return hashlib.sha256(text.encode("ascii")).hexdigest()[:RUN_KEY_LENGTH]
 

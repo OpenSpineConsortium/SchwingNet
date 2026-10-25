@@ -1,9 +1,9 @@
 """SweepFlow: one plan of the block smoke test, every row a branch of a foreach (issue #252).
 
 Started only by flows/launch.py (python flows/launch.py sweep -- --plan ... --catalog ... --out
-...), which resumes the newest run of the same words and commit that did not finish;
-grid/sweep-driver.sbatch runs that launcher and never tools/block_sweep.py alone, so Metaflow's
-resume is the one way a sweep cut short is continued.
+...), which resumes the newest run of the same words, code and plan that did not finish, the
+plan's bytes named by key_reads below; grid/sweep-driver.sbatch runs every row through that
+launcher, so Metaflow's resume is the one way a sweep cut short is continued.
 
 The work is tools/block_sweep.py's: start runs `prepare`, which makes the plan's state folder
 and names the rows to run, those with no parent first and the warm starts second, since a warm
@@ -22,6 +22,7 @@ Where a list is empty, Metaflow 2.19's switch, a conditional next, steps past it
 Metaflow refuses over nothing.
 """
 
+import hashlib
 import json
 import os
 import subprocess
@@ -46,8 +47,36 @@ def launcher_folder():
     return Path(os.environ.get("SCHWINGNET_WORKDIR") or os.getcwd())
 
 
-def from_launcher(path):
-    return str(launcher_folder() / path) if path and not Path(path).is_absolute() else path
+def from_launcher(path, folder=None):
+    """A path parameter as the caller meant it: a relative one is read from the launcher's folder."""
+    return str((folder or launcher_folder()) / path) if path and not Path(path).is_absolute() else path
+
+
+def file_sha256(path):
+    try:
+        return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+    except OSError:
+        return "unreadable"
+
+
+def word_value(words, flag):
+    """The value the words give a flag, the last one as click takes it; '' where they give none."""
+    value, rest = "", list(words)
+    while rest:
+        word = rest.pop(0)
+        if word == flag and rest:
+            value = rest.pop(0)
+        elif word.startswith(flag + "="):
+            value = word[len(flag) + 1:]
+    return value
+
+
+def key_reads(words, folder):
+    """What a run of these words reads that the words do not name, for the launcher's key: the plan
+    file's bytes, since start makes the state folder and its lists of rows from the plan and resume
+    clones start, so an edited plan is never carried on as the plan it was. Read in the launcher,
+    from its folder, as start reads the same word."""
+    return [f"plan {file_sha256(from_launcher(word_value(words, '--plan'), folder))}"]
 
 
 def weights_words(weights):
@@ -241,7 +270,7 @@ class SweepFlow(FlowSpec):
     weights = Parameter("weights", default="", help="space-separated ARCH=FILE, the ImageNet files")
     keep_epoch_weights = Parameter("keep-epoch-weights", type=bool, default=False,
                                    help="keep each row's train/epochs/*.pt")
-    commit = Parameter("commit", default="", help="the checkout's commit, which the launcher passes")
+    commit = Parameter("commit", default="", help="the commit of the checkout that first started the run, which the launcher passes")
 
     @step
     def start(self):

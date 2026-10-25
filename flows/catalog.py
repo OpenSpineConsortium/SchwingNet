@@ -1,7 +1,7 @@
 """CatalogFlow: stage 3 of the X-ray chain, the catalog's build and split check, under Metaflow.
 
 Started only by flows/launch.py (python flows/launch.py catalog -- --data-root ... --store ...),
-which resumes the newest run of the same words and commit that did not finish.
+which resumes the newest run of the same words and code that did not finish.
 grid/03-catalog.sbatch execs that launcher whenever Slurm runs it (issue #252).
 
 One working step, since the build lock is held from the listing of the manifests to the marker
@@ -59,7 +59,7 @@ class CatalogFlow(FlowSpec):
 
     data_root = Parameter("data-root", default="", help="the data root; empty for the lab volume's")
     store = Parameter("store", default="", help="the catalog store; empty for <data root>/_catalog")
-    commit = Parameter("commit", default="", help="the checkout's commit, which the launcher passes")
+    commit = Parameter("commit", default="", help="the commit of the checkout that first started the run, which the launcher passes")
 
     @step
     def start(self):

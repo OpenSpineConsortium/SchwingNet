@@ -1,4 +1,4 @@
-"""The launcher's two rules: one key per flow, commit and words, and the newest run decides."""
+"""The launcher's two rules: one key per flow, code and words, and the newest run decides."""
 
 import hashlib
 import json
@@ -19,56 +19,60 @@ from schwingnet.pipeline import (
     run_key,
 )
 
-COMMIT = "0123456789abcdef0123456789abcdef01234567"
+# tools/run_code.py's digest of the files a flow runs, which names a launch in place of the commit
+CODE = "0123456789abcdef" * 4
 
 
 def test_the_key_is_the_hash_of_the_canonical_json_of_the_three() -> None:
     words = ["--plan", "grid/sweeps/real.json", "--epochs", "3"]
-    text = json.dumps(["sweep", COMMIT, words], ensure_ascii=True, separators=(",", ":"))
+    text = json.dumps(["sweep", CODE, words], ensure_ascii=True, separators=(",", ":"))
     expected = hashlib.sha256(text.encode("ascii")).hexdigest()[:RUN_KEY_LENGTH]
-    assert run_key("sweep", COMMIT, words) == expected
-    assert run_key("sweep", COMMIT, tuple(words)) == expected
+    assert run_key("sweep", CODE, words) == expected
+    assert run_key("sweep", CODE, tuple(words)) == expected
     assert len(expected) == 16
 
 
-def test_a_change_of_flow_commit_or_any_word_names_another_key() -> None:
-    first = run_key("bank", COMMIT, ["--sources", "lumos"])
-    assert run_key("bank", COMMIT, ["--sources", "lumos"]) == first
-    assert run_key("catalog", COMMIT, ["--sources", "lumos"]) != first
-    assert run_key("bank", "f" * 40, ["--sources", "lumos"]) != first
-    assert run_key("bank", COMMIT, ["--sources", "vindr_cxr"]) != first
-    assert run_key("bank", COMMIT, ["--sources lumos"]) != first
-    assert run_key("bank", COMMIT, []) != first
+def test_a_change_of_flow_code_or_any_word_names_another_key() -> None:
+    first = run_key("bank", CODE, ["--sources", "lumos"])
+    assert run_key("bank", CODE, ["--sources", "lumos"]) == first
+    assert run_key("catalog", CODE, ["--sources", "lumos"]) != first
+    assert run_key("bank", "f" * 64, ["--sources", "lumos"]) != first
+    assert run_key("bank", CODE, ["--sources", "vindr_cxr"]) != first
+    assert run_key("bank", CODE, ["--sources lumos"]) != first
+    assert run_key("bank", CODE, []) != first
 
 
 def test_what_the_flow_reads_beyond_its_words_is_in_the_key() -> None:
     words = ["--sources", "nih_chestxray14 open_i_chest"]
-    first = run_key("bank", COMMIT, words, ["nih_chestxray14 aa", "open_i_chest not fetched"])
+    first = run_key("bank", CODE, words, ["nih_chestxray14 aa", "open_i_chest not fetched"])
     assert (
-        run_key("bank", COMMIT, words, ("nih_chestxray14 aa", "open_i_chest not fetched")) == first
+        run_key("bank", CODE, words, ("nih_chestxray14 aa", "open_i_chest not fetched")) == first
     )
-    assert run_key("bank", COMMIT, words, ["nih_chestxray14 aa", "open_i_chest bb"]) != first
-    text = json.dumps(["bank", COMMIT, words, ["x"]], ensure_ascii=True, separators=(",", ":"))
+    assert run_key("bank", CODE, words, ["nih_chestxray14 aa", "open_i_chest bb"]) != first
+    text = json.dumps(["bank", CODE, words, ["x"]], ensure_ascii=True, separators=(",", ":"))
     assert (
-        run_key("bank", COMMIT, words, ["x"])
+        run_key("bank", CODE, words, ["x"])
         == hashlib.sha256(text.encode("ascii")).hexdigest()[:16]
     )
     # no reads is the key of the three; a word and a read of the same text never meet
-    assert run_key("bank", COMMIT, words, []) == run_key("bank", COMMIT, words)
-    assert run_key("bank", COMMIT, ["x"], []) != run_key("bank", COMMIT, [], ["x"])
+    assert run_key("bank", CODE, words, []) == run_key("bank", CODE, words)
+    assert run_key("bank", CODE, ["x"], []) != run_key("bank", CODE, [], ["x"])
 
 
 def test_a_word_of_any_characters_has_a_key() -> None:
-    assert len(run_key("bank", COMMIT, ["\u00e9t\u00e9", "\ud800", '"', "\n"])) == 16
+    assert len(run_key("bank", CODE, ["\u00e9t\u00e9", "\ud800", '"', "\n"])) == 16
 
 
-def test_a_key_needs_a_flow_and_a_commit() -> None:
+def test_a_key_needs_a_flow_and_the_code_in_hex() -> None:
     with pytest.raises(ViolationError):
-        run_key("", COMMIT, [])
+        run_key("", CODE, [])
     with pytest.raises(ViolationError):
         run_key("bank", "abc", [])
     with pytest.raises(ViolationError):
         run_key("bank", "XYZ" * 5, [])
+    with pytest.raises(ViolationError):
+        run_key("bank", CODE + "0", [])
+    assert len(run_key("bank", CODE[:7], [])) == 16, "a commit's length still names a key"
 
 
 def test_no_run_yet_starts_one() -> None:

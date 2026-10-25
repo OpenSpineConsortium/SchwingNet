@@ -18,6 +18,8 @@ The block smoke test (#252, docs/research/block-smoke/):
         --test-frames 100 --unlabelled-frames 200 --seed 1]
     python3 tools/block_sweep.py prepare --plan <plan.json> --catalog <catalog.sqlite> \
         --out <smoke root> [--weights ARCHITECTURE=<file> ...]
+    python3 tools/block_sweep.py state --plan <plan.json> --catalog <catalog.sqlite> \
+        --out <smoke root> [--epochs N]
     python3 tools/block_sweep.py row --state <state> --slug <slug> --catalog <catalog.sqlite> \
         [--environment train-gpu] [--epochs N] [--weights ARCHITECTURE=<file> ...] \
         [--keep-epoch-weights]
@@ -54,18 +56,29 @@ such. The plan files under grid/sweeps/ are these commands' output, and a test m
 byte for byte, so a plan is a function of the code. `synthetic` builds the synthetic catalog the
 synthetic plan runs on. The plans are run only by the Metaflow flow flows/sweep.py, whose resume
 is the one way a sweep is continued: it calls `prepare` once, which writes the plan's state folder
-`<smoke root>/<plan>/<commit 7>-<catalog sha256 8>/` (`-e<N>` after it for N epochs in place of
+`<smoke root>/<plan>/<code 8>-<catalog sha256 8>/` (`-e<N>` after it for N epochs in place of
 the plan's) with the plan resolved against the catalog,
 the check's verdicts and the results so far, then `row` for each row, which runs tools/flow.py
 with the row's slug as its folder and records what came of it, and `results` at the end. Every
 file of the state is written whole and renamed into place, and the three result files under a
 lock, so two rows finishing at once never lose one another's entry and the status word, which
 reads PROGRESS.txt on the login node, never reads half of one.
+
+A state is named by the code its rows and records are made by and by the plan file's bytes
+(state_code), not by the commit it was prepared on: main merges many times a day, and a sweep
+named by its commit, cut at its time limit after a merge that changed nothing it runs, would
+train every finished row again (issue #252, finding 27). A merge that changes none of the
+state's code (tools/run_code.py's kind state, which holds every file a row runs) and leaves the
+plan as it was names the same state, whose finished rows tools/flow.py carries on, and any
+other names a new one. PLAN.json records that code's digest and keeps the commit the state was
+first prepared on, which holds the same code. `state` prints the folder `prepare` makes and
+makes nothing, so grid/sweep-driver.sbatch reads the path from here rather than make it again.
 """
 
 import argparse
 import fcntl
 import hashlib
+import importlib.util
 import json
 import math
 import os
@@ -747,12 +760,19 @@ def frozen_cases(source):
     return [entry["person"].removeprefix(f"{source}:") for entry in persons if entry["person"].startswith(f"{source}:")]
 
 
-def git_head(short=False):
-    words = ["git", "-C", str(ROOT), "rev-parse", *(["--short=7"] if short else []), "HEAD"]
-    done = subprocess.run(words, capture_output=True, text=True, check=False)
+def git_head():
+    done = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "HEAD"], capture_output=True, text=True, check=False)
     if done.returncode != 0:
         raise BlockError(f"git rev-parse HEAD in {ROOT}: {done.stderr.strip()}")
     return done.stdout.strip()
+
+
+def run_code():
+    """tools/run_code.py by its file, as tools/flow.py loads it, since tools/ is no package."""
+    spec = importlib.util.spec_from_file_location("schwingnet_tool_run_code", ROOT / "tools" / "run_code.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 # What a synthetic catalog is made by, beside its arguments: the tools that write, ingest and
@@ -887,13 +907,54 @@ def synthetic_catalog(into, frames=600, cases=40, test_frames=100, unlabelled_fr
 
 # The state of a sweep: prepare, row and results.
 
-def state_folder(out, plan_name, catalog, epochs=None):
-    """`<out>/<plan>/<commit 7>-<catalog sha256 first 8>`, then `-e<N>` where the rows train for N
-    epochs in place of the plan's, so a sweep with another epoch count never meets the folders
-    of the plan's own; grid/sweep-driver.sbatch, which never changes the epochs, makes the same
-    path in bash from git and sha256sum, so this formula is kept exactly."""
-    name = f"{git_head(short=True)}-{file_sha256(catalog)[:8]}"
+def state_code(plan_file):
+    """The digest of the code a state's rows and records are made by (tools/run_code.py, kind
+    state), and the sha256 over it and the plan file's bytes that names the state: a merge that
+    changes neither names the same state, and any other change names another."""
+    tool = run_code()
+    try:
+        code = tool.digest("state")
+    except tool.RunCodeError as error:
+        raise BlockError(f"the sweep's code cannot be named: {error}") from error
+    return code, hashlib.sha256(f"state {code}\nplan {file_sha256(plan_file)}\n".encode("ascii")).hexdigest()
+
+
+def state_folder(out, plan_name, named, catalog, epochs=None):
+    """`<out>/<plan>/<code 8>-<catalog sha256 first 8>`, the code part the first eight digits of
+    state_code's name, then `-e<N>` where the rows train for N epochs in place of the plan's, so
+    a sweep with another epoch count never meets the folders of the plan's own."""
+    name = f"{named[:8]}-{file_sha256(catalog)[:8]}"
     return Path(out) / plan_name / (f"{name}-e{epochs}" if epochs else name)
+
+
+def plan_of(path):
+    """A plan file whose name a state folder can carry."""
+    plan = read_json(path)
+    if not isinstance(plan, dict) or not PLAN_NAME.fullmatch(str(plan.get("plan", ""))):
+        raise BlockError(f"{path}: no plan name a state folder can carry")
+    return plan
+
+
+def own_epochs(args, plan):
+    """The epochs a state's rows train for where they are not the plan's own, else None."""
+    return args.epochs if args.epochs and args.epochs != plan.get("epochs") else None
+
+
+def state_of(args, plan):
+    """The state folder of a plan for these arguments, and the digest of the code that names it."""
+    code, named = state_code(args.plan)
+    return state_folder(args.out, plan["plan"], named, Path(args.catalog).resolve(), own_epochs(args, plan)), code
+
+
+def first_commit(state):
+    """The commit PLAN.json names where the state was prepared before, else this checkout's: the
+    folder is named by its code, so the commit it was first prepared on holds the same code, and
+    a prepare on a later commit leaves the files as the first wrote them."""
+    try:
+        held = read_json(state / "PLAN.json").get("commit")
+    except (OSError, ValueError, AttributeError):
+        held = None
+    return held if isinstance(held, str) and re.fullmatch(r"[0-9a-f]{40}", held) else git_head()
 
 
 def resolved_words(row, facts):
@@ -904,24 +965,21 @@ def resolved_words(row, facts):
 
 
 def write_if_changed(path, text):
-    """A state file written only where its text changed, so a second prepare of the same commit
-    and catalog leaves every file as the first wrote it."""
+    """A state file written only where its text changed, so a second prepare of the same code,
+    plan and catalog leaves every file as the first wrote it."""
     if not (path.is_file() and path.read_text(encoding="utf-8") == text):
         write_whole(path, text)
 
 
 def command_prepare(args):
-    plan = read_json(args.plan)
-    if not PLAN_NAME.fullmatch(str(plan.get("plan", ""))):
-        raise BlockError(f"{args.plan}: no plan name a state folder can carry")
+    plan = plan_of(args.plan)
     catalog = Path(args.catalog).resolve()
     facts, files = read_facts(catalog), weights_files(args.weights)
-    epochs = args.epochs if args.epochs and args.epochs != plan.get("epochs") else None
-    state = state_folder(args.out, plan["plan"], catalog, epochs)
+    state, code = state_of(args, plan)
     check = check_document(catalog, facts, plan, files)
-    resolved_plan = {**plan, "epochs": epochs or plan.get("epochs"),
+    resolved_plan = {**plan, "epochs": own_epochs(args, plan) or plan.get("epochs"),
                      "catalog_file": str(catalog), "catalog_sha256": check["catalog_sha256"], "catalog_version": catalog_version(catalog),
-                     "commit": git_head(), "state": str(state),
+                     "code_sha256": code, "plan_sha256": file_sha256(args.plan), "commit": first_commit(state), "state": str(state),
                      "rows": [{**row, "planned_blocks": row["blocks"], "blocks": resolved_words(row, facts)} for row in plan["rows"]]}
     write_if_changed(state / "PLAN.json", json_text(resolved_plan))
     write_if_changed(state / "CHECK.json", json_text(check))
@@ -1105,8 +1163,9 @@ def results_of(state):
         except (OSError, ValueError) as error:
             print(f"block_sweep: {path}: not read ({error}); its row counts as to come", file=sys.stderr)
     entries = [recorded.get(row["slug"]) or to_come(row, predictions[row["slug"]]) for row in plan["rows"]]
-    return {"plan": plan["plan"], "state": str(state), "commit": plan["commit"], "catalog": plan["catalog_file"], "catalog_sha256": plan["catalog_sha256"],
-            "catalog_version": plan["catalog_version"], "updated_at": now(), "counts": counts_of(entries), "rows": entries}
+    return {"plan": plan["plan"], "state": str(state), "commit": plan["commit"], "code_sha256": plan.get("code_sha256"),
+            "catalog": plan["catalog_file"], "catalog_sha256": plan["catalog_sha256"], "catalog_version": plan["catalog_version"],
+            "updated_at": now(), "counts": counts_of(entries), "rows": entries}
 
 
 def number_text(value):
@@ -1122,7 +1181,8 @@ def results_markdown(results):
     head = (f"{counts['rows']} rows: {counts['ran']} ran, {counts['refused']} refused, {counts['not_applicable']} not applicable, {counts['failed']} failed,"
             f" {counts['to_come']} to come; " + (f"{counts['mismatched']} DID NOT DO WHAT THE CHECK PREDICTED." if counts["mismatched"] else "every row run so far did what the check predicted."))
     out = [f"# Smoke plan {results['plan']}", "", head, "",
-           f"State {results['state']}; commit {results['commit'][:12]}; catalog {results['catalog']} (version {results['catalog_version']},"
+           f"State {results['state']}; commit {results['commit'][:12]}, code {(results.get('code_sha256') or 'not recorded')[:12]};"
+           f" catalog {results['catalog']} (version {results['catalog_version']},"
            f" sha256 {results['catalog_sha256'][:12]}); updated {results['updated_at']}.", "",
            "| row | role | crop | blocks | predicted | outcome | matched | training crops | validation | test | W&B |", "|---|---|---|---|---|---|---|---|---|---|---|"]
     for e in results["rows"]:
@@ -1210,12 +1270,17 @@ def add_smoke_commands(sub):
     synthetic_p.add_argument("--test-frames", type=int, default=100)
     synthetic_p.add_argument("--unlabelled-frames", type=int, default=200)
     synthetic_p.add_argument("--seed", type=int, default=1)
-    prepare_p = sub.add_parser("prepare", help="a plan's state folder for one commit and catalog")
+    prepare_p = sub.add_parser("prepare", help="a plan's state folder for one code, plan and catalog")
     prepare_p.add_argument("--plan", required=True)
     prepare_p.add_argument("--catalog", required=True)
     prepare_p.add_argument("--out", required=True, help="the smoke root")
     prepare_p.add_argument("--weights", action="append", default=[], metavar="ARCHITECTURE=FILE", help=weights_help)
     prepare_p.add_argument("--epochs", type=int, default=0, help="epochs per row in place of the plan's, in a state folder of their own")
+    state_p = sub.add_parser("state", help="the state folder prepare makes for these words, making nothing")
+    state_p.add_argument("--plan", required=True)
+    state_p.add_argument("--catalog", required=True)
+    state_p.add_argument("--out", required=True, help="the smoke root")
+    state_p.add_argument("--epochs", type=int, default=0, help="epochs per row in place of the plan's, as prepare takes it")
     row_p = sub.add_parser("row", help="run one row of a state's plan and record what came of it")
     row_p.add_argument("--state", required=True)
     row_p.add_argument("--slug", required=True)
@@ -1241,6 +1306,8 @@ def smoke_command(args):
         return json.dumps(found, sort_keys=True) + "\n"
     if args.command == "prepare":
         return json.dumps(command_prepare(args), sort_keys=True) + "\n"
+    if args.command == "state":
+        return f"{state_of(args, plan_of(args.plan))[0]}\n"
     if args.command == "results":
         return json.dumps({"results": str(Path(args.state) / "results.json"), "counts": rebuild(args.state)["counts"]}, sort_keys=True) + "\n"
     return None

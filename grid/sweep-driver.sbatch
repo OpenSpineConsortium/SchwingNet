@@ -18,9 +18,10 @@
 # (grid/v1-version.sh --alone), so the real plan is never run on the two-source catalog it is set
 # against; "with:<source>" the version 1 run's choice holding that source's train part too. The
 # split check runs again on the chosen file before the flow reads a frame, as grid/v1-driver.sbatch
-# does. The results land in the state folder SMOKE/<plan>/<commit 7>-<catalog sha256 first 8>/,
-# the path tools/block_sweep.py prepare makes, computed the same way here so the report names it
-# without asking python.
+# does. The results land in the state folder SMOKE/<plan>/<code 8>-<catalog sha256 first 8>/,
+# named by the code the rows run and the plan file's bytes and not by the commit (issue #252,
+# finding 27), so the word sent again after a merge that changes none of that code carries the
+# cut sweep on; the report asks tools/block_sweep.py state for the path, which prepare makes.
 # The report is logs/sweep-<plan>-STAGE-REPORT.md: the GPU, the state folder, the launcher's
 # decision, RESULTS.md's headline, the W&B lines and the Metaflow run.
 set -uo pipefail
@@ -46,10 +47,10 @@ cd "$REPO" || fail "no checkout at $REPO"
 [ -f "$PLAN_FILE" ] || fail "no plan grid/sweeps/$PLAN.json at this commit"
 # The checkout holds still while the sweep lasts, as for the version 1 run: grid/logs/HOLD names
 # this job and the commit, the gate's side skips its fast-forward while the file is there, and the
-# gate clears a hold whose job Slurm no longer holds. The commit is read again at the end, and a
-# sweep whose checkout moved is not used.
+# gate clears a hold whose job Slurm no longer holds. The state folder is asked for again at the
+# end, and a sweep whose code changed while it ran is not used.
 started_at=$(git -C "$REPO" rev-parse HEAD 2>/dev/null)
-[ -n "$started_at" ] || fail "the checkout at $REPO names no commit, and the state folder is named by one"
+[ -n "$started_at" ] || fail "the checkout at $REPO names no commit"
 HOLD=$REPO/grid/logs/HOLD
 echo "${SLURM_JOB_ID:-$$} $started_at" > "$HOLD"
 unhold() { [ "$(awk '{ print $1; exit }' "$HOLD" 2>/dev/null)" != "${SLURM_JOB_ID:-$$}" ] || rm -f "$HOLD"; }
@@ -97,9 +98,10 @@ bash grid/box.sh pixi run --locked python tools/catalog.py split-check "$store" 
   || fail "the split check of version $number failed; no sweep reads it"
 report "catalog: $CATALOG (version $number, split check passed)"
 
-commit7=$(git -C "$REPO" rev-parse --short=7 HEAD 2>/dev/null)
-digest=$(sha256sum < "$CATALOG" | cut -c1-8)
-STATE=$SMOKE/$name/$commit7-$digest
+# The folder prepare makes, from python, which names the code; the path alone on stdout.
+state_folder() { bash grid/box.sh pixi run --locked python tools/block_sweep.py state --plan "$PLAN_FILE" --catalog "$CATALOG" --out "$SMOKE" 2> "$why"; }
+why=$(mktemp)
+STATE=$(state_folder | tail -n 1) && [ -n "$STATE" ] || fail "tools/block_sweep.py state named no state folder: $(tail -n 1 "$why")"
 report "state folder: $STATE"
 report "GPU: $(nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv,noheader 2>/dev/null | head -n 1 || echo 'nvidia-smi gave nothing')"
 said=$(bash grid/box.sh pixi run --locked -e train-gpu python -c "import torch; print('torch', torch.__version__, 'cuda available', torch.cuda.is_available())" 2>&1 | tail -n 1)
@@ -134,8 +136,14 @@ report "Metaflow: ${run:-the launcher named no run}"
 report "launcher exited $rc"
 ended_at=$(git -C "$REPO" rev-parse HEAD 2>/dev/null)
 if [ "$ended_at" != "$started_at" ]; then
-  report "FAILED: the checkout moved from ${started_at:0:7} to ${ended_at:0:7} during the sweep, so a later row may have run the newer code while the state folder names the older; this sweep is not used, and the word runs it again"
-  [ "$rc" != 0 ] || rc=3
+  ended_in=$(state_folder | tail -n 1)
+  if [ "$ended_in" = "$STATE" ]; then
+    report "the checkout moved from ${started_at:0:7} to ${ended_at:0:7} during the sweep, with none of the code its rows run changed, so every row ran the code its state folder names"
+  else
+    report "FAILED: the checkout moved from ${started_at:0:7} to ${ended_at:0:7} during the sweep and changed the code its rows run (state folder now ${ended_in:-not named}), so a later row may have run the newer code while the state folder names the older; this sweep is not used, and the word runs it again"
+    [ "$rc" != 0 ] || rc=3
+  fi
 fi
+rm -f "$why"
 echo "SN_SWEEP_RC=$rc"
 exit "$rc"

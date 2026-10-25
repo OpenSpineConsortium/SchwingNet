@@ -47,19 +47,27 @@ a join step, so a switch lands on a plain step: BankFlow's end, SweepFlow's midd
 
     python flows/launch.py {bank|catalog|sweep} [--max-workers N] [--root DIR] -- <flow parameters>
 
-The launcher names a launch by a key, the first 16 hex of the sha256 of the flow, the commit,
-the flow's parameters as given and, for bank, a line per recipe start would list with the
-recipe's bytes and its raw folder's state, every file by path, size and modification time as
-tools/bank.py's BANK.json stamp lists it (flows/bank.py's key_reads; schwingnet.pipeline.run_key),
-since a resume clones start's listing of what has a raw copy and every bank step that finished:
-a raw copy fetched, grown or changed since the cut, or a recipe edited, names another key and so
-a new run, while raw copies as they were resume. Every run it starts or resumes carries the
-tags `key:<key>` and `commit:<7>`. It lists the runs of the flow carrying the key, newest first,
+The launcher names a launch by a key, the first 16 hex of the sha256 of the flow, the code it
+runs, the flow's parameters as given and what the flow reads that they do not name
+(schwingnet.pipeline.run_key). The code is tools/run_code.py's digest of the tracked files the
+flow's kind executes (`python3 tools/run_code.py files sweep` lists them), not the commit: main
+merges many times a day, most merges change nothing a flow runs, and a key with the commit in it
+started a cut run over after any of them (issue #252, finding 27). What the flow reads is listed
+by its own key_reads: for bank a line per recipe start would list with the recipe's bytes and its
+raw folder's state, every file by path, size and modification time as tools/bank.py's BANK.json
+stamp lists it, since a resume clones start's listing of what has a raw copy and every bank step
+that finished: a raw copy fetched, grown or changed since the cut, or a recipe edited, names
+another key and so a new run, while raw copies as they were resume; for sweep the plan file's
+sha256, since start makes the state folder and its lists of rows from the plan. Every run it
+starts or resumes carries the tags `key:<key>`, `commit:<7>`, the checkout that launched it, and
+`code:<12>`; a new run is given the checkout's `--commit`, which resume clones with the other
+parameters, so a resumed run names the commit it was first started on, which holds the same
+code. It lists the runs of the flow carrying the key, newest first,
 and the newest decides (schwingnet.pipeline.decide): a newest run that did not succeed, killed
 or failed, is resumed (`resume --origin-run-id`, with the same --max-workers and no parameters,
 which resume clones); else a new run starts. A job queued again with the same words therefore
-continues where the killed one stopped; a change of code, of words or of a raw copy starts
-afresh, and so does a launch after a success, where the tools' own
+continues where the killed one stopped; a change of the code it runs, of words, of a plan or of
+a raw copy starts afresh, and so does a launch after a success, where the tools' own
 content addressing finds the finished work (an ingest's "already there", a run folder tools/flow.py
 reuses). Bank's ingest date is the caller's `--date`, in the key like any word, so a job asking
 for another date runs anew under it; where the words name none, the launcher chooses today for a
@@ -81,8 +89,9 @@ launcher killed with its job stops counting once it is 300 s old (LIVE_SECONDS),
 it names this very Slurm job, which Slurm queued again, and at once where it names a process on
 this host that is gone.
 
-Its first line on stdout is the decision, `{"decision", "flow", "key", "live", "origin", "root"}`,
-with `live` the id of a newest run passed over as live, else null, and its last `{"flow", "run":
+Its first line on stdout is the decision, `{"code", "decision", "flow", "key", "live", "origin",
+"root"}`, with `code` the code's digest and `live` the id of a newest run passed over as live,
+else null, and its last `{"flow", "run":
 "Class/ID", "successful", "verdict"}`; the flow's own output passes
 through between them. It exits with the flow's own code where that is not 0 (128 plus the
 signal where the flow was killed), else with the verdict, so a job's afterok means what it meant
@@ -94,8 +103,9 @@ The stage scripts call it: grid/02-bank-ingest.sbatch and grid/03-catalog.sbatch
 Slurm runs them (SLURM_JOB_ID set and SCHWINGNET_FLOW_STEP not), passing only what the caller
 gave, and the flows' steps run the same scripts again with SCHWINGNET_FLOW_STEP=1, which runs
 their bodies; a direct bash call, as the tests make, runs the body as before. grid/sweep-driver.sbatch
-runs `launch.py sweep` and never block_sweep itself. PYDRV on the grid is grid/bin/train-cpu-python,
-which carries Metaflow.
+runs every row through `launch.py sweep`, and calls block_sweep itself only for what runs no row:
+`synthetic`, the synthetic catalog, and `state`, the state folder's path for its report. PYDRV on
+the grid is grid/bin/train-cpu-python, which carries Metaflow.
 
 ## The datastore
 

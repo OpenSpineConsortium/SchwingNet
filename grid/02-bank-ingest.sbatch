@@ -17,7 +17,7 @@
 # Under Slurm the stage runs as Metaflow's BankFlow (issue #252): a job with SLURM_JOB_ID set,
 # and no SCHWINGNET_FLOW_STEP, execs flows/launch.py bank with what the caller gave (ONLY,
 # DATA_ROOT, BANKS, INGEST_DATE), so a job cut short and queued again resumes the newest run of
-# the same words and commit, every recipe that finished cloned and a cut ingest run again with
+# the same words and code, every recipe that finished cloned and a cut ingest run again with
 # its bank cloned. The flow's steps run this script again with SCHWINGNET_FLOW_STEP=1, one recipe
 # (ONLY) and one half (PART=bank or PART=ingest) at a time, on the date the run chose once
 # (INGEST_DATE); a direct bash call, as the tests make, runs the body as before, both halves.

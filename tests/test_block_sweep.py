@@ -35,11 +35,15 @@ SLUG = re.compile(r"(?:(?:imagenet|init|refuse|trial)-)?[a-z0-9-]+-\d+px-[0-9a-f
 TINY = ("--frames", "80", "--cases", "6", "--test-frames", "15", "--unlabelled-frames", "20", "--seed", "3")
 
 
-def load():
-    spec = importlib.util.spec_from_file_location("block_sweep_under_test", ROOT / "tools" / "block_sweep.py")
+def load(root=ROOT, name="block_sweep"):
+    spec = importlib.util.spec_from_file_location(f"{name}_under_test", root / "tools" / f"{name}.py")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+def load_run_code(root=ROOT):
+    return load(root, "run_code")
 
 
 def said(module, *argv):
@@ -337,16 +341,20 @@ class CheckTest(unittest.TestCase):
         code, printed, err = said(self.sweep, "prepare", "--plan", plan, "--catalog", self.catalog, "--out", out)
         self.assertEqual(code, 0, err)
         answer = json.loads(printed)
-        commit = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "--short=7", "HEAD"], capture_output=True, text=True, check=True).stdout.strip()
+        code_sha256 = load_run_code().digest("state")
+        named = hashlib.sha256(f"state {code_sha256}\nplan {hashlib.sha256(plan.read_bytes()).hexdigest()}\n".encode("ascii")).hexdigest()
         digest = hashlib.sha256(Path(self.catalog).read_bytes()).hexdigest()
-        state = out / "synthetic" / f"{commit}-{digest[:8]}"
+        state = out / "synthetic" / f"{named[:8]}-{digest[:8]}"
         self.assertEqual(answer["state"], str(state))
+        self.assertEqual(said(self.sweep, "state", "--plan", plan, "--catalog", self.catalog, "--out", out), (0, f"{state}\n", ""))
         rows = json.loads(plan.read_text(encoding="utf-8"))["rows"]
         weighted = {row["slug"] for row in rows if row["weights"]}
         self.assertEqual(answer["first"], [row["slug"] for row in rows if not row["init"] and row["slug"] not in weighted])
         self.assertEqual(answer["second"], [row["slug"] for row in rows if row["init"] and row["slug"] not in weighted])
         self.assertEqual(sorted(p.stem for p in (state / "rows").glob("*.json")), sorted(weighted), "the rows not applicable are recorded at once")
         resolved = json.loads((state / "PLAN.json").read_text(encoding="utf-8"))
+        head = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "HEAD"], capture_output=True, text=True, check=True).stdout.strip()
+        self.assertEqual((resolved["code_sha256"], resolved["commit"]), (code_sha256, head))
         self.assertEqual(resolved["rows"][9]["blocks"], ["samples=drop-sources", "sources=carmlspine"])
         self.assertEqual(resolved["rows"][9]["planned_blocks"], ["samples=drop-sources", "sources=@first-labelled"])
         results = json.loads((state / "results.json").read_text(encoding="utf-8"))
@@ -418,6 +426,75 @@ def with_words(words, **changed):
     return out
 
 
+QUIET_GIT = ["-c", "gc.auto=0", "-c", "gc.autoDetach=false", "-c", "maintenance.auto=false", "-c", "maintenance.autoDetach=false",
+             "-c", "user.name=test", "-c", "user.email=test@example.invalid"]
+
+
+def commit_all(repo, message):
+    for words in (["add", "-A"], ["commit", "-q", "-m", message]):
+        subprocess.run(["git", "-C", str(repo), *QUIET_GIT, *words], check=True, capture_output=True)
+
+
+def head_of(repo):
+    return subprocess.run(["git", "-C", str(repo), "rev-parse", "HEAD"], capture_output=True, text=True, check=True).stdout.strip()
+
+
+def tool_in(repo, *argv, timeout=600):
+    """block_sweep in a copy of the repository, as the grid's checkout runs it: what it printed."""
+    done = subprocess.run([sys.executable, str(repo / "tools" / "block_sweep.py"), *map(str, argv)], cwd=repo, capture_output=True, text=True,
+                          timeout=timeout, env=dict(os.environ, PYTHONDONTWRITEBYTECODE="1"))
+    if done.returncode != 0:
+        raise AssertionError(f"block_sweep {argv[0]} exited {done.returncode}: {done.stderr[-3000:]}")
+    return done.stdout
+
+
+def append_line(path, line):
+    with path.open("a", encoding="utf-8") as out:
+        out.write(line + "\n")
+
+
+@unittest.skipIf(MISSING, f"needs the package's checkers ({', '.join(MISSING)} missing)")
+class StateNameTest(unittest.TestCase):
+    """A sweep's state is named by the code its rows run and its plan file, and not by the commit
+    it was prepared on (finding 27 of #252): main merges many times a day, and a sweep cut short
+    and started again after a merge that changes none of that code must carry its finished rows
+    on. In a clean copy of the repository, as the grid's checkout is, so a tool can be changed and
+    committed there."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = Path(tempfile.mkdtemp())
+        cls.repo = cls.tmp / "repo"
+        clean_copy(cls.repo)
+        cls.catalog = json.loads(tool_in(cls.repo, "synthetic", "--into", cls.tmp / "synthetic", *TINY))["catalog"]
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls.tmp, ignore_errors=True)
+
+    def test_a_merge_that_changes_no_code_a_row_runs_names_the_same_state_and_keeps_its_first_commit(self):
+        plan = self.tmp / "plan.json"
+        shutil.copyfile(ROOT / "grid" / "sweeps" / "synthetic.json", plan)
+        words = ["--plan", plan, "--catalog", self.catalog, "--out", self.tmp / "smoke"]
+        first, prepared_on = json.loads(tool_in(self.repo, "prepare", *words)), head_of(self.repo)
+        state = Path(first["state"])
+        self.assertEqual(tool_in(self.repo, "state", *words), f"{state}\n")
+        recorded = json.loads((state / "PLAN.json").read_text(encoding="utf-8"))
+        self.assertEqual((recorded["commit"], recorded["code_sha256"]), (prepared_on, load_run_code(self.repo).digest("state")))
+        append_line(self.repo / "tools" / "textbook_site.py", "# a page no row runs")
+        commit_all(self.repo, "a merge that changes nothing a row runs")
+        self.assertEqual(json.loads(tool_in(self.repo, "prepare", *words)), first)
+        self.assertEqual(json.loads((state / "PLAN.json").read_text(encoding="utf-8"))["commit"], prepared_on, "the commit it was first prepared on")
+        append_line(self.repo / "tools" / "train.py", "# the trainer, changed")
+        commit_all(self.repo, "a change to the trainer")
+        other = Path(tool_in(self.repo, "state", *words).strip())
+        self.assertNotEqual(other, state, "a change to the code a row runs names another state")
+        self.assertEqual((other.parent, other.name[8:]), (state.parent, state.name[8:]), "the same plan and catalog")
+        edited = json.loads(plan.read_text(encoding="utf-8"))
+        plan.write_text(json.dumps({**edited, "about": edited["about"] + " Edited."}, indent=1, sort_keys=True) + "\n", encoding="utf-8")
+        self.assertNotIn(Path(tool_in(self.repo, "state", *words).strip()), (state, other), "an edited plan names another state")
+
+
 @unittest.skipIf(MISSING, f"needs the package's checkers ({', '.join(MISSING)} missing)")
 class SyntheticBuildTest(unittest.TestCase):
     """The synthetic catalog is found again where its arguments and the code that makes it are
@@ -442,10 +519,7 @@ class SyntheticBuildTest(unittest.TestCase):
         return json.loads(done.stdout)
 
     def commit(self, message):
-        quiet = ["-c", "gc.auto=0", "-c", "gc.autoDetach=false", "-c", "maintenance.auto=false", "-c", "maintenance.autoDetach=false",
-                 "-c", "user.name=test", "-c", "user.email=test@example.invalid"]
-        for words in (["add", "-A"], ["commit", "-q", "-m", message]):
-            subprocess.run(["git", "-C", str(self.repo), *quiet, *words], check=True, capture_output=True)
+        commit_all(self.repo, message)
 
     def test_other_arguments_build_anew_and_the_folder_they_replace_goes(self):
         into = self.tmp / "arguments"
@@ -615,12 +689,11 @@ def clean_copy(into):
     one, so the rows run from a clean commit of the same files."""
     for name in ("tools", "src", "vendor", "data"):
         shutil.copytree(ROOT / name, into / name, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
-    for name in ("pyproject.toml", "pixi.toml", ".gitignore"):
+    # pixi.lock too, since a run is named by the code it runs and the locked environment is part of it
+    for name in ("pyproject.toml", "pixi.toml", "pixi.lock", ".gitignore"):
         shutil.copyfile(ROOT / name, into / name)
-    quiet = ["-c", "gc.auto=0", "-c", "gc.autoDetach=false", "-c", "maintenance.auto=false", "-c", "maintenance.autoDetach=false",
-             "-c", "user.name=test", "-c", "user.email=test@example.invalid"]
-    for words in (["init", "-q"], ["add", "-A"], ["commit", "-q", "-m", "a copy for the smoke rows"]):
-        subprocess.run(["git", "-C", str(into), *quiet, *words], check=True, capture_output=True)
+    subprocess.run(["git", "-C", str(into), *QUIET_GIT, "init", "-q"], check=True, capture_output=True)
+    commit_all(into, "a copy for the smoke rows")
 
 
 @unittest.skipIf(TORCH_MISSING, f"needs the train environment ({', '.join(TORCH_MISSING)} missing)")

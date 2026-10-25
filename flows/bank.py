@@ -1,7 +1,7 @@
 """BankFlow: stage 2 of the X-ray chain, bank and ingest, as a Metaflow flow (issue #252).
 
 Started only by flows/launch.py (python flows/launch.py bank -- --sources "<ids>" ...), which
-resumes the newest run of the same words, commit and raw copies that did not finish.
+resumes the newest run of the same words, code and raw copies that did not finish.
 grid/02-bank-ingest.sbatch execs that launcher whenever Slurm runs it, so every job of stage 2
 runs here. Metaflow clones start on a resume, and with it start's listing of which recipes have a
 raw copy, and clones each bank step that finished, so the launcher keys the run by every listed
@@ -291,7 +291,7 @@ class BankFlow(FlowSpec):
     date = Parameter("date", default="", help="the ingest date, chosen once per run by the launcher")
     data_root = Parameter("data-root", default="", help="each source under <root>/<id>/ (issue #40)")
     banks = Parameter("banks", default="", help="the recipe folder; empty for grid/banks")
-    commit = Parameter("commit", default="", help="the checkout's commit, which the launcher passes")
+    commit = Parameter("commit", default="", help="the commit of the checkout that first started the run, which the launcher passes")
 
     @step
     def start(self):
