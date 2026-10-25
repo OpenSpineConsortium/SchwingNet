@@ -405,7 +405,7 @@ const Model = (function () {
     } else {
       place = '<span class="muted">-</span>';
     }
-    const find = (s.name + " " + s.id + " " + s.group + " " + s.status + " " + s.location + " " + tagsOf(s).join(" ")).toLowerCase();
+    const find = (s.name + " " + s.id + " " + s.group + " " + s.status + " " + s.location + " " + tagsOf(s).join(" ") + " " + Model.regionsOf(s).join(" ")).toLowerCase();
     return '<tr data-id="' + esc(s.id) + '" data-find="' + esc(find) + '"><td class="set" title="' + esc(s.group + "; licence " + s.licence + "; " + (s.frozen ? "frozen" : "not frozen")) + '">' + esc(s.name) + "<br><code>" + esc(s.id) + "</code></td>" +
       '<td class="opt">' + esc(s.group) + "</td><td>" + esc(s.status) + (s.reach === s.status ? "" : ' <span class="muted">(' + esc(s.reach) + ")</span>") + "</td><td>" + esc(s.location) + "</td>" +
       '<td class="num" title="' + esc(sizeTitle) + '">' + (s.bytes === null || s.bytes === undefined ? '<span class="red">size unknown</span>' : Model.tb(s.bytes) + (s.bytes_known ? "" : ' <span class="muted">stated</span>')) + "</td>" +
@@ -621,7 +621,7 @@ const Model = (function () {
     const p = PLAN.power && typeof PLAN.power === "object" ? PLAN.power : {};
     const options = C.confidences.slice();
     if (typeof p.confidence === "number" && typeof p.z === "number" && !options.some(function (o) { return o[0] === p.confidence; })) options.push([p.confidence, p.z]);
-    const chosen = typeof p.confidence === "number" ? p.confidence : 0.95;
+    const chosen = options.some(function (o) { return o[0] === p.confidence; }) ? p.confidence : 0.95;
     $("conf").innerHTML = options.map(function (o) {
       return '<option value="' + o[1] + '"' + (o[0] === chosen ? " selected" : "") + ">" + Math.round(o[0] * 1000) / 10 + " percent</option>";
     }).join("");

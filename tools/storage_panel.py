@@ -957,7 +957,7 @@ UI_JS = r"""
     } else {
       place = '<span class="muted">-</span>';
     }
-    const find = (s.name + " " + s.id + " " + s.group + " " + s.status + " " + s.location + " " + tagsOf(s).join(" ")).toLowerCase();
+    const find = (s.name + " " + s.id + " " + s.group + " " + s.status + " " + s.location + " " + tagsOf(s).join(" ") + " " + Model.regionsOf(s).join(" ")).toLowerCase();
     return '<tr data-id="' + esc(s.id) + '" data-find="' + esc(find) + '"><td class="set" title="' + esc(s.group + "; licence " + s.licence + "; " + (s.frozen ? "frozen" : "not frozen")) + '">' + esc(s.name) + "<br><code>" + esc(s.id) + "</code></td>" +
       '<td class="opt">' + esc(s.group) + "</td><td>" + esc(s.status) + (s.reach === s.status ? "" : ' <span class="muted">(' + esc(s.reach) + ")</span>") + "</td><td>" + esc(s.location) + "</td>" +
       '<td class="num" title="' + esc(sizeTitle) + '">' + (s.bytes === null || s.bytes === undefined ? '<span class="red">size unknown</span>' : Model.tb(s.bytes) + (s.bytes_known ? "" : ' <span class="muted">stated</span>')) + "</td>" +
@@ -1173,7 +1173,7 @@ UI_JS = r"""
     const p = PLAN.power && typeof PLAN.power === "object" ? PLAN.power : {};
     const options = C.confidences.slice();
     if (typeof p.confidence === "number" && typeof p.z === "number" && !options.some(function (o) { return o[0] === p.confidence; })) options.push([p.confidence, p.z]);
-    const chosen = typeof p.confidence === "number" ? p.confidence : 0.95;
+    const chosen = options.some(function (o) { return o[0] === p.confidence; }) ? p.confidence : 0.95;
     $("conf").innerHTML = options.map(function (o) {
       return '<option value="' + o[1] + '"' + (o[0] === chosen ? " selected" : "") + ">" + Math.round(o[0] * 1000) / 10 + " percent</option>";
     }).join("");
@@ -1329,6 +1329,10 @@ def percent(fraction):
     return f"{round(fraction * 1000) / 10:g}"
 
 
+def is_number(x):
+    return isinstance(x, (int, float)) and not isinstance(x, bool)
+
+
 def worth_lines(plan):
     """What the sets on the drives are worth, in at most two sentences for the picture: none for a
     feed written before spine-datasets #249 gave each set its value, and the test's need only where
@@ -1339,10 +1343,10 @@ def worth_lines(plan):
     p, priors = w["power"], w["synthesis"]["priors"]
     modalities = ", ".join(f"{name} {most:,}" for name, _sets, most, _least in p["by_modality"] if most)
     lines = [f"On the drives: at most {p['most']:,} people with level truth" + (f" ({modalities})" if modalities else "") +
-             f" and {priors} 3D prior {'source' if priors == 1 else 'sources'}."]
+             f" and {priors} {'source' if priors == 1 else 'sources'} of 3D priors."]
     power = plan.get("power") if isinstance(plan.get("power"), dict) else {}
     need = count_of(power.get("people_needed"))
-    if need is not None and isinstance(power.get("half_width"), (int, float)) and isinstance(power.get("confidence"), (int, float)):
+    if need is not None and all(is_number(power.get(k)) for k in ("half_width", "confidence")):
         lines.append(f"A test needs {need:,} people with level truth in its modality for plus or minus {percent(power['half_width'])} "
                      f"points at {percent(power['confidence'])} percent confidence (the feed's power block).")
     return lines

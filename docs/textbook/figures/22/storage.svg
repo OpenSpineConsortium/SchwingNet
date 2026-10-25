@@ -12,7 +12,7 @@
 <rect class="panel" x="170" y="118" width="700" height="26" rx="4"/>
 <text x="180" y="136" class="ink3">not read yet</text>
 <text x="170" y="164">Quota 4.0 TB; nothing is placed here until a grid word reads its use.</text>
-<text x="12" y="190">On the drives: at most 5,990 people with level truth (films 3,964, fluoro 959, projections 692, ct 375) and 63 3D prior sources.</text>
+<text x="12" y="190">On the drives: at most 5,990 people with level truth (films 3,964, fluoro 959, projections 692, ct 375) and 63 sources of 3D priors.</text>
 <text x="12" y="208">A test needs 385 people with level truth in its modality for plus or minus 5 points at 95 percent confidence (the feed's power block).</text>
 <text x="12" y="230" class="ink3">166 sets in the feed; the interactive page trials selections and sends them through storage.yml. python3 tools/storage_panel.py build</text>
 </svg>
