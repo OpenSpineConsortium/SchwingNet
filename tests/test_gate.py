@@ -1453,8 +1453,6 @@ esac
         self.assertEqual(refused.returncode, 2, refused.stdout)
         self.assertIn("C-ArmLSpine's bank", refused.stdout)
         (self.data / "realxray" / "carmlspine" / "meta").mkdir(parents=True)
-        self.assertEqual(self.gate("bench", "flexray_carmlspine").returncode, 75)
-        self.assertEqual(self.submitted(), [])
         self.environments_ready()
         done = self.gate("bench", "flexray_carmlspine")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
@@ -1540,6 +1538,32 @@ esac
         done = self.gate("v1")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         self.assertIn(f"--dependency=afterany:{job} ", self.line_of("v1-driver.sbatch")[0])
+
+    def test_bench_with_stale_environments_queues_one_setup_job_that_every_bench_waits_on(self):
+        bundle = self.data / "hf_flexray_weights" / "raw"
+        bundle.mkdir(parents=True)
+        (bundle / "ensemble.json").write_text("{}\n", encoding="utf-8")
+        (self.data / "realxray" / "carmlspine" / "meta").mkdir(parents=True)
+        h5 = self.data / "deepfluoro_h5" / "raw"
+        h5.mkdir(parents=True)
+        with (h5 / "ipcai_2020_full_res_data.h5").open("wb") as out:
+            out.truncate(2 * 1024 * 1024)
+        done = self.gate("bench", "flexray_carmlspine")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        lines = self.submitted()
+        self.assertEqual(len(lines), 2, lines)
+        self.assertIn("--name setup", lines[0])
+        setup = self.recorded()["setup"]
+        self.assertIn("--name bench_flexray_carmlspine", lines[1])
+        self.assertIn(f"afterok:{setup}", lines[1])
+        # a second bench sent while that setup job is live waits on it and queues no second setup
+        self.live(setup)
+        done = self.gate("bench", "flexray_deepfluoro")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        lines = self.submitted()
+        self.assertEqual(len(lines), 3, lines)
+        self.assertIn("--name bench_flexray_deepfluoro", lines[2])
+        self.assertIn(f"afterok:{setup}", lines[2])
 
     def test_dropzip_deletes_once_then_prints_what_it_did(self):
         shutil.copy(GRID / "fetch-xray.json", self.repo / "grid" / "fetch-xray.json")
