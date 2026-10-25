@@ -488,9 +488,14 @@ def test_a_staging_folder_is_never_listed_even_under_a_root_inside_a_shards_fold
     tmp_path: Path,
 ) -> None:
     # find's -path lets a wildcard cross a slash, so a pattern alone would match a `shards` in
-    # the data root's own path; the staging folder is left out by its own name.
+    # the data root's own path; the staging folder, and a folder whose parent is not shards, are
+    # left out by their own names.
     root = tmp_path / "shards" / "data"
-    for name in ("src/shards/2026-10-21-aaaaaaaaaaaa", "src/shards/.ingest-2026-10-21-aaaaaaaaaaaa-x"):
+    for name in (
+        "src/shards/2026-10-21-aaaaaaaaaaaa",
+        "src/shards/.ingest-2026-10-21-aaaaaaaaaaaa-x",
+        "src/raw/2026-10-21-bbbbbbbbbbbb",
+    ):
         (root / name).mkdir(parents=True)
         (root / name / "MANIFEST.json").write_text("{}", encoding="utf-8")
     done = run_leaks(root, HPCW_DRY="1", LEAKS_OUT=str(tmp_path / "_leaks"))

@@ -167,6 +167,28 @@ def test_a_linked_folder_of_films_is_in_the_stamp_and_a_link_loop_is_walked_once
     assert "unchanged" not in bank_run(bank_tool, recipe, capsys)
 
 
+def test_a_name_that_is_not_utf8_in_raw_or_the_bank_stops_no_source(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # Info-ZIP's unzip writes the names of an archive made on Windows as Latin-1 bytes, which
+    # Python reads with surrogates; the listings hash them as they are and refuse nothing.
+    bank_tool = load("bank")
+    raw = tmp_path / "raw" / "images_001" / "images"
+    raw.mkdir(parents=True)
+    for index, name in enumerate(["00000001_000", "00000002_000"]):
+        (raw / f"{name}.png").write_bytes(png(40, 30, index))
+    with open(os.fsencode(tmp_path / "raw") + b"/notes-caf\xe9.txt", "wb") as handle:
+        handle.write(b"a note")
+    recipe = nih_recipe(tmp_path, tmp_path / "raw")
+    assert bank_run(bank_tool, recipe, capsys)["written"] == 2
+    assert bank_run(bank_tool, recipe, capsys)["unchanged"] is True
+    with open(os.fsencode(tmp_path / "bank") + b"/stray-\xe9.txt", "wb") as handle:
+        handle.write(b"left by hand")
+    again = bank_run(bank_tool, recipe, capsys)
+    assert "unchanged" not in again and (again["written"], again["kept"]) == (0, 2)
+    assert bank_run(bank_tool, recipe, capsys)["unchanged"] is True
+
+
 def test_a_thinned_or_edited_bank_is_made_again_and_a_refused_run_leaves_no_stamp(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

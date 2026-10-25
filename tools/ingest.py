@@ -838,15 +838,19 @@ def ingest(args, settings, inputs, key, cleared):
         report["verified"] = verify_shard(folder, manifest)
         report["staging_cleared"] = cleared
         if key is not None:
-            note_reuse(settings.grid_root, key, report, folder)
+            note_reuse(Path(args.bank), settings, inputs, key, report, folder)
     return report
 
 
-def note_reuse(grid_root, key, report, folder):
-    """The note is a saving and no part of the shard: where it cannot be written, the run says so
-    and the next one reads the bank."""
+def note_reuse(bank, settings, inputs, key, report, folder):
+    """The note is a saving and no part of the shard: where it cannot be written, or the bank no
+    longer lists as it did when the key was made, so the shard may hold a later state of it than
+    the key names, the run says so and the next one reads the bank."""
     try:
-        record_reuse(grid_root, key, report, folder)
+        if reuse_key(bank, settings, inputs) != key:
+            report["reuse_note"] = "not written: the bank changed while it was read"
+            return
+        record_reuse(settings.grid_root, key, report, folder)
     except (OSError, ValueError) as error:
         report["reuse_note"] = f"not written: {error}"
 

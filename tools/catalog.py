@@ -539,7 +539,8 @@ def write_version(store, writer, reason, code_commit=None, as_of=None, same=None
     latest already has, or that `same(fresh, latest file)` calls the latest's equal, is dropped
     and the latest returned, so the store never holds two of one thing, and CURRENT is made to
     name it, so a store a killed build left half written is mended by the next build as it was
-    before #260. Returns the record and whether it is new."""
+    before #260; a log another writer moved meanwhile is refused first, so CURRENT never goes back
+    to an older version. Returns the record and whether it is new."""
     folder, log, current = store_paths(store)
     folder.mkdir(parents=True, exist_ok=True)
     with store_lock(store):
@@ -550,6 +551,7 @@ def write_version(store, writer, reason, code_commit=None, as_of=None, same=None
             writer(fresh)
             digest = file_sha256(fresh)
             if latest is not None and (latest.sha256 == digest or same_as_latest(same, fresh, folder, latest)):
+                refuse_moved_store(store, records)
                 point_current(current, latest)
                 return latest, False
             record = describe(fresh, len(records) + 1, digest, latest, reason, code_commit, as_of)

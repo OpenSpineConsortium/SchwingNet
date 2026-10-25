@@ -3,6 +3,7 @@
 import hashlib
 import importlib.util
 import json
+import os
 import struct
 import zlib
 from pathlib import Path
@@ -784,6 +785,41 @@ def test_a_bank_already_ingested_is_not_read_again_until_a_file_of_it_changes(
     assert ingest.main(later(argv(bank, root, "train", "train"), "2026-10-27", "89abcde")) == 0
     thinned = json.loads(capsys.readouterr().out)
     assert thinned["frames_kept"] == first["frames_kept"] - 1 and reads == [1, 1, 1, 1]
+
+
+def test_a_bank_that_changes_while_it_is_read_leaves_no_note_and_a_name_not_utf8_stops_nothing(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    ingest = load("ingest")
+    bank, root = bank_of(tmp_path), tmp_path / "grid" / "carmlspine"
+    with open(os.fsencode(bank) + b"/notes-caf\xe9.txt", "wb") as handle:
+        handle.write(b"a stray file whose name an archive made on Windows wrote")
+    real = ingest.plan_shard
+    reads: list[int] = []
+
+    # A file lands in the bank after the key was listed and before the shard is cut, so the shard
+    # may hold a later state of the bank than the key names: no note ties the two.
+    def plan_while_the_bank_moves(*arguments):
+        reads.append(1)
+        planned = real(*arguments)
+        if len(reads) == 1:
+            (bank / "late.txt").write_text("landed during the read", encoding="utf-8")
+        return planned
+
+    monkeypatch.setattr(ingest, "plan_shard", plan_while_the_bank_moves)
+    assert ingest.main(argv(bank, root, "train", "train")) == 0
+    first = json.loads(capsys.readouterr().out)
+    assert first["outcome"] == "written" and first["reuse_note"] == "not written: the bank changed while it was read"
+    assert not (root / ".reuse").exists()
+    # The next run reads the bank, finds its shard already there and notes it; the one after is
+    # answered from the note.
+    assert ingest.main(argv(bank, root, "train", "train")) == 0
+    second = json.loads(capsys.readouterr().out)
+    assert second["outcome"] == "already there" and "reuse_note" not in second and reads == [1, 1]
+    assert (root / ".reuse" / f"{second['reuse_key']}.json").is_file()
+    assert ingest.main(argv(bank, root, "train", "train")) == 0
+    third = json.loads(capsys.readouterr().out)
+    assert third["verified_by"].startswith("presence") and reads == [1, 1]
 
 
 def test_a_shard_cut_before_the_note_is_answered_from_the_second_run_on(

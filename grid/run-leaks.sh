@@ -40,11 +40,12 @@ LIST=$RUN/shards.txt
 # -L and the trailing slash follow a data root or a source folder that is a symbolic link, as a
 # source kept on another volume would be; without them find lists none of its shards, and the
 # join, which checks only the list, would pass without having seen them. A folder whose name
-# starts with a dot is an ingest's staging folder and no shard (#260); it is left out by its own
-# name after the path is cut, since find's -path lets a wildcard cross a slash and so a pattern
-# could match a `shards` higher up the data root's own path.
+# starts with a dot is an ingest's staging folder and no shard (#260); it, and a folder whose
+# parent is not shards, are left out by their own names after the path is cut, since find's -path
+# lets a wildcard cross a slash and so a pattern could match a `shards` higher up the data root's
+# own path.
 find -L "$DATA_ROOT/" -mindepth 4 -maxdepth 4 -path '*/shards/*/MANIFEST.json' 2>/dev/null \
-  | sed -e 's|/MANIFEST.json$||' -e 's|//*|/|g' | awk -F/ '$NF !~ /^[.]/' | sort > "$LIST"
+  | sed -e 's|/MANIFEST.json$||' -e 's|//*|/|g' | awk -F/ '$(NF-1) == "shards" && $NF !~ /^[.]/' | sort > "$LIST"
 count=$(wc -l < "$LIST" | tr -dc '0-9')
 if [ "$count" = 0 ]; then
   echo "refusing: no MANIFEST.json under $DATA_ROOT/*/shards/; nothing to check"; exit 64

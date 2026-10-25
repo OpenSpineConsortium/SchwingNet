@@ -570,7 +570,9 @@ def tree_listing(root, skip=()):
 
 
 def listing_sha256(lines):
-    return hashlib.sha256(("\n".join(lines) + "\n").encode("utf-8")).hexdigest()
+    """The listing's hash over the bytes the file system holds: a name that is not UTF-8, as an
+    archive made on Windows unpacks to, is hashed as it is and stops no source."""
+    return hashlib.sha256(("\n".join(lines) + "\n").encode("utf-8", "surrogateescape")).hexdigest()
 
 
 def bank_listing(bank):

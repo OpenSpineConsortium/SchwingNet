@@ -775,3 +775,31 @@ def test_a_dropped_build_mends_a_stale_current_and_an_unreadable_latest_is_no_eq
     (store / "versions" / third.file).unlink()
     fourth, new = tool.build(store, [train, test], tool.load_inputs(), "fedcba9")
     assert new and fourth.version == 4
+
+
+def test_a_dropped_build_never_points_current_back_over_a_version_landed_meanwhile(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    tool = load_tool()
+    train = write(tmp_path, "train", manifest("train", TRAIN_ITEMS))
+    test = write(tmp_path, "test", manifest("test", TEST_ITEMS))
+    store = tmp_path / "store"
+    first, _ = tool.build(store, [train], tool.load_inputs(), "0123abc")
+    real = tool.same_as_latest
+    asked: list[int] = []
+
+    # Another writer lands while this build, the latest's equal, is written (a lock a process
+    # never holds against itself): the dropped build is refused and CURRENT keeps the newer.
+    def same_after_another_landed(*arguments: object) -> bool:
+        monkeypatch.setattr(tool, "same_as_latest", real)
+        asked.append(1)
+        tool.build(store, [train, test], tool.load_inputs(), "0123abc")
+        return real(*arguments)
+
+    monkeypatch.setattr(tool, "same_as_latest", same_after_another_landed)
+    with pytest.raises(tool.CatalogError, match="another build landed"):
+        tool.build(store, [train], tool.load_inputs(), "4567def")
+    records = tool.read_versions(store)
+    assert asked == [1] and [r.version for r in records] == [1, 2] and records[0] == first
+    assert (store / "CURRENT").read_text(encoding="utf-8") == records[1].file + "\n"
+    assert tool.version_path(store)[0].name == records[1].file
