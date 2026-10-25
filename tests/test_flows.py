@@ -10,6 +10,7 @@ skips the file; run it with the train-cpu environment, as tests/test_train_resum
 
 import base64
 import importlib.util
+import io
 import json
 import os
 import re
@@ -21,9 +22,12 @@ import sys
 import tempfile
 import time
 import unittest
+import warnings
 import zlib
+from contextlib import redirect_stderr, redirect_stdout
 from datetime import date
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parent.parent
 GRID = ROOT / "grid"
@@ -88,11 +92,19 @@ def base_env(**extra):
     return env
 
 
-def load_run_code():
-    spec = importlib.util.spec_from_file_location("run_code_under_test", ROOT / "tools" / "run_code.py")
+def load(path, name):
+    """A file of the repository loaded as a module under a name of its own, with the warnings of
+    what it imports left as a script has them, which unittest shows."""
+    spec = importlib.util.spec_from_file_location(name, path)
     module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        spec.loader.exec_module(module)
     return module
+
+
+def load_run_code():
+    return load(ROOT / "tools" / "run_code.py", "run_code_under_test")
 
 
 def launch(words, cwd, env, root):
@@ -239,6 +251,61 @@ class LauncherTest(unittest.TestCase):
             done = subprocess.run([sys.executable, str(LAUNCH), *argv], cwd=self.tmp, env=base_env(), capture_output=True, text=True, timeout=60)
             self.assertEqual(done.returncode, 64, done.stderr)
             self.assertIn(words, done.stderr)
+
+    def test_every_refusal_ends_with_its_stages_rc_line_which_the_gates_status_keeps(self):
+        # Finding [6] of the second review of #252: a refusal said its words alone, which the gate's
+        # status withholds, so the log of a job that never started its flow showed nothing of how it ended
+        missing = self.tmp / "no" / "such" / "metaflow"
+        for argv, word, code in ((["bank", "--max-workers", "0"], "XR_BANK_RC", 64), (["sweep", "--", "--commit", "abc"], "SWEEP_RC", 64),
+                                 (["catalog", "--root", str(missing)], "XR_CATALOG_RC", 69), (["nothing"], "LAUNCH_RC", 64)):
+            done = subprocess.run([sys.executable, str(LAUNCH), *argv], cwd=self.tmp, env=base_env(), stdout=subprocess.PIPE,
+                                  stderr=subprocess.STDOUT, text=True, timeout=60)
+            self.assertEqual(done.returncode, code, done.stdout)
+            self.assertRegex(done.stdout, r"^LaunchError: [^\n]+\n[^\n]+\n$")
+            kept = gate_shows(done.stdout)
+            self.assertEqual(kept[0], "LaunchError: <message withheld>", kept)
+            self.assertRegex(kept[1], rf"^{word}={code} [0-9-]+ [0-9:]+$")
+            self.assertEqual(kept[2:], ["#withheld 0"], kept)
+
+    def main_listing(self, runs_with_key):
+        """flows/launch.py's main run in this process, as a catalog job on an empty data root, with
+        Metaflow's listing of the key's runs replaced by runs_with_key(module), whatever reaches it:
+        its exit code, what it printed on stdout and what on stderr. Python's warnings are left as
+        a script has them, which unittest shows."""
+        module = load(LAUNCH, "launch_under_test")
+        out, err = io.StringIO(), io.StringIO()
+        argv = ["catalog", "--root", str(self.tmp / "metaflow"), "--", "--data-root", str(self.tmp / "data")]
+        with mock.patch.dict(os.environ), mock.patch.object(module, "runs_with_key", runs_with_key(module)), \
+                warnings.catch_warnings(), redirect_stdout(out), redirect_stderr(err):
+            warnings.simplefilter("ignore", DeprecationWarning)
+            code = module.main(argv)
+        return code, out.getvalue(), err.getvalue()
+
+    def test_a_broken_rule_of_the_decision_is_a_refusal_in_words_and_any_other_crash_a_traceback(self):
+        # Finding [3] of the second review of #252: a run read as succeeded and not finished broke
+        # decide's precondition, and the launch ended in icontract's traceback, its last line withheld
+        code, out, err = self.main_listing(lambda module: lambda flow_class, key: [module.RunState("1792", finished=False, successful=True)])
+        self.assertEqual(code, 70, err)
+        self.assertRegex(err, r"^LaunchError: a rule of schwingnet.pipeline was broken, so no run was started or resumed: ")
+        self.assertIn("a run that succeeded has finished", err)
+        self.assertNotIn("Traceback", err)
+        self.assertRegex(out, r"^XR_CATALOG_RC=70 [0-9-]+ [0-9:]+\n$")
+        kept = gate_shows(err + out)
+        self.assertEqual(kept[0], "LaunchError: <message withheld>", kept)
+        self.assertRegex(kept[1], r"^XR_CATALOG_RC=70 [0-9-]+ [0-9:]+$")
+        self.assertEqual(len(kept), 3, kept)
+
+        def crash(flow_class, key):
+            raise RuntimeError("Metaflow could not read run 12345678")
+
+        code, out, err = self.main_listing(lambda module: crash)
+        self.assertEqual(code, 1, err)
+        self.assertIn("Traceback (most recent call last):", err)
+        self.assertTrue(err.endswith("RuntimeError: Metaflow could not read run 12345678\n"), err)
+        self.assertRegex(out, r"^XR_CATALOG_RC=1 [0-9-]+ [0-9:]+\n$")
+        kept = gate_shows(err + out)
+        self.assertEqual(kept[-3], "RuntimeError: <message withheld>", kept)
+        self.assertRegex(kept[-2], r"^XR_CATALOG_RC=1 [0-9-]+ [0-9:]+$")
 
 
 @unittest.skipIf(MISSING, f"needs the train environment ({', '.join(MISSING)} missing)")
@@ -822,6 +889,64 @@ fi
 echo '{"file": "catalog-000001-0123456789ab.sqlite", "new": true, "version": 1}'
 """
 
+# The flow tests' sitecustomize, put first on PYTHONPATH, so every python a launch starts imports it
+# as it begins: it acts once, where FLOW_TEST_HOOK says, and makes FLOW_TEST_MARKER as it does.
+FLOW_HOOK = '''"""A launch's processes as the grid can cut them, once, where FLOW_TEST_HOOK says.
+
+persist: the flow's runtime exits 137 as Metaflow is about to save the run's parameters, a kill
+landing after Metaflow registered the run and before it saved them. pause: the launcher says it
+has listed the runs, then waits for the test's word before it reads the beats.
+"""
+import os
+import sys
+import time
+from pathlib import Path
+
+WHERE = os.environ.get("FLOW_TEST_HOOK", "")
+MARKER = Path(os.environ.get("FLOW_TEST_MARKER") or "/nonexistent/marker")
+SCRIPT = sys.argv[0] if sys.argv else ""
+WORDS = " ".join(sys.argv)
+
+
+def once():
+    """Whether the hook acts now: only while its marker is not there, which it then makes."""
+    if MARKER.exists():
+        return False
+    MARKER.write_text("", encoding="utf-8")
+    return True
+
+
+def exit_as_the_parameters_are_saved():
+    from metaflow import runtime
+
+    saved = runtime.NativeRuntime.persist_constants
+
+    def persist_constants(self, task_id=None):
+        if once():
+            os._exit(137)
+        return saved(self, task_id)
+
+    runtime.NativeRuntime.persist_constants = persist_constants
+
+
+def pause_before_the_beats():
+    def profile(frame, event, arg):
+        if event == "call" and frame.f_code.co_name == "read_beats" and once():
+            sys.setprofile(None)
+            Path(os.environ["FLOW_TEST_LISTED"]).write_text("", encoding="utf-8")
+            while not Path(os.environ["FLOW_TEST_GO"]).exists():
+                time.sleep(0.1)
+
+    sys.setprofile(profile)
+
+
+in_a_flow = "/flows/" in SCRIPT and not SCRIPT.endswith("/launch.py")
+if WHERE == "persist" and in_a_flow and " step " not in WORDS:
+    exit_as_the_parameters_are_saved()
+elif WHERE == "pause" and SCRIPT.endswith("/flows/launch.py"):
+    pause_before_the_beats()
+'''
+
 
 @unittest.skipIf(MISSING, f"needs the train environment ({', '.join(MISSING)} missing)")
 class CatalogFlowTest(unittest.TestCase):
@@ -830,41 +955,117 @@ class CatalogFlowTest(unittest.TestCase):
         self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
         self.root, self.work, self.data = self.tmp / "metaflow", self.tmp / "work", self.tmp / "data"
         self.work.mkdir()
+        self.builds, self.held, self.release = self.tmp / "builds", self.tmp / "held", self.tmp / "release"
+        self.words = ["catalog", "--", "--data-root", str(self.data)]
 
     def shard(self, name):
         folder = self.data / "carmlspine" / "shards" / name
         folder.mkdir(parents=True)
         (folder / "MANIFEST.json").write_text("{}\n", encoding="utf-8")
 
-    def test_a_second_catalog_job_never_resumes_a_live_build_and_waits_on_its_lock(self):
-        self.shard("a")
+    def builder(self, **extra):
+        """The environment of a launch whose builds CATALOG_PYDRV logs, the first held until the
+        release file is there."""
         pydrv = self.tmp / "pydrv"
         pydrv.write_text(CATALOG_PYDRV, encoding="utf-8")
         pydrv.chmod(0o755)
-        builds, held, release = self.tmp / "builds", self.tmp / "held", self.tmp / "release"
-        env = base_env(PYDRV=str(pydrv), FLOW_TEST_BUILDS=str(builds), FLOW_TEST_HELD=str(held), FLOW_TEST_RELEASE=str(release),
-                       BUILD_LOCK_WAIT="600", TMPDIR_OVERRIDE=str(self.tmp / "t"))
-        words = ["catalog", "--", "--data-root", str(self.data)]
-        first = start_launch(words, self.work, env, self.root)
+        return base_env(PYDRV=str(pydrv), FLOW_TEST_BUILDS=str(self.builds), FLOW_TEST_HELD=str(self.held),
+                        FLOW_TEST_RELEASE=str(self.release), BUILD_LOCK_WAIT="600", TMPDIR_OVERRIDE=str(self.tmp / "t"), **extra)
+
+    def hooked(self, where, **extra):
+        """The builder's environment with FLOW_HOOK imported by every python the launch starts."""
+        hooks = self.tmp / "hooks"
+        hooks.mkdir(exist_ok=True)
+        (hooks / "sitecustomize.py").write_text(FLOW_HOOK, encoding="utf-8")
+        path = os.pathsep.join(part for part in (str(hooks), os.environ.get("PYTHONPATH", "")) if part)
+        return self.builder(PYTHONPATH=path, FLOW_TEST_HOOK=where, FLOW_TEST_MARKER=str(self.tmp / f"{where}-done"), **extra)
+
+    def built(self):
+        """How many manifests each build was given, in order."""
+        return self.builds.read_text(encoding="utf-8").split() if self.builds.exists() else []
+
+    def test_a_second_catalog_job_never_resumes_a_live_build_and_waits_on_its_lock(self):
+        self.shard("a")
+        env = self.builder()
+        first = start_launch(self.words, self.work, env, self.root)
         self.addCleanup(first.kill)
-        self.addCleanup(release.touch)
-        wait_for(held)
+        self.addCleanup(self.release.touch)
+        wait_for(self.held)
 
         # a shard lands while the first build, which listed one manifest, still holds the lock; a
         # second job of the same words starts a run of its own, which waits on the lock and then
         # builds with both, where a resume of the live run would carry its build on
         self.shard("b")
-        second = start_launch(words, self.work, env, self.root)
+        second = start_launch(self.words, self.work, env, self.root)
         self.addCleanup(second.kill)
         decision = json.loads(second.stdout.readline())
         self.assertEqual((decision["decision"], decision["origin"]), ("run", None), decision)
-        release.touch()
+        self.release.touch()
         code, first_said, first_out = finish(first)
         self.assertEqual((code, first_said[-1]["verdict"]), (0, 0), first_out)
         code, said, out = finish(second)
         self.assertEqual((code, said[-1]["verdict"]), (0, 0), out)
         self.assertEqual(decision["live"], first_said[-1]["run"].split("/")[1])
-        self.assertEqual(builds.read_text(encoding="utf-8").split(), ["1", "2"])
+        self.assertEqual(self.built(), ["1", "2"])
+
+    def test_a_run_killed_before_metaflow_saved_its_parameters_is_never_resumed(self):
+        # Finding [1] of the second review of #252: Metaflow registers a run, its key tag with it,
+        # before it saves the run's parameters, and refuses to resume a run that has none, after it
+        # has registered the resume as one more run of the key with none; resumed, such a run made
+        # every later job of the same words fail before any step
+        self.shard("a")
+        self.release.touch()
+        code, said, cut_log = finish(start_launch(self.words, self.work, self.hooked("persist"), self.root))
+        self.assertEqual(code, 137, cut_log)
+        self.assertEqual((said[0]["decision"], said[-1]["successful"]), ("run", False), cut_log)
+        self.assertTrue(said[-1]["run"], cut_log)
+
+        code, said, log = finish(start_launch(self.words, self.work, self.hooked("persist"), self.root))
+        self.assertEqual(code, 0, log)
+        self.assertEqual((said[0]["decision"], said[0]["origin"], said[-1]["verdict"]), ("run", None, 0), log)
+        self.assertEqual(self.built(), ["1"])
+        # the cut job's log, which held no line the gate's status keeps, ends with the launcher's own
+        self.assertRegex(gate_shows(cut_log)[-2], r"^XR_CATALOG_RC=137 [0-9-]+ [0-9:]+$", cut_log)
+
+    def test_a_success_read_between_the_end_tasks_two_flags_starts_a_new_run(self):
+        # Finding [3] of the second review of #252: Metaflow writes the end task's ok and success as
+        # two files, one after the other, so a read between them saw a run that succeeded and had
+        # not finished, which broke decide's precondition and ended the launch in a traceback; that
+        # moment is made here by taking the ok's file away from a run that succeeded
+        self.shard("a")
+        self.release.touch()
+        code, said, log = finish(start_launch(self.words, self.work, self.builder(), self.root))
+        self.assertEqual(code, 0, log)
+        done = said[-1]["run"].split("/")[1]
+        flags = list((self.root / ".metaflow" / "CatalogFlow" / done / "end").glob("*/_meta/*_artifact__task_ok.json"))
+        self.assertEqual(len(flags), 1, flags)
+        flags[0].unlink()
+        code, said, log = finish(start_launch(self.words, self.work, self.builder(), self.root))
+        self.assertEqual(code, 0, log)
+        self.assertEqual((said[0]["decision"], said[0]["origin"]), ("run", None), log)
+
+    def test_a_run_that_ended_well_after_the_listing_is_read_again_and_not_resumed(self):
+        # Finding [3] of the second review of #252: a second job lists the first's run while it
+        # builds, the first ends well and its launcher takes its beat away, and the second then reads
+        # no beat for it; it reads the run again before it resumes it, where it cloned the first's build
+        self.shard("a")
+        first = start_launch(self.words, self.work, self.builder(), self.root)
+        self.addCleanup(first.kill)
+        self.addCleanup(self.release.touch)
+        wait_for(self.held)
+        listed, go = self.tmp / "listed", self.tmp / "go"
+        second = start_launch(self.words, self.work, self.hooked("pause", FLOW_TEST_LISTED=str(listed), FLOW_TEST_GO=str(go)), self.root)
+        self.addCleanup(second.kill)
+        self.addCleanup(go.touch)
+        wait_for(listed)
+        self.release.touch()
+        code, first_said, first_out = finish(first)
+        self.assertEqual((code, first_said[-1]["successful"]), (0, True), first_out)
+        go.touch()
+        code, said, log = finish(second)
+        self.assertEqual(code, 0, log)
+        self.assertEqual((said[0]["decision"], said[0]["origin"], said[0]["live"]), ("run", None, None), log)
+        self.assertEqual(self.built(), ["1", "1"])
 
 
 # Logs a call of the launcher only; the stage's own small reads of a recipe print nothing.

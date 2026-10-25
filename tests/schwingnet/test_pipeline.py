@@ -102,6 +102,27 @@ def test_a_newest_run_still_running_is_never_resumed() -> None:
     assert decide([killed, live]) == (RESUME, "1792")
 
 
+def test_a_newest_run_whose_parameters_were_never_saved_starts_a_new_run() -> None:
+    # The second review of #252, finding 1: killed after Metaflow registered it and before it saved
+    # its parameters, a run holds no work, and Metaflow refuses to resume it after registering the
+    # resume as one more such run, so each launch of the key that resumed the newest failed in turn
+    unsaved = RunState("1802", finished=False, successful=False, parameters_saved=False)
+    killed = RunState("1792", finished=False, successful=False)
+    assert decide([unsaved]) == (RUN, None)
+    assert decide([unsaved, killed]) == (RUN, None)
+    assert decide([killed, unsaved]) == (RESUME, "1792")
+
+
+def test_a_run_a_live_launcher_has_just_registered_counts_as_live_before_its_parameters() -> None:
+    unsaved = RunState("1802", finished=False, successful=False, parameters_saved=False)
+    killed = RunState("1792", finished=False, successful=False)
+    for beat in (Beat("1802", "4242", NOW), Beat("", "4242", NOW)):
+        marked = marked_live([unsaved, killed], [beat], "", NOW)
+        assert [run.live for run in marked] == [True, False]
+        assert [run.parameters_saved for run in marked] == [False, True]
+        assert decide(marked) == (RUN, None)
+
+
 NOW = 1_800_000_000.0
 
 
