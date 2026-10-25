@@ -167,8 +167,10 @@ def run_id(commit: str, catalog_sha256: str, started_at: str) -> str:
 @require(lambda catalog_sha256: len(catalog_sha256) == 64 and catalog_sha256.isascii(), "a sha256")
 # The configuration's digest is held to 64 ASCII characters, as the catalog's is, and not to hex:
 # CrossHair 0.0.111 met no hex form of this precondition beside the other two within the gate's
-# 20 s (a regular expression, a test of each character, sets, 2026-10-24), and a precondition no
-# input meets fails the gate. RunRecord's HexDigest holds the digest to hex where it is recorded.
+# 20 s (a regular expression, a test of each character, sets, 2026-10-24), and it meets this form
+# in only some runs (two of three, 2026-10-25), so the function is listed under
+# [tool.beethoven-qa.unproven] in pyproject.toml. RunRecord's HexDigest holds the digest to hex
+# where it is recorded.
 @require(
     lambda configuration_sha256: len(configuration_sha256) == 64 and configuration_sha256.isascii(),
     "the configuration's sha256",
