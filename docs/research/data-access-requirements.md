@@ -4,9 +4,9 @@ Source: the thread "SchwingNet video demo plan", 2026-10-20, the owner's ask ("r
 
 What the cloud session can and cannot reach (2026-10-20): web search answers, but every host page tried was refused by name (PMC, arXiv, Zenodo, IEEE DataPort, Hugging Face, PhysioNet, TalkBank, RSNA MIRA, Stanford AIMI, the university and clinic sites), so a licence line or an address that only a page shows is marked "to confirm on the page". Radiopaedia was not fetched by choice: its terms bar automated access.
 
-## Where each request stands (2026-10-24)
+## Where each request stands (2026-10-25)
 
-The letters above went out from the owner's Wayne State Outlook between 2026-10-20 and 2026-10-24, all under the subject tag [XR/CT Imaging Research]; the table below is that mail as read on 2026-10-24 (thread "Paired CT and X-ray datasets", issue #229), and each record's status under data/sources/ says the same. Where this section and the table below disagree, this section is newer: rows of the table that say a letter was never sent are out of date.
+The letters above went out from the owner's Wayne State Outlook between 2026-10-20 and 2026-10-24, all under the subject tag [XR/CT Imaging Research]; the table below is that mail as read on 2026-10-24 (thread "Paired CT and X-ray datasets", issue #229) and read again in full on 2026-10-25 at 15:35 UTC, all 66 messages, when the only answer not yet recorded was Zhou's, and each record's status under data/sources/ says the same. Where this section and the table below disagree, this section is newer: rows of the table that say a letter was never sent are out of date.
 
 | Request (record) | Sent | Answer |
 |---|---|---|
@@ -23,7 +23,8 @@ The letters above went out from the owner's Wayne State Outlook between 2026-10-
 | TotalSegmentator task sets (zenodo_ts_task_*) | 2026-10-21 | Wasserthal 2026-10-22: v2 is a complete subset of v3 with the same ids; the task sets' overlap is not answered, so they stay counted as overlapping |
 | IRI-VFI (pediatric_iri), TVGH-SpineXR (tvgh_spinexr) | 2026-10-21 | none |
 | SOF and MrOS lateral spine films (sof_lateral_spine, mros_lateral_spine) | 2026-10-22 | the same day: the Online sites are closed to registration for new NIH requirements; the images go to the NIA Aging Research Biobank, where the request now goes; not yet asked there |
-| MAGIC-CT (magic_ct), AbdomenAtlas 2.0 Mini case list (hf_abdomenatlas2_0_mini) | 2026-10-22 | none |
+| MAGIC-CT (magic_ct) | 2026-10-22 | none |
+| AbdomenAtlas 2.0 Mini case list (hf_abdomenatlas2_0_mini) | 2026-10-22 | Zhou 2026-10-25: the BDMAP id is the case's identifier across releases, so the cases not held are the 2.0 Mini ids that 3.0 Mini lacks; no list needed |
 | ReXGradient-160K (rexgradient_160k) | 2026-10-24 | none yet |
 
 Six letters went to sets that had no record under data/sources/ until #234 gave each one, named here in brackets:

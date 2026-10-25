@@ -5,7 +5,7 @@
   "what": "AbdomenAtlas 2.0 Mini, 10,135 CT in 21 tars, about 620 GB on Hugging Face (tree read 2026-09-24); no card, no metadata; the AbdomenAtlas line aggregates public sets, 3.0 Mini (9,262) is already fetched and the other about 873 are unidentified",
   "level_truth": "counted by the census pipeline once fetched",
   "reach": "get",
-  "status": "asked Professor Zhou for the case list on 2026-10-22, so an id map against AbdomenAtlas 3.0 Mini can be made (there is no card and no metadata); no answer by 2026-10-24",
+  "status": "asked Professor Zhou for the case list on 2026-10-22, so an id map against AbdomenAtlas 3.0 Mini can be made (there is no card and no metadata); Zongwei Zhou answered on 2026-10-25 that the identifier is each case's BDMAP id, the same across releases, so the 2.0 Mini cases not held are the BDMAP ids of 2.0 Mini that 3.0 Mini lacks; no list was sent and none is needed",
   "licence": "CC BY-NC-SA 4.0",
   "link": "https://huggingface.co/datasets/AbdomenAtlas/AbdomenAtlas2.0Mini",
   "how_to_get": [
