@@ -9,8 +9,8 @@ the commit, the clean-tree flag and the catalog's sha256, all read from the run'
 tools/flow.py wrote from a clean tree, and the catalog is refused in words unless it has that
 sha256, so no number is stamped with a catalog it was not read from. The test part is read once,
 here, after training is over; the trainer never saw it. Beside the table the figures a reader
-checks: the confusion matrix and the per-level accuracy with its intervals. The transitional stratum (T13, L6) is reported apart,
-never pooled, as docs/research/retraining-plan.md asks.
+checks: the confusion matrix and the per-level accuracy with its intervals. The transitional
+stratum (T13, L6) is reported apart, never pooled, as docs/research/retraining-plan.md asks.
 
 The evaluator is the version boundary, so it is where the test witness frames are read
 (docs/research/retraining-plan.md, section 4): the test, transitional and sweep frames of the
