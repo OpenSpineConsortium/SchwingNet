@@ -1,8 +1,9 @@
 """tools/flow.py names a run by what it computes and carries a cut-short run on in its own folder.
 
-The run id is the hash of the commit, the catalog and the run's configuration (CONFIGURATION.json),
-so the same configuration names the same folder, and started again the flow runs only what that
-folder still needs: nothing once it wrote FINISHED.json, its last file; the last push, the ledger
+The run id is the hash of the digest of the code the run executes (tools/run_code.py), the
+catalog and the run's configuration (CONFIGURATION.json), so the same configuration names the same
+folder, on a later commit that changed none of that code too, and started again the flow runs
+only what that folder still needs: nothing once it wrote FINISHED.json, its last file; the last push, the ledger
 row (once) and the report where it was cut after its evaluation; the evaluation where training
 wrote its checkpoint.json, training with --resume where it left train/last.pt (issue #252). A sweep's row
 names its folder with --slug, and a folder holding another run is refused and left as it was. A
@@ -13,7 +14,8 @@ The flow runs in-process against a real synthetic catalog built by the tools, wi
 on PATH standing in for the trainer, the evaluator and the W&B sync: it writes the files the flow
 reads after each step and logs what it was asked, so the test sees which steps ran and with what.
 The flow refuses a dirty tree, and the working copy under test may hold uncommitted changes, so
-tree_state is replaced in-process by a clean tree at a fixed commit; that refusal itself is tested
+tree_state is replaced in-process by a clean tree at a fixed commit, and code_state, where a test
+says, by a fixed digest; that refusal itself is tested
 in tests/schwingnet/test_flow.py. flow.py imports the package, so the test skips where pydantic,
 beartype or icontract is missing, as under the required check's plain python3.
 """
@@ -37,6 +39,7 @@ ROOT = Path(__file__).resolve().parent.parent
 NEEDED = ("pydantic", "beartype", "icontract")
 MISSING = [name for name in NEEDED if importlib.util.find_spec(name) is None]
 COMMIT = "0123456789abcdef0123456789abcdef01234567"
+LATER = "89abcdef0123456789abcdef0123456789abcdef"
 LEGACY_RUN = ROOT / "docs" / "research" / "v1-demo" / "runs" / "a767a466f5c1"
 V1_DRIVER_SED = r's/.*"run_dir": "\([^"]*\)".*/\1/p'
 
@@ -176,14 +179,17 @@ class FlowReuseTest(unittest.TestCase):
         self.out = self.work / "runs"
         self.log = self.work / "pixi.jsonl"
 
-    def run_flow(self, *extra, fake=None):
-        """tools/flow.py run in local mode on the catalog; its exit code, stdout lines and stderr."""
+    def run_flow(self, *extra, fake=None, commit=COMMIT, code=None):
+        """tools/flow.py run in local mode on the catalog, on the commit and, where one is given,
+        the code digest; its exit code, stdout lines and stderr."""
         argv = ["run", "--catalog", str(self.catalog), "--out", str(self.out), "--mode", "local",
                 "--epochs", "2", "--seed", "1", "--size", "32", *extra]
         environ = {"PATH": f"{self.bin}{os.pathsep}{os.environ.get('PATH', '')}", "FAKE_PIXI_LOG": str(self.log),
                    "SCHWINGNET_WANDB": "off", "FAKE_TRAIN": "", "FAKE_EVALUATE": "", **(fake or {})}
         stdout, stderr = io.StringIO(), io.StringIO()
-        with mock.patch.dict(os.environ, environ), mock.patch.object(self.flow, "tree_state", lambda: (COMMIT, True)), \
+        code_state = (lambda: code) if code else self.flow.code_state
+        with mock.patch.dict(os.environ, environ), mock.patch.object(self.flow, "tree_state", lambda: (commit, True)), \
+                mock.patch.object(self.flow, "code_state", code_state), \
                 contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
             rc = self.flow.main(argv)
         return rc, stdout.getvalue().splitlines(), stderr.getvalue()
@@ -246,7 +252,9 @@ class FlowReuseTest(unittest.TestCase):
         record = self.record(run_dir)
         self.assertEqual(record["configuration_sha256"], digest)
         catalog_sha256 = hashlib.sha256(self.catalog.read_bytes()).hexdigest()
-        self.assertEqual(record["run_id"], self.rules.configured_run_id(COMMIT, catalog_sha256, digest))
+        self.assertEqual(record["code_sha256"], self.flow._run_code.digest("row"))
+        self.assertEqual(record["code_commit"], COMMIT)
+        self.assertEqual(record["run_id"], self.rules.configured_run_id(record["code_sha256"], catalog_sha256, digest))
         self.assertEqual(self.rules.RunRecord.model_validate(record).run_id, record["run_id"])
         train_args = dict(self.calls())["train"]
         self.assertEqual(train_args[train_args.index("--out") + 1], str(run_dir))
@@ -365,6 +373,31 @@ class FlowReuseTest(unittest.TestCase):
         rc, lines, err = self.run_flow()
         self.assertEqual((rc, self.said(lines)["reused"], self.calls()), (0, "finished", []))
 
+    def test_a_start_on_a_later_commit_of_the_same_code_carries_the_run_on_and_other_code_names_another(self):
+        # The gate brings main in before every word, so a run cut short is started again on a later
+        # commit; one that changed none of the code the run executes names the same run.
+        rc, lines, err = self.run_flow(fake={"FAKE_TRAIN": "cut"})
+        self.assertEqual(rc, 1)
+        run_dir = Path(self.said(lines)["run_dir"])
+        first = self.record(run_dir)
+        self.log.unlink()
+        rc, lines, err = self.run_flow(commit=LATER)
+        self.assertEqual(rc, 0, err)
+        self.assertEqual((self.said(lines)["run_dir"], self.said(lines)["reused"]), (str(run_dir), "resumed"))
+        self.assertEqual(dict(self.calls())["train"][-1], "--resume")
+        record = self.record(run_dir)
+        self.assertEqual((record["code_commit"], record["code_sha256"]), (COMMIT, first["code_sha256"]),
+                         "the record keeps the commit it started on, whose code is the code that ran")
+        # Another code is another run, in a folder of its own, from the start.
+        self.log.unlink()
+        rc, lines, err = self.run_flow(commit=LATER, code="f" * 64)
+        self.assertEqual(rc, 0, err)
+        other = self.said(lines)
+        self.assertNotEqual(other["run_id"], first["run_id"])
+        self.assertNotIn("reused", other)
+        self.assertNotIn("--resume", dict(self.calls())["train"])
+        self.assertEqual(self.record(Path(other["run_dir"]))["code_commit"], LATER)
+
     def test_a_run_cut_after_its_evaluation_is_finished_by_the_next_start_once(self):
         # Cut at the push right after the evaluation, as a Slurm limit or SIGTERM cuts the driver:
         # the record says the evaluation ended, and nothing after it was done.
@@ -445,7 +478,7 @@ class FlowReuseTest(unittest.TestCase):
         self.log.unlink()
         rc, lines, err = self.run_flow("--slug", "row-a", "--block", "sampler=balanced")
         self.assertEqual(rc, 1)
-        self.assertRegex(err, rf"^flow: {re.escape(str(self.out / 'row-a'))} holds run {held}, and this configuration on this commit and catalog names run [0-9a-f]{{12}}; nothing is touched")
+        self.assertRegex(err, rf"^flow: {re.escape(str(self.out / 'row-a'))} holds run {held}, and this configuration of this code on this catalog names run [0-9a-f]{{12}}; nothing is touched")
         self.assertNotIn(f"names run {held}", err)
         self.assertEqual(snapshot(self.out), before)
         self.assertEqual(self.calls(), [])

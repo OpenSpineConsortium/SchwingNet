@@ -36,6 +36,7 @@ SHA = "a" * 64
 COMMIT = "0123abc"
 START = "2026-10-21T03:00:00Z"
 CONFIGURATION = "c" * 64
+CODE = "e" * 64
 
 
 def load_tool(name: str) -> ModuleType:
@@ -76,30 +77,47 @@ def test_a_run_record_refuses_a_dirty_tree_a_leaky_split_and_a_forged_id() -> No
     assert run_id(COMMIT, SHA, START) != run_id(COMMIT, SHA, "2026-10-21T03:00:01Z")
 
 
-def test_a_configured_run_is_named_by_its_configuration_and_never_by_its_start() -> None:
-    named = configured_run_id(COMMIT, SHA, CONFIGURATION)
-    assert len(named) == 12 and named == configured_run_id(COMMIT, SHA, CONFIGURATION)
-    assert named != configured_run_id(COMMIT, SHA, "d" * 64)
-    assert named != configured_run_id("0123abd", SHA, CONFIGURATION)
-    assert named != configured_run_id(COMMIT, "b" * 64, CONFIGURATION)
+def test_a_configured_run_is_named_by_its_code_and_configuration_and_never_by_its_start() -> None:
+    named = configured_run_id(CODE, SHA, CONFIGURATION)
+    assert len(named) == 12 and named == configured_run_id(CODE, SHA, CONFIGURATION)
+    assert named != configured_run_id(CODE, SHA, "d" * 64)
+    assert named != configured_run_id("f" * 64, SHA, CONFIGURATION)
+    assert named != configured_run_id(CODE, "b" * 64, CONFIGURATION)
     assert named != run_id(COMMIT, SHA, START)
-    # The start is kept in the record and never enters the name, so a run started again later
-    # with the same configuration is the same run.
-    first = record(run_id=named, configuration_sha256=CONFIGURATION)
+    # The start and the commit are kept in the record and never enter the name, so a run started
+    # again later with the same configuration of the same code is the same run, on a later commit
+    # that changed none of that code too.
+    first = record(run_id=named, configuration_sha256=CONFIGURATION, code_sha256=CODE)
     later = record(
-        run_id=named, configuration_sha256=CONFIGURATION, started_at="2026-10-25T09:30:00Z"
+        run_id=named,
+        configuration_sha256=CONFIGURATION,
+        code_sha256=CODE,
+        code_commit="4567def",
+        started_at="2026-10-25T09:30:00Z",
     )
     assert first.run_id == later.run_id == named
     with pytest.raises(ValidationError, match="configuration"):
-        record(run_id=run_id(COMMIT, SHA, START), configuration_sha256=CONFIGURATION)
+        record(
+            run_id=run_id(COMMIT, SHA, START), configuration_sha256=CONFIGURATION, code_sha256=CODE
+        )
+    with pytest.raises(ValidationError, match="its code"):
+        record(run_id=named, configuration_sha256=CONFIGURATION, code_sha256="f" * 64)
+    with pytest.raises(ValidationError, match="names the code"):
+        record(run_id=named, configuration_sha256=CONFIGURATION)
+    with pytest.raises(ValidationError, match="names no code"):
+        record(code_sha256=CODE)
     with pytest.raises(ValidationError, match="start"):
         record(run_id=named)
     with pytest.raises(ValidationError):
-        record(run_id=named, configuration_sha256="C" * 64)
+        record(run_id=named, configuration_sha256="C" * 64, code_sha256=CODE)
+    with pytest.raises(ValidationError):
+        record(run_id=named, configuration_sha256=CONFIGURATION, code_sha256="E" * 64)
     with pytest.raises(ViolationError):
-        configured_run_id(COMMIT, SHA, "c" * 63)
+        configured_run_id(CODE, SHA, "c" * 63)
     with pytest.raises(ViolationError):
-        configured_run_id(COMMIT, SHA, "\u00e9" * 64)
+        configured_run_id(CODE, SHA, "\u00e9" * 64)
+    with pytest.raises(ViolationError):
+        configured_run_id(COMMIT, SHA, CONFIGURATION)
 
 
 def test_every_recorded_run_record_still_validates() -> None:

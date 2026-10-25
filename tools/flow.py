@@ -13,10 +13,12 @@ data/recipes/ does not take, so a catalog meant for a commercial network is cut 
 `python3 tools/licences.py derive`, and the ledger row names the class and the recipe.
 
 A run is refused from a dirty tree, since its record names the commit; the run id is the hash of
-the commit, the catalog's sha256 and the run's configuration (below), so the same configuration
-on the same commit and catalog always names the same run; RUN.json is written before the first
-step, so the trainer and the evaluator stamp their numbers from it and never type a fact of
-their own. The steps are the split check (SQL over the catalog, here), training
+the digest of the code the run executes (tools/run_code.py, kind row), the catalog's sha256 and
+the run's configuration (below), so the same configuration of the same code on the same catalog
+always names the same run, also on a later commit that changed none of that code, which carries
+the run on; RUN.json is written before the first step, so the trainer and the evaluator stamp
+their numbers from it and never type a fact of their own, and the commit it names is the one the
+run started on. The steps are the split check (SQL over the catalog, here), training
 and evaluation, each one process, each timed and recorded as a job with what it cost, in local
 mode as a subprocess in the train-cpu environment and in slurm mode as one job each in
 train-gpu, queued through hpcworker's job submit as the gpu class (issue #77), polled no faster than once a minute (grid rule 7). `record` copies the run's small
@@ -29,8 +31,8 @@ The run's configuration is every argument that changes what the steps compute (t
 epochs, the seed, the crop size, the frame cap, the blocks, augment's changes and the sources in
 one order whatever order they were named in, the sha256 of the weights or of the parent it
 starts from, the recipe and the environment) and nothing that only says where or how
-long it runs; it is written to CONFIGURATION.json and its sha256 names the run with the commit and
-the catalog (schwingnet.flow.configured_run_id), so no clock enters the name. The run's folder is
+long it runs; it is written to CONFIGURATION.json and its sha256 names the run with the code's
+digest and the catalog (schwingnet.flow.configured_run_id), so no clock enters the name. The run's folder is
 <out>/<run id>, or <out>/<slug> with `--slug`, so a sweep finds each row's folder by the row's
 name. Started again on a folder that holds its record, the flow runs only what is left: nothing
 where the run wrote FINISHED.json, its last file, after its report; only the last push, the
@@ -119,8 +121,19 @@ def _load_report():
     return module
 
 
+def _load_run_code():
+    """tools/run_code.py by its file, for the reason _load_witness gives."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("schwingnet_tool_run_code", ROOT / "tools" / "run_code.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 _licences = _load_licences()
 _report = _load_report()
+_run_code = _load_run_code()
 
 VERSION_NAME = re.compile(r"catalog-(\d{6})-[0-9a-f]{12}\.sqlite$")
 LEDGER_HEADER = (
@@ -151,6 +164,16 @@ def git(*args):
 def tree_state():
     """The commit and whether the tree is clean; a dirty tree is refused by RunRecord."""
     return git("rev-parse", "HEAD"), git("status", "--porcelain") == ""
+
+
+def code_state():
+    """The digest of the code a run executes (tools/run_code.py, kind row), which names the run
+    with its catalog and configuration, so a commit that changes none of that code names the
+    same run and a start on it carries the run on."""
+    try:
+        return _run_code.digest("row")
+    except _run_code.RunCodeError as error:
+        raise FlowError(f"the run's code cannot be named: {error}") from error
 
 
 def catalog_facts(catalog):
@@ -376,14 +399,16 @@ def ledger_holds(path, run_id):
 
 def start_record(args, configuration=None):
     """RUN.json before the first step: the facts from the tree, the catalog and the split check,
-    named by the commit, the catalog and the configuration's hash."""
+    named by the code's digest, the catalog and the configuration's hash; the commit is the one
+    it starts on, which a start on a later commit with the same code keeps (run_held)."""
     configuration = run_configuration(args) if configuration is None else configuration
     commit, clean = tree_state()
+    code = code_state()
     sha256, version = catalog_facts(args.catalog)
     check = split_disjoint(args.catalog)
     named = configuration_sha256(configuration)
     try:
-        return RunRecord(run_id=configured_run_id(commit, sha256, named), code_commit=commit, clean_tree=clean, catalog_version=version, catalog_sha256=sha256, split_disjoint=check["disjoint"], stage=Stage(args.stage), seed=args.seed, epochs=args.epochs, parent_weights=configuration["weights_sha256"], configuration_sha256=named, started_at=now(), mode=args.mode), check
+        return RunRecord(run_id=configured_run_id(code, sha256, named), code_commit=commit, clean_tree=clean, catalog_version=version, catalog_sha256=sha256, split_disjoint=check["disjoint"], stage=Stage(args.stage), seed=args.seed, epochs=args.epochs, parent_weights=configuration["weights_sha256"], configuration_sha256=named, code_sha256=code, started_at=now(), mode=args.mode), check
     except ValueError as error:
         raise FlowError(f"refused: {error}; split check {json.dumps(check)}") from error
 
@@ -408,7 +433,7 @@ def earlier_record(run_dir, record):
         raise FlowError(f"{run_file}: not a run record ({error}); nothing is touched") from error
     held_id = held.get("run_id") if isinstance(held, dict) else None
     if held_id != record.run_id:
-        raise FlowError(f"{run_dir} holds run {held_id}, and this configuration on this commit and catalog names run {record.run_id}; nothing is touched")
+        raise FlowError(f"{run_dir} holds run {held_id}, and this configuration of this code on this catalog names run {record.run_id}; nothing is touched")
     try:
         return RunRecord.model_validate(held)
     except ValueError as error:
@@ -472,8 +497,8 @@ def holder_words():
 @contextlib.contextmanager
 def held(run_dir):
     """The run's folder held for this start alone, to its end: an exclusive lock on <run>/.lock,
-    taken without waiting. The run's name holds no clock, so two starts of one configuration on
-    one commit and catalog name one folder, the v1 driver's and an experiment's asking for version
+    taken without waiting. The run's name holds no clock, so two starts of one configuration of
+    one code on one catalog name one folder, the v1 driver's and an experiment's asking for version
     1's training among them, and a run in progress would look like a cut one and be carried on
     beside itself. The kernel drops a flock when its process ends, by a kill too, so a cut start
     leaves no lock behind, and CephFS, the lab volume, honours it across nodes, as
