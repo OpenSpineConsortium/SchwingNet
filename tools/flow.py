@@ -40,7 +40,11 @@ left train/last.pt, else training from the start; RUN.json keeps its first start
 earlier jobs and gains a job for each step run now. A folder that holds another run's record
 is refused and left as it is. The flow writes its own files whole and renames them into place,
 so a start cut while it writes one leaves the one before, and a folder a start left before its
-record, holding no more than the split check and this configuration, is started again.
+record, holding no more than the split check and this configuration, is started again. A start
+holds the run's folder by an exclusive lock on <run>/.lock from before it reads the folder to its
+end, and the trainer holds train/ the same way, so a second start of the same run while the first
+still runs, which would otherwise take a run in progress for a cut one, is refused in words that
+name the holder, and runs and writes nothing.
 
 Before the first step the run's witness.json is written (tools/witness.py): the frozen list in
 data/witness/ where the repository has one, checked against this catalog, else the frames chosen
@@ -53,17 +57,21 @@ only.
 """
 
 import argparse
+import contextlib
+import fcntl
 import hashlib
 import json
 import os
 import re
 import shutil
+import socket
 import sqlite3
 import subprocess
 import sys
 import time
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import NamedTuple
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
@@ -126,6 +134,8 @@ SLUG = re.compile(r"[a-z0-9][a-z0-9.-]{0,79}")
 FINISHED, EVALUATED, TRAINED, RESUMED, RESTARTED = "finished", "evaluated", "trained", "resumed", "restarted"
 # The run's last file, written once everything after its evaluation is done (finish).
 FINISHED_MARK = "FINISHED.json"
+# The file a start holds the run's folder by for as long as it runs (held).
+LOCK = ".lock"
 
 
 class FlowError(Exception):
@@ -417,23 +427,63 @@ BEFORE_RECORD = ("split-check.json", "CONFIGURATION.json", "RUN.json")
 
 
 def new_folder(run_dir, configuration):
-    """A new run's folder. One a start left before it wrote the record holds at most the split
-    check and the configuration, which must be this run's, and their temporary files, all written
-    again; anything else there is no run of this flow's, so it is refused and left as it is."""
+    """A new run's folder, there or not yet, checked before anything is written in it. One a start
+    left before it wrote the record holds at most the split check and the configuration, which
+    must be this run's, their temporary files and the lock, all written again; anything else there
+    is no run of this flow's, so it is refused and left as it is."""
     run_dir = Path(run_dir)
-    if run_dir.exists():
-        strays = sorted(p.name for p in run_dir.iterdir() if not left_by_a_start(p.name)) if run_dir.is_dir() else [run_dir.name]
-        if strays:
-            raise FlowError(f"{run_dir} holds {', '.join(strays[:5])} and no RUN.json, so it is no run of this flow's; nothing is touched")
-        held = run_dir / "CONFIGURATION.json"
-        if held.is_file() and held.read_text(encoding="utf-8") != configuration_text(configuration):
-            raise FlowError(f"{run_dir} holds CONFIGURATION.json of another configuration and no RUN.json, so it is no start of this run's; nothing is touched")
-    run_dir.mkdir(parents=True, exist_ok=True)
+    if not run_dir.exists():
+        return
+    strays = sorted(p.name for p in run_dir.iterdir() if not left_by_a_start(p.name)) if run_dir.is_dir() else [run_dir.name]
+    if strays:
+        raise FlowError(f"{run_dir} holds {', '.join(strays[:5])} and no RUN.json, so it is no run of this flow's; nothing is touched")
+    held = run_dir / "CONFIGURATION.json"
+    if held.is_file() and held.read_text(encoding="utf-8") != configuration_text(configuration):
+        raise FlowError(f"{run_dir} holds CONFIGURATION.json of another configuration and no RUN.json, so it is no start of this run's; nothing is touched")
 
 
 def left_by_a_start(name):
-    """Whether a file of this name is one a start writes before RUN.json, or its temporary file."""
-    return name.removesuffix(".tmp") in BEFORE_RECORD
+    """Whether a file of this name is one a start writes before RUN.json, its temporary file, or
+    the lock a start holds the folder by."""
+    return name == LOCK or name.removesuffix(".tmp") in BEFORE_RECORD
+
+
+def holder_words():
+    """Who holds the run's folder, as its lock file says it to the next start refused: the
+    process, the machine, the Slurm job where there is one, and since when."""
+    job = os.environ.get("SLURM_JOB_ID")
+    return f"pid {os.getpid()} on {socket.gethostname()}" + (f", Slurm job {job}" if job else "") + f", since {now()}"
+
+
+@contextlib.contextmanager
+def held(run_dir):
+    """The run's folder held for this start alone, to its end: an exclusive lock on <run>/.lock,
+    taken without waiting. The run's name holds no clock, so two starts of one configuration on
+    one commit and catalog name one folder, the v1 driver's and an experiment's asking for version
+    1's training among them, and a run in progress would look like a cut one and be carried on
+    beside itself. The kernel drops a flock when its process ends, by a kill too, so a cut start
+    leaves no lock behind, and CephFS, the lab volume, honours it across nodes, as
+    grid/03-catalog.sbatch's lock relies on. The folder is made here, so the lock has a place."""
+    run_dir = Path(run_dir)
+    run_dir.mkdir(parents=True, exist_ok=True)
+    path = run_dir / LOCK
+    with path.open("a+", encoding="utf-8") as handle:
+        try:
+            fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as error:
+            holder = path.read_text(encoding="utf-8").strip() or "which has not yet written who it is"
+            raise FlowError(f"{run_dir} is in progress: another start of this run holds {path} ({holder}); nothing is touched, and that start carries the run on") from error
+        except OSError as error:
+            raise FlowError(f"{path}: cannot be locked ({error}), so whether another start runs here cannot be told; nothing is touched") from error
+        yield handle
+
+
+def claim(lock):
+    """The lock file says who holds it, for the next start it refuses: written only by a start
+    that goes on to run something, so a finished run's folder is read and never written."""
+    lock.truncate(0)
+    lock.write(holder_words() + "\n")
+    lock.flush()
 
 
 def steps_for(args, reused):
@@ -451,25 +501,49 @@ def licence_record(catalog, recipe):
         raise FlowError(f"licences: {error}") from error
 
 
+class Start(NamedTuple):
+    """What a start of the run works out before it takes the run's folder."""
+
+    record: RunRecord
+    check: dict
+    configuration: dict
+    licences: dict
+
+
 def command_run(args):
     slug = checked_slug(args.slug)
     configuration = run_configuration(args)
     record, check = start_record(args, configuration)
     licences = licence_record(args.catalog, args.recipe)
     run_dir = Path(args.out) / (slug or record.run_id)
+    # Read before the lock, so a folder that is another run's, refused here, gets no lock file of
+    # this one's; what the folder holds is read again under the lock, and that reading decides.
+    if earlier_record(run_dir, record) is None:
+        new_folder(run_dir, configuration)
+    with held(run_dir) as lock:
+        return run_held(args, run_dir, Start(record, check, configuration, licences), lock)
+
+
+def run_held(args, run_dir, start, lock):
+    """The run, once its folder is held for this start alone (held)."""
+    record, configuration, licences = start.record, start.configuration, start.licences
     held = earlier_record(run_dir, record)
     reused = what_is_left(run_dir, held) if held else None
     said = {"run_id": record.run_id, "run_dir": str(run_dir), "mode": args.mode, **({"reused": reused} if reused else {})}
-    if reused in (FINISHED, EVALUATED):
-        # Finished before: nothing runs and no second ledger row is written for the same run.
+    if reused == FINISHED:
+        # Finished before: nothing runs, nothing is written, and no second ledger row.
+        print(json.dumps(said), flush=True)
+        return 0
+    claim(lock)
+    if reused == EVALUATED:
         # Evaluated before and cut after: only what comes after the evaluation.
         print(json.dumps(said), flush=True)
-        return 0 if reused == FINISHED else finish(args, run_dir, held, licences)
+        return finish(args, run_dir, held, licences)
     if held:
         record = held
     else:
         new_folder(run_dir, configuration)
-    write_whole(run_dir / "split-check.json", json.dumps(check, indent=1) + "\n")
+    write_whole(run_dir / "split-check.json", json.dumps(start.check, indent=1) + "\n")
     write_configuration(run_dir, configuration)
     jobs = [*record.jobs, JobRecord(step=Step.SPLIT_CHECK, job_id=f"local-{os.getpid()}-split-check", partition="runner", qos=None, hours_requested=0.01, seconds_used=1, gpus=0, preemptions=0, exit_code=0)]
     record = record.model_copy(update={"jobs": tuple(jobs)})

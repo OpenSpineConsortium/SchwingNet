@@ -6,7 +6,8 @@ folder still needs: nothing once it wrote FINISHED.json, its last file; the last
 row (once) and the report where it was cut after its evaluation; the evaluation where training
 wrote its checkpoint.json, training with --resume where it left train/last.pt (issue #252). A sweep's row
 names its folder with --slug, and a folder holding another run is refused and left as it was. A
-start cut while it writes its record or witness list, or before its record, is started again.
+start cut while it writes its record or witness list, or before its record, is started again,
+and a start while another start holds the folder is refused and runs nothing.
 
 The flow runs in-process against a real synthetic catalog built by the tools, with a fake `pixi`
 on PATH standing in for the trainer, the evaluator and the W&B sync: it writes the files the flow
@@ -375,6 +376,41 @@ class FlowReuseTest(unittest.TestCase):
         self.assertEqual((rc, self.said(lines)["reused"]), (0, "evaluated"), err)
         self.assertEqual(len(self.ledger_rows()), 2, "one ledger row a run")
         self.assertTrue((self.out / "row-b" / "REPORT.md").is_file() and (self.out / "row-b" / "FINISHED.json").is_file())
+
+    def test_a_start_while_another_start_holds_the_folder_is_refused_and_runs_nothing(self):
+        # The v1 driver's start and an experiment asking for version 1's training, whose --hours
+        # names no other run, meet in one folder; the second must not train beside the first.
+        import fcntl
+
+        rc, lines, _ = self.run_flow(fake={"FAKE_TRAIN": "cut"})
+        run_dir = Path(self.said(lines)["run_dir"])
+        self.log.unlink()
+
+        def refused_while_held(folder, *extra):
+            with (folder / ".lock").open("a+", encoding="utf-8") as live:
+                fcntl.flock(live, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                live.truncate(0)
+                live.write("pid 4242 on login-1, since 2026-10-25T03:00:00Z\n")
+                live.flush()
+                before = snapshot(self.out)
+                rc, lines, err = self.run_flow(*extra)
+                self.assertEqual(snapshot(self.out), before, "nothing is written while another start holds the folder")
+            self.assertEqual((rc, lines), (1, []))
+            self.assertIn(f"flow: {folder} is in progress: another start of this run holds {folder / '.lock'}"
+                          " (pid 4242 on login-1, since 2026-10-25T03:00:00Z)", err)
+            self.assertEqual(self.calls(), [])
+
+        refused_while_held(run_dir, "--hours", "6")
+        rc, lines, err = self.run_flow("--hours", "6")
+        self.assertEqual((rc, self.said(lines)["reused"]), (0, "resumed"), err)
+        # A new run's folder, held by a start that has not yet written its record.
+        args = self.flow.parse(["run", "--catalog", str(self.catalog), "--out", str(self.out), "--epochs", "2", "--size", "32", "--seed", "3"])
+        with mock.patch.object(self.flow, "tree_state", lambda: (COMMIT, True)):
+            fresh = self.out / self.flow.start_record(args)[0].run_id
+        fresh.mkdir()
+        self.log.unlink()
+        refused_while_held(fresh, "--seed", "3")
+        self.assertEqual(sorted(p.name for p in fresh.iterdir()), [".lock"])
 
     def test_a_folder_holding_another_run_is_refused_and_left_as_it_was(self):
         rc, lines, err = self.run_flow("--slug", "row-a")
