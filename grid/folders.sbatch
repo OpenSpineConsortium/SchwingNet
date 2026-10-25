@@ -16,8 +16,14 @@ export PYTHONNOUSERSITE=1
 mkdir -p logs
 rm -f logs/FOLDERS-*.md
 echo "FOLDERS start $(date '+%F %T') on $(hostname) job ${SLURM_JOB_ID:-}"
-"$PYDRV" "$REPO/tools/folder_report.py" --db "$db" --out logs/FOLDERS.md
+"$PYDRV" "$REPO/tools/folder_report.py" --db "$db" --out logs/FOLDERS.md 2> logs/FOLDERS.err
 rc=$?
-[ "$rc" != 0 ] || chmod 644 logs/FOLDERS-*.md
+if [ "$rc" != 0 ]; then
+  # A failure becomes the one page, so the next send prints why and queues no job of its own.
+  rm -f logs/FOLDERS-*.md
+  { echo "## the folder report failed (exit $rc, job ${SLURM_JOB_ID:-})"; echo; tail -n 40 logs/FOLDERS.err; } > logs/FOLDERS-1.md
+fi
+cat logs/FOLDERS.err >&2
+chmod 644 logs/FOLDERS-*.md
 echo "FOLDERS_RC=$rc $(date '+%F %T')"
 exit $rc

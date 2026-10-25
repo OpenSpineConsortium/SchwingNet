@@ -57,6 +57,17 @@ class FolderReport(unittest.TestCase):
         self.assertIn("    Real C-arm frames from CArmLSpine.", text)
         self.assertNotIn("cervical_c5_001", text)
 
+    def test_a_folder_name_that_is_not_ascii_is_escaped_not_fatal(self):
+        db = sqlite3.connect(self.db)
+        db.execute("INSERT INTO file (path, root_id, rel, role, format, size) VALUES (?, 1, ?, 'image', 'png', 7)",
+                   (str(self.tmp / "data" / "realxray" / "\u8170\u690e" / "a.png"), "\u8170\u690e/a.png"))
+        db.commit()
+        db.close()
+        out = self.tmp / "logs" / "FOLDERS.md"
+        out.parent.mkdir()
+        self.assertEqual(folder_report.main(["--db", str(self.db), "--out", str(out), "--data-root", str(self.tmp / "data")]), 0)
+        self.assertIn("| \\u8170\\u690e | 1 |", (out.parent / "FOLDERS-1.md").read_text(encoding="ascii"))
+
     def test_a_long_report_is_cut_into_pages_under_the_limit(self):
         sections = ["head\n"] + [f"## g{n}\n" + "x" * 300 + "\n" for n in range(10)]
         pages = folder_report.pages(sections, 1000)
