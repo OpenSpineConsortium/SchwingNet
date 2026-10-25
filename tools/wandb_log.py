@@ -39,13 +39,23 @@ ends with exit 0 when the server refused a run, so the mark, not the exit, says 
 a sync no server answers is given up after SYNC_SECONDS. A killed step leaves less offline than it
 logged: wandb writes a run's log out in blocks of 32 KiB and the rest when the run finishes, so a
 step Slurm kills mid-way keeps only the blocks written before the kill, and a short one nothing.
+Its log then ends with a record cut in two, which 0.30's sync reads no further than: it pushes
+what it read and marks nothing, so every later push would send those lines again, and nothing
+after them in the step's sync would go. So `sync` first cuts such a log back to its last whole
+record, keeping the bytes it cut beside it in run-<id>.wandb.cut, and leaves out a log with no
+whole record, which the sync refuses outright, saying so in wandb-sync.json and on the flow's
+line. A log a trainer still writes ends the same way, so nothing is cut back or pushed while a
+trainer holds the run's train/.lock; the evaluator holds none, so whoever pushes by hand waits for
+it to end.
 """
 
 import argparse
+import fcntl
 import json
 import os
 import re
 import stat
+import struct
 import subprocess
 import sys
 from pathlib import Path
@@ -60,6 +70,14 @@ OFFLINE_SUFFIX = "-offline"
 # of an hour, once a minute at the last, and a run makes several, while a step's run, its pictures
 # with it, is megabytes (4.1 MB for three epochs on the synthetic catalog).
 SYNC_SECONDS = 600
+# wandb's offline log, run-<id>.wandb, as 0.30 writes it: a header of 7 bytes, then its records
+# framed as LevelDB frames them, in blocks of 32 KiB, each record in pieces with a head of 7 bytes
+# of their own (checksum, length, kind): one whole piece, or a first, middles and a last where the
+# record does not fit what is left of its block.
+LOG_HEADER = b":W&B\xe1\xbe\x00"
+LOG_BLOCK = 32768
+PIECE_HEAD = 7
+WHOLE, FIRST, MIDDLE, LAST = 1, 2, 3, 4
 
 
 def enabled():
@@ -215,6 +233,76 @@ def offline_runs(run_dir):
     return sorted(p for p in (Path(run_dir) / "wandb" / "wandb").glob("offline-run-*") if not pushed(p))
 
 
+def whole_records(data):
+    """An offline log read by its framing alone: where its last whole record ends, how many whole
+    records it holds, and whether a record cut short follows them, as a kill leaves one; None for
+    a log of another shape, which is left to wandb as it is."""
+    if not data.startswith(LOG_HEADER):
+        return None
+    at = end = len(LOG_HEADER)
+    records, open_record = 0, False
+    while at < len(data):
+        room = LOG_BLOCK - at % LOG_BLOCK
+        if room < PIECE_HEAD:
+            at += room  # too little of the block is left for a piece's head: padding
+            continue
+        if at + PIECE_HEAD > len(data):
+            return end, records, True
+        _, length, kind = struct.unpack_from("<IHB", data, at)
+        if kind not in (WHOLE, FIRST, MIDDLE, LAST) or PIECE_HEAD + length > room or (kind in (WHOLE, FIRST)) == open_record:
+            return None
+        if at + PIECE_HEAD + length > len(data):
+            return end, records, True
+        at += PIECE_HEAD + length
+        open_record = kind in (FIRST, MIDDLE)
+        records, end = (records, end) if open_record else (records + 1, at)
+    return end, records, open_record
+
+
+def cut_back(log):
+    """Whether an offline log holds a whole record to push. A log a kill left with a record cut
+    short is first cut back to its last whole record, the bytes cut off kept beside it in <log>.cut:
+    0.30's sync reads such a log as far as that record, pushes what it read and marks nothing, so
+    every push would send it again and nothing after it in its step's sync would go."""
+    data = log.read_bytes()
+    read = whole_records(data)
+    if read is None:
+        return True
+    end, records, cut = read
+    if cut and records:
+        with log.with_name(log.name + ".cut").open("ab") as kept:
+            kept.write(data[end:])
+        with log.open("r+b") as handle:
+            handle.truncate(end)
+    return records > 0
+
+
+def ready(runs):
+    """The offline runs to push, each cut back where a kill left a record cut short (cut_back), and
+    apart from them the empty ones: a log with no whole record, which 0.30's sync refuses, stopping
+    there, or no log at all, as a step killed while wandb started leaves."""
+    to_push, empty = [], []
+    for folder in runs:
+        logs = sorted(Path(folder).glob("run-*.wandb"))
+        (to_push if logs and cut_back(logs[0]) else empty).append(folder)
+    return to_push, empty
+
+
+def trainer_running(run_dir):
+    """Whether a trainer holds the run's train/.lock, as tools/train.py does to its end; a lock that
+    cannot be read counts as held. A log a trainer still writes ends with a record cut short, as a
+    killed one does, so the push waits for it."""
+    path = Path(run_dir) / "train" / ".lock"
+    if not path.is_file():
+        return False
+    try:
+        with path.open("rb") as handle:
+            fcntl.flock(handle, fcntl.LOCK_SH | fcntl.LOCK_NB)
+    except OSError:
+        return True
+    return False
+
+
 def step_of(folder):
     """The W&B id of the step an offline run is of: the id its log is named by (run-<id>.wandb),
     less the suffix an online start's offline fall-back takes; None for a folder with no log."""
@@ -291,7 +379,12 @@ def sync(run_dir):
         outcome["why"] = "no W&B run in this run directory"
     elif where == "none":
         outcome["why"] = "no W&B key: not in WANDB_API_KEY, ~/.wandb/token.env or ~/.netrc"
+    elif trainer_running(run_dir):
+        outcome["why"] = "a trainer still holds train/.lock, so its offline log is still being written; it is pushed once the trainer ends"
     else:
+        runs, empty = ready(runs)
+        if empty:
+            outcome["empty_runs"] = [p.name for p in empty]
         env = dict(os.environ, **(token_file_env() if where == "file" else {}))
         printed, why = push(runs, env, run_dir)
         outcome["synced"] = why is None
@@ -304,9 +397,12 @@ def sync(run_dir):
 
 def verdict(outcome):
     """The one line the flow prints last and writes into the ledger."""
+    empty = len(outcome.get("empty_runs", []))
+    runs = "1 offline run" if empty == 1 else f"{empty} offline runs"
+    note = f"; {runs} held nothing to push (killed before wandb wrote a block)" if empty else ""
     if outcome["synced"]:
-        return "W&B: pushed " + (", ".join(outcome.get("urls", [])) or "(no link printed)")
-    return f"W&B NOT PUSHED: {outcome.get('why', 'unknown')}; offline files kept in wandb/"
+        return "W&B: pushed " + (", ".join(outcome.get("urls", [])) or "(no link printed)") + note
+    return f"W&B NOT PUSHED: {outcome.get('why', 'unknown')}; offline files kept in wandb/{note}"
 
 
 def main(argv=None):

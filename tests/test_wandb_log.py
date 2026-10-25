@@ -14,18 +14,24 @@ id and land as one W&B run, in the order they started whatever their folders are
 W&B marked pushed when its step was cut is not sent again, and the next half follows it; a push
 the server refused, which 0.30's sync still ends with exit 0, is said not pushed; a push no
 server answers, which 0.30's sync goes on trying for more than 25 minutes, is given up after the
-module's bound; and a push leaves nothing in the directory it was started from, the checkout for
-tools/flow.py, though wandb sync writes logs of its own where it runs.
+module's bound; a push leaves nothing in the directory it was started from, the checkout for
+tools/flow.py, though wandb sync writes logs of its own where it runs; a half killed mid-record,
+as Slurm kills a step, which 0.30's sync pushes as far as its last whole record, stopping there
+and marking nothing, is pushed once, cut back to that record with the bytes cut kept beside it,
+and the half after it follows; a half killed before wandb wrote a block, which the sync refuses,
+is left out and said; and while a trainer holds the run's train/.lock nothing is touched.
 
 The tests need wandb, which the train and telemetry environments hold, and skip under the
 required check's plain python3.
 """
 
 import contextlib
+import fcntl
 import importlib.util
 import json
 import os
 import shutil
+import signal
 import socket
 import subprocess
 import sys
@@ -41,18 +47,25 @@ ROOT = Path(__file__).resolve().parent.parent
 MISSING = [name for name in ("wandb",) if importlib.util.find_spec(name) is None]
 # A placeholder of the length wandb asks of a key, for the stand-in, which takes any.
 PLACEHOLDER = "x" * 40
-# One offline half of a step, as Telemetry writes one: run as a process of its own, so this one
-# never holds a W&B service.
+# One offline half of a step, as Telemetry writes one, finished, or killed before it finishes as
+# Slurm kills a step: run as a process of its own, so this one never holds a W&B service. A half to
+# be killed logs long lines, so the kill cuts a record in two, as it does a trainer's.
 HALF = """\
+import os
+import signal
 import sys
 import wandb
-folder, run_id, first, last = sys.argv[1], sys.argv[2], int(sys.argv[3]), int(sys.argv[4])
+folder, run_id, first, last, end = sys.argv[1], sys.argv[2], int(sys.argv[3]), int(sys.argv[4]), sys.argv[5]
 run = wandb.init(mode="offline", id=run_id, dir=folder, project="SchwingNet", group="run0", job_type="train",
                  settings=wandb.Settings(silent=True, console="off"))
 for step in range(first, last + 1):
-    run.log({"loss": 1.0 / (step + 1)}, step=step)
+    run.log({"loss": 1.0 / (step + 1), **({"note": "x" * 20000} if end == "kill" else {})}, step=step)
+if end == "kill":
+    os.kill(os.getpid(), signal.SIGKILL)
 run.finish()
 """
+# wandb's offline log is written out in blocks of this many bytes.
+BLOCK = 32768
 
 
 def load():
@@ -183,13 +196,14 @@ class PushTest(unittest.TestCase):
             patch.start()
             self.addCleanup(patch.stop)
 
-    def half(self, run_id, first, last):
+    def half(self, run_id, first, last, end="finish"):
         """One offline half of a step, written by the installed wandb under run/wandb as Telemetry
-        writes it; its folder."""
+        writes it, and finished or killed; its folder. Its wandb-core holds the output's pipes, so
+        the half is over once it too has ended."""
         before = set(self.folders())
-        done = subprocess.run([sys.executable, "-c", HALF, str(self.run_dir / "wandb"), run_id, str(first), str(last)],
+        done = subprocess.run([sys.executable, "-c", HALF, str(self.run_dir / "wandb"), run_id, str(first), str(last), end],
                               env=environment(self.tmp / "home"), capture_output=True, text=True, timeout=180, check=False)
-        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(done.returncode, -signal.SIGKILL if end == "kill" else 0, done.stdout + done.stderr)
         (made,) = set(self.folders()) - before
         return made
 
@@ -275,6 +289,61 @@ class PushTest(unittest.TestCase):
         self.assertTrue(outcome["synced"], outcome)
         self.assertEqual(self.server.steps("run0-train"), [0, 1, 2])
         self.assertEqual(sorted(path.name for path in checkout.rglob("*")), [])
+
+    def test_a_half_killed_mid_record_is_pushed_once_and_the_half_after_it_follows(self):
+        """The kill leaves the half's log at the last block wandb wrote out, its last record cut in
+        two; cut back to its last whole record, it goes whole, the half after it follows in the
+        same sync, and the next push sends nothing again."""
+        cut = self.half("run0-train", 0, 9, end="kill")
+        (log,) = cut.glob("run-*.wandb")
+        left = log.read_bytes()
+        self.assertEqual(len(left) % BLOCK, 0, "the kill leaves a log at the end of a block")
+        self.half("run0-train", 10, 12)
+        outcome, calls = self.push()
+        self.assertTrue(outcome["synced"], outcome)
+        self.assertEqual(len(calls), 1, calls)
+        steps = self.server.steps("run0-train")
+        self.assertEqual((steps[:1], steps[-3:]), ([0], [10, 11, 12]))
+        self.assertEqual(steps, sorted(set(steps)), "in order, and none twice")
+        kept = log.with_name(log.name + ".cut")
+        self.assertTrue(kept.is_file() and kept.stat().st_size, "the bytes cut off are kept")
+        self.assertEqual(log.read_bytes() + kept.read_bytes(), left)
+        written = self.server.lines_written("run0-train")
+        outcome, calls = self.push()
+        self.assertTrue(outcome["synced"], outcome)
+        self.assertEqual((calls, self.server.lines_written("run0-train")), ([], written))
+
+    def test_a_half_killed_before_wandb_wrote_a_block_is_left_out_and_said(self):
+        """Killed before 32 KiB of it was written out, a half's log is wandb's header alone, which
+        wandb's sync refuses, stopping there: the push leaves it out as it is, says so, and pushes
+        the half after it."""
+        empty = self.half("run0-train", 0, -1, end="kill")
+        (log,) = empty.glob("run-*.wandb")
+        self.assertEqual(log.stat().st_size, 7, "wandb's header alone")
+        self.half("run0-train", 3, 5)
+        outcome, _ = self.push()
+        self.assertTrue(outcome["synced"], outcome)
+        self.assertEqual(outcome.get("empty_runs"), [empty.name])
+        self.assertIn("held nothing to push", self.tool.verdict(outcome))
+        self.assertEqual(self.server.steps("run0-train"), [3, 4, 5])
+        self.assertEqual((log.stat().st_size, sorted(empty.glob("*.cut")), sorted(empty.glob("*.synced"))), (7, [], []), "left as it was")
+
+    def test_while_a_trainer_holds_its_lock_the_push_touches_nothing_and_says_why(self):
+        """A log a trainer still writes ends mid-record as a killed one does, so while a trainer
+        holds the run's train/.lock, as tools/train.py does to its end, the push waits for it."""
+        cut = self.half("run0-train", 0, 9, end="kill")
+        (log,) = cut.glob("run-*.wandb")
+        left = log.read_bytes()
+        lock = self.run_dir / "train" / ".lock"
+        lock.parent.mkdir()
+        with lock.open("a+", encoding="utf-8") as handle:
+            fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            outcome, calls = self.push()
+        self.assertFalse(outcome["synced"], outcome)
+        self.assertIn("train/.lock", outcome["why"])
+        self.assertEqual((calls, log.read_bytes(), self.server.history), ([], left, {}))
+        outcome, _ = self.push()
+        self.assertTrue(outcome["synced"], outcome)
 
     def test_a_push_the_server_refuses_is_said_not_pushed_though_wandb_sync_ends_with_0(self):
         self.server.refusing = True
