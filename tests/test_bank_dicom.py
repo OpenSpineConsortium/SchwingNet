@@ -17,9 +17,11 @@ import unittest
 try:
     import numpy
     import pydicom
-    from PIL import Image
+    from PIL import Image, ImageCms
     from pydicom.dataset import FileDataset, FileMetaDataset
-    from pydicom.uid import ExplicitVRLittleEndian, generate_uid
+    from pydicom.encaps import encapsulate
+    from pydicom.uid import (JPEG2000, ExplicitVRLittleEndian, JPEG2000Lossless, JPEGBaseline8Bit, RLELossless,
+                             generate_uid)
 except ImportError:
     pydicom = None
 
@@ -50,6 +52,49 @@ def dicom(patient, study, view, seed, photometric="MONOCHROME2", **tags):
         setattr(data, name, value)
     grid = (numpy.arange(24 * 32).reshape(24, 32) * (seed + 3)) % 4096
     data.PixelData = grid.astype(numpy.uint16).tobytes()
+    out = io.BytesIO()
+    data.save_as(out, enforce_file_format=True)
+    return out.getvalue()
+
+
+def film(rows=384, columns=320, seed=0):
+    """A 12-bit film as the second review of #252 drew one to measure the bank's budget: a body,
+    six vertebra-like blobs and some noise, small enough to bank in a test."""
+    rng = numpy.random.default_rng(seed)
+    y, x = numpy.mgrid[0:rows, 0:columns]
+    base = 1200 + 1400 * numpy.exp(-((x - columns / 2) / (columns / 5)) ** 2)
+    for k in range(6):
+        base += 600 * numpy.exp(-(((x - columns / 2) / (columns / 10)) ** 2 + ((y - rows * (k + 1) / 7) / (rows / 22)) ** 2))
+    return numpy.clip(base + rng.normal(0, 15, base.shape), 0, 4095).astype(numpy.uint16)
+
+
+def shipped_as(pixels, syntax, **options):
+    """The film as a publisher may ship it: one DICOM file in a transfer syntax pydicom writes."""
+    data = pydicom.dcmread(io.BytesIO(dicom("P1", "1.2.11.1", "AP", 1)))
+    data.Rows, data.Columns = pixels.shape
+    data.PixelData = pixels.astype(numpy.uint16).tobytes()
+    if syntax != ExplicitVRLittleEndian:
+        data.compress(syntax, **options)
+    out = io.BytesIO()
+    data.save_as(out, enforce_file_format=True)
+    return out.getvalue()
+
+
+def jpeg_of(grey, quality, **options):
+    out = io.BytesIO()
+    Image.fromarray(grey, mode="L").save(out, format="JPEG", quality=quality, **options)
+    return out.getvalue()
+
+
+def shipped_as_jpeg(grey, quality):
+    """The 8-bit film as a JPEG baseline DICOM file, which pydicom reads and does not write."""
+    data = pydicom.dcmread(io.BytesIO(dicom("P1", "1.2.11.1", "AP", 1)))
+    data.file_meta.TransferSyntaxUID = JPEGBaseline8Bit
+    data.Rows, data.Columns = grey.shape
+    data.BitsAllocated, data.BitsStored, data.HighBit = 8, 8, 7
+    data.PixelData = encapsulate([jpeg_of(grey, quality)])
+    data["PixelData"].VR = "OB"
+    data["PixelData"].is_undefined_length = True
     out = io.BytesIO()
     data.save_as(out, enforce_file_format=True)
     return out.getvalue()
@@ -91,6 +136,11 @@ def digests(folder):
     raw files' times, which two raw copies never share (#260)."""
     return {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in Path(folder).rglob("*")
             if p.is_file() and p.name != "BANK.json"}
+
+
+def banked_bytes(bank):
+    """What a bank's frames take, which its shard copies once more (tools/ingest.py)."""
+    return sum(p.stat().st_size for p in (Path(bank) / "images").rglob("*.png"))
 
 
 @unittest.skipIf(pydicom is None, "pydicom, numpy and Pillow are the train environment's")
@@ -204,6 +254,68 @@ class DicomBankTest(unittest.TestCase):
         metas = [json.loads(p.read_text(encoding="utf-8")) for p in sorted((self.tmp / "bank" / "meta").glob("*.json"))]
         self.assertEqual([m["case"] for m in metas], ["001", "001", "002"])
         self.assertEqual([m["view"]["lat_from_ap_deg"] for m in metas], [0.0, None, 90.0])
+        # the bound reads the members' headers inside their zips as the bank reads their frames
+        bound = counts_of(self.tool, path, "--bound")
+        self.assertEqual(bound["frames"], 3)
+        self.assertGreaterEqual(bound["most_bytes"], 2 * banked_bytes(self.tmp / "bank"))
+
+    def test_the_bound_holds_for_every_transfer_syntax_and_above_what_a_lossy_film_writes(self):
+        # The bank word budgets a DICOM set at twice the raw copy's bytes, which an uncompressed or a
+        # lossless film keeps under; a lossy one does not, since its file holds fewer bytes than its
+        # pixels take as PNG (the second review of #252). The bound the bank job is admitted for
+        # reads the rows and columns from each header alone and holds whatever the syntax.
+        pixels = film()
+        grey = self.tool.window_8bit(numpy, pixels.astype(numpy.float64))
+        shipped = {"uncompressed": shipped_as(pixels, ExplicitVRLittleEndian), "rle": shipped_as(pixels, RLELossless),
+                   "j2k_lossless": shipped_as(pixels, JPEG2000Lossless), "j2k_lossy": shipped_as(pixels, JPEG2000, j2k_cr=[10]),
+                   "jpeg_q90": shipped_as_jpeg(grey, 90)}
+        raw = self.tmp / "raw" / "train_images"
+        raw.mkdir(parents=True)
+        for name, data in shipped.items():
+            (raw / f"{name}.dicom").write_bytes(data)
+        path = recipe(self.tmp)
+        bound = counts_of(self.tool, path, "--bound")
+        self.assertEqual(bound["frames"], 5)
+        self.assertFalse((self.tmp / "bank").exists(), "the bound writes nothing")
+        counts_of(self.tool, path, "--run")
+        for name, data in shipped.items():
+            written = (self.tmp / "bank" / "images" / "train" / f"train_images_{name}.png").stat().st_size
+            at_most = self.tool.frame_at_most((str(self.tmp / "raw"), f"train_images/{name}.dicom", "dcm"))
+            self.assertLessEqual(written, at_most, name)
+            if name in ("j2k_lossy", "jpeg_q90"):
+                # so a set of such films takes more than twice its raw copy in the bank and its shard
+                self.assertGreater(written, len(data), f"{name}: a lossy film writes more than its file")
+        self.assertGreaterEqual(bound["most_bytes"], 2 * banked_bytes(self.tmp / "bank"))
+
+    def test_the_bound_holds_for_each_format_pillow_reads_and_above_a_low_quality_jpeg(self):
+        # JPEG, TIFF, BMP and a PNG of more than 8 bits are written as Pillow's 8-bit grey PNG, which
+        # carries over the ICC profile the file holds; a JPEG below quality 95 can take more than
+        # three times its bytes as PNG, beyond the six times the raw copy the word budgets for it
+        # and its shard (the second review of #252).
+        pixels = film()
+        grey = self.tool.window_8bit(numpy, pixels.astype(numpy.float64))
+        profile = ImageCms.ImageCmsProfile(ImageCms.createProfile("sRGB")).tobytes()
+        colour = io.BytesIO()
+        Image.fromarray(numpy.stack([grey] * 3, axis=-1), mode="RGB").save(colour, format="JPEG", quality=60,
+                                                                          icc_profile=profile)
+        wide = {}
+        for image_format in ("png", "tiff"):
+            out = io.BytesIO()
+            Image.fromarray(pixels).save(out, format=image_format.upper())
+            wide[image_format] = out.getvalue()
+        bitmap = io.BytesIO()
+        Image.fromarray(grey, mode="L").save(bitmap, format="BMP")
+        frames = {"q50.jpg": jpeg_of(grey, 50), "q75.jpg": jpeg_of(grey, 75), "q95.jpg": jpeg_of(grey, 95),
+                  "colour.jpg": colour.getvalue(), "wide.png": wide["png"], "wide.tiff": wide["tiff"],
+                  "grey.bmp": bitmap.getvalue()}
+        for name, data in frames.items():
+            (self.tmp / name).write_bytes(data)
+            written, _, _ = self.tool.as_png(data, name.rsplit(".", 1)[1])
+            self.assertLessEqual(len(written), self.tool.frame_at_most((str(self.tmp), name, name.rsplit(".", 1)[1])), name)
+        written, _, _ = self.tool.as_png(frames["q75.jpg"], "jpg")
+        self.assertGreater(2 * len(written), 6 * len(frames["q75.jpg"]))
+        with Image.open(io.BytesIO(self.tool.as_png(frames["colour.jpg"], "jpg")[0])) as carried:
+            self.assertEqual(carried.info.get("icc_profile"), profile)
 
 
 if __name__ == "__main__":

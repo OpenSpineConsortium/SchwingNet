@@ -1963,7 +1963,7 @@ esac
         self.ceph_fake(raw_bytes=5000 * 10**9)
         done = self.gate_with_ceph("bank", "vindr_spinexr")
         self.assertEqual(done.returncode, 75, done.stdout)
-        self.assertIn("raw copy: 5000 GB of dcm, which bank.py windows to an 8-bit PNG; the bank and its shard: at most 10000 GB", done.stdout)
+        self.assertIn("raw copy: 5000 GB of dcm, which bank.py windows to an 8-bit PNG; the bank and its shard: 10000 GB held", done.stdout)
         self.assertIn("room: 8844 GB free under its quota after 0 GB owed to 0 running fetches", done.stdout)
         self.assertIn("refusing: the bank and its shard need 10000 GB and the room is 8844 GB", done.stdout)
         self.assertEqual(self.submitted(), [])
@@ -1976,7 +1976,7 @@ esac
         self.ceph_fake(raw_bytes=100 * 10**9)
         done = self.gate_with_ceph("bank", "vindr_spinexr")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
-        self.assertIn("raw copy: 100 GB of dcm, which bank.py windows to an 8-bit PNG; the bank and its shard: at most 200 GB", done.stdout)
+        self.assertIn("raw copy: 100 GB of dcm, which bank.py windows to an 8-bit PNG; the bank and its shard: 200 GB held", done.stdout)
         jobs = self.recorded()
         lines = self.submitted()
         self.assertEqual([line.split(" | ")[0].split()[-1] for line in lines],
@@ -2098,9 +2098,11 @@ esac
         self.assertEqual(len(self.submitted()), 2)
 
     def test_bank_budgets_by_the_format_the_recipe_names(self):
-        # tools/bank.py copies a PNG and windows a DICOM to an 8-bit PNG, at most the raw copy's size,
-        # but turns JPEG, TIFF and BMP into PNG, which a q95 JPEG radiograph grows 1.8 to 2.5 times
-        # into; its shard then copies the bank once more (finding 24)
+        # tools/bank.py copies a PNG and windows an uncompressed or lossless DICOM to an 8-bit PNG
+        # under the raw copy's size, but turns JPEG, TIFF and BMP into PNG, which a q95 JPEG radiograph
+        # grows 1.8 to 2.5 times into; its shard then copies the bank once more (finding 24). The word
+        # holds this while the job waits; a lossy file's frames outgrow it, which the job's pixel bound
+        # catches (test_the_bank_job_admits_what_the_frames_pixels_need_where_the_words_budget_is_less)
         self.environments_ready()
         recipe = (GRID / "banks" / "nih_chestxray14.json").read_text(encoding="utf-8")
         for name, image_format in (("a_jpg_set", "jpg"), ("a_tiff_set", "tiff"), ("a_webp_set", "webp")):
@@ -2112,13 +2114,13 @@ esac
         self.ceph_fake(raw_bytes=1500 * 10**9)
         done = self.gate_with_ceph("bank", "a_jpg_set")
         self.assertEqual(done.returncode, 75, done.stdout)
-        self.assertIn("raw copy: 1500 GB of jpg, which bank.py turns into PNG; the bank and its shard: at most 9000 GB", done.stdout)
+        self.assertIn("raw copy: 1500 GB of jpg, which bank.py turns into PNG; the bank and its shard: 9000 GB held", done.stdout)
         self.assertIn("refusing: the bank and its shard need 9000 GB and the room is 8844 GB", done.stdout)
         self.assertEqual(self.submitted(), [])
         self.ceph_fake(raw_bytes=1000 * 10**9)
         done = self.gate_with_ceph("bank", "a_tiff_set")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
-        self.assertIn("the bank and its shard: at most 6000 GB", done.stdout)
+        self.assertIn("the bank and its shard: 6000 GB held", done.stdout)
         self.assertIn(f" BANK_NEED={6000 * 10**9}", self.line_of("02-bank-ingest.sbatch")[0])
         # a format bank.py takes in no recipe here is never budgeted by a guess
         self.live()
@@ -2132,7 +2134,7 @@ esac
         self.live()
         done = self.gate_with_ceph("bank", "nih_chestxray14")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
-        self.assertIn("raw copy: 1000 GB of png, which bank.py copies; the bank and its shard: at most 2000 GB", done.stdout)
+        self.assertIn("raw copy: 1000 GB of png, which bank.py copies; the bank and its shard: 2000 GB held", done.stdout)
 
     def test_bank_and_unpack_of_one_set_never_run_side_by_side(self):
         # both hold their room through the set's one admission file, and a bank of a raw folder still
@@ -2155,9 +2157,11 @@ esac
 
     def bank_job(self, **extra):
         """grid/02-bank-ingest.sbatch as Slurm starts the bank word's job: its admission checked under
-        the size rule before the launcher, which a fake python stands in for, is handed the job."""
+        the size rule before the launcher, which a fake python stands in for, is handed the job; the
+        job's other python, tools/bank.py's bound among it, runs on python3."""
         pydrv = self.fake / "pydrv"
-        pydrv.write_text('#!/bin/bash\ncase "$1" in */flows/launch.py) printf \'%s\\n\' "$@" > "$FAKE/launched" ;; esac\n', encoding="utf-8")
+        pydrv.write_text('#!/bin/bash\ncase "$1" in */flows/launch.py) printf \'%s\\n\' "$@" > "$FAKE/launched" ;; *) exec python3 "$@" ;; esac\n',
+                         encoding="utf-8")
         pydrv.chmod(0o755)
         (self.fake / "launched").unlink(missing_ok=True)
         env = dict(self.gate_env(), GETFATTR=str(self.fake / "getfattr"), PYDRV=str(pydrv), SLURM_JOB_ID="4242", ONLY="vindr_spinexr",
@@ -2205,6 +2209,60 @@ esac
             done, launched = self.bank_job(**extra)
             self.assertEqual(done.returncode, 4, f"{extra}: {done.stdout}")
             self.assertIsNone(launched)
+
+    def test_the_bank_job_admits_what_the_frames_pixels_need_where_the_words_budget_is_less(self):
+        # The word budgets the bank and its shard by a multiple of the raw copy's bytes, which a
+        # lossy file holds fewer of than its frame takes as PNG (the second review of #252); the job
+        # bounds them by the frames, read from their headers by tools/bank.py, before it writes, and
+        # takes the larger admission under the size lock. Three 8-bit PNG frames of 40000 bytes,
+        # which the bank copies and its shard copies again, need 240000 bytes, more than a budget
+        # of 1000 bytes stands for.
+        shutil.copy(ROOT / "tools" / "bank.py", self.repo / "tools" / "bank.py")
+        self.ceph_fake(raw_bytes=120000)
+        images = self.data / "nih_chestxray14" / "raw" / "images_001" / "images"
+        images.mkdir(parents=True)
+        header = b"\x89PNG\r\n\x1a\n" + b"\0\0\0\x0dIHDR" + (64).to_bytes(4, "big") * 2 + b"\x08\0\0\0\0"
+        for name in ("00000001_000", "00000001_001", "00000002_000"):
+            (images / f"{name}.png").write_bytes(header + b"\0" * (40000 - len(header)))
+        size = self.data / "nih_chestxray14" / "meta" / "SIZE"
+        size.parent.mkdir(parents=True)
+
+        def admitted_for(need):
+            size.write_text(f"admitted 4242 {need} 2600000000000 2026-10-25T00:00:00Z {need}\n", encoding="utf-8")
+            return self.bank_job(ONLY="nih_chestxray14", BANK_NEED=str(need))
+
+        # a fetch admitted while the job waited leaves 200000 bytes of room: the budget fits, the frames do not
+        other = self.data / "other_set" / "meta"
+        other.mkdir(parents=True)
+        (other / "SIZE").write_text("admitted 555 8844232355520 2600000000000 2026-10-25T00:00:00Z 8844232355520\n",
+                                    encoding="utf-8")
+        self.live(555, 4242)
+        done, launched = admitted_for(1000)
+        self.assertEqual(done.returncode, 4, done.stdout + done.stderr)
+        self.assertIn("nih_chestxray14: refused for space; it needs 1 gb of its 1 gb by the pixels of the bank and its shard", done.stdout)
+        self.assertIsNone(launched, "nothing was banked")
+        self.assertEqual((self.data / "nih_chestxray14" / "meta" / "REFUSED").read_text(encoding="utf-8").split()[:3],
+                         ["4242", "240000", "200000"])
+        self.assertTrue(size.read_text(encoding="utf-8").startswith("settled 4242 1000 "))
+        # with the room there, the job holds the frames' need, not the budget, while it writes
+        self.live(4242)
+        done, launched = admitted_for(1000)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIsNotNone(launched)
+        self.assertTrue(size.read_text(encoding="utf-8").startswith("admitted 4242 240000 2600000000000 "))
+        # a budget above what the frames take stands as it did
+        done, launched = admitted_for(500000)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("by the bank and its shard and", done.stdout)
+        self.assertTrue(size.read_text(encoding="utf-8").startswith("admitted 4242 500000 2600000000000 "))
+        # a frame whose header the bound cannot read admits nothing, whatever the budget
+        (images / "00000003_000.png").write_bytes(b"not a png")
+        done, launched = admitted_for(500000)
+        self.assertEqual(done.returncode, 4, done.stdout + done.stderr)
+        self.assertIn("nih_chestxray14: refused; the bank tool could not bound the frames by their pixels", done.stdout)
+        self.assertIn("00000003_000.png: not a PNG", done.stderr)
+        self.assertIsNone(launched)
+        self.assertTrue(size.read_text(encoding="utf-8").startswith("settled 4242 500000 "))
 
     def progress(self, plan, folder, lines, age=0):
         state = self.smoke / plan / folder

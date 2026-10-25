@@ -72,7 +72,7 @@
 #                   copy is there, no job still lands the folder under the data root that holds it,
 #                   and the room under the quota takes what they may write by the recipe's format,
 #                   which the bank holds as the size rule's admission while it is live and checks
-#                   again when it starts
+#                   again when it starts, then for the larger of that and its frames' pixel bound
 #   experiment <n>  one requested combination of data and blocks, issue #<n> labelled experiment: the
 #                   request the experiment workflow recorded as <n>.request on the branch experiments,
 #                   fetched now and checked line by line, run as one GPU job (experiment-driver.sbatch)
@@ -1199,17 +1199,23 @@ landing_of() {  # landing_of RAW: the folder under the data root that holds RAW,
 recipe_format() {  # recipe_format FILE: the image format a recipe of grid/banks/ names
   sed -n 's/^ *"format": *"\([^"]*\)".*/\1/p' "$1" | head -n 1
 }
-bank_factor() {  # bank_factor FORMAT: "<times> <words>", how many times the raw copy the bank and its shard may write and why; status 1 where no budget is known
-  # tools/bank.py copies a PNG byte for byte, and decodes a DICOM frame and writes it as an 8-bit
-  # PNG, which the container's measurement found smaller than the frame (202 MB of DICOM became
-  # 104 MB of PNG, grid/README.md), so the bank is at most the raw copy and its shard, which copies
-  # every frame of the bank once more (tools/ingest.py), as much again: twice the raw copy. It
-  # re-encodes JPEG, TIFF and BMP as lossless PNG, which grows a radiograph: the review of #252
-  # measured a q95 JPEG of a 2500 x 3000 8-bit film at 1.77 to 2.53 times its size as PNG through
-  # bank.py's own path, the more the less noise there is, so three times the raw copy for the bank,
-  # above the largest measured, and three again for its shard. TIFF and BMP are not measured and
-  # may hold JPEG-compressed data, so they take JPEG's budget; an uncompressed one is budgeted more
-  # than it writes, which can refuse a bank that would fit and never admits one that overflows.
+bank_factor() {  # bank_factor FORMAT: "<times> <words>", how many times the raw copy the bank and its shard are held for while the job waits, and why; status 1 where no budget is known
+  # tools/bank.py copies a PNG byte for byte, and its shard, which copies every frame of the bank
+  # once more (tools/ingest.py), as much again: twice the raw copy. It decodes a DICOM frame and
+  # writes it as an 8-bit PNG, which an uncompressed or losslessly compressed film keeps under its
+  # file (202 MB of uncompressed DICOM became 104 MB of PNG, grid/README.md; RLE and lossless JPEG
+  # 2000 films at 0.31 to 0.64 of their files, the second review of #252), so twice the raw copy
+  # too. A lossy film, JPEG or lossy JPEG 2000, takes about two to four times its file as PNG, and
+  # bank.py re-encodes JPEG, TIFF and BMP as lossless PNG, which grows a radiograph: the review of
+  # #252 measured a q95 JPEG of a 2500 x 3000 8-bit film at 1.77 to 2.53 times its size as PNG
+  # through bank.py's own path, so three times the raw copy for the bank and three again for its
+  # shard, while a lower quality grows more, to 5.5 times at q75 (the second review). No figure read
+  # from the bytes on the login node sees that, so these hold the room while the job waits, and the
+  # job, where python runs, bounds the bank and its shard by their frames' pixels before it writes
+  # and is admitted for the larger (grid/02-bank-ingest.sbatch, tools/bank.py --bound). TIFF and BMP
+  # are not measured and may hold JPEG-compressed data, so they take JPEG's budget; an uncompressed
+  # one is budgeted more than it writes, which can refuse a bank that would fit and never admits
+  # one that overflows.
   case "$1" in
     png) echo "2 which bank.py copies" ;;
     dcm) echo "2 which bank.py windows to an 8-bit PNG" ;;
@@ -1301,7 +1307,7 @@ word_bank() {
   [ "$bytes" -le $(( 999999999999999999 / factor )) ] \
     || { echo "refusing: $factor times what $id's raw copy holds is more than the size rule counts; nothing was queued"; return 2; }
   need=$(( factor * bytes ))
-  echo "  raw copy: $(gb_up "$bytes") GB of $format, $why; the bank and its shard: at most $(gb_up "$need") GB"
+  echo "  raw copy: $(gb_up "$bytes") GB of $format, $why; the bank and its shard: $(gb_up "$need") GB held, and the job asks for more before it writes where their frames' pixels need it"
   # One decision at a time with the fetch and unpack jobs' own and the fetch word's chain, from the
   # room's reading to the record of this bank's admission (grid/size-rule.sh, admit_fetch).
   exec 8> "$DATA/.size-rule.lock" || { echo "refusing: the size rule's lock on the data root could not be opened; nothing was queued"; return 2; }
