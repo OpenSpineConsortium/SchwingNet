@@ -33,6 +33,7 @@ from unittest import mock
 # By the module, not its classes, so this file runs none of that file's tests; imported now, since
 # loading tools/train.py takes this folder's parent off the path.
 import tests.test_train_blocks as blocks_tests
+import tests.test_wandb_log as wandb_tests
 
 ROOT = Path(__file__).resolve().parent.parent
 NEEDED = ("torch", "PIL", "numpy", "beartype", "icontract", "pydantic")
@@ -547,7 +548,8 @@ class FakeWandb(types.ModuleType):
 
 
 class TelemetryResumeTest(unittest.TestCase):
-    """A resumed step's W&B run goes on under its id: resume="allow" on whichever start it makes."""
+    """A resumed step's W&B run goes on under its id: online by resume="allow", which only the
+    online start asks for, since offline W&B resumes nothing; offline the push joins the halves."""
 
     record = {"run_id": "telemetry000", "code_commit": "0" * 40, "catalog_sha256": "0" * 64, "catalog_version": 1, "clean_tree": True}
 
@@ -561,18 +563,48 @@ class TelemetryResumeTest(unittest.TestCase):
             self.assertIsNotNone(telemetry.run)
         return fake.starts
 
-    def test_a_resumed_step_starts_online_and_offline_with_resume_allow(self):
+    def test_a_resumed_step_asks_its_online_start_to_resume_and_never_its_offline_one(self):
         online = self.starts("env", fail_online=False, resume=True)
         self.assertEqual([(s["mode"], s["id"], s["resume"]) for s in online], [("online", "telemetry000-train", "allow")])
         fallen = self.starts("env", fail_online=True, resume=True)
-        self.assertEqual([(s["mode"], s.get("resume")) for s in fallen], [("online", "allow"), ("offline", "allow")])
+        self.assertEqual([(s["mode"], s["id"], s.get("resume")) for s in fallen],
+                         [("online", "telemetry000-train", "allow"), ("offline", "telemetry000-train-offline", None)])
         offline = self.starts("none", fail_online=False, resume=True)
-        self.assertEqual([(s["mode"], s["id"], s["resume"]) for s in offline], [("offline", "telemetry000-train", "allow")])
+        self.assertEqual([(s["mode"], s["id"], s.get("resume")) for s in offline], [("offline", "telemetry000-train", None)])
 
     def test_a_fresh_step_passes_no_resume(self):
         for key, fail in (("env", False), ("env", True), ("none", False)):
             with self.subTest(key=key, fail=fail):
                 self.assertTrue(all("resume" not in s for s in self.starts(key, fail, resume=False)))
+
+    @unittest.skipIf(wandb_tests.MISSING, "needs wandb, which the train and telemetry environments hold")
+    def test_offline_the_resumed_half_is_a_run_of_its_own_until_the_push_joins_it_to_the_first(self):
+        """The installed wandb itself, offline as on a node with no key: the cut half and the
+        resumed half are two local runs of the step's id, each in a folder of its own, and the
+        push sends both in one sync to tests/test_wandb_log.py's stand-in for W&B's server, which
+        then holds one run with every epoch in order."""
+        tool = load("wandb_log")
+        server = wandb_tests.StandIn()
+        self.addCleanup(server.server_close)
+        self.addCleanup(server.shutdown)
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir, home = Path(tmp) / "run", Path(tmp) / "home"
+            with mock.patch.dict(os.environ, wandb_tests.environment(home), clear=True), mock.patch.object(tool, "key_source", return_value="none"):
+                for resume, epochs in ((False, (0, 1)), (True, (2, 3))):
+                    telemetry = tool.Telemetry(run_dir, self.record, "train", {}, resume=resume)
+                    self.assertEqual((telemetry.mode, telemetry.run.resumed), ("offline", False), telemetry.reason)
+                    for epoch in epochs:
+                        telemetry.log({"validation_accuracy": epoch / 4}, step=epoch)
+                    telemetry.finish()
+                telemetry.wandb.teardown()
+            folders = tool.offline_runs(run_dir)
+            self.assertEqual([sorted(p.name for p in folder.glob("*.wandb")) for folder in folders], [["run-telemetry000-train.wandb"]] * 2)
+            with mock.patch.dict(os.environ, wandb_tests.environment(home, server.url, wandb_tests.PLACEHOLDER), clear=True), \
+                    mock.patch.object(tool, "TOKEN_FILE", Path(tmp) / "token.env"), mock.patch.object(tool, "NETRC", Path(tmp) / "netrc"):
+                outcome = tool.sync(run_dir)
+            self.assertTrue(outcome["synced"], outcome)
+            self.assertEqual(server.steps("telemetry000-train"), [0, 1, 2, 3])
+            self.assertEqual(tool.offline_runs(run_dir), [])
 
 
 if __name__ == "__main__":

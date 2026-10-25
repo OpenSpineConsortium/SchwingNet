@@ -20,17 +20,25 @@ silently.
 
 The project is SchwingNet unless WANDB_PROJECT says otherwise, private as the plan asks; the
 entity is the key's default unless WANDB_ENTITY names one. SCHWINGNET_WANDB=off turns logging
-off for a run, and the record says so. Each step is a W&B run of its own, grouped by the run id,
-so the trainer's epochs and the evaluator's tables sit side by side. A step that goes on after a
-cut (tools/train.py --resume) starts its W&B run with resume="allow" under the same id, online or
-offline, so the epochs after the cut join the epochs before it rather than open a run of their own.
+off for a run, and the record says so. Each step is a W&B run of its own, <run id>-<step>,
+grouped by the run id, so the trainer's epochs and the evaluator's tables sit side by side.
 
-`sync` pushes a run's offline runs not yet pushed in one `wandb sync` (tests/test_wandb_log.py runs
-it against a stand-in for W&B's server). A run counts as pushed once wandb has left its mark beside
-the run's log, the .wandb.synced it writes when the server took the run, and is never sent again,
-since its lines would be added a second time: 0.30's sync ends with exit 0 when the server refused
-a run, so the mark, not the exit, says a push went, and a sync no server answers is given up after
-SYNC_SECONDS.
+A step that goes on after a cut (tools/train.py --resume) starts online with resume="allow", so
+W&B carries the epochs after the cut on in the run that holds the epochs before it. Offline
+nothing resumes: wandb 0.30 ignores resume there, with a warning, and starts the id afresh in a
+folder of its own, wandb/offline-run-<time>-<id>, so until it is pushed a step cut and carried on
+offline is two runs; and an online start's offline fall-back logs under <run id>-<step>-offline,
+since the failed start may have registered the step's id. `sync` joins them: a step's offline
+runs not yet pushed go in one `wandb sync --id <run id>-<step>`, which replays them into the
+step's one run in the order they started, after the lines W&B holds of it already, so a half
+pushed when its step was cut, or the epochs logged online before a fall-back, come first
+(tests/test_wandb_log.py runs it against a stand-in for W&B's server). A run counts as pushed
+once wandb has left its mark beside the run's log, the .wandb.synced it writes when the server
+took the run, and is never sent again, since its lines would be added a second time: 0.30's sync
+ends with exit 0 when the server refused a run, so the mark, not the exit, says a push went, and
+a sync no server answers is given up after SYNC_SECONDS. A killed step leaves less offline than it
+logged: wandb writes a run's log out in blocks of 32 KiB and the rest when the run finishes, so a
+step Slurm kills mid-way keeps only the blocks written before the kill, and a short one nothing.
 """
 
 import argparse
@@ -45,6 +53,8 @@ from pathlib import Path
 PROJECT = "SchwingNet"
 TOKEN_FILE = Path.home() / ".wandb" / "token.env"
 NETRC = Path.home() / ".netrc"
+# What an online start's offline fall-back adds to the step's id (Telemetry._start).
+OFFLINE_SUFFIX = "-offline"
 # How long one wandb sync may take before the push gives it up, so the flow says NOT PUSHED and
 # goes on. 0.30's sync tries each request to a server that does not answer 21 times over a quarter
 # of an hour, once a minute at the last, and a run makes several, while a step's run, its pictures
@@ -93,7 +103,9 @@ class Telemetry:
 
     Nothing W&B does may stop a training run: a failure at any call is caught, logging stops for
     the step, and the reason is written to wandb-mode.json and said by the flow. resume is for a
-    step that goes on after a cut: its W&B run continues under the id it had (the module docstring).
+    step that goes on after a cut: online, W&B carries the step's run on from where it was cut;
+    offline the step logs a run of its own, which `sync` joins to the first when it pushes them
+    (the module docstring).
     """
 
     def __init__(self, run_dir, record, step, config, resume=False):
@@ -132,23 +144,24 @@ class Telemetry:
             dir=str(folder),
             config=dict(config, run_id=record["run_id"], code_commit=record["code_commit"], catalog_sha256=record["catalog_sha256"], catalog_version=record["catalog_version"], clean_tree=record["clean_tree"]),
         )
-        if self.resume:
-            # Both starts below take it, so the cut step's run goes on whichever start it had.
-            options["resume"] = "allow"
+        # Only online does W&B resume a run: offline it ignores resume, with a warning, and starts
+        # the id afresh in a folder of its own, which `sync` joins to the step's run when it pushes.
+        resume = {"resume": "allow"} if self.resume else {}
         self.mode, self.reason = "offline", f"no W&B key ({where})"
         if where != "none" and os.environ.get("SCHWINGNET_WANDB_MODE", "online") == "online":
             try:
                 if where == "file":
                     os.environ.update(token_file_env())
-                self.run = wandb.init(mode="online", id=f"{record['run_id']}-{step}", settings=wandb.Settings(silent=True, console="off", init_timeout=60), **options)
+                self.run = wandb.init(mode="online", id=f"{record['run_id']}-{step}", settings=wandb.Settings(silent=True, console="off", init_timeout=60), **options, **resume)
                 self.mode, self.reason = "online", None
             except Exception as error:  # noqa: BLE001 - any failure to reach W&B falls back to offline
                 self.reason = f"online start failed ({type(error).__name__}: {plain(error, 120)}); logged offline"
                 # The failed start still holds the run id in W&B's service; a fresh service frees it.
                 wandb.teardown()
         if self.run is None:
-            # An id of its own, since a failed online start may have registered the first one.
-            suffix = "" if self.mode == "offline" and self.reason.startswith("no W&B key") else "-offline"
+            # An id of its own, since a failed online start may have registered the first one;
+            # `sync` pushes it into the step's run all the same.
+            suffix = "" if self.mode == "offline" and self.reason.startswith("no W&B key") else OFFLINE_SUFFIX
             self.run = wandb.init(mode="offline", id=f"{record['run_id']}-{step}{suffix}", settings=wandb.Settings(silent=True, console="off"), **options)
 
     def _note(self):
@@ -202,6 +215,23 @@ def offline_runs(run_dir):
     return sorted(p for p in (Path(run_dir) / "wandb" / "wandb").glob("offline-run-*") if not pushed(p))
 
 
+def step_of(folder):
+    """The W&B id of the step an offline run is of: the id its log is named by (run-<id>.wandb),
+    less the suffix an online start's offline fall-back takes; None for a folder with no log."""
+    logs = sorted(Path(folder).glob("run-*.wandb"))
+    return logs[0].name.removeprefix("run-").removesuffix(".wandb").removesuffix(OFFLINE_SUFFIX) if logs else None
+
+
+def sync_commands(runs):
+    """One wandb sync per step, with the step's offline runs: given --id, wandb replays every run it
+    is given into that one W&B run, in the order the runs started, whatever their folders are
+    called. A folder with no log goes alone and plain; wandb finds nothing in it to push."""
+    steps = {}
+    for folder in runs:
+        steps.setdefault(step_of(folder), []).append(folder)
+    return [(folders, [sys.executable, "-m", "wandb", "sync", *(("--id", step) if step else ()), *map(str, folders)]) for step, folders in steps.items()]
+
+
 def as_text(output):
     """What a process printed, as text: a cut one's output comes as bytes."""
     return output.decode("utf-8", "replace") if isinstance(output, bytes) else output or ""
@@ -220,7 +250,7 @@ def run_sync(command, env, run_dir):
 
 
 def shortfall(code, said, folders):
-    """Why the sync fell short, or None where wandb marked every run it was given pushed."""
+    """Why one sync fell short, or None where wandb marked every run it was given pushed."""
     last = plain(next((line for line in reversed(said.splitlines()) if line.strip()), ""))
     if code is None:
         return f"wandb sync did not end within {SYNC_SECONDS} s, as when W&B cannot be reached from this node ({last})"
@@ -228,6 +258,19 @@ def shortfall(code, said, folders):
         return f"wandb sync exited {code}: {last}"
     left = [folder for folder in folders if not pushed(folder)]
     return f"wandb sync left {len(left)} of {len(folders)} offline runs unpushed: {last}" if left else None
+
+
+def push(runs, env, run_dir):
+    """Each step's sync in turn; all they printed, and why the first that fell short did, None
+    where none did. A sync given up ends the push, since W&B did not answer."""
+    printed, why = [], None
+    for folders, command in sync_commands(runs):
+        code, said = run_sync(command, env, run_dir)
+        printed.append(said)
+        why = why or shortfall(code, said, folders)
+        if code is None:
+            break
+    return "".join(printed), why
 
 
 def sync(run_dir):
@@ -250,8 +293,7 @@ def sync(run_dir):
         outcome["why"] = "no W&B key: not in WANDB_API_KEY, ~/.wandb/token.env or ~/.netrc"
     else:
         env = dict(os.environ, **(token_file_env() if where == "file" else {}))
-        code, printed = run_sync([sys.executable, "-m", "wandb", "sync", *map(str, runs)], env, run_dir)
-        why = shortfall(code, printed, runs)
+        printed, why = push(runs, env, run_dir)
         outcome["synced"] = why is None
         outcome["urls"] = sorted(set(live) | set(previous.get("urls", [])) | {word for word in printed.split() if word.startswith("https://wandb.ai/")})
         if why:

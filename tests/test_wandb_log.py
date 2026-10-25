@@ -8,12 +8,14 @@ stand-in takes any, so each push is handed a placeholder of a key's length, and 
 this machine.
 
 What it holds to: every option the push passes is one the installed wandb takes, since 0.30
-refuses one it removed (--include-offline) before it reads a file; a half of a step W&B marked
-pushed when the step was cut is not sent again, and the next half follows it; a push the server
-refused, which 0.30's sync still ends with exit 0, is said not pushed; a push no server answers,
-which 0.30's sync goes on trying for more than 25 minutes, is given up after the module's bound;
-and a push leaves nothing in the directory it was started from, the checkout for tools/flow.py,
-though wandb sync writes logs of its own where it runs.
+refuses one it removed (--include-offline) before it reads a file; the two halves of a step cut
+and carried on, the second an online start's offline fall-back, go in one sync under the step's
+id and land as one W&B run, in the order they started whatever their folders are called; a half
+W&B marked pushed when its step was cut is not sent again, and the next half follows it; a push
+the server refused, which 0.30's sync still ends with exit 0, is said not pushed; a push no
+server answers, which 0.30's sync goes on trying for more than 25 minutes, is given up after the
+module's bound; and a push leaves nothing in the directory it was started from, the checkout for
+tools/flow.py, though wandb sync writes logs of its own where it runs.
 
 The tests need wandb, which the train and telemetry environments hold, and skip under the
 required check's plain python3.
@@ -231,6 +233,21 @@ class PushTest(unittest.TestCase):
         listed = "".join(done.stdout + done.stderr for done in answers)
         for folder in self.folders():
             self.assertIn(folder.name, listed)
+
+    def test_a_steps_halves_go_in_one_push_under_its_id_and_land_as_one_run_in_the_order_they_started(self):
+        """The half before a cut, and the half after it, an online start's offline fall-back, whose
+        folder is renamed here to sort first: one sync, the step's id, its lines in start order."""
+        self.half("run0-train", 0, 2)
+        later = self.half("run0-train-offline", 3, 4)
+        later.rename(later.with_name("offline-run-00000000_000000-run0-train-offline"))
+        outcome, calls = self.push()
+        self.assertTrue(outcome["synced"], outcome)
+        self.assertEqual(len(calls), 1, calls)
+        command = calls[0][0]
+        self.assertEqual(command[command.index("--id") + 1], "run0-train")
+        self.assertEqual(self.server.steps("run0-train"), [0, 1, 2, 3, 4])
+        self.assertNotIn("run0-train-offline", self.server.history)
+        self.assertEqual(self.tool.offline_runs(self.run_dir), [])
 
     def test_a_half_pushed_when_its_step_was_cut_is_not_sent_again_and_the_next_half_follows_it(self):
         """The flow pushes after every step, a cut one too; the resumed half, which offline W&B
