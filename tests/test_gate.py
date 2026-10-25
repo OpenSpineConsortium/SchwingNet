@@ -1478,6 +1478,41 @@ esac
         self.assertEqual(len(self.submitted()), 1)
         self.assertTrue(report.exists())
 
+    def test_a_failed_benchmark_is_queued_once_more_only_after_the_checkout_moves(self):
+        # a benchmark that failed scored nothing: once a fix has moved the checkout past the commit
+        # its report names, one more send keeps the report under its job's number and queues it
+        # again (#312); on the same commit, or once it succeeded, a send queues nothing
+        bundle = self.data / "hf_flexray_weights" / "raw"
+        bundle.mkdir(parents=True)
+        (bundle / "ensemble.json").write_text("{}\n", encoding="utf-8")
+        h5 = self.data / "deepfluoro_h5" / "raw"
+        h5.mkdir(parents=True)
+        with (h5 / "ipcai_2020_full_res_data.h5").open("wb") as handle:
+            handle.truncate(2 * 1024 * 1024)
+        self.environments_ready()
+        logs = self.repo / "grid" / "logs"
+        logs.mkdir(parents=True, exist_ok=True)
+        report = logs / "BENCH-flexray_deepfluoro.md"
+        head = "# bench flexray_deepfluoro: job 4242 on voh3, commit {}, 2026-10-25 13:20:52 UTC\n"
+        report.write_text(head.format("unknown") + "- exit 1 at 2026-10-25 13:21:01 UTC\n", encoding="utf-8")
+        done = self.gate("bench", "flexray_deepfluoro")
+        self.assertEqual(done.returncode, 0, done.stdout)
+        self.assertIn("- exit 1", done.stdout)
+        self.assertEqual(self.submitted(), [])
+        report.write_text(head.format("fc027a6") + "- exit 1 at 2026-10-25 13:21:01 UTC\n", encoding="utf-8")
+        done = self.gate("bench", "flexray_deepfluoro")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("queueing the benchmark again", done.stdout)
+        self.assertFalse(report.exists())
+        self.assertIn("- exit 1", (logs / "BENCH-flexray_deepfluoro-4242.md").read_text(encoding="utf-8"))
+        lines = self.submitted()
+        self.assertEqual(len(lines), 1, lines)
+        self.assertIn("BENCH=flexray_deepfluoro", lines[0])
+        (self.fake / "queue").write_text("", encoding="utf-8")
+        report.write_text(head.format("fc027a6") + "- exit 0 at 2026-10-25 14:00:00 UTC\n", encoding="utf-8")
+        self.assertEqual(self.gate("bench", "flexray_deepfluoro").returncode, 0)
+        self.assertEqual(len(self.submitted()), 1)
+
     def bench_job(self, name):
         env = dict(os.environ, SCHWINGNET=str(self.repo), DATA_ROOT=str(self.data), LAB_VOLUME=str(self.tmp), FAKE=str(self.fake),
                    BENCH=name, SLURM_JOB_ID="778")
