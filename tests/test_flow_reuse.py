@@ -2,9 +2,12 @@
 
 The run id is the hash of the commit, the catalog and the run's configuration (CONFIGURATION.json),
 so the same configuration names the same folder, and started again the flow runs only what that
-folder still needs: nothing once the evaluation finished, the evaluation where training wrote its
-checkpoint.json, training with --resume where it left train/last.pt (issue #252). A sweep's row
-names its folder with --slug, and a folder holding another run is refused and left as it was.
+folder still needs: nothing once it wrote FINISHED.json, its last file; the last push, the ledger
+row (once) and the report where it was cut after its evaluation; the evaluation where training
+wrote its checkpoint.json, training with --resume where it left train/last.pt (issue #252). A sweep's row
+names its folder with --slug, and a folder holding another run is refused and left as it was. A
+start cut while it writes its record or witness list, or before its record, is started again,
+and a start while another start holds the folder is refused and runs nothing.
 
 The flow runs in-process against a real synthetic catalog built by the tools, with a fake `pixi`
 on PATH standing in for the trainer, the evaluator and the W&B sync: it writes the files the flow
@@ -121,6 +124,27 @@ def load_flow():
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+class Killed(Exception):
+    """What a patched write raises, as a job killed at that write would stop."""
+
+
+def write_cut_short(names, at):
+    """Path.write_text made to write half its text to a file of these names and stop, at the
+    at-th write to them, as a full volume or a kill mid-write leaves a file; every other write is
+    the real one."""
+    real, seen = Path.write_text, []
+
+    def write_half(path, text, *args, **kwargs):
+        if path.name in names:
+            seen.append(path.name)
+            if len(seen) == at:
+                real(path, text[: len(text) // 2], *args, **kwargs)
+                raise Killed(f"cut while writing {path.name}")
+        return real(path, text, *args, **kwargs)
+
+    return mock.patch.object(Path, "write_text", write_half)
 
 
 def snapshot(folder):
@@ -266,6 +290,31 @@ class FlowReuseTest(unittest.TestCase):
         self.assertIn("no parent checkpoint there", err)
         self.assertFalse(self.out.exists())
 
+    def test_the_order_the_changes_or_sources_are_named_in_names_no_other_run(self):
+        # The trainer applies augment in its own fixed order and keeps a crop by whether its source
+        # is named, so the two orders train alike and must name one run.
+        def named(*blocks):
+            words = [w for block in blocks for w in ("--block", block)]
+            args = self.flow.parse(["run", "--catalog", str(self.catalog), "--out", str(self.out), "--epochs", "2", *words])
+            with mock.patch.object(self.flow, "tree_state", lambda: (COMMIT, True)):
+                return self.flow.start_record(args)[0].run_id
+
+        self.assertEqual(named("augment=noise,blur"), named("augment=blur,noise"))
+        self.assertEqual(named("samples=drop-sources", "sources=b,a"), named("sources=a,b", "samples=drop-sources"))
+        self.assertNotEqual(named("augment=blur"), named("augment=blur,noise"))
+        self.assertNotEqual(named("samples=drop-sources", "sources=a"), named("samples=drop-sources", "sources=a,b"))
+        rc, lines, _ = self.run_flow("--block", "augment=noise,blur", fake={"FAKE_TRAIN": "cut"})
+        run_dir = Path(self.said(lines)["run_dir"])
+        first = dict(self.calls())["train"]
+        self.log.unlink()
+        rc, lines, err = self.run_flow("--block", "augment=blur,noise")
+        self.assertEqual((rc, self.said(lines)["run_dir"], self.said(lines)["reused"]), (0, str(run_dir), "resumed"), err)
+        again = dict(self.calls())["train"]
+        self.assertEqual(again, [*first, "--resume"], "the trainer is handed the same blocks whichever order was typed")
+        self.assertIn("augment=blur,noise", first)
+        configuration = json.loads((run_dir / "CONFIGURATION.json").read_text(encoding="utf-8"))
+        self.assertEqual(configuration["blocks"]["augment"], ["blur", "noise"])
+
     def test_a_folder_that_finished_training_runs_the_evaluation_only(self):
         rc, lines, err = self.run_flow(fake={"FAKE_EVALUATE": "fail"})
         self.assertEqual(rc, 1)
@@ -316,6 +365,78 @@ class FlowReuseTest(unittest.TestCase):
         rc, lines, err = self.run_flow()
         self.assertEqual((rc, self.said(lines)["reused"], self.calls()), (0, "finished", []))
 
+    def test_a_run_cut_after_its_evaluation_is_finished_by_the_next_start_once(self):
+        # Cut at the push right after the evaluation, as a Slurm limit or SIGTERM cuts the driver:
+        # the record says the evaluation ended, and nothing after it was done.
+        real, pushes = self.flow.push_wandb, []
+
+        def push_then_cut(*args):
+            pushes.append(args)
+            if len(pushes) == 2:
+                raise Killed("cut during the push after the evaluation")
+            return real(*args)
+
+        with mock.patch.object(self.flow, "push_wandb", push_then_cut), self.assertRaises(Killed):
+            self.run_flow("--slug", "row-a")
+        run_dir = self.out / "row-a"
+        self.assertEqual([job["step"] for job in self.record(run_dir)["jobs"]], ["split-check", "train", "evaluate"])
+        self.assertEqual((self.ledger_rows(), (run_dir / "REPORT.md").exists()), ([], False))
+        self.log.unlink()
+        rc, lines, err = self.run_flow("--slug", "row-a")
+        self.assertEqual(rc, 0, err)
+        self.assertEqual(self.said(lines)["reused"], "evaluated")
+        self.assertEqual(self.tools_called(), ["wandb_log"], "only the last push: nothing is trained or evaluated again")
+        self.assertEqual([job["step"] for job in self.record(run_dir)["jobs"]], ["split-check", "train", "evaluate"])
+        self.assertEqual(len(self.ledger_rows()), 1)
+        self.assertTrue((run_dir / "REPORT.md").is_file())
+        self.assertEqual(json.loads((run_dir / "FINISHED.json").read_text(encoding="utf-8"))["run_id"], self.said(lines)["run_id"])
+        self.log.unlink()
+        rc, lines, _ = self.run_flow("--slug", "row-a")
+        self.assertEqual((rc, self.said(lines)["reused"], self.calls()), (0, "finished", []))
+        # Cut after its ledger row and before its report: the row is not written twice.
+        with mock.patch.object(self.flow, "write_report", side_effect=Killed("cut before the report")), self.assertRaises(Killed):
+            self.run_flow("--slug", "row-b", "--seed", "2")
+        self.assertEqual(len(self.ledger_rows()), 2)
+        rc, lines, err = self.run_flow("--slug", "row-b", "--seed", "2")
+        self.assertEqual((rc, self.said(lines)["reused"]), (0, "evaluated"), err)
+        self.assertEqual(len(self.ledger_rows()), 2, "one ledger row a run")
+        self.assertTrue((self.out / "row-b" / "REPORT.md").is_file() and (self.out / "row-b" / "FINISHED.json").is_file())
+
+    def test_a_start_while_another_start_holds_the_folder_is_refused_and_runs_nothing(self):
+        # The v1 driver's start and an experiment asking for version 1's training, whose --hours
+        # names no other run, meet in one folder; the second must not train beside the first.
+        import fcntl
+
+        rc, lines, _ = self.run_flow(fake={"FAKE_TRAIN": "cut"})
+        run_dir = Path(self.said(lines)["run_dir"])
+        self.log.unlink()
+
+        def refused_while_held(folder, *extra):
+            with (folder / ".lock").open("a+", encoding="utf-8") as live:
+                fcntl.flock(live, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                live.truncate(0)
+                live.write("pid 4242 on login-1, since 2026-10-25T03:00:00Z\n")
+                live.flush()
+                before = snapshot(self.out)
+                rc, lines, err = self.run_flow(*extra)
+                self.assertEqual(snapshot(self.out), before, "nothing is written while another start holds the folder")
+            self.assertEqual((rc, lines), (1, []))
+            self.assertIn(f"flow: {folder} is in progress: another start of this run holds {folder / '.lock'}"
+                          " (pid 4242 on login-1, since 2026-10-25T03:00:00Z)", err)
+            self.assertEqual(self.calls(), [])
+
+        refused_while_held(run_dir, "--hours", "6")
+        rc, lines, err = self.run_flow("--hours", "6")
+        self.assertEqual((rc, self.said(lines)["reused"]), (0, "resumed"), err)
+        # A new run's folder, held by a start that has not yet written its record.
+        args = self.flow.parse(["run", "--catalog", str(self.catalog), "--out", str(self.out), "--epochs", "2", "--size", "32", "--seed", "3"])
+        with mock.patch.object(self.flow, "tree_state", lambda: (COMMIT, True)):
+            fresh = self.out / self.flow.start_record(args)[0].run_id
+        fresh.mkdir()
+        self.log.unlink()
+        refused_while_held(fresh, "--seed", "3")
+        self.assertEqual(sorted(p.name for p in fresh.iterdir()), [".lock"])
+
     def test_a_folder_holding_another_run_is_refused_and_left_as_it_was(self):
         rc, lines, err = self.run_flow("--slug", "row-a")
         self.assertEqual(rc, 0, err)
@@ -345,6 +466,38 @@ class FlowReuseTest(unittest.TestCase):
         self.assertIn("holds notes.txt and no RUN.json", err)
         self.assertEqual(sorted(p.name for p in stray.iterdir()), ["notes.txt"])
         self.assertEqual(self.calls(), [])
+
+    def test_a_start_cut_between_its_configuration_and_its_record_starts_again(self):
+        with mock.patch.object(self.flow, "write_record", side_effect=Killed("cut before RUN.json")), self.assertRaises(Killed):
+            self.run_flow("--slug", "row-a")
+        self.assertEqual(sorted(p.name for p in (self.out / "row-a").iterdir() if p.name != ".lock"), ["CONFIGURATION.json", "split-check.json"])
+        rc, lines, err = self.run_flow("--slug", "row-a")
+        self.assertEqual(rc, 0, err)
+        self.assertNotIn("reused", self.said(lines))
+        self.assertEqual(self.tools_called(), ["train", "wandb_log", "evaluate", "wandb_log", "wandb_log"])
+        # One the start of another configuration left is not this run's and is refused.
+        (self.out / "row-b").mkdir()
+        shutil.copyfile(self.out / "row-a" / "CONFIGURATION.json", self.out / "row-b" / "CONFIGURATION.json")
+        self.log.unlink()
+        rc, _, err = self.run_flow("--slug", "row-b", "--seed", "2")
+        self.assertEqual(rc, 1)
+        self.assertIn("holds CONFIGURATION.json of another configuration and no RUN.json", err)
+        self.assertEqual(self.calls(), [])
+
+    def test_a_record_or_witness_list_cut_while_written_leaves_the_one_before(self):
+        # RUN.json is rewritten after the training step; a cut there must leave the first one.
+        with write_cut_short(("RUN.json", "RUN.json.tmp"), 2), self.assertRaises(Killed):
+            self.run_flow("--slug", "row-a")
+        json.loads((self.out / "row-a" / "RUN.json").read_text(encoding="utf-8"))
+        self.log.unlink()
+        rc, lines, err = self.run_flow("--slug", "row-a")
+        self.assertEqual(rc, 0, err)
+        self.assertEqual((self.said(lines)["reused"], self.tools_called()), ("trained", ["evaluate", "wandb_log", "wandb_log"]))
+        with write_cut_short(("witness.json", "witness.json.tmp"), 1), self.assertRaises(Killed):
+            self.run_flow("--slug", "row-b")
+        rc, lines, err = self.run_flow("--slug", "row-b")
+        self.assertEqual(rc, 0, err)
+        json.loads((self.out / "row-b" / "witness.json").read_text(encoding="utf-8"))
 
     def test_the_slug_places_the_folder_and_a_bad_slug_is_refused(self):
         rc, lines, err = self.run_flow("--slug", "resnet18-64px-0123abcd")

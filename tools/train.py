@@ -30,12 +30,19 @@ A run that is cut, a Slurm job timed out or preempted, goes on where it stopped.
 epoch, epoch 0 included, train/last.pt holds the weights, the optimiser's state, the prior head,
 every random state the run draws from (its own generator, torch's, CUDA's, numpy's and python's)
 and the lines so far, written whole and renamed into place; --resume, given with the arguments
-the run was started with, builds the run as a fresh start does and then takes those states back,
-so on the CPU a resumed run ends on the same lines, best.pt and checkpoint.json as one that went
-through, the seconds apart. best.pt and prior_head.pt are written under train/pending/ and moved
+the run was started with (the catalog, the ImageNet file and the parent held to their bytes, not
+to their paths, as tools/flow.py names the run), builds the run as a fresh start does and then
+takes those states back, so on the CPU a resumed run ends on the same lines, best.pt and
+checkpoint.json as one that went through, the seconds apart. best.pt and prior_head.pt are written under train/pending/ and moved
 into place only once last.pt records them, so a cut between the two never leaves weights the
 record does not name. last.pt goes once checkpoint.json is written, the step's last file and the
 one tools/flow.py takes as its end, since it holds the optimiser's state and is only for resuming.
+A last.pt that cannot be read, cut short or emptied, is moved aside to last.pt.unreadable and the
+run trains from epoch 0 in the same call, saying so in its log and on its card, since the flow
+resumes wherever last.pt is and a refusal would come back on every start. A run holds train/ by
+an exclusive lock on train/.lock from before it reads a file there to its end, so a second
+trainer sent into the same folder while the first still trains, as a flow started again after
+the flow of a live Slurm job died would send one, is refused in words and touches nothing.
 
 Batch norm in training needs more than one value per channel, and a batch of one small crop ends
 on a map that gives it one: no architecture here can take a step on one 32-pixel crop, nor
@@ -44,7 +51,8 @@ training crops are one more than a whole number of batches, so the run asks once
 model trains on one crop at its size (trains_on_one_crop) and, where it cannot, joins such a last
 batch to the batch before it; checkpoint.json then says "single_crop_batch": "joined" and the card
 says so. Where it can, the batches are as they always were, so a run that trained before trains
-to the same weights; a run of exactly one training crop that cannot train on one is refused.
+to the same weights; a run of exactly one training crop that cannot train on one is refused, and
+so is --batch 1, whose every batch holds one crop.
 """
 
 import sys
@@ -56,13 +64,17 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path[0] = str(ROOT / "src")
 
 import argparse  # noqa: E402
+import contextlib  # noqa: E402
 import copy  # noqa: E402
+import fcntl  # noqa: E402
 import hashlib  # noqa: E402
 import json  # noqa: E402
 import os  # noqa: E402
 import pickle  # noqa: E402
 import random  # noqa: E402
+import socket  # noqa: E402
 import sqlite3  # noqa: E402
+import struct  # noqa: E402
 import time  # noqa: E402
 
 import numpy as np  # noqa: E402
@@ -80,6 +92,8 @@ PAD = 0.15
 # folder best.pt and prior_head.pt wait in until last.pt records them.
 LAST = "last.pt"
 PENDING = "pending"
+# The file a run holds train/ by for as long as it trains (held).
+LOCK = ".lock"
 STAGED = (("best.pt", "checkpoint_sha256"), ("prior_head.pt", "prior_head_sha256"))
 TRAIN_PARTS = ("train", "validation")
 SAMPLE_WORDS = ("samples", "sources", "per_person")
@@ -377,15 +391,21 @@ def batch_bounds(count, batch, join_single=False):
     return list(zip(starts, stops, strict=True))
 
 
-def refuse_one_crop(count, join_single, architecture, size):
-    """A training part of exactly one crop where the model cannot train on one is refused before
-    any epoch, since there is no batch to join it to and its first step would fail."""
-    if count == 1 and join_single:
-        raise TrainError(
-            f"one training crop: {architecture} cannot take a training step on a batch of one {size}-pixel crop,"
-            " since batch norm needs more than one value per channel there; take more crops, or 64-pixel crops,"
-            " on which every architecture here trains on one"
-        )
+def refuse_one_crop(count, batch, join_single, why):
+    """A training part of exactly one crop, or --batch 1, where the model cannot train on one is
+    refused before any epoch, since there is no batch to join the crop to and the first step would
+    fail; why is the model's reason (one_crop_words), the same in both refusals."""
+    if not join_single:
+        return
+    if count == 1:
+        raise TrainError(f"one training crop: {why}; take more crops, or 64-pixel crops, on which every architecture here trains on one")
+    if batch == 1:
+        raise TrainError(f"--batch 1: every batch holds one crop, and {why}; take a batch of 2 or more, or 64-pixel crops, on which every architecture here trains on one")
+
+
+def one_crop_words(architecture, size):
+    """Why the model cannot train on one crop, in the words both refusals give."""
+    return f"{architecture} cannot take a training step on a batch of one {size}-pixel crop, since batch norm needs more than one value per channel there"
 
 
 def train_epoch(model, optimiser, inputs, targets, device, batch, generator, blocks=None, loss_fn=None, maps=None, prior=None, join_single=False):
@@ -576,6 +596,16 @@ def batch_lines(joined, blocks, args):
     return [
         f"- Batches: {blocks.architecture} cannot train on one {args.size}-pixel crop (batch norm needs more than one"
         f" value per channel), so each epoch's last batch of one crop joined the batch before it, which then held {args.batch + 1}."
+    ]
+
+
+def restart_lines(restarted):
+    """The card's line on a resume that found last.pt unreadable and started again (read_last)."""
+    if not restarted:
+        return []
+    return [
+        f"- Restarted from epoch 0: train/last.pt could not be read, so it was moved aside to train/{LAST}.unreadable"
+        " and the run trained from the start, as a fresh start trains."
     ]
 
 
@@ -825,15 +855,29 @@ def drop_pending(folder):
         pass
 
 
-def arguments_of(args, blocks):
+def file_digest(path, what):
+    """The sha256 of a file the run reads, streamed, since a catalog may be gigabytes; refused in
+    words where there is no file."""
+    path = Path(path)
+    if not path.is_file():
+        raise TrainError(f"{what} {path}: no file there")
+    with path.open("rb") as handle:
+        return hashlib.file_digest(handle, "sha256").hexdigest()
+
+
+def arguments_of(args, blocks, parent):
     """What a resumed run must share with the run it goes on from: everything that shapes what it
-    trains on and how, the schedule's length among them. The device is left out, since a job put
-    back in the queue may land on another card, and the catalog's path too, which RUN.json binds by
-    its digest."""
+    trains on and how, the schedule's length among them, and the files it reads by their bytes, the
+    catalog, the ImageNet file and the parent (parent_of), as tools/flow.py names the run by them, so
+    the same file reached by another path resumes and a file replaced at its path is refused. The
+    device is left out, since a job put back in the queue may land on another card."""
     return {
         "epochs": args.epochs, "seed": args.seed, "size": args.size, "batch": args.batch, "lr": args.lr,
         "max_frames": args.max_frames, "witness": args.witness, "keep_epochs": args.keep_epochs,
-        "weights": args.weights, "init": args.init, "blocks": as_record(blocks),
+        "catalog_sha256": file_digest(args.catalog, "--catalog"),
+        "weights_sha256": file_digest(args.weights, "--weights") if args.weights else None,
+        "init_sha256": parent["sha256"] if parent else None,
+        "blocks": as_record(blocks),
     }
 
 
@@ -875,18 +919,51 @@ def save_last(folder, state):
     os.replace(temporary, folder / LAST)
 
 
-def load_last(folder, arguments):
-    """train/last.pt for --resume, refused in words where there is none, where it cannot be read,
-    or where the run that wrote it was started with other arguments; the files staged under
-    pending/ are then settled as its best line says, and best.pt held to that line, before
-    anything of the run starts."""
+def refuse_nothing_to_resume(folder):
+    """--resume where there is no train/last.pt, refused in words before anything is read."""
     path = folder / LAST
     if not path.is_file():
         raise TrainError(f"--resume: {path} is not there, so there is nothing to resume (a run writes it after every epoch and deletes it once checkpoint.json is written); start the run without --resume")
+
+
+# What torch.load raised on a last.pt cut at 400 places, on random bytes and on a saved file with
+# bytes overwritten, measured with the locked torch (2026-10-25); and the keys last_state writes,
+# without which a file torch did read is no run's state.
+UNREADABLE = (OSError, EOFError, RuntimeError, ValueError, IndexError, KeyError, struct.error, pickle.UnpicklingError)
+LAST_KEYS = ("epoch", "model", "optimiser", "prior", "generator", "torch_rng", "cuda_rng", "numpy_rng", "python_rng",
+             "best", "history", "witness_epochs", "arguments", "resumed_after")
+
+
+def read_last(path):
+    """last.pt as torch reads it, or None where it cannot be read: cut short or emptied, as a node
+    that died before the rename reached the disk may leave it. Such a file is moved aside to
+    last.pt.unreadable, kept for a person to look at, and the run starts again from epoch 0 in this
+    call, since refusing it would be refused again on every start the flow makes, which resumes
+    wherever last.pt is."""
     try:
         state = torch.load(path, map_location="cpu", weights_only=True)
-    except (OSError, EOFError, RuntimeError, pickle.UnpicklingError) as error:
-        raise TrainError(f"--resume: {path} cannot be read ({type(error).__name__}); start the run again without --resume") from error
+    except UNREADABLE as error:
+        why = type(error).__name__
+    else:
+        if isinstance(state, dict) and all(key in state for key in LAST_KEYS):
+            return state
+        why = f"a {type(state).__name__} that is not a run's state"
+    aside = path.with_name(f"{LAST}.unreadable")
+    os.replace(path, aside)
+    print(json.dumps({"restarted_from_epoch": 0, "unreadable": str(aside), "why": why}), flush=True)
+    return None
+
+
+def load_last(folder, arguments):
+    """train/last.pt for --resume, refused in words where there is none or where the run that
+    wrote it was started with other arguments, and None where it cannot be read (read_last); the
+    files staged under pending/ are then settled as its best line says, and best.pt held to that
+    line, before anything of the run starts."""
+    refuse_nothing_to_resume(folder)
+    path = folder / LAST
+    state = read_last(path)
+    if state is None:
+        return None
     theirs = state.get("arguments") or {}
     changed = [f"{name} was {theirs.get(name)!r}, now {value!r}" for name, value in arguments.items() if theirs.get(name) != value]
     if changed:
@@ -920,6 +997,37 @@ def resume_into(saved, model, optimiser, prior, generator, frames):
     return saved["epoch"] + 1, list(saved["history"]), saved["best"], [*saved["resumed_after"], saved["epoch"]]
 
 
+def holder_words():
+    """Who holds a lock, as the lock file says it to the next one refused: the process, the node,
+    the Slurm job where there is one, and since when."""
+    job = os.environ.get("SLURM_JOB_ID")
+    return f"pid {os.getpid()} on {socket.gethostname()}" + (f", Slurm job {job}" if job else "") + time.strftime(", since %Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+
+@contextlib.contextmanager
+def held(folder):
+    """train/ held for this run alone, from before any file in it is read to the end: an exclusive
+    lock on train/.lock, taken without waiting, so a second trainer sent into the same folder, as a
+    flow started again after the flow of a live Slurm job died sends one, is refused in words
+    before it settles pending/ or opens a file. The kernel drops a flock when its process ends, by
+    a kill too, so a cut run leaves no lock behind, and CephFS, the lab volume, honours it across
+    nodes, as grid/03-catalog.sbatch's lock relies on."""
+    folder.mkdir(parents=True, exist_ok=True)
+    path = folder / LOCK
+    with path.open("a+", encoding="utf-8") as handle:
+        try:
+            fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as error:
+            holder = path.read_text(encoding="utf-8").strip() or "which has not yet written who it is"
+            raise TrainError(f"{folder} is in progress: another trainer holds {path} ({holder}); this one stops before it touches anything") from error
+        except OSError as error:
+            raise TrainError(f"{path}: cannot be locked ({error}), so whether another trainer works here cannot be told; nothing is touched") from error
+        handle.truncate(0)
+        handle.write(holder_words() + "\n")
+        handle.flush()
+        yield
+
+
 def write_whole(path, text):
     """A file written beside its place and renamed into it, so no reader sees half of it:
     tools/flow.py takes checkpoint.json as the end of the training step."""
@@ -942,10 +1050,18 @@ def run(args):
         raise TrainError(f"blocks: {error}") from error
     if args.init and args.weights:
         raise TrainError("a run starts from ImageNet (--weights) or from a parent (--init), not both")
+    with held(out / "train"):
+        return train_held(args, out, record, blocks)
+
+
+def train_held(args, out, record, blocks):
+    """The run itself, once train/ is held for it alone (held)."""
     folder = out / "train"
-    arguments = arguments_of(args, blocks)
-    saved = load_last(folder, arguments) if args.resume else None
     parent = parent_of(args.init) if args.init else None
+    if args.resume:
+        refuse_nothing_to_resume(folder)
+    arguments = arguments_of(args, blocks, parent)
+    saved = load_last(folder, arguments) if args.resume else None
     seed_everything(args.seed)
     crops = read_crops(args.catalog, TRAIN_PARTS)
     seen, offered = training_crops(crops, blocks)
@@ -966,7 +1082,7 @@ def run(args):
         warm_start(model, args.init, parent, blocks, args.size)
     join_single = not trains_on_one_crop(model, args.size)
     maps, val_maps, prior = prior_of(blocks, model, train_crops, val_crops, args)
-    refuse_one_crop(len(train_crops), join_single, blocks.architecture, args.size)
+    refuse_one_crop(len(train_crops), args.batch, join_single, one_crop_words(blocks.architecture, args.size))
     optimiser = BLOCKS.OPTIMISERS[blocks.optimiser](model, args.lr, blocks, prior.parameters() if prior else ())
     base_rates = [group["lr"] for group in optimiser.param_groups]
     loss_fn = BLOCKS.loss_function(blocks, train_y, LEVELS).to(args.device)
@@ -979,7 +1095,10 @@ def run(args):
         started -= history[-1]["seconds"]
     joined = join_single and ends_on_one(len(train_y), args.batch)
     with (folder / "metrics.jsonl").open("w", encoding="utf-8") as metrics:
+        # Flushed after every write, so the lines are on disk while the run goes on: the sweep's
+        # card reads the last one as the row's progress, and a killed job flushes nothing.
         metrics.writelines(json.dumps(line) + "\n" for line in history)
+        metrics.flush()
         for epoch in range(first, args.epochs + 1):
             rate = None
             if epoch:
@@ -995,6 +1114,7 @@ def run(args):
                 best = stage_best(model, prior, folder, line)
             history.append(line)
             metrics.write(json.dumps(line) + "\n")
+            metrics.flush()
             print(json.dumps({k: v for k, v in line.items() if k != "validation_strata"}), flush=True)
             telemetry.log(dict(wandb_values(line), **telemetry.images(frames.media(epoch)), **telemetry.images({"witness/crops": folder / "witness" / f"epoch-{epoch:02d}.png"})), step=epoch)
             progress = {"best": best, "history": history, "witness_epochs": frames.epochs, "arguments": arguments, "resumed_after": resumed}
@@ -1013,7 +1133,7 @@ def run(args):
         "train_with_map": with_map(train_crops),
         "validation_with_map": with_map(val_crops),
     }
-    notes = batch_lines(joined, blocks, args) + resume_lines(resumed)
+    notes = batch_lines(joined, blocks, args) + restart_lines(args.resume and saved is None) + resume_lines(resumed)
     model_card(folder, args, record, counts, best, time.monotonic() - started, blocks, parent, notes)
     joins = {"single_crop_batch": "joined"} if joined else {}
     facts = dict(best, counts=counts, levels=list(LEVELS), size=args.size, blocks=as_record(blocks), parent=parent_record(parent), **joins)

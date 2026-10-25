@@ -5,10 +5,13 @@ ends, on the CPU, on the same lines, best.pt, prior head and checkpoint.json as 
 through, the seconds apart; the cut is made here by the trainer's own save function raising
 after its second write, patched in this process, so the trainer carries no hook for tests. A
 --resume with nothing to resume, or with other arguments than the run was started with, is
-refused in words, and last.pt is gone once a run has finished. W&B's run goes on under the same
-id. And at 32 pixels, where batch norm cannot train on one crop, a training part of 65 crops,
-whose last batch of 64 would hold one, still trains, while at 64 pixels the batches are as they
-always were.
+refused in words, as is one whose catalog, ImageNet file or parent is not the bytes the run
+started from, while the same file at another path resumes; a last.pt that cannot be read is
+moved aside and the run trains again from epoch 0; a second trainer in a folder another holds is
+refused and touches nothing; and last.pt is gone once a run has finished. W&B's run goes on
+under the same id. And at 32 pixels, where batch norm cannot train on one crop, a training part
+of 65 crops, whose last batch of 64 would hold one, still trains, while at 64 pixels the batches
+are as they always were.
 
 The trainer's tests need the train environment, as tests/test_train_blocks.py does, and skip
 under the required check's plain python3; the W&B test needs nothing but the standard library."""
@@ -91,6 +94,18 @@ def cut_after(module, writes):
     return mock.patch.object(module, "save_last", save_then_stop)
 
 
+def lines_on_disk(module, seen):
+    """The trainer's save of last.pt, made to note first how many whole lines metrics.jsonl holds
+    on disk, read through a handle of its own, as the sweep's card reads it while the step runs."""
+    real = module.save_last
+
+    def note_then_save(folder, state):
+        seen.append((folder / "metrics.jsonl").read_bytes().count(b"\n"))
+        real(folder, state)
+
+    return mock.patch.object(module, "save_last", note_then_save)
+
+
 def train(catalog, folder, *extra, module=None):
     """The trainer's main on a short CPU run, its output kept; returns the exit code, stdout and stderr."""
     args = ["--catalog", str(catalog), "--out", str(folder), "--seed", "1", "--device", "cpu", "--witness", "2",
@@ -115,7 +130,9 @@ class ResumeCase:
         witness = load("witness").freeze(cls.catalog, "0" * 64)
         cls.config = ["--epochs", "3", "--size", "32", *(w for word in cls.words for w in ("--block", word))]
         cls.through = new_run(cls.tmp / "through", "throughrun00", witness)
-        cls.through_rc = train(cls.catalog, cls.through, *cls.config)[0]
+        cls.through_on_disk, module = [], load("train")
+        with lines_on_disk(module, cls.through_on_disk):
+            cls.through_rc = train(cls.catalog, cls.through, *cls.config, module=module)[0]
         cls.cut = new_run(cls.tmp / "cut", "cutrun000000", witness)
         module = load("train")
         with cut_after(module, 2):
@@ -128,7 +145,9 @@ class ResumeCase:
         cls.last_digest = digest(cls.cut / "train" / "last.pt")
         cls.mismatch = train(cls.catalog, cls.cut, *[w if w != "3" else "4" for w in cls.config], "--resume")
         cls.mismatch_left = digest(cls.cut / "train" / "last.pt")
-        cls.resumed_rc, cls.resumed_out, _ = train(cls.catalog, cls.cut, *cls.config, "--resume")
+        cls.resumed_on_disk, module = [], load("train")
+        with lines_on_disk(module, cls.resumed_on_disk):
+            cls.resumed_rc, cls.resumed_out, _ = train(cls.catalog, cls.cut, *cls.config, "--resume", module=module)
 
     @classmethod
     def tearDownClass(cls):
@@ -157,6 +176,12 @@ class ResumeCase:
         self.assertEqual(mine, theirs)
         sheets = sorted(name for name in mine if "sheet-epoch-" in name)
         self.assertEqual(sheets, ["witness/frames/sheet-epoch-00.jpg", "witness/frames/sheet-epoch-03.jpg"], "the witness epochs before the cut are taken back")
+
+    def test_every_epoch_line_is_on_disk_once_its_epoch_ends(self):
+        # The sweep's card reads the last line every 15 s; a line left in the writer's buffer
+        # would show no epoch until the step ends, and a kill would lose it.
+        self.assertEqual(self.through_on_disk, [1, 2, 3, 4])
+        self.assertEqual(self.resumed_on_disk, [3, 4], "the lines before the cut are on disk with the first new one")
 
     def test_last_pt_is_gone_after_a_finished_run(self):
         for folder in (self.through, self.cut):
@@ -198,6 +223,149 @@ class ResumeWithDropoutTest(ResumeCase, unittest.TestCase):
 
 
 @unittest.skipIf(MISSING, f"needs the train environment ({', '.join(MISSING)} missing)")
+class ResumeBindingTest(unittest.TestCase):
+    """--resume holds a cut run to the bytes of the files it started from, the catalog, the
+    ImageNet file and the parent, as tools/flow.py names the run by them: the same file at another
+    path resumes, and a file replaced at the same path, or another catalog, is refused in words."""
+
+    config = ("--epochs", "3", "--size", "32")
+
+    @classmethod
+    def setUpClass(cls):
+        import torch
+        import torchvision
+
+        cls.tmp = Path(tempfile.mkdtemp())
+        cls.catalog = blocks_tests.RunWithEveryBlockTest.make_catalog(cls.tmp)
+        cls.moved_catalog = cls.tmp / "elsewhere" / "catalog.sqlite"
+        cls.moved_catalog.parent.mkdir()
+        shutil.copyfile(cls.catalog, cls.moved_catalog)
+        (cls.tmp / "models-old").mkdir()
+        torch.manual_seed(4)
+        torch.save(torchvision.models.resnet18(weights=None).state_dict(), cls.tmp / "models-old" / "resnet18.pth")
+        shutil.copytree(cls.tmp / "models-old", cls.tmp / "models")
+        parent = new_run(cls.tmp / "parent", "parentrun000")
+        assert train(cls.catalog, parent, "--epochs", "1", "--size", "32")[0] == 0
+        (cls.tmp / "parent-alias").symlink_to(parent, target_is_directory=True)
+        cls.parent = parent / "train" / "best.pt"
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls.tmp, ignore_errors=True)
+
+    def cut(self, name, *extra):
+        """A run cut after its second last.pt (epoch 1), as ResumeCase cuts one."""
+        folder = new_run(self.tmp / name, name.ljust(12, "0")[:12])
+        module = load("train")
+        with cut_after(module, 2), self.assertRaises(Killed):
+            train(self.catalog, folder, *self.config, *extra, module=module)
+        self.assertTrue((folder / "train" / "last.pt").is_file())
+        return folder
+
+    def resume(self, folder, *extra, catalog=None):
+        return train(catalog or self.catalog, folder, *self.config, *extra, "--resume")
+
+    def test_the_same_files_at_other_paths_resume(self):
+        folder = self.cut("respelled", "--weights", str(self.tmp / "models-old" / "resnet18.pth"))
+        rc, out, err = self.resume(folder, "--weights", str(self.tmp / "models" / "resnet18.pth"), catalog=self.moved_catalog)
+        self.assertEqual(rc, 0, err)
+        self.assertIn('"resumed_after_epoch": 1', out)
+        folder = self.cut("aliased", "--init", str(self.parent))
+        rc, out, err = self.resume(folder, "--init", str(self.tmp / "parent-alias" / "train" / "best.pt"))
+        self.assertEqual(rc, 0, err)
+        self.assertIn('"resumed_after_epoch": 1', out)
+
+    def test_a_file_replaced_at_the_same_path_is_refused(self):
+        import torch
+        import torchvision
+
+        weights = self.tmp / "replaced.pth"
+        shutil.copyfile(self.tmp / "models" / "resnet18.pth", weights)
+        folder = self.cut("replaced", "--weights", str(weights))
+        last = digest(folder / "train" / "last.pt")
+        torch.manual_seed(5)
+        torch.save(torchvision.models.resnet18(weights=None).state_dict(), weights)
+        rc, _, err = self.resume(folder, "--weights", str(weights))
+        self.assertEqual(rc, 1)
+        self.assertIn("train: --resume:", err)
+        self.assertIn("weights_sha256 was", err)
+        self.assertEqual(digest(folder / "train" / "last.pt"), last)
+
+    def test_another_catalog_is_refused(self):
+        import sqlite3
+
+        other = self.tmp / "other.sqlite"
+        shutil.copyfile(self.catalog, other)
+        db = sqlite3.connect(other)
+        db.execute("PRAGMA user_version = 7")
+        db.commit()
+        db.close()
+        folder = self.cut("recatalogued")
+        rc, _, err = self.resume(folder, catalog=other)
+        self.assertEqual(rc, 1)
+        self.assertIn("train: --resume:", err)
+        self.assertIn("catalog_sha256 was", err)
+
+
+@unittest.skipIf(MISSING, f"needs the train environment ({', '.join(MISSING)} missing)")
+class UnreadableLastTest(unittest.TestCase):
+    """A last.pt that cannot be read, cut short or emptied by a node that died before it reached
+    the disk, is moved aside under a name that says so and the run trains from epoch 0 in the same
+    call, ending as a run that went through; refused, every start the flow makes would resume it
+    and be refused again."""
+
+    config = ("--epochs", "3", "--size", "32")
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = Path(tempfile.mkdtemp())
+        cls.catalog = blocks_tests.RunWithEveryBlockTest.make_catalog(cls.tmp)
+        cls.through = new_run(cls.tmp / "through", "throughrun00")
+        assert train(cls.catalog, cls.through, *cls.config)[0] == 0
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls.tmp, ignore_errors=True)
+
+    def cut_and_spoil(self, name, spoil):
+        folder = new_run(self.tmp / name, name.ljust(12, "0")[:12])
+        module = load("train")
+        with cut_after(module, 2), self.assertRaises(Killed):
+            train(self.catalog, folder, *self.config, module=module)
+        last = folder / "train" / "last.pt"
+        spoiled = spoil(last.read_bytes())
+        last.write_bytes(spoiled)
+        return folder, spoiled
+
+    def test_a_truncated_or_empty_last_pt_is_moved_aside_and_the_run_starts_again(self):
+        import torch
+
+        foreign = io.BytesIO()
+        torch.save({"epoch": 1}, foreign)
+        # Each spoil but the last makes torch.load raise another way: a zip cut short, nothing, two
+        # kinds of pickle that is no pickle (one stops at an opcode, one pops an empty stack), and
+        # zeroes; the last is a file torch reads that holds no run's state.
+        spoils = (("truncated", lambda data: data[: len(data) // 2]), ("emptied", lambda data: b""),
+                  ("overwritten", lambda data: b"not a torch file"), ("scribbled", lambda data: b"the epoch"),
+                  ("zeroed", lambda data: bytes(len(data))), ("foreign", lambda data: foreign.getvalue()))
+        for name, spoil in spoils:
+            with self.subTest(name):
+                folder, spoiled = self.cut_and_spoil(name, spoil)
+                rc, out, err = train(self.catalog, folder, *self.config, "--resume")
+                self.assertEqual(rc, 0, err)
+                self.assertEqual((folder / "train" / "last.pt.unreadable").read_bytes(), spoiled)
+                self.assertFalse((folder / "train" / "last.pt").exists())
+                self.assertIn('"restarted_from_epoch": 0', out)
+                self.assertNotIn("resumed_after_epoch", out)
+                self.assertEqual([untimed(line) for line in lines_of(folder)], [untimed(line) for line in lines_of(self.through)])
+                self.assertEqual(digest(folder / "train" / "best.pt"), digest(self.through / "train" / "best.pt"))
+                self.assertEqual(untimed(facts_of(folder)), untimed(facts_of(self.through)))
+                card = (folder / "train" / "MODEL.md").read_text(encoding="utf-8")
+                self.assertIn("- Restarted from epoch 0: train/last.pt could not be read", card)
+                self.assertNotIn("- Resumed", card)
+
+
+@unittest.skipIf(MISSING, f"needs the train environment ({', '.join(MISSING)} missing)")
 class ResumeRefusalsTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -214,6 +382,28 @@ class ResumeRefusalsTest(unittest.TestCase):
         self.assertEqual(rc, 1)
         self.assertIn("nothing to resume", err)
         self.assertFalse((folder / "train" / "metrics.jsonl").exists())
+
+    def test_a_second_trainer_in_a_folder_another_holds_is_refused_and_touches_nothing(self):
+        # A flow started again after the flow of a live Slurm training job died sends a second
+        # trainer into the same folder; it must stop before it settles pending/ or opens a file.
+        import fcntl
+
+        folder = new_run(self.tmp / "held", "heldrun00000")
+        train_dir = folder / "train"
+        (train_dir / "pending").mkdir(parents=True)
+        (train_dir / "last.pt").write_bytes(b"the live run's epoch")
+        (train_dir / "pending" / "best.pt").write_bytes(b"staged by the live run")
+        catalog = blocks_tests.RunWithEveryBlockTest.make_catalog(self.tmp / "catalog")
+        with (train_dir / ".lock").open("a+", encoding="utf-8") as live:
+            fcntl.flock(live, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            live.write("pid 4242 on node-a, Slurm job 777\n")
+            live.flush()
+            before = {str(p.relative_to(folder)): p.read_bytes() for p in folder.rglob("*") if p.is_file()}
+            rc, _, err = train(catalog, folder, "--epochs", "1", "--resume", module=self.train)
+        self.assertEqual(rc, 1)
+        self.assertIn(f"train: {train_dir} is in progress: another trainer holds {train_dir / '.lock'} (pid 4242 on node-a, Slurm job 777)", err)
+        after = {str(p.relative_to(folder)): p.read_bytes() for p in folder.rglob("*") if p.is_file()}
+        self.assertEqual(after, before)
 
     def test_a_staged_best_moves_in_only_where_the_record_names_it(self):
         folder = self.tmp / "settle" / "train"
@@ -322,6 +512,18 @@ class SingleCropBatchTest(unittest.TestCase):
         self.assertEqual(rc, 1)
         self.assertIn("train: one training crop: resnet18 cannot take a training step", err)
         self.assertFalse((folder / "train" / "metrics.jsonl").exists())
+
+    def test_a_batch_of_one_that_cannot_train_on_one_is_refused_in_the_same_words(self):
+        # Every batch then holds one crop, so there is nothing to join; at 64 pixels it trains.
+        folder = new_run(self.tmp / "batch-one", "batchonerun0")
+        rc, _, err = train(self.catalog, folder, "--epochs", "1", "--size", "32", "--batch", "1", "--max-frames", "3", module=self.train)
+        self.assertEqual(rc, 1)
+        self.assertIn("train: --batch 1: every batch holds one crop, and resnet18 cannot take a training step on a batch"
+                      " of one 32-pixel crop, since batch norm needs more than one value per channel there", err)
+        self.assertFalse((folder / "train" / "metrics.jsonl").exists())
+        folder = new_run(self.tmp / "batch-one-64", "batchone6400")
+        rc, _, err = train(self.catalog, folder, "--epochs", "1", "--size", "64", "--batch", "1", "--max-frames", "3", module=self.train)
+        self.assertEqual(rc, 0, err)
 
 
 class FakeWandb(types.ModuleType):

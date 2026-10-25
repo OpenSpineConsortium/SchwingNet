@@ -26,17 +26,26 @@ written beside its files (tools/report.py): the CLAIM 2024 and REFORMS items eac
 run's files or the declared study, and the licences of the data it read.
 
 The run's configuration is every argument that changes what the steps compute (the stage, the
-epochs, the seed, the crop size, the frame cap, the blocks, the sha256 of the weights or of the
-parent it starts from, the recipe and the environment) and nothing that only says where or how
+epochs, the seed, the crop size, the frame cap, the blocks, augment's changes and the sources in
+one order whatever order they were named in, the sha256 of the weights or of the parent it
+starts from, the recipe and the environment) and nothing that only says where or how
 long it runs; it is written to CONFIGURATION.json and its sha256 names the run with the commit and
 the catalog (schwingnet.flow.configured_run_id), so no clock enters the name. The run's folder is
 <out>/<run id>, or <out>/<slug> with `--slug`, so a sweep finds each row's folder by the row's
 name. Started again on a folder that holds its record, the flow runs only what is left: nothing
-where the evaluation finished (and no second ledger row), the evaluation alone where training
-wrote its checkpoint.json, training carried on from its last epoch (`tools/train.py --resume`)
-where it left train/last.pt, else training from the start; RUN.json keeps its first start and
-its earlier jobs and gains a job for each step run now. A folder that holds another run's record
-is refused and left as it is.
+where the run wrote FINISHED.json, its last file, after its report; only the last push, the
+ledger row where the ledger has none for the run, the report and FINISHED.json where the
+evaluation ended and the run was cut after it; the evaluation alone where training wrote its
+checkpoint.json, training carried on from its last epoch (`tools/train.py --resume`) where it
+left train/last.pt, else training from the start; RUN.json keeps its first start and its
+earlier jobs and gains a job for each step run now. A folder that holds another run's record
+is refused and left as it is. The flow writes its own files whole and renames them into place,
+so a start cut while it writes one leaves the one before, and a folder a start left before its
+record, holding no more than the split check and this configuration, is started again. A start
+holds the run's folder by an exclusive lock on <run>/.lock from before it reads the folder to its
+end, and the trainer holds train/ the same way, so a second start of the same run while the first
+still runs, which would otherwise take a run in progress for a cut one, is refused in words that
+name the holder, and runs and writes nothing.
 
 Before the first step the run's witness.json is written (tools/witness.py): the frozen list in
 data/witness/ where the repository has one, checked against this catalog, else the frames chosen
@@ -49,22 +58,27 @@ only.
 """
 
 import argparse
+import contextlib
+import fcntl
 import hashlib
 import json
 import os
 import re
 import shutil
+import socket
 import sqlite3
 import subprocess
 import sys
 import time
+from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import NamedTuple
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
-from schwingnet.blocks import BlockError, as_record  # noqa: E402
+from schwingnet.blocks import AUGMENT, BlockError, as_record, words_of  # noqa: E402
 from schwingnet.blocks import parse as parse_blocks  # noqa: E402
 from schwingnet.flow import JobClass, JobRecord, JobSpec, RunRecord, Stage, Step, configured_run_id, ledger_row  # noqa: E402
 from schwingnet.slurm import elapsed_seconds, is_finished, sbatch_script, submitted_of  # noqa: E402
@@ -119,7 +133,11 @@ MIN_POLL = 60
 # A run folder's name where the caller gives one: a sweep's row names it, so the folder is found by
 # the row; no slash, no leading dot, so it stays one folder inside --out.
 SLUG = re.compile(r"[a-z0-9][a-z0-9.-]{0,79}")
-FINISHED, TRAINED, RESUMED, RESTARTED = "finished", "trained", "resumed", "restarted"
+FINISHED, EVALUATED, TRAINED, RESUMED, RESTARTED = "finished", "evaluated", "trained", "resumed", "restarted"
+# The run's last file, written once everything after its evaluation is done (finish).
+FINISHED_MARK = "FINISHED.json"
+# The file a start holds the run's folder by for as long as it runs (held).
+LOCK = ".lock"
 
 
 class FlowError(Exception):
@@ -161,19 +179,30 @@ def now():
 
 def parsed_blocks(words):
     """The trainer's blocks from the command's words, refused here before any step starts: a word
-    that names no block, and any space, since the command is split on spaces."""
+    that names no block, and any space, since the command is split on spaces; in one order
+    (canonical_blocks) whatever order the words named them in."""
     if any(any(c.isspace() for c in word) for word in words):
         raise FlowError("a block is KEY=VALUE with no space in it")
     try:
-        return parse_blocks(words)
+        return canonical_blocks(parse_blocks(words))
     except BlockError as error:
         raise FlowError(f"blocks: {error}") from error
 
 
+def canonical_blocks(blocks):
+    """The blocks with augment's changes in the order schwingnet.blocks lists them, the order the
+    trainer applies them in whatever order they are named, and the sources sorted, since the
+    trainer keeps a crop by whether its source is named: two orders that train alike then name
+    one run, and a run started with one and carried on with the other hands the trainer the same
+    words, which its --resume holds to."""
+    augment = tuple(name for name in AUGMENT if name in blocks.augment)
+    return replace(blocks, augment=augment, sources=tuple(sorted(blocks.sources)))
+
+
 def block_words(words):
-    """The trainer's blocks as the command passes them, each word checked first."""
-    parsed_blocks(words)
-    return "".join(f" --block {word}" for word in words)
+    """The trainer's blocks as the command passes them: checked, in one order, and only those
+    that are not version 1's (schwingnet.blocks.words_of)."""
+    return "".join(f" --block {word}" for word in words_of(parsed_blocks(words)))
 
 
 def file_sha256(path, what, missing="no file there"):
@@ -188,8 +217,9 @@ def file_sha256(path, what, missing="no file there"):
 
 def run_configuration(args):
     """What the run computes, as CONFIGURATION.json records it and its hash names the run: the
-    blocks as the checkpoint writes them, keyed by block, so the order of the --block words
-    changes nothing, and the files it starts from by their bytes. The mode, the partition, the hours, the CPUs and the
+    blocks as the checkpoint writes them, keyed by block and with augment and sources in one
+    order (canonical_blocks), so the order of the --block words, or of the names in one, changes
+    nothing, and the files it starts from by their bytes. The mode, the partition, the hours, the CPUs and the
     poll only say where and how long it runs, so they are left out, and a run started on another
     node is still the same run."""
     return {
@@ -213,12 +243,28 @@ def configuration_sha256(configuration):
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
+def configuration_text(configuration):
+    """CONFIGURATION.json's text: the configuration sorted, one key a line."""
+    return json.dumps(configuration, indent=1, sort_keys=True) + "\n"
+
+
 def write_configuration(run_dir, configuration):
     """CONFIGURATION.json, written once: a run started again has the same configuration, since
     its hash is in the run's name."""
     path = Path(run_dir) / "CONFIGURATION.json"
     if not path.is_file():
-        path.write_text(json.dumps(configuration, indent=1, sort_keys=True) + "\n", encoding="utf-8")
+        write_whole(path, configuration_text(configuration))
+
+
+def write_whole(path, text):
+    """A file written beside its place and renamed into it, as tools/train.py writes its own, so a
+    start cut while writing it, by a kill or a full volume, leaves the one before and never half
+    of one: RUN.json is written again after every step, and a half one would make the folder no
+    run's for good."""
+    path = Path(path)
+    temporary = path.with_name(path.name + ".tmp")
+    temporary.write_text(text, encoding="utf-8")
+    os.replace(temporary, path)
 
 
 def job_specs(args, resume=False):
@@ -308,7 +354,7 @@ def run_slurm(job, run_dir, poll):
 
 
 def write_record(run_dir, record):
-    (Path(run_dir) / "RUN.json").write_text(record.model_dump_json(indent=1) + "\n", encoding="utf-8")
+    write_whole(Path(run_dir) / "RUN.json", record.model_dump_json(indent=1) + "\n")
 
 
 def append_ledger(path, record, activity, verified):
@@ -316,6 +362,16 @@ def append_ledger(path, record, activity, verified):
     path = Path(path)
     text = path.read_text(encoding="utf-8") if path.is_file() else LEDGER_HEADER + "\n"
     path.write_text(text + ledger_row(record, activity, verified) + "\n", encoding="utf-8")
+
+
+def ledger_holds(path, run_id):
+    """Whether the ledger has a row for the run already, its second cell the run's id: a run cut
+    after its row and started again writes none of its own."""
+    path = Path(path)
+    if not path.is_file():
+        return False
+    cells = ([cell.strip() for cell in line.strip().strip("|").split("|")] for line in path.read_text(encoding="utf-8").splitlines())
+    return any(len(row) > 1 and row[1] == run_id for row in cells)
 
 
 def start_record(args, configuration=None):
@@ -361,12 +417,16 @@ def earlier_record(run_dir, record):
 
 def what_is_left(run_dir, held):
     """What a run started before still needs, from its folder, the furthest step first: nothing
-    once its evaluation finished, the evaluation where training wrote checkpoint.json (which the
-    trainer writes last), training carried on where it left train/last.pt, else all of it."""
+    once it wrote FINISHED.json, its last file; what comes after the evaluation (finish) where the
+    record holds an evaluation that ended well and its results are there; the evaluation where
+    training wrote checkpoint.json (which the trainer writes last), training carried on where it
+    left train/last.pt, else all of it."""
     run_dir = Path(run_dir)
+    if (run_dir / FINISHED_MARK).is_file():
+        return FINISHED
     evaluated = any(job.step is Step.EVALUATE and job.exit_code == 0 for job in held.jobs)
     if evaluated and (run_dir / "evaluate" / "results.json").is_file():
-        return FINISHED
+        return EVALUATED
     if (run_dir / "train" / "checkpoint.json").is_file():
         return TRAINED
     if (run_dir / "train" / "last.pt").is_file():
@@ -374,16 +434,70 @@ def what_is_left(run_dir, held):
     return RESTARTED
 
 
-def new_folder(run_dir):
-    """A new run's folder. One a start left before it wrote the record holds at most the split
-    check, which is written again; anything else there is no run of this flow's, so it is
-    refused and left as it is."""
+# What a start leaves before it writes RUN.json, each written whole (write_whole), so a start cut
+# there leaves at most these and their temporary files; CONFIGURATION.json only where it is this
+# configuration's (new_folder).
+BEFORE_RECORD = ("split-check.json", "CONFIGURATION.json", "RUN.json")
+
+
+def new_folder(run_dir, configuration):
+    """A new run's folder, there or not yet, checked before anything is written in it. One a start
+    left before it wrote the record holds at most the split check and the configuration, which
+    must be this run's, their temporary files and the lock, all written again; anything else there
+    is no run of this flow's, so it is refused and left as it is."""
     run_dir = Path(run_dir)
-    if run_dir.exists():
-        strays = sorted(p.name for p in run_dir.iterdir() if p.name != "split-check.json") if run_dir.is_dir() else [run_dir.name]
-        if strays:
-            raise FlowError(f"{run_dir} holds {', '.join(strays[:5])} and no RUN.json, so it is no run of this flow's; nothing is touched")
+    if not run_dir.exists():
+        return
+    strays = sorted(p.name for p in run_dir.iterdir() if not left_by_a_start(p.name)) if run_dir.is_dir() else [run_dir.name]
+    if strays:
+        raise FlowError(f"{run_dir} holds {', '.join(strays[:5])} and no RUN.json, so it is no run of this flow's; nothing is touched")
+    held = run_dir / "CONFIGURATION.json"
+    if held.is_file() and held.read_text(encoding="utf-8") != configuration_text(configuration):
+        raise FlowError(f"{run_dir} holds CONFIGURATION.json of another configuration and no RUN.json, so it is no start of this run's; nothing is touched")
+
+
+def left_by_a_start(name):
+    """Whether a file of this name is one a start writes before RUN.json, its temporary file, or
+    the lock a start holds the folder by."""
+    return name == LOCK or name.removesuffix(".tmp") in BEFORE_RECORD
+
+
+def holder_words():
+    """Who holds the run's folder, as its lock file says it to the next start refused: the
+    process, the machine, the Slurm job where there is one, and since when."""
+    job = os.environ.get("SLURM_JOB_ID")
+    return f"pid {os.getpid()} on {socket.gethostname()}" + (f", Slurm job {job}" if job else "") + f", since {now()}"
+
+
+@contextlib.contextmanager
+def held(run_dir):
+    """The run's folder held for this start alone, to its end: an exclusive lock on <run>/.lock,
+    taken without waiting. The run's name holds no clock, so two starts of one configuration on
+    one commit and catalog name one folder, the v1 driver's and an experiment's asking for version
+    1's training among them, and a run in progress would look like a cut one and be carried on
+    beside itself. The kernel drops a flock when its process ends, by a kill too, so a cut start
+    leaves no lock behind, and CephFS, the lab volume, honours it across nodes, as
+    grid/03-catalog.sbatch's lock relies on. The folder is made here, so the lock has a place."""
+    run_dir = Path(run_dir)
     run_dir.mkdir(parents=True, exist_ok=True)
+    path = run_dir / LOCK
+    with path.open("a+", encoding="utf-8") as handle:
+        try:
+            fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as error:
+            holder = path.read_text(encoding="utf-8").strip() or "which has not yet written who it is"
+            raise FlowError(f"{run_dir} is in progress: another start of this run holds {path} ({holder}); nothing is touched, and that start carries the run on") from error
+        except OSError as error:
+            raise FlowError(f"{path}: cannot be locked ({error}), so whether another start runs here cannot be told; nothing is touched") from error
+        yield handle
+
+
+def claim(lock):
+    """The lock file says who holds it, for the next start it refuses: written only by a start
+    that goes on to run something, so a finished run's folder is read and never written."""
+    lock.truncate(0)
+    lock.write(holder_words() + "\n")
+    lock.flush()
 
 
 def steps_for(args, reused):
@@ -401,24 +515,49 @@ def licence_record(catalog, recipe):
         raise FlowError(f"licences: {error}") from error
 
 
+class Start(NamedTuple):
+    """What a start of the run works out before it takes the run's folder."""
+
+    record: RunRecord
+    check: dict
+    configuration: dict
+    licences: dict
+
+
 def command_run(args):
     slug = checked_slug(args.slug)
     configuration = run_configuration(args)
     record, check = start_record(args, configuration)
     licences = licence_record(args.catalog, args.recipe)
     run_dir = Path(args.out) / (slug or record.run_id)
+    # Read before the lock, so a folder that is another run's, refused here, gets no lock file of
+    # this one's; what the folder holds is read again under the lock, and that reading decides.
+    if earlier_record(run_dir, record) is None:
+        new_folder(run_dir, configuration)
+    with held(run_dir) as lock:
+        return run_held(args, run_dir, Start(record, check, configuration, licences), lock)
+
+
+def run_held(args, run_dir, start, lock):
+    """The run, once its folder is held for this start alone (held)."""
+    record, configuration, licences = start.record, start.configuration, start.licences
     held = earlier_record(run_dir, record)
     reused = what_is_left(run_dir, held) if held else None
     said = {"run_id": record.run_id, "run_dir": str(run_dir), "mode": args.mode, **({"reused": reused} if reused else {})}
     if reused == FINISHED:
-        # Finished before: nothing runs and no second ledger row is written for the same run.
+        # Finished before: nothing runs, nothing is written, and no second ledger row.
         print(json.dumps(said), flush=True)
         return 0
+    claim(lock)
+    if reused == EVALUATED:
+        # Evaluated before and cut after: only what comes after the evaluation.
+        print(json.dumps(said), flush=True)
+        return finish(args, run_dir, held, licences)
     if held:
         record = held
     else:
-        new_folder(run_dir)
-    (run_dir / "split-check.json").write_text(json.dumps(check, indent=1) + "\n", encoding="utf-8")
+        new_folder(run_dir, configuration)
+    write_whole(run_dir / "split-check.json", json.dumps(start.check, indent=1) + "\n")
     write_configuration(run_dir, configuration)
     jobs = [*record.jobs, JobRecord(step=Step.SPLIT_CHECK, job_id=f"local-{os.getpid()}-split-check", partition="runner", qos=None, hours_requested=0.01, seconds_used=1, gpus=0, preemptions=0, exit_code=0)]
     record = record.model_copy(update={"jobs": tuple(jobs)})
@@ -440,11 +579,23 @@ def command_run(args):
         if done.exit_code != 0:
             where = f"{run_dir}/{job.step.value}.log" if args.mode == "local" else f"hpcworker's log of job {done.job_id}"
             raise FlowError(f"{job.step.value} exited {done.exit_code}; see {where}")
+    return finish(args, run_dir, record, licences)
+
+
+def finish(args, run_dir, record, licences):
+    """What a run does once its evaluation is recorded: the last W&B push, its ledger row, its
+    report, and last of all FINISHED.json, so a run cut anywhere before it, at a push that hung or
+    by a time limit, is finished by its next start, which writes the ledger row only where the
+    ledger has none for the run."""
     activity = f"{record.stage.value} stage, {record.epochs} epochs, seed {record.seed}" + (f", {args.max_frames} crops per part" if args.max_frames else "") + licence_words(licences)
     pushed = push_wandb(run_dir, args.environment)
-    append_ledger(Path(args.out) / "LEDGER.md", record, activity, f"evaluate/results.md from the test part; split-check.json disjoint; {pushed}")
+    ledger = Path(args.out) / "LEDGER.md"
+    if not ledger_holds(ledger, record.run_id):
+        append_ledger(ledger, record, activity, f"evaluate/results.md from the test part; split-check.json disjoint; {pushed}")
     print(pushed, file=sys.stderr if "NOT" in pushed else sys.stdout, flush=True)
-    print(write_report(run_dir), flush=True)
+    report = write_report(run_dir)
+    print(report, flush=True)
+    write_whole(Path(run_dir) / FINISHED_MARK, json.dumps({"run_id": record.run_id, "finished_at": now(), "wandb": pushed, "report": report}, indent=1) + "\n")
     return 0
 
 
@@ -482,7 +633,7 @@ def write_witness(run_dir, catalog, catalog_sha256):
         document, how = for_run(catalog, catalog_sha256)
     except WitnessError as error:
         raise FlowError(f"witness frames: {error}") from error
-    (Path(run_dir) / "witness.json").write_text(json.dumps(document, indent=1) + "\n", encoding="utf-8")
+    write_whole(Path(run_dir) / "witness.json", json.dumps(document, indent=1) + "\n")
     print(json.dumps({"witness": how, "frames": len(document["frames"]), "missing": document["missing"]}), flush=True)
 
 
