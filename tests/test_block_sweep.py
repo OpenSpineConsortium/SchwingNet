@@ -175,6 +175,30 @@ class CheckTest(unittest.TestCase):
         self.assertEqual(table["carmlspine", "test"]["persons"], 5, "the five frozen test persons")
         self.assertFalse(any(c["part"] == "test" for c in self.facts["crops"]), "the check, like the trainer, never reads a test crop")
 
+    def test_the_facts_table_counts_the_test_parts_labels_and_maps_too(self):
+        # The table says what each part holds, the frozen test persons' labelled crops among it,
+        # counted as the trainer and the evaluator read labels, so no reader takes the test part
+        # for unlabelled; only the predictions leave it out.
+        import sqlite3
+
+        db = sqlite3.connect(f"file:{self.catalog}?mode=ro", uri=True)
+        try:
+            counted = dict(db.execute("SELECT i.part, COUNT(*) FROM label l JOIN item i ON i.sha256 = l.item AND i.shard = l.shard"
+                                      " JOIN shard s ON s.name = i.shard WHERE i.source = 'carmlspine' GROUP BY i.part"))
+            mapped = dict(db.execute("SELECT i.part, COUNT(*) FROM label l JOIN item i ON i.sha256 = l.item AND i.shard = l.shard"
+                                     " WHERE i.source = 'carmlspine' AND i.level_map IS NOT NULL GROUP BY i.part"))
+        finally:
+            db.close()
+        table = {(row["source"], row["part"]): row for row in self.facts["table"]}
+        for part in ("train", "validation", "test"):
+            self.assertEqual(table["carmlspine", part]["labelled_crops"], counted[part], part)
+            self.assertEqual(table["carmlspine", part]["crops_with_map"], mapped[part], part)
+        self.assertGreater(table["carmlspine", "test"]["labelled_crops"], 0)
+        code, page, err = said(self.sweep, "check", "--catalog", self.catalog, "--all", "--sizes", "64")
+        self.assertEqual(code, 0, err)
+        test = table["carmlspine", "test"]
+        self.assertIn(f"| carmlspine | test | {test['frames']} | {test['labelled_crops']} | {test['crops_with_map']} | {test['persons']} |", page)
+
     def test_each_row_of_the_synthetic_plan_is_predicted(self):
         rows = json.loads((ROOT / "grid" / "sweeps" / "synthetic.json").read_text(encoding="utf-8"))["rows"]
         verdicts = self.verdicts("synthetic", "--weights", "resnet18=/nowhere/resnet18.pth")

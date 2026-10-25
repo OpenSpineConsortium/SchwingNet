@@ -342,6 +342,16 @@ WHERE i.part IN ('train', 'validation')
 ORDER BY i.sha256, l.level
 """
 ITEM_FACTS_SQL = "SELECT source, part, COUNT(*), COUNT(DISTINCT person) FROM item GROUP BY source, part ORDER BY source, part"
+# The facts table's labelled crops and crops with a map in every part, the test part's among them,
+# counted as CROP_FACTS_SQL reads a label, so the table says what each part holds; the predictions
+# read the train and validation crops alone, as the trainer does.
+LABEL_FACTS_SQL = """
+SELECT i.source, i.part, COUNT(*), SUM({level_map} IS NOT NULL)
+FROM label l
+JOIN item i ON i.sha256 = l.item AND i.shard = l.shard
+JOIN shard s ON s.name = i.shard
+GROUP BY i.source, i.part
+"""
 VERSION_NAME = re.compile(r"catalog-(\d{6})-[0-9a-f]{12}\.sqlite$")
 PROGRESS_LINES = 60
 # The synthetic catalog stands for the two routes of the real data: a labelled source with level
@@ -441,8 +451,9 @@ def catalog_version(path):
 def read_facts(catalog):
     """What the check reads from a catalog, the trainer's way (tools/train.py read_crops): each
     labelled body of the train and validation parts in the catalog's order with its source, its
-    person and whether its frame has a level map, and every source's frames and persons in each
-    part, so a source with frames and no labelled body is seen as the unannotated set it is."""
+    person and whether its frame has a level map, and every source's frames, labelled crops,
+    crops with a map and persons in each part, the test part's too, so a source with frames and
+    no labelled body is seen as the unannotated set it is and the test part as the labelled one."""
     path = Path(catalog)
     if not path.is_file():
         raise BlockError(f"{catalog}: no catalog there")
@@ -452,6 +463,7 @@ def read_facts(catalog):
         level_map = "i.level_map" if "level_map" in columns else "NULL"
         crops = [{"part": part, "person": person, "source": source, "map": bool(found)}
                  for part, person, source, found in db.execute(CROP_FACTS_SQL.format(level_map=level_map))]
+        labels = {(source, part): (count, mapped or 0) for source, part, count, mapped in db.execute(LABEL_FACTS_SQL.format(level_map=level_map))}
         items = list(db.execute(ITEM_FACTS_SQL))
     except sqlite3.Error as error:
         raise BlockError(f"{catalog}: not read as a catalog ({error})") from error
@@ -459,9 +471,9 @@ def read_facts(catalog):
         db.close()
     table = []
     for source, part, frames, persons in items:
-        mine = [c for c in crops if c["source"] == source and c["part"] == part]
-        table.append({"source": source, "part": part, "frames": frames, "labelled_crops": len(mine),
-                      "crops_with_map": sum(c["map"] for c in mine), "persons": persons})
+        count, mapped = labels.get((source, part), (0, 0))
+        table.append({"source": source, "part": part, "frames": frames, "labelled_crops": count,
+                      "crops_with_map": mapped, "persons": persons})
     in_train = {row["source"] for row in table if row["part"] == "train"}
     labelled = sorted({c["source"] for c in crops if c["part"] == "train"})
     return {"crops": crops, "table": table, "labelled": labelled, "unlabelled": sorted(in_train - set(labelled))}
