@@ -39,7 +39,10 @@ record does not name. last.pt goes once checkpoint.json is written, the step's l
 one tools/flow.py takes as its end, since it holds the optimiser's state and is only for resuming.
 A last.pt that cannot be read, cut short or emptied, is moved aside to last.pt.unreadable and the
 run trains from epoch 0 in the same call, saying so in its log and on its card, since the flow
-resumes wherever last.pt is and a refusal would come back on every start.
+resumes wherever last.pt is and a refusal would come back on every start. A run holds train/ by
+an exclusive lock on train/.lock from before it reads a file there to its end, so a second
+trainer sent into the same folder while the first still trains, as a flow started again after
+the flow of a live Slurm job died would send one, is refused in words and touches nothing.
 
 Batch norm in training needs more than one value per channel, and a batch of one small crop ends
 on a map that gives it one: no architecture here can take a step on one 32-pixel crop, nor
@@ -61,12 +64,15 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path[0] = str(ROOT / "src")
 
 import argparse  # noqa: E402
+import contextlib  # noqa: E402
 import copy  # noqa: E402
+import fcntl  # noqa: E402
 import hashlib  # noqa: E402
 import json  # noqa: E402
 import os  # noqa: E402
 import pickle  # noqa: E402
 import random  # noqa: E402
+import socket  # noqa: E402
 import sqlite3  # noqa: E402
 import struct  # noqa: E402
 import time  # noqa: E402
@@ -86,6 +92,8 @@ PAD = 0.15
 # folder best.pt and prior_head.pt wait in until last.pt records them.
 LAST = "last.pt"
 PENDING = "pending"
+# The file a run holds train/ by for as long as it trains (held).
+LOCK = ".lock"
 STAGED = (("best.pt", "checkpoint_sha256"), ("prior_head.pt", "prior_head_sha256"))
 TRAIN_PARTS = ("train", "validation")
 SAMPLE_WORDS = ("samples", "sources", "per_person")
@@ -989,6 +997,37 @@ def resume_into(saved, model, optimiser, prior, generator, frames):
     return saved["epoch"] + 1, list(saved["history"]), saved["best"], [*saved["resumed_after"], saved["epoch"]]
 
 
+def holder_words():
+    """Who holds a lock, as the lock file says it to the next one refused: the process, the node,
+    the Slurm job where there is one, and since when."""
+    job = os.environ.get("SLURM_JOB_ID")
+    return f"pid {os.getpid()} on {socket.gethostname()}" + (f", Slurm job {job}" if job else "") + time.strftime(", since %Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+
+@contextlib.contextmanager
+def held(folder):
+    """train/ held for this run alone, from before any file in it is read to the end: an exclusive
+    lock on train/.lock, taken without waiting, so a second trainer sent into the same folder, as a
+    flow started again after the flow of a live Slurm job died sends one, is refused in words
+    before it settles pending/ or opens a file. The kernel drops a flock when its process ends, by
+    a kill too, so a cut run leaves no lock behind, and CephFS, the lab volume, honours it across
+    nodes, as grid/03-catalog.sbatch's lock relies on."""
+    folder.mkdir(parents=True, exist_ok=True)
+    path = folder / LOCK
+    with path.open("a+", encoding="utf-8") as handle:
+        try:
+            fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as error:
+            holder = path.read_text(encoding="utf-8").strip() or "which has not yet written who it is"
+            raise TrainError(f"{folder} is in progress: another trainer holds {path} ({holder}); this one stops before it touches anything") from error
+        except OSError as error:
+            raise TrainError(f"{path}: cannot be locked ({error}), so whether another trainer works here cannot be told; nothing is touched") from error
+        handle.truncate(0)
+        handle.write(holder_words() + "\n")
+        handle.flush()
+        yield
+
+
 def write_whole(path, text):
     """A file written beside its place and renamed into it, so no reader sees half of it:
     tools/flow.py takes checkpoint.json as the end of the training step."""
@@ -1011,6 +1050,12 @@ def run(args):
         raise TrainError(f"blocks: {error}") from error
     if args.init and args.weights:
         raise TrainError("a run starts from ImageNet (--weights) or from a parent (--init), not both")
+    with held(out / "train"):
+        return train_held(args, out, record, blocks)
+
+
+def train_held(args, out, record, blocks):
+    """The run itself, once train/ is held for it alone (held)."""
     folder = out / "train"
     parent = parent_of(args.init) if args.init else None
     if args.resume:

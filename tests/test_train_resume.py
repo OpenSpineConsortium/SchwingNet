@@ -7,10 +7,11 @@ after its second write, patched in this process, so the trainer carries no hook 
 --resume with nothing to resume, or with other arguments than the run was started with, is
 refused in words, as is one whose catalog, ImageNet file or parent is not the bytes the run
 started from, while the same file at another path resumes; a last.pt that cannot be read is
-moved aside and the run trains again from epoch 0; and last.pt is gone once a run has finished.
-W&B's run goes on under the same id. And at 32 pixels, where batch norm cannot train on one
-crop, a training part of 65 crops, whose last batch of 64 would hold one, still trains, while at
-64 pixels the batches are as they always were.
+moved aside and the run trains again from epoch 0; a second trainer in a folder another holds is
+refused and touches nothing; and last.pt is gone once a run has finished. W&B's run goes on
+under the same id. And at 32 pixels, where batch norm cannot train on one crop, a training part
+of 65 crops, whose last batch of 64 would hold one, still trains, while at 64 pixels the batches
+are as they always were.
 
 The trainer's tests need the train environment, as tests/test_train_blocks.py does, and skip
 under the required check's plain python3; the W&B test needs nothing but the standard library."""
@@ -392,12 +393,12 @@ class ResumeRefusalsTest(unittest.TestCase):
         (train_dir / "pending").mkdir(parents=True)
         (train_dir / "last.pt").write_bytes(b"the live run's epoch")
         (train_dir / "pending" / "best.pt").write_bytes(b"staged by the live run")
-        before = {str(p.relative_to(folder)): p.read_bytes() for p in folder.rglob("*") if p.is_file()}
+        catalog = blocks_tests.RunWithEveryBlockTest.make_catalog(self.tmp / "catalog")
         with (train_dir / ".lock").open("a+", encoding="utf-8") as live:
             fcntl.flock(live, fcntl.LOCK_EX | fcntl.LOCK_NB)
             live.write("pid 4242 on node-a, Slurm job 777\n")
             live.flush()
-            catalog = blocks_tests.RunWithEveryBlockTest.make_catalog(self.tmp / "catalog")
+            before = {str(p.relative_to(folder)): p.read_bytes() for p in folder.rglob("*") if p.is_file()}
             rc, _, err = train(catalog, folder, "--epochs", "1", "--resume", module=self.train)
         self.assertEqual(rc, 1)
         self.assertIn(f"train: {train_dir} is in progress: another trainer holds {train_dir / '.lock'} (pid 4242 on node-a, Slurm job 777)", err)
