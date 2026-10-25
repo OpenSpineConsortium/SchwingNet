@@ -6,10 +6,11 @@ through, the seconds apart; the cut is made here by the trainer's own save funct
 after its second write, patched in this process, so the trainer carries no hook for tests. A
 --resume with nothing to resume, or with other arguments than the run was started with, is
 refused in words, as is one whose catalog, ImageNet file or parent is not the bytes the run
-started from, while the same file at another path resumes; and last.pt is gone once a run has
-finished. W&B's run goes on under the same id. And at 32 pixels, where batch norm cannot train
-on one crop, a training part of 65 crops, whose last batch of 64 would hold one, still trains,
-while at 64 pixels the batches are as they always were.
+started from, while the same file at another path resumes; a last.pt that cannot be read is
+moved aside and the run trains again from epoch 0; and last.pt is gone once a run has finished.
+W&B's run goes on under the same id. And at 32 pixels, where batch norm cannot train on one
+crop, a training part of 65 crops, whose last batch of 64 would hold one, still trains, while at
+64 pixels the batches are as they always were.
 
 The trainer's tests need the train environment, as tests/test_train_blocks.py does, and skip
 under the required check's plain python3; the W&B test needs nothing but the standard library."""
@@ -303,6 +304,54 @@ class ResumeBindingTest(unittest.TestCase):
         self.assertEqual(rc, 1)
         self.assertIn("train: --resume:", err)
         self.assertIn("catalog_sha256 was", err)
+
+
+@unittest.skipIf(MISSING, f"needs the train environment ({', '.join(MISSING)} missing)")
+class UnreadableLastTest(unittest.TestCase):
+    """A last.pt that cannot be read, cut short or emptied by a node that died before it reached
+    the disk, is moved aside under a name that says so and the run trains from epoch 0 in the same
+    call, ending as a run that went through; refused, every start the flow makes would resume it
+    and be refused again."""
+
+    config = ("--epochs", "3", "--size", "32")
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = Path(tempfile.mkdtemp())
+        cls.catalog = blocks_tests.RunWithEveryBlockTest.make_catalog(cls.tmp)
+        cls.through = new_run(cls.tmp / "through", "throughrun00")
+        assert train(cls.catalog, cls.through, *cls.config)[0] == 0
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls.tmp, ignore_errors=True)
+
+    def cut_and_spoil(self, name, spoil):
+        folder = new_run(self.tmp / name, name.ljust(12, "0")[:12])
+        module = load("train")
+        with cut_after(module, 2), self.assertRaises(Killed):
+            train(self.catalog, folder, *self.config, module=module)
+        last = folder / "train" / "last.pt"
+        spoiled = spoil(last.read_bytes())
+        last.write_bytes(spoiled)
+        return folder, spoiled
+
+    def test_a_truncated_or_empty_last_pt_is_moved_aside_and_the_run_starts_again(self):
+        for name, spoil in (("truncated", lambda data: data[: len(data) // 2]), ("emptied", lambda data: b"")):
+            with self.subTest(name):
+                folder, spoiled = self.cut_and_spoil(name, spoil)
+                rc, out, err = train(self.catalog, folder, *self.config, "--resume")
+                self.assertEqual(rc, 0, err)
+                self.assertEqual((folder / "train" / "last.pt.unreadable").read_bytes(), spoiled)
+                self.assertFalse((folder / "train" / "last.pt").exists())
+                self.assertIn('"restarted_from_epoch": 0', out)
+                self.assertNotIn("resumed_after_epoch", out)
+                self.assertEqual([untimed(line) for line in lines_of(folder)], [untimed(line) for line in lines_of(self.through)])
+                self.assertEqual(digest(folder / "train" / "best.pt"), digest(self.through / "train" / "best.pt"))
+                self.assertEqual(untimed(facts_of(folder)), untimed(facts_of(self.through)))
+                card = (folder / "train" / "MODEL.md").read_text(encoding="utf-8")
+                self.assertIn("- Restarted from epoch 0: train/last.pt could not be read", card)
+                self.assertNotIn("- Resumed", card)
 
 
 @unittest.skipIf(MISSING, f"needs the train environment ({', '.join(MISSING)} missing)")

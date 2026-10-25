@@ -37,6 +37,9 @@ checkpoint.json as one that went through, the seconds apart. best.pt and prior_h
 into place only once last.pt records them, so a cut between the two never leaves weights the
 record does not name. last.pt goes once checkpoint.json is written, the step's last file and the
 one tools/flow.py takes as its end, since it holds the optimiser's state and is only for resuming.
+A last.pt that cannot be read, cut short or emptied, is moved aside to last.pt.unreadable and the
+run trains from epoch 0 in the same call, saying so in its log and on its card, since the flow
+resumes wherever last.pt is and a refusal would come back on every start.
 
 Batch norm in training needs more than one value per channel, and a batch of one small crop ends
 on a map that gives it one: no architecture here can take a step on one 32-pixel crop, nor
@@ -587,6 +590,16 @@ def batch_lines(joined, blocks, args):
     ]
 
 
+def restart_lines(restarted):
+    """The card's line on a resume that found last.pt unreadable and started again (read_last)."""
+    if not restarted:
+        return []
+    return [
+        f"- Restarted from epoch 0: train/last.pt could not be read, so it was moved aside to train/{LAST}.unreadable"
+        " and the run trained from the start, as a fresh start trains."
+    ]
+
+
 def resume_lines(resumed):
     """The card's line on the cuts the run was resumed after, where it was."""
     if not resumed:
@@ -904,17 +917,36 @@ def refuse_nothing_to_resume(folder):
         raise TrainError(f"--resume: {path} is not there, so there is nothing to resume (a run writes it after every epoch and deletes it once checkpoint.json is written); start the run without --resume")
 
 
-def load_last(folder, arguments):
-    """train/last.pt for --resume, refused in words where there is none, where it cannot be read,
-    or where the run that wrote it was started with other arguments; the files staged under
-    pending/ are then settled as its best line says, and best.pt held to that line, before
-    anything of the run starts."""
-    refuse_nothing_to_resume(folder)
-    path = folder / LAST
+def read_last(path):
+    """last.pt as torch reads it, or None where it cannot be read: cut short or emptied, as a node
+    that died before the rename reached the disk may leave it. Such a file is moved aside to
+    last.pt.unreadable, kept for a person to look at, and the run starts again from epoch 0 in this
+    call, since refusing it would be refused again on every start the flow makes, which resumes
+    wherever last.pt is."""
     try:
         state = torch.load(path, map_location="cpu", weights_only=True)
     except (OSError, EOFError, RuntimeError, pickle.UnpicklingError) as error:
-        raise TrainError(f"--resume: {path} cannot be read ({type(error).__name__}); start the run again without --resume") from error
+        why = type(error).__name__
+    else:
+        if isinstance(state, dict):
+            return state
+        why = f"a {type(state).__name__}, not a run's state"
+    aside = path.with_name(f"{LAST}.unreadable")
+    os.replace(path, aside)
+    print(json.dumps({"restarted_from_epoch": 0, "unreadable": str(aside), "why": why}), flush=True)
+    return None
+
+
+def load_last(folder, arguments):
+    """train/last.pt for --resume, refused in words where there is none or where the run that
+    wrote it was started with other arguments, and None where it cannot be read (read_last); the
+    files staged under pending/ are then settled as its best line says, and best.pt held to that
+    line, before anything of the run starts."""
+    refuse_nothing_to_resume(folder)
+    path = folder / LAST
+    state = read_last(path)
+    if state is None:
+        return None
     theirs = state.get("arguments") or {}
     changed = [f"{name} was {theirs.get(name)!r}, now {value!r}" for name, value in arguments.items() if theirs.get(name) != value]
     if changed:
@@ -1047,7 +1079,7 @@ def run(args):
         "train_with_map": with_map(train_crops),
         "validation_with_map": with_map(val_crops),
     }
-    notes = batch_lines(joined, blocks, args) + resume_lines(resumed)
+    notes = batch_lines(joined, blocks, args) + restart_lines(args.resume and saved is None) + resume_lines(resumed)
     model_card(folder, args, record, counts, best, time.monotonic() - started, blocks, parent, notes)
     joins = {"single_crop_batch": "joined"} if joined else {}
     facts = dict(best, counts=counts, levels=list(LEVELS), size=args.size, blocks=as_record(blocks), parent=parent_record(parent), **joins)
