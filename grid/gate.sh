@@ -1018,7 +1018,7 @@ bench_inputs_missing() {  # what bench $id still lacks on the data root, one lin
   esac
 }
 word_bench() {  # one public model's benchmark (#287): queued once, its report printed on every later send
-  local report=$LOGS/BENCH-$id.md busy missing holds opts
+  local report=$LOGS/BENCH-$id.md busy missing holds opts setup
   case "$id" in
     flexray_carmlspine|flexray_deepfluoro|xvr_deepfluoro) ;;
     *) echo "refusing: bench takes flexray_carmlspine, flexray_deepfluoro or xvr_deepfluoro"; return 64 ;;
@@ -1033,14 +1033,17 @@ word_bench() {  # one public model's benchmark (#287): queued once, its report p
   fi
   missing=$(bench_inputs_missing)
   [ -z "$missing" ] || { echo "refusing: bench $id needs $missing"; return 2; }
-  envs_ready || { echo "refusing: the environments are not ready; 'start' makes them first"; return 75; }
+  # Stale environments are rebuilt by the one setup job, which every bench sent while it runs waits
+  # on, rather than by 'start', which would queue the whole pipeline (the owner's choice, 2026-10-25).
+  setup=$(setup_dependency) || return 1
+  [ -z "$setup" ] || echo "  the environments: after the setup job that rebuilds them (${setup#afterok:})"
   # The job holds the checkout while it runs (grid/bench.sbatch), so it is queued after every other
   # run that holds it, as a sweep is, rather than refused.
   holds=$(checkout_holders)
   [ -z "$holds" ] || echo "  the checkout: after the live runs that hold it ($holds)"
-  depend_on "$holds" || return 1
+  depend_on "$(joined "$setup" "$holds")" || return 1
   submit "bench_$id" gpu BENCH="$id" DATA_ROOT="$DATA_ROOT" ${opts[@]+"${opts[@]}"} --no-requeue -- bench.sbatch > /dev/null || return 1
-  echo "submitted one job. Send bench $id again once it ends to read its report, logs/BENCH-$id.md."
+  echo "submitted the benchmark. Send bench $id again once it ends to read its report, logs/BENCH-$id.md."
 }
 
 word_samples() {
