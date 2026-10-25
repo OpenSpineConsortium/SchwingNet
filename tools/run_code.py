@@ -15,8 +15,9 @@ after a merge that changes none of its files is the same run and is carried on, 
 any of them names a new one.
 
 KINDS lists, for each kind, the files whose bytes the digest covers: what its steps run, the rules
-they import and the locked environment, and for the stages that read them the registry and the
-split files, whole folders where a name ends in "/". The files are the tracked ones, read from the
+they import and the locked environment, for bank and catalog the wrappers every tool of their steps
+runs through on the grid, and for the stages that read them the registry and the split files,
+whole folders where a name ends in "/". The files are the tracked ones, read from the
 working tree; a run refuses a dirty tree elsewhere (schwingnet.flow.RunRecord), so for a run that
 is the code git holds. LEFT_OUT names, file by file, what a kind's code reaches and its digest
 leaves out, with the reason. tests/test_run_code.py follows each kind's imports, the tools it
@@ -47,7 +48,12 @@ STATE = (*ROW, "tools/block_sweep.py")
 # What a bank or catalog build reads besides its words: tools/catalog.py loads the registry and the
 # frozen test persons and the split rule, which decide each frame's part.
 SPLIT_RULES = ("data/registry/", "data/splits/")
-STAGE = (*ENVIRONMENT, *CONTRACTS, *SPLIT_RULES, "src/schwingnet/__init__.py", "src/schwingnet/catalog.py", "tools/catalog.py")
+# On the grid every tool a bank or catalog step runs goes through the PYDRV grid/gate.sh exports,
+# grid/bin/train-cpu-python, which picks the environment the tool runs in and execs grid/box.sh,
+# which runs it in the container or, inside it already, as it is (the second review of #252,
+# finding 4).
+PYDRV = ("grid/bin/train-cpu-python", "grid/box.sh")
+STAGE = (*ENVIRONMENT, *CONTRACTS, *SPLIT_RULES, *PYDRV, "src/schwingnet/__init__.py", "src/schwingnet/catalog.py", "tools/catalog.py")
 KINDS = {
     "row": ROW,
     "state": STATE,
@@ -73,7 +79,10 @@ STATE_LEFT_OUT = {
 }
 # A stage's job script starts the launcher when Slurm runs it, and the flow's steps run the same
 # script again for its body.
-STAGE_LEFT_OUT = {"flows/launch.py": LAUNCHES}
+STAGE_LEFT_OUT = {
+    "flows/launch.py": LAUNCHES,
+    "grid/00-setup.sbatch": "is named only in grid/box.sh's refusal on a node with no container, which it builds once, before any job",
+}
 LEFT_OUT = {
     "row": ROW_LEFT_OUT,
     "state": STATE_LEFT_OUT,
