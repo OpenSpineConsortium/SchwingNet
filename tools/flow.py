@@ -26,8 +26,9 @@ written beside its files (tools/report.py): the CLAIM 2024 and REFORMS items eac
 run's files or the declared study, and the licences of the data it read.
 
 The run's configuration is every argument that changes what the steps compute (the stage, the
-epochs, the seed, the crop size, the frame cap, the blocks, the sha256 of the weights or of the
-parent it starts from, the recipe and the environment) and nothing that only says where or how
+epochs, the seed, the crop size, the frame cap, the blocks, augment's changes and the sources in
+one order whatever order they were named in, the sha256 of the weights or of the parent it
+starts from, the recipe and the environment) and nothing that only says where or how
 long it runs; it is written to CONFIGURATION.json and its sha256 names the run with the commit and
 the catalog (schwingnet.flow.configured_run_id), so no clock enters the name. The run's folder is
 <out>/<run id>, or <out>/<slug> with `--slug`, so a sweep finds each row's folder by the row's
@@ -69,6 +70,7 @@ import sqlite3
 import subprocess
 import sys
 import time
+from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import NamedTuple
@@ -76,7 +78,7 @@ from typing import NamedTuple
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
-from schwingnet.blocks import BlockError, as_record  # noqa: E402
+from schwingnet.blocks import AUGMENT, BlockError, as_record, words_of  # noqa: E402
 from schwingnet.blocks import parse as parse_blocks  # noqa: E402
 from schwingnet.flow import JobClass, JobRecord, JobSpec, RunRecord, Stage, Step, configured_run_id, ledger_row  # noqa: E402
 from schwingnet.slurm import elapsed_seconds, is_finished, sbatch_script, submitted_of  # noqa: E402
@@ -177,19 +179,30 @@ def now():
 
 def parsed_blocks(words):
     """The trainer's blocks from the command's words, refused here before any step starts: a word
-    that names no block, and any space, since the command is split on spaces."""
+    that names no block, and any space, since the command is split on spaces; in one order
+    (canonical_blocks) whatever order the words named them in."""
     if any(any(c.isspace() for c in word) for word in words):
         raise FlowError("a block is KEY=VALUE with no space in it")
     try:
-        return parse_blocks(words)
+        return canonical_blocks(parse_blocks(words))
     except BlockError as error:
         raise FlowError(f"blocks: {error}") from error
 
 
+def canonical_blocks(blocks):
+    """The blocks with augment's changes in the order schwingnet.blocks lists them, the order the
+    trainer applies them in whatever order they are named, and the sources sorted, since the
+    trainer keeps a crop by whether its source is named: two orders that train alike then name
+    one run, and a run started with one and carried on with the other hands the trainer the same
+    words, which its --resume holds to."""
+    augment = tuple(name for name in AUGMENT if name in blocks.augment)
+    return replace(blocks, augment=augment, sources=tuple(sorted(blocks.sources)))
+
+
 def block_words(words):
-    """The trainer's blocks as the command passes them, each word checked first."""
-    parsed_blocks(words)
-    return "".join(f" --block {word}" for word in words)
+    """The trainer's blocks as the command passes them: checked, in one order, and only those
+    that are not version 1's (schwingnet.blocks.words_of)."""
+    return "".join(f" --block {word}" for word in words_of(parsed_blocks(words)))
 
 
 def file_sha256(path, what, missing="no file there"):
@@ -204,8 +217,9 @@ def file_sha256(path, what, missing="no file there"):
 
 def run_configuration(args):
     """What the run computes, as CONFIGURATION.json records it and its hash names the run: the
-    blocks as the checkpoint writes them, keyed by block, so the order of the --block words
-    changes nothing, and the files it starts from by their bytes. The mode, the partition, the hours, the CPUs and the
+    blocks as the checkpoint writes them, keyed by block and with augment and sources in one
+    order (canonical_blocks), so the order of the --block words, or of the names in one, changes
+    nothing, and the files it starts from by their bytes. The mode, the partition, the hours, the CPUs and the
     poll only say where and how long it runs, so they are left out, and a run started on another
     node is still the same run."""
     return {

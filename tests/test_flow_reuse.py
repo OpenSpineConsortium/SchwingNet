@@ -290,6 +290,31 @@ class FlowReuseTest(unittest.TestCase):
         self.assertIn("no parent checkpoint there", err)
         self.assertFalse(self.out.exists())
 
+    def test_the_order_the_changes_or_sources_are_named_in_names_no_other_run(self):
+        # The trainer applies augment in its own fixed order and keeps a crop by whether its source
+        # is named, so the two orders train alike and must name one run.
+        def named(*blocks):
+            words = [w for block in blocks for w in ("--block", block)]
+            args = self.flow.parse(["run", "--catalog", str(self.catalog), "--out", str(self.out), "--epochs", "2", *words])
+            with mock.patch.object(self.flow, "tree_state", lambda: (COMMIT, True)):
+                return self.flow.start_record(args)[0].run_id
+
+        self.assertEqual(named("augment=noise,blur"), named("augment=blur,noise"))
+        self.assertEqual(named("samples=drop-sources", "sources=b,a"), named("sources=a,b", "samples=drop-sources"))
+        self.assertNotEqual(named("augment=blur"), named("augment=blur,noise"))
+        self.assertNotEqual(named("samples=drop-sources", "sources=a"), named("samples=drop-sources", "sources=a,b"))
+        rc, lines, _ = self.run_flow("--block", "augment=noise,blur", fake={"FAKE_TRAIN": "cut"})
+        run_dir = Path(self.said(lines)["run_dir"])
+        first = dict(self.calls())["train"]
+        self.log.unlink()
+        rc, lines, err = self.run_flow("--block", "augment=blur,noise")
+        self.assertEqual((rc, self.said(lines)["run_dir"], self.said(lines)["reused"]), (0, str(run_dir), "resumed"), err)
+        again = dict(self.calls())["train"]
+        self.assertEqual(again, [*first, "--resume"], "the trainer is handed the same blocks whichever order was typed")
+        self.assertIn("augment=blur,noise", first)
+        configuration = json.loads((run_dir / "CONFIGURATION.json").read_text(encoding="utf-8"))
+        self.assertEqual(configuration["blocks"]["augment"], ["blur", "noise"])
+
     def test_a_folder_that_finished_training_runs_the_evaluation_only(self):
         rc, lines, err = self.run_flow(fake={"FAKE_EVALUATE": "fail"})
         self.assertEqual(rc, 1)
