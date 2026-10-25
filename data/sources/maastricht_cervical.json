@@ -5,7 +5,7 @@
   "what": "112 lateral cervical recordings at 1024 x 1024, 15 fps, uncompressed, with C0 to C7 contours on every frame carrying identity through the sequence",
   "level_truth": "yes, C0 to C7 per frame",
   "reach": "get",
-  "status": "request 2 sent 2026-10-20 22:58 UTC; no answer by 2026-10-24; on request only",
+  "status": "request 2 sent 2026-10-20 22:58 UTC; no answer by 2026-10-25; on request only",
   "licence": "available on request under privacy restrictions; a Dutch WMO/GDPR data transfer agreement is expected",
   "link": "https://pmc.ncbi.nlm.nih.gov/articles/PMC13024292/",
   "how_to_get": [

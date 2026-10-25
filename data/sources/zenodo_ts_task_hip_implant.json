@@ -5,11 +5,11 @@
   "what": "TotalSegmentator task data 'hip_implant', 71 CT, Zenodo 20272031 published 2026-05-18, about 9.0 GB; the same institution as TotalSegmentator v2/v3 (on disk) with no subject map",
   "level_truth": "counted by the census pipeline once fetched",
   "reach": "held",
-  "status": "asked the TotalSegmentator authors on 2026-10-21 whether these subjects overlap the public v2/v3 release; Jakob Wasserthal answered on 2026-10-22 only that v2 is a complete subset of v3 with the same ids; whether the task sets overlap v2/v3 is still unanswered, so they are counted as overlapping until shown otherwise",
+  "status": "asked the TotalSegmentator authors on 2026-10-21 whether these subjects overlap the public v2/v3 release; Jakob Wasserthal answered on 2026-10-22 only that v2 is a complete subset of v3 and that the ids should have stayed the same in v3, his words, so a match by id is checked rather than assumed; whether the task sets overlap v2/v3 is still unanswered, though the owner asked again on 2026-10-24 03:05 UTC for a yes or no, with no answer by 2026-10-25, so they are counted as overlapping until shown otherwise",
   "licence": "CC BY 4.0",
   "link": "https://zenodo.org/records/20272031",
   "how_to_get": [
-    "The owner writes to the TotalSegmentator authors about the overlap with v2/v3 (one letter for the three task sets).",
+    "The owner wrote to the TotalSegmentator authors on 2026-10-21, one letter for the three task sets, and again on 2026-10-24; the step waits for Jakob Wasserthal's yes or no on whether the task sets' subjects are among v2/v3.",
     "Read the record listing and choose the include pattern, then spinesurg-ct-nnunet's tools/acquisition_fetch.py zenodo --collection ts_task_hip_implant --record 20272031 --include '<pattern>' (md5-verified) through slurm/acquisition_fetch.sh; as liver_lesions.",
     "The route as the manifest prints it: python3 data/reproduce/reacquire/reacquire.py --grid zenodo_ts_task_hip_implant; on the grid, from ~/spinesurg-ct-nnunet/data_platform/reacquire, sbatch -D \"$PWD\" --export=ALL,IDS=\"zenodo_ts_task_hip_implant\",MODE=--run reacquire.sbatch, as a Slurm job on the owner's word."
   ],

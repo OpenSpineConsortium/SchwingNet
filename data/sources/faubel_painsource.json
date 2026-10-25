@@ -2,14 +2,14 @@
   "id": "faubel_painsource",
   "name": "ThePainSource (Faubel) fluoroscopy clips",
   "group": "video",
-  "what": "pain-procedure fluoroscopy clips on YouTube; fax or phone only",
+  "what": "pain-procedure fluoroscopy clips on YouTube; e-mailed to the channel's address, fax or phone the fallback",
   "level_truth": "none named",
   "reach": "get",
-  "status": "request 13 sent by e-mail 2026-10-21 04:01 UTC (fax fallback to confirm); no answer by 2026-10-24",
+  "status": "request 13 sent by e-mail 2026-10-21 04:01 UTC (fax fallback to confirm); no answer by 2026-10-25",
   "licence": "unknown",
   "link": "https://www.faubelmd.com/contact-us",
   "how_to_get": [
-    "Fax or phone request 13 of spine-program 01_carm_level_detection/docs/data_requests/FLUORO_VIDEO_REQUESTS_READY_2026-09-26.md to the numbers on the contact page."
+    "Request 13 of spine-program 01_carm_level_detection/docs/data_requests/FLUORO_VIDEO_REQUESTS_READY_2026-09-26.md went by e-mail to thepainsource@gmail.com on 2026-10-21 04:01 UTC; if no answer comes, fax or phone the numbers on the contact page."
   ],
   "grid_path": null,
   "counts": {},

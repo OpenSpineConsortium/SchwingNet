@@ -5,7 +5,7 @@
   "what": "paired cervical and lumbar radiograph series in DICOM from Taipei Veterans General Hospital, of ankylosing spondylitis, whose fused and bridged spines are among the hardest to count; on the Taiwan Medical AI and Data Portal, which shows no files to a visitor",
   "level_truth": "not recorded",
   "reach": "gated",
-  "status": "asked Dr Tsai on 2026-10-21 19:56 UTC whether the radiographs can be shared for non-commercial research and on what terms, with TVGH-SpineXR asked about under the same terms; no answer by 2026-10-24",
+  "status": "asked Dr Tsai on 2026-10-21 19:56 UTC whether the radiographs can be shared for non-commercial research and on what terms, with TVGH-SpineXR asked about under the same terms; no answer by 2026-10-25",
   "licence": "not recorded",
   "link": "https://data.dmc.nycu.edu.tw/dataset/d08-x-ray",
   "how_to_get": [
@@ -14,5 +14,5 @@
   "grid_path": null,
   "counts": {},
   "measured": {},
-  "record": "SchwingNet docs/research/data-access-requirements.md, Where each request stands (2026-10-24); the letter in the owner's Wayne State Outlook, subject tag [XR/CT Imaging Research]"
+  "record": "SchwingNet docs/research/data-access-requirements.md, Where each request stands (2026-10-25); the letter in the owner's Wayne State Outlook, subject tag [XR/CT Imaging Research]"
 }

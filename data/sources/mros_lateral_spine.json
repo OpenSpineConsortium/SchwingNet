@@ -5,11 +5,11 @@
   "what": "lateral thoracic and lumbar films of 5,994 men at six US centres, two visits (2000-2002 and about 4.6 years later), with Genant semi-quantitative vertebral fracture grades per vertebra; one deep-learning study used 4,461 subjects and 15,524 films; the image counts and the request steps to confirm on the page",
   "level_truth": "Genant grades on named levels, so level truth exists",
   "reach": "get",
-  "status": "found by the sweep of 2026-10-21; asked MrOS's data team on 2026-10-22 for leave to register; they answered the same day that MrOS Online is closed to registrations while it is changed for new NIH requirements, and that the study images are going to the NIA Aging Research Biobank (agingresearchbiobank.nia.nih.gov), which gives the timeline, transfer, fees and terms; no request there yet; older osteoporotic spines with compression fractures, the anatomy the C-arm sees in kyphoplasty",
+  "status": "found by the sweep of 2026-10-21; asked MrOS's data team on 2026-10-22 for leave to register; Liezl P. Concepcion (Center for Aging Science, Sutter Health Research Institute) answered the same day that MrOS Online is closed to registrations while it is changed for new NIH requirements and that they will write when it reopens, and that the study images are already with the NIA Aging Research Biobank (agingresearchbiobank.nia.nih.gov), which gives the timeline, transfer, fees and terms; no request there yet; older osteoporotic spines with compression fractures, the anatomy the C-arm sees in kyphoplasty",
   "licence": "an NIA Outgoing Human Data Transfer Agreement signed by the PI and Wayne State's Signing Official: non-profit research on the approved project only, no redistribution, no re-identification, acknowledgement, 12 months renewable, destruction certified at the end",
   "link": "https://mrosonline.ucsf.edu/",
   "how_to_get": [
-    "Open https://mrosonline.ucsf.edu/ and read the data request route (an online application with a proposal), to confirm on the page.",
+    "Submit the image request to the NIA Aging Research Biobank (https://agingresearchbiobank.nia.nih.gov), which already has the images and gives the timeline, transfer, fees and terms; MrOS Online is closed to registration and MrOS will write when it reopens.",
     "The owner files the request in the owner's name and signs whatever agreement follows; a session drafts the proposal text once the owner asks.",
     "Once granted, fetch by the route the centre gives, as a Slurm job on the owner's word, never on the login node; no fetch helper applies until the route is known."
   ],

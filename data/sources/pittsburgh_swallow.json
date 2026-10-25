@@ -5,7 +5,7 @@
   "what": "about 1,500 lateral swallow clips at 30 fps captured by video card, 265 patients and 70 volunteers on two machines",
   "level_truth": "thin: named corner landmarks on C2 and C4 only, no boxes, no other levels",
   "reach": "get",
-  "status": "request 4 sent 2026-10-20 22:59 UTC; Ervin Sejdic answered on 2026-10-21 that he has left Pitt and cannot share the data, that the IRB approval never covered sharing, and that James Coyle (copied) may know whether Pitt will; no answer from Coyle by 2026-10-24",
+  "status": "request 4 sent 2026-10-20 22:59 UTC; Ervin Sejdic answered on 2026-10-21 that he has left Pitt and cannot share the data, that the IRB approval never covered sharing, and that James Coyle (copied) may know whether Pitt will; no answer from Coyle by 2026-10-25",
   "licence": "by request",
   "link": "https://doi.org/10.1016/j.media.2021.102218",
   "how_to_get": [

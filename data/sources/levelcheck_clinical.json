@@ -5,11 +5,11 @@
   "what": "intraoperative spine radiographs with the same patient's preoperative CT, the vertebral levels placed on each radiograph by registration to the labelled CT (De Silva et al., Spine 2016; Ketcha et al. 2017; the reader images of Manbachi et al. 2018)",
   "level_truth": "yes, every vertebra's level registered from the labelled CT",
   "reach": "none",
-  "status": "refused: asked Jeffrey Siewerdsen on 2026-10-21, who answered the same day that the data are held at Johns Hopkins, which he has left, and pointed to Ali Uneri; asked Uneri on 2026-10-21, who answered on 2026-10-23 that the cohort's IRB approval expired years ago and that Hopkins' IRB now restricts sharing patient data across institutions; he suggested the Harms Study Group (hsg.settingscoliosisstraight.org), a multi-institution scoliosis dataset whose imaging he could not vouch for, and offered to introduce the owner to its administrators",
+  "status": "refused: asked Jeffrey Siewerdsen on 2026-10-21, who answered the same day that the data are held at Johns Hopkins, which he has left, and pointed to Ali Uneri; asked Uneri on 2026-10-21, who answered on 2026-10-23 that the cohort's IRB approval expired years ago and that Hopkins' IRB now restricts sharing patient data across institutions; he suggested the Harms Study Group (hsg.settingscoliosisstraight.org), a multi-institution scoliosis dataset whose imaging he could not vouch for, and offered to introduce the owner to its administrators; the owner accepted on 2026-10-23 16:56 UTC, dropping LevelCheck and noting that the site describes the AIS registry and a Database User Program but not whether the radiographs themselves are shared with a research user; the introduction has not come by 2026-10-25",
   "licence": "not shared (Johns Hopkins IRB approval expired)",
   "link": null,
   "how_to_get": [
-    "None: the holder refused on 2026-10-23. The alternative Uneri named is the Harms Study Group; ask him for the introduction, or read hsg.settingscoliosisstraight.org first, on the owner's word."
+    "None: the holder refused on 2026-10-23. The alternative Uneri named is the Harms Study Group (hsg.settingscoliosisstraight.org); the owner asked him for the introduction on 2026-10-23, and once it comes, the question for its administrators is whether the radiographs can be shared with a research user."
   ],
   "grid_path": null,
   "counts": {
@@ -18,5 +18,5 @@
     "reader_images": 62
   },
   "measured": {},
-  "record": "SchwingNet docs/research/data-access-requirements.md, Where each request stands (2026-10-24); the letter in the owner's Wayne State Outlook, subject tag [XR/CT Imaging Research]"
+  "record": "SchwingNet docs/research/data-access-requirements.md, Where each request stands (2026-10-25); the letter in the owner's Wayne State Outlook, subject tag [XR/CT Imaging Research]"
 }

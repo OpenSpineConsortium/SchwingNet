@@ -5,7 +5,7 @@
   "what": "95,308 real fluoroscopy images in 1,357 sequences with the lumbar spine in field; pediatric, DSA subtraction frames to be excluded",
   "level_truth": "none",
   "reach": "get",
-  "status": "a grain calibration target and an unlabelled pool; 150 to 200 frames would be annotated as a test set; the record is IRI-VFI on IEEE DataPort (doi:10.21227/v4kg-zp42, 1,357 sequences, 95,308 images, angiography, fluoroscopy and subtraction, Children's Hospital of Chongqing Medical University, ChiCTR2200058971); its licence line was not readable from the cloud session; requested by e-mail to the authors 2026-10-21 19:54 UTC, no answer by 2026-10-24",
+  "status": "a grain calibration target and an unlabelled pool; 150 to 200 frames would be annotated as a test set; the record is IRI-VFI on IEEE DataPort (doi:10.21227/v4kg-zp42, 1,357 sequences, 95,308 images, angiography, fluoroscopy and subtraction, Children's Hospital of Chongqing Medical University, ChiCTR2200058971); its licence line was not readable from the cloud session; requested by e-mail to the authors 2026-10-21 19:54 UTC, no answer by 2026-10-25",
   "licence": "not recorded",
   "link": "https://ieee-dataport.org/documents/iri-vfi-dataset",
   "how_to_get": [

@@ -5,11 +5,12 @@
   "what": "160,000 chest radiograph studies with reports from 109,487 patients at 79 US sites; several images per study, so laterals are likely included (to confirm on the page)",
   "level_truth": "none; the thoracic spine behind the heart, and laterals if present",
   "reach": "held",
-  "status": "found by the sweep of 2026-10-21; not fetched; asked Dr Zhang on 2026-10-24 for leave to download all image parts; no answer by 2026-10-24; Hugging Face gated behind a non-commercial data access and use agreement signed on the page; 79 sites means 79 exposure recipes",
+  "status": "found by the sweep of 2026-10-21; not fetched; asked Dr Zhang on 2026-10-24 03:24 UTC for leave to download all image parts, the letter's one recipient being xiaoman_zhang@hms.harvard.edu; it never arrived: the receiving side's mail filter returned it within the minute (\"Returned mail: see transcript for details\"), a return that sat unread in the owner's Junk Email until the read of 2026-10-25, its reason in an attached transcript the connector cannot open; the address is to be confirmed and the letter sent again; Hugging Face gated behind a non-commercial data access and use agreement signed on the page; 79 sites means 79 exposure recipes",
   "licence": "a non-commercial data access and use agreement on the Hugging Face page",
   "link": "https://huggingface.co/datasets/rajpurkarlab/ReXGradient-160K",
   "how_to_get": [
     "The owner accepts the data access and use agreement on https://huggingface.co/datasets/rajpurkarlab/ReXGradient-160K under the owner's Hugging Face account.",
+    "The agreement's Section A.5 allows only the part of the data the project needs and forbids downloading the whole repository, so the ten image parts (deid_png.part00 to part09) are fetched only once Dr Zhang grants the leave the letter asks for; the owner first confirms her address, from the bounce's transcript, the dataset page or the paper, and sends the letter again.",
     "Fetch as a Slurm job on the owner's word, never on the login node: python3 data/reproduce/reacquire/reacquire.py hf-get --repo rajpurkarlab/ReXGradient-160K --repo-type dataset --dest DIR; HF_TOKEN from the submitter's environment, never from this repository."
   ],
   "grid_path": "/rs/rs_grp_oschome/go2432/data/hf_rexgradient_160k",

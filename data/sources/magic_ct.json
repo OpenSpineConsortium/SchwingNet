@@ -5,7 +5,7 @@
   "what": "562 CTs; a gated anomaly-harvest collection (group B7)",
   "level_truth": "counted by the census pipeline once fetched",
   "reach": "gated",
-  "status": "an application went to Dr Popov's team on 2026-10-22 with an attachment; no answer by 2026-10-24; the Zenodo record (v2, 2026) is labelled CC0 yet carries a data use agreement (no re-identification, no sharing); the record counts 562 patients, 39.1 GB, 492 with reports",
+  "status": "an application went to Dr Popov's team on 2026-10-22 15:38 UTC with the owner's CITI completion report attached, naming Wayne State IRB determination HPR 2026-269 and accepting the agreement's terms (no re-identification, no onward sharing, secure storage, reporting any identifying information found, research use only, release of the code behind any result disseminated, either side's right to end it); no answer by 2026-10-25; the Zenodo record (v2, 2026) is labelled CC0 yet carries a data use agreement (no re-identification, no sharing); the record counts 562 patients, 39.1 GB, 492 with reports",
   "licence": "a data use agreement (non-commercial)",
   "link": "https://zenodo.org/records/18389015",
   "how_to_get": [

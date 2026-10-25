@@ -5,7 +5,7 @@
   "what": "336 intraoperative pelvic fluoroscopy frames from 146 total hip arthroplasty patients, with midline L5/S1 and both sacroiliac joints marked (the cup landmarks are not asked for)",
   "level_truth": "thin: the L5/S1 junction marked, the anchor lumbar counting starts from; no level named above it",
   "reach": "get",
-  "status": "asked Dr Martin and Dr Moyer on 2026-10-21 12:25 UTC for the de-identified frames with the bony landmarks under a Vanderbilt data use agreement; no answer by 2026-10-24",
+  "status": "asked Dr Martin and Dr Moyer on 2026-10-21 12:25 UTC for the de-identified frames with the bony landmarks under a Vanderbilt data use agreement; no answer by 2026-10-25",
   "licence": "not recorded; a data use agreement with Vanderbilt is the route",
   "link": null,
   "how_to_get": [
@@ -17,5 +17,5 @@
     "patients": 146
   },
   "measured": {},
-  "record": "SchwingNet docs/research/data-access-requirements.md, Where each request stands (2026-10-24); the letter in the owner's Wayne State Outlook, subject tag [XR/CT Imaging Research]"
+  "record": "SchwingNet docs/research/data-access-requirements.md, Where each request stands (2026-10-25); the letter in the owner's Wayne State Outlook, subject tag [XR/CT Imaging Research]"
 }
