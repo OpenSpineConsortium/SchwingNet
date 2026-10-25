@@ -46,8 +46,8 @@ own file_path; a whole version must stay under 511 files and 256 MB, a
 binary file under 15 MB and a text file under 16 MB, and the script says so
 when one does not. The edition line carries the built commit's own date,
 given as --built, never the clock, so building one commit twice gives the
-same bytes and the publish workflow (.github/workflows/textbook-artifact.yml,
-tools/textbook_publish.py) can tell what changed by hashing the files.
+same bytes and the publish (tools/textbook_publish.py local, run on the
+owner's computer) can tell what changed by hashing the files.
 
     python3 tools/textbook_artifact.py SITE OUT --repo OWNER/NAME --sha SHA --built DATE
 """

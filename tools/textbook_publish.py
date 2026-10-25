@@ -1,42 +1,29 @@
-"""The steps around the publish of the textbook edition as one claude.ai artifact (issue #236):
-what the book is built from, whether a run may publish, what changed since the last publish, the
-prompt that tells Claude exactly what to publish, and the record left on the branch
+"""The publish of the textbook edition as one claude.ai artifact from the owner's computer
+(issues #236 and #277): what the book is built from, what changed since the last publish, the
+prompt that tells Claude Code exactly what to publish, and the record left on the branch
 textbook-artifact.
 
-The owner decided on 2026-10-24 that the book is republished after each merge to main by an
-Action (.github/workflows/textbook-artifact.yml) on the repository's Claude token, the
-subscription token of one account, so the artifact lands in that account's gallery, private until
-that account shares it. The Action's first run, on 2026-10-25, found that the session
-claude-code-action starts has no Artifact tool, and Claude Code's documentation says the tool is
-off in the GitHub Action, the Agent SDK and `claude -p` whatever the settings say
-(docs/research/textbook-as-an-artifact.md). So the command `local` makes the same publish from a
-computer where Claude Code is signed in to the account that keeps the artifact (issue #277): it
-fetches main, reads the record, stops where the book's inputs are the ones already published,
-builds the edition from main's commit in a folder outside the clone, opens Claude Code there on
-the same mechanical prompt, and records the session's answer on the branch as the workflow's
-record job does. Nothing here carries the book's text: the prompt and the record hold paths,
-hashes, a commit and a link, and the only text the session sees of the book is what the Artifact
-tool's own read of the front page returns, which the tool requires before a publish to an
-existing artifact.
+The owner decided on 2026-10-24 that the book is also one private claude.ai artifact, republished
+to the same link (#236), and that a GitHub Action would publish it. That Action's first run, on
+2026-10-25, found that the session claude-code-action starts has no Artifact tool, and Claude
+Code's documentation says the tool is off in the GitHub Action, the Agent SDK and `claude -p`
+whatever the settings say (docs/research/textbook-as-an-artifact.md). So the owner chose, the same
+day, to publish from a computer where Claude Code is signed in to the account that keeps the
+artifact, by this one command, and the workflow went (#277). The command fetches main, reads the
+record, stops where the book's inputs are the ones already published, builds the site and the
+edition from main's commit in a folder beside the clone, opens Claude Code there on a mechanical
+prompt, and records the session's answer on the branch once the person leaves it. Nothing here
+carries the book's text: the prompt and the record hold paths, hashes, a commit and a link, and
+the only text the session sees of the book is what the Artifact tool's own read of the front page
+returns, which the tool requires before a publish to an existing artifact.
 
-The record is one file, state.json, on the branch textbook-artifact, written with GITHUB_TOKEN
-by fast-forward commits alone: the artifact's link, the commit the published edition was built
-from and its date, a fingerprint of the book's inputs at that commit, and the sha256 of every
-published path. A run reads it first and stops before building when the inputs it would build
-from are the ones already published, so the schedule, which exists because a merge GitHub's
-auto-merge makes starts no workflow, costs nothing while the book is unchanged. The day's
-publishes are counted from that branch's commits, one per publish, so no run list and no
-marker artifact is needed. A publish that fails partway leaves the record as it was, or, where
-the link is known, records the link with nothing published, so the next run publishes the whole
-edition to the same artifact instead of making a second one.
+The record is one file, state.json, on the branch textbook-artifact, written by fast-forward
+commits alone: the artifact's link, the commit the published edition was built from and its date,
+a fingerprint of the book's inputs at that commit, and the sha256 of every published path. A
+publish that fails partway leaves the record as it was, or, where the link is known, records the
+link with nothing published, so the next publish sends the whole edition to the same artifact
+instead of making a second one.
 
-    python3 tools/textbook_publish.py inputs --root . --sha HEAD
-    python3 tools/textbook_publish.py admit --state state.json --inputs HEX --sha SHA ...
-    python3 tools/textbook_publish.py plan --out textbook-out --state state.json --plan plan.json
-    python3 tools/textbook_publish.py prompt --plan plan.json --sha SHA
-    python3 tools/textbook_publish.py args [--model M] [--effort E] [--fallback M]
-    python3 tools/textbook_publish.py answer --execution-file F --out answer.json
-    python3 tools/textbook_publish.py record --state state.json --plan plan.json --answer answer.json ...
     python3 tools/textbook_publish.py local [--work FOLDER] [--no-launch] [--record] [--anyway]
 """
 
@@ -44,6 +31,7 @@ import argparse
 import datetime as dt
 import hashlib
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -52,18 +40,15 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 
-# What the book is built from: the paths the workflow's push filter names, in the same order, so
-# the fingerprint and the trigger agree (tests/test_textbook_publish.py holds them together). The
-# site reads the chapters and figures, the synthesis's records and the exported artifacts under
-# artifacts/, its own code and the stylesheet, and CODEOWNERS for the login its privacy pass hides.
-# Its code is every module of tools/ the two builders import, the claims register's queue and the
-# book's search among them, and the search's package, which tools/rag.py loads by path; a test
-# follows the builders' imports and fails on one this list leaves out, since a change to it alone
-# would otherwise republish nothing (issue #269).
-FILTER = ["docs/textbook/**", "artifacts/**", "tools/textbook_site.py", "tools/textbook_artifact.py",
+# What the book is built from. The site reads the chapters and figures, the synthesis's records and
+# the exported artifacts under artifacts/, its own code and the stylesheet, and CODEOWNERS for the
+# login its privacy pass hides. Its code is every module of tools/ the two builders import, the
+# claims register's queue and the book's search among them, and the search's package, which
+# tools/rag.py loads by path; a test follows the builders' imports and fails on one this list
+# leaves out, since a change to it alone would otherwise publish nothing new (issue #269).
+INPUTS = ["docs/textbook", "artifacts", "tools/textbook_site.py", "tools/textbook_artifact.py",
           "tools/living_docs.py", ".github/CODEOWNERS", "tools/claims_rank.py", "tools/rag.py",
           "src/schwingnet/rag.py"]
-INPUTS = [path.removesuffix("/**") for path in FILTER]
 SCHEMA = "textbook-artifact/1"
 # What the pages may use of the viewer's: Ask Claude's sample, and the GitHub connector's two tools behind
 # Run as me and a panel's read (docs/research/experiments-panel.md, section 4). A redeploy that passes none
@@ -78,25 +63,21 @@ REFUSED = "CAPABILITIES_REFUSED"
 BRANCH = "textbook-artifact"
 STATE_FILE = "state.json"
 PAGE = "index.html"
-OUT_REL = "textbook-out"           # the edition's folder inside the checkout, where the Artifact tool reads it
+OUT_REL = "textbook-out"           # the edition's folder in the work folder, where the Artifact tool reads it
 PER_PUBLISH_FILES = 240            # the tool takes 255 entries a publish
 PER_PUBLISH_BYTES = 60 * 1024 * 1024    # and 64 MB
-CAP_DEFAULT, CAP_MOST = 12, 50
-TURNS = 40
-TOOLS = "Artifact,Read"
 TITLE = "SchwingNet Textbook"
-DESCRIPTION = ("The SchwingNet textbook, built from the repository's records and exported artifacts "
-               "and republished after each merge.")
+DESCRIPTION = "The SchwingNet textbook, built from the repository's records and exported artifacts."
 URL = re.compile(r"^https://claude\.ai/(?:code/)?artifact/[A-Za-z0-9_-]+$")
-NAME = re.compile(r"^[a-z0-9][a-z0-9.-]*$")
-EFFORTS = ("low", "medium", "high", "max")
 NOT_PUBLISHED = {"batches.json", "plan.json"}
-# What the command local keeps in its work folder, outside the clone: the session's instructions, the
+# What the command keeps in its work folder, outside the clone: the session's instructions, the
 # marker lines it writes back, what the record needs once it ends, and a small repository of the
 # command's own for the record (record_repo says why).
 REPO_NAME = "OpenSpineConsortium/SchwingNet"
 PROMPT_FILE, ANSWER_FILE, META_FILE, RECORD_GIT = "prompt.txt", "answer.txt", "edition.json", "record.git"
 LOCAL_ASK = "Read the file prompt.txt in this folder and do exactly what it says."
+# The interpreter's name in the steps the command prints: on Windows python3 may be the Store's stub.
+PYTHON = "python" if os.name == "nt" else "python3"
 
 
 def sha256(path):
@@ -131,49 +112,6 @@ def inputs_fingerprint(root, sha):
     listing = subprocess.run(["git", "-C", str(root), "ls-tree", "-r", sha, "--", *INPUTS],
                              capture_output=True, text=True, check=True).stdout
     return hashlib.sha256(listing.encode("utf-8")).hexdigest()
-
-
-# admit
-
-def cap_of(text):
-    """The day's cap from the variable: its default when unset or not a number, and never over
-    the most this workflow allows."""
-    try:
-        value = int(str(text).strip())
-    except ValueError:
-        return CAP_DEFAULT
-    return max(1, min(value, CAP_MOST))
-
-
-def publishes_today(commits, today):
-    """How many publishes the state branch records today, in UTC: its commits of the day whose
-    message says an edition was published; a commit that only moved the fingerprint is none."""
-    count = 0
-    for commit in commits or []:
-        inner = commit.get("commit") or {}
-        when = ((inner.get("committer") or {}).get("date") or "")[:10]
-        if when == today and str(inner.get("message", "")).startswith("Edition "):
-            count += 1
-    return count
-
-
-def admit(state, inputs, event, switch, crowd, token, cap, commits, today):
-    """Whether this run may build and publish, and the first reason it may not: the switch, crowd
-    mode, the token, nothing new since the published edition (a Run workflow builds anyway, so a
-    person can republish after a publish that failed partway), and the day's cap."""
-    if str(switch).strip().lower() == "off":
-        return False, "the variable TEXTBOOK_ARTIFACT is off"
-    if str(crowd).strip().lower() == "true":
-        return False, "crowd mode is on (the variable CLAUDE_CROWD), and no workflow runs Claude in it"
-    if str(token).strip().lower() != "true":
-        return False, "the secret CLAUDE_CODE_OAUTH_TOKEN is not set"
-    if event != "workflow_dispatch" and state.get("inputs") and state.get("inputs") == inputs:
-        return False, (f"the edition built from {state.get('sha', '')[:7]} is already published and the book's "
-                       f"inputs have not changed since")
-    done = publishes_today(commits, today)
-    if done >= cap:
-        return False, f"{done} publishes today reached the day's cap of {cap} (the variable TEXTBOOK_PUBLISHES_PER_DAY)"
-    return True, f"{done} of {cap} publishes today"
 
 
 # plan
@@ -235,18 +173,11 @@ def plan(out, state):
             "files": {rel: f["sha256"] for rel, f in files.items()}}
 
 
-# prompt and args
+# prompt
 
 def opening(answer):
-    """Where the session runs and what it may touch: a run in Actions writes nothing, and a session on
-    the owner's computer writes the answer file alone, since no execution file carries its answer back."""
-    if not answer:
-        return [
-            "You are publishing a confidential book, the SchwingNet textbook, as one private claude.ai artifact from a",
-            "GitHub Actions run, with the Artifact tool, in the batches below. Do these steps in order and nothing",
-            "else: call no other tool than Artifact (and Read, only to read the plan again if you must), write no",
-            "file, quote nothing of the book's pages in your answer, and never publish from any other folder.",
-        ]
+    """Where the session runs and what it may touch: the answer file alone, which is how its answer
+    reaches the command that opened it."""
     return [
         "You are publishing a confidential book, the SchwingNet textbook, as one private claude.ai artifact from the",
         "owner's computer, with the Artifact tool, in the batches below. Do these steps in order and nothing else:",
@@ -256,26 +187,20 @@ def opening(answer):
     ]
 
 
-def prompt(plan_, sha, folder="", answer=""):
+def prompt(plan_, sha, root, answer):
     """The session's instructions, mechanical: the tool calls in order with their arguments, the
-    marker lines its answer ends with, and nothing of the book but the paths of its files. The
-    folder is where the edition is, absolute where the caller gives it; the answer file, which the
-    command local gives, is where a session on the owner's computer writes those marker lines."""
+    marker lines its answer ends with and writes to the answer file, and nothing of the book but the
+    paths of its files; root is the folder the edition is in, absolute."""
     label = f"Edition {sha[:7]}"
-    root = folder or plan_["root"]
     page = f"{root}/{plan_['page']}"
-    if answer:
-        missing = (f"If the Artifact tool is not among your tools, write the line ARTIFACT_TOOL_MISSING to {answer},\n"
-                   "tell the person to type /exit, and stop.")
-    else:
-        missing = "If the Artifact tool is not among your tools, print the line ARTIFACT_TOOL_MISSING and stop."
     lines = opening(answer) + [
         "",
         f"The edition's files are under {root}/ in the working directory, {plan_['total_files']} files in all; the",
         f"page is {page}, which every publish names as file_path with root {root}, and the other files are passed",
         f"in files as a map of each path to the same path (relative to root). The plan is {root}/plan.json.",
         "",
-        missing,
+        f"If the Artifact tool is not among your tools, write the line ARTIFACT_TOOL_MISSING to {answer},",
+        "tell the person to type /exit, and stop.",
         "",
     ]
     if plan_["first"]:
@@ -303,26 +228,24 @@ def prompt(plan_, sha, folder="", answer=""):
             "   publish is refused for paths you have not read or listed, publish that batch again with those paths,",
             "   and only those, in overwrite_unread.",
         ]
-    if plan_.get("first") or plan_.get("capabilities"):
+    refusable = plan_.get("first") or plan_.get("capabilities")
+    if refusable:
         lines += [
             "If the publish that carries capabilities is refused for them (the mcp entry or its server), make that",
-            f"publish again with capabilities {json.dumps(BASIC_CAPABILITIES)} instead, carry on, and print a line {REFUSED}",
-            "before the last line.",
+            f"publish again with capabilities {json.dumps(BASIC_CAPABILITIES)} instead, carry on, and keep the marker",
+            f"line {REFUSED} for the end.",
         ]
+    markers = (f"{REFUSED} and PUBLISH_INCOMPLETE=<n> of <m> where they apply" if refusable
+               else "PUBLISH_INCOMPLETE=<n> of <m> where it applies")
     lines += [
-        "If a publish fails, try that batch once more. If it fails again, stop and print a line",
-        "PUBLISH_INCOMPLETE=<n> of <m> naming the batch that failed, before the last line.",
-        "Whatever happened after the first publish, the last line of your answer is ARTIFACT_URL=<url>, the",
-        "artifact's url and nothing else on that line.",
+        "If a publish fails, try that batch once more. If it fails again, stop, and keep the marker line",
+        "PUBLISH_INCOMPLETE=<n> of <m>, naming the batch that failed, for the end.",
+        f"Last of all, whatever happened after the first publish, write the marker lines to {answer} with the",
+        f"Write tool, one to a line and nothing else: {markers}, and last ARTIFACT_URL=<url>, the",
+        "artifact's url and nothing else on that line. Then tell the person the artifact's url, and that typing",
+        "/exit lets the command that opened this session record the edition.",
+        "",
     ]
-    if answer:
-        lines += [
-            f"Last of all, write the marker lines of your answer to {answer} with the Write tool, one to a line and",
-            f"nothing else: {REFUSED} and PUBLISH_INCOMPLETE=<n> of <m> where they apply, and last ARTIFACT_URL=<url>.",
-            "Then tell the person the artifact's url, and that typing /exit lets the command that opened this session",
-            "record the edition.",
-        ]
-    lines.append("")
     for batch in plan_["batches"]:
         lines.append(f"Batch {batch['n']} of {len(plan_['batches'])}: {len(batch['files'])} files, {batch['bytes']} bytes"
                      + (f", {len(batch['remove'])} to remove" if batch["remove"] else ""))
@@ -332,38 +255,7 @@ def prompt(plan_, sha, folder="", answer=""):
     return "\n".join(lines).rstrip() + "\n"
 
 
-def args_lines(model="", effort="", fallback=""):
-    """The session's claude_args: its turns, the model, effort and fallback the pool's settings
-    give where they are plain names, the user's settings alone, so no file of the repository's
-    adds a hook or an instruction, and the two tools it may use."""
-    lines = [f"--max-turns {TURNS}"]
-    if model and NAME.match(model):
-        lines.append(f"--model {model}")
-    if effort in EFFORTS:
-        lines.append(f"--effort {effort}")
-    if fallback and NAME.match(fallback) and fallback != model:
-        lines.append(f"--fallback-model {fallback}")
-    lines += ["--permission-mode default", "--setting-sources user", f'--allowedTools "{TOOLS}"']
-    return lines
-
-
 # answer and record
-
-def result_text(execution_file):
-    """The session's last answer from the action's execution file, a JSON list of messages whose
-    last entry of type result carries the text; an empty string where there is none."""
-    try:
-        messages = json.loads(Path(execution_file).read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return ""
-    if isinstance(messages, dict):
-        messages = [messages]
-    text = ""
-    for message in messages if isinstance(messages, list) else []:
-        if isinstance(message, dict) and message.get("type") == "result":
-            text = str(message.get("result") or "")
-    return text
-
 
 def answer_of(text):
     """What the answer says, read from its marker lines alone: the artifact's link from the last
@@ -386,20 +278,18 @@ def answer_of(text):
 
 
 def record(state, plan_, answer, sha, built, inputs, run):
-    """The record a run leaves, and the message of its commit: a whole publish records the
+    """The record a publish leaves, and the message of its commit: a whole publish records the
     edition and every hash; one that failed partway records the link with nothing published, so
-    the next run publishes everything to the same artifact; a run that found nothing to publish
-    moves the fingerprint alone. The record is refused, and the run fails, where the session
-    reports no link or another artifact's link than the one recorded, which a person settles."""
+    the next publish sends everything to the same artifact; one that found nothing to send moves
+    the fingerprint alone. The record is refused where the session reports no link or another
+    artifact's link than the one recorded, which a person settles."""
     if answer.get("nothing"):
         if not state.get("url"):
-            raise SystemExit("nothing to publish and no artifact recorded; the first edition is published by a run "
-                             "that finds the book changed, or by Run workflow")
+            raise SystemExit("nothing to publish and no artifact recorded, so nothing was recorded")
         new = dict(state, inputs=inputs, run=run)
         return new, f"Inputs at {sha[:7]}: nothing to publish"
     if answer.get("missing_tool"):
-        raise SystemExit("the session had no Artifact tool (ARTIFACT_TOOL_MISSING): the publish cannot run from Actions "
-                         "with this action and token, and nothing was recorded")
+        raise SystemExit("the session had no Artifact tool (ARTIFACT_TOOL_MISSING), and nothing was recorded")
     url = answer.get("url", "")
     if not url:
         raise SystemExit("the session's answer ends with no ARTIFACT_URL line, so nothing is known to have been "
@@ -410,7 +300,7 @@ def record(state, plan_, answer, sha, built, inputs, run):
     if answer.get("incomplete"):
         new = {"schema": SCHEMA, "url": url, "sha": "", "built": "", "inputs": "", "run": run, "files": {},
                "incomplete": answer["incomplete"]}
-        return new, f"Edition {sha[:7]}: incomplete ({answer['incomplete']}); the next run publishes it whole"
+        return new, f"Edition {sha[:7]}: incomplete ({answer['incomplete']}); the next publish sends it whole"
     new = {"schema": SCHEMA, "url": url, "sha": sha, "built": built, "inputs": inputs, "run": run,
            "files": plan_["files"], "capabilities": BASIC_CAPABILITIES if answer.get("capabilities_refused") else CAPABILITIES}
     message = (f"Edition {sha[:7]}: {plan_['changed']} files published, {plan_['removed']} removed, "
@@ -418,7 +308,7 @@ def record(state, plan_, answer, sha, built, inputs, run):
     return new, message
 
 
-# local: the same publish from the owner's computer, where Claude Code carries the Artifact tool
+# the publish from the owner's computer, where Claude Code carries the Artifact tool
 
 def git_out(where, *args, stdin=None):
     """git's output in a repository, stripped, or a stop that quotes git's own words; the input goes
@@ -439,8 +329,7 @@ def remote_url(clone):
 def record_repo(work):
     """The small repository of the command's own, in the work folder, that reads and writes the
     record. The clone's pre-push hook runs the gate on the checked-out tree and refuses to push any
-    other commit, and the record's one file is no part of that tree, so the record leaves from here,
-    as the workflow's record job writes it from a runner."""
+    other commit, and the record's one file is no part of that tree, so the record leaves from here."""
     repo = Path(work) / RECORD_GIT
     if not (repo / "HEAD").is_file():
         git_out(work, "init", "--quiet", "--bare", RECORD_GIT)
@@ -509,15 +398,17 @@ def drop_tree(clone, tree):
 
 
 def run_builder(script, *args):
-    done = subprocess.run([sys.executable, str(script), *map(str, args)])
+    """A builder run by this interpreter in UTF-8 mode, as CI runs it, whatever the computer's own
+    encoding is."""
+    done = subprocess.run([sys.executable, "-X", "utf8", str(script), *map(str, args)])
     if done.returncode != 0:
         raise SystemExit(f"{script.name} failed; nothing was published")
 
 
 def build(clone, sha, built, work):
     """The site and the edition from a commit, by that commit's own builders in a worktree of the
-    clone made in the work folder, as the workflow builds from its checkout; the worktree and the
-    site go again, and the edition stays in the folder for the session."""
+    clone made in the work folder; the worktree and the site go again, and the edition stays in the
+    folder for the session."""
     work = Path(work)
     tree, site, out = work / "tree", work / "site", work / OUT_REL
     drop_tree(clone, tree)
@@ -552,7 +443,7 @@ def steps_by_hand(work):
             "1. Open Claude Code in that folder, signed in to the claude.ai account that keeps the book, and type:\n"
             f"   {LOCAL_ASK}\n"
             "2. When it has given the link and you have left it, record the edition:\n"
-            f"   python3 {script} local --record --work {work}\n")
+            f"   {PYTHON} {script} local --record --work {work}\n")
 
 
 def local_publish(clone, work, claude="claude", launch=True, anyway=False):
@@ -635,59 +526,9 @@ def finish(work, answer=None, now=None):
 
 # the command
 
-def output(key, value):
-    print(f"{key}={value}")
-
-
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     commands = parser.add_subparsers(dest="command", required=True)
-
-    fingerprint = commands.add_parser("inputs", help="the fingerprint of the book's inputs at a commit")
-    fingerprint.add_argument("--root", default=".")
-    fingerprint.add_argument("--sha", default="HEAD")
-
-    admitting = commands.add_parser("admit", help="whether this run may build and publish, as step outputs")
-    admitting.add_argument("--state", default="", help="state.json as the branch holds it, or nothing")
-    admitting.add_argument("--inputs", required=True)
-    admitting.add_argument("--event", default="")
-    admitting.add_argument("--switch", default="")
-    admitting.add_argument("--crowd", default="")
-    admitting.add_argument("--token", default="")
-    admitting.add_argument("--cap", default="")
-    admitting.add_argument("--commits", default="", help="the branch's commits of the day, as the API lists them")
-    admitting.add_argument("--today", default="", help="the UTC date, for tests")
-    admitting.add_argument("--words", default="", help="where to write the summary's line")
-
-    planning = commands.add_parser("plan", help="what changed since the record, in batches")
-    planning.add_argument("--out", required=True)
-    planning.add_argument("--state", default="")
-    planning.add_argument("--plan", required=True)
-
-    prompting = commands.add_parser("prompt", help="the session's instructions, as a step output")
-    prompting.add_argument("--plan", required=True)
-    prompting.add_argument("--sha", required=True)
-    prompting.add_argument("--folder", default="", help="where the edition is on the runner, absolute")
-
-    arguments = commands.add_parser("args", help="the session's claude_args, as a step output")
-    arguments.add_argument("--model", default="")
-    arguments.add_argument("--effort", default="")
-    arguments.add_argument("--fallback", default="")
-
-    answering = commands.add_parser("answer", help="what the session's answer says, as a small file")
-    answering.add_argument("--execution-file", required=True)
-    answering.add_argument("--out", required=True)
-
-    recording = commands.add_parser("record", help="the record the run leaves on the branch")
-    recording.add_argument("--state", default="")
-    recording.add_argument("--plan", required=True)
-    recording.add_argument("--answer", required=True)
-    recording.add_argument("--sha", required=True)
-    recording.add_argument("--built", required=True)
-    recording.add_argument("--inputs", required=True)
-    recording.add_argument("--run", default="")
-    recording.add_argument("--write", required=True)
-    recording.add_argument("--message", required=True, help="where to write the commit's message")
 
     local = commands.add_parser("local", help="the publish from this computer, where Claude Code has the Artifact tool")
     local.add_argument("--clone", default=str(ROOT), help="the clone to build from, this one by default")
@@ -698,68 +539,10 @@ def main(argv=None):
     local.add_argument("--record", action="store_true", help="record what the session answered, after it ran by hand")
 
     args = parser.parse_args(argv)
-    if args.command == "inputs":
-        output("inputs", inputs_fingerprint(args.root, args.sha))
-    elif args.command == "admit":
-        commits = []
-        if args.commits:
-            try:
-                commits = json.loads(Path(args.commits).read_text(encoding="utf-8"))
-            except (OSError, ValueError):
-                commits = []
-        today = args.today or dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d")
-        ok, why = admit(load_state(args.state), args.inputs, args.event, args.switch, args.crowd, args.token,
-                        cap_of(args.cap), commits if isinstance(commits, list) else [], today)
-        output("admit", "true" if ok else "false")
-        output("why", why)
-        if args.words:
-            verb = "publishes" if ok else "does not publish"
-            Path(args.words).write_text(f"This run {verb}: {why}.\n", encoding="utf-8")
-    elif args.command == "plan":
-        plan_ = plan(args.out, load_state(args.state))
-        Path(args.plan).write_text(json.dumps(plan_, indent=1) + "\n", encoding="utf-8")
-        for key in ("nothing", "first", "changed", "removed", "unchanged", "total_files", "total_bytes"):
-            output(key, str(plan_[key]).lower())
-        output("batches", str(len(plan_["batches"])))
-    elif args.command == "prompt":
-        plan_ = json.loads(Path(args.plan).read_text(encoding="utf-8"))
-        text = prompt(plan_, args.sha, args.folder)
-        print("prompt<<TEXTBOOK_PROMPT")
-        print(text, end="")
-        print("TEXTBOOK_PROMPT")
-    elif args.command == "args":
-        print("args<<TEXTBOOK_ARGS")
-        print("\n".join(args_lines(args.model, args.effort, args.fallback)))
-        print("TEXTBOOK_ARGS")
-    elif args.command == "answer":
-        found = answer_of(result_text(args.execution_file))
-        Path(args.out).write_text(json.dumps(found, indent=1) + "\n", encoding="utf-8")
-        output("url", found["url"])
-        if found["missing_tool"]:
-            print("::error::the session had no Artifact tool (ARTIFACT_TOOL_MISSING); the publish cannot run from "
-                  "Actions with this action and token", file=sys.stderr)
-            return 1
-        if not found["url"]:
-            print("::error::the session's answer ends with no ARTIFACT_URL line; nothing is known to have been "
-                  "published", file=sys.stderr)
-            return 1
-        if found["incomplete"]:
-            print(f"::warning::the publish stopped at batch {found['incomplete']}; the next run publishes the whole "
-                  "edition to the same artifact", file=sys.stderr)
-    elif args.command == "record":
-        plan_ = json.loads(Path(args.plan).read_text(encoding="utf-8"))
-        answer = json.loads(Path(args.answer).read_text(encoding="utf-8"))
-        new, message = record(load_state(args.state), plan_, answer, args.sha, args.built, args.inputs, args.run)
-        Path(args.write).write_text(json.dumps(new, indent=1, sort_keys=True) + "\n", encoding="utf-8")
-        Path(args.message).write_text(message + "\n", encoding="utf-8")
-        output("url", new.get("url", ""))
-        output("published", "true" if message.startswith("Edition ") else "false")
-    elif args.command == "local":
-        work = args.work or default_work(args.clone)
-        if args.record:
-            return finish(work)
-        return local_publish(args.clone, work, args.claude, not args.no_launch, args.anyway)
-    return 0
+    work = args.work or default_work(args.clone)
+    if args.record:
+        return finish(work)
+    return local_publish(args.clone, work, args.claude, not args.no_launch, args.anyway)
 
 
 if __name__ == "__main__":
