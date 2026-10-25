@@ -1,10 +1,22 @@
 {
- "built_at": "2026-10-24T20:52:07Z",
+ "built_at": "2026-10-25T02:53:38Z",
  "format": "spine-datasets/storage 1",
  "home": {
   "quota_bytes": 4000000000000,
   "read_at": null,
   "used_bytes": null
+ },
+ "power": {
+  "assumed_accuracy": 0.5,
+  "confidence": 0.95,
+  "half_width": 0.05,
+  "kept_is_upper_bound": true,
+  "level_truth_people_kept": 5990,
+  "level_truth_people_unread": 81,
+  "level_truth_scans_kept": 32354,
+  "people_needed": 385,
+  "transitional_people_kept": 0,
+  "z": 1.959964
  },
  "read_at": "2026-10-24T17:15:28Z",
  "requests": [],
@@ -22,7 +34,24 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "read",
+    "level_truth_people": null,
+    "level_truth_scans": 1000,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "films",
+    "paired": false,
+    "people": null,
+    "prior_source": false,
+    "regions": [],
+    "scans": 1000,
+    "segmented": false,
+    "spine": null,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": null,
@@ -37,7 +66,24 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "read",
+    "level_truth_people": null,
+    "level_truth_scans": 707,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "films",
+    "paired": false,
+    "people": null,
+    "prior_source": false,
+    "regions": [],
+    "scans": 707,
+    "segmented": false,
+    "spine": null,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 570557160234,
@@ -52,7 +98,26 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "automatic",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": "automatic",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": 7835,
+    "prior_source": true,
+    "regions": [
+     "abdomen"
+    ],
+    "scans": 7649,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 102615496477,
@@ -67,7 +132,26 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "automatic",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": "automatic",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": 2200,
+    "prior_source": true,
+    "regions": [
+     "abdomen"
+    ],
+    "scans": 723,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 15929004557,
@@ -82,7 +166,28 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "automatic",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": "automatic",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": 60,
+    "prior_source": true,
+    "regions": [
+     "abdomen",
+     "chest",
+     "pelvis"
+    ],
+    "scans": 55,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 264277371447,
@@ -97,7 +202,26 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "unknown",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "ct",
+    "paired": false,
+    "people": 2000,
+    "prior_source": false,
+    "regions": [
+     "chest"
+    ],
+    "scans": null,
+    "segmented": true,
+    "spine": false,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": null,
@@ -112,7 +236,26 @@
    "overlap": [],
    "reach": "get",
    "rebuild": true,
-   "status": "refused"
+   "status": "refused",
+   "value": {
+    "level_truth": "unknown",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "fluoro",
+    "paired": true,
+    "people": null,
+    "prior_source": false,
+    "regions": [
+     "spine"
+    ],
+    "scans": null,
+    "segmented": true,
+    "spine": true,
+    "tier": "D",
+    "transitional_people": null
+   }
   },
   {
    "bytes": 20313374662,
@@ -127,7 +270,28 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "automatic",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": "automatic",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": 220,
+    "prior_source": true,
+    "regions": [
+     "abdomen",
+     "chest",
+     "pelvis"
+    ],
+    "scans": 212,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": null,
@@ -142,7 +306,24 @@
    "overlap": [],
    "reach": "get",
    "rebuild": true,
-   "status": "requested"
+   "status": "requested",
+   "value": {
+    "level_truth": "read",
+    "level_truth_people": null,
+    "level_truth_scans": 4,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "video",
+    "paired": false,
+    "people": null,
+    "prior_source": false,
+    "regions": [],
+    "scans": 4,
+    "segmented": false,
+    "spine": null,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": null,
@@ -157,7 +338,24 @@
    "overlap": [],
    "reach": "get",
    "rebuild": true,
-   "status": "needs-owner"
+   "status": "needs-owner",
+   "value": {
+    "level_truth": "no",
+    "level_truth_people": 0,
+    "level_truth_scans": 0,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "films",
+    "paired": false,
+    "people": null,
+    "prior_source": false,
+    "regions": [],
+    "scans": null,
+    "segmented": false,
+    "spine": null,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": null,
@@ -172,7 +370,24 @@
    "overlap": [],
    "reach": "get",
    "rebuild": true,
-   "status": "requested"
+   "status": "requested",
+   "value": {
+    "level_truth": "read",
+    "level_truth_people": 63,
+    "level_truth_scans": 252,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "video",
+    "paired": false,
+    "people": 63,
+    "prior_source": false,
+    "regions": [],
+    "scans": 252,
+    "segmented": false,
+    "spine": null,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": null,
@@ -187,7 +402,24 @@
    "overlap": [],
    "reach": "get",
    "rebuild": true,
-   "status": "requested"
+   "status": "requested",
+   "value": {
+    "level_truth": "read",
+    "level_truth_people": 127,
+    "level_truth_scans": null,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "video",
+    "paired": false,
+    "people": 127,
+    "prior_source": false,
+    "regions": [],
+    "scans": null,
+    "segmented": false,
+    "spine": null,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": null,
@@ -202,7 +434,24 @@
    "overlap": [],
    "reach": "gated",
    "rebuild": true,
-   "status": "needs-owner"
+   "status": "needs-owner",
+   "value": {
+    "level_truth": "no",
+    "level_truth_people": 0,
+    "level_truth_scans": 0,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "films",
+    "paired": false,
+    "people": null,
+    "prior_source": false,
+    "regions": [],
+    "scans": 40967,
+    "segmented": false,
+    "spine": null,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 35225321802,
@@ -217,7 +466,24 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "read",
+    "level_truth_people": 3600,
+    "level_truth_scans": 7203,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "films",
+    "paired": false,
+    "people": 3600,
+    "prior_source": false,
+    "regions": [],
+    "scans": 7203,
+    "segmented": false,
+    "spine": null,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 3076112179,
@@ -232,7 +498,24 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "fetched"
+   "status": "fetched",
+   "value": {
+    "level_truth": "no",
+    "level_truth_people": 0,
+    "level_truth_scans": 0,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "video",
+    "paired": false,
+    "people": 42,
+    "prior_source": false,
+    "regions": [],
+    "scans": null,
+    "segmented": false,
+    "spine": null,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": null,
@@ -247,7 +530,26 @@
    "overlap": [],
    "reach": "gated",
    "rebuild": true,
-   "status": "granted"
+   "status": "granted",
+   "value": {
+    "level_truth": "unknown",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "ct",
+    "paired": false,
+    "people": null,
+    "prior_source": false,
+    "regions": [
+     "whole body"
+    ],
+    "scans": null,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": null,
@@ -262,7 +564,24 @@
    "overlap": [],
    "reach": "gated",
    "rebuild": true,
-   "status": "needs-owner"
+   "status": "needs-owner",
+   "value": {
+    "level_truth": "no",
+    "level_truth_people": 0,
+    "level_truth_scans": 0,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "video",
+    "paired": true,
+    "people": 6,
+    "prior_source": false,
+    "regions": [],
+    "scans": null,
+    "segmented": false,
+    "spine": null,
+    "tier": "E",
+    "transitional_people": null
+   }
   },
   {
    "bytes": null,
@@ -277,7 +596,24 @@
    "overlap": [],
    "reach": "get",
    "rebuild": true,
-   "status": "todo"
+   "status": "todo",
+   "value": {
+    "level_truth": "no",
+    "level_truth_people": 0,
+    "level_truth_scans": 0,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "future",
+    "paired": false,
+    "people": null,
+    "prior_source": false,
+    "regions": [],
+    "scans": 152,
+    "segmented": false,
+    "spine": null,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 103686719641,
@@ -292,7 +628,26 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "read",
+    "level_truth_people": 149,
+    "level_truth_scans": 149,
+    "masks_by_level": "automatic",
+    "masks_held": true,
+    "modality": "fluoro",
+    "paired": true,
+    "people": 149,
+    "prior_source": false,
+    "regions": [
+     "spine"
+    ],
+    "scans": 149,
+    "segmented": true,
+    "spine": true,
+    "tier": "A",
+    "transitional_people": null
+   }
   },
   {
    "bytes": 56183481264,
@@ -307,7 +662,24 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "no",
+    "level_truth_people": 0,
+    "level_truth_scans": 0,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "video",
+    "paired": false,
+    "people": null,
+    "prior_source": false,
+    "regions": [],
+    "scans": null,
+    "segmented": false,
+    "spine": null,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": null,
@@ -322,7 +694,24 @@
    "overlap": [],
    "reach": "gated",
    "rebuild": true,
-   "status": "todo"
+   "status": "todo",
+   "value": {
+    "level_truth": "no",
+    "level_truth_people": 0,
+    "level_truth_scans": 0,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "films",
+    "paired": false,
+    "people": 65240,
+    "prior_source": false,
+    "regions": [],
+    "scans": 224316,
+    "segmented": false,
+    "spine": null,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": null,
@@ -337,7 +726,24 @@
    "overlap": [],
    "reach": "get",
    "rebuild": true,
-   "status": "requested"
+   "status": "requested",
+   "value": {
+    "level_truth": "read",
+    "level_truth_people": null,
+    "level_truth_scans": 208,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "fluoro",
+    "paired": false,
+    "people": null,
+    "prior_source": false,
+    "regions": [],
+    "scans": 208,
+    "segmented": false,
+    "spine": null,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 808617728644,
@@ -352,7 +758,27 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "read",
+    "level_truth_people": 692,
+    "level_truth_scans": 692,
+    "masks_by_level": "automatic",
+    "masks_held": true,
+    "modality": "projections",
+    "paired": true,
+    "people": 692,
+    "prior_source": false,
+    "regions": [
+     "pelvis",
+     "spine"
+    ],
+    "scans": 692,
+    "segmented": true,
+    "spine": true,
+    "tier": "A",
+    "transitional_people": null
+   }
   },
   {
    "bytes": null,
@@ -367,7 +793,27 @@
    "overlap": [],
    "reach": "embargoed",
    "rebuild": true,
-   "status": "todo"
+   "status": "todo",
+   "value": {
+    "level_truth": "unknown",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "projections",
+    "paired": true,
+    "people": 175,
+    "prior_source": false,
+    "regions": [
+     "pelvis",
+     "spine"
+    ],
+    "scans": null,
+    "segmented": true,
+    "spine": true,
+    "tier": "D",
+    "transitional_people": null
+   }
   },
   {
    "bytes": null,
@@ -382,7 +828,24 @@
    "overlap": [],
    "reach": "get",
    "rebuild": true,
-   "status": "todo"
+   "status": "todo",
+   "value": {
+    "level_truth": "no",
+    "level_truth_people": 0,
+    "level_truth_scans": 0,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "video",
+    "paired": false,
+    "people": null,
+    "prior_source": false,
+    "regions": [],
+    "scans": null,
+    "segmented": false,
+    "spine": null,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 6640702200,
@@ -397,7 +860,26 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "read",
+    "level_truth_people": 20,
+    "level_truth_scans": 20,
+    "masks_by_level": "automatic",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": 20,
+    "prior_source": true,
+    "regions": [
+     "spine"
+    ],
+    "scans": 20,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 3691537837,
@@ -412,7 +894,24 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "read",
+    "level_truth_people": null,
+    "level_truth_scans": 4963,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "films",
+    "paired": false,
+    "people": null,
+    "prior_source": false,
+    "regions": [],
+    "scans": 4963,
+    "segmented": false,
+    "spine": null,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": null,
@@ -427,13 +926,32 @@
    "overlap": [],
    "reach": "gated",
    "rebuild": true,
-   "status": "granted"
+   "status": "granted",
+   "value": {
+    "level_truth": "unknown",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "ct",
+    "paired": false,
+    "people": null,
+    "prior_source": false,
+    "regions": [
+     "chest"
+    ],
+    "scans": null,
+    "segmented": true,
+    "spine": false,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
-   "bytes": null,
-   "bytes_known": false,
+   "bytes": 14831867170,
+   "bytes_known": true,
    "fetchable": false,
-   "frozen": false,
+   "frozen": true,
    "group": "ct",
    "id": "ctpelvic1k",
    "licence": "restricted",
@@ -442,7 +960,27 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "read",
+    "level_truth_people": null,
+    "level_truth_scans": 172,
+    "masks_by_level": "automatic",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": null,
+    "prior_source": true,
+    "regions": [
+     "pelvis",
+     "spine"
+    ],
+    "scans": 172,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 162350473572,
@@ -454,10 +992,47 @@
    "licence": "restricted",
    "location": "lab",
    "name": "CTSpine1K",
-   "overlap": [],
+   "overlap": [
+    {
+     "patients": 0,
+     "same_bytes": 0,
+     "same_scans": 526,
+     "series": 0,
+     "with": "ctspinopelvic1k"
+    },
+    {
+     "patients": 0,
+     "same_bytes": 0,
+     "same_scans": 3,
+     "series": 0,
+     "with": "kidney_thoraxabdomen"
+    }
+   ],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "read",
+    "level_truth_people": null,
+    "level_truth_scans": 1005,
+    "masks_by_level": "read",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": null,
+    "prior_source": true,
+    "regions": [
+     "abdomen",
+     "chest",
+     "head and neck",
+     "spine"
+    ],
+    "scans": 1005,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 202680383788,
@@ -469,10 +1044,40 @@
    "licence": "restricted",
    "location": "lab",
    "name": "CTSpinoPelvic1K v11 (the consortium's own release)",
-   "overlap": [],
+   "overlap": [
+    {
+     "patients": 0,
+     "same_bytes": 0,
+     "same_scans": 526,
+     "series": 0,
+     "with": "ctspine1k"
+    }
+   ],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "read",
+    "level_truth_people": null,
+    "level_truth_scans": 802,
+    "masks_by_level": "read",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": null,
+    "prior_source": true,
+    "regions": [
+     "abdomen",
+     "chest",
+     "pelvis",
+     "spine"
+    ],
+    "scans": 802,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 29993980558,
@@ -487,7 +1092,29 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "automatic",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": "automatic",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": 90,
+    "prior_source": true,
+    "regions": [
+     "abdomen",
+     "chest",
+     "pelvis",
+     "whole body"
+    ],
+    "scans": 70,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 16878618437,
@@ -499,10 +1126,39 @@
    "licence": "open",
    "location": "lab",
    "name": "CURVAS-PDACVI (MICCAI 2025)",
-   "overlap": [],
+   "overlap": [
+    {
+     "patients": 0,
+     "same_bytes": 0,
+     "same_scans": 1,
+     "series": 0,
+     "with": "panorama"
+    }
+   ],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "automatic",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": "automatic",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": 109,
+    "prior_source": true,
+    "regions": [
+     "abdomen",
+     "chest",
+     "pelvis"
+    ],
+    "scans": 101,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": null,
@@ -517,7 +1173,24 @@
    "overlap": [],
    "reach": "get",
    "rebuild": true,
-   "status": "requested"
+   "status": "requested",
+   "value": {
+    "level_truth": "no",
+    "level_truth_people": 0,
+    "level_truth_scans": 0,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "video",
+    "paired": false,
+    "people": null,
+    "prior_source": false,
+    "regions": [],
+    "scans": null,
+    "segmented": false,
+    "spine": null,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 24253086312,
@@ -532,7 +1205,26 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "automatic",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": "automatic",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": 100,
+    "prior_source": true,
+    "regions": [
+     "whole body"
+    ],
+    "scans": 53,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 116260000000,
@@ -547,7 +1239,27 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "read",
+    "level_truth_people": 6,
+    "level_truth_scans": 19,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "fluoro",
+    "paired": true,
+    "people": 6,
+    "prior_source": false,
+    "regions": [
+     "pelvis",
+     "spine"
+    ],
+    "scans": 19,
+    "segmented": true,
+    "spine": true,
+    "tier": "A",
+    "transitional_people": null
+   }
   },
   {
    "bytes": null,
@@ -562,7 +1274,24 @@
    "overlap": [],
    "reach": "get",
    "rebuild": true,
-   "status": "requested"
+   "status": "requested",
+   "value": {
+    "level_truth": "no",
+    "level_truth_people": 0,
+    "level_truth_scans": 0,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "video",
+    "paired": false,
+    "people": null,
+    "prior_source": false,
+    "regions": [],
+    "scans": null,
+    "segmented": false,
+    "spine": null,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 19557720024,
@@ -577,7 +1306,24 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "no",
+    "level_truth_people": 0,
+    "level_truth_scans": 0,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "video",
+    "paired": false,
+    "people": null,
+    "prior_source": false,
+    "regions": [],
+    "scans": null,
+    "segmented": false,
+    "spine": null,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": null,
@@ -592,7 +1338,24 @@
    "overlap": [],
    "reach": "get",
    "rebuild": true,
-   "status": "requested"
+   "status": "requested",
+   "value": {
+    "level_truth": "no",
+    "level_truth_people": 0,
+    "level_truth_scans": 0,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "video",
+    "paired": false,
+    "people": null,
+    "prior_source": false,
+    "regions": [],
+    "scans": null,
+    "segmented": false,
+    "spine": null,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": null,
@@ -607,7 +1370,24 @@
    "overlap": [],
    "reach": "get",
    "rebuild": true,
-   "status": "todo"
+   "status": "todo",
+   "value": {
+    "level_truth": "no",
+    "level_truth_people": 0,
+    "level_truth_scans": 0,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "films",
+    "paired": false,
+    "people": null,
+    "prior_source": false,
+    "regions": [],
+    "scans": 4083,
+    "segmented": false,
+    "spine": null,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 85596630,
@@ -622,7 +1402,24 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "fetched"
+   "status": "fetched",
+   "value": {
+    "level_truth": "no",
+    "level_truth_people": 0,
+    "level_truth_scans": 0,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "films",
+    "paired": false,
+    "people": 338,
+    "prior_source": false,
+    "regions": [],
+    "scans": null,
+    "segmented": false,
+    "spine": null,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 1110686125,
@@ -637,7 +1434,27 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "no",
+    "level_truth_people": 0,
+    "level_truth_scans": 0,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "fluoro",
+    "paired": true,
+    "people": 1,
+    "prior_source": false,
+    "regions": [
+     "pelvis",
+     "spine"
+    ],
+    "scans": 1,
+    "segmented": true,
+    "spine": true,
+    "tier": "E",
+    "transitional_people": null
+   }
   },
   {
    "bytes": null,
@@ -652,7 +1469,24 @@
    "overlap": [],
    "reach": "get",
    "rebuild": true,
-   "status": "needs-owner"
+   "status": "needs-owner",
+   "value": {
+    "level_truth": "no",
+    "level_truth_people": 0,
+    "level_truth_scans": 0,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "video",
+    "paired": false,
+    "people": null,
+    "prior_source": false,
+    "regions": [],
+    "scans": null,
+    "segmented": false,
+    "spine": null,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 620400000000,
@@ -667,7 +1501,26 @@
    "overlap": [],
    "reach": "get",
    "rebuild": true,
-   "status": "requested"
+   "status": "requested",
+   "value": {
+    "level_truth": "unknown",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "ct",
+    "paired": false,
+    "people": null,
+    "prior_source": false,
+    "regions": [
+     "abdomen"
+    ],
+    "scans": 10135,
+    "segmented": true,
+    "spine": false,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": null,
@@ -682,7 +1535,24 @@
    "overlap": [],
    "reach": "gated",
    "rebuild": true,
-   "status": "requested"
+   "status": "requested",
+   "value": {
+    "level_truth": "unknown",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "films",
+    "paired": false,
+    "people": null,
+    "prior_source": false,
+    "regions": [],
+    "scans": null,
+    "segmented": false,
+    "spine": null,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": null,
@@ -697,7 +1567,26 @@
    "overlap": [],
    "reach": "get",
    "rebuild": true,
-   "status": "requested"
+   "status": "requested",
+   "value": {
+    "level_truth": "read",
+    "level_truth_people": 140,
+    "level_truth_scans": 140,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "fluoro",
+    "paired": true,
+    "people": 140,
+    "prior_source": false,
+    "regions": [
+     "spine"
+    ],
+    "scans": 140,
+    "segmented": true,
+    "spine": true,
+    "tier": "C",
+    "transitional_people": null
+   }
   },
   {
    "bytes": 2820716228,
@@ -712,7 +1601,26 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "automatic",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": "automatic",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": 15,
+    "prior_source": true,
+    "regions": [
+     "whole body"
+    ],
+    "scans": 15,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 15803448804,
@@ -727,7 +1635,31 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "automatic",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": "automatic",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": 131,
+    "prior_source": true,
+    "regions": [
+     "abdomen",
+     "chest",
+     "head and neck",
+     "other",
+     "pelvis",
+     "whole body"
+    ],
+    "scans": 131,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 3554260496,
@@ -742,7 +1674,28 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "automatic",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": "automatic",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": 29,
+    "prior_source": true,
+    "regions": [
+     "abdomen",
+     "chest",
+     "pelvis"
+    ],
+    "scans": 29,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 4255529904,
@@ -757,7 +1710,29 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "automatic",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": "automatic",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": 34,
+    "prior_source": true,
+    "regions": [
+     "abdomen",
+     "chest",
+     "pelvis",
+     "whole body"
+    ],
+    "scans": 34,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 2592712452,
@@ -772,7 +1747,29 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "automatic",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": "automatic",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": 21,
+    "prior_source": true,
+    "regions": [
+     "abdomen",
+     "chest",
+     "pelvis",
+     "whole body"
+    ],
+    "scans": 21,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 5415090502,
@@ -787,7 +1784,30 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "automatic",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": "automatic",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": 30,
+    "prior_source": true,
+    "regions": [
+     "abdomen",
+     "chest",
+     "other",
+     "pelvis",
+     "whole body"
+    ],
+    "scans": 30,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 10016371716,
@@ -802,7 +1822,30 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "automatic",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": "automatic",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": 75,
+    "prior_source": true,
+    "regions": [
+     "abdomen",
+     "chest",
+     "other",
+     "pelvis",
+     "whole body"
+    ],
+    "scans": 75,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 2182027164,
@@ -817,7 +1860,30 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "automatic",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": "automatic",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": 23,
+    "prior_source": true,
+    "regions": [
+     "abdomen",
+     "chest",
+     "pelvis",
+     "spine",
+     "whole body"
+    ],
+    "scans": 23,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 2325630444,
@@ -832,7 +1898,31 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "automatic",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": "automatic",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": 16,
+    "prior_source": true,
+    "regions": [
+     "abdomen",
+     "chest",
+     "other",
+     "pelvis",
+     "spine",
+     "whole body"
+    ],
+    "scans": 16,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 1046667648,
@@ -847,7 +1937,28 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "automatic",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": "automatic",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": 7,
+    "prior_source": true,
+    "regions": [
+     "abdomen",
+     "chest",
+     "pelvis"
+    ],
+    "scans": 7,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 6306640878,
@@ -862,7 +1973,26 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "automatic",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": "automatic",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": 80,
+    "prior_source": true,
+    "regions": [
+     "abdomen"
+    ],
+    "scans": 80,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 5663331196,
@@ -877,7 +2007,28 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "automatic",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": "automatic",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": 23,
+    "prior_source": true,
+    "regions": [
+     "abdomen",
+     "chest",
+     "pelvis"
+    ],
+    "scans": 23,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 64665429890,
@@ -892,7 +2043,29 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "automatic",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": "automatic",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": 443,
+    "prior_source": true,
+    "regions": [
+     "abdomen",
+     "chest",
+     "pelvis",
+     "whole body"
+    ],
+    "scans": 443,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 7899579642,
@@ -907,7 +2080,29 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "automatic",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": "automatic",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": 48,
+    "prior_source": true,
+    "regions": [
+     "abdomen",
+     "chest",
+     "other",
+     "pelvis"
+    ],
+    "scans": 48,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 4231397264,
@@ -922,7 +2117,30 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "automatic",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": "automatic",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": 12,
+    "prior_source": true,
+    "regions": [
+     "abdomen",
+     "chest",
+     "other",
+     "pelvis",
+     "whole body"
+    ],
+    "scans": 12,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 29521912984,
@@ -937,7 +2155,30 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "unknown",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "ct",
+    "paired": false,
+    "people": 32,
+    "prior_source": false,
+    "regions": [
+     "abdomen",
+     "chest",
+     "other",
+     "pelvis",
+     "whole body"
+    ],
+    "scans": null,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 38946321618,
@@ -952,7 +2193,29 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "unknown",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "ct",
+    "paired": false,
+    "people": 32,
+    "prior_source": false,
+    "regions": [
+     "abdomen",
+     "chest",
+     "other",
+     "whole body"
+    ],
+    "scans": null,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 10052805748,
@@ -967,7 +2230,29 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "automatic",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": "automatic",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": 62,
+    "prior_source": true,
+    "regions": [
+     "abdomen",
+     "chest",
+     "other",
+     "pelvis"
+    ],
+    "scans": 62,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 3091957308,
@@ -982,7 +2267,30 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "automatic",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": "automatic",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": 14,
+    "prior_source": true,
+    "regions": [
+     "abdomen",
+     "chest",
+     "other",
+     "pelvis",
+     "whole body"
+    ],
+    "scans": 14,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 7112447934,
@@ -997,7 +2305,28 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "automatic",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": "automatic",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": 19,
+    "prior_source": true,
+    "regions": [
+     "abdomen",
+     "chest",
+     "pelvis"
+    ],
+    "scans": 19,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 10535515130,
@@ -1012,7 +2341,29 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "automatic",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": "automatic",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": 66,
+    "prior_source": true,
+    "regions": [
+     "abdomen",
+     "chest",
+     "pelvis",
+     "whole body"
+    ],
+    "scans": 66,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 1792570632,
@@ -1027,7 +2378,27 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "automatic",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": "automatic",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": 20,
+    "prior_source": true,
+    "regions": [
+     "abdomen",
+     "chest"
+    ],
+    "scans": 20,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 6163724386,
@@ -1042,7 +2413,29 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "automatic",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": "automatic",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": 34,
+    "prior_source": true,
+    "regions": [
+     "abdomen",
+     "chest",
+     "other",
+     "pelvis"
+    ],
+    "scans": 34,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 37225661636,
@@ -1057,7 +2450,31 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "automatic",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": "automatic",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": 376,
+    "prior_source": true,
+    "regions": [
+     "abdomen",
+     "chest",
+     "other",
+     "pelvis",
+     "spine",
+     "whole body"
+    ],
+    "scans": 376,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 5119552398,
@@ -1072,7 +2489,28 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "automatic",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": "automatic",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": 101,
+    "prior_source": true,
+    "regions": [
+     "abdomen",
+     "chest",
+     "pelvis"
+    ],
+    "scans": 101,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 862724923831,
@@ -1087,7 +2525,26 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "unknown",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "ct",
+    "paired": false,
+    "people": 99,
+    "prior_source": false,
+    "regions": [
+     "chest"
+    ],
+    "scans": null,
+    "segmented": true,
+    "spine": false,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 123300000000,
@@ -1102,7 +2559,28 @@
    "overlap": [],
    "reach": "get",
    "rebuild": true,
-   "status": "todo"
+   "status": "todo",
+   "value": {
+    "level_truth": "unknown",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "ct",
+    "paired": false,
+    "people": 997,
+    "prior_source": false,
+    "regions": [
+     "abdomen",
+     "chest",
+     "pelvis"
+    ],
+    "scans": null,
+    "segmented": true,
+    "spine": false,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 29895161732,
@@ -1117,7 +2595,29 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "automatic",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": "automatic",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": 158,
+    "prior_source": true,
+    "regions": [
+     "abdomen",
+     "chest",
+     "other",
+     "whole body"
+    ],
+    "scans": 158,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 25695564010,
@@ -1132,7 +2632,30 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "automatic",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": "automatic",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": 316,
+    "prior_source": true,
+    "regions": [
+     "abdomen",
+     "chest",
+     "head and neck",
+     "pelvis",
+     "whole body"
+    ],
+    "scans": 316,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 6690856480,
@@ -1147,7 +2670,28 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "automatic",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": "automatic",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": 98,
+    "prior_source": true,
+    "regions": [
+     "abdomen",
+     "chest",
+     "other"
+    ],
+    "scans": 98,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 8668721317,
@@ -1162,7 +2706,29 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "unknown",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "ct",
+    "paired": false,
+    "people": 91,
+    "prior_source": false,
+    "regions": [
+     "abdomen",
+     "chest",
+     "other",
+     "pelvis"
+    ],
+    "scans": null,
+    "segmented": true,
+    "spine": false,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 2305300000000,
@@ -1177,7 +2743,27 @@
    "overlap": [],
    "reach": "get",
    "rebuild": true,
-   "status": "todo"
+   "status": "todo",
+   "value": {
+    "level_truth": "automatic",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": "automatic",
+    "masks_held": false,
+    "modality": "ct",
+    "paired": false,
+    "people": 24713,
+    "prior_source": true,
+    "regions": [
+     "chest",
+     "other"
+    ],
+    "scans": null,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 90920028002,
@@ -1192,7 +2778,29 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "unknown",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "ct",
+    "paired": false,
+    "people": 188,
+    "prior_source": false,
+    "regions": [
+     "abdomen",
+     "chest",
+     "pelvis",
+     "whole body"
+    ],
+    "scans": null,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 26952714219,
@@ -1207,7 +2815,26 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "unknown",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "ct",
+    "paired": false,
+    "people": 415,
+    "prior_source": false,
+    "regions": [
+     "chest"
+    ],
+    "scans": null,
+    "segmented": true,
+    "spine": false,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 2957497980,
@@ -1222,7 +2849,27 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "automatic",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": "automatic",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": 40,
+    "prior_source": true,
+    "regions": [
+     "abdomen",
+     "pelvis"
+    ],
+    "scans": 40,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 56902381622,
@@ -1237,7 +2884,28 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "automatic",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": "automatic",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": 352,
+    "prior_source": true,
+    "regions": [
+     "abdomen",
+     "chest",
+     "pelvis"
+    ],
+    "scans": 352,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 4499041132,
@@ -1252,7 +2920,28 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "automatic",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": "automatic",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": 58,
+    "prior_source": true,
+    "regions": [
+     "abdomen",
+     "other",
+     "pelvis"
+    ],
+    "scans": 58,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 16600000000,
@@ -1267,7 +2956,26 @@
    "overlap": [],
    "reach": "get",
    "rebuild": true,
-   "status": "todo"
+   "status": "todo",
+   "value": {
+    "level_truth": "unknown",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "ct",
+    "paired": false,
+    "people": 131,
+    "prior_source": false,
+    "regions": [
+     "pelvis"
+    ],
+    "scans": null,
+    "segmented": true,
+    "spine": false,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 63139697062,
@@ -1282,7 +2990,26 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "automatic",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": "automatic",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": 374,
+    "prior_source": true,
+    "regions": [
+     "whole body"
+    ],
+    "scans": 374,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 18537943612,
@@ -1297,7 +3024,29 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "automatic",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": "automatic",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": 117,
+    "prior_source": true,
+    "regions": [
+     "abdomen",
+     "chest",
+     "pelvis",
+     "whole body"
+    ],
+    "scans": 117,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 297769275017,
@@ -1312,7 +3061,26 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "automatic",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": "automatic",
+    "masks_held": false,
+    "modality": "ct",
+    "paired": false,
+    "people": 67,
+    "prior_source": true,
+    "regions": [
+     "spine"
+    ],
+    "scans": null,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 18724919264,
@@ -1327,7 +3095,28 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "automatic",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": "automatic",
+    "masks_held": false,
+    "modality": "ct",
+    "paired": false,
+    "people": 54,
+    "prior_source": true,
+    "regions": [
+     "abdomen",
+     "pelvis",
+     "spine"
+    ],
+    "scans": null,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 10284999264,
@@ -1342,7 +3131,29 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "automatic",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": "automatic",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": 79,
+    "prior_source": true,
+    "regions": [
+     "abdomen",
+     "chest",
+     "pelvis",
+     "whole body"
+    ],
+    "scans": 79,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 2501238054,
@@ -1357,7 +3168,28 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "automatic",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": "automatic",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": 16,
+    "prior_source": true,
+    "regions": [
+     "abdomen",
+     "chest",
+     "other"
+    ],
+    "scans": 16,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 9966507748,
@@ -1372,7 +3204,28 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "automatic",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": "automatic",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": 129,
+    "prior_source": true,
+    "regions": [
+     "abdomen",
+     "chest",
+     "pelvis"
+    ],
+    "scans": 129,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 4976751636,
@@ -1387,7 +3240,28 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "automatic",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": "automatic",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": 42,
+    "prior_source": true,
+    "regions": [
+     "abdomen",
+     "chest",
+     "pelvis"
+    ],
+    "scans": 42,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 2474408344,
@@ -1402,7 +3276,28 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "automatic",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": "automatic",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": 24,
+    "prior_source": true,
+    "regions": [
+     "abdomen",
+     "chest",
+     "pelvis"
+    ],
+    "scans": 24,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 6437945576,
@@ -1417,7 +3312,26 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "automatic",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": "automatic",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": 45,
+    "prior_source": true,
+    "regions": [
+     "abdomen"
+    ],
+    "scans": 45,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 4171151216,
@@ -1432,7 +3346,29 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "automatic",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": "automatic",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": 38,
+    "prior_source": true,
+    "regions": [
+     "abdomen",
+     "chest",
+     "other",
+     "pelvis"
+    ],
+    "scans": 38,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 5483126018,
@@ -1447,7 +3383,29 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "automatic",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": "automatic",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": 35,
+    "prior_source": true,
+    "regions": [
+     "abdomen",
+     "chest",
+     "pelvis",
+     "spine"
+    ],
+    "scans": 35,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 1300000000,
@@ -1462,7 +3420,24 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "needs-owner"
+   "status": "needs-owner",
+   "value": {
+    "level_truth": "no",
+    "level_truth_people": 0,
+    "level_truth_scans": 0,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "films",
+    "paired": false,
+    "people": 236,
+    "prior_source": false,
+    "regions": [],
+    "scans": 236,
+    "segmented": false,
+    "spine": null,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 6670978774,
@@ -1477,7 +3452,26 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "no",
+    "level_truth_people": 0,
+    "level_truth_scans": 0,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "projections",
+    "paired": true,
+    "people": 5,
+    "prior_source": false,
+    "regions": [
+     "other"
+    ],
+    "scans": 5,
+    "segmented": true,
+    "spine": false,
+    "tier": "E",
+    "transitional_people": null
+   }
   },
   {
    "bytes": null,
@@ -1492,7 +3486,24 @@
    "overlap": [],
    "reach": "get",
    "rebuild": true,
-   "status": "requested"
+   "status": "requested",
+   "value": {
+    "level_truth": "read",
+    "level_truth_people": null,
+    "level_truth_scans": 1,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "video",
+    "paired": false,
+    "people": null,
+    "prior_source": false,
+    "regions": [],
+    "scans": 1,
+    "segmented": false,
+    "spine": null,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 481000000,
@@ -1507,7 +3518,24 @@
    "overlap": [],
    "reach": "get",
    "rebuild": true,
-   "status": "todo"
+   "status": "todo",
+   "value": {
+    "level_truth": "no",
+    "level_truth_people": 0,
+    "level_truth_scans": 0,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "films",
+    "paired": false,
+    "people": null,
+    "prior_source": false,
+    "regions": [],
+    "scans": 10580,
+    "segmented": false,
+    "spine": null,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": null,
@@ -1522,7 +3550,24 @@
    "overlap": [],
    "reach": "get",
    "rebuild": true,
-   "status": "needs-owner"
+   "status": "needs-owner",
+   "value": {
+    "level_truth": "read",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "films",
+    "paired": false,
+    "people": null,
+    "prior_source": false,
+    "regions": [],
+    "scans": null,
+    "segmented": false,
+    "spine": null,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 75937730899,
@@ -1534,10 +3579,45 @@
    "licence": "open",
    "location": "lab",
    "name": "Kidney abnormality segmentation in thorax-abdomen CT",
-   "overlap": [],
+   "overlap": [
+    {
+     "patients": 0,
+     "same_bytes": 0,
+     "same_scans": 3,
+     "series": 0,
+     "with": "ctspine1k"
+    },
+    {
+     "patients": 0,
+     "same_bytes": 0,
+     "same_scans": 1,
+     "series": 0,
+     "with": "panorama"
+    }
+   ],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "automatic",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": "automatic",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": 215,
+    "prior_source": true,
+    "regions": [
+     "abdomen",
+     "chest"
+    ],
+    "scans": 215,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": null,
@@ -1552,7 +3632,24 @@
    "overlap": [],
    "reach": "get",
    "rebuild": true,
-   "status": "requested"
+   "status": "requested",
+   "value": {
+    "level_truth": "no",
+    "level_truth_people": 0,
+    "level_truth_scans": 0,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "video",
+    "paired": false,
+    "people": null,
+    "prior_source": false,
+    "regions": [],
+    "scans": null,
+    "segmented": false,
+    "spine": null,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 55328666242,
@@ -1567,7 +3664,24 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "no",
+    "level_truth_people": 0,
+    "level_truth_scans": 0,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "films",
+    "paired": false,
+    "people": 1703,
+    "prior_source": false,
+    "regions": [],
+    "scans": 2570,
+    "segmented": false,
+    "spine": null,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": null,
@@ -1582,7 +3696,26 @@
    "overlap": [],
    "reach": "get",
    "rebuild": true,
-   "status": "refused"
+   "status": "refused",
+   "value": {
+    "level_truth": "read",
+    "level_truth_people": 202,
+    "level_truth_scans": 202,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "fluoro",
+    "paired": true,
+    "people": 202,
+    "prior_source": false,
+    "regions": [
+     "spine"
+    ],
+    "scans": 202,
+    "segmented": true,
+    "spine": true,
+    "tier": "D",
+    "transitional_people": null
+   }
   },
   {
    "bytes": 306504065,
@@ -1597,7 +3730,26 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "read",
+    "level_truth_people": 1,
+    "level_truth_scans": 5,
+    "masks_by_level": "read",
+    "masks_held": true,
+    "modality": "fluoro",
+    "paired": true,
+    "people": 1,
+    "prior_source": false,
+    "regions": [
+     "spine"
+    ],
+    "scans": 5,
+    "segmented": true,
+    "spine": true,
+    "tier": "A",
+    "transitional_people": null
+   }
   },
   {
    "bytes": 76386234420,
@@ -1612,7 +3764,26 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "read",
+    "level_truth_people": 803,
+    "level_truth_scans": 280,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "fluoro",
+    "paired": true,
+    "people": 803,
+    "prior_source": false,
+    "regions": [
+     "spine"
+    ],
+    "scans": 280,
+    "segmented": true,
+    "spine": true,
+    "tier": "A",
+    "transitional_people": null
+   }
   },
   {
    "bytes": null,
@@ -1627,7 +3798,24 @@
    "overlap": [],
    "reach": "get",
    "rebuild": true,
-   "status": "requested"
+   "status": "requested",
+   "value": {
+    "level_truth": "read",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "video",
+    "paired": false,
+    "people": null,
+    "prior_source": false,
+    "regions": [],
+    "scans": null,
+    "segmented": false,
+    "spine": null,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": null,
@@ -1642,7 +3830,27 @@
    "overlap": [],
    "reach": "gated",
    "rebuild": true,
-   "status": "needs-owner"
+   "status": "needs-owner",
+   "value": {
+    "level_truth": "unknown",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "ct",
+    "paired": false,
+    "people": null,
+    "prior_source": false,
+    "regions": [
+     "abdomen",
+     "chest"
+    ],
+    "scans": null,
+    "segmented": true,
+    "spine": false,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": null,
@@ -1657,7 +3865,24 @@
    "overlap": [],
    "reach": "get",
    "rebuild": true,
-   "status": "requested"
+   "status": "requested",
+   "value": {
+    "level_truth": "unknown",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "video",
+    "paired": false,
+    "people": null,
+    "prior_source": false,
+    "regions": [],
+    "scans": null,
+    "segmented": false,
+    "spine": null,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": null,
@@ -1672,7 +3897,24 @@
    "overlap": [],
    "reach": "get",
    "rebuild": true,
-   "status": "todo"
+   "status": "todo",
+   "value": {
+    "level_truth": "no",
+    "level_truth_people": 0,
+    "level_truth_scans": 0,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "films",
+    "paired": false,
+    "people": null,
+    "prior_source": false,
+    "regions": [],
+    "scans": null,
+    "segmented": false,
+    "spine": null,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": null,
@@ -1687,7 +3929,24 @@
    "overlap": [],
    "reach": "gated",
    "rebuild": true,
-   "status": "requested"
+   "status": "requested",
+   "value": {
+    "level_truth": "no",
+    "level_truth_people": 0,
+    "level_truth_scans": 0,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "films",
+    "paired": false,
+    "people": 65379,
+    "prior_source": false,
+    "regions": [],
+    "scans": 377110,
+    "segmented": false,
+    "spine": null,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": null,
@@ -1702,7 +3961,24 @@
    "overlap": [],
    "reach": "get",
    "rebuild": true,
-   "status": "needs-owner"
+   "status": "needs-owner",
+   "value": {
+    "level_truth": "read",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "films",
+    "paired": false,
+    "people": null,
+    "prior_source": false,
+    "regions": [],
+    "scans": null,
+    "segmented": false,
+    "spine": null,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": null,
@@ -1717,7 +3993,24 @@
    "overlap": [],
    "reach": "get",
    "rebuild": true,
-   "status": "requested"
+   "status": "requested",
+   "value": {
+    "level_truth": "no",
+    "level_truth_people": 0,
+    "level_truth_scans": 0,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "video",
+    "paired": false,
+    "people": null,
+    "prior_source": false,
+    "regions": [],
+    "scans": null,
+    "segmented": false,
+    "spine": null,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": null,
@@ -1732,7 +4025,24 @@
    "overlap": [],
    "reach": "get",
    "rebuild": true,
-   "status": "todo"
+   "status": "todo",
+   "value": {
+    "level_truth": "read",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "video",
+    "paired": false,
+    "people": null,
+    "prior_source": false,
+    "regions": [],
+    "scans": null,
+    "segmented": false,
+    "spine": null,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 3284647651,
@@ -1747,7 +4057,24 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "read",
+    "level_truth_people": 364,
+    "level_truth_scans": 543,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "films",
+    "paired": false,
+    "people": 364,
+    "prior_source": false,
+    "regions": [],
+    "scans": 543,
+    "segmented": false,
+    "spine": null,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 138377968433,
@@ -1762,7 +4089,24 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "no",
+    "level_truth_people": 0,
+    "level_truth_scans": 0,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "films",
+    "paired": false,
+    "people": null,
+    "prior_source": false,
+    "regions": [],
+    "scans": 16531,
+    "segmented": false,
+    "spine": null,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 45079872841,
@@ -1777,7 +4121,24 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "no",
+    "level_truth_people": 0,
+    "level_truth_scans": 0,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "films",
+    "paired": false,
+    "people": 30805,
+    "prior_source": false,
+    "regions": [],
+    "scans": 112120,
+    "segmented": false,
+    "spine": null,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": null,
@@ -1792,7 +4153,26 @@
    "overlap": [],
    "reach": "get",
    "rebuild": true,
-   "status": "requested"
+   "status": "requested",
+   "value": {
+    "level_truth": "read",
+    "level_truth_people": 9,
+    "level_truth_scans": 9,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "fluoro",
+    "paired": true,
+    "people": 9,
+    "prior_source": false,
+    "regions": [
+     "spine"
+    ],
+    "scans": 9,
+    "segmented": true,
+    "spine": true,
+    "tier": "C",
+    "transitional_people": null
+   }
   },
   {
    "bytes": 73543991208,
@@ -1807,7 +4187,27 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "automatic",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": "automatic",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": 500,
+    "prior_source": true,
+    "regions": [
+     "chest",
+     "other"
+    ],
+    "scans": 500,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": null,
@@ -1822,7 +4222,24 @@
    "overlap": [],
    "reach": "get",
    "rebuild": true,
-   "status": "needs-owner"
+   "status": "needs-owner",
+   "value": {
+    "level_truth": "no",
+    "level_truth_people": 0,
+    "level_truth_scans": 0,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "films",
+    "paired": false,
+    "people": null,
+    "prior_source": false,
+    "regions": [],
+    "scans": 7470,
+    "segmented": false,
+    "spine": null,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": null,
@@ -1837,7 +4254,24 @@
    "overlap": [],
    "reach": "gated",
    "rebuild": true,
-   "status": "todo"
+   "status": "todo",
+   "value": {
+    "level_truth": "no",
+    "level_truth_people": 0,
+    "level_truth_scans": 0,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "films",
+    "paired": false,
+    "people": 67625,
+    "prior_source": false,
+    "regions": [],
+    "scans": 160868,
+    "segmented": false,
+    "spine": null,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 194439363448,
@@ -1849,10 +4283,46 @@
    "licence": "restricted",
    "location": "lab",
    "name": "PANORAMA public set (pancreas CE-CT)",
-   "overlap": [],
+   "overlap": [
+    {
+     "patients": 0,
+     "same_bytes": 0,
+     "same_scans": 1,
+     "series": 0,
+     "with": "curvas_pdacvi"
+    },
+    {
+     "patients": 0,
+     "same_bytes": 0,
+     "same_scans": 1,
+     "series": 0,
+     "with": "kidney_thoraxabdomen"
+    }
+   ],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "automatic",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": "automatic",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": 1950,
+    "prior_source": true,
+    "regions": [
+     "abdomen",
+     "chest",
+     "pelvis"
+    ],
+    "scans": 2024,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": null,
@@ -1867,7 +4337,24 @@
    "overlap": [],
    "reach": "get",
    "rebuild": true,
-   "status": "requested"
+   "status": "requested",
+   "value": {
+    "level_truth": "no",
+    "level_truth_people": 0,
+    "level_truth_scans": 0,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "video",
+    "paired": false,
+    "people": null,
+    "prior_source": false,
+    "regions": [],
+    "scans": 95308,
+    "segmented": false,
+    "spine": null,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 83498925109,
@@ -1882,7 +4369,26 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "automatic",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": "automatic",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": 340,
+    "prior_source": true,
+    "regions": [
+     "pelvis"
+    ],
+    "scans": 340,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 34950751395,
@@ -1897,7 +4403,27 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "no",
+    "level_truth_people": 0,
+    "level_truth_scans": 0,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "ct",
+    "paired": false,
+    "people": null,
+    "prior_source": false,
+    "regions": [
+     "pelvis",
+     "spine"
+    ],
+    "scans": 100,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": null,
@@ -1912,7 +4438,24 @@
    "overlap": [],
    "reach": "get",
    "rebuild": true,
-   "status": "requested"
+   "status": "requested",
+   "value": {
+    "level_truth": "read",
+    "level_truth_people": 335,
+    "level_truth_scans": 1500,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "video",
+    "paired": false,
+    "people": 335,
+    "prior_source": false,
+    "regions": [],
+    "scans": 1500,
+    "segmented": false,
+    "spine": null,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": null,
@@ -1927,7 +4470,24 @@
    "overlap": [],
    "reach": "get",
    "rebuild": true,
-   "status": "requested"
+   "status": "requested",
+   "value": {
+    "level_truth": "read",
+    "level_truth_people": null,
+    "level_truth_scans": 4,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "video",
+    "paired": false,
+    "people": null,
+    "prior_source": false,
+    "regions": [],
+    "scans": 4,
+    "segmented": false,
+    "spine": null,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": null,
@@ -1942,7 +4502,24 @@
    "overlap": [],
    "reach": "get",
    "rebuild": true,
-   "status": "requested"
+   "status": "requested",
+   "value": {
+    "level_truth": "no",
+    "level_truth_people": 0,
+    "level_truth_scans": 0,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "fluoro",
+    "paired": false,
+    "people": null,
+    "prior_source": false,
+    "regions": [],
+    "scans": null,
+    "segmented": false,
+    "spine": null,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 20413498578,
@@ -1957,7 +4534,26 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "automatic",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": "automatic",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": 48,
+    "prior_source": true,
+    "regions": [
+     "whole body"
+    ],
+    "scans": 48,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": null,
@@ -1972,7 +4568,24 @@
    "overlap": [],
    "reach": "gated",
    "rebuild": true,
-   "status": "granted"
+   "status": "granted",
+   "value": {
+    "level_truth": "read",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "video",
+    "paired": false,
+    "people": null,
+    "prior_source": false,
+    "regions": [],
+    "scans": null,
+    "segmented": false,
+    "spine": null,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": null,
@@ -1987,7 +4600,24 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "no",
+    "level_truth_people": 0,
+    "level_truth_scans": 0,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "films",
+    "paired": false,
+    "people": 109487,
+    "prior_source": false,
+    "regions": [],
+    "scans": null,
+    "segmented": false,
+    "spine": null,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 156899015256,
@@ -2002,7 +4632,27 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "no",
+    "level_truth_people": 0,
+    "level_truth_scans": 0,
+    "masks_by_level": "automatic",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": null,
+    "prior_source": true,
+    "regions": [
+     "chest",
+     "spine"
+    ],
+    "scans": 660,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 203321991870,
@@ -2017,7 +4667,26 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "read",
+    "level_truth_people": null,
+    "level_truth_scans": 2019,
+    "masks_by_level": "read",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": null,
+    "prior_source": true,
+    "regions": [
+     "spine"
+    ],
+    "scans": 2019,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": null,
@@ -2032,7 +4701,28 @@
    "overlap": [],
    "reach": "gated",
    "rebuild": true,
-   "status": "granted"
+   "status": "granted",
+   "value": {
+    "level_truth": "unknown",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "ct",
+    "paired": false,
+    "people": null,
+    "prior_source": false,
+    "regions": [
+     "abdomen",
+     "chest",
+     "pelvis"
+    ],
+    "scans": null,
+    "segmented": true,
+    "spine": false,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 980237210056,
@@ -2047,7 +4737,26 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "unknown",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "ct",
+    "paired": false,
+    "people": null,
+    "prior_source": false,
+    "regions": [
+     "chest"
+    ],
+    "scans": null,
+    "segmented": true,
+    "spine": false,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 286300000000,
@@ -2062,7 +4771,26 @@
    "overlap": [],
    "reach": "get",
    "rebuild": true,
-   "status": "todo"
+   "status": "todo",
+   "value": {
+    "level_truth": "unknown",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "ct",
+    "paired": false,
+    "people": null,
+    "prior_source": false,
+    "regions": [
+     "whole body"
+    ],
+    "scans": null,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 4053482052,
@@ -2077,7 +4805,24 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "fetched"
+   "status": "fetched",
+   "value": {
+    "level_truth": "no",
+    "level_truth_people": 0,
+    "level_truth_scans": 0,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "films",
+    "paired": false,
+    "people": 2156,
+    "prior_source": false,
+    "regions": [],
+    "scans": 2156,
+    "segmented": false,
+    "spine": null,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": null,
@@ -2092,7 +4837,24 @@
    "overlap": [],
    "reach": "get",
    "rebuild": true,
-   "status": "requested"
+   "status": "requested",
+   "value": {
+    "level_truth": "read",
+    "level_truth_people": null,
+    "level_truth_scans": 12,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "video",
+    "paired": false,
+    "people": null,
+    "prior_source": false,
+    "regions": [],
+    "scans": 12,
+    "segmented": false,
+    "spine": null,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": null,
@@ -2107,7 +4869,24 @@
    "overlap": [],
    "reach": "get",
    "rebuild": true,
-   "status": "needs-owner"
+   "status": "needs-owner",
+   "value": {
+    "level_truth": "read",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "films",
+    "paired": false,
+    "people": null,
+    "prior_source": false,
+    "regions": [],
+    "scans": null,
+    "segmented": false,
+    "spine": null,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": null,
@@ -2122,7 +4901,26 @@
    "overlap": [],
    "reach": "gated",
    "rebuild": true,
-   "status": "needs-owner"
+   "status": "needs-owner",
+   "value": {
+    "level_truth": "unknown",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "ct",
+    "paired": false,
+    "people": null,
+    "prior_source": false,
+    "regions": [
+     "chest"
+    ],
+    "scans": null,
+    "segmented": true,
+    "spine": false,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": null,
@@ -2137,7 +4935,27 @@
    "overlap": [],
    "reach": "gated",
    "rebuild": true,
-   "status": "needs-owner"
+   "status": "needs-owner",
+   "value": {
+    "level_truth": "unknown",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "ct",
+    "paired": false,
+    "people": null,
+    "prior_source": false,
+    "regions": [
+     "abdomen",
+     "pelvis"
+    ],
+    "scans": null,
+    "segmented": true,
+    "spine": false,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": null,
@@ -2152,7 +4970,24 @@
    "overlap": [],
    "reach": "get",
    "rebuild": true,
-   "status": "requested"
+   "status": "requested",
+   "value": {
+    "level_truth": "read",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "fluoro",
+    "paired": false,
+    "people": null,
+    "prior_source": false,
+    "regions": [],
+    "scans": null,
+    "segmented": false,
+    "spine": null,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 393872197196,
@@ -2167,7 +5002,26 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "automatic",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": "automatic",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": 900,
+    "prior_source": true,
+    "regions": [
+     "whole body"
+    ],
+    "scans": 900,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": null,
@@ -2182,7 +5036,31 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "read",
+    "level_truth_people": null,
+    "level_truth_scans": 1935,
+    "masks_by_level": "automatic",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": null,
+    "prior_source": true,
+    "regions": [
+     "abdomen",
+     "chest",
+     "head and neck",
+     "pelvis",
+     "spine",
+     "whole body"
+    ],
+    "scans": 1935,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": null,
@@ -2197,7 +5075,24 @@
    "overlap": [],
    "reach": "gated",
    "rebuild": true,
-   "status": "requested"
+   "status": "requested",
+   "value": {
+    "level_truth": "unknown",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "films",
+    "paired": false,
+    "people": null,
+    "prior_source": false,
+    "regions": [],
+    "scans": null,
+    "segmented": false,
+    "spine": null,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": null,
@@ -2212,7 +5107,24 @@
    "overlap": [],
    "reach": "gated",
    "rebuild": true,
-   "status": "requested"
+   "status": "requested",
+   "value": {
+    "level_truth": "unknown",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "films",
+    "paired": false,
+    "people": null,
+    "prior_source": false,
+    "regions": [],
+    "scans": null,
+    "segmented": false,
+    "spine": null,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": null,
@@ -2227,7 +5139,24 @@
    "overlap": [],
    "reach": "get",
    "rebuild": true,
-   "status": "requested"
+   "status": "requested",
+   "value": {
+    "level_truth": "read",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "fluoro",
+    "paired": false,
+    "people": null,
+    "prior_source": false,
+    "regions": [],
+    "scans": null,
+    "segmented": false,
+    "spine": null,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": null,
@@ -2242,7 +5171,24 @@
    "overlap": [],
    "reach": "get",
    "rebuild": true,
-   "status": "needs-owner"
+   "status": "needs-owner",
+   "value": {
+    "level_truth": "no",
+    "level_truth_people": 0,
+    "level_truth_scans": 0,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "video",
+    "paired": true,
+    "people": null,
+    "prior_source": false,
+    "regions": [],
+    "scans": null,
+    "segmented": false,
+    "spine": null,
+    "tier": "E",
+    "transitional_people": null
+   }
   },
   {
    "bytes": 52189925577,
@@ -2257,7 +5203,26 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "read",
+    "level_truth_people": 355,
+    "level_truth_scans": 374,
+    "masks_by_level": "read",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": 355,
+    "prior_source": true,
+    "regions": [
+     "spine"
+    ],
+    "scans": 374,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 4417086105,
@@ -2272,7 +5237,26 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "unknown",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "ct",
+    "paired": false,
+    "people": null,
+    "prior_source": false,
+    "regions": [
+     "spine"
+    ],
+    "scans": null,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": null,
@@ -2287,7 +5271,24 @@
    "overlap": [],
    "reach": "get",
    "rebuild": true,
-   "status": "todo"
+   "status": "todo",
+   "value": {
+    "level_truth": "read",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "films",
+    "paired": false,
+    "people": null,
+    "prior_source": false,
+    "regions": [],
+    "scans": null,
+    "segmented": false,
+    "spine": null,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 205012607,
@@ -2302,7 +5303,26 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "no",
+    "level_truth_people": 0,
+    "level_truth_scans": 0,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "future",
+    "paired": true,
+    "people": 1,
+    "prior_source": false,
+    "regions": [
+     "other"
+    ],
+    "scans": 3,
+    "segmented": true,
+    "spine": false,
+    "tier": "E",
+    "transitional_people": null
+   }
   },
   {
    "bytes": null,
@@ -2317,7 +5337,24 @@
    "overlap": [],
    "reach": "get",
    "rebuild": true,
-   "status": "todo"
+   "status": "todo",
+   "value": {
+    "level_truth": "no",
+    "level_truth_people": 0,
+    "level_truth_scans": 0,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "video",
+    "paired": false,
+    "people": null,
+    "prior_source": false,
+    "regions": [],
+    "scans": null,
+    "segmented": false,
+    "spine": null,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": null,
@@ -2332,7 +5369,24 @@
    "overlap": [],
    "reach": "gated",
    "rebuild": true,
-   "status": "requested"
+   "status": "requested",
+   "value": {
+    "level_truth": "no",
+    "level_truth_people": 0,
+    "level_truth_scans": 0,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "films",
+    "paired": false,
+    "people": null,
+    "prior_source": false,
+    "regions": [],
+    "scans": 18000,
+    "segmented": false,
+    "spine": null,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": null,
@@ -2347,7 +5401,24 @@
    "overlap": [],
    "reach": "gated",
    "rebuild": true,
-   "status": "granted"
+   "status": "granted",
+   "value": {
+    "level_truth": "no",
+    "level_truth_people": 0,
+    "level_truth_scans": 0,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "films",
+    "paired": false,
+    "people": null,
+    "prior_source": false,
+    "regions": [],
+    "scans": 9125,
+    "segmented": false,
+    "spine": null,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 114749095458,
@@ -2362,7 +5433,24 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "read",
+    "level_truth_people": null,
+    "level_truth_scans": 10466,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "films",
+    "paired": false,
+    "people": null,
+    "prior_source": false,
+    "regions": [],
+    "scans": 10466,
+    "segmented": false,
+    "spine": null,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 47150828519,
@@ -2377,7 +5465,26 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "automatic",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": "automatic",
+    "masks_held": true,
+    "modality": "ct",
+    "paired": false,
+    "people": 233,
+    "prior_source": true,
+    "regions": [
+     "abdomen"
+    ],
+    "scans": 228,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 10075438693,
@@ -2392,7 +5499,26 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "fetched"
+   "status": "fetched",
+   "value": {
+    "level_truth": "unknown",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "ct",
+    "paired": false,
+    "people": 185,
+    "prior_source": false,
+    "regions": [
+     "spine"
+    ],
+    "scans": null,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 31351310903,
@@ -2407,7 +5533,26 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "fetched"
+   "status": "fetched",
+   "value": {
+    "level_truth": "unknown",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "ct",
+    "paired": false,
+    "people": 99,
+    "prior_source": false,
+    "regions": [
+     "pelvis"
+    ],
+    "scans": null,
+    "segmented": true,
+    "spine": false,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 6846084599,
@@ -2422,7 +5567,26 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "fetched"
+   "status": "fetched",
+   "value": {
+    "level_truth": "unknown",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "ct",
+    "paired": false,
+    "people": 60,
+    "prior_source": false,
+    "regions": [
+     "whole body"
+    ],
+    "scans": null,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 9129987506,
@@ -2437,7 +5601,26 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "unknown",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "ct",
+    "paired": false,
+    "people": 71,
+    "prior_source": false,
+    "regions": [
+     "pelvis"
+    ],
+    "scans": null,
+    "segmented": true,
+    "spine": false,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 39039571028,
@@ -2452,7 +5635,26 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "unknown",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "ct",
+    "paired": false,
+    "people": 842,
+    "prior_source": false,
+    "regions": [
+     "abdomen"
+    ],
+    "scans": null,
+    "segmented": true,
+    "spine": false,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 9012772615,
@@ -2467,7 +5669,26 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "unknown",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "ct",
+    "paired": false,
+    "people": 600,
+    "prior_source": false,
+    "regions": [
+     "chest"
+    ],
+    "scans": null,
+    "segmented": true,
+    "spine": false,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 84067545368,
@@ -2482,7 +5703,26 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "fetched"
+   "status": "fetched",
+   "value": {
+    "level_truth": "unknown",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "ct",
+    "paired": false,
+    "people": 623,
+    "prior_source": false,
+    "regions": [
+     "chest"
+    ],
+    "scans": null,
+    "segmented": true,
+    "spine": false,
+    "tier": null,
+    "transitional_people": null
+   }
   },
   {
    "bytes": 252158307717,
@@ -2497,13 +5737,32 @@
    "overlap": [],
    "reach": "held",
    "rebuild": true,
-   "status": "held"
+   "status": "held",
+   "value": {
+    "level_truth": "unknown",
+    "level_truth_people": null,
+    "level_truth_scans": null,
+    "masks_by_level": null,
+    "masks_held": false,
+    "modality": "ct",
+    "paired": false,
+    "people": 100,
+    "prior_source": false,
+    "regions": [
+     "whole body"
+    ],
+    "scans": null,
+    "segmented": true,
+    "spine": true,
+    "tier": null,
+    "transitional_people": null
+   }
   }
  ],
  "target_bytes": 20000000000000,
  "volume": {
-  "datasets_bytes": 7626035136479,
-  "other_bytes": 9927214863521,
+  "datasets_bytes": 7640867003649,
+  "other_bytes": 9912382996351,
   "quota_bytes": 21990230000000,
   "read_at": "2026-10-24T17:15:28Z",
   "used_bytes": 17553250000000
