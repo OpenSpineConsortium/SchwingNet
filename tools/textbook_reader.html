@@ -1,0 +1,790 @@
+<title>SchwingNet Textbook</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+:root { --bg:#fbfaf7; --fg:#1d1d1f; --muted:#5d5d63; --line:#e3e0d8; --panel:#f3efe6; --accent:#8a5a14; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg:#16171a; --fg:#ececee; --muted:#a2a2aa; --line:#2c2d33; --panel:#1f2024; --accent:#e0a85a; color-scheme:dark; }
+}
+:root[data-theme="dark"] { --bg:#16171a; --fg:#ececee; --muted:#a2a2aa; --line:#2c2d33; --panel:#1f2024; --accent:#e0a85a; color-scheme:dark; }
+body { margin:0; background:var(--bg); color:var(--fg); display:flex; flex-direction:column;
+  height:calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  font:14px/1.45 -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; }
+.bar { flex:none; display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px; padding-block:6px;
+  padding-left:max(16px, env(safe-area-inset-left, 0px)); padding-right:max(16px, env(safe-area-inset-right, 0px));
+  background:var(--panel); border-bottom:1px solid var(--line); }
+button { font:inherit; font-size:13.5px; color:var(--accent); background:transparent; border:1px solid var(--accent);
+  border-radius:6px; padding:3px 10px; cursor:pointer; }
+button:disabled { opacity:.45; cursor:default; }
+button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+#where { flex:1 1 10em; min-width:0; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+#edition { color:var(--muted); font-size:12.5px; }
+#view { flex:1; min-height:0; position:relative; }
+#view iframe { position:absolute; inset:0; width:100%; height:100%; border:0; background:var(--bg); }
+#busy { position:absolute; top:0; left:0; right:0; height:3px; z-index:3; background:var(--accent); opacity:.75; }
+#note { position:absolute; inset:0; z-index:2; display:flex; align-items:center; justify-content:center; background:var(--bg);
+  padding-block:24px; padding-left:max(16px, env(safe-area-inset-left, 0px)); padding-right:max(16px, env(safe-area-inset-right, 0px)); }
+#note > div { max-width:36em; min-width:0; display:flex; flex-direction:column; gap:12px; }
+#note p { margin:0; }
+#note-text { font-size:15px; font-weight:600; text-wrap:balance; }
+#note-more { color:var(--muted); }
+#note code { font:12.5px/1.4 ui-monospace, Menlo, Consolas, monospace; background:var(--panel); border:1px solid var(--line);
+  border-radius:4px; padding:4px 8px; overflow-wrap:anywhere; }
+#note-do { display:flex; flex-wrap:wrap; gap:8px; }
+</style>
+
+<header class="bar">
+<button id="back" type="button" disabled>Back</button>
+<button id="home" type="button" disabled>Contents</button>
+<span id="where">SchwingNet Textbook</span>
+<span id="edition"></span>
+</header>
+<main id="view">
+<div id="busy" hidden></div>
+<div id="note" role="status"><div><p id="note-text">Opening the book...</p><p id="note-more" hidden></p>
+<code id="note-code" hidden></code><div id="note-do"></div></div></div>
+</main>
+
+<script>
+// The reader of the SchwingNet textbook (tools/textbook_reader.html, issue #294). It holds no page
+// of the book: opened on claude.ai, it reads the book from the files of the Claude project the
+// textbook thread belongs to, through the artifact runtime's files capability and with the viewer's
+// own access, and shows the book's pages in frames. `python3 tools/textbook_reader.py stage`, run in a
+// thread of that project, writes what it reads into the project's textbook/ folder: CURRENT.json
+// names the edition, whose index, book-<commit>.json, says where each of its files lies in
+// book-<commit>.bin.
+//
+// The book's own pages, the files at the top of the edition, are shown in a frame of this page's
+// origin, so their Ask Claude and Ask the book boxes reach the runtime's sample capability through
+// the window.claude the frame takes from this page, and read the book's search index through a
+// fetch this page answers from the pack. A figure or an exported artifact is shown as the site
+// shows it, sandboxed without this page's origin and with its files put inline, so its scripts
+// reach neither this page nor the project's files.
+(function () {
+  "use strict";
+  var FORMAT = "textbook-reader/1";  // tools/textbook_reader.py FORMAT; a copy of another format is refused
+  var FOLDER = "textbook", POINTER = "CURRENT.json";
+  var SPAN = 24 * 1024 * 1024;       // the bytes one read asks for; the runtime gives at most 25 MiB a read
+  var GAP = 512 * 1024;              // the bytes of other files one read may take in to spare another read
+  var BUDGET = 64 * 1024 * 1024;     // the unpacked bytes kept for Back and for what pages share; the book is 109 MB
+  var SEALED = "allow-scripts allow-popups";  // how the site frames an exported artifact (EXPORT_SANDBOX)
+  var ELSEWHERE = /^(?:[a-z][a-z0-9+.-]*:|\/\/)/i;
+  var CSS_URL = /url\(\s*(['"]?)([^'")]+)\1\s*\)/g;
+  var MEDIA = [["img", "src"], ["source", "src"], ["video", "src"], ["video", "poster"], ["audio", "src"],
+               ["input", "src"], ["track", "src"]];
+  var $ = function (id) { return document.getElementById(id); };
+  var view = $("view"), note = $("note"), busy = $("busy"), back = $("back"), home = $("home"), where = $("where");
+
+  var files = null;     // the files capability, once the viewer has it
+  var book = null;      // {pointer, index, data, revision}: the edition CURRENT.json names
+  var cache = {};       // a file of the book's path -> its bytes, unpacked
+  var used = {};        // a path -> the page it was last used for, counted by opens, for trim
+  var opens = 0;        // pages opened so far
+  var titles = {};      // a page's path -> its title, for the bar
+  var reading = {};     // a path -> the promise of its bytes, while a read is on its way
+  var blobs = {};       // an image's path -> the object URL a page of the book shows it by
+  var shown = null;     // {path, frame, trusted}: the page in view
+  var opening = null;   // the page being opened, so a slower earlier one never replaces it
+  var trail = [];       // the pages before this one, for Back
+
+  function text(bytes) { return new TextDecoder().decode(bytes); }
+  function code(e) { return (e && (e.code || e.name)) || "error"; }
+  function wait(ms) { return new Promise(function (done) { setTimeout(done, ms); }); }
+
+  // What the viewer reads where there is no page to show, or a page could not be opened.
+  function say(words, more, command, actions) {
+    $("note-text").textContent = words;
+    $("note-more").hidden = !more;
+    $("note-more").textContent = more || "";
+    $("note-code").hidden = !command;
+    $("note-code").textContent = command || "";
+    var row = $("note-do");
+    row.textContent = "";
+    (actions || []).forEach(function (a) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.textContent = a[0];
+      b.addEventListener("click", a[1]);
+      row.appendChild(b);
+    });
+    note.hidden = false;
+  }
+
+  // The project's files
+
+  // A call to the files capability, made again after the wait the runtime gives with rate_limited,
+  // and again for a file that changed under the read, a few times at most and never in a loop. A
+  // file written seconds ago may not be readable yet, so one a listing named is asked for once more.
+  function call(make, listed, tries) {
+    tries = tries || 0;
+    return make().catch(function (e) {
+      var c = code(e);
+      if (c === "rate_limited" && tries < 4) {
+        return wait((e && e.retryAfterMs) || 2000).then(function () { return call(make, listed, tries + 1); });
+      }
+      if (c === "changed" && tries < 2) return call(make, listed, tries + 1);
+      if (c === "not_found" && listed && tries < 1) return wait(1500).then(function () { return call(make, listed, tries + 1); });
+      throw e;
+    });
+  }
+
+  // A folder's entries, page by page, below it too when asked, up to a number of pages.
+  function listAll(path, recursive, pages) {
+    var found = [], left = pages || 20;
+    function page(cursor) {
+      var options = {};
+      if (path) options.path = path;
+      if (recursive) options.recursive = true;
+      if (cursor) options.cursor = cursor;
+      return call(function () { return files.list(options); }).then(function (r) {
+        found = found.concat(r.entries || []);
+        return r.cursor && --left > 0 ? page(r.cursor) : found;
+      });
+    }
+    return page("");
+  }
+
+  // An entry of a listing by its name, since a path is passed back to the runtime as it gave it.
+  function named(entries, name, folder) {
+    for (var i = 0; i < entries.length; i++) {
+      var last = String(entries[i].path).replace(/\/+$/, "").split("/").pop();
+      if (last === name && Boolean(entries[i].isDirectory) === folder) return entries[i];
+    }
+    return null;
+  }
+
+  function join(parts, size) {
+    if (parts.length === 1) return parts[0];
+    var all = new Uint8Array(size), at = 0;
+    parts.forEach(function (p) { all.set(p, at); at += p.length; });
+    return all;
+  }
+
+  function readWhole(path) {
+    var parts = [], got = 0;
+    function next() {
+      return call(function () { return files.read(path, {offset: got}); }, true).then(function (r) {
+        parts.push(r.bytes);
+        got += r.bytes.length;
+        return got < r.size && r.bytes.length ? next() : join(parts, got);
+      });
+    }
+    return next();
+  }
+
+  // A span of the edition's data file, in reads of at most SPAN bytes, all of one revision: a copy
+  // that changed under the reader is said so, never read half from each.
+  function readSpan(at, n) {
+    var parts = [], got = 0;
+    function next() {
+      if (got >= n) return Promise.resolve(join(parts, got));
+      return call(function () { return files.read(book.data, {offset: at + got, length: Math.min(SPAN, n - got)}); }, true)
+        .then(function (r) {
+          if (book.revision === null) book.revision = r.revision;
+          else if (r.revision !== book.revision) throw {code: "copy_changed"};
+          if (!r.bytes.length) throw {code: "copy_short"};
+          parts.push(r.bytes);
+          got += r.bytes.length;
+          return next();
+        });
+    }
+    return next();
+  }
+
+  // The book's files
+
+  function entry(path) {
+    var all = book && book.index.files;
+    return all && Object.prototype.hasOwnProperty.call(all, path) ? all[path] : null;
+  }
+
+  function unpack(e, bytes) {
+    if (!e.gz) return Promise.resolve(bytes);
+    var stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
+    return new Response(stream).arrayBuffer().then(function (b) { return new Uint8Array(b); });
+  }
+
+  // The bytes of each path the book holds, null for one it does not. Files that lie close together
+  // in the pack come in one read, and no file is read twice.
+  function load(paths) {
+    var wanted = [];
+    paths.forEach(function (p) {
+      if (p && entry(p)) used[p] = opens;
+      if (p && entry(p) && !(p in cache) && !(p in reading) && wanted.indexOf(p) < 0) wanted.push(p);
+    });
+    wanted.sort(function (a, b) { return entry(a).at - entry(b).at; });
+    var groups = [];
+    wanted.forEach(function (p) {
+      var e = entry(p), g = groups[groups.length - 1];
+      if (g && e.at - g.end <= GAP && e.at + e.n - g.at <= SPAN) {
+        g.paths.push(p);
+        g.end = Math.max(g.end, e.at + e.n);
+      } else {
+        groups.push({at: e.at, end: e.at + e.n, paths: [p]});
+      }
+    });
+    groups.forEach(function (g) {
+      var span = readSpan(g.at, g.end - g.at);
+      g.paths.forEach(function (p) {
+        var e = entry(p);
+        reading[p] = span.then(function (bytes) { return unpack(e, bytes.subarray(e.at - g.at, e.at - g.at + e.n)); })
+          .then(function (b) { cache[p] = b; used[p] = opens; delete reading[p]; return b; },
+                function (err) { delete reading[p]; throw err; });
+      });
+    });
+    return Promise.all(paths.map(function (p) {
+      if (!p || !entry(p)) return null;
+      return p in cache ? cache[p] : reading[p];
+    }));
+  }
+
+  // The bytes kept within the budget: when a page is opened, the files no page used since the one
+  // before it are let go, the longest unused first; what the page in view and the one it came from
+  // use, and any read still under way, stay.
+  function trim() {
+    var total = 0, old = [];
+    Object.keys(cache).forEach(function (p) {
+      total += cache[p].length;
+      if (used[p] < opens - 1) old.push(p);
+    });
+    old.sort(function (a, b) { return used[a] - used[b]; });
+    while (total > BUDGET && old.length) {
+      var p = old.shift();
+      total -= cache[p].length;
+      delete cache[p];
+      if (blobs[p]) { URL.revokeObjectURL(blobs[p]); delete blobs[p]; }
+    }
+  }
+
+  // A reference a page makes, resolved against the page's own path in the book; one that names
+  // another site, a data or blob address or a place in the same page is none of the book's.
+  function resolve(base, ref) {
+    ref = String(ref == null ? "" : ref).trim();
+    if (!ref || ELSEWHERE.test(ref) || ref.charAt(0) === "#" || ref.charAt(0) === "?") return null;
+    ref = ref.split("#")[0].split("?")[0];
+    var parts = ref.charAt(0) === "/" ? [] : String(base).split("/").slice(0, -1);
+    ref.split("/").forEach(function (step) {
+      if (step === "..") parts.pop();
+      else if (step && step !== ".") {
+        try { parts.push(decodeURIComponent(step)); } catch (e) { parts.push(step); }
+      }
+    });
+    return parts.join("/");
+  }
+
+  function fragment(ref) {
+    var at = String(ref).indexOf("#");
+    return at < 0 ? "" : String(ref).slice(at + 1);
+  }
+
+  function dataUrl(path) {
+    var bytes = cache[path], chunks = [];
+    for (var i = 0; i < bytes.length; i += 0x8000) chunks.push(String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000)));
+    return "data:" + entry(path).type + ";base64," + btoa(chunks.join(""));
+  }
+
+  // A page's documents
+
+  function parse(html) { return new DOMParser().parseFromString(html, "text/html"); }
+  function serialize(doc) { return "<!doctype html>\n" + doc.documentElement.outerHTML; }
+  function pick(found) { return found.path; }
+
+  // A script or a stylesheet put inline must not close its own element early, nor open an HTML
+  // comment the parser would read past its end in; the escapes change no string's value.
+  function scriptSafe(js) { return js.replace(/<\/(script)/gi, "<\\/$1").replace(/<!--/g, "<\\!--"); }
+  function styleSafe(css) { return css.replace(/<\/(style)/gi, "<\\/$1"); }
+
+  function inBook(doc, selector, attr, base) {
+    var found = [];
+    doc.querySelectorAll(selector).forEach(function (el) {
+      var p = resolve(base, el.getAttribute(attr));
+      if (p && entry(p)) found.push({el: el, attr: attr, path: p});
+    });
+    return found;
+  }
+  function sheetsOf(doc, base) { return inBook(doc, 'link[rel~="stylesheet"][href]', "href", base); }
+  function scriptsOf(doc, base) { return inBook(doc, "script[src]", "src", base); }
+  function framesOf(doc, base) { return inBook(doc, "iframe[src]", "src", base); }
+  function mediaOf(doc, base) {
+    var found = [];
+    MEDIA.forEach(function (m) { found = found.concat(inBook(doc, m[0] + "[" + m[1] + "]", m[1], base)); });
+    return found;
+  }
+
+  function cssRefs(css, base) {
+    var found = [], m;
+    CSS_URL.lastIndex = 0;
+    while ((m = CSS_URL.exec(css))) {
+      var p = resolve(base, m[2]);
+      if (p && entry(p)) found.push(p);
+    }
+    return found;
+  }
+  function cssInline(css, base) {
+    return styleSafe(css.replace(CSS_URL, function (all, quote, ref) {
+      var p = resolve(base, ref);
+      return p && cache[p] ? 'url("' + dataUrl(p) + '")' : all;
+    }));
+  }
+  // The images a document's styles name, its own and those of the stylesheets it links.
+  function styleRefs(doc, base) {
+    var found = [];
+    doc.querySelectorAll("style").forEach(function (s) { found = found.concat(cssRefs(s.textContent, base)); });
+    doc.querySelectorAll("[style]").forEach(function (el) { found = found.concat(cssRefs(el.getAttribute("style"), base)); });
+    sheetsOf(doc, base).forEach(function (s) { found = found.concat(cssRefs(text(cache[s.path]), s.path)); });
+    return found;
+  }
+
+  function inlineSheets(doc, base) {
+    sheetsOf(doc, base).forEach(function (s) {
+      var style = doc.createElement("style");
+      if (s.el.getAttribute("media")) style.setAttribute("media", s.el.getAttribute("media"));
+      style.textContent = cssInline(text(cache[s.path]), s.path);
+      s.el.replaceWith(style);
+    });
+    doc.querySelectorAll("[style]").forEach(function (el) { el.setAttribute("style", cssInline(el.getAttribute("style"), base)); });
+    doc.querySelectorAll("style").forEach(function (s) { s.textContent = cssInline(s.textContent, base); });
+  }
+
+  // A script put inline runs where it stands, so one the page deferred goes to the end of the page,
+  // in its order, where a deferred script ran.
+  function inlineScripts(doc, base) {
+    var late = [];
+    scriptsOf(doc, base).forEach(function (s) {
+      var js = doc.createElement("script");
+      if (s.el.getAttribute("type")) js.setAttribute("type", s.el.getAttribute("type"));
+      js.textContent = scriptSafe(text(cache[s.path]));
+      if (s.el.hasAttribute("defer") || s.el.hasAttribute("async") || s.el.getAttribute("type") === "module") {
+        late.push(js);
+        s.el.remove();
+      } else {
+        s.el.replaceWith(js);
+      }
+    });
+    late.forEach(function (js) { doc.body.appendChild(js); });
+  }
+
+  // A srcset that names the book's files would send the browser to this page's own address.
+  function dropSrcsets(doc, base) {
+    doc.querySelectorAll("[srcset]").forEach(function (el) {
+      var named = el.getAttribute("srcset").split(",").some(function (c) { return resolve(base, c.trim().split(/\s+/)[0]); });
+      if (named) el.removeAttribute("srcset");
+    });
+  }
+
+  function mark(doc, path, hash) {
+    var root = doc.documentElement, theme = document.documentElement.getAttribute("data-theme");
+    root.setAttribute("data-page", path);
+    if (hash) root.setAttribute("data-hash", hash);
+    if (theme) root.setAttribute("data-theme", theme);
+  }
+
+  function prelude(doc, js) {
+    var s = doc.createElement("script"), head = doc.head || doc.documentElement;
+    s.textContent = js;
+    head.insertBefore(s, head.firstChild);
+  }
+
+  // The first script of a page of the book: window.claude from this page, and the rest from wire.
+  function trustedPrelude(path) {
+    return "(function(){var R=window.parent&&window.parent.textbookReader;if(!R)return;" +
+      "try{window.claude=window.parent.claude;}catch(e){}R.wire(window," + JSON.stringify(path) + ");})();";
+  }
+
+  // The first script of a sealed frame, which cannot reach this page: a link to a page of the book
+  // asks for it by message, one to another site opens in a new tab where the sandbox lets it.
+  function sealedLinks(hash) {
+    document.addEventListener("click", function (e) {
+      var a = e.target && e.target.closest ? e.target.closest("a[href]") : null;
+      if (!a || e.defaultPrevented) return;
+      var href = a.getAttribute("href") || "";
+      if (/^(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(href)) {
+        if (!a.target && /^(?:https?:)?\/\//i.test(href)) a.target = "_blank";
+        return;
+      }
+      e.preventDefault();
+      if (href.charAt(0) === "#") {
+        var t = document.getElementById(href.slice(1));
+        if (t) t.scrollIntoView();
+        return;
+      }
+      parent.postMessage({type: "textbook-reader.open", href: href}, "*");
+    });
+    if (hash) addEventListener("load", function () { var t = document.getElementById(hash); if (t) t.scrollIntoView(); });
+  }
+
+  // A page of the book itself, for a frame of this page's origin. Its stylesheets and scripts go
+  // inline now, since they run as the page is parsed; its images and frames are held back and filled
+  // as they come into view (fill), so a long page is read only as far as it is looked at.
+  function pageDoc(path, hash) {
+    var doc;
+    return load([path]).then(function (got) {
+      doc = parse(text(got[0]));
+      titles[path] = doc.title;
+      return load(sheetsOf(doc, path).map(pick).concat(scriptsOf(doc, path).map(pick)));
+    }).then(function () {
+      return load(styleRefs(doc, path));
+    }).then(function () {
+      inlineSheets(doc, path);
+      inlineScripts(doc, path);
+      mediaOf(doc, path).concat(framesOf(doc, path)).forEach(function (m) {
+        m.el.setAttribute("data-reader-src", m.path);
+        m.el.setAttribute("data-reader-attr", m.attr);
+        m.el.removeAttribute(m.attr);
+      });
+      dropSrcsets(doc, path);
+      mark(doc, path, hash);
+      prelude(doc, trustedPrelude(path));
+      return serialize(doc);
+    });
+  }
+
+  // A file of the book that is no page of its own, a figure or an exported artifact's page, whole in
+  // one document: its stylesheets, scripts and images inline and the pages it frames inline in turn,
+  // so it needs nothing from this page once it is shown in its sandbox.
+  function sealedDoc(path, hash, depth) {
+    var doc;
+    return load([path]).then(function (got) {
+      if (!got[0]) throw {code: "not_in_book"};
+      doc = parse(text(got[0]));
+      if (!depth) titles[path] = doc.title;
+      return load(sheetsOf(doc, path).concat(scriptsOf(doc, path), mediaOf(doc, path)).map(pick));
+    }).then(function () {
+      return load(styleRefs(doc, path));
+    }).then(function () {
+      inlineSheets(doc, path);
+      inlineScripts(doc, path);
+      mediaOf(doc, path).forEach(function (m) { m.el.setAttribute(m.attr, dataUrl(m.path)); });
+      dropSrcsets(doc, path);
+      return Promise.all((depth < 2 ? framesOf(doc, path) : []).map(function (f) {
+        return sealedDoc(f.path, "", depth + 1).then(function (html) {
+          f.el.removeAttribute("src");
+          f.el.setAttribute("srcdoc", html);
+          if (!f.el.hasAttribute("sandbox")) f.el.setAttribute("sandbox", "allow-scripts");
+        });
+      }));
+    }).then(function () {
+      mark(doc, path, hash);
+      prelude(doc, "(" + sealedLinks.toString() + ")(" + JSON.stringify(hash) + ");");
+      return serialize(doc);
+    });
+  }
+
+  // A page of the book's own, as its first script hands it over: its fetches of the book's files
+  // answered from the pack, its links opened here, and its held images and frames filled in view.
+  function wire(win, path) {
+    var own = win.fetch;
+    win.fetch = function (input, init) {
+      var p = typeof input === "string" ? resolve(path, input) : null;
+      if (!p || !entry(p)) return own.apply(win, arguments);
+      return load([p]).then(function (got) {
+        var type = entry(p).type;
+        return new win.Response(new win.Blob([got[0]], {type: type}), {status: 200, headers: {"Content-Type": type}});
+      });
+    };
+    win.document.addEventListener("click", function (e) { follow(e, win, path); });
+    win.addEventListener("message", function (e) { fromFigure(e, win); });
+    win.addEventListener("DOMContentLoaded", function () { hydrate(win); });
+  }
+
+  function follow(e, win, path) {
+    var a = e.target && e.target.closest ? e.target.closest("a[href]") : null;
+    if (!a || e.defaultPrevented) return;
+    var href = a.getAttribute("href") || "";
+    if (ELSEWHERE.test(href)) {
+      if (!a.target && /^(?:https?:)?\/\//i.test(href)) { a.target = "_blank"; a.rel = "noopener"; }
+      return;
+    }
+    e.preventDefault();
+    var p = href.charAt(0) === "#" ? path : resolve(path, href);
+    if (p === path) reveal(win, fragment(href));
+    else if (p) open(p, fragment(href));
+  }
+
+  function reveal(win, hash) {
+    var target = null;
+    if (hash) {
+      try { target = win.document.getElementById(decodeURIComponent(hash)); } catch (e) { target = null; }
+      target = target || win.document.getElementsByName(hash)[0] || null;
+    }
+    if (target) target.scrollIntoView();
+    else if (!hash) win.scrollTo(0, 0);
+  }
+
+  // A link followed in a figure or an exported artifact framed in a page of the book, resolved
+  // against the frame's own path, never against what the message says it is.
+  function fromFigure(e, win) {
+    var d = e.data;
+    if (!d || d.type !== "textbook-reader.open") return;
+    var frames = win.document.querySelectorAll("iframe[data-reader-path]");
+    for (var i = 0; i < frames.length; i++) {
+      if (frames[i].contentWindow === e.source) {
+        var p = resolve(frames[i].getAttribute("data-reader-path"), d.href);
+        if (p) open(p, fragment(d.href));
+        return;
+      }
+    }
+  }
+
+  // The held images and frames of a page, filled as they come near the view, those that come
+  // together asked for together, so images that lie close in the pack come in one read. The page
+  // scrolls inside its frame, so the frame's own document is the root the margin is measured on:
+  // against the viewer's window, of another origin, a browser takes no margin at all.
+  function hydrate(win) {
+    var held = win.document.querySelectorAll("[data-reader-src]"), watch;
+    if (!held.length) return;
+    function seen(entries) {
+      var near = [];
+      entries.forEach(function (s) {
+        if (!s.isIntersecting) return;
+        watch.unobserve(s.target);
+        near.push(s.target);
+      });
+      fill(near);
+    }
+    try {
+      watch = new win.IntersectionObserver(seen, {root: win.document, rootMargin: "1200px 0px"});
+    } catch (e) {
+      watch = new win.IntersectionObserver(seen, {rootMargin: "1200px 0px"});
+    }
+    held.forEach(function (el) { watch.observe(el); });
+  }
+
+  function fill(els) {
+    var media = [];
+    els.forEach(function (el) {
+      var p = el.getAttribute("data-reader-src");
+      el.removeAttribute("data-reader-src");
+      if (el.tagName === "IFRAME") frame(el, p);
+      else media.push({el: el, path: p});
+    });
+    if (!media.length) return;
+    load(media.map(function (m) { return m.path; })).catch(function () { /* each says for itself below */ });
+    media.forEach(function (m) {
+      load([m.path]).then(function () { picture(m.el, m.path); }, function () { /* the image stays empty */ });
+    });
+  }
+
+  function frame(el, p) {
+    if (!el.hasAttribute("sandbox")) el.setAttribute("sandbox", "allow-scripts");
+    el.setAttribute("data-reader-path", p);
+    sealedDoc(p, "", 1).then(function (html) { el.setAttribute("srcdoc", html); }, function (e) {
+      el.setAttribute("srcdoc", "<p style=\"font:14px sans-serif\">This could not be read from the project's files (" +
+        String(code(e)).replace(/[^A-Za-z0-9_]/g, "") + ").</p>");
+    });
+  }
+
+  // An image by an object URL of its bytes, or by the bytes inline where the frame refuses that.
+  function picture(el, p) {
+    var attr = el.getAttribute("data-reader-attr") || "src";
+    if (!cache[p]) return;   // let go meanwhile, for a page no longer in view
+    if (!blobs[p]) blobs[p] = URL.createObjectURL(new Blob([cache[p]], {type: entry(p).type}));
+    el.addEventListener("error", function () { if (cache[p]) el.setAttribute(attr, dataUrl(p)); }, {once: true});
+    el.setAttribute(attr, blobs[p]);
+  }
+
+  // Showing a page
+
+  function open(path, hash, remember) {
+    if (!entry(path)) {
+      say("That page is not in this copy of the book.", path, "", [["Close", function () { note.hidden = Boolean(shown); }]]);
+      return;
+    }
+    if (shown && shown.path === path) {
+      if (shown.trusted) reveal(shown.frame.contentWindow, hash);
+      return;
+    }
+    var trusted = path.indexOf("/") < 0 && /\.html?$/i.test(path), me = {};
+    opening = me;
+    opens += 1;
+    trim();
+    busy.hidden = false;
+    (trusted ? pageDoc(path, hash) : sealedDoc(path, hash, 0)).then(function (html) {
+      if (opening !== me) return;
+      if (remember !== false && shown) trail.push(shown.path);
+      put(path, hash, html, trusted);
+    }).catch(function (e) {
+      if (opening === me) failed(e, path);
+    }).then(function () {
+      if (opening === me) busy.hidden = true;
+    });
+  }
+
+  function put(path, hash, html, trusted) {
+    var frame = document.createElement("iframe"), old = shown && shown.frame;
+    frame.title = "A page of the SchwingNet textbook";
+    if (!trusted) frame.setAttribute("sandbox", SEALED);
+    frame.addEventListener("load", function () {
+      if (old && old.parentNode) old.remove();
+      note.hidden = true;
+      if (!trusted || !hash) return;
+      try { reveal(frame.contentWindow, hash); } catch (e) { /* a page that navigated away is no longer readable here */ }
+    }, {once: true});
+    frame.setAttribute("srcdoc", html);
+    view.appendChild(frame);
+    shown = {path: path, frame: frame, trusted: trusted};
+    where.textContent = (titles[path] || "").replace(/ - The SchwingNet textbook$/, "").trim() || path;
+    back.disabled = !trail.length;
+  }
+
+  // A sealed page shown on its own asks for another page of the book by message.
+  window.addEventListener("message", function (e) {
+    var d = e.data;
+    if (!d || d.type !== "textbook-reader.open" || !shown || shown.trusted || e.source !== shown.frame.contentWindow) return;
+    var p = resolve(shown.path, d.href);
+    if (p) open(p, fragment(d.href));
+  });
+
+  // The viewer's theme toggle reaches the page in view.
+  new MutationObserver(function () {
+    if (!shown || !shown.trusted) return;
+    try {
+      var root = shown.frame.contentDocument.documentElement, theme = document.documentElement.getAttribute("data-theme");
+      if (theme) root.setAttribute("data-theme", theme);
+      else root.removeAttribute("data-theme");
+    } catch (e) { /* nothing to follow */ }
+  }).observe(document.documentElement, {attributes: true, attributeFilter: ["data-theme"]});
+
+  back.addEventListener("click", function () {
+    var p = trail.pop();
+    back.disabled = !trail.length;
+    if (p) open(p, "", false);
+  });
+  home.addEventListener("click", function () { if (book) open(book.index.start, ""); });
+
+  // Opening the book
+
+  var AGAIN = ["Try again", function () { start(); }];
+
+  function stopped(e) {
+    busy.hidden = true;
+    var c = code(e);
+    if (c === "absent") {
+      say("This view cannot read the project's files.", "Open the reader on claude.ai, signed in to the account that " +
+          "holds the SchwingNet project; a viewer who cannot open that project's files reads nothing here.", "", []);
+    } else if (c === "not_granted") {
+      say("The reader may not read the project's files, so it cannot show the book.", "You chose not to allow it. " +
+          "The artifact's Permissions menu turns it back on.", "", [["Open permissions", permissions]]);
+    } else if (c === "not_found" || c === "no_copy") {
+      say("No copy of the book was found in the project's files.", "A thread of the SchwingNet project puts one there " +
+          "with the command below. If one is there, this account may not be able to open the project's files.",
+          "python3 tools/textbook_reader.py stage", [AGAIN]);
+    } else if (c === "format") {
+      say("The copy of the book in the project's files is not one this reader reads.", "It is in format " +
+          (e.found || "unknown") + "; this reader reads " + FORMAT + ". Stage the book again, or publish the reader " +
+          "again from the computer.", "python3 tools/textbook_reader.py stage", [AGAIN]);
+    } else if (c === "no_gzip") {
+      say("This browser cannot unpack the book.", "Open the reader in a current Chrome, Edge, Safari or Firefox, " +
+          "or in the Claude app.", "", []);
+    } else if (c === "copy_changed") {
+      say("The copy of the book changed while you were reading.", "Open it again to read the new copy.", "",
+          [["Open it again", function () { start(); }]]);
+    } else {
+      say("The project's files could not be read (" + c + ").", "This is usually a passing network or service " +
+          "problem.", "", [AGAIN]);
+    }
+  }
+
+  function failed(e, path) {
+    var c = code(e);
+    // The edition open here was removed from the project's files by a later copy of the book.
+    if (c === "not_found" && book) c = "copy_changed";
+    if (["absent", "not_granted", "copy_changed", "unavailable", "capability_disabled",
+         "capability_removed"].indexOf(c) >= 0) {
+      stopped({code: c});
+      return;
+    }
+    say("This page could not be opened (" + c + ").", path, "", [["Close", function () { note.hidden = Boolean(shown); }],
+        ["Try again", function () { open(path, ""); }]]);
+  }
+
+  function permissions() {
+    window.claude.use("permissions").then(function (p) { return p ? p.manage() : null; }).then(function () { start(); },
+      function () {
+        say("The Permissions panel did not open.", "Use the artifact's Permissions menu to let the reader read the " +
+            "project's files, then open the reader again.", "", [AGAIN]);
+      });
+  }
+
+  // The book's folder, textbook/ at the top of the project's files, where the stage command puts it.
+  // Should the runtime list the project from another root, the folder is looked for below it, once.
+  function folderEntries() {
+    return listAll("").then(function (top) {
+      var folder = named(top, FOLDER, true);
+      return folder ? listAll(folder.path) : listAll("", true, 10).then(below);
+    });
+  }
+
+  function below(all) {
+    var pointer = null;
+    all.forEach(function (e) {
+      if (!pointer && !e.isDirectory && /(?:^|\/)textbook\/CURRENT\.json$/.test(String(e.path))) pointer = e;
+    });
+    if (!pointer) throw {code: "no_copy"};
+    var folder = String(pointer.path).slice(0, -POINTER.length);
+    return all.filter(function (e) {
+      var p = String(e.path);
+      return p.slice(0, folder.length) === folder && p.indexOf("/", folder.length) < 0;
+    });
+  }
+
+  function find() {
+    var listing;
+    return folderEntries().then(function (entries) {
+      listing = entries;
+      var pointer = named(entries, POINTER, false);
+      if (!pointer) throw {code: "no_copy"};
+      return readWhole(pointer.path);
+    }).then(function (bytes) {
+      var pointer = JSON.parse(text(bytes));
+      if (!pointer || pointer.format !== FORMAT) throw {code: "format", found: pointer && pointer.format};
+      var index = named(listing, String(pointer.index), false), data = named(listing, String(pointer.data), false);
+      if (!index || !data) throw {code: "no_copy"};
+      return readWhole(index.path).then(function (got) {
+        var idx = JSON.parse(text(got));
+        if (!idx || idx.format !== FORMAT || idx.sha !== pointer.sha) throw {code: "format", found: idx && idx.format};
+        return {pointer: pointer, index: idx, data: data.path, revision: null};
+      });
+    });
+  }
+
+  function start() {
+    files = book = shown = opening = null;
+    cache = {};
+    reading = {};
+    used = {};
+    titles = {};
+    opens = 0;
+    trail = [];
+    Object.keys(blobs).forEach(function (p) { URL.revokeObjectURL(blobs[p]); });
+    blobs = {};
+    Array.prototype.slice.call(view.querySelectorAll("iframe")).forEach(function (f) { f.remove(); });
+    back.disabled = home.disabled = true;
+    where.textContent = "SchwingNet Textbook";
+    $("edition").textContent = "";
+    say("Opening the book...", "", "", []);
+    if (typeof DecompressionStream !== "function") { stopped({code: "no_gzip"}); return; }
+    if (!window.claude || typeof window.claude.use !== "function") { stopped({code: "absent"}); return; }
+    busy.hidden = false;
+    window.claude.use("files").then(function (f) {
+      if (!f) throw {code: "absent"};
+      files = f;
+      return find();
+    }).then(function (found) {
+      book = found;
+      busy.hidden = true;
+      home.disabled = false;
+      var built = new Date(book.index.built);
+      $("edition").textContent = "Edition " + book.index.sha.slice(0, 7) +
+        (isNaN(built) ? "" : ", " + built.toISOString().slice(0, 16).replace("T", " ") + " UTC");
+      $("edition").title = "Copied into the project's files " + (book.pointer.staged || "at a time not recorded");
+      var first = decodeURIComponent(location.hash.slice(1));
+      if (first && !/\.html?$/i.test(first)) first += ".html";
+      open(entry(first) ? first : book.index.start, "", false);
+    }).catch(stopped);
+  }
+
+  Object.defineProperty(window, "textbookReader", {value: Object.freeze({wire: wire})});
+  if (document.readyState === "complete") start();
+  else window.addEventListener("load", start, {once: true});
+})();
+</script>
