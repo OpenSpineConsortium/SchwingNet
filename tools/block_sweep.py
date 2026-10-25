@@ -90,6 +90,7 @@ from schwingnet.blocks import (  # noqa: E402
     AUGMENT,
     CHOICES,
     DEFAULT,
+    FIRST_LABELLED,
     LABELLED,
     PRIOR,
     RULES,
@@ -355,11 +356,15 @@ GROUP BY i.source, i.part
 """
 VERSION_NAME = re.compile(r"catalog-(\d{6})-[0-9a-f]{12}\.sqlite$")
 PROGRESS_LINES = 60
-# The synthetic catalog stands for the two routes of the real data: a labelled source with level
-# maps and frozen test persons, as C-ArmLSpine and a render's shard bring them, and an unannotated
-# one, as VinDr-SpineXR enters the bank; its banks are ingested under those sources' names.
+# The synthetic catalog stands for the routes of the real data: a labelled source with level maps
+# and frozen test persons, as C-ArmLSpine brings them, a second labelled source with level maps,
+# as a render's shard brings them (the VerSe projections, a train-side render source), and an
+# unannotated one, as VinDr-SpineXR enters the bank; its banks are ingested under those sources'
+# names. The labelled bank's last third of cases is the render's, so each source cut of the cover
+# has two labelled sources to keep or drop one of.
 SYNTHETIC_DATE = "2026-10-24"
-LABELLED_SOURCE, UNLABELLED_SOURCE = "carmlspine", "vindr_spinexr"
+LABELLED_SOURCE, RENDER_SOURCE, UNLABELLED_SOURCE = "carmlspine", "verse_2d_projections", "vindr_spinexr"
+RENDER_SHARE = 3
 
 
 def now():
@@ -393,7 +398,8 @@ def json_text(data):
 def catalog_words(word):
     """What a plan's catalog field names, in words, for its "about" sentence."""
     if word == "synthetic":
-        return "the synthetic catalog of `block_sweep.py synthetic` (a labelled bank with level maps, the frozen test persons and an unannotated bank)"
+        return ("the synthetic catalog of `block_sweep.py synthetic` (a labelled bank with level maps, its cases split between C-ArmLSpine's route and a render's,"
+                " the frozen test persons and an unannotated bank)")
     if word == "v1":
         return "catalog version 1 of C-ArmLSpine, real frames"
     return f"version 1's catalog with {word.removeprefix('with:')} banked beside it"
@@ -416,8 +422,10 @@ def cover_plan(name, catalog, epochs, seed, strict=False):
     """The covering set as a plan file: every row of schwingnet.blocks.cover, with what it is."""
     checked_plan_words(name, catalog)
     how = "the full pairwise array of every two parts, the prior among them" if strict else "every option of every part and every pair of parts whose code meets, with the prior off and on"
-    about = (f"The block smoke test's covering set on {catalog_words(catalog)}: {how}, then a run from the ImageNet file, two warm starts and the four refusals"
-             f" the check predicts, {epochs} epochs each, every row set against tools/block_sweep.py check's prediction for it (#252).")
+    about = (f"The block smoke test's covering set on {catalog_words(catalog)}: {how}, and for each prior the two cuts to one labelled source of several"
+             " (only-sources and drop-sources to @first-labelled), which train on a strict part of the labelled crops where the catalog holds two labelled"
+             f" sources and are not applicable where it holds one; then a run from the ImageNet file, two warm starts and the four refusals the check predicts,"
+             f" {epochs} epochs each, every row set against tools/block_sweep.py check's prediction for it (#252).")
     return {"plan": name, "about": about, "catalog": catalog, "epochs": epochs, "seed": seed, "rows": [plan_row(row) for row in cover(strict)]}
 
 
@@ -484,17 +492,35 @@ def verdict(predicted, code=None, why="", train_crops=None):
     return {"predicted": predicted, "code": code, "why": why, "train_crops": train_crops}
 
 
+def placeholder_sources(name, facts):
+    """The sources a placeholder names on this catalog, and why where it names none: @labelled the
+    train part's sources with labelled crops, @unlabelled those without, and @first-labelled the
+    first by name of the labelled ones where there are two or more, since a cut to the only one
+    would keep every crop or none; any other name is itself."""
+    labelled = facts["labelled"]
+    if name == FIRST_LABELLED:
+        if len(labelled) > 1:
+            return labelled[:1], None
+        held = f"one source with labelled crops ({labelled[0]})" if labelled else "no source with labelled crops"
+        return [], (f"{name} names no source of this catalog: its train part has {held}, and a cut to one labelled source of several needs two,"
+                    " since a cut to the only one keeps every crop or none")
+    if name in (LABELLED, UNLABELLED):
+        group = labelled if name == LABELLED else facts["unlabelled"]
+        kind = "with" if name == LABELLED else "without"
+        return group, None if group else f"{name} names no source of this catalog: its train part has no source {kind} labelled crops"
+    return [name], None
+
+
 def resolved(blocks, facts):
-    """The blocks with the placeholders named, @labelled the train part's sources with labelled
-    crops and @unlabelled those without; (None, why) where one names no source of this catalog."""
+    """The blocks with the placeholders named for this catalog (placeholder_sources); (None, why)
+    where one names no source of it."""
     if not blocks.sources:
         return blocks, None
     names = []
     for name in blocks.sources:
-        group = facts["labelled"] if name == LABELLED else facts["unlabelled"] if name == UNLABELLED else [name]
+        group, why = placeholder_sources(name, facts)
         if not group:
-            kind = "with" if name == LABELLED else "without"
-            return None, f"{name} names no source of this catalog: its train part has no source {kind} labelled crops"
+            return None, why
         names += [source for source in group if source not in names]
     return replace(blocks, sources=tuple(names)), None
 
@@ -618,8 +644,10 @@ def facts_table(facts):
 
 
 def sources_line(facts):
+    first, why = placeholder_sources(FIRST_LABELLED, facts)
     return (f"Sources of the train part with labelled crops (@labelled): {', '.join(facts['labelled']) or 'none'}; "
-            f"without (@unlabelled): {', '.join(facts['unlabelled']) or 'none'}.")
+            f"without (@unlabelled): {', '.join(facts['unlabelled']) or 'none'}; "
+            f"the first labelled source of several (@first-labelled): {', '.join(first) or 'none, ' + why.split(': ', 1)[1]}.")
 
 
 def setting_words(samples, prior):
@@ -648,8 +676,8 @@ def all_markdown(catalog, facts, cells):
         whole = sum(cell["named"] for cell in mine)
         out.append(f"| {size} | {tally[RUNS]:,} | {tally[REFUSED]:,} | {tally[NOT_APPLICABLE]:,} | {whole:,} | {whole * 2 ** len(AUGMENT):,} |")
     out += ["", "The incompatibilities the blocks declare (schwingnet.blocks.problems), which the flow refuses before any step; every named combination above, with its"
-            " canonical settings (adamw with weight_decay 0.01, the level-map prior with prior_weight 0.5, cap-per-person with per_person 1, only-sources with the"
-            " labelled sources, drop-sources with the unlabelled ones), holds them:", ""]
+            " canonical settings (adamw with weight_decay 0.01, the level-map prior with prior_weight 0.5, cap-per-person with per_person 1, only-sources with every"
+            " labelled source, drop-sources with the first labelled source of several), holds them:", ""]
     out += [f"- {rule}" for rule in RULES]
     return "\n".join(out) + "\n"
 
@@ -733,7 +761,7 @@ def git_head(short=False):
 # while a merge that changes none of them, which a new commit alone would say, reuses it.
 SYNTHETIC_MADE_BY = ("tools/synthetic_bank.py", "tools/ingest.py", "tools/bank.py", "tools/catalog.py", "src/schwingnet/catalog.py",
                      "data/splits/rule.json", "data/splits/test-persons.json")
-SYNTHETIC_SOURCES = (LABELLED_SOURCE, UNLABELLED_SOURCE)
+SYNTHETIC_SOURCES = (LABELLED_SOURCE, RENDER_SOURCE, UNLABELLED_SOURCE)
 
 
 def synthetic_made_by():
@@ -776,16 +804,34 @@ def clear_builds(builds, keep=None):
             shutil.rmtree(folder)
 
 
+def move_last_cases(bank, into, share):
+    """The frames of the last 1/share of the bank's cases by name, with their metas and level
+    maps, moved into a bank of their own: two labelled sources from one bank, no frame's bytes
+    in both, since a frame the bank repeats repeats one of its own case's (tools/synthetic_bank.py)."""
+    metas = {path: read_json(path) for path in sorted((bank / "meta").glob("*.json"))}
+    cases = sorted({meta["case"] for meta in metas.values()})
+    moved = set(cases[len(cases) - len(cases) // share:])
+    for path, meta in metas.items():
+        if meta["case"] not in moved:
+            continue
+        for name in (f"images/{meta['split']}/{path.stem}.png", f"meta/{path.name}", meta.get("level_map")):
+            if name:
+                (into / name).parent.mkdir(parents=True, exist_ok=True)
+                os.replace(bank / name, into / name)
+    return sorted(moved)
+
+
 def build_synthetic(folder, wanted):
     """The banks, their shards and the store inside one build's own folder; the catalog file and
     the shards' manifests."""
     banks, commit, seed = folder / "banks", git_head(), wanted["seed"]
     run_tool("synthetic_bank.py", banks / "labelled", "--frames", wanted["frames"], "--cases", wanted["cases"], "--seed", seed)
+    move_last_cases(banks / "labelled", banks / "render", RENDER_SHARE)
     run_tool("synthetic_bank.py", banks / "test", "--frames", wanted["test_frames"], "--test-cases", ",".join(frozen_cases(LABELLED_SOURCE)), "--seed", seed + 1)
     run_tool("synthetic_bank.py", banks / "unlabelled", "--frames", wanted["unlabelled_frames"], "--cases", wanted["cases"], "--seed", seed + 2, "--unlabelled")
     shards = []
-    for bank, source, kind, persons in (("labelled", LABELLED_SOURCE, "train", "all"), ("test", LABELLED_SOURCE, "test", "frozen"),
-                                        ("unlabelled", UNLABELLED_SOURCE, "train", "all")):
+    for bank, source, kind, persons in (("labelled", LABELLED_SOURCE, "train", "all"), ("render", RENDER_SOURCE, "train", "all"),
+                                        ("test", LABELLED_SOURCE, "test", "frozen"), ("unlabelled", UNLABELLED_SOURCE, "train", "all")):
         report = json.loads(run_tool("ingest.py", "run", "--bank", banks / bank, "--source", source, "--kind", kind, "--persons", persons,
                                      "--date", SYNTHETIC_DATE, "--code-commit", commit, "--grid-root", folder / source))
         shards.append(str(Path(report["folder"]) / "MANIFEST.json"))
@@ -796,10 +842,15 @@ def build_synthetic(folder, wanted):
 
 def synthetic_catalog(into, frames=600, cases=40, test_frames=100, unlabelled_frames=200, seed=1):
     """The synthetic plan's catalog, built once under `into` and reused: a labelled bank with level
-    maps and a bank of the frozen test persons, ingested as C-ArmLSpine's train and test shards, and
-    an unannotated bank ingested as VinDr-SpineXR's, built into a store. SYNTHETIC.json records the
-    arguments, the hashes of what makes it (SYNTHETIC_MADE_BY) and the file, so the same arguments
-    and code find the catalog built before and build nothing, and anything else builds it again.
+    maps, two thirds of its cases ingested as C-ArmLSpine's train shard and the last third as the
+    VerSe projections', a render's, a bank of the frozen test persons ingested as C-ArmLSpine's
+    test shard, and an unannotated bank ingested as VinDr-SpineXR's, built into a store. Both
+    labelled sources and the unannotated one have registry entries and licence entries, so the
+    flow's licence record and the split check take the catalog as they take a real one; the
+    licence classes they record are the real sources', borrowed, as the names are, since the
+    frames hold nothing of any person. SYNTHETIC.json records the arguments, the hashes of what
+    makes it (SYNTHETIC_MADE_BY) and the file, so the same arguments and code find the catalog
+    built before and build nothing, and anything else builds it again.
 
     Each build is made in a folder of its own under builds/, fresh from tempfile, and is put in
     place by SYNTHETIC.json, renamed over the record before it only once the build is whole, so a
@@ -808,6 +859,8 @@ def synthetic_catalog(into, frames=600, cases=40, test_frames=100, unlabelled_fr
     path its manifest was read at (tools/catalog.py), where the trainer reads its frames. The
     whole build holds into/.lock, so two builds into one folder take turns."""
     into = Path(into).resolve()
+    if cases < RENDER_SHARE:
+        raise BlockError(f"--cases {cases}: {RENDER_SHARE} or more, so the last third of them is the render's labelled source and the rest C-ArmLSpine's")
     wanted = {"frames": frames, "cases": cases, "test_frames": test_frames, "unlabelled_frames": unlabelled_frames, "seed": seed}
     record_file, builds = into / "SYNTHETIC.json", into / "builds"
     builds.mkdir(parents=True, exist_ok=True)

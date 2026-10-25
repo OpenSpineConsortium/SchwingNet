@@ -50,6 +50,11 @@ def said(module, *argv):
     return code, out.getvalue(), err.getvalue()
 
 
+def samples_of(row):
+    """A plan row's samples cut, as its words name it."""
+    return next((word.split("=", 1)[1] for word in row["blocks"] if word.startswith("samples=")), "all")
+
+
 def tiny_catalog(module, into):
     code, out, err = said(module, "synthetic", "--into", into, *TINY)
     if code != 0:
@@ -89,7 +94,7 @@ class PlanTest(unittest.TestCase):
 
         rows = json.loads((ROOT / "grid" / "sweeps" / "synthetic.json").read_text(encoding="utf-8"))["rows"]
         roles = [row["role"] for row in rows]
-        self.assertEqual(roles, ["cover"] * 18 + ["imagenet", "init", "init", "refuse", "refuse", "refuse", "refuse"])
+        self.assertEqual(roles, ["cover"] * 20 + ["imagenet", "init", "init", "refuse", "refuse", "refuse", "refuse"])
         self.assertEqual(len({row["slug"] for row in rows}), len(rows))
         for row in rows:
             self.assertRegex(row["slug"], SLUG)
@@ -100,17 +105,19 @@ class PlanTest(unittest.TestCase):
         first = rows[0]
         self.assertEqual((first["blocks"], first["size"]), ([], 64), "the first row is version 1's training")
         self.assertEqual([row["init"] for row in rows if row["init"]], [first["slug"]] * 4)
-        drops = [row for row in rows[:18] if "samples=drop-sources" in row["blocks"]]
-        self.assertEqual([(row["blocks"], row["size"]) for row in drops],
-                         [(["samples=drop-sources", "sources=@unlabelled"], 64),
-                          (["samples=drop-sources", "sources=@unlabelled", "prior=level-map", "prior_weight=0.5"], 64)])
-        architectures = {word for row in rows[:18] if "samples=drop-sources" not in row["blocks"] for word in row["blocks"] if word.startswith("architecture=")}
+        cuts = [row for row in rows[:20] if "sources=@first-labelled" in row["blocks"]]
+        prior = ["prior=level-map", "prior_weight=0.5"]
+        self.assertEqual([(row["blocks"], row["size"]) for row in cuts],
+                         [(["samples=only-sources", "sources=@first-labelled"], 64), (["samples=drop-sources", "sources=@first-labelled"], 64),
+                          (["samples=only-sources", "sources=@first-labelled", *prior], 64), (["samples=drop-sources", "sources=@first-labelled", *prior], 64)])
+        self.assertEqual([rows.index(row) for row in cuts], [8, 9, 18, 19], "each half closes with its two source cuts")
+        architectures = {word for row in rows[:20] if row not in cuts for word in row["blocks"] if word.startswith("architecture=")}
         self.assertEqual(len(architectures), 7, "every architecture but resnet18 is named on a row whose cut trains")
 
-    def test_the_strict_cover_is_the_pairwise_array_and_its_two_dropping_rows(self):
+    def test_the_strict_cover_is_the_pairwise_array_and_its_four_source_cut_rows(self):
         plan = json.loads(self.plan("cover", "--name", "strict", "--catalog", "synthetic", "--strict"))
         roles = [row["role"] for row in plan["rows"]]
-        self.assertEqual(roles.count("cover"), 34)
+        self.assertEqual(roles.count("cover"), 36)
         self.assertIn("pairwise", plan["about"])
 
     def test_the_trials_are_six_arms_from_imagenet(self):
@@ -165,8 +172,10 @@ class CheckTest(unittest.TestCase):
         self.assertEqual(code, 0, err)
         return {row["slug"]: row for row in json.loads(out)["rows"]}
 
-    def test_the_facts_tell_the_annotated_source_from_the_unannotated_one(self):
-        self.assertEqual((self.facts["labelled"], self.facts["unlabelled"]), (["carmlspine"], ["vindr_spinexr"]))
+    def test_the_facts_tell_the_annotated_sources_from_the_unannotated_one(self):
+        # The labelled bank is split between C-ArmLSpine's route and a render's, so the source
+        # cuts have two labelled sources to cut between.
+        self.assertEqual((self.facts["labelled"], self.facts["unlabelled"]), (["carmlspine", "verse_2d_projections"], ["vindr_spinexr"]))
         table = {(row["source"], row["part"]): row for row in self.facts["table"]}
         self.assertGreater(table["carmlspine", "train"]["crops_with_map"], 0)
         self.assertLess(table["carmlspine", "train"]["crops_with_map"], table["carmlspine", "train"]["labelled_crops"])
@@ -204,13 +213,23 @@ class CheckTest(unittest.TestCase):
         verdicts = self.verdicts("synthetic", "--weights", "resnet18=/nowhere/resnet18.pth")
         for row in rows:
             found = verdicts[row["slug"]]
-            if "samples=drop-sources" in row["blocks"] and row["role"] == "cover":
-                self.assertEqual((found["predicted"], found["code"]), ("refused", "source-absent"), row["slug"])
-            elif row["role"] in ("cover", "imagenet", "init"):
+            if row["role"] in ("cover", "imagenet", "init"):
                 self.assertEqual(found["predicted"], "runs", (row["slug"], found))
                 self.assertGreater(found["train_crops"], 0)
         refusals = [verdicts[row["slug"]]["code"] for row in rows if row["role"] == "refuse"]
         self.assertEqual(refusals, ["cut-leaves-none", "source-absent", "init-mismatch", "init-and-weights"])
+
+    def test_every_cut_trains_in_each_half_and_the_source_cuts_on_a_strict_part(self):
+        rows = json.loads((ROOT / "grid" / "sweeps" / "synthetic.json").read_text(encoding="utf-8"))["rows"]
+        verdicts = self.verdicts("synthetic")
+        everything = verdicts[rows[0]["slug"]]["train_crops"]
+        for prior in (False, True):
+            half = [row for row in rows if row["role"] == "cover" and any(word.startswith("prior=") for word in row["blocks"]) == prior]
+            for cut in ("all", "only-sources", "drop-sources", "cap-per-person"):
+                trained = [verdicts[row["slug"]] for row in half if samples_of(row) == cut and verdicts[row["slug"]]["predicted"] == "runs"]
+                self.assertTrue(trained, f"no row of samples={cut} trains with the prior {'on' if prior else 'off'}")
+                if cut in ("only-sources", "drop-sources"):
+                    self.assertTrue(any(0 < found["train_crops"] < everything for found in trained), (cut, prior, trained))
 
     def test_a_row_that_needs_a_file_or_a_source_the_catalog_lacks_is_not_applicable(self):
         verdicts = self.verdicts("synthetic")
@@ -222,9 +241,27 @@ class CheckTest(unittest.TestCase):
         plan = json.loads((ROOT / "grid" / "sweeps" / "real.json").read_text(encoding="utf-8"))
         predicted = self.sweep.plan_verdicts(plan, alone, {"resnet18": "w.pth"})
         dropping = [row["slug"] for row in plan["rows"] if "sources=@unlabelled" in row["blocks"]]
-        self.assertEqual(len(dropping), 3)
-        self.assertTrue(all(predicted[slug]["predicted"] == "not applicable" for slug in dropping))
+        self.assertEqual(len(dropping), 1)
+        self.assertEqual(predicted[dropping[0]]["predicted"], "not applicable")
         self.assertIn("@unlabelled names no source", predicted[dropping[0]]["why"])
+
+    def test_on_a_catalog_with_one_labelled_source_the_source_cuts_say_why_they_do_not_apply(self):
+        # Catalog version 1 holds C-ArmLSpine alone, so a cut to one labelled source of several
+        # would keep every crop or none: the four rows are not applicable, saying so, and no
+        # other row loses its prediction.
+        plan = json.loads((ROOT / "grid" / "sweeps" / "real.json").read_text(encoding="utf-8"))
+        one = dict(self.facts, labelled=["carmlspine"], unlabelled=[], crops=[c for c in self.facts["crops"] if c["source"] == "carmlspine"])
+        predicted = self.sweep.plan_verdicts(plan, one, {"resnet18": "w.pth"})
+        cuts = [row["slug"] for row in plan["rows"] if "sources=@first-labelled" in row["blocks"]]
+        self.assertEqual(len(cuts), 4)
+        for slug in cuts:
+            self.assertEqual(predicted[slug]["predicted"], "not applicable")
+            self.assertIn("one source with labelled crops (carmlspine)", predicted[slug]["why"])
+            self.assertIn("needs two", predicted[slug]["why"])
+        others = [row for row in plan["rows"] if row["role"] == "cover" and row["slug"] not in cuts]
+        self.assertTrue(all(predicted[row["slug"]]["predicted"] == "runs" for row in others))
+        page = self.sweep.plan_markdown(self.catalog, one, plan, predicted)
+        self.assertIn("the first labelled source of several (@first-labelled): none, its train part has one source with labelled crops (carmlspine)", page)
 
     def test_the_rules_are_asked_in_the_trainers_order(self):
         from schwingnet.blocks import parse
@@ -259,12 +296,13 @@ class CheckTest(unittest.TestCase):
             mine = [c for c in cells if c["size"] == size]
             self.assertEqual(sum(c["named"] for c in mine), 12288)
             self.assertEqual(sum(c["with_augment"] for c in mine), 393216)
-            refused = {c["samples"] for c in mine if c["predicted"] == "refused"}
-            self.assertEqual(refused, {"drop-sources"})
+            self.assertTrue(all(c["predicted"] == "runs" for c in mine), "every cut trains where two sources hold labelled crops")
+            dropping = [c for c in mine if c["samples"] == "drop-sources"]
+            self.assertTrue(all("training crops" in c["why"] and c["train_crops"] < max(d["train_crops"] for d in mine) for c in dropping))
         code, page, _ = said(self.sweep, "check", "--catalog", self.catalog, "--all", "--sizes", "32,64")
         self.assertEqual(code, 0)
-        self.assertIn("| 32 | 9,216 | 3,072 | 0 | 12,288 | 393,216 |", page)
-        self.assertIn("| 64 | 9,216 | 3,072 | 0 | 12,288 | 393,216 |", page)
+        self.assertIn("| 32 | 12,288 | 0 | 0 | 12,288 | 393,216 |", page)
+        self.assertIn("| 64 | 12,288 | 0 | 0 | 12,288 | 393,216 |", page)
         self.assertNotIn("| 96 |", page)
         self.assertIn("prior_weight is above 0 with prior=level-map, and only there", page)
 
@@ -309,10 +347,10 @@ class CheckTest(unittest.TestCase):
         self.assertEqual(answer["second"], [row["slug"] for row in rows if row["init"] and row["slug"] not in weighted])
         self.assertEqual(sorted(p.stem for p in (state / "rows").glob("*.json")), sorted(weighted), "the rows not applicable are recorded at once")
         resolved = json.loads((state / "PLAN.json").read_text(encoding="utf-8"))
-        self.assertIn("sources=vindr_spinexr", resolved["rows"][8]["blocks"])
-        self.assertIn("sources=@unlabelled", resolved["rows"][8]["planned_blocks"])
+        self.assertEqual(resolved["rows"][9]["blocks"], ["samples=drop-sources", "sources=carmlspine"])
+        self.assertEqual(resolved["rows"][9]["planned_blocks"], ["samples=drop-sources", "sources=@first-labelled"])
         results = json.loads((state / "results.json").read_text(encoding="utf-8"))
-        self.assertEqual(results["counts"], {"rows": 25, "ran": 0, "refused": 0, "not_applicable": 2, "failed": 0, "to_come": 23, "mismatched": 0})
+        self.assertEqual(results["counts"], {"rows": 27, "ran": 0, "refused": 0, "not_applicable": 2, "failed": 0, "to_come": 25, "mismatched": 0})
         names = ("PLAN.json", "CHECK.json", "CHECK-ALL.md")
         stamps = {name: (state / name).stat().st_mtime_ns for name in names}
         (state / "rows" / "kept-by-hand.json").write_text("{}", encoding="utf-8")
@@ -616,7 +654,8 @@ class RowRunTest(unittest.TestCase):
                        PYTHONPATH=f"{cls.repo}/src:{cls.repo}/vendor/beethoven-qa/src")
         cls.catalog = json.loads(cls.tool("synthetic", "--into", cls.tmp / "synthetic", *TINY))["catalog"]
         rows = json.loads((ROOT / "grid" / "sweeps" / "synthetic.json").read_text(encoding="utf-8"))["rows"]
-        chosen = [rows[0], *(row for row in rows if row["role"] != "cover")]
+        cuts = [row for row in rows if row["role"] == "cover" and "sources=@first-labelled" in row["blocks"] and "prior=level-map" not in row["blocks"]]
+        chosen = [rows[0], *cuts, *(row for row in rows if row["role"] != "cover")]
         cls.plan = cls.tmp / "plan.json"
         cls.plan.write_text(json.dumps({"plan": "tiny", "about": "", "catalog": "synthetic", "epochs": 1, "seed": 1, "rows": chosen}), encoding="utf-8")
         cls.prepared = json.loads(cls.tool("prepare", "--plan", cls.plan, "--catalog", cls.catalog, "--out", cls.tmp / "smoke", "--weights", f"resnet18={cls.weights}"))
@@ -639,17 +678,25 @@ class RowRunTest(unittest.TestCase):
         return done.stdout
 
     def test_every_row_did_what_the_check_predicted(self):
-        self.assertEqual(len(self.entries), 8)
+        self.assertEqual(len(self.entries), 10)
         wrong = {slug: (e["predicted"], e["predicted_code"], e["outcome"], e["code"], e["why"]) for slug, e in self.entries.items() if not e["matched"]}
         self.assertEqual(wrong, {}, "a row whose outcome differs from its prediction is a bug")
         outcomes = sorted((e["role"], e["outcome"], e["code"] or "") for e in self.entries.values())
-        self.assertEqual(outcomes, [("cover", "ran", ""), ("imagenet", "ran", ""), ("init", "ran", ""), ("init", "ran", ""),
-                                    ("refuse", "refused", "cut-leaves-none"), ("refuse", "refused", "init-and-weights"),
+        self.assertEqual(outcomes, [("cover", "ran", ""), ("cover", "ran", ""), ("cover", "ran", ""), ("imagenet", "ran", ""), ("init", "ran", ""),
+                                    ("init", "ran", ""), ("refuse", "refused", "cut-leaves-none"), ("refuse", "refused", "init-and-weights"),
                                     ("refuse", "refused", "init-mismatch"), ("refuse", "refused", "source-absent")])
         results = json.loads((self.state / "results.json").read_text(encoding="utf-8"))
-        self.assertEqual(results["counts"], {"rows": 8, "ran": 4, "refused": 4, "not_applicable": 0, "failed": 0, "to_come": 0, "mismatched": 0})
+        self.assertEqual(results["counts"], {"rows": 10, "ran": 6, "refused": 4, "not_applicable": 0, "failed": 0, "to_come": 0, "mismatched": 0})
         ran = [e for e in self.entries.values() if e["outcome"] == "ran"]
         self.assertTrue(all(e["run_id"] and e["train_crops"] and e["test_accuracy"] is not None for e in ran))
+
+    def test_each_source_cut_trained_on_a_strict_part_of_the_labelled_crops(self):
+        rows = json.loads(self.plan.read_text(encoding="utf-8"))["rows"]
+        everything = self.entries[rows[0]["slug"]]["train_crops"]
+        kept = {samples_of(row): self.entries[row["slug"]]["train_crops"] for row in rows[1:3]}
+        self.assertEqual(set(kept), {"only-sources", "drop-sources"})
+        self.assertTrue(all(0 < count < everything for count in kept.values()), (kept, everything))
+        self.assertEqual(sum(kept.values()), everything, "the crops kept and the crops dropped of one source make the whole")
 
     def test_a_row_that_ran_keeps_best_pt_and_drops_each_epochs_weights(self):
         parent = self.state / self.prepared["first"][0]

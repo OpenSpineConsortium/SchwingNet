@@ -3,6 +3,7 @@
 import hashlib
 import json
 import math
+from dataclasses import replace
 from itertools import combinations
 
 import pytest
@@ -13,6 +14,7 @@ from schwingnet.blocks import (
     CHOICES,
     DEFAULT,
     FIELDS,
+    FIRST_LABELLED,
     LABELLED,
     PRIOR,
     SETTINGS,
@@ -315,10 +317,14 @@ def slug_of(row):
     return f"{prefix}{row['blocks'].architecture}-{row['size']}px-{digest[:8]}"
 
 
-def test_the_cover_is_two_halves_of_nine_then_seven_routes():
+def cuts_one_labelled(row):
+    return row["blocks"].sources == (FIRST_LABELLED,)
+
+
+def test_the_cover_is_two_halves_of_ten_then_seven_routes():
     rows = cover()
-    assert len(rows) == 25
-    assert [row["role"] for row in rows] == ["cover"] * 18 + [
+    assert len(rows) == 27
+    assert [row["role"] for row in rows] == ["cover"] * 20 + [
         "imagenet",
         "init",
         "init",
@@ -327,22 +333,35 @@ def test_the_cover_is_two_halves_of_nine_then_seven_routes():
         "refuse",
         "refuse",
     ]
-    assert [row["blocks"].prior for row in rows[:18]] == ["none"] * 9 + ["level-map"] * 9
-    assert all(row["blocks"].prior_weight == 0.5 for row in rows[9:18])
+    assert [row["blocks"].prior for row in rows[:20]] == ["none"] * 10 + ["level-map"] * 10
+    assert all(row["blocks"].prior_weight == 0.5 for row in rows[10:20])
     assert all(not problems(row["blocks"]) for row in rows)
-    assert len({row["slug"] for row in rows}) == 25
+    assert len({row["slug"] for row in rows}) == 27
     assert all(row["slug"] == slug_of(row) for row in rows)
     assert cover() == rows
 
 
 def test_each_half_runs_every_option_and_every_pair_asked_for():
+    # The array rows train on every catalog with labelled crops; the two rows that cut to one
+    # labelled source of several train on a strict part of the labelled crops wherever the
+    # catalog holds two labelled sources, as the synthetic one does, and run nothing else.
     rows = cover()
-    for half in (rows[:9], rows[9:18]):
-        training = [row for row in half if row["blocks"].samples != "drop-sources"]
-        dropping = [row for row in half if row["blocks"].samples == "drop-sources"]
-        assert len(training) == 8
-        assert holds_every_value_and_pair(training, FACTORS, PAIRS)
-        assert [(r["blocks"].sources, r["size"]) for r in dropping] == [((UNLABELLED,), 64)]
+    for half in (rows[:10], rows[10:20]):
+        everywhere = [row for row in half if not cuts_one_labelled(row)]
+        cuts = [row for row in half if cuts_one_labelled(row)]
+        assert len(everywhere) == 8
+        assert all(row["blocks"].samples != "drop-sources" for row in everywhere)
+        assert holds_every_value_and_pair(everywhere, FACTORS, PAIRS)
+        assert [(r["blocks"].samples, r["size"]) for r in cuts] == [
+            ("only-sources", 64),
+            ("drop-sources", 64),
+        ]
+        prior = half[0]["blocks"].prior
+        assert all(
+            replace(r["blocks"], samples="all", sources=())
+            == replace(DEFAULT, prior=prior, prior_weight=r["blocks"].prior_weight)
+            for r in cuts
+        )
         assert {row["blocks"].architecture for row in half} == set(ARCHITECTURE)
 
 
@@ -350,9 +369,9 @@ def test_the_source_cuts_take_the_placeholders_and_the_settings_their_canonical_
     for row in cover():
         blocks = row["blocks"]
         if blocks.samples == "only-sources" and row["role"] == "cover":
-            assert blocks.sources == (LABELLED,)
+            assert blocks.sources in ((LABELLED,), (FIRST_LABELLED,))
         if blocks.samples == "drop-sources" and row["role"] == "cover":
-            assert blocks.sources == (UNLABELLED,)
+            assert blocks.sources == (FIRST_LABELLED,)
         if blocks.samples == "cap-per-person":
             assert blocks.per_person == 1
         if blocks.optimiser == "adamw":
@@ -363,7 +382,7 @@ def test_the_routes_start_from_the_first_row_and_refuse_what_the_check_predicts(
     rows = cover()
     parent = rows[0]
     assert (parent["blocks"], parent["size"]) == (DEFAULT, 64)
-    imagenet, same, prior, drops, onlys, across, both = rows[18:]
+    imagenet, same, prior, drops, onlys, across, both = rows[20:]
     assert (imagenet["blocks"].normalise, imagenet["size"]) == ("imagenet", 64)
     assert (imagenet["weights"], imagenet["init"]) == ("resnet18", None)
     assert (same["blocks"], same["size"], same["init"]) == (DEFAULT, 64, parent["slug"])
@@ -373,21 +392,21 @@ def test_the_routes_start_from_the_first_row_and_refuse_what_the_check_predicts(
     assert (onlys["blocks"].samples, onlys["blocks"].sources) == ("only-sources", (UNLABELLED,))
     assert across["init"] == parent["slug"] and across["blocks"].architecture != "resnet18"
     assert (both["weights"], both["init"]) == ("resnet18", parent["slug"])
-    assert all(row["slug"].startswith(f"{row['role']}-") for row in rows[18:])
+    assert all(row["slug"].startswith(f"{row['role']}-") for row in rows[20:])
 
 
 def test_the_strict_cover_holds_every_pair_of_every_two_factors_the_prior_among_them():
     rows = cover(strict=True)
     cover_rows = [row for row in rows if row["role"] == "cover"]
-    assert len(cover_rows) == 34 and len(rows) == 41
-    training = [row for row in cover_rows if row["blocks"].samples != "drop-sources"]
+    assert len(cover_rows) == 36 and len(rows) == 43
+    everywhere = [row for row in cover_rows if not cuts_one_labelled(row)]
     factors = {**FACTORS, "prior": PRIOR}
-    assert len(training) == 32
-    assert holds_every_value_and_pair(training, factors, list(combinations(factors, 2)))
-    dropping = [
-        row["blocks"].prior for row in cover_rows if row["blocks"].samples == "drop-sources"
+    assert len(everywhere) == 32
+    assert holds_every_value_and_pair(everywhere, factors, list(combinations(factors, 2)))
+    cuts = [
+        (row["blocks"].samples, row["blocks"].prior) for row in cover_rows if cuts_one_labelled(row)
     ]
-    assert dropping == list(PRIOR)
+    assert cuts == [(cut, prior) for prior in PRIOR for cut in ("only-sources", "drop-sources")]
 
 
 def test_the_trials_are_six_resnet18_arms_from_imagenet_the_first_version_1s():

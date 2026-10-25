@@ -1,5 +1,5 @@
 {
- "about": "The block smoke test's covering set on catalog version 1 of C-ArmLSpine, real frames: every option of every part and every pair of parts whose code meets, with the prior off and on, then a run from the ImageNet file, two warm starts and the four refusals the check predicts, 3 epochs each, every row set against tools/block_sweep.py check's prediction for it (#252).",
+ "about": "The block smoke test's covering set on catalog version 1 of C-ArmLSpine, real frames: every option of every part and every pair of parts whose code meets, with the prior off and on, and for each prior the two cuts to one labelled source of several (only-sources and drop-sources to @first-labelled), which train on a strict part of the labelled crops where the catalog holds two labelled sources and are not applicable where it holds one; then a run from the ImageNet file, two warm starts and the four refusals the check predicts, 3 epochs each, every row set against tools/block_sweep.py check's prediction for it (#252).",
  "catalog": "v1",
  "epochs": 3,
  "plan": "real",
@@ -139,13 +139,24 @@
   },
   {
    "blocks": [
-    "samples=drop-sources",
-    "sources=@unlabelled"
+    "samples=only-sources",
+    "sources=@first-labelled"
    ],
    "init": null,
    "role": "cover",
    "size": 64,
-   "slug": "resnet18-64px-030f0789",
+   "slug": "resnet18-64px-bd498d21",
+   "weights": null
+  },
+  {
+   "blocks": [
+    "samples=drop-sources",
+    "sources=@first-labelled"
+   ],
+   "init": null,
+   "role": "cover",
+   "size": 64,
+   "slug": "resnet18-64px-ebfd9423",
    "weights": null
   },
   {
@@ -300,15 +311,28 @@
   },
   {
    "blocks": [
-    "samples=drop-sources",
-    "sources=@unlabelled",
+    "samples=only-sources",
+    "sources=@first-labelled",
     "prior=level-map",
     "prior_weight=0.5"
    ],
    "init": null,
    "role": "cover",
    "size": 64,
-   "slug": "resnet18-64px-fe3ccf78",
+   "slug": "resnet18-64px-48c758ed",
+   "weights": null
+  },
+  {
+   "blocks": [
+    "samples=drop-sources",
+    "sources=@first-labelled",
+    "prior=level-map",
+    "prior_weight=0.5"
+   ],
+   "init": null,
+   "role": "cover",
+   "size": 64,
+   "slug": "resnet18-64px-6a94606a",
    "weights": null
   },
   {

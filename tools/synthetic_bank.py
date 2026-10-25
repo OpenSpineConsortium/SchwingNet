@@ -19,8 +19,8 @@ crops without a map; which frames is drawn from a generator of its own, so a see
 metas are what they were before maps existed and the recorded dry runs' banks come out again.
 `--unlabelled` writes an unannotated bank instead, as VinDr-SpineXR enters the bank: the same
 frames, bodies drawn, but every meta's boxes empty and no level map, so the ingest keeps each frame
-as a frame fact with no label and the trainer finds no crop in it; the block smoke test's two-source
-catalog routes it beside a labelled bank (tools/block_sweep.py synthetic). A labelled bank is
+as a frame fact with no label and the trainer finds no crop in it; the block smoke test's synthetic
+catalog routes it beside the labelled banks (tools/block_sweep.py synthetic). A labelled bank is
 written exactly as before for a given seed.
 Standard library only, so it runs where the verification environment runs.
 """

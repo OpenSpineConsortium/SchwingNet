@@ -438,10 +438,13 @@ def words_of(blocks: Blocks) -> list[str]:
 # The smoke test's covering set (#252). Each part is a factor with the values the cover runs, in
 # the order given, each value a choice with its canonical setting (SETTING_OF): adamw takes
 # weight_decay 0.01, the level-map prior prior_weight 0.5, cap-per-person per_person 1, and the
-# two source cuts take the placeholders LABELLED and UNLABELLED, the catalog's train-part sources
-# with and without labelled crops, which the check resolves against a catalog. Each augment name
+# two source cuts take placeholders the check resolves against a catalog: LABELLED and
+# UNLABELLED, the catalog's train-part sources with and without labelled crops, and
+# FIRST_LABELLED, the first by name of the labelled ones where the train part holds two or more,
+# so a cut to it keeps a strict part of the labelled crops or drops one, and no source where it
+# holds one, since a cut to the only labelled source keeps every crop or none. Each augment name
 # is a factor of its own, off or on, since a run may name any subset of them.
-LABELLED, UNLABELLED = "@labelled", "@unlabelled"
+LABELLED, UNLABELLED, FIRST_LABELLED = "@labelled", "@unlabelled", "@first-labelled"
 SIZES = (64, 32, 96, 128)
 AUGMENT_FACTOR = "augment:"
 COVER_FACTORS: tuple[tuple[str, tuple[object, ...]], ...] = (
@@ -477,13 +480,16 @@ SETTING_OF: dict[tuple[str, object], dict[str, Any]] = {
     ("prior", "level-map"): {"prior_weight": 0.5},
     ("samples", "cap-per-person"): {"per_person": 1},
     ("samples", "only-sources"): {"sources": (LABELLED,)},
-    ("samples", "drop-sources"): {"sources": (UNLABELLED,)},
+    ("samples", "drop-sources"): {"sources": (FIRST_LABELLED,)},
 }
-# The cut drop-sources takes the unannotated sources (UNLABELLED), and the trainer refuses a cut
-# that names a source holding no labelled crop (tools/train.py training_crops), so a row with it
-# never trains, whatever its other parts are. The array is built over the cuts that train, and
-# each half gains one row more, version 1's training with drop-sources, so the cut is still in
-# each half and no option of another part is spent on a row that never trains.
+# The array is built over the cuts that train on every catalog with labelled crops: all,
+# cap-per-person and only-sources to every labelled source (LABELLED), which keeps every crop. A
+# cut to one labelled source of several (FIRST_LABELLED) trains only where the catalog's train
+# part holds two labelled sources, as the synthetic catalog's does, and is not applicable where
+# it holds one, as catalog version 1 does, so a row with it may not train whatever its other parts
+# are. So each half gains two rows more, version 1's training at 64 pixels with only-sources and
+# with drop-sources to FIRST_LABELLED, the two cuts of a strict part of the labelled crops, and no
+# option of another part is spent on a row that may not train.
 TRAINING_CUTS = tuple(name for name in SAMPLES if name != "drop-sources")
 # What a row is for: a row of the cover, the run from an ImageNet file, a warm start, a refusal the
 # check predicts, or an arm of the literature trials. Every role but the cover's starts the slug.
@@ -746,36 +752,39 @@ def _pairs(strict: bool) -> list[tuple[str, str]]:
     return list(combinations(names, 2)) if strict else list(COVER_PAIRS)
 
 
-def _dropping_row(prior: str) -> Row:
-    """Version 1's training at 64 pixels with the cut to every source but the unannotated ones,
-    which the trainer refuses wherever a catalog has one and which names no source where it has
-    none, so the row runs nothing else and costs the cover no option."""
-    return _cover_row(
-        {
-            "architecture": DEFAULT.architecture,
-            "size": 64,
-            "samples": "drop-sources",
-            "prior": prior,
-        }
-    )
+def _source_cut_rows(prior: str) -> list[Row]:
+    """Version 1's training at 64 pixels with each cut to one labelled source of several, only
+    that source's crops and every labelled crop but its, which cut a strict part of the labelled
+    crops where the catalog holds two labelled sources and name no source where it holds one, so
+    the rows run nothing else and cost the cover no option."""
+    settings = SETTING_OF.get(("prior", prior), {})
+    return [
+        _row(
+            "cover",
+            replace(DEFAULT, samples=cut, sources=(FIRST_LABELLED,), prior=prior, **settings),
+            64,
+        )
+        for cut in BY_SOURCE
+    ]
 
 
 def _cover_rows(strict: bool) -> list[Row]:
-    """The cover itself: the two halves, the prior off then on, each closed by its dropping row;
-    or the strict pairwise array with a dropping row for each prior."""
+    """The cover itself: the two halves, the prior off then on, each closed by its two source-cut
+    rows; or the strict pairwise array with the two source-cut rows for each prior."""
     names = [name for name, _ in _factors(strict)]
     array = [
         dict(zip(names, values, strict=True))
         for values in _covering(_factors(strict), _pairs(strict))
     ]
     if strict:
-        return [_cover_row(chosen) for chosen in array] + [_dropping_row(p) for p in PRIOR]
+        cuts = [row for prior in PRIOR for row in _source_cut_rows(prior)]
+        return [_cover_row(chosen) for chosen in array] + cuts
     return [
         row
         for prior in PRIOR
         for row in [
             *(_cover_row({**chosen, "prior": prior}) for chosen in array),
-            _dropping_row(prior),
+            *_source_cut_rows(prior),
         ]
     ]
 
@@ -848,9 +857,9 @@ def _halves(rows: Sequence[Row], strict: bool) -> list[list[Row]]:
     return [[row for row in cover_rows if row["blocks"].prior == prior] for prior in PRIOR]
 
 
-def _priors_dropped(group: Sequence[Row], strict: bool) -> set[str]:
-    """The priors a group needs a dropping row for: every prior when strict, else its half's own,
-    and the prior off for a half with no row, which then holds none and fails."""
+def _priors_cut(group: Sequence[Row], strict: bool) -> set[str]:
+    """The priors a group needs its source-cut rows for: every prior when strict, else its half's
+    own, and the prior off for a half with no row, which then holds none and fails."""
     if strict:
         return set(PRIOR)
     if not group:
@@ -858,19 +867,33 @@ def _priors_dropped(group: Sequence[Row], strict: bool) -> set[str]:
     return {group[0]["blocks"].prior}
 
 
+def _cuts_one_labelled(row: Row) -> bool:
+    """Whether the row cuts to one labelled source of several, as each half's last two rows do."""
+    return row["blocks"].sources == (FIRST_LABELLED,)
+
+
 def _whole(group: Sequence[Row], strict: bool) -> bool:
-    """One group's promise: every option and pair among its rows whose cut trains, and a dropping
-    row for each prior it needs one for."""
-    training = [row for row in group if row["blocks"].samples in TRAINING_CUTS]
-    dropping = {row["blocks"].prior for row in group if row["blocks"].samples == "drop-sources"}
-    holds = _holds(training, _factors(strict), _pairs(strict))
-    return holds and dropping == _priors_dropped(group, strict)
+    """One group's promise: every option and pair among its rows whose cut trains on every
+    catalog, and for each prior it needs them for, a row of each cut to one labelled source of
+    several, the rows that train on a strict part of the labelled crops wherever the catalog
+    holds two labelled sources."""
+    everywhere = [
+        row
+        for row in group
+        if row["blocks"].samples in TRAINING_CUTS and not _cuts_one_labelled(row)
+    ]
+    cuts = sorted(
+        (row["blocks"].samples, row["blocks"].prior) for row in group if _cuts_one_labelled(row)
+    )
+    asked = sorted((cut, prior) for cut in BY_SOURCE for prior in _priors_cut(group, strict))
+    return _holds(everywhere, _factors(strict), _pairs(strict)) and cuts == asked
 
 
 def _covered(rows: Sequence[Row], strict: bool) -> bool:
-    """The cover's promise: in each half, among the rows whose cut trains, every option of every
-    part and every pair asked for, and a row with the cut that does not; strict, every pair of
-    values of every two parts, the prior among them, and a dropping row for each prior."""
+    """The cover's promise: in each half, among the rows whose cut trains on every catalog, every
+    option of every part and every pair asked for, and one row of each cut to one labelled source
+    of several; strict, every pair of values of every two parts, the prior among them, and the
+    two source-cut rows for each prior."""
     return all(_whole(group, strict) for group in _halves(rows, strict))
 
 
@@ -908,10 +931,15 @@ def cover(strict: bool = False) -> list[Row]:
     array over the factors of COVER_FACTORS that holds every value of every factor and every
     pair of values of COVER_PAIRS (8 rows a half, the architecture's 8 values being the most
     any factor has and no pair asked for having more than 6), built over the samples cuts that
-    train and closed by one row of the cut that cannot (TRAINING_CUTS), 9 rows a half. Every
-    factor then meets both values of the prior, which are the prior's meetings in the code.
+    train on every catalog (TRAINING_CUTS, only-sources taking every labelled source) and closed
+    by the two rows of the cuts to one labelled source of several, 10 rows a half. Those two
+    train on a strict part of the labelled crops on a catalog whose train part holds two
+    labelled sources, as the synthetic catalog's does (tools/block_sweep.py synthetic), and are
+    not applicable on one that holds one, as catalog version 1 does; there no row cuts a strict
+    part of the crops by source, and the check says why. Every factor then meets both values of
+    the prior, which are the prior's meetings in the code.
     `strict` gives the full pairwise array instead, every pair of values of every two factors,
-    the prior among them (32 rows and the two dropping rows), for when the owner asks for it.
+    the prior among them (32 rows and the four source-cut rows), for when the owner asks for it.
 
     The route rows follow, from the first cover row with the prior off whose architecture is
     version 1's (the first row, which is version 1's training at 64 pixels): the run from the
