@@ -30,9 +30,10 @@ A run that is cut, a Slurm job timed out or preempted, goes on where it stopped.
 epoch, epoch 0 included, train/last.pt holds the weights, the optimiser's state, the prior head,
 every random state the run draws from (its own generator, torch's, CUDA's, numpy's and python's)
 and the lines so far, written whole and renamed into place; --resume, given with the arguments
-the run was started with, builds the run as a fresh start does and then takes those states back,
-so on the CPU a resumed run ends on the same lines, best.pt and checkpoint.json as one that went
-through, the seconds apart. best.pt and prior_head.pt are written under train/pending/ and moved
+the run was started with (the catalog, the ImageNet file and the parent held to their bytes, not
+to their paths, as tools/flow.py names the run), builds the run as a fresh start does and then
+takes those states back, so on the CPU a resumed run ends on the same lines, best.pt and
+checkpoint.json as one that went through, the seconds apart. best.pt and prior_head.pt are written under train/pending/ and moved
 into place only once last.pt records them, so a cut between the two never leaves weights the
 record does not name. last.pt goes once checkpoint.json is written, the step's last file and the
 one tools/flow.py takes as its end, since it holds the optimiser's state and is only for resuming.
@@ -832,15 +833,29 @@ def drop_pending(folder):
         pass
 
 
-def arguments_of(args, blocks):
+def file_digest(path, what):
+    """The sha256 of a file the run reads, streamed, since a catalog may be gigabytes; refused in
+    words where there is no file."""
+    path = Path(path)
+    if not path.is_file():
+        raise TrainError(f"{what} {path}: no file there")
+    with path.open("rb") as handle:
+        return hashlib.file_digest(handle, "sha256").hexdigest()
+
+
+def arguments_of(args, blocks, parent):
     """What a resumed run must share with the run it goes on from: everything that shapes what it
-    trains on and how, the schedule's length among them. The device is left out, since a job put
-    back in the queue may land on another card, and the catalog's path too, which RUN.json binds by
-    its digest."""
+    trains on and how, the schedule's length among them, and the files it reads by their bytes, the
+    catalog, the ImageNet file and the parent (parent_of), as tools/flow.py names the run by them, so
+    the same file reached by another path resumes and a file replaced at its path is refused. The
+    device is left out, since a job put back in the queue may land on another card."""
     return {
         "epochs": args.epochs, "seed": args.seed, "size": args.size, "batch": args.batch, "lr": args.lr,
         "max_frames": args.max_frames, "witness": args.witness, "keep_epochs": args.keep_epochs,
-        "weights": args.weights, "init": args.init, "blocks": as_record(blocks),
+        "catalog_sha256": file_digest(args.catalog, "--catalog"),
+        "weights_sha256": file_digest(args.weights, "--weights") if args.weights else None,
+        "init_sha256": parent["sha256"] if parent else None,
+        "blocks": as_record(blocks),
     }
 
 
@@ -882,14 +897,20 @@ def save_last(folder, state):
     os.replace(temporary, folder / LAST)
 
 
+def refuse_nothing_to_resume(folder):
+    """--resume where there is no train/last.pt, refused in words before anything is read."""
+    path = folder / LAST
+    if not path.is_file():
+        raise TrainError(f"--resume: {path} is not there, so there is nothing to resume (a run writes it after every epoch and deletes it once checkpoint.json is written); start the run without --resume")
+
+
 def load_last(folder, arguments):
     """train/last.pt for --resume, refused in words where there is none, where it cannot be read,
     or where the run that wrote it was started with other arguments; the files staged under
     pending/ are then settled as its best line says, and best.pt held to that line, before
     anything of the run starts."""
+    refuse_nothing_to_resume(folder)
     path = folder / LAST
-    if not path.is_file():
-        raise TrainError(f"--resume: {path} is not there, so there is nothing to resume (a run writes it after every epoch and deletes it once checkpoint.json is written); start the run without --resume")
     try:
         state = torch.load(path, map_location="cpu", weights_only=True)
     except (OSError, EOFError, RuntimeError, pickle.UnpicklingError) as error:
@@ -950,9 +971,11 @@ def run(args):
     if args.init and args.weights:
         raise TrainError("a run starts from ImageNet (--weights) or from a parent (--init), not both")
     folder = out / "train"
-    arguments = arguments_of(args, blocks)
-    saved = load_last(folder, arguments) if args.resume else None
     parent = parent_of(args.init) if args.init else None
+    if args.resume:
+        refuse_nothing_to_resume(folder)
+    arguments = arguments_of(args, blocks, parent)
+    saved = load_last(folder, arguments) if args.resume else None
     seed_everything(args.seed)
     crops = read_crops(args.catalog, TRAIN_PARTS)
     seen, offered = training_crops(crops, blocks)

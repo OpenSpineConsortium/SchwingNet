@@ -5,10 +5,11 @@ ends, on the CPU, on the same lines, best.pt, prior head and checkpoint.json as 
 through, the seconds apart; the cut is made here by the trainer's own save function raising
 after its second write, patched in this process, so the trainer carries no hook for tests. A
 --resume with nothing to resume, or with other arguments than the run was started with, is
-refused in words, and last.pt is gone once a run has finished. W&B's run goes on under the same
-id. And at 32 pixels, where batch norm cannot train on one crop, a training part of 65 crops,
-whose last batch of 64 would hold one, still trains, while at 64 pixels the batches are as they
-always were.
+refused in words, as is one whose catalog, ImageNet file or parent is not the bytes the run
+started from, while the same file at another path resumes; and last.pt is gone once a run has
+finished. W&B's run goes on under the same id. And at 32 pixels, where batch norm cannot train
+on one crop, a training part of 65 crops, whose last batch of 64 would hold one, still trains,
+while at 64 pixels the batches are as they always were.
 
 The trainer's tests need the train environment, as tests/test_train_blocks.py does, and skip
 under the required check's plain python3; the W&B test needs nothing but the standard library."""
@@ -217,6 +218,91 @@ class ResumeWithDropoutTest(ResumeCase, unittest.TestCase):
     must take back too (tools/train_blocks.py's module docstring)."""
 
     words = ("architecture=mobilenet-v3-small",)
+
+
+@unittest.skipIf(MISSING, f"needs the train environment ({', '.join(MISSING)} missing)")
+class ResumeBindingTest(unittest.TestCase):
+    """--resume holds a cut run to the bytes of the files it started from, the catalog, the
+    ImageNet file and the parent, as tools/flow.py names the run by them: the same file at another
+    path resumes, and a file replaced at the same path, or another catalog, is refused in words."""
+
+    config = ("--epochs", "3", "--size", "32")
+
+    @classmethod
+    def setUpClass(cls):
+        import torch
+        import torchvision
+
+        cls.tmp = Path(tempfile.mkdtemp())
+        cls.catalog = blocks_tests.RunWithEveryBlockTest.make_catalog(cls.tmp)
+        cls.moved_catalog = cls.tmp / "elsewhere" / "catalog.sqlite"
+        cls.moved_catalog.parent.mkdir()
+        shutil.copyfile(cls.catalog, cls.moved_catalog)
+        (cls.tmp / "models-old").mkdir()
+        torch.manual_seed(4)
+        torch.save(torchvision.models.resnet18(weights=None).state_dict(), cls.tmp / "models-old" / "resnet18.pth")
+        shutil.copytree(cls.tmp / "models-old", cls.tmp / "models")
+        parent = new_run(cls.tmp / "parent", "parentrun000")
+        assert train(cls.catalog, parent, "--epochs", "1", "--size", "32")[0] == 0
+        (cls.tmp / "parent-alias").symlink_to(parent, target_is_directory=True)
+        cls.parent = parent / "train" / "best.pt"
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls.tmp, ignore_errors=True)
+
+    def cut(self, name, *extra):
+        """A run cut after its second last.pt (epoch 1), as ResumeCase cuts one."""
+        folder = new_run(self.tmp / name, name.ljust(12, "0")[:12])
+        module = load("train")
+        with cut_after(module, 2), self.assertRaises(Killed):
+            train(self.catalog, folder, *self.config, *extra, module=module)
+        self.assertTrue((folder / "train" / "last.pt").is_file())
+        return folder
+
+    def resume(self, folder, *extra, catalog=None):
+        return train(catalog or self.catalog, folder, *self.config, *extra, "--resume")
+
+    def test_the_same_files_at_other_paths_resume(self):
+        folder = self.cut("respelled", "--weights", str(self.tmp / "models-old" / "resnet18.pth"))
+        rc, out, err = self.resume(folder, "--weights", str(self.tmp / "models" / "resnet18.pth"), catalog=self.moved_catalog)
+        self.assertEqual(rc, 0, err)
+        self.assertIn('"resumed_after_epoch": 1', out)
+        folder = self.cut("aliased", "--init", str(self.parent))
+        rc, out, err = self.resume(folder, "--init", str(self.tmp / "parent-alias" / "train" / "best.pt"))
+        self.assertEqual(rc, 0, err)
+        self.assertIn('"resumed_after_epoch": 1', out)
+
+    def test_a_file_replaced_at_the_same_path_is_refused(self):
+        import torch
+        import torchvision
+
+        weights = self.tmp / "replaced.pth"
+        shutil.copyfile(self.tmp / "models" / "resnet18.pth", weights)
+        folder = self.cut("replaced", "--weights", str(weights))
+        last = digest(folder / "train" / "last.pt")
+        torch.manual_seed(5)
+        torch.save(torchvision.models.resnet18(weights=None).state_dict(), weights)
+        rc, _, err = self.resume(folder, "--weights", str(weights))
+        self.assertEqual(rc, 1)
+        self.assertIn("train: --resume:", err)
+        self.assertIn("weights_sha256 was", err)
+        self.assertEqual(digest(folder / "train" / "last.pt"), last)
+
+    def test_another_catalog_is_refused(self):
+        import sqlite3
+
+        other = self.tmp / "other.sqlite"
+        shutil.copyfile(self.catalog, other)
+        db = sqlite3.connect(other)
+        db.execute("PRAGMA user_version = 7")
+        db.commit()
+        db.close()
+        folder = self.cut("recatalogued")
+        rc, _, err = self.resume(folder, catalog=other)
+        self.assertEqual(rc, 1)
+        self.assertIn("train: --resume:", err)
+        self.assertIn("catalog_sha256 was", err)
 
 
 @unittest.skipIf(MISSING, f"needs the train environment ({', '.join(MISSING)} missing)")
