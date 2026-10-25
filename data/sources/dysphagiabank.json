@@ -6,7 +6,7 @@
   "level_truth": "none named",
   "reach": "held",
   "status": "held on the grid since before 2026-10-08 (spine-program 01_carm_level_detection/MANIFEST_GRID.md, ls of 2026-10-08): the UNM corpus, 87 files, 19 GB, fetched after the owner's registration; CC BY-NC-SA, programmatic processing only, no language-model use of its text; never scored",
-  "licence": "CC BY-NC-SA, non-commercial, by registration; no language-model use",
+  "licence": "non-commercial, by registration",
   "link": "https://dysphagia.talkbank.org/",
   "how_to_get": [
     "Already on the grid; a bank recipe reads it from grid_path."

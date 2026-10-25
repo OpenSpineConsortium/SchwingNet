@@ -13,7 +13,7 @@
    "note": ""
   },
   "aasce": {
-   "licence": "by request form (SpineWeb); the mirror repository is MIT, the images' reuse terms not recorded",
+   "licence": "by request form (SpineWeb dataset 16); the mirror repository is MIT, the images' reuse terms not recorded",
    "class": "agreement",
    "commercial": "no",
    "derivatives": "unknown",
@@ -69,7 +69,7 @@
    "note": ""
   },
   "bournemouth_lumbar_qf": {
-   "licence": "not recorded (OSF holds derived tables only)",
+   "licence": "not recorded (OSF a27py holds derived tables only; the image deposit OSF z2jby states no licence)",
    "class": "unknown",
    "commercial": "unknown",
    "derivatives": "unknown",
@@ -77,9 +77,9 @@
    "note": ""
   },
   "buu_lspine": {
-   "licence": "unread by the owner",
-   "class": "unknown",
-   "commercial": "unknown",
+   "licence": "the release's end-user agreement by request form: acknowledgement required, no re-identification, never redistributed",
+   "class": "agreement",
+   "commercial": "no",
    "derivatives": "unknown",
    "reviewed": "rule",
    "note": ""
@@ -141,7 +141,7 @@
    "note": ""
   },
   "cm_spine_drive_file": {
-   "licence": "not recorded",
+   "licence": "none stated: the paper's data statement and its repository's README name no licence, and the repository has no licence file (read 2026-10-23)",
    "class": "unknown",
    "commercial": "unknown",
    "derivatives": "unknown",
@@ -197,10 +197,10 @@
    "note": ""
   },
   "csxa": {
-   "licence": "open",
-   "class": "unknown",
-   "commercial": "unknown",
-   "derivatives": "unknown",
+   "licence": "CC BY 4.0",
+   "class": "open",
+   "commercial": "yes",
+   "derivatives": "yes",
    "reviewed": "rule",
    "note": ""
   },
@@ -221,7 +221,7 @@
    "note": ""
   },
   "ctspinopelvic1k": {
-   "licence": "CC BY-NC-SA 4.0",
+   "licence": "labels CC BY-NC-SA 4.0; the CT images CC BY 3.0 (TCIA)",
    "class": "non-commercial",
    "commercial": "no",
    "derivatives": "yes",
@@ -237,7 +237,7 @@
    "note": ""
   },
   "deepfluoro": {
-   "licence": "CC BY-NC-SA 4.0",
+   "licence": "CC BY-NC 4.0 by the H5 release's LICENSE, CC BY-NC-SA 4.0 by its datasheet: non-commercial either way",
    "class": "non-commercial",
    "commercial": "no",
    "derivatives": "yes",
@@ -253,7 +253,7 @@
    "note": ""
   },
   "dysphagiabank": {
-   "licence": "CC BY-NC-SA, non-commercial, by registration; no language-model use",
+   "licence": "non-commercial, by registration",
    "class": "agreement",
    "commercial": "no",
    "derivatives": "unknown",
@@ -309,18 +309,18 @@
    "note": ""
   },
   "geneva_hip": {
-   "licence": "not recorded",
-   "class": "unknown",
-   "commercial": "unknown",
-   "derivatives": "unknown",
+   "licence": "CC BY-SA 4.0, as the source's page gives it (read 2026-10-23), which also lists a 'Contract on the use of data' and shows none of its terms",
+   "class": "share-alike",
+   "commercial": "yes",
+   "derivatives": "yes",
    "reviewed": "rule",
    "note": ""
   },
   "guide3d": {
-   "licence": "to confirm on the page",
-   "class": "unknown",
-   "commercial": "unknown",
-   "derivatives": "unknown",
+   "licence": "CC BY-NC 4.0 (cc-by-nc-4.0, as the Hugging Face dataset airvlab/guide3d's licence line reads, read 2026-10-22)",
+   "class": "non-commercial",
+   "commercial": "no",
+   "derivatives": "yes",
    "reviewed": "rule",
    "note": ""
   },
@@ -429,9 +429,9 @@
    "note": ""
   },
   "ieee_dataport_lateral_236": {
-   "licence": "not recorded",
-   "class": "unknown",
-   "commercial": "unknown",
+   "licence": "not recorded; downloaded under an IEEE DataPort subscription",
+   "class": "agreement",
+   "commercial": "no",
    "derivatives": "unknown",
    "reviewed": "rule",
    "note": ""
@@ -445,7 +445,7 @@
    "note": ""
   },
   "ipcai2025_xray_ct": {
-   "licence": "Research-Only Dataset License (the Zenodo record: redistribution for academic research only, commercial use by written permission, Swiss law); the code is by request under a non-commercial licence, patent pending EP25168706.7",
+   "licence": "Research-Only Dataset License (as the Zenodo page's licence line reads for version 1.0, published 2025-05-20, read 2026-10-22)",
    "class": "agreement",
    "commercial": "no",
    "derivatives": "unknown",
@@ -509,7 +509,7 @@
    "note": ""
   },
   "ljubljana_2d3d_gs": {
-   "licence": "ND (read-only)",
+   "licence": "CC BY-NC-ND, as the source's page gives it (read 2026-10-23); the user guide that comes with the set says the data are used only under an agreement form between the user and the Laboratory of Imaging Technologies, and never redistributed",
    "class": "no-derivatives",
    "commercial": "no",
    "derivatives": "no",
@@ -573,7 +573,7 @@
    "note": ""
   },
   "mros_lateral_spine": {
-   "licence": "a MrOS data request agreement; terms to confirm on the page",
+   "licence": "an NIA Outgoing Human Data Transfer Agreement signed by the PI and Wayne State's Signing Official: non-profit research on the approved project only, no redistribution, no re-identification, acknowledgement, 12 months renewable, destruction certified at the end",
    "class": "agreement",
    "commercial": "no",
    "derivatives": "unknown",
@@ -597,18 +597,18 @@
    "note": ""
   },
   "nhanes2_annotated": {
-   "licence": "open (NCHS)",
-   "class": "unknown",
-   "commercial": "unknown",
-   "derivatives": "unknown",
+   "licence": "CC BY 4.0",
+   "class": "open",
+   "commercial": "yes",
+   "derivatives": "yes",
    "reviewed": "rule",
    "note": ""
   },
   "nhanes2_unannotated": {
-   "licence": "open (NCHS)",
-   "class": "unknown",
-   "commercial": "unknown",
-   "derivatives": "unknown",
+   "licence": "US government work, public domain (NCHS)",
+   "class": "open",
+   "commercial": "yes",
+   "derivatives": "yes",
    "reviewed": "rule",
    "note": ""
   },
@@ -701,7 +701,7 @@
    "note": ""
   },
   "rsna_2022_cervical": {
-   "licence": "Kaggle competition rules (non-commercial)",
+   "licence": "Kaggle competition rules (non-commercial); the terms for derived labels not recorded",
    "class": "agreement",
    "commercial": "no",
    "derivatives": "unknown",
@@ -741,7 +741,7 @@
    "note": ""
   },
   "sof_lateral_spine": {
-   "licence": "a SOF data request agreement; terms to confirm on the page",
+   "licence": "an NIA Outgoing Human Data Transfer Agreement signed by the PI and Wayne State's Signing Official: non-profit research on the approved project only, no redistribution, no re-identification, acknowledgement, 12 months renewable, destruction certified at the end",
    "class": "agreement",
    "commercial": "no",
    "derivatives": "unknown",
@@ -813,7 +813,7 @@
    "note": ""
   },
   "vanderbilt_tha_fluoro": {
-   "licence": "by request",
+   "licence": "not recorded; a data use agreement with Vanderbilt is the route",
    "class": "agreement",
    "commercial": "no",
    "derivatives": "unknown",
@@ -821,9 +821,9 @@
    "note": ""
   },
   "veriserum": {
-   "licence": "to confirm on the page",
-   "class": "unknown",
-   "commercial": "unknown",
+   "licence": "In Copyright - Non-Commercial Use Permitted (as the ETH Research Collection record's rights line reads, read 2026-10-22)",
+   "class": "agreement",
+   "commercial": "no",
    "derivatives": "unknown",
    "reviewed": "rule",
    "note": ""
@@ -949,7 +949,7 @@
    "note": ""
   },
   "zenodo_vsd_fullbody": {
-   "licence": "CC BY-NC-SA per the record's text (the record's licence field is empty)",
+   "licence": "Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Switzerland (CC BY-NC-SA 3.0 CH), the Zenodo record 8270365's licence line, read 2026-10-22",
    "class": "non-commercial",
    "commercial": "no",
    "derivatives": "yes",

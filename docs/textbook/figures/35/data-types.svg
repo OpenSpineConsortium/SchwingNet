@@ -22,7 +22,7 @@
 <line x1="830.0" x2="830.0" y1="60" y2="929" class="rule"/>
 <text x="830.0" y="55" text-anchor="middle">1,000,000</text>
 <text x="244" y="75" text-anchor="end">ReXGradient-160K</text>
-<rect x="250" y="66" width="487.1" height="11" rx="2" class="t-unannotated" opacity="0.45"/>
+<rect x="250" y="66" width="487.1" height="11" rx="2" class="t-unannotated" opacity="1"/>
 <text x="741.1" y="75">109,487</text>
 <text x="244" y="90" text-anchor="end">PadChest</text>
 <rect x="250" y="81" width="466.9" height="11" rx="2" class="t-unannotated" opacity="0.45"/>
@@ -34,7 +34,7 @@
 <rect x="250" y="111" width="465.4" height="11" rx="2" class="t-unannotated" opacity="0.45"/>
 <text x="719.4" y="120">65,240</text>
 <text x="244" y="135" text-anchor="end">NIH ChestX-ray14 and the RSNA pne...</text>
-<rect x="250" y="126" width="433.9" height="11" rx="2" class="t-unannotated" opacity="0.45"/>
+<rect x="250" y="126" width="433.9" height="11" rx="2" class="t-unannotated" opacity="1"/>
 <text x="687.9" y="135">30,805</text>
 <text x="244" y="150" text-anchor="end">NLST, full</text>
 <rect x="250" y="141" width="424.6" height="11" rx="2" class="t-ct" opacity="0.45"/>
@@ -52,7 +52,7 @@
 <rect x="250" y="201" width="385.4" height="11" rx="2" class="t-annotated" opacity="0.45"/>
 <text x="639.4" y="210">9,700</text>
 <text x="244" y="225" text-anchor="end">RSNA pulmonary embolism CT</text>
-<rect x="250" y="216" width="373.3" height="11" rx="2" class="t-ct" opacity="0.45"/>
+<rect x="250" y="216" width="373.3" height="11" rx="2" class="t-ct" opacity="1"/>
 <text x="627.3" y="225">7,279</text>
 <text x="244" y="240" text-anchor="end">MrOS lateral spine radiographs</text>
 <rect x="250" y="231" width="365.2" height="11" rx="2" class="t-annotated" opacity="0.45"/>
@@ -64,16 +64,16 @@
 <rect x="250" y="261" width="338.1" height="11" rx="2" class="t-ct" opacity="0.45"/>
 <text x="592.1" y="270">3,147</text>
 <text x="244" y="285" text-anchor="end">KUB-StoneX</text>
-<rect x="250" y="276" width="312.4" height="11" rx="2" class="t-unannotated" opacity="0.45"/>
+<rect x="250" y="276" width="312.4" height="11" rx="2" class="t-unannotated" opacity="1"/>
 <text x="566.4" y="285">1,703</text>
 <text x="244" y="300" text-anchor="end">IDC lidc_idri</text>
 <rect x="250" y="291" width="289.9" height="11" rx="2" class="t-ct" opacity="0.45"/>
 <text x="543.9" y="300">997</text>
 <text x="244" y="315" text-anchor="end">TotalSegmentator task data 'liver...</text>
-<rect x="250" y="306" width="282.8" height="11" rx="2" class="t-ct" opacity="0.45"/>
+<rect x="250" y="306" width="282.8" height="11" rx="2" class="t-ct" opacity="1"/>
 <text x="536.8" y="315">842</text>
 <text x="244" y="330" text-anchor="end">LUMOS</text>
-<rect x="250" y="321" width="280.8" height="11" rx="2" class="t-paired" opacity="0.45"/>
+<rect x="250" y="321" width="280.8" height="11" rx="2" class="t-paired" opacity="1"/>
 <text x="534.8" y="330">803</text>
 <text x="244" y="345" text-anchor="end">CTSpinoPelvic1K</text>
 <rect x="250" y="336" width="280.7" height="11" rx="2" class="t-ct" opacity="1"/>
@@ -85,13 +85,13 @@
 <rect x="250" y="366" width="270.1" height="11" rx="2" class="t-ct" opacity="0.45"/>
 <text x="524.1" y="375">623</text>
 <text x="244" y="390" text-anchor="end">TotalSegmentator task data 'pleur...</text>
-<rect x="250" y="381" width="268.6" height="11" rx="2" class="t-ct" opacity="0.45"/>
+<rect x="250" y="381" width="268.6" height="11" rx="2" class="t-ct" opacity="1"/>
 <text x="522.6" y="390">600</text>
 <text x="244" y="405" text-anchor="end">Coronary angiography sets</text>
 <rect x="250" y="396" width="256.9" height="11" rx="2" class="t-unannotated" opacity="0.45"/>
 <text x="510.9" y="405">455</text>
 <text x="244" y="420" text-anchor="end">IDC nsclc_radiomics</text>
-<rect x="250" y="411" width="253.1" height="11" rx="2" class="t-ct" opacity="0.45"/>
+<rect x="250" y="411" width="253.1" height="11" rx="2" class="t-ct" opacity="1"/>
 <text x="507.1" y="420">415</text>
 <text x="244" y="435" text-anchor="end">NHANES II annotated films</text>
 <rect x="250" y="426" width="247.6" height="11" rx="2" class="t-annotated" opacity="1"/>
@@ -109,7 +109,7 @@
 <rect x="250" y="486" width="244.1" height="11" rx="2" class="t-annotated" opacity="0.45"/>
 <text x="498.1" y="495">335</text>
 <text x="244" y="510" text-anchor="end">IDC nsclc_radiogenomics</text>
-<rect x="250" y="501" width="219.8" height="11" rx="2" class="t-ct" opacity="0.45"/>
+<rect x="250" y="501" width="219.8" height="11" rx="2" class="t-ct" opacity="1"/>
 <text x="473.8" y="510">188</text>
 <text x="244" y="525" text-anchor="end">LumVBCanSeg lumbar CT</text>
 <rect x="250" y="516" width="219.2" height="11" rx="2" class="t-ct" opacity="0.45"/>
@@ -136,25 +136,25 @@
 <rect x="250" y="621" width="203.4" height="11" rx="2" class="t-unannotated" opacity="0.45"/>
 <text x="457.4" y="630">127</text>
 <text x="244" y="645" text-anchor="end">PENGWIN 2024 Task 2 synthetic X-r...</text>
-<rect x="250" y="636" width="193.3" height="11" rx="2" class="t-synthetic" opacity="0.45"/>
+<rect x="250" y="636" width="193.3" height="11" rx="2" class="t-synthetic" opacity="1"/>
 <text x="447.3" y="645">100</text>
 <text x="244" y="660" text-anchor="end">VSDFullBody: post-mortem whole-bo...</text>
-<rect x="250" y="651" width="193.3" height="11" rx="2" class="t-ct" opacity="0.45"/>
+<rect x="250" y="651" width="193.3" height="11" rx="2" class="t-ct" opacity="1"/>
 <text x="447.3" y="660">100</text>
 <text x="244" y="675" text-anchor="end">IDC ldct_and_projection_data</text>
-<rect x="250" y="666" width="192.9" height="11" rx="2" class="t-ct" opacity="0.45"/>
+<rect x="250" y="666" width="192.9" height="11" rx="2" class="t-ct" opacity="1"/>
 <text x="446.9" y="675">99</text>
 <text x="244" y="690" text-anchor="end">MedPelvis3D pelvic CT</text>
 <rect x="250" y="681" width="192.9" height="11" rx="2" class="t-ct" opacity="0.45"/>
 <text x="446.9" y="690">99</text>
 <text x="244" y="705" text-anchor="end">IDC midrc_ricord_1b</text>
-<rect x="250" y="696" width="189.4" height="11" rx="2" class="t-ct" opacity="0.45"/>
+<rect x="250" y="696" width="189.4" height="11" rx="2" class="t-ct" opacity="1"/>
 <text x="443.4" y="705">91</text>
 <text x="244" y="720" text-anchor="end">TotalSegmentator task data 'hip_i...</text>
-<rect x="250" y="711" width="179.0" height="11" rx="2" class="t-ct" opacity="0.45"/>
+<rect x="250" y="711" width="179.0" height="11" rx="2" class="t-ct" opacity="1"/>
 <text x="433.0" y="720">71</text>
 <text x="244" y="735" text-anchor="end">IDC spinal_multiple_myeloma_seg</text>
-<rect x="250" y="726" width="176.5" height="11" rx="2" class="t-ct" opacity="0.45"/>
+<rect x="250" y="726" width="176.5" height="11" rx="2" class="t-ct" opacity="1"/>
 <text x="430.5" y="735">67</text>
 <text x="244" y="750" text-anchor="end">Bournemouth cervical quantitative...</text>
 <rect x="250" y="741" width="173.9" height="11" rx="2" class="t-annotated" opacity="0.45"/>
@@ -163,16 +163,16 @@
 <rect x="250" y="756" width="171.9" height="11" rx="2" class="t-ct" opacity="0.45"/>
 <text x="425.9" y="765">60</text>
 <text x="244" y="780" text-anchor="end">IDC spine_mets_ct_seg</text>
-<rect x="250" y="771" width="167.5" height="11" rx="2" class="t-ct" opacity="0.45"/>
+<rect x="250" y="771" width="167.5" height="11" rx="2" class="t-ct" opacity="1"/>
 <text x="421.5" y="780">54</text>
 <text x="244" y="795" text-anchor="end">Spinal-AI2024</text>
 <rect x="250" y="786" width="158.9" height="11" rx="2" class="t-synthetic" opacity="1"/>
 <text x="412.9" y="795">44</text>
 <text x="244" y="810" text-anchor="end">IDC cptac_lscc</text>
-<rect x="250" y="801" width="145.5" height="11" rx="2" class="t-ct" opacity="0.45"/>
+<rect x="250" y="801" width="145.5" height="11" rx="2" class="t-ct" opacity="1"/>
 <text x="399.5" y="810">32</text>
 <text x="244" y="825" text-anchor="end">IDC cptac_luad</text>
-<rect x="250" y="816" width="145.5" height="11" rx="2" class="t-ct" opacity="0.45"/>
+<rect x="250" y="816" width="145.5" height="11" rx="2" class="t-ct" opacity="1"/>
 <text x="399.5" y="825">32</text>
 <text x="244" y="840" text-anchor="end">2D-3D-sci-registration C-arm fram...</text>
 <rect x="250" y="831" width="92.2" height="11" rx="2" class="t-paired" opacity="0.45"/>
