@@ -1,0 +1,1332 @@
+{
+ "about": "The judgments chapter 35 adds to the dataset records: each corpus's data type, the stretch of the spine it shows, the persons and images figures read from its record, and whether it has been tried. Written by hand on 2026-10-24 from data/sources/<id>.json (its what, level_truth and status lines) and data/registry/<id>.json (its regions); tools/data_figures.py reads it with the records and writes corpora.json. A span marked stated is the record's own words; inferred is read from the body part the collection images (chest, abdomen, pelvis, whole body). tried is yes where the record's status says a bank, a run or a test of the reported stack used it.",
+ "types": {
+  "paired": "paired 3D-2D: real 2D frames or projections with a CT or CBCT of the same body",
+  "annotated": "annotated 2D: real radiographs, fluoroscopy or cine with spine labels (boxes, landmarks, levels or grades)",
+  "synthetic": "synthetic 2D: renders or generated images (and synthetic CTs) with exact or inherited labels",
+  "ct": "CT volumes: 3D collections, the raw material of synthetic 2D and of the CT counting priors",
+  "unannotated": "unannotated 2D: real images with no spine labels, for unsupervised or self-supervised use"
+ },
+ "corpora": {
+  "aariz_cephalograms": {
+   "type": "annotated",
+   "span": "C2-C4",
+   "basis": "stated",
+   "images": 1000,
+   "images_unit": "films",
+   "tried": "no",
+   "why": "CVM stage names C2 to C4 shapes; held since the census, in no bank"
+  },
+  "isbi2015_cephalograms": {
+   "type": "unannotated",
+   "span": "C2-C4",
+   "basis": "inferred",
+   "images": 400,
+   "images_unit": "films",
+   "images_from": "data/sources/aariz_cephalograms.json counts.isbi_2015_films",
+   "tried": "no",
+   "reach": "held",
+   "why": "19 cephalometric landmarks and no CVM stage, so no spine label; registry entry only"
+  },
+  "aasce": {
+   "type": "annotated",
+   "span": "T1-L5",
+   "basis": "stated",
+   "images": 707,
+   "images_unit": "films",
+   "images_from": "609 labelled + 98 challenge-test films",
+   "tried": "yes",
+   "why": "457 training films fed the deleted level banks v4, v5 and v5c; the thoracic test set"
+  },
+  "anomaly_harvest_b": {
+   "type": "ct",
+   "span": "T11-S1",
+   "basis": "inferred",
+   "aggregate": true,
+   "images_from": "an umbrella of 144 CT sources, many recorded on their own; left out of every sum",
+   "tried": "yes",
+   "why": "the census screened its on-disk collections for transitional spines"
+  },
+  "aws_stoic2021": {
+   "type": "ct",
+   "span": "T1-L1",
+   "basis": "inferred",
+   "tried": "no",
+   "why": "chest CT"
+  },
+  "balgrist_lumbar": {
+   "type": "paired",
+   "span": "L1-S1",
+   "basis": "stated",
+   "tried": "no",
+   "why": "refused 2026-10-21: proprietary"
+  },
+  "bern_myelography": {
+   "type": "unannotated",
+   "span": "T7-S1",
+   "basis": "stated",
+   "images": 4,
+   "images_unit": "videos",
+   "tried": "no",
+   "why": "levels only in the captions (T7/8, T9/10, L5/S1)"
+  },
+  "bournemouth_cervical_qf": {
+   "type": "annotated",
+   "span": "C1-T1",
+   "basis": "stated",
+   "persons": 63,
+   "images": 252,
+   "images_unit": "sequences",
+   "tried": "no",
+   "why": "level-named corner tracks C0 to T1 on every frame"
+  },
+  "bournemouth_lumbar_qf": {
+   "type": "unannotated",
+   "span": "L2-S1",
+   "basis": "stated",
+   "persons": 127,
+   "tried": "no",
+   "why": "labels only if corner templates exist, to confirm"
+  },
+  "buu_lspine": {
+   "type": "annotated",
+   "span": "L1-S1",
+   "basis": "stated",
+   "persons": 3600,
+   "persons_note": "3,600 by the release and the registry; an older reading of 1,200 is refuted (contradictions page, datasets row 14)",
+   "images": 7203,
+   "images_unit": "films (3,603 lateral + 3,600 AP)",
+   "tried": "yes",
+   "why": "laterals in the v8 and v9 banks; APs never used"
+  },
+  "cads": {
+   "type": "ct",
+   "span": null,
+   "basis": "unknown",
+   "images": 753,
+   "images_unit": "CTs",
+   "images_from": "the record's what line",
+   "tried": "no",
+   "why": "a gated anomaly-harvest collection; region not recorded"
+  },
+  "canine_thoracic_vhs": {
+   "type": "unannotated",
+   "span": "T1-L1",
+   "basis": "stated",
+   "human": false,
+   "images": 152,
+   "images_unit": "radiographs",
+   "tried": "no",
+   "why": "dogs; T4 is the VHS reference"
+  },
+  "carmlspine": {
+   "type": "paired",
+   "span": "L1-S1",
+   "basis": "stated",
+   "persons": 149,
+   "persons_note": "149 cases; 148 cases or 120 subjects in other files (concept ledger); a record, not a final value",
+   "images": 299,
+   "images_unit": "spot frames",
+   "tried": "yes",
+   "why": "the reported stack's held-out test set and the demo"
+  },
+  "carmlspine_sweeps": {
+   "type": "paired",
+   "span": "L1-S1",
+   "basis": "stated",
+   "persons": 2,
+   "images": 602,
+   "images_unit": "projections",
+   "tried": "yes",
+   "why": "the demo's recorded sweep; the case134 bank exists"
+  },
+  "cathaction": {
+   "type": "unannotated",
+   "span": "T1-T12",
+   "basis": "inferred",
+   "images": 500000,
+   "images_unit": "frames (about)",
+   "tried": "no",
+   "why": "endovascular frames, no spine labels, much of it animal"
+  },
+  "cervical_thoracic_intraop": {
+   "type": "annotated",
+   "span": "C1-T12",
+   "basis": "stated",
+   "tried": "no",
+   "why": "the gap: no public set of real cervical or thoracic C-arm frames with named levels"
+  },
+  "chexpert_plus": {
+   "type": "unannotated",
+   "span": "T1-L1",
+   "basis": "inferred",
+   "persons": 65240,
+   "images": 224316,
+   "images_unit": "radiographs",
+   "tried": "no",
+   "why": "chest films"
+  },
+  "cm_spine_drive_file": {
+   "type": "unannotated",
+   "span": null,
+   "basis": "unknown",
+   "tried": "no",
+   "why": "one file described only as intraoperative"
+  },
+  "cobra_total": {
+   "type": "paired",
+   "span": "L4-Co",
+   "basis": "inferred",
+   "persons": 692,
+   "images": 375618,
+   "images_unit": "projections",
+   "tried": "yes",
+   "why": "145 Elekta cases in a bank of 24 frames each, the sacrum detector's training; the rest never exported"
+  },
+  "cobra_elekta": {
+   "type": "paired",
+   "span": "L4-Co",
+   "basis": "inferred",
+   "aggregate": true,
+   "persons": 467,
+   "images": 3480,
+   "images_unit": "bank frames (145 x 24 = 3,480)",
+   "tried": "yes",
+   "why": "part of cobra_total; left out of every sum"
+  },
+  "cobra_varian": {
+   "type": "paired",
+   "span": "L4-Co",
+   "basis": "inferred",
+   "aggregate": true,
+   "persons": 225,
+   "tried": "no",
+   "why": "part of cobra_total; geometry solved, no frame looked at"
+  },
+  "cobra_embargoed": {
+   "type": "paired",
+   "span": "L4-Co",
+   "basis": "inferred",
+   "persons": 175,
+   "tried": "no",
+   "why": "released on 2032-03-01"
+  },
+  "coronary_angiography": {
+   "type": "unannotated",
+   "span": "T1-T12",
+   "basis": "stated",
+   "persons": 455,
+   "persons_note": "CADICA 42 + AngioCAD 413 patients; ARCADE and XCAD counted in images only",
+   "images": 4747,
+   "images_unit": "images (ARCADE 3,000 + XCAD 1,747)",
+   "tried": "no",
+   "why": "the thoracic spine in the background"
+  },
+  "csxa": {
+   "type": "annotated",
+   "span": "C1-C7",
+   "basis": "stated",
+   "images": 4963,
+   "images_unit": "films",
+   "tried": "yes",
+   "why": "used fully; every person in the v9 base"
+  },
+  "ct_rate": {
+   "type": "ct",
+   "span": "T1-L1",
+   "basis": "inferred",
+   "persons": 21304,
+   "images": 25692,
+   "images_unit": "CTs",
+   "images_from": "the record's what line",
+   "tried": "no",
+   "why": "chest CT; gated"
+  },
+  "ctspine1k_ctpelvic1k_ribfrac": {
+   "type": "ct",
+   "span": "C1-Co",
+   "basis": "inferred",
+   "images": 1837,
+   "images_unit": "CTs (1,005 + 172 + 660)",
+   "tried": "yes",
+   "why": "the transitional registry only"
+  },
+  "ctspinopelvic1k": {
+   "type": "ct",
+   "span": "L1-Co",
+   "basis": "stated",
+   "persons": 802,
+   "images": 802,
+   "images_unit": "CTs",
+   "tried": "yes",
+   "why": "the render banks and the synthetic L6 arm"
+  },
+  "daradia_vertebroplasty": {
+   "type": "unannotated",
+   "span": null,
+   "basis": "unknown",
+   "tried": "no",
+   "why": "one teaching video"
+  },
+  "deepfluoro": {
+   "type": "paired",
+   "span": "L4-Co",
+   "basis": "stated",
+   "persons": 6,
+   "persons_note": "cadaver specimens",
+   "images": 3025,
+   "images_unit": "frames (366 H5 + 2,659 vendor)",
+   "tried": "yes",
+   "why": "the sacrum detector's training; 2,293 vendor frames unused"
+  },
+  "dmx_imaging": {
+   "type": "unannotated",
+   "span": "L1-S1",
+   "basis": "stated",
+   "tried": "no",
+   "why": "lumbar flexion-extension on a commercial video"
+  },
+  "dysphagiabank": {
+   "type": "unannotated",
+   "span": "C1-C7",
+   "basis": "stated",
+   "tried": "no",
+   "why": "about 7 to 53 adults; held, never used"
+  },
+  "faubel_painsource": {
+   "type": "unannotated",
+   "span": null,
+   "basis": "unknown",
+   "tried": "no",
+   "why": "clips on a video site"
+  },
+  "fluoro_video_clips": {
+   "type": "unannotated",
+   "span": "C1-S1",
+   "basis": "inferred",
+   "images": 726614,
+   "images_unit": "images (census)",
+   "images_from": "726,614 images in docs/research/data-manifest/MANIFEST.md, group fluoro_video_clips (the census of 2026-10-22)",
+   "tried": "no",
+   "why": "never scored; tracker screening only"
+  },
+  "fluorocap": {
+   "type": "unannotated",
+   "span": "C1-S1",
+   "basis": "inferred",
+   "images": 29500,
+   "images_unit": "figure panels",
+   "tried": "yes",
+   "why": "pseudo labels only; out of training by directive D1, still inside the old fold banks"
+  },
+  "fluorogen_synth_rare": {
+   "type": "synthetic",
+   "span": "T10-S1",
+   "basis": "inferred",
+   "images": 12929,
+   "images_unit": "renders (1,763 L6, 86 T13)",
+   "tried": "no",
+   "why": "in no bank, no reason written"
+  },
+  "fracatlas": {
+   "type": "unannotated",
+   "span": "S1-S1",
+   "basis": "stated",
+   "images": 4083,
+   "images_unit": "radiographs",
+   "tried": "no",
+   "why": "limbs and hips; no spine labels"
+  },
+  "fraiwan_spine_xray": {
+   "type": "annotated",
+   "span": "T1-S1",
+   "basis": "stated",
+   "persons": 338,
+   "tried": "no",
+   "why": "three diagnostic classes, no levels"
+  },
+  "geneva_hip": {
+   "type": "paired",
+   "span": "S1-Co",
+   "basis": "stated",
+   "persons": 1,
+   "persons_note": "one phantom",
+   "images": 116,
+   "images_unit": "frames",
+   "tried": "yes",
+   "why": "the unseen-device test"
+  },
+  "guide3d": {
+   "type": "unannotated",
+   "span": null,
+   "basis": "stated",
+   "human": false,
+   "images": 8700,
+   "images_unit": "frames (more than)",
+   "tried": "no",
+   "why": "a vascular phantom; no spine"
+  },
+  "hf_abdomenatlas2_0_mini": {
+   "type": "ct",
+   "span": "T10-S1",
+   "basis": "inferred",
+   "images": 10135,
+   "images_unit": "CTs",
+   "tried": "no",
+   "why": "abdominal CT"
+  },
+  "idc_cptac_lscc": {
+   "type": "ct",
+   "span": "T1-L1",
+   "basis": "inferred",
+   "persons": 32,
+   "tried": "no",
+   "why": "chest CT"
+  },
+  "idc_cptac_luad": {
+   "type": "ct",
+   "span": "T1-L1",
+   "basis": "inferred",
+   "persons": 32,
+   "tried": "no",
+   "why": "chest CT"
+  },
+  "idc_ldct_and_projection_data": {
+   "type": "ct",
+   "span": "T1-L1",
+   "basis": "stated",
+   "persons": 99,
+   "tried": "no",
+   "why": "chest"
+  },
+  "idc_lidc_idri": {
+   "type": "ct",
+   "span": "T1-L1",
+   "basis": "inferred",
+   "persons": 997,
+   "tried": "no",
+   "why": "chest CT"
+  },
+  "idc_midrc_ricord_1b": {
+   "type": "ct",
+   "span": "T1-L1",
+   "basis": "inferred",
+   "persons": 91,
+   "tried": "no",
+   "why": "chest CT"
+  },
+  "idc_nlst": {
+   "type": "ct",
+   "span": "T1-L1",
+   "basis": "inferred",
+   "persons": 24713,
+   "tried": "yes",
+   "why": "a 500-subject pilot fetched and screened"
+  },
+  "idc_nsclc_radiogenomics": {
+   "type": "ct",
+   "span": "T1-L1",
+   "basis": "inferred",
+   "persons": 188,
+   "tried": "no",
+   "why": "chest CT"
+  },
+  "idc_nsclc_radiomics": {
+   "type": "ct",
+   "span": "T1-L1",
+   "basis": "inferred",
+   "persons": 415,
+   "tried": "no",
+   "why": "chest CT"
+  },
+  "idc_prostate_anatomical_edge_cases": {
+   "type": "ct",
+   "span": "L4-Co",
+   "basis": "stated",
+   "persons": 131,
+   "tried": "no",
+   "why": "pelvis"
+  },
+  "idc_spinal_multiple_myeloma_seg": {
+   "type": "ct",
+   "span": "C1-S1",
+   "basis": "stated",
+   "persons": 67,
+   "tried": "no",
+   "why": "spine"
+  },
+  "idc_spine_mets_ct_seg": {
+   "type": "ct",
+   "span": "T1-Co",
+   "basis": "stated",
+   "persons": 54,
+   "tried": "no",
+   "why": "spine, abdomen and pelvis"
+  },
+  "ieee_dataport_lateral_236": {
+   "type": "unannotated",
+   "span": "C1-S1",
+   "basis": "stated",
+   "images": 236,
+   "images_unit": "films",
+   "tried": "yes",
+   "why": "the pseudo-label arm was refuted"
+  },
+  "implant_ct_synthetic": {
+   "type": "synthetic",
+   "span": "T1-S1",
+   "basis": "stated",
+   "images": 2748,
+   "images_unit": "synthetic CTs (1,119 + 1,629)",
+   "persons_note": "derived from persons already held (VerSe, TotalSegmentator)",
+   "tried": "no",
+   "why": "partial; no use recorded"
+  },
+  "ipcai2025_xray_ct": {
+   "type": "paired",
+   "span": null,
+   "basis": "stated",
+   "persons": 5,
+   "persons_note": "cadaveric distal femurs",
+   "images": 50,
+   "images_unit": "X-rays",
+   "tried": "no",
+   "why": "no spine; a registration benchmark"
+  },
+  "jefferson_drg": {
+   "type": "unannotated",
+   "span": "L5-S1",
+   "basis": "stated",
+   "images": 1,
+   "images_unit": "videos",
+   "tried": "no",
+   "why": "levels in the article text"
+  },
+  "kaggle_fracture_multiregion": {
+   "type": "unannotated",
+   "span": "L1-S1",
+   "basis": "stated",
+   "images": 10580,
+   "images_unit": "radiographs, all regions",
+   "tried": "no",
+   "why": "a lumbar-spine folder among limbs; fracture labels only"
+  },
+  "kaggle_scoliosis_yolov5": {
+   "type": "annotated",
+   "span": "T1-L5",
+   "basis": "inferred",
+   "tried": "no",
+   "why": "boxes on vertebrae; count and source unknown"
+  },
+  "konica_ddr": {
+   "type": "unannotated",
+   "span": "L1-S1",
+   "basis": "stated",
+   "tried": "no",
+   "why": "flat-panel motion in a marketing video"
+  },
+  "kub_stonex": {
+   "type": "unannotated",
+   "span": "L1-S1",
+   "basis": "stated",
+   "persons": 1703,
+   "images": 2570,
+   "images_unit": "radiographs",
+   "tried": "no",
+   "why": "stone masks, no spine labels"
+  },
+  "ljubljana_2d3d_gs": {
+   "type": "paired",
+   "span": "L1-L5",
+   "basis": "stated",
+   "persons": 1,
+   "persons_note": "one cadaver",
+   "images": 18,
+   "images_unit": "frames",
+   "tried": "no",
+   "why": "parameters read, no truth bank built"
+  },
+  "lumos": {
+   "type": "paired",
+   "span": "L1-S1",
+   "basis": "stated",
+   "persons": 803,
+   "images": 1620,
+   "images_unit": "radiographs (and 280 CTs)",
+   "tried": "no",
+   "why": "open download; which film goes with which CT is not stated"
+  },
+  "maastricht_cervical": {
+   "type": "annotated",
+   "span": "C1-C7",
+   "basis": "stated",
+   "images": 112,
+   "images_unit": "recordings",
+   "tried": "no",
+   "why": "C0 to C7 contours on every frame"
+  },
+  "magic_ct": {
+   "type": "ct",
+   "span": null,
+   "basis": "unknown",
+   "images": 562,
+   "images_unit": "CTs",
+   "images_from": "the record's what line",
+   "tried": "no",
+   "why": "a gated anomaly-harvest collection; region not recorded"
+  },
+  "mayfield_kyphoplasty": {
+   "type": "unannotated",
+   "span": "T10-L2",
+   "basis": "inferred",
+   "images": 163,
+   "images_unit": "frames",
+   "tried": "no",
+   "why": "thoracolumbar, unnamed"
+  },
+  "mendeley_5jdfdgp762": {
+   "type": "annotated",
+   "span": "L1-S1",
+   "basis": "stated",
+   "images": 714,
+   "images_unit": "films",
+   "tried": "no",
+   "why": "excluded: about 500 are BUU persons"
+  },
+  "mendeley_ddh_hips": {
+   "type": "unannotated",
+   "span": "S1-Co",
+   "basis": "inferred",
+   "persons": 354,
+   "persons_note": "jf3pv98m9g subjects; AV-DDH counted in films",
+   "images": 2417,
+   "images_unit": "films (AV-DDH)",
+   "tried": "no",
+   "why": "infant pelvis"
+  },
+  "mimic_cxr": {
+   "type": "unannotated",
+   "span": "T1-L1",
+   "basis": "stated",
+   "persons": 65379,
+   "images": 377110,
+   "images_unit": "radiographs",
+   "tried": "no",
+   "why": "chest films"
+  },
+  "mros_lateral_spine": {
+   "type": "annotated",
+   "span": "T1-L5",
+   "basis": "stated",
+   "persons": 5994,
+   "tried": "no",
+   "why": "Genant grades on named levels"
+  },
+  "mtfi_lumbar_coupling": {
+   "type": "unannotated",
+   "span": "L1-S1",
+   "basis": "stated",
+   "tried": "no",
+   "why": "AP lumbar side-bending"
+  },
+  "neurosurgical_focus_video": {
+   "type": "unannotated",
+   "span": "C1-S1",
+   "basis": "inferred",
+   "tried": "no",
+   "why": "a library of spine-surgery videos"
+  },
+  "nhanes2_annotated": {
+   "type": "annotated",
+   "span": "C1-C7,L1-S1",
+   "basis": "stated",
+   "persons": 364,
+   "images": 543,
+   "images_unit": "films",
+   "tried": "yes",
+   "why": "used; counted twice in the old fold banks"
+  },
+  "nhanes2_unannotated": {
+   "type": "unannotated",
+   "span": "C1-C7,L1-S1",
+   "basis": "stated",
+   "images": 16531,
+   "images_unit": "films (17,073 TIFFs on disk; a record, not a final value)",
+   "images_from": "16,531 by the record; 17,073 TIFFs on disk (contradictions page, datasets row 9)",
+   "tried": "yes",
+   "why": "a pseudo-label arm, which the record says cut anomalous accuracy by 20 points"
+  },
+  "nih_chestxray14": {
+   "type": "unannotated",
+   "span": "T1-T12",
+   "basis": "stated",
+   "persons": 30805,
+   "images": 112120,
+   "images_unit": "films",
+   "tried": "no",
+   "why": "frontal chest films"
+  },
+  "open_i_chest": {
+   "type": "unannotated",
+   "span": "T1-L1",
+   "basis": "stated",
+   "images": 7470,
+   "images_unit": "radiographs",
+   "tried": "no",
+   "why": "chest films"
+  },
+  "padchest": {
+   "type": "unannotated",
+   "span": "T1-L1",
+   "basis": "stated",
+   "persons": 67625,
+   "images": 160868,
+   "images_unit": "radiographs",
+   "tried": "no",
+   "why": "chest films"
+  },
+  "pediatric_iri": {
+   "type": "unannotated",
+   "span": "L1-S1",
+   "basis": "stated",
+   "images": 95308,
+   "images_unit": "images",
+   "tried": "no",
+   "why": "the lumbar spine in field"
+  },
+  "pengwin_task2_xrays": {
+   "type": "synthetic",
+   "span": "L5-Co",
+   "basis": "inferred",
+   "persons": 100,
+   "persons_note": "source CTs",
+   "images": 50000,
+   "images_unit": "DRRs",
+   "tried": "no",
+   "why": "pelvic-fracture renders at C-arm poses"
+  },
+  "pittsburgh_swallow": {
+   "type": "annotated",
+   "span": "C2-C4",
+   "basis": "stated",
+   "persons": 335,
+   "images": 1500,
+   "images_unit": "clips",
+   "tried": "no",
+   "why": "corner landmarks on C2 and C4 only"
+  },
+  "procedure_guide": {
+   "type": "unannotated",
+   "span": null,
+   "basis": "unknown",
+   "images": 4,
+   "images_unit": "clips",
+   "tried": "no",
+   "why": "the level only if the author tells it"
+  },
+  "radiopaedia": {
+   "type": "unannotated",
+   "span": "C1-Co",
+   "basis": "inferred",
+   "tried": "no",
+   "why": "levels named in case text; never fetched by script"
+  },
+  "rexgradient_160k": {
+   "type": "unannotated",
+   "span": "T1-L1",
+   "basis": "stated",
+   "persons": 109487,
+   "images": 160000,
+   "images_unit": "studies",
+   "tried": "no",
+   "why": "chest films"
+  },
+  "roboflow_vindr_relabels": {
+   "type": "annotated",
+   "span": "C1-L5",
+   "basis": "inferred",
+   "tried": "no",
+   "why": "excluded: VinDr-SpineXR pixels redistributed"
+  },
+  "rsna_2022_cervical": {
+   "type": "ct",
+   "span": "C1-C7",
+   "basis": "stated",
+   "images": 2019,
+   "images_unit": "studies",
+   "tried": "no",
+   "why": "never unpacked"
+  },
+  "rsna_ratic": {
+   "type": "ct",
+   "span": "T10-S1",
+   "basis": "inferred",
+   "persons": 3147,
+   "images": 4711,
+   "images_unit": "series",
+   "images_from": "the record's what line",
+   "tried": "no",
+   "why": "abdominal trauma CT; gated"
+  },
+  "rsna_rspect": {
+   "type": "ct",
+   "span": "T1-L1",
+   "basis": "inferred",
+   "persons": 7279,
+   "images_from": "the record's what line",
+   "tried": "no",
+   "why": "chest CT; gated"
+  },
+  "scidb_enhance_pet_1_6k": {
+   "type": "ct",
+   "span": "C1-Co",
+   "basis": "inferred",
+   "images": 1683,
+   "images_unit": "studies",
+   "tried": "no",
+   "why": "whole-body PET/CT"
+  },
+  "seattle_science_foundation": {
+   "type": "unannotated",
+   "span": "T12-L1",
+   "basis": "stated",
+   "images": 12,
+   "images_unit": "videos",
+   "tried": "no",
+   "why": "levels in some chapter titles"
+  },
+  "sof_lateral_spine": {
+   "type": "annotated",
+   "span": "T1-L5",
+   "basis": "stated",
+   "persons": 9700,
+   "persons_note": "about 9,700 women",
+   "tried": "no",
+   "why": "Genant grades on named levels"
+  },
+  "spinal_ai2024": {
+   "type": "synthetic",
+   "span": "C1-S1",
+   "basis": "inferred",
+   "persons": 44,
+   "persons_note": "synthetic identities",
+   "images": 20000,
+   "images_unit": "films",
+   "tried": "yes",
+   "why": "all on train in the G3 split"
+  },
+  "spinesac": {
+   "type": "unannotated",
+   "span": "L1-S1",
+   "basis": "inferred",
+   "human": false,
+   "images": 5490,
+   "images_unit": "sawbone frames",
+   "tried": "no",
+   "why": "excluded: masks empty; 0 frames scored"
+  },
+  "stanford_aimi_inspect": {
+   "type": "ct",
+   "span": "T1-L1",
+   "basis": "inferred",
+   "persons": 19402,
+   "images_from": "the record's what line",
+   "tried": "no",
+   "why": "chest CT; gated"
+  },
+  "stanford_aimi_merlin": {
+   "type": "ct",
+   "span": "T10-S1",
+   "basis": "inferred",
+   "persons": 18317,
+   "images": 25494,
+   "images_unit": "CTs",
+   "images_from": "the record's what line",
+   "tried": "no",
+   "why": "abdominal CT; gated"
+  },
+  "sx_stitch": {
+   "type": "annotated",
+   "span": null,
+   "basis": "unknown",
+   "tried": "no",
+   "why": "levels present; count and stretch not recorded"
+  },
+  "totalsegmentator": {
+   "type": "ct",
+   "span": "C1-Co",
+   "basis": "inferred",
+   "images": 3163,
+   "images_unit": "scans (1,228 v2 + 1,935 v3; v3 a record, not a final value)",
+   "images_from": "the record; v3 is 1,939 in the manifest and 1,936 in the census",
+   "tried": "yes",
+   "why": "renders; v3 is the device corpus"
+  },
+  "tvgh_spinexr": {
+   "type": "annotated",
+   "span": null,
+   "basis": "unknown",
+   "tried": "no",
+   "why": "behind a login; labels not recorded"
+  },
+  "veriserum": {
+   "type": "unannotated",
+   "span": null,
+   "basis": "stated",
+   "human": false,
+   "images": 110000,
+   "images_unit": "images (about)",
+   "tried": "no",
+   "why": "knee implant phantoms; no spine"
+  },
+  "verse": {
+   "type": "ct",
+   "span": "C1-S1",
+   "basis": "stated",
+   "persons": 355,
+   "images": 374,
+   "images_unit": "series",
+   "tried": "yes",
+   "why": "renders in the v9 base"
+  },
+  "verse_2d_projections": {
+   "type": "synthetic",
+   "span": "C1-S1",
+   "basis": "stated",
+   "tried": "no",
+   "why": "projections of VerSe vertebrae; count to confirm"
+  },
+  "vertxnet_nhanes2_labels": {
+   "type": "annotated",
+   "span": "C1-C7,L1-S1",
+   "basis": "stated",
+   "tried": "no",
+   "why": "labels only, for the NHANES II films already held"
+  },
+  "veterinary_pig_levelcheck": {
+   "type": "paired",
+   "span": null,
+   "basis": "stated",
+   "human": false,
+   "tried": "no",
+   "why": "a pig lower limb; no spine"
+  },
+  "vfss2022": {
+   "type": "unannotated",
+   "span": "C1-C7",
+   "basis": "stated",
+   "images": 440,
+   "images_unit": "frames",
+   "tried": "no",
+   "why": "swallow masks, no vertebra labels"
+  },
+  "vindr_cxr": {
+   "type": "unannotated",
+   "span": "T1-T12",
+   "basis": "stated",
+   "images": 18000,
+   "images_unit": "radiographs",
+   "tried": "no",
+   "why": "chest films"
+  },
+  "vindr_pcxr": {
+   "type": "unannotated",
+   "span": "T1-T12",
+   "basis": "stated",
+   "images": 9125,
+   "images_unit": "radiographs",
+   "tried": "no",
+   "why": "pediatric chest films"
+  },
+  "vindr_spinexr": {
+   "type": "annotated",
+   "span": "C1-L5",
+   "basis": "stated",
+   "images": 10466,
+   "images_unit": "images",
+   "tried": "yes",
+   "why": "lesion boxes, no levels; 2,632 crops in the old fold models"
+  },
+  "zenodo_lumvbcanseg": {
+   "type": "ct",
+   "span": "L1-S1",
+   "basis": "stated",
+   "persons": 185,
+   "tried": "no",
+   "why": "lumbar CT"
+  },
+  "zenodo_medpelvis3d": {
+   "type": "ct",
+   "span": "L4-Co",
+   "basis": "inferred",
+   "persons": 99,
+   "tried": "no",
+   "why": "pelvic CT"
+  },
+  "zenodo_tmtv_benchmark": {
+   "type": "ct",
+   "span": "C1-Co",
+   "basis": "inferred",
+   "persons": 60,
+   "tried": "no",
+   "why": "whole-body PET/CT"
+  },
+  "zenodo_ts_task_hip_implant": {
+   "type": "ct",
+   "span": "L4-Co",
+   "basis": "inferred",
+   "persons": 71,
+   "tried": "no",
+   "why": "pelvic CT"
+  },
+  "zenodo_ts_task_liver_lesions": {
+   "type": "ct",
+   "span": "T10-L3",
+   "basis": "inferred",
+   "persons": 842,
+   "tried": "no",
+   "why": "abdominal CT"
+  },
+  "zenodo_ts_task_pleural_effusion": {
+   "type": "ct",
+   "span": "T1-L1",
+   "basis": "inferred",
+   "persons": 600,
+   "tried": "no",
+   "why": "chest CT"
+  },
+  "zenodo_unitochest": {
+   "type": "ct",
+   "span": "T1-L1",
+   "basis": "inferred",
+   "persons": 623,
+   "tried": "no",
+   "why": "chest CT"
+  },
+  "zenodo_vsd_fullbody": {
+   "type": "ct",
+   "span": "C1-Co",
+   "basis": "inferred",
+   "persons": 100,
+   "tried": "no",
+   "why": "post-mortem whole-body CT"
+  },
+  "bimcv_covid19": {
+   "type": "unannotated",
+   "span": "T1-T12",
+   "basis": "stated",
+   "reach": "held",
+   "tried": "no",
+   "why": "registry entry only: chest films and CTs, raw copy fetched, no bank yet"
+  },
+  "cm_spine_garm": {
+   "type": "annotated",
+   "span": "L1-L5",
+   "basis": "stated",
+   "images": 208,
+   "images_unit": "G-arm images",
+   "tried": "no",
+   "why": "L1 to L5 labelled per vertebra; the file no longer opens"
+  },
+  "huashan_intraop_lumbar": {
+   "type": "paired",
+   "span": "L1-S1",
+   "basis": "inferred",
+   "persons": 140,
+   "tried": "no",
+   "why": "lumbar films with the same patient's CT; asked, no answer yet"
+  },
+  "levelcheck_clinical": {
+   "type": "paired",
+   "span": null,
+   "basis": "unknown",
+   "persons": 178,
+   "persons_note": "178 CTs, one per patient",
+   "tried": "no",
+   "why": "levels registered from the labelled CT; the owners declined to share"
+  },
+  "nitw_2d3d_registration": {
+   "type": "paired",
+   "span": "L1-L5",
+   "basis": "stated",
+   "persons": 9,
+   "tried": "no",
+   "why": "L1 to L5 centroids per frame with the CTs on request"
+  },
+  "tvgh_as_spine": {
+   "type": "annotated",
+   "span": null,
+   "basis": "unknown",
+   "tried": "no",
+   "why": "behind a login; labels not recorded"
+  },
+  "vanderbilt_tha_fluoro": {
+   "type": "annotated",
+   "span": "L5-S1",
+   "basis": "stated",
+   "persons": 146,
+   "images": 336,
+   "images_unit": "frames",
+   "tried": "no",
+   "why": "L5/S1 marked on pelvic fluoroscopy, the anchor counting starts from"
+  }
+ },
+ "tasks": {
+  "detection": {
+   "title": "Detection recall: bodies found on a real C-arm frame",
+   "unit": "vertebral bodies, clustered in persons",
+   "defaults": {
+    "mode": "precision",
+    "p": 0.805,
+    "margin": 0.05,
+    "alpha": 0.05,
+    "power": 0.8,
+    "m": 4,
+    "de": 4
+   },
+   "defaults_source": "p: 231/287 = 80.5 % at overlap 0.74, the reported stack on a held-out device (docs/research/state-of-knowledge.md, row 3); de: 3.84 to 4.47 measured for naming (artifacts/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay/); m and margin: the chapter's choice",
+   "holdings": [
+    {
+     "label": "C-ArmLSpine cases",
+     "persons": 149,
+     "kind": "real C-arm frames",
+     "reach": "held",
+     "source": "data/sources/carmlspine.json",
+     "note": "149 cases; 148 or 120 in other files; a record, not a final value"
+    },
+    {
+     "label": "DeepFluoro specimens",
+     "persons": 6,
+     "kind": "real cadaver frames",
+     "reach": "held",
+     "source": "data/sources/deepfluoro.json",
+     "note": ""
+    },
+    {
+     "label": "LUMOS patients",
+     "persons": 803,
+     "kind": "real radiographs with CT",
+     "reach": "to get",
+     "source": "data/sources/lumos.json",
+     "note": "films, not C-arm frames"
+    }
+   ]
+  },
+  "naming": {
+   "title": "Level naming accuracy: each body named right on a real frame",
+   "unit": "vertebral bodies, clustered in persons",
+   "defaults": {
+    "mode": "precision",
+    "p": 0.964,
+    "margin": 0.02,
+    "alpha": 0.05,
+    "power": 0.8,
+    "m": 4,
+    "de": 4
+   },
+   "defaults_source": "p: lateral naming 595/617 = 96.4 % zero-shot, the reported stack (docs/research/state-of-knowledge.md, row 1); AP is 43.7 %; de as for detection",
+   "holdings": [
+    {
+     "label": "C-ArmLSpine cases",
+     "persons": 149,
+     "kind": "real C-arm frames",
+     "reach": "held",
+     "source": "data/sources/carmlspine.json",
+     "note": "level truth from two automatic labellers; 149 a record, not a final value"
+    },
+    {
+     "label": "BUU-LSPINE persons",
+     "persons": 3600,
+     "kind": "real films with levels",
+     "reach": "held",
+     "source": "data/sources/buu_lspine.json",
+     "note": "3,600; an older reading of 1,200 is refuted (contradictions page, datasets row 14)"
+    },
+    {
+     "label": "NHANES II landmarked persons",
+     "persons": 364,
+     "kind": "real films with landmarks",
+     "reach": "held",
+     "source": "data/sources/nhanes2_annotated.json",
+     "note": ""
+    },
+    {
+     "label": "MrOS men",
+     "persons": 5994,
+     "kind": "real films, Genant grades on named levels",
+     "reach": "to get",
+     "source": "data/sources/mros_lateral_spine.json",
+     "note": ""
+    },
+    {
+     "label": "SOF women",
+     "persons": 9700,
+     "kind": "real films, Genant grades on named levels",
+     "reach": "to get",
+     "source": "data/sources/sof_lateral_spine.json",
+     "note": "about 9,700"
+    },
+    {
+     "label": "Bournemouth cervical people",
+     "persons": 63,
+     "kind": "real cine with named corners",
+     "reach": "to get",
+     "source": "data/sources/bournemouth_cervical_qf.json",
+     "note": ""
+    }
+   ]
+  },
+  "transitional": {
+   "title": "Transitional naming: an L6 or T13 named right on a real frame",
+   "unit": "carriers (persons)",
+   "defaults": {
+    "mode": "bound",
+    "p": 0.95,
+    "target": 0.85,
+    "alpha": 0.05,
+    "power": 0.8,
+    "m": 1,
+    "de": 1
+   },
+   "defaults_source": "target: the pre-stated variant sensitivity lower bound of 85 % (artifacts/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay/); p: the planning value the record assumed (95 to 99 %); the measured render L6 recall is 56.1 to 72.4 %",
+   "holdings": [
+    {
+     "label": "C-ArmLSpine real L6 persons",
+     "persons": 3,
+     "kind": "real C-arm frames",
+     "reach": "held",
+     "source": "data/sources/carmlspine.json",
+     "note": "the frozen test persons"
+    },
+    {
+     "label": "COBRA2026 unverified at-risk persons",
+     "persons": 7,
+     "kind": "real projections",
+     "reach": "held",
+     "source": "artifacts/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay/",
+     "note": "two-labeller calls, unverified"
+    },
+    {
+     "label": "CT at-risk test persons",
+     "persons": 51,
+     "kind": "CT, not frames",
+     "reach": "held",
+     "source": "artifacts/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay/",
+     "note": "L6 43, sacralised or four lumbar 5, T13 3"
+    }
+   ]
+  },
+  "counting": {
+   "title": "Counting exactness: the whole column counted right in a person",
+   "unit": "persons",
+   "defaults": {
+    "mode": "bound",
+    "p": 0.95,
+    "target": 0.9,
+    "alpha": 0.05,
+    "power": 0.8,
+    "m": 1,
+    "de": 1
+   },
+   "defaults_source": "target: paper 1's exact-level Wilson lower bound of 90 % (artifacts/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay/); p: a planning value of 95 %, the low end of the record's 95 to 99 %",
+   "holdings": [
+    {
+     "label": "CTSpinoPelvic1K countable people",
+     "persons": 789,
+     "kind": "CT",
+     "reach": "held",
+     "source": "artifacts/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay/",
+     "note": "lumbosacral junction countable"
+    },
+    {
+     "label": "TotalSegmentator v2 countable people",
+     "persons": 483,
+     "kind": "CT",
+     "reach": "held",
+     "source": "artifacts/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay/",
+     "note": ""
+    },
+    {
+     "label": "COBRA2026 countable people",
+     "persons": 435,
+     "kind": "CT with projections",
+     "reach": "held",
+     "source": "artifacts/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay/",
+     "note": ""
+    },
+    {
+     "label": "Screened acquisition collections",
+     "persons": 10060,
+     "kind": "CT",
+     "reach": "held",
+     "source": "artifacts/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay/",
+     "note": "about 10,060"
+    },
+    {
+     "label": "C-ArmLSpine cases",
+     "persons": 149,
+     "kind": "real C-arm frames",
+     "reach": "held",
+     "source": "data/sources/carmlspine.json",
+     "note": "lumbar-only CBCT, so no whole-column count (artifacts/research-directions-from-the-data-holding-kcyckb/)"
+    }
+   ]
+  },
+  "anomaly": {
+   "title": "Anomaly classification: a transitional spine told from an ordinary one",
+   "unit": "carriers (persons)",
+   "defaults": {
+    "mode": "compare",
+    "p": 0.9,
+    "p2": 0.7,
+    "alpha": 0.05,
+    "power": 0.8,
+    "m": 1,
+    "de": 1
+   },
+   "defaults_source": "p and p2: illustrative, a 90 % against a 70 % rate; the record's transitional figures are 89.9 % ordinary against 49.9 % anomalous film windows (artifacts/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay/)",
+   "holdings": [
+    {
+     "label": "Registry L6 persons",
+     "persons": 146,
+     "kind": "CT",
+     "reach": "held",
+     "source": "artifacts/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay/",
+     "note": "registry calls, mostly unverified"
+    },
+    {
+     "label": "Registry T13 persons",
+     "persons": 14,
+     "kind": "CT",
+     "reach": "held",
+     "source": "artifacts/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay/",
+     "note": ""
+    },
+    {
+     "label": "CTSpinoPelvic1K L6 cases",
+     "persons": 18,
+     "kind": "CT",
+     "reach": "held",
+     "source": "data/sources/ctspinopelvic1k.json",
+     "note": "18 by release label; 16, 22 or 29 by other counts"
+    },
+    {
+     "label": "BUU-LSPINE flagged anomalous films",
+     "persons": 144,
+     "kind": "real films",
+     "reach": "held",
+     "source": "artifacts/research-directions-from-the-data-holding-kcyckb/",
+     "note": "by the flag table"
+    },
+    {
+     "label": "C-ArmLSpine real L6 persons",
+     "persons": 3,
+     "kind": "real C-arm frames",
+     "reach": "held",
+     "source": "data/sources/carmlspine.json",
+     "note": ""
+    }
+   ]
+  }
+ }
+}

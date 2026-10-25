@@ -6,9 +6,21 @@ docs/REAL_XRAY_DATASETS_SPEC.md): `images/<split>/<stem>.png`, `meta/<stem>.json
 the device, the view and the boxes with their level names. This tool reads one bank, hashes every
 frame, and writes the shard `<grid root>/shards/<date>-<12 hex>/`: each frame as `<aa>/<sha256>.png`
 (schwingnet.catalog.frame_path), the manifest in the shape schwingnet.catalog.ShardManifest, and
-INGEST.json with the counts. The shard's name is its content, so the same bank ingested twice is
-the same shard and the second run writes nothing; a bank that changed is a new shard that names the
-old one as superseded. Nothing is deleted and nothing outside the shard is written.
+INGEST.json with the counts. The shard's name is its content, so the same bank ingested twice is the
+same shard and the second run writes nothing; a bank that changed is a new shard that names the old
+one as superseded. Nothing is deleted and nothing outside the shard is written, but for the staging
+folders a killed ingest left behind, which are cleared once they are older than the stage's time
+limit, and the reuse notes below. Reuse does not depend on the date or the commit (#260): where the
+source's current shard, or one no other shard supersedes, holds exactly the manifest this bank
+makes, apart from the date, the commit and what it supersedes, the run answers "already there" with
+that shard and cuts no dated twin; and where an earlier run, of a bank whose every file had the same
+path, size and modification time, with the same settings, the same frozen persons, the same registry
+entry and the same ingest code, noted its report under `<grid root>/.reuse/`, and the shard
+that note names is still one no other supersedes, the run reads no frame of the bank at all and
+answers from the note, checking only that every file the manifest names is in place. A bank changed
+in any file, a map added or a frame removed, is read again. A frame of more than 8 bits of grey is
+refused by name, since the trainer's 8-bit reading would clip it white and tools/bank.py windows it;
+the bank is made again.
 
 Before anything is written the frames are checked: a frame's bytes seen twice in the bank under
 one person count once (the second stem is reported as a duplicate, never silently kept, since two
@@ -18,6 +30,22 @@ the duplicates too, is refused; the plan lists the frozen persons of the source 
 showed, so a case spelt otherwise than the frozen list spells it is seen before a shard is cut; and a
 box with no trusted level (null in the bank) is kept as a frame fact and dropped as a label, as the
 spec says, so a detector can still train on it while no level score counts it.
+
+A frame may bring a projected level map (#228), the 3D prior the trainer's prior block learns
+from: the meta names it as `level_map`, a path inside the bank, with `level_map_from` saying
+whether the render's own geometry (`render`) or a pose registered to a real frame (`registered`)
+projected it. The map is an 8-bit greyscale PNG of the frame's own size, 0 where no vertebra is
+and 1 to 27 for the catalog's levels in order (schwingnet.catalog.LEVELS), decoded here with the
+standard library and refused by name where it is anything else; it rides in the shard at its own
+content address beside the frame, and the manifest's item carries its path, digest, projector and
+labeller.
+A frame without one is as before, and a manifest whose items carry none is byte for byte the
+manifest this tool wrote before maps existed, so a bank already ingested reads as unchanged. A map
+added to a bank already ingested changes the manifest and not the shard's name, which is the
+frames' hashes alone, so it is ingested under a new date with `--supersedes latest`, as a bank that
+grew is; the same date is refused, since a shard of that name is there with another manifest. A
+duplicate frame's map, where the kept copy of the bytes carries none or another, is named in the
+report's duplicates as level_map_dropped.
 
     pixi run --locked python tools/ingest.py plan --bank <dir> --source carmlspine --kind train
     pixi run --locked python tools/ingest.py run --bank <dir> --source carmlspine --kind train \\
@@ -48,6 +76,8 @@ import shutil
 import struct
 import sys
 import tempfile
+import time
+import zlib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -55,10 +85,12 @@ sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "tools"))
 sys.path.insert(0, str(ROOT / "vendor" / "beethoven-qa" / "src"))
 
+import bank as bank_tool  # noqa: E402  (tools/bank.py, whose listing of a folder the reuse key is made from)
 import catalog as catalog_tool  # noqa: E402  (tools/catalog.py, the reading and writing around the rules)
 from beethoven_qa.contracts import ViolationError  # noqa: E402
 from schwingnet.catalog import (  # noqa: E402
     LEVELS,
+    MANIFEST_SCHEMA,
     DeviceClass,
     Item,
     Modality,
@@ -73,8 +105,17 @@ from schwingnet.catalog import (  # noqa: E402
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 MANIFEST = "MANIFEST.json"
 REPORT = "INGEST.json"
+REUSE = ".reuse"
+# A staging folder older than the bank stage's time limit (two days) and a margin is a killed
+# ingest's, never one still being filled.
+STALE_STAGING_SECONDS = 3 * 24 * 3600
+# What may differ between two manifests of the same frames with nothing else changed.
+CIRCUMSTANCE = ("name", "ingest_date", "code_commit", "supersedes")
 # What a bank's meta calls a level, mapped onto the catalog's 27 classes where the spelling differs.
 LEVEL_NAMES = {"S1": "sacrum", "Sacrum": "sacrum", "SACRUM": "sacrum"}
+# The meta's keys for a frame's projected level map and what projected it (the module docstring).
+MAP_KEY, MAP_FROM_KEY = "level_map", "level_map_from"
+PROJECTORS = ("render", "registered")
 
 
 class IngestError(Exception):
@@ -82,13 +123,154 @@ class IngestError(Exception):
 
 
 def png_size(data):
-    """The width and height of a PNG from its header, the only thing of the image this tool reads."""
-    if len(data) < 24 or data[:8] != PNG_SIGNATURE or data[12:16] != b"IHDR":
+    """The width and height of a PNG from its header, the only thing of a frame this tool reads;
+    a file shorter than a whole IHDR chunk, 33 bytes, or whose IHDR is not the 13 bytes the format
+    gives it, is no PNG, so every later read of the header finds its byte where it belongs."""
+    if len(data) < 33 or data[:8] != PNG_SIGNATURE or data[8:16] != b"\x00\x00\x00\x0dIHDR":
         raise IngestError("not a PNG")
     width, height = struct.unpack(">II", data[16:24])
     if width == 0 or height == 0:
         raise IngestError("a PNG of zero size")
     return width, height
+
+
+def refuse_wide_grey(data):
+    """A frame of 16 bits of grey (colour type 0) is refused by name: the trainer's image library
+    reads it as 16-bit integers and its conversion to 8-bit grey clips every value above 255, so
+    the frame would train white (#260); tools/bank.py windows such a frame to 8 bits. Sixteen bits
+    of colour, or of grey with alpha, the library reads at 8 bits a channel, which is no clip."""
+    if data[24] == 16 and data[25] == 0:
+        raise IngestError("a 16-bit grey frame, which the trainer's 8-bit reading clips white; bank it"
+                          " again with tools/bank.py, which windows it to 8 bits (#260)")
+
+
+def png_chunks(data):
+    """Each chunk's type and bytes, in order up to IEND, each whole and under its own checksum, so
+    a map this tool keeps is one the trainer's image library reads too: Pillow checks the checksums
+    of the chunks before the first IDAT and stops at IEND, and this tool holds every chunk to its
+    checksum, which is stricter; the signature was checked by png_size."""
+    at = 8
+    while at + 12 <= len(data):
+        length = struct.unpack(">I", data[at : at + 4])[0]
+        kind = data[at + 4 : at + 8]
+        if at + 12 + length > len(data):
+            raise IngestError(f"the PNG's {kind.decode('ascii', 'replace')} chunk is cut short")
+        body = data[at + 8 : at + 8 + length]
+        if struct.unpack(">I", data[at + 8 + length : at + 12 + length])[0] != zlib.crc32(kind + body) & 0xFFFFFFFF:
+            raise IngestError(f"the PNG's {kind.decode('ascii', 'replace')} chunk fails its checksum")
+        yield kind, body
+        if kind == b"IEND":
+            return
+        at += 12 + length
+
+
+def paeth(left, up, up_left):
+    """The PNG Paeth predictor: whichever neighbour is nearest the gradient's estimate."""
+    estimate = left + up - up_left
+    near_left, near_up, near_up_left = abs(estimate - left), abs(estimate - up), abs(estimate - up_left)
+    if near_left <= near_up and near_left <= near_up_left:
+        return left
+    return up if near_up <= near_up_left else up_left
+
+
+def unfiltered(raw, width, height):
+    """The rows of one-byte pixels under the five PNG filters, each row undone against the last."""
+    stride = width + 1
+    if len(raw) != stride * height:
+        raise IngestError("the PNG's pixel data is not one byte per pixel over its size")
+    rows, previous = [], bytes(width)
+    for y in range(height):
+        kind, line = raw[y * stride], bytearray(raw[y * stride + 1 : (y + 1) * stride])
+        if kind == 1:
+            for x in range(1, width):
+                line[x] = (line[x] + line[x - 1]) & 255
+        elif kind == 2:
+            line = bytearray((a + b) & 255 for a, b in zip(line, previous, strict=True))
+        elif kind == 3:
+            for x in range(width):
+                line[x] = (line[x] + (((line[x - 1] if x else 0) + previous[x]) >> 1)) & 255
+        elif kind == 4:
+            for x in range(width):
+                left, up_left = (line[x - 1], previous[x - 1]) if x else (0, 0)
+                line[x] = (line[x] + paeth(left, previous[x], up_left)) & 255
+        elif kind != 0:
+            raise IngestError(f"a PNG filter type {kind} does not exist")
+        previous = bytes(line)
+        rows.append(previous)
+    return rows
+
+
+def png_grey_rows(data):
+    """The pixel rows of an 8-bit greyscale PNG without interlace, which is what a level map is,
+    decoded with the standard library, since this tool runs where no image library is; any other
+    PNG is refused by name rather than guessed at."""
+    width, height = png_size(data)
+    depth, colour, compression, filtering, interlace = data[24:29]
+    if (depth, colour, compression, filtering, interlace) != (8, 0, 0, 0, 0):
+        raise IngestError(
+            f"a level map is an 8-bit greyscale PNG without interlace, compression method 0 and filter"
+            f" method 0, not bit depth {depth}, colour type {colour}, compression {compression},"
+            f" filter {filtering}, interlace {interlace}"
+        )
+    bodies, closed = [], False
+    for kind, body in png_chunks(data):
+        if kind == b"IDAT":
+            if closed:
+                raise IngestError("the PNG's IDAT chunks are not consecutive")
+            bodies.append(body)
+        elif bodies:
+            # The format keeps the IDAT chunks together, and Pillow stops reading pixel data at
+            # the first other chunk after them, so a map with a chunk between them is refused here.
+            closed = True
+    try:
+        raw = zlib.decompress(b"".join(bodies))
+    except zlib.error as error:
+        raise IngestError(f"the PNG's pixel data does not decompress: {error}") from error
+    return unfiltered(raw, width, height)
+
+
+def check_map(data, width, height):
+    """A level map's bytes are the frame's own size with every value 0 or a level's code."""
+    rows = png_grey_rows(data)
+    if (len(rows[0]), len(rows)) != (width, height):
+        raise IngestError(
+            f"the level map is {len(rows[0])}x{len(rows)}, the frame {width}x{height}"
+        )
+    highest = max(max(row) for row in rows)
+    if highest > len(LEVELS):
+        raise IngestError(f"the level map holds the value {highest}; a level's code is 1 to {len(LEVELS)}")
+
+
+def map_file(meta, bank):
+    """The level map's path inside the bank and what projected it, where the meta names one."""
+    named = meta.get(MAP_KEY)
+    if named is None:
+        return None, None
+    parts = Path(named).parts if isinstance(named, str) and named else ()
+    if not parts or Path(named).is_absolute() or ".." in parts:
+        raise IngestError(f"meta's {MAP_KEY} is not a path inside the bank")
+    projector = meta.get(MAP_FROM_KEY)
+    if projector not in PROJECTORS:
+        raise IngestError(f"meta's {MAP_FROM_KEY} is {projector!r}, not one of {', '.join(PROJECTORS)}")
+    return bank / named, projector
+
+
+def level_map_of(meta, bank, width, height, labeller):
+    """The frame's projected level map as the manifest's row, checked against the frame, and the
+    file it comes from; a pair of None where the meta names none."""
+    path, projector = map_file(meta, bank)
+    if path is None:
+        return None, None
+    try:
+        data = path.read_bytes()
+    except OSError as error:
+        raise IngestError(f"the level map {path.name}: {error}") from error
+    try:
+        check_map(data, width, height)
+    except IngestError as error:
+        raise IngestError(f"the level map {path.name}: {error}") from error
+    sha = hashlib.sha256(data).hexdigest()
+    return {"path": frame_path(sha, "png"), "sha256": sha, "projector": projector, "labeller": labeller}, path
 
 
 def unit_box(box, width, height):
@@ -185,7 +367,7 @@ def exposure_of(meta):
     return {"kvp": kvp, "mas": device.get("mas"), "px_mm": meta.get("px_mm")}
 
 
-def item_of(meta, sha, extension, width, height, settings):
+def item_of(meta, sha, extension, width, height, settings, level_map=None):
     """One manifest row from one frame's meta; the person is the bank's case under the key rule."""
     case = meta.get("case")
     if not case:
@@ -193,6 +375,7 @@ def item_of(meta, sha, extension, width, height, settings):
     lat_from_ap_deg, gantry_deg = view_of(meta)
     labels, dropped = labels_of(meta, width, height, settings.labeller)
     row = {
+        "level_map": level_map,
         "path": frame_path(sha, extension),
         "sha256": sha,
         "person": f"{settings.person_prefix}:{case}",
@@ -223,14 +406,18 @@ def frames_of(bank, split):
         yield image.stem, image, meta
 
 
-def read_frame(image, meta_path, settings):
+def read_frame(image, meta_path, settings, bank):
+    """The frame's item, how many boxes it dropped, and the level map's file where it has one."""
     data = image.read_bytes()
     sha = hashlib.sha256(data).hexdigest()
     width, height = png_size(data)
+    refuse_wide_grey(data)
     meta = json.loads(meta_path.read_text(encoding="utf-8"))
     if not isinstance(meta, dict):
         raise IngestError(f"{meta_path.name} is not a JSON object")
-    return item_of(meta, sha, image.suffix.lstrip(".").lower(), width, height, settings)
+    level_map, map_path = level_map_of(meta, bank, width, height, settings.labeller)
+    item, dropped = item_of(meta, sha, image.suffix.lstrip(".").lower(), width, height, settings, level_map)
+    return item, dropped, map_path
 
 
 def plan_shard(bank, settings, inputs):
@@ -238,7 +425,7 @@ def plan_shard(bank, settings, inputs):
     kept, sources, duplicates, dropped, persons = {}, {}, [], 0, set()
     first_seen, left_out = {}, set()
     for stem, image, meta_path in frames_of(bank, settings.split):
-        item, dropped_here = checked_frame(image, meta_path, settings)
+        item, dropped_here, map_path = checked_frame(image, meta_path, settings, bank)
         # The same bytes under two persons are refused across the whole bank, before --persons
         # leaves any frame out, so splitting a bank in two never hides one.
         first_item, first_image = first_seen.setdefault(item.sha256, (item, image))
@@ -249,9 +436,11 @@ def plan_shard(bank, settings, inputs):
         dropped += dropped_here
         persons.add(item.person)
         if item.sha256 in kept:
-            duplicates.append({"stem": stem, "same_bytes_as": sources[item.sha256].name, "sha256": item.sha256})
+            duplicates.append(duplicate_entry(stem, item, kept[item.sha256], sources[item.sha256]))
             continue
         kept[item.sha256], sources[item.sha256] = item, image
+        if item.level_map:
+            sources[item.level_map.sha256] = map_path
     # Every person the bank named is checked, the duplicates' too, never only the kept items'.
     refuse_test_persons(frozenset(persons), settings, inputs)
     if not kept:
@@ -260,9 +449,19 @@ def plan_shard(bank, settings, inputs):
     return items, sources, shard_report(items, duplicates, dropped, persons | left_out, left_out, settings, inputs)
 
 
-def checked_frame(image, meta_path, settings):
+def duplicate_entry(stem, item, first, first_image):
+    """The report's line on a duplicate frame: which kept stem holds its bytes and, where it
+    brought a level map the kept copy does not carry, that map's digest, so a registered map
+    attached to the second stem of a repeated frame is not lost without a word."""
+    entry = {"stem": stem, "same_bytes_as": first_image.name, "sha256": item.sha256}
+    if item.level_map and (first.level_map is None or first.level_map.sha256 != item.level_map.sha256):
+        entry["level_map_dropped"] = item.level_map.sha256
+    return entry
+
+
+def checked_frame(image, meta_path, settings, bank):
     try:
-        return read_frame(image, meta_path, settings)
+        return read_frame(image, meta_path, settings, bank)
     except (IngestError, ValueError, KeyError) as error:
         raise IngestError(f"{image}: {error}") from error
 
@@ -279,7 +478,8 @@ def shard_report(items, duplicates, dropped, seen, left_out, settings, inputs):
             "persons": len({i.person for i in items}),
             "persons_filter": settings.persons, "persons_left_out": len(left_out),
             "frozen_persons_not_seen": frozen_not_seen(frozenset(seen), settings, inputs),
-            "labels": sum(len(i.labels) for i in items)}
+            "labels": sum(len(i.labels) for i in items),
+            "level_maps": sum(1 for i in items if i.level_map)}
 
 
 def refuse_two_persons(item, first, first_image, image):
@@ -305,12 +505,145 @@ def frozen_not_seen(persons, settings, inputs):
     return sorted(p for p in inputs.test_persons if p.startswith(prefix) and p not in persons)
 
 
+def shard_manifests(grid_root):
+    """Every shard's MANIFEST.json under `<grid root>/shards/`, in name order, never one inside a
+    folder whose name starts with a dot, which is a staging folder and no shard (pathlib's glob
+    matches such names)."""
+    found = Path(grid_root).glob("shards/*/" + MANIFEST)
+    return sorted(path for path in found if not path.parent.name.startswith("."))
+
+
+def heads(grid_root):
+    """Every shard of the source that no other shard there supersedes, by name, with its folder
+    and its manifest as written; a manifest that cannot be read is refused, as latest_shard does."""
+    manifests = {}
+    for path in shard_manifests(grid_root):
+        try:
+            manifests[path.parent] = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as error:
+            raise IngestError(f"{path}: not a readable manifest: {error}") from error
+    superseded = {data.get("supersedes") for data in manifests.values()}
+    return sorted((data["name"], folder, data) for folder, data in manifests.items() if data["name"] not in superseded)
+
+
+def same_frames_and_facts(one, other):
+    """Whether two manifests hold the same frames, labels and facts, whatever their date, commit
+    and the shard they supersede, which are circumstances of the run and not the shard's content."""
+    def content(data):
+        return {key: value for key, value in data.items() if key not in CIRCUMSTANCE}
+    return content(one) == content(other)
+
+
+def equivalent_head(grid_root, data):
+    """A shard no other supersedes whose manifest is this one in all but its circumstances, the
+    newest by name where there are several; None where there is none. A shard that something
+    supersedes is never reused, since the catalog reads only the head of a chain."""
+    found = [(name, existing) for name, _, existing in heads(grid_root) if same_frames_and_facts(existing, data)]
+    return found[-1][1] if found else None
+
+
+def clear_stale_staging(grid_root, now=None):
+    """Remove the staging folders a killed ingest left under shards/, those older than the stage's
+    time limit; the number removed."""
+    now = time.time() if now is None else now
+    cleared = 0
+    for folder in sorted(Path(grid_root).glob("shards/.ingest-*")):
+        if folder.is_dir() and now - folder.stat().st_mtime > STALE_STAGING_SECONDS:
+            shutil.rmtree(folder, ignore_errors=True)
+            cleared += not folder.exists()
+    return cleared
+
+
+def file_sha256(path):
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def reuse_key(bank, settings, inputs):
+    """The hash of everything a shard's manifest follows from: every file of the bank by its path,
+    size and modification time (tools/bank.py's listing, the bank's own stamp left out), the
+    settings, the frozen persons, the source's registry entry and the ingest code; None for an
+    empty or missing bank, which is read and refused. A bank changed in any file, a level map
+    added, a frame removed or a meta edited, has another key and is read again."""
+    listing = bank_tool.bank_listing(bank)
+    if not listing:
+        return None
+    entry = inputs.registry[settings.source]
+    facts = {
+        "bank_listing_sha256": bank_tool.listing_sha256(listing),
+        "settings": [settings.source, settings.kind.value, settings.split, settings.persons, settings.person_prefix,
+                     settings.labeller, settings.modality.value, settings.device_class.value],
+        "test_persons_sha256": inputs.test_persons_sha256,
+        "registry_entry": json.loads(entry.model_dump_json()),
+        "code_sha256": [file_sha256(Path(__file__)), file_sha256(ROOT / "src" / "schwingnet" / "catalog.py")],
+    }
+    return hashlib.sha256(json.dumps(facts, sort_keys=True).encode("utf-8")).hexdigest()
+
+
+def reuse_note(grid_root, key):
+    return Path(grid_root) / REUSE / f"{key}.json"
+
+
+def manifest_sha256(data):
+    return hashlib.sha256(json.dumps(data, sort_keys=True).encode("utf-8")).hexdigest()
+
+
+def record_reuse(grid_root, key, report, folder):
+    """Note the report a run with this key gave and the manifest its shard holds, in a dot folder
+    of the source's own beside shards/, which therefore holds shards alone, so the next run with
+    the same key is answered without reading the bank. It is written for a shard found already there as for one written,
+    so a shard cut before the note existed, or under another key, is answered from the second run
+    on."""
+    data = json.loads((Path(folder) / MANIFEST).read_text(encoding="utf-8"))
+    note = {"key": key, "manifest_sha256": manifest_sha256(data), "report": report}
+    path = reuse_note(grid_root, key)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    part = path.with_name(f"{path.name}.{os.getpid()}.part")
+    part.write_text(json.dumps(note, indent=1, sort_keys=True) + "\n", encoding="utf-8")
+    os.replace(part, path)
+
+
+def reused_by_stamp(grid_root, key):
+    """The report a run with the same key gave, answered without reading the bank, where the
+    shard it names is still one no other supersedes and holds the manifest it held then; None
+    otherwise. Every file the shard's manifest names must be in place, which costs a look at
+    each and no read."""
+    if key is None:
+        return None
+    try:
+        note = json.loads(reuse_note(grid_root, key).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    report = note.get("report") if isinstance(note, dict) else None
+    if not isinstance(report, dict) or note.get("key") != key:
+        return None
+    found = {name: (folder, data) for name, folder, data in heads(grid_root)}
+    if report.get("shard") not in found:
+        return None
+    folder, data = found[report["shard"]]
+    if manifest_sha256(data) != note.get("manifest_sha256"):
+        return None
+    manifest = ShardManifest.model_validate(data)
+    missing = [p for p in present_paths(manifest) if not (folder / p).is_file()]
+    if missing:
+        raise IngestError(f"{folder}: {len(missing)} files its manifest names are missing (first {missing[0]})")
+    report.update({"outcome": "already there", "verified": len(manifest.items), "folder": str(folder),
+                   "verified_by": "presence: the bank's files, the settings and the inputs are unchanged"})
+    return report
+
+
+def present_paths(manifest):
+    for item in manifest.items:
+        yield item.path
+        if item.level_map:
+            yield item.level_map.path
+
+
 def latest_shard(grid_root):
     """The head of the source's shard chain, with what it supersedes: the shard under
     `<grid root>/shards/` that none of the others there supersedes, the newest by name where the
     chain forked; a pair of None with no shard."""
     manifests = {}
-    for path in sorted(Path(grid_root).glob("shards/*/" + MANIFEST)):
+    for path in shard_manifests(grid_root):
         try:
             data = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, ValueError) as error:
@@ -328,10 +661,36 @@ def manifest_of(items, settings):
         # it keeps what the head supersedes; a changed bank supersedes the head.
         head, head_supersedes = latest_shard(settings.grid_root)
         settings.supersedes = head_supersedes if head == name else head
-    data = {"schema_version": 1, "name": name, "source": settings.source, "kind": settings.kind.value,
+    rows = [item_record(i) for i in items]
+    schema = MANIFEST_SCHEMA if any(i.level_map for i in items) else 1
+    data = {"schema_version": schema, "name": name, "source": settings.source, "kind": settings.kind.value,
             "ingest_date": settings.date, "code_commit": settings.code_commit,
-            "supersedes": settings.supersedes, "items": [json.loads(i.model_dump_json()) for i in items]}
+            "supersedes": settings.supersedes, "items": rows}
     return ShardManifest.model_validate(data), data
+
+
+def item_record(item):
+    """The item as the manifest writes it: a frame without a level map carries no key for one, so
+    a shard ingested before maps existed (#228) is written byte for byte as it was, and a bank
+    ingested again is "already there" and not a manifest that differs."""
+    record = json.loads(item.model_dump_json())
+    if record.get("level_map") is None:
+        record.pop("level_map", None)
+    return record
+
+
+def shard_files(items, sources):
+    """Every file the shard holds with where it comes from, each path once: the frames and, where
+    an item carries one, its level map; two frames may share one map's bytes, which is one file."""
+    seen = set()
+    for item in items:
+        pairs = [(item.path, sources[item.sha256])]
+        if item.level_map:
+            pairs.append((item.level_map.path, sources[item.level_map.sha256]))
+        for path, source in pairs:
+            if path not in seen:
+                seen.add(path)
+                yield path, source
 
 
 def write_shard(folder, items, sources, data, report):
@@ -346,10 +705,10 @@ def write_shard(folder, items, sources, data, report):
     staging = Path(tempfile.mkdtemp(dir=final.parent, prefix=f".ingest-{final.name}-"))
     try:
         os.chmod(staging, 0o755)  # mkdtemp makes it private; a shard is read by the whole lab
-        for item in items:
-            target = staging / item.path
+        for path, source in shard_files(items, sources):
+            target = staging / path
             target.parent.mkdir(exist_ok=True)
-            shutil.copyfile(sources[item.sha256], target)
+            shutil.copyfile(source, target)
             os.chmod(target, 0o444)
         (staging / MANIFEST).write_text(json.dumps(data, indent=1, sort_keys=True) + "\n", encoding="utf-8")
         (staging / REPORT).write_text(json.dumps(report, indent=1, sort_keys=True) + "\n", encoding="utf-8")
@@ -384,11 +743,16 @@ def finish_existing(final, data):
 
 
 def verify_shard(folder, manifest):
-    """Every frame of the manifest is in place with the bytes its name promises."""
+    """Every frame of the manifest, and every level map, is in place with the bytes its name
+    promises; the count returned is the frames'."""
     for item in manifest.items:
-        path = Path(folder) / item.path
-        if hashlib.sha256(path.read_bytes()).hexdigest() != item.sha256:
-            raise IngestError(f"{path}: the bytes do not match the name")
+        named = [(item.path, item.sha256)]
+        if item.level_map:
+            named.append((item.level_map.path, item.level_map.sha256))
+        for relative, sha in named:
+            path = Path(folder) / relative
+            if hashlib.sha256(path.read_bytes()).hexdigest() != sha:
+                raise IngestError(f"{path}: the bytes do not match the name")
     return len(manifest.items)
 
 
@@ -447,7 +811,7 @@ def parser():
         p.add_argument("--code-commit", required=True, help="the commit of the code that made the bank")
         p.add_argument("--supersedes", default=None, help="the shard this one replaces; 'latest' names the source's current one")
         p.add_argument("--person-prefix", default=None, help="the person key's prefix; the source id unless named")
-        p.add_argument("--labeller", default="projected", help="who drew the boxes, as the manifest records it")
+        p.add_argument("--labeller", default="projected", help="who drew the boxes and made the level maps, as the manifest records it")
         p.add_argument("--persons", default="all", choices=["all", "frozen", "unfrozen"],
                        help="only the frozen test persons' frames, only the others', or every frame")
         p.add_argument("--modality", default=None)
@@ -457,6 +821,46 @@ def parser():
     return top
 
 
+def ingest(args, settings, inputs, key, cleared, motion=None):
+    """Read the bank and plan the shard, or write it with `run`; the report. A shard already there
+    under another date or commit with the same content is the answer, and no twin is cut."""
+    items, sources, report = plan_shard(Path(args.bank), settings, inputs)
+    manifest, data = manifest_of(items, settings)
+    existing = equivalent_head(settings.grid_root, data)
+    if existing is not None:
+        manifest, data = ShardManifest.model_validate(existing), existing
+    folder = shard_folder(settings.grid_root, manifest.name)
+    report.update({"shard": manifest.name, "folder": folder, "kind": manifest.kind.value})
+    if key is not None:
+        report["reuse_key"] = key
+    if args.command == "run":
+        report["outcome"] = write_shard(folder, items, sources, data, report)
+        report["verified"] = verify_shard(folder, manifest)
+        report["staging_cleared"] = cleared
+        if key is not None:
+            note_reuse(Path(args.bank), motion, settings.grid_root, key, report, folder)
+    return report
+
+
+def bank_motion_sha256(bank):
+    return bank_tool.listing_sha256(bank_tool.bank_motion(bank))
+
+
+def note_reuse(bank, motion, grid_root, key, report, folder):
+    """The note is a saving and no part of the shard: where it cannot be written, or the bank moved
+    while it was read, an entry of it added, removed, renamed or written, even one put back as it
+    was, so the shard may hold another state of it than the key names, the run says so and the next
+    one reads the bank. The motion is taken before the key's listing and again here; the code the
+    key hashes is the code this run ran, so a merge landing meanwhile changes nothing here."""
+    try:
+        if motion is None or bank_motion_sha256(bank) != motion:
+            report["reuse_note"] = "not written: the bank changed while it was read"
+            return
+        record_reuse(grid_root, key, report, folder)
+    except (OSError, ValueError) as error:
+        report["reuse_note"] = f"not written: {error}"
+
+
 def main(argv=None):
     args = parser().parse_args(argv)
     try:
@@ -464,14 +868,15 @@ def main(argv=None):
         if args.source not in inputs.registry:
             raise IngestError(f"{args.source} has no registry entry")
         settings = Settings(args, inputs.registry[args.source])
-        items, sources, report = plan_shard(Path(args.bank), settings, inputs)
-        manifest, data = manifest_of(items, settings)
-        folder = shard_folder(settings.grid_root, manifest.name)
-        report.update({"shard": manifest.name, "folder": folder, "kind": manifest.kind.value})
-        if args.command == "run":
-            report["outcome"] = write_shard(folder, items, sources, data, report)
-            report["verified"] = verify_shard(folder, manifest)
-        print(json.dumps(report, indent=1, sort_keys=True))
+        motion = bank_motion_sha256(args.bank) if args.command == "run" else None
+        key = reuse_key(args.bank, settings, inputs)
+        cleared = clear_stale_staging(settings.grid_root) if args.command == "run" else 0
+        reused = reused_by_stamp(settings.grid_root, key) if args.command == "run" else None
+        if reused is not None:
+            reused["staging_cleared"] = cleared
+            print(json.dumps(reused, indent=1, sort_keys=True))
+            return 0
+        print(json.dumps(ingest(args, settings, inputs, key, cleared, motion), indent=1, sort_keys=True))
         return 0
     except (catalog_tool.CatalogError, IngestError, OSError, ValueError, ViolationError) as error:
         # A pydantic ValidationError is a ValueError; a ViolationError is a rule of the catalog

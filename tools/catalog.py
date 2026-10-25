@@ -14,7 +14,8 @@ A catalog is a store, one directory: `versions/` holds every version ever built,
 by its number and its content hash and made read-only the moment it is complete; `VERSIONS.jsonl`
 is the append-only log, one line per version with its parent and its accounting; `CURRENT` names
 the latest. Nothing is rewritten: a build or an embedding load that changes anything is a new
-version, one that changes nothing is reported and leaves the store as it was, and a reader opens a
+version, one that changes nothing is reported and leaves the store as it was (for a build, nothing
+but the code commit that ran it, #260, so a merge to main moves no version), and a reader opens a
 version with SQLite's read-only, immutable flags, so it can neither write nor lock it.
 
     pixi run --locked python tools/catalog.py check
@@ -34,6 +35,7 @@ import argparse
 import contextlib
 import fcntl
 import hashlib
+import itertools
 import json
 import math
 import os
@@ -83,7 +85,7 @@ from schwingnet.catalog import (  # the path above makes the package importable
 REGISTRY = ROOT / "data" / "registry"
 TEST_PERSONS = ROOT / "data" / "splits" / "test-persons.json"
 RULE = ROOT / "data" / "splits" / "rule.json"
-CATALOG_SCHEMA = 1
+CATALOG_SCHEMA = 2  # 2 since #228: item carries level_map and level_map_from, null for a frame without one
 # PRAGMA application_id of every version file: "SCWN", so `file` and SQLite's own tools name it.
 APPLICATION_ID = 0x5343574E
 TABLES = ("build", "source", "shard", "person", "item", "label", "embedding")
@@ -153,6 +155,8 @@ CREATE TABLE item (
     view TEXT,
     acquired TEXT,
     label_count INTEGER NOT NULL,
+    level_map TEXT,
+    level_map_from TEXT,
     PRIMARY KEY (shard, sha256)
 );
 CREATE TABLE label (
@@ -187,7 +191,7 @@ CREATE INDEX label_region ON label(region);
 ITEM_COLUMNS = (
     "sha256", "shard", "path", "source", "person", "part", "modality", "device_class", "make",
     "model", "detector", "kvp", "mas", "px_mm", "lat_from_ap_deg", "gantry_deg", "view",
-    "acquired", "label_count",
+    "acquired", "label_count", "level_map", "level_map_from",
 )
 
 
@@ -306,11 +310,16 @@ def refuse_superseded(loaded):
 
 def item_row(item, manifest, part):
     view = None if item.lat_from_ap_deg is None else view_band(item.lat_from_ap_deg).value
+    # The projected level map, where the frame has one (#228): its path in the shard and whether
+    # the render's own geometry or a registered pose projected it; the trainer's prior block reads
+    # the path beside the frame's as a crop reads its frame.
+    level_map = item.level_map
     return (
         item.sha256, manifest.name, item.path, manifest.source, item.person, part.value,
         item.modality.value, item.device.device_class.value, item.device.make, item.device.model,
         item.device.detector, item.exposure.kvp, item.exposure.mas, item.exposure.px_mm,
         item.lat_from_ap_deg, item.gantry_deg, view, item.acquired, len(item.labels),
+        level_map.path if level_map else None, level_map.projector if level_map else None,
     )
 
 
@@ -525,10 +534,14 @@ def store_lock(store):
             fcntl.lockf(handle, fcntl.LOCK_UN)
 
 
-def write_version(store, writer, reason, code_commit=None, as_of=None):
+def write_version(store, writer, reason, code_commit=None, as_of=None, same=None):
     """Write a new version through `writer(path)` and record it; a version whose bytes the
-    latest already has is dropped and the latest returned, so the store never holds two of
-    one thing. Returns the record and whether it is new."""
+    latest already has, or that `same(fresh, latest file)` calls the latest's equal, is dropped
+    and the latest returned, so the store never holds two of one thing, and CURRENT is made to
+    name it, so a store a killed build left half written is mended by the next build as it was
+    before #260. A log another writer moved meanwhile is refused first, as it is for a new version,
+    so CURRENT is not sent back to an older one; only the lock closes the moment between that look
+    and CURRENT's write. Returns the record and whether it is new."""
     folder, log, current = store_paths(store)
     folder.mkdir(parents=True, exist_ok=True)
     with store_lock(store):
@@ -538,7 +551,9 @@ def write_version(store, writer, reason, code_commit=None, as_of=None):
         try:
             writer(fresh)
             digest = file_sha256(fresh)
-            if latest is not None and latest.sha256 == digest:
+            if latest is not None and (latest.sha256 == digest or same_as_latest(same, fresh, folder, latest)):
+                refuse_moved_store(store, records)
+                point_current(current, latest)
                 return latest, False
             record = describe(fresh, len(records) + 1, digest, latest, reason, code_commit, as_of)
             refuse_moved_store(store, records)
@@ -565,12 +580,39 @@ def refuse_moved_store(store, records):
         raise CatalogError(f"{store}: another build landed while this one was written; build again")
 
 
+def same_as_latest(same, fresh, folder, latest):
+    """Whether `same` calls the fresh build the latest's equal, the latest read only where it is
+    in place with the bytes it was sealed with: a latest gone, replaced or unreadable is no equal,
+    and the build writes a new version, as every build did before #260."""
+    if same is None:
+        return False
+    try:
+        refuse_changed_file(folder / latest.file, latest.sha256)
+        return same(fresh, folder / latest.file)
+    except (OSError, CatalogError, sqlite3.Error):
+        return False
+
+
 def append_record(log, current, record):
     with log.open("a", encoding="utf-8") as handle:
         handle.write(record.model_dump_json(exclude_none=True) + "\n")
+    write_current(current, record)
+
+
+def write_current(current, record):
     point = current.with_name(current.name + ".new")
     point.write_text(record.file + "\n", encoding="utf-8")
     os.replace(point, current)
+
+
+def point_current(current, record):
+    """CURRENT names the record, written only where it names another or cannot be read."""
+    try:
+        named = current.read_text(encoding="utf-8").strip()
+    except OSError:
+        named = None
+    if named != record.file:
+        write_current(current, record)
 
 
 def seal(fresh, final):
@@ -591,7 +633,42 @@ def build(store, manifests, inputs, code_commit=None, as_of=None):
             stamp(db)
         finally:
             db.close()
-    return write_version(store, writer, "build", code_commit, as_of)
+    return write_version(store, writer, "build", code_commit, as_of, same=same_but_the_commit)
+
+
+def table_rows(db, table):
+    """A table's rows in their stored order, the build table's without the code commit, which
+    says what code ran the build and nothing of what the catalog holds."""
+    columns = [row[1] for row in db.execute(f'PRAGMA table_info("{table}")')]
+    if table == "build":
+        columns = [c for c in columns if c != "code_commit"]
+    listed = ", ".join(f'"{c}"' for c in columns)
+    return db.execute(f'SELECT {listed} FROM "{table}" ORDER BY rowid')
+
+
+def same_but_the_commit(one, other):
+    """Whether two catalog files hold the same schema, marks and rows in every table, the build
+    table's code commit apart (#260): every merge to main is a new commit, and a build of
+    unchanged shards on it is the same catalog, which must not move CURRENT or ask for a new
+    split check. Read row by row, so a large catalog is never held in memory."""
+    first = sqlite3.connect(file_uri(one, "mode=ro"), uri=True)
+    second = sqlite3.connect(file_uri(other, "mode=ro"), uri=True)
+    try:
+        marks = "SELECT * FROM pragma_application_id, pragma_user_version"
+        schema = "SELECT type, name, sql FROM sqlite_master ORDER BY type, name"
+        if first.execute(marks).fetchall() != second.execute(marks).fetchall():
+            return False
+        if first.execute(schema).fetchall() != second.execute(schema).fetchall():
+            return False
+        tables = [row[0] for row in first.execute("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")]
+        for table in tables:
+            pairs = itertools.zip_longest(table_rows(first, table), table_rows(second, table), fillvalue=None)
+            if any(a != b for a, b in pairs):
+                return False
+        return True
+    finally:
+        first.close()
+        second.close()
 
 
 def stamp(db):
@@ -611,7 +688,8 @@ def fill(db, manifests, inputs, code_commit):
     )
     # The manifests go in by shard name and by their resolved paths, so the order they were named
     # in and the directory they were named from change no byte of the file: the same facts give
-    # the same hash, which is what the dedupe against the latest version compares. That dedupe
+    # the same hash, which is what the dedupe against the latest version compares, the build
+    # table's code commit apart (same_but_the_commit). That dedupe
     # looks at the latest alone, on purpose: a build equal to an older version is still a new
     # version, since the log reads as a line of time and a step names what it read by number.
     loaded = sorted(((Path(path).resolve(), *load_manifest(path)) for path in manifests),

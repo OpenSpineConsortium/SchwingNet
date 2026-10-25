@@ -1,0 +1,401 @@
+"""tools/textbook_site.py lays the Artifact Textbook out as pages: one for
+every chapter of the plan and every artifact in the record, each chapter
+linking the artifacts it reads; a written narrative shown on its chapter's
+page and checked there against the concept ledger, a superseded value given
+without its disclaimer on its line flagged; what the book does not hold yet
+listed, a folder with no record, a record no chapter reads (beside the
+chapter that reads its cluster's canonical artifact), a record whose folder is
+gone and a chapter file the plan does not name; the owner's account names and
+a person named by title kept off the pages; each artifact opening on
+claude.ai, and one exported as a page copied into the site with its tree and
+shown on its own page in a sandboxed iframe, a Docs artifact keeping its
+links alone; and each figure a chapter places shown with its record's grade,
+status and source panel, Explore and Re-run, a button that opens the
+exported page of the artifact it is traced to, an interactive figure in
+place of its image, one with no record said to have none, and every figure
+listed with how far it is traced."""
+
+import json
+import os
+import subprocess
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "tools"))
+
+import textbook_site  # noqa: E402
+
+LONG_LINE = ("In the earliest record the figure was 98.2% exact level on whole lateral frames of the set, read "
+             "from the first page as it stood when the first page was made, before the second page revised the "
+             "count, recounted every frame it held and gave the figure that the record now keeps for the set, "
+             "and the first page was never read again after that revision, so the older figure is given here only "
+             "as a record, not a final value.")
+NARRATIVE = f"""# 01 One
+
+Label: schwingnet-internal. A test chapter.
+
+The first page gave 98.2% exact level on whole lateral frames of the set.
+
+The second page gives 97.4% exact level on whole lateral frames of the set.
+
+{LONG_LINE}
+
+The figures follow.
+
+![A figure](figures/01/a-figure.png)
+*Figure 1.1. A drawn figure. Source: [record](figures/01/a-figure.json).*
+
+![A moving figure](figures/01/a-moving-figure.png)
+*Figure 1.2. A figure one can move. Source: [record](figures/01/a-moving-figure.json).*
+
+![An untraced figure](figures/01/untraced.png)
+*Figure 1.3. A figure with no record yet.*
+"""
+
+
+def figure_record(fid, where, command=None, made_by=None, data=(), artifact="artifacts/second/"):
+    return {"id": fid, "title": f"Title of {fid}", "caption": f"Caption of {fid}, drawn for someacct.", "chapter": "01",
+            "grade": "Reported", "status": "a record, not a final value",
+            "source": {"kind": "artifact", "artifact": artifact, "artifact_url": None, "made_by": made_by,
+                       "commit": None, "data": list(data), "run": None, "notes": "Traced from the manifest."},
+            "explore": [{"label": "The artifact", "href": "artifacts/second/"},
+                        {"label": "The method", "href": "docs/method.md"}],
+            "rerun": {"where": where, "command": command, "cost": "one GPU job", "needs_owner_word": where == "grid"}}
+# No git of the test's runs gc or maintenance on its own, as tests/test_claim_skill.py says why.
+QUIET = {"gc.auto": "0", "gc.autoDetach": "false", "maintenance.auto": "false", "maintenance.autoDetach": "false",
+         "receive.autogc": "false"}
+GIT_ENV = {"GIT_AUTHOR_NAME": "Test", "GIT_AUTHOR_EMAIL": "test@example.invalid", "GIT_COMMITTER_NAME": "Test",
+           "GIT_COMMITTER_EMAIL": "test@example.invalid", "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": os.devnull,
+           "GIT_CONFIG_COUNT": str(len(QUIET)),
+           **{f"GIT_CONFIG_KEY_{i}": key for i, key in enumerate(QUIET)},
+           **{f"GIT_CONFIG_VALUE_{i}": value for i, value in enumerate(QUIET.values())}}
+
+
+def record(folder, title, date, **fields):
+    return {"repo": "SchwingNet", "folder": folder, "title": title, "link": f"https://claude.ai/artifact/{folder}",
+            "date": date, "kind": "page", "genre": "report", "confidentiality": "schwingnet-other",
+            "question": f"What does {title} answer?", "summary": f"{title} in brief.", "key_claims": [],
+            "numbers": [{"value": "98.2", "unit": "%", "n": 148, "interval": None, "context": "exact level"}], **fields}
+
+
+def write(path, data):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(data if isinstance(data, str) else json.dumps(data), encoding="utf-8")
+
+
+def git(root, *args):
+    return subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True, check=True,
+                          env={**os.environ, **GIT_ENV}).stdout.strip()
+
+
+def small_book(root):
+    """A repository with one chapter reading the canonical artifact, the artifact it superseded
+    read by no chapter, a folder the synthesis has not read, two artifacts that share a title, a
+    record whose folder is gone, a Docs artifact exported as index.md alone and a chapter file no
+    chapter of the plan names, committed, with two of its folders stamped as they were when their
+    records were read; the canonical artifact's export holds a nested file, a dotfile and a note."""
+    syn = root / "artifacts" / "_synthesis"
+    for name in ("clusters.md", "concepts.md", "contradictions.md", "table-of-contents.md"):
+        write(syn / name, f"# {name}\n\nSee [the second](../second/).\n")
+    write(syn / "contradictions" / "one.md", "# Contradictions: One\n\nRows.\n")
+    chapter = {"number": "01", "file": "docs/textbook/01-one.md", "title": "One", "purpose": "Settles one thing.",
+               "questions_answered": ["Why one?"], "artifacts_primary": ["SchwingNet/second"],
+               "artifacts_secondary": [], "repository_sources": [], "research_needed": "Nothing.",
+               "confidentiality": "schwingnet-internal"}
+    write(syn / "work" / "out" / "toc-hand.json",
+          {"preface": "The plan.", "parts": [{"label": "Part I", "title": "Orientation", "chapters": [chapter]}]})
+    shared = [{"title": "Shared", "relation": "builds on", "why": "It reads the shared figures."}]
+    write(syn / "inventory.json", {"artifacts": [
+        record("first", "First", "2026-09-22", account="someacct", summary="Made for Dr. Smith by someacct."),
+        record("second", "Second", "2026-10-01", cross_references=["owner-login/some-repo, branch main"]),
+        record("fourth", "Fourth", "2026-10-02", related_titles=shared),
+        record("fifth", "Shared", "2026-09-01", related_titles=shared),
+        record("sixth", "Shared", "2026-09-05"),
+        record("seventh", "Seventh", "2026-09-07"),
+        record("eighth", "Eighth", "2026-09-08", kind="document")], "skipped": []})
+    write(syn / "work" / "out" / "clustering.json", {"judged": {"clusters": [{
+        "name": "One", "part": "schwingnet", "members": ["SchwingNet/first", "SchwingNet/second"],
+        "canonical": ["SchwingNet/second"], "secondary_members": [], "duplicates": [],
+        "superseded": [{"id": "SchwingNet/first", "by": "SchwingNet/second", "why": "Revised the next week."}]}]}})
+    write(syn / "work" / "out" / "concepts.json", {"datasets": [], "checks": [], "figures": [{
+        "id": "figure:0", "row": 0, "quantity": "exact level on whole lateral frames", "verdict": "updated-later",
+        "artifacts": ["SchwingNet/first", "SchwingNet/second"],
+        "quotes": ["98.2% exact level on whole lateral frames", "97.4% exact level on whole lateral frames"],
+        "anchors": ["exact", "level", "whole", "lateral", "frames"], "unused": None,
+        "values": [{"figure": "98.2", "percent": True, "status": "superseded", "side": "a"},
+                   {"figure": "97.4", "percent": True, "status": "current", "side": "b"}]}]})
+    for folder in ("first", "second", "third", "fourth", "fifth", "sixth"):
+        write(root / "artifacts" / folder / "index.html", f"<p>{folder}</p>")
+    write(root / "artifacts" / "second" / "data" / "table.js", "window.rows = [];")
+    write(root / "artifacts" / "second" / ".export.json", "{}")
+    write(root / "artifacts" / "second" / "README.md", "# Notes on the export\n")
+    write(root / "artifacts" / "eighth" / "index.md", "# Eighth\n\nA Docs document, exported as text.\n")
+    write(root / ".github" / "CODEOWNERS", "# Every file asks the owner.\n* @owner-login\n")
+    write(root / "docs" / "textbook" / "01-one.md", NARRATIVE)
+    figures = root / "docs" / "textbook" / "figures" / "01"
+    write(figures / "a-figure.json", figure_record("01/a-figure", "grid", "sbatch slurm/draw.sh", "tools/draw.py"))
+    write(figures / "a-figure.png", "not really a png")
+    write(figures / "a-moving-figure.json", figure_record("01/a-moving-figure", "none", data=["data/x.json"],
+                                                          artifact="artifacts/eighth/"))
+    write(figures / "a-moving-figure.png", "fallback")
+    write(figures / "a-moving-figure.html", "<!doctype html><p>moves</p>")
+    write(figures / "untraced.png", "no record")
+    write(root / "docs" / "textbook" / "claims.json", CLAIMS)
+    write(root / "docs" / "textbook" / "02-unplanned.md", "# 02 Unplanned\n\nA chapter the plan does not name.\n")
+    git(root, "init", "-q")
+    git(root, "add", "-A")
+    git(root, "commit", "-q", "-m", "A small book")
+    # The second artifact changed since its record was read; the third was stamped unread by hand.
+    write(syn / "work" / "out" / "state.json", {"stamped": "2026-10-24", "artifacts": {
+        "SchwingNet/first": git(root, "rev-parse", "HEAD:artifacts/first"),
+        "SchwingNet/second": "0" * 40, "SchwingNet/third": "1" * 40}})
+
+
+# A register of one claim and two items, the first under way, for the research loop's page (#220).
+CLAIMS = {
+    "stakes": {"talk": "the talk"},
+    "claims": [{"id": "F1", "kind": "functionality", "statement": "works", "stakes": ["talk"], "grade": "Inferred",
+                "evidence": [{"chapter": "01", "source": "a page", "grade": "Inferred"}]}],
+    "items": [
+        {"id": "E1", "title": "Render the sweep", "what": "render", "needs_owner_word": True,
+         "bears_on": [{"claim": "F1", "to": "Reported"}], "cost": {"cpu_hours": 1, "basis": "estimate"},
+         "depends_on": [], "status": "doing"},
+        {"id": "E2", "title": "Train the stage", "what": "train", "needs_owner_word": True,
+         "bears_on": [{"claim": "F1", "to": "Measured"}], "cost": {"gpu_hours": 4, "basis": "estimate"},
+         "depends_on": ["E1"], "status": "open"},
+    ],
+}
+
+
+class ASmallBook(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = tempfile.TemporaryDirectory()
+        root = Path(cls.tmp.name) / "repo"
+        small_book(root)
+        cls.out = Path(cls.tmp.name) / "site"
+        textbook_site.main([str(cls.out), "--root", str(root), "--repo", "OWNER/NAME", "--sha", "abc1234"])
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.tmp.cleanup()
+
+    def read(self, name):
+        return (self.out / name).read_text(encoding="utf-8")
+
+    def test_the_chapter_shows_its_narrative_and_links_what_it_reads(self):
+        page = self.read("chapter-01.html")
+        self.assertIn("The second page gives 97.4%", page)
+        self.assertIn("artifact-second.html", page)
+        self.assertNotIn("not written yet", page)
+
+    def test_a_superseded_value_without_its_disclaimer_is_flagged(self):
+        page = self.read("chapter-01.html")
+        self.assertIn("gives a superseded value", page)
+        self.assertIn("1 agree with the ledger and 2 give one another way", page)
+        rows = {row.split("</td>", 1)[0]: row for row in page.split("<tr><td>")[1:]}
+        self.assertIn("no disclaimer in the passage", rows["line 5"])
+
+    def test_a_disclaimer_late_in_a_long_line_still_counts(self):
+        rows = {row.split("</td>", 1)[0]: row for row in self.read("chapter-01.html").split("<tr><td>")[1:]}
+        self.assertIn("gives a superseded value", rows["line 9"])
+        self.assertNotIn("no disclaimer in the passage", rows["line 9"])
+
+    def test_what_the_book_does_not_hold_yet_is_listed(self):
+        pending = self.read("pending.html")
+        self.assertIn("third", pending)
+        self.assertIn("artifact-first.html", pending)
+        self.assertIn("New, not yet placed by the plan", self.read("chapter-01.html"))
+
+    def test_a_changed_artifact_is_listed_and_a_stamped_folder_with_no_record_breaks_nothing(self):
+        changed = self.read("pending.html").split("<h2>Changed since its record was read</h2>", 1)[1].split("<h2>", 1)[0]
+        self.assertIn("artifact-second.html", changed)
+        self.assertNotIn("first", changed)
+        self.assertNotIn("third", changed)
+
+    def test_a_record_whose_folder_is_gone_and_an_unplanned_chapter_file_are_listed(self):
+        pending = self.read("pending.html")
+        gone = pending.split("<h2>Recorded, but its folder is gone</h2>", 1)[1].split("<h2>", 1)[0]
+        self.assertIn("artifact-seventh.html", gone)
+        self.assertIn("docs/textbook/02-unplanned.md", pending)
+        self.assertNotIn("Its files in the repository", self.read("artifact-seventh.html"))
+
+    def test_a_superseded_artifact_says_so_on_its_page(self):
+        page = self.read("artifact-first.html")
+        self.assertIn("Superseded by", page)
+        self.assertIn("not final values", page)
+
+    def test_an_artifact_opens_on_claude_ai_and_its_exported_page_is_embedded_above_its_record(self):
+        page = self.read("artifact-second.html")
+        self.assertIn('href="https://claude.ai/artifact/second"', page)
+        embed = page[page.index('<figure class="fig embed">'):page.index("</figure>")]
+        self.assertIn('<iframe src="artifacts/second/index.html"', embed)
+        self.assertIn('sandbox="allow-scripts allow-popups"', embed)
+        self.assertNotIn("allow-same-origin", embed)
+        self.assertIn('loading="lazy"', embed)
+        self.assertIn('<a href="artifacts/second/index.html">open it full-page</a>', embed)
+        self.assertLess(page.index('<figure class="fig embed">'), page.index("<h2>What it answers</h2>"))
+
+    def test_a_docs_artifact_has_no_embed_and_keeps_its_links(self):
+        page = self.read("artifact-eighth.html")
+        self.assertNotIn("<iframe", page)
+        self.assertIn('href="https://claude.ai/artifact/eighth"', page)
+        self.assertIn("Its files in the repository", page)
+        self.assertFalse((self.out / "artifacts" / "eighth").exists())
+
+    def test_the_exported_pages_are_copied_with_their_trees_and_nothing_else_is(self):
+        copied = self.out / "artifacts"
+        self.assertTrue((copied / "second" / "index.html").exists())
+        self.assertTrue((copied / "second" / "data" / "table.js").exists())
+        self.assertFalse((copied / "second" / ".export.json").exists())
+        self.assertFalse((copied / "second" / "README.md").exists())
+        self.assertFalse((copied / "_synthesis").exists())
+        self.assertEqual(sorted(p.name for p in copied.iterdir()), ["fifth", "first", "fourth", "second", "sixth", "third"])
+
+    def test_account_names_and_a_person_named_by_title_are_kept_off_the_pages(self):
+        first, second = self.read("artifact-first.html"), self.read("artifact-second.html")
+        self.assertIn("Made for [a colleague] by [the owner&#x27;s account].", first)
+        self.assertNotIn("someacct", first)
+        self.assertNotIn("Smith", first)
+        self.assertIn("[the owner&#x27;s account]/some-repo", second)
+        self.assertNotIn("owner-login", second)
+
+    def test_a_title_two_records_share_links_each_of_them(self):
+        fourth, fifth = self.read("artifact-fourth.html"), self.read("artifact-fifth.html")
+        self.assertIn('href="artifact-fifth.html">2026-09-01</a>', fourth)
+        self.assertIn('href="artifact-sixth.html">2026-09-05</a>', fourth)
+        self.assertIn('<a href="artifact-sixth.html">Shared</a>', fifth)
+        self.assertNotIn('href="artifact-fifth.html"', fifth)
+
+    def test_a_link_in_a_record_page_reaches_the_artifact_page(self):
+        self.assertIn('href="artifact-second.html"', self.read("clusters.html"))
+
+    def test_a_folder_it_did_not_build_is_left_alone(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / "keep.txt").write_text("mine", encoding="utf-8")
+            with self.assertRaises(SystemExit):
+                textbook_site.prepare(tmp)
+            self.assertTrue((Path(tmp) / "keep.txt").exists())
+
+
+    # the figures (issue #215)
+
+    def figure(self, fid):
+        page = self.read("chapter-01.html")
+        start = page.index(f'id="fig-{fid}"')
+        return page[start:page.index("</figure>", start)]
+
+    def test_a_figure_shows_its_image_caption_grade_and_status(self):
+        block = self.figure("01-a-figure")
+        self.assertIn('<img src="figures/01/a-figure.png"', block)
+        self.assertIn("<strong>Figure 1.1.</strong> Caption of 01/a-figure", block)
+        self.assertIn("Reported", block)
+        self.assertIn("a record, not a final value", block)
+        self.assertIn("traced to the script", block)
+        self.assertNotIn("*Figure", self.read("chapter-01.html"))
+
+    def test_its_source_panel_explores_and_reruns(self):
+        block = self.figure("01-a-figure")
+        self.assertIn('href="artifact-second.html"', block)
+        self.assertIn('href="https://github.com/OWNER/NAME/blob/abc1234/docs/method.md"', block)
+        self.assertIn("https://github.com/OWNER/NAME/issues/new?labels=figure-rerun", block)
+        self.assertIn("figure-rerun-id%3A+01%2Fa-figure", block)
+        self.assertIn("Opening the issue only asks", block)
+        self.assertNotIn("word for this one run", block)
+        self.assertIn("sbatch slurm/draw.sh", block)
+        self.assertIn('href="figures/01/a-figure.json"', block)
+
+    def test_an_interactive_figure_shows_in_place_of_its_image(self):
+        block = self.figure("01-a-moving-figure")
+        self.assertIn('<iframe src="figures/01/a-moving-figure.html"', block)
+        self.assertIn('sandbox="allow-scripts"', block)
+        self.assertNotIn("allow-same-origin", block)
+        self.assertNotIn("<img", block)
+        self.assertIn("traced to the data", block)
+        self.assertIn("No command is recorded", block)
+
+    def test_a_figure_traced_to_an_exported_page_opens_it_and_one_traced_to_a_docs_artifact_does_not(self):
+        block = self.figure("01-a-figure")
+        buttons = block[block.index('<div class="buttons">'):]
+        self.assertIn('<a class="button" href="artifacts/second/index.html">Open the artifact&#x27;s page</a>', buttons)
+        self.assertNotIn("Open the artifact", self.figure("01-a-moving-figure"))
+        self.assertIsNone(textbook_site.exported_folder("https://claude.ai/artifact/x"))
+        self.assertEqual(textbook_site.exported_folder("artifacts/second"), "second")
+
+    def test_a_figure_with_no_record_says_so(self):
+        page = self.read("chapter-01.html")
+        self.assertIn('<img src="figures/01/untraced.png"', page)
+        self.assertIn("This figure has no record yet", page)
+
+    def test_the_figures_are_served_and_listed_with_their_provenance(self):
+        self.assertTrue((self.out / "figures" / "01" / "a-figure.png").exists())
+        self.assertTrue((self.out / "figures" / "01" / "a-moving-figure.html").exists())
+        listing = self.read("figures.html")
+        self.assertIn("2 figures", listing)
+        self.assertIn("Traced to the script that drew it: 1; to its data or run only: 1; to the artifact alone: 0", listing)
+        self.assertIn('href="chapter-01.html#fig-01-a-figure"', listing)
+        self.assertIn('href="figures.html"', self.read("index.html"))
+
+    def test_a_script_that_made_only_the_numbers_traces_to_the_data(self):
+        made = {"made_by": "elsewhere:tools/stats.py (the numbers); the chart is drawn by the artifact's own script"}
+        self.assertEqual(textbook_site.traced({"source": made}), "data")
+        self.assertEqual(textbook_site.traced({"source": {"made_by": "x:tables/t.tex (a hand table)"}}), "data")
+        self.assertEqual(textbook_site.traced({"source": {"made_by": "x:tools/draw.py"}}), "script")
+
+    # Ask Claude and the research loop (issue #220)
+
+    def test_every_chapter_asks_claude_in_a_new_issue_that_begins_with_the_mention(self):
+        page = self.read("chapter-01.html")
+        self.assertIn('class="button ask" href="https://github.com/OWNER/NAME/issues/new?title=Ask+Claude', page)
+        self.assertIn("body=%40claude%0A%0AAbout%3A+chapter+01+One", page)
+        self.assertIn("docs%2Ftextbook%2F01-one.md", page)
+
+    def test_every_figure_asks_claude_naming_its_record(self):
+        for fid, record in (("01-a-figure", "docs%2Ftextbook%2Ffigures%2F01%2Fa-figure.json"),
+                            ("01-a-moving-figure", "docs%2Ftextbook%2Ffigures%2F01%2Fa-moving-figure.json")):
+            block = self.figure(fid)
+            self.assertIn("Ask Claude", block)
+            self.assertIn(record, block)
+        page = self.read("chapter-01.html")
+        untraced = page[page.index('<img src="figures/01/untraced.png"'):]
+        self.assertIn("docs%2Ftextbook%2Ffigures%2F01%2Funtraced.png", untraced[:untraced.index("</figure>")])
+
+    def test_the_ask_url_puts_the_mention_first(self):
+        url = textbook_site.ask_url("O/N", "chapter 09", "docs/textbook/09.md", ["one more line"])
+        body = textbook_site.urllib.parse.parse_qs(url.split("?", 1)[1])["body"][0]
+        self.assertTrue(body.startswith("@claude\n"))
+        self.assertIn("one more line", body)
+
+    def test_the_research_loop_page_shows_the_queue_and_the_switch(self):
+        page = self.read("research.html")
+        self.assertIn("RESEARCH_LOOP", page)
+        self.assertIn("RESEARCH_RUNS_PER_DAY", page)
+        self.assertIn("https://github.com/OWNER/NAME/actions/workflows/research.yml", page)
+        self.assertIn("<code>E1</code>", page)
+        self.assertIn("doing", page)
+        self.assertIn("waits on another item", page)
+        self.assertIn('href="research.html"', self.read("index.html"))
+
+    def test_a_record_s_prose_goes_through_the_privacy_pass(self):
+        self.assertNotIn("someacct", self.read("chapter-01.html"))
+
+
+class TheRepositorysOwnBook(unittest.TestCase):
+    def test_every_chapter_and_every_artifact_has_a_page(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "site"
+            self.assertEqual(textbook_site.main([str(out), "--repo", "OWNER/NAME", "--sha", "abc1234"]), 0)
+            book = textbook_site.Book(ROOT)
+            for _part, chapter in book.chapters:
+                page = (out / textbook_site.chapter_page(chapter["number"])).read_text(encoding="utf-8")
+                for aid in textbook_site.chapter_ids(chapter):
+                    self.assertIn(textbook_site.artifact_page(aid), page, chapter["number"])
+            for aid in book.records:
+                self.assertTrue((out / textbook_site.artifact_page(aid)).exists(), aid)
+
+
+if __name__ == "__main__":
+    unittest.main()

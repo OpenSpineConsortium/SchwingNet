@@ -3,6 +3,7 @@
 import hashlib
 import importlib.util
 import json
+import os
 import struct
 import zlib
 from pathlib import Path
@@ -190,8 +191,10 @@ def test_a_shard_already_there_with_another_manifest_is_refused(
     folder = Path(json.loads(capsys.readouterr().out)["folder"])
     manifest = folder / "MANIFEST.json"
     manifest.chmod(0o644)
+    # A level read otherwise is another content under the same name; the commit alone is not
+    # (test_a_bank_ingested_again_on_another_day_is_the_shard_already_there).
     manifest.write_text(
-        manifest.read_text(encoding="utf-8").replace("0123abc", "0123abd"), encoding="utf-8"
+        manifest.read_text(encoding="utf-8").replace('"L3"', '"L2"'), encoding="utf-8"
     )
     assert ingest.main(argv(bank, root, "train", "val")) == 1
     assert "its manifest differs" in capsys.readouterr().err
@@ -463,3 +466,431 @@ def test_the_case134_sweep_bank_is_read_at_its_spin_angles(
         (-51.5, -51.5, 75.0),
         (122.0, 122.0, 75.0),
     ]
+
+
+def paeth(left: int, up: int, up_left: int) -> int:
+    estimate = left + up - up_left
+    near = (abs(estimate - left), abs(estimate - up), abs(estimate - up_left))
+    if near[0] <= near[1] and near[0] <= near[2]:
+        return left
+    return up if near[1] <= near[2] else up_left
+
+
+def grey_png(rows: list[list[int]], colour: int = 0) -> bytes:
+    """An 8-bit greyscale PNG whose rows use each of the five filters in turn, so the ingest's
+    own decoder is held to all of them; colour type 2 writes the same bytes under an RGB header."""
+    raw = bytearray()
+    previous = [0] * len(rows[0])
+    for y, row in enumerate(rows):
+        kind = y % 5
+        raw.append(kind)
+        for x, value in enumerate(row):
+            left, up, up_left = (row[x - 1] if x else 0), previous[x], (previous[x - 1] if x else 0)
+            guess = (0, left, up, (left + up) >> 1, paeth(left, up, up_left))[kind]
+            raw.append((value - guess) & 255)
+        previous = row
+
+    def chunk(kind: bytes, data: bytes) -> bytes:
+        body = kind + data
+        return (
+            struct.pack(">I", len(data)) + body + struct.pack(">I", zlib.crc32(body) & 0xFFFFFFFF)
+        )
+
+    header = struct.pack(">IIBBBBB", len(rows[0]), len(rows), 8, colour, 0, 0, 0)
+    return (
+        b"\x89PNG\r\n\x1a\n"
+        + chunk(b"IHDR", header)
+        + chunk(b"IDAT", zlib.compress(bytes(raw)))
+        + chunk(b"IEND", b"")
+    )
+
+
+def png_chunk(kind: bytes, data: bytes) -> bytes:
+    body = kind + data
+    return struct.pack(">I", len(data)) + body + struct.pack(">I", zlib.crc32(body) & 0xFFFFFFFF)
+
+
+def map_rows(width: int, height: int, code: int) -> list[list[int]]:
+    rows = [[0] * width for _ in range(height)]
+    for y in range(2, height - 2):
+        for x in range(4, 30):
+            rows[y][x] = code
+    return rows
+
+
+def with_map(bank: Path, stem: str, data: bytes, projector: str = "registered") -> None:
+    (bank / "maps").mkdir(exist_ok=True)
+    (bank / "maps" / f"{stem}.png").write_bytes(data)
+    meta_path = bank / "meta" / f"{stem}.json"
+    meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    meta.update({"level_map": f"maps/{stem}.png", "level_map_from": projector})
+    meta_path.write_text(json.dumps(meta), encoding="utf-8")
+
+
+def test_a_frames_level_map_rides_in_the_shard_and_a_wrong_one_is_refused(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    ingest = load("ingest")
+    bank, root = tmp_path / "bank", tmp_path / "grid" / "carmlspine"
+    frame(bank, "train", "case7_f1", "case7", 1, [box("L4")])
+    frame(bank, "train", "case7_f2", "case7", 2, [box("L5")])
+    good = grey_png(map_rows(40, 20, 23))
+    decoded = [list(row) for row in ingest.png_grey_rows(good)]
+    assert decoded == map_rows(40, 20, 23), "every filter decodes"
+    with_map(bank, "case7_f1", good)
+    assert ingest.main(argv(bank, root, "train", "train")) == 0
+    report = json.loads(capsys.readouterr().out)
+    assert report["level_maps"] == 1 and report["verified"] == 2 and report["frames_kept"] == 2
+    folder = Path(report["folder"])
+    written = json.loads((folder / "MANIFEST.json").read_text(encoding="utf-8"))
+    manifest = ShardManifest.model_validate(written)
+    assert manifest.schema_version == 2 and sum("level_map" in i for i in written["items"]) == 1
+    (carried,) = [i for i in manifest.items if i.level_map]
+    assert carried.level_map is not None
+    assert (carried.level_map.projector, carried.level_map.labeller) == ("registered", "projected")
+    copied = folder / carried.level_map.path
+    assert copied.stat().st_mode & 0o777 == 0o444
+    assert hashlib.sha256(copied.read_bytes()).hexdigest() == carried.level_map.sha256
+    assert carried.level_map.sha256 == hashlib.sha256(good).hexdigest()
+    assert carried.level_map.path == frame_path(carried.level_map.sha256, "png")
+    assert ingest.main(argv(bank, root, "train", "train")) == 0
+    assert json.loads(capsys.readouterr().out)["outcome"] == "already there"
+    # A bank without maps writes the manifest the tool wrote before maps existed.
+    plain = tmp_path / "plain"
+    frame(plain, "train", "case8_f1", "case8", 3, [box("L4")])
+    assert ingest.main(argv(plain, tmp_path / "grid2" / "carmlspine", "train", "train")) == 0
+    first = json.loads(
+        Path(json.loads(capsys.readouterr().out)["folder"], "MANIFEST.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert first["schema_version"] == 1 and all("level_map" not in i for i in first["items"])
+    # What is refused, each by name, before anything is written.
+    wrong = [
+        (grey_png(map_rows(40, 21, 23)), "registered", "the level map is 40x21, the frame 40x20"),
+        (grey_png(map_rows(40, 20, 28)), "render", "holds the value 28; a level's code is 1 to 27"),
+        (
+            grey_png(map_rows(40, 20, 23), colour=2),
+            "render",
+            "8-bit greyscale PNG without interlace",
+        ),
+        (b"not a png", "render", "not a PNG"),
+        (good[:26], "render", "not a PNG"),
+        (good[:29] + bytes([good[29] ^ 1]) + good[30:], "render", "IHDR chunk fails its checksum"),
+        (good[:-13], "render", "IDAT chunk is cut short"),
+        (
+            good[:8] + png_chunk(b"IHDR", struct.pack(">IIBBBBB", 40, 20, 8, 0, 0, 1, 0)) + good[33:],
+            "render",
+            "filter method 0, not",
+        ),
+        (good[:33] + png_chunk(b"IEND", b"") + good[33:-12], "render", "does not decompress"),
+        (
+            good[:8] + png_chunk(b"IHDR", struct.pack(">IIBBBB", 40, 20, 8, 0, 0, 0)) + good[33:],
+            "render",
+            "not a PNG",
+        ),
+        (
+            good[:33]
+            + png_chunk(b"IDAT", good[41:46])
+            + png_chunk(b"tEXt", b"k\x00v")
+            + png_chunk(b"IDAT", good[46:-16])
+            + png_chunk(b"IEND", b""),
+            "render",
+            "IDAT chunks are not consecutive",
+        ),
+        (good, "guessed", "not one of render, registered"),
+    ]
+    for data, projector, words in wrong:
+        with_map(bank, "case7_f1", data, projector)
+        assert ingest.main(argv(bank, tmp_path / "grid3" / "carmlspine", "train", "train")) == 1
+        assert words in capsys.readouterr().err
+    meta_path = bank / "meta" / "case7_f1.json"
+    meta = dict(json.loads(meta_path.read_text(encoding="utf-8")), level_map_from="render")
+    for named in ("../maps/case7_f1.png", "/maps/case7_f1.png", "", 3):
+        meta_path.write_text(json.dumps(dict(meta, level_map=named)), encoding="utf-8")
+        assert ingest.main(argv(bank, tmp_path / "grid3" / "carmlspine", "train", "train")) == 1
+        assert "not a path inside the bank" in capsys.readouterr().err
+    meta_path.write_text(json.dumps(dict(meta, level_map="maps/elsewhere.png")), encoding="utf-8")
+    assert ingest.main(argv(bank, tmp_path / "grid3" / "carmlspine", "train", "train")) == 1
+    assert "the level map elsewhere.png" in capsys.readouterr().err
+    assert not (tmp_path / "grid3").exists()
+
+
+def test_a_duplicate_frames_level_map_is_named_in_the_report(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    ingest = load("ingest")
+    bank = tmp_path / "bank"
+    frame(bank, "train", "case7_f1", "case7", 1, [box("L4")])
+    frame(bank, "train", "case7_f2", "case7", 1, [box("L4")])
+    good = grey_png(map_rows(40, 20, 23))
+    with_map(bank, "case7_f2", good)
+    assert ingest.main(argv(bank, tmp_path / "grid" / "carmlspine", "train", "train")) == 0
+    report = json.loads(capsys.readouterr().out)
+    assert (report["frames_kept"], report["level_maps"]) == (1, 0)
+    (duplicate,) = report["duplicates"]
+    assert duplicate["stem"] == "case7_f2" and duplicate["same_bytes_as"] == "case7_f1.png"
+    assert duplicate["level_map_dropped"] == hashlib.sha256(good).hexdigest()
+    # The same map on both stems loses nothing, so the report says nothing.
+    with_map(bank, "case7_f1", good)
+    assert ingest.main(argv(bank, tmp_path / "grid2" / "carmlspine", "train", "train")) == 0
+    report = json.loads(capsys.readouterr().out)
+    assert report["level_maps"] == 1 and "level_map_dropped" not in report["duplicates"][0]
+
+
+def later(arguments: list[str], date: str, commit: str) -> list[str]:
+    """The same ingest on another day at another commit, superseding the source's current shard."""
+    changed = list(arguments)
+    changed[changed.index("--date") + 1] = date
+    changed[changed.index("--code-commit") + 1] = commit
+    return changed + ["--supersedes", "latest"]
+
+
+def test_a_bank_ingested_again_on_another_day_is_the_shard_already_there(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    ingest = load("ingest")
+    bank, root = bank_of(tmp_path), tmp_path / "grid" / "carmlspine"
+    first = argv(bank, root, "train", "train") + ["--supersedes", "latest"]
+    assert ingest.main(first) == 0
+    shard = json.loads(capsys.readouterr().out)["shard"]
+    assert ingest.main(later(argv(bank, root, "train", "train"), "2026-10-25", "4567def")) == 0
+    again = json.loads(capsys.readouterr().out)
+    assert (again["outcome"], again["shard"]) == ("already there", shard)
+    assert len(list(root.glob("shards/*/MANIFEST.json"))) == 1
+    # A bank that changed is still a new shard of the new date, superseding the first.
+    frame(bank, "train", "case8_f2", "case8", 6, [box("L5")])
+    assert ingest.main(later(argv(bank, root, "train", "train"), "2026-10-25", "4567def")) == 0
+    grown = json.loads(capsys.readouterr().out)
+    assert grown["outcome"] == "written" and grown["shard"].startswith("carmlspine/2026-10-25-")
+    manifest = json.loads((Path(grown["folder"]) / "MANIFEST.json").read_text(encoding="utf-8"))
+    assert manifest["supersedes"] == shard
+
+
+def test_a_superseded_shard_of_the_same_frames_is_never_reused(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    ingest = load("ingest")
+    bank, root = bank_of(tmp_path), tmp_path / "grid" / "carmlspine"
+    assert ingest.main(argv(bank, root, "train", "train") + ["--supersedes", "latest"]) == 0
+    first = json.loads(capsys.readouterr().out)["shard"]
+    grown = bank / "images" / "train" / "case8_f2.png"
+    frame(bank, "train", "case8_f2", "case8", 6, [box("L5")])
+    assert ingest.main(later(argv(bank, root, "train", "train"), "2026-10-22", "4567def")) == 0
+    capsys.readouterr()
+    grown.unlink()
+    (bank / "meta" / "case8_f2.json").unlink()
+    assert ingest.main(later(argv(bank, root, "train", "train"), "2026-10-23", "89abcde")) == 0
+    back = json.loads(capsys.readouterr().out)
+    assert back["outcome"] == "written" and back["shard"] != first
+
+
+def sixteen_bit_png(width: int, height: int, colour: int = 0) -> bytes:
+    channels = {0: 1, 2: 3, 4: 2}[colour]
+    row = b"\x00" + b"".join(struct.pack(">H", (x * 4099) % 65536) * channels for x in range(width))
+    header = struct.pack(">IIBBBBB", width, height, 16, colour, 0, 0, 0)
+    return (
+        b"\x89PNG\r\n\x1a\n"
+        + png_chunk(b"IHDR", header)
+        + png_chunk(b"IDAT", zlib.compress(row * height))
+        + png_chunk(b"IEND", b"")
+    )
+
+
+def test_a_16_bit_grey_frame_is_refused_by_name(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    ingest = load("ingest")
+    bank, root = bank_of(tmp_path), tmp_path / "grid" / "carmlspine"
+    (bank / "images" / "val" / "case9_f1.png").write_bytes(sixteen_bit_png(40, 20, 0))
+    assert ingest.main(argv(bank, root, "train", "val")) == 1
+    assert "a 16-bit grey frame" in capsys.readouterr().err
+    # Sixteen bits of colour, or of grey with alpha, the trainer's image library reads at 8 bits
+    # a channel (Pillow 13), which clips nothing.
+    for colour in (2, 4):
+        (bank / "images" / "val" / "case9_f1.png").write_bytes(sixteen_bit_png(40, 20, colour))
+        assert ingest.main(argv(bank, root, "train", "val")) == 0
+        capsys.readouterr()
+    assert not [p for p in root.glob("shards/.*")]
+
+
+def test_a_staging_folder_is_no_shard_and_a_stale_one_is_cleared(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    ingest = load("ingest")
+    bank, root = bank_of(tmp_path), tmp_path / "grid" / "carmlspine"
+    assert ingest.main(argv(bank, root, "train", "train")) == 0
+    shard = json.loads(capsys.readouterr().out)["shard"]
+    staging = root / "shards" / ".ingest-2026-10-26-000000000000-x"
+    staging.mkdir()
+    (staging / "MANIFEST.json").write_text(
+        json.dumps({"name": "carmlspine/2026-10-26-000000000000", "supersedes": None}),
+        encoding="utf-8",
+    )
+    assert ingest.latest_shard(root)[0] == shard
+    fresh = root / "shards" / ".ingest-2026-10-26-111111111111-y"
+    fresh.mkdir()
+    old = ingest.time.time() - ingest.STALE_STAGING_SECONDS - 60
+    ingest.os.utime(staging, (old, old))
+    assert ingest.clear_stale_staging(root) == 1
+    assert not staging.exists() and fresh.is_dir()
+
+
+def counting_plans(ingest, monkeypatch: pytest.MonkeyPatch) -> list[int]:
+    """Count the runs that read the bank: every one plans the shard from its frames."""
+    calls: list[int] = []
+    real = ingest.plan_shard
+
+    def plan_shard(*arguments):
+        calls.append(1)
+        return real(*arguments)
+
+    monkeypatch.setattr(ingest, "plan_shard", plan_shard)
+    return calls
+
+
+def test_a_bank_already_ingested_is_not_read_again_until_a_file_of_it_changes(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    ingest = load("ingest")
+    reads = counting_plans(ingest, monkeypatch)
+    bank, root = bank_of(tmp_path), tmp_path / "grid" / "carmlspine"
+    first_run = argv(bank, root, "train", "train") + ["--supersedes", "latest"]
+    assert ingest.main(first_run) == 0
+    first = json.loads(capsys.readouterr().out)
+    assert first["outcome"] == "written" and len(first["reuse_key"]) == 64 and reads == [1]
+    assert (root / ".reuse" / f"{first['reuse_key']}.json").is_file()
+    # The same bank, on another day at another commit too, and with a stamp tools/bank.py wrote
+    # since, which the key leaves out, is answered from the note without reading a frame.
+    (bank / "BANK.json").write_text('{"stamp": {}}\n', encoding="utf-8")
+    for arguments in (first_run, later(argv(bank, root, "train", "train"), "2026-10-25", "4567def")):
+        assert ingest.main(arguments) == 0
+        again = json.loads(capsys.readouterr().out)
+        assert again["outcome"] == "already there" and again["shard"] == first["shard"]
+        assert again["verified"] == 3 and again["verified_by"].startswith("presence")
+    assert reads == [1]
+    # Other settings read the bank, and here make another manifest under the shard's name.
+    other = argv(bank, root, "train", "train")[:-2] + ["--labeller", "x", "--grid-root", str(root)]
+    assert ingest.main(other) == 1 and reads == [1, 1]
+    assert "its manifest differs" in capsys.readouterr().err
+    # A level map added after the bank was ingested, as a registered pose's map is, changes a
+    # file of the bank, so the bank is read and the map reaches a shard that supersedes the first.
+    with_map(bank, "case7_f2", grey_png(map_rows(40, 20, 23)))
+    assert ingest.main(later(argv(bank, root, "train", "train"), "2026-10-26", "89abcde")) == 0
+    mapped = json.loads(capsys.readouterr().out)
+    assert mapped["outcome"] == "written" and mapped["level_maps"] == 1 and reads == [1, 1, 1]
+    # A frame removed, as one thinned by hand to save room would be, is read too.
+    (bank / "images" / "train" / "case8_f1.png").unlink()
+    (bank / "meta" / "case8_f1.json").unlink()
+    assert ingest.main(later(argv(bank, root, "train", "train"), "2026-10-27", "89abcde")) == 0
+    thinned = json.loads(capsys.readouterr().out)
+    assert thinned["frames_kept"] == first["frames_kept"] - 1 and reads == [1, 1, 1, 1]
+
+
+def test_a_bank_that_changes_while_it_is_read_leaves_no_note_and_a_name_not_utf8_stops_nothing(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    ingest = load("ingest")
+    bank, root = bank_of(tmp_path), tmp_path / "grid" / "carmlspine"
+    with open(os.fsencode(bank) + b"/notes-caf\xe9.txt", "wb") as handle:
+        handle.write(b"a stray file whose name an archive made on Windows wrote")
+    real = ingest.plan_shard
+    reads: list[int] = []
+
+    # A file lands in the bank after the key was listed and before the shard is cut, so the shard
+    # may hold a later state of the bank than the key names: no note ties the two.
+    def plan_while_the_bank_moves(*arguments):
+        reads.append(1)
+        planned = real(*arguments)
+        if len(reads) == 1:
+            (bank / "late.txt").write_text("landed during the read", encoding="utf-8")
+        return planned
+
+    monkeypatch.setattr(ingest, "plan_shard", plan_while_the_bank_moves)
+    assert ingest.main(argv(bank, root, "train", "train")) == 0
+    first = json.loads(capsys.readouterr().out)
+    assert first["outcome"] == "written" and first["reuse_note"] == "not written: the bank changed while it was read"
+    assert not (root / ".reuse").exists()
+    # The next run reads the bank, finds its shard already there and notes it; the one after is
+    # answered from the note.
+    assert ingest.main(argv(bank, root, "train", "train")) == 0
+    second = json.loads(capsys.readouterr().out)
+    assert second["outcome"] == "already there" and "reuse_note" not in second and reads == [1, 1]
+    assert (root / ".reuse" / f"{second['reuse_key']}.json").is_file()
+    assert ingest.main(argv(bank, root, "train", "train")) == 0
+    third = json.loads(capsys.readouterr().out)
+    assert third["verified_by"].startswith("presence") and reads == [1, 1]
+
+
+def test_a_frame_moved_out_and_back_during_the_read_leaves_no_note(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # A move keeps a file's size and modification time, so the bank lists after the read as it did
+    # before it; the folder's own time and the file's change time say it moved.
+    ingest = load("ingest")
+    bank, root = bank_of(tmp_path), tmp_path / "grid" / "carmlspine"
+    real = ingest.plan_shard
+    moved = [bank / "images" / "train" / "case8_f1.png", bank / "meta" / "case8_f1.json"]
+
+    def plan_with_a_frame_away(*arguments):
+        for path in moved:
+            path.rename(tmp_path / path.name)
+        try:
+            return real(*arguments)
+        finally:
+            for path in moved:
+                (tmp_path / path.name).rename(path)
+
+    monkeypatch.setattr(ingest, "plan_shard", plan_with_a_frame_away)
+    before = ingest.bank_tool.listing_sha256(ingest.bank_tool.bank_listing(bank))
+    assert ingest.main(argv(bank, root, "train", "train")) == 0
+    away = json.loads(capsys.readouterr().out)
+    assert ingest.bank_tool.listing_sha256(ingest.bank_tool.bank_listing(bank)) == before
+    assert away["reuse_note"] == "not written: the bank changed while it was read"
+    assert not (root / ".reuse").exists()
+    monkeypatch.setattr(ingest, "plan_shard", real)
+    later_run = later(argv(bank, root, "train", "train"), "2026-10-25", "4567def")
+    assert ingest.main(later_run) == 0
+    whole = json.loads(capsys.readouterr().out)
+    assert whole["outcome"] == "written" and whole["frames_kept"] == away["frames_kept"] + 1
+
+
+def test_a_shard_cut_before_the_note_is_answered_from_the_second_run_on(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    ingest = load("ingest")
+    reads = counting_plans(ingest, monkeypatch)
+    bank, root = bank_of(tmp_path), tmp_path / "grid" / "carmlspine"
+    assert ingest.main(argv(bank, root, "train", "train")) == 0
+    shard = json.loads(capsys.readouterr().out)["shard"]
+    for note in (root / ".reuse").iterdir():
+        note.unlink()
+    # The shards on the grid were cut before #260 and carry no note: the first run reads the
+    # bank, finds the shard already there and notes it, and the next reads nothing.
+    for expected in ([1, 1], [1, 1]):
+        assert ingest.main(later(argv(bank, root, "train", "train"), "2026-10-25", "4567def")) == 0
+        again = json.loads(capsys.readouterr().out)
+        assert (again["outcome"], again["shard"]) == ("already there", shard) and reads == expected
+
+
+def test_a_note_whose_shard_changed_reads_the_bank_and_one_missing_a_file_is_refused(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    ingest = load("ingest")
+    bank, root = bank_of(tmp_path), tmp_path / "grid" / "carmlspine"
+    assert ingest.main(argv(bank, root, "train", "train")) == 0
+    first = json.loads(capsys.readouterr().out)
+    note = root / ".reuse" / f"{first['reuse_key']}.json"
+    written = json.loads(note.read_text(encoding="utf-8"))
+    for broken in ("not json", json.dumps(dict(written, key="0" * 64)), json.dumps({"key": first["reuse_key"]})):
+        note.write_text(broken, encoding="utf-8")
+        assert ingest.reused_by_stamp(root, first["reuse_key"]) is None
+    assert ingest.reused_by_stamp(root, None) is None
+    note.write_text(json.dumps(written), encoding="utf-8")
+    folder = Path(first["folder"])
+    frame_file = next(folder.glob("*/*.png"))
+    frame_file.parent.chmod(0o755)
+    frame_file.unlink()
+    assert ingest.main(argv(bank, root, "train", "train")) == 1
+    assert "files its manifest names are missing" in capsys.readouterr().err
+    assert ingest.reuse_key(tmp_path / "nowhere", None, None) is None

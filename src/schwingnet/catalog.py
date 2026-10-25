@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 from hashlib import sha256
 from math import isfinite, sqrt
-from typing import Annotated
+from typing import Annotated, Literal
 
 from beartype import beartype
 from beethoven_qa.contracts import ensure, require
@@ -101,7 +101,7 @@ LEVELS: tuple[str, ...] = (
 # The rare classes the owner annotates as they arrive: a thirteenth thoracic, a sixth lumbar body.
 TRANSITIONAL: tuple[str, ...] = ("T13", "L6")
 HASH_SPACE = 2**64
-MANIFEST_SCHEMA = 1
+MANIFEST_SCHEMA = 2  # 2 since #228: an item may carry a level_map; a manifest of 1 reads as before
 
 
 @beartype
@@ -490,6 +490,30 @@ class Label(BaseModel):
     labeller: str = Field(min_length=1)
 
 
+class LevelMap(BaseModel):
+    """The frame's projected level map, where one exists: a PNG in the shard beside the frame,
+    one byte per pixel, 0 where no vertebra is and 1 to 27 for LEVELS in order, made from the
+    segmented CT by the render's own geometry or by a pose registered to a real frame. It is
+    the 3D prior the trainer's prior block reads (#228): the voxels' levels where they fall on
+    the X-ray, exact where the geometry is."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    path: str = Field(pattern=r"^[0-9a-f]{2}/[0-9a-f]{64}\.png$")
+    sha256: HexDigest
+    projector: Literal["render", "registered"]
+    labeller: str = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def _at_its_content_address(self) -> "LevelMap":
+        expected = frame_path(self.sha256, "png")
+        if self.path != expected:
+            raise ValueError(
+                f"the level map is at {self.path} but its digest puts it at {expected}"
+            )
+        return self
+
+
 class Item(BaseModel):
     """One frame of a shard: the boundary where a manifest row becomes catalog facts.
 
@@ -509,6 +533,7 @@ class Item(BaseModel):
     gantry_deg: Annotated[float, Field(ge=-360, le=360)] | None = None
     acquired: str | None = None
     labels: tuple[Label, ...] = ()
+    level_map: LevelMap | None = None
 
     @model_validator(mode="after")
     def _at_its_content_address(self) -> "Item":

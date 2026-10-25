@@ -1,0 +1,34 @@
+{
+  "id": "13/fluorogen-preview",
+  "title": "The diffusion output loses the vertebrae",
+  "caption": "A cone-beam render, the same render with drawn hardware, and the image-to-image diffusion output, which looks like fluoroscopy and has lost the vertebrae.",
+  "chapter": "13",
+  "grade": "Reported",
+  "status": "a record, not a final value",
+  "source": {
+    "kind": "artifact",
+    "artifact": "artifacts/fluorocap-overnight-report-xnhgdo/",
+    "artifact_url": "https://claude.ai/artifact/XNhGDo7nZCyswabMVcydAL",
+    "made_by": null,
+    "commit": null,
+    "data": [],
+    "run": null,
+    "notes": "Embedded image; the page names the preview case and the strength range, not a script."
+  },
+  "explore": [
+    {
+      "label": "The artifact's page and files",
+      "href": "artifacts/fluorocap-overnight-report-xnhgdo/"
+    },
+    {
+      "label": "The artifact on claude.ai",
+      "href": "https://claude.ai/artifact/XNhGDo7nZCyswabMVcydAL"
+    }
+  ],
+  "rerun": {
+    "where": "none",
+    "command": null,
+    "cost": "nothing to run: no command is recorded for it",
+    "needs_owner_word": false
+  }
+}

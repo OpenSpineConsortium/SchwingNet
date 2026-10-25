@@ -47,8 +47,8 @@ def load_trainer():
 
 
 train = load_trainer()
-TrainError, build_model, load_crops, predict, read_crops = (
-    train.TrainError, train.build_model, train.load_crops, train.predict, train.read_crops,
+TrainError, model_for, load_crops, predict, read_crops = (
+    train.TrainError, train.model_for, train.load_crops, train.predict, train.read_crops,
 )
 TEST_ROLES = ("test", "transitional", "sweep")
 
@@ -204,9 +204,10 @@ def test_witness(out, args, size):
     folder = out / "evaluate" / "witness" / "frames"
     inputs, _ = load_crops(crops, size, {})
     roles = {f["key"]: f["role"] for f in frames}
+    facts = json.loads((out / "train" / "checkpoint.json").read_text(encoding="utf-8"))
     lines = []
     for epoch, path in epochs:
-        model = build_model(None, args.device)
+        model = model_for(facts, args.device)
         model.load_state_dict(torch.load(path, map_location=args.device, weights_only=True))
         scores = tool.draw_checkpoint(frames, train.marks_of(crops, predict(model, inputs, args.device, args.batch)), epoch, folder)
         line = {"epoch": epoch}
@@ -246,7 +247,7 @@ def run(args):
     crops = read_crops(args.catalog, (args.part,))
     if not crops:
         raise TrainError(f"the catalog has no labelled crops in the {args.part} part")
-    model = build_model(None, args.device)
+    model = model_for(checkpoint, args.device)
     state = torch.load(out / "train" / "best.pt", map_location=args.device, weights_only=True)
     model.load_state_dict(state)
     size = int(checkpoint["size"])

@@ -1,6 +1,6 @@
 # Contradictions: Datasets, holdings and licences
 
-Part of [the contradictions of the artifacts](../contradictions.md), rendered on 2026-10-23. Rows count from 0, as the record and the skeptics' explanations do. A blank verdict means no skeptic read that candidate. The Review column says whether the verdict was read again and what it was before; the main page says how the review was run.
+Part of [the contradictions of the artifacts](../contradictions.md), rendered on 2026-10-25. Rows count from 0, as the record and the skeptics' explanations do. A blank verdict means no skeptic read that candidate. The Review column says whether the verdict was read again and what it was before; the main page says how the review was run.
 
 Rows 2, 15, 21, 41, 47 and 51 give figures that a judge of the follow-up's group re-rule read in other rows, by the rule the main page gives. Each was set beside that group's finding; below, each says whether its instruction agrees with the finding, differs from it or is about another quantity, with the note that says why, and the main page gives the finding and how the rows were read.
 

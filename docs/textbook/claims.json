@@ -1,0 +1,2057 @@
+{
+  "about": "SchwingNet's claims register: every claim the talk, the provisional's draft, the grant, the manuscripts and the operating-room study make or mean to make, as the textbook's chapters and the artifacts record them, each with the evidence it stands on and its grade, and every outstanding experiment or open question as an item that says which claims it bears on and what it costs. tools/claims_rank.py ranks the items and checks that the file holds together; chapter 33 (docs/textbook/33-what-to-run-next-by-the-weight-of-the-claims.md) explains it. Written 2026-10-24 for issue #216. Confidential with the rest of this repository: it names what the provisional's claims can and cannot rest on.",
+  "grades": [
+    "Unverified",
+    "Inferred",
+    "Reported",
+    "Measured"
+  ],
+  "grade_rules": "A claim's grade is the weakest grade among its evidence. Measured: a number read here from a result file or computed by tested code. Reported: stated by an artifact, a paper or the earlier programme's records without the file behind it read here. Inferred: a judgment or a design claim with no outcome measured. Unverified: no source, or contradicted by another record. A novelty claim cannot be Measured, since nothing measures an absence: it is Unverified while a named prior-art item is unread or contradicts it, Inferred once the search is recorded and finds nothing against it, and Reported once counsel's written read says so.",
+  "stakes": {
+    "patent": "the provisional patent application, to be filed by 30 October 2026",
+    "talk": "the CNS talk of 2 November 2026 (mini-oral 66629)",
+    "paper-1": "paper 1, the C-arm level-naming manuscript held for technology transfer",
+    "paper-2": "paper 2, SchwingNet against registration-assisted surgeons, which needs transitional reads",
+    "paper-film": "the plain-film manuscript rows (spine-program 07_plain_film_level_id)",
+    "grant": "the AIDaS seed grant as submitted on 16 October 2026",
+    "or-study": "the retrospective protocol and the operating-room study planned for 2027"
+  },
+  "claims": [
+    {
+      "id": "N1",
+      "kind": "novelty",
+      "statement": "Naming each vertebral level from a single intraoperative C-arm exposure, with no registration to a preoperative scan and no other image of the patient, has not been published.",
+      "stakes": [
+        "patent",
+        "talk",
+        "paper-1"
+      ],
+      "grade": "Unverified",
+      "evidence": [
+        {
+          "chapter": "19",
+          "source": "docs/research/unberath-lab-items-prior-art.md",
+          "grade": "Inferred",
+          "note": "none of the seven Johns Hopkins items names levels; a search, not a proof"
+        },
+        {
+          "chapter": "19",
+          "source": "docs/research/fluoroscopy-list-prior-art.md",
+          "grade": "Inferred",
+          "note": "Huang 2022 (cadaver Long-Film) and Zeng 2024 (intraoperative AP G-arm) already name levels on real images with no CT, so the claim holds only as the whole of it"
+        },
+        {
+          "chapter": "19",
+          "source": "artifacts/research-directions-from-the-data-holding-kcyckb/",
+          "grade": "Unverified",
+          "note": "Li 2016, Li 2017 and ABLSpineLevelCheck 2024 are listed unread because the publisher's site was blocked; any could hold a C-arm naming result"
+        }
+      ],
+      "action": "narrow"
+    },
+    {
+      "id": "N2",
+      "kind": "novelty",
+      "statement": "The talk's first-time claim: a per-level naming rate on real C-arm frames at any angle, as a per-angle curve, by a model with its own detector and no CT, with its latency measured; no published method reports that whole.",
+      "stakes": [
+        "talk"
+      ],
+      "grade": "Inferred",
+      "evidence": [
+        {
+          "chapter": "19",
+          "source": "docs/research/benchmarks-to-beat.md",
+          "grade": "Inferred",
+          "note": "section 2: no comparator row reports a per-angle curve or a latency with level naming"
+        },
+        {
+          "chapter": "03",
+          "source": "docs/research/state-of-knowledge.md",
+          "grade": "Inferred",
+          "note": "section 6: what the talk may claim once measured, and may not claim (first from renders, first on C-arm frames)"
+        }
+      ]
+    },
+    {
+      "id": "N3",
+      "kind": "novelty",
+      "statement": "Part A of the disclosure: a classifier on CT that flags a transitional spine (L6, a sacralised L5, T13) whatever segmenter produced the vertebrae, without trusting that segmenter's level names, is new.",
+      "stakes": [
+        "patent"
+      ],
+      "grade": "Unverified",
+      "evidence": [
+        {
+          "chapter": "14",
+          "source": "docs/research/unberath-lab-items-prior-art.md",
+          "grade": "Unverified",
+          "note": "section 4: VERIDAH (Moeller, arXiv 2026) enumerates T13 and L6 from an upstream localiser on CT and predates Part A's conception; counsel has not read it against Part A"
+        }
+      ]
+    },
+    {
+      "id": "N4",
+      "kind": "novelty",
+      "statement": "Choosing and commanding the next C-arm shot from the levels already named (keeping a named level in overlap while moving toward the target level) is new.",
+      "stakes": [
+        "patent"
+      ],
+      "grade": "Inferred",
+      "evidence": [
+        {
+          "chapter": "10",
+          "source": "docs/research/unberath-lab-items-prior-art.md",
+          "grade": "Inferred",
+          "note": "section 3: US 12,268,533 B2 and its parent claim choosing and moving to the next X-ray from one image, and Kausch 2020 chooses a C-arm pose from one lumbar X-ray with no CT; what survives is the choice by named levels and overlap, and freedom to operate is counsel's question"
+        }
+      ],
+      "action": "narrow"
+    },
+    {
+      "id": "N5",
+      "kind": "novelty",
+      "statement": "Carrying a level count or name along a chain of overlapping C-arm exposures (a sweep) from an anchor is new.",
+      "stakes": [
+        "patent",
+        "paper-1"
+      ],
+      "grade": "Unverified",
+      "evidence": [
+        {
+          "chapter": "10",
+          "source": "docs/research/unberath-lab-items-prior-art.md",
+          "grade": "Inferred",
+          "note": "the granted next-shot patent says nothing of chaining overlapping images"
+        },
+        {
+          "chapter": "19",
+          "source": "docs/textbook/19-what-a-valid-comparison-needs.md",
+          "grade": "Unverified",
+          "note": "no recorded prior-art search on chaining or stitching overlapping fluoroscopic exposures beyond the seven items"
+        }
+      ]
+    },
+    {
+      "id": "N6",
+      "kind": "novelty",
+      "statement": "The draft's sentence that no surveyed method addresses transitional spines at all.",
+      "stakes": [
+        "patent"
+      ],
+      "grade": "Unverified",
+      "evidence": [
+        {
+          "chapter": "14",
+          "source": "docs/research/unberath-lab-items-prior-art.md",
+          "grade": "Unverified",
+          "note": "contradicted by VERIDAH (2026), Kwak 2025 and the VerSe labels; the note asks that it come out of the claims"
+        }
+      ],
+      "action": "withdraw"
+    },
+    {
+      "id": "N7",
+      "kind": "novelty",
+      "statement": "Naming levels on a single intraoperative C-arm image with the transitional column taken into account (named or abstained) has not been published.",
+      "stakes": [
+        "patent",
+        "paper-2"
+      ],
+      "grade": "Inferred",
+      "evidence": [
+        {
+          "chapter": "14",
+          "source": "docs/research/unberath-lab-items-prior-art.md",
+          "grade": "Inferred",
+          "note": "section 4: what survives as far as the read goes"
+        },
+        {
+          "chapter": "19",
+          "source": "artifacts/registration-free-level-id-feasibility-uramo1/",
+          "grade": "Reported",
+          "note": "Kwak 2025 flags LSTV on standing lateral films, diagnostic and not intraoperative naming"
+        }
+      ]
+    },
+    {
+      "id": "N8",
+      "kind": "novelty",
+      "statement": "The priority sentences of the September pages: naming solved to a standard nobody has published, 71.67 percent has no peer, no published work uses renders to give a 2-D model level identity, first to learn level naming from renders, first to try it on C-arm frames.",
+      "stakes": [
+        "paper-1",
+        "talk"
+      ],
+      "grade": "Unverified",
+      "evidence": [
+        {
+          "chapter": "19",
+          "source": "docs/textbook/19-what-a-valid-comparison-needs.md",
+          "grade": "Unverified",
+          "note": "made with no search record behind them"
+        },
+        {
+          "chapter": "03",
+          "source": "docs/research/state-of-knowledge.md",
+          "grade": "Unverified",
+          "note": "section 6: Huang 2022 learned naming from renders and FluoroSAM was tried on C-arm frames, so neither first may be said"
+        }
+      ],
+      "action": "withdraw"
+    },
+    {
+      "id": "F1",
+      "kind": "functionality",
+      "statement": "The reported stack names lateral C-arm vertebrae on a device it never trained on: 595 of 617, 96.4 percent [92.3, 98.4], on C-ArmLSpine, behind its own detector's boxes and against automatic truth.",
+      "stakes": [
+        "talk",
+        "paper-1"
+      ],
+      "grade": "Reported",
+      "evidence": [
+        {
+          "chapter": "03",
+          "source": "docs/research/demo-plan.md",
+          "grade": "Reported",
+          "note": "copied from spine-program 01/STATUS.md A2.1"
+        },
+        {
+          "chapter": "33",
+          "source": "spine-program 01_carm_level_detection/docs/handoff/RESULTS_CATALOG.md row A2.1",
+          "grade": "Reported",
+          "note": "CURRENT, HELD OUT; 141 cases; interval on the effective n at design effect 3.84; truth automatic"
+        }
+      ]
+    },
+    {
+      "id": "F2",
+      "kind": "functionality",
+      "statement": "AP frames of a device never seen are named about as well as lateral ones.",
+      "stakes": [
+        "talk",
+        "patent",
+        "paper-1"
+      ],
+      "grade": "Unverified",
+      "evidence": [
+        {
+          "chapter": "03",
+          "source": "docs/research/demo-plan.md",
+          "grade": "Unverified",
+          "note": "a Reported figure that contradicts the claim today: zero-shot AP 276 of 631, 43.7 percent, a one-level cranial shift, which the concept ledger marks current"
+        },
+        {
+          "chapter": "16",
+          "source": "docs/research/ct-priors-for-2d-detection.md",
+          "grade": "Inferred",
+          "note": "that a counting prior from CT fixes the shift is Inferred; the closest published analogue is in CT"
+        }
+      ],
+      "action": "narrow"
+    },
+    {
+      "id": "F3",
+      "kind": "functionality",
+      "statement": "Naming holds across gantry angles on real frames, as a per-angle curve on a real sweep.",
+      "stakes": [
+        "talk",
+        "patent"
+      ],
+      "grade": "Unverified",
+      "evidence": [
+        {
+          "chapter": "27",
+          "source": "artifacts/naming-vertebrae-without-ct-hjy4vc/",
+          "grade": "Reported",
+          "note": "the only figure is on renders: about 58 to 60 percent over 89 obliquely rendered spines"
+        },
+        {
+          "chapter": "27",
+          "source": "docs/research/training-review.md",
+          "grade": "Unverified",
+          "note": "the sweep's jobs for the first real run were pending on 24 October; no real per-angle number exists"
+        }
+      ]
+    },
+    {
+      "id": "F4",
+      "kind": "functionality",
+      "statement": "The count from an anchor is exact on 99.17 to 100 percent of completed counts when its boxes are right, in twelve arms of 16 to 801 spines (1,205 of 1,209 on 262 real lateral radiographs); each a record, not a final value.",
+      "stakes": [
+        "grant",
+        "or-study",
+        "paper-1"
+      ],
+      "grade": "Unverified",
+      "evidence": [
+        {
+          "chapter": "03",
+          "source": "artifacts/aidas-seed-grant-proposal/",
+          "grade": "Reported",
+          "note": "the grant's counting paragraph, from a manuscript in preparation"
+        },
+        {
+          "chapter": "33",
+          "source": "spine-program 01_carm_level_detection/docs/handoff/RESULTS_CATALOG.md rows C3.5 and C3.6",
+          "grade": "Unverified",
+          "note": "the catalog marks the boxes-given counting figures RECORD ONLY and prints 1,204 of 1,209 where the grant has 1,205, though its own 99.67 percent fits 1,205 (1,204 of 1,209 is 99.59 percent), so the row is inconsistent with itself; counting with render-detector boxes (30.06 percent) is REFUTED as deployable"
+        }
+      ],
+      "action": "narrow"
+    },
+    {
+      "id": "F5",
+      "kind": "functionality",
+      "statement": "Counting-grade detection, at least 97 percent of bodies, on a C-arm held out entirely: one network for any C-arm.",
+      "stakes": [
+        "or-study",
+        "grant",
+        "patent"
+      ],
+      "grade": "Unverified",
+      "evidence": [
+        {
+          "chapter": "20",
+          "source": "artifacts/or-readiness-ledger/",
+          "grade": "Reported",
+          "note": "the ledger lists it as not supported"
+        },
+        {
+          "chapter": "33",
+          "source": "spine-program 01_carm_level_detection/docs/handoff/RESULTS_CATALOG.md rows A6.1, A6.2, A6.4, A6.5 and A6.13",
+          "grade": "Unverified",
+          "note": "one held-out detector: 80.5 percent at confidence 0.74 (an operating point chosen after a result was seen, marked [THR]; 236 of 287 when re-scored on the rebuilt truth, A6.5) and 90.6 percent at 0.25 on the same 287 vertebrae, short of the pre-stated 97 percent, which no held-out cell meets (A6.13); the record contradicts the claim"
+        }
+      ],
+      "action": "narrow"
+    },
+    {
+      "id": "F6",
+      "kind": "functionality",
+      "statement": "Transitional spines on real frames are named or abstained correctly: exact level at a Wilson lower bound of 90 percent (35 at-risk persons, no error), variant sensitivity at 85 percent (22 carriers, no miss).",
+      "stakes": [
+        "paper-2",
+        "patent",
+        "talk"
+      ],
+      "grade": "Unverified",
+      "evidence": [
+        {
+          "chapter": "03",
+          "source": "artifacts/research-directions-from-the-data-holding-kcyckb/",
+          "grade": "Unverified",
+          "note": "the verified real-frame transitional test count is zero; seven at-risk persons have a frame, none verified; no measurement stands behind the claim"
+        },
+        {
+          "chapter": "19",
+          "source": "artifacts/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay/",
+          "grade": "Reported",
+          "note": "render L6 recall 56.1 to 72.4 percent; at 72.4 percent the chance of 22 of 22 is 0.0008"
+        }
+      ]
+    },
+    {
+      "id": "F7",
+      "kind": "functionality",
+      "statement": "Part A works: the CT flag separates transitional from typical columns (the receiver operating curve on 26 transitional-labelled against 757 normal-labelled CTSpinoPelvic1K records).",
+      "stakes": [
+        "patent",
+        "paper-2"
+      ],
+      "grade": "Inferred",
+      "evidence": [
+        {
+          "chapter": "14",
+          "source": "artifacts/counting-against-two-anchors-qkktgu/",
+          "grade": "Inferred",
+          "note": "designed, not run; CT-7's gate is written"
+        },
+        {
+          "chapter": "28",
+          "source": "docs/textbook/28-the-ranked-experiment-backlog.md",
+          "grade": "Inferred",
+          "note": "entry 8 waits on the canal-closing fix, the pre-registration freeze and readers for the disputed records"
+        },
+        {
+          "chapter": "14",
+          "source": "artifacts/research-directions-from-the-data-holding-kcyckb/",
+          "grade": "Inferred",
+          "note": "CT-7 is unrun; its receiver operating curve set is 26 transitional-labelled records against 757 normal-labelled ones"
+        }
+      ]
+    },
+    {
+      "id": "F8",
+      "kind": "functionality",
+      "statement": "Low latency: the whole frame path, detector included, runs at a 95th percentile under 97 ms, one frame interval of the sweep, on the machine that shows it.",
+      "stakes": [
+        "talk",
+        "patent"
+      ],
+      "grade": "Inferred",
+      "evidence": [
+        {
+          "chapter": "20",
+          "source": "docs/research/latency-and-sweep/README.md",
+          "grade": "Measured",
+          "note": "p95 15.1 ms through ONNX Runtime on four CPU threads, but of a synthetic model with no detector in a cloud container"
+        },
+        {
+          "chapter": "03",
+          "source": "docs/research/retraining-plan.md",
+          "grade": "Inferred",
+          "note": "no machine of an operating room measured; the stack's only CPU figure is 3,350 ms a frame"
+        }
+      ]
+    },
+    {
+      "id": "F9",
+      "kind": "functionality",
+      "statement": "Version 1, the new workflow's first well-trained model, names vertebrae on the frozen real C-ArmLSpine test persons, and its number is the reference row of the evaluation page.",
+      "stakes": [
+        "talk"
+      ],
+      "grade": "Unverified",
+      "evidence": [
+        {
+          "chapter": "27",
+          "source": "docs/research/training-review.md",
+          "grade": "Unverified",
+          "note": "one real-frame run on 21 test crops from 4 persons, interval about 0.85 to 1, carries no claim and is not recorded here"
+        },
+        {
+          "chapter": "03",
+          "source": "docs/research/evaluation/README.md",
+          "grade": "Measured",
+          "note": "the recorded runs are on a synthetic bank and measure the workflow, not SchwingNet"
+        }
+      ]
+    },
+    {
+      "id": "F10",
+      "kind": "functionality",
+      "statement": "Every visible vertebra from C1 to the sacrum is named, thoracic and cervical frames included.",
+      "stakes": [
+        "talk",
+        "patent"
+      ],
+      "grade": "Unverified",
+      "evidence": [
+        {
+          "chapter": "03",
+          "source": "docs/research/state-of-knowledge.md",
+          "grade": "Unverified",
+          "note": "no number exists on a cervical or thoracic C-arm frame; no real AP and lateral pair above the lumbar spine is held"
+        },
+        {
+          "chapter": "27",
+          "source": "artifacts/or-readiness-ledger/",
+          "grade": "Reported",
+          "note": "C2 found on 0 to 8 percent of 25 real-film truths"
+        }
+      ],
+      "action": "narrow"
+    },
+    {
+      "id": "F11",
+      "kind": "functionality",
+      "statement": "The system declines when unsure, with a measured bound on wrong-level output at a stated decline rate (the 99 percent selective accuracy at 35.7 percent coverage is its only headline figure, a record, not a final value).",
+      "stakes": [
+        "or-study",
+        "grant",
+        "talk"
+      ],
+      "grade": "Unverified",
+      "evidence": [
+        {
+          "chapter": "20",
+          "source": "artifacts/counting-levels-under-fluoroscopy/",
+          "grade": "Inferred",
+          "note": "the guarantee is a design promise with no outcome measured"
+        },
+        {
+          "chapter": "33",
+          "source": "spine-program 01_carm_level_detection/docs/handoff/RESULTS_CATALOG.md row C1.8",
+          "grade": "Unverified",
+          "note": "NOT QUOTABLE: leaked bank, coverage chosen on the same half it was scored on; a clean re-run is not recorded"
+        }
+      ],
+      "action": "narrow"
+    },
+    {
+      "id": "F12",
+      "kind": "functionality",
+      "statement": "Plain films are named on persons held out: 99.87 percent on CSXA cervical windows, 98.04 percent on BUU-LSPINE lumbar windows, and the FluoroCap level model's 98.7 percent on 8,422 radiograph crops; each a record, not a final value.",
+      "stakes": [
+        "paper-film",
+        "talk"
+      ],
+      "grade": "Unverified",
+      "evidence": [
+        {
+          "chapter": "03",
+          "source": "artifacts/counting-from-the-sacrum/",
+          "grade": "Reported",
+          "note": "called held out by patient"
+        },
+        {
+          "chapter": "03",
+          "source": "docs/research/retraining-plan.md",
+          "grade": "Unverified",
+          "note": "every CSXA, BUU and NHANES person sits in the current base model's training or selection set; the 98.7 percent travels with person-disjointness not re-verified"
+        },
+        {
+          "chapter": "33",
+          "source": "spine-program 01_carm_level_detection/docs/handoff/RESULTS_CATALOG.md rows C1.6 and C1.2",
+          "grade": "Unverified",
+          "note": "C1.6: the clean per-source CSXA and BUU figures are on the list of numbers deliberately absent from paper 1's numbers file (sn:NUMBERS.md), as the row says; C1.2: a recurrent head's 98.69 percent on n 8,422, likely the same figure as the 98.7 percent (same n, an Inferred match), is RECORD ONLY and marked wrong-bank"
+        }
+      ],
+      "action": "narrow"
+    },
+    {
+      "id": "F13",
+      "kind": "functionality",
+      "statement": "The grant's DeepFluoro paragraph: the sacrum found on about 96 to 98 percent of real frames by a detector trained on renders, and a physics renderer explaining 80.9 percent of a real frame's variance; each a record, not a final value.",
+      "stakes": [
+        "grant",
+        "or-study"
+      ],
+      "grade": "Unverified",
+      "evidence": [
+        {
+          "chapter": "03",
+          "source": "artifacts/_synthesis/concepts.md",
+          "grade": "Unverified",
+          "note": "the sacrum figure is open in the ledger (90 to 97 against 96 to 98); the variance figure is read two ways (80.9 against 86)"
+        },
+        {
+          "chapter": "33",
+          "source": "spine-program 01_carm_level_detection/docs/handoff/RESULTS_CATALOG.md rows C4.1 and C4.2",
+          "grade": "Unverified",
+          "note": "the renderer's 80.9 percent is RECORD ONLY (C4.2); the catalog's render-only DeepFluoro sacrum row, 76.9 percent, is RECORD ONLY (C4.1) and sits in the grant's lower range of about 64 to 77 percent; the grant's 96 to 98 percent on renders of DeepFluoro's own CTs has no row in the parts read"
+        }
+      ],
+      "action": "narrow"
+    },
+    {
+      "id": "F14",
+      "kind": "functionality",
+      "statement": "Chaining along a sweep raises naming on real films (NHANES II 64.4 to 88.5 percent, BUU 78.9 to 96.5 percent with three bodies in view); each a record, not a final value.",
+      "stakes": [
+        "patent",
+        "paper-1"
+      ],
+      "grade": "Unverified",
+      "evidence": [
+        {
+          "chapter": "11",
+          "source": "artifacts/naming-vertebrae-without-ct-hjy4vc/",
+          "grade": "Reported",
+          "note": "75 films in two arms"
+        },
+        {
+          "chapter": "28",
+          "source": "artifacts/handoff-schwingnet-ctspinopelvic1k-and-the-imaging-programme-rbcdmf/",
+          "grade": "Unverified",
+          "note": "the lineage behind the arms is ruled leaked and record only; the promised replacement is not recorded"
+        }
+      ],
+      "action": "narrow"
+    },
+    {
+      "id": "F15",
+      "kind": "functionality",
+      "statement": "A hand-moved C-arm keeps the step the count assumes, so the count holds in a real operating room.",
+      "stakes": [
+        "or-study",
+        "grant"
+      ],
+      "grade": "Inferred",
+      "evidence": [
+        {
+          "chapter": "10",
+          "source": "artifacts/aidas-seed-grant-proposal/",
+          "grade": "Inferred",
+          "note": "phantom sweeps planned for the first quarter of 2027; no phantom bought"
+        }
+      ]
+    },
+    {
+      "id": "F16",
+      "kind": "functionality",
+      "statement": "On the hospital's own devices and patients, per-body detector recall is at least 97 percent (the retrospective protocol's first hypothesis).",
+      "stakes": [
+        "or-study",
+        "grant"
+      ],
+      "grade": "Inferred",
+      "evidence": [
+        {
+          "chapter": "20",
+          "source": "artifacts/retrospective-fluoroscopy-protocol/",
+          "grade": "Inferred",
+          "note": "a draft; nothing pulled; the interval sizes an estimate, not a test of at least 97 percent"
+        }
+      ]
+    },
+    {
+      "id": "I1",
+      "kind": "integrity",
+      "statement": "Every C-ArmLSpine interval counts persons: the 149 cases are known as persons, and folds keep each person on one side.",
+      "stakes": [
+        "talk",
+        "paper-1"
+      ],
+      "grade": "Unverified",
+      "evidence": [
+        {
+          "chapter": "05",
+          "source": "artifacts/_synthesis/contradictions/verification-benches-overnight-audits-and-or-readiness.md",
+          "grade": "Unverified",
+          "note": "149 cases, 148 with 296 frames, or 120 distinct subjects; row 2 is cannot-tell"
+        }
+      ]
+    },
+    {
+      "id": "I2",
+      "kind": "integrity",
+      "statement": "The new workflow cannot train on a catalog whose leak checks have not passed.",
+      "stakes": [
+        "talk",
+        "paper-1"
+      ],
+      "grade": "Unverified",
+      "evidence": [
+        {
+          "chapter": "27",
+          "source": "artifacts/schwingnet-grid-pipeline/",
+          "grade": "Unverified",
+          "note": "the leak verdict holds training back by instruction only; no run tool reads it"
+        }
+      ]
+    },
+    {
+      "id": "I3",
+      "kind": "integrity",
+      "statement": "The content-hash leak join (CHK-6 and CHK-7) passes over the real shards.",
+      "stakes": [
+        "talk",
+        "paper-1"
+      ],
+      "grade": "Unverified",
+      "evidence": [
+        {
+          "chapter": "09",
+          "source": "docs/research/data-catalog.md",
+          "grade": "Unverified",
+          "note": "the checks exist as the ingest step; no note says the join has run over real shards and passed"
+        }
+      ]
+    },
+    {
+      "id": "I4",
+      "kind": "integrity",
+      "statement": "One CTSpinoPelvic1K record is one person, so the person-disjoint G3 split holds.",
+      "stakes": [
+        "paper-2",
+        "patent"
+      ],
+      "grade": "Unverified",
+      "evidence": [
+        {
+          "chapter": "09",
+          "source": "artifacts/_synthesis/contradictions/level-naming-and-counting.md",
+          "grade": "Unverified",
+          "note": "row 29 cannot-tell: the release comes from CT colonography, scanned prone and supine; the audit was said to be running and no page reports it"
+        }
+      ]
+    },
+    {
+      "id": "I5",
+      "kind": "integrity",
+      "statement": "The intervals shown are clustered by person or case, not counted over vertebrae.",
+      "stakes": [
+        "talk",
+        "paper-1"
+      ],
+      "grade": "Unverified",
+      "evidence": [
+        {
+          "chapter": "18",
+          "source": "docs/research/evaluation/README.md",
+          "grade": "Unverified",
+          "note": "the evaluator prints a per-vertebra Wilson interval with no clustered interval; the claim is not true of this repository's tool today"
+        }
+      ]
+    },
+    {
+      "id": "I6",
+      "kind": "integrity",
+      "statement": "Comparisons with published methods are made on the same frames, so a difference is a difference of method and not of test set.",
+      "stakes": [
+        "talk",
+        "paper-1"
+      ],
+      "grade": "Unverified",
+      "evidence": [
+        {
+          "chapter": "19",
+          "source": "docs/research/benchmarks-to-beat.md",
+          "grade": "Unverified",
+          "note": "every comparator sits on a different test set until one method runs on the other's frames; FluoroSAM's weights on C-ArmLSpine (#132) is the cheapest such run"
+        }
+      ]
+    },
+    {
+      "id": "I7",
+      "kind": "integrity",
+      "statement": "No test person is scored before the pre-registered entry says the hypothesis was seen (paper 2's H1 seen), and the witness frames drawn at every checkpoint do not breach that rule.",
+      "stakes": [
+        "paper-2",
+        "talk"
+      ],
+      "grade": "Unverified",
+      "evidence": [
+        {
+          "chapter": "18",
+          "source": "docs/textbook/18-metrics-intervals-and-witness-frames.md",
+          "grade": "Unverified",
+          "note": "whether a test witness read at a version boundary counts as the H1 seen entry has not been ruled"
+        }
+      ]
+    },
+    {
+      "id": "I8",
+      "kind": "integrity",
+      "statement": "Every number the talk shows is reproduced by a command from a record in this repository.",
+      "stakes": [
+        "talk"
+      ],
+      "grade": "Unverified",
+      "evidence": [
+        {
+          "chapter": "01",
+          "source": "docs/project.md",
+          "grade": "Inferred",
+          "note": "the goal's rule"
+        },
+        {
+          "chapter": "03",
+          "source": "docs/research/evaluation/README.md",
+          "grade": "Unverified",
+          "note": "only synthetic-bank runs are recorded; no real-frame number about SchwingNet is in a record here"
+        }
+      ]
+    },
+    {
+      "id": "I9",
+      "kind": "integrity",
+      "statement": "No figure quoted by the talk, the grant or the book is one the earlier programme's results catalog marks superseded, record only or not quotable.",
+      "stakes": [
+        "talk",
+        "grant",
+        "paper-1"
+      ],
+      "grade": "Unverified",
+      "evidence": [
+        {
+          "chapter": "03",
+          "source": "docs/textbook/03-what-is-measured-and-what-is-claimed.md",
+          "grade": "Inferred",
+          "note": "chapter 03 carried each disagreement as cannot-tell because the catalog had not been read"
+        },
+        {
+          "chapter": "33",
+          "source": "spine-program 01_carm_level_detection/docs/handoff/RESULTS_CATALOG.md",
+          "grade": "Unverified",
+          "note": "read in part for chapter 33 (rows A2, A3, A5, A6, B, C1, C3, C4): the grant as submitted quotes figures the catalog marks RECORD ONLY, the boxes-given counting arms (C3.5) and the renderer's 80.9 percent (C4.2), so the claim is contradicted for the grant and holds at most for what is said next"
+        }
+      ],
+      "action": "narrow"
+    },
+    {
+      "id": "I10",
+      "kind": "integrity",
+      "statement": "The grant's reading of the registry, that 81.3 percent of wrong-level events came from intraoperative disorientation, means a count gone wrong under fluoroscopy.",
+      "stakes": [
+        "grant",
+        "talk"
+      ],
+      "grade": "Unverified",
+      "evidence": [
+        {
+          "chapter": "01",
+          "source": "artifacts/_synthesis/contradictions/the-case-for-the-or-study-proposal-seed-grant-and-irb-protoc.md",
+          "grade": "Unverified",
+          "note": "row 8 cannot-tell: another page gives 18.8 percent to image misinterpretation; the paper's categories were not read"
+        }
+      ]
+    },
+    {
+      "id": "I11",
+      "kind": "integrity",
+      "statement": "C-ArmLSpine's poses are accurate enough that the truth boxes and levels projected from its cone-beam volumes are right on the frames.",
+      "stakes": [
+        "talk",
+        "paper-1"
+      ],
+      "grade": "Unverified",
+      "evidence": [
+        {
+          "chapter": "27",
+          "source": "docs/research/state-of-knowledge.md",
+          "grade": "Unverified",
+          "note": "the poses are the project's own registrations and their accuracy has not been measured"
+        }
+      ]
+    },
+    {
+      "id": "I12",
+      "kind": "integrity",
+      "statement": "The level truth on the real test frames is right: a person, not only two automatic labellers, has read it.",
+      "stakes": [
+        "talk",
+        "paper-1",
+        "paper-2"
+      ],
+      "grade": "Unverified",
+      "evidence": [
+        {
+          "chapter": "05",
+          "source": "docs/textbook/05-real-fluoroscopy-and-c-arm-sets.md",
+          "grade": "Reported",
+          "note": "two labellers agree on 814 of 910 vertebrae; no person has read a level on any frame; the three L6 cases rest on one labeller"
+        },
+        {
+          "chapter": "17",
+          "source": "docs/textbook/17-benches-and-human-reads.md",
+          "grade": "Unverified",
+          "note": "no bench store shows a verdict"
+        }
+      ]
+    }
+  ],
+  "items": [
+    {
+      "id": "E01",
+      "title": "Read the earlier programme's results catalog against the book and the grant",
+      "what": "Read spine-program's 01_carm_level_detection/docs/handoff/RESULTS_CATALOG.md, already in the read-only clone, row by row against chapters 03, 18, 19 and 20 and the grant's figures, and record each catalog status beside the book's figure.",
+      "chapter_28_entry": null,
+      "issue": "#216",
+      "bears_on": [
+        {
+          "claim": "I9",
+          "to": "Reported",
+          "could_refute": true,
+          "how": "settles the cannot-tell rows by the catalog's own status words"
+        },
+        {
+          "claim": "F4",
+          "to": "Unverified",
+          "could_refute": true,
+          "how": "confirms whether the counting figures are record only everywhere"
+        },
+        {
+          "claim": "F11",
+          "to": "Unverified",
+          "could_refute": true,
+          "how": "confirms the 99 percent is not quotable"
+        },
+        {
+          "claim": "F13",
+          "to": "Unverified",
+          "could_refute": true,
+          "how": "confirms both DeepFluoro numbers are record only"
+        }
+      ],
+      "cost": {
+        "session_hours": 3,
+        "basis": "Inferred: this chapter's estimate for a 110 KB file already read in part"
+      },
+      "needs_owner_word": false,
+      "depends_on": [],
+      "status": "open"
+    },
+    {
+      "id": "E02",
+      "title": "Read the unread prior art on naming without registration",
+      "what": "Read Li 2016, Li 2017 and ABLSpineLevelCheck 2024, listed unread since the publisher's site was blocked, and Huang 2022's full text, by public terms only, and record what each reports on C-arm naming without registration.",
+      "chapter_28_entry": null,
+      "issue": null,
+      "before": "2026-10-30",
+      "bears_on": [
+        {
+          "claim": "N1",
+          "to": "Inferred",
+          "could_refute": true,
+          "how": "closes the named gap in the search, or finds the prior art"
+        },
+        {
+          "claim": "N7",
+          "to": "Inferred",
+          "could_refute": true,
+          "how": "any of the three could report transitional-aware naming"
+        },
+        {
+          "claim": "N2",
+          "to": "Inferred",
+          "could_refute": true,
+          "how": "a per-angle or timed result there would end the first-time claim"
+        }
+      ],
+      "cost": {
+        "session_hours": 4,
+        "basis": "Inferred: this chapter's estimate; the publisher's site may still be blocked from the container"
+      },
+      "needs_owner_word": false,
+      "depends_on": [],
+      "status": "open"
+    },
+    {
+      "id": "E03",
+      "title": "Search the prior art on chaining overlapping fluoroscopic exposures",
+      "what": "A recorded search, by public terms only, for methods that carry a level count or name across overlapping C-arm or fluoroscopic exposures, stitched or not, and for next-shot choice by named anatomy.",
+      "chapter_28_entry": null,
+      "issue": null,
+      "before": "2026-10-30",
+      "bears_on": [
+        {
+          "claim": "N5",
+          "to": "Inferred",
+          "could_refute": true,
+          "how": "the first recorded search on the chaining element"
+        },
+        {
+          "claim": "N4",
+          "to": "Inferred",
+          "could_refute": true,
+          "how": "a method choosing the next shot from named levels would take the narrowed element too"
+        }
+      ],
+      "cost": {
+        "session_hours": 4,
+        "basis": "Inferred: this chapter's estimate"
+      },
+      "needs_owner_word": false,
+      "depends_on": [],
+      "status": "open"
+    },
+    {
+      "id": "E04",
+      "title": "Counsel reads the closest prior art against the draft's claims",
+      "what": "Counsel reads VERIDAH against Part A, US 12,268,533 B2, US 11,992,348 B2 and Kausch 2020 against the next-shot element, and the searches of E02 and E03 against the naming and chaining claims, before the provisional is filed.",
+      "chapter_28_entry": null,
+      "issue": null,
+      "before": "2026-10-30",
+      "bears_on": [
+        {
+          "claim": "N3",
+          "to": "Reported",
+          "could_refute": true,
+          "how": "counsel's written read on VERIDAH"
+        },
+        {
+          "claim": "N4",
+          "to": "Reported",
+          "could_refute": true,
+          "how": "counsel's read of the granted family and freedom to operate"
+        },
+        {
+          "claim": "N1",
+          "to": "Reported",
+          "could_refute": true,
+          "how": "counsel's read once the search is complete"
+        },
+        {
+          "claim": "N5",
+          "to": "Reported",
+          "could_refute": true,
+          "how": "counsel's read once the chaining search exists"
+        },
+        {
+          "claim": "N7",
+          "to": "Reported",
+          "could_refute": true,
+          "how": "counsel's read of the narrow surviving claim"
+        }
+      ],
+      "cost": {
+        "external": "patent counsel's time",
+        "basis": "no figure in the record"
+      },
+      "needs_owner_word": true,
+      "owner_word_reason": "counsel is engaged and instructed by the owner",
+      "depends_on": [
+        "E02",
+        "E03"
+      ],
+      "status": "open"
+    },
+    {
+      "id": "E05",
+      "title": "Read C-ArmLSpine's person key",
+      "what": "Read the release's subject column and record how many persons stand behind the 149 cases, so every C-ArmLSpine interval and fold counts persons.",
+      "chapter_28_entry": null,
+      "issue": null,
+      "bears_on": [
+        {
+          "claim": "I1",
+          "to": "Reported",
+          "could_refute": true,
+          "how": "settles 149, 148 or 120 by the release's own column"
+        },
+        {
+          "claim": "F1",
+          "to": "Reported",
+          "could_refute": true,
+          "how": "fewer persons widen the 96.4 percent interval"
+        }
+      ],
+      "cost": {
+        "session_hours": 1,
+        "basis": "chapter 27: a session can close it from the release's subject column, in hours; if the column is only in the grid's copy it becomes a grid read"
+      },
+      "needs_owner_word": false,
+      "depends_on": [],
+      "status": "open"
+    },
+    {
+      "id": "E06",
+      "title": "Give the evaluator a person-clustered interval",
+      "what": "Add an interval clustered by person or case to tools/evaluate.py, with tests, and print it beside the per-vertebra Wilson interval on the evaluation page.",
+      "chapter_28_entry": null,
+      "issue": null,
+      "bears_on": [
+        {
+          "claim": "I5",
+          "to": "Measured",
+          "could_refute": false,
+          "how": "tested code makes the clustered interval the reported one"
+        }
+      ],
+      "cost": {
+        "session_hours": 4,
+        "basis": "Inferred: this chapter's estimate for a standard-library change with tests"
+      },
+      "needs_owner_word": false,
+      "depends_on": [],
+      "status": "open"
+    },
+    {
+      "id": "E07",
+      "title": "Make the run tools refuse a catalog whose leak join has not passed",
+      "what": "Have tools/flow.py read the leak join's verdict for the catalog it trains on and stop when the verdict is missing or failing, with tests.",
+      "chapter_28_entry": null,
+      "issue": null,
+      "bears_on": [
+        {
+          "claim": "I2",
+          "to": "Measured",
+          "could_refute": false,
+          "how": "the guard moves from instruction to tested code"
+        }
+      ],
+      "cost": {
+        "session_hours": 3,
+        "basis": "chapter 27: a session can write that read; the hours are this chapter's estimate"
+      },
+      "needs_owner_word": false,
+      "depends_on": [],
+      "status": "open"
+    },
+    {
+      "id": "E08",
+      "title": "Build the mask-to-box step for the FluoroSAM comparison",
+      "what": "Add to tools/evaluate.py the step that turns a segmenter's masks into boxes so FluoroSAM's output can be scored as naming accuracy (#132), with tests.",
+      "chapter_28_entry": null,
+      "issue": "#132",
+      "bears_on": [],
+      "cost": {
+        "session_hours": 3,
+        "basis": "Inferred: this chapter's estimate; docs/research/benchmarks-to-beat.md says the step is not built"
+      },
+      "needs_owner_word": false,
+      "depends_on": [],
+      "status": "open"
+    },
+    {
+      "id": "E09",
+      "title": "Read the registry paper's cause categories",
+      "what": "Read Furuya 2026's definition of intraoperative disorientation and image misinterpretation, and record whether a miscount under fluoroscopy falls in the 81.3 percent.",
+      "chapter_28_entry": null,
+      "issue": null,
+      "bears_on": [
+        {
+          "claim": "I10",
+          "to": "Reported",
+          "could_refute": true,
+          "how": "the paper's own categories decide the reading"
+        }
+      ],
+      "cost": {
+        "session_hours": 1,
+        "basis": "Inferred: this chapter's estimate"
+      },
+      "needs_owner_word": false,
+      "depends_on": [],
+      "status": "open"
+    },
+    {
+      "id": "E10",
+      "title": "The owner rules on the H1 seen gate and the witness frames",
+      "what": "The owner says whether version 1's test reading, and the test witness frames drawn at every checkpoint, wait for paper 2's H1 seen entry.",
+      "chapter_28_entry": null,
+      "issue": null,
+      "before": "2026-10-28",
+      "bears_on": [
+        {
+          "claim": "I7",
+          "to": "Inferred",
+          "could_refute": true,
+          "how": "a written rule replaces an unruled conflict"
+        }
+      ],
+      "cost": {
+        "basis": "a decision, no compute"
+      },
+      "needs_owner_word": true,
+      "owner_word_reason": "only the owner can rule",
+      "depends_on": [],
+      "status": "open"
+    },
+    {
+      "id": "E11",
+      "title": "Train version 1 and score it on the frozen C-ArmLSpine test persons",
+      "what": "Run version 1 on the registry as it stands and record its evaluation on the frozen test persons with witness frames (#11, #12), so the reference row exists.",
+      "chapter_28_entry": null,
+      "issue": "#11, #12",
+      "before": "2026-10-28",
+      "bears_on": [
+        {
+          "claim": "F9",
+          "to": "Measured",
+          "could_refute": true,
+          "how": "the first number this repository holds about SchwingNet on real frames"
+        },
+        {
+          "claim": "I8",
+          "to": "Measured",
+          "could_refute": false,
+          "how": "a real-frame number reproduced from a record here"
+        }
+      ],
+      "cost": {
+        "gpu_hours": [
+          5,
+          32
+        ],
+        "basis": "the bound is the owner's: 5 GPU-hours in the flow's Slurm mode or 24 for one job (docs/research/v1-demo/README.md), 8 + 14 + 10 hours in the retraining plan; the range spans the three answers"
+      },
+      "needs_owner_word": true,
+      "owner_word_reason": "grid jobs and training",
+      "depends_on": [],
+      "status": "open"
+    },
+    {
+      "id": "E12",
+      "title": "Record the 21-crop real-frame run already made",
+      "what": "Bring the first version 1 run on real frames (21 test crops, 4 persons) into the repository's run records, with its caveat that it carries no claim.",
+      "chapter_28_entry": null,
+      "issue": null,
+      "bears_on": [
+        {
+          "claim": "I8",
+          "to": "Inferred",
+          "could_refute": false,
+          "how": "a first real-frame record, too small to quote"
+        }
+      ],
+      "cost": {
+        "unknown": [
+          "grid"
+        ],
+        "basis": "the run's files are on the grid; a read through the gate words"
+      },
+      "needs_owner_word": true,
+      "owner_word_reason": "a grid read",
+      "depends_on": [],
+      "status": "open"
+    },
+    {
+      "id": "E13",
+      "title": "Run the leak join over the real shards",
+      "what": "Run CHK-6 and CHK-7 as the ingest step's join over every real shard and record the verdict.",
+      "chapter_28_entry": null,
+      "issue": null,
+      "bears_on": [
+        {
+          "claim": "I3",
+          "to": "Measured",
+          "could_refute": true,
+          "how": "a passing or failing join on the real corpus"
+        }
+      ],
+      "cost": {
+        "unknown": [
+          "grid"
+        ],
+        "basis": "an array over the shards with a join after it; the record gives no hours"
+      },
+      "needs_owner_word": true,
+      "owner_word_reason": "a grid job",
+      "depends_on": [],
+      "status": "open"
+    },
+    {
+      "id": "E14",
+      "title": "The counting prior from 3-D at decode",
+      "what": "Fit the counting prior from the segmented CTs and score the reported stack's saved AP outputs with and without it on the validation witness frames, the transitional stratum apart (workstream A, #57).",
+      "chapter_28_entry": 4,
+      "issue": "#57",
+      "before": "2026-11-02",
+      "bears_on": [
+        {
+          "claim": "F2",
+          "to": "Measured",
+          "could_refute": true,
+          "how": "AP accuracy before and after, scored here"
+        },
+        {
+          "claim": "F6",
+          "to": "Unverified",
+          "could_refute": true,
+          "how": "the named risk: a confident wrong answer on a transitional spine"
+        }
+      ],
+      "cost": {
+        "work_days": [
+          1,
+          2
+        ],
+        "cpu_hours": [
+          32,
+          64
+        ],
+        "basis": "chapter 28: 1 to 2 days, one CPU job of 1 to 2 hours on 32 cores, then CPU minutes; core-hours computed here"
+      },
+      "needs_owner_word": true,
+      "owner_word_reason": "one grid job",
+      "depends_on": [],
+      "status": "open"
+    },
+    {
+      "id": "E15",
+      "title": "AP and oblique renders with projected anchors, and the rare-class bank",
+      "what": "Render AP and oblique frames from CT collections with no C-ArmLSpine person, bank the rare-class renders after the person-key chain, and fine-tune version 1 (workstreams C and B, #59 and #58).",
+      "chapter_28_entry": 5,
+      "issue": "#58, #59",
+      "bears_on": [
+        {
+          "claim": "F2",
+          "to": "Measured",
+          "could_refute": true,
+          "how": "AP naming on the witness frames after the fine-tune"
+        },
+        {
+          "claim": "F3",
+          "to": "Inferred",
+          "could_refute": false,
+          "how": "renders at angle, not real frames"
+        }
+      ],
+      "cost": {
+        "work_days": [
+          2,
+          3
+        ],
+        "gpu_hours": [
+          1,
+          3
+        ],
+        "cpu_hours": 1,
+        "unknown": [
+          "grid"
+        ],
+        "basis": "chapter 28: 2 to 3 days, 1 to 3 GPU-hours to render, about an hour of CPU for the bank and leak jobs; the fine-tune's bound is not set"
+      },
+      "needs_owner_word": true,
+      "owner_word_reason": "render, bank, leak and training jobs",
+      "depends_on": [
+        "E11"
+      ],
+      "status": "open"
+    },
+    {
+      "id": "E16",
+      "title": "Latency on the H200 and the per-angle curve on the recorded sweep",
+      "what": "Run task #13's latency jobs with ONNX parity and score the recorded C-ArmLSpine sweep by gantry angle, behind version 1.",
+      "chapter_28_entry": null,
+      "issue": "#13",
+      "before": "2026-10-29",
+      "bears_on": [
+        {
+          "claim": "F8",
+          "to": "Measured",
+          "could_refute": true,
+          "how": "a p95 on the machine the demo runs on"
+        },
+        {
+          "claim": "F3",
+          "to": "Measured",
+          "could_refute": true,
+          "how": "accuracy against gantry angle on continuous real motion, over truth boxes until a detector stage exists"
+        }
+      ],
+      "cost": {
+        "unknown": [
+          "grid"
+        ],
+        "basis": "three latency and sweep jobs were pending; the record gives no hours"
+      },
+      "needs_owner_word": true,
+      "owner_word_reason": "grid jobs",
+      "depends_on": [
+        "E11"
+      ],
+      "status": "open"
+    },
+    {
+      "id": "E17",
+      "title": "FluoroSAM's released weights on the C-ArmLSpine test persons",
+      "what": "Fetch FluoroSAM's weights and score them as naming accuracy on the held C-ArmLSpine test persons, rung 0 of the ablation ladder (#132).",
+      "chapter_28_entry": null,
+      "issue": "#132",
+      "bears_on": [
+        {
+          "claim": "I6",
+          "to": "Measured",
+          "could_refute": false,
+          "how": "one published method on the same frames"
+        },
+        {
+          "claim": "N2",
+          "to": "Inferred",
+          "could_refute": true,
+          "how": "if it names levels well there, the first-time claim weakens"
+        }
+      ],
+      "cost": {
+        "gpu_hours": 1,
+        "basis": "docs/research/state-of-knowledge.md section 5: about an hour of GPU after the weights fetch"
+      },
+      "needs_owner_word": true,
+      "owner_word_reason": "a fetch and a grid job",
+      "depends_on": [
+        "E08"
+      ],
+      "status": "open"
+    },
+    {
+      "id": "E18",
+      "title": "Zeng 2024 against SchwingNet, each on the other's frames",
+      "what": "Train Zeng 2024's released code on the held C-ArmLSpine persons, and score SchwingNet on CM Spine's 60 test images once the Drive file is opened.",
+      "chapter_28_entry": null,
+      "issue": null,
+      "bears_on": [
+        {
+          "claim": "I6",
+          "to": "Measured",
+          "could_refute": false,
+          "how": "the nearest published method on the same frames"
+        },
+        {
+          "claim": "N1",
+          "to": "Unverified",
+          "could_refute": true,
+          "how": "a close match on intraoperative frames narrows the naming claim further"
+        }
+      ],
+      "cost": {
+        "unknown": [
+          "grid",
+          "external"
+        ],
+        "basis": "a training run of no stated size; the data's terms go to counsel"
+      },
+      "needs_owner_word": true,
+      "owner_word_reason": "a training run, and the owner opens the Drive file",
+      "depends_on": [
+        "E11"
+      ],
+      "status": "open"
+    },
+    {
+      "id": "E19",
+      "title": "A reader on the 11 field-supported COBRA L6 calls, with the coverage render",
+      "what": "A reader reads the 11 COBRA L6 calls on CT, the single most decisive afternoon in the holding, after a one-hour render that shows whether COBRA's field holds the sacral anchor.",
+      "chapter_28_entry": 3,
+      "issue": null,
+      "before": "2026-11-02",
+      "bears_on": [
+        {
+          "claim": "F6",
+          "to": "Inferred",
+          "could_refute": true,
+          "how": "false positives retire the real-frame transitional claim before any model is built"
+        }
+      ],
+      "cost": {
+        "reader_hours": [
+          3,
+          4
+        ],
+        "cpu_hours": 1,
+        "basis": "chapter 28: an afternoon of a reader and one render job of about an hour; hours Inferred from those words"
+      },
+      "needs_owner_word": true,
+      "owner_word_reason": "the render job, and a reader's time",
+      "depends_on": [],
+      "status": "open"
+    },
+    {
+      "id": "E20",
+      "title": "The 63-volume CT queue under a frozen protocol",
+      "what": "Read the 57 field-supported COBRA calls, the 3 re-read candidates and the 3 C-ArmLSpine cone-beam volumes on CT under a frozen protocol.",
+      "chapter_28_entry": 3,
+      "issue": null,
+      "bears_on": [
+        {
+          "claim": "F6",
+          "to": "Inferred",
+          "could_refute": true,
+          "how": "counts the verified carriers; about 5 L6 and at most 19 verifiable expected, short of 22"
+        }
+      ],
+      "cost": {
+        "unknown": [
+          "reads"
+        ],
+        "basis": "no reader-hour figure in the record"
+      },
+      "needs_owner_word": true,
+      "owner_word_reason": "readers' time",
+      "depends_on": [
+        "E19",
+        "E30"
+      ],
+      "status": "open"
+    },
+    {
+      "id": "E21",
+      "title": "The two-reader transitional case series on real frames",
+      "what": "Two readers, one of them the senior neuroradiologist the owner named, read the at-risk persons with an exported real frame, toward 35 at-risk persons and 22 carriers, then the model is scored once.",
+      "chapter_28_entry": 3,
+      "issue": null,
+      "bears_on": [
+        {
+          "claim": "F6",
+          "to": "Measured",
+          "could_refute": true,
+          "how": "the first transitional number on real frames, or the stop rule's sentence"
+        },
+        {
+          "claim": "I12",
+          "to": "Measured",
+          "could_refute": true,
+          "how": "human truth on real transitional frames"
+        }
+      ],
+      "cost": {
+        "unknown": [
+          "reads",
+          "external"
+        ],
+        "basis": "readers' hours not stated; an outside reader"
+      },
+      "needs_owner_word": true,
+      "owner_word_reason": "readers, and the scoring waits on the H1 seen ruling",
+      "depends_on": [
+        "E20",
+        "E25",
+        "E10"
+      ],
+      "status": "open"
+    },
+    {
+      "id": "E22",
+      "title": "The two-reader read of 545 FluoroCap panels",
+      "what": "Two readers read 545 FluoroCap panels, about plus or minus 3 points around 85 percent, so the corpus can serve as a test set.",
+      "chapter_28_entry": 3,
+      "issue": null,
+      "bears_on": [
+        {
+          "claim": "F12",
+          "to": "Inferred",
+          "could_refute": true,
+          "how": "a panel accuracy beside the crop figure"
+        }
+      ],
+      "cost": {
+        "reader_hours": [
+          16,
+          32
+        ],
+        "basis": "the FluoroCap Reality Check: a day or two for two readers; hours computed here at eight a day"
+      },
+      "needs_owner_word": true,
+      "owner_word_reason": "readers, and whether FluoroCap stays a test set is the owner's",
+      "depends_on": [],
+      "status": "open"
+    },
+    {
+      "id": "E23",
+      "title": "Tabulate whatever verdicts the three benches saved",
+      "what": "Read the level verification, LSTV and FluoroCap adjudication benches' stores and tabulate any verdict, once the owner says where they were saved.",
+      "chapter_28_entry": 3,
+      "issue": null,
+      "bears_on": [
+        {
+          "claim": "F12",
+          "to": "Measured",
+          "could_refute": true,
+          "how": "the random level bench would give the first unbiased real-panel accuracy"
+        },
+        {
+          "claim": "I12",
+          "to": "Inferred",
+          "could_refute": false,
+          "how": "human reads exist somewhere, if they do"
+        }
+      ],
+      "cost": {
+        "session_hours": 1,
+        "basis": "chapter 27: a session can tabulate them in an hour"
+      },
+      "needs_owner_word": true,
+      "owner_word_reason": "only the owner knows where the verdicts were saved",
+      "depends_on": [],
+      "status": "open"
+    },
+    {
+      "id": "E24",
+      "title": "The CTSpinoPelvic1K identity audit",
+      "what": "Check whether any two CTSpinoPelvic1K records are one person scanned prone and supine, and re-split G3 if so.",
+      "chapter_28_entry": null,
+      "issue": null,
+      "bears_on": [
+        {
+          "claim": "I4",
+          "to": "Measured",
+          "could_refute": true,
+          "how": "paired ids void every split that treated them as two"
+        },
+        {
+          "claim": "F7",
+          "to": "Inferred",
+          "could_refute": true,
+          "how": "a re-split reopens the matched pair's folds"
+        }
+      ],
+      "cost": {
+        "unknown": [
+          "grid"
+        ],
+        "basis": "the record gives no hours"
+      },
+      "needs_owner_word": true,
+      "owner_word_reason": "a grid job",
+      "depends_on": [],
+      "status": "open"
+    },
+    {
+      "id": "E25",
+      "title": "Exact labels on COBRA's real projections from each case's own CT, and gold masks",
+      "what": "Label COBRA's real projections from the case's planning CT with no reader (workstream D, #60) and draw gold masks on the paired sets, verified by a second reader (workstream O, #127).",
+      "chapter_28_entry": 9,
+      "issue": "#60, #127",
+      "bears_on": [
+        {
+          "claim": "F6",
+          "to": "Inferred",
+          "could_refute": false,
+          "how": "real frames with exact levels, where the field reaches the anchor"
+        },
+        {
+          "claim": "F3",
+          "to": "Inferred",
+          "could_refute": false,
+          "how": "real sweeps for the per-angle curve, though from radiotherapy imagers"
+        }
+      ],
+      "cost": {
+        "work_days": [
+          3,
+          5
+        ],
+        "gpu_hours": [
+          3,
+          6
+        ],
+        "cpu_hours": [
+          50,
+          100
+        ],
+        "unknown": [
+          "reads"
+        ],
+        "basis": "chapter 28: 3 to 5 days, 3 to 6 GPU-hours to segment, 50 to 100 CPU-hours to project, plus readers' hours for O"
+      },
+      "needs_owner_word": true,
+      "owner_word_reason": "grid jobs and readers",
+      "depends_on": [
+        "E19"
+      ],
+      "status": "open"
+    },
+    {
+      "id": "E26",
+      "title": "C-ArmLSpine's pose accuracy",
+      "what": "Measure the reprojection distance on held-out landmarks for a sample of C-ArmLSpine cases (#127).",
+      "chapter_28_entry": null,
+      "issue": "#127",
+      "bears_on": [
+        {
+          "claim": "I11",
+          "to": "Measured",
+          "could_refute": true,
+          "how": "projected truth boxes and labels are only as good as the poses"
+        }
+      ],
+      "cost": {
+        "unknown": [
+          "grid"
+        ],
+        "basis": "the record gives no hours"
+      },
+      "needs_owner_word": true,
+      "owner_word_reason": "a grid job",
+      "depends_on": [],
+      "status": "open"
+    },
+    {
+      "id": "E27",
+      "title": "The VerSe L6 count from the raw masks",
+      "what": "Count VerSe's L6 cases from the raw masks, given as 85, 47, 50 or 87 across three files.",
+      "chapter_28_entry": null,
+      "issue": null,
+      "bears_on": [],
+      "cost": {
+        "cpu_hours": 1,
+        "basis": "the directions note: under an hour of one job"
+      },
+      "needs_owner_word": true,
+      "owner_word_reason": "a grid job",
+      "depends_on": [],
+      "status": "open"
+    },
+    {
+      "id": "E28",
+      "title": "The two-anchor arms as a matched pair (CT-7)",
+      "what": "Run the first two arms of the two-anchor design on the same folds of the 802 CTSpinoPelvic1K records and read the receiver operating curve on the count disagreement.",
+      "chapter_28_entry": 8,
+      "issue": null,
+      "bears_on": [
+        {
+          "claim": "F7",
+          "to": "Measured",
+          "could_refute": true,
+          "how": "an ROC near chance would take the flag away"
+        }
+      ],
+      "cost": {
+        "unknown": [
+          "grid"
+        ],
+        "basis": "the record gives no GPU-hours and no fold count"
+      },
+      "needs_owner_word": true,
+      "owner_word_reason": "training jobs",
+      "depends_on": [
+        "E29",
+        "E24",
+        "E30"
+      ],
+      "status": "open"
+    },
+    {
+      "id": "E29",
+      "title": "Readers on the disputed CT border-variant records",
+      "what": "A reader looks at the named CTSpinoPelvic1K cases (the disputed sacralisation, the two with no thoracic label, the rib defect, the cages, the 15 asymmetric cases), and the leak audit runs again if a record moves.",
+      "chapter_28_entry": 8,
+      "issue": null,
+      "bears_on": [],
+      "cost": {
+        "unknown": [
+          "reads"
+        ],
+        "basis": "no reader-hour figure"
+      },
+      "needs_owner_word": true,
+      "owner_word_reason": "readers' time",
+      "depends_on": [],
+      "status": "open"
+    },
+    {
+      "id": "E30",
+      "title": "Freeze the transitional pre-registration",
+      "what": "Write and freeze PREREG.md for the transitional work, with its hash, its bars and the sentence each failure writes, before any transitional number.",
+      "chapter_28_entry": 8,
+      "issue": null,
+      "bears_on": [
+        {
+          "claim": "I7",
+          "to": "Inferred",
+          "could_refute": false,
+          "how": "the freeze is the rule the H1 seen entry refers to"
+        }
+      ],
+      "cost": {
+        "session_hours": 3,
+        "basis": "Inferred: this chapter's estimate for the draft; the bars are the owner's"
+      },
+      "needs_owner_word": true,
+      "owner_word_reason": "the owner sets the bars and freezes it",
+      "depends_on": [],
+      "status": "open"
+    },
+    {
+      "id": "E31",
+      "title": "The census's second run, split by body part",
+      "what": "Run the sample index again with NHANES II, VinDr-SpineXR and FluoroCap split by body part, so each region's testable counts are known.",
+      "chapter_28_entry": 1,
+      "issue": null,
+      "bears_on": [
+        {
+          "claim": "F10",
+          "to": "Inferred",
+          "could_refute": false,
+          "how": "shows which regions can be tested at all"
+        }
+      ],
+      "cost": {
+        "cpu_hours": [
+          18.5,
+          113.5
+        ],
+        "basis": "chapter 28's first run: 64 tasks of 8 to 97 minutes, a merge of about five hours and a report of about five; task-hours computed here"
+      },
+      "needs_owner_word": true,
+      "owner_word_reason": "grid jobs",
+      "depends_on": [],
+      "status": "open"
+    },
+    {
+      "id": "E32",
+      "title": "The physics correlation test",
+      "what": "Correlate missed DeepFluoro frames with the fitted appearance terms and the view angle, seeds averaged and specimens as folds.",
+      "chapter_28_entry": 2,
+      "issue": "#69",
+      "bears_on": [],
+      "cost": {
+        "unknown": [
+          "grid"
+        ],
+        "basis": "the cheapest of the three tests; no training; no hours given"
+      },
+      "needs_owner_word": true,
+      "owner_word_reason": "a grid job",
+      "depends_on": [],
+      "status": "open"
+    },
+    {
+      "id": "E33",
+      "title": "The clean same-device DeepFluoro retrain",
+      "what": "Look for the queued run's output on the grid; if absent, retrain the pooled real-frame detector from an initialisation that never saw the test specimen, seeds averaged.",
+      "chapter_28_entry": 6,
+      "issue": null,
+      "bears_on": [
+        {
+          "claim": "F13",
+          "to": "Measured",
+          "could_refute": true,
+          "how": "a clean sacrum number to replace the record-only ones"
+        }
+      ],
+      "cost": {
+        "unknown": [
+          "grid"
+        ],
+        "basis": "one training as queued, with seeds; no hours given"
+      },
+      "needs_owner_word": true,
+      "owner_word_reason": "a grid read and a training",
+      "depends_on": [],
+      "status": "open"
+    },
+    {
+      "id": "E34",
+      "title": "The leave-one-device-out designs",
+      "what": "Train with each device left out in turn and test on that device's real frames, after the styled-frame check (workstream E, #61, and the September designs).",
+      "chapter_28_entry": 7,
+      "issue": "#61",
+      "bears_on": [
+        {
+          "claim": "F5",
+          "to": "Measured",
+          "could_refute": true,
+          "how": "held-out accuracy per device against 97 percent"
+        }
+      ],
+      "cost": {
+        "work_days": [
+          3,
+          7
+        ],
+        "gpu_hours": [
+          10,
+          20
+        ],
+        "basis": "chapter 28: workstream E's estimate"
+      },
+      "needs_owner_word": true,
+      "owner_word_reason": "training jobs",
+      "depends_on": [],
+      "status": "open"
+    },
+    {
+      "id": "E35",
+      "title": "The real-film sweep arms on a clean lineage",
+      "what": "Re-run the NHANES II and BUU sweep arms with a model none of whose ancestors saw the test persons, sized from the census.",
+      "chapter_28_entry": 10,
+      "issue": null,
+      "bears_on": [
+        {
+          "claim": "F14",
+          "to": "Measured",
+          "could_refute": true,
+          "how": "the sweep's gain on real films, held out"
+        },
+        {
+          "claim": "F12",
+          "to": "Measured",
+          "could_refute": true,
+          "how": "clean plain-film naming on held-out persons"
+        }
+      ],
+      "cost": {
+        "unknown": [
+          "grid"
+        ],
+        "basis": "the record gives no job count"
+      },
+      "needs_owner_word": true,
+      "owner_word_reason": "grid jobs",
+      "depends_on": [
+        "E11",
+        "E31"
+      ],
+      "status": "open"
+    },
+    {
+      "id": "E36",
+      "title": "The transitional screen FLU-2",
+      "what": "A clean-lineage encoder on the G3 training persons, scored on the 7 render-scoreable G3 validation L6 persons: zero or one miss proceeds, two or more stop the fluoroscopy arm.",
+      "chapter_28_entry": 11,
+      "issue": null,
+      "bears_on": [
+        {
+          "claim": "F6",
+          "to": "Inferred",
+          "could_refute": true,
+          "how": "the stop rule writes not at parity with the number"
+        },
+        {
+          "claim": "N7",
+          "to": "Inferred",
+          "could_refute": false,
+          "how": "shows whether the transitional element works on renders"
+        }
+      ],
+      "cost": {
+        "unknown": [
+          "grid"
+        ],
+        "basis": "one seed then three; no hours given"
+      },
+      "needs_owner_word": true,
+      "owner_word_reason": "training jobs",
+      "depends_on": [
+        "E30"
+      ],
+      "status": "open"
+    },
+    {
+      "id": "E37",
+      "title": "Selective prediction re-run on a clean bank",
+      "what": "Re-run the risk-coverage curve on the G3 split through the evaluation gate, on at least the 298 answered cases a 99 percent claim needs.",
+      "chapter_28_entry": null,
+      "issue": null,
+      "bears_on": [
+        {
+          "claim": "F11",
+          "to": "Measured",
+          "could_refute": true,
+          "how": "replaces the not-quotable 99 percent"
+        }
+      ],
+      "cost": {
+        "unknown": [
+          "grid"
+        ],
+        "basis": "no hours given"
+      },
+      "needs_owner_word": true,
+      "owner_word_reason": "grid jobs",
+      "depends_on": [
+        "E11"
+      ],
+      "status": "open"
+    },
+    {
+      "id": "E38",
+      "title": "Re-run the counting evidence on a clean lineage",
+      "what": "Re-run the boxes-given counting arms through a committed tool on held-out persons, so the grant's counting paragraph rests on quotable rows.",
+      "chapter_28_entry": null,
+      "issue": null,
+      "bears_on": [
+        {
+          "claim": "F4",
+          "to": "Measured",
+          "could_refute": true,
+          "how": "quotable counting rows, or the end of the paragraph"
+        }
+      ],
+      "cost": {
+        "unknown": [
+          "grid"
+        ],
+        "basis": "no hours given"
+      },
+      "needs_owner_word": true,
+      "owner_word_reason": "grid jobs",
+      "depends_on": [
+        "E01"
+      ],
+      "status": "open"
+    },
+    {
+      "id": "E39",
+      "title": "Phantom and cadaver sweeps on the university's C-arm",
+      "what": "Phantom sweeps measure how far a hand-moved C-arm departs from the step the count assumes; a cadaver session reads the count against a needle at a known level.",
+      "chapter_28_entry": 12,
+      "issue": null,
+      "bears_on": [
+        {
+          "claim": "F15",
+          "to": "Measured",
+          "could_refute": true,
+          "how": "the operator's step error against the count's tolerance"
+        }
+      ],
+      "cost": {
+        "dollars": 5000,
+        "external": "the grant's award and the body bequest programme",
+        "basis": "chapter 28: $3,000 for a phantom ($0 if lent) and $2,000 for one cadaver session, 2027"
+      },
+      "needs_owner_word": true,
+      "owner_word_reason": "spending and the grant's schedule",
+      "depends_on": [],
+      "status": "open"
+    },
+    {
+      "id": "E40",
+      "title": "The retrospective collection and the in-domain study",
+      "what": "Submit the retrospective protocol, run the pilot query of 20 cases, collect and seal the held-out set, then the shadow-mode and reader studies.",
+      "chapter_28_entry": 13,
+      "issue": null,
+      "bears_on": [
+        {
+          "claim": "F16",
+          "to": "Measured",
+          "could_refute": true,
+          "how": "the only route to a number on the hospital's own devices"
+        },
+        {
+          "claim": "F11",
+          "to": "Measured",
+          "could_refute": true,
+          "how": "the decline rate and wrong-level bound in the field"
+        },
+        {
+          "claim": "F5",
+          "to": "Measured",
+          "could_refute": true,
+          "how": "recall on devices never trained on"
+        }
+      ],
+      "cost": {
+        "unknown": [
+          "grid",
+          "external"
+        ],
+        "basis": "an IRB protocol, a clinical collaborator and the hospital; submission planned for the first quarter of 2027"
+      },
+      "needs_owner_word": true,
+      "owner_word_reason": "the owner submits the protocol",
+      "depends_on": [],
+      "status": "open"
+    },
+    {
+      "id": "E41",
+      "title": "Paired data above L1",
+      "what": "Requests for paired intraoperative radiographs and CT above the lumbar spine (the LevelCheck cohort, Huashan Fudan, NIT Warangal) on the owner's word.",
+      "chapter_28_entry": null,
+      "issue": null,
+      "bears_on": [
+        {
+          "claim": "F10",
+          "to": "Inferred",
+          "could_refute": false,
+          "how": "the first pairs that would let thoracic naming be tested on real images"
+        }
+      ],
+      "cost": {
+        "unknown": [
+          "external"
+        ],
+        "basis": "outside parties; the LevelCheck data stay at their institution by the PI's answer of 21 October"
+      },
+      "needs_owner_word": true,
+      "owner_word_reason": "letters go from the owner's mailbox on the owner's word",
+      "depends_on": [],
+      "status": "open"
+    },
+    {
+      "id": "E42",
+      "title": "A human read of C-ArmLSpine's levels",
+      "what": "Gold reads of C-ArmLSpine's frames first among the paired sets, 30 verified cases giving about plus or minus 10 points on a per-body rate at 90 percent (workstream O, #127).",
+      "chapter_28_entry": null,
+      "issue": "#127",
+      "bears_on": [
+        {
+          "claim": "I12",
+          "to": "Measured",
+          "could_refute": true,
+          "how": "human truth on the test device, against the automatic labellers"
+        },
+        {
+          "claim": "F1",
+          "to": "Reported",
+          "could_refute": true,
+          "how": "if the readers disagree with the labellers, the 96.4 percent is scored against the wrong truth"
+        }
+      ],
+      "cost": {
+        "unknown": [
+          "reads",
+          "grid"
+        ],
+        "basis": "the automatic first pass is one array job; readers' hours not given"
+      },
+      "needs_owner_word": true,
+      "owner_word_reason": "a grid job and readers",
+      "depends_on": [],
+      "status": "open"
+    }
+  ]
+}

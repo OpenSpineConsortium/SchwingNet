@@ -99,6 +99,18 @@ class ExploreTest(unittest.TestCase):
         self.assertNotIn("## against", text)
         self.assertNotIn(str(self.tmp), text)
 
+    def test_an_unpacked_zip_is_counted_once_and_long_names_are_shown(self):
+        long_name = "Bone_Fracture_Binary_Classification_Dataset"
+        with zipfile.ZipFile(self.raw / "set.zip", "a") as archive:
+            archive.writestr(f"{long_name}/train/fractured/a.txt", "x")
+        with zipfile.ZipFile(self.raw / "set.zip") as archive:
+            archive.extractall(self.raw)
+        text = self.report()
+        self.assertIn("  files: 39, images: 20", text)
+        self.assertIn("set.zip: 38 members already unpacked beside it, counted once, from disk", text)
+        self.assertIn("  Bone Fracture Binary Classification Dataset/: 1", text)
+        self.assertIn("      fractured/: 1", text)
+
     def test_the_comparison_finds_the_copied_films_and_only_them(self):
         text = self.report(f"AASCE-test={self.theirs}")
         self.assertIn("names: 5 of this set's images share a file name", text)

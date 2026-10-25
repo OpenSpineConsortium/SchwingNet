@@ -85,15 +85,37 @@ python3 tools/reproduce_table.py check
 # owner's reading, or data/LICENCES.md not what the facts render, fails here.
 python3 tools/licences.py check
 
+# The claims register (docs/textbook/claims.json, chapter 33) must hold together (tools/claims_rank.py,
+# standard library): every claim an item bears on exists, every grade is one of the four and each
+# claim's grade is its weakest link, no item waits on an item that is not there or on itself.
+python3 tools/claims_rank.py check
+
+# Ask the book (tools/rag.py, standard library): the questions of docs/textbook/rag/questions.json
+# must hold together (at least 30, each answered by chapters of the book, a figure only one with a
+# record) and version 1 of the book's search must reach the floor they write for its recall at 5 and
+# its mean reciprocal rank, so an edit that breaks the search fails here, not in a reader's hands.
+python3 tools/rag.py check
+
 # The evaluation page (docs/research/evaluation/README.md) is written from the recorded runs under
 # docs/research/v1-demo/runs/ by tools/eval_page.py, standard library: a run recorded without the
 # page written again, or a page edited by hand, fails here.
 python3 tools/eval_page.py check
+
+# The experiments panel (docs/textbook/figures/35/experiments.html, .json and .svg) is written from
+# the same recorded runs, the recipes and the blocks by tools/experiments_panel.py, standard library:
+# a run recorded without the panel written again (python3 tools/experiments_panel.py write), or a
+# page edited by hand, fails here.
+python3 tools/experiments_panel.py check
 
 # Every recorded run carries its report (REPORT.md, claim.json, reforms.json), written by
 # tools/report.py from the run's files and data/reporting/study.json, standard library: a run
 # recorded without its report, or a study answer changed without the reports written again
 # (python3 tools/report.py write-recorded), fails here.
 python3 tools/report.py check-recorded
+
+# The textbook's storage panel (docs/textbook/figures/22/, chapter 22) is drawn by tools/storage_panel.py from
+# the committed snapshot of spine-datasets' feed, standard library: a snapshot refreshed without the page built
+# again, or a page edited by hand, fails here.
+python3 tools/storage_panel.py check
 
 echo "checks ok"

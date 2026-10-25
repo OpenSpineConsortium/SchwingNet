@@ -1,0 +1,682 @@
+[
+ {
+  "id": "SchwingNet/any-view-spine-plan",
+  "replaced_on": "2026-10-24",
+  "record": {
+   "repo": "SchwingNet",
+   "folder": "any-view-spine-plan",
+   "title": "Any-View Spine Plan",
+   "account": "first account",
+   "link": "https://claude.ai/artifact/XofcEieMWzL443pSG8qrLh",
+   "link_id": "XofcEieMWzL443pSG8qrLh",
+   "readme_summary": "Plan: view translation, any-position detection, paired XR-CT gold prior (patent material)",
+   "kind": "page",
+   "genre": "plan",
+   "date": "2026-10-21",
+   "date_evidence": "Header chip 'SchwingNet \u00b7 From 3D to X-ray \u00b7 21 October 2026'.",
+   "question": "Can SchwingNet turn an X-ray in one position into another view, detect and classify vertebrae at any C-arm position, and use paired X-ray and CT sets as gold truth for the 3D prior, and what must the census count before each model is trained?",
+   "summary": "A confidential (patent material, before the provisional) plan with three goals: a network that turns an X-ray in one position into another (AP to lateral), a detector and classifier that works at any position, and paired X-ray and CT sets as gold ground truth for the 3D prior. Its short answer grades them: paired X-ray and CT as gold truth is strong (registration-based labelling is near perfect in LevelCheck, 100% at 26 s, 99.3% at 7 s); any-position detection and classification is feasible with a measured gap (the project's own record on C-ArmLSpine: lateral naming 96.4% zero-shot from renders, AP naming 43.7% as a one-level counting error, detection 0.3% from renders alone, 80.5% with other devices' real frames, 84.0% with 24 frames of the device added); AP image to lateral image is hard as stated, since the closest published work (XraySyn) moves the view only 9 degrees, so the plan is structured transfer of the lateral's levels, corners and alignment from the AP, with pixel synthesis only as an auxiliary task. It tables the held paired sets (COBRA 692 cases and 375,618 projections, C-ArmLSpine 149 cases, DeepFluoro, Ljubljana, IPCAI 2025 not yet) and notes every one is lumbar or lumbosacral. Section 4 gives what the census (PR #76) must count per region with the estimated counts needed to test each approach; section 5 gives the order of work, census first, and says nothing appears in an external text before the provisional is filed.",
+   "key_claims": [
+    {
+     "claim": "Lateral naming transfers from 3D renders: 96.4% zero-shot on C-ArmLSpine with an encoder that saw the device only through renders, within a point of the 97.4% fine-tuned on the device.",
+     "evidence_in_artifact": "Naming, lateral, encoder that saw the device only through renders | 96.4% (595/617) | ... within a point of the 97.4% fine-tuned on the device.",
+     "grade_hint": "measured"
+    },
+    {
+     "claim": "AP naming zero-shot collapses to 43.7%, a one-level cranial shift that is a counting error, not an appearance error.",
+     "evidence_in_artifact": "Naming, AP, zero-shot | 43.7% | A one-level cranial shift: a counting error, not an appearance error.",
+     "grade_hint": "measured"
+    },
+    {
+     "claim": "Detection does not transfer from today's renders (0.3%); real frames from other devices carry most of it (80.5%), and 24 frames of the device take it to 84.0%.",
+     "evidence_in_artifact": "Detection from renders alone | 0.3% ... Detection with other devices' real frames plus renders | 80.5% ... Detection with 24 frames of the device added | 84.0%",
+     "grade_hint": "measured"
+    },
+    {
+     "claim": "No published work turns a spine AP film into a lateral one; the closest moves the view only 9 degrees, and AP to lateral is a 90 degree move.",
+     "evidence_in_artifact": "No published work turns a spine AP film into a lateral one. The closest work moves the view only 9 degrees.",
+     "grade_hint": "inferred"
+    },
+    {
+     "claim": "A synthesised lateral is a display aid and must never be read as a film, since what an AP does not show a model cannot recover.",
+     "evidence_in_artifact": "A listhesis or a wedged body seen only on the lateral is invisible on the AP, and a synthesised lateral would paint the typical spine in its place.",
+     "grade_hint": "inferred"
+    },
+    {
+     "claim": "Registration-based level labelling is near perfect: LevelCheck labelled 100% of views at about 26 s and 99.3% at 7 s, with sub-millimetre projection error.",
+     "evidence_in_artifact": "LevelCheck (Lo et al., Spine 2015, 20 thoracolumbar surgery patients, 10,000 perturbed views) labelled 100% of views correctly at about 26 s, and 99.3% at 7 s.",
+     "grade_hint": "reported"
+    },
+    {
+     "claim": "The project holds more real AP-lateral pairs than the report assumed: BUU-LSPINE's 3,600 people, on the scale of LatXGen's 2,611 training pairs.",
+     "evidence_in_artifact": "BUU-LSPINE is held: 3,600 people with an AP and a lateral lumbar film each, with end-plate lines. That is on the scale of LatXGen's 2,611 training pairs.",
+     "grade_hint": "measured"
+    },
+    {
+     "claim": "There are no real paired films above the lumbar spine among the held sets, so cervical and thoracic transfer rests on renders until pairs are found.",
+     "evidence_in_artifact": "There are no real paired films above the lumbar spine among the held sets.",
+     "grade_hint": "measured"
+    },
+    {
+     "claim": "Every held paired X-ray/CT set is lumbar or lumbosacral, so the prior's thoracic and cervical parts can be checked only on renders.",
+     "evidence_in_artifact": "every held paired set is lumbar or lumbosacral. The prior's thoracic and cervical parts can be checked only on renders until a paired set there is found.",
+     "grade_hint": "measured"
+    },
+    {
+     "claim": "SyntheX shows physics renders can carry detection (6.44 vs 6.46 mm, Dice 0.80 vs 0.79, better at 10k images) but not always (chest lesions 85% vs 94%), so the 0.3% may be the renderer's fault.",
+     "evidence_in_artifact": "So physics renders can carry detection, but not always. Your 0.3% may be the renderer's fault, which is what the physics renderer ablation (#69) tests.",
+     "grade_hint": "reported"
+    },
+    {
+     "claim": "About 100 test persons gives a 95% interval near plus or minus 6 points at 90% accuracy, which sets the per-region count needed to test.",
+     "evidence_in_artifact": "About 100 test persons gives a 95% interval near \u00b16 points at 90% accuracy.",
+     "grade_hint": "inferred"
+    },
+    {
+     "claim": "The first steps need no census; the decision to train each model waits for the per-region counts.",
+     "evidence_in_artifact": "Nothing below needs the census to start ... The decision to train each model does wait for it, because the per-region counts ... decide where each model has enough real pairs",
+     "grade_hint": "inferred"
+    }
+   ],
+   "numbers": [
+    {
+     "value": "96.4",
+     "unit": "% naming accuracy",
+     "n": "595/617",
+     "interval": null,
+     "context": "lateral naming on C-ArmLSpine, zero-shot, encoder trained on renders only",
+     "quote": "Naming, lateral, encoder that saw the device only through renders | 96.4% (595/617)"
+    },
+    {
+     "value": "97.4",
+     "unit": "% naming accuracy",
+     "n": null,
+     "interval": null,
+     "context": "lateral naming fine-tuned on the device",
+     "quote": "It is within a point of the 97.4% fine-tuned on the device."
+    },
+    {
+     "value": "43.7",
+     "unit": "% naming accuracy",
+     "n": null,
+     "interval": null,
+     "context": "AP naming on C-ArmLSpine, zero-shot",
+     "quote": "Naming, AP, zero-shot | 43.7% | A one-level cranial shift"
+    },
+    {
+     "value": "0.3",
+     "unit": "% detection",
+     "n": null,
+     "interval": null,
+     "context": "detection on C-ArmLSpine from renders alone",
+     "quote": "Detection from renders alone | 0.3% | Detection does not transfer from today's renders."
+    },
+    {
+     "value": "80.5",
+     "unit": "% detection",
+     "n": null,
+     "interval": null,
+     "context": "detection with other devices' real frames plus renders",
+     "quote": "Detection with other devices' real frames plus renders | 80.5%"
+    },
+    {
+     "value": "84.0",
+     "unit": "% detection",
+     "n": "24 frames of the device added",
+     "interval": null,
+     "context": "detection with 24 frames of the test device",
+     "quote": "Detection with 24 frames of the device added | 84.0%"
+    },
+    {
+     "value": "24",
+     "unit": "frames",
+     "n": null,
+     "interval": null,
+     "context": "frames of the new device that lifted detection from 80.5% to 84.0%",
+     "quote": "Your record: 24 frames took detection from 80.5% to 84.0%."
+    },
+    {
+     "value": "27.2 / 0.93",
+     "unit": "PSNR / SSIM",
+     "n": null,
+     "interval": null,
+     "context": "XraySyn novel view synthesis on simulated data",
+     "quote": "PSNR 27.2 / SSIM 0.93 (sim) falls to ~25.4 at \u00b19\u00b0"
+    },
+    {
+     "value": "~25.4",
+     "unit": "PSNR",
+     "n": null,
+     "interval": null,
+     "context": "XraySyn at plus or minus 9 degrees",
+     "quote": "falls to ~25.4 at \u00b19\u00b0"
+    },
+    {
+     "value": "9",
+     "unit": "degrees",
+     "n": null,
+     "interval": null,
+     "context": "largest view change shown by XraySyn",
+     "quote": "Only \u00b19\u00b0 was shown, and quality falls as the angle grows."
+    },
+    {
+     "value": "90",
+     "unit": "degrees",
+     "n": null,
+     "interval": null,
+     "context": "AP to lateral view change, ten times further",
+     "quote": "AP to lateral is a 90\u00b0 move, ten times further."
+    },
+    {
+     "value": "3,264",
+     "unit": "real pairs",
+     "n": null,
+     "interval": null,
+     "context": "LatXGen dataset",
+     "quote": "3,264 real pairs; PSNR 20.9"
+    },
+    {
+     "value": "20.9",
+     "unit": "PSNR",
+     "n": null,
+     "interval": null,
+     "context": "LatXGen lateral synthesis",
+     "quote": "3,264 real pairs; PSNR 20.9"
+    },
+    {
+     "value": "0.85\u20130.90",
+     "unit": "R squared",
+     "n": null,
+     "interval": null,
+     "context": "LatXGen sagittal angles",
+     "quote": "sagittal angles R\u00b2 0.85\u20130.90"
+    },
+    {
+     "value": "0.83\u20130.84 / 0.86\u20130.90",
+     "unit": "sensitivity / specificity",
+     "n": null,
+     "interval": null,
+     "context": "LatXGen abnormal detection",
+     "quote": "abnormal: sens 0.83\u20130.84, spec 0.86\u20130.90"
+    },
+    {
+     "value": "~0.5",
+     "unit": "degrees mean",
+     "n": null,
+     "interval": null,
+     "context": "global alignment transfer error in LatXGen",
+     "quote": "global alignment carries over to the other view to within about half a degree on average"
+    },
+    {
+     "value": "2,611",
+     "unit": "training pairs",
+     "n": null,
+     "interval": null,
+     "context": "LatXGen training set, the scale BUU-LSPINE matches",
+     "quote": "That is on the scale of LatXGen's 2,611 training pairs."
+    },
+    {
+     "value": "3,600",
+     "unit": "people (AP + lateral lumbar pairs)",
+     "n": null,
+     "interval": null,
+     "context": "BUU-LSPINE held, with end-plate lines",
+     "quote": "BUU-LSPINE is held: 3,600 people with an AP and a lateral lumbar film each, with end-plate lines."
+    },
+    {
+     "value": "149",
+     "unit": "cases",
+     "n": null,
+     "interval": null,
+     "context": "C-ArmLSpine cases with AP and lateral frames and CBCT",
+     "quote": "C-ArmLSpine adds 149 cases with AP and lateral frames and the CBCT of the same patient."
+    },
+    {
+     "value": "299",
+     "unit": "spot frames",
+     "n": "149 cases, 149 CBCT",
+     "interval": null,
+     "context": "C-ArmLSpine held paired set",
+     "quote": "C-ArmLSpine | held | 149 cases, 299 spot frames, 149 CBCT | Lumbar"
+    },
+    {
+     "value": "692",
+     "unit": "cases",
+     "n": null,
+     "interval": null,
+     "context": "COBRA held, lumbosacral and pelvis, radiotherapy CBCT, CC BY-NC",
+     "quote": "COBRA | held | 692 cases, 375,618 real projections | Lumbosacral, pelvis"
+    },
+    {
+     "value": "375,618",
+     "unit": "real projections",
+     "n": "692 cases",
+     "interval": null,
+     "context": "COBRA",
+     "quote": "692 cases, 375,618 real projections"
+    },
+    {
+     "value": "6",
+     "unit": "cadavers",
+     "n": "19 CT",
+     "interval": null,
+     "context": "DeepFluoro held set, pelvis and hip, some lumbar",
+     "quote": "DeepFluoro | held | 6 cadavers, 366 + 2,659 frames, 19 CT"
+    },
+    {
+     "value": "366 + 2,659",
+     "unit": "frames",
+     "n": null,
+     "interval": null,
+     "context": "DeepFluoro frames",
+     "quote": "6 cadavers, 366 + 2,659 frames, 19 CT"
+    },
+    {
+     "value": "2,293",
+     "unit": "vendor frames",
+     "n": null,
+     "interval": null,
+     "context": "DeepFluoro frames unused; registration gives their truth",
+     "quote": "2,293 vendor frames unused. Registration gives their truth."
+    },
+    {
+     "value": "18",
+     "unit": "frames",
+     "n": "1 cadaver",
+     "interval": null,
+     "context": "Ljubljana 2D/3D gold standard, L1\u2013L5, registration accuracy check only",
+     "quote": "Ljubljana 2D/3D gold standard | held | 18 frames, 1 cadaver | L1\u2013L5"
+    },
+    {
+     "value": "5",
+     "unit": "CT, 6.7 GB",
+     "n": null,
+     "interval": null,
+     "context": "IPCAI 2025 X-ray with CT, not yet held, region to confirm",
+     "quote": "IPCAI 2025 X-ray with CT | not yet | 5 CT, 6.7 GB | To confirm"
+    },
+    {
+     "value": "20",
+     "unit": "CTs",
+     "n": null,
+     "interval": null,
+     "context": "SyntheX hip training CTs",
+     "quote": "SyntheX (hip, 20 CTs, real test on 366 cadaver X-rays)"
+    },
+    {
+     "value": "366",
+     "unit": "cadaver X-rays",
+     "n": null,
+     "interval": null,
+     "context": "SyntheX real test set",
+     "quote": "real test on 366 cadaver X-rays"
+    },
+    {
+     "value": "6.44 vs 6.46",
+     "unit": "mm landmark error",
+     "n": null,
+     "interval": null,
+     "context": "SyntheX simulation-trained vs real-data-trained",
+     "quote": "landmark error 6.44 vs 6.46 mm and Dice 0.80 vs 0.79"
+    },
+    {
+     "value": "0.80 vs 0.79",
+     "unit": "Dice",
+     "n": null,
+     "interval": null,
+     "context": "SyntheX simulation vs real",
+     "quote": "Dice 0.80 vs 0.79"
+    },
+    {
+     "value": "5.95 / 0.86",
+     "unit": "mm / Dice",
+     "n": "10k images",
+     "interval": null,
+     "context": "SyntheX scaled to 10k images beat real training",
+     "quote": "Scaled up to 10k images it beat it, at 5.95 mm and Dice 0.86."
+    },
+    {
+     "value": "6.16",
+     "unit": "mm",
+     "n": null,
+     "interval": null,
+     "context": "SyntheX on another imaging system",
+     "quote": "On another imaging system it scored 6.16 mm."
+    },
+    {
+     "value": "85 vs 94",
+     "unit": "%",
+     "n": null,
+     "interval": null,
+     "context": "SyntheX chest lesions, simulation fell short of real",
+     "quote": "For chest lesions it fell short (85% vs 94%)."
+    },
+    {
+     "value": "692",
+     "unit": "real rotations",
+     "n": null,
+     "interval": null,
+     "context": "COBRA rotations for the per-angle curve on the low lumbar spine and sacrum (#60)",
+     "quote": "COBRA's 692 real rotations give that curve on real projections for the low lumbar spine and the sacrum (#60)."
+    },
+    {
+     "value": "20",
+     "unit": "patients",
+     "n": "10,000 perturbed views",
+     "interval": null,
+     "context": "LevelCheck clinical study",
+     "quote": "LevelCheck (Lo et al., Spine 2015, 20 thoracolumbar surgery patients, 10,000 perturbed views)"
+    },
+    {
+     "value": "100",
+     "unit": "% views labelled correctly",
+     "n": "10,000 views",
+     "interval": null,
+     "context": "LevelCheck at about 26 s",
+     "quote": "labelled 100% of views correctly at about 26 s, and 99.3% at 7 s"
+    },
+    {
+     "value": "99.3",
+     "unit": "% views labelled correctly",
+     "n": null,
+     "interval": null,
+     "context": "LevelCheck at 7 s",
+     "quote": "and 99.3% at 7 s"
+    },
+    {
+     "value": "26 / 7",
+     "unit": "seconds",
+     "n": null,
+     "interval": null,
+     "context": "LevelCheck registration time at 100% and 99.3%",
+     "quote": "labelled 100% of views correctly at about 26 s, and 99.3% at 7 s"
+    },
+    {
+     "value": "0.2",
+     "unit": "mm projection error",
+     "n": null,
+     "interval": "\u00b1 0.2 mm",
+     "context": "earlier registration work in simulation",
+     "quote": "Earlier work reported 0.2 \u00b1 0.2 mm projection error in simulation and under 1 mm in cadavers."
+    },
+    {
+     "value": "<1",
+     "unit": "mm",
+     "n": null,
+     "interval": null,
+     "context": "registration projection error in cadavers",
+     "quote": "and under 1 mm in cadavers"
+    },
+    {
+     "value": "\u2265 3,600",
+     "unit": "real AP + lateral pairs (lumbar)",
+     "n": null,
+     "interval": null,
+     "context": "census table, lumbar row, from BUU",
+     "quote": "Lumbar | census | census | \u2265 3,600 (BUU) | \u2265 149 + COBRA"
+    },
+    {
+     "value": "\u2265 149 + COBRA",
+     "unit": "X-ray with CT (gold), lumbar",
+     "n": null,
+     "interval": null,
+     "context": "census table, lumbar row",
+     "quote": "\u2265 149 + COBRA"
+    },
+    {
+     "value": "~1,000+",
+     "unit": "real pairs per region",
+     "n": null,
+     "interval": null,
+     "context": "needed to fine-tune AP to lateral structured transfer",
+     "quote": "~1,000+ real pairs per region to fine-tune; ~100 persons to test"
+    },
+    {
+     "value": "~100",
+     "unit": "persons per region",
+     "n": null,
+     "interval": "95% interval near \u00b16 points at 90% accuracy",
+     "context": "needed to test transfer and the gold check of the 3D prior",
+     "quote": "About 100 test persons gives a 95% interval near \u00b16 points at 90% accuracy."
+    },
+    {
+     "value": "~25",
+     "unit": "real frames",
+     "n": null,
+     "interval": null,
+     "context": "needed to test detection at a new device",
+     "quote": "Detection at a new device | ~25 real frames of it"
+    },
+    {
+     "value": "~50",
+     "unit": "confirmed cases per anomaly class",
+     "n": null,
+     "interval": null,
+     "context": "needed for the anomaly screener over NHANES II, plus every film",
+     "quote": "every film, plus ~50 confirmed per anomaly class"
+    },
+    {
+     "value": "#76",
+     "unit": "pull request",
+     "n": null,
+     "interval": null,
+     "context": "the census job, built, going to the grid next",
+     "quote": "The census job is built (PR #76) and goes to the grid next."
+    },
+    {
+     "value": "#57 / #59 / #60 / #68 / #69 / #72",
+     "unit": "issue numbers",
+     "n": null,
+     "interval": null,
+     "context": "counting prior, AP and oblique renders with anchors, COBRA per-angle curve, structured transfer, physics renderer ablation, the gate word",
+     "quote": "The counting prior's grid job (#57, built) and the AP and oblique renders with anchors (#59). ... (#60) ... (#68) ... (#69) ... beside #72"
+    },
+    {
+     "value": "2026-10-21",
+     "unit": "date",
+     "n": null,
+     "interval": null,
+     "context": "plan date",
+     "quote": "SchwingNet \u00b7 From 3D to X-ray \u00b7 21 October 2026"
+    }
+   ],
+   "datasets": [
+    "BUU-LSPINE",
+    "C-ArmLSpine",
+    "COBRA",
+    "DeepFluoro",
+    "Ljubljana 2D/3D gold standard",
+    "IPCAI 2025 X-ray with CT (not yet held)",
+    "VinDr-SpineXR",
+    "NHANES II",
+    "renders from segmented CT"
+   ],
+   "tools": [
+    "the census job (PR #76)",
+    "the catalog (person-keyed split)",
+    "the registry under data/sources/",
+    "the grid",
+    "physics renderer (ablation #69)"
+   ],
+   "models": [
+    "the naming encoder (lateral and AP level naming)",
+    "the vertebra detector",
+    "the 3D counting prior (#57)",
+    "anomaly screener over NHANES II",
+    "XraySyn",
+    "LatXGen (two-stage GAN)",
+    "X2CT-GAN",
+    "Diff2CT",
+    "DL-GIPS",
+    "SyntheX",
+    "LevelCheck (registration)"
+   ],
+   "decisions": [
+    {
+     "decision": "The first steps (renders and data plumbing) start without the census; the decision to train each model waits for the per-region counts.",
+     "date": "2026-10-21",
+     "owner": null,
+     "reason": "The per-region counts decide where each model has enough real pairs to be tested at all."
+    },
+    {
+     "decision": "AP to lateral is done as structured transfer first (levels, corners, sagittal alignment scored against the real lateral), with pixel synthesis only as an auxiliary task; a generated lateral is never read as a film.",
+     "date": "2026-10-21",
+     "owner": null,
+     "reason": "No published work turns a spine AP film into a lateral; what an AP does not show a model cannot recover."
+    },
+    {
+     "decision": "C-ArmLSpine's test persons stay out of every training, and a person used to check the prior is never used to fit it; the split is by person.",
+     "date": "2026-10-21",
+     "owner": null,
+     "reason": "It is the test device; keeps the gold truth gold."
+    },
+    {
+     "decision": "The order of work: census on the grid (PR #76) first; then the counting prior (#57) and AP/oblique renders with anchors (#59); then COBRA projected labels and the per-angle curve (#60); then structured AP-to-lateral transfer on BUU-LSPINE and C-ArmLSpine pairs (#68); thoracic and cervical transfer only once pairs are found.",
+     "date": "2026-10-21",
+     "owner": null,
+     "reason": "The counting prior and renders lift AP naming before the talk; COBRA is the gold set for the lumbosacral spine."
+    },
+    {
+     "decision": "Results go on slides as results only; nothing appears in an external text before the provisional is filed.",
+     "date": "2026-10-21",
+     "owner": "the owner",
+     "reason": "Confidential patent material."
+    },
+    {
+     "decision": "COBRA's commercial use (CC BY-NC) is a lawyer's question, not decided here.",
+     "date": "2026-10-21",
+     "owner": null,
+     "reason": "Licence is non-commercial."
+    }
+   ],
+   "open_questions": [
+    "The per-region census counts (cervical, thoracic, lumbar, sacral) for annotated and unannotated X-rays, real AP+lateral pairs, X-ray with CT and segmented CT; the last table fills in once PR #76 returns.",
+    "Whether the 0.3% detection from renders is the renderer's fault (physics renderer ablation #69).",
+    "Accuracy at oblique C-arm angles is unmeasured.",
+    "How many two-view lumbar studies VinDr-SpineXR holds.",
+    "Whether COBRA's CC BY-NC licence permits the intended commercial use (a lawyer's question).",
+    "IPCAI 2025 X-ray with CT: not yet held, region to confirm.",
+    "Whether the census or new letters find paired films above the lumbar spine."
+   ],
+   "unsourced_assertions": [
+    "No published work turns a spine AP film into a lateral one.",
+    "Renders add unlimited exact pairs.",
+    "Lateral naming at any device is already at the ceiling.",
+    "AP should rise substantially once counting is fixed, because its error is one systematic shift and not noise."
+   ],
+   "stale_markers": [
+    "Confidential: patent material, before the provisional.",
+    "The census job is built (PR #76) and goes to the grid next; this page's last table fills in once it returns.",
+    "The counting prior (#57) is built.",
+    "IPCAI 2025 X-ray with CT: not yet; region to confirm.",
+    "'before the talk'.",
+    "The gate word goes in beside #72."
+   ],
+   "external_sources": [
+    {
+     "title": "XraySyn: realistic view synthesis from a single radiograph through CT priors",
+     "url_or_citation": "AAAI 2021"
+    },
+    {
+     "title": "LatXGen: lateral spine radiographs from back surface images",
+     "url_or_citation": "arXiv 2509.24165 (2025)"
+    },
+    {
+     "title": "Reconstruct spine CT from biplanar X-rays via diffusion learning (Diff2CT); spine vertebrae from biplanar X-rays with GANs; X2CT-GAN",
+     "url_or_citation": "as listed in the page's Sources"
+    },
+    {
+     "title": "DL-GIPS",
+     "url_or_citation": "MedIA 2022"
+    },
+    {
+     "title": "SyntheX: scaling up learning-based X-ray image analysis through in silico experiments",
+     "url_or_citation": "as listed in the page's Sources"
+    },
+    {
+     "title": "LevelCheck clinical study, Lo et al.",
+     "url_or_citation": "Spine 2015, as reported"
+    }
+   ],
+   "cross_references": [
+    "PR #76 (the census job)",
+    "#57 (the 3D counting prior's grid job)",
+    "#59 (AP and oblique renders with anchors)",
+    "#60 (COBRA projected labels and per-angle curve)",
+    "#68 (structured AP-to-lateral transfer)",
+    "#69 (physics renderer ablation)",
+    "#72 (where the gate word goes)",
+    "docs/research/xr-from-3d/ in SchwingNet (the full written report)",
+    "docs/research/ct-priors-for-2d-detection.md",
+    "the registry under data/sources/",
+    "the catalog (person-keyed split)"
+   ],
+   "confidentiality": "schwingnet-method",
+   "related_titles": [
+    {
+     "title": "Counting Against Two Anchors",
+     "relation": "same-topic",
+     "why": "The plan's AP naming failure is a counting error targeted by the 3D counting prior and renders with anchors."
+    },
+    {
+     "title": "Counting From The Sacrum",
+     "relation": "same-topic",
+     "why": "Counting from anchors is the fix the plan names for the one-level cranial shift."
+    },
+    {
+     "title": "Counting Levels Under Fluoroscopy",
+     "relation": "same-topic",
+     "why": "Level counting under fluoroscopy is the task whose any-position form this plan addresses."
+    },
+    {
+     "title": "Vertebral Count Anomaly Rule",
+     "relation": "same-topic",
+     "why": "The plan's census row for the anomaly screener over NHANES II needs ~50 confirmed cases per anomaly class."
+    },
+    {
+     "title": "Registration-Free Level ID Feasibility",
+     "relation": "same-topic",
+     "why": "The plan uses registration-based labelling (LevelCheck) as gold truth; that feasibility study concerns level ID without registration."
+    },
+    {
+     "title": "Naming Vertebrae Without CT",
+     "relation": "same-topic",
+     "why": "The plan names vertebrae on X-ray with a 3D prior checked against paired CT; that page concerns naming without CT."
+    },
+    {
+     "title": "Vertebral Levels Without CT",
+     "relation": "same-topic",
+     "why": "Same naming-without-CT question beside this plan's paired X-ray/CT gold standard."
+    },
+    {
+     "title": "Spine X-ray Data Handoff",
+     "relation": "builds-on",
+     "why": "The handoff of 3 Sep 2026 had 77 BUU-LSPINE files ingested and the full release pending; this plan reports BUU-LSPINE as held with 3,600 people."
+    },
+    {
+     "title": "SchwingNet Data Registry",
+     "relation": "builds-on",
+     "why": "The plan tags its held-set facts 'Registry' and points to the registry under data/sources/."
+    },
+    {
+     "title": "Vertebra Detector Field Report",
+     "relation": "same-topic",
+     "why": "The plan's detection numbers (0.3%, 80.5%, 84.0% on C-ArmLSpine) are the detector's record."
+    },
+    {
+     "title": "What Is Left After Physics",
+     "relation": "same-topic",
+     "why": "The plan's physics renderer ablation (#69) asks whether renders can carry detection, the question that title names."
+    }
+   ],
+   "people_by_role": [
+    "the owner (whose record and talk the plan serves)",
+    "a lawyer (COBRA commercial-use question)",
+    "readers (not needed where registration labels levels)",
+    "held-out persons (the test split)"
+   ],
+   "coverage_notes": "The page is a single index.html read whole; no images, scripts with data or binary files in the folder. The page carries a confidentiality banner ('Confidential: patent material, before the provisional'), not an instruction to this inventory; no instruction-like text was found. Grade chips in the page (Inferred, Published idea, Registry, To count, Published, Inferred from the record) were used to set grade hints.",
+   "notes": "The plan belongs to the 'From 3D to X-ray' programme and says the full written report is docs/research/xr-from-3d/ in SchwingNet. Its own record outweighs the papers it cites: the C-ArmLSpine numbers are the project's measurements, the rest are reported from XraySyn, LatXGen, SyntheX and LevelCheck."
+  }
+ }
+]

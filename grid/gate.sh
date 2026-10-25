@@ -43,8 +43,31 @@
 #                   names one for (explore_against), the comparison with it by name and content; the
 #                   next send prints the report, logs/EXPLORE-<id>.md, and queues nothing; a new fetch
 #                   of the set or a change to tools/explore.py makes the next send look again
+#   dropzip <id>    the deletion of a fetched set's download zips (tools/dropzip.py, grid/dropzip.sbatch,
+#                   the owner's word of 2026-10-23): the first send queues one job, which deletes a zip
+#                   only when every file in it sits unpacked beside it at the same size; the next send
+#                   prints its report, logs/DROPZIP-<id>.md, and clears it, so a later send looks again
+#   unpack <id>     the unpacking of a fetched set's download zips beside themselves (tools/unpack.py,
+#                   grid/unpack.sbatch, the owner's word of 2026-10-23 for RSPECT): the first send
+#                   queues one job, which starts writing only when the size rule admits what the
+#                   unpacked files take; the next send prints its report, logs/UNPACK-<id>.md, and
+#                   clears it, so a later send goes on where a job cut short stopped
+#   nodequota       the volume's readout as a compute node reads it (grid/nodequota.sbatch, the owner's yes
+#                   of 2026-10-24): the first send queues one job, the next prints logs/NODEQUOTA.md and
+#                   clears it, so the send after that looks again
 #   samples         the sample index (grid/run-samples.sh): plan, scan and merge, refused while one
 #                   of them is live; status shows its MANIFEST.md, aggregates only
+#   experiment <n>  one requested combination of data and blocks, issue #<n> labelled experiment: the
+#                   request the experiment workflow recorded as <n>.request on the branch experiments,
+#                   fetched now and checked line by line, run as one GPU job (experiment-driver.sbatch)
+#                   once the version 1 inputs are there (the environments, the weights, C-ArmLSpine's
+#                   shards and a qualifying catalog version, which 'v1' makes), refused while a run for
+#                   the same issue is live; the job checks the values against the blocks module before
+#                   anything trains
+#   bench <name>    one public model's benchmark as its authors published it (#287, the owner's word and
+#                   count of 2026-10-25): flexray_carmlspine, flexray_deepfluoro or xvr_deepfluoro, each one
+#                   GPU job (grid/bench.sbatch, tools/bench_public.py) once its fetch has landed; the next
+#                   send prints logs/BENCH-<name>.md, and every later one prints it again and queues nothing
 #   stop            cancel the gate's own jobs that are still queued or running, and nothing else
 #   cancel <job>    cancel one of the gate's own live jobs and every other live job its word queued
 #                   with it (a fetch's bank and catalog), and nothing else
@@ -58,7 +81,8 @@
 # squeue, as before: hpcworker's `job status` reads every job as ended when neither squeue nor sacct
 # answers, and a gate that took that for "nothing live" would queue a second graph beside the first.
 # HPCWORKER names the hpcworker (the gate's clone hands it here), SQUEUE, SACCT, SCANCEL and
-# GETFATTR fakes for the tests; DATA_ROOT, RUNS and MODELS other folders. Exit codes: 0 done, 64 a word
+# GETFATTR fakes for the tests, GETFATTR read by the size rule only where SIZE_RULE_STAND_INS=yes
+# says so (grid/size-rule.sh); DATA_ROOT, RUNS and MODELS other folders. Exit codes: 0 done, 64 a word
 # refused, 75 busy (a word still running, or jobs still live), 2 the checkout or a file missing,
 # 1 a submission failed.
 set -uo pipefail
@@ -87,21 +111,25 @@ SWEEP_BANK=${SWEEP_BANK:-$DATA_ROOT/realxray/carmlspine_sweep}
 NETRC=${NETRC:-$HOME/.netrc}
 LOGS=$REPO/grid/logs
 STATE=$LOGS/GATE_JOBS.txt
-WORDS="start status leaks v1 latency fetch explore samples stop cancel"
+WORDS="start status leaks v1 latency fetch explore dropzip unpack nodequota samples experiment bench stop cancel"
 ENVS="default train-cpu train-gpu telemetry"
 
 word=${1:-}
 id=${2:-}
 # Matched whole, so one argument holding two words ("v1 latency") is refused and never runs nothing.
 case "$word" in
-  start|status|leaks|v1|latency|fetch|explore|samples|stop|cancel) ;;
+  start|status|leaks|v1|latency|fetch|explore|dropzip|unpack|nodequota|samples|experiment|bench|stop|cancel) ;;
   "") echo "refusing: no word; one of: $WORDS"; exit 64 ;;
   *) echo "refusing: '$word' is not one of: $WORDS"; exit 64 ;;
 esac
-if [ "$word" = fetch ] || [ "$word" = explore ]; then
+if [ "$word" = fetch ] || [ "$word" = explore ] || [ "$word" = dropzip ] || [ "$word" = unpack ] || [ "$word" = bench ]; then
   [ $# -eq 2 ] || { echo "refusing: $word takes exactly one id"; exit 64; }
   case "$id" in ""|*[!a-z0-9_]*) echo "refusing: an id is lower-case letters, digits and _"; exit 64 ;; esac
   [ ${#id} -le 40 ] || { echo "refusing: an id is at most 40 characters"; exit 64; }
+elif [ "$word" = experiment ]; then
+  [ $# -eq 2 ] || { echo "refusing: experiment takes exactly one issue number"; exit 64; }
+  case "$id" in ""|*[!0-9]*|0*) echo "refusing: an issue is digits alone, with no leading zero"; exit 64 ;; esac
+  [ ${#id} -le 9 ] || { echo "refusing: an issue is at most 9 digits"; exit 64; }
 elif [ "$word" = cancel ]; then
   [ $# -eq 2 ] || { echo "refusing: cancel takes exactly one job"; exit 64; }
   case "$id" in ""|*[!0-9]*) echo "refusing: a job is digits alone"; exit 64 ;; esac
@@ -409,8 +437,8 @@ latency_lines() {  # the newest run's parity, latency and sweep numbers, one lin
 # oschome"), so he chooses which sets stay on it at once and cycles the rest in and out. CephFS keeps
 # each folder's recursive size as the attribute ceph.dir.rbytes, read at once whatever the tree
 # holds, so no du walks millions of files; where the attribute is not there the size reads unknown.
-rbytes_of() {  # the size rule's own reading (grid/size-rule.sh), so a value that is no count reads unknown
-  xattr_digits ceph.dir.rbytes "$1"
+rbytes_of() {  # the size rule's own reading (grid/size-rule.sh), read whole, so a value with a NUL or that is no count reads unknown
+  xattr_whole ceph.dir.rbytes "$1"
 }
 gb_of() {  # whole GB, rounded up, of a byte count
   awk -v b="$1" 'BEGIN { printf "%d", (b + 999999999) / 1000000000 }'
@@ -735,6 +763,161 @@ word_explore() {
   echo "submitted one job. Send explore $id again once it ends to read the report."
 }
 
+word_dropzip() {
+  local raw report busy
+  raw=$DATA_ROOT/$id/raw report=$LOGS/DROPZIP-$id.md
+  grep -q "\"id\": \"$id\"" "$REPO/grid/fetch-xray.json" || gated_platform_id \
+    || { echo "refusing: $id is not an id of grid/fetch-xray.json nor a gated source of grid/run-platform-fetch.sh"; return 64; }
+  busy=$(live_of dropzip "dropzip:$id")
+  [ -z "$busy" ] || { echo "refusing: the deletion for $id is still queued or running (job $busy); send dropzip $id again once it ends"; return 75; }
+  if [ -f "$report" ]; then
+    # Printed once: the next send looks again, so a zip a later fetch leaves is settled too.
+    echo "## $(basename "$report") ($(date -r "$report" '+%F %T'))"
+    head -n 100 "$report" | LC_ALL=C tr -cd '\11\12\40-\176' | masked | head -c 20000
+    rm -f "$report"
+    return 0
+  fi
+  # Never while the set is still landing or being read: a zip half unpacked has members not yet beside it.
+  busy=$( { live_of xr_fetch "fetch:$id"; live_of "dp_$id"; live_of explore "explore:$id"; live_of unpack "unpack:$id"; } | tr '\n' ' ')
+  [ -z "${busy// /}" ] || { echo "refusing: a fetch, an unpacking or a look at $id is still queued or running (job $busy)"; return 75; }
+  [ -d "$raw" ] || { echo "refusing: $id has no raw folder on the data root yet; fetch it first"; return 2; }
+  envs_ready || { echo "refusing: the environments are not ready; 'start' makes them first"; return 75; }
+  submit dropzip batch DROPZIP_ID="$id" DROPZIP_RAW="$raw" -- dropzip.sbatch > /dev/null || return 1
+  echo "submitted one job. Send dropzip $id again once it ends to read what it deleted."
+}
+
+word_unpack() {
+  local raw report busy
+  raw=$DATA_ROOT/$id/raw report=$LOGS/UNPACK-$id.md
+  grep -q "\"id\": \"$id\"" "$REPO/grid/fetch-xray.json" || gated_platform_id \
+    || { echo "refusing: $id is not an id of grid/fetch-xray.json nor a gated source of grid/run-platform-fetch.sh"; return 64; }
+  busy=$(live_of unpack "unpack:$id")
+  [ -z "$busy" ] || { echo "refusing: the unpacking of $id is still queued or running (job $busy); send unpack $id again once it ends"; return 75; }
+  if [ -f "$report" ]; then
+    echo "## $(basename "$report") ($(date -r "$report" '+%F %T'))"
+    head -n 100 "$report" | LC_ALL=C tr -cd '\11\12\40-\176' | masked | head -c 20000
+    rm -f "$report"
+    return 0
+  fi
+  # Never beside a fetch of the set, a look at it or a deletion of its zips.
+  busy=$( { live_of xr_fetch "fetch:$id"; live_of "dp_$id"; live_of explore "explore:$id"; live_of dropzip "dropzip:$id"; } | tr '\n' ' ')
+  [ -z "${busy// /}" ] || { echo "refusing: a fetch, a deletion or a look at $id is still queued or running (job $busy)"; return 75; }
+  [ -d "$raw" ] || { echo "refusing: $id has no raw folder on the data root yet; fetch it first"; return 2; }
+  envs_ready || { echo "refusing: the environments are not ready; 'start' makes them first"; return 75; }
+  submit unpack batch UNPACK_ID="$id" UNPACK_RAW="$raw" DATA_ROOT="$DATA_ROOT" VOLUME="$VOLUME" -- unpack.sbatch > /dev/null || return 1
+  echo "submitted one job. It starts writing only once the size rule admits it; send unpack $id again once it ends to read what it wrote."
+}
+
+experiment_request() {  # experiment_request N: the lines the workflow recorded for issue N, on stdout
+  # From the branch experiments on origin, fetched now, since the gate's side brings main alone; a test
+  # sets EXPERIMENTS_DIR to a folder of such files instead, where no origin answers.
+  if [ -n "${EXPERIMENTS_DIR:-}" ]; then cat "$EXPERIMENTS_DIR/$1.request" 2>/dev/null; return; fi
+  git -C "$REPO" fetch -q --no-tags origin "+refs/heads/experiments:refs/remotes/origin/experiments" 2>/dev/null || return 1
+  git -C "$REPO" show "refs/remotes/origin/experiments:$1.request" 2>/dev/null
+}
+experiment_lines_ok() {  # experiment_lines_ok FILE: every line has the shape the workflow writes, the four settings once each
+  # The shapes alone, on the login node, where no python runs; the driver checks the values against the
+  # blocks module inside the container before anything trains.
+  local n=0 line key
+  while IFS= read -r line || [ -n "$line" ]; do
+    n=$((n + 1))
+    [ $n -le 40 ] || { echo "refusing: the request has more than 40 lines"; return 1; }
+    [ ${#line} -le 120 ] || { echo "refusing: line $n of the request is over 120 characters"; return 1; }
+    case "$line" in *[!A-Za-z0-9._,=:\ -]*) echo "refusing: line $n of the request holds a character outside letters, digits and . _ , = : -"; return 1 ;; esac
+    case "$line" in
+      "recipe: "[a-z]*|"epochs: "[1-9]*|"seed: "[0-9]*|"hours: "[0-9]*|"block: "[a-z]*=?*) ;;
+      *) echo "refusing: line $n of the request is not one the gate takes: $(printf '%s' "$line" | cut -c1-60)"; return 1 ;;
+    esac
+  done < "$1"
+  for key in recipe epochs seed hours; do
+    [ "$(grep -c "^$key: " "$1")" = 1 ] || { echo "refusing: the request names $key once, not $(grep -c "^$key: " "$1") times"; return 1; }
+  done
+}
+experiment_wall() {  # experiment_wall HOURS: the job's wall time as Slurm takes it, H:MM:00
+  # The request's hours are the training's (the panel's "the training job's wall time"); in this one job the
+  # evaluation follows the training, given a quarter of its hours as flow.py's slurm mode gives it, and an
+  # hour more holds the checks and the container's start. Never less than the driver's own 24 hours, which
+  # the version 1 run proved, so a short request runs as v1 did and a long one gets the time it asked for.
+  awk -v h="$1" 'BEGIN { m = int((h * 1.25 + 1) * 60 + 0.999); if (m < 1440) m = 1440; printf "%d:%02d:00\n", int(m / 60), m % 60 }'
+}
+word_experiment() {
+  local req=$LOGS/experiment-$id.request busy version hours wall
+  busy=$(live_of "experiment_$id")
+  [ -z "$busy" ] || { echo "refusing: the run for #$id is already queued or running (job $busy)"; return 75; }
+  if ! experiment_request "$id" > "$req.new" || [ ! -s "$req.new" ]; then
+    rm -f "$req.new"
+    echo "refusing: no $id.request on the branch experiments; the experiment workflow writes it when issue #$id's combination holds (grid/README.md)"
+    return 75
+  fi
+  mv "$req.new" "$req"
+  experiment_lines_ok "$req" || { rm -f "$req"; return 64; }
+  hours=$(sed -n 's/^hours: //p' "$req")
+  case "$hours" in ''|*[!0-9.]*|*.*.*|.*|*.) rm -f "$req"; echo "refusing: hours is a number such as 4 or 2.5, not ${hours:-nothing}"; return 64 ;; esac
+  wall=$(experiment_wall "$hours")
+  envs_ready || { echo "refusing: the environments are not ready; 'start' makes them first"; return 75; }
+  weights_ready || { echo "refusing: no ImageNet weights at $WEIGHTS; 'v1' makes them first"; return 75; }
+  carmlspine_ready || { echo "refusing: C-ArmLSpine's train and test shards are not on the data root; 'v1' makes them first"; return 75; }
+  version=$(v1_version) || { echo "refusing: no catalog version qualifies (grid/v1-version.sh); 'v1' builds one first"; return 75; }
+  echo "  catalog: $version qualifies for the run (grid/v1-version.sh); no job"
+  echo "  request: $(tr '\n' ' ' < "$req")"
+  echo "  wall time: $wall for $hours hours of training"
+  submit "experiment_$id" gpu REQUEST="$req" ISSUE="$id" RUNS="$RUNS" WEIGHTS="$WEIGHTS" --no-requeue --time "$wall" -- experiment-driver.sbatch > /dev/null || return 1
+  echo "submitted one job. 'status' shows it; its report is logs/experiment-$id-STAGE-REPORT.md"
+}
+word_nodequota() {
+  local report=$LOGS/NODEQUOTA.md busy
+  busy=$(live_of nodequota)
+  [ -z "$busy" ] || { echo "refusing: the node's readout is still queued or running (job $busy); send nodequota again once it ends"; return 75; }
+  if [ -f "$report" ]; then
+    # Printed once, so the send after it reads a node again.
+    echo "## $(basename "$report") ($(date -r "$report" '+%F %T'))"
+    head -n 100 "$report" | LC_ALL=C tr -cd '\11\12\40-\176' | masked | head -c 20000
+    rm -f "$report"
+    return 0
+  fi
+  envs_ready || { echo "refusing: the environments are not ready; 'start' makes them first"; return 75; }
+  submit nodequota batch -- nodequota.sbatch > /dev/null || return 1
+  echo "submitted one job. Send nodequota again once it ends to read what the node read."
+}
+
+bench_inputs_missing() {  # what bench $id still lacks on the data root, one line, or nothing
+  case "$id" in
+    flexray_carmlspine|flexray_deepfluoro)
+      find "$DATA_ROOT/hf_flexray_weights/raw" -maxdepth 3 -name ensemble.json -print -quit 2>/dev/null | grep -q . \
+        || { echo "FleXray's weights (fetch hf_flexray_weights first)"; return; }
+      if [ "$id" = flexray_carmlspine ]; then
+        [ -d "$DATA_ROOT/realxray/carmlspine/meta" ] || echo "C-ArmLSpine's bank at $DATA_ROOT/realxray/carmlspine"
+      else
+        find "$DATA_ROOT/deepfluoro_h5/raw" -name '*.h5' -size +1M -print -quit 2>/dev/null | grep -q . \
+          || echo "DeepFluoro's .h5 under $DATA_ROOT/deepfluoro_h5/raw"
+      fi ;;
+    xvr_deepfluoro)
+      find "$DATA_ROOT/hf_xvr_models/raw" -path '*/deepfluoro/finetuned/subject01.pth' -print -quit 2>/dev/null | grep -q . \
+        || { echo "xvr's DeepFluoro models (fetch hf_xvr_models first)"; return; }
+      [ -f "$DATA_ROOT/hf_xvr_data/raw/deepfluoro/subject01/volume.nii.gz" ] || echo "xvr's DeepFluoro data (fetch hf_xvr_data first)" ;;
+  esac
+}
+word_bench() {  # one public model's benchmark (#287): queued once, its report printed on every later send
+  local report=$LOGS/BENCH-$id.md busy missing
+  case "$id" in
+    flexray_carmlspine|flexray_deepfluoro|xvr_deepfluoro) ;;
+    *) echo "refusing: bench takes flexray_carmlspine, flexray_deepfluoro or xvr_deepfluoro"; return 64 ;;
+  esac
+  busy=$(live_of "bench_$id")
+  [ -z "$busy" ] || { echo "refusing: the benchmark $id is still queued or running (job $busy); send bench $id again once it ends"; return 75; }
+  if [ -f "$report" ]; then
+    # Kept, so the owner's count of one job each holds: a report that stands queues nothing.
+    echo "## $(basename "$report") ($(date -r "$report" '+%F %T'))"
+    head -n 100 "$report" | LC_ALL=C tr -cd '\11\12\40-\176' | masked | head -c 20000
+    return 0
+  fi
+  missing=$(bench_inputs_missing)
+  [ -z "$missing" ] || { echo "refusing: bench $id needs $missing"; return 2; }
+  envs_ready || { echo "refusing: the environments are not ready; 'start' makes them first"; return 75; }
+  submit "bench_$id" gpu BENCH="$id" DATA_ROOT="$DATA_ROOT" --no-requeue -- bench.sbatch > /dev/null || return 1
+  echo "submitted one job. Send bench $id again once it ends to read its report, logs/BENCH-$id.md."
+}
+
 word_samples() {
   local busy said rc
   busy=$( { live_of samples_plan; live_of samples_scan; live_of samples_merge; } | tr '\n' ' ')
@@ -796,6 +979,11 @@ case "$word" in
   latency) word_latency ;;
   fetch) word_fetch ;;
   explore) word_explore ;;
+  dropzip) word_dropzip ;;
+  unpack) word_unpack ;;
+  nodequota) word_nodequota ;;
+  experiment) word_experiment ;;
+  bench) word_bench ;;
   samples) word_samples ;;
   stop) word_stop ;;
   cancel) word_cancel ;;

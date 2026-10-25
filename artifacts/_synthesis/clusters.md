@@ -249,7 +249,7 @@ Primary members, by date:
 
 Superseded:
 
-- `celebrate-life-flyer-noutom` is superseded by `celebrate-life-scoliosis-night-julcos`: The export's own summary calls noutom 'the first Celebrate Life flyer'. Both flyers carry the same Saturday October 24 at the Detroit City Fieldhouse, the same registration form (forms.gle/v2NbizhJ8TpBdVi66), the same event page and the same two contacts, so they are one registration and one night; the later flyer re-targets it from kids in treatment for cancer and blood disorders at a 6:45 PM kickoff beside Trunk or Treat to kids with scoliosis from 5:00 to 7:00 PM beside Turf or Treat, with the watch party and the facility rules added.
+- `celebrate-life-flyer-noutom` is superseded by `celebrate-life-scoliosis-night-julcos`: The export's own summary calls noutom 'the first Celebrate Life flyer'. Both flyers carry the same Saturday October 24 at the Detroit City Fieldhouse, the same registration form ([the registration form's link]), the same event page and the same two contacts, so they are one registration and one night; the later flyer re-targets it from kids in treatment for cancer and blood disorders at a 6:45 PM kickoff beside Trunk or Treat to kids with scoliosis from 5:00 to 7:00 PM beside Turf or Treat, with the watch party and the facility rules added.
 
 Secondary members: `aidas-seed-grant-proposal`, `spine-program-student-onboarding`
 

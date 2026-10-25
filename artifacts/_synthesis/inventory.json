@@ -1766,7 +1766,7 @@
      "n": null,
      "interval": null,
      "context": "status count from the embedded data",
-     "quote": "\"greg_status\": \"held\" (52 entries in window.ATLAS)"
+     "quote": "\"[the owner]_status\": \"held\" (52 entries in window.ATLAS)"
     },
     {
      "value": "149",
@@ -1774,7 +1774,7 @@
      "n": null,
      "interval": null,
      "context": "status count from the embedded data",
-     "quote": "\"greg_status\": \"not held\" (149 entries in window.ATLAS)"
+     "quote": "\"[the owner]_status\": \"not held\" (149 entries in window.ATLAS)"
     },
     {
      "value": "11",
@@ -2638,7 +2638,7 @@
     "spine-program 01_carm_level_detection docs/data_requests and FLUORO_VIDEO_SOURCES_2026-09-26.md",
     "docs/external_reports (two external dataset reports)",
     "the project memory notes",
-    "/rs/rs_grp_oschome/go2432/data/ (grid paths per entry)",
+    "[the lab volume's data root]/ (grid paths per entry)",
     "tools/xray_dataset_usage.py",
     "tools/polypose_apply_pose_flip.py",
     "lstv_flag_labels_v2.csv",
@@ -2717,7 +2717,7 @@
    "account": "first account",
    "link": "https://claude.ai/artifact/UMnwCkV9SQm2kokkCXWUKA",
    "link_id": "UMnwCkV9SQm2kokkCXWUKA",
-   "readme_summary": "How a SchwingNet run starts on the Wayne State grid without greg typing a command, what each job waits for",
+   "readme_summary": "How a SchwingNet run starts on the Wayne State grid without [the owner] typing a command, what each job waits for",
    "kind": "page",
    "genre": "board",
    "date": "2026-10-21",
@@ -2742,7 +2742,7 @@
     },
     {
      "claim": "One press by the owner remains, Connect GitHub Actions in Beethoven after beethoven-extension #23; no word can run before it.",
-     "evidence_in_artifact": "One press by greg remains: Connect GitHub Actions in Beethoven, once beethoven-extension #23 reaches him. Until then no word can run.",
+     "evidence_in_artifact": "One press by [the owner] remains: Connect GitHub Actions in Beethoven, once beethoven-extension #23 reaches him. Until then no word can run.",
      "grade_hint": "measured"
     },
     {
@@ -2777,12 +2777,12 @@
     },
     {
      "claim": "CT-RATE in full (21.3 TB) is off by the owner's decision of 21 October; printed, never submitted.",
-     "evidence_in_artifact": "CT-RATE, full | 1 | 21.3 TB; off by greg's decision of 21 Oct",
+     "evidence_in_artifact": "CT-RATE, full | 1 | 21.3 TB; off by [the owner]'s decision of 21 Oct",
      "grade_hint": "measured"
     },
     {
      "claim": "The RSNA RATIC download link expires 2026-10-28 02:38 UTC and is the owner's presigned address, which no gate word may carry.",
-     "evidence_in_artifact": "The RSNA RATIC download link expires 2026-10-28 02:38 UTC. The link is greg's own presigned address, which no gate word may carry",
+     "evidence_in_artifact": "The RSNA RATIC download link expires 2026-10-28 02:38 UTC. The link is [the owner]'s own presigned address, which no gate word may carry",
      "grade_hint": "measured"
     },
     {
@@ -2797,7 +2797,7 @@
     },
     {
      "claim": "VinDr-PCXR access was granted on 21 October and its fetch is to be queued first once the words are live.",
-     "evidence_in_artifact": "Queue the VinDr-PCXR fetch first once the words are live; access was granted on 21 Oct and greg's PhysioNet login is in place.",
+     "evidence_in_artifact": "Queue the VinDr-PCXR fetch first once the words are live; access was granted on 21 Oct and [the owner]'s PhysioNet login is in place.",
      "grade_hint": "reported"
     }
    ],
@@ -2992,7 +2992,7 @@
      "n": null,
      "interval": null,
      "context": "provisional filed, the owner's",
-     "quote": "Fri 30 Oct Provisional filed. greg's"
+     "quote": "Fri 30 Oct Provisional filed. [the owner]'s"
     },
     {
      "value": "2026-11-02",
@@ -3080,7 +3080,7 @@
      "n": "1 set",
      "interval": null,
      "context": "CT-RATE in full, off by the owner's decision of 21 Oct, printed never submitted",
-     "quote": "CT-RATE, full | 1 | 21.3 TB; off by greg's decision of 21 Oct"
+     "quote": "CT-RATE, full | 1 | 21.3 TB; off by [the owner]'s decision of 21 Oct"
     },
     {
      "value": "7a74bb6",
@@ -4254,7 +4254,7 @@
     "spine-program 99_archive/MANIFEST_CODE.md and 99_archive/LITERATURE_BY_PATH.md",
     "the plan's section 3.5 (own captures with a preoperative CT)",
     "IRB determination 2026-269",
-    "grid paths under /rs/rs_grp_oschome/.../data/ (carmlspine, cobra2026, anomaly_harvest, external/fluoro_video, realxray)"
+    "grid paths under [the lab volume]/.../data/ (carmlspine, cobra2026, anomaly_harvest, external/fluoro_video, realxray)"
    ],
    "confidentiality": "schwingnet-other",
    "related_titles": [
@@ -5298,7 +5298,7 @@
     }
    ],
    "cross_references": [
-    "Grid path /rs/rs_grp_oschome/go2432/data/or_ready/ with subfolders audit, lodo, robust, crossdev, wholespine, thoracic, spinesac",
+    "Grid path [the lab volume's data root]/or_ready/ with subfolders audit, lodo, robust, crossdev, wholespine, thoracic, spinesac",
     "or_ready/audit/AUDIT.md and addendum",
     "or_ready/thoracic/tables.md",
     "docs/HANDOFF_2026-09-21_PM.md",
@@ -5376,7 +5376,7 @@
     "living radiotherapy patients (COBRA)",
     "cadaver specimens (DeepFluoro)"
    ],
-   "coverage_notes": "The extracted text (371 lines) was read whole. The index.html is 1.5 MB, almost all six embedded data-URI images (recall-versus-confidence curves, held-out predictions, corruption severity heatmap, corruption curves, cross-device naming, eight AASCE films); only their captions and alt text were readable. Roughly 25 further numeric cells were left out of the numbers list under the cap of 80: the remaining SpineSAC per-detector columns, intermediate corruption severities for most families, the ws_render and 2-class cells of the whole-spine table, the third AASCE column, and some device-card terms. The text names the owner by first name once ('the parameter sets Greg asked to wake up to'); recorded by role. No instruction-like text was found.",
+   "coverage_notes": "The extracted text (371 lines) was read whole. The index.html is 1.5 MB, almost all six embedded data-URI images (recall-versus-confidence curves, held-out predictions, corruption severity heatmap, corruption curves, cross-device naming, eight AASCE films); only their captions and alt text were readable. Roughly 25 further numeric cells were left out of the numbers list under the cap of 80: the remaining SpineSAC per-detector columns, intermediate corruption severities for most families, the ws_render and 2-class cells of the whole-spine table, the third AASCE column, and some device-card terms. The text names the owner by first name once ('the parameter sets [the owner] asked to wake up to'); recorded by role. No instruction-like text was found.",
    "notes": "The page says every number was read from disk on the grid and nothing was re-trained that morning; sources are listed as or_ready/ subfolders, the session scratchpad and the handoff of 2026-09-21 PM. Status chips (device held out, init exposure, position prior, same device, two denominators in circulation) qualify most cells and were carried into the contexts above."
   },
   {
@@ -7928,7 +7928,7 @@
    "kind": "page",
    "genre": "board",
    "date": "2026-09-21",
-   "date_evidence": "Header chip '21 Sep 2026, 03:3x EDT grid go2432@wayne, branch L6_Class, 8 GPU jobs live'.",
+   "date_evidence": "Header chip '21 Sep 2026, 03:3x EDT grid [the owner's login], branch L6_Class, 8 GPU jobs live'.",
    "question": "Does the coarse pixel spacing of the render corpora (93 pixels for a 140 mm field) explain the detector's failures, and can the DRR renderer be calibrated against real fluoroscopy using DeepFluoro?",
    "summary": "An overnight status board on the intraoperative level-counting work. It measures that the render corpora are 4 to 15 times coarser than a C-arm intensifier (ts_drr gives 93 px for a 140 mm field) but that a downsampling ladder on real films shows 836 px to 139 px costs 0.00 points of per-vertebra recall, so resolution is not the main event and the C2 failure needs another explanation. DeepFluoro (366 real frames, 6 cadaveric specimens, exact poses) was unblocked by presenting Chrome's TLS fingerprint, read to its geometry (reprojection 0.00 px median over 111 frames), and used to calibrate an image-formation model: physics alone explains 80.9% of attenuation variance, nine device terms add +4.3 points held out, the ceiling is 99.5%, and the residual has nothing local to learn, so the map was calibrated, not learned, and the GAN route was refuted by the literature. A two-class detector trained on 597 calibrated synthetic frames finds the sacrum on 76.9% of 365 real frames, with a 26-point seed spread bounding every arm comparison; the C2 arm's number is void (6 correct of 2593 walks) because C2 is inside a sweep frame only 15% of the time. Eight domain-randomization training arms are live, several silent failures were caught (a holdout bank deleted, films washed white, contamination checks erring toward clean), and the decision on the table is whether to re-render at C-arm resolution or price the resolution term first.",
    "key_claims": [
@@ -8469,7 +8469,7 @@
      "n": null,
      "interval": null,
      "context": "u251 RNA-seq study untouched since July, not deleted without the owner's word",
-     "quote": "194 GB in u251-xenograft-murine-RNASeq-study, untouched since July"
+     "quote": "194 GB in [another group's study folder], untouched since July"
     },
     {
      "value": "8 / ~20",
@@ -8502,7 +8502,7 @@
     "vindr_pseudo_drr",
     "mendeley_drr",
     "aasce_drr",
-    "u251-xenograft-murine-RNASeq-study"
+    "[another group's study folder]"
    ],
    "tools": [
     "curl_cffi (impersonate chrome)",
@@ -8513,7 +8513,7 @@
     "probe_c2_lands_on.py",
     "dr_eval",
     "DeepDRR (referenced renderer)",
-    "the grid (go2432@wayne), 8 GPU jobs"
+    "the grid ([the owner's login]), 8 GPU jobs"
    ],
    "models": [
     "YOLO detector trained at 1024 px (film-trained)",
@@ -8637,7 +8637,7 @@
     "corpus_resolution.py",
     "probe_first_field.py",
     "probe_c2_lands_on.py",
-    "u251-xenograft-murine-RNASeq-study",
+    "[another group's study folder]",
     "FluoroCap's top decile by grain (the former validation target)"
    ],
    "confidentiality": "schwingnet-method",
@@ -8690,7 +8690,7 @@
    ],
    "people_by_role": [
     "the owner (addressed as 'you', holds the decision on the table)",
-    "the grid account (go2432)",
+    "the grid account ([the owner's login])",
     "the author session"
    ],
    "coverage_notes": "Five embedded images not readable (image formation figure, whole-spine render, first synthetic set, corrected synthetic set, calls on real frames). An e-mail address is withheld in the source. About 20 lesser numbers left out (remaining corpus-table cells, per-arm epoch counts, 2 px and 16 px band edges, the 14 landmark names). Phrases such as 'Refuted \u2014 do not build this' and 'Do not read the ablation off this table' address the owner, not this inventory, and were treated as data.",
@@ -8707,68 +8707,68 @@
    "kind": "page",
    "genre": "plan",
    "date": "2026-10-21",
-   "date_evidence": "Header chip 'SchwingNet \u00b7 From 3D to X-ray \u00b7 21 October 2026'.",
+   "date_evidence": "Header chip 'SchwingNet \u00b7 From 3D to X-ray \u00b7 21 October 2026'. The page now also carries later material: 'The goal stated on 2026-10-22' and 'The census (PR #76, run on 2026-10-22: 140 groups, 7,008,826 files, 7.3 TB...)', so the body was revised after the header date.",
    "question": "Can SchwingNet turn an X-ray in one position into another view, detect and classify vertebrae at any C-arm position, and use paired X-ray and CT sets as gold truth for the 3D prior, and what must the census count before each model is trained?",
-   "summary": "A confidential (patent material, before the provisional) plan with three goals: a network that turns an X-ray in one position into another (AP to lateral), a detector and classifier that works at any position, and paired X-ray and CT sets as gold ground truth for the 3D prior. Its short answer grades them: paired X-ray and CT as gold truth is strong (registration-based labelling is near perfect in LevelCheck, 100% at 26 s, 99.3% at 7 s); any-position detection and classification is feasible with a measured gap (the project's own record on C-ArmLSpine: lateral naming 96.4% zero-shot from renders, AP naming 43.7% as a one-level counting error, detection 0.3% from renders alone, 80.5% with other devices' real frames, 84.0% with 24 frames of the device added); AP image to lateral image is hard as stated, since the closest published work (XraySyn) moves the view only 9 degrees, so the plan is structured transfer of the lateral's levels, corners and alignment from the AP, with pixel synthesis only as an auxiliary task. It tables the held paired sets (COBRA 692 cases and 375,618 projections, C-ArmLSpine 149 cases, DeepFluoro, Ljubljana, IPCAI 2025 not yet) and notes every one is lumbar or lumbosacral. Section 4 gives what the census (PR #76) must count per region with the estimated counts needed to test each approach; section 5 gives the order of work, census first, and says nothing appears in an external text before the provisional is filed.",
+   "summary": "A confidential plan (patent material, before the provisional) with three goals: a network that turns an X-ray in one position into another (AP to lateral), a detector and classifier that works at any position, and paired X-ray and CT sets as gold ground truth for the 3D prior. Its short answer grades them: paired X-ray and CT as gold truth is strong (LevelCheck labelled 100% of views at about 26 s and 99.3% at 7 s); any-position detection and naming is feasible with a measured gap on C-ArmLSpine (lateral naming 96.4% zero-shot, AP naming 43.7%, detection 0.3% from renders alone, 80.5% with other devices' real frames, 84.0% with 24 frames of the device); AP image to lateral image is hard as stated, so the plan is structured transfer of levels, corners and alignment with pixel synthesis only as an auxiliary task. Section 3 now tables nine paired sets (COBRA, C-ArmLSpine, DeepFluoro, Ljubljana, a digital-twin cadaver, LUMOS, Geneva hip phantom, IPCAI 2025, pig limb, Veriserum), with notes on which have masks and which are not spine, and states a goal of 22 October to segment every paired set. Section 4 now holds the census counts per region (run on 2026-10-22) beside the counts needed to test each approach; section 5 gives the order of work and says nothing appears in an external text before the provisional is filed.",
    "key_claims": [
     {
-     "claim": "Lateral naming transfers from 3D renders: 96.4% zero-shot on C-ArmLSpine with an encoder that saw the device only through renders, within a point of the 97.4% fine-tuned on the device.",
-     "evidence_in_artifact": "Naming, lateral, encoder that saw the device only through renders | 96.4% (595/617) | ... within a point of the 97.4% fine-tuned on the device.",
+     "claim": "Lateral naming transfers from 3D renders: 96.4% zero-shot on C-ArmLSpine, within a point of the 97.4% fine-tuned on the device.",
+     "evidence_in_artifact": "Naming, lateral, encoder that saw the device only through renders | 96.4% (595/617) | Naming transfers from 3D renders. It is within a point of the 97.4% fine-tuned on the device.",
      "grade_hint": "measured"
     },
     {
-     "claim": "AP naming zero-shot collapses to 43.7%, a one-level cranial shift that is a counting error, not an appearance error.",
+     "claim": "AP naming zero-shot collapses to 43.7%, a one-level cranial shift that is a counting error.",
      "evidence_in_artifact": "Naming, AP, zero-shot | 43.7% | A one-level cranial shift: a counting error, not an appearance error.",
      "grade_hint": "measured"
     },
     {
-     "claim": "Detection does not transfer from today's renders (0.3%); real frames from other devices carry most of it (80.5%), and 24 frames of the device take it to 84.0%.",
+     "claim": "Detection does not transfer from renders (0.3%); other devices' real frames carry most of it (80.5%); 24 frames of the device give 84.0%.",
      "evidence_in_artifact": "Detection from renders alone | 0.3% ... Detection with other devices' real frames plus renders | 80.5% ... Detection with 24 frames of the device added | 84.0%",
      "grade_hint": "measured"
     },
     {
-     "claim": "No published work turns a spine AP film into a lateral one; the closest moves the view only 9 degrees, and AP to lateral is a 90 degree move.",
+     "claim": "No published work turns a spine AP film into a lateral; the closest moves the view only 9 degrees, so a synthesised lateral is a display aid, never a film.",
      "evidence_in_artifact": "No published work turns a spine AP film into a lateral one. The closest work moves the view only 9 degrees.",
-     "grade_hint": "inferred"
+     "grade_hint": "unverified"
     },
     {
-     "claim": "A synthesised lateral is a display aid and must never be read as a film, since what an AP does not show a model cannot recover.",
-     "evidence_in_artifact": "A listhesis or a wedged body seen only on the lateral is invisible on the AP, and a synthesised lateral would paint the typical spine in its place.",
-     "grade_hint": "inferred"
-    },
-    {
-     "claim": "Registration-based level labelling is near perfect: LevelCheck labelled 100% of views at about 26 s and 99.3% at 7 s, with sub-millimetre projection error.",
+     "claim": "Registration-based level labelling is near perfect: LevelCheck 100% of views at about 26 s, 99.3% at 7 s.",
      "evidence_in_artifact": "LevelCheck (Lo et al., Spine 2015, 20 thoracolumbar surgery patients, 10,000 perturbed views) labelled 100% of views correctly at about 26 s, and 99.3% at 7 s.",
      "grade_hint": "reported"
     },
     {
-     "claim": "The project holds more real AP-lateral pairs than the report assumed: BUU-LSPINE's 3,600 people, on the scale of LatXGen's 2,611 training pairs.",
+     "claim": "The project holds more real AP-lateral pairs than assumed: BUU-LSPINE's 3,600 people, on the scale of LatXGen's 2,611 training pairs.",
      "evidence_in_artifact": "BUU-LSPINE is held: 3,600 people with an AP and a lateral lumbar film each, with end-plate lines. That is on the scale of LatXGen's 2,611 training pairs.",
      "grade_hint": "measured"
     },
     {
-     "claim": "There are no real paired films above the lumbar spine among the held sets, so cervical and thoracic transfer rests on renders until pairs are found.",
-     "evidence_in_artifact": "There are no real paired films above the lumbar spine among the held sets.",
+     "claim": "Every paired spine set, held or not, is lumbar or lumbosacral except one cadaver reaching T2; thoracic and cervical parts of the prior can be checked only on renders.",
+     "evidence_in_artifact": "every paired spine set, held or not, is lumbar or lumbosacral, except the digital twin's cadaver, one specimen reaching T2; the four non-spine pairs tune the registration code only.",
      "grade_hint": "measured"
     },
     {
-     "claim": "Every held paired X-ray/CT set is lumbar or lumbosacral, so the prior's thoracic and cervical parts can be checked only on renders.",
-     "evidence_in_artifact": "every held paired set is lumbar or lumbosacral. The prior's thoracic and cervical parts can be checked only on renders until a paired set there is found.",
-     "grade_hint": "measured"
-    },
-    {
-     "claim": "SyntheX shows physics renders can carry detection (6.44 vs 6.46 mm, Dice 0.80 vs 0.79, better at 10k images) but not always (chest lesions 85% vs 94%), so the 0.3% may be the renderer's fault.",
+     "claim": "SyntheX shows physics renders can carry detection but not always, so the 0.3% may be the renderer's fault, which ablation #69 tests.",
      "evidence_in_artifact": "So physics renders can carry detection, but not always. Your 0.3% may be the renderer's fault, which is what the physics renderer ablation (#69) tests.",
      "grade_hint": "reported"
     },
     {
-     "claim": "About 100 test persons gives a 95% interval near plus or minus 6 points at 90% accuracy, which sets the per-region count needed to test.",
+     "claim": "About 100 test persons per region gives a 95% interval near \u00b16 points at 90% accuracy and sets the count needed to test.",
      "evidence_in_artifact": "About 100 test persons gives a 95% interval near \u00b16 points at 90% accuracy.",
      "grade_hint": "inferred"
     },
     {
+     "claim": "The census has run and its counts fill the per-region table: 140 groups, 7,008,826 files, 7.3 TB; only lumbar and lumbosacral regions hold X-ray with CT.",
+     "evidence_in_artifact": "The census (PR #76, run on 2026-10-22: 140 groups, 7,008,826 files, 7.3 TB; docs/research/data-manifest/MANIFEST.md) indexes every held file",
+     "grade_hint": "measured"
+    },
+    {
+     "claim": "The goal of 22 October is to segment every paired set so every real X-ray with a CT carries gold per-pixel labels.",
+     "evidence_in_artifact": "The goal stated on 2026-10-22: every paired set is segmented, in ITK-SNAP with AI assistance where no annotation exists and verified by a second reader",
+     "grade_hint": "inferred"
+    },
+    {
      "claim": "The first steps need no census; the decision to train each model waits for the per-region counts.",
-     "evidence_in_artifact": "Nothing below needs the census to start ... The decision to train each model does wait for it, because the per-region counts ... decide where each model has enough real pairs",
+     "evidence_in_artifact": "Nothing below needs the census to start: the first steps are renders and data plumbing on sets you already hold. The decision to train each model does wait for it",
      "grade_hint": "inferred"
     }
    ],
@@ -8822,43 +8822,27 @@
      "quote": "Detection with 24 frames of the device added | 84.0%"
     },
     {
-     "value": "24",
-     "unit": "frames",
-     "n": null,
-     "interval": null,
-     "context": "frames of the new device that lifted detection from 80.5% to 84.0%",
-     "quote": "Your record: 24 frames took detection from 80.5% to 84.0%."
-    },
-    {
      "value": "27.2 / 0.93",
      "unit": "PSNR / SSIM",
      "n": null,
      "interval": null,
      "context": "XraySyn novel view synthesis on simulated data",
-     "quote": "PSNR 27.2 / SSIM 0.93 (sim) falls to ~25.4 at \u00b19\u00b0"
+     "quote": "PSNR 27.2 / SSIM 0.93 (sim)"
     },
     {
      "value": "~25.4",
      "unit": "PSNR",
      "n": null,
      "interval": null,
-     "context": "XraySyn at plus or minus 9 degrees",
+     "context": "XraySyn at \u00b19 degrees",
      "quote": "falls to ~25.4 at \u00b19\u00b0"
-    },
-    {
-     "value": "9",
-     "unit": "degrees",
-     "n": null,
-     "interval": null,
-     "context": "largest view change shown by XraySyn",
-     "quote": "Only \u00b19\u00b0 was shown, and quality falls as the angle grows."
     },
     {
      "value": "90",
      "unit": "degrees",
      "n": null,
      "interval": null,
-     "context": "AP to lateral view change, ten times further",
+     "context": "AP to lateral view change",
      "quote": "AP to lateral is a 90\u00b0 move, ten times further."
     },
     {
@@ -8870,59 +8854,35 @@
      "quote": "3,264 real pairs; PSNR 20.9"
     },
     {
-     "value": "20.9",
-     "unit": "PSNR",
-     "n": null,
-     "interval": null,
-     "context": "LatXGen lateral synthesis",
-     "quote": "3,264 real pairs; PSNR 20.9"
-    },
-    {
-     "value": "0.85\u20130.90",
-     "unit": "R squared",
-     "n": null,
-     "interval": null,
-     "context": "LatXGen sagittal angles",
-     "quote": "sagittal angles R\u00b2 0.85\u20130.90"
-    },
-    {
-     "value": "0.83\u20130.84 / 0.86\u20130.90",
-     "unit": "sensitivity / specificity",
-     "n": null,
-     "interval": null,
-     "context": "LatXGen abnormal detection",
-     "quote": "abnormal: sens 0.83\u20130.84, spec 0.86\u20130.90"
-    },
-    {
-     "value": "~0.5",
-     "unit": "degrees mean",
-     "n": null,
-     "interval": null,
-     "context": "global alignment transfer error in LatXGen",
-     "quote": "global alignment carries over to the other view to within about half a degree on average"
-    },
-    {
      "value": "2,611",
      "unit": "training pairs",
      "n": null,
      "interval": null,
-     "context": "LatXGen training set, the scale BUU-LSPINE matches",
+     "context": "LatXGen training set",
      "quote": "That is on the scale of LatXGen's 2,611 training pairs."
     },
     {
      "value": "3,600",
-     "unit": "people (AP + lateral lumbar pairs)",
+     "unit": "people (AP + lateral lumbar)",
      "n": null,
      "interval": null,
-     "context": "BUU-LSPINE held, with end-plate lines",
+     "context": "BUU-LSPINE held",
      "quote": "BUU-LSPINE is held: 3,600 people with an AP and a lateral lumbar film each, with end-plate lines."
+    },
+    {
+     "value": "7,203",
+     "unit": "films",
+     "n": "3,600 people",
+     "interval": null,
+     "context": "BUU annotated lumbar X-rays in the census table",
+     "quote": "BUU 7,203 films (3,600 people); BUU 2000 relabel 2,000"
     },
     {
      "value": "149",
      "unit": "cases",
      "n": null,
      "interval": null,
-     "context": "C-ArmLSpine cases with AP and lateral frames and CBCT",
+     "context": "C-ArmLSpine cases with AP, lateral and CBCT",
      "quote": "C-ArmLSpine adds 149 cases with AP and lateral frames and the CBCT of the same patient."
     },
     {
@@ -8930,64 +8890,88 @@
      "unit": "spot frames",
      "n": "149 cases, 149 CBCT",
      "interval": null,
-     "context": "C-ArmLSpine held paired set",
+     "context": "C-ArmLSpine paired set (census table counts 297 spots annotated)",
      "quote": "C-ArmLSpine | held | 149 cases, 299 spot frames, 149 CBCT | Lumbar"
+    },
+    {
+     "value": "814 of 910",
+     "unit": "bodies agreed",
+     "n": "910 bodies",
+     "interval": null,
+     "context": "TotalSegmentator and SPINEPS/VERIDAH agreement on C-ArmLSpine CBCT",
+     "quote": "agreeing on 814 of 910 bodies"
     },
     {
      "value": "692",
      "unit": "cases",
-     "n": null,
+     "n": "375,618 real projections",
      "interval": null,
-     "context": "COBRA held, lumbosacral and pelvis, radiotherapy CBCT, CC BY-NC",
+     "context": "COBRA held, lumbosacral and pelvis, CC BY-NC",
      "quote": "COBRA | held | 692 cases, 375,618 real projections | Lumbosacral, pelvis"
-    },
-    {
-     "value": "375,618",
-     "unit": "real projections",
-     "n": "692 cases",
-     "interval": null,
-     "context": "COBRA",
-     "quote": "692 cases, 375,618 real projections"
     },
     {
      "value": "6",
      "unit": "cadavers",
      "n": "19 CT",
      "interval": null,
-     "context": "DeepFluoro held set, pelvis and hip, some lumbar",
+     "context": "DeepFluoro",
      "quote": "DeepFluoro | held | 6 cadavers, 366 + 2,659 frames, 19 CT"
-    },
-    {
-     "value": "366 + 2,659",
-     "unit": "frames",
-     "n": null,
-     "interval": null,
-     "context": "DeepFluoro frames",
-     "quote": "6 cadavers, 366 + 2,659 frames, 19 CT"
     },
     {
      "value": "2,293",
      "unit": "vendor frames",
      "n": null,
      "interval": null,
-     "context": "DeepFluoro frames unused; registration gives their truth",
-     "quote": "2,293 vendor frames unused. Registration gives their truth."
+     "context": "DeepFluoro frames unused",
+     "quote": "2,293 vendor frames unused; registration gives their truth."
     },
     {
      "value": "18",
      "unit": "frames",
      "n": "1 cadaver",
      "interval": null,
-     "context": "Ljubljana 2D/3D gold standard, L1\u2013L5, registration accuracy check only",
+     "context": "Ljubljana 2D/3D gold standard, L1\u2013L5",
      "quote": "Ljubljana 2D/3D gold standard | held | 18 frames, 1 cadaver | L1\u2013L5"
     },
     {
-     "value": "5",
-     "unit": "CT, 6.7 GB",
-     "n": null,
+     "value": "80",
+     "unit": "Loop-X frames",
+     "n": "46 viewpoints, 4 CT",
      "interval": null,
-     "context": "IPCAI 2025 X-ray with CT, not yet held, region to confirm",
-     "quote": "IPCAI 2025 X-ray with CT | not yet | 5 CT, 6.7 GB | To confirm"
+     "context": "digital-twin cadaver, mid-femur to T2, not yet held",
+     "quote": "80 Loop-X frames, 46 viewpoints, 4 CT | | Mid-femur to T2"
+    },
+    {
+     "value": "1,620",
+     "unit": "films",
+     "n": "280 CT, 803 patients",
+     "interval": null,
+     "context": "LUMOS lumbar, not yet held (46.4 GB), CC BY-NC 4.0",
+     "quote": "1,620 films, 280 CT, 803 patients"
+    },
+    {
+     "value": "116",
+     "unit": "frames",
+     "n": "1 phantom",
+     "interval": null,
+     "context": "Geneva hip phantom",
+     "quote": "Geneva hip phantom | | held | | 116 frames, 1 phantom"
+    },
+    {
+     "value": "50",
+     "unit": "X-rays",
+     "n": "5 CT",
+     "interval": null,
+     "context": "IPCAI 2025 X-ray with CT, femur, fetched zipped 6.2 GB, not spine",
+     "quote": "IPCAI 2025 X-ray with CT | | fetched, zipped (6.2 GB) | | 50 X-rays, 5 CT | | Femur"
+    },
+    {
+     "value": "~110,000",
+     "unit": "dual-plane frames",
+     "n": "200 hand-registered",
+     "interval": null,
+     "context": "Veriserum, knee implants, not yet held",
+     "quote": "~110,000 dual-plane frames, 200 hand-registered"
     },
     {
      "value": "20",
@@ -8998,51 +8982,27 @@
      "quote": "SyntheX (hip, 20 CTs, real test on 366 cadaver X-rays)"
     },
     {
-     "value": "366",
-     "unit": "cadaver X-rays",
-     "n": null,
-     "interval": null,
-     "context": "SyntheX real test set",
-     "quote": "real test on 366 cadaver X-rays"
-    },
-    {
      "value": "6.44 vs 6.46",
      "unit": "mm landmark error",
      "n": null,
      "interval": null,
-     "context": "SyntheX simulation-trained vs real-data-trained",
+     "context": "SyntheX simulation-trained vs real-trained",
      "quote": "landmark error 6.44 vs 6.46 mm and Dice 0.80 vs 0.79"
-    },
-    {
-     "value": "0.80 vs 0.79",
-     "unit": "Dice",
-     "n": null,
-     "interval": null,
-     "context": "SyntheX simulation vs real",
-     "quote": "Dice 0.80 vs 0.79"
     },
     {
      "value": "5.95 / 0.86",
      "unit": "mm / Dice",
      "n": "10k images",
      "interval": null,
-     "context": "SyntheX scaled to 10k images beat real training",
+     "context": "SyntheX scaled up",
      "quote": "Scaled up to 10k images it beat it, at 5.95 mm and Dice 0.86."
-    },
-    {
-     "value": "6.16",
-     "unit": "mm",
-     "n": null,
-     "interval": null,
-     "context": "SyntheX on another imaging system",
-     "quote": "On another imaging system it scored 6.16 mm."
     },
     {
      "value": "85 vs 94",
      "unit": "%",
      "n": null,
      "interval": null,
-     "context": "SyntheX chest lesions, simulation fell short of real",
+     "context": "SyntheX chest lesions",
      "quote": "For chest lesions it fell short (85% vs 94%)."
     },
     {
@@ -9050,21 +9010,13 @@
      "unit": "real rotations",
      "n": null,
      "interval": null,
-     "context": "COBRA rotations for the per-angle curve on the low lumbar spine and sacrum (#60)",
+     "context": "COBRA rotations for the per-angle curve",
      "quote": "COBRA's 692 real rotations give that curve on real projections for the low lumbar spine and the sacrum (#60)."
-    },
-    {
-     "value": "20",
-     "unit": "patients",
-     "n": "10,000 perturbed views",
-     "interval": null,
-     "context": "LevelCheck clinical study",
-     "quote": "LevelCheck (Lo et al., Spine 2015, 20 thoracolumbar surgery patients, 10,000 perturbed views)"
     },
     {
      "value": "100",
      "unit": "% views labelled correctly",
-     "n": "10,000 views",
+     "n": "10,000 perturbed views, 20 patients",
      "interval": null,
      "context": "LevelCheck at about 26 s",
      "quote": "labelled 100% of views correctly at about 26 s, and 99.3% at 7 s"
@@ -9078,14 +9030,6 @@
      "quote": "and 99.3% at 7 s"
     },
     {
-     "value": "26 / 7",
-     "unit": "seconds",
-     "n": null,
-     "interval": null,
-     "context": "LevelCheck registration time at 100% and 99.3%",
-     "quote": "labelled 100% of views correctly at about 26 s, and 99.3% at 7 s"
-    },
-    {
      "value": "0.2",
      "unit": "mm projection error",
      "n": null,
@@ -9094,28 +9038,36 @@
      "quote": "Earlier work reported 0.2 \u00b1 0.2 mm projection error in simulation and under 1 mm in cadavers."
     },
     {
-     "value": "<1",
-     "unit": "mm",
-     "n": null,
+     "value": "140",
+     "unit": "groups",
+     "n": "7,008,826 files, 7.3 TB",
      "interval": null,
-     "context": "registration projection error in cadavers",
-     "quote": "and under 1 mm in cadavers"
+     "context": "census PR #76 run on 2026-10-22",
+     "quote": "The census (PR #76, run on 2026-10-22: 140 groups, 7,008,826 files, 7.3 TB"
     },
     {
-     "value": "\u2265 3,600",
-     "unit": "real AP + lateral pairs (lumbar)",
+     "value": "322,914",
+     "unit": "panels",
      "n": null,
      "interval": null,
-     "context": "census table, lumbar row, from BUU",
-     "quote": "Lumbar | census | census | \u2265 3,600 (BUU) | \u2265 149 + COBRA"
+     "context": "FluoroCap unannotated lumbar X-ray in the census table",
+     "quote": "FluoroCap 322,914 panels; fluoro clips 690,554 frames; C-ArmLSpine 51,429 frames"
     },
     {
-     "value": "\u2265 149 + COBRA",
-     "unit": "X-ray with CT (gold), lumbar",
+     "value": "4,962",
+     "unit": "annotated cervical X-rays (CSXA)",
      "n": null,
      "interval": null,
-     "context": "census table, lumbar row",
-     "quote": "\u2265 149 + COBRA"
+     "context": "census table, cervical",
+     "quote": "CSXA 4,962; Aariz 1,000"
+    },
+    {
+     "value": "802",
+     "unit": "segmented CTs",
+     "n": null,
+     "interval": null,
+     "context": "CTSpinoPelvic1K in lumbar and sacral rows",
+     "quote": "CTSpinoPelvic1K 802; CTPelvic1K 178; PENGWIN 680"
     },
     {
      "value": "~1,000+",
@@ -9130,7 +9082,7 @@
      "unit": "persons per region",
      "n": null,
      "interval": "95% interval near \u00b16 points at 90% accuracy",
-     "context": "needed to test transfer and the gold check of the 3D prior",
+     "context": "needed to test transfer and the gold check",
      "quote": "About 100 test persons gives a 95% interval near \u00b16 points at 90% accuracy."
     },
     {
@@ -9139,39 +9091,15 @@
      "n": null,
      "interval": null,
      "context": "needed to test detection at a new device",
-     "quote": "Detection at a new device | ~25 real frames of it"
+     "quote": "Detection at a new device | | ~25 real frames of it"
     },
     {
      "value": "~50",
      "unit": "confirmed cases per anomaly class",
      "n": null,
      "interval": null,
-     "context": "needed for the anomaly screener over NHANES II, plus every film",
+     "context": "anomaly screener over NHANES II",
      "quote": "every film, plus ~50 confirmed per anomaly class"
-    },
-    {
-     "value": "#76",
-     "unit": "pull request",
-     "n": null,
-     "interval": null,
-     "context": "the census job, built, going to the grid next",
-     "quote": "The census job is built (PR #76) and goes to the grid next."
-    },
-    {
-     "value": "#57 / #59 / #60 / #68 / #69 / #72",
-     "unit": "issue numbers",
-     "n": null,
-     "interval": null,
-     "context": "counting prior, AP and oblique renders with anchors, COBRA per-angle curve, structured transfer, physics renderer ablation, the gate word",
-     "quote": "The counting prior's grid job (#57, built) and the AP and oblique renders with anchors (#59). ... (#60) ... (#68) ... (#69) ... beside #72"
-    },
-    {
-     "value": "2026-10-21",
-     "unit": "date",
-     "n": null,
-     "interval": null,
-     "context": "plan date",
-     "quote": "SchwingNet \u00b7 From 3D to X-ray \u00b7 21 October 2026"
     }
    ],
    "datasets": [
@@ -9180,9 +9108,28 @@
     "COBRA",
     "DeepFluoro",
     "Ljubljana 2D/3D gold standard",
-    "IPCAI 2025 X-ray with CT (not yet held)",
+    "Digital-twin cadaver (arXiv 2412.08020)",
+    "LUMOS",
+    "Geneva hip phantom",
+    "IPCAI 2025 X-ray with CT",
+    "Pig lower limb (IEEE DataPort)",
+    "Veriserum",
     "VinDr-SpineXR",
     "NHANES II",
+    "FluoroCap",
+    "CSXA",
+    "Aariz",
+    "AASCE",
+    "KUB-StoneX",
+    "Spinal-AI2024",
+    "CTSpinoPelvic1K",
+    "CTSpine1K",
+    "VerSe",
+    "TotalSeg",
+    "RSNA 2022 cervical",
+    "RibFrac",
+    "CTPelvic1K",
+    "PENGWIN",
     "renders from segmented CT"
    ],
    "tools": [
@@ -9190,7 +9137,12 @@
     "the catalog (person-keyed split)",
     "the registry under data/sources/",
     "the grid",
-    "physics renderer (ablation #69)"
+    "physics renderer (ablation #69)",
+    "ITK-SNAP",
+    "TotalSegmentator",
+    "SPINEPS/VERIDAH",
+    "tools/sample_index.py",
+    "registration code"
    ],
    "models": [
     "the naming encoder (lateral and AP level naming)",
@@ -9207,64 +9159,71 @@
    ],
    "decisions": [
     {
-     "decision": "The first steps (renders and data plumbing) start without the census; the decision to train each model waits for the per-region counts.",
      "date": "2026-10-21",
+     "decision": "First steps (renders and data plumbing) start without the census; the decision to train each model waits for the per-region counts.",
      "owner": null,
      "reason": "The per-region counts decide where each model has enough real pairs to be tested at all."
     },
     {
-     "decision": "AP to lateral is done as structured transfer first (levels, corners, sagittal alignment scored against the real lateral), with pixel synthesis only as an auxiliary task; a generated lateral is never read as a film.",
      "date": "2026-10-21",
+     "decision": "AP to lateral is done as structured transfer first, with pixel synthesis only as an auxiliary task; a generated lateral is never read as a film.",
      "owner": null,
-     "reason": "No published work turns a spine AP film into a lateral; what an AP does not show a model cannot recover."
+     "reason": "What an AP does not show a model cannot recover."
     },
     {
-     "decision": "C-ArmLSpine's test persons stay out of every training, and a person used to check the prior is never used to fit it; the split is by person.",
      "date": "2026-10-21",
+     "decision": "C-ArmLSpine's test persons stay out of every training, and a person used to check the prior is never used to fit it; the split is by person.",
      "owner": null,
      "reason": "It is the test device; keeps the gold truth gold."
     },
     {
-     "decision": "The order of work: census on the grid (PR #76) first; then the counting prior (#57) and AP/oblique renders with anchors (#59); then COBRA projected labels and the per-angle curve (#60); then structured AP-to-lateral transfer on BUU-LSPINE and C-ArmLSpine pairs (#68); thoracic and cervical transfer only once pairs are found.",
+     "date": "2026-10-22",
+     "decision": "Goal: every paired set is segmented in ITK-SNAP with AI assistance and verified by a second reader; annotated X-rays without a CT either train an independent pseudolabeller or test the network, one role per person.",
+     "owner": "the owner",
+     "reason": "So every real X-ray with a CT carries gold per-pixel labels."
+    },
+    {
      "date": "2026-10-21",
+     "decision": "Order of work: split NHANES II, VinDr-SpineXR and FluoroCap by region in the next census run; then counting prior (#57) and AP/oblique renders (#59); COBRA projected labels and per-angle curve (#60); structured transfer on BUU-LSPINE and C-ArmLSpine pairs (#68); thoracic and cervical only once pairs are found.",
      "owner": null,
      "reason": "The counting prior and renders lift AP naming before the talk; COBRA is the gold set for the lumbosacral spine."
     },
     {
-     "decision": "Results go on slides as results only; nothing appears in an external text before the provisional is filed.",
      "date": "2026-10-21",
+     "decision": "Results go on slides as results only; nothing appears in an external text before the provisional is filed.",
      "owner": "the owner",
      "reason": "Confidential patent material."
     },
     {
-     "decision": "COBRA's commercial use (CC BY-NC) is a lawyer's question, not decided here.",
      "date": "2026-10-21",
+     "decision": "COBRA's commercial use (CC BY-NC) is a lawyer's question, not decided here.",
      "owner": null,
      "reason": "Licence is non-commercial."
     }
    ],
    "open_questions": [
-    "The per-region census counts (cervical, thoracic, lumbar, sacral) for annotated and unannotated X-rays, real AP+lateral pairs, X-ray with CT and segmented CT; the last table fills in once PR #76 returns.",
+    "Which regions NHANES II, VinDr-SpineXR and FluoroCap fall in (waiting on the next census run's body-part split).",
     "Whether the 0.3% detection from renders is the renderer's fault (physics renderer ablation #69).",
     "Accuracy at oblique C-arm angles is unmeasured.",
     "How many two-view lumbar studies VinDr-SpineXR holds.",
-    "Whether COBRA's CC BY-NC licence permits the intended commercial use (a lawyer's question).",
-    "IPCAI 2025 X-ray with CT: not yet held, region to confirm.",
-    "Whether the census or new letters find paired films above the lumbar spine."
+    "Whether COBRA's CC BY-NC licence permits the intended commercial use.",
+    "Whether the census or new letters find paired films above the lumbar spine.",
+    "How to reach C2 from the lumbosacral gold (workstream P)."
    ],
    "unsourced_assertions": [
     "No published work turns a spine AP film into a lateral one.",
     "Renders add unlimited exact pairs.",
     "Lateral naming at any device is already at the ceiling.",
-    "AP should rise substantially once counting is fixed, because its error is one systematic shift and not noise."
+    "AP should rise substantially once counting is fixed, because its error is one systematic shift and not noise.",
+    "DL-GIPS is the right architecture idea but untested on bone."
    ],
    "stale_markers": [
     "Confidential: patent material, before the provisional.",
-    "The census job is built (PR #76) and goes to the grid next; this page's last table fills in once it returns.",
+    "The census job is built (PR #76) and goes to the grid next; this page's last table fills in once it returns. (Section 4 reports the run of 2026-10-22.)",
     "The counting prior (#57) is built.",
-    "IPCAI 2025 X-ray with CT: not yet; region to confirm.",
+    "LUMOS, digital twin, pig limb and Veriserum 'not yet' held.",
     "'before the talk'.",
-    "The gate word goes in beside #72."
+    "NHANES II, VinDr-SpineXR and FluoroCap wait for the next run's body-part split."
    ],
    "external_sources": [
     {
@@ -9274,6 +9233,10 @@
     {
      "title": "LatXGen: lateral spine radiographs from back surface images",
      "url_or_citation": "arXiv 2509.24165 (2025)"
+    },
+    {
+     "title": "Digital-twin cadaver dataset",
+     "url_or_citation": "arXiv 2412.08020"
     },
     {
      "title": "Reconstruct spine CT from biplanar X-rays via diffusion learning (Diff2CT); spine vertebrae from biplanar X-rays with GANs; X2CT-GAN",
@@ -9294,28 +9257,30 @@
    ],
    "cross_references": [
     "PR #76 (the census job)",
-    "#57 (the 3D counting prior's grid job)",
-    "#59 (AP and oblique renders with anchors)",
-    "#60 (COBRA projected labels and per-angle curve)",
-    "#68 (structured AP-to-lateral transfer)",
-    "#69 (physics renderer ablation)",
-    "#72 (where the gate word goes)",
-    "docs/research/xr-from-3d/ in SchwingNet (the full written report)",
+    "docs/research/data-manifest/MANIFEST.md",
+    "#57",
+    "#59",
+    "#60",
+    "#68",
+    "#69",
+    "SchwingNet workstream P",
+    "docs/research/xr-from-3d/",
     "docs/research/ct-priors-for-2d-detection.md",
     "the registry under data/sources/",
-    "the catalog (person-keyed split)"
+    "the catalog (person-keyed split)",
+    "tools/sample_index.py"
    ],
    "confidentiality": "schwingnet-method",
    "related_titles": [
     {
      "title": "Counting Against Two Anchors",
      "relation": "same-topic",
-     "why": "The plan's AP naming failure is a counting error targeted by the 3D counting prior and renders with anchors."
+     "why": "The AP naming failure is a counting error targeted by the 3D counting prior and anchor renders."
     },
     {
      "title": "Counting From The Sacrum",
      "relation": "same-topic",
-     "why": "Counting from anchors is the fix the plan names for the one-level cranial shift."
+     "why": "Counting from anchors is the fix named for the one-level cranial shift; it gives different zero-shot figures."
     },
     {
      "title": "Counting Levels Under Fluoroscopy",
@@ -9325,52 +9290,54 @@
     {
      "title": "Vertebral Count Anomaly Rule",
      "relation": "same-topic",
-     "why": "The plan's census row for the anomaly screener over NHANES II needs ~50 confirmed cases per anomaly class."
+     "why": "The census row for the anomaly screener needs ~50 confirmed cases per class."
     },
     {
      "title": "Registration-Free Level ID Feasibility",
      "relation": "same-topic",
-     "why": "The plan uses registration-based labelling (LevelCheck) as gold truth; that feasibility study concerns level ID without registration."
+     "why": "The plan uses registration-based labelling as gold truth."
     },
     {
      "title": "Naming Vertebrae Without CT",
      "relation": "same-topic",
-     "why": "The plan names vertebrae on X-ray with a 3D prior checked against paired CT; that page concerns naming without CT."
+     "why": "Naming on X-ray with a 3D prior checked against paired CT."
     },
     {
      "title": "Vertebral Levels Without CT",
      "relation": "same-topic",
-     "why": "Same naming-without-CT question beside this plan's paired X-ray/CT gold standard."
+     "why": "Same naming-without-CT question."
     },
     {
      "title": "Spine X-ray Data Handoff",
      "relation": "builds-on",
-     "why": "The handoff of 3 Sep 2026 had 77 BUU-LSPINE files ingested and the full release pending; this plan reports BUU-LSPINE as held with 3,600 people."
+     "why": "Earlier handoff had BUU-LSPINE partly ingested; this plan reports 3,600 people held."
     },
     {
      "title": "SchwingNet Data Registry",
      "relation": "builds-on",
-     "why": "The plan tags its held-set facts 'Registry' and points to the registry under data/sources/."
+     "why": "The plan tags held-set facts 'Registry' and points to data/sources/."
     },
     {
      "title": "Vertebra Detector Field Report",
      "relation": "same-topic",
-     "why": "The plan's detection numbers (0.3%, 80.5%, 84.0% on C-ArmLSpine) are the detector's record."
+     "why": "The detection numbers 0.3%, 80.5%, 84.0% are the detector's record."
     },
     {
      "title": "What Is Left After Physics",
      "relation": "same-topic",
-     "why": "The plan's physics renderer ablation (#69) asks whether renders can carry detection, the question that title names."
+     "why": "The physics renderer ablation asks whether renders can carry detection."
     }
    ],
    "people_by_role": [
-    "the owner (whose record and talk the plan serves)",
+    "the owner",
     "a lawyer (COBRA commercial-use question)",
-    "readers (not needed where registration labels levels)",
+    "a second reader (verifies segmentations)",
     "held-out persons (the test split)"
    ],
-   "coverage_notes": "The page is a single index.html read whole; no images, scripts with data or binary files in the folder. The page carries a confidentiality banner ('Confidential: patent material, before the provisional'), not an instruction to this inventory; no instruction-like text was found. Grade chips in the page (Inferred, Published idea, Registry, To count, Published, Inferred from the record) were used to set grade hints.",
-   "notes": "The plan belongs to the 'From 3D to X-ray' programme and says the full written report is docs/research/xr-from-3d/ in SchwingNet. Its own record outweighs the papers it cites: the C-ArmLSpine numbers are the project's measurements, the rest are reported from XraySyn, LatXGen, SyntheX and LevelCheck."
+   "coverage_notes": "Read the text file whole (index.html, 23,755 bytes, the only file in the folder; no scripts, data or images). The page's own banner is a confidentiality notice, not an instruction; none found. Grade chips (Inferred, Published idea, Registry, To count, Published, Census, Owner) were used for grade hints. The text hunks listed as changed cover the dataset table and gold-truth paragraph; the census section 4 as it stands was read too. No addresses, links or logins appear in the record.",
+   "notes": "Header date is 21 October but the body includes the 22 October census run and goal, so the body is later than its header. Internal count differences: C-ArmLSpine 299 spot frames (section 3) vs 297 spots annotated (census table), probably a subset. The 96.4/43.7 figures are the project's own; XraySyn, LatXGen, SyntheX and LevelCheck figures are reported from papers. Confidentiality is method for the plan, with dataset holdings and licence notes.",
+   "read_on": "2026-10-24",
+   "changed": "The change adds the census result (run on 2026-10-22: 140 groups, 7,008,826 files, 7.3 TB) and per-region counts, and the 22 October goal to segment every paired set. It enlarges the section 3 table: COBRA, C-ArmLSpine, DeepFluoro and Ljubljana gain mask and labeller notes (814 of 910 bodies agree), IPCAI 2025 moves from 'not yet, 5 CT, 6.7 GB' to fetched, 50 X-rays, 5 CT, 6.2 GB, femur, and the digital twin, LUMOS, Geneva phantom, pig limb and Veriserum are added. The claim that all paired sets are lumbar or lumbosacral now excepts the digital twin's cadaver reaching T2. The headline accuracy figures are unchanged, but the intro sentence that the census 'goes to the grid next' now conflicts with section 4."
   },
   {
    "repo": "SchwingNet",
@@ -9419,7 +9386,7 @@
     },
     {
      "claim": "Results, figures, manuscripts and regulatory folders left the repository on 2026-10-13 for the grid archive, linked from each folder.",
-     "evidence_in_artifact": "not in the repository since 2026-10-13: they live on the grid under /rs/rs_grp_oschome/shared/spine-program/archive/",
+     "evidence_in_artifact": "not in the repository since 2026-10-13: they live on the grid under [the lab volume]/shared/spine-program/archive/",
      "grade_hint": "unverified"
     },
     {
@@ -9439,7 +9406,7 @@
     },
     {
      "claim": "A Project belongs to one account and cannot be shared; the repository is the one shared thing.",
-     "evidence_in_artifact": "A Project belongs to one account and cannot be shared, so you and Greg each have your own; the repository is the one thing you share",
+     "evidence_in_artifact": "A Project belongs to one account and cannot be shared, so you and [the owner] each have your own; the repository is the one thing you share",
      "grade_hint": "unverified"
     },
     {
@@ -9455,7 +9422,7 @@
      "n": null,
      "interval": null,
      "context": "numbered folders holding the spine imaging research in spine-program",
-     "quote": "holds Greg's spine imaging research as 13 numbered project folders, and you will do the work through Claude, one task at a time"
+     "quote": "holds [the owner]'s spine imaging research as 13 numbered project folders, and you will do the work through Claude, one task at a time"
     },
     {
      "value": "21,622",
@@ -9583,7 +9550,7 @@
      "n": null,
      "interval": null,
      "context": "folders a student may take issues from (03, 04, 05, 06, 10, 12)",
-     "quote": "in one of the student folders (03, 04, 05, 06, 10, 12), and not labelled greg-first"
+     "quote": "in one of the student folders (03, 04, 05, 06, 10, 12), and not labelled [the owner]-first"
     },
     {
      "value": "19",
@@ -9624,7 +9591,7 @@
     "Google Authenticator and Microsoft Authenticator",
     "ondemand.grid.wayne.edu (2FA Setup)",
     "Slurm: sbatch -D, partition reqp, qos requeue",
-    "shared python at /rs/rs_grp_oschome/go2432/envs/spineps212",
+    "shared python at [a grid folder named by a login]/envs/spineps212",
     "git archive over ssh, SHIPPED_COMMITS.txt",
     "gh api (labels, comments, pulls) and the GitHub tool update_pull_request",
     "fine-grained GitHub personal access token in a mode-600 file",
@@ -9647,7 +9614,7 @@
      "reason": null
     },
     {
-     "decision": "Issues in Greg-first folders (01, 02, 07, 08, 09, 99) or labelled greg-first are the student's only after the owner hands them over by a comment or by removing the label.",
+     "decision": "Issues in [the owner]-first folders (01, 02, 07, 08, 09, 99) or labelled [the owner]-first are the student's only after the owner hands them over by a comment or by removing the label.",
      "date": null,
      "owner": "the owner",
      "reason": null
@@ -9764,8 +9731,8 @@
     "ARCHIVE.md at the repository root",
     "STATUS.md section D (issue 19 results)",
     "each folder's CLAUDE.md, README.md, DATA.md, TODO.md, STATUS.md, MEMORY.md",
-    "/rs/rs_grp_oschome/shared/spine-program/archive/",
-    "/rs/rs_grp_oschome/go2432/envs/spineps212",
+    "[the lab volume]/shared/spine-program/archive/",
+    "[a grid folder named by a login]/envs/spineps212",
     "$HOME/.beethoven/github_token"
    ],
    "confidentiality": "mixed",
@@ -9827,7 +9794,7 @@
     }
    ],
    "people_by_role": [
-    "the owner (lab lead and repository owner, who invites, hands out Greg-first issues and merges)",
+    "the owner (lab lead and repository owner, who invites, hands out [the owner]-first issues and merges)",
     "the student (new member, working under their own GitHub login and Claude account)",
     "Wayne State C&IT (provides the grid account)",
     "the document's author, shown only as a placeholder handle"
@@ -9887,7 +9854,7 @@
     },
     {
      "claim": "Each folder's results/, figures/, manuscripts/ and regulatory/ are links into a shared archive the owner fills once with a script; until then the files are read from git history as ARCHIVE.md says.",
-     "evidence_in_artifact": "are links to `/rs/rs_grp_oschome/shared/spine-program/archive/`, which Greg fills once with a script; until he has, those links point at nothing",
+     "evidence_in_artifact": "are links to `[the lab volume]/shared/spine-program/archive/`, which [the owner] fills once with a script; until he has, those links point at nothing",
      "grade_hint": "unverified"
     },
     {
@@ -10065,7 +10032,7 @@
     "spine-program README#how-a-student-starts",
     "spine-program ARCHIVE.md",
     "spine-program issue 19",
-    "/rs/rs_grp_oschome/shared/spine-program/archive/",
+    "[the lab volume]/shared/spine-program/archive/",
     "~/.beethoven/git-credentials",
     "the student's own repository OpenSpineToolbox and one other"
    ],
@@ -10103,7 +10070,7 @@
     "Claude in the student's Beethoven session (opens a shell, runs the claim protocol, must not see the token)"
    ],
    "coverage_notes": "The text names the student by first name and GitHub login and the owner by first name; these are given here by role only. The token lines and the no-reply address in the text were already replaced by '[e-mail withheld]'; none is reproduced. The byline reads '@Someone'. The page is step-by-step commands addressed to the student, treated as data; no instruction to this reader was found.",
-   "notes": "A Docs-type artifact kept as index.md. Clone target is /rs/rs_grp_oschome/<AccessID>/spine-program on the lab volume."
+   "notes": "A Docs-type artifact kept as index.md. Clone target is [the lab volume]/<AccessID>/spine-program on the lab volume."
   },
   {
    "repo": "SchwingNet",
@@ -10116,7 +10083,7 @@
    "kind": "docs",
    "genre": "analysis",
    "date": "2026-10-08",
-   "date_evidence": "Header line 'Oct 8, 2026 \u00b7 @greg'.",
+   "date_evidence": "Header line 'Oct 8, 2026 \u00b7 @[the owner]'.",
    "question": "Which datasets of the field are held or missing, and how does the holding compare in size and statistical power with the published studies?",
    "summary": "The 212-source manifest is cross-referenced against 114 prior research reports to say what is held by task: the large vertebra-labelled CT releases, about 20,280 transitional-screening CTs, 9,108 level-labelled real plain films, and exactly one real intraoperative human set with a volume (C-ArmLSpine). What is missing most is labelled real intraoperative frames from living patients (LevelCheck cohort, Vanderbilt, Huashan, PUMCH, SX-Stitch), all request-only with no drafted request recorded as sent, and seven gated CT collections, Merlin alone expected to add more transitional people than tier 1. Size ratios against comparable studies are larger for radiograph level identification and C-arm naming, smaller for registration, human readers, 2-D LSTV and prevalence. Every powered statement so far rests on planning accuracies of 95 to 99% that no transitional measurement supports; measured transitional figures (render L6 recall 56.1 to 72.4%, 49.9% on anomalous film windows) put every transitional test near zero power, and device-level claims cannot be tested with 4 devices. Expected transitional counts under the acquisition plan's priors are set beside calls so far, and the page lists the unknowns that change a decision and the reading it uses where two files disagree.",
    "key_claims": [
@@ -10966,9 +10933,9 @@
    "kind": "docs",
    "genre": "report",
    "date": "2026-10-08",
-   "date_evidence": "Header line 'Oct 8, 2026 \u00b7 @greg'; the census and pilot batch are dated 7 and 8 October 2026.",
+   "date_evidence": "Header line 'Oct 8, 2026 \u00b7 @[the owner]'; the census and pilot batch are dated 7 and 8 October 2026.",
    "question": "What imaging sources does the lab hold, how is each re-acquired, how is the holding moving from home to the Ceph volume, and who may read it?",
-   "summary": "The report cards 212 imaging sources in five families (A: CT releases the project was built on; B: anomaly-harvest CT acquisitions; C: real X-ray and fluoroscopy with 3-D truth or pose; D: plain-film and harvested 2-D corpora; E: the disk map), of which 116 are on disk, 23 planned, 7 gated behind a form and 58 excluded. A table of principal sources gives each one's origin, route, acquisition date, contents and annotation. One driver, data_platform/reacquire/reacquire.py, prints or runs the exact fetch commands with checksum and count verification, dry-run by default and executing only inside a Slurm job. Everything moves to /rs/rs_grp_oschome/go2432/data/<source_id>/ by batches (pre-flight, rsync, verify, cut over with a symlink, finalize after a second comparison, publish); the DeepFluoro pilot batch verified on 8 October 2026 and later batches are queued or cut over. The census found Ceph holds 7.7 TB in 5.66 million files and that the home copy of CTSpinoPelvic1K's build data was already reclaimed. Approved students read everything except VinDr-SpineXR and BUU-LSPINE, held owner-only under their agreements; a table lists the decisions left to the owner and the facts no file records.",
+   "summary": "The report cards 212 imaging sources in five families (A: CT releases the project was built on; B: anomaly-harvest CT acquisitions; C: real X-ray and fluoroscopy with 3-D truth or pose; D: plain-film and harvested 2-D corpora; E: the disk map), of which 116 are on disk, 23 planned, 7 gated behind a form and 58 excluded. A table of principal sources gives each one's origin, route, acquisition date, contents and annotation. One driver, data_platform/reacquire/reacquire.py, prints or runs the exact fetch commands with checksum and count verification, dry-run by default and executing only inside a Slurm job. Everything moves to [the lab volume's data root]/<source_id>/ by batches (pre-flight, rsync, verify, cut over with a symlink, finalize after a second comparison, publish); the DeepFluoro pilot batch verified on 8 October 2026 and later batches are queued or cut over. The census found Ceph holds 7.7 TB in 5.66 million files and that the home copy of CTSpinoPelvic1K's build data was already reclaimed. Approved students read everything except VinDr-SpineXR and BUU-LSPINE, held owner-only under their agreements; a table lists the decisions left to the owner and the facts no file records.",
    "key_claims": [
     {
      "claim": "The manifest cards 212 sources: 116 on disk, 23 planned fetches, 7 gated, 58 ranked and excluded.",
@@ -11324,7 +11291,7 @@
      "n": "3 items",
      "interval": null,
      "context": "Batch B13 nnU-Net results, ablations and bench; the owner decides",
-     "quote": "| B13 | nnU-Net results, ablations, bench: results, not imaging | 3 | 627 | not started; Greg decides |"
+     "quote": "| B13 | nnU-Net results, ablations, bench: results, not imaging | 3 | 627 | not started; [the owner] decides |"
     },
     {
      "value": "7,691",
@@ -11519,7 +11486,7 @@
    ],
    "decisions": [
     {
-     "decision": "Code stays on home; data goes to Ceph, under /rs/rs_grp_oschome/go2432/data/<source_id>/ with role folders and a README.yaml each.",
+     "decision": "Code stays on home; data goes to Ceph, under [the lab volume's data root]/<source_id>/ with role folders and a README.yaml each.",
      "date": null,
      "owner": null,
      "reason": null
@@ -11589,7 +11556,7 @@
     "State on 8 Oct 2026 (batch table)",
     "B00 cut over; finalize pending",
     "B04, B07, B09 copy queued; B05, B10, B11 wait on earlier batches",
-    "B13 not started; Greg decides",
+    "B13 not started; [the owner] decides",
     "the home walk is still running in two jobs, so the home figures below are partial",
     "the live routes have not been exercised from this driver",
     "When the home walk ends, the plan is regenerated from the census",
@@ -11681,7 +11648,7 @@
     "SchwingNet/results/transitional_registry/acquisition/",
     "CTSpinoPelvic1K-1 paper/mpda/REPRODUCE.md",
     "data/inventory/census_2026-10-07/ on Ceph",
-    "/rs/rs_grp_oschome/go2432/data/",
+    "[the lab volume's data root]/",
     "data/index/",
     "Slurm jobs 40580054 to 40580673"
    ],
@@ -11736,7 +11703,7 @@
     "the lab"
    ],
    "coverage_notes": "One Markdown file, read whole; every table read. About ten lesser numbers left out (family E's one source, batches B03 226 GB, B04 302 GB, B05 4.7 GB, B07 211 GB, the 802 CTs verified on rebuild). The text mentions that a plain-text access token exists among home entries; no value appears and none is reproduced. No instruction-like text.",
-   "notes": "A Docs-type artifact kept as index.md. The owner is named only as @greg and 'Greg decides'; referred to here as the owner."
+   "notes": "A Docs-type artifact kept as index.md. The owner is named only as @[the owner] and '[the owner] decides'; referred to here as the owner."
   },
   {
    "repo": "SchwingNet",
@@ -11749,7 +11716,7 @@
    "kind": "docs",
    "genre": "roadmap",
    "date": "2026-10-08",
-   "date_evidence": "Header line under the title: \"Oct 8, 2026 \u00b7 @greg\"; the text also cites \"the 2026-10-08 rerun\" of the 3-D feature weights.",
+   "date_evidence": "Header line under the title: \"Oct 8, 2026 \u00b7 @[the owner]\"; the text also cites \"the 2026-10-08 rerun\" of the 3-D feature weights.",
    "question": "Given the data the spine programme holds today, which research projects should run in what order, with what gate, n, outside check and dependency, and which unknowns still decide each one?",
    "summary": "A research-directions page dated Oct 8, 2026, condensed from six reader notes and three independent proposals and checked by three reviewers against 711 claims, that orders the programme's work: measurement first, human reads second, models third. It finds the 2-D naming system at ceiling on ordinary spines (97.4 % of bodies on a whole lateral frame, 74.8 % with one body in view) but with zero verified real-frame transitional test persons, and argues that the published 3-D 0.990 T12-vs-L1 number is a within-patient, coronal-feature result that cannot yet serve as the parity target. It tables every mechanism tried on transitional spines with its measured result, the fluoroscopy, paired, CT and unused data sources with their restrictions, the pre-stated gates against today's n, and eleven CT projects with their gates and outside checks. It lays out a three-stage visibility experiment (single-vertebra 3-D target on the laptop, projected morphometry at exact pose on the 802 v11 volumes, then real frames) with ICC and AUC gates, five model variants held until stage 2 reports, and a ranked list of sixteen projects with a week-one order in which no model trains. It closes with where the three proposals disagreed and a table of the unknowns that decide each project and where each was looked for.",
    "key_claims": [
@@ -12954,7 +12921,7 @@
    "kind": "docs",
    "genre": "handoff",
    "date": "2026-10-08",
-   "date_evidence": "Byline \"Oct 8, 2026 \u00b7 @greg\"; the body repeats \"Where things stand on 2026-10-08\" and \"every result found on disk on 2026-10-08\"",
+   "date_evidence": "Byline \"Oct 8, 2026 \u00b7 @[the owner]\"; the body repeats \"Where things stand on 2026-10-08\" and \"every result found on disk on 2026-10-08\"",
    "question": "What must a new student or a fresh Claude project know about SchwingNet, CTSpinoPelvic1K, OpenSpineToolkit, Beethoven and the data platform: where every result lives, how it is regenerated, which numbers are leaked or superseded, what each manuscript still needs, and the rules that bind the work?",
    "summary": "The shareable summary of the handoff written into spinesurg-ct-nnunet/HANDOFF/ on 8 October 2026. It names the one question (naming a vertebral level from what the surgeon has in the room, without counting from C2 or a registered scan), the four projects and where each lives, and the five pieces of the SchwingNet model with what each trained on: a YOLO11m-pose body detector on 12,709 films, a YOLO11m vertebra and sacrum detector on 3,094 real frames, the allspine_v9 ResNet-18 level encoder with 27 classes, a BiGRU recurrent head, and five C-ArmLSpine fold models. It flags a defect to decide on (the fold banks still hold VinDr and FluoroCap crops against the directive), that real C-arm data is barely used, and the results catalog's headline numbers (97.4% of bodies named on a whole lateral frame, 97.0% from the count alone, 80.5% held-out-device recall, a comparator at 97.6% that cannot be exceeded). It lists the regeneration recipes, the manuscripts and their states (paper 1 held pending technology transfer, NeurIPS 3474 accepted as a poster, CNS 2026 accepted), the hold-out rule of 2026-09-23 with checks CHK-1 to CHK-9, the two historical leaks (NHANES II twice, CTSpinoPelvic1K twice) that make allspine v2, v6, v7, anchor_drr and vindrps record only, the ten rules, a student's first week, and what context was exported. The results catalog wins over any other file or memory note.",
    "key_claims": [
@@ -13895,7 +13862,7 @@
     "ashley-bridge (OpenSpineConsortium/beethoven)",
     "spinesurg-ct-nnunet/data_platform",
     "model_night/ on the grid",
-    "/rs/rs_grp_oschome/go2432/data (Ceph)",
+    "[a grid folder named by a login]/data (Ceph)",
     "power.json",
     "the two repository CLAUDE.md files",
     "the lab recipe and board",
@@ -21600,7 +21567,7 @@
     },
     {
      "claim": "The grid is inside the university's address space and publishers authenticate by IP, so the closed-journal refetch should be tried from the grid login node before asking for proxy cookies.",
-     "evidence_in_artifact": "The grid is inside the university's address space (141.217.x.x) and publishers authenticate by IP.",
+     "evidence_in_artifact": "The grid is inside the university's address space ([the university's network range]) and publishers authenticate by IP.",
      "grade_hint": "unverified"
     },
     {
@@ -21730,12 +21697,12 @@
      "quote": "Google Patents cut us off after forty requests."
     },
     {
-     "value": "141.217.x.x",
+     "value": "[the university's network range]",
      "unit": "IP range",
      "n": null,
      "interval": null,
      "context": "University address space the grid sits in, used for IP-authenticated publisher access",
-     "quote": "The grid is inside the university's address space (141.217.x.x) and publishers authenticate by IP."
+     "quote": "The grid is inside the university's address space ([the university's network range]) and publishers authenticate by IP."
     },
     {
      "value": "30 June 2026",
@@ -29695,7 +29662,7 @@
    "kind": "docs",
    "genre": "checklist",
    "date": "2026-10-03",
-   "date_evidence": "Header line under the title: \"Oct 3, 2026 \u00b7 @greg\"",
+   "date_evidence": "Header line under the title: \"Oct 3, 2026 \u00b7 @[the owner]\"",
    "question": "Which of the 32 REFORMS reporting items can be enforced as an automated gate in the hpcworker and Beethoven pipeline, where each gate fires, and which repository owns it?",
    "summary": "The checklist maps all 32 REFORMS items (Kapoor et al.) to a gate, finding 20 verifiable by code and 12 only enforceable as a declared non-empty field in study.yaml. Each gate fires before dispatch, after the run, before publish, or as a declared field, and none exists yet: both repositories are the Remote Control launcher (hpcworker framework 11, extension 12.0.0). Ownership splits three ways because the framework is held to bash 4.2 and Python 3.6 stdlib on the CentOS 7 login node while Hydra, MONAI, W&B and CodeCarbon can only live in the container image: hpcworker takes the run manifest, Run ID, clean-tree refusal and publish lock; a proposed beethoven-research repository takes the schema, splitter, leakage checks, bootstrap CIs and card builders; the extension takes a read-only checklist view and the human Publish approval, through a per-run contract file reforms.json. Four conflicts with CLAUDE.md are listed with fixes (Run ID must not hash Slurm variables, publishing waits for a human click, tokens in a mode-0600 file, LiteLLM key rotation is out), three questions are left for the owner, and a seven-step build order starts with the two gates that need no ML libraries.",
    "key_claims": [
@@ -29979,7 +29946,7 @@
     }
    ],
    "people_by_role": [
-    "the owner (addressed by handle in the header and in 'Open questions for greg')",
+    "the owner (addressed by handle in the header and in 'Open questions for [the owner]')",
     "the student (whose click releases a publish)",
     "the agent (which never publishes)"
    ],
@@ -30013,7 +29980,7 @@
     },
     {
      "claim": "The resident cannot be the applicant on any student award, and OSC is not a Registered Student Organization.",
-     "evidence_in_artifact": "Greg is a resident, so he cannot be the applicant on any student award ... And OpenSpineConsortium is not a Registered Student Organization, which several of these require.",
+     "evidence_in_artifact": "[the owner] is a resident, so he cannot be the applicant on any student award ... And OpenSpineConsortium is not a Registered Student Organization, which several of these require.",
      "grade_hint": "unverified"
     },
     {
@@ -30058,7 +30025,7 @@
     },
     {
      "claim": "The RSNA Education Project Award ($10,000 to $20,000, one year) is the closest fit, but needs an RSNA member applicant, realistically the resident or a faculty sponsor.",
-     "evidence_in_artifact": "you must be an RSNA member to apply, and the award is aimed at educators rather than students \u2014 so realistically Greg or a faculty sponsor is the applicant and you are named on the project.",
+     "evidence_in_artifact": "you must be an RSNA member to apply, and the award is aimed at educators rather than students \u2014 so realistically [the owner] or a faculty sponsor is the applicant and you are named on the project.",
      "grade_hint": "reported"
     },
     {
@@ -30127,7 +30094,7 @@
      "n": null,
      "interval": null,
      "context": "WSU GME Seed Grant, applicant the resident",
-     "quote": "WSU GME Seed Grant  up to $2,500  Applicant Greg, not you  Cycle 2026\u201327 open, rolling"
+     "quote": "WSU GME Seed Grant  up to $2,500  Applicant [the owner], not you  Cycle 2026\u201327 open, rolling"
     },
     {
      "value": "$9,000",
@@ -30494,7 +30461,7 @@
     },
     {
      "claim": "Registration is asked for so the organisers can feed attendees and pick teams, through a QR code and a Google Forms link.",
-     "evidence_in_artifact": "SIGN UP SO WE CAN FEED YOU AND PICK TEAMS! ... SCAN TO REGISTER ... forms.gle/v2NbizhJ8TpBdVi66",
+     "evidence_in_artifact": "SIGN UP SO WE CAN FEED YOU AND PICK TEAMS! ... SCAN TO REGISTER ... [the registration form's link]",
      "grade_hint": "unverified"
     },
     {
@@ -30548,7 +30515,7 @@
    "stale_markers": [
     "SATURDAY OCTOBER 24, 6:45 PM KICKOFF (the event date, no year)",
     "SIGN UP SO WE CAN FEED YOU AND PICK TEAMS (registration open at the time of the flyer)",
-    "forms.gle/v2NbizhJ8TpBdVi66 (the registration form link)",
+    "[the registration form's link] (the registration form link)",
     "openspineconsortium.com/celebrate-life (the event page)",
     "SIMULTANEOUS WITH THE DETROIT CITY FC TRUNK OR TREAT EVENT (a one-time pairing)",
     "Contact persons' titles (a Detroit City FC operations assistant; the owner under DMC/WSU General Surgery)"
@@ -30556,7 +30523,7 @@
    "external_sources": [
     {
      "title": "Celebrate Life registration form (Google Forms)",
-     "url_or_citation": "forms.gle/v2NbizhJ8TpBdVi66"
+     "url_or_citation": "[the registration form's link]"
     },
     {
      "title": "Celebrate Life event page, OpenSpine Consortium",
@@ -30573,7 +30540,7 @@
    ],
    "cross_references": [
     "openspineconsortium.com/celebrate-life (the event page the flyer points to)",
-    "forms.gle/v2NbizhJ8TpBdVi66 (the registration form the QR code opens)",
+    "[the registration form's link] (the registration form the QR code opens)",
     "trunk_or_treat.jpg (embedded image: 'Detroit City FC Halloween Trunk or Treat')",
     "register_qr.png (embedded image: 'QR code for the registration form')",
     "Main.dc.html (the embedded design file the page is built from)"
@@ -30643,7 +30610,7 @@
     },
     {
      "claim": "Registration is by a Google Form reached by QR code or link, so that teams can be picked in advance.",
-     "evidence_in_artifact": "Sign up so we can pick teams! ... Scan to register forms.gle/v2NbizhJ8TpBdVi66",
+     "evidence_in_artifact": "Sign up so we can pick teams! ... Scan to register [the registration form's link]",
      "grade_hint": "unverified"
     }
    ],
@@ -30704,14 +30671,14 @@
    ],
    "stale_markers": [
     "Event date Saturday, October 24, 5:00 to 7:00 PM (year not stated)",
-    "Registration form forms.gle/v2NbizhJ8TpBdVi66 (a live form link)",
+    "Registration form [the registration form's link] (a live form link)",
     "openspineconsortium.com/celebrate-life (a page that may change)",
     "Watch party for Detroit City's men's pro team after the event"
    ],
    "external_sources": [
     {
      "title": "Registration form (Google Forms)",
-     "url_or_citation": "https://forms.gle/v2NbizhJ8TpBdVi66"
+     "url_or_citation": "[the registration form's link]"
     },
     {
      "title": "OpenSpine Consortium Celebrate Life page",
@@ -30724,7 +30691,7 @@
    ],
    "cross_references": [
     "openspineconsortium.com/celebrate-life",
-    "forms.gle/v2NbizhJ8TpBdVi66 (registration)",
+    "[the registration form's link] (registration)",
     "Detroit City Fieldhouse Turf or Treat event"
    ],
    "confidentiality": "personal-outreach",
@@ -33074,14 +33041,14 @@
    "repo": "SchwingNet",
    "folder": "how-the-beethoven-repositories-are-encapsulated-6h4zq9",
    "title": "How the Beethoven repositories are encapsulated",
-   "account": "go2432",
+   "account": "[the owner's login]",
    "link": "https://claude.ai/artifact/6h4ZQ9Tgwu5zqmsLUgkTeT",
    "link_id": "6h4ZQ9Tgwu5zqmsLUgkTeT",
    "readme_summary": "The sealed-repository standard for Beethoven's seven code repositories, who pins what from whom, and what still crosses a boundary (Docs type, kept as Markdown; the dependency diagram dropped, chips kept as text)",
    "kind": "docs",
    "genre": "report",
    "date": "2026-10-07",
-   "date_evidence": "Header line \"Oct 7, 2026 \u00b7 @greg\"; the body dates the merges, the v2.0.0 tag and the owner's access-service choice to 2026-10-07.",
+   "date_evidence": "Header line \"Oct 7, 2026 \u00b7 @[the owner]\"; the body dates the merges, the v2.0.0 tag and the owner's access-service choice to 2026-10-07.",
    "question": "How are Beethoven's seven code repositories sealed from one another, which repository pins what from which, and what still crosses a boundary?",
    "summary": "The report states that all seven Beethoven code repositories (hpcworker, beethoven-sites, beethoven-extension, beethoven-desktop, beethoven-qa, beethoven-agents, beethoven-research) are now sealed under a five-rule standard merged in the hub as INTERFACES.md: each builds from its own tree, declares its exports and imports in interface/INTERFACE.json, takes another repository's work only as a pinned copy checked against an ORIGIN record, tests only against the published surface, and follows a fixed direction (qa, then agents, then research, never back). A table gives who offers what to whom, each repository's section says how it proves its export is the truth about its code (contract vectors, conformance and boundary tests), and a list names the three entries that still reach another checkout and why. Read-only neighbours (Beethoven for VS Code, the website, the two studies, spinesurg-ct-nnunet) were audited but not changed, with the high-weight crossings listed. The report leaves the owner two decisions: whether the VS Code edition gives up its own grid scripts for hpcworker's, and whether qa's vendor command should fetch through gh. It closes with the pull requests merged and what their gates showed, including fourteen client readers that disagreed with hpcworker's real output and two faults found in CrossHair 0.0.111.",
    "key_claims": [
@@ -33132,7 +33099,7 @@
     },
     {
      "claim": "A session cannot create tags, so the owner tagged beethoven-qa v2.0.0 by hand.",
-     "evidence_in_artifact": "greg tagged `v2.0.0` at its merge commit (53d5ae5) on 2026-10-07. A session may not create tags.",
+     "evidence_in_artifact": "[the owner] tagged `v2.0.0` at its merge commit (53d5ae5) on 2026-10-07. A session may not create tags.",
      "grade_hint": "measured"
     }
    ],
@@ -33175,7 +33142,7 @@
      "n": null,
      "interval": null,
      "context": "Decisions left to the owner",
-     "quote": "What greg does next: two decisions, in \"What lands next\" below"
+     "quote": "What [the owner] does next: two decisions, in \"What lands next\" below"
     },
     {
      "value": "55",
@@ -33303,7 +33270,7 @@
      "n": null,
      "interval": null,
      "context": "beethoven-qa release tagged at merge commit 53d5ae5 on 2026-10-07",
-     "quote": "greg tagged `v2.0.0` at its merge commit (53d5ae5) on 2026-10-07"
+     "quote": "[the owner] tagged `v2.0.0` at its merge commit (53d5ae5) on 2026-10-07"
     },
     {
      "value": "2",
@@ -33552,14 +33519,14 @@
    "repo": "SchwingNet",
    "folder": "the-lab-recipe-1t2gvp",
    "title": "The Lab Recipe",
-   "account": "go2432",
+   "account": "[the owner's login]",
    "link": "https://claude.ai/artifact/1T2gVPMkKhzU2J4TryUDRG",
    "link_id": "1T2gVPMkKhzU2J4TryUDRG",
    "readme_summary": "How a lab paper runs from frozen pre-registration through grid jobs and a numbers manifest to the manuscript, with the data rules and checklists (Docs type, kept as Markdown; chips kept as text)",
    "kind": "docs",
    "genre": "runbook",
    "date": "2026-09-27",
-   "date_evidence": "Header line 'Sep 27, 2026 \u00b7 @greg'; the closing gap table is headed 'What is not yet true (2026-09-27)'.",
+   "date_evidence": "Header line 'Sep 27, 2026 \u00b7 @[the owner]'; the closing gap table is headed 'What is not yet true (2026-09-27)'.",
    "question": "How does a lab paper run as a chain of files from a frozen pre-registration through grid jobs and a numbers manifest to the manuscript, and which data rules, grid rules and checklists hold that chain together?",
    "summary": "A Docs page (kept as Markdown) that sets out how a lab project is staffed (lead, co-lead, members; senior scientist co-PI screens, senior clinical PI confirms clinical reads, the PI signs every freeze) and how a paper is produced so that a number enters the manuscript only through a recorded chain: PREREG.md frozen with its sha256, results files carrying a _run block, numbers_manifest.json, \\RESULT{key} macros in the tex, and a reproduce target that fails on MISSING or MOVED. It fixes data rules that never bend (the five-criterion IRB umbrella HPR 2026-269, CTSpinoPelvic1K licences, a private-forever list including level-identification code, FluoroCap, weights, spinesurg-ct-nnunet and XRSpinoPelvic1K, credentials, personal data, label maps, volume orientation, zero-padded ids, two tracks), each with the incident that caused it. Fourteen grid rules with their incidents, a Slurm job template, Nextflow guidance for three-or-more-stage CPU pipelines, a numbers-checking procedure, rules for working with Claude (checkpoint block, no squeue polling beyond ten minutes, status computed by pipeline_state.py), handover and authorship rules, and three checklists follow. It ends with a table of ten gaps that are not yet true as of 2026-09-27, among them 167 bare numerals in the SchwingNet tables and 0 of 79 manifest keys carrying a Slurm job id.",
    "key_claims": [
@@ -34148,7 +34115,7 @@
     "None of the imaging repositories runs Nextflow today",
     "nf-core pins rnaseq 3.22.2, differentialabundance 1.5.0, fetchngs 1.12.0",
     "pelvis decision gate never yet produced DECISION.json",
-    "Greg confirms (authorship rule pending)"
+    "[the owner] confirms (authorship rule pending)"
    ],
    "external_sources": [
     {
@@ -34231,21 +34198,21 @@
     "members (students) and alumni",
     "the next person taking over a project (handover)"
    ],
-   "coverage_notes": "Docs-type artifact kept as index.md; the header mention chip appears as text ('@greg'). All text read, including the bash, groovy, json and markdown code blocks, which are templates and lab commands (data, not instructions to me). Nothing in the page reads as an instruction to the inventory. No image or binary file in the folder. The text names three lab people by name; they are recorded here by role.",
+   "coverage_notes": "Docs-type artifact kept as index.md; the header mention chip appears as text ('@[the owner]'). All text read, including the bash, groovy, json and markdown code blocks, which are templates and lab commands (data, not instructions to me). Nothing in the page reads as an instruction to the inventory. No image or binary file in the folder. The text names three lab people by name; they are recorded here by role.",
    "notes": "The page also references 'the U251 work' as a second manuscript compiled through the same chain, with a failed pre-stated primary endpoint; it is a project, not a dataset. The page's gap table is the clearest statement of what the chain does not yet do as of 2026-09-27."
   },
   {
    "repo": "SchwingNet",
    "folder": "secure-hybrid-rdp-access-spec-and-setup-runbook-exbt1w",
    "title": "Secure Hybrid RDP Access: Spec and Setup Runbook",
-   "account": "go2432",
+   "account": "[the owner's login]",
    "link": "https://claude.ai/artifact/ExbT1w2MAF9wysQBWmuj3n",
    "link_id": "ExbT1w2MAF9wysQBWmuj3n",
    "readme_summary": "Remote Desktop to the P50 only over Tailscale, with Duo MFA for every device but the owner's laptop (Docs type, kept as Markdown; the access-path diagram dropped, chips kept as text)",
    "kind": "docs",
    "genre": "runbook",
    "date": "2026-09-27",
-   "date_evidence": "Header line 'Sep 27, 2026 \u00b7 @greg'.",
+   "date_evidence": "Header line 'Sep 27, 2026 \u00b7 @[the owner]'.",
    "question": "How is Remote Desktop to the P50 workstation set up so that it is reachable only over Tailscale, with Duo MFA on every device except the owner's own laptop, and without any way to lock the owner out?",
    "summary": "A spec and step-by-step runbook for Remote Desktop to the owner's P50 workstation: the P50 accepts RDP only over Tailscale, the owner's laptop signs in with the Windows password alone, every other device must also pass Duo MFA, and nothing on the P50 is reachable from the open internet. A table lists what changed from the original spec (no port forwarding instead of internet-exposed RDP guarded by Duo; a /32 bypass for the laptop instead of the whole 100.64.0.0/10 range; firewall and Tailscale access rules added; key expiry disabled only on the P50; Duo prompting only on RDP with bypass codes on paper). Five design rules are followed by prerequisites (Windows Pro or above, a Duo paid plan since Duo Free cannot do the bypass, a password logon, BitLocker key saved offline), a Windows 10 warning (6th-generation Intel CPU, Windows 10 extended support ending October 13, 2026), and five phases: prep, Tailscale on both machines, RDP with the firewall scoped to the tailnet, Duo Admin Panel policy, Duo install with RDP-only prompting, and a Tailscale grant restricting access to the owner's own devices. Six verification tests, a troubleshooting table and lockout recovery close it.",
    "key_claims": [
@@ -34516,7 +34483,7 @@
    "confidentiality": "schwingnet-other",
    "related_titles": [],
    "people_by_role": [
-    "the owner (the P50's and laptop's user, author @greg)",
+    "the owner (the P50's and laptop's user, author @[the owner])",
     "other tailnet users (blocked by the grant)"
    ],
    "coverage_notes": "The access-path diagram was dropped in the export and survives only as the placeholder '[embedded content: access paths \u00b7 3 sources, 1 Duo decision]'; chips were kept as text. The text names the owner's Windows account name and a Windows domain name; neither is reproduced here. Steps are instructions to the owner, not to this inventory. No binary files in the folder.",
@@ -34864,11 +34831,11 @@
    "account": "first account",
    "link": "https://claude.ai/artifact/UjuFBMxLEL8CnifRofU3Vv",
    "link_id": "UjuFBMxLEL8CnifRofU3Vv",
-   "readme_summary": "Plan for multi-project grid workers in Beethoven, awaiting greg's go (Docs type, kept as Markdown)",
+   "readme_summary": "Plan for multi-project grid workers in Beethoven, awaiting [the owner]'s go (Docs type, kept as Markdown)",
    "kind": "docs",
    "genre": "plan",
    "date": "2026-10-21",
-   "date_evidence": "Header line 'Oct 21, 2026' and the request line 'greg, 2026-10-21 20:06 UTC'.",
+   "date_evidence": "Header line 'Oct 21, 2026' and the request line '[the owner], 2026-10-21 20:06 UTC'.",
    "question": "How can the Beethoven extension switch between and update several Claude workers on the grid, one per claude.ai project, when the laptop cannot keep several Claude desktops signed in at once?",
    "summary": "A plan answering the owner's request of 2026-10-21 to switch between and update projects through several Claude workers on the grid, driven from the browser through the Beethoven extension. It says most of the grid side exists: since hpcworker framework 22 the grid runs several named workers at once, each a separate Slurm job with its own Remote Control link and status, started with accounts start N NAME on a Claude account slot, and the control panel's Grid tab lists them; what is missing is on the Beethoven side, which knows one worker name and one project address. The design gives Beethoven a projects list in Settings (name, project address, grid worker, account slot), a chip switcher on the home screen with one tab per project, start-on-press through the portal shell, an Update press that fast-forwards the worker's workspace to main, and the same pairing stored on the grid in accounts.json so the control panel reads one record. The build order is four pull requests: hpcworker's project field and accounts list, Beethoven's list and switcher (a store release), the control panel's project column, then the workspace Update. Two open questions are not yet measured: whether two workers on one Claude account can each stay a separate environment, and whether a project's Work locally pairing survives a wall-time restart with --continue.",
    "key_claims": [
@@ -34921,7 +34888,7 @@
      "n": null,
      "interval": null,
      "context": "When the owner asked for the feature",
-     "quote": "greg, 2026-10-21 20:06 UTC: switch between and update projects using several Claude workers on the grid"
+     "quote": "[the owner], 2026-10-21 20:06 UTC: switch between and update projects using several Claude workers on the grid"
     },
     {
      "value": "4",
@@ -35563,7 +35530,7 @@
     },
     {
      "claim": "Push rulesets exist only for private and internal repositories, and with an empty bypass list they would block the owner too, so they do not close the self-judging hole.",
-     "evidence_in_artifact": "Push rulesets exist only for private and internal repositories ... With `bypass_actors` empty, which the research itself recommends, the rule would also block Greg.",
+     "evidence_in_artifact": "Push rulesets exist only for private and internal repositories ... With `bypass_actors` empty, which the research itself recommends, the rule would also block [the owner].",
      "grade_hint": "reported"
     },
     {
@@ -37021,7 +36988,7 @@
    "kind": "docs",
    "genre": "comparison",
    "date": "2026-10-09",
-   "date_evidence": "Header line 'Oct 9, 2026 \u00b7 @greg'; body says 'the ladder below was verified against GitHub's and Anthropic's own pages on Oct 9, 2026' and 'on 2026-10-09'.",
+   "date_evidence": "Header line 'Oct 9, 2026 \u00b7 @[the owner]'; body says 'the ladder below was verified against GitHub's and Anthropic's own pages on Oct 9, 2026' and 'on 2026-10-09'.",
    "question": "What does running the sdlc-template (the shared-repository, agent-driven software project) cost at each GitHub and Claude price rung, and what named feature does each dollar above the bottom rung buy?",
    "summary": "The page argues that the template runs whole for $17 a month (one Claude Pro seat billed annually plus a public repository on GitHub Free), that the GitHub bill at that rung is $0 by construction because an account with no stored payment method is halted at the quota rather than billed, and that GitHub Pro and Team both include the same 3,000 private-repo CI minutes, so money above the bottom rung buys governance and usage rather than compute until Enterprise's 50,000 minutes. It lays out a five-rung ladder (Free+Pro, +GitHub Pro, Team+Claude Team, premium seats or Max, Enterprise) with what each genuinely adds, describes three pull requests (#3, #5, #7) that turned the protocol's prose into mechanism, and explains the zero-inference core (native settings beat workflows, workflows beat inference). It refuses to price the Enterprise tier because Claude Enterprise's pricing could not be verified. A verification section reports a 103-agent research run on 2026-10-09 with 21 sources, 95 claims, the top 25 verified by three votes each, 23 confirmed and 2 refuted, and a 'Turning it on' checklist with the first item done.",
    "key_claims": [
@@ -37547,7 +37514,7 @@
     }
    ],
    "people_by_role": [
-    "the owner (author, @greg)",
+    "the owner (author, @[the owner])",
     "the main account holder (runs claude setup-token)",
     "the session author (offers to mark pull requests ready)"
    ],
@@ -38207,7 +38174,7 @@
    "kind": "docs",
    "genre": "plan",
    "date": "2026-10-08",
-   "date_evidence": "Header line under the title: \"Oct 8, 2026 \u00b7 @f\". The body also records later events: \"sized on 2026-10-09\" and \"On 2026-10-09 greg chose GitHub Issues\".",
+   "date_evidence": "Header line under the title: \"Oct 8, 2026 \u00b7 @f\". The body also records later events: \"sized on 2026-10-09\" and \"On 2026-10-09 [the owner] chose GitHub Issues\".",
    "question": "Should the shared-plane SDLC be built by expanding Claude Swap Cloud (Route A) or as a focused utility on top of what already exists (Route B), and in what phases?",
    "summary": "The plan recommends Route B: build a small standard-library materializer that turns a cswap Project export into repository files (CLAUDE.md, docs/memory/, docs/history/, docs/project.md), leave the Claude Swap Cloud extension and bridge unchanged, and run the unattended export through a routine inside the Project rather than any browser scheduler, which the Consumer Terms forbid. It sets each account's claude.ai Project as a thin pointer to the repository and leans on GitHub Issues, branch protection, a board-regenerating Action, Anthropic-run routines and cloud threads instead of bespoke services. A table maps each architectural need to an existing tool. Six phases (0 to 5, an hour to two days each) each end with a measurement on the real claude-swap Project; on 2026-10-09 the owner chose GitHub Issues and asked for the repository side first as a template repository with no export or import in its first layer. Risks listed include the terms, multi-account use of one repository, routine caps, the lossy prompt route, one-way memory flow, instruction drift, branch protection on a private repository, keys in Actions and unpublished routes.",
    "key_claims": [
@@ -38340,7 +38307,7 @@
      "n": null,
      "interval": null,
      "context": "entries in the export from the live run of 2026-10-08 (PR #41) that Phase 1 tests against",
-     "quote": "Write `materialize.py` against the export already on disk from greg's live run of 2026-10-08 (19 memory entries, PR #41)."
+     "quote": "Write `materialize.py` against the export already on disk from [the owner]'s live run of 2026-10-08 (19 memory entries, PR #41)."
     },
     {
      "value": "30",
@@ -38420,7 +38387,7 @@
      "n": null,
      "interval": null,
      "context": "the board comments once on a pull request idle this long",
-     "quote": "comments once on a pull request idle for a day, the rule in greg's plan of 2026-10-08"
+     "quote": "comments once on a pull request idle for a day, the rule in [the owner]'s plan of 2026-10-08"
     },
     {
      "value": "weekly",
@@ -38566,7 +38533,7 @@
     }
    ],
    "people_by_role": [
-    "the owner (greg, who chose GitHub Issues on 2026-10-09 and wrote the plan of 2026-10-08)",
+    "the owner ([the owner], who chose GitHub Issues on 2026-10-09 and wrote the plan of 2026-10-08)",
     "the plan's author (byline @f)",
     "a person at the keyboard for the one-time export"
    ],
@@ -39098,14 +39065,14 @@
    "repo": "symphony-template",
    "folder": "symphony-versus-competitors-lynwzk",
    "title": "Symphony versus competitors",
-   "account": "go2432",
+   "account": "[the owner's login]",
    "link": "https://claude.ai/artifact/LynwZkPadyo2SQ7G4mJfHc",
    "link_id": "LynwZkPadyo2SQ7G4mJfHc",
    "readme_summary": "Symphony set beside the other ways of coordinating coding agents, the Doc behind docs/research/symphony-versus-competitors.md (Docs type, kept as Markdown; an embedded widget dropped, chips kept as text)",
    "kind": "docs",
    "genre": "comparison",
    "date": "2026-10-16",
-   "date_evidence": "Header line under the title: \"Oct 16, 2026 \u00b7 @greg\"; sources read on 2026-10-15 and 2026-10-16.",
+   "date_evidence": "Header line under the title: \"Oct 16, 2026 \u00b7 @[the owner]\"; sources read on 2026-10-15 and 2026-10-16.",
    "question": "Where does Symphony stand, by design, against every other way of coordinating coding agents, and what may honestly be claimed for it before any outcome is measured?",
    "summary": "The Doc sets Symphony, a GitHub repository acting as the coordinator of Claude Code agents with no server of its own, beside four kinds of system: work-queue coordinators (gh-aw, unsorry, openai/symphony, CCPM, Beads and Gas Town, paperclip, agentic-setup, Orbi, aeon), vendor-hosted agents, single-session orchestration and agent frameworks. Two tables apply the manual's two questions (what stops a second agent taking the same work, what frees an unfinished claim) and record where each runs, who pays and what was read at which commit on 2026-10-15. It argues Symphony is better by design in three respects, graded Inferred: one claim rule for sessions, routines and Actions agents on a flat-rate subscription, an idle claim released with its work kept, and a shipped library checked over every interleaving against an oracle with mutants. It then lists where Symphony is not better or not yet (no outcome evidence, pre-release 0.4.1, the claim enforced only at creation, the idle clock read from the committer date, scale unmeasured), what not to claim, one paragraph per audience and a full sources section.",
    "key_claims": [
@@ -39900,7 +39867,7 @@
    ],
    "people_by_role": [
     "the owner (set the hold of 2026-10-15 on coordbench numbers; attached two orchestration reports)",
-    "the author of the Doc (the project's lead account, signed @greg)",
+    "the author of the Doc (the project's lead account, signed @[the owner])",
     "the research session that read the sources on 2026-10-15 and 2026-10-16",
     "grant reviewers, funders, engineers and lab leads (the four audiences)",
     "a reviewer who knows the field (anticipated)",
@@ -39913,7 +39880,7 @@
    "repo": "symphony-template",
    "folder": "symphony-in-brief-9cdciz",
    "title": "Symphony in brief",
-   "account": "go2432",
+   "account": "[the owner's login]",
    "link": "https://claude.ai/artifact/9CDCiZqYfbrobDk6rRrMho",
    "link_id": "9CDCiZqYfbrobDk6rRrMho",
    "readme_summary": "What Symphony is, how it works, its 17 guarantees and what is not measured yet, as of 2026-10-14 (Docs type, kept as Markdown; the lifecycle diagram dropped, chips kept as text)",
@@ -40695,7 +40662,7 @@
    "repo": "symphony-template",
    "folder": "shared-multi-account-claude-project-plan-rqzwh9",
    "title": "Shared multi-account Claude project: plan",
-   "account": "go2432",
+   "account": "[the owner's login]",
    "link": "https://claude.ai/artifact/Rqzwh9ncY9aj6kZa5BQp7m",
    "link_id": "Rqzwh9ncY9aj6kZa5BQp7m",
    "readme_summary": "The plan of 2026-10-08 that became Symphony: the repository as the shared plane, claims by branch push, a coordinator (Docs type, kept as Markdown; the architecture diagram dropped, chips kept as text)",
@@ -41085,14 +41052,14 @@
    "repo": "symphony-template",
    "folder": "moving-beethoven-for-vs-code-onto-hpcworker-apbd6t",
    "title": "Moving Beethoven for VS Code onto hpcworker",
-   "account": "go2432",
+   "account": "[the owner's login]",
    "link": "https://claude.ai/artifact/ApBd6TpHYnsWVKvP1NjvyX",
    "link_id": "ApBd6TpHYnsWVKvP1NjvyX",
    "readme_summary": "The plan for the VS Code edition to become a client of hpcworker on the grid (Docs type, kept as Markdown; chips kept as text)",
    "kind": "docs",
    "genre": "plan",
    "date": "2026-10-07",
-   "date_evidence": "Header line \"Oct 7, 2026 \u00b7 @greg\" and the status note \"On 2026-10-07 at 22:33Z greg deferred the move\"; other dates mentioned are earlier (2026-09-27, 2026-09-28, 2026-09-29, 2026-10-03, 2026-10-05).",
+   "date_evidence": "Header line \"Oct 7, 2026 \u00b7 @[the owner]\" and the status note \"On 2026-10-07 at 22:33Z [the owner] deferred the move\"; other dates mentioned are earlier (2026-09-27, 2026-09-28, 2026-09-29, 2026-10-03, 2026-10-05).",
    "question": "What would it take for Beethoven for VS Code to run its grid workers through the lab's shared hpcworker instead of its own grid scripts, and what must the owner decide before any code is written?",
    "summary": "A plan, deferred by the owner on 2026-10-07, for Beethoven for VS Code to stop shipping its own ten grid scripts and become a client of the lab's shared hpcworker on the Wayne State grid, as the browser and desktop editions already are. It reads both code bases at pinned commits (beethoven-vscode 631226e, hpcworker e77863c) and finds that starting, stopping, status, the log, the Claude sign-in folder and the Remote Control consent carry over, while hpcworker lacks four things VS Code relies on: the Ask request channel, per-worker sizes and GPUs, the Remote-SSH sysroot lines, and GitHub and Hugging Face tokens. It flags four things to know now, among them a credential path in VS Code 5.0.0 by which an unchecked result id can return the Claude credential file to the laptop's Claude, and a lab-access gap by which a VS Code student not on the access service's roster loses the lab folder at every sync. It sets out a side-by-side table of every grid feature, an eleven-step order of work across hpcworker, beethoven-sites, beethoven-vscode and the hub (framework 18 and 19, VS Code 6.0.0 and 7.0.0), what already set-up students keep, the risks, and fourteen decisions for the owner with a recommended answer each. Nothing on the grid is deleted at any step, and many behaviours are marked not yet measured.",
    "key_claims": [
@@ -41103,7 +41070,7 @@
     },
     {
      "claim": "The owner deferred the move on 2026-10-07 because he is the only user of the VS Code edition and nothing else depends on it; VS Code keeps its grid scripts for now.",
-     "evidence_in_artifact": "On 2026-10-07 at 22:33Z greg deferred the move, since he is the only person using the VS Code edition and nothing else in the ecosystem depends on it.",
+     "evidence_in_artifact": "On 2026-10-07 at 22:33Z [the owner] deferred the move, since he is the only person using the VS Code edition and nothing else in the ecosystem depends on it.",
      "grade_hint": "reported"
     },
     {
@@ -41797,7 +41764,7 @@
      "n": null,
      "interval": null,
      "context": "When the owner deferred the move",
-     "quote": "On 2026-10-07 at 22:33Z greg deferred the move"
+     "quote": "On 2026-10-07 at 22:33Z [the owner] deferred the move"
     },
     {
      "value": "19:37Z (2026-10-07)",
@@ -42006,7 +41973,7 @@
     "hub repository: REPOS.md, SEAMS.md (seams 2, 3, 6 to 11, 13, 14), INTERFACES.md (rules 1 to 3) at 65d94f7",
     "Site repository openspineconsortium.github.io (/beethoven/vscode/ rendered agreement texts)",
     "Older beethoven-vscode commits b188223, 710d74e, 0475b63, 503ea71, 1a47118",
-    "Wayne State grid paths /rs/rs_grp_oschome/shared/beethoven, containers/claude-node22, npm-claude-node22, library.json, shared/access"
+    "Wayne State grid paths [the lab volume]/shared/beethoven, containers/claude-node22, npm-claude-node22, library.json, shared/access"
    ],
    "confidentiality": "symphony-beethoven",
    "related_titles": [
@@ -42057,7 +42024,7 @@
     }
    ],
    "people_by_role": [
-    "the owner (byline @greg; decides the fourteen questions, merges beethoven-vscode's pull requests by hand, deferred the move, is the only user of the VS Code edition)",
+    "the owner (byline @[the owner]; decides the fourteen questions, merges beethoven-vscode's pull requests by hand, deferred the move, is the only user of the VS Code edition)",
     "the plan's author (a session) and a second reader who checked each section against the code",
     "VS Code students, including the pilot students and the maintainer's own grid account",
     "the lab lead (keeps shared/access, library.json and the old containers untouched)",
@@ -42066,14 +42033,14 @@
     "C&IT, Wayne State's computing unit (author of the knowledge-base article and the sysroot paths)",
     "Anthropic (statement on the four-hour resume window; stores Remote Control transcripts)"
    ],
-   "coverage_notes": "Read whole: 948 lines, one file index.md (156,807 bytes); the folder holds no figure, image or binary. It is a Docs-type artifact kept as Markdown with chips kept as text. Lines addressed to the reader (\"No code is written until you have answered the first four questions\", \"greg decides\") are the plan's address to the owner, not instructions to this inventory; nothing else read as an instruction. Numbers: 80 kept; left out are the deploy_shared file modes (2555, 0444, 0555, 2755, 0644), module and tool versions (apptainer/1.2.2, singularity/3.5.2, patchelf 0.19.1, bash 5.2.21 versus 4.2), --signal=B:TERM@120, the 10 s state.json timer, the count of eleven order-of-work steps and fourteen seams, and the hundreds of file:line citations.",
-   "notes": "The artifact's method is explicit: every claim cites a file and line at beethoven-vscode 631226e or hpcworker e77863c and was checked by a second reader; claims found by reading code were not executed (the credential path, the unescaped job values). The top status line (Deferred, 2026-10-07 22:33Z) supersedes the plan's own order of work as the current state. The byline handle @greg and the name greg throughout are the owner's; referred to here by role."
+   "coverage_notes": "Read whole: 948 lines, one file index.md (156,807 bytes); the folder holds no figure, image or binary. It is a Docs-type artifact kept as Markdown with chips kept as text. Lines addressed to the reader (\"No code is written until you have answered the first four questions\", \"[the owner] decides\") are the plan's address to the owner, not instructions to this inventory; nothing else read as an instruction. Numbers: 80 kept; left out are the deploy_shared file modes (2555, 0444, 0555, 2755, 0644), module and tool versions (apptainer/1.2.2, singularity/3.5.2, patchelf 0.19.1, bash 5.2.21 versus 4.2), --signal=B:TERM@120, the 10 s state.json timer, the count of eleven order-of-work steps and fourteen seams, and the hundreds of file:line citations.",
+   "notes": "The artifact's method is explicit: every claim cites a file and line at beethoven-vscode 631226e or hpcworker e77863c and was checked by a second reader; claims found by reading code were not executed (the credential path, the unescaped job values). The top status line (Deferred, 2026-10-07 22:33Z) supersedes the plan's own order of work as the current state. The byline handle @[the owner] and the name [the owner] throughout are the owner's; referred to here by role."
   },
   {
    "repo": "symphony-template",
    "folder": "store-upload-and-repo-move-step-by-step-fpy3fh",
    "title": "Store upload and repo move, step by step",
-   "account": "go2432",
+   "account": "[the owner's login]",
    "link": "https://claude.ai/artifact/Fpy3FhkGSwF4jkDUYRWXmu",
    "link_id": "Fpy3FhkGSwF4jkDUYRWXmu",
    "readme_summary": "Claude Swap Cloud's first Chrome Web Store upload, its listing texts, the CWS_ secrets and the automatic release (Docs type, kept as Markdown; chips kept as text)",
@@ -42747,7 +42714,7 @@
    "kind": "docs",
    "genre": "analysis",
    "date": "2026-10-03",
-   "date_evidence": "Header line 'Oct 3, 2026 \u00b7 @greg'; closing section: 'Every product claim above was checked against Anthropic's documentation as published on October 3, 2026'.",
+   "date_evidence": "Header line 'Oct 3, 2026 \u00b7 @[the owner]'; closing section: 'Every product claim above was checked against Anthropic's documentation as published on October 3, 2026'.",
    "question": "What can Claude Chat do that Claude Code cannot, and the reverse, and how should the two surfaces be combined in one working procedure?",
    "summary": "A Docs-type analysis dated 3 October 2026 comparing Claude Chat (claude.ai/chat and the consumer apps) with Claude Code (one harness shipped through the CLI, the IDE extensions, cloud sessions at claude.ai/code, the GitHub Action and the Agent SDK). It first corrects the prompt's taxonomy: claude.ai/code is not the CLI, and three of the six features the prompt called exclusive (artifacts, vision, MCP) are shared, differing in ingestion path, scale and control plane rather than by a hard boundary. Chat's exclusives are the in-conversation preview runtime, server-side Project knowledge with retrieval mode and the hosted AI-powered artifact runtime billed to each viewer; Claude Code's are read/write/execute on the user's own machine, the terminal error loop against the real toolchain, hooks and permission rules, headless use and multi-session orchestration. It documents the agent loop, the tool set with its output limits, MCP transports, scopes and security, the data flow and retention by plan, and a set of workflow scenarios graded trivial, possible or impossible on each surface. It closes with a hybrid standard operating procedure (design and communicate in Chat; plan, build and verify in Claude Code; hand off through a committed spec, a pull request and a published page, with headless glue for recurring steps) and a sources table, flagging three statements as inferences rather than documented facts.",
    "key_claims": [
@@ -44487,7 +44454,7 @@
    "folder_cell": "not copied: holds an e-mail address and private persons' names and addresses",
    "link": "https://claude.ai/artifact/6NDDpxQS11qRXy4iMG63BF",
    "link_id": "6NDDpxQS11qRXy4iMG63BF",
-   "account": "go2432",
+   "account": "[the owner's login]",
    "readme_summary": "A personal court filing; kept only on claude.ai until the owner decides on a redacted copy"
   },
   {
@@ -44497,7 +44464,7 @@
    "folder_cell": "not copied: holds a private person's name and home address",
    "link": "https://claude.ai/artifact/FFHu9wFJoyFp8byuioDZmT",
    "link_id": "FFHu9wFJoyFp8byuioDZmT",
-   "account": "go2432",
+   "account": "[the owner's login]",
    "readme_summary": "A personal court filing; kept only on claude.ai until the owner decides on a redacted copy"
   }
  ]

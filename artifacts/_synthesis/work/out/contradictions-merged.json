@@ -1443,10 +1443,29 @@
      "artifact_a": "SchwingNet/counting-from-the-sacrum",
      "artifact_b": "SchwingNet/any-view-spine-plan",
      "verdict": "refuted",
-     "quote_a": "the same acquisitions' vendor files carry it on 2,654 frames across 84 distinct values",
-     "quote_b": "6 cadavers, 366 + 2,659 frames, 19 CT | | Pelvis and hip, some lumbar | | 2,293 vendor frames unused",
-     "explanation": "Counting-from-the-sacrum counts 2,654 vendor frames that record kilovoltage, data that goes unused. The any-view plan counts 2,659 vendor frames, of which 2,293 are unused because they have no pose; research-directions says '2,293 of 2,659' have no released pose. Frames with kV recorded and frames without a pose are different quantities, and 2,654 of 2,659 fits.",
-     "resolution_hint": "Carry 2,659 DeepFluoro vendor frames, of which 2,293 have no released pose and 2,654 record kV."
+     "quote_a": "same acquisitions' vendor files carry it on 2,654 frames across 84 distinct values.",
+     "quote_b": "6 cadavers, 366 + 2,659 frames, 19 CT | Pelvis and hip, some lumbar | Seven-class labels ship, the vertebrae as one class: ITK-SNAP splits them into named lumbar bodies. 2,293 vendor frames unused; registration gives their truth.",
+     "explanation": "The Counting From The Sacrum page (22 Sep) says one card records kilovoltage as unavailable while the vendor files carry it on 2,654 frames; the frames are not called unused, the kV data is. The Any-View plan (21 Oct) counts the vendor frames at 2,659 and says 2,293 of them are unused. Frames that carry kV (2,654 of 2,659) and frames left unused (2,293) are different quantities, and neither page gives the other's figure, so they do not conflict. The registry's own data line gives the same 2,659 total and 2,293 unused.",
+     "resolution_hint": "Carry 2,659 DeepFluoro vendor frames, of which 2,654 record kV (sacrum page) and 2,293 are unused (plan and registry), as separate figures.",
+     "delta": {
+      "date": "2026-10-24",
+      "read": [
+       "skeptic",
+       "re-checker"
+      ],
+      "why": "the verdict's two quotes were found as own and own when it was stamped and are found as own and own-in-part now: a page it rests on has changed since it was read",
+      "earlier": {
+       "kind": "contradiction",
+       "topic": "Number of unused DeepFluoro vendor frames",
+       "artifact_a": "SchwingNet/counting-from-the-sacrum",
+       "artifact_b": "SchwingNet/any-view-spine-plan",
+       "verdict": "refuted",
+       "quote_a": "the same acquisitions' vendor files carry it on 2,654 frames across 84 distinct values",
+       "quote_b": "6 cadavers, 366 + 2,659 frames, 19 CT | | Pelvis and hip, some lumbar | | 2,293 vendor frames unused",
+       "explanation": "Counting-from-the-sacrum counts 2,654 vendor frames that record kilovoltage, data that goes unused. The any-view plan counts 2,659 vendor frames, of which 2,293 are unused because they have no pose; research-directions says '2,293 of 2,659' have no released pose. Frames with kV recorded and frames without a pose are different quantities, and 2,654 of 2,659 fits.",
+       "resolution_hint": "Carry 2,659 DeepFluoro vendor frames, of which 2,293 have no released pose and 2,654 record kV."
+      }
+     }
     },
     {
      "kind": "contradiction",
@@ -8859,6 +8878,20 @@
      "statement_b": "v5 exists only as a local tree; nothing pushed; sacral tests next (two-anchors arms proposed, not run)",
      "quote_b": "v5 exists as a local tree on the grid ... Nothing has been pushed to a HuggingFace branch",
      "why_it_matters": "Both describe work that may or may not have happened since; the proposal's deadline has passed."
+    },
+    {
+     "kind": "stale",
+     "topic": "Census status inside the any-view plan: pending in the intro, run in section 4",
+     "statement_a": "The opening says the census job is built and goes to the grid next, and that the last table fills in once it returns.",
+     "quote_a": "The census job is built (PR #76) and goes to the grid next. This page's last table fills in once it returns.",
+     "statement_b": "Section 4 of the same page reports the census as run on 2026-10-22 and fills the table with its counts.",
+     "quote_b": "The census (PR #76, run on 2026-10-22: 140 groups, 7,008,826 files, 7.3 TB; docs/research/data-manifest/MANIFEST.md) indexes every held file",
+     "artifact_a": "SchwingNet/any-view-spine-plan",
+     "artifact_b": "",
+     "why_it_matters": "A planner reading the intro would think the per-region counts are not yet known and would hold the train decisions, though the page itself has them.",
+     "delta": {
+      "date": "2026-10-24"
+     }
     }
    ],
    "verdicts": [
@@ -9753,6 +9786,25 @@
      "quote_b": "v5 exists as a local tree on the grid at data/v5_final . Nothing has been pushed to a HuggingFace branch.",
      "explanation": "AIDaS (October 2026, due 16 October) calls the refiner and low-band-swap arms pending. Yet counting-levels (September 2026) already reports them: about ten points for the swap, about eight for the refiners, with every effect inside the 26-point seed spread. So AIDaS was behind when written, but no source later than AIDaS shows its state. The rib audit's unpushed v5 has no later source either.",
      "resolution_hint": "Carry the arm results from counting-levels. A record of the AIDaS submission, and of a v5 push to the HuggingFace branch, would settle whether the two statements still hold."
+    },
+    {
+     "kind": "stale",
+     "topic": "Census status inside the any-view plan: pending in the intro, run in section 4",
+     "artifact_a": "SchwingNet/any-view-spine-plan",
+     "artifact_b": null,
+     "verdict": "confirmed",
+     "quote_a": "The census job is built (PR #76) and goes to the grid next. This page's last table fills in once it returns.",
+     "quote_b": "The census (PR #76, run on 2026-10-22: 140 groups, 7,008,826 files, 7.3 TB; docs/research/data-manifest/MANIFEST.md) indexes every held file",
+     "explanation": "The intro (line 27) says the census job is built and still goes to the grid next, with the last table to fill in once it returns. Section 4 of the same page says the census was run on 2026-10-22 (140 groups, 7,008,826 files, 7.3 TB) and calls the table cells \"its counts\", and the table is filled in. So the intro's pending status no longer holds. The inventory dates the page 2026-10-21, a day before the run date it reports, so the section 4 text was evidently added after that date. The page also still says NHANES II, VinDr-SpineXR and FluoroCap \"wait for the next run's body-part split\", so the table is only partly complete.",
+     "resolution_hint": "Carry the census as run on 2026-10-22 (140 groups, 7,008,826 files, 7.3 TB) per section 4, and treat the intro's \"goes to the grid next\" as stale. Per-region counts for NHANES II, VinDr-SpineXR and FluoroCap are still pending the next run.",
+     "delta": {
+      "date": "2026-10-24",
+      "read": [
+       "skeptic",
+       "re-checker"
+      ],
+      "why": "found by the finder that read SchwingNet/any-view-spine-plan on 2026-10-24"
+     }
     }
    ],
    "canonical_check": [
@@ -10937,10 +10989,29 @@
      "artifact_a": "SchwingNet/schwingnet-data-registry",
      "artifact_b": "SchwingNet/any-view-spine-plan",
      "verdict": "confirmed",
-     "quote_a": "2,293 vendor frames unused with no written criterion",
-     "quote_b": "2,293 vendor frames unused. Registration gives their truth.",
-     "explanation": "The registry (20 Oct, in its record data) and the Any-View plan (21 Oct) both say 2,293 of DeepFluoro's 2,659 vendor frames are unused. The plan's table takes its figures from the registry, so this is one count.",
-     "resolution_hint": "Carry 2,293 of 2,659 vendor frames unused, with no written criterion, once, from the registry."
+     "quote_a": "the sacrum detector's training; 2,293 vendor frames unused with no written criterion",
+     "quote_b": "2,293 vendor frames unused; registration gives their truth.",
+     "explanation": "The registry (20 Oct) carries 2,293 unused vendor frames in its data line for DeepFluoro, beside a vendor_frames count of 2,659, and notes no written criterion for leaving them out. The Any-View plan (21 Oct) repeats 2,293 vendor frames unused in its dataset table, with a 2,659-frame total, and elsewhere in the text points to the registry as its source. It adds that registration gives their truth but not the 'no written criterion' wording. It is one count carried by both, not two independent confirmations.",
+     "resolution_hint": "Carry 2,293 of 2,659 DeepFluoro vendor frames unused once, from the registry, with its 'no written criterion' note; the plan's mention is a restatement.",
+     "delta": {
+      "date": "2026-10-24",
+      "read": [
+       "skeptic",
+       "re-checker"
+      ],
+      "why": "the verdict's two quotes were found as own and own when it was stamped and are found as own and absent now: a page it rests on has changed since it was read",
+      "earlier": {
+       "kind": "duplicate-text",
+       "topic": "DeepFluoro vendor frames left unused (2,293)",
+       "artifact_a": "SchwingNet/schwingnet-data-registry",
+       "artifact_b": "SchwingNet/any-view-spine-plan",
+       "verdict": "confirmed",
+       "quote_a": "2,293 vendor frames unused with no written criterion",
+       "quote_b": "2,293 vendor frames unused. Registration gives their truth.",
+       "explanation": "The registry (20 Oct, in its record data) and the Any-View plan (21 Oct) both say 2,293 of DeepFluoro's 2,659 vendor frames are unused. The plan's table takes its figures from the registry, so this is one count.",
+       "resolution_hint": "Carry 2,293 of 2,659 vendor frames unused, with no written criterion, once, from the registry."
+      }
+     }
     },
     {
      "kind": "unsourced-shared-claim",
@@ -13164,10 +13235,10 @@
      "topic": "Where the archived files are and whether they exist yet",
      "artifact_a": "SchwingNet/spine-program-student-onboarding",
      "statement_a": "The archived files are not in the repository since 2026-10-13; they live on the grid under the shared spine-program archive.",
-     "quote_a": "not in the repository since 2026-10-13: they live on the grid under /rs/rs_grp_oschome/shared/spine-program/archive/",
+     "quote_a": "not in the repository since 2026-10-13: they live on the grid under [the lab volume]/shared/spine-program/archive/",
      "artifact_b": "SchwingNet/connect-the-grid-to-github",
      "statement_b": "The repository's links point at that archive, which the owner fills once with a script; until then the links point at nothing.",
-     "quote_b": "are links to `/rs/rs_grp_oschome/shared/spine-program/archive/`, which [the owner] fills once with a script; until he has, those links point at nothing",
+     "quote_b": "are links to `[the lab volume]/shared/spine-program/archive/`, which [the owner] fills once with a script; until he has, those links point at nothing",
      "why_it_matters": "A student sent to the archive by the onboarding finds nothing until the owner's script runs; the onboarding states as done what the next day's note calls pending."
     },
     {
@@ -18038,7 +18109,7 @@
      "topic": "Whether the shared spine-program archive on the grid is populated",
      "artifact_a": "SchwingNet/spine-program-student-onboarding",
      "statement_a": "Results, figures, manuscripts and regulatory folders live on the grid under the shared archive, and in a Beethoven session the link opens.",
-     "quote_a": "they live on the grid under /rs/rs_grp_oschome/shared/spine-program/archive/, and the repository holds a link to them in each folder. In a Beethoven session the link opens",
+     "quote_a": "they live on the grid under [the lab volume]/shared/spine-program/archive/, and the repository holds a link to them in each folder. In a Beethoven session the link opens",
      "artifact_b": "SchwingNet/connect-the-grid-to-github",
      "statement_b": "The links point at nothing until the owner fills the archive once with a script; until then the files are read from git history.",
      "quote_b": "which [the owner] fills once with a script; until he has, those links point at nothing and the files are read from git history as ARCHIVE.md says.",
@@ -20933,9 +21004,9 @@
    "resolution_hint": "Carry 301 frames per sweep and 602 in all, from the registry, which counts XA frames and agrees with the atlas's 301-item case134 bank and with the 602 total the research-directions page itself gives; a census of the case134 sweep by DICOM Modality and Rows would settle the 302.",
    "first": {
     "verdict": "cannot-tell",
-    "quote_a": "{\"id\": \"carmlspine\", \"name\": \"C-ArmLSpine (Surgio-B51)\", \"group\": \"fluoro\", \"what\": \"149 lumbar intraoperative cases from one mobile C-arm: AP and lateral spot frames with a CBCT of the same device\", \"level_truth\": \"yes, lumbar, projected from the CBCT (two labellers agreeing on 814 of 910 bodies); 3 real L6 cases\", \"reach\": \"held\", \"status\": \"the test set and the demo; never trained on in the zero-shot arm; case134 headers carry a real PatientID, never printed\", \"licence\": \"CC BY 4.0\", \"link\": \"https://zenodo.org/records/22768651\", \"how_to_get\": [], \"grid_path\": \"/rs/rs_grp_osch",
+    "quote_a": "{\"id\": \"carmlspine\", \"name\": \"C-ArmLSpine (Surgio-B51)\", \"group\": \"fluoro\", \"what\": \"149 lumbar intraoperative cases from one mobile C-arm: AP and lateral spot frames with a CBCT of the same device\", \"level_truth\": \"yes, lumbar, projected from the CBCT (two labellers agreeing on 814 of 910 bodies); 3 real L6 cases\", \"reach\": \"held\", \"status\": \"the test set and the demo; never trained on in the zero-shot arm; case134 headers carry a real PatientID, never printed\", \"licence\": \"CC BY 4.0\", \"link\": \"https://zenodo.org/records/22768651\", \"how_to_get\": [], \"grid_path\": \"[the lab volume]",
     "quote_b": "| C-ArmLSpine sweep projections and the case134 spin | 602; 302 frames | only one script reads a sweep | export into the real-frame layout |",
-    "explanation": "The candidate's quote_a ('raw CBCT projections at quantised gantry angles, 301 XA frames each; rotational, not cranio-caudal') is not in artifact A's text. The registry export is 5,497 bytes and its DATA array stops mid-string at the first record's grid_path ('/rs/rs_grp_osch'), so the rest of the carmlspine record and all other 59 records are missing from the text; grep finds no '301', 'XA', 'quantised', 'rotational' or 'cranio' anywhere in it. The only C-ArmLSpine figures A does carry are 149 cases, 814 of 910 bodies, 3 real L6 cases and the note that case134 headers carry a PatientID. Artifact B states 302 frames for the case134 spin twice (line 143: 'the case134 302-frame spin as the n 1 real check'; line 204, the quoted row) and beside it 602 for 'C-ArmLSpine sweep projections', which equals 2 x 301, so B is internally consistent with 301 raw projections per sweep while counting the exported case134 spin as 302 frames. That hints the two figures may be different quantities (raw CBCT projections per case versus frames of the exported spin) or an off-by-one in one document, but with A's sentence absent from the exported text the two texts cannot settle it, and neither says it revises the other. The 'why' given in the candidate cites an outside note (Atlas), not either text.",
+    "explanation": "The candidate's quote_a ('raw CBCT projections at quantised gantry angles, 301 XA frames each; rotational, not cranio-caudal') is not in artifact A's text. The registry export is 5,497 bytes and its DATA array stops mid-string at the first record's grid_path ('[the lab volume]'), so the rest of the carmlspine record and all other 59 records are missing from the text; grep finds no '301', 'XA', 'quantised', 'rotational' or 'cranio' anywhere in it. The only C-ArmLSpine figures A does carry are 149 cases, 814 of 910 bodies, 3 real L6 cases and the note that case134 headers carry a PatientID. Artifact B states 302 frames for the case134 spin twice (line 143: 'the case134 302-frame spin as the n 1 real check'; line 204, the quoted row) and beside it 602 for 'C-ArmLSpine sweep projections', which equals 2 x 301, so B is internally consistent with 301 raw projections per sweep while counting the exported case134 spin as 302 frames. That hints the two figures may be different quantities (raw CBCT projections per case versus frames of the exported spin) or an off-by-one in one document, but with A's sentence absent from the exported text the two texts cannot settle it, and neither says it revises the other. The 'why' given in the candidate cites an outside note (Atlas), not either text.",
     "resolution_hint": null
    },
    "review": "read again",
@@ -21156,6 +21227,26 @@
      "regroup",
      "regroup2"
     ]
+   }
+  },
+  {
+   "quantity": "sacrum recall on real DeepFluoro frames, detector trained on renders of DeepFluoro's own CTs",
+   "artifact_a": "SchwingNet/aidas-seed-grant-proposal",
+   "artifact_b": "SchwingNet/or-readiness-ledger",
+   "value_a": "96%, 98%",
+   "value_b": "97.7",
+   "verdict": "different-quantities",
+   "quote_a": "A detector trained only on calibrated renders of DeepFluoro's own CTs finds the sacrum on about 96\u201398% of real frames (leave-one-specimen-out).",
+   "quote_b": "Thoracic T1\u2013T12 on real films: 97.7% (keypoint detector)",
+   "explanation": "In the ledger, 97.7 is the thoracic T1\u2013T4 recall of a film keypoint detector on AASCE radiographs (all 608 films; the same tile calls it T1\u2013T12). It is not a sacrum figure and not a DeepFluoro frame result. The proposal's 96\u201398% is sacrum recall on real DeepFluoro frames for a render-trained detector under leave-one-specimen-out. The quote in the item from the ledger's C2 tile is about C2 on films (0\u20138%), also a different quantity. The ledger's own DeepFluoro sacrum numbers (e.g. 84.3% sacrum-anchored count, device held out) are a separate quantity again, so 97.7 does not contradict the proposal's figure.",
+   "resolution_hint": "Drop 97.7 from the sacrum-on-DeepFluoro collision and carry it as thoracic keypoint recall on AASCE films. The sacrum quantity should be compared against the ledger's DeepFluoro sacrum rows and the proposal's 96\u201398%.",
+   "delta": {
+    "date": "2026-10-25",
+    "read": [
+     "skeptic",
+     "re-checker"
+    ],
+    "why": "a concept check: line 223 of SchwingNet/or-readiness-ledger gives 97.7, which number collision 10 (confirmed-contradiction) carries as open"
    }
   }
  ],

@@ -1,0 +1,44 @@
+{
+  "id": "12/which-source-carries-the-detector",
+  "title": "Which source carries the detector",
+  "caption": "The matrix behind the reversed DeepFluoro answer: adding the arc-spanning Elekta source gains 71.8 points on the held-out device and adding the near-AP cadaver source changes it by -2.1, as the artifact reports.",
+  "chapter": "12",
+  "grade": "Reported",
+  "status": "a record, not a final value",
+  "source": {
+    "kind": "artifact",
+    "artifact": "artifacts/schwingnet-figures-xyz6kr/",
+    "artifact_url": "https://claude.ai/artifact/XyZ6krXFYezkdkpj2kAKPw",
+    "made_by": "spinesurg-ct-nnunet:SchwingNet/tools/fig5_contribution.py",
+    "commit": null,
+    "data": [
+      "SchwingNet/results/contribution_matrix.json (spinesurg-ct-nnunet)"
+    ],
+    "run": "grid jobs 40415588 and 40415691",
+    "notes": "RECIPES.md 1.7 names sn:tools/fig5_contribution.py (or figS_supplement.py) as the figure and slurm/contrib_matrix_cpu.sh as the rerun, whose self-check must report a maximum difference of 0.0000 over 85 cells. Bytes (522,582) differ from the manuscript copy spine-program lists (520,611), so this is an earlier export."
+  },
+  "explore": [
+    {
+      "label": "The artifact's page and files",
+      "href": "artifacts/schwingnet-figures-xyz6kr/"
+    },
+    {
+      "label": "The artifact on claude.ai",
+      "href": "https://claude.ai/artifact/XyZ6krXFYezkdkpj2kAKPw"
+    },
+    {
+      "label": "The recipe (section 1.7)",
+      "href": "https://github.com/OpenSpineConsortium/spine-program/blob/88398813308aba7dc2b4ee823385ea0ca2665f0d/07_plain_film_level_id/docs/handoff/RECIPES.md"
+    },
+    {
+      "label": "The results catalog",
+      "href": "https://github.com/OpenSpineConsortium/spine-program/blob/88398813308aba7dc2b4ee823385ea0ca2665f0d/07_plain_film_level_id/docs/handoff/RESULTS_CATALOG.md"
+    }
+  ],
+  "rerun": {
+    "where": "grid",
+    "command": "sbatch SchwingNet/slurm/contrib_matrix_cpu.sh",
+    "cost": "one CPU job on the grid; needs each arm's realxray_eval.py --dump-raw output",
+    "needs_owner_word": true
+  }
+}

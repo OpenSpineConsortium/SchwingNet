@@ -1,12 +1,12 @@
 {
  "tally": {
-  "own/absent (two artifacts)": 1,
   "own/elsewhere (one artifact)": 1,
   "own/elsewhere (two artifacts)": 1,
   "own/empty (one artifact)": 12,
   "own/empty (two artifacts)": 8,
+  "own/other (two artifacts)": 1,
   "own/own (one artifact)": 47,
-  "own/own (two artifacts)": 890
+  "own/own (two artifacts)": 892
  },
  "listed": [
   {
@@ -17,11 +17,11 @@
    "quote_b": "elsewhere:SchwingNet/naming-vertebrae-without-an-anchor-3dfzmh"
   },
   {
-   "cluster": "Renders, physics and the sim-to-real gap",
-   "index": 45,
+   "cluster": "Detectors, architecture and the training plan",
+   "index": 80,
    "verdict": "confirmed",
    "quote_a": "own",
-   "quote_b": "absent"
+   "quote_b": "other"
   },
   {
    "cluster": "Number collisions",

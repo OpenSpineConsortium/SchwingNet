@@ -17,6 +17,7 @@ from schwingnet.catalog import (
     DeviceClass,
     FrozenPerson,
     Item,
+    LevelMap,
     Modality,
     Part,
     Query,
@@ -596,9 +597,11 @@ def test_a_replaced_file_a_forged_log_and_a_stale_current_are_refused(tmp_path: 
     tool = load_tool()
     inputs = tool.load_inputs()
     a = write(tmp_path, "a", manifest("train", TRAIN_ITEMS[:1]))
+    b = write(tmp_path, "b", manifest("train", TRAIN_ITEMS[2:]))
     store = tmp_path / "store"
     first, _ = tool.build(store, [a], inputs)
-    second, _ = tool.build(store, [a], inputs, "abcdef0")
+    # A second version needs other content: a build that differs only in its commit is none.
+    second, _ = tool.build(store, [a, b], inputs, "abcdef0")
     log = store / "VERSIONS.jsonl"
     lines = log.read_text(encoding="utf-8").splitlines()
     # A line whose number or parent is not the line before it.
@@ -678,3 +681,125 @@ def test_a_vector_with_no_direction_is_refused_before_it_is_stored(tmp_path: Pat
     db.execute("INSERT INTO embedding VALUES (?, 'v1', 2, ?)", ("a" * 64, tool.pack([0.0, 0.0])))
     with pytest.raises(tool.CatalogError, match="no direction for a{64}"):
         tool.similar(db, "v1", "a" * 64, 5)
+
+
+def test_a_level_map_sits_at_its_digest_and_the_catalog_says_where_it_is(tmp_path: Path) -> None:
+    tool = load_tool()
+    map_sha = "e" * 64
+    level_map = {
+        "path": frame_path(map_sha, "png"),
+        "sha256": map_sha,
+        "projector": "render",
+        "labeller": "cbct",
+    }
+    with_map = dict(item("carmlspine:case7", "L5", "a" * 64), level_map=level_map)
+    assert Item.model_validate(with_map).level_map == LevelMap.model_validate(level_map)
+    assert Item.model_validate(item("carmlspine:case7", "L5", "a" * 64)).level_map is None
+    with pytest.raises(ValidationError, match="its digest puts it at"):
+        LevelMap.model_validate(dict(level_map, path=frame_path("f" * 64, "png")))
+    with pytest.raises(ValidationError):
+        LevelMap.model_validate(dict(level_map, projector="guessed"))
+    with pytest.raises(ValidationError):
+        LevelMap.model_validate(dict(level_map, path=frame_path(map_sha, "jpg")))
+    with pytest.raises(ValidationError):
+        LevelMap.model_validate(dict(level_map, labeller=""))
+    # A manifest of schema 2 may carry maps, one above it is refused, and the catalog's item row
+    # says where each frame's map is and what projected it, null for a frame without one.
+    data = dict(
+        manifest("train", [with_map, item("carmlspine:case8", "L4", "b" * 64)]), schema_version=2
+    )
+    with pytest.raises(ValidationError):
+        ShardManifest.model_validate(dict(data, schema_version=3))
+    train = write(tmp_path, "train", data)
+    store = tmp_path / "store"
+    tool.build(store, [train], tool.load_inputs(), "0123abc", "2026-10-24")
+    db = tool.open_catalog(store)
+    rows = sorted(
+        tuple(row) for row in db.execute("SELECT sha256, level_map, level_map_from FROM item")
+    )
+    assert rows == [("a" * 64, frame_path(map_sha, "png"), "render"), ("b" * 64, None, None)]
+    assert len(tool.ITEM_COLUMNS) == len(
+        tool.item_row(Item.model_validate(with_map), ShardManifest.model_validate(data), Part.TRAIN)
+    )
+
+
+def test_a_build_that_differs_only_in_the_code_commit_is_no_new_version(tmp_path: Path) -> None:
+    tool = load_tool()
+    train = write(tmp_path, "train", manifest("train", TRAIN_ITEMS))
+    test = write(tmp_path, "test", manifest("test", TEST_ITEMS))
+    store = tmp_path / "store"
+    first, new = tool.build(store, [train], tool.load_inputs(), "0123abc")
+    assert new
+    again, new = tool.build(store, [train], tool.load_inputs(), "4567def")
+    assert not new and again == first and len(tool.read_versions(store)) == 1
+    assert (store / "CURRENT").read_text(encoding="utf-8") == first.file + "\n"
+    second, new = tool.build(store, [train, test], tool.load_inputs(), "4567def")
+    assert new and second.version == 2 and second.code_commit == "4567def"
+    fresh = tmp_path / "fresh.sqlite"
+    db = sqlite3.connect(fresh)
+    tool.fill(db, [train, test], tool.load_inputs(), "89abcde")
+    db.commit()
+    tool.stamp(db)
+    db.close()
+    latest = store / "versions" / second.file
+    assert tool.same_but_the_commit(fresh, latest)
+    assert not tool.same_but_the_commit(store / "versions" / first.file, latest)
+
+
+def test_a_dropped_build_mends_a_stale_current_and_an_unreadable_latest_is_no_equal(
+    tmp_path: Path,
+) -> None:
+    tool = load_tool()
+    train = write(tmp_path, "train", manifest("train", TRAIN_ITEMS))
+    test = write(tmp_path, "test", manifest("test", TEST_ITEMS))
+    store = tmp_path / "store"
+    first, _ = tool.build(store, [train], tool.load_inputs(), "0123abc")
+    second, _ = tool.build(store, [train, test], tool.load_inputs(), "0123abc")
+    # A build killed between the log's line and CURRENT's rename leaves CURRENT a version behind;
+    # the next build of the same shards at a new commit adds nothing and points CURRENT again.
+    current = store / "CURRENT"
+    current.write_text(first.file + "\n", encoding="utf-8")
+    with pytest.raises(tool.CatalogError, match="but the log's last line is"):
+        tool.version_path(store)
+    again, new = tool.build(store, [train, test], tool.load_inputs(), "4567def")
+    assert not new and again == second and current.read_text(encoding="utf-8") == second.file + "\n"
+    assert tool.version_path(store)[0].name == second.file
+    # A latest gone or broken is no equal of a fresh build, which is written as a new version
+    # in place of a traceback.
+    latest = store / "versions" / second.file
+    latest.chmod(0o644)
+    latest.write_bytes(latest.read_bytes()[:100])
+    third, new = tool.build(store, [train, test], tool.load_inputs(), "89abcde")
+    assert new and third.version == 3
+    (store / "versions" / third.file).chmod(0o644)
+    (store / "versions" / third.file).unlink()
+    fourth, new = tool.build(store, [train, test], tool.load_inputs(), "fedcba9")
+    assert new and fourth.version == 4
+
+
+def test_a_dropped_build_never_points_current_back_over_a_version_landed_meanwhile(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    tool = load_tool()
+    train = write(tmp_path, "train", manifest("train", TRAIN_ITEMS))
+    test = write(tmp_path, "test", manifest("test", TEST_ITEMS))
+    store = tmp_path / "store"
+    first, _ = tool.build(store, [train], tool.load_inputs(), "0123abc")
+    real = tool.same_as_latest
+    asked: list[int] = []
+
+    # Another writer lands while this build, the latest's equal, is written (a lock a process
+    # never holds against itself): the dropped build is refused and CURRENT keeps the newer.
+    def same_after_another_landed(*arguments: object) -> bool:
+        monkeypatch.setattr(tool, "same_as_latest", real)
+        asked.append(1)
+        tool.build(store, [train, test], tool.load_inputs(), "0123abc")
+        return real(*arguments)
+
+    monkeypatch.setattr(tool, "same_as_latest", same_after_another_landed)
+    with pytest.raises(tool.CatalogError, match="another build landed"):
+        tool.build(store, [train], tool.load_inputs(), "4567def")
+    records = tool.read_versions(store)
+    assert asked == [1] and [r.version for r in records] == [1, 2] and records[0] == first
+    assert (store / "CURRENT").read_text(encoding="utf-8") == records[1].file + "\n"
+    assert tool.version_path(store)[0].name == records[1].file

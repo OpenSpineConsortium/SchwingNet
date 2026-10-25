@@ -21,7 +21,7 @@ ROOT = Path(__file__).resolve().parent.parent
 GRID = ROOT / "grid"
 FAKE_HPCWORKER = ROOT / "tests" / "fakes" / "hpcworker"
 NEW_SCRIPTS = ("gate.sh", "hpcw.sh", "box.sh", "bin/pixi", "bin/train-cpu-python", "00-setup.sbatch", "00-weights.sbatch",
-               "00-carmlspine.sbatch", "v1-driver.sbatch", "run-xray-chain.sh", "run-platform-fetch.sh")
+               "00-carmlspine.sbatch", "v1-driver.sbatch", "experiment-driver.sbatch", "run-xray-chain.sh", "run-platform-fetch.sh")
 ENVS = ("default", "train-cpu", "train-gpu", "telemetry")
 
 FAKES = {
@@ -42,10 +42,12 @@ echo "$*" >> "$FAKE/scancel.log"
 echo "Avail"
 echo "900000000000000"
 """,
-    # stat -f -c %T as grid/size-rule.sh asks it before df: a mount that is no CephFS, kernel or FUSE,
-    # so the stand-in df may answer for it; named so it never stands in for stat itself
+    # stat as grid/size-rule.sh asks it: -f -c %T, before df, names a mount that is no CephFS, kernel
+    # or FUSE, so the stand-in df may answer for it, and every other question, the devices that show
+    # the data root inside the volume on its mount among them, goes to stat itself; named so it never
+    # stands in for stat on PATH
     "fstype": """#!/bin/bash
-echo "ext2/ext3"
+case " $* " in *" -f "*) echo "ext2/ext3" ;; *) exec stat "$@" ;; esac
 """,
 }
 
@@ -88,6 +90,11 @@ class GateTest(unittest.TestCase):
         for name in ("GETFATTR", "VOLUME", "HPCW_DRY", "HPCW_FIRST", "HPCW_FRAMEWORK", "SBATCH", "SQUEUE", "SACCT", "SCANCEL", "DF", "DEPEND", "PYDRV"):
             env.pop(name, None)
         env["STAT"] = str(self.fake / "fstype")
+        # The lab volume is the test's own folder, which holds the data root as /rs/rs_grp_oschome
+        # holds go2432/data: the size rule reads no room where the data root lies outside the volume (#180).
+        env["VOLUME"] = str(self.tmp)
+        # the size rule reads these fakes only where a test says so, and waits no minute here (#180)
+        env.update(SIZE_RULE_STAND_INS="yes", SIZE_RULE_SETTLE="0")
         return env
 
     def submitted(self):
@@ -398,6 +405,89 @@ class GateTest(unittest.TestCase):
         self.assertNotIn("--dependency", line)
         self.assertIn(f"RUNS={self.runs} WEIGHTS={self.models}/resnet18-f37072fd.pth", line)
         self.assertIn("catalog: catalog-000002-0123456789ab.sqlite qualifies for the run (grid/v1-version.sh); no job", done.stdout)
+
+    REQUEST = "recipe: none\nepochs: 12\nseed: 3\nhours: 2.5\nblock: architecture=resnet34\nblock: optimiser=adamw\n"
+
+    def experiment(self, *words, requests):
+        """The gate with EXPERIMENTS_DIR standing in for the branch experiments, as a test must."""
+        env = self.gate_env()
+        env["EXPERIMENTS_DIR"] = str(requests)
+        return subprocess.run(["bash", str(self.repo / "grid" / "gate.sh"), *words], env=env, capture_output=True, text=True, timeout=120)
+
+    def test_experiment_runs_the_recorded_request_as_one_gpu_job_once_the_inputs_are_there(self):
+        requests = self.tmp / "requests"
+        requests.mkdir()
+        (requests / "250.request").write_text(self.REQUEST, encoding="utf-8")
+        for words in (("experiment",), ("experiment", "x"), ("experiment", "01"), ("experiment", "0"), ("experiment", "1", "2"), ("experiment", "1" * 10)):
+            done = self.experiment(*words, requests=requests)
+            self.assertEqual(done.returncode, 64, f"{words}: {done.stdout}{done.stderr}")
+        done = self.experiment("experiment", "251", requests=requests)
+        self.assertEqual(done.returncode, 75, done.stdout + done.stderr)
+        self.assertIn("no 251.request on the branch experiments", done.stdout)
+        # the version 1 inputs come first: the word submits nothing until v1 made them
+        done = self.experiment("experiment", "250", requests=requests)
+        self.assertEqual(done.returncode, 75, done.stdout + done.stderr)
+        self.assertIn("'start' makes them first", done.stdout)
+        self.environments_ready()
+        done = self.experiment("experiment", "250", requests=requests)
+        self.assertEqual(done.returncode, 75, done.stdout + done.stderr)
+        self.assertIn("'v1' makes them first", done.stdout)
+        self.weights_ready()
+        self.carmlspine_shards()
+        self.catalog_ready(version=2)
+        self.assertEqual(self.submitted(), [])
+        done = self.experiment("experiment", "250", requests=requests)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(len(self.submitted()), 1, self.submitted())
+        line = self.line_of("experiment-driver.sbatch")[0]
+        self.assertIn("ISSUE=250", line)
+        self.assertIn(f"REQUEST={self.repo}/grid/logs/experiment-250.request", line)
+        self.assertIn(f"RUNS={self.runs} WEIGHTS={self.models}/resnet18-f37072fd.pth", line)
+        self.assertIn("--no-requeue", line)
+        self.assertIn("gpu", line)
+        # 2.5 hours of training fit the driver's own 24 hours, which stay the floor
+        self.assertIn("--time 24:00:00", line)
+        self.assertIn("catalog: catalog-000002-0123456789ab.sqlite qualifies for the run", done.stdout)
+        self.assertIn("request: recipe: none epochs: 12 seed: 3 hours: 2.5 block: architecture=resnet34 block: optimiser=adamw", done.stdout)
+        self.assertEqual((self.repo / "grid" / "logs" / "experiment-250.request").read_text(encoding="utf-8"), self.REQUEST)
+        job = self.recorded()["experiment_250"]
+        (self.fake / "queue").write_text(job + "\n", encoding="utf-8")
+        done = self.experiment("experiment", "250", requests=requests)
+        self.assertEqual(done.returncode, 75, done.stdout + done.stderr)
+        self.assertIn(f"already queued or running (job {job})", done.stdout)
+        self.assertEqual(len(self.submitted()), 1)
+        # a longer training asks for its hours, the evaluation's quarter of them and an hour more
+        (requests / "252.request").write_text(self.REQUEST.replace("hours: 2.5", "hours: 40"), encoding="utf-8")
+        done = self.experiment("experiment", "252", requests=requests)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("--time 51:00:00", self.line_of("experiment-driver.sbatch")[1])
+        self.assertIn("wall time: 51:00:00 for 40 hours of training", done.stdout)
+
+    def test_experiment_refuses_a_request_with_a_strange_line_before_anything_is_submitted(self):
+        self.environments_ready()
+        self.weights_ready()
+        self.carmlspine_shards()
+        self.catalog_ready(version=2)
+        requests = self.tmp / "requests"
+        requests.mkdir()
+        strange = {
+            "260": "recipe: none\nepochs: 12\nseed: 3\nhours: 2\nblock: architecture=resnet34; rm -rf /\n",
+            "261": "recipe: none\nrecipe: none\nepochs: 12\nseed: 3\nhours: 2\n",
+            "262": "recipe: none\nepochs: 12\nseed: 3\n",
+            "263": "recipe: none\nepochs: 0x\nseed: 3\nhours: 2\n",
+            "264": "recipe: none\nepochs: 12\nseed: 3\nhours: 2\nsomething else\n",
+            "265": "recipe: none\nepochs: 12\nseed: 3\nhours: 2\nblock: " + "a" * 120 + "=b\n",
+            "266": "".join(f"block: architecture=resnet34\n" for _ in range(41)) + "recipe: none\nepochs: 1\nseed: 1\nhours: 1\n",
+            "267": "recipe: none\nepochs: 12\nseed: 3\nhours: 2.5.1\n",
+            "268": "recipe: none\nepochs: 12\nseed: 3\nhours: 4h\n",
+        }
+        for number, body in strange.items():
+            (requests / f"{number}.request").write_text(body, encoding="utf-8")
+            done = self.experiment("experiment", number, requests=requests)
+            self.assertEqual(done.returncode, 64, f"{number}: {done.stdout}{done.stderr}")
+            self.assertIn("refusing:", done.stdout)
+            self.assertFalse((self.repo / "grid" / "logs" / f"experiment-{number}.request").exists(), number)
+        self.assertEqual(self.submitted(), [])
 
     def test_v1_from_nothing_submits_every_input_and_the_run_afterok_on_each(self):
         done = self.gate("v1")
@@ -909,10 +999,10 @@ echo "the split is not disjoint; no training step reads this version"; exit 1
         (self.fake / "getfattr").write_text("""#!/bin/bash
 folder=${!#}
 case "$3:$folder" in
-  ceph.quota.max_bytes:/rs/rs_grp_oschome) echo -n 21990232555520 ;;
-  ceph.dir.rbytes:/rs/rs_grp_oschome) echo -n 13146000000000 ;;
-  ceph.dir.rfiles:/rs/rs_grp_oschome) echo -n 7008826 ;;
-  *:/rs/rs_grp_oschome) exit 1 ;;
+  ceph.quota.max_bytes:"$VOLUME") echo -n 21990232555520 ;;
+  ceph.dir.rbytes:"$VOLUME") echo -n 13146000000000 ;;
+  ceph.dir.rfiles:"$VOLUME") echo -n 7008826 ;;
+  ceph.quota.*|*:"$VOLUME") echo "$folder: $3: No such attribute" >&2; exit 1 ;;
   */big) echo -n 2500000000000 ;;
   */small) echo -n 1500000000 ;;
   */unread) exit 1 ;;
@@ -945,9 +1035,10 @@ esac
         self.assertIn("  data: 2600 GB in all", out)
         tally = [line.split() for line in out.splitlines() if line.startswith("    ")]
         self.assertEqual(tally[0], ["2500", "big"])
-        # a value ends at its first NUL, and one that is no count of at most 18 digits reads
-        # unknown, never as a figure bash's arithmetic wrapped (#160)
-        self.assertEqual(sorted(tally[1:5]), [["2", "nul"], ["2", "small"], ["?", "long"], ["?", "unread"]])
+        # a value is read whole, so one with a NUL in it, which a NUL could have cut short, reads
+        # unknown (#180), as one that is no count of at most 18 digits does, never as a figure bash's
+        # arithmetic wrapped (#160)
+        self.assertEqual(sorted(tally[1:5]), [["2", "small"], ["?", "long"], ["?", "nul"], ["?", "unread"]])
         self.assertIn("shared datasets: not there", out)
         self.assertNotIn(str(self.tmp), out)
         self.assertLess(out.index("## space"), out.index("## the gate's newest jobs") if "## the gate's" in out else len(out))
@@ -1305,6 +1396,162 @@ esac
         done = self.gate("explore", "kaggle_fracture_multiregion")
         self.assertEqual(done.returncode, 0, done.stdout)
         self.assertIn("EXPLORE_AGAINST= ", self.submitted()[2] + " ")
+
+    def test_nodequota_reads_a_node_once_then_prints_what_it_read(self):
+        # an argument is refused, and nothing is queued before the environments are made
+        self.assertEqual(self.gate("nodequota", "x").returncode, 64)
+        self.assertEqual(self.gate("nodequota").returncode, 75)
+        self.environments_ready()
+        done = self.gate("nodequota")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        lines = self.submitted()
+        self.assertEqual(len(lines), 1, lines)
+        self.assertIn("--class batch --name nodequota", lines[0])
+        self.assertIn("nodequota.sbatch", lines[0])
+        job = self.recorded()["nodequota"]
+        # while its job is live a second send is refused and queues nothing
+        self.live(job)
+        self.assertEqual(self.gate("nodequota").returncode, 75)
+        self.assertEqual(len(self.submitted()), 1)
+        # once it has ended, its report is printed once and nothing is queued
+        (self.fake / "queue").write_text("", encoding="utf-8")
+        report = self.repo / "grid" / "logs" / "NODEQUOTA.md"
+        report.write_text("# The lab volume as compute node n1 reads it\n  2 up: ceph.quota.max_bytes reads 1\n",
+                          encoding="utf-8")
+        done = self.gate("nodequota")
+        self.assertEqual(done.returncode, 0, done.stdout)
+        self.assertIn("2 up: ceph.quota.max_bytes reads 1", done.stdout)
+        self.assertEqual(len(self.submitted()), 1)
+        self.assertFalse(report.exists())
+        # the send after that reads a node again
+        self.assertEqual(self.gate("nodequota").returncode, 0)
+        self.assertEqual(len(self.submitted()), 2)
+
+    def test_bench_queues_one_gpu_job_per_model_and_then_keeps_printing_its_report(self):
+        # no name, two names and a name of no benchmark are refused before anything is read
+        self.assertEqual(self.gate("bench").returncode, 64)
+        self.assertEqual(self.gate("bench", "a", "b").returncode, 64)
+        self.assertEqual(self.gate("bench", "fluorosam").returncode, 64)
+        # nothing is queued before the fetch has landed the weights, and the refusal names the fetch
+        refused = self.gate("bench", "flexray_carmlspine")
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn("fetch hf_flexray_weights first", refused.stdout)
+        refused = self.gate("bench", "xvr_deepfluoro")
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn("fetch hf_xvr_models first", refused.stdout)
+        bundle = self.data / "hf_flexray_weights" / "raw"
+        bundle.mkdir(parents=True)
+        (bundle / "ensemble.json").write_text("{}\n", encoding="utf-8")
+        refused = self.gate("bench", "flexray_carmlspine")
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn("C-ArmLSpine's bank", refused.stdout)
+        (self.data / "realxray" / "carmlspine" / "meta").mkdir(parents=True)
+        self.assertEqual(self.gate("bench", "flexray_carmlspine").returncode, 75)
+        self.assertEqual(self.submitted(), [])
+        self.environments_ready()
+        done = self.gate("bench", "flexray_carmlspine")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        lines = self.submitted()
+        self.assertEqual(len(lines), 1, lines)
+        self.assertIn("--class gpu --name bench_flexray_carmlspine", lines[0])
+        self.assertIn("BENCH=flexray_carmlspine", lines[0])
+        self.assertIn("--no-requeue", lines[0])
+        self.assertIn("bench.sbatch", lines[0])
+        job = self.recorded()["bench_flexray_carmlspine"]
+        # while its job is live a second send is refused and queues nothing
+        self.live(job)
+        self.assertEqual(self.gate("bench", "flexray_carmlspine").returncode, 75)
+        # once it has ended, its report is printed on every send and nothing more is queued,
+        # so the owner's count of one job each holds
+        (self.fake / "queue").write_text("", encoding="utf-8")
+        report = self.repo / "grid" / "logs" / "BENCH-flexray_carmlspine.md"
+        report.write_text("# bench flexray_carmlspine\n- exit 0\n", encoding="utf-8")
+        for _ in range(2):
+            done = self.gate("bench", "flexray_carmlspine")
+            self.assertEqual(done.returncode, 0, done.stdout)
+            self.assertIn("- exit 0", done.stdout)
+        self.assertEqual(len(self.submitted()), 1)
+        self.assertTrue(report.exists())
+
+    def test_dropzip_deletes_once_then_prints_what_it_did(self):
+        shutil.copy(GRID / "fetch-xray.json", self.repo / "grid" / "fetch-xray.json")
+        # an id of no list, one with no raw folder yet, and a malformed send are refused and queue nothing
+        self.assertEqual(self.gate("dropzip", "no_such_set").returncode, 64)
+        self.assertEqual(self.gate("dropzip", "kaggle_scoliosis_yolov5").returncode, 2)
+        self.assertEqual(self.gate("dropzip", "a", "b").returncode, 64)
+        self.assertEqual(self.gate("dropzip", "Bad-Id").returncode, 64)
+        (self.data / "kaggle_scoliosis_yolov5" / "raw").mkdir(parents=True)
+        self.assertEqual(self.gate("dropzip", "kaggle_scoliosis_yolov5").returncode, 75)
+        self.environments_ready()
+        done = self.gate("dropzip", "kaggle_scoliosis_yolov5")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        lines = self.submitted()
+        self.assertEqual(len(lines), 1, lines)
+        self.assertIn("--class batch --name dropzip", lines[0])
+        self.assertIn("dropzip.sbatch", lines[0])
+        self.assertIn(f"DROPZIP_RAW={self.data}/kaggle_scoliosis_yolov5/raw", lines[0])
+        job = self.recorded()["dropzip"]
+        # while its job is live a second send is refused and queues nothing
+        self.live(job)
+        self.assertEqual(self.gate("dropzip", "kaggle_scoliosis_yolov5").returncode, 75)
+        self.assertEqual(len(self.submitted()), 1)
+        # once it has ended, its report is printed once and nothing is queued
+        (self.fake / "queue").write_text("", encoding="utf-8")
+        report = self.repo / "grid" / "logs" / "DROPZIP-kaggle_scoliosis_yolov5.md"
+        report.write_text("# dropzip kaggle_scoliosis_yolov5\n  zips: 1\n  freed: 0.5 GB\n", encoding="utf-8")
+        done = self.gate("dropzip", "kaggle_scoliosis_yolov5")
+        self.assertEqual(done.returncode, 0, done.stdout)
+        self.assertIn("  freed: 0.5 GB", done.stdout)
+        self.assertEqual(len(self.submitted()), 1)
+        self.assertFalse(report.exists())
+        # the send after that looks again
+        self.assertEqual(self.gate("dropzip", "kaggle_scoliosis_yolov5").returncode, 0)
+        self.assertEqual(len(self.submitted()), 2)
+        # never while a fetch or a look at the set is live, since a zip half unpacked is missing members
+        (self.fake / "queue").write_text("", encoding="utf-8")
+        self.state_line("4242", "explore:kaggle_scoliosis_yolov5", "explore")
+        self.live("4242")
+        done = self.gate("dropzip", "kaggle_scoliosis_yolov5")
+        self.assertEqual(done.returncode, 75, done.stdout)
+        self.assertEqual(len(self.submitted()), 2)
+
+    def test_unpack_queues_once_then_prints_what_it_wrote(self):
+        shutil.copy(GRID / "fetch-xray.json", self.repo / "grid" / "fetch-xray.json")
+        # an id of no list, one with no raw folder yet, and a malformed send are refused and queue nothing
+        self.assertEqual(self.gate("unpack", "no_such_set").returncode, 64)
+        self.assertEqual(self.gate("unpack", "kaggle_scoliosis_yolov5").returncode, 2)
+        self.assertEqual(self.gate("unpack", "a", "b").returncode, 64)
+        (self.data / "kaggle_scoliosis_yolov5" / "raw").mkdir(parents=True)
+        self.assertEqual(self.gate("unpack", "kaggle_scoliosis_yolov5").returncode, 75)
+        self.environments_ready()
+        done = self.gate("unpack", "kaggle_scoliosis_yolov5")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        lines = self.submitted()
+        self.assertEqual(len(lines), 1, lines)
+        self.assertIn("--class batch --name unpack", lines[0])
+        self.assertIn("unpack.sbatch", lines[0])
+        self.assertIn(f"UNPACK_RAW={self.data}/kaggle_scoliosis_yolov5/raw", lines[0])
+        self.assertIn(f"DATA_ROOT={self.data}", lines[0])
+        job = self.recorded()["unpack"]
+        # while it is live, a second unpacking and a deletion of the set's zips are refused
+        self.live(job)
+        self.assertEqual(self.gate("unpack", "kaggle_scoliosis_yolov5").returncode, 75)
+        self.assertEqual(self.gate("dropzip", "kaggle_scoliosis_yolov5").returncode, 75)
+        self.assertEqual(len(self.submitted()), 1)
+        # once it has ended, its report is printed once and nothing is queued
+        (self.fake / "queue").write_text("", encoding="utf-8")
+        report = self.repo / "grid" / "logs" / "UNPACK-kaggle_scoliosis_yolov5.md"
+        report.write_text("# unpack kaggle_scoliosis_yolov5\n  written: 0.5 GB\n", encoding="utf-8")
+        done = self.gate("unpack", "kaggle_scoliosis_yolov5")
+        self.assertEqual(done.returncode, 0, done.stdout)
+        self.assertIn("  written: 0.5 GB", done.stdout)
+        self.assertEqual(len(self.submitted()), 1)
+        self.assertFalse(report.exists())
+        # never beside a deletion of the set's zips
+        self.state_line("4243", "dropzip:kaggle_scoliosis_yolov5", "dropzip")
+        self.live("4243")
+        self.assertEqual(self.gate("unpack", "kaggle_scoliosis_yolov5").returncode, 75)
+        self.assertEqual(len(self.submitted()), 1)
 
     def test_status_shows_the_sample_manifest_whole(self):
         logs = self.repo / "grid" / "logs"

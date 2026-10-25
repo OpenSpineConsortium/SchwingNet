@@ -48,6 +48,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
+from schwingnet.blocks import BlockError  # noqa: E402
+from schwingnet.blocks import parse as parse_blocks  # noqa: E402
 from schwingnet.flow import JobClass, JobRecord, JobSpec, RunRecord, Stage, Step, ledger_row, run_id  # noqa: E402
 from schwingnet.slurm import elapsed_seconds, is_finished, sbatch_script, submitted_of  # noqa: E402
 
@@ -137,13 +139,27 @@ def now():
     return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def block_words(words):
+    """The trainer's blocks as the command passes them, refused here before any step starts: a
+    word that names no block, and any space, since the command is split on spaces."""
+    if any(any(c.isspace() for c in word) for word in words):
+        raise FlowError("a block is KEY=VALUE with no space in it")
+    try:
+        parse_blocks(words)
+    except BlockError as error:
+        raise FlowError(f"blocks: {error}") from error
+    return "".join(f" --block {word}" for word in words)
+
+
 def job_specs(args):
     """What each step asks for; the plan a person approves before any job is submitted."""
     train_command = (
         f"python tools/train.py --catalog {args.catalog} --out {{run_dir}} --epochs {args.epochs}"
         f" --seed {args.seed} --size {args.size}"
         + (f" --weights {args.weights}" if args.weights else "")
+        + (f" --init {args.init}" if args.init else "")
         + (f" --max-frames {args.max_frames}" if args.max_frames else "")
+        + block_words(args.block)
     )
     evaluate_command = f"python tools/evaluate.py --catalog {args.catalog} --run {{run_dir}}"
     gpus = 1 if args.mode == "slurm" else 0
@@ -365,8 +381,10 @@ def add_run_arguments(parser):
     parser.add_argument("--size", type=int, default=64)
     parser.add_argument("--max-frames", type=int, default=0)
     parser.add_argument("--weights", default=None)
+    parser.add_argument("--init", default=None, help="a parent checkpoint to start the trainer from: an incremental run")
     parser.add_argument("--recipe", default=None, help="refuse the run unless every source it trains on is one this recipe in data/recipes/ takes")
     parser.add_argument("--hours", type=float, default=4.0, help="the training job's wall time")
+    parser.add_argument("--block", action="append", default=[], metavar="KEY=VALUE", help="one building block for the trainer (src/schwingnet/blocks.py), passed to tools/train.py; none gives version 1's training")
     # A step names hpcworker's gpu class and never a QoS: the site profile gives the GPU partitions,
     # the first with room, and the QoS they take, without which Slurm refused a GPU job (issue #74).
     # Only slurm mode submits; local mode runs each step here.

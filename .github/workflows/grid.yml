@@ -16,6 +16,9 @@
 # through the grid's ssh gate (a chain already queued or running is no failure), so it need not wait in
 # Slurm's queue between jobs; the job then waits for the chain's runner as it always does.
 name: Grid
+# the command in the run's title, so the research loop (tools/research_loop.py runs) and a person
+# see what each run ran before sending it again; a call from another workflow keeps that run's title
+run-name: "Grid: ${{ inputs.command }}"
 on:
   workflow_dispatch:
     inputs:
@@ -89,7 +92,7 @@ jobs:
           bash -c "$COMMAND" 2>&1 | tee -a grid.log
       - name: keep the log as an artifact
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ${{ inputs.artifact || 'grid' }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: grid.log

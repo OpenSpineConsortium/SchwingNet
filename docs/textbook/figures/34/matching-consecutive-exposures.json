@@ -1,0 +1,36 @@
+{
+  "id": "34/matching-consecutive-exposures",
+  "title": "Matching consecutive acquisitions",
+  "caption": "Row d of the 22 September figure set: two consecutive exposures sharing L2 and L3, the two windows and their overlap, and the one-body aliases either side of the true match with the search band of +/- 0.6 body. Its millimetres are not quotable; read it in body units.",
+  "chapter": "34",
+  "grade": "Reported",
+  "status": "a record, not a final value",
+  "source": {
+    "kind": "artifact",
+    "artifact": "artifacts/schwingnet-figures-jshksq/",
+    "artifact_url": "https://claude.ai/artifact/JSHksQ6Tgad2w8cwJmaDZT",
+    "made_by": "spinesurg-ct-nnunet (branch L6_Class): paper/rsnai/figures, drawing script not named on the page",
+    "commit": null,
+    "data": [
+      "artifacts/schwingnet-figures-jshksq/fig1_row3_overlap.png"
+    ],
+    "run": null,
+    "notes": "Copied from the artifact's fig1_row3_overlap.png, downscaled from 3,900 to 1,400 pixels wide. The page marks its millimetres under review: they come from verse_drr, whose row spacing was defective (checklist item A8), so only the body units are used."
+  },
+  "explore": [
+    {
+      "label": "The artifact",
+      "href": "artifacts/schwingnet-figures-jshksq/"
+    },
+    {
+      "label": "Chapter 10 on the linking window",
+      "href": "docs/textbook/10-counting-from-an-anchor-along-a-sweep.md"
+    }
+  ],
+  "rerun": {
+    "where": "none",
+    "command": null,
+    "cost": "the drawing script and its inputs are in spinesurg-ct-nnunet, not in this repository",
+    "needs_owner_word": true
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "id": "14/training-patients-per-level",
+  "title": "Why the variant classes fail",
+  "caption": "Distinct training patients per level on a log scale: L6 and T13 have a few hundred and a few dozen, and almost all were simulated from CT.",
+  "chapter": "14",
+  "grade": "Reported",
+  "status": "a record, not a final value",
+  "source": {
+    "kind": "artifact",
+    "artifact": "artifacts/naming-vertebrae-without-ct-hjy4vc/",
+    "artifact_url": "https://claude.ai/artifact/HJY4VC3VUVh7oNH4C7YEpR",
+    "made_by": null,
+    "commit": null,
+    "data": [],
+    "run": null,
+    "notes": "Inline SVG of the artifact page, captured by rendering. No result file is named."
+  },
+  "explore": [
+    {
+      "label": "The artifact's page and files",
+      "href": "artifacts/naming-vertebrae-without-ct-hjy4vc/"
+    },
+    {
+      "label": "The artifact on claude.ai",
+      "href": "https://claude.ai/artifact/HJY4VC3VUVh7oNH4C7YEpR"
+    }
+  ],
+  "rerun": {
+    "where": "none",
+    "command": null,
+    "cost": "nothing to run: no command is recorded for it",
+    "needs_owner_word": false
+  }
+}

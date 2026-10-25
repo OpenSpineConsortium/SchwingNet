@@ -84,7 +84,7 @@ def checkpoint_of(run):
 def load_torch_model(run, device):
     """The run's level stage in PyTorch, in eval mode on the device."""
     facts, weights = checkpoint_of(run)
-    model = train.build_model(None, device)
+    model = train.model_for(facts, device)
     model.load_state_dict(torch.load(weights, map_location=device, weights_only=True))
     model.eval()
     return model, facts

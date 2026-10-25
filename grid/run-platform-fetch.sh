@@ -90,6 +90,9 @@ ipcai2025_robotic_xray_drive|gdown|0.85|not stated on the file; to ask the autho
 fluorosam_weights_drive|gdown|1.0|per arcadelab/fluorosam; not stated on the file|open|1lJqVIuVFbdc9Bcmj17ac_cha-gW827Q6|NOTE=fluorosam_model_weights.pth, 1,002,351,026 bytes, the weights the FluoroSAM repository's README links, readable by anyone with the link; asked for by the 3D-to-X-ray work on 2026-10-22 as its comparison row
 kaggle_fracture_multiregion|kaggle-dataset|0.51|not stated; merged from three other Kaggle uploads, to map back by hand|gated|bmadushanirodrigo/fracture-multi-region-x-ray-data|TOKEN_FILE=~/.fluorocap/credentials.env NOTE=507,724,147 bytes and 10,580 images by Kaggle's dataset API on 2026-10-22; fetched to explore on the owner's yes of 2026-10-23, out of every split until its sources and licences are read (spine-datasets #23)
 kaggle_scoliosis_yolov5|kaggle-dataset|0.26|MIT in the licence field, CC BY 4.0 in the description|gated|salmankey/scoliosis-yolov5-annotated-spine-x-ray-dataset|TOKEN_FILE=~/.fluorocap/credentials.env NOTE=251,996,951 bytes by Kaggle's dataset API on 2026-10-22; fetched to explore on the owner's yes of 2026-10-23, every image hash-checked against the AASCE copy before any use (spine-datasets #24)
+hf_flexray_weights|hf-token|0|weights CC-BY-NC-4.0, code MIT; a benchmark row only, never in a SchwingNet network|gated|--repo VictorButoi/flexray --repo-type model|TOKEN_FILE=~/.hf/token.env NOTE=FleXray's open weights (MIT CSAIL, arXiv 2609.26756), every member with its checksums, for the bench word's two FleXray jobs; the owner's yes of 2026-10-25 (#287)
+hf_xvr_models|hf-token|3.7|MIT; a benchmark row only|gated|--repo eigenvivek/xvr --repo-type model|TOKEN_FILE=~/.hf/token.env NOTE=xvr's published registration models (arXiv 2503.16309), 3.7 GB by its README, for bench xvr_deepfluoro; the owner's yes of 2026-10-25 (#287)
+hf_xvr_data|hf-token|4.8|CC-BY-NC-ND-4.0; read-only, a benchmark row only|gated|--repo eigenvivek/xvr-data --repo-type dataset --include deepfluoro/*|TOKEN_FILE=~/.hf/token.env NOTE=xvr's DeepFluoro folder alone of its 4.8 GB data, what bench xvr_deepfluoro reads; the owner's yes of 2026-10-25 (#287)
 hf_fluoroseg|hf-token|2650|FluoroSeg data use terms, accepted by the owner on 2026-10-22|gated|--repo benjamindkilleen/fluoroseg --repo-type dataset|TOKEN_FILE=~/.hf/token.env NOTE=the whole set, about 2.65 TB of simulated X-rays with masks, on the owner's yes of 2026-10-22 (12.6 TB free of the 22 TB quota at the time, 6.8 TB of it promised to queued fetches)
 "
 # Never in the chain: the owner's own lines, printed at the end.
@@ -146,13 +149,20 @@ done <<< "$TABLE"
 DATA=$DATA_ROOT
 # shellcheck source=grid/size-rule.sh
 . "$REPO/grid/size-rule.sh"
-read -r free_gb free_from <<< "$(volume_free_gb "$VOLUME")"
-[ -n "$free_gb" ] || { echo "cannot read the free space of $VOLUME: neither its CephFS quota nor df answered"; exit 2; }
+# What the running fetches owe first and the room after it, in the order a fetch job's decision
+# reads them (grid/size-rule.sh, admit_fetch, #180); this line only reports them, since each job
+# decides when it starts.
 if owed=$(owed_by_running ""); then
   read -r owed_bytes owed_n owed_unsized <<< "$owed"
   owed="$(gb_up "$owed_bytes") GB of it owed to $(running_fetches "$owed_n")${owed_unsized:+, and the running fetch of $owed_unsized states no size}"
 else
   owed="what the running fetches owe not read (squeue did not answer)"
+fi
+read -r free_gb free_from <<< "$(volume_free_gb "$VOLUME")"
+if [ -z "$free_gb" ]; then
+  why=$(room_unread_words "$VOLUME" "neither its CephFS quota nor df answered")
+  echo "cannot read the free space of $VOLUME: $why"
+  exit 2
 fi
 echo "size budget: $n sources, $total_gb GB stated; $VOLUME has $free_gb GB $(free_space_words "$free_from"), $owed"
 echo "each job starts its fetch only if the exact size its source states fits the room then; one that does not lands nothing (grid/size-rule.sh)"

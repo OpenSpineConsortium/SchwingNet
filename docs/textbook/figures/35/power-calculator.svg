@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 560" width="900" height="560" role="img" aria-label="Persons needed against persons held, by task">
+<style>.bg{fill:#fcfcfb}text{fill:#52514e;font:11px system-ui,sans-serif}.head{fill:#0b0b0b;font-weight:600}.rule{stroke:#e4e3df}.ink3{fill:#8a8984}.need-line{stroke:#e34948}text.need-text{fill:#e34948}.t-paired{fill:#2a78d6}.o-paired{stroke:#2a78d6}.t-annotated{fill:#eb6834}.o-annotated{stroke:#eb6834}.t-synthetic{fill:#1baf7a}.o-synthetic{stroke:#1baf7a}.t-ct{fill:#eda100}.o-ct{stroke:#eda100}.t-unannotated{fill:#e87ba4}.o-unannotated{stroke:#e87ba4}@media (prefers-color-scheme:dark){.bg{fill:#1a1a19}text{fill:#c3c2b7;font:11px system-ui,sans-serif}.head{fill:#f0efec;font-weight:600}.rule{stroke:#34332f}.ink3{fill:#8f8e87}.need-line{stroke:#e66767}text.need-text{fill:#e66767}.t-paired{fill:#3987e5}.o-paired{stroke:#3987e5}.t-annotated{fill:#d95926}.o-annotated{stroke:#d95926}.t-synthetic{fill:#199e70}.o-synthetic{stroke:#199e70}.t-ct{fill:#c98500}.o-ct{stroke:#c98500}.t-unannotated{fill:#d55181}.o-unannotated{stroke:#d55181}}</style>
+<rect class="bg" width="900" height="560"/>
+<text x="10" y="16">Persons each task needs at the calculator's defaults (red mark) against the persons each corpus holds for it; log axis. Blue: real frames or films; grey: CT.</text>
+<line x1="330.0" x2="330.0" y1="40" y2="540" class="rule"/>
+<text x="330.0" y="35" text-anchor="middle">1</text>
+<line x1="430.0" x2="430.0" y1="40" y2="540" class="rule"/>
+<text x="430.0" y="35" text-anchor="middle">10</text>
+<line x1="530.0" x2="530.0" y1="40" y2="540" class="rule"/>
+<text x="530.0" y="35" text-anchor="middle">100</text>
+<line x1="630.0" x2="630.0" y1="40" y2="540" class="rule"/>
+<text x="630.0" y="35" text-anchor="middle">1,000</text>
+<line x1="730.0" x2="730.0" y1="40" y2="540" class="rule"/>
+<text x="730.0" y="35" text-anchor="middle">10,000</text>
+<line x1="830.0" x2="830.0" y1="40" y2="540" class="rule"/>
+<text x="830.0" y="35" text-anchor="middle">100,000</text>
+<text x="10" y="56" class="head">Detection recall: bodies found on a real C-arm frame</text>
+<line x1="568.0" x2="568.0" y1="46" y2="114" class="need-line" stroke-width="2"/>
+<text x="572.0" y="56" class="need-text">needs 240 (p 0.805, margin 0.05, DE 4, m 4)</text>
+<text x="324" y="74" text-anchor="end">C-ArmLSpine cases</text>
+<rect x="330" y="65" width="217.3" height="12" rx="2" class="t-paired" opacity="1"/>
+<text x="551.3" y="74">149</text>
+<text x="324" y="92" text-anchor="end">DeepFluoro specimens</text>
+<rect x="330" y="83" width="77.8" height="12" rx="2" class="t-paired" opacity="1"/>
+<text x="411.8" y="92">6</text>
+<text x="324" y="110" text-anchor="end">LUMOS patients</text>
+<rect x="330" y="101" width="290.5" height="12" rx="2" class="t-paired" opacity="0.45"/>
+<text x="624.5" y="110">803</text>
+<text x="10" y="128" class="head">Level naming accuracy: each body named right on a real frame</text>
+<line x1="584.7" x2="584.7" y1="118" y2="240" class="need-line" stroke-width="2"/>
+<text x="588.7" y="128" class="need-text">needs 352 (p 0.964, margin 0.02, DE 4, m 4)</text>
+<text x="324" y="146" text-anchor="end">C-ArmLSpine cases</text>
+<rect x="330" y="137" width="217.3" height="12" rx="2" class="t-paired" opacity="1"/>
+<text x="551.3" y="146">149</text>
+<text x="324" y="164" text-anchor="end">BUU-LSPINE persons</text>
+<rect x="330" y="155" width="355.6" height="12" rx="2" class="t-paired" opacity="1"/>
+<text x="689.6" y="164">3,600</text>
+<text x="324" y="182" text-anchor="end">NHANES II landmarked persons</text>
+<rect x="330" y="173" width="256.1" height="12" rx="2" class="t-paired" opacity="1"/>
+<text x="590.1" y="182">364</text>
+<text x="324" y="200" text-anchor="end">MrOS men</text>
+<rect x="330" y="191" width="377.8" height="12" rx="2" class="t-paired" opacity="0.45"/>
+<text x="711.8" y="200">5,994</text>
+<text x="324" y="218" text-anchor="end">SOF women</text>
+<rect x="330" y="209" width="398.7" height="12" rx="2" class="t-paired" opacity="0.45"/>
+<text x="732.7" y="218">9,700</text>
+<text x="324" y="236" text-anchor="end">Bournemouth cervical people</text>
+<rect x="330" y="227" width="179.9" height="12" rx="2" class="t-paired" opacity="0.45"/>
+<text x="513.9" y="236">63</text>
+<text x="10" y="254" class="head">Transitional naming: an L6 or T13 named right on a real frame</text>
+<line x1="516.9" x2="516.9" y1="244" y2="312" class="need-line" stroke-width="2"/>
+<text x="520.9" y="254" class="need-text">needs 74 (p 0.95, bound 0.85, power 0.8, DE 1, m 1)</text>
+<text x="324" y="272" text-anchor="end">C-ArmLSpine real L6 persons</text>
+<rect x="330" y="263" width="47.7" height="12" rx="2" class="t-paired" opacity="1"/>
+<text x="381.7" y="272">3</text>
+<text x="324" y="290" text-anchor="end">COBRA2026 unverified at-risk persons</text>
+<rect x="330" y="281" width="84.5" height="12" rx="2" class="t-paired" opacity="1"/>
+<text x="418.5" y="290">7</text>
+<text x="324" y="308" text-anchor="end">CT at-risk test persons</text>
+<rect x="330" y="299" width="170.8" height="12" rx="2" class="ink3" opacity="1"/>
+<text x="504.8" y="308">51</text>
+<text x="10" y="326" class="head">Counting exactness: the whole column counted right in a person</text>
+<line x1="563.6" x2="563.6" y1="316" y2="420" class="need-line" stroke-width="2"/>
+<text x="567.6" y="326" class="need-text">needs 217 (p 0.95, bound 0.9, power 0.8, DE 1, m 1)</text>
+<text x="324" y="344" text-anchor="end">CTSpinoPelvic1K countable people</text>
+<rect x="330" y="335" width="289.7" height="12" rx="2" class="ink3" opacity="1"/>
+<text x="623.7" y="344">789</text>
+<text x="324" y="362" text-anchor="end">TotalSegmentator v2 countable people</text>
+<rect x="330" y="353" width="268.4" height="12" rx="2" class="ink3" opacity="1"/>
+<text x="602.4" y="362">483</text>
+<text x="324" y="380" text-anchor="end">COBRA2026 countable people</text>
+<rect x="330" y="371" width="263.8" height="12" rx="2" class="ink3" opacity="1"/>
+<text x="597.8" y="380">435</text>
+<text x="324" y="398" text-anchor="end">Screened acquisition collections</text>
+<rect x="330" y="389" width="400.3" height="12" rx="2" class="ink3" opacity="1"/>
+<text x="734.3" y="398">10,060</text>
+<text x="324" y="416" text-anchor="end">C-ArmLSpine cases</text>
+<rect x="330" y="407" width="217.3" height="12" rx="2" class="t-paired" opacity="1"/>
+<text x="551.3" y="416">149</text>
+<text x="10" y="434" class="head">Anomaly classification: a transitional spine told from an ordinary one</text>
+<line x1="539.3" x2="539.3" y1="424" y2="528" class="need-line" stroke-width="2"/>
+<text x="543.3" y="434" class="need-text">needs 124 (0.9 against 0.7, power 0.8, DE 1, m 1)</text>
+<text x="324" y="452" text-anchor="end">Registry L6 persons</text>
+<rect x="330" y="443" width="216.4" height="12" rx="2" class="ink3" opacity="1"/>
+<text x="550.4" y="452">146</text>
+<text x="324" y="470" text-anchor="end">Registry T13 persons</text>
+<rect x="330" y="461" width="114.6" height="12" rx="2" class="ink3" opacity="1"/>
+<text x="448.6" y="470">14</text>
+<text x="324" y="488" text-anchor="end">CTSpinoPelvic1K L6 cases</text>
+<rect x="330" y="479" width="125.5" height="12" rx="2" class="ink3" opacity="1"/>
+<text x="459.5" y="488">18</text>
+<text x="324" y="506" text-anchor="end">BUU-LSPINE flagged anomalous films</text>
+<rect x="330" y="497" width="215.8" height="12" rx="2" class="t-paired" opacity="1"/>
+<text x="549.8" y="506">144</text>
+<text x="324" y="524" text-anchor="end">C-ArmLSpine real L6 persons</text>
+<rect x="330" y="515" width="47.7" height="12" rx="2" class="t-paired" opacity="1"/>
+<text x="381.7" y="524">3</text>
+<text x="10" y="554">The interactive page recomputes the need for any inputs. python3 tools/data_figures.py write</text>
+</svg>

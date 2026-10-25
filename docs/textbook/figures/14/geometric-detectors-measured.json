@@ -1,0 +1,44 @@
+{
+  "id": "14/geometric-detectors-measured",
+  "title": "Geometric detectors, measured",
+  "caption": "AUC per geometric index for six-lumbar and four-lumbar against ordinary, lateral and AP, and the Wigh index of the lowest body on ordinary lateral films.",
+  "chapter": "14",
+  "grade": "Reported",
+  "status": "a record, not a final value",
+  "source": {
+    "kind": "artifact",
+    "artifact": "artifacts/naming-vertebrae-without-an-anchor-3dfzmh/",
+    "artifact_url": "https://claude.ai/artifact/3DFZMHt4oAnrDVHwxdZnyf",
+    "made_by": "spinesurg-ct-nnunet:tools/make_feasibility_figures.py",
+    "commit": null,
+    "data": [
+      "~/model_night (the feasibility results, grid)"
+    ],
+    "run": "grid jobs 40321409 and 40321779 (named by the artifact)",
+    "notes": "Its size matches no row of spine-program's manifests; it sits beside the other feasibility figures in the artifact's figures/ folder. The artifact names tools/make_feasibility_figures.py and jobs 40321409 and 40321779; spine-program's RECIPES.md gives the command, and FEASIBILITY_REPRODUCE.md says one job, slurm/reproduce_feasibility.sh, recomputes every figure from raw inputs. The label-defined headline numbers of this report were superseded by the pixel-defined interior windows (stage 8). The builder's commit is not recorded."
+  },
+  "explore": [
+    {
+      "label": "The artifact's page and files",
+      "href": "artifacts/naming-vertebrae-without-an-anchor-3dfzmh/"
+    },
+    {
+      "label": "The artifact on claude.ai",
+      "href": "https://claude.ai/artifact/3DFZMHt4oAnrDVHwxdZnyf"
+    },
+    {
+      "label": "How every feasibility number is reproduced",
+      "href": "https://github.com/OpenSpineConsortium/spine-program/blob/88398813308aba7dc2b4ee823385ea0ca2665f0d/01_carm_level_detection/docs/FEASIBILITY_REPRODUCE.md"
+    },
+    {
+      "label": "The recipe",
+      "href": "https://github.com/OpenSpineConsortium/spine-program/blob/88398813308aba7dc2b4ee823385ea0ca2665f0d/07_plain_film_level_id/docs/handoff/RECIPES.md"
+    }
+  ],
+  "rerun": {
+    "where": "grid",
+    "command": "python tools/make_feasibility_figures.py --results ~/model_night --out ~/model_night/figures_feasibility",
+    "cost": "CPU, in a job on the grid, over the stored results",
+    "needs_owner_word": true
+  }
+}

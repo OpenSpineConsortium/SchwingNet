@@ -1,0 +1,815 @@
+name: Synthesis
+
+# Keeps the synthesis of the artifacts (artifacts/_synthesis/) current as the artifacts, the
+# research notes and the dataset records change: a change is checked within a day, within minutes
+# where a person or an App merged it, and read by the run that finds it where that run may read,
+# not by a day of reads by hand (issues #166 and #176). artifacts/_synthesis/work/RESUME.md says how
+# it works; in short:
+#
+# The look runs on a push to main that changes an artifact, a research note or a dataset record,
+# daily at 06:41 UTC, and on Run workflow. A push starts it only when a person or an App made it:
+# GitHub starts no workflow for an event the workflow token caused, and automerge.yml arms
+# GitHub's auto-merge with that token, so a merge auto-merge makes starts none, and the daily run
+# looks at what it landed, as it looks at symphony-template's artifacts, which change in another
+# repository. A push's own run does one thing, the job relay: it starts this workflow on main by
+# Run workflow with relayed set to push, and that run looks and reads, admitted as the push would
+# have been (issue #274), since claude-code-action takes no push event and stops at "Unsupported
+# event type: push", while GitHub starts a run for a Run workflow the workflow token asks for. A
+# scheduled run and the stand-in are both started by the Actions bot, which every session's step
+# names in allowed_bots, since the action refuses a run no person started unless its actor is
+# listed there. The look runs no Claude. It lays the records of the open synthesis pull request the App
+# opened on main (work/tools/synth_base.sh), finds what changed since the stamp
+# (work/out/state.json), checks every verdict's quotes against today's texts and every text
+# against the concept ledger (work/tools/synth.py status), and writes what it found into the open
+# issue labelled synthesis, opening one only when there is something to say and closing it once
+# the report finds nothing at all. Research notes and dataset records are checked by script
+# alone: only an artifact, a verdict or a concept check becomes a Claude read, and a check no
+# read settles is one a person takes as seen (the issue says how).
+#
+# Where reads wait and the run may read (below), Claude sessions read: one per new or changed
+# artifact, at most three a run, reading it into its record and, as the finder, setting it against
+# its cluster and the numbers table; then, for every verdict item, at most 24 planned a run and
+# whatever the finders kept, up to 20 each, a skeptic, a re-checker told to overturn the skeptic's
+# verdict and its hint, and, where the re-checker disagreed, a judge (work/briefs/), the planned
+# items and each finder's candidates in batches of their own. The join takes whatever came back
+# into the records, renders the pages again, and stamps the artifacts it read, the concept checks
+# it settled and every dataset record's hash as it stands, so an artifact a run did not read waits
+# for the next; one whose read keeps failing is read again by each run, which the day's cap
+# bounds. A run whose sessions bring nothing back writes nothing and fails, and still counts
+# toward the day. Otherwise the run adds what it read to the one open synthesis pull request, or
+# opens it, from a branch synthesis/<run> that is always one commit on main, made again by each
+# run that writes to it: a push to it never carries a change of main's, a workflow file's least of
+# all, which the App's token may not push, and it changes only the files a join writes, the
+# records, the pages and the stamp. That branch is the only one the run pushes to, with
+# --force-with-lease at the head it read, and only after checking that nobody changed the records
+# while it read. The pull request needs the owner's tap on owner-ok, which a bot's pull request
+# always asks for, and merges by itself once the checks are green (automerge.yml); each later
+# run's push asks for the tap again. Where main's rules do not require owner-ok, the run opens it
+# as a draft, and turns it back into one on each later push, so a person marks it ready. A Reject
+# is kept: no run builds on a pull request whose owner-ok failed on its head.
+#
+# No job here runs code that is not on main beside a secret: the tools are main's, with only the
+# open pull request's records laid on them, and a pull request that changes anything else is not
+# built on. Which secrets are set is learnt by the job values, which checks nothing out and runs
+# nothing of the repository's (ci.yml says why), so the look never names the Claude token. The
+# App's key is named in the look, which mints a token that reads symphony-template and ships its
+# artifacts to the sessions with the plan, and in the join, which pushes; the sessions' own jobs
+# name the Claude token alone.
+#
+# A run reads only when all of these hold, and its job summary names the first that does not:
+#   - the variable SYNTHESIS_READS is not off (set it to off to stop every read; the look still
+#     runs and the issue still says what waits);
+#   - crowd mode is off (the variable CLAUDE_CROWD), since in crowd mode no workflow runs Claude:
+#     there every job of this workflow is skipped, the look's too, as the crowd check holds every
+#     job of a workflow that reaches Claude to (tests/test_crowd_check.py);
+#   - the repository secret CLAUDE_CODE_OAUTH_TOKEN is set. It is the token `claude setup-token`
+#     makes, so the reads run on that account's plan limits and bill no API. The owner's choice
+#     of 2026-10-23, that these reads start on their own, needs it, as an exception to the
+#     project's rule that no Claude credential is kept anywhere; and since it is the
+#     repository's one Claude token, @claude (claude.yml), the coordinator (coordinator.yml,
+#     weekly and on an epic) and any worker registered in Actions run on it too once it is set;
+#   - the SymphonyBoard App's variable SDLC_APP_ID and secret SDLC_APP_PRIVATE_KEY are set, since
+#     its token reads symphony-template and opens the pull request, and a pull request GITHUB_TOKEN
+#     opens starts no checks;
+#   - symphony-template was checked out, since a stamp made without it would take its checks as
+#     gone;
+#   - the open synthesis pull request still goes onto main cleanly, changes only the files a join
+#     writes, and owner-ok has not failed on its head;
+#   - fewer runs than the variable SYNTHESIS_READS_PER_DAY (10 unless it says otherwise, 50 at
+#     most) have read today, in UTC, by the marker artifact synthesis-reads each reading run keeps;
+#   - the last three runs that read did not all fail, the last less than six hours ago, so a token
+#     at its limit or a broken brief does not spend the day; Run workflow by hand always tries,
+#     and a push's stand-in does not.
+#
+# The sessions run with the user's settings alone (--setting-sources user), after every CLAUDE.md,
+# CLAUDE.local.md, .mcp.json and .claude folder of the checkouts is deleted, so no repository
+# instruction or hook loads; they read inside the checkout, which needs no rule, and every tool
+# that writes, runs a command, fetches or starts another session is denied, as are the checkouts'
+# .git folders, where the action writes its token. Each answers in a JSON schema
+# (work/tools/synth_schemas.py), and the join refuses an answer, a record, a verdict or a finder's
+# candidate, holding an e-mail address, a phone number or a credential's shape, keeps a candidate
+# only where the script finds its quotes in the artifacts it names, and checks everything it is
+# about to write once more before it writes. What each session spent is kept as a
+# symphony-usage-* artifact, as the other Claude workflows keep theirs, for metrics.yml. On a
+# private repository the runner minutes count against the account's Actions minutes.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "artifacts/**"
+      - "!artifacts/_synthesis/**"
+      - "docs/research/**"
+      - "data/sources/**"
+  schedule:
+    - cron: "41 6 * * *"
+  workflow_dispatch:
+    inputs:
+      relayed:
+        description: "Leave empty. A push's run sets it to push, and the run is admitted as that push would be."
+        type: string
+        required: false
+        default: ""
+
+# Nothing at the top; each job asks for what it needs.
+permissions: {}
+
+# One run at a time, so two joins never write over each other; a run waiting behind another reads
+# what the other left. A push's relay has a group of its own, so it dispatches at once instead of
+# waiting behind a run that reads.
+concurrency:
+  group: ${{ github.event_name == 'push' && format('synthesis-relay-{0}', github.run_id) || 'synthesis' }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  TOOLS: artifacts/_synthesis/work/tools
+
+jobs:
+  relay:
+    # A push's run starts this workflow on main by Run workflow, which the sessions can run in,
+    # and does nothing else: no checkout, no secret, and the one right a dispatch needs.
+    if: vars.CLAUDE_CROWD != 'true' && github.event_name == 'push' && github.repository == 'OpenSpineConsortium/SchwingNet' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write # the dispatch of this workflow, and nothing else
+    steps:
+      - name: Start this workflow on main, standing in for the push
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: gh workflow run synthesis.yml --repo "$REPO" --ref main -f relayed=push
+
+  values:
+    # Which secrets are set, learnt by a job that checks nothing out, runs nothing of the
+    # repository's and uses no action, so no job that runs the synthesis's tools names a secret
+    # only to compare it with nothing (ci.yml's values says why).
+    if: vars.CLAUDE_CROWD != 'true' && github.event_name != 'push' && github.repository == 'OpenSpineConsortium/SchwingNet' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    outputs:
+      token: ${{ steps.set.outputs.token }}
+      app: ${{ steps.set.outputs.app }}
+    steps:
+      - name: Whether the Claude token and the App's key are set
+        id: set
+        env:
+          TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' }}
+          APP: ${{ vars.SDLC_APP_ID != '' && secrets.SDLC_APP_PRIVATE_KEY != '' }}
+        run: |
+          echo "token=$TOKEN" >> "$GITHUB_OUTPUT"
+          echo "app=$APP" >> "$GITHUB_OUTPUT"
+
+  look:
+    needs: values
+    if: vars.CLAUDE_CROWD != 'true' && github.event_name != 'push' && github.repository == 'OpenSpineConsortium/SchwingNet' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read # the checkout
+      issues: write # the issue labelled synthesis, and its label
+      pull-requests: read # the open synthesis pull request, whose reads the look builds on
+      checks: read # whether owner-ok failed on that pull request's head
+      actions: read # the day's marks and the last runs, for whether this run may read
+    env:
+      SYNTH_TEXT: ${{ github.workspace }}/synth-text
+      SYNTH_SYMPHONY: ${{ github.workspace }}/symphony-template
+    outputs:
+      admit: ${{ steps.admit.outputs.admit }}
+      reads: ${{ steps.plan.outputs.reads }}
+      main: ${{ steps.base.outputs.main }}
+      start: ${{ steps.base.outputs.start }}
+      tree: ${{ steps.base.outputs.tree }}
+      synthesis: ${{ steps.base.outputs.synthesis }}
+      symphony: ${{ steps.symphony.outputs.head }}
+      model: ${{ steps.settings.outputs.model }}
+      effort: ${{ steps.settings.outputs.effort }}
+      fallback: ${{ steps.settings.outputs.fallback }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # the merge base with the open pull request's head, and the old trees a changed
+          # artifact's lines are compared with
+          fetch-depth: 0
+          persist-credentials: false
+      - name: The App's token to read symphony-template, and the App's name
+        id: symphony-token
+        if: vars.SDLC_APP_ID != ''
+        continue-on-error: true
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          app-id: ${{ vars.SDLC_APP_ID }}
+          private-key: ${{ secrets.SDLC_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: symphony-template
+          permission-contents: read
+      - name: Lay the records of the App's open synthesis pull request on main
+        id: base
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SYNTH_APP: ${{ steps.symphony-token.outputs.app-slug }}
+        # main's copy, run from outside the checkout, since the script checks out another commit
+        run: |
+          cp "$TOOLS/synth_base.sh" "$RUNNER_TEMP/synth_base.sh"
+          bash "$RUNNER_TEMP/synth_base.sh" look "$REPO" | tee -a "$GITHUB_OUTPUT"
+      - name: Check out symphony-template, whose artifacts the synthesis reads too
+        id: symphony-checkout
+        if: steps.symphony-token.outputs.token != ''
+        continue-on-error: true
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ github.repository_owner }}/symphony-template
+          token: ${{ steps.symphony-token.outputs.token }}
+          path: symphony-template
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Which symphony-template the run reads
+        id: symphony
+        env:
+          OUTCOME: ${{ steps.symphony-checkout.outcome }}
+        run: |
+          if [ "$OUTCOME" = success ]; then
+            echo "head=$(git -C symphony-template rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+            echo "without=" >> "$GITHUB_OUTPUT"
+          else
+            rm -rf symphony-template
+            echo "::notice::symphony-template could not be checked out (the App's variable or key is missing, or its token was refused), so this run checks SchwingNet's artifacts alone, makes no concept check and reads nothing"
+            echo "head=" >> "$GITHUB_OUTPUT"
+            echo "without=symphony-template" >> "$GITHUB_OUTPUT"
+          fi
+      - name: The model, effort and fallback the Tokens tab's main tile sets
+        id: settings
+        env:
+          SETTINGS: ${{ vars.SYMPHONY_CLAUDE_SETTINGS }}
+        # a variable that does not hold together leaves Claude's own defaults
+        run: python3 tools/pool.py settings --slot main --settings "$SETTINGS" >> "$GITHUB_OUTPUT" || true
+      - name: What changed since the stamp
+        id: status
+        env:
+          WITHOUT: ${{ steps.symphony.outputs.without }}
+          # main's commit, which the report names: where an open synthesis pull request's records
+          # are laid on main, the checkout's HEAD is a commit made on this runner alone
+          SYNTH_MAIN: ${{ steps.base.outputs.main }}
+        run: |
+          without=()
+          if [ -n "$WITHOUT" ]; then without=(--without "$WITHOUT"); fi
+          python3 -I -B "$TOOLS/synth.py" status --json "$RUNNER_TEMP/status.json" "${without[@]}"
+          python3 -I -B "$TOOLS/synth.py" report "$RUNNER_TEMP/report.md" --status "$RUNNER_TEMP/status.json" >> "$GITHUB_OUTPUT"
+          cat "$RUNNER_TEMP/report.md" >> "$GITHUB_STEP_SUMMARY"
+      - name: Write what the run found into the issue labelled synthesis
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          ANYTHING: ${{ steps.status.outputs.anything }}
+          MARKER: ${{ steps.status.outputs.marker }}
+        run: |
+          gh label create synthesis --repo "$REPO" --color 5319E7 \
+            --description "What the synthesis of the artifacts has not read yet (synthesis.yml)" >/dev/null 2>&1 || true
+          number=$(gh issue list --repo "$REPO" --label synthesis --state open --limit 1 --json number --jq '.[0].number // empty')
+          first=''
+          if [ -n "$number" ]; then
+            first=$(gh issue view "$number" --repo "$REPO" --json body --jq '.body | split("\n") | .[0] | rtrimstr("\r")')
+          fi
+          if [ "$ANYTHING" = true ] && [ -z "$number" ]; then
+            gh issue create --repo "$REPO" --label synthesis --title "Synthesis: what changed since the artifacts were read" \
+              --body-file "$RUNNER_TEMP/report.md"
+          elif [ -n "$number" ] && [ "$first" != "<!-- synthesis-report: $MARKER -->" ]; then
+            gh issue edit "$number" --repo "$REPO" --body-file "$RUNNER_TEMP/report.md"
+          fi
+          if [ "$ANYTHING" != true ] && [ -n "$number" ]; then
+            gh issue close "$number" --repo "$REPO" --reason completed
+          fi
+      - name: Whether this run may read
+        id: admit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          # a push's stand-in is admitted as the push, so three failed runs still pause it
+          EVENT: ${{ inputs.relayed == 'push' && 'push' || github.event_name }}
+          SWITCH: ${{ vars.SYNTHESIS_READS }}
+          CROWD: ${{ vars.CLAUDE_CROWD }}
+          CAP: ${{ vars.SYNTHESIS_READS_PER_DAY }}
+          HAVE_TOKEN: ${{ needs.values.outputs.token }}
+          HAVE_APP: ${{ needs.values.outputs.app }}
+          WITHOUT: ${{ steps.symphony.outputs.without }}
+          CONFLICT: ${{ steps.base.outputs.conflict }}
+          FOREIGN: ${{ steps.base.outputs.foreign }}
+          REJECTED: ${{ steps.base.outputs.rejected }}
+        run: |
+          set -euo pipefail
+          # every page of the marks, and then the runs the last of them name, each by its id
+          gh api --paginate --slurp "repos/$REPO/actions/artifacts?name=synthesis-reads&per_page=100" > "$RUNNER_TEMP/marks.json"
+          python3 -I -B "$TOOLS/synth_actions.py" marked --marks "$RUNNER_TEMP/marks.json" > "$RUNNER_TEMP/marked.txt"
+          while read -r id; do
+            if [ -n "$id" ]; then gh api "repos/$REPO/actions/runs/$id"; fi
+          done < "$RUNNER_TEMP/marked.txt" | jq -s '{workflow_runs: .}' > "$RUNNER_TEMP/runs.json"
+          python3 -I -B "$TOOLS/synth_actions.py" admit --status "$RUNNER_TEMP/status.json" --marks "$RUNNER_TEMP/marks.json" \
+            --runs "$RUNNER_TEMP/runs.json" --event "$EVENT" --switch "$SWITCH" --crowd "$CROWD" --token "$HAVE_TOKEN" \
+            --app "$HAVE_APP" --without "$WITHOUT" --conflict "$CONFLICT" --foreign "$FOREIGN" --rejected "$REJECTED" \
+            --cap "$CAP" --words "$RUNNER_TEMP/words.md" >> "$GITHUB_OUTPUT"
+          cat "$RUNNER_TEMP/words.md" >> "$GITHUB_STEP_SUMMARY"
+      - name: Plan the reads
+        id: plan
+        if: steps.admit.outputs.admit == 'true'
+        run: |
+          python3 -I -B "$TOOLS/synth.py" plan "$GITHUB_WORKSPACE/synth-plan"
+          python3 -I -B "$TOOLS/synth_actions.py" matrix "$GITHUB_WORKSPACE/synth-plan" >> "$GITHUB_OUTPUT"
+      - name: Keep the plan, the texts and symphony-template's artifacts for the reads
+        # the sessions' jobs read symphony-template from here, so none of them needs the App's key
+        if: steps.admit.outputs.admit == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: synthesis-plan
+          path: |
+            synth-plan/
+            synth-text/
+            symphony-template/artifacts/
+          retention-days: 2
+          if-no-files-found: error
+      - name: Mark the run as one that reads, for the day's count
+        if: steps.admit.outputs.admit == 'true'
+        env:
+          WHY: ${{ steps.admit.outputs.why }}
+        run: printf '%s\n' "$WHY" > "$RUNNER_TEMP/synthesis-reads.txt"
+      - name: Keep the mark
+        if: steps.admit.outputs.admit == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: synthesis-reads
+          path: ${{ runner.temp }}/synthesis-reads.txt
+          retention-days: 2
+          if-no-files-found: error
+
+  read:
+    # One leg per new or changed artifact: its reader and finder.
+    needs: look
+    if: needs.look.outputs.admit == 'true' && needs.look.outputs.reads != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        unit: ${{ fromJSON(needs.look.outputs.reads) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.look.outputs.main }}
+          persist-credentials: false
+      - name: The plan, the texts and symphony-template's artifacts as the look read them
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: synthesis-plan
+          path: ${{ github.workspace }}
+      - name: The reader's arguments and brief, with no repository instruction left to load
+        id: brief
+        env:
+          K: ${{ matrix.unit }}
+          MODEL: ${{ needs.look.outputs.model }}
+          EFFORT: ${{ needs.look.outputs.effort }}
+          FALLBACK: ${{ needs.look.outputs.fallback }}
+        run: |
+          {
+            python3 -I -B "$TOOLS/synth_actions.py" args read --model "$MODEL" --fallback "$FALLBACK" --effort "$EFFORT"
+            python3 -I -B "$TOOLS/synth_actions.py" prompt read "$GITHUB_WORKSPACE/synth-plan" none "$K"
+          } >> "$GITHUB_OUTPUT"
+          find . \( -name CLAUDE.md -o -name CLAUDE.local.md -o -name .mcp.json \) -type f -delete
+          find . -name .claude -type d -prune -exec rm -rf {} +
+          rm -f "$RUNNER_TEMP/claude-execution-output.json"
+      - name: Read the artifact
+        id: claude
+        continue-on-error: true
+        uses: anthropics/claude-code-action@34968b5981d5d170904281aa3df6f3c0d4a28855 # v1.0.249
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ github.token }}
+          # the scheduled run and a push's stand-in are the Actions bot's, not a person's
+          allowed_bots: "github-actions"
+          prompt: ${{ steps.brief.outputs.prompt }}
+          claude_args: ${{ steps.brief.outputs.args }}
+      - name: Take the reader's answer
+        if: always() && steps.claude.outcome != 'skipped'
+        env:
+          K: ${{ matrix.unit }}
+          EXECUTION_FILE: ${{ steps.claude.outputs.execution_file }}
+        run: >-
+          python3 -I -B "$TOOLS/synth_actions.py" answer read "$K"
+          "${EXECUTION_FILE:-$RUNNER_TEMP/claude-execution-output.json}" "$RUNNER_TEMP/answers"
+      - name: Record what the session spent, for the field metrics
+        if: always() && steps.claude.outcome != 'skipped'
+        continue-on-error: true
+        env:
+          EXECUTION_FILE: ${{ steps.claude.outputs.execution_file }}
+          SDLC_METRICS: ${{ vars.SDLC_METRICS }}
+        run: >-
+          python3 tools/usage.py actions --root "$GITHUB_WORKSPACE"
+          --execution-file "${EXECUTION_FILE:-$RUNNER_TEMP/claude-execution-output.json}"
+          --out "$RUNNER_TEMP/symphony-usage/record.json" --workflow synthesis --job read
+      - name: Keep the record where the metrics workflow reads it
+        if: always() && steps.claude.outcome != 'skipped'
+        continue-on-error: true
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: symphony-usage-${{ github.run_id }}-${{ github.run_attempt }}-synthesis-read-${{ matrix.unit }}
+          path: ${{ runner.temp }}/symphony-usage/record.json
+          if-no-files-found: ignore
+      - name: Keep the answer for the join
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: synthesis-answers-read-${{ matrix.unit }}
+          path: ${{ runner.temp }}/answers/
+          retention-days: 2
+          if-no-files-found: ignore
+
+  batch:
+    # The skeptics' batches: the planned verdict items, and the candidates the finders found.
+    needs: [look, read]
+    if: vars.CLAUDE_CROWD != 'true' && !cancelled() && needs.look.result == 'success' && needs.look.outputs.admit == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    env:
+      # the candidates' quotes are checked against the texts and the folders before any skeptic
+      SYNTH_TEXT: ${{ github.workspace }}/synth-text
+      SYNTH_SCHWINGNET: ${{ github.workspace }}
+      SYNTH_SYMPHONY: ${{ github.workspace }}/symphony-template
+    outputs:
+      batches: ${{ steps.batch.outputs.batches }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.look.outputs.main }}
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: synthesis-plan
+          path: ${{ github.workspace }}
+      - name: The readers' answers, those that came back
+        continue-on-error: true
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: synthesis-answers-read-*
+          merge-multiple: true
+          path: ${{ github.workspace }}/synth-answers
+      - name: Make the batches
+        id: batch
+        run: >-
+          python3 -I -B "$TOOLS/synth_actions.py" batch "$GITHUB_WORKSPACE/synth-plan" "$GITHUB_WORKSPACE/synth-answers"
+          "$GITHUB_WORKSPACE/synth-batches" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: synthesis-batches
+          path: synth-batches/
+          retention-days: 2
+          if-no-files-found: error
+
+  verdicts:
+    # One leg per batch: the skeptic, the re-checker, and the judge where they disagree.
+    needs: [look, batch]
+    if: vars.CLAUDE_CROWD != 'true' && !cancelled() && needs.batch.result == 'success' && needs.batch.outputs.batches != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        batch: ${{ fromJSON(needs.batch.outputs.batches) }}
+    env:
+      B: ${{ matrix.batch }}
+      PLAN: ${{ github.workspace }}/synth-plan
+      BATCHES: ${{ github.workspace }}/synth-batches
+      MODEL: ${{ needs.look.outputs.model }}
+      FALLBACK: ${{ needs.look.outputs.fallback }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.look.outputs.main }}
+          persist-credentials: false
+      - name: The plan, the texts and symphony-template's artifacts as the look read them
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: synthesis-plan
+          path: ${{ github.workspace }}
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: synthesis-batches
+          path: ${{ github.workspace }}/synth-batches
+      - name: The skeptic's arguments and brief, with no repository instruction left to load
+        id: skeptic-brief
+        run: |
+          {
+            python3 -I -B "$TOOLS/synth_actions.py" args skeptic --model "$MODEL" --fallback "$FALLBACK"
+            python3 -I -B "$TOOLS/synth_actions.py" prompt skeptic "$PLAN" "$BATCHES" "$B"
+          } >> "$GITHUB_OUTPUT"
+          find . \( -name CLAUDE.md -o -name CLAUDE.local.md -o -name .mcp.json \) -type f -delete
+          find . -name .claude -type d -prune -exec rm -rf {} +
+          rm -f "$RUNNER_TEMP/claude-execution-output.json"
+      - name: The skeptic reads the batch
+        id: skeptic
+        continue-on-error: true
+        uses: anthropics/claude-code-action@34968b5981d5d170904281aa3df6f3c0d4a28855 # v1.0.249
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ github.token }}
+          # the scheduled run and a push's stand-in are the Actions bot's, not a person's
+          allowed_bots: "github-actions"
+          prompt: ${{ steps.skeptic-brief.outputs.prompt }}
+          claude_args: ${{ steps.skeptic-brief.outputs.args }}
+      - name: Take the skeptic's answer
+        if: always() && steps.skeptic.outcome != 'skipped'
+        env:
+          EXECUTION_FILE: ${{ steps.skeptic.outputs.execution_file }}
+        run: >-
+          python3 -I -B "$TOOLS/synth_actions.py" answer skeptic "$B"
+          "${EXECUTION_FILE:-$RUNNER_TEMP/claude-execution-output.json}" "$RUNNER_TEMP/answers"
+      - name: Record what the skeptic spent
+        if: always() && steps.skeptic.outcome != 'skipped'
+        continue-on-error: true
+        env:
+          EXECUTION_FILE: ${{ steps.skeptic.outputs.execution_file }}
+          SDLC_METRICS: ${{ vars.SDLC_METRICS }}
+        run: >-
+          python3 tools/usage.py actions --root "$GITHUB_WORKSPACE"
+          --execution-file "${EXECUTION_FILE:-$RUNNER_TEMP/claude-execution-output.json}"
+          --out "$RUNNER_TEMP/symphony-usage-skeptic/record.json" --workflow synthesis --job skeptic
+      - name: Keep the skeptic's record where the metrics workflow reads it
+        if: always() && steps.skeptic.outcome != 'skipped'
+        continue-on-error: true
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: symphony-usage-${{ github.run_id }}-${{ github.run_attempt }}-synthesis-skeptic-${{ matrix.batch }}
+          path: ${{ runner.temp }}/symphony-usage-skeptic/record.json
+          if-no-files-found: ignore
+      - name: The re-checker's input, arguments and brief
+        id: recheck-brief
+        if: always() && steps.skeptic-brief.outcome == 'success'
+        run: |
+          {
+            python3 -I -B "$TOOLS/synth_actions.py" recheck "$BATCHES" "$RUNNER_TEMP/answers" "$B"
+            python3 -I -B "$TOOLS/synth_actions.py" args recheck --model "$MODEL" --fallback "$FALLBACK"
+            python3 -I -B "$TOOLS/synth_actions.py" prompt recheck "$PLAN" "$BATCHES" "$B"
+          } >> "$GITHUB_OUTPUT"
+          rm -f "$RUNNER_TEMP/claude-execution-output.json"
+      - name: The re-checker tries to overturn each verdict
+        id: recheck
+        if: always() && steps.recheck-brief.outcome == 'success' && steps.recheck-brief.outputs.count != '0'
+        continue-on-error: true
+        uses: anthropics/claude-code-action@34968b5981d5d170904281aa3df6f3c0d4a28855 # v1.0.249
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ github.token }}
+          # the scheduled run and a push's stand-in are the Actions bot's, not a person's
+          allowed_bots: "github-actions"
+          prompt: ${{ steps.recheck-brief.outputs.prompt }}
+          claude_args: ${{ steps.recheck-brief.outputs.args }}
+      - name: Take the re-checker's answer
+        if: always() && steps.recheck.outcome != 'skipped'
+        env:
+          EXECUTION_FILE: ${{ steps.recheck.outputs.execution_file }}
+        run: >-
+          python3 -I -B "$TOOLS/synth_actions.py" answer recheck "$B"
+          "${EXECUTION_FILE:-$RUNNER_TEMP/claude-execution-output.json}" "$RUNNER_TEMP/answers"
+      - name: Record what the re-checker spent
+        if: always() && steps.recheck.outcome != 'skipped'
+        continue-on-error: true
+        env:
+          EXECUTION_FILE: ${{ steps.recheck.outputs.execution_file }}
+          SDLC_METRICS: ${{ vars.SDLC_METRICS }}
+        run: >-
+          python3 tools/usage.py actions --root "$GITHUB_WORKSPACE"
+          --execution-file "${EXECUTION_FILE:-$RUNNER_TEMP/claude-execution-output.json}"
+          --out "$RUNNER_TEMP/symphony-usage-recheck/record.json" --workflow synthesis --job recheck
+      - name: Keep the re-checker's record where the metrics workflow reads it
+        if: always() && steps.recheck.outcome != 'skipped'
+        continue-on-error: true
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: symphony-usage-${{ github.run_id }}-${{ github.run_attempt }}-synthesis-recheck-${{ matrix.batch }}
+          path: ${{ runner.temp }}/symphony-usage-recheck/record.json
+          if-no-files-found: ignore
+      - name: The judge's input, arguments and brief
+        id: judge-brief
+        if: always() && steps.recheck-brief.outcome == 'success'
+        run: |
+          {
+            python3 -I -B "$TOOLS/synth_actions.py" disputes "$BATCHES" "$RUNNER_TEMP/answers" "$B"
+            python3 -I -B "$TOOLS/synth_actions.py" args judge --model "$MODEL" --fallback "$FALLBACK"
+            python3 -I -B "$TOOLS/synth_actions.py" prompt judge "$PLAN" "$BATCHES" "$B"
+          } >> "$GITHUB_OUTPUT"
+          rm -f "$RUNNER_TEMP/claude-execution-output.json"
+      - name: The judge rules on each dispute
+        id: judge
+        if: always() && steps.judge-brief.outcome == 'success' && steps.judge-brief.outputs.count != '0'
+        continue-on-error: true
+        uses: anthropics/claude-code-action@34968b5981d5d170904281aa3df6f3c0d4a28855 # v1.0.249
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ github.token }}
+          # the scheduled run and a push's stand-in are the Actions bot's, not a person's
+          allowed_bots: "github-actions"
+          prompt: ${{ steps.judge-brief.outputs.prompt }}
+          claude_args: ${{ steps.judge-brief.outputs.args }}
+      - name: Take the judge's answer
+        if: always() && steps.judge.outcome != 'skipped'
+        env:
+          EXECUTION_FILE: ${{ steps.judge.outputs.execution_file }}
+        run: >-
+          python3 -I -B "$TOOLS/synth_actions.py" answer judge "$B"
+          "${EXECUTION_FILE:-$RUNNER_TEMP/claude-execution-output.json}" "$RUNNER_TEMP/answers"
+      - name: Record what the judge spent
+        if: always() && steps.judge.outcome != 'skipped'
+        continue-on-error: true
+        env:
+          EXECUTION_FILE: ${{ steps.judge.outputs.execution_file }}
+          SDLC_METRICS: ${{ vars.SDLC_METRICS }}
+        run: >-
+          python3 tools/usage.py actions --root "$GITHUB_WORKSPACE"
+          --execution-file "${EXECUTION_FILE:-$RUNNER_TEMP/claude-execution-output.json}"
+          --out "$RUNNER_TEMP/symphony-usage-judge/record.json" --workflow synthesis --job judge
+      - name: Keep the judge's record where the metrics workflow reads it
+        if: always() && steps.judge.outcome != 'skipped'
+        continue-on-error: true
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: symphony-usage-${{ github.run_id }}-${{ github.run_attempt }}-synthesis-judge-${{ matrix.batch }}
+          path: ${{ runner.temp }}/symphony-usage-judge/record.json
+          if-no-files-found: ignore
+      - name: Keep the answers for the join
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: synthesis-answers-verdicts-${{ matrix.batch }}
+          path: ${{ runner.temp }}/answers/
+          retention-days: 2
+          if-no-files-found: ignore
+
+  join:
+    # Whatever came back, into the records, and the pull request.
+    needs: [look, read, batch, verdicts]
+    if: vars.CLAUDE_CROWD != 'true' && !cancelled() && needs.look.result == 'success' && needs.look.outputs.admit == 'true' && needs.batch.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read # the checkout; the App's token pushes
+      pull-requests: read # the open synthesis pull request as it is now
+      checks: read # whether owner-ok failed on its head while the run read
+    env:
+      SYNTH_TEXT: ${{ github.workspace }}/synth-text
+      SYNTH_SYMPHONY: ${{ github.workspace }}/symphony-template
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.look.outputs.main }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Make the look's tree again
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          START: ${{ needs.look.outputs.start }}
+          TREE: ${{ needs.look.outputs.tree }}
+        run: |
+          cp "$TOOLS/synth_base.sh" "$RUNNER_TEMP/synth_base.sh"
+          bash "$RUNNER_TEMP/synth_base.sh" again "$REPO" "$START" | tee "$RUNNER_TEMP/again.txt"
+          tree=$(sed -n 's/^tree=//p' "$RUNNER_TEMP/again.txt")
+          if [ "$tree" != "$TREE" ]; then
+            echo "::error::the tree made again ($tree) is not the one the look read ($TREE), so the answers are not joined into it"
+            exit 1
+          fi
+      - name: The App's token to read symphony-template
+        id: symphony-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          app-id: ${{ vars.SDLC_APP_ID }}
+          private-key: ${{ secrets.SDLC_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: symphony-template
+          permission-contents: read
+      - name: Check out symphony-template at the commit the look read
+        # with its history, since the stamp records each artifact folder's tree
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ github.repository_owner }}/symphony-template
+          ref: ${{ needs.look.outputs.symphony }}
+          token: ${{ steps.symphony-token.outputs.token }}
+          path: symphony-template
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: synthesis-plan
+          path: ${{ github.workspace }}
+      - name: The answers that came back
+        continue-on-error: true
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: synthesis-answers-*
+          merge-multiple: true
+          path: ${{ github.workspace }}/synth-answers
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: synthesis-batches
+          path: ${{ github.workspace }}/synth-batches
+      - name: Join the answers into the records
+        run: >-
+          python3 -I -B "$TOOLS/synth.py" join "$GITHUB_WORKSPACE/synth-plan" "$GITHUB_WORKSPACE/synth-answers"
+          "$GITHUB_WORKSPACE/synth-batches" "$RUNNER_TEMP/summary.json"
+      - name: The App's token to push the branch and open the pull request
+        id: app-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          app-id: ${{ vars.SDLC_APP_ID }}
+          private-key: ${{ secrets.SDLC_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+      - name: Open or update the synthesis pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          APP_TOKEN: ${{ steps.app-token.outputs.token }}
+          SYNTH_APP: ${{ steps.app-token.outputs.app-slug }}
+          REPO: ${{ github.repository }}
+          LOOK_SYNTHESIS: ${{ needs.look.outputs.synthesis }}
+        run: |
+          set -euo pipefail
+          git add -A artifacts/_synthesis
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit --quiet --no-verify -m "The join of run $GITHUB_RUN_ID"
+          joined=$(git rev-parse HEAD)
+          # main and the App's open pull request as they are now, since either may have moved while
+          # the sessions read; what the run read goes onto them only where the records are still
+          # the ones it read
+          bash "$RUNNER_TEMP/synth_base.sh" now "$REPO" | tee "$RUNNER_TEMP/now.txt"
+          value() { sed -n "s/^$1=//p" "$RUNNER_TEMP/now.txt"; }
+          main=$(value main)
+          start=$(value start)
+          pr=$(value pr)
+          branch=$(value branch)
+          if [ -n "$(value conflict)" ]; then
+            echo "::error::the open synthesis pull request #$(value conflict) no longer goes onto main cleanly, so what this run read is not written; merge or close it, and the next run reads again"
+            exit 1
+          fi
+          if [ -n "$(value foreign)" ]; then
+            echo "::error::the open synthesis pull request #$(value foreign) changes a file no join writes, so what this run read is not written onto it; a person reads it and closes it"
+            exit 1
+          fi
+          if [ -n "$(value rejected)" ]; then
+            echo "::error::owner-ok failed on the head of the open synthesis pull request #$(value rejected), so what this run read is not written onto it; close it, or approve it, and the next run reads again"
+            exit 1
+          fi
+          if [ "$(value synthesis)" != "$LOOK_SYNTHESIS" ]; then
+            echo "::error::the synthesis's records on main or in its open pull request changed while this run read, so what it read is not written over them; the next run reads again"
+            exit 1
+          fi
+          # main's tree with the join's records in place of main's, and nothing else of the run's
+          tree=$(bash "$RUNNER_TEMP/synth_base.sh" publish "$REPO" "$joined" "$main" | sed -n 's/^tree=//p')
+          carried=()
+          if [ -n "$pr" ]; then carried=(--carried); fi
+          python3 -I -B "$TOOLS/synth_actions.py" message "$RUNNER_TEMP/summary.json" "${carried[@]}" > "$RUNNER_TEMP/message.txt"
+          commit=$(GIT_AUTHOR_NAME="github-actions[bot]" GIT_AUTHOR_EMAIL="41898282+github-actions[bot]@users.noreply.github.com" \
+            GIT_COMMITTER_NAME="github-actions[bot]" GIT_COMMITTER_EMAIL="41898282+github-actions[bot]@users.noreply.github.com" \
+            git commit-tree "$tree" -p "$main" -F "$RUNNER_TEMP/message.txt")
+          # Where main's rules do not require owner-ok, the pull request is a draft, which a person
+          # marks ready, so nothing merges it unread; it is turned back into one before the push.
+          required=$(gh api "repos/$REPO/rules/branches/main" \
+            --jq '[.[] | select(.type == "required_status_checks") | .parameters.required_status_checks[]? | select(.context == "owner-ok")] | length' \
+            || echo 0)
+          draft=()
+          if [ "${required:-0}" = 0 ]; then
+            draft=(--draft)
+            echo "::notice::main's rules do not require owner-ok, so the synthesis pull request is a draft for a person to mark ready"
+            if [ -n "$pr" ]; then
+              GH_TOKEN="$APP_TOKEN" gh pr ready "$pr" --repo "$REPO" --undo || echo "::notice::#$pr could not be turned back into a draft"
+            fi
+          fi
+          auth="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$APP_TOKEN" | base64 -w0)"
+          echo "::add-mask::$(printf 'x-access-token:%s' "$APP_TOKEN" | base64 -w0)"
+          if [ -n "$branch" ]; then
+            # the workflow's own branch, at the head the run read and no other
+            git -c http.extraheader="$auth" push --quiet origin "$commit:refs/heads/$branch" \
+              --force-with-lease="refs/heads/$branch:$start"
+          else
+            branch="synthesis/$GITHUB_RUN_ID"
+            git -c http.extraheader="$auth" push --quiet origin "$commit:refs/heads/$branch"
+          fi
+          url="$GITHUB_SERVER_URL/$REPO/actions/runs/$GITHUB_RUN_ID"
+          if [ -n "$pr" ]; then
+            GH_TOKEN="$APP_TOKEN" gh pr view "$pr" --repo "$REPO" --json body --jq .body > "$RUNNER_TEMP/old.md"
+            python3 -I -B "$TOOLS/synth_actions.py" body "$RUNNER_TEMP/summary.json" --run "$url" --old "$RUNNER_TEMP/old.md" > "$RUNNER_TEMP/body.md"
+            GH_TOKEN="$APP_TOKEN" gh pr edit "$pr" --repo "$REPO" --body-file "$RUNNER_TEMP/body.md"
+          else
+            python3 -I -B "$TOOLS/synth_actions.py" body "$RUNNER_TEMP/summary.json" --run "$url" > "$RUNNER_TEMP/body.md"
+            GH_TOKEN="$APP_TOKEN" gh pr create --repo "$REPO" --base main --head "$branch" "${draft[@]}" \
+              --title "Synthesis: what the reads of $(date -u +%F) found" --body-file "$RUNNER_TEMP/body.md"
+          fi

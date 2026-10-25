@@ -1,0 +1,34 @@
+{
+  "id": "10/frames-linked-from-the-anchor",
+  "title": "Frames linked from the anchor",
+  "caption": "Overlapping exposures linked from the anchor into one map; every body is a node of the chain.",
+  "chapter": "10",
+  "grade": "Reported",
+  "status": "current",
+  "source": {
+    "kind": "artifact",
+    "artifact": "artifacts/counting-levels-under-fluoroscopy/",
+    "artifact_url": "https://claude.ai/artifact/8uhYki72Jf355qdfLM5N96",
+    "made_by": null,
+    "commit": null,
+    "data": [],
+    "run": null,
+    "notes": "Embedded image; no builder or data file is named on the page."
+  },
+  "explore": [
+    {
+      "label": "The artifact's page and files",
+      "href": "artifacts/counting-levels-under-fluoroscopy/"
+    },
+    {
+      "label": "The artifact on claude.ai",
+      "href": "https://claude.ai/artifact/8uhYki72Jf355qdfLM5N96"
+    }
+  ],
+  "rerun": {
+    "where": "none",
+    "command": null,
+    "cost": "nothing to run: no command is recorded for it",
+    "needs_owner_word": false
+  }
+}

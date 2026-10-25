@@ -1,0 +1,40 @@
+{
+  "id": "20/detection-and-device-cards",
+  "title": "Detection and device cards",
+  "caption": "Recall against confidence on the held-out device with the pre-stated operating point, the four paired comparisons with the interval of the difference, and the per-fold gain of the fitted physics terms.",
+  "chapter": "20",
+  "grade": "Reported",
+  "status": "a record, not a final value",
+  "source": {
+    "kind": "artifact",
+    "artifact": "artifacts/schwingnet-figures-xyz6kr/",
+    "artifact_url": "https://claude.ai/artifact/XyZ6krXFYezkdkpj2kAKPw",
+    "made_by": "spinesurg-ct-nnunet: the SchwingNet assembler (builder not named)",
+    "commit": null,
+    "data": [
+      "SchwingNet/figures/fig4_detection.png (spinesurg-ct-nnunet)"
+    ],
+    "run": null,
+    "notes": "Byte-identical (376,869 bytes) to figures/schwingnet/fig4_detection.png in MANIFEST_LOCAL.md (line 870); the assembler's pick, no builder named."
+  },
+  "explore": [
+    {
+      "label": "The artifact's page and files",
+      "href": "artifacts/schwingnet-figures-xyz6kr/"
+    },
+    {
+      "label": "The artifact on claude.ai",
+      "href": "https://claude.ai/artifact/XyZ6krXFYezkdkpj2kAKPw"
+    },
+    {
+      "label": "The local manifest",
+      "href": "https://github.com/OpenSpineConsortium/spine-program/blob/88398813308aba7dc2b4ee823385ea0ca2665f0d/01_carm_level_detection/MANIFEST_LOCAL.md"
+    }
+  ],
+  "rerun": {
+    "where": "none",
+    "command": null,
+    "cost": "nothing to run: no command is recorded for it",
+    "needs_owner_word": false
+  }
+}

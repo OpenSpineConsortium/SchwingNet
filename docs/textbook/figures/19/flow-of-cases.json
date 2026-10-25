@@ -1,0 +1,40 @@
+{
+  "id": "19/flow-of-cases",
+  "title": "Flow of cases",
+  "caption": "The flow of cases that the CLAIM checklist's item 33 requires, as the supplement's Figure S1.",
+  "chapter": "19",
+  "grade": "Reported",
+  "status": "a record, not a final value",
+  "source": {
+    "kind": "artifact",
+    "artifact": "artifacts/schwingnet-figures-xyz6kr/",
+    "artifact_url": "https://claude.ai/artifact/XyZ6krXFYezkdkpj2kAKPw",
+    "made_by": "spinesurg-ct-nnunet:SchwingNet/tools/fig2_flow.py",
+    "commit": null,
+    "data": [
+      "the figure's record (figures/fig2_flow.caption.txt and record, spinesurg-ct-nnunet)"
+    ],
+    "run": null,
+    "notes": "The manuscripts note maps S1 to tools/fig2_flow.py with its numbers in its figure record. These bytes (717,309) differ from the copy spine-program lists (719,720), so this is the 22 September export."
+  },
+  "explore": [
+    {
+      "label": "The artifact's page and files",
+      "href": "artifacts/schwingnet-figures-xyz6kr/"
+    },
+    {
+      "label": "The artifact on claude.ai",
+      "href": "https://claude.ai/artifact/XyZ6krXFYezkdkpj2kAKPw"
+    },
+    {
+      "label": "The manuscript's figure table",
+      "href": "https://github.com/OpenSpineConsortium/spine-program/blob/88398813308aba7dc2b4ee823385ea0ca2665f0d/07_plain_film_level_id/docs/handoff/working_notes/topic4_manuscripts.md"
+    }
+  ],
+  "rerun": {
+    "where": "none",
+    "command": null,
+    "cost": "nothing to run: no command is recorded for it",
+    "needs_owner_word": false
+  }
+}

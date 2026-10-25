@@ -1,0 +1,4 @@
+{
+ "about": "The names a text calls a dataset by, for a record under data/sources/ whose name gives none or the wrong ones: under aliases, the record's id, then its names as a text writes them, case and separators not counting. work/tools/synth.py concepts takes them in place of the names the record's name gives (synth_concepts.name_aliases), so a set whose name the rule reads wrongly is set right here, by pull request, and every text is checked with the new names from the next run on.",
+ "aliases": {}
+}

@@ -613,6 +613,40 @@
      ],
      "confidentiality": "confidential-method",
      "research_needed": "Consolidate the records' 512 decision entries into distinct decisions, dating undated ones from the artifact's date and naming the owner by role; check each against the retraining plan (version 2, 2026-10-20), which supersedes earlier choices where they differ."
+    },
+    {
+     "number": "34",
+     "file": "docs/textbook/34-the-optimal-overlap.md",
+     "title": "The optimal overlap",
+     "purpose": "The owner's work on the overlap between consecutive exposures of a sweep, alone: what reached 100 percent at two vertebral bodies of overlap, on which generated pans and with which boxes; why two bodies, from the sources' own reasons and from figures drawn from the records and from a small simulation of what goes wrong below and above two; and a pre-registered plan to test it on a video pan, on full-spine radiographs cut into overlapping fields and on pans rendered from segmented CTs with normal and anomalous columns.",
+     "questions_answered": [
+      "What exactly reached 100 percent at two bodies of overlap, on what, and with which boxes?",
+      "Why two bodies: what goes wrong with less overlap and what with more?",
+      "Which overlap figures may be quoted, and which are records only?",
+      "How would the overlap be tested on a real or synthetic pan with normal and anomalous spines, with what sample, pass line and cost?"
+     ],
+     "artifacts_primary": [
+      "SchwingNet/naming-vertebrae-without-ct-hjy4vc",
+      "SchwingNet/vertebral-levels-without-ct-a4rydj",
+      "SchwingNet/naming-vertebrae-without-an-anchor-3dfzmh",
+      "SchwingNet/counting-levels-under-fluoroscopy",
+      "SchwingNet/level-counting-visual-abstract",
+      "SchwingNet/counting-from-the-sacrum",
+      "SchwingNet/schwingnet-figures-jshksq",
+      "SchwingNet/schwingnet-figures-xyz6kr"
+     ],
+     "artifacts_secondary": [
+      "SchwingNet/aidas-seed-grant-proposal",
+      "SchwingNet/or-readiness-ledger"
+     ],
+     "repository_sources": [
+      "src/schwingnet/chain.py",
+      "docs/research/latency-and-sweep/README.md",
+      "docs/research/xray-dataset-requests.md",
+      "tools/overlap_figures.py"
+     ],
+     "confidentiality": "confidential-method",
+     "research_needed": "Read the sweep_v3 and counting result files on the grid, so the overlap ladder and the 100 percent arms can be graded Measured; run the pre-registered arms on the owner's word."
     }
    ]
   },
@@ -890,6 +924,47 @@
      ],
      "confidentiality": "schwingnet-internal",
      "research_needed": "Check docs/agents/OWNERSHIP.md for the current worker map; confirm the volume's ACL and who is on it, from the owner; check the authorship rule (ICMJE, byline by recorded volume) against the lab recipe as it stands; cite the LLC note's commercial-track boundary here, as the owner answered on 2026-10-23."
+    },
+    {
+     "number": "35",
+     "file": "docs/textbook/35-how-the-workflow-is-built.md",
+     "title": "How the workflow is built: its plug points and the data it can take",
+     "purpose": "Describes the workflow's construction for a planner who will run the next experiment: a dataset added by one pull request and one incremental run, the read-only catalog versions, the person-keyed split, the training blocks chosen by name, the sweep planner that submits nothing, the run ledger, the witness frames and the provenance each run writes, and where a new block, a new data type or a new task plugs in, with the commands. It then sets every held and wanted corpus by data type (paired 3D-2D, annotated 2D, synthetic 2D, CT volumes, unannotated 2D), size, region along the spine, licence class and whether it has been, can be or will be tried, in three interactive figures, the third a power calculator for each detection and classification task set beside the persons each corpus holds. Mechanism stays in Part III.",
+     "questions_answered": [
+      "How does a new dataset, a new training block or a new task enter the workflow, and with which commands?",
+      "What does each run write, and what keeps a number reproducible from a commit, a catalog hash and a seed?",
+      "Which types of data are held or wanted, how much of each, where along the spine, and which have been tried?",
+      "How many persons does each detection and classification task need, and does any corpus hold that many?"
+     ],
+     "artifacts_primary": [
+      "SchwingNet/schwingnet-data-registry",
+      "SchwingNet/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay"
+     ],
+     "artifacts_secondary": [
+      "SchwingNet/fluoroscopy-data-atlas",
+      "SchwingNet/research-directions-from-the-data-holding-kcyckb"
+     ],
+     "repository_sources": [
+      "docs/research/experiment-framework.md",
+      "docs/memory/the-v1-flow.md",
+      "docs/memory/training-blocks.md",
+      "docs/memory/the-data-catalog.md",
+      "docs/memory/evaluation-and-wandb.md",
+      "docs/memory/latency-and-the-recorded-sweep.md",
+      "docs/memory/training-data-licences.md",
+      "tools/flow.py",
+      "tools/block_sweep.py",
+      "tools/catalog.py",
+      "tools/ingest.py",
+      "tools/data_figures.py",
+      "data/sources/",
+      "data/registry/",
+      "data/licences.json",
+      "docs/research/data-manifest/MANIFEST.md",
+      "docs/research/state-of-knowledge.md"
+     ],
+     "confidentiality": "schwingnet-internal",
+     "research_needed": "None beyond the figures' own inputs; the counts are the records', and the data type, span and tried status of each corpus are the chapter's reading in docs/textbook/figures/35/corpora-overlay.json."
     }
    ]
   },
@@ -1138,6 +1213,42 @@
      ],
      "confidentiality": "schwingnet-internal",
      "research_needed": "Reconcile the ranking with the fourteen workstreams A to N of docs/research/xr-from-3d/README.md and the issue numbers #56 to #70, #9 to #13 and #76; check each entry's grid estimate against the ledger and the owner's stated job numbers; confirm with the owner which entries wait on his word today."
+    },
+    {
+     "number": "33",
+     "file": "docs/textbook/33-what-to-run-next-by-the-weight-of-the-claims.md",
+     "title": "What to run next, by the weight of the claims",
+     "purpose": "Sets every claim SchwingNet makes or means to make (novelty, functionality, integrity) beside the evidence it stands on, its grade and what falls if it fails, in the register docs/textbook/claims.json, and ranks the outstanding experiments and open questions by how far each could move the claims that matter most, against what it costs, with tools/claims_rank.py; names the claims the record cannot support today and the formula's limits.",
+     "questions_answered": [
+      "Which claims does SchwingNet make or mean to make, of what kind, on what evidence and at what grade?",
+      "Which experiment or question bears most on the claims that matter most, for what it costs?",
+      "What can a session do next without the owner's word, and what is the top item that waits on it?",
+      "Which claims can the record not support today?"
+     ],
+     "artifacts_primary": [
+      "SchwingNet/research-directions-from-the-data-holding-kcyckb",
+      "SchwingNet/state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay",
+      "SchwingNet/handoff-schwingnet-ctspinopelvic1k-and-the-imaging-programme-rbcdmf",
+      "SchwingNet/registration-free-level-id-feasibility-uramo1",
+      "SchwingNet/or-readiness-ledger",
+      "SchwingNet/aidas-seed-grant-proposal"
+     ],
+     "artifacts_secondary": [
+      "SchwingNet/retrospective-fluoroscopy-protocol",
+      "SchwingNet/counting-against-two-anchors-qkktgu",
+      "SchwingNet/counting-from-the-sacrum",
+      "SchwingNet/any-view-spine-plan"
+     ],
+     "repository_sources": [
+      "docs/textbook/claims.json",
+      "tools/claims_rank.py",
+      "docs/research/benchmarks-to-beat.md",
+      "docs/research/unberath-lab-items-prior-art.md",
+      "docs/research/fluoroscopy-list-prior-art.md",
+      "docs/research/state-of-knowledge.md"
+     ],
+     "confidentiality": "schwingnet-internal",
+     "research_needed": "Read the earlier programme's results catalog in full against every claim (item E01); give the formula a term for dates and for the chance an item succeeds once the owner says how to weigh them; ask the owner which stakes weigh most."
     }
    ]
   },

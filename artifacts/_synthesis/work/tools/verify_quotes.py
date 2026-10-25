@@ -52,7 +52,8 @@ def text_of(text_dir, aid):
     folder (the page's own scripts and data hold numbers the extraction dropped)."""
     if aid not in TEXTS:
         try:
-            TEXTS[aid] = norm(open(f"{text_dir}/{aid}.txt", encoding="utf-8").read())
+            with open(f"{text_dir}/{aid}.txt", encoding="utf-8") as handle:
+                TEXTS[aid] = norm(handle.read())
         except OSError:
             TEXTS[aid] = None
         import html
@@ -62,7 +63,8 @@ def text_of(text_dir, aid):
             for f in sorted(files):
                 if f.rsplit(".", 1)[-1].lower() in ("html", "htm", "js", "json", "md", "css", "txt", "svg", "csv"):
                     try:
-                        chunks.append(open(os.path.join(root, f), encoding="utf-8", errors="replace").read())
+                        with open(os.path.join(root, f), encoding="utf-8", errors="replace") as handle:
+                            chunks.append(handle.read())
                     except OSError:
                         pass
         raw = html.unescape(re.sub(r"<[^>]+>", " ", "\n".join(chunks)))

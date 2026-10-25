@@ -38,6 +38,7 @@ AGREE_N = ("same-number-restated", "different-quantities", "scope-or-unit-differ
 # Kinds whose confirmed verdict is no disagreement: one claim carried twice, or a claim with no
 # source; a planner must still not count it twice or take it as sourced.
 NOT_DISAGREEMENTS = ("duplicate-text", "unsourced-shared-claim")
+NUMBER_STRATUM = "Number collisions"
 REVIEW = {"held": "review: held", "hint corrected": "review: held, hint corrected", "verdict overturned": "review: overturned, was {}",
           "read again": "read again, was {}"}
 FOLLOWUP = {"held": "held", "hint corrected": "held, hint corrected", "verdict overturned": "overturned, was {}"}
@@ -57,9 +58,9 @@ def number_key(v):
 
 def number_verdicts(N, extra):
     """Each number verdict by its collision's key. A later verdict replaces an earlier one only
-    where it says it was reviewed, read again or read in a follow-up; two on one key otherwise,
-    or one that matches no collision, stop the run, since either would drop a verdict from the
-    page without a word."""
+    where it says it was reviewed, read again, read in a follow-up or read by a later run of the
+    workflow; two on one key otherwise, or one that matches no collision, stop the run, since
+    either would drop a verdict from the page without a word."""
     keys = {number_key(c) for c in N["candidates"]}
     by = {}
     for v in N["verdicts"]:
@@ -69,7 +70,8 @@ def number_verdicts(N, extra):
     for v in extra:
         k = number_key(v)
         require(k not in seen, f"two number verdicts on {k}")
-        require(k not in by or v.get("review") or v.get("followup"), f"a verdict on {k} replaces an earlier one without saying why")
+        require(k not in by or v.get("review") or v.get("followup") or v.get("delta"),
+                f"a verdict on {k} replaces an earlier one without saying why")
         seen.add(k)
         by[k] = v
     stray = sorted(k for k in by if k not in keys)
@@ -124,9 +126,10 @@ def unfound(text_dir, x):
 
 
 def replaced(v):
-    """Whether a ruling's words stand in place of the skeptic's, the review's, the follow-up's
-    or a group judge's."""
-    return v.get("review") in ("hint corrected", "verdict overturned") or bool((v.get("followup") or {}).get("before"))
+    """Whether a ruling's words stand in place of the skeptic's, the review's, the follow-up's,
+    a group judge's or, in a later run of the workflow, a judge's."""
+    return (v.get("review") in ("hint corrected", "verdict overturned") or bool((v.get("followup") or {}).get("before"))
+            or "judge" in ((v.get("delta") or {}).get("read") or []))
 
 
 def skeptic_words(text_dir, a, b, v):
@@ -147,9 +150,36 @@ ROUNDS = {(): "follow-up", ("regroup",): "follow-up, group re-rule", ("regroup2"
           ("regroup", "regroup2"): "follow-up, both group re-rules"}
 
 
-def review_cell(v):
+# The kinds of number collision no skeptic reads, by design: another scope or another quantity.
+UNREAD_KINDS = ("unit-or-scope-mismatch", "probably-different-quantities")
+
+
+def later_words(v, x):
+    """What a later run of the workflow made of a row: a verdict read again because a page it
+    rests on changed, with the verdict it replaced; a row found and read; a row found that no
+    skeptic has read yet; or a row found of a kind no skeptic reads. A judge's ruling is named,
+    since it stands in the skeptic's place."""
+    d, found = (v or {}).get("delta"), (x or {}).get("delta")
+    if not d:
+        if not found:
+            return ""
+        return f"found on {found['date']}, " + ("a kind no skeptic reads" if x.get("kind") in UNREAD_KINDS else "not read yet")
+    judge = ", ruled by a judge" if "judge" in (d.get("read") or []) else ""
+    if d.get("earlier"):
+        return f"read again on {d['date']}, was {cell(d['earlier'].get('verdict'))}{judge}"
+    if found and found.get("date") != d["date"]:
+        return f"found on {found['date']}, read on {d['date']}{judge}"
+    return f"found on {d['date']}{judge}"
+
+
+def review_cell(v, x=None):
     """What the review, and then the follow-up, made of a verdict, each with the verdict it read;
-    the follow-up's outcome names the group re-rules that changed the row, if any did."""
+    the follow-up's outcome names the group re-rules that changed the row, if any did. A verdict
+    a later run gave stands in place of the one the review and the follow-up read, so its cell
+    says what that run made of the row instead."""
+    later = later_words(v, x)
+    if later:
+        return later
     v = v or {}
     words = []
     if v.get("review"):
@@ -160,8 +190,8 @@ def review_cell(v):
     return "; ".join(words)
 
 
-def review_tag(v):
-    r = review_cell(v)
+def review_tag(v, x=None):
+    r = review_cell(v, x)
     return f" ({r})" if r else ""
 
 
@@ -252,6 +282,7 @@ def siblings_of(groups, M, N, rule="fourth"):
     require(rule in RULES, f"no marking rule {rule!r}; {RULES}")
     read = standing_figures if rule == "fourth" else figures
     clusters = {c["cluster"]: c for c in M["clusters"]}
+    later = {(c["cluster"], i) for c in M["clusters"] for i, v in enumerate(c["verdicts"]) if (v or {}).get("delta")}
     found = []
     for g in groups:
         rows = [N["candidates"][r] for r in g["rows"] + g.get("context", [])]
@@ -266,7 +297,7 @@ def siblings_of(groups, M, N, rule="fourth"):
                 if v and own & pages and enough(given_figures(x, v, rule, read) & figs, own <= pages, rule):
                     mine.append((c["cluster"], i, v))
         if mine:
-            found.append((g, mine))
+            found.append(({**g, "later": later}, mine))
     return found
 
 
@@ -313,17 +344,23 @@ def bears_words(bears):
             f"{count(bears['other'], 'is about another quantity', 'are about another quantity')}")
 
 
-def hint_editor(F):
-    """The editor's words on number collision hints, by row."""
-    return {c["index"]: editor_field(c)["editor"] for c in corrections_of(F) if c["to"] == "hint"}
+def hint_editor(F, later=()):
+    """The editor's words on number collision hints, by row, but for a row a later run of the
+    workflow read again, whose hint is no longer the one the words were on."""
+    return {c["index"]: editor_field(c)["editor"] for c in corrections_of(F)
+            if c["to"] == "hint" and (NUMBER_STRATUM, c["index"]) not in later}
 
 
-def check_corrections(F, N, nv):
+def check_corrections(F, N, nv, later=()):
     """Every editor's word lands: a hint's on a number collision with a verdict, a note's on a
-    note the page shows; one that lands on nothing stops the run, since it would be lost."""
+    note the page shows; one that lands on nothing stops the run, since it would be lost. A word
+    on a row a later run of the workflow read is left aside, since the hint or the note it was
+    on is no longer the row's."""
     shown = {(g["name"], n["cluster"], n["index"]) for g in final_groups(F) for n in g["notes"] or []}
     for c in corrections_of(F):
         require(c["kind"] in ("correction", "note"), f"an editor's word is neither a correction nor a note: {c['kind']!r}")
+        if (NUMBER_STRATUM if c["to"] == "hint" else c.get("cluster"), c["index"]) in later:
+            continue
         if c["to"] == "hint":
             x = N["candidates"][c["index"]]
             require(number_key(x) in nv and nv[number_key(x)].get("resolution_hint"), f"the editor's {c['kind']} on collision {c['index']} lands on no hint")
@@ -336,30 +373,46 @@ def group_siblings(M, N):
     return siblings_of(final_groups(M.get("followup")), M, N, "fourth")
 
 
+def later_rows(M, N, nv):
+    """The rows a later run of the workflow read again or found, as (stratum, row): their
+    verdicts, where they have one, are not the ones the review, the follow-up and its notes
+    read."""
+    rows = {(c["cluster"], i) for c in M["clusters"] for i, (x, v) in enumerate(zip(c["candidates"], c["verdicts"]))
+            if x.get("delta") or (v or {}).get("delta")}
+    return rows | {(NUMBER_STRATUM, j) for j, x in enumerate(N["candidates"])
+                   if x.get("delta") or (nv.get(number_key(x)) or {}).get("delta")}
+
+
 BEARS = ("agrees", "differs", "other")
 
 
 def notes_by_row(g, mine):
     """A group's notes on its marked rows, by (cluster, row), or None where no round gave any;
     the notes must name exactly the rows the rule marks, so a changed rule or record cannot
-    leave a marked row unread or keep a note on a row no longer marked."""
+    leave a marked row unread or keep a note on a row no longer marked. A row whose verdict a
+    later run of the workflow gave is left out on both sides: its note, if it had one, was on
+    the verdict that run replaced."""
     if g.get("notes") is None:
         return None
-    notes = {(n["cluster"], n["index"]): n for n in g["notes"]}
-    marked = {(c, i) for c, i, _ in mine}
-    require(set(notes) == marked and len(notes) == len(g["notes"]), f"the notes on group {g['name']} name other rows than the rule marks")
-    require(all(n["bears"] in BEARS for n in g["notes"]), f"a note on group {g['name']} is not one of {BEARS}")
+    later = g.get("later", set())
+    kept = [n for n in g["notes"] if (n["cluster"], n["index"]) not in later]
+    notes = {(n["cluster"], n["index"]): n for n in kept}
+    marked = {(c, i) for c, i, _ in mine} - later
+    require(set(notes) == marked and len(notes) == len(kept), f"the notes on group {g['name']} name other rows than the rule marks")
+    require(all(n["bears"] in BEARS for n in kept), f"a note on group {g['name']} is not one of {BEARS}")
     return notes
 
 
 def marks_of(siblings):
     """Each marked cluster row's groups, by (cluster, row), each with its note where one was
-    given."""
+    given and, for a row whose verdict a later run of the workflow gave, the day that run read
+    it, in place of a note."""
     marks = {}
     for g, rows in siblings:
         notes = notes_by_row(g, rows)
-        for c, i, _ in rows:
-            marks.setdefault((c, i), []).append((g["title"], notes and notes[(c, i)]))
+        for c, i, v in rows:
+            later = (v.get("delta") or {}).get("date")
+            marks.setdefault((c, i), []).append((g["title"], None if later or notes is None else notes[(c, i)], later))
     return marks
 
 
@@ -372,8 +425,10 @@ def beside(entries, where):
     finds the row's instruction stands beside each finding, with the note's own words, where one
     was given, else that the finding is to be read beside it."""
     words = []
-    for title, note in entries:
-        if note is None:
+    for title, note, later in entries:
+        if later:
+            words.append(f" This row's verdict was read on {later}, after the follow-up's group judge on \"{title}\" ruled, so read its finding ({where}) beside it.")
+        elif note is None:
             words.append(f" The follow-up's group judge on \"{title}\" read figures this row gives but not this row, so read its finding ({where}) beside it.")
         else:
             words.append(f" Set beside the follow-up's finding on \"{title}\" ({where}), {BEARS_WORDS[note['bears']]}: {with_editor(cell(note['note']), cell(note.get('editor', '')))}")
@@ -476,15 +531,17 @@ def drawn_side(x):
 
 
 def unreviewed_by_stratum(M, N, nv, reviewed):
-    """How many of the verdicts the review did not read each stratum holds, on each side."""
+    """How many of the verdicts the review did not read each stratum holds, on each side. A
+    verdict a later run of the workflow gave was read twice over already, by its skeptic and a
+    re-checker told to overturn it, so it is not counted."""
     pop = {}
     for c in M["clusters"]:
         for i, v in enumerate(c["verdicts"]):
-            if v and (c["cluster"], i) not in reviewed:
+            if v and not v.get("delta") and (c["cluster"], i) not in reviewed:
                 pop.setdefault(c["cluster"], Counter())[side_of(v["verdict"], CONFIRMED_C)] += 1
     for j, x in enumerate(N["candidates"]):
         v = nv.get(number_key(x))
-        if v and ("Number collisions", j) not in reviewed:
+        if v and not v.get("delta") and ("Number collisions", j) not in reviewed:
             pop.setdefault("Number collisions", Counter())[side_of(v["verdict"], CONFIRMED_N)] += 1
     return pop
 
@@ -583,7 +640,8 @@ def review_section(M, N, nv):
         out.append(f"{len(again)} number verdicts of #136's first run were cannot-tell because their values were missing from the plain text, which cuts each line of a page's script data at 600 characters. "
                    "A skeptic read them again in the artifacts' own files: " + ", ".join(f"{n} {w}" for w, n in got.most_common())
                    + f" (collisions {', '.join(str(j) for j, _ in again)}). Each says read again in its Review column, with the verdict it replaced.\n")
-    return out + followup_section(F, whole, group_siblings(M, N))
+    later = later_rows(M, N, nv)
+    return out + followup_section(F, whole, group_siblings(M, N), bool(later)) + later_section(M, N, nv)
 
 
 def by_cluster(keys):
@@ -690,13 +748,14 @@ def skeptic_sided(items):
             f"until apply_review.py was changed to put such a ruling's words in place, with the second group re-rule, which ruled neither {'row' if one else 'of them'}.")
 
 
-def followup_section(F, whole, siblings):
+def followup_section(F, whole, siblings, later=False):
     """The follow-up's reading: how many of the verdicts it read held, by the verdict each was,
     how many stay on the confirmed list, the groups ruled again together, the cluster rows that
     give their figures, and the rows it changed. It read every verdict of one kind rather than a
     sample, so its counts say how these rows stand, and its rates how far such verdicts held.
     whole says that no number collision on the confirmed list is left that neither it nor the
-    review read."""
+    review read; later says that a later run of the workflow read some rows too.
+    """
     if not F:
         return []
     items = F["items"]
@@ -737,7 +796,8 @@ def followup_section(F, whole, siblings):
                   if G else "Each now reads as its ruling has it, ")
                + "and its Review column gives the follow-up's outcome with the verdict it replaced."
                + skeptic_sided(items)
-               + (" With these, every number collision on the confirmed list has been read by a skeptic and then again, by the review or the follow-up." if whole else "")
+               + (" With these, every number collision on the confirmed list has been read by a skeptic and then again, by the review or the follow-up"
+                  + (" or, since, by a later run's re-checker." if later else ".") if whole else "")
                + "\n")
     if over or hinted:
         out.append("The rows the follow-up changed:\n")
@@ -748,8 +808,44 @@ def followup_section(F, whole, siblings):
     return out
 
 
-def confirmed_section(text_dir, clusters, N, nv, followup, marks):
-    edits = hint_editor(followup)
+def later_section(M, N, nv):
+    """What the runs of .github/workflows/synthesis.yml read after the follow-up: the verdicts
+    read again because a page they rest on changed, with how many kept the verdict they had; the
+    rows its finders and its concept checks found and read; how many of these a judge ruled; and
+    the rows found that wait for a verdict."""
+    rows = [(c["cluster"], i, x, v) for c in M["clusters"] for i, (x, v) in enumerate(zip(c["candidates"], c["verdicts"]))]
+    rows += [(NUMBER_STRATUM, j, x, nv.get(number_key(x))) for j, x in enumerate(N["candidates"])]
+    again = [(s, i, v) for s, i, x, v in rows if (v or {}).get("delta", {}).get("earlier")]
+    found = [(s, i, v) for s, i, x, v in rows if (v or {}).get("delta") and not v["delta"].get("earlier")]
+    waiting = [(s, i) for s, i, x, v in rows if x.get("delta") and not v and x.get("kind") not in UNREAD_KINDS]
+    kept = [(s, i) for s, i, x, v in rows if x.get("delta") and not v and x.get("kind") in UNREAD_KINDS]
+    if not (again or found or waiting or kept):
+        return []
+    dates = sorted({v["delta"]["date"] for _, _, v in again + found} | {x["delta"]["date"] for s, i, x, v in rows if x.get("delta")})
+    when = f"on {dates[0]}" if len(dates) == 1 else f"from {dates[0]} to {dates[-1]}"
+    held = sum(1 for _, _, v in again if v["verdict"] == v["delta"]["earlier"].get("verdict"))
+    judged = sum(1 for _, _, v in again + found if "judge" in (v["delta"].get("read") or []))
+    out = ["### Read by the workflow since\n",
+           f"After the follow-up, the runs of .github/workflows/synthesis.yml {when} read {len(again)} {'verdict' if len(again) == 1 else 'verdicts'} again "
+           f"because a page {'it rests' if len(again) == 1 else 'each rests'} on had changed, {held} of them keeping the verdict {'it' if len(again) == 1 else 'they'} had, "
+           f"and read {len(found)} {'row' if len(found) == 1 else 'rows'} that their finders or the concept checks found. "
+           "Each was read by a skeptic and then by a re-checker told to overturn the skeptic's verdict and its hint, "
+           f"and {judged} of the {len(again) + len(found)}, where the two disagreed, by a judge who read both sources and ruled. "
+           + (f"{len(waiting)} {'row' if len(waiting) == 1 else 'rows'} found {'waits' if len(waiting) == 1 else 'wait'} for a verdict, which the next run reads. "
+              if waiting else "")
+           + (f"{len(kept)} number {'collision' if len(kept) == 1 else 'collisions'} of another scope or another quantity {'was' if len(kept) == 1 else 'were'} "
+              "added with none, as the first readers' were, since no skeptic reads that kind. " if kept else "")
+           + "Each such row's Review column says when it was read and, for a verdict read again, what it was before.\n"]
+    changed = [(s, i, v) for s, i, v in again if v["verdict"] != v["delta"]["earlier"].get("verdict")]
+    if changed:
+        out.append("The verdicts read again that changed:\n")
+        out += [f"- {where_of({'stratum': s, 'index': i})}: {cell(v['delta']['earlier'].get('verdict'))} became {cell(v['verdict'])}." for s, i, v in changed]
+        out.append("")
+    return out
+
+
+def confirmed_section(text_dir, clusters, N, nv, followup, marks, later=()):
+    edits = hint_editor(followup, later)
     out = ["## Confirmed: what a planner must not take from one artifact alone\n",
            "Every candidate a skeptic confirmed or found revised, by cluster. Disagreements, revisions and stale statements come first; "
            "duplicated texts and shared unsourced claims follow, confirmed in the senses above, which are not disagreements: a duplicated text is one claim and not two confirmations, and a shared unsourced claim has no source on either page. "
@@ -772,8 +868,8 @@ def confirmed_section(text_dir, clusters, N, nv, followup, marks):
                 continue
             out.append(title + "\n")
             for i, x, v in group:
-                tag = f"; {review_cell(v)}" if review_cell(v) else ""
-                out.append(f"- Row {i}, {x['kind']}, {v['verdict']} ({pair(x)}{tag}): {cell(x['topic'])}. {cell(v.get('resolution_hint'))}"
+                tag = f"; {review_cell(v, x)}" if review_cell(v, x) else ""
+                out.append(f"- Row {i}, {cell(x['kind'])}, {cell(v['verdict'])} ({pair(x)}{tag}): {cell(x['topic'])}. {cell(v.get('resolution_hint'))}"
                            + beside(marks.get((c["cluster"], i), []), "How far the verdicts hold, above"))
             out.append("")
     rows = [(j, x, nv[number_key(x)]) for j, x in enumerate(N["candidates"])
@@ -781,7 +877,7 @@ def confirmed_section(text_dir, clusters, N, nv, followup, marks):
     if rows:
         out.append("### Numbers\n")
         for j, x, v in rows:
-            out.append(f"- Collision {j}, {v['verdict']}{review_tag(v)}, {cell(x['quantity'])}: {short_id(x['artifact_a'])} gives {cell(x['value_a'])}, "
+            out.append(f"- Collision {j}, {cell(v['verdict'])}{review_tag(v, x)}, {cell(x['quantity'])}: {short_id(x['artifact_a'])} gives {cell(x['value_a'])}, "
                        f"{short_id(x['artifact_b'])} gives {cell(x['value_b'])}. {with_editor(cell(v.get('resolution_hint') or v.get('explanation')), cell(edits.get(j, '')))}")
         out.append("")
     return out
@@ -799,7 +895,7 @@ def numbers_section(text_dir, N, nv, titles, edits):
             v = nv.get(number_key(x))
             why = with_editor(short(v.get("resolution_hint") or v.get("explanation"), 260), cell(edits.get(j, ""))) if v else short(x["why"], 200)
             out.append(f"| {j} | {short(x['quantity'], 110)} | {link(x['artifact_a'], titles)} | {short(x['value_a'], 70)} | {link(x['artifact_b'], titles)} | {short(x['value_b'], 70)} | "
-                       f"{quote_status(text_dir, x['artifact_a'], x['quote_a'])} | {quote_status(text_dir, x['artifact_b'], x['quote_b'])} | {(v or {}).get('verdict', '')} | {review_cell(v)} | {why} |")
+                       f"{quote_status(text_dir, x['artifact_a'], x['quote_a'])} | {quote_status(text_dir, x['artifact_b'], x['quote_b'])} | {cell((v or {}).get('verdict', ''))} | {review_cell(v, x)} | {why} |")
         out.append("")
         out.append("The quotes, by collision:\n")
         for j, x in rows:
@@ -813,12 +909,21 @@ def numbers_section(text_dir, N, nv, titles, edits):
 def marked_note(marked, noted):
     """What a cluster page says of its rows that give a regrouped figure: that each was set
     beside its group's finding and says how it bears on it and why, where noted, else that each
-    says so and the main page gives the finding."""
+    says so and the main page gives the finding; noted lists the rows each of whose groups gave
+    a note, and where only some were noted the two are named apart."""
     if not marked:
         return ""
     one = len(marked) == 1
     gives = (f"{'Row' if one else 'Rows'} {listed(marked)} {'gives' if one else 'give'} figures that a judge of the follow-up's group re-rule "
              "read in other rows, by the rule the main page gives")
+    unnoted = [i for i in marked if i not in noted]
+    if noted and unnoted:
+        def rows(ix):
+            return f"{'row' if len(ix) == 1 else 'rows'} {listed(ix)}"
+        return (f"{gives}. Of these, {rows(noted)} {'was' if len(noted) == 1 else 'were each'} set beside that group's finding, and below "
+                f"{'it says' if len(noted) == 1 else 'each says'} whether its instruction agrees with the finding, differs from it or is about another quantity, "
+                f"with the note that says why; {rows(unnoted)} {'was' if len(unnoted) == 1 else 'were'} not, and {'says' if len(unnoted) == 1 else 'say'} so below. "
+                "The main page gives the finding and how the rows were read.\n")
     if noted:
         return (f"{gives}. {'It was' if one else 'Each was'} set beside that group's finding; below, {'it says' if one else 'each says'} whether "
                 "its instruction agrees with the finding, differs from it or is about another quantity, with the note that says why, "
@@ -829,7 +934,7 @@ def marked_note(marked, noted):
 def cluster_page(text_dir, c, titles, date, marks):
     up = "../../"
     marked = [i for i in range(len(c["candidates"])) if (c["cluster"], i) in marks]
-    note = marked_note(marked, all(n is not None for i in marked for _, n in marks[(c["cluster"], i)]))
+    note = marked_note(marked, [i for i in marked if all(n is not None for _, n, _ in marks[(c["cluster"], i)])])
     out = [f"# Contradictions: {c['cluster']}\n",
            f"Part of [the contradictions of the artifacts](../contradictions.md), rendered on {date}. Rows count from 0, as the record and the skeptics' explanations do. "
            "A blank verdict means no skeptic read that candidate. The Review column says whether the verdict was read again and what it was before; the main page says how the review was run.\n"
@@ -838,9 +943,9 @@ def cluster_page(text_dir, c, titles, date, marks):
            "| # | Kind | Topic | A | B | Reader's quote A | Reader's quote B | Verdict | Review | Explanation |",
            "|---|---|---|---|---|---|---|---|---|---|"]
     for i, (x, v) in enumerate(zip(c["candidates"], c["verdicts"])):
-        out.append(f"| {i} | {x['kind']} | {short(x['topic'], 110)} | {link_or(x['artifact_a'], titles, up)} | {link_or(x.get('artifact_b'), titles, up)} | "
+        out.append(f"| {i} | {cell(x['kind'])} | {short(x['topic'], 110)} | {link_or(x['artifact_a'], titles, up)} | {link_or(x.get('artifact_b'), titles, up)} | "
                    f"{quote_status(text_dir, x['artifact_a'], x.get('quote_a'))} | {quote_status(text_dir, x.get('artifact_b'), x.get('quote_b'))} | "
-                   f"{(v or {}).get('verdict', '')} | {review_cell(v)} | {short((v or {}).get('explanation') or x.get('why_it_matters'), 260)} |")
+                   f"{cell((v or {}).get('verdict', ''))} | {review_cell(v, x)} | {short((v or {}).get('explanation') or x.get('why_it_matters'), 260)} |")
     out.append("")
     out.append("What each artifact says, and the words each verdict rests on, in the same order:\n")
     for i, (x, v) in enumerate(zip(c["candidates"], c["verdicts"])):
@@ -854,7 +959,7 @@ def cluster_page(text_dir, c, titles, date, marks):
     if c.get("canonical_check"):
         out.append("The clustering's superseded and duplicate relations, as the reader checked them:\n")
         for y in c["canonical_check"]:
-            out.append(f"- {short_id(y['id'])} {y['relation']} {short_id(y['other'])}: {'agrees' if y['agree'] else 'disagrees'}. {cell(y['why'])}")
+            out.append(f"- {short_id(y['id'])} {cell(y['relation'])} {short_id(y['other'])}: {'agrees' if y['agree'] else 'disagrees'}. {cell(y['why'])}")
         out.append("")
     out.append(f"Unsourced: {cell(c['unsourced_summary'])}\n")
     out.append(f"Stale: {cell(c['stale_summary'])}\n")
@@ -871,9 +976,11 @@ def main(merged, numbers, inventory, dst, date):
     nv = number_verdicts(N, M.get("numbers_extra", []))
     clusters = M["clusters"]
     marks = marks_of(group_siblings(M, N))
-    check_corrections(M.get("followup"), N, nv)
+    later = later_rows(M, N, nv)
+    check_corrections(M.get("followup"), N, nv, later)
     page = (intro(N, nv, inv, date, M.get("followup"), reads_every_confirmed_number(M, N, nv)) + definitions() + summary(text_dir, clusters, N, nv) + review_section(M, N, nv)
-            + confirmed_section(text_dir, clusters, N, nv, M.get("followup"), marks) + numbers_section(text_dir, N, nv, titles, hint_editor(M.get("followup")))
+            + confirmed_section(text_dir, clusters, N, nv, M.get("followup"), marks, later)
+            + numbers_section(text_dir, N, nv, titles, hint_editor(M.get("followup"), later))
             + ["## Cluster by cluster\n",
                "Each swept cluster has a page of its own under contradictions/, linked from the table above: every candidate with its kind, both artifacts, whether a script found the reader's quotes, the verdict, the review's outcome and the skeptic's explanation, "
                "then what each artifact says with the words the verdict rests on, the clustering's superseded relations as the reader checked them, and what the cluster asserts without a source or holds as dated.\n"])
