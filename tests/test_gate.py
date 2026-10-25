@@ -14,6 +14,7 @@ import hashlib
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 import time
 import unittest
@@ -1512,6 +1513,77 @@ esac
         report.write_text(head.format("fc027a6") + "- exit 0 at 2026-10-25 14:00:00 UTC\n", encoding="utf-8")
         self.assertEqual(self.gate("bench", "flexray_deepfluoro").returncode, 0)
         self.assertEqual(len(self.submitted()), 1)
+
+    def test_anomaly_queues_one_cpu_job_for_select_and_then_keeps_printing_its_report(self):
+        # no stage, two stages and a stage not built yet are refused before anything is read
+        self.assertEqual(self.gate("anomaly").returncode, 64)
+        self.assertEqual(self.gate("anomaly", "a", "b").returncode, 64)
+        refused = self.gate("anomaly", "tune")
+        self.assertEqual(refused.returncode, 64, refused.stdout)
+        self.assertIn("not built yet", refused.stdout)
+        self.environments_ready()
+        done = self.gate("anomaly", "select")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        lines = self.submitted()
+        self.assertEqual(len(lines), 1, lines)
+        self.assertIn("--class batch --name anomaly_select", lines[0])
+        self.assertIn("STAGE=select", lines[0])
+        self.assertIn("--no-requeue", lines[0])
+        self.assertIn("anomaly.sbatch", lines[0])
+        job = self.recorded()["anomaly_select"]
+        self.live(job)
+        self.assertEqual(self.gate("anomaly", "select").returncode, 75)
+        (self.fake / "queue").write_text("", encoding="utf-8")
+        report = self.repo / "grid" / "logs" / "ANOMALY-select.md"
+        report.write_text("# anomaly select\n- exit 0\n", encoding="utf-8")
+        for _ in range(2):
+            done = self.gate("anomaly", "select")
+            self.assertEqual(done.returncode, 0, done.stdout)
+            self.assertIn("- exit 0", done.stdout)
+        self.assertEqual(len(self.submitted()), 1)
+
+    def test_select_is_refused_without_the_frozen_holdout(self):
+        (self.repo / "data" / "splits" / "anomaly-holdout.json").unlink()
+        self.environments_ready()
+        refused = self.gate("anomaly", "select")
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn("data/splits/anomaly-holdout.json", refused.stdout)
+        self.assertEqual(self.submitted(), [])
+
+    def anomaly_job(self, ssn):
+        env = dict(os.environ, SCHWINGNET=str(self.repo), DATA_ROOT=str(self.data), LAB_VOLUME=str(self.tmp), SSN=str(ssn),
+                   STAGE="select", SLURM_JOB_ID="779", PYDRV=sys.executable)
+        return subprocess.run(["bash", str(self.repo / "grid" / "anomaly.sbatch")], cwd=self.repo / "grid", env=env,
+                              capture_output=True, text=True, timeout=60)
+
+    def test_the_select_stage_scores_selects_and_reports_counts_only(self):
+        # anomaly.sbatch runs tools/anomaly_route.py from the checkout over the grid's records and
+        # writes a report of counts and digests, holding the checkout while it runs
+        self.git_repo()
+        shutil.copy(ROOT / "tools" / "anomaly_route.py", self.repo / "tools" / "anomaly_route.py")
+        subprocess.run(["git", "-C", str(self.repo), "add", "-A"], check=True)
+        subprocess.run(["git", "-C", str(self.repo), "-c", "user.name=t", "-c", "user.email=t@t", "-c", "gc.auto=0",
+                        "-c", "maintenance.auto=false", "commit", "-q", "-m", "tool"], check=True)
+        registry = self.tmp / "ssn" / "SchwingNet" / "results" / "transitional_registry"
+        (registry / "verse").mkdir(parents=True)
+        columns = "case,patient_key,read_structure,read_subtype,mask_has_L6,a_nL,a_nT,b_nL,b_nL_contact,b_nT,labeller_a,labeller_b,junction_tl_in_fov,junction_ls_in_fov,review"
+        rows = [f"verse{500 + n},verse:verse{500 + n},7/12/6/5,L6,True,6,,6,6,,,,True,True," for n in range(4)]
+        rows += [f"verse{100 + n},verse:verse{100 + n},7/12/5/5,normal,False,5,,5,5,,,,True,True," for n in range(8)]
+        (registry / "verse" / "screened.csv").write_text("\n".join([columns] + rows) + "\n", encoding="utf-8")
+        (registry / "registry.csv").write_text(
+            "patient_key,subtype,truth_tier,winning_source,winning_case,frames_role,junction_tl_in_fov,junction_ls_in_fov\n"
+            "verse:verse900,L6,read,verse,verse900,CT-only,True,True\n"
+            + "".join(f"verse:verse{200 + n},none,read,verse,verse{200 + n},CT-only,True,True\n" for n in range(5)), encoding="utf-8")
+        done = self.anomaly_job(self.tmp / "ssn")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        report = (self.repo / "grid" / "logs" / "ANOMALY-select.md").read_text(encoding="utf-8")
+        self.assertIn("# anomaly select: job 779", report.splitlines()[0])
+        self.assertIn("NOTE: the grid's VerSe screen", report)
+        self.assertIn("| L6: sensitivity | 4 of 4", report)
+        self.assertIn("no held-out person in", report)
+        self.assertIn("- exit 0 at ", report)
+        self.assertFalse((self.repo / "grid" / "logs" / "HOLD").exists())
+        self.assertTrue((self.tmp / "go2432" / "anomaly" / "select" / "selection.csv").exists())
 
     def bench_job(self, name):
         env = dict(os.environ, SCHWINGNET=str(self.repo), DATA_ROOT=str(self.data), LAB_VOLUME=str(self.tmp), FAKE=str(self.fake),

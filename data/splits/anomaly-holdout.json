@@ -1,0 +1,391 @@
+{
+ "frozen": "2026-10-25",
+ "why": "the SPINEPS to FleXray anomaly route (docs/research/spineps-anomaly-route.md, #398): no checkpoint of the route's lineage may see these persons, and the selection, the pack's training list and the fine-tune refuse them",
+ "rule": {
+  "rank": "first 8 bytes, big-endian, of sha256 over the UTF-8 of 'schwingnet-anomaly-holdout|' + salt + '|' + person; lowest first",
+  "salt": "2026-10-25",
+  "verse": "read persons of the VerSe screen, none disputed; 2 T13, 10 L6 and 1 four-lumbar, each split over the VerSe releases in proportion to its candidates; 20 normal counts with both junctions in the field of every scan, any Castellvi grade or lumbar rib, split over the releases in proportion to the positives held",
+  "disputed": "a scan whose screen review says: contradicts the published read; release mask carries an L6; release mask id order broken",
+  "ctspinopelvic1k": "5 of the 16 reader-confirmed L6 records, none of the seven disputed (0008, 0021, 0033, 0049, 0176, 0179, 0196); its normals are drawn by the same rank by the select stage and added here by pull request before any render reads this file"
+ },
+ "inputs": {
+  "screen": {
+   "name": "screened.csv",
+   "sha256": "a0cb756c2ef7d9455306c09cd010adada5b36e03584534f01bb3af5fbd464f4b"
+  },
+  "table": {
+   "name": "verse_suppl_table1.csv",
+   "sha256": "b35ea6146e9b314d15d4c681105288c038663b323e6d5a013529a16f79f1af37"
+  }
+ },
+ "persons": [
+  {
+   "person": "verse:verse547",
+   "variant": "T13",
+   "release": "2020",
+   "stratum": "T13",
+   "scans": [
+    "verse547"
+   ]
+  },
+  {
+   "person": "verse:verse602",
+   "variant": "T13",
+   "release": "2020",
+   "stratum": "T13",
+   "scans": [
+    "verse602"
+   ]
+  },
+  {
+   "person": "verse:verse642",
+   "variant": "L6",
+   "release": "2020",
+   "stratum": "L6, id 25 in the release mask",
+   "scans": [
+    "verse642"
+   ]
+  },
+  {
+   "person": "verse:verse406",
+   "variant": "L6",
+   "release": "2019",
+   "stratum": "L6, id 25 in the release mask",
+   "scans": [
+    "verse214",
+    "verse261"
+   ]
+  },
+  {
+   "person": "verse:verse551",
+   "variant": "L6",
+   "release": "2020",
+   "stratum": "L6, id 25 in the release mask",
+   "scans": [
+    "verse551"
+   ]
+  },
+  {
+   "person": "verse:verse509",
+   "variant": "L6",
+   "release": "2020",
+   "stratum": "L6, id 25 in the release mask",
+   "scans": [
+    "verse509"
+   ]
+  },
+  {
+   "person": "verse:verse518",
+   "variant": "L6",
+   "release": "2020",
+   "stratum": "L6, no id 25 in the release mask",
+   "scans": [
+    "verse518"
+   ]
+  },
+  {
+   "person": "verse:verse597",
+   "variant": "L6",
+   "release": "2020",
+   "stratum": "L6, id 25 in the release mask",
+   "scans": [
+    "verse597"
+   ]
+  },
+  {
+   "person": "verse:verse544",
+   "variant": "L6",
+   "release": "2020",
+   "stratum": "L6, no id 25 in the release mask",
+   "scans": [
+    "verse544"
+   ]
+  },
+  {
+   "person": "verse:verse619",
+   "variant": "L6",
+   "release": "2020",
+   "stratum": "L6, id 25 in the release mask",
+   "scans": [
+    "verse619"
+   ]
+  },
+  {
+   "person": "verse:verse513",
+   "variant": "L6",
+   "release": "2020",
+   "stratum": "L6, no id 25 in the release mask",
+   "scans": [
+    "verse513"
+   ]
+  },
+  {
+   "person": "verse:verse514",
+   "variant": "L6",
+   "release": "2020",
+   "stratum": "L6, no id 25 in the release mask",
+   "scans": [
+    "verse514"
+   ]
+  },
+  {
+   "person": "verse:verse549",
+   "variant": "four_lumbar",
+   "release": "2020",
+   "stratum": "four_lumbar",
+   "scans": [
+    "verse549"
+   ]
+  },
+  {
+   "person": "verse:verse755",
+   "variant": "normal",
+   "release": "2020",
+   "stratum": "normal",
+   "scans": [
+    "verse755"
+   ]
+  },
+  {
+   "person": "verse:verse761",
+   "variant": "normal",
+   "release": "2020",
+   "stratum": "normal",
+   "scans": [
+    "verse761"
+   ]
+  },
+  {
+   "person": "verse:verse646",
+   "variant": "normal",
+   "release": "2020",
+   "stratum": "unassigned",
+   "scans": [
+    "verse646"
+   ]
+  },
+  {
+   "person": "verse:verse825",
+   "variant": "normal",
+   "release": "2020",
+   "stratum": "normal",
+   "scans": [
+    "verse825"
+   ]
+  },
+  {
+   "person": "verse:verse010",
+   "variant": "normal",
+   "release": "2019",
+   "stratum": "normal",
+   "scans": [
+    "verse010"
+   ]
+  },
+  {
+   "person": "verse:verse153",
+   "variant": "normal",
+   "release": "2019",
+   "stratum": "normal",
+   "scans": [
+    "verse153"
+   ]
+  },
+  {
+   "person": "verse:verse533",
+   "variant": "normal",
+   "release": "2020",
+   "stratum": "unassigned",
+   "scans": [
+    "verse533"
+   ]
+  },
+  {
+   "person": "verse:verse550",
+   "variant": "normal",
+   "release": "2020",
+   "stratum": "unassigned",
+   "scans": [
+    "verse550"
+   ]
+  },
+  {
+   "person": "verse:verse756",
+   "variant": "normal",
+   "release": "2020",
+   "stratum": "unassigned",
+   "scans": [
+    "verse756"
+   ]
+  },
+  {
+   "person": "verse:verse804",
+   "variant": "normal",
+   "release": "2020",
+   "stratum": "normal",
+   "scans": [
+    "verse804"
+   ]
+  },
+  {
+   "person": "verse:verse705",
+   "variant": "normal",
+   "release": "2020",
+   "stratum": "normal",
+   "scans": [
+    "verse705"
+   ]
+  },
+  {
+   "person": "verse:verse809",
+   "variant": "normal",
+   "release": "2020",
+   "stratum": "normal",
+   "scans": [
+    "verse809"
+   ]
+  },
+  {
+   "person": "verse:verse820",
+   "variant": "normal",
+   "release": "2020",
+   "stratum": "normal",
+   "scans": [
+    "verse820"
+   ]
+  },
+  {
+   "person": "verse:verse817",
+   "variant": "normal",
+   "release": "2020",
+   "stratum": "normal",
+   "scans": [
+    "verse817"
+   ]
+  },
+  {
+   "person": "verse:verse821",
+   "variant": "normal",
+   "release": "2020",
+   "stratum": "normal",
+   "scans": [
+    "verse821"
+   ]
+  },
+  {
+   "person": "verse:verse835",
+   "variant": "normal",
+   "release": "2020",
+   "stratum": "normal",
+   "scans": [
+    "verse835"
+   ]
+  },
+  {
+   "person": "verse:verse759",
+   "variant": "normal",
+   "release": "2020",
+   "stratum": "unassigned",
+   "scans": [
+    "verse759"
+   ]
+  },
+  {
+   "person": "verse:verse573",
+   "variant": "normal",
+   "release": "2020",
+   "stratum": "sacralised_L5_fused",
+   "scans": [
+    "verse573"
+   ]
+  },
+  {
+   "person": "verse:verse524",
+   "variant": "normal",
+   "release": "2020",
+   "stratum": "sacralised_L5_fused",
+   "scans": [
+    "verse524"
+   ]
+  },
+  {
+   "person": "verse:verse760",
+   "variant": "normal",
+   "release": "2020",
+   "stratum": "normal",
+   "scans": [
+    "verse760"
+   ]
+  },
+  {
+   "person": "ctsp:0376",
+   "variant": "L6",
+   "release": "ctspinopelvic1k",
+   "stratum": "reader-confirmed L6",
+   "scans": [
+    "0376"
+   ]
+  },
+  {
+   "person": "ctsp:0366",
+   "variant": "L6",
+   "release": "ctspinopelvic1k",
+   "stratum": "reader-confirmed L6",
+   "scans": [
+    "0366"
+   ]
+  },
+  {
+   "person": "ctsp:0005",
+   "variant": "L6",
+   "release": "ctspinopelvic1k",
+   "stratum": "reader-confirmed L6",
+   "scans": [
+    "0005"
+   ]
+  },
+  {
+   "person": "ctsp:0302",
+   "variant": "L6",
+   "release": "ctspinopelvic1k",
+   "stratum": "reader-confirmed L6",
+   "scans": [
+    "0302"
+   ]
+  },
+  {
+   "person": "ctsp:0234",
+   "variant": "L6",
+   "release": "ctspinopelvic1k",
+   "stratum": "reader-confirmed L6",
+   "scans": [
+    "0234"
+   ]
+  }
+ ],
+ "disputed": [
+  "ctsp:0008",
+  "ctsp:0021",
+  "ctsp:0033",
+  "ctsp:0049",
+  "ctsp:0176",
+  "ctsp:0179",
+  "ctsp:0196",
+  "verse:verse026",
+  "verse:verse149",
+  "verse:verse417",
+  "verse:verse507",
+  "verse:verse512",
+  "verse:verse540",
+  "verse:verse559",
+  "verse:verse571",
+  "verse:verse588",
+  "verse:verse601",
+  "verse:verse612",
+  "verse:verse615",
+  "verse:verse707",
+  "verse:verse753",
+  "verse:verse765",
+  "verse:verse814"
+ ]
+}
