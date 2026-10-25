@@ -547,26 +547,54 @@ def entry_line(path, root):
     return f"{relative}\t{info.st_size}\t{info.st_mtime_ns}\t{target}"
 
 
-def tree_listing(root, skip=()):
-    """Every file under a folder as listing lines in path order, the names in skip at its top left
-    out. A linked folder is walked, as the recipes' globs walk it, and listed with its target too,
-    so a new copy behind the same link changes the listing; a folder reached a second time, a link
-    back up the tree among them, is walked once. A file rewritten with the same bytes has a new
-    time, so a listing errs towards a full run, never towards a skip."""
-    root = Path(root)
-    lines, seen = [], set()
+def walked(root):
+    """os.walk through linked folders, as the recipes' globs walk them, each real folder once, so a
+    link back up the tree is walked once; folders and files in name order."""
+    seen = set()
     for folder, folders, files in os.walk(root, followlinks=True):
-        here = Path(folder)
-        real = os.path.realpath(here)
+        real = os.path.realpath(folder)
         if real in seen:
             folders[:] = []
             continue
         seen.add(real)
         folders.sort()
+        yield Path(folder), folders, sorted(files)
+
+
+def tree_listing(root, skip=()):
+    """Every file under a folder as listing lines in path order, the names in skip at its top left
+    out. A linked folder is walked and listed with its target too, so a new copy behind the same
+    link changes the listing. A file rewritten with the same bytes has a new time, so a listing
+    errs towards a full run, never towards a skip."""
+    root = Path(root)
+    lines = []
+    for here, folders, files in walked(root):
         lines.extend(f"{(here / name).relative_to(root).as_posix()}/\tlink\t{link_target(here / name)}"
                      for name in folders if (here / name).is_symlink())
-        lines.extend(entry_line(here / name, root) for name in sorted(files) if not (here == root and name in skip))
+        lines.extend(entry_line(here / name, root) for name in files if not (here == root and name in skip))
     return sorted(lines)
+
+
+def tree_motion(root, skip=()):
+    """The listing with what a change leaves behind even once it is undone: every folder's own
+    modification time, which an entry added, removed or renamed in it moves, and every file's
+    change time, which a write or a rename moves and no tool sets back. Two equal motions taken
+    around a read say nothing in the tree moved during it, where two equal listings do not: a
+    frame moved out and back, or a file added and removed, lists as it did."""
+    root = Path(root)
+    lines = []
+    for here, _, files in walked(root):
+        lines.append(f"{here.relative_to(root).as_posix()}/\t{stat_time(here, 'st_mtime_ns')}")
+        lines.extend(f"{entry_line(here / name, root)}\t{stat_time(here / name, 'st_ctime_ns')}"
+                     for name in files if not (here == root and name in skip))
+    return sorted(lines)
+
+
+def stat_time(path, field):
+    try:
+        return getattr(path.stat(), field)
+    except OSError:
+        return "missing"
 
 
 def listing_sha256(lines):
@@ -578,6 +606,12 @@ def listing_sha256(lines):
 def bank_listing(bank):
     """What a bank holds, its own stamp left out: what the ingest reads and the stamp checks."""
     return tree_listing(bank, skip=(STAMP, STAMP + ".part"))
+
+
+def bank_motion(bank):
+    """The bank's motion (tree_motion), its own stamp left out, which the ingest takes around its
+    read of the bank."""
+    return tree_motion(bank, skip=(STAMP, STAMP + ".part"))
 
 
 def decoder_versions():

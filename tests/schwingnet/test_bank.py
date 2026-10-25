@@ -1,5 +1,6 @@
 """A bank tools/bank.py writes from a raw folder is one tools/ingest.py reads and plans a shard from."""
 
+import hashlib
 import importlib.util
 import json
 import os
@@ -180,6 +181,11 @@ def test_a_name_that_is_not_utf8_in_raw_or_the_bank_stops_no_source(
     with open(os.fsencode(tmp_path / "raw") + b"/notes-caf\xe9.txt", "wb") as handle:
         handle.write(b"a note")
     recipe = nih_recipe(tmp_path, tmp_path / "raw")
+    lines = bank_tool.tree_listing(tmp_path / "raw")
+    held = hashlib.sha256(b"\n".join(os.fsencode(line) for line in lines) + b"\n").hexdigest()
+    assert bank_tool.listing_sha256(lines) == held
+    renamed = [line.replace("caf\udce9", "caf\udce8") for line in lines]
+    assert renamed != lines and bank_tool.listing_sha256(renamed) != held
     assert bank_run(bank_tool, recipe, capsys)["written"] == 2
     assert bank_run(bank_tool, recipe, capsys)["unchanged"] is True
     with open(os.fsencode(tmp_path / "bank") + b"/stray-\xe9.txt", "wb") as handle:

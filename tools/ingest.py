@@ -821,7 +821,7 @@ def parser():
     return top
 
 
-def ingest(args, settings, inputs, key, cleared):
+def ingest(args, settings, inputs, key, cleared, motion=None):
     """Read the bank and plan the shard, or write it with `run`; the report. A shard already there
     under another date or commit with the same content is the answer, and no twin is cut."""
     items, sources, report = plan_shard(Path(args.bank), settings, inputs)
@@ -838,19 +838,25 @@ def ingest(args, settings, inputs, key, cleared):
         report["verified"] = verify_shard(folder, manifest)
         report["staging_cleared"] = cleared
         if key is not None:
-            note_reuse(Path(args.bank), settings, inputs, key, report, folder)
+            note_reuse(Path(args.bank), motion, settings.grid_root, key, report, folder)
     return report
 
 
-def note_reuse(bank, settings, inputs, key, report, folder):
-    """The note is a saving and no part of the shard: where it cannot be written, or the bank no
-    longer lists as it did when the key was made, so the shard may hold a later state of it than
-    the key names, the run says so and the next one reads the bank."""
+def bank_motion_sha256(bank):
+    return bank_tool.listing_sha256(bank_tool.bank_motion(bank))
+
+
+def note_reuse(bank, motion, grid_root, key, report, folder):
+    """The note is a saving and no part of the shard: where it cannot be written, or the bank moved
+    while it was read, an entry of it added, removed, renamed or written, even one put back as it
+    was, so the shard may hold another state of it than the key names, the run says so and the next
+    one reads the bank. The motion is taken before the key's listing and again here; the code the
+    key hashes is the code this run ran, so a merge landing meanwhile changes nothing here."""
     try:
-        if reuse_key(bank, settings, inputs) != key:
+        if motion is None or bank_motion_sha256(bank) != motion:
             report["reuse_note"] = "not written: the bank changed while it was read"
             return
-        record_reuse(settings.grid_root, key, report, folder)
+        record_reuse(grid_root, key, report, folder)
     except (OSError, ValueError) as error:
         report["reuse_note"] = f"not written: {error}"
 
@@ -862,6 +868,7 @@ def main(argv=None):
         if args.source not in inputs.registry:
             raise IngestError(f"{args.source} has no registry entry")
         settings = Settings(args, inputs.registry[args.source])
+        motion = bank_motion_sha256(args.bank) if args.command == "run" else None
         key = reuse_key(args.bank, settings, inputs)
         cleared = clear_stale_staging(settings.grid_root) if args.command == "run" else 0
         reused = reused_by_stamp(settings.grid_root, key) if args.command == "run" else None
@@ -869,7 +876,7 @@ def main(argv=None):
             reused["staging_cleared"] = cleared
             print(json.dumps(reused, indent=1, sort_keys=True))
             return 0
-        print(json.dumps(ingest(args, settings, inputs, key, cleared), indent=1, sort_keys=True))
+        print(json.dumps(ingest(args, settings, inputs, key, cleared, motion), indent=1, sort_keys=True))
         return 0
     except (catalog_tool.CatalogError, IngestError, OSError, ValueError, ViolationError) as error:
         # A pydantic ValidationError is a ValueError; a ViolationError is a rule of the catalog

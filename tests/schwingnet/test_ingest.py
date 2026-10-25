@@ -822,6 +822,39 @@ def test_a_bank_that_changes_while_it_is_read_leaves_no_note_and_a_name_not_utf8
     assert third["verified_by"].startswith("presence") and reads == [1, 1]
 
 
+def test_a_frame_moved_out_and_back_during_the_read_leaves_no_note(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # A move keeps a file's size and modification time, so the bank lists after the read as it did
+    # before it; the folder's own time and the file's change time say it moved.
+    ingest = load("ingest")
+    bank, root = bank_of(tmp_path), tmp_path / "grid" / "carmlspine"
+    real = ingest.plan_shard
+    moved = [bank / "images" / "train" / "case8_f1.png", bank / "meta" / "case8_f1.json"]
+
+    def plan_with_a_frame_away(*arguments):
+        for path in moved:
+            path.rename(tmp_path / path.name)
+        try:
+            return real(*arguments)
+        finally:
+            for path in moved:
+                (tmp_path / path.name).rename(path)
+
+    monkeypatch.setattr(ingest, "plan_shard", plan_with_a_frame_away)
+    before = ingest.bank_tool.listing_sha256(ingest.bank_tool.bank_listing(bank))
+    assert ingest.main(argv(bank, root, "train", "train")) == 0
+    away = json.loads(capsys.readouterr().out)
+    assert ingest.bank_tool.listing_sha256(ingest.bank_tool.bank_listing(bank)) == before
+    assert away["reuse_note"] == "not written: the bank changed while it was read"
+    assert not (root / ".reuse").exists()
+    monkeypatch.setattr(ingest, "plan_shard", real)
+    later_run = later(argv(bank, root, "train", "train"), "2026-10-25", "4567def")
+    assert ingest.main(later_run) == 0
+    whole = json.loads(capsys.readouterr().out)
+    assert whole["outcome"] == "written" and whole["frames_kept"] == away["frames_kept"] + 1
+
+
 def test_a_shard_cut_before_the_note_is_answered_from_the_second_run_on(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
