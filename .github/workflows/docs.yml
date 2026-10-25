@@ -61,6 +61,28 @@ jobs:
           SDLC_PROTOCOL: ${{ runner.temp }}/symphony-protocol
         run: python3 tools/living_docs.py report "$RUNNER_TEMP/tests.json"
 
+      - name: The App's token to read spine-datasets' storage feed
+        id: feed-token
+        if: vars.SDLC_APP_ID != ''
+        continue-on-error: true
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          app-id: ${{ vars.SDLC_APP_ID }}
+          private-key: ${{ secrets.SDLC_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: spine-datasets
+          permission-contents: read
+
+      # The textbook's storage panel (tools/storage_panel.py): the snapshot of the
+      # feed is refreshed where the token reads it, and a feed that cannot be read is
+      # one line in the log, never a failed deploy; the page is built either way.
+      - name: Refresh the storage panel from the feed, else build it from the committed snapshot
+        env:
+          STORAGE_FEED_TOKEN: ${{ steps.feed-token.outputs.token }}
+        run: |
+          python3 tools/storage_panel.py fetch || echo "the storage panel is built from the committed snapshot"
+          python3 tools/storage_panel.py build
+
       - name: Build the site
         env:
           SHA: ${{ github.sha }}

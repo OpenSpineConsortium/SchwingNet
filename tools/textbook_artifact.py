@@ -105,6 +105,7 @@ body { padding-left:max(0px, env(safe-area-inset-left, 0px)); padding-right:max(
 #ask button:disabled { opacity:.55; cursor:default; }
 #ask-out { overflow:auto; white-space:pre-wrap; line-height:1.5; border-top:1px solid var(--line); padding-top:8px; min-height:1.4em; }
 #ask-out:empty { display:none; }
+#ask-run { border-top:1px solid var(--line); padding-top:8px; }
 #ask-hint { color:var(--muted); font-size:12.5px; margin:0; }
 #ask button:focus-visible, #ask-open:focus-visible, #ask textarea:focus-visible { outline:2px solid var(--runline); outline-offset:2px; }
 @media (prefers-reduced-motion: no-preference) { #ask-open { transition:transform .15s; } #ask-open:hover { transform:translateY(-1px); } }
@@ -226,7 +227,75 @@ ASK_JS = r"""
     "page gives them, and call a figure the record has not settled \"a record, not a final value\", as the book does. " +
     "Give numbers only as the page gives them, with their n and interval where it has them. Name people by role, never " +
     "by name. Plain prose, under 250 words, no headings. If the question needs work the page cannot do, a run, a fetch " +
-    "or a new analysis, say what would settle it in one sentence, so the reader can hand it to Claude in the repository.";
+    "or a new analysis, say what would settle it in one sentence, so the reader can hand it to Claude in the repository. " +
+    "When the reader asks for a run, a training of a new combination of data and blocks, end your answer with one line " +
+    "of its own, experiment: recipe=<name> epochs=<n> seed=<n> hours=<h> KEY=VALUE ..., one KEY=VALUE word per block " +
+    "named, the recipe and the values spelled as the page spells them, the panel's defaults (recipe none, 20 epochs, " +
+    "seed 1, 4 hours) where the reader names none, and nothing the page does not name; write no such line otherwise.";
+
+  // The combination an answer names on its experiment: line becomes a request in the experiments panel's own
+  // form (docs/research/experiments-panel.md, section 5): the prefilled issue always, and Run as me where the
+  // page's dispatcher has the viewer's GitHub connector (tools/textbook_site.py MESSAGE_JS). The workflow checks
+  // every value against the recipes and the blocks module, so the box checks only the shape of each word.
+  var REQUEST_LINE = /^experiment:[ \t]*(.+?)[ \t]*$/m;
+  var REQUEST_WORD = /^([a-z][a-z0-9_]{0,31})=([A-Za-z0-9][A-Za-z0-9._,-]{0,79})$/;
+  var SETTINGS = {recipe: "none", epochs: "20", seed: "1", hours: "4"};
+  var runRow = null;
+  function requestOf(text) {
+    var m = REQUEST_LINE.exec(text || "");
+    if (!m) return null;
+    var fields = {}, blocks = [];
+    m[1].split(/\s+/).forEach(function (w) {
+      var p = REQUEST_WORD.exec(w);
+      if (!p) return;
+      if (SETTINGS.hasOwnProperty(p[1])) fields[p[1]] = p[2]; else blocks.push(p[1] + "=" + p[2]);
+    });
+    Object.keys(SETTINGS).forEach(function (k) { if (!fields[k]) fields[k] = SETTINGS[k]; });
+    return {fields: fields, blocks: blocks};
+  }
+  function requestTitle(r) {
+    return "Experiment: " + (r.blocks.length ? r.blocks.join(" ") : "version 1 (no block named)") + ", " + r.fields.epochs + " epochs";
+  }
+  function requestBody(r, question) {
+    var lines = ["<!-- schwingnet-experiment -->"];
+    Object.keys(SETTINGS).forEach(function (k) { lines.push(k + ": " + r.fields[k]); });
+    r.blocks.forEach(function (w) { lines.push("block: " + w); });
+    return lines.join("\n") + "\n\nAsked in the textbook's Ask Claude box on " + subject + " (page " + here + "): " + question +
+      "\n\nThe answer named this combination; the experiment workflow checks it against data/recipes/ and " +
+      "src/schwingnet/blocks.py and answers with the command, the gate word and the owner's click.\n";
+  }
+  function requestUrl(r, question) {
+    return "https://github.com/" + repo + "/issues/new?" +
+      new URLSearchParams({title: requestTitle(r), labels: "experiment", body: requestBody(r, question)}).toString();
+  }
+  function offerRun(r, question) {
+    if (runRow) { runRow.remove(); runRow = null; }
+    if (!r) return;
+    runRow = document.createElement("div"); runRow.className = "row"; runRow.id = "ask-run";
+    var a = document.createElement("a");
+    a.className = "button"; a.target = "_blank"; a.rel = "noopener"; a.href = requestUrl(r, question); a.textContent = "Request this run";
+    runRow.appendChild(a);
+    out.parentNode.insertBefore(runRow, out.nextSibling);
+    if (typeof window.schwingnetConnector !== "function" || typeof window.schwingnetDispatch !== "function") return;
+    window.schwingnetConnector().then(function (m) {
+      if (!m || !runRow) return;
+      var b = document.createElement("button");
+      b.type = "button"; b.textContent = "Run as me";
+      b.title = "Dispatches experiment.yml on " + repo + " through your GitHub connector; the workflow opens the issue and answers it";
+      b.addEventListener("click", function () {
+        b.disabled = true;
+        window.schwingnetDispatch({repo: repo, workflow: "experiment.yml", ref: "main", label: "experiment", fallbackUrl: a.href,
+                                   inputs: {recipe: r.fields.recipe, epochs: r.fields.epochs, seed: r.fields.seed, hours: r.fields.hours,
+                                            blocks: r.blocks.join(" ")}})
+          .then(function (res) {
+            out.textContent += "\n\n" + (res.ok ? "Dispatched as you: the experiment workflow opens the issue and answers it with the gate word."
+                                                 : "Not dispatched (" + res.error + "); Request this run opens the issue instead.");
+            if (!res.ok) b.disabled = false;
+          });
+      });
+      runRow.appendChild(b);
+    });
+  }
 
   send.addEventListener("click", function () {
     var question = q.value.trim();
@@ -237,9 +306,13 @@ ASK_JS = r"""
     var input = RULES + "\n\nPage: " + subject + "\n\nPage text:\n" + text.slice(0, LIMIT) + "\n\nQuestion: " + question;
     controller = new AbortController();
     send.disabled = true; stop.hidden = false;
+    offerRun(null);
     out.textContent = "Thinking...";
     sampleFn(input, {signal: controller.signal, cache: false, onText: function (e) { out.textContent = e.text; }})
-      .then(function (r) { out.textContent = r.text + (r.truncated ? "\n\n[The answer was cut short; ask for less at a time.]" : ""); })
+      .then(function (r) {
+        out.textContent = r.text + (r.truncated ? "\n\n[The answer was cut short; ask for less at a time.]" : "");
+        offerRun(r.truncated ? null : requestOf(r.text), question);
+      })
       .catch(function (e) { out.textContent = (e && e.text) || ""; var c = copyFor(e && e.code); if (c) out.textContent += (out.textContent ? "\n\n" : "") + c; })
       .then(function () { send.disabled = false; stop.hidden = true; controller = null; });
   });

@@ -1,0 +1,415 @@
+{
+  "about": "Questions a reader of the textbook would ask, each with the chapter files whose sections answer it and, where one applies, the figure that shows it; written from the chapters on 2026-10-24 (issue #250). tools/rag.py eval scores a block set by them, and tools/rag.py check, part of scripts/check.sh, holds version 1 to the floor below.",
+  "floor": {
+    "recall_at_5": 0.8,
+    "mrr": 0.7,
+    "set_from": "version 1 reached a recall at 5 of 0.877 and an MRR of 0.764 over these 54 questions on 2026-10-24, as docs/textbook/rag/eval.json records; the floor sits about 0.07 below both, so an edit of a chapter does not fail the check while a broken search does"
+  },
+  "questions": [
+    {
+      "id": "what-schwingnet-is-for",
+      "question": "What is SchwingNet meant to do, and what has to be ready by the talk?",
+      "chapters": [
+        "docs/textbook/01-the-goal-and-the-constraints.md"
+      ]
+    },
+    {
+      "id": "why-count-from-an-anchor",
+      "question": "Why count vertebrae from an anchor the surgeon trusts instead of naming the level from one image?",
+      "chapters": [
+        "docs/textbook/01-the-goal-and-the-constraints.md",
+        "docs/textbook/10-counting-from-an-anchor-along-a-sweep.md"
+      ]
+    },
+    {
+      "id": "evidence-grades",
+      "question": "How does the book grade how strongly a number is backed?",
+      "chapters": [
+        "docs/textbook/02-vocabulary.md",
+        "docs/textbook/03-what-is-measured-and-what-is-claimed.md"
+      ]
+    },
+    {
+      "id": "banned-words",
+      "question": "Which words does the book refuse to use, and what does it say instead?",
+      "chapters": [
+        "docs/textbook/02-vocabulary.md"
+      ]
+    },
+    {
+      "id": "real-c-arm-sets",
+      "question": "Which real C-arm image sets are held on the grid?",
+      "chapters": [
+        "docs/textbook/05-real-fluoroscopy-and-c-arm-sets.md"
+      ]
+    },
+    {
+      "id": "intraoperative-truth",
+      "question": "Is there any real intraoperative human fluoroscopy with measured results?",
+      "chapters": [
+        "docs/textbook/03-what-is-measured-and-what-is-claimed.md",
+        "docs/textbook/05-real-fluoroscopy-and-c-arm-sets.md"
+      ]
+    },
+    {
+      "id": "manifest-families",
+      "question": "How are the sources in the data manifest grouped?",
+      "chapters": [
+        "docs/textbook/04-the-registry-and-the-holding.md"
+      ]
+    },
+    {
+      "id": "agreements-needed",
+      "question": "Which image sets still need a data use agreement or a request letter before they can be downloaded?",
+      "chapters": [
+        "docs/textbook/05-real-fluoroscopy-and-c-arm-sets.md",
+        "docs/textbook/24-decision-log-data-licences-and-splits.md"
+      ]
+    },
+    {
+      "id": "plain-film-held-out",
+      "question": "Which plain film collections are kept out of training as a test, and why?",
+      "chapters": [
+        "docs/textbook/06-plain-film-corpora.md",
+        "docs/textbook/24-decision-log-data-licences-and-splits.md"
+      ]
+    },
+    {
+      "id": "ap-gap",
+      "question": "Why is there so little frontal AP plain film with level truth?",
+      "chapters": [
+        "docs/textbook/06-plain-film-corpora.md"
+      ]
+    },
+    {
+      "id": "rib-label-trust",
+      "question": "Can the rib and level labels of the CT collections be trusted?",
+      "chapters": [
+        "docs/textbook/07-ct-collections-their-labels-and-the-border-variants.md"
+      ]
+    },
+    {
+      "id": "border-variants-together",
+      "question": "Do lumbosacral and thoracolumbar variants tend to turn up in the same patient?",
+      "chapters": [
+        "docs/textbook/07-ct-collections-their-labels-and-the-border-variants.md"
+      ],
+      "figure": "07/border-anomalies-co-occur"
+    },
+    {
+      "id": "what-is-fluorocap",
+      "question": "What is FluoroCap and how large is it?",
+      "chapters": [
+        "docs/textbook/08-fluorocap-as-a-dataset.md"
+      ]
+    },
+    {
+      "id": "fluorocap-label-quality",
+      "question": "How good are FluoroCap's labels, given that they come from figure captions?",
+      "chapters": [
+        "docs/textbook/08-fluorocap-as-a-dataset.md",
+        "docs/textbook/15-fluorocaps-evidence-decoder-and-the-level-model.md"
+      ]
+    },
+    {
+      "id": "one-person",
+      "question": "What counts as one person when a train and test split is made, and why does it matter?",
+      "chapters": [
+        "docs/textbook/09-splits-leakage-and-licences.md"
+      ]
+    },
+    {
+      "id": "leaked-numbers",
+      "question": "Which earlier numbers were produced by leaked training sets?",
+      "chapters": [
+        "docs/textbook/09-splits-leakage-and-licences.md",
+        "docs/textbook/03-what-is-measured-and-what-is-claimed.md"
+      ]
+    },
+    {
+      "id": "decline-rule",
+      "question": "When does the counting chain refuse to give a level?",
+      "chapters": [
+        "docs/textbook/10-counting-from-an-anchor-along-a-sweep.md"
+      ]
+    },
+    {
+      "id": "both-ends-check",
+      "question": "How does adding the count from the sacrum to the count from C2 check a count?",
+      "chapters": [
+        "docs/textbook/10-counting-from-an-anchor-along-a-sweep.md"
+      ]
+    },
+    {
+      "id": "how-much-spine",
+      "question": "How many vertebrae must be in view before a level can be named exactly?",
+      "chapters": [
+        "docs/textbook/11-naming-from-morphology-context-and-a-sweep.md"
+      ],
+      "figure": "11/exact-level-against-vertebrae-visible"
+    },
+    {
+      "id": "version-1-networks",
+      "question": "What are the two networks of version 1, and how is version 1 to be trained?",
+      "chapters": [
+        "docs/textbook/12-detectors-the-architecture-and-the-version-1-training-plan.md"
+      ]
+    },
+    {
+      "id": "unseen-device",
+      "question": "How well does detection hold up on a C-arm the model never saw in training?",
+      "chapters": [
+        "docs/textbook/20-readiness-for-the-operating-room.md",
+        "docs/textbook/12-detectors-the-architecture-and-the-version-1-training-plan.md",
+        "docs/textbook/03-what-is-measured-and-what-is-claimed.md"
+      ]
+    },
+    {
+      "id": "physics-gap",
+      "question": "How much of the gap between rendered and real frames does the physics of image formation explain?",
+      "chapters": [
+        "docs/textbook/13-renders-physics-and-the-sim-to-real-gap.md"
+      ],
+      "figure": "13/what-is-left-after-physics"
+    },
+    {
+      "id": "diffusion-frames",
+      "question": "Did synthetic fluoroscopy made by a diffusion model help?",
+      "chapters": [
+        "docs/textbook/13-renders-physics-and-the-sim-to-real-gap.md"
+      ],
+      "figure": "13/fluorogen-preview"
+    },
+    {
+      "id": "sixth-lumbar",
+      "question": "How is a sixth lumbar vertebra or a sacralised L5 handled?",
+      "chapters": [
+        "docs/textbook/14-transitional-anatomy-two-anchors-disagreement-and-abstention.md"
+      ]
+    },
+    {
+      "id": "abstain",
+      "question": "When should the model abstain instead of naming a level?",
+      "chapters": [
+        "docs/textbook/14-transitional-anatomy-two-anchors-disagreement-and-abstention.md",
+        "docs/textbook/10-counting-from-an-anchor-along-a-sweep.md"
+      ]
+    },
+    {
+      "id": "decoder-disagreement",
+      "question": "What decides FluoroCap's level when its caption and the image disagree?",
+      "chapters": [
+        "docs/textbook/15-fluorocaps-evidence-decoder-and-the-level-model.md"
+      ]
+    },
+    {
+      "id": "overturned-decisions",
+      "question": "Which method decisions have since been overturned, and by what?",
+      "chapters": [
+        "docs/textbook/16-method-decisions-and-what-would-reverse-them.md"
+      ]
+    },
+    {
+      "id": "readers",
+      "question": "Who reads the bench frames and how are disagreements between readers settled?",
+      "chapters": [
+        "docs/textbook/17-benches-and-human-reads.md"
+      ]
+    },
+    {
+      "id": "clustered-intervals",
+      "question": "How is a confidence interval computed when many frames come from the same patient?",
+      "chapters": [
+        "docs/textbook/18-metrics-intervals-and-witness-frames.md"
+      ]
+    },
+    {
+      "id": "witness-frames",
+      "question": "What are witness frames and why are they fixed in advance?",
+      "chapters": [
+        "docs/textbook/18-metrics-intervals-and-witness-frames.md"
+      ]
+    },
+    {
+      "id": "invalid-comparison",
+      "question": "What makes a comparison between two methods invalid?",
+      "chapters": [
+        "docs/textbook/19-what-a-valid-comparison-needs.md"
+      ]
+    },
+    {
+      "id": "persons-per-claim",
+      "question": "How many patients does a claim need before it can be made?",
+      "chapters": [
+        "docs/textbook/19-what-a-valid-comparison-needs.md",
+        "docs/textbook/35-how-the-workflow-is-built.md"
+      ],
+      "figure": "35/power-calculator"
+    },
+    {
+      "id": "latency-budget",
+      "question": "What is the latency budget for one frame in the operating room?",
+      "chapters": [
+        "docs/textbook/20-readiness-for-the-operating-room.md"
+      ]
+    },
+    {
+      "id": "or-ready",
+      "question": "Is SchwingNet ready to be used in the operating room?",
+      "chapters": [
+        "docs/textbook/20-readiness-for-the-operating-room.md"
+      ]
+    },
+    {
+      "id": "grid-start",
+      "question": "What happens when a run is started on the grid?",
+      "chapters": [
+        "docs/textbook/21-the-grid-how-a-run-starts-waits-and-finishes.md"
+      ],
+      "figure": "21/how-a-run-starts"
+    },
+    {
+      "id": "disk-quota",
+      "question": "What stops a download from filling the lab's disk quota?",
+      "chapters": [
+        "docs/textbook/22-quotas-cost-and-the-budget-of-a-run.md",
+        "docs/textbook/21-the-grid-how-a-run-starts-waits-and-finishes.md"
+      ]
+    },
+    {
+      "id": "run-cost",
+      "question": "What does one training run cost?",
+      "chapters": [
+        "docs/textbook/22-quotas-cost-and-the-budget-of-a-run.md"
+      ]
+    },
+    {
+      "id": "who-approves",
+      "question": "Who must approve a grid job or a training run before it spends anything?",
+      "chapters": [
+        "docs/textbook/23-who-may-do-what.md",
+        "docs/textbook/22-quotas-cost-and-the-budget-of-a-run.md"
+      ]
+    },
+    {
+      "id": "session-alone",
+      "question": "What may a Claude session do without asking the owner?",
+      "chapters": [
+        "docs/textbook/23-who-may-do-what.md"
+      ]
+    },
+    {
+      "id": "commercial-licences",
+      "question": "Which datasets may train a model meant for commercial use?",
+      "chapters": [
+        "docs/textbook/24-decision-log-data-licences-and-splits.md",
+        "docs/textbook/09-splits-leakage-and-licences.md"
+      ]
+    },
+    {
+      "id": "stating-a-number",
+      "question": "How may a number be stated in a paper or on a slide?",
+      "chapters": [
+        "docs/textbook/25-decision-log-evaluation-reporting-programme-and-operations.md",
+        "docs/textbook/18-metrics-intervals-and-witness-frames.md"
+      ]
+    },
+    {
+      "id": "student-money",
+      "question": "Where can a student ask for money to work on this programme?",
+      "chapters": [
+        "docs/textbook/26-outreach-and-student-funding-by-role.md"
+      ]
+    },
+    {
+      "id": "open-label-questions",
+      "question": "What is still unknown about the labels and the human reads?",
+      "chapters": [
+        "docs/textbook/27-open-questions.md"
+      ]
+    },
+    {
+      "id": "first-experiment",
+      "question": "Which experiment should be run first?",
+      "chapters": [
+        "docs/textbook/28-the-ranked-experiment-backlog.md",
+        "docs/textbook/33-what-to-run-next-by-the-weight-of-the-claims.md"
+      ]
+    },
+    {
+      "id": "symphony-guarantees",
+      "question": "What does the Symphony protocol guarantee when two workers want the same task?",
+      "chapters": [
+        "docs/textbook/29-symphony-the-protocol-its-guarantees-its-comparison-and-its-cost.md"
+      ]
+    },
+    {
+      "id": "cswap",
+      "question": "What was cswap, and why was it set aside?",
+      "chapters": [
+        "docs/textbook/30-symphonys-origins-cswap-the-primitives-and-the-two-claude-surfaces.md"
+      ]
+    },
+    {
+      "id": "grid-worker",
+      "question": "How does a Claude worker keep running on the grid across Slurm jobs?",
+      "chapters": [
+        "docs/textbook/31-claude-workers-on-the-grid-and-the-labs-machines.md"
+      ]
+    },
+    {
+      "id": "beethoven-gates",
+      "question": "What are Beethoven's gates, and how much of the REFORMS checklist can they enforce?",
+      "chapters": [
+        "docs/textbook/32-beethoven-the-repositories-the-roadmap-the-reforms-gates-and-the-store-release.md"
+      ]
+    },
+    {
+      "id": "weight-over-cost",
+      "question": "How are claims ranked by what they would settle against what they would cost?",
+      "chapters": [
+        "docs/textbook/33-what-to-run-next-by-the-weight-of-the-claims.md"
+      ]
+    },
+    {
+      "id": "exposure-overlap",
+      "question": "How much should consecutive exposures overlap?",
+      "chapters": [
+        "docs/textbook/34-the-optimal-overlap.md"
+      ],
+      "figure": "34/overlap-geometry"
+    },
+    {
+      "id": "add-a-block",
+      "question": "How do I add a new dataset or a new training block?",
+      "chapters": [
+        "docs/textbook/35-how-the-workflow-is-built.md"
+      ]
+    },
+    {
+      "id": "spine-coverage",
+      "question": "Which stretch of the spine does each dataset show?",
+      "chapters": [
+        "docs/textbook/35-how-the-workflow-is-built.md"
+      ],
+      "figure": "35/spine-coverage"
+    },
+    {
+      "id": "wrong-level-cost",
+      "question": "What does a wrong-level operation cost a hospital?",
+      "chapters": [
+        "docs/textbook/01-the-goal-and-the-constraints.md"
+      ],
+      "figure": "01/visual-abstract"
+    },
+    {
+      "id": "stitching",
+      "question": "How are overlapping exposures linked into one map from the anchor?",
+      "chapters": [
+        "docs/textbook/10-counting-from-an-anchor-along-a-sweep.md",
+        "docs/textbook/34-the-optimal-overlap.md"
+      ],
+      "figure": "34/overlapping-frames-stitched"
+    }
+  ]
+}

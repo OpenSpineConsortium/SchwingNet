@@ -6,6 +6,7 @@ import importlib.util
 import json
 import re
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -142,6 +143,45 @@ class TheFigure(unittest.TestCase):
         for word in ("schwingnet.open", "schwingnet.experiment", "schwingnet.dispatch", "schwingnet.read", "no connector", "contentWindow === source", "figure-bar"):
             self.assertIn(word, shell, word)
         self.assertNotIn("e.origin", textbook_site.MESSAGE_JS, "a sandboxed frame's origin is null, so the source is checked instead")
+
+    def test_the_page_starts_only_the_two_request_workflows_as_the_viewer(self):
+        # A figure is framed content, and some figures are exported artifacts, so the page's dispatcher starts
+        # experiment.yml on SchwingNet and storage.yml on spine-datasets and nothing else, whatever a message
+        # names; node runs the page's own script against a stand-in connector that records each call.
+        node = shutil.which("node")
+        if not node:
+            self.skipTest("node is not installed here; CI's runner has it")
+        script = re.search(r"<script>(.*)</script>", textbook_site.MESSAGE_JS, re.S).group(1)
+        harness = """
+const calls = [];
+globalThis.window = globalThis;
+window.addEventListener = function () {};
+globalThis.document = {querySelectorAll: () => [], createElement: () => ({}), body: {appendChild() {}}, addEventListener() {}};
+window.claude = {use: async () => ({callTool: async (server, tool, input) => { calls.push([server, tool, input.owner + "/" + input.repo, input.workflow_id]); return {}; }})};
+""" + script + """
+const asks = [
+  {repo: "OpenSpineConsortium/SchwingNet", workflow: "experiment.yml", inputs: {epochs: 3}},
+  {repo: "OpenSpineConsortium/spine-datasets", workflow: "storage.yml", inputs: {selection: "-a"}},
+  {repo: "OpenSpineConsortium/SchwingNet", workflow: "research.yml"},
+  {repo: "OpenSpineConsortium/SchwingNet", workflow: "constructor"},
+  {repo: "OpenSpineConsortium/spine-datasets", workflow: "experiment.yml"},
+  {repo: "OpenSpineConsortium/hpcworker", workflow: "experiment.yml"},
+];
+Promise.all(asks.map((a) => window.schwingnetDispatch(a))).then((results) => {
+  console.log(JSON.stringify({results, calls}));
+});
+"""
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "dispatch.js"
+            path.write_text(harness, encoding="utf-8")
+            run = subprocess.run([node, str(path)], capture_output=True, text=True, timeout=60)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        seen = json.loads(run.stdout.strip().splitlines()[-1])
+        self.assertEqual([r["ok"] for r in seen["results"]], [True, True, False, False, False, False])
+        self.assertEqual([r.get("error") for r in seen["results"][2:]],
+                         ["workflow not allowed", "workflow not allowed", "workflow not allowed", "repository not allowed"])
+        self.assertEqual(seen["calls"], [["GitHub", "actions_run_trigger", "OpenSpineConsortium/SchwingNet", "experiment.yml"],
+                                         ["GitHub", "actions_run_trigger", "OpenSpineConsortium/spine-datasets", "storage.yml"]])
 
     def test_the_svg_draws_every_run(self):
         svg = self.outputs["experiments.svg"]

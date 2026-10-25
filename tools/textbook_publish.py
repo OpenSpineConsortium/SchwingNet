@@ -44,10 +44,25 @@ from pathlib import Path
 # the fingerprint and the trigger agree (tests/test_textbook_publish.py holds them together). The
 # site reads the chapters and figures, the synthesis's records and the exported artifacts under
 # artifacts/, its own code and the stylesheet, and CODEOWNERS for the login its privacy pass hides.
+# Its code is every module of tools/ the two builders import, the claims register's queue and the
+# book's search among them, and the search's package, which tools/rag.py loads by path; a test
+# follows the builders' imports and fails on one this list leaves out, since a change to it alone
+# would otherwise republish nothing (issue #269).
 FILTER = ["docs/textbook/**", "artifacts/**", "tools/textbook_site.py", "tools/textbook_artifact.py",
-          "tools/living_docs.py", ".github/CODEOWNERS"]
+          "tools/living_docs.py", ".github/CODEOWNERS", "tools/claims_rank.py", "tools/rag.py",
+          "src/schwingnet/rag.py"]
 INPUTS = [path.removesuffix("/**") for path in FILTER]
 SCHEMA = "textbook-artifact/1"
+# What the pages may use of the viewer's: Ask Claude's sample, and the GitHub connector's two tools behind
+# Run as me and a panel's read (docs/research/experiments-panel.md, section 4). A redeploy that passes none
+# keeps what the artifact has, so they go with the first publish and again only when the record's differ.
+CAPABILITIES = {"sample": {}, "mcp": {"servers": [{"server": "GitHub", "tools": ["actions_run_trigger", "get_file_contents"]}]}}
+# What the pages keep where the publish refuses the connector's entry (an account with no GitHub connector,
+# or a server name the control plane does not take): Ask Claude alone, the dispatcher answering "no
+# connector" and every figure its fallback. The record keeps what was applied, so the next publish offers
+# the connector again and the pages gain it once the account has it.
+BASIC_CAPABILITIES = {"sample": {}}
+REFUSED = "CAPABILITIES_REFUSED"
 BRANCH = "textbook-artifact"
 STATE_FILE = "state.json"
 PAGE = "index.html"
@@ -193,7 +208,9 @@ def plan(out, state):
     batches = [] if nothing else batched(changed, sizes, removed)
     if not nothing and not batches:
         batches = [{"n": 1, "files": [], "remove": [], "bytes": 0}]
-    return {"first": not state.get("url"), "url": state.get("url", ""), "page": PAGE, "root": OUT_REL,
+    first = not state.get("url")
+    capabilities = CAPABILITIES if first or state.get("capabilities") != CAPABILITIES else None
+    return {"first": first, "url": state.get("url", ""), "page": PAGE, "root": OUT_REL, "capabilities": capabilities,
             "nothing": nothing, "batches": batches, "changed": len(changed) + int(page_changed),
             "removed": len(removed), "unchanged": len(files) - len(changed) - int(page_changed),
             "total_files": len(files), "total_bytes": sum(sizes.values()),
@@ -226,21 +243,32 @@ def prompt(plan_, sha, folder=""):
         lines += [
             "This is the first publish, so there is no artifact yet.",
             f"1. Publish batch 1: action publish, file_path {page}, root {root}, title \"{TITLE}\", icon book,",
-            f"   description \"{DESCRIPTION}\", capabilities {{\"sample\": {{}}}}, label \"{label}\", and files",
+            f"   description \"{DESCRIPTION}\", capabilities {json.dumps(CAPABILITIES)}, label \"{label}\", and files",
             "   mapping each path of batch 1 to itself. The result gives the artifact's url; use it in every later call.",
             "2. For each later batch, in order: action publish with that url, the same file_path and root, the",
             "   label, and files mapping each path of the batch to itself; no icon, title, description or capabilities.",
         ]
     else:
+        if plan_.get("capabilities"):
+            keep = [f"   null, and on the first of them alone capabilities {json.dumps(plan_['capabilities'])}, since the",
+                    "   artifact's capabilities changed; pass no icon, title or description, so the artifact keeps what it has. If a"]
+        else:
+            keep = ["   null. Pass no capabilities, icon, title or description, so the artifact keeps what it has. If a"]
         lines += [
             f"The artifact exists: {plan_['url']}",
             "1. Action read with that url (a publish to an artifact this session has not read is refused).",
             "2. Action list with scope files and that url, so the paths about to be replaced are ones you listed.",
             f"3. For each batch, in order: action publish with that url, file_path {page}, root {root}, label",
             f"   \"{label}\", and files mapping each path of the batch to itself, with each path to remove mapped to",
-            "   null. Pass no capabilities, icon, title or description, so the artifact keeps what it has. If a",
+            *keep,
             "   publish is refused for paths you have not read or listed, publish that batch again with those paths,",
             "   and only those, in overwrite_unread.",
+        ]
+    if plan_.get("first") or plan_.get("capabilities"):
+        lines += [
+            "If the publish that carries capabilities is refused for them (the mcp entry or its server), make that",
+            f"publish again with capabilities {json.dumps(BASIC_CAPABILITIES)} instead, carry on, and print a line {REFUSED}",
+            "before the last line.",
         ]
     lines += [
         "If a publish fails, try that batch once more. If it fails again, stop and print a line",
@@ -293,12 +321,15 @@ def result_text(execution_file):
 
 def answer_of(text):
     """What the answer says, read from its marker lines alone: the artifact's link from the last
-    non-empty line, whether the tool was missing, and which batch failed, where one did."""
+    non-empty line, whether the tool was missing, which batch failed, where one did, and whether the
+    connector's capability was refused."""
     lines = [line.strip() for line in text.splitlines() if line.strip()]
-    found = {"url": "", "missing_tool": False, "incomplete": ""}
+    found = {"url": "", "missing_tool": False, "incomplete": "", "capabilities_refused": False}
     for line in lines:
         if line == "ARTIFACT_TOOL_MISSING":
             found["missing_tool"] = True
+        elif line == REFUSED:
+            found["capabilities_refused"] = True
         elif line.startswith("PUBLISH_INCOMPLETE="):
             found["incomplete"] = line.split("=", 1)[1].strip()
     if lines and lines[-1].startswith("ARTIFACT_URL="):
@@ -335,7 +366,7 @@ def record(state, plan_, answer, sha, built, inputs, run):
                "incomplete": answer["incomplete"]}
         return new, f"Edition {sha[:7]}: incomplete ({answer['incomplete']}); the next run publishes it whole"
     new = {"schema": SCHEMA, "url": url, "sha": sha, "built": built, "inputs": inputs, "run": run,
-           "files": plan_["files"]}
+           "files": plan_["files"], "capabilities": BASIC_CAPABILITIES if answer.get("capabilities_refused") else CAPABILITIES}
     message = (f"Edition {sha[:7]}: {plan_['changed']} files published, {plan_['removed']} removed, "
                f"{plan_['unchanged']} unchanged")
     return new, message

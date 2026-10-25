@@ -63,6 +63,13 @@
 #   bank <id>       one recipe of grid/banks/ banked and ingested (grid/02-bank-ingest.sbatch with
 #                   ONLY=<id>) and a catalog build afterok on it: two CPU jobs, once its held raw
 #                   copy is there and the room under the quota takes what they write
+#   experiment <n>  one requested combination of data and blocks, issue #<n> labelled experiment: the
+#                   request the experiment workflow recorded as <n>.request on the branch experiments,
+#                   fetched now and checked line by line, run as one GPU job (experiment-driver.sbatch)
+#                   once the version 1 inputs are there (the environments, the weights, C-ArmLSpine's
+#                   shards and a qualifying catalog version, which 'v1' makes), refused while a run for
+#                   the same issue is live; the job checks the values against the blocks module before
+#                   anything trains
 #   stop            cancel the gate's own jobs that are still queued or running, and nothing else
 #   cancel <job>    cancel one of the gate's own live jobs and every other live job its word queued
 #                   with it (a fetch's bank and catalog), and nothing else
@@ -110,14 +117,14 @@ SWEEP_BANK=${SWEEP_BANK:-$DATA_ROOT/realxray/carmlspine_sweep}
 NETRC=${NETRC:-$HOME/.netrc}
 LOGS=$REPO/grid/logs
 STATE=$LOGS/GATE_JOBS.txt
-WORDS="start status leaks v1 latency fetch explore dropzip unpack nodequota samples sweep bank stop cancel"
+WORDS="start status leaks v1 latency fetch explore dropzip unpack nodequota samples sweep bank experiment stop cancel"
 ENVS="default train-cpu train-gpu telemetry"
 
 word=${1:-}
 id=${2:-}
 # Matched whole, so one argument holding two words ("v1 latency") is refused and never runs nothing.
 case "$word" in
-  start|status|leaks|v1|latency|fetch|explore|dropzip|unpack|nodequota|samples|sweep|bank|stop|cancel) ;;
+  start|status|leaks|v1|latency|fetch|explore|dropzip|unpack|nodequota|samples|sweep|bank|experiment|stop|cancel) ;;
   "") echo "refusing: no word; one of: $WORDS"; exit 64 ;;
   *) echo "refusing: '$word' is not one of: $WORDS"; exit 64 ;;
 esac
@@ -125,6 +132,10 @@ if [ "$word" = fetch ] || [ "$word" = explore ] || [ "$word" = dropzip ] || [ "$
   [ $# -eq 2 ] || { echo "refusing: $word takes exactly one id"; exit 64; }
   case "$id" in ""|*[!a-z0-9_]*) echo "refusing: an id is lower-case letters, digits and _"; exit 64 ;; esac
   [ ${#id} -le 40 ] || { echo "refusing: an id is at most 40 characters"; exit 64; }
+elif [ "$word" = experiment ]; then
+  [ $# -eq 2 ] || { echo "refusing: experiment takes exactly one issue number"; exit 64; }
+  case "$id" in ""|*[!0-9]*|0*) echo "refusing: an issue is digits alone, with no leading zero"; exit 64 ;; esac
+  [ ${#id} -le 9 ] || { echo "refusing: an issue is at most 9 digits"; exit 64; }
 elif [ "$word" = cancel ]; then
   [ $# -eq 2 ] || { echo "refusing: cancel takes exactly one job"; exit 64; }
   case "$id" in ""|*[!0-9]*) echo "refusing: a job is digits alone"; exit 64 ;; esac
@@ -830,6 +841,62 @@ word_unpack() {
   echo "submitted one job. It starts writing only once the size rule admits it; send unpack $id again once it ends to read what it wrote."
 }
 
+experiment_request() {  # experiment_request N: the lines the workflow recorded for issue N, on stdout
+  # From the branch experiments on origin, fetched now, since the gate's side brings main alone; a test
+  # sets EXPERIMENTS_DIR to a folder of such files instead, where no origin answers.
+  if [ -n "${EXPERIMENTS_DIR:-}" ]; then cat "$EXPERIMENTS_DIR/$1.request" 2>/dev/null; return; fi
+  git -C "$REPO" fetch -q --no-tags origin "+refs/heads/experiments:refs/remotes/origin/experiments" 2>/dev/null || return 1
+  git -C "$REPO" show "refs/remotes/origin/experiments:$1.request" 2>/dev/null
+}
+experiment_lines_ok() {  # experiment_lines_ok FILE: every line has the shape the workflow writes, the four settings once each
+  # The shapes alone, on the login node, where no python runs; the driver checks the values against the
+  # blocks module inside the container before anything trains.
+  local n=0 line key
+  while IFS= read -r line || [ -n "$line" ]; do
+    n=$((n + 1))
+    [ $n -le 40 ] || { echo "refusing: the request has more than 40 lines"; return 1; }
+    [ ${#line} -le 120 ] || { echo "refusing: line $n of the request is over 120 characters"; return 1; }
+    case "$line" in *[!A-Za-z0-9._,=:\ -]*) echo "refusing: line $n of the request holds a character outside letters, digits and . _ , = : -"; return 1 ;; esac
+    case "$line" in
+      "recipe: "[a-z]*|"epochs: "[1-9]*|"seed: "[0-9]*|"hours: "[0-9]*|"block: "[a-z]*=?*) ;;
+      *) echo "refusing: line $n of the request is not one the gate takes: $(printf '%s' "$line" | cut -c1-60)"; return 1 ;;
+    esac
+  done < "$1"
+  for key in recipe epochs seed hours; do
+    [ "$(grep -c "^$key: " "$1")" = 1 ] || { echo "refusing: the request names $key once, not $(grep -c "^$key: " "$1") times"; return 1; }
+  done
+}
+experiment_wall() {  # experiment_wall HOURS: the job's wall time as Slurm takes it, H:MM:00
+  # The request's hours are the training's (the panel's "the training job's wall time"); in this one job the
+  # evaluation follows the training, given a quarter of its hours as flow.py's slurm mode gives it, and an
+  # hour more holds the checks and the container's start. Never less than the driver's own 24 hours, which
+  # the version 1 run proved, so a short request runs as v1 did and a long one gets the time it asked for.
+  awk -v h="$1" 'BEGIN { m = int((h * 1.25 + 1) * 60 + 0.999); if (m < 1440) m = 1440; printf "%d:%02d:00\n", int(m / 60), m % 60 }'
+}
+word_experiment() {
+  local req=$LOGS/experiment-$id.request busy version hours wall
+  busy=$(live_of "experiment_$id")
+  [ -z "$busy" ] || { echo "refusing: the run for #$id is already queued or running (job $busy)"; return 75; }
+  if ! experiment_request "$id" > "$req.new" || [ ! -s "$req.new" ]; then
+    rm -f "$req.new"
+    echo "refusing: no $id.request on the branch experiments; the experiment workflow writes it when issue #$id's combination holds (grid/README.md)"
+    return 75
+  fi
+  mv "$req.new" "$req"
+  experiment_lines_ok "$req" || { rm -f "$req"; return 64; }
+  hours=$(sed -n 's/^hours: //p' "$req")
+  case "$hours" in ''|*[!0-9.]*|*.*.*|.*|*.) rm -f "$req"; echo "refusing: hours is a number such as 4 or 2.5, not ${hours:-nothing}"; return 64 ;; esac
+  wall=$(experiment_wall "$hours")
+  envs_ready || { echo "refusing: the environments are not ready; 'start' makes them first"; return 75; }
+  weights_ready || { echo "refusing: no ImageNet weights at $WEIGHTS; 'v1' makes them first"; return 75; }
+  carmlspine_ready || { echo "refusing: C-ArmLSpine's train and test shards are not on the data root; 'v1' makes them first"; return 75; }
+  version=$(v1_version) || { echo "refusing: no catalog version qualifies (grid/v1-version.sh); 'v1' builds one first"; return 75; }
+  echo "  catalog: $version qualifies for the run (grid/v1-version.sh); no job"
+  echo "  request: $(tr '\n' ' ' < "$req")"
+  echo "  wall time: $wall for $hours hours of training"
+  submit "experiment_$id" gpu REQUEST="$req" ISSUE="$id" RUNS="$RUNS" WEIGHTS="$WEIGHTS" --no-requeue --time "$wall" -- experiment-driver.sbatch > /dev/null || return 1
+  echo "submitted one job. 'status' shows it; its report is logs/experiment-$id-STAGE-REPORT.md"
+}
 word_nodequota() {
   local report=$LOGS/NODEQUOTA.md busy
   busy=$(live_of nodequota)
@@ -1043,6 +1110,7 @@ case "$word" in
   dropzip) word_dropzip ;;
   unpack) word_unpack ;;
   nodequota) word_nodequota ;;
+  experiment) word_experiment ;;
   samples) word_samples ;;
   sweep) word_sweep ;;
   bank) word_bank ;;
