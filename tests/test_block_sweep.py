@@ -342,6 +342,26 @@ class CheckTest(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertIn("prepare with --epochs 2", err)
 
+    def test_a_row_asked_to_train_on_another_catalog_is_refused(self):
+        # A state is named for its catalog's sha256 and PLAN.json records it, so a row given
+        # another file would land one catalog's result under another's path.
+        out = self.tmp / "smoke-other-catalog"
+        code, printed, err = said(self.sweep, "prepare", "--plan", ROOT / "grid" / "sweeps" / "synthetic.json", "--catalog", self.catalog, "--out", out)
+        self.assertEqual(code, 0, err)
+        state = Path(json.loads(printed)["state"])
+        other = self.tmp / "other.sqlite"
+        other.write_bytes(Path(self.catalog).read_bytes() + b"\0")
+        plan = json.loads((state / "PLAN.json").read_text(encoding="utf-8"))
+        slug = next(row["slug"] for row in plan["rows"] if row["role"] == "imagenet")
+        (state / "rows" / f"{slug}.json").unlink()
+        code, _, err = said(self.sweep, "row", "--state", state, "--slug", slug, "--catalog", other)
+        self.assertEqual(code, 2)
+        self.assertIn(plan["catalog_sha256"][:12], err)
+        self.assertIn("not the catalog", err)
+        self.assertFalse((state / "rows" / f"{slug}.json").exists(), "nothing is recorded for it")
+        code, _, err = said(self.sweep, "row", "--state", state, "--slug", slug, "--catalog", self.catalog)
+        self.assertEqual(code, 0, err)
+
     def test_a_row_that_cannot_be_run_exits_two(self):
         code, _, err = said(self.sweep, "row", "--state", self.tmp / "no-state", "--slug", "x", "--catalog", self.catalog)
         self.assertEqual(code, 2)

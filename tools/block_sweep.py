@@ -914,6 +914,17 @@ class RowFault(Exception):
     """A row that could not be run or recorded: the flow treats it as a fault and retries it."""
 
 
+def refuse_another_catalog(state, plan, catalog):
+    """The state is named for its catalog's sha256 and PLAN.json records it, so a row given any
+    other file is refused before it trains, rather than landing one catalog's result under
+    another catalog's path."""
+    given = Path(catalog)
+    digest = file_sha256(given) if given.is_file() else None
+    if digest != plan["catalog_sha256"]:
+        found = f"sha256 {digest[:12]}" if digest else "no file there"
+        raise RowFault(f"{state}: --catalog {catalog} ({found}) is not the catalog the state was prepared for, {plan['catalog_file']} (sha256 {plan['catalog_sha256'][:12]})")
+
+
 def command_row(args):
     state = Path(args.state)
     try:
@@ -926,6 +937,7 @@ def command_row(args):
         raise RowFault(f"{state}: the plan holds no row {args.slug}")
     if args.epochs and args.epochs != plan["epochs"]:
         raise RowFault(f"{state}: its rows train for {plan['epochs']} epochs, not {args.epochs}; prepare with --epochs {args.epochs} for a state of its own")
+    refuse_another_catalog(state, plan, args.catalog)
     files = weights_files(args.weights)
     if prediction["predicted"] == NOT_APPLICABLE:
         entry = entry_of(row, prediction, NOT_APPLICABLE, None, prediction["why"], state)
