@@ -20,9 +20,14 @@ as the stage recorded it before; only a kill or a crash of the step itself fails
 When no recipe has a raw copy, start goes straight to end by Metaflow 2.19's switch, a
 conditional next, since a foreach over nothing is refused; end writes the stage's report
 either way, logs/02-bank-ingest-STAGE-REPORT.md under the launcher's working folder, in the
-stage's words, so the gate's status reads it where it always did.
+stage's words, so the gate's status reads it where it always did. While the run lasts the report
+says so, as the stage's said by stopping short: start writes its head, the skipped lines and a
+line saying the run is not finished, and each recipe's ingest step, once the recipe is done,
+rewrites it with every recipe done so far, so status shows a run in progress, or one cut short,
+and never the last finished run's report.
 """
 
+import fcntl
 import hashlib
 import importlib.util
 import json
@@ -42,6 +47,8 @@ SOME_FAILED = ("Some recipes failed; the lines above say which, the job's log, w
                "status shows, says why.")
 TO_CONFIRM = ("A recipe spelled 'to confirm' is filled in from the page, by pull request, and the gate "
               "word fetch <id> runs this stage again for that id.")
+NOT_FINISHED = ("Not finished as of {at}: {done} of {todo} recipes with a raw copy done; the job is "
+                "running still, or was cut short.")
 
 
 def launcher_folder():
@@ -140,11 +147,16 @@ def short_commit():
     return done.stdout.strip() if done.returncode == 0 and done.stdout.strip() else "0000000"
 
 
+def run_folder():
+    """The run's working folder, under the datastore root, which the launcher runs in."""
+    root = Path(os.environ.get("METAFLOW_DATASTORE_SYSROOT_LOCAL") or os.getcwd())
+    return root / "work" / current.flow_name / str(current.run_id)
+
+
 def step_folder(identity, part):
     """A working folder of the step's own under the run's, so each recipe's half writes its own
-    report and none reads another's; under the datastore root, which the launcher runs in."""
-    root = Path(os.environ.get("METAFLOW_DATASTORE_SYSROOT_LOCAL") or os.getcwd())
-    folder = root / "work" / current.flow_name / str(current.run_id) / identity / part
+    report and none reads another's."""
+    folder = run_folder() / identity / part
     folder.mkdir(parents=True, exist_ok=True)
     return folder
 
@@ -193,22 +205,74 @@ def is_skipped(lines):
     return any(" skipped, nothing fetched under " in line for line in lines)
 
 
+def report_head(at, short, ingest_date):
+    return [f"# Stage 2, bank and ingest: {at}", "",
+            f"Code commit {short}, ingest date {ingest_date}; one line per recipe under grid/banks/.", ""]
+
+
 def report_text(order, lines, failed, short, ingest_date):
     """logs/02-bank-ingest-STAGE-REPORT.md as the stage writes it, a line per recipe in order."""
-    out = [f"# Stage 2, bank and ingest: {stamp()}", "",
-           f"Code commit {short}, ingest date {ingest_date}; one line per recipe under grid/banks/.", ""]
+    out = report_head(stamp(), short, ingest_date)
     for identity in order:
         out += lines.get(identity, [])
     out += ["", SOME_FAILED if failed else ALL_WELL, TO_CONFIRM]
     return "\n".join(out) + "\n"
 
 
+def recipe_lines(bank_lines, ingest_lines):
+    """A recipe's report lines from its two halves; a raw copy gone between start and the bank
+    half is skipped by both halves alike, and said once."""
+    return bank_lines + [line for line in ingest_lines if line not in bank_lines]
+
+
 def write_whole(path, text):
-    """Written beside and renamed into place, so the gate's status never reads half a report."""
+    """Written beside under a name of this process's own and renamed into place, so the gate's
+    status never reads half a report and two writers never share a part file."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    part = path.with_name(path.name + ".part")
+    part = path.with_name(f"{path.name}.{os.getpid()}.part")
     part.write_text(text, encoding="utf-8")
     os.replace(part, path)
+
+
+def progress_text(flow, done):
+    """The report while the run lasts: the head with the time the run began, start's skipped lines
+    and the lines of every recipe done so far, in the stage's order, and the line that says how
+    far it got."""
+    lines = {**flow.lines, **done}
+    out = report_head(flow.started, flow.short_commit, flow.ingest_date)
+    for identity in flow.order:
+        out += lines.get(identity, [])
+    out += ["", NOT_FINISHED.format(at=stamp(), done=len(done), todo=len(flow.todo))]
+    return "\n".join(out) + "\n"
+
+
+def done_so_far(folder, todo):
+    """The lines each recipe done so far left in the progress folder, by recipe."""
+    done = {}
+    for identity in todo:
+        try:
+            done[identity] = json.loads((folder / f"{identity}.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+    return done
+
+
+def write_progress(flow, identity=None, lines=None):
+    """The report in progress written where the stage's is, after this recipe's lines, where one
+    is done, are kept in the progress folder start named. A resumed run clones start and so keeps
+    its folder, where every recipe done before the cut left its lines. Under a lock, so branches
+    that end at once never write an older count over a newer. Best effort: a report that cannot
+    be written stops no recipe, and end writes the whole one."""
+    folder = Path(flow.progress_folder)
+    try:
+        folder.mkdir(parents=True, exist_ok=True)
+        if identity is not None:
+            write_whole(folder / f"{identity}.json", json.dumps(lines))
+        with open(folder / "LOCK", "a", encoding="utf-8") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            write_whole(launcher_folder() / REPORT, progress_text(flow, done_so_far(folder, flow.todo)))
+    except OSError as error:
+        print(f"BankFlow: the report in progress could not be written: {error}", flush=True)
 
 
 def half_card(identity, part, code, lines, output):
@@ -236,6 +300,7 @@ class BankFlow(FlowSpec):
         self.data_folder = from_launcher(self.data_root)
         self.ingest_date = self.date or datetime.now().date().isoformat()
         self.short_commit = short_commit()
+        self.started, self.progress_folder = stamp(), str(run_folder() / "progress")
         self.order, self.lines, self.todo = [], {}, []
         for _, identity, raw in recipes_listed(self.banks_folder, self.data_folder, self.sources.split()):
             self.order.append(identity)
@@ -245,6 +310,7 @@ class BankFlow(FlowSpec):
                 self.lines[identity] = [f"- {identity}: skipped, nothing fetched under {raw}"]
         self.failed = []
         self.route = "bank" if self.todo else "none"
+        write_progress(self)
         print(f"BankFlow: {len(self.order)} recipes, {len(self.todo)} with a raw copy, date {self.ingest_date}", flush=True)
         self.next({"bank": self.fan, "none": self.end}, condition="route")
 
@@ -265,7 +331,8 @@ class BankFlow(FlowSpec):
     @card(type="blank")
     @step
     def ingest(self):
-        """The ingest half: the bank into a shard, skipped where the bank half refused."""
+        """The ingest half: the bank into a shard, skipped where the bank half refused; the recipe
+        is then done, and the report in progress says so."""
         if self.bank_code != 0:
             self.ingest_output, self.ingest_code, self.ingest_lines = "", None, []
             current.card.append(Markdown(f"# {self.source}: ingest\n\nNot run: the bank half refused."))
@@ -273,6 +340,7 @@ class BankFlow(FlowSpec):
             self.ingest_output, self.ingest_code, self.ingest_lines = run_stage(
                 self.source, "ingest", self.ingest_date, self.data_folder, self.banks_folder)
             half_card(self.source, "ingest", self.ingest_code, self.ingest_lines, self.ingest_output)
+        write_progress(self, self.source, recipe_lines(self.bank_lines, self.ingest_lines))
         self.next(self.join)
 
     @step
@@ -282,8 +350,7 @@ class BankFlow(FlowSpec):
         self.lines = dict(inputs[0].lines)
         self.failed = []
         for branch in inputs:
-            # a raw copy gone between start and the bank half is skipped by both halves alike
-            self.lines[branch.source] = branch.bank_lines + [line for line in branch.ingest_lines if line not in branch.bank_lines]
+            self.lines[branch.source] = recipe_lines(branch.bank_lines, branch.ingest_lines)
             if branch.bank_code != 0 or branch.ingest_code not in (0, None):
                 self.failed.append(branch.source)
         self.next(self.end)

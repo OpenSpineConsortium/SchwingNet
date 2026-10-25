@@ -313,6 +313,15 @@ class BankFlowTest(unittest.TestCase):
         first_run, first_key = said[-1]["run"].split("/")[1], said[0]["key"]
         self.assertIn("ingest.py open_i_chest", calls)
         self.assertEqual(sorted(c for c in calls if c.startswith("bank.py")), ["bank.py nih_chestxray14", "bank.py open_i_chest"])
+        # the report says the run was cut short, with what it had done: NIH's line, written as NIH
+        # finished, and start's skipped line, under the time the run began
+        name = "02-bank-ingest-STAGE-REPORT.md"
+        report = (self.tmp / "logs-flow" / "logs" / name).read_text(encoding="utf-8")
+        self.assertEqual([line for line in report.splitlines() if line.startswith("- ")][0][:35], "- nih_chestxray14: nih_chestxray14/")
+        self.assertEqual([line for line in report.splitlines() if line.startswith("- ")][1:],
+                         [f"- vindr_spinexr: skipped, nothing fetched under {flow_root}/vindr_spinexr/raw"])
+        self.assertRegex(report, r"\nNot finished as of [0-9-]+ [0-9:]+: 1 of 2 recipes with a raw copy done; ")
+        self.assertNotIn("Every recipe that had a raw copy", report)
 
         # the same words again, the raw copies as they were and no date given, so the date the
         # launcher chose is kept out of the key: the newest run with the key did not succeed, so it
@@ -323,7 +332,6 @@ class BankFlowTest(unittest.TestCase):
         self.assertEqual((said[-1]["successful"], said[-1]["verdict"]), (True, 0), out)
         self.assertEqual([c for c in calls if c.startswith("bank.py")], [], calls)
         self.assertIn("ingest.py open_i_chest", calls)
-        name = "02-bank-ingest-STAGE-REPORT.md"
         self.assertEqual(report_of(self.tmp / "logs-flow", name, flow_root), report_of(self.tmp / "logs-direct", name, self.tmp / "direct"))
         self.assertEqual(shards_of(flow_root), shards_of(self.tmp / "direct"))
 
@@ -345,6 +353,13 @@ class BankFlowTest(unittest.TestCase):
         code, said, out, calls = self.launch_logged(words, 1, kill="nih_chestxray14")
         self.assertEqual(said[-1]["successful"], False, out)
         first_key = said[0]["key"]
+        # cut before any recipe was done: the report start wrote, its skipped lines and no more
+        report = (self.tmp / "logs-flow" / "logs" / "02-bank-ingest-STAGE-REPORT.md").read_text(encoding="utf-8")
+        self.assertEqual([line for line in report.splitlines() if line.startswith("- ")],
+                         [f"- open_i_chest: skipped, nothing fetched under {flow_root}/open_i_chest/raw",
+                          f"- vindr_spinexr: skipped, nothing fetched under {flow_root}/vindr_spinexr/raw"])
+        self.assertRegex(report, r"^# Stage 2, bank and ingest: [0-9-]+ [0-9:]+\n")
+        self.assertRegex(report, r"\nNot finished as of [0-9-]+ [0-9:]+: 0 of 1 recipes with a raw copy done; ")
 
         # Open-i's raw copy lands before the job is queued again: the run that listed it as not
         # fetched is not resumed, so Open-i is banked and ingested and nothing says it was skipped

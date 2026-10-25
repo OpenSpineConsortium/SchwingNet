@@ -14,9 +14,13 @@ Metaflow's own resume rather than by anything written around it.
   bank, a `bank` step and an `ingest` step in each, each running the stage script for that one
   recipe and that half of its loop body (PART=bank, PART=ingest), a join, and end, which writes
   logs/02-bank-ingest-STAGE-REPORT.md under the launcher's working folder in the stage's words
-  and prints it with `XR_BANK_RC=<0|1>`. A refusal of the bank or the ingest tool is the stage's
-  own report line, recorded, not raised, as before. A kill mid-ingest resumes at that recipe's
-  ingest with its bank cloned.
+  and prints it with `XR_BANK_RC=<0|1>`. Until then the report says the run is not finished:
+  start writes its head, the skipped lines and a "Not finished as of <time>: <n> of <m> recipes
+  with a raw copy done" line, and each recipe's ingest step rewrites it once the recipe is done,
+  so the gate's status shows a run in progress, or one cut short, as the stage's report did by
+  stopping short. A refusal of the bank or the ingest tool is the stage's own report line,
+  recorded, not raised, as before. A kill mid-ingest resumes at that recipe's ingest with its
+  bank cloned.
 - `catalog.py`, CatalogFlow: stage 3, the catalog's build and its split check, in one step that
   runs grid/03-catalog.sbatch whole, since the build lock is held from the listing of the
   manifests to the marker (issue #80); a kill reruns it whole, which costs under a minute. Its
@@ -91,7 +95,9 @@ get_cards found none; METAFLOW_CARD_LOCALROOT set put them under the datastore w
 mf.cards/, where get_cards found none either). The launcher's own folder reaches the flow as
 SCHWINGNET_WORKDIR: the stage reports are written under it, as before, and a relative path
 among the parameters is read from it. BankFlow's per-recipe halves each run in a folder of their
-own, <root>/work/BankFlow/<run>/<recipe>/<half>/, so no half reads another's report.
+own, <root>/work/BankFlow/<run>/<recipe>/<half>/, so no half reads another's report, and each
+recipe done leaves its report lines in <root>/work/BankFlow/<run>/progress/, start's run, which a
+resumed run keeps with start, so the report in progress counts what was done before the cut.
 
 ## Looking at a run
 
