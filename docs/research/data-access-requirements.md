@@ -24,7 +24,7 @@ The letters above went out from the owner's Wayne State Outlook between 2026-10-
 | IRI-VFI (pediatric_iri), TVGH-SpineXR (tvgh_spinexr) | 2026-10-21 | none |
 | SOF and MrOS lateral spine films (sof_lateral_spine, mros_lateral_spine) | 2026-10-22 | the same day: the Online sites are closed to registration for new NIH requirements; the images go to the NIA Aging Research Biobank, where the request now goes; not yet asked there |
 | MAGIC-CT (magic_ct) | 2026-10-22 | none |
-| AbdomenAtlas 2.0 Mini case list (hf_abdomenatlas2_0_mini) | 2026-10-22 | Zhou 2026-10-25: the BDMAP id is the case's identifier across releases, so the cases not held are the 2.0 Mini ids that 3.0 Mini lacks; no list needed |
+| AbdomenAtlas 2.0 Mini case list (hf_abdomenatlas2_0_mini) | 2026-10-22 | Zhou 2026-10-25: the BDMAP id is the case's identifier across releases, so the cases not held are the 2.0 Mini ids that 3.0 Mini lacks, with no list needed; the source collection of each case was not answered |
 | ReXGradient-160K (rexgradient_160k) | 2026-10-24 | none yet |
 
 Six letters went to sets that had no record under data/sources/ until #234 gave each one, named here in brackets:
