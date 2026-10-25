@@ -21228,6 +21228,26 @@
      "regroup2"
     ]
    }
+  },
+  {
+   "quantity": "sacrum recall on real DeepFluoro frames, detector trained on renders of DeepFluoro's own CTs",
+   "artifact_a": "SchwingNet/aidas-seed-grant-proposal",
+   "artifact_b": "SchwingNet/or-readiness-ledger",
+   "value_a": "96%, 98%",
+   "value_b": "97.7",
+   "verdict": "different-quantities",
+   "quote_a": "A detector trained only on calibrated renders of DeepFluoro's own CTs finds the sacrum on about 96\u201398% of real frames (leave-one-specimen-out).",
+   "quote_b": "Thoracic T1\u2013T12 on real films: 97.7% (keypoint detector)",
+   "explanation": "In the ledger, 97.7 is the thoracic T1\u2013T4 recall of a film keypoint detector on AASCE radiographs (all 608 films; the same tile calls it T1\u2013T12). It is not a sacrum figure and not a DeepFluoro frame result. The proposal's 96\u201398% is sacrum recall on real DeepFluoro frames for a render-trained detector under leave-one-specimen-out. The quote in the item from the ledger's C2 tile is about C2 on films (0\u20138%), also a different quantity. The ledger's own DeepFluoro sacrum numbers (e.g. 84.3% sacrum-anchored count, device held out) are a separate quantity again, so 97.7 does not contradict the proposal's figure.",
+   "resolution_hint": "Drop 97.7 from the sacrum-on-DeepFluoro collision and carry it as thoracic keypoint recall on AASCE films. The sacrum quantity should be compared against the ledger's DeepFluoro sacrum rows and the proposal's 96\u201398%.",
+   "delta": {
+    "date": "2026-10-25",
+    "read": [
+     "skeptic",
+     "re-checker"
+    ],
+    "why": "a concept check: line 223 of SchwingNet/or-readiness-ledger gives 97.7, which number collision 10 (confirmed-contradiction) carries as open"
+   }
   }
  ],
  "review": {
