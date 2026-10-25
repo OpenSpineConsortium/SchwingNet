@@ -2036,6 +2036,67 @@ esac
         self.assertIn("  Owed  =         0.00gb still to land for 0 running fetches\n", done.stdout)
         self.assertTrue(size.read_text(encoding="utf-8").startswith(f"settled {bank} 200000000000 "))
 
+    def grid_layout(self):
+        """The gate as it reads the grid: the test's data root stands as the grid's own, so the gate
+        hands the stages no DATA_ROOT and reads each recipe's own raw folder, moved under that root."""
+        gate = self.repo / "grid" / "gate.sh"
+        gate.write_text(gate.read_text(encoding="utf-8").replace(
+            "GRID_DATA=/rs/rs_grp_oschome/go2432/data", f"GRID_DATA={self.data}"), encoding="utf-8")
+        for recipe in (self.repo / "grid" / "banks").glob("*.json"):
+            recipe.write_text(recipe.read_text(encoding="utf-8").replace("/rs/rs_grp_oschome/go2432/data", str(self.data)),
+                              encoding="utf-8")
+
+    def test_bank_waits_until_the_landing_that_holds_its_raw_copy_has_landed(self):
+        # lumos's raw copy is zenodo_lumos/raw, which start's platform chain lands one zip at a time
+        # as dp_zenodo_lumos: a bank admitted beside it would bank part of the set against a budget
+        # read from part of it, so it waits for every fetch, unpacking and admission of the landing
+        self.grid_layout()
+        self.environments_ready()
+        raw = self.data / "zenodo_lumos" / "raw"
+        raw.mkdir(parents=True)
+        (raw / "lumos_x_01_dcm.zip").write_bytes(b"z")
+        (raw / "lumos_x_02_dcm.zip.part").write_bytes(b"z")
+        self.ceph_fake(raw_bytes=2 * 10**9)
+        self.state_line(7001, "start", "dp_zenodo_lumos")
+        self.state_line(7002, "fetch:zenodo_lumos", "xr_fetch")
+        self.state_line(7003, "unpack:zenodo_lumos", "unpack")
+        for job in ("7001", "7002", "7003"):
+            self.live(job)
+            refused = self.gate_with_ceph("bank", "lumos")
+            self.assertEqual(refused.returncode, 75, refused.stdout)
+            self.assertIn(f"zenodo_lumos, which holds lumos's raw copy, is still being landed (job {job})", refused.stdout)
+        # an admission of the landing a live job of any word still holds
+        meta = self.data / "zenodo_lumos" / "meta"
+        meta.mkdir()
+        (meta / "SIZE").write_text("admitted 7004 46400000000 2598000000000 2026-10-25T00:00:00Z 46400000000\n", encoding="utf-8")
+        self.live("7004")
+        refused = self.gate_with_ceph("bank", "lumos")
+        self.assertEqual(refused.returncode, 75, refused.stdout)
+        self.assertIn("(job 7004)", refused.stdout)
+        # start's X-ray fetch lands every open set of grid/fetch-xray.json, nih_chestxray14 among them
+        self.state_line(7005, "start", "xr_fetch")
+        self.live("7005")
+        refused = self.gate_with_ceph("bank", "nih_chestxray14")
+        self.assertEqual(refused.returncode, 75, refused.stdout)
+        self.assertIn("nih_chestxray14, which holds nih_chestxray14's raw copy, is still being landed (job 7005)", refused.stdout)
+        self.assertEqual(self.submitted(), [])
+        # once the landing is still, the bank is queued for the recipe's own id
+        self.live()
+        done = self.gate_with_ceph("bank", "lumos")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn(" ONLY=lumos ", self.line_of("02-bank-ingest.sbatch")[0])
+        # a recipe whose raw folder lies outside the data root names no landing to wait on: refused
+        elsewhere = self.tmp / "elsewhere" / "vindr" / "raw"
+        elsewhere.mkdir(parents=True)
+        (elsewhere / "a.dicom").write_bytes(b"d")
+        recipe = self.repo / "grid" / "banks" / "vindr_spinexr.json"
+        recipe.write_text(recipe.read_text(encoding="utf-8").replace(f"{self.data}/vindr_spinexr/raw/vindr/1.0.0", str(elsewhere)),
+                          encoding="utf-8")
+        refused = self.gate_with_ceph("bank", "vindr_spinexr")
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn("is not under the data root", refused.stdout)
+        self.assertEqual(len(self.submitted()), 2)
+
     def test_bank_budgets_by_the_format_the_recipe_names(self):
         # tools/bank.py copies a PNG and windows a DICOM to an 8-bit PNG, at most the raw copy's size,
         # but turns JPEG, TIFF and BMP into PNG, which a q95 JPEG radiograph grows 1.8 to 2.5 times

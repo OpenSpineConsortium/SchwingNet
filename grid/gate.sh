@@ -69,9 +69,10 @@
 #                   shows each plan's PROGRESS.txt under SMOKE
 #   bank <id>       one recipe of grid/banks/ banked and ingested (grid/02-bank-ingest.sbatch with
 #                   ONLY=<id>) and a catalog build afterok on it: two CPU jobs, once its held raw
-#                   copy is there and the room under the quota takes what they may write by the
-#                   recipe's format, which the bank holds as the size rule's admission while it is
-#                   live and checks again when it starts
+#                   copy is there, no job still lands the folder under the data root that holds it,
+#                   and the room under the quota takes what they may write by the recipe's format,
+#                   which the bank holds as the size rule's admission while it is live and checks
+#                   again when it starts
 #   experiment <n>  one requested combination of data and blocks, issue #<n> labelled experiment: the
 #                   request the experiment workflow recorded as <n>.request on the branch experiments,
 #                   fetched now and checked line by line, run as one GPU job (experiment-driver.sbatch)
@@ -753,13 +754,16 @@ word_latency() {
   [ "$rc" = 0 ] || return 1
 }
 
+fetch_section() {  # fetch_section ID: open or credentialed, the section of grid/fetch-xray.json that names ID, or nothing
+  awk -v id="$1" '
+    /"credentialed": \[/ { cred = 1 }
+    index($0, "\"id\": \"" id "\"") { print (cred ? "credentialed" : "open"); exit }' "$REPO/grid/fetch-xray.json"
+}
 word_fetch() {
   local section setup busy waits="" one args=(--only "$id")
   # A look at the set taken before this fetch no longer says what it holds (word_explore).
   rm -f "$LOGS/EXPLORE-$id.md" "$LOGS/EXPLORE-$id.md.key"
-  section=$(awk -v id="$id" '
-    /"credentialed": \[/ { cred = 1 }
-    index($0, "\"id\": \"" id "\"") { print (cred ? "credentialed" : "open"); exit }' "$REPO/grid/fetch-xray.json")
+  section=$(fetch_section "$id")
   if [ -z "$section" ]; then
     gated_platform_id || { echo "refusing: $id is not an id of grid/fetch-xray.json nor a gated source of grid/run-platform-fetch.sh"; return 64; }
     word_fetch_gated
@@ -1183,6 +1187,15 @@ recipe_raw() {  # recipe_raw FILE: the raw folder a recipe of grid/banks/ names,
   if [ -n "$DATA_ROOT_GIVEN" ]; then echo "$DATA_ROOT/$id/raw"; return 0; fi
   sed -n 's/^ *"raw": *"\([^"]*\)".*/\1/p' "$1" | head -n 1
 }
+landing_of() {  # landing_of RAW: the folder under the data root that holds RAW, the first on its path; status 1 where RAW is not under the data root
+  # The folder a fetch lands and whose meta/SIZE holds the fetch's admission: a recipe's own id for
+  # most recipes, zenodo_lumos for lumos, which start's platform chain lands as dp_zenodo_lumos.
+  local rest=${1#"$DATA_ROOT"/} landing
+  [ "$rest" != "$1" ] || return 1
+  landing=${rest%%/*}
+  case "$landing" in ""|*[!a-z0-9_]*) return 1 ;; esac
+  echo "$landing"
+}
 recipe_format() {  # recipe_format FILE: the image format a recipe of grid/banks/ names
   sed -n 's/^ *"format": *"\([^"]*\)".*/\1/p' "$1" | head -n 1
 }
@@ -1220,10 +1233,10 @@ bank_room() {  # bank_room NEED: 0 where the room under the quota takes NEED byt
   echo "  room: $(gb_down "$room") GB $(free_space_words "$free_from") after $(gb_up "$owed_bytes") GB owed to $(running_fetches "$owed_n")"
   [ "$1" -le "$room" ] || { echo "refusing: the bank and its shard need $(gb_up "$1") GB and the room is $(gb_down "$room") GB; nothing was queued"; return 75; }
 }
-admission_holder() {  # admission_holder: the live job whose admission $DATA/<id>/meta/SIZE still holds, else nothing
-  local state job
-  [ -f "$DATA/$id/meta/SIZE" ] || return 0
-  read -r state job _ < "$DATA/$id/meta/SIZE"
+admission_holder() {  # admission_holder [SET]: the live job whose admission $DATA/<SET>/meta/SIZE still holds (SET $id by default), else nothing
+  local set=${1:-$id} state job
+  [ -f "$DATA/$set/meta/SIZE" ] || return 0
+  read -r state job _ < "$DATA/$set/meta/SIZE"
   [ "$state" = admitted ] || return 0
   case "$QUEUED" in *" $job "*) echo "$job" ;; esac
 }
@@ -1253,7 +1266,7 @@ bank_jobs() {  # bank_jobs NEED: the bank and its catalog build queued, and the 
   fi
 }
 word_bank() {
-  local recipe=$REPO/grid/banks/$id.json busy raw bytes need format factor why rc DATA=$DATA_ROOT
+  local recipe=$REPO/grid/banks/$id.json busy raw landing bytes need format factor why rc DATA=$DATA_ROOT
   [ -f "$recipe" ] || { echo "refusing: $id is not a recipe under grid/banks/"; return 64; }
   # One bank and one build at a time: two banks of one set write the same bank folder, and the X-ray
   # chain's stage 2 banks every recipe its fetch names, start's every one there is.
@@ -1271,6 +1284,14 @@ word_bank() {
   read -r factor why <<< "$(bank_factor "$format")"
   [ -n "$factor" ] || { echo "refusing: grid/banks/$id.json names the format '$format', which the bank word has no budget for"; return 2; }
   raw=$(recipe_raw "$recipe")
+  # Never while the landing that holds the raw copy is still being fetched, unpacked or admitted by
+  # any word's job: the bank would read part of the set and the budget below would be read from
+  # part of it, while the job banks whatever has landed by the time it starts.
+  landing=$(landing_of "$raw") \
+    || { echo "refusing: $id's raw folder is not under the data root, so nothing can say whether it is still landing; nothing was queued"; return 2; }
+  busy=$( { live_of xr_fetch "fetch:$landing"; [ "$(fetch_section "$landing")" != open ] || live_of xr_fetch start
+            live_of "dp_$landing"; live_of unpack "unpack:$landing"; admission_holder "$landing"; } | tr '\n' ' ')
+  [ -z "${busy// /}" ] || { echo "refusing: $landing, which holds $id's raw copy, is still being landed (job ${busy% }): a fetch, an unpacking or an admission of it is queued or running"; return 75; }
   [ -n "$raw" ] && [ -d "$raw" ] && [ -n "$(ls -A "$raw" 2>/dev/null | head -n 1)" ] \
     || { echo "refusing: $id's raw copy is not on the volume (its recipe's raw folder is missing or empty); fetch it first"; return 2; }
   # What the raw copy holds, read with no walk as the size rule reads a folder, whole, times what
