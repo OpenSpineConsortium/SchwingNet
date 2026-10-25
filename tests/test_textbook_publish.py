@@ -469,10 +469,7 @@ class Workflow(unittest.TestCase):
         self.assertIn("\npermissions: {}\n", self.TEXT)
         for uses in re.findall(r"uses:\s*(\S+)", self.TEXT):
             self.assertRegex(uses, r"^[\w.-]+/[\w./-]+@[0-9a-f]{40}$")
-        group = ("concurrency:\n  group: ${{ github.event_name == 'push' && "
-                 "format('textbook-artifact-relay-{0}', github.run_id) || 'textbook-artifact' }}\n"
-                 "  cancel-in-progress: true\n")
-        self.assertIn(group, self.TEXT)
+        self.assertIn("concurrency:\n  group: textbook-artifact\n  cancel-in-progress: true\n", self.TEXT)
         self.assertNotIn("persist-credentials: true", self.TEXT)
         self.assertEqual(self.TEXT.count("persist-credentials: false"), self.TEXT.count("actions/checkout@"))
 
@@ -480,8 +477,7 @@ class Workflow(unittest.TestCase):
         edition = self.JOBS["edition"]
         for needed in ("SWITCH: ${{ vars.TEXTBOOK_ARTIFACT }}", "CAP: ${{ vars.TEXTBOOK_PUBLISHES_PER_DAY }}",
                        "CROWD: ${{ vars.CLAUDE_CROWD }}", "HAVE_TOKEN: ${{ needs.values.outputs.token }}",
-                       "EVENT: ${{ inputs.relayed == 'push' && 'push' || github.event_name }}",
-                       'commits?sha=$STATE_BRANCH&since=', "contents/state.json?ref=$STATE_BRANCH"):
+                       "EVENT: ${{ github.event_name }}", 'commits?sha=$STATE_BRANCH&since=', "contents/state.json?ref=$STATE_BRANCH"):
             self.assertIn(needed, edition, needed)
         self.assertIn("TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' }}", self.JOBS["values"])
         self.assertIn("STATE_BRANCH: textbook-artifact", self.TEXT)
@@ -508,44 +504,6 @@ class Workflow(unittest.TestCase):
         self.assertIn('tools/usage.py actions --root "$GITHUB_WORKSPACE"', edition)
         self.assertIn("name: symphony-usage-${{ github.run_id }}-${{ github.run_attempt }}-textbook-artifact", edition)
         self.assertIn("if-no-files-found: ignore", edition)
-
-    def test_a_push_only_starts_the_workflow_again_by_run_workflow(self):
-        # claude-code-action stops at "Unsupported event type: push" (issue #274), so a push's run
-        # hands the publish to a run the action takes, and nothing else of it runs.
-        relay = self.JOBS["relay"]
-        self.assertIn("    if: vars.CLAUDE_CROWD != 'true' && github.event_name == 'push' && "
-                      "github.repository == 'OpenSpineConsortium/SchwingNet' && github.ref == 'refs/heads/main'\n", relay)
-        self.assertEqual(re.findall(r"^      (\w+): ", relay.split("    permissions:\n", 1)[1], re.M), ["actions"])
-        self.assertIn("      actions: write", relay)
-        self.assertIn('gh workflow run textbook-artifact.yml --repo "$REPO" --ref main -f relayed=push', relay)
-        for absent in ("secrets.", "actions/checkout", "uses:", "contents:"):
-            self.assertNotIn(absent, relay, absent)
-        for name in ("values", "edition"):
-            self.assertIn("github.event_name != 'push'", self.JOBS[name], name)
-        self.assertIn("needs.edition.outputs.record == 'true'", self.JOBS["record"])
-
-    def test_the_stand_in_is_admitted_as_the_push_and_a_run_by_hand_as_before(self):
-        dispatch = self.TEXT.split("  workflow_dispatch:\n", 1)[1].split("\n\n", 1)[0]
-        self.assertIn("      relayed:\n", dispatch)
-        self.assertIn('        default: ""', dispatch)
-        self.assertIn("        required: false", dispatch)
-        state = {"schema": tp.SCHEMA, "url": URL, "sha": "1234567890abcdef", "inputs": "f" * 64}
-        common = dict(state=state, inputs="f" * 64, switch="", crowd="", token="true", cap=12, commits=[],
-                      today="2026-10-25")
-        self.assertFalse(tp.admit(event="push", **common)[0], "the stand-in publishes only what changed")
-        self.assertTrue(tp.admit(event="workflow_dispatch", **common)[0], "a person's run builds anyway")
-
-    def test_the_session_takes_runs_the_actions_bot_starts_and_says_why_it_failed(self):
-        edition = self.JOBS["edition"]
-        step = edition.split("        id: claude\n", 1)[1].split("      - name:", 1)[0]
-        self.assertIn('allowed_bots: "github-actions"\n', step)
-        self.assertNotIn("allowed_bots: \"*\"", self.TEXT)
-        self.assertNotIn("allowed_non_write_users", self.TEXT)
-        why = edition.split("      - name: Why the session ended, when it ended in error\n", 1)[1].split("      - name:", 1)[0]
-        self.assertIn("if: always() && steps.claude.outcome == 'failure'", why)
-        self.assertIn("continue-on-error: true", why)
-        self.assertIn("python3 tools/research_loop.py why", why)
-        self.assertTrue((ROOT / "tools" / "research_loop.py").is_file())
 
     def test_the_record_is_written_fast_forward_and_a_foreign_branch_is_left_alone(self):
         record = self.JOBS["record"]

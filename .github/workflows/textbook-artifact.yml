@@ -12,13 +12,6 @@ name: Textbook artifact
 #
 # The run starts on a push to main that changes what the book is built from (the paths below,
 # the same list tools/textbook_publish.py fingerprints), every half hour, and on Run workflow.
-# A push's own run does one thing, the job relay: it starts this workflow on main by Run workflow
-# with relayed set to push, and that run publishes, admitted as the push would have been (issue
-# #274). claude-code-action takes no push event and stops at "Unsupported event type: push",
-# while GitHub starts a run for a Run workflow the workflow token asks for, as it does for no
-# other event the token causes. A scheduled run and the stand-in are both started by the Actions
-# bot, which the publish step names in allowed_bots, since the action refuses a run no person
-# started unless its actor is listed there.
 # The schedule is there because a merge GitHub's auto-merge makes starts no workflow
 # (automerge.yml arms it with the workflow token), and most of this repository's pull requests
 # merge that way; a scheduled run reads the record first and stops before building when the
@@ -27,19 +20,19 @@ name: Textbook artifact
 # publish cut short leaves the record as it was, and the next run publishes the whole edition
 # again to the same artifact.
 #
-# Four jobs. relay runs on a push alone and starts the workflow again (above). values learns
-# whether the Claude token is set, checking nothing out and running nothing of the repository's
-# (ci.yml's values says why). edition reads the record, decides whether this run may publish,
-# builds the site (tools/textbook_site.py) and the edition (tools/textbook_artifact.py), plans
-# what changed since the record by hashing the files (tools/textbook_publish.py plan) and, where
-# anything did, has a Claude session publish it with the Artifact tool, in batches under the
-# tool's limits, from a prompt that carries paths and nothing of the book's text; that job holds
-# a read-only token, so the session, allowed the Artifact and Read tools alone, can write nothing
-# here. record, the one job with contents: write and no session, writes the record, state.json on
-# the branch textbook-artifact, by a fast-forward commit on the branch's head with GITHUB_TOKEN:
-# the artifact's link, the commit the edition was built from, its date, the fingerprint of the
-# inputs and the sha256 of every published path; it never replaces a branch that holds anything
-# else. The day's publishes are counted from that branch's commits, one per publish.
+# Three jobs. values learns whether the Claude token is set, checking nothing out and running
+# nothing of the repository's (ci.yml's values says why). edition reads the record, decides
+# whether this run may publish, builds the site (tools/textbook_site.py) and the edition
+# (tools/textbook_artifact.py), plans what changed since the record by hashing the files
+# (tools/textbook_publish.py plan) and, where anything did, has a Claude session publish it with
+# the Artifact tool, in batches under the tool's limits, from a prompt that carries paths and
+# nothing of the book's text; that job holds a read-only token, so the session, allowed the
+# Artifact and Read tools alone, can write nothing here. record, the one job with contents:
+# write and no session, writes the record, state.json on the branch textbook-artifact, by a
+# fast-forward commit on the branch's head with GITHUB_TOKEN: the artifact's link, the commit the
+# edition was built from, its date, the fingerprint of the inputs and the sha256 of every
+# published path; it never replaces a branch that holds anything else. The day's publishes are
+# counted from that branch's commits, one per publish.
 #
 # A run publishes only when all of these hold, and its job summary names the first that does not:
 #   - the variable TEXTBOOK_ARTIFACT is not off (set it to off to stop the publishes);
@@ -49,8 +42,7 @@ name: Textbook artifact
 #   - the repository secret CLAUDE_CODE_OAUTH_TOKEN is set, the token `claude setup-token`
 #     makes, so the publish runs on that account's plan, bills no API, and lands in that
 #     account's artifact gallery, private until that account shares it;
-#   - the book's inputs changed since the published edition (Run workflow by hand builds anyway;
-#     a push's stand-in does not);
+#   - the book's inputs changed since the published edition (Run workflow builds anyway);
 #   - fewer than TEXTBOOK_PUBLISHES_PER_DAY publishes (12 unless the variable says otherwise,
 #     50 at most) were recorded today, in UTC.
 #
@@ -74,20 +66,13 @@ on:
   schedule:
     - cron: "13,43 * * * *"
   workflow_dispatch:
-    inputs:
-      relayed:
-        description: "Leave empty. A push's run sets it to push, and the run is admitted as that push would be."
-        type: string
-        required: false
-        default: ""
 
 # Nothing at the top; each job asks for what it needs.
 permissions: {}
 
-# The newest commit is the one to publish: a new run cancels one still at work. A push's relay
-# has a group of its own, so it neither cancels a publish nor is cancelled before it dispatches.
+# The newest commit is the one to publish: a new run cancels one still at work.
 concurrency:
-  group: ${{ github.event_name == 'push' && format('textbook-artifact-relay-{0}', github.run_id) || 'textbook-artifact' }}
+  group: textbook-artifact
   cancel-in-progress: true
 
 defaults:
@@ -98,26 +83,11 @@ env:
   STATE_BRANCH: textbook-artifact
 
 jobs:
-  relay:
-    # A push's run starts this workflow on main by Run workflow, which the session can run in,
-    # and does nothing else: no checkout, no secret, and the one right a dispatch needs.
-    if: vars.CLAUDE_CROWD != 'true' && github.event_name == 'push' && github.repository == 'OpenSpineConsortium/SchwingNet' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    permissions:
-      actions: write # the dispatch of this workflow, and nothing else
-    steps:
-      - name: Start this workflow on main, standing in for the push
-        env:
-          GH_TOKEN: ${{ github.token }}
-          REPO: ${{ github.repository }}
-        run: gh workflow run textbook-artifact.yml --repo "$REPO" --ref main -f relayed=push
-
   values:
     # Whether the Claude token is set, learnt by a job that checks nothing out, runs nothing of
     # the repository's and uses no action, so the job that runs the repository's code names the
     # secret only where the session takes it.
-    if: vars.CLAUDE_CROWD != 'true' && github.event_name != 'push' && github.repository == 'OpenSpineConsortium/SchwingNet' && github.ref == 'refs/heads/main'
+    if: vars.CLAUDE_CROWD != 'true' && github.repository == 'OpenSpineConsortium/SchwingNet' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions: {}
@@ -133,7 +103,7 @@ jobs:
   edition:
     # The record, the decision, the build, the plan and the session; a read-only token.
     needs: values
-    if: vars.CLAUDE_CROWD != 'true' && github.event_name != 'push' && github.repository == 'OpenSpineConsortium/SchwingNet' && github.ref == 'refs/heads/main'
+    if: vars.CLAUDE_CROWD != 'true' && github.repository == 'OpenSpineConsortium/SchwingNet' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 90
     permissions:
@@ -188,8 +158,7 @@ jobs:
         env:
           STATE: ${{ steps.state.outputs.state }}
           INPUTS: ${{ steps.edition.outputs.inputs }}
-          # a push's stand-in is admitted as the push, so it publishes only what changed
-          EVENT: ${{ inputs.relayed == 'push' && 'push' || github.event_name }}
+          EVENT: ${{ github.event_name }}
           SWITCH: ${{ vars.TEXTBOOK_ARTIFACT }}
           CROWD: ${{ vars.CLAUDE_CROWD }}
           HAVE_TOKEN: ${{ needs.values.outputs.token }}
@@ -245,22 +214,8 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ github.token }}
-          # the scheduled run and a push's stand-in are the Actions bot's, not a person's
-          allowed_bots: "github-actions"
           prompt: ${{ steps.brief.outputs.prompt }}
           claude_args: ${{ steps.brief.outputs.args }}
-      - name: Why the session ended, when it ended in error
-        # the action shows the session's output only whole, so a run refused before its first turn
-        # (a token no longer valid, a limit reached) would otherwise leave a log that says only
-        # is_error; the result's fields and the session's last words go to the log and the summary,
-        # with the shapes of secrets masked, as research.yml does
-        if: always() && steps.claude.outcome == 'failure'
-        continue-on-error: true
-        env:
-          EXECUTION_FILE: ${{ steps.claude.outputs.execution_file }}
-        run: >-
-          python3 tools/research_loop.py why
-          "${EXECUTION_FILE:-$RUNNER_TEMP/claude-execution-output.json}" | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Record what the session spent, for the field metrics
         if: always() && steps.claude.outcome != 'skipped'
         continue-on-error: true
