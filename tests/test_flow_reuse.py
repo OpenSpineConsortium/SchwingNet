@@ -5,10 +5,13 @@ catalog and the run's configuration (CONFIGURATION.json), so the same configurat
 folder, on a later commit that changed none of that code too, and started again the flow runs
 only what that folder still needs: nothing once it wrote FINISHED.json, its last file; the last push, the ledger
 row (once) and the report where it was cut after its evaluation; the evaluation where training
-wrote its checkpoint.json, training with --resume where it left train/last.pt (issue #252). A sweep's row
+wrote its checkpoint.json and the best.pt it names, training again, with --resume where it left
+train/last.pt, where it did not (issue #252). A sweep's row
 names its folder with --slug, and a folder holding another run is refused and left as it was. A
 start cut while it writes its record or witness list, or before its record, is started again,
-and a start while another start holds the folder is refused and runs nothing.
+and a start while another start holds the folder is refused and runs nothing. In slurm mode,
+against tests/fakes/hpcworker and a fake sacct, a job is in RUN.json from the moment it is
+submitted, so a start cut while the job waits leaves it for the next start to wait on.
 
 The flow runs in-process against a real synthetic catalog built by the tools, with a fake `pixi`
 on PATH standing in for the trainer, the evaluator and the W&B sync: it writes the files the flow
@@ -21,10 +24,12 @@ beartype or icontract is missing, as under the required check's plain python3.
 """
 
 import contextlib
+import errno
 import hashlib
 import importlib.util
 import io
 import json
+import multiprocessing
 import os
 import re
 import shutil
@@ -47,7 +52,7 @@ V1_DRIVER_SED = r's/.*"run_dir": "\([^"]*\)".*/\1/p'
 # writes that the flow reads, and logs one JSON line per call. FAKE_TRAIN=cut leaves train/last.pt
 # and exits as a killed job does; FAKE_EVALUATE=fail exits before writing results.
 FAKE_PIXI = r'''#!{python}
-import json, os, sys
+import hashlib, json, os, sys
 from pathlib import Path
 
 words = sys.argv[1:]
@@ -80,7 +85,9 @@ if tool == "train":
         (train / "last.pt").write_bytes(b"epoch 1")
         print("epoch 1 done, then the job was killed")
         raise SystemExit(137)
-    (train / "checkpoint.json").write_text(json.dumps({{"best": {{"epoch": 2, "validation_accuracy": 0.5}}}}), encoding="utf-8")
+    (train / "best.pt").write_bytes(b"the weights of epoch 2")
+    named = hashlib.sha256(b"the weights of epoch 2").hexdigest()
+    (train / "checkpoint.json").write_text(json.dumps({{"best": {{"epoch": 2, "validation_accuracy": 0.5}}, "checkpoint_sha256": named}}), encoding="utf-8")
     (train / "last.pt").unlink(missing_ok=True)
     print("trained" + (" on from train/last.pt" if "--resume" in args else ""))
 elif tool == "evaluate":
@@ -95,6 +102,13 @@ elif tool == "wandb_log":
     print("W&B offline only, nothing to push (fake)")
 else:
     raise SystemExit(f"the fake pixi knows no tool {{tool}}")
+'''
+
+
+# sacct as the flow asks it, `sacct -j ID -n -P -X --format=State,Elapsed,ExitCode`: the line the
+# test wrote for the job under FAKE_SACCT, PENDING where it wrote none.
+FAKE_SACCT = r'''#!/bin/bash
+if [ -f "$FAKE_SACCT/$2" ]; then cat "$FAKE_SACCT/$2"; else echo "PENDING|00:00:00|0:0"; fi
 '''
 
 
@@ -133,10 +147,10 @@ class Killed(Exception):
     """What a patched write raises, as a job killed at that write would stop."""
 
 
-def write_cut_short(names, at):
+def write_cut_short(names, at, error=None):
     """Path.write_text made to write half its text to a file of these names and stop, at the
-    at-th write to them, as a full volume or a kill mid-write leaves a file; every other write is
-    the real one."""
+    at-th write to them, as a full volume or a kill mid-write leaves a file, raising error where
+    one is given and Killed otherwise; every other write is the real one."""
     real, seen = Path.write_text, []
 
     def write_half(path, text, *args, **kwargs):
@@ -144,10 +158,26 @@ def write_cut_short(names, at):
             seen.append(path.name)
             if len(seen) == at:
                 real(path, text[: len(text) // 2], *args, **kwargs)
-                raise Killed(f"cut while writing {path.name}")
+                raise error or Killed(f"cut while writing {path.name}")
         return real(path, text, *args, **kwargs)
 
     return mock.patch.object(Path, "write_text", write_half)
+
+
+def legacy_record(rules, started_at):
+    """A run record named by its start, as the records written before configurations were named
+    are, which needs no catalog or code to make: a ledger row's facts and nothing else."""
+    return rules.RunRecord(run_id=rules.run_id(COMMIT, "a" * 64, started_at), code_commit=COMMIT, clean_tree=True,
+                           catalog_version=1, catalog_sha256="a" * 64, split_disjoint=True, stage=rules.Stage.LEVEL,
+                           seed=1, epochs=1, started_at=started_at, mode="local")
+
+
+def write_rows(flow, ledger, records, barrier):
+    """One writer's rows, started with the other writer's at the barrier, as the rows of a sweep
+    run side by side finish into one ledger; the flow's own call, the one finish makes."""
+    barrier.wait()
+    for record in records:
+        flow.add_ledger_row(ledger, record, "a row of a sweep", "by the test")
 
 
 def snapshot(folder):
@@ -346,6 +376,108 @@ class FlowReuseTest(unittest.TestCase):
         self.assertEqual(len(self.ledger_rows()), 1, "one ledger row for the run, once it finished")
         self.assertTrue((run_dir / "PROVENANCE.json").is_file() and (run_dir / "split-check.json").is_file())
 
+    def test_a_checkpoint_json_that_is_no_record_of_its_best_pt_trains_again(self):
+        # A node that died, or a disk that spoiled a file, can leave checkpoint.json short, or
+        # beside other weights than the ones it names; taken for the end of training, it sent
+        # every start to an evaluation that refuses it. Training runs again, on from last.pt
+        # where the trainer left one.
+        def emptied(train):
+            (train / "checkpoint.json").write_bytes(b"")
+
+        def unnamed(train):
+            (train / "checkpoint.json").write_text('{"best": {"epoch": 2}}', encoding="utf-8")
+
+        def replaced(train):
+            (train / "best.pt").write_bytes(b"other weights")
+
+        def gone(train):
+            (train / "best.pt").unlink()
+
+        def replaced_beside_last(train):
+            replaced(train)
+            (train / "last.pt").write_bytes(b"epoch 2")
+
+        spoils = ((emptied, "restarted"), (unnamed, "restarted"), (replaced, "restarted"), (gone, "restarted"), (replaced_beside_last, "resumed"))
+        for seed, (spoil, reused) in enumerate(spoils, start=11):
+            with self.subTest(spoil.__name__):
+                rc, lines, _ = self.run_flow("--seed", str(seed), fake={"FAKE_EVALUATE": "fail"})
+                self.assertEqual(rc, 1)
+                run_dir = Path(self.said(lines)["run_dir"])
+                spoil(run_dir / "train")
+                self.log.unlink()
+                rc, lines, err = self.run_flow("--seed", str(seed))
+                self.assertEqual(rc, 0, err)
+                self.assertEqual(self.said(lines)["reused"], reused)
+                self.assertEqual(self.tools_called(), ["train", "wandb_log", "evaluate", "wandb_log", "wandb_log"])
+                self.assertEqual("--resume" in dict(self.calls())["train"], reused == "resumed")
+
+    def slurm(self):
+        """What a start in slurm mode runs with: tests/fakes/hpcworker, which queues nothing and
+        logs each job it is asked to queue, numbered from 101, and the fake sacct, which answers
+        for each job what the test wrote for it, both first on the path."""
+        states, tools = self.work / "sacct", self.work / "slurm-bin"
+        states.mkdir()
+        tools.mkdir()
+        (tools / "sacct").write_text(FAKE_SACCT, encoding="utf-8")
+        (tools / "sacct").chmod(0o755)
+        queued = self.work / "hpcw.log"
+        environment = {"HPCWORKER": str(ROOT / "tests" / "fakes" / "hpcworker"), "HPCW_LOG": str(queued), "FAKE_SACCT": str(states),
+                       "PATH": f"{tools}{os.pathsep}{self.bin}{os.pathsep}{os.environ.get('PATH', '')}"}
+        return environment, states, queued
+
+    def test_a_slurm_start_cut_while_its_job_waits_leaves_the_job_for_the_next_start_to_wait_on(self):
+        # A person's login shell that dies while the train job waits in the queue: the job runs on,
+        # and a start that knew nothing of it would submit a second, which trains over the first's
+        # finished folder on another GPU allocation, the first one's cost counted nowhere.
+        environment, states, queued = self.slurm()
+        run_dir = self.out / "row-a"
+
+        def shell_died(seconds):
+            raise Killed("the login shell died while the job waited")
+
+        def scheduler(seconds):
+            # The flow's sleep before each sacct read, made to run each job queued and not yet run,
+            # as the grid would while the flow waits: training leaves checkpoint.json and the
+            # best.pt it names, an evaluation its results, and sacct then calls the job COMPLETED.
+            for number, line in enumerate(queued.read_text(encoding="utf-8").splitlines(), start=101):
+                if (states / str(number)).exists():
+                    continue
+                if "--name flow_train " in line:
+                    (run_dir / "train").mkdir(exist_ok=True)
+                    (run_dir / "train" / "best.pt").write_bytes(b"the weights of job 101")
+                    named = hashlib.sha256(b"the weights of job 101").hexdigest()
+                    (run_dir / "train" / "checkpoint.json").write_text(json.dumps({"checkpoint_sha256": named}), encoding="utf-8")
+                else:
+                    (run_dir / "evaluate").mkdir(exist_ok=True)
+                    (run_dir / "evaluate" / "results.json").write_text(json.dumps({"headline": {"correct": 1, "total": 2}}), encoding="utf-8")
+                    (run_dir / "evaluate" / "results.md").write_text("| accuracy | 1/2 |\n", encoding="utf-8")
+                (states / str(number)).write_text("COMPLETED|00:10:00|0:0\n", encoding="utf-8")
+
+        with mock.patch.object(self.flow.time, "sleep", shell_died), self.assertRaises(Killed):
+            self.run_flow("--mode", "slurm", "--slug", "row-a", fake=environment)
+        jobs = self.record(run_dir)["jobs"]
+        self.assertEqual([(job["step"], job["job_id"], job["exit_code"]) for job in jobs[1:]], [("train", "101", None)],
+                         "the job is in the record before the flow waits on it")
+        with mock.patch.object(self.flow.time, "sleep", scheduler):
+            rc, lines, err = self.run_flow("--mode", "slurm", "--slug", "row-a", fake=environment)
+        self.assertEqual(rc, 0, err)
+        self.assertEqual(self.said(lines)["reused"], "trained", "the job it waited on finished training")
+        names = [line.split()[3] for line in queued.read_text(encoding="utf-8").splitlines()]
+        self.assertEqual(names, ["flow_train", "flow_evaluate"], "one train job, waited on by the second start")
+        jobs = self.record(run_dir)["jobs"]
+        self.assertEqual([(job["step"], job["job_id"], job["exit_code"]) for job in jobs if job["step"] != "split-check"],
+                         [("train", "101", 0), ("evaluate", "102", 0)])
+        self.assertEqual(jobs[1]["seconds_used"], 600, "the first job's time is counted")
+        self.assertTrue((run_dir / "FINISHED.json").is_file())
+
+    def test_sacct_that_cannot_be_run_is_refused_in_words(self):
+        # A start that finds a job it must wait on and no sacct to ask, as on a machine off the grid.
+        def no_sacct(*args, **kwargs):
+            raise FileNotFoundError(2, "No such file or directory", "sacct")
+
+        with mock.patch.object(self.flow.subprocess, "run", no_sacct), self.assertRaisesRegex(self.flow.FlowError, r"sacct cannot be run here \(\[Errno 2\] No such file or directory: 'sacct'\), so whether job 101 has finished cannot be told"):
+            self.flow.sacct("101")
+
     def test_a_folder_with_a_last_epoch_carries_training_on_with_resume(self):
         rc, lines, err = self.run_flow(fake={"FAKE_TRAIN": "cut"})
         self.assertEqual(rc, 1)
@@ -434,6 +566,41 @@ class FlowReuseTest(unittest.TestCase):
         self.assertEqual((rc, self.said(lines)["reused"]), (0, "evaluated"), err)
         self.assertEqual(len(self.ledger_rows()), 2, "one ledger row a run")
         self.assertTrue((self.out / "row-b" / "REPORT.md").is_file() and (self.out / "row-b" / "FINISHED.json").is_file())
+
+    def test_a_ledger_write_cut_by_a_full_volume_keeps_the_rows_before_it_and_the_next_start_writes_its_row(self):
+        rc, lines, err = self.run_flow("--slug", "row-a")
+        self.assertEqual(rc, 0, err)
+        first = self.said(lines)["run_id"]
+        ledger = self.out / "LEDGER.md"
+        before = ledger.read_text(encoding="utf-8")
+        full = OSError(errno.EDQUOT, "Disk quota exceeded")
+        with write_cut_short(("LEDGER.md", "LEDGER.md.tmp"), 1, full):
+            rc, lines, err = self.run_flow("--slug", "row-b", "--seed", "2")
+        self.assertEqual(rc, 1)
+        self.assertIn(f"flow: {ledger}: the run's row could not be written ([Errno {errno.EDQUOT}] Disk quota exceeded)", err)
+        self.assertEqual(ledger.read_text(encoding="utf-8"), before, "the header and the rows before it are kept")
+        self.assertFalse((self.out / "row-b" / "FINISHED.json").exists())
+        rc, lines, err = self.run_flow("--slug", "row-b", "--seed", "2")
+        self.assertEqual((rc, self.said(lines)["reused"]), (0, "evaluated"), err)
+        text = ledger.read_text(encoding="utf-8")
+        self.assertTrue(text.startswith(self.flow.LEDGER_HEADER + "\n"))
+        self.assertEqual([row.split(" | ")[1] for row in self.ledger_rows()], [first, self.said(lines)["run_id"]])
+
+    def test_two_runs_that_finish_together_keep_every_row_and_the_header(self):
+        # The rows of a sweep's state share <state>/LEDGER.md, and flows/launch.py sweep runs rows
+        # side by side under --max-workers; each writer reads the ledger and writes it again.
+        context = multiprocessing.get_context("fork")
+        barrier, ledger, each = context.Barrier(2), self.work / "LEDGER.md", 150
+        rows = [[legacy_record(self.rules, f"2026-10-25T{hour:02d}:{n // 60:02d}:{n % 60:02d}Z") for n in range(each)] for hour in (1, 2)]
+        writers = [context.Process(target=write_rows, args=(self.flow, ledger, records, barrier)) for records in rows]
+        for writer in writers:
+            writer.start()
+        for writer in writers:
+            writer.join(timeout=300)
+        self.assertEqual([writer.exitcode for writer in writers], [0, 0])
+        lines = ledger.read_text(encoding="utf-8").splitlines()
+        self.assertEqual(lines[:2], self.flow.LEDGER_HEADER.splitlines())
+        self.assertEqual(sorted(line.split(" | ")[1] for line in lines[2:]), sorted(r.run_id for records in rows for r in records))
 
     def test_a_start_while_another_start_holds_the_folder_is_refused_and_runs_nothing(self):
         # The v1 driver's start and an experiment asking for version 1's training, whose --hours
@@ -548,7 +715,7 @@ class FlowReuseTest(unittest.TestCase):
             self.assertEqual(rc, 1, bad)
             self.assertIn("flow: --slug", err)
         self.assertEqual(self.run_flow("--slug", "r" * 80)[0], 0)
-        self.assertEqual(sorted(p.name for p in self.out.iterdir()), ["LEDGER.md", "r" * 80])
+        self.assertEqual(sorted(p.name for p in self.out.iterdir()), ["LEDGER.md", "LEDGER.md.lock", "r" * 80])
 
     def test_a_record_written_before_configurations_were_named_still_validates_in_record(self):
         run = self.work / "old"

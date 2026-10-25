@@ -80,7 +80,12 @@ class JobSpec(BaseModel):
 
 
 class JobRecord(BaseModel):
-    """What one job cost, as the scheduler and the runner recorded it, never estimated."""
+    """What one job cost, as the scheduler and the runner recorded it, never estimated.
+
+    A Slurm job is recorded as soon as it is submitted, with no exit code and no time used yet, so
+    a start that dies while the job waits leaves it named for the next start to wait on instead of
+    submitting a second; the exit code is never left out, so a record from before keeps reading.
+    """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -92,7 +97,7 @@ class JobRecord(BaseModel):
     seconds_used: int = Field(ge=0)
     gpus: int = Field(ge=0)
     preemptions: int = Field(ge=0)
-    exit_code: int
+    exit_code: int | None
 
 
 class RunRecord(BaseModel):

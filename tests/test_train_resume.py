@@ -6,9 +6,12 @@ through, the seconds apart; the cut is made here by the trainer's own save funct
 after its second write, patched in this process, so the trainer carries no hook for tests. A
 --resume with nothing to resume, or with other arguments than the run was started with, is
 refused in words, as is one whose catalog, ImageNet file or parent is not the bytes the run
-started from, while the same file at another path resumes; a last.pt that cannot be read is
-moved aside and the run trains again from epoch 0; a second trainer in a folder another holds is
-refused and touches nothing; and last.pt is gone once a run has finished. W&B's run goes on
+started from, while the same file at another path resumes; a last.pt that cannot be read, or
+whose bytes its record train/last.pt.sha256 does not name, as a stretch of zeros a node that died
+left in it, is moved aside and the run trains again from epoch 0, as it is where last.pt's best
+line names weights best.pt does not hold; a second trainer in a folder another holds is refused
+and touches nothing; last.pt is gone once a run has finished; and the evaluator scores only a
+best.pt train/checkpoint.json names by its sha256, refusing in words otherwise. W&B's run goes on
 under the same id. And at 32 pixels, where batch norm cannot train on one crop, a training part
 of 65 crops, whose last batch of 64 would hold one, still trains, while at 64 pixels the batches
 are as they always were.
@@ -52,9 +55,13 @@ def load(name):
     return module
 
 
-def new_run(folder, run_id, witness=None):
+def new_run(folder, run_id, catalog=None, witness=None):
+    """A run's folder with the record tools/flow.py writes before any step, naming the catalog by
+    its sha256 as the flow does, since the trainer and the evaluator read no other; a test that
+    stops before the catalog is read names none."""
     folder.mkdir(parents=True)
-    record = {"run_id": run_id, "code_commit": "0" * 40, "catalog_sha256": "0" * 64, "catalog_version": 1, "clean_tree": True}
+    named = digest(catalog) if catalog else "0" * 64
+    record = {"run_id": run_id, "code_commit": "0" * 40, "catalog_sha256": named, "catalog_version": 1, "clean_tree": True}
     (folder / "RUN.json").write_text(json.dumps(record), encoding="utf-8")
     if witness is not None:
         (folder / "witness.json").write_text(json.dumps(witness), encoding="utf-8")
@@ -63,6 +70,24 @@ def new_run(folder, run_id, witness=None):
 
 def digest(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def other_catalog(catalog, path):
+    """A copy of the catalog with other bytes, its rows the same, as a catalog path given other
+    bytes between the flow's start and a step would hold."""
+    import sqlite3
+
+    shutil.copyfile(catalog, path)
+    db = sqlite3.connect(path)
+    db.execute("PRAGMA user_version = 7")
+    db.commit()
+    db.close()
+    return path
+
+
+def another_catalog_words(other, catalog):
+    """How a step refuses a catalog other than the one the run's record names."""
+    return f"--catalog {other}: its sha256 {digest(other)[:12]} is not {digest(catalog)[:12]}, the catalog the run's RUN.json names"
 
 
 def untimed(line):
@@ -93,6 +118,62 @@ def cut_after(module, writes):
             raise Killed(f"cut after write {writes} of last.pt (epoch {state['epoch']})")
 
     return mock.patch.object(module, "save_last", save_then_stop)
+
+
+def cut_at_binding(module, call, before_write):
+    """The trainer's write of train/last.pt.sha256 made to stop the run at its call-th write,
+    before or after it writes: save_last writes the sidecar twice an epoch, naming the new file
+    beside the one in place before the rename and the new one alone after it, so the third and
+    fourth writes are epoch 1's, on either side of its rename."""
+    real, done = module.bind_last, []
+
+    def bind_then_stop(folder, digests):
+        done.append(len(digests))
+        if len(done) == call and before_write:
+            raise Killed(f"cut before write {call} of last.pt.sha256")
+        real(folder, digests)
+        if len(done) == call:
+            raise Killed(f"cut after write {call} of last.pt.sha256")
+
+    return mock.patch.object(module, "bind_last", bind_then_stop)
+
+
+def hole_in_a_tensor(data):
+    """last.pt with one 4 KiB block in the middle of its largest tensor record read back as zeros,
+    as a node that died with that stretch unwritten leaves the file on CephFS; torch reads it
+    without a word, since it checks no tensor record's bytes."""
+    import struct
+    import zipfile
+
+    archive = zipfile.ZipFile(io.BytesIO(data))
+    record = max((info for info in archive.infolist() if "/data/" in info.filename), key=lambda info: info.file_size)
+    name_length, extra_length = struct.unpack("<HH", data[record.header_offset + 26 : record.header_offset + 30])
+    start = record.header_offset + 30 + name_length + extra_length
+    block = (start + record.file_size // 2) // 4096 * 4096
+    return data[:block] + bytes(4096) + data[block + 4096 :]
+
+
+def archive_with(pickled):
+    """A torch file whose pickle is these bytes, every other record of the archive a saved file's,
+    so torch.load reads the pickle as it reads a run's state."""
+    import torch
+    import zipfile
+
+    saved, built = io.BytesIO(), io.BytesIO()
+    torch.save({"epoch": 1}, saved)
+    source = zipfile.ZipFile(io.BytesIO(saved.getvalue()))
+    with zipfile.ZipFile(built, "w", zipfile.ZIP_STORED) as target:
+        for info in source.infolist():
+            target.writestr(info.filename, pickled if info.filename.endswith("data.pkl") else source.read(info))
+    return built.getvalue()
+
+
+# Pickles torch's weights-only loader cannot rebuild a state from, each raising an error outside
+# the ones a cut file raises: the review's 1500 one-byte changes to a last.pt's pickle found the
+# first two, and 6000 changes of two bytes the third (2026-10-25).
+UNREBUILT = (("TypeError", b"\x80\x02ctorch._utils\n_rebuild_tensor_v2\n)R."),
+             ("AttributeError", b"\x80\x02ctorch._utils\n_rebuild_tensor_v2\n()K\x00K\x01\x85K\x01\x85\x89ccollections\nOrderedDict\n)RtR."),
+             ("AssertionError", b"\x80\x02K\x01Q."))
 
 
 def lines_on_disk(module, seen):
@@ -130,11 +211,11 @@ class ResumeCase:
         cls.catalog = blocks_tests.RunWithEveryBlockTest.make_catalog(cls.tmp)
         witness = load("witness").freeze(cls.catalog, "0" * 64)
         cls.config = ["--epochs", "3", "--size", "32", *(w for word in cls.words for w in ("--block", word))]
-        cls.through = new_run(cls.tmp / "through", "throughrun00", witness)
+        cls.through = new_run(cls.tmp / "through", "throughrun00", cls.catalog, witness)
         cls.through_on_disk, module = [], load("train")
         with lines_on_disk(module, cls.through_on_disk):
             cls.through_rc = train(cls.catalog, cls.through, *cls.config, module=module)[0]
-        cls.cut = new_run(cls.tmp / "cut", "cutrun000000", witness)
+        cls.cut = new_run(cls.tmp / "cut", "cutrun000000", cls.catalog, witness)
         module = load("train")
         with cut_after(module, 2):
             try:
@@ -186,9 +267,8 @@ class ResumeCase:
 
     def test_last_pt_is_gone_after_a_finished_run(self):
         for folder in (self.through, self.cut):
-            self.assertFalse((folder / "train" / "last.pt").exists())
-            self.assertFalse((folder / "train" / "last.pt.tmp").exists())
-            self.assertFalse((folder / "train" / "pending").exists())
+            for name in ("last.pt", "last.pt.tmp", "last.pt.sha256", "last.pt.sha256.tmp", "pending"):
+                self.assertFalse((folder / "train" / name).exists(), name)
 
     def test_a_resume_with_other_arguments_is_refused_in_words_and_touches_nothing(self):
         rc, _, err = self.mismatch
@@ -245,7 +325,7 @@ class ResumeBindingTest(unittest.TestCase):
         torch.manual_seed(4)
         torch.save(torchvision.models.resnet18(weights=None).state_dict(), cls.tmp / "models-old" / "resnet18.pth")
         shutil.copytree(cls.tmp / "models-old", cls.tmp / "models")
-        parent = new_run(cls.tmp / "parent", "parentrun000")
+        parent = new_run(cls.tmp / "parent", "parentrun000", cls.catalog)
         assert train(cls.catalog, parent, "--epochs", "1", "--size", "32")[0] == 0
         (cls.tmp / "parent-alias").symlink_to(parent, target_is_directory=True)
         cls.parent = parent / "train" / "best.pt"
@@ -256,7 +336,7 @@ class ResumeBindingTest(unittest.TestCase):
 
     def cut(self, name, *extra):
         """A run cut after its second last.pt (epoch 1), as ResumeCase cuts one."""
-        folder = new_run(self.tmp / name, name.ljust(12, "0")[:12])
+        folder = new_run(self.tmp / name, name.ljust(12, "0")[:12], self.catalog)
         module = load("train")
         with cut_after(module, 2), self.assertRaises(Killed):
             train(self.catalog, folder, *self.config, *extra, module=module)
@@ -276,6 +356,21 @@ class ResumeBindingTest(unittest.TestCase):
         self.assertEqual(rc, 0, err)
         self.assertIn('"resumed_after_epoch": 1', out)
 
+    def test_a_link_to_the_parent_file_is_read_as_the_file_it_names(self):
+        # A link to the file itself sits in a folder with no RUN.json or checkpoint.json beside it;
+        # read there, the parent named no run and warm_start checked none of its blocks, so a
+        # parent trained on other crops warm-started without a word.
+        link = self.tmp / "parent.pt"
+        link.symlink_to(self.parent)
+        trainer = load("train")
+        through_link = trainer.parent_of(link)
+        self.assertEqual(through_link, trainer.parent_of(self.parent))
+        self.assertEqual((through_link["file"], through_link["run_id"], through_link["facts"]["size"]), ("best.pt", "parentrun000", 32))
+        folder = new_run(self.tmp / "linked", "linkedrun000", self.catalog)
+        rc, _, err = train(self.catalog, folder, "--epochs", "1", "--size", "64", "--init", str(link), module=trainer)
+        self.assertEqual(rc, 1)
+        self.assertIn("train: the parent was trained on 32-pixel crops, this run on 64", err)
+
     def test_a_file_replaced_at_the_same_path_is_refused(self):
         import torch
         import torchvision
@@ -292,28 +387,31 @@ class ResumeBindingTest(unittest.TestCase):
         self.assertIn("weights_sha256 was", err)
         self.assertEqual(digest(folder / "train" / "last.pt"), last)
 
-    def test_another_catalog_is_refused(self):
-        import sqlite3
-
-        other = self.tmp / "other.sqlite"
-        shutil.copyfile(self.catalog, other)
-        db = sqlite3.connect(other)
-        db.execute("PRAGMA user_version = 7")
-        db.commit()
-        db.close()
+    def test_another_catalog_is_refused_on_a_resume_and_on_a_fresh_start(self):
+        # RUN.json names the catalog the run was started on, and every number a step writes is
+        # stamped with it, so a step on another, run by hand or after the catalog's path was
+        # given other bytes, would stamp one catalog's numbers with another's name.
+        other = other_catalog(self.catalog, self.tmp / "other.sqlite")
         folder = self.cut("recatalogued")
+        last = digest(folder / "train" / "last.pt")
         rc, _, err = self.resume(folder, catalog=other)
         self.assertEqual(rc, 1)
-        self.assertIn("train: --resume:", err)
-        self.assertIn("catalog_sha256 was", err)
+        self.assertIn(f"train: {another_catalog_words(other, self.catalog)}", err)
+        self.assertEqual(digest(folder / "train" / "last.pt"), last)
+        fresh = new_run(self.tmp / "fresh-on-another", "freshother00", self.catalog)
+        rc, _, err = train(other, fresh, *self.config)
+        self.assertEqual(rc, 1)
+        self.assertIn(f"train: {another_catalog_words(other, self.catalog)}", err)
+        self.assertFalse((fresh / "train" / "metrics.jsonl").exists())
 
 
 @unittest.skipIf(MISSING, f"needs the train environment ({', '.join(MISSING)} missing)")
 class UnreadableLastTest(unittest.TestCase):
-    """A last.pt that cannot be read, cut short or emptied by a node that died before it reached
-    the disk, is moved aside under a name that says so and the run trains from epoch 0 in the same
-    call, ending as a run that went through; refused, every start the flow makes would resume it
-    and be refused again."""
+    """A last.pt the run cannot go on from, cut short, emptied or with a stretch of zeros a node
+    that died before it reached the disk left, or with no record of its bytes, is moved aside under
+    a name that says so and the run trains from epoch 0 in the same call, ending as a run that went
+    through; refused, every start the flow makes would resume it and be refused again. A cut on
+    either side of the rename that puts a new last.pt in place resumes from the file in place."""
 
     config = ("--epochs", "3", "--size", "32")
 
@@ -321,7 +419,7 @@ class UnreadableLastTest(unittest.TestCase):
     def setUpClass(cls):
         cls.tmp = Path(tempfile.mkdtemp())
         cls.catalog = blocks_tests.RunWithEveryBlockTest.make_catalog(cls.tmp)
-        cls.through = new_run(cls.tmp / "through", "throughrun00")
+        cls.through = new_run(cls.tmp / "through", "throughrun00", cls.catalog)
         assert train(cls.catalog, cls.through, *cls.config)[0] == 0
 
     @classmethod
@@ -329,7 +427,7 @@ class UnreadableLastTest(unittest.TestCase):
         shutil.rmtree(cls.tmp, ignore_errors=True)
 
     def cut_and_spoil(self, name, spoil):
-        folder = new_run(self.tmp / name, name.ljust(12, "0")[:12])
+        folder = new_run(self.tmp / name, name.ljust(12, "0")[:12], self.catalog)
         module = load("train")
         with cut_after(module, 2), self.assertRaises(Killed):
             train(self.catalog, folder, *self.config, module=module)
@@ -338,32 +436,83 @@ class UnreadableLastTest(unittest.TestCase):
         last.write_bytes(spoiled)
         return folder, spoiled
 
-    def test_a_truncated_or_empty_last_pt_is_moved_aside_and_the_run_starts_again(self):
+    def assert_started_again(self, folder, resumed):
+        """The resumed call's outcome: last.pt moved aside, the run trained from epoch 0 and ended
+        as the run that went through, and its card saying so."""
+        rc, out, err = resumed
+        self.assertEqual(rc, 0, err)
+        self.assertFalse((folder / "train" / "last.pt").exists())
+        self.assertIn('"restarted_from_epoch": 0', out)
+        self.assertNotIn("resumed_after_epoch", out)
+        self.assertEqual([untimed(line) for line in lines_of(folder)], [untimed(line) for line in lines_of(self.through)])
+        self.assertEqual(digest(folder / "train" / "best.pt"), digest(self.through / "train" / "best.pt"))
+        self.assertEqual(untimed(facts_of(folder)), untimed(facts_of(self.through)))
+        card = (folder / "train" / "MODEL.md").read_text(encoding="utf-8")
+        self.assertIn("- Restarted from epoch 0: train/last.pt could not be resumed from", card)
+        self.assertNotIn("- Resumed", card)
+        return out
+
+    def test_a_spoiled_last_pt_is_moved_aside_and_the_run_starts_again(self):
         import torch
 
         foreign = io.BytesIO()
         torch.save({"epoch": 1}, foreign)
-        # Each spoil but the last makes torch.load raise another way: a zip cut short, nothing, two
-        # kinds of pickle that is no pickle (one stops at an opcode, one pops an empty stack), and
-        # zeroes; the last is a file torch reads that holds no run's state.
+        # A zip cut short, nothing, two kinds of pickle that is no pickle, zeroes, a file torch reads
+        # that holds no run's state, and one 4 KiB block of zeros inside a tensor, which torch reads
+        # as the state it was; last.pt.sha256 names none of them.
         spoils = (("truncated", lambda data: data[: len(data) // 2]), ("emptied", lambda data: b""),
                   ("overwritten", lambda data: b"not a torch file"), ("scribbled", lambda data: b"the epoch"),
-                  ("zeroed", lambda data: bytes(len(data))), ("foreign", lambda data: foreign.getvalue()))
+                  ("zeroed", lambda data: bytes(len(data))), ("foreign", lambda data: foreign.getvalue()),
+                  ("holed", hole_in_a_tensor))
         for name, spoil in spoils:
             with self.subTest(name):
                 folder, spoiled = self.cut_and_spoil(name, spoil)
+                if name == "holed":
+                    state = torch.load(io.BytesIO(spoiled), map_location="cpu", weights_only=True)
+                    self.assertEqual(state["epoch"], 1, "torch takes the holed file for epoch 1's state")
+                out = self.assert_started_again(folder, train(self.catalog, folder, *self.config, "--resume"))
+                self.assertEqual((folder / "train" / "last.pt.unreadable").read_bytes(), spoiled)
+                self.assertIn("is not one last.pt.sha256 names", out)
+
+    def test_a_last_pt_with_no_record_of_its_bytes_is_moved_aside_and_the_run_starts_again(self):
+        # As a last.pt left by the code before the record would be; none was left on the grid.
+        folder, _ = self.cut_and_spoil("unrecorded", lambda data: data)
+        (folder / "train" / "last.pt.sha256").unlink()
+        out = self.assert_started_again(folder, train(self.catalog, folder, *self.config, "--resume"))
+        self.assertIn("no last.pt.sha256 names its bytes", out)
+
+    def test_a_last_pt_torch_cannot_rebuild_is_moved_aside_and_the_run_starts_again(self):
+        # Bytes the record names, as a disk that spoiled them after the record was written leaves
+        # them, whose pickle makes torch.load raise an error no list of a cut file's errors names.
+        for error, pickled in UNREBUILT:
+            with self.subTest(error):
+                folder, spoiled = self.cut_and_spoil(error.lower(), lambda data, pickled=pickled: archive_with(pickled))
+                (folder / "train" / "last.pt.sha256").write_text(hashlib.sha256(spoiled).hexdigest() + "\n", encoding="ascii")
+                out = self.assert_started_again(folder, train(self.catalog, folder, *self.config, "--resume"))
+                self.assertIn(f'"why": "{error}"', out)
+
+    def test_a_staged_best_pt_the_record_does_not_name_restarts_the_run_and_is_refused_no_more(self):
+        # Epoch 1's best.pt waits under pending/ when the cut comes, its digest in last.pt's best
+        # line; other bytes there leave no best.pt the record names, and the flow passes --resume
+        # wherever last.pt is, so a refusal would come back on every start.
+        folder, _ = self.cut_and_spoil("unnamed", lambda data: data)
+        (folder / "train" / "pending" / "best.pt").write_bytes(b"spoiled on the disk")
+        out = self.assert_started_again(folder, train(self.catalog, folder, *self.config, "--resume"))
+        self.assertIn("best.pt is not there, though last.pt's best line names sha256", out)
+
+    def test_a_cut_on_either_side_of_the_rename_resumes_from_the_file_in_place(self):
+        # Epoch 1's save writes the sidecar a third and a fourth time, on either side of its rename.
+        for call, before_write, after_epoch in ((3, False, 0), (4, True, 1)):
+            with self.subTest(call=call, before_write=before_write):
+                folder = new_run(self.tmp / f"swap-{call}", f"swap{call}".ljust(12, "0"), self.catalog)
+                module = load("train")
+                with cut_at_binding(module, call, before_write), self.assertRaises(Killed):
+                    train(self.catalog, folder, *self.config, module=module)
                 rc, out, err = train(self.catalog, folder, *self.config, "--resume")
                 self.assertEqual(rc, 0, err)
-                self.assertEqual((folder / "train" / "last.pt.unreadable").read_bytes(), spoiled)
-                self.assertFalse((folder / "train" / "last.pt").exists())
-                self.assertIn('"restarted_from_epoch": 0', out)
-                self.assertNotIn("resumed_after_epoch", out)
+                self.assertIn(f'"resumed_after_epoch": {after_epoch}', out)
                 self.assertEqual([untimed(line) for line in lines_of(folder)], [untimed(line) for line in lines_of(self.through)])
                 self.assertEqual(digest(folder / "train" / "best.pt"), digest(self.through / "train" / "best.pt"))
-                self.assertEqual(untimed(facts_of(folder)), untimed(facts_of(self.through)))
-                card = (folder / "train" / "MODEL.md").read_text(encoding="utf-8")
-                self.assertIn("- Restarted from epoch 0: train/last.pt could not be read", card)
-                self.assertNotIn("- Resumed", card)
 
 
 @unittest.skipIf(MISSING, f"needs the train environment ({', '.join(MISSING)} missing)")
@@ -406,6 +555,25 @@ class ResumeRefusalsTest(unittest.TestCase):
         after = {str(p.relative_to(folder)): p.read_bytes() for p in folder.rglob("*") if p.is_file()}
         self.assertEqual(after, before)
 
+    def test_a_fresh_start_into_a_finished_folder_is_refused_and_touches_nothing(self):
+        # A second train job queued beside a first that has since finished, as a flow that lost
+        # its record of the first one submitted, would train over the finished run from epoch 0
+        # on another allocation; the flow evaluates such a folder instead.
+        catalog = blocks_tests.RunWithEveryBlockTest.make_catalog(self.tmp / "finished-catalog")
+        folder = new_run(self.tmp / "finished", "finishedrun0", catalog)
+        rc, _, err = train(catalog, folder, "--epochs", "1", "--size", "32", module=self.train)
+        self.assertEqual(rc, 0, err)
+
+        def files():
+            # The lock file says who held it last, so it is the one file a refused start writes.
+            return {str(p.relative_to(folder)): p.read_bytes() for p in folder.rglob("*") if p.is_file() and p.name != ".lock"}
+
+        before = files()
+        rc, _, err = train(catalog, folder, "--epochs", "1", "--size", "32", module=self.train)
+        self.assertEqual(rc, 1)
+        self.assertIn(f"train: {folder / 'train' / 'checkpoint.json'}: the run finished training here", err)
+        self.assertEqual(files(), before)
+
     def test_a_staged_best_moves_in_only_where_the_record_names_it(self):
         folder = self.tmp / "settle" / "train"
         (folder / "pending").mkdir(parents=True)
@@ -420,18 +588,88 @@ class ResumeRefusalsTest(unittest.TestCase):
         self.assertEqual((folder / "best.pt").read_bytes(), b"recorded")
         self.assertFalse((folder / "pending" / "best.pt").exists())
 
-    def test_a_best_pt_the_record_does_not_name_stops_the_resume_in_words(self):
+    def test_a_best_pt_the_record_does_not_name_is_said_in_words(self):
         folder = self.tmp / "unnamed" / "train"
         folder.mkdir(parents=True)
         named = {"checkpoint_sha256": hashlib.sha256(b"the recorded weights").hexdigest()}
-        with self.assertRaisesRegex(self.train.TrainError, "is not the checkpoint"):
-            self.train.check_best(folder, named)
+        self.assertEqual(self.train.best_mismatch(folder, named), f"best.pt is not there, though last.pt's best line names sha256 {named['checkpoint_sha256'][:12]}")
         (folder / "best.pt").write_bytes(b"other weights")
-        with self.assertRaisesRegex(self.train.TrainError, "is not the checkpoint"):
-            self.train.check_best(folder, named)
+        other = hashlib.sha256(b"other weights").hexdigest()[:12]
+        self.assertEqual(self.train.best_mismatch(folder, named), f"best.pt's sha256 {other} is not {named['checkpoint_sha256'][:12]}, the one last.pt's best line names")
         (folder / "best.pt").write_bytes(b"the recorded weights")
-        self.train.check_best(folder, named)
-        self.train.check_best(self.tmp / "nowhere", None)
+        self.assertIsNone(self.train.best_mismatch(folder, named))
+        self.assertIsNone(self.train.best_mismatch(self.tmp / "nowhere", None))
+
+
+@unittest.skipIf(MISSING, f"needs the train environment ({', '.join(MISSING)} missing)")
+class EvaluateRefusalsTest(unittest.TestCase):
+    """tools/evaluate.py scores best.pt only where train/checkpoint.json is the record of it: one
+    that cannot be read, or beside other weights than the ones it names, as a node that died or a
+    disk that spoiled a file may leave them, is refused in words and nothing is written, where it
+    ended in a traceback or scored the other weights. The catalog here has no test part, so the
+    evaluator scores the validation part."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = Path(tempfile.mkdtemp())
+        cls.catalog = blocks_tests.RunWithEveryBlockTest.make_catalog(cls.tmp)
+        cls.trained = new_run(cls.tmp / "trained", "0123456789ab", cls.catalog)
+        assert train(cls.catalog, cls.trained, "--epochs", "1", "--size", "32")[0] == 0
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls.tmp, ignore_errors=True)
+
+    def evaluate(self, name, spoil=None, catalog=None):
+        """The evaluator on a copy of the trained run, spoiled first where asked; the copy, the
+        exit code and stderr."""
+        folder = self.tmp / name
+        shutil.copytree(self.trained, folder)
+        if spoil:
+            spoil(folder / "train")
+        err = io.StringIO()
+        with mock.patch.dict(os.environ, {"SCHWINGNET_WANDB": "off"}), contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(err):
+            rc = load("evaluate").main(["--catalog", str(catalog or self.catalog), "--run", str(folder), "--part", "validation", "--device", "cpu"])
+        return folder, rc, err.getvalue()
+
+    def test_another_catalog_is_refused_in_words(self):
+        other = other_catalog(self.catalog, self.tmp / "other.sqlite")
+        folder, rc, err = self.evaluate("recatalogued", catalog=other)
+        self.assertEqual(rc, 1)
+        self.assertIn(f"evaluate: {another_catalog_words(other, self.catalog)}", err)
+        self.assertFalse((folder / "evaluate").exists())
+
+    def test_a_sound_run_is_scored(self):
+        folder, rc, err = self.evaluate("sound")
+        self.assertEqual(rc, 0, err)
+        self.assertTrue((folder / "evaluate" / "results.json").is_file())
+
+    def test_a_checkpoint_json_that_is_no_record_is_refused_in_words(self):
+        spoils = (("emptied", b"", "cannot be read as a run's checkpoint record"),
+                  ("halved", b'{"epoch": 1, "checkpoint_sha2', "cannot be read as a run's checkpoint record"),
+                  ("listed", b"[]", "names no checkpoint_sha256"), ("unnamed", b'{"epoch": 1}', "names no checkpoint_sha256"))
+        for name, text, words in spoils:
+            with self.subTest(name):
+                folder, rc, err = self.evaluate(name, lambda train_dir, text=text: (train_dir / "checkpoint.json").write_bytes(text))
+                self.assertEqual(rc, 1)
+                self.assertIn(f"evaluate: {folder / 'train' / 'checkpoint.json'}: {words}", err)
+                self.assertFalse((folder / "evaluate").exists())
+
+    def test_a_best_pt_checkpoint_json_does_not_name_is_refused_in_words(self):
+        import torch
+
+        def other_weights(train_dir):
+            torch.manual_seed(9)
+            torch.save(load("train").build_model(None, "cpu").state_dict(), train_dir / "best.pt")
+
+        named = facts_of(self.trained)["checkpoint_sha256"]
+        for name, spoil, words in (("replaced", other_weights, f"is not {named[:12]}, the one"), ("gone", lambda train_dir: (train_dir / "best.pt").unlink(), "not there, though")):
+            with self.subTest(name):
+                folder, rc, err = self.evaluate(name, spoil)
+                self.assertEqual(rc, 1)
+                self.assertIn(f"evaluate: {folder / 'train' / 'best.pt'}", err)
+                self.assertIn(words, err)
+                self.assertFalse((folder / "evaluate").exists())
 
 
 @unittest.skipIf(MISSING, f"needs the train environment ({', '.join(MISSING)} missing)")
@@ -449,7 +687,7 @@ class SingleCropBatchTest(unittest.TestCase):
         shutil.rmtree(cls.tmp, ignore_errors=True)
 
     def run_65(self, name, architecture, size):
-        folder = new_run(self.tmp / name, f"{name}run".ljust(12, "0")[:12])
+        folder = new_run(self.tmp / name, f"{name}run".ljust(12, "0")[:12], self.catalog)
         rc, _, err = train(self.catalog, folder, "--epochs", "1", "--size", str(size), "--max-frames", "65",
                            "--block", f"architecture={architecture}", module=self.train)
         self.assertEqual(rc, 0, err)
@@ -508,7 +746,7 @@ class SingleCropBatchTest(unittest.TestCase):
         self.assertTrue(all(torch.equal(states[0][k], states[1][k]) for k in states[0]))
 
     def test_one_training_crop_that_cannot_train_on_one_is_refused_in_words(self):
-        folder = new_run(self.tmp / "one", "onecroprun00")
+        folder = new_run(self.tmp / "one", "onecroprun00", self.catalog)
         rc, _, err = train(self.catalog, folder, "--epochs", "1", "--size", "32", "--max-frames", "1", module=self.train)
         self.assertEqual(rc, 1)
         self.assertIn("train: one training crop: resnet18 cannot take a training step", err)
@@ -516,13 +754,13 @@ class SingleCropBatchTest(unittest.TestCase):
 
     def test_a_batch_of_one_that_cannot_train_on_one_is_refused_in_the_same_words(self):
         # Every batch then holds one crop, so there is nothing to join; at 64 pixels it trains.
-        folder = new_run(self.tmp / "batch-one", "batchonerun0")
+        folder = new_run(self.tmp / "batch-one", "batchonerun0", self.catalog)
         rc, _, err = train(self.catalog, folder, "--epochs", "1", "--size", "32", "--batch", "1", "--max-frames", "3", module=self.train)
         self.assertEqual(rc, 1)
         self.assertIn("train: --batch 1: every batch holds one crop, and resnet18 cannot take a training step on a batch"
                       " of one 32-pixel crop, since batch norm needs more than one value per channel there", err)
         self.assertFalse((folder / "train" / "metrics.jsonl").exists())
-        folder = new_run(self.tmp / "batch-one-64", "batchone6400")
+        folder = new_run(self.tmp / "batch-one-64", "batchone6400", self.catalog)
         rc, _, err = train(self.catalog, folder, "--epochs", "1", "--size", "64", "--batch", "1", "--max-frames", "3", module=self.train)
         self.assertEqual(rc, 0, err)
 

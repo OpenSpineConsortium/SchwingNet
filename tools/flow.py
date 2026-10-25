@@ -21,11 +21,14 @@ their numbers from it and never type a fact of their own, and the commit it name
 run started on. The steps are the split check (SQL over the catalog, here), training
 and evaluation, each one process, each timed and recorded as a job with what it cost, in local
 mode as a subprocess in the train-cpu environment and in slurm mode as one job each in
-train-gpu, queued through hpcworker's job submit as the gpu class (issue #77), polled no faster than once a minute (grid rule 7). `record` copies the run's small
-files, never the checkpoint, into the research folder with one ledger row, so the repository
-holds what ran and what it cost beside the numbers. After the last step the run's report is
-written beside its files (tools/report.py): the CLAIM 2024 and REFORMS items each answered from the
-run's files or the declared study, and the licences of the data it read.
+train-gpu, queued through hpcworker's job submit as the gpu class (issue #77), polled no faster
+than once a minute (grid rule 7) and in RUN.json from the moment it is submitted, so a start that
+dies while its job waits leaves the job for the next start to wait on, never to submit again.
+`record` copies the run's small files, never the checkpoint, into the research folder with one
+ledger row, so the repository holds what ran and what it cost beside the numbers. After the last
+step the run's report is written beside its files (tools/report.py): the CLAIM 2024 and REFORMS
+items each answered from the run's files or the declared study, and the licences of the data it
+read.
 
 The run's configuration is every argument that changes what the steps compute (the stage, the
 epochs, the seed, the crop size, the frame cap, the blocks, augment's changes and the sources in
@@ -38,16 +41,16 @@ name. Started again on a folder that holds its record, the flow runs only what i
 where the run wrote FINISHED.json, its last file, after its report; only the last push, the
 ledger row where the ledger has none for the run, the report and FINISHED.json where the
 evaluation ended and the run was cut after it; the evaluation alone where training wrote its
-checkpoint.json, training carried on from its last epoch (`tools/train.py --resume`) where it
-left train/last.pt, else training from the start; RUN.json keeps its first start and its
-earlier jobs and gains a job for each step run now. A folder that holds another run's record
-is refused and left as it is. The flow writes its own files whole and renames them into place,
-so a start cut while it writes one leaves the one before, and a folder a start left before its
-record, holding no more than the split check and this configuration, is started again. A start
-holds the run's folder by an exclusive lock on <run>/.lock from before it reads the folder to its
-end, and the trainer holds train/ the same way, so a second start of the same run while the first
-still runs, which would otherwise take a run in progress for a cut one, is refused in words that
-name the holder, and runs and writes nothing.
+checkpoint.json and the best.pt it names by its sha256, training carried on from its last epoch
+(`tools/train.py --resume`) where it left train/last.pt, else training from the start; RUN.json
+keeps its first start and its earlier jobs and gains a job for each step run now. A folder that
+holds another run's record is refused and left as it is. The flow writes its own files whole,
+flushed to the disk, and renames them into place, so a start cut while it writes one leaves the
+one before, and a folder a start left before its record, holding no more than the split check
+and this configuration, is started again. A start holds the run's folder by an exclusive lock on
+<run>/.lock from before it reads the folder to its end, and the trainer holds train/ the same way,
+so a second start of the same run while the first still runs, which would otherwise take a run in
+progress for a cut one, is refused in words that name the holder, and runs and writes nothing.
 
 Before the first step the run's witness.json is written (tools/witness.py): the frozen list in
 data/witness/ where the repository has one, checked against this catalog, else the frames chosen
@@ -280,14 +283,28 @@ def write_configuration(run_dir, configuration):
 
 
 def write_whole(path, text):
-    """A file written beside its place and renamed into it, as tools/train.py writes its own, so a
-    start cut while writing it, by a kill or a full volume, leaves the one before and never half
-    of one: RUN.json is written again after every step, and a half one would make the folder no
-    run's for good."""
+    """A file written beside its place, on the disk, and renamed into it, as tools/train.py writes
+    its own, so a start cut while writing it, by a kill, a full volume or the death of its node,
+    leaves the one before and never half of one: RUN.json is written again after every step, and a
+    half one would make the folder no run's for good."""
     path = Path(path)
     temporary = path.with_name(path.name + ".tmp")
     temporary.write_text(text, encoding="utf-8")
+    synced(temporary)
     os.replace(temporary, path)
+    synced(path.parent)
+
+
+def synced(*paths):
+    """Each file or folder flushed to the disk, a folder for the names in it: a rename can reach
+    the disk before the bytes it names, so a node that dies after it may leave the file short or
+    with stretches of zeros, where a start that is killed leaves the node to write them."""
+    for path in paths:
+        handle = os.open(path, os.O_RDONLY)
+        try:
+            os.fsync(handle)
+        finally:
+            os.close(handle)
 
 
 def job_specs(args, resume=False):
@@ -327,8 +344,12 @@ def run_local(job, run_dir, again=None):
 
 
 def sacct(job_id):
-    """State, elapsed and exit code of a job's main step, from sacct."""
-    out = subprocess.run(["sacct", "-j", job_id, "-n", "-P", "-X", "--format=State,Elapsed,ExitCode"], capture_output=True, text=True, check=False).stdout
+    """State, elapsed and exit code of a job's main step, from sacct; refused in words where sacct
+    cannot be run, as on a machine off the grid, since whether the job ended cannot then be told."""
+    try:
+        out = subprocess.run(["sacct", "-j", job_id, "-n", "-P", "-X", "--format=State,Elapsed,ExitCode"], capture_output=True, text=True, check=False).stdout
+    except OSError as error:
+        raise FlowError(f"sacct cannot be run here ({error}), so whether job {job_id} has finished cannot be told; start the run where sacct runs, on the grid's login node") from error
     lines = [line for line in out.splitlines() if line.strip()]
     if not lines:
         return None
@@ -352,9 +373,9 @@ def submit_call(job, run_dir, script):
     return ["bash", hpcworker(), "job", "submit", "--project", "schwingnet", "--name", f"flow_{job.step.value}", "--class", job.job_class.value, *narrowed, *gpus, "--no-requeue", "--dir", str(run_dir), "--", str(script)]
 
 
-def run_slurm(job, run_dir, poll):
-    """One step as one job through hpcworker's job submit, its shape asked with --check first, then
-    polled no faster than once a minute until sacct calls it finished."""
+def submit_slurm(job, run_dir):
+    """One step queued as one job through hpcworker's job submit, its shape asked with --check
+    first; the job as submitted, with no exit code until it is seen to finish (waited_for)."""
     script = Path(run_dir) / f"{job.step.value}.sbatch"
     script.write_text(sbatch_script(job.model_copy(update={"command": job.command.format(run_dir=run_dir)}), str(ROOT)), encoding="utf-8")
     call = submit_call(job, run_dir, script)
@@ -367,13 +388,64 @@ def run_slurm(job, run_dir, poll):
         raise FlowError(f"hpcworker refused {script.name}: {(submitted.stdout + submitted.stderr).strip()}")
     job_id, partition, qos = answer
     print(json.dumps({"step": job.step.value, "job_id": job_id, "partition": partition, "submitted": now()}), flush=True)
+    return JobRecord(step=job.step, job_id=job_id, partition=partition, qos=qos, hours_requested=job.hours, seconds_used=0, gpus=job.gpus, preemptions=0, exit_code=None)
+
+
+def waited_for(submitted, poll):
+    """A submitted job polled no faster than once a minute until sacct calls it finished, and the
+    job as it finished: the time it used, its preemptions and its exit code, at least 1 for any
+    end but COMPLETED."""
     while True:
         time.sleep(max(MIN_POLL, poll))
-        answer = sacct(job_id)
+        answer = sacct(submitted.job_id)
         if answer and is_finished(answer[0]):
             break
     state, elapsed, exit_code, preemptions = answer
-    return JobRecord(step=job.step, job_id=job_id, partition=partition, qos=qos, hours_requested=job.hours, seconds_used=elapsed_seconds(elapsed), gpus=job.gpus, preemptions=preemptions, exit_code=exit_code if state.startswith("COMPLETED") else max(1, exit_code))
+    ended = {"seconds_used": elapsed_seconds(elapsed), "preemptions": preemptions, "exit_code": exit_code if state.startswith("COMPLETED") else max(1, exit_code)}
+    return JobRecord.model_validate({**submitted.model_dump(), **ended})
+
+
+def with_job(record, job):
+    """The record with the job in it: in place of its entry as submitted where the record holds
+    one, a job not yet seen to finish with the same id and step, else after the others."""
+    jobs = list(record.jobs)
+    for index, held in enumerate(jobs):
+        if held.exit_code is None and (held.job_id, held.step) == (job.job_id, job.step):
+            jobs[index] = job
+            break
+    else:
+        jobs.append(job)
+    return record.model_copy(update={"jobs": tuple(jobs)})
+
+
+def settle_jobs(run_dir, held, poll):
+    """Each job the record holds as submitted and not yet seen to finish, waited for and recorded
+    as it finished, before the start reads what is left: a start that died while its job waited
+    leaves that job to run on, and the next start waits on it where it would otherwise submit a
+    second, which would train over the first's folder on another allocation and leave the
+    first's cost counted nowhere. A local start's jobs are recorded once they ended, so it finds
+    none."""
+    for job in [job for job in held.jobs if job.exit_code is None]:
+        print(json.dumps({"step": job.step.value, "job_id": job.job_id, "waiting": "submitted by an earlier start"}), flush=True)
+        held = with_job(held, waited_for(job, poll))
+        write_record(run_dir, held)
+    return held
+
+
+def run_step(args, job, run_dir, reused, record):
+    """One step run, and the record with it: in local mode a subprocess, recorded once it ended; in
+    slurm mode a job recorded as soon as it is submitted (submit_slurm), so a start that dies while
+    the job waits leaves it for the next start to wait on (settle_jobs), and again once it ended."""
+    if args.mode == "local":
+        done = run_local(job, run_dir, reused)
+    else:
+        submitted = submit_slurm(job, run_dir)
+        record = with_job(record, submitted)
+        write_record(run_dir, record)
+        done = waited_for(submitted, args.poll)
+    record = with_job(record, done)
+    write_record(run_dir, record)
+    return done, record
 
 
 def write_record(run_dir, record):
@@ -381,10 +453,53 @@ def write_record(run_dir, record):
 
 
 def append_ledger(path, record, activity, verified):
-    """One row per run in the ledger beside the runs; the header once."""
+    """One more row in a ledger, the header once, the whole text written again beside it and
+    renamed into place (write_whole), so a write cut by a kill or a full volume leaves the ledger
+    as it was, every earlier row with it, where writing it in place would empty it first. Its
+    writer is alone or holds the ledger's lock: a run's finish holds it (add_ledger_row), and
+    `record`, run by hand into the repository, takes none, since a lock file beside the
+    repository's ledger would leave the tree dirty and the next run refused; two writers with
+    no lock lose rows to each other and meet at the one temporary file."""
     path = Path(path)
-    text = path.read_text(encoding="utf-8") if path.is_file() else LEDGER_HEADER + "\n"
-    path.write_text(text + ledger_row(record, activity, verified) + "\n", encoding="utf-8")
+    text = path.read_text(encoding="utf-8") if path.is_file() else ""
+    write_whole(path, ledger_text(text, ledger_row(record, activity, verified)))
+
+
+def ledger_text(text, row):
+    """The ledger's text with one more row: the header first where the text does not begin with
+    it, as a ledger the code before this one cut while writing it was left, and the row on a line
+    of its own."""
+    if not text.startswith(LEDGER_HEADER + "\n"):
+        text = LEDGER_HEADER + "\n" + text
+    if not text.endswith("\n"):
+        text += "\n"
+    return text + row + "\n"
+
+
+@contextlib.contextmanager
+def ledger_held(path):
+    """The ledger beside the runs held by one writer at a time: an exclusive lock on LEDGER.md.lock
+    beside it, waited for, since every row of a sweep's state finishes into one LEDGER.md, side by
+    side where the sweep runs rows together, and each writer reads the ledger and writes it again.
+    The lock is a file of its own, never renamed, since the ledger is renamed into place and a lock
+    on it would be on the file a rename replaces; a writer holds it for one read and one write."""
+    path = Path(path)
+    with path.with_name(path.name + ".lock").open("a+", encoding="utf-8") as handle:
+        fcntl.flock(handle, fcntl.LOCK_EX)
+        yield
+
+
+def add_ledger_row(path, record, activity, verified):
+    """The run's row in the ledger beside the runs, once: under the ledger's lock (ledger_held), so
+    two runs that finish together each find the other's row, and only where the ledger has none
+    for the run. Refused in words where the volume will not take it, the ledger left as it was, and
+    since FINISHED.json is written after it, the next start writes the row."""
+    try:
+        with ledger_held(path):
+            if not ledger_holds(path, record.run_id):
+                append_ledger(path, record, activity, verified)
+    except OSError as error:
+        raise FlowError(f"{path}: the run's row could not be written ({error}); the ledger is kept as it was, and the next start of the run writes the row") from error
 
 
 def ledger_holds(path, run_id):
@@ -444,19 +559,34 @@ def what_is_left(run_dir, held):
     """What a run started before still needs, from its folder, the furthest step first: nothing
     once it wrote FINISHED.json, its last file; what comes after the evaluation (finish) where the
     record holds an evaluation that ended well and its results are there; the evaluation where
-    training wrote checkpoint.json (which the trainer writes last), training carried on where it
-    left train/last.pt, else all of it."""
+    training ended (trained), training carried on where it left train/last.pt, else all of it."""
     run_dir = Path(run_dir)
     if (run_dir / FINISHED_MARK).is_file():
         return FINISHED
     evaluated = any(job.step is Step.EVALUATE and job.exit_code == 0 for job in held.jobs)
     if evaluated and (run_dir / "evaluate" / "results.json").is_file():
         return EVALUATED
-    if (run_dir / "train" / "checkpoint.json").is_file():
+    if trained(run_dir / "train"):
         return TRAINED
     if (run_dir / "train" / "last.pt").is_file():
         return RESUMED
     return RESTARTED
+
+
+def trained(train_dir):
+    """Whether training ended: checkpoint.json, the trainer's last file, reads as a record that
+    names the sha256 of the best.pt beside it, as the evaluator holds it to (tools/train.py's
+    checkpoint_facts). One a node that died left short, or one beside other weights than the ones
+    it names, is no end, since taking it for one sent every start to an evaluation that refuses
+    it; the run trains again instead, on from last.pt where the trainer left one, and the trainer
+    sets such a record aside before it trains."""
+    try:
+        facts = json.loads((train_dir / "checkpoint.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return False
+    named = facts.get("checkpoint_sha256") if isinstance(facts, dict) else None
+    best = train_dir / "best.pt"
+    return isinstance(named, str) and best.is_file() and file_sha256(best, "best.pt") == named
 
 
 # What a start leaves before it writes RUN.json, each written whole (write_whole), so a start cut
@@ -567,6 +697,9 @@ def run_held(args, run_dir, start, lock):
     """The run, once its folder is held for this start alone (held)."""
     record, configuration, licences = start.record, start.configuration, start.licences
     held = earlier_record(run_dir, record)
+    if held and any(job.exit_code is None for job in held.jobs):
+        claim(lock)
+        held = settle_jobs(run_dir, held, args.poll)
     reused = what_is_left(run_dir, held) if held else None
     said = {"run_id": record.run_id, "run_dir": str(run_dir), "mode": args.mode, **({"reused": reused} if reused else {})}
     if reused == FINISHED:
@@ -584,18 +717,14 @@ def run_held(args, run_dir, start, lock):
         new_folder(run_dir, configuration)
     write_whole(run_dir / "split-check.json", json.dumps(start.check, indent=1) + "\n")
     write_configuration(run_dir, configuration)
-    jobs = [*record.jobs, JobRecord(step=Step.SPLIT_CHECK, job_id=f"local-{os.getpid()}-split-check", partition="runner", qos=None, hours_requested=0.01, seconds_used=1, gpus=0, preemptions=0, exit_code=0)]
-    record = record.model_copy(update={"jobs": tuple(jobs)})
+    record = with_job(record, JobRecord(step=Step.SPLIT_CHECK, job_id=f"local-{os.getpid()}-split-check", partition="runner", qos=None, hours_requested=0.01, seconds_used=1, gpus=0, preemptions=0, exit_code=0))
     write_record(run_dir, record)
     _licences.write_provenance(run_dir, licences)
     print(json.dumps({"licence": licences["run_class"], "commercial_use": licences["commercial_use"], "fits_recipes": licences["fits_recipes"]}), flush=True)
     keep_witness(run_dir, args.catalog, record.catalog_sha256)
     print(json.dumps(said), flush=True)
     for job in steps_for(args, reused):
-        done = run_local(job, run_dir, reused) if args.mode == "local" else run_slurm(job, run_dir, args.poll)
-        jobs.append(done)
-        record = record.model_copy(update={"jobs": tuple(jobs)})
-        write_record(run_dir, record)
+        done, record = run_step(args, job, run_dir, reused, record)
         print(json.dumps(done.model_dump()), flush=True)
         # Each step's W&B run is pushed as soon as the step ends, so the website shows training
         # before evaluation starts, even from a node that could only log offline.
@@ -614,9 +743,7 @@ def finish(args, run_dir, record, licences):
     ledger has none for the run."""
     activity = f"{record.stage.value} stage, {record.epochs} epochs, seed {record.seed}" + (f", {args.max_frames} crops per part" if args.max_frames else "") + licence_words(licences)
     pushed = push_wandb(run_dir, args.environment)
-    ledger = Path(args.out) / "LEDGER.md"
-    if not ledger_holds(ledger, record.run_id):
-        append_ledger(ledger, record, activity, f"evaluate/results.md from the test part; split-check.json disjoint; {pushed}")
+    add_ledger_row(Path(args.out) / "LEDGER.md", record, activity, f"evaluate/results.md from the test part; split-check.json disjoint; {pushed}")
     print(pushed, file=sys.stderr if "NOT" in pushed else sys.stdout, flush=True)
     report = write_report(run_dir)
     print(report, flush=True)
