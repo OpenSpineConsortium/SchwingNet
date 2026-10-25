@@ -9,10 +9,10 @@ A class reads the licence's words (tools/licences.py); whether a trained network
 |---|---|---|
 | open | 26 | 4 |
 | share-alike | 2 | 0 |
-| non-commercial | 16 | 0 |
+| non-commercial | 17 | 0 |
 | agreement | 31 | 0 |
 | no-derivatives | 3 | 0 |
-| unknown | 41 | 0 |
+| unknown | 40 | 0 |
 
 ## Recipes over the trainable sources (data/registry/)
 
@@ -56,8 +56,8 @@ yes: the recipe takes the source now; after review: its class fits, and the reci
 | balgrist_lumbar | unknown | unknown | rule | not recorded |
 | bern_myelography | agreement | no | rule | CC BY 4.0 (the article's videos); native DICOM available on reasonable request under Swiss law |
 | bimcv_covid19 | agreement | no | rule | BIMCV's COVID-19+ research use agreement, accepted by the owner on 2026-10-22; no redistribution, the link kept inside the organisation |
-| bournemouth_cervical_qf | no-derivatives | no | rule | CC BY 4.0 (the tracks); README.rtf CC BY-ND |
-| bournemouth_lumbar_qf | unknown | unknown | rule | not recorded (OSF a27py holds derived tables only; the image deposit OSF z2jby states no licence) |
+| bournemouth_cervical_qf | no-derivatives | no | rule | CC BY 4.0 (the tracks); README.rtf CC BY-ND; the MAID images (OSF z2jby) CC BY-NC 4.0, set on OSF by Marcin Budka on 2026-10-25 |
+| bournemouth_lumbar_qf | non-commercial | no | rule | CC BY-NC 4.0 for the MAID images (OSF z2jby), set on OSF by Marcin Budka on 2026-10-25; OSF a27py holds derived tables only |
 | buu_lspine | agreement | no | rule | the release's end-user agreement by request form: acknowledgement required, no re-identification, never redistributed |
 | cads | agreement | no | rule | a data use agreement (non-commercial) |
 | canine_thoracic_vhs | unknown | unknown | rule | Mendeley Data ktx4cj55pn, CC BY 4.0 to confirm on the page |

@@ -61,7 +61,7 @@
    "note": ""
   },
   "bournemouth_cervical_qf": {
-   "licence": "CC BY 4.0 (the tracks); README.rtf CC BY-ND",
+   "licence": "CC BY 4.0 (the tracks); README.rtf CC BY-ND; the MAID images (OSF z2jby) CC BY-NC 4.0, set on OSF by Marcin Budka on 2026-10-25",
    "class": "no-derivatives",
    "commercial": "no",
    "derivatives": "no",
@@ -69,10 +69,10 @@
    "note": ""
   },
   "bournemouth_lumbar_qf": {
-   "licence": "not recorded (OSF a27py holds derived tables only; the image deposit OSF z2jby states no licence)",
-   "class": "unknown",
-   "commercial": "unknown",
-   "derivatives": "unknown",
+   "licence": "CC BY-NC 4.0 for the MAID images (OSF z2jby), set on OSF by Marcin Budka on 2026-10-25; OSF a27py holds derived tables only",
+   "class": "non-commercial",
+   "commercial": "no",
+   "derivatives": "yes",
    "reviewed": "rule",
    "note": ""
   },
