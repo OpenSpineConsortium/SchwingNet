@@ -55,9 +55,13 @@ def load(name):
     return module
 
 
-def new_run(folder, run_id, witness=None):
+def new_run(folder, run_id, catalog=None, witness=None):
+    """A run's folder with the record tools/flow.py writes before any step, naming the catalog by
+    its sha256 as the flow does, since the trainer and the evaluator read no other; a test that
+    stops before the catalog is read names none."""
     folder.mkdir(parents=True)
-    record = {"run_id": run_id, "code_commit": "0" * 40, "catalog_sha256": "0" * 64, "catalog_version": 1, "clean_tree": True}
+    named = digest(catalog) if catalog else "0" * 64
+    record = {"run_id": run_id, "code_commit": "0" * 40, "catalog_sha256": named, "catalog_version": 1, "clean_tree": True}
     (folder / "RUN.json").write_text(json.dumps(record), encoding="utf-8")
     if witness is not None:
         (folder / "witness.json").write_text(json.dumps(witness), encoding="utf-8")
@@ -66,6 +70,24 @@ def new_run(folder, run_id, witness=None):
 
 def digest(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def other_catalog(catalog, path):
+    """A copy of the catalog with other bytes, its rows the same, as a catalog path given other
+    bytes between the flow's start and a step would hold."""
+    import sqlite3
+
+    shutil.copyfile(catalog, path)
+    db = sqlite3.connect(path)
+    db.execute("PRAGMA user_version = 7")
+    db.commit()
+    db.close()
+    return path
+
+
+def another_catalog_words(other, catalog):
+    """How a step refuses a catalog other than the one the run's record names."""
+    return f"--catalog {other}: its sha256 {digest(other)[:12]} is not {digest(catalog)[:12]}, the catalog the run's RUN.json names"
 
 
 def untimed(line):
@@ -189,11 +211,11 @@ class ResumeCase:
         cls.catalog = blocks_tests.RunWithEveryBlockTest.make_catalog(cls.tmp)
         witness = load("witness").freeze(cls.catalog, "0" * 64)
         cls.config = ["--epochs", "3", "--size", "32", *(w for word in cls.words for w in ("--block", word))]
-        cls.through = new_run(cls.tmp / "through", "throughrun00", witness)
+        cls.through = new_run(cls.tmp / "through", "throughrun00", cls.catalog, witness)
         cls.through_on_disk, module = [], load("train")
         with lines_on_disk(module, cls.through_on_disk):
             cls.through_rc = train(cls.catalog, cls.through, *cls.config, module=module)[0]
-        cls.cut = new_run(cls.tmp / "cut", "cutrun000000", witness)
+        cls.cut = new_run(cls.tmp / "cut", "cutrun000000", cls.catalog, witness)
         module = load("train")
         with cut_after(module, 2):
             try:
@@ -303,7 +325,7 @@ class ResumeBindingTest(unittest.TestCase):
         torch.manual_seed(4)
         torch.save(torchvision.models.resnet18(weights=None).state_dict(), cls.tmp / "models-old" / "resnet18.pth")
         shutil.copytree(cls.tmp / "models-old", cls.tmp / "models")
-        parent = new_run(cls.tmp / "parent", "parentrun000")
+        parent = new_run(cls.tmp / "parent", "parentrun000", cls.catalog)
         assert train(cls.catalog, parent, "--epochs", "1", "--size", "32")[0] == 0
         (cls.tmp / "parent-alias").symlink_to(parent, target_is_directory=True)
         cls.parent = parent / "train" / "best.pt"
@@ -314,7 +336,7 @@ class ResumeBindingTest(unittest.TestCase):
 
     def cut(self, name, *extra):
         """A run cut after its second last.pt (epoch 1), as ResumeCase cuts one."""
-        folder = new_run(self.tmp / name, name.ljust(12, "0")[:12])
+        folder = new_run(self.tmp / name, name.ljust(12, "0")[:12], self.catalog)
         module = load("train")
         with cut_after(module, 2), self.assertRaises(Killed):
             train(self.catalog, folder, *self.config, *extra, module=module)
@@ -344,7 +366,7 @@ class ResumeBindingTest(unittest.TestCase):
         through_link = trainer.parent_of(link)
         self.assertEqual(through_link, trainer.parent_of(self.parent))
         self.assertEqual((through_link["file"], through_link["run_id"], through_link["facts"]["size"]), ("best.pt", "parentrun000", 32))
-        folder = new_run(self.tmp / "linked", "linkedrun000")
+        folder = new_run(self.tmp / "linked", "linkedrun000", self.catalog)
         rc, _, err = train(self.catalog, folder, "--epochs", "1", "--size", "64", "--init", str(link), module=trainer)
         self.assertEqual(rc, 1)
         self.assertIn("train: the parent was trained on 32-pixel crops, this run on 64", err)
@@ -365,20 +387,22 @@ class ResumeBindingTest(unittest.TestCase):
         self.assertIn("weights_sha256 was", err)
         self.assertEqual(digest(folder / "train" / "last.pt"), last)
 
-    def test_another_catalog_is_refused(self):
-        import sqlite3
-
-        other = self.tmp / "other.sqlite"
-        shutil.copyfile(self.catalog, other)
-        db = sqlite3.connect(other)
-        db.execute("PRAGMA user_version = 7")
-        db.commit()
-        db.close()
+    def test_another_catalog_is_refused_on_a_resume_and_on_a_fresh_start(self):
+        # RUN.json names the catalog the run was started on, and every number a step writes is
+        # stamped with it, so a step on another, run by hand or after the catalog's path was
+        # given other bytes, would stamp one catalog's numbers with another's name.
+        other = other_catalog(self.catalog, self.tmp / "other.sqlite")
         folder = self.cut("recatalogued")
+        last = digest(folder / "train" / "last.pt")
         rc, _, err = self.resume(folder, catalog=other)
         self.assertEqual(rc, 1)
-        self.assertIn("train: --resume:", err)
-        self.assertIn("catalog_sha256 was", err)
+        self.assertIn(f"train: {another_catalog_words(other, self.catalog)}", err)
+        self.assertEqual(digest(folder / "train" / "last.pt"), last)
+        fresh = new_run(self.tmp / "fresh-on-another", "freshother00", self.catalog)
+        rc, _, err = train(other, fresh, *self.config)
+        self.assertEqual(rc, 1)
+        self.assertIn(f"train: {another_catalog_words(other, self.catalog)}", err)
+        self.assertFalse((fresh / "train" / "metrics.jsonl").exists())
 
 
 @unittest.skipIf(MISSING, f"needs the train environment ({', '.join(MISSING)} missing)")
@@ -395,7 +419,7 @@ class UnreadableLastTest(unittest.TestCase):
     def setUpClass(cls):
         cls.tmp = Path(tempfile.mkdtemp())
         cls.catalog = blocks_tests.RunWithEveryBlockTest.make_catalog(cls.tmp)
-        cls.through = new_run(cls.tmp / "through", "throughrun00")
+        cls.through = new_run(cls.tmp / "through", "throughrun00", cls.catalog)
         assert train(cls.catalog, cls.through, *cls.config)[0] == 0
 
     @classmethod
@@ -403,7 +427,7 @@ class UnreadableLastTest(unittest.TestCase):
         shutil.rmtree(cls.tmp, ignore_errors=True)
 
     def cut_and_spoil(self, name, spoil):
-        folder = new_run(self.tmp / name, name.ljust(12, "0")[:12])
+        folder = new_run(self.tmp / name, name.ljust(12, "0")[:12], self.catalog)
         module = load("train")
         with cut_after(module, 2), self.assertRaises(Killed):
             train(self.catalog, folder, *self.config, module=module)
@@ -480,7 +504,7 @@ class UnreadableLastTest(unittest.TestCase):
         # Epoch 1's save writes the sidecar a third and a fourth time, on either side of its rename.
         for call, before_write, after_epoch in ((3, False, 0), (4, True, 1)):
             with self.subTest(call=call, before_write=before_write):
-                folder = new_run(self.tmp / f"swap-{call}", f"swap{call}".ljust(12, "0"))
+                folder = new_run(self.tmp / f"swap-{call}", f"swap{call}".ljust(12, "0"), self.catalog)
                 module = load("train")
                 with cut_at_binding(module, call, before_write), self.assertRaises(Killed):
                     train(self.catalog, folder, *self.config, module=module)
@@ -570,14 +594,14 @@ class EvaluateRefusalsTest(unittest.TestCase):
     def setUpClass(cls):
         cls.tmp = Path(tempfile.mkdtemp())
         cls.catalog = blocks_tests.RunWithEveryBlockTest.make_catalog(cls.tmp)
-        cls.trained = new_run(cls.tmp / "trained", "0123456789ab")
+        cls.trained = new_run(cls.tmp / "trained", "0123456789ab", cls.catalog)
         assert train(cls.catalog, cls.trained, "--epochs", "1", "--size", "32")[0] == 0
 
     @classmethod
     def tearDownClass(cls):
         shutil.rmtree(cls.tmp, ignore_errors=True)
 
-    def evaluate(self, name, spoil=None):
+    def evaluate(self, name, spoil=None, catalog=None):
         """The evaluator on a copy of the trained run, spoiled first where asked; the copy, the
         exit code and stderr."""
         folder = self.tmp / name
@@ -586,8 +610,15 @@ class EvaluateRefusalsTest(unittest.TestCase):
             spoil(folder / "train")
         err = io.StringIO()
         with mock.patch.dict(os.environ, {"SCHWINGNET_WANDB": "off"}), contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(err):
-            rc = load("evaluate").main(["--catalog", str(self.catalog), "--run", str(folder), "--part", "validation", "--device", "cpu"])
+            rc = load("evaluate").main(["--catalog", str(catalog or self.catalog), "--run", str(folder), "--part", "validation", "--device", "cpu"])
         return folder, rc, err.getvalue()
+
+    def test_another_catalog_is_refused_in_words(self):
+        other = other_catalog(self.catalog, self.tmp / "other.sqlite")
+        folder, rc, err = self.evaluate("recatalogued", catalog=other)
+        self.assertEqual(rc, 1)
+        self.assertIn(f"evaluate: {another_catalog_words(other, self.catalog)}", err)
+        self.assertFalse((folder / "evaluate").exists())
 
     def test_a_sound_run_is_scored(self):
         folder, rc, err = self.evaluate("sound")
@@ -637,7 +668,7 @@ class SingleCropBatchTest(unittest.TestCase):
         shutil.rmtree(cls.tmp, ignore_errors=True)
 
     def run_65(self, name, architecture, size):
-        folder = new_run(self.tmp / name, f"{name}run".ljust(12, "0")[:12])
+        folder = new_run(self.tmp / name, f"{name}run".ljust(12, "0")[:12], self.catalog)
         rc, _, err = train(self.catalog, folder, "--epochs", "1", "--size", str(size), "--max-frames", "65",
                            "--block", f"architecture={architecture}", module=self.train)
         self.assertEqual(rc, 0, err)
@@ -696,7 +727,7 @@ class SingleCropBatchTest(unittest.TestCase):
         self.assertTrue(all(torch.equal(states[0][k], states[1][k]) for k in states[0]))
 
     def test_one_training_crop_that_cannot_train_on_one_is_refused_in_words(self):
-        folder = new_run(self.tmp / "one", "onecroprun00")
+        folder = new_run(self.tmp / "one", "onecroprun00", self.catalog)
         rc, _, err = train(self.catalog, folder, "--epochs", "1", "--size", "32", "--max-frames", "1", module=self.train)
         self.assertEqual(rc, 1)
         self.assertIn("train: one training crop: resnet18 cannot take a training step", err)
@@ -704,13 +735,13 @@ class SingleCropBatchTest(unittest.TestCase):
 
     def test_a_batch_of_one_that_cannot_train_on_one_is_refused_in_the_same_words(self):
         # Every batch then holds one crop, so there is nothing to join; at 64 pixels it trains.
-        folder = new_run(self.tmp / "batch-one", "batchonerun0")
+        folder = new_run(self.tmp / "batch-one", "batchonerun0", self.catalog)
         rc, _, err = train(self.catalog, folder, "--epochs", "1", "--size", "32", "--batch", "1", "--max-frames", "3", module=self.train)
         self.assertEqual(rc, 1)
         self.assertIn("train: --batch 1: every batch holds one crop, and resnet18 cannot take a training step on a batch"
                       " of one 32-pixel crop, since batch norm needs more than one value per channel there", err)
         self.assertFalse((folder / "train" / "metrics.jsonl").exists())
-        folder = new_run(self.tmp / "batch-one-64", "batchone6400")
+        folder = new_run(self.tmp / "batch-one-64", "batchone6400", self.catalog)
         rc, _, err = train(self.catalog, folder, "--epochs", "1", "--size", "64", "--batch", "1", "--max-frames", "3", module=self.train)
         self.assertEqual(rc, 0, err)
 

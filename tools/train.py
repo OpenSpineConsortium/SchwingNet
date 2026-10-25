@@ -13,7 +13,8 @@ writes everything a reader needs to see the run rather than trust it: metrics.js
 per epoch, a witness strip of the same fixed validation crops at every epoch with truth and
 prediction on each, the accuracy curve, the best checkpoint with its sha256 and a model card. The
 seed fixes every source of randomness torch exposes, and the run is refused unless its RUN.json
-is there, since tools/flow.py writes that record from a clean tree before any step starts.
+is there, since tools/flow.py writes that record from a clean tree before any step starts, and
+unless --catalog has the sha256 that record names, since every number is stamped with it.
 
 Evaluation is visible from the first frame (docs/research/retraining-plan.md, section 4): epoch 0
 is the untrained network, scored and drawn like every other; every epoch's weights are kept under
@@ -1172,12 +1173,34 @@ def synced(*paths):
             os.close(handle)
 
 
-def run(args):
-    out = Path(args.out)
-    run_file = out / "RUN.json"
+def run_record(out):
+    """The run's RUN.json, which tools/flow.py writes from a clean tree before any step and every
+    number a step writes is stamped from, refused in words where it is not there or is no record."""
+    run_file = Path(out) / "RUN.json"
     if not run_file.is_file():
         raise TrainError(f"{run_file}: no run record; start the run with tools/flow.py")
-    record = json.loads(run_file.read_text(encoding="utf-8"))
+    try:
+        record = json.loads(run_file.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as error:
+        raise TrainError(f"{run_file}: cannot be read as a run record ({error})") from error
+    if not isinstance(record, dict):
+        raise TrainError(f"{run_file}: not a run record")
+    return record
+
+
+def refuse_another_catalog(record, catalog, catalog_sha256):
+    """A step reads the catalog the run was started on and no other: RUN.json names it by its
+    sha256, which every number the step writes is stamped with, so a step on another, run by hand
+    or after the catalog's path was given other bytes, would stamp one catalog's numbers with
+    another's name."""
+    named = str(record.get("catalog_sha256"))
+    if catalog_sha256 != named:
+        raise TrainError(f"--catalog {catalog}: its sha256 {catalog_sha256[:12]} is not {named[:12]}, the catalog the run's RUN.json names; every number a step writes is stamped with that catalog, so the step reads no other")
+
+
+def run(args):
+    out = Path(args.out)
+    record = run_record(out)
     if args.epochs < 1:
         raise TrainError("a run trains at least one epoch; epoch 0 is the untrained network, drawn before it")
     try:
@@ -1197,6 +1220,7 @@ def train_held(args, out, record, blocks):
     if args.resume:
         refuse_nothing_to_resume(folder)
     arguments = arguments_of(args, blocks, parent)
+    refuse_another_catalog(record, args.catalog, arguments["catalog_sha256"])
     unsound_set_aside(folder)
     saved, restarted = load_last(folder, arguments) if args.resume else (None, None)
     seed_everything(args.seed)
