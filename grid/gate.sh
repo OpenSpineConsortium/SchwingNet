@@ -54,6 +54,10 @@
 #   nodequota       the volume's readout as a compute node reads it (grid/nodequota.sbatch, the owner's yes
 #                   of 2026-10-24): the first send queues one job, the next prints logs/NODEQUOTA.md and
 #                   clears it, so the send after that looks again
+#   folders         what each unmapped folder of the data root holds (tools/folder_report.py,
+#                   grid/folders.sbatch, #296, the owner's yes of 2026-10-25): the first send queues one
+#                   job over the newest whole sample index, the next sends print its pages,
+#                   logs/FOLDERS-<n>.md, one a send, clearing each, so the send after the last looks again
 #   samples         the sample index (grid/run-samples.sh): plan, scan and merge, refused while one
 #                   of them is live; status shows its MANIFEST.md, aggregates only
 #   experiment <n>  one requested combination of data and blocks, issue #<n> labelled experiment: the
@@ -110,14 +114,14 @@ SWEEP_BANK=${SWEEP_BANK:-$DATA_ROOT/realxray/carmlspine_sweep}
 NETRC=${NETRC:-$HOME/.netrc}
 LOGS=$REPO/grid/logs
 STATE=$LOGS/GATE_JOBS.txt
-WORDS="start status leaks v1 latency fetch explore dropzip unpack nodequota samples experiment bench stop cancel"
+WORDS="start status leaks v1 latency fetch explore dropzip unpack nodequota folders samples experiment bench stop cancel"
 ENVS="default train-cpu train-gpu telemetry"
 
 word=${1:-}
 id=${2:-}
 # Matched whole, so one argument holding two words ("v1 latency") is refused and never runs nothing.
 case "$word" in
-  start|status|leaks|v1|latency|fetch|explore|dropzip|unpack|nodequota|samples|experiment|bench|stop|cancel) ;;
+  start|status|leaks|v1|latency|fetch|explore|dropzip|unpack|nodequota|folders|samples|experiment|bench|stop|cancel) ;;
   "") echo "refusing: no word; one of: $WORDS"; exit 64 ;;
   *) echo "refusing: '$word' is not one of: $WORDS"; exit 64 ;;
 esac
@@ -862,6 +866,31 @@ word_nodequota() {
   echo "submitted one job. Send nodequota again once it ends to read what the node read."
 }
 
+word_folders() {
+  local busy page left index
+  busy=$(live_of folders)
+  [ -z "$busy" ] || { echo "refusing: the folder report is still queued or running (job $busy); send folders again once it ends"; return 75; }
+  page=$(find "$LOGS" -maxdepth 1 -name 'FOLDERS-*.md' 2>/dev/null | sort -V | head -n 1)
+  if [ -n "$page" ]; then
+    left=$(( $(find "$LOGS" -maxdepth 1 -name 'FOLDERS-*.md' | wc -l) - 1 ))
+    echo "## $(basename "$page") ($(date -r "$page" '+%F %T')), $left more to print"
+    head -c 60000 "$page" | LC_ALL=C tr -cd '\11\12\40-\176' | masked
+    rm -f "$page"
+    return 0
+  fi
+  index=$(samples_index) || { echo "refusing: no whole sample index yet; 'samples' makes it"; return 2; }
+  envs_ready || { echo "refusing: the environments are not ready; 'start' makes them first"; return 75; }
+  submit folders batch FOLDERS_DB="$index" -- folders.sbatch > /dev/null || return 1
+  echo "submitted one job. Send folders again once it ends to print its report, one page a send."
+}
+
+samples_index() {  # the newest whole run's samples.sqlite, as grid/run-samples.sh names it in CURRENT
+  local out=${SAMPLES_OUT:-$DATA_ROOT/_samples} current
+  current=$(cat "$out/CURRENT" 2>/dev/null)
+  [ -n "$current" ] && [ -f "$out/$current/samples.sqlite" ] || return 1
+  echo "$out/$current/samples.sqlite"
+}
+
 bench_inputs_missing() {  # what bench $id still lacks on the data root, one line, or nothing
   case "$id" in
     flexray_carmlspine|flexray_deepfluoro)
@@ -964,6 +993,7 @@ case "$word" in
   dropzip) word_dropzip ;;
   unpack) word_unpack ;;
   nodequota) word_nodequota ;;
+  folders) word_folders ;;
   experiment) word_experiment ;;
   bench) word_bench ;;
   samples) word_samples ;;
