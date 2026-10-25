@@ -24,6 +24,13 @@ off for a run, and the record says so. Each step is a W&B run of its own, groupe
 so the trainer's epochs and the evaluator's tables sit side by side. A step that goes on after a
 cut (tools/train.py --resume) starts its W&B run with resume="allow" under the same id, online or
 offline, so the epochs after the cut join the epochs before it rather than open a run of their own.
+
+`sync` pushes a run's offline runs not yet pushed in one `wandb sync` (tests/test_wandb_log.py runs
+it against a stand-in for W&B's server). A run counts as pushed once wandb has left its mark beside
+the run's log, the .wandb.synced it writes when the server took the run, and is never sent again,
+since its lines would be added a second time: 0.30's sync ends with exit 0 when the server refused
+a run, so the mark, not the exit, says a push went, and a sync no server answers is given up after
+SYNC_SECONDS.
 """
 
 import argparse
@@ -38,6 +45,11 @@ from pathlib import Path
 PROJECT = "SchwingNet"
 TOKEN_FILE = Path.home() / ".wandb" / "token.env"
 NETRC = Path.home() / ".netrc"
+# How long one wandb sync may take before the push gives it up, so the flow says NOT PUSHED and
+# goes on. 0.30's sync tries each request to a server that does not answer 21 times over a quarter
+# of an hour, once a minute at the last, and a run makes several, while a step's run, its pictures
+# with it, is megabytes (4.1 MB for three epochs on the synthetic catalog).
+SYNC_SECONDS = 600
 
 
 def enabled():
@@ -179,9 +191,41 @@ class Telemetry:
         self._guard(lambda: self.run.finish())
 
 
+def pushed(folder):
+    """Whether wandb sync marked an offline run pushed: it leaves a .wandb.synced beside the run's
+    log once the server took it, and nothing where the server refused it."""
+    return any(Path(folder).glob("*.synced"))
+
+
 def offline_runs(run_dir):
-    """The step runs logged offline and not yet pushed; wandb sync leaves a .synced file behind."""
-    return sorted(p for p in (Path(run_dir) / "wandb" / "wandb").glob("offline-run-*") if not any(p.glob("*.synced")))
+    """The step runs logged offline and not yet pushed."""
+    return sorted(p for p in (Path(run_dir) / "wandb" / "wandb").glob("offline-run-*") if not pushed(p))
+
+
+def as_text(output):
+    """What a process printed, as text: a cut one's output comes as bytes."""
+    return output.decode("utf-8", "replace") if isinstance(output, bytes) else output or ""
+
+
+def run_sync(command, env):
+    """One wandb sync, given up after SYNC_SECONDS; its exit code, None where given up, and all it
+    printed. wandb-core, which the sync starts, ends with it."""
+    try:
+        done = subprocess.run(command, env=env, capture_output=True, text=True, check=False, timeout=SYNC_SECONDS)
+    except subprocess.TimeoutExpired as cut:
+        return None, as_text(cut.stdout) + as_text(cut.stderr)
+    return done.returncode, done.stdout + done.stderr
+
+
+def shortfall(code, said, folders):
+    """Why the sync fell short, or None where wandb marked every run it was given pushed."""
+    last = plain(next((line for line in reversed(said.splitlines()) if line.strip()), ""))
+    if code is None:
+        return f"wandb sync did not end within {SYNC_SECONDS} s, as when W&B cannot be reached from this node ({last})"
+    if code:
+        return f"wandb sync exited {code}: {last}"
+    left = [folder for folder in folders if not pushed(folder)]
+    return f"wandb sync left {len(left)} of {len(folders)} offline runs unpushed: {last}" if left else None
 
 
 def sync(run_dir):
@@ -203,12 +247,12 @@ def sync(run_dir):
         outcome["why"] = "no W&B key: not in WANDB_API_KEY, ~/.wandb/token.env or ~/.netrc"
     else:
         env = dict(os.environ, **(token_file_env() if where == "file" else {}))
-        done = subprocess.run([sys.executable, "-m", "wandb", "sync", "--include-offline", *map(str, runs)], env=env, capture_output=True, text=True, check=False)
-        outcome["synced"] = done.returncode == 0
-        outcome["urls"] = sorted(set(live) | set(previous.get("urls", [])) | {word for word in (done.stdout + done.stderr).split() if word.startswith("https://wandb.ai/")})
-        if done.returncode != 0:
-            lines = [line for line in (done.stderr or done.stdout).splitlines() if line.strip()]
-            outcome["why"] = f"wandb sync exited {done.returncode}: {plain(lines[-1] if lines else '')}"
+        code, printed = run_sync([sys.executable, "-m", "wandb", "sync", *map(str, runs)], env)
+        why = shortfall(code, printed, runs)
+        outcome["synced"] = why is None
+        outcome["urls"] = sorted(set(live) | set(previous.get("urls", [])) | {word for word in printed.split() if word.startswith("https://wandb.ai/")})
+        if why:
+            outcome["why"] = why
     (run_dir / "wandb-sync.json").write_text(json.dumps(outcome, indent=1) + "\n", encoding="utf-8")
     return outcome
 
