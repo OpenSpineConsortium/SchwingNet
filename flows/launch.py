@@ -7,14 +7,16 @@ The grid ends jobs from outside, a Slurm time limit or a preemption killing the 
 the gate word that queued it queues it again. Metaflow carries a run that did not finish on with
 `resume --origin-run-id`, cloning every step and every branch of a foreach that finished and
 running only the rest, but it must be told which run. So every job of a pipeline stage starts
-here: the launch is named by a key, the hash of the flow, the commit and the flow's parameters
-as given (schwingnet.pipeline.run_key), every run carries the key as a tag, and the newest run
-with that key decides (schwingnet.pipeline.decide): one that did not succeed is resumed, else a
-new run starts. A job queued again with the same words therefore continues where the killed one
-stopped, and a change of code or of configuration starts afresh. Bank's --date is in the key
-when the caller gave it, so a job asking for another date runs anew under it; where the words
-name none, the launcher chooses today for a new run, after the key is taken, and resume keeps it
-with the other parameters, so the same words on another day still continue the cut run.
+here: the launch is named by a key, the hash of the flow, the commit, the flow's parameters as
+given and, for bank, every recipe it lists with its raw folder's state (reads_of), since resume
+clones steps made from inputs the words do not name (schwingnet.pipeline.run_key); every run
+carries the key as a tag, and the newest run with that key decides (schwingnet.pipeline.decide):
+one that did not succeed is resumed, else a new run starts. A job queued again with the same
+words therefore continues where the killed one stopped, and a change of code, of configuration
+or of a raw copy starts afresh. Bank's --date is in the key when the caller gave it, so a job
+asking for another date runs anew under it; where the words name none, the launcher chooses
+today for a new run, after the key is taken, and resume keeps it with the other parameters, so
+the same words on another day still continue the cut run.
 
 The first line on stdout is the decision, as JSON, flushed before the flow starts, and the last
 says which run it was and how it ended; the exit code is the flow's own where it failed, else
@@ -30,6 +32,7 @@ their reports under it, as they did before Metaflow, and a relative path among t
 is read from it.
 """
 
+import importlib.util
 import json
 import os
 import subprocess
@@ -126,6 +129,19 @@ def commit_of(repo):
     return commit
 
 
+def reads_of(name, repo, words):
+    """What the flow reads that its words do not name, for the key: bank's recipes and raw copies,
+    listed by the flow's own file in the checkout (flows/bank.py's key_reads), so the launcher
+    lists them exactly as start will; nothing for the other flows. Loaded once Metaflow is set
+    up, since that file imports it."""
+    if name != "bank":
+        return []
+    spec = importlib.util.spec_from_file_location("schwingnet_bank_flow", repo / "flows" / "bank.py")
+    flow = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(flow)
+    return flow.key_reads(words, Path.cwd())
+
+
 def point_metaflow_at(root):
     """Metaflow reads its settings once, when it is first imported, so these are set before that,
     in this process and in the flow's, which inherits them."""
@@ -217,7 +233,7 @@ def launch(argv):
     (root / ".metaflow").mkdir(parents=True, exist_ok=True)
     repo = repository()
     commit = commit_of(repo)
-    key = run_key(name, commit, words)
+    key = run_key(name, commit, words, reads_of(name, repo, words))
     flow_class = FLOWS[name]
     decision, origin = decide(runs_with_key(flow_class, key))
     say({"decision": decision, "flow": name, "key": key, "origin": origin, "root": str(root)})

@@ -4,10 +4,11 @@ The grid's jobs are killed from outside: a Slurm time limit or a preemption ends
 and the gate word that queued it queues it again. Metaflow carries a run that did not finish
 on with `resume --origin-run-id`, which clones every step that finished and runs only the rest,
 but only when it is told which run to carry on. flows/launch.py asks these two rules: the key
-names a launch by the flow, the commit and the flow's own parameters, so a job queued again with
-the same words finds the run it began, and a change of code or of configuration starts afresh;
-the decision then looks at the runs carrying that key, newest first. Nothing here reads a file,
-starts a process or asks Metaflow; the launcher does, and hands the runs over as RunState.
+names a launch by the flow, the commit, the flow's own parameters and what it reads beyond them,
+so a job queued again with the same words on the same inputs finds the run it began, and a
+change of code, of configuration or of an input starts afresh; the decision then looks at the
+runs carrying that key, newest first. Nothing here reads a file, starts a process or asks
+Metaflow; the launcher does, and hands the runs over as RunState.
 """
 
 import hashlib
@@ -44,14 +45,20 @@ class RunState(NamedTuple):
 )
 @ensure(lambda result: len(result) == RUN_KEY_LENGTH, "a key is sixteen hex digits")
 @ensure(lambda result: _is_hex(result), "a key is hex")
-def run_key(flow: str, commit: str, words: Sequence[str]) -> str:
-    """The launch's name: a hash of the flow, the commit and the flow's parameters as given.
+def run_key(flow: str, commit: str, words: Sequence[str], reads: Sequence[str] = ()) -> str:
+    """The launch's name: a hash of the flow, the commit, the flow's parameters as given and
+    what the flow reads that its parameters do not name.
 
-    Canonical JSON of the three, ASCII-escaped, so two launches name the same key exactly when
-    they ran the same code with the same words, whatever characters a word holds. The caller
-    leaves out what is chosen once per run and kept by resume itself, such as bank's date.
+    Canonical JSON of them, ASCII-escaped, so two launches name the same key exactly when they
+    ran the same code with the same words on the same inputs, whatever characters a word holds.
+    The reads are a line per input the launcher can look at before the run, such as each
+    recipe's raw folder for bank, so a resume never clones a step made from an input that has
+    changed since; with none, the key is the hash of the first three alone, and a list of four
+    never hashes as a list of three. What the launcher chooses for a new run and resume keeps,
+    such as the date bank is given where the words name none, is in neither.
     """
-    text = json.dumps([flow, commit, list(words)], ensure_ascii=True, separators=(",", ":"))
+    parts = [flow, commit, list(words)] + ([list(reads)] if reads else [])
+    text = json.dumps(parts, ensure_ascii=True, separators=(",", ":"))
     return hashlib.sha256(text.encode("ascii")).hexdigest()[:RUN_KEY_LENGTH]
 
 

@@ -45,11 +45,19 @@ def png(width, height, seed):
 def write_raw_copies(data_root):
     """Two sources' raw copies as tests/schwingnet/test_chain_stages.py writes one: NIH's films
     by patient and follow-up, and Open-i's by case."""
+    write_nih_raw(data_root)
+    write_open_i_raw(data_root)
+
+
+def write_nih_raw(data_root, patients=4):
     folder = data_root / "nih_chestxray14" / "raw" / "images_001" / "images"
     folder.mkdir(parents=True, exist_ok=True)
-    for patient in range(1, 5):
+    for patient in range(1, patients + 1):
         for follow in range(2):
             (folder / f"{patient:08d}_{follow:03d}.png").write_bytes(png(48, 32, patient * 2 + follow))
+
+
+def write_open_i_raw(data_root):
     folder = data_root / "open_i_chest" / "raw" / "NLMCXR_png"
     folder.mkdir(parents=True, exist_ok=True)
     for case in range(1, 4):
@@ -327,6 +335,49 @@ class BankFlowTest(unittest.TestCase):
                          ["bank.py nih_chestxray14", "bank.py open_i_chest", "ingest.py nih_chestxray14", "ingest.py open_i_chest"])
         self.assertIn("already there", (self.tmp / "logs-flow" / "logs" / name).read_text(encoding="utf-8"))
         self.assertEqual(shards_of(flow_root), shards_of(self.tmp / "direct"))
+
+    def test_a_raw_copy_fetched_since_a_kill_starts_a_new_run_that_banks_it(self):
+        banks = self.tmp / "banks"
+        write_banks(banks)
+        flow_root = self.tmp / "flow"
+        write_nih_raw(flow_root)
+        words = ["bank", "--", "--data-root", str(flow_root), "--banks", str(banks)]
+        code, said, out, calls = self.launch_logged(words, 1, kill="nih_chestxray14")
+        self.assertEqual(said[-1]["successful"], False, out)
+        first_key = said[0]["key"]
+
+        # Open-i's raw copy lands before the job is queued again: the run that listed it as not
+        # fetched is not resumed, so Open-i is banked and ingested and nothing says it was skipped
+        write_open_i_raw(flow_root)
+        code, said, out, calls = self.launch_logged(words, 2)
+        self.assertEqual(code, 0, out)
+        self.assertEqual((said[0]["decision"], said[0]["origin"]), ("run", None), out)
+        self.assertNotEqual(said[0]["key"], first_key)
+        self.assertEqual((said[-1]["successful"], said[-1]["verdict"]), (True, 0), out)
+        self.assertIn("bank.py open_i_chest", calls)
+        report = (self.tmp / "logs-flow" / "logs" / "02-bank-ingest-STAGE-REPORT.md").read_text(encoding="utf-8")
+        self.assertIn("- open_i_chest: open_i_chest/", report)
+        self.assertNotIn("open_i_chest: skipped", report)
+        self.assertTrue(list(flow_root.glob("open_i_chest/shards/*/MANIFEST.json")))
+
+    def test_a_raw_copy_that_grew_since_its_bank_was_made_is_banked_again_not_cloned(self):
+        banks = self.tmp / "banks"
+        write_banks(banks)
+        flow_root = self.tmp / "flow"
+        write_raw_copies(flow_root)
+        words = ["bank", "--", "--data-root", str(flow_root), "--banks", str(banks)]
+        code, said, out, calls = self.launch_logged(words, 1)
+        self.assertEqual(said[-1]["successful"], False, out)
+        self.assertIn("bank.py nih_chestxray14", calls)
+
+        # the cut was at Open-i's ingest, NIH's bank done; NIH's raw copy then grows by a patient
+        write_nih_raw(flow_root, patients=5)
+        code, said, out, calls = self.launch_logged(words, 2)
+        self.assertEqual(code, 0, out)
+        self.assertEqual((said[0]["decision"], said[0]["origin"]), ("run", None), out)
+        self.assertIn("bank.py nih_chestxray14", calls)
+        report = (self.tmp / "logs-flow" / "logs" / "02-bank-ingest-STAGE-REPORT.md").read_text(encoding="utf-8")
+        self.assertRegex(report, r"- nih_chestxray14: nih_chestxray14/[^ ]+ written 10 frames, 5 persons")
 
     def test_a_date_the_caller_gave_is_in_the_key_so_another_date_runs_anew(self):
         banks = self.tmp / "banks"

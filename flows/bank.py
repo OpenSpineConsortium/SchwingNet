@@ -1,8 +1,13 @@
 """BankFlow: stage 2 of the X-ray chain, bank and ingest, as a Metaflow flow (issue #252).
 
 Started only by flows/launch.py (python flows/launch.py bank -- --sources "<ids>" ...), which
-resumes the newest run of the same words and commit that did not finish. grid/02-bank-ingest.sbatch
-execs that launcher whenever Slurm runs it, so every job of stage 2 runs here.
+resumes the newest run of the same words, commit and raw copies that did not finish.
+grid/02-bank-ingest.sbatch execs that launcher whenever Slurm runs it, so every job of stage 2
+runs here. Metaflow clones start on a resume, and with it start's listing of which recipes have a
+raw copy, and clones each bank step that finished, so the launcher keys the run by every listed
+recipe's bytes and raw folder as well (key_reads, below): a raw copy fetched, grown or changed
+since, or a recipe edited, names another key, and the job starts a new run that lists and banks
+it, while raw copies as they were resume the cut run.
 
 The work is the stage's own: each step runs grid/02-bank-ingest.sbatch for one recipe and one half
 of its loop body (PART=bank, then PART=ingest), with SCHWINGNET_FLOW_STEP=1 so the script runs its
@@ -18,6 +23,8 @@ either way, logs/02-bank-ingest-STAGE-REPORT.md under the launcher's working fol
 stage's words, so the gate's status reads it where it always did.
 """
 
+import hashlib
+import importlib.util
 import json
 import os
 import subprocess
@@ -42,9 +49,9 @@ def launcher_folder():
     return Path(os.environ.get("SCHWINGNET_WORKDIR") or os.getcwd())
 
 
-def from_launcher(path):
+def from_launcher(path, folder=None):
     """A path parameter as the caller meant it: a relative one is read from the launcher's folder."""
-    return str(launcher_folder() / path) if path and not Path(path).is_absolute() else path
+    return str((folder or launcher_folder()) / path) if path and not Path(path).is_absolute() else path
 
 
 def raw_of(recipe, identity, data_root):
@@ -65,6 +72,63 @@ def fetched(raw):
         return bool(folder) and folder.is_dir() and any(folder.iterdir())
     except OSError:
         return False
+
+
+def recipes_listed(banks_folder, data_folder, wanted):
+    """The recipes as the stage lists them, in its order, each as (file, id, raw folder); bash's
+    glob, which the stage lists them with, takes no dot file."""
+    listed = []
+    for recipe in sorted(Path(banks_folder).glob("*.json")):
+        identity = recipe.stem
+        if not identity.startswith(".") and (not wanted or identity in wanted):
+            listed.append((recipe, identity, raw_of(recipe, identity, data_folder)))
+    return listed
+
+
+def bank_tool():
+    """tools/bank.py, loaded by its path under a name of its own: this file is bank.py too, and
+    tools/ never goes on sys.path, where tools/profile.py would shadow the standard library's."""
+    spec = importlib.util.spec_from_file_location("schwingnet_bank_tool", REPO / "tools" / "bank.py")
+    tool = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(tool)
+    return tool
+
+
+def file_sha256(path):
+    try:
+        return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+    except OSError:
+        return "unreadable"
+
+
+def raw_state(tool, raw):
+    """A raw folder as tools/bank.py's BANK.json stamp lists it, every file by its path, size and
+    modification time through linked folders, hashed; 'not fetched' where the stage skips it."""
+    return tool.listing_sha256(tool.tree_listing(raw)) if fetched(raw) else "not fetched"
+
+
+def word_value(words, flag):
+    """The value the words give a flag, the last one as click takes it; '' where they give none."""
+    value, rest = "", list(words)
+    while rest:
+        word = rest.pop(0)
+        if word == flag and rest:
+            value = rest.pop(0)
+        elif word.startswith(flag + "="):
+            value = word[len(flag) + 1:]
+    return value
+
+
+def key_reads(words, folder):
+    """What a run of these words reads that the words do not name, for the launcher's key: a line
+    per recipe start would list, its id, its recipe's bytes and its raw folder's state. Read in the
+    launcher, before the run, from the launcher's folder, as start reads the same words; a walk of
+    every listed raw copy, as tools/bank.py's stamp walks each again in the bank step."""
+    banks = from_launcher(word_value(words, "--banks"), folder) or str(REPO / "grid" / "banks")
+    data = from_launcher(word_value(words, "--data-root"), folder)
+    tool = bank_tool()
+    return [f"{identity} {file_sha256(recipe)} {raw_state(tool, raw)}"
+            for recipe, identity, raw in recipes_listed(banks, data, word_value(words, "--sources").split())]
 
 
 def short_commit():
@@ -172,15 +236,9 @@ class BankFlow(FlowSpec):
         self.data_folder = from_launcher(self.data_root)
         self.ingest_date = self.date or datetime.now().date().isoformat()
         self.short_commit = short_commit()
-        wanted = self.sources.split()
         self.order, self.lines, self.todo = [], {}, []
-        for recipe in sorted(Path(self.banks_folder).glob("*.json")):
-            identity = recipe.stem
-            # bash's glob, which the stage lists the recipes with, takes no dot file
-            if identity.startswith(".") or (wanted and identity not in wanted):
-                continue
+        for _, identity, raw in recipes_listed(self.banks_folder, self.data_folder, self.sources.split()):
             self.order.append(identity)
-            raw = raw_of(recipe, identity, self.data_folder)
             if fetched(raw):
                 self.todo.append(identity)
             else:

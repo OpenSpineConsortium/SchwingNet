@@ -43,14 +43,19 @@ a join step, so a switch lands on a plain step: BankFlow's end, SweepFlow's midd
 
     python flows/launch.py {bank|catalog|sweep} [--max-workers N] [--root DIR] -- <flow parameters>
 
-The launcher names a launch by a key, the first 16 hex of the sha256 of the flow, the commit
-and the flow's parameters as given (schwingnet.pipeline.run_key), and every
-run it starts or resumes carries the tags `key:<key>` and `commit:<7>`. It lists the runs of
-the flow carrying the key, newest first, and the newest decides (schwingnet.pipeline.decide): a
-newest run that did not succeed, killed or failed, is resumed (`resume --origin-run-id`, with
-the same --max-workers and no parameters, which resume clones); else a new run starts. A job
-queued again with the same words therefore continues where the killed one stopped; a change of
-code or of words starts afresh, and so does a launch after a success, where the tools' own
+The launcher names a launch by a key, the first 16 hex of the sha256 of the flow, the commit,
+the flow's parameters as given and, for bank, a line per recipe start would list with the
+recipe's bytes and its raw folder's state, every file by path, size and modification time as
+tools/bank.py's BANK.json stamp lists it (flows/bank.py's key_reads; schwingnet.pipeline.run_key),
+since a resume clones start's listing of what has a raw copy and every bank step that finished:
+a raw copy fetched, grown or changed since the cut, or a recipe edited, names another key and so
+a new run, while raw copies as they were resume. Every run it starts or resumes carries the
+tags `key:<key>` and `commit:<7>`. It lists the runs of the flow carrying the key, newest first,
+and the newest decides (schwingnet.pipeline.decide): a newest run that did not succeed, killed
+or failed, is resumed (`resume --origin-run-id`, with the same --max-workers and no parameters,
+which resume clones); else a new run starts. A job queued again with the same words therefore
+continues where the killed one stopped; a change of code, of words or of a raw copy starts
+afresh, and so does a launch after a success, where the tools' own
 content addressing finds the finished work (an ingest's "already there", a run folder tools/flow.py
 reuses). Bank's ingest date is the caller's `--date`, in the key like any word, so a job asking
 for another date runs anew under it; where the words name none, the launcher chooses today for a

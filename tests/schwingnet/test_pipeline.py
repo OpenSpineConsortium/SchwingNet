@@ -30,6 +30,18 @@ def test_a_change_of_flow_commit_or_any_word_names_another_key() -> None:
     assert run_key("bank", COMMIT, []) != first
 
 
+def test_what_the_flow_reads_beyond_its_words_is_in_the_key() -> None:
+    words = ["--sources", "nih_chestxray14 open_i_chest"]
+    first = run_key("bank", COMMIT, words, ["nih_chestxray14 aa", "open_i_chest not fetched"])
+    assert run_key("bank", COMMIT, words, ("nih_chestxray14 aa", "open_i_chest not fetched")) == first
+    assert run_key("bank", COMMIT, words, ["nih_chestxray14 aa", "open_i_chest bb"]) != first
+    text = json.dumps(["bank", COMMIT, words, ["x"]], ensure_ascii=True, separators=(",", ":"))
+    assert run_key("bank", COMMIT, words, ["x"]) == hashlib.sha256(text.encode("ascii")).hexdigest()[:16]
+    # no reads is the key of the three; a word and a read of the same text never meet
+    assert run_key("bank", COMMIT, words, []) == run_key("bank", COMMIT, words)
+    assert run_key("bank", COMMIT, ["x"], []) != run_key("bank", COMMIT, [], ["x"])
+
+
 def test_a_word_of_any_characters_has_a_key() -> None:
     assert len(run_key("bank", COMMIT, ["\u00e9t\u00e9", "\ud800", '"', "\n"])) == 16
 
