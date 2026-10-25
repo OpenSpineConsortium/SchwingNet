@@ -1041,7 +1041,7 @@ word_sweep() {
   # Every refusal before any job is queued, so a refused word leaves nothing behind.
   catalog=$(plan_catalog "$plan")
   case "$catalog" in
-    synthetic) CATALOG_DEP=""; echo "  catalog: the synthetic one, which the run builds once under the smoke folder or finds there" ;;
+    synthetic) CATALOG_DEP=""; echo "  catalog: the synthetic one, which the run finds under the smoke folder or builds afresh there when its arguments or the code that makes it changed" ;;
     v1) sweep_catalog v1 || return ;;
     with:*)
       source=${catalog#with:}

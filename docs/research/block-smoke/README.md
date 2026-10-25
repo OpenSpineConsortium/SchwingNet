@@ -26,6 +26,6 @@ docs/research/experiment-framework.md, section 7: a static check decides every n
 ## What this folder will hold
 
 - `<plan>/`: each plan's results.json and RESULTS.md as the sweep left them in its state folder on the grid (`/rs/rs_grp_oschome/go2432/smoke/<plan>/<commit 7>-<catalog sha256 8>/`), with CHECK.json and CHECK-ALL.md, the check's verdicts for that catalog.
-- `runs/<plan>/<slug>/`: each finished row, copied by `tools/flow.py record`, so the experiments panel of the textbook's chapter 35 and the evaluation page read it like any other run.
+- `runs/<plan>/<run id>/`: each finished row, copied by `tools/flow.py record --run <state>/<slug> --into docs/research/block-smoke/runs/<plan>`, which names the copy by the row's run id and adds its line to `runs/LEDGER.md`, so the experiments panel of the textbook's chapter 35 reads it like any other run; the evaluation page reads only docs/research/v1-demo/runs.
 
 The trained weights stay on the grid. Nothing here is a number about SchwingNet until a row of the real catalog is recorded, and a smoke row trains three epochs, so its accuracy says that the route works, not how well.

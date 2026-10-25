@@ -47,7 +47,7 @@ declared incompatibilities works on any dataset held, annotated and unannotated,
 `check` decides, for one catalog and training nothing, every named combination at every crop
 size from the catalog's own facts (which sources hold labelled crops, which crops carry a level
 map, how many persons): it runs, or the trainer will refuse it for a stated reason. Then a plan of
-a few runs, the covering set of src/schwingnet/blocks.py (`cover`) or the literature trials
+a few runs, the covering set of src/schwingnet/blocks.py (`cover`) or the trials
 (`trials`), runs on the GPU, each run set against what the check predicted for it; a run whose
 outcome differs from its prediction is a bug in the check or in the trainer, and is flagged as
 such. The plan files under grid/sweeps/ are these commands' output, and a test makes them again
@@ -430,13 +430,13 @@ def cover_plan(name, catalog, epochs, seed, strict=False):
 
 
 def trials_plan(catalog, epochs, seed):
-    """The literature trials as a plan file: the six arms of schwingnet.blocks.trials, each source
+    """The trials as a plan file: the six arms of schwingnet.blocks.trials, each source
     cited for what it did. Kwak, Ro and Kang's ResNet-50 (J Clin Med 14:7671, read on the journal's
     page on 2026-10-25) trained with AdamW, its decay, a warm-up and a cosine schedule and kept the
     model of the highest accuracy, with no balanced sampling or balanced accuracy, so they are cited
     for the third arm's recipe, with how the arm differs, and the balanced arms cite no one."""
     checked_plan_words("trials", catalog)
-    about = (f"The six literature trials on {catalog_words(catalog)}, each resnet18 from its ImageNet file for {epochs} epochs: version 1's training as the control;"
+    about = (f"The six trials on {catalog_words(catalog)}, each resnet18 from its ImageNet file for {epochs} epochs: version 1's training as the control;"
              " the ImageNet scaling with every augment change, the strong one being SyntheX's strong domain randomisation (Gao, Killeen et al. 2023, Nat Mach Intell 5:294)"
              " with the transforms FluoroSAM adds (Killeen et al., MICCAI 2025); that with AdamW, its decay, a warm-up, a cosine schedule and a tenth of the rate for the"
              " pretrained layers, the recipe of Kwak, Ro and Kang 2025 (J Clin Med 14:7671: AdamW with decay 0.01 and cosine annealing after a 5-epoch warm-up), here"
@@ -1191,7 +1191,7 @@ def add_smoke_commands(sub):
     cover_p.add_argument("--epochs", type=int, default=3)
     cover_p.add_argument("--seed", type=int, default=1)
     cover_p.add_argument("--strict", action="store_true", help="every pair of values of every two parts (32 cover rows)")
-    trials_p = sub.add_parser("trials", help="the six literature trials as a plan file")
+    trials_p = sub.add_parser("trials", help="the six trials as a plan file")
     trials_p.add_argument("--catalog", default="v1")
     trials_p.add_argument("--epochs", type=int, default=20)
     trials_p.add_argument("--seed", type=int, default=1)

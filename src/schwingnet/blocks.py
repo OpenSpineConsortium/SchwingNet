@@ -45,7 +45,7 @@ new part is a field with version 1's default and its entry in CHOICES or SETTING
 
 The smoke test of every block (#252) is two pieces of data made here: `cover`, the rows of a
 covering set that runs every option of every part and every pair of parts that meet in the code,
-and `trials`, the six arms of the literature trials; tools/block_sweep.py writes each as a plan
+and `trials`, the six arms of the trials; tools/block_sweep.py writes each as a plan
 file, checks it against a catalog and runs it row by row. A row's slug is made from its
 configuration alone, so a plan read again, or reordered, names every row's folder as before.
 """
@@ -492,7 +492,7 @@ SETTING_OF: dict[tuple[str, object], dict[str, Any]] = {
 # option of another part is spent on a row that may not train.
 TRAINING_CUTS = tuple(name for name in SAMPLES if name != "drop-sources")
 # What a row is for: a row of the cover, the run from an ImageNet file, a warm start, a refusal the
-# check predicts, or an arm of the literature trials. Every role but the cover's starts the slug.
+# check predicts, or an arm of the trials. Every role but the cover's starts the slug.
 ROLES = ("cover", "imagenet", "init", "refuse", "trial")
 
 
@@ -962,7 +962,7 @@ def cover(strict: bool = False) -> list[Row]:
 @ensure(lambda result: len({row["slug"] for row in result}) == len(result), "every slug once")
 @ensure(lambda result: result[0]["blocks"] == DEFAULT, "the control is version 1's training")
 def trials() -> list[Row]:
-    """The six arms of the literature trials, each resnet18 from its ImageNet file, in order: the
+    """The six arms of the trials, each resnet18 from its ImageNet file, in order: the
     control (version 1's training at 64 pixels); the ImageNet scaling with every augment change,
     the strong one among them (SyntheX's and FluoroSAM's randomisation); that with AdamW, its
     decay, a warm-up, a cosine schedule and a tenth of the rate for the pretrained layers (Kwak,
