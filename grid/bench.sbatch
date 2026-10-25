@@ -36,6 +36,10 @@ OUT=$BENCH_ROOT/$BENCH
 mkdir -p "$REPO/grid/logs" "$OUT"
 cd "$REPO" || exit 2
 export PYTHONNOUSERSITE=1 WANDB_MODE=disabled HF_HUB_OFFLINE=1
+# Triton builds a small C helper with gcc and -lcuda on its first GPU call. Under Apptainer's --nv
+# the driver's libraries sit in /.singularity.d/libs rather than where ldconfig looks, and xvr's
+# registration failed there on every subject (job 40781587), so Triton is told where they are.
+export TRITON_LIBCUDA_PATH=${TRITON_LIBCUDA_PATH:-/.singularity.d/libs}
 report() { echo "- $*" | tee -a "$REPORT.part"; }
 finish() {
   local rc=$1 ended_at
@@ -71,6 +75,9 @@ venv_for() {  # venv_for PINS: a virtual environment holding PINS beside train-g
     printf '%s\n' "$1" > "$venv/READY"
   fi
   echo "$venv"
+}
+failure_of() {  # the first compiler or linker error in a log, else its last line, in one short line
+  { grep -m 1 -E '(: (fatal )?error:|cannot find -l|undefined reference)' "$1" || tail -n 1 "$1"; } | cut -c1-240
 }
 weights_dir() {  # the FleXray bundle the fetch landed: the folder that holds ensemble.json
   dirname "$(find "$DATA/hf_flexray_weights/raw" -maxdepth 3 -name ensemble.json -print -quit 2>/dev/null)"
@@ -113,7 +120,7 @@ case "$BENCH" in
           --imagepath experiments/data/deepfluoro/$s/volume.nii.gz --labelpath experiments/data/deepfluoro/$s/mask.nii.gz \
           --warp experiments/data/deepfluoro/$s/warp.txt --labels 1 2 3 4 7 --scales 24 12 6 \
           --n-itrs 500 500 500 --patience 10 10 10 --crop 100 --linearize --savepath "$dest" ) > "$OUT/register-$s.log" 2>&1 \
-        || { report "$s: register failed ($(tail -n 1 "$OUT/register-$s.log" | cut -c1-160))"; rc=1; }
+        || { report "$s: register failed ($(failure_of "$OUT/register-$s.log"))"; rc=1; }
     done
     ( cd "$work" && bash "$REPO/grid/box.sh" "$venv/bin/python" experiments/evaluate.py --dataset deepfluoro --result finetuned \
         --main "$OUT/registration.csv" --device cuda ) > "$OUT/evaluate.log" 2>&1 \
