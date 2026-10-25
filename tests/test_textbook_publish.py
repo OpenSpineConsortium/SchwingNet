@@ -9,6 +9,7 @@ helper: its push filter is the fingerprint's list, every action is pinned, the s
 the job that cannot write and may fail without failing the record, and the day's count, the
 switch and the cap are read where the helper expects them."""
 
+import ast
 import io
 import json
 import os
@@ -61,6 +62,34 @@ def edition(folder, pages):
 FILES = {"a.html": "A", "ask.js": "js", "figures/01/x.png": "png", "artifacts/f/index.html": "F"}
 
 
+def tools_imported(name):
+    """The modules of tools/ that tools/<name>.py imports, wherever in its code the import stands."""
+    tree = ast.parse((ROOT / "tools" / f"{name}.py").read_text(encoding="utf-8"))
+    names = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            names.update(alias.name.split(".")[0] for alias in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.module and not node.level:
+            names.add(node.module.split(".")[0])
+    return {n for n in names if (ROOT / "tools" / f"{n}.py").is_file()}
+
+
+def builders_code():
+    """Every module of tools/ the site and edition builders run, followed through their own imports."""
+    seen, waiting = set(), ["textbook_site", "textbook_artifact"]
+    while waiting:
+        name = waiting.pop()
+        if name not in seen:
+            seen.add(name)
+            waiting.extend(tools_imported(name) - seen)
+    return seen
+
+
+def fingerprinted(rel):
+    """Whether a path is one the fingerprint and the push filter cover."""
+    return any(rel == path or rel.startswith(path + "/") for path in tp.INPUTS)
+
+
 class Inputs(unittest.TestCase):
     def test_two_commits_with_the_same_inputs_share_a_fingerprint(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -88,6 +117,32 @@ class Inputs(unittest.TestCase):
         self.assertEqual(tp.INPUTS, [p.removesuffix("/**") for p in tp.FILTER])
         self.assertIn("docs/textbook", tp.INPUTS)
         self.assertIn("artifacts", tp.INPUTS)
+
+    def test_the_fingerprint_covers_the_code_the_builders_run(self):
+        # A module the builders run that the list leaves out would change the pages without
+        # changing the fingerprint, and the half-hourly run would find nothing new to publish.
+        code = builders_code()
+        self.assertTrue({"textbook_site", "textbook_artifact", "claims_rank", "rag"} <= code)
+        for name in sorted(code):
+            with self.subTest(module=name):
+                self.assertTrue(fingerprinted(f"tools/{name}.py"), f"tools/{name}.py is not in FILTER")
+        import rag
+        import textbook_site
+        self.assertTrue(fingerprinted(rag.PACKAGE.as_posix()), f"{rag.PACKAGE} is not in FILTER")
+        self.assertTrue(fingerprinted(textbook_site.LEDGER_TOOLS.as_posix()))
+
+    def test_a_change_to_the_search_alone_changes_the_fingerprint(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            git(root, "init", "-q")
+            write(root / "docs" / "textbook" / "01-one.md", "# 01 One\n\nText.\n")
+            write(root / "src" / "schwingnet" / "rag.py", "K = 8\n")
+            git(root, "add", "-A")
+            git(root, "commit", "-q", "-m", "one")
+            first = tp.inputs_fingerprint(root, "HEAD")
+            write(root / "src" / "schwingnet" / "rag.py", "K = 5\n")
+            git(root, "commit", "-q", "-am", "two")
+            self.assertNotEqual(tp.inputs_fingerprint(root, "HEAD"), first)
 
 
 class Admit(unittest.TestCase):
