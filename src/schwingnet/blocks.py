@@ -510,6 +510,28 @@ Cells = list[int | None]
 Requirement = tuple[int, int, int]
 
 
+@dataclass(frozen=True)
+class _Column:
+    """The column the array grows by: its place among the factors, how many values its factor
+    has, and the earlier columns it must meet in every pair of values."""
+
+    index: int
+    size: int
+    partners: tuple[int, ...]
+
+
+@dataclass(frozen=True)
+class _Start:
+    """Where a row's training starts: the architecture whose ImageNet file it loads, the slug of
+    the row whose best.pt it loads, both or neither."""
+
+    weights: str | None = None
+    init: str | None = None
+
+
+FROM_SCRATCH = _Start()
+
+
 def _partners(names: Sequence[str], pairs: Sequence[tuple[str, str]]) -> dict[int, list[int]]:
     """For each column, the earlier columns it must meet in every pair of values."""
     found: dict[int, list[int]] = {column: [] for column in range(len(names))}
@@ -519,83 +541,106 @@ def _partners(names: Sequence[str], pairs: Sequence[tuple[str, str]]) -> dict[in
     return {column: sorted(set(earlier)) for column, earlier in found.items()}
 
 
-def _needed(sizes: Sequence[int], partners: Sequence[int], column: int) -> set[Requirement]:
+def _needed(sizes: Sequence[int], column: _Column) -> set[Requirement]:
     """What a column must cover: each of its values once, and each pair with a partner's values."""
-    needed = {(-1, -1, b) for b in range(sizes[column])}
-    needed |= {(i, a, b) for i in partners for a in range(sizes[i]) for b in range(sizes[column])}
+    needed = {(-1, -1, b) for b in range(column.size)}
+    needed |= {
+        (i, a, b) for i in column.partners for a in range(sizes[i]) for b in range(column.size)
+    }
     return needed
 
 
-def _met(row: Cells, column: int, value: int, partners: Sequence[int]) -> set[Requirement]:
+def _met(row: Cells, column: _Column, value: int) -> set[Requirement]:
     """The requirements this value in this row's column meets, with the row's cells so far."""
     met = {(-1, -1, value)}
-    for i in partners:
+    for i in column.partners:
         earlier = row[i]
         if earlier is not None:
             met.add((i, earlier, value))
     return met
 
 
-def _across(
-    rows: list[Cells], column: int, size: int, partners: Sequence[int], needed: set[Requirement]
-) -> None:
+def _across(rows: list[Cells], column: _Column, needed: set[Requirement]) -> None:
     """IPOG's horizontal growth: each row in turn takes the value that meets the most requirements
     still open, a tie going to the value used least so far in the column and then to the one
     declared first, so the array is the same on every run and on every machine."""
-    used = [0] * size
+    used = [0] * column.size
     for row in rows:
         best = max(
-            range(size),
-            key=lambda v: (len(_met(row, column, v, partners) & needed), -used[v], -v),
+            range(column.size),
+            key=lambda v: (len(_met(row, column, v) & needed), -used[v], -v),
         )
-        row[column] = best
+        row[column.index] = best
         used[best] += 1
-        needed -= _met(row, column, best, partners)
+        needed -= _met(row, column, best)
 
 
-def _redundant(rows: list[Cells], row: Cells, column: int, partners: Sequence[int]) -> bool:
+def _redundant(rows: list[Cells], row: Cells, column: _Column) -> bool:
     """Whether every requirement this row's cell in the column meets is met by another row too, so
     the cell may take another value and the array lose nothing."""
-    value = row[column]
+    value = row[column.index]
     if value is None:
         return True
     others: set[Requirement] = set()
     for other in rows:
-        cell = other[column]
+        cell = other[column.index]
         if other is not row and cell is not None:
-            others |= _met(other, column, cell, partners)
-    return _met(row, column, value, partners) <= others
+            others |= _met(other, column, cell)
+    return _met(row, column, value) <= others
 
 
-def _down(
-    rows: list[Cells], column: int, partners: Sequence[int], needed: set[Requirement], width: int
-) -> None:
+def _into_free_cell(rows: list[Cells], column: _Column, requirement: Requirement) -> Cells | None:
+    """The first row whose column already holds the value and whose earlier cell is still free,
+    that cell then taking the earlier value; None for a requirement of one value alone."""
+    i, a, b = requirement
+    if i < 0:
+        return None
+    row = next((r for r in rows if r[column.index] == b and r[i] is None), None)
+    if row is not None:
+        row[i] = a
+    return row
+
+
+def _into_spare_cell(rows: list[Cells], column: _Column, requirement: Requirement) -> Cells | None:
+    """The first row that holds the earlier value, if any is asked for, and whose cell in the
+    column meets nothing no other row meets, that cell then taking the value."""
+    i, a, b = requirement
+    row = next(
+        (r for r in rows if (i < 0 or r[i] == a) and _redundant(rows, r, column)),
+        None,
+    )
+    if row is not None:
+        row[column.index] = b
+    return row
+
+
+def _into_new_row(
+    rows: list[Cells], column: _Column, requirement: Requirement, width: int
+) -> Cells:
+    """A new row of free cells but the column's value and, if one is asked for, the earlier one."""
+    i, a, b = requirement
+    row: Cells = [None] * width
+    row[column.index] = b
+    if i >= 0:
+        row[i] = a
+    rows.append(row)
+    return row
+
+
+def _down(rows: list[Cells], column: _Column, needed: set[Requirement], width: int) -> None:
     """IPOG's vertical growth: each requirement the rows left open goes into a row whose earlier
     cell is still free and whose column holds the value, else into a row whose cell in the column
     meets nothing no other row meets, else into a new row of free cells; the second is what lets
     the strict array close in as few rows as any array can have."""
-    for i, a, b in sorted(needed):
-        if (i, a, b) not in needed:
+    for requirement in sorted(needed):
+        if requirement not in needed:
             continue
-        row = None
-        if i >= 0:
-            row = next((r for r in rows if r[column] == b and r[i] is None), None)
-            if row is not None:
-                row[i] = a
+        row = _into_free_cell(rows, column, requirement)
         if row is None:
-            row = next(
-                (r for r in rows if (i < 0 or r[i] == a) and _redundant(rows, r, column, partners)),
-                None,
-            )
-            if row is not None:
-                row[column] = b
+            row = _into_spare_cell(rows, column, requirement)
         if row is None:
-            row = [None] * width
-            row[column] = b
-            if i >= 0:
-                row[i] = a
-            rows.append(row)
-        needed -= _met(row, column, b, partners)
+            row = _into_new_row(rows, column, requirement, width)
+        needed -= _met(row, column, requirement[2])
 
 
 def _fill(rows: list[Cells], sizes: Sequence[int]) -> None:
@@ -633,27 +678,31 @@ def _covering(
     if width > 1 and 0 in partners[1]:
         rows = [[a, b] + [None] * (width - 2) for a in range(sizes[0]) for b in range(sizes[1])]
         first = 2
-    for column in range(first, width):
-        needed = _needed(sizes, partners[column], column)
-        _across(rows, column, sizes[column], partners[column], needed)
-        _down(rows, column, partners[column], needed, width)
+    for index in range(first, width):
+        column = _Column(index, sizes[index], tuple(partners[index]))
+        needed = _needed(sizes, column)
+        _across(rows, column, needed)
+        _down(rows, column, needed, width)
     _fill(rows, sizes)
     return [tuple(factors[c][1][v] for c, v in enumerate(row) if v is not None) for row in rows]
 
 
-def _canonical(blocks: Blocks, size: int, weights: str | None, init: str | None) -> str:
+def _canonical(blocks: Blocks, size: int, start: _Start) -> str:
     """A row's configuration as one text: what its slug is the hash of."""
-    record = {"blocks": as_record(blocks), "size": size, "weights": weights, "init": init}
+    record = {
+        "blocks": as_record(blocks),
+        "size": size,
+        "weights": start.weights,
+        "init": start.init,
+    }
     return json.dumps(record, sort_keys=True, separators=(",", ":"))
 
 
-def _row(
-    role: str, blocks: Blocks, size: int, weights: str | None = None, init: str | None = None
-) -> Row:
+def _row(role: str, blocks: Blocks, size: int, start: _Start = FROM_SCRATCH) -> Row:
     """A plan's row with its slug: the architecture, the size and the first 8 hex of the hash of
     its configuration, after its role unless it is a cover row, so the slug follows from the
     configuration alone and reordering the rows renames none of them."""
-    digest = hashlib.sha256(_canonical(blocks, size, weights, init).encode("ascii")).hexdigest()
+    digest = hashlib.sha256(_canonical(blocks, size, start).encode("ascii")).hexdigest()
     prefix = "" if role == "cover" else f"{role}-"
     slug = f"{prefix}{blocks.architecture}-{size}px-{digest[:8]}"
     return {
@@ -661,8 +710,8 @@ def _row(
         "slug": slug,
         "blocks": blocks,
         "size": size,
-        "weights": weights,
-        "init": init,
+        "weights": start.weights,
+        "init": start.init,
     }
 
 
@@ -739,9 +788,14 @@ def _route_rows(parent: Row) -> list[Row]:
     base, size, init = parent["blocks"], parent["size"], parent["slug"]
     other = next(name for name in ARCHITECTURE if name != base.architecture)
     return [
-        _row("imagenet", replace(DEFAULT, normalise="imagenet"), 64, weights=DEFAULT.architecture),
-        _row("init", base, size, init=init),
-        _row("init", replace(base, prior="level-map", prior_weight=0.5), size, init=init),
+        _row(
+            "imagenet",
+            replace(DEFAULT, normalise="imagenet"),
+            64,
+            _Start(weights=DEFAULT.architecture),
+        ),
+        _row("init", base, size, _Start(init=init)),
+        _row("init", replace(base, prior="level-map", prior_weight=0.5), size, _Start(init=init)),
         _row(
             "refuse", replace(base, samples="drop-sources", sources=(LABELLED,), per_person=0), size
         ),
@@ -750,8 +804,8 @@ def _route_rows(parent: Row) -> list[Row]:
             replace(base, samples="only-sources", sources=(UNLABELLED,), per_person=0),
             size,
         ),
-        _row("refuse", replace(base, architecture=other), size, init=init),
-        _row("refuse", base, size, weights=base.architecture, init=init),
+        _row("refuse", replace(base, architecture=other), size, _Start(init=init)),
+        _row("refuse", base, size, _Start(weights=base.architecture, init=init)),
     ]
 
 
@@ -786,24 +840,38 @@ def _holds(
     return singles and met
 
 
+def _halves(rows: Sequence[Row], strict: bool) -> list[list[Row]]:
+    """The cover rows the promise is kept in: all of them when strict, else each prior's half."""
+    cover_rows = [row for row in rows if row["role"] == "cover"]
+    if strict:
+        return [cover_rows]
+    return [[row for row in cover_rows if row["blocks"].prior == prior] for prior in PRIOR]
+
+
+def _priors_dropped(group: Sequence[Row], strict: bool) -> set[str]:
+    """The priors a group needs a dropping row for: every prior when strict, else its half's own,
+    and the prior off for a half with no row, which then holds none and fails."""
+    if strict:
+        return set(PRIOR)
+    if not group:
+        return {"none"}
+    return {group[0]["blocks"].prior}
+
+
+def _whole(group: Sequence[Row], strict: bool) -> bool:
+    """One group's promise: every option and pair among its rows whose cut trains, and a dropping
+    row for each prior it needs one for."""
+    training = [row for row in group if row["blocks"].samples in TRAINING_CUTS]
+    dropping = {row["blocks"].prior for row in group if row["blocks"].samples == "drop-sources"}
+    holds = _holds(training, _factors(strict), _pairs(strict))
+    return holds and dropping == _priors_dropped(group, strict)
+
+
 def _covered(rows: Sequence[Row], strict: bool) -> bool:
     """The cover's promise: in each half, among the rows whose cut trains, every option of every
     part and every pair asked for, and a row with the cut that does not; strict, every pair of
     values of every two parts, the prior among them, and a dropping row for each prior."""
-    cover_rows = [row for row in rows if row["role"] == "cover"]
-    groups = (
-        [cover_rows]
-        if strict
-        else [[row for row in cover_rows if row["blocks"].prior == prior] for prior in PRIOR]
-    )
-
-    def whole(group: list[Row]) -> bool:
-        training = [row for row in group if row["blocks"].samples in TRAINING_CUTS]
-        dropping = {row["blocks"].prior for row in group if row["blocks"].samples == "drop-sources"}
-        priors = set(PRIOR) if strict else {group[0]["blocks"].prior} if group else {"none"}
-        return _holds(training, _factors(strict), _pairs(strict)) and dropping == priors
-
-    return all(whole(group) for group in groups)
+    return all(_whole(group, strict) for group in _halves(rows, strict))
 
 
 def _routes_follow(rows: Sequence[Row]) -> bool:
@@ -889,4 +957,6 @@ def trials() -> list[Row]:
         (replace(strong, sampler="balanced", select="balanced-accuracy"), 64),
         (replace(tuned, sampler="balanced", select="balanced-accuracy"), 64),
     )
-    return [_row("trial", blocks, size, weights=blocks.architecture) for blocks, size in arms]
+    return [
+        _row("trial", blocks, size, _Start(weights=blocks.architecture)) for blocks, size in arms
+    ]
