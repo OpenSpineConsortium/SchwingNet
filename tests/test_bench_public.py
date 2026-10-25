@@ -12,6 +12,11 @@ import tempfile
 import unittest
 from pathlib import Path
 
+try:
+    import numpy
+except ImportError:
+    numpy = None
+
 ROOT = Path(__file__).resolve().parent.parent
 SPEC = importlib.util.spec_from_file_location("bench_public", ROOT / "tools" / "bench_public.py")
 bench = importlib.util.module_from_spec(SPEC)
@@ -128,6 +133,35 @@ class XvrSummaryTest(unittest.TestCase):
         self.assertEqual(summary["median_mtre_mm"], 0.9)
         self.assertAlmostEqual(summary["submillimetre_share"], 2 / 3)
         self.assertEqual(summary["median_runtime_s"], 8)
+
+
+class Group(dict):
+    """An h5py group as far as deepfluoro_views reads one: keys, and paths through subgroups."""
+
+    def __getitem__(self, path):
+        node = self
+        for part in path.split("/"):
+            node = dict.__getitem__(node, part)
+        return node
+
+
+@unittest.skipIf(numpy is None, "numpy is in the train environment")
+class DeepFluoroViewsTest(unittest.TestCase):
+    def test_a_views_segmentation_is_read_from_its_image_group_or_as_an_array(self):
+        np = numpy
+        labels = np.array([[0, 1], [2, 3]], dtype="uint8")
+        image = Group(pixels=np.ones((2, 2), dtype="float32"))
+        grouped = Group({"dir-mat": np.eye(2), "origin": np.zeros(2), "pixels": labels, "spacing": np.ones(2)})
+        projections = Group({"000": Group(image=image, **{"gt-seg": grouped}),
+                             "001": Group(image=image, **{"gt-seg": labels}),
+                             "002": Group(image=image)})
+        h5 = Group({"17-1882": Group(projections=projections)})
+        views = list(bench.deepfluoro_views(h5))
+        self.assertEqual([(s, v) for s, v, *_ in views], [("subject01", "000"), ("subject01", "001")])
+        for _subject, _view, _pixels, read, rotate in views:
+            self.assertEqual(read.dtype, np.uint8)
+            self.assertTrue((read == labels).all())
+            self.assertFalse(rotate)
 
 
 if __name__ == "__main__":
