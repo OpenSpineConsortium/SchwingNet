@@ -14,10 +14,12 @@ import json
 import os
 import re
 import shutil
+import socket
 import struct
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 import zlib
 from datetime import date
@@ -45,11 +47,19 @@ def png(width, height, seed):
 def write_raw_copies(data_root):
     """Two sources' raw copies as tests/schwingnet/test_chain_stages.py writes one: NIH's films
     by patient and follow-up, and Open-i's by case."""
+    write_nih_raw(data_root)
+    write_open_i_raw(data_root)
+
+
+def write_nih_raw(data_root, patients=4):
     folder = data_root / "nih_chestxray14" / "raw" / "images_001" / "images"
     folder.mkdir(parents=True, exist_ok=True)
-    for patient in range(1, 5):
+    for patient in range(1, patients + 1):
         for follow in range(2):
             (folder / f"{patient:08d}_{follow:03d}.png").write_bytes(png(48, 32, patient * 2 + follow))
+
+
+def write_open_i_raw(data_root):
     folder = data_root / "open_i_chest" / "raw" / "NLMCXR_png"
     folder.mkdir(parents=True, exist_ok=True)
     for case in range(1, 4):
@@ -86,6 +96,26 @@ def launch(words, cwd, env, root):
     return done.returncode, said, done.stdout + done.stderr
 
 
+def start_launch(words, cwd, env, root):
+    """flows/launch.py started and left running, as a job on another node finds it."""
+    return subprocess.Popen([sys.executable, str(LAUNCH), words[0], "--root", str(root), *words[1:]], cwd=cwd, env=env,
+                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+
+
+def finish(process):
+    """A launch started by start_launch, waited for: its exit code, its JSON lines and its output."""
+    out, _ = process.communicate(timeout=TIMEOUT)
+    return process.returncode, [json.loads(line) for line in out.splitlines() if line.startswith("{")], out
+
+
+def wait_for(path):
+    deadline = time.monotonic() + TIMEOUT
+    while not path.exists():
+        if time.monotonic() > deadline:
+            raise AssertionError(f"{path} never came")
+        time.sleep(0.2)
+
+
 def stage(name, cwd, env):
     done = subprocess.run(["bash", str(GRID / name)], cwd=cwd, env=env, capture_output=True, text=True, timeout=TIMEOUT)
     return done.returncode, done.stdout + done.stderr
@@ -98,6 +128,15 @@ def report_of(folder, name, data_root):
     return text.split("\n", 1)[1].replace(str(data_root), "<data root>")
 
 
+def gate_shows(log):
+    """What the gate word status keeps of a failed job's log: the commands grid/gate.sh's printable
+    and log_tail run on it, up to the awk filters, before the masking of what they keep."""
+    script = ('tail -c 65536 | tr "\\r" "\\n" | LC_ALL=C tr -cd "\\11\\12\\40-\\176" | tail -n 400 '
+              '| awk -f "$1/shape-words.awk" -f "$1/log-shapes.awk"')
+    done = subprocess.run(["bash", "-c", script, "shapes", str(GRID)], input=log, capture_output=True, text=True, timeout=60)
+    return done.stdout.splitlines()
+
+
 def card_data(html):
     """What a Metaflow card shows, the base64 JSON its page embeds as window.__MF_DATA__[id]."""
     found = re.findall(r'__MF_DATA__\["[^"]+"\] = "([A-Za-z0-9+/=]+)"', html)
@@ -106,12 +145,15 @@ def card_data(html):
 
 def shards_of(data_root):
     """Every file under each source's shards/, staging folders and reuse notes aside, with its
-    bytes, the data root named the same wherever INGEST.json records it."""
+    bytes, the data root named the same wherever INGEST.json records it, and so is INGEST.json's
+    reuse key (#260), which hashes the bank's listing with every file's modification time, so two
+    banks of the same frames made a second apart differ in it alone."""
     found = {}
     for path in sorted(data_root.glob("*/shards/**/*")):
         relative = path.relative_to(data_root)
         if path.is_file() and not any(part.startswith(".") for part in relative.parts):
-            found[str(relative)] = path.read_bytes().replace(str(data_root).encode(), b"<data root>")
+            data = path.read_bytes().replace(str(data_root).encode(), b"<data root>")
+            found[str(relative)] = re.sub(rb'"reuse_key": "[0-9a-f]{64}"', b'"reuse_key": "<reuse key>"', data)
     return found
 
 
@@ -139,6 +181,24 @@ if tool == "ingest.py" and source == os.environ.get("FLOW_TEST_KILL") and not ma
             break
         pid = int(Path(f"/proc/{{pid}}/stat").read_text().rsplit(")", 1)[1].split()[1])
     sys.exit(137)
+os.execv(sys.executable, [sys.executable, *args])
+'''
+
+# PYDRV for the filter test, named pydrv.py so its frames have a .py file as the tools' frames do:
+# the bank tool's run on NIH's raw copy raises with a value in its message, as a tool's crash can.
+CRASHING_PYDRV = '''#!{python}
+import os
+import sys
+
+args = sys.argv[1:]
+
+
+def read_the_frames(raw):
+    raise ValueError(f"no frame under {{raw}} for person 12345678")
+
+
+if args and args[0].endswith("bank.py") and "nih_chestxray14" in " ".join(args):
+    read_the_frames(args[args.index("--raw") + 1])
 os.execv(sys.executable, [sys.executable, *args])
 '''
 
@@ -222,43 +282,78 @@ class BankFlowTest(unittest.TestCase):
         self.assertEqual(len(list((flow_root / "_catalog" / "checked").iterdir())), 1)
         self.assertTrue((flow_root / "_catalog" / "BUILD.lock").exists())
 
+    def test_a_failed_bank_flows_log_keeps_its_rc_line_and_traceback_through_the_gates_filter(self):
+        banks = self.tmp / "banks"
+        write_banks(banks)
+        wrapper = self.tmp / "pydrv.py"
+        wrapper.write_text(CRASHING_PYDRV.format(python=sys.executable), encoding="utf-8")
+        wrapper.chmod(0o755)
+        flow_root = self.tmp / "flow"
+        write_raw_copies(flow_root)
+        code, said, out = launch(["bank", "--", "--data-root", str(flow_root), "--banks", str(banks)], self.tmp / "logs-flow",
+                                 base_env(PYDRV=str(wrapper)), self.root)
+        self.assertEqual(code, 1, out)
+        # every line the stage printed reached the log behind Metaflow's prefix, its indent stripped
+        self.assertRegex(out, r"(?m)^[0-9-]+ [0-9:.]+ \[[0-9]+/end/[0-9]+ \(pid [0-9]+\)\] XR_BANK_RC=1 ")
+        self.assertRegex(out, r'(?m)\] File "[^"]*pydrv\.py", line [0-9]+, in read_the_frames$')
+        kept = gate_shows(out)
+        self.assertRegex(kept[-2], r"^XR_BANK_RC=1 [0-9-]+ [0-9:]+$", kept)
+        self.assertIn("Traceback (most recent call last):", kept)
+        self.assertTrue(any(re.fullmatch(r'  File "[^"]*/pydrv\.py", line [0-9]+, in read_the_frames', line) for line in kept), kept)
+        self.assertIn("ValueError: <message withheld>", kept)
+        self.assertIn("== nih_chestxray14", kept)
+        self.assertFalse(any("12345678" in line or str(flow_root) in line for line in kept), kept)
+
+    def launch_logged(self, words, n, kill="open_i_chest"):
+        """A launch through the kill test's PYDRV, which kills the task of the first ingest of
+        KILL while no earlier launch of the test has killed one: its result and its tool calls."""
+        wrapper = self.tmp / "pydrv"
+        wrapper.write_text(PYDRV_WRAPPER.format(python=sys.executable), encoding="utf-8")
+        wrapper.chmod(0o755)
+        calls = self.tmp / f"calls-{n}"
+        calls.write_text("", encoding="utf-8")
+        env = base_env(PYDRV=str(wrapper), FLOW_TEST_CALLS=str(calls), FLOW_TEST_MARKER=str(self.tmp / "killed"), FLOW_TEST_KILL=kill)
+        result = launch(words, self.tmp / "logs-flow", env, self.root)
+        return (*result, calls.read_text(encoding="utf-8").splitlines())
+
     def test_a_kill_mid_ingest_resumes_there_with_the_banks_cloned_and_a_later_launch_runs_anew(self):
         banks = self.tmp / "banks"
         write_banks(banks)
         code, out = self.direct(self.tmp / "direct", banks)
         self.assertEqual(code, 0, out)
-        wrapper = self.tmp / "pydrv"
-        wrapper.write_text(PYDRV_WRAPPER.format(python=sys.executable), encoding="utf-8")
-        wrapper.chmod(0o755)
         flow_root = self.tmp / "flow"
         write_raw_copies(flow_root)
         words = ["bank", "--", "--data-root", str(flow_root), "--banks", str(banks)]
 
         def launch_logged(n):
-            calls = self.tmp / f"calls-{n}"
-            calls.write_text("", encoding="utf-8")
-            env = base_env(PYDRV=str(wrapper), FLOW_TEST_CALLS=str(calls), FLOW_TEST_MARKER=str(self.tmp / "killed"),
-                           FLOW_TEST_KILL="open_i_chest")
-            result = launch(words, self.tmp / "logs-flow", env, self.root)
-            return (*result, calls.read_text(encoding="utf-8").splitlines())
+            return self.launch_logged(words, n)
 
         code, said, out, calls = launch_logged(1)
         self.assertNotEqual(code, 0, out)
         self.assertEqual(said[0]["decision"], "run", out)
         self.assertEqual(said[-1]["successful"], False, out)
-        first_run = said[-1]["run"].split("/")[1]
+        first_run, first_key = said[-1]["run"].split("/")[1], said[0]["key"]
         self.assertIn("ingest.py open_i_chest", calls)
         self.assertEqual(sorted(c for c in calls if c.startswith("bank.py")), ["bank.py nih_chestxray14", "bank.py open_i_chest"])
+        # the report says the run was cut short, with what it had done: NIH's line, written as NIH
+        # finished, and start's skipped line, under the time the run began
+        name = "02-bank-ingest-STAGE-REPORT.md"
+        report = (self.tmp / "logs-flow" / "logs" / name).read_text(encoding="utf-8")
+        self.assertEqual([line for line in report.splitlines() if line.startswith("- ")][0][:35], "- nih_chestxray14: nih_chestxray14/")
+        self.assertEqual([line for line in report.splitlines() if line.startswith("- ")][1:],
+                         [f"- vindr_spinexr: skipped, nothing fetched under {flow_root}/vindr_spinexr/raw"])
+        self.assertRegex(report, r"\nNot finished as of [0-9-]+ [0-9:]+: 1 of 2 recipes with a raw copy done; ")
+        self.assertNotIn("Every recipe that had a raw copy", report)
 
-        # the same words again: the newest run with the key did not succeed, so it is resumed,
-        # both banks cloned and the cut ingest run again
+        # the same words again, the raw copies as they were and no date given, so the date the
+        # launcher chose is kept out of the key: the newest run with the key did not succeed, so it
+        # is resumed, both banks cloned and the cut ingest run again
         code, said, out, calls = launch_logged(2)
         self.assertEqual(code, 0, out)
-        self.assertEqual((said[0]["decision"], said[0]["origin"]), ("resume", first_run), out)
+        self.assertEqual((said[0]["decision"], said[0]["origin"], said[0]["key"]), ("resume", first_run, first_key), out)
         self.assertEqual((said[-1]["successful"], said[-1]["verdict"]), (True, 0), out)
         self.assertEqual([c for c in calls if c.startswith("bank.py")], [], calls)
         self.assertIn("ingest.py open_i_chest", calls)
-        name = "02-bank-ingest-STAGE-REPORT.md"
         self.assertEqual(report_of(self.tmp / "logs-flow", name, flow_root), report_of(self.tmp / "logs-direct", name, self.tmp / "direct"))
         self.assertEqual(shards_of(flow_root), shards_of(self.tmp / "direct"))
 
@@ -270,6 +365,83 @@ class BankFlowTest(unittest.TestCase):
                          ["bank.py nih_chestxray14", "bank.py open_i_chest", "ingest.py nih_chestxray14", "ingest.py open_i_chest"])
         self.assertIn("already there", (self.tmp / "logs-flow" / "logs" / name).read_text(encoding="utf-8"))
         self.assertEqual(shards_of(flow_root), shards_of(self.tmp / "direct"))
+
+    def test_a_raw_copy_fetched_since_a_kill_starts_a_new_run_that_banks_it(self):
+        banks = self.tmp / "banks"
+        write_banks(banks)
+        flow_root = self.tmp / "flow"
+        write_nih_raw(flow_root)
+        words = ["bank", "--", "--data-root", str(flow_root), "--banks", str(banks)]
+        code, said, out, calls = self.launch_logged(words, 1, kill="nih_chestxray14")
+        self.assertEqual(said[-1]["successful"], False, out)
+        first_key = said[0]["key"]
+        # cut before any recipe was done: the report start wrote, its skipped lines and no more
+        report = (self.tmp / "logs-flow" / "logs" / "02-bank-ingest-STAGE-REPORT.md").read_text(encoding="utf-8")
+        self.assertEqual([line for line in report.splitlines() if line.startswith("- ")],
+                         [f"- open_i_chest: skipped, nothing fetched under {flow_root}/open_i_chest/raw",
+                          f"- vindr_spinexr: skipped, nothing fetched under {flow_root}/vindr_spinexr/raw"])
+        self.assertRegex(report, r"^# Stage 2, bank and ingest: [0-9-]+ [0-9:]+\n")
+        self.assertRegex(report, r"\nNot finished as of [0-9-]+ [0-9:]+: 0 of 1 recipes with a raw copy done; ")
+
+        # Open-i's raw copy lands before the job is queued again: the run that listed it as not
+        # fetched is not resumed, so Open-i is banked and ingested and nothing says it was skipped
+        write_open_i_raw(flow_root)
+        code, said, out, calls = self.launch_logged(words, 2)
+        self.assertEqual(code, 0, out)
+        self.assertEqual((said[0]["decision"], said[0]["origin"]), ("run", None), out)
+        self.assertNotEqual(said[0]["key"], first_key)
+        self.assertEqual((said[-1]["successful"], said[-1]["verdict"]), (True, 0), out)
+        self.assertIn("bank.py open_i_chest", calls)
+        report = (self.tmp / "logs-flow" / "logs" / "02-bank-ingest-STAGE-REPORT.md").read_text(encoding="utf-8")
+        self.assertIn("- open_i_chest: open_i_chest/", report)
+        self.assertNotIn("open_i_chest: skipped", report)
+        self.assertTrue(list(flow_root.glob("open_i_chest/shards/*/MANIFEST.json")))
+
+    def test_a_raw_copy_that_grew_since_its_bank_was_made_is_banked_again_not_cloned(self):
+        banks = self.tmp / "banks"
+        write_banks(banks)
+        flow_root = self.tmp / "flow"
+        write_raw_copies(flow_root)
+        words = ["bank", "--", "--data-root", str(flow_root), "--banks", str(banks)]
+        code, said, out, calls = self.launch_logged(words, 1)
+        self.assertEqual(said[-1]["successful"], False, out)
+        self.assertIn("bank.py nih_chestxray14", calls)
+
+        # the cut was at Open-i's ingest, NIH's bank done; NIH's raw copy then grows by a patient
+        write_nih_raw(flow_root, patients=5)
+        code, said, out, calls = self.launch_logged(words, 2)
+        self.assertEqual(code, 0, out)
+        self.assertEqual((said[0]["decision"], said[0]["origin"]), ("run", None), out)
+        self.assertIn("bank.py nih_chestxray14", calls)
+        report = (self.tmp / "logs-flow" / "logs" / "02-bank-ingest-STAGE-REPORT.md").read_text(encoding="utf-8")
+        self.assertRegex(report, r"- nih_chestxray14: nih_chestxray14/[^ ]+ written 10 frames, 5 persons")
+
+    def test_a_date_the_caller_gave_is_in_the_key_so_another_date_runs_anew(self):
+        banks = self.tmp / "banks"
+        write_banks(banks)
+        flow_root = self.tmp / "flow"
+        write_raw_copies(flow_root)
+        words = ["bank", "--", "--data-root", str(flow_root), "--banks", str(banks)]
+        code, said, out, calls = self.launch_logged([*words, "--date", "2026-10-01"], 1)
+        self.assertEqual(said[-1]["successful"], False, out)
+        first_run, first_key = said[-1]["run"].split("/")[1], said[0]["key"]
+
+        # another date asked for is another run, so the ingest the kill cut is made under that
+        # date, where a resume would have cloned the first; NIH's bank, unchanged, is answered by
+        # the ingest's own reuse note (#260) with the shard already there, as the stage's would be
+        code, said, out, calls = self.launch_logged([*words, "--date", "2026-10-20"], 2)
+        self.assertEqual(code, 0, out)
+        self.assertEqual((said[0]["decision"], said[0]["origin"]), ("run", None), out)
+        self.assertNotEqual(said[0]["key"], first_key)
+        self.assertEqual([p.parent.parent.name for p in flow_root.glob("*/shards/2026-10-20-*")], ["open_i_chest"])
+        self.assertEqual([p.parent.parent.name for p in flow_root.glob("*/shards/2026-10-01-*")], ["nih_chestxray14"])
+        report = (self.tmp / "logs-flow" / "logs" / "02-bank-ingest-STAGE-REPORT.md").read_text(encoding="utf-8")
+        self.assertIn("ingest date 2026-10-20;", report)
+
+        # the first date asked for again names the first key, whose cut run is resumed
+        code, said, out, calls = self.launch_logged([*words, "--date", "2026-10-01"], 3)
+        self.assertEqual(code, 0, out)
+        self.assertEqual((said[0]["decision"], said[0]["origin"], said[0]["key"]), ("resume", first_run, first_key), out)
 
     def test_with_no_raw_copy_the_flow_steps_past_the_foreach_to_the_report(self):
         banks = self.tmp / "banks"
@@ -291,6 +463,7 @@ import json
 import os
 import signal
 import sys
+import time
 from pathlib import Path
 
 
@@ -328,6 +501,15 @@ def kill_the_job():
     sys.exit(137)
 
 
+def hold():
+    """A row that lasts until the test lets it end, as a row trains for hours, saying it holds."""
+    Path(os.environ["FLOW_TEST_HELD"]).write_text("", encoding="utf-8")
+    for _ in range(3000):
+        if Path(os.environ["FLOW_TEST_RELEASE"]).exists():
+            return
+        time.sleep(0.2)
+
+
 def prepare():
     plan = json.loads(Path(value("--plan")).read_text(encoding="utf-8"))
     state = Path(value("--out")) / plan["plan"] / "state"
@@ -349,6 +531,8 @@ def row():
     if slug == os.environ.get("FLOW_TEST_KILL") and not marker.exists():
         marker.write_text("", encoding="utf-8")
         kill_the_job()
+    if slug == os.environ.get("FLOW_TEST_HOLD"):
+        hold()
     entry = {"slug": slug, "outcome": "ran", "code": None, "matched": True, "predicted": "runs", "role": "cover",
              "validation_accuracy": 0.75, "test_accuracy": 0.5, "wandb": []}
     write(state / "rows" / f"{slug}.json", entry)
@@ -390,8 +574,9 @@ class SweepFlowTest(unittest.TestCase):
         self.root, self.out, self.work = self.tmp / "metaflow", self.tmp / "smoke", self.tmp / "work"
         self.work.mkdir()
 
-    def sweep(self, plan, n, **extra):
-        """One launch of a plan whose rows the stub runs, with its own call log."""
+    def sweep_launch(self, plan, n, **extra):
+        """The words and the environment of a launch of a plan whose rows the stub runs, and the
+        call log of its own the stub writes."""
         plan_file = self.tmp / f"{plan['plan']}.json"
         plan_file.write_text(json.dumps(plan), encoding="utf-8")
         calls = self.tmp / f"calls-{plan['plan']}-{n}"
@@ -399,8 +584,74 @@ class SweepFlowTest(unittest.TestCase):
         env = base_env(SCHWINGNET=str(self.repo), FLOW_TEST_CALLS=str(calls), FLOW_TEST_MARKER=str(self.tmp / "killed"), **extra)
         words = ["sweep", "--", "--plan", str(plan_file), "--catalog", str(self.tmp / "catalog.sqlite"), "--out", str(self.out),
                  "--environment", "train-cpu"]
+        return words, env, calls
+
+    def sweep(self, plan, n, **extra):
+        """One launch of a plan whose rows the stub runs, with its own call log."""
+        words, env, calls = self.sweep_launch(plan, n, **extra)
         result = launch(words, self.work, env, self.root)
         return (*result, calls.read_text(encoding="utf-8").splitlines())
+
+    def test_a_second_launch_never_resumes_a_live_run_and_clones_none_of_its_rows(self):
+        plan = {"plan": "live", "first": ["a", "b", "c"], "second": ["d"]}
+        held, release = self.tmp / "held", self.tmp / "release"
+        words, env, _ = self.sweep_launch(plan, 1, FLOW_TEST_HOLD="c", FLOW_TEST_HELD=str(held), FLOW_TEST_RELEASE=str(release))
+        first = start_launch(words, self.work, env, self.root)
+        self.addCleanup(first.kill)
+        self.addCleanup(release.touch)
+        wait_for(held)
+
+        # the first run is live, rows a and b done and c training: a second launch of the same
+        # words starts a run of its own, as a resume would clone a and b from a run still going
+        code, said, out, calls = self.sweep(plan, 2)
+        self.assertEqual(code, 0, out)
+        self.assertEqual((said[0]["decision"], said[0]["origin"]), ("run", None), out)
+        self.assertEqual(calls, ["prepare", "row a", "row b", "row c", "row d", "results"])
+        release.touch()
+        code, first_said, first_out = finish(first)
+        self.assertEqual((code, first_said[-1]["successful"]), (0, True), first_out)
+        self.assertEqual(said[0]["live"], first_said[-1]["run"].split("/")[1], out)
+
+    def test_a_beat_left_by_a_launcher_that_is_gone_keeps_no_run_from_being_resumed(self):
+        plan = {"plan": "gone", "first": ["a", "b"], "second": []}
+        code, said, out, calls = self.sweep(plan, 1, FLOW_TEST_KILL="b")
+        self.assertEqual(code, 137, out)
+        first_run, key = said[-1]["run"].split("/")[1], said[0]["key"]
+        beats = self.root / "launches" / "SweepFlow" / key
+        self.assertEqual(list(beats.glob("*.json")), [], "the launcher took its beat away as its flow ended")
+
+        # beats a killed job could leave: one on this host by a process that is gone, one of this
+        # very Slurm job before Slurm queued it again, and one from another node too long ago
+        gone = subprocess.Popen(["true"])
+        gone.wait()
+        now = time.time()
+        records = {"here": {"host": socket.gethostname(), "pid": gone.pid, "slurm_job": "", "beat": now},
+                   "requeued": {"host": "node7", "pid": 4, "slurm_job": "4242", "beat": now},
+                   "old": {"host": "node8", "pid": 5, "slurm_job": "4243", "beat": now - 3600}}
+        beats.mkdir(parents=True, exist_ok=True)
+        for name, record in records.items():
+            (beats / f"{name}.json").write_text(json.dumps({**record, "key": key, "run": first_run}), encoding="utf-8")
+        code, said, out, calls = self.sweep(plan, 2, SLURM_JOB_ID="4242")
+        self.assertEqual(code, 0, out)
+        self.assertEqual((said[0]["decision"], said[0]["origin"], said[0].get("live")), ("resume", first_run, None), out)
+        self.assertEqual(calls, ["row b", "results"])
+
+    def test_a_fresh_beat_naming_a_run_the_listing_lacks_keeps_the_newest_from_being_resumed(self):
+        plan = {"plan": "race", "first": ["a", "b"], "second": []}
+        code, said, out, calls = self.sweep(plan, 1, FLOW_TEST_KILL="b")
+        self.assertEqual(code, 137, out)
+        first_run, key = said[-1]["run"].split("/")[1], said[0]["key"]
+
+        # a launch on another node that began resuming the cut run after this one listed the
+        # runs and before it read the beats: its beat names a run this listing lacks
+        beats = self.root / "launches" / "SweepFlow" / key
+        beats.mkdir(parents=True, exist_ok=True)
+        record = {"key": key, "run": "9" + first_run, "host": "node9", "pid": 6, "slurm_job": "4244", "beat": time.time()}
+        (beats / "node9-6.json").write_text(json.dumps(record), encoding="utf-8")
+        code, said, out, calls = self.sweep(plan, 2)
+        self.assertEqual(code, 0, out)
+        self.assertEqual((said[0]["decision"], said[0]["origin"], said[0]["live"]), ("run", None, first_run), out)
+        self.assertEqual(calls, ["prepare", "row a", "row b", "results"])
 
     def test_a_sweep_killed_mid_row_resumes_that_row_and_the_warm_starts_alone(self):
         plan = {"plan": "smoke", "first": ["a", "b", "c"], "second": ["d"]}
@@ -441,6 +692,122 @@ class SweepFlowTest(unittest.TestCase):
         self.assertEqual(code, 0, out)
         self.assertEqual((said[-1]["successful"], said[-1]["verdict"]), (True, 0), out)
         self.assertEqual(calls, ["prepare", "results"])
+
+
+# A failed stage 2 job's log under the launcher, in the shape Metaflow 2.19.39 gave it (measured
+# 2026-10-25): every line a task printed behind "<date> <time> [<run>/<step>/<task> (pid N)] " and
+# stripped of its own leading blanks, so a traceback's frames and source lines lost their indent.
+FLOW_LOG = """{"decision": "run", "flow": "bank", "key": "68974c7ccabf5595", "origin": null, "root": "/rs/x/metaflow"}
+2026-10-25 04:29:45.289 Workflow starting (run-id 1792902585286456):
+2026-10-25 04:29:46.714 [1792902585286456/bank/3 (pid 21494)] Task is starting.
+2026-10-25 04:29:47.553 [1792902585286456/bank/3 (pid 21494)] XR_BANK start 2026-10-25 04:29:47 on node12 job 4242 commit f16efe8
+2026-10-25 04:29:49.050 [1792902585286456/bank/3 (pid 21494)] == nih_chestxray14: 2026-10-25 04:29:47
+2026-10-25 04:29:49.050 [1792902585286456/bank/3 (pid 21494)] Traceback (most recent call last):
+2026-10-25 04:29:49.050 [1792902585286456/bank/3 (pid 21494)] File "/home/u/SchwingNet/tools/bank.py", line 761, in main
+2026-10-25 04:29:49.050 [1792902585286456/bank/3 (pid 21494)] counts = run_once(recipe, raw, bank, args.workers)
+2026-10-25 04:29:49.050 [1792902585286456/bank/3 (pid 21494)] ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-10-25 04:29:49.050 [1792902585286456/bank/3 (pid 21494)] File "/home/u/SchwingNet/tools/bank.py", line 512, in keys_of
+2026-10-25 04:29:49.050 [1792902585286456/bank/3 (pid 21494)] ValueError: no frame under /rs/data/nih/raw/00012345 for person 12345678
+2026-10-25 04:29:49.050 [1792902585286456/bank/3 (pid 21494)] - nih_chestxray14: bank refused: ValueError: no frame for person 12345678
+2026-10-25 04:29:49.050 [1792902585286456/bank/3 (pid 21494)]
+2026-10-25 04:29:49.050 [1792902585286456/bank/3 (pid 21494)]\x20
+2026-10-25 04:29:49.051 [1792902585286456/bank/3 (pid 21494)] - x: 2026-10-25 04:29:49.050 [1792902585286456/bank/3 (pid 21494)] XR_BANK_RC=0 2026-10-25 04:29:58
+2026-10-25 04:29:59.472 [1792902585286456/end/8 (pid 25629)] XR_BANK_RC=1 2026-10-25 04:29:58
+2026-10-25 04:29:59.474 Done!
+{"flow": "bank", "run": "BankFlow/1792902585286456", "successful": true, "verdict": 1}
+2026-10-25 05:00:01.002 [1792902599999999/catalog/2 (pid 7)] XR_CATALOG start 2026-10-25 05:00:01 on node12 job 4243
+2026-10-25 05:00:01.010 [1792902599999999/catalog/2 (pid 7)] XR_CATALOG lock 2026-10-25 05:00:01
+2026-10-25 05:00:09.010 [1792902599999999/catalog/2 (pid 7)] XR_CATALOG_RC=1 2026-10-25 05:00:09
+Traceback (most recent call last):
+  File "/home/u/SchwingNet/flows/launch.py", line 256, in <module>
+    sys.exit(main())
+"""
+
+
+class GateFilterTest(unittest.TestCase):
+    """grid/log-shapes.awk on a flow's log, as the gate word status runs it (#252); plain bash and
+    awk, so it runs wherever the other tests do."""
+
+    def test_the_filter_reads_a_flows_lines_behind_metaflows_prefix_and_no_more(self):
+        kept = gate_shows(FLOW_LOG)
+        self.assertEqual(kept[:-1], [
+            "XR_BANK start 2026-10-25 04:29:47 on node12 job 4242",
+            "== nih_chestxray14",
+            "Traceback (most recent call last):",
+            '  File "/home/u/SchwingNet/tools/bank.py", line 761, in main',
+            "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+            '  File "/home/u/SchwingNet/tools/bank.py", line 512, in keys_of',
+            "ValueError: <message withheld>",
+            "XR_BANK_RC=1 2026-10-25 04:29:58",
+            "XR_CATALOG start 2026-10-25 05:00:01 on node12 job 4243",
+            "XR_CATALOG lock 2026-10-25 05:00:01",
+            "XR_CATALOG_RC=1 2026-10-25 05:00:09",
+            "Traceback (most recent call last):",
+            '  File "/home/u/SchwingNet/flows/launch.py", line 256, in <module>',
+            "    sys.exit(main())",
+        ])
+        # the source line under the prefix lost its indent, so nothing tells it from any other line
+        # the task printed, and it is withheld with the rest; a prefix's text inside a line is no prefix
+        self.assertEqual(kept[-1], "#withheld 8")
+        self.assertFalse(any("12345678" in line or "run_once" in line for line in kept), kept)
+
+
+# PYDRV for the two-launcher test: a build logs how many manifests it was given, and the first
+# holds stage 3's build lock until the release file is there, as a long build does.
+CATALOG_PYDRV = """#!/bin/bash
+[ "$2" = split-check ] && { echo '{"disjoint": true}'; exit 0; }
+[ "$2" = build ] || exit 0
+printf '%s\\n' "$@" | grep -c -- '^--manifest$' >> "$FLOW_TEST_BUILDS"
+if [ "$(wc -l < "$FLOW_TEST_BUILDS")" -eq 1 ]; then
+  : > "$FLOW_TEST_HELD"
+  for _ in $(seq 3000); do [ -e "$FLOW_TEST_RELEASE" ] && break; sleep 0.2; done
+fi
+echo '{"file": "catalog-000001-0123456789ab.sqlite", "new": true, "version": 1}'
+"""
+
+
+@unittest.skipIf(MISSING, f"needs the train environment ({', '.join(MISSING)} missing)")
+class CatalogFlowTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
+        self.root, self.work, self.data = self.tmp / "metaflow", self.tmp / "work", self.tmp / "data"
+        self.work.mkdir()
+
+    def shard(self, name):
+        folder = self.data / "carmlspine" / "shards" / name
+        folder.mkdir(parents=True)
+        (folder / "MANIFEST.json").write_text("{}\n", encoding="utf-8")
+
+    def test_a_second_catalog_job_never_resumes_a_live_build_and_waits_on_its_lock(self):
+        self.shard("a")
+        pydrv = self.tmp / "pydrv"
+        pydrv.write_text(CATALOG_PYDRV, encoding="utf-8")
+        pydrv.chmod(0o755)
+        builds, held, release = self.tmp / "builds", self.tmp / "held", self.tmp / "release"
+        env = base_env(PYDRV=str(pydrv), FLOW_TEST_BUILDS=str(builds), FLOW_TEST_HELD=str(held), FLOW_TEST_RELEASE=str(release),
+                       BUILD_LOCK_WAIT="600", TMPDIR_OVERRIDE=str(self.tmp / "t"))
+        words = ["catalog", "--", "--data-root", str(self.data)]
+        first = start_launch(words, self.work, env, self.root)
+        self.addCleanup(first.kill)
+        self.addCleanup(release.touch)
+        wait_for(held)
+
+        # a shard lands while the first build, which listed one manifest, still holds the lock; a
+        # second job of the same words starts a run of its own, which waits on the lock and then
+        # builds with both, where a resume of the live run would carry its build on
+        self.shard("b")
+        second = start_launch(words, self.work, env, self.root)
+        self.addCleanup(second.kill)
+        decision = json.loads(second.stdout.readline())
+        self.assertEqual((decision["decision"], decision["origin"]), ("run", None), decision)
+        release.touch()
+        code, first_said, first_out = finish(first)
+        self.assertEqual((code, first_said[-1]["verdict"]), (0, 0), first_out)
+        code, said, out = finish(second)
+        self.assertEqual((code, said[-1]["verdict"]), (0, 0), out)
+        self.assertEqual(decision["live"], first_said[-1]["run"].split("/")[1])
+        self.assertEqual(builds.read_text(encoding="utf-8").split(), ["1", "2"])
 
 
 # Logs a call of the launcher only; the stage's own small reads of a recipe print nothing.

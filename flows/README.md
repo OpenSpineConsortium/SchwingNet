@@ -14,9 +14,13 @@ Metaflow's own resume rather than by anything written around it.
   bank, a `bank` step and an `ingest` step in each, each running the stage script for that one
   recipe and that half of its loop body (PART=bank, PART=ingest), a join, and end, which writes
   logs/02-bank-ingest-STAGE-REPORT.md under the launcher's working folder in the stage's words
-  and prints it with `XR_BANK_RC=<0|1>`. A refusal of the bank or the ingest tool is the stage's
-  own report line, recorded, not raised, as before. A kill mid-ingest resumes at that recipe's
-  ingest with its bank cloned.
+  and prints it with `XR_BANK_RC=<0|1>`. Until then the report says the run is not finished:
+  start writes its head, the skipped lines and a "Not finished as of <time>: <n> of <m> recipes
+  with a raw copy done" line, and each recipe's ingest step rewrites it once the recipe is done,
+  so the gate's status shows a run in progress, or one cut short, as the stage's report did by
+  stopping short. A refusal of the bank or the ingest tool is the stage's own report line,
+  recorded, not raised, as before. A kill mid-ingest resumes at that recipe's ingest with its
+  bank cloned.
 - `catalog.py`, CatalogFlow: stage 3, the catalog's build and its split check, in one step that
   runs grid/03-catalog.sbatch whole, since the build lock is held from the listing of the
   manifests to the marker (issue #80); a kill reruns it whole, which costs under a minute. Its
@@ -43,20 +47,43 @@ a join step, so a switch lands on a plain step: BankFlow's end, SweepFlow's midd
 
     python flows/launch.py {bank|catalog|sweep} [--max-workers N] [--root DIR] -- <flow parameters>
 
-The launcher names a launch by a key, the first 16 hex of the sha256 of the flow, the commit
-and the flow's parameters as given, less bank's --date (schwingnet.pipeline.run_key), and every
-run it starts or resumes carries the tags `key:<key>` and `commit:<7>`. It lists the runs of
-the flow carrying the key, newest first, and the newest decides (schwingnet.pipeline.decide): a
-newest run that did not succeed, killed or failed, is resumed (`resume --origin-run-id`, with
-the same --max-workers and no parameters, which resume clones); else a new run starts. A job
-queued again with the same words therefore continues where the killed one stopped; a change of
-code or of words starts afresh, and so does a launch after a success, where the tools' own
+The launcher names a launch by a key, the first 16 hex of the sha256 of the flow, the commit,
+the flow's parameters as given and, for bank, a line per recipe start would list with the
+recipe's bytes and its raw folder's state, every file by path, size and modification time as
+tools/bank.py's BANK.json stamp lists it (flows/bank.py's key_reads; schwingnet.pipeline.run_key),
+since a resume clones start's listing of what has a raw copy and every bank step that finished:
+a raw copy fetched, grown or changed since the cut, or a recipe edited, names another key and so
+a new run, while raw copies as they were resume. Every run it starts or resumes carries the
+tags `key:<key>` and `commit:<7>`. It lists the runs of the flow carrying the key, newest first,
+and the newest decides (schwingnet.pipeline.decide): a newest run that did not succeed, killed
+or failed, is resumed (`resume --origin-run-id`, with the same --max-workers and no parameters,
+which resume clones); else a new run starts. A job queued again with the same words therefore
+continues where the killed one stopped; a change of code, of words or of a raw copy starts
+afresh, and so does a launch after a success, where the tools' own
 content addressing finds the finished work (an ingest's "already there", a run folder tools/flow.py
-reuses). Bank's ingest date is chosen once per run by the launcher (`--date`, today where the
-words name none) and kept by resume, so a resumed ingest writes the shard its first half meant.
+reuses). Bank's ingest date is the caller's `--date`, in the key like any word, so a job asking
+for another date runs anew under it; where the words name none, the launcher chooses today for a
+new run, after the key is taken, and resume keeps it, so a resumed ingest writes the shard its
+first half meant, on whatever day the job is queued again.
 
-Its first line on stdout is the decision, `{"decision", "flow", "key", "origin", "root"}`, and
-its last `{"flow", "run": "Class/ID", "successful", "verdict"}`; the flow's own output passes
+A run still running is never resumed, since a resume clones what it has done so far, a catalog
+built before the shards that landed since among them. While its flow lasts the launcher keeps a
+heartbeat, <root>/launches/<Flow>/<key>/<host>-<pid>.json, written before the flow starts,
+naming the run within a second of Metaflow's writing its id, rewritten every minute with the
+host, the process and SLURM_JOB_ID, and taken away when the flow ends. The launcher lists the
+runs before it reads the beats, so a live run it lists always has a beat it reads; a newest run
+that a fresh beat names is live, and so is any newest run while a fresh beat names none yet, or
+one the listing lacks, made after it by a launch that may be resuming the newest
+(schwingnet.pipeline.marked_live), and the launch starts a run of its own beside it, as two jobs
+of a stage ran before Metaflow, the stage's own locks ordering what may not overlap: a second
+catalog job waits on BUILD.lock and builds with the shards that landed since. A beat left by a
+launcher killed with its job stops counting once it is 300 s old (LIVE_SECONDS), at once where
+it names this very Slurm job, which Slurm queued again, and at once where it names a process on
+this host that is gone.
+
+Its first line on stdout is the decision, `{"decision", "flow", "key", "live", "origin", "root"}`,
+with `live` the id of a newest run passed over as live, else null, and its last `{"flow", "run":
+"Class/ID", "successful", "verdict"}`; the flow's own output passes
 through between them. It exits with the flow's own code where that is not 0 (128 plus the
 signal where the flow was killed), else with the verdict, so a job's afterok means what it meant
 before Metaflow. It refuses, exit 69, where Metaflow cannot be imported or the datastore's parent
@@ -84,7 +111,9 @@ get_cards found none; METAFLOW_CARD_LOCALROOT set put them under the datastore w
 mf.cards/, where get_cards found none either). The launcher's own folder reaches the flow as
 SCHWINGNET_WORKDIR: the stage reports are written under it, as before, and a relative path
 among the parameters is read from it. BankFlow's per-recipe halves each run in a folder of their
-own, <root>/work/BankFlow/<run>/<recipe>/<half>/, so no half reads another's report.
+own, <root>/work/BankFlow/<run>/<recipe>/<half>/, so no half reads another's report, and each
+recipe done leaves its report lines in <root>/work/BankFlow/<run>/progress/, start's run, which a
+resumed run keeps with start, so the report in progress counts what was done before the cut.
 
 ## Looking at a run
 
