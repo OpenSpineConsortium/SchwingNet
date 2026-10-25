@@ -381,10 +381,49 @@ def write_record(run_dir, record):
 
 
 def append_ledger(path, record, activity, verified):
-    """One row per run in the ledger beside the runs; the header once."""
+    """One more row in a ledger, the header once, the whole text written again beside it and
+    renamed into place (write_whole), so a write cut by a kill or a full volume leaves the ledger
+    as it was, every earlier row with it, where writing it in place would empty it first."""
     path = Path(path)
-    text = path.read_text(encoding="utf-8") if path.is_file() else LEDGER_HEADER + "\n"
-    path.write_text(text + ledger_row(record, activity, verified) + "\n", encoding="utf-8")
+    text = path.read_text(encoding="utf-8") if path.is_file() else ""
+    write_whole(path, ledger_text(text, ledger_row(record, activity, verified)))
+
+
+def ledger_text(text, row):
+    """The ledger's text with one more row: the header first where the text does not begin with
+    it, as a ledger the code before this one cut while writing it was left, and the row on a line
+    of its own."""
+    if not text.startswith(LEDGER_HEADER + "\n"):
+        text = LEDGER_HEADER + "\n" + text
+    if not text.endswith("\n"):
+        text += "\n"
+    return text + row + "\n"
+
+
+@contextlib.contextmanager
+def ledger_held(path):
+    """The ledger beside the runs held by one writer at a time: an exclusive lock on LEDGER.md.lock
+    beside it, waited for, since every row of a sweep's state finishes into one LEDGER.md, side by
+    side where the sweep runs rows together, and each writer reads the ledger and writes it again.
+    The lock is a file of its own, never renamed, since the ledger is renamed into place and a lock
+    on it would be on the file a rename replaces; a writer holds it for one read and one write."""
+    path = Path(path)
+    with path.with_name(path.name + ".lock").open("a+", encoding="utf-8") as handle:
+        fcntl.flock(handle, fcntl.LOCK_EX)
+        yield
+
+
+def add_ledger_row(path, record, activity, verified):
+    """The run's row in the ledger beside the runs, once: under the ledger's lock (ledger_held), so
+    two runs that finish together each find the other's row, and only where the ledger has none
+    for the run. Refused in words where the volume will not take it, the ledger left as it was, and
+    since FINISHED.json is written after it, the next start writes the row."""
+    try:
+        with ledger_held(path):
+            if not ledger_holds(path, record.run_id):
+                append_ledger(path, record, activity, verified)
+    except OSError as error:
+        raise FlowError(f"{path}: the run's row could not be written ({error}); the ledger is kept as it was, and the next start of the run writes the row") from error
 
 
 def ledger_holds(path, run_id):
@@ -614,9 +653,7 @@ def finish(args, run_dir, record, licences):
     ledger has none for the run."""
     activity = f"{record.stage.value} stage, {record.epochs} epochs, seed {record.seed}" + (f", {args.max_frames} crops per part" if args.max_frames else "") + licence_words(licences)
     pushed = push_wandb(run_dir, args.environment)
-    ledger = Path(args.out) / "LEDGER.md"
-    if not ledger_holds(ledger, record.run_id):
-        append_ledger(ledger, record, activity, f"evaluate/results.md from the test part; split-check.json disjoint; {pushed}")
+    add_ledger_row(Path(args.out) / "LEDGER.md", record, activity, f"evaluate/results.md from the test part; split-check.json disjoint; {pushed}")
     print(pushed, file=sys.stderr if "NOT" in pushed else sys.stdout, flush=True)
     report = write_report(run_dir)
     print(report, flush=True)

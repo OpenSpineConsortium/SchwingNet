@@ -21,10 +21,12 @@ beartype or icontract is missing, as under the required check's plain python3.
 """
 
 import contextlib
+import errno
 import hashlib
 import importlib.util
 import io
 import json
+import multiprocessing
 import os
 import re
 import shutil
@@ -133,10 +135,10 @@ class Killed(Exception):
     """What a patched write raises, as a job killed at that write would stop."""
 
 
-def write_cut_short(names, at):
+def write_cut_short(names, at, error=None):
     """Path.write_text made to write half its text to a file of these names and stop, at the
-    at-th write to them, as a full volume or a kill mid-write leaves a file; every other write is
-    the real one."""
+    at-th write to them, as a full volume or a kill mid-write leaves a file, raising error where
+    one is given and Killed otherwise; every other write is the real one."""
     real, seen = Path.write_text, []
 
     def write_half(path, text, *args, **kwargs):
@@ -144,10 +146,26 @@ def write_cut_short(names, at):
             seen.append(path.name)
             if len(seen) == at:
                 real(path, text[: len(text) // 2], *args, **kwargs)
-                raise Killed(f"cut while writing {path.name}")
+                raise error or Killed(f"cut while writing {path.name}")
         return real(path, text, *args, **kwargs)
 
     return mock.patch.object(Path, "write_text", write_half)
+
+
+def legacy_record(rules, started_at):
+    """A run record named by its start, as the records written before configurations were named
+    are, which needs no catalog or code to make: a ledger row's facts and nothing else."""
+    return rules.RunRecord(run_id=rules.run_id(COMMIT, "a" * 64, started_at), code_commit=COMMIT, clean_tree=True,
+                           catalog_version=1, catalog_sha256="a" * 64, split_disjoint=True, stage=rules.Stage.LEVEL,
+                           seed=1, epochs=1, started_at=started_at, mode="local")
+
+
+def write_rows(flow, ledger, records, barrier):
+    """One writer's rows, started with the other writer's at the barrier, as the rows of a sweep
+    run side by side finish into one ledger; the flow's own call, the one finish makes."""
+    barrier.wait()
+    for record in records:
+        flow.add_ledger_row(ledger, record, "a row of a sweep", "by the test")
 
 
 def snapshot(folder):
@@ -435,6 +453,41 @@ class FlowReuseTest(unittest.TestCase):
         self.assertEqual(len(self.ledger_rows()), 2, "one ledger row a run")
         self.assertTrue((self.out / "row-b" / "REPORT.md").is_file() and (self.out / "row-b" / "FINISHED.json").is_file())
 
+    def test_a_ledger_write_cut_by_a_full_volume_keeps_the_rows_before_it_and_the_next_start_writes_its_row(self):
+        rc, lines, err = self.run_flow("--slug", "row-a")
+        self.assertEqual(rc, 0, err)
+        first = self.said(lines)["run_id"]
+        ledger = self.out / "LEDGER.md"
+        before = ledger.read_text(encoding="utf-8")
+        full = OSError(errno.EDQUOT, "Disk quota exceeded")
+        with write_cut_short(("LEDGER.md", "LEDGER.md.tmp"), 1, full):
+            rc, lines, err = self.run_flow("--slug", "row-b", "--seed", "2")
+        self.assertEqual(rc, 1)
+        self.assertIn(f"flow: {ledger}: the run's row could not be written ([Errno {errno.EDQUOT}] Disk quota exceeded)", err)
+        self.assertEqual(ledger.read_text(encoding="utf-8"), before, "the header and the rows before it are kept")
+        self.assertFalse((self.out / "row-b" / "FINISHED.json").exists())
+        rc, lines, err = self.run_flow("--slug", "row-b", "--seed", "2")
+        self.assertEqual((rc, self.said(lines)["reused"]), (0, "evaluated"), err)
+        text = ledger.read_text(encoding="utf-8")
+        self.assertTrue(text.startswith(self.flow.LEDGER_HEADER + "\n"))
+        self.assertEqual([row.split(" | ")[1] for row in self.ledger_rows()], [first, self.said(lines)["run_id"]])
+
+    def test_two_runs_that_finish_together_keep_every_row_and_the_header(self):
+        # The rows of a sweep's state share <state>/LEDGER.md, and flows/launch.py sweep runs rows
+        # side by side under --max-workers; each writer reads the ledger and writes it again.
+        context = multiprocessing.get_context("fork")
+        barrier, ledger, each = context.Barrier(2), self.work / "LEDGER.md", 150
+        rows = [[legacy_record(self.rules, f"2026-10-25T{hour:02d}:{n // 60:02d}:{n % 60:02d}Z") for n in range(each)] for hour in (1, 2)]
+        writers = [context.Process(target=write_rows, args=(self.flow, ledger, records, barrier)) for records in rows]
+        for writer in writers:
+            writer.start()
+        for writer in writers:
+            writer.join(timeout=300)
+        self.assertEqual([writer.exitcode for writer in writers], [0, 0])
+        lines = ledger.read_text(encoding="utf-8").splitlines()
+        self.assertEqual(lines[:2], self.flow.LEDGER_HEADER.splitlines())
+        self.assertEqual(sorted(line.split(" | ")[1] for line in lines[2:]), sorted(r.run_id for records in rows for r in records))
+
     def test_a_start_while_another_start_holds_the_folder_is_refused_and_runs_nothing(self):
         # The v1 driver's start and an experiment asking for version 1's training, whose --hours
         # names no other run, meet in one folder; the second must not train beside the first.
@@ -548,7 +601,7 @@ class FlowReuseTest(unittest.TestCase):
             self.assertEqual(rc, 1, bad)
             self.assertIn("flow: --slug", err)
         self.assertEqual(self.run_flow("--slug", "r" * 80)[0], 0)
-        self.assertEqual(sorted(p.name for p in self.out.iterdir()), ["LEDGER.md", "r" * 80])
+        self.assertEqual(sorted(p.name for p in self.out.iterdir()), ["LEDGER.md", "LEDGER.md.lock", "r" * 80])
 
     def test_a_record_written_before_configurations_were_named_still_validates_in_record(self):
         run = self.work / "old"
