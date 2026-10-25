@@ -36,7 +36,7 @@ Licence: FleXray's weights are non-commercial, and xvr's data are non-commercial
 
 ## 2. The benchmark, as jobs to count
 
-The owner would be asked for three fetches and three GPU jobs. Each job writes RUN.json and a ledger row, gives each number its Wilson interval, and uses the test part of no SchwingNet split for choosing anything. The models run as published, with no tuning.
+The owner gave the word and count for three fetches and three GPU jobs on 2026-10-25 (#287). The gate word `bench <name>` (grid/gate.sh) queues each job once through grid/bench.sbatch and keeps its report, grid/logs/BENCH-<name>.md; tools/bench_public.py scores it. Each number carries its Wilson interval, which is set beside the record's own intervals as each side computed them and never mixed with them (the record's [92.3, 98.4] for 595 of 617 is wider than Wilson's [94.7, 97.6]). Each job and uses the test part of no SchwingNet split for choosing anything. The models run as published, with no tuning.
 
 Fetches, as fetch words added to the owner's list in grid/run-platform-fetch.sh. The hf-token route already reads exact sizes before landing.
 
@@ -50,17 +50,17 @@ GPU jobs, each one Slurm job of class gpu through grid/hpcw.sh. Each runs in a t
 
 1. FleXray zero-shot on C-ArmLSpine.
    - Inputs: the 617 lateral frames of A2.1 and the 631 AP frames of A2.2, flagship member and the ensemble.
-   - Each truth box gets the level whose mask covers most of it, and a body with no mask over half of it counts as undetected.
+   - Each truth box gets the level whose mask covers most of it, and a body that no level's mask, at probability 0.5, covers a quarter of counts as undetected. #287 set the quarter, not the half first written here, before any frame was scored, since a mask drawn on a 256-pixel canvas is thinner at a body's edge than its box (Inferred).
    - Scoring is the reported stack's own: over detected bodies, and again with the undetected counted wrong (A2.6).
    - This is the measurement that settles section 6's contradiction. It tests whether a model trained on renders and real radiographs, asked for levels by channel rather than by prompt, names them from one frame as the reported stack does (96.4 percent lateral, 43.7 percent AP), or fails as FluoroSAM did on the twin (Dice 0.16 to 0.25).
 2. FleXray on DeepFluoro, for the pelvis and femurs.
    - Its paper reports Dice 0.916 there against 0.866 for nnU-Net.
    - Reproducing that number shows our install runs the model as published, so a poor score in job 1 is the model's and not ours.
    - It is also the pelvis row the owner asked for.
-3. xvr on DeepFluoro and Ljubljana.
-   - The aim is to reproduce the median TRE: 1.1 mm on DeepFluoro and about 0.9 mm on Ljubljana, as the PDF tables it from the xvr paper.
-   - Then project the CT's level labels through each recovered Ljubljana pose. That gives up to 90 level boxes of exact truth on real frames, the bank data/sources/ljubljana_2d3d_gs.json says has not been built.
-   - That bank is the first real set where the level truth comes from geometry and not from a reader.
+3. xvr on DeepFluoro.
+   - The aim is to reproduce the median mTRE of 1.1 mm on DeepFluoro's six subjects with xvr's own fine-tuned models, its register arguments and its evaluate.py, at the commit #287 pins.
+   - Ljubljana is not in this job. xvr's Ljubljana is the cerebral angiography set of ten subjects, not the spine 2D-3D-GS this repository holds (section 6), so the spine set has no xvr model to run.
+   - The spine 2D-3D-GS ships gold-standard poses, so its level bank needs no registration at all: the CT's level labels projected through each given pose give up to 90 level boxes of exact truth on real frames, the bank data/sources/ljubljana_2d3d_gs.json says has not been built. That is a follow-up of its own, with no GPU job.
 
 What the jobs would not do: train or fine-tune anything, fetch FleXray's training data, or score on SchwingNet's own held-out test part beyond C-ArmLSpine. C-ArmLSpine is already the reported stack's zero-shot set.
 
@@ -75,7 +75,7 @@ Download in each case where weights exist. Rebuilding FleXray's training would n
    - The reported stack detects boxes and assigns a level per box, which already allows overlap. The idea matters for any segmentation head this project adds, and for the prior head of #228, whose projected level map should be multi-label where bodies overlap in AP (Inferred).
 2. A model per patient beside the general one.
    - xvr trains on one patient's own CT renders in minutes and reaches millimetres where general models do not.
-   - Where a preoperative CT exists, a level map projected from it at a recovered pose gives the levels by geometry. That is the counting prior's strongest form (docs/research/xr-from-3d/), and job 3 measures it on real frames.
+   - Where a preoperative CT exists, a level map projected from it at a recovered pose gives the levels by geometry. That is the counting prior's strongest form (docs/research/xr-from-3d/), and job 3 measures the registration it rests on, on real pelvis frames.
 3. Generative editing of DRRs.
    - FleXray's FluXray share is a measured knob. The paper ships five members from 0 to 0.75, so its effect on our frames can be read by running all five in job 1, at no training cost.
    - That is a free ablation of the question the calibrated renderer asks of realism (docs/research/drr-realism-against-our-results.md).
@@ -101,7 +101,7 @@ Download in each case where weights exist. Rebuilding FleXray's training would n
   - AP50 23.2 percent against 7.4 percent with 10 percent of BTXRD.
   
   The PDF's figure matches neither.
-- The PDF calls Ljubljana an rDSA set. Ljubljana's group has two 2D/3D sets: the cerebral angiography one, and the spine 2D-3D-GS this repository holds. The PDF's metric table does not say which one its xvr row is.
+- The PDF calls Ljubljana an rDSA set. Ljubljana's group has two 2D/3D sets: the cerebral angiography one, and the spine 2D-3D-GS this repository holds. xvr's data and models hold the cerebral one, ten subjects, so the PDF's rDSA remark is right for its xvr row (read on 2026-10-25 for #287, from xvr's repository).
 - "Definitively solved the data bottleneck" and "true zero-shot Sim2Real generalization" overstate the record. The twin's own Table 1 gives Dice 0.16 to 0.25 per lumbar level on real frames, and FleXray finds FluoroSAM's Cobb error near 32 degrees off its own benchmark.
 
 ## 7. What was read
