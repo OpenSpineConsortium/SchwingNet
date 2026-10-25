@@ -5,11 +5,11 @@
   "what": "AbdomenAtlas 2.0 Mini, 10,135 CT in 21 tars, about 620 GB on Hugging Face (tree read 2026-09-24); no card, no metadata; the AbdomenAtlas line aggregates public sets, 3.0 Mini (9,262) is already fetched and the other about 873 are unidentified",
   "level_truth": "counted by the census pipeline once fetched",
   "reach": "get",
-  "status": "asked Professor Zhou for the case list on 2026-10-22, so an id map against AbdomenAtlas 3.0 Mini can be made (there is no card and no metadata); Zongwei Zhou answered on 2026-10-25 that the identifier is each case's BDMAP id, the same across releases, so the 2.0 Mini cases not held are the BDMAP ids of 2.0 Mini that 3.0 Mini lacks, and no list is needed for that; which public collection each case comes from, the letter's second question, was not answered",
+  "status": "asked Professor Zhou for the case list on 2026-10-22, so an id map against AbdomenAtlas 3.0 Mini can be made (there is no card and no metadata); Zongwei Zhou answered on 2026-10-25 that the identifier is each case's BDMAP id, the same across releases, so the 2.0 Mini cases not held are the BDMAP ids of 2.0 Mini that 3.0 Mini lacks, so no id map beyond that set difference is needed, but he attached or linked no list and the tars carry no index, so the ids inside 2.0 Mini are still to be read from the tars or asked for; he answered from a personal address with Xinze Zhou and Wenxuan Li (Johns Hopkins) copied, so a follow-up replies to all on the thread; which public collection each case comes from, the letter's second question, was not answered",
   "licence": "CC BY-NC-SA 4.0",
   "link": "https://huggingface.co/datasets/AbdomenAtlas/AbdomenAtlas2.0Mini",
   "how_to_get": [
-    "Obtain an id map against AbdomenAtlas 3.0 Mini.",
+    "Read the BDMAP ids inside the 2.0 Mini tars (or ask Zhou for the list) and take the ids that 3.0 Mini lacks.",
     "Then spinesurg-ct-nnunet's tools/acquisition_fetch.py hf --collection abdomenatlas2_mini --repo AbdomenAtlas/AbdomenAtlas2.0Mini --include '<tars>' through slurm/acquisition_fetch.sh; HF_TOKEN from the submitter's environment, never from this repository.",
     "The route as the manifest prints it: python3 data/reproduce/reacquire/reacquire.py --grid hf_abdomenatlas2_0_mini; on the grid, from ~/spinesurg-ct-nnunet/data_platform/reacquire, sbatch -D \"$PWD\" --export=ALL,IDS=\"hf_abdomenatlas2_0_mini\",MODE=--run reacquire.sbatch, as a Slurm job on the owner's word."
   ],

@@ -5,7 +5,7 @@
   "what": "208 anteroposterior lumbar images from a Geelin500-A mobile G-arm taken during surgery, 537 vertebrae labelled L1 to L5; the paper's data statement points to a GitHub repository whose README linked the set as one Google Drive file, and the repository is no longer public and the file does not open; the record cm_spine_drive_file is very likely that same file",
   "level_truth": "yes, L1 to L5 per vertebra",
   "reach": "get",
-  "status": "asked the corresponding authors, Dr Cheng and Dr Song, on 2026-09-10, 2026-09-20 and 2026-10-23, and on 2026-10-23 asked the journal's editorial office to have the data restored or the data statement corrected under MDPI's data policy; no answer from either by 2026-10-24",
+  "status": "asked the corresponding authors, Dr Cheng and Dr Song, on 2026-09-10, 2026-09-20 and 2026-10-23, and on 2026-10-23 asked the journal's editorial office to have the data restored or the data statement corrected under MDPI's data policy; no answer from either by 2026-10-25",
   "licence": "not recorded",
   "link": "https://doi.org/10.3390/electronics13112137",
   "how_to_get": [
@@ -17,5 +17,5 @@
     "vertebrae": 537
   },
   "measured": {},
-  "record": "SchwingNet docs/research/data-access-requirements.md, Where each request stands (2026-10-24); the letter in the owner's Wayne State Outlook, subject tag [XR/CT Imaging Research]"
+  "record": "SchwingNet docs/research/data-access-requirements.md, Where each request stands (2026-10-25); the letter in the owner's Wayne State Outlook, subject tag [XR/CT Imaging Research]"
 }

@@ -5,7 +5,7 @@
   "what": "1,228 and 1,935 scans with whole-body segmentation (the manifest counts v3 at 1,939)",
   "level_truth": "yes, segmentation",
   "reach": "held",
-  "status": "renders; v3 is the device corpus (142 whole-spine subjects); v2 is a complete subset of v3 with the same ids (Jakob Wasserthal, 2026-10-22)",
+  "status": "renders; v3 is the device corpus (142 whole-spine subjects); v2 is a complete subset of v3, and the ids should have stayed the same in v3 (Jakob Wasserthal, 2026-10-22, his words; a match by id is checked rather than assumed)",
   "licence": "CC BY 4.0",
   "link": null,
   "how_to_get": [],

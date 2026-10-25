@@ -5,7 +5,7 @@
   "what": "intraoperative lumbar C-arm frames (Ziehm) of nine patients with their CTs; the repository publishes level-named L1 to L5 centroid files and overlay images, and says the CTs and raw X-rays are available on request from the NIMS team",
   "level_truth": "L1 to L5 centroids named per frame (the published files)",
   "reach": "get",
-  "status": "asked Professor Kadambari and Mr Gangolu on 2026-10-21 09:39 UTC for the raw anteroposterior and lateral frames at original depth, the CTs and the projection geometry, for the nine patients and the manuscript's two; no answer by 2026-10-24",
+  "status": "asked Professor Kadambari and Mr Gangolu on 2026-10-21 09:39 UTC for the raw anteroposterior and lateral frames at original depth, the CTs and the projection geometry, for the nine patients and the manuscript's two; no answer by 2026-10-25",
   "licence": "by request",
   "link": null,
   "how_to_get": [
@@ -16,5 +16,5 @@
     "patients": 9
   },
   "measured": {},
-  "record": "SchwingNet docs/research/data-access-requirements.md, Where each request stands (2026-10-24); the letter in the owner's Wayne State Outlook, subject tag [XR/CT Imaging Research]"
+  "record": "SchwingNet docs/research/data-access-requirements.md, Where each request stands (2026-10-25); the letter in the owner's Wayne State Outlook, subject tag [XR/CT Imaging Research]"
 }

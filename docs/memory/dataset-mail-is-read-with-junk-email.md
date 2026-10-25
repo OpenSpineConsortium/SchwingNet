@@ -1,0 +1,5 @@
+A read of the dataset mail tagged [XR/CT Imaging Research] takes in Junk Email as well as the Inbox and Sent Items, since a bounce can land there unread.
+
+On 2026-10-24 the ReXGradient-160K letter to Dr Zhang bounced within the minute, and the return went to the owner's Junk Email. The full read of 2026-10-25 at 15:35 UTC covered the Inbox and Sent Items, missed it, and recorded the request as waiting for an answer; the second read that day found it (docs/research/data-access-requirements.md, Where each request stands).
+
+How to read the mail: search the tag in every folder, then search Junk Email by date for returns ("Returned mail", "Undeliverable", "Delivery Status Notification") from the day each letter went. The Microsoft 365 connector cannot open a bounce's attached transcript (a message/rfc822 part), so the reason for a return is the owner's to read in Outlook. Answers are recorded in the page and in each dataset's record under data/sources/, by pull request; replies are drafts for the owner, never sent by a session.
