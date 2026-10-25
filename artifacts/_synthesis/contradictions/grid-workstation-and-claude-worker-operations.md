@@ -1,6 +1,6 @@
 # Contradictions: Grid, workstation and Claude worker operations
 
-Part of [the contradictions of the artifacts](../contradictions.md), rendered on 2026-10-24. Rows count from 0, as the record and the skeptics' explanations do. A blank verdict means no skeptic read that candidate. The Review column says whether the verdict was read again and what it was before; the main page says how the review was run.
+Part of [the contradictions of the artifacts](../contradictions.md), rendered on 2026-10-25. Rows count from 0, as the record and the skeptics' explanations do. A blank verdict means no skeptic read that candidate. The Review column says whether the verdict was read again and what it was before; the main page says how the review was run.
 
 40 candidates.
 
