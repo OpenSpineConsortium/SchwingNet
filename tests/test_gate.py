@@ -1883,6 +1883,46 @@ esac
         self.assertEqual(out.count("to-come -"), 21, out)
         self.assertIn("  (5 more rows not yet matched; the state folder's PROGRESS.txt holds them)", out)
 
+    def test_status_shows_every_sweeps_progress_even_when_the_other_sections_fill_the_page(self):
+        # A status of the grid's size, every earlier section at the most it shows: 80 sets on each
+        # root, the committed sample manifest, 60 jobs with two failed logs, eight stage reports and
+        # a results table of 30 lines. The sweeps' progress, the one live view of a sweep, once came
+        # last and was cut by the 400 lines; now it comes before everything the cut can reach.
+        self.ceph_fake(raw_bytes=10**9)
+        (self.tmp / "shared").mkdir()
+        for n in range(80):
+            (self.data / f"set_{n:02d}").mkdir()
+            (self.tmp / "shared" / f"shared_{n:02d}").mkdir()
+        logs = self.repo / "grid" / "logs"
+        logs.mkdir(parents=True, exist_ok=True)
+        shutil.copy(ROOT / "docs" / "research" / "data-manifest" / "MANIFEST.md", logs / "SAMPLES-STAGE-REPORT.md")
+        for n in range(58):
+            self.state_line(2000 + n, "start", f"job_{n}")
+        self.failed(*[(2100 + n, "start", "setup", "sn_setup", "FAILED", "00:01:00", [f"error line {i}" for i in range(20)])
+                      for n in range(2)])
+        for n in range(8):
+            (logs / f"0{n}-STAGE-REPORT.md").write_text("".join(f"- line {i}\n" for i in range(13)), encoding="utf-8")
+        run = self.runs / "newest"
+        (run / "evaluate").mkdir(parents=True)
+        (run / "evaluate" / "results.md").write_text("".join(f"| row {i} |\n" for i in range(30)), encoding="utf-8")
+        plans = ("real", "synthetic", "trials", "two_source")
+        for plan in plans:
+            self.progress(plan, "abc1234-0123abcd", [f"plan {plan} rows 25 to_come 25"]
+                          + [f"row resnet18-64px-{n:08x} to-come -" for n in range(25)]
+                          + [f"wandb https://wandb.ai/lab/schwingnet/runs/{plan}{n}" for n in range(5)])
+        done = self.gate_with_ceph("status")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        out = done.stdout
+        self.assertLessEqual(len(out.splitlines()), 402)
+        for plan in plans:
+            self.assertIn(f"## sweep {plan}, abc1234-0123abcd (", out)
+            self.assertIn(f"  plan {plan} rows 25 to_come 25", out)
+            self.assertIn(f"  wandb https://wandb.ai/lab/schwingnet/runs/{plan}3", out)
+        self.assertEqual(out.count("  (5 more rows not yet matched; the state folder's PROGRESS.txt holds them)"), 4)
+        # after the space it reads beside, before the job list and every section that grows with the jobs
+        self.assertLess(out.index("## space on the lab volume"), out.index("## sweep real"))
+        self.assertLess(out.index("## sweep two_source"), out.index("## SAMPLES-STAGE-REPORT.md"))
+
     def test_status_shows_the_newest_failed_sweep_of_each_plan_by_its_shapes(self):
         self.failed((1001, "sweep:real", "sweep", "sweep", "FAILED", "04:00:00", ["person carmlspine:case042 seen", "SN_SWEEP_RC=1"]),
                     (1002, "sweep:synthetic", "sweep", "sweep", "TIMEOUT", "04:00:00", ["SN_SWEEP_RC=3"]))

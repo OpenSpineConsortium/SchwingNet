@@ -537,8 +537,11 @@ fetch_progress() {  # one line per live fetch of one set: what its raw folder ho
 
 word_status() {
   local ids report run lines shown job name state elapsed code node probe
-  # First, so the status's 400 lines never cut it off; then the sample manifest, whole.
+  # First, so the status's 400 lines never cut it off; then the sweeps' progress, the one live view
+  # of a sweep, which once came last and was cut, held to its own bound so that the two together
+  # stay inside the 400 lines whatever the sections after them hold; then the sample manifest.
   word_space
+  sweep_progress | head -n "$SWEEP_LINES_SHOWN"
   samples_report
   ids=$(gate_ids | tail -n 60 | tr '\n' ',' | sed 's/,$//')
   if [ -z "$ids" ]; then
@@ -578,10 +581,12 @@ word_status() {
     [ -f "$run/wandb-sync.json" ] && grep -o 'https://wandb\.ai/[^" ]*' "$run/wandb-sync.json" | sort -u | sed 's/^/  W\&B /' | head -n 4
     [ -f "$run/evaluate/results.md" ] && head -n 30 "$run/evaluate/results.md" | sed 's/^/  /'
   fi
-  sweep_progress
 }
 
-SWEEP_ROWS_SHOWN=20 SWEEP_WANDB_SHOWN=4
+# A plan's section is its heading, its headline, up to SWEEP_ROWS_SHOWN rows, the line counting the
+# rest and up to SWEEP_WANDB_SHOWN links, 27 lines; the four plans of grid/sweeps/ take 108 of the
+# section's 120, and the space tally before it at most about 180, so both fit inside status's 400.
+SWEEP_ROWS_SHOWN=20 SWEEP_WANDB_SHOWN=4 SWEEP_LINES_SHOWN=120
 smoke_paths() {  # every line with the smoke folder's path cut to <smoke>, matched as text and not as a pattern
   awk -v smoke="$SMOKE" '{
     while (smoke != "" && (at = index($0, smoke)) > 0) $0 = substr($0, 1, at - 1) "<smoke>" substr($0, at + length(smoke))
