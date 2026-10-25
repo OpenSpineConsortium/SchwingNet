@@ -1,0 +1,7 @@
+The DRR domain-gap study (the owner's ask of 2026-10-25, #391): tools/domain_gap.py sets FleXray's DRRs and other synthetic sets beside the held fluoroscopy and film corpora; one GPU job, bench flexray_drr_gap; design and results in docs/research/drr-domain-gap/README.md.
+
+- The groups are data/domain_gap/groups.json (salt schwingnet-drr-gap-v1): each picks files from the sample index, a folder walk, FleXray's own renders made in the job, or FluXray's ThunderDB, with a person rule; the pure rules (person keys, the salted choice, the words) are src/schwingnet/domain_gap.py under the gate, the numerics tools/domain_gap_stats.py, the renderer tools/flexray_render.py.
+- Images are decoded one way for every corpus (percentile window, centre square of 0.9, 256), and the primary reading is inversion-invariant (the mean of an image's features and its inverse's), since fluoroscopy is often bone-dark and DRRs bone-bright.
+- Separation is read against calibration: split-half nulls within a corpus and real-against-real baselines; a synthetic set is "closer than two real corpora" or "separable" by the pre-registered words, never by a map.
+- Only summary.txt (at most 80 safe lines) leaves the grid; figures and map coordinates go to W&B where the key is found; results.json and the plan name files and stay on the grid.
+- FluXray needs the fetch hf_flexray_data (grid/run-platform-fetch.sh, waiting for the owner's yes); without it the group is skipped with its reason.
