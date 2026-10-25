@@ -685,7 +685,7 @@ def dropout(batch, generator):
 
 def sharpen(batch, generator):
     """imgaug's Sharpen, which SyntheX's name matches: the 3 by 3 kernel of 8 plus the lightness
-    at the centre and -1 about it, blended with the crop by alpha."""
+    at the centre and -1 about it, blended with the crop by an alpha of 0 to 1, SyntheX's range."""
     count = batch.shape[0]
     alpha = _per_crop(generator, count, *SHARPEN_ALPHA, batch)
     lightness = _per_crop(generator, count, *SHARPEN_LIGHTNESS, batch)
@@ -969,14 +969,16 @@ def strong(batch, generator):
     The ranges in SyntheX's own words: inversion as max minus x; impulse, pepper or salt noise on
     10 percent of the pixels; a Gaussian blur of spread 3, which the block draws up to; an average
     blur of kernel 2 to 7; dropout of 1 to 10 percent of the pixels or of one rectangle of 2 to 5
-    percent of the image; an emboss that "added the sharpened version rather than blending it";
-    pooling whose "kernel sizes were between 2 x 2 and 4 x 4", which the block draws per crop as
-    2, 3 or 4; and a multiply that "either changed brightness or multiplied x element wise with
-    50-150% of the original value", which SyntheX's own code (github.com/arcadelab/SyntheX) writes
-    as imgaug's Multiply and MultiplyElementwise of 0.5 to 1.5, so the block's change of brightness
-    is one factor for the whole crop and its element-wise multiply one factor per pixel, both 50 to
-    150 percent. SyntheX names the rest with no range. The contrast curves, sharpen and emboss take
-    theirs from imgaug's augmenters of the same names (LinearContrast, LogContrast,
+    percent of the image; a sharpen that "blended the original image with a sharpened version with
+    an alpha between 0 and 1", and an emboss that "added the sharpened version rather than
+    blending it"; pooling whose "kernel sizes were between 2 x 2 and 4 x 4", which the block draws
+    per crop as 2, 3 or 4; and a multiply that "either changed brightness or multiplied x
+    element wise with 50-150% of the original value", which SyntheX's own code
+    (github.com/arcadelab/SyntheX) writes as imgaug's Multiply and MultiplyElementwise of 0.5
+    to 1.5, so the block's change of brightness is one factor for the whole crop and its
+    element-wise multiply one factor per pixel, both 50 to 150 percent. SyntheX names the rest
+    with no range. The contrast curves, the sharpen's lightness and the emboss's alpha and
+    strength take theirs from imgaug's augmenters of the same names (LinearContrast, LogContrast,
     SigmoidContrast, Sharpen, Emboss), the library SyntheX's code uses though the paper does not
     name it, as imgaug's documentation shows them, and write their curves and kernels on 0 to 1.
     SyntheX's code sets several ranges apart from both the paper's words and these, which the
