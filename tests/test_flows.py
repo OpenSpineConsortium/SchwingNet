@@ -106,12 +106,15 @@ def card_data(html):
 
 def shards_of(data_root):
     """Every file under each source's shards/, staging folders and reuse notes aside, with its
-    bytes, the data root named the same wherever INGEST.json records it."""
+    bytes, the data root named the same wherever INGEST.json records it, and so is INGEST.json's
+    reuse key (#260), which hashes the bank's listing with every file's modification time, so two
+    banks of the same frames made a second apart differ in it alone."""
     found = {}
     for path in sorted(data_root.glob("*/shards/**/*")):
         relative = path.relative_to(data_root)
         if path.is_file() and not any(part.startswith(".") for part in relative.parts):
-            found[str(relative)] = path.read_bytes().replace(str(data_root).encode(), b"<data root>")
+            data = path.read_bytes().replace(str(data_root).encode(), b"<data root>")
+            found[str(relative)] = re.sub(rb'"reuse_key": "[0-9a-f]{64}"', b'"reuse_key": "<reuse key>"', data)
     return found
 
 
