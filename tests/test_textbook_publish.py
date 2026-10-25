@@ -7,9 +7,14 @@ prompt, with the paths and nothing of the book's text; the session's arguments; 
 says; and the record a run leaves, whole, partial or moved on. The workflow's text is held to the
 helper: its push filter is the fingerprint's list, every action is pinned, the session runs in
 the job that cannot write and may fail without failing the record, and the day's count, the
-switch and the cap are read where the helper expects them."""
+switch and the cap are read where the helper expects them. The command local, the same publish
+from the owner's computer (issue #277), is run against a bare repository standing in for GitHub:
+the record read and written by fast-forward alone from a repository of its own, the edition built
+by the commit's own builders in a worktree that goes again, a stop where the book's inputs are
+already published, and the answer file the session writes deciding what is recorded."""
 
 import ast
+import datetime as dt
 import io
 import json
 import os
@@ -27,7 +32,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import textbook_publish as tp  # noqa: E402
-from test_textbook_site import GIT_ENV  # noqa: E402
+from test_textbook_site import GIT_ENV, QUIET  # noqa: E402
 
 WORKFLOW = ROOT / ".github" / "workflows" / "textbook-artifact.yml"
 TODAY = "2026-10-24"
@@ -334,6 +339,25 @@ class Prompt(unittest.TestCase):
                 self.assertNotIn("SECRETWORD", json.dumps(plan))
                 self.assertNotIn("SECRETWORD", tp.prompt(plan, "abc1234def"))
 
+    def test_a_session_on_the_owners_computer_writes_its_markers_to_the_answer_file(self):
+        # No execution file carries a local session's answer back, so it writes the marker lines to
+        # a file of the work folder, and may write that file alone.
+        with tempfile.TemporaryDirectory() as folder:
+            first, later = self.plans(folder)
+            for plan in (first, later):
+                text = tp.prompt(plan, "abc1234def", "/h/ed/textbook-out", "/h/ed/answer.txt")
+                self.assertIn("one private claude.ai artifact from the\nowner's computer", text)
+                self.assertIn("Write (only for the\nanswer file, /h/ed/answer.txt), write no other file", text)
+                self.assertIn("write the line ARTIFACT_TOOL_MISSING to /h/ed/answer.txt", text)
+                self.assertIn("Last of all, write the marker lines of your answer to /h/ed/answer.txt", text)
+                self.assertIn("file_path /h/ed/textbook-out/index.html, root /h/ed/textbook-out", text)
+                self.assertNotIn("GitHub Actions", text)
+                self.assertNotIn("SECRETWORD", text)
+            action = tp.prompt(first, "abc1234def", "/w/textbook-out")
+        self.assertIn("from a\nGitHub Actions run", action)
+        self.assertNotIn("answer file", action)
+        self.assertNotIn("Write tool", action)
+
 
 class Args(unittest.TestCase):
     def test_the_sessions_arguments(self):
@@ -494,6 +518,210 @@ class Command(unittest.TestCase):
             code, text = self.run_main("inputs", "--root", str(root), "--sha", "HEAD")
             self.assertEqual(code, 0)
             self.assertRegex(text, r"^inputs=[0-9a-f]{64}\n$")
+
+
+def quiet(repo):
+    """A scratch repository that runs no gc or maintenance of its own, set in its config too, since
+    the receive-pack and upload-pack git starts for a local remote do not take the environment's."""
+    for key, value in QUIET.items():
+        git(repo, "config", key, value)
+
+
+# The builders' stand-ins: the site says what it was asked and which commit it stood on, and the
+# edition carries that on as its page.
+SITE_STUB = """import json, subprocess, sys
+from pathlib import Path
+out = Path(sys.argv[1])
+out.mkdir(parents=True)
+root = sys.argv[sys.argv.index("--root") + 1]
+head = subprocess.run(["git", "-C", root, "rev-parse", "HEAD"], capture_output=True, text=True, check=True).stdout
+(out / "site.json").write_text(json.dumps({"site": sys.argv[2:], "head": head.strip()}))
+"""
+EDITION_STUB = """import json, sys
+from pathlib import Path
+site, out = Path(sys.argv[1]), Path(sys.argv[2])
+out.mkdir(parents=True)
+said = json.loads((site / "site.json").read_text())
+said["edition"] = sys.argv[3:]
+(out / "index.html").write_text(json.dumps(said))
+"""
+
+
+class Local(unittest.TestCase):
+    STATE = {"schema": tp.SCHEMA, "url": URL, "sha": "a" * 40, "built": "d", "inputs": "i" * 64, "run": "local",
+             "files": {"index.html": "h"}}
+
+    def setUp(self):
+        patched = mock.patch.dict(os.environ, GIT_ENV)
+        patched.start()
+        self.addCleanup(patched.stop)
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        self.base = Path(temp.name).resolve()
+        self.origin = self.base / "origin.git"
+        git(self.base, "init", "-q", "--bare", "-b", "main", str(self.origin))
+        quiet(self.origin)
+        self.clone = self.base / "SchwingNet"
+        git(self.base, "init", "-q", "-b", "main", str(self.clone))
+        quiet(self.clone)
+        write(self.clone / "docs" / "textbook" / "01-one.md", "# 01 One\n")
+        git(self.clone, "add", "-A")
+        git(self.clone, "commit", "-q", "-m", "one")
+        git(self.clone, "remote", "add", "origin", str(self.origin))
+        git(self.clone, "push", "-q", "origin", "main")
+        self.work = self.base / "SchwingNet-textbook-edition"
+        self.remote = str(self.origin)
+
+    def recorded(self):
+        return json.loads(git(self.origin, "show", f"{tp.BRANCH}:{tp.STATE_FILE}"))
+
+    def no_record(self):
+        return git(self.origin, "branch", "--list", tp.BRANCH) == ""
+
+    def fake_build(self, clone, sha, built, work):
+        self.built = (Path(clone), sha, built)
+        return edition(Path(work) / tp.OUT_REL, FILES)
+
+    def test_the_record_is_read_and_written_by_fast_forward_alone(self):
+        self.work.mkdir()
+        self.assertEqual(tp.recorded_state(self.work, self.remote), {})
+        self.assertFalse((self.work / tp.STATE_FILE).exists())
+        first = tp.write_record(self.work, self.remote, self.STATE, "Edition aaaaaaa: 1 files published")
+        self.assertEqual(git(self.origin, "ls-tree", "--name-only", tp.BRANCH), tp.STATE_FILE)
+        self.assertEqual(self.recorded(), self.STATE)
+        self.assertEqual(tp.recorded_state(self.work, self.remote), self.STATE)
+        second = tp.write_record(self.work, self.remote, dict(self.STATE, sha="b" * 40), "Edition bbbbbbb")
+        self.assertEqual(git(self.origin, "rev-parse", tp.BRANCH), second)
+        self.assertEqual(git(self.origin, "rev-parse", f"{tp.BRANCH}^"), first)
+        self.assertEqual(git(self.origin, "log", "-1", "--format=%s", tp.BRANCH), "Edition bbbbbbb")
+        self.assertEqual(self.recorded()["sha"], "b" * 40)
+
+    def test_a_remote_that_cannot_be_read_stops_the_command(self):
+        self.work.mkdir()
+        with self.assertRaises(SystemExit):
+            tp.recorded_state(self.work, str(self.base / "missing.git"))
+
+    def test_a_branch_that_holds_other_files_is_never_replaced(self):
+        other = self.base / "other"
+        git(self.base, "init", "-q", str(other))
+        quiet(other)
+        write(other / tp.STATE_FILE, json.dumps(self.STATE))
+        write(other / "notes.md", "the project's own\n")
+        git(other, "add", "-A")
+        git(other, "commit", "-q", "-m", "a branch of its own")
+        git(other, "push", "-q", self.remote, f"HEAD:refs/heads/{tp.BRANCH}")
+        head = git(self.origin, "rev-parse", tp.BRANCH)
+        self.work.mkdir()
+        with self.assertRaises(SystemExit) as stop:
+            tp.write_record(self.work, self.remote, self.STATE, "Edition aaaaaaa")
+        self.assertIn("notes.md", str(stop.exception))
+        self.assertEqual(git(self.origin, "rev-parse", tp.BRANCH), head)
+
+    def test_a_branch_that_moved_meanwhile_is_read_again(self):
+        self.work.mkdir()
+        elsewhere = self.base / "elsewhere"
+        elsewhere.mkdir()
+        tp.write_record(self.work, self.remote, self.STATE, "Edition aaaaaaa")
+        real, moved = tp.record_head, []
+
+        def moving(repo, remote):
+            head = real(repo, remote)
+            if not moved:
+                moved.append(head)
+                tp.write_record(elsewhere, remote, dict(self.STATE, sha="c" * 40), "Edition ccccccc")
+            return head
+
+        with mock.patch.object(tp, "record_head", moving):
+            commit = tp.write_record(self.work, self.remote, dict(self.STATE, sha="b" * 40), "Edition bbbbbbb")
+        self.assertEqual(git(self.origin, "rev-parse", tp.BRANCH), commit)
+        self.assertEqual(git(self.origin, "log", "--format=%s", tp.BRANCH).splitlines(),
+                         ["Edition bbbbbbb", "Edition ccccccc", "Edition aaaaaaa"])
+
+    def test_the_edition_is_built_by_the_commits_own_builders_in_a_worktree_that_goes_again(self):
+        write(self.clone / "tools" / "textbook_site.py", SITE_STUB)
+        write(self.clone / "tools" / "textbook_artifact.py", EDITION_STUB)
+        git(self.clone, "add", "-A")
+        git(self.clone, "commit", "-q", "-m", "builders")
+        sha = git(self.clone, "rev-parse", "HEAD")
+        self.work.mkdir()
+        out = tp.build(self.clone, sha, "2026-10-25T02:00:00Z", self.work)
+        self.assertEqual(out, self.work / tp.OUT_REL)
+        said = json.loads((out / "index.html").read_text(encoding="utf-8"))
+        self.assertEqual(said["head"], sha)
+        self.assertEqual(said["site"][:4], ["--repo", tp.REPO_NAME, "--sha", sha])
+        self.assertEqual(said["edition"], ["--repo", tp.REPO_NAME, "--sha", sha, "--built", "2026-10-25T02:00:00Z"])
+        self.assertFalse((self.work / "tree").exists())
+        self.assertFalse((self.work / "site").exists())
+        self.assertEqual(len(git(self.clone, "worktree", "list").splitlines()), 1)
+        write(self.clone / "tools" / "textbook_site.py", "import sys\nsys.exit(3)\n")
+        git(self.clone, "commit", "-q", "-am", "a site that fails")
+        with redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            tp.build(self.clone, git(self.clone, "rev-parse", "HEAD"), "d", self.work)
+        self.assertFalse((self.work / "tree").exists())
+        self.assertEqual(len(git(self.clone, "worktree", "list").splitlines()), 1)
+
+    def test_a_work_folder_inside_the_clone_is_refused(self):
+        with self.assertRaises(SystemExit):
+            tp.local_publish(self.clone, self.clone / "edition", launch=False)
+
+    def test_the_command_builds_opens_claude_code_and_records_its_answer(self):
+        sha = git(self.clone, "rev-parse", "HEAD")
+
+        def session(command, work):
+            self.assertEqual(Path(work), self.work)
+            text = (Path(work) / tp.PROMPT_FILE).read_text(encoding="utf-8")
+            self.assertIn(f"answer file, {(self.work / tp.ANSWER_FILE).as_posix()})", text)
+            self.assertIn(f"file_path {(self.work / tp.OUT_REL).as_posix()}/index.html", text)
+            (Path(work) / tp.ANSWER_FILE).write_text(f"Published.\nARTIFACT_URL={URL}\n", encoding="utf-8")
+
+        printed = io.StringIO()
+        with mock.patch.object(tp, "build", self.fake_build), \
+                mock.patch.object(tp, "open_session", side_effect=session) as opened, redirect_stdout(printed):
+            self.assertEqual(tp.local_publish(self.clone, self.work, claude=sys.executable), 0)
+        opened.assert_called_once()
+        self.assertEqual(self.built[1], sha)
+        state = self.recorded()
+        self.assertEqual((state["url"], state["sha"]), (URL, sha))
+        self.assertEqual(state["inputs"], tp.inputs_fingerprint(self.clone, sha))
+        self.assertEqual(state["capabilities"], tp.CAPABILITIES)
+        self.assertTrue(state["run"].startswith("local "))
+        self.assertEqual(printed.getvalue(), f"Edition {sha[:7]}: 5 files published, 0 removed, 0 unchanged\n{URL}\n")
+        self.assertFalse((self.work / tp.OUT_REL).exists())
+        printed = io.StringIO()
+        with mock.patch.object(tp, "build", side_effect=AssertionError("built again")), redirect_stdout(printed):
+            self.assertEqual(tp.local_publish(self.clone, self.work, claude=sys.executable), 0)
+        self.assertIn(f"already published at {URL}", printed.getvalue())
+
+    def test_without_claude_code_the_folder_waits_with_the_two_steps(self):
+        printed = io.StringIO()
+        with mock.patch.object(tp, "build", self.fake_build), redirect_stdout(printed):
+            code = tp.main(["local", "--clone", str(self.clone), "--work", str(self.work),
+                            "--claude", "no-such-claude-command"])
+        self.assertEqual(code, 0)
+        self.assertIn(tp.LOCAL_ASK, printed.getvalue())
+        self.assertIn(f"local --record --work {self.work}", printed.getvalue())
+        self.assertTrue((self.work / tp.PROMPT_FILE).is_file())
+        self.assertTrue(self.no_record())
+        with self.assertRaises(SystemExit) as stop:
+            tp.main(["local", "--work", str(self.work), "--record"])
+        self.assertIn("wrote no answer.txt", str(stop.exception))
+        (self.work / tp.ANSWER_FILE).write_text("ARTIFACT_TOOL_MISSING\n", encoding="utf-8")
+        with self.assertRaises(SystemExit) as stop:
+            tp.main(["local", "--work", str(self.work), "--record"])
+        self.assertIn("/login", str(stop.exception))
+        self.assertTrue(self.no_record())
+        (self.work / tp.ANSWER_FILE).write_text(f"{tp.REFUSED}\nARTIFACT_URL={URL}\n", encoding="utf-8")
+        with redirect_stdout(io.StringIO()):
+            self.assertEqual(tp.finish(self.work, now=dt.datetime(2026, 10, 25, 2, 30, tzinfo=dt.timezone.utc)), 0)
+        state = self.recorded()
+        self.assertEqual((state["url"], state["run"]), (URL, "local 2026-10-25T02:30:00Z"))
+        self.assertEqual(state["capabilities"], tp.BASIC_CAPABILITIES)
+        self.assertFalse((self.work / tp.ANSWER_FILE).exists())
+        with self.assertRaises(SystemExit):
+            tp.main(["local", "--work", str(self.work), "--record"])
+
+    def test_the_default_work_folder_is_beside_the_clone(self):
+        self.assertEqual(tp.default_work(self.clone), self.work)
 
 
 def jobs_of(text):
