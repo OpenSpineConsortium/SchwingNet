@@ -11,6 +11,14 @@
 # alone, and then only where it holds no path, quoted value or long run of digits; the stages'
 # start and _RC= lines; Slurm's own errors by their phrase; wget's and curl's status lines; the
 # stages' section headers by id; and a line holding one of a few system phrases, as that phrase.
+#
+# A stage run as a Metaflow flow (flows/, issue #252) reaches the job's log through Metaflow's
+# runtime, which writes every line a task prints behind "<date> <time> [<run>/<step>/<task> (pid N)] "
+# with the line's own leading and trailing blanks stripped (Metaflow 2.19.39, measured 2026-10-25).
+# That prefix is taken off first, only where it opens the line, so the stage's lines are read as
+# they were when it ran straight; a frame the strip left with no indent gets its two spaces back.
+# A frame's source line lost its indent too, and nothing then tells it from any other line the
+# task printed, so behind the prefix it is withheld.
 function keep(line) { print substr(line, 1, 200) }
 function exception_type(line,    name) {
   name = line
@@ -36,7 +44,9 @@ BEGIN {
 }
 {
   line = $0
+  flow_task = sub(/^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9] [0-9][0-9]:[0-9][0-9]:[0-9][0-9]\.[0-9][0-9][0-9] \[[0-9]+\/[A-Za-z_][A-Za-z0-9_]*\/[0-9]+( \(pid [0-9]+\))?\]( |$)/, "", line)
   sub(/[ \t]+$/, "", line)
+  if (flow_task && line ~ /^File "/) line = "  " line
   after_frame = source
   source = 0
   if (line == "") next

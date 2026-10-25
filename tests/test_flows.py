@@ -98,6 +98,15 @@ def report_of(folder, name, data_root):
     return text.split("\n", 1)[1].replace(str(data_root), "<data root>")
 
 
+def gate_shows(log):
+    """What the gate word status keeps of a failed job's log: the commands grid/gate.sh's printable
+    and log_tail run on it, up to the awk filters, before the masking of what they keep."""
+    script = ('tail -c 65536 | tr "\\r" "\\n" | LC_ALL=C tr -cd "\\11\\12\\40-\\176" | tail -n 400 '
+              '| awk -f "$1/shape-words.awk" -f "$1/log-shapes.awk"')
+    done = subprocess.run(["bash", "-c", script, "shapes", str(GRID)], input=log, capture_output=True, text=True, timeout=60)
+    return done.stdout.splitlines()
+
+
 def card_data(html):
     """What a Metaflow card shows, the base64 JSON its page embeds as window.__MF_DATA__[id]."""
     found = re.findall(r'__MF_DATA__\["[^"]+"\] = "([A-Za-z0-9+/=]+)"', html)
@@ -142,6 +151,24 @@ if tool == "ingest.py" and source == os.environ.get("FLOW_TEST_KILL") and not ma
             break
         pid = int(Path(f"/proc/{{pid}}/stat").read_text().rsplit(")", 1)[1].split()[1])
     sys.exit(137)
+os.execv(sys.executable, [sys.executable, *args])
+'''
+
+# PYDRV for the filter test, named pydrv.py so its frames have a .py file as the tools' frames do:
+# the bank tool's run on NIH's raw copy raises with a value in its message, as a tool's crash can.
+CRASHING_PYDRV = '''#!{python}
+import os
+import sys
+
+args = sys.argv[1:]
+
+
+def read_the_frames(raw):
+    raise ValueError(f"no frame under {{raw}} for person 12345678")
+
+
+if args and args[0].endswith("bank.py") and "nih_chestxray14" in " ".join(args):
+    read_the_frames(args[args.index("--raw") + 1])
 os.execv(sys.executable, [sys.executable, *args])
 '''
 
@@ -224,6 +251,28 @@ class BankFlowTest(unittest.TestCase):
         self.assertIn("split-check of version 1: disjoint", catalog)
         self.assertEqual(len(list((flow_root / "_catalog" / "checked").iterdir())), 1)
         self.assertTrue((flow_root / "_catalog" / "BUILD.lock").exists())
+
+    def test_a_failed_bank_flows_log_keeps_its_rc_line_and_traceback_through_the_gates_filter(self):
+        banks = self.tmp / "banks"
+        write_banks(banks)
+        wrapper = self.tmp / "pydrv.py"
+        wrapper.write_text(CRASHING_PYDRV.format(python=sys.executable), encoding="utf-8")
+        wrapper.chmod(0o755)
+        flow_root = self.tmp / "flow"
+        write_raw_copies(flow_root)
+        code, said, out = launch(["bank", "--", "--data-root", str(flow_root), "--banks", str(banks)], self.tmp / "logs-flow",
+                                 base_env(PYDRV=str(wrapper)), self.root)
+        self.assertEqual(code, 1, out)
+        # every line the stage printed reached the log behind Metaflow's prefix, its indent stripped
+        self.assertRegex(out, r"(?m)^[0-9-]+ [0-9:.]+ \[[0-9]+/end/[0-9]+ \(pid [0-9]+\)\] XR_BANK_RC=1 ")
+        self.assertRegex(out, r'(?m)\] File "[^"]*pydrv\.py", line [0-9]+, in read_the_frames$')
+        kept = gate_shows(out)
+        self.assertRegex(kept[-2], r"^XR_BANK_RC=1 [0-9-]+ [0-9:]+$", kept)
+        self.assertIn("Traceback (most recent call last):", kept)
+        self.assertTrue(any(re.fullmatch(r'  File "[^"]*/pydrv\.py", line [0-9]+, in read_the_frames', line) for line in kept), kept)
+        self.assertIn("ValueError: <message withheld>", kept)
+        self.assertIn("== nih_chestxray14", kept)
+        self.assertFalse(any("12345678" in line or str(flow_root) in line for line in kept), kept)
 
     def test_a_kill_mid_ingest_resumes_there_with_the_banks_cloned_and_a_later_launch_runs_anew(self):
         banks = self.tmp / "banks"
@@ -444,6 +493,64 @@ class SweepFlowTest(unittest.TestCase):
         self.assertEqual(code, 0, out)
         self.assertEqual((said[-1]["successful"], said[-1]["verdict"]), (True, 0), out)
         self.assertEqual(calls, ["prepare", "results"])
+
+
+# A failed stage 2 job's log under the launcher, in the shape Metaflow 2.19.39 gave it (measured
+# 2026-10-25): every line a task printed behind "<date> <time> [<run>/<step>/<task> (pid N)] " and
+# stripped of its own leading blanks, so a traceback's frames and source lines lost their indent.
+FLOW_LOG = """{"decision": "run", "flow": "bank", "key": "68974c7ccabf5595", "origin": null, "root": "/rs/x/metaflow"}
+2026-10-25 04:29:45.289 Workflow starting (run-id 1792902585286456):
+2026-10-25 04:29:46.714 [1792902585286456/bank/3 (pid 21494)] Task is starting.
+2026-10-25 04:29:47.553 [1792902585286456/bank/3 (pid 21494)] XR_BANK start 2026-10-25 04:29:47 on node12 job 4242 commit f16efe8
+2026-10-25 04:29:49.050 [1792902585286456/bank/3 (pid 21494)] == nih_chestxray14: 2026-10-25 04:29:47
+2026-10-25 04:29:49.050 [1792902585286456/bank/3 (pid 21494)] Traceback (most recent call last):
+2026-10-25 04:29:49.050 [1792902585286456/bank/3 (pid 21494)] File "/home/u/SchwingNet/tools/bank.py", line 761, in main
+2026-10-25 04:29:49.050 [1792902585286456/bank/3 (pid 21494)] counts = run_once(recipe, raw, bank, args.workers)
+2026-10-25 04:29:49.050 [1792902585286456/bank/3 (pid 21494)] ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-10-25 04:29:49.050 [1792902585286456/bank/3 (pid 21494)] File "/home/u/SchwingNet/tools/bank.py", line 512, in keys_of
+2026-10-25 04:29:49.050 [1792902585286456/bank/3 (pid 21494)] ValueError: no frame under /rs/data/nih/raw/00012345 for person 12345678
+2026-10-25 04:29:49.050 [1792902585286456/bank/3 (pid 21494)] - nih_chestxray14: bank refused: ValueError: no frame for person 12345678
+2026-10-25 04:29:49.050 [1792902585286456/bank/3 (pid 21494)]
+2026-10-25 04:29:49.050 [1792902585286456/bank/3 (pid 21494)]\x20
+2026-10-25 04:29:49.051 [1792902585286456/bank/3 (pid 21494)] - x: 2026-10-25 04:29:49.050 [1792902585286456/bank/3 (pid 21494)] XR_BANK_RC=0 2026-10-25 04:29:58
+2026-10-25 04:29:59.472 [1792902585286456/end/8 (pid 25629)] XR_BANK_RC=1 2026-10-25 04:29:58
+2026-10-25 04:29:59.474 Done!
+{"flow": "bank", "run": "BankFlow/1792902585286456", "successful": true, "verdict": 1}
+2026-10-25 05:00:01.002 [1792902599999999/catalog/2 (pid 7)] XR_CATALOG start 2026-10-25 05:00:01 on node12 job 4243
+2026-10-25 05:00:01.010 [1792902599999999/catalog/2 (pid 7)] XR_CATALOG lock 2026-10-25 05:00:01
+2026-10-25 05:00:09.010 [1792902599999999/catalog/2 (pid 7)] XR_CATALOG_RC=1 2026-10-25 05:00:09
+Traceback (most recent call last):
+  File "/home/u/SchwingNet/flows/launch.py", line 256, in <module>
+    sys.exit(main())
+"""
+
+
+class GateFilterTest(unittest.TestCase):
+    """grid/log-shapes.awk on a flow's log, as the gate word status runs it (#252); plain bash and
+    awk, so it runs wherever the other tests do."""
+
+    def test_the_filter_reads_a_flows_lines_behind_metaflows_prefix_and_no_more(self):
+        kept = gate_shows(FLOW_LOG)
+        self.assertEqual(kept[:-1], [
+            "XR_BANK start 2026-10-25 04:29:47 on node12 job 4242",
+            "== nih_chestxray14",
+            "Traceback (most recent call last):",
+            '  File "/home/u/SchwingNet/tools/bank.py", line 761, in main',
+            "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+            '  File "/home/u/SchwingNet/tools/bank.py", line 512, in keys_of',
+            "ValueError: <message withheld>",
+            "XR_BANK_RC=1 2026-10-25 04:29:58",
+            "XR_CATALOG start 2026-10-25 05:00:01 on node12 job 4243",
+            "XR_CATALOG lock 2026-10-25 05:00:01",
+            "XR_CATALOG_RC=1 2026-10-25 05:00:09",
+            "Traceback (most recent call last):",
+            '  File "/home/u/SchwingNet/flows/launch.py", line 256, in <module>',
+            "    sys.exit(main())",
+        ])
+        # the source line under the prefix lost its indent, so nothing tells it from any other line
+        # the task printed, and it is withheld with the rest; a prefix's text inside a line is no prefix
+        self.assertEqual(kept[-1], "#withheld 8")
+        self.assertFalse(any("12345678" in line or "run_once" in line for line in kept), kept)
 
 
 # Logs a call of the launcher only; the stage's own small reads of a recipe print nothing.
