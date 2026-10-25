@@ -6,7 +6,7 @@
   "level_truth": "boxes per vertebra, level-adjacent if the vertebrae are ordered; worthless if the films are AASCE's",
   "reach": "get",
   "status": "found by the sweep of 2026-10-21; not fetched; its origin is unstated, so it may be a relabel of AASCE (aasce): every image is hash-checked (filename or pixel hash) against the AASCE copy on the grid before any use, and a match excludes it as new people",
-  "licence": "Kaggle; the licence on the page, to confirm",
+  "licence": "MIT in the Kaggle metadata field, while the description's own licence section says CC BY 4.0 (both read from Kaggle's dataset API on 2026-10-22); either is open",
   "link": "https://www.kaggle.com/datasets/salmankey/scoliosis-yolov5-annotated-spine-x-ray-dataset",
   "how_to_get": [
     "The owner's Kaggle account; read the licence and the stated source on the page.",

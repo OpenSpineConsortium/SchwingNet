@@ -1,0 +1,20 @@
+{
+ "recipe": "research-internal",
+ "power": {
+  "expected_accuracy": 0.5,
+  "half_width": 0.05,
+  "confidence": 0.95
+ },
+ "device_training_persons": 12,
+ "test_groups": [
+  "fluoro"
+ ],
+ "fill_groups": [
+  "fluoro",
+  "projections"
+ ],
+ "never_train": {
+  "carmlspine_sweeps": "the two recorded sweeps are the demo persons case134 and case39, never trained on (data/splits/test-persons.json)"
+ },
+ "why": "The owner's settings for tools/choose_data.py (#291). The power is the storage feed's own (a 5 point half-width at 95 percent at the most demanding accuracy, 0.5), so the chooser and the storage panel ask for the same people; a lower half-width or a higher expected accuracy is the owner's to set. Twelve persons per device go to training, the top of the ten to twelve frames that reach 95 percent of the plateau (docs/research/state-of-knowledge.md row 4); 0 makes the test zero-shot. never_train names sets no run may train on, each with the reason."
+}

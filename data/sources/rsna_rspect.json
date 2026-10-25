@@ -4,7 +4,7 @@
   "group": "ct",
   "what": "7,279 patients; a gated anomaly-harvest collection (group B7)",
   "level_truth": "counted by the census pipeline once fetched",
-  "reach": "gated",
+  "reach": "held",
   "status": "the owner joined the competition on Kaggle on 2026-10-21; the fetch command was given (kagglehub competition_download on a compute node, the Kaggle token read from ~/.fluorocap/credentials.env, never on a command line); the token the owner pasted into the chat is to be revoked and minted again; job id not yet recorded",
   "licence": "a data use agreement (non-commercial)",
   "link": "https://www.kaggle.com/competitions/rsna-str-pulmonary-embolism-detection",
@@ -12,7 +12,7 @@
     "The competition rules are accepted on the owner's Kaggle account (2026-10-21).",
     "Fetch on a compute node with kagglehub into /rs/rs_grp_oschome/go2432/data/rsna_rspect_pe/raw (manifest id rsna_rspect_pe), the Kaggle API token kept in a mode-0600 file and read into the job's environment, never on a command line."
   ],
-  "grid_path": null,
+  "grid_path": "/rs/rs_grp_oschome/go2432/data/rsna_rspect_pe/raw",
   "counts": {},
   "measured": {},
   "record": "spine-program 10_data_platform_grid/code/data_platform/DATA_MANIFEST.md group B7; spine-program 10_data_platform_grid acquisition/ACQUISITION_PLAN.md section 7"

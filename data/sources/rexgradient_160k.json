@@ -4,7 +4,7 @@
   "group": "films",
   "what": "160,000 chest radiograph studies with reports from 109,487 patients at 79 US sites; several images per study, so laterals are likely included (to confirm on the page)",
   "level_truth": "none; the thoracic spine behind the heart, and laterals if present",
-  "reach": "gated",
+  "reach": "held",
   "status": "found by the sweep of 2026-10-21; not fetched; asked Dr Zhang on 2026-10-24 for leave to download all image parts; no answer by 2026-10-24; Hugging Face gated behind a non-commercial data access and use agreement signed on the page; 79 sites means 79 exposure recipes",
   "licence": "a non-commercial data access and use agreement on the Hugging Face page",
   "link": "https://huggingface.co/datasets/rajpurkarlab/ReXGradient-160K",
@@ -12,7 +12,7 @@
     "The owner accepts the data access and use agreement on https://huggingface.co/datasets/rajpurkarlab/ReXGradient-160K under the owner's Hugging Face account.",
     "Fetch as a Slurm job on the owner's word, never on the login node: python3 data/reproduce/reacquire/reacquire.py hf-get --repo rajpurkarlab/ReXGradient-160K --repo-type dataset --dest DIR; HF_TOKEN from the submitter's environment, never from this repository."
   ],
-  "grid_path": null,
+  "grid_path": "/rs/rs_grp_oschome/go2432/data/hf_rexgradient_160k",
   "counts": {
     "studies": 160000,
     "patients": 109487,

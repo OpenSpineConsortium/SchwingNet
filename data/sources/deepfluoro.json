@@ -6,7 +6,7 @@
   "level_truth": "pelvis and lower lumbar, from the CT",
   "reach": "held",
   "status": "the sacrum detector's training; 2,293 vendor frames unused with no written criterion",
-  "licence": "CC BY-NC-SA 4.0",
+  "licence": "CC BY-NC 4.0 by the H5 release's LICENSE, CC BY-NC-SA 4.0 by its datasheet: non-commercial either way",
   "link": "https://github.com/eigenvivek/DiffDRR-Datasets",
   "how_to_get": [],
   "grid_path": "/rs/rs_grp_oschome/go2432/data/deepfluoro_h5/raw/deepfluoro; /rs/rs_grp_oschome/go2432/data/deepfluoro_vendor",

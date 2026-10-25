@@ -1,7 +1,9 @@
-"""The textbook site as the files of one claude.ai artifact: the edition a
-Claude Code session on the owner's computer publishes, private, on the
-owner's account, and republishes to the same link when the book has changed
-(issues #236 and #277).
+"""The textbook site as the files of the book on claude.ai: the edition the
+reader shows, one private artifact on the owner's account (issues #236, #277
+and #294). A thread of the Claude project packs the edition and copies it
+into the project's files (tools/textbook_reader.py stage), and the reader,
+tools/textbook_reader.html, the one page the owner publishes, reads it from
+there when it is opened.
 
 The members-only Pages site is built by tools/textbook_site.py. A claude.ai
 artifact page cannot be framed by any other site, the Pages site included:
@@ -40,15 +42,17 @@ script copies the site and changes only what the artifact needs:
   can tell a stale copy from the current one. Each figure gets a button that
   opens the box with the figure named.
 
-The output folder holds the files to publish and batches.json: the files
-grouped under the Artifact tool's per-publish limits (255 files and 64 MB,
-with a margin), index.html left out of every batch since it is the publish's
-own file_path; a whole version must stay under 511 files and 256 MB, a
-binary file under 15 MB and a text file under 16 MB, and the script says so
-when one does not. The edition line carries the built commit's own date,
-given as --built, never the clock, so building one commit twice gives the
-same bytes and the publish (tools/textbook_publish.py local, run on the
-owner's computer) can tell what changed by hashing the files.
+The output folder holds the edition and batches.json: the files grouped
+under the Artifact tool's per-publish limits (255 files and 64 MB, with a
+margin), index.html left out of every batch since it is the publish's own
+file_path; a whole version must stay under 511 files and 256 MB, a binary
+file under 15 MB and a text file under 16 MB, and the script says so when
+one does not. Those are the limits of the multi-file artifact the edition
+was published as until #294, which the Artifact tool refused to publish
+unread, and the pack leaves batches.json out. The edition line carries the
+built commit's own date, given as --built, never the clock, so building one
+commit twice gives the same bytes and a stage can tell an edition it already
+copied by its inputs.
 
     python3 tools/textbook_artifact.py SITE OUT --repo OWNER/NAME --sha SHA --built DATE
 """
@@ -137,8 +141,12 @@ ASK_JS = r"""
   var q = document.getElementById("ask-q"), out = document.getElementById("ask-out"), send = document.getElementById("ask-send");
   var stop = document.getElementById("ask-stop"), hint = document.getElementById("ask-hint"), handoff = document.getElementById("ask-handoff");
   var title = document.getElementById("ask-title");
-  var repo = document.documentElement.getAttribute("data-repo") || "";
-  var here = (function () { var p = location.pathname.split("/").pop() || ""; return /\.html$/.test(p) ? p : "index.html"; })();
+  var root = document.documentElement, repo = root.getAttribute("data-repo") || "";
+  // The reader on claude.ai (tools/textbook_reader.html) shows a page from a srcdoc, whose address
+  // names no page, so it marks the page and the place its link asked for on the root.
+  var here = root.getAttribute("data-page") ||
+    (function () { var p = location.pathname.split("/").pop() || ""; return /\.html$/.test(p) ? p : "index.html"; })();
+  var asked = root.hasAttribute("data-page") ? "#" + (root.getAttribute("data-hash") || "") : location.hash;
   var LIMIT = 180000; // characters of page text sent with a question; the runtime takes 256 KiB in all
   var context = null, subject = pageTitle(), sampleFn = undefined, controller = null;
 
@@ -219,7 +227,7 @@ ASK_JS = r"""
       show(true);
     }).catch(function () {});
   }
-  var m = /^#ask-([a-z0-9-]+)$/.exec(location.hash || "");
+  var m = /^#ask-([a-z0-9-]+)$/.exec(asked || "");
   if (m && m[1] !== "index") loadChapter(m[1]);
 
   var RULES = "You are answering inside the SchwingNet textbook, a confidential book built from a research programme's " +
@@ -360,7 +368,7 @@ def record_links(text, repo, sha):
 
 def edition_line(repo, sha, built):
     return (f'<p class="edition">This edition was built from <a href="https://github.com/{esc(repo)}/commit/{esc(sha)}">'
-            f'{esc(sha[:7])}</a> on {esc(built)}; the repository is the source, and this copy is republished from it when the '
+            f'{esc(sha[:7])}</a> on {esc(built)}; the repository is the source, and this copy is rebuilt from it when the '
             f'book changes. A figure that came from an exported artifact opens that artifact&#x27;s own page here, and '
             f'Ask Claude answers from the page you are on.</p>')
 

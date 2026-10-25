@@ -4,15 +4,15 @@
   "group": "ct",
   "what": "2D projections of the central slices of VerSe 19 and 20 vertebrae, with soft labels from proposal-based non-expert annotation ('Annotating ambiguous images', 2023); count to confirm on the page (VerSe holds 4,505 vertebrae over 374 scans)",
   "level_truth": "vertebral identity from VerSe",
-  "reach": "get",
+  "reach": "held",
   "status": "found by the sweep of 2026-10-21; not fetched; its people are already in the v9 base (verse), so train-side only: a cheap extra render arm or a sanity check of the project's own VerSe renders",
-  "licence": "to confirm on the page (VerSe itself is CC BY-SA 4.0)",
+  "licence": "Other (Open) (as the Zenodo page's licence line reads for version v1.0, published 2022-10-06, read 2026-10-22); the record's license.txt names no licence for its two VerSe files",
   "link": "https://zenodo.org/records/8115942",
   "how_to_get": [
     "Open https://zenodo.org/records/8115942 and read its licence line and file list.",
     "Fetch as a Slurm job on the owner's word, never on the login node: python3 data/reproduce/reacquire/reacquire.py zenodo-get --record 8115942 --dest DIR."
   ],
-  "grid_path": null,
+  "grid_path": "/rs/rs_grp_oschome/go2432/data/verse_2d_projections",
   "counts": {},
   "measured": {},
   "record": "docs/research/xray-datasets-missing.md (2026-10-21)"

@@ -4,15 +4,15 @@
   "group": "video",
   "what": "about 500,000 fluoroscopy frames (600,000 in the 2026 revision) of endovascular catheterisation, animal and phantom, with action labels, collision labels and 25,000 to 40,000 catheter and guidewire masks; two zips, 4.35 GB and 9.88 GB",
   "level_truth": "none; no spine, much of it animal",
-  "reach": "get",
+  "reach": "held",
   "status": "found by the sweep of 2026-10-21; not fetched; the largest real fluoroscopy frame pool in the open with no DUA, from clinical C-arms with live instruments: an exposure, noise and device-domain source beside coronary_angiography and fluoro_video_clips, not anatomy",
-  "licence": "to confirm on the page",
+  "licence": "CC BY-NC-SA 4.0 (cc-by-nc-sa-4.0, as the Hugging Face page's licence line reads, read 2026-10-22), with a download form",
   "link": "https://huggingface.co/datasets/airvlab/CathAction",
   "how_to_get": [
     "Open https://huggingface.co/datasets/airvlab/CathAction and read the licence line.",
     "Fetch as a Slurm job on the owner's word, never on the login node: python3 data/reproduce/reacquire/reacquire.py hf-get --repo airvlab/CathAction --repo-type dataset --dest DIR."
   ],
-  "grid_path": null,
+  "grid_path": "/rs/rs_grp_oschome/go2432/data/cathaction",
   "counts": {
     "frames_about": 500000,
     "zip_1_gb": 4.35,

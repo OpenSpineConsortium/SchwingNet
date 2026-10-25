@@ -1397,6 +1397,87 @@ esac
         self.assertEqual(self.gate("nodequota").returncode, 0)
         self.assertEqual(len(self.submitted()), 2)
 
+    def test_folders_reads_the_index_once_then_prints_one_page_a_send(self):
+        # an argument is refused, and nothing is queued before there is a whole sample index
+        self.assertEqual(self.gate("folders", "x").returncode, 64)
+        self.assertEqual(self.gate("folders").returncode, 2)
+        run = self.data / "_samples" / "20261022-000000-abcd"
+        run.mkdir(parents=True)
+        (run / "samples.sqlite").write_bytes(b"")
+        (self.data / "_samples" / "CURRENT").write_text(run.name + "\n", encoding="utf-8")
+        self.assertEqual(self.gate("folders").returncode, 75)
+        self.environments_ready()
+        done = self.gate("folders")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        lines = self.submitted()
+        self.assertEqual(len(lines), 1, lines)
+        self.assertIn("--class batch --name folders", lines[0])
+        self.assertIn(f"FOLDERS_DB={run / 'samples.sqlite'}", lines[0])
+        self.assertIn("folders.sbatch", lines[0])
+        # while its job is live a second send is refused and queues nothing
+        self.live(self.recorded()["folders"])
+        self.assertEqual(self.gate("folders").returncode, 75)
+        # once it has ended, each send prints the next page, in number order, and clears it
+        (self.fake / "queue").write_text("", encoding="utf-8")
+        logs = self.repo / "grid" / "logs"
+        for number in (1, 2, 10):
+            (logs / f"FOLDERS-{number}.md").write_text(f"## page {number}\n", encoding="utf-8")
+        printed = [self.gate("folders").stdout for _ in range(3)]
+        self.assertIn("page 1", printed[0])
+        self.assertIn("2 more to print", printed[0])
+        self.assertIn("page 2", printed[1])
+        self.assertIn("page 10", printed[2])
+        self.assertEqual(len(self.submitted()), 1)
+        # the send after the last page looks again
+        self.assertEqual(self.gate("folders").returncode, 0)
+        self.assertEqual(len(self.submitted()), 2)
+
+    def test_bench_queues_one_gpu_job_per_model_and_then_keeps_printing_its_report(self):
+        # no name, two names and a name of no benchmark are refused before anything is read
+        self.assertEqual(self.gate("bench").returncode, 64)
+        self.assertEqual(self.gate("bench", "a", "b").returncode, 64)
+        self.assertEqual(self.gate("bench", "fluorosam").returncode, 64)
+        # nothing is queued before the fetch has landed the weights, and the refusal names the fetch
+        refused = self.gate("bench", "flexray_carmlspine")
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn("fetch hf_flexray_weights first", refused.stdout)
+        refused = self.gate("bench", "xvr_deepfluoro")
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn("fetch hf_xvr_models first", refused.stdout)
+        bundle = self.data / "hf_flexray_weights" / "raw"
+        bundle.mkdir(parents=True)
+        (bundle / "ensemble.json").write_text("{}\n", encoding="utf-8")
+        refused = self.gate("bench", "flexray_carmlspine")
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn("C-ArmLSpine's bank", refused.stdout)
+        (self.data / "realxray" / "carmlspine" / "meta").mkdir(parents=True)
+        self.assertEqual(self.gate("bench", "flexray_carmlspine").returncode, 75)
+        self.assertEqual(self.submitted(), [])
+        self.environments_ready()
+        done = self.gate("bench", "flexray_carmlspine")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        lines = self.submitted()
+        self.assertEqual(len(lines), 1, lines)
+        self.assertIn("--class gpu --name bench_flexray_carmlspine", lines[0])
+        self.assertIn("BENCH=flexray_carmlspine", lines[0])
+        self.assertIn("--no-requeue", lines[0])
+        self.assertIn("bench.sbatch", lines[0])
+        job = self.recorded()["bench_flexray_carmlspine"]
+        # while its job is live a second send is refused and queues nothing
+        self.live(job)
+        self.assertEqual(self.gate("bench", "flexray_carmlspine").returncode, 75)
+        # once it has ended, its report is printed on every send and nothing more is queued,
+        # so the owner's count of one job each holds
+        (self.fake / "queue").write_text("", encoding="utf-8")
+        report = self.repo / "grid" / "logs" / "BENCH-flexray_carmlspine.md"
+        report.write_text("# bench flexray_carmlspine\n- exit 0\n", encoding="utf-8")
+        for _ in range(2):
+            done = self.gate("bench", "flexray_carmlspine")
+            self.assertEqual(done.returncode, 0, done.stdout)
+            self.assertIn("- exit 0", done.stdout)
+        self.assertEqual(len(self.submitted()), 1)
+        self.assertTrue(report.exists())
+
     def test_dropzip_deletes_once_then_prints_what_it_did(self):
         shutil.copy(GRID / "fetch-xray.json", self.repo / "grid" / "fetch-xray.json")
         # an id of no list, one with no raw folder yet, and a malformed send are refused and queue nothing

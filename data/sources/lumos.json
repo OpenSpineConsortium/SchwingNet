@@ -4,15 +4,12 @@
   "group": "fluoro",
   "what": "803 living patients: 1,620 lumbar AP or lateral radiographs and 280 non-contrast lumbar CTs, anonymised DICOM and NPY; diagnostic radiography, not C-arm fluoroscopy; no pose given",
   "level_truth": "levels readable from the paired CT after a 2D/3D registration",
-  "reach": "get",
-  "status": "open on Zenodo; never fetched; still open on Zenodo at the sweep of 2026-10-21, never fetched; queued in the fetch chain of #38",
-  "licence": "not recorded on the card; to confirm on the record",
+  "reach": "held",
+  "status": "held on the grid since 2026-10-23 (spine-datasets' record: /rs/rs_grp_oschome/go2432/data/zenodo_lumos, 77 GB); diagnostic radiographs, not C-arm, whose levels come only through a registration to the paired CT",
+  "licence": "CC BY-NC 4.0 (Creative Commons Attribution Non Commercial 4.0 International, as the Zenodo page's licence line reads for v1, published 2025-10-27, read 2026-10-22)",
   "link": "https://zenodo.org/records/18173664",
-  "how_to_get": [
-    "Open https://zenodo.org/records/18173664 and read its licence line.",
-    "Fetch the 46.4 GB archive to Ceph as a Slurm job (sbatch, never on the login node), verify the record's md5."
-  ],
-  "grid_path": null,
+  "how_to_get": [],
+  "grid_path": "/rs/rs_grp_oschome/go2432/data/zenodo_lumos",
   "counts": {
     "patients": 803,
     "radiographs": 1620,

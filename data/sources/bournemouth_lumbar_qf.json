@@ -6,7 +6,7 @@
   "level_truth": "lumbar, if corner templates exist as they do for the cervical set",
   "reach": "get",
   "status": "the only confirmed lumbar cine; the letter (request 1) went to the Bournemouth team on 2026-10-20 22:44 UTC; Jonny Branney answered on 2026-10-22 and Alex Breen on 2026-10-24: about 1,180 image events, cervical and lumbar together, 500 to 800 GB, the stored DICOM being the original frames (row 1 of a corner template is the mean of frames 1 and 2), with the corner templates; a data sharing agreement is required and one Wayne State prepares would be quickest; Marcin Budka, chief investigator of MAID, was copied for the licence of the MAID images (OSF z2jby), which Breen is unsure of; the owner replied on 2026-10-24 asking for the agreement and that licence; waits on the agreement",
-  "licence": "not recorded (OSF holds derived tables only)",
+  "licence": "not recorded (OSF a27py holds derived tables only; the image deposit OSF z2jby states no licence)",
   "link": "https://osf.io/a27py/",
   "how_to_get": [
     "Part of request 1 above: write to the corresponding author of doi:10.3389/fbioe.2021.745837 for the L2-S1 cine behind osf.io/a27py."

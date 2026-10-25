@@ -54,6 +54,10 @@
 #   nodequota       the volume's readout as a compute node reads it (grid/nodequota.sbatch, the owner's yes
 #                   of 2026-10-24): the first send queues one job, the next prints logs/NODEQUOTA.md and
 #                   clears it, so the send after that looks again
+#   folders         what each unmapped folder of the data root holds (tools/folder_report.py,
+#                   grid/folders.sbatch, #296, the owner's yes of 2026-10-25): the first send queues one
+#                   job over the newest whole sample index, the next sends print its pages,
+#                   logs/FOLDERS-<n>.md, one a send, clearing each, so the send after the last looks again
 #   samples         the sample index (grid/run-samples.sh): plan, scan and merge, refused while one
 #                   of them is live; status shows its MANIFEST.md, aggregates only
 #   sweep <plan>    one plan of grid/sweeps/ (issue #252): the block smoke test on one GPU through
@@ -74,6 +78,10 @@
 #                   shards and a qualifying catalog version, which 'v1' makes), refused while a run for
 #                   the same issue is live and afterany every other live run that holds the checkout;
 #                   the job checks the values against the blocks module before anything trains
+#   bench <name>    one public model's benchmark as its authors published it (#287, the owner's word and
+#                   count of 2026-10-25): flexray_carmlspine, flexray_deepfluoro or xvr_deepfluoro, each one
+#                   GPU job (grid/bench.sbatch, tools/bench_public.py) once its fetch has landed; the next
+#                   send prints logs/BENCH-<name>.md, and every later one prints it again and queues nothing
 #   stop            cancel the gate's own jobs that are still queued or running, and nothing else
 #   cancel <job>    cancel one of the gate's own live jobs and every other live job its word queued
 #                   with it (a fetch's bank and catalog), and nothing else
@@ -122,18 +130,18 @@ SWEEP_BANK=${SWEEP_BANK:-$DATA_ROOT/realxray/carmlspine_sweep}
 NETRC=${NETRC:-$HOME/.netrc}
 LOGS=$REPO/grid/logs
 STATE=$LOGS/GATE_JOBS.txt
-WORDS="start status leaks v1 latency fetch explore dropzip unpack nodequota samples sweep bank experiment stop cancel"
+WORDS="start status leaks v1 latency fetch explore dropzip unpack nodequota folders samples sweep bank experiment bench stop cancel"
 ENVS="default train-cpu train-gpu telemetry"
 
 word=${1:-}
 id=${2:-}
 # Matched whole, so one argument holding two words ("v1 latency") is refused and never runs nothing.
 case "$word" in
-  start|status|leaks|v1|latency|fetch|explore|dropzip|unpack|nodequota|samples|sweep|bank|experiment|stop|cancel) ;;
+  start|status|leaks|v1|latency|fetch|explore|dropzip|unpack|nodequota|folders|samples|sweep|bank|experiment|bench|stop|cancel) ;;
   "") echo "refusing: no word; one of: $WORDS"; exit 64 ;;
   *) echo "refusing: '$word' is not one of: $WORDS"; exit 64 ;;
 esac
-if [ "$word" = fetch ] || [ "$word" = explore ] || [ "$word" = dropzip ] || [ "$word" = unpack ] || [ "$word" = sweep ] || [ "$word" = bank ]; then
+if [ "$word" = fetch ] || [ "$word" = explore ] || [ "$word" = dropzip ] || [ "$word" = unpack ] || [ "$word" = sweep ] || [ "$word" = bank ] || [ "$word" = bench ]; then
   [ $# -eq 2 ] || { echo "refusing: $word takes exactly one id"; exit 64; }
   case "$id" in ""|*[!a-z0-9_]*) echo "refusing: an id is lower-case letters, digits and _"; exit 64 ;; esac
   [ ${#id} -le 40 ] || { echo "refusing: an id is at most 40 characters"; exit 64; }
@@ -935,6 +943,69 @@ word_nodequota() {
   echo "submitted one job. Send nodequota again once it ends to read what the node read."
 }
 
+word_folders() {
+  local busy page left index
+  busy=$(live_of folders)
+  [ -z "$busy" ] || { echo "refusing: the folder report is still queued or running (job $busy); send folders again once it ends"; return 75; }
+  page=$(find "$LOGS" -maxdepth 1 -name 'FOLDERS-*.md' 2>/dev/null | sort -V | head -n 1)
+  if [ -n "$page" ]; then
+    left=$(( $(find "$LOGS" -maxdepth 1 -name 'FOLDERS-*.md' | wc -l) - 1 ))
+    echo "## $(basename "$page") ($(date -r "$page" '+%F %T')), $left more to print"
+    head -c 60000 "$page" | LC_ALL=C tr -cd '\11\12\40-\176' | masked
+    rm -f "$page"
+    return 0
+  fi
+  index=$(samples_index) || { echo "refusing: no whole sample index yet; 'samples' makes it"; return 2; }
+  envs_ready || { echo "refusing: the environments are not ready; 'start' makes them first"; return 75; }
+  submit folders batch FOLDERS_DB="$index" -- folders.sbatch > /dev/null || return 1
+  echo "submitted one job. Send folders again once it ends to print its report, one page a send."
+}
+
+samples_index() {  # the newest whole run's samples.sqlite, as grid/run-samples.sh names it in CURRENT
+  local out=${SAMPLES_OUT:-$DATA_ROOT/_samples} current
+  current=$(cat "$out/CURRENT" 2>/dev/null)
+  [ -n "$current" ] && [ -f "$out/$current/samples.sqlite" ] || return 1
+  echo "$out/$current/samples.sqlite"
+}
+
+bench_inputs_missing() {  # what bench $id still lacks on the data root, one line, or nothing
+  case "$id" in
+    flexray_carmlspine|flexray_deepfluoro)
+      find "$DATA_ROOT/hf_flexray_weights/raw" -maxdepth 3 -name ensemble.json -print -quit 2>/dev/null | grep -q . \
+        || { echo "FleXray's weights (fetch hf_flexray_weights first)"; return; }
+      if [ "$id" = flexray_carmlspine ]; then
+        [ -d "$DATA_ROOT/realxray/carmlspine/meta" ] || echo "C-ArmLSpine's bank at $DATA_ROOT/realxray/carmlspine"
+      else
+        find "$DATA_ROOT/deepfluoro_h5/raw" -name '*.h5' -size +1M -print -quit 2>/dev/null | grep -q . \
+          || echo "DeepFluoro's .h5 under $DATA_ROOT/deepfluoro_h5/raw"
+      fi ;;
+    xvr_deepfluoro)
+      find "$DATA_ROOT/hf_xvr_models/raw" -path '*/deepfluoro/finetuned/subject01.pth' -print -quit 2>/dev/null | grep -q . \
+        || { echo "xvr's DeepFluoro models (fetch hf_xvr_models first)"; return; }
+      [ -f "$DATA_ROOT/hf_xvr_data/raw/deepfluoro/subject01/volume.nii.gz" ] || echo "xvr's DeepFluoro data (fetch hf_xvr_data first)" ;;
+  esac
+}
+word_bench() {  # one public model's benchmark (#287): queued once, its report printed on every later send
+  local report=$LOGS/BENCH-$id.md busy missing
+  case "$id" in
+    flexray_carmlspine|flexray_deepfluoro|xvr_deepfluoro) ;;
+    *) echo "refusing: bench takes flexray_carmlspine, flexray_deepfluoro or xvr_deepfluoro"; return 64 ;;
+  esac
+  busy=$(live_of "bench_$id")
+  [ -z "$busy" ] || { echo "refusing: the benchmark $id is still queued or running (job $busy); send bench $id again once it ends"; return 75; }
+  if [ -f "$report" ]; then
+    # Kept, so the owner's count of one job each holds: a report that stands queues nothing.
+    echo "## $(basename "$report") ($(date -r "$report" '+%F %T'))"
+    head -n 100 "$report" | LC_ALL=C tr -cd '\11\12\40-\176' | masked | head -c 20000
+    return 0
+  fi
+  missing=$(bench_inputs_missing)
+  [ -z "$missing" ] || { echo "refusing: bench $id needs $missing"; return 2; }
+  envs_ready || { echo "refusing: the environments are not ready; 'start' makes them first"; return 75; }
+  submit "bench_$id" gpu BENCH="$id" DATA_ROOT="$DATA_ROOT" --no-requeue -- bench.sbatch > /dev/null || return 1
+  echo "submitted one job. Send bench $id again once it ends to read its report, logs/BENCH-$id.md."
+}
+
 word_samples() {
   local busy said rc
   busy=$( { live_of samples_plan; live_of samples_scan; live_of samples_merge; } | tr '\n' ' ')
@@ -1254,7 +1325,9 @@ case "$word" in
   dropzip) word_dropzip ;;
   unpack) word_unpack ;;
   nodequota) word_nodequota ;;
+  folders) word_folders ;;
   experiment) word_experiment ;;
+  bench) word_bench ;;
   samples) word_samples ;;
   sweep) word_sweep ;;
   bank) word_bank ;;

@@ -6,7 +6,7 @@
   "level_truth": "none; phantom only",
   "reach": "get",
   "status": "found by the sweep of 2026-10-21; not fetched; open per the paper, licence to confirm on the page; bi-planar real fluoroscopy geometry from one device, domain and calibration value only",
-  "licence": "to confirm on the page",
+  "licence": "CC BY-NC 4.0 (cc-by-nc-4.0, as the Hugging Face dataset airvlab/guide3d's licence line reads, read 2026-10-22)",
   "link": "https://airvlab.github.io/guide3d/",
   "how_to_get": [
     "Open https://airvlab.github.io/guide3d/ and read the download route and the licence.",

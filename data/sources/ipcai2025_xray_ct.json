@@ -6,7 +6,7 @@
   "level_truth": "none; no spine; the stored poses make it a 2D/3D registration benchmark (docs/research/benchmarks-to-beat.md, sections 1 and 5)",
   "reach": "held",
   "status": "found by the sweep of 2026-10-21 as 'pelvis or spine, to confirm'; fetched by the X-ray chain on 2026-10-21 and still zipped at the sample index of 2026-10-22 (4 files, 6.2 GB, docs/research/data-manifest/MANIFEST.md); the Zenodo page and the paper, read on 2026-10-22 and 2026-10-23, say the distal femur, so it names no level, enters no registry shard (its registry entry, its chain entry and its bank recipe were removed on 2026-10-23) and serves workstream O (#127) as a registration benchmark only",
-  "licence": "Research-Only Dataset License (the Zenodo record: redistribution for academic research only, commercial use by written permission, Swiss law); the code is by request under a non-commercial licence, patent pending EP25168706.7",
+  "licence": "Research-Only Dataset License (as the Zenodo page's licence line reads for version 1.0, published 2025-05-20, read 2026-10-22)",
   "link": "https://zenodo.org/records/15753063",
   "how_to_get": [
     "Open https://zenodo.org/records/15753063: open access, no login; one file, dataset_ipcai.zip, 6.7 GB, md5 cc8bf3e445495d2deb6d50dd058dc977.",

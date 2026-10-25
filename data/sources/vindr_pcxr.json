@@ -6,7 +6,7 @@
   "level_truth": "none; the pediatric frontal thoracic spine",
   "reach": "gated",
   "status": "found by the sweep of 2026-10-21; the owner's data use agreement is on file (spine-datasets 7a74bb6, 2026-10-21); the first fetch, Slurm job 40697734 on 2026-10-21 (the gate's answer for the request schwingnet-fetch-vindr_pcxr-first), ended with wget exit 8 and 0 files, and the next fetch's report names PhysioNet's answer",
-  "licence": "PhysioNet Restricted Health Data License 1.5.0: a data use agreement signed on the page, with no CITI training review (spine-datasets 7a74bb6, 2026-10-21, which records the files open to the owner's account, 34.1 GB uncompressed)",
+  "licence": "PhysioNet Restricted Health Data License 1.5.0 (no CITI review needed)",
   "link": "https://physionet.org/content/vindr-pcxr/1.0.0/",
   "how_to_get": [
     "The data use agreement on the record page, signed under the owner's PhysioNet account, the account ~/.netrc names; this Restricted project needs no CITI training review (spine-datasets 7a74bb6).",

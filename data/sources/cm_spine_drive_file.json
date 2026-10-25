@@ -6,7 +6,7 @@
   "level_truth": "unknown",
   "reach": "get",
   "status": "empty in the data platform at bf1432f; the owner's hand: gdown into a scratch directory, inspect, then decide",
-  "licence": "not recorded",
+  "licence": "none stated: the paper's data statement and its repository's README name no licence, and the repository has no licence file (read 2026-10-23)",
   "link": null,
   "how_to_get": [
     "cd into a scratch directory on a compute node and gdown 1r9wX1802gkU4-EQHMMlyAlEiWXGWLhhJ; inspect what came; then decide whether it is a source at all.",
