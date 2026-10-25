@@ -879,7 +879,9 @@ word_folders() {
     return 0
   fi
   index=$(samples_index) || { echo "refusing: no whole sample index yet; 'samples' makes it"; return 2; }
-  envs_ready || { echo "refusing: the environments are not ready; 'start' makes them first"; return 75; }
+  # The report needs only the standard library, so an environment a newer pixi.lock left behind
+  # still runs it: only a train-cpu python that is not there at all waits for 'start'.
+  [ -x "$REPO/.pixi/envs/train-cpu/bin/python" ] || { echo "refusing: no train-cpu environment yet; 'start' makes it first"; return 75; }
   submit folders batch FOLDERS_DB="$index" -- folders.sbatch > /dev/null || return 1
   echo "submitted one job. Send folders again once it ends to print its report, one page a send."
 }
