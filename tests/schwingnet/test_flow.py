@@ -175,6 +175,29 @@ def test_the_spend_is_summed_from_the_jobs_and_the_ledger_row_is_one_line() -> N
     assert "1.50 h wall, 1.50 GPU h" in row
 
 
+def test_a_job_submitted_and_not_yet_seen_to_finish_is_recorded_with_no_exit_code() -> None:
+    # tools/flow.py records a Slurm job as soon as it is submitted, so a start that dies while the
+    # job waits leaves it named for the next start to wait on; the record reads back as written.
+    submitted = JobRecord(
+        step=Step.TRAIN,
+        job_id="101",
+        partition="gmsap",
+        hours_requested=4,
+        seconds_used=0,
+        gpus=1,
+        preemptions=0,
+        exit_code=None,
+    )
+    held = record(mode="slurm", jobs=(*jobs(), submitted))
+    again = RunRecord.model_validate_json(held.model_dump_json())
+    assert again == held and again.jobs[-1].exit_code is None
+    assert gpu_hours(held.jobs) == 1.5 and wall_hours(held.jobs) == 1.5
+    with pytest.raises(ValidationError):
+        JobRecord.model_validate({**submitted.model_dump(), "exit_code": "running"})
+    with pytest.raises(ValidationError):
+        JobRecord.model_validate({k: v for k, v in submitted.model_dump().items() if k != "exit_code"})
+
+
 def test_a_result_row_is_stamped_and_its_line_carries_the_interval() -> None:
     row = ResultRow(
         measure="accuracy",

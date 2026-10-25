@@ -9,7 +9,9 @@ wrote its checkpoint.json and the best.pt it names, training again, with --resum
 train/last.pt, where it did not (issue #252). A sweep's row
 names its folder with --slug, and a folder holding another run is refused and left as it was. A
 start cut while it writes its record or witness list, or before its record, is started again,
-and a start while another start holds the folder is refused and runs nothing.
+and a start while another start holds the folder is refused and runs nothing. In slurm mode,
+against tests/fakes/hpcworker and a fake sacct, a job is in RUN.json from the moment it is
+submitted, so a start cut while the job waits leaves it for the next start to wait on.
 
 The flow runs in-process against a real synthetic catalog built by the tools, with a fake `pixi`
 on PATH standing in for the trainer, the evaluator and the W&B sync: it writes the files the flow
@@ -100,6 +102,13 @@ elif tool == "wandb_log":
     print("W&B offline only, nothing to push (fake)")
 else:
     raise SystemExit(f"the fake pixi knows no tool {{tool}}")
+'''
+
+
+# sacct as the flow asks it, `sacct -j ID -n -P -X --format=State,Elapsed,ExitCode`: the line the
+# test wrote for the job under FAKE_SACCT, PENDING where it wrote none.
+FAKE_SACCT = r'''#!/bin/bash
+if [ -f "$FAKE_SACCT/$2" ]; then cat "$FAKE_SACCT/$2"; else echo "PENDING|00:00:00|0:0"; fi
 '''
 
 
@@ -401,6 +410,73 @@ class FlowReuseTest(unittest.TestCase):
                 self.assertEqual(self.said(lines)["reused"], reused)
                 self.assertEqual(self.tools_called(), ["train", "wandb_log", "evaluate", "wandb_log", "wandb_log"])
                 self.assertEqual("--resume" in dict(self.calls())["train"], reused == "resumed")
+
+    def slurm(self):
+        """What a start in slurm mode runs with: tests/fakes/hpcworker, which queues nothing and
+        logs each job it is asked to queue, numbered from 101, and the fake sacct, which answers
+        for each job what the test wrote for it, both first on the path."""
+        states, tools = self.work / "sacct", self.work / "slurm-bin"
+        states.mkdir()
+        tools.mkdir()
+        (tools / "sacct").write_text(FAKE_SACCT, encoding="utf-8")
+        (tools / "sacct").chmod(0o755)
+        queued = self.work / "hpcw.log"
+        environment = {"HPCWORKER": str(ROOT / "tests" / "fakes" / "hpcworker"), "HPCW_LOG": str(queued), "FAKE_SACCT": str(states),
+                       "PATH": f"{tools}{os.pathsep}{self.bin}{os.pathsep}{os.environ.get('PATH', '')}"}
+        return environment, states, queued
+
+    def test_a_slurm_start_cut_while_its_job_waits_leaves_the_job_for_the_next_start_to_wait_on(self):
+        # A person's login shell that dies while the train job waits in the queue: the job runs on,
+        # and a start that knew nothing of it would submit a second, which trains over the first's
+        # finished folder on another GPU allocation, the first one's cost counted nowhere.
+        environment, states, queued = self.slurm()
+        run_dir = self.out / "row-a"
+
+        def shell_died(seconds):
+            raise Killed("the login shell died while the job waited")
+
+        def scheduler(seconds):
+            # The flow's sleep before each sacct read, made to run each job queued and not yet run,
+            # as the grid would while the flow waits: training leaves checkpoint.json and the
+            # best.pt it names, an evaluation its results, and sacct then calls the job COMPLETED.
+            for number, line in enumerate(queued.read_text(encoding="utf-8").splitlines(), start=101):
+                if (states / str(number)).exists():
+                    continue
+                if "--name flow_train " in line:
+                    (run_dir / "train").mkdir(exist_ok=True)
+                    (run_dir / "train" / "best.pt").write_bytes(b"the weights of job 101")
+                    named = hashlib.sha256(b"the weights of job 101").hexdigest()
+                    (run_dir / "train" / "checkpoint.json").write_text(json.dumps({"checkpoint_sha256": named}), encoding="utf-8")
+                else:
+                    (run_dir / "evaluate").mkdir(exist_ok=True)
+                    (run_dir / "evaluate" / "results.json").write_text(json.dumps({"headline": {"correct": 1, "total": 2}}), encoding="utf-8")
+                    (run_dir / "evaluate" / "results.md").write_text("| accuracy | 1/2 |\n", encoding="utf-8")
+                (states / str(number)).write_text("COMPLETED|00:10:00|0:0\n", encoding="utf-8")
+
+        with mock.patch.object(self.flow.time, "sleep", shell_died), self.assertRaises(Killed):
+            self.run_flow("--mode", "slurm", "--slug", "row-a", fake=environment)
+        jobs = self.record(run_dir)["jobs"]
+        self.assertEqual([(job["step"], job["job_id"], job["exit_code"]) for job in jobs[1:]], [("train", "101", None)],
+                         "the job is in the record before the flow waits on it")
+        with mock.patch.object(self.flow.time, "sleep", scheduler):
+            rc, lines, err = self.run_flow("--mode", "slurm", "--slug", "row-a", fake=environment)
+        self.assertEqual(rc, 0, err)
+        self.assertEqual(self.said(lines)["reused"], "trained", "the job it waited on finished training")
+        names = [line.split()[3] for line in queued.read_text(encoding="utf-8").splitlines()]
+        self.assertEqual(names, ["flow_train", "flow_evaluate"], "one train job, waited on by the second start")
+        jobs = self.record(run_dir)["jobs"]
+        self.assertEqual([(job["step"], job["job_id"], job["exit_code"]) for job in jobs if job["step"] != "split-check"],
+                         [("train", "101", 0), ("evaluate", "102", 0)])
+        self.assertEqual(jobs[1]["seconds_used"], 600, "the first job's time is counted")
+        self.assertTrue((run_dir / "FINISHED.json").is_file())
+
+    def test_sacct_that_cannot_be_run_is_refused_in_words(self):
+        # A start that finds a job it must wait on and no sacct to ask, as on a machine off the grid.
+        def no_sacct(*args, **kwargs):
+            raise FileNotFoundError(2, "No such file or directory", "sacct")
+
+        with mock.patch.object(self.flow.subprocess, "run", no_sacct), self.assertRaisesRegex(self.flow.FlowError, r"sacct cannot be run here \(\[Errno 2\] No such file or directory: 'sacct'\), so whether job 101 has finished cannot be told"):
+            self.flow.sacct("101")
 
     def test_a_folder_with_a_last_epoch_carries_training_on_with_resume(self):
         rc, lines, err = self.run_flow(fake={"FAKE_TRAIN": "cut"})

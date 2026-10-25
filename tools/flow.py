@@ -21,11 +21,14 @@ their numbers from it and never type a fact of their own, and the commit it name
 run started on. The steps are the split check (SQL over the catalog, here), training
 and evaluation, each one process, each timed and recorded as a job with what it cost, in local
 mode as a subprocess in the train-cpu environment and in slurm mode as one job each in
-train-gpu, queued through hpcworker's job submit as the gpu class (issue #77), polled no faster than once a minute (grid rule 7). `record` copies the run's small
-files, never the checkpoint, into the research folder with one ledger row, so the repository
-holds what ran and what it cost beside the numbers. After the last step the run's report is
-written beside its files (tools/report.py): the CLAIM 2024 and REFORMS items each answered from the
-run's files or the declared study, and the licences of the data it read.
+train-gpu, queued through hpcworker's job submit as the gpu class (issue #77), polled no faster
+than once a minute (grid rule 7) and in RUN.json from the moment it is submitted, so a start that
+dies while its job waits leaves the job for the next start to wait on, never to submit again.
+`record` copies the run's small files, never the checkpoint, into the research folder with one
+ledger row, so the repository holds what ran and what it cost beside the numbers. After the last
+step the run's report is written beside its files (tools/report.py): the CLAIM 2024 and REFORMS
+items each answered from the run's files or the declared study, and the licences of the data it
+read.
 
 The run's configuration is every argument that changes what the steps compute (the stage, the
 epochs, the seed, the crop size, the frame cap, the blocks, augment's changes and the sources in
@@ -341,8 +344,12 @@ def run_local(job, run_dir, again=None):
 
 
 def sacct(job_id):
-    """State, elapsed and exit code of a job's main step, from sacct."""
-    out = subprocess.run(["sacct", "-j", job_id, "-n", "-P", "-X", "--format=State,Elapsed,ExitCode"], capture_output=True, text=True, check=False).stdout
+    """State, elapsed and exit code of a job's main step, from sacct; refused in words where sacct
+    cannot be run, as on a machine off the grid, since whether the job ended cannot then be told."""
+    try:
+        out = subprocess.run(["sacct", "-j", job_id, "-n", "-P", "-X", "--format=State,Elapsed,ExitCode"], capture_output=True, text=True, check=False).stdout
+    except OSError as error:
+        raise FlowError(f"sacct cannot be run here ({error}), so whether job {job_id} has finished cannot be told; start the run where sacct runs, on the grid's login node") from error
     lines = [line for line in out.splitlines() if line.strip()]
     if not lines:
         return None
@@ -366,9 +373,9 @@ def submit_call(job, run_dir, script):
     return ["bash", hpcworker(), "job", "submit", "--project", "schwingnet", "--name", f"flow_{job.step.value}", "--class", job.job_class.value, *narrowed, *gpus, "--no-requeue", "--dir", str(run_dir), "--", str(script)]
 
 
-def run_slurm(job, run_dir, poll):
-    """One step as one job through hpcworker's job submit, its shape asked with --check first, then
-    polled no faster than once a minute until sacct calls it finished."""
+def submit_slurm(job, run_dir):
+    """One step queued as one job through hpcworker's job submit, its shape asked with --check
+    first; the job as submitted, with no exit code until it is seen to finish (waited_for)."""
     script = Path(run_dir) / f"{job.step.value}.sbatch"
     script.write_text(sbatch_script(job.model_copy(update={"command": job.command.format(run_dir=run_dir)}), str(ROOT)), encoding="utf-8")
     call = submit_call(job, run_dir, script)
@@ -381,13 +388,64 @@ def run_slurm(job, run_dir, poll):
         raise FlowError(f"hpcworker refused {script.name}: {(submitted.stdout + submitted.stderr).strip()}")
     job_id, partition, qos = answer
     print(json.dumps({"step": job.step.value, "job_id": job_id, "partition": partition, "submitted": now()}), flush=True)
+    return JobRecord(step=job.step, job_id=job_id, partition=partition, qos=qos, hours_requested=job.hours, seconds_used=0, gpus=job.gpus, preemptions=0, exit_code=None)
+
+
+def waited_for(submitted, poll):
+    """A submitted job polled no faster than once a minute until sacct calls it finished, and the
+    job as it finished: the time it used, its preemptions and its exit code, at least 1 for any
+    end but COMPLETED."""
     while True:
         time.sleep(max(MIN_POLL, poll))
-        answer = sacct(job_id)
+        answer = sacct(submitted.job_id)
         if answer and is_finished(answer[0]):
             break
     state, elapsed, exit_code, preemptions = answer
-    return JobRecord(step=job.step, job_id=job_id, partition=partition, qos=qos, hours_requested=job.hours, seconds_used=elapsed_seconds(elapsed), gpus=job.gpus, preemptions=preemptions, exit_code=exit_code if state.startswith("COMPLETED") else max(1, exit_code))
+    ended = {"seconds_used": elapsed_seconds(elapsed), "preemptions": preemptions, "exit_code": exit_code if state.startswith("COMPLETED") else max(1, exit_code)}
+    return JobRecord.model_validate({**submitted.model_dump(), **ended})
+
+
+def with_job(record, job):
+    """The record with the job in it: in place of its entry as submitted where the record holds
+    one, a job not yet seen to finish with the same id and step, else after the others."""
+    jobs = list(record.jobs)
+    for index, held in enumerate(jobs):
+        if held.exit_code is None and (held.job_id, held.step) == (job.job_id, job.step):
+            jobs[index] = job
+            break
+    else:
+        jobs.append(job)
+    return record.model_copy(update={"jobs": tuple(jobs)})
+
+
+def settle_jobs(run_dir, held, poll):
+    """Each job the record holds as submitted and not yet seen to finish, waited for and recorded
+    as it finished, before the start reads what is left: a start that died while its job waited
+    leaves that job to run on, and the next start waits on it where it would otherwise submit a
+    second, which would train over the first's folder on another allocation and leave the
+    first's cost counted nowhere. A local start's jobs are recorded once they ended, so it finds
+    none."""
+    for job in [job for job in held.jobs if job.exit_code is None]:
+        print(json.dumps({"step": job.step.value, "job_id": job.job_id, "waiting": "submitted by an earlier start"}), flush=True)
+        held = with_job(held, waited_for(job, poll))
+        write_record(run_dir, held)
+    return held
+
+
+def run_step(args, job, run_dir, reused, record):
+    """One step run, and the record with it: in local mode a subprocess, recorded once it ended; in
+    slurm mode a job recorded as soon as it is submitted (submit_slurm), so a start that dies while
+    the job waits leaves it for the next start to wait on (settle_jobs), and again once it ended."""
+    if args.mode == "local":
+        done = run_local(job, run_dir, reused)
+    else:
+        submitted = submit_slurm(job, run_dir)
+        record = with_job(record, submitted)
+        write_record(run_dir, record)
+        done = waited_for(submitted, args.poll)
+    record = with_job(record, done)
+    write_record(run_dir, record)
+    return done, record
 
 
 def write_record(run_dir, record):
@@ -635,6 +693,9 @@ def run_held(args, run_dir, start, lock):
     """The run, once its folder is held for this start alone (held)."""
     record, configuration, licences = start.record, start.configuration, start.licences
     held = earlier_record(run_dir, record)
+    if held and any(job.exit_code is None for job in held.jobs):
+        claim(lock)
+        held = settle_jobs(run_dir, held, args.poll)
     reused = what_is_left(run_dir, held) if held else None
     said = {"run_id": record.run_id, "run_dir": str(run_dir), "mode": args.mode, **({"reused": reused} if reused else {})}
     if reused == FINISHED:
@@ -652,18 +713,14 @@ def run_held(args, run_dir, start, lock):
         new_folder(run_dir, configuration)
     write_whole(run_dir / "split-check.json", json.dumps(start.check, indent=1) + "\n")
     write_configuration(run_dir, configuration)
-    jobs = [*record.jobs, JobRecord(step=Step.SPLIT_CHECK, job_id=f"local-{os.getpid()}-split-check", partition="runner", qos=None, hours_requested=0.01, seconds_used=1, gpus=0, preemptions=0, exit_code=0)]
-    record = record.model_copy(update={"jobs": tuple(jobs)})
+    record = with_job(record, JobRecord(step=Step.SPLIT_CHECK, job_id=f"local-{os.getpid()}-split-check", partition="runner", qos=None, hours_requested=0.01, seconds_used=1, gpus=0, preemptions=0, exit_code=0))
     write_record(run_dir, record)
     _licences.write_provenance(run_dir, licences)
     print(json.dumps({"licence": licences["run_class"], "commercial_use": licences["commercial_use"], "fits_recipes": licences["fits_recipes"]}), flush=True)
     keep_witness(run_dir, args.catalog, record.catalog_sha256)
     print(json.dumps(said), flush=True)
     for job in steps_for(args, reused):
-        done = run_local(job, run_dir, reused) if args.mode == "local" else run_slurm(job, run_dir, args.poll)
-        jobs.append(done)
-        record = record.model_copy(update={"jobs": tuple(jobs)})
-        write_record(run_dir, record)
+        done, record = run_step(args, job, run_dir, reused, record)
         print(json.dumps(done.model_dump()), flush=True)
         # Each step's W&B run is pushed as soon as the step ends, so the website shows training
         # before evaluation starts, even from a node that could only log offline.

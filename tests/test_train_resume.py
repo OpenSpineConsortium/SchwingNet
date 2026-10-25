@@ -555,6 +555,25 @@ class ResumeRefusalsTest(unittest.TestCase):
         after = {str(p.relative_to(folder)): p.read_bytes() for p in folder.rglob("*") if p.is_file()}
         self.assertEqual(after, before)
 
+    def test_a_fresh_start_into_a_finished_folder_is_refused_and_touches_nothing(self):
+        # A second train job queued beside a first that has since finished, as a flow that lost
+        # its record of the first one submitted, would train over the finished run from epoch 0
+        # on another allocation; the flow evaluates such a folder instead.
+        catalog = blocks_tests.RunWithEveryBlockTest.make_catalog(self.tmp / "finished-catalog")
+        folder = new_run(self.tmp / "finished", "finishedrun0", catalog)
+        rc, _, err = train(catalog, folder, "--epochs", "1", "--size", "32", module=self.train)
+        self.assertEqual(rc, 0, err)
+
+        def files():
+            # The lock file says who held it last, so it is the one file a refused start writes.
+            return {str(p.relative_to(folder)): p.read_bytes() for p in folder.rglob("*") if p.is_file() and p.name != ".lock"}
+
+        before = files()
+        rc, _, err = train(catalog, folder, "--epochs", "1", "--size", "32", module=self.train)
+        self.assertEqual(rc, 1)
+        self.assertIn(f"train: {folder / 'train' / 'checkpoint.json'}: the run finished training here", err)
+        self.assertEqual(files(), before)
+
     def test_a_staged_best_moves_in_only_where_the_record_names_it(self):
         folder = self.tmp / "settle" / "train"
         (folder / "pending").mkdir(parents=True)

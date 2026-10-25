@@ -46,9 +46,11 @@ emptied or with stretches of zeros a node that died left in it, which torch read
 so any whose bytes last.pt.sha256 does not name, or whose best line names weights best.pt does
 not hold, is moved aside to last.pt.unreadable and the run trains from epoch 0 in the same call,
 saying so in its log and on its card, since the flow resumes wherever last.pt is and a refusal
-would come back on every start. Every file the run writes whole, best.pt and prior_head.pt among
-them, is on the disk before the rename that puts it in place, so a node that dies leaves the old
-file or the new one whole, never one in between. A run holds train/ by an exclusive lock on
+would come back on every start. A fresh start into a train/ whose checkpoint.json is that of a
+finished run, as a second job queued beside a first that has since finished would make, is
+refused in words and touches nothing. Every file the run writes whole, best.pt and prior_head.pt
+among them, is on the disk before the rename that puts it in place, so a node that dies leaves
+the old file or the new one whole, never one in between. A run holds train/ by an exclusive lock on
 train/.lock from before it reads a file there to its end, so a second trainer sent into the same
 folder while the first still trains, as a flow started again after the flow of a live Slurm job
 died would send one, is refused in words and touches nothing.
@@ -900,19 +902,25 @@ def checkpoint_facts(folder):
     return facts
 
 
-def unsound_set_aside(folder):
-    """A checkpoint.json that is no record of the best.pt beside it (checkpoint_facts), as the flow
-    sends a run to train again for, moved to checkpoint.json.unsound before the run trains, so no
-    reader takes it for this run's end while the run trains again."""
+def checkpoint_left(folder, resume):
+    """What a checkpoint.json train/ holds before the run trains: the record of the best.pt beside
+    it is a finished run, which a fresh start, as a second job queued beside a first that has
+    since finished would make, would train over from epoch 0, so it is refused and tools/flow.py
+    evaluates such a folder instead, while a resume goes on to the same end; one that is no record
+    of it (checkpoint_facts), for which the flow sends the run to train again, is moved to
+    checkpoint.json.unsound, so no reader takes it for this run's end while the run trains."""
     path = folder / "checkpoint.json"
     if not path.exists():
         return
     try:
-        checkpoint_facts(folder)
+        facts = checkpoint_facts(folder)
     except TrainError as error:
         aside = path.with_name("checkpoint.json.unsound")
         os.replace(path, aside)
         print(json.dumps({"set_aside": str(aside), "why": str(error)}), flush=True)
+        return
+    if not resume:
+        raise TrainError(f"{path}: the run finished training here (best.pt sha256 {facts['checkpoint_sha256'][:12]}), and a fresh start would train over it from epoch 0; evaluate it, as tools/flow.py run started again does, or start another run in a folder of its own")
 
 
 def drop_pending(folder):
@@ -1221,7 +1229,7 @@ def train_held(args, out, record, blocks):
         refuse_nothing_to_resume(folder)
     arguments = arguments_of(args, blocks, parent)
     refuse_another_catalog(record, args.catalog, arguments["catalog_sha256"])
-    unsound_set_aside(folder)
+    checkpoint_left(folder, args.resume)
     saved, restarted = load_last(folder, arguments) if args.resume else (None, None)
     seed_everything(args.seed)
     crops = read_crops(args.catalog, TRAIN_PARTS)
