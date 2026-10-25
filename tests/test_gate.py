@@ -1802,7 +1802,7 @@ esac
         self.ceph_fake(raw_bytes=5000 * 10**9)
         done = self.gate_with_ceph("bank", "vindr_spinexr")
         self.assertEqual(done.returncode, 75, done.stdout)
-        self.assertIn("raw copy: 5000 GB; the bank and its shard: at most 10000 GB", done.stdout)
+        self.assertIn("raw copy: 5000 GB of dcm, which bank.py windows to an 8-bit PNG; the bank and its shard: at most 10000 GB", done.stdout)
         self.assertIn("room: 8844 GB free under its quota after 0 GB owed to 0 running fetches", done.stdout)
         self.assertIn("refusing: the bank and its shard need 10000 GB and the room is 8844 GB", done.stdout)
         self.assertEqual(self.submitted(), [])
@@ -1815,7 +1815,7 @@ esac
         self.ceph_fake(raw_bytes=100 * 10**9)
         done = self.gate_with_ceph("bank", "vindr_spinexr")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
-        self.assertIn("raw copy: 100 GB; the bank and its shard: at most 200 GB", done.stdout)
+        self.assertIn("raw copy: 100 GB of dcm, which bank.py windows to an 8-bit PNG; the bank and its shard: at most 200 GB", done.stdout)
         jobs = self.recorded()
         lines = self.submitted()
         self.assertEqual([line.split(" | ")[0].split()[-1] for line in lines],
@@ -1874,6 +1874,43 @@ esac
         done = self.gate_with_ceph("status")
         self.assertIn("  Owed  =         0.00gb still to land for 0 running fetches\n", done.stdout)
         self.assertTrue(size.read_text(encoding="utf-8").startswith(f"settled {bank} 200000000000 "))
+
+    def test_bank_budgets_by_the_format_the_recipe_names(self):
+        # tools/bank.py copies a PNG and windows a DICOM to an 8-bit PNG, at most the raw copy's size,
+        # but turns JPEG, TIFF and BMP into PNG, which a q95 JPEG radiograph grows 1.8 to 2.5 times
+        # into; its shard then copies the bank once more (finding 24)
+        self.environments_ready()
+        recipe = (GRID / "banks" / "nih_chestxray14.json").read_text(encoding="utf-8")
+        for name, image_format in (("a_jpg_set", "jpg"), ("a_tiff_set", "tiff"), ("a_webp_set", "webp")):
+            (self.repo / "grid" / "banks" / f"{name}.json").write_text(
+                recipe.replace('"id": "nih_chestxray14"', f'"id": "{name}"').replace('"format": "png"', f'"format": "{image_format}"'),
+                encoding="utf-8")
+            (self.data / name / "raw").mkdir(parents=True)
+            (self.data / name / "raw" / "a").write_bytes(b"x")
+        self.ceph_fake(raw_bytes=1500 * 10**9)
+        done = self.gate_with_ceph("bank", "a_jpg_set")
+        self.assertEqual(done.returncode, 75, done.stdout)
+        self.assertIn("raw copy: 1500 GB of jpg, which bank.py turns into PNG; the bank and its shard: at most 9000 GB", done.stdout)
+        self.assertIn("refusing: the bank and its shard need 9000 GB and the room is 8844 GB", done.stdout)
+        self.assertEqual(self.submitted(), [])
+        self.ceph_fake(raw_bytes=1000 * 10**9)
+        done = self.gate_with_ceph("bank", "a_tiff_set")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("the bank and its shard: at most 6000 GB", done.stdout)
+        self.assertIn(f" BANK_NEED={6000 * 10**9}", self.line_of("02-bank-ingest.sbatch")[0])
+        # a format bank.py takes in no recipe here is never budgeted by a guess
+        self.live()
+        done = self.gate_with_ceph("bank", "a_webp_set")
+        self.assertEqual(done.returncode, 2, done.stdout)
+        self.assertIn("refusing: grid/banks/a_webp_set.json names the format 'webp', which the bank word has no budget for", done.stdout)
+        # the shipped recipes' png and dcm keep twice the raw copy
+        self.assertEqual(self.gate_with_ceph("bank", "nih_chestxray14").returncode, 2, "no raw copy of it here")
+        (self.data / "nih_chestxray14" / "raw").mkdir(parents=True)
+        (self.data / "nih_chestxray14" / "raw" / "a.png").write_bytes(b"p")
+        self.live()
+        done = self.gate_with_ceph("bank", "nih_chestxray14")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("raw copy: 1000 GB of png, which bank.py copies; the bank and its shard: at most 2000 GB", done.stdout)
 
     def test_bank_and_unpack_of_one_set_never_run_side_by_side(self):
         # both hold their room through the set's one admission file, and a bank of a raw folder still

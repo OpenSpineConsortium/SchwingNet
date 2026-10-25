@@ -64,9 +64,9 @@
 #                   shows each plan's PROGRESS.txt under SMOKE
 #   bank <id>       one recipe of grid/banks/ banked and ingested (grid/02-bank-ingest.sbatch with
 #                   ONLY=<id>) and a catalog build afterok on it: two CPU jobs, once its held raw
-#                   copy is there and the room under the quota takes what they write, which the
-#                   bank holds as the size rule's admission while it is live and checks again when
-#                   it starts
+#                   copy is there and the room under the quota takes what they may write by the
+#                   recipe's format, which the bank holds as the size rule's admission while it is
+#                   live and checks again when it starts
 #   experiment <n>  one requested combination of data and blocks, issue #<n> labelled experiment: the
 #                   request the experiment workflow recorded as <n>.request on the branch experiments,
 #                   fetched now and checked line by line, run as one GPU job (experiment-driver.sbatch)
@@ -1074,6 +1074,27 @@ recipe_raw() {  # recipe_raw FILE: the raw folder a recipe of grid/banks/ names,
   if [ -n "$DATA_ROOT_GIVEN" ]; then echo "$DATA_ROOT/$id/raw"; return 0; fi
   sed -n 's/^ *"raw": *"\([^"]*\)".*/\1/p' "$1" | head -n 1
 }
+recipe_format() {  # recipe_format FILE: the image format a recipe of grid/banks/ names
+  sed -n 's/^ *"format": *"\([^"]*\)".*/\1/p' "$1" | head -n 1
+}
+bank_factor() {  # bank_factor FORMAT: "<times> <words>", how many times the raw copy the bank and its shard may write and why; status 1 where no budget is known
+  # tools/bank.py copies a PNG byte for byte, and decodes a DICOM frame and writes it as an 8-bit
+  # PNG, which the container's measurement found smaller than the frame (202 MB of DICOM became
+  # 104 MB of PNG, grid/README.md), so the bank is at most the raw copy and its shard, which copies
+  # every frame of the bank once more (tools/ingest.py), as much again: twice the raw copy. It
+  # re-encodes JPEG, TIFF and BMP as lossless PNG, which grows a radiograph: the review of #252
+  # measured a q95 JPEG of a 2500 x 3000 8-bit film at 1.77 to 2.53 times its size as PNG through
+  # bank.py's own path, the more the less noise there is, so three times the raw copy for the bank,
+  # above the largest measured, and three again for its shard. TIFF and BMP are not measured and
+  # may hold JPEG-compressed data, so they take JPEG's budget; an uncompressed one is budgeted more
+  # than it writes, which can refuse a bank that would fit and never admits one that overflows.
+  case "$1" in
+    png) echo "2 which bank.py copies" ;;
+    dcm) echo "2 which bank.py windows to an 8-bit PNG" ;;
+    jpg|jpeg|tif|tiff|bmp) echo "6 which bank.py turns into PNG" ;;
+    *) return 1 ;;
+  esac
+}
 bank_room() {  # bank_room NEED: 0 where the room under the quota takes NEED bytes after what the running fetches owe, saying both
   # The room the fetch word's chain decides against (grid/size-rule.sh, run-xray-chain.sh): what the
   # running fetches owe first, then the room twice a minute apart, the smaller kept.
@@ -1123,7 +1144,7 @@ bank_jobs() {  # bank_jobs NEED: the bank and its catalog build queued, and the 
   fi
 }
 word_bank() {
-  local recipe=$REPO/grid/banks/$id.json busy raw bytes need rc DATA=$DATA_ROOT
+  local recipe=$REPO/grid/banks/$id.json busy raw bytes need format factor why rc DATA=$DATA_ROOT
   [ -f "$recipe" ] || { echo "refusing: $id is not a recipe under grid/banks/"; return 64; }
   # One bank and one build at a time: two banks of one set write the same bank folder, and the X-ray
   # chain's stage 2 banks every recipe its fetch names, start's every one there is.
@@ -1137,16 +1158,20 @@ word_bank() {
   [ -z "$busy" ] || { echo "refusing: the size rule's admission for $id is still held by job $busy, which is queued or running"; return 75; }
   [ "$(unconfirmed_fields "$recipe")" = 0 ] \
     || { echo "refusing: grid/banks/$id.json still has a field spelled \"to confirm\"; stage 2 refuses it until the page is read and the field filled in"; return 2; }
+  format=$(recipe_format "$recipe")
+  read -r factor why <<< "$(bank_factor "$format")"
+  [ -n "$factor" ] || { echo "refusing: grid/banks/$id.json names the format '$format', which the bank word has no budget for"; return 2; }
   raw=$(recipe_raw "$recipe")
   [ -n "$raw" ] && [ -d "$raw" ] && [ -n "$(ls -A "$raw" 2>/dev/null | head -n 1)" ] \
     || { echo "refusing: $id's raw copy is not on the volume (its recipe's raw folder is missing or empty); fetch it first"; return 2; }
-  # What the raw copy holds, read with no walk as the size rule reads a folder, whole: the bank is at
-  # most the raw copy's size for the formats here, and its shard copies the bank's frames once more,
-  # so the two jobs write at most twice the raw copy.
+  # What the raw copy holds, read with no walk as the size rule reads a folder, whole, times what
+  # the bank and its shard may write of each byte of it (bank_factor).
   bytes=$(xattr_whole ceph.dir.rbytes "$raw")
   [ -n "$bytes" ] || { echo "refusing: what $id's raw copy holds could not be read (ceph.dir.rbytes); nothing was queued"; return 2; }
-  need=$(( 2 * bytes ))
-  echo "  raw copy: $(gb_up "$bytes") GB; the bank and its shard: at most $(gb_up "$need") GB"
+  [ "$bytes" -le $(( 999999999999999999 / factor )) ] \
+    || { echo "refusing: $factor times what $id's raw copy holds is more than the size rule counts; nothing was queued"; return 2; }
+  need=$(( factor * bytes ))
+  echo "  raw copy: $(gb_up "$bytes") GB of $format, $why; the bank and its shard: at most $(gb_up "$need") GB"
   # One decision at a time with the fetch and unpack jobs' own and the fetch word's chain, from the
   # room's reading to the record of this bank's admission (grid/size-rule.sh, admit_fetch).
   exec 8> "$DATA/.size-rule.lock" || { echo "refusing: the size rule's lock on the data root could not be opened; nothing was queued"; return 2; }
