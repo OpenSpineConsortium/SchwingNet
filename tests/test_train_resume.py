@@ -8,8 +8,10 @@ after its second write, patched in this process, so the trainer carries no hook 
 refused in words, as is one whose catalog, ImageNet file or parent is not the bytes the run
 started from, while the same file at another path resumes; a last.pt that cannot be read, or
 whose bytes its record train/last.pt.sha256 does not name, as a stretch of zeros a node that died
-left in it, is moved aside and the run trains again from epoch 0; a second trainer in a folder another holds is
-refused and touches nothing; and last.pt is gone once a run has finished. W&B's run goes on
+left in it, is moved aside and the run trains again from epoch 0, as it is where last.pt's best
+line names weights best.pt does not hold; a second trainer in a folder another holds is refused
+and touches nothing; last.pt is gone once a run has finished; and the evaluator scores only a
+best.pt train/checkpoint.json names by its sha256, refusing in words otherwise. W&B's run goes on
 under the same id. And at 32 pixels, where batch norm cannot train on one crop, a training part
 of 65 crops, whose last batch of 64 would hold one, still trains, while at 64 pixels the batches
 are as they always were.
@@ -127,6 +129,29 @@ def hole_in_a_tensor(data):
     start = record.header_offset + 30 + name_length + extra_length
     block = (start + record.file_size // 2) // 4096 * 4096
     return data[:block] + bytes(4096) + data[block + 4096 :]
+
+
+def archive_with(pickled):
+    """A torch file whose pickle is these bytes, every other record of the archive a saved file's,
+    so torch.load reads the pickle as it reads a run's state."""
+    import torch
+    import zipfile
+
+    saved, built = io.BytesIO(), io.BytesIO()
+    torch.save({"epoch": 1}, saved)
+    source = zipfile.ZipFile(io.BytesIO(saved.getvalue()))
+    with zipfile.ZipFile(built, "w", zipfile.ZIP_STORED) as target:
+        for info in source.infolist():
+            target.writestr(info.filename, pickled if info.filename.endswith("data.pkl") else source.read(info))
+    return built.getvalue()
+
+
+# Pickles torch's weights-only loader cannot rebuild a state from, each raising an error outside
+# the ones a cut file raises: the review's 1500 one-byte changes to a last.pt's pickle found the
+# first two, and 6000 changes of two bytes the third (2026-10-25).
+UNREBUILT = (("TypeError", b"\x80\x02ctorch._utils\n_rebuild_tensor_v2\n)R."),
+             ("AttributeError", b"\x80\x02ctorch._utils\n_rebuild_tensor_v2\n()K\x00K\x01\x85K\x01\x85\x89ccollections\nOrderedDict\n)RtR."),
+             ("AssertionError", b"\x80\x02K\x01Q."))
 
 
 def lines_on_disk(module, seen):
@@ -417,6 +442,25 @@ class UnreadableLastTest(unittest.TestCase):
         out = self.assert_started_again(folder, train(self.catalog, folder, *self.config, "--resume"))
         self.assertIn("no last.pt.sha256 names its bytes", out)
 
+    def test_a_last_pt_torch_cannot_rebuild_is_moved_aside_and_the_run_starts_again(self):
+        # Bytes the record names, as a disk that spoiled them after the record was written leaves
+        # them, whose pickle makes torch.load raise an error no list of a cut file's errors names.
+        for error, pickled in UNREBUILT:
+            with self.subTest(error):
+                folder, spoiled = self.cut_and_spoil(error.lower(), lambda data, pickled=pickled: archive_with(pickled))
+                (folder / "train" / "last.pt.sha256").write_text(hashlib.sha256(spoiled).hexdigest() + "\n", encoding="ascii")
+                out = self.assert_started_again(folder, train(self.catalog, folder, *self.config, "--resume"))
+                self.assertIn(f'"why": "{error}"', out)
+
+    def test_a_staged_best_pt_the_record_does_not_name_restarts_the_run_and_is_refused_no_more(self):
+        # Epoch 1's best.pt waits under pending/ when the cut comes, its digest in last.pt's best
+        # line; other bytes there leave no best.pt the record names, and the flow passes --resume
+        # wherever last.pt is, so a refusal would come back on every start.
+        folder, _ = self.cut_and_spoil("unnamed", lambda data: data)
+        (folder / "train" / "pending" / "best.pt").write_bytes(b"spoiled on the disk")
+        out = self.assert_started_again(folder, train(self.catalog, folder, *self.config, "--resume"))
+        self.assertIn("best.pt is not there, though last.pt's best line names sha256", out)
+
     def test_a_cut_on_either_side_of_the_rename_resumes_from_the_file_in_place(self):
         # Epoch 1's save writes the sidecar a third and a fourth time, on either side of its rename.
         for call, before_write, after_epoch in ((3, False, 0), (4, True, 1)):
@@ -486,18 +530,81 @@ class ResumeRefusalsTest(unittest.TestCase):
         self.assertEqual((folder / "best.pt").read_bytes(), b"recorded")
         self.assertFalse((folder / "pending" / "best.pt").exists())
 
-    def test_a_best_pt_the_record_does_not_name_stops_the_resume_in_words(self):
+    def test_a_best_pt_the_record_does_not_name_is_said_in_words(self):
         folder = self.tmp / "unnamed" / "train"
         folder.mkdir(parents=True)
         named = {"checkpoint_sha256": hashlib.sha256(b"the recorded weights").hexdigest()}
-        with self.assertRaisesRegex(self.train.TrainError, "is not the checkpoint"):
-            self.train.check_best(folder, named)
+        self.assertEqual(self.train.best_mismatch(folder, named), f"best.pt is not there, though last.pt's best line names sha256 {named['checkpoint_sha256'][:12]}")
         (folder / "best.pt").write_bytes(b"other weights")
-        with self.assertRaisesRegex(self.train.TrainError, "is not the checkpoint"):
-            self.train.check_best(folder, named)
+        other = hashlib.sha256(b"other weights").hexdigest()[:12]
+        self.assertEqual(self.train.best_mismatch(folder, named), f"best.pt's sha256 {other} is not {named['checkpoint_sha256'][:12]}, the one last.pt's best line names")
         (folder / "best.pt").write_bytes(b"the recorded weights")
-        self.train.check_best(folder, named)
-        self.train.check_best(self.tmp / "nowhere", None)
+        self.assertIsNone(self.train.best_mismatch(folder, named))
+        self.assertIsNone(self.train.best_mismatch(self.tmp / "nowhere", None))
+
+
+@unittest.skipIf(MISSING, f"needs the train environment ({', '.join(MISSING)} missing)")
+class EvaluateRefusalsTest(unittest.TestCase):
+    """tools/evaluate.py scores best.pt only where train/checkpoint.json is the record of it: one
+    that cannot be read, or beside other weights than the ones it names, as a node that died or a
+    disk that spoiled a file may leave them, is refused in words and nothing is written, where it
+    ended in a traceback or scored the other weights. The catalog here has no test part, so the
+    evaluator scores the validation part."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = Path(tempfile.mkdtemp())
+        cls.catalog = blocks_tests.RunWithEveryBlockTest.make_catalog(cls.tmp)
+        cls.trained = new_run(cls.tmp / "trained", "0123456789ab")
+        assert train(cls.catalog, cls.trained, "--epochs", "1", "--size", "32")[0] == 0
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls.tmp, ignore_errors=True)
+
+    def evaluate(self, name, spoil=None):
+        """The evaluator on a copy of the trained run, spoiled first where asked; the copy, the
+        exit code and stderr."""
+        folder = self.tmp / name
+        shutil.copytree(self.trained, folder)
+        if spoil:
+            spoil(folder / "train")
+        err = io.StringIO()
+        with mock.patch.dict(os.environ, {"SCHWINGNET_WANDB": "off"}), contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(err):
+            rc = load("evaluate").main(["--catalog", str(self.catalog), "--run", str(folder), "--part", "validation", "--device", "cpu"])
+        return folder, rc, err.getvalue()
+
+    def test_a_sound_run_is_scored(self):
+        folder, rc, err = self.evaluate("sound")
+        self.assertEqual(rc, 0, err)
+        self.assertTrue((folder / "evaluate" / "results.json").is_file())
+
+    def test_a_checkpoint_json_that_is_no_record_is_refused_in_words(self):
+        spoils = (("emptied", b"", "cannot be read as a run's checkpoint record"),
+                  ("halved", b'{"epoch": 1, "checkpoint_sha2', "cannot be read as a run's checkpoint record"),
+                  ("listed", b"[]", "names no checkpoint_sha256"), ("unnamed", b'{"epoch": 1}', "names no checkpoint_sha256"))
+        for name, text, words in spoils:
+            with self.subTest(name):
+                folder, rc, err = self.evaluate(name, lambda train_dir, text=text: (train_dir / "checkpoint.json").write_bytes(text))
+                self.assertEqual(rc, 1)
+                self.assertIn(f"evaluate: {folder / 'train' / 'checkpoint.json'}: {words}", err)
+                self.assertFalse((folder / "evaluate").exists())
+
+    def test_a_best_pt_checkpoint_json_does_not_name_is_refused_in_words(self):
+        import torch
+
+        def other_weights(train_dir):
+            torch.manual_seed(9)
+            torch.save(load("train").build_model(None, "cpu").state_dict(), train_dir / "best.pt")
+
+        named = facts_of(self.trained)["checkpoint_sha256"]
+        for name, spoil, words in (("replaced", other_weights, f"is not {named[:12]}, the one"), ("gone", lambda train_dir: (train_dir / "best.pt").unlink(), "not there, though")):
+            with self.subTest(name):
+                folder, rc, err = self.evaluate(name, spoil)
+                self.assertEqual(rc, 1)
+                self.assertIn(f"evaluate: {folder / 'train' / 'best.pt'}", err)
+                self.assertIn(words, err)
+                self.assertFalse((folder / "evaluate").exists())
 
 
 @unittest.skipIf(MISSING, f"needs the train environment ({', '.join(MISSING)} missing)")

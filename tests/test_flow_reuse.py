@@ -5,7 +5,8 @@ catalog and the run's configuration (CONFIGURATION.json), so the same configurat
 folder, on a later commit that changed none of that code too, and started again the flow runs
 only what that folder still needs: nothing once it wrote FINISHED.json, its last file; the last push, the ledger
 row (once) and the report where it was cut after its evaluation; the evaluation where training
-wrote its checkpoint.json, training with --resume where it left train/last.pt (issue #252). A sweep's row
+wrote its checkpoint.json and the best.pt it names, training again, with --resume where it left
+train/last.pt, where it did not (issue #252). A sweep's row
 names its folder with --slug, and a folder holding another run is refused and left as it was. A
 start cut while it writes its record or witness list, or before its record, is started again,
 and a start while another start holds the folder is refused and runs nothing.
@@ -49,7 +50,7 @@ V1_DRIVER_SED = r's/.*"run_dir": "\([^"]*\)".*/\1/p'
 # writes that the flow reads, and logs one JSON line per call. FAKE_TRAIN=cut leaves train/last.pt
 # and exits as a killed job does; FAKE_EVALUATE=fail exits before writing results.
 FAKE_PIXI = r'''#!{python}
-import json, os, sys
+import hashlib, json, os, sys
 from pathlib import Path
 
 words = sys.argv[1:]
@@ -82,7 +83,9 @@ if tool == "train":
         (train / "last.pt").write_bytes(b"epoch 1")
         print("epoch 1 done, then the job was killed")
         raise SystemExit(137)
-    (train / "checkpoint.json").write_text(json.dumps({{"best": {{"epoch": 2, "validation_accuracy": 0.5}}}}), encoding="utf-8")
+    (train / "best.pt").write_bytes(b"the weights of epoch 2")
+    named = hashlib.sha256(b"the weights of epoch 2").hexdigest()
+    (train / "checkpoint.json").write_text(json.dumps({{"best": {{"epoch": 2, "validation_accuracy": 0.5}}, "checkpoint_sha256": named}}), encoding="utf-8")
     (train / "last.pt").unlink(missing_ok=True)
     print("trained" + (" on from train/last.pt" if "--resume" in args else ""))
 elif tool == "evaluate":
@@ -363,6 +366,41 @@ class FlowReuseTest(unittest.TestCase):
         self.assertIn('"witness": "kept"', "\n".join(lines))
         self.assertEqual(len(self.ledger_rows()), 1, "one ledger row for the run, once it finished")
         self.assertTrue((run_dir / "PROVENANCE.json").is_file() and (run_dir / "split-check.json").is_file())
+
+    def test_a_checkpoint_json_that_is_no_record_of_its_best_pt_trains_again(self):
+        # A node that died, or a disk that spoiled a file, can leave checkpoint.json short, or
+        # beside other weights than the ones it names; taken for the end of training, it sent
+        # every start to an evaluation that refuses it. Training runs again, on from last.pt
+        # where the trainer left one.
+        def emptied(train):
+            (train / "checkpoint.json").write_bytes(b"")
+
+        def unnamed(train):
+            (train / "checkpoint.json").write_text('{"best": {"epoch": 2}}', encoding="utf-8")
+
+        def replaced(train):
+            (train / "best.pt").write_bytes(b"other weights")
+
+        def gone(train):
+            (train / "best.pt").unlink()
+
+        def replaced_beside_last(train):
+            replaced(train)
+            (train / "last.pt").write_bytes(b"epoch 2")
+
+        spoils = ((emptied, "restarted"), (unnamed, "restarted"), (replaced, "restarted"), (gone, "restarted"), (replaced_beside_last, "resumed"))
+        for seed, (spoil, reused) in enumerate(spoils, start=11):
+            with self.subTest(spoil.__name__):
+                rc, lines, _ = self.run_flow("--seed", str(seed), fake={"FAKE_EVALUATE": "fail"})
+                self.assertEqual(rc, 1)
+                run_dir = Path(self.said(lines)["run_dir"])
+                spoil(run_dir / "train")
+                self.log.unlink()
+                rc, lines, err = self.run_flow("--seed", str(seed))
+                self.assertEqual(rc, 0, err)
+                self.assertEqual(self.said(lines)["reused"], reused)
+                self.assertEqual(self.tools_called(), ["train", "wandb_log", "evaluate", "wandb_log", "wandb_log"])
+                self.assertEqual("--resume" in dict(self.calls())["train"], reused == "resumed")
 
     def test_a_folder_with_a_last_epoch_carries_training_on_with_resume(self):
         rc, lines, err = self.run_flow(fake={"FAKE_TRAIN": "cut"})

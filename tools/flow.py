@@ -38,16 +38,16 @@ name. Started again on a folder that holds its record, the flow runs only what i
 where the run wrote FINISHED.json, its last file, after its report; only the last push, the
 ledger row where the ledger has none for the run, the report and FINISHED.json where the
 evaluation ended and the run was cut after it; the evaluation alone where training wrote its
-checkpoint.json, training carried on from its last epoch (`tools/train.py --resume`) where it
-left train/last.pt, else training from the start; RUN.json keeps its first start and its
-earlier jobs and gains a job for each step run now. A folder that holds another run's record
-is refused and left as it is. The flow writes its own files whole and renames them into place,
-so a start cut while it writes one leaves the one before, and a folder a start left before its
-record, holding no more than the split check and this configuration, is started again. A start
-holds the run's folder by an exclusive lock on <run>/.lock from before it reads the folder to its
-end, and the trainer holds train/ the same way, so a second start of the same run while the first
-still runs, which would otherwise take a run in progress for a cut one, is refused in words that
-name the holder, and runs and writes nothing.
+checkpoint.json and the best.pt it names by its sha256, training carried on from its last epoch
+(`tools/train.py --resume`) where it left train/last.pt, else training from the start; RUN.json
+keeps its first start and its earlier jobs and gains a job for each step run now. A folder that
+holds another run's record is refused and left as it is. The flow writes its own files whole,
+flushed to the disk, and renames them into place, so a start cut while it writes one leaves the
+one before, and a folder a start left before its record, holding no more than the split check
+and this configuration, is started again. A start holds the run's folder by an exclusive lock on
+<run>/.lock from before it reads the folder to its end, and the trainer holds train/ the same way,
+so a second start of the same run while the first still runs, which would otherwise take a run in
+progress for a cut one, is refused in words that name the holder, and runs and writes nothing.
 
 Before the first step the run's witness.json is written (tools/witness.py): the frozen list in
 data/witness/ where the repository has one, checked against this catalog, else the frames chosen
@@ -497,19 +497,34 @@ def what_is_left(run_dir, held):
     """What a run started before still needs, from its folder, the furthest step first: nothing
     once it wrote FINISHED.json, its last file; what comes after the evaluation (finish) where the
     record holds an evaluation that ended well and its results are there; the evaluation where
-    training wrote checkpoint.json (which the trainer writes last), training carried on where it
-    left train/last.pt, else all of it."""
+    training ended (trained), training carried on where it left train/last.pt, else all of it."""
     run_dir = Path(run_dir)
     if (run_dir / FINISHED_MARK).is_file():
         return FINISHED
     evaluated = any(job.step is Step.EVALUATE and job.exit_code == 0 for job in held.jobs)
     if evaluated and (run_dir / "evaluate" / "results.json").is_file():
         return EVALUATED
-    if (run_dir / "train" / "checkpoint.json").is_file():
+    if trained(run_dir / "train"):
         return TRAINED
     if (run_dir / "train" / "last.pt").is_file():
         return RESUMED
     return RESTARTED
+
+
+def trained(train_dir):
+    """Whether training ended: checkpoint.json, the trainer's last file, reads as a record that
+    names the sha256 of the best.pt beside it, as the evaluator holds it to (tools/train.py's
+    checkpoint_facts). One a node that died left short, or one beside other weights than the ones
+    it names, is no end, since taking it for one sent every start to an evaluation that refuses
+    it; the run trains again instead, on from last.pt where the trainer left one, and the trainer
+    sets such a record aside before it trains."""
+    try:
+        facts = json.loads((train_dir / "checkpoint.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return False
+    named = facts.get("checkpoint_sha256") if isinstance(facts, dict) else None
+    best = train_dir / "best.pt"
+    return isinstance(named, str) and best.is_file() and file_sha256(best, "best.pt") == named
 
 
 # What a start leaves before it writes RUN.json, each written whole (write_whole), so a start cut

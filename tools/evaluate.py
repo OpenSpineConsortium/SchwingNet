@@ -18,6 +18,11 @@ network on, with each frame's strip and animation and witness-test.jsonl holding
 score; none of it chooses anything, since the checkpoint was chosen before this step began. The
 table, the figures and the pictures go to Weights and Biases offline beside the run
 (tools/wandb_log.py), pushed by the flow once the step is done.
+
+Only a finished training is scored: train/checkpoint.json must read as a run's record and the
+best.pt beside it must have the sha256 it names (tools/train.py's checkpoint_facts), or the
+evaluation is refused in words before it reads a crop or writes a file, since a record a node that
+died left short, or weights that are not the ones it names, would give numbers of no run.
 """
 
 import importlib.util
@@ -243,7 +248,9 @@ def log_to_wandb(out, record, rows, folder, lines, drawn):
 def run(args):
     out = Path(args.run)
     record = json.loads((out / "RUN.json").read_text(encoding="utf-8"))
-    checkpoint = json.loads((out / "train" / "checkpoint.json").read_text(encoding="utf-8"))
+    # Held to the best.pt it names before anything is read, so no number comes from weights the
+    # record does not name and a record a node that died left short is refused in words.
+    checkpoint = train.checkpoint_facts(out / "train")
     crops = read_crops(args.catalog, (args.part,))
     if not crops:
         raise TrainError(f"the catalog has no labelled crops in the {args.part} part")
