@@ -455,7 +455,11 @@ def write_record(run_dir, record):
 def append_ledger(path, record, activity, verified):
     """One more row in a ledger, the header once, the whole text written again beside it and
     renamed into place (write_whole), so a write cut by a kill or a full volume leaves the ledger
-    as it was, every earlier row with it, where writing it in place would empty it first."""
+    as it was, every earlier row with it, where writing it in place would empty it first. Its
+    writer is alone or holds the ledger's lock: a run's finish holds it (add_ledger_row), and
+    `record`, run by hand into the repository, takes none, since a lock file beside the
+    repository's ledger would leave the tree dirty and the next run refused; two writers with
+    no lock lose rows to each other and meet at the one temporary file."""
     path = Path(path)
     text = path.read_text(encoding="utf-8") if path.is_file() else ""
     write_whole(path, ledger_text(text, ledger_row(record, activity, verified)))
