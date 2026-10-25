@@ -207,11 +207,13 @@ def as_text(output):
     return output.decode("utf-8", "replace") if isinstance(output, bytes) else output or ""
 
 
-def run_sync(command, env):
+def run_sync(command, env, run_dir):
     """One wandb sync, given up after SYNC_SECONDS; its exit code, None where given up, and all it
-    printed. wandb-core, which the sync starts, ends with it."""
+    printed. wandb-core, which the sync starts, ends with it. It runs in the run directory, since it
+    writes logs of its own under a wandb folder of the directory it runs in, and the flow pushes
+    from the checkout, whose next run it would refuse with them there."""
     try:
-        done = subprocess.run(command, env=env, capture_output=True, text=True, check=False, timeout=SYNC_SECONDS)
+        done = subprocess.run(command, cwd=run_dir, env=env, capture_output=True, text=True, check=False, timeout=SYNC_SECONDS)
     except subprocess.TimeoutExpired as cut:
         return None, as_text(cut.stdout) + as_text(cut.stderr)
     return done.returncode, done.stdout + done.stderr
@@ -230,7 +232,8 @@ def shortfall(code, said, folders):
 
 def sync(run_dir):
     """Push the run's offline W&B files where a key is found; the outcome in wandb-sync.json."""
-    run_dir = Path(run_dir)
+    # Whole, since the sync runs in the run directory and is handed the runs' folders from there.
+    run_dir = Path(run_dir).absolute()
     runs = offline_runs(run_dir)
     where = key_source()
     modes = json.loads((run_dir / "wandb-mode.json").read_text(encoding="utf-8")) if (run_dir / "wandb-mode.json").is_file() else {}
@@ -247,7 +250,7 @@ def sync(run_dir):
         outcome["why"] = "no W&B key: not in WANDB_API_KEY, ~/.wandb/token.env or ~/.netrc"
     else:
         env = dict(os.environ, **(token_file_env() if where == "file" else {}))
-        code, printed = run_sync([sys.executable, "-m", "wandb", "sync", *map(str, runs)], env)
+        code, printed = run_sync([sys.executable, "-m", "wandb", "sync", *map(str, runs)], env, run_dir)
         why = shortfall(code, printed, runs)
         outcome["synced"] = why is None
         outcome["urls"] = sorted(set(live) | set(previous.get("urls", [])) | {word for word in printed.split() if word.startswith("https://wandb.ai/")})

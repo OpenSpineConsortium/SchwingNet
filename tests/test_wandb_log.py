@@ -10,14 +10,16 @@ this machine.
 What it holds to: every option the push passes is one the installed wandb takes, since 0.30
 refuses one it removed (--include-offline) before it reads a file; a half of a step W&B marked
 pushed when the step was cut is not sent again, and the next half follows it; a push the server
-refused, which 0.30's sync still ends with exit 0, is said not pushed; and a push no server
-answers, which 0.30's sync goes on trying for more than 25 minutes, is given up after the
-module's bound.
+refused, which 0.30's sync still ends with exit 0, is said not pushed; a push no server answers,
+which 0.30's sync goes on trying for more than 25 minutes, is given up after the module's bound;
+and a push leaves nothing in the directory it was started from, the checkout for tools/flow.py,
+though wandb sync writes logs of its own where it runs.
 
 The tests need wandb, which the train and telemetry environments hold, and skip under the
 required check's plain python3.
 """
 
+import contextlib
 import importlib.util
 import json
 import os
@@ -192,7 +194,7 @@ class PushTest(unittest.TestCase):
     def folders(self):
         return sorted((self.run_dir / "wandb" / "wandb").glob("offline-run-*"))
 
-    def push(self, base_url=None):
+    def push(self, base_url=None, run_dir=None):
         """The module's push of the run, against the stand-in unless another server is given; its
         outcome and each wandb sync it ran, with that sync's exit."""
         calls, real = [], subprocess.run
@@ -204,7 +206,7 @@ class PushTest(unittest.TestCase):
 
         with mock.patch.dict(os.environ, environment(self.tmp / "home", base_url or self.server.url, PLACEHOLDER), clear=True), \
                 mock.patch.object(self.tool.subprocess, "run", kept):
-            outcome = self.tool.sync(self.run_dir)
+            outcome = self.tool.sync(run_dir or self.run_dir)
         return outcome, calls
 
     def test_every_option_the_push_passes_is_one_the_installed_wandb_takes(self):
@@ -243,6 +245,19 @@ class PushTest(unittest.TestCase):
         self.assertEqual([[word for word in command if "offline-run-" in word] for command, _ in calls], [[str(later)]])
         self.assertEqual(self.server.steps("run0-train"), [0, 1, 2, 3, 4])
         self.assertEqual(self.server.lines_written("run0-train"), 5, "a line sent twice")
+
+    def test_a_push_leaves_nothing_in_the_directory_it_was_started_from(self):
+        """tools/flow.py pushes from the checkout, which its next run refuses with anything untracked
+        in it, and wandb sync writes logs of its own under a wandb folder of the directory it runs in;
+        the run directory is given relative to that directory, as the flow may give it."""
+        self.half("run0-train", 0, 2)
+        checkout = self.tmp / "checkout"
+        checkout.mkdir()
+        with contextlib.chdir(checkout):
+            outcome, _ = self.push(run_dir=os.path.relpath(self.run_dir, checkout))
+        self.assertTrue(outcome["synced"], outcome)
+        self.assertEqual(self.server.steps("run0-train"), [0, 1, 2])
+        self.assertEqual(sorted(path.name for path in checkout.rglob("*")), [])
 
     def test_a_push_the_server_refuses_is_said_not_pushed_though_wandb_sync_ends_with_0(self):
         self.server.refusing = True
