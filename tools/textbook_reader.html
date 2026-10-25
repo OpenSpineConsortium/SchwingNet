@@ -55,8 +55,8 @@ button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
 //
 // The book's own pages, the files at the top of the edition, are shown in a frame of this page's
 // origin, so their Ask Claude and Ask the book boxes reach the runtime's sample capability through
-// the window.claude the frame takes from this page, and read the book's search index through a
-// fetch this page answers from the pack. A figure or an exported artifact is shown as the site
+// the window.claude the frame takes from this page, which makes what they pass this page's own, and
+// read the book's search index through a fetch this page answers from the pack. A figure or an exported artifact is shown as the site
 // shows it, sandboxed without this page's origin and with its files put inline, so its scripts
 // reach neither this page nor the project's files.
 (function () {
@@ -387,8 +387,55 @@ button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
   // The first script of a page of the book: window.claude from this page, and the rest from wire.
   function trustedPrelude(path) {
     return "(function(){var R=window.parent&&window.parent.textbookReader;if(!R)return;" +
-      "try{window.claude=window.parent.claude;}catch(e){}R.wire(window," + JSON.stringify(path) + ");})();";
+      "window.claude=R.claude;R.wire(window," + JSON.stringify(path) + ");})();";
   }
+
+  // The runtime as the book's pages take it. A page's frame is a realm of its own, so the arrays,
+  // objects and abort signals it passes are not this page's, and a runtime that checks what it is
+  // given by instanceof, as validators commonly do, would refuse them: sample's input and options
+  // are made again here before they go on, and every other capability passes as the runtime gives it.
+  function plain(value) { return value == null ? value : JSON.parse(JSON.stringify(value)); }
+
+  function signalHere(signal) {
+    var c = new AbortController();
+    if (signal.aborted) c.abort();
+    else signal.addEventListener("abort", function () { c.abort(); }, {once: true});
+    return c.signal;
+  }
+
+  function toolHere(t) {
+    var tool = {name: String(t.name), description: String(t.description), execute: function (input, context) {
+      return Promise.resolve(t.execute(input, context)).then(function (r) { return typeof r === "object" ? plain(r) : r; });
+    }};
+    if (t.inputSchema) tool.inputSchema = plain(t.inputSchema);
+    return tool;
+  }
+
+  function optionsHere(o) {
+    if (!o || typeof o !== "object") return o;
+    var out = {};
+    Object.keys(o).forEach(function (k) {
+      var v = o[k];
+      if (k === "signal" && v) out.signal = signalHere(v);
+      else if (k === "tools" && v) out.tools = Array.prototype.map.call(v, toolHere);
+      else if (k === "images" && v) out.images = Array.prototype.map.call(v, function (b) { return new Blob([b], {type: b.type}); });
+      else out[k] = v !== null && typeof v === "object" ? plain(v) : v;
+    });
+    return out;
+  }
+
+  function sampleHere(fn) {
+    function input(i) { return typeof i === "string" ? i : plain(i); }
+    var asked = function (i, o) { return fn(input(i), optionsHere(o)); };
+    asked.json = function (i, o) { return fn.json(input(i), optionsHere(o)); };
+    asked.limits = function () { return fn.limits(); };
+    return Object.freeze(asked);
+  }
+
+  var forPages = Object.freeze({use: function (name) {
+    if (!window.claude || typeof window.claude.use !== "function") return Promise.resolve(null);
+    return window.claude.use(name).then(function (ns) { return ns && name === "sample" ? sampleHere(ns) : ns; });
+  }});
 
   // The first script of a sealed frame, which cannot reach this page: a link to a page of the book
   // asks for it by message, one to another site opens in a new tab where the sandbox lets it.
@@ -777,13 +824,14 @@ button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
       $("edition").textContent = "Edition " + book.index.sha.slice(0, 7) +
         (isNaN(built) ? "" : ", " + built.toISOString().slice(0, 16).replace("T", " ") + " UTC");
       $("edition").title = "Copied into the project's files " + (book.pointer.staged || "at a time not recorded");
-      var first = decodeURIComponent(location.hash.slice(1));
+      var first = location.hash.slice(1);
+      try { first = decodeURIComponent(first); } catch (e) { first = ""; }
       if (first && !/\.html?$/i.test(first)) first += ".html";
       open(entry(first) ? first : book.index.start, "", false);
     }).catch(stopped);
   }
 
-  Object.defineProperty(window, "textbookReader", {value: Object.freeze({wire: wire})});
+  Object.defineProperty(window, "textbookReader", {value: Object.freeze({wire: wire, claude: forPages})});
   if (document.readyState === "complete") start();
   else window.addEventListener("load", start, {once: true});
 })();

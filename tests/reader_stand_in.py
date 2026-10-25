@@ -4,7 +4,7 @@ skeleton around the page, a content security policy as strict as the artifact fr
 (inline scripts and styles, images from data and blob addresses, fetches of the page's own origin
 alone), a viewer page on another origin that frames it, and window.claude with three capabilities:
 files over a folder standing in for the Claude project's files, read through this server; sample,
-answering in fixed words; and permissions. What the runtime documents and this stand-in follows:
+answering in fixed words and strict about the realm of what it is given; and permissions. What the runtime documents and this stand-in follows:
 use() resolves after the page's first run, the namespaces are frozen, a listing gives at most 500
 entries a page with a cursor, a read gives bytes, the file's size and a revision, and a call fails
 with an object whose code says why (the artifact-capabilities skill's files.d.ts, contract 0.2.90).
@@ -94,11 +94,28 @@ RUNTIME = r"""
     download: function () { return fail("declined"); },
     asSampleTools: function () { return Promise.resolve([]); }
   });
+  // sample as a strict runtime takes it: what it is given is checked by instanceof in this frame's
+  // own realm, as validators commonly check it, so an array, an object or an abort signal made in
+  // another frame is refused; the first tool given is run once and its answer quoted.
   function sample(input, opts) {
-    calls.push(["sample", typeof input === "string" ? input.length : JSON.stringify(input).length]);
-    var text = S.answer || "A stand-in answer.";
-    if (opts && typeof opts.onText === "function") opts.onText({text: text, delta: text});
-    return Promise.resolve({text: text, truncated: false});
+    opts = opts || {};
+    var tools = opts.tools || [];
+    calls.push(["sample", typeof input === "string" ? input.length : JSON.stringify(input).length,
+                Boolean(opts.signal), tools.length]);
+    if (typeof input !== "string" && !(input instanceof Array)) return fail("bad_request");
+    if (opts.signal && !(opts.signal instanceof AbortSignal)) return fail("bad_request");
+    if (opts.tools && !(opts.tools instanceof Array)) return fail("bad_request");
+    for (var i = 0; i < tools.length; i++) {
+      if (!(tools[i] instanceof Object) || typeof tools[i].execute !== "function") return fail("bad_request");
+    }
+    if (opts.signal && opts.signal.aborted) return fail("cancelled");
+    var ran = tools.length ? Promise.resolve(tools[0].execute({query: "level"}, {signal: new AbortController().signal}))
+                           : Promise.resolve(null);
+    return ran.then(function (result) {
+      var text = (S.answer || "A stand-in answer.") + (result ? " The tool said " + JSON.stringify(result) + "." : "");
+      if (typeof opts.onText === "function") opts.onText({text: text, delta: text});
+      return {text: text, truncated: false};
+    });
   }
   sample.json = function () { return Promise.resolve(null); };
   sample.limits = function () { return Promise.resolve({images: false}); };

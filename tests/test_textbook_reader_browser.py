@@ -56,8 +56,14 @@ ASK = """(function () {
   out.setAttribute("data-page", root.getAttribute("data-page") || "");
   out.setAttribute("data-hash", root.getAttribute("data-hash") || "");
   if (!window.claude || typeof window.claude.use !== "function") { out.textContent = "no runtime"; return; }
-  window.claude.use("sample").then(function (fn) { return fn ? fn("What is on this page?") : {text: "no sample"}; })
-    .then(function (r) { out.textContent = r.text; });
+  // As the book's Ask boxes call it: a signal to stop by, the answer streamed, a tool of the page's.
+  window.claude.use("sample").then(function (fn) {
+    if (!fn) return {text: "no sample"};
+    var tool = {name: "search_textbook", description: "Search the book.", inputSchema: {type: "object", properties: {}},
+                execute: function (input) { return {passages: [input.query]}; }};
+    return fn("What is on this page?", {signal: new AbortController().signal, cache: false, onText: function () {},
+                                        tools: [tool]});
+  }).then(function (r) { out.textContent = r.text; }, function (e) { out.textContent = "refused: " + (e && e.code); });
 })();
 """
 
@@ -211,7 +217,7 @@ class ReaderInABrowser(unittest.TestCase):
     def test_ask_claude_reaches_sample_through_the_reader(self):
         page = self.front()
         answer = self.shown(page).locator("#answer")
-        expect(answer).to_have_text("A stand-in answer.", timeout=WAIT)
+        expect(answer).to_have_text('A stand-in answer. The tool said {"passages":["level"]}.', timeout=WAIT)
         expect(answer).to_have_attribute("data-page", "index.html")
         self.assertIn("sample", [c[0] for c in self.calls(page)])
 
