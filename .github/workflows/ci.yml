@@ -43,7 +43,17 @@ name: Checks
 # while draft, that file's deletion when ready, a body that closes its
 # issue, a head in this repository. The extra event types are the moments
 # those facts change without a push: marked ready, converted back to draft,
-# the body edited.
+# the body edited. Those three events bring no commit, so on them the job
+# first asks GitHub, with tools/earlier_pass.py and the run's own token,
+# whether the newest earlier run on the same head passed its step "Run the
+# checks", and skips the clone, the linters and that step where it did; the
+# crowd guard and the pull request's own checks then run as always, so the
+# run costs a minute instead of the checks (39 of the 124 pull-request runs
+# on 2026-10-25 were such re-runs, OpenSpineConsortium/symphony-template's
+# docs/research/actions-minutes-2026-10-25.md). "Run the checks" has no
+# condition but that one, so a run whose job succeeded with it skipped
+# carries the pass from the run before. An edit that changes the base
+# branch, and every other event, runs the checks in full.
 # The same job holds a crowd repository (docs/setup/crowdsourcing.md) to
 # its rules, so they are part of the required check: tools/crowd_check.py
 # guard fails while a Claude secret or variable reaches the repository and
@@ -86,13 +96,29 @@ jobs:
     needs: values
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # to read this workflow's earlier runs on the head (tools/earlier_pass.py)
+      actions: read
     steps:
       - uses: actions/checkout@v7
 
+      - name: Whether an earlier run on this head passed the checks
+        id: earlier
+        # an event that brings no commit: the body edited, not the base branch;
+        # marked ready; turned back to draft
+        if: github.event_name == 'pull_request' && contains(fromJSON('["edited", "ready_for_review", "converted_to_draft"]'), github.event.action) && !github.event.changes.base
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: python3 tools/earlier_pass.py --job check --step "Run the checks"
+
       - name: Clone symphony-protocol, the library the copy is held to
+        if: steps.earlier.outputs.passed != 'true'
         run: git clone --quiet https://github.com/OpenSpineConsortium/symphony-protocol "$RUNNER_TEMP/symphony-protocol"
 
       - name: Install the workflow linters, pinned by hash
+        if: steps.earlier.outputs.passed != 'true'
         # actionlint and zizmor, which scripts/check.sh runs (issue #248).
         run: |
           set -eu
@@ -108,6 +134,7 @@ jobs:
           echo "$RUNNER_TEMP/lint/bin" >> "$GITHUB_PATH"
 
       - name: Run the checks
+        if: steps.earlier.outputs.passed != 'true'
         env:
           SDLC_PROTOCOL: ${{ runner.temp }}/symphony-protocol
         run: bash scripts/check.sh
