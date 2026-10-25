@@ -44,8 +44,13 @@ from pathlib import Path
 # the fingerprint and the trigger agree (tests/test_textbook_publish.py holds them together). The
 # site reads the chapters and figures, the synthesis's records and the exported artifacts under
 # artifacts/, its own code and the stylesheet, and CODEOWNERS for the login its privacy pass hides.
+# Its code is every module of tools/ the two builders import, the claims register's queue and the
+# book's search among them, and the search's package, which tools/rag.py loads by path; a test
+# follows the builders' imports and fails on one this list leaves out, since a change to it alone
+# would otherwise republish nothing (issue #269).
 FILTER = ["docs/textbook/**", "artifacts/**", "tools/textbook_site.py", "tools/textbook_artifact.py",
-          "tools/living_docs.py", ".github/CODEOWNERS"]
+          "tools/living_docs.py", ".github/CODEOWNERS", "tools/claims_rank.py", "tools/rag.py",
+          "src/schwingnet/rag.py"]
 INPUTS = [path.removesuffix("/**") for path in FILTER]
 SCHEMA = "textbook-artifact/1"
 # What the pages may use of the viewer's: Ask Claude's sample, and the GitHub connector's two tools behind
