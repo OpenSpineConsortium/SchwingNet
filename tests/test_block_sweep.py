@@ -237,12 +237,29 @@ class CheckTest(unittest.TestCase):
             self.assertEqual(sum(c["with_augment"] for c in mine), 393216)
             refused = {c["samples"] for c in mine if c["predicted"] == "refused"}
             self.assertEqual(refused, {"drop-sources"})
-        code, page, _ = said(self.sweep, "check", "--catalog", self.catalog, "--all", "--sizes", "16,64")
+        code, page, _ = said(self.sweep, "check", "--catalog", self.catalog, "--all", "--sizes", "32,64")
         self.assertEqual(code, 0)
-        # At 16 pixels the prior is refused beside drop-sources: three cells of eight run.
-        self.assertIn("| 16 | 4,608 | 7,680 | 0 | 12,288 | 393,216 |", page)
+        self.assertIn("| 32 | 9,216 | 3,072 | 0 | 12,288 | 393,216 |", page)
         self.assertIn("| 64 | 9,216 | 3,072 | 0 | 12,288 | 393,216 |", page)
+        self.assertNotIn("| 96 |", page)
         self.assertIn("prior_weight is above 0 with prior=level-map, and only there", page)
+
+    def test_a_size_the_rules_were_not_measured_at_is_refused_in_words(self):
+        # The prior's head and a batch of one crop depend on the architecture between the sizes
+        # measured (densenet121 cannot forward at 16 pixels, the prior head builds at 30 for six
+        # of eight), so the check decides only at 32, 64, 96 and 128 and says so.
+        for sizes in ("16", "30", "48", "16,64", "256"):
+            code, out, err = said(self.sweep, "check", "--catalog", self.catalog, "--all", "--sizes", sizes)
+            self.assertEqual((code, out), (1, ""), sizes)
+            self.assertIn("32, 64, 96 and 128", err, sizes)
+        plan = json.loads((ROOT / "grid" / "sweeps" / "synthetic.json").read_text(encoding="utf-8"))
+        plan["rows"] = [dict(plan["rows"][0], size=48)]
+        path = self.tmp / "at-48.json"
+        path.write_text(json.dumps(plan), encoding="utf-8")
+        code, out, err = said(self.sweep, "check", "--catalog", self.catalog, "--plan", path)
+        self.assertEqual((code, out), (1, ""))
+        self.assertIn("48", err)
+        self.assertIn("32, 64, 96 and 128", err)
 
     def test_the_synthetic_catalog_is_built_once_and_refused_for_other_arguments(self):
         folder = self.tmp / "synthetic"

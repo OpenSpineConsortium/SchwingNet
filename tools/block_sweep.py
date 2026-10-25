@@ -301,6 +301,11 @@ def parts_table():
 
 PLAN_NAME = re.compile(r"[a-z0-9_]{1,40}")
 CATALOG_WORD = re.compile(r"synthetic|v1|with:[a-z0-9_]{1,40}")
+# The crop sizes the check's rules were measured at on every architecture, and the only ones it
+# decides: between them the rules depend on the architecture (densenet121 cannot forward at 16 or
+# 24 pixels, the prior's head builds at 30 for six of the eight, and seven of the eight train on
+# one 48-pixel crop), which the check, counting by the samples cut, the prior and the size alone,
+# does not read, so another size is refused rather than decided wrongly.
 CHECK_SIZES = (32, 64, 96, 128)
 # The prior's head needs a feature map of 8 cells across the crop, which no architecture's
 # shallowest named stage keeps below 32 pixels (tools/train_blocks.py PriorHead); a batch of one
@@ -543,8 +548,21 @@ def row_verdict(row, facts, files, earlier):
     return crops_verdict(blocks, row["size"], facts, parent)
 
 
+def sizes_words():
+    return ", ".join(map(str, CHECK_SIZES[:-1])) + f" and {CHECK_SIZES[-1]}"
+
+
+def refuse_unmeasured(size, what):
+    """A crop size the rules were not measured at, refused in words (CHECK_SIZES)."""
+    if size not in CHECK_SIZES:
+        raise BlockError(f"{what}: crop size {size}: the check decides only the sizes its rules were measured at on every architecture, {sizes_words()} pixels")
+
+
 def plan_verdicts(plan, facts, files):
-    """Every row's prediction, in the plan's order, by slug."""
+    """Every row's prediction, in the plan's order, by slug; a plan with a row at a size the
+    check does not decide is refused whole."""
+    for row in plan["rows"]:
+        refuse_unmeasured(row["size"], f"row {row['slug']}")
     earlier, verdicts = {}, {}
     for row in plan["rows"]:
         verdicts[row["slug"]] = row_verdict(row, facts, files, earlier)
@@ -651,8 +669,10 @@ def parse_sizes(text):
         sizes = tuple(int(part) for part in text.split(",") if part.strip())
     except ValueError as error:
         raise BlockError(f"--sizes {text!r}: crop sizes in pixels, comma-separated") from error
-    if not sizes or any(size < 1 for size in sizes):
-        raise BlockError(f"--sizes {text!r}: crop sizes in pixels, 1 or more, comma-separated")
+    if not sizes:
+        raise BlockError(f"--sizes {text!r}: crop sizes in pixels, comma-separated, of {sizes_words()}")
+    for size in sizes:
+        refuse_unmeasured(size, f"--sizes {text}")
     return sizes
 
 
@@ -1030,7 +1050,7 @@ def add_smoke_commands(sub):
     which.add_argument("--plan", help="a plan file")
     which.add_argument("--all", action="store_true", help="every named combination of the blocks")
     check_p.add_argument("--weights", action="append", default=[], metavar="ARCHITECTURE=FILE", help=weights_help)
-    check_p.add_argument("--sizes", default=",".join(map(str, CHECK_SIZES)), help="the crop sizes --all decides, comma-separated")
+    check_p.add_argument("--sizes", default=",".join(map(str, CHECK_SIZES)), help="the crop sizes --all decides, comma-separated, of 32, 64, 96 and 128")
     check_p.add_argument("--json", action="store_true")
     synthetic_p = sub.add_parser("synthetic", help="build the synthetic plan's catalog once")
     synthetic_p.add_argument("--into", required=True)
