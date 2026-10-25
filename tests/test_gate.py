@@ -558,7 +558,10 @@ class GateTest(unittest.TestCase):
     def run_catalog_job(self, pydrv):
         env = dict(os.environ, SCHWINGNET=str(self.repo), PYDRV=str(pydrv), DATA_ROOT=str(self.data), FAKE=str(self.fake),
                    TMPDIR_OVERRIDE=str(self.tmp / "t"), BUILD_LOCK_WAIT="60")
-        env.pop("STORE", None)
+        # Inside a Slurm shell the stage would hand itself to the launcher and never run the body
+        # this test is about, as tests/test_flows.py's base_env says too.
+        for name in ("STORE", "SLURM_JOB_ID", "SCHWINGNET_FLOW_STEP"):
+            env.pop(name, None)
         return subprocess.Popen(["bash", str(self.repo / "grid" / "03-catalog.sbatch")], cwd=self.repo / "grid", env=env,
                                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
 
