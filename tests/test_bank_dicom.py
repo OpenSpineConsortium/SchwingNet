@@ -87,7 +87,10 @@ def counts_of(tool, path, *extra):
 
 
 def digests(folder):
-    return {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in Path(folder).rglob("*") if p.is_file()}
+    """The frames' and the metas' digests: BANK.json, the stamp of what made the bank, names the
+    raw files' times, which two raw copies never share (#260)."""
+    return {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in Path(folder).rglob("*")
+            if p.is_file() and p.name != "BANK.json"}
 
 
 @unittest.skipIf(pydicom is None, "pydicom, numpy and Pillow are the train environment's")
