@@ -369,6 +369,14 @@ GROUP BY i.source, i.part
 """
 VERSION_NAME = re.compile(r"catalog-(\d{6})-[0-9a-f]{12}\.sqlite$")
 PROGRESS_LINES = 60
+# How tools/flow.py refuses a run folder that holds another run (its new_folder): within one
+# state, whose code, plan, catalog and epochs are fixed, only another --environment or other
+# bytes behind --weights name another run for the same slug.
+HELD_FOLDER = re.compile(r"holds run \S+, and this configuration of this code on this catalog names run \S+; nothing is touched")
+# The most of a row's reason a line of PROGRESS.txt carries. Status shows the reason only where
+# it can quote no value (grid/report-shapes.awk judges what follows "why:"), since the tools'
+# words can name a frame's file, which carries a case's number, or a run's id.
+PROGRESS_WHY = 100
 # The synthetic catalog stands for the routes of the real data: a labelled source with level maps
 # and frozen test persons, as C-ArmLSpine brings them, a second labelled source with level maps,
 # as a render's shard brings them (the VerSe projections, a train-side render source), and an
@@ -445,15 +453,18 @@ def cover_plan(name, catalog, epochs, seed, strict=False):
 def trials_plan(catalog, epochs, seed):
     """The trials as a plan file: the six arms of schwingnet.blocks.trials, each source
     cited for what it did. Kwak, Ro and Kang's ResNet-50 (J Clin Med 14:7671, read on the journal's
-    page on 2026-10-25) trained with AdamW, its decay, a warm-up and a cosine schedule and kept the
-    model of the highest accuracy, with no balanced sampling or balanced accuracy, so they are cited
-    for the third arm's recipe, with how the arm differs, and the balanced arms cite no one."""
+    page on 2026-10-25) trained with AdamW, its decay, a warm-up and a cosine schedule at one rate,
+    its first two blocks frozen, and kept the model of the highest accuracy, with no balanced
+    sampling or balanced accuracy, so they are cited for the third arm's recipe, with how the arm
+    differs, its tenth of the rate for the pretrained layers among those differences, and the
+    balanced arms cite no one."""
     checked_plan_words("trials", catalog)
     about = (f"The six trials on {catalog_words(catalog)}, each resnet18 from its ImageNet file for {epochs} epochs: version 1's training as the control;"
              " the ImageNet scaling with every augment change, the strong one being SyntheX's strong domain randomisation (Gao, Killeen et al. 2023, Nat Mach Intell 5:294)"
-             " with the transforms FluoroSAM adds (Killeen et al., MICCAI 2025); that with AdamW, its decay, a warm-up, a cosine schedule and a tenth of the rate for the"
-             " pretrained layers, the recipe of Kwak, Ro and Kang 2025 (J Clin Med 14:7671: AdamW with decay 0.01 and cosine annealing after a 5-epoch warm-up), here"
-             f" at 64 pixels for {epochs} epochs with a 1-epoch warm-up and the trainer's own rate, where theirs trained a ResNet-50 at 224 pixels for 200 epochs at 5e-6;"
+             " with the transforms FluoroSAM adds (Killeen et al., MICCAI 2025); that with AdamW, its decay, a warm-up and a cosine schedule, the recipe of Kwak, Ro"
+             " and Kang 2025 (J Clin Med 14:7671: AdamW with decay 0.01 and cosine annealing after a 5-epoch warm-up), here at 64 pixels for"
+             f" {epochs} epochs with a 1-epoch warm-up, the trainer's own rate and a tenth of it for the pretrained layers, where theirs trained a ResNet-50 at 224 pixels"
+             " for 200 epochs at 5e-6 with its first two blocks frozen;"
              " the second arm at 96 pixels; the second with balanced sampling and the checkpoint chosen by balanced accuracy, for the rare transitional levels, this"
              " project's own choice, for which no source is cited; and the third with that sampling and selection.")
     return {"plan": "trials", "about": about, "catalog": catalog, "epochs": epochs, "seed": seed, "rows": [plan_row(row) for row in trials()]}
@@ -776,11 +787,13 @@ def run_code():
 
 
 # What a synthetic catalog is made by, beside its arguments: the tools that write, ingest and
-# build it, the rules they import, the split files and the registry entries of its sources. Their
-# hashes go into SYNTHETIC.json, so a catalog an older version of any of them made is made again,
-# while a merge that changes none of them, which a new commit alone would say, reuses it.
-SYNTHETIC_MADE_BY = ("tools/synthetic_bank.py", "tools/ingest.py", "tools/bank.py", "tools/catalog.py", "src/schwingnet/catalog.py",
-                     "data/splits/rule.json", "data/splits/test-persons.json")
+# build it, this file among them, since build_synthetic and move_last_cases here split the
+# labelled bank between its two sources and give the seeds and the date, the rules they import,
+# the split files and the registry entries of its sources. Their hashes go into SYNTHETIC.json,
+# so a catalog an older version of any of them made is made again, while a merge that changes
+# none of them, which a new commit alone would say, reuses it.
+SYNTHETIC_MADE_BY = ("tools/block_sweep.py", "tools/synthetic_bank.py", "tools/ingest.py", "tools/bank.py", "tools/catalog.py",
+                     "src/schwingnet/catalog.py", "data/splits/rule.json", "data/splits/test-persons.json")
 SYNTHETIC_SOURCES = (LABELLED_SOURCE, RENDER_SOURCE, UNLABELLED_SOURCE)
 
 
@@ -959,8 +972,14 @@ def first_commit(state):
 
 def resolved_words(row, facts):
     """The row's block words with the placeholders named for this catalog; the plan's own where
-    a placeholder names nothing here, since that row is not applicable and never runs."""
-    blocks, _ = resolved(parse(row["blocks"]), facts)
+    a placeholder names nothing here, since that row is not applicable and never runs, or where
+    the words do not parse, since the check predicts the flow refuses them (problems) and the row
+    runs to see it do so."""
+    try:
+        planned = parse(row["blocks"])
+    except BlockError:
+        return row["blocks"]
+    blocks, _ = resolved(planned, facts)
     return row["blocks"] if blocks is None else words_of(blocks)
 
 
@@ -1110,6 +1129,14 @@ def refuse_another_catalog(state, plan, catalog):
         raise RowFault(f"{state}: --catalog {catalog} ({found}) is not the catalog the state was prepared for, {plan['catalog_file']} (sha256 {plan['catalog_sha256'][:12]})")
 
 
+def refuse_a_held_folder(outcome, why):
+    """A row the flow would not run because its folder holds another run is a fault, not a
+    result: the flow touched nothing, so the entry that run left stands rather than turning
+    failed with its numbers, and the sweep stops, saying what to do."""
+    if outcome == FAILED and HELD_FOLDER.search(why):
+        raise RowFault(f"{why}; a sweep with another --environment or other --weights bytes takes a smoke root of its own (--out)")
+
+
 def command_row(args):
     state = Path(args.state)
     try:
@@ -1132,6 +1159,7 @@ def command_row(args):
         with (state / f"{args.slug}.flow.log").open("w", encoding="utf-8") as log:
             done = subprocess.run(row_flow_command(state, plan, row, args, files), cwd=ROOT, stdout=log, stderr=subprocess.STDOUT, check=False)
         outcome, code, why = observed(state, args.slug, done.returncode)
+        refuse_a_held_folder(outcome, why)
         if outcome == RAN and not args.keep_epoch_weights:
             drop_epoch_weights(state / args.slug)
         entry = entry_of(row, prediction, outcome, code, why, state)
@@ -1176,6 +1204,26 @@ def matched_word(entry):
     return {True: "matched", False: "mismatched"}.get(entry["matched"], "-")
 
 
+def reason_of(entry, limit=None):
+    """Why a row did not run as a run does, for the pages a person reads: the check's words for a
+    row not applicable, the tool's for one refused or failed, on one line and at most `limit`
+    characters; "-" for a row that ran or is to come."""
+    if entry["outcome"] not in (NOT_APPLICABLE, REFUSED, FAILED) or not entry.get("why"):
+        return "-"
+    text = " ".join(str(entry["why"]).split()).replace("|", "/")
+    return text if limit is None or len(text) <= limit else text[: limit - 3] + "..."
+
+
+def progress_row(entry):
+    """A row's line of PROGRESS.txt: its slug, its outcome and whether it matched, the fields
+    status selects on; then a refused row's code, a word of REFUSALS that quotes nothing; then, for
+    a row not applicable, refused or failed, the start of why after "why:", the marker status
+    judges it by."""
+    why = reason_of(entry, PROGRESS_WHY)
+    code = f" {entry['code']}" if entry.get("code") else ""
+    return f"row {entry['slug']} {entry['outcome'].replace(' ', '-')} {matched_word(entry)}{code}" + ("" if why == "-" else f" why: {why}")
+
+
 def results_markdown(results):
     counts = results["counts"]
     head = (f"{counts['rows']} rows: {counts['ran']} ran, {counts['refused']} refused, {counts['not_applicable']} not applicable, {counts['failed']} failed,"
@@ -1184,13 +1232,14 @@ def results_markdown(results):
            f"State {results['state']}; commit {results['commit'][:12]}, code {(results.get('code_sha256') or 'not recorded')[:12]};"
            f" catalog {results['catalog']} (version {results['catalog_version']},"
            f" sha256 {results['catalog_sha256'][:12]}); updated {results['updated_at']}.", "",
-           "| row | role | crop | blocks | predicted | outcome | matched | training crops | validation | test | W&B |", "|---|---|---|---|---|---|---|---|---|---|---|"]
+           "| row | role | crop | blocks | predicted | outcome | matched | training crops | validation | test | W&B | why |",
+           "|---|---|---|---|---|---|---|---|---|---|---|---|"]
     for e in results["rows"]:
         predicted = e["predicted"] + (f" ({e['predicted_code']})" if e["predicted_code"] else "")
         outcome = e["outcome"] + (f" ({e['code']})" if e["code"] else "")
         crops = "-" if e["train_crops"] is None else str(e["train_crops"])
         out.append(f"| {e['slug']} | {e['role']} | {e['size']} | {' '.join(e['blocks']) or 'version 1'} | {predicted} | {outcome} | {matched_word(e)} | {crops} |"
-                   f" {number_text(e['validation_accuracy'])} | {number_text(e['test_accuracy'])} | {' '.join(e['wandb']) or '-'} |")
+                   f" {number_text(e['validation_accuracy'])} | {number_text(e['test_accuracy'])} | {' '.join(e['wandb']) or '-'} | {reason_of(e)} |")
     return "\n".join(out) + "\n"
 
 
@@ -1200,7 +1249,7 @@ def progress_text(results):
     c = results["counts"]
     lines = [f"plan {results['plan']} state {results['state']} rows {c['rows']} ran {c['ran']} refused {c['refused']} not_applicable {c['not_applicable']}"
              f" failed {c['failed']} to_come {c['to_come']} mismatched {c['mismatched']} updated {results['updated_at']}"]
-    lines += [f"row {e['slug']} {e['outcome'].replace(' ', '-')} {matched_word(e)}" for e in results["rows"]]
+    lines += [progress_row(e) for e in results["rows"]]
     lines += [f"wandb {url}" for e in results["rows"] for url in e["wandb"]]
     return "\n".join(lines[:PROGRESS_LINES]) + "\n"
 

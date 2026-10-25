@@ -146,6 +146,10 @@ class PlanTest(unittest.TestCase):
         balanced = next(clause for clause in clauses if "balanced sampling" in clause)
         self.assertIn("Kwak, Ro and Kang 2025", tuned)
         self.assertIn("224 pixels", tuned, "and it says how the arm differs from their recipe")
+        # They trained at one rate with the first two blocks frozen, so the tenth of the rate for
+        # the pretrained layers is among how the arm differs, never part of what they did.
+        self.assertLess(tuned.index("here at"), tuned.index("a tenth"))
+        self.assertIn("first two blocks frozen", tuned)
         self.assertNotIn("Kwak", balanced)
 
     def test_a_plan_with_a_name_or_catalog_the_gate_cannot_take_is_refused(self):
@@ -367,6 +371,23 @@ class CheckTest(unittest.TestCase):
         self.assertEqual(stamps, {name: (state / name).stat().st_mtime_ns for name in names})
         self.assertEqual((state / "rows" / "kept-by-hand.json").read_text(encoding="utf-8"), "{}")
 
+    def test_a_row_whose_words_do_not_parse_is_prepared_and_predicted_refused(self):
+        # The check predicts the flow refuses such a row (problems), so prepare keeps its words
+        # as the plan has them, and the row runs to see the flow refuse it, rather than the whole
+        # plan stopping before any row runs.
+        source = json.loads((ROOT / "grid" / "sweeps" / "synthetic.json").read_text(encoding="utf-8"))
+        bad = dict(source["rows"][0], slug="resnet18-64px-bad", blocks=["optimiser=nonsense"])
+        plan = self.tmp / "unparsable.json"
+        plan.write_text(json.dumps(dict(source, plan="unparsable", rows=[source["rows"][0], bad])), encoding="utf-8")
+        code, printed, err = said(self.sweep, "prepare", "--plan", plan, "--catalog", self.catalog, "--out", self.tmp / "smoke-unparsable")
+        self.assertEqual(code, 0, err)
+        answer = json.loads(printed)
+        state = Path(answer["state"])
+        self.assertEqual(json.loads((state / "PLAN.json").read_text(encoding="utf-8"))["rows"][1]["blocks"], ["optimiser=nonsense"])
+        check = {row["slug"]: row for row in json.loads((state / "CHECK.json").read_text(encoding="utf-8"))["rows"]}
+        self.assertEqual((check["resnet18-64px-bad"]["predicted"], check["resnet18-64px-bad"]["code"]), ("refused", "problems"))
+        self.assertIn("resnet18-64px-bad", answer["first"])
+
     def test_another_epoch_count_gets_a_state_of_its_own_and_a_row_asked_for_another_is_refused(self):
         out = self.tmp / "smoke-epochs"
         plan = ROOT / "grid" / "sweeps" / "synthetic.json"
@@ -561,6 +582,12 @@ class SyntheticBuildTest(unittest.TestCase):
         rebuilt = self.build(into)
         self.assertFalse(rebuilt["reused"], "a catalog older code made is made again")
         self.assertNotEqual(rebuilt["catalog"], first["catalog"])
+        # block_sweep.py itself splits the labelled bank between two sources and gives the seeds
+        # and the date, so a change to it makes the catalog again too
+        with (self.repo / "tools" / "block_sweep.py").open("a", encoding="utf-8") as out:
+            out.write("# a change to how the sweep builds its catalog\n")
+        self.commit("a change to the sweep's build")
+        self.assertFalse(self.build(into)["reused"], "the sweep's own build code makes the catalog too")
 
 
 @unittest.skipIf(MISSING, f"needs the package's checkers ({', '.join(MISSING)} missing)")
@@ -616,9 +643,46 @@ class ResultsTest(unittest.TestCase):
         self.assertIn(f"| {rows[0]['slug']} | cover | 64 | version 1 | runs | ran | matched | 9 | 0.500 | 0.750 |", page)
         lines = (self.state / "PROGRESS.txt").read_text(encoding="utf-8").splitlines()
         self.assertRegex(lines[0], r"^plan handmade state \S+ rows 3 ran 1 refused 1 not_applicable 0 failed 0 to_come 1 mismatched 1 updated \d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$")
-        self.assertEqual(lines[1:], [f"row {rows[0]['slug']} ran matched", f"row {rows[1]['slug']} refused mismatched", f"row {rows[2]['slug']} to-come -",
+        self.assertEqual(lines[1:], [f"row {rows[0]['slug']} ran matched", f"row {rows[1]['slug']} refused mismatched one-crop", f"row {rows[2]['slug']} to-come -",
                                      "wandb https://wandb.ai/x/y/runs/abc"])
         self.assertFalse([p for p in self.state.iterdir() if p.name.startswith(".") and p.name != ".lock"], "no half-written file left beside its place")
+
+    def test_each_row_that_did_not_run_says_why_on_both_pages(self):
+        rows = self.make_state()
+        predictions = {entry["slug"]: entry for entry in json.loads((self.state / "CHECK.json").read_text(encoding="utf-8"))["rows"]}
+        long = "train: one training crop: " + "x" * 120
+        for row, (outcome, code, why) in ((rows[1], ("refused", "one-crop", long)), (rows[2], ("failed", None, "flow: train exited 1 |\n see the log"))):
+            entry = self.sweep.entry_of(row, predictions[row["slug"]], outcome, code, why, self.state)
+            (self.state / "rows" / f"{row['slug']}.json").write_text(json.dumps(entry), encoding="utf-8")
+        code, _, err = said(self.sweep, "results", self.state)
+        self.assertEqual(code, 0, err)
+        page = (self.state / "RESULTS.md").read_text(encoding="utf-8").splitlines()
+        self.assertIn("| row | role | crop | blocks | predicted | outcome | matched | training crops | validation | test | W&B | why |", page)
+        table = {line.split(" | ")[0].lstrip("| "): line for line in page if line.startswith("| resnet18-")}
+        self.assertTrue(table[rows[0]["slug"]].endswith(" | https://wandb.ai/x/y/runs/abc | - |"), "a row that ran needs no reason")
+        self.assertTrue(table[rows[1]["slug"]].endswith(f" | {long} |"), "the page carries the whole reason")
+        self.assertTrue(table[rows[2]["slug"]].endswith(" | flow: train exited 1 / see the log |"), "on one line, with no cell break in it")
+        lines = (self.state / "PROGRESS.txt").read_text(encoding="utf-8").splitlines()
+        self.assertEqual(lines[2], f"row {rows[1]['slug']} refused mismatched one-crop why: {long[:97]}...")
+        self.assertEqual(lines[3], f"row {rows[2]['slug']} failed mismatched why: flow: train exited 1 / see the log")
+        self.assertEqual(self.sweep.reason_of({"outcome": "not applicable", "why": "@first-labelled names no source of this catalog"}),
+                         "@first-labelled names no source of this catalog")
+        self.assertEqual(self.sweep.reason_of({"outcome": "ran", "why": "the flow trained and evaluated it"}), "-")
+
+    def test_a_row_whose_folder_holds_another_configurations_run_is_a_fault(self):
+        # tools/flow.py refuses such a folder whole and touches nothing, so the entry its run left
+        # stands and the sweep stops saying what to do, rather than recording a failed row that
+        # carries the earlier run's numbers.
+        self.write_logs("held", "flow: /s/held holds run 93f196a63823, and this configuration of this code on this catalog names run 3a175b635add; nothing is touched\n")
+        outcome, code, why = self.sweep.observed(self.state, "held", 1)
+        self.assertEqual((outcome, code), ("failed", None))
+        with self.assertRaisesRegex(self.sweep.RowFault, "takes a smoke root of its own"):
+            self.sweep.refuse_a_held_folder(outcome, why)
+        self.sweep.refuse_a_held_folder("failed", "flow: train exited 1; see held/train.log")
+        self.sweep.refuse_a_held_folder("ran", "the flow trained and evaluated it")
+        # the words are the flow's own, so a change to its refusal shows here
+        flow = (ROOT / "tools" / "flow.py").read_text(encoding="utf-8")
+        self.assertIn('holds run {held_id}, and this configuration of this code on this catalog names run {record.run_id}; nothing is touched"', flow)
 
     def test_progress_holds_at_most_sixty_lines(self):
         entries = [{"slug": f"r{n}", "outcome": "ran", "matched": True, "wandb": [f"https://wandb.ai/a/b/runs/{n}"]} for n in range(50)]
@@ -775,6 +839,17 @@ class RowRunTest(unittest.TestCase):
         parent = self.state / self.prepared["first"][0]
         self.assertTrue((parent / "train" / "best.pt").is_file(), "a warm start reads it")
         self.assertEqual(list((parent / "train" / "epochs").glob("*.pt")), [])
+
+    def test_a_finished_row_sent_with_another_environment_stops_and_its_entry_stands(self):
+        slug = next(s for s in self.prepared["first"][1:] if self.entries[s]["outcome"] == "ran")
+        record = self.state / "rows" / f"{slug}.json"
+        before = record.read_bytes()
+        done = subprocess.run([sys.executable, str(self.repo / "tools" / "block_sweep.py"), "row", "--state", str(self.state), "--slug", slug,
+                               "--catalog", str(self.catalog), "--environment", "train-gpu"],
+                              cwd=self.repo, env=self.env, capture_output=True, text=True, timeout=600)
+        self.assertEqual(done.returncode, 2, done.stdout + done.stderr[-2000:])
+        self.assertIn("takes a smoke root of its own", done.stderr)
+        self.assertEqual(record.read_bytes(), before, "the run that finished keeps its record")
 
     def test_a_finished_row_run_again_records_the_same_entry_and_trains_nothing(self):
         slug = self.prepared["first"][0]
