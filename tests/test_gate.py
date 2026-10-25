@@ -1846,6 +1846,107 @@ esac
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         self.assertIn(f"afterok:{jobs['catalog']}", self.line_of("sweep-driver.sbatch")[0])
 
+    def test_bank_holds_its_room_while_its_job_is_live_and_settles_it_once_the_job_has_ended(self):
+        # The size rule counts what a running job owes from its admission (grid/size-rule.sh,
+        # owed_by_running): the bank word writes one for its bank job, $DATA/<id>/meta/SIZE, so a
+        # fetch or an unpacking admitted after it counts the bank's room as taken (finding 23).
+        raw = self.data / "vindr_spinexr" / "raw"
+        raw.mkdir(parents=True)
+        (raw / "a.dicom").write_bytes(b"d")
+        self.ceph_fake(raw_bytes=100 * 10**9)
+        done = self.gate_with_ceph("bank", "vindr_spinexr")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        bank = self.recorded()["bank"]
+        size = self.data / "vindr_spinexr" / "meta" / "SIZE"
+        record = size.read_text(encoding="utf-8").split()
+        # admitted <job> <bytes to write> <bytes the landing held then> <utc> <total>, as a fetch's
+        self.assertEqual(record[:4] + record[5:], ["admitted", bank, str(200 * 10**9), "2600000000000", str(200 * 10**9)])
+        line = self.line_of("02-bank-ingest.sbatch")[0]
+        self.assertIn(f" BANK_NEED={200 * 10**9}", line)
+        self.assertIn(f" VOLUME={self.tmp} ", line)
+        # while the job is queued or running, every decision counts it
+        self.live(bank)
+        done = self.gate_with_ceph("status")
+        self.assertIn("  Owed  =         200.00gb still to land for 1 running fetch\n", done.stdout)
+        self.assertTrue(size.read_text(encoding="utf-8").startswith(f"admitted {bank} "))
+        # once Slurm no longer holds it, the next word settles the record, which then counts nothing
+        self.live()
+        done = self.gate_with_ceph("status")
+        self.assertIn("  Owed  =         0.00gb still to land for 0 running fetches\n", done.stdout)
+        self.assertTrue(size.read_text(encoding="utf-8").startswith(f"settled {bank} 200000000000 "))
+
+    def test_bank_and_unpack_of_one_set_never_run_side_by_side(self):
+        # both hold their room through the set's one admission file, and a bank of a raw folder still
+        # being unpacked would read half of it
+        self.environments_ready()
+        (self.data / "nih_chestxray14" / "raw").mkdir(parents=True)
+        (self.data / "nih_chestxray14" / "raw" / "a.png").write_bytes(b"p")
+        self.ceph_fake(raw_bytes=10**9)
+        self.state_line(960, "unpack:nih_chestxray14", "unpack")
+        self.live(960)
+        done = self.gate_with_ceph("bank", "nih_chestxray14")
+        self.assertEqual(done.returncode, 75, done.stdout)
+        self.assertIn("an unpacking of nih_chestxray14 is still queued or running (job 960)", done.stdout)
+        self.state_line(961, "bank:nih_chestxray14", "bank")
+        self.live(961)
+        done = self.gate("unpack", "nih_chestxray14")
+        self.assertEqual(done.returncode, 75, done.stdout)
+        self.assertIn("job 961", done.stdout)
+        self.assertEqual(self.submitted(), [])
+
+    def bank_job(self, **extra):
+        """grid/02-bank-ingest.sbatch as Slurm starts the bank word's job: its admission checked under
+        the size rule before the launcher, which a fake python stands in for, is handed the job."""
+        pydrv = self.fake / "pydrv"
+        pydrv.write_text('#!/bin/bash\ncase "$1" in */flows/launch.py) printf \'%s\\n\' "$@" > "$FAKE/launched" ;; esac\n', encoding="utf-8")
+        pydrv.chmod(0o755)
+        (self.fake / "launched").unlink(missing_ok=True)
+        env = dict(self.gate_env(), GETFATTR=str(self.fake / "getfattr"), PYDRV=str(pydrv), SLURM_JOB_ID="4242", ONLY="vindr_spinexr",
+                   BANK_NEED=str(200 * 10**9), VOLUME=str(self.tmp))
+        env.update(extra)
+        env.pop("SCHWINGNET_FLOW_STEP", None)
+        done = subprocess.run(["bash", str(self.repo / "grid" / "02-bank-ingest.sbatch")], cwd=self.repo / "grid", env=env,
+                              capture_output=True, text=True, timeout=60)
+        launched = (self.fake / "launched").read_text(encoding="utf-8").split() if (self.fake / "launched").exists() else None
+        return done, launched
+
+    def test_the_bank_job_checks_the_room_again_before_it_writes_and_keeps_it_when_requeued(self):
+        self.ceph_fake(raw_bytes=100 * 10**9)
+        size = self.data / "vindr_spinexr" / "meta" / "SIZE"
+        size.parent.mkdir(parents=True)
+        size.write_text("admitted 4242 200000000000 2600000000000 2026-10-25T00:00:00Z 200000000000\n", encoding="utf-8")
+        # a fetch admitted while the bank job waited in the queue now owes 8700 GB of the 8844 GB room
+        other = self.data / "other_set" / "meta"
+        other.mkdir(parents=True)
+        (other / "SIZE").write_text("admitted 555 8700000000000 2600000000000 2026-10-25T00:00:00Z 8700000000000\n", encoding="utf-8")
+        self.live(555, 4242)
+        done, launched = self.bank_job()
+        self.assertEqual(done.returncode, 4, done.stdout + done.stderr)
+        self.assertIn("vindr_spinexr: refused for space; it needs 200 gb", done.stdout)
+        self.assertIn("XR_BANK_RC=4", done.stdout)
+        self.assertIsNone(launched, "nothing was banked")
+        self.assertTrue((self.data / "vindr_spinexr" / "meta" / "REFUSED").exists())
+        # its admission is settled, so it holds no room once the job has ended
+        self.assertTrue(size.read_text(encoding="utf-8").startswith("settled 4242 "))
+        # with the room there, the job is admitted again under its own id and hands itself to the launcher
+        self.live(4242)
+        done, launched = self.bank_job()
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("vindr_spinexr: admitted; it needs 200 gb", done.stdout)
+        self.assertEqual(launched[1:3], ["bank", "--max-workers"])
+        self.assertTrue(size.read_text(encoding="utf-8").startswith("admitted 4242 200000000000 2600000000000 "))
+        # requeued by Slurm after a preemption, it keeps the room it was given rather than decide again
+        self.live(555, 4242)
+        done, launched = self.bank_job(SLURM_RESTART_COUNT="1")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("vindr_spinexr: admitted already; job 4242 restarted", done.stdout)
+        self.assertIsNotNone(launched)
+        # a need that is no count, or more than one recipe, is refused before anything is read
+        for extra in ({"BANK_NEED": "2e11"}, {"ONLY": "vindr_spinexr lumos"}):
+            done, launched = self.bank_job(**extra)
+            self.assertEqual(done.returncode, 4, f"{extra}: {done.stdout}")
+            self.assertIsNone(launched)
+
     def progress(self, plan, folder, lines, age=0):
         state = self.smoke / plan / folder
         state.mkdir(parents=True)

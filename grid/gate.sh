@@ -64,7 +64,9 @@
 #                   shows each plan's PROGRESS.txt under SMOKE
 #   bank <id>       one recipe of grid/banks/ banked and ingested (grid/02-bank-ingest.sbatch with
 #                   ONLY=<id>) and a catalog build afterok on it: two CPU jobs, once its held raw
-#                   copy is there and the room under the quota takes what they write
+#                   copy is there and the room under the quota takes what they write, which the
+#                   bank holds as the size rule's admission while it is live and checks again when
+#                   it starts
 #   experiment <n>  one requested combination of data and blocks, issue #<n> labelled experiment: the
 #                   request the experiment workflow recorded as <n>.request on the branch experiments,
 #                   fetched now and checked line by line, run as one GPU job (experiment-driver.sbatch)
@@ -841,9 +843,10 @@ word_unpack() {
     rm -f "$report"
     return 0
   fi
-  # Never beside a fetch of the set, a look at it or a deletion of its zips.
-  busy=$( { live_of xr_fetch "fetch:$id"; live_of "dp_$id"; live_of explore "explore:$id"; live_of dropzip "dropzip:$id"; } | tr '\n' ' ')
-  [ -z "${busy// /}" ] || { echo "refusing: a fetch, a deletion or a look at $id is still queued or running (job $busy)"; return 75; }
+  # Never beside a fetch of the set, a look at it, a deletion of its zips or a bank of it, which
+  # would read half a raw folder and holds its room through the same admission file.
+  busy=$( { live_of xr_fetch "fetch:$id"; live_of "dp_$id"; live_of explore "explore:$id"; live_of dropzip "dropzip:$id"; live_of bank "bank:$id"; } | tr '\n' ' ')
+  [ -z "${busy// /}" ] || { echo "refusing: a fetch, a deletion, a bank or a look at $id is still queued or running (job $busy)"; return 75; }
   [ -d "$raw" ] || { echo "refusing: $id has no raw folder on the data root yet; fetch it first"; return 2; }
   envs_ready || { echo "refusing: the environments are not ready; 'start' makes them first"; return 75; }
   submit unpack batch UNPACK_ID="$id" UNPACK_RAW="$raw" DATA_ROOT="$DATA_ROOT" VOLUME="$VOLUME" -- unpack.sbatch > /dev/null || return 1
@@ -1074,7 +1077,7 @@ recipe_raw() {  # recipe_raw FILE: the raw folder a recipe of grid/banks/ names,
 bank_room() {  # bank_room NEED: 0 where the room under the quota takes NEED bytes after what the running fetches owe, saying both
   # The room the fetch word's chain decides against (grid/size-rule.sh, run-xray-chain.sh): what the
   # running fetches owe first, then the room twice a minute apart, the smaller kept.
-  local DATA=$DATA_ROOT owed owed_bytes owed_n unsized free free_from room
+  local owed owed_bytes owed_n unsized free free_from room
   owed=$(owed_by_running "") || { echo "refusing: squeue did not answer, so what the running fetches owe is not known; nothing was queued"; return 75; }
   read -r owed_bytes owed_n unsized <<< "$owed"
   [ -z "$unsized" ] || { echo "refusing: the running fetch of $unsized states no size, so the room after it is not known; nothing was queued"; return 75; }
@@ -1087,13 +1090,51 @@ bank_room() {  # bank_room NEED: 0 where the room under the quota takes NEED byt
   echo "  room: $(gb_down "$room") GB $(free_space_words "$free_from") after $(gb_up "$owed_bytes") GB owed to $(running_fetches "$owed_n")"
   [ "$1" -le "$room" ] || { echo "refusing: the bank and its shard need $(gb_up "$1") GB and the room is $(gb_down "$room") GB; nothing was queued"; return 75; }
 }
+admission_holder() {  # admission_holder: the live job whose admission $DATA/<id>/meta/SIZE still holds, else nothing
+  local state job
+  [ -f "$DATA/$id/meta/SIZE" ] || return 0
+  read -r state job _ < "$DATA/$id/meta/SIZE"
+  [ "$state" = admitted ] || return 0
+  case "$QUEUED" in *" $job "*) echo "$job" ;; esac
+}
+bank_jobs() {  # bank_jobs NEED: the bank and its catalog build queued, and the bank's admission recorded, under the size lock
+  # What the bank and its shard write is held from the moment the job is queued: its admission, the
+  # line a fetch's job writes when it starts (grid/size-rule.sh, admit_fetch), counts against every
+  # later decision while Slurm holds the job, at what it may write less what the set's folder on
+  # the data root, which holds the bank and the shard, has grown by since. The job decides again
+  # when it starts, its own admission aside (grid/02-bank-ingest.sbatch, BANK_NEED).
+  local need=$1 base setup bank catalog opts
+  bank_room "$need" || return
+  base=$(landing_bytes "$id")
+  [ -n "$base" ] || { echo "refusing: what $id's folder on the data root holds could not be read, which the bank's admission is measured from; nothing was queued"; return 2; }
+  setup=$(setup_dependency) || return 1
+  [ -n "$setup" ] || echo "  setup: the environments match pixi.lock; no job"
+  depend_on "$setup" || return 1
+  bank=$(submit bank batch ONLY="$id" BANK_NEED="$need" VOLUME="$VOLUME" ${opts[@]+"${opts[@]}"} -- 02-bank-ingest.sbatch) || return 1
+  # Recorded as catalog, so a sweep of a plan with:<id> waits on it as on any build of the gate's.
+  if ! depend_on "afterok:$bank" || ! catalog=$(submit catalog batch ${opts[@]+"${opts[@]}"} -- 03-catalog.sbatch); then
+    "$SCANCEL" "$bank" && echo "  cancelled the bank job $bank, so no bank runs that no catalog build follows"
+    return 1
+  fi
+  if ! { mkdir -p "$DATA/$id/meta" && echo "admitted $bank $need $base $(date -u '+%FT%TZ') $need" > "$DATA/$id/meta/SIZE"; }; then
+    "$SCANCEL" "$bank" "$catalog" && echo "  cancelled the bank job $bank and its catalog build $catalog"
+    echo "refusing: the bank's admission could not be written to its folder's meta/SIZE, so no later decision would count it"
+    return 2
+  fi
+}
 word_bank() {
-  local recipe=$REPO/grid/banks/$id.json busy raw bytes need setup bank opts
+  local recipe=$REPO/grid/banks/$id.json busy raw bytes need rc DATA=$DATA_ROOT
   [ -f "$recipe" ] || { echo "refusing: $id is not a recipe under grid/banks/"; return 64; }
   # One bank and one build at a time: two banks of one set write the same bank folder, and the X-ray
   # chain's stage 2 banks every recipe its fetch names, start's every one there is.
   busy=$( { live_of bank; live_of catalog; live_of xr_bank; } | tr '\n' ' ')
   [ -z "${busy// /}" ] || { echo "refusing: a bank or a catalog build of the gate's is still queued or running (jobs $busy)"; return 75; }
+  # Never beside an unpacking of the set, which would hand the bank half a raw folder and holds its
+  # room through the same admission file, nor over an admission a live job still holds.
+  busy=$(live_of unpack "unpack:$id")
+  [ -z "$busy" ] || { echo "refusing: an unpacking of $id is still queued or running (job $busy)"; return 75; }
+  busy=$(admission_holder)
+  [ -z "$busy" ] || { echo "refusing: the size rule's admission for $id is still held by job $busy, which is queued or running"; return 75; }
   [ "$(unconfirmed_fields "$recipe")" = 0 ] \
     || { echo "refusing: grid/banks/$id.json still has a field spelled \"to confirm\"; stage 2 refuses it until the page is read and the field filled in"; return 2; }
   raw=$(recipe_raw "$recipe")
@@ -1106,18 +1147,19 @@ word_bank() {
   [ -n "$bytes" ] || { echo "refusing: what $id's raw copy holds could not be read (ceph.dir.rbytes); nothing was queued"; return 2; }
   need=$(( 2 * bytes ))
   echo "  raw copy: $(gb_up "$bytes") GB; the bank and its shard: at most $(gb_up "$need") GB"
-  bank_room "$need" || return
-  setup=$(setup_dependency) || return 1
-  [ -n "$setup" ] || echo "  setup: the environments match pixi.lock; no job"
-  depend_on "$setup" || return 1
-  bank=$(submit bank batch ONLY="$id" ${opts[@]+"${opts[@]}"} -- 02-bank-ingest.sbatch) || return 1
-  # Recorded as catalog, so v1 and sweep wait on it as on any build of the gate's.
-  depend_on "afterok:$bank" || return 1
-  submit catalog batch ${opts[@]+"${opts[@]}"} -- 03-catalog.sbatch > /dev/null || {
-    "$SCANCEL" "$bank" && echo "  cancelled the bank job $bank, so no bank runs that no catalog build follows"
-    return 1
-  }
-  echo "submitted. 'status' shows the stage reports; a sweep sent while the build is live waits on it."
+  # One decision at a time with the fetch and unpack jobs' own and the fetch word's chain, from the
+  # room's reading to the record of this bank's admission (grid/size-rule.sh, admit_fetch).
+  exec 8> "$DATA/.size-rule.lock" || { echo "refusing: the size rule's lock on the data root could not be opened; nothing was queued"; return 2; }
+  if ! flock -w "${SIZE_RULE_WAIT:-900}" 8; then
+    exec 8>&-
+    echo "refusing: another decision held the size check for ${SIZE_RULE_WAIT:-900} seconds; nothing was queued"
+    return 75
+  fi
+  bank_jobs "$need"
+  rc=$?
+  exec 8>&-
+  [ "$rc" = 0 ] || return "$rc"
+  echo "submitted. 'status' shows the stage reports and counts the bank's room as owed while it lasts; a sweep of a plan with:$id sent while the build is live waits on it."
 }
 
 word_stop() {
@@ -1149,12 +1191,26 @@ release_hold() {  # a run's hold (grid/v1-driver.sbatch, grid/sweep-driver.sbatc
     *) rm -f "$LOGS/HOLD" ;;
   esac
 }
+settle_banks() {  # every bank's admission whose job Slurm no longer holds is settled (grid/size-rule.sh, settle_admission)
+  # The job hands itself to the launcher with exec and so cannot settle its own once it ends; the
+  # size rule counts only a live job's admission, and a settled one counts for nothing even where
+  # Slurm hands the job's id out again.
+  local DATA=$DATA_ROOT job from one
+  [ -f "$STATE" ] || return 0
+  awk '$3 == "bank" { print $1, $2 }' "$STATE" | sort -u | while read -r job from; do
+    case "$QUEUED" in *" $job "*) continue ;; esac
+    one=${from#bank:}
+    case "$one" in ""|*[!a-z0-9_]*) continue ;; esac
+    settle_admission "$one" "$job"
+  done
+}
 if [ "$word" = status ]; then
-  # status reads even when squeue does not answer; only a hold it can see is over is cleared
-  snapshot > /dev/null && release_hold
+  # status reads even when squeue does not answer; only a hold or an admission it can see is over is cleared
+  snapshot > /dev/null && { release_hold; settle_banks; }
 else
   snapshot || { echo "schwingnet $word: exit 75"; exit 75; }
   release_hold
+  settle_banks
 fi
 case "$word" in
   start) word_start ;;

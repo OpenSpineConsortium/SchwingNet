@@ -22,9 +22,38 @@
 # (ONLY) and one half (PART=bank or PART=ingest) at a time, on the date the run chose once
 # (INGEST_DATE); a direct bash call, as the tests make, runs the body as before, both halves.
 # PYDRV must then carry Metaflow too, as grid/bin/train-cpu-python does.
+#
+# The size rule (grid/size-rule.sh, the owner's rule of 2026-10-23): grid/gate.sh's word `bank <id>`
+# admits the job for BANK_NEED bytes, what the bank and its shard may write, and records that
+# admission as $DATA/<id>/meta/SIZE when it queues the job, so every later decision counts it while
+# Slurm holds the job. The job decides again before it writes a byte, its own admission aside,
+# against the room as it is when it starts, since what the volume took while it waited in the
+# queue, another user's files among it, can leave less than the word saw: refused, it writes
+# nothing, settles the admission and exits 4, and the catalog build afterok on it is cancelled with
+# it; requeued by Slurm, it keeps the room it was given. Once a job, before the launcher, so the
+# flow's steps (SCHWINGNET_FLOW_STEP) never decide again; with no BANK_NEED, as from the X-ray chain
+# and the tests, nothing is decided here.
 set -uo pipefail
 REPO=${SCHWINGNET:-$HOME/SchwingNet}
 PYDRV=${PYDRV:-python3}
+bank_admitted() {  # 0 where the size rule admits the one recipe ONLY names for BANK_NEED bytes, 4 where it refuses
+  local id=${ONLY:-}
+  case "$id" in
+    ""|*[!a-z0-9_]*) echo "bank: BANK_NEED holds room for one recipe, which ONLY names alone, not '$id'; nothing was banked"; return 4 ;;
+  esac
+  DATA=${DATA_ROOT:-/rs/rs_grp_oschome/go2432/data} VOLUME=${VOLUME:-/rs/rs_grp_oschome}
+  # shellcheck source=grid/size-rule.sh
+  . "$REPO/grid/size-rule.sh"
+  # A compute node may have no getfattr; the job's own python reads the quota's attributes there,
+  # as grid/unpack.sbatch does, never one the environment it was sent from names unless a test says so.
+  if [ "${SIZE_RULE_STAND_INS:-}" = yes ]; then RULE_PYTHON=${XATTR_PYTHON:-$PYDRV}; else RULE_PYTHON=$PYDRV; fi
+  size_and_admit "$id" printf '%s %s %s\n' "$BANK_NEED" "$BANK_NEED" "the bank and its shard" && return 0
+  settle_admission "$id" "${SLURM_JOB_ID:-none}"
+  return 4
+}
+if [ -n "${BANK_NEED:-}" ] && [ -z "${SCHWINGNET_FLOW_STEP:-}" ]; then
+  bank_admitted || { echo "XR_BANK_RC=4 $(date '+%F %T')"; exit 4; }
+fi
 if [ -n "${SLURM_JOB_ID:-}" ] && [ -z "${SCHWINGNET_FLOW_STEP:-}" ]; then
   words=()
   [ -z "${ONLY:-}" ] || words+=(--sources "$ONLY")
