@@ -46,10 +46,12 @@ class FolderReport(unittest.TestCase):
     def test_an_unmapped_group_is_broken_down_and_a_known_one_left_out(self):
         out = self.tmp / "logs" / "FOLDERS.md"
         out.parent.mkdir()
-        self.assertEqual(folder_report.main(["--db", str(self.db), "--out", str(out)]), 0)
+        data = str(self.tmp / "data")
+        self.assertEqual(folder_report.main(["--db", str(self.db), "--out", str(out), "--data-root", data]), 0)
         text = (out.parent / "FOLDERS-1.md").read_text(encoding="ascii")
         self.assertIn("## realxray", text)
-        self.assertNotIn("known", text)
+        self.assertNotIn("## known", text)
+        self.assertIn("| realxray | 450 B | 3 | unmapped:realxray 3 |", text)
         self.assertIn("| carm | 2 | 400 B | 2 | dicom 1, png 1 | 512-1024 x 480-1024 | 1 | fluoro 2, cervical 1, thoracic 1 |", text)
         self.assertIn("DICOM modality: RF 1. Maker and model: Siemens Cios 1.", text)
         self.assertIn("    Real C-arm frames from CArmLSpine.", text)

@@ -7,7 +7,10 @@ root that no record names ("unmapped <folder>"). This report breaks each such gr
 first folder level, with what tells real fluoroscopy and a body region apart: DICOM modality,
 frames, maker and model, image sizes, and how many paths name the cervical or thoracic spine.
 It also quotes the first lines of each small text file near a folder's top (a README, a
-manifest's notes), since that is where a derived bank says what it was built from.
+manifest's notes), since that is where a derived bank says what it was built from. Its first
+section lists every folder of the data root with the groups it holds, mapped or not, so each can
+be set beside the spine-datasets record and task that account for it (the owner's ask of
+2026-10-25 04:53 UTC).
 
     python tools/folder_report.py --db <run>/samples.sqlite --out logs/FOLDERS.md [--page-bytes N]
 
@@ -25,6 +28,7 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 UNMAPPED = "unmapped:"
+GRID_DATA = "/rs/rs_grp_oschome/go2432/data"
 REGIONS = {"cervical": re.compile(r"cervic|c[-_]?spine|\bneck\b|\bc[1-7]\b", re.I),
            "thoracic": re.compile(r"thorac|t[-_]?spine|\bt(?:[1-9]|1[0-2])\b", re.I),
            "fluoro": re.compile(r"fluoro|c[-_]?arm|cine|intra[-_]?op", re.I)}
@@ -150,13 +154,39 @@ def group_section(name, group):
     return "\n".join(lines) + "\n"
 
 
-def report(groups):
+def data_root_folders(db, data_root):
+    """Every folder directly under the data root that holds a root of the index, with the groups in
+    it, mapped or not, so each folder can be set beside the dataset record that accounts for it."""
+    prefix = data_root.rstrip("/") + "/"
+    folders = defaultdict(Counter)
+    query = "SELECT r.path, r.sources, COUNT(f.id), COALESCE(SUM(f.size), 0) FROM root r LEFT JOIN file f ON f.root_id = r.id GROUP BY r.id"
+    for path, sources, files, size in db.execute(query):
+        if path.startswith(prefix):
+            name = path[len(prefix):].split("/")[0]
+            folders[name][sources or "-"] += files
+            folders[name]["__bytes"] += size
+    return folders
+
+
+def data_root_section(folders):
+    lines = ["## Every folder of the data root", "",
+             "| folder | size | files | groups (files) |", "| --- | ---: | ---: | --- |"]
+    for name in sorted(folders):
+        counts = folders[name]
+        size = counts.pop("__bytes", 0)
+        groups = ", ".join(f"{k} {v}" for k, v in sorted(counts.items()))
+        lines.append(f"| {name} | {human(size)} | {sum(counts.values())} | {groups} |")
+    return "\n".join(lines) + "\n"
+
+
+def report(groups, roots=None):
     head = ("# What the unmapped folders hold\n\nFrom the sample index, by tools/folder_report.py. "
             "Multi-frame counts files with more than one frame (video or cine). \"Paths naming\" counts "
             "files whose path names the cervical or thoracic spine, or fluoroscopy, a C-arm, cine or "
             "the operating room.\n")
     order = sorted(groups, key=lambda name: -sum(f["bytes"] for f in groups[name]["folders"].values()))
-    return [head] + [group_section(name, groups[name]) for name in order]
+    tail = [data_root_section(roots)] if roots is not None else []
+    return [head] + tail + [group_section(name, groups[name]) for name in order]
 
 
 def pages(sections, limit):
@@ -182,12 +212,13 @@ def main(argv=None):
     parser.add_argument("--db", required=True)
     parser.add_argument("--out", required=True)
     parser.add_argument("--page-bytes", type=int, default=PAGE_BYTES)
+    parser.add_argument("--data-root", default=os.environ.get("DATA_ROOT", GRID_DATA))
     args = parser.parse_args(argv)
     db = sqlite3.connect(f"file:{args.db}?mode=ro", uri=True)
-    sections = report(gather(db))
+    sections = report(gather(db), data_root_folders(db, args.data_root))
     db.close()
     count = write(sections, args.out, args.page_bytes)
-    print(f"folders: {len(sections) - 1} groups in {count} pages beside {args.out}")
+    print(f"folders: {len(sections) - 2} groups in {count} pages beside {args.out}")
     return 0
 
 
