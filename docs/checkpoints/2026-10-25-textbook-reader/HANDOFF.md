@@ -30,6 +30,8 @@ The work is finished when the owner has opened the link and the book shows, with
    - #275 merged 2026-10-25 02:26 UTC and put allowed_bots: "github-actions" on the sessions in .github/workflows/synthesis.yml.
    - The schedule is cron 41 6, which GitHub has been starting about five hours late. The last scheduled run was 2026-10-24 11:32 UTC, and none had run today at 09:50 UTC.
    - When today's run comes, check two things where it plans reads: that its claude-code-action steps start and finish, and that it is not refused for a run no person started. Read the logs with the GitHub tools' get_job_logs and return_content, since the proxy refuses gh's log download.
+   - A run whose look job admits no reads proves nothing about allowed_bots. The push and dispatch runs of 05:20 to 06:00 UTC were like that: the plan needed no reads (inventory, finders and verdicts all 0).
+   - If no scheduled run has come by 12:00 UTC the next day, tell the owner in one line instead of checking again.
 4. **#271, noticed and not claimed.** The memory index is 29,044 bytes, over its 25 KB limit, and nothing checks it. The issue is open and labelled todo. Read the board's Overlaps before claiming it.
 
 ## Moving the reader to another account's project
