@@ -16,6 +16,11 @@
 # that carries the pins, so the repository takes no new dependency and pixi.lock is never touched.
 # Nothing trains. Results go to $BENCH_ROOT/<name>/; the report is logs/BENCH-<name>.md, which the
 # next `bench <name>` prints. Not requeued (--no-requeue from the gate): a second start would score twice.
+# The checkout holds still while the benchmark lasts, as for a version 1 run: grid/logs/HOLD names
+# this job and the commit, the gate's side skips its fast-forward while the file is there, the gate
+# clears a hold whose job Slurm no longer holds, and each run that holds it waits for the others
+# (grid/gate.sh, checkout_holders). The commit is read again at the end, and a benchmark whose
+# checkout moved anyway is failed, since its report names the commit it began on.
 set -uo pipefail
 REPO=${SCHWINGNET:-$HOME/SchwingNet}
 DATA=${DATA_ROOT:-/rs/rs_grp_oschome/go2432/data}
@@ -33,12 +38,25 @@ cd "$REPO" || exit 2
 export PYTHONNOUSERSITE=1 WANDB_MODE=disabled HF_HUB_OFFLINE=1
 report() { echo "- $*" | tee -a "$REPORT.part"; }
 finish() {
-  report "exit $1 at $(date -u '+%F %T') UTC"
+  local rc=$1 ended_at
+  ended_at=$(git -C "$REPO" rev-parse HEAD 2>/dev/null)
+  if [ "$ended_at" != "$started_at" ]; then
+    report "FAILED: the checkout moved from ${started_at:0:7} to ${ended_at:0:7} during the benchmark, so a later step may have run the newer code while this report names the older; its results are not used"
+    [ "$rc" != 0 ] || rc=3
+  fi
+  report "exit $rc at $(date -u '+%F %T') UTC"
   mv "$REPORT.part" "$REPORT" && chmod 644 "$REPORT"
-  echo "SN_BENCH_RC=$1"
-  exit "$1"
+  echo "SN_BENCH_RC=$rc"
+  exit "$rc"
 }
-echo "# bench $BENCH: job ${SLURM_JOB_ID:-none} on $(hostname), commit $(git rev-parse --short HEAD), $(date -u '+%F %T') UTC" > "$REPORT.part"
+started_at=$(git -C "$REPO" rev-parse HEAD 2>/dev/null)
+echo "# bench $BENCH: job ${SLURM_JOB_ID:-none} on $(hostname), commit ${started_at:0:7}, $(date -u '+%F %T') UTC" > "$REPORT.part"
+[ -n "$started_at" ] || { report "FAILED: the checkout at $REPO names no commit"; finish 2; }
+HOLD=$REPO/grid/logs/HOLD
+echo "${SLURM_JOB_ID:-$$} $started_at" > "$HOLD"
+unhold() { [ "$(awk '{ print $1; exit }' "$HOLD" 2>/dev/null)" != "${SLURM_JOB_ID:-$$}" ] || rm -f "$HOLD"; }
+trap unhold EXIT
+trap 'exit 143' TERM
 report "GPU: $(nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv,noheader 2>/dev/null | head -n 1 || echo 'nvidia-smi gave nothing')"
 
 venv_for() {  # venv_for PINS: a virtual environment holding PINS beside train-gpu's packages, made once

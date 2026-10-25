@@ -24,19 +24,49 @@
 # PYDRV must then carry Metaflow too, as grid/bin/train-cpu-python does.
 #
 # The size rule (grid/size-rule.sh, the owner's rule of 2026-10-23): grid/gate.sh's word `bank <id>`
-# admits the job for BANK_NEED bytes, what the bank and its shard may write, and records that
-# admission as $DATA/<id>/meta/SIZE when it queues the job, so every later decision counts it while
-# Slurm holds the job. The job decides again before it writes a byte, its own admission aside,
-# against the room as it is when it starts, since what the volume took while it waited in the
-# queue, another user's files among it, can leave less than the word saw: refused, it writes
-# nothing, settles the admission and exits 4, and the catalog build afterok on it is cancelled with
-# it; requeued by Slurm, it keeps the room it was given. Once a job, before the launcher, so the
-# flow's steps (SCHWINGNET_FLOW_STEP) never decide again; with no BANK_NEED, as from the X-ray chain
-# and the tests, nothing is decided here.
+# admits the job for BANK_NEED bytes, what the bank and its shard may write by the format's budget
+# of the raw copy's bytes, and records that admission as $DATA/<id>/meta/SIZE when it queues the
+# job, so every later decision counts it while Slurm holds the job. The job decides again before it
+# writes a byte, its own admission aside, against the room as it is when it starts, since what the
+# volume took while it waited in the queue, another user's files among it, can leave less than the
+# word saw; and for the larger of BANK_NEED and what the frames' pixels bound the bank and its shard
+# by (tools/bank.py --bound, read from the headers), since a lossy file, a JPEG or a lossy DICOM,
+# holds fewer bytes than its frame takes as PNG, which the word's budget, read with no python on the
+# login node, cannot see (the second review of #252). Refused, or where the bound cannot be read,
+# it writes nothing, settles the admission and exits 4, and the catalog build afterok on it is
+# cancelled with it; requeued by Slurm, it keeps the room it was given. Once a job, before the
+# launcher, so the flow's steps (SCHWINGNET_FLOW_STEP) never decide again; with no BANK_NEED, as
+# from the X-ray chain and the tests, nothing is decided here.
 set -uo pipefail
 REPO=${SCHWINGNET:-$HOME/SchwingNet}
 PYDRV=${PYDRV:-python3}
-bank_admitted() {  # 0 where the size rule admits the one recipe ONLY names for BANK_NEED bytes, 4 where it refuses
+# The size reader below is called by name through size_and_admit, which shellcheck cannot follow.
+# shellcheck disable=SC2329
+bank_need() {  # bank_need ID: "<total> <need> <how>" for size_and_admit, the larger of BANK_NEED and the bound of the recipe's frames
+  local recipe=${BANKS:-$REPO/grid/banks}/$1.json raw out bound
+  is_count "$BANK_NEED" || { echo "BANK_NEED is no count"; return 2; }
+  if [ -n "${DATA_ROOT:-}" ]; then
+    raw=$DATA_ROOT/$1/raw
+  else
+    raw=$("$PYDRV" -c "import json,sys; print(json.load(open(sys.argv[1]))['raw'])" "$recipe") \
+      || { echo "the recipe's raw folder could not be read"; return 2; }
+  fi
+  # A raw folder the stage skips below writes nothing, so the word's budget stands for it.
+  if [ ! -d "$raw" ] || [ -z "$(ls -A "$raw" 2>/dev/null)" ]; then
+    echo "$BANK_NEED $BANK_NEED the bank and its shard"
+    return 0
+  fi
+  out=$("$PYDRV" "$REPO/tools/bank.py" --recipe "$recipe" --raw "$raw" --bound --workers "${BANK_WORKERS:-${SLURM_CPUS_PER_TASK:-1}}") \
+    || { echo "the bank tool could not bound the frames by their pixels (exit $?)"; return 2; }
+  bound=$(printf '%s\n' "$out" | "$PYDRV" -c "import json,sys; print(json.load(sys.stdin)['most_bytes'])")
+  is_count "$bound" || { echo "the bank tool gave no bound of the frames"; return 2; }
+  if [ "$bound" -gt "$BANK_NEED" ]; then
+    echo "$bound $bound the pixels of the bank and its shard"
+  else
+    echo "$BANK_NEED $BANK_NEED the bank and its shard"
+  fi
+}
+bank_admitted() {  # 0 where the size rule admits the one recipe ONLY names for what bank_need says it may write, 4 where it refuses
   local id=${ONLY:-}
   case "$id" in
     ""|*[!a-z0-9_]*) echo "bank: BANK_NEED holds room for one recipe, which ONLY names alone, not '$id'; nothing was banked"; return 4 ;;
@@ -47,7 +77,7 @@ bank_admitted() {  # 0 where the size rule admits the one recipe ONLY names for 
   # A compute node may have no getfattr; the job's own python reads the quota's attributes there,
   # as grid/unpack.sbatch does, never one the environment it was sent from names unless a test says so.
   if [ "${SIZE_RULE_STAND_INS:-}" = yes ]; then RULE_PYTHON=${XATTR_PYTHON:-$PYDRV}; else RULE_PYTHON=$PYDRV; fi
-  size_and_admit "$id" printf '%s %s %s\n' "$BANK_NEED" "$BANK_NEED" "the bank and its shard" && return 0
+  size_and_admit "$id" bank_need "$id" && return 0
   settle_admission "$id" "${SLURM_JOB_ID:-none}"
   return 4
 }

@@ -1480,6 +1480,67 @@ esac
         self.assertEqual(len(self.submitted()), 1)
         self.assertTrue(report.exists())
 
+    def bench_job(self, name):
+        env = dict(os.environ, SCHWINGNET=str(self.repo), DATA_ROOT=str(self.data), LAB_VOLUME=str(self.tmp), FAKE=str(self.fake),
+                   BENCH=name, SLURM_JOB_ID="778")
+        return subprocess.run(["bash", str(self.repo / "grid" / "bench.sbatch")], cwd=self.repo / "grid", env=env,
+                              capture_output=True, text=True, timeout=60)
+
+    def test_a_benchmark_holds_the_checkout_while_it_runs_and_fails_when_it_moved(self):
+        # bench.sbatch runs its steps from the checkout for hours and its report names the commit it
+        # began on, so it holds grid/logs/HOLD as the drivers do, and a checkout that moved anyway
+        # fails the benchmark rather than leave a report naming code some steps did not run
+        self.git_repo()
+        commit = subprocess.run(["git", "-C", str(self.repo), "rev-parse", "HEAD"], check=True, capture_output=True,
+                                text=True).stdout.strip()
+        bundle = self.data / "hf_flexray_weights" / "raw"
+        bundle.mkdir(parents=True)
+        (bundle / "ensemble.json").write_text("{}\n", encoding="utf-8")
+        (self.repo / "grid" / "box.sh").write_text(
+            '#!/bin/bash\necho "$* hold=$(cat "$SCHWINGNET/grid/logs/HOLD" 2>/dev/null)" >> "$FAKE/box.log"\n'
+            '[[ "$*" == *bench_public.py* ]] || exit 0\n'
+            'if [ -f "$FAKE/move" ]; then\n'
+            '  git -C "$SCHWINGNET" -c user.name=t -c user.email=t@t -c gc.auto=0 -c maintenance.auto=false commit -q --allow-empty -m moved\n'
+            'fi\necho "scored"\n', encoding="utf-8")
+        hold = self.repo / "grid" / "logs" / "HOLD"
+        done = self.bench_job("flexray_carmlspine")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        boxed = self.boxed()
+        self.assertTrue(boxed and all(line.endswith(f" hold=778 {commit}") for line in boxed), boxed)
+        self.assertTrue([line for line in boxed if "tools/bench_public.py flexray-carmlspine" in line], boxed)
+        self.assertFalse(hold.exists())
+        report = self.repo / "grid" / "logs" / "BENCH-flexray_carmlspine.md"
+        self.assertIn(f"commit {commit[:7]}", report.read_text(encoding="utf-8").splitlines()[0])
+        self.assertIn("- exit 0 at ", report.read_text(encoding="utf-8"))
+        (self.fake / "move").write_text("1", encoding="utf-8")
+        done = self.bench_job("flexray_carmlspine")
+        self.assertEqual(done.returncode, 3, done.stdout)
+        self.assertIn("SN_BENCH_RC=3", done.stdout)
+        self.assertIn(f"- FAILED: the checkout moved from {commit[:7]} to ", report.read_text(encoding="utf-8"))
+        self.assertIn("- exit 3 at ", report.read_text(encoding="utf-8"))
+        self.assertFalse(hold.exists())
+
+    def test_a_benchmark_and_the_runs_that_hold_the_checkout_each_wait_for_the_others(self):
+        self.environments_ready()
+        self.weights_ready()
+        self.carmlspine_shards()
+        self.catalog_ready(version=2)
+        bundle = self.data / "hf_flexray_weights" / "raw"
+        bundle.mkdir(parents=True)
+        (bundle / "ensemble.json").write_text("{}\n", encoding="utf-8")
+        (self.data / "realxray" / "carmlspine" / "meta").mkdir(parents=True, exist_ok=True)
+        self.state_line(900, "sweep:synthetic", "sweep")
+        self.live(900)
+        done = self.gate("bench", "flexray_carmlspine")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("--dependency=afterany:900 ", self.line_of("bench.sbatch")[0])
+        self.assertIn("the checkout: after the live runs that hold it (afterany:900)", done.stdout)
+        job = self.recorded()["bench_flexray_carmlspine"]
+        self.live(job)
+        done = self.gate("v1")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn(f"--dependency=afterany:{job} ", self.line_of("v1-driver.sbatch")[0])
+
     def test_dropzip_deletes_once_then_prints_what_it_did(self):
         shutil.copy(GRID / "fetch-xray.json", self.repo / "grid" / "fetch-xray.json")
         # an id of no list, one with no raw folder yet, and a malformed send are refused and queue nothing
@@ -1902,7 +1963,7 @@ esac
         self.ceph_fake(raw_bytes=5000 * 10**9)
         done = self.gate_with_ceph("bank", "vindr_spinexr")
         self.assertEqual(done.returncode, 75, done.stdout)
-        self.assertIn("raw copy: 5000 GB of dcm, which bank.py windows to an 8-bit PNG; the bank and its shard: at most 10000 GB", done.stdout)
+        self.assertIn("raw copy: 5000 GB of dcm, which bank.py windows to an 8-bit PNG; the bank and its shard: 10000 GB held", done.stdout)
         self.assertIn("room: 8844 GB free under its quota after 0 GB owed to 0 running fetches", done.stdout)
         self.assertIn("refusing: the bank and its shard need 10000 GB and the room is 8844 GB", done.stdout)
         self.assertEqual(self.submitted(), [])
@@ -1915,7 +1976,7 @@ esac
         self.ceph_fake(raw_bytes=100 * 10**9)
         done = self.gate_with_ceph("bank", "vindr_spinexr")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
-        self.assertIn("raw copy: 100 GB of dcm, which bank.py windows to an 8-bit PNG; the bank and its shard: at most 200 GB", done.stdout)
+        self.assertIn("raw copy: 100 GB of dcm, which bank.py windows to an 8-bit PNG; the bank and its shard: 200 GB held", done.stdout)
         jobs = self.recorded()
         lines = self.submitted()
         self.assertEqual([line.split(" | ")[0].split()[-1] for line in lines],
@@ -1975,10 +2036,73 @@ esac
         self.assertIn("  Owed  =         0.00gb still to land for 0 running fetches\n", done.stdout)
         self.assertTrue(size.read_text(encoding="utf-8").startswith(f"settled {bank} 200000000000 "))
 
+    def grid_layout(self):
+        """The gate as it reads the grid: the test's data root stands as the grid's own, so the gate
+        hands the stages no DATA_ROOT and reads each recipe's own raw folder, moved under that root."""
+        gate = self.repo / "grid" / "gate.sh"
+        gate.write_text(gate.read_text(encoding="utf-8").replace(
+            "GRID_DATA=/rs/rs_grp_oschome/go2432/data", f"GRID_DATA={self.data}"), encoding="utf-8")
+        for recipe in (self.repo / "grid" / "banks").glob("*.json"):
+            recipe.write_text(recipe.read_text(encoding="utf-8").replace("/rs/rs_grp_oschome/go2432/data", str(self.data)),
+                              encoding="utf-8")
+
+    def test_bank_waits_until_the_landing_that_holds_its_raw_copy_has_landed(self):
+        # lumos's raw copy is zenodo_lumos/raw, which start's platform chain lands one zip at a time
+        # as dp_zenodo_lumos: a bank admitted beside it would bank part of the set against a budget
+        # read from part of it, so it waits for every fetch, unpacking and admission of the landing
+        self.grid_layout()
+        self.environments_ready()
+        raw = self.data / "zenodo_lumos" / "raw"
+        raw.mkdir(parents=True)
+        (raw / "lumos_x_01_dcm.zip").write_bytes(b"z")
+        (raw / "lumos_x_02_dcm.zip.part").write_bytes(b"z")
+        self.ceph_fake(raw_bytes=2 * 10**9)
+        self.state_line(7001, "start", "dp_zenodo_lumos")
+        self.state_line(7002, "fetch:zenodo_lumos", "xr_fetch")
+        self.state_line(7003, "unpack:zenodo_lumos", "unpack")
+        for job in ("7001", "7002", "7003"):
+            self.live(job)
+            refused = self.gate_with_ceph("bank", "lumos")
+            self.assertEqual(refused.returncode, 75, refused.stdout)
+            self.assertIn(f"zenodo_lumos, which holds lumos's raw copy, is still being landed (job {job})", refused.stdout)
+        # an admission of the landing a live job of any word still holds
+        meta = self.data / "zenodo_lumos" / "meta"
+        meta.mkdir()
+        (meta / "SIZE").write_text("admitted 7004 46400000000 2598000000000 2026-10-25T00:00:00Z 46400000000\n", encoding="utf-8")
+        self.live("7004")
+        refused = self.gate_with_ceph("bank", "lumos")
+        self.assertEqual(refused.returncode, 75, refused.stdout)
+        self.assertIn("(job 7004)", refused.stdout)
+        # start's X-ray fetch lands every open set of grid/fetch-xray.json, nih_chestxray14 among them
+        self.state_line(7005, "start", "xr_fetch")
+        self.live("7005")
+        refused = self.gate_with_ceph("bank", "nih_chestxray14")
+        self.assertEqual(refused.returncode, 75, refused.stdout)
+        self.assertIn("nih_chestxray14, which holds nih_chestxray14's raw copy, is still being landed (job 7005)", refused.stdout)
+        self.assertEqual(self.submitted(), [])
+        # once the landing is still, the bank is queued for the recipe's own id
+        self.live()
+        done = self.gate_with_ceph("bank", "lumos")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn(" ONLY=lumos ", self.line_of("02-bank-ingest.sbatch")[0])
+        # a recipe whose raw folder lies outside the data root names no landing to wait on: refused
+        elsewhere = self.tmp / "elsewhere" / "vindr" / "raw"
+        elsewhere.mkdir(parents=True)
+        (elsewhere / "a.dicom").write_bytes(b"d")
+        recipe = self.repo / "grid" / "banks" / "vindr_spinexr.json"
+        recipe.write_text(recipe.read_text(encoding="utf-8").replace(f"{self.data}/vindr_spinexr/raw/vindr/1.0.0", str(elsewhere)),
+                          encoding="utf-8")
+        refused = self.gate_with_ceph("bank", "vindr_spinexr")
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn("is not under the data root", refused.stdout)
+        self.assertEqual(len(self.submitted()), 2)
+
     def test_bank_budgets_by_the_format_the_recipe_names(self):
-        # tools/bank.py copies a PNG and windows a DICOM to an 8-bit PNG, at most the raw copy's size,
-        # but turns JPEG, TIFF and BMP into PNG, which a q95 JPEG radiograph grows 1.8 to 2.5 times
-        # into; its shard then copies the bank once more (finding 24)
+        # tools/bank.py copies a PNG and windows an uncompressed or lossless DICOM to an 8-bit PNG
+        # under the raw copy's size, but turns JPEG, TIFF and BMP into PNG, which a q95 JPEG radiograph
+        # grows 1.8 to 2.5 times into; its shard then copies the bank once more (finding 24). The word
+        # holds this while the job waits; a lossy file's frames outgrow it, which the job's pixel bound
+        # catches (test_the_bank_job_admits_what_the_frames_pixels_need_where_the_words_budget_is_less)
         self.environments_ready()
         recipe = (GRID / "banks" / "nih_chestxray14.json").read_text(encoding="utf-8")
         for name, image_format in (("a_jpg_set", "jpg"), ("a_tiff_set", "tiff"), ("a_webp_set", "webp")):
@@ -1990,13 +2114,13 @@ esac
         self.ceph_fake(raw_bytes=1500 * 10**9)
         done = self.gate_with_ceph("bank", "a_jpg_set")
         self.assertEqual(done.returncode, 75, done.stdout)
-        self.assertIn("raw copy: 1500 GB of jpg, which bank.py turns into PNG; the bank and its shard: at most 9000 GB", done.stdout)
+        self.assertIn("raw copy: 1500 GB of jpg, which bank.py turns into PNG; the bank and its shard: 9000 GB held", done.stdout)
         self.assertIn("refusing: the bank and its shard need 9000 GB and the room is 8844 GB", done.stdout)
         self.assertEqual(self.submitted(), [])
         self.ceph_fake(raw_bytes=1000 * 10**9)
         done = self.gate_with_ceph("bank", "a_tiff_set")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
-        self.assertIn("the bank and its shard: at most 6000 GB", done.stdout)
+        self.assertIn("the bank and its shard: 6000 GB held", done.stdout)
         self.assertIn(f" BANK_NEED={6000 * 10**9}", self.line_of("02-bank-ingest.sbatch")[0])
         # a format bank.py takes in no recipe here is never budgeted by a guess
         self.live()
@@ -2010,7 +2134,7 @@ esac
         self.live()
         done = self.gate_with_ceph("bank", "nih_chestxray14")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
-        self.assertIn("raw copy: 1000 GB of png, which bank.py copies; the bank and its shard: at most 2000 GB", done.stdout)
+        self.assertIn("raw copy: 1000 GB of png, which bank.py copies; the bank and its shard: 2000 GB held", done.stdout)
 
     def test_bank_and_unpack_of_one_set_never_run_side_by_side(self):
         # both hold their room through the set's one admission file, and a bank of a raw folder still
@@ -2033,9 +2157,11 @@ esac
 
     def bank_job(self, **extra):
         """grid/02-bank-ingest.sbatch as Slurm starts the bank word's job: its admission checked under
-        the size rule before the launcher, which a fake python stands in for, is handed the job."""
+        the size rule before the launcher, which a fake python stands in for, is handed the job; the
+        job's other python, tools/bank.py's bound among it, runs on python3."""
         pydrv = self.fake / "pydrv"
-        pydrv.write_text('#!/bin/bash\ncase "$1" in */flows/launch.py) printf \'%s\\n\' "$@" > "$FAKE/launched" ;; esac\n', encoding="utf-8")
+        pydrv.write_text('#!/bin/bash\ncase "$1" in */flows/launch.py) printf \'%s\\n\' "$@" > "$FAKE/launched" ;; *) exec python3 "$@" ;; esac\n',
+                         encoding="utf-8")
         pydrv.chmod(0o755)
         (self.fake / "launched").unlink(missing_ok=True)
         env = dict(self.gate_env(), GETFATTR=str(self.fake / "getfattr"), PYDRV=str(pydrv), SLURM_JOB_ID="4242", ONLY="vindr_spinexr",
@@ -2084,6 +2210,60 @@ esac
             self.assertEqual(done.returncode, 4, f"{extra}: {done.stdout}")
             self.assertIsNone(launched)
 
+    def test_the_bank_job_admits_what_the_frames_pixels_need_where_the_words_budget_is_less(self):
+        # The word budgets the bank and its shard by a multiple of the raw copy's bytes, which a
+        # lossy file holds fewer of than its frame takes as PNG (the second review of #252); the job
+        # bounds them by the frames, read from their headers by tools/bank.py, before it writes, and
+        # takes the larger admission under the size lock. Three 8-bit PNG frames of 40000 bytes,
+        # which the bank copies and its shard copies again, need 240000 bytes, more than a budget
+        # of 1000 bytes stands for.
+        shutil.copy(ROOT / "tools" / "bank.py", self.repo / "tools" / "bank.py")
+        self.ceph_fake(raw_bytes=120000)
+        images = self.data / "nih_chestxray14" / "raw" / "images_001" / "images"
+        images.mkdir(parents=True)
+        header = b"\x89PNG\r\n\x1a\n" + b"\0\0\0\x0dIHDR" + (64).to_bytes(4, "big") * 2 + b"\x08\0\0\0\0"
+        for name in ("00000001_000", "00000001_001", "00000002_000"):
+            (images / f"{name}.png").write_bytes(header + b"\0" * (40000 - len(header)))
+        size = self.data / "nih_chestxray14" / "meta" / "SIZE"
+        size.parent.mkdir(parents=True)
+
+        def admitted_for(need):
+            size.write_text(f"admitted 4242 {need} 2600000000000 2026-10-25T00:00:00Z {need}\n", encoding="utf-8")
+            return self.bank_job(ONLY="nih_chestxray14", BANK_NEED=str(need))
+
+        # a fetch admitted while the job waited leaves 200000 bytes of room: the budget fits, the frames do not
+        other = self.data / "other_set" / "meta"
+        other.mkdir(parents=True)
+        (other / "SIZE").write_text("admitted 555 8844232355520 2600000000000 2026-10-25T00:00:00Z 8844232355520\n",
+                                    encoding="utf-8")
+        self.live(555, 4242)
+        done, launched = admitted_for(1000)
+        self.assertEqual(done.returncode, 4, done.stdout + done.stderr)
+        self.assertIn("nih_chestxray14: refused for space; it needs 1 gb of its 1 gb by the pixels of the bank and its shard", done.stdout)
+        self.assertIsNone(launched, "nothing was banked")
+        self.assertEqual((self.data / "nih_chestxray14" / "meta" / "REFUSED").read_text(encoding="utf-8").split()[:3],
+                         ["4242", "240000", "200000"])
+        self.assertTrue(size.read_text(encoding="utf-8").startswith("settled 4242 1000 "))
+        # with the room there, the job holds the frames' need, not the budget, while it writes
+        self.live(4242)
+        done, launched = admitted_for(1000)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIsNotNone(launched)
+        self.assertTrue(size.read_text(encoding="utf-8").startswith("admitted 4242 240000 2600000000000 "))
+        # a budget above what the frames take stands as it did
+        done, launched = admitted_for(500000)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("by the bank and its shard and", done.stdout)
+        self.assertTrue(size.read_text(encoding="utf-8").startswith("admitted 4242 500000 2600000000000 "))
+        # a frame whose header the bound cannot read admits nothing, whatever the budget
+        (images / "00000003_000.png").write_bytes(b"not a png")
+        done, launched = admitted_for(500000)
+        self.assertEqual(done.returncode, 4, done.stdout + done.stderr)
+        self.assertIn("nih_chestxray14: refused; the bank tool could not bound the frames by their pixels", done.stdout)
+        self.assertIn("00000003_000.png: not a PNG", done.stderr)
+        self.assertIsNone(launched)
+        self.assertTrue(size.read_text(encoding="utf-8").startswith("settled 4242 500000 "))
+
     def progress(self, plan, folder, lines, age=0):
         state = self.smoke / plan / folder
         state.mkdir(parents=True)
@@ -2122,11 +2302,52 @@ esac
         self.assertEqual(out.count("to-come -"), 21, out)
         self.assertIn("  (5 more rows not yet matched; the state folder's PROGRESS.txt holds them)", out)
 
+    def test_status_shows_a_rows_code_and_withholds_a_reason_that_can_quote_a_value(self):
+        # tools/block_sweep.py writes a row's refusal code and, after "why:", the last words the tools
+        # wrote of it, which can quote a run's folder, a frame's file name with its case number, or a
+        # run's id; status judges each row it shows as it judges a stage report's lines (report_shapes)
+        withheld = "why: <reason withheld: it can quote a value; the whole report stays on the grid>"
+        state = self.smoke / "real" / "c0dec0de-0123abcd"
+        self.progress("real", "c0dec0de-0123abcd", [
+            f"plan real state {state} rows 8 ran 0 refused 3 not_applicable 1 failed 4 to_come 0 mismatched 4 updated 2026-10-25T06:00:00Z",
+            f"row resnet18-64px-0000aaaa refused mismatched init-mismatch why: the parent {self.runs}/20261022-ab12/train/best.pt is another net",
+            "row resnet18-64px-00002222 failed - why: cannot open /scratch/go2432/case39 for reading",
+            "row resnet18-64px-0000bbbb failed - why: FileNotFoundError: no such frame case134_0007.png",
+            "row resnet18-64px-0000cccc failed - why: the flow run 1f2e3d4c5b6a7980 ended before its first epoch",
+            "row resnet18-64px-0000dddd failed - why: CUDA out of memory / the trainer stopped",
+            "row resnet18-64px-0000eeee refused mismatched no-validation why: the catalog holds no validation part of this source",
+            "row resnet18-64px-0000ffff not-applicable mismatched why: no frame of the catalog is as large as the crop",
+            "row resnet18-64px-00001111 refused mismatched one-crop",
+            "wandb https://wandb.ai/lab/schwingnet/runs/1f2e3d4c"])
+        done = self.gate("status")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        out = done.stdout
+        # the code is shown whether its reason is or not; a path under the runs is cut to <runs> and
+        # its reason kept, while a path the gate cannot name, a file name and a long hex run withhold it
+        for shown in ("  row resnet18-64px-0000aaaa refused mismatched init-mismatch why: the parent <runs> is another net\n",
+                      f"  row resnet18-64px-00002222 failed - {withheld}\n",
+                      f"  row resnet18-64px-0000bbbb failed - {withheld}\n",
+                      f"  row resnet18-64px-0000cccc failed - {withheld}\n",
+                      f"  row resnet18-64px-0000dddd failed - {withheld}\n",
+                      "  row resnet18-64px-0000eeee refused mismatched no-validation why: the catalog holds no validation part of this source\n",
+                      "  row resnet18-64px-0000ffff not-applicable mismatched why: no frame of the catalog is as large as the crop\n",
+                      "  row resnet18-64px-00001111 refused mismatched one-crop\n"):
+            self.assertIn(shown, out)
+        for gone in (str(self.runs), "20261022", "ab12", "best.pt", "scratch", "case39", "case134", "0007",
+                     "1f2e3d4c5b6a7980", "the trainer stopped"):
+            self.assertNotIn(gone, out.split("## sweep real", 1)[1].split("  wandb ", 1)[0])
+        # the headline keeps its state folder and the W&B link stays whole: neither is a row
+        self.assertIn("  plan real state <smoke>/real/c0dec0de-0123abcd rows 8", out)
+        self.assertIn("  wandb https://wandb.ai/lab/schwingnet/runs/1f2e3d4c\n", out)
+
     def test_status_shows_every_sweeps_progress_even_when_the_other_sections_fill_the_page(self):
-        # A status of the grid's size, every earlier section at the most it shows: 80 sets on each
-        # root, the committed sample manifest, 60 jobs with two failed logs, eight stage reports and
-        # a results table of 30 lines. The sweeps' progress, the one live view of a sweep, once came
-        # last and was cut by the 400 lines; now it comes before everything the cut can reach.
+        # A status of the grid's size, every section at the most it shows: 80 sets on each root,
+        # four plans' progress, 60 jobs, the newest of them a sweep that failed with its log and its
+        # stage report, an older setup that failed, eight older stage reports, the committed sample
+        # manifest and a results table of 30 lines. The sweeps' progress once came last and was cut
+        # by the 400 lines; then it came first and pushed the newest jobs, every failed job's log and
+        # every stage report off the page behind the manifest. Now the page is handed out in the
+        # order a reader needs it, and what found no room is named on its last line.
         self.ceph_fake(raw_bytes=10**9)
         (self.tmp / "shared").mkdir()
         for n in range(80):
@@ -2134,13 +2355,19 @@ esac
             (self.tmp / "shared" / f"shared_{n:02d}").mkdir()
         logs = self.repo / "grid" / "logs"
         logs.mkdir(parents=True, exist_ok=True)
+        now = time.time()
         shutil.copy(ROOT / "docs" / "research" / "data-manifest" / "MANIFEST.md", logs / "SAMPLES-STAGE-REPORT.md")
-        for n in range(58):
-            self.state_line(2000 + n, "start", f"job_{n}")
-        self.failed(*[(2100 + n, "start", "setup", "sn_setup", "FAILED", "00:01:00", [f"error line {i}" for i in range(20)])
-                      for n in range(2)])
+        os.utime(logs / "SAMPLES-STAGE-REPORT.md", (now - 7200, now - 7200))
+        rows = [(2000 + n, "start", f"job_{n}", f"sn_job_{n}", "COMPLETED", "00:10:00", None) for n in range(57)]
+        rows += [(2100 + n, "start", "setup", "sn_setup", "FAILED", "00:01:00", [f"error line {i}" for i in range(20)])
+                 for n in range(2)]
+        rows += [(2200, "sweep:real", "sweep", "sweep", "FAILED", "04:00:00", [f"step {i}" for i in range(30)] + ["SN_SWEEP_RC=1"])]
+        self.failed(*rows)
         for n in range(8):
             (logs / f"0{n}-STAGE-REPORT.md").write_text("".join(f"- line {i}\n" for i in range(13)), encoding="utf-8")
+            os.utime(logs / f"0{n}-STAGE-REPORT.md", (now - 3600 - n, now - 3600 - n))
+        (logs / "sweep-real-STAGE-REPORT.md").write_text(
+            "".join(f"- sweep line {i}\n" for i in range(12)) + "- FAILED: the flow stopped before its first row\n", encoding="utf-8")
         run = self.runs / "newest"
         (run / "evaluate").mkdir(parents=True)
         (run / "evaluate" / "results.md").write_text("".join(f"| row {i} |\n" for i in range(30)), encoding="utf-8")
@@ -2160,7 +2387,62 @@ esac
         self.assertEqual(out.count("  (5 more rows not yet matched; the state folder's PROGRESS.txt holds them)"), 4)
         # after the space it reads beside, before the job list and every section that grows with the jobs
         self.assertLess(out.index("## space on the lab volume"), out.index("## sweep real"))
-        self.assertLess(out.index("## sweep two_source"), out.index("## SAMPLES-STAGE-REPORT.md"))
+        self.assertLess(out.index("## sweep two_source"), out.index("## the gate's newest jobs"))
+        # the newest job's row, the failed sweep's log and its stage report, newest of the reports
+        self.assertIn("\n  2200 sweep FAILED 04:00:00 1:0 n1\n", out)
+        self.assertIn("## 2200 (sweep) ended FAILED after 04:00:00, exit 1:0\n    SN_SWEEP_RC=1\n", out)
+        self.assertIn("## 2101 (setup) ended FAILED after 00:01:00, exit 1:0\n", out)
+        self.assertIn("## sweep-real-STAGE-REPORT.md (", out)
+        self.assertIn("  - FAILED: the flow stopped before its first row\n", out)
+        self.assertLess(out.index("## sweep-real-STAGE-REPORT.md ("), out.index("## 00-STAGE-REPORT.md ("))
+        # the manifest, older than every report, and the run found no room, and the page says so last
+        self.assertNotIn("## SAMPLES-STAGE-REPORT.md", out)
+        unsaid = out.splitlines()[-2]
+        self.assertTrue(unsaid.startswith("## not shown, for want of room on the page (400 lines and 64 KiB): "), unsaid)
+        for named in ("stage reports", "the sample manifest", "the newest run"):
+            self.assertIn(named, unsaid)
+
+    def test_status_hands_the_sample_manifest_its_room_among_the_stage_reports_by_its_date(self):
+        # The manifest changes only when a census runs: newest, it is shown whole before the jobs and
+        # the older reports are cut and named; older than the reports, they come first and it is cut
+        # to what is left, keeping its largest groups, and the page says what it left out.
+        logs = self.repo / "grid" / "logs"
+        logs.mkdir(parents=True, exist_ok=True)
+        manifest = logs / "SAMPLES-STAGE-REPORT.md"
+        manifest.write_text("# The sample index\n\n" + "".join(f"| source_{i} | {i} |\n" for i in range(150)), encoding="utf-8")
+        now = time.time()
+        def reports(count):
+            for path in logs.glob("[0-9]*-STAGE-REPORT.md"):
+                path.unlink()
+            for n in range(count):
+                path = logs / f"{n:02d}-STAGE-REPORT.md"
+                path.write_text("".join(f"- report {n} line {i}\n" for i in range(12)), encoding="utf-8")
+                os.utime(path, (now - 600 - n, now - 600 - n))
+        reports(30)
+        os.utime(manifest, (now, now))
+        out = self.gate("status").stdout
+        self.assertLessEqual(len(out.splitlines()), 402)
+        self.assertIn("  | source_0 | 0 |\n", out)
+        self.assertIn("  | source_149 | 149 |\n", out)
+        self.assertLess(out.index("## SAMPLES-STAGE-REPORT.md"), out.index("no job submitted by the gate yet"))
+        # the reports newest first, so the newest is whole and the oldest gone
+        self.assertIn("  - report 0 line 11\n", out)
+        self.assertNotIn("report 29 line", out)
+        self.assertEqual(out.count("earlier lines of this section not shown, for want of room on the page)"), 1, out)
+        unsaid = out.splitlines()[-2]
+        self.assertTrue(unsaid.startswith("## not shown, for want of room on the page (400 lines and 64 KiB): "), unsaid)
+        self.assertIn(" stage reports", unsaid)
+        self.assertNotIn("manifest", unsaid)
+        reports(26)
+        os.utime(manifest, (now - 7200, now - 7200))
+        out = self.gate("status").stdout
+        self.assertLessEqual(len(out.splitlines()), 402)
+        for n in range(26):
+            self.assertIn(f"  - report {n} line 11\n", out)
+        self.assertIn("  | source_0 | 0 |\n", out)
+        self.assertNotIn("source_149", out)
+        self.assertEqual(out.count("more lines of this section not shown, for want of room on the page)"), 1, out)
+        self.assertNotIn("## not shown", out)
 
     def test_status_shows_the_newest_failed_sweep_of_each_plan_by_its_shapes(self):
         self.failed((1001, "sweep:real", "sweep", "sweep", "FAILED", "04:00:00", ["person carmlspine:case042 seen", "SN_SWEEP_RC=1"]),

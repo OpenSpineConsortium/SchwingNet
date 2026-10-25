@@ -25,7 +25,8 @@
 #                   failed, masked (grid/redact.sed), and for a job that reads DICOM headers,
 #                   person keys or a sign-in only its tracebacks and status lines (grid/log-shapes.awk);
 #                   the stage reports with their paths cut and a quoting reason withheld
-#                   (grid/report-shapes.awk), masked; the newest run
+#                   (grid/report-shapes.awk), masked; the newest run; one page of 400 lines and
+#                   64 KiB, handed out in the order a reader needs it (grid/status-page.awk)
 #   leaks           the leak checks over every shard on the volume, once no ingest is queued
 #   v1              the version 1 run alone (again, after a failure), while start's other jobs are
 #                   still live: each input is there, made by a live job of the gate's, or submitted
@@ -68,9 +69,10 @@
 #                   shows each plan's PROGRESS.txt under SMOKE
 #   bank <id>       one recipe of grid/banks/ banked and ingested (grid/02-bank-ingest.sbatch with
 #                   ONLY=<id>) and a catalog build afterok on it: two CPU jobs, once its held raw
-#                   copy is there and the room under the quota takes what they may write by the
-#                   recipe's format, which the bank holds as the size rule's admission while it is
-#                   live and checks again when it starts
+#                   copy is there, no job still lands the folder under the data root that holds it,
+#                   and the room under the quota takes what they may write by the recipe's format,
+#                   which the bank holds as the size rule's admission while it is live and checks
+#                   again when it starts, then for the larger of that and its frames' pixel bound
 #   experiment <n>  one requested combination of data and blocks, issue #<n> labelled experiment: the
 #                   request the experiment workflow recorded as <n>.request on the branch experiments,
 #                   fetched now and checked line by line, run as one GPU job (experiment-driver.sbatch)
@@ -86,9 +88,9 @@
 #   cancel <job>    cancel one of the gate's own live jobs and every other live job its word queued
 #                   with it (a fetch's bank and catalog), and nothing else
 #
-# While a version 1 run, a sweep or an experiment run lasts, grid/logs/HOLD names its job and
-# commit (grid/v1-driver.sbatch, grid/sweep-driver.sbatch, grid/experiment-driver.sbatch); the
-# gate's side skips its fast-forward while the file is there, and every word but a refused one
+# While a version 1 run, a sweep, an experiment run or a benchmark lasts, grid/logs/HOLD names its
+# job and commit (grid/v1-driver.sbatch, grid/sweep-driver.sbatch, grid/experiment-driver.sbatch,
+# grid/bench.sbatch); the gate's side skips its fast-forward while the file is there, and every word but a refused one
 # clears a hold whose job Slurm no longer holds, so the run's later steps run the code it
 # recorded. One file holds one job, so each run that takes it waits afterany on every other one
 # still live (checkout_holders) rather than run beside it.
@@ -122,7 +124,8 @@ export -n DATA_ROOT 2>/dev/null
 DATA_ROOT=${DATA_ROOT:-$GRID_DATA}
 STORE=$DATA_ROOT/_catalog
 RUNS=${RUNS:-/rs/rs_grp_oschome/go2432/runs}
-# The block smoke test's results (issue #252): <plan>/<commit 7>-<catalog sha256 first 8>/ per sweep.
+# The block smoke test's results (issue #252): <plan>/<code 8>-<catalog sha256 first 8>/ per sweep, the
+# code part naming the code its rows run and the plan's bytes, as `tools/block_sweep.py state` prints it.
 SMOKE=${SMOKE:-/rs/rs_grp_oschome/go2432/smoke}
 MODELS=${MODELS:-/rs/rs_grp_oschome/go2432/models}
 WEIGHTS=$MODELS/resnet18-f37072fd.pth
@@ -273,12 +276,13 @@ chain() {  # chain DEPEND [run-xray-chain.sh arguments...]: the X-ray chain afte
   record "$XR_FETCH" xr_fetch; record "$(value_of bank "$after")" xr_bank; record "$XR_CATALOG" xr_catalog
 }
 checkout_holders() {  # afterany:<job> for every live job of the gate's that holds the checkout while it runs, comma-joined
-  # A version 1 run, a sweep and an experiment run each write grid/logs/HOLD, one file naming one
-  # job, and the first of two side by side to end would clear it while the other still runs, whose
-  # end check then finds the checkout moved and throws the run away; so each waits for the others.
+  # A version 1 run, a sweep, an experiment run and a benchmark each write grid/logs/HOLD, one file
+  # naming one job, and the first of two side by side to end would clear it while the other still
+  # runs, whose end check then finds the checkout moved and throws the run away; so each waits for
+  # the others, a sweep sent while a benchmark lasts up to its 12 hours among them.
   local job waits=""
   [ -f "$STATE" ] || return 0
-  for job in $(awk '$3 == "v1_driver" || $3 == "sweep" || $3 ~ /^experiment_[0-9]+$/ { print $1 }' "$STATE" | sort -u); do
+  for job in $(awk '$3 == "v1_driver" || $3 == "sweep" || $3 ~ /^experiment_[0-9]+$/ || $3 ~ /^bench_[a-z_]+$/ { print $1 }' "$STATE" | sort -u); do
     case "$QUEUED" in *" $job "*) waits=$(joined "$waits" "afterany:$job") ;; esac
   done
   echo "$waits"
@@ -458,7 +462,7 @@ latency_lines() {  # the newest run's parity, latency and sweep numbers, one lin
     [ -f "$file" ] && files+=("$file")
   done
   [ ${#files[@]} -gt 0 ] || return 0
-  # Before the stage reports, so the 200 lines status keeps never cut the timing off.
+  # Handed the page's room before the stage reports (grid/status-page.awk), so they never cut it off.
   echo "## latency of the newest run, $(basename "$run")"
   awk -f "$REPO/grid/latency-lines.awk" "${files[@]}" | masked | sed 's/^/  /'
 }
@@ -547,11 +551,25 @@ fetch_progress() {  # one line per live fetch of one set: what its raw folder ho
   done
 }
 
+# What reaches the gate of status is one page of 400 lines and 64 KiB at most, and its sections
+# together can hold twice that on the grid. Each is made whole (status_sections) and then handed
+# the page's room in the order a reader needs it (grid/status-page.awk): the space, the sweeps'
+# progress, the newest jobs and the failed jobs' logs come first, the stage reports and the sample
+# manifest after them, newest first, so the manifest, which changes only when a census runs, never
+# pushes the newest jobs, a failed job's log or the newest stage report off the page; a section
+# cut short says so, and one left out is named on the page's last line.
+STATUS_LINES=400 STATUS_BYTES=65536
 word_status() {
-  local ids report run lines shown job name state elapsed code node probe
-  # First, so the status's 400 lines never cut it off; then the sweeps' progress, the one live view
-  # of a sweep, which once came last and was cut, held to its own bound so that the two together
-  # stay inside the 400 lines whatever the sections after them hold; then the sample manifest.
+  local newer
+  # The manifest is handed its room among the stage reports by its date, after those newer than it.
+  newer=$(ls -1t "$LOGS"/*STAGE-REPORT.md 2>/dev/null | awk '/\/SAMPLES-STAGE-REPORT\.md$/ { print NR - 1; exit }')
+  status_sections | LC_ALL=C awk -v lines="$STATUS_LINES" -v bytes="$STATUS_BYTES" -v samples_after="${newer:-0}" \
+    -f "$REPO/grid/status-page.awk"
+}
+status_sections() {  # every section of status whole, in the order the page shows them
+  local ids run lines job name state elapsed code node probe
+  # The space first and the sweeps' progress, the one live view of a sweep, after it; then the
+  # sample manifest, which once came after the jobs, where the page's end cut it.
   word_space
   sweep_progress | head -n "$SWEEP_LINES_SHOWN"
   samples_report
@@ -569,8 +587,8 @@ word_status() {
     failed_tails "$lines"
   fi
   # The latency probe's answer (#87): counts, sizes, PNG dimensions and the export's meta keys only,
-  # never a DICOM header, printed before the reports so it stays inside status's 200 lines; only
-  # its own lines' shapes, with no folder or file name (grid/probe-shapes.awk), then masked (#80).
+  # never a DICOM header; only its own lines' shapes, with no folder or file name
+  # (grid/probe-shapes.awk), then masked (#80).
   probe=$(probe_text)
   if [ -n "$probe" ]; then
     printf '%s\n' "$probe" | head -n 1
@@ -578,7 +596,9 @@ word_status() {
       | awk -f "$REPO/grid/probe-shapes.awk" | masked | sed 's/^/  /'
   fi
   latency_lines
-  for report in "$LOGS"/*STAGE-REPORT.md; do
+  # Newest first, the order they are handed the page's room in, so a sweep's or a run's report from
+  # today comes before a stage's from last week.
+  ls -1t "$LOGS"/*STAGE-REPORT.md 2>/dev/null | while read -r report; do
     [ -f "$report" ] || continue
     [ "$(basename "$report")" != SAMPLES-STAGE-REPORT.md ] || continue
     echo "## $(basename "$report") ($(date -r "$report" '+%F %T'))"
@@ -597,7 +617,8 @@ word_status() {
 
 # A plan's section is its heading, its headline, up to SWEEP_ROWS_SHOWN rows, the line counting the
 # rest and up to SWEEP_WANDB_SHOWN links, 27 lines; the four plans of grid/sweeps/ take 108 of the
-# section's 120, and the space tally before it at most about 180, so both fit inside status's 400.
+# section's 120, and the space tally before it at most about 180, so both fit inside status's 400
+# with room left for the job list, which is handed lines right after them (grid/status-page.awk).
 SWEEP_ROWS_SHOWN=20 SWEEP_WANDB_SHOWN=4 SWEEP_LINES_SHOWN=120
 smoke_paths() {  # every line with the smoke folder's path cut to <smoke>, matched as text and not as a pattern
   awk -v smoke="$SMOKE" '{
@@ -608,12 +629,18 @@ progress_lines() {  # progress_lines FILE: a sweep's PROGRESS.txt as status show
   # Its headline, the rows that have not matched their prediction yet (failed, mismatched or still
   # to come; the rows that matched are counted on the headline) and its W&B links. tools/block_sweep.py
   # writes the file whole and renames it into place, so it never reads half written.
+  # A refused or failed row ends with its code and, after "why:", the last words the tools wrote of
+  # it, which can quote a run's folder, a frame's file name or a run's id: each row shown is judged
+  # as a stage report's line is (report_shapes), its paths cut and that reason withheld unless it
+  # holds no value, while the code before it stays. The headline and the W&B links are the sweep's
+  # own words and are left whole, the links so that they still open.
   local unmatched count
   head -n 1 "$1"
   unmatched=$(tail -n +2 "$1" | awk '$1 == "row" && ($3 == "failed" || $3 == "to-come" || $3 == "to_come" ||
                                                     $4 == "no" || $4 == "false" || $4 == "mismatched")')
   count=$(printf '%s' "$unmatched" | grep -c '^row ')
-  [ -z "$unmatched" ] || printf '%s\n' "$unmatched" | head -n "$SWEEP_ROWS_SHOWN"
+  [ -z "$unmatched" ] \
+    || printf '%s\n' "$unmatched" | head -n "$SWEEP_ROWS_SHOWN" | LC_ALL=C tr -cd '\11\12\40-\176' | report_shapes
   [ "$count" -le "$SWEEP_ROWS_SHOWN" ] \
     || echo "($((count - SWEEP_ROWS_SHOWN)) more rows not yet matched; the state folder's PROGRESS.txt holds them)"
   tail -n +2 "$1" | awk '$1 == "wandb"' | head -n "$SWEEP_WANDB_SHOWN"
@@ -727,13 +754,16 @@ word_latency() {
   [ "$rc" = 0 ] || return 1
 }
 
+fetch_section() {  # fetch_section ID: open or credentialed, the section of grid/fetch-xray.json that names ID, or nothing
+  awk -v id="$1" '
+    /"credentialed": \[/ { cred = 1 }
+    index($0, "\"id\": \"" id "\"") { print (cred ? "credentialed" : "open"); exit }' "$REPO/grid/fetch-xray.json"
+}
 word_fetch() {
   local section setup busy waits="" one args=(--only "$id")
   # A look at the set taken before this fetch no longer says what it holds (word_explore).
   rm -f "$LOGS/EXPLORE-$id.md" "$LOGS/EXPLORE-$id.md.key"
-  section=$(awk -v id="$id" '
-    /"credentialed": \[/ { cred = 1 }
-    index($0, "\"id\": \"" id "\"") { print (cred ? "credentialed" : "open"); exit }' "$REPO/grid/fetch-xray.json")
+  section=$(fetch_section "$id")
   if [ -z "$section" ]; then
     gated_platform_id || { echo "refusing: $id is not an id of grid/fetch-xray.json nor a gated source of grid/run-platform-fetch.sh"; return 64; }
     word_fetch_gated
@@ -988,7 +1018,7 @@ bench_inputs_missing() {  # what bench $id still lacks on the data root, one lin
   esac
 }
 word_bench() {  # one public model's benchmark (#287): queued once, its report printed on every later send
-  local report=$LOGS/BENCH-$id.md busy missing
+  local report=$LOGS/BENCH-$id.md busy missing holds opts
   case "$id" in
     flexray_carmlspine|flexray_deepfluoro|xvr_deepfluoro) ;;
     *) echo "refusing: bench takes flexray_carmlspine, flexray_deepfluoro or xvr_deepfluoro"; return 64 ;;
@@ -1004,7 +1034,12 @@ word_bench() {  # one public model's benchmark (#287): queued once, its report p
   missing=$(bench_inputs_missing)
   [ -z "$missing" ] || { echo "refusing: bench $id needs $missing"; return 2; }
   envs_ready || { echo "refusing: the environments are not ready; 'start' makes them first"; return 75; }
-  submit "bench_$id" gpu BENCH="$id" DATA_ROOT="$DATA_ROOT" --no-requeue -- bench.sbatch > /dev/null || return 1
+  # The job holds the checkout while it runs (grid/bench.sbatch), so it is queued after every other
+  # run that holds it, as a sweep is, rather than refused.
+  holds=$(checkout_holders)
+  [ -z "$holds" ] || echo "  the checkout: after the live runs that hold it ($holds)"
+  depend_on "$holds" || return 1
+  submit "bench_$id" gpu BENCH="$id" DATA_ROOT="$DATA_ROOT" ${opts[@]+"${opts[@]}"} --no-requeue -- bench.sbatch > /dev/null || return 1
   echo "submitted one job. Send bench $id again once it ends to read its report, logs/BENCH-$id.md."
 }
 
@@ -1152,20 +1187,35 @@ recipe_raw() {  # recipe_raw FILE: the raw folder a recipe of grid/banks/ names,
   if [ -n "$DATA_ROOT_GIVEN" ]; then echo "$DATA_ROOT/$id/raw"; return 0; fi
   sed -n 's/^ *"raw": *"\([^"]*\)".*/\1/p' "$1" | head -n 1
 }
+landing_of() {  # landing_of RAW: the folder under the data root that holds RAW, the first on its path; status 1 where RAW is not under the data root
+  # The folder a fetch lands and whose meta/SIZE holds the fetch's admission: a recipe's own id for
+  # most recipes, zenodo_lumos for lumos, which start's platform chain lands as dp_zenodo_lumos.
+  local rest=${1#"$DATA_ROOT"/} landing
+  [ "$rest" != "$1" ] || return 1
+  landing=${rest%%/*}
+  case "$landing" in ""|*[!a-z0-9_]*) return 1 ;; esac
+  echo "$landing"
+}
 recipe_format() {  # recipe_format FILE: the image format a recipe of grid/banks/ names
   sed -n 's/^ *"format": *"\([^"]*\)".*/\1/p' "$1" | head -n 1
 }
-bank_factor() {  # bank_factor FORMAT: "<times> <words>", how many times the raw copy the bank and its shard may write and why; status 1 where no budget is known
-  # tools/bank.py copies a PNG byte for byte, and decodes a DICOM frame and writes it as an 8-bit
-  # PNG, which the container's measurement found smaller than the frame (202 MB of DICOM became
-  # 104 MB of PNG, grid/README.md), so the bank is at most the raw copy and its shard, which copies
-  # every frame of the bank once more (tools/ingest.py), as much again: twice the raw copy. It
-  # re-encodes JPEG, TIFF and BMP as lossless PNG, which grows a radiograph: the review of #252
-  # measured a q95 JPEG of a 2500 x 3000 8-bit film at 1.77 to 2.53 times its size as PNG through
-  # bank.py's own path, the more the less noise there is, so three times the raw copy for the bank,
-  # above the largest measured, and three again for its shard. TIFF and BMP are not measured and
-  # may hold JPEG-compressed data, so they take JPEG's budget; an uncompressed one is budgeted more
-  # than it writes, which can refuse a bank that would fit and never admits one that overflows.
+bank_factor() {  # bank_factor FORMAT: "<times> <words>", how many times the raw copy the bank and its shard are held for while the job waits, and why; status 1 where no budget is known
+  # tools/bank.py copies a PNG byte for byte, and its shard, which copies every frame of the bank
+  # once more (tools/ingest.py), as much again: twice the raw copy. It decodes a DICOM frame and
+  # writes it as an 8-bit PNG, which an uncompressed or losslessly compressed film keeps under its
+  # file (202 MB of uncompressed DICOM became 104 MB of PNG, grid/README.md; RLE and lossless JPEG
+  # 2000 films at 0.31 to 0.64 of their files, the second review of #252), so twice the raw copy
+  # too. A lossy film, JPEG or lossy JPEG 2000, takes about two to four times its file as PNG, and
+  # bank.py re-encodes JPEG, TIFF and BMP as lossless PNG, which grows a radiograph: the review of
+  # #252 measured a q95 JPEG of a 2500 x 3000 8-bit film at 1.77 to 2.53 times its size as PNG
+  # through bank.py's own path, so three times the raw copy for the bank and three again for its
+  # shard, while a lower quality grows more, to 5.5 times at q75 (the second review). No figure read
+  # from the bytes on the login node sees that, so these hold the room while the job waits, and the
+  # job, where python runs, bounds the bank and its shard by their frames' pixels before it writes
+  # and is admitted for the larger (grid/02-bank-ingest.sbatch, tools/bank.py --bound). TIFF and BMP
+  # are not measured and may hold JPEG-compressed data, so they take JPEG's budget; an uncompressed
+  # one is budgeted more than it writes, which can refuse a bank that would fit and never admits
+  # one that overflows.
   case "$1" in
     png) echo "2 which bank.py copies" ;;
     dcm) echo "2 which bank.py windows to an 8-bit PNG" ;;
@@ -1189,10 +1239,10 @@ bank_room() {  # bank_room NEED: 0 where the room under the quota takes NEED byt
   echo "  room: $(gb_down "$room") GB $(free_space_words "$free_from") after $(gb_up "$owed_bytes") GB owed to $(running_fetches "$owed_n")"
   [ "$1" -le "$room" ] || { echo "refusing: the bank and its shard need $(gb_up "$1") GB and the room is $(gb_down "$room") GB; nothing was queued"; return 75; }
 }
-admission_holder() {  # admission_holder: the live job whose admission $DATA/<id>/meta/SIZE still holds, else nothing
-  local state job
-  [ -f "$DATA/$id/meta/SIZE" ] || return 0
-  read -r state job _ < "$DATA/$id/meta/SIZE"
+admission_holder() {  # admission_holder [SET]: the live job whose admission $DATA/<SET>/meta/SIZE still holds (SET $id by default), else nothing
+  local set=${1:-$id} state job
+  [ -f "$DATA/$set/meta/SIZE" ] || return 0
+  read -r state job _ < "$DATA/$set/meta/SIZE"
   [ "$state" = admitted ] || return 0
   case "$QUEUED" in *" $job "*) echo "$job" ;; esac
 }
@@ -1222,7 +1272,7 @@ bank_jobs() {  # bank_jobs NEED: the bank and its catalog build queued, and the 
   fi
 }
 word_bank() {
-  local recipe=$REPO/grid/banks/$id.json busy raw bytes need format factor why rc DATA=$DATA_ROOT
+  local recipe=$REPO/grid/banks/$id.json busy raw landing bytes need format factor why rc DATA=$DATA_ROOT
   [ -f "$recipe" ] || { echo "refusing: $id is not a recipe under grid/banks/"; return 64; }
   # One bank and one build at a time: two banks of one set write the same bank folder, and the X-ray
   # chain's stage 2 banks every recipe its fetch names, start's every one there is.
@@ -1240,6 +1290,14 @@ word_bank() {
   read -r factor why <<< "$(bank_factor "$format")"
   [ -n "$factor" ] || { echo "refusing: grid/banks/$id.json names the format '$format', which the bank word has no budget for"; return 2; }
   raw=$(recipe_raw "$recipe")
+  # Never while the landing that holds the raw copy is still being fetched, unpacked or admitted by
+  # any word's job: the bank would read part of the set and the budget below would be read from
+  # part of it, while the job banks whatever has landed by the time it starts.
+  landing=$(landing_of "$raw") \
+    || { echo "refusing: $id's raw folder is not under the data root, so nothing can say whether it is still landing; nothing was queued"; return 2; }
+  busy=$( { live_of xr_fetch "fetch:$landing"; [ "$(fetch_section "$landing")" != open ] || live_of xr_fetch start
+            live_of "dp_$landing"; live_of unpack "unpack:$landing"; admission_holder "$landing"; } | tr '\n' ' ')
+  [ -z "${busy// /}" ] || { echo "refusing: $landing, which holds $id's raw copy, is still being landed (job ${busy% }): a fetch, an unpacking or an admission of it is queued or running"; return 75; }
   [ -n "$raw" ] && [ -d "$raw" ] && [ -n "$(ls -A "$raw" 2>/dev/null | head -n 1)" ] \
     || { echo "refusing: $id's raw copy is not on the volume (its recipe's raw folder is missing or empty); fetch it first"; return 2; }
   # What the raw copy holds, read with no walk as the size rule reads a folder, whole, times what
@@ -1249,7 +1307,7 @@ word_bank() {
   [ "$bytes" -le $(( 999999999999999999 / factor )) ] \
     || { echo "refusing: $factor times what $id's raw copy holds is more than the size rule counts; nothing was queued"; return 2; }
   need=$(( factor * bytes ))
-  echo "  raw copy: $(gb_up "$bytes") GB of $format, $why; the bank and its shard: at most $(gb_up "$need") GB"
+  echo "  raw copy: $(gb_up "$bytes") GB of $format, $why; the bank and its shard: $(gb_up "$need") GB held, and the job asks for more before it writes where their frames' pixels need it"
   # One decision at a time with the fetch and unpack jobs' own and the fetch word's chain, from the
   # room's reading to the record of this bank's admission (grid/size-rule.sh, admit_fetch).
   exec 8> "$DATA/.size-rule.lock" || { echo "refusing: the size rule's lock on the data root could not be opened; nothing was queued"; return 2; }
@@ -1285,7 +1343,7 @@ word_cancel() {  # the job named, if the gate's and live, with every live job of
   "$SCANCEL" $cancel && echo "cancelled ($from): $cancel"
 }
 
-release_hold() {  # a run's hold (grid/v1-driver.sbatch, grid/sweep-driver.sbatch, grid/experiment-driver.sbatch) is cleared once Slurm no longer holds its job
+release_hold() {  # a run's hold (grid/v1-driver.sbatch, grid/sweep-driver.sbatch, grid/experiment-driver.sbatch, grid/bench.sbatch) is cleared once Slurm no longer holds its job
   local job
   [ -f "$LOGS/HOLD" ] || return 0
   job=$(awk '{ print $1; exit }' "$LOGS/HOLD")
@@ -1317,8 +1375,9 @@ else
 fi
 case "$word" in
   start) word_start ;;
-  # Bounded whatever the logs hold: 400 lines and 64 KiB reach the gate at most.
-  status) out=$(word_status); printf '%s\n' "$(head -n 400 <<< "$out" | head -c 65536)" ;;
+  # Bounded whatever the logs hold: 400 lines and 64 KiB reach the gate at most. word_status fits
+  # its page into them; the cut here is a second net.
+  status) out=$(word_status); printf '%s\n' "$(head -n "$STATUS_LINES" <<< "$out" | head -c "$STATUS_BYTES")" ;;
   leaks) word_leaks ;;
   v1) word_v1 ;;
   latency) word_latency ;;

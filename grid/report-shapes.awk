@@ -3,7 +3,9 @@
 # paths on the volume, whose folders under a bank can carry a case's or a person's name. So every
 # path is cut to the folder it starts under: <data root: carmlspine> for one under the data root,
 # <runs>, <models> and <repo> for the others, <path> for any other; and the reason after a
-# "refused:" or "FAILED:" is kept only where it holds no value (shape-words.awk), else withheld.
+# "refused:" or "FAILED:", or after the "why:" a sweep's PROGRESS.txt puts on a refused or failed
+# row (issue #252), is kept only where it holds no value (shape-words.awk), else withheld; the
+# leftmost of the three is the marker, so a row's code before its "why:" always stays.
 # grid/redact.sed runs on what this keeps, as a second net.
 # Run as awk -v data=<data root> -v runs=<runs> -v models=<models> -v repo=<repo>
 # -f grid/shape-words.awk -f grid/report-shapes.awk, with gawk 4.0 on the login node and mawk on CI.
@@ -53,7 +55,7 @@ function cut_other_paths(text,    out, piece, before) {
   line = cut_paths(line, models, "models")
   line = cut_paths(line, repo, "repo")
   line = cut_other_paths(line)
-  if (match(line, /(refused|FAILED):/)) {
+  if (match(line, /(refused|FAILED|why):/)) {
     head = substr(line, 1, RSTART + RLENGTH - 1)
     reason = substr(line, RSTART + RLENGTH)
     if (!reason_is_plain(reason)) line = head " <reason withheld: it can quote a value; the whole report stays on the grid>"
