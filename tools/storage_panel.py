@@ -32,9 +32,22 @@ one. The site's host (tools/textbook_site.py, MESSAGE_JS) answers every dispatch
 connector" and shows the link; the artifact edition's host carries the connector. This file implements
 only the figure's side.
 
+Since spine-datasets #249 (2026-10-25) each set carries a value block read from its record alone, and
+the feed a power block, for the owner's ask of that day to choose what to keep by power, anatomical
+coverage, the data's quality, its annotations and its use for the synthetic X-rays and 3D priors. The
+page shows each set's level truth, people with level truth per terabyte, regions and uses, orders the
+sets by any of the numbers (`ordered`), and sums what the sets kept after the choices are worth
+(`worth`): the people with level truth by modality, at most as the power block counts them and at
+least less what the overlap lists let two sets share, against the people a test needs at the accuracy,
+margin and confidence the reader sets (`people_needed`, the feed's own formula); the regions covered,
+lost and gained; the labels read or automatic; the prior sources and the pairs; and what each removal
+costs or addition brings. Both blocks are optional: a feed written before them draws the page as
+before, each value cell saying the record gives nothing.
+
 The arithmetic the page does (the final place of each set, the selection string, the totals after the
-choices, the overlaps among the kept sets and the refusals the planner's check would make) is written
-once in Python below (`final_location`, `tokens`, `selection`, `totals`, `overlaps`, `refusals`) and
+choices, the overlaps among the kept sets, the refusals the planner's check would make, the order of
+the sets and what the kept ones are worth) is written once in Python below (`final_location`,
+`tokens`, `selection`, `totals`, `overlaps`, `refusals`, `ordered`, `people_needed`, `worth`) and
 mirrored in the page's MODEL_JS; tests/test_storage_panel.py runs both on one plan and compares.
 
     python3 tools/storage_panel.py build [--plan PATH] [--out DIR]   # storage.html, storage.svg, storage.json
@@ -47,6 +60,7 @@ import base64
 import binascii
 import hashlib
 import json
+import math
 import os
 import sys
 import urllib.error
@@ -63,6 +77,7 @@ FEED_URL = f"https://api.github.com/repos/{FEED_REPO}/contents/{FEED_PATH}?ref={
 FEED_PAGE = f"https://github.com/{FEED_REPO}/blob/{FEED_REF}/{FEED_PATH}"
 WORKFLOW = "storage.yml"
 WORKFLOW_URL = f"https://github.com/{FEED_REPO}/actions/workflows/{WORKFLOW}"
+VALUE_PAGE = f"https://github.com/{FEED_REPO}/blob/main/storage/README.md"
 FORMAT = "spine-datasets/storage 1"
 FIGURE_ID = "22/storage"
 COMMAND = "python3 tools/storage_panel.py build"
@@ -207,6 +222,212 @@ def refusals(plan, t):
     if t["home_after"] is not None and t["home_after"] > t["home_quota"]:
         out.append(f"The home would hold {tb(t['home_after'])}, over its quota of {tb(t['home_quota'])}.")
     return out
+
+
+# ---------------------------------------------------------------- what the kept sets are worth, mirrored in MODEL_JS
+#
+# The owner asked on 2026-10-25 to choose what to keep by power, anatomical coverage, the data's
+# quality, its annotations and its use for the synthetic X-rays and 3D priors. spine-datasets #249
+# gives each set a value block read from its record alone and the feed a power block; a feed written
+# before them has neither, and every count the feed does not give is counted as unknown, never guessed.
+
+TRUTH_WORDS = ("read", "automatic", "no", "unknown")
+SORTS = (("feed", "the feed's order"), ("truth_per_tb", "people with level truth per TB"),
+         ("truth_people", "people with level truth"), ("people_per_tb", "people per TB"), ("size", "size"))
+SORT_KEYS = tuple(key for key, _words in SORTS[1:])
+CONFIDENCES = ((0.9, 1.644854), (0.95, 1.959964), (0.99, 2.575829))
+
+
+def value_of(s):
+    v = s.get("value")
+    return v if isinstance(v, dict) else {}
+
+
+def count_of(n):
+    """A count the feed gives, a whole number of zero or more; anything else is None."""
+    if isinstance(n, bool) or not isinstance(n, (int, float)):
+        return None
+    if isinstance(n, float) and not (math.isfinite(n) and n.is_integer()):
+        return None
+    return int(n) if n >= 0 else None
+
+
+def truth_word(s):
+    """read where people named the levels, automatic where only a tool did, no, or unknown."""
+    word = value_of(s).get("level_truth")
+    return word if word in TRUTH_WORDS else "unknown"
+
+
+def truth_people(s):
+    return count_of(value_of(s).get("level_truth_people"))
+
+
+def modality_of(s):
+    for name in (value_of(s).get("modality"), s.get("group")):
+        if isinstance(name, str) and name:
+            return name
+    return "unknown"
+
+
+def regions_of(s):
+    regions = value_of(s).get("regions")
+    return sorted({r for r in regions if isinstance(r, str) and r}) if isinstance(regions, list) else []
+
+
+def per_tb(count, size):
+    """A count for each terabyte of a set's size; None where either is not known."""
+    size = count_of(size)
+    if count is None or not size:
+        return None
+    return count * 1e12 / size
+
+
+def sort_key(s, key):
+    if key == "truth_per_tb":
+        return per_tb(truth_people(s), s.get("bytes"))
+    if key == "truth_people":
+        return truth_people(s)
+    if key == "people_per_tb":
+        return per_tb(count_of(value_of(s).get("people")), s.get("bytes"))
+    if key == "size":
+        return count_of(s.get("bytes"))
+    return None
+
+
+def ordered(sets, key):
+    """The sets largest first by the key, those it gives no number for after them, each in the
+    feed's order where the numbers tie; the feed's own order for any other key."""
+    if key not in SORT_KEYS:
+        return list(sets)
+    ranked = [(sort_key(s, key), i, s) for i, s in enumerate(sets)]
+    known = sorted((r for r in ranked if r[0] is not None), key=lambda r: (-r[0], r[1]))
+    return [r[2] for r in known] + [r[2] for r in ranked if r[0] is None]
+
+
+def people_needed(accuracy, half_width, z):
+    """The people with level truth a test needs to measure an accuracy near `accuracy` to plus or
+    minus `half_width` at the confidence z stands for, by the normal approximation to the binomial,
+    the feed's own formula; None outside the formula's range."""
+    if not (0 < accuracy < 1 and 0 < half_width < 1 and z > 0):
+        return None
+    return math.ceil(z * z * accuracy * (1 - accuracy) / (half_width * half_width))
+
+
+def kept(plan, choices):
+    return [s for s in plan["sets"] if final_location(s, choices.get(s["id"]) or {}) != "none"]
+
+
+def shared_at_most(pair, a, b):
+    """The most people with level truth two overlapping sets holding a and b of them can share: what
+    their overlap counts, patients or scans holding the same images, whichever is more; all of the
+    smaller set where the feed lists the pair with no count above zero, since a zero there says
+    nothing was read (#272)."""
+    if not a or not b:
+        return 0
+    counted = [n for n in (count_of(pair.get("patients")), count_of(pair.get("same_scans"))) if n]
+    return min(max(counted), a, b) if counted else min(a, b)
+
+
+def people_with_truth(group, pairs):
+    """At most and at least how many people with level truth a group of kept sets holds: at most
+    their sum, as the feed's power block counts it; at least the sum less what each overlapping pair
+    among them may share, and never fewer than the largest set holds alone. Sets may share people
+    no overlap list records, so the least is the least the records allow, not a proof."""
+    people = {s["id"]: truth_people(s) or 0 for s in group}
+    most = sum(people.values())
+    shared = sum(shared_at_most(p, people[p["a"]], people[p["b"]]) for p in pairs
+                 if p["a"] in people and p["b"] in people)
+    return [most, max(most - shared, max(people.values(), default=0))]
+
+
+def by_modality(group, pairs):
+    """Each modality among the kept sets: its name, its sets and its people with level truth at most
+    and at least, the most people first."""
+    rows = []
+    for name in sorted({modality_of(s) for s in group}):
+        members = [s for s in group if modality_of(s) == name]
+        rows.append([name, len(members)] + people_with_truth(members, pairs))
+    return sorted(rows, key=lambda r: (-r[2], r[0]))
+
+
+def covered(group):
+    """Each region the group covers, with how many of its sets cover it."""
+    counts = {}
+    for s in group:
+        for region in regions_of(s):
+            counts[region] = counts.get(region, 0) + 1
+    return counts
+
+
+def power_part(after, pairs):
+    most, least = people_with_truth(after, pairs)
+    return {"most": most, "least": least,
+            "unread": sum(1 for s in after if truth_people(s) is None),
+            "scans": sum(count_of(value_of(s).get("level_truth_scans")) or 0 for s in after),
+            "transitional": sum(count_of(value_of(s).get("transitional_people")) or 0 for s in after),
+            "by_modality": by_modality(after, pairs)}
+
+
+def anatomy_part(after, before):
+    now, then = covered(after), covered(before)
+    return {"regions": sorted(([r, n] for r, n in now.items()), key=lambda x: (-x[1], x[0])),
+            "lost": sorted(set(then) - set(now)), "gained": sorted(set(now) - set(then)),
+            "spine": sum(1 for s in after if value_of(s).get("spine") is True),
+            "spine_before": sum(1 for s in before if value_of(s).get("spine") is True),
+            "no_region": sum(1 for s in after if not regions_of(s))}
+
+
+def labels_part(after):
+    def masks(word):
+        return sum(1 for s in after if value_of(s).get("masks_by_level") == word)
+
+    return {"truth": {w: sum(1 for s in after if truth_word(s) == w) for w in TRUTH_WORDS},
+            "masks_read": masks("read"), "masks_automatic": masks("automatic"),
+            "masks_held": sum(1 for s in after if value_of(s).get("masks_held") is True),
+            "segmented": sum(1 for s in after if value_of(s).get("segmented") is True)}
+
+
+def synthesis_part(after, before):
+    priors = [s for s in after if value_of(s).get("prior_source") is True]
+    paired = [s for s in after if value_of(s).get("paired") is True]
+    tiers = {}
+    for s in paired:
+        tier = value_of(s).get("tier")
+        tier = tier if isinstance(tier, str) and tier else "none"
+        tiers[tier] = tiers.get(tier, 0) + 1
+    return {"priors": len(priors), "priors_before": sum(1 for s in before if value_of(s).get("prior_source") is True),
+            "prior_bytes": sum(count_of(s.get("bytes")) or 0 for s in priors),
+            "prior_unsized": sum(1 for s in priors if count_of(s.get("bytes")) is None),
+            "paired": len(paired), "tiers": sorted([t, n] for t, n in tiers.items())}
+
+
+def changes(plan, choices, after, before):
+    """Each set the choices take off the drives or bring onto them, in the feed's order, with its
+    people with level truth, its level truth, the regions no other kept set covers (lost with a
+    removal, gained with an addition), whether it is a prior source and its size."""
+    now, then = covered(after), covered(before)
+    out = []
+    for s in plan["sets"]:
+        was = s["location"] if is_held(s) else "none"
+        will = final_location(s, choices.get(s["id"]) or {})
+        if (was == "none") == (will == "none"):
+            continue
+        kind = "removed" if will == "none" else "added"
+        others = now if kind == "removed" else then
+        out.append({"id": s["id"], "kind": kind, "people": truth_people(s), "truth": truth_word(s), "modality": modality_of(s),
+                    "only": [r for r in regions_of(s) if r not in others],
+                    "prior": value_of(s).get("prior_source") is True, "bytes": count_of(s.get("bytes"))})
+    return out
+
+
+def worth(plan, choices):
+    """What the sets on the drives after the choices are worth, for the owner's five questions, and
+    what each change costs or brings; with no choices its power part is the feed's power block."""
+    after, before = kept(plan, choices), kept(plan, {})
+    pairs = overlaps(plan, choices)
+    return {"power": power_part(after, pairs), "anatomy": anatomy_part(after, before),
+            "labels": labels_part(after), "synthesis": synthesis_part(after, before),
+            "changes": changes(plan, choices, after, before)}
 
 
 def validate(plan):
@@ -376,24 +597,47 @@ textarea.sel{width:100%;min-height:54px;font:12.5px ui-monospace,SFMono-Regular,
 .fallback{border:1px solid var(--target);border-radius:8px;padding:8px 12px;margin:8px 0;background:var(--panel)}
 .fallback a{word-break:break-all}
 .fallback code.paste{display:block;white-space:pre-wrap;word-break:break-all;margin:6px 0;padding:6px;background:var(--bg);border-radius:4px}
-@media (max-width:600px){.opt{display:none}table{min-width:560px}}
+.warn{color:var(--target)}td.tags{min-width:150px}.nowrap{white-space:nowrap}
+.worth{display:grid;grid-template-columns:1fr;gap:10px;margin:8px 0;align-items:start}@media (min-width:760px){.worth{grid-template-columns:1fr 1fr}}
+.card{border:1px solid var(--rule);border-radius:8px;padding:8px 12px;min-width:0}.card p{margin:4px 0}
+.calc{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;margin:4px 0 6px}.calc label{display:inline-flex;gap:4px;align-items:center}
+.calc input{width:5.5em;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--rule);border-radius:6px;padding:2px 6px}
+.small{max-height:none;margin:6px 0}table.mini{min-width:0}
+@media (max-width:600px){.opt{display:none}table{min-width:560px}table.mini{min-width:0}}
 """
 
 BODY = """
 <h1>The storage panel</h1>
-<p class="sub">What the lab volume and the owner's home hold, every set spine-datasets knows, and a selection that fits under the target.
+<p class="sub">What the lab volume and the owner's home hold, every set spine-datasets knows, a selection that fits under the target,
+and what the sets kept are worth: the people with level truth a test needs, the anatomy covered, the labels, and the sources of the synthetic X-rays and 3D priors.
 Feed built <span id="built"></span><span id="built-age" class="badge"></span></p>
 <section class="drives"><div class="drive" id="lab"></div><div class="drive" id="home"></div></section>
 <h2>Pending requests</h2><div id="requests"></div>
 <h2>The sets</h2>
-<div class="controls"><input id="filter" type="search" placeholder="Filter by name, id or group" aria-label="Filter the sets">
+<div class="controls"><input id="filter" type="search" placeholder="Filter by name, id, group or tag: prior, paired, spine, truth-read, a region"
+aria-label="Filter the sets by name, id, group or tag"><label>order by <select id="order" aria-label="Order the sets"></select></label>
 <label><input type="checkbox" id="changed-only"> changed only</label><span id="shown" class="muted"></span>
 <button id="reset" type="button" title="Put every set back as the feed has it">Reset the choices</button></div>
 <div class="wrap"><table id="sets"><thead><tr><th>Set</th><th class="opt">Group</th><th>Status</th><th>Where</th><th>Size</th>
+<th title="read: people named the levels; automatic: only a tool's masks name them; no; unknown">Level truth</th>
+<th title="people with level truth for each terabyte the set takes">Per TB</th><th class="opt">Covers</th><th class="opt">Uses</th>
 <th class="opt">Licence</th><th class="opt">Frozen</th><th>Choice</th><th>Place</th></tr></thead><tbody id="rows"></tbody></table></div>
 <h2>After the choices</h2>
 <div class="totals"><div class="total" id="t-lab"></div><div class="total" id="t-home"></div></div>
 <div id="refusals"></div><div id="overlaps"></div>
+<h2>What the kept sets are worth</h2>
+<p class="sub">Read from each set's record in the feed (spine-datasets' value and power fields): a count a record does not give is left out and said so, never guessed.</p>
+<section class="worth">
+<div class="card"><h3>Power: people with level truth</h3>
+<div class="calc"><label>accuracy near <input id="acc" type="number" min="1" max="99" step="1" aria-label="Accuracy in percent"> percent</label>
+<label>to within plus or minus <input id="hw" type="number" min="0.5" max="25" step="0.5" aria-label="Half-width in points"> points</label>
+<label>at <select id="conf" aria-label="Confidence"></select> confidence</label></div>
+<p id="w-needed"></p><div class="wrap small"><table class="mini" id="w-modality"></table></div><div id="w-power"></div></div>
+<div class="card"><h3>Anatomy covered</h3><div id="w-anatomy"></div></div>
+<div class="card"><h3>Labels and their quality</h3><div id="w-labels"></div></div>
+<div class="card"><h3>Synthetic X-rays and 3D priors</h3><div id="w-synthesis"></div></div>
+</section>
+<div id="w-changes"></div>
 <h2>The selection</h2>
 <p class="sub">In the planner's grammar: <code>-id</code> removes a set, <code>+id</code> adds one, <code>id@home</code> and <code>id@lab</code> place one.</p>
 <textarea id="selection" class="sel" readonly aria-label="The selection"></textarea>
@@ -497,8 +741,131 @@ const Model = (function () {
     }
     return out;
   }
+
+  // What the kept sets are worth, mirrored from value_of to worth in the Python.
+  const TRUTH_WORDS = ["read", "automatic", "no", "unknown"];
+  const SORT_KEYS = ["truth_per_tb", "truth_people", "people_per_tb", "size"];
+  function byText(x, y) { return x < y ? -1 : x > y ? 1 : 0; }
+  function sum(list, f) { return list.reduce(function (n, x) { return n + f(x); }, 0); }
+  function valueOf(s) { return s.value && typeof s.value === "object" && !Array.isArray(s.value) ? s.value : {}; }
+  function countOf(n) { return typeof n === "number" && Number.isInteger(n) && n >= 0 ? n : null; }
+  function truthWord(s) { const w = valueOf(s).level_truth; return TRUTH_WORDS.indexOf(w) >= 0 ? w : "unknown"; }
+  function truthPeople(s) { return countOf(valueOf(s).level_truth_people); }
+  function modalityOf(s) {
+    const names = [valueOf(s).modality, s.group];
+    for (let i = 0; i < names.length; i++) if (typeof names[i] === "string" && names[i]) return names[i];
+    return "unknown";
+  }
+  function regionsOf(s) {
+    const regions = valueOf(s).regions, seen = Object.create(null);
+    if (!Array.isArray(regions)) return [];
+    regions.forEach(function (r) { if (typeof r === "string" && r) seen[r] = true; });
+    return Object.keys(seen).sort(byText);
+  }
+  function perTb(count, size) {
+    size = countOf(size);
+    if (count === null || !size) return null;
+    return count * 1e12 / size;
+  }
+  function sortKey(s, key) {
+    if (key === "truth_per_tb") return perTb(truthPeople(s), s.bytes);
+    if (key === "truth_people") return truthPeople(s);
+    if (key === "people_per_tb") return perTb(countOf(valueOf(s).people), s.bytes);
+    if (key === "size") return countOf(s.bytes);
+    return null;
+  }
+  function ordered(sets, key) {
+    if (SORT_KEYS.indexOf(key) < 0) return sets.slice();
+    const ranked = sets.map(function (s, i) { return { n: sortKey(s, key), i: i, s: s }; });
+    const known = ranked.filter(function (r) { return r.n !== null; }).sort(function (x, y) { return y.n - x.n || x.i - y.i; });
+    return known.concat(ranked.filter(function (r) { return r.n === null; })).map(function (r) { return r.s; });
+  }
+  function peopleNeeded(accuracy, halfWidth, z) {
+    if (!(0 < accuracy && accuracy < 1 && 0 < halfWidth && halfWidth < 1 && z > 0)) return null;
+    return Math.ceil(z * z * accuracy * (1 - accuracy) / (halfWidth * halfWidth));
+  }
+  function kept(plan, choices) { return plan.sets.filter(function (s) { return finalLocation(s, choices[s.id] || {}) !== "none"; }); }
+  function sharedAtMost(pair, a, b) {
+    if (!a || !b) return 0;
+    const counted = [countOf(pair.patients), countOf(pair.same_scans)].filter(function (n) { return n; });
+    return counted.length ? Math.min(Math.max.apply(null, counted), a, b) : Math.min(a, b);
+  }
+  function peopleWithTruth(group, pairs) {
+    const people = Object.create(null);
+    let most = 0, largest = 0, shared = 0;
+    group.forEach(function (s) { const n = truthPeople(s) || 0; people[s.id] = n; most += n; largest = Math.max(largest, n); });
+    pairs.forEach(function (p) { if (p.a in people && p.b in people) shared += sharedAtMost(p, people[p.a], people[p.b]); });
+    return [most, Math.max(most - shared, largest)];
+  }
+  function byModality(group, pairs) {
+    const names = Object.create(null);
+    group.forEach(function (s) { names[modalityOf(s)] = true; });
+    return Object.keys(names).sort(byText).map(function (name) {
+      const members = group.filter(function (s) { return modalityOf(s) === name; });
+      return [name, members.length].concat(peopleWithTruth(members, pairs));
+    }).sort(function (x, y) { return y[2] - x[2] || byText(x[0], y[0]); });
+  }
+  function covered(group) {
+    const counts = Object.create(null);
+    group.forEach(function (s) { regionsOf(s).forEach(function (r) { counts[r] = (counts[r] || 0) + 1; }); });
+    return counts;
+  }
+  function powerPart(after, pairs) {
+    const range = peopleWithTruth(after, pairs);
+    return { most: range[0], least: range[1],
+      unread: after.filter(function (s) { return truthPeople(s) === null; }).length,
+      scans: sum(after, function (s) { return countOf(valueOf(s).level_truth_scans) || 0; }),
+      transitional: sum(after, function (s) { return countOf(valueOf(s).transitional_people) || 0; }),
+      by_modality: byModality(after, pairs) };
+  }
+  function anatomyPart(after, before) {
+    const now = covered(after), then = covered(before);
+    return { regions: Object.keys(now).map(function (r) { return [r, now[r]]; }).sort(function (x, y) { return y[1] - x[1] || byText(x[0], y[0]); }),
+      lost: Object.keys(then).filter(function (r) { return !(r in now); }).sort(byText),
+      gained: Object.keys(now).filter(function (r) { return !(r in then); }).sort(byText),
+      spine: after.filter(function (s) { return valueOf(s).spine === true; }).length,
+      spine_before: before.filter(function (s) { return valueOf(s).spine === true; }).length,
+      no_region: after.filter(function (s) { return !regionsOf(s).length; }).length };
+  }
+  function labelsPart(after) {
+    function masks(word) { return after.filter(function (s) { return valueOf(s).masks_by_level === word; }).length; }
+    const truth = {};
+    TRUTH_WORDS.forEach(function (w) { truth[w] = after.filter(function (s) { return truthWord(s) === w; }).length; });
+    return { truth: truth, masks_read: masks("read"), masks_automatic: masks("automatic"),
+      masks_held: after.filter(function (s) { return valueOf(s).masks_held === true; }).length,
+      segmented: after.filter(function (s) { return valueOf(s).segmented === true; }).length };
+  }
+  function synthesisPart(after, before) {
+    function isPrior(s) { return valueOf(s).prior_source === true; }
+    const priors = after.filter(isPrior), paired = after.filter(function (s) { return valueOf(s).paired === true; });
+    const tiers = Object.create(null);
+    paired.forEach(function (s) { const t = valueOf(s).tier, tier = typeof t === "string" && t ? t : "none"; tiers[tier] = (tiers[tier] || 0) + 1; });
+    return { priors: priors.length, priors_before: before.filter(isPrior).length,
+      prior_bytes: sum(priors, function (s) { return countOf(s.bytes) || 0; }),
+      prior_unsized: priors.filter(function (s) { return countOf(s.bytes) === null; }).length,
+      paired: paired.length, tiers: Object.keys(tiers).sort(byText).map(function (t) { return [t, tiers[t]]; }) };
+  }
+  function changes(plan, choices, after, before) {
+    const now = covered(after), then = covered(before), out = [];
+    plan.sets.forEach(function (s) {
+      const was = isHeld(s) ? s.location : "none", will = finalLocation(s, choices[s.id] || {});
+      if ((was === "none") === (will === "none")) return;
+      const kind = will === "none" ? "removed" : "added", others = kind === "removed" ? now : then;
+      out.push({ id: s.id, kind: kind, people: truthPeople(s), truth: truthWord(s), modality: modalityOf(s),
+        only: regionsOf(s).filter(function (r) { return !(r in others); }),
+        prior: valueOf(s).prior_source === true, bytes: countOf(s.bytes) });
+    });
+    return out;
+  }
+  function worth(plan, choices) {
+    const after = kept(plan, choices), before = kept(plan, {}), pairs = overlaps(plan, choices);
+    return { power: powerPart(after, pairs), anatomy: anatomyPart(after, before), labels: labelsPart(after),
+      synthesis: synthesisPart(after, before), changes: changes(plan, choices, after, before) };
+  }
   return { tb: tb, isHeld: isHeld, finalLocation: finalLocation, tokens: tokens, selection: selection,
-    totals: totals, overlaps: overlaps, refusals: refusals };
+    totals: totals, overlaps: overlaps, refusals: refusals, valueOf: valueOf, countOf: countOf, truthWord: truthWord,
+    truthPeople: truthPeople, modalityOf: modalityOf, regionsOf: regionsOf, perTb: perTb, ordered: ordered,
+    peopleNeeded: peopleNeeded, worth: worth };
 })();
 """
 
@@ -590,15 +957,69 @@ UI_JS = r"""
     } else {
       place = '<span class="muted">-</span>';
     }
-    const find = (s.name + " " + s.id + " " + s.group + " " + s.status + " " + s.location).toLowerCase();
+    const find = (s.name + " " + s.id + " " + s.group + " " + s.status + " " + s.location + " " + tagsOf(s).join(" ")).toLowerCase();
     return '<tr data-id="' + esc(s.id) + '" data-find="' + esc(find) + '"><td class="set" title="' + esc(s.group + "; licence " + s.licence + "; " + (s.frozen ? "frozen" : "not frozen")) + '">' + esc(s.name) + "<br><code>" + esc(s.id) + "</code></td>" +
       '<td class="opt">' + esc(s.group) + "</td><td>" + esc(s.status) + (s.reach === s.status ? "" : ' <span class="muted">(' + esc(s.reach) + ")</span>") + "</td><td>" + esc(s.location) + "</td>" +
       '<td class="num" title="' + esc(sizeTitle) + '">' + (s.bytes === null || s.bytes === undefined ? '<span class="red">size unknown</span>' : Model.tb(s.bytes) + (s.bytes_known ? "" : ' <span class="muted">stated</span>')) + "</td>" +
+      truthCell(s) + perTbCell(s) + coversCell(s) + usesCell(s) +
       '<td class="opt">' + esc(s.licence) + '</td><td class="opt">' + (s.frozen ? "yes" : "no") + '</td><td class="choice">' + choice + '</td><td class="choice">' + place + "</td></tr>";
+  }
+
+  // What a set is worth, as the feed's value block gives it (spine-datasets #249); a feed written before
+  // it has none, and every cell then says the record gives nothing rather than guess.
+  const TRUTH_TITLES = { read: "read: people named the levels", automatic: "automatic: only a tool's masks name the levels, which no radiologist read",
+    no: "no: the record says it has no level truth", unknown: "unknown: the record does not say" };
+  function people(n, one, many) { return n.toLocaleString("en-US") + " " + (n === 1 ? one : many); }
+  function truthCell(s) {
+    const word = Model.truthWord(s), v = Model.valueOf(s), n = Model.truthPeople(s), scans = Model.countOf(v.level_truth_scans);
+    let line = "";
+    if (n !== null && word !== "no") line = people(n, "person", "people");
+    else if (word === "read" && scans !== null) line = people(scans, "scan", "scans") + ", people not counted";
+    else if (word === "read") line = "not counted";
+    const cls = word === "read" ? "ok" : word === "automatic" ? "" : "muted";
+    return '<td title="' + esc(TRUTH_TITLES[word]) + '"><span class="' + cls + '">' + esc(word) + "</span>" + (line ? '<br><span class="muted nowrap">' + esc(line) + "</span>" : "") + "</td>";
+  }
+  function perTbText(n) { return n >= 10 ? Math.round(n).toLocaleString("en-US") : n >= 1 ? n.toFixed(1) : n === 0 ? "0" : n.toPrecision(2); }
+  function perTbCell(s) {
+    const n = Model.truthPeople(s), each = Model.perTb(n, s.bytes);
+    if (each === null) {
+      const why = n === null ? "the record gives no count of people with level truth" : "the feed gives no size";
+      return '<td class="num muted" title="' + esc(why) + '">-</td>';
+    }
+    return '<td class="num" title="' + esc(people(n, "person", "people") + " with level truth in " + exact(s.bytes)) + '">' + perTbText(each) + "</td>";
+  }
+  function coversCell(s) {
+    const regions = Model.regionsOf(s), spine = Model.valueOf(s).spine;
+    const title = spine === true ? "the spine is in view" : spine === false ? "the spine is not in view" : "the record does not say whether the spine is in view";
+    return '<td class="opt tags" title="' + esc(title) + '">' + (regions.length ? esc(regions.join(", ")) : '<span class="muted">none recorded</span>') +
+      (spine === true && regions.indexOf("spine") < 0 ? ' <span class="muted">(spine in view)</span>' : "") + "</td>";
+  }
+  function usesOf(s) {
+    const v = Model.valueOf(s), out = [];
+    if (v.prior_source === true) out.push("3D prior source");
+    if (v.paired === true) out.push("X-ray and CT pair" + (typeof v.tier === "string" && v.tier ? ", tier " + v.tier : ""));
+    if (v.masks_by_level === "read" || v.masks_by_level === "automatic") out.push("masks by level, " + v.masks_by_level + (v.masks_held === true ? ", on the grid" : ""));
+    else if (v.segmented === true) out.push("segmented");
+    return out;
+  }
+  function usesCell(s) {
+    const uses = usesOf(s);
+    return '<td class="opt tags">' + (uses.length ? esc(uses.join("; ")) : '<span class="muted">-</span>') + "</td>";
+  }
+  // Words the filter box finds a set by, beside its name, id, group, status and place.
+  function tagsOf(s) {
+    const v = Model.valueOf(s), out = ["truth-" + Model.truthWord(s), Model.modalityOf(s)];
+    if (v.prior_source === true) out.push("prior");
+    if (v.paired === true) out.push("paired", "tier-" + String(v.tier || "none").toLowerCase());
+    if (v.spine === true) out.push("spine");
+    if (v.masks_by_level === "read" || v.masks_by_level === "automatic") out.push("masks-" + v.masks_by_level);
+    if (v.masks_held === true) out.push("masks-held");
+    if (v.segmented === true) out.push("segmented");
+    return out.concat(Model.regionsOf(s).map(function (r) { return r.replace(/\s+/g, "-"); }));
   }
   function section(title, sets) {
     if (!sets.length) return "";
-    return '<tr class="head" data-head="1"><td colspan="9">' + esc(title) + " (" + sets.length + ")</td></tr>" + sets.map(rowFor).join("");
+    return '<tr class="head" data-head="1"><td colspan="13">' + esc(title) + " (" + sets.length + ")</td></tr>" + Model.ordered(sets, $("order").value).map(rowFor).join("");
   }
   function drawTable() {
     const held = PLAN.sets.filter(Model.isHeld), fetchable = PLAN.sets.filter(function (s) { return !Model.isHeld(s) && s.fetchable; });
@@ -671,10 +1092,100 @@ UI_JS = r"""
     $("copy").disabled = !sel;
     $("copy").title = sel ? "copy the selection" : "nothing to copy yet";
   }
+  // What the kept sets are worth: the power calculator against the people with level truth by modality,
+  // the anatomy, the labels, the sources of the synthetic X-rays and 3D priors, and each change's cost.
+  function needed() {
+    const acc = parseFloat($("acc").value) / 100, hw = parseFloat($("hw").value) / 100, z = parseFloat($("conf").value);
+    return { n: Model.peopleNeeded(acc, hw, z), acc: $("acc").value, hw: $("hw").value, conf: $("conf").selectedOptions[0] ? $("conf").selectedOptions[0].textContent : "" };
+  }
+  function against(least, most, need) {
+    if (need === null) return '<span class="muted">-</span>';
+    if (!most) return '<span class="muted">none counted</span>';
+    if (least >= need) return '<span class="ok">enough</span>';
+    if (most < need) return '<span class="red">short by ' + (need - most).toLocaleString("en-US") + "</span>";
+    return '<span class="warn" title="the sets may share people, which the overlap lists bound">enough at most; short by ' + (need - least).toLocaleString("en-US") + " at the least</span>";
+  }
+  function peopleRange(most, least) {
+    return most.toLocaleString("en-US") + (least < most ? ' <span class="muted">(at least ' + least.toLocaleString("en-US") + ")</span>" : "");
+  }
+  function drawPower(p) {
+    const need = needed();
+    $("w-needed").innerHTML = need.n === null ? '<span class="red">Give an accuracy between 1 and 99 percent and a margin above 0 points.</span>'
+      : "To measure an accuracy near " + esc(need.acc) + " percent to within plus or minus " + esc(need.hw) + " points at " + esc(need.conf) +
+        " confidence, a test needs <b>" + need.n.toLocaleString("en-US") + "</b> people with level truth, in the modality it runs on.";
+    $("w-modality").innerHTML = "<thead><tr><th>Modality</th><th>Sets kept</th><th>People with level truth</th><th>For the test</th></tr></thead><tbody>" +
+      p.by_modality.map(function (r) {
+        return "<tr><td>" + esc(r[0]) + '</td><td class="num">' + r[1] + '</td><td class="num">' + peopleRange(r[2], r[3]) + "</td><td>" + against(r[3], r[2], need.n) + "</td></tr>";
+      }).join("") + '<tr><td><b>all</b></td><td class="num"></td><td class="num"><b>' + peopleRange(p.most, p.least) + "</b></td><td></td></tr></tbody>";
+    $("w-power").innerHTML = "<p>The kept sets hold " + p.scans.toLocaleString("en-US") + " scans with level truth. " +
+      (p.unread ? p.unread + (p.unread === 1 ? " kept set gives" : " kept sets give") + " no count of people with level truth (automatic labels, unknown, or a count its record does not give), so these are what the records count, not all there is. " : "") +
+      (p.least < p.most ? "The least takes off what the overlapping sets may share. " : p.most ? "The overlap lists record no shared people among the sets that count them, so the figure is a ceiling; sets may still share people nobody has matched. " : "") +
+      (p.transitional ? p.transitional.toLocaleString("en-US") + " people with a transitional level (L6 or LSTV) are counted." : "No kept set's record counts people with a transitional level (L6 or LSTV) yet.") + "</p>" +
+      '<p class="muted">A test counts only the people of the modality it runs on: the C-arm task is measured on fluoroscopy, the fluoro row. The formula is the feed\'s own, the normal approximation to the binomial; near 0 or 100 percent it asks for too few, and the Wilson interval the evaluation reports needs somewhat more.</p>';
+  }
+  function countsText(pairs) { return pairs.map(function (p) { return esc(p[0]) + " " + p[1]; }).join(", "); }
+  function drawAnatomy(a) {
+    $("w-anatomy").innerHTML = "<p>Regions, with how many kept sets cover each: " + (a.regions.length ? countsText(a.regions) : '<span class="muted">none recorded</span>') + ".</p>" +
+      "<p>The spine is in view in " + a.spine + " kept " + (a.spine === 1 ? "set" : "sets") +
+      (a.spine !== a.spine_before ? ' <span class="' + (a.spine < a.spine_before ? "red" : "ok") + '">(' + a.spine_before + " on the drives now)</span>" : "") +
+      "; " + a.no_region + " record no region.</p>" +
+      (a.lost.length ? '<p class="red">After the choices no kept set covers ' + esc(a.lost.join(", ")) + ".</p>" : "") +
+      (a.gained.length ? '<p class="ok">The choices add ' + esc(a.gained.join(", ")) + ", which no set on the drives covers now.</p>" : "");
+  }
+  function drawLabels(l) {
+    const t = l.truth;
+    $("w-labels").innerHTML = "<p>Level truth by kept set: read in " + t.read + " (people named the levels), automatic in " + t.automatic +
+      " (only a tool's masks name them, which no radiologist read), none in " + t.no + ", unknown in " + t.unknown + ".</p>" +
+      "<p>Vertebra masks by level: read in " + l.masks_read + ", automatic in " + l.masks_automatic + "; on the grid for " + l.masks_held +
+      ". Segmented in some way: " + l.segmented + ".</p>" +
+      '<p class="muted">The feed carries no score of image quality: who read the labels, the pairing tier and whether a set is frozen are the quality its records give.</p>';
+  }
+  function drawSynthesis(y) {
+    $("w-synthesis").innerHTML = "<p>Prior sources, CTs with vertebra masks by level from which the synthetic X-rays and the 3D priors are drawn: " + y.priors + " kept" +
+      (y.priors !== y.priors_before ? ' <span class="' + (y.priors < y.priors_before ? "red" : "ok") + '">(' + y.priors_before + " on the drives now)</span>" : "") +
+      ', <span title="' + esc(exact(y.prior_bytes)) + '">' + Model.tb(y.prior_bytes) + "</span>" + (y.prior_unsized ? " and " + y.prior_unsized + " with no size" : "") + ".</p>" +
+      "<p>Real X-rays paired with the same subject's CT: " + y.paired + " kept" + (y.tiers.length ? ", by tier " + countsText(y.tiers) : "") +
+      '. <span class="muted">Tier A is spine pairs on the grid, where annotation starts; E is pairs of something other than the spine.</span></p>';
+  }
+  function changeLine(c) {
+    const verb = c.kind === "removed" ? "Removing" : "Adding", gives = c.kind === "removed" ? "takes off" : "brings";
+    const how = " (" + esc(c.truth) + ", " + esc(c.modality) + ")";
+    const parts = [(c.people === null ? "no counted people with level truth" : people(c.people, "person", "people") + " with level truth") + how];
+    if (c.only.length) parts.push((c.kind === "removed" ? "the last kept set covering " : "the first set covering ") + esc(c.only.join(", ")));
+    if (c.prior) parts.push("a 3D prior source");
+    parts.push(c.bytes === null ? "a size the feed does not give" : Model.tb(c.bytes) + (c.kind === "removed" ? " freed" : " taken"));
+    return "<li>" + verb + " <code>" + esc(c.id) + "</code> " + gives + " " + parts.join("; ") + ".</li>";
+  }
+  function drawChanges(items) {
+    $("w-changes").innerHTML = items.length ? "<h3>What each change costs or brings</h3><ul class=\"notes\">" + items.map(changeLine).join("") + "</ul>"
+      : '<p class="muted">Choose remove or add in the table to see what each change costs or brings.</p>';
+  }
+  function drawWorth() {
+    const w = Model.worth(PLAN, choices);
+    drawPower(w.power);
+    drawAnatomy(w.anatomy);
+    drawLabels(w.labels);
+    drawSynthesis(w.synthesis);
+    drawChanges(w.changes);
+  }
+  // The calculator starts at the feed's own power block (spine-datasets #249), or at its defaults.
+  function setUpWorth() {
+    const p = PLAN.power && typeof PLAN.power === "object" ? PLAN.power : {};
+    const options = C.confidences.slice();
+    if (typeof p.confidence === "number" && typeof p.z === "number" && !options.some(function (o) { return o[0] === p.confidence; })) options.push([p.confidence, p.z]);
+    const chosen = typeof p.confidence === "number" ? p.confidence : 0.95;
+    $("conf").innerHTML = options.map(function (o) {
+      return '<option value="' + o[1] + '"' + (o[0] === chosen ? " selected" : "") + ">" + Math.round(o[0] * 1000) / 10 + " percent</option>";
+    }).join("");
+    $("acc").value = Math.round((typeof p.assumed_accuracy === "number" ? p.assumed_accuracy : 0.5) * 1000) / 10;
+    $("hw").value = Math.round((typeof p.half_width === "number" ? p.half_width : 0.05) * 1000) / 10;
+    $("order").innerHTML = C.sorts.map(function (o) { return '<option value="' + esc(o[0]) + '">' + esc(o[1]) + "</option>"; }).join("");
+  }
   function recompute() {
     const t = Model.totals(PLAN, choices);
     drawDrives(t);
     drawTotals(t, Model.refusals(PLAN, t), Model.overlaps(PLAN, choices));
+    drawWorth();
     applyFilter();
   }
   function drawAll() {
@@ -771,7 +1282,10 @@ UI_JS = r"""
   });
   $("filter").addEventListener("input", applyFilter);
   $("changed-only").addEventListener("change", applyFilter);
+  $("order").addEventListener("change", function () { drawTable(); applyFilter(); });
+  ["acc", "hw", "conf"].forEach(function (id) { $(id).addEventListener("input", drawWorth); $(id).addEventListener("change", drawWorth); });
   $("reset").addEventListener("click", function () { choices = {}; drawTable(); recompute(); status(""); $("fallback").hidden = true; });
+  setUpWorth();
   drawAll();
 })();
 """
@@ -784,7 +1298,7 @@ def inline_json(data):
 
 def page_of(plan):
     constants = {"repo": FEED_REPO, "workflow": WORKFLOW, "workflow_url": WORKFLOW_URL, "feed_page": FEED_PAGE,
-                 "feed_path": FEED_PATH, "feed_ref": FEED_REF, "format": FORMAT}
+                 "feed_path": FEED_PATH, "feed_ref": FEED_REF, "format": FORMAT, "sorts": SORTS, "confidences": CONFIDENCES}
     return ("<!doctype html>\n<html lang=\"en\"><head><meta charset=\"utf-8\">"
             "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
             f"<title>The storage panel</title><style>{STYLE}</style></head><body><main>{BODY}</main>\n"
@@ -811,17 +1325,41 @@ def svg_rules(c):
 SVG_STYLE = svg_rules(LIGHT) + "@media (prefers-color-scheme:dark){" + svg_rules(DARK) + "}"
 
 
+def percent(fraction):
+    return f"{round(fraction * 1000) / 10:g}"
+
+
+def worth_lines(plan):
+    """What the sets on the drives are worth, in at most two sentences for the picture: none for a
+    feed written before spine-datasets #249 gave each set its value, and the test's need only where
+    the feed's power block gives it."""
+    if not any(isinstance(s.get("value"), dict) for s in plan["sets"]):
+        return []
+    w = worth(plan, {})
+    p, priors = w["power"], w["synthesis"]["priors"]
+    modalities = ", ".join(f"{name} {most:,}" for name, _sets, most, _least in p["by_modality"] if most)
+    lines = [f"On the drives: at most {p['most']:,} people with level truth" + (f" ({modalities})" if modalities else "") +
+             f" and {priors} 3D prior {'source' if priors == 1 else 'sources'}."]
+    power = plan.get("power") if isinstance(plan.get("power"), dict) else {}
+    need = count_of(power.get("people_needed"))
+    if need is not None and isinstance(power.get("half_width"), (int, float)) and isinstance(power.get("confidence"), (int, float)):
+        lines.append(f"A test needs {need:,} people with level truth in its modality for plus or minus {percent(power['half_width'])} "
+                     f"points at {percent(power['confidence'])} percent confidence (the feed's power block).")
+    return lines
+
+
 def svg_of(plan):
-    """The drive-use bands as the snapshot read them: the figure's image where the page cannot show."""
+    """The drive-use bands as the snapshot read them, and what the sets on them are worth: the
+    figure's image where the page cannot show."""
     v, h = plan["volume"], plan["home"]
-    width, left, right, bar = 900, 170, 870, 26
+    width, height, left, right, bar = 900, 240, 170, 870, 26
 
     def x(n, quota):
         return left + (right - left) * min(n, quota) / quota
 
-    lines = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} 190" width="{width}" height="190" role="img" '
+    lines = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" width="{width}" height="{height}" role="img" '
              'aria-label="Drive use from spine-datasets\' feed">', f"<style>{SVG_STYLE}</style>",
-             f'<rect class="bg" width="{width}" height="190"/>',
+             f'<rect class="bg" width="{width}" height="{height}"/>',
              f'<text x="12" y="20" class="head">Drive use from spine-datasets\' feed, built {esc(plan["built_at"])}; the volume read '
              f'{esc(v.get("read_at") or "at no recorded time")}.</text>']
     y = 48
@@ -844,8 +1382,10 @@ def svg_of(plan):
         lines.append(f'<rect class="home" x="{left}" y="{y}" width="{x(h["used_bytes"], h["quota_bytes"]) - left:.1f}" height="{bar}" rx="4"/>')
         lines.append(f'<text x="{left}" y="{y + bar + 20}">{tb(h["used_bytes"])} used of {tb(h["quota_bytes"])}, read '
                      f'{esc(h.get("read_at") or "at no recorded time")}.</text>')
-    lines.append(f'<text x="12" y="182" class="ink3">{len(plan["sets"])} sets in the feed; the interactive page trials which fit under the '
-                 f'target and asks for the changes through storage.yml. {COMMAND}</text>')
+    for i, sentence in enumerate(worth_lines(plan)):
+        lines.append(f'<text x="12" y="{190 + 18 * i}">{esc(sentence)}</text>')
+    lines.append(f'<text x="12" y="{height - 10}" class="ink3">{len(plan["sets"])} sets in the feed; the interactive page trials selections '
+                 f'and sends them through storage.yml. {COMMAND}</text>')
     lines.append("</svg>")
     return "\n".join(lines) + "\n"
 
@@ -854,13 +1394,17 @@ def record_of(plan, digest):
     """The figure's record in the site's convention (tools/textbook_site.py): where it came from, how
     to explore it and how it is drawn again."""
     v = plan["volume"]
+    power = plan.get("power") if isinstance(plan.get("power"), dict) else {}
     return {
         "id": FIGURE_ID,
-        "title": "The storage panel: drive use and the sets that fit under the target",
+        "title": "The storage panel: drive use, the sets that fit under the target, and what they are worth",
         "caption": "The lab volume's and the owner's home's use as spine-datasets' feed read them, every set the feed knows "
-                   "with its size, licence and state, and the choices (keep, remove, add, place on the lab or the home) that "
-                   "build a selection the planner's check admits under the target; the interactive figure trials combinations "
-                   "and asks for the changes only through storage.yml, whose run opens a request pull request the owner merges.",
+                   "with its size, licence, state, level truth, people with level truth per terabyte, regions and uses, and the "
+                   "choices (keep, remove, add, place on the lab or the home) that build a selection the planner's check admits "
+                   "under the target; what the kept sets are worth (people with level truth by modality against what a test "
+                   "needs, the regions covered, the labels, the sources of the synthetic X-rays and 3D priors, and what each "
+                   "removal costs); the interactive figure asks for the changes only through storage.yml, whose run opens a "
+                   "request pull request the owner merges.",
         "chapter": "22",
         "grade": "Reported",
         "status": "current",
@@ -875,18 +1419,25 @@ def record_of(plan, digest):
             "notes": f"Drawn from a committed snapshot of {FEED_REPO}'s {FEED_PATH} on its branch {FEED_REF}, built "
                      f"{plan['built_at']} from that repository's records, with the lab volume read {v.get('read_at') or 'at no recorded time'} "
                      f"by the grid's status word; the snapshot's sha256 is {digest}. The sizes are the feed's own, measured where a set "
-                     "is frozen and stated by its source otherwise, and the home's use is null until a grid word reads it. "
+                     "is frozen and stated by its source otherwise, and the home's use is null until a grid word reads it. Each set's "
+                     "value (people and scans, level truth read or automatic, regions, masks by level, prior source, pairing tier) and "
+                     "the power block are read by spine-datasets from the set's record alone (its pull request #249); the panel sums "
+                     "them for the sets kept after the choices, the people with level truth at most as the power block does and at "
+                     "least less what the overlap lists let two sets share. "
                      ".github/workflows/docs.yml refreshes the snapshot with the App's read token before each site build and builds "
                      "the page from the committed snapshot when the feed is unreachable; a reading is dated, never a final value, and "
                      "the page shows its age.",
         },
         "feed": {"repo": FEED_REPO, "path": FEED_PATH, "ref": FEED_REF, "format": plan["format"], "built_at": plan["built_at"],
-                 "read_at": v.get("read_at"), "sha256": digest, "sets": len(plan["sets"])},
+                 "read_at": v.get("read_at"), "sha256": digest, "sets": len(plan["sets"]),
+                 "people_needed": count_of(power.get("people_needed")),
+                 "level_truth_people_kept": count_of(power.get("level_truth_people_kept"))},
         "explore": [
             {"label": "The script", "href": "tools/storage_panel.py"},
             {"label": "The snapshot of the feed it draws from", "href": SNAPSHOT.relative_to(ROOT).as_posix()},
             {"label": "The feed on its branch", "href": FEED_PAGE},
             {"label": "The workflow the panel dispatches", "href": WORKFLOW_URL},
+            {"label": "What the feed's value and power fields mean", "href": VALUE_PAGE},
             {"label": "The size rule", "href": "docs/memory/the-size-rule.md"},
             {"label": "The chapter", "href": "docs/textbook/22-quotas-cost-and-the-budget-of-a-run.md"},
         ],

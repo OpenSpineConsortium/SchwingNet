@@ -1,16 +1,18 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 190" width="900" height="190" role="img" aria-label="Drive use from spine-datasets' feed">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 240" width="900" height="240" role="img" aria-label="Drive use from spine-datasets' feed">
 <style>.bg{fill:#fcfcfb}.panel{fill:#f3f1ec;stroke:#e4e3df}text{fill:#52514e;font:12px system-ui,sans-serif}.head{fill:#0b0b0b;font-weight:600;font-size:13px}.ink3{fill:#8a8984}.data{fill:#2a78d6}.other{fill:#b3b1aa}.home{fill:#7a52c7}.target{stroke:#d98c00;stroke-width:2}@media (prefers-color-scheme:dark){.bg{fill:#1a1a19}.panel{fill:#242422;stroke:#34332f}text{fill:#c3c2b7;font:12px system-ui,sans-serif}.head{fill:#f0efec;font-weight:600;font-size:13px}.ink3{fill:#8f8e87}.data{fill:#4a8fe8}.other{fill:#6c6b66}.home{fill:#a98ae8}.target{stroke:#f0b23a;stroke-width:2}}</style>
-<rect class="bg" width="900" height="190"/>
-<text x="12" y="20" class="head">Drive use from spine-datasets' feed, built 2026-10-24T20:52:07Z; the volume read 2026-10-24T17:15:28Z.</text>
+<rect class="bg" width="900" height="240"/>
+<text x="12" y="20" class="head">Drive use from spine-datasets' feed, built 2026-10-25T02:53:38Z; the volume read 2026-10-24T17:15:28Z.</text>
 <text x="12" y="66" class="head">Lab volume</text>
 <rect class="panel" x="170" y="48" width="700" height="26" rx="4"/>
-<rect class="data" x="170" y="48" width="242.8" height="26" rx="4"/>
-<rect class="other" x="412.8" y="48" width="316.0" height="26"/>
+<rect class="data" x="170" y="48" width="243.2" height="26" rx="4"/>
+<rect class="other" x="413.2" y="48" width="315.5" height="26"/>
 <line class="target" x1="806.6" x2="806.6" y1="42" y2="80"/>
 <text x="170" y="94">17.6 TB used of 22.0 TB: datasets 7.6 TB, other 9.9 TB; the target is 20.0 TB.</text>
 <text x="12" y="136" class="head">The owner's home</text>
 <rect class="panel" x="170" y="118" width="700" height="26" rx="4"/>
 <text x="180" y="136" class="ink3">not read yet</text>
 <text x="170" y="164">Quota 4.0 TB; nothing is placed here until a grid word reads its use.</text>
-<text x="12" y="182" class="ink3">166 sets in the feed; the interactive page trials which fit under the target and asks for the changes through storage.yml. python3 tools/storage_panel.py build</text>
+<text x="12" y="190">On the drives: at most 5,990 people with level truth (films 3,964, fluoro 959, projections 692, ct 375) and 63 3D prior sources.</text>
+<text x="12" y="208">A test needs 385 people with level truth in its modality for plus or minus 5 points at 95 percent confidence (the feed's power block).</text>
+<text x="12" y="230" class="ink3">166 sets in the feed; the interactive page trials selections and sends them through storage.yml. python3 tools/storage_panel.py build</text>
 </svg>
