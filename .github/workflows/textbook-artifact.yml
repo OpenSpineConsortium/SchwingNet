@@ -63,6 +63,9 @@ on:
       - "tools/textbook_artifact.py"
       - "tools/living_docs.py"
       - ".github/CODEOWNERS"
+      - "tools/claims_rank.py"
+      - "tools/rag.py"
+      - "src/schwingnet/rag.py"
   schedule:
     - cron: "13,43 * * * *"
   workflow_dispatch:
