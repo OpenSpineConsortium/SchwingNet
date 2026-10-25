@@ -1,17 +1,23 @@
 # The living documentation site (docs/learn/README.md): the lessons, the
 # capabilities page, a reference made from the code's own docstrings and the
-# test suite's results, built by tools/living_docs.py on every push to the
-# default branch and published with GitHub Pages. The Artifact Textbook is
-# built into the same site, under textbook/, by tools/textbook_site.py: a page
-# for each chapter and each artifact, laid out from the artifacts and the
-# synthesis's records (issue #196). A merge GitHub's auto-merge makes starts
-# no workflow, and the synthesis's pull requests merge that way, so the site
-# is also built once a day, after the synthesis's daily look at 06:41 UTC, so
-# that what such a merge brought reaches the textbook within a day. The lessons' commands
-# already ran in the required check before the merge; they run again here,
-# so a page is published only from a commit whose examples still print what
-# the pages say. The test report is written even when a test fails, so the
-# Tests page shows the failure rather than hiding the page.
+# test suite's results, built by tools/living_docs.py and published with
+# GitHub Pages. The Artifact Textbook is built into the same site, under
+# textbook/, by tools/textbook_site.py: a page for each chapter and each
+# artifact, laid out from the artifacts and the synthesis's records (issue
+# #196). The lessons' commands already ran in the required check before the
+# merge; they run again here, so a page is published only from a commit whose
+# examples still print what the pages say. The test report is written even
+# when a test fails, so the Tests page shows the failure rather than hiding
+# the page.
+#
+# It runs only when the owner starts it (Actions, Docs, Run workflow on the
+# default branch), never on a push or a schedule: the owner's call of
+# 2026-10-25, since a build on every merge and once a day spent Actions
+# minutes on a site read far less often than it was rebuilt
+# (OpenSpineConsortium/symphony-template's
+# docs/research/actions-minutes-2026-10-25.md). What any merge brought, an
+# auto-merged synthesis pull request's among it, reaches the site and the
+# textbook at the owner's next run.
 #
 # Publishing needs two settings the workflow's token cannot make: Pages set
 # to deploy from GitHub Actions, and the repository variable SYMPHONY_DOCS
@@ -21,9 +27,6 @@
 name: Docs
 
 on:
-  push:
-  schedule:
-    - cron: "23 8 * * *"
   workflow_dispatch:
 
 permissions:
@@ -36,8 +39,7 @@ concurrency:
 
 jobs:
   build:
-    # a scheduled run's event carries no repository, and always runs on the default branch
-    if: github.event_name == 'schedule' || github.ref_name == github.event.repository.default_branch
+    if: github.ref_name == github.event.repository.default_branch
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:

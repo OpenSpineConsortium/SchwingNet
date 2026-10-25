@@ -158,7 +158,8 @@ class TokenStore(unittest.TestCase):
 
 class Pages(unittest.TestCase):
     """GitHub Pages built by GitHub Actions and the variable SYMPHONY_DOCS,
-    so docs.yml publishes the documentation site with no click; a site
+    so docs.yml, when the owner runs it, publishes the documentation site
+    with no click in the settings; a site
     there already is left as it is, a non-public repository's site is
     limited to its readers or removed, and a refusal stops nothing."""
 

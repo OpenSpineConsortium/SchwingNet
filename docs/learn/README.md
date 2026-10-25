@@ -33,9 +33,9 @@ The tests behind all of it accumulate in [tests/](../../tests/): every test any 
 
 ## Publishing the site
 
-[docs.yml](../../.github/workflows/docs.yml) builds the site on every push to the default branch with `python3 tools/living_docs.py site`, and publishes it with GitHub Pages once two settings are made, which the workflow's own token cannot make:
+[docs.yml](../../.github/workflows/docs.yml) builds the site with `python3 tools/living_docs.py site` when the owner runs it, never on a push or a schedule (the owner's call of 2026-10-25), and publishes it with GitHub Pages once two settings are made, which the workflow's own token cannot make:
 
 1. The repository's Settings, Pages, Build and deployment, Source: GitHub Actions.
 2. The repository's Settings, Secrets and variables, Actions, Variables tab, New repository variable: name `SYMPHONY_DOCS`, value `pages`.
 
-Then run the Docs workflow once from the Actions tab (Run workflow). On an internal or private repository, Pages can be limited to people who can read the repository, and the deploy job checks that it is: before every deploy it asks GitHub whether the site is public, and deploys nothing unless the answer is that it is not. To preview the site locally: `python3 tools/living_docs.py site _site`, then open `_site/index.html`.
+Run the Docs workflow from the Actions tab (Run workflow, on the default branch) to publish it; a push does not. On an internal or private repository, Pages can be limited to people who can read the repository, and the deploy job checks that it is: before every deploy it asks GitHub whether the site is public, and deploys nothing unless the answer is that it is not. To preview the site locally: `python3 tools/living_docs.py site _site`, then open `_site/index.html`.
