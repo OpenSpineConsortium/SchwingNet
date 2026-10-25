@@ -8,12 +8,16 @@ The tooling is built and tested on a CPU (issue #252); no grid job of the smoke 
 
 | Job | Gate word | What it proves |
 | --- | --- | --- |
-| GPU 1 | `sweep synthetic` | every route on the synthetic bank with level maps, the prior's among them |
-| GPU 2 | `sweep real` | every route but the prior's on catalog version 1 of C-ArmLSpine, real frames |
+| GPU 1 | `sweep synthetic` | every route on the synthetic bank with level maps, the prior's among them, and the two source cuts that keep a strict part of the labelled crops, since the bank's labelled cases are split between two sources |
+| GPU 2 | `sweep real` | every route but the prior's and the source cuts that keep a strict part of the labelled crops, on catalog version 1 of C-ArmLSpine, real frames |
 | CPU 1 and 2 | `bank vindr_spinexr` | VinDr-SpineXR banked and ingested, then the catalog rebuilt with it |
 | GPU 3 | `sweep two_source` | the same plan on the two-source catalog: the unannotated source feeds the level stage nothing, and a cut to it alone is refused |
 
 Then the six trials of the design note, `sweep trials`, once the owner has seen the smoke and given the count.
+
+The source cuts that keep a strict part of the labelled crops run on the synthetic catalog alone. Its labelled bank's last third of cases is ingested as a render's source (the VerSe projections' registry id, a train-side render route) and the rest as C-ArmLSpine's, so `samples=only-sources` and `samples=drop-sources` with `sources=@first-labelled`, the first labelled source of several, keep one labelled source's crops or the other's. Catalog version 1 and the two-source catalog hold one labelled source, C-ArmLSpine, so there the check calls those four rows not applicable, saying why: a cut to the only labelled source keeps every crop or none. In the covering array itself `only-sources` names every labelled source (`@labelled`), so it trains on every catalog and keeps every crop.
+
+The synthetic catalog is built by `tools/block_sweep.py synthetic` under `/rs/rs_grp_oschome/go2432/smoke/synthetic/catalog/`, each build in a folder of its own under `builds/`, which `SYNTHETIC.json` names once the build is whole. The record holds the arguments and the hashes of the tools, rules, split files and registry entries that make the catalog, so `sweep synthetic` finds the catalog again while they are the same and builds it afresh, removing the folder it replaces, when any of them differs; a build cut short leaves a folder no record names, which the next build removes.
 
 ## How the argument is made
 
