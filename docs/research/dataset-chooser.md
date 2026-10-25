@@ -42,12 +42,13 @@ The output carries the sha256 of every input. `python3 tools/choose_data.py chec
 
 ## 4. What it chooses today
 
-On the records at the commit that adds it:
+On the records at the commit that adds it, after its records were brought up to the spine-datasets census (48 records took their holding and licence lines from it):
 
 - The test holds 132 persons with normal spines, all from C-ArmLSpine: 149 cases, less the 5 frozen and the 12 kept for training. DeepFluoro's 6 specimens all go to training. Ljubljana gives no person count, so it is listed as uncounted.
 - 381 are needed, so the test is short by 249. With 132 people the half-width reached at 0.5 is 0.084.
-- The gap closes first at LUMOS (803 patients, not held). Its levels come only through a registration to its paired CT. After it come the embargoed COBRA cases, Vanderbilt's 146 and Huashan's 140.
-- Training takes 16 sets and excludes 13. Twelve of the 13 are excluded for an unknown licence, among them BUU, CSXA and both NHANES II sets. Reading those licences is what most enlarges training.
+- The gap closes first at Vanderbilt's 146 cases, after the 175 embargoed COBRA cases (neither held). Huashan's 140 and NITW's 9 follow.
+- LUMOS (803 patients) is held, since 2026-10-23, but it is no test: its frames are diagnostic radiographs, not C-arm frames, and its levels come only through a registration to its paired CT. The chooser reads that phrase as "derivable" and gives LUMOS to training with that role.
+- Training takes 25 sets and excludes 26. Of the excluded, 14 hold no level truth and serve as no render source (the IDC and Zenodo CT collections, STOIC, RSPECT), 11 have a licence the records leave unknown (among them PENGWIN's X-rays, CathAction, NIH ChestX-ray14, the VerSe projections, Spinal AI 2024 and FluoroCap), and one is the demo sweeps. BUU, CSXA and both NHANES II sets are in training: their licences came across from the spine-datasets records in the same pull request.
 
 Every test person is lumbar, from one device. The chooser can only say that the test is normal-spine lumbar fluoroscopy from one mobile C-arm until a cervical or thoracic fluoroscopy set with levels is held. The recipe note's gaps say none exists anywhere searched.
 
