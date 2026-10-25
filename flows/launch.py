@@ -11,8 +11,10 @@ here: the launch is named by a key, the hash of the flow, the commit and the flo
 as given (schwingnet.pipeline.run_key), every run carries the key as a tag, and the newest run
 with that key decides (schwingnet.pipeline.decide): one that did not succeed is resumed, else a
 new run starts. A job queued again with the same words therefore continues where the killed one
-stopped, and a change of code or of configuration starts afresh. Bank's --date is left out of
-the key, since it is chosen once per run here and resume keeps it with the other parameters.
+stopped, and a change of code or of configuration starts afresh. Bank's --date is in the key
+when the caller gave it, so a job asking for another date runs anew under it; where the words
+name none, the launcher chooses today for a new run, after the key is taken, and resume keeps it
+with the other parameters, so the same words on another day still continue the cut run.
 
 The first line on stdout is the decision, as JSON, flushed before the flow starts, and the last
 says which run it was and how it ended; the exit code is the flow's own where it failed, else
@@ -86,19 +88,6 @@ def parse(argv):
     if any(word == "--commit" or word.startswith("--commit=") for word in words):
         raise LaunchError("the launcher passes --commit itself, the checkout's own; leave it out", EX_USAGE)
     return name, options, words
-
-
-def without_date(words):
-    """The words the key is taken over: all but --date and its value, which resume keeps itself."""
-    kept, skip = [], False
-    for word in words:
-        if skip:
-            skip = False
-        elif word == "--date":
-            skip = True
-        elif not word.startswith("--date="):
-            kept.append(word)
-    return kept
 
 
 def names_a_date(words):
@@ -228,7 +217,7 @@ def launch(argv):
     (root / ".metaflow").mkdir(parents=True, exist_ok=True)
     repo = repository()
     commit = commit_of(repo)
-    key = run_key(name, commit, without_date(words))
+    key = run_key(name, commit, words)
     flow_class = FLOWS[name]
     decision, origin = decide(runs_with_key(flow_class, key))
     say({"decision": decision, "flow": name, "key": key, "origin": origin, "root": str(root)})

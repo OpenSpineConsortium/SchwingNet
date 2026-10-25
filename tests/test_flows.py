@@ -274,39 +274,44 @@ class BankFlowTest(unittest.TestCase):
         self.assertIn("== nih_chestxray14", kept)
         self.assertFalse(any("12345678" in line or str(flow_root) in line for line in kept), kept)
 
+    def launch_logged(self, words, n, kill="open_i_chest"):
+        """A launch through the kill test's PYDRV, which kills the task of the first ingest of
+        KILL while no earlier launch of the test has killed one: its result and its tool calls."""
+        wrapper = self.tmp / "pydrv"
+        wrapper.write_text(PYDRV_WRAPPER.format(python=sys.executable), encoding="utf-8")
+        wrapper.chmod(0o755)
+        calls = self.tmp / f"calls-{n}"
+        calls.write_text("", encoding="utf-8")
+        env = base_env(PYDRV=str(wrapper), FLOW_TEST_CALLS=str(calls), FLOW_TEST_MARKER=str(self.tmp / "killed"), FLOW_TEST_KILL=kill)
+        result = launch(words, self.tmp / "logs-flow", env, self.root)
+        return (*result, calls.read_text(encoding="utf-8").splitlines())
+
     def test_a_kill_mid_ingest_resumes_there_with_the_banks_cloned_and_a_later_launch_runs_anew(self):
         banks = self.tmp / "banks"
         write_banks(banks)
         code, out = self.direct(self.tmp / "direct", banks)
         self.assertEqual(code, 0, out)
-        wrapper = self.tmp / "pydrv"
-        wrapper.write_text(PYDRV_WRAPPER.format(python=sys.executable), encoding="utf-8")
-        wrapper.chmod(0o755)
         flow_root = self.tmp / "flow"
         write_raw_copies(flow_root)
         words = ["bank", "--", "--data-root", str(flow_root), "--banks", str(banks)]
 
         def launch_logged(n):
-            calls = self.tmp / f"calls-{n}"
-            calls.write_text("", encoding="utf-8")
-            env = base_env(PYDRV=str(wrapper), FLOW_TEST_CALLS=str(calls), FLOW_TEST_MARKER=str(self.tmp / "killed"),
-                           FLOW_TEST_KILL="open_i_chest")
-            result = launch(words, self.tmp / "logs-flow", env, self.root)
-            return (*result, calls.read_text(encoding="utf-8").splitlines())
+            return self.launch_logged(words, n)
 
         code, said, out, calls = launch_logged(1)
         self.assertNotEqual(code, 0, out)
         self.assertEqual(said[0]["decision"], "run", out)
         self.assertEqual(said[-1]["successful"], False, out)
-        first_run = said[-1]["run"].split("/")[1]
+        first_run, first_key = said[-1]["run"].split("/")[1], said[0]["key"]
         self.assertIn("ingest.py open_i_chest", calls)
         self.assertEqual(sorted(c for c in calls if c.startswith("bank.py")), ["bank.py nih_chestxray14", "bank.py open_i_chest"])
 
-        # the same words again: the newest run with the key did not succeed, so it is resumed,
-        # both banks cloned and the cut ingest run again
+        # the same words again, the raw copies as they were and no date given, so the date the
+        # launcher chose is kept out of the key: the newest run with the key did not succeed, so it
+        # is resumed, both banks cloned and the cut ingest run again
         code, said, out, calls = launch_logged(2)
         self.assertEqual(code, 0, out)
-        self.assertEqual((said[0]["decision"], said[0]["origin"]), ("resume", first_run), out)
+        self.assertEqual((said[0]["decision"], said[0]["origin"], said[0]["key"]), ("resume", first_run, first_key), out)
         self.assertEqual((said[-1]["successful"], said[-1]["verdict"]), (True, 0), out)
         self.assertEqual([c for c in calls if c.startswith("bank.py")], [], calls)
         self.assertIn("ingest.py open_i_chest", calls)
@@ -322,6 +327,33 @@ class BankFlowTest(unittest.TestCase):
                          ["bank.py nih_chestxray14", "bank.py open_i_chest", "ingest.py nih_chestxray14", "ingest.py open_i_chest"])
         self.assertIn("already there", (self.tmp / "logs-flow" / "logs" / name).read_text(encoding="utf-8"))
         self.assertEqual(shards_of(flow_root), shards_of(self.tmp / "direct"))
+
+    def test_a_date_the_caller_gave_is_in_the_key_so_another_date_runs_anew(self):
+        banks = self.tmp / "banks"
+        write_banks(banks)
+        flow_root = self.tmp / "flow"
+        write_raw_copies(flow_root)
+        words = ["bank", "--", "--data-root", str(flow_root), "--banks", str(banks)]
+        code, said, out, calls = self.launch_logged([*words, "--date", "2026-10-01"], 1)
+        self.assertEqual(said[-1]["successful"], False, out)
+        first_run, first_key = said[-1]["run"].split("/")[1], said[0]["key"]
+
+        # another date asked for is another run, so the ingest the kill cut is made under that
+        # date, where a resume would have cloned the first; NIH's bank, unchanged, is answered by
+        # the ingest's own reuse note (#260) with the shard already there, as the stage's would be
+        code, said, out, calls = self.launch_logged([*words, "--date", "2026-10-20"], 2)
+        self.assertEqual(code, 0, out)
+        self.assertEqual((said[0]["decision"], said[0]["origin"]), ("run", None), out)
+        self.assertNotEqual(said[0]["key"], first_key)
+        self.assertEqual([p.parent.parent.name for p in flow_root.glob("*/shards/2026-10-20-*")], ["open_i_chest"])
+        self.assertEqual([p.parent.parent.name for p in flow_root.glob("*/shards/2026-10-01-*")], ["nih_chestxray14"])
+        report = (self.tmp / "logs-flow" / "logs" / "02-bank-ingest-STAGE-REPORT.md").read_text(encoding="utf-8")
+        self.assertIn("ingest date 2026-10-20;", report)
+
+        # the first date asked for again names the first key, whose cut run is resumed
+        code, said, out, calls = self.launch_logged([*words, "--date", "2026-10-01"], 3)
+        self.assertEqual(code, 0, out)
+        self.assertEqual((said[0]["decision"], said[0]["origin"], said[0]["key"]), ("resume", first_run, first_key), out)
 
     def test_with_no_raw_copy_the_flow_steps_past_the_foreach_to_the_report(self):
         banks = self.tmp / "banks"

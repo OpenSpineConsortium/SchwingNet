@@ -44,7 +44,7 @@ a join step, so a switch lands on a plain step: BankFlow's end, SweepFlow's midd
     python flows/launch.py {bank|catalog|sweep} [--max-workers N] [--root DIR] -- <flow parameters>
 
 The launcher names a launch by a key, the first 16 hex of the sha256 of the flow, the commit
-and the flow's parameters as given, less bank's --date (schwingnet.pipeline.run_key), and every
+and the flow's parameters as given (schwingnet.pipeline.run_key), and every
 run it starts or resumes carries the tags `key:<key>` and `commit:<7>`. It lists the runs of
 the flow carrying the key, newest first, and the newest decides (schwingnet.pipeline.decide): a
 newest run that did not succeed, killed or failed, is resumed (`resume --origin-run-id`, with
@@ -52,8 +52,10 @@ the same --max-workers and no parameters, which resume clones); else a new run s
 queued again with the same words therefore continues where the killed one stopped; a change of
 code or of words starts afresh, and so does a launch after a success, where the tools' own
 content addressing finds the finished work (an ingest's "already there", a run folder tools/flow.py
-reuses). Bank's ingest date is chosen once per run by the launcher (`--date`, today where the
-words name none) and kept by resume, so a resumed ingest writes the shard its first half meant.
+reuses). Bank's ingest date is the caller's `--date`, in the key like any word, so a job asking
+for another date runs anew under it; where the words name none, the launcher chooses today for a
+new run, after the key is taken, and resume keeps it, so a resumed ingest writes the shard its
+first half meant, on whatever day the job is queued again.
 
 Its first line on stdout is the decision, `{"decision", "flow", "key", "origin", "root"}`, and
 its last `{"flow", "run": "Class/ID", "successful", "verdict"}`; the flow's own output passes
