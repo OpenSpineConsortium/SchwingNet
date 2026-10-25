@@ -2161,10 +2161,13 @@ esac
         self.assertIn("  wandb https://wandb.ai/lab/schwingnet/runs/1f2e3d4c\n", out)
 
     def test_status_shows_every_sweeps_progress_even_when_the_other_sections_fill_the_page(self):
-        # A status of the grid's size, every earlier section at the most it shows: 80 sets on each
-        # root, the committed sample manifest, 60 jobs with two failed logs, eight stage reports and
-        # a results table of 30 lines. The sweeps' progress, the one live view of a sweep, once came
-        # last and was cut by the 400 lines; now it comes before everything the cut can reach.
+        # A status of the grid's size, every section at the most it shows: 80 sets on each root,
+        # four plans' progress, 60 jobs, the newest of them a sweep that failed with its log and its
+        # stage report, an older setup that failed, eight older stage reports, the committed sample
+        # manifest and a results table of 30 lines. The sweeps' progress once came last and was cut
+        # by the 400 lines; then it came first and pushed the newest jobs, every failed job's log and
+        # every stage report off the page behind the manifest. Now the page is handed out in the
+        # order a reader needs it, and what found no room is named on its last line.
         self.ceph_fake(raw_bytes=10**9)
         (self.tmp / "shared").mkdir()
         for n in range(80):
@@ -2172,13 +2175,19 @@ esac
             (self.tmp / "shared" / f"shared_{n:02d}").mkdir()
         logs = self.repo / "grid" / "logs"
         logs.mkdir(parents=True, exist_ok=True)
+        now = time.time()
         shutil.copy(ROOT / "docs" / "research" / "data-manifest" / "MANIFEST.md", logs / "SAMPLES-STAGE-REPORT.md")
-        for n in range(58):
-            self.state_line(2000 + n, "start", f"job_{n}")
-        self.failed(*[(2100 + n, "start", "setup", "sn_setup", "FAILED", "00:01:00", [f"error line {i}" for i in range(20)])
-                      for n in range(2)])
+        os.utime(logs / "SAMPLES-STAGE-REPORT.md", (now - 7200, now - 7200))
+        rows = [(2000 + n, "start", f"job_{n}", f"sn_job_{n}", "COMPLETED", "00:10:00", None) for n in range(57)]
+        rows += [(2100 + n, "start", "setup", "sn_setup", "FAILED", "00:01:00", [f"error line {i}" for i in range(20)])
+                 for n in range(2)]
+        rows += [(2200, "sweep:real", "sweep", "sweep", "FAILED", "04:00:00", [f"step {i}" for i in range(30)] + ["SN_SWEEP_RC=1"])]
+        self.failed(*rows)
         for n in range(8):
             (logs / f"0{n}-STAGE-REPORT.md").write_text("".join(f"- line {i}\n" for i in range(13)), encoding="utf-8")
+            os.utime(logs / f"0{n}-STAGE-REPORT.md", (now - 3600 - n, now - 3600 - n))
+        (logs / "sweep-real-STAGE-REPORT.md").write_text(
+            "".join(f"- sweep line {i}\n" for i in range(12)) + "- FAILED: the flow stopped before its first row\n", encoding="utf-8")
         run = self.runs / "newest"
         (run / "evaluate").mkdir(parents=True)
         (run / "evaluate" / "results.md").write_text("".join(f"| row {i} |\n" for i in range(30)), encoding="utf-8")
@@ -2198,7 +2207,62 @@ esac
         self.assertEqual(out.count("  (5 more rows not yet matched; the state folder's PROGRESS.txt holds them)"), 4)
         # after the space it reads beside, before the job list and every section that grows with the jobs
         self.assertLess(out.index("## space on the lab volume"), out.index("## sweep real"))
-        self.assertLess(out.index("## sweep two_source"), out.index("## SAMPLES-STAGE-REPORT.md"))
+        self.assertLess(out.index("## sweep two_source"), out.index("## the gate's newest jobs"))
+        # the newest job's row, the failed sweep's log and its stage report, newest of the reports
+        self.assertIn("\n  2200 sweep FAILED 04:00:00 1:0 n1\n", out)
+        self.assertIn("## 2200 (sweep) ended FAILED after 04:00:00, exit 1:0\n    SN_SWEEP_RC=1\n", out)
+        self.assertIn("## 2101 (setup) ended FAILED after 00:01:00, exit 1:0\n", out)
+        self.assertIn("## sweep-real-STAGE-REPORT.md (", out)
+        self.assertIn("  - FAILED: the flow stopped before its first row\n", out)
+        self.assertLess(out.index("## sweep-real-STAGE-REPORT.md ("), out.index("## 00-STAGE-REPORT.md ("))
+        # the manifest, older than every report, and the run found no room, and the page says so last
+        self.assertNotIn("## SAMPLES-STAGE-REPORT.md", out)
+        unsaid = out.splitlines()[-2]
+        self.assertTrue(unsaid.startswith("## not shown, for want of room on the page (400 lines and 64 KiB): "), unsaid)
+        for named in ("stage reports", "the sample manifest", "the newest run"):
+            self.assertIn(named, unsaid)
+
+    def test_status_hands_the_sample_manifest_its_room_among_the_stage_reports_by_its_date(self):
+        # The manifest changes only when a census runs: newest, it is shown whole before the jobs and
+        # the older reports are cut and named; older than the reports, they come first and it is cut
+        # to what is left, keeping its largest groups, and the page says what it left out.
+        logs = self.repo / "grid" / "logs"
+        logs.mkdir(parents=True, exist_ok=True)
+        manifest = logs / "SAMPLES-STAGE-REPORT.md"
+        manifest.write_text("# The sample index\n\n" + "".join(f"| source_{i} | {i} |\n" for i in range(150)), encoding="utf-8")
+        now = time.time()
+        def reports(count):
+            for path in logs.glob("[0-9]*-STAGE-REPORT.md"):
+                path.unlink()
+            for n in range(count):
+                path = logs / f"{n:02d}-STAGE-REPORT.md"
+                path.write_text("".join(f"- report {n} line {i}\n" for i in range(12)), encoding="utf-8")
+                os.utime(path, (now - 600 - n, now - 600 - n))
+        reports(30)
+        os.utime(manifest, (now, now))
+        out = self.gate("status").stdout
+        self.assertLessEqual(len(out.splitlines()), 402)
+        self.assertIn("  | source_0 | 0 |\n", out)
+        self.assertIn("  | source_149 | 149 |\n", out)
+        self.assertLess(out.index("## SAMPLES-STAGE-REPORT.md"), out.index("no job submitted by the gate yet"))
+        # the reports newest first, so the newest is whole and the oldest gone
+        self.assertIn("  - report 0 line 11\n", out)
+        self.assertNotIn("report 29 line", out)
+        self.assertEqual(out.count("earlier lines of this section not shown, for want of room on the page)"), 1, out)
+        unsaid = out.splitlines()[-2]
+        self.assertTrue(unsaid.startswith("## not shown, for want of room on the page (400 lines and 64 KiB): "), unsaid)
+        self.assertIn(" stage reports", unsaid)
+        self.assertNotIn("manifest", unsaid)
+        reports(26)
+        os.utime(manifest, (now - 7200, now - 7200))
+        out = self.gate("status").stdout
+        self.assertLessEqual(len(out.splitlines()), 402)
+        for n in range(26):
+            self.assertIn(f"  - report {n} line 11\n", out)
+        self.assertIn("  | source_0 | 0 |\n", out)
+        self.assertNotIn("source_149", out)
+        self.assertEqual(out.count("more lines of this section not shown, for want of room on the page)"), 1, out)
+        self.assertNotIn("## not shown", out)
 
     def test_status_shows_the_newest_failed_sweep_of_each_plan_by_its_shapes(self):
         self.failed((1001, "sweep:real", "sweep", "sweep", "FAILED", "04:00:00", ["person carmlspine:case042 seen", "SN_SWEEP_RC=1"]),

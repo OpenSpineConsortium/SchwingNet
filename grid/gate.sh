@@ -25,7 +25,8 @@
 #                   failed, masked (grid/redact.sed), and for a job that reads DICOM headers,
 #                   person keys or a sign-in only its tracebacks and status lines (grid/log-shapes.awk);
 #                   the stage reports with their paths cut and a quoting reason withheld
-#                   (grid/report-shapes.awk), masked; the newest run
+#                   (grid/report-shapes.awk), masked; the newest run; one page of 400 lines and
+#                   64 KiB, handed out in the order a reader needs it (grid/status-page.awk)
 #   leaks           the leak checks over every shard on the volume, once no ingest is queued
 #   v1              the version 1 run alone (again, after a failure), while start's other jobs are
 #                   still live: each input is there, made by a live job of the gate's, or submitted
@@ -459,7 +460,7 @@ latency_lines() {  # the newest run's parity, latency and sweep numbers, one lin
     [ -f "$file" ] && files+=("$file")
   done
   [ ${#files[@]} -gt 0 ] || return 0
-  # Before the stage reports, so the 200 lines status keeps never cut the timing off.
+  # Handed the page's room before the stage reports (grid/status-page.awk), so they never cut it off.
   echo "## latency of the newest run, $(basename "$run")"
   awk -f "$REPO/grid/latency-lines.awk" "${files[@]}" | masked | sed 's/^/  /'
 }
@@ -548,11 +549,25 @@ fetch_progress() {  # one line per live fetch of one set: what its raw folder ho
   done
 }
 
+# What reaches the gate of status is one page of 400 lines and 64 KiB at most, and its sections
+# together can hold twice that on the grid. Each is made whole (status_sections) and then handed
+# the page's room in the order a reader needs it (grid/status-page.awk): the space, the sweeps'
+# progress, the newest jobs and the failed jobs' logs come first, the stage reports and the sample
+# manifest after them, newest first, so the manifest, which changes only when a census runs, never
+# pushes the newest jobs, a failed job's log or the newest stage report off the page; a section
+# cut short says so, and one left out is named on the page's last line.
+STATUS_LINES=400 STATUS_BYTES=65536
 word_status() {
-  local ids report run lines shown job name state elapsed code node probe
-  # First, so the status's 400 lines never cut it off; then the sweeps' progress, the one live view
-  # of a sweep, which once came last and was cut, held to its own bound so that the two together
-  # stay inside the 400 lines whatever the sections after them hold; then the sample manifest.
+  local newer
+  # The manifest is handed its room among the stage reports by its date, after those newer than it.
+  newer=$(ls -1t "$LOGS"/*STAGE-REPORT.md 2>/dev/null | awk '/\/SAMPLES-STAGE-REPORT\.md$/ { print NR - 1; exit }')
+  status_sections | LC_ALL=C awk -v lines="$STATUS_LINES" -v bytes="$STATUS_BYTES" -v samples_after="${newer:-0}" \
+    -f "$REPO/grid/status-page.awk"
+}
+status_sections() {  # every section of status whole, in the order the page shows them
+  local ids run lines job name state elapsed code node probe
+  # The space first and the sweeps' progress, the one live view of a sweep, after it; then the
+  # sample manifest, which once came after the jobs, where the page's end cut it.
   word_space
   sweep_progress | head -n "$SWEEP_LINES_SHOWN"
   samples_report
@@ -570,8 +585,8 @@ word_status() {
     failed_tails "$lines"
   fi
   # The latency probe's answer (#87): counts, sizes, PNG dimensions and the export's meta keys only,
-  # never a DICOM header, printed before the reports so it stays inside status's 200 lines; only
-  # its own lines' shapes, with no folder or file name (grid/probe-shapes.awk), then masked (#80).
+  # never a DICOM header; only its own lines' shapes, with no folder or file name
+  # (grid/probe-shapes.awk), then masked (#80).
   probe=$(probe_text)
   if [ -n "$probe" ]; then
     printf '%s\n' "$probe" | head -n 1
@@ -579,7 +594,9 @@ word_status() {
       | awk -f "$REPO/grid/probe-shapes.awk" | masked | sed 's/^/  /'
   fi
   latency_lines
-  for report in "$LOGS"/*STAGE-REPORT.md; do
+  # Newest first, the order they are handed the page's room in, so a sweep's or a run's report from
+  # today comes before a stage's from last week.
+  ls -1t "$LOGS"/*STAGE-REPORT.md 2>/dev/null | while read -r report; do
     [ -f "$report" ] || continue
     [ "$(basename "$report")" != SAMPLES-STAGE-REPORT.md ] || continue
     echo "## $(basename "$report") ($(date -r "$report" '+%F %T'))"
@@ -598,7 +615,8 @@ word_status() {
 
 # A plan's section is its heading, its headline, up to SWEEP_ROWS_SHOWN rows, the line counting the
 # rest and up to SWEEP_WANDB_SHOWN links, 27 lines; the four plans of grid/sweeps/ take 108 of the
-# section's 120, and the space tally before it at most about 180, so both fit inside status's 400.
+# section's 120, and the space tally before it at most about 180, so both fit inside status's 400
+# with room left for the job list, which is handed lines right after them (grid/status-page.awk).
 SWEEP_ROWS_SHOWN=20 SWEEP_WANDB_SHOWN=4 SWEEP_LINES_SHOWN=120
 smoke_paths() {  # every line with the smoke folder's path cut to <smoke>, matched as text and not as a pattern
   awk -v smoke="$SMOKE" '{
@@ -1324,8 +1342,9 @@ else
 fi
 case "$word" in
   start) word_start ;;
-  # Bounded whatever the logs hold: 400 lines and 64 KiB reach the gate at most.
-  status) out=$(word_status); printf '%s\n' "$(head -n 400 <<< "$out" | head -c 65536)" ;;
+  # Bounded whatever the logs hold: 400 lines and 64 KiB reach the gate at most. word_status fits
+  # its page into them; the cut here is a second net.
+  status) out=$(word_status); printf '%s\n' "$(head -n "$STATUS_LINES" <<< "$out" | head -c "$STATUS_BYTES")" ;;
   leaks) word_leaks ;;
   v1) word_v1 ;;
   latency) word_latency ;;
