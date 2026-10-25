@@ -36,6 +36,12 @@ def load(name):
     return module
 
 
+def sha256_of(path):
+    """A catalog's sha256, as tools/flow.py writes it into RUN.json, the catalog the trainer then
+    reads and no other."""
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
 def python(*args):
     done = subprocess.run([sys.executable, *map(str, args)], capture_output=True, text=True, timeout=600)
     if done.returncode != 0:
@@ -717,7 +723,7 @@ class RunWithEveryBlockTest(unittest.TestCase):
         cls.catalog = cls.make_catalog(cls.tmp)
         cls.run_dir = cls.tmp / "run"
         cls.run_dir.mkdir()
-        record = {"run_id": "blocksrun000", "code_commit": "0" * 40, "catalog_sha256": "0" * 64, "catalog_version": 1, "clean_tree": True}
+        record = {"run_id": "blocksrun000", "code_commit": "0" * 40, "catalog_sha256": sha256_of(cls.catalog), "catalog_version": 1, "clean_tree": True}
         (cls.run_dir / "RUN.json").write_text(json.dumps(record), encoding="utf-8")
         words = ["normalise=imagenet", "augment=box-jitter,intensity,blur,noise", "optimiser=adamw", "weight_decay=0.01",
                  "schedule=cosine", "warmup_epochs=1", "backbone_lr_scale=0.5", "sampler=balanced",
@@ -817,7 +823,7 @@ class RunWithSamplesArchitectureAndDenoiseTest(unittest.TestCase):
         cls.catalog = RunWithEveryBlockTest.make_catalog(cls.tmp)
         cls.run_dir = cls.tmp / "runs" / "2026" / "capped"
         cls.run_dir.mkdir(parents=True)
-        record = {"run_id": "capped000000", "code_commit": "0" * 40, "catalog_sha256": "0" * 64, "catalog_version": 1, "clean_tree": True}
+        record = {"run_id": "capped000000", "code_commit": "0" * 40, "catalog_sha256": sha256_of(cls.catalog), "catalog_version": 1, "clean_tree": True}
         (cls.run_dir / "RUN.json").write_text(json.dumps(record), encoding="utf-8")
         cls.words = ["samples=cap-per-person", "per_person=2", "architecture=mobilenet-v3-small", "denoise=median"]
         args = ["--catalog", str(cls.catalog), "--out", str(cls.run_dir), "--epochs", "1", "--seed", "1", "--size", "32",
@@ -911,7 +917,7 @@ class RunWithSamplesArchitectureAndDenoiseTest(unittest.TestCase):
         catalog = RunWithEveryBlockTest.make_catalog(tmp, map_share=0)
         run_dir = tmp / "run"
         run_dir.mkdir()
-        record = {"run_id": "nomaps000000", "code_commit": "0" * 40, "catalog_sha256": "0" * 64, "catalog_version": 1, "clean_tree": True}
+        record = {"run_id": "nomaps000000", "code_commit": "0" * 40, "catalog_sha256": sha256_of(catalog), "catalog_version": 1, "clean_tree": True}
         (run_dir / "RUN.json").write_text(json.dumps(record), encoding="utf-8")
         args = ["--catalog", str(catalog), "--out", str(run_dir), "--epochs", "1", "--seed", "1", "--size", "32", "--device", "cpu"]
         err = io.StringIO()
@@ -954,7 +960,7 @@ class RunWithAMonaiArchitectureTest(unittest.TestCase):
         cls.catalog = RunWithEveryBlockTest.make_catalog(cls.tmp)
         cls.run_dir = cls.tmp / "runs" / "2026" / "monai"
         cls.run_dir.mkdir(parents=True)
-        record = {"run_id": "monai0000000", "code_commit": "0" * 40, "catalog_sha256": "0" * 64, "catalog_version": 1, "clean_tree": True}
+        record = {"run_id": "monai0000000", "code_commit": "0" * 40, "catalog_sha256": sha256_of(cls.catalog), "catalog_version": 1, "clean_tree": True}
         (cls.run_dir / "RUN.json").write_text(json.dumps(record), encoding="utf-8")
         args = ["--catalog", str(cls.catalog), "--out", str(cls.run_dir), "--epochs", "1", "--seed", "1", "--size", "32",
                 "--device", "cpu", "--witness", "2", "--keep-epochs", "0", "--block", "architecture=densenet121"]
@@ -993,7 +999,7 @@ class RunWithTheStrongBlockTest(unittest.TestCase):
     def run_with(self, name, size, words):
         run_dir = self.tmp / name
         run_dir.mkdir()
-        record = {"run_id": f"{name}-000", "code_commit": "0" * 40, "catalog_sha256": "0" * 64, "catalog_version": 1, "clean_tree": True}
+        record = {"run_id": f"{name}-000", "code_commit": "0" * 40, "catalog_sha256": sha256_of(self.catalog), "catalog_version": 1, "clean_tree": True}
         (run_dir / "RUN.json").write_text(json.dumps(record), encoding="utf-8")
         args = ["--catalog", str(self.catalog), "--out", str(run_dir), "--epochs", "1", "--seed", "1", "--size", str(size),
                 "--device", "cpu", "--witness", "2", "--keep-epochs", "0"]

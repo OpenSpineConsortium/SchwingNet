@@ -6,6 +6,7 @@ in words where the parent was trained to see its input differently.
 It needs the train environment, as tests/test_train_blocks.py does, and skips under the required
 check's plain python3."""
 
+import hashlib
 import importlib.util
 import json
 import os
@@ -26,9 +27,12 @@ def load(name):
     return module
 
 
-def new_run(folder, run_id):
+def new_run(folder, run_id, catalog):
+    """A run's folder with the record tools/flow.py writes, naming the catalog by its sha256, the
+    catalog the trainer then reads and no other."""
     folder.mkdir(parents=True)
-    record = {"run_id": run_id, "code_commit": "0" * 40, "catalog_sha256": "0" * 64, "catalog_version": 1, "clean_tree": True}
+    named = hashlib.sha256(Path(catalog).read_bytes()).hexdigest()
+    record = {"run_id": run_id, "code_commit": "0" * 40, "catalog_sha256": named, "catalog_version": 1, "clean_tree": True}
     (folder / "RUN.json").write_text(json.dumps(record), encoding="utf-8")
     return folder
 
@@ -41,7 +45,7 @@ class InitTest(unittest.TestCase):
 
         cls.tmp = Path(tempfile.mkdtemp())
         cls.catalog = RunWithEveryBlockTest.make_catalog(cls.tmp)
-        cls.parent = new_run(cls.tmp / "parent", "parentrun000")
+        cls.parent = new_run(cls.tmp / "parent", "parentrun000", cls.catalog)
         cls.rc = cls.train(cls.parent)
 
     @classmethod
@@ -68,7 +72,7 @@ class InitTest(unittest.TestCase):
 
     def test_the_child_records_its_parent_and_says_so(self):
         train = load("train")
-        child = new_run(self.tmp / "child", "childrun0000")
+        child = new_run(self.tmp / "child", "childrun0000", self.catalog)
         self.assertEqual(self.train(child, "--init", str(self.best())), 0)
         facts = json.loads((child / "train" / "checkpoint.json").read_text(encoding="utf-8"))
         self.assertEqual(facts["parent"], {"file": "best.pt", "sha256": train.sha256_of(self.best()), "run_id": "parentrun000"})
@@ -82,18 +86,18 @@ class InitTest(unittest.TestCase):
         self.assertIn("a rebase", (self.parent / "train" / "MODEL.md").read_text(encoding="utf-8"))
 
     def test_a_parent_that_saw_its_input_differently_is_refused(self):
-        child = new_run(self.tmp / "scaled", "scaledrun000")
+        child = new_run(self.tmp / "scaled", "scaledrun000", self.catalog)
         self.assertEqual(self.train(child, "--init", str(self.best()), "--block", "normalise=imagenet"), 1)
-        resized = new_run(self.tmp / "resized", "resizedrun00")
+        resized = new_run(self.tmp / "resized", "resizedrun00", self.catalog)
         args = ["--catalog", str(self.catalog), "--out", str(resized), "--epochs", "1", "--seed", "1", "--size", "48",
                 "--device", "cpu", "--witness", "2", "--keep-epochs", "0", "--init", str(self.best())]
         with mock.patch.dict(os.environ, {"SCHWINGNET_WANDB": "off"}):
             self.assertEqual(load("train").main(args), 1)
 
     def test_imagenet_and_a_parent_together_or_a_missing_parent_are_refused(self):
-        both = new_run(self.tmp / "both", "bothrun00000")
+        both = new_run(self.tmp / "both", "bothrun00000", self.catalog)
         self.assertEqual(self.train(both, "--init", str(self.best()), "--weights", str(self.best())), 1)
-        missing = new_run(self.tmp / "missing", "missingrun00")
+        missing = new_run(self.tmp / "missing", "missingrun00", self.catalog)
         self.assertEqual(self.train(missing, "--init", str(self.tmp / "nowhere.pt")), 1)
 
 
