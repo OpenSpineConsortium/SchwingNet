@@ -420,16 +420,25 @@ docs/research/block-smoke/.
   <run>/.lock and the trainer holds train/.lock, so a second start of a row still running is
   refused in words; a row counts as finished only once it wrote FINISHED.json, its last file,
   after the ledger row and the report; a resume is held to the sha256 of its catalog, ImageNet
-  file and parent, and an unreadable last.pt is moved aside to last.pt.unreadable and the row
-  trains again from epoch 0.
+  file and parent, and every step to the catalog RUN.json names; train/last.pt is bound to its
+  bytes by train/last.pt.sha256, and a last.pt torch cannot read, whose bytes that record does not
+  name, that has no record, or whose best line names weights best.pt does not hold is moved aside
+  to last.pt.unreadable and the row trains again from epoch 0; training counts as ended only where
+  train/checkpoint.json names the sha256 of the best.pt beside it; LEDGER.md is written whole under
+  LEDGER.md.lock; and in slurm mode each job is in RUN.json from its submission, so a start that
+  dies while its job waits leaves the job for the next start to wait on.
 - **What Metaflow does not cover.** Resume continues a run that did not finish; reuse across two
   finished runs, a catalog rebuilt on a new commit or an ingest on a new date, stays with the
   tools' own content addressing, whose gaps are issue #260. The fetch, stage 1, resumes its own
   downloads by its .part files.
 - **Live views.** Each row's Metaflow card refreshes every fifteen seconds from the trainer's
   metrics, read with `python flows/sweep.py card server` on the grid; W&B carries each step live
-  where the grid has the key; and the status word prints each plan's PROGRESS.txt right after the space tally, before
-  anything its 400 lines could cut.
+  where the grid has the key; and the status word hands its page of 400 lines and 64 KiB out in
+  the order a reader needs it (grid/status-page.awk): the space tally, each plan's PROGRESS.txt,
+  the newest jobs and every failed job's log, then the stage reports with the sample manifest
+  among them by its date, each section keeping its place and saying what it left out, the last
+  line naming any section that found no room. A refused or failed row shows its code there, and
+  the tools' reason after it only where the reason can quote no value.
 - **Two fixes the cover found before any GPU ran.** A training batch of one crop raises in
   BatchNorm at 32 pixels for every architecture (densenet121 at 48 too), so a last batch of one
   crop now joins the batch before it where a probe shows the model cannot train on one; nothing
