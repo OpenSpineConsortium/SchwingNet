@@ -124,6 +124,18 @@ def test_the_runs_a_live_beat_names_are_live_and_the_newest_while_a_launcher_sta
     assert marked_live([], [Beat("", "", NOW)], "", NOW) == []
 
 
+def test_a_live_beat_naming_a_run_the_listing_lacks_marks_the_newest_live() -> None:
+    # Two launchers of one key seconds apart: the second lists the runs before the first's resume
+    # of the newest is registered and reads the beats after the first's beat has named it.
+    newest = RunState("1801", finished=False, successful=False)
+    older = RunState("1792", finished=True, successful=True)
+    named = marked_live([newest, older], [Beat("1810", "", NOW)], "", NOW)
+    assert [run.live for run in named] == [True, False]
+    assert decide(named) == (RUN, None)
+    stale = [Beat("1810", "", NOW - LIVE_SECONDS - 1)]
+    assert decide(marked_live([newest, older], stale, "", NOW)) == (RESUME, "1801")
+
+
 def test_the_runs_must_hold_together() -> None:
     with pytest.raises(ViolationError):
         decide([RunState("", finished=False, successful=False)])

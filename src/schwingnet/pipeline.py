@@ -88,21 +88,28 @@ def is_live(beat: Beat, job: str, now: float) -> bool:
     lambda result, runs, beats, job, now: (
         len(result) == 0
         or result[0].live
-        or not any(b.run_id == "" and is_live(b, job, now) for b in beats)
+        or not any(
+            is_live(b, job, now) and all(b.run_id != run.run_id for run in runs) for b in beats
+        )
     ),
-    "the newest is live while a live beat names no run yet",
+    "the newest is live while a live beat names no run listed",
 )
 def marked_live(
     runs: Sequence[RunState], beats: Sequence[Beat], job: str, now: float
 ) -> list[RunState]:
     """The runs, newest first, with each one a live beat names marked live, and the newest too
-    where a live beat names no run yet: a launcher that has started its flow before Metaflow
-    wrote its run's id may be running the newest, and the newest is the only one decide would
-    resume. The launcher lists the runs before it reads the beats, and every launcher writes its
-    beat before its flow makes a run, so a run it lists that is live has a beat it reads."""
+    where a live beat names no run listed: a launcher whose flow Metaflow has named no run for
+    yet, or named one only after the runs were listed, may be running the newest or resuming
+    it, and the newest is the only one decide would resume. The launcher lists the runs before
+    it reads the beats, and every launcher writes its beat before its flow makes a run, so a run
+    it lists that is live has a beat it reads, and a live run it missed has a beat naming a run
+    it did not list, or none."""
+    listed = {run.run_id for run in runs}
     held = {beat.run_id for beat in beats if is_live(beat, job, now)}
+    # "" is never listed, since every run has an id
+    unlisted = any(run_id not in listed for run_id in held)
     return [
-        run._replace(live=run.live or run.run_id in held or (at == 0 and "" in held))
+        run._replace(live=run.live or run.run_id in held or (at == 0 and unlisted))
         for at, run in enumerate(runs)
     ]
 

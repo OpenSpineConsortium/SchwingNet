@@ -636,6 +636,23 @@ class SweepFlowTest(unittest.TestCase):
         self.assertEqual((said[0]["decision"], said[0]["origin"], said[0].get("live")), ("resume", first_run, None), out)
         self.assertEqual(calls, ["row b", "results"])
 
+    def test_a_fresh_beat_naming_a_run_the_listing_lacks_keeps_the_newest_from_being_resumed(self):
+        plan = {"plan": "race", "first": ["a", "b"], "second": []}
+        code, said, out, calls = self.sweep(plan, 1, FLOW_TEST_KILL="b")
+        self.assertEqual(code, 137, out)
+        first_run, key = said[-1]["run"].split("/")[1], said[0]["key"]
+
+        # a launch on another node that began resuming the cut run after this one listed the
+        # runs and before it read the beats: its beat names a run this listing lacks
+        beats = self.root / "launches" / "SweepFlow" / key
+        beats.mkdir(parents=True, exist_ok=True)
+        record = {"key": key, "run": "9" + first_run, "host": "node9", "pid": 6, "slurm_job": "4244", "beat": time.time()}
+        (beats / "node9-6.json").write_text(json.dumps(record), encoding="utf-8")
+        code, said, out, calls = self.sweep(plan, 2)
+        self.assertEqual(code, 0, out)
+        self.assertEqual((said[0]["decision"], said[0]["origin"], said[0]["live"]), ("run", None, first_run), out)
+        self.assertEqual(calls, ["prepare", "row a", "row b", "results"])
+
     def test_a_sweep_killed_mid_row_resumes_that_row_and_the_warm_starts_alone(self):
         plan = {"plan": "smoke", "first": ["a", "b", "c"], "second": ["d"]}
         code, said, out, calls = self.sweep(plan, 1, FLOW_TEST_KILL="c")

@@ -72,7 +72,8 @@ heartbeat, <root>/launches/<Flow>/<key>/<host>-<pid>.json, written before the fl
 naming the run within a second of Metaflow's writing its id, rewritten every minute with the
 host, the process and SLURM_JOB_ID, and taken away when the flow ends. The launcher lists the
 runs before it reads the beats, so a live run it lists always has a beat it reads; a newest run
-that a fresh beat names, or any newest run while a fresh beat names none yet, is live
+that a fresh beat names is live, and so is any newest run while a fresh beat names none yet, or
+one the listing lacks, made after it by a launch that may be resuming the newest
 (schwingnet.pipeline.marked_live), and the launch starts a run of its own beside it, as two jobs
 of a stage ran before Metaflow, the stage's own locks ordering what may not overlap: a second
 catalog job waits on BUILD.lock and builds with the shards that landed since. A beat left by a
