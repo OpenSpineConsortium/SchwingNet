@@ -1017,6 +1017,16 @@ bench_inputs_missing() {  # what bench $id still lacks on the data root, one lin
       [ -f "$DATA_ROOT/hf_xvr_data/raw/deepfluoro/subject01/volume.nii.gz" ] || echo "xvr's DeepFluoro data (fetch hf_xvr_data first)" ;;
   esac
 }
+bench_job_of() {  # the job number a benchmark report's first line names
+  sed -n '1s/.*: job \([0-9][0-9]*\) .*/\1/p' "$1"
+}
+bench_failed_on_older_code() {  # a report whose last line is a nonzero exit, from a commit not the checkout's
+  local last began
+  last=$(tail -n 1 "$1")
+  [[ "$last" =~ ^-\ exit\ [1-9][0-9]*\  ]] || return 1
+  began=$(sed -n '1s/.*, commit \([0-9a-f]*\|unknown\),.*/\1/p' "$1")
+  [ -n "$began" ] && [ -n "$(bench_job_of "$1")" ] && [ "$began" != "${commit:0:7}" ]
+}
 word_bench() {  # one public model's benchmark (#287): queued once, its report printed on every later send
   local report=$LOGS/BENCH-$id.md busy missing holds opts setup
   case "$id" in
@@ -1029,7 +1039,11 @@ word_bench() {  # one public model's benchmark (#287): queued once, its report p
     # Kept, so the owner's count of one job each holds: a report that stands queues nothing.
     echo "## $(basename "$report") ($(date -r "$report" '+%F %T'))"
     head -n 100 "$report" | LC_ALL=C tr -cd '\11\12\40-\176' | masked | head -c 20000
-    return 0
+    bench_failed_on_older_code "$report" || return 0
+    # A benchmark that failed scored nothing, so once a fix has moved the checkout it is queued
+    # once more, its report kept under its job's number (#312); the same commit queues nothing.
+    mv "$report" "$LOGS/BENCH-$id-$(bench_job_of "$report").md" || return 1
+    echo "  the report above ended in failure on older code: queueing the benchmark again at $commit"
   fi
   missing=$(bench_inputs_missing)
   [ -z "$missing" ] || { echo "refusing: bench $id needs $missing"; return 2; }

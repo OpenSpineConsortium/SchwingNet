@@ -241,7 +241,15 @@ def deepfluoro_views(h5):
             if (subject, view) in DEEPFLUORO_SKIP or "gt-seg" not in group:
                 continue
             rotate = bool(np.asarray(group["rot-180-for-up"])) if "rot-180-for-up" in group else False
-            yield subject, view, np.asarray(group["image/pixels"], dtype="float32"), np.asarray(group["gt-seg"]), rotate
+            yield subject, view, np.asarray(group["image/pixels"], dtype="float32"), image_pixels(group["gt-seg"]), rotate
+
+
+def image_pixels(node):
+    """The pixels of an h5 node that is either an array or an xreg image group (dir-mat, origin,
+    pixels, spacing), the layout the IPCAI 2020 file gives each view's gt-seg (#312)."""
+    import numpy as np
+
+    return np.asarray(node["pixels"] if hasattr(node, "keys") else node)
 
 
 def readings(pixels):
