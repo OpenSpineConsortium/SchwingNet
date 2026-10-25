@@ -22,18 +22,32 @@ the way each route lands its files:
                   manifest, idc-index's series_size_MB in units of 10**6 bytes
     zenodo-token  grid/zenodo_fetch.py: the files of a record read with the owner's token, as
                   they are
+    gdown         gdown 6.4.2 on one Drive file: the length a one-byte range request on Drive's
+                  download address states, with the confirmation form Drive shows for a file it
+                  cannot scan read once, as gdown reads it; gdown downloads into a temporary file
+                  beside the output and moves it over whatever is there, so a resend needs it all
+    kaggle, kaggle-dataset
+                  the kaggle 2.2.5 client's competitions and datasets download: the address
+                  Kaggle's API redirects the client's own request to, asked with the token and
+                  never followed with it, then the length a one-byte range request on that storage
+                  states; the client writes <competition>.<ext> or <slug>.zip and resumes or
+                  rewrites a shorter file in place
 
 It prints one line, "<total bytes> <bytes still to land> <how>", and exits 0. The bytes still to
 land leave out what an earlier try verified or landed whole, so a resend asks only for the rest.
 A source whose size it cannot state exactly is one line and exit 3; a source that does not
 answer, one line and exit 2. Runs in a Slurm job, in the grid's acq environment, on the standard
-library alone; a token comes from the environment (HF_TOKEN, ZENODO_TOKEN), is sent only to its
-own host and is never printed.
+library alone; a token comes from the environment (HF_TOKEN, ZENODO_TOKEN, KAGGLE_API_TOKEN), is
+sent only to its own host and is never printed. The Redivis route is sized by grid/redivis_fetch.py
+--size, in the environment that holds the Redivis client.
 
     python grid/fetch_size.py hf --repo benjamindkilleen/fluoroseg --dest <landing>/raw
     python grid/fetch_size.py acq zenodo --collection zenodo_lumos --record 18173664 \
         --include . --data-root <data>
     python grid/fetch_size.py idc --manifest <landing>/meta/idc_nlst.csv --landing <landing>
+    python grid/fetch_size.py gdown --id 1lJqVIuVFbdc9Bcmj17ac_cha-gW827Q6 --dest <landing>/raw/gdown_<date>
+    python grid/fetch_size.py kaggle-dataset --dataset salmankey/scoliosis-yolov5-annotated-spine-x-ray-dataset \
+        --dest <landing>/raw
 """
 
 import argparse
@@ -48,6 +62,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import zipfile
+from html.parser import HTMLParser
 from pathlib import Path
 from xml.etree import ElementTree
 
@@ -70,6 +85,15 @@ COMPRESSOR_MAGIC = (
 )
 TAR_BLOCK = 512
 USTAR_AT = 257
+# Drive's download address as gdown 6.4.2 reaches it, with the confirmation Drive asks for a file
+# it cannot scan for viruses given up front; the form on its page, read where it still asks.
+DRIVE = "https://drive.usercontent.google.com/download"
+KAGGLE_API = "https://api.kaggle.com/v1"
+# The most of a page sent in place of a file that is read for its form.
+PAGE_LIMIT = 1 << 20
+# A length of more digits than the size rule counts is no length (grid/size-rule.sh, is_count).
+CONTENT_RANGE = re.compile(r"^bytes 0-0/([0-9]{1,18})$")
+LENGTH = re.compile(r"^[0-9]{1,18}$")
 
 
 class NoSize(Exception):
@@ -78,6 +102,16 @@ class NoSize(Exception):
 
 class NoAnswer(Exception):
     """The source did not answer, or answered with an error."""
+
+
+class NotRanged(NoSize):
+    """A server that answered a range request with the whole of what it serves: the length it
+    stated for it, where it stated one plainly, and the first part of the page it sent, where it
+    sent a page."""
+
+    def __init__(self, length=None, page=None):
+        super().__init__("the file server answers no range request")
+        self.length, self.page = length, page
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -98,14 +132,45 @@ def get(url, token="", byte_range=None, timeout=120):
     try:
         with opener.open(request, timeout=timeout) as answer:
             if byte_range and answer.status != 206:
-                # Reading on would download the whole file to learn what its end says.
-                raise NoSize("the file server answers no range request")
+                # Reading on would download the whole file to learn what its end says; a page is
+                # read only as far as its form, which is all a page in place of a file holds.
+                raise NotRanged(stated_length(answer.headers), first_page(answer))
             limit = byte_range[1] - byte_range[0] + 1 if byte_range else -1
             return answer.read(limit), answer.headers
     except urllib.error.HTTPError as error:
         raise NoAnswer(f"http {error.code}") from None
     except (urllib.error.URLError, OSError):
         raise NoAnswer("no connection") from None
+
+
+def stated_length(headers):
+    """The length an answer states for its whole body, where it states it plainly: no encoding
+    between the bytes sent and the bytes that land, as urllib and the fetchers write them."""
+    encoding = (headers.get("Content-Encoding") or "identity").strip().lower()
+    length = (headers.get("Content-Length") or "").strip()
+    return int(length) if encoding == "identity" and LENGTH.match(length) else None
+
+
+def first_page(answer):
+    """The first part of a page an answer sends in place of a file, else None."""
+    kind = (answer.headers.get("Content-Type") or "").split(";")[0].strip().lower()
+    return answer.read(PAGE_LIMIT) if kind == "text/html" else None
+
+
+def first_byte_total(url, fetch=get, token=""):
+    """The exact size of the file at an address: the total a one-byte range request states, or the
+    length an answer that ignores the range states for the whole file. A page sent in place of the
+    file is no size of it."""
+    try:
+        _, headers = fetch(url, token, (0, 0))
+    except NotRanged as answer:
+        if answer.page is None and answer.length is not None:
+            return answer.length
+        raise
+    match = CONTENT_RANGE.match((headers.get("Content-Range") or "").strip())
+    if not match:
+        raise NoSize("the file server states no length beside its range")
+    return int(match.group(1))
 
 
 def next_page(link):
@@ -361,6 +426,133 @@ def size_zenodo_token(args, fetch=get):
     return total, total - landed, f"{len(files)} files listed by zenodo"
 
 
+def drive_address(file_id):
+    """Drive's download address for one file, its confirmation given."""
+    return f"{DRIVE}?{urllib.parse.urlencode({'id': file_id, 'export': 'download', 'confirm': 't'})}"
+
+
+class DriveForm(HTMLParser):
+    """The form Drive's page shows where it cannot scan a file for viruses, as gdown reads it: the
+    form download-form, its action and its hidden inputs."""
+
+    def __init__(self):
+        super().__init__()
+        self.action, self.fields, self.inside = None, {}, False
+
+    def handle_starttag(self, tag, attrs):
+        named = dict(attrs)
+        if tag == "form" and named.get("id") == "download-form":
+            self.action, self.inside = named.get("action") or "", True
+        elif tag == "input" and self.inside and named.get("type") == "hidden" and named.get("name"):
+            self.fields[named["name"]] = named.get("value") or ""
+
+    def handle_endtag(self, tag):
+        if tag == "form":
+            self.inside = False
+
+
+def confirmed_address(page):
+    """The address the confirmation form on Drive's page sends to, on Drive's own download host."""
+    form = DriveForm()
+    form.feed(page.decode("utf-8", "replace"))
+    if not form.action or not form.action.startswith(DRIVE + "?") and form.action != DRIVE:
+        raise NoSize("drive answered with a page and no download form")
+    parts = urllib.parse.urlsplit(form.action.replace("&amp;", "&"))
+    query = dict(urllib.parse.parse_qsl(parts.query))
+    query.update(form.fields)
+    return urllib.parse.urlunsplit(parts._replace(query=urllib.parse.urlencode(query)))
+
+
+def size_gdown(args, fetch=get):
+    """gdown's one file: what Drive states for it. gdown run without --continue writes the whole
+    file into a temporary one beside the output before it moves it over whatever is there, so all
+    of it is still to land however much a try before left."""
+    address = drive_address(args.id)
+    try:
+        total = first_byte_total(address, fetch)
+    except NotRanged as answer:
+        if answer.page is None:
+            raise
+        total = first_byte_total(confirmed_address(answer.page), fetch)
+    return total, total, "the drive file answers"
+
+
+def post_for_location(url, token, payload, timeout=120):
+    """One JSON request to Kaggle's API with the token, which it answers with a redirect to the
+    file's storage: the address the redirect names, never followed, so the token reaches the API's
+    own host alone, as the client's session drops it when it follows the redirect itself."""
+    request = urllib.request.Request(
+        url,
+        data=json.dumps(payload).encode("utf-8"),
+        method="POST",
+        headers={
+            "User-Agent": "schwingnet-fetch-size",
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {token}",
+        },
+    )
+    try:
+        with urllib.request.build_opener(NoRedirect).open(request, timeout=timeout):
+            raise NoSize("the api answered with no redirect to the file")
+    except urllib.error.HTTPError as error:
+        location = error.headers.get("Location") if 300 <= error.code < 400 else None
+        if not location:
+            raise NoAnswer(f"http {error.code}") from None
+        return urllib.parse.urljoin(url, location)
+    except (urllib.error.URLError, OSError):
+        raise NoAnswer("no connection") from None
+
+
+def kaggle_storage(service, payload, post):
+    """Where Kaggle's API sends the client for a download, asked with the token the job loaded."""
+    token = os.environ.get("KAGGLE_API_TOKEN", "")
+    if not token:
+        raise NoSize("no kaggle token in the environment, so the api cannot be asked")
+    return post(f"{KAGGLE_API}/{service}", token, payload)
+
+
+def kaggle_need(path, total):
+    """What the Kaggle client still writes into PATH: it skips a whole file newer than the
+    storage's, resumes a shorter one it can prove is the same object and otherwise rewrites it in
+    place, so no more than the file less what is there."""
+    have = path.stat().st_size if path.is_file() else 0
+    return max(total - have, 0)
+
+
+def size_kaggle(args, fetch=get, post=post_for_location):
+    """kaggle competitions download -c: the competition's archive, landed as
+    <competition>.<what follows the last dot of the storage address>, as the client names it."""
+    location = kaggle_storage(
+        "competitions.CompetitionApiService/DownloadDataFiles",
+        {"competitionName": args.competition},
+        post,
+    )
+    total = first_byte_total(location, fetch)
+    name = f"{args.competition}.{location.split('?')[0].split('.')[-1]}"
+    return total, kaggle_need(args.dest / name, total), "the archive kaggle's storage states"
+
+
+def kaggle_dataset_request(dataset):
+    """The client's request for OWNER/SLUG or OWNER/SLUG/VERSION, and the name it lands as."""
+    parts = dataset.split("/")
+    if len(parts) not in (2, 3) or not all(parts):
+        raise NoSize("a kaggle dataset named without its owner")
+    payload = {"ownerSlug": parts[0], "datasetSlug": parts[1]}
+    if len(parts) == 3:
+        if not parts[2].isdigit() or not parts[2].isascii():
+            raise NoSize("a kaggle dataset version that is no number")
+        payload["datasetVersionNumber"] = int(parts[2])
+    return payload, f"{parts[1]}.zip"
+
+
+def size_kaggle_dataset(args, fetch=get, post=post_for_location):
+    """kaggle datasets download -d: the dataset's archive, landed as <slug>.zip and never unpacked."""
+    payload, name = kaggle_dataset_request(args.dataset)
+    location = kaggle_storage("datasets.DatasetApiService/DownloadDataset", payload, post)
+    total = first_byte_total(location, fetch)
+    return total, kaggle_need(args.dest / name, total), "the archive kaggle's storage states"
+
+
 def parsed(route, argv):
     """The arguments a route's fetcher takes that bear on the size; the rest are left to it."""
     parser = argparse.ArgumentParser(prog=f"fetch_size.py {route}")
@@ -382,6 +574,15 @@ def parsed(route, argv):
     elif route == "idc":
         parser.add_argument("--manifest", required=True, type=Path)
         parser.add_argument("--landing", required=True, type=Path)
+    elif route == "gdown":
+        parser.add_argument("--id", required=True)
+        parser.add_argument("--dest", required=True, type=Path)
+    elif route == "kaggle":
+        parser.add_argument("--competition", required=True)
+        parser.add_argument("--dest", required=True, type=Path)
+    elif route == "kaggle-dataset":
+        parser.add_argument("--dataset", required=True)
+        parser.add_argument("--dest", required=True, type=Path)
     else:
         parser.add_argument("--record", required=True)
         parser.add_argument("--dest", required=True, type=Path)
@@ -390,20 +591,23 @@ def parsed(route, argv):
 
 
 SIZERS = {
-    "hf": size_hf,
-    "acq": size_acq,
-    "idc": lambda args, fetch: size_idc(args),
-    "zenodo-token": size_zenodo_token,
+    "hf": lambda args, fetch, post: size_hf(args, fetch),
+    "acq": lambda args, fetch, post: size_acq(args, fetch),
+    "idc": lambda args, fetch, post: size_idc(args),
+    "zenodo-token": lambda args, fetch, post: size_zenodo_token(args, fetch),
+    "gdown": lambda args, fetch, post: size_gdown(args, fetch),
+    "kaggle": size_kaggle,
+    "kaggle-dataset": size_kaggle_dataset,
 }
 
 
-def main(argv=None, fetch=get):
+def main(argv=None, fetch=get, post=post_for_location):
     argv = sys.argv[1:] if argv is None else argv
     if not argv or argv[0] not in SIZERS:
         print(f"no exact size; no size reader for this route; one of {' '.join(SIZERS)}")
         return NO_SIZE
     try:
-        total, need, how = SIZERS[argv[0]](parsed(argv[0], argv[1:]), fetch)
+        total, need, how = SIZERS[argv[0]](parsed(argv[0], argv[1:]), fetch, post)
     except NoSize as reason:
         print(f"no exact size; {reason}")
         return NO_SIZE

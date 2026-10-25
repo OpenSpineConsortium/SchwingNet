@@ -1278,13 +1278,66 @@ class SizeRuleTest(unittest.TestCase):
                                source="zenodo_lumos")
         self.assertEqual(code, 4, out)
         self.assertNotIn("acquisition_fetch:", out)
-        # routes with no size reader yet are refused, so no dataset lands without its size known
-        for route in ("gdown", "kaggle", "kaggle-dataset", "redivis"):
-            # an id as the data platform writes one, and the route's name in the plain words status keeps
-            source, words = "x_" + route.replace("-", "_"), route.replace("-", " ")
-            code, out = self.fetch(1, route=route, args="anything", source=source)
+
+    def test_drive_kaggle_and_redivis_are_sized_before_their_clients_run(self):
+        # #163: each route asks its size reader with what it will land and where, and its client
+        # runs only once the rule has admitted that size
+        clients = self.tmp / "clients"
+        (clients / "redivis" / "bin").mkdir(parents=True)
+        (self.tmp / "acq" / "bin").mkdir(parents=True, exist_ok=True)
+        stand_ins = {
+            self.tmp / "acq" / "bin" / "gdown": 'echo "gdown: $* in $(basename "$PWD")"\n',
+            clients / "kaggle": 'echo "kaggle: $* with a token of ${#KAGGLE_API_TOKEN} characters"\n',
+            # the Redivis client's environment is its own size reader, asked with --size
+            clients / "redivis" / "bin" / "python": (
+                '[ "$1" = -c ] && exit 0\n'
+                'case " $* " in *" --size "*) echo "redivis sizer: $*" >&2; printf \'%s\\n\' "$FAKE_SIZE";'
+                ' exit "${FAKE_SIZE_RC:-0}" ;; esac\n'
+                'echo "redivis: $* with a token of ${#REDIVIS_API_TOKEN} characters"\n'),
+        }
+        for path, body in stand_ins.items():
+            path.write_text("#!/bin/bash\n" + body, encoding="utf-8")
+            path.chmod(0o755)
+        data = self.volume.data
+        routes = {
+            "gdown": ("1lJqVIuVFbdc9Bcmj17ac_cha-gW827Q6", "sizer: gdown --id 1lJqVIuVFbdc9Bcmj17ac_cha-gW827Q6 --dest "
+                      f"{data}/x_gdown/raw/gdown_", "gdown: 1lJqVIuVFbdc9Bcmj17ac_cha-gW827Q6 in gdown_"),
+            "kaggle": ("rsna-str-pulmonary-embolism-detection",
+                       f"sizer: kaggle --competition rsna-str-pulmonary-embolism-detection --dest {data}/x_kaggle/raw",
+                       f"kaggle: competitions download -c rsna-str-pulmonary-embolism-detection -p {data}/x_kaggle/raw"),
+            "kaggle-dataset": ("salmankey/scoliosis-yolov5-annotated-spine-x-ray-dataset",
+                               "sizer: kaggle-dataset --dataset salmankey/scoliosis-yolov5-annotated-spine-x-ray-dataset "
+                               f"--dest {data}/x_kaggle_dataset/raw",
+                               "kaggle: datasets download -d salmankey/scoliosis-yolov5-annotated-spine-x-ray-dataset "
+                               f"-p {data}/x_kaggle_dataset/raw"),
+            "redivis": ("--max-gb 10 --files aimi.ol3i:asvh:v1_0.ol3i:n1y3",
+                        f"redivis sizer: {ROOT}/grid/redivis_fetch.py --size --dest {data}/x_redivis/raw "
+                        f"--manifest {data}/x_redivis/meta --max-gb 10 --files aimi.ol3i:asvh:v1_0.ol3i:n1y3",
+                        f"redivis: {ROOT}/grid/redivis_fetch.py --dest {data}/x_redivis/raw "
+                        f"--manifest {data}/x_redivis/meta --max-gb 10 --files aimi.ol3i:asvh:v1_0.ol3i:n1y3"),
+        }
+        for route, (args, asked, ran) in routes.items():
+            source = "x_" + route.replace("-", "_")
+            env = dict(KAGGLE_BIN=str(clients / "kaggle"), REDIVIS_ENV=str(clients / "redivis"))
+            code, out = self.fetch(10, route=route, args=args, source=source, **env)
+            self.assertEqual(code, 0, f"{route}: {out}")
+            self.assertIn(asked, out)
+            self.assertIn(ran, out)
+            self.assertIn(f"{source}: admitted; it needs 10 gb of its 10 gb by 3 files listed by the hub", shown(out))
+            self.assertNotIn("not-a-token", out)
+            # one that would pass the room lands nothing
+            code, out = self.fetch(9000, route=route, args=args, source=source, **env)
             self.assertEqual(code, 4, f"{route}: {out}")
-            self.assertIn(f"{source}: refused; no exact size; the {words} route has no size reader yet at ", shown(out))
+            self.assertIn(asked, out)
+            self.assertNotIn(ran, out)
+            # and one whose size its reader cannot state, the same
+            code, out = self.fetch(0, route=route, args=args, source=source,
+                                   FAKE_SIZE="no exact size; drive answered with a page and no download form",
+                                   FAKE_SIZE_RC="3", **env)
+            self.assertEqual(code, 4, f"{route}: {out}")
+            self.assertIn(f"{source}: refused; no exact size; drive answered with a page and no download form at ", shown(out))
+        # the job carries no reader that answers "no size" for a route any more
+        self.assertNotIn("no_size_reader", (GRID / "platform-fetch.sbatch").read_text(encoding="utf-8"))
 
     def test_the_rule_counts_the_fetches_the_gate_sent_before_it(self):
         repo = repo_copy(self)
