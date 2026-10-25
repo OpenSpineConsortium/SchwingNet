@@ -39,6 +39,9 @@ NOTE_LINES = 12
 NOTES_PER_GROUP = 3
 NOTE_DEPTH = 2
 PAGE_BYTES = 55_000
+# The gate's output comes back through grid-accounts.yml, which keeps only a job's last 400 lines
+# (symphony-template tools/grid_accounts.py, LOG_LINES), so a page stays well under that in lines too.
+PAGE_LINES = 350
 # The index keeps what each reader gave, so a number can be stored as text (a header's "1" for
 # NumberOfFrames); SQL casts each to an integer, and anything not a number to 0, before Python compares.
 ROWS = """SELECT r.sources, COALESCE(f.rel, ''), f.path, f.role, f.format, CAST(f.size AS INTEGER),
@@ -193,19 +196,33 @@ def report(groups, roots=None):
     return [head] + tail + [group_section(name, groups[name]) for name in order]
 
 
-def pages(sections, limit):
+def chunks(section, limit, max_lines):
+    """A section longer than a page goes on over the next pages, never cut, by lines and by bytes."""
+    out, chunk = [], []
+    for line in section.splitlines(keepends=True):
+        line = line[:limit]
+        if chunk and (len(chunk) >= max_lines or sum(map(len, chunk)) + len(line) > limit):
+            out.append("".join(chunk))
+            chunk = ["(continued)\n"]
+        chunk.append(line)
+    return out + (["".join(chunk)] if chunk else [])
+
+
+def pages(sections, limit, max_lines=PAGE_LINES):
     out, page = [], ""
     for section in sections:
-        if page and len(page) + len(section) > limit:
-            out.append(page)
-            page = ""
-        page += section[:limit] + ("\n(cut)\n" if len(section) > limit else "") + "\n"
+        for chunk in chunks(section, limit - 1, max_lines - 1):
+            if page and (len(page) + len(chunk) + 1 > limit or
+                         page.count("\n") + chunk.count("\n") + 1 > max_lines):
+                out.append(page)
+                page = ""
+            page += chunk + "\n"
     return out + ([page] if page else [])
 
 
 def write(sections, out, limit):
     out = Path(out)
-    written = pages(sections, limit)
+    written = pages(sections, limit, PAGE_LINES)
     for number, text in enumerate(written, 1):
         # Folder names on the volume are not all ASCII; escaped, they stay readable and the page prints.
         out.with_name(f"{out.stem}-{number}{out.suffix}").write_text(text, encoding="ascii", errors="backslashreplace")
