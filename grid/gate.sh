@@ -87,9 +87,9 @@
 #   cancel <job>    cancel one of the gate's own live jobs and every other live job its word queued
 #                   with it (a fetch's bank and catalog), and nothing else
 #
-# While a version 1 run, a sweep or an experiment run lasts, grid/logs/HOLD names its job and
-# commit (grid/v1-driver.sbatch, grid/sweep-driver.sbatch, grid/experiment-driver.sbatch); the
-# gate's side skips its fast-forward while the file is there, and every word but a refused one
+# While a version 1 run, a sweep, an experiment run or a benchmark lasts, grid/logs/HOLD names its
+# job and commit (grid/v1-driver.sbatch, grid/sweep-driver.sbatch, grid/experiment-driver.sbatch,
+# grid/bench.sbatch); the gate's side skips its fast-forward while the file is there, and every word but a refused one
 # clears a hold whose job Slurm no longer holds, so the run's later steps run the code it
 # recorded. One file holds one job, so each run that takes it waits afterany on every other one
 # still live (checkout_holders) rather than run beside it.
@@ -275,12 +275,13 @@ chain() {  # chain DEPEND [run-xray-chain.sh arguments...]: the X-ray chain afte
   record "$XR_FETCH" xr_fetch; record "$(value_of bank "$after")" xr_bank; record "$XR_CATALOG" xr_catalog
 }
 checkout_holders() {  # afterany:<job> for every live job of the gate's that holds the checkout while it runs, comma-joined
-  # A version 1 run, a sweep and an experiment run each write grid/logs/HOLD, one file naming one
-  # job, and the first of two side by side to end would clear it while the other still runs, whose
-  # end check then finds the checkout moved and throws the run away; so each waits for the others.
+  # A version 1 run, a sweep, an experiment run and a benchmark each write grid/logs/HOLD, one file
+  # naming one job, and the first of two side by side to end would clear it while the other still
+  # runs, whose end check then finds the checkout moved and throws the run away; so each waits for
+  # the others, a sweep sent while a benchmark lasts up to its 12 hours among them.
   local job waits=""
   [ -f "$STATE" ] || return 0
-  for job in $(awk '$3 == "v1_driver" || $3 == "sweep" || $3 ~ /^experiment_[0-9]+$/ { print $1 }' "$STATE" | sort -u); do
+  for job in $(awk '$3 == "v1_driver" || $3 == "sweep" || $3 ~ /^experiment_[0-9]+$/ || $3 ~ /^bench_[a-z_]+$/ { print $1 }' "$STATE" | sort -u); do
     case "$QUEUED" in *" $job "*) waits=$(joined "$waits" "afterany:$job") ;; esac
   done
   echo "$waits"
@@ -1013,7 +1014,7 @@ bench_inputs_missing() {  # what bench $id still lacks on the data root, one lin
   esac
 }
 word_bench() {  # one public model's benchmark (#287): queued once, its report printed on every later send
-  local report=$LOGS/BENCH-$id.md busy missing
+  local report=$LOGS/BENCH-$id.md busy missing holds opts
   case "$id" in
     flexray_carmlspine|flexray_deepfluoro|xvr_deepfluoro) ;;
     *) echo "refusing: bench takes flexray_carmlspine, flexray_deepfluoro or xvr_deepfluoro"; return 64 ;;
@@ -1029,7 +1030,12 @@ word_bench() {  # one public model's benchmark (#287): queued once, its report p
   missing=$(bench_inputs_missing)
   [ -z "$missing" ] || { echo "refusing: bench $id needs $missing"; return 2; }
   envs_ready || { echo "refusing: the environments are not ready; 'start' makes them first"; return 75; }
-  submit "bench_$id" gpu BENCH="$id" DATA_ROOT="$DATA_ROOT" --no-requeue -- bench.sbatch > /dev/null || return 1
+  # The job holds the checkout while it runs (grid/bench.sbatch), so it is queued after every other
+  # run that holds it, as a sweep is, rather than refused.
+  holds=$(checkout_holders)
+  [ -z "$holds" ] || echo "  the checkout: after the live runs that hold it ($holds)"
+  depend_on "$holds" || return 1
+  submit "bench_$id" gpu BENCH="$id" DATA_ROOT="$DATA_ROOT" ${opts[@]+"${opts[@]}"} --no-requeue -- bench.sbatch > /dev/null || return 1
   echo "submitted one job. Send bench $id again once it ends to read its report, logs/BENCH-$id.md."
 }
 
@@ -1310,7 +1316,7 @@ word_cancel() {  # the job named, if the gate's and live, with every live job of
   "$SCANCEL" $cancel && echo "cancelled ($from): $cancel"
 }
 
-release_hold() {  # a run's hold (grid/v1-driver.sbatch, grid/sweep-driver.sbatch, grid/experiment-driver.sbatch) is cleared once Slurm no longer holds its job
+release_hold() {  # a run's hold (grid/v1-driver.sbatch, grid/sweep-driver.sbatch, grid/experiment-driver.sbatch, grid/bench.sbatch) is cleared once Slurm no longer holds its job
   local job
   [ -f "$LOGS/HOLD" ] || return 0
   job=$(awk '{ print $1; exit }' "$LOGS/HOLD")

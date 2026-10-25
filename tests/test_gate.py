@@ -1480,6 +1480,67 @@ esac
         self.assertEqual(len(self.submitted()), 1)
         self.assertTrue(report.exists())
 
+    def bench_job(self, name):
+        env = dict(os.environ, SCHWINGNET=str(self.repo), DATA_ROOT=str(self.data), LAB_VOLUME=str(self.tmp), FAKE=str(self.fake),
+                   BENCH=name, SLURM_JOB_ID="778")
+        return subprocess.run(["bash", str(self.repo / "grid" / "bench.sbatch")], cwd=self.repo / "grid", env=env,
+                              capture_output=True, text=True, timeout=60)
+
+    def test_a_benchmark_holds_the_checkout_while_it_runs_and_fails_when_it_moved(self):
+        # bench.sbatch runs its steps from the checkout for hours and its report names the commit it
+        # began on, so it holds grid/logs/HOLD as the drivers do, and a checkout that moved anyway
+        # fails the benchmark rather than leave a report naming code some steps did not run
+        self.git_repo()
+        commit = subprocess.run(["git", "-C", str(self.repo), "rev-parse", "HEAD"], check=True, capture_output=True,
+                                text=True).stdout.strip()
+        bundle = self.data / "hf_flexray_weights" / "raw"
+        bundle.mkdir(parents=True)
+        (bundle / "ensemble.json").write_text("{}\n", encoding="utf-8")
+        (self.repo / "grid" / "box.sh").write_text(
+            '#!/bin/bash\necho "$* hold=$(cat "$SCHWINGNET/grid/logs/HOLD" 2>/dev/null)" >> "$FAKE/box.log"\n'
+            '[[ "$*" == *bench_public.py* ]] || exit 0\n'
+            'if [ -f "$FAKE/move" ]; then\n'
+            '  git -C "$SCHWINGNET" -c user.name=t -c user.email=t@t -c gc.auto=0 -c maintenance.auto=false commit -q --allow-empty -m moved\n'
+            'fi\necho "scored"\n', encoding="utf-8")
+        hold = self.repo / "grid" / "logs" / "HOLD"
+        done = self.bench_job("flexray_carmlspine")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        boxed = self.boxed()
+        self.assertTrue(boxed and all(line.endswith(f" hold=778 {commit}") for line in boxed), boxed)
+        self.assertTrue([line for line in boxed if "tools/bench_public.py flexray-carmlspine" in line], boxed)
+        self.assertFalse(hold.exists())
+        report = self.repo / "grid" / "logs" / "BENCH-flexray_carmlspine.md"
+        self.assertIn(f"commit {commit[:7]}", report.read_text(encoding="utf-8").splitlines()[0])
+        self.assertIn("- exit 0 at ", report.read_text(encoding="utf-8"))
+        (self.fake / "move").write_text("1", encoding="utf-8")
+        done = self.bench_job("flexray_carmlspine")
+        self.assertEqual(done.returncode, 3, done.stdout)
+        self.assertIn("SN_BENCH_RC=3", done.stdout)
+        self.assertIn(f"- FAILED: the checkout moved from {commit[:7]} to ", report.read_text(encoding="utf-8"))
+        self.assertIn("- exit 3 at ", report.read_text(encoding="utf-8"))
+        self.assertFalse(hold.exists())
+
+    def test_a_benchmark_and_the_runs_that_hold_the_checkout_each_wait_for_the_others(self):
+        self.environments_ready()
+        self.weights_ready()
+        self.carmlspine_shards()
+        self.catalog_ready(version=2)
+        bundle = self.data / "hf_flexray_weights" / "raw"
+        bundle.mkdir(parents=True)
+        (bundle / "ensemble.json").write_text("{}\n", encoding="utf-8")
+        (self.data / "realxray" / "carmlspine" / "meta").mkdir(parents=True, exist_ok=True)
+        self.state_line(900, "sweep:synthetic", "sweep")
+        self.live(900)
+        done = self.gate("bench", "flexray_carmlspine")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("--dependency=afterany:900 ", self.line_of("bench.sbatch")[0])
+        self.assertIn("the checkout: after the live runs that hold it (afterany:900)", done.stdout)
+        job = self.recorded()["bench_flexray_carmlspine"]
+        self.live(job)
+        done = self.gate("v1")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn(f"--dependency=afterany:{job} ", self.line_of("v1-driver.sbatch")[0])
+
     def test_dropzip_deletes_once_then_prints_what_it_did(self):
         shutil.copy(GRID / "fetch-xray.json", self.repo / "grid" / "fetch-xray.json")
         # an id of no list, one with no raw folder yet, and a malformed send are refused and queue nothing
