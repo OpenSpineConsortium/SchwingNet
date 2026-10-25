@@ -1622,7 +1622,8 @@ esac
 
     def test_sweep_waits_on_the_setup_the_weights_a_live_catalog_and_every_run_that_holds_the_checkout(self):
         self.plan("real", "v1", weights=True)
-        self.state_line(700, "bank:vindr_spinexr", "catalog")
+        # start's first catalog, which may make a version of C-ArmLSpine alone; a bank's never does
+        self.state_line(700, "start", "catalog")
         self.state_line(701, "v1", "v1_driver")
         self.state_line(702, "sweep:synthetic", "sweep")
         self.state_line(703, "start", "xr_catalog")
@@ -1950,6 +1951,104 @@ esac
         for odd in ("vindr*", "../x", "Vindr"):
             self.assertEqual(self.chosen(odd)[0], 1, odd)
 
+    def test_the_chooser_alone_wants_c_armlspine_as_the_only_source_a_run_trains_or_selects_on(self):
+        # the v1 plan's catalog: C-ArmLSpine's train and validation parts and no other source's,
+        # since real is set against two_source, the same plan with VinDr-SpineXR beside it (#252)
+        self.carmlspine_shards()
+        self.catalog_ready(version=2)
+        self.catalog_ready(version=3, also=("vindr_spinexr",))
+        self.assertEqual(self.chosen(), (0, "catalog-000003-0123456789ab.sqlite"))
+        self.assertEqual(self.chosen("--alone"), (0, "catalog-000002-0123456789ab.sqlite"))
+        # another source's validation part counts as much as its train part; its test part does not
+        log = self.data / "_catalog" / "VERSIONS.jsonl"
+        lines = log.read_text(encoding="utf-8").splitlines()
+        lines[0] = lines[0].replace('"carmlspine|train":50', '"carmlspine|train":50,"lumos|validation":3,"lumos|test":2')
+        log.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        code, said = self.chosen("--alone")
+        self.assertEqual(code, 1)
+        self.assertIn("(catalog-000003-0123456789ab.sqlite) holds frames of vindr_spinexr to train or select on beside C-ArmLSpine's",
+                      said)
+        lines[0] = lines[0].replace(',"lumos|validation":3', "")
+        log.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        self.assertEqual(self.chosen("--alone"), (0, "catalog-000002-0123456789ab.sqlite"))
+        # every other test still holds: an unmarked version is passed over
+        (self.data / "_catalog" / "checked" / "catalog-000002-0123456789ab.sqlite").unlink()
+        self.assertEqual(self.chosen("--alone")[0], 1)
+        self.assertEqual(self.chosen("--alone", "vindr_spinexr")[0], 1, "one choice at a time")
+
+    def test_the_v1_plan_takes_the_version_that_qualifies_now_and_never_a_banks_build(self):
+        self.environments_ready()
+        self.carmlspine_shards()
+        self.catalog_ready(version=2)
+        self.plan("real", "v1")
+        self.plan("two_source", "with:vindr_spinexr")
+        self.state_line(700, "bank:vindr_spinexr", "bank")
+        self.state_line(701, "bank:vindr_spinexr", "catalog")
+        self.live(700, 701)
+        done = self.gate("sweep", "real")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("catalog-000002-0123456789ab.sqlite qualifies", done.stdout)
+        self.assertNotIn("--dependency", self.line_of("sweep-driver.sbatch")[0])
+        # with the bank's two-source version in, real still finds the one of C-ArmLSpine alone
+        self.live()
+        self.catalog_ready(version=3, also=("vindr_spinexr",))
+        done = self.gate("sweep", "real")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("catalog-000002-0123456789ab.sqlite qualifies", done.stdout)
+        # no version of C-ArmLSpine alone: the bank's build never makes one, so it is not waited on
+        (self.data / "_catalog" / "checked" / "catalog-000002-0123456789ab.sqlite").unlink()
+        self.live(701)
+        count = len(self.submitted())
+        done = self.gate("sweep", "real")
+        self.assertEqual(done.returncode, 75, done.stdout)
+        self.assertIn("refusing: no catalog version holds C-ArmLSpine alone for the v1 plan", done.stdout)
+        self.assertIn("holds frames of vindr_spinexr to train or select on", done.stdout)
+        self.assertEqual(len(self.submitted()), count)
+        # start's or v1's build may make one while C-ArmLSpine's are the only shards on the data root
+        self.state_line(702, "v1", "catalog")
+        self.live(701, 702)
+        done = self.gate("sweep", "real")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("--dependency=afterok:702 ", self.line_of("sweep-driver.sbatch")[-1])
+        # and never once another source's shard is there, which every build takes in
+        self.live(702)
+        shard = self.data / "vindr_spinexr" / "shards" / "2026-10-25-0a0b0c0d0e0f"
+        shard.mkdir(parents=True)
+        (shard / "MANIFEST.json").write_text("{}\n", encoding="utf-8")
+        count = len(self.submitted())
+        done = self.gate("sweep", "real")
+        self.assertEqual(done.returncode, 75, done.stdout)
+        self.assertIn("only while C-ArmLSpine's are the only shards on the data root", done.stdout)
+        self.assertEqual(len(self.submitted()), count)
+
+    def test_a_second_source_plan_waits_only_on_a_build_that_can_hold_that_source(self):
+        self.environments_ready()
+        self.carmlspine_shards()
+        self.catalog_ready(version=2)
+        self.plan("two_source", "with:vindr_spinexr")
+        # start's build is live but nothing of vindr_spinexr is banked: it will not hold the source
+        self.state_line(800, "start", "catalog")
+        self.live(800)
+        done = self.gate("sweep", "two_source")
+        self.assertEqual(done.returncode, 75, done.stdout)
+        self.assertIn("bank vindr_spinexr first", done.stdout)
+        self.assertEqual(self.submitted(), [])
+        # once its shard is on the data root, every build holds it
+        shard = self.data / "vindr_spinexr" / "shards" / "2026-10-25-0a0b0c0d0e0f"
+        shard.mkdir(parents=True)
+        (shard / "MANIFEST.json").write_text("{}\n", encoding="utf-8")
+        done = self.gate("sweep", "two_source")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("--dependency=afterok:800 ", self.line_of("sweep-driver.sbatch")[0])
+        # a version that holds it now: no wait, though a bank of it is live
+        self.catalog_ready(version=3, also=("vindr_spinexr",))
+        self.state_line(801, "bank:vindr_spinexr", "catalog")
+        self.live(800, 801)
+        done = self.gate("sweep", "two_source")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("catalog-000003-0123456789ab.sqlite qualifies", done.stdout)
+        self.assertNotIn("afterok:80", self.line_of("sweep-driver.sbatch")[1])
+
     def sweep_box(self):
         """box.sh as a fake for the sweep driver: it logs what it was asked and where the hold was,
         names $FAKE_CATALOG as the synthetic catalog, fails a split check while $FAKE/split_fails is
@@ -2058,6 +2157,35 @@ esac
         self.assertFalse((self.repo / "grid" / "logs" / "HOLD").exists())
         # a plan's name that is no id never reaches a path
         self.assertEqual(self.sweep_driver("../real").returncode, 2)
+
+
+    def test_the_sweep_driver_runs_the_v1_plan_on_c_armlspine_alone_and_the_second_source_plan_beside_it(self):
+        # the comparison the plans are for: real on the version of C-ArmLSpine alone, two_source on
+        # the newer one the bank word built with VinDr-SpineXR beside it, never both on the same file
+        self.git_repo()
+        self.sweep_box()
+        self.carmlspine_shards()
+        self.catalog_ready(version=2)
+        self.catalog_ready(version=3, also=("vindr_spinexr",))
+        self.plan("real", "v1")
+        self.plan("two_source", "with:vindr_spinexr")
+        catalogs = {}
+        for plan in ("real", "two_source"):
+            (self.fake / "box.log").unlink(missing_ok=True)
+            done = self.sweep_driver(plan)
+            self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+            launch = [line for line in self.boxed() if "flows/launch.py" in line]
+            catalogs[plan] = launch[0].split("--catalog ", 1)[1].split()[0]
+        self.assertEqual(catalogs, {"real": f"{self.data}/_catalog/versions/catalog-000002-0123456789ab.sqlite",
+                                    "two_source": f"{self.data}/_catalog/versions/catalog-000003-0123456789ab.sqlite"})
+        # with no version of C-ArmLSpine alone, real runs nothing rather than the two-source one
+        (self.data / "_catalog" / "checked" / "catalog-000002-0123456789ab.sqlite").unlink()
+        (self.fake / "box.log").unlink()
+        done = self.sweep_driver("real")
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("no catalog version to run on: the newest version with C-ArmLSpine (catalog-000003-0123456789ab.sqlite) holds frames "
+                      "of vindr_spinexr to train or select on beside C-ArmLSpine's", done.stdout)
+        self.assertEqual(self.boxed(), [])
 
 
 if __name__ == "__main__":

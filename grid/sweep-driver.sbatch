@@ -13,11 +13,14 @@
 # word would start a second launcher on the same flow run.
 #
 # The catalog is the plan's: "synthetic" is built once under SMOKE by tools/block_sweep.py synthetic
-# and found there afterwards; "v1" is the version grid/v1-version.sh chooses for the version 1 run;
-# "with:<source>" the same, holding that source's train part too. The split check runs again on the
-# chosen file before the flow reads a frame, as grid/v1-driver.sbatch does. The results land in the
-# state folder SMOKE/<plan>/<commit 7>-<catalog sha256 first 8>/, the path tools/block_sweep.py
-# prepare makes, computed the same way here so the report names it without asking python.
+# and found there afterwards; "v1" is catalog version 1 of C-ArmLSpine, the newest version the
+# version 1 run could read that holds no other source's frames to train or select on
+# (grid/v1-version.sh --alone), so the real plan is never run on the two-source catalog it is set
+# against; "with:<source>" the version 1 run's choice holding that source's train part too. The
+# split check runs again on the chosen file before the flow reads a frame, as grid/v1-driver.sbatch
+# does. The results land in the state folder SMOKE/<plan>/<commit 7>-<catalog sha256 first 8>/,
+# the path tools/block_sweep.py prepare makes, computed the same way here so the report names it
+# without asking python.
 # The report is logs/sweep-<plan>-STAGE-REPORT.md: the GPU, the state folder, the launcher's
 # decision, RESULTS.md's headline, the W&B lines and the Metaflow run.
 set -uo pipefail
@@ -73,9 +76,9 @@ case "$catalog_kind" in
     report "catalog: the synthetic one ($([ "$reused" = true ] && echo "found under the smoke folder" || echo "built now"))"
     ;;
   v1|with:*)
-    source=""
-    case "$catalog_kind" in with:*) source=${catalog_kind#with:} ;; esac
-    chosen=$(bash grid/v1-version.sh "$STORE" "$DATA_ROOT" "$REPO" ${source:+"$source"} 2> "$why") \
+    source="" choice=--alone
+    case "$catalog_kind" in with:*) source=${catalog_kind#with:} choice=$source ;; esac
+    chosen=$(bash grid/v1-version.sh "$STORE" "$DATA_ROOT" "$REPO" "$choice" 2> "$why") \
       || fail "no catalog version to run on: $(head -n 1 "$why") (the gate's v1 word${source:+ or bank $source} makes one)"
     CATALOG=$STORE/versions/$chosen
     newest=$(cat "$STORE/CURRENT" 2>/dev/null)

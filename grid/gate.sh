@@ -57,9 +57,11 @@
 #   samples         the sample index (grid/run-samples.sh): plan, scan and merge, refused while one
 #                   of them is live; status shows its MANIFEST.md, aggregates only
 #   sweep <plan>    one plan of grid/sweeps/ (issue #252): the block smoke test on one GPU through
-#                   the Metaflow flow (grid/sweep-driver.sbatch), after the setup, the weights and a
-#                   live catalog build where the plan needs them, and afterany every live run that
-#                   holds the checkout; status shows each plan's PROGRESS.txt under SMOKE
+#                   the Metaflow flow (grid/sweep-driver.sbatch), after the setup and the weights
+#                   where the plan needs them, on the catalog version that qualifies now (the v1
+#                   plan's of C-ArmLSpine alone, grid/v1-version.sh --alone) or after a live build
+#                   that can make one, and afterany every live run that holds the checkout; status
+#                   shows each plan's PROGRESS.txt under SMOKE
 #   bank <id>       one recipe of grid/banks/ banked and ingested (grid/02-bank-ingest.sbatch with
 #                   ONLY=<id>) and a catalog build afterok on it: two CPU jobs, once its held raw
 #                   copy is there and the room under the quota takes what they write
@@ -956,26 +958,70 @@ plan_names_weights() {  # plan_names_weights FILE: whether a row of the plan sta
   grep -q '^  *"weights": "[^"]' "$1"
 }
 CATALOG_DEP=""
+shard_folders() {  # the folders of the data root that hold a shard, one a line, where grid/03-catalog.sbatch lists them
+  # <data root>/<folder>/shards/<shard>/MANIFEST.json, never a dot folder, which holds a shard still
+  # being staged or ingest's notes; the folder is the source's own, its registry entry's grid root.
+  local manifest folder
+  for manifest in "$DATA_ROOT"/[!.]*/shards/[!.]*/MANIFEST.json; do
+    [ -f "$manifest" ] || continue
+    folder=${manifest%/shards/*}
+    echo "${folder##*/}"
+  done | sort -u
+}
+newest_build_of() {  # newest_build_of FROM...: the newest live catalog build the gate submitted from one of the words FROM
+  local job from what want
+  [ -f "$STATE" ] || return 0
+  tac "$STATE" | while read -r job from what _; do
+    [ "$what" = catalog ] || continue
+    for want in "$@"; do
+      if [ "$from" = "$want" ]; then
+        case "$QUEUED" in *" $job "*) echo "$job"; break 2 ;; esac
+      fi
+    done
+  done
+}
+plan_build() {  # plan_build CATALOG: the live catalog build of the gate's that can make a version CATALOG qualifies by, else nothing
+  # Every build takes in every shard on the data root (grid/03-catalog.sbatch), so a bank's build
+  # always holds the source it banked. The v1 plan's version holds C-ArmLSpine alone, so only
+  # start's or v1's build can make one, and only while no other source's shard is there; a
+  # with:<source> plan's holds that source, so the build of a bank of it can, and so can any build
+  # once a shard of it is on the data root. The X-ray chain's builds wait on fetches of days and
+  # are never waited on.
+  local source
+  # grep reads the whole list, never -q, so no early exit ends shard_folders with SIGPIPE under pipefail.
+  case "$1" in
+    v1) shard_folders | grep -vx carmlspine > /dev/null || newest_build_of start v1 ;;
+    with:*)
+      source=${1#with:}
+      if shard_folders | grep -xF -- "$source" > /dev/null; then live_of catalog; else live_of catalog "bank:$source"; fi ;;
+  esac
+}
 sweep_catalog() {  # sweep_catalog CATALOG: the wait a plan's real catalog needs, in CATALOG_DEP; 75 with the reason where none can come
-  # A live catalog build of the gate's goes first, start's, v1's or a bank's, since the version the
-  # run reads is chosen when it starts (grid/v1-version.sh); else a version that qualifies now.
-  local source="" job version
+  # A version that qualifies now first, which the run reads once it starts (grid/v1-version.sh), so
+  # a build of another kind that lands before then is never the reason it waits or is cancelled;
+  # else a live build of the gate's that can make one.
+  local source="" choice job version why
   CATALOG_DEP=""
-  case "$1" in with:*) source=${1#with:} ;; esac
-  job=$(live_of catalog)
-  if [ -n "$job" ]; then
-    CATALOG_DEP="afterok:$job"
-    echo "  catalog: after the live catalog build, job $job"
+  case "$1" in with:*) source=${1#with:} choice=$source ;; *) choice=--alone ;; esac
+  why=$(mktemp "${TMPDIR:-/tmp}/sweep-catalog.XXXXXX") || { echo "refusing: no temporary file could be made; nothing was queued"; return 2; }
+  if version=$(bash "$REPO/grid/v1-version.sh" "$STORE" "$DATA_ROOT" "$REPO" "$choice" 2> "$why"); then
+    rm -f "$why"
+    echo "  catalog: $version qualifies (grid/v1-version.sh $choice); no job"
     return 0
   fi
-  if version=$(bash "$REPO/grid/v1-version.sh" "$STORE" "$DATA_ROOT" "$REPO" ${source:+"$source"} 2>/dev/null); then
-    echo "  catalog: $version qualifies (grid/v1-version.sh $1); no job"
+  version=$(head -n 1 "$why" | cut -c1-200)
+  rm -f "$why"
+  job=$(plan_build "$1")
+  if [ -n "$job" ]; then
+    CATALOG_DEP="afterok:$job"
+    echo "  catalog: none qualifies yet ($version); after the live catalog build, job $job"
     return 0
   fi
   if [ -z "$source" ]; then
-    echo "refusing: no catalog version qualifies for the v1 plan and no catalog build of the gate's is live; the v1 word or start makes the catalog first"
+    echo "refusing: no catalog version holds C-ArmLSpine alone for the v1 plan ($version), and no live catalog build of the gate's can make one;"
+    echo "  the v1 word or start makes the catalog first, and makes one of C-ArmLSpine alone only while C-ArmLSpine's are the only shards on the data root"
   else
-    echo "refusing: no catalog version holds $source's train part beside C-ArmLSpine's and no catalog build of the gate's is live; bank $source first"
+    echo "refusing: no catalog version holds $source's train part beside C-ArmLSpine's ($version), and no live catalog build of the gate's can hold it; bank $source first"
   fi
   return 75
 }
