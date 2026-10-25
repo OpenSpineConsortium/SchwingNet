@@ -75,9 +75,10 @@ runs before it reads the beats, so a live run it lists always has a beat it read
 that a fresh beat names, or any newest run while a fresh beat names none yet, is live
 (schwingnet.pipeline.marked_live), and the launch starts a run of its own beside it, as two jobs
 of a stage ran before Metaflow, the stage's own locks ordering what may not overlap: a second
-catalog job waits on BUILD.lock and builds with the shards that landed since. A beat left by a launcher killed with its job stops counting once it is 300 s
-old (LIVE_SECONDS), at once where it names this very Slurm job, which Slurm queued again, and at
-once where it names a process on this host that is gone.
+catalog job waits on BUILD.lock and builds with the shards that landed since. A beat left by a
+launcher killed with its job stops counting once it is 300 s old (LIVE_SECONDS), at once where
+it names this very Slurm job, which Slurm queued again, and at once where it names a process on
+this host that is gone.
 
 Its first line on stdout is the decision, `{"decision", "flow", "key", "live", "origin", "root"}`,
 with `live` the id of a newest run passed over as live, else null, and its last `{"flow", "run":

@@ -25,13 +25,14 @@ run once Metaflow has, with the host, the process and the Slurm job, and takes i
 flow ends. A newest run whose launcher's beat is fresh is live (schwingnet.pipeline.marked_live),
 and a launch of the same key then starts a run of its own beside it, as two jobs of a stage ran
 before Metaflow, the stage's own locks, catalog's BUILD.lock among them, ordering what may not
-overlap. A beat left by a launcher killed with its job counts no
-more once it is LIVE_SECONDS old, at once where it names this very Slurm job, which Slurm queued
-again, and at once where it names a process on this host that is gone.
+overlap. A beat left by a launcher killed with its job counts no more once it is LIVE_SECONDS
+old, at once where it names this very Slurm job, which Slurm queued again, and at once where it
+names a process on this host that is gone.
 
 The first line on stdout is the decision, as JSON, flushed before the flow starts, with "live"
-the id of a newest run passed over as live; the last says which run it was and how it ended; the exit code is the flow's own where it failed, else
-the end step's verdict (0 all well, 1 otherwise), so a job's afterok means what it meant before.
+the id of a newest run passed over as live; the last says which run it was and how it ended; the
+exit code is the flow's own where it failed, else the end step's verdict (0 all well, 1
+otherwise), so a job's afterok means what it meant before.
 
 The datastore is local, on the lab volume: --root, else $SCHWINGNET_METAFLOW, else
 /rs/rs_grp_oschome/go2432/metaflow. The flow runs with that folder as its working directory:
