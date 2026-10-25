@@ -1,0 +1,33 @@
+{
+ "id": "16/dataset-recipe",
+ "title": "A recipe for the final dataset",
+ "caption": "Every registry set placed in one of nine strata by what it gives the goal (limited-field naming anywhere from C1 to the sacrum, robust to anomaly, rotation, acquisition machine and domain), with a keep, maybe, drop, acquire or defer call drawn from the evidence cards above it; the bench trials a selection against the 20 TB target, shows the kept sets along the spine and warns when a demand loses its source or its test.",
+ "chapter": "16",
+ "grade": "Inferred",
+ "status": "a record, not a final value",
+ "source": {
+  "kind": "hand",
+  "artifact": null,
+  "artifact_url": null,
+  "made_by": "written by hand from the research notes named in each card, and from spine-datasets' inclusion audit",
+  "commit": null,
+  "data": [
+   "docs/research/final-dataset-recipe.md",
+   "docs/research/state-of-knowledge.md",
+   "docs/research/lumbosacral-to-cervical-extrapolation.md",
+   "docs/research/benchmarks-to-beat.md",
+   "docs/research/ct-priors-for-2d-detection.md",
+   "docs/research/arcade-lab-x-ray-learning-against-schwingnet.md",
+   "docs/research/drr-realism-against-our-results.md",
+   "docs/research/xr-from-3d/README.md",
+   "https://github.com/OpenSpineConsortium/spine-datasets/blob/main/docs/research/dataset-inclusion-audit.md"
+  ],
+  "run": null,
+  "notes": "The numbers on the evidence cards are the notes' own, each graded as its note grades it. Sizes are what the grid held at the volume reading of 24 October 17:15 UTC; people and level truth are the dataset records' at spine-datasets 1a124d9. The stratum, the call, the role, the demands and the regions of each set are this figure's reading of the evidence (Inferred). No proportion between strata is set: no synthetic-to-real ratio was ever swept."
+ },
+ "explore": [
+  {"label": "The research note", "href": "docs/research/final-dataset-recipe.md"},
+  {"label": "The chapter", "href": "docs/textbook/16-method-decisions-and-what-would-reverse-them.md"},
+  {"label": "The inclusion audit", "href": "https://github.com/OpenSpineConsortium/spine-datasets/blob/main/docs/research/dataset-inclusion-audit.md"}
+ ]
+}
