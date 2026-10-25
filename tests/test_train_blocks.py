@@ -1025,8 +1025,9 @@ class FlowBlocksTest(unittest.TestCase):
     def test_blocks_pass_through_and_a_fault_stops_the_plan(self):
         flow = load("flow")
         self.assertEqual(flow.block_words([]), "")
+        # augment's changes are passed in schwingnet.blocks' order, whatever order they were typed.
         self.assertEqual(flow.block_words(["normalise=imagenet", "augment=noise,blur"]),
-                         " --block normalise=imagenet --block augment=noise,blur")
+                         " --block normalise=imagenet --block augment=blur,noise")
         for words in (["normalise=zscore"], ["augment=noise, blur"], ["sampler=balanced", "sampler=uniform"]):
             with self.subTest(words=words), self.assertRaises(flow.FlowError):
                 flow.block_words(words)
