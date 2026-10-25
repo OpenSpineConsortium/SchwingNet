@@ -203,7 +203,8 @@ def write(sections, out, limit):
     out = Path(out)
     written = pages(sections, limit)
     for number, text in enumerate(written, 1):
-        out.with_name(f"{out.stem}-{number}{out.suffix}").write_text(text, encoding="ascii")
+        # Folder names on the volume are not all ASCII; escaped, they stay readable and the page prints.
+        out.with_name(f"{out.stem}-{number}{out.suffix}").write_text(text, encoding="ascii", errors="backslashreplace")
     return len(written)
 
 
