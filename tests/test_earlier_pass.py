@@ -18,8 +18,9 @@ HEAD = "a" * 40
 RUNS = "/repos/o/r/actions/workflows/ci.yml/runs"
 
 
-def run(number, head=HEAD, created="2026-10-25T10:00:00Z", status="completed"):
-    return {"id": number, "head_sha": head, "created_at": created, "status": status}
+def run(number, head=HEAD, created="2026-10-25T10:00:00Z", status="completed", started=None):
+    return {"id": number, "head_sha": head, "created_at": created, "status": status,
+            "run_started_at": started or created}
 
 
 def job(name, conclusion="success", steps=()):
@@ -77,6 +78,24 @@ class Standing(unittest.TestCase):
         self.assertIsNone(earlier_pass.standing([broken], "check", "Run the checks"))
 
 
+    def test_a_skip_after_a_body_check_failed_still_carries(self):
+        steps = [("Whether an earlier run on this head passed the checks", "success"),
+                 ("Clone", "skipped"), ("Run the checks", "skipped"), ("Hold", "failure")]
+        carried = job("check", "failure", steps=steps)
+        self.assertEqual(earlier_pass.standing([carried], "check", "Run the checks"), earlier_pass.CARRIED)
+        cancelled = job("check", "cancelled", steps=[("Run the checks", "skipped")])
+        self.assertIsNone(earlier_pass.standing([cancelled], "check", "Run the checks"))
+
+    def test_parts_are_judged_as_one(self):
+        parts = ["check part 1/4", "check part 2/4"]
+        both = [job("check part 1/4"), job("check part 2/4")]
+        self.assertEqual(earlier_pass.standing_of_all(both, parts), earlier_pass.PASSED)
+        one_failed = [job("check part 1/4"), job("check part 2/4", "failure")]
+        self.assertIsNone(earlier_pass.standing_of_all(one_failed, parts))
+        self.assertIsNone(earlier_pass.standing_of_all([job("check part 1/4")], parts))
+        self.assertIsNone(earlier_pass.standing_of_all(both, []))
+
+
 class Verdict(unittest.TestCase):
     def test_the_newest_earlier_run_that_passed_the_job(self):
         api = api_with([run(7), run(9, created="2026-10-25T10:05:00Z")],
@@ -115,6 +134,37 @@ class Verdict(unittest.TestCase):
         # A carried run with nothing before it carries nothing.
         api = api_with([run(9)], {9: jobs[9]})
         self.assertFalse(earlier_pass.verdict(api, "ci.yml", HEAD, "11", "check", "Run the checks")[0])
+
+    def test_a_re_run_is_as_new_as_its_latest_attempt(self):
+        # A re-ran after B was made, and failed: B's older pass stands in for nothing.
+        rerun = run(7, created="2026-10-25T10:00:00Z", started="2026-10-25T10:30:00Z")
+        api = api_with([rerun, run(9, created="2026-10-25T10:05:00Z")],
+                       {7: [job("check part 1/4", "failure")], 9: [job("check part 1/4")]})
+        passed, line = earlier_pass.verdict(api, "ci.yml", HEAD, "11", "check part 1/4")
+        self.assertFalse(passed, line)
+        self.assertEqual([path for path, _ in api.asked], [RUNS, "/repos/o/r/actions/runs/7/jobs"])
+
+    def test_with_a_prefix_every_part_of_the_newest_run_must_have_passed(self):
+        mine = [job("check part 1/4", "in_progress"), job("check part 2/4", "in_progress"), job("check")]
+        jobs = {11: mine, 9: [job("check part 1/4"), job("check part 2/4", "failure")]}
+        api = api_with([run(9)], jobs)
+        passed, line = earlier_pass.verdict(api, "ci.yml", HEAD, "11", "check part 1/4", prefix="check part ")
+        self.assertFalse(passed, line)
+        self.assertIn("every part named 'check part '", line)
+        jobs[9] = [job("check part 1/4"), job("check part 2/4")]
+        passed, line = earlier_pass.verdict(api_with([run(9)], jobs), "ci.yml", HEAD, "11",
+                                            "check part 1/4", prefix="check part ")
+        self.assertTrue(passed, line)
+        self.assertIn("run 9 passed every part named 'check part '", line)
+
+    def test_a_prefix_this_run_does_not_show_runs_the_work(self):
+        api = api_with([run(9)], {11: [job("check")], 9: [job("check part 1/4")]})
+        passed, line = earlier_pass.verdict(api, "ci.yml", HEAD, "11", "check part 1/4", prefix="check part ")
+        self.assertFalse(passed, line)
+        api = api_with([run(9)], {9: [job("check part 1/4")]})
+        api.answers["/repos/o/r/actions/runs/11/jobs"] = OSError("refused")
+        self.assertFalse(earlier_pass.verdict(api, "ci.yml", HEAD, "11", "check part 1/4",
+                                              prefix="check part ")[0])
 
     def test_the_run_asking_and_other_heads_never_count(self):
         api = api_with([run(11), run(5, head="b" * 40)], {11: [job("check")], 5: [job("check")]})

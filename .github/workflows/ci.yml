@@ -50,10 +50,11 @@ name: Checks
 # crowd guard and the pull request's own checks then run as always, so the
 # run costs a minute instead of the checks (39 of the 124 pull-request runs
 # on 2026-10-25 were such re-runs, OpenSpineConsortium/symphony-template's
-# docs/research/actions-minutes-2026-10-25.md). "Run the checks" has no
-# condition but that one, so a run whose job succeeded with it skipped
-# carries the pass from the run before. An edit that changes the base
-# branch, and every other event, runs the checks in full.
+# docs/research/actions-minutes-2026-10-25.md). Only the newest earlier
+# run decides, by when its latest attempt started. "Run the checks" has no
+# condition but that one, so a run in which it was skipped with no step
+# before it failed carries the pass from the run before. An edit that
+# changes the base branch, and every other event, runs the checks in full.
 # The same job holds a crowd repository (docs/setup/crowdsourcing.md) to
 # its rules, so they are part of the required check: tools/crowd_check.py
 # guard fails while a Claude secret or variable reaches the repository and

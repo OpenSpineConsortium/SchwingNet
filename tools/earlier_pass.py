@@ -12,12 +12,17 @@ that runs the checks asks GitHub first for this workflow's runs on the
 head, and skips its work only where the newest of them, not this run, has
 finished and holds a job of the same name that succeeded, or, with --step,
 a job of that name whose step of that name succeeded. Only the newest
-decides: an edit that changed the base branch ran in full, and one that
+decides, by when its latest attempt started, so a re-run counts as the
+newest: an edit that changed the base branch ran in full, and one that
 failed there, was cancelled, or is still going lets nothing older stand in
-for it. A job whose work an earlier pass let it skip succeeds, so in a
+for it. With --prefix every job of this run whose name starts so, the
+parts of one check, is judged as one: the tests a part runs come from the
+commit checked out, GitHub's test merge, and a moved base branch can move
+a failing test from one part into another, so one part's pass alone says
+nothing once another part of the same run failed. A job whose work an earlier pass let it skip succeeds, so in a
 job of parts the pass carries on to the next such event; with --step the
-skipped step is skipped, not passed, and a run whose job succeeded with
-that step skipped is read past to the run before it. Whatever GitHub does
+skipped step is skipped, not passed, and a run in which that step was
+skipped with no step before it failed is read past to the run before it. Whatever GitHub does
 not answer reads as not passed, so the work runs as it always did.
 
 An earlier run checked GitHub's test merge of the head with its base
@@ -27,9 +32,11 @@ no more than a label does. That is the rule already: the check is not
 required to be up to date, and the overlap check (tools/locks.py overlap)
 says when a pull request must bring its base branch in. Two open pull
 requests on one head, which the claim protocol never makes (one issue,
-one branch, one pull request), share their runs here.
+one branch, one pull request), share their runs here; so does a pull
+request moved to another base branch while it conflicts with it, which
+GitHub runs no workflow for, until its next push.
 
-  python3 tools/earlier_pass.py --job "check part 1/4" [--step NAME]
+  python3 tools/earlier_pass.py --job "check part 1/4" [--prefix "check part "] [--step NAME]
 
 reads GITHUB_REPOSITORY, GITHUB_RUN_ID, HEAD_SHA and GITHUB_TOKEN, prints
 one line, and writes passed=true or passed=false to GITHUB_OUTPUT.
@@ -51,41 +58,69 @@ def standing(jobs, job, step=None):
     name succeeded, or, with step, where that step succeeded, whatever the
     job's later steps did, since the body's checks may fail after the
     commit's checks passed and the body is what the next event fixes;
-    CARRIED where the job succeeded with that step skipped, which only an
-    earlier pass does to it; else None, so the work runs."""
+    CARRIED where that step was skipped with no step before it failed or
+    cancelled, which only an earlier pass does to it; else None, so the
+    work runs."""
     for entry in jobs:
         if entry.get("name") != job:
             continue
-        succeeded = entry.get("conclusion") == "success"
         if step is None:
-            return PASSED if succeeded else None
-        found = [s.get("conclusion") for s in entry.get("steps") or [] if s.get("name") == step]
-        if "success" in found:
-            return PASSED
-        return CARRIED if succeeded and found == ["skipped"] else None
+            return PASSED if entry.get("conclusion") == "success" else None
+        return step_standing(entry, step)
     return None
+
+
+def step_standing(entry, step):
+    """PASSED, CARRIED or None for the step of that name in one job."""
+    if entry.get("conclusion") == "cancelled":
+        return None
+    for done in entry.get("steps") or []:
+        if done.get("name") == step:
+            if done.get("conclusion") == "success":
+                return PASSED
+            return CARRIED if done.get("conclusion") == "skipped" else None
+        if done.get("conclusion") not in ("success", "skipped"):
+            return None
+    return None
+
+
+def standing_of_all(jobs, names, step=None):
+    """One answer for several jobs judged as one: None where any of them
+    would run its work, CARRIED where any carried, else PASSED. The parts
+    of a check are judged together because which tests a part runs comes
+    from the commit checked out, GitHub's test merge, and a moved base
+    branch can move a test from a part that failed into one that passed."""
+    found = [standing(jobs, name, step) for name in names]
+    if not found or None in found:
+        return None
+    return CARRIED if CARRIED in found else PASSED
 
 
 def earlier_runs(api, workflow, head, run_id):
     """This workflow's pull-request runs on the head, finished or not,
-    newest first, leaving out the run asking."""
+    newest first by when their latest attempt started, leaving out the run
+    asking: a re-run keeps the run's created_at, so it is sorted by its
+    run_started_at."""
     path = f"/repos/{api.repo}/actions/workflows/{workflow}/runs"
     params = {"head_sha": head, "event": "pull_request", "per_page": 100}
     runs = (api.get(path, params) or {}).get("workflow_runs", [])
     mine = [r for r in runs if r.get("head_sha") == head and str(r.get("id")) != str(run_id)]
-    return sorted(mine, key=lambda r: r.get("created_at") or "", reverse=True)
+    return sorted(mine, key=lambda r: r.get("run_started_at") or r.get("created_at") or "", reverse=True)
 
 
-def run_that_passed(api, workflow, head, run_id, job, step=None):
-    """The id of the run that passed the job, where the newest earlier run
-    on the head passed it or carried a pass from the runs before it, or
+def jobs_of(api, run_id):
+    path = f"/repos/{api.repo}/actions/runs/{run_id}/jobs"
+    return (api.get(path, {"per_page": 100}) or {}).get("jobs", [])
+
+
+def run_that_passed(api, workflow, head, run_id, names, step=None):
+    """The id of the run that passed the jobs, where the newest earlier run
+    on the head passed them or carried a pass from the runs before it, or
     None."""
     for run in earlier_runs(api, workflow, head, run_id):
         if run.get("status") != "completed":
             return None
-        path = f"/repos/{api.repo}/actions/runs/{run['id']}/jobs"
-        jobs = (api.get(path, {"per_page": 100}) or {}).get("jobs", [])
-        found = standing(jobs, job, step)
+        found = standing_of_all(jobs_of(api, run["id"]), names, step)
         if found == PASSED:
             return run["id"]
         if found != CARRIED:
@@ -93,14 +128,28 @@ def run_that_passed(api, workflow, head, run_id, job, step=None):
     return None
 
 
-def verdict(api, workflow, head, run_id, job, step=None):
+def parts_named(api, run_id, job, prefix):
+    """The names of this run's jobs that start with prefix, the job's own
+    among them, so every part of the check is judged with it; None where
+    the run's jobs cannot be told."""
+    names = sorted({entry.get("name") for entry in jobs_of(api, run_id)
+                    if (entry.get("name") or "").startswith(prefix)})
+    return names if job in names else None
+
+
+def verdict(api, workflow, head, run_id, job, step=None, prefix=None):
     """True or False, and the line that says why. Any failure to read
     GitHub is a False, so the job does its work."""
     what = repr(job) + (f" (step {step!r})" if step else "")
     try:
-        passed = run_that_passed(api, workflow, head, run_id, job, step)
+        names = parts_named(api, run_id, job, prefix) if prefix else [job]
+        if not names:
+            return False, f"earlier pass: this run's parts named {prefix!r} not told, so {what} runs"
+        passed = run_that_passed(api, workflow, head, run_id, names, step)
     except Exception as problem:  # whatever stops the read runs the work
         return False, f"earlier pass: not read ({problem}), so {what} runs"
+    if len(names) > 1:
+        what = f"every part named {prefix!r}"
     if passed is None:
         return False, f"earlier pass: no earlier run on {head[:12]} passed {what}, so it runs"
     return True, f"earlier pass: run {passed} passed {what} on {head[:12]}, so its work is skipped"
@@ -122,6 +171,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--job", required=True)
     parser.add_argument("--step")
+    parser.add_argument("--prefix", help="judge every job of this run whose name starts so as one")
     parser.add_argument("--workflow", default=CI_WORKFLOW)
     args = parser.parse_args(argv)
     head = os.environ.get("HEAD_SHA", "")
@@ -134,7 +184,7 @@ def main(argv=None):
             passed, line = False, f"earlier pass: no client ({problem}), so the work runs"
         else:
             run_id = os.environ.get("GITHUB_RUN_ID", "")
-            passed, line = verdict(api, args.workflow, head, run_id, args.job, args.step)
+            passed, line = verdict(api, args.workflow, head, run_id, args.job, args.step, args.prefix)
     print(line)
     write_output(passed)
     return 0
