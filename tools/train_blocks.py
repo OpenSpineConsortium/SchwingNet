@@ -835,23 +835,50 @@ def _tile_maps(levels, area, limits):
 
 def _tile_places(size, tile, device):
     """For each row (or column) of pixels, the two nearest tile centres and the weight of the
-    second, which bilinear interpolation between the tiles' maps takes; past the outer centres the
-    nearest tile's map alone."""
-    place = ((torch.arange(size, device=device, dtype=torch.float64) + 0.5) / tile - 0.5).clamp(0, CLAHE_TILES - 1)
+    second, which bilinear interpolation between the tiles' maps takes, where OpenCV's CLAHE puts
+    them: pixel x at x / tile - 0.5 tiles, counted from its edge and not its centre, and past the
+    outer centres the nearest tile's map alone."""
+    place = (torch.arange(size, device=device, dtype=torch.float64) / tile - 0.5).clamp(0, CLAHE_TILES - 1)
     first = place.floor().long()
     return first, (first + 1).clamp(max=CLAHE_TILES - 1), place - first
 
 
+def _clahe_sides(height, width):
+    """The sides CLAHE's tiles cover, as OpenCV pads a crop to them: the crop's own when both are
+    multiples of the tiles, else each grown by the tiles less its remainder, so that a side that
+    is a multiple already gains a whole tile's worth all the same."""
+    if height % CLAHE_TILES == 0 and width % CLAHE_TILES == 0:
+        return height, width
+    return height + CLAHE_TILES - height % CLAHE_TILES, width + CLAHE_TILES - width % CLAHE_TILES
+
+
+def _reflect_101(length, size, device):
+    """Which of a side's length pixels each of size places reads once the side is padded at its
+    end as OpenCV's BORDER_REFLECT_101 pads it: mirrored about the last pixel, which is not
+    repeated, as many times over as the padding needs; a side of one pixel repeats it."""
+    places = torch.arange(size, device=device)
+    if length == 1:
+        return torch.zeros_like(places)
+    period = 2 * (length - 1)
+    folded = places % period
+    return torch.where(folded < length, folded, period - folded)
+
+
 def clahe(batch, generator):
-    """FluoroSAM's CLAHE histogram equalisation, written in torch: CLAHE_TILES by CLAHE_TILES tiles
-    of CLAHE_BINS grey levels, a clip limit drawn per crop in CLAHE_CLIP times the tile's mean
-    count per level, at least one count, as OpenCV's clipLimit reads, and each pixel's level mapped
-    by the four nearest tiles' equalisers, bilinear between them; a side that is no multiple of
-    the tiles is padded by repeating its edge and cut back after."""
+    """FluoroSAM's CLAHE histogram equalisation, written in torch to OpenCV's createCLAHE:
+    CLAHE_TILES by CLAHE_TILES tiles of CLAHE_BINS grey levels, a clip limit drawn per crop in
+    CLAHE_CLIP times the tile's mean count per level, at least one count, as OpenCV's clipLimit
+    reads, and each pixel's level mapped by the four nearest tiles' equalisers, bilinear between
+    them at the places OpenCV gives (_tile_places). A crop whose sides are not both multiples of
+    the tiles is padded at its bottom and right to the sides OpenCV pads it to (_clahe_sides),
+    mirrored about its edge pixel (_reflect_101), and cut back after. OpenCV rounds each tile's
+    equaliser and then each pixel's result to a byte, which this keeps as fractions, so the two
+    differ by a grey level at most."""
     count, channels, height, width = batch.shape
     clip = _uniform(generator, count, *CLAHE_CLIP)
-    tall, wide = -(-height // CLAHE_TILES) * CLAHE_TILES, -(-width // CLAHE_TILES) * CLAHE_TILES
-    padded = F.pad(batch, (0, wide - width, 0, tall - height), mode="replicate")
+    tall, wide = _clahe_sides(height, width)
+    down_from, across_from = _reflect_101(height, tall, batch.device), _reflect_101(width, wide, batch.device)
+    padded = batch.index_select(2, down_from).index_select(3, across_from)
     planes = count * channels
     levels = (padded.clamp(0.0, 1.0) * (CLAHE_BINS - 1)).round().long().view(planes, tall, wide)
     tile_tall, tile_wide = tall // CLAHE_TILES, wide // CLAHE_TILES
