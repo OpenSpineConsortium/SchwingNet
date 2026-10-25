@@ -1,6 +1,7 @@
 """The textbook site as the files of one claude.ai artifact: the edition a
-session publishes, private, on the owner's account, and republishes to the
-same link after each merge (issue #236).
+Claude Code session on the owner's computer publishes, private, on the
+owner's account, and republishes to the same link when the book has changed
+(issues #236 and #277).
 
 The members-only Pages site is built by tools/textbook_site.py. A claude.ai
 artifact page cannot be framed by any other site, the Pages site included:
@@ -359,8 +360,8 @@ def record_links(text, repo, sha):
 
 def edition_line(repo, sha, built):
     return (f'<p class="edition">This edition was built from <a href="https://github.com/{esc(repo)}/commit/{esc(sha)}">'
-            f'{esc(sha[:7])}</a> on {esc(built)}; the repository is the source and this copy is republished after each merge to '
-            f'its default branch. A figure that came from an exported artifact opens that artifact&#x27;s own page here, and '
+            f'{esc(sha[:7])}</a> on {esc(built)}; the repository is the source, and this copy is republished from it when the '
+            f'book changes. A figure that came from an exported artifact opens that artifact&#x27;s own page here, and '
             f'Ask Claude answers from the page you are on.</p>')
 
 

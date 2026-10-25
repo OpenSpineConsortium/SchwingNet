@@ -51,6 +51,7 @@ The Ask Claude box on every page asks the artifact runtime's sample capability (
 ## What is not settled
 
 - Whether Claude Code on the owner's computer takes the edition's first publish with its capabilities, and how many approvals it asks for; the owner's first run shows it.
+- Room in one version: the edition of main on 2026-10-25 at 03:20 UTC is 455 files, against the 511 files a version of an artifact may hold, so the exported artifacts under artifacts/ can grow by about fifty files before tools/textbook_artifact.py refuses the edition, and a cut is needed before then, such as leaving an exported artifact's largest image folders to its own page on GitHub.
 - Whether the frame origin resolves the supporting pages' relative links and fetches exactly as the tool's contract says; the first edition shows it.
 - A session left during a first publish, before it wrote its answer, can leave an artifact the record never learns of; the owner deletes it from the gallery, or writes its link to answer.txt as ARTIFACT_URL=<link> and runs the command again with --record.
 - The tool's read of the existing artifact, required before a publish to it, returns the front page's HTML into the session; that is the one text of the book the session sees, and it is the book's own front page on the owner's own account.
