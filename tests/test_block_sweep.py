@@ -285,15 +285,13 @@ class CheckTest(unittest.TestCase):
         self.assertIn("48", err)
         self.assertIn("32, 64, 96 and 128", err)
 
-    def test_the_synthetic_catalog_is_built_once_and_refused_for_other_arguments(self):
+    def test_the_synthetic_catalog_is_built_once_and_found_again(self):
         folder = self.tmp / "synthetic"
-        before = (folder / "SYNTHETIC.json").read_bytes(), (folder / "store" / "VERSIONS.jsonl").read_bytes()
+        store = Path(self.catalog).parent.parent
+        before = (folder / "SYNTHETIC.json").read_bytes(), (store / "VERSIONS.jsonl").read_bytes()
         code, out, _ = said(self.sweep, "synthetic", "--into", folder, *TINY)
         self.assertEqual((code, json.loads(out)), (0, {"catalog": self.catalog, "reused": True}))
-        self.assertEqual(before, ((folder / "SYNTHETIC.json").read_bytes(), (folder / "store" / "VERSIONS.jsonl").read_bytes()))
-        code, _, err = said(self.sweep, "synthetic", "--into", folder, "--frames", "81")
-        self.assertEqual(code, 1)
-        self.assertIn("give another --into", err)
+        self.assertEqual(before, ((folder / "SYNTHETIC.json").read_bytes(), (store / "VERSIONS.jsonl").read_bytes()))
 
     def test_prepare_writes_the_state_once_and_lists_the_rows_to_run(self):
         out = self.tmp / "smoke"
@@ -372,6 +370,85 @@ class CheckTest(unittest.TestCase):
         code, _, err = said(self.sweep, "row", "--state", state, "--slug", "resnet18-64px-00000000", "--catalog", self.catalog)
         self.assertEqual(code, 2)
         self.assertIn("no row resnet18-64px-00000000", err)
+
+
+def with_words(words, **changed):
+    """TINY's words with some values changed, as `synthetic` takes them."""
+    out = list(words)
+    for name, value in changed.items():
+        out[out.index(f"--{name.replace('_', '-')}") + 1] = str(value)
+    return out
+
+
+@unittest.skipIf(MISSING, f"needs the package's checkers ({', '.join(MISSING)} missing)")
+class SyntheticBuildTest(unittest.TestCase):
+    """The synthetic catalog is found again where its arguments and the code that makes it are
+    the same, built anew where either differs, and never blocked by a build cut short. The runs
+    are in a clean copy of the repository's tools, as the grid's checkout is, so a tool can be
+    changed there."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = Path(tempfile.mkdtemp())
+        cls.repo = cls.tmp / "repo"
+        clean_copy(cls.repo)
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls.tmp, ignore_errors=True)
+
+    def build(self, into, words=TINY):
+        done = subprocess.run([sys.executable, str(self.repo / "tools" / "block_sweep.py"), "synthetic", "--into", str(into), *words],
+                              cwd=self.repo, capture_output=True, text=True, timeout=600, env=dict(os.environ, PYTHONDONTWRITEBYTECODE="1"))
+        self.assertEqual(done.returncode, 0, done.stderr)
+        return json.loads(done.stdout)
+
+    def commit(self, message):
+        quiet = ["-c", "gc.auto=0", "-c", "gc.autoDetach=false", "-c", "maintenance.auto=false", "-c", "maintenance.autoDetach=false",
+                 "-c", "user.name=test", "-c", "user.email=test@example.invalid"]
+        for words in (["add", "-A"], ["commit", "-q", "-m", message]):
+            subprocess.run(["git", "-C", str(self.repo), *quiet, *words], check=True, capture_output=True)
+
+    def test_other_arguments_build_anew_and_the_folder_they_replace_goes(self):
+        into = self.tmp / "arguments"
+        first = self.build(into)
+        second = self.build(into, with_words(TINY, frames=81))
+        self.assertFalse(second["reused"])
+        self.assertNotEqual(second["catalog"], first["catalog"])
+        self.assertTrue(Path(second["catalog"]).is_file())
+        self.assertFalse(Path(first["catalog"]).exists(), "the build the record no longer names is removed")
+        record = json.loads((into / "SYNTHETIC.json").read_text(encoding="utf-8"))
+        self.assertEqual((record["arguments"]["frames"], record["catalog"]), (81, second["catalog"]))
+        self.assertEqual(self.build(into, with_words(TINY, frames=81)), {"catalog": second["catalog"], "reused": True})
+
+    def test_a_build_cut_short_never_blocks_the_next(self):
+        # Cut between the catalog's version file and its log line, the one moment a catalog build
+        # leaves what the next build at the same commit refuses ("a file of that name is already
+        # there"), and before the record: the next run builds afresh and drops the cut folder.
+        into = self.tmp / "cut"
+        first = Path(self.build(into)["catalog"])
+        store = first.parent.parent
+        (store / "VERSIONS.jsonl").write_text("", encoding="utf-8")
+        (store / "CURRENT").unlink()
+        (into / "SYNTHETIC.json").unlink()
+        again = self.build(into)
+        self.assertFalse(again["reused"])
+        self.assertTrue(Path(again["catalog"]).is_file())
+        self.assertFalse(store.exists(), "the cut build's folder is cleared")
+
+    def test_the_code_that_makes_it_builds_it_again_and_other_code_does_not(self):
+        into = self.tmp / "code"
+        first = self.build(into)
+        with (self.repo / "tools" / "train.py").open("a", encoding="utf-8") as out:
+            out.write("# a change the synthetic catalog does not depend on\n")
+        self.commit("an unrelated change")
+        self.assertEqual(self.build(into), {"catalog": first["catalog"], "reused": True}, "a merge elsewhere rebuilds nothing")
+        with (self.repo / "tools" / "synthetic_bank.py").open("a", encoding="utf-8") as out:
+            out.write("# a change to the bank's writer\n")
+        self.commit("a change to the bank's writer")
+        rebuilt = self.build(into)
+        self.assertFalse(rebuilt["reused"], "a catalog older code made is made again")
+        self.assertNotEqual(rebuilt["catalog"], first["catalog"])
 
 
 @unittest.skipIf(MISSING, f"needs the package's checkers ({', '.join(MISSING)} missing)")

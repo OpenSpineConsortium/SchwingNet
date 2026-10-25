@@ -70,6 +70,7 @@ import json
 import math
 import os
 import re
+import shutil
 import sqlite3
 import subprocess
 import sys
@@ -726,35 +727,108 @@ def git_head(short=False):
     return done.stdout.strip()
 
 
-def synthetic_catalog(into, frames=600, cases=40, test_frames=100, unlabelled_frames=200, seed=1):
-    """The synthetic plan's catalog, built once under `into` and reused: a labelled bank with level
-    maps and a bank of the frozen test persons, ingested as C-ArmLSpine's train and test shards, and
-    an unannotated bank ingested as VinDr-SpineXR's, built into a store. SYNTHETIC.json records the
-    arguments and the file, so the same arguments find the catalog built before and build nothing,
-    and other arguments are refused rather than mixed into the same folder."""
-    into = Path(into).resolve()
-    wanted = {"frames": frames, "cases": cases, "test_frames": test_frames, "unlabelled_frames": unlabelled_frames, "seed": seed}
-    record_file = into / "SYNTHETIC.json"
-    if record_file.is_file():
+# What a synthetic catalog is made by, beside its arguments: the tools that write, ingest and
+# build it, the rules they import, the split files and the registry entries of its sources. Their
+# hashes go into SYNTHETIC.json, so a catalog an older version of any of them made is made again,
+# while a merge that changes none of them, which a new commit alone would say, reuses it.
+SYNTHETIC_MADE_BY = ("tools/synthetic_bank.py", "tools/ingest.py", "tools/bank.py", "tools/catalog.py", "src/schwingnet/catalog.py",
+                     "data/splits/rule.json", "data/splits/test-persons.json")
+SYNTHETIC_SOURCES = (LABELLED_SOURCE, UNLABELLED_SOURCE)
+
+
+def synthetic_made_by():
+    """{file: sha256} of everything a synthetic catalog is made by, the paths from the repository."""
+    files = [*SYNTHETIC_MADE_BY, *(f"data/registry/{source}.json" for source in SYNTHETIC_SOURCES)]
+    return {name: file_sha256(ROOT / name) for name in sorted(files)}
+
+
+def recorded_build(record_file):
+    """SYNTHETIC.json as the last build wrote it, or None where there is none it can be read as."""
+    try:
         record = read_json(record_file)
-        if record.get("arguments") != wanted:
-            raise BlockError(f"{into} holds a synthetic catalog built with {record.get('arguments')}, not {wanted}; give another --into")
-        if Path(record["catalog"]).is_file():
-            return {"catalog": record["catalog"], "reused": True}
-    banks, commit = into / "banks", git_head()
-    run_tool("synthetic_bank.py", banks / "labelled", "--frames", frames, "--cases", cases, "--seed", seed)
-    run_tool("synthetic_bank.py", banks / "test", "--frames", test_frames, "--test-cases", ",".join(frozen_cases(LABELLED_SOURCE)), "--seed", seed + 1)
-    run_tool("synthetic_bank.py", banks / "unlabelled", "--frames", unlabelled_frames, "--cases", cases, "--seed", seed + 2, "--unlabelled")
+    except (OSError, ValueError):
+        return None
+    return record if isinstance(record, dict) else None
+
+
+def why_built_again(record, wanted, made_by):
+    """Why the recorded build cannot be reused, in words; None where it can."""
+    if record is None:
+        return "no build is recorded"
+    if record.get("arguments") != wanted:
+        return f"it was built with {record.get('arguments')}, not {wanted}"
+    if not isinstance(record.get("made_by"), dict):
+        return "its record holds no hashes of what made it"
+    if record["made_by"] != made_by:
+        changed = sorted(set(made_by) ^ set(record["made_by"]) | {name for name in made_by if record["made_by"].get(name) != made_by[name]})
+        return f"what makes it has changed since: {', '.join(changed)}"
+    if not Path(str(record.get("catalog"))).is_file():
+        return f"its catalog {record.get('catalog')} is not there"
+    return None
+
+
+def clear_builds(builds, keep=None):
+    """Every folder under builds/ but the one named `keep`: a build cut short, which no record
+    names, or the one a newer build replaced, which no sweep reads once the record names another,
+    since the gate runs one sweep at a time."""
+    for folder in sorted(builds.iterdir()):
+        if folder.is_dir() and folder.name != keep:
+            shutil.rmtree(folder)
+
+
+def build_synthetic(folder, wanted):
+    """The banks, their shards and the store inside one build's own folder; the catalog file and
+    the shards' manifests."""
+    banks, commit, seed = folder / "banks", git_head(), wanted["seed"]
+    run_tool("synthetic_bank.py", banks / "labelled", "--frames", wanted["frames"], "--cases", wanted["cases"], "--seed", seed)
+    run_tool("synthetic_bank.py", banks / "test", "--frames", wanted["test_frames"], "--test-cases", ",".join(frozen_cases(LABELLED_SOURCE)), "--seed", seed + 1)
+    run_tool("synthetic_bank.py", banks / "unlabelled", "--frames", wanted["unlabelled_frames"], "--cases", wanted["cases"], "--seed", seed + 2, "--unlabelled")
     shards = []
     for bank, source, kind, persons in (("labelled", LABELLED_SOURCE, "train", "all"), ("test", LABELLED_SOURCE, "test", "frozen"),
                                         ("unlabelled", UNLABELLED_SOURCE, "train", "all")):
         report = json.loads(run_tool("ingest.py", "run", "--bank", banks / bank, "--source", source, "--kind", kind, "--persons", persons,
-                                     "--date", SYNTHETIC_DATE, "--code-commit", commit, "--grid-root", into / source))
+                                     "--date", SYNTHETIC_DATE, "--code-commit", commit, "--grid-root", folder / source))
         shards.append(str(Path(report["folder"]) / "MANIFEST.json"))
     manifests = [word for shard in shards for word in ("--manifest", shard)]
-    built = json.loads(run_tool("catalog.py", "build", "--store", into / "store", *manifests, "--root", into, "--code-commit", commit).splitlines()[-1])
-    catalog = str(into / "store" / "versions" / built["file"])
-    write_whole(record_file, json_text({"arguments": wanted, "catalog": catalog, "commit": commit, "built_at": now(), "shards": shards}))
+    built = json.loads(run_tool("catalog.py", "build", "--store", folder / "store", *manifests, "--root", folder, "--code-commit", commit).splitlines()[-1])
+    return str(folder / "store" / "versions" / built["file"]), shards, commit
+
+
+def synthetic_catalog(into, frames=600, cases=40, test_frames=100, unlabelled_frames=200, seed=1):
+    """The synthetic plan's catalog, built once under `into` and reused: a labelled bank with level
+    maps and a bank of the frozen test persons, ingested as C-ArmLSpine's train and test shards, and
+    an unannotated bank ingested as VinDr-SpineXR's, built into a store. SYNTHETIC.json records the
+    arguments, the hashes of what makes it (SYNTHETIC_MADE_BY) and the file, so the same arguments
+    and code find the catalog built before and build nothing, and anything else builds it again.
+
+    Each build is made in a folder of its own under builds/, fresh from tempfile, and is put in
+    place by SYNTHETIC.json, renamed over the record before it only once the build is whole, so a
+    build cut short, at any step, leaves a folder no record names, which the next build removes,
+    and never blocks it. The folder is not renamed itself: the catalog names each shard by the
+    path its manifest was read at (tools/catalog.py), where the trainer reads its frames. The
+    whole build holds into/.lock, so two builds into one folder take turns."""
+    into = Path(into).resolve()
+    wanted = {"frames": frames, "cases": cases, "test_frames": test_frames, "unlabelled_frames": unlabelled_frames, "seed": seed}
+    record_file, builds = into / "SYNTHETIC.json", into / "builds"
+    builds.mkdir(parents=True, exist_ok=True)
+    with (into / ".lock").open("a", encoding="utf-8") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        record, made_by = recorded_build(record_file), synthetic_made_by()
+        why = why_built_again(record, wanted, made_by)
+        if why is None:
+            return {"catalog": record["catalog"], "reused": True}
+        print(f"block_sweep: synthetic: building it under {builds}, since {why}", file=sys.stderr)
+        clear_builds(builds, keep=Path(record["build"]).name if record and record.get("build") else None)
+        folder = Path(tempfile.mkdtemp(dir=builds, prefix="build-"))
+        try:
+            os.chmod(folder, 0o755)  # mkdtemp makes it private; the lab reads the frames
+            catalog, shards, commit = build_synthetic(folder, wanted)
+        except BaseException:
+            shutil.rmtree(folder, ignore_errors=True)
+            raise
+        write_whole(record_file, json_text({"arguments": wanted, "made_by": made_by, "build": str(folder), "catalog": catalog,
+                                            "commit": commit, "built_at": now(), "shards": shards}))
+        clear_builds(builds, keep=folder.name)
     return {"catalog": catalog, "reused": False}
 
 

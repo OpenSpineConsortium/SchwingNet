@@ -15,6 +15,8 @@ The tooling is built and tested on a CPU (issue #252); no grid job of the smoke 
 
 Then the six trials of the design note, `sweep trials`, once the owner has seen the smoke and given the count.
 
+The synthetic catalog is built by `tools/block_sweep.py synthetic` under `/rs/rs_grp_oschome/go2432/smoke/synthetic/catalog/`, each build in a folder of its own under `builds/`, which `SYNTHETIC.json` names once the build is whole. The record holds the arguments and the hashes of the tools, rules, split files and registry entries that make the catalog, so `sweep synthetic` finds the catalog again while they are the same and builds it afresh, removing the folder it replaces, when any of them differs; a build cut short leaves a folder no record names, which the next build removes.
+
 ## How the argument is made
 
 docs/research/experiment-framework.md, section 7: a static check decides every named combination from the catalog's facts and trains nothing, and a covering set of runs checks on the GPU that each run does what the check predicted. A row that does not match is a bug.
