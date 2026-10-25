@@ -6,8 +6,9 @@ through, the seconds apart; the cut is made here by the trainer's own save funct
 after its second write, patched in this process, so the trainer carries no hook for tests. A
 --resume with nothing to resume, or with other arguments than the run was started with, is
 refused in words, as is one whose catalog, ImageNet file or parent is not the bytes the run
-started from, while the same file at another path resumes; a last.pt that cannot be read is
-moved aside and the run trains again from epoch 0; a second trainer in a folder another holds is
+started from, while the same file at another path resumes; a last.pt that cannot be read, or
+whose bytes its record train/last.pt.sha256 does not name, as a stretch of zeros a node that died
+left in it, is moved aside and the run trains again from epoch 0; a second trainer in a folder another holds is
 refused and touches nothing; and last.pt is gone once a run has finished. W&B's run goes on
 under the same id. And at 32 pixels, where batch norm cannot train on one crop, a training part
 of 65 crops, whose last batch of 64 would hold one, still trains, while at 64 pixels the batches
@@ -93,6 +94,39 @@ def cut_after(module, writes):
             raise Killed(f"cut after write {writes} of last.pt (epoch {state['epoch']})")
 
     return mock.patch.object(module, "save_last", save_then_stop)
+
+
+def cut_at_binding(module, call, before_write):
+    """The trainer's write of train/last.pt.sha256 made to stop the run at its call-th write,
+    before or after it writes: save_last writes the sidecar twice an epoch, naming the new file
+    beside the one in place before the rename and the new one alone after it, so the third and
+    fourth writes are epoch 1's, on either side of its rename."""
+    real, done = module.bind_last, []
+
+    def bind_then_stop(folder, digests):
+        done.append(len(digests))
+        if len(done) == call and before_write:
+            raise Killed(f"cut before write {call} of last.pt.sha256")
+        real(folder, digests)
+        if len(done) == call:
+            raise Killed(f"cut after write {call} of last.pt.sha256")
+
+    return mock.patch.object(module, "bind_last", bind_then_stop)
+
+
+def hole_in_a_tensor(data):
+    """last.pt with one 4 KiB block in the middle of its largest tensor record read back as zeros,
+    as a node that died with that stretch unwritten leaves the file on CephFS; torch reads it
+    without a word, since it checks no tensor record's bytes."""
+    import struct
+    import zipfile
+
+    archive = zipfile.ZipFile(io.BytesIO(data))
+    record = max((info for info in archive.infolist() if "/data/" in info.filename), key=lambda info: info.file_size)
+    name_length, extra_length = struct.unpack("<HH", data[record.header_offset + 26 : record.header_offset + 30])
+    start = record.header_offset + 30 + name_length + extra_length
+    block = (start + record.file_size // 2) // 4096 * 4096
+    return data[:block] + bytes(4096) + data[block + 4096 :]
 
 
 def lines_on_disk(module, seen):
@@ -186,9 +220,8 @@ class ResumeCase:
 
     def test_last_pt_is_gone_after_a_finished_run(self):
         for folder in (self.through, self.cut):
-            self.assertFalse((folder / "train" / "last.pt").exists())
-            self.assertFalse((folder / "train" / "last.pt.tmp").exists())
-            self.assertFalse((folder / "train" / "pending").exists())
+            for name in ("last.pt", "last.pt.tmp", "last.pt.sha256", "last.pt.sha256.tmp", "pending"):
+                self.assertFalse((folder / "train" / name).exists(), name)
 
     def test_a_resume_with_other_arguments_is_refused_in_words_and_touches_nothing(self):
         rc, _, err = self.mismatch
@@ -310,10 +343,11 @@ class ResumeBindingTest(unittest.TestCase):
 
 @unittest.skipIf(MISSING, f"needs the train environment ({', '.join(MISSING)} missing)")
 class UnreadableLastTest(unittest.TestCase):
-    """A last.pt that cannot be read, cut short or emptied by a node that died before it reached
-    the disk, is moved aside under a name that says so and the run trains from epoch 0 in the same
-    call, ending as a run that went through; refused, every start the flow makes would resume it
-    and be refused again."""
+    """A last.pt the run cannot go on from, cut short, emptied or with a stretch of zeros a node
+    that died before it reached the disk left, or with no record of its bytes, is moved aside under
+    a name that says so and the run trains from epoch 0 in the same call, ending as a run that went
+    through; refused, every start the flow makes would resume it and be refused again. A cut on
+    either side of the rename that puts a new last.pt in place resumes from the file in place."""
 
     config = ("--epochs", "3", "--size", "32")
 
@@ -338,32 +372,64 @@ class UnreadableLastTest(unittest.TestCase):
         last.write_bytes(spoiled)
         return folder, spoiled
 
-    def test_a_truncated_or_empty_last_pt_is_moved_aside_and_the_run_starts_again(self):
+    def assert_started_again(self, folder, resumed):
+        """The resumed call's outcome: last.pt moved aside, the run trained from epoch 0 and ended
+        as the run that went through, and its card saying so."""
+        rc, out, err = resumed
+        self.assertEqual(rc, 0, err)
+        self.assertFalse((folder / "train" / "last.pt").exists())
+        self.assertIn('"restarted_from_epoch": 0', out)
+        self.assertNotIn("resumed_after_epoch", out)
+        self.assertEqual([untimed(line) for line in lines_of(folder)], [untimed(line) for line in lines_of(self.through)])
+        self.assertEqual(digest(folder / "train" / "best.pt"), digest(self.through / "train" / "best.pt"))
+        self.assertEqual(untimed(facts_of(folder)), untimed(facts_of(self.through)))
+        card = (folder / "train" / "MODEL.md").read_text(encoding="utf-8")
+        self.assertIn("- Restarted from epoch 0: train/last.pt could not be resumed from", card)
+        self.assertNotIn("- Resumed", card)
+        return out
+
+    def test_a_spoiled_last_pt_is_moved_aside_and_the_run_starts_again(self):
         import torch
 
         foreign = io.BytesIO()
         torch.save({"epoch": 1}, foreign)
-        # Each spoil but the last makes torch.load raise another way: a zip cut short, nothing, two
-        # kinds of pickle that is no pickle (one stops at an opcode, one pops an empty stack), and
-        # zeroes; the last is a file torch reads that holds no run's state.
+        # A zip cut short, nothing, two kinds of pickle that is no pickle, zeroes, a file torch reads
+        # that holds no run's state, and one 4 KiB block of zeros inside a tensor, which torch reads
+        # as the state it was; last.pt.sha256 names none of them.
         spoils = (("truncated", lambda data: data[: len(data) // 2]), ("emptied", lambda data: b""),
                   ("overwritten", lambda data: b"not a torch file"), ("scribbled", lambda data: b"the epoch"),
-                  ("zeroed", lambda data: bytes(len(data))), ("foreign", lambda data: foreign.getvalue()))
+                  ("zeroed", lambda data: bytes(len(data))), ("foreign", lambda data: foreign.getvalue()),
+                  ("holed", hole_in_a_tensor))
         for name, spoil in spoils:
             with self.subTest(name):
                 folder, spoiled = self.cut_and_spoil(name, spoil)
+                if name == "holed":
+                    state = torch.load(io.BytesIO(spoiled), map_location="cpu", weights_only=True)
+                    self.assertEqual(state["epoch"], 1, "torch takes the holed file for epoch 1's state")
+                out = self.assert_started_again(folder, train(self.catalog, folder, *self.config, "--resume"))
+                self.assertEqual((folder / "train" / "last.pt.unreadable").read_bytes(), spoiled)
+                self.assertIn("is not one last.pt.sha256 names", out)
+
+    def test_a_last_pt_with_no_record_of_its_bytes_is_moved_aside_and_the_run_starts_again(self):
+        # As a last.pt left by the code before the record would be; none was left on the grid.
+        folder, _ = self.cut_and_spoil("unrecorded", lambda data: data)
+        (folder / "train" / "last.pt.sha256").unlink()
+        out = self.assert_started_again(folder, train(self.catalog, folder, *self.config, "--resume"))
+        self.assertIn("no last.pt.sha256 names its bytes", out)
+
+    def test_a_cut_on_either_side_of_the_rename_resumes_from_the_file_in_place(self):
+        # Epoch 1's save writes the sidecar a third and a fourth time, on either side of its rename.
+        for call, before_write, after_epoch in ((3, False, 0), (4, True, 1)):
+            with self.subTest(call=call, before_write=before_write):
+                folder = new_run(self.tmp / f"swap-{call}", f"swap{call}".ljust(12, "0"))
+                module = load("train")
+                with cut_at_binding(module, call, before_write), self.assertRaises(Killed):
+                    train(self.catalog, folder, *self.config, module=module)
                 rc, out, err = train(self.catalog, folder, *self.config, "--resume")
                 self.assertEqual(rc, 0, err)
-                self.assertEqual((folder / "train" / "last.pt.unreadable").read_bytes(), spoiled)
-                self.assertFalse((folder / "train" / "last.pt").exists())
-                self.assertIn('"restarted_from_epoch": 0', out)
-                self.assertNotIn("resumed_after_epoch", out)
+                self.assertIn(f'"resumed_after_epoch": {after_epoch}', out)
                 self.assertEqual([untimed(line) for line in lines_of(folder)], [untimed(line) for line in lines_of(self.through)])
                 self.assertEqual(digest(folder / "train" / "best.pt"), digest(self.through / "train" / "best.pt"))
-                self.assertEqual(untimed(facts_of(folder)), untimed(facts_of(self.through)))
-                card = (folder / "train" / "MODEL.md").read_text(encoding="utf-8")
-                self.assertIn("- Restarted from epoch 0: train/last.pt could not be read", card)
-                self.assertNotIn("- Resumed", card)
 
 
 @unittest.skipIf(MISSING, f"needs the train environment ({', '.join(MISSING)} missing)")

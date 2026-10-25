@@ -280,14 +280,28 @@ def write_configuration(run_dir, configuration):
 
 
 def write_whole(path, text):
-    """A file written beside its place and renamed into it, as tools/train.py writes its own, so a
-    start cut while writing it, by a kill or a full volume, leaves the one before and never half
-    of one: RUN.json is written again after every step, and a half one would make the folder no
-    run's for good."""
+    """A file written beside its place, on the disk, and renamed into it, as tools/train.py writes
+    its own, so a start cut while writing it, by a kill, a full volume or the death of its node,
+    leaves the one before and never half of one: RUN.json is written again after every step, and a
+    half one would make the folder no run's for good."""
     path = Path(path)
     temporary = path.with_name(path.name + ".tmp")
     temporary.write_text(text, encoding="utf-8")
+    synced(temporary)
     os.replace(temporary, path)
+    synced(path.parent)
+
+
+def synced(*paths):
+    """Each file or folder flushed to the disk, a folder for the names in it: a rename can reach
+    the disk before the bytes it names, so a node that dies after it may leave the file short or
+    with stretches of zeros, where a start that is killed leaves the node to write them."""
+    for path in paths:
+        handle = os.open(path, os.O_RDONLY)
+        try:
+            os.fsync(handle)
+        finally:
+            os.close(handle)
 
 
 def job_specs(args, resume=False):
