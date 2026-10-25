@@ -1626,7 +1626,8 @@ esac
         self.state_line(701, "v1", "v1_driver")
         self.state_line(702, "sweep:synthetic", "sweep")
         self.state_line(703, "start", "xr_catalog")
-        self.live(700, 701, 702, 703)
+        self.state_line(704, "experiment:250", "experiment_250")
+        self.live(700, 701, 702, 703, 704)
         done = self.gate("sweep", "real")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         lines = self.submitted()
@@ -1635,8 +1636,8 @@ esac
         jobs = self.recorded()
         sweep = self.line_of("sweep-driver.sbatch")[0]
         self.assertTrue(sweep.startswith("--class gpu --name sweep "), sweep)
-        self.assertIn(f"--dependency=afterok:{jobs['setup']},afterok:{jobs['weights']},afterok:700,afterany:701,afterany:702 ",
-                      sweep)
+        self.assertIn(f"--dependency=afterok:{jobs['setup']},afterok:{jobs['weights']},afterok:700,afterany:701,afterany:702,"
+                      "afterany:704 ", sweep)
         self.assertIn("--kill-on-invalid-dep=yes", sweep)
         self.assertIn(" --no-requeue sweep-driver.sbatch", sweep)
         # the X-ray chain's catalog follows a fetch of days and is never waited on
@@ -1721,6 +1722,41 @@ esac
         done = self.gate("v1")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         self.assertIn("--dependency=afterany:900 ", self.line_of("v1-driver.sbatch")[0])
+
+    def test_an_experiment_run_and_the_runs_beside_it_each_wait_for_the_others_that_hold_the_checkout(self):
+        # experiment-driver.sbatch writes and clears grid/logs/HOLD as v1-driver and sweep-driver do,
+        # so each of the three waits afterany on every other one still live, whichever came first
+        self.environments_ready()
+        self.weights_ready()
+        self.carmlspine_shards()
+        self.catalog_ready(version=2)
+        self.plan("synthetic", "synthetic")
+        requests = self.tmp / "requests"
+        requests.mkdir()
+        for number in ("250", "251"):
+            (requests / f"{number}.request").write_text(self.REQUEST, encoding="utf-8")
+        self.state_line(600, "experiment:250", "experiment_250")
+        self.live(600)
+        done = self.gate("sweep", "synthetic")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("--dependency=afterany:600 ", self.line_of("sweep-driver.sbatch")[0])
+        done = self.gate("v1")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("--dependency=afterany:600 ", self.line_of("v1-driver.sbatch")[0])
+        # an experiment sent while a sweep, a version 1 run and another experiment are live
+        self.state_line(601, "sweep:real", "sweep")
+        self.state_line(602, "v1", "v1_driver")
+        self.live(600, 601, 602)
+        done = self.experiment("experiment", "251", requests=requests)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        line = self.line_of("experiment-driver.sbatch")[0]
+        self.assertIn("--dependency=afterany:600,afterany:601,afterany:602 ", line)
+        self.assertIn("the checkout: after the live runs that hold it", done.stdout)
+        # none live: no wait at all
+        self.live()
+        done = self.experiment("experiment", "250", requests=requests)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertNotIn("--dependency", self.line_of("experiment-driver.sbatch")[1])
 
     def ceph_fake(self, raw_bytes=None):
         """CephFS's attributes, faked by folder: the volume's quota, use and file count; a raw folder's

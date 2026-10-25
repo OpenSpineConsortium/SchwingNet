@@ -68,17 +68,18 @@
 #                   fetched now and checked line by line, run as one GPU job (experiment-driver.sbatch)
 #                   once the version 1 inputs are there (the environments, the weights, C-ArmLSpine's
 #                   shards and a qualifying catalog version, which 'v1' makes), refused while a run for
-#                   the same issue is live; the job checks the values against the blocks module before
-#                   anything trains
+#                   the same issue is live and afterany every other live run that holds the checkout;
+#                   the job checks the values against the blocks module before anything trains
 #   stop            cancel the gate's own jobs that are still queued or running, and nothing else
 #   cancel <job>    cancel one of the gate's own live jobs and every other live job its word queued
 #                   with it (a fetch's bank and catalog), and nothing else
 #
-# While a version 1 run or a sweep lasts, grid/logs/HOLD names its job and commit
-# (grid/v1-driver.sbatch, grid/sweep-driver.sbatch); the gate's side skips its fast-forward while
-# the file is there, and every word but a refused one clears a hold whose job Slurm no longer holds,
-# so the run's later steps run the code it recorded. One file holds one job, so each run that takes
-# it waits afterany on every other one still live (checkout_holders) rather than run beside it.
+# While a version 1 run, a sweep or an experiment run lasts, grid/logs/HOLD names its job and
+# commit (grid/v1-driver.sbatch, grid/sweep-driver.sbatch, grid/experiment-driver.sbatch); the
+# gate's side skips its fast-forward while the file is there, and every word but a refused one
+# clears a hold whose job Slurm no longer holds, so the run's later steps run the code it
+# recorded. One file holds one job, so each run that takes it waits afterany on every other one
+# still live (checkout_holders) rather than run beside it.
 # Every submission is one line of grid/logs/GATE_JOBS.txt (<job id> <word> <what> <when>) as well
 # as of hpcworker's ledger for the project; status and stop read the gate's file, which knows the
 # word each job came from, and touch no job it does not name. Which of them are live is read from
@@ -260,11 +261,12 @@ chain() {  # chain DEPEND [run-xray-chain.sh arguments...]: the X-ray chain afte
   record "$XR_FETCH" xr_fetch; record "$(value_of bank "$after")" xr_bank; record "$XR_CATALOG" xr_catalog
 }
 checkout_holders() {  # afterany:<job> for every live job of the gate's that holds the checkout while it runs, comma-joined
-  # A version 1 run and a sweep each write grid/logs/HOLD, one file naming one job, and the first of
-  # two side by side to end would clear it while the other still runs; so each waits for the others.
+  # A version 1 run, a sweep and an experiment run each write grid/logs/HOLD, one file naming one
+  # job, and the first of two side by side to end would clear it while the other still runs, whose
+  # end check then finds the checkout moved and throws the run away; so each waits for the others.
   local job waits=""
   [ -f "$STATE" ] || return 0
-  for job in $(awk '$3 == "v1_driver" || $3 == "sweep" { print $1 }' "$STATE" | sort -u); do
+  for job in $(awk '$3 == "v1_driver" || $3 == "sweep" || $3 ~ /^experiment_[0-9]+$/ { print $1 }' "$STATE" | sort -u); do
     case "$QUEUED" in *" $job "*) waits=$(joined "$waits" "afterany:$job") ;; esac
   done
   echo "$waits"
@@ -874,7 +876,7 @@ experiment_wall() {  # experiment_wall HOURS: the job's wall time as Slurm takes
   awk -v h="$1" 'BEGIN { m = int((h * 1.25 + 1) * 60 + 0.999); if (m < 1440) m = 1440; printf "%d:%02d:00\n", int(m / 60), m % 60 }'
 }
 word_experiment() {
-  local req=$LOGS/experiment-$id.request busy version hours wall
+  local req=$LOGS/experiment-$id.request busy version hours wall holds opts
   busy=$(live_of "experiment_$id")
   [ -z "$busy" ] || { echo "refusing: the run for #$id is already queued or running (job $busy)"; return 75; }
   if ! experiment_request "$id" > "$req.new" || [ ! -s "$req.new" ]; then
@@ -894,7 +896,12 @@ word_experiment() {
   echo "  catalog: $version qualifies for the run (grid/v1-version.sh); no job"
   echo "  request: $(tr '\n' ' ' < "$req")"
   echo "  wall time: $wall for $hours hours of training"
-  submit "experiment_$id" gpu REQUEST="$req" ISSUE="$id" RUNS="$RUNS" WEIGHTS="$WEIGHTS" --no-requeue --time "$wall" -- experiment-driver.sbatch > /dev/null || return 1
+  # Queued after every run that holds the checkout, as a sweep is, rather than refused.
+  holds=$(checkout_holders)
+  [ -z "$holds" ] || echo "  the checkout: after the live runs that hold it ($holds)"
+  depend_on "$holds" || return 1
+  submit "experiment_$id" gpu REQUEST="$req" ISSUE="$id" RUNS="$RUNS" WEIGHTS="$WEIGHTS" ${opts[@]+"${opts[@]}"} \
+    --no-requeue --time "$wall" -- experiment-driver.sbatch > /dev/null || return 1
   echo "submitted one job. 'status' shows it; its report is logs/experiment-$id-STAGE-REPORT.md"
 }
 word_nodequota() {
@@ -1082,7 +1089,7 @@ word_cancel() {  # the job named, if the gate's and live, with every live job of
   "$SCANCEL" $cancel && echo "cancelled ($from): $cancel"
 }
 
-release_hold() {  # a run's hold (grid/v1-driver.sbatch, grid/sweep-driver.sbatch) is cleared once Slurm no longer holds its job
+release_hold() {  # a run's hold (grid/v1-driver.sbatch, grid/sweep-driver.sbatch, grid/experiment-driver.sbatch) is cleared once Slurm no longer holds its job
   local job
   [ -f "$LOGS/HOLD" ] || return 0
   job=$(awk '{ print $1; exit }' "$LOGS/HOLD")
