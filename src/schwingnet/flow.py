@@ -80,7 +80,12 @@ class JobSpec(BaseModel):
 
 
 class JobRecord(BaseModel):
-    """What one job cost, as the scheduler and the runner recorded it, never estimated."""
+    """What one job cost, as the scheduler and the runner recorded it, never estimated.
+
+    A Slurm job is recorded as soon as it is submitted, with no exit code and no time used yet, so
+    a start that dies while the job waits leaves it named for the next start to wait on instead of
+    submitting a second; the exit code is never left out, so a record from before keeps reading.
+    """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -92,7 +97,7 @@ class JobRecord(BaseModel):
     seconds_used: int = Field(ge=0)
     gpus: int = Field(ge=0)
     preemptions: int = Field(ge=0)
-    exit_code: int
+    exit_code: int | None
 
 
 class RunRecord(BaseModel):
@@ -100,7 +105,13 @@ class RunRecord(BaseModel):
 
     A dirty tree is refused at the boundary, so no number can be written against code git does
     not hold; the catalog version is named by its sha256, so two runs that cite the same hash
-    read the same bytes.
+    read the same bytes. A run that names the sha256 of its configuration is named by it and by
+    the digest of the code it runs (configured_run_id, tools/run_code.py), so the same
+    configuration of the same code on the same catalog is always the same run, and a cut-short
+    run can be carried on in its own folder on any later commit that changed none of that code;
+    the commit it cites is the one it started on. A record without a configuration was written
+    before configurations were named, and its id is still the hash of its start (run_id), so every
+    RUN.json written before keeps validating.
     """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
@@ -115,6 +126,8 @@ class RunRecord(BaseModel):
     seed: int = Field(ge=0)
     epochs: int = Field(ge=1)
     parent_weights: HexDigest | None = None
+    configuration_sha256: HexDigest | None = None
+    code_sha256: HexDigest | None = None
     started_at: Instant
     mode: str = Field(pattern=r"^(local|slurm)$")
     jobs: tuple[JobRecord, ...] = ()
@@ -126,7 +139,19 @@ class RunRecord(BaseModel):
             raise ValueError("a run from a dirty tree is refused")
         if not self.split_disjoint:
             raise ValueError("a run on a split that is not disjoint is refused")
-        if self.run_id != run_id(self.code_commit, self.catalog_sha256, self.started_at):
+        if self.configuration_sha256 is not None:
+            if self.code_sha256 is None:
+                raise ValueError("a run named by its configuration names the code it runs too")
+            named = configured_run_id(
+                self.code_sha256, self.catalog_sha256, self.configuration_sha256
+            )
+            if self.run_id != named:
+                raise ValueError(
+                    "the run id is not the hash of its code, catalog and configuration"
+                )
+        elif self.code_sha256 is not None:
+            raise ValueError("a run named by its start names no code")
+        elif self.run_id != run_id(self.code_commit, self.catalog_sha256, self.started_at):
             raise ValueError("the run id is not the hash of its commit, catalog and start")
         return self
 
@@ -140,8 +165,38 @@ class RunRecord(BaseModel):
 @ensure(lambda result: len(result) == RUN_ID_LENGTH, "a run id is twelve hex digits")
 @ensure(lambda result: _is_hex(result), "a run id is hex")
 def run_id(commit: str, catalog_sha256: str, started_at: str) -> str:
-    """The run's name: a hash of what it ran on and when, so no two runs share one."""
+    """The name of a run recorded before configurations were named: a hash of what it ran on and
+    when, so no two such runs share one. tools/flow.py names every run since by configured_run_id;
+    this one stays so that the records written before keep validating."""
     text = f"{commit}\n{catalog_sha256}\n{started_at}\n"
+    return hashlib.sha256(text.encode("ascii")).hexdigest()[:RUN_ID_LENGTH]
+
+
+# The three digests are held to 64 ASCII characters, and not to hex: CrossHair 0.0.111 met no hex
+# form of these preconditions within the gate's 20 s (a regular expression, a test of each
+# character, sets, 2026-10-24), and it meets the ASCII form in only some runs (two of three,
+# 2026-10-25), so the function is listed under [tool.beethoven-qa.unproven] in pyproject.toml.
+# RunRecord's HexDigest holds each digest to hex where it is recorded.
+@beartype
+@require(lambda code_sha256: len(code_sha256) == 64 and code_sha256.isascii(), "the code's sha256")
+@require(lambda catalog_sha256: len(catalog_sha256) == 64 and catalog_sha256.isascii(), "a sha256")
+@require(
+    lambda configuration_sha256: len(configuration_sha256) == 64 and configuration_sha256.isascii(),
+    "the configuration's sha256",
+)
+@ensure(lambda result: len(result) == RUN_ID_LENGTH, "a run id is twelve hex digits")
+@ensure(lambda result: _is_hex(result), "a run id is hex")
+def configured_run_id(code_sha256: str, catalog_sha256: str, configuration_sha256: str) -> str:
+    """The run's name from what it ran: its code's digest, the catalog and the configuration.
+
+    No clock enters it, and no commit: the code is the digest of the files a run executes
+    (tools/run_code.py), so a run started again with the same configuration on the same catalog
+    finds its own folder and carries on what is done there instead of training a second time
+    beside it, also after main has merged anything that changed none of those files. The first
+    line says code, and the third configuration where a legacy id's third line is an instant, so
+    the text hashed here is never the text run_id hashes.
+    """
+    text = f"code {code_sha256}\n{catalog_sha256}\nconfiguration {configuration_sha256}\n"
     return hashlib.sha256(text.encode("ascii")).hexdigest()[:RUN_ID_LENGTH]
 
 

@@ -12,6 +12,7 @@ seen is spelled that way on purpose.
 
     python3 tools/bank.py --recipe grid/banks/nih_chestxray14.json            # plan: counts, writes nothing
     python3 tools/bank.py --recipe grid/banks/nih_chestxray14.json --run      # write the bank
+    python3 tools/bank.py --recipe grid/banks/nih_chestxray14.json --bound    # the most its frames take
     python3 tools/bank.py --recipe R --raw <dir> --bank <dir>                  # another root, for a test
 
 The conversion is deterministic (the files in path order, one stem per relative path, the meta
@@ -45,10 +46,15 @@ whose stamp is the same and whose bank lists the same decodes and reads nothing 
 is unchanged (#260), so a rerun of the chain costs a listing of the two folders and not a decode of
 the set. Any change to any of them, a file fetched again or a frame removed from the bank among
 them, makes a full run, which is idempotent as before; a full run removes the old stamp first, so
-a run refused or killed part way leaves no stamp to trust. Standard library only, Pillow, numpy and pydicom optional.
+a run refused or killed part way leaves no stamp to trust. `--bound` reads the files' headers alone
+and prints `most_bytes`, the most the bank's frames take with their copies in its shard: an 8-bit
+PNG its own size, and any other frame the largest 8-bit grey PNG its pixels can make, which no
+compression of the file it came from bounds (#252); the bank job is admitted for it before it
+writes where it is more than the bank word's budget. Standard library only, Pillow, numpy and pydicom optional.
 """
 
 import argparse
+import contextlib
 import csv
 import hashlib
 import io
@@ -360,6 +366,41 @@ def dicom_as_png(data):
     return out.getvalue(), image.width, image.height, header
 
 
+def dicom_extent(handle):
+    """A DICOM file's rows and columns, read from its header with the pixel data left unread."""
+    _, pydicom, _ = dicom_modules()
+    dataset = pydicom.dcmread(handle, stop_before_pixels=True, force=True)
+    rows, columns = dataset.get("Rows"), dataset.get("Columns")
+    if not rows or not columns:
+        raise BankError("the header gives no Rows and Columns, so the frame's pixels cannot be counted")
+    return int(rows), int(columns)
+
+
+# Pillow's PNG of an 8-bit grey frame holds, beside its pixels and an ICC profile carried over from
+# the file it came from, the signature (8 bytes), the header chunk (25), at most one transparency
+# chunk (14) and the end chunk (12); its encoder hands the data chunks ImageFile.MAXBLOCK bytes, 64
+# KiB, at a time, the last two of them perhaps fewer.
+PNG_CHUNKS = 8 + 25 + 14 + 12
+PNG_BLOCK = 65536
+ICC_NAME = b"ICC Profile"
+
+
+def deflated_at_most(length):
+    """The most bytes a zlib stream of `length` bytes takes, whatever the level, the window and the
+    memory its encoder chose: the conservative bound zlib's deflateBound gives where it cannot read
+    the stream's parameters, the stream's own six bytes with it."""
+    return length + (length + 7) // 8 + (length + 63) // 64 + 5 + 6
+
+
+def grey_png_at_most(width, height, profile=0):
+    """The most bytes Pillow's PNG of an 8-bit grey frame takes, whatever its pixels hold: its rows,
+    a filter byte and a byte a pixel each, deflated into data chunks, the chunks around them and an
+    ICC profile of `profile` bytes."""
+    data = deflated_at_most(height * (width + 1))
+    carried = 12 + len(ICC_NAME) + 2 + deflated_at_most(profile) if profile else 0
+    return PNG_CHUNKS + data + 12 * (data // PNG_BLOCK + 2) + carried
+
+
 class Labels:
     """The boxes of a frame from the recipe's label files, in the shape ingest reads."""
 
@@ -489,6 +530,48 @@ def header_only(job):
     except BankError as error:
         raise BankError(f"{relative}: {error}") from None
     except Exception as error:
+        raise BankError(f"{relative}: {type(error).__name__}: {error}") from None
+
+
+@contextlib.contextmanager
+def frame_file(raw, relative):
+    """A frame's file, or its member of an archive, open for reading with its size, so that its
+    header is read without the rest of it."""
+    if MEMBER in relative:
+        archive, member = relative.split(MEMBER, 1)
+        with zipfile.ZipFile(Path(raw) / archive) as opened, opened.open(member) as handle:
+            yield handle, opened.getinfo(member).file_size
+        return
+    with open(Path(raw) / relative, "rb") as handle:
+        yield handle, os.fstat(handle.fileno()).st_size
+
+
+def extent_at_most(handle, size, image_format):
+    """The most bytes the frame of an open file takes in the bank: an 8-bit PNG its own size, since
+    it is copied byte for byte, and any other the largest PNG its pixels can make, which nothing
+    about the file's own compression bounds."""
+    if image_format == "png":
+        head = handle.read(25)
+        png_size(head)
+        if png_depth(head) <= 8:
+            return size
+        handle.seek(0)
+    if image_format == "dcm":
+        rows, columns = dicom_extent(handle)
+        return grey_png_at_most(columns, rows)
+    with pillow().open(handle) as image:
+        return grey_png_at_most(image.width, image.height, len(image.info.get("icc_profile") or b""))
+
+
+def frame_at_most(job):
+    """One file's extent_at_most, from its header alone; run in a worker process."""
+    raw, relative, image_format = job
+    try:
+        with frame_file(raw, relative) as (handle, size):
+            return extent_at_most(handle, size, image_format)
+    except BankError as error:
+        raise BankError(f"{relative}: {error}") from None
+    except Exception as error:  # a malformed file names itself, not a traceback
         raise BankError(f"{relative}: {type(error).__name__}: {error}") from None
 
 
@@ -732,12 +815,26 @@ def convert(recipe, raw, bank, run, workers=1):
     return counts
 
 
+def bound(recipe, raw, workers=1):
+    """The most bytes the frames of the files a plan banks take, in the bank and once more in its
+    shard, which copies every frame of the bank (tools/ingest.py): what the bank job is admitted
+    for before it writes, where the bank word's budget, a multiple of the raw copy's bytes, is less
+    (grid/02-bank-ingest.sbatch). Read from the headers, nothing decoded or written; the text
+    beside the frames, each frame's meta and the shard's manifest, is not counted."""
+    relatives = image_paths(raw, recipe["images"], recipe.get("archives"))
+    jobs = [(str(raw), relative, recipe["format"]) for relative in relatives]
+    return {"frames": len(relatives), "most_bytes": 2 * sum(mapped(frame_at_most, jobs, workers))}
+
+
 def parser():
     top = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     top.add_argument("--recipe", required=True, help="grid/banks/<id>.json")
     top.add_argument("--raw", default=None, help="the raw folder; the recipe's unless named")
     top.add_argument("--bank", default=None, help="the bank folder; the recipe's unless named")
-    top.add_argument("--run", action="store_true", help="write the bank; a plan otherwise")
+    mode = top.add_mutually_exclusive_group()
+    mode.add_argument("--run", action="store_true", help="write the bank; a plan otherwise")
+    mode.add_argument("--bound", action="store_true",
+                      help="the most bytes the bank's frames and their shard's copies take, read from the headers")
     top.add_argument("--workers", type=int, default=int(os.environ.get("BANK_WORKERS", "1")),
                      help="processes that decode; the bank is the same bytes whatever the number")
     return top
@@ -748,11 +845,14 @@ def main(argv=None):
     try:
         recipe = load_recipe(args.recipe)
         raw, bank = args.raw or recipe["raw"], args.bank or recipe["bank"]
-        if args.run:
+        if args.bound:
+            counts = bound(recipe, raw, args.workers)
+        elif args.run:
             counts = run_once(recipe, raw, bank, args.workers)
         else:
             counts = convert(recipe, raw, bank, False, args.workers)
-        counts.update({"id": recipe["id"], "bank": args.bank or recipe["bank"], "mode": "run" if args.run else "plan",
+        mode = "bound" if args.bound else "run" if args.run else "plan"
+        counts.update({"id": recipe["id"], "bank": args.bank or recipe["bank"], "mode": mode,
                        "split": recipe["split"], "person_prefix": recipe.get("person_prefix", recipe["id"])})
         print(json.dumps(counts, indent=1, sort_keys=True))
         return 0

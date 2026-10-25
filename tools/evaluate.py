@@ -6,10 +6,11 @@ Usage (inside the train-cpu or train-gpu environment):
 The eval gate's rules (spine-program rule 5 and 6, beethoven-research REFORMS): a number is a
 fraction with n, a 95 percent Wilson interval and the persons behind it, stamped with the run id,
 the commit, the clean-tree flag and the catalog's sha256, all read from the run's RUN.json, which
-tools/flow.py wrote from a clean tree. The test part is read once, here, after training is over;
-the trainer never saw it. Beside the table the figures a reader checks: the confusion matrix and
-the per-level accuracy with its intervals. The transitional stratum (T13, L6) is reported apart,
-never pooled, as docs/research/retraining-plan.md asks.
+tools/flow.py wrote from a clean tree, and the catalog is refused in words unless it has that
+sha256, so no number is stamped with a catalog it was not read from. The test part is read once,
+here, after training is over; the trainer never saw it. Beside the table the figures a reader
+checks: the confusion matrix and the per-level accuracy with its intervals. The transitional
+stratum (T13, L6) is reported apart, never pooled, as docs/research/retraining-plan.md asks.
 
 The evaluator is the version boundary, so it is where the test witness frames are read
 (docs/research/retraining-plan.md, section 4): the test, transitional and sweep frames of the
@@ -18,6 +19,11 @@ network on, with each frame's strip and animation and witness-test.jsonl holding
 score; none of it chooses anything, since the checkpoint was chosen before this step began. The
 table, the figures and the pictures go to Weights and Biases offline beside the run
 (tools/wandb_log.py), pushed by the flow once the step is done.
+
+Only a finished training is scored: train/checkpoint.json must read as a run's record and the
+best.pt beside it must have the sha256 it names (tools/train.py's checkpoint_facts), or the
+evaluation is refused in words before it reads a crop or writes a file, since a record a node that
+died left short, or weights that are not the ones it names, would give numbers of no run.
 """
 
 import importlib.util
@@ -242,8 +248,12 @@ def log_to_wandb(out, record, rows, folder, lines, drawn):
 
 def run(args):
     out = Path(args.run)
-    record = json.loads((out / "RUN.json").read_text(encoding="utf-8"))
-    checkpoint = json.loads((out / "train" / "checkpoint.json").read_text(encoding="utf-8"))
+    record = train.run_record(out)
+    # The catalog the record names, whose sha256 every number here is stamped with, and the
+    # best.pt the checkpoint's record names, both held to before anything is read, so no number
+    # comes from another catalog or from weights the record does not name.
+    train.refuse_another_catalog(record, args.catalog, train.file_digest(args.catalog, "--catalog"))
+    checkpoint = train.checkpoint_facts(out / "train")
     crops = read_crops(args.catalog, (args.part,))
     if not crops:
         raise TrainError(f"the catalog has no labelled crops in the {args.part} part")

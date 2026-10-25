@@ -5,6 +5,7 @@ import importlib.util
 import json
 import os
 import struct
+import zipfile
 import zlib
 from pathlib import Path
 
@@ -222,3 +223,35 @@ def test_a_thinned_or_edited_bank_is_made_again_and_a_refused_run_leaves_no_stam
     assert bank_tool.main(["--recipe", str(recipe), "--run"]) == 2
     assert "other bytes" in capsys.readouterr().err
     assert not stamp.exists()
+
+
+def test_the_bound_of_eight_bit_pngs_is_their_own_bytes_in_the_bank_and_in_its_shard(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # An 8-bit PNG is copied into the bank byte for byte and its shard copies it once more, so
+    # the bound the bank job is admitted for (#252) is the frames' own bytes twice, read from their
+    # headers with nothing written, whether they lie in folders or inside an archive.
+    bank_tool = load("bank")
+    raw = tmp_path / "raw" / "images_001" / "images"
+    raw.mkdir(parents=True)
+    for index, name in enumerate(["00000001_000", "00000001_001", "00000002_000"]):
+        (raw / f"{name}.png").write_bytes(png(40 + index, 30, index))
+    films = sum(film.stat().st_size for film in raw.iterdir())
+    recipe = nih_recipe(tmp_path, tmp_path / "raw")
+    assert bank_tool.main(["--recipe", str(recipe), "--bound"]) == 0
+    bound = json.loads(capsys.readouterr().out)
+    assert (bound["mode"], bound["frames"], bound["most_bytes"]) == ("bound", 3, 2 * films)
+    assert not (tmp_path / "bank").exists()
+    assert bank_run(bank_tool, recipe, capsys)["written"] == 3
+    banked = sum(film.stat().st_size for film in (tmp_path / "bank" / "images").rglob("*.png"))
+    assert 2 * banked == bound["most_bytes"]
+    zipped = tmp_path / "zipped"
+    zipped.mkdir()
+    with zipfile.ZipFile(zipped / "images_001.zip", "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        for film in sorted(raw.iterdir()):
+            archive.write(film, f"images_001/images/{film.name}")
+    shipped = json.loads(recipe.read_text(encoding="utf-8"))
+    shipped.update(raw=str(zipped), archives=["*.zip"])
+    recipe.write_text(json.dumps(shipped), encoding="utf-8")
+    assert bank_tool.main(["--recipe", str(recipe), "--bound"]) == 0
+    assert json.loads(capsys.readouterr().out)["most_bytes"] == 2 * films

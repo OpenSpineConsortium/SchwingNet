@@ -76,7 +76,7 @@ class RecordsAreRead(unittest.TestCase):
     def test_the_catalog_is_what_blocks_py_defines(self):
         self.assertEqual(self.catalog["fields"][:3], ["normalise", "augment", "optimiser"])
         self.assertIn("resnet18", self.catalog["choices"]["architecture"])
-        self.assertEqual(self.catalog["options"]["augment"], ["box-jitter", "intensity", "blur", "noise"])
+        self.assertEqual(self.catalog["options"]["augment"], ["box-jitter", "intensity", "blur", "noise", "strong"])
         self.assertIn("weight_decay", self.catalog["numbers"])
         self.assertEqual(self.catalog["by_person"], "cap-per-person")
         self.assertEqual([r["name"] for r in panel.recipes(ROOT)], ["commercial", "commercial-share-alike", "non-commercial", "research-internal"])

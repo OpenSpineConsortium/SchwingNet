@@ -18,9 +18,22 @@
 # build made, writes $STORE/checked/<file> once that check passes (grid/v1-version.sh reads it),
 # and writes its report only once it holds the lock, since every catalog job writes the same
 # report file. BUILD_LOCK_WAIT bounds the wait, inside the job's wall time.
+#
+# Under Slurm the build runs as Metaflow's CatalogFlow (issue #252): a job with SLURM_JOB_ID set,
+# and no SCHWINGNET_FLOW_STEP, execs flows/launch.py catalog with what the caller gave (DATA_ROOT,
+# STORE), whose one step runs this script again with SCHWINGNET_FLOW_STEP=1. One step, since the
+# lock is held from the listing to the marker, so a killed build is run again whole when its job
+# is queued again, which costs under a minute. A direct bash call, as the tests make, runs the
+# body as before. PYDRV must then carry Metaflow too, as grid/bin/train-cpu-python does.
 set -uo pipefail
 REPO=${SCHWINGNET:-$HOME/SchwingNet}
 PYDRV=${PYDRV:-python3}
+if [ -n "${SLURM_JOB_ID:-}" ] && [ -z "${SCHWINGNET_FLOW_STEP:-}" ]; then
+  words=()
+  [ -z "${DATA_ROOT:-}" ] || words+=(--data-root "$DATA_ROOT")
+  [ -z "${STORE:-}" ] || words+=(--store "$STORE")
+  exec "$PYDRV" "$REPO/flows/launch.py" catalog --max-workers 1 -- ${words[@]+"${words[@]}"}
+fi
 DATA_ROOT=${DATA_ROOT:-/rs/rs_grp_oschome/go2432/data}
 STORE=${STORE:-$DATA_ROOT/_catalog}
 REPORT=logs/03-catalog-STAGE-REPORT.md
@@ -58,8 +71,12 @@ args=()
 while IFS= read -r manifest; do
   args+=(--manifest "$manifest")
 # Not a folder whose name starts with a dot: tools/ingest.py stages a shard as shards/.ingest-*
-# and renames it into place, which the build lock does not wait for (grid/v1-version.sh skips them too).
-done < <(find "$DATA_ROOT" -mindepth 4 -maxdepth 4 -path '*/shards/[!.]*/MANIFEST.json' 2>/dev/null | sort)
+# and renames it into place, which the build lock does not wait for (grid/v1-version.sh skips them
+# too), and a source's dot folders beside shards/ (ingest's .reuse/ notes, #260) hold no shard. Each
+# folder is judged by its own name once the path is cut, since find's -path lets a * span slashes,
+# so a pattern alone would take a staging folder under a data root that lies inside a shards/ folder.
+done < <(find "$DATA_ROOT" -mindepth 4 -maxdepth 4 -name MANIFEST.json 2>/dev/null \
+  | awk -F/ '$(NF-2) == "shards" && $(NF-1) !~ /^\./ && $(NF-3) !~ /^\./' | sort)
 if [ "${#args[@]}" = 0 ]; then
   echo "- no MANIFEST.json under $DATA_ROOT/*/shards/: nothing to build" >> "$REPORT"; cat "$REPORT"
   echo "XR_CATALOG_RC=1 $(date '+%F %T')"; exit 1

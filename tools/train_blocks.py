@@ -14,6 +14,10 @@ The denoisers and the normalisers are forward pre-hooks on the model, registered
 so a crop is filtered and then scaled inside the model: the evaluator, the latency tool, the chain
 evaluation and the ONNX export all call the model and so all see the crop the trainer saw.
 
+The augment block strong, SyntheX's and FluoroSAM's strong domain randomisation, has a table of
+its own, STRONG, of which each crop takes none, one or two transforms (strong); it is last in
+AUGMENT_ORDER, so a run that names the other changes and not it draws what it drew before.
+
 Every random draw the blocks make takes the run's own generator, on the CPU, so their draws are
 fixed by the seed whatever the device. torchvision's networks draw on their own account too:
 mobilenet-v3-small's classifier holds a Dropout and efficientnet-b0 Dropout and StochasticDepth,
@@ -480,12 +484,528 @@ def noise(batch, generator):
     return (batch + field.to(batch.device, batch.dtype) * batch.clamp(min=0.0).sqrt()).clamp(0.0, 1.0)
 
 
-AUGMENTERS = {"box-jitter": box_jitter, "intensity": intensity, "blur": blur, "noise": noise}
-AUGMENT_ORDER = ("box-jitter", "intensity", "blur", "noise")
+# The strong block's ranges (strong, below, says which are SyntheX's words and which are not). A
+# share of the side is of the crop's own side, and a spread or a kernel is in the crop's pixels.
+IMPULSE_SHARE = 0.10
+AFFINE_SHIFT = 0.10
+AFFINE_TURN = 15.0
+AFFINE_SHEAR = 10.0
+AFFINE_ZOOM = (0.9, 1.1)
+LINEAR_ALPHA = (0.6, 1.4)
+LOG_GAIN = (0.6, 1.4)
+SIGMOID_GAIN = (3.0, 10.0)
+SIGMOID_CUTOFF = (0.3, 0.6)
+STRONG_BLUR_SIGMA = (0.0, 3.0)
+AVERAGE_KERNEL = (2, 7)
+POOL_KERNEL = (2, 4)
+BOXES = (1, 4)
+BOX_SIDE = (0.05, 0.20)
+BOX_SPREAD = 0.5
+DROPOUT_SHARE = (0.01, 0.10)
+DROPOUT_AREA = (0.02, 0.05)
+SHARPEN_ALPHA = (0.0, 1.0)
+SHARPEN_LIGHTNESS = (0.75, 1.5)
+EMBOSS_ALPHA = (0.0, 1.0)
+EMBOSS_STRENGTH = (0.5, 1.5)
+MULTIPLY = (0.5, 1.5)
+WARP_CELLS = 4
+WARP_SHIFT = 0.05
+GAUSSIAN_SPREAD = (0.2, 1.0)
+WINDOW_WIDTH = (0.2, 1.0)
+CLAHE_TILES = 8
+CLAHE_CLIP = (2.0, 4.0)
+CLAHE_BINS = 256
+# SyntheX's "up to two" strong transforms per crop.
+STRONG_MOST = 2
+
+# The 3 by 3 kernels of sharpen and emboss, imgaug's Sharpen and Emboss matrices split into what
+# is fixed and what a drawn lightness or strength multiplies, so the drawn part is a broadcast.
+LAPLACE = ((-1.0, -1.0, -1.0), (-1.0, 8.0, -1.0), (-1.0, -1.0, -1.0))
+RELIEF = ((-1.0, -1.0, 0.0), (-1.0, 0.0, 1.0), (0.0, 1.0, 1.0))
+CORNERS = ((-1.0, 0.0, 0.0), (0.0, 0.0, 0.0), (0.0, 0.0, 1.0))
+
+
+def _per_crop(generator, count, low, high, like):
+    """One draw per crop, shaped to act on every channel of its crop alike."""
+    return _uniform(generator, count, low, high).view(count, 1, 1, 1).to(like.device, like.dtype)
+
+
+def _ways(generator, count, options, like):
+    """Which of a transform's ways, 0 to options - 1, each crop takes, as a column a batch
+    compares against."""
+    return torch.randint(0, options, (count,), generator=generator).view(count, 1, 1, 1).to(like.device)
+
+
+def _field(generator, like):
+    """One uniform field per crop, shared by its channels, so a grey crop stays grey."""
+    count, _, height, width = like.shape
+    return torch.rand(count, 1, height, width, generator=generator).to(like.device, like.dtype)
+
+
+def _rectangles(sides, corners, height, width, device):
+    """The pixels inside each crop's rectangles, one mask per crop and rectangle: sides are a
+    rectangle's height and width as shares of the crop's, at least a pixel, and corners place it
+    anywhere it fits, as shares of the room left; made on the CPU from the CPU's draws."""
+    tall = (sides[..., 0] * height).round().clamp(1, height)
+    wide = (sides[..., 1] * width).round().clamp(1, width)
+    top = (corners[..., 0] * (height - tall + 1)).floor()
+    left = (corners[..., 1] * (width - wide + 1)).floor()
+    rows = torch.arange(height).view(1, 1, height, 1)
+    columns = torch.arange(width).view(1, 1, 1, width)
+    down = (rows >= top[..., None, None]) & (rows < (top + tall)[..., None, None])
+    across = (columns >= left[..., None, None]) & (columns < (left + wide)[..., None, None])
+    return (down & across).to(device)
+
+
+def _filter3(batch, rows):
+    """One fixed 3 by 3 kernel over every channel of every crop alike, the edges repeated."""
+    count, channels, height, width = batch.shape
+    kernel = torch.tensor(rows, dtype=batch.dtype, device=batch.device).view(1, 1, 3, 3)
+    planes = F.pad(batch.reshape(count * channels, 1, height, width), (1, 1, 1, 1), mode="replicate")
+    return F.conv2d(planes, kernel).view(count, channels, height, width)
+
+
+def invert(batch, generator):
+    """Max minus x with the maximum 1, SyntheX's inversion and FluoroSAM's; it draws nothing."""
+    return (1.0 - batch).clamp(0.0, 1.0)
+
+
+def impulse_noise(batch, generator):
+    """SyntheX's impulse, pepper or salt noise on IMPULSE_SHARE of each crop's pixels, the kind
+    drawn per crop: impulse noise sets each hit pixel to 0 or 1 at even odds, pepper to 0, salt
+    to 1."""
+    count = batch.shape[0]
+    kind = _ways(generator, count, 3, batch)
+    hit = _field(generator, batch) < IMPULSE_SHARE
+    salt = (_field(generator, batch) < 0.5).to(batch.dtype)
+    value = torch.where(kind == 0, salt, torch.where(kind == 1, torch.zeros_like(salt), torch.ones_like(salt)))
+    return torch.where(hit, value, batch)
+
+
+def affine_theta(count, generator):
+    """One move, turn, shear and zoom per crop as the matrix affine_grid takes: the turn and the
+    shear in degrees, the move a share of the side, twice that in the grid's -1 to 1 units, as
+    jitter_theta moves it; a turn of a square crop is a turn, which is every crop here."""
+    shift = _uniform(generator, count * 2, -AFFINE_SHIFT, AFFINE_SHIFT).view(count, 2) * 2.0
+    turn = torch.deg2rad(_uniform(generator, count, -AFFINE_TURN, AFFINE_TURN))
+    shear = torch.deg2rad(_uniform(generator, count, -AFFINE_SHEAR, AFFINE_SHEAR))
+    zoom = _uniform(generator, count, *AFFINE_ZOOM)
+    cos, sin, tan = turn.cos(), turn.sin(), shear.tan()
+    theta = torch.zeros(count, 2, 3)
+    theta[:, 0, 0] = zoom * cos
+    theta[:, 0, 1] = zoom * (cos * tan - sin)
+    theta[:, 1, 0] = zoom * sin
+    theta[:, 1, 1] = zoom * (sin * tan + cos)
+    theta[:, :, 2] = shift
+    return theta
+
+
+def affine(batch, generator):
+    """SyntheX's random affine warp, its edge repeated where the warp uncovers it, as box_jitter."""
+    return resample(batch, affine_theta(batch.shape[0], generator), "bilinear").clamp(0.0, 1.0)
+
+
+def affine_with_maps(batch, maps, generator):
+    """affine on the crops and the same warp on their level maps, sampled nearest so a map stays
+    level codes and the ignore mark; the draw is affine's own, so the crops come out as without."""
+    theta = affine_theta(batch.shape[0], generator)
+    moved = resample(maps.unsqueeze(1).to(batch.dtype), theta, "nearest")
+    return resample(batch, theta, "bilinear").clamp(0.0, 1.0), moved.squeeze(1).round().to(maps.dtype)
+
+
+def contrast(batch, generator):
+    """One of a linear, a log and a sigmoid contrast curve per crop, SyntheX's three, written on 0
+    to 1 as imgaug writes them on a byte: linear about the middle grey, gain times log2(1 + x),
+    and 1 / (1 + exp(gain (cutoff - x))); every crop draws every setting, so the draws do not
+    depend on which curve it took."""
+    count = batch.shape[0]
+    kind = _ways(generator, count, 3, batch)
+    alpha = _per_crop(generator, count, *LINEAR_ALPHA, batch)
+    gain = _per_crop(generator, count, *LOG_GAIN, batch)
+    steep = _per_crop(generator, count, *SIGMOID_GAIN, batch)
+    cutoff = _per_crop(generator, count, *SIGMOID_CUTOFF, batch)
+    x = batch.clamp(0.0, 1.0)
+    linear = 0.5 + alpha * (x - 0.5)
+    log = gain * torch.log2(1.0 + x)
+    sigmoid = torch.sigmoid(steep * (x - cutoff))
+    return torch.where(kind == 0, linear, torch.where(kind == 1, log, sigmoid)).clamp(0.0, 1.0)
+
+
+def gaussian_blur(batch, generator):
+    """A Gaussian blur of a spread drawn per crop up to SyntheX's 3 pixels, a far heavier blur
+    than the blur block's, crop by crop since each has its own kernel."""
+    sigmas = _uniform(generator, batch.shape[0], *STRONG_BLUR_SIGMA).tolist()
+    crops = [crop[None] if sigma < 0.05 else _gaussian(crop[None], sigma) for crop, sigma in zip(batch, sigmas, strict=True)]
+    return torch.cat(crops).clamp(0.0, 1.0)
+
+
+def _box_mean(crop, kernel):
+    """The mean over a kernel by kernel window about every pixel, the edges repeated; an even
+    kernel reaches one pixel further to the right and down, as OpenCV's box filter does."""
+    before, after = (kernel - 1) // 2, kernel // 2
+    return F.avg_pool2d(F.pad(crop, (before, after, before, after), mode="replicate"), kernel, stride=1)
+
+
+def average_blur(batch, generator):
+    """SyntheX's average blur, a kernel of AVERAGE_KERNEL pixels drawn per crop."""
+    low, high = AVERAGE_KERNEL
+    kernels = torch.randint(low, high + 1, (batch.shape[0],), generator=generator).tolist()
+    return torch.cat([_box_mean(crop[None], kernel) for crop, kernel in zip(batch, kernels, strict=True)])
+
+
+def box_corruption(batch, generator):
+    """SyntheX's boxes corrupted with large noise: BOXES boxes per crop, each side a BOX_SIDE share
+    of the crop's, filled with Gaussian noise about the middle grey of spread BOX_SPREAD; every
+    crop draws the most boxes there can be and keeps as many as its count, so what it draws does
+    not depend on the count."""
+    count, _, height, width = batch.shape
+    most = BOXES[1]
+    boxes = torch.randint(BOXES[0], most + 1, (count,), generator=generator)
+    sides = _uniform(generator, count * most * 2, *BOX_SIDE).view(count, most, 2)
+    corners = torch.rand(count, most, 2, generator=generator)
+    fill = (0.5 + BOX_SPREAD * torch.randn(count, 1, height, width, generator=generator)).clamp(0.0, 1.0)
+    kept = (torch.arange(most).view(1, most) < boxes.view(count, 1)).to(batch.device)
+    inside = (_rectangles(sides, corners, height, width, batch.device) & kept[..., None, None]).any(dim=1, keepdim=True)
+    return torch.where(inside, fill.to(batch.device, batch.dtype), batch)
+
+
+def dropout(batch, generator):
+    """SyntheX's dropout, and FluoroSAM's coarse dropout: per crop either a DROPOUT_SHARE of its
+    pixels or one rectangle of a DROPOUT_AREA share of it set to 0, the rectangle's sides each the
+    square root of that share of the crop's; every crop draws both ways."""
+    count, _, height, width = batch.shape
+    by_rectangle = _ways(generator, count, 2, batch) == 1
+    share = _per_crop(generator, count, *DROPOUT_SHARE, batch)
+    pixels = _field(generator, batch) < share
+    side = _uniform(generator, count, *DROPOUT_AREA).sqrt().view(count, 1, 1).expand(count, 1, 2)
+    corners = torch.rand(count, 1, 2, generator=generator)
+    rectangle = _rectangles(side, corners, height, width, batch.device)
+    return torch.where(torch.where(by_rectangle, rectangle, pixels), torch.zeros_like(batch), batch)
+
+
+def sharpen(batch, generator):
+    """imgaug's Sharpen, which SyntheX's name matches: the 3 by 3 kernel of 8 plus the lightness
+    at the centre and -1 about it, blended with the crop by an alpha of 0 to 1, SyntheX's range."""
+    count = batch.shape[0]
+    alpha = _per_crop(generator, count, *SHARPEN_ALPHA, batch)
+    lightness = _per_crop(generator, count, *SHARPEN_LIGHTNESS, batch)
+    sharpened = lightness * batch + _filter3(batch, LAPLACE)
+    return ((1.0 - alpha) * batch + alpha * sharpened).clamp(0.0, 1.0)
+
+
+def emboss(batch, generator):
+    """imgaug's Emboss kernel, the crop plus strength times the relief and the two far corners,
+    added to the crop by alpha and not blended with it, as SyntheX says, so a flat field
+    brightens as the edges carve, until the clamp."""
+    count = batch.shape[0]
+    alpha = _per_crop(generator, count, *EMBOSS_ALPHA, batch)
+    strength = _per_crop(generator, count, *EMBOSS_STRENGTH, batch)
+    embossed = batch + strength * _filter3(batch, RELIEF) + _filter3(batch, CORNERS)
+    return (batch + alpha * embossed).clamp(0.0, 1.0)
+
+
+def _pool(crops, kind, kernel):
+    """One of the four poolings over kernel by kernel cells from the top left, each cell's value
+    given back to its pixels, so the size is kept; a side that is no multiple of the kernel has its
+    last row or column repeated to fill its last cells first. The median of an even count is the
+    mean of the middle two, as numpy's is."""
+    count, channels, height, width = crops.shape
+    padded = F.pad(crops, (0, -width % kernel, 0, -height % kernel), mode="replicate")
+    rows, columns, area = padded.shape[-2] // kernel, padded.shape[-1] // kernel, kernel * kernel
+    cells = padded.reshape(count, channels, rows, kernel, columns, kernel).permute(0, 1, 2, 4, 3, 5).reshape(count, channels, rows, columns, area)
+    if kind == 0:
+        pooled = cells.mean(dim=-1)
+    elif kind == 1:
+        pooled = cells.amax(dim=-1)
+    elif kind == 2:
+        pooled = cells.amin(dim=-1)
+    else:
+        pooled = cells.sort(dim=-1).values[..., (area - 1) // 2 : area // 2 + 1].mean(dim=-1)
+    return pooled.repeat_interleave(kernel, dim=-2).repeat_interleave(kernel, dim=-1)[..., :height, :width]
+
+
+def pooling(batch, generator):
+    """SyntheX's pooling, one of average, max, min and median over square cells of a side drawn in
+    POOL_KERNEL, its "between 2 x 2 and 4 x 4", the kind and the side drawn per crop and the crops
+    that drew the same two pooled together."""
+    count = batch.shape[0]
+    kinds = torch.randint(0, 4, (count,), generator=generator)
+    low, high = POOL_KERNEL
+    kernels = torch.randint(low, high + 1, (count,), generator=generator)
+    out = batch.clone()
+    for kind in range(4):
+        for kernel in range(low, high + 1):
+            chosen = ((kinds == kind) & (kernels == kernel)).nonzero().flatten().to(batch.device)
+            if len(chosen):
+                out[chosen] = _pool(batch[chosen], kind, kernel)
+    return out
+
+
+def multiply(batch, generator):
+    """SyntheX's multiply, which "either changed brightness or multiplied x element wise with
+    50-150% of the original value": the crop times MULTIPLY, the way drawn per crop, either one
+    factor for the whole crop, its change of brightness, or one per pixel, element wise, as
+    SyntheX's code takes imgaug's Multiply or MultiplyElementwise of 0.5 to 1.5. A pixel's factor
+    is shared by its channels, so a grey crop stays grey; every crop draws both settings."""
+    count = batch.shape[0]
+    element_wise = _ways(generator, count, 2, batch) == 1
+    whole = _per_crop(generator, count, *MULTIPLY, batch)
+    low, high = MULTIPLY
+    each = low + (high - low) * _field(generator, batch)
+    return (batch * torch.where(element_wise, each, whole)).clamp(0.0, 1.0)
+
+
+def warp_grid(count, height, width, generator):
+    """Where each pixel of a warped crop is read from: the identity grid plus a coarse field of
+    offsets, WARP_CELLS by WARP_CELLS per crop of up to WARP_SHIFT of the side, upsampled
+    bicubically to the crop so the warp bends smoothly between its cells, as a piecewise affine
+    warp does at its control points; made on the CPU, so it is the same on any device."""
+    offsets = _uniform(generator, count * 2 * WARP_CELLS * WARP_CELLS, -WARP_SHIFT, WARP_SHIFT)
+    offsets = offsets.view(count, 2, WARP_CELLS, WARP_CELLS) * 2.0
+    smooth = F.interpolate(offsets, size=(height, width), mode="bicubic", align_corners=True)
+    identity = F.affine_grid(torch.eye(2, 3).expand(count, 2, 3), [count, 1, height, width], align_corners=False)
+    return identity + smooth.permute(0, 2, 3, 1)
+
+
+def _sample(batch, grid, mode):
+    grid = grid.to(batch.device, batch.dtype)
+    return F.grid_sample(batch, grid, mode=mode, padding_mode="border", align_corners=False)
+
+
+def piecewise_warp(batch, generator):
+    """SyntheX's piecewise affine distortion, as a smooth random warp (warp_grid)."""
+    count, _, height, width = batch.shape
+    return _sample(batch, warp_grid(count, height, width, generator), "bilinear").clamp(0.0, 1.0)
+
+
+def piecewise_warp_with_maps(batch, maps, generator):
+    """piecewise_warp on the crops and the same warp on their level maps, sampled nearest; the
+    draw is piecewise_warp's own, so the crops come out as without maps."""
+    count, _, height, width = batch.shape
+    grid = warp_grid(count, height, width, generator)
+    moved = _sample(maps.unsqueeze(1).to(batch.dtype), grid, "nearest")
+    return _sample(batch, grid, "bilinear").clamp(0.0, 1.0), moved.squeeze(1).round().to(maps.dtype)
+
+
+def gaussian_contrast(batch, generator):
+    """FluoroSAM's Gaussian contrast: each pixel passed through a Gaussian of a centre anywhere in
+    0 to 1 and a GAUSSIAN_SPREAD spread, drawn per crop, and the crop rescaled to 0 to 1, so the
+    grey levels near the centre come out bright and those far from it dark; a crop the curve
+    leaves flat keeps the curve's value."""
+    count = batch.shape[0]
+    centre = _per_crop(generator, count, 0.0, 1.0, batch)
+    spread = _per_crop(generator, count, *GAUSSIAN_SPREAD, batch)
+    curve = torch.exp(-0.5 * ((batch - centre) / spread) ** 2)
+    low = curve.amin(dim=(1, 2, 3), keepdim=True)
+    high = curve.amax(dim=(1, 2, 3), keepdim=True)
+    rescaled = (curve - low) / (high - low).clamp(min=1e-6)
+    return torch.where(high - low > 1e-6, rescaled, curve).clamp(0.0, 1.0)
+
+
+def windowing(batch, generator):
+    """FluoroSAM's random windowing: a window a WINDOW_WIDTH share of the range wide, set anywhere
+    it fits inside 0 to 1, the crop clipped to it and stretched over 0 to 1, as a viewer's window
+    and level would show it."""
+    count = batch.shape[0]
+    width = _per_crop(generator, count, *WINDOW_WIDTH, batch)
+    low = _per_crop(generator, count, 0.0, 1.0, batch) * (1.0 - width)
+    return ((batch - low) / width).clamp(0.0, 1.0)
+
+
+def _tile_maps(levels, area, limits):
+    """Each tile's equaliser, in whole counts as OpenCV's CLAHE keeps them, so it is exact on any
+    device: the tile's histogram clipped at its limit, the excess spread evenly over the bins and
+    the remainder one each over bins a step apart from the first, its running sum over the tile's
+    pixels. levels holds each plane's pixels as their tile times CLAHE_BINS plus their grey level,
+    and limits one clip limit per plane."""
+    planes = levels.shape[0]
+    cells = CLAHE_TILES * CLAHE_TILES
+    offsets = torch.arange(planes, device=levels.device).view(planes, 1) * (cells * CLAHE_BINS)
+    counts = torch.bincount((levels.reshape(planes, -1) + offsets).flatten(), minlength=planes * cells * CLAHE_BINS)
+    counts = counts.view(planes, cells, CLAHE_BINS)
+    clipped = torch.minimum(counts, limits.view(planes, 1, 1))
+    excess = (counts - clipped).sum(dim=-1, keepdim=True)
+    clipped = clipped + excess // CLAHE_BINS
+    remainder = excess % CLAHE_BINS
+    step = (CLAHE_BINS // remainder.clamp(min=1)).clamp(min=1)
+    bins = torch.arange(CLAHE_BINS, device=levels.device).view(1, 1, CLAHE_BINS)
+    clipped = clipped + ((bins % step == 0) & (bins // step < remainder)).long()
+    return clipped.cumsum(dim=-1).to(torch.float64) / area
+
+
+def _tile_places(size, tile, device):
+    """For each row (or column) of pixels, the two nearest tile centres and the weight of the
+    second, which bilinear interpolation between the tiles' maps takes, where OpenCV's CLAHE puts
+    them: pixel x at x / tile - 0.5 tiles, counted from its edge and not its centre, and past the
+    outer centres the nearest tile's map alone."""
+    place = (torch.arange(size, device=device, dtype=torch.float64) / tile - 0.5).clamp(0, CLAHE_TILES - 1)
+    first = place.floor().long()
+    return first, (first + 1).clamp(max=CLAHE_TILES - 1), place - first
+
+
+def _clahe_sides(height, width):
+    """The sides CLAHE's tiles cover, as OpenCV pads a crop to them: the crop's own when both are
+    multiples of the tiles, else each grown by the tiles less its remainder, so that a side that
+    is a multiple already gains a whole tile's worth all the same."""
+    if height % CLAHE_TILES == 0 and width % CLAHE_TILES == 0:
+        return height, width
+    return height + CLAHE_TILES - height % CLAHE_TILES, width + CLAHE_TILES - width % CLAHE_TILES
+
+
+def _reflect_101(length, size, device):
+    """Which of a side's length pixels each of size places reads once the side is padded at its
+    end as OpenCV's BORDER_REFLECT_101 pads it: mirrored about the last pixel, which is not
+    repeated, as many times over as the padding needs; a side of one pixel repeats it."""
+    places = torch.arange(size, device=device)
+    if length == 1:
+        return torch.zeros_like(places)
+    period = 2 * (length - 1)
+    folded = places % period
+    return torch.where(folded < length, folded, period - folded)
+
+
+def clahe(batch, generator):
+    """FluoroSAM's CLAHE histogram equalisation, written in torch to OpenCV's createCLAHE:
+    CLAHE_TILES by CLAHE_TILES tiles of CLAHE_BINS grey levels, a clip limit drawn per crop in
+    CLAHE_CLIP times the tile's mean count per level, at least one count, as OpenCV's clipLimit
+    reads, and each pixel's level mapped by the four nearest tiles' equalisers, bilinear between
+    them at the places OpenCV gives (_tile_places). A crop whose sides are not both multiples of
+    the tiles is padded at its bottom and right to the sides OpenCV pads it to (_clahe_sides),
+    mirrored about its edge pixel (_reflect_101), and cut back after. OpenCV rounds each tile's
+    equaliser and then each pixel's result to a byte, which this keeps as fractions, so the two
+    differ by a grey level at most."""
+    count, channels, height, width = batch.shape
+    clip = _uniform(generator, count, *CLAHE_CLIP)
+    tall, wide = _clahe_sides(height, width)
+    down_from, across_from = _reflect_101(height, tall, batch.device), _reflect_101(width, wide, batch.device)
+    padded = batch.index_select(2, down_from).index_select(3, across_from)
+    planes = count * channels
+    levels = (padded.clamp(0.0, 1.0) * (CLAHE_BINS - 1)).round().long().view(planes, tall, wide)
+    tile_tall, tile_wide = tall // CLAHE_TILES, wide // CLAHE_TILES
+    area = tile_tall * tile_wide
+    rows = torch.arange(tall, device=batch.device) // tile_tall
+    columns = torch.arange(wide, device=batch.device) // tile_wide
+    tiles = (rows.view(tall, 1) * CLAHE_TILES + columns.view(1, wide)).view(1, tall, wide)
+    limits = (clip * area / CLAHE_BINS).floor().clamp(min=1).long().repeat_interleave(channels).to(batch.device)
+    maps = _tile_maps(tiles * CLAHE_BINS + levels, area, limits).view(planes, -1)
+    top, bottom, down = _tile_places(tall, tile_tall, batch.device)
+    left, right, across = _tile_places(wide, tile_wide, batch.device)
+
+    def mapped(tile_rows, tile_columns):
+        cell = tile_rows.view(tall, 1) * CLAHE_TILES + tile_columns.view(1, wide)
+        return maps.gather(1, (cell.view(1, tall, wide) * CLAHE_BINS + levels).view(planes, -1)).view(planes, tall, wide)
+
+    down, across = down.view(1, tall, 1), across.view(1, 1, wide)
+    upper = (1 - across) * mapped(top, left) + across * mapped(top, right)
+    lower = (1 - across) * mapped(bottom, left) + across * mapped(bottom, right)
+    out = ((1 - down) * upper + down * lower).to(batch.dtype).view(count, channels, tall, wide)
+    return out[..., :height, :width].clamp(0.0, 1.0)
+
+
+STRONG = {
+    "invert": invert,
+    "impulse-noise": impulse_noise,
+    "affine": affine,
+    "contrast": contrast,
+    "gaussian-blur": gaussian_blur,
+    "average-blur": average_blur,
+    "box-corruption": box_corruption,
+    "dropout": dropout,
+    "sharpen": sharpen,
+    "emboss": emboss,
+    "pooling": pooling,
+    "multiply": multiply,
+    "piecewise-warp": piecewise_warp,
+    "gaussian-contrast": gaussian_contrast,
+    "windowing": windowing,
+    "clahe": clahe,
+}
+STRONG_ORDER = tuple(STRONG)
+# The two strong transforms that move a crop's pixels, and so its level map with it.
+STRONG_WARPS = {"affine": affine_with_maps, "piecewise-warp": piecewise_warp_with_maps}
+
+
+def strong_picks(count, generator):
+    """The strong transforms each crop takes, in the order it takes them: how many, none, one or
+    two alike, and which, uniformly without replacement, the first few of a random order of all of
+    them drawn per crop."""
+    how_many = torch.randint(0, STRONG_MOST + 1, (count,), generator=generator).tolist()
+    orders = torch.rand(count, len(STRONG_ORDER), generator=generator).argsort(dim=1).tolist()
+    return [tuple(STRONG_ORDER[i] for i in order[:n]) for order, n in zip(orders, how_many, strict=True)]
+
+
+def _strong(batch, maps, generator):
+    """The strong block on a batch, and on its level maps where it has them: each crop's picks
+    (strong_picks), the crops that take one transform at one turn done together, the turns in
+    order and the transforms in STRONG_ORDER within a turn, so the draws are fixed by the picks
+    and do not depend on whether the maps are there."""
+    picks = strong_picks(batch.shape[0], generator)
+    batch = batch.clone()
+    maps = None if maps is None else maps.clone()
+    for turn in range(STRONG_MOST):
+        for name in STRONG_ORDER:
+            chosen = [n for n, pick in enumerate(picks) if len(pick) > turn and pick[turn] == name]
+            if not chosen:
+                continue
+            index = torch.tensor(chosen, device=batch.device)
+            if maps is not None and name in STRONG_WARPS:
+                batch[index], maps[index] = STRONG_WARPS[name](batch[index], maps[index], generator)
+            else:
+                batch[index] = STRONG[name](batch[index], generator)
+    return batch, maps
+
+
+def strong(batch, generator):
+    """SyntheX's strong domain randomisation, its image-level transforms (Gao, Killeen et al.,
+    "Synthetic data accelerates the development of generalizable learning-based algorithms for
+    X-ray image analysis", Nat Mach Intell 5:294, 2023, Methods, read on PubMed Central as
+    PMC10959504), with the ones FluoroSAM adds (Killeen et al., MICCAI 2025, paper 5042, which
+    names coarse dropout, inversion, blurring, Gaussian contrast adjustment, random windowing and
+    CLAHE). SyntheX "only randomly concatenated up to two strong domain randomization methods
+    during each training iteration"; here each crop draws how many, none, one or two alike, and
+    which, without replacement, from STRONG_ORDER (strong_picks), every draw from the run's
+    generator on the CPU, so a run reproduces on any device.
+
+    The ranges in SyntheX's own words: inversion as max minus x; impulse, pepper or salt noise on
+    10 percent of the pixels; a Gaussian blur of spread 3, which the block draws up to; an average
+    blur of kernel 2 to 7; dropout of 1 to 10 percent of the pixels or of one rectangle of 2 to 5
+    percent of the image; a sharpen that "blended the original image with a sharpened version with
+    an alpha between 0 and 1", and an emboss that "added the sharpened version rather than
+    blending it"; pooling whose "kernel sizes were between 2 x 2 and 4 x 4", which the block draws
+    per crop as 2, 3 or 4; and a multiply that "either changed brightness or multiplied x
+    element wise with 50-150% of the original value", which SyntheX's own code
+    (github.com/arcadelab/SyntheX) writes as imgaug's Multiply and MultiplyElementwise of 0.5
+    to 1.5, so the block's change of brightness is one factor for the whole crop and its
+    element-wise multiply one factor per pixel, both 50 to 150 percent. SyntheX names the rest
+    with no range. The contrast curves, the sharpen's lightness and the emboss's alpha and
+    strength take theirs from imgaug's augmenters of the same names (LinearContrast, LogContrast,
+    SigmoidContrast, Sharpen, Emboss), the library SyntheX's code uses though the paper does not
+    name it, as imgaug's documentation shows them, and write their curves and kernels on 0 to 1.
+    SyntheX's code sets several ranges apart from both the paper's words and these, which the
+    block does not follow (docs/research/strong-domain-randomisation.md lists them). The affine's
+    move, turn, shear and zoom, the boxes' count, size and noise and the warp's grid are this
+    module's, chosen mild enough to leave a level readable. FluoroSAM's paper gives no range
+    either, and the ranges its code draws (docs/research/benchmarks-to-beat.md, section 3) are not
+    taken, so the Gaussian contrast's spread, the window's width and CLAHE's clip limit are this
+    module's too, and CLAHE's 8 by 8 tiles are OpenCV's default. Both papers randomise simulated
+    images to carry training to real ones; here it is a test of robustness on real frames. Only
+    the two warps move a crop's level map (strong_with_maps)."""
+    return _strong(batch, None, generator)[0]
+
+
+def strong_with_maps(batch, maps, generator):
+    """strong on crops that carry level maps: the affine and the piecewise warp move each map with
+    its crop, nearest, and the rest leave it; the crops come out as they would without maps."""
+    return _strong(batch, maps, generator)
+
+
+AUGMENTERS = {"box-jitter": box_jitter, "intensity": intensity, "blur": blur, "noise": noise, "strong": strong}
+AUGMENT_ORDER = ("box-jitter", "intensity", "blur", "noise", "strong")
 
 
 def augment(batch, names, generator):
-    """The named changes in their fixed order, whatever order the run named them in."""
+    """The named changes in their fixed order, whatever order the run named them in; strong is
+    last, so the four before it draw what they drew before it was named."""
     for name in AUGMENT_ORDER:
         if name in names:
             batch = AUGMENTERS[name](batch, generator)
@@ -493,13 +1013,16 @@ def augment(batch, names, generator):
 
 
 def augment_with_maps(batch, maps, names, generator):
-    """augment on crops that carry level maps: the box jitter moves each map with its crop, and
-    the other changes, which alter intensity alone, leave the maps as they are."""
+    """augment on crops that carry level maps: the box jitter and the strong block's two warps
+    move each map with its crop, and the other changes, which alter intensity alone, leave the
+    maps as they are."""
     for name in AUGMENT_ORDER:
         if name not in names:
             continue
         if name == "box-jitter":
             batch, maps = jitter_with_maps(batch, maps, generator)
+        elif name == "strong":
+            batch, maps = strong_with_maps(batch, maps, generator)
         else:
             batch = AUGMENTERS[name](batch, generator)
     return batch, maps

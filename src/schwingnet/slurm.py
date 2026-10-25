@@ -88,7 +88,21 @@ def elapsed_seconds(text: str) -> int:
     return ((days * 24 + hours) * 60 + minutes) * 60 + seconds
 
 
-FINISHED = frozenset({"COMPLETED", "FAILED", "CANCELLED", "TIMEOUT", "OUT_OF_MEMORY", "NODE_FAIL"})
+# Every state Slurm ends a job in. PREEMPTED is one, since tools/flow.py submits every job with
+# --no-requeue, so a preempted job never runs again; left out, it was polled for ever.
+FINISHED = frozenset(
+    {
+        "COMPLETED",
+        "FAILED",
+        "CANCELLED",
+        "TIMEOUT",
+        "OUT_OF_MEMORY",
+        "NODE_FAIL",
+        "PREEMPTED",
+        "BOOT_FAIL",
+        "DEADLINE",
+    }
+)
 
 
 @beartype

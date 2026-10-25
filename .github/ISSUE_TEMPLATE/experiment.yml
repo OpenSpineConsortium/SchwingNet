@@ -58,12 +58,13 @@ body:
     id: augment
     attributes:
       label: augment
-      description: "any of box-jitter, intensity, blur, noise, comma-separated, or none"
+      description: "any of box-jitter, intensity, blur, noise, strong, comma-separated, or none"
       options:
         - label: box-jitter
         - label: intensity
         - label: blur
         - label: noise
+        - label: strong
   - type: dropdown
     id: optimiser
     attributes:

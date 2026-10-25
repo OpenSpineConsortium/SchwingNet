@@ -9,6 +9,7 @@ from pathlib import Path
 from types import ModuleType
 
 import pytest
+from icontract import ViolationError
 from pydantic import ValidationError
 
 from schwingnet.catalog import LEVELS
@@ -20,6 +21,7 @@ from schwingnet.flow import (
     RunRecord,
     Stage,
     Step,
+    configured_run_id,
     gpu_hours,
     ledger_row,
     result_line,
@@ -33,6 +35,8 @@ ROOT = Path(__file__).resolve().parents[2]
 SHA = "a" * 64
 COMMIT = "0123abc"
 START = "2026-10-21T03:00:00Z"
+CONFIGURATION = "c" * 64
+CODE = "e" * 64
 
 
 def load_tool(name: str) -> ModuleType:
@@ -71,6 +75,60 @@ def test_a_run_record_refuses_a_dirty_tree_a_leaky_split_and_a_forged_id() -> No
     with pytest.raises(ValidationError, match="run id"):
         record(run_id="0" * 12)
     assert run_id(COMMIT, SHA, START) != run_id(COMMIT, SHA, "2026-10-21T03:00:01Z")
+
+
+def test_a_configured_run_is_named_by_its_code_and_configuration_and_never_by_its_start() -> None:
+    named = configured_run_id(CODE, SHA, CONFIGURATION)
+    assert len(named) == 12 and named == configured_run_id(CODE, SHA, CONFIGURATION)
+    assert named != configured_run_id(CODE, SHA, "d" * 64)
+    assert named != configured_run_id("f" * 64, SHA, CONFIGURATION)
+    assert named != configured_run_id(CODE, "b" * 64, CONFIGURATION)
+    assert named != run_id(COMMIT, SHA, START)
+    # The start and the commit are kept in the record and never enter the name, so a run started
+    # again later with the same configuration of the same code is the same run, on a later commit
+    # that changed none of that code too.
+    first = record(run_id=named, configuration_sha256=CONFIGURATION, code_sha256=CODE)
+    later = record(
+        run_id=named,
+        configuration_sha256=CONFIGURATION,
+        code_sha256=CODE,
+        code_commit="4567def",
+        started_at="2026-10-25T09:30:00Z",
+    )
+    assert first.run_id == later.run_id == named
+    with pytest.raises(ValidationError, match="configuration"):
+        record(
+            run_id=run_id(COMMIT, SHA, START), configuration_sha256=CONFIGURATION, code_sha256=CODE
+        )
+    with pytest.raises(ValidationError, match="its code"):
+        record(run_id=named, configuration_sha256=CONFIGURATION, code_sha256="f" * 64)
+    with pytest.raises(ValidationError, match="names the code"):
+        record(run_id=named, configuration_sha256=CONFIGURATION)
+    with pytest.raises(ValidationError, match="names no code"):
+        record(code_sha256=CODE)
+    with pytest.raises(ValidationError, match="start"):
+        record(run_id=named)
+    with pytest.raises(ValidationError):
+        record(run_id=named, configuration_sha256="C" * 64, code_sha256=CODE)
+    with pytest.raises(ValidationError):
+        record(run_id=named, configuration_sha256=CONFIGURATION, code_sha256="E" * 64)
+    with pytest.raises(ViolationError):
+        configured_run_id(CODE, SHA, "c" * 63)
+    with pytest.raises(ViolationError):
+        configured_run_id(CODE, SHA, "\u00e9" * 64)
+    with pytest.raises(ViolationError):
+        configured_run_id(COMMIT, SHA, CONFIGURATION)
+
+
+def test_every_recorded_run_record_still_validates() -> None:
+    # The records written before configurations were named carry no configuration_sha256 and
+    # are named by their start; the field's default keeps every one of them a valid record.
+    recorded = sorted((ROOT / "docs" / "research").rglob("RUN.json"))
+    assert recorded, "the repository records its dry runs under docs/research/"
+    for path in recorded:
+        made = RunRecord.model_validate_json(path.read_text(encoding="utf-8"))
+        assert made.configuration_sha256 is None
+        assert made.run_id == run_id(made.code_commit, made.catalog_sha256, made.started_at)
 
 
 def test_the_wilson_interval_holds_the_point_and_narrows_with_n() -> None:
@@ -115,6 +173,29 @@ def test_the_spend_is_summed_from_the_jobs_and_the_ledger_row_is_one_line() -> N
     row = ledger_row(record(jobs=jobs()), "level | stage\nsmoke", "results.md")
     assert row.count("|") == 10 and "\n" not in row and "level / stage smoke" in row
     assert "1.50 h wall, 1.50 GPU h" in row
+
+
+def test_a_job_submitted_and_not_yet_seen_to_finish_is_recorded_with_no_exit_code() -> None:
+    # tools/flow.py records a Slurm job as soon as it is submitted, so a start that dies while the
+    # job waits leaves it named for the next start to wait on; the record reads back as written.
+    submitted = JobRecord(
+        step=Step.TRAIN,
+        job_id="101",
+        partition="gmsap",
+        hours_requested=4,
+        seconds_used=0,
+        gpus=1,
+        preemptions=0,
+        exit_code=None,
+    )
+    held = record(mode="slurm", jobs=(*jobs(), submitted))
+    again = RunRecord.model_validate_json(held.model_dump_json())
+    assert again == held and again.jobs[-1].exit_code is None
+    assert gpu_hours(held.jobs) == 1.5 and wall_hours(held.jobs) == 1.5
+    with pytest.raises(ValidationError):
+        JobRecord.model_validate({**submitted.model_dump(), "exit_code": "running"})
+    with pytest.raises(ValidationError):
+        JobRecord.model_validate({k: v for k, v in submitted.model_dump().items() if k != "exit_code"})
 
 
 def test_a_result_row_is_stamped_and_its_line_carries_the_interval() -> None:
@@ -208,6 +289,18 @@ def test_the_batch_script_carries_the_grid_rules_and_nothing_secret_or_placed() 
     )
 
 
+def test_every_state_slurm_ends_a_job_in_counts_as_over() -> None:
+    # The flow polls a job until sacct calls it over, and a start finds a job an earlier start
+    # submitted and waits on it too (#252), so an end state left out is polled for ever by every
+    # start. Every job goes in with --no-requeue, so a preempted one never runs again.
+    for state in ("COMPLETED", "FAILED", "CANCELLED by 1234", "TIMEOUT", "OUT_OF_MEMORY", "NODE_FAIL"):
+        assert is_finished(state), state
+    for state in ("PREEMPTED", "BOOT_FAIL", "DEADLINE"):
+        assert is_finished(state), state
+    for state in ("PENDING", "RUNNING", "REQUEUED", "RESIZING", "SUSPENDED", ""):
+        assert not is_finished(state), state
+
+
 def test_the_synthetic_bank_is_learnable_and_repeats_a_frame(tmp_path: Path) -> None:
     bank = load_tool("synthetic_bank")
     counts = bank.write_bank(tmp_path, 120, 6, 1, [])
@@ -241,7 +334,9 @@ def test_the_synthetic_bank_is_learnable_and_repeats_a_frame(tmp_path: Path) -> 
         twin = tmp_path / "full" / image.relative_to(tmp_path / "plain")
         assert twin.read_bytes() == image.read_bytes()
     for meta_path in sorted((tmp_path / "plain" / "meta").glob("*.json")):
-        mapped = json.loads((tmp_path / "full" / "meta" / meta_path.name).read_text(encoding="utf-8"))
+        mapped = json.loads(
+            (tmp_path / "full" / "meta" / meta_path.name).read_text(encoding="utf-8")
+        )
         plain = json.loads(meta_path.read_text(encoding="utf-8"))
         assert {k: v for k, v in mapped.items() if not k.startswith("level_map")} == plain
 

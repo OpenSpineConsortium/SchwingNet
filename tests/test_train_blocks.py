@@ -7,13 +7,16 @@ It needs torch, onnx, onnxruntime, Pillow and the package's checkers, so it runs
 environment (`pixi run -e train-cpu python -m unittest tests.test_train_blocks`) and skips under the
 required check's plain python3."""
 
+import base64
 import contextlib
 import hashlib
 import importlib.util
 import io
 import json
+import math
 import os
 import shutil
+import statistics
 import subprocess
 import sys
 import tempfile
@@ -33,11 +36,189 @@ def load(name):
     return module
 
 
+def sha256_of(path):
+    """A catalog's sha256, as tools/flow.py writes it into RUN.json, the catalog the trainer then
+    reads and no other."""
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
 def python(*args):
     done = subprocess.run([sys.executable, *map(str, args)], capture_output=True, text=True, timeout=600)
     if done.returncode != 0:
         raise AssertionError(f"{args}: {done.stdout}\n{done.stderr}")
     return done.stdout
+
+
+def structured_plane(height, width, seed):
+    """A byte image whose tiles CLAHE equalises differently: a diagonal ramp and a bright block
+    under a little noise, with a dark row and a dark column next to the bottom and right edges,
+    which a pad that mirrors the edge carries into the padding and one that repeats it does not.
+    It is made in integers, the noise by a linear congruential draw, so OPENCV_CLAHE, OpenCV's
+    output for it, holds on any machine."""
+    state, rows = seed, []
+    for y in range(height):
+        row = []
+        for x in range(width):
+            state = (1103515245 * state + 12345) % 2**31
+            value = 30 + 160 * (x + y) // (height + width) + (state >> 16) % 32
+            if width // 4 <= x < width // 2 and height // 3 <= y < 2 * height // 3:
+                value += 50
+            if y == height - 3 or x == width - 2:
+                value = 5
+            row.append(min(value, 255))
+        rows.append(row)
+    return rows
+
+
+def tile_equaliser(levels, limit, bins=256):
+    """One tile's equaliser written out as OpenCV's clahe.cpp computes it, loop by loop: the
+    histogram clipped at the limit, the excess spread evenly, the remainder one each from the first
+    bin on at a step of bins over the remainder, and the running sum over the tile's pixels."""
+    histogram = [0] * bins
+    for level in levels:
+        histogram[level] += 1
+    excess = 0
+    for i in range(bins):
+        if histogram[i] > limit:
+            excess += histogram[i] - limit
+            histogram[i] = limit
+    histogram = [count + excess // bins for count in histogram]
+    remainder = excess % bins
+    if remainder:
+        step, i = max(bins // remainder, 1), 0
+        while i < bins and remainder > 0:
+            histogram[i] += 1
+            i, remainder = i + step, remainder - 1
+    running, out = 0, []
+    for count in histogram:
+        running += count
+        out.append(running / len(levels))
+    return out
+
+
+def reflect_101(place, length):
+    """The pixel a place outside a side of length pixels reads under OpenCV's BORDER_REFLECT_101,
+    as its borderInterpolate loops to it: mirrored about the edge pixel, which is not repeated."""
+    if length == 1:
+        return 0
+    while not 0 <= place < length:
+        place = -place if place < 0 else 2 * length - 2 - place
+    return place
+
+
+def reference_clahe(image, clip, tiles=8, bins=256):
+    """CLAHE of one plane, a list of rows of 0..1 values, pixel by pixel in plain python as
+    OpenCV's clahe.cpp computes it: the plane padded at the bottom and right to whole tiles by
+    BORDER_REFLECT_101, both sides by tiles less their remainder once either side is no multiple,
+    OpenCV's clip limit from clip, and each pixel's level mapped by the equalisers of the tiles
+    whose centres are on either side of x / tile - 0.5 (CLAHE_Interpolation_Body), the weight
+    taken before the tiles are clamped to the outer ones. It keeps the equalisers as fractions,
+    where OpenCV rounds them to a byte."""
+    height, width = len(image), len(image[0])
+    tall, wide = height, width
+    if height % tiles or width % tiles:
+        tall, wide = height + tiles - height % tiles, width + tiles - width % tiles
+    levels = [[round(min(max(image[reflect_101(y, height)][reflect_101(x, width)], 0.0), 1.0) * (bins - 1)) for x in range(wide)]
+              for y in range(tall)]
+    tile_tall, tile_wide = tall // tiles, wide // tiles
+    limit = max(int(clip * tile_tall * tile_wide / bins), 1)
+    maps = [[tile_equaliser([levels[y][x] for y in range(r * tile_tall, (r + 1) * tile_tall) for x in range(c * tile_wide, (c + 1) * tile_wide)], limit, bins)
+             for c in range(tiles)] for r in range(tiles)]
+
+    def between(position, tile):
+        place = position / tile - 0.5
+        first = math.floor(place)
+        return max(first, 0), min(first + 1, tiles - 1), place - first
+
+    out = []
+    for y in range(height):
+        top, bottom, down = between(y, tile_tall)
+        line = []
+        for x in range(width):
+            left, right, across = between(x, tile_wide)
+            level = levels[y][x]
+            upper = (1 - across) * maps[top][left][level] + across * maps[top][right][level]
+            lower = (1 - across) * maps[bottom][left][level] + across * maps[bottom][right][level]
+            line.append((1 - down) * upper + down * lower)
+        out.append(line)
+    return out
+
+
+# OpenCV's own CLAHE of structured_plane(height, width, 100 * height + width), its bytes row by row
+# in base64, keyed by (height, width): cv2.createCLAHE(clipLimit, tileGridSize=(8, 8)).apply() of
+# OpenCV 4.10.0 (the wheel opencv-python-headless 4.10.0.84 unpacked outside any environment, once,
+# never a dependency). A tile here holds at most 16 pixels, so its clip limit is one count for any
+# clip under 16 and the bytes are the same whatever clip a crop draws in CLAHE_CLIP. 32 by 32 pads
+# nothing; 20 by 20 pads 4 rows and 4 columns; 20 by 24, whose width is a multiple of the tiles
+# already, OpenCV pads by 4 rows and a whole tile's 8 columns, as it pads both sides once one is
+# no multiple.
+OPENCV_CLAHE = {
+    (32, 32): (
+        "j4BgKKeMMM+oKHBQKFiv00DjIGSoz1AoqK/PUECbII9wv8/jYCiv21iUn884eM97r7dgj9dsMIeoRGBsOIggYBDfIJPXKM9g"
+        "SL+Pp3jLcI/P14A016Nw47/LryT31yDfPKfnPbFYNMXRVNdekuEo6mDo88tClLu+oeo89M+jIGSX1yhKx5WgPmS5mL102edw"
+        "7+uodp/FQNFEredAUIsg3yBkVKLZpeNJWnBMtq1qfK2Jf0DJw2g88umzhFDTYSDvUJ9w08dQr6eIjI+3QOuAk8dUr4ewu4Dj"
+        "57vPz5irIO+vm69fRDivQ46/e8F6mIe5ZlBkedm7RFyfcVTB3Vcgr69IoM+vzaiMZImImnS2oDZAvXBMdFq37eO337/n2yC3"
+        "s7+bPVqpgJJ4SZhMmpJwQZpPXJqd4ufGp0azr36QIO+AYHA4qL+/QK+r7+vH24/zOKPPh4Boj0R4o98817cggCC/2zqCa5uj"
+        "vdWrspXes/uIYee3uahYX9XYo9/nXiCDiHinpaDLeF7Ls3jbs62Ai2y1SKpATM+MVKNw4c/TIM84fGx0qWrjjrl228WB8Lf8"
+        "QLtUe27VfLOtsOPT3YEgn59gv0yXRCA0sJSf23B8n+N4TFCXWKvvw2i3YIdQjCDvk7NIv8+Cq7ecyZ/yVOGnw2Sms9OH1uN6"
+        "v47ncFjZIJeXz6dAiKXnfsulz8nD7b+7cCRgQr+zx2DLtdd2w5IgaChYfKFAtlSg0fZQUsuqaI1sssvm6adwS1xxp1SpziBs"
+        "MIDPUJBE34fniHC393DP80A4QIvXjHDLz9fvp6/TIO+HWMuSWtzjYaXm+4L9blDPPmzH4lDhi99IY8t+YGUgy2CA33JszVC7"
+        "+8Hnv/Pz371MgLeJj8mIbuPRt3KYpyDXRMt4nXiTQGpwPm9Bel9cg2A7o6qx2FTNZueEVOnRIICvYJ/XULOv18d4UFxgo1Cz"
+        "OMffYJjXcOe3RO+Tt7Mgjxx0aNWNSHfQk8RsWZBBVIVI0+vOwZWzwNvfv2pa5SCrYDCQfkCdSLHLq7/Dp0JYUHzBWJVcrd/H"
+        "r1y3Wmh4IP/Xy7t5n9WjTKVgRF1Uo8ekl1uE5IDDx9fR0Zfcqa0gx0Cf33fnp9/rt7Ofz9eA78OA71C/aOdws1Bs72zviCCP"
+        "MPN/UcXQSOehRUxtn9+TYaXJm7qSuZvkZsfP9ninIMtAx4CGy9O/0VDXWJq/bte143rno7/dWLHPr8/f770gpxwcHBwcHBwc"
+        "HBwcHBwcHBwcHBwcHBwcHBwcHB0eHyAgUN9g07hwz2Cfy8/niGSP02jfv+/PlK/L58+A63ifIL9wn89351Tvh+encOd4dIDr"
+        "qLdwe/ejYNfnw3DbgMsg/w=="
+    ),
+    (20, 20): (
+        "HDl2Y0xHjpfVqrOzVSXVRnbVHJxxxtC4y45jf/qAY2PUXl6cR1ocy0uS3IbV4GGdrknvutuN49Ch7R+p1ICOqtyQnHu7auVY"
+        "R8RLzrPEJKGh0Ot419eOqdvz6I7c1/Lz1/Ioz2icxrhb4KOsKG1uitdvQExTsSqgVf/gY2rS8ajL+KG/nKPqctmoKsEler3B"
+        "deeJhbzzeKw9uJfcqcYq1JdMZtCPxvbPc8QouYnB8exv6Sivjri/v3ms6ufz6jJ2qtz41FdoJJX/6LnJPsPnsXjzfq87R32X"
+        "pPIf6DRMoo6s4pX3iLEYO3FUkpXVqBzLVcbVqrjqsfP//0UxMpzbRs7ZHNx2XqC9pa6qI16He9Ro5a9a7LYcpL313b182XZF"
+        "rHSotXuX729Z4SHo8dRlY1xaaraOuOO9nNnj1Xj4K8iz6IOluMPqf+aZ+oWOv/PQ1+Y02DQ0NDQ0NDQ0NDQ0NDQ0NDQ0NTc4"
+        "gNTEuMmho+Wo42PgnInq/5mxMrp645DZ57J/jdvcmXbO16bztLct2g=="
+    ),
+    (20, 24): (
+        "qlUVJWqVKko1Rb9QYJpAumB/v5VV3yqFQGqV1Z+latqK6pW0aqpq5LXPQNDUfyqqyrR16ViO0JehVcqrz7BOvjqfTu/teyqY"
+        "yjVVtGCVgJBleKB1WvrA1Tq3gIKKeirfdeaKzbak6ruH1JzSnaJgQ2fi6obaaSqK6kqHfHOv45GnkbF0r7O/dtPO8XHvnSrD"
+        "wIBq2srP9L/En5Tnmq1g5N+C6t9gtSqF28o4yH+ip7i4uJXyJ5S4T8ifuJL94iqWX5jxZ5dTtO3WavGyYUbVbkHq9LWK4yqr"
+        "dd+qkpCKqufEcIDvcLfqoso66krkZSqaeLHbUExS/5aAeO3XI51L8bF9xpzk/yrbv1xcap97ws2liPzBR0fme+w29FzsiCqQ"
+        "n6rKxECY1PTvyrT/SoWqr5CfoJpw3yr3TjWxVjyHkqNBZZFDWYNY32x429TG5CrkVeOSs5ZFrsNPf0COtLZmsqXGn+eleSr5"
+        "qmq/Yt9ayp1wr2C6xGC05Y+i1Oyw5yqlUoDYkF55joq84byDtIHYda+G2Jqj0irtJiYmJiYmJiYmJiYmJiYmJiYmJicoKSoq"
+        "n3Wq2t+Fv4K60mrSetqglbTPivTvpSq0tWfG3WfcioqV6qO8zN+t4K/gyqzY/yqd"
+    ),
+}
+
+
+def reference_pool(plane, kind, kernel):
+    """One plane, a list of rows, pooled cell by cell in plain python: kernel by kernel cells from
+    the top left, the last row and column repeated to fill the last cells, and each cell's mean,
+    maximum, minimum or median (statistics.median, the mean of the middle two of an even count)
+    given to its pixels."""
+    height, width = len(plane), len(plane[0])
+    reduce = (statistics.fmean, max, min, statistics.median)[kind]
+    out = [[0.0] * width for _ in range(height)]
+    for top in range(0, height, kernel):
+        for left in range(0, width, kernel):
+            value = reduce([plane[min(y, height - 1)][min(x, width - 1)] for y in range(top, top + kernel) for x in range(left, left + kernel)])
+            for y in range(top, min(top + kernel, height)):
+                for x in range(left, min(left + kernel, width)):
+                    out[y][x] = value
+    return out
+
+
+def pooled_kernel(crop):
+    """The widest kernel, 4, 3 or 2 pixels, over whose cells from the top left a pooled crop is
+    constant, or 0 where there is none."""
+    import torch
+    from torch.nn import functional as F
+
+    for kernel in (4, 3, 2):
+        highest = F.max_pool2d(crop[None], kernel, ceil_mode=True)
+        lowest = -F.max_pool2d(-crop[None], kernel, ceil_mode=True)
+        if torch.equal(highest, lowest):
+            return kernel
+    return 0
 
 
 @unittest.skipIf(MISSING, f"needs the train environment ({', '.join(MISSING)} missing)")
@@ -284,6 +465,178 @@ class BlocksTest(unittest.TestCase):
         same, same_maps = self.blocks.augment_with_maps(batch, maps, ("intensity",), torch.Generator().manual_seed(4))
         self.assertTrue(torch.equal(same_maps, maps), "a change of intensity alone leaves the maps")
 
+    def grey(self, count, size, seed=0):
+        import torch
+
+        crops = torch.rand(count, 1, size, size, generator=torch.Generator().manual_seed(seed))
+        return crops.repeat(1, 3, 1, 1)
+
+    def test_each_strong_transform_keeps_a_grey_crop_grey_in_range_and_seeded(self):
+        import torch
+
+        self.assertEqual(self.blocks.STRONG_ORDER, tuple(self.blocks.STRONG))
+        self.assertEqual(len(self.blocks.STRONG), 16)
+        self.assertLessEqual(set(self.blocks.STRONG_WARPS), set(self.blocks.STRONG))
+        # 37 pixels is no multiple of CLAHE's eight tiles, nor of any pooling kernel from 2 to 4.
+        for size in (32, 37, 64):
+            crops = self.grey(6, size)
+            for name, change in self.blocks.STRONG.items():
+                with self.subTest(name=name, size=size):
+                    first = change(crops, torch.Generator().manual_seed(4))
+                    again = change(crops, torch.Generator().manual_seed(4))
+                    self.assertEqual(tuple(first.shape), (6, 3, size, size))
+                    self.assertTrue(torch.equal(first, again), "the same seed draws the same change")
+                    self.assertTrue(torch.equal(first[:, 0], first[:, 1]) and torch.equal(first[:, 0], first[:, 2]))
+                    self.assertGreaterEqual(float(first.min()), 0.0)
+                    self.assertLessEqual(float(first.max()), 1.0)
+                    self.assertFalse(torch.equal(first, crops), "it changes the crops")
+                    self.assertTrue(torch.equal(crops, self.grey(6, size)), "and leaves its input as it was")
+
+    def test_the_strong_transforms_do_what_their_names_say(self):
+        import torch
+
+        def seeded():
+            return torch.Generator().manual_seed(4)
+
+        crops = self.grey(6, 32)
+        self.assertTrue(torch.allclose(self.blocks.invert(crops, seeded()), 1.0 - crops))
+        for name in ("dropout", "impulse-noise"):
+            out = self.blocks.STRONG[name](crops, seeded())
+            changed = out != crops
+            self.assertTrue(bool(changed.any()), name)
+            self.assertTrue(set(out[changed].unique().tolist()) <= {0.0, 1.0}, f"{name} sets pixels to black or white")
+        hit = float((self.blocks.impulse_noise(crops, seeded()) != crops).float().mean())
+        self.assertAlmostEqual(hit, self.blocks.IMPULSE_SHARE, delta=0.02)
+        for name in ("gaussian-blur", "average-blur"):
+            self.assertLess(float(self.blocks.STRONG[name](crops, seeded()).var()), float(crops.var()), f"{name} smooths")
+        stretched = self.blocks.gaussian_contrast(crops, seeded())
+        self.assertTrue(torch.allclose(stretched.amin(dim=(1, 2, 3)), torch.zeros(6), atol=1e-6))
+        self.assertTrue(torch.allclose(stretched.amax(dim=(1, 2, 3)), torch.ones(6), atol=1e-6))
+        flat = torch.full((6, 3, 32, 32), 0.4)
+        self.assertTrue(bool((self.blocks.emboss(flat, seeded()) >= flat).all()), "the emboss is added, not blended")
+        for name in self.blocks.STRONG_WARPS:
+            self.assertTrue(torch.allclose(self.blocks.STRONG[name](flat, seeded()), flat, atol=1e-6), f"{name} moves, not shades")
+
+    def test_pooling_draws_a_kernel_of_two_to_four_pixels_per_crop_as_synthex_says(self):
+        import torch
+
+        # SyntheX's Methods: "All of the pooling kernel sizes were between 2 x 2 and 4 x 4."
+        for size in (32, 37):
+            pooled = self.blocks.pooling(self.grey(24, size, seed=size), torch.Generator().manual_seed(4))
+            kernels = [pooled_kernel(crop) for crop in pooled]
+            self.assertEqual(set(kernels), {2, 3, 4}, f"each crop pooled over one kernel of 2 to 4 at {size} pixels: {kernels}")
+        plane = self.grey(1, 7, seed=7).double()
+        for kind in range(4):
+            for kernel in (2, 3, 4):
+                with self.subTest(kind=kind, kernel=kernel):
+                    expected = torch.tensor(reference_pool(plane[0, 0].tolist(), kind, kernel), dtype=torch.float64)
+                    got = self.blocks._pool(plane, kind, kernel)
+                    self.assertEqual(tuple(got.shape), (1, 3, 7, 7))
+                    self.assertTrue(torch.allclose(got[0, 0], expected, rtol=0, atol=1e-12))
+
+    def test_multiply_takes_the_crop_or_each_pixel_by_half_to_one_and_a_half_as_synthex_does(self):
+        import torch
+
+        # SyntheX's Methods: "either changed brightness or multiplied x element wise with 50-150% of
+        # the original value", which its code writes as imgaug's Multiply((0.5, 1.5)), "Change
+        # brightness of images (50-150% of original value)", or MultiplyElementwise((0.5, 1.5)).
+        ramp = torch.linspace(0.1, 0.6, 32 * 32).view(1, 1, 32, 32).repeat(12, 3, 1, 1)
+        factor = self.blocks.multiply(ramp, torch.Generator().manual_seed(4)) / ramp
+        self.assertTrue(bool(((factor >= 0.5 - 1e-6) & (factor <= 1.5 + 1e-6)).all()), "every pixel 50 to 150 percent of itself")
+        spread = factor.amax(dim=(1, 2, 3)) - factor.amin(dim=(1, 2, 3))
+        whole = spread < 1e-5
+        self.assertTrue(bool(whole.any()), "some crops take one factor, a change of brightness")
+        self.assertTrue(bool((~whole).any()), "and some a factor per pixel, element wise")
+        self.assertTrue(bool((spread[~whole] > 0.9).all()), "each pixel's factor drawn on its own over the range")
+
+    def test_clahe_is_opencvs_to_within_the_byte_opencv_rounds_to(self):
+        import torch
+
+        for (height, width), encoded in OPENCV_CLAHE.items():
+            with self.subTest(height=height, width=width):
+                plane = torch.tensor(structured_plane(height, width, 100 * height + width), dtype=torch.float64) / 255
+                out = self.blocks.clahe(plane.view(1, 1, height, width).repeat(2, 3, 1, 1), torch.Generator().manual_seed(4))
+                opencv = torch.tensor(list(base64.b64decode(encoded)), dtype=torch.float64).view(height, width)
+                gap = (out * 255 - opencv).abs()
+                # OpenCV rounds each tile's equaliser and then its result to a byte, where the block
+                # keeps both as fractions, so the two differ by a grey level at most.
+                self.assertLessEqual(float(gap.max()), 1.0 + 1e-3)
+                self.assertLess(float(gap.mean()), 0.5)
+
+    def test_clahe_clips_and_spreads_each_tiles_histogram_as_opencv_does_and_blends_between_tiles(self):
+        import torch
+
+        # A tile's clip limit is one count at 32 and 37 pixels, and two or three at 128.
+        for size in (32, 37, 128):
+            crops = (self.grey(3, size, seed=size) ** 2).double()
+            clips = self.blocks._uniform(torch.Generator().manual_seed(4), 3, *self.blocks.CLAHE_CLIP).tolist()
+            out = self.blocks.clahe(crops, torch.Generator().manual_seed(4))
+            for n in range(3):
+                with self.subTest(size=size, crop=n):
+                    expected = torch.tensor(reference_clahe(crops[n, 0].tolist(), clips[n]), dtype=torch.float64)
+                    self.assertTrue(torch.allclose(out[n, 0], expected, rtol=0, atol=1e-12))
+        flat = torch.full((2, 3, 32, 32), 0.3)
+        out = self.blocks.clahe(flat, torch.Generator().manual_seed(4))
+        self.assertTrue(torch.allclose(out, out[:, :, :1, :1].expand_as(out), rtol=0, atol=1e-6), "a flat crop stays flat")
+
+    def test_strong_takes_none_one_or_two_different_transforms_per_crop_uniformly(self):
+        from collections import Counter
+
+        import torch
+
+        picks = self.blocks.strong_picks(3000, torch.Generator().manual_seed(1))
+        self.assertEqual(picks, self.blocks.strong_picks(3000, torch.Generator().manual_seed(1)))
+        how_many = Counter(len(pick) for pick in picks)
+        self.assertEqual(set(how_many), {0, 1, 2})
+        self.assertTrue(all(900 < n < 1100 for n in how_many.values()), how_many)
+        self.assertTrue(all(len(set(pick)) == len(pick) for pick in picks), "without replacement")
+        taken = Counter(name for pick in picks for name in pick)
+        self.assertEqual(set(taken), set(self.blocks.STRONG))
+        # 3000 crops take 3000 transforms in all, about 187 of each of the sixteen.
+        self.assertTrue(all(130 < n < 250 for n in taken.values()), taken)
+
+    def test_the_strong_warps_move_a_map_with_its_crop_and_the_rest_leave_it(self):
+        import torch
+
+        maps = torch.zeros(6, 32, 32, dtype=torch.long)
+        maps[1:, 8:20, 10:22] = 5
+        maps[0] = self.blocks.IGNORED
+        batch = (maps == 5).float().unsqueeze(1).repeat(1, 3, 1, 1)
+        for name, with_maps in self.blocks.STRONG_WARPS.items():
+            with self.subTest(name=name):
+                moved, moved_maps = with_maps(batch, maps, torch.Generator().manual_seed(4))
+                alone = self.blocks.STRONG[name](batch, torch.Generator().manual_seed(4))
+                self.assertTrue(torch.equal(moved, alone), "the crops come out as without maps")
+                self.assertEqual(moved_maps.dtype, torch.long)
+                self.assertTrue(torch.equal(moved_maps[0], torch.full((32, 32), self.blocks.IGNORED)))
+                self.assertEqual(set(moved_maps[1:].unique().tolist()), {0, 5})
+                self.assertFalse(torch.equal(moved_maps[1:], maps[1:]))
+                body = moved_maps[1:] == 5
+                bright = moved[1:, 0] > moved[1:, 0].mean(dim=(1, 2), keepdim=True)
+                self.assertGreater(float((body == bright).float().mean()), 0.9)
+        # The block as a whole: the crops come out as without maps, and only the crops whose picks
+        # hold a warp have their maps moved.
+        many = torch.zeros(40, 32, 32, dtype=torch.long)
+        many[:, 8:20, 10:22] = 5
+        crops = (many == 5).float().unsqueeze(1).repeat(1, 3, 1, 1)
+        picks = self.blocks.strong_picks(40, torch.Generator().manual_seed(6))
+        out, out_maps = self.blocks.augment_with_maps(crops, many, ("strong",), torch.Generator().manual_seed(6))
+        self.assertTrue(torch.equal(out, self.blocks.augment(crops, ("strong",), torch.Generator().manual_seed(6))))
+        warped = [n for n, pick in enumerate(picks) if set(pick) & set(self.blocks.STRONG_WARPS)]
+        self.assertTrue(0 < len(warped) < 40, picks)
+        self.assertTrue(all(torch.equal(out_maps[n], many[n]) for n in range(40) if n not in warped))
+        self.assertTrue(any(not torch.equal(out_maps[n], many[n]) for n in warped))
+
+    def test_strong_comes_last_so_the_other_changes_draw_as_before(self):
+        import torch
+
+        others = ("box-jitter", "intensity", "blur", "noise")
+        generator = torch.Generator().manual_seed(4)
+        expected = self.blocks.strong(self.blocks.augment(self.batch(), others, generator), generator)
+        got = self.blocks.augment(self.batch(), ("strong", *others), torch.Generator().manual_seed(4))
+        self.assertTrue(torch.equal(got, expected))
+        self.assertEqual(self.blocks.AUGMENT_ORDER[-1], "strong")
+
     def test_imagenet_scaling_keeps_the_weights_names(self):
         import torch
 
@@ -370,7 +723,7 @@ class RunWithEveryBlockTest(unittest.TestCase):
         cls.catalog = cls.make_catalog(cls.tmp)
         cls.run_dir = cls.tmp / "run"
         cls.run_dir.mkdir()
-        record = {"run_id": "blocksrun000", "code_commit": "0" * 40, "catalog_sha256": "0" * 64, "catalog_version": 1, "clean_tree": True}
+        record = {"run_id": "blocksrun000", "code_commit": "0" * 40, "catalog_sha256": sha256_of(cls.catalog), "catalog_version": 1, "clean_tree": True}
         (cls.run_dir / "RUN.json").write_text(json.dumps(record), encoding="utf-8")
         words = ["normalise=imagenet", "augment=box-jitter,intensity,blur,noise", "optimiser=adamw", "weight_decay=0.01",
                  "schedule=cosine", "warmup_epochs=1", "backbone_lr_scale=0.5", "sampler=balanced",
@@ -470,7 +823,7 @@ class RunWithSamplesArchitectureAndDenoiseTest(unittest.TestCase):
         cls.catalog = RunWithEveryBlockTest.make_catalog(cls.tmp)
         cls.run_dir = cls.tmp / "runs" / "2026" / "capped"
         cls.run_dir.mkdir(parents=True)
-        record = {"run_id": "capped000000", "code_commit": "0" * 40, "catalog_sha256": "0" * 64, "catalog_version": 1, "clean_tree": True}
+        record = {"run_id": "capped000000", "code_commit": "0" * 40, "catalog_sha256": sha256_of(cls.catalog), "catalog_version": 1, "clean_tree": True}
         (cls.run_dir / "RUN.json").write_text(json.dumps(record), encoding="utf-8")
         cls.words = ["samples=cap-per-person", "per_person=2", "architecture=mobilenet-v3-small", "denoise=median"]
         args = ["--catalog", str(cls.catalog), "--out", str(cls.run_dir), "--epochs", "1", "--seed", "1", "--size", "32",
@@ -564,7 +917,7 @@ class RunWithSamplesArchitectureAndDenoiseTest(unittest.TestCase):
         catalog = RunWithEveryBlockTest.make_catalog(tmp, map_share=0)
         run_dir = tmp / "run"
         run_dir.mkdir()
-        record = {"run_id": "nomaps000000", "code_commit": "0" * 40, "catalog_sha256": "0" * 64, "catalog_version": 1, "clean_tree": True}
+        record = {"run_id": "nomaps000000", "code_commit": "0" * 40, "catalog_sha256": sha256_of(catalog), "catalog_version": 1, "clean_tree": True}
         (run_dir / "RUN.json").write_text(json.dumps(record), encoding="utf-8")
         args = ["--catalog", str(catalog), "--out", str(run_dir), "--epochs", "1", "--seed", "1", "--size", "32", "--device", "cpu"]
         err = io.StringIO()
@@ -607,7 +960,7 @@ class RunWithAMonaiArchitectureTest(unittest.TestCase):
         cls.catalog = RunWithEveryBlockTest.make_catalog(cls.tmp)
         cls.run_dir = cls.tmp / "runs" / "2026" / "monai"
         cls.run_dir.mkdir(parents=True)
-        record = {"run_id": "monai0000000", "code_commit": "0" * 40, "catalog_sha256": "0" * 64, "catalog_version": 1, "clean_tree": True}
+        record = {"run_id": "monai0000000", "code_commit": "0" * 40, "catalog_sha256": sha256_of(cls.catalog), "catalog_version": 1, "clean_tree": True}
         (cls.run_dir / "RUN.json").write_text(json.dumps(record), encoding="utf-8")
         args = ["--catalog", str(cls.catalog), "--out", str(cls.run_dir), "--epochs", "1", "--seed", "1", "--size", "32",
                 "--device", "cpu", "--witness", "2", "--keep-epochs", "0", "--block", "architecture=densenet121"]
@@ -632,6 +985,45 @@ class RunWithAMonaiArchitectureTest(unittest.TestCase):
         self.assertTrue(verdict["passed"], verdict)
 
 
+@unittest.skipIf(MISSING, f"needs the train environment ({', '.join(MISSING)} missing)")
+class RunWithTheStrongBlockTest(unittest.TestCase):
+    """One epoch with the strong block, SyntheX's and FluoroSAM's randomisation, at the two crop
+    sizes the plans start from: at 32 pixels with the prior block on, so its two warps move the
+    level maps the head is scored against inside the trainer, and at 64 pixels with it alone."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = Path(tempfile.mkdtemp())
+        cls.catalog = RunWithEveryBlockTest.make_catalog(cls.tmp)
+
+    def run_with(self, name, size, words):
+        run_dir = self.tmp / name
+        run_dir.mkdir()
+        record = {"run_id": f"{name}-000", "code_commit": "0" * 40, "catalog_sha256": sha256_of(self.catalog), "catalog_version": 1, "clean_tree": True}
+        (run_dir / "RUN.json").write_text(json.dumps(record), encoding="utf-8")
+        args = ["--catalog", str(self.catalog), "--out", str(run_dir), "--epochs", "1", "--seed", "1", "--size", str(size),
+                "--device", "cpu", "--witness", "2", "--keep-epochs", "0"]
+        for word in words:
+            args += ["--block", word]
+        with mock.patch.dict(os.environ, {"SCHWINGNET_WANDB": "off"}):
+            self.assertEqual(load("train").main(args), 0)
+        facts = json.loads((run_dir / "train" / "checkpoint.json").read_text(encoding="utf-8"))
+        lines = [json.loads(line) for line in (run_dir / "train" / "metrics.jsonl").read_text(encoding="utf-8").splitlines()]
+        self.assertEqual(facts["blocks"]["augment"], ["strong"])
+        self.assertEqual(facts["size"], size)
+        self.assertEqual([line["epoch"] for line in lines], [0, 1])
+        self.assertTrue(lines[1]["train_loss"] > 0 and lines[1]["train_loss"] < float("inf"))
+        self.assertIn("augment strong", (run_dir / "train" / "MODEL.md").read_text(encoding="utf-8"))
+        return lines
+
+    def test_one_epoch_at_32_pixels_with_the_prior_trains(self):
+        lines = self.run_with("strong-32", 32, ["augment=strong", "prior=level-map", "prior_weight=0.5"])
+        self.assertGreater(lines[1]["train_prior_loss"], 0)
+
+    def test_one_epoch_at_64_pixels_trains(self):
+        self.run_with("strong-64", 64, ["augment=strong"])
+
+
 @unittest.skipIf([n for n in FLOW_NEEDS if importlib.util.find_spec(n) is None], "needs the package's checkers")
 class FlowBlocksTest(unittest.TestCase):
     """tools/flow.py passes the blocks to the trainer and refuses a wrong one before any step."""
@@ -639,8 +1031,9 @@ class FlowBlocksTest(unittest.TestCase):
     def test_blocks_pass_through_and_a_fault_stops_the_plan(self):
         flow = load("flow")
         self.assertEqual(flow.block_words([]), "")
+        # augment's changes are passed in schwingnet.blocks' order, whatever order they were typed.
         self.assertEqual(flow.block_words(["normalise=imagenet", "augment=noise,blur"]),
-                         " --block normalise=imagenet --block augment=noise,blur")
+                         " --block normalise=imagenet --block augment=blur,noise")
         for words in (["normalise=zscore"], ["augment=noise, blur"], ["sampler=balanced", "sampler=uniform"]):
             with self.subTest(words=words), self.assertRaises(flow.FlowError):
                 flow.block_words(words)

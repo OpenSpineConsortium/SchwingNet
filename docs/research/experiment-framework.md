@@ -328,3 +328,127 @@ renders, the CT's segmentation projected").
   prior=level-map --base prior_weight=0.5 ...` for the rung and the same command with no prior
   words for the control, which is version 1's row; `ledger` reads both. (`--vary` separates values
   with `/`, so `--vary prior_weight=0.1/0.5` under `--base prior=level-map` plans the weights.)
+
+## 7. The smoke test: every combination decided, every route run, the pipeline on Metaflow (#252)
+
+The owner's asks of 2026-10-24, 21:11 to 21:20 UTC: smoke every combination of the blocks on the
+grid, or the combinations that cover every route of data through the workflow; keep the results
+in their go2432 folder at a path that follows from the configuration; resume preprocessing from
+the latest step that reuses the most, enforced where the workflow software does it natively; and
+know that any combination within the fundamental incompatibilities works on any dataset held,
+annotated and unannotated sets passed on as they should be. At 22:12 UTC the owner chose three GPU
+jobs and up to three CPU jobs for it, and at 22:27 UTC that Metaflow, installed and chosen in
+October but used by no flow, be the engine whose resume is enforced. The results are kept under
+docs/research/block-smoke/.
+
+- **Two halves of one argument.** Running all 393,216 named combinations (the ten named parts,
+  12,288 combinations with the samples cut counted as its four choices, times the 32 subsets of
+  the five augment names) is neither possible nor needed. `python3 tools/block_sweep.py check
+  --catalog FILE --all` decides every one of them at each crop size its rules were measured at on
+  every architecture, 32, 64, 96 and 128 pixels, from the catalog's own facts, training nothing:
+  it runs, or it is refused for a stated reason; any other size it refuses in words. Only the samples cut,
+  the prior and the crop size can change a verdict, since every other part is a separate hook
+  that acts on whatever crops it is given, so the check counts by those three and multiplies.
+  Then a covering set of runs, `cover`, exercises on the GPU every option of every part and every
+  pair of parts that interact in the code, and each run's outcome is set against the check's
+  prediction for it; a mismatch is a bug, flagged in the results and failing the flow. Parts that
+  share no code cannot hide a bug between them, so covering every interacting pair covers every
+  route.
+- **The cover.** Two halves, the prior off and the level-map prior on, each a greedy covering
+  array over seventeen factors (architecture, crop size, denoise, normalise, the samples cut,
+  optimiser, schedule, warm-up, backbone rate, sampler, loss weights, selection, and each of the
+  five augment names on or off) holding every value of every factor and every pair of (denoise, normalise),
+  (sampler, loss weights), (optimiser, schedule) and (schedule, warm-up). Each half closes with
+  two rows of version 1's training at 64 pixels that cut to one labelled source of several,
+  `samples=only-sources` and `samples=drop-sources` with `sources=@first-labelled`, which train
+  on a strict part of the labelled crops where the catalog's train part holds two labelled
+  sources, as the synthetic catalog's does, and are not applicable, saying why, where it holds
+  one, as catalog version 1 and the two-source catalog do; in the array itself only-sources names
+  every labelled source (`@labelled`), so the array trains on every catalog. Across the two halves
+  every architecture, size, samples cut, augment name and backbone rate meets both prior values,
+  which are the prior's interactions. After the cover come the route rows: one run from the
+  ImageNet file, two warm starts from a cover row (one adding the prior), and the four refusals
+  the check predicts (a cut that leaves no crop, a cut to the unannotated source alone, a warm
+  start across architectures, a warm start that also names weights). `--strict` gives the full
+  pairwise array instead, offered for when it is asked for.
+- **Annotated and unannotated sets, natively.** Ingest keeps a box with no trusted level as a
+  frame fact and drops it as a label, and a frame with no labelled box yields no crop, so an
+  unannotated source such as VinDr-SpineXR enters the catalog and feeds the level stage nothing.
+  The check and the plans name the kinds as placeholders, `@labelled`, `@unlabelled` and
+  `@first-labelled` (the first by name of two or more labelled sources, and none where the train
+  part holds one), resolved against each catalog, so the same plan proves on the two-source catalog that the
+  crops equal the annotated source's alone and that a cut to the unannotated source alone is
+  refused as leaving nothing.
+- **The plans.** grid/sweeps/synthetic.json (the synthetic bank with level maps, its labelled
+  cases split between C-ArmLSpine's route and a render's under the VerSe projections' id, the
+  only place the prior route and the cuts to one labelled source of several run today), real.json (catalog version 1 of C-ArmLSpine, chosen by grid/v1-version.sh --alone so that no
+  other source has frames in train or validation), two_source.json
+  (the catalog with VinDr-SpineXR banked beside it) and trials.json (the six trial arms of
+  the design note), each the output of a block_sweep command, committed and regenerated byte for
+  byte by a test, so a plan is a function of the code.
+- **Predictable folders.** The run id was the hash of the commit, the catalog and the start, so
+  no run could be found again from its configuration. It is now the hash of the code the run
+  executes, the catalog and the run's configuration, written once to CONFIGURATION.json; a legacy
+  RUN.json still validates. The code is tools/run_code.py's digest of the tracked files a run
+  executes, listed by kind with the reason for each file left out and checked by
+  tests/test_run_code.py against the imports, tools and scripts the code reaches, and not the
+  commit: main merges many times a day, and of its 88 merges from 22 to 25 October 10 changed a
+  file a sweep runs, so a run named by its commit could not be carried on after the other 78.
+  RUN.json records the code's digest beside the commit the run first started on, which holds
+  that code. A sweep's state is `<smoke root>/<plan>/<code 8>-<catalog sha256 8>/`, the code
+  part naming the code the rows run and the plan file's bytes, so `tools/block_sweep.py state`
+  prints it from the plan, the catalog and the checkout before anything runs, with
+  `-e<N>` after it where the sweep was asked for N epochs in place of the plan's, each row
+  under its slug, `<architecture>-<size>px-<8 hex of the row's configuration>`, with results.json,
+  RESULTS.md and PROGRESS.txt at the state's root. On the grid the smoke root is
+  /rs/rs_grp_oschome/go2432/smoke.
+- **Resume, natively.** Three Metaflow flows carry the pipeline: BankFlow (bank then ingest, a
+  branch per source), CatalogFlow (the catalog and its marker, one step since the build lock is
+  held throughout) and SweepFlow (prepare, the rows with no parent as one foreach, the warm starts
+  as a second, then the results). One launcher, flows/launch.py, starts them all: it names a run
+  by a key of the flow, the code it runs, the parameters and what it reads beyond them (bank's
+  recipes and raw copies, catalog's shard manifests, the sweep's plan), and before it starts a
+  new run it resumes the newest run of that key that did not succeed, runs no more and had its
+  parameters saved by Metaflow, with Metaflow's own `resume`, which clones
+  every finished step and every finished branch of a foreach and reruns only the rest (measured
+  here with Metaflow 2.19.39 after an exception and after a SIGKILL, as a Slurm timeout kills a
+  job). grid/02-bank-ingest.sbatch and grid/03-catalog.sbatch hand themselves to the launcher
+  inside every Slurm job, so no grid route skips it, while a direct call, as the tests make, runs
+  the stage as before. Inside a row, a run cut short resumes from its last epoch: the trainer
+  writes train/last.pt after every epoch and `--resume` ends bit-identical on a CPU to a run that
+  went through, and the flow resumes a row from its folder. A start holds the folder by a lock on
+  <run>/.lock and the trainer holds train/.lock, so a second start of a row still running is
+  refused in words; a row counts as finished only once it wrote FINISHED.json, its last file,
+  after the ledger row and the report; a resume is held to the sha256 of its catalog, ImageNet
+  file and parent, and every step to the catalog RUN.json names; train/last.pt is bound to its
+  bytes by train/last.pt.sha256, and a last.pt torch cannot read, whose bytes that record does not
+  name, that has no record, or whose best line names weights best.pt does not hold is moved aside
+  to last.pt.unreadable and the row trains again from epoch 0; training counts as ended only where
+  train/checkpoint.json names the sha256 of the best.pt beside it; LEDGER.md is written whole under
+  LEDGER.md.lock; and in slurm mode each job is in RUN.json from its submission, so a start that
+  dies while its job waits leaves the job for the next start to wait on.
+- **What Metaflow does not cover.** Resume continues a run that did not finish; reuse across two
+  finished runs, a catalog rebuilt on a new commit or an ingest on a new date, stays with the
+  tools' own content addressing, whose gaps are issue #260. The fetch, stage 1, resumes its own
+  downloads by its .part files.
+- **Live views.** Each row's Metaflow card refreshes every fifteen seconds from the trainer's
+  metrics, read with `python flows/sweep.py card server` on the grid; W&B carries each step live
+  where the grid has the key; and the status word hands its page of 400 lines and 64 KiB out in
+  the order a reader needs it (grid/status-page.awk): the space tally, each plan's PROGRESS.txt,
+  the newest jobs and every failed job's log, then the stage reports with the sample manifest
+  among them by its date, each section keeping its place and saying what it left out, the last
+  line naming any section that found no room. A refused or failed row shows its code there, and
+  the tools' reason after it only where the reason can quote no value.
+- **Two fixes the cover found before any GPU ran.** A training batch of one crop raises in
+  BatchNorm at 32 pixels for every architecture (densenet121 at 48 too), so a last batch of one
+  crop now joins the batch before it where a probe shows the model cannot train on one; nothing
+  changes where it can, so version 1's training is unchanged to the bit. And the strong block,
+  below.
+- **The strong block.** `augment=strong` is SyntheX's strong domain randomisation (Gao, Killeen
+  et al., Nat Mach Intell 5:294, 2023) with the transforms FluoroSAM adds (Killeen et al., MICCAI
+  2025): up to two transforms a crop from sixteen, among them inversion, impulse noise, affine,
+  contrast curves, blurs, box corruption, dropout, sharpen, emboss, pooling, multiply, a
+  piecewise warp, Gaussian contrast, windowing and CLAHE, each drawn from the run's own
+  generator, the two geometric ones moving the level maps. What the papers randomise, what the
+  blocks had and lacked, and the caveat that their training is sim-to-real while this one is real
+  frames is docs/research/strong-domain-randomisation.md.
