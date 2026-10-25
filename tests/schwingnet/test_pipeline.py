@@ -6,7 +6,18 @@ import json
 import pytest
 from beethoven_qa.contracts import ViolationError
 
-from schwingnet.pipeline import RESUME, RUN, RUN_KEY_LENGTH, RunState, decide, run_key
+from schwingnet.pipeline import (
+    LIVE_SECONDS,
+    RESUME,
+    RUN,
+    RUN_KEY_LENGTH,
+    Beat,
+    RunState,
+    decide,
+    is_live,
+    marked_live,
+    run_key,
+)
 
 COMMIT = "0123456789abcdef0123456789abcdef01234567"
 
@@ -33,10 +44,15 @@ def test_a_change_of_flow_commit_or_any_word_names_another_key() -> None:
 def test_what_the_flow_reads_beyond_its_words_is_in_the_key() -> None:
     words = ["--sources", "nih_chestxray14 open_i_chest"]
     first = run_key("bank", COMMIT, words, ["nih_chestxray14 aa", "open_i_chest not fetched"])
-    assert run_key("bank", COMMIT, words, ("nih_chestxray14 aa", "open_i_chest not fetched")) == first
+    assert (
+        run_key("bank", COMMIT, words, ("nih_chestxray14 aa", "open_i_chest not fetched")) == first
+    )
     assert run_key("bank", COMMIT, words, ["nih_chestxray14 aa", "open_i_chest bb"]) != first
     text = json.dumps(["bank", COMMIT, words, ["x"]], ensure_ascii=True, separators=(",", ":"))
-    assert run_key("bank", COMMIT, words, ["x"]) == hashlib.sha256(text.encode("ascii")).hexdigest()[:16]
+    assert (
+        run_key("bank", COMMIT, words, ["x"])
+        == hashlib.sha256(text.encode("ascii")).hexdigest()[:16]
+    )
     # no reads is the key of the three; a word and a read of the same text never meet
     assert run_key("bank", COMMIT, words, []) == run_key("bank", COMMIT, words)
     assert run_key("bank", COMMIT, ["x"], []) != run_key("bank", COMMIT, [], ["x"])
@@ -73,6 +89,39 @@ def test_a_newest_success_starts_a_new_run_whatever_failed_before_it() -> None:
     assert decide([done]) == (RUN, None)
     # an older success behind a newer failure is no reason to start afresh
     assert decide([killed, done]) == (RESUME, "1792")
+
+
+def test_a_newest_run_still_running_is_never_resumed() -> None:
+    live = RunState("1801", finished=False, successful=False, live=True)
+    killed = RunState("1792", finished=False, successful=False)
+    assert decide([live, killed]) == (RUN, None)
+    assert decide([killed, live]) == (RESUME, "1792")
+
+
+NOW = 1_800_000_000.0
+
+
+def test_a_beat_is_live_while_fresh_and_from_another_job() -> None:
+    assert is_live(Beat("1801", "4242", NOW - 30), "4243", NOW)
+    assert is_live(Beat("1801", "", NOW - LIVE_SECONDS), "", NOW)
+    # a clock ahead of this one still beats
+    assert is_live(Beat("1801", "4242", NOW + 90), "", NOW)
+    assert not is_live(Beat("1801", "4242", NOW - LIVE_SECONDS - 1), "4243", NOW)
+    # this very job's beat was left by its earlier start, which Slurm ended and queued again
+    assert not is_live(Beat("1801", "4242", NOW - 1), "4242", NOW)
+
+
+def test_the_runs_a_live_beat_names_are_live_and_the_newest_while_a_launcher_starts() -> None:
+    newest = RunState("1801", finished=False, successful=False)
+    older = RunState("1792", finished=False, successful=False)
+    named = marked_live([newest, older], [Beat("1792", "", NOW)], "", NOW)
+    assert [run.live for run in named] == [False, True]
+    assert named[0][:3] == newest[:3]
+    starting = marked_live([newest, older], [Beat("", "4242", NOW)], "", NOW)
+    assert [run.live for run in starting] == [True, False]
+    gone = [Beat("1801", "", NOW - 3600), Beat("1792", "4242", NOW), Beat("", "4242", NOW)]
+    assert [run.live for run in marked_live([newest, older], gone, "4242", NOW)] == [False, False]
+    assert marked_live([], [Beat("", "", NOW)], "", NOW) == []
 
 
 def test_the_runs_must_hold_together() -> None:

@@ -66,8 +66,22 @@ for another date runs anew under it; where the words name none, the launcher cho
 new run, after the key is taken, and resume keeps it, so a resumed ingest writes the shard its
 first half meant, on whatever day the job is queued again.
 
-Its first line on stdout is the decision, `{"decision", "flow", "key", "origin", "root"}`, and
-its last `{"flow", "run": "Class/ID", "successful", "verdict"}`; the flow's own output passes
+A run still running is never resumed, since a resume clones what it has done so far, a catalog
+built before the shards that landed since among them. While its flow lasts the launcher keeps a
+heartbeat, <root>/launches/<Flow>/<key>/<host>-<pid>.json, written before the flow starts,
+naming the run within a second of Metaflow's writing its id, rewritten every minute with the
+host, the process and SLURM_JOB_ID, and taken away when the flow ends. The launcher lists the
+runs before it reads the beats, so a live run it lists always has a beat it reads; a newest run
+that a fresh beat names, or any newest run while a fresh beat names none yet, is live
+(schwingnet.pipeline.marked_live), and the launch starts a run of its own beside it, as two jobs
+of a stage ran before Metaflow, the stage's own locks ordering what may not overlap: a second
+catalog job waits on BUILD.lock and builds with the shards that landed since. A beat left by a launcher killed with its job stops counting once it is 300 s
+old (LIVE_SECONDS), at once where it names this very Slurm job, which Slurm queued again, and at
+once where it names a process on this host that is gone.
+
+Its first line on stdout is the decision, `{"decision", "flow", "key", "live", "origin", "root"}`,
+with `live` the id of a newest run passed over as live, else null, and its last `{"flow", "run":
+"Class/ID", "successful", "verdict"}`; the flow's own output passes
 through between them. It exits with the flow's own code where that is not 0 (128 plus the
 signal where the flow was killed), else with the verdict, so a job's afterok means what it meant
 before Metaflow. It refuses, exit 69, where Metaflow cannot be imported or the datastore's parent

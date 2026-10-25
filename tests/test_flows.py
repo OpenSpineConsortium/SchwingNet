@@ -14,10 +14,12 @@ import json
 import os
 import re
 import shutil
+import socket
 import struct
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 import zlib
 from datetime import date
@@ -92,6 +94,26 @@ def launch(words, cwd, env, root):
                           capture_output=True, text=True, timeout=TIMEOUT)
     said = [json.loads(line) for line in done.stdout.splitlines() if line.startswith("{")]
     return done.returncode, said, done.stdout + done.stderr
+
+
+def start_launch(words, cwd, env, root):
+    """flows/launch.py started and left running, as a job on another node finds it."""
+    return subprocess.Popen([sys.executable, str(LAUNCH), words[0], "--root", str(root), *words[1:]], cwd=cwd, env=env,
+                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+
+
+def finish(process):
+    """A launch started by start_launch, waited for: its exit code, its JSON lines and its output."""
+    out, _ = process.communicate(timeout=TIMEOUT)
+    return process.returncode, [json.loads(line) for line in out.splitlines() if line.startswith("{")], out
+
+
+def wait_for(path):
+    deadline = time.monotonic() + TIMEOUT
+    while not path.exists():
+        if time.monotonic() > deadline:
+            raise AssertionError(f"{path} never came")
+        time.sleep(0.2)
 
 
 def stage(name, cwd, env):
@@ -441,6 +463,7 @@ import json
 import os
 import signal
 import sys
+import time
 from pathlib import Path
 
 
@@ -478,6 +501,15 @@ def kill_the_job():
     sys.exit(137)
 
 
+def hold():
+    """A row that lasts until the test lets it end, as a row trains for hours, saying it holds."""
+    Path(os.environ["FLOW_TEST_HELD"]).write_text("", encoding="utf-8")
+    for _ in range(3000):
+        if Path(os.environ["FLOW_TEST_RELEASE"]).exists():
+            return
+        time.sleep(0.2)
+
+
 def prepare():
     plan = json.loads(Path(value("--plan")).read_text(encoding="utf-8"))
     state = Path(value("--out")) / plan["plan"] / "state"
@@ -499,6 +531,8 @@ def row():
     if slug == os.environ.get("FLOW_TEST_KILL") and not marker.exists():
         marker.write_text("", encoding="utf-8")
         kill_the_job()
+    if slug == os.environ.get("FLOW_TEST_HOLD"):
+        hold()
     entry = {"slug": slug, "outcome": "ran", "code": None, "matched": True, "predicted": "runs", "role": "cover",
              "validation_accuracy": 0.75, "test_accuracy": 0.5, "wandb": []}
     write(state / "rows" / f"{slug}.json", entry)
@@ -540,8 +574,9 @@ class SweepFlowTest(unittest.TestCase):
         self.root, self.out, self.work = self.tmp / "metaflow", self.tmp / "smoke", self.tmp / "work"
         self.work.mkdir()
 
-    def sweep(self, plan, n, **extra):
-        """One launch of a plan whose rows the stub runs, with its own call log."""
+    def sweep_launch(self, plan, n, **extra):
+        """The words and the environment of a launch of a plan whose rows the stub runs, and the
+        call log of its own the stub writes."""
         plan_file = self.tmp / f"{plan['plan']}.json"
         plan_file.write_text(json.dumps(plan), encoding="utf-8")
         calls = self.tmp / f"calls-{plan['plan']}-{n}"
@@ -549,8 +584,57 @@ class SweepFlowTest(unittest.TestCase):
         env = base_env(SCHWINGNET=str(self.repo), FLOW_TEST_CALLS=str(calls), FLOW_TEST_MARKER=str(self.tmp / "killed"), **extra)
         words = ["sweep", "--", "--plan", str(plan_file), "--catalog", str(self.tmp / "catalog.sqlite"), "--out", str(self.out),
                  "--environment", "train-cpu"]
+        return words, env, calls
+
+    def sweep(self, plan, n, **extra):
+        """One launch of a plan whose rows the stub runs, with its own call log."""
+        words, env, calls = self.sweep_launch(plan, n, **extra)
         result = launch(words, self.work, env, self.root)
         return (*result, calls.read_text(encoding="utf-8").splitlines())
+
+    def test_a_second_launch_never_resumes_a_live_run_and_clones_none_of_its_rows(self):
+        plan = {"plan": "live", "first": ["a", "b", "c"], "second": ["d"]}
+        held, release = self.tmp / "held", self.tmp / "release"
+        words, env, _ = self.sweep_launch(plan, 1, FLOW_TEST_HOLD="c", FLOW_TEST_HELD=str(held), FLOW_TEST_RELEASE=str(release))
+        first = start_launch(words, self.work, env, self.root)
+        self.addCleanup(first.kill)
+        self.addCleanup(release.touch)
+        wait_for(held)
+
+        # the first run is live, rows a and b done and c training: a second launch of the same
+        # words starts a run of its own, as a resume would clone a and b from a run still going
+        code, said, out, calls = self.sweep(plan, 2)
+        self.assertEqual(code, 0, out)
+        self.assertEqual((said[0]["decision"], said[0]["origin"]), ("run", None), out)
+        self.assertEqual(calls, ["prepare", "row a", "row b", "row c", "row d", "results"])
+        release.touch()
+        code, first_said, first_out = finish(first)
+        self.assertEqual((code, first_said[-1]["successful"]), (0, True), first_out)
+        self.assertEqual(said[0]["live"], first_said[-1]["run"].split("/")[1], out)
+
+    def test_a_beat_left_by_a_launcher_that_is_gone_keeps_no_run_from_being_resumed(self):
+        plan = {"plan": "gone", "first": ["a", "b"], "second": []}
+        code, said, out, calls = self.sweep(plan, 1, FLOW_TEST_KILL="b")
+        self.assertEqual(code, 137, out)
+        first_run, key = said[-1]["run"].split("/")[1], said[0]["key"]
+        beats = self.root / "launches" / "SweepFlow" / key
+        self.assertEqual(list(beats.glob("*.json")), [], "the launcher took its beat away as its flow ended")
+
+        # beats a killed job could leave: one on this host by a process that is gone, one of this
+        # very Slurm job before Slurm queued it again, and one from another node too long ago
+        gone = subprocess.Popen(["true"])
+        gone.wait()
+        now = time.time()
+        records = {"here": {"host": socket.gethostname(), "pid": gone.pid, "slurm_job": "", "beat": now},
+                   "requeued": {"host": "node7", "pid": 4, "slurm_job": "4242", "beat": now},
+                   "old": {"host": "node8", "pid": 5, "slurm_job": "4243", "beat": now - 3600}}
+        beats.mkdir(parents=True, exist_ok=True)
+        for name, record in records.items():
+            (beats / f"{name}.json").write_text(json.dumps({**record, "key": key, "run": first_run}), encoding="utf-8")
+        code, said, out, calls = self.sweep(plan, 2, SLURM_JOB_ID="4242")
+        self.assertEqual(code, 0, out)
+        self.assertEqual((said[0]["decision"], said[0]["origin"], said[0].get("live")), ("resume", first_run, None), out)
+        self.assertEqual(calls, ["row b", "results"])
 
     def test_a_sweep_killed_mid_row_resumes_that_row_and_the_warm_starts_alone(self):
         plan = {"plan": "smoke", "first": ["a", "b", "c"], "second": ["d"]}
@@ -649,6 +733,64 @@ class GateFilterTest(unittest.TestCase):
         # the task printed, and it is withheld with the rest; a prefix's text inside a line is no prefix
         self.assertEqual(kept[-1], "#withheld 8")
         self.assertFalse(any("12345678" in line or "run_once" in line for line in kept), kept)
+
+
+# PYDRV for the two-launcher test: a build logs how many manifests it was given, and the first
+# holds stage 3's build lock until the release file is there, as a long build does.
+CATALOG_PYDRV = """#!/bin/bash
+[ "$2" = split-check ] && { echo '{"disjoint": true}'; exit 0; }
+[ "$2" = build ] || exit 0
+printf '%s\\n' "$@" | grep -c -- '^--manifest$' >> "$FLOW_TEST_BUILDS"
+if [ "$(wc -l < "$FLOW_TEST_BUILDS")" -eq 1 ]; then
+  : > "$FLOW_TEST_HELD"
+  for _ in $(seq 3000); do [ -e "$FLOW_TEST_RELEASE" ] && break; sleep 0.2; done
+fi
+echo '{"file": "catalog-000001-0123456789ab.sqlite", "new": true, "version": 1}'
+"""
+
+
+@unittest.skipIf(MISSING, f"needs the train environment ({', '.join(MISSING)} missing)")
+class CatalogFlowTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
+        self.root, self.work, self.data = self.tmp / "metaflow", self.tmp / "work", self.tmp / "data"
+        self.work.mkdir()
+
+    def shard(self, name):
+        folder = self.data / "carmlspine" / "shards" / name
+        folder.mkdir(parents=True)
+        (folder / "MANIFEST.json").write_text("{}\n", encoding="utf-8")
+
+    def test_a_second_catalog_job_never_resumes_a_live_build_and_waits_on_its_lock(self):
+        self.shard("a")
+        pydrv = self.tmp / "pydrv"
+        pydrv.write_text(CATALOG_PYDRV, encoding="utf-8")
+        pydrv.chmod(0o755)
+        builds, held, release = self.tmp / "builds", self.tmp / "held", self.tmp / "release"
+        env = base_env(PYDRV=str(pydrv), FLOW_TEST_BUILDS=str(builds), FLOW_TEST_HELD=str(held), FLOW_TEST_RELEASE=str(release),
+                       BUILD_LOCK_WAIT="600", TMPDIR_OVERRIDE=str(self.tmp / "t"))
+        words = ["catalog", "--", "--data-root", str(self.data)]
+        first = start_launch(words, self.work, env, self.root)
+        self.addCleanup(first.kill)
+        self.addCleanup(release.touch)
+        wait_for(held)
+
+        # a shard lands while the first build, which listed one manifest, still holds the lock; a
+        # second job of the same words starts a run of its own, which waits on the lock and then
+        # builds with both, where a resume of the live run would carry its build on
+        self.shard("b")
+        second = start_launch(words, self.work, env, self.root)
+        self.addCleanup(second.kill)
+        decision = json.loads(second.stdout.readline())
+        self.assertEqual((decision["decision"], decision["origin"]), ("run", None), decision)
+        release.touch()
+        code, first_said, first_out = finish(first)
+        self.assertEqual((code, first_said[-1]["verdict"]), (0, 0), first_out)
+        code, said, out = finish(second)
+        self.assertEqual((code, said[-1]["verdict"]), (0, 0), out)
+        self.assertEqual(decision["live"], first_said[-1]["run"].split("/")[1])
+        self.assertEqual(builds.read_text(encoding="utf-8").split(), ["1", "2"])
 
 
 # Logs a call of the launcher only; the stage's own small reads of a recipe print nothing.
