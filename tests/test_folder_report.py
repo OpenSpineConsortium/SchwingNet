@@ -91,6 +91,16 @@ class FolderReport(unittest.TestCase):
         self.assertTrue(all(len(page) <= 1000 + 20 for page in pages))
         self.assertEqual("".join(pages).count("## g"), 10)
 
+    def test_no_page_passes_the_line_limit_and_a_long_section_goes_on_whole(self):
+        table = "## data root\n" + "".join(f"| f{n} | 1 GB |\n" for n in range(700))
+        sections = ["head\n", table] + [f"## g{n}\n" + "row\n" * 40 for n in range(20)]
+        pages = folder_report.pages(sections, 55_000, 350)
+        self.assertTrue(all(page.count("\n") <= 350 for page in pages))
+        joined = "".join(pages)
+        self.assertTrue(all(f"| f{n} | 1 GB |" in joined for n in range(700)))
+        self.assertEqual(joined.count("## g"), 20)
+        self.assertNotIn("(cut)", joined)
+
 
 if __name__ == "__main__":
     unittest.main()
