@@ -122,7 +122,8 @@ export -n DATA_ROOT 2>/dev/null
 DATA_ROOT=${DATA_ROOT:-$GRID_DATA}
 STORE=$DATA_ROOT/_catalog
 RUNS=${RUNS:-/rs/rs_grp_oschome/go2432/runs}
-# The block smoke test's results (issue #252): <plan>/<commit 7>-<catalog sha256 first 8>/ per sweep.
+# The block smoke test's results (issue #252): <plan>/<code 8>-<catalog sha256 first 8>/ per sweep, the
+# code part naming the code its rows run and the plan's bytes, as `tools/block_sweep.py state` prints it.
 SMOKE=${SMOKE:-/rs/rs_grp_oschome/go2432/smoke}
 MODELS=${MODELS:-/rs/rs_grp_oschome/go2432/models}
 WEIGHTS=$MODELS/resnet18-f37072fd.pth
