@@ -1,0 +1,478 @@
+{
+  "about": "The measures of tools/rag.py eval over docs/textbook/rag/questions.json, one row for each block set tried; written by tools/rag.py eval --write.",
+  "commit": "5dd29a91446aab9f5a474614a15cf7d09a5d8f0a",
+  "questions": 54,
+  "sets": [
+    {
+      "set": "version 1",
+      "blocks": {
+        "chunk": "section",
+        "tokens": "plain",
+        "index": "bm25",
+        "retrieve": "top",
+        "answer": "cite",
+        "embed": "none"
+      },
+      "passages": 1228,
+      "recall_at_5": 0.877,
+      "mrr": 0.764,
+      "figure_at_5": 0.4,
+      "misses": [
+        "one-person",
+        "how-much-spine",
+        "invalid-comparison"
+      ]
+    },
+    {
+      "set": "retrieve=spread",
+      "blocks": {
+        "chunk": "section",
+        "tokens": "plain",
+        "index": "bm25",
+        "retrieve": "spread",
+        "answer": "cite",
+        "embed": "none"
+      },
+      "passages": 1228,
+      "recall_at_5": 0.886,
+      "mrr": 0.764,
+      "figure_at_5": 0.3,
+      "misses": [
+        "one-person",
+        "how-much-spine",
+        "invalid-comparison"
+      ]
+    },
+    {
+      "set": "index=tfidf",
+      "blocks": {
+        "chunk": "section",
+        "tokens": "plain",
+        "index": "tfidf",
+        "retrieve": "top",
+        "answer": "cite",
+        "embed": "none"
+      },
+      "passages": 1228,
+      "recall_at_5": 0.883,
+      "mrr": 0.78,
+      "figure_at_5": 0.5,
+      "misses": [
+        "how-much-spine"
+      ]
+    },
+    {
+      "set": "index=tfidf retrieve=spread",
+      "blocks": {
+        "chunk": "section",
+        "tokens": "plain",
+        "index": "tfidf",
+        "retrieve": "spread",
+        "answer": "cite",
+        "embed": "none"
+      },
+      "passages": 1228,
+      "recall_at_5": 0.91,
+      "mrr": 0.781,
+      "figure_at_5": 0.3,
+      "misses": [
+        "how-much-spine"
+      ]
+    },
+    {
+      "set": "tokens=stem",
+      "blocks": {
+        "chunk": "section",
+        "tokens": "stem",
+        "index": "bm25",
+        "retrieve": "top",
+        "answer": "cite",
+        "embed": "none"
+      },
+      "passages": 1228,
+      "recall_at_5": 0.877,
+      "mrr": 0.754,
+      "figure_at_5": 0.4,
+      "misses": [
+        "how-much-spine",
+        "abstain",
+        "grid-start"
+      ]
+    },
+    {
+      "set": "tokens=stem retrieve=spread",
+      "blocks": {
+        "chunk": "section",
+        "tokens": "stem",
+        "index": "bm25",
+        "retrieve": "spread",
+        "answer": "cite",
+        "embed": "none"
+      },
+      "passages": 1228,
+      "recall_at_5": 0.895,
+      "mrr": 0.756,
+      "figure_at_5": 0.2,
+      "misses": [
+        "how-much-spine",
+        "abstain",
+        "grid-start"
+      ]
+    },
+    {
+      "set": "tokens=stem index=tfidf",
+      "blocks": {
+        "chunk": "section",
+        "tokens": "stem",
+        "index": "tfidf",
+        "retrieve": "top",
+        "answer": "cite",
+        "embed": "none"
+      },
+      "passages": 1228,
+      "recall_at_5": 0.92,
+      "mrr": 0.785,
+      "figure_at_5": 0.4,
+      "misses": [
+        "how-much-spine",
+        "first-experiment"
+      ]
+    },
+    {
+      "set": "tokens=stem index=tfidf retrieve=spread",
+      "blocks": {
+        "chunk": "section",
+        "tokens": "stem",
+        "index": "tfidf",
+        "retrieve": "spread",
+        "answer": "cite",
+        "embed": "none"
+      },
+      "passages": 1228,
+      "recall_at_5": 0.938,
+      "mrr": 0.786,
+      "figure_at_5": 0.2,
+      "misses": [
+        "how-much-spine"
+      ]
+    },
+    {
+      "set": "chunk=window",
+      "blocks": {
+        "chunk": "window",
+        "tokens": "plain",
+        "index": "bm25",
+        "retrieve": "top",
+        "answer": "cite",
+        "embed": "none"
+      },
+      "passages": 1293,
+      "recall_at_5": 0.846,
+      "mrr": 0.716,
+      "figure_at_5": 0.6,
+      "misses": [
+        "banned-words",
+        "both-ends-check",
+        "how-much-spine",
+        "clustered-intervals",
+        "invalid-comparison",
+        "session-alone"
+      ]
+    },
+    {
+      "set": "chunk=window retrieve=spread",
+      "blocks": {
+        "chunk": "window",
+        "tokens": "plain",
+        "index": "bm25",
+        "retrieve": "spread",
+        "answer": "cite",
+        "embed": "none"
+      },
+      "passages": 1293,
+      "recall_at_5": 0.873,
+      "mrr": 0.718,
+      "figure_at_5": 0.3,
+      "misses": [
+        "banned-words",
+        "how-much-spine",
+        "clustered-intervals",
+        "invalid-comparison",
+        "session-alone"
+      ]
+    },
+    {
+      "set": "chunk=window index=tfidf",
+      "blocks": {
+        "chunk": "window",
+        "tokens": "plain",
+        "index": "tfidf",
+        "retrieve": "top",
+        "answer": "cite",
+        "embed": "none"
+      },
+      "passages": 1293,
+      "recall_at_5": 0.892,
+      "mrr": 0.719,
+      "figure_at_5": 0.4,
+      "misses": [
+        "abstain",
+        "open-label-questions"
+      ]
+    },
+    {
+      "set": "chunk=window index=tfidf retrieve=spread",
+      "blocks": {
+        "chunk": "window",
+        "tokens": "plain",
+        "index": "tfidf",
+        "retrieve": "spread",
+        "answer": "cite",
+        "embed": "none"
+      },
+      "passages": 1293,
+      "recall_at_5": 0.91,
+      "mrr": 0.719,
+      "figure_at_5": 0.2,
+      "misses": [
+        "abstain",
+        "open-label-questions"
+      ]
+    },
+    {
+      "set": "chunk=window tokens=stem",
+      "blocks": {
+        "chunk": "window",
+        "tokens": "stem",
+        "index": "bm25",
+        "retrieve": "top",
+        "answer": "cite",
+        "embed": "none"
+      },
+      "passages": 1293,
+      "recall_at_5": 0.892,
+      "mrr": 0.743,
+      "figure_at_5": 0.5,
+      "misses": [
+        "decline-rule",
+        "abstain",
+        "clustered-intervals",
+        "session-alone"
+      ]
+    },
+    {
+      "set": "chunk=window tokens=stem retrieve=spread",
+      "blocks": {
+        "chunk": "window",
+        "tokens": "stem",
+        "index": "bm25",
+        "retrieve": "spread",
+        "answer": "cite",
+        "embed": "none"
+      },
+      "passages": 1293,
+      "recall_at_5": 0.892,
+      "mrr": 0.745,
+      "figure_at_5": 0.3,
+      "misses": [
+        "decline-rule",
+        "abstain",
+        "clustered-intervals",
+        "session-alone"
+      ]
+    },
+    {
+      "set": "chunk=window tokens=stem index=tfidf",
+      "blocks": {
+        "chunk": "window",
+        "tokens": "stem",
+        "index": "tfidf",
+        "retrieve": "top",
+        "answer": "cite",
+        "embed": "none"
+      },
+      "passages": 1293,
+      "recall_at_5": 0.904,
+      "mrr": 0.805,
+      "figure_at_5": 0.3,
+      "misses": [
+        "abstain",
+        "first-experiment"
+      ]
+    },
+    {
+      "set": "chunk=window tokens=stem index=tfidf retrieve=spread",
+      "blocks": {
+        "chunk": "window",
+        "tokens": "stem",
+        "index": "tfidf",
+        "retrieve": "spread",
+        "answer": "cite",
+        "embed": "none"
+      },
+      "passages": 1293,
+      "recall_at_5": 0.932,
+      "mrr": 0.806,
+      "figure_at_5": 0.2,
+      "misses": [
+        "abstain"
+      ]
+    },
+    {
+      "set": "chunk=figure",
+      "blocks": {
+        "chunk": "figure",
+        "tokens": "plain",
+        "index": "bm25",
+        "retrieve": "top",
+        "answer": "cite",
+        "embed": "none"
+      },
+      "passages": 1323,
+      "recall_at_5": 0.886,
+      "mrr": 0.771,
+      "figure_at_5": 0.5,
+      "misses": [
+        "one-person",
+        "how-much-spine",
+        "invalid-comparison"
+      ]
+    },
+    {
+      "set": "chunk=figure retrieve=spread",
+      "blocks": {
+        "chunk": "figure",
+        "tokens": "plain",
+        "index": "bm25",
+        "retrieve": "spread",
+        "answer": "cite",
+        "embed": "none"
+      },
+      "passages": 1323,
+      "recall_at_5": 0.886,
+      "mrr": 0.771,
+      "figure_at_5": 0.5,
+      "misses": [
+        "one-person",
+        "how-much-spine",
+        "invalid-comparison"
+      ]
+    },
+    {
+      "set": "chunk=figure index=tfidf",
+      "blocks": {
+        "chunk": "figure",
+        "tokens": "plain",
+        "index": "tfidf",
+        "retrieve": "top",
+        "answer": "cite",
+        "embed": "none"
+      },
+      "passages": 1323,
+      "recall_at_5": 0.873,
+      "mrr": 0.8,
+      "figure_at_5": 0.6,
+      "misses": [
+        "how-much-spine",
+        "invalid-comparison"
+      ]
+    },
+    {
+      "set": "chunk=figure index=tfidf retrieve=spread",
+      "blocks": {
+        "chunk": "figure",
+        "tokens": "plain",
+        "index": "tfidf",
+        "retrieve": "spread",
+        "answer": "cite",
+        "embed": "none"
+      },
+      "passages": 1323,
+      "recall_at_5": 0.91,
+      "mrr": 0.802,
+      "figure_at_5": 0.5,
+      "misses": [
+        "how-much-spine"
+      ]
+    },
+    {
+      "set": "chunk=figure tokens=stem",
+      "blocks": {
+        "chunk": "figure",
+        "tokens": "stem",
+        "index": "bm25",
+        "retrieve": "top",
+        "answer": "cite",
+        "embed": "none"
+      },
+      "passages": 1323,
+      "recall_at_5": 0.858,
+      "mrr": 0.752,
+      "figure_at_5": 0.5,
+      "misses": [
+        "how-much-spine",
+        "abstain",
+        "clustered-intervals",
+        "grid-start"
+      ]
+    },
+    {
+      "set": "chunk=figure tokens=stem retrieve=spread",
+      "blocks": {
+        "chunk": "figure",
+        "tokens": "stem",
+        "index": "bm25",
+        "retrieve": "spread",
+        "answer": "cite",
+        "embed": "none"
+      },
+      "passages": 1323,
+      "recall_at_5": 0.867,
+      "mrr": 0.755,
+      "figure_at_5": 0.3,
+      "misses": [
+        "how-much-spine",
+        "abstain",
+        "clustered-intervals",
+        "grid-start"
+      ]
+    },
+    {
+      "set": "chunk=figure tokens=stem index=tfidf",
+      "blocks": {
+        "chunk": "figure",
+        "tokens": "stem",
+        "index": "tfidf",
+        "retrieve": "top",
+        "answer": "cite",
+        "embed": "none"
+      },
+      "passages": 1323,
+      "recall_at_5": 0.901,
+      "mrr": 0.79,
+      "figure_at_5": 0.6,
+      "misses": [
+        "how-much-spine",
+        "first-experiment"
+      ]
+    },
+    {
+      "set": "chunk=figure tokens=stem index=tfidf retrieve=spread",
+      "blocks": {
+        "chunk": "figure",
+        "tokens": "stem",
+        "index": "tfidf",
+        "retrieve": "spread",
+        "answer": "cite",
+        "embed": "none"
+      },
+      "passages": 1323,
+      "recall_at_5": 0.929,
+      "mrr": 0.792,
+      "figure_at_5": 0.5,
+      "misses": [
+        "how-much-spine"
+      ]
+    }
+  ]
+}

@@ -16,6 +16,13 @@ and shows your comment as Markdown.
   list, gh pr view N, gh pr list, gh run list, gh run view ID.
 - Files with Read, which takes a line range; no sed, cat or shell
   script is allowed.
+- The textbook by its passages first. Its search, python3 tools/rag.py
+  ask "the question" --k 8, is not among this run's tools, since python3
+  is denied, so Grep docs/textbook/ for the question's own terms and
+  Read the sections it finds by line range; read a chapter whole only
+  when those passages are not enough. A person who wants the passages
+  themselves runs that command in a clone, or types the question into
+  Ask the book at the top of any page of the textbook.
 - The protocol and the setup pages under docs/agents/ and docs/setup/,
   and what CLAUDE.md already imports: the goal, the protocol, the memory.
 
