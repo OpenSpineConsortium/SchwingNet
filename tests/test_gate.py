@@ -2122,6 +2122,44 @@ esac
         self.assertEqual(out.count("to-come -"), 21, out)
         self.assertIn("  (5 more rows not yet matched; the state folder's PROGRESS.txt holds them)", out)
 
+    def test_status_shows_a_rows_code_and_withholds_a_reason_that_can_quote_a_value(self):
+        # tools/block_sweep.py writes a row's refusal code and, after "why:", the last words the tools
+        # wrote of it, which can quote a run's folder, a frame's file name with its case number, or a
+        # run's id; status judges each row it shows as it judges a stage report's lines (report_shapes)
+        withheld = "why: <reason withheld: it can quote a value; the whole report stays on the grid>"
+        state = self.smoke / "real" / "c0dec0de-0123abcd"
+        self.progress("real", "c0dec0de-0123abcd", [
+            f"plan real state {state} rows 8 ran 0 refused 3 not_applicable 1 failed 4 to_come 0 mismatched 4 updated 2026-10-25T06:00:00Z",
+            f"row resnet18-64px-0000aaaa refused mismatched init-mismatch why: the parent {self.runs}/20261022-ab12/train/best.pt is another net",
+            "row resnet18-64px-00002222 failed - why: cannot open /scratch/go2432/case39 for reading",
+            "row resnet18-64px-0000bbbb failed - why: FileNotFoundError: no such frame case134_0007.png",
+            "row resnet18-64px-0000cccc failed - why: the flow run 1f2e3d4c5b6a7980 ended before its first epoch",
+            "row resnet18-64px-0000dddd failed - why: CUDA out of memory / the trainer stopped",
+            "row resnet18-64px-0000eeee refused mismatched no-validation why: the catalog holds no validation part of this source",
+            "row resnet18-64px-0000ffff not-applicable mismatched why: no frame of the catalog is as large as the crop",
+            "row resnet18-64px-00001111 refused mismatched one-crop",
+            "wandb https://wandb.ai/lab/schwingnet/runs/1f2e3d4c"])
+        done = self.gate("status")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        out = done.stdout
+        # the code is shown whether its reason is or not; a path under the runs is cut to <runs> and
+        # its reason kept, while a path the gate cannot name, a file name and a long hex run withhold it
+        for shown in ("  row resnet18-64px-0000aaaa refused mismatched init-mismatch why: the parent <runs> is another net\n",
+                      f"  row resnet18-64px-00002222 failed - {withheld}\n",
+                      f"  row resnet18-64px-0000bbbb failed - {withheld}\n",
+                      f"  row resnet18-64px-0000cccc failed - {withheld}\n",
+                      f"  row resnet18-64px-0000dddd failed - {withheld}\n",
+                      "  row resnet18-64px-0000eeee refused mismatched no-validation why: the catalog holds no validation part of this source\n",
+                      "  row resnet18-64px-0000ffff not-applicable mismatched why: no frame of the catalog is as large as the crop\n",
+                      "  row resnet18-64px-00001111 refused mismatched one-crop\n"):
+            self.assertIn(shown, out)
+        for gone in (str(self.runs), "20261022", "ab12", "best.pt", "scratch", "case39", "case134", "0007",
+                     "1f2e3d4c5b6a7980", "the trainer stopped"):
+            self.assertNotIn(gone, out.split("## sweep real", 1)[1].split("  wandb ", 1)[0])
+        # the headline keeps its state folder and the W&B link stays whole: neither is a row
+        self.assertIn("  plan real state <smoke>/real/c0dec0de-0123abcd rows 8", out)
+        self.assertIn("  wandb https://wandb.ai/lab/schwingnet/runs/1f2e3d4c\n", out)
+
     def test_status_shows_every_sweeps_progress_even_when_the_other_sections_fill_the_page(self):
         # A status of the grid's size, every earlier section at the most it shows: 80 sets on each
         # root, the committed sample manifest, 60 jobs with two failed logs, eight stage reports and

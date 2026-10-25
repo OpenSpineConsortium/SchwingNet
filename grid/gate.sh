@@ -609,12 +609,18 @@ progress_lines() {  # progress_lines FILE: a sweep's PROGRESS.txt as status show
   # Its headline, the rows that have not matched their prediction yet (failed, mismatched or still
   # to come; the rows that matched are counted on the headline) and its W&B links. tools/block_sweep.py
   # writes the file whole and renames it into place, so it never reads half written.
+  # A refused or failed row ends with its code and, after "why:", the last words the tools wrote of
+  # it, which can quote a run's folder, a frame's file name or a run's id: each row shown is judged
+  # as a stage report's line is (report_shapes), its paths cut and that reason withheld unless it
+  # holds no value, while the code before it stays. The headline and the W&B links are the sweep's
+  # own words and are left whole, the links so that they still open.
   local unmatched count
   head -n 1 "$1"
   unmatched=$(tail -n +2 "$1" | awk '$1 == "row" && ($3 == "failed" || $3 == "to-come" || $3 == "to_come" ||
                                                     $4 == "no" || $4 == "false" || $4 == "mismatched")')
   count=$(printf '%s' "$unmatched" | grep -c '^row ')
-  [ -z "$unmatched" ] || printf '%s\n' "$unmatched" | head -n "$SWEEP_ROWS_SHOWN"
+  [ -z "$unmatched" ] \
+    || printf '%s\n' "$unmatched" | head -n "$SWEEP_ROWS_SHOWN" | LC_ALL=C tr -cd '\11\12\40-\176' | report_shapes
   [ "$count" -le "$SWEEP_ROWS_SHOWN" ] \
     || echo "($((count - SWEEP_ROWS_SHOWN)) more rows not yet matched; the state folder's PROGRESS.txt holds them)"
   tail -n +2 "$1" | awk '$1 == "wandb"' | head -n "$SWEEP_WANDB_SHOWN"
