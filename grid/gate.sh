@@ -89,7 +89,10 @@
 #                   queued once as one job (grid/anomaly.sbatch, tools/anomaly_route.py) once the stage's code has
 #                   merged; the next send prints logs/ANOMALY-<stage>.md, and every later one prints it again and
 #                   queues nothing. Built so far: select, the inventory, the two-labeller call, the holdout's
-#                   score and the selection, one CPU job over masks that already exist
+#                   score and the selection, one CPU job over masks that already exist; timing, one GPU job that
+#                   lists the paired CTs without a named SPINEPS mask and times SPINEPS on ten of them
+#                   (tools/anomaly_timing.py), sent once select's report ended well, and queued again at the
+#                   same commit when its GPU self-test left a node the spineps environment cannot use (exit 4)
 #   realism <stage> one stage of the Flux realism programme (docs/research/flux-realism/README.md; no count
 #                   given yet, each stage waits for the owner's word): edit, stats, lora or eval, each one GPU
 #                   job (grid/realism.sbatch, tools/realism.py) once its inputs have landed and the stage before
@@ -797,6 +800,10 @@ word_fetch() {
   # the bank's in the set's meta/SIZE.
   busy=$(live_of bank "bank:$id")
   [ -z "$busy" ] || { echo "refusing: a bank of $id is still queued or running (job $busy), and this fetch's chain banks the same folder"; return 75; }
+  # Nor beside an unpacking of the set, a look at it or a deletion of its zips, each of which
+  # holds its room through the same admission file and reads the raw folder this fetch writes.
+  busy=$( { live_of unpack "unpack:$id"; live_of explore "explore:$id"; live_of dropzip "dropzip:$id"; } | tr '\n' ' ')
+  [ -z "${busy// /}" ] || { echo "refusing: an unpacking, a look or a deletion of zips in $id is still queued or running (job $busy)"; return 75; }
   # One catalog build at a time: this chain's catalog job waits for every one still live.
   for one in $(awk '$3 == "catalog" || $3 == "xr_catalog" { print $1 }' "$STATE" 2>/dev/null | sort -u); do
     case "$QUEUED" in *" $one "*) waits=$(joined "$waits" "afterany:$one") ;; esac
@@ -899,7 +906,7 @@ word_unpack() {
   fi
   # Never beside a fetch of the set, a look at it, a deletion of its zips or a bank of it, which
   # would read half a raw folder and holds its room through the same admission file.
-  busy=$( { live_of xr_fetch "fetch:$id"; live_of "dp_$id"; live_of explore "explore:$id"; live_of dropzip "dropzip:$id"; live_of bank "bank:$id"; } | tr '\n' ' ')
+  busy=$( { live_of xr_fetch "fetch:$id"; live_of "dp_$id"; live_of explore "explore:$id"; live_of dropzip "dropzip:$id"; live_of bank "bank:$id"; live_of xr_bank; } | tr '\n' ' ')
   [ -z "${busy// /}" ] || { echo "refusing: a fetch, a deletion, a bank or a look at $id is still queued or running (job $busy)"; return 75; }
   [ -d "$raw" ] || { echo "refusing: $id has no raw folder on the data root yet; fetch it first"; return 2; }
   envs_ready || { echo "refusing: the environments are not ready; 'start' makes them first"; return 75; }
@@ -1074,29 +1081,55 @@ word_bench() {  # one public model's benchmark (#287): queued once, its report p
 anomaly_class() {  # the job class a built stage of the anomaly route runs as, else nothing
   case "$1" in
     select) echo batch ;;
+    timing) echo gpu ;;
   esac
 }
+anomaly_options() {  # the job options a stage asks beyond its class: timing as spinesurg-ct-nnunet's slurm/spineps_cases.sh asked them
+  case "$1" in
+    timing) echo "--cpus 8 --mem 64G --time 04:00:00" ;;
+  esac
+}
+anomaly_ended_well() {  # a stage report whose last line is exit 0
+  [[ "$(tail -n 1 "$1" 2>/dev/null)" =~ ^-\ exit\ 0\  ]]
+}
+anomaly_left_its_node() {  # a stage report whose last line is exit 4: step 0 left a node the environment cannot use (grid/anomaly.sbatch)
+  [[ "$(tail -n 1 "$1" 2>/dev/null)" =~ ^-\ exit\ 4\  ]] && [ -n "$(bench_job_of "$1")" ]
+}
 anomaly_inputs_missing() {  # what anomaly $id still lacks, one line, or nothing
+  local conda_sh=${CONDA_SH:-$HOME/mambaforge/etc/profile.d/conda.sh} runner=${SSN:-$HOME/spinesurg-ct-nnunet}/benchmark/run_spineps_cases.py
   case "$id" in
     select)
       [ -f "$REPO/data/splits/anomaly-holdout.json" ] || echo "the frozen holdout, data/splits/anomaly-holdout.json" ;;
+    timing)
+      # Each stage goes once the one before looks sane (docs/research/spineps-anomaly-route.md, section 5).
+      anomaly_ended_well "$LOGS/ANOMALY-select.md" || { echo "a select report that ended in exit 0 (logs/ANOMALY-select.md: send anomaly select first and read it)"; return; }
+      [ -f "$conda_sh" ] || { echo "conda at $conda_sh, which holds the spineps environment"; return; }
+      [ -f "$runner" ] || echo "the SPINEPS runner, $runner (the spinesurg-ct-nnunet clone at its branch L6_Class)" ;;
   esac
 }
 word_anomaly() {  # one stage of the SPINEPS to FleXray anomaly route (#398): queued once, its report printed on every later send
-  local report=$LOGS/ANOMALY-$id.md class busy missing holds opts setup
+  local report=$LOGS/ANOMALY-$id.md class busy missing holds opts setup stage_opts
   class=$(anomaly_class "$id")
-  [ -n "$class" ] || { echo "refusing: anomaly takes select; the stages timing, pack, render, figure, tune and eval are not built yet, and each comes by pull request first"; return 64; }
+  [ -n "$class" ] || { echo "refusing: anomaly takes select or timing; the stages pack, render, figure, tune and eval are not built yet, and each comes by pull request first"; return 64; }
   busy=$(live_of "anomaly_$id")
   [ -z "$busy" ] || { echo "refusing: the anomaly stage $id is still queued or running (job $busy); send anomaly $id again once it ends"; return 75; }
   if [ -f "$report" ]; then
     # Kept, so the owner's count of one job a stage holds: a report that stands queues nothing.
     echo "## $(basename "$report") ($(date -r "$report" '+%F %T'))"
     head -n 200 "$report" | LC_ALL=C tr -cd '\11\12\40-\176' | masked | head -c 30000
-    bench_failed_on_older_code "$report" || return 0
-    # A stage that failed decided nothing, so once a fix has moved the checkout it is queued once
-    # more, its report kept under its job's number, as a benchmark's is; the same commit queues nothing.
-    mv "$report" "$LOGS/ANOMALY-$id-$(bench_job_of "$report").md" || return 1
-    echo "  the report above ended in failure on older code: queueing the stage again at $commit"
+    if anomaly_left_its_node "$report"; then
+      # Step 0 left a node the environment cannot use before a CT was staged, so the stage spent
+      # nothing of the count: it is queued again at the same commit, its report kept under its
+      # job's number, to land where the class's partitions next have room.
+      mv "$report" "$LOGS/ANOMALY-$id-$(bench_job_of "$report").md" || return 1
+      echo "  the report above says the stage left its node unused: queueing the stage again at $commit"
+    else
+      bench_failed_on_older_code "$report" || return 0
+      # A stage that failed decided nothing, so once a fix has moved the checkout it is queued once
+      # more, its report kept under its job's number, as a benchmark's is; the same commit queues nothing.
+      mv "$report" "$LOGS/ANOMALY-$id-$(bench_job_of "$report").md" || return 1
+      echo "  the report above ended in failure on older code: queueing the stage again at $commit"
+    fi
   fi
   missing=$(anomaly_inputs_missing)
   [ -z "$missing" ] || { echo "refusing: anomaly $id needs $missing"; return 2; }
@@ -1105,6 +1138,9 @@ word_anomaly() {  # one stage of the SPINEPS to FleXray anomaly route (#398): qu
   holds=$(checkout_holders)
   [ -z "$holds" ] || echo "  the checkout: after the live runs that hold it ($holds)"
   depend_on "$(joined "$setup" "$holds")" || return 1
+  # depend_on filled opts with the --after options; the stage's own job options follow them
+  read -ra stage_opts <<< "$(anomaly_options "$id")"
+  opts+=(${stage_opts[@]+"${stage_opts[@]}"})
   submit "anomaly_$id" "$class" STAGE="$id" DATA_ROOT="$DATA_ROOT" ${opts[@]+"${opts[@]}"} --no-requeue -- anomaly.sbatch > /dev/null || return 1
   echo "submitted the anomaly stage $id. Send anomaly $id again once it ends to read its report, logs/ANOMALY-$id.md."
 }
@@ -1303,11 +1339,6 @@ word_sweep() {
   echo "submitted. 'status' shows the plan's PROGRESS.txt once the sweep writes it; the same word again after a cut sweep ends resumes it."
 }
 
-unconfirmed_fields() {  # unconfirmed_fields FILE: how many of a recipe's values still start "to confirm", its notes aside
-  # As tools/bank.py's unconfirmed() counts them, a string value starting so in any case, which it
-  # refuses before banking a frame; the recipes keep one value a line, so grep counts them.
-  grep -v '^  "notes":' "$1" | grep -ciE '(^|[^\\])"[[:space:]]*to confirm'
-}
 recipe_raw() {  # recipe_raw FILE: the raw folder a recipe of grid/banks/ names, as stage 2 reads it
   # Off the grid stage 2 reads <data root>/<id>/raw in place of the recipe's path (issue #40), and
   # the gate hands the stage a data root only where its caller gave one.
@@ -1323,36 +1354,10 @@ landing_of() {  # landing_of RAW: the folder under the data root that holds RAW,
   case "$landing" in ""|*[!a-z0-9_]*) return 1 ;; esac
   echo "$landing"
 }
-recipe_format() {  # recipe_format FILE: the image format a recipe of grid/banks/ names
-  sed -n 's/^ *"format": *"\([^"]*\)".*/\1/p' "$1" | head -n 1
-}
-bank_factor() {  # bank_factor FORMAT: "<times> <words>", how many times the raw copy the bank and its shard are held for while the job waits, and why; status 1 where no budget is known
-  # tools/bank.py copies a PNG byte for byte, and its shard, which copies every frame of the bank
-  # once more (tools/ingest.py), as much again: twice the raw copy. It decodes a DICOM frame and
-  # writes it as an 8-bit PNG, which an uncompressed or losslessly compressed film keeps under its
-  # file (202 MB of uncompressed DICOM became 104 MB of PNG, grid/README.md; RLE and lossless JPEG
-  # 2000 films at 0.31 to 0.64 of their files, the second review of #252), so twice the raw copy
-  # too. A lossy film, JPEG or lossy JPEG 2000, takes about two to four times its file as PNG, and
-  # bank.py re-encodes JPEG, TIFF and BMP as lossless PNG, which grows a radiograph: the review of
-  # #252 measured a q95 JPEG of a 2500 x 3000 8-bit film at 1.77 to 2.53 times its size as PNG
-  # through bank.py's own path, so three times the raw copy for the bank and three again for its
-  # shard, while a lower quality grows more, to 5.5 times at q75 (the second review). No figure read
-  # from the bytes on the login node sees that, so these hold the room while the job waits, and the
-  # job, where python runs, bounds the bank and its shard by their frames' pixels before it writes
-  # and is admitted for the larger (grid/02-bank-ingest.sbatch, tools/bank.py --bound). TIFF and BMP
-  # are not measured and may hold JPEG-compressed data, so they take JPEG's budget; an uncompressed
-  # one is budgeted more than it writes, which can refuse a bank that would fit and never admits
-  # one that overflows.
-  case "$1" in
-    png) echo "2 which bank.py copies" ;;
-    dcm) echo "2 which bank.py windows to an 8-bit PNG" ;;
-    jpg|jpeg|tif|tiff|bmp) echo "6 which bank.py turns into PNG" ;;
-    *) return 1 ;;
-  esac
-}
 bank_room() {  # bank_room NEED: 0 where the room under the quota takes NEED bytes after what the running fetches owe, saying both
-  # The room the fetch word's chain decides against (grid/size-rule.sh, run-xray-chain.sh): what the
-  # running fetches owe first, then the room twice a minute apart, the smaller kept.
+  # The room the bank word decides against before it queues its job (grid/size-rule.sh): what the
+  # running fetches owe first, then the room twice a minute apart, the smaller kept. The fetch
+  # word's chain decides nothing at submit since #163; its job decides each set in turn.
   local owed owed_bytes owed_n unsized free free_from room
   owed=$(owed_by_running "") || { echo "refusing: squeue did not answer, so what the running fetches owe is not known; nothing was queued"; return 75; }
   read -r owed_bytes owed_n unsized <<< "$owed"

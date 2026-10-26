@@ -42,7 +42,9 @@ only the login name is passed, as PhysioNet's own documentation passes it. Stand
 
 import argparse
 import base64
+import functools
 import hashlib
+import importlib.util
 import json
 import os
 import re
@@ -58,6 +60,7 @@ import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ElementTree
 import zipfile
+import zlib
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
@@ -69,7 +72,22 @@ HELPERS = ("zenodo-get", "http-get", "hf-get")
 LOGIN_PREFIXES = ("warrior",)
 STATE = "fetch-state"
 RECORD = "FETCH.json"
-SKIPPED, DONE, FAILED = "skipped", "done", "failed"
+SKIPPED, DONE, FAILED, REFUSED = "skipped", "done", "failed", "refused"
+SIZE_READERS = ROOT / "grid" / "fetch_size.py"
+# PhysioNet's API states each published version's storage; its files are served under /files/.
+PHYSIONET_FILES = re.compile(r"^https://physionet\.org/files/([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+)/$")
+PHYSIONET_API = "https://physionet.org/api/v1/projects/{}/versions/{}/"
+PHYSIONET_ROBOTS = "https://physionet.org/robots.txt"
+# What a .torrent whose server states no length counts for: fetch_torrent reads one whole whatever
+# its server says, and none of the lists' comes near this.
+TORRENT_BOUND = 64 * 10**6
+# The length wget's own default line states for a file it was asked about.
+WGET_LENGTH = re.compile(r"^Length: ([0-9]{1,18}) ", re.M)
+COMPRESSED_TARS = (".tar.gz", ".tgz")
+# The words each route's sizes come from, in the plain words the size rule's lines keep.
+SIZED_BY = {"zenodo": "zenodo lists", "hf": "the hub lists", "http": "their servers state",
+            "mendeley": "mendeley lists", "figshare": "figshare lists", "nextcloud": "the share lists",
+            "kaggle": "the kaggle storage states", "physionet": "physionet states"}
 
 
 class FetchError(Exception):
@@ -510,8 +528,11 @@ def physionet_why(http, exit_code, login=None):
 
 def physionet_commands(entry, login):
     # -r -N -c -np: recurse, keep timestamps, continue a partial file, never climb; the password
-    # comes from ~/.netrc, which wget consults when --user is given without --password.
-    return [["wget", "-r", "-N", "-c", "-np", "--user", login, "-P", entry["dest"], entry["url"]]]
+    # comes from ~/.netrc, which wget consults when --user is given without --password. -R drops
+    # each folder's listing page once wget has read its links, so what lands is the version's files
+    # alone, which PhysioNet states the size of (size_physionet).
+    return [["wget", "-r", "-N", "-c", "-np", "-R", "index.html*", "--user", login, "-P", entry["dest"],
+             entry["url"]]]
 
 
 def print_plan(entry, plan):
@@ -528,7 +549,8 @@ def print_plan(entry, plan):
         # The share's link is the agreement's to keep inside the organisation, so no log carries it.
         print(f"   nextcloud: list the entry's share by WebDAV, then http-get each file with its size into {entry['dest']}")
     if "physionet" in plan:
-        print(f"   physionet: wget -r -N -c -np --user <login from ~/.netrc> -P {entry['dest']} {plan['physionet']}")
+        # The command as physionet_commands builds it, so the plan never drifts from the run.
+        print("   physionet: " + shlex.join(physionet_commands(entry, "<login from ~/.netrc>")[0]))
     for index, command in enumerate(plan.get("commands", [])):
         prefix = "   fallback: " if plan.get("fallback") and index else "   "
         print(prefix + shlex.join(command))
@@ -793,8 +815,447 @@ def shutil_copy(source, sink):
         sink.write(block)
 
 
-def run_entry(entry, plan, python, helper, settings):
-    """Run one entry's commands; a fallback runs only when the first command failed."""
+# The size rule (issue #163): with --admit, each set's exact size is read from its source after its
+# plan is expanded and before its first byte lands, and grid/admit.sh admits the set whole or refuses
+# it whole against the room as it is then; a set whose size cannot be read is refused. What is read
+# is what each helper adds to the landing, by its own rules for what it keeps and what it resumes:
+# reacquire.py's http-get and zenodo-get, hf-get's snapshot_download, the kaggle client and wget.
+# The helpers' state files and FETCH.json, a few kilobytes beside the landing, are not counted.
+
+
+@functools.cache
+def size_readers():
+    """grid/fetch_size.py, the size rule's readers for the CT platform's routes, loaded by its path."""
+    spec = importlib.util.spec_from_file_location("schwingnet_fetch_size", SIZE_READERS)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+class Admission:
+    """The size rule's word on each set, from the command --admit names (grid/admit.sh), run with
+    the set's data root as DATA: whether it may go on, and its line."""
+
+    def __init__(self, command):
+        self.command = shlex.split(command)
+
+    def ask(self, word, entry, *values):
+        landing = Path(entry["dest"]).parent
+        env = dict(os.environ, DATA=str(landing.parent))
+        done = subprocess.run(self.command + [word, landing.name, *map(str, values)], env=env,
+                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        lines = done.stdout.strip().splitlines()
+        for line in lines:
+            print(line, flush=True)
+        said = lines[-1] if lines else f"{landing.name}: refused; the size check ended with exit {done.returncode}"
+        return done.returncode == 0, said
+
+    def admit(self, entry, size, word="admit"):
+        return self.ask(word, entry, size["total"], size["need"], size["how"])
+
+    def refuse(self, entry, reason):
+        return self.ask("refuse", entry, reason)[1]
+
+    def landed(self, entry, landed_bytes):
+        self.ask("landed", entry, landed_bytes)
+
+    def settle(self, entry):
+        self.ask("settle", entry)
+
+
+def flag_values(command):
+    """A command's flags and their values; a flag followed by another flag, or last, has none."""
+    values, at = {}, 0
+    while at < len(command):
+        word = command[at]
+        if word.startswith("-") and at + 1 < len(command) and not command[at + 1].startswith("-"):
+            values[word], at = command[at + 1], at + 2
+        else:
+            values.setdefault(word, "")
+            at += 1
+    return values
+
+
+def part_bytes(path):
+    """What a .part beside PATH holds, which reacquire.py's download resumes from."""
+    part = Path(f"{path}.part")
+    return part.stat().st_size if part.is_file() else 0
+
+
+def file_digest(path, algo):
+    digest = hashlib.new(algo)
+    with open(path, "rb") as handle:
+        for block in iter(lambda: handle.read(1 << 20), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def checks_out(path, values):
+    """Whether a file passes the md5 and sha256 its http-get command names, as http-get checks it."""
+    return all(file_digest(path, algo) == values[f"--{algo}"] for algo in ("md5", "sha256") if values.get(f"--{algo}"))
+
+
+def http_need(dest, size, values):
+    """What http-get adds for one file: nothing where the file is there at its size and passes its
+    check, which it keeps; else the size less what a .part an earlier try left holds, which it
+    resumes, the old file staying until the new one is renamed over it."""
+    if dest.is_file() and dest.stat().st_size == size and checks_out(dest, values):
+        return 0
+    return max(size - part_bytes(dest), 0)
+
+
+def size_http_get(command, fetch):
+    """One http-get: the size its listing gave, else the size its server states for the URL, which
+    the command is then given, so http-get checks it and a rerun keeps a whole file."""
+    readers, values = size_readers(), flag_values(command)
+    url, dest = values["--url"], Path(values["--dest"])
+    if values.get("--bytes"):
+        size = int(values["--bytes"])
+    else:
+        size = readers.first_byte_total(url, fetch)
+        command = command + ["--bytes", str(size)]
+    return command, size, http_need(dest, size, values), [(dest, size, url)]
+
+
+def verified_sizes(state):
+    """The size reacquire.py recorded for each unit it verified, from its state's verified.jsonl."""
+    sizes = {}
+    try:
+        lines = (Path(state) / "verified.jsonl").read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return sizes
+    for line in lines:
+        if line.strip():
+            row = json.loads(line)
+            sizes[row.get("unit")] = row.get("size")
+    return sizes
+
+
+def zenodo_listed(item, record):
+    """A file of a Zenodo record as reacquire.py's zenodo_files reads it: key, size and URL."""
+    key = item.get("key") or item.get("filename")
+    size = item.get("size") or item.get("filesize")
+    if size is None and 0 in (item.get("size"), item.get("filesize")):
+        size = 0
+    if not key or not isinstance(size, int) or isinstance(size, bool) or size < 0:
+        raise size_readers().NoSize("zenodo lists a file with no size")
+    links = item.get("links") or {}
+    url = links.get("content") or links.get("self") or links.get("download") or \
+        f"https://zenodo.org/records/{record}/files/{key}?download=1"
+    if url.endswith("/files/" + key):
+        url += "/content"
+    return key, size, url
+
+
+def size_zenodo_get(command, fetch):
+    """One zenodo-get: every file of the record, as it lands under the destination; a file it
+    verified before, or one there at the record's size, it keeps, and a wrong one it sets aside as
+    .bad without fetching it again."""
+    readers, values = size_readers(), flag_values(command)
+    record, dest = values["--record"], Path(values["--dest"])
+    body, _ = fetch(f"{readers.ZENODO}/{record}", "")
+    files = json.loads(body).get("files") or []
+    if isinstance(files, dict):
+        files = list((files.get("entries") or {}).values())
+    if not files:
+        raise readers.NoSize("the zenodo record lists no file")
+    done, total, need, landed = verified_sizes(values["--state"]), 0, 0, []
+    for item in files:
+        key, size, url = zenodo_listed(item, record)
+        target = dest / key
+        here = target.stat().st_size if target.is_file() else None
+        kept = here is not None and (done.get(f"zenodo:{record}/{key}") == here or (size and here == size))
+        total += size
+        need += 0 if kept else max(size - part_bytes(target), 0)
+        landed.append((target, size, url))
+    return command, total, need, landed
+
+
+def size_hf_get(command, fetch):
+    """One hf-get: the repository's files as snapshot_download lands them, a whole one kept."""
+    readers, values = size_readers(), flag_values(command)
+    dest = Path(values["--dest"])
+    files = readers.hub_files(values["--repo"], values.get("--repo-type") or "dataset",
+                              os.environ.get("HF_TOKEN", ""), fetch)
+    if not files:
+        raise readers.NoSize("the hub lists no file of the repository")
+    total = sum(size for _, size in files)
+    need = sum(size for path, size in files if not readers.whole_at(dest / path, size))
+    return command, total, need, [(dest / path, size, None) for path, size in files]
+
+
+def size_kaggle_download(command, env, fetch, post):
+    """kaggle datasets download -d: the archive Kaggle's storage states, landed as <slug>.zip."""
+    readers = size_readers()
+    dataset, dest = command[command.index("-d") + 1], Path(command[command.index("-p") + 1])
+    token = (env or {}).get("KAGGLE_API_TOKEN", "")
+    if not token:
+        raise readers.NoSize("no kaggle token, so the api cannot be asked")
+    payload, name = readers.kaggle_dataset_request(dataset)
+    location = post(f"{readers.KAGGLE_API}/datasets.DatasetApiService/DownloadDataset", token, payload)
+    total = readers.first_byte_total(location, fetch)
+    return command, total, readers.kaggle_need(dest / name, total), [(dest / name, total, location)]
+
+
+def spider_length(url, login):
+    """The length PhysioNet states for one file of a version, asked by wget with the login whose
+    password it reads from $HOME/.netrc itself, downloading nothing; its default lines only."""
+    done = subprocess.run(["wget", "--spider", "--user", login, url], env=dict(os.environ, LC_ALL="C", LANGUAGE="C"),
+                          stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    found = WGET_LENGTH.findall(done.stdout)
+    if done.returncode != 0 or not found:
+        raise size_readers().NoAnswer(f"physionet stated no length for its checksum file (wget exit {done.returncode})")
+    return int(found[-1])
+
+
+def landed_under(folder):
+    """What the files under a folder hold, every listing page wget left aside."""
+    total = 0
+    for path in Path(folder).rglob("*"):
+        if path.is_file() and not path.name.startswith("index.html"):
+            total += path.stat().st_size
+    return total
+
+
+def size_physionet(command, fetch, spider=spider_length):
+    """One wget of a PhysioNet version: the storage PhysioNet's API states for the version's files,
+    its checksum file beside it, since PhysioNet writes that file at publication and the stated
+    storage may have been summed before it (where it was not, one small file counts twice, which
+    errs toward refusing), and the robots.txt a recursive wget saves; less what the version's
+    folder already holds, which wget skips or continues."""
+    readers = size_readers()
+    url, dest, login = command[-1], Path(command[command.index("-P") + 1]), command[command.index("--user") + 1]
+    match = PHYSIONET_FILES.match(url)
+    if not match:
+        raise readers.NoSize("a physionet address that names no project version")
+    body, _ = fetch(PHYSIONET_API.format(*match.groups()), "")
+    stated = json.loads(body).get("main_storage_size")
+    if not isinstance(stated, int) or isinstance(stated, bool) or stated < 0:
+        raise readers.NoSize("physionet states no storage for the version")
+    files = stated + spider(url + "SHA256SUMS.txt", login)
+    robots = readers.first_byte_total(PHYSIONET_ROBOTS, fetch)
+    site = dest / "physionet.org"
+    need = max(files - landed_under(site / "files" / match.group(1) / match.group(2)), 0)
+    need += 0 if readers.whole_at(site / "robots.txt", robots) else robots
+    return command, files + robots, need, []
+
+
+def size_command(command, env, fetch, post):
+    """(command, total, need, landed) for one command of a plan, by the helper it runs."""
+    helper = command[2] if len(command) > 2 else ""
+    if command[0] == "wget":
+        return size_physionet(command, fetch)
+    if helper == "http-get":
+        return size_http_get(command, fetch)
+    if helper == "zenodo-get":
+        return size_zenodo_get(command, fetch)
+    if helper == "hf-get":
+        return size_hf_get(command, fetch)
+    if command[1:3] == ["datasets", "download"]:
+        return size_kaggle_download(command, env, fetch, post)
+    raise size_readers().NoSize("no size reader for this command")
+
+
+def sized_commands(plan, commands, env, fetch, post):
+    """Each command sized; for a plan with a fallback, the routes whose size could be read, and only
+    those then run, since the fallback lands into the same folder when the first route fails. Both
+    sized, both are counted: a first route that fails part-way leaves what it landed beside what
+    the fallback then lands."""
+    readers, sized, first_error = size_readers(), [], None
+    for command in commands:
+        try:
+            sized.append(size_command(command, env, fetch, post))
+        except (readers.NoSize, readers.NoAnswer) as error:
+            if not plan.get("fallback"):
+                raise
+            first_error = first_error or error
+    if not sized:
+        raise first_error
+    return sized
+
+
+def zip_need(archive, members):
+    """(total, need) of a zip's members as unpack_archives writes them beside the archive: a member
+    there at its size is left, any other written in place of what is there."""
+    total = need = 0
+    for member in members:
+        if member.is_dir():
+            continue
+        target = (archive.parent / member.filename).resolve()
+        here = target.stat().st_size if target.is_file() else 0
+        total += member.file_size
+        need += 0 if target.is_file() and here == member.file_size else max(member.file_size - here, 0)
+    return total, need
+
+
+def tar_need(archive):
+    """(total, need) of a compressed tar's regular members as unpack_tar writes them: one there at
+    its size is left, any other written to a .part and renamed over what is there."""
+    total = need = 0
+    with tarfile.open(archive, "r:gz") as opened:
+        for member in opened:
+            if not member.isfile():
+                continue
+            target = (archive.parent / member.name).resolve()
+            total += member.size
+            if not (target.is_file() and target.stat().st_size == member.size):
+                need += max(member.size - part_bytes(target), 0)
+    return total, need
+
+
+def unpack_size(dest, landed, fetch):
+    """(total, need, members, tars) unpack_archives adds: each zip's members from its central
+    directory, read by range requests while the zip is still to land and from the file once it is
+    there whole; a compressed tar states its members only once it has landed, so tars says whether
+    the set must be decided again then (unpack_admitted)."""
+    readers, root = size_readers(), Path(dest).resolve()
+    archives = {Path(path).resolve(): (size, url) for path, size, url in landed}
+    for path in root.rglob("*"):
+        if path.is_file() and path.name.endswith((".zip",) + COMPRESSED_TARS):
+            archives.setdefault(path.resolve(), (path.stat().st_size, None))
+    total = need = members = 0
+    tars = False
+    for archive, (size, url) in sorted(archives.items()):
+        if archive.name.endswith(COMPRESSED_TARS):
+            tars = True
+            continue
+        if not archive.name.endswith(".zip"):
+            continue
+        if archive.is_file() and archive.stat().st_size == size:
+            source = archive
+        elif url:
+            source = readers.RemoteFile(url, size, fetch)
+        else:
+            raise readers.NoSize("a zip whose members can be read only once it has landed")
+        try:
+            with zipfile.ZipFile(source) as opened:
+                listed = opened.infolist()
+        except (zipfile.BadZipFile, EOFError, OSError):
+            raise readers.NoSize("a zip whose central directory cannot be read") from None
+        more, owed = zip_need(archive, listed)
+        total, need, members = total + more, need + owed, members + sum(not m.is_dir() for m in listed)
+    return total, need, members, tars
+
+
+def torrent_need(entry, fetch):
+    """What fetch_torrent writes under the state folder: the .torrent, unless the copy there is the
+    one the URL names; TORRENT_BOUND where its server states no length for it, since the file is a
+    few kilobytes that fetch_torrent reads whole whatever the server says, and the set's archives,
+    sized by their own servers, are what the rule decides."""
+    cached = Path(state_dir(entry)) / "release.torrent"
+    expected = entry["torrent"].rstrip("/").rsplit("/", 1)[-1].split(".", 1)[0].lower()
+    try:
+        if cached.is_file() and info_digest(cached.read_bytes()) == expected:
+            return 0
+    except (FetchError, ValueError, IndexError):
+        pass
+    readers = size_readers()
+    try:
+        return readers.first_byte_total(entry["torrent"], fetch)
+    except (readers.NoSize, readers.NoAnswer):
+        return TORRENT_BOUND
+
+
+def sized_by(entry, commands):
+    """Where the sizes came from, in the size rule's words: the route's, or the hub's where a
+    Zenodo entry's fallback was sized."""
+    helpers = {command[2] for command in commands if len(command) > 2}
+    if entry["route"] == "zenodo" and "hf-get" in helpers:
+        return "zenodo and the hub list" if "zenodo-get" in helpers else SIZED_BY["hf"]
+    return SIZED_BY.get(entry["route"], "their sources state")
+
+
+def size_entry(entry, plan, commands, env, fetch=None, post=None):
+    """(commands, size): the exact bytes the entry lands, read before a byte of it lands, and the
+    commands as they then run. size holds the total, the need, how it was read and whether its
+    compressed tars are decided again once they have landed."""
+    readers = size_readers()
+    fetch, post = fetch or readers.get, post or readers.post_for_location
+    sized = sized_commands(plan, commands, env, fetch, post)
+    commands = [command for command, _, _, _ in sized]
+    landed = [item for _, _, _, items in sized for item in items]
+    total, need = sum(t for _, t, _, _ in sized), sum(n for _, _, n, _ in sized)
+    how = f"{counted(len(landed), 'file')} {sized_by(entry, commands)}" if landed else \
+        f"the version {sized_by(entry, commands)}"
+    if entry.get("torrent"):
+        torrent = torrent_need(entry, fetch)
+        total, need = total + torrent, need + torrent
+    downloads, tars = total, False
+    if entry.get("unpack"):
+        more, owed, members, tars = unpack_size(entry["dest"], landed, fetch)
+        total, need = total + more, need + owed
+        how += f" and {counted(members, 'zip member')}" if members else ""
+    return commands, {"total": total, "need": need, "how": how, "downloads": downloads, "tars": tars}
+
+
+def counted(n, one):
+    return f"{n} {one}" if n == 1 else f"{n} {one}s"
+
+
+def size_words(error):
+    """Why a set's size could not be read, in the size rule's plain words; never an address."""
+    readers = size_readers()
+    if isinstance(error, readers.NoSize):
+        return f"no exact size; {error}"
+    if isinstance(error, readers.NoAnswer):
+        return f"the source did not answer; {error}"
+    if isinstance(error, OSError):
+        return f"what its landing holds could not be read ({type(error).__name__})"
+    return "the source did not answer; an answer that is not a listing"
+
+
+def unpack_admitted(entry, outcome, admission):
+    """Whether the set's compressed tars may be unpacked: their members, read from the archives
+    that landed, with every zip's again, decided under the size rule in place of the set's first
+    admission. Refused, or where an archive cannot be listed, nothing of them is unpacked and the
+    set is refused."""
+    readers = size_readers()
+    try:
+        zips, zips_owed, _, _ = unpack_size(entry["dest"], [], None)
+        tars = owed = 0
+        for archive in sorted(p for p in Path(entry["dest"]).resolve().rglob("*")
+                              if p.is_file() and p.name.endswith(COMPRESSED_TARS)):
+            more, still = tar_need(archive)
+            tars, owed = tars + more, owed + still
+    except (tarfile.TarError, zlib.error, zipfile.BadZipFile, readers.NoSize, OSError, EOFError) as error:
+        outcome.update(status=REFUSED, error=admission.refuse(entry, f"its archives could not be listed ({type(error).__name__})"))
+        return False
+    size = {"total": outcome["size"]["downloads"] + zips + tars, "need": zips_owed + owed,
+            "how": "the members of its archives"}
+    ok, said = admission.admit(entry, size, word="unpack")
+    outcome["size"]["unpack"] = dict(size, said=said)
+    if not ok:
+        outcome.update(status=REFUSED, error=said)
+    return ok
+
+
+def admitted(entry, plan, commands, env, admission, outcome):
+    """The commands as they run once the set is admitted whole under the size rule, else None with
+    the set refused; with no admission asked for, as off the grid, the commands as planned."""
+    if admission is None:
+        return commands
+    readers = size_readers()
+    try:
+        commands, size = size_entry(entry, plan, commands, env)
+    except (readers.NoSize, readers.NoAnswer, FetchError, OSError, ValueError, KeyError, TypeError,
+            IndexError, AttributeError) as error:
+        outcome.update(status=REFUSED, error=admission.refuse(entry, size_words(error)), ended=now())
+        return None
+    except Exception as error:  # noqa: BLE001  one set's reader failing ends that set, never the run's other sets
+        outcome.update(status=REFUSED, ended=now(),
+                       error=admission.refuse(entry, f"the size reader failed with {type(error).__name__}"))
+        return None
+    ok, said = admission.admit(entry, size)
+    outcome["size"] = dict(size, said=said)
+    if not ok:
+        outcome.update(status=REFUSED, error=said, ended=now())
+        return None
+    return commands
+
+
+def run_entry(entry, plan, python, helper, settings, admission=None):
+    """Run one entry's commands once the size rule admits it; a fallback runs only when the first
+    command failed."""
     outcome = {"id": entry["id"], "dest": entry["dest"], "started": now(), "runs": []}
     Path(entry["dest"]).mkdir(parents=True, exist_ok=True)
     Path(state_dir(entry)).mkdir(parents=True, exist_ok=True)
@@ -802,6 +1263,9 @@ def run_entry(entry, plan, python, helper, settings):
         commands, env = expand_plan(entry, plan, python, helper, settings)
     except (FetchError, OSError, ValueError, urllib.error.URLError) as error:
         outcome.update(status=FAILED, error=str(error), ended=now())
+        return outcome
+    commands = admitted(entry, plan, commands, env, admission, outcome)
+    if commands is None:
         return outcome
     for index, command in enumerate(commands):
         if plan.get("fallback") and index and outcome["runs"][-1]["exit"] == 0:
@@ -824,6 +1288,9 @@ def run_entry(entry, plan, python, helper, settings):
                                                 entry.get("names"))
         except (FetchError, OSError, KeyError, ValueError, IndexError, urllib.error.URLError) as error:
             outcome.update(status=FAILED, error=f"torrent check: {error}")
+    if outcome["status"] == DONE and entry.get("unpack") and admission is not None \
+            and outcome["size"]["tars"]:
+        unpack_admitted(entry, outcome, admission)
     if outcome["status"] == DONE and entry.get("unpack"):
         try:
             outcome["unpacked"] = unpack_archives(entry["dest"])
@@ -852,13 +1319,18 @@ def report_lines(outcomes, started):
         if outcome["status"] == SKIPPED:
             lines.append(f"- {outcome['id']}: skipped ({outcome['why']})")
             continue
+        if outcome["status"] == REFUSED and not outcome.get("runs"):
+            lines.append(f"- {outcome['id']}: refused, nothing fetched; {outcome['error']}")
+            continue
         exits = ", ".join(str(r["exit"]) for r in outcome.get("runs", [])) or "none"
         files = [f for f in outcome.get("files", []) if "sha256" in f]
         lines.append(f"- {outcome['id']}: {outcome['status']}; exit codes {exits}; {len(files)} files,"
                      f" {outcome.get('bytes', 0) / 1e9:.2f} GB under {outcome['dest']}"
                      + (f"; {outcome['error']}" if outcome.get("error") else ""))
     failed = [o["id"] for o in outcomes if o["status"] == FAILED]
+    refused = [o["id"] for o in outcomes if o["status"] == REFUSED]
     lines += ["", "Failed: " + (", ".join(failed) if failed else "none") + ".",
+              "Refused by the size rule: " + (", ".join(refused) if refused else "none") + ".",
               "Re-run one source: `bash grid/run-xray-chain.sh --only <id>` (grid/README.md).", ""]
     return lines
 
@@ -880,6 +1352,8 @@ def parser():
     top.add_argument("--kaggle-bin", default=os.path.expanduser("~/mambaforge/envs/spineps/bin/kaggle"))
     top.add_argument("--netrc", default="~/.netrc")
     top.add_argument("--report", default=None, help="write STAGE-REPORT.md here after a run")
+    top.add_argument("--admit", default=None,
+                     help="the size rule's command (bash grid/admit.sh), which admits or refuses each set before it lands")
     return top
 
 
@@ -896,6 +1370,10 @@ def main(argv=None):
             print(f"dry run: {len(plans)} entries planned, nothing fetched; add --run inside a Slurm job")
             return 0
         refusal = refuse_unless_job(args.outside_slurm)
+        if not refusal and not args.admit and os.environ.get("SLURM_JOB_ID"):
+            # On the grid every set is sized and admitted first (grid/01-fetch.sbatch passes it);
+            # --outside-slurm lifts only the refusal of a shell with no job.
+            refusal = "refusing to fetch in a Slurm job without --admit: the size rule decides each set first"
         if refusal:
             print(refusal, file=sys.stderr)
             return 3
@@ -910,20 +1388,29 @@ def main(argv=None):
 
 def run_all(plans, args, helper):
     started, outcomes = now(), []
+    admission = Admission(args.admit) if args.admit else None
     for entry, plan in plans:
         if "skip" in plan:
             print(f"{entry['id']}: skipped, {plan['skip']}")
             outcomes.append({"id": entry["id"], "status": SKIPPED, "why": plan["skip"]})
             continue
         print(f"{entry['id']}: fetching at {now()}", flush=True)
-        outcome = run_entry(entry, plan, args.python, helper, args)
+        outcome = run_entry(entry, plan, args.python, helper, args, admission)
         print(f"{entry['id']}: {outcome['status']} at {now()}, record {write_record(entry, outcome)}", flush=True)
+        if admission is not None:
+            # Landed whole, the set's bank keeps its room until the bank job decides it; else
+            # nothing more of it lands, and its room is freed: a set refused or failed before it
+            # was sized too, since a requeued job may hold the admission its first run gave it.
+            if outcome["status"] == DONE and "size" in outcome:
+                admission.landed(entry, outcome["bytes"])
+            elif outcome["status"] != DONE:
+                admission.settle(entry)
         outcomes.append(outcome)
     lines = report_lines(outcomes, started)
     if args.report:
         Path(args.report).write_text("\n".join(lines), encoding="utf-8")
     print("\n".join(lines))
-    return 1 if any(o["status"] == FAILED for o in outcomes) else 0
+    return 1 if any(o["status"] in (FAILED, REFUSED) for o in outcomes) else 0
 
 
 if __name__ == "__main__":

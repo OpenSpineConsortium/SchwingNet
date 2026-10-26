@@ -5,10 +5,15 @@ counted by its members, read from its central directory by range requests alone,
 its own size once its first block shows it is one, each with room for the largest archive while it
 opens, and a compressed tar states no size, whatever its name; an S3 bucket is listed page by page,
 every object under its prefix, as s5cmd syncs them; an IDC manifest is summed less the series
-already verified; a record read with the owner's token is summed as it lands. Every answer that gives no
-exact size ends 3 and every source that does not answer ends 2, so the size rule refuses the
-fetch. The one HTTP read is checked against a local server: a range is asked and refused when the
-server ignores it, and a token is never carried through a redirect. grid/idc_manifest.py's byte
+already verified; a record read with the owner's token is summed as it lands; a Drive file is the
+length a one-byte range states, through Drive's confirmation form where it shows one, and a Kaggle
+archive the length its storage states, the storage address asked of Kaggle's API with the token and
+read without it (issue #163). Every answer that gives no exact size ends 3 and every source that
+does not answer ends 2, so the size rule refuses the fetch. The HTTP reads are checked against a
+local server: an answer that ignores the range counts only by a length it states plainly, never by
+a page or under a content coding, the address an answer came from is kept through a redirect, a
+token is never carried through one, an answer cut short is no answer, and Kaggle's redirect is read
+and never followed. grid/idc_manifest.py's byte
 column is checked too. Standard library only, so the required check runs it."""
 
 import csv
@@ -42,15 +47,22 @@ class Source:
     every request it was asked kept."""
 
     def __init__(self, tool):
-        self.tool, self.answers, self.asked = tool, {}, []
+        self.tool, self.answers, self.unranged, self.asked = tool, {}, {}, []
 
     def add(self, url, body, headers=None):
         if not isinstance(body, bytes):
             body = json.dumps(body).encode("utf-8")
         self.answers[url] = (body, headers or {})
 
+    def add_unranged(self, url, length=None, page=None):
+        """An address whose server answers a range request with the whole of what it serves: the
+        length it states plainly, if any, and the page it sends in place of a file, if any."""
+        self.unranged[url] = (length, page)
+
     def __call__(self, url, token="", byte_range=None):
         self.asked.append((url, token, byte_range))
+        if byte_range and url in self.unranged:
+            raise self.tool.NotRanged(*self.unranged[url])
         if url not in self.answers:
             raise self.tool.NoAnswer("http 404")
         body, headers = self.answers[url]
@@ -90,10 +102,13 @@ class FetchSizeTest(unittest.TestCase):
         self.addCleanup(tmp.cleanup)
         self.tmp = Path(tmp.name)
 
-    def size(self, *argv):
+    def size(self, *argv, post=None):
         out = io.StringIO()
         with redirect_stdout(out):
-            code = self.tool.main(list(argv), fetch=self.source)
+            if post is None:
+                code = self.tool.main(list(argv), fetch=self.source)
+            else:
+                code = self.tool.main(list(argv), fetch=self.source, post=post)
         return code, out.getvalue().strip()
 
     def hub(self):
@@ -281,26 +296,188 @@ class FetchSizeTest(unittest.TestCase):
         code, out = self.size("zenodo-token", "--record", "18389015", "--dest", str(dest))
         self.assertEqual((code, out), (3, "no exact size; the record lists no file"))
 
+    DRIVE_ID = "1lJqVIuVFbdc9Bcmj17ac_cha-gW827Q6"
+
+    def drive(self):
+        return f"https://drive.usercontent.google.com/download?id={self.DRIVE_ID}&export=download&confirm=t"
+
+    def test_a_drive_file_is_the_length_its_one_byte_range_states_and_lands_whole(self):
+        self.source.add(self.drive(), b"x", {"Content-Range": "bytes 0-0/1002351026"})
+        dest = self.tmp / "gdown_2026-10-25"
+        gdown = ("gdown", "--id", self.DRIVE_ID, "--dest", str(dest))
+        self.assertEqual(self.size(*gdown), (0, "1002351026 1002351026 the drive file answers"))
+        self.assertEqual(self.source.asked, [(self.drive(), "", (0, 0))])
+        # gdown writes a temporary file beside the output and moves it over what is there, so a
+        # file a try before left needs all of it again
+        dest.mkdir()
+        (dest / "fluorosam_model_weights.pth").write_bytes(b"w" * 4096)
+        self.assertEqual(self.size(*gdown), (0, "1002351026 1002351026 the drive file answers"))
+
+    def test_drives_confirmation_form_is_followed_once_on_drives_own_host(self):
+        def form(action, fields):
+            inputs = "".join(f'<input type="hidden" name="{k}" value="{v}">' for k, v in fields)
+            return (f'<html><body><p>Google Drive can\'t scan this file for viruses.</p>'
+                    f'<form id="download-form" action="{action}" method="get">{inputs}'
+                    f'<input type="submit" value="Download anyway"></form></body></html>').encode()
+
+        fields = [("id", self.DRIVE_ID), ("export", "download"), ("confirm", "t"), ("uuid", "u-1")]
+        confirmed = ("https://drive.usercontent.google.com/download"
+                     f"?id={self.DRIVE_ID}&export=download&confirm=t&uuid=u-1")
+        self.source.add_unranged(self.drive(), page=form("https://drive.usercontent.google.com/download", fields))
+        self.source.add(confirmed, b"x", {"Content-Range": "bytes 0-0/850000000"})
+        gdown = ("gdown", "--id", self.DRIVE_ID, "--dest", str(self.tmp))
+        self.assertEqual(self.size(*gdown), (0, "850000000 850000000 the drive file answers"))
+        self.assertEqual([url for url, _, _ in self.source.asked], [self.drive(), confirmed])
+        # a form that sends anywhere but Drive's download host, or a page with no form, is no size
+        for page in (form("https://elsewhere.example/download", fields), b"<html>Quota exceeded</html>"):
+            self.source.add_unranged(self.drive(), page=page)
+            self.assertEqual(self.size(*gdown), (3, "no exact size; drive answered with a page and no download form"))
+        # a second page after the form is no size either: the form is followed once
+        self.source.add_unranged(self.drive(), page=form("https://drive.usercontent.google.com/download", fields))
+        self.source.add_unranged(confirmed, page=b"<html>still a page</html>")
+        self.assertEqual(self.size(*gdown), (3, "no exact size; the file server answers no range request"))
+
+    def test_an_answer_to_a_range_counts_only_by_a_length_stated_plainly(self):
+        gdown = ("gdown", "--id", self.DRIVE_ID, "--dest", str(self.tmp))
+        # a server that sends the whole file in place of its first byte, saying how long it is
+        self.source.add_unranged(self.drive(), length=4096)
+        self.assertEqual(self.size(*gdown), (0, "4096 4096 the drive file answers"))
+        self.source.add_unranged(self.drive())
+        self.assertEqual(self.size(*gdown), (3, "no exact size; the file server answers no range request"))
+        self.source.unranged.clear()
+        for stated in ({}, {"Content-Range": "bytes 0-0/*"}, {"Content-Range": "bytes 0-0/" + "9" * 19}):
+            self.source.add(self.drive(), b"x", stated)
+            self.assertEqual(self.size(*gdown), (3, "no exact size; the file server states no length beside its range"))
+
+    STORAGE = ("https://storage.googleapis.com/kaggle-competitions-data/kaggle-v2/2/b/archive.zip"
+               "?GoogleAccessId=web-data&Expires=1&Signature=sig")
+
+    def kaggle_api(self, location):
+        asked = []
+
+        def post(url, token, payload):
+            asked.append((url, token, payload))
+            if isinstance(location, Exception):
+                raise location
+            return location
+
+        return post, asked
+
+    def test_a_kaggle_archive_is_the_length_its_storage_states_asked_with_the_token_alone(self):
+        post, asked = self.kaggle_api(self.STORAGE)
+        self.source.add(self.STORAGE, b"x", {"Content-Range": "bytes 0-0/980240000000"})
+        dest = self.tmp / "raw"
+        competition = ("kaggle", "--competition", "rsna-str-pulmonary-embolism-detection", "--dest", str(dest))
+        with mock.patch.dict(os.environ, {"KAGGLE_API_TOKEN": "kaggle-not-a-token"}):
+            code, out = self.size(*competition, post=post)
+            self.assertEqual((code, out), (0, "980240000000 980240000000 the archive kaggle's storage states"))
+            self.assertEqual(asked, [("https://api.kaggle.com/v1/competitions.CompetitionApiService/DownloadDataFiles",
+                                      "kaggle-not-a-token", {"competitionName": "rsna-str-pulmonary-embolism-detection"})])
+            # the storage is read with no token, and the token is never printed
+            self.assertEqual(self.source.asked, [(self.STORAGE, "", (0, 0))])
+            self.assertNotIn("kaggle-not-a-token", out)
+            # the client lands <competition>.<extension of the storage address> and resumes it
+            dest.mkdir()
+            (dest / "rsna-str-pulmonary-embolism-detection.zip").write_bytes(b"k" * 1000)
+            self.assertEqual(self.size(*competition, post=post)[1].split()[:2], ["980240000000", "980239999000"])
+        with mock.patch.dict(os.environ):
+            os.environ.pop("KAGGLE_API_TOKEN", None)
+            self.assertEqual(self.size(*competition, post=post),
+                             (3, "no exact size; no kaggle token in the environment, so the api cannot be asked"))
+
+    def test_a_kaggle_dataset_is_asked_by_owner_slug_and_version_and_lands_as_its_slug(self):
+        post, asked = self.kaggle_api(self.STORAGE)
+        self.source.add(self.STORAGE, b"x", {"Content-Range": "bytes 0-0/251996951"})
+        dest = self.tmp / "raw"
+        dest.mkdir()
+        (dest / "scoliosis-yolov5-annotated-spine-x-ray-dataset.zip").write_bytes(b"z" * 251996)
+        dataset = "salmankey/scoliosis-yolov5-annotated-spine-x-ray-dataset"
+        with mock.patch.dict(os.environ, {"KAGGLE_API_TOKEN": "kaggle-not-a-token"}):
+            code, out = self.size("kaggle-dataset", "--dataset", dataset, "--dest", str(dest), post=post)
+            self.assertEqual((code, out), (0, f"251996951 {251996951 - 251996} the archive kaggle's storage states"))
+            self.size("kaggle-dataset", "--dataset", dataset + "/3", "--dest", str(dest), post=post)
+            self.assertEqual([payload for _, _, payload in asked], [
+                {"ownerSlug": "salmankey", "datasetSlug": "scoliosis-yolov5-annotated-spine-x-ray-dataset"},
+                {"ownerSlug": "salmankey", "datasetSlug": "scoliosis-yolov5-annotated-spine-x-ray-dataset",
+                 "datasetVersionNumber": 3},
+            ])
+            self.assertEqual({url for url, _, _ in asked}, {"https://api.kaggle.com/v1/datasets.DatasetApiService/DownloadDataset"})
+            for name, why in (("scoliosis", "a kaggle dataset named without its owner"),
+                              ("a//b", "a kaggle dataset named without its owner"),
+                              ("a/b/3x", "a kaggle dataset version that is no number"),
+                              ("a/b/\u0663", "a kaggle dataset version that is no number")):
+                self.assertEqual(self.size("kaggle-dataset", "--dataset", name, "--dest", str(dest), post=post),
+                                 (3, f"no exact size; {why}"))
+            # an api that sends no redirect, or does not answer, is no size and no answer
+            post, _ = self.kaggle_api(self.tool.NoSize("the api answered with no redirect to the file"))
+            self.assertEqual(self.size("kaggle-dataset", "--dataset", dataset, "--dest", str(dest), post=post),
+                             (3, "no exact size; the api answered with no redirect to the file"))
+            post, _ = self.kaggle_api(self.tool.NoAnswer("http 403"))
+            self.assertEqual(self.size("kaggle-dataset", "--dataset", dataset, "--dest", str(dest), post=post),
+                             (2, "the source did not answer; http 403"))
+
     def test_a_route_with_no_size_reader_is_refused(self):
-        self.assertEqual(self.size("gdown", "1r9wX"), (3, "no exact size; no size reader for this route; one of hf acq idc zenodo-token"))
-        self.assertEqual(self.size(), (3, "no exact size; no size reader for this route; one of hf acq idc zenodo-token"))
+        every = "hf acq idc zenodo-token gdown kaggle kaggle-dataset"
+        self.assertEqual(self.size("probe", "https://x"), (3, f"no exact size; no size reader for this route; one of {every}"))
+        self.assertEqual(self.size(), (3, f"no exact size; no size reader for this route; one of {every}"))
         code, out = self.size("acq", "idc", "--collection", "x", "--data-root", str(self.tmp))
         self.assertEqual((code, out), (3, "no exact size; no size reader for the idc route of the acquisition fetcher"))
 
 
 class Server(http.server.BaseHTTPRequestHandler):
     """A file server on 127.0.0.1: /ranged honours a range, /whole ignores it, /moved redirects to
-    /ranged; each request's Authorization header is kept."""
+    /ranged, /page sends a page in place of the file, /gzip ignores the range and states its length
+    under a content coding, /cut states a length and sends less; a POST to /api answers as Kaggle's API does,
+    with a redirect to the file's storage, and to /api-json with a body; each request's path and
+    Authorization header is kept, and each POST's body."""
 
     BODY = bytes(range(256)) * 4
     seen = []
 
+    def do_POST(self):
+        body = self.rfile.read(int(self.headers.get("Content-Length", "0")))
+        Server.seen.append((self.path, self.headers.get("Authorization"), json.loads(body)))
+        if self.path == "/api":
+            self.send_response(302)
+            self.send_header("Location", "https://storage.example/archive.zip?Signature=s")
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return
+        reply = b'{"url": "nowhere"}'
+        self.send_response(200 if self.path == "/api-json" else 401)
+        self.send_header("Content-Length", str(len(reply)))
+        self.end_headers()
+        self.wfile.write(reply)
+
     def do_GET(self):
         Server.seen.append((self.path, self.headers.get("Authorization")))
+        if self.path == "/page":
+            page = b"<html>" + b" " * 3000 + b"</html>"
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(page)))
+            self.end_headers()
+            self.wfile.write(page)
+            return
         if self.path == "/moved":
             self.send_response(302)
             self.send_header("Location", "/ranged")
             self.end_headers()
+            return
+        if self.path == "/gzip":
+            body = gzip.compress(self.BODY)
+            self.send_response(200)
+            self.send_header("Content-Encoding", "gzip")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
+        if self.path == "/cut":
+            self.send_response(200)
+            self.send_header("Content-Length", str(len(self.BODY)))
+            self.end_headers()
+            self.wfile.write(self.BODY[:10])
+            self.close_connection = True
             return
         if self.path not in ("/ranged", "/whole"):
             self.send_error(404)
@@ -339,19 +516,47 @@ class GetTest(unittest.TestCase):
     def test_a_range_is_read_when_the_server_honours_it_and_refused_when_it_does_not(self):
         body, _ = self.tool.get(self.base + "/ranged", byte_range=(2, 5))
         self.assertEqual(body, Server.BODY[2:6])
-        with self.assertRaisesRegex(self.tool.NoSize, "answers no range request"):
+        with self.assertRaisesRegex(self.tool.NoSize, "answers no range request") as refused:
             self.tool.get(self.base + "/whole", byte_range=(2, 5))
+        # the whole length it states plainly is kept, and nothing of the file is read
+        self.assertEqual((refused.exception.length, refused.exception.page), (len(Server.BODY), None))
+        self.assertEqual(self.tool.first_byte_total(self.base + "/whole"), len(Server.BODY))
+        self.assertEqual(self.tool.first_byte_total(self.base + "/ranged"), len(Server.BODY))
+        with self.assertRaises(self.tool.NotRanged) as refused:
+            self.tool.get(self.base + "/page", byte_range=(0, 0))
+        self.assertTrue(refused.exception.page.startswith(b"<html>"))
+        # a page in place of the file, or a length stated under a content coding, is no size
+        for path in ("/page", "/gzip"):
+            with self.assertRaisesRegex(self.tool.NoSize, "answers no range request"):
+                self.tool.first_byte_total(self.base + path)
         with self.assertRaisesRegex(self.tool.NoAnswer, "http 404"):
             self.tool.get(self.base + "/missing")
+        # a body cut short is no answer, never an error that ends the reader
+        with self.assertRaisesRegex(self.tool.NoAnswer, "an answer cut short"):
+            self.tool.get(self.base + "/cut")
+
+    def test_kaggles_redirect_is_read_with_the_token_and_never_followed(self):
+        token = "kaggle-not-a-token"
+        location = self.tool.post_for_location(self.base + "/api", token, {"competitionName": "c"})
+        self.assertEqual(location, "https://storage.example/archive.zip?Signature=s")
+        self.assertEqual(Server.seen, [("/api", f"Bearer {token}", {"competitionName": "c"})])
+        with self.assertRaisesRegex(self.tool.NoSize, "no redirect to the file"):
+            self.tool.post_for_location(self.base + "/api-json", token, {})
+        with self.assertRaisesRegex(self.tool.NoAnswer, "http 401"):
+            self.tool.post_for_location(self.base + "/api-denied", token, {})
 
     def test_a_token_is_never_carried_through_a_redirect(self):
         with self.assertRaisesRegex(self.tool.NoAnswer, "http 302"):
             self.tool.get(self.base + "/moved", token="t-secret")
         self.assertEqual(Server.seen, [("/moved", "Bearer t-secret")])
-        # with no token the redirect is followed, the range with it
-        body, _ = self.tool.get(self.base + "/moved", byte_range=(0, 3))
+        # with no token the redirect is followed, the range with it, and the address the answer
+        # came from is kept, since a client names what it lands by it (size_kaggle)
+        body, headers = self.tool.get(self.base + "/moved", byte_range=(0, 3))
         self.assertEqual(body, Server.BODY[:4])
         self.assertEqual(Server.seen[1:], [("/moved", None), ("/ranged", None)])
+        self.assertEqual(headers.address, self.base + "/ranged")
+        self.assertEqual(self.tool.ranged_answer(self.base + "/moved"), (len(Server.BODY), self.base + "/ranged"))
+        self.assertEqual(self.tool.ranged_answer(self.base + "/whole"), (len(Server.BODY), self.base + "/whole"))
 
 
 class IdcManifestTest(unittest.TestCase):
