@@ -725,12 +725,12 @@
    "note": ""
   },
   "scidb_enhance_pet_1_6k": {
-   "licence": "CC BY 4.0",
-   "class": "open",
-   "commercial": "yes",
+   "licence": "CC BY 4.0 (Leipzig, Careggi, UC Davis) and CC BY-NC 4.0 (autoPET, Tuebingen) by site, per the bucket's CT-details.xlsx; the strictest binds the set",
+   "class": "non-commercial",
+   "commercial": "no",
    "derivatives": "yes",
    "reviewed": "rule",
-   "note": ""
+   "note": "two of the five sites are CC BY-NC, so the set as one is non-commercial until a per-site split is made; the three CC BY sites could be an open subset by study id"
   },
   "seattle_science_foundation": {
    "licence": "unknown; embedding disabled",

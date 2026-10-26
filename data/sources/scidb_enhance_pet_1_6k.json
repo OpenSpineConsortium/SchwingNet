@@ -2,11 +2,11 @@
   "id": "scidb_enhance_pet_1_6k",
   "name": "ENHANCE.PET 1.6k: whole-/total-body FDG-PET/CT, 1,683 studies (NIfTI)",
   "group": "ct",
-  "what": "ENHANCE.PET 1.6k, whole- and total-body FDG-PET/CT, 1,683 studies as NIfTI (Science Data Bank doi:10.57760/sciencedb.34150), about 286 GB; multi-centre (Vienna, UC Davis, Careggi, Leipzig, Tuebingen), so Tuebingen may be autoPET and Vienna's healthy controls QUADRA_HC, both tier 1, which the landing dedupe would find; the slice thickness per study is in its CT-details.xlsx, not read",
+  "what": "ENHANCE.PET 1.6k, whole- and total-body FDG-PET/CT, 1,683 studies as NIfTI (Science Data Bank doi:10.57760/sciencedb.34150), about 286 GB, also on the public S3 bucket enhance-pet-1-6k (unsigned listing: imaging-data/images/CT, imaging-data/images/PT, imaging-data/ground-truth with seven label folders, labels.json, CT-details.xlsx), the CTs FleXray's MOOSE set and FluXray were rendered from, so the Flux realism programme fetches the CTs and the truth from it (grid/run-platform-fetch.sh rows aws_enhance_pet_ct and aws_enhance_pet_labels); multi-centre (Vienna, UC Davis, Careggi, Leipzig, Tuebingen), so Tuebingen may be autoPET and Vienna's healthy controls QUADRA_HC, both tier 1, which the landing dedupe would find; the slice thickness per study is in its CT-details.xlsx, not read",
   "level_truth": "counted by the census pipeline once fetched",
   "reach": "get",
   "status": "the owner's hand: confirm whether Science Data Bank needs a login and read CT-details.xlsx for slice thickness; no fetch route exists in tools/acquisition_fetch.py for Science Data Bank (planned in the data platform at bf1432f)",
-  "licence": "CC BY 4.0",
+  "licence": "CC BY 4.0 (Leipzig, Careggi, UC Davis) and CC BY-NC 4.0 (autoPET, Tuebingen) by site, per the bucket's CT-details.xlsx; the strictest binds the set",
   "link": "https://doi.org/10.57760/sciencedb.34150",
   "how_to_get": [
     "The owner opens https://doi.org/10.57760/sciencedb.34150, reads whether a login is needed and CT-details.xlsx for slice thickness.",

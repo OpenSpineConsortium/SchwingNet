@@ -7,9 +7,9 @@ A class reads the licence's words (tools/licences.py); whether a trained network
 
 | Class | Datasets | Owner-reviewed |
 |---|---|---|
-| open | 26 | 4 |
+| open | 25 | 4 |
 | share-alike | 2 | 0 |
-| non-commercial | 17 | 0 |
+| non-commercial | 18 | 0 |
 | agreement | 31 | 0 |
 | no-derivatives | 3 | 0 |
 | unknown | 40 | 0 |
@@ -139,7 +139,7 @@ yes: the recipe takes the source now; after review: its class fits, and the reci
 | rsna_2022_cervical | agreement | no | rule | Kaggle competition rules (non-commercial); the terms for derived labels not recorded |
 | rsna_ratic | agreement | no | rule | a data use agreement (non-commercial) |
 | rsna_rspect | agreement | no | rule | a data use agreement (non-commercial) |
-| scidb_enhance_pet_1_6k | open | yes | rule | CC BY 4.0 |
+| scidb_enhance_pet_1_6k | non-commercial | no | rule | CC BY 4.0 (Leipzig, Careggi, UC Davis) and CC BY-NC 4.0 (autoPET, Tuebingen) by site, per the bucket's CT-details.xlsx; the strictest binds the set |
 | seattle_science_foundation | unknown | unknown | rule | unknown; embedding disabled |
 | sof_lateral_spine | agreement | no | rule | an NIA Outgoing Human Data Transfer Agreement signed by the PI and Wayne State's Signing Official: non-profit research on the approved project only, no redistribution, no re-identification, acknowledgement, 12 months renewable, destruction certified at the end |
 | spinal_ai2024 | unknown | unknown | rule | not recorded |

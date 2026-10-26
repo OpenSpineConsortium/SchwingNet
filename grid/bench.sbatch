@@ -76,22 +76,10 @@ trap unhold EXIT
 trap 'exit 143' TERM
 report "GPU: $(nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv,noheader 2>/dev/null | head -n 1 || echo 'nvidia-smi gave nothing')"
 
-venv_for() {  # venv_for PINS: a virtual environment holding PINS beside train-gpu's packages, made once
-  local key venv
-  key=$(printf '%s' "$1" | sha256sum | cut -c1-12)
-  venv=$LAB/go2432/.cache/bench/venv-$key
-  if [ ! -f "$venv/READY" ]; then
-    rm -rf "$venv"
-    bash grid/box.sh pixi run --locked -e train-gpu python -m venv --system-site-packages "$venv" || return 1
-    # set -f: a pin may carry an extra's brackets (flexray[train]), which the shell would read as a pattern.
-    set -f
-    # shellcheck disable=SC2086
-    bash grid/box.sh "$venv/bin/python" -m pip install --quiet $1 || { set +f; return 1; }
-    set +f
-    printf '%s\n' "$1" > "$venv/READY"
-  fi
-  echo "$venv"
-}
+# venv_for, the throwaway environment on the lab volume, lives in grid/venv.sh since the anomaly
+# route's pack stage makes one too (#391).
+# shellcheck source=grid/venv.sh
+. "$REPO/grid/venv.sh"
 failure_of() {  # the first compiler or linker error in a log, else its last line, in one short line
   { grep -m 1 -E '(: (fatal )?error:|cannot find -l|undefined reference)' "$1" || tail -n 1 "$1"; } | cut -c1-240
 }
