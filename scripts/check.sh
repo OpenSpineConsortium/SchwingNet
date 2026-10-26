@@ -16,6 +16,11 @@ python3 tools/check_docs.py
 # tests/test_vendored.py, which compares the copy with the library itself
 # in the clone SDLC_PROTOCOL names (CI clones it; .github/workflows/ci.yml).
 python3 tools/sdlc_protocol/vendoring.py verify tools
+# bordercall's copy under grid/bordercall/ must be what grid/bordercall/VENDORED
+# records: a change is made in OpenSpineConsortium/bordercall and brought here
+# by tools/bordercall_vendor.py copy, never edited in the copy (the grid's job
+# runs it, and has no token for the private repository).
+python3 tools/bordercall_vendor.py check
 # Every worker's file under .github/symphony/workers/ must hold together
 # (docs/agents/WORKERS.md): a misspelt setting or a name that is no label
 # fails here, before the workflows that read the registry would.
