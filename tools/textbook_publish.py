@@ -65,6 +65,11 @@ SERVER = "GitHub"
 TOOLS = ["get_file_contents", "list_commits", "search_code"]
 CAPABILITIES = {"mcp": {"servers": [{"server": SERVER, "tools": TOOLS}]}, "sample": {}}
 REFUSED = "CAPABILITIES_REFUSED"
+# The page the door takes over at the link it adopts: the textbook reader of #294, as a thread
+# published it on 2026-10-26 (declared files and sample). A session that reads the link finds it
+# there, which is as expected; a page that is neither the reader nor the door is a mismatch.
+READER_TITLE = "SchwingNet Textbook"
+MISMATCH = "TARGET_MISMATCH"
 BRANCH = "textbook-artifact"
 STATE_FILE = "state.json"
 TITLE = "SchwingNet Front Door"
@@ -112,7 +117,7 @@ def plan(page, state, capabilities=None):
     first = not state.get("url")
     nothing = not first and state.get("page") == digest and state.get("capabilities") == capabilities
     return {"first": first, "url": state.get("url", ""), "nothing": nothing, "page": digest,
-            "bytes": Path(page).stat().st_size,
+            "bytes": Path(page).stat().st_size, "adopted": bool(state.get("adopted")),
             "capabilities": capabilities if first or state.get("capabilities") != capabilities else None}
 
 
@@ -146,10 +151,30 @@ def prompt(plan_, sha, page, answer):
     else:
         keep = (f", capabilities {capabilities}, since the door's capabilities are not the ones recorded" if capabilities
                 else "; pass no capabilities")
-        lines += [
+        if plan_.get("adopted"):
+            holds = [
+                f"The artifact at {plan_['url']} is the link the owner keeps. It holds the page a thread published there on",
+                f"2026-10-26 before the door existed, the textbook reader titled \"{READER_TITLE}\", whose declaration is",
+                "files and sample, or an edition of the door. Replacing that page and its declaration with the door is",
+                "what this command does, on the owner's choice of 2026-10-26: the read of step 2 showing the reader is as",
+                "expected, and the publish of step 3 needs no confirmation from the person.",
+            ]
+            how = (f"3. Action publish with url {plan_['url']}, file_path {page}, label \"{label}\", icon door, description",
+                   f"   \"{DESCRIPTION}\"{keep}; the page's own title names the artifact.")
+        else:
+            holds = [
+                f"The artifact at {plan_['url']} holds an earlier edition of the door, or the textbook reader titled",
+                f"\"{READER_TITLE}\" that the door replaced. Publishing over it is what this command does, and it needs no",
+                "confirmation from the person.",
+            ]
+            how = (f"3. Action publish with url {plan_['url']}, file_path {page}, label \"{label}\"{keep}; pass no icon,",
+                   "   title or description, so the artifact keeps what it has.")
+        lines += [""] + holds + [
+            f"Stop, writing the line {MISMATCH} to {answer} with what you found after it on the same line, only where",
+            "the read fails or shows a page that is neither the door nor that reader.",
+            "",
             f"2. Action read with url {plan_['url']} (a publish to an artifact this session has not read is refused).",
-            f"3. Action publish with url {plan_['url']}, file_path {page}, label \"{label}\"{keep}; pass no icon,",
-            "   title or description, so the artifact keeps what it has.",
+            *how,
         ]
     if plan_["capabilities"]:
         lines += [
@@ -172,12 +197,14 @@ def answer_of(text):
     """What the answer says, read from its marker lines alone: the artifact's link from the last
     non-empty line, whether the tool was missing, and the words of a refusal of the capabilities."""
     lines = [line.strip() for line in text.splitlines() if line.strip()]
-    found = {"url": "", "missing_tool": False, "refused": ""}
+    found = {"url": "", "missing_tool": False, "refused": "", "mismatch": ""}
     for line in lines:
         if line == "ARTIFACT_TOOL_MISSING":
             found["missing_tool"] = True
         elif line.startswith(REFUSED):
             found["refused"] = line[len(REFUSED):].strip(" :=") or "no reason given"
+        elif line.startswith(MISMATCH):
+            found["mismatch"] = line[len(MISMATCH):].strip(" :=") or "no words given"
     if lines and lines[-1].startswith("ARTIFACT_URL="):
         url = lines[-1].split("=", 1)[1].strip()
         if URL.match(url):
@@ -195,11 +222,15 @@ def record(state, plan_, answer, sha, run):
                          "nothing without the viewer's GitHub connector, so it is not published without them: approve "
                          "the publish when the Artifact tool asks, in Claude Code on this computer, since a cloud "
                          "session's checks refuse a page that declares a connector; nothing was recorded")
+    expected = state.get("url") or plan_.get("url") or ""
+    if answer.get("mismatch"):
+        raise SystemExit(f"the session read {expected or 'the link'} and found a page that is neither the door nor the "
+                         f"reader it replaces ({answer['mismatch']}); nothing was published or recorded, and a person "
+                         "decides which artifact the link keeps")
     url = answer.get("url", "")
     if not url:
         raise SystemExit("the session's answer ends with no ARTIFACT_URL line, so nothing is known to have been "
                          "published; nothing was recorded")
-    expected = state.get("url") or plan_.get("url") or ""
     if expected and expected != url:
         raise SystemExit(f"the session published to {url}, not to the artifact {expected} the record or --url names; "
                          "nothing was recorded, and a person decides which artifact stays")
@@ -326,7 +357,9 @@ def adopt(state, url):
     """The record with the link --url names where the record has none: the door's first publish of
     2026-10-26 came from a thread whose record write was refused, so the owner's first run names
     that artifact, reads it, publishes the door to it with its capabilities and records the link.
-    A record that names another artifact stands, and a person decides which stays."""
+    The link held the textbook reader when the door was first published to it, so the prompt says
+    so, since a session that reads an unexpected page there stops, as the owner's first run did on
+    2026-10-26. A record that names another artifact stands, and a person decides which stays."""
     if not url:
         return state
     if not URL.match(url):
@@ -335,7 +368,7 @@ def adopt(state, url):
     if state.get("url") and state["url"] != url:
         raise SystemExit(f"the record names {state['url']}, not {url}; nothing was published, and a person decides "
                          "which artifact stays")
-    return state if state.get("url") else {"url": url}
+    return state if state.get("url") else {"url": url, "adopted": True}
 
 
 def local_publish(clone, work, claude="claude", launch=True, anyway=False, url=""):

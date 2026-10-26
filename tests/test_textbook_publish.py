@@ -95,7 +95,7 @@ class Plan(unittest.TestCase):
     def test_a_first_publish_makes_the_artifact_with_its_capabilities(self):
         plan = tp.plan(self.page, {})
         self.assertEqual(plan, {"first": True, "url": "", "nothing": False, "page": tp.sha256(self.page),
-                                "bytes": self.page.stat().st_size, "capabilities": tp.CAPABILITIES})
+                                "bytes": self.page.stat().st_size, "adopted": False, "capabilities": tp.CAPABILITIES})
 
     def test_the_page_and_capabilities_recorded_are_nothing_to_publish(self):
         plan = tp.plan(self.page, self.recorded())
@@ -124,6 +124,7 @@ class Prompt(unittest.TestCase):
         self.first = tp.plan(page, {})
         self.later = tp.plan(page, {"schema": tp.SCHEMA, "url": URL, "page": "o" * 64, "capabilities": tp.CAPABILITIES})
         self.again = tp.plan(page, {"schema": tp.SCHEMA, "url": URL, "page": "o" * 64, "capabilities": {"sample": {}}})
+        self.adopted = tp.plan(page, tp.adopt({}, URL))
 
     def text(self, plan):
         return tp.prompt(plan, SHA, PAGE, ANSWER)
@@ -151,6 +152,28 @@ class Prompt(unittest.TestCase):
         self.assertNotIn("capabilities {", text)
         self.assertNotIn(tp.REFUSED, text)
 
+    def test_a_later_publish_says_what_the_link_holds_and_needs_no_confirmation(self):
+        # The owner's first run of 2026-10-26 stopped at the link, since the session read the textbook
+        # reader there and the prompt had not said that was the page the door replaces.
+        for plan in (self.later, self.again, self.adopted):
+            text = self.text(plan)
+            self.assertRegex(text, rf'the textbook reader titled\s+"{tp.READER_TITLE}"')
+            self.assertRegex(text, r"needs no\s+confirmation from the person")
+            self.assertIn(f"Stop, writing the line {tp.MISMATCH} to {ANSWER} with what you found after it on the same line, only where\n"
+                          "the read fails or shows a page that is neither the door nor that reader.", text)
+            self.assertLess(text.index(tp.MISMATCH), text.index("2. Action read"), "the stop is said before the read")
+        self.assertIn("Replacing that page and its declaration with the door is\nwhat this command does, on the owner's "
+                      "choice of 2026-10-26", self.text(self.adopted))
+        self.assertNotIn("Replacing that page", self.text(self.later))
+
+    def test_an_adopted_link_takes_the_doors_icon_and_description_with_its_capabilities(self):
+        text = self.text(self.adopted)
+        self.assertIn(f"3. Action publish with url {URL}, file_path {PAGE}, label \"Door abc1234\", icon door, description\n"
+                      f"   \"{tp.DESCRIPTION}\", capabilities {json.dumps(tp.CAPABILITIES)}, since the door's capabilities "
+                      "are not the ones recorded; the page's own title names the artifact.", text)
+        self.assertNotIn("pass no icon", text)
+        self.assertNotIn("Publish it: action publish", text)
+
     def test_capabilities_that_changed_go_again_and_their_refusal_stops_the_publish(self):
         text = self.text(self.again)
         self.assertIn(f"label \"Door abc1234\", capabilities {json.dumps(tp.CAPABILITIES)}, since the door's "
@@ -177,7 +200,7 @@ class Prompt(unittest.TestCase):
 class Answer(unittest.TestCase):
     def test_the_link_is_read_from_the_last_line_alone(self):
         self.assertEqual(tp.answer_of(f"Published.\nARTIFACT_URL={URL}\n"),
-                         {"url": URL, "missing_tool": False, "refused": ""})
+                         {"url": URL, "missing_tool": False, "refused": "", "mismatch": ""})
         self.assertEqual(tp.answer_of(f"ARTIFACT_URL={URL}\nand more")["url"], "")
         self.assertEqual(tp.answer_of("ARTIFACT_URL=https://example.com/artifact/x")["url"], "")
         self.assertEqual(tp.answer_of("ARTIFACT_URL=https://claude.ai/artifact/x; rm")["url"], "")
@@ -186,10 +209,18 @@ class Answer(unittest.TestCase):
         self.assertEqual(tp.answer_of("")["url"], "")
 
     def test_a_missing_tool_and_a_refusal_are_read_with_its_words(self):
-        self.assertEqual(tp.answer_of("ARTIFACT_TOOL_MISSING"), {"url": "", "missing_tool": True, "refused": ""})
+        self.assertEqual(tp.answer_of("ARTIFACT_TOOL_MISSING"),
+                         {"url": "", "missing_tool": True, "refused": "", "mismatch": ""})
         self.assertEqual(tp.answer_of(f"{tp.REFUSED} files: not a member of the project\n")["refused"],
                          "files: not a member of the project")
         self.assertEqual(tp.answer_of(f"{tp.REFUSED}\n")["refused"], "no reason given")
+
+    def test_a_mismatch_is_read_with_the_sessions_words(self):
+        said = f"{tp.MISMATCH}: {URL} reads as \"Something Else\", not as the front door. Nothing was published.\n"
+        self.assertEqual(tp.answer_of(said)["mismatch"],
+                         f"{URL} reads as \"Something Else\", not as the front door. Nothing was published.")
+        self.assertEqual(tp.answer_of(f"{tp.MISMATCH}\n")["mismatch"], "no words given")
+        self.assertEqual(tp.answer_of(f"Published.\nARTIFACT_URL={URL}\n")["mismatch"], "")
 
 
 class Record(unittest.TestCase):
@@ -213,6 +244,8 @@ class Record(unittest.TestCase):
                                       ({}, dict(self.WHOLE, url=""), "no ARTIFACT_URL line"),
                                       ({}, dict(self.WHOLE, missing_tool=True), "no Artifact tool"),
                                       ({}, dict(self.WHOLE, refused="mcp: not allowed"), "refuse a page that declares a connector"),
+                                      ({}, dict(self.WHOLE, url="", mismatch="reads as Something Else"),
+                                       "neither the door nor the reader it replaces (reads as Something Else)"),
                                       ({}, dict(self.WHOLE, url="https://claude.ai/artifact/third"), "the record or --url names")):
             plan = dict(self.PLAN, url=URL) if says.endswith("names") else self.PLAN
             with self.subTest(says=says), self.assertRaises(SystemExit) as stop:
@@ -443,6 +476,8 @@ class Local(unittest.TestCase):
         self.assertIn(f"2. Action read with url {URL}", prompt)
         self.assertIn(f"capabilities {json.dumps(tp.CAPABILITIES)}, since the door's capabilities are not the ones recorded",
                       prompt)
+        self.assertRegex(prompt, rf'the textbook reader titled\s+"{tp.READER_TITLE}"')
+        self.assertIn("icon door", prompt)
         self.assertNotIn("Publish it: action publish", prompt)
         state = self.recorded()
         self.assertEqual((state["url"], state["capabilities"]), (URL, tp.CAPABILITIES))
@@ -458,6 +493,15 @@ class Local(unittest.TestCase):
             tp.local_publish(self.clone, self.work, claude=sys.executable, url="https://example.com/artifact/x")
         self.assertIn("not a claude.ai artifact link", str(stop.exception))
         self.assertEqual(git(self.origin, "rev-list", "--count", tp.BRANCH), "1")
+
+    def test_a_session_that_finds_another_page_at_the_adopted_link_records_nothing(self):
+        said = f"{tp.MISMATCH}: {URL} reads as \"Something Else\". Nothing was published.\n"
+        with mock.patch.object(tp, "open_session", side_effect=self.session(said)), \
+                redirect_stdout(io.StringIO()), self.assertRaises(SystemExit) as stop:
+            tp.local_publish(self.clone, self.work, claude=sys.executable, url=URL)
+        self.assertIn(f"the session read {URL} and found a page that is neither the door nor the reader it replaces "
+                      f"({URL} reads as \"Something Else\". Nothing was published.)", str(stop.exception))
+        self.assertTrue(self.no_record())
 
     def test_a_session_that_published_elsewhere_than_the_adopted_link_records_nothing(self):
         other = "https://claude.ai/artifact/other"
