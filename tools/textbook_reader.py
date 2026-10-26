@@ -12,7 +12,10 @@ the owner publishes once from the owner's computer (tools/textbook_publish.py lo
 when it is opened, reads the book from the files of the Claude project the textbook thread belongs
 to, with the viewer's own access, through the artifact runtime's files capability. Nothing of the
 book is in the page or in the artifact, and a viewer who cannot open the project's files reads
-nothing.
+nothing. On 2026-10-26 the owner replaced the reader at its link with the front door,
+tools/front_door.html, which reads the repository itself through the viewer's GitHub connector, so
+the publish command publishes the door and this stage is run by nothing after a merge; the reader
+and the stage stay as the record of #294 (docs/research/textbook-as-an-artifact.md).
 
 GitHub cannot write to a Claude project's files, so a thread of the project puts the book there:
 
