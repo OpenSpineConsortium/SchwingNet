@@ -205,18 +205,34 @@ def ct_subjects(ct_root):
     return sorted(found)
 
 
-def has_masks(subject, segmenter, roots):
-    """Whether the segmenter's locator finds the subject's masks under its folder."""
+def header_shape(ct_root, subject):
+    """The CT's grid from its header alone, as tools/render_blocks.py reads a mask's, so a
+    subject is listed by masks on its own grid; None for a header that cannot be read, which
+    lists the subject by name alone and leaves the render to pass it over as unreadable."""
+    try:
+        return blocks_tool().mask_shape(Path(ct_root) / subject / CT_NAME)
+    except Exception:  # nibabel raises several unrelated error types, as fxr notes
+        return None
+
+
+def has_masks(subject, segmenter, roots, shape):
+    """Whether the segmenter's locator finds the subject's masks on the CT's grid under its
+    folder: one SPINEPS mask, or under moose every model's file, since the segment job makes
+    all five for each chosen CT and a render that read fewer would label less than the
+    replication's, with no word in the manifest but models_missing."""
     parts = blocks_tool()
     root = roots.get(segmenter)
     if segmenter == "spineps":
-        return parts.locate_spineps(subject, root) is not None
-    return bool(parts.locate_moose(subject, root))
+        return parts.locate_spineps(subject, root, shape) is not None
+    found = parts.locate_moose(subject, root, shape)
+    return all(model in found for model in schemes().MOOSEZ_MODELS)
 
 
 def find_subjects(ct_root, segmenter=None, roots=None):
     """The subjects under ct_root (ct_subjects), as ids; with a segmenter named, only those
-    whose masks that scheme's locator finds under roots[segmenter], which must be given."""
+    whose masks that scheme's locator finds, on the CT's grid, under roots[segmenter], which
+    must be given, as load_subject will find them, so the subject choice of tools/domain_gap.py
+    and the render agree on which CTs have masks."""
     found = ct_subjects(ct_root)
     if segmenter is None:
         return found
@@ -225,7 +241,8 @@ def find_subjects(ct_root, segmenter=None, roots=None):
         raise ValueError("; ".join(problems))
     if not roots or roots.get(segmenter) is None:
         raise ValueError(f"segmenter={segmenter}: no masks folder given (roots[{segmenter!r}])")
-    return [subject for subject in found if has_masks(subject, segmenter, roots)]
+    return [subject for subject in found
+            if has_masks(subject, segmenter, roots, header_shape(ct_root, subject))]
 
 
 def image_stem(subject):

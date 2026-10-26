@@ -44,11 +44,24 @@ import struct  # noqa: E402
 from collections import defaultdict  # noqa: E402
 
 import numpy as np  # noqa: E402
+from schwingnet import segmenters  # noqa: E402
 from schwingnet.chain import SACRUM, column, fit_spacing, hypothesis_name, pair_key  # noqa: E402
 
 DTYPES = {2: "u1", 4: "i2", 8: "i4", 16: "f4", 64: "f8", 256: "i1", 512: "u2", 768: "u4"}
-VERSE = {**{i: f"C{i}" for i in range(1, 8)}, **{7 + i: f"T{i}" for i in range(1, 13)},
-         **{19 + i: f"L{i}" for i in range(1, 6)}, 25: "L6", 26: SACRUM, 28: "T13"}
+
+
+def chain_name(canonical):
+    """A segmenter's canonical name in this tool's short form: vertebra_t13 is T13, the sacrum
+    stays schwingnet.chain's SACRUM."""
+    if canonical.startswith("vertebra_"):
+        return canonical.removeprefix("vertebra_").upper()
+    return canonical
+
+
+# The VerSe alphabet SPINEPS writes, spelled once in schwingnet.segmenters (1 to 7 C1 to C7, 8 to
+# 19 T1 to T12, 20 to 25 L1 to L6, 26 the sacrum, 28 T13), so a change of the alphabet lands in
+# one place and tools/render_blocks.py's label volumes and these counts read the same values.
+VERSE = {value: chain_name(name) for value, name in segmenters.VERSE.items()}
 ORDER = column(13, 6)
 
 

@@ -54,25 +54,42 @@ OTHER_GRID = (32, 32, 150)
 TOOLS = {}
 
 # What the label records of s0001 must say under each scheme (tools/render_blocks.py,
-# label_record): MOOSE's stored ids, FleXray's dropped names, the values left out.
+# label_record): MOOSE's stored ids, FleXray's dropped names, the values left out, the names the
+# files could have carried and did not (absent), and the order the files were written in.
 SPINEPS_S0001 = {
-    "scheme": "spineps", "files": {"spineps": "s0001_seg-vert_msk.nii.gz"}, "skipped": [],
+    "scheme": "spineps", "files": {"spineps": "s0001_seg-vert_msk.nii.gz"},
+    "precedence": ["spineps"], "skipped": [],
     "labels": {"81": "vertebra_l4", "82": "vertebra_l5", "83": "vertebra_l6", "86": "sacrum"},
-    "dropped": ["vertebra_l6"], "unsupervised": {"27": "coccyx", "28": "vertebra_t13"},
-    "models_missing": [],
+    "dropped": ["vertebra_l6"],
+    "absent": [f"vertebra_c{n}" for n in range(1, 8)] + [f"vertebra_t{n}" for n in range(1, 13)]
+              + ["vertebra_l1", "vertebra_l2", "vertebra_l3"],
+    "unsupervised": {"27": "coccyx", "28": "vertebra_t13"}, "models_missing": [], "unplaced": [],
 }
+MODELS = ("clin_ct_organs", "clin_ct_cardiac", "clin_ct_peripheral_bones", "clin_ct_ribs",
+          "clin_ct_vertebrae")
+MOOSE_FILES = {model: f"clin_CT_{model.split('_', 2)[2]}_CT_s0001.nii.gz" for model in MODELS}
 MOOSE_S0001 = {
-    "scheme": "moose",
-    "files": {"clin_ct_organs": "clin_CT_organs_CT_s0001.nii.gz",
-              "clin_ct_ribs": "clin_CT_ribs_CT_s0001.nii.gz",
-              "clin_ct_vertebrae": "clin_CT_vertebrae_CT_s0001.nii.gz"},
-    "skipped": [],
+    "scheme": "moose", "files": MOOSE_FILES, "precedence": list(MODELS), "skipped": [],
     "labels": {"32": "rib_left_1", "44": "rib_left_13", "81": "vertebra_l4", "82": "vertebra_l5",
                "83": "vertebra_l6", "86": "sacrum", "94": "liver"},
     "dropped": ["rib_left_13", "vertebra_l6"],
+    "absent": None,  # moose_s0001() fills it from the tables; the Tables case pins what it holds
     "unsupervised": {"clin_ct_organs:19": "trachea"},
-    "models_missing": ["clin_ct_cardiac", "clin_ct_peripheral_bones"],
+    "models_missing": [], "unplaced": [],
 }
+
+
+def moose_absent(present_ids):
+    """The absent list of a record read from all five models: every name their tables land on,
+    less the ids present and the names FleXray drops, in MOOSE's id order."""
+    segmenters = load_tool("render_blocks").segmenters
+    reachable = {i for m in MODELS for i in segmenters.moosez_to_moose_ids(m).values()}
+    return [segmenters.MOOSE_STORED[i] for i in sorted(reachable - set(present_ids))
+            if segmenters.MOOSE_STORED[i] not in segmenters.MOOSE_DROPPED]
+
+
+def moose_s0001():
+    return {**MOOSE_S0001, "absent": moose_absent(int(i) for i in MOOSE_S0001["labels"])}
 
 
 def load_tool(name):
@@ -154,7 +171,8 @@ def moose_file(root, subject, model, stamp="20260101", suffix=""):
 def make_s0001(ct, spineps, moose):
     """300 slices (two crops at overlap 0, five at 0.5): L4, L5, L6 and the sacrum in both
     schemes; T13 and the coccyx under SPINEPS where moosez's ribs model has rib 1 and rib 13; a
-    liver cube over L4's top and a trachea cube under moosez's organs model."""
+    liver cube over L4's top and a trachea cube under moosez's organs model; the cardiac and
+    peripheral bones models' files empty, as a CT of the lumbar spine leaves them."""
     bones = [(23, 60, 90, MAIN), (24, 200, 230, MAIN), (25, 232, 250, MAIN), (26, 255, 275, MAIN)]
     extra = [(28, 10, 30, SIDE_COLUMN), (27, 280, 295, SIDE_COLUMN)]
     soft = [(8, 50, 75, MAIN), (19, 100, 120, SIDE_COLUMN)]
@@ -166,17 +184,28 @@ def make_s0001(ct, spineps, moose):
     write_mask(moose_file(moose, "s0001", "clin_ct_ribs"), 300,
                [(1, 10, 30, SIDE_COLUMN), (13, 280, 295, SIDE_COLUMN)])
     write_mask(moose_file(moose, "s0001", "clin_ct_organs"), 300, soft)
+    for model in ("clin_ct_cardiac", "clin_ct_peripheral_bones"):
+        write_mask(moose_file(moose, "s0001", model), 300, [])
+
+
+def empty_models(moose, subject, depth, stamp="20260101"):
+    """The four models' files beside a vertebrae file, each empty, so the subject has every
+    model's file as the segment job leaves a CT."""
+    for model in MODELS[:-1]:
+        write_mask(moose_file(moose, subject, model, stamp), depth, [])
 
 
 def make_others(ct, spineps, moose):
-    """batch/s0002, 200 slices (one padded crop), L4 and L5, the SPINEPS mask under sub-<id>;
-    s0003, only the coccyx under SPINEPS and only L6 under MOOSE; s0004, a CT with no mask;
-    s0005, a first mask on another grid in each scheme, then one on the CT's, and a decoy for
-    s00050; s0006, a mask on another grid alone in each scheme."""
+    """batch/s0002, 200 slices (one padded crop), L4 and L5, the SPINEPS mask under sub-<id>,
+    every model's file under MOOSE; s0003, only the coccyx under SPINEPS and only L6 under
+    MOOSE's vertebrae model, its one file; s0004, a CT with no mask; s0005, a first mask on
+    another grid in each scheme, then one on the CT's, the other models' files beside it, and a
+    decoy for s00050; s0006, a mask on another grid alone in each scheme."""
     two = [(23, 50, 80, MAIN), (24, 120, 150, MAIN)]
     write_ct(ct / "batch" / "s0002", 200, two)
     write_mask(spineps / "sub-s0002_seg-vert_msk.nii.gz", 200, two)
     write_mask(moose_file(moose, "batch/s0002", "clin_ct_vertebrae"), 200, two)
+    empty_models(moose, "batch/s0002", 200)
     write_ct(ct / "s0003", 120, [(27, 40, 60, MAIN)])
     write_mask(spineps / "s0003_seg-vert_msk.nii.gz", 120, [(27, 40, 60, MAIN)])
     write_mask(moose_file(moose, "s0003", "clin_ct_vertebrae"), 120, [(25, 40, 60, MAIN)])
@@ -188,6 +217,7 @@ def make_others(ct, spineps, moose):
     write_mask(spineps / "s00050_seg-vert_msk.nii.gz", 150, [(1, 40, 70, MAIN)])
     write_mask(moose_file(moose, "s0005", "clin_ct_vertebrae", "a", "_old"), 150, five, OTHER_GRID)
     write_mask(moose_file(moose, "s0005", "clin_ct_vertebrae", "b"), 150, five)
+    empty_models(moose, "s0005", 150, "b")
     write_ct(ct / "s0006", 120, five)
     write_mask(spineps / "s0006_seg-vert_msk.nii.gz", 120, five, OTHER_GRID)
     write_mask(moose_file(moose, "s0006", "clin_ct_vertebrae"), 120, five, OTHER_GRID)
@@ -558,7 +588,8 @@ class Locators(unittest.TestCase):
         cls.ct, cls.spineps, cls.moose = make_corpus(cls.base)
         cls.roots = {"spineps": cls.spineps, "moose": cls.moose}
         cls.flat = cls.base / "flat"
-        for name in ("s0007_vertebrae", "ribs_s0007", "s00070_vertebrae"):
+        for name in ("s0007_vertebrae", "ribs_s0007", "s00070_vertebrae", "s0009_ribs_vertebrae",
+                     "ribs_case1_vertebrae"):
             write_mask(cls.flat / f"{name}.nii.gz", 120, [(23, 40, 60, MAIN)])
         cls.renderer = load_tool("flexray_render")
         cls.parts = load_tool("render_blocks")
@@ -571,9 +602,14 @@ class Locators(unittest.TestCase):
         find = self.renderer.find_subjects
         self.assertEqual(find(self.ct),
                          ["batch/s0002", "s0001", "s0003", "s0004", "s0005", "s0006"])
-        for segmenter in ("spineps", "moose"):
-            self.assertEqual(find(self.ct, segmenter=segmenter, roots=self.roots),
-                             ["batch/s0002", "s0001", "s0003", "s0005", "s0006"], segmenter)
+        # On the CT's grid, so s0006's masks count for nothing; under moose every model's file,
+        # which s0003 lacks.
+        self.assertEqual(find(self.ct, segmenter="spineps", roots=self.roots),
+                         ["batch/s0002", "s0001", "s0003", "s0005"])
+        self.assertEqual(find(self.ct, segmenter="moose", roots=self.roots),
+                         ["batch/s0002", "s0001", "s0005"])
+        self.assertEqual(self.renderer.header_shape(self.ct, "s0005"), (SIDE, SIDE, 150))
+        self.assertIsNone(self.renderer.header_shape(self.ct, "nowhere"))
         with self.assertRaisesRegex(ValueError, "segmenter 'totalsegmentator' is not one of"):
             find(self.ct, segmenter="totalsegmentator", roots=self.roots)
         with self.assertRaisesRegex(ValueError, "segmenter=moose: no masks folder given"):
@@ -612,7 +648,9 @@ class Locators(unittest.TestCase):
         locate = self.parts.locate_moose
         found = locate("s0001", self.moose)
         self.assertEqual({m: p.name for m, p in found.items()}, MOOSE_S0001["files"])
-        self.assertEqual(list(locate("batch/s0002", self.moose)), ["clin_ct_vertebrae"])
+        self.assertEqual(list(found), list(MODELS), "in the order the volume is written")
+        self.assertEqual(list(locate("batch/s0002", self.moose)), list(MODELS))
+        self.assertEqual(list(locate("s0003", self.moose)), ["clin_ct_vertebrae"])
         self.assertEqual(locate("s0004", self.moose), {})
         self.assertEqual(locate("s0001", None), {})
         self.assertEqual(locate("s0005", self.moose)["clin_ct_vertebrae"].name,
@@ -625,6 +663,21 @@ class Locators(unittest.TestCase):
                          {"clin_ct_vertebrae": "s0007_vertebrae.nii.gz",
                           "clin_ct_ribs": "ribs_s0007.nii.gz"})
         self.assertEqual(locate("s0008", self.flat), {})
+        # A file naming two regions is placed with no model and recorded; a subject whose own id
+        # holds a region word still names one model.
+        parts = self.parts
+        found, skipped, unplaced = parts.by_region(parts.moose_candidates("s0009", self.flat),
+                                                   None, "s0009")
+        self.assertEqual((found, skipped, unplaced), ({}, [], ["s0009_ribs_vertebrae.nii.gz"]))
+        self.assertEqual({m: p.name for m, p in locate("ribs_case1", self.flat).items()},
+                         {"clin_ct_vertebrae": "ribs_case1_vertebrae.nii.gz"})
+        # moosez's CLI names its output folder after every model of one run; the file's name
+        # decides there.
+        self.assertEqual(parts.model_of(Path("moosez-clin_ct_ribs-clin_ct_vertebrae-20260101")
+                                        / "segmentations" / "clin_CT_ribs_segmentation_CT_x.nii.gz",
+                                        "x"), "clin_ct_ribs")
+        self.assertIsNone(parts.model_of(Path("moosez-clin_ct_ribs-clin_ct_vertebrae-1") / "segmentations"
+                                         / "segmentation_CT_x.nii.gz", "x"))
 
 
 @unittest.skipIf(MISSING, f"needs {', '.join(MISSING)}")
@@ -669,11 +722,38 @@ class LabelVolumes(unittest.TestCase):
         side = label[SIDE_COLUMN]
         self.assertTrue((side[..., 10:30] == 32).all() and (side[..., 280:295] == 44).all())
         self.assertFalse(side[..., 100:120].any(), "the trachea has no MOOSE id")
-        self.assertEqual(record, MOOSE_S0001)
+        self.assertEqual(record, moose_s0001())
         label, record = self.parts.label_moose("s0003", (SIDE, SIDE, 120), self.roots)
         self.assertEqual(np.unique(label).tolist(), [0, 83])
         self.assertEqual((record["labels"], record["dropped"]),
                          ({"83": "vertebra_l6"}, ["vertebra_l6"]))
+        self.assertEqual((record["models_missing"], record["precedence"]),
+                         (list(MODELS[:-1]), ["clin_ct_vertebrae"]))
+        # One model read: its absent names are the vertebrae model's alone, the sacrum among them.
+        vertebrae = self.parts.segmenters.moosez_to_moose_ids("clin_ct_vertebrae").values()
+        self.assertEqual(record["absent"], [self.parts.segmenters.MOOSE_STORED[i]
+                                            for i in sorted(set(vertebrae) - {83})])
+        self.assertIn("sacrum", record["absent"])
+        self.assertNotIn("liver", record["absent"])
+
+    def test_absent_lists_the_supervised_names_the_files_could_have_carried(self):
+        import numpy as np
+
+        _, record = self.parts.label_moose("s0001", (SIDE, SIDE, 300), self.roots)
+        absent = record["absent"]
+        # Absent: a vertebra the mask lacks, a cardiac name whose file is empty; not absent: a
+        # name present, the names FleXray drops (L6, rib 13, the aorta), a name MOOSE lacks.
+        for name in ("vertebra_l1", "heart_myocardium", "liver", "vertebra_l6", "rib_left_13",
+                     "aorta", "trachea", "vertebra_t13", "background"):
+            self.assertEqual(name in absent, name in ("vertebra_l1", "heart_myocardium"), name)
+        self.assertEqual(len(absent), len(set(absent)))
+        ids = [self.parts.segmenters.MOOSE_IDS[name] for name in absent]
+        self.assertEqual(ids, sorted(ids), "in MOOSE's id order")
+        # A negative value is outside every table and recorded, never written.
+        label = np.zeros((2, 2, 2), dtype=np.int16)
+        values = np.array([[[-1, 0], [23, 99]], [[0, 0], [0, 0]]], dtype=np.int32)
+        outside = self.parts.relabel(values, self.parts.segmenters.to_moose_ids("spineps"), label)
+        self.assertEqual((outside, np.unique(label).tolist()), ([-1, 99], [0, 81]))
 
     def test_a_mask_on_another_grid_is_skipped_by_name_or_refused_when_alone(self):
         parts = self.parts
@@ -681,8 +761,8 @@ class LabelVolumes(unittest.TestCase):
         self.assertEqual(record["files"], {"spineps": "sub-s0005_seg-vert_msk.nii.gz"})
         self.assertEqual(record["skipped"], ["s0005_seg-vert_msk.nii.gz"])
         _, record = parts.label_moose("s0005", (SIDE, SIDE, 150), self.roots)
-        self.assertEqual(record["files"],
-                         {"clin_ct_vertebrae": "clin_CT_vertebrae_CT_s0005.nii.gz"})
+        self.assertEqual(record["files"]["clin_ct_vertebrae"], "clin_CT_vertebrae_CT_s0005.nii.gz")
+        self.assertEqual((list(record["files"]), record["models_missing"]), (list(MODELS), []))
         self.assertEqual(record["skipped"], ["clin_CT_vertebrae_CT_s0005_old.nii.gz"])
         with self.assertRaises(parts.MaskProblem) as found:
             parts.label_spineps("s0006", (SIDE, SIDE, 120), self.roots)
@@ -823,11 +903,11 @@ class Rendering(unittest.TestCase):
         manifest = read_file(self.base / "moose", "manifest.json")
         self.assertEqual(manifest["segmenter"], "moose")
         self.assertEqual(manifest["blocks"]["segmenter"], "moose")
-        self.assertEqual(manifest["labels"]["s0001"], MOOSE_S0001)
+        self.assertEqual(manifest["labels"]["s0001"], moose_s0001())
         two = manifest["labels"]["batch/s0002"]
-        self.assertEqual(two["files"], {"clin_ct_vertebrae": "clin_CT_vertebrae_CT_s0002.nii.gz"})
-        self.assertEqual(two["models_missing"], ["clin_ct_organs", "clin_ct_cardiac",
-                                                 "clin_ct_peripheral_bones", "clin_ct_ribs"])
+        self.assertEqual(two["files"]["clin_ct_vertebrae"], "clin_CT_vertebrae_CT_s0002.nii.gz")
+        self.assertEqual((sorted(two["files"]), two["models_missing"]), (sorted(MODELS), []))
+        self.assertEqual(two["precedence"], list(MODELS), "the order written, kept as a list")
         self.assertEqual(manifest["labels"]["s0005"]["skipped"],
                          ["clin_CT_vertebrae_CT_s0005_old.nii.gz"])
         # The same label volume under either scheme draws the same views.
@@ -1072,7 +1152,7 @@ class FleXraysRuntime(unittest.TestCase):
 
     def test_under_moose_the_runtime_attenuates_no_name_flexray_drops(self):
         manifest = read_file(self.base / "moose-flexray-runtime", "manifest.json")
-        self.assertEqual(manifest["labels"]["s0001"], MOOSE_S0001)
+        self.assertEqual(manifest["labels"]["s0001"], moose_s0001())
         supervised = {str(i) for i in self.renderer.supervised_ids(self.renderer.label_lut())}
         opened = [row for row in manifest["views"] if row["attenuation"] is not None]
         self.assertGreaterEqual(len(opened), 1)
@@ -1127,13 +1207,16 @@ class Segment(unittest.TestCase):
         self.assertEqual(plan["models"], list(self.renderer.segment_models()))
         by_id = {s["id"]: s for s in plan["subjects"]}
         self.assertEqual(list(by_id), ["s0001", "batch/s0002", "s0003", "s0004", "nowhere"])
-        self.assertEqual((by_id["s0001"]["action"], by_id["s0001"]["found"]),
-                         ("run", ["clin_ct_organs", "clin_ct_ribs", "clin_ct_vertebrae"]))
-        self.assertEqual(by_id["s0001"]["missing"], ["clin_ct_cardiac", "clin_ct_peripheral_bones"])
-        self.assertEqual(by_id["batch/s0002"]["found"], ["clin_ct_vertebrae"])
+        every = sorted(self.renderer.segment_models())
+        self.assertEqual((by_id["s0001"]["action"], by_id["s0001"]["found"]), ("done", every))
+        self.assertEqual(by_id["s0001"]["missing"], [])
+        self.assertEqual(by_id["batch/s0002"]["found"], every)
+        self.assertEqual((by_id["s0003"]["action"], by_id["s0003"]["found"]),
+                         ("run", ["clin_ct_vertebrae"]))
+        self.assertEqual(by_id["s0003"]["missing"], list(MODELS[:-1]))
         self.assertEqual((by_id["s0004"]["action"], by_id["s0004"]["missing"]), ("done", []))
         self.assertEqual((by_id["nowhere"]["action"], by_id["nowhere"]["ct"]), ("no CT", False))
-        self.assertEqual(plan["to_run"], 3)
+        self.assertEqual(plan["to_run"], 1)
         self.assertEqual(len(plan["refusals"]), 5)
         self.assertIn("MOOSE's model zip clin_ct_organs_ras_07052025.zip (clin_ct_organs) is not "
                       "under --weights (fetch moose_weights first); never downloaded here",

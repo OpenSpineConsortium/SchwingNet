@@ -310,8 +310,10 @@ def thunder_candidates(group, data_root):
     return found
 
 
-def render_candidates(group, out):
-    """The renders of the render stage, each with its CT's subject as person."""
+def render_candidates(group, out, shared=None):
+    """The renders of the render stage, each with its CT's subject as person; with shared given,
+    the rows of those subjects alone (share_subjects), so every render group on one CT folder
+    enters the analysis with the same CTs."""
     manifest = Path(out) / "renders" / group.id / "manifest.json"
     failed = manifest.with_name("FAILED")
     if failed.is_file():
@@ -319,7 +321,11 @@ def render_candidates(group, out):
     if not manifest.is_file():
         raise StageError("the render stage wrote no manifest")
     base = manifest.parent
-    return [(str(base / r["file"]), r["file"], r["subject"], "") for r in manifest_rows(read_json(manifest))]
+    rows = manifest_rows(read_json(manifest))
+    if shared is not None:
+        keep = set(shared)
+        rows = [r for r in rows if r["subject"] in keep]
+    return [(str(base / r["file"]), r["file"], r["subject"], "") for r in rows]
 
 
 def manifest_rows(manifest):
@@ -397,10 +403,10 @@ def candidate_rows(group, args, renders):
         return walk_candidates(group, args.data_root)
     if group.source == "thunderdb":
         return thunder_candidates(group, args.data_root)
-    skipped = renders.get(group.id, {}).get("skipped")
-    if skipped:
-        raise StageError(skipped)
-    return render_candidates(group, args.out)
+    record = renders.get(group.id, {})
+    if record.get("skipped"):
+        raise StageError(record["skipped"])
+    return render_candidates(group, args.out, record.get("shared"))
 
 
 def stage_plan(args, table, renders=None, folders=None):
@@ -432,7 +438,10 @@ def stage_render(args, table):
     are chosen once (render_folders), among those with masks under every segmenter the folder's
     groups name, so every render group on one folder renders the same subjects, and the per-view
     seeds take the folder's salt and not the group's, so two groups on one folder differ only by
-    their blocks and engine. Returns what each group got and each folder's choice, for the plan."""
+    their blocks and engine; once every group has rendered, the subjects every group on a folder
+    kept are the ones that enter the analysis (share_subjects), since one scheme's masks may
+    hold nothing FleXray supervises for a CT the other's do. Returns what each group got and
+    each folder's choice, for the plan."""
     renders = {}
     groups = [g for g in table.groups if g.source == "render"]
     if not groups:
@@ -451,7 +460,27 @@ def stage_render(args, table):
             continue
         ct_root = Path(args.data_root) / group.folder
         renders[group.id] = render_group(renderer, args, group, ct_root, subjects, f"{table.salt}:{group.folder}", roots)
+    share_subjects(renders, groups, folders)
     return renders, folders
+
+
+def share_subjects(renders, groups, folders):
+    """The subjects every render group on one CT folder kept, so a CT one group passed over (its
+    masks holding nothing, or nothing that group's scheme supervises: a SPINEPS mask of one L6
+    alone is a volume FleXray drops whole) is in no group's rows and every pair compares the
+    same CTs: the folder's record says which they are, in the chosen order, each group's which
+    of its own it kept outside that set, and render_candidates reads the shared ones alone. A
+    group that rendered nothing, skipped or failed, takes no part in the intersection."""
+    for name, folder in folders.items():
+        kept = {g.id: renders[g.id]["kept"] for g in groups
+                if g.folder == name and "kept" in renders.get(g.id, {})}
+        if not kept:
+            continue
+        shared = set.intersection(*(set(subjects) for subjects in kept.values()))
+        folder["shared"] = [s for s in folder["subjects"] if s in shared]
+        for group_id, subjects in kept.items():
+            renders[group_id]["shared"] = [s for s in subjects if s in shared]
+            renders[group_id]["unshared"] = [s for s in subjects if s not in shared]
 
 
 def mask_roots(args):
@@ -551,7 +580,8 @@ def render_group(renderer, args, group, ct_root, subjects, salt, roots):
     try:
         done = renderer.render_subjects(ct_root, out, len(subjects), salt, args.device, blocks=blocks,
                                         engine=group.engine, subject_ids=tuple(subjects), roots=roots)
-        record.update(rendered=done.get("rendered"), passed_over=done.get("skipped", []))
+        record.update(rendered=done.get("rendered"), kept=list(done.get("subjects", [])),
+                      passed_over=done.get("skipped", []))
     except Exception as error:  # the other groups are still worth the job; the reason is kept
         traceback.print_exc(file=sys.stderr)
         out.mkdir(parents=True, exist_ok=True)
@@ -1564,13 +1594,17 @@ def verdict_line(pair, found, verdict):
 
 def render_summary(folders):
     """One line a CT folder: how many CTs its render groups drew from, of how many with masks under
-    every segmenter they name, each segmenter's count and the folder's CTs; or why it was skipped."""
+    every segmenter they name, each segmenter's count and the folder's CTs, and how many every
+    group kept (share_subjects), the CTs the analysis reads; or why it was skipped."""
     lines = []
     for folder, record in folders.items():
         if record.get("skipped"):
             lines.append(f"render {folder}: skipped, {record['skipped'][:120]}")
             continue
-        lines.append(f"render {folder}: {len(record['subjects'])} CTs chosen of {mask_counts(record)}")
+        line = f"render {folder}: {len(record['subjects'])} CTs chosen of {mask_counts(record)}"
+        if "shared" in record:
+            line += f"; {len(record['shared'])} kept by every group"
+        lines.append(line)
     return lines
 
 

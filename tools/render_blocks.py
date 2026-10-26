@@ -405,20 +405,45 @@ def moose_candidates(subject, root):
             if names_subject(p.name.split(".")[0], subject)]
 
 
-def by_region(candidates, shape):
-    """Each model's file among the candidates, {model: path}: a file is a model's when its path
-    below the folder names the model's region (MOOSE_REGIONS), the first in sorted order that
-    lies on the CT's grid when a shape is given; and the names of the files on another grid."""
+def regions_in(text, subject):
+    """The models whose region word occurs in a path's text, the subject's own name taken out
+    first so an id that holds a region word (ribs_case1) names no model."""
+    text = text.lower().replace(str(subject).rsplit("/", 1)[-1].lower(), "")
+    return [model for model, region in MOOSE_REGIONS.items() if region in text]
+
+
+def model_of(below, subject):
+    """The model a moosez output below the subject's folder belongs to: the one region word in
+    its file name (moosez's multilabel files carry the model's region, clin_CT_<region>_...),
+    else the one region word in the folders above it; None where the path names no region or
+    more than one, since the CLI's output folder is named after every model of one run
+    (moosez-<models>-<stamp>), so a folder with several region words decides nothing."""
+    for text in (below.name, below.parent.as_posix()):
+        models = regions_in(text, subject)
+        if len(models) == 1:
+            return models[0]
+        if models:
+            return None
+    return None
+
+
+def by_region(candidates, shape, subject):
+    """Each model's file among the candidates, {model: path} in MOOSE_REGIONS' order: a file is
+    a model's by model_of, the first in sorted order that lies on the CT's grid when a shape is
+    given; with the names of the files on another grid and of the ones that name no model or
+    more than one (unplaced), which the record keeps so a layout this reader does not know is
+    seen and not silently dropped."""
     paths = {path: below for path, below in candidates}
     kept, skipped = on_grid(list(paths), shape)
-    found = {}
+    found, unplaced = {}, []
     for path in kept:
-        below = paths[path].as_posix().lower()
-        for model, region in MOOSE_REGIONS.items():
-            if model not in found and region in below:
-                found[model] = path
-                break
-    return found, skipped
+        model = model_of(paths[path], subject)
+        if model is None:
+            unplaced.append(path.name)
+        elif model not in found:
+            found[model] = path
+    ordered = {model: found[model] for model in MOOSE_REGIONS if model in found}
+    return ordered, skipped, unplaced
 
 
 def locate_moose(subject, root, shape=None):
@@ -426,11 +451,12 @@ def locate_moose(subject, root, shape=None):
     moose_candidates by region (by_region: moosez names its output folders
     moosez-<model>-<stamp>/segmentations/ by its constants, and its multilabel files carry the
     model's name, by its README's examples; what its library entry writes exactly was not run
-    here, so the match is by the region word anywhere in the path below the subject's folder),
-    a file on another grid skipped when the CT's shape is given. Empty when there is none."""
+    here, so the match is by the one region word in the file's name, else in the folders
+    above it, below the subject's folder), a file on another grid skipped when the CT's shape
+    is given. Empty when there is none."""
     if root is None:
         return {}
-    found, _ = by_region(moose_candidates(subject, root), shape)
+    found, _, _ = by_region(moose_candidates(subject, root), shape, subject)
     return found
 
 
@@ -452,24 +478,32 @@ def grid_note(skipped):
     return f" on the CT's grid ({', '.join(skipped)} are not)" if skipped else ""
 
 
-def label_record(scheme, files, label, skipped):
+def label_record(scheme, files, label, skipped, reachable):
     """What a label volume holds, as the manifest records it: the scheme, the files read (names
-    only) and the ones skipped for lying on another grid, the MOOSE ids present with their
-    names, and the names present that FleXray's protocol drops (vertebra_l6, the thirteenth
-    ribs), which its remap drops at render time (fxr/datasets/remap.py,
-    compile_training_label_remap_by_name)."""
-    present = [int(i) for i in np.unique(label) if i > 0]
+    only, keyed as they were written, a later one winning where two overlap, which precedence
+    repeats as a list) and the ones skipped for lying on another grid, the MOOSE ids present
+    with their names, the names present that FleXray's protocol drops (vertebra_l6, the
+    thirteenth ribs), which its remap drops at render time (fxr/datasets/remap.py,
+    compile_training_label_remap_by_name), and absent, the names FleXray supervises that the
+    files read could have carried (reachable, the ids their relabel tables land on) and did
+    not, in MOOSE's id order, so a reader tells a structure the masks lack from one no file
+    could hold. unsupervised, models_missing and unplaced are filled by the caller."""
+    present = [int(i) for i in np.unique(label) if i != 0]
     names = {str(i): segmenters.MOOSE_STORED[i] for i in present}
     dropped = [n for n in names.values() if n in segmenters.MOOSE_DROPPED]
-    return {"scheme": scheme, "files": files, "skipped": list(skipped), "labels": names,
-            "dropped": dropped, "unsupervised": {}, "models_missing": []}
+    absent = [segmenters.MOOSE_STORED[i] for i in sorted(set(reachable) - set(present))
+              if segmenters.MOOSE_STORED[i] not in segmenters.MOOSE_DROPPED]
+    return {"scheme": scheme, "files": files, "precedence": list(files), "skipped": list(skipped),
+            "labels": names, "dropped": dropped, "absent": absent, "unsupervised": {},
+            "models_missing": [], "unplaced": []}
 
 
 def relabel(values, table, label):
     """Write each raw value's MOOSE stored id into the label volume where the mask holds it;
-    returns the raw values the table has no id for, which stay out of the volume."""
+    returns the raw values the table has no id for, which stay out of the volume, a negative
+    one among them, since a mask holds no negative structure."""
     outside = []
-    for value in (int(v) for v in np.unique(values) if v > 0):
+    for value in (int(v) for v in np.unique(values) if v != 0):
         if value in table:
             label[values == value] = table[value]
         else:
@@ -489,9 +523,10 @@ def label_spineps(subject, ct_shape, roots):
         raise MaskProblem("no SPINEPS mask found under its folder" + grid_note(skipped))
     values = read_values(kept[0], ct_shape)
     label = np.zeros(ct_shape, dtype=np.int16)
-    outside = relabel(values, segmenters.to_moose_ids("spineps"), label)
+    table = segmenters.to_moose_ids("spineps")
+    outside = relabel(values, table, label)
     names = segmenters.unsupervised_in("spineps")
-    record = label_record("spineps", {"spineps": kept[0].name}, label, skipped)
+    record = label_record("spineps", {"spineps": kept[0].name}, label, skipped, table.values())
     record["unsupervised"] = {str(v): names.get(v, "outside the VerSe alphabet") for v in outside}
     return label, record
 
@@ -504,24 +539,26 @@ def label_moose(subject, ct_shape, roots):
     wins where two models overlap, its values to stored ids by segmenters.moosez_to_moose_ids;
     a value MOOSE never stored (the organs model's trachea) or outside the model's table is left
     out and recorded as unsupervised; a missing model's file is recorded, and at least one must
-    be there. One int16 volume and its record."""
+    be there (the subject listing of tools/flexray_render.py asks for all five, so a render on
+    fewer is one the caller named). One int16 volume and its record."""
     root = roots.get("moose")
-    found, skipped = by_region(moose_candidates(subject, root), ct_shape) if root else ({}, [])
+    candidates = moose_candidates(subject, root) if root else []
+    found, skipped, unplaced = by_region(candidates, ct_shape, subject)
     if not found:
         raise MaskProblem("no MOOSE masks found under its folder" + grid_note(skipped))
     label = np.zeros(ct_shape, dtype=np.int16)
-    unsupervised, missing = {}, []
+    unsupervised, missing, reachable = {}, [], set()
     for model, names in segmenters.MOOSEZ_MODELS.items():
         if model not in found:
             missing.append(model)
             continue
-        values = read_values(found[model], ct_shape)
-        for value in relabel(values, segmenters.moosez_to_moose_ids(model), label):
+        table = segmenters.moosez_to_moose_ids(model)
+        reachable |= set(table.values())
+        for value in relabel(read_values(found[model], ct_shape), table, label):
             unsupervised[f"{model}:{value}"] = names.get(value, "outside the model's table")
-    files = {model: path.name for model, path in found.items()}
-    record = label_record("moose", files, label, skipped)
-    record["unsupervised"] = unsupervised
-    record["models_missing"] = missing
+    files = {m: found[m].name for m in segmenters.MOOSEZ_MODELS if m in found}
+    record = label_record("moose", files, label, skipped, reachable)
+    record.update(unsupervised=unsupervised, models_missing=missing, unplaced=unplaced)
     return label, record
 
 

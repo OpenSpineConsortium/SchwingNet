@@ -2,9 +2,10 @@
 MOOSE.yml declares them, and the maps between them at both edges (L6, which MOOSE stores and
 FleXray drops; T13 and the coccyx, which MOOSE lacks).
 
-These cases import no torch and no fxr, except the one that reads MOOSE.yml itself, which runs
-where the flexray package is installed and parses the file's simple `  id: name` lines with the
-standard library (no yaml dependency):
+These cases import no torch and no fxr: the one that reads MOOSE.yml itself reads the copy under
+tests/fixtures/ (flexray-1.0.2-MOOSE.yml) wherever it runs, and the installed package's own file
+too where flexray is installed, so a release that changes the file fails here; it parses the
+file's simple `  id: name` lines with the standard library (no yaml dependency):
 
     PYTHONPATH=src:vendor/beethoven-qa/src python -m unittest tests.schwingnet.test_segmenters
 """
@@ -37,6 +38,9 @@ from schwingnet.segmenters import (
 )
 
 
+FIXTURE = Path(__file__).resolve().parents[1] / "fixtures" / "flexray-1.0.2-MOOSE.yml"
+
+
 def moose_yaml():
     """FleXray's MOOSE.yml where the flexray package is installed, else None."""
     spec = importlib.util.find_spec("fxr")
@@ -44,6 +48,13 @@ def moose_yaml():
         return None
     path = Path(next(iter(spec.submodule_search_locations))) / "configs" / "datasets" / "MOOSE.yml"
     return path if path.is_file() else None
+
+
+def moose_yaml_copies():
+    """Every copy of MOOSE.yml to hold the tables to: the fixture always, the installed package's
+    own where there is one."""
+    installed = moose_yaml()
+    return [FIXTURE] if installed is None else [FIXTURE, installed]
 
 
 def parse_moose_yaml(text):
@@ -227,12 +238,11 @@ class Moosez(unittest.TestCase):
 
 class TheFile(unittest.TestCase):
     def test_moose_stored_and_the_drop_list_are_moose_yml(self):
-        path = moose_yaml()
-        if path is None:
-            self.skipTest("needs the flexray package for fxr/configs/datasets/MOOSE.yml")
-        stored, dropped = parse_moose_yaml(path.read_text(encoding="utf-8"))
-        self.assertEqual(stored, MOOSE_STORED)
-        self.assertEqual(dropped, list(MOOSE_DROPPED))
+        for path in moose_yaml_copies():
+            stored, dropped = parse_moose_yaml(path.read_text(encoding="utf-8"))
+            self.assertEqual(stored, MOOSE_STORED, path)
+            self.assertEqual(dropped, list(MOOSE_DROPPED), path)
+        self.assertEqual(len(MOOSE_STORED), 118, "background and 117 stored names")
 
     def test_the_parser_reads_the_simple_lines_and_nothing_else(self):
         text = (

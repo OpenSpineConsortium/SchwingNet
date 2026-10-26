@@ -244,7 +244,9 @@ class FakeRenderer:
     CT folders, and with a segmenter named only those with a mask file <subject>.nii.gz under
     roots[segmenter]; render_subjects writes one textured 16-bit PNG a view for the subject ids it
     is given, with a manifest in the renderer's shape, recording every call, so the test reads
-    which subjects, salt, blocks, engine and roots each render group got."""
+    which subjects, salt, blocks, engine and roots each render group got; under spineps it passes
+    the first subject over, as the renderer passes over a CT whose SPINEPS mask holds one L6
+    alone, so the run's shared-subjects rule is exercised."""
 
     def __init__(self, rng, kind):
         self.rng, self.kind, self.calls, self.finds = rng, kind, [], []
@@ -261,14 +263,17 @@ class FakeRenderer:
                         roots=None):
         self.calls.append({"group": Path(out).name, "subjects": subjects, "salt": salt, "device": device,
                            "blocks": blocks, "engine": engine, "subject_ids": subject_ids, "roots": roots})
+        passed = list(subject_ids[:1]) if blocks.segmenter == "spineps" else []
+        kept = [s for s in subject_ids if s not in passed]
         rows = []
-        for subject in subject_ids:
+        for subject in kept:
             for view in range(blocks.views):
                 name = f"{subject}_v{view}.png"
                 save_png(Path(out) / name, texture(self.rng, self.kind, 280), 16)
                 rows.append({"file": name, "subject": subject, "view": view})
         (Path(out) / "manifest.json").write_text(json.dumps({"engine": engine, "views": rows}), encoding="utf-8")
-        return {"rendered": len(rows), "subjects": list(subject_ids), "skipped": []}
+        return {"rendered": len(rows), "subjects": kept,
+                "skipped": [f"{s}: no structure FleXray supervises in its masks" for s in passed]}
 
 
 CT_FOLDER = "totalsegmentator_v201"
@@ -376,12 +381,22 @@ class WholeRunTest(unittest.TestCase):
         self.assertEqual([r["blocks"]["segmenter"] for r in records],
                          ["moose", "moose", "moose", "spineps", "moose", "moose"])
         self.assertEqual(records[0]["rendered"], 48)
-        self.assertEqual(len(rows["fluxray_raw_reference"]["chosen"]), 48)
         self.assertEqual(subjects_file, {CT_FOLDER: expected})
+        # The subject flexray_spineps passed over is in no group's rows: every group's shared list
+        # is the other 23, flexray_drr kept it outside that set, and the plan says so.
+        first, shared = expected[0], expected[1:]
+        spineps = rows["flexray_spineps"]["render"]
+        self.assertEqual((spineps["kept"], spineps["unshared"]), (shared, []))
+        self.assertEqual(spineps["passed_over"], [f"{first}: no structure FleXray supervises in its masks"])
+        self.assertEqual({tuple(r["shared"]) for r in records}, {tuple(shared)})
+        self.assertEqual((records[0]["kept"], records[0]["unshared"]), (expected, [first]))
+        for group, _, _, _ in RENDER_GROUPS:
+            self.assertEqual(len(rows[group]["chosen"]), 46, group)
+            self.assertFalse(any(p.endswith(f":{first}") for _, p in rows[group]["chosen"]), group)
         self.assertEqual(plan["renders"], {CT_FOLDER: {
             "subjects": expected, "segmenters": ["moose", "spineps"], "pending": [],
             "roots": {"moose": "found", "spineps": "found"}, "ct": 30, "masks": {"moose": 27, "spineps": 27},
-            "every": 26, "count": 24}})
+            "every": 26, "count": 24, "shared": shared}})
 
     def replication_is_tested_and_summarised(self, tool, results, lines):
         """The replication section holds the five pairs, the two engine pairs with the
@@ -410,7 +425,8 @@ class WholeRunTest(unittest.TestCase):
         self.assertEqual(results["renders"][CT_FOLDER]["every"], 26)
         self.assertTrue(lines[1].startswith("replication flexray_replica vs flexray_reference: no verdict"))
         self.assertTrue(lines[2].startswith("replication fluxray_raw vs fluxray_raw_reference: no verdict"))
-        self.assertEqual(lines[3], f"render {CT_FOLDER}: 24 CTs chosen of 26 with every mask of 30 CTs (moose 27, spineps 27)")
+        self.assertEqual(lines[3], f"render {CT_FOLDER}: 24 CTs chosen of 26 with every mask of 30 CTs "
+                                   "(moose 27, spineps 27); 23 kept by every group")
         self.assertIn("group flexray_replica synthetic counts as flexray_drr", lines)
         self.assertEqual(sum(1 for line in lines if line.startswith("group ")), 9)
         for pair in PAIRS[:2]:
