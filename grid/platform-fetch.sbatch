@@ -28,8 +28,10 @@
 # range request, url's summed over its URLs), must fit in the room left under the volume's quota after what the running fetches
 # still owe, or the job ends with exit 4 having fetched nothing; no floor stops a fetch part-way, so
 # acquisition_fetch.sh runs with FLOOR_TB=0, and a job Slurm requeues keeps the admission it was
-# given. kaggle, kaggle-dataset, gdown and redivis have no size reader yet and are refused the
-# same way, so no dataset lands without its size known.
+# given. gdown, kaggle and kaggle-dataset are sized by grid/fetch_size.py from what Drive or
+# Kaggle's storage states, Kaggle asked with the token, and redivis by grid/redivis_fetch.py
+# --size from Redivis's listing and its CSV exports (#163), so no dataset lands without its size
+# known; a token is loaded before the size is read, since the size reader asks with it.
 # Secrets are read from files into this job's environment or a mode-0600 config and never echoed.
 set -uo pipefail
 ID=${ID:?the source id}
@@ -97,7 +99,7 @@ else
   RULE_PYTHON=$ACQ_ENV/bin/python
   CURL=curl
 fi
-# The two size readers below are called by name through size_and_admit, which shellcheck cannot follow.
+# The size reader below is called by name through size_and_admit, which shellcheck cannot follow.
 # shellcheck disable=SC2329
 link_size() {  # link_size LINK_FILE OUTPUT: "<total bytes> <bytes still to land> the link answers", from a one-byte range request
   local cfg total have=0
@@ -138,11 +140,6 @@ fetch_url() {  # fetch_url URL: curl into raw/<its name>, resumed from what is t
   "$CURL" -sS -L --fail --continue-at - -o "$DATA/$ID/raw/$name" "$1" || { echo "$name: curl ended with exit $?"; return 1; }
   echo "$name: landed $(landed_size "$1") bytes"
 }
-# shellcheck disable=SC2329
-no_size_reader() {  # the size reader of a route that has none yet: no size, so the rule refuses it
-  echo "no exact size; the $ROUTE route has no size reader yet"
-  return 3
-}
 rc=0
 case "$ROUTE" in
   acq)
@@ -161,9 +158,13 @@ case "$ROUTE" in
   verify)
     python3 "$SSN/data_platform/reacquire/reacquire.py" --verify "$ID"; rc=$? ;;
   gdown)
-    if size_and_admit "$ID" no_size_reader; then
+    # The folder is named here so the reader and gdown are given one place; the reader counts
+    # nothing in it, since gdown writes the whole file into a new temporary beside the output
+    # (grid/fetch_size.py, size_gdown).
+    scratch=$DATA/$ID/raw/gdown_$(date '+%F')
+    # shellcheck disable=SC2086
+    if size_and_admit "$ID" $SIZER gdown --id "$ARGS" --dest "$scratch"; then
       export PATH=$ACQ_ENV/bin:$PATH
-      scratch=$DATA/$ID/raw/gdown_$(date '+%F')
       mkdir -p "$scratch" && cd "$scratch" && gdown "$ARGS"; rc=$?
       file "$scratch"/* 2>/dev/null | tee "$DATA/$ID/meta/file_report.txt"
     else rc=4; fi ;;
@@ -199,25 +200,31 @@ case "$ROUTE" in
       for url in $ARGS; do fetch_url "$url" || rc=1; done
     else rc=4; fi ;;
   kaggle)
-    if size_and_admit "$ID" no_size_reader; then
-      load_token KAGGLE_API_TOKEN "${TOKEN_FILE:-~/.fluorocap/credentials.env}" || exit 2
+    load_token KAGGLE_API_TOKEN "${TOKEN_FILE:-~/.fluorocap/credentials.env}" || exit 2
+    # shellcheck disable=SC2086
+    if size_and_admit "$ID" $SIZER kaggle --competition "$ARGS" --dest "$DATA/$ID/raw"; then
       "${KAGGLE_BIN:-$HOME/mambaforge/envs/spineps/bin/kaggle}" competitions download -c "$ARGS" -p "$DATA/$ID/raw"; rc=$?
     else rc=4; fi ;;
   kaggle-dataset)
-    if size_and_admit "$ID" no_size_reader; then
-      load_token KAGGLE_API_TOKEN "${TOKEN_FILE:-~/.fluorocap/credentials.env}" || exit 2
+    load_token KAGGLE_API_TOKEN "${TOKEN_FILE:-~/.fluorocap/credentials.env}" || exit 2
+    # shellcheck disable=SC2086
+    if size_and_admit "$ID" $SIZER kaggle-dataset --dataset "$ARGS" --dest "$DATA/$ID/raw"; then
       "${KAGGLE_BIN:-$HOME/mambaforge/envs/spineps/bin/kaggle}" datasets download -d "$ARGS" -p "$DATA/$ID/raw"; rc=$?
     else rc=4; fi ;;
   redivis)
-    if size_and_admit "$ID" no_size_reader; then
-      load_token REDIVIS_API_TOKEN "${TOKEN_FILE:-~/.redivis/token.env}" || exit 2
-      renv=${REDIVIS_ENV:-/rs/rs_grp_oschome/go2432/envs/redivis}
-      # Under a lock, so two Redivis fetches starting together never build the environment at once.
-      (
-        flock 9
-        "$renv/bin/python" -c 'import redivis' 2>/dev/null ||
-          { "$ACQ_ENV/bin/python" -m venv "$renv" && "$renv/bin/pip" install -q "redivis==${REDIVIS_VERSION:-0.21.1}"; }
-      ) 9> "$renv.lock" || exit 2
+    load_token REDIVIS_API_TOKEN "${TOKEN_FILE:-~/.redivis/token.env}" || exit 2
+    renv=${REDIVIS_ENV:-/rs/rs_grp_oschome/go2432/envs/redivis}
+    # Under a lock, so two Redivis fetches starting together never build the environment at once.
+    # It is built before the size is read, since the size reader is the client too; the client and
+    # what it pulls in (pyarrow among them) come to some hundreds of megabytes, far under any room
+    # the rule decides.
+    (
+      flock 9
+      "$renv/bin/python" -c 'import redivis' 2>/dev/null ||
+        { "$ACQ_ENV/bin/python" -m venv "$renv" && "$renv/bin/pip" install -q "redivis==${REDIVIS_VERSION:-0.21.1}"; }
+    ) 9> "$renv.lock" || exit 2
+    # shellcheck disable=SC2086
+    if size_and_admit "$ID" "$renv/bin/python" "$REPO/grid/redivis_fetch.py" --size --dest "$DATA/$ID/raw" --manifest "$DATA/$ID/meta" $ARGS; then
       # shellcheck disable=SC2086
       "$renv/bin/python" "$REPO/grid/redivis_fetch.py" --dest "$DATA/$ID/raw" --manifest "$DATA/$ID/meta" $ARGS; rc=$?
     else rc=4; fi ;;

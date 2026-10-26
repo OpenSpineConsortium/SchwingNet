@@ -14,14 +14,16 @@
 #   bash grid/run-xray-chain.sh --credentialed --only mimic_cxr_jpg   # the opt-in PhysioNet list
 #   HPCW_DRY=1 bash grid/run-xray-chain.sh            # dry run: print the submissions
 #
-# Before submitting it sums the sizes the list states for the chosen entries, rounded up to the
-# whole GB, and refuses when they exceed the room left under the volume's CephFS quota after what
-# the running fetches still owe, read at submit time with no margin (grid/size-rule.sh; df reports
-# the whole Ceph pool there, issue #160); an entry whose size is null counts as 0 and is named, so
-# the owner knows it is unbudgeted. The size rule's lock is held from that reading until the
-# chain's sizes are recorded, so no fetch admitted in between misses the chain, nor the chain it.
-# The X-ray sets are not yet sized from their sources one by one, as the CT platform's are in their
-# jobs (issue #163): until they are, this sum of the list's sizes is their only check.
+# Each set is admitted or refused whole by the owner's size rule when the fetch job reaches it
+# (grid/admit.sh, issue #163): its exact size, read from its source, with what its bank and shard
+# may write, must fit the room left under the volume's CephFS quota after what the running fetches
+# still owe, with no margin (grid/size-rule.sh; df reports the whole Ceph pool there, issue #160).
+# Nothing is refused here, since the list's sizes are guesses and the room changes before the job
+# starts; the budget line says what the list states, what the quota has left and what the running
+# fetches owe. The chain is recorded in grid/logs/XRAY_SIZES.txt as "<fetch job> sets <utc> <bank
+# job>", so the size rule counts the fetch by its sets' own admissions and the fetch job hands
+# each set's bank room to the bank job; the size rule's lock is held from submission to that
+# record, so the fetch job's first decision finds it.
 # PYDRV: the python the stages run; the repository's pixi environment where pixi installed it,
 # else python3 (then stage 2 and 3 fail at pydantic, and the report says so).
 set -uo pipefail
@@ -73,40 +75,26 @@ if [ "$count" = 0 ]; then
 fi
 # shellcheck source=grid/size-rule.sh
 . "$REPO/grid/size-rule.sh"
-# One decision at a time with the fetch jobs' own (grid/size-rule.sh, admit_fetch), from the room's
-# reading to the record of this chain's sizes; a dry run sends nothing, and off the grid there is
-# no data root to hold the lock in.
-if [ -z "${HPCW_DRY:-}" ] && [ -d "$DATA" ]; then
-  exec 8> "$DATA/.size-rule.lock"
-  flock -w "${SIZE_RULE_WAIT:-900}" 8 || {
-    echo "refusing to submit: another fetch held the size check for ${SIZE_RULE_WAIT:-900} seconds; nothing was queued"
-    exit 3
-  }
+# What the running fetches owe first and the room after it, in the order a fetch job's decision
+# reads them (grid/size-rule.sh, admit_fetch, #180); this line only reports them, since each set is
+# decided when the fetch job reaches it.
+if owed=$(owed_by_running ""); then
+  read -r owed_bytes owed_n owed_unsized <<< "$owed"
+  owed="$(gb_up "$owed_bytes") GB of it owed to $(running_fetches "$owed_n")${owed_unsized:+, and the running fetch of $owed_unsized states no size}"
+else
+  owed="what the running fetches owe not read (squeue did not answer)"
 fi
-# What the running fetches owe first and the room after it, read twice a minute apart, as a fetch
-# job's own decision reads them (grid/size-rule.sh, admit_fetch and settled_room, #180).
-owed=$(owed_by_running "") || { echo "cannot read what the running fetches owe: squeue did not answer; nothing was queued"; exit 2; }
-read -r owed_bytes owed_n owed_unsized <<< "$owed"
-read -r free_bytes free_from <<< "$(settled_room "$VOLUME")"
-if [ -z "$free_bytes" ]; then
+read -r free_gb free_from <<< "$(volume_free_gb "$VOLUME")"
+if [ -z "$free_gb" ]; then
   why=$(room_unread_words "$VOLUME" "neither its CephFS quota nor df answered")
   echo "cannot read the free space of $VOLUME: $why; nothing was queued"
   exit 2
 fi
-free_gb=$(gb_down "$free_bytes")
-owed_gb=$(gb_up "$owed_bytes")
 counted=""
 [ "$stated_gb" = "$total_gb" ] || counted=", counted as $total_gb GB"
-echo "size budget: $count entries, $stated_gb GB stated$counted; $VOLUME has $free_gb GB $(free_space_words "$free_from"), $owed_gb GB of it owed to $(running_fetches "$owed_n")"
-[ -z "$unknown" ] || echo "no size stated for:${unknown} (counted as 0; read the page)" | sed "s/for: */for: /"
-if [ -n "$owed_unsized" ]; then
-  echo "refusing to submit: the running fetch of $owed_unsized states no size, so nothing is admitted beside it"
-  exit 3
-fi
-if [ "$total_gb" -gt $(( free_gb - owed_gb )) ]; then
-  echo "refusing to submit: $total_gb GB exceeds the room the quota has left after the running fetches; free room or narrow with --only"
-  exit 3
-fi
+echo "size budget: $count entries, $stated_gb GB stated$counted; $VOLUME has $free_gb GB $(free_space_words "$free_from"), $owed"
+echo "each set starts its fetch only if the exact size its source states, with its bank, fits the room then; one that does not lands nothing (grid/admit.sh)"
+[ -z "$unknown" ] || echo "no size stated in the list for:${unknown} (the job reads it from the source)" | sed "s/for: */for: /"
 
 FETCH_ARGS=""
 [ -z "$ONLY" ] || FETCH_ARGS="--only $ONLY"
@@ -121,6 +109,17 @@ export FETCH_ARGS ONLY="$ONLY_IDS"
 # DEPEND (sbatch's dependency grammar, as grid/gate.sh gives it) holds stage 1 back until the jobs
 # it names allow; job submit ends a stage whose dependency can never be met instead of stranding it.
 hpcw_after "${DEPEND:-}" || exit 1
+# One decision at a time with the fetch jobs' own (grid/size-rule.sh, admit_fetch), from the first
+# submission to the record of this chain, so the fetch job's first decision finds the bank job it
+# hands each set's bank room to; a dry run sends nothing, and off the grid there is no data root to
+# hold the lock in.
+if [ -z "${HPCW_DRY:-}" ] && [ -d "$DATA" ]; then
+  exec 8> "$DATA/.size-rule.lock"
+  flock -w "${SIZE_RULE_WAIT:-900}" 8 || {
+    echo "refusing to submit: another fetch held the size check for ${SIZE_RULE_WAIT:-900} seconds; nothing was queued"
+    exit 3
+  }
+fi
 # All three or none: a stage refused after the first cancels what was submitted, so no fetch runs
 # that nothing recorded and no later chain waits on half of this one.
 undo() { "${SCANCEL:-scancel}" "$@" && echo "cancelled what was submitted before the refusal: $*" >&2; exit 1; }
@@ -134,10 +133,10 @@ j3=$(hpcw_submit xr_catalog batch ${HPCW_AFTER[@]+"${HPCW_AFTER[@]}"} -- 03-cata
 {
   echo "$(date '+%F %T') fetch=$j1 bank=$j2 catalog=$j3 only=${ONLY:-all} credentialed=$CRED size_gb=$total_gb pydrv=$PYDRV"
 } | tee -a "$REPO/grid/LAST_RUN.txt"
-# What the size rule counts the fetch at while it runs (grid/size-rule.sh): the sizes the list
-# states, their sum rounded up to the whole GB; a set whose size the list leaves null counts
-# nothing. Recorded before the lock is let go, so the next decision sees it.
-[ -n "${HPCW_DRY:-}" ] || echo "$j1 $(( total_gb * 1000000000 )) $(date -u '+%FT%TZ')" >> "$REPO/grid/logs/XRAY_SIZES.txt"
+# The fetch decides set by set and counts by its sets' admissions (grid/size-rule.sh), and hands
+# each set's bank room to the bank job named here (grid/admit.sh). Recorded before the lock is let
+# go, so its first decision sees it.
+[ -n "${HPCW_DRY:-}" ] || echo "$j1 sets $(date -u '+%FT%TZ') $j2" >> "$REPO/grid/logs/XRAY_SIZES.txt"
 exec 8>&-
 echo "submitted: 1 fetch $j1 -> 2 bank-ingest $j2 (afterany) -> 3 catalog $j3 (afterany)"
 echo "ETA: stage 1 is network-bound, about 1 hour per 20 GB on a compute node (${stated_gb} GB stated, so about $(( total_gb / 20 + 1 )) hours; a 4-day wall time, requeued on preemption); stage 2 minutes per source (hashing and copying; a JPG set converts at a few hundred frames a minute); stage 3 under a minute."

@@ -1,17 +1,19 @@
-"""tools/textbook_publish.py publishes the textbook's reader as one claude.ai artifact from the
-owner's computer (issues #236, #277 and #294): the plan, nothing where the record holds this page
-and these capabilities, the capabilities passed on a first publish and again only where the
-record's differ; the mechanical prompt, which has the session read the page whole before it
-publishes it and stop where the project's files are refused, with nothing of the page's text in
-it; what the answer file says; and the record a publish leaves. The command itself is run against
-a bare repository standing in for GitHub: the record read and written by fast-forward alone from a
-repository of its own, the page taken from main's commit, a stop where it is already published,
-and the answer file the session writes deciding what is recorded."""
+"""tools/textbook_publish.py publishes the repository's front door as one claude.ai artifact from
+the owner's computer (issues #236, #277 and #294, the owner's word of 2026-10-26): the plan,
+nothing where the record holds this page and these capabilities, the capabilities passed on a
+first publish and again only where the record's differ; the mechanical prompt, which has the
+session read the page whole before it publishes it and stop where the connector is refused, with
+nothing of the page's text in it; what the answer file says; and the record a publish leaves. The
+command itself is run against a bare repository standing in for GitHub: the record read and
+written by fast-forward alone from a repository of its own, the page taken from main's commit, a
+stop where it is already published, an artifact already at a link adopted with --url, and the
+answer file the session writes deciding what is recorded."""
 
 import datetime as dt
 import io
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -30,7 +32,7 @@ from test_textbook_site import GIT_ENV, QUIET  # noqa: E402
 URL = "https://claude.ai/artifact/AbC123-xyz"
 RUN = "local 2026-10-25T03:00:00Z"
 SHA = "abc1234def567890abc1234def567890abc1234d"
-PAGE, ANSWER = "/h/SchwingNet-textbook-reader/reader.html", "/h/SchwingNet-textbook-reader/answer.txt"
+PAGE, ANSWER = "/h/SchwingNet-front-door/door.html", "/h/SchwingNet-front-door/answer.txt"
 
 
 def git(root, *args):
@@ -51,10 +53,15 @@ def quiet(repo):
 
 
 class ThePublish(unittest.TestCase):
-    def test_the_reader_reads_this_projects_files_and_nothing_else_of_the_viewers(self):
-        self.assertEqual(tp.CAPABILITIES, {"files": {"project": tp.PROJECT}, "sample": {}})
-        self.assertRegex(tp.PROJECT, r"^chan_[0-9A-Za-z]+$")
+    def test_the_door_reads_the_viewers_github_connector_and_nothing_else_of_the_viewers(self):
+        self.assertEqual(tp.CAPABILITIES, {"mcp": {"servers": [{"server": "GitHub", "tools": tp.TOOLS}]}, "sample": {}})
+        self.assertEqual(tp.TOOLS, ["get_file_contents", "list_commits", "search_code"], "read-only tools alone")
         self.assertTrue((ROOT / tp.PAGE_SOURCE).is_file())
+        # The page names the same connector and calls no tool but the ones declared.
+        page = (ROOT / tp.PAGE_SOURCE).read_text(encoding="ascii")
+        self.assertIn('SERVER = "GitHub"', page)
+        called = set(re.findall(r'call\("([a-z_]+)"', page))
+        self.assertEqual(called, set(tp.TOOLS))
 
 
 class StateFile(unittest.TestCase):
@@ -78,8 +85,8 @@ class Plan(unittest.TestCase):
     def setUp(self):
         temp = tempfile.TemporaryDirectory()
         self.addCleanup(temp.cleanup)
-        self.page = Path(temp.name) / "reader.html"
-        self.page.write_text("<title>SchwingNet Textbook</title>\n<p>The reader.</p>\n", encoding="utf-8")
+        self.page = Path(temp.name) / "door.html"
+        self.page.write_text("<title>SchwingNet Front Door</title>\n<p>The door.</p>\n", encoding="utf-8")
 
     def recorded(self, **fields):
         state = {"schema": tp.SCHEMA, "url": URL, "page": tp.sha256(self.page), "capabilities": tp.CAPABILITIES}
@@ -112,8 +119,8 @@ class Prompt(unittest.TestCase):
     def setUp(self):
         temp = tempfile.TemporaryDirectory()
         self.addCleanup(temp.cleanup)
-        page = Path(temp.name) / "reader.html"
-        page.write_text("<title>SchwingNet Textbook</title>\n<p>SECRETWORD-ZXQ</p>\n", encoding="utf-8")
+        page = Path(temp.name) / "door.html"
+        page.write_text("<title>SchwingNet Front Door</title>\n<p>SECRETWORD-ZXQ</p>\n", encoding="utf-8")
         self.first = tp.plan(page, {})
         self.later = tp.plan(page, {"schema": tp.SCHEMA, "url": URL, "page": "o" * 64, "capabilities": tp.CAPABILITIES})
         self.again = tp.plan(page, {"schema": tp.SCHEMA, "url": URL, "page": "o" * 64, "capabilities": {"sample": {}}})
@@ -127,27 +134,27 @@ class Prompt(unittest.TestCase):
             read = text.index(f"1. Read {PAGE} with the Read tool, the whole of it, before any publish.")
             self.assertLess(read, text.index("Publish it") if plan["first"] else text.index("Action publish"))
             self.assertIn(f"publish nothing but {PAGE}", text)
-            self.assertIn(f"{self.first['bytes']} bytes of HTML that hold no part of the book", text)
+            self.assertIn(f"{self.first['bytes']} bytes of HTML that hold no file of the repository", text)
 
     def test_the_first_publish_makes_the_artifact_with_its_capabilities_and_label(self):
         text = self.text(self.first)
-        self.assertIn(f"2. Publish it: action publish, file_path {PAGE}, title \"{tp.TITLE}\", icon book, description\n"
-                      f"   \"{tp.DESCRIPTION}\", capabilities {json.dumps(tp.CAPABILITIES)}, label \"Reader abc1234\".",
+        self.assertIn(f"2. Publish it: action publish, file_path {PAGE}, title \"{tp.TITLE}\", icon door, description\n"
+                      f"   \"{tp.DESCRIPTION}\", capabilities {json.dumps(tp.CAPABILITIES)}, label \"Door abc1234\".",
                       text)
         self.assertNotIn("Action read", text)
 
     def test_a_later_publish_reads_the_artifact_first_and_passes_no_capabilities(self):
         text = self.text(self.later)
         self.assertIn(f"2. Action read with url {URL}", text)
-        self.assertIn(f"3. Action publish with url {URL}, file_path {PAGE}, label \"Reader abc1234\"; pass no "
+        self.assertIn(f"3. Action publish with url {URL}, file_path {PAGE}, label \"Door abc1234\"; pass no "
                       "capabilities; pass no icon,\n   title or description", text)
         self.assertNotIn("capabilities {", text)
         self.assertNotIn(tp.REFUSED, text)
 
     def test_capabilities_that_changed_go_again_and_their_refusal_stops_the_publish(self):
         text = self.text(self.again)
-        self.assertIn(f"label \"Reader abc1234\", capabilities {json.dumps(tp.CAPABILITIES)}, since the reader's "
-                      "capabilities changed", text)
+        self.assertIn(f"label \"Door abc1234\", capabilities {json.dumps(tp.CAPABILITIES)}, since the door's "
+                      "capabilities are not the ones recorded", text)
         for text in (self.text(self.first), text):
             self.assertIn("If the publish is refused for its capabilities, do not publish without them", text)
             self.assertIn(f"write the line {tp.REFUSED} to the answer file", text)
@@ -159,7 +166,7 @@ class Prompt(unittest.TestCase):
             self.assertIn(f"write the line ARTIFACT_TOOL_MISSING to {ANSWER}", text)
             self.assertIn(f"write the line ARTIFACT_URL=<url> to {ANSWER} with the Write\ntool", text)
             self.assertIn("typing /exit lets the command that opened this session record it", text)
-            self.assertIn(tp.PROJECT, text)
+            self.assertIn("the viewer's own GitHub connector in claude.ai (the connector named GitHub)", text)
 
     def test_nothing_of_the_pages_text_is_in_the_prompt_or_the_plan(self):
         for plan in (self.first, self.later, self.again):
@@ -193,28 +200,30 @@ class Record(unittest.TestCase):
         new, message = tp.record({}, self.PLAN, self.WHOLE, SHA, RUN)
         self.assertEqual(new, {"schema": tp.SCHEMA, "url": URL, "sha": SHA, "page": "p" * 64,
                                "capabilities": tp.CAPABILITIES, "run": RUN})
-        self.assertEqual(message, "Reader abc1234: published")
+        self.assertEqual(message, "Door abc1234: published")
 
     def test_a_redeploy_that_passed_no_capabilities_keeps_the_recorded_ones(self):
-        state = {"schema": tp.SCHEMA, "url": URL, "capabilities": {"files": {"project": "chan_x"}}}
+        state = {"schema": tp.SCHEMA, "url": URL, "capabilities": {"sample": {}}}
         new, _message = tp.record(state, dict(self.PLAN, first=False, url=URL, capabilities=None), self.WHOLE, SHA, RUN)
-        self.assertEqual(new["capabilities"], {"files": {"project": "chan_x"}})
+        self.assertEqual(new["capabilities"], {"sample": {}})
 
     def test_a_missing_tool_a_refusal_another_artifact_or_no_link_is_refused(self):
         other = {"schema": tp.SCHEMA, "url": "https://claude.ai/artifact/other"}
-        for current, answer, says in ((other, self.WHOLE, "not to the recorded artifact"),
+        for current, answer, says in ((other, self.WHOLE, "not to the artifact https://claude.ai/artifact/other"),
                                       ({}, dict(self.WHOLE, url=""), "no ARTIFACT_URL line"),
                                       ({}, dict(self.WHOLE, missing_tool=True), "no Artifact tool"),
-                                      ({}, dict(self.WHOLE, refused="not a member"), "must be a member")):
+                                      ({}, dict(self.WHOLE, refused="mcp: not allowed"), "refuse a page that declares a connector"),
+                                      ({}, dict(self.WHOLE, url="https://claude.ai/artifact/third"), "the record or --url names")):
+            plan = dict(self.PLAN, url=URL) if says.endswith("names") else self.PLAN
             with self.subTest(says=says), self.assertRaises(SystemExit) as stop:
-                tp.record(current, self.PLAN, answer, SHA, RUN)
+                tp.record(current, plan, answer, SHA, RUN)
             self.assertIn(says, str(stop.exception))
 
 
 class Local(unittest.TestCase):
     STATE = {"schema": tp.SCHEMA, "url": URL, "sha": "a" * 40, "page": "p" * 64, "capabilities": tp.CAPABILITIES,
              "run": "local"}
-    READER = "<title>SchwingNet Textbook</title>\n<p>The reader, first.</p>\n"
+    READER = "<title>SchwingNet Front Door</title>\n<p>The door, first.</p>\n"
 
     def setUp(self):
         patched = mock.patch.dict(os.environ, GIT_ENV)
@@ -234,7 +243,7 @@ class Local(unittest.TestCase):
         git(self.clone, "commit", "-q", "-m", "one")
         git(self.clone, "remote", "add", "origin", str(self.origin))
         git(self.clone, "push", "-q", "origin", "main")
-        self.work = self.base / "SchwingNet-textbook-reader"
+        self.work = self.base / "SchwingNet-front-door"
         self.remote = str(self.origin)
 
     def recorded(self):
@@ -267,14 +276,14 @@ class Local(unittest.TestCase):
         self.work.mkdir()
         self.assertEqual(tp.recorded_state(self.work, self.remote), {})
         self.assertFalse((self.work / tp.STATE_FILE).exists())
-        first = tp.write_record(self.work, self.remote, self.STATE, "Reader aaaaaaa: published")
+        first = tp.write_record(self.work, self.remote, self.STATE, "Door aaaaaaa: published")
         self.assertEqual(git(self.origin, "ls-tree", "--name-only", tp.BRANCH), tp.STATE_FILE)
         self.assertEqual(self.recorded(), self.STATE)
         self.assertEqual(tp.recorded_state(self.work, self.remote), self.STATE)
-        second = tp.write_record(self.work, self.remote, dict(self.STATE, sha="b" * 40), "Reader bbbbbbb: published")
+        second = tp.write_record(self.work, self.remote, dict(self.STATE, sha="b" * 40), "Door bbbbbbb: published")
         self.assertEqual(git(self.origin, "rev-parse", tp.BRANCH), second)
         self.assertEqual(git(self.origin, "rev-parse", f"{tp.BRANCH}^"), first)
-        self.assertEqual(git(self.origin, "log", "-1", "--format=%s", tp.BRANCH), "Reader bbbbbbb: published")
+        self.assertEqual(git(self.origin, "log", "-1", "--format=%s", tp.BRANCH), "Door bbbbbbb: published")
         self.assertEqual(self.recorded()["sha"], "b" * 40)
 
     def test_the_editions_record_is_followed_by_the_readers_on_the_same_branch(self):
@@ -284,7 +293,7 @@ class Local(unittest.TestCase):
         old = {"schema": "textbook-artifact/1", "url": "https://claude.ai/artifact/edition", "files": {}}
         edition = tp.write_record(self.work, self.remote, old, "Edition aaaaaaa: 5 files published")
         self.assertEqual(tp.recorded_state(self.work, self.remote), {})
-        tp.write_record(self.work, self.remote, self.STATE, "Reader aaaaaaa: published")
+        tp.write_record(self.work, self.remote, self.STATE, "Door aaaaaaa: published")
         self.assertEqual(git(self.origin, "rev-parse", f"{tp.BRANCH}^"), edition)
 
     def test_a_remote_that_cannot_be_read_stops_the_command(self):
@@ -304,7 +313,7 @@ class Local(unittest.TestCase):
         head = git(self.origin, "rev-parse", tp.BRANCH)
         self.work.mkdir()
         with self.assertRaises(SystemExit) as stop:
-            tp.write_record(self.work, self.remote, self.STATE, "Reader aaaaaaa: published")
+            tp.write_record(self.work, self.remote, self.STATE, "Door aaaaaaa: published")
         self.assertIn("notes.md", str(stop.exception))
         self.assertEqual(git(self.origin, "rev-parse", tp.BRANCH), head)
 
@@ -312,21 +321,21 @@ class Local(unittest.TestCase):
         self.work.mkdir()
         elsewhere = self.base / "elsewhere"
         elsewhere.mkdir()
-        tp.write_record(self.work, self.remote, self.STATE, "Reader aaaaaaa")
+        tp.write_record(self.work, self.remote, self.STATE, "Door aaaaaaa")
         real, moved = tp.record_head, []
 
         def moving(repo, remote):
             head = real(repo, remote)
             if not moved:
                 moved.append(head)
-                tp.write_record(elsewhere, remote, dict(self.STATE, sha="c" * 40), "Reader ccccccc")
+                tp.write_record(elsewhere, remote, dict(self.STATE, sha="c" * 40), "Door ccccccc")
             return head
 
         with mock.patch.object(tp, "record_head", moving):
-            commit = tp.write_record(self.work, self.remote, dict(self.STATE, sha="b" * 40), "Reader bbbbbbb")
+            commit = tp.write_record(self.work, self.remote, dict(self.STATE, sha="b" * 40), "Door bbbbbbb")
         self.assertEqual(git(self.origin, "rev-parse", tp.BRANCH), commit)
         self.assertEqual(git(self.origin, "log", "--format=%s", tp.BRANCH).splitlines(),
-                         ["Reader bbbbbbb", "Reader ccccccc", "Reader aaaaaaa"])
+                         ["Door bbbbbbb", "Door ccccccc", "Door aaaaaaa"])
 
     def test_a_work_folder_inside_the_clone_is_refused(self):
         with self.assertRaises(SystemExit):
@@ -355,7 +364,7 @@ class Local(unittest.TestCase):
         self.assertEqual(state["page"], tp.sha256(self.work / tp.PAGE))
         self.assertEqual(state["capabilities"], tp.CAPABILITIES)
         self.assertTrue(state["run"].startswith("local "))
-        self.assertEqual(printed.getvalue(), f"Reader {sha[:7]}: published\n{URL}\n")
+        self.assertEqual(printed.getvalue(), f"Door {sha[:7]}: published\n{URL}\n")
         self.assertFalse((self.work / tp.ANSWER_FILE).exists())
         self.assertFalse((self.work / tp.META_FILE).exists())
 
@@ -364,13 +373,14 @@ class Local(unittest.TestCase):
             self.assertEqual(tp.local_publish(self.clone, self.work, claude=sys.executable), 0)
         self.assertIn(f"already published at {URL}", printed.getvalue())
 
-        # A change to the book alone publishes nothing; a change to the page publishes it again.
+        # A change to the repository alone publishes nothing, since the door reads it live; a change
+        # to the page publishes it again.
         git(self.clone, "checkout", "-q", "--", tp.PAGE_SOURCE)
         self.commit("docs/textbook/01-one.md", "# 01 One\n", "the book moves on")
         with mock.patch.object(tp, "open_session", side_effect=AssertionError("opened again")), \
                 redirect_stdout(io.StringIO()):
             self.assertEqual(tp.local_publish(self.clone, self.work, claude=sys.executable), 0)
-        newer = self.commit(tp.PAGE_SOURCE, "<title>SchwingNet Textbook</title>\n<p>The reader, second.</p>\n", "reader")
+        newer = self.commit(tp.PAGE_SOURCE, "<title>SchwingNet Front Door</title>\n<p>The door, second.</p>\n", "door")
         with mock.patch.object(tp, "open_session", side_effect=self.session(f"ARTIFACT_URL={URL}\n")), \
                 redirect_stdout(io.StringIO()):
             self.assertEqual(tp.local_publish(self.clone, self.work, claude=sys.executable), 0)
@@ -407,10 +417,10 @@ class Local(unittest.TestCase):
         with self.assertRaises(SystemExit) as stop:
             tp.main(["local", "--work", str(self.work), "--record"])
         self.assertIn("/login", str(stop.exception))
-        (self.work / tp.ANSWER_FILE).write_text(f"{tp.REFUSED} files: not a member\n", encoding="utf-8")
+        (self.work / tp.ANSWER_FILE).write_text(f"{tp.REFUSED} mcp: not allowed\n", encoding="utf-8")
         with self.assertRaises(SystemExit) as stop:
             tp.main(["local", "--work", str(self.work), "--record"])
-        self.assertIn(tp.PROJECT, str(stop.exception))
+        self.assertIn("GitHub connector", str(stop.exception))
         self.assertTrue(self.no_record())
         (self.work / tp.ANSWER_FILE).write_text(f"ARTIFACT_URL={URL}\n", encoding="utf-8")
         with redirect_stdout(io.StringIO()):
@@ -420,6 +430,42 @@ class Local(unittest.TestCase):
         self.assertFalse((self.work / tp.ANSWER_FILE).exists())
         with self.assertRaises(SystemExit):
             tp.main(["local", "--work", str(self.work), "--record"])
+
+    def test_an_artifact_already_at_a_link_is_adopted_with_url_where_the_record_names_none(self):
+        # The door of 2026-10-26 was first published from a thread that could not write the record:
+        # the owner's run names its link, reads it, publishes the door to it with its capabilities
+        # and records the link; the next run finds it published.
+        with mock.patch.object(tp, "open_session", side_effect=self.session(f"ARTIFACT_URL={URL}\n")), \
+                redirect_stdout(io.StringIO()):
+            self.assertEqual(tp.main(["local", "--clone", str(self.clone), "--work", str(self.work),
+                                      "--claude", sys.executable, "--url", URL]), 0)
+        prompt = (self.work / tp.PROMPT_FILE).read_text(encoding="utf-8")
+        self.assertIn(f"2. Action read with url {URL}", prompt)
+        self.assertIn(f"capabilities {json.dumps(tp.CAPABILITIES)}, since the door's capabilities are not the ones recorded",
+                      prompt)
+        self.assertNotIn("Publish it: action publish", prompt)
+        state = self.recorded()
+        self.assertEqual((state["url"], state["capabilities"]), (URL, tp.CAPABILITIES))
+        printed = io.StringIO()
+        with mock.patch.object(tp, "open_session", side_effect=AssertionError("opened again")), redirect_stdout(printed):
+            self.assertEqual(tp.local_publish(self.clone, self.work, claude=sys.executable, url=URL), 0)
+        self.assertIn(f"already published at {URL}", printed.getvalue())
+        # A record that names another artifact stands, and a link that is none is refused before anything runs.
+        with self.assertRaises(SystemExit) as stop:
+            tp.local_publish(self.clone, self.work, claude=sys.executable, url="https://claude.ai/artifact/other")
+        self.assertIn(f"the record names {URL}", str(stop.exception))
+        with self.assertRaises(SystemExit) as stop:
+            tp.local_publish(self.clone, self.work, claude=sys.executable, url="https://example.com/artifact/x")
+        self.assertIn("not a claude.ai artifact link", str(stop.exception))
+        self.assertEqual(git(self.origin, "rev-list", "--count", tp.BRANCH), "1")
+
+    def test_a_session_that_published_elsewhere_than_the_adopted_link_records_nothing(self):
+        other = "https://claude.ai/artifact/other"
+        with mock.patch.object(tp, "open_session", side_effect=self.session(f"ARTIFACT_URL={other}\n")), \
+                redirect_stdout(io.StringIO()), self.assertRaises(SystemExit) as stop:
+            tp.local_publish(self.clone, self.work, claude=sys.executable, url=URL)
+        self.assertIn(f"not to the artifact {URL}", str(stop.exception))
+        self.assertTrue(self.no_record())
 
     def test_the_default_work_folder_is_beside_the_clone(self):
         self.assertEqual(tp.default_work(self.clone), self.work)

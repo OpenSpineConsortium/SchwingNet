@@ -1,0 +1,1077 @@
+<title>SchwingNet Front Door</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: one bar across the top, the folder pane at the left, the file in view at the right; on a
+   phone the pane slides over the view. The repository's own files fill it, read live at every open. */
+:root { --bg:#f6f7f9; --fg:#1b1f26; --muted:#5f6672; --line:#d9dde4; --panel:#eceff3; --accent:#9a5b00; --link:#1f5fa8; --ok:#2f7a4a; --warn:#a63d2f;
+  --mono: ui-monospace, Menlo, Consolas, monospace; --sans: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg:#15181d; --fg:#e8eaee; --muted:#9aa2ad; --line:#2b3038; --panel:#1d2127; --accent:#e5a44a; --link:#7fb2ea; --ok:#6fcf97; --warn:#f08a7a; color-scheme:dark; }
+}
+:root[data-theme="dark"] { --bg:#15181d; --fg:#e8eaee; --muted:#9aa2ad; --line:#2b3038; --panel:#1d2127; --accent:#e5a44a; --link:#7fb2ea; --ok:#6fcf97; --warn:#f08a7a; color-scheme:dark; }
+html, body { height:100%; }
+body { margin:0; background:var(--bg); color:var(--fg); display:flex; flex-direction:column; font:14px/1.5 var(--sans); }
+.bar { flex:none; display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px; padding-block:6px; background:var(--panel); border-bottom:1px solid var(--line);
+  padding-left:max(16px, env(safe-area-inset-left, 0px)); padding-right:max(16px, env(safe-area-inset-right, 0px)); }
+.bar h1 { margin:0 4px 0 0; font-size:15px; font-weight:600; white-space:nowrap; }
+#head { color:var(--muted); font:12px/1.4 var(--mono); flex:1 1 12em; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+button { font:inherit; font-size:13px; color:var(--accent); background:transparent; border:1px solid var(--accent); border-radius:6px; padding:3px 10px; cursor:pointer; }
+button:disabled { opacity:.45; cursor:default; }
+button:focus-visible, input:focus-visible, textarea:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+button.plain { border:0; padding:0; color:var(--link); text-align:left; font-size:inherit; border-radius:2px; }
+#files { display:none; }
+form.find { display:flex; gap:6px; margin:0; }
+input, textarea { font:inherit; color:var(--fg); background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:3px 8px; min-width:0; }
+#q { width:12em; }
+#body { flex:1; min-height:0; display:flex; position:relative; }
+#side { flex:none; width:17em; min-width:0; overflow:auto; border-right:1px solid var(--line); background:var(--panel); padding-block:10px;
+  padding-left:max(16px, env(safe-area-inset-left, 0px)); padding-right:10px; }
+#side h2 { margin:8px 0 4px; font-size:11.5px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); }
+#side ul { list-style:none; margin:0 0 10px; padding:0; }
+#side li { padding:2px 0; display:flex; gap:6px; align-items:baseline; min-width:0; }
+#side li .kind { flex:none; width:1.1em; color:var(--muted); font-size:12px; }
+#side li button { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%; }
+#view { flex:1; min-width:0; min-height:0; overflow:auto; position:relative; padding-block:18px;
+  padding-left:max(16px, env(safe-area-inset-left, 0px)); padding-right:max(16px, env(safe-area-inset-right, 0px)); }
+#view.framed { padding:0; overflow:hidden; }
+#view iframe { position:absolute; inset:0; width:100%; height:100%; border:0; background:var(--bg); }
+#busy { position:absolute; top:0; left:0; right:0; height:3px; z-index:3; background:var(--accent); opacity:.75; }
+#where { color:var(--muted); font:12.5px/1.4 var(--mono); margin:0 0 12px; overflow-wrap:anywhere; }
+#where button { font:inherit; }
+#note { max-width:40em; position:relative; z-index:2; }   /* above a sealed frame, which fills the view behind it */
+#view.framed #note { margin:16px; padding:12px 14px; background:var(--panel); border:1px solid var(--line); border-radius:8px; }
+#note p { margin:0 0 10px; }
+#note-text { font-size:15px; font-weight:600; text-wrap:balance; }
+#note-more { color:var(--muted); }
+#note ol { padding-left:1.4em; }
+#note li { margin:4px 0; }
+#note-do { display:flex; flex-wrap:wrap; gap:8px; }
+code, kbd { font:12.5px/1.4 var(--mono); background:var(--panel); border:1px solid var(--line); border-radius:4px; padding:1px 5px; overflow-wrap:anywhere; }
+pre { background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:10px 12px; overflow-x:auto; font:12.5px/1.45 var(--mono); }
+pre code { border:0; padding:0; background:transparent; font:inherit; }
+a { color:var(--link); }
+.doc { max-width:46em; }
+.doc h1, .doc h2, .doc h3, .doc h4 { text-wrap:balance; line-height:1.25; margin:1.4em 0 .5em; }
+.doc h1 { font-size:24px; margin-top:.2em; } .doc h2 { font-size:19px; } .doc h3 { font-size:16px; } .doc h4 { font-size:14.5px; }
+.doc p, .doc li { overflow-wrap:anywhere; }
+.doc img { max-width:100%; height:auto; display:block; margin:10px 0; }
+.doc blockquote { margin:12px 0; padding:2px 14px; border-left:3px solid var(--line); color:var(--muted); }
+.doc hr { border:0; border-top:1px solid var(--line); margin:20px 0; }
+.doc .table { overflow-x:auto; margin:12px 0; }
+.doc table { border-collapse:collapse; font-size:13px; }
+.doc th, .doc td { border:1px solid var(--line); padding:4px 8px; text-align:left; vertical-align:top; }
+.doc th { background:var(--panel); }
+.doc a.gone { color:var(--muted); text-decoration:line-through; }
+ul.entries { list-style:none; padding:0; margin:0 0 18px; border:1px solid var(--line); border-radius:6px; max-width:46em; }
+ul.entries li { margin:0; padding:5px 12px; border-top:1px solid var(--line); display:flex; gap:10px; align-items:baseline; min-width:0; }
+ul.entries li:first-child { border-top:0; }
+ul.entries .kind { color:var(--muted); flex:none; width:1.1em; font-size:12px; }
+ul.entries .size { color:var(--muted); margin-left:auto; font-size:12px; font-variant-numeric:tabular-nums; white-space:nowrap; }
+ul.commits { list-style:none; padding:0; margin:0; max-width:52em; }
+ul.commits li { padding:8px 0; border-top:1px solid var(--line); display:grid; grid-template-columns:auto 1fr; gap:2px 12px; }
+ul.commits li:first-child { border-top:0; }
+ul.commits .sha { font:12px/1.5 var(--mono); }
+ul.commits .when { grid-column:2; color:var(--muted); font-size:12px; }
+ul.hits { list-style:none; padding:0; margin:0; max-width:52em; }
+ul.hits li { padding:8px 0; border-top:1px solid var(--line); }
+ul.hits li:first-child { border-top:0; }
+ul.hits pre { margin:6px 0 0; white-space:pre-wrap; }
+.picture { max-width:100%; height:auto; display:block; }
+#ask { max-width:46em; }
+#ask textarea { width:100%; box-sizing:border-box; min-height:4em; display:block; margin:8px 0; }
+#answer { white-space:pre-wrap; overflow-wrap:anywhere; margin-top:12px; }
+#answer:empty { display:none; }
+.muted { color:var(--muted); }
+@media (max-width: 720px) {
+  #files { display:inline-block; }
+  #side { position:absolute; top:0; bottom:0; left:0; width:min(80vw, 20em); z-index:4; transform:translateX(-100%); transition:transform .15s; box-shadow:0 0 0 1px var(--line); }
+  #side.open { transform:none; }
+  @media (prefers-reduced-motion: reduce) { #side { transition:none; } }
+  #q { width:8em; }
+}
+</style>
+
+<header class="bar">
+<button id="files" type="button" aria-controls="side" aria-expanded="false">Files</button>
+<h1>SchwingNet Front Door</h1>
+<span id="head" title="The newest commit of main, read when this page opened"></span>
+<button id="back" type="button" disabled>Back</button>
+<button id="home" type="button">Home</button>
+<button id="changes" type="button">Changes</button>
+<button id="ask-open" type="button">Ask</button>
+<form class="find" id="find"><input id="q" type="search" placeholder="Search the repository" aria-label="Search the repository"><button type="submit">Search</button></form>
+</header>
+<div id="body">
+<nav id="side" aria-label="Files"></nav>
+<main id="view">
+<div id="busy" hidden></div>
+<p id="where"></p>
+<div id="note" role="status"><p id="note-text">Opening the repository...</p><p id="note-more" hidden></p><div id="note-do"></div></div>
+<div id="content"></div>
+</main>
+</div>
+
+<script>
+// The front door of the SchwingNet repository (tools/front_door.html). It holds no file of the
+// repository: opened on claude.ai, it reads OpenSpineConsortium/SchwingNet itself, live and as the
+// viewer, through the viewer's own GitHub connector (the artifact runtime's mcp capability, with
+// the connector's read-only tools get_file_contents, list_commits and search_code), so a file or an
+// artifact merged a minute ago is there at the next open, with nothing staged, copied or published
+// again. Markdown is rendered here; a page of HTML, an exported artifact or a figure, is shown
+// sealed in a frame without this page's origin, its stylesheets, scripts and images put inline and
+// its fetches of files beside it answered by message, so its scripts reach neither this page nor
+// the connector; an image is shown as it is. Ask puts the repository's files in Claude's hands
+// through the runtime's sample capability, with tools that read through the same connector.
+(function () {
+  "use strict";
+  var SERVER = "GitHub", OWNER = "OpenSpineConsortium", REPO = "SchwingNet", MAIN = "main";
+  var GITHUB = "https://github.com/" + OWNER + "/" + REPO;
+  var SEALED = "allow-scripts";   // scripts and nothing else: no popup, no navigation, no origin, so nothing leaves the frame
+  var DOORS = [["Textbook", "docs/textbook", MAIN], ["Research", "docs/research/README.md", MAIN],
+               ["Artifacts", "artifacts/README.md", MAIN], ["Board", "STATE.md", "board"],
+               ["Memory", "docs/memory/MEMORY.md", MAIN], ["Checkpoints", "docs/checkpoints", MAIN],
+               ["Data", "data", MAIN], ["Grid", "grid", MAIN]];
+  var ELSEWHERE = /^(?:[a-z][a-z0-9+.-]*:|\/\/)/i;
+  var CSS_URL = /url\(\s*(['"]?)([^'")]+)\1\s*\)/g;
+  var MEDIA = [["img", "src"], ["source", "src"], ["video", "src"], ["video", "poster"], ["audio", "src"],
+               ["input", "src"], ["track", "src"]];
+  var TYPES = {html: "text/html", htm: "text/html", md: "text/markdown", css: "text/css", js: "text/javascript",
+               mjs: "text/javascript", json: "application/json", ipynb: "application/json", svg: "image/svg+xml",
+               png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif", webp: "image/webp",
+               ico: "image/x-icon", pdf: "application/pdf", txt: "text/plain", csv: "text/csv", tsv: "text/tab-separated-values",
+               py: "text/x-python", sh: "text/x-shellscript", bash: "text/x-shellscript", yml: "text/yaml", yaml: "text/yaml",
+               toml: "text/plain", xml: "text/xml", woff: "font/woff", woff2: "font/woff2", ttf: "font/ttf", otf: "font/otf"};
+  var BINARY = /\.(?:png|jpe?g|gif|webp|ico|pdf|zip|gz|tgz|whl|sqlite|bin|pt|pth|onnx|npy|npz|woff2?|ttf|otf|docx|pptx|xlsx|mp4|webm|mp3|wav)$/i;
+  var IMAGE = /\.(?:png|jpe?g|gif|webp|svg|ico)$/i;
+  var MOST_TEXT = 1500000;   // the characters of a text file shown as text; a longer one is cut and said so
+  var $ = function (id) { return document.getElementById(id); };
+  var view = $("view"), content = $("content"), note = $("note"), busy = $("busy"), where = $("where"), side = $("side");
+
+  var mcp = null;        // the mcp capability, once the viewer has it
+  var reads = {};        // ref + path -> the promise of the file: {text, bytes, type}
+  var folders = {};      // ref + path -> the promise of a folder's entries
+  var blobs = [];        // the object URLs made for pictures, let go when the view changes
+  var shown = null;      // the target in view: {kind, ref, path, hash, q}
+  var opening = null;    // the open under way, so a slower earlier one never replaces it
+  var trail = [];        // the targets before this one, for Back
+  var watch = null;      // the observer that fills a document's pictures as they come near
+  var sealed = null;     // {frame, ref, path} of the sealed page in view, whose messages are answered
+
+  function code(e) { return (e && (e.code || e.name)) || "error"; }
+  function wait(ms) { return new Promise(function (done) { setTimeout(done, ms); }); }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return {"&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;"}[c]; }); }
+  function text(bytes) { return new TextDecoder().decode(bytes); }
+  function key(ref, path) { return ref + "\n" + path; }
+  function ext(path) { var m = /\.([A-Za-z0-9]+)$/.exec(path); return m ? m[1].toLowerCase() : ""; }
+  function typeOf(path) { return TYPES[ext(path)] || "application/octet-stream"; }
+  function parent(path) { return path.indexOf("/") < 0 ? "" : path.slice(0, path.lastIndexOf("/")); }
+  function name(path) { return path.split("/").pop(); }
+  function el(tag, attrs, children) {
+    var e = document.createElement(tag);
+    Object.keys(attrs || {}).forEach(function (k) {
+      if (k === "text") e.textContent = attrs[k];
+      else if (k === "onclick") e.addEventListener("click", attrs[k]);
+      else e.setAttribute(k, attrs[k]);
+    });
+    (children || []).forEach(function (c) { if (c) e.appendChild(c); });
+    return e;
+  }
+
+  // What the viewer reads where nothing is in view, or where something could not be read.
+  function say(words, more, actions) {
+    $("note-text").textContent = words;
+    $("note-more").hidden = !more;
+    $("note-more").innerHTML = more || "";
+    var row = $("note-do");
+    row.textContent = "";
+    (actions || []).forEach(function (a) { row.appendChild(el("button", {type: "button", text: a[0], onclick: a[1]})); });
+    note.hidden = false;
+  }
+
+  // The connector
+
+  // A call to the viewer's GitHub connector, made again after the wait the runtime gives with
+  // rate_limited, and once more for a passing failure the runtime marks retryable, never in a loop.
+  function call(tool, input, tries) {
+    tries = tries || 0;
+    return mcp.callTool(SERVER, tool, input).catch(function (e) {
+      var c = code(e);
+      if (c === "rate_limited" && tries < 4) return wait((e && e.retryAfterMs) || 2000).then(function () { return call(tool, input, tries + 1); });
+      if (e && e.retryable && c !== "rate_limited" && tries < 1) return wait(1500).then(function () { return call(tool, input, tries + 1); });
+      throw e;
+    });
+  }
+
+  // The JSON a tool answers with: the runtime's payload, else the first text block parsed.
+  function payloadOf(r) {
+    if (r && r.payload !== undefined) return r.payload;
+    var blocks = r && Array.isArray(r.content) ? r.content : [];
+    for (var i = 0; i < blocks.length; i++) {
+      if (blocks[i] && typeof blocks[i].text === "string") {
+        try { return JSON.parse(blocks[i].text); } catch (e) { return blocks[i].text; }
+      }
+    }
+    return r;
+  }
+
+  function fromBase64(b64) { return Uint8Array.from(atob(String(b64).replace(/\s+/g, "")), function (c) { return c.charCodeAt(0); }); }
+  function toBase64(bytes) {
+    var chunks = [];
+    for (var i = 0; i < bytes.length; i += 0x8000) chunks.push(String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000)));
+    return btoa(chunks.join(""));
+  }
+
+  // A file out of what the connector hands back for get_file_contents: the GitHub server answers
+  // with a resource block, the file's text or its bytes as base64, beside a text block that says it
+  // was downloaded; a payload with content and encoding is the API's own envelope.
+  function fileOf(r, path) {
+    var blocks = r && Array.isArray(r.content) ? r.content : [], f = {type: typeOf(path), text: null, bytes: null};
+    for (var i = 0; i < blocks.length; i++) {
+      var res = blocks[i] && blocks[i].resource;
+      if (res && typeof res.text === "string") { f.text = res.text; return f; }
+      if (res && typeof res.blob === "string") { f.bytes = fromBase64(res.blob); return f; }
+    }
+    var p = r && r.payload;
+    if (p && typeof p === "object" && typeof p.content === "string") {
+      if (p.encoding === "base64") f.bytes = fromBase64(p.content);
+      else f.text = p.content;
+      return f;
+    }
+    if (typeof p === "string" && !/^successfully downloaded/i.test(p)) { f.text = p; return f; }
+    throw {code: "unreadable", message: "the connector answered with no file"};
+  }
+
+  function notFound(e) { return /\b404\b|not found|does not exist/i.test(String((e && e.message) || "")); }
+
+  function refOf(ref) { return "refs/heads/" + ref; }
+
+  // A file's text or bytes, read once per open of this page; a path GitHub has not is not_found.
+  function read(ref, path) {
+    var k = key(ref, path);
+    if (!reads[k]) {
+      reads[k] = call("get_file_contents", {owner: OWNER, repo: REPO, path: path, ref: refOf(ref)}).then(function (r) {
+        if (Array.isArray(payloadOf(r))) throw {code: "is_folder"};
+        return fileOf(r, path);
+      }).catch(function (e) {
+        delete reads[k];
+        if (code(e) === "tool_error" && notFound(e)) throw {code: "not_found", message: path};
+        throw e;
+      });
+    }
+    return reads[k];
+  }
+  function textOf(f) { return f.text !== null ? f.text : text(f.bytes); }
+  function bytesOf(f) { return f.bytes !== null ? f.bytes : new TextEncoder().encode(f.text); }
+
+  // A folder's entries, files and folders, read once per open of this page.
+  function folder(ref, path) {
+    var k = key(ref, path);
+    if (!folders[k]) {
+      folders[k] = call("get_file_contents", {owner: OWNER, repo: REPO, path: path || "/", ref: refOf(ref),
+                                              fields: ["type", "name", "path", "size", "html_url"]}).then(function (r) {
+        var p = payloadOf(r);
+        if (!Array.isArray(p)) throw {code: "is_file"};
+        return p.map(function (en) {
+          return {type: en.type === "dir" ? "dir" : "file", name: String(en.name), size: en.size,
+                  path: String(en.path).replace(/^\/+/, ""), url: en.html_url};
+        }).sort(function (a, b) { return a.type !== b.type ? (a.type === "dir" ? -1 : 1) : a.name.localeCompare(b.name); });
+      }).catch(function (e) {
+        delete folders[k];
+        if (code(e) === "tool_error" && notFound(e)) throw {code: "not_found", message: path};
+        throw e;
+      });
+    }
+    return folders[k];
+  }
+
+  // What a path is, by its folder's listing: a file, a folder, or nothing.
+  function entryOf(ref, path) {
+    if (!path) return Promise.resolve({type: "dir", name: "", path: "", size: 0});
+    return folder(ref, parent(path)).then(function (entries) {
+      for (var i = 0; i < entries.length; i++) if (entries[i].path === path) return entries[i];
+      return null;
+    }, function (e) { if (code(e) === "not_found") return null; throw e; });
+  }
+
+  // A file a page or a stylesheet refers to, read where its folder lists it, null otherwise, so a
+  // reference to nothing costs no read; a folder that cannot be listed leaves the file out.
+  function loadIfKnown(ref, path) {
+    return entryOf(ref, path).then(function (en) {
+      return en && en.type === "file" ? read(ref, path).catch(function () { return null; }) : null;
+    }, function () { return null; });
+  }
+
+  // References
+
+  // A reference a page makes, resolved against the page's own path; one that names another site,
+  // a data or blob address or a place in the same page is none of the repository's. A link into
+  // this repository on GitHub, by blob, raw or tree, is the file it names.
+  function decode(s) { try { return decodeURIComponent(s); } catch (e) { return String(s); } }
+  function resolve(base, ref) {
+    ref = String(ref == null ? "" : ref).trim();
+    var m = new RegExp("^" + GITHUB.replace(/[.]/g, "\\.") + "/(?:blob|raw|tree)/([^/#?]+)/([^#?]*)").exec(ref);
+    if (m) return {ref: decode(m[1]), path: decode(m[2]).replace(/\/+$/, "")};
+    if (!ref || ELSEWHERE.test(ref) || ref.charAt(0) === "#" || ref.charAt(0) === "?") return null;
+    ref = ref.split("#")[0].split("?")[0];
+    var parts = ref.charAt(0) === "/" ? [] : String(base).split("/").slice(0, -1);
+    ref.split("/").forEach(function (step) {
+      if (step === "..") parts.pop();
+      else if (step && step !== ".") parts.push(decode(step));
+    });
+    return {ref: null, path: parts.join("/")};
+  }
+  function fragment(ref) { var at = String(ref).indexOf("#"); return at < 0 ? "" : String(ref).slice(at + 1); }
+  function slug(s) {
+    return String(s).toLowerCase().replace(/<[^>]*>/g, "").replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "-");
+  }
+
+  // Markdown, as the repository's documents write it: headings, paragraphs, lists, fenced code,
+  // quotes, rules and tables, with code spans, emphasis, links, images and bare addresses inline.
+  // Raw HTML is shown as text, never run. A relative link or image names a file of the repository.
+  function markdown(src) {
+    var lines = String(src).replace(/\r\n?/g, "\n").split("\n"), out = [], i = 0, m;
+    function blockStart(l) {
+      return /^\s*$/.test(l) || /^(?:`{3,}|~{3,})/.test(l) || /^#{1,6}\s/.test(l) || /^ {0,3}>/.test(l) ||
+             /^ {0,3}([-*_])(\s*\1){2,}\s*$/.test(l) || /^\s*([-*+]|\d+[.)])\s+/.test(l) || /^\s*\|/.test(l) || /^\s*<!--/.test(l);
+    }
+    while (i < lines.length) {
+      var line = lines[i];
+      if (/^\s*$/.test(line)) { i++; continue; }
+      if ((m = /^\s*(`{3,}|~{3,})\s*([^`\s]*)/.exec(line))) {
+        var fence = m[1], lang = m[2], buf = [];
+        i++;
+        while (i < lines.length && !(lines[i].trim().slice(0, fence.length) === fence && /^\s*$/.test(lines[i].trim().slice(fence.length)))) buf.push(lines[i++]);
+        i++;
+        out.push("<pre><code" + (lang ? " class=\"lang-" + esc(lang) + "\"" : "") + ">" + esc(buf.join("\n")) + "</code></pre>");
+        continue;
+      }
+      if ((m = /^(#{1,6})\s+(.*?)\s*#*\s*$/.exec(line))) {
+        out.push("<h" + m[1].length + " id=\"doc-" + esc(slug(m[2])) + "\">" + inline(m[2]) + "</h" + m[1].length + ">");
+        i++;
+        continue;
+      }
+      if (/^ {0,3}([-*_])(\s*\1){2,}\s*$/.test(line)) { out.push("<hr>"); i++; continue; }
+      if (/^\s*<!--/.test(line)) {
+        while (i < lines.length && lines[i].indexOf("-->") < 0) i++;
+        i++;
+        continue;
+      }
+      if (/^ {0,3}>/.test(line)) {
+        var q = [];
+        while (i < lines.length && (/^ {0,3}>/.test(lines[i]) || (!/^\s*$/.test(lines[i]) && q.length && !blockStart(lines[i])))) q.push(lines[i++].replace(/^ {0,3}> ?/, ""));
+        out.push("<blockquote>" + markdown(q.join("\n")) + "</blockquote>");
+        continue;
+      }
+      if (/^\s*\|/.test(line) && i + 1 < lines.length && /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?\s*$/.test(lines[i + 1])) {
+        var head = cells(line), aligns = cells(lines[i + 1]).map(function (c) {
+          return /^:-+:$/.test(c) ? "center" : /-+:$/.test(c) ? "right" : "";
+        }), rows = [];
+        i += 2;
+        while (i < lines.length && /^\s*\|/.test(lines[i])) rows.push(cells(lines[i++]));
+        var t = "<div class=\"table\"><table><thead><tr>" + head.map(function (c, n) {
+          return "<th" + (aligns[n] ? " style=\"text-align:" + aligns[n] + "\"" : "") + ">" + inline(c) + "</th>";
+        }).join("") + "</tr></thead><tbody>";
+        rows.forEach(function (r) {
+          t += "<tr>" + head.map(function (c, n) {
+            return "<td" + (aligns[n] ? " style=\"text-align:" + aligns[n] + "\"" : "") + ">" + inline(r[n] || "") + "</td>";
+          }).join("") + "</tr>";
+        });
+        out.push(t + "</tbody></table></div>");
+        continue;
+      }
+      if ((m = /^(\s*)([-*+]|\d+[.)])\s+/.exec(line))) {
+        var ordered = /\d/.test(m[2]), indent = m[1].length, items = [], start = ordered ? parseInt(m[2], 10) : 1;
+        while (i < lines.length && (m = /^(\s*)([-*+]|\d+[.)])\s+(.*)$/.exec(lines[i])) && m[1].length === indent && /\d/.test(m[2]) === ordered) {
+          var body = [m[3]], inner = m[0].length - m[3].length;
+          i++;
+          while (i < lines.length && (/^\s*$/.test(lines[i]) || /^\s/.test(lines[i]) && leading(lines[i]) > indent)) {
+            if (/^\s*$/.test(lines[i]) && (i + 1 >= lines.length || leading(lines[i + 1]) <= indent || /^\s*$/.test(lines[i + 1]))) break;
+            body.push(lines[i].slice(Math.min(inner, leading(lines[i]))));
+            i++;
+          }
+          var first = body.shift(), rest = body.join("\n").trim();
+          items.push("<li>" + inline(first) + (rest ? (rest.indexOf("\n") < 0 && !blockStart(rest) ? " " + inline(rest) : markdown(rest)) : "") + "</li>");
+        }
+        out.push((ordered ? "<ol" + (start !== 1 ? " start=\"" + start + "\"" : "") + ">" : "<ul>") + items.join("") + (ordered ? "</ol>" : "</ul>"));
+        continue;
+      }
+      var para = [line];
+      i++;
+      while (i < lines.length && (underline(lines[i]) || !blockStart(lines[i]))) {
+        if (underline(lines[i])) {
+          var level = /=/.test(lines[i]) ? 1 : 2, title = para.join(" ");
+          out.push("<h" + level + " id=\"doc-" + esc(slug(title)) + "\">" + inline(title) + "</h" + level + ">");
+          para = null;
+          i++;
+          break;
+        }
+        para.push(lines[i++]);
+      }
+      if (para) out.push("<p>" + inline(para.join("\n")) + "</p>");
+    }
+    return out.join("\n");
+  }
+  function leading(l) { return /^\s*/.exec(l)[0].length; }
+  function underline(l) { return /^ {0,3}=+\s*$/.test(l) || /^ {0,3}-+\s*$/.test(l); }
+  function cells(row) {
+    var r = row.trim();
+    if (r.charAt(0) === "|") r = r.slice(1);
+    if (r.charAt(r.length - 1) === "|" && r.charAt(r.length - 2) !== "\\") r = r.slice(0, -1);
+    return r.split(/(?<!\\)\|/).map(function (c) { return c.replace(/\\\|/g, "|").trim(); });
+  }
+  function inline(s) {
+    var parts = String(s).split(/(`+)([\s\S]*?[^`])\1(?!`)/), out = "";
+    for (var i = 0; i < parts.length; i += 3) {
+      out += spans(parts[i]);
+      if (i + 2 < parts.length) out += "<code>" + esc(parts[i + 2].trim()) + "</code>";
+    }
+    return out;
+  }
+  function emphasis(s) {
+    s = s.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>").replace(/__([^_]+)__/g, "<strong>$1</strong>");
+    s = s.replace(/(^|[^\w*])\*([^*\n]+)\*(?!\w)/g, "$1<em>$2</em>").replace(/(^|[^\w_])_([^_\n]+)_(?!\w)/g, "$1<em>$2</em>");
+    return s.replace(/~~([^~]+)~~/g, "<del>$1</del>");
+  }
+  // Images and links are rendered first and held aside behind markers, so the passes after them
+  // never read the HTML they emitted: an address with underscores, or an alt text that holds an
+  // address, stays whole. A link's address may hold one level of parentheses, as a Wikipedia
+  // address does.
+  function spans(s) {
+    var held = [];
+    function hold(html) { held.push(html); return "\u0001" + (held.length - 1) + "\u0001"; }
+    s = esc(s).replace(/\u0001/g, "");
+    s = s.replace(/!\[([^\]]*)\]\(((?:[^()\s]|\([^()\s]*\))+)(?:\s+&quot;[^&]*&quot;)?\)/g, function (all, alt, src) { return hold(image(src, alt)); });
+    s = s.replace(/\[([^\]]+)\]\(((?:[^()\s]|\([^()\s]*\))+)(?:\s+&quot;([^&]*)&quot;)?\)/g, function (all, t, href) { return hold(link(href, emphasis(t))); });
+    s = s.replace(/&lt;(https?:\/\/[^&\s]+)&gt;/g, function (all, u) { return hold(link(u, u)); });
+    s = s.replace(/(^|[\s(])(https?:\/\/[^\s<)]+[^\s<).,;:!?&])/g, function (all, before, u) { return before + hold(link(u, u)); });
+    s = emphasis(s).replace(/ {2,}\n/g, "<br>\n");
+    return s.replace(/\u0001(\d+)\u0001/g, function (all, n) { return held[+n]; });
+  }
+  var docBase = {ref: MAIN, path: ""};   // the document being rendered, for its relative links
+  function link(href, label) {
+    var raw = href.replace(/&amp;/g, "&").replace(/&quot;/g, "\"");
+    var where_ = resolve(docBase.path, raw);
+    if (!where_ && raw.charAt(0) === "#") return "<a href=\"#" + esc(raw.slice(1)) + "\" data-door-hash=\"" + esc(raw.slice(1)) + "\">" + label + "</a>";
+    if (!where_) return /^(?:https?:|mailto:)/i.test(raw) ? "<a href=\"" + href + "\" target=\"_blank\" rel=\"noopener\">" + label + "</a>" : label;
+    return "<a href=\"#\" data-door-ref=\"" + esc(where_.ref || docBase.ref) + "\" data-door-path=\"" + esc(where_.path) +
+           "\" data-door-hash=\"" + esc(fragment(raw)) + "\">" + label + "</a>";
+  }
+  function image(src, alt) {
+    var raw = src.replace(/&amp;/g, "&"), where_ = resolve(docBase.path, raw);
+    if (!where_) return "<span class=\"muted\">[image elsewhere: " + esc(alt || raw) + "]</span>";
+    return "<img alt=\"" + alt + "\" data-door-ref=\"" + esc(where_.ref || docBase.ref) + "\" data-door-src=\"" + esc(where_.path) + "\">";
+  }
+
+  // Sealed pages: a page of HTML of the repository, whole in one document with what it refers to
+  // inline, shown in a frame without this page's origin.
+
+  function parse(html) { return new DOMParser().parseFromString(html, "text/html"); }
+  function serialize(doc) { return "<!doctype html>\n" + doc.documentElement.outerHTML; }
+  function scriptSafe(js) { return js.replace(/<\/(script)/gi, "<\\/$1").replace(/<!--/g, "<\\!--"); }
+  function styleSafe(css) { return css.replace(/<\/(style)/gi, "<\\/$1"); }
+  function dataUrl(f) { return "data:" + f.type + ";base64," + toBase64(bytesOf(f)); }
+
+  function refsIn(doc, selector, attr, base) {
+    var found = [];
+    doc.querySelectorAll(selector).forEach(function (e) {
+      var w = resolve(base, e.getAttribute(attr));
+      if (w && !w.ref) found.push({el: e, attr: attr, path: w.path});
+    });
+    return found;
+  }
+  function sheetsOf(doc, base) { return refsIn(doc, "link[rel~=\"stylesheet\"][href]", "href", base); }
+  function scriptsOf(doc, base) { return refsIn(doc, "script[src]", "src", base); }
+  function framesOf(doc, base) { return refsIn(doc, "iframe[src]", "src", base); }
+  function mediaOf(doc, base) {
+    var found = [];
+    MEDIA.forEach(function (m) { found = found.concat(refsIn(doc, m[0] + "[" + m[1] + "]", m[1], base)); });
+    return found;
+  }
+  function cssRefs(css, base) {
+    var found = [], m;
+    CSS_URL.lastIndex = 0;
+    while ((m = CSS_URL.exec(css))) {
+      var w = resolve(base, m[2]);
+      if (w && !w.ref) found.push(w.path);
+    }
+    return found;
+  }
+
+  // A sealed document: every file it refers to that the repository has, read and put inline.
+  function sealedDoc(ref, path, hash, depth) {
+    var doc, got = {};
+    function have(p) { return Object.prototype.hasOwnProperty.call(got, p) ? got[p] : null; }
+    function fetchAll(paths) {
+      var wanted = paths.filter(function (p) { return !Object.prototype.hasOwnProperty.call(got, p); });
+      return Promise.all(wanted.map(function (p) { return loadIfKnown(ref, p).then(function (f) { got[p] = f; }); }));
+    }
+    function cssInline(css, base) {
+      return styleSafe(css.replace(CSS_URL, function (all, quote, r) {
+        var w = resolve(base, r), f = w && !w.ref ? have(w.path) : null;
+        return f ? "url(\"" + dataUrl(f) + "\")" : all;
+      }));
+    }
+    return read(ref, path).then(function (f) {
+      doc = parse(textOf(f));
+      return fetchAll(sheetsOf(doc, path).concat(scriptsOf(doc, path), mediaOf(doc, path)).map(function (r) { return r.path; }));
+    }).then(function () {
+      var more = [];
+      doc.querySelectorAll("style").forEach(function (s) { more = more.concat(cssRefs(s.textContent, path)); });
+      doc.querySelectorAll("[style]").forEach(function (e) { more = more.concat(cssRefs(e.getAttribute("style"), path)); });
+      sheetsOf(doc, path).forEach(function (s) { var f = have(s.path); if (f) more = more.concat(cssRefs(textOf(f), s.path)); });
+      return fetchAll(more);
+    }).then(function () {
+      sheetsOf(doc, path).forEach(function (s) {
+        var f = have(s.path);
+        if (!f) return;
+        var style = doc.createElement("style");
+        if (s.el.getAttribute("media")) style.setAttribute("media", s.el.getAttribute("media"));
+        style.textContent = cssInline(textOf(f), s.path);
+        s.el.replaceWith(style);
+      });
+      doc.querySelectorAll("[style]").forEach(function (e) { e.setAttribute("style", cssInline(e.getAttribute("style"), path)); });
+      doc.querySelectorAll("style").forEach(function (s) { s.textContent = cssInline(s.textContent, path); });
+      var late = [];
+      scriptsOf(doc, path).forEach(function (s) {
+        var f = have(s.path);
+        if (!f) return;
+        var js = doc.createElement("script");
+        if (s.el.getAttribute("type")) js.setAttribute("type", s.el.getAttribute("type"));
+        js.textContent = scriptSafe(textOf(f));
+        if (s.el.hasAttribute("defer") || s.el.hasAttribute("async") || s.el.getAttribute("type") === "module") { late.push(js); s.el.remove(); }
+        else s.el.replaceWith(js);
+      });
+      late.forEach(function (js) { doc.body.appendChild(js); });
+      mediaOf(doc, path).forEach(function (m) { var f = have(m.path); if (f) m.el.setAttribute(m.attr, dataUrl(f)); });
+      doc.querySelectorAll("[srcset]").forEach(function (e) { e.removeAttribute("srcset"); });
+      return Promise.all((depth < 2 ? framesOf(doc, path) : []).map(function (fr) {
+        return sealedDoc(ref, fr.path, "", depth + 1).then(function (html) {
+          fr.el.removeAttribute("src");
+          fr.el.setAttribute("srcdoc", html);
+          if (!fr.el.hasAttribute("sandbox")) fr.el.setAttribute("sandbox", "allow-scripts");
+        }, function () { /* a frame the repository lacks stays empty */ });
+      }));
+    }).then(function () {
+      var root = doc.documentElement, theme = document.documentElement.getAttribute("data-theme");
+      root.setAttribute("data-page", path);
+      if (hash) root.setAttribute("data-hash", hash);
+      if (theme) root.setAttribute("data-theme", theme);
+      var s = doc.createElement("script"), head = doc.head || root;
+      s.textContent = "(" + sealedPrelude.toString() + ")(" + JSON.stringify(hash) + ");";
+      head.insertBefore(s, head.firstChild);
+      return serialize(doc);
+    });
+  }
+
+  // The first script of a sealed page, run inside its frame: a link to a file of the repository is
+  // asked for by message, one to another site opens in a new tab where the sandbox lets it, and a
+  // fetch of a file beside the page is answered by message, with the file's bytes, since a frame
+  // with no origin can fetch nothing itself.
+  function sealedPrelude(hash) {
+    var pending = {}, n = 0, own = window.fetch;
+    function away(h) { return /^(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(h); }
+    window.fetch = function (input, init) {
+      var href = typeof input === "string" ? input : (input && input.url) || "";
+      if (!href || away(href) || href.charAt(0) === "#") return own.apply(window, arguments);
+      return new Promise(function (done, fail) {
+        var id = ++n;
+        pending[id] = done;
+        parent.postMessage({type: "front-door.fetch", id: id, href: href}, "*");
+        setTimeout(function () { if (pending[id]) { delete pending[id]; fail(new TypeError("no answer for " + href)); } }, 60000);
+      }).then(function (r) {
+        if (!r.ok) throw new TypeError("not in the repository: " + href);
+        var bytes = Uint8Array.from(atob(r.base64), function (c) { return c.charCodeAt(0); });
+        return new Response(new Blob([bytes], {type: r.mime}), {status: 200, headers: {"Content-Type": r.mime}});
+      });
+    };
+    window.addEventListener("message", function (e) {
+      var d = e.data;
+      if (!d || d.type !== "front-door.fetch.result" || e.source !== window.parent) return;
+      var done = pending[d.id];
+      if (!done) return;
+      delete pending[d.id];
+      done(d);
+    });
+    document.addEventListener("click", function (e) {
+      var a = e.target && e.target.closest ? e.target.closest("a[href]") : null;
+      if (!a || e.defaultPrevented) return;
+      var href = a.getAttribute("href") || "";
+      e.preventDefault();
+      if (href.charAt(0) === "#") {
+        var t = document.getElementById(href.slice(1));
+        if (t) t.scrollIntoView();
+        return;
+      }
+      parent.postMessage({type: "front-door.open", href: href}, "*");
+    });
+    if (hash) addEventListener("load", function () { var t = document.getElementById(hash); if (t) t.scrollIntoView(); });
+  }
+
+  // Answering the sealed page in view: its links, its fetches, and the messages a figure of the
+  // book sends (docs/research/experiments-panel.md, section 4): a read of this repository is
+  // answered as the viewer, a dispatch is answered "no connector", since this page declares no tool
+  // that writes, and a link it cannot open is shown where the viewer can click it.
+  window.addEventListener("message", function (e) {
+    var d = e.data;
+    if (!d || !sealed || e.source !== sealed.frame.contentWindow) return;
+    var reply = function (msg) { e.source.postMessage(msg, "*"); };
+    if (d.type === "front-door.open") {
+      var w = resolve(sealed.path, d.href);
+      if (w) open({kind: "path", ref: w.ref || sealed.ref, path: w.path, hash: fragment(d.href)});
+      else if (/^https?:\/\//i.test(String(d.href))) elsewhere(String(d.href), "");
+    } else if (d.type === "front-door.fetch") {
+      var w2 = resolve(sealed.path, d.href);
+      (w2 && !w2.ref ? loadIfKnown(sealed.ref, w2.path) : Promise.resolve(null)).then(function (f) {
+        reply(f ? {type: "front-door.fetch.result", id: d.id, ok: true, base64: toBase64(bytesOf(f)), mime: f.type}
+                : {type: "front-door.fetch.result", id: d.id, ok: false});
+      });
+    } else if (d.type === "schwingnet.open") {
+      if (typeof d.href === "string" && /^https?:\/\//i.test(d.href)) elsewhere(d.href, typeof d.label === "string" ? d.label : "");
+    } else if (d.type === "schwingnet.read") {
+      // A page reads only at its own branch: what the viewer sees beside it, never another branch.
+      var ref = String(d.ref || MAIN).replace(/^refs\/heads\//, "");
+      if (d.repo !== OWNER + "/" + REPO) { reply({type: "schwingnet.read.result", id: d.id, ok: false, error: "repository not allowed"}); return; }
+      if (ref !== sealed.ref) { reply({type: "schwingnet.read.result", id: d.id, ok: false, error: "ref not allowed"}); return; }
+      read(ref, String(d.path || "").replace(/^\/+/, "")).then(function (f) {
+        reply({type: "schwingnet.read.result", id: d.id, ok: true, text: textOf(f)});
+      }, function (err) { reply({type: "schwingnet.read.result", id: d.id, ok: false, error: code(err)}); });
+    } else if (d.type === "schwingnet.dispatch" || d.type === "schwingnet.experiment") {
+      if (d.type === "schwingnet.dispatch") reply({type: "schwingnet.dispatch.result", label: d.label, ok: false, error: "no connector"});
+    }
+  });
+
+  // A link out of the repository that a sealed page asks for: shown with its whole address, for the
+  // viewer to open or not; the sealed frame itself can open nothing.
+  function elsewhere(href, label) {
+    say("The page asks to open a link outside the repository.",
+        (label ? esc(label) + ": " : "") + "<a href=\"" + esc(href) + "\" target=\"_blank\" rel=\"noopener\">" + esc(href) + "</a>",
+        [["Close", function () { note.hidden = true; }]]);
+  }
+
+  // Showing
+
+  function clear() {
+    if (watch) { watch.disconnect(); watch = null; }
+    blobs.forEach(function (u) { URL.revokeObjectURL(u); });
+    blobs = [];
+    sealed = null;
+    content.textContent = "";
+    view.className = "";
+    view.scrollTop = 0;
+  }
+
+  function crumbs(ref, path) {
+    where.textContent = "";
+    if (ref !== MAIN) where.appendChild(el("span", {text: ref + " "}));
+    where.appendChild(el("button", {type: "button", "class": "plain", text: OWNER + "/" + REPO, onclick: function () { open({kind: "path", ref: ref, path: ""}); }}));
+    var sofar = "";
+    (path ? path.split("/") : []).forEach(function (step) {
+      sofar = sofar ? sofar + "/" + step : step;
+      var p = sofar;
+      where.appendChild(el("span", {text: " / "}));
+      where.appendChild(el("button", {type: "button", "class": "plain", text: step, onclick: function () { open({kind: "path", ref: ref, path: p}); }}));
+    });
+  }
+
+  function entriesList(ref, path, entries) {
+    var ul = el("ul", {"class": "entries"});
+    if (path) {
+      ul.appendChild(el("li", {}, [el("span", {"class": "kind", text: "^"}),
+        el("button", {type: "button", "class": "plain", text: "..", onclick: function () { open({kind: "path", ref: ref, path: parent(path)}); }})]));
+    }
+    entries.forEach(function (en) {
+      var li = el("li", {}, [el("span", {"class": "kind", text: en.type === "dir" ? "/" : "-"}),
+        el("button", {type: "button", "class": "plain", text: en.name, onclick: function () { open({kind: "path", ref: ref, path: en.path}); }})]);
+      if (en.type === "file" && typeof en.size === "number") li.appendChild(el("span", {"class": "size", text: size(en.size)}));
+      ul.appendChild(li);
+    });
+    return ul;
+  }
+  function size(n) { return n < 1024 ? n + " B" : n < 1048576 ? (n / 1024).toFixed(n < 10240 ? 1 : 0) + " KB" : (n / 1048576).toFixed(1) + " MB"; }
+
+  // The folder pane: the doors, then the folder in view.
+  function pane(ref, path, entries) {
+    side.textContent = "";
+    side.appendChild(el("h2", {text: "Doors"}));
+    var doors = el("ul");
+    DOORS.forEach(function (d) {
+      doors.appendChild(el("li", {}, [el("span", {"class": "kind", text: ">"}),
+        el("button", {type: "button", "class": "plain", text: d[0], onclick: function () { open({kind: "path", ref: d[2], path: d[1]}); }})]));
+    });
+    doors.appendChild(el("li", {}, [el("span", {"class": "kind", text: ">"}),
+      el("a", {href: GITHUB, target: "_blank", rel: "noopener", text: "On GitHub"})]));
+    side.appendChild(doors);
+    if (entries) {
+      side.appendChild(el("h2", {text: path ? name(path) : "Top folder"}));
+      var ul = entriesList(ref, path, entries);
+      ul.className = "";
+      side.appendChild(ul);
+    }
+  }
+
+  function showFolder(ref, path, entries) {
+    clear();
+    crumbs(ref, path);
+    pane(ref, path, entries);
+    content.appendChild(entriesList(ref, path, entries));
+    var readme = null;
+    entries.forEach(function (en) { if (!readme && en.type === "file" && /^readme\.md$/i.test(en.name)) readme = en; });
+    note.hidden = true;
+    if (!readme) return Promise.resolve();
+    return read(ref, readme.path).then(function (f) { content.appendChild(docOf(ref, readme.path, textOf(f))); });
+  }
+
+  // A document rendered from Markdown, its relative links opening here and its images read in view.
+  function docOf(ref, path, md) {
+    docBase = {ref: ref, path: path};
+    var doc = el("div", {"class": "doc"});
+    doc.innerHTML = markdown(md);
+    doc.addEventListener("click", function (e) {
+      var a = e.target && e.target.closest ? e.target.closest("a[data-door-path], a[data-door-hash]") : null;
+      if (!a) return;
+      e.preventDefault();
+      if (!a.hasAttribute("data-door-path")) { reveal(a.getAttribute("data-door-hash")); return; }
+      open({kind: "path", ref: a.getAttribute("data-door-ref"), path: a.getAttribute("data-door-path"), hash: a.getAttribute("data-door-hash")});
+    });
+    var held = doc.querySelectorAll("img[data-door-src]");
+    if (held.length) {
+      watch = new IntersectionObserver(function (seen) {
+        seen.forEach(function (s) {
+          if (!s.isIntersecting) return;
+          watch.unobserve(s.target);
+          picture(s.target);
+        });
+      }, {root: view, rootMargin: "1200px 0px"});
+      held.forEach(function (img) { watch.observe(img); });
+    }
+    return doc;
+  }
+  function pictureUrl(f) {
+    if (f.type === "image/svg+xml") return dataUrl(f);
+    var url = URL.createObjectURL(new Blob([bytesOf(f)], {type: f.type}));
+    blobs.push(url);
+    return url;
+  }
+  function picture(img) {
+    var ref = img.getAttribute("data-door-ref"), p = img.getAttribute("data-door-src");
+    img.removeAttribute("data-door-src");
+    read(ref, p).then(function (f) { img.src = pictureUrl(f); },
+                      function (e) { img.alt = (img.alt ? img.alt + " " : "") + "(not in the repository: " + p + ")"; });
+  }
+  // A document's headings carry ids prefixed doc-, so a heading named Files or Note never takes
+  // the place of the page's own elements; an anchor is looked up by that id, and the hash by itself
+  // only inside the document, for an id a document gives in its own HTML.
+  function reveal(hash) {
+    if (!hash) { view.scrollTop = 0; return; }
+    var t = content.querySelector("#doc-" + cssEscape(decode(hash))) || document.getElementById(decode(hash));
+    if (t && content.contains(t)) t.scrollIntoView();
+  }
+  function cssEscape(s) { return window.CSS && CSS.escape ? CSS.escape(s) : String(s).replace(/[^\w-]/g, "\\$&"); }
+
+  function showFile(ref, path, en) {
+    var e = ext(path);
+    if (e === "html" || e === "htm") return showSealed(ref, path, shownHash());
+    if (IMAGE.test(path)) return read(ref, path).then(function (f) {
+      clear();
+      crumbs(ref, path);
+      content.appendChild(el("img", {"class": "picture", src: pictureUrl(f), alt: name(path)}));
+      note.hidden = true;
+    });
+    if (BINARY.test(path)) {
+      clear();
+      crumbs(ref, path);
+      content.appendChild(el("p", {text: name(path) + " is a binary file" + (en && typeof en.size === "number" ? " of " + size(en.size) : "") + "."}));
+      if (en && en.url) content.appendChild(el("p", {}, [el("a", {href: en.url, target: "_blank", rel: "noopener", text: "Open it on GitHub"})]));
+      note.hidden = true;
+      return Promise.resolve();
+    }
+    return read(ref, path).then(function (f) {
+      clear();
+      crumbs(ref, path);
+      var t = textOf(f);
+      if (e === "md") {
+        content.appendChild(docOf(ref, path, t));
+        if (shownHash()) setTimeout(function () { reveal(shownHash()); }, 0);
+      } else {
+        var cut = t.length > MOST_TEXT;
+        content.appendChild(el("pre", {}, [el("code", {text: cut ? t.slice(0, MOST_TEXT) : t})]));
+        if (cut) content.appendChild(el("p", {"class": "muted", text: "Cut after " + MOST_TEXT.toLocaleString() + " characters; the whole file is on GitHub."}));
+      }
+      note.hidden = true;
+    });
+  }
+  function shownHash() { return (shown && shown.hash) || ""; }
+
+  function showSealed(ref, path, hash) {
+    return sealedDoc(ref, path, hash, 0).then(function (html) {
+      clear();
+      crumbs(ref, path);
+      view.className = "framed";
+      var frame = el("iframe", {title: name(path), sandbox: SEALED});
+      frame.setAttribute("srcdoc", html);
+      content.appendChild(frame);
+      sealed = {frame: frame, ref: ref, path: path};
+      note.hidden = true;
+    });
+  }
+
+  function showChanges() {
+    return call("list_commits", {owner: OWNER, repo: REPO, sha: MAIN, perPage: 30, fields: ["sha", "html_url", "commit", "author"]}).then(function (r) {
+      var commits = payloadOf(r);
+      if (!Array.isArray(commits)) throw {code: "unreadable"};
+      clear();
+      where.textContent = "The newest commits of main";
+      var ul = el("ul", {"class": "commits"});
+      commits.forEach(function (c) {
+        var m = (c.commit && c.commit.message) || "", when = c.commit && c.commit.committer && c.commit.committer.date;
+        var who = (c.author && c.author.login) || (c.commit && c.commit.author && c.commit.author.name) || "";
+        ul.appendChild(el("li", {}, [
+          el("a", {"class": "sha", href: c.html_url || GITHUB + "/commit/" + c.sha, target: "_blank", rel: "noopener", text: String(c.sha || "").slice(0, 7)}),
+          el("span", {text: String(m).split("\n")[0]}),
+          el("span", {"class": "when", text: (when ? String(when).slice(0, 16).replace("T", " ") + " UTC" : "") + (who ? ", " + who : "")})]));
+      });
+      content.appendChild(ul);
+      note.hidden = true;
+    });
+  }
+
+  function showSearch(q) {
+    return call("search_code", {query: "repo:" + OWNER + "/" + REPO + " " + q, perPage: 30}).then(function (r) {
+      var p = payloadOf(r), items = p && Array.isArray(p.items) ? p.items : [];
+      clear();
+      where.textContent = "Search: " + q;
+      if (!items.length) { content.appendChild(el("p", {"class": "muted", text: "Nothing in the repository's default branch matches, as GitHub indexes it."})); note.hidden = true; return; }
+      var ul = el("ul", {"class": "hits"});
+      items.forEach(function (it) {
+        var li = el("li", {}, [el("button", {type: "button", "class": "plain", text: it.path, onclick: function () { open({kind: "path", ref: MAIN, path: it.path}); }})]);
+        (it.text_matches || []).slice(0, 3).forEach(function (tm) { if (tm && tm.fragment) li.appendChild(el("pre", {text: tm.fragment})); });
+        ul.appendChild(li);
+      });
+      content.appendChild(ul);
+      note.hidden = true;
+    });
+  }
+
+  // Ask: a question answered by Claude, as the viewer, with tools that read the repository
+  // through the viewer's connector, so the answer can name the files it read.
+  var asking = null;
+  function showAsk() {
+    clear();
+    where.textContent = "Ask about the repository";
+    var box = el("div", {id: "ask"});
+    box.appendChild(el("p", {"class": "muted", text: "Claude answers from the files it reads through your GitHub connector, and names them."}));
+    var q = el("textarea", {id: "question", placeholder: "What do you want to know?"});
+    var go = el("button", {type: "button", id: "ask-go", text: "Ask"});
+    var stop = el("button", {type: "button", id: "ask-stop", text: "Stop"});
+    stop.hidden = true;
+    var answer = el("div", {id: "answer"});
+    box.appendChild(q);
+    box.appendChild(el("div", {"class": "row"}, [go, stop]));
+    box.appendChild(answer);
+    content.appendChild(box);
+    note.hidden = true;
+    go.addEventListener("click", function () { ask(q.value.trim(), answer, go, stop); });
+    stop.addEventListener("click", function () { if (asking) asking.abort(); });
+    return Promise.resolve();
+  }
+  function tools() {
+    return [
+      {name: "list_folder", description: "The files and folders in a folder of the repository, at main.",
+       inputSchema: {type: "object", properties: {path: {type: "string", description: "The folder's path, empty for the top"}}},
+       execute: function (input) { return folder(MAIN, String((input && input.path) || "").replace(/^\/+|\/+$/g, "")).then(function (es) {
+         return es.map(function (en) { return en.type === "dir" ? en.path + "/" : en.path; }); }); }},
+      {name: "read_file", description: "The text of a file of the repository, at main, up to 60000 characters.",
+       inputSchema: {type: "object", properties: {path: {type: "string"}}, required: ["path"]},
+       execute: function (input) { return read(MAIN, String(input.path).replace(/^\/+/, "")).then(function (f) {
+         var t = textOf(f); return t.length > 60000 ? t.slice(0, 60000) + "\n[cut]" : t; }); }},
+      {name: "search", description: "GitHub code search over the repository's default branch; returns matching paths.",
+       inputSchema: {type: "object", properties: {query: {type: "string"}}, required: ["query"]},
+       execute: function (input) { return call("search_code", {query: "repo:" + OWNER + "/" + REPO + " " + String(input.query), perPage: 20}).then(function (r) {
+         var p = payloadOf(r); return (p && p.items ? p.items : []).map(function (it) { return it.path; }); }); }}
+    ];
+  }
+  function ask(question, out, go, stop) {
+    if (!question) return;
+    out.textContent = "Thinking...";
+    go.disabled = true;
+    stop.hidden = false;
+    asking = new AbortController();
+    var prompt = "You answer questions about the GitHub repository " + OWNER + "/" + REPO + ", a confidential research repository, " +
+      "for a member of it. Use the tools to list folders, read files and search before you answer; start from README.md, " +
+      "docs/project.md, docs/memory/MEMORY.md and docs/research/README.md where the question gives no path. Answer in plain " +
+      "prose, name every file you drew on by its path, and say what you could not find. Question: " + question;
+    window.claude.use("sample").then(function (fn) {
+      if (!fn) throw {code: "absent"};
+      return fn(prompt, {tools: tools(), signal: asking.signal, cache: false, onText: function (u) { out.textContent = u.text; }});
+    }).then(function (r) { out.textContent = r.text; }, function (e) {
+      var c = code(e);
+      out.textContent = c === "cancelled" ? ((e && e.text) || "") + "\n[stopped]" : c === "absent" ? "Ask is not available in this view." :
+        c === "not_granted" ? "You chose not to let this page ask Claude; the artifact's Permissions menu turns it on." :
+        "The question could not be answered (" + c + ")." + ((e && e.text) ? "\n" + e.text : "");
+    }).then(function () { go.disabled = false; stop.hidden = true; asking = null; });
+  }
+
+  // Opening a target
+
+  function open(target, remember) {
+    var me = {}, was = shown;
+    opening = me;
+    busy.hidden = false;
+    var shows;
+    if (target.kind === "changes") shows = showChanges();
+    else if (target.kind === "search") shows = showSearch(target.q);
+    else if (target.kind === "ask") shows = showAsk();
+    else {
+      target.ref = target.ref || MAIN;
+      target.path = String(target.path || "").replace(/^\/+|\/+$/g, "");
+      shows = entryOf(target.ref, target.path).then(function (en) {
+        if (opening !== me) return;
+        if (!en) throw {code: "not_found", message: target.path};
+        if (shown && shown.kind === "path" && shown.ref === target.ref && shown.path === target.path && en.type === "file") {
+          shown.hash = target.hash || "";
+          if (ext(target.path) === "md") { reveal(shown.hash); return "same"; }
+        }
+        if (en.type === "dir") return folder(target.ref, target.path).then(function (es) { return opening === me ? showFolder(target.ref, target.path, es) : null; });
+        shown = target;   // the hash a file opens at is read from the target in view
+        return showFile(target.ref, target.path, en).catch(function (e) { shown = was; throw e; });
+      });
+    }
+    shows.then(function (r) {
+      if (opening !== me || r === "same") return;
+      if (remember !== false && was) trail.push(was);
+      shown = target;
+      $("back").disabled = !trail.length;
+      side.classList.remove("open");
+      $("files").setAttribute("aria-expanded", "false");
+    }).catch(function (e) {
+      if (opening === me) failed(e, target);
+    }).then(function () { if (opening === me) busy.hidden = true; });
+  }
+
+  function connectSteps() {
+    return "Claude's connector directory has no GitHub connector, so GitHub is added once as a custom connector in your own " +
+      "claude.ai settings, with a GitHub App of yours that may read this repository:<ol>" +
+      "<li>Open <a href=\"https://claude.ai/settings/connectors\" target=\"_blank\" rel=\"noopener\">claude.ai/settings/connectors</a> and choose Add custom connector.</li>" +
+      "<li>Name it exactly <code>GitHub</code>; the remote MCP server address is <code>https://api.githubcopilot.com/mcp/</code>.</li>" +
+      "<li>Under Advanced settings enter the client id and client secret of your GitHub App, whose callback URL is " +
+      "<code>https://claude.ai/api/mcp/auth_callback</code>; Add, then Connect and sign in to GitHub.</li>" +
+      "<li>Open this page again and allow it to use GitHub when asked.</li></ol>";
+  }
+
+  function stopped(e) {
+    busy.hidden = true;
+    var c = code(e);
+    if (c === "absent") say("This view cannot reach your connectors.", "Open the door on claude.ai, signed in to the account that holds it.", []);
+    else if (c === "needs_reauth")
+      say("Your GitHub connector needs to be connected again.", "Reconnect GitHub in claude.ai Settings, Connectors, then try again.", [["Try again", start]]);
+    else if (c === "selection_required")
+      say("More than one of your connectors is named GitHub.", "Choose one when claude.ai asks, or keep one connector of that name in claude.ai Settings, Connectors, then try again.",
+          [["Try again", start]]);
+    else if (c === "server_not_connected" || c === "server_not_found")
+      say("GitHub is not connected to your claude.ai account, so the door has nothing to show.", connectSteps(), [["Try again", start]]);
+    else if (c === "not_granted" || c === "consent_required")
+      say("The door may not use your GitHub connector, so it cannot read the repository.", "You chose not to allow it. The artifact's Permissions menu turns it back on.",
+          [["Open permissions", permissions], ["Try again", start]]);
+    else if (c === "not_in_manifest")
+      say("The door may not call your GitHub connector's tools.",
+          "If you turned GitHub off for this page, or declined it when the page first asked, the artifact's Permissions menu turns it on. " +
+          "Otherwise the page's published capabilities are stale, and the door is published again from the repository's tools/front_door.html.",
+          [["Open permissions", permissions], ["Try again", start]]);
+    else if (c === "blocked_by_policy")
+      say("Your organization's policy blocks this tool for you, so the door cannot read the repository.", "", []);
+    else say("The repository could not be read (" + esc(c) + ").", esc((e && e.message) || "This is usually a passing network or service problem."), [["Try again", start]]);
+  }
+
+  function failed(e, target) {
+    var c = code(e);
+    if (["absent", "not_granted", "consent_required", "server_not_connected", "server_not_found", "needs_reauth", "selection_required",
+         "not_in_manifest", "blocked_by_policy", "capability_disabled", "capability_removed"].indexOf(c) >= 0) { stopped(e); return; }
+    var close = ["Close", function () { note.hidden = Boolean(shown); }];
+    if (c === "not_found") say("That is not in the repository.", esc((target.ref || MAIN) + ": " + (target.path || "")), [close]);
+    else if (c === "tool_error") say("GitHub refused the read.", esc((e && e.message) || ""), [close, ["Try again", function () { open(target, false); }]]);
+    else say("This could not be opened (" + esc(c) + ").", esc((e && e.message) || (target.path || "")), [close, ["Try again", function () { open(target, false); }]]);
+  }
+
+  function permissions() {
+    window.claude.use("permissions").then(function (p) { return p ? p.manage() : null; }).then(start, function () {
+      say("The Permissions panel did not open.", "Use the artifact's Permissions menu to let the door use your GitHub connector, then open it again.", [["Try again", start]]);
+    });
+  }
+
+  function showHead() {
+    return call("list_commits", {owner: OWNER, repo: REPO, sha: MAIN, perPage: 1, fields: ["sha", "commit"]}).then(function (r) {
+      var c = payloadOf(r);
+      c = Array.isArray(c) ? c[0] : null;
+      if (!c) return;
+      var when = c.commit && c.commit.committer && c.commit.committer.date;
+      $("head").textContent = "main " + String(c.sha || "").slice(0, 7) + (when ? ", " + String(when).slice(0, 16).replace("T", " ") + " UTC" : "") +
+        (c.commit && c.commit.message ? ": " + String(c.commit.message).split("\n")[0] : "");
+    }, function () { /* the head line is a courtesy */ });
+  }
+
+  // The deep link: a path with its slashes written as ~, or one of the words board, changes, ask.
+  function firstTarget() {
+    var h = location.hash.slice(1);
+    try { h = decodeURIComponent(h); } catch (e) { h = ""; }
+    if (!h) return {kind: "path", ref: MAIN, path: ""};
+    if (h === "board") return {kind: "path", ref: "board", path: "STATE.md"};
+    if (h === "changes" || h === "ask") return {kind: h};
+    return {kind: "path", ref: MAIN, path: h.replace(/~/g, "/")};
+  }
+
+  $("back").addEventListener("click", function () {
+    var t = trail.pop();
+    $("back").disabled = !trail.length;
+    if (t) open(t, false);
+  });
+  $("home").addEventListener("click", function () { open({kind: "path", ref: MAIN, path: ""}); });
+  $("changes").addEventListener("click", function () { open({kind: "changes"}); });
+  $("ask-open").addEventListener("click", function () { open({kind: "ask"}); });
+  $("find").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var q = $("q").value.trim();
+    if (q) open({kind: "search", q: q});
+  });
+  $("files").addEventListener("click", function () {
+    var on = !side.classList.contains("open");
+    side.classList.toggle("open", on);
+    $("files").setAttribute("aria-expanded", String(on));
+  });
+
+  // The viewer's theme toggle reaches the sealed page in view.
+  new MutationObserver(function () {
+    if (!sealed) return;
+    try {
+      var root = sealed.frame.contentDocument.documentElement, theme = document.documentElement.getAttribute("data-theme");
+      if (theme) root.setAttribute("data-theme", theme);
+      else root.removeAttribute("data-theme");
+    } catch (e) { /* a sealed frame of another origin is not reachable; it keeps the theme it opened with */ }
+  }).observe(document.documentElement, {attributes: true, attributeFilter: ["data-theme"]});
+
+  function start() {
+    reads = {};
+    folders = {};
+    trail = [];
+    shown = null;
+    clear();
+    where.textContent = "";
+    $("head").textContent = "";
+    $("back").disabled = true;
+    pane(MAIN, "", null);
+    say("Opening the repository...", "", []);
+    if (!window.claude || typeof window.claude.use !== "function") { stopped({code: "absent"}); return; }
+    busy.hidden = false;
+    window.claude.use("mcp").then(function (m) {
+      if (!m) throw {code: "absent"};
+      mcp = m;
+      return mcp.listTools(SERVER);
+    }).then(function () {
+      showHead();
+      open(firstTarget(), false);
+    }).catch(stopped);
+  }
+
+  if (document.readyState === "complete") start();
+  else window.addEventListener("load", start, {once: true});
+})();
+</script>
