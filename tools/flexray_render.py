@@ -48,7 +48,9 @@ A subject is a folder under --ct-root, one to four levels down, that holds ct.ni
 are found under the segmenter's folder (--spineps, --moose; a render whose segmenter has no folder
 is refused in words before anything is written): SPINEPS's by the file *_seg-vert_msk.nii* whose
 name before _seg-vert names the subject, moosez's under <moose>/<subject>/ by the model's region
-in each file's path (tools/render_blocks.py, locate_spineps and locate_moose). Without --subject,
+in each file's path (tools/render_blocks.py, locate_spineps and locate_moose), each on the CT's
+grid, the shape and the affine its header gives, read once a subject (header_grid); a mask of
+another shape or another affine is skipped by name with that reason. Without --subject,
 subjects are taken in the order of rank_key("<salt>:subjects", id) until --subjects are kept, a
 subject with no mask, no structure FleXray supervises or an unreadable file passed over with its
 reason; with --subject the named ones alone are rendered, in that order. Each CT is read as
@@ -76,16 +78,29 @@ the lungs, muscles and digestive models label nothing MOOSE stores) on a link to
 CT_<id>.nii.gz inside that folder, so moosez's outputs land under it whether it writes beside its
 input or under its output folder, in moosez's own layout, which the locator reads. The weights
 are the model zips the fetch row moose_weights landed under --weights by their release names,
-never downloaded: a model whose zip is missing refuses the whole run before moosez is imported;
-when the run starts, each zip is unpacked into moosez's own models directory as moosez's download
-would unpack it, with the model_version.json naming the release URL that moosez reads before
-downloading, a model already there under that URL left as it is, and moosez's metadata is held
-equal to this tool's copy of it first, since moosez downloads a model whose URL differs. --plan
-prints the plan (the subjects, what each lacks, the zips found, the refusals) and stops. SPINEPS
-is never run here: --segmenter spineps is refused with the owner's reason, its production array
-is not approved; its existing masks are read under --spineps. Which file names moosez's library
-entry writes, and whether it reads a CT through the link, could not be run here; the plan is
-what the tests hold.
+never downloaded: a model whose zip is missing, or is not a whole zip (a part the fetch left
+under the zip's final name, which a resend of fetch moose_weights resumes), refuses the whole run
+before moosez is imported and before any model is unpacked; when the run starts, each zip is
+unpacked into moosez's own models directory as moosez's download would unpack it, with the
+model_version.json naming the release URL that moosez reads before downloading, a model already
+there under that URL left as it is, and moosez's metadata is held equal to this tool's copy of
+it first, since moosez downloads a model whose URL differs; then each unpacked model's
+dataset.json, the labels moosez itself reads (moosez/models.py, Model.__get_organ_indices), is
+held equal to this tool's table (schwingnet.segmenters.MOOSEZ_MODELS, the README's), the four
+renamed bones read as one name, and a model whose labels differ refuses the run, since the
+relabel tables would land its values on the wrong structures; SEGMENT.json records both checks.
+--plan prints the plan (the subjects, what each lacks, the zips found and whether each is whole,
+the refusals) and stops. A run prints the plan, then {"done": [...]}, then one plain line, the
+tail the bench report takes: "segment: N subjects run, M models, F files found, G not found,
+written under <out>". SPINEPS is never run here: --segmenter spineps is refused with the owner's
+reason, its production array is not approved; its existing masks are read under --spineps.
+moosez's source (3.2.2) says what its library entry writes: moose() reads the input by its path,
+through a link as through any file, and writes each model's multilabel file straight into the
+output_dir it is given as <prefix>segmentation_<input stem>.nii.gz, the prefix clin_CT_<region>_
+(moosez/__init__.py, moose; models.py, Model.multilabel_prefix), reoriented back to the input's
+orientation code, so for CT_s0001.nii.gz under the vertebrae model the file is
+clin_CT_vertebrae_segmentation_CT_s0001.nii.gz beside the link, which the locator reads by its
+region word; the tests hold both that layout and the command line's.
 
 numpy, torch, nibabel, Pillow and fxr are imported only when a render is asked for, so the
 orchestrator and the tests can load this file where they are missing. tools/ never goes on
@@ -103,6 +118,7 @@ import random
 import re
 import sys
 import time
+import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -205,17 +221,18 @@ def ct_subjects(ct_root):
     return sorted(found)
 
 
-def header_shape(ct_root, subject):
-    """The CT's grid from its header alone, as tools/render_blocks.py reads a mask's, so a
-    subject is listed by masks on its own grid; None for a header that cannot be read, which
-    lists the subject by name alone and leaves the render to pass it over as unreadable."""
+def header_grid(ct_root, subject):
+    """The CT's grid, its shape and its affine, from one read of its header, as
+    tools/render_blocks.py reads a mask's (mask_grid), so a subject is listed by masks on its
+    own grid; None for a header that cannot be read, which lists the subject by name alone and
+    leaves the render to pass it over as unreadable."""
     try:
-        return blocks_tool().mask_shape(Path(ct_root) / subject / CT_NAME)
+        return blocks_tool().mask_grid(Path(ct_root) / subject / CT_NAME)
     except Exception:  # nibabel raises several unrelated error types, as fxr notes
         return None
 
 
-def has_masks(subject, segmenter, roots, shape):
+def has_masks(subject, segmenter, roots, grid):
     """Whether the segmenter's locator finds the subject's masks on the CT's grid under its
     folder: one SPINEPS mask, or under moose every model's file, since the segment job makes
     all five for each chosen CT and a render that read fewer would label less than the
@@ -223,8 +240,8 @@ def has_masks(subject, segmenter, roots, shape):
     parts = blocks_tool()
     root = roots.get(segmenter)
     if segmenter == "spineps":
-        return parts.locate_spineps(subject, root, shape) is not None
-    found = parts.locate_moose(subject, root, shape)
+        return parts.locate_spineps(subject, root, grid) is not None
+    found = parts.locate_moose(subject, root, grid)
     return all(model in found for model in schemes().MOOSEZ_MODELS)
 
 
@@ -242,7 +259,7 @@ def find_subjects(ct_root, segmenter=None, roots=None):
     if not roots or roots.get(segmenter) is None:
         raise ValueError(f"segmenter={segmenter}: no masks folder given (roots[{segmenter!r}])")
     return [subject for subject in found
-            if has_masks(subject, segmenter, roots, header_shape(ct_root, subject))]
+            if has_masks(subject, segmenter, roots, header_grid(ct_root, subject))]
 
 
 def image_stem(subject):
@@ -294,8 +311,9 @@ def load_subject(folder, subject, blocks, roots, supervised):
 
     parts = blocks_tool()
     volume, affine = read_nifti(Path(folder) / CT_NAME)
+    grid = (volume.shape, affine)
     try:
-        label, record = parts.NAMES["segmenter"][blocks.segmenter](subject, volume.shape, roots)
+        label, record = parts.NAMES["segmenter"][blocks.segmenter](subject, grid, roots)
     except parts.MaskProblem as problem:
         raise SkipSubject(str(problem)) from problem
     if not label.any():
@@ -1001,21 +1019,36 @@ def read_subject_list(path, ct_root):
 
 def weights_plan(weights, metadata):
     """Each model's zip under --weights, by the file name of its release URL, as the fetch row
-    lands it: whether it is there and how many bytes it holds."""
+    lands it: whether it is there, how many bytes it holds and whether it is a whole zip
+    (zipfile.is_zipfile, which reads the central directory at the end), since the fetch lands
+    a zip under its final name while it is still downloading and a part cut short stays there."""
     found = {}
     for model, (folder, url) in metadata.items():
         path = Path(weights) / zip_of(url)
         present = path.is_file()
         found[model] = {"zip": path.name, "folder": folder, "present": present,
-                        "bytes": path.stat().st_size if present else 0}
+                        "bytes": path.stat().st_size if present else 0,
+                        "whole": present and zipfile.is_zipfile(path)}
     return found
 
 
-def zips_missing(weights_found):
-    """The model zips not under --weights, in words, each a refusal: the weights are fetched by
-    their row and never downloaded here."""
-    return [f"MOOSE's model zip {w['zip']} ({m}) is not under --weights (fetch moose_weights "
-            "first); never downloaded here" for m, w in weights_found.items() if not w["present"]]
+RESEND = "resend fetch moose_weights, which resumes it"
+
+
+def zip_refusals(weights_found):
+    """The model zips not under --weights, and the ones there that are not whole zips, in words,
+    each a refusal before any model is unpacked: the weights are fetched by their row and never
+    downloaded here, and a resend of the row resumes a part."""
+    found = []
+    for model, w in weights_found.items():
+        if not w["present"]:
+            found.append(f"MOOSE's model zip {w['zip']} ({model}) is not under --weights (fetch "
+                         "moose_weights first); never downloaded here")
+        elif not w["whole"]:
+            found.append(f"MOOSE's model zip {w['zip']} ({model}) under --weights is not a whole "
+                         f"zip ({w['bytes']} bytes, a part the fetch left): {RESEND}; never "
+                         "downloaded here")
+    return found
 
 
 def segment_plan(args):
@@ -1037,13 +1070,14 @@ def segment_plan(args):
             "weights": str(args.weights), "models": list(models), "weights_found": weights,
             "models_directory": "moosez's own (moosez.system.MODELS_DIRECTORY_PATH), where the "
                                 "zips are unpacked when the run starts",
-            "refusals": zips_missing(weights), "subjects": subjects,
+            "refusals": zip_refusals(weights), "subjects": subjects,
             "to_run": sum(s["action"] == "run" for s in subjects),
             "moosez": "importable" if importlib.util.find_spec("moosez") else "absent"}
 
 
 def check_weights(plan):
-    """Every model's zip must be under --weights: a missing one refuses the run."""
+    """Every model's zip must be under --weights and whole: a missing one or a part refuses the
+    run before moosez is imported, so no model is half-unpacked."""
     if plan["refusals"]:
         raise SegmentError("; ".join(plan["refusals"]))
 
@@ -1062,15 +1096,18 @@ def unpack_model(zip_path, models_dir, folder, url):
     it (moosez/models.py, Model.__download: the members into the base directory, then
     model_version.json naming the URL, which it reads before downloading), so moosez finds the
     model there and fetches nothing; left as it is when its version file already names the
-    URL. Returns what was done."""
-    import zipfile
-
+    URL. A zip that is not whole, a part the fetch left or a member it cannot read, is refused
+    in words naming the zip and the resend that resumes it, never a traceback that spends the
+    job. Returns what was done."""
     home = models_dir / folder
     version = home / MODEL_VERSION_FILE
     if (read_json(version) or {}).get("url") == url:
         return "kept"
-    with zipfile.ZipFile(zip_path) as archive:
-        archive.extractall(models_dir, members=safe_members(archive))
+    try:
+        with zipfile.ZipFile(zip_path) as archive:
+            archive.extractall(models_dir, members=safe_members(archive))
+    except zipfile.BadZipFile as error:
+        raise SegmentError(f"{zip_path.name} is not a whole zip ({error}): {RESEND}") from error
     if not home.is_dir():
         raise SegmentError(f"{zip_path.name} did not unpack to {folder} under moosez's models "
                            "directory, where moosez looks for it")
@@ -1078,15 +1115,79 @@ def unpack_model(zip_path, models_dir, folder, url):
     return "unpacked"
 
 
-def unpack_weights(weights, metadata):
-    """Every model's zip from --weights unpacked into moosez's models directory, the default of
-    Model.__init__ (moosez/system.py, MODELS_DIRECTORY_PATH); returns what was done to each."""
+def models_directory():
+    """moosez's own models directory, the default of Model.__init__ (moosez/system.py,
+    MODELS_DIRECTORY_PATH), made where it is missing."""
     from moosez import system
 
     models_dir = Path(system.MODELS_DIRECTORY_PATH)
     models_dir.mkdir(parents=True, exist_ok=True)
+    return models_dir
+
+
+def unpack_weights(weights, metadata, models_dir):
+    """Every model's zip from --weights unpacked into moosez's models directory; returns what
+    was done to each."""
     return {model: unpack_model(Path(weights) / zip_of(url), models_dir, folder, url)
             for model, (folder, url) in metadata.items()}
+
+
+def dataset_labels(models_dir, folder):
+    """The labels of an unpacked model's dataset.json, {value: name} as moosez reads them
+    (moosez/models.py, Model.__get_model_data and __get_organ_indices: the first configuration
+    folder under the model's, one named trainer__planner__resolution, its dataset.json's
+    "labels" of name to value, background left out), with the file's path below the models
+    directory; a SegmentError where moosez could not read them either."""
+    home = models_dir / folder
+    configs = sorted(p for p in home.iterdir()
+                     if p.is_dir() and p.name.count("__") == 2 and not p.name.startswith("."))
+    if not configs:
+        raise SegmentError(f"{folder} holds no configuration folder "
+                           "(trainer__planner__resolution) for moosez to read")
+    path = configs[0] / "dataset.json"
+    data = read_json(path)
+    labels = data.get("labels") if isinstance(data, dict) else None
+    if not isinstance(labels, dict):
+        raise SegmentError(f"{path.relative_to(models_dir)} has no labels for moosez to read")
+    try:
+        found = {int(value): str(name) for name, value in labels.items() if str(value) != "0"}
+    except (TypeError, ValueError) as error:
+        raise SegmentError(f"{path.relative_to(models_dir)}: a label's value is no integer "
+                           f"({error})") from error
+    return found, path.relative_to(models_dir).as_posix()
+
+
+def label_disagreements(model, labels):
+    """Where a model's dataset.json names a value otherwise than this tool's table
+    (schwingnet.segmenters.MOOSEZ_MODELS, moosez's README), in words, the names lowercased and
+    the four renamed bones read as one name on either side (MOOSEZ_RENAMED); empty when they
+    agree, so the relabel tables land every value on the structure moosez labelled."""
+    renamed = schemes().MOOSEZ_RENAMED
+    theirs = {v: renamed.get(n.lower(), n.lower()) for v, n in labels.items()}
+    ours = {v: renamed.get(n, n) for v, n in schemes().MOOSEZ_MODELS[model].items()}
+    found = []
+    for value in sorted(set(theirs) | set(ours)):
+        if theirs.get(value) != ours.get(value):
+            found.append(f"{model}: value {value} is {theirs.get(value, 'absent')} in its "
+                         f"dataset.json and {ours.get(value, 'absent')} in this tool's table")
+    return found
+
+
+def check_labels(models_dir, metadata):
+    """Every unpacked model's dataset.json held equal to this tool's table before any CT runs:
+    a model whose labels differ refuses the run in words, since the relabel tables would land
+    its values on the wrong structures; returns the record SEGMENT.json keeps of the check."""
+    record, problems = {}, []
+    for model, (folder, _) in metadata.items():
+        labels, path = dataset_labels(models_dir, folder)
+        differs = label_disagreements(model, labels)
+        problems.extend(differs)
+        record[model] = {"dataset_json": path, "values": len(labels), "agrees": not differs}
+    if problems:
+        raise SegmentError("a model's dataset.json names its labels otherwise than this tool's "
+                           "table (schwingnet.segmenters.MOOSEZ_MODELS), so the relabel tables "
+                           "would land on the wrong structures: " + "; ".join(problems))
+    return record
 
 
 def segment_one(subject, args, models):
@@ -1109,8 +1210,9 @@ def segment_one(subject, args, models):
 
 def run_segment(plan, args):
     """The segment run after its plan: the zips checked, moosez imported and its metadata held
-    equal to the copy, the zips unpacked where moosez looks, then each subject that lacks a
-    model's masks; the record written to --out/SEGMENT.json."""
+    equal to the copy, the zips unpacked where moosez looks, each model's dataset.json held
+    equal to this tool's table, then each subject that lacks a model's masks; the record
+    written to --out/SEGMENT.json."""
     check_weights(plan)
     if plan["moosez"] != "importable":
         raise SegmentError("moosez is not installed here; the plan above says what it would do")
@@ -1119,7 +1221,9 @@ def run_segment(plan, args):
     if differs:
         raise SegmentError("moosez's own metadata differs from this tool's copy, so it would "
                            "download: " + "; ".join(differs))
-    record = {"plan": plan, "weights": unpack_weights(args.weights, metadata), "done": []}
+    models_dir = models_directory()
+    record = {"plan": plan, "weights": unpack_weights(args.weights, metadata, models_dir),
+              "labels": check_labels(models_dir, metadata), "done": []}
     for entry in plan["subjects"]:
         if entry["action"] != "run":
             continue
@@ -1127,6 +1231,18 @@ def run_segment(plan, args):
         write_json(Path(args.out) / "SEGMENT.json", record)
     write_json(Path(args.out) / "SEGMENT.json", record)
     return record
+
+
+def summary_line(plan, record, out):
+    """The one plain line a run ends with, after the JSON: the subjects run, the models, the
+    model files the locator found and did not find afterwards, and where they were written.
+    grid/bench.sbatch's report takes the last lines of the job's stdout, so this line is what a
+    reader sees first, and tests/test_gate.py's stand-in prints the same shape."""
+    done = record["done"]
+    found = sum(len(d["found"]) for d in done)
+    not_found = sum(len(d["not_found"]) for d in done)
+    return (f"segment: {len(done)} subjects run, {len(plan['models'])} models, {found} files "
+            f"found, {not_found} not found, written under {out}")
 
 
 def segment_main(argv):
@@ -1158,6 +1274,7 @@ def segment_main(argv):
         print(f"segment: refused: {error}", file=sys.stderr)
         return 2
     print(json.dumps({"done": record["done"]}, indent=1, sort_keys=True))
+    print(summary_line(plan, record, args.out))
     return 0
 
 

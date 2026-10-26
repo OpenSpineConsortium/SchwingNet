@@ -80,6 +80,10 @@ MOOSE_REGIONS = {
     "clin_ct_ribs": "ribs",
     "clin_ct_vertebrae": "vertebrae",
 }
+# How far a mask's voxel-to-world affine may differ from the CT's, in mm, and still be the CT's
+# grid: a mask SPINEPS or moosez wrote from the CT carries the CT's affine to float32, so a
+# difference above this is another placement, and its voxels would land on the wrong anatomy.
+AFFINE_TOLERANCE_MM = 1e-3
 
 
 class MaskProblem(Exception):
@@ -350,27 +354,48 @@ def moose_index(root):
     return tuple(sorted(p for p in Path(root).rglob("*.nii*") if p.is_file()))
 
 
-def mask_shape(path):
-    """A mask's array shape from its header alone, trailing axes of length one dropped as
-    read_values drops them, so a mask on another grid is told apart without reading it."""
+def mask_grid(path):
+    """A volume's grid from its header alone: the array shape, trailing axes of length one
+    dropped as read_values drops them, and the voxel-to-world affine as float64, so a mask on
+    another grid, of another shape or placed elsewhere, is told apart without reading it. The
+    CT's grid is read the same way, once a subject (tools/flexray_render.py, header_grid)."""
     import nibabel
 
-    shape = tuple(int(n) for n in nibabel.load(str(path)).shape)
+    image = nibabel.load(str(path))
+    shape = tuple(int(n) for n in image.shape)
     while len(shape) > 3 and shape[-1] == 1:
         shape = shape[:-1]
-    return shape
+    return shape, np.asarray(image.affine, dtype=np.float64)
 
 
-def on_grid(paths, shape):
-    """The masks among paths that lie on the CT's grid, and the names of the ones that do not,
-    which are skipped with that reason; every path when no shape is given, as the subject
-    listing of find_subjects asks before any CT is read."""
-    if shape is None:
+def grid_problem(found, grid):
+    """Why a volume's grid (shape, affine) is not the CT's, in two words, or None when it is:
+    the shape first, then the affine within AFFINE_TOLERANCE_MM, since a mask of the CT's shape
+    placed elsewhere in the world would relabel the CT's voxels onto the wrong anatomy."""
+    shape, affine = found
+    ct_shape, ct_affine = grid
+    if tuple(shape) != tuple(ct_shape):
+        return "another shape"
+    if not np.allclose(affine, ct_affine, rtol=0.0, atol=AFFINE_TOLERANCE_MM):
+        return "another affine"
+    return None
+
+
+def on_grid(paths, grid):
+    """The masks among paths that lie on the CT's grid (shape, affine), and the ones that do
+    not, each named with its reason ("<name>: another shape" or "<name>: another affine"),
+    which are skipped; every path when no grid is given, as the subject listing of
+    find_subjects asks before any CT is read."""
+    if grid is None:
         return list(paths), []
     kept, skipped = [], []
     for path in paths:
-        (kept if mask_shape(path) == tuple(shape) else skipped).append(path)
-    return kept, [p.name for p in skipped]
+        problem = grid_problem(mask_grid(path), grid)
+        if problem is None:
+            kept.append(path)
+        else:
+            skipped.append(f"{path.name}: {problem}")
+    return kept, skipped
 
 
 def spineps_matches(subject, root):
@@ -382,14 +407,23 @@ def spineps_matches(subject, root):
     return [path for stem, path in spineps_index(str(root)) if names_subject(stem, subject)]
 
 
-def locate_spineps(subject, root, shape=None):
+def locate_spineps(subject, root, grid=None):
     """The subject's SPINEPS mask under root: the first, in sorted order, of the files
-    *_seg-vert_msk.nii* whose name before _seg-vert names the subject and, when the CT's shape
-    is given, whose header is on the CT's grid, a mask on another grid skipped (brief: the
-    spineps folder is shared by several CT corpora, so a name alone may name another CT); None
-    when there is none."""
-    kept, _ = on_grid(spineps_matches(subject, root), shape)
+    *_seg-vert_msk.nii* whose name before _seg-vert names the subject and, when the CT's grid
+    (shape, affine) is given, whose header is on the CT's grid, a mask of another shape or
+    another affine skipped (brief: the spineps folder is shared by several CT corpora, so a
+    name alone may name another CT); None when there is none."""
+    kept, _ = on_grid(spineps_matches(subject, root), grid)
     return kept[0] if kept else None
+
+
+def ct_link(path, subject):
+    """Whether a file is the CT the segment subcommand links beside moosez's outputs as
+    CT_<id>.nii.gz (tools/flexray_render.py, segment_one), or any symlink, which no moosez
+    output is: such a file is never a candidate, so the record's unplaced names moosez's own
+    files alone."""
+    name = str(subject).rsplit("/", 1)[-1]
+    return path.is_symlink() or path.name == f"CT_{name}.nii.gz"
 
 
 def moose_candidates(subject, root):
@@ -397,12 +431,14 @@ def moose_candidates(subject, root):
     folder the region word is read in: the files under root/<subject>/, the folder the segment
     subcommand gives moosez as its output and its input's home, below that folder; or, where
     that folder is missing, the files under root whose name holds the subject's id, below root.
-    Below the subject's folder, so a region word in the subject's own id matches nothing."""
+    Below the subject's folder, so a region word in the subject's own id matches nothing; the
+    CT link and any symlink left out (ct_link)."""
     home = Path(root) / str(subject)
     if home.is_dir():
-        return [(p, p.relative_to(home)) for p in sorted(home.rglob("*.nii*")) if p.is_file()]
+        return [(p, p.relative_to(home)) for p in sorted(home.rglob("*.nii*"))
+                if p.is_file() and not ct_link(p, subject)]
     return [(p, p.relative_to(root)) for p in moose_index(str(root))
-            if names_subject(p.name.split(".")[0], subject)]
+            if names_subject(p.name.split(".")[0], subject) and not ct_link(p, subject)]
 
 
 def regions_in(text, subject):
@@ -427,14 +463,14 @@ def model_of(below, subject):
     return None
 
 
-def by_region(candidates, shape, subject):
+def by_region(candidates, grid, subject):
     """Each model's file among the candidates, {model: path} in MOOSE_REGIONS' order: a file is
-    a model's by model_of, the first in sorted order that lies on the CT's grid when a shape is
-    given; with the names of the files on another grid and of the ones that name no model or
-    more than one (unplaced), which the record keeps so a layout this reader does not know is
-    seen and not silently dropped."""
+    a model's by model_of, the first in sorted order that lies on the CT's grid when the grid
+    (shape, affine) is given; with the files on another grid, each named with its reason, and
+    the names of the ones that name no model or more than one (unplaced), which the record
+    keeps so a layout this reader does not know is seen and not silently dropped."""
     paths = {path: below for path, below in candidates}
-    kept, skipped = on_grid(list(paths), shape)
+    kept, skipped = on_grid(list(paths), grid)
     found, unplaced = {}, []
     for path in kept:
         model = model_of(paths[path], subject)
@@ -446,42 +482,53 @@ def by_region(candidates, shape, subject):
     return ordered, skipped, unplaced
 
 
-def locate_moose(subject, root, shape=None):
+def locate_moose(subject, root, grid=None):
     """The subject's moosez outputs under root, one file a model, {model: path}, from
-    moose_candidates by region (by_region: moosez names its output folders
-    moosez-<model>-<stamp>/segmentations/ by its constants, and its multilabel files carry the
-    model's name, by its README's examples; what its library entry writes exactly was not run
-    here, so the match is by the one region word in the file's name, else in the folders
-    above it, below the subject's folder), a file on another grid skipped when the CT's shape
-    is given. Empty when there is none."""
+    moose_candidates by region (by_region). moosez's source (3.2.2) names its files by the
+    model's region either way: its library entry moose() writes each model's multilabel file
+    straight into the output_dir it is given, or beside its input when given none, as
+    <prefix>segmentation_<input stem>.nii.gz, the prefix <imaging type>_<modality>_<region>_
+    (moosez/__init__.py, moose: f"{model.multilabel_prefix}segmentation_{file_name}.nii.gz",
+    the prefix from moosez/models.py, Model.multilabel_prefix, so clin_CT_vertebrae_ for
+    clin_ct_vertebrae, and the stem the input's name before .nii, moosez/file_utilities.py,
+    get_nifti_file_stem), reoriented back to the input's orientation code; its command line
+    writes the same names under <subject>/moosez-<stamp>/segmentations/ (moose_subject,
+    file_utilities.moose_folder_structure). So the match is by the one region word in the
+    file's name, else in the folders above it, below the subject's folder; a file on another
+    grid is skipped when the CT's grid (shape, affine) is given. Empty when there is none."""
     if root is None:
         return {}
-    found, _, _ = by_region(moose_candidates(subject, root), shape, subject)
+    found, _, _ = by_region(moose_candidates(subject, root), grid, subject)
     return found
 
 
-def read_values(path, shape):
+def read_values(path, grid):
     """A mask's values as int32 on the CT's grid (trailing axes of length one dropped, as fxr's
-    NIfTI loader drops them); a mask on another grid is a MaskProblem."""
+    NIfTI loader drops them); a mask on another grid, by its shape or by its affine
+    (grid_problem), is a MaskProblem."""
     import nibabel
 
-    array = np.asarray(nibabel.load(str(path)).dataobj)
+    image = nibabel.load(str(path))
+    array = np.asarray(image.dataobj)
     while array.ndim > 3 and array.shape[-1] == 1:
         array = array[..., 0]
-    if tuple(array.shape) != tuple(shape):
-        raise MaskProblem(f"{path.name} is on another grid than the CT")
+    problem = grid_problem((array.shape, np.asarray(image.affine, dtype=np.float64)), grid)
+    if problem:
+        raise MaskProblem(f"{path.name} is on another grid than the CT ({problem})")
     return np.rint(array).astype(np.int32)
 
 
 def grid_note(skipped):
-    """The tail of a reason naming the masks skipped for lying on another grid, or nothing."""
-    return f" on the CT's grid ({', '.join(skipped)} are not)" if skipped else ""
+    """The tail of a reason naming the masks skipped for lying on another grid, each with its
+    reason, or nothing."""
+    return f" on the CT's grid ({'; '.join(skipped)})" if skipped else ""
 
 
 def label_record(scheme, files, label, skipped, reachable):
     """What a label volume holds, as the manifest records it: the scheme, the files read (names
     only, keyed as they were written, a later one winning where two overlap, which precedence
-    repeats as a list) and the ones skipped for lying on another grid, the MOOSE ids present
+    repeats as a list) and the ones skipped for lying on another grid, each named with its
+    reason, another shape or another affine (on_grid), the MOOSE ids present
     with their names, the names present that FleXray's protocol drops (vertebra_l6, the
     thirteenth ribs), which its remap drops at render time (fxr/datasets/remap.py,
     compile_training_label_remap_by_name), and absent, the names FleXray supervises that the
@@ -511,18 +558,19 @@ def relabel(values, table, label):
     return outside
 
 
-def label_spineps(subject, ct_shape, roots):
-    """The subject's SPINEPS mask (the VerSe alphabet, schwingnet.segmenters.VERSE) relabelled
-    into MOOSE's stored ids (segmenters.to_moose_ids), which FleXray's own code reads
-    (fxr/experiment/label_projection.py, TrainingLabelProjection over the dataset's
-    stored_labels): L1 to L5 and L6 to vertebra_l1 to vertebra_l6, the sacrum to sacrum; T13 and
-    the coccyx have no MOOSE id, so they are left out of the volume and recorded as
-    unsupervised, as is any value outside the alphabet. One int16 volume and its record."""
-    kept, skipped = on_grid(spineps_matches(subject, roots.get("spineps")), ct_shape)
+def label_spineps(subject, grid, roots):
+    """The subject's SPINEPS mask (the VerSe alphabet, schwingnet.segmenters.VERSE) on the CT's
+    grid (shape, affine) relabelled into MOOSE's stored ids (segmenters.to_moose_ids), which
+    FleXray's own code reads (fxr/experiment/label_projection.py, TrainingLabelProjection over
+    the dataset's stored_labels): L1 to L5 and L6 to vertebra_l1 to vertebra_l6, the sacrum to
+    sacrum; T13 and the coccyx have no MOOSE id, so they are left out of the volume and
+    recorded as unsupervised, as is any value outside the alphabet. One int16 volume and its
+    record."""
+    kept, skipped = on_grid(spineps_matches(subject, roots.get("spineps")), grid)
     if not kept:
         raise MaskProblem("no SPINEPS mask found under its folder" + grid_note(skipped))
-    values = read_values(kept[0], ct_shape)
-    label = np.zeros(ct_shape, dtype=np.int16)
+    values = read_values(kept[0], grid)
+    label = np.zeros(grid[0], dtype=np.int16)
     table = segmenters.to_moose_ids("spineps")
     outside = relabel(values, table, label)
     names = segmenters.unsupervised_in("spineps")
@@ -531,22 +579,23 @@ def label_spineps(subject, ct_shape, roots):
     return label, record
 
 
-def label_moose(subject, ct_shape, roots):
-    """The subject's moosez outputs merged into one volume of MOOSE's stored ids, as FleXray's
-    own MOOSE dataset was labelled (its CTs were run through moosez; the volume is what
-    fxr/experiment/label_projection.py's TrainingLabelProjection reads): each model's file in
-    the order of segmenters.MOOSEZ_MODELS, soft tissue first and the vertebrae last so a bone
-    wins where two models overlap, its values to stored ids by segmenters.moosez_to_moose_ids;
-    a value MOOSE never stored (the organs model's trachea) or outside the model's table is left
-    out and recorded as unsupervised; a missing model's file is recorded, and at least one must
-    be there (the subject listing of tools/flexray_render.py asks for all five, so a render on
-    fewer is one the caller named). One int16 volume and its record."""
+def label_moose(subject, grid, roots):
+    """The subject's moosez outputs on the CT's grid (shape, affine) merged into one volume of
+    MOOSE's stored ids, as FleXray's own MOOSE dataset was labelled (its CTs were run through
+    moosez; the volume is what fxr/experiment/label_projection.py's TrainingLabelProjection
+    reads): each model's file in the order of segmenters.MOOSEZ_MODELS, soft tissue first and
+    the vertebrae last so a bone wins where two models overlap, its values to stored ids by
+    segmenters.moosez_to_moose_ids; a value MOOSE never stored (the organs model's trachea) or
+    outside the model's table is left out and recorded as unsupervised; a missing model's file
+    is recorded, and at least one must be there (the subject listing of tools/flexray_render.py
+    asks for all five, so a render on fewer is one the caller named). One int16 volume and its
+    record."""
     root = roots.get("moose")
     candidates = moose_candidates(subject, root) if root else []
-    found, skipped, unplaced = by_region(candidates, ct_shape, subject)
+    found, skipped, unplaced = by_region(candidates, grid, subject)
     if not found:
         raise MaskProblem("no MOOSE masks found under its folder" + grid_note(skipped))
-    label = np.zeros(ct_shape, dtype=np.int16)
+    label = np.zeros(grid[0], dtype=np.int16)
     unsupervised, missing, reachable = {}, [], set()
     for model, names in segmenters.MOOSEZ_MODELS.items():
         if model not in found:
@@ -554,7 +603,7 @@ def label_moose(subject, ct_shape, roots):
             continue
         table = segmenters.moosez_to_moose_ids(model)
         reachable |= set(table.values())
-        for value in relabel(read_values(found[model], ct_shape), table, label):
+        for value in relabel(read_values(found[model], grid), table, label):
             unsupervised[f"{model}:{value}"] = names.get(value, "outside the model's table")
     files = {m: found[m].name for m in segmenters.MOOSEZ_MODELS if m in found}
     record = label_record("moose", files, label, skipped, reachable)
