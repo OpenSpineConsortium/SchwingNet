@@ -25,7 +25,7 @@ GRID = ROOT / "grid"
 FAKE_HPCWORKER = ROOT / "tests" / "fakes" / "hpcworker"
 NEW_SCRIPTS = ("gate.sh", "hpcw.sh", "box.sh", "bin/pixi", "bin/train-cpu-python", "00-setup.sbatch", "00-weights.sbatch",
                "00-carmlspine.sbatch", "v1-driver.sbatch", "experiment-driver.sbatch", "run-xray-chain.sh",
-               "run-platform-fetch.sh", "sweep-driver.sbatch", "v1-version.sh")
+               "run-platform-fetch.sh", "sweep-driver.sbatch", "v1-version.sh", "realism.sbatch")
 ENVS = ("default", "train-cpu", "train-gpu", "telemetry")
 
 FAKES = {
@@ -1541,6 +1541,94 @@ esac
             self.assertEqual(done.returncode, 0, done.stdout)
             self.assertIn("- exit 0", done.stdout)
         self.assertEqual(len(self.submitted()), 1)
+
+    def realism_inputs(self, *which):
+        """The data root as the realism fetches leave it, each named set landed by its marker file."""
+        markers = {"klein_4b": ("hf_flux2_klein_4b", "raw", "model_index.json"),
+                   "klein_9b": ("hf_flux2_klein_9b", "raw", "model_index.json"),
+                   "klein_base_4b": ("hf_flux2_klein_base_4b", "raw", "model_index.json"),
+                   "flexray": ("hf_flexray_weights", "raw", "ensemble.json"),
+                   "fluxray": ("hf_flexray_data", "raw", "FluXray", "samples.csv"),
+                   "ct": ("aws_enhance_pet_ct", "raw", "0001.nii.gz"),
+                   "truth": ("aws_enhance_pet_labels", "raw", "Vertebrae", "0001.nii.gz")}
+        for name in which:
+            path = self.data.joinpath(*markers[name])
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("{}\n", encoding="utf-8")
+
+    def test_realism_refuses_a_stage_it_does_not_know_and_names_each_missing_input_in_turn(self):
+        # no stage, two stages and a stage that is not one of the four are refused before anything is read
+        self.assertEqual(self.gate("realism").returncode, 64)
+        self.assertEqual(self.gate("realism", "edit", "stats").returncode, 64)
+        refused = self.gate("realism", "train")
+        self.assertEqual(refused.returncode, 64, refused.stdout)
+        self.assertIn("edit, stats, lora or eval", refused.stdout)
+        self.environments_ready()
+        steps = (((), "hf_flux2_klein_4b"), (("klein_4b",), "fetch hf_flexray_weights first"), (("flexray",), "fetch hf_flexray_data first"),
+                 (("fluxray",), "fetch aws_enhance_pet_ct first"), (("ct",), "fetch aws_enhance_pet_labels first"))
+        for landed, said in steps:
+            self.realism_inputs(*landed)
+            refused = self.gate("realism", "edit")
+            self.assertEqual(refused.returncode, 2, refused.stdout)
+            self.assertIn(said, refused.stdout)
+        self.assertEqual(self.submitted(), [])
+        # the later stages wait for the one before them, whatever the data root holds
+        for stage, before in (("stats", "edit"), ("lora", "edit"), ("eval", "lora")):
+            refused = self.gate("realism", stage)
+            self.assertEqual(refused.returncode, 2, refused.stdout)
+            self.assertIn(f"send realism {before} first", refused.stdout)
+
+    def test_realism_queues_each_stage_once_as_one_gpu_job_and_then_prints_its_report(self):
+        self.environments_ready()
+        self.realism_inputs("klein_9b", "flexray", "fluxray", "ct", "truth")
+        done = self.gate("realism", "edit")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        lines = self.submitted()
+        self.assertEqual(len(lines), 1, lines)
+        self.assertIn("--class gpu --name realism_edit", lines[0])
+        self.assertIn("STAGE=edit", lines[0])
+        self.assertIn("--no-requeue", lines[0])
+        self.assertIn("realism.sbatch", lines[0])
+        job = self.recorded()["realism_edit"]
+        self.live(job)
+        self.assertEqual(self.gate("realism", "edit").returncode, 75)
+        (self.fake / "queue").write_text("", encoding="utf-8")
+        logs = self.repo / "grid" / "logs"
+        report = logs / "REALISM-edit.md"
+        # a report that ended in failure keeps stats waiting; one that ended well frees it
+        report.write_text("# realism edit: job 4242 on node, commit 0000000, 2026-10-26 01:00:00 UTC\n- exit 1 at 2026-10-26 02:00:00 UTC\n", encoding="utf-8")
+        refused = self.gate("realism", "stats")
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn("send realism edit first", refused.stdout)
+        report.write_text("# realism edit: job 4242 on node, commit 0000000, 2026-10-26 01:00:00 UTC\n- exit 0 at 2026-10-26 02:00:00 UTC\n", encoding="utf-8")
+        for _ in range(2):
+            done = self.gate("realism", "edit")
+            self.assertEqual(done.returncode, 0, done.stdout)
+            self.assertIn("- exit 0", done.stdout)
+        done = self.gate("realism", "stats")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        lines = self.submitted()
+        self.assertEqual(len(lines), 2, lines)
+        self.assertIn("--class gpu --name realism_stats", lines[1])
+        self.assertIn("STAGE=stats", lines[1])
+        # lora needs the base weights on top of the edit report; eval waits for lora's report
+        refused = self.gate("realism", "lora")
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn("fetch hf_flux2_klein_base_4b first", refused.stdout)
+        self.realism_inputs("klein_base_4b")
+        self.assertEqual(self.gate("realism", "lora").returncode, 0)
+        self.assertEqual(self.gate("realism", "eval").returncode, 2)
+        self.assertEqual(len(self.submitted()), 3)
+
+    def test_the_realism_job_refuses_a_stage_it_does_not_know_before_touching_anything(self):
+        for stage in ("", "train"):
+            env = dict(os.environ, SCHWINGNET=str(self.repo), DATA_ROOT=str(self.data), LAB_VOLUME=str(self.tmp), STAGE=stage)
+            done = subprocess.run(["bash", str(self.repo / "grid" / "realism.sbatch")], cwd=self.repo / "grid", env=env,
+                                  capture_output=True, text=True, timeout=60)
+            self.assertEqual(done.returncode, 64, done.stdout + done.stderr)
+            self.assertIn("SN_REALISM_RC=64", done.stdout)
+            self.assertIn("edit, stats, lora or eval", done.stdout)
+        self.assertFalse((self.repo / "grid" / "logs" / "REALISM-.md").exists())
 
     def test_select_is_refused_without_the_frozen_holdout(self):
         (self.repo / "data" / "splits" / "anomaly-holdout.json").unlink()
