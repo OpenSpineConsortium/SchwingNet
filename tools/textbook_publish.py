@@ -1,27 +1,40 @@
-"""The publish of the textbook's reader, the one small claude.ai artifact that shows the book, from
-the owner's computer (issues #236, #277 and #294): the page from main's commit, the prompt that
-tells Claude Code exactly what to publish, and the record left on the branch textbook-artifact.
+"""The publish of the repository's front door, the one small claude.ai artifact that opens the
+SchwingNet repository live (issues #236, #277 and #294, and the owner's word of 2026-10-26), from
+the owner's computer: the page from main's commit, the prompt that tells Claude Code exactly what
+to publish, and the record left on the branch textbook-artifact.
 
 The owner decided on 2026-10-24 that the book is also one private claude.ai artifact (#236). A
 GitHub Action could not publish it, since the session claude-code-action starts has no Artifact
-tool (#277), and on 2026-10-25 the session on the owner's computer published nothing either, as it
-should: the Artifact tool publishes a file Claude did not write only once Claude has read the whole
-of it, and the edition is about 450 files and 109 MB (docs/research/textbook-as-an-artifact.md). So
-the owner chose, the same day, a reader (#294): tools/textbook_reader.html, one page small enough
-to read in full, which holds no part of the book and, when it is opened, reads the book from the
-files of the Claude project the textbook thread belongs to, with the viewer's own access, through
-the artifact runtime's files capability; a thread of that project copies the book there with
-`python3 tools/textbook_reader.py stage`. The page is published once and again only when it
-changes, not when the book does.
+tool (#277); the session on the owner's computer published nothing either, as it should, since the
+Artifact tool publishes a file Claude did not write only once Claude has read the whole of it, and
+the edition is about 450 files and 109 MB; so the owner chose a reader (#294), one page reading a
+copy of the book that a thread staged into a Claude project's files. On 2026-10-26 the owner asked
+that the link never need a hand again and "dynamically load new files/artefacts like it's a front
+door into a repo", so the page at the link is now tools/front_door.html: it holds no file of the
+repository and, when it is opened, reads the repository itself, as the viewer, through the viewer's
+own GitHub connector in claude.ai (the artifact runtime's mcp capability, three read-only tools),
+so a merge to main is at the link the moment it is opened, with nothing staged and nothing
+republished (docs/research/textbook-as-an-artifact.md, The front door). The page is published once
+and again only when it changes.
+
+Two things fix where the publish runs. GitHub is not in claude.ai's connector directory and its
+server takes no dynamic client registration, so the owner adds it once as a custom connector named
+GitHub with a GitHub App of the owner's own; the door tells a viewer without it the same steps. And
+a cloud session's checks refuse to publish a page that declares a connector, as they refused the
+edition before it, so the publish runs in Claude Code on the owner's own computer, where the
+Artifact tool asks the person.
 
 This command publishes it: it fetches main, takes the page from main's commit into a folder beside
 the clone, stops where the page and its capabilities are the ones already published, opens Claude
 Code there on a mechanical prompt that has it read the page whole and then publish it, and records
 the session's answer on the branch once the person leaves it. The record is one file, state.json,
 on the branch textbook-artifact, written by fast-forward commits alone: the artifact's link, the
-commit the page came from, the page's sha256 and the capabilities it was published with.
+commit the page came from, the page's sha256 and the capabilities it was published with. Where the
+record has no link and an artifact is already at a link, --url names it: the run reads that
+artifact, publishes the door to it and records the link, which is how the door of 2026-10-26, whose
+first publish came from a thread that could not write the record, takes its record.
 
-    python3 tools/textbook_publish.py local [--work FOLDER] [--no-launch] [--record] [--anyway]
+    python3 tools/textbook_publish.py local [--url LINK] [--work FOLDER] [--no-launch] [--record] [--anyway]
 """
 
 import argparse
@@ -37,25 +50,26 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 REPO_NAME = "OpenSpineConsortium/SchwingNet"
-PAGE_SOURCE = "tools/textbook_reader.html"
-PAGE = "reader.html"                # the page's name in the work folder, where the Artifact tool reads it
+PAGE_SOURCE = "tools/front_door.html"
+PAGE = "door.html"                  # the page's name in the work folder, where the Artifact tool reads it
+# The record's schema is the reader's still: the record has the same fields (the link, the commit,
+# the page's hash, the capabilities), and a reader's record names the artifact the door takes over,
+# since the link stays.
 SCHEMA = "textbook-reader-page/1"
-# The Claude project whose files hold the book: the project the textbook thread runs in, which
-# tools/textbook_reader.py stage copies the book into. A project member publishes; a viewer who
-# cannot open the project's files reads nothing. The id moves with the work: on 2026-10-25 it took
-# the second account's project in the evening and, on the owner's word of 22:57 UTC that night, the
-# project the work went on in from the checkpoint of 22:35 UTC; a reader published before a move
-# keeps the project it named.
-PROJECT = "chan_014WUU19NHgHPhf7QetT9cbS"
-# What the reader uses of the viewer's: the project's files, and sample, which the book's own pages
-# reach through the reader for Ask Claude and Ask the book. No connector: a figure's Run as me
-# answers "no connector" here and its prefilled issue still works.
-CAPABILITIES = {"files": {"project": PROJECT}, "sample": {}}
+# What the door uses of the viewer's: the GitHub connector, by the display name a viewer gives it
+# in claude.ai, which the custom connector the door's steps describe is named exactly, and three of
+# its read-only tools, a file or folder, the commits of a branch and a search of the code; and
+# sample, for the Ask view, on the viewer's own account. No workflow tool: a figure's Run as me
+# answers "no connector" at the door and its prefilled issue still works.
+SERVER = "GitHub"
+TOOLS = ["get_file_contents", "list_commits", "search_code"]
+CAPABILITIES = {"mcp": {"servers": [{"server": SERVER, "tools": TOOLS}]}, "sample": {}}
 REFUSED = "CAPABILITIES_REFUSED"
 BRANCH = "textbook-artifact"
 STATE_FILE = "state.json"
-TITLE = "SchwingNet Textbook"
-DESCRIPTION = "The SchwingNet textbook, read from the SchwingNet Claude project's files when it is opened."
+TITLE = "SchwingNet Front Door"
+DESCRIPTION = ("The SchwingNet repository, read live when it is opened through the viewer's own GitHub connector "
+               "in claude.ai.")
 URL = re.compile(r"^https://claude\.ai/(?:code/)?artifact/[A-Za-z0-9_-]+$")
 # What the command keeps in its work folder, outside the clone: the session's instructions, the
 # marker lines it writes back, what the record needs once it ends, and a small repository of the
@@ -77,7 +91,7 @@ def sha256(path):
 def load_state(path):
     """The record as the branch holds it, or an empty one where the branch, the file or its
     JSON is not there yet; a record of another schema, such as the edition's of #236, is read as
-    empty, so the reader is published as a new artifact once."""
+    empty, so the door is published as a new artifact once."""
     if not path:
         return {}
     try:
@@ -107,15 +121,16 @@ def plan(page, state, capabilities=None):
 def prompt(plan_, sha, page, answer):
     """The session's instructions, mechanical: read the page whole, then the tool calls in order
     with their arguments, and the marker lines its answer ends with and writes to the answer file."""
-    label = f"Reader {sha[:7]}"
+    label = f"Door {sha[:7]}"
     lines = [
-        "You are publishing the reader of a confidential book, the SchwingNet textbook, as one private claude.ai",
-        "artifact from the owner's computer, with the Artifact tool. Do these steps in order and nothing else: call",
+        "You are publishing the front door of a confidential repository, OpenSpineConsortium/SchwingNet, as one",
+        "private claude.ai artifact from the owner's computer, with the Artifact tool. Do these steps in order and nothing else: call",
         f"no other tool than Artifact, Read and Write (only for the answer file, {answer}), write no other file, and",
         f"publish nothing but {page}.",
         "",
-        f"The page is {page}, {plan_['bytes']} bytes of HTML that hold no part of the book: when it is opened it",
-        f"reads the book from the files of the Claude project {PROJECT}, with the viewer's own access.",
+        f"The page is {page}, {plan_['bytes']} bytes of HTML that hold no file of the repository: when it is opened it",
+        f"reads the repository through the viewer's own GitHub connector in claude.ai (the connector named {SERVER}),",
+        "with the viewer's own access.",
         "",
         f"If the Artifact tool is not among your tools, write the line ARTIFACT_TOOL_MISSING to {answer}, tell the",
         "person to type /exit, and stop.",
@@ -125,11 +140,11 @@ def prompt(plan_, sha, page, answer):
     capabilities = json.dumps(plan_["capabilities"]) if plan_["capabilities"] else ""
     if plan_["first"]:
         lines += [
-            f"2. Publish it: action publish, file_path {page}, title \"{TITLE}\", icon book, description",
+            f"2. Publish it: action publish, file_path {page}, title \"{TITLE}\", icon door, description",
             f"   \"{DESCRIPTION}\", capabilities {capabilities}, label \"{label}\". The result gives the artifact's url.",
         ]
     else:
-        keep = (f", capabilities {capabilities}, since the reader's capabilities changed" if capabilities
+        keep = (f", capabilities {capabilities}, since the door's capabilities are not the ones recorded" if capabilities
                 else "; pass no capabilities")
         lines += [
             f"2. Action read with url {plan_['url']} (a publish to an artifact this session has not read is refused).",
@@ -138,8 +153,8 @@ def prompt(plan_, sha, page, answer):
         ]
     if plan_["capabilities"]:
         lines += [
-            "If the publish is refused for its capabilities, do not publish without them, since the reader shows",
-            f"nothing without the project's files: write the line {REFUSED} to the answer file with the refusal's",
+            "If the publish is refused for its capabilities, do not publish without them, since the door shows",
+            f"nothing without the viewer's GitHub connector: write the line {REFUSED} to the answer file with the refusal's",
             "words after it on the same line, tell the person what the refusal said, and stop.",
         ]
     lines += [
@@ -176,19 +191,21 @@ def record(state, plan_, answer, sha, run):
     if answer.get("missing_tool"):
         raise SystemExit("the session had no Artifact tool (ARTIFACT_TOOL_MISSING), and nothing was recorded")
     if answer.get("refused"):
-        raise SystemExit(f"the publish was refused for the reader's capabilities ({answer['refused']}); the account "
-                         f"Claude Code is signed in to must be a member of the Claude project {PROJECT}, the one whose "
-                         "files hold the book; nothing was recorded")
+        raise SystemExit(f"the publish was refused for the door's capabilities ({answer['refused']}); the door shows "
+                         "nothing without the viewer's GitHub connector, so it is not published without them: approve "
+                         "the publish when the Artifact tool asks, in Claude Code on this computer, since a cloud "
+                         "session's checks refuse a page that declares a connector; nothing was recorded")
     url = answer.get("url", "")
     if not url:
         raise SystemExit("the session's answer ends with no ARTIFACT_URL line, so nothing is known to have been "
                          "published; nothing was recorded")
-    if state.get("url") and state["url"] != url:
-        raise SystemExit(f"the session published to {url}, not to the recorded artifact {state['url']}; nothing was "
-                         "recorded, and a person decides which artifact stays")
+    expected = state.get("url") or plan_.get("url") or ""
+    if expected and expected != url:
+        raise SystemExit(f"the session published to {url}, not to the artifact {expected} the record or --url names; "
+                         "nothing was recorded, and a person decides which artifact stays")
     capabilities = plan_["capabilities"] or state.get("capabilities") or CAPABILITIES
     new = {"schema": SCHEMA, "url": url, "sha": sha, "page": plan_["page"], "capabilities": capabilities, "run": run}
-    return new, f"Reader {sha[:7]}: published"
+    return new, f"Door {sha[:7]}: published"
 
 
 # the publish from the owner's computer, where Claude Code carries the Artifact tool
@@ -274,8 +291,8 @@ def write_record(work, remote, new, message):
 
 
 def take_page(clone, sha, work):
-    """The reader page as main's commit holds it, written into the work folder; the bytes are
-    git's own, so the page published is the one reviewed and merged."""
+    """The door page as main's commit holds it, written into the work folder; the bytes are git's
+    own, so the page published is the one reviewed and merged."""
     done = subprocess.run(["git", "-C", str(clone), "show", f"{sha}:{PAGE_SOURCE}"], capture_output=True)
     if done.returncode != 0:
         raise SystemExit(f"{PAGE_SOURCE} is not in main's commit {sha[:7]}; nothing was published")
@@ -287,7 +304,7 @@ def take_page(clone, sha, work):
 def default_work(clone):
     """The work folder beside the clone, so the session there loads none of the repository's files."""
     clone = Path(clone).resolve()
-    return clone.parent / f"{clone.name}-textbook-reader"
+    return clone.parent / f"{clone.name}-front-door"
 
 
 def open_session(command, work):
@@ -298,14 +315,30 @@ def open_session(command, work):
 
 def steps_by_hand(work):
     script = Path(__file__).resolve()
-    return (f"The reader is ready in {work}. Two steps publish it:\n"
-            "1. Open Claude Code in that folder, signed in to the claude.ai account that keeps the book, and type:\n"
+    return (f"The door is ready in {work}. Two steps publish it:\n"
+            "1. Open Claude Code in that folder, signed in to the claude.ai account that holds the link, and type:\n"
             f"   {LOCAL_ASK}\n"
             "2. When it has given the link and you have left it, record it:\n"
             f"   {PYTHON} {script} local --record --work {work}\n")
 
 
-def local_publish(clone, work, claude="claude", launch=True, anyway=False):
+def adopt(state, url):
+    """The record with the link --url names where the record has none: the door's first publish of
+    2026-10-26 came from a thread whose record write was refused, so the owner's first run names
+    that artifact, reads it, publishes the door to it with its capabilities and records the link.
+    A record that names another artifact stands, and a person decides which stays."""
+    if not url:
+        return state
+    if not URL.match(url):
+        raise SystemExit(f"--url {url} is not a claude.ai artifact link (https://claude.ai/artifact/<id>); nothing was "
+                         "published")
+    if state.get("url") and state["url"] != url:
+        raise SystemExit(f"the record names {state['url']}, not {url}; nothing was published, and a person decides "
+                         "which artifact stays")
+    return state if state.get("url") else {"url": url}
+
+
+def local_publish(clone, work, claude="claude", launch=True, anyway=False, url=""):
     """The whole publish from this computer: main's commit fetched, the record read, the page taken
     from that commit, a stop where it and its capabilities are the ones already published, and
     Claude Code opened in the work folder on the prompt, its answer recorded once the person leaves
@@ -318,12 +351,12 @@ def local_publish(clone, work, claude="claude", launch=True, anyway=False):
     git_out(clone, "fetch", "--quiet", "--no-tags", "origin", "+refs/heads/main:refs/remotes/origin/main")
     sha = git_out(clone, "rev-parse", "refs/remotes/origin/main")
     work.mkdir(parents=True, exist_ok=True)
-    state = recorded_state(work, remote_url(clone))
+    state = adopt(recorded_state(work, remote_url(clone)), url)
     page = take_page(clone, sha, work)
     plan_ = plan(page, state)
     if plan_["nothing"] and not anyway:
-        print(f"The reader is already published at {state['url']}, as main holds it; the book it shows is copied "
-              "into the project's files by a thread (tools/textbook_reader.py stage). --anyway publishes it again.")
+        print(f"The door is already published at {state['url']}, as main holds it; it reads the repository itself "
+              "each time it is opened, so nothing is staged or published again. --anyway publishes it again.")
         return 0
     if plan_["nothing"]:
         plan_["nothing"] = False
@@ -388,12 +421,13 @@ def main(argv=None):
     local.add_argument("--no-launch", action="store_true", help="leave the folder ready and print the two steps")
     local.add_argument("--anyway", action="store_true", help="publish even where this page is already published")
     local.add_argument("--record", action="store_true", help="record what the session answered, after it ran by hand")
+    local.add_argument("--url", default="", help="the artifact already at a link, where the record names none")
 
     args = parser.parse_args(argv)
     work = args.work or default_work(args.clone)
     if args.record:
         return finish(work)
-    return local_publish(args.clone, work, args.claude, not args.no_launch, args.anyway)
+    return local_publish(args.clone, work, args.claude, not args.no_launch, args.anyway, args.url)
 
 
 if __name__ == "__main__":
