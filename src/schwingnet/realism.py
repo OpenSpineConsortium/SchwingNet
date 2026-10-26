@@ -223,7 +223,10 @@ def quantile(values: Sequence[float], q: float) -> float:
     below = math.floor(position)
     above = min(below + 1, len(ordered) - 1)
     weight = position - below
-    return ordered[below] * (1.0 - weight) + ordered[above] * weight
+    low, high = ordered[below], ordered[above]
+    # The two products round on their own, so their sum can land a few ulps outside the pair it
+    # interpolates (-2.2 twice gave -2.2000000000000006); the clamp keeps the promise above.
+    return min(max(low * (1.0 - weight) + high * weight, low), high)
 
 
 @beartype

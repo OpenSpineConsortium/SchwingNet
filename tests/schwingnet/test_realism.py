@@ -118,6 +118,16 @@ def test_quantile_reads_as_numpy_does():
     assert math.isclose(quantile([0.0, 1.0], 0.98), 0.98)
 
 
+def test_quantile_stays_inside_a_pair_of_equal_order_statistics():
+    # -2.2 * 0.7 + -2.2 * 0.3 rounds to -2.2000000000000006 in binary floating point, below the
+    # sample's minimum; the postcondition would fail without the clamp.
+    values = [0.7, 0.001, 0.001, -2.2, -2.2]
+    assert quantile(values, 0.02) == -2.2
+    assert quantile([0.001, -2.2, -2.2, 0.001, 3.0], 0.5) == 0.001
+    for q in (0.02, 0.3, 0.5, 0.98):
+        assert min(values) <= quantile(values, q) <= max(values)
+
+
 def test_the_filter_reflects_the_high_tail_about_the_median_and_keeps_the_best():
     # the README's rule: delta = edited - raw, keep delta >= 2 * median - q98
     deltas = [0.0, 0.01, -0.01, 0.02, 0.5, -0.5]

@@ -1112,8 +1112,23 @@ def run_measure(args):
     summary = {"bodies": len(rows), "difference_median_deg": float(np.median(differences)),
                "difference_p90_deg": float(np.percentile(differences, 90)), "table": realism.measurement_rows()}
     write_json(Path(args.out) / "measure.json", summary)
+    (Path(args.out) / "measure.md").write_text(measure_markdown(summary), encoding="utf-8")
     print(f"{len(rows)} lumbar endplates: |angle at 1024 - angle at 256| median {summary['difference_median_deg']:.2f} deg, "
           f"p90 {summary['difference_p90_deg']:.2f} deg")
+
+
+def measure_markdown(summary):
+    """The measurement as the job's report prints it: the endplate angles read from the exact masks
+    at both sizes, then the resolution table the recipe's geometry fixes."""
+    lines = [f"## realism measure: {summary['bodies']} lumbar endplates", "",
+             f"|angle at 1024 - angle at 256|: median {summary['difference_median_deg']:.2f} deg, "
+             f"p90 {summary['difference_p90_deg']:.2f} deg", "",
+             "| source to object (mm) | pixels | pixel at isocentre (mm) | endplate (px) | angle quantum (deg) |",
+             "| --- | --- | --- | --- | --- |"]
+    for row in summary["table"]:
+        lines.append(f"| {row['sod_mm']} | {row['pixels']} | {row['pixel_mm']:.3f} | {row['endplate_px']:.1f} | "
+                     f"{row['angle_quantum_deg']:.2f} |")
+    return "\n".join(lines) + "\n"
 
 
 # --- the command line ---------------------------------------------------------------------------------------------

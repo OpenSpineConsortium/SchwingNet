@@ -300,6 +300,10 @@ class RealismToolTest(unittest.TestCase):
         table = self.realism.measurement_rows()
         self.assertEqual(len(table), 6)
         self.assertGreater(min(r["angle_quantum_deg"] for r in table if r["pixels"] == 256), 1.0)
+        summary = {"bodies": 1, "difference_median_deg": 0.5, "difference_p90_deg": 0.5, "table": table}
+        page = self.tool.measure_markdown(summary)
+        self.assertIn("## realism measure: 1 lumbar endplates", page)
+        self.assertEqual(page.count("\n| "), 2 + len(table))
 
 
 if __name__ == "__main__":
