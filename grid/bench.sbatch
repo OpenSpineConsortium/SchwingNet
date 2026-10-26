@@ -86,13 +86,32 @@ failure_of() {  # the first compiler or linker error in a log, else its last lin
 weights_dir() {  # the FleXray bundle the fetch landed: the folder that holds ensemble.json
   dirname "$(find "$DATA/hf_flexray_weights/raw" -maxdepth 3 -name ensemble.json -print -quit 2>/dev/null)"
 }
-moose_zip_missing() {  # the first of MOOSE's model zips not under the data root's moose_weights/raw, by the fetch row's URLs
-  local urls url
+moose_zip_missing() {  # the first of MOOSE's model zips not whole under the data root's moose_weights/raw, by the fetch row's URLs: "<name> missing", "<name> part", "<name> damaged", or "row" where the row was not read
+  local urls url file whole
   urls=$(bash grid/run-platform-fetch.sh --args moose_weights 2>/dev/null)
-  [ -n "$urls" ] || { echo "(the row moose_weights of grid/run-platform-fetch.sh was not read)"; return; }
+  [ -n "$urls" ] || { echo row; return; }
   for url in $urls; do
-    [ -s "$DATA/moose_weights/raw/${url##*/}" ] || { echo "${url##*/}"; return; }
+    file=$DATA/moose_weights/raw/${url##*/}
+    [ -s "$file" ] || { echo "${url##*/} missing"; return; }
+    whole=0; zip_whole "$file" || whole=$?
+    case "$whole" in 0) ;; 2) echo "${url##*/} damaged"; return ;; *) echo "${url##*/} part"; return ;; esac
   done
+}
+zip_whole() {  # zip_whole FILE: 0 where the file ends in a whole end-of-central-directory record, read as Python's zipfile.is_zipfile reads it, and unzip finds every member whole where the node has unzip; 2 where only unzip's test fails
+  # grid/gate.sh's check again, where the job runs, since the gate's may be hours old by the time
+  # the job starts: the url route lands each zip under its final name while curl resumes it and
+  # leaves a part there when a download is cut short (grid/platform-fetch.sbatch, fetch_url), which
+  # [ -s ] passes and the unpack would die on. The node may have no python3, so awk and coreutils
+  # read the record; unzip, where it is there, tests every member's CRC too, which tells a zip
+  # resumed across two uploads of the asset, whole by its record, from a sound one.
+  local size from
+  size=$(stat -c %s "$1" 2>/dev/null) && [ "$size" -ge 22 ] || return 1
+  from=$(( size > 65558 ? size - 65558 : 0 ))
+  tail -c +"$((from + 1))" "$1" | od -An -v -tx1 -w1 | awk '
+    function hex(s,  i, v) { v = 0; for (i = 1; i <= length(s); i++) v = v * 16 + index("0123456789abcdef", substr(s, i, 1)) - 1; return v }
+    { bytes[NR] = $1 }
+    END { for (i = NR - 21; i >= 1; i--) if (bytes[i] bytes[i + 1] bytes[i + 2] bytes[i + 3] == "504b0506" && i + 21 + hex(bytes[i + 21] bytes[i + 20]) == NR) exit 0; exit 1 }' || return 1
+  ! command -v unzip > /dev/null 2>&1 || unzip -tq "$1" > /dev/null 2>&1 || return 2
 }
 samples_index() {  # the sample index the gate checked (INDEX), else the newest whole run's, as grid/gate.sh names it in CURRENT
   local out=${SAMPLES_OUT:-$DATA/_samples} current
@@ -185,7 +204,13 @@ case "$BENCH" in
     [ -d "$DATA/totalsegmentator_v201" ] || { report "FAILED: no totalsegmentator_v201 under $DATA, the CTs the render groups draw"; finish 2; }
     [ -d "$DATA/spineps" ] || { report "FAILED: no spineps under $DATA, the masks the choice of CTs is made among"; finish 2; }
     zip=$(moose_zip_missing)
-    [ -z "$zip" ] || { report "FAILED: no $zip under $DATA/moose_weights/raw (fetch moose_weights first)"; finish 2; }
+    case "$zip" in
+      "") ;;
+      row) report "FAILED: the row moose_weights of grid/run-platform-fetch.sh was not read, so no zip can be named"; finish 2 ;;
+      *" part") report "FAILED: ${zip% part} under $DATA/moose_weights/raw is not a whole zip (a part still landing or cut short, which a resend of fetch moose_weights resumes)"; finish 2 ;;
+      *" damaged") report "FAILED: ${zip% damaged} under $DATA/moose_weights/raw is whole by its record but unzip finds a member damaged (a download resumed across two uploads of the asset, say): delete it in the grid's shell and resend fetch moose_weights, which lands it again"; finish 2 ;;
+      *) report "FAILED: no ${zip% missing} under $DATA/moose_weights/raw (fetch moose_weights first)"; finish 2 ;;
+    esac
     venv=$(venv_for "$MOOSE_PIN") || { report "FAILED: the environment for $MOOSE_PIN could not be made"; finish 1; }
     report "environment: $MOOSE_PIN; weights: $DATA/moose_weights/raw; CTs: $DATA/totalsegmentator_v201; masks: $DATA/moose"
     # The choice of CTs, made as the study makes it but before any MOOSE mask exists, to
@@ -199,7 +224,13 @@ case "$BENCH" in
     # MOOSE on exactly those CTs, through the segment subcommand's own plan (which subjects still
     # lack masks, which models), the masks landing under the data root's moose in moosez's layout.
     said=$(bash grid/box.sh "$venv/bin/python" tools/flexray_render.py segment --segmenter moose --ct-root "$DATA/totalsegmentator_v201" \
-      --subjects "$OUT/render-subjects.json" --weights "$DATA/moose_weights/raw" --out "$DATA/moose" 2>&1 | sed -r -f grid/redact.sed); rc=$? ;;
+      --subjects "$OUT/render-subjects.json" --weights "$DATA/moose_weights/raw" --out "$DATA/moose" 2>&1 | sed -r -f grid/redact.sed); rc=$?
+    # The segment subcommand prints its plan and its record as JSON (every subject, the data root's
+    # paths, each zip's bytes) and ends with one plain line, the subjects run, the models, the files
+    # found and not found and where they were written: the report carries that line alone, since the
+    # JSON's last lines are closing brackets, and the whole stays in the job's log; a run that failed
+    # keeps its last lines, the refusal or the traceback's end.
+    [ "$rc" != 0 ] || tail_lines=1 ;;
 esac
 echo "$said"
 report "results: $OUT"

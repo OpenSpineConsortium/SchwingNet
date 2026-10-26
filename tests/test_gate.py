@@ -11,6 +11,7 @@ scancel and df on PATH answer for Slurm; nothing reaches a scheduler. Standard l
 required check runs it."""
 
 import hashlib
+import io
 import json
 import os
 import shutil
@@ -19,6 +20,7 @@ import sys
 import tempfile
 import time
 import unittest
+import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -429,11 +431,18 @@ class GateTest(unittest.TestCase):
                               capture_output=True, text=True).stdout.split()
         return [url.rsplit("/", 1)[1] for url in args]
 
-    def moose_weights_landed(self, names):
+    def moose_weights_landed(self, names, cut=0):
+        """The zips as the url route lands them under moose_weights/raw, each a whole zip of one
+        member; with cut, each less its last cut bytes, the part the route leaves under the zip's
+        final name while curl resumes it or when a download was cut short."""
         raw = self.data / "moose_weights" / "raw"
         raw.mkdir(parents=True, exist_ok=True)
         for name in names:
-            (raw / name).write_bytes(b"zip")
+            buffer = io.BytesIO()
+            with zipfile.ZipFile(buffer, "w") as archive:
+                archive.writestr(f"{name[:-4]}/dataset.json", "{}\n")
+            data = buffer.getvalue()
+            (raw / name).write_bytes(data[:len(data) - cut] if cut else data)
 
     def test_moose_weights_is_a_fetch_word_for_the_five_model_zips_outside_the_chain(self):
         # MOOSE's weights (moose_weights), what bench flexray_drr_seg runs on, are the five model zips
@@ -562,7 +571,7 @@ class GateTest(unittest.TestCase):
             "263": "recipe: none\nepochs: 0x\nseed: 3\nhours: 2\n",
             "264": "recipe: none\nepochs: 12\nseed: 3\nhours: 2\nsomething else\n",
             "265": "recipe: none\nepochs: 12\nseed: 3\nhours: 2\nblock: " + "a" * 120 + "=b\n",
-            "266": "".join(f"block: architecture=resnet34\n" for _ in range(41)) + "recipe: none\nepochs: 1\nseed: 1\nhours: 1\n",
+            "266": "".join("block: architecture=resnet34\n" for _ in range(41)) + "recipe: none\nepochs: 1\nseed: 1\nhours: 1\n",
             "267": "recipe: none\nepochs: 12\nseed: 3\nhours: 2.5.1\n",
             "268": "recipe: none\nepochs: 12\nseed: 3\nhours: 4h\n",
         }
@@ -2522,6 +2531,25 @@ esac
         self.assertEqual(refused.returncode, 2, refused.stdout)
         self.assertIn(f"MOOSE's model zip {zips[-1]} under", refused.stdout)
         self.assertEqual(self.submitted(), [])
+        # while fetch moose_weights is still queued or running the zips may be landing: refused by
+        # its job, as the fetch, explore and unpack words refuse beside a live fetch
+        self.state_line(4242, "fetch:moose_weights", "dp_moose_weights")
+        self.live(4242)
+        self.moose_weights_landed(zips[-1:])
+        refused = self.gate("bench", "flexray_drr_seg")
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn("needs the fetch of moose_weights to end: it is still queued or running (job 4242)", refused.stdout)
+        self.live()
+        # a zip there as a part, cut short or still landing under its final name, is no landed zip:
+        # named, with the resend that resumes it, since [ -s ] passes it and the unpack would die
+        self.moose_weights_landed(zips[-1:], cut=5)
+        refused = self.gate("bench", "flexray_drr_seg")
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn(f"MOOSE's model zip {zips[-1]} under {self.data}/moose_weights/raw whole: what is there is a part,"
+                      " still landing or cut short, which a resend of fetch moose_weights resumes", refused.stdout)
+        self.moose_weights_landed(zips[-1:], cut=100)
+        self.assertIn(f"MOOSE's model zip {zips[-1]} under {self.data}/moose_weights/raw whole", self.gate("bench", "flexray_drr_seg").stdout)
+        self.assertEqual(self.submitted(), [])
         self.moose_weights_landed(zips[-1:])
         self.environments_ready()
         done = self.gate("bench", "flexray_drr_seg")
@@ -2545,11 +2573,17 @@ esac
         self.assertEqual(refused.returncode, 2, refused.stdout)
         self.assertIn("the row moose_weights of grid/run-platform-fetch.sh was not read", refused.stdout)
 
+    # what tools/flexray_render.py segment prints: its plan and its record as JSON, then one plain line
+    SEGMENT_SAID = ('  echo "{"; echo \' "models": ["clin_ct_vertebrae"],\'; echo \' "subjects": [{"id": "s0001"}]\'; echo "}"\n'
+                    '  echo "{"; echo \' "done": [{"id": "s0001"}]\'; echo "}"\n'
+                    '  echo "segment: 2 subjects run, 5 models, 10 files found, 0 not found, written under $out"\n')
+
     def test_the_drr_seg_job_plans_the_subjects_then_runs_moose_on_them_with_the_fetched_weights(self):
         # bench.sbatch with BENCH=flexray_drr_seg: the moosez pin goes into the throwaway environment,
         # the study's plan subcommand chooses the CTs into the job's own folder (its log stays there
         # under umask 077), and the segment subcommand runs on exactly that file with the fetched zips
-        # as its weights, writing under the data root's moose; a zip not there or a plan that fails
+        # as its weights, writing under the data root's moose; the report carries the segment's one
+        # summary line and not the JSON before it; a zip not there or not whole, or a plan that fails,
         # ends the job by name before any segmenter runs
         self.git_repo()
         (self.data / "totalsegmentator_v201" / "s0001").mkdir(parents=True)
@@ -2567,7 +2601,8 @@ esac
             'else\n'
             '  [ -f "$subjects" ] || { echo "no subjects file at $subjects"; exit 2; }\n'
             '  mkdir -p "$out/s0001" && echo mask > "$out/s0001/mask"\n'
-            '  echo "segment: 2 subjects, 8 models, written under $out"\n'
+            '  [ ! -f "$FAKE/segment_fail" ] || { echo "{"; echo "}"; echo "segment: refused: $(cat "$FAKE/segment_fail")" >&2; exit 2; }\n'
+            + self.SEGMENT_SAID +
             'fi\n', encoding="utf-8")
         done = self.bench_job("flexray_drr_seg")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
@@ -2587,8 +2622,11 @@ esac
         report = (self.repo / "grid" / "logs" / "BENCH-flexray_drr_seg.md").read_text(encoding="utf-8")
         self.assertIn(f"- environment: moosez==3.2.2; weights: {self.data}/moose_weights/raw; CTs: {self.data}/totalsegmentator_v201;"
                       f" masks: {self.data}/moose\n", report)
-        self.assertIn(f"\n  segment: 2 subjects, 8 models, written under {self.data}/moose\n", report)
-        self.assertIn("- exit 0 at ", report)
+        self.assertIn(f"- results: {out}\n  segment: 2 subjects run, 5 models, 10 files found, 0 not found,"
+                      f" written under {self.data}/moose\n- exit 0 at ", report)
+        self.assertNotIn("models", report.split("- results:")[1].split("segment:")[0])
+        self.assertNotIn('"done"', report)
+        self.assertIn('"done": [{"id": "s0001"}]', done.stdout)
         # the plan's log stays in the job's folder, the owner's alone
         self.assertNotIn("CTs chosen", report + done.stdout)
         self.assertIn("2 CTs chosen", (out / "plan.log").read_text(encoding="utf-8"))
@@ -2605,8 +2643,16 @@ esac
         self.assertIn("- FAILED: domain_gap.py plan ended 2 (drr-gap FAILED: no CT chosen for totalsegmentator_v201, token <withheld>)", report)
         self.assertNotIn(token, report + done.stdout)
         self.assertEqual(len([line for line in self.boxed() if "flexray_render.py segment" in line]), 1)
-        # a zip the fetch has not landed: named with its fetch, before the environment or the plan
+        # a segment run that is refused: its last lines in the report, the refusal among them, masked
         (self.fake / "plan_fail").unlink()
+        (self.fake / "segment_fail").write_text(f"no whole zip for token {token}", encoding="utf-8")
+        done = self.bench_job("flexray_drr_seg")
+        self.assertEqual(done.returncode, 2, done.stdout + done.stderr)
+        report = (self.repo / "grid" / "logs" / "BENCH-flexray_drr_seg.md").read_text(encoding="utf-8")
+        self.assertIn("\n  {\n  }\n  segment: refused: no whole zip for token <withheld>\n- exit 2 at ", report)
+        self.assertNotIn(token, report + done.stdout)
+        (self.fake / "segment_fail").unlink()
+        # a zip the fetch has not landed: named with its fetch, before the environment or the plan
         (self.data / "moose_weights" / "raw" / zips[2]).unlink()
         before = len(self.boxed())
         done = self.bench_job("flexray_drr_seg")
@@ -2615,6 +2661,40 @@ esac
         self.assertIn(f"- FAILED: no {zips[2]} under {self.data}/moose_weights/raw (fetch moose_weights first)", report)
         self.assertEqual(len(self.boxed()), before)
         self.assertFalse((self.repo / "grid" / "logs" / "HOLD").exists())
+        # a zip there as a part, cut short or still landing: named too, with the resend that resumes it,
+        # since the gate's check may be hours old by the time the job starts
+        self.moose_weights_landed(zips[2:3], cut=7)
+        done = self.bench_job("flexray_drr_seg")
+        self.assertEqual(done.returncode, 2, done.stdout + done.stderr)
+        report = (self.repo / "grid" / "logs" / "BENCH-flexray_drr_seg.md").read_text(encoding="utf-8")
+        self.assertIn(f"- FAILED: {zips[2]} under {self.data}/moose_weights/raw is not a whole zip (a part still landing or"
+                      " cut short, which a resend of fetch moose_weights resumes)", report)
+        self.assertEqual(len(self.boxed()), before)
+        self.assertFalse((self.repo / "grid" / "logs" / "HOLD").exists())
+
+    @unittest.skipUnless(shutil.which("unzip"), "the node's unzip tests the members; none here")
+    def test_the_drr_seg_job_refuses_a_zip_whole_by_its_record_whose_member_unzip_finds_damaged(self):
+        # a zip resumed across two uploads of the asset ends in a whole record and [ -s ] and the
+        # record's check both pass it, while unzip's test of every member's CRC does not, where the
+        # node has unzip: the job names it, and says what a resend would not mend
+        self.git_repo()
+        (self.data / "totalsegmentator_v201" / "s0001").mkdir(parents=True)
+        (self.data / "spineps").mkdir()
+        zips = self.moose_zips()
+        self.moose_weights_landed(zips)
+        damaged = self.data / "moose_weights" / "raw" / zips[1]
+        data = bytearray(damaged.read_bytes())
+        start = data.index(b"{}\n")
+        data[start:start + 3] = b"!!\n"
+        damaged.write_bytes(bytes(data))
+        self.assertTrue(zipfile.is_zipfile(damaged))
+        done = self.bench_job("flexray_drr_seg")
+        self.assertEqual(done.returncode, 2, done.stdout + done.stderr)
+        report = (self.repo / "grid" / "logs" / "BENCH-flexray_drr_seg.md").read_text(encoding="utf-8")
+        self.assertIn(f"- FAILED: {zips[1]} under {self.data}/moose_weights/raw is whole by its record but unzip finds a member"
+                      " damaged (a download resumed across two uploads of the asset, say): delete it in the grid's shell and"
+                      " resend fetch moose_weights, which lands it again", report)
+        self.assertEqual(self.boxed(), [])
 
     def test_dropzip_deletes_once_then_prints_what_it_did(self):
         shutil.copy(GRID / "fetch-xray.json", self.repo / "grid" / "fetch-xray.json")

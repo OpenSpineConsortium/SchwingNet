@@ -1044,7 +1044,7 @@ samples_index() {  # the newest whole run's samples.sqlite, as grid/run-samples.
 }
 
 bench_inputs_missing() {  # what bench $id still lacks on the data root, one line, or nothing
-  local zip
+  local zip busy
   case "$id" in
     flexray_carmlspine|flexray_deepfluoro)
       find "$DATA_ROOT/hf_flexray_weights/raw" -maxdepth 3 -name ensemble.json -print -quit 2>/dev/null | grep -q . \
@@ -1074,20 +1074,46 @@ bench_inputs_missing() {  # what bench $id still lacks on the data root, one lin
       weights_ready || echo "the ImageNet ResNet-18 file at $WEIGHTS (the gate word start fetches it)" ;;
     flexray_drr_seg)
       # The segment job's inputs in the order it reads them: the CTs and the SPINEPS masks the plan
-      # chooses among, then MOOSE's weights, which the job never downloads.
+      # chooses among, then MOOSE's weights, which the job never downloads: no fetch of them still
+      # live, as the fetch, explore and unpack words refuse beside one, and every zip there and
+      # whole, since the url route lands each under its final name while curl resumes it and leaves
+      # a part there when a download is cut short (grid/platform-fetch.sbatch, fetch_url), which
+      # [ -s ] passes and the job's unpack would die on.
       [ -d "$DATA_ROOT/totalsegmentator_v201" ] || { echo "the TotalSegmentator CTs at $DATA_ROOT/totalsegmentator_v201, which the study's render groups draw"; return; }
       [ -d "$DATA_ROOT/spineps" ] || { echo "the SPINEPS masks at $DATA_ROOT/spineps, which the choice of CTs is made among"; return; }
+      busy=$(live_of dp_moose_weights)
+      [ -z "$busy" ] || { echo "the fetch of moose_weights to end: it is still queued or running (job $busy)"; return; }
       zip=$(moose_weights_missing)
-      [ -z "$zip" ] || echo "MOOSE's model zip $zip under $DATA_ROOT/moose_weights/raw (fetch moose_weights first)" ;;
+      case "$zip" in
+        "") ;;
+        row) echo "MOOSE's model zips named: the row moose_weights of grid/run-platform-fetch.sh was not read" ;;
+        *" part") echo "MOOSE's model zip ${zip% part} under $DATA_ROOT/moose_weights/raw whole: what is there is a part, still landing or cut short, which a resend of fetch moose_weights resumes" ;;
+        *) echo "MOOSE's model zip ${zip% missing} under $DATA_ROOT/moose_weights/raw (fetch moose_weights first)" ;;
+      esac ;;
   esac
 }
-moose_weights_missing() {  # the first of MOOSE's model zips not under the data root's moose_weights/raw, by the fetch row's URLs
-  local urls url
+moose_weights_missing() {  # the first of MOOSE's model zips not whole under the data root's moose_weights/raw, by the fetch row's URLs: "<name> missing", "<name> part", or "row" where the row was not read
+  local urls url file
   urls=$(bash "$REPO/grid/run-platform-fetch.sh" --args moose_weights 2>/dev/null)
-  [ -n "$urls" ] || { echo "(the row moose_weights of grid/run-platform-fetch.sh was not read)"; return; }
+  [ -n "$urls" ] || { echo row; return; }
   for url in $urls; do
-    [ -s "$DATA_ROOT/moose_weights/raw/${url##*/}" ] || { echo "${url##*/}"; return; }
+    file=$DATA_ROOT/moose_weights/raw/${url##*/}
+    [ -s "$file" ] || { echo "${url##*/} missing"; return; }
+    zip_whole "$file" || { echo "${url##*/} part"; return; }
   done
+}
+zip_whole() {  # zip_whole FILE: the file ends in a whole end-of-central-directory record, read as Python's zipfile.is_zipfile reads it
+  # The record's signature PK\5\6 within the last 65557 bytes, 18 bytes after it and then a comment
+  # of the length the record states, up to the file's end: a zip cut short anywhere, in its last
+  # bytes included, fails this, a whole one passes. awk and coreutils alone, since the login node
+  # runs no python; grid/bench.sbatch's copy adds unzip's test of every member where the node has it.
+  local size from
+  size=$(stat -c %s "$1" 2>/dev/null) && [ "$size" -ge 22 ] || return 1
+  from=$(( size > 65558 ? size - 65558 : 0 ))
+  tail -c +"$((from + 1))" "$1" | od -An -v -tx1 -w1 | awk '
+    function hex(s,  i, v) { v = 0; for (i = 1; i <= length(s); i++) v = v * 16 + index("0123456789abcdef", substr(s, i, 1)) - 1; return v }
+    { bytes[NR] = $1 }
+    END { for (i = NR - 21; i >= 1; i--) if (bytes[i] bytes[i + 1] bytes[i + 2] bytes[i + 3] == "504b0506" && i + 21 + hex(bytes[i + 21] bytes[i + 20]) == NR) exit 0; exit 1 }'
 }
 bench_job_of() {  # the job number a benchmark report's first line names
   sed -n '1s/.*: job \([0-9][0-9]*\) .*/\1/p' "$1"
