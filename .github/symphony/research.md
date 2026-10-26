@@ -54,7 +54,7 @@ The gate words of grid/gate.sh (start, status, leaks, v1, latency, fetch <id>, e
 
 ## Rules that hold in every run
 
-- The size rule: every fetch onto the lab volume reads its exact size from its source first (grid/fetch_size.py) and is refused whole when it would pass the oschome quota after what running fetches still owe (grid/size-rule.sh, docs/memory/the-size-rule.md). Never stage a dataset in a grid.yml container. gdown, Kaggle and Redivis stay refused until issue #163 settles them.
+- The size rule: every fetch onto the lab volume reads its exact size from its source first (grid/fetch_size.py) and is refused whole when it would pass the oschome quota after what running fetches still owe (grid/size-rule.sh, docs/memory/the-size-rule.md). Never stage a dataset in a grid.yml container. gdown, Kaggle and Redivis are sized too since issue #163.
 - CT-RATE (21.3 TB) is never fetched without the owner's own number of terabytes. Radiopaedia is never fetched by script. Usage credits are never used: if the Claude token reaches its limit, stop.
 - Check a job's state before you ask for it again (`runs`, `log`, the dispatch job's comment on the issue, and the gate word status by the owner's issue for a Slurm job).
 - Never push to or force-push a default branch; never push to another worker's branch; force-with-lease only on your own claim branch. Work only by the claim protocol: an issue, `claude/<issue>`, a draft pull request, the review record, ready. Never merge.

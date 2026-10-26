@@ -9,8 +9,18 @@
 # logs/01-fetch-STAGE-REPORT.md. FETCH_ARGS carries --only and --credentialed.
 # Off the grid (a container testing the chain, issue #40) the same script runs with bash:
 # DATA_ROOT names another data root, OUTSIDE_SLURM=1 lifts the tool's refusal of a shell with no
-# job, and REACQUIRE names the helper where ~/spinesurg-ct-nnunet is not there (the repository's
-# copy data/reproduce/reacquire/reacquire.py is the same file and is the tool's own fallback).
+# job and nothing else, and REACQUIRE names the helper where ~/spinesurg-ct-nnunet is not there
+# (the repository's copy data/reproduce/reacquire/reacquire.py is the same file and is the tool's
+# own fallback).
+# In a Slurm job each set is sized from its source and admitted whole, with its bank, or refused
+# whole by the owner's size rule before its first byte lands (grid/admit.sh, issue #163); a set
+# refused lands nothing, the next one is decided in turn, and the report says which were refused.
+# The tool then runs under a Python of the node's own, not PYDRV: the rule it asks reads Slurm's
+# queue with squeue and takes a flock on the data root, and the container PYDRV runs the stages in
+# (grid/box.sh) has neither, so a decision made there would refuse every set. FETCH_PYTHON names
+# that Python, else the acq environment's, which grid/platform-fetch.sbatch runs its size reader
+# with; the helpers run under PYDRV as before (--python). A node with no Python of 3.9 or later
+# for the tool fetches nothing, since nothing could decide.
 set -uo pipefail
 REPO=${SCHWINGNET:-$HOME/SchwingNet}
 PYDRV=${PYDRV:-python3}
@@ -18,14 +28,37 @@ FETCH_ARGS=${FETCH_ARGS:-}
 [ -z "${DATA_ROOT:-}" ] || FETCH_ARGS="$FETCH_ARGS --data-root $DATA_ROOT"
 [ "${OUTSIDE_SLURM:-0}" != 1 ] || FETCH_ARGS="$FETCH_ARGS --outside-slurm"
 [ -z "${REACQUIRE:-}" ] || FETCH_ARGS="$FETCH_ARGS --reacquire $REACQUIRE"
+node_python() {  # the node's own Python of 3.9 or later for the tool: FETCH_PYTHON, else the acq environment's
+  local candidate found
+  for candidate in "${FETCH_PYTHON:-}" "${ACQ_ENV:-/rs/rs_grp_oschome/go2432/envs/acq}/bin/python"; do
+    [ -n "$candidate" ] || continue
+    found=$(command -v "$candidate" 2>/dev/null) || continue
+    "$found" -c 'import sys; sys.exit(sys.version_info < (3, 9))' 2>/dev/null || continue
+    echo "$found"
+    return 0
+  done
+  return 1
+}
 # The grid's temp folder unless the run names its own root, whose _tmp then serves, since mkdir
 # on the grid's path fails anywhere else and a TMPDIR that is no directory breaks every tempfile.
 export PYTHONNOUSERSITE=1 TMPDIR=${TMPDIR_OVERRIDE:-${DATA_ROOT:+$DATA_ROOT/_tmp}}
 TMPDIR=${TMPDIR:-/rs/rs_grp_oschome/go2432/tmp}
 mkdir -p logs "$TMPDIR"
 echo "XR_FETCH start $(date '+%F %T') on $(hostname) job ${SLURM_JOB_ID:-} restart ${SLURM_RESTART_COUNT:-0}: $FETCH_ARGS"
+RUNNER=$PYDRV
+ADMIT=()
+if [ -n "${SLURM_JOB_ID:-}" ]; then
+  export PYDRV SCHWINGNET="$REPO"
+  ADMIT=(--admit "bash $REPO/grid/admit.sh")
+  if ! RUNNER=$(node_python); then
+    echo "XR_FETCH refused: no Python of 3.9 or later on the node for the size rule (FETCH_PYTHON, else ${ACQ_ENV:-/rs/rs_grp_oschome/go2432/envs/acq}/bin/python); nothing fetched"
+    echo "XR_FETCH_RC=4 $(date '+%F %T')"
+    exit 4
+  fi
+fi
 # shellcheck disable=SC2086
-"$PYDRV" "$REPO/tools/fetch_sources.py" --run --python "$PYDRV" --report logs/01-fetch-STAGE-REPORT.md $FETCH_ARGS
+"$RUNNER" "$REPO/tools/fetch_sources.py" --run --python "$PYDRV" --report logs/01-fetch-STAGE-REPORT.md \
+  ${ADMIT[@]+"${ADMIT[@]}"} $FETCH_ARGS
 rc=$?
 echo "XR_FETCH_RC=$rc $(date '+%F %T')"
 exit $rc

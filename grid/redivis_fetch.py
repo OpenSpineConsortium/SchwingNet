@@ -9,10 +9,24 @@ exceed --max-gb, so a set larger than the owner chose never starts. Runs inside 
 (grid/platform-fetch.sbatch, route redivis) with REDIVIS_API_TOKEN in its environment; standard
 library plus the redivis package.
 
+With --size it downloads nothing and is the route's size reader for the owner's size rule
+(grid/size-rule.sh, issue #163): its last line is "<total bytes> <bytes still to land> <how>", as
+grid/fetch_size.py prints for the other routes. The total is the listed files' bytes and each CSV
+table's export, which Redivis makes and states the size of before any byte of it is downloaded.
+The client writes a file it fetches again in place of what is there, so a file adds no more than
+its listed size less what is on disk at its landing path; a CSV export is counted whole, since its
+name and its parts are known only once it is downloaded. A client that fails is one line and exit 2,
+naming the kind of failure and never its text, which could carry an address; a client or an answer
+this reader does not fit is another line and exit 5, so a mismatch never reads as Redivis being
+down. The export the size read waits for is not reused: the download asks Redivis for one of its
+own (Table.download), so a set sized and then fetched has two exports built; reusing the first
+waits on the client's export download being run once on the grid.
+
     python grid/redivis_fetch.py --dest <data>/chexpert_plus/raw \
         --manifest <data>/chexpert_plus/meta --max-gb 3000 \
         --files aimi.chexpert_plus:5yyj:v1_0.png_train:s6cj \
         --csv aimi.chexpert_plus:5yyj:v1_0.df_chexpert_plus_240401:bavj
+    python grid/redivis_fetch.py --size --dest ... --manifest ... --files ... --csv ...
 """
 
 import argparse
@@ -20,6 +34,12 @@ import sys
 from pathlib import Path
 
 REFUSED_FOR_SIZE = 3
+NO_ANSWER = 2
+NO_FIT = 5
+
+
+class NoSize(Exception):
+    """Redivis lists or states no exact size for something the run would land."""
 
 
 def folder_of(reference):
@@ -41,17 +61,69 @@ def write_manifest(path, rows):
             out.write(f"{folder}\t{name}\t{size}\t{md5}\n")
 
 
+def landing_of(directory, listed):
+    """Where the client lands a listed file inside its table's folder: its path within the
+    directory, as Directory.download makes it."""
+    return (Path("/") / listed.path).relative_to(getattr(directory, "path", None) or Path("/"))
+
+
 def listed_files(redivis, references):
-    """Each file table's directory and the manifest rows of its files."""
-    directories, rows = [], []
+    """Each file table's directory, the manifest rows of its files and, for each, its size and
+    where it lands under the destination."""
+    directories, rows, landings = [], [], []
     for reference in references:
         directory = redivis.table(reference).to_directory()
         files = directory.list(mode="files", recursive=True)
         folder = folder_of(reference)
         for f in files:
             rows.append((folder, str(f.path), f.size or 0, f.properties.get("md5_hash", "")))
+            landings.append((Path(folder) / landing_of(directory, f), f.size))
         directories.append((reference, folder, directory, len(files)))
-    return directories, rows
+    return directories, rows, landings
+
+
+def still_to_land(dest, landings):
+    """What the files add to the volume at most: each one's listed size less what its landing
+    path holds, since the client skips a whole one and writes any other in place of what is there."""
+    need = 0
+    for path, size in landings:
+        if not isinstance(size, int) or size < 0:
+            raise NoSize("redivis lists a file with no size")
+        target = dest / path
+        have = target.stat().st_size if target.is_file() else 0
+        need += max(size - have, 0)
+    return need
+
+
+def client_internals():
+    """The redivis client's own export request and export job, which Table.download uses."""
+    from redivis.classes.Export import Export
+    from redivis.common.api_request import make_request
+
+    return make_request, Export
+
+
+def export_bytes(redivis, reference, internals):
+    """The bytes of a data table's CSV export, asked for as Table.download asks for it and waited
+    on until Redivis has made it; nothing of it is downloaded."""
+    make_request, export_class = internals
+    table = redivis.table(reference)
+    answer = make_request(method="POST", path=f"{table.uri}/exports", payload={"format": "csv"})
+    export = export_class(answer["id"], table=table, properties=answer)
+    export.wait_for_finish(progress=False)
+    size = export.properties.get("size")
+    if not isinstance(size, int) or isinstance(size, bool) or size < 0:
+        raise NoSize("redivis stated no size for a csv export")
+    return size
+
+
+def size_line(args, redivis, rows, landings, internals):
+    """The size reader's line for the files listed and the CSV tables asked for."""
+    files_need = still_to_land(args.dest, landings)
+    csv_total = sum(export_bytes(redivis, reference, internals) for reference in args.csv)
+    total = sum(size for _, _, size, _ in rows) + csv_total
+    how = f"{len(rows)} files and {len(args.csv)} csv exports listed by redivis"
+    return f"{total} {files_need + csv_total} {how}"
 
 
 def main(argv=None):
@@ -76,11 +148,32 @@ def main(argv=None):
         help="refuse before downloading above this many GB; 0 is no cap",
     )
     parser.add_argument("--list-only", action="store_true")
+    parser.add_argument(
+        "--size",
+        action="store_true",
+        help="download nothing; print the size rule's line, the exact size and what is still to land",
+    )
     args = parser.parse_args(argv)
 
     import redivis
 
-    directories, rows = listed_files(redivis, args.files)
+    if args.size:
+        # The client's internals first, outside the try: a client that has moved them fails here
+        # plainly, before any request, and never reads as the source not answering.
+        internals = client_internals()
+        try:
+            return size_only(args, redivis, internals)
+        except NoSize as reason:
+            print(f"no exact size; {reason}")
+            return REFUSED_FOR_SIZE
+        except (TypeError, AttributeError, KeyError, ValueError) as failure:
+            print(f"the redivis client or its answer does not fit this reader ({type(failure).__name__});"
+                  " grid/redivis_fetch.py needs a change before this set is sized")
+            return NO_FIT
+        except Exception as failure:  # noqa: BLE001  the client's own errors are many kinds; none is printed
+            print(f"the source did not answer; the redivis client failed with {type(failure).__name__}")
+            return NO_ANSWER
+    directories, rows, _ = listed_files(redivis, args.files)
     total = sum(size for _, _, size, _ in rows)
     args.manifest.mkdir(parents=True, exist_ok=True)
     write_manifest(args.manifest / "redivis_files.tsv", rows)
@@ -105,6 +198,23 @@ def main(argv=None):
         target.mkdir(parents=True, exist_ok=True)
         redivis.table(reference).download(str(target), format="csv", overwrite=True, progress=False)
         print(f"{reference}: saved as CSV")
+    return 0
+
+
+def size_only(args, redivis, internals):
+    """The size reader: the listing and its manifest, the owner's cap, then the line."""
+    _, rows, landings = listed_files(redivis, args.files)
+    total = sum(size for _, _, size, _ in rows)
+    args.manifest.mkdir(parents=True, exist_ok=True)
+    write_manifest(args.manifest / "redivis_files.tsv", rows)
+    if over_cap(total, args.max_gb):
+        # In whole words and figures, as the size rule's refusal line keeps them (plain_words).
+        print(
+            f"the files redivis lists come to {-(-total // 10**9)} gb over the cap of"
+            f" {args.max_gb:g} gb the source line names"
+        )
+        return REFUSED_FOR_SIZE
+    print(size_line(args, redivis, rows, landings, internals))
     return 0
 
 
