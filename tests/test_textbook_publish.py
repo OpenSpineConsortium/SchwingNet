@@ -95,7 +95,20 @@ class Plan(unittest.TestCase):
     def test_a_first_publish_makes_the_artifact_with_its_capabilities(self):
         plan = tp.plan(self.page, {})
         self.assertEqual(plan, {"first": True, "url": "", "nothing": False, "page": tp.sha256(self.page),
-                                "bytes": self.page.stat().st_size, "adopted": False, "capabilities": tp.CAPABILITIES})
+                                "bytes": self.page.stat().st_size, "adopted": False, "clear": False,
+                                "capabilities": tp.CAPABILITIES})
+
+    def test_a_declaration_that_drops_a_held_capability_clears_the_artifact_first(self):
+        held = {"schema": tp.SCHEMA, "url": URL, "page": "o" * 64}
+        # An adopted link holds the reader's files, unknown to the record: cleared first.
+        self.assertTrue(tp.plan(self.page, tp.adopt({}, URL))["clear"])
+        # A record naming a capability the door no longer declares: cleared first.
+        self.assertTrue(tp.plan(self.page, dict(held, capabilities={"files": {"project": "chan_x"}, "sample": {}}))["clear"])
+        # A record whose capabilities the door's declaration all keeps: nothing to clear.
+        self.assertFalse(tp.plan(self.page, dict(held, capabilities={"sample": {}}))["clear"])
+        # The same capabilities, or a first publish: nothing goes out again, nothing to clear.
+        self.assertFalse(tp.plan(self.page, dict(held, capabilities=tp.CAPABILITIES))["clear"])
+        self.assertFalse(tp.plan(self.page, {})["clear"])
 
     def test_the_page_and_capabilities_recorded_are_nothing_to_publish(self):
         plan = tp.plan(self.page, self.recorded())
@@ -125,6 +138,8 @@ class Prompt(unittest.TestCase):
         self.later = tp.plan(page, {"schema": tp.SCHEMA, "url": URL, "page": "o" * 64, "capabilities": tp.CAPABILITIES})
         self.again = tp.plan(page, {"schema": tp.SCHEMA, "url": URL, "page": "o" * 64, "capabilities": {"sample": {}}})
         self.adopted = tp.plan(page, tp.adopt({}, URL))
+        self.dropping = tp.plan(page, {"schema": tp.SCHEMA, "url": URL, "page": "o" * 64,
+                                       "capabilities": {"files": {"project": "chan_x"}, "sample": {}}})
 
     def text(self, plan):
         return tp.prompt(plan, SHA, PAGE, ANSWER)
@@ -149,6 +164,7 @@ class Prompt(unittest.TestCase):
         self.assertIn(f"2. Action read with url {URL}", text)
         self.assertIn(f"3. Action publish with url {URL}, file_path {PAGE}, label \"Door abc1234\"; pass no "
                       "capabilities; pass no icon,\n   title or description", text)
+        self.assertNotIn("cleared", text)
         self.assertNotIn("capabilities {", text)
         self.assertNotIn(tp.REFUSED, text)
 
@@ -168,11 +184,31 @@ class Prompt(unittest.TestCase):
 
     def test_an_adopted_link_takes_the_doors_icon_and_description_with_its_capabilities(self):
         text = self.text(self.adopted)
-        self.assertIn(f"3. Action publish with url {URL}, file_path {PAGE}, label \"Door abc1234\", icon door, description\n"
+        self.assertIn(f"4. Action publish with url {URL}, file_path {PAGE}, label \"Door abc1234\", icon door, description\n"
                       f"   \"{tp.DESCRIPTION}\", capabilities {json.dumps(tp.CAPABILITIES)}, since the door's capabilities "
                       "are not the ones recorded; the page's own title names the artifact.", text)
+        self.assertIn("the publish of step 4 needs no confirmation", text)
         self.assertNotIn("pass no icon", text)
         self.assertNotIn("Publish it: action publish", text)
+
+    def test_a_declaration_that_drops_a_held_capability_is_cleared_first_in_the_prompt(self):
+        # The owner's second run of 2026-10-26 was refused: the Artifact tool keeps a stored capability
+        # (the reader's files) from being dropped silently, so the prompt clears the artifact first.
+        for plan in (self.adopted, self.dropping):
+            text = self.text(plan)
+            self.assertIn(f"3. Action publish with url {URL}, file_path {PAGE}, label \"Door abc1234, cleared\" and "
+                          "capabilities {},\n   nothing else.", text)
+            self.assertIn("the Artifact tool refuses a\n   declaration that drops a stored capability unless the artifact "
+                          "is cleared first", text)
+            self.assertLess(text.index("2. Action read"), text.index("3. Action publish"))
+            self.assertLess(text.index("3. Action publish"), text.index("4. Action publish"))
+        text = self.text(self.dropping)
+        self.assertIn(f"4. Action publish with url {URL}, file_path {PAGE}, label \"Door abc1234\", capabilities "
+                      f"{json.dumps(tp.CAPABILITIES)}, since the door's capabilities are not the ones recorded; pass no icon,",
+                      text)
+        for plan in (self.later, self.again):
+            self.assertNotIn("cleared", self.text(plan))
+            self.assertNotIn("4. Action", self.text(plan))
 
     def test_capabilities_that_changed_go_again_and_their_refusal_stops_the_publish(self):
         text = self.text(self.again)
@@ -478,6 +514,7 @@ class Local(unittest.TestCase):
                       prompt)
         self.assertRegex(prompt, rf'the textbook reader titled\s+"{tp.READER_TITLE}"')
         self.assertIn("icon door", prompt)
+        self.assertIn("capabilities {},\n   nothing else", prompt)
         self.assertNotIn("Publish it: action publish", prompt)
         state = self.recorded()
         self.assertEqual((state["url"], state["capabilities"]), (URL, tp.CAPABILITIES))
