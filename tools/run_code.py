@@ -70,6 +70,8 @@ ROW_LEFT_OUT = {
     "tools/report.py": "writes the run's report from its files after the last step, at every start that gets there",
     "tools/wandb_log.py": "sends the steps' telemetry to Weights and Biases and records nothing a number is computed from",
     "tools/ingest.py": "is named only in the trainer's words; the catalog a run reads is named by its own sha256",
+    "src/schwingnet/segmenters.py": "names the segmenter block's values and the label alphabets the pack stage reads;"
+    " no training step reads it, and the catalog a run reads is named by its own sha256",
 }
 STATE_LEFT_OUT = {
     **ROW_LEFT_OUT,

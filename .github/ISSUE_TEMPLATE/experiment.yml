@@ -181,6 +181,15 @@ body:
       label: prior_weight
       description: "the prior loss's weight beside the level loss, above 0, with prior=level-map"
       value: "0.0"
+  - type: dropdown
+    id: segmenter
+    attributes:
+      label: segmenter
+      description: "spineps or moose, the segmentation model whose masks label the unannotated CTs the pack stage reads; no training step reads it"
+      options:
+        - spineps
+        - moose
+      default: 0
   - type: textarea
     id: note
     attributes:

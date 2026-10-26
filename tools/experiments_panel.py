@@ -54,6 +54,10 @@ LEDGER = "docs/research/v1-demo/LEDGER.md"
 RUNS = "docs/research/v1-demo/runs"
 RECIPES = "data/recipes"
 BLOCKS_PY = "src/schwingnet/blocks.py"
+# A part whose choices another module spells, read from that module's source the same way: the
+# segmenter's values are schwingnet.segmenters' SEGMENTERS, which blocks.py never spells again
+# (tests/schwingnet/test_blocks.py), so the form's dropdown and the request reader take them there.
+OUTSIDE_CHOICES = {"segmenter": ("src/schwingnet/segmenters.py", "SEGMENTERS")}
 CHAPTER = "docs/textbook/35-how-the-workflow-is-built.md"
 OUT = "docs/textbook/figures/35"
 FIGURE = "experiments"
@@ -127,21 +131,39 @@ def _literal(node, space):
     raise ValueError("not a plain value")
 
 
-def block_catalog(root=ROOT):
-    """The parts of training as src/schwingnet/blocks.py defines them, read from the source: the
-    fields in order with version 1's default of each, the choices of each part that has a list, the
-    settings' ranges in words, the list, number and count fields, and the samples choices that take
-    sources or a count per person."""
-    path = Path(root) / BLOCKS_PY
+def module_values(path):
+    """A module's source as (tree, space): every module-level name assigned a plain value, in order,
+    read by _literal and never run."""
     tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
     space = {}
-    fields, defaults = [], {}
     for node in tree.body:
         if isinstance(node, ast.Assign) and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name):
             try:
                 space[node.targets[0].id] = _literal(node.value, space)
             except (ValueError, KeyError, TypeError):
                 continue
+    return tree, space
+
+
+def outside_choices(root, fields):
+    """The choices of each field another module spells (OUTSIDE_CHOICES), read from that module's
+    source; a field the Blocks dataclass does not carry is left out."""
+    found = {}
+    for name, (module, constant) in OUTSIDE_CHOICES.items():
+        if name in fields:
+            found[name] = list(module_values(Path(root) / module)[1][constant])
+    return found
+
+
+def block_catalog(root=ROOT):
+    """The parts of training as src/schwingnet/blocks.py defines them, read from the source: the
+    fields in order with version 1's default of each, the choices of each part that has a list, those
+    another module spells among them, the settings' ranges in words, the list, number and count
+    fields, and the samples choices that take sources or a count per person."""
+    path = Path(root) / BLOCKS_PY
+    tree, space = module_values(path)
+    fields, defaults = [], {}
+    for node in tree.body:
         if isinstance(node, ast.ClassDef) and node.name == "Blocks":
             for item in node.body:
                 if isinstance(item, ast.AnnAssign) and item.value is not None and isinstance(item.target, ast.Name):
@@ -153,7 +175,7 @@ def block_catalog(root=ROOT):
     return {
         "fields": fields,
         "defaults": defaults,
-        "choices": {name: list(values) for name, values in space["CHOICES"].items()},
+        "choices": {**{name: list(values) for name, values in space["CHOICES"].items()}, **outside_choices(root, fields)},
         "settings": dict(space.get("SETTINGS", {})),
         "options": {"augment": list(space.get("AUGMENT", ()))},
         "lists": list(space.get("LISTS", ())),

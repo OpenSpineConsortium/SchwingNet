@@ -13,8 +13,11 @@ venv_for() {  # venv_for PINS: a virtual environment holding PINS beside train-g
   if [ ! -f "$venv/READY" ]; then
     rm -rf "$venv"
     bash "$box" pixi run --locked -e train-gpu python -m venv --system-site-packages "$venv" || return 1
+    # set -f: a pin may carry an extra's brackets (flexray[train]), which the shell would read as a pattern.
+    set -f
     # shellcheck disable=SC2086
-    bash "$box" "$venv/bin/python" -m pip install --quiet $1 || return 1
+    bash "$box" "$venv/bin/python" -m pip install --quiet $1 || { set +f; return 1; }
+    set +f
     printf '%s\n' "$1" > "$venv/READY"
   fi
   echo "$venv"

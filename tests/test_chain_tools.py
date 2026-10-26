@@ -62,8 +62,24 @@ def spine(levels, height=10, gap=3):
     return volume
 
 
+def load_chain_stats():
+    """tools/chain_stats.py as a module, by path, since tools/ is never on sys.path."""
+    spec = importlib.util.spec_from_file_location("chain_stats_tool", ROOT / "tools" / "chain_stats.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 @unittest.skipIf(MISSING, f"needs the train environment ({', '.join(MISSING)} missing)")
 class ChainStatsTest(unittest.TestCase):
+    def test_the_verse_alphabet_is_the_segmenters_in_short_names(self):
+        """The values the counts read are schwingnet.segmenters' VerSe alphabet, which the render
+        blocks' label volumes read too, in this tool's short names."""
+        verse = load_chain_stats().VERSE
+        self.assertEqual(verse, {**{i: f"C{i}" for i in range(1, 8)}, **{7 + i: f"T{i}" for i in range(1, 13)},
+                                 **{19 + i: f"L{i}" for i in range(1, 6)}, 25: "L6", 26: "sacrum", 28: "T13"})
+        self.assertNotIn(27, verse, "the coccyx is no level")
+
     def test_a_prior_from_both_layouts_and_readers_calls(self):
         tmp = Path(tempfile.mkdtemp())
         whole = list(range(8, 20)) + list(range(20, 25)) + [26]
