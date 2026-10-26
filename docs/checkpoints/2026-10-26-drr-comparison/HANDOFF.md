@@ -2,6 +2,12 @@
 
 Source: the thread "Compare FleXray DRRs to real X-ray corpora" of the claude.ai project symphony, written at 03:05 UTC on 2026-10-26 on the owner's checkpoint word ("please push as much as possible now im running out of tokens then write a handoff for checkpointing asap!", 03:01 UTC). The earlier handoff of this work is docs/checkpoints/2026-10-25-drr-domain-gap/HANDOFF.md. The research is docs/research/drr-domain-gap/README.md (confidential) and, in public words, symphony-template's docs/research/drr-domain-gap-method-2026-10-25.md; the memory is docs/memory/drr-domain-gap.md. This page points at them and carries none of it.
 
+## Resumed at 08:29 UTC on the owner's "continue"
+
+- CI on f662f9a failed in the check (the experiments panel was stale, and the Experiment form's reader and tools/run_code.py's digest lists had not been told of the segmenter block) and in the gate's symbolic lane (a public function with no contract, render_blocks.runtime_choices, and two type-ignore comments in a test); main was merged in with #406, so the hf_flexray_data row is on this branch; CI on ef13c34 passed every required check.
+- The adversarial review (four lenses, the majors attacked by skeptics) confirmed: the replication pairs' twin renders were keyed as different persons, which biased the word toward "replicated"; a model zip landed in part passed the seg word's checks, and the word was not held while the fetch was live; the segmenter pair was said to share crops and poses, which follow the labels; and several count lines were stale. Each is fixed on the branch; the review is in #401's body.
+- The lines below are as written at 03:05 UTC; step 3's file is tools/anomaly_pack.py, which spells the VerSe alphabet itself with a note naming schwingnet.segmenters, not tools/anomaly_route.py. What is left after #401 merges is step 4, the four grid words.
+
 ## Where it stands
 
 - SchwingNet draft pull request #401, branch claude/project-thread-7ltron, head a387f48 (commit 21ca7dc, the audit's closes, with main at 8523876 merged in; pushed 03:04 UTC): the DRR domain-gap study (tools/domain_gap.py, src/schwingnet/domain_gap.py, data/domain_gap/groups.json), the render blocks and both engines (tools/flexray_render.py, tools/render_blocks.py, src/schwingnet/render_blocks.py), the segmenter block (src/schwingnet/segmenters.py), the url fetch route (grid/platform-fetch.sbatch) and the row moose_weights, the bench words flexray_drr_seg and flexray_drr_gap, the tests and the notes.
@@ -27,5 +33,5 @@ Source: the thread "Compare FleXray DRRs to real X-ray corpora" of the claude.ai
 
 1. Read CI on #401's head (check, gate, standards, owner-ok) with `gh api repos/OpenSpineConsortium/SchwingNet/commits/<sha>/check-runs` (this session's GitHub MCP server failed on the proxy; gh api REST worked, GraphQL did not) and fix what fails; the pre-push gate was skipped here (SKIP_GATE=1, no pixi in the container), so CI's gate and standards jobs are the verdict.
 2. An adversarial review with distinct lenses, written as "## Adversarial review" into the bodies of #401 and #493; mark each ready in a call of its own (`POST /repos/{owner}/{repo}/pulls/{n}/ccr/ready_for_review` worked this session); merge once green on the standing permission; ask Gregory-Schwing-MD-PhD for review where the call is allowed.
-3. Tell the anomaly-route thread that schwingnet.segmenters' names are on main and that tools/anomaly_route.py spells L6's id itself.
+3. Tell the anomaly-route thread that schwingnet.segmenters' names are on main and that tools/anomaly_pack.py spells the VerSe alphabet, L6's id 25 among it, itself.
 4. The four grid words above, in order, once each, after #401 (and for FluXray #406) are on main; the results into the README's section 6 and the public note's "Where it stands".
