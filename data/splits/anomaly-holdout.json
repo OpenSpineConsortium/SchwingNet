@@ -1,0 +1,725 @@
+{
+ "frozen": "2026-10-25",
+ "why": "the SPINEPS to FleXray anomaly route (docs/research/spineps-anomaly-route.md, #398): no checkpoint of the route's lineage may see these persons, and the selection, the pack's training list and the fine-tune refuse them",
+ "rule": {
+  "rank": "first 8 bytes, big-endian, of sha256 over the UTF-8 of 'schwingnet-anomaly-holdout|' + salt + '|' + person; lowest first",
+  "salt": "2026-10-25",
+  "verse": "read persons of the VerSe screen, none disputed; 2 T13, 10 L6 and 1 four-lumbar, each split over the VerSe releases in proportion to its candidates; 20 normal counts with both junctions in the field of every scan, any Castellvi grade or lumbar rib, split over the releases in proportion to the positives held",
+  "disputed": "a scan whose screen review says 'release mask carries an L6' or 'release mask id order broken', or whose disposition's 'CONTRADICTED by' clause names the mask; a read only labeller A or B contradicts is scored, not disputed",
+  "ctspinopelvic1k": "5 of the 16 reader-confirmed L6 records and 5 of the registry's read normal counts with both junctions in the field, by the same rank, none of the seven disputed (0008, 0021, 0033, 0049, 0176, 0179, 0196)",
+  "folds": "the clean read VerSe L6 persons not held, dealt into 4 folds in rank order within each release; each fold's fine-tune never trains on that fold, and every person here is tested once by it"
+ },
+ "inputs": {
+  "screen": {
+   "name": "screened.csv",
+   "sha256": "a0cb756c2ef7d9455306c09cd010adada5b36e03584534f01bb3af5fbd464f4b"
+  },
+  "table": {
+   "name": "verse_suppl_table1.csv",
+   "sha256": "b35ea6146e9b314d15d4c681105288c038663b323e6d5a013529a16f79f1af37"
+  },
+  "registry": {
+   "name": "registry.csv",
+   "sha256": "43ce1c9e8bd18c8c99660ed0af2fcb9c3391f996973e298637489a56b2585f5c"
+  }
+ },
+ "persons": [
+  {
+   "person": "verse:verse547",
+   "variant": "T13",
+   "release": "2020",
+   "stratum": "T13",
+   "scans": [
+    "verse547"
+   ]
+  },
+  {
+   "person": "verse:verse601",
+   "variant": "T13",
+   "release": "2020",
+   "stratum": "T13",
+   "scans": [
+    "verse601"
+   ]
+  },
+  {
+   "person": "verse:verse642",
+   "variant": "L6",
+   "release": "2020",
+   "stratum": "L6, id 25 in the release mask",
+   "scans": [
+    "verse642"
+   ]
+  },
+  {
+   "person": "verse:verse406",
+   "variant": "L6",
+   "release": "2019",
+   "stratum": "L6, id 25 in the release mask",
+   "scans": [
+    "verse214",
+    "verse261"
+   ]
+  },
+  {
+   "person": "verse:verse551",
+   "variant": "L6",
+   "release": "2020",
+   "stratum": "L6, id 25 in the release mask",
+   "scans": [
+    "verse551"
+   ]
+  },
+  {
+   "person": "verse:verse509",
+   "variant": "L6",
+   "release": "2020",
+   "stratum": "L6, id 25 in the release mask",
+   "scans": [
+    "verse509"
+   ]
+  },
+  {
+   "person": "verse:verse518",
+   "variant": "L6",
+   "release": "2020",
+   "stratum": "L6, no id 25 in the release mask",
+   "scans": [
+    "verse518"
+   ]
+  },
+  {
+   "person": "verse:verse597",
+   "variant": "L6",
+   "release": "2020",
+   "stratum": "L6, id 25 in the release mask",
+   "scans": [
+    "verse597"
+   ]
+  },
+  {
+   "person": "verse:verse544",
+   "variant": "L6",
+   "release": "2020",
+   "stratum": "L6, no id 25 in the release mask",
+   "scans": [
+    "verse544"
+   ]
+  },
+  {
+   "person": "verse:verse619",
+   "variant": "L6",
+   "release": "2020",
+   "stratum": "L6, id 25 in the release mask",
+   "scans": [
+    "verse619"
+   ]
+  },
+  {
+   "person": "verse:verse513",
+   "variant": "L6",
+   "release": "2020",
+   "stratum": "L6, no id 25 in the release mask",
+   "scans": [
+    "verse513"
+   ]
+  },
+  {
+   "person": "verse:verse514",
+   "variant": "L6",
+   "release": "2020",
+   "stratum": "L6, no id 25 in the release mask",
+   "scans": [
+    "verse514"
+   ]
+  },
+  {
+   "person": "verse:verse549",
+   "variant": "four_lumbar",
+   "release": "2020",
+   "stratum": "four_lumbar",
+   "scans": [
+    "verse549"
+   ]
+  },
+  {
+   "person": "verse:verse755",
+   "variant": "normal",
+   "release": "2020",
+   "stratum": "normal",
+   "scans": [
+    "verse755"
+   ]
+  },
+  {
+   "person": "verse:verse761",
+   "variant": "normal",
+   "release": "2020",
+   "stratum": "normal",
+   "scans": [
+    "verse761"
+   ]
+  },
+  {
+   "person": "verse:verse646",
+   "variant": "normal",
+   "release": "2020",
+   "stratum": "unassigned",
+   "scans": [
+    "verse646"
+   ]
+  },
+  {
+   "person": "verse:verse825",
+   "variant": "normal",
+   "release": "2020",
+   "stratum": "normal",
+   "scans": [
+    "verse825"
+   ]
+  },
+  {
+   "person": "verse:verse010",
+   "variant": "normal",
+   "release": "2019",
+   "stratum": "normal",
+   "scans": [
+    "verse010"
+   ]
+  },
+  {
+   "person": "verse:verse153",
+   "variant": "normal",
+   "release": "2019",
+   "stratum": "normal",
+   "scans": [
+    "verse153"
+   ]
+  },
+  {
+   "person": "verse:verse533",
+   "variant": "normal",
+   "release": "2020",
+   "stratum": "unassigned",
+   "scans": [
+    "verse533"
+   ]
+  },
+  {
+   "person": "verse:verse550",
+   "variant": "normal",
+   "release": "2020",
+   "stratum": "unassigned",
+   "scans": [
+    "verse550"
+   ]
+  },
+  {
+   "person": "verse:verse756",
+   "variant": "normal",
+   "release": "2020",
+   "stratum": "unassigned",
+   "scans": [
+    "verse756"
+   ]
+  },
+  {
+   "person": "verse:verse804",
+   "variant": "normal",
+   "release": "2020",
+   "stratum": "normal",
+   "scans": [
+    "verse804"
+   ]
+  },
+  {
+   "person": "verse:verse615",
+   "variant": "normal",
+   "release": "2020",
+   "stratum": "castellvi_I_II",
+   "scans": [
+    "verse615"
+   ]
+  },
+  {
+   "person": "verse:verse705",
+   "variant": "normal",
+   "release": "2020",
+   "stratum": "normal",
+   "scans": [
+    "verse705"
+   ]
+  },
+  {
+   "person": "verse:verse809",
+   "variant": "normal",
+   "release": "2020",
+   "stratum": "normal",
+   "scans": [
+    "verse809"
+   ]
+  },
+  {
+   "person": "verse:verse820",
+   "variant": "normal",
+   "release": "2020",
+   "stratum": "normal",
+   "scans": [
+    "verse820"
+   ]
+  },
+  {
+   "person": "verse:verse817",
+   "variant": "normal",
+   "release": "2020",
+   "stratum": "normal",
+   "scans": [
+    "verse817"
+   ]
+  },
+  {
+   "person": "verse:verse821",
+   "variant": "normal",
+   "release": "2020",
+   "stratum": "normal",
+   "scans": [
+    "verse821"
+   ]
+  },
+  {
+   "person": "verse:verse835",
+   "variant": "normal",
+   "release": "2020",
+   "stratum": "normal",
+   "scans": [
+    "verse835"
+   ]
+  },
+  {
+   "person": "verse:verse759",
+   "variant": "normal",
+   "release": "2020",
+   "stratum": "unassigned",
+   "scans": [
+    "verse759"
+   ]
+  },
+  {
+   "person": "verse:verse573",
+   "variant": "normal",
+   "release": "2020",
+   "stratum": "sacralised_L5_fused",
+   "scans": [
+    "verse573"
+   ]
+  },
+  {
+   "person": "verse:verse524",
+   "variant": "normal",
+   "release": "2020",
+   "stratum": "sacralised_L5_fused",
+   "scans": [
+    "verse524"
+   ]
+  },
+  {
+   "person": "ctsp:0376",
+   "variant": "L6",
+   "release": "ctspinopelvic1k",
+   "stratum": "reader-confirmed L6",
+   "scans": [
+    "0376"
+   ]
+  },
+  {
+   "person": "ctsp:0366",
+   "variant": "L6",
+   "release": "ctspinopelvic1k",
+   "stratum": "reader-confirmed L6",
+   "scans": [
+    "0366"
+   ]
+  },
+  {
+   "person": "ctsp:0005",
+   "variant": "L6",
+   "release": "ctspinopelvic1k",
+   "stratum": "reader-confirmed L6",
+   "scans": [
+    "0005"
+   ]
+  },
+  {
+   "person": "ctsp:0302",
+   "variant": "L6",
+   "release": "ctspinopelvic1k",
+   "stratum": "reader-confirmed L6",
+   "scans": [
+    "0302"
+   ]
+  },
+  {
+   "person": "ctsp:0234",
+   "variant": "L6",
+   "release": "ctspinopelvic1k",
+   "stratum": "reader-confirmed L6",
+   "scans": [
+    "0234"
+   ]
+  },
+  {
+   "person": "ctsp:0875",
+   "variant": "normal",
+   "release": "ctspinopelvic1k",
+   "stratum": "sacralised_L5_fused",
+   "scans": [
+    "0875"
+   ]
+  },
+  {
+   "person": "ctsp:0151",
+   "variant": "normal",
+   "release": "ctspinopelvic1k",
+   "stratum": "sacralised_L5_fused",
+   "scans": [
+    "0151"
+   ]
+  },
+  {
+   "person": "ctsp:0156",
+   "variant": "normal",
+   "release": "ctspinopelvic1k",
+   "stratum": "sacralised_L5_fused",
+   "scans": [
+    "0156"
+   ]
+  },
+  {
+   "person": "ctsp:0170",
+   "variant": "normal",
+   "release": "ctspinopelvic1k",
+   "stratum": "castellvi_I_II",
+   "scans": [
+    "0170"
+   ]
+  },
+  {
+   "person": "ctsp:0760",
+   "variant": "normal",
+   "release": "ctspinopelvic1k",
+   "stratum": "sacralised_L5_fused",
+   "scans": [
+    "0760"
+   ]
+  }
+ ],
+ "folds": [
+  {
+   "person": "verse:verse403",
+   "fold": 1
+  },
+  {
+   "person": "verse:verse593",
+   "fold": 1
+  },
+  {
+   "person": "verse:verse519",
+   "fold": 1
+  },
+  {
+   "person": "verse:verse526",
+   "fold": 1
+  },
+  {
+   "person": "verse:verse540",
+   "fold": 1
+  },
+  {
+   "person": "verse:verse517",
+   "fold": 1
+  },
+  {
+   "person": "verse:verse553",
+   "fold": 1
+  },
+  {
+   "person": "verse:verse605",
+   "fold": 1
+  },
+  {
+   "person": "verse:verse586",
+   "fold": 1
+  },
+  {
+   "person": "verse:verse085",
+   "fold": 1
+  },
+  {
+   "person": "verse:verse636",
+   "fold": 1
+  },
+  {
+   "person": "verse:verse571",
+   "fold": 1
+  },
+  {
+   "person": "verse:verse555",
+   "fold": 1
+  },
+  {
+   "person": "verse:verse505",
+   "fold": 1
+  },
+  {
+   "person": "verse:verse577",
+   "fold": 1
+  },
+  {
+   "person": "verse:verse613",
+   "fold": 1
+  },
+  {
+   "person": "verse:verse023",
+   "fold": 1
+  },
+  {
+   "person": "verse:verse587",
+   "fold": 1
+  },
+  {
+   "person": "verse:verse816",
+   "fold": 1
+  },
+  {
+   "person": "verse:verse554",
+   "fold": 2
+  },
+  {
+   "person": "verse:verse590",
+   "fold": 2
+  },
+  {
+   "person": "verse:verse113",
+   "fold": 2
+  },
+  {
+   "person": "verse:verse606",
+   "fold": 2
+  },
+  {
+   "person": "verse:verse539",
+   "fold": 2
+  },
+  {
+   "person": "verse:verse570",
+   "fold": 2
+  },
+  {
+   "person": "verse:verse810",
+   "fold": 2
+  },
+  {
+   "person": "verse:verse560",
+   "fold": 2
+  },
+  {
+   "person": "verse:verse557",
+   "fold": 2
+  },
+  {
+   "person": "verse:verse814",
+   "fold": 2
+  },
+  {
+   "person": "verse:verse131",
+   "fold": 2
+  },
+  {
+   "person": "verse:verse502",
+   "fold": 2
+  },
+  {
+   "person": "verse:verse623",
+   "fold": 2
+  },
+  {
+   "person": "verse:verse512",
+   "fold": 2
+  },
+  {
+   "person": "verse:verse592",
+   "fold": 2
+  },
+  {
+   "person": "verse:verse616",
+   "fold": 2
+  },
+  {
+   "person": "verse:verse768",
+   "fold": 2
+  },
+  {
+   "person": "verse:verse525",
+   "fold": 2
+  },
+  {
+   "person": "verse:verse581",
+   "fold": 3
+  },
+  {
+   "person": "verse:verse506",
+   "fold": 3
+  },
+  {
+   "person": "verse:verse034",
+   "fold": 3
+  },
+  {
+   "person": "verse:verse529",
+   "fold": 3
+  },
+  {
+   "person": "verse:verse609",
+   "fold": 3
+  },
+  {
+   "person": "verse:verse626",
+   "fold": 3
+  },
+  {
+   "person": "verse:verse556",
+   "fold": 3
+  },
+  {
+   "person": "verse:verse578",
+   "fold": 3
+  },
+  {
+   "person": "verse:verse751",
+   "fold": 3
+  },
+  {
+   "person": "verse:verse618",
+   "fold": 3
+  },
+  {
+   "person": "verse:verse576",
+   "fold": 3
+  },
+  {
+   "person": "verse:verse580",
+   "fold": 3
+  },
+  {
+   "person": "verse:verse522",
+   "fold": 3
+  },
+  {
+   "person": "verse:verse527",
+   "fold": 3
+  },
+  {
+   "person": "verse:verse569",
+   "fold": 3
+  },
+  {
+   "person": "verse:verse083",
+   "fold": 3
+  },
+  {
+   "person": "verse:verse612",
+   "fold": 3
+  },
+  {
+   "person": "verse:verse585",
+   "fold": 3
+  },
+  {
+   "person": "verse:verse604",
+   "fold": 4
+  },
+  {
+   "person": "verse:verse088",
+   "fold": 4
+  },
+  {
+   "person": "verse:verse599",
+   "fold": 4
+  },
+  {
+   "person": "verse:verse536",
+   "fold": 4
+  },
+  {
+   "person": "verse:verse614",
+   "fold": 4
+  },
+  {
+   "person": "verse:verse534",
+   "fold": 4
+  },
+  {
+   "person": "verse:verse530",
+   "fold": 4
+  },
+  {
+   "person": "verse:verse598",
+   "fold": 4
+  },
+  {
+   "person": "verse:verse532",
+   "fold": 4
+  },
+  {
+   "person": "verse:verse572",
+   "fold": 4
+  },
+  {
+   "person": "verse:verse542",
+   "fold": 4
+  },
+  {
+   "person": "verse:verse510",
+   "fold": 4
+  },
+  {
+   "person": "verse:verse535",
+   "fold": 4
+  },
+  {
+   "person": "verse:verse565",
+   "fold": 4
+  },
+  {
+   "person": "verse:verse607",
+   "fold": 4
+  },
+  {
+   "person": "verse:verse024",
+   "fold": 4
+  },
+  {
+   "person": "verse:verse545",
+   "fold": 4
+  },
+  {
+   "person": "verse:verse620",
+   "fold": 4
+  }
+ ],
+ "disputed": [
+  "ctsp:0008",
+  "ctsp:0021",
+  "ctsp:0033",
+  "ctsp:0049",
+  "ctsp:0176",
+  "ctsp:0179",
+  "ctsp:0196",
+  "verse:verse026",
+  "verse:verse417",
+  "verse:verse559",
+  "verse:verse707",
+  "verse:verse753",
+  "verse:verse765"
+ ]
+}

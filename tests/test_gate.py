@@ -14,6 +14,7 @@ import hashlib
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 import time
 import unittest
@@ -26,6 +27,32 @@ NEW_SCRIPTS = ("gate.sh", "hpcw.sh", "box.sh", "bin/pixi", "bin/train-cpu-python
                "00-carmlspine.sbatch", "v1-driver.sbatch", "experiment-driver.sbatch", "run-xray-chain.sh",
                "run-platform-fetch.sh", "sweep-driver.sbatch", "v1-version.sh")
 ENVS = ("default", "train-cpu", "train-gpu", "telemetry")
+# A stand-in for spinesurg-ct-nnunet's benchmark/run_spineps_cases.py, which the timing stage of the anomaly
+# route runs in the spineps conda environment: a mask and a timing record per case, no SPINEPS; a case whose
+# name says fail fails, and the runner then exits 2 as the real one does.
+FAKE_SPINEPS_RUNNER = """import argparse, csv, json, os, sys
+from pathlib import Path
+ap = argparse.ArgumentParser()
+for name in ("--cases", "--out_dir", "--work", "--model_semantic", "--model_instance", "--model_labeling"):
+    ap.add_argument(name, required=True)
+a = ap.parse_args()
+assert os.environ.get("SPINEPS_SEGMENTOR_MODELS"), "SPINEPS_SEGMENTOR_MODELS is set"
+assert a.model_semantic.endswith("/CT_semantic") and a.model_labeling.endswith("/ct_labeling"), "the CT models"
+out = Path(a.out_dir)
+out.mkdir(parents=True, exist_ok=True)
+Path(a.work).mkdir(parents=True, exist_ok=True)
+rc = 0
+with open(a.cases, newline="") as fh, open(out / "timing_shard0.jsonl", "a") as log:
+    for n, row in enumerate(csv.DictReader(fh)):
+        ok = Path(row["ct"]).is_file() and "fail" not in row["case"]
+        if ok:
+            (out / (row["case"] + "_seg-vert_msk.nii.gz")).write_bytes(b"mask")
+        else:
+            rc = 2
+        log.write(json.dumps({"case": row["case"], "seconds": 60.0 + 30 * n, "ok": ok}) + "\\n")
+        print(row["case"], "ok" if ok else "failed", flush=True)
+sys.exit(rc)
+"""
 
 FAKES = {
     "squeue": """#!/bin/bash
@@ -80,8 +107,9 @@ class GateTest(unittest.TestCase):
             folder.mkdir()
         self.netrc = self.tmp / "netrc"
 
-    def gate(self, *words, data_root=None):
+    def gate(self, *words, data_root=None, **extra):
         env = self.gate_env(data_root)
+        env.update(extra)
         if data_root == "":
             env.pop("DATA_ROOT")
         return subprocess.run(["bash", str(self.repo / "grid" / "gate.sh"), *words], env=env, capture_output=True, text=True, timeout=120)
@@ -1512,6 +1540,227 @@ esac
         report.write_text(head.format("fc027a6") + "- exit 0 at 2026-10-25 14:00:00 UTC\n", encoding="utf-8")
         self.assertEqual(self.gate("bench", "flexray_deepfluoro").returncode, 0)
         self.assertEqual(len(self.submitted()), 1)
+
+    def test_anomaly_queues_one_cpu_job_for_select_and_then_keeps_printing_its_report(self):
+        # no stage, two stages and a stage not built yet are refused before anything is read
+        self.assertEqual(self.gate("anomaly").returncode, 64)
+        self.assertEqual(self.gate("anomaly", "a", "b").returncode, 64)
+        refused = self.gate("anomaly", "tune")
+        self.assertEqual(refused.returncode, 64, refused.stdout)
+        self.assertIn("not built yet", refused.stdout)
+        self.environments_ready()
+        done = self.gate("anomaly", "select")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        lines = self.submitted()
+        self.assertEqual(len(lines), 1, lines)
+        self.assertIn("--class batch --name anomaly_select", lines[0])
+        self.assertIn("STAGE=select", lines[0])
+        self.assertIn("--no-requeue", lines[0])
+        self.assertIn("anomaly.sbatch", lines[0])
+        job = self.recorded()["anomaly_select"]
+        self.live(job)
+        self.assertEqual(self.gate("anomaly", "select").returncode, 75)
+        (self.fake / "queue").write_text("", encoding="utf-8")
+        report = self.repo / "grid" / "logs" / "ANOMALY-select.md"
+        report.write_text("# anomaly select\n- exit 0\n", encoding="utf-8")
+        for _ in range(2):
+            done = self.gate("anomaly", "select")
+            self.assertEqual(done.returncode, 0, done.stdout)
+            self.assertIn("- exit 0", done.stdout)
+        self.assertEqual(len(self.submitted()), 1)
+
+    def test_select_is_refused_without_the_frozen_holdout(self):
+        (self.repo / "data" / "splits" / "anomaly-holdout.json").unlink()
+        self.environments_ready()
+        refused = self.gate("anomaly", "select")
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn("data/splits/anomaly-holdout.json", refused.stdout)
+        self.assertEqual(self.submitted(), [])
+
+    def anomaly_job(self, ssn):
+        env = dict(os.environ, SCHWINGNET=str(self.repo), DATA_ROOT=str(self.data), LAB_VOLUME=str(self.tmp), SSN=str(ssn),
+                   STAGE="select", SLURM_JOB_ID="779", PYDRV=sys.executable)
+        return subprocess.run(["bash", str(self.repo / "grid" / "anomaly.sbatch")], cwd=self.repo / "grid", env=env,
+                              capture_output=True, text=True, timeout=60)
+
+    def test_the_select_stage_scores_selects_and_reports_counts_only(self):
+        # anomaly.sbatch runs tools/anomaly_route.py from the checkout over the grid's records and
+        # writes a report of counts and digests, holding the checkout while it runs
+        self.git_repo()
+        shutil.copy(ROOT / "tools" / "anomaly_route.py", self.repo / "tools" / "anomaly_route.py")
+        subprocess.run(["git", "-C", str(self.repo), "add", "-A"], check=True)
+        subprocess.run(["git", "-C", str(self.repo), "-c", "user.name=t", "-c", "user.email=t@t", "-c", "gc.auto=0",
+                        "-c", "maintenance.auto=false", "commit", "-q", "-m", "tool"], check=True)
+        registry = self.tmp / "ssn" / "SchwingNet" / "results" / "transitional_registry"
+        (registry / "verse").mkdir(parents=True)
+        columns = "case,patient_key,read_structure,read_subtype,mask_has_L6,a_nL,a_nT,b_nL,b_nL_contact,b_nT,labeller_a,labeller_b,junction_tl_in_fov,junction_ls_in_fov,review"
+        rows = [f"verse{500 + n},verse:verse{500 + n},7/12/6/5,L6,True,6,,6,6,,,,True,True," for n in range(4)]
+        rows += [f"verse{100 + n},verse:verse{100 + n},7/12/5/5,normal,False,5,,5,5,,,,True,True," for n in range(8)]
+        (registry / "verse" / "screened.csv").write_text("\n".join([columns] + rows) + "\n", encoding="utf-8")
+        (registry / "registry.csv").write_text(
+            "patient_key,subtype,truth_tier,winning_source,winning_case,frames_role,junction_tl_in_fov,junction_ls_in_fov\n"
+            "verse:verse900,L6,read,verse,verse900,CT-only,True,True\n"
+            + "".join(f"verse:verse{200 + n},none,read,verse,verse{200 + n},CT-only,True,True\n" for n in range(5)), encoding="utf-8")
+        done = self.anomaly_job(self.tmp / "ssn")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        report = (self.repo / "grid" / "logs" / "ANOMALY-select.md").read_text(encoding="utf-8")
+        self.assertIn("# anomaly select: job 779", report.splitlines()[0])
+        self.assertIn("NOTE: the grid's VerSe screen", report)
+        self.assertIn("| L6: sensitivity | 4 of 4", report)
+        self.assertIn("no held-out or disputed person in", report)
+        self.assertIn("- exit 0 at ", report)
+        self.assertFalse((self.repo / "grid" / "logs" / "HOLD").exists())
+        self.assertTrue((self.tmp / "go2432" / "anomaly" / "select" / "selection.csv").exists())
+
+    def spineps_fakes(self, smi="NVIDIA A100-SXM4-80GB, 8.0"):
+        """What the timing stage needs on the node, each a stand-in: conda with the spineps environment, the runner, nvidia-smi."""
+        ssn = self.tmp / "ssn"
+        runner = ssn / "benchmark" / "run_spineps_cases.py"
+        runner.parent.mkdir(parents=True, exist_ok=True)
+        runner.write_text(FAKE_SPINEPS_RUNNER, encoding="utf-8")
+        conda = self.tmp / "conda.sh"
+        conda.write_text('conda() { echo "conda $*" >> "$FAKE/conda.log"; }\n', encoding="utf-8")
+        (self.fake / "nvidia-smi").write_text('#!/bin/bash\ncat "$FAKE/smi"\n', encoding="utf-8")
+        (self.fake / "nvidia-smi").chmod(0o755)
+        (self.fake / "smi").write_text(smi + "\n", encoding="utf-8")
+        return ssn, conda
+
+    def test_timing_waits_for_a_sane_select_report_then_queues_one_gpu_job_and_leaves_a_blackwell_node_for_another(self):
+        self.environments_ready()
+        ssn, conda = self.spineps_fakes()
+        logs = self.repo / "grid" / "logs"
+        logs.mkdir(parents=True, exist_ok=True)
+        # each stage goes once the one before looks sane: no select report, or one that failed, refuses timing
+        for text in (None, "# anomaly select: job 101 on n1, commit unknown, 2026-10-25 23:42:00 UTC\n- exit 1 at 2026-10-25 23:50:00 UTC\n"):
+            if text:
+                (logs / "ANOMALY-select.md").write_text(text, encoding="utf-8")
+            refused = self.gate("anomaly", "timing", SSN=str(ssn), CONDA_SH=str(conda))
+            self.assertEqual(refused.returncode, 2, refused.stdout)
+            self.assertIn("logs/ANOMALY-select.md", refused.stdout)
+        (logs / "ANOMALY-select.md").write_text("# anomaly select: job 101 on n1, commit unknown, 2026-10-25 23:42:00 UTC\n"
+                                                "- exit 0 at 2026-10-25 23:50:00 UTC\n", encoding="utf-8")
+        # and the node's side must be there: the spineps environment's conda and the runner
+        refused = self.gate("anomaly", "timing", SSN=str(ssn), CONDA_SH=str(self.tmp / "no-conda.sh"))
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn("conda at", refused.stdout)
+        refused = self.gate("anomaly", "timing", SSN=str(self.tmp / "no-ssn"), CONDA_SH=str(conda))
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn("run_spineps_cases.py", refused.stdout)
+        self.assertEqual(self.submitted(), [])
+        done = self.gate("anomaly", "timing", SSN=str(ssn), CONDA_SH=str(conda))
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        lines = self.submitted()
+        self.assertEqual(len(lines), 1, lines)
+        self.assertIn("--class gpu --name anomaly_timing", lines[0])
+        self.assertIn("--cpus 8 --mem 64G --time 04:00:00 --no-requeue", lines[0])
+        self.assertIn("STAGE=timing", lines[0])
+        self.assertIn("anomaly.sbatch", lines[0])
+        job = self.recorded()["anomaly_timing"]
+        self.live(job)
+        self.assertEqual(self.gate("anomaly", "timing", SSN=str(ssn), CONDA_SH=str(conda)).returncode, 75)
+        (self.fake / "queue").write_text("", encoding="utf-8")
+        # step 0 left a Blackwell node: the stage spent nothing, so it is queued again at the same commit
+        report = logs / "ANOMALY-timing.md"
+        head = "# anomaly timing: job {} on ymh3, commit unknown, 2026-10-26 00:10:00 UTC\n- GPU: NVIDIA RTX PRO 6000, sm_120: a Blackwell card\n"
+        report.write_text(head.format(job) + "- exit 4 at 2026-10-26 00:10:05 UTC\n", encoding="utf-8")
+        done = self.gate("anomaly", "timing", SSN=str(ssn), CONDA_SH=str(conda))
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("left its node unused: queueing the stage again", done.stdout)
+        self.assertFalse(report.exists())
+        self.assertIn("- exit 4", (logs / f"ANOMALY-timing-{job}.md").read_text(encoding="utf-8"))
+        self.assertEqual(len(self.submitted()), 2)
+        # a stage that failed at the same commit is not queued again, and one that ended well never is
+        report.write_text(head.format(job) + "- exit 1 at 2026-10-26 00:20:00 UTC\n", encoding="utf-8")
+        self.assertEqual(self.gate("anomaly", "timing", SSN=str(ssn), CONDA_SH=str(conda)).returncode, 0)
+        self.assertEqual(len(self.submitted()), 2)
+        report.write_text(head.format(job) + "- exit 0 at 2026-10-26 00:30:00 UTC\n", encoding="utf-8")
+        for _ in range(2):
+            done = self.gate("anomaly", "timing", SSN=str(ssn), CONDA_SH=str(conda))
+            self.assertEqual(done.returncode, 0, done.stdout)
+            self.assertIn("- exit 0", done.stdout)
+        self.assertEqual(len(self.submitted()), 2)
+
+    def timing_job(self, ssn, conda):
+        env = dict(os.environ, PATH=f"{self.fake}:{os.environ['PATH']}", FAKE=str(self.fake), SCHWINGNET=str(self.repo),
+                   DATA_ROOT=str(self.data), LAB_VOLUME=str(self.tmp), SSN=str(ssn), CONDA_SH=str(conda), SPINEPS_PYTHON=sys.executable,
+                   SPINEPS_SEGMENTOR_MODELS=str(self.tmp / "models"), TIMING_WORK=str(self.tmp / "work"), REALXRAY_WORK=str(self.tmp / "rxw"),
+                   STAGE="timing", SLURM_JOB_ID="780", PYDRV=sys.executable)
+        return subprocess.run(["bash", str(self.repo / "grid" / "anomaly.sbatch")], cwd=self.repo / "grid", env=env,
+                              capture_output=True, text=True, timeout=60)
+
+    def paired_cts(self):
+        """A few paired CTs as the grid's records lay them out: COBRA's screen folders and C-ArmLSpine's case table."""
+        cobra = self.data / "cobra2026"
+        for case in ("cobra_named", "cobra_two", "cobra_mha"):
+            (cobra / "cases" / case).mkdir(parents=True)
+            (cobra / "cases" / case / "ct_def.mha").write_bytes(b"ct")
+        (cobra / "lstv" / "nifti").mkdir(parents=True)
+        (cobra / "lstv" / "seg").mkdir(parents=True)
+        for case in ("cobra_named", "cobra_two"):
+            (cobra / "lstv" / "nifti" / f"{case}_ct.nii.gz").write_bytes(b"ct")
+        (cobra / "lstv" / "seg" / "cobra_named_seg-vert_msk.nii.gz").write_bytes(b"mask")
+        carm = self.data / "carmlspine"
+        (carm / "nifti").mkdir(parents=True)
+        (carm / "spineps").mkdir()
+        rows = []
+        for case in ("carm_named", "carm_two", "carm_fail"):
+            (carm / "nifti" / f"{case}_ct.nii.gz").write_bytes(b"ct")
+            rows.append(f"{case},{carm / 'nifti' / f'{case}_ct.nii.gz'}")
+        (carm / "cases.csv").write_text("case,ct\n" + "\n".join(rows) + "\n", encoding="utf-8")
+        (carm / "spineps" / "carm_named_seg-vert_msk.nii.gz").write_bytes(b"mask")
+
+    def anomaly_tool_committed(self, name):
+        self.git_repo()
+        shutil.copy(ROOT / "tools" / name, self.repo / "tools" / name)
+        subprocess.run(["git", "-C", str(self.repo), "add", "-A"], check=True)
+        subprocess.run(["git", "-C", str(self.repo), "-c", "user.name=t", "-c", "user.email=t@t", "-c", "gc.auto=0",
+                        "-c", "maintenance.auto=false", "commit", "-q", "-m", "tool"], check=True)
+
+    def test_the_timing_stage_lists_the_lacking_cts_times_spineps_on_them_and_reports_counts_and_seconds_only(self):
+        # anomaly.sbatch with STAGE=timing: the GPU self-test, the inventory, the pick, SPINEPS through
+        # spinesurg-ct-nnunet's runner in the spineps environment, and the estimate; no case id or path
+        # in the report, the runner's log on the lab volume, the work folder gone
+        self.anomaly_tool_committed("anomaly_timing.py")
+        self.paired_cts()
+        ssn, conda = self.spineps_fakes()
+        done = self.timing_job(ssn, conda)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("SN_ANOMALY_RC=0", done.stdout)
+        report = (self.repo / "grid" / "logs" / "ANOMALY-timing.md").read_text(encoding="utf-8")
+        self.assertIn("# anomaly timing: job 780", report.splitlines()[0])
+        self.assertIn("- GPU: NVIDIA A100-SXM4-80GB, sm_80", report)
+        self.assertIn("| cobra | 3 | 1 | 0 | 1 | 1 |", report)
+        self.assertIn("| carmlspine | 3 | 1 | 0 | 2 | 0 |", report)
+        self.assertIn("Asked for 10; picked 3 by rank among the 3 CTs with a NIfTI and no named mask, of 3 lacking one in all.", report)
+        self.assertIn("NOTE: the runner over carmlspine exited 2 with 1 failed cases", report)
+        self.assertIn("Timed 2 CTs; 1 failed.", report)
+        self.assertIn("CTs still lacking a named mask after this run: 1 (carmlspine 1).", report)
+        self.assertIn("The production array is not approved", report)
+        self.assertIn("- exit 0 at ", report)
+        for name in ("cobra_two", "carm_two", "carm_fail", str(self.data)):
+            self.assertNotIn(name, report)
+        out = self.tmp / "go2432" / "anomaly" / "timing"
+        self.assertTrue((out / "spineps" / "cobra" / "cobra_two_seg-vert_msk.nii.gz").exists())
+        self.assertTrue((out / "spineps" / "carmlspine" / "carm_two_seg-vert_msk.nii.gz").exists())
+        self.assertFalse((out / "spineps" / "carmlspine" / "carm_fail_seg-vert_msk.nii.gz").exists())
+        self.assertIn("carm_fail", (out / "spineps" / "carmlspine.log").read_text(encoding="utf-8"))
+        self.assertIn("conda activate spineps", (self.fake / "conda.log").read_text(encoding="utf-8"))
+        self.assertFalse((self.tmp / "work").exists())
+        self.assertFalse((self.repo / "grid" / "logs" / "HOLD").exists())
+
+    def test_the_timing_stage_leaves_a_blackwell_node_before_staging_a_ct(self):
+        self.anomaly_tool_committed("anomaly_timing.py")
+        self.paired_cts()
+        ssn, conda = self.spineps_fakes(smi="NVIDIA RTX PRO 6000 Blackwell Server Edition, 12.0")
+        done = self.timing_job(ssn, conda)
+        self.assertEqual(done.returncode, 4, done.stdout + done.stderr)
+        self.assertIn("SN_ANOMALY_RC=4", done.stdout)
+        report = (self.repo / "grid" / "logs" / "ANOMALY-timing.md").read_text(encoding="utf-8")
+        self.assertIn("Blackwell", report)
+        self.assertTrue(report.splitlines()[-1].startswith("- exit 4 at "))
+        self.assertFalse((self.tmp / "go2432" / "anomaly" / "timing" / "inventory.csv").exists())
+        self.assertFalse((self.fake / "conda.log").exists())
+        self.assertFalse((self.repo / "grid" / "logs" / "HOLD").exists())
 
     def bench_job(self, name):
         env = dict(os.environ, SCHWINGNET=str(self.repo), DATA_ROOT=str(self.data), LAB_VOLUME=str(self.tmp), FAKE=str(self.fake),
