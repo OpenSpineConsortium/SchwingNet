@@ -1,5 +1,5 @@
 repository: OpenSpineConsortium/beethoven-qa
-ref: v9.0.0
-commit: 432fffb272833ecae2a9aee35772867413b685d4
-tree_sha256: ef7522c9e3aaf509d561bfe5dc6d5af3d2002ba9050849c68f04018add70461f
+ref: v10.0.0
+commit: 50cc2990b7aa882ac34844f8ec31e678f9f0c105
+tree_sha256: 28b868e8b13a851c17cb1ad40ca669a875d569b53b955f1c93cd2f4d16824772
 files: 47
