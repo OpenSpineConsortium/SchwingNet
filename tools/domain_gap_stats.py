@@ -15,9 +15,14 @@ therefore moves a person whole. The classifier two-sample test (c2st) scores eve
 with folds that keep each person in one fold; its interval resamples persons with their rows; its
 permutation test and the MMD's relabel persons, each person's rows moving together and the number
 of persons on each side kept. A person is counted within its label, so a person name that two
-corpora happen to share is two persons in a resample, while a fold still keeps both together. The
-measures that carry no test (the Frechet distance, KID, PRDC, neighbour purity, silhouette) describe
-the rows as the sample and say nothing about significance.
+corpora happen to share is two persons in a resample, while a fold still keeps both together. Two
+samples of the same persons, as two renders of one CT under two engines are, are a paired sample
+(paired=True on the interval, the permutation test and the MMD): a person drawn brings both its
+units, and a relabelling swaps a person's two units or leaves them, since under no difference it is
+the two sides of one person that are exchangeable, not the persons; the free resampling of twins
+as independent persons holds the observed statistic below its own null and reads every shift as no
+difference. The measures that carry no test (the Frechet distance, KID, PRDC, neighbour purity,
+silhouette) describe the rows as the sample and say nothing about significance.
 
 The pure rules, the AUC by ranks, the permutation p-value with its +1, Benjamini-Hochberg, the
 percentile interval and the gap ratio, live in src/schwingnet/domain_gap.py under beethoven-qa's
@@ -140,6 +145,74 @@ def units(labels, persons):
     return unit_of_row, np.asarray(unit_label)
 
 
+def twin_units(labels, persons):
+    """A paired sample's units: each row's unit and the units' labels (units), and two aligned
+    arrays, every person's unit under label 1 and under label 0, so a resample or a relabelling
+    moves a person's two units together; a person under one label alone is refused, since it has
+    no twin to move with."""
+    unit_of_row, unit_label = units(labels, persons)
+    first = {}
+    for row, key in enumerate(zip(np.asarray(labels).tolist(), persons)):
+        first.setdefault(key, unit_of_row[row])
+    people = list(dict.fromkeys(persons))
+    alone = [p for p in people if (1, p) not in first or (0, p) not in first]
+    if alone:
+        raise ValueError("a paired sample has every person under both labels;"
+                         f" {len(alone)} of {len(people)} are under one")
+    ones = np.array([first[(1, p)] for p in people], dtype=np.int64)
+    zeros = np.array([first[(0, p)] for p in people], dtype=np.int64)
+    return unit_of_row, unit_label, ones, zeros
+
+
+def twin_draws(rng, twins, count, size):
+    """How many times each of count units is drawn in each of size resamples of a paired sample,
+    twins being every person's unit under label 1 and under label 0 (twin_units): persons drawn
+    with replacement, a drawn person bringing both its units, so one draw resamples the two sides
+    to their own sizes."""
+    ones, zeros = twins
+    draws = np.zeros((size, count))
+    for row in range(size):
+        times = np.bincount(rng.integers(0, len(ones), size=len(ones)), minlength=len(ones))
+        draws[row, ones] = times
+        draws[row, zeros] = times
+    return draws
+
+
+def twin_swaps(rng, unit_label, ones, zeros):
+    """The units' labels with each person's two units swapped between the labels or left, by a
+    coin each: the relabelling of a paired sample under which, with no difference between the
+    sides, the sample is exchangeable; every person stays on both sides, so the number of persons
+    per side is kept."""
+    swapped = unit_label.copy()
+    flip = rng.integers(0, 2, size=len(ones)).astype(bool)
+    swapped[ones[flip]] = 0
+    swapped[zeros[flip]] = 1
+    return swapped
+
+
+def resampler(labels, persons, paired):
+    """The units of a sample and a function drawing size resamples of them (a size x units matrix
+    of how many times each unit is drawn): persons drawn with replacement within each label, or,
+    paired, persons drawn once with both their units (twin_draws)."""
+    if paired:
+        unit_of_row, unit_label, ones, zeros = twin_units(labels, persons)
+        return unit_of_row, unit_label, lambda rng, size: twin_draws(rng, (ones, zeros), len(unit_label), size)
+    unit_of_row, unit_label = units(labels, persons)
+    pools = [np.flatnonzero(unit_label == value) for value in (0, 1)]
+    return unit_of_row, unit_label, lambda rng, size: unit_draws(rng, pools, len(unit_label), size)
+
+
+def relabeller(labels, persons, paired):
+    """The units of a sample and a function giving the units' labels under one random
+    relabelling: the labels shuffled over the units with the number per label kept, or, paired,
+    each person's two units swapped or left (twin_swaps)."""
+    if paired:
+        unit_of_row, unit_label, ones, zeros = twin_units(labels, persons)
+        return unit_of_row, unit_label, lambda rng: twin_swaps(rng, unit_label, ones, zeros)
+    unit_of_row, unit_label = units(labels, persons)
+    return unit_of_row, unit_label, lambda rng: rng.permutation(unit_label)
+
+
 def subsample(rows, max_points, seed):
     """Sorted row indices: all of them, or max_points drawn without replacement under seed."""
     if rows <= max_points:
@@ -255,35 +328,36 @@ def rank_auc(scores, labels):
     return float(gap().mann_whitney_auc(floats(scores[labels == 1]), floats(scores[labels == 0])))
 
 
-def auc_with_interval(scores, labels, persons, *, boot=1000, seed=0):
+def auc_with_interval(scores, labels, persons, *, boot=1000, seed=0, paired=False):
     """{"auc", "lo", "hi"}: the AUC of the scores by the pure rule and its 95% percentile interval
     from a person-cluster bootstrap, persons drawn with replacement within each label and their
-    rows taken whole. The scores are held fixed, so the interval is the sampling of persons and
-    leaves out the variance of fitting the classifier: on Gaussian clouds of one law it ran about
-    two-thirds as wide as the AUC's spread from sample to sample and covered 0.5 in 15 of 20, so
-    it describes the gap and c2st_permutation_p, which refits on every shuffle, is the test."""
+    rows taken whole, or, paired, persons drawn once with their rows under both labels (twin_units),
+    the interval of a paired sample. The scores are held fixed, so the interval is the sampling of
+    persons and leaves out the variance of fitting the classifier: on Gaussian clouds of one law it
+    ran about two-thirds as wide as the AUC's spread from sample to sample and covered 0.5 in 15 of
+    20, so it describes the gap and c2st_permutation_p, which refits on every shuffle, is the test."""
     scores = vector(scores)
     labels = binary_labels(labels, len(scores))
     persons = names(persons, len(scores), "persons")
     if boot < 1:
         raise ValueError("boot must be at least 1")
-    replicates = cluster_bootstrap_auc(scores, labels, persons, boot, seed)
+    replicates = cluster_bootstrap_auc(scores, labels, persons, boot, seed, paired)
     lo, hi = gap().percentile_interval(floats(replicates), 0.95)
     return {"auc": rank_auc(scores, labels), "lo": float(lo), "hi": float(hi)}
 
 
-def cluster_bootstrap_auc(scores, labels, persons, boot, seed):
-    """boot AUCs, each of the rows of persons drawn with replacement within their label; a drawn
-    person's rows are weighted by the times it was drawn, which is the same as repeating them."""
-    unit_of_row, unit_label = units(labels, persons)
+def cluster_bootstrap_auc(scores, labels, persons, boot, seed, paired=False):
+    """boot AUCs, each of the rows of persons drawn with replacement within their label, or, paired,
+    of persons drawn with both their labels' rows; a drawn person's rows are weighted by the times
+    it was drawn, which is the same as repeating them."""
+    unit_of_row, unit_label, draw = resampler(labels, persons, paired)
     order = np.argsort(scores, kind="stable")
     ordered = scores[order]
     starts = np.flatnonzero(np.r_[True, ordered[1:] != ordered[:-1]])
     row_unit, positive = unit_of_row[order], labels[order] == 1
-    pools = [np.flatnonzero(unit_label == value) for value in (0, 1)]
     rng, out = np.random.default_rng(seed), []
     for begin in range(0, boot, BLOCK):
-        draws = unit_draws(rng, pools, len(unit_label), min(BLOCK, boot - begin))
+        draws = draw(rng, min(BLOCK, boot - begin))
         weights = draws[:, row_unit]
         out.append(weighted_auc(weights * positive, weights * ~positive, starts))
     return np.concatenate(out)
@@ -310,20 +384,22 @@ def weighted_auc(positive, negative, starts):
     return (pos * (below + 0.5 * neg)).sum(axis=1) / (pos.sum(axis=1) * neg.sum(axis=1))
 
 
-def c2st_permutation_p(x, labels, persons, *, observed_auc, perms=100, k=5, seed=0, model="logistic"):
+def c2st_permutation_p(x, labels, persons, *, observed_auc, perms=100, k=5, seed=0, model="logistic",
+                       paired=False):
     """The permutation p-value of an observed c2st AUC: persons' labels shuffled with every row of a
-    person moving together and the number of persons per label kept, the whole c2st rerun on each
-    shuffle with the same k, seed and model as the observed one, and the pure +1 rule over the
-    null AUCs; observed_auc must come from c2st with those same settings."""
+    person moving together and the number of persons per label kept, or, paired, each person's two
+    labels swapped or left (twin_swaps), the whole c2st rerun on each shuffle with the same k, seed
+    and model as the observed one, and the pure +1 rule over the null AUCs; observed_auc must come
+    from c2st with those same settings."""
     x = matrix(x, min_rows=4)
     labels = binary_labels(labels, len(x))
     persons = names(persons, len(x), "persons")
     if perms < 1:
         raise ValueError("perms must be at least 1")
-    unit_of_row, unit_label = units(labels, persons)
+    unit_of_row, unit_label, relabel = relabeller(labels, persons, paired)
     rng, null = np.random.default_rng(seed), []
     for _ in range(perms):
-        shuffled = rng.permutation(unit_label)[unit_of_row]
+        shuffled = relabel(rng)[unit_of_row]
         scores = c2st(x, shuffled, persons, k=k, seed=seed, model=model)
         null.append(rank_auc(scores, shuffled))
     return float(gap().permutation_p(float(observed_auc), tuple(null)))
@@ -375,10 +451,11 @@ def median_bandwidth(z, max_points=2000, seed=0):
     return float(np.median(positive)) if positive.size else 1.0
 
 
-def mmd_test(x, y, persons_x, persons_y, *, perms=1000, seed=0, backend="auto"):
+def mmd_test(x, y, persons_x, persons_y, *, perms=1000, seed=0, backend="auto", paired=False):
     """{"mmd2", "p", "bandwidth"}: the unbiased MMD^2 between x and y under a Gaussian kernel whose
     bandwidth is the pooled sample's median distance, and its permutation p-value with persons
-    relabelled whole and the number of persons per side kept. One pooled kernel matrix is summed
+    relabelled whole and the number of persons per side kept, or, paired, with each person, on
+    both sides, swapped between the sides or left (twin_swaps). One pooled kernel matrix is summed
     into person blocks once, so each permutation costs a product of a 0/1 vector with that small
     matrix; backend "auto" uses torch on CUDA where it is there and numpy otherwise, "numpy" and
     "torch" (on CUDA when available, else the CPU) force one."""
@@ -388,14 +465,14 @@ def mmd_test(x, y, persons_x, persons_y, *, perms=1000, seed=0, backend="auto"):
         raise ValueError("perms must be at least 1")
     side = np.r_[np.ones(len(x), dtype=np.int64), np.zeros(len(y), dtype=np.int64)]
     persons = [*names(persons_x, len(x), "persons_x"), *names(persons_y, len(y), "persons_y")]
-    unit_of_row, unit_label = units(side, persons)
+    unit_of_row, unit_label, relabel = relabeller(side, persons, paired)
     if min((unit_label == 1).sum(), (unit_label == 0).sum()) < 2:
         raise ValueError("each side needs at least two persons")
     z = np.vstack([x, y])
     z -= z.mean(axis=0)
     bandwidth = median_bandwidth(z, seed=seed)
     rng = np.random.default_rng(seed)
-    sides = np.stack([unit_label] + [rng.permutation(unit_label) for _ in range(perms)])
+    sides = np.stack([unit_label] + [relabel(rng) for _ in range(perms)])
     statistics = mmd_by_sides(z, bandwidth, unit_of_row, sides.astype(np.float64), backend)
     p = gap().permutation_p(float(statistics[0]), floats(statistics[1:]))
     return {"mmd2": float(statistics[0]), "p": float(p), "bandwidth": float(bandwidth)}
@@ -774,7 +851,9 @@ def umap_map(base, seed):
 
 
 def lda_map(base, groups):
-    """Linear discriminant analysis of the principal components onto two axes, or why it was skipped."""
+    """Linear discriminant analysis of the principal components onto two axes, or why it was
+    skipped: scikit-learn keeps only the axes the group means span, so groups whose means lie on
+    one line, as a replication's twins of the production renders do, give one axis and no map."""
     from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 
     if groups is None:
@@ -782,7 +861,10 @@ def lda_map(base, groups):
     labels = names(groups, len(base), "groups").astype(str)
     if len(set(labels)) < 3:
         return "skipped: lda draws two axes only from three or more groups"
-    return LinearDiscriminantAnalysis(n_components=2).fit_transform(base, labels)
+    mapped = LinearDiscriminantAnalysis(n_components=2).fit_transform(base, labels)
+    if mapped.shape[1] < 2:
+        return "skipped: lda found one axis, the group means lying on one line"
+    return mapped
 
 
 def trust(z_high, z_low, *, k=10, max_points=5000, seed=0):

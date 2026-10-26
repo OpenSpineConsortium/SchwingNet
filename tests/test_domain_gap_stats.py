@@ -174,6 +174,74 @@ class DomainGapStatsTest(unittest.TestCase):
         self.assertTrue((draws[:, :2].sum(axis=1) == 2).all())  # label 0 keeps its two persons
         self.assertTrue((draws[:, 2:].sum(axis=1) == 2).all())
 
+    def twins(self, seed, shift, shape=(60, 3, 12)):
+        """A paired sample of shape persons x views x dimensions: each person's views under
+        engine a and, under engine b, the same views with a little noise and a shift, so every
+        person is on both sides."""
+        import numpy as np
+
+        persons, views, dims = shape
+        rng = np.random.default_rng(seed)
+        base = rng.normal(0, 1, (persons, 1, dims)) + 0.3 * rng.normal(0, 1, (persons, views, dims))
+        a = base.reshape(-1, dims)
+        b = (base + 0.05 * rng.normal(0, 1, base.shape)).reshape(-1, dims)
+        b[:, 0] += shift
+        names_ = [f"s{p}" for p in range(persons) for _ in range(views)]
+        x = np.vstack([a, b])
+        labels = np.r_[np.ones(len(a), dtype=int), np.zeros(len(b), dtype=int)]
+        return x, labels, names_ + names_, (a, b, names_)
+
+    def test_a_paired_sample_moves_each_persons_two_units_together(self):
+        """Twins keyed as one person fall in one fold, so the AUC is near one half at no shift;
+        the paired interval is the paired design's, far narrower than the free person bootstrap's,
+        and the paired MMD permutation sees a shift the free one reads as none, since the free
+        relabelling lands twins on one side and holds the observed statistic below its own null."""
+        x, labels, persons, (a, b, names_) = self.twins(1, shift=0.0)
+        scores = self.stats.c2st(x, labels, persons, seed=0)
+        free = self.stats.auc_with_interval(scores, labels, persons, boot=300, seed=0)
+        paired = self.stats.auc_with_interval(scores, labels, persons, boot=300, seed=0, paired=True)
+        self.assertAlmostEqual(free["auc"], 0.5, delta=0.06)
+        self.assertEqual(paired["auc"], free["auc"])
+        self.assertLess(paired["hi"] - paired["lo"], 0.05)
+        self.assertGreater(free["hi"] - free["lo"], 0.1)
+        self.assertGreater(self.stats.mmd_test(a, b, names_, names_, perms=100, seed=0, backend="numpy",
+                                               paired=True)["p"], 0.05)
+        x, labels, persons, (a, b, names_) = self.twins(2, shift=0.6)
+        free_p = self.stats.mmd_test(a, b, names_, names_, perms=100, seed=0, backend="numpy")
+        paired_p = self.stats.mmd_test(a, b, names_, names_, perms=100, seed=0, backend="numpy", paired=True)
+        self.assertEqual(free_p["mmd2"], paired_p["mmd2"])
+        self.assertGreater(free_p["p"], 0.5)
+        self.assertLess(paired_p["p"], 0.05)
+        scores = self.stats.c2st(x, labels, persons, seed=0)
+        auc = self.stats.rank_auc(scores, labels)
+        p = self.stats.c2st_permutation_p(x, labels, persons, observed_auc=auc, perms=20, seed=0, paired=True)
+        self.assertAlmostEqual(p, 1 / 21)
+
+    def test_twin_swaps_keep_every_person_on_both_sides(self):
+        import numpy as np
+
+        labels = np.array([1, 1, 0, 1, 0, 0, 0, 1])
+        persons = ["a", "a", "b", "b", "a", "c", "c", "c"]
+        unit_of_row, unit_label, ones, zeros = self.stats.twin_units(labels, persons)
+        self.assertEqual(unit_label.tolist(), [1, 0, 1, 0, 0, 1])  # (1,a) (0,b) (1,b) (0,a) (0,c) (1,c)
+        self.assertEqual((ones.tolist(), zeros.tolist()), ([0, 2, 5], [3, 1, 4]))
+        rng = np.random.default_rng(0)
+        for _ in range(20):
+            swapped = self.stats.twin_swaps(rng, unit_label, ones, zeros)
+            rows = swapped[unit_of_row]
+            self.assertEqual(set(np.array(persons)[rows == 1]), {"a", "b", "c"})
+            self.assertEqual(set(np.array(persons)[rows == 0]), {"a", "b", "c"})
+            self.assertTrue((swapped[ones] + swapped[zeros] == 1).all())  # one unit a side a person
+        draws = self.stats.twin_draws(rng, (ones, zeros), len(unit_label), 5)
+        self.assertEqual(draws.shape, (5, 6))
+        np.testing.assert_array_equal(draws[:, ones], draws[:, zeros])
+        self.assertTrue((draws.sum(axis=1) == 6).all())
+        with self.assertRaises(ValueError):
+            self.stats.twin_units(np.array([1, 1, 0]), ["a", "b", "a"])
+        with self.assertRaises(ValueError):
+            self.stats.auc_with_interval(np.array([0.1, 0.9, 0.4, 0.6]), np.array([1, 1, 0, 0]), ["a", "b", "a", "c"],
+                                         boot=5, paired=True)
+
     def test_cluster_interval_is_wider_than_row_interval_under_a_person_effect(self):
         x, labels, persons = two_clouds(6, shift=0.4, persons=12, rows=15, person_sd=2.0, noise_sd=0.3)
         scores = self.stats.c2st(x, labels, persons, seed=0)
@@ -437,6 +505,22 @@ class DomainGapStatsTest(unittest.TestCase):
         np.testing.assert_allclose(unsupervised["pca"], maps["pca"])
         with self.assertRaises(ValueError):
             self.stats.reductions(z, methods=("mds",))
+
+    def test_lda_skips_groups_whose_means_lie_on_one_line(self):
+        """Twin render groups share every feature, so their means and a shifted group's lie on one
+        line and scikit-learn's LDA keeps one axis; the map is skipped in words, as the figures
+        draw only maps with two columns (the whole-run twin case of tests/test_domain_gap_run.py)."""
+        import numpy as np
+
+        base = np.random.default_rng(0).normal(size=(60, 8))
+        z = np.concatenate([base, base, base, base + 0.7])
+        groups = np.array(["a"] * 60 + ["b"] * 60 + ["c"] * 60 + ["d"] * 60)
+        maps = self.stats.reductions(z, seed=0, methods=("pca", "lda"), groups=groups)
+        self.assertEqual(maps["lda"], "skipped: lda found one axis, the group means lying on one line")
+        self.assertEqual(maps["pca"].shape, (len(z), 2))
+        apart = np.concatenate([base, base + 0.7, base - 0.7, base + np.arange(8)])
+        self.assertEqual(self.stats.reductions(apart, seed=0, methods=("lda",), groups=groups)["lda"].shape,
+                         (len(z), 2))
 
     def test_standardise_and_pca(self):
         import numpy as np

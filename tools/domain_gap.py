@@ -33,10 +33,11 @@ ResNet-18 and handcrafted physics measures, each taken on the image and on its i
 is the inversion-invariant feature the primary analysis reads, since fluoroscopy is often shown
 bone-dark and DRRs bone-bright), and the analysis (tools/domain_gap_stats.py: PCA, t-SNE, UMAP and
 LDA maps with their trustworthiness; person-grouped classifier two-sample tests with cluster
-bootstrap intervals and permutation p-values; MMD with person-level permutations; Frechet distance
-and KID in each space's first 64 principal components; precision, recall, density and coverage;
-silhouette and neighbour purity; split-half nulls as the calibration; Benjamini-Hochberg within a
-space).
+bootstrap intervals and permutation p-values; MMD with person-level permutations, a contrast of
+two render groups on one CT folder read as the paired sample it is, since their views are twins
+of one CT; Frechet distance and KID in each space's first 64 principal components; precision,
+recall, density and coverage; silhouette and neighbour purity; split-half nulls as the
+calibration; Benjamini-Hochberg within a space).
 
 The choice of CTs is written to <out>/render-subjects.json, {folder: [subject ids]}, by `run` and
 by `plan`, which makes that choice alone, rendering and decoding nothing: the grid's segment job
@@ -103,8 +104,10 @@ FOCUS_GROUPS = ("flexray_drr", "fluxray")  # FleXray's own groups, read in most 
 # verdict; FluXray's raw-render recipe (the paper's 90 fixed poses) through our blocks against the
 # same through FleXray's primitives; the physical render against the recipe, which isolates the
 # attenuation randomisation; the production labels (SPINEPS) against the replication's (MOOSE),
-# which isolates the segmenter; and the raw renders against the FLUX-edited FluXray, which isolates
-# the edit with the pose recipe held the same.
+# which shares the CTs and the seeds with it while the crops, isocentres and poses follow the
+# labels, since FleXray's recipe draws them from the label volume before the pose (so the pair
+# reads the segmenter with everything the labels decide); and the raw renders against the
+# FLUX-edited FluXray, which isolates the edit with the pose recipe held the same.
 REPLICATION_PAIRS = (("flexray_replica", "flexray_reference"), ("fluxray_raw", "fluxray_raw_reference"),
                      ("flexray_drr", "flexray_replica"), ("flexray_spineps", "flexray_replica"),
                      ("fluxray_raw_reference", "fluxray"))
@@ -370,7 +373,12 @@ def persons_of(group, candidates, rule):
 
 def plan_group(group, args, salt, frozen, renders):
     """One group's row of the plan: what was found, what was chosen and why anything was not; a
-    render group's row also records which CTs it rendered, with what blocks, engine and salt."""
+    render group's row also records which CTs it rendered, with what blocks, engine and salt. A
+    chosen file's person is <group id>:<person>, so no two corpora share a person by the accident
+    of a name, except that a render's person is its CT, <CT folder>:<subject>, whichever group
+    rendered it: two render groups on one folder render the same CTs from the same seeds, so their
+    views are near-identical twins of one CT, and a contrast between them is a paired sample
+    (contrast), never two sets of persons."""
     row = {"id": group.id, "label": group.label, "family": group.family, "source": group.source,
            "licence": group.licence, "note": group.note, "chosen": [], "skipped": ""}
     if group.source == "render":
@@ -388,9 +396,10 @@ def plan_group(group, args, salt, frozen, renders):
     pairs, fallback = persons_of(group, candidates, rule)
     kept = [(f, p) for f, p in pairs if not is_frozen(group.id, p, frozen)]
     chosen = rules().choose(tuple(kept), group.cap, group.per_person, f"{salt}:{group.id}")
+    prefix = group.folder if group.source == "render" else group.id
     row.update(found=len(candidates), persons_found=len({p for _, p in pairs}), person_rule=rule,
                person_fallback=fallback, frozen_dropped=len(pairs) - len(kept),
-               chosen=[[f, f"{group.id}:{p}"] for f, p in chosen])
+               chosen=[[f, f"{prefix}:{p}"] for f, p in chosen])
     if not chosen:
         row["skipped"] = "nothing found under its rules"
     return row
@@ -406,6 +415,10 @@ def candidate_rows(group, args, renders):
     record = renders.get(group.id, {})
     if record.get("skipped"):
         raise StageError(record["skipped"])
+    if "kept" in record and not record["kept"]:
+        raise StageError(f"it kept no CT, {len(record.get('passed_over', []))} passed over")
+    if record.get("shared") == []:
+        raise StageError("no CT kept by every render group on its folder")
     return render_candidates(group, args.out, record.get("shared"))
 
 
@@ -417,7 +430,7 @@ def stage_plan(args, table, renders=None, folders=None):
     renders, folders = renders or {}, folders or {}
     path = Path(args.out) / "plan.json"
     stamp = {"table": sha256_of(args.groups), "frozen": sha256_of(args.frozen) if args.frozen else "",
-             "index": str(args.index or ""), "renders": digest_of(renders), "folders": digest_of(folders)}
+             "index": index_stamp(args.index), "renders": digest_of(renders), "folders": digest_of(folders)}
     if path.is_file() and read_json(path).get("stamp") == stamp:
         return read_json(path)
     frozen = frozen_persons(args.frozen)
@@ -429,6 +442,16 @@ def stage_plan(args, table, renders=None, folders=None):
 
 def digest_of(data):
     return hashlib.sha256(json.dumps(data, sort_keys=True, default=str).encode("utf-8")).hexdigest()
+
+
+def index_stamp(index):
+    """The sample index as the plan's stamp reads it: its path with its size and modification
+    time, so a sample index rebuilt at the same path makes the plan again rather than keeping the
+    old plan's files; the path alone where none is there, or none is named."""
+    if not index or not Path(index).is_file():
+        return str(index or "")
+    status = Path(index).stat()
+    return f"{index} {status.st_size} {status.st_mtime_ns}"
 
 
 # --- the renders -----------------------------------------------------------------------------------
@@ -470,10 +493,12 @@ def share_subjects(renders, groups, folders):
     alone is a volume FleXray drops whole) is in no group's rows and every pair compares the
     same CTs: the folder's record says which they are, in the chosen order, each group's which
     of its own it kept outside that set, and render_candidates reads the shared ones alone. A
-    group that rendered nothing, skipped or failed, takes no part in the intersection."""
+    group that rendered nothing, skipped, failed or passing every CT over, takes no part in the
+    intersection, so one such group empties no other group's rows, and its plan row says what it
+    kept (candidate_rows)."""
     for name, folder in folders.items():
         kept = {g.id: renders[g.id]["kept"] for g in groups
-                if g.folder == name and "kept" in renders.get(g.id, {})}
+                if g.folder == name and renders.get(g.id, {}).get("kept")}
         if not kept:
             continue
         shared = set.intersection(*(set(subjects) for subjects in kept.values()))
@@ -920,6 +945,12 @@ class Frame:
     def family_of(self, group):
         return str(self.family[self.rows_of(group)[0]])
 
+    def twins(self, a, b):
+        """Whether rows a and rows b are of the same persons, which two render groups on one CT
+        folder are (a render's person is its CT, whichever group rendered it, plan_group) and no
+        two corpora are: a paired sample, every person on both sides."""
+        return len(a) > 0 and len(b) > 0 and set(self.person[a]) == set(self.person[b])
+
     def why_untestable(self, group):
         """Why a group is not in the tests, in words, or "" when it is: not in the table, skipped
         by the plan for its reason, too few images decoded, or too few persons."""
@@ -957,30 +988,45 @@ def contrast(frame, z64, a, b, seed, *, permute=False, prdc=False):
     """Every separation measure of rows a against rows b: the classifier two-sample tests
     (logistic and k nearest neighbours, person-grouped, with cluster bootstrap intervals and,
     when asked, a permutation p), MMD with its person-level permutation p, FD and KID in the
-    first 64 components, and, when asked, precision, recall, density and coverage of a against b."""
+    first 64 components, and, when asked, precision, recall, density and coverage of a against b.
+    Two sides of the same persons (Frame.twins), two render groups on one CT folder, whose views
+    are near-identical twins of one CT, are a paired sample: a CT's rows fall in one fold on both
+    sides, since its person is one key, and the interval, the permutations and the MMD's null
+    move its two sides together (domain_gap_stats, paired). Twins analysed as independent persons
+    teach the classifier each CT from the other side and hold every statistic below its own null,
+    so a shift the test should see reads as none (the review of 2026-10-26, F22)."""
     import numpy as np
 
     s = stats()
     rows = np.concatenate([a, b])
     labels = np.concatenate([np.ones(len(a), int), np.zeros(len(b), int)])
-    persons = list(frame.person[rows])
-    result = {"n": [len(a), len(b)], "persons": [len(set(frame.person[a])), len(set(frame.person[b]))]}
+    persons, paired = list(frame.person[rows]), frame.twins(a, b)
+    result = {"n": [len(a), len(b)], "persons": [len(set(frame.person[a])), len(set(frame.person[b]))],
+              "paired": paired}
     for model in ("logistic", "knn"):
         scores = s.c2st(frame.x[rows], labels, persons, seed=seed, model=model)
-        result[f"auc_{model}"] = s.auc_with_interval(scores, labels, persons, boot=BOOTSTRAP, seed=seed)
+        result[f"auc_{model}"] = s.auc_with_interval(scores, labels, persons, boot=BOOTSTRAP, seed=seed,
+                                                     paired=paired)
     if permute:
         result["auc_logistic"]["p"] = s.c2st_permutation_p(
             frame.x[rows], labels, persons, observed_auc=result["auc_logistic"]["auc"],
-            perms=PERMUTATIONS_C2ST, seed=seed)
-    result["mmd"] = s.mmd_test(z64[a], z64[b], list(frame.person[a]), list(frame.person[b]),
-                               perms=PERMUTATIONS_MMD, seed=seed)
-    fa, fb = equal_rows(frame, a, b, seed)
-    result["fd64"] = s.frechet_distance(z64[fa], z64[fb])
-    result["fd_rows"] = len(fa)
-    result["kid64"] = s.kid(z64[a], z64[b], seed=seed)
+            perms=PERMUTATIONS_C2ST, seed=seed, paired=paired)
+    result["mmd"] = s.mmd_test(z64[a], z64[b], persons[:len(a)], persons[len(a):],
+                               perms=PERMUTATIONS_MMD, seed=seed, paired=paired)
+    result.update(distances(frame, z64, (a, b), seed))
     if prdc:
         result["prdc"] = s.prdc(z64[b], z64[a])
     return result
+
+
+def distances(frame, z64, sides, seed):
+    """fd64, the Frechet distance of the two sides at equal sizes (equal_rows) with the rows a
+    side it was taken at, and kid64, the first side against the second."""
+    s = stats()
+    a, b = sides
+    fa, fb = equal_rows(frame, a, b, seed)
+    return {"fd64": s.frechet_distance(z64[fa], z64[fb]), "fd_rows": len(fa),
+            "kid64": s.kid(z64[a], z64[b], seed=seed)}
 
 
 def equal_rows(frame, a, b, seed):
@@ -1235,14 +1281,15 @@ def replication_verdict(results):
 
 
 def pair_verdict(results, pair):
-    """One pair's word in the primary space's inversion-invariant reading, or why there is none."""
+    """One pair's word in the primary space's inversion-invariant reading, with the persons and
+    rows a side it was read from, or why there is none."""
     verdict = {"word": None, "reason": ""}
     space = results["spaces"].get(PRIMARY_SPACE, {})
     found = space.get("replication", {}).get(pair, {})
     if space.get("invalid"):
         verdict["reason"] = f"space {PRIMARY_SPACE} not run, {space['invalid']}"
     elif "word" in found:
-        verdict["word"] = found["word"]
+        verdict.update(word=found["word"], persons=found["persons"], n=found["n"])
     else:
         verdict["reason"] = found.get("skipped", "the pair was not tested")
     return verdict
@@ -1586,10 +1633,22 @@ def verdict_lines(verdict):
 
 
 def verdict_line(pair, found, verdict):
+    """A worded pair's line: the word with the persons and rows a side it was read from, since the
+    word is a non-rejection rule (replication_word: an AUC bound at most 0.6 and an MMD q at least
+    0.05) that a small sample satisfies for want of power, and the segment job may have labelled
+    fewer CTs than the study asked for, so a reader of "replicated" sees at once how many CTs it
+    rests on. A pair with no word gives its reason, cut to what the report's line holds."""
     a, b = pair.split("|")
     if found.get("word"):
-        return f"replication {a} vs {b} in {verdict['space']} ({verdict['reading']}): {found['word']}"
-    return f"replication {a} vs {b}: no verdict, {found['reason'][:140]}"
+        return (f"replication {a} vs {b} in {verdict['space']} ({verdict['reading']}): {found['word']}"
+                f" ({counts_text(found)})")
+    head = f"replication {a} vs {b}: no verdict, "
+    return head + found["reason"][:rules().LINE_LIMIT - len(head)]
+
+
+def counts_text(c):
+    """A contrast's persons and rows a side, first/second."""
+    return f"persons {c['persons'][0]}/{c['persons'][1]} n {c['n'][0]}/{c['n'][1]}"
 
 
 def render_summary(folders):
@@ -1701,15 +1760,35 @@ def replication_summary(space):
 
 
 def replication_line(pair, c):
+    """A pair's line: the persons and rows a side first, since the word at its end is a
+    non-rejection rule that a small sample satisfies for want of power (verdict_line), then the
+    measures a family line carries with the MMD's q, the word's second input (the C2ST's q stays
+    in results.json, since with it the line of a worded pair would pass the report's limit), the
+    last of them left off whole where the line would still pass it, so a cut never takes the
+    word."""
     a, b = pair.split("|")
     if "skipped" in c:
         return f" replication {a} vs {b} not tested, {c['skipped'][:130]}"
     prdc = c.get("prdc", {})
-    return (f" replication {a} vs {b} auc {auc_text(c['auc_logistic'])} q {fmt(c['auc_logistic'].get('q'), 3)}"
-            f" knn {fmt(c['auc_knn']['auc'])} mmd p {fmt(c['mmd']['p'], 3)} q {fmt(c['mmd'].get('q'), 3)}"
-            f" fd64 {fmt(c['fd64'], 1)} kid64 {fmt(c['kid64']['kid'], 3)}"
-            f" prdc {' '.join(fmt(prdc.get(k)) for k in ('precision', 'recall', 'density', 'coverage'))}"
-            f" {c.get('word', '')}").rstrip()
+    numbers = [f"auc {auc_text(c['auc_logistic'])}", f"knn {fmt(c['auc_knn']['auc'])}",
+               f"mmd p {fmt(c['mmd']['p'], 3)} q {fmt(c['mmd'].get('q'), 3)}",
+               f"fd64 {fmt(c['fd64'], 1)}", f"kid64 {fmt(c['kid64']['kid'], 3)}",
+               f"prdc {' '.join(fmt(prdc.get(k)) for k in ('precision', 'recall', 'density', 'coverage'))}"]
+    return within_limit(f" replication {a} vs {b} {counts_text(c)}", numbers, c.get("word", ""))
+
+
+def within_limit(head, numbers, word):
+    """head, the numbers and the word as one line within the report's limit (LINE_LIMIT), the
+    last numbers left off whole where they would pass it: every number is in results.json, while
+    a word cut by safe_line would read as another."""
+    limit = rules().LINE_LIMIT
+    tail = f" {word}" if word else ""
+    line = head
+    for number in numbers:
+        if len(line) + 1 + len(number) + len(tail) > limit:
+            break
+        line += f" {number}"
+    return line + tail
 
 
 def calibration_summary(space):

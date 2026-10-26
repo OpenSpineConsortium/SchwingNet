@@ -7,8 +7,13 @@ with only the physics space, writes a summary of at most 80 lines that survive t
 redaction, tells the textured corpora apart, finds nothing in its split-half nulls, renders the
 six render groups from one choice of CTs under one salt, drawn among the CTs with masks under both
 segmenters they name and passed the mask roots, and reads the five replication pairs with the
-pre-registered word beside the two engine pairs; and the plan subcommand writes that choice alone,
-without the masks the segment job makes, for that job to read.
+pre-registered word beside the two engine pairs; twin renders, one CT's view under two engines,
+are read as the paired sample they are, so identical twins read an AUC of one half and a gamma
+curve between them reads "not replicated", where twins keyed as persons of their own read neither;
+a second run after a mask lands makes the plan, the rows and the features again; a render group
+that kept no CT is out of the shared set and its plan row says so; the verdict and replication
+lines carry the persons and rows they rest on within the report's line; and the plan subcommand
+writes that choice alone, without the masks the segment job makes, for that job to read.
 
 It needs numpy, Pillow, torch, scikit-learn and the package's contracts, which the job's
 environment holds and the required check's python does not, so each case runs where they import
@@ -169,6 +174,27 @@ class PlanTest(unittest.TestCase):
         again = self.tool.stage_plan(args, self.tool.read_table(groups))
         self.assertEqual(len(again["groups"][0]["chosen"]), 12)
 
+    def test_an_index_rebuilt_at_the_same_path_makes_the_plan_again(self):
+        """The plan's stamp reads the sample index by its size and modification time, not its
+        path alone, so a samples.sqlite rebuilt where the old one stood (more files indexed
+        after a failed job) is planned again rather than read from the old plan's file list."""
+        index = index_of(self.folder, self.index_rows())
+        groups = table(self.folder, self.groups())
+        args = args_for(self.tool, self.folder, groups, index)
+        Path(args.out).mkdir(parents=True)
+        first = self.tool.stage_plan(args, self.tool.read_table(groups))
+        self.assertEqual(first["groups"][0]["found"], 12)
+        more = [(f"/x/carmlspine/images/train/case7_{v}.png", f"carmlspine/images/train/case7_{v}.png", "png",
+                 "1024", "1024", None, None, None, None, "image", None, "unmapped:realxray") for v in ("ap", "lat")]
+        with sqlite3.connect(index) as connection:
+            connection.executemany("INSERT INTO sample VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", more)
+        again = self.tool.stage_plan(args, self.tool.read_table(groups))
+        self.assertEqual(again["groups"][0]["found"], 14)
+        self.assertNotEqual(again["stamp"]["index"], first["stamp"]["index"])
+        self.assertTrue(again["stamp"]["index"].startswith(str(index)))
+        self.assertEqual(self.tool.index_stamp(""), "")
+        self.assertEqual(self.tool.index_stamp(str(self.folder / "absent.sqlite")), str(self.folder / "absent.sqlite"))
+
     def test_a_patient_id_on_most_files_falls_back_to_the_study(self):
         group = self.tool.read_table(table(self.folder, self.groups())).groups[1]
         same = [("f1", "r1", "SITE", "a"), ("f2", "r2", "SITE", "b"), ("f3", "r3", "p3", "c")]
@@ -244,12 +270,18 @@ class FakeRenderer:
     CT folders, and with a segmenter named only those with a mask file <subject>.nii.gz under
     roots[segmenter]; render_subjects writes one textured 16-bit PNG a view for the subject ids it
     is given, with a manifest in the renderer's shape, recording every call, so the test reads
-    which subjects, salt, blocks, engine and roots each render group got; under spineps it passes
-    the first subject over, as the renderer passes over a CT whose SPINEPS mask holds one L6
-    alone, so the run's shared-subjects rule is exercised."""
+    which subjects, salt, blocks, engine and roots each render group got. passes says how many of
+    the leading subjects each group (by its folder's name) passes over, as the renderer passes
+    over a CT whose SPINEPS mask holds one L6 alone: one for flexray_spineps unless told
+    otherwise, so the run's shared-subjects rule is exercised. With twins, a subject's view is one
+    image under every group, drawn from the subject and the view alone, as two engines render
+    one CT from one seed; shifts raises a group's images to the named gamma, a brightness curve
+    the other engine lacks, a real difference between twins."""
 
-    def __init__(self, rng, kind):
+    def __init__(self, rng, kind, *, passes=None, twins=False, shifts=None, seed=12):
         self.rng, self.kind, self.calls, self.finds = rng, kind, [], []
+        self.passes = {"flexray_spineps": 1} if passes is None else passes
+        self.twins, self.shifts, self.seed = twins, shifts or {}, seed
 
     def find_subjects(self, ct_root, segmenter=None, roots=None):
         self.finds.append((segmenter, roots))
@@ -259,18 +291,28 @@ class FakeRenderer:
         root = (roots or {}).get(segmenter)
         return [s for s in found if root is not None and (Path(root) / f"{s}.nii.gz").is_file()]
 
+    def image(self, group, subject, view):
+        """One view's image: the stream's next texture, or with twins the texture of the subject
+        and the view, under every group the same, raised to the group's gamma where it has one."""
+        import numpy as np
+
+        rng = np.random.default_rng((self.seed, int(subject[1:]), view)) if self.twins else self.rng
+        return np.clip(texture(rng, self.kind, 280), 0.0, 1.0) ** self.shifts.get(group, 1.0)
+
     def render_subjects(self, ct_root, out, subjects, salt, device, *, blocks, engine="blocks", subject_ids=None,
                         roots=None):
-        self.calls.append({"group": Path(out).name, "subjects": subjects, "salt": salt, "device": device,
+        group = Path(out).name
+        self.calls.append({"group": group, "subjects": subjects, "salt": salt, "device": device,
                            "blocks": blocks, "engine": engine, "subject_ids": subject_ids, "roots": roots})
-        passed = list(subject_ids[:1]) if blocks.segmenter == "spineps" else []
+        passed = list(subject_ids[:self.passes.get(group, 0)])
         kept = [s for s in subject_ids if s not in passed]
         rows = []
         for subject in kept:
             for view in range(blocks.views):
                 name = f"{subject}_v{view}.png"
-                save_png(Path(out) / name, texture(self.rng, self.kind, 280), 16)
+                save_png(Path(out) / name, self.image(group, subject, view), 16)
                 rows.append({"file": name, "subject": subject, "view": view})
+        Path(out).mkdir(parents=True, exist_ok=True)
         (Path(out) / "manifest.json").write_text(json.dumps({"engine": engine, "views": rows}), encoding="utf-8")
         return {"rendered": len(rows), "subjects": kept,
                 "skipped": [f"{s}: no structure FleXray supervises in its masks" for s in passed]}
@@ -293,6 +335,11 @@ RENDER_GROUPS = (("flexray_drr", ["segmenter=moose", "attenuation=off", "views=2
                  ("fluxray_raw_reference", FLUXRAY_RAW + ["views=2"], "flexray-runtime", "flexray_drr"))
 PAIRS = ("flexray_replica|flexray_reference", "fluxray_raw|fluxray_raw_reference", "flexray_drr|flexray_replica",
          "flexray_spineps|flexray_replica", "fluxray_raw_reference|fluxray")
+# The gamma the twin test raises flexray_reference's images to: a curve the physics features see
+# as a shift under the paired reading and the keying before the fix reads as none (measured
+# 2026-10-26 on this fixture, 24 CTs x 2 views: paired AUC 0.60 and MMD p at its floor, the other
+# keying AUC 0.45 and MMD p 0.45).
+GAMMA = 1.2
 
 
 def ranked(tool, subjects, salt="test-salt"):
@@ -429,13 +476,149 @@ class WholeRunTest(unittest.TestCase):
                                    "(moose 27, spineps 27); 23 kept by every group")
         self.assertIn("group flexray_replica synthetic counts as flexray_drr", lines)
         self.assertEqual(sum(1 for line in lines if line.startswith("group ")), 9)
+        self.replication_lines_carry_the_counts(replication, lines)
+
+    def replication_lines_carry_the_counts(self, replication, lines):
+        """Each engine pair, a paired sample of the folder's 23 shared CTs, has one replication
+        line opening with its persons and rows a side and ending with its word; the untested
+        FluXray pair's line says so."""
         for pair in PAIRS[:2]:
             a, b = pair.split("|")
-            pair_lines = [line for line in lines if line.startswith(f" replication {a} vs {b} auc")]
+            head = f" replication {a} vs {b} persons 23/23 n 46/46 auc"
+            pair_lines = [line for line in lines if line.startswith(head)]
             self.assertEqual(len(pair_lines), 1)
             self.assertTrue(pair_lines[0].endswith(" replicated"))
-        self.assertTrue(any(line.startswith(" replication flexray_spineps vs flexray_replica auc") for line in lines))
+            self.assertTrue(replication[pair]["paired"])
+        self.assertTrue(any(line.startswith(" replication flexray_spineps vs flexray_replica persons 23/23 n 46/46")
+                            for line in lines))
         self.assertTrue(any(line.startswith(" replication fluxray_raw_reference vs fluxray not tested") for line in lines))
+
+    def test_twin_renders_read_replicated_and_a_gamma_between_them_not_replicated(self):
+        """Two engines rendering one CT from one seed give twins: identical views read an AUC of
+        one half, a degenerate interval and "replicated" because a twin pair is a paired sample,
+        every CT's rows in one fold on both sides and its two sides moved together by the
+        interval and the permutations (contrast); analysed as persons of their own, the keying
+        before the fix, the classifier learns each CT from the other side, the AUC falls far
+        below one half and the free permutation's MMD p sits at one, which the pre-registered
+        rule reads as "replicated" whatever the engines differ by. A gamma curve on the reference
+        alone reads "not replicated" under the paired reading and "replicated" under the other."""
+        tool = load_tool()
+        tool.PERMUTATIONS_C2ST, tool.PERMUTATIONS_MMD, tool.BOOTSTRAP = 5, 200, 50
+        tool.SPLIT_PERSONS = 12
+        with tempfile.TemporaryDirectory() as temporary:
+            folder = Path(temporary)
+            renderer = FakeRenderer(None, "blobs", passes={}, twins=True, shifts={"flexray_reference": GAMMA})
+            args = self.render_corpora(tool, folder, renderer)
+            self.assertEqual(tool.run(args), 0)
+            lines = (Path(args.out) / "summary.txt").read_text(encoding="ascii").splitlines()
+            results = json.loads((Path(args.out) / "results.json").read_text(encoding="utf-8"))
+            before = {pair: self.contrast_as_before(tool, Path(args.out), pair) for pair in PAIRS[:2]}
+        replication = results["spaces"]["physics"]["replication"]
+        shifted, same = replication[PAIRS[0]], replication[PAIRS[1]]
+        for found in (shifted, same):
+            self.assertTrue(found["paired"])
+            self.assertEqual((found["persons"], found["n"]), ([24, 24], [48, 48]))
+        self.assertEqual(same["word"], "replicated")
+        auc = same["auc_logistic"]
+        self.assertEqual((auc["auc"], auc["lo"], auc["hi"], same["auc_knn"]["auc"]), (0.5, 0.5, 0.5, 0.5))
+        self.assertEqual(shifted["word"], "not replicated")
+        self.assertLess(shifted["mmd"]["q"], 0.05)
+        self.assert_worded_lines(lines)
+        self.assert_read_as_before(tool, before, shifted)
+
+    def assert_worded_lines(self, lines):
+        """Each twin pair's replication line opens with its counts and ends with its word."""
+        for pair, word in ((PAIRS[1], " replicated"), (PAIRS[0], " not replicated")):
+            a, b = pair.split("|")
+            head = f" replication {a} vs {b} persons 24/24 n 48/48 auc"
+            self.assertTrue(any(line.startswith(head) and line.endswith(word) for line in lines), pair)
+
+    def assert_read_as_before(self, tool, before, shifted):
+        """Keyed as persons of their own, twins read a shift as none and no shift as a shift: the
+        identical pair's AUC falls far below one half, and the shifted pair's MMD, the same
+        statistic as the paired reading's, sits inside the free permutation's null."""
+        import numpy as np
+
+        for pair, found in before.items():
+            self.assertFalse(found["paired"], pair)
+            word = tool.rules().replication_word(found["auc_logistic"]["lo"], found["mmd"]["p"])
+            self.assertEqual(word, "replicated", pair)
+        self.assertLess(before[PAIRS[1]]["auc_logistic"]["auc"], 0.25)
+        self.assertTrue(np.isclose(before[PAIRS[0]]["mmd"]["mmd2"], shifted["mmd"]["mmd2"]))
+
+    def contrast_as_before(self, tool, out, pair):
+        """The pair's contrast on the run's physics features with every render's person keyed by
+        its group, the keying before the review of 2026-10-26 (F22): each CT two persons."""
+        import numpy as np
+
+        rows = json.loads((out / "rows.json").read_text(encoding="utf-8"))
+        plan = json.loads((out / "plan.json").read_text(encoding="utf-8"))
+        data = np.load(out / "features" / "physics.npz")
+        for row in rows["rows"]:
+            row["person"] = f"{row['group']}:{row['person']}"
+        frame = tool.Frame((data["stored"] + data["inverse"]) / 2.0, rows["rows"], plan)
+        s = tool.stats()
+        z = s.standardise(frame.x)
+        z64, _ = s.pca(z, min(64, z.shape[1], len(z) - 1), seed=0)
+        a, b = pair.split("|")
+        return tool.contrast(frame, z64, frame.rows_of(a), frame.rows_of(b), 0)
+
+    def test_a_second_run_after_a_mask_lands_makes_the_plan_the_rows_and_the_features_again(self):
+        """The stages are kept for the same inputs and made again for new ones: s0001 has no MOOSE
+        mask in the fixture and ranks among the first 24 CTs in the salted order, so once its mask
+        lands (a segment job finishing what a cut one left) the choice of CTs changes, and the
+        plan, rows.json and the physics features follow; a third pass changes nothing."""
+        import numpy as np
+
+        tool = load_tool()
+        with tempfile.TemporaryDirectory() as temporary:
+            folder = Path(temporary)
+            args = self.render_corpora(tool, folder, FakeRenderer(np.random.default_rng(5), "blobs"))
+            table = tool.read_table(args.groups)
+            first = self.stages(tool, args, table)
+            (folder / "data" / "moose" / "s0001.nii.gz").write_bytes(b"")
+            second = self.stages(tool, args, table)
+            third = self.stages(tool, args, table)
+        self.assertNotIn("s0001", first["subjects"])
+        self.assertIn("s0001", second["subjects"])
+        self.assertEqual(first["masks"], {"moose": 27, "spineps": 27})
+        self.assertEqual(second["masks"], {"moose": 28, "spineps": 27})
+        self.assertNotEqual(first["plan"], second["plan"])
+        self.assertNotIn(f"{CT_FOLDER}:s0001", first["persons"])
+        self.assertIn(f"{CT_FOLDER}:s0001", second["persons"])
+        self.assertEqual(first["features"], first["plan"])
+        self.assertEqual(second["features"], second["plan"])
+        self.assertEqual(third, second)
+
+    def stages(self, tool, args, table):
+        """The render, plan, image and feature stages once, and what they left: the folder's choice
+        and mask counts, the plan digest the rows carry, the rows' persons, the plan the physics
+        features carry and the three files' modification times."""
+        import numpy as np
+
+        renders, folders = tool.stage_render(args, table)
+        plan = tool.stage_plan(args, table, renders, folders)
+        rows, images = tool.stage_images(args, plan)
+        tool.stage_features(args, images, rows)
+        out = Path(args.out)
+        return {"subjects": folders[CT_FOLDER]["subjects"], "masks": folders[CT_FOLDER]["masks"], "plan": rows["plan"],
+                "persons": sorted({r["person"] for r in rows["rows"]}),
+                "features": str(np.load(out / "features" / "physics.npz")["plan"]),
+                "written": [(out / name).stat().st_mtime_ns
+                            for name in ("plan.json", "rows.json", "features/physics.npz")]}
+
+    def render_corpora(self, tool, folder, renderer, cap=48):
+        """The six render groups alone, with a film group whose folder is absent (a table sets
+        two families beside each other), the mask roots at their defaults under the data root and
+        the fake renderer in the tool's place."""
+        make_cts(folder, {folder / "data" / "spineps": SPINEPS_MASKED, folder / "data" / "moose": MOOSE_MASKED})
+        films = {"id": "films", "label": "films", "family": "film", "source": "walk", "folder": "films", "cap": 10,
+                 "per_person": 1}
+        original = tool.tool
+        tool.tool = lambda name: renderer if name == "flexray_render" else original(name)
+        args = args_for(tool, folder, table(folder, render_rows(cap) + [films]), index_of(folder, []))
+        Path(args.out).mkdir(parents=True, exist_ok=True)
+        return args
 
     def corpora(self, tool, folder):
         import numpy as np
@@ -456,6 +639,103 @@ class WholeRunTest(unittest.TestCase):
         original = tool.tool
         tool.tool = lambda name: renderer if name == "flexray_render" else original(name)
         return args_for(tool, folder, table(folder, groups), index_of(folder, [])), renderer
+
+
+@unittest.skipIf(MISSING_BASE, f"needs {', '.join(MISSING_BASE)}")
+class RenderPlanTest(unittest.TestCase):
+    """The render stage and the plan on the fake renderer alone, with no feature space: what the
+    shared set holds when a group keeps no CT."""
+
+    def test_a_group_that_kept_no_ct_is_out_of_the_shared_set_and_its_row_says_so(self):
+        """A render group that passed every CT over takes no part in the intersection, so the
+        other groups on the folder still share every CT they kept, and its plan row says it kept
+        none rather than that nothing was found under its rules; a group whose shared set is
+        empty says that too."""
+        tool = load_tool()
+        renderer = FakeRenderer(None, "blobs", passes={"flexray_spineps": len(SUBJECTS)}, twins=True)
+        with tempfile.TemporaryDirectory() as temporary:
+            args, table_, renders, folders, plan = self.render_and_plan(tool, Path(temporary), renderer)
+        expected = ranked(tool, sorted(set(SPINEPS_MASKED) & set(MOOSE_MASKED)))[:24]
+        self.assertEqual(renders["flexray_spineps"]["kept"], [])
+        self.assertNotIn("shared", renders["flexray_spineps"])
+        self.assertEqual(folders[CT_FOLDER]["shared"], expected)
+        rows = {g["id"]: g for g in plan["groups"]}
+        self.assertEqual(rows["flexray_spineps"]["skipped"], "it kept no CT, 24 passed over")
+        self.assertEqual(rows["flexray_spineps"]["chosen"], [])
+        for group in ("flexray_drr", "flexray_replica", "flexray_reference", "fluxray_raw", "fluxray_raw_reference"):
+            self.assertEqual(renders[group]["shared"], expected, group)
+            self.assertEqual(len(rows[group]["chosen"]), 48, group)
+        with self.assertRaises(tool.StageError) as refused:
+            tool.candidate_rows(table_.groups[1], args, {table_.groups[1].id: {"kept": ["s0001"], "shared": []}})
+        self.assertEqual(str(refused.exception), "no CT kept by every render group on its folder")
+
+    def render_and_plan(self, tool, folder, renderer):
+        """The render stage and the plan over the six render groups and an absent walk group,
+        on the fake renderer: the arguments, the table, the render and folder records, the plan."""
+        make_cts(folder, {folder / "data" / "spineps": SPINEPS_MASKED, folder / "data" / "moose": MOOSE_MASKED})
+        films = {"id": "films", "label": "films", "family": "film", "source": "walk", "folder": "films", "cap": 10,
+                 "per_person": 1}
+        original = tool.tool
+        tool.tool = lambda name: renderer if name == "flexray_render" else original(name)
+        args = args_for(tool, folder, table(folder, render_rows() + [films]), index_of(folder, []))
+        Path(args.out).mkdir(parents=True)
+        table_ = tool.read_table(args.groups)
+        renders, folders = tool.stage_render(args, table_)
+        return args, table_, renders, folders, tool.stage_plan(args, table_, renders, folders)
+
+
+@unittest.skipIf(MISSING_BASE, f"needs {', '.join(MISSING_BASE)}")
+class SummaryLineTest(unittest.TestCase):
+    """The verdict and replication lines: each carries the persons and rows a side the word rests
+    on, since the word is a non-rejection rule a small sample satisfies for want of power, and each
+    stays within the report's 200 characters at the widest numbers, the last numbers left off
+    whole rather than the word cut (the review of 2026-10-26, F23 and F26)."""
+
+    PAIR = "fluxray_raw|fluxray_raw_reference"  # the longest pair name
+
+    def setUp(self):
+        self.tool = load_tool()
+
+    def contrast(self, **changes):
+        found = {"persons": [250, 250], "n": [1000, 1000], "word": "not replicated", "paired": True,
+                 "auc_logistic": {"auc": 0.5, "lo": 0.42, "hi": 0.57, "p": 0.5, "q": 0.5}, "auc_knn": {"auc": 0.5},
+                 "mmd": {"mmd2": 0.0, "p": 0.5, "q": 0.5}, "fd64": 1234.5, "fd_rows": 250, "kid64": {"kid": 0.012},
+                 "prdc": {"precision": 0.5, "recall": 0.5, "density": 1.34, "coverage": 0.5}}
+        found.update(changes)
+        return found
+
+    def test_the_verdict_line_carries_the_counts_and_a_reason_is_cut_to_the_line(self):
+        verdict = {"space": "flexray", "reading": "invariant"}
+        line = self.tool.verdict_line(self.PAIR, self.contrast(persons=[1000, 1000]), verdict)
+        self.assertEqual(line, "replication fluxray_raw vs fluxray_raw_reference in flexray (invariant): not replicated"
+                               " (persons 1000/1000 n 1000/1000)")
+        self.assertEqual(self.tool.rules().safe_line(line), line)
+        reason = "fluxray_raw_reference: " + "the render failed " * 20
+        cut = self.tool.verdict_line(self.PAIR, {"word": None, "reason": reason}, verdict)
+        self.assertEqual(len(cut), 200)
+        self.assertTrue(cut.startswith("replication fluxray_raw vs fluxray_raw_reference: no verdict,"
+                                       " fluxray_raw_reference: the render failed"))
+        results = {"spaces": {"flexray": {"replication": {self.PAIR: self.contrast()}}}}
+        self.assertEqual(self.tool.pair_verdict(results, self.PAIR),
+                         {"word": "not replicated", "reason": "", "persons": [250, 250], "n": [1000, 1000]})
+
+    def test_the_replication_line_carries_the_counts_and_keeps_the_word_within_the_limit(self):
+        line = self.tool.replication_line(self.PAIR, self.contrast())
+        self.assertEqual(line, " replication fluxray_raw vs fluxray_raw_reference persons 250/250 n 1000/1000"
+                               " auc 0.50 [0.42, 0.57] p 0.500 knn 0.50 mmd p 0.500 q 0.500 fd64 1234.5 kid64 0.012"
+                               " prdc 0.50 0.50 1.34 0.50 not replicated")
+        self.assertEqual(len(line), 200)
+        self.assertEqual(self.tool.rules().safe_line(line), line)
+        wide = self.tool.replication_line(self.PAIR, self.contrast(persons=[1000, 999], n=[1000, 996], fd64=12345.6,
+                                                                   kid64={"kid": -0.012}))
+        self.assertTrue(wide.startswith(" replication fluxray_raw vs fluxray_raw_reference"
+                                        " persons 1000/999 n 1000/996 auc 0.50 [0.42, 0.57] p 0.500 knn"))
+        self.assertTrue(wide.endswith(" fd64 12345.6 kid64 -0.012 not replicated"))  # prdc left off whole
+        self.assertLessEqual(len(wide), 200)
+        unworded = self.tool.replication_line(self.PAIR, self.contrast(word=None))
+        self.assertTrue(unworded.endswith(" prdc 0.50 0.50 1.34 0.50"))
+        self.assertEqual(self.tool.replication_line(self.PAIR, {"skipped": "x" * 300}),
+                         " replication fluxray_raw vs fluxray_raw_reference not tested, " + "x" * 130)
 
 
 @unittest.skipIf(MISSING_BASE, f"needs {', '.join(MISSING_BASE)}")
