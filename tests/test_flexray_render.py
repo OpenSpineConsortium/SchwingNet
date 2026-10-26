@@ -1,36 +1,78 @@
-"""tools/flexray_render.py and tools/render_blocks.py on a made-up CT corpus: two subjects of
-soft tissue with two bone cubes each, labelled vertebrae_L1 and vertebrae_L2 as TotalSegmentator
-writes them, and one with no supervised structure, rendered on the CPU at a 32-pixel detector
+"""tools/flexray_render.py and tools/render_blocks.py on a made-up CT corpus of six subjects, one
+nested: CTs of soft tissue with bone cubes, each labelled as SPINEPS writes its masks (one
+*_seg-vert_msk.nii.gz in the VerSe alphabet, in a sibling spineps folder, a mask of another grid
+and a decoy among them) and as moosez writes its outputs (one multilabel file a model under
+moose/<subject>/moosez-<model>-<stamp>/segmentations/), rendered on the CPU at a 32-pixel detector
 and 64 ray samples by the blocks engine and, where FleXray's runtime imports, by FleXray's own
-code, so the layout, the reuse, the seeds shared between render groups and the arithmetic held
-equal to FleXray's (the crop plan, the crop weights, the crop draw, the crop records, the
-scaling) are checked where fxr is installed; tests/schwingnet/test_render_blocks.py holds the
+code. It checks both locators, both label volumes (L6 present and recorded as dropped, T13 and the
+coccyx unsupervised under SPINEPS, rib 13 dropped and the trachea unsupervised under MOOSE), both
+engines under each segmenter, the raw FluXray recipe's fixed poses, the layout, the reuse, the
+seeds shared between render groups, the refusals, and the segment subcommand's plan and refusals
+with moosez kept out or stood in for; and the arithmetic held equal to FleXray's (the crop plan at
+both overlaps, the crop weights, the crop draw, the crop records, the scaling, the label table)
+where fxr is installed. tests/schwingnet/test_render_blocks.py and test_segmenters.py hold the
 pure rules without it.
 
 It needs numpy, torch, nibabel, Pillow, fxr (flexray from pip) and the package's contract
 libraries, which the job's environment holds and the required check's python does not, so each
 case runs where they import and is skipped elsewhere; the cases of FleXray's own runtime need
 kornia too, which fxr.models.camera imports for its label smoothing, and are skipped without it.
+Nothing else skips: moosez is never needed, since the grid's job environment is the only one that
+holds it.
 
     <venv>/bin/python -m unittest tests.test_flexray_render
 """
 
 import importlib
+import importlib.machinery
 import importlib.util
+import io
+import itertools
 import json
 import shutil
 import sys
 import tempfile
+import types
 import unittest
+import zipfile
+from contextlib import redirect_stderr, redirect_stdout
+from dataclasses import replace
 from pathlib import Path
 from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 NEEDED = ("numpy", "torch", "nibabel", "PIL", "fxr", "beartype", "icontract", "pydantic")
 MISSING = [name for name in NEEDED if importlib.util.find_spec(name) is None]
-SALT = "c"  # under this salt two of the four views open FleXray's attenuation gate
+SALT = "c"  # under this salt two of the six views open FleXray's attenuation gate
 SMALL = ["views=2", "detector=32", "ray_samples=64"]
+# The subjects the render cases name, in this order; s0006 is left to the locator cases.
+ALL = ("s0001", "batch/s0002", "s0003", "s0004", "s0005")
+SIDE = 64
+MAIN = (slice(24, 40), slice(24, 40))
+SIDE_COLUMN = (slice(8, 20), slice(8, 20))
+OTHER_GRID = (32, 32, 150)
 TOOLS = {}
+
+# What the label records of s0001 must say under each scheme (tools/render_blocks.py,
+# label_record): MOOSE's stored ids, FleXray's dropped names, the values left out.
+SPINEPS_S0001 = {
+    "scheme": "spineps", "files": {"spineps": "s0001_seg-vert_msk.nii.gz"}, "skipped": [],
+    "labels": {"81": "vertebra_l4", "82": "vertebra_l5", "83": "vertebra_l6", "86": "sacrum"},
+    "dropped": ["vertebra_l6"], "unsupervised": {"27": "coccyx", "28": "vertebra_t13"},
+    "models_missing": [],
+}
+MOOSE_S0001 = {
+    "scheme": "moose",
+    "files": {"clin_ct_organs": "clin_CT_organs_CT_s0001.nii.gz",
+              "clin_ct_ribs": "clin_CT_ribs_CT_s0001.nii.gz",
+              "clin_ct_vertebrae": "clin_CT_vertebrae_CT_s0001.nii.gz"},
+    "skipped": [],
+    "labels": {"32": "rib_left_1", "44": "rib_left_13", "81": "vertebra_l4", "82": "vertebra_l5",
+               "83": "vertebra_l6", "86": "sacrum", "94": "liver"},
+    "dropped": ["rib_left_13", "vertebra_l6"],
+    "unsupervised": {"clin_ct_organs:19": "trachea"},
+    "models_missing": ["clin_ct_cardiac", "clin_ct_peripheral_bones"],
+}
 
 
 def load_tool(name):
@@ -55,56 +97,112 @@ def runtime_missing():
     return None
 
 
+# --- the corpus -----------------------------------------------------------------------------------
+
+def affine_for(depth):
+    """3 mm in plane and 1.5 mm along the slices, the volume centred on the origin."""
+    import numpy as np
+
+    affine = np.diag([3.0, 3.0, 1.5, 1.0])
+    affine[:3, 3] = [-96.0, -96.0, -0.75 * depth]
+    return affine
+
+
 def write_nifti(path, array, affine):
     import nibabel
 
+    path.parent.mkdir(parents=True, exist_ok=True)
     nibabel.save(nibabel.Nifti1Image(array, affine), str(path))
 
 
-def make_subject(folder, depth, cubes):
-    """A CT of 64 x 64 x depth voxels, 3 mm in plane and 1.5 mm along the slices, soft tissue
-    throughout so that every ray through it adds up, with one bone cube per structure named,
-    each written as its TotalSegmentator mask; an empty mask for vertebrae_L3, as
-    TotalSegmentator writes one for a structure it did not find."""
+def cubes_volume(depth, cubes, shape=None):
+    """A volume of the cubes, each (value, first slice, last slice, column) written in order,
+    int16 as the segmenters write their masks."""
     import numpy as np
 
-    shape = (64, 64, depth)
-    affine = np.diag([3.0, 3.0, 1.5, 1.0])
-    affine[:3, 3] = [-96.0, -96.0, -0.75 * depth]
-    ct = np.full(shape, 40.0, dtype=np.float32)
-    (folder / "segmentations").mkdir(parents=True)
-    for structure, (first, last) in cubes.items():
-        mask = np.zeros(shape, dtype=np.uint8)
-        mask[24:40, 24:40, first:last] = 1
-        ct[mask > 0] = 800.0
-        write_nifti(folder / "segmentations" / f"{structure}.nii.gz", mask, affine)
-    write_nifti(folder / "segmentations" / "vertebrae_L3.nii.gz", np.zeros(shape, np.uint8), affine)
-    write_nifti(folder / "ct.nii.gz", ct, affine)
+    volume = np.zeros(shape or (SIDE, SIDE, depth), dtype=np.int16)
+    for value, first, last, column in cubes:
+        volume[column[0], column[1], first:last] = value
+    return volume
 
 
-def make_corpus(root):
-    """Three subjects, one nested: 300 slices (two crops), 200 slices (one padded crop) and one
-    with no supervised structure."""
-    make_subject(root / "s0001", 300, {"vertebrae_L1": (60, 90), "vertebrae_L2": (200, 230)})
-    make_subject(root / "batch" / "s0002", 200,
-                 {"vertebrae_L1": (50, 80), "vertebrae_L2": (120, 150)})
-    make_subject(root / "s0003", 120, {})
+def write_mask(path, depth, cubes, shape=None):
+    """One mask of the cubes on the CT's grid, or on another grid when a shape is given."""
+    write_nifti(path, cubes_volume(depth, cubes, shape), affine_for(depth))
 
 
-def rows_by_file(out):
-    """The manifest's rows by file, without the seconds a render took, which no run repeats."""
-    manifest = json.loads((Path(out) / "manifest.json").read_text(encoding="utf-8"))
-    return {row["file"]: {k: v for k, v in row.items() if k != "seconds"}
-            for row in manifest["views"]}
+def write_ct(folder, depth, cubes):
+    """A CT of 64 x 64 x depth voxels, soft tissue throughout so that every ray through it adds
+    up, bone where the cubes are."""
+    import numpy as np
+
+    ct = np.full((SIDE, SIDE, depth), 40.0, dtype=np.float32)
+    for _, first, last, column in cubes:
+        ct[column[0], column[1], first:last] = 800.0
+    write_nifti(folder / "ct.nii.gz", ct, affine_for(depth))
 
 
-def render(renderer, root, out, words, engine="blocks", subjects=3):
-    blocks = renderer.rules().parse(SMALL + words)
-    return renderer.render_subjects(root, out, subjects, SALT, "cpu", blocks=blocks, engine=engine)
+def moose_file(root, subject, model, stamp="20260101", suffix=""):
+    """Where moosez writes a model's multilabel file for a subject, by its output folder
+    moosez-<model>-<stamp>/segmentations/ and a file name carrying the model's region."""
+    name = subject.rsplit("/", 1)[-1]
+    region = model.split("_", 2)[2]
+    return (root / subject / f"moosez-{model}-{stamp}" / "segmentations"
+            / f"clin_CT_{region}_CT_{name}{suffix}.nii.gz")
+
+
+def make_s0001(ct, spineps, moose):
+    """300 slices (two crops at overlap 0, five at 0.5): L4, L5, L6 and the sacrum in both
+    schemes; T13 and the coccyx under SPINEPS where moosez's ribs model has rib 1 and rib 13; a
+    liver cube over L4's top and a trachea cube under moosez's organs model."""
+    bones = [(23, 60, 90, MAIN), (24, 200, 230, MAIN), (25, 232, 250, MAIN), (26, 255, 275, MAIN)]
+    extra = [(28, 10, 30, SIDE_COLUMN), (27, 280, 295, SIDE_COLUMN)]
+    soft = [(8, 50, 75, MAIN), (19, 100, 120, SIDE_COLUMN)]
+    write_ct(ct / "s0001", 300, bones + extra + soft)
+    write_mask(spineps / "s0001_seg-vert_msk.nii.gz", 300, bones + extra)
+    # The sacrum is 28 in moosez's vertebrae model and 26 in the VerSe alphabet.
+    write_mask(moose_file(moose, "s0001", "clin_ct_vertebrae"), 300,
+               bones[:3] + [(28, 255, 275, MAIN)])
+    write_mask(moose_file(moose, "s0001", "clin_ct_ribs"), 300,
+               [(1, 10, 30, SIDE_COLUMN), (13, 280, 295, SIDE_COLUMN)])
+    write_mask(moose_file(moose, "s0001", "clin_ct_organs"), 300, soft)
+
+
+def make_others(ct, spineps, moose):
+    """batch/s0002, 200 slices (one padded crop), L4 and L5, the SPINEPS mask under sub-<id>;
+    s0003, only the coccyx under SPINEPS and only L6 under MOOSE; s0004, a CT with no mask;
+    s0005, a first mask on another grid in each scheme, then one on the CT's, and a decoy for
+    s00050; s0006, a mask on another grid alone in each scheme."""
+    two = [(23, 50, 80, MAIN), (24, 120, 150, MAIN)]
+    write_ct(ct / "batch" / "s0002", 200, two)
+    write_mask(spineps / "sub-s0002_seg-vert_msk.nii.gz", 200, two)
+    write_mask(moose_file(moose, "batch/s0002", "clin_ct_vertebrae"), 200, two)
+    write_ct(ct / "s0003", 120, [(27, 40, 60, MAIN)])
+    write_mask(spineps / "s0003_seg-vert_msk.nii.gz", 120, [(27, 40, 60, MAIN)])
+    write_mask(moose_file(moose, "s0003", "clin_ct_vertebrae"), 120, [(25, 40, 60, MAIN)])
+    write_ct(ct / "s0004", 120, [(23, 40, 60, MAIN)])
+    five = [(24, 40, 70, MAIN)]
+    write_ct(ct / "s0005", 150, five)
+    write_mask(spineps / "s0005_seg-vert_msk.nii.gz", 150, five, OTHER_GRID)
+    write_mask(spineps / "sub-s0005_seg-vert_msk.nii.gz", 150, five)
+    write_mask(spineps / "s00050_seg-vert_msk.nii.gz", 150, [(1, 40, 70, MAIN)])
+    write_mask(moose_file(moose, "s0005", "clin_ct_vertebrae", "a", "_old"), 150, five, OTHER_GRID)
+    write_mask(moose_file(moose, "s0005", "clin_ct_vertebrae", "b"), 150, five)
+    write_ct(ct / "s0006", 120, five)
+    write_mask(spineps / "s0006_seg-vert_msk.nii.gz", 120, five, OTHER_GRID)
+    write_mask(moose_file(moose, "s0006", "clin_ct_vertebrae"), 120, five, OTHER_GRID)
+
+
+def make_corpus(base):
+    """The corpus under base: the CTs under ct/, the masks under spineps/ and moose/."""
+    ct, spineps, moose = base / "ct", base / "spineps", base / "moose"
+    make_s0001(ct, spineps, moose)
+    make_others(ct, spineps, moose)
+    return ct, spineps, moose
 
 
 def label_volume(shape, cubes):
-    """A label volume of the cubes make_subject writes, by MOOSE id, for the crop record cases."""
+    """A label volume by MOOSE id in the main column, for the crop record cases."""
     import numpy as np
 
     label = np.zeros(shape, dtype=np.uint8)
@@ -113,11 +211,161 @@ def label_volume(shape, cubes):
     return label
 
 
+# --- the runs -------------------------------------------------------------------------------------
+
+def read_file(out, name):
+    return json.loads((Path(out) / name).read_text(encoding="utf-8"))
+
+
+def rows_by_file(out):
+    """The manifest's rows by file, without the seconds a render took, which no run repeats."""
+    return {row["file"]: {k: v for k, v in row.items() if k != "seconds"}
+            for row in read_file(out, "manifest.json")["views"]}
+
+
+def render(renderer, root, out, words, roots, engine="blocks", subjects=5, ids=ALL):
+    blocks = renderer.rules().parse(SMALL + words)
+    return renderer.render_subjects(root, out, subjects, SALT, "cpu", blocks=blocks, engine=engine,
+                                    subject_ids=ids, roots=roots)
+
+
+def grid_words(renderer):
+    """The raw FluXray recipe's words, its 1024-pixel detector left to SMALL's 32."""
+    rules = renderer.rules()
+    return [w for w in rules.words_of(rules.FLUXRAY_RAW) if not w.startswith("detector=")]
+
+
+def with_segmenter(words, name):
+    return [w for w in words if not w.startswith("segmenter=")] + [f"segmenter={name}"]
+
+
+def image_gap(ours, theirs):
+    """The largest difference in grey levels between two 16-bit PNGs."""
+    import numpy as np
+    from PIL import Image
+
+    with Image.open(ours) as a, Image.open(theirs) as b:
+        return int(np.abs(np.asarray(a, dtype=np.int64) - np.asarray(b, dtype=np.int64)).max())
+
+
+def recording_factors(drawn):
+    """fxr.drr.subjects.sample_attenuation wrapped to record each call's count and factors."""
+    import fxr.drr.subjects as subjects
+
+    original = subjects.sample_attenuation
+
+    def recording(bounds, n, *args, **kwargs):
+        factors = original(bounds, n, *args, **kwargs)
+        drawn.append((int(n), [float(f) for f in factors.tolist()]))
+        return factors
+
+    return mock.patch.object(subjects, "sample_attenuation", recording)
+
+
+def check_factors(test, renderer, done, rows, drawn):
+    """Each recorded factor is the one render_drr drew for its id, view by view; a shut gate drew
+    one factor of 1."""
+    supervised = renderer.supervised_ids(renderer.label_lut())
+    for subject in done["subjects"]:
+        for view in range(2):
+            row = rows[renderer.render_file(subject, view)]
+            count, factors = drawn.pop(0)
+            if row["attenuation"] is None:
+                test.assertEqual(count, 1, "a shut gate draws one factor of 1")
+                continue
+            test.assertEqual(count, len(supervised))
+            for i, factor in row["attenuation"].items():
+                test.assertAlmostEqual(factor, factors[supervised.index(int(i))], places=6)
+    test.assertEqual(drawn, [])
+
+
+# --- the segment subcommand's stand-ins -----------------------------------------------------------
+
+def write_zip(path, members):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(path, "w") as archive:
+        for name, text in members.items():
+            archive.writestr(name, text)
+
+
+def json_documents(text):
+    """The JSON documents printed one after another."""
+    decoder = json.JSONDecoder()
+    found, position = [], 0
+    while position < len(text):
+        document, end = decoder.raw_decode(text, position)
+        found.append(document)
+        position = end
+        while position < len(text) and text[position].isspace():
+            position += 1
+    return found
+
+
+def segment(renderer, *words):
+    """main's segment subcommand with its output caught: the exit code, the JSON documents it
+    printed and what it wrote to stderr."""
+    out, err = io.StringIO(), io.StringIO()
+    with redirect_stdout(out), redirect_stderr(err):
+        code = renderer.main(["segment", *words])
+    return code, json_documents(out.getvalue()), err.getvalue()
+
+
+def untouchable_moosez():
+    """A moosez that is importable and refuses every attribute, so a plan that touches it fails
+    here instead of downloading on the grid."""
+    class Untouchable(types.ModuleType):
+        def __getattr__(self, name):
+            raise AssertionError(f"the plan touched moosez.{name}")
+
+    module = Untouchable("moosez")
+    module.__spec__ = importlib.machinery.ModuleSpec("moosez", None)
+    return module
+
+
+def stand_in_moose(calls):
+    """moosez's library entry stood in for: it records its call and writes one mask a model in
+    moosez's output layout, on the CT's grid, read through the link it is given."""
+    def moose(input_path, names, output_dir, accelerator):
+        import nibabel
+
+        calls.append((Path(input_path).name, list(names), accelerator))
+        image = nibabel.load(input_path)
+        subject = Path(input_path).name.split(".")[0].removeprefix("CT_")
+        for model in names:
+            region = model.split("_", 2)[2]
+            path = (Path(output_dir) / f"moosez-{model}-stand-in" / "segmentations"
+                    / f"clin_CT_{region}_CT_{subject}.nii.gz")
+            write_nifti(path, cubes_volume(image.shape[2], [(1, 0, 1, MAIN)]), image.affine)
+
+    return moose
+
+
+def stand_in_moosez(metadata, models_dir, calls):
+    """The modules of moosez the segment run imports, stood in for: system with the models
+    directory, constants and models with the metadata given, and the package with moose()."""
+    system = types.ModuleType("moosez.system")
+    system.MODELS_DIRECTORY_PATH = str(models_dir)
+    constants = types.ModuleType("moosez.constants")
+    constants.KEY_FOLDER_NAME, constants.KEY_URL = "directory", "url"
+    models = types.ModuleType("moosez.models")
+    models.MODEL_METADATA = {m: {"directory": f, "url": u} for m, (f, u) in metadata.items()}
+    package = types.ModuleType("moosez")
+    package.__spec__ = importlib.machinery.ModuleSpec("moosez", None, is_package=True)
+    package.__path__ = []
+    package.moose = stand_in_moose(calls)
+    package.system, package.constants, package.models = system, constants, models
+    return {"moosez": package, "moosez.system": system, "moosez.constants": constants,
+            "moosez.models": models}
+
+
+# --- the cases ------------------------------------------------------------------------------------
+
 @unittest.skipIf(MISSING, f"needs {', '.join(MISSING)}")
 class Tables(unittest.TestCase):
     def test_the_torch_table_names_every_choice_of_the_rules(self):
         parts = load_tool("render_blocks")
         self.assertEqual(tuple(parts.NAMES), tuple(parts.rules.CHOICES))
+        self.assertEqual(tuple(parts.NAMES["segmenter"]), parts.segmenters.SEGMENTERS)
         for name, allowed in parts.rules.CHOICES.items():
             self.assertEqual(tuple(parts.NAMES[name]), allowed, name)
             for choice, function in parts.NAMES[name].items():
@@ -125,17 +373,24 @@ class Tables(unittest.TestCase):
                 self.assertIn("fxr/", function.__doc__ or "",
                               f"{name}={choice} says where FleXray does it")
 
-    def test_every_structure_written_is_one_the_protocol_supervises(self):
+    def test_every_relabel_table_lands_on_an_id_flexrays_protocol_declares(self):
         renderer = load_tool("flexray_render")
-        names = renderer.moose_labels()
-        ids = {name: i for i, name in names.items()}
+        schemes = renderer.schemes()
         lut = renderer.label_lut()
         supervised = renderer.supervised_ids(lut)
-        self.assertEqual(len(lut), len(names))
-        for structure, name in renderer.TOTALSEG_TO_MOOSE.items():
-            self.assertIn(name, ids, structure)
-            self.assertIn(ids[name], supervised, f"{structure} -> {name}")
-        self.assertNotIn(ids["vertebra_l6"], supervised)
+        self.assertEqual((len(lut), max(lut), len(supervised)), (118, 60, 97))
+        self.assertNotIn(-1, lut, "every stored id is declared")
+        tables = [schemes.to_moose_ids(scheme) for scheme in schemes.SEGMENTERS]
+        tables += [schemes.moosez_to_moose_ids(model) for model in schemes.MOOSEZ_MODELS]
+        for table in tables:
+            for moose_id in table.values():
+                name = schemes.MOOSE_STORED[moose_id]
+                self.assertEqual(moose_id in supervised, schemes.supervised_by_flexray(name), name)
+        for name in schemes.MOOSE_DROPPED:
+            self.assertEqual(lut[schemes.MOOSE_IDS[name]], 0, f"{name} is dropped, not undeclared")
+        self.assertEqual(schemes.to_moose_ids("spineps")[25], schemes.MOOSE_IDS["vertebra_l6"])
+        self.assertNotIn(28, schemes.to_moose_ids("spineps"), "T13 has no MOOSE id")
+        self.assertNotIn(19, schemes.moosez_to_moose_ids("clin_ct_organs"), "nor the trachea")
 
     def test_the_label_table_reads_as_flexrays_projection(self):
         reason = runtime_missing()
@@ -149,21 +404,42 @@ class Tables(unittest.TestCase):
         self.assertEqual(tuple(lut), projection.label_lut)
         self.assertEqual(renderer.supervised_ids(lut), projection.native_foreground_label_ids())
 
+    def test_the_moosez_weights_copied_are_the_fetch_rows_zips(self):
+        renderer = load_tool("flexray_render")
+        text = (ROOT / "grid" / "run-platform-fetch.sh").read_text(encoding="utf-8")
+        row = next(line for line in text.splitlines() if line.startswith("moose_weights|"))
+        urls = {word for word in row.replace("|", " ").split() if word.startswith("https://")}
+        metadata = renderer.moosez_metadata()
+        self.assertEqual(tuple(metadata), renderer.segment_models())
+        self.assertEqual(len(metadata), 5, "the five models whose labels MOOSE stores")
+        for model, (folder, url) in metadata.items():
+            self.assertIn(url, urls, f"{model}: the fetch row lands the zip the segment run reads")
+            self.assertTrue(url.startswith(renderer.MOOSEZ_RELEASE), model)
+            self.assertEqual(renderer.zip_of(url), renderer.MOOSEZ_WEIGHTS[model][1])
+            self.assertTrue(folder.startswith("Dataset"), model)
+
 
 @unittest.skipIf(MISSING, f"needs {', '.join(MISSING)}")
 class FleXraysArithmetic(unittest.TestCase):
-    def test_plan_crops_is_plan_z_crops(self):
+    def test_plan_crops_is_plan_z_crops_at_both_overlaps(self):
         from fxr.datasets.ct_crops import plan_z_crops
 
-        rules = load_tool("render_blocks").rules
+        parts = load_tool("render_blocks")
+        rules = parts.rules
+        self.assertEqual(rules.CROP_OVERLAP, {"flexray-axial": 0.5, "flexray-axial-min": 0.0})
         for depth in (1, 100, 101, 255, 256, 257, 300, 511, 512, 513, 700, 1000, 1500, 4096):
-            planned = plan_z_crops(depth, rules.CROP_DEPTH)
-            self.assertEqual(
-                rules.plan_crops(depth),
-                tuple((s.z_start, s.z_stop, s.z_pad_before, s.z_pad_after) for s in planned), depth)
-            for spec in planned:
-                self.assertEqual(spec.z_offset, spec.z_start - spec.z_pad_before)
+            for choice, overlap in rules.CROP_OVERLAP.items():
+                planned = plan_z_crops(depth, rules.CROP_DEPTH, max_overlap=overlap)
+                theirs = tuple((s.z_start, s.z_stop, s.z_pad_before, s.z_pad_after)
+                               for s in planned)
+                self.assertEqual(rules.plan_crops(depth, overlap), theirs, (depth, overlap))
+                self.assertEqual(parts.NAMES["crop"][choice](depth), theirs, (depth, choice))
+                for spec in planned:
+                    self.assertEqual(spec.z_offset, spec.z_start - spec.z_pad_before)
+            self.assertEqual(parts.NAMES["crop"]["whole"](depth), ((0, depth, 0, 0),))
         self.assertEqual([s.z_start for s in plan_z_crops(700, 256)], [0, 222, 444])
+        self.assertEqual([s.z_start for s in plan_z_crops(700, 256, max_overlap=0.5)],
+                         [0, 111, 222, 333, 444])
 
     def test_crop_weights_are_inverse_label_frequency_weights(self):
         import torch
@@ -183,6 +459,8 @@ class FleXraysArithmetic(unittest.TestCase):
             self.assertTrue(torch.allclose(found, expected.double(), atol=1e-12),
                             (sets, found, expected))
             self.assertAlmostEqual(float(found.mean()), 1.0)
+            self.assertTrue(torch.equal(parts.crop_sampler_uniform(crops, lut),
+                                        torch.ones(len(crops), dtype=torch.float64)))
 
     def test_the_crop_draw_is_the_weighted_random_samplers(self):
         import torch
@@ -199,33 +477,25 @@ class FleXraysArithmetic(unittest.TestCase):
 
     def test_crop_content_records_what_crop_metadata_records(self):
         import numpy as np
-        from fxr.datasets.ct_crops import crop_metadata, crop_z, offset_affine, plan_z_crops
+        from fxr.datasets.ct_crops import offset_affine
 
         parts = load_tool("render_blocks")
         volumes = ((300, {78: (60, 90), 79: (200, 230)}), (200, {78: (50, 80), 79: (120, 150)}),
                    (300, {78: (10, 40)}), (700, {59: (0, 30), 60: (300, 340), 61: (690, 700)}))
-        for depth, cubes in volumes:
+        for (depth, cubes), overlap in itertools.product(volumes, (0.0, 0.5)):
             label = label_volume((64, 64, depth), cubes)
-            affine = np.diag([3.0, 3.0, 1.5, 1.0])
-            affine[:3, 3] = [-96.0, -96.0, -0.75 * depth]
-            content = parts.crop_content(label, parts.rules.plan_crops(depth))
+            content = parts.crop_content(label, parts.rules.plan_crops(depth, overlap))
             ours = {c["z_start"]: c for c in content}
-            theirs = {}
-            for spec in plan_z_crops(depth, 256):
-                label_crop = crop_z(label, spec, fill_value=0)
-                if not np.any(label_crop != 0):
-                    continue
-                meta = crop_metadata(spec, label_crop, subject_id="s", source_sample_id="s")
-                theirs[spec.z_start] = (spec, meta, label_crop)
-            self.assertEqual(set(ours), set(theirs), depth)
+            theirs = packer_crops(label, depth, overlap)
+            self.assertEqual(set(ours), set(theirs), (depth, overlap))
             for start, (spec, meta, label_crop) in theirs.items():
                 crop = ours[start]
                 self.assertEqual(crop["ids"], meta["crop_foreground_label_ids"])
                 for i, centroid in zip(crop["ids"], meta["fg_centroids_ijk"], strict=True):
                     np.testing.assert_allclose(crop["centroids"][i], centroid, atol=1e-9)
                 np.testing.assert_array_equal(parts.cut(label, crop, 0), label_crop)
-                np.testing.assert_allclose(parts.crop_affine(affine, crop),
-                                           offset_affine(affine, spec))
+                np.testing.assert_allclose(parts.crop_affine(affine_for(depth), crop),
+                                           offset_affine(affine_for(depth), spec))
 
     def test_scale_minmax_is_scale_rendered_images(self):
         reason = runtime_missing()
@@ -241,30 +511,260 @@ class FleXraysArithmetic(unittest.TestCase):
         images[2] = 0.5
         self.assertTrue(torch.equal(parts.scale_minmax(images), scale_rendered_images(images)))
 
+    def test_the_grid_pose_is_one_randint_over_fluxrays_90_poses(self):
+        import torch
+
+        parts = load_tool("render_blocks")
+        rules = parts.rules
+        seen = set()
+        for seed in range(2000):
+            torch.manual_seed(seed)
+            pose = parts.pose_fluxray_grid(None)
+            torch.manual_seed(seed)
+            index = int(torch.randint(rules.GRID_POSES, (1,)).item())
+            alpha, y, z = rules.grid_pose(index)
+            self.assertEqual(pose["grid"], index)
+            self.assertEqual(pose["rot"].tolist(), [[alpha, 0.0, 0.0]])
+            self.assertEqual(pose["xyz"].tolist(), [[0.0, y, z]])
+            self.assertEqual((pose["sdd"], pose["delx"]), (1250.0, 0.6))
+            seen.add(index)
+        self.assertEqual((rules.GRID_POSES, len(seen)), (90, 90))
+        raw = rules.FLUXRAY_RAW
+        self.assertEqual((raw.pose, raw.isocentre), ("fluxray-grid", "volume-centre"))
+        self.assertEqual((raw.detector, raw.attenuation, raw.crop), (1024, "off", "whole"))
+        self.assertEqual(raw.segmenter, "moose")
+
+
+def packer_crops(label, depth, overlap):
+    """FleXray's packer's crops of a label volume that hold a structure, by z_start: the spec,
+    its metadata and the label crop."""
+    import numpy as np
+    from fxr.datasets.ct_crops import crop_metadata, crop_z, plan_z_crops
+
+    theirs = {}
+    for spec in plan_z_crops(depth, 256, max_overlap=overlap):
+        label_crop = crop_z(label, spec, fill_value=0)
+        if np.any(label_crop != 0):
+            meta = crop_metadata(spec, label_crop, subject_id="s", source_sample_id="s")
+            theirs[spec.z_start] = (spec, meta, label_crop)
+    return theirs
+
 
 @unittest.skipIf(MISSING, f"needs {', '.join(MISSING)}")
-class Rendering(unittest.TestCase):
+class Locators(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.base = Path(tempfile.mkdtemp(prefix="flexray-render-"))
-        cls.root = cls.base / "ct"
-        make_corpus(cls.root)
+        cls.base = Path(tempfile.mkdtemp(prefix="flexray-locate-"))
+        cls.ct, cls.spineps, cls.moose = make_corpus(cls.base)
+        cls.roots = {"spineps": cls.spineps, "moose": cls.moose}
+        cls.flat = cls.base / "flat"
+        for name in ("s0007_vertebrae", "ribs_s0007", "s00070_vertebrae"):
+            write_mask(cls.flat / f"{name}.nii.gz", 120, [(23, 40, 60, MAIN)])
         cls.renderer = load_tool("flexray_render")
-        cls.done = render(cls.renderer, cls.root, cls.base / "default", [])
-        cls.physical = render(cls.renderer, cls.root, cls.base / "physical", ["attenuation=off"])
+        cls.parts = load_tool("render_blocks")
 
     @classmethod
     def tearDownClass(cls):
         shutil.rmtree(cls.base, ignore_errors=True)
 
-    def test_find_subjects_walks_the_nested_layout(self):
-        self.assertEqual(self.renderer.find_subjects(self.root), ["batch/s0002", "s0001", "s0003"])
+    def test_find_subjects_walks_the_nested_layout_and_lists_by_segmenter(self):
+        find = self.renderer.find_subjects
+        self.assertEqual(find(self.ct),
+                         ["batch/s0002", "s0001", "s0003", "s0004", "s0005", "s0006"])
+        for segmenter in ("spineps", "moose"):
+            self.assertEqual(find(self.ct, segmenter=segmenter, roots=self.roots),
+                             ["batch/s0002", "s0001", "s0003", "s0005", "s0006"], segmenter)
+        with self.assertRaisesRegex(ValueError, "segmenter 'totalsegmentator' is not one of"):
+            find(self.ct, segmenter="totalsegmentator", roots=self.roots)
+        with self.assertRaisesRegex(ValueError, "segmenter=moose: no masks folder given"):
+            find(self.ct, segmenter="moose", roots={"spineps": self.spineps})
+        with self.assertRaisesRegex(ValueError, "segmenter=spineps: no masks folder given"):
+            find(self.ct, segmenter="spineps")
 
-    def test_two_subjects_are_kept_and_the_empty_one_passed_over_with_its_reason(self):
-        self.assertEqual(self.done["rendered"], 4)
-        self.assertEqual((self.done["rendered_now"], self.done["reused"]), (4, 0))
-        self.assertEqual(sorted(self.done["subjects"]), ["batch/s0002", "s0001"])
-        self.assertEqual(self.done["skipped"], ["s0003: no supervised structure in its masks"])
+    def test_names_subject_reads_the_id_between_separators(self):
+        names = self.parts.names_subject
+        for stem in ("s0005", "sub-s0005", "s0005_ct", "CT_s0005", "a-s0005_b"):
+            self.assertTrue(names(stem, "s0005"), stem)
+            self.assertTrue(names(stem, "batch/s0005"), stem)
+        for stem in ("s00050", "xs0005", "s0005x", "s000", "sub-s00050_ct", "batch"):
+            self.assertFalse(names(stem, "s0005"), stem)
+
+    def test_locate_spineps_takes_the_first_mask_naming_the_subject_on_the_cts_grid(self):
+        locate = self.parts.locate_spineps
+        self.assertEqual(locate("s0001", self.spineps).name, "s0001_seg-vert_msk.nii.gz")
+        self.assertEqual(locate("batch/s0002", self.spineps).name, "sub-s0002_seg-vert_msk.nii.gz")
+        self.assertIsNone(locate("s0004", self.spineps))
+        self.assertIsNone(locate("s0001", None))
+        # s0005: the first name in sorted order lies on another grid, the next on the CT's; the
+        # decoy s00050 never names s0005.
+        self.assertEqual(locate("s0005", self.spineps).name, "s0005_seg-vert_msk.nii.gz")
+        self.assertEqual(locate("s0005", self.spineps, (SIDE, SIDE, 150)).name,
+                         "sub-s0005_seg-vert_msk.nii.gz")
+        self.assertEqual(locate("s0005", self.spineps, OTHER_GRID).name,
+                         "s0005_seg-vert_msk.nii.gz")
+        self.assertEqual(locate("s00050", self.spineps).name, "s00050_seg-vert_msk.nii.gz")
+        self.assertEqual([p.name for p in self.parts.spineps_matches("s0005", self.spineps)],
+                         ["s0005_seg-vert_msk.nii.gz", "sub-s0005_seg-vert_msk.nii.gz"])
+        self.assertIsNone(locate("s0006", self.spineps, (SIDE, SIDE, 120)))
+        self.assertEqual(locate("s0006", self.spineps).name, "s0006_seg-vert_msk.nii.gz")
+
+    def test_locate_moose_reads_each_models_file_by_its_region_below_the_subjects_folder(self):
+        locate = self.parts.locate_moose
+        found = locate("s0001", self.moose)
+        self.assertEqual({m: p.name for m, p in found.items()}, MOOSE_S0001["files"])
+        self.assertEqual(list(locate("batch/s0002", self.moose)), ["clin_ct_vertebrae"])
+        self.assertEqual(locate("s0004", self.moose), {})
+        self.assertEqual(locate("s0001", None), {})
+        self.assertEqual(locate("s0005", self.moose)["clin_ct_vertebrae"].name,
+                         "clin_CT_vertebrae_CT_s0005_old.nii.gz")
+        self.assertEqual(locate("s0005", self.moose, (SIDE, SIDE, 150))["clin_ct_vertebrae"].name,
+                         "clin_CT_vertebrae_CT_s0005.nii.gz")
+        self.assertEqual(locate("s0006", self.moose, (SIDE, SIDE, 120)), {})
+        # With no folder of its own, a subject's files are the ones under the root naming it.
+        self.assertEqual({m: p.name for m, p in locate("s0007", self.flat).items()},
+                         {"clin_ct_vertebrae": "s0007_vertebrae.nii.gz",
+                          "clin_ct_ribs": "ribs_s0007.nii.gz"})
+        self.assertEqual(locate("s0008", self.flat), {})
+
+
+@unittest.skipIf(MISSING, f"needs {', '.join(MISSING)}")
+class LabelVolumes(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.base = Path(tempfile.mkdtemp(prefix="flexray-labels-"))
+        cls.ct, spineps, moose = make_corpus(cls.base)
+        cls.roots = {"spineps": spineps, "moose": moose}
+        cls.parts = load_tool("render_blocks")
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls.base, ignore_errors=True)
+
+    def test_label_spineps_relabels_the_verse_alphabet_into_moose_ids(self):
+        import numpy as np
+
+        label, record = self.parts.label_spineps("s0001", (SIDE, SIDE, 300), self.roots)
+        self.assertEqual((label.dtype, label.shape), (np.int16, (SIDE, SIDE, 300)))
+        self.assertEqual(np.unique(label).tolist(), [0, 81, 82, 83, 86])
+        column = label[MAIN]
+        self.assertTrue((column[..., 60:90] == 81).all() and (column[..., 232:250] == 83).all())
+        self.assertTrue((column[..., 200:230] == 82).all() and (column[..., 255:275] == 86).all())
+        self.assertFalse(label[SIDE_COLUMN].any(), "T13 and the coccyx have no MOOSE id")
+        self.assertEqual(record, SPINEPS_S0001)
+        label, record = self.parts.label_spineps("batch/s0002", (SIDE, SIDE, 200), self.roots)
+        self.assertEqual(np.unique(label).tolist(), [0, 81, 82])
+        self.assertEqual(record["files"], {"spineps": "sub-s0002_seg-vert_msk.nii.gz"})
+        self.assertEqual((record["dropped"], record["unsupervised"]), ([], {}))
+
+    def test_label_moose_merges_the_models_with_the_vertebrae_last(self):
+        import numpy as np
+
+        label, record = self.parts.label_moose("s0001", (SIDE, SIDE, 300), self.roots)
+        self.assertEqual(label.dtype, np.int16)
+        self.assertEqual(np.unique(label).tolist(), [0, 32, 44, 81, 82, 83, 86, 94])
+        column = label[MAIN]
+        self.assertTrue((column[..., 50:60] == 94).all(), "the liver where no vertebra is")
+        self.assertTrue((column[..., 60:90] == 81).all(), "L4 wins over the liver")
+        self.assertTrue((column[..., 255:275] == 86).all(), "moosez's 28 is the sacrum")
+        side = label[SIDE_COLUMN]
+        self.assertTrue((side[..., 10:30] == 32).all() and (side[..., 280:295] == 44).all())
+        self.assertFalse(side[..., 100:120].any(), "the trachea has no MOOSE id")
+        self.assertEqual(record, MOOSE_S0001)
+        label, record = self.parts.label_moose("s0003", (SIDE, SIDE, 120), self.roots)
+        self.assertEqual(np.unique(label).tolist(), [0, 83])
+        self.assertEqual((record["labels"], record["dropped"]),
+                         ({"83": "vertebra_l6"}, ["vertebra_l6"]))
+
+    def test_a_mask_on_another_grid_is_skipped_by_name_or_refused_when_alone(self):
+        parts = self.parts
+        _, record = parts.label_spineps("s0005", (SIDE, SIDE, 150), self.roots)
+        self.assertEqual(record["files"], {"spineps": "sub-s0005_seg-vert_msk.nii.gz"})
+        self.assertEqual(record["skipped"], ["s0005_seg-vert_msk.nii.gz"])
+        _, record = parts.label_moose("s0005", (SIDE, SIDE, 150), self.roots)
+        self.assertEqual(record["files"],
+                         {"clin_ct_vertebrae": "clin_CT_vertebrae_CT_s0005.nii.gz"})
+        self.assertEqual(record["skipped"], ["clin_CT_vertebrae_CT_s0005_old.nii.gz"])
+        with self.assertRaises(parts.MaskProblem) as found:
+            parts.label_spineps("s0006", (SIDE, SIDE, 120), self.roots)
+        self.assertEqual(str(found.exception), "no SPINEPS mask found under its folder on the "
+                         "CT's grid (s0006_seg-vert_msk.nii.gz are not)")
+        with self.assertRaises(parts.MaskProblem) as found:
+            parts.label_moose("s0006", (SIDE, SIDE, 120), self.roots)
+        self.assertEqual(str(found.exception), "no MOOSE masks found under its folder on the "
+                         "CT's grid (clin_CT_vertebrae_CT_s0006.nii.gz are not)")
+        other = self.roots["spineps"] / "s0005_seg-vert_msk.nii.gz"
+        with self.assertRaisesRegex(parts.MaskProblem, "is on another grid than the CT"):
+            parts.read_values(other, (SIDE, SIDE, 150))
+
+    def test_no_mask_and_no_folder_are_refused_in_words(self):
+        parts = self.parts
+        cases = ((parts.label_spineps, "SPINEPS mask"), (parts.label_moose, "MOOSE masks"))
+        for build, scheme in cases:
+            with self.assertRaises(parts.MaskProblem) as found:
+                build("s0004", (SIDE, SIDE, 120), self.roots)
+            self.assertEqual(str(found.exception), f"no {scheme} found under its folder")
+            with self.assertRaises(parts.MaskProblem):
+                build("s0001", (SIDE, SIDE, 300), {})
+
+    def test_flexrays_projection_accepts_both_volumes(self):
+        reason = runtime_missing()
+        if reason:
+            self.skipTest(reason)
+        import numpy as np
+        import torch
+        from fxr.experiment.label_projection import TrainingLabelProjection
+
+        renderer = load_tool("flexray_render")
+        projection = TrainingLabelProjection.from_label_remap(renderer.label_remap())
+        for build in (self.parts.label_spineps, self.parts.label_moose):
+            label, _ = build("s0001", (SIDE, SIDE, 300), self.roots)
+            native = projection.validated_native_ids(
+                torch.from_numpy(label.astype(np.int64))[None, None], source="s0001",
+                require_mapped=True)
+            self.assertEqual(sorted(set(native.flatten().tolist())), np.unique(label).tolist())
+
+
+@unittest.skipIf(MISSING, f"needs {', '.join(MISSING)}")
+class Rendering(unittest.TestCase):
+    """The blocks engine on the five named subjects under each segmenter, the physical variant
+    of each and the raw FluXray recipe under both."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.base = Path(tempfile.mkdtemp(prefix="flexray-render-"))
+        cls.root, spineps, moose = make_corpus(cls.base)
+        cls.roots = {"spineps": spineps, "moose": moose}
+        cls.renderer = load_tool("flexray_render")
+        grid = grid_words(cls.renderer)
+        cls.runs = {}
+        for name, words in (("default", []), ("physical", ["attenuation=off"]),
+                            ("moose", ["segmenter=moose"]),
+                            ("physical-moose", ["attenuation=off", "segmenter=moose"])):
+            cls.runs[name] = render(cls.renderer, cls.root, cls.base / name, words, cls.roots)
+        for name, words in (("grid", grid), ("grid-spineps", with_segmenter(grid, "spineps"))):
+            cls.runs[name] = render(cls.renderer, cls.root, cls.base / name, words, cls.roots,
+                                    subjects=2)
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls.base, ignore_errors=True)
+
+    def test_three_subjects_are_kept_and_the_others_passed_over_with_their_reasons(self):
+        done = self.runs["default"]
+        self.assertEqual((done["rendered"], done["rendered_now"], done["reused"]), (6, 6, 0))
+        self.assertEqual(done["subjects"], ["s0001", "batch/s0002", "s0005"])
+        self.assertEqual(done["skipped"], ["s0003: no structure in its masks",
+                                           "s0004: no SPINEPS mask found under its folder"])
+        moose = self.runs["moose"]
+        self.assertEqual(moose["subjects"], done["subjects"])
+        self.assertEqual(moose["skipped"], ["s0003: no structure FleXray supervises in its masks",
+                                            "s0004: no MOOSE masks found under its folder"])
+        salted = render(self.renderer, self.root, self.base / "salted", ["attenuation=off"],
+                        self.roots, subjects=6, ids=None)
+        self.assertEqual(sorted(salted["subjects"]), ["batch/s0002", "s0001", "s0005"])
+        self.assertIn("s0006: no SPINEPS mask found under its folder on the CT's grid "
+                      "(s0006_seg-vert_msk.nii.gz are not)", salted["skipped"])
+        self.assertEqual(len(salted["skipped"]), 3)
 
     def test_each_view_is_a_16_bit_png_at_the_detector_size(self):
         import numpy as np
@@ -272,7 +772,8 @@ class Rendering(unittest.TestCase):
 
         rows = rows_by_file(self.base / "default")
         self.assertEqual(sorted(rows), ["images/batch-s0002_v00.png", "images/batch-s0002_v01.png",
-                                        "images/s0001_v00.png", "images/s0001_v01.png"])
+                                        "images/s0001_v00.png", "images/s0001_v01.png",
+                                        "images/s0005_v00.png", "images/s0005_v01.png"])
         levels = []
         for file in rows:
             with Image.open(self.base / "default" / file) as image:
@@ -280,139 +781,206 @@ class Rendering(unittest.TestCase):
                 levels.append(len(np.unique(np.asarray(image))))
         self.assertGreater(max(levels), 1, "the renderer saw the volume in at least one view")
 
-    def test_the_manifest_and_the_record_say_what_was_rendered(self):
+    def test_the_manifest_says_what_was_rendered(self):
         rules = self.renderer.rules()
-        manifest = json.loads((self.base / "default" / "manifest.json").read_text(encoding="utf-8"))
+        names = self.renderer.moose_names()
+        manifest = read_file(self.base / "default", "manifest.json")
         self.assertEqual(manifest["blocks"], rules.as_record(rules.parse(SMALL)))
-        self.assertEqual(manifest["engine"], "blocks")
+        self.assertEqual((manifest["engine"], manifest["segmenter"]), ("blocks", "spineps"))
         self.assertEqual(manifest["flexray"], self.renderer.versions()["flexray"])
+        self.assertEqual(manifest["labels"]["s0001"], SPINEPS_S0001)
+        self.assertEqual(sorted(manifest["labels"]), ["batch/s0002", "s0001", "s0005"])
         for row in manifest["views"]:
             self.assertEqual(set(row), {"file", "subject", "view", "seed", "crop", "isocentre",
                                         "pose", "attenuation", "seconds"})
             seed = self.renderer.view_seed(SALT, row["subject"], row["view"])
             self.assertEqual(row["seed"], seed)
             self.assertEqual(set(row["crop"]), {"z_start", "z_stop", "pad_before", "pad_after"})
-            self.assertIn(row["isocentre"]["label"], (78, 79))
-            names = {78: "vertebra_l1", 79: "vertebra_l2"}
+            self.assertIn(row["isocentre"]["label"], (81, 82, 86), "a supervised structure, not L6")
             self.assertEqual(row["isocentre"]["name"], names[row["isocentre"]["label"]])
             self.assertEqual(len(row["isocentre"]["point_mm"]), 3)
-            self.assertEqual(set(row["pose"]), {"rot_deg", "xyz_mm", "orthographic", "sdd", "delx"})
+            self.assertEqual(set(row["pose"]),
+                             {"rot_deg", "xyz_mm", "orthographic", "sdd", "delx", "grid"})
+            self.assertIsNone(row["pose"]["grid"])
             self.assertTrue(1150.0 <= row["pose"]["sdd"] <= 1250.0)
             self.assertTrue(1.25 <= row["pose"]["delx"] <= 2.25)
-        record = json.loads((self.base / "default" / "RENDER.json").read_text(encoding="utf-8"))
-        self.assertEqual((record["version"], record["status"]), (2, "done"))
+
+    def test_the_record_says_what_was_rendered(self):
+        record = read_file(self.base / "default", "RENDER.json")
+        self.assertEqual((record["version"], record["status"]), (3, "done"))
         self.assertEqual(record["settings"]["engine"], "blocks")
-        self.assertEqual(record["counts"]["subjects_kept"], 2)
-        self.assertEqual(record["skipped"], self.done["skipped"])
+        self.assertEqual(record["settings"]["blocks"]["segmenter"], "spineps")
+        self.assertEqual(record["arguments"]["subject_ids"], list(ALL))
+        self.assertEqual(sorted(record["arguments"]["roots"]), ["moose", "spineps"])
+        self.assertEqual(record["counts"]["subjects_kept"], 3)
+        self.assertEqual((record["counts"]["subjects_found"], record["counts"]["renders"]), (6, 6))
+        self.assertEqual(record["subjects"], self.runs["default"]["subjects"])
+        self.assertEqual(record["skipped"], self.runs["default"]["skipped"])
+        self.assertEqual(record["profile"]["crop_overlap"], 0.5)
+        self.assertEqual(record["profile"]["grid"], self.renderer.grid_record())
+
+    def test_the_moose_manifest_records_the_models_read_and_the_dropped_names(self):
+        manifest = read_file(self.base / "moose", "manifest.json")
+        self.assertEqual(manifest["segmenter"], "moose")
+        self.assertEqual(manifest["blocks"]["segmenter"], "moose")
+        self.assertEqual(manifest["labels"]["s0001"], MOOSE_S0001)
+        two = manifest["labels"]["batch/s0002"]
+        self.assertEqual(two["files"], {"clin_ct_vertebrae": "clin_CT_vertebrae_CT_s0002.nii.gz"})
+        self.assertEqual(two["models_missing"], ["clin_ct_organs", "clin_ct_cardiac",
+                                                 "clin_ct_peripheral_bones", "clin_ct_ribs"])
+        self.assertEqual(manifest["labels"]["s0005"]["skipped"],
+                         ["clin_CT_vertebrae_CT_s0005_old.nii.gz"])
+        # The same label volume under either scheme draws the same views.
+        ours, theirs = rows_by_file(self.base / "default"), rows_by_file(self.base / "moose")
+        for file in ("images/batch-s0002_v00.png", "images/batch-s0002_v01.png",
+                     "images/s0005_v00.png", "images/s0005_v01.png"):
+            self.assertEqual(ours[file], theirs[file], file)
+        # A dropped name is in the volume and never among the attenuated ids.
+        for row in theirs.values():
+            if row["attenuation"] is not None:
+                self.assertFalse({"44", "83"} & set(row["attenuation"]), row["file"])
 
     def test_a_second_call_under_the_same_settings_reuses_every_view(self):
         out = self.base / "default"
         before = {p.name: p.read_bytes() for p in (out / "images").glob("*.png")}
         rows = rows_by_file(out)
-        again = render(self.renderer, self.root, out, [])
-        self.assertEqual((again["rendered"], again["rendered_now"], again["reused"]), (4, 0, 4))
-        self.assertEqual(again["subjects"], self.done["subjects"])
+        again = render(self.renderer, self.root, out, [], self.roots)
+        self.assertEqual((again["rendered"], again["rendered_now"], again["reused"]), (6, 0, 6))
+        self.assertEqual(again["subjects"], self.runs["default"]["subjects"])
         self.assertEqual({p.name: p.read_bytes() for p in (out / "images").glob("*.png")}, before)
         self.assertEqual(rows_by_file(out), rows)
+        self.assertEqual(read_file(out, "manifest.json")["labels"]["s0001"], SPINEPS_S0001)
 
     def test_other_settings_render_anew_into_the_same_folder(self):
         out = self.base / "default"
-        other = render(self.renderer, self.root, out, ["crop_sampler=uniform"])
-        self.assertEqual((other["rendered_now"], other["reused"]), (4, 0))
-        record = json.loads((out / "RENDER.json").read_text(encoding="utf-8"))
+        other = render(self.renderer, self.root, out, ["crop_sampler=uniform"], self.roots)
+        self.assertEqual((other["rendered_now"], other["reused"]), (6, 0))
+        record = read_file(out, "RENDER.json")
         self.assertEqual(record["settings"]["blocks"]["crop_sampler"], "uniform")
-        back = render(self.renderer, self.root, out, [])
-        self.assertEqual((back["rendered_now"], back["reused"]), (4, 0))
+        back = render(self.renderer, self.root, out, [], self.roots)
+        self.assertEqual((back["rendered_now"], back["reused"]), (6, 0))
 
     def test_groups_that_differ_only_by_attenuation_share_crop_isocentre_and_pose(self):
-        default = rows_by_file(self.base / "default")
-        physical = rows_by_file(self.base / "physical")
-        self.assertEqual(set(default), set(physical))
-        for file, row in default.items():
-            other = physical[file]
-            self.assertEqual(row["crop"], other["crop"], file)
-            self.assertEqual(row["isocentre"], other["isocentre"], file)
-            self.assertEqual(row["pose"], other["pose"], file)
-            self.assertEqual(row["seed"], other["seed"], file)
-            self.assertIsNone(other["attenuation"], file)
-        opened = [row for row in default.values() if row["attenuation"] is not None]
-        self.assertGreaterEqual(len(opened), 1, "the salt opens the gate at least once")
-        for row in opened:
-            held = {78, 79} & set(int(i) for i in row["attenuation"])
-            self.assertTrue(held, row["file"])
-            for factor in row["attenuation"].values():
-                self.assertTrue(0.1 <= factor <= 4.0)
+        for pair in (("default", "physical"), ("moose", "physical-moose")):
+            default, physical = (rows_by_file(self.base / name) for name in pair)
+            self.assertEqual(set(default), set(physical))
+            for file, row in default.items():
+                other = physical[file]
+                for key in ("crop", "isocentre", "pose", "seed"):
+                    self.assertEqual(row[key], other[key], (pair, file, key))
+                self.assertIsNone(other["attenuation"], file)
+            opened = [row for row in default.values() if row["attenuation"] is not None]
+            self.assertGreaterEqual(len(opened), 1, "the salt opens the gate at least once")
+            for row in opened:
+                self.assertTrue({81, 82, 86} & {int(i) for i in row["attenuation"]}, row["file"])
+                for factor in row["attenuation"].values():
+                    self.assertTrue(0.1 <= factor <= 4.0)
 
     def test_the_factors_recorded_are_the_ones_render_drr_drew(self):
-        import fxr.drr.subjects as subjects
-
         drawn = []
-        original = subjects.sample_attenuation
-
-        def recording(bounds, n, *args, **kwargs):
-            factors = original(bounds, n, *args, **kwargs)
-            drawn.append((int(n), [float(f) for f in factors.tolist()]))
-            return factors
-
-        with mock.patch.object(subjects, "sample_attenuation", recording):
-            done = render(self.renderer, self.root, self.base / "recorded", [])
+        with recording_factors(drawn):
+            done = render(self.renderer, self.root, self.base / "recorded", [], self.roots)
         rows = rows_by_file(self.base / "recorded")
-        supervised = self.renderer.supervised_ids(self.renderer.label_lut())
         self.assertEqual(rows, rows_by_file(self.base / "default"))
-        for subject in done["subjects"]:
-            for view in range(2):
-                row = rows[self.renderer.render_file(subject, view)]
-                count, factors = drawn.pop(0)
-                if row["attenuation"] is None:
-                    self.assertEqual(count, 1, "a shut gate draws one factor of 1")
-                    continue
-                self.assertEqual(count, len(supervised))
-                for i, factor in row["attenuation"].items():
-                    self.assertAlmostEqual(factor, factors[supervised.index(int(i))], places=6)
-        self.assertEqual(drawn, [])
+        check_factors(self, self.renderer, done, rows, drawn)
 
-    def test_the_runtime_engine_refuses_a_choice_in_words_before_writing(self):
+    def test_a_fault_is_refused_in_words_before_anything_is_written(self):
         rules = self.renderer.rules()
         out = self.base / "refused"
-        refused = "FleXray's runtime cannot honour crop='whole'"
-        with self.assertRaisesRegex(rules.RenderBlockError, refused):
+        with self.assertRaisesRegex(rules.RenderBlockError, "runtime cannot honour crop='whole'"):
             render(self.renderer, self.root, out, ["crop=whole", "crop_sampler=uniform"],
-                   engine="flexray-runtime")
-        self.assertFalse(out.exists())
+                   self.roots, engine="flexray-runtime")
         with self.assertRaisesRegex(rules.RenderBlockError, "engine 'flux' is not one of"):
-            render(self.renderer, self.root, out, [], engine="flux")
-        with self.assertRaises(ValueError):
-            render(self.renderer, self.root, out, [], subjects=0)
+            render(self.renderer, self.root, out, [], self.roots, engine="flux")
+        with self.assertRaisesRegex(rules.RenderBlockError, "segmenter='totalsegmentator' is not"):
+            render(self.renderer, self.root, out, ["segmenter=totalsegmentator"], self.roots)
+        bad = replace(rules.parse(SMALL), segmenter="totalsegmentator")
+        with self.assertRaisesRegex(rules.RenderBlockError, "segmenter='totalsegmentator' is not"):
+            self.renderer.render_subjects(self.root, out, 1, SALT, "cpu", blocks=bad,
+                                          roots=self.roots)
+        with self.assertRaisesRegex(ValueError, "subjects must be at least 1"):
+            render(self.renderer, self.root, out, [], self.roots, subjects=0)
+        with self.assertRaisesRegex(ValueError, "segmenter=spineps: no masks folder given"):
+            render(self.renderer, self.root, out, [], {})
+        with self.assertRaisesRegex(ValueError, "segmenter=moose: no masks folder given"):
+            render(self.renderer, self.root, out, ["segmenter=moose"],
+                   {"spineps": self.roots["spineps"]})
+        with self.assertRaisesRegex(ValueError, "segmenter=spineps: its masks folder is not"):
+            render(self.renderer, self.root, out, [], {"spineps": self.base / "nowhere"})
         self.assertFalse(out.exists())
 
     def test_named_subjects_are_rendered_in_their_order_and_a_missing_one_is_passed_over(self):
-        blocks = self.renderer.rules().parse(SMALL + ["attenuation=off"])
-        done = self.renderer.render_subjects(self.root, self.base / "named", 5, SALT, "cpu",
-                                             blocks=blocks,
-                                             subject_ids=("s0001", "nowhere", "s0003"))
+        done = render(self.renderer, self.root, self.base / "named", ["attenuation=off"],
+                      self.roots, ids=("s0001", "nowhere", "s0003"))
         self.assertEqual(done["subjects"], ["s0001"])
         self.assertEqual(done["skipped"], ["nowhere: not found under the CT folder",
-                                           "s0003: no supervised structure in its masks"])
+                                           "s0003: no structure in its masks"])
         self.assertEqual(rows_by_file(self.base / "named")["images/s0001_v00.png"],
                          rows_by_file(self.base / "physical")["images/s0001_v00.png"])
 
-    def test_the_command_line_renders_one_subject(self):
+    def test_the_command_line_renders_one_subject_and_needs_the_segmenters_folder(self):
         out = self.base / "cli"
-        code = self.renderer.main([
-            "--ct-root", str(self.root), "--out", str(out), "--subjects", "1", "--salt", SALT,
-            "--blocks", "views=1", "--blocks", "detector=32", "--blocks", "ray_samples=64",
-            "--blocks", "attenuation=off"])
+        common = ["--ct-root", str(self.root), "--out", str(out), "--salt", SALT,
+                  "--blocks", "views=1", "--blocks", "detector=32", "--blocks", "ray_samples=64",
+                  "--blocks", "attenuation=off"]
+        with self.assertRaisesRegex(ValueError, "--spineps on the command line"):
+            self.renderer.main(common + ["--subject", "s0001"])
+        self.assertFalse(out.exists())
+        spineps = str(self.roots["spineps"])
+        code = self.renderer.main(common + ["--subject", "s0001", "--spineps", spineps])
         self.assertEqual(code, 0)
-        self.assertEqual(len(rows_by_file(out)), 1)
-        record = json.loads((out / "RENDER.json").read_text(encoding="utf-8"))
+        self.assertEqual(list(rows_by_file(out)), ["images/s0001_v00.png"])
+        record = read_file(out, "RENDER.json")
         self.assertEqual(record["arguments"]["engine"], "blocks")
+        self.assertEqual(record["arguments"]["roots"], {"spineps": spineps})
         self.assertEqual(record["settings"]["blocks"]["views"], 1)
+        code = self.renderer.main(["render"] + common + ["--subject", "s0004", "--blocks",
+                                  "segmenter=moose", "--moose", str(self.roots["moose"])])
+        self.assertEqual(code, 1, "no subject kept")
+        self.assertEqual(read_file(out, "RENDER.json")["skipped"],
+                         ["s0004: no MOOSE masks found under its folder"])
+
+    def test_the_grid_pose_rows_are_fluxrays_fixed_poses_at_the_volumes_centre(self):
+        rules = self.renderer.rules()
+        rows = rows_by_file(self.base / "grid")
+        self.assertEqual(sorted(rows), ["images/batch-s0002_v00.png", "images/batch-s0002_v01.png",
+                                        "images/s0001_v00.png", "images/s0001_v01.png"])
+        depths = {"s0001": 300, "batch/s0002": 200}
+        for row in rows.values():
+            pose = row["pose"]
+            self.assertTrue(0 <= pose["grid"] < rules.GRID_POSES)
+            alpha, y, z = rules.grid_pose(pose["grid"])
+            self.assertEqual((pose["rot_deg"], pose["xyz_mm"]), ([alpha, 0.0, 0.0], [0.0, y, z]))
+            self.assertEqual((pose["sdd"], pose["delx"]), (1250.0, 0.6))
+            self.assertFalse(pose["orthographic"])
+            self.assertEqual(row["isocentre"],
+                             {"label": None, "name": None, "point_mm": [-1.5, -1.5, -0.75]})
+            self.assertEqual(row["crop"], {"z_start": 0, "z_stop": depths[row["subject"]],
+                                           "pad_before": 0, "pad_after": 0})
+            self.assertIsNone(row["attenuation"])
+        self.assertGreater(len({row["pose"]["grid"] for row in rows.values()}), 1)
+        record = read_file(self.base / "grid", "RENDER.json")
+        self.assertEqual(record["profile"]["grid"], self.renderer.grid_record())
+        self.assertEqual(record["settings"]["blocks"]["pose"], "fluxray-grid")
+        self.assertEqual((record["counts"]["subjects_kept"], record["skipped"]), (2, []))
+
+    def test_the_raw_recipe_renders_the_same_under_either_segmenter(self):
+        ours = rows_by_file(self.base / "grid")
+        self.assertEqual(ours, rows_by_file(self.base / "grid-spineps"))
+        for file in ours:
+            self.assertEqual((self.base / "grid" / file).read_bytes(),
+                             (self.base / "grid-spineps" / file).read_bytes(), file)
+        self.assertEqual(read_file(self.base / "grid", "manifest.json")["segmenter"], "moose")
+        manifest = read_file(self.base / "grid-spineps", "manifest.json")
+        self.assertEqual(manifest["segmenter"], "spineps")
+        self.assertEqual(manifest["labels"]["s0001"], SPINEPS_S0001)
 
 
 @unittest.skipIf(MISSING, f"needs {', '.join(MISSING)}")
 class FleXraysRuntime(unittest.TestCase):
-    """FleXray's own code rendering the same corpus from the same seeds: with the draws in the
-    same order, the blocks engine's crop, isocentre, pose and factors are its own."""
+    """FleXray's own code rendering the same corpus from the same seeds under each segmenter and
+    under the raw FluXray recipe: with the draws in the same order, the blocks engine's crop,
+    isocentre, pose and factors are its own."""
 
     @classmethod
     def setUpClass(cls):
@@ -420,12 +988,16 @@ class FleXraysRuntime(unittest.TestCase):
         if cls.reason:
             return
         cls.base = Path(tempfile.mkdtemp(prefix="flexray-runtime-"))
-        cls.root = cls.base / "ct"
-        make_corpus(cls.root)
+        cls.root, spineps, moose = make_corpus(cls.base)
+        cls.roots = {"spineps": spineps, "moose": moose}
         cls.renderer = load_tool("flexray_render")
-        cls.blocks = render(cls.renderer, cls.root, cls.base / "blocks", [])
-        cls.runtime = render(cls.renderer, cls.root, cls.base / "runtime", [],
-                             engine="flexray-runtime")
+        cls.words = {"default": [], "moose": ["segmenter=moose"], "grid": grid_words(cls.renderer)}
+        cls.runs = {}
+        for name, words in cls.words.items():
+            for engine in ("blocks", "flexray-runtime"):
+                cls.runs[name, engine] = render(
+                    cls.renderer, cls.root, cls.base / f"{name}-{engine}", words, cls.roots,
+                    engine=engine, subjects=2 if name == "grid" else 5)
 
     @classmethod
     def tearDownClass(cls):
@@ -439,80 +1011,253 @@ class FleXraysRuntime(unittest.TestCase):
     def test_the_runtime_writes_the_same_layout(self):
         from PIL import Image
 
-        self.assertEqual(self.runtime["subjects"], self.blocks["subjects"])
-        self.assertEqual(self.runtime["skipped"], self.blocks["skipped"])
-        rows = rows_by_file(self.base / "runtime")
-        self.assertEqual(set(rows), set(rows_by_file(self.base / "blocks")))
-        for file in rows:
-            with Image.open(self.base / "runtime" / file) as image:
-                self.assertEqual((image.mode, image.size), ("I;16", (32, 32)), file)
-        record = json.loads((self.base / "runtime" / "RENDER.json").read_text(encoding="utf-8"))
+        for name in self.words:
+            ours, theirs = self.runs[name, "blocks"], self.runs[name, "flexray-runtime"]
+            self.assertEqual((theirs["subjects"], theirs["skipped"]),
+                             (ours["subjects"], ours["skipped"]), name)
+            rows = rows_by_file(self.base / f"{name}-flexray-runtime")
+            self.assertEqual(set(rows), set(rows_by_file(self.base / f"{name}-blocks")), name)
+            for file in rows:
+                with Image.open(self.base / f"{name}-flexray-runtime" / file) as image:
+                    self.assertEqual((image.mode, image.size), ("I;16", (32, 32)), file)
+        record = read_file(self.base / "default-flexray-runtime", "RENDER.json")
         self.assertEqual(record["settings"]["engine"], "flexray-runtime")
         self.assertEqual(record["profile"]["effective_profile"]["num_views"], 1)
         self.assertEqual(record["profile"]["effective_profile"]["intrinsics_cfg"]["height"], 32)
+        grid = read_file(self.base / "grid-flexray-runtime", "RENDER.json")
+        self.assertIsNone(grid["profile"]["effective_profile"])
+        self.assertEqual(grid["profile"]["grid"], self.renderer.grid_record())
 
     def test_the_blocks_engine_draws_what_flexrays_runtime_draws(self):
+        for name in ("default", "moose"):
+            ours = rows_by_file(self.base / f"{name}-blocks")
+            theirs = rows_by_file(self.base / f"{name}-flexray-runtime")
+            for file, row in ours.items():
+                self.assert_same_draws(row, theirs[file], (name, file))
+
+    def assert_same_draws(self, row, other, where):
         import numpy as np
 
-        ours = rows_by_file(self.base / "blocks")
-        theirs = rows_by_file(self.base / "runtime")
-        for file, row in ours.items():
-            other = theirs[file]
-            self.assertEqual(row["crop"], other["crop"], file)
-            self.assertEqual(row["isocentre"]["label"], other["isocentre"]["label"], file)
-            np.testing.assert_allclose(row["isocentre"]["point_mm"],
-                                       other["isocentre"]["point_mm"], atol=1e-3)
-            np.testing.assert_allclose(row["pose"]["rot_deg"], other["pose"]["rot_deg"], atol=1e-3)
-            np.testing.assert_allclose(row["pose"]["xyz_mm"], other["pose"]["xyz_mm"], atol=1e-3)
-            self.assertEqual(row["pose"]["orthographic"], other["pose"]["orthographic"], file)
-            self.assertAlmostEqual(row["pose"]["sdd"], other["pose"]["sdd"], places=4)
-            self.assertAlmostEqual(row["pose"]["delx"], other["pose"]["delx"], places=6)
-            if row["attenuation"] is None:
-                self.assertIsNone(other["attenuation"], file)
-                continue
-            self.assertEqual(set(row["attenuation"]), set(other["attenuation"]), file)
-            for i, factor in row["attenuation"].items():
-                self.assertAlmostEqual(factor, other["attenuation"][i], places=5)
+        self.assertEqual(row["crop"], other["crop"], where)
+        self.assertEqual(row["isocentre"]["label"], other["isocentre"]["label"], where)
+        np.testing.assert_allclose(row["isocentre"]["point_mm"], other["isocentre"]["point_mm"],
+                                   atol=1e-3)
+        np.testing.assert_allclose(row["pose"]["rot_deg"], other["pose"]["rot_deg"], atol=1e-3)
+        np.testing.assert_allclose(row["pose"]["xyz_mm"], other["pose"]["xyz_mm"], atol=1e-3)
+        self.assertEqual(row["pose"]["orthographic"], other["pose"]["orthographic"], where)
+        self.assertEqual(row["pose"]["grid"], other["pose"]["grid"], where)
+        self.assertAlmostEqual(row["pose"]["sdd"], other["pose"]["sdd"], places=4)
+        self.assertAlmostEqual(row["pose"]["delx"], other["pose"]["delx"], places=6)
+        if row["attenuation"] is None:
+            self.assertIsNone(other["attenuation"], where)
+            return
+        self.assertEqual(set(row["attenuation"]), set(other["attenuation"]), where)
+        for i, factor in row["attenuation"].items():
+            self.assertAlmostEqual(factor, other["attenuation"][i], places=5)
 
     def test_the_runtimes_images_are_the_blocks_engines(self):
-        import numpy as np
-        from PIL import Image
+        for name in self.words:
+            for file in rows_by_file(self.base / f"{name}-blocks"):
+                gap = image_gap(self.base / f"{name}-blocks" / file,
+                                self.base / f"{name}-flexray-runtime" / file)
+                self.assertLessEqual(gap, 2, (name, file))
 
-        for file in rows_by_file(self.base / "blocks"):
-            with Image.open(self.base / "blocks" / file) as ours:
-                mine = np.asarray(ours, dtype=np.int64)
-            with Image.open(self.base / "runtime" / file) as theirs:
-                gap = np.abs(mine - np.asarray(theirs, dtype=np.int64))
-            self.assertLessEqual(int(gap.max()), 2, file)
+    def test_the_grid_run_is_the_same_through_both_engines(self):
+        ours = rows_by_file(self.base / "grid-blocks")
+        self.assertEqual(ours, rows_by_file(self.base / "grid-flexray-runtime"))
+        for row in ours.values():
+            self.assertEqual((row["pose"]["sdd"], row["pose"]["delx"]), (1250.0, 0.6))
+            self.assertEqual(row["isocentre"]["label"], None)
+            self.assertEqual(row["isocentre"]["point_mm"], [-1.5, -1.5, -0.75])
+
+    def test_under_moose_the_runtime_attenuates_no_name_flexray_drops(self):
+        manifest = read_file(self.base / "moose-flexray-runtime", "manifest.json")
+        self.assertEqual(manifest["labels"]["s0001"], MOOSE_S0001)
+        supervised = {str(i) for i in self.renderer.supervised_ids(self.renderer.label_lut())}
+        opened = [row for row in manifest["views"] if row["attenuation"] is not None]
+        self.assertGreaterEqual(len(opened), 1)
+        for row in opened:
+            self.assertFalse({"44", "83"} & set(row["attenuation"]), row["file"])
+            self.assertTrue(set(row["attenuation"]) <= supervised, row["file"])
+        held = {i for row in opened if row["subject"] == "s0001" for i in row["attenuation"]}
+        self.assertTrue(held & {"32", "94"}, "the rib and the liver moosez labelled are attenuated")
 
     def test_the_factors_recorded_are_the_ones_flexrays_render_drr_drew(self):
-        import fxr.drr.subjects as subjects
-
         drawn = []
-        original = subjects.sample_attenuation
-
-        def recording(bounds, n, *args, **kwargs):
-            factors = original(bounds, n, *args, **kwargs)
-            drawn.append((int(n), [float(f) for f in factors.tolist()]))
-            return factors
-
-        with mock.patch.object(subjects, "sample_attenuation", recording):
-            done = render(self.renderer, self.root, self.base / "recorded", [],
+        with recording_factors(drawn):
+            done = render(self.renderer, self.root, self.base / "recorded", [], self.roots,
                           engine="flexray-runtime")
         rows = rows_by_file(self.base / "recorded")
-        supervised = self.renderer.supervised_ids(self.renderer.label_lut())
-        self.assertEqual(rows, rows_by_file(self.base / "runtime"))
-        for subject in done["subjects"]:
-            for view in range(2):
-                row = rows[self.renderer.render_file(subject, view)]
-                count, factors = drawn.pop(0)
-                if row["attenuation"] is None:
-                    self.assertEqual(count, 1)
-                    continue
-                self.assertEqual(count, len(supervised))
-                for i, factor in row["attenuation"].items():
-                    self.assertAlmostEqual(factor, factors[supervised.index(int(i))], places=6)
-        self.assertEqual(drawn, [])
+        self.assertEqual(rows, rows_by_file(self.base / "default-flexray-runtime"))
+        check_factors(self, self.renderer, done, rows, drawn)
+
+
+@unittest.skipIf(MISSING, f"needs {', '.join(MISSING)}")
+class Segment(unittest.TestCase):
+    """The segment subcommand with moosez kept out or stood in for: its plan from the corpus, its
+    refusals, the subject list, the unpacking of a model zip and one run."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.base = Path(tempfile.mkdtemp(prefix="flexray-segment-"))
+        cls.ct, _, cls.moose = make_corpus(cls.base)
+        cls.renderer = load_tool("flexray_render")
+        for model in cls.renderer.segment_models():
+            write_mask(moose_file(cls.moose, "s0004", model), 120, [(1, 40, 60, MAIN)])
+        cls.subjects = cls.base / "render-subjects.json"
+        cls.subjects.write_text(json.dumps(
+            {"ct": ["s0001", "batch/s0002", "s0003", "s0004", "nowhere"]}), encoding="utf-8")
+        cls.empty = cls.base / "empty"
+        cls.empty.mkdir()
+        cls.zips = cls.base / "zips"
+        for folder, zip_name in cls.renderer.MOOSEZ_WEIGHTS.values():
+            write_zip(cls.zips / zip_name, {f"{folder}/plans.json": "{}"})
+        cls.common = ["--segmenter", "moose", "--ct-root", str(cls.ct),
+                      "--subjects", str(cls.subjects), "--out", str(cls.moose)]
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls.base, ignore_errors=True)
+
+    def test_the_plan_says_what_each_subject_lacks_and_touches_nothing_of_moosez(self):
+        with mock.patch.dict(sys.modules, {"moosez": untouchable_moosez()}):
+            code, (plan,), err = segment(self.renderer, *self.common,
+                                         "--weights", str(self.empty), "--plan")
+        self.assertEqual((code, err, plan["moosez"]), (0, "", "importable"))
+        self.assertEqual(plan["models"], list(self.renderer.segment_models()))
+        by_id = {s["id"]: s for s in plan["subjects"]}
+        self.assertEqual(list(by_id), ["s0001", "batch/s0002", "s0003", "s0004", "nowhere"])
+        self.assertEqual((by_id["s0001"]["action"], by_id["s0001"]["found"]),
+                         ("run", ["clin_ct_organs", "clin_ct_ribs", "clin_ct_vertebrae"]))
+        self.assertEqual(by_id["s0001"]["missing"], ["clin_ct_cardiac", "clin_ct_peripheral_bones"])
+        self.assertEqual(by_id["batch/s0002"]["found"], ["clin_ct_vertebrae"])
+        self.assertEqual((by_id["s0004"]["action"], by_id["s0004"]["missing"]), ("done", []))
+        self.assertEqual((by_id["nowhere"]["action"], by_id["nowhere"]["ct"]), ("no CT", False))
+        self.assertEqual(plan["to_run"], 3)
+        self.assertEqual(len(plan["refusals"]), 5)
+        self.assertIn("MOOSE's model zip clin_ct_organs_ras_07052025.zip (clin_ct_organs) is not "
+                      "under --weights (fetch moose_weights first); never downloaded here",
+                      plan["refusals"])
+        self.assertEqual({w["present"] for w in plan["weights_found"].values()}, {False})
+        self.assertEqual(plan["weights_found"]["clin_ct_vertebrae"]["folder"],
+                         "Dataset111_Vertebrae")
+        self.assertIn("moosez.system.MODELS_DIRECTORY_PATH", plan["models_directory"])
+        self.assertFalse((self.moose / "SEGMENT.json").exists())
+
+    def test_the_run_is_refused_without_a_zip_and_without_moosez(self):
+        with mock.patch.dict(sys.modules, {"moosez": None}):
+            code, (plan,), err = segment(self.renderer, *self.common, "--weights", str(self.empty))
+            self.assertEqual((code, plan["moosez"]), (2, "absent"))
+            self.assertTrue(err.startswith(
+                "segment: refused: MOOSE's model zip clin_ct_organs_ras_07052025.zip "
+                "(clin_ct_organs) is not under --weights"), err)
+            code, (plan,), err = segment(self.renderer, *self.common, "--weights", str(self.zips))
+            self.assertEqual((code, plan["refusals"]), (2, []))
+            self.assertEqual(err, "segment: refused: moosez is not installed here; the plan above "
+                                  "says what it would do\n")
+            self.assertEqual({w["present"] for w in plan["weights_found"].values()}, {True})
+            self.assertTrue(all(w["bytes"] > 0 for w in plan["weights_found"].values()))
+        self.assertFalse((self.moose / "SEGMENT.json").exists())
+        self.assertFalse((self.moose / "s0001" / "CT_s0001.nii.gz").exists())
+
+    def test_spineps_and_a_third_segmenter_are_refused_with_the_reason(self):
+        rest = [*self.common[2:], "--weights", str(self.zips), "--plan"]
+        code, documents, err = segment(self.renderer, "--segmenter", "spineps", *rest)
+        self.assertEqual((code, documents), (2, []))
+        self.assertEqual(err, f"segment: refused: {self.renderer.SPINEPS_REFUSAL}\n")
+        self.assertIn("production array is not approved", err)
+        code, documents, err = segment(self.renderer, "--segmenter", "totalsegmentator", *rest)
+        self.assertEqual((code, documents), (2, []))
+        self.assertEqual(err, "segment: refused: segmenter 'totalsegmentator' is not one of "
+                              "spineps, moose\n")
+
+    def test_the_subject_list_is_read_at_the_ct_folders_name_or_as_a_plain_list(self):
+        read_list = self.renderer.read_subject_list
+        path = self.base / "list.json"
+        for data, expected in ((["a", "b"], ["a", "b"]), ({"ct": ["a"]}, ["a"]),
+                               ({"other": ["b"]}, ["b"]), ({"ct": ["a"], "other": ["b"]}, ["a"])):
+            path.write_text(json.dumps(data), encoding="utf-8")
+            self.assertEqual(read_list(path, self.ct), expected, data)
+        for data in ({}, "words", 3):
+            path.write_text(json.dumps(data), encoding="utf-8")
+            with self.assertRaisesRegex(self.renderer.SegmentError, "is not render-subjects.json"):
+                read_list(path, self.ct)
+        path.write_text(json.dumps({"a": [], "b": []}), encoding="utf-8")
+        with self.assertRaisesRegex(self.renderer.SegmentError, "names the folders a, b and none"):
+            read_list(path, self.ct)
+
+    def test_a_model_zip_is_unpacked_once_into_the_folder_moosez_looks_in(self):
+        renderer = self.renderer
+        models = self.base / "models"
+        folder, url = renderer.moosez_metadata()["clin_ct_vertebrae"]
+        zip_path = self.zips / renderer.zip_of(url)
+        self.assertEqual(renderer.unpack_model(zip_path, models, folder, url), "unpacked")
+        self.assertTrue((models / folder / "plans.json").is_file())
+        self.assertEqual(renderer.read_json(models / folder / "model_version.json"), {"url": url})
+        self.assertEqual(renderer.unpack_model(zip_path, models, folder, url), "kept")
+        self.assertEqual(renderer.unpack_model(zip_path, models, folder, url + "x"), "unpacked")
+        evil = self.base / "evil.zip"
+        write_zip(evil, {"../escaped.txt": "no"})
+        with self.assertRaisesRegex(renderer.SegmentError, "outside its folder"):
+            renderer.unpack_model(evil, models, "Dataset999", "u")
+        self.assertFalse((self.base / "escaped.txt").exists())
+        other = self.base / "other.zip"
+        write_zip(other, {"Elsewhere/plans.json": "{}"})
+        with self.assertRaisesRegex(renderer.SegmentError, "did not unpack to Dataset999"):
+            renderer.unpack_model(other, models, "Dataset999", "u")
+
+    def test_a_run_with_a_stand_in_moosez_links_the_ct_unpacks_the_zips_and_records(self):
+        renderer, calls = self.renderer, []
+        out, models_dir = self.base / "moose-run", self.base / "moosez-models"
+        words = [*self.common[:-2], "--out", str(out), "--weights", str(self.zips),
+                 "--device", "cpu"]
+        modules = stand_in_moosez(renderer.moosez_metadata(), models_dir, calls)
+        with mock.patch.dict(sys.modules, modules):
+            code, (plan, done), err = segment(renderer, *words)
+        self.assertEqual((code, err, plan["to_run"]), (0, "", 4))
+        every = list(renderer.segment_models())
+        self.assertEqual(calls, [(f"CT_{name}.nii.gz", every, "cpu")
+                                 for name in ("s0001", "s0002", "s0003", "s0004")])
+        self.check_segment_record(out, models_dir, plan, done)
+        with mock.patch.dict(sys.modules, modules):
+            code, (plan, done), err = segment(renderer, *words)
+        self.assertEqual((code, plan["to_run"], done, calls[4:]), (0, 0, {"done": []}, []))
+        self.assertEqual(renderer.read_json(out / "SEGMENT.json")["weights"],
+                         dict.fromkeys(every, "kept"))
+
+    def check_segment_record(self, out, models_dir, plan, done):
+        """After the first run: the CT linked into the subject's folder, SEGMENT.json with the
+        plan, every zip unpacked where moosez looks, and every model's file found."""
+        renderer = self.renderer
+        every = list(renderer.segment_models())
+        link = out / "batch" / "s0002" / "CT_s0002.nii.gz"
+        self.assertTrue(link.is_symlink())
+        self.assertEqual(link.resolve(), (self.ct / "batch" / "s0002" / "ct.nii.gz").resolve())
+        record = renderer.read_json(out / "SEGMENT.json")
+        self.assertEqual((record["plan"], record["done"]), (plan, done["done"]))
+        self.assertEqual(record["weights"], dict.fromkeys(every, "unpacked"))
+        self.assertEqual([d["id"] for d in record["done"]],
+                         ["s0001", "batch/s0002", "s0003", "s0004"])
+        for entry in record["done"]:
+            self.assertEqual((entry["found"], entry["not_found"]), (sorted(every), []))
+        for folder, _ in renderer.moosez_metadata().values():
+            self.assertTrue((models_dir / folder / "model_version.json").is_file(), folder)
+
+    def test_a_moosez_whose_metadata_differs_is_refused_before_anything_runs(self):
+        renderer, calls = self.renderer, []
+        metadata = dict(renderer.moosez_metadata())
+        folder, url = metadata["clin_ct_ribs"]
+        metadata["clin_ct_ribs"] = (folder, url.replace("3.1.3", "3.9.9"))
+        out, models_dir = self.base / "moose-differs", self.base / "models-differs"
+        modules = stand_in_moosez(metadata, models_dir, calls)
+        with mock.patch.dict(sys.modules, modules):
+            code, (plan,), err = segment(renderer, *self.common[:-2], "--out", str(out),
+                                         "--weights", str(self.zips), "--device", "cpu")
+        self.assertEqual((code, calls, plan["moosez"]), (2, [], "importable"))
+        self.assertIn("segment: refused: moosez's own metadata differs from this tool's copy, so "
+                      "it would download: clin_ct_ribs: moosez names Dataset444_Ribs at", err)
+        self.assertFalse(out.exists())
+        self.assertFalse(models_dir.exists())
 
 
 if __name__ == "__main__":

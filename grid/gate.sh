@@ -85,9 +85,15 @@
 #                   GPU job (grid/bench.sbatch, tools/bench_public.py) once its fetch has landed; the next
 #                   send prints logs/BENCH-<name>.md, and every later one prints it again and queues nothing;
 #                   and flexray_drr_gap, the DRR domain-gap study (tools/domain_gap.py) as one GPU job of
-#                   the same shape, once FleXray's weights, a whole sample index, the TotalSegmentator CTs
-#                   and the ImageNet file are there, FluXray read when fetched and skipped with its reason
-#                   otherwise; only its summary leaves the grid, through grid/redact.sed
+#                   the same shape, once FleXray's weights, a whole sample index, the TotalSegmentator CTs,
+#                   the SPINEPS masks (spineps), the MOOSE masks (moose, which flexray_drr_seg makes) and
+#                   the ImageNet file are there, FluXray read when fetched and skipped with its reason
+#                   otherwise; only its summary leaves the grid, through grid/redact.sed; and
+#                   flexray_drr_seg, one GPU job before it (the owner's word of 2026-10-26: MOOSE labels
+#                   for the FleXray replication, SPINEPS for production): the study's choice of CTs
+#                   (tools/domain_gap.py plan) and MOOSE on exactly those (tools/flexray_render.py segment),
+#                   once the TotalSegmentator CTs, the SPINEPS masks and the five model zips of
+#                   `fetch moose_weights` are there; it writes the masks under the data root's moose
 #   anomaly <stage> one stage of the SPINEPS to FleXray anomaly route (#398, the owner's word and count of
 #                   2026-10-25 21:22 UTC: seven jobs, two CPU and five GPU, docs/research/spineps-anomaly-route.md),
 #                   queued once as one job (grid/anomaly.sbatch, tools/anomaly_route.py) once the stage's code has
@@ -1014,6 +1020,7 @@ samples_index() {  # the newest whole run's samples.sqlite, as grid/run-samples.
 }
 
 bench_inputs_missing() {  # what bench $id still lacks on the data root, one line, or nothing
+  local zip
   case "$id" in
     flexray_carmlspine|flexray_deepfluoro)
       find "$DATA_ROOT/hf_flexray_weights/raw" -maxdepth 3 -name ensemble.json -print -quit 2>/dev/null | grep -q . \
@@ -1030,13 +1037,33 @@ bench_inputs_missing() {  # what bench $id still lacks on the data root, one lin
       [ -f "$DATA_ROOT/hf_xvr_data/raw/deepfluoro/subject01/volume.nii.gz" ] || echo "xvr's DeepFluoro data (fetch hf_xvr_data first)" ;;
     flexray_drr_gap)
       # The study's inputs in the order the job reads them (grid/bench.sbatch); FluXray is optional
-      # and never refused for, so word_bench only says when it is not there.
+      # and never refused for, so word_bench only says when it is not there. The masks are not
+      # optional: every render group's CTs are chosen among those with masks under both segmenters,
+      # so with no SPINEPS or no MOOSE folder the six render groups render nothing and the job
+      # would answer none of the replication.
       find "$DATA_ROOT/hf_flexray_weights/raw" -maxdepth 3 -name ensemble.json -print -quit 2>/dev/null | grep -q . \
         || { echo "FleXray's weights (fetch hf_flexray_weights first)"; return; }
       samples_index > /dev/null || { echo "a whole sample index (the gate word samples makes it)"; return; }
       [ -d "$DATA_ROOT/totalsegmentator_v201" ] || { echo "the TotalSegmentator CTs at $DATA_ROOT/totalsegmentator_v201, which its render groups draw"; return; }
+      [ -d "$DATA_ROOT/spineps" ] || { echo "the SPINEPS masks at $DATA_ROOT/spineps, the production segmenter's labels"; return; }
+      [ -d "$DATA_ROOT/moose" ] || { echo "the MOOSE masks at $DATA_ROOT/moose (bench flexray_drr_seg makes them)"; return; }
       weights_ready || echo "the ImageNet ResNet-18 file at $WEIGHTS (the gate word start fetches it)" ;;
+    flexray_drr_seg)
+      # The segment job's inputs in the order it reads them: the CTs and the SPINEPS masks the plan
+      # chooses among, then MOOSE's weights, which the job never downloads.
+      [ -d "$DATA_ROOT/totalsegmentator_v201" ] || { echo "the TotalSegmentator CTs at $DATA_ROOT/totalsegmentator_v201, which the study's render groups draw"; return; }
+      [ -d "$DATA_ROOT/spineps" ] || { echo "the SPINEPS masks at $DATA_ROOT/spineps, which the choice of CTs is made among"; return; }
+      zip=$(moose_weights_missing)
+      [ -z "$zip" ] || echo "MOOSE's model zip $zip under $DATA_ROOT/moose_weights/raw (fetch moose_weights first)" ;;
   esac
+}
+moose_weights_missing() {  # the first of MOOSE's model zips not under the data root's moose_weights/raw, by the fetch row's URLs
+  local urls url
+  urls=$(bash "$REPO/grid/run-platform-fetch.sh" --args moose_weights 2>/dev/null)
+  [ -n "$urls" ] || { echo "(the row moose_weights of grid/run-platform-fetch.sh was not read)"; return; }
+  for url in $urls; do
+    [ -s "$DATA_ROOT/moose_weights/raw/${url##*/}" ] || { echo "${url##*/}"; return; }
+  done
 }
 bench_job_of() {  # the job number a benchmark report's first line names
   sed -n '1s/.*: job \([0-9][0-9]*\) .*/\1/p' "$1"
@@ -1052,8 +1079,8 @@ word_bench() {  # one public model's benchmark (#287): queued once, its report p
   local report=$LOGS/BENCH-$id.md busy missing holds opts setup extra
   extra=()
   case "$id" in
-    flexray_carmlspine|flexray_deepfluoro|xvr_deepfluoro|flexray_drr_gap) ;;
-    *) echo "refusing: bench takes flexray_carmlspine, flexray_deepfluoro, xvr_deepfluoro or flexray_drr_gap"; return 64 ;;
+    flexray_carmlspine|flexray_deepfluoro|xvr_deepfluoro|flexray_drr_gap|flexray_drr_seg) ;;
+    *) echo "refusing: bench takes flexray_carmlspine, flexray_deepfluoro, xvr_deepfluoro, flexray_drr_gap or flexray_drr_seg"; return 64 ;;
   esac
   busy=$(live_of "bench_$id")
   [ -z "$busy" ] || { echo "refusing: the benchmark $id is still queued or running (job $busy); send bench $id again once it ends"; return 75; }

@@ -14,6 +14,8 @@
 #   hf-token reacquire.py hf-get with HF_TOKEN read from TOKEN_FILE (mode 0600) into the environment; its
 #            --include is a glob, and a run that verified no file fails here with exit 3 (issue #158)
 #   curl-link curl on a presigned link read from LINK_FILE (mode 0600) through a curl config, never on a command line
+#   url      curl on each public URL in ARGS (a release's assets), following redirects, each landed as raw/<its name>,
+#            resumed where part of it is there and left alone where it is whole; no token and no config, since nothing is secret
 #   kaggle   kaggle competitions download with KAGGLE_API_TOKEN read from TOKEN_FILE
 #   kaggle-dataset kaggle datasets download of OWNER/NAME in ARGS, the same token; a plain dataset has no rules to accept
 #   redivis  grid/redivis_fetch.py ARGS with REDIVIS_API_TOKEN read from TOKEN_FILE, in REDIVIS_ENV, a
@@ -22,8 +24,8 @@
 #            the owner's approved account, each file md5-checked against the record
 #   note     print NOTE and exit 0 (a step that needs a repository or a hand step not on the grid yet)
 # Before a route downloads a byte, the owner's size rule decides (grid/size-rule.sh, issue #160): the
-# exact size of what it will land, read from the source (grid/fetch_size.py; for curl-link a one-byte
-# range request), must fit in the room left under the volume's quota after what the running fetches
+# exact size of what it will land, read from the source (grid/fetch_size.py; for curl-link and url a one-byte
+# range request, url's summed over its URLs), must fit in the room left under the volume's quota after what the running fetches
 # still owe, or the job ends with exit 4 having fetched nothing; no floor stops a fetch part-way, so
 # acquisition_fetch.sh runs with FLOOR_TB=0, and a job Slurm requeues keeps the admission it was
 # given. kaggle, kaggle-dataset, gdown and redivis have no size reader yet and are refused the
@@ -109,6 +111,34 @@ link_size() {  # link_size LINK_FILE OUTPUT: "<total bytes> <bytes still to land
   echo "$total $(( total > have ? total - have : 0 )) the link answers"
 }
 # shellcheck disable=SC2329
+url_length() {  # url_length URL: the length a URL answers to a one-byte range request, after its redirects; empty when none
+  "$CURL" -sS -L --fail -r 0-0 -o /dev/null -D - "$1" | tr -d '\r' | sed -n 's/^[Cc]ontent-[Rr]ange: bytes 0-0\/\([0-9][0-9]*\)$/\1/p' | tail -n 1
+}
+landed_size() {  # landed_size URL: the bytes of raw/<its name> that are there, 0 where none
+  local file=$DATA/$ID/raw/${1##*/}
+  if [ -f "$file" ]; then stat -c %s "$file"; else echo 0; fi
+}
+# shellcheck disable=SC2329
+urls_size() {  # urls_size URL...: "<total bytes> <bytes still to land> the links answer", every URL's length read first, less what is landed
+  local url size have total=0 need=0
+  for url in "$@"; do
+    size=$(url_length "$url")
+    [ -n "$size" ] || { echo "no exact size; ${url##*/} answers no range request with its length"; return 3; }
+    is_count "$size" || { echo "no exact size; the length ${url##*/} answers is no count"; return 3; }
+    have=$(landed_size "$url")
+    total=$(( total + size ))
+    need=$(( need + (size > have ? size - have : 0) ))
+  done
+  echo "$total $need the links answer"
+}
+fetch_url() {  # fetch_url URL: curl into raw/<its name>, resumed from what is there, left alone when it is whole
+  local name=${1##*/} size
+  size=$(url_length "$1")
+  [ "$(landed_size "$1")" != "$size" ] || { echo "$name: landed whole already"; return 0; }
+  "$CURL" -sS -L --fail --continue-at - -o "$DATA/$ID/raw/$name" "$1" || { echo "$name: curl ended with exit $?"; return 1; }
+  echo "$name: landed $(landed_size "$1") bytes"
+}
+# shellcheck disable=SC2329
 no_size_reader() {  # the size reader of a route that has none yet: no size, so the rule refuses it
   echo "no exact size; the $ROUTE route has no size reader yet"
   return 3
@@ -161,6 +191,12 @@ case "$ROUTE" in
       cfg=/dev/shm/${USER}_${ID}_$$.curl; umask 077
       { echo "url = \"$(head -n 1 "$link_file")\""; echo "output = \"$DATA/$ID/raw/$ARGS\""; echo "continue-at = -"; echo "location"; echo "fail"; } > "$cfg"
       "$CURL" -sS -K "$cfg"; rc=$?; rm -f "$cfg"
+    else rc=4; fi ;;
+  url)
+    # Every URL's length is read before a byte lands, so one that answers none refuses the whole row.
+    # shellcheck disable=SC2086
+    if size_and_admit "$ID" urls_size $ARGS; then
+      for url in $ARGS; do fetch_url "$url" || rc=1; done
     else rc=4; fi ;;
   kaggle)
     if size_and_admit "$ID" no_size_reader; then

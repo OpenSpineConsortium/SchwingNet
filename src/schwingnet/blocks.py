@@ -31,7 +31,14 @@ part (docs/research/training-review.md, section 1):
 - prior: a second supervision from 3D (#228), "none" or "level-map", where a head on the
   backbone's last feature map predicts the frame's projected level map, the segmented CT's
   voxels mapped onto the X-ray by the render's geometry or a registered pose, and its loss is
-  added with prior_weight; the head is training-only, so the exported classifier is unchanged.
+  added with prior_weight; the head is training-only, so the exported classifier is unchanged;
+- segmenter: which segmentation model's masks label the unannotated CTs a run's data is made
+  from, read by the pack stage before any training step (the owner, 2026-10-26: the segmentation
+  model on the unannotated data is a configurable block, the production runs on SPINEPS, the
+  replication of FleXray's dataset on MOOSE), "spineps" or "moose"; the names, the alphabets and
+  the maps between them are schwingnet.segmenters, and no training step reads it, so the torch
+  side has no function for it, the smoke test's cover does not vary it and tools/block_sweep.py
+  counts no combination of it.
 
 DEFAULT is version 1's training exactly, so a run that names no block trains as before and the
 recorded runs stay reproducible. The choices are kept here, with the arithmetic that needs no
@@ -41,7 +48,10 @@ hold the two lists equal. A new way of doing a part is one name added to its tup
 function there, plus the entry the part keys by name where it has one (HEADS and FEATURES for
 an architecture, AUGMENT_ORDER for an augment change, a branch in _keeps for a samples choice); a
 new part is a field with version 1's default and its entry in CHOICES or SETTINGS, which
-`problems` checks and `parts` reads to list every part with its names for tools/block_sweep.py.
+`problems` checks and `parts` reads to list every part with its names for tools/block_sweep.py;
+tools/experiments_panel.py reads the fields and their defaults from this file's source with ast,
+so each default in the dataclass is a literal. A row's slug hashes the whole record, so a new
+part renames every row of the plans under grid/sweeps/ once, and they are written again.
 
 The smoke test of every block (#252) is two pieces of data made here: `cover`, the rows of a
 covering set that runs every option of every part and every pair of parts that meet in the code,
@@ -60,6 +70,8 @@ from typing import Any, TypedDict
 
 from beartype import beartype
 from beethoven_qa.contracts import ensure, require
+
+from schwingnet import segmenters
 
 NORMALISE = ("none", "imagenet")
 AUGMENT = ("box-jitter", "intensity", "blur", "noise", "strong")
@@ -111,6 +123,10 @@ class Blocks:
     denoise: str = "none"
     prior: str = "none"
     prior_weight: float = 0.0
+    # The pack stage's choice, spelled as a literal since tools/experiments_panel.py reads these
+    # defaults from the source; tests/schwingnet/test_blocks.py holds it equal to
+    # segmenters.DEFAULT_SEGMENTER.
+    segmenter: str = "spineps"
 
 
 DEFAULT = Blocks()
@@ -126,7 +142,10 @@ CHOICES = {
     "denoise": DENOISE,
     "prior": PRIOR,
 }
-# The settings a choice takes, each with its range in words, for `parts` and the command line.
+# The settings a choice takes, each with its range in words, for `parts` and the command line;
+# the segmenter is listed here and not in CHOICES, since no training step reads it and the count
+# of the trainer's combinations (tools/block_sweep.py) leaves it out. Each value is a plain string,
+# as tools/experiments_panel.py reads this table from the source.
 SETTINGS = {
     "augment": "any of " + ", ".join(AUGMENT) + ", comma-separated, or none",
     "weight_decay": "a finite number, 0 or more, with optimiser=adamw",
@@ -135,6 +154,8 @@ SETTINGS = {
     "sources": "the catalog's sources, comma-separated, with samples=only-sources or drop-sources",
     "per_person": "crops kept per person, 1 or more, with samples=cap-per-person",
     "prior_weight": "the prior loss's weight beside the level loss, above 0, with prior=level-map",
+    "segmenter": "spineps or moose, the segmentation model whose masks label the unannotated CTs"
+    " the pack stage reads; no training step reads it",
 }
 LISTS = ("augment", "sources")
 NUMBERS = ("weight_decay", "backbone_lr_scale", "prior_weight")
@@ -162,6 +183,10 @@ def _choice_problems(blocks: Blocks) -> list[str]:
             found.append(f"augment {change!r} is not one of {', '.join(AUGMENT)}")
     if len(set(blocks.augment)) != len(blocks.augment):
         found.append("augment names a change twice")
+    if blocks.segmenter not in segmenters.SEGMENTERS:
+        found.append(
+            f"segmenter={blocks.segmenter!r} is not one of {', '.join(segmenters.SEGMENTERS)}"
+        )
     return found
 
 
@@ -213,6 +238,7 @@ RULES = (
     "prior_weight is above 0 with prior=level-map, and only there",
     "sources names each source once, with samples=only-sources or drop-sources, and only there",
     "per_person is 1 or more with samples=cap-per-person, and only there",
+    "segmenter is spineps or moose, the pack stage's choice, which no training step reads",
 )
 
 
@@ -443,7 +469,8 @@ def words_of(blocks: Blocks) -> list[str]:
 # FIRST_LABELLED, the first by name of the labelled ones where the train part holds two or more,
 # so a cut to it keeps a strict part of the labelled crops or drops one, and no source where it
 # holds one, since a cut to the only labelled source keeps every crop or none. Each augment name
-# is a factor of its own, off or on, since a run may name any subset of them.
+# is a factor of its own, off or on, since a run may name any subset of them. The segmenter is no
+# factor: the cover runs training on a catalog already packed, which no training step reads.
 LABELLED, UNLABELLED, FIRST_LABELLED = "@labelled", "@unlabelled", "@first-labelled"
 SIZES = (64, 32, 96, 128)
 AUGMENT_FACTOR = "augment:"

@@ -4,20 +4,48 @@
  "groups": [
   {
    "id": "flexray_drr",
-   "label": "FleXray physical DRRs (attenuation off, our blocks)",
+   "label": "FleXray physical DRRs (MOOSE labels, attenuation off)",
    "family": "synthetic",
    "source": "render",
    "folder": "totalsegmentator_v201",
    "cap": 1000,
    "per_person": 4,
-   "blocks": ["attenuation=off"],
+   "blocks": ["segmenter=moose", "attenuation=off"],
    "engine": "blocks",
-   "licence": "open: TotalSegmentator CC BY 4.0; FleXray code MIT",
-   "note": "Rendered in the job by tools/flexray_render.py through this project's render blocks: FleXray's MOOSE recipe, its random-label isocentre, its crop and pose sampling, with the attenuation randomisation off, the physical render a comparison with real X-rays reads; the person is the CT's subject. Against flexray_replica it isolates the attenuation randomisation."
+   "licence": "open: TotalSegmentator CC BY 4.0 CTs; FleXray code MIT; SPINEPS masks as held, MOOSE masks made by moosez (GPL-3.0 code) in the segment job",
+   "note": "Rendered in the job by tools/flexray_render.py through this project's render blocks: FleXray's MOOSE recipe on MOOSE's labels (moosez's masks, the segmenter FleXray's own dataset was labelled with), its random-label isocentre, its crop and pose sampling, with the attenuation randomisation off, the physical render a comparison with real X-rays reads; the person is the CT's subject. The other render groups share its choice of CTs. Against flexray_replica it isolates the attenuation randomisation."
   },
   {
    "id": "flexray_replica",
-   "label": "FleXray recipe through our blocks (replica)",
+   "label": "FleXray recipe, MOOSE labels, our blocks (replica)",
+   "family": "synthetic",
+   "source": "render",
+   "folder": "totalsegmentator_v201",
+   "cap": 1000,
+   "per_person": 4,
+   "blocks": ["segmenter=moose"],
+   "engine": "blocks",
+   "subjects_from": "flexray_drr",
+   "licence": "open: TotalSegmentator CC BY 4.0 CTs; FleXray code MIT; SPINEPS masks as held, MOOSE masks made by moosez (GPL-3.0 code) in the segment job",
+   "note": "FleXray's released MOOSE recipe to the letter on MOOSE's labels, the attenuation randomisation on half the renders, through this project's render blocks, on the same CTs, crops and poses as flexray_drr. Against flexray_reference it is the replication test: our blocks against FleXray's own code under the same labels. Against flexray_spineps it isolates the segmenter."
+  },
+  {
+   "id": "flexray_reference",
+   "label": "FleXray recipe, MOOSE labels, FleXray's code (reference)",
+   "family": "synthetic",
+   "source": "render",
+   "folder": "totalsegmentator_v201",
+   "cap": 1000,
+   "per_person": 4,
+   "blocks": ["segmenter=moose"],
+   "engine": "flexray-runtime",
+   "subjects_from": "flexray_drr",
+   "licence": "open: TotalSegmentator CC BY 4.0 CTs; FleXray code MIT; SPINEPS masks as held, MOOSE masks made by moosez (GPL-3.0 code) in the segment job",
+   "note": "The same recipe on the same MOOSE labels rendered by FleXray's own runtime code, its crop planning, label remap, camera runtime and scaling, on the same CTs, each view seeded from the same number as the replica's. Against flexray_replica it is the replication test."
+  },
+  {
+   "id": "flexray_spineps",
+   "label": "FleXray recipe, SPINEPS labels, our blocks (production)",
    "family": "synthetic",
    "source": "render",
    "folder": "totalsegmentator_v201",
@@ -26,22 +54,36 @@
    "blocks": [],
    "engine": "blocks",
    "subjects_from": "flexray_drr",
-   "licence": "open: TotalSegmentator CC BY 4.0; FleXray code MIT",
-   "note": "FleXray's released MOOSE recipe to the letter, the attenuation randomisation on half the renders, through this project's render blocks, on the same CTs, crops and poses as flexray_drr. Against flexray_reference it is the replication test: our blocks against FleXray's own code."
+   "licence": "open: TotalSegmentator CC BY 4.0 CTs; FleXray code MIT; SPINEPS masks as held, MOOSE masks made by moosez (GPL-3.0 code) in the segment job",
+   "note": "FleXray's recipe through this project's render blocks on the project's production labels, SPINEPS's existing masks (the owner's word of 2026-10-26: SPINEPS for the production runs, MOOSE only when replicating FleXray's dataset), on the same CTs, crops and poses as flexray_replica. Against flexray_replica it isolates the segmenter: production labels against the replication's."
   },
   {
-   "id": "flexray_reference",
-   "label": "FleXray recipe through FleXray's code (reference)",
+   "id": "fluxray_raw",
+   "label": "FluXray raw-render recipe, our blocks",
    "family": "synthetic",
    "source": "render",
    "folder": "totalsegmentator_v201",
    "cap": 1000,
    "per_person": 4,
-   "blocks": [],
+   "blocks": ["segmenter=moose", "crop=whole", "crop_sampler=uniform", "pose=fluxray-grid", "isocentre=volume-centre", "projection=cone", "attenuation=off", "scale=minmax", "views=4", "detector=1024"],
+   "engine": "blocks",
+   "subjects_from": "flexray_drr",
+   "licence": "open: TotalSegmentator CC BY 4.0 CTs; FleXray code MIT; SPINEPS masks as held, MOOSE masks made by moosez (GPL-3.0 code) in the segment job",
+   "note": "The recipe FluXray's raw renders were made with, from FleXray's paper: one of its 90 fixed C-arm poses a view (y 650, 900 or 1150 mm, z -300 to 200 mm, alpha 0, +-45 or +-90 degrees), SDD 1250 mm, 0.6 mm pixels on a 1024 detector, the whole volume, the volume's centre as the isocentre, the attenuation randomisation off, MOOSE's labels; through this project's render blocks on flexray_drr's CTs. Against fluxray_raw_reference it is a replication test of that recipe."
+  },
+  {
+   "id": "fluxray_raw_reference",
+   "label": "FluXray raw-render recipe, FleXray's primitives",
+   "family": "synthetic",
+   "source": "render",
+   "folder": "totalsegmentator_v201",
+   "cap": 1000,
+   "per_person": 4,
+   "blocks": ["segmenter=moose", "crop=whole", "crop_sampler=uniform", "pose=fluxray-grid", "isocentre=volume-centre", "projection=cone", "attenuation=off", "scale=minmax", "views=4", "detector=1024"],
    "engine": "flexray-runtime",
    "subjects_from": "flexray_drr",
-   "licence": "open: TotalSegmentator CC BY 4.0; FleXray code MIT",
-   "note": "The same recipe rendered by FleXray's own runtime code, its crop planning, label remap, camera runtime and scaling, on the same CTs, each view seeded from the same number as the replica's. Against flexray_replica it is the replication test; against fluxray it isolates the FLUX edit."
+   "licence": "open: TotalSegmentator CC BY 4.0 CTs; FleXray code MIT; SPINEPS masks as held, MOOSE masks made by moosez (GPL-3.0 code) in the segment job",
+   "note": "The same FluXray raw-render recipe through FleXray's own primitives (its render request built with the explicit pose), on the same CTs. Against fluxray_raw it is a replication test; against fluxray, the FLUX-edited renders made from renders like these, it isolates the FLUX edit, with the pose recipe held the same."
   },
   {
    "id": "fluxray",
@@ -52,7 +94,7 @@
    "cap": 1000,
    "per_person": 4,
    "licence": "non-commercial: CC BY-NC 4.0",
-   "note": "Read with FleXray's own ThunderDB reader once flexray-data is fetched (the audit plan's item 6); skipped with its reason until then. The person is the record's subject."
+   "note": "Read with FleXray's own ThunderDB reader once flexray-data is fetched (the audit plan's item 6); skipped with its reason until then. The person is the record's subject. Against fluxray_raw_reference, the raw renders it was edited from, it isolates the FLUX edit."
   },
   {
    "id": "ts_drr_project",

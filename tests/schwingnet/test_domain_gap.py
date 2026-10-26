@@ -100,6 +100,12 @@ def test_a_render_group_reads_its_blocks_engine_and_shared_subjects() -> None:
     assert (reference.engine, reference.subjects_from) == ("flexray-runtime", "flexray_raw")
     two_views = gap.GroupSpec.model_validate(render(blocks=["views=2"], per_person=2))
     assert two_views.per_person == 2
+    # The segmenter is a block like any other: MOOSE's masks for a replication of FleXray's
+    # dataset, the project's SPINEPS when no word names one; TotalSegmentator is no value.
+    moose = gap.GroupSpec.model_validate(
+        render(blocks=["segmenter=moose"], engine="flexray-runtime")
+    )
+    assert moose.blocks == ("segmenter=moose",)
 
 
 @pytest.mark.parametrize(
@@ -109,6 +115,7 @@ def test_a_render_group_reads_its_blocks_engine_and_shared_subjects() -> None:
         ({"blocks": ["views=2"]}, "views"),
         ({"blocks": ["detector=abc"]}, "blocks"),
         ({"blocks": ["colour=red"]}, "blocks"),
+        ({"blocks": ["segmenter=totalsegmentator"]}, "segmenter"),
         ({"blocks": ["attenuation=off", "attenuation=off"]}, "twice"),
         ({"blocks": ["isocentre=vertebra"], "engine": "flexray-runtime"}, "isocentre"),
         ({"engine": "nanodrr"}, "engine"),
@@ -174,28 +181,132 @@ def test_a_table_holds_shared_subjects_to_a_render_group_of_the_same_shape() -> 
         )
 
 
-def test_the_studys_own_table_holds_and_names_the_three_render_groups() -> None:
+# FluXray's raw render stream as the paper gives it, every word spelled out so the record reads
+# whole: MOOSE's labels, the whole volume drawn uniformly, one of the 90 fixed poses, the volume's
+# centre, a cone beam, the attenuation randomisation off, min-max scaling, 4 views at 1024 pixels.
+FLUXRAY_RAW_WORDS = (
+    "segmenter=moose",
+    "crop=whole",
+    "crop_sampler=uniform",
+    "pose=fluxray-grid",
+    "isocentre=volume-centre",
+    "projection=cone",
+    "attenuation=off",
+    "scale=minmax",
+    "views=4",
+    "detector=1024",
+)
+# The six render groups of the study's table: each one's blocks, engine and the group whose CTs it
+# shares, and the pair its note says it isolates.
+STUDY_RENDERS = {
+    "flexray_drr": (("segmenter=moose", "attenuation=off"), "blocks", "", "flexray_replica"),
+    "flexray_replica": (("segmenter=moose",), "blocks", "flexray_drr", "flexray_reference"),
+    "flexray_reference": (
+        ("segmenter=moose",),
+        "flexray-runtime",
+        "flexray_drr",
+        "flexray_replica",
+    ),
+    "flexray_spineps": ((), "blocks", "flexray_drr", "flexray_replica"),
+    "fluxray_raw": (FLUXRAY_RAW_WORDS, "blocks", "flexray_drr", "fluxray_raw_reference"),
+    "fluxray_raw_reference": (FLUXRAY_RAW_WORDS, "flexray-runtime", "flexray_drr", "fluxray"),
+}
+
+
+def test_the_studys_own_table_holds_and_names_the_six_render_groups() -> None:
+    from dataclasses import replace
+
+    from schwingnet import render_blocks
+
     parsed = gap.GroupTable.model_validate_json(
         (ROOT / "data" / "domain_gap" / "groups.json").read_text(encoding="utf-8")
     )
-    by_id = {group.id: group for group in parsed.groups}
-    drr, replica, reference = (
-        by_id[i] for i in ("flexray_drr", "flexray_replica", "flexray_reference")
+    renders = {g.id: g for g in parsed.groups if g.source == "render"}
+    assert {i: (g.blocks, g.engine, g.subjects_from) for i, g in renders.items()} == {
+        i: (blocks, engine, shares) for i, (blocks, engine, shares, _) in STUDY_RENDERS.items()
+    }
+    for i, (_, _, _, pair) in STUDY_RENDERS.items():
+        assert pair in renders[i].note, i
+    # The recipes are the presets they stand for: FleXray's with MOOSE's labels (its own), the
+    # same with the attenuation randomisation off, the project's default (SPINEPS) and FluXray's
+    # raw render stream; and the folder names both segmenters, so the CTs are chosen among those
+    # with masks under both.
+    assert render_blocks.parse(renders["flexray_replica"].blocks) == render_blocks.FLEXRAY
+    assert render_blocks.parse(renders["flexray_reference"].blocks) == render_blocks.FLEXRAY
+    assert render_blocks.parse(renders["flexray_drr"].blocks) == replace(
+        render_blocks.PHYSICAL, segmenter="moose"
     )
-    assert (drr.blocks, drr.engine, drr.subjects_from) == (("attenuation=off",), "blocks", "")
-    assert (replica.blocks, replica.engine, replica.subjects_from) == ((), "blocks", "flexray_drr")
-    assert (reference.blocks, reference.engine, reference.subjects_from) == (
-        (),
-        "flexray-runtime",
-        "flexray_drr",
+    assert render_blocks.parse(renders["flexray_spineps"].blocks) == render_blocks.DEFAULT
+    assert render_blocks.parse(renders["fluxray_raw"].blocks) == render_blocks.FLUXRAY_RAW
+    assert gap.segmenters_named([g.blocks for g in renders.values()]) == ("moose", "spineps")
+    assert len({(g.folder, g.cap, g.per_person, g.licence) for g in renders.values()}) == 1
+    assert all(g.cap // g.per_person == 250 for g in renders.values())
+    assert [g.id for g in parsed.groups[:7]] == [*STUDY_RENDERS, "fluxray"]
+    assert len(parsed.groups) == 22
+
+
+# --- the choice of CTs -------------------------------------------------------------------------
+
+
+def test_the_segmenters_named_are_each_recipes_once_in_order() -> None:
+    assert gap.segmenters_named([]) == ()
+    assert gap.segmenters_named([()]) == ("spineps",)
+    assert gap.segmenters_named([("segmenter=moose",), (), ("segmenter=moose", "views=2")]) == (
+        "moose",
+        "spineps",
     )
-    assert len({(g.folder, g.cap, g.per_person, g.licence) for g in (drr, replica, reference)}) == 1
-    assert [g.id for g in parsed.groups[:4]] == [
-        "flexray_drr",
-        "flexray_replica",
-        "flexray_reference",
-        "fluxray",
-    ]
+    with pytest.raises(ViolationError):
+        gap.segmenters_named([("segmenter=totalsegmentator",)])
+    with pytest.raises(ViolationError):
+        gap.segmenters_named([(), ("colour=red",)])
+
+
+def test_with_masks_keeps_the_subjects_every_segmenter_has_masks_for() -> None:
+    subjects = frozenset({"s1", "s2", "s3", "s4"})
+    masked = {
+        "spineps": frozenset({"s1", "s2", "s3", "s9"}),
+        "moose": frozenset({"s2", "s3", "s4"}),
+    }
+    assert gap.with_masks(subjects, masked) == {"s2", "s3"}
+    assert gap.with_masks(subjects, {"spineps": masked["spineps"]}) == {"s1", "s2", "s3"}
+    assert gap.with_masks(subjects, {}) == subjects
+    assert gap.with_masks(subjects, {"moose": frozenset()}) == frozenset()
+    assert gap.with_masks(frozenset(), masked) == frozenset()
+
+
+def subject_order(salt: str, subject: str) -> tuple[str, str]:
+    return gap.rank_key(f"{salt}:subjects", subject), subject
+
+
+def test_a_choice_of_subjects_is_the_first_in_the_salted_order_with_every_mask() -> None:
+    subjects = frozenset(f"s{n:04d}" for n in range(40))
+    masked = {
+        "spineps": frozenset(f"s{n:04d}" for n in range(0, 36)),
+        "moose": frozenset(f"s{n:04d}" for n in range(4, 40)),
+    }
+    both = sorted(gap.with_masks(subjects, masked), key=lambda s: subject_order(SALT, s))
+    assert len(both) == 32
+    chosen = gap.choose_subjects(subjects, masked, 10, SALT)
+    assert list(chosen) == both[:10]
+    assert set(chosen) <= {f"s{n:04d}" for n in range(4, 36)}
+    assert gap.choose_subjects(subjects, masked, 100, SALT) == tuple(both)
+    assert gap.choose_subjects(subjects, masked, 0, SALT) == ()
+    assert gap.choose_subjects(frozenset(), masked, 5, SALT) == ()
+    # With no segmenter named, every subject is a candidate; the salt decides who comes first.
+    assert set(gap.choose_subjects(subjects, {}, 40, SALT)) == subjects
+    assert gap.choose_subjects(subjects, masked, 10, "other") != chosen
+    assert gap.choose_subjects(subjects, masked, 10, "other") == tuple(
+        sorted(both, key=lambda s: subject_order("other", s))[:10]
+    )
+
+
+def test_a_choice_of_subjects_refuses_a_count_below_zero_and_what_is_no_set() -> None:
+    with pytest.raises(ViolationError):
+        gap.choose_subjects(frozenset({"s1"}), {}, -1, SALT)
+    with pytest.raises(BeartypeCallHintParamViolation):
+        gap.choose_subjects(["s1"], {}, 1, SALT)  # type: ignore[arg-type]
+    with pytest.raises(BeartypeCallHintParamViolation):
+        gap.choose_subjects(frozenset({"s1"}), {"spineps": ["s1"]}, 1, SALT)  # type: ignore[dict-item]
 
 
 def test_the_families_and_sources_are_the_studys() -> None:

@@ -1,54 +1,91 @@
-"""Synthetic X-rays from held TotalSegmentator CTs through the render blocks, by one of two
-engines, for the DRR domain-gap study's replication test of FleXray's renderer.
+"""Synthetic X-rays from held CTs and their existing masks through the render blocks, by one of two
+engines, for the DRR domain-gap study's replication test of FleXray's renderer; and the segment
+subcommand that makes MOOSE's masks for the replication's CTs with moosez.
 
 The owner asked on 2026-10-25 (the thread "Compare FleXray DRRs to real X-ray corpora") for
 FleXray's synthetic DRRs to be set beside every held real X-ray corpus, and for FleXray's recipe
 to be rendered both through this project's blocks and through FleXray's own code, so the two can
-be compared: tools/domain_gap.py runs the study and calls render_subjects here for each render
-group. A render is a configuration of schwingnet.render_blocks (FleXray's released MOOSE recipe
+be compared; and on 2026-10-26 that the CTs' labels come from SPINEPS's existing masks for the
+production renders and from MOOSE, moosez's masks, only when replicating FleXray's own dataset,
+never from TotalSegmentator, the segmenter being a block of its own (schwingnet.segmenters).
+tools/domain_gap.py runs the study and calls render_subjects here for each render group. A render
+is a configuration of schwingnet.render_blocks (FleXray's released MOOSE recipe on SPINEPS masks
 when no block is named) run by an engine:
 
 - "blocks" calls tools/render_blocks.py, one function per named choice, FleXray's primitives
   (fxr.drr) underneath for the pose draw and the rendering;
 - "flexray-runtime" calls FleXray's own functions for every step: its pack's HU window
-  (CTPreprocessing), its CT loader's air clamp, its crop planner and packer (ct_crops.plan_z_crops,
-  crop_z, crop_metadata, offset_affine), its crop weights (sampling.inverse_label_frequency_weights)
-  and torch's WeightedRandomSampler for the draw, its label remap
-  (compile_training_label_remap_by_name("all_structures_flexray_v4", "MOOSE") at the released
-  model's 61 labels, TrainingLabelProjection), its SegmentationDRRRuntime built from the MOOSE
-  effective profile of its base training config at one view a call, since each view draws its own
-  crop, and its scale_rendered_images; it takes only the blocks FleXray's code can honour
-  (schwingnet.render_blocks.engine_problems) and refuses the rest in words before rendering. It
-  needs kornia, which FleXray's camera package imports for its training-time label smoothing
-  (flexray's train extra); the blocks engine needs fxr.drr alone.
+  (CTPreprocessing), its CT loader's air clamp, its crop planner and packer (ct_crops.plan_z_crops
+  at the recipe's overlap, crop_z, crop_metadata, offset_affine), its crop weights
+  (sampling.inverse_label_frequency_weights) and torch's WeightedRandomSampler for the draw, its
+  label remap (compile_training_label_remap_by_name("all_structures_flexray_v4", "MOOSE") at the
+  released model's 61 labels, TrainingLabelProjection), its SegmentationDRRRuntime built from the
+  MOOSE effective profile of its base training config at one view a call, since each view draws
+  its own crop, and its scale_rendered_images; under pose fluxray-grid, which its PoseSampler
+  cannot draw, the request with the explicit pose through fxr.drr's primitives (compute_isocenter
+  at the volume's centre, DRRRenderRequest, render_drr) and the same scaling. It takes only the
+  blocks FleXray's code can honour (schwingnet.render_blocks.engine_problems) and refuses the rest
+  in words before rendering. It needs kornia, which FleXray's camera package imports for its
+  training-time label smoothing (flexray's train extra); the blocks engine needs fxr.drr alone.
 
-Both read the same CT once (nibabel), build one label volume of MOOSE's stored ids from the
-TotalSegmentator masks (TOTALSEG_TO_MOOSE below; every name written is one FleXray's protocol
-supervises) and write the same layout. The seed of a view comes from the salt, the subject and the
-view alone, not from the engine or the group, so two render groups on one folder that differ only
-by their attenuation block share every crop, isocentre and pose, and the reference engine seeds
-FleXray's own generators from the same number (its draws differ where its code differs; that is
-the point of the test).
+Both read the same CT once (nibabel) and one label volume of MOOSE's stored ids built by the
+segmenter block (tools/render_blocks.py, NAMES["segmenter"]: SPINEPS's mask relabelled from the
+VerSe alphabet, or moosez's model outputs merged), which is what FleXray's own code reads, L6 and
+the thirteenth ribs in it and dropped by FleXray's remap as in its own training, T13 and the
+coccyx left out and recorded as unsupervised; and they write the same layout. The seed of a view
+comes from the salt, the subject and the view alone, not from the engine or the group, so two
+render groups on one folder that differ only by their attenuation block share every crop,
+isocentre and pose, and the reference engine seeds FleXray's own generators from the same number
+(its draws differ where its code differs; that is the point of the test).
 
     python tools/flexray_render.py --ct-root <dir> --out <dir> --subjects 250 --salt <s> \\
-        [--device cuda] [--engine blocks|flexray-runtime] [--blocks KEY=VALUE]... [--subject ID]...
+        --spineps <dir> [--moose <dir>] [--device cuda] [--engine blocks|flexray-runtime] \\
+        [--blocks KEY=VALUE]... [--subject ID]...
+    python tools/flexray_render.py segment --segmenter moose --ct-root <dir> \\
+        --subjects <out>/render-subjects.json --weights <dir> --out <dir> [--device cuda] [--plan]
 
-A subject is a folder under --ct-root, one to four levels down, that holds ct.nii.gz and
-segmentations/ in TotalSegmentator v2.0.1's layout, one binary mask a structure. Without
---subject, subjects are taken in the order of rank_key("<salt>:subjects", id) until --subjects
-are kept, a subject with no supervised structure or an unreadable file passed over with its
+A subject is a folder under --ct-root, one to four levels down, that holds ct.nii.gz; its masks
+are found under the segmenter's folder (--spineps, --moose; a render whose segmenter has no folder
+is refused in words before anything is written): SPINEPS's by the file *_seg-vert_msk.nii* whose
+name before _seg-vert names the subject, moosez's under <moose>/<subject>/ by the model's region
+in each file's path (tools/render_blocks.py, locate_spineps and locate_moose). Without --subject,
+subjects are taken in the order of rank_key("<salt>:subjects", id) until --subjects are kept, a
+subject with no mask, no structure FleXray supervises or an unreadable file passed over with its
 reason; with --subject the named ones alone are rendered, in that order. Each CT is read as
 float32 HU in its own voxel order with its affine, as FleXray's NIfTI packer reads it.
 
 Per view, in FleXray's order of draws: one crop by the crop sampler's weights, one isocentre, one
 pose, one gate and the attenuation factors, one render, scaled to 0 to 1 and written as a 16-bit
 grey PNG, <out>/images/<subject>_v<k>.png (65535 is 1; tools/domain_gap.py reads 16-bit PNGs at
-their depth). <out>/manifest.json holds the blocks record, the engine, FleXray's version and per
-view the subject, the crop (z_start, z_stop, the pads), the isocentre (the MOOSE label and the
-point in mm), the pose (rot_deg, xyz_mm, orthographic, sdd, delx), the attenuation factors drawn
-for the labels the crop holds or null, and the seed. <out>/RENDER.json records the settings, the
-subjects kept and passed over, the versions and the time; a second call under the same settings
-reuses every view already on disk with its row, so a job cut short carries on where it stopped.
+their depth). <out>/manifest.json holds the blocks record, the engine, the segmenter, FleXray's
+version, each kept subject's label record (the scheme, the mask files by name, the MOOSE ids
+present, the dropped names present, the unsupervised values seen, the moosez models missing) and
+per view the subject, the crop (z_start, z_stop, the pads), the isocentre (the MOOSE label and the
+point in mm), the pose (rot_deg, xyz_mm, orthographic, sdd, delx, and grid, the pose's index under
+fluxray-grid, else null), the attenuation factors drawn for the labels the crop holds or null, and
+the seed. <out>/RENDER.json records the settings, the subjects kept and passed over, the versions
+and the time; a second call under the same settings reuses every view already on disk with its
+row, so a job cut short carries on where it stopped.
+
+The segment subcommand prepares CTs for segmenter=moose only: for each subject of the list (the
+study's <out>/render-subjects.json, {folder: [subject ids]}, read at the CT folder's name, or a
+plain list) that lacks a model's masks under --out/<subject>/, it calls moosez's Python entry
+`moose(input, models, output_dir, accelerator)` with the five CT models whose labels MOOSE.yml
+stores (schwingnet.segmenters.MOOSEZ_MODELS: organs, cardiac, peripheral bones, ribs, vertebrae;
+the lungs, muscles and digestive models label nothing MOOSE stores) on a link to the CT named
+CT_<id>.nii.gz inside that folder, so moosez's outputs land under it whether it writes beside its
+input or under its output folder, in moosez's own layout, which the locator reads. The weights
+are the model zips the fetch row moose_weights landed under --weights by their release names,
+never downloaded: a model whose zip is missing refuses the whole run before moosez is imported;
+when the run starts, each zip is unpacked into moosez's own models directory as moosez's download
+would unpack it, with the model_version.json naming the release URL that moosez reads before
+downloading, a model already there under that URL left as it is, and moosez's metadata is held
+equal to this tool's copy of it first, since moosez downloads a model whose URL differs. --plan
+prints the plan (the subjects, what each lacks, the zips found, the refusals) and stops. SPINEPS
+is never run here: --segmenter spineps is refused with the owner's reason, its production array
+is not approved; its existing masks are read under --spineps. Which file names moosez's library
+entry writes, and whether it reads a CT through the link, could not be run here; the plan is
+what the tests hold.
 
 numpy, torch, nibabel, Pillow and fxr are imported only when a render is asked for, so the
 orchestrator and the tests can load this file where they are missing. tools/ never goes on
@@ -75,7 +112,6 @@ for folder in (ROOT / "vendor" / "beethoven-qa" / "src", ROOT / "src"):
         sys.path.insert(0, str(folder))
 
 CT_NAME = "ct.nii.gz"
-MASK_FOLDER = "segmentations"
 SEARCH_DEPTH = 4
 AIR_HU = -1000.0
 HU_WINDOW = (-1000.0, 2000.0)
@@ -85,37 +121,32 @@ CROP_TAU = 0.5
 PROTOCOL = "all_structures_flexray_v4"
 DATASET = "MOOSE"
 TRAINING_BASE = "base"
-
-
-def _structure_map():
-    """TotalSegmentator v2.0.1's structure names to MOOSE's stored label names, in the order the
-    masks are written into the label volume (a later mask wins where two overlap). Everything
-    else TotalSegmentator segments is unsupervised by FleXray's protocol and stays out."""
-    pairs = {"skull": "skull", "clavicula_left": "clavicle_left",
-             "clavicula_right": "clavicle_right"}
-    pairs.update({name: name for name in (
-        "scapula_left", "scapula_right", "humerus_left", "humerus_right", "femur_left",
-        "femur_right", "hip_left", "hip_right", "sacrum")})
-    pairs["vertebrae_S1"] = "sacrum"
-    pairs["sternum"] = "sternum"
-    levels = [f"C{n}" for n in range(1, 8)] + [f"T{n}" for n in range(1, 13)]
-    levels += [f"L{n}" for n in range(1, 6)]
-    pairs.update({f"vertebrae_{level}": f"vertebra_{level.lower()}" for level in levels})
-    pairs.update({f"rib_{side}_{n}": f"rib_{side}_{n}"
-                  for side in ("left", "right") for n in range(1, 13)})
-    pairs.update({name: name for name in (
-        "kidney_left", "kidney_right", "liver", "spleen", "lung_upper_lobe_left",
-        "lung_lower_lobe_left", "lung_upper_lobe_right", "lung_middle_lobe_right",
-        "lung_lower_lobe_right")})
-    pairs["heart"] = "heart_myocardium"
-    return pairs
-
-
-TOTALSEG_TO_MOOSE = _structure_map()
+# moosez 3.2's weights for the five models the segment subcommand runs (its models.py,
+# MODEL_METADATA): the folder each zip unpacks to under moosez's models directory, and the
+# release asset, which the fetch row moose_weights of grid/run-platform-fetch.sh lands under
+# moose_weights/raw by its file name. Copied here so the plan needs no moosez; where moosez
+# imports, its own metadata is held equal before anything runs, since moosez downloads a model
+# whose recorded URL differs from its own.
+MOOSEZ_RELEASE = "https://github.com/ENHANCE-PET/MOOSE/releases/download/moosez-v.3.1.3/"
+MOOSEZ_WEIGHTS = {
+    "clin_ct_organs": ("Dataset123_Organs", "clin_ct_organs_ras_07052025.zip"),
+    "clin_ct_cardiac": ("Dataset888_Cardiac", "clin_ct_cardiac_ras_21052025.zip"),
+    "clin_ct_peripheral_bones": ("Dataset666_Peripheral-Bones",
+                                 "clin_ct_peripheral_bones_ras_07052025.zip"),
+    "clin_ct_ribs": ("Dataset444_Ribs", "clin_ct_ribs_ras_08052025.zip"),
+    "clin_ct_vertebrae": ("Dataset111_Vertebrae", "clin_ct_vertebrae_ras_21052025.zip"),
+}
+MODEL_VERSION_FILE = "model_version.json"
+SPINEPS_REFUSAL = ("SPINEPS is never run here: its production array is not approved (the owner's "
+                   "word); its existing masks are read under --spineps")
 
 
 class SkipSubject(Exception):
     """A subject the renders pass over, with the reason RENDER.json records."""
+
+
+class SegmentError(Exception):
+    """A segment run refused before anything is written, with the reason."""
 
 
 # --- names and order ------------------------------------------------------------------------------
@@ -126,6 +157,14 @@ def rules():
     from schwingnet import render_blocks
 
     return render_blocks
+
+
+@functools.lru_cache(maxsize=1)
+def schemes():
+    """schwingnet.segmenters, the names, the alphabets and the maps of the two segmenters."""
+    from schwingnet import segmenters
+
+    return segmenters
 
 
 @functools.lru_cache(maxsize=1)
@@ -148,15 +187,15 @@ def rank_key(salt, text):
     return hashlib.sha256(f"{salt}:{text}".encode("utf-8", "surrogatepass")).hexdigest()
 
 
-def find_subjects(ct_root):
-    """Every folder one to SEARCH_DEPTH levels under ct_root that holds a CT and its masks, as a
-    sorted list of paths relative to ct_root; a subject's own folders are not searched further."""
+def ct_subjects(ct_root):
+    """Every folder one to SEARCH_DEPTH levels under ct_root that holds a CT, as a sorted list of
+    paths relative to ct_root; a subject's own folders are not searched further."""
     root = Path(ct_root)
     found = []
     for folder, names, files in os.walk(root):
         here = Path(folder)
         depth = len(here.relative_to(root).parts)
-        if depth >= 1 and CT_NAME in files and MASK_FOLDER in names:
+        if depth >= 1 and CT_NAME in files:
             found.append(here.relative_to(root).as_posix())
             names[:] = []
             continue
@@ -164,6 +203,29 @@ def find_subjects(ct_root):
             names[:] = []
         names.sort()
     return sorted(found)
+
+
+def has_masks(subject, segmenter, roots):
+    """Whether the segmenter's locator finds the subject's masks under its folder."""
+    parts = blocks_tool()
+    root = roots.get(segmenter)
+    if segmenter == "spineps":
+        return parts.locate_spineps(subject, root) is not None
+    return bool(parts.locate_moose(subject, root))
+
+
+def find_subjects(ct_root, segmenter=None, roots=None):
+    """The subjects under ct_root (ct_subjects), as ids; with a segmenter named, only those
+    whose masks that scheme's locator finds under roots[segmenter], which must be given."""
+    found = ct_subjects(ct_root)
+    if segmenter is None:
+        return found
+    problems = schemes().scheme_problems(segmenter)
+    if problems:
+        raise ValueError("; ".join(problems))
+    if not roots or roots.get(segmenter) is None:
+        raise ValueError(f"segmenter={segmenter}: no masks folder given (roots[{segmenter!r}])")
+    return [subject for subject in found if has_masks(subject, segmenter, roots)]
 
 
 def image_stem(subject):
@@ -200,54 +262,30 @@ def read_nifti(path):
     return np.ascontiguousarray(array), np.asarray(image.affine, dtype=np.float64)
 
 
-def read_mask(path, shape):
-    """A mask as booleans on the CT's grid; a mask on another grid passes the subject over."""
-    import nibabel
+def moose_names():
+    """MOOSE's stored label names by id, from schwingnet.segmenters' copy of FleXray's
+    fxr/configs/datasets/MOOSE.yml, background left out."""
+    return {i: name for i, name in schemes().MOOSE_STORED.items() if i > 0}
+
+
+def load_subject(folder, subject, blocks, roots, supervised):
+    """One subject read for rendering: the CT as read, its affine, the label volume of MOOSE's
+    stored ids the segmenter block builds from its masks, and that volume's record; passed over
+    when no mask is found, when the masks hold nothing, or nothing FleXray's protocol supervises,
+    since such a subject gives FleXray's sampler no crop to draw."""
     import numpy as np
 
-    array = np.asarray(nibabel.load(str(path)).dataobj)
-    while array.ndim > 3 and array.shape[-1] == 1:
-        array = array[..., 0]
-    if array.shape != shape:
-        raise SkipSubject(f"{Path(path).name} is on another grid than the CT")
-    return array > 0
-
-
-@functools.lru_cache(maxsize=1)
-def moose_labels():
-    """MOOSE's stored label names by id, from FleXray's own dataset spec
-    (fxr/configs/datasets/MOOSE.yml)."""
-    from fxr.protocols import load_dataset_spec_by_name
-
-    stored = load_dataset_spec_by_name(DATASET).stored_labels
-    return {int(i): str(name) for i, name in stored.items()}
-
-
-def label_volume(folder, shape):
-    """One label volume of MOOSE's stored ids from the subject's TotalSegmentator masks, uint8,
-    each structure of TOTALSEG_TO_MOOSE written where its mask is set; a mask that is missing is
-    passed over, since TotalSegmentator writes an empty one for an absent structure."""
-    import numpy as np
-
-    ids = {name: i for i, name in moose_labels().items()}
-    label = np.zeros(shape, dtype=np.uint8)
-    for structure, name in TOTALSEG_TO_MOOSE.items():
-        path = Path(folder) / MASK_FOLDER / f"{structure}.nii.gz"
-        if not path.is_file():
-            continue
-        mask = read_mask(path, shape)
-        if mask.any():
-            label[mask] = ids[name]
-    return label
-
-
-def load_subject(folder, subject):
-    """One subject read for rendering: the CT as read, its affine and its MOOSE label volume."""
+    parts = blocks_tool()
     volume, affine = read_nifti(Path(folder) / CT_NAME)
-    label = label_volume(folder, volume.shape)
+    try:
+        label, record = parts.NAMES["segmenter"][blocks.segmenter](subject, volume.shape, roots)
+    except parts.MaskProblem as problem:
+        raise SkipSubject(str(problem)) from problem
     if not label.any():
-        raise SkipSubject("no supervised structure in its masks")
-    return {"id": subject, "volume": volume, "affine": affine, "label": label}
+        raise SkipSubject("no structure in its masks")
+    if not np.isin(np.unique(label), np.asarray(supervised)).any():
+        raise SkipSubject("no structure FleXray supervises in its masks")
+    return {"id": subject, "volume": volume, "affine": affine, "label": label, "record": record}
 
 
 # --- the engines ----------------------------------------------------------------------------------
@@ -317,7 +355,7 @@ class Engine:
         self.device = torch.device(device)
         self.lut = label_lut()
         self.supervised = supervised_ids(self.lut)
-        self.names = moose_labels()
+        self.names = moose_names()
 
     def row(self, crop, point, label_id, pose, factors, ids_held):
         """A view's manifest row but its file, subject, view, seed and time."""
@@ -332,6 +370,20 @@ class Engine:
             "pose": pose,
             "attenuation": attenuation,
         }
+
+    def no_supervised_crop(self, weights):
+        """Passed over when no crop weighs anything: FleXray's sampler would draw nothing."""
+        if float(weights.sum()) <= 0.0:
+            raise SkipSubject("no crop holds a structure FleXray supervises")
+
+
+def pose_record(pose, orthographic):
+    """A pose as the manifest records it: degrees, mm, the beam, the distance, the pixel and the
+    grid index under fluxray-grid."""
+    return {"rot_deg": [float(v) for v in pose["rot"][0].tolist()],
+            "xyz_mm": [float(v) for v in pose["xyz"][0].tolist()],
+            "orthographic": bool(orthographic), "sdd": float(pose["sdd"]),
+            "delx": float(pose["delx"]), "grid": pose.get("grid")}
 
 
 class BlocksEngine(Engine):
@@ -350,9 +402,11 @@ class BlocksEngine(Engine):
                 "delx": list(parts.DELX_RANGE), "orthographic": parts.ORTHOGRAPHIC_SHARE,
                 "orientation": parts.ORIENTATION, "hu_window": list(parts.HU_WINDOW),
                 "air_clamp_hu": parts.AIR_CLAMP_HU, "crop_depth": CROP_DEPTH,
+                "crop_overlap": rules().CROP_OVERLAP.get(self.blocks.crop),
                 "attenuation_probability": parts.ATTENUATION_PROBABILITY,
                 "attenuation_range": list(parts.ATTENUATION_RANGE),
-                "attenuation_distribution": parts.ATTENUATION_DISTRIBUTION}
+                "attenuation_distribution": parts.ATTENUATION_DISTRIBUTION,
+                "grid": grid_record()}
 
     def prepare(self, subject):
         """The volume windowed and clamped, the crops planned with what they hold, and weighed."""
@@ -362,8 +416,9 @@ class BlocksEngine(Engine):
         plan = parts.NAMES["crop"][blocks.crop](int(volume.shape[2]))
         crops = parts.crop_content(subject["label"], plan)
         if not crops:
-            raise SkipSubject("no crop holds a supervised structure")
+            raise SkipSubject("no crop holds a structure")
         weights = parts.NAMES["crop_sampler"][blocks.crop_sampler](crops, self.lut)
+        self.no_supervised_crop(weights)
         return {"volume": volume, "label": subject["label"], "affine": subject["affine"],
                 "crops": crops, "weights": weights}
 
@@ -376,7 +431,8 @@ class BlocksEngine(Engine):
         crop = prepared["crops"][parts.draw_crop(prepared["weights"])]
         affine = torch.from_numpy(parts.crop_affine(prepared["affine"], crop))
         volume = torch.from_numpy(parts.cut(prepared["volume"], crop, AIR_HU))[None].to(self.device)
-        point, label_id = parts.NAMES["isocentre"][blocks.isocentre](crop, affine, volume)
+        aim = parts.NAMES["isocentre"][blocks.isocentre]
+        point, label_id = aim(crop, affine, volume, self.supervised)
         pose = parts.NAMES["pose"][blocks.pose](self.sampler)
         orthographic = parts.NAMES["projection"][blocks.projection]()
         attenuate = parts.NAMES["attenuation"][blocks.attenuation]
@@ -388,10 +444,7 @@ class BlocksEngine(Engine):
         view_request = parts.request(pose, point, orthographic, blocks.detector, blocks.ray_samples)
         images = parts.render(volume, label, affine.to(self.device), view_request, keywords)
         image = parts.NAMES["edit"][blocks.edit](parts.NAMES["scale"][blocks.scale](images)[0, 0])
-        pose_row = {"rot_deg": [float(v) for v in pose["rot"][0].tolist()],
-                    "xyz_mm": [float(v) for v in pose["xyz"][0].tolist()],
-                    "orthographic": bool(orthographic), "sdd": pose["sdd"], "delx": pose["delx"]}
-        row = self.row(crop, point, label_id, pose_row, factors, crop["ids"])
+        row = self.row(crop, point, label_id, pose_record(pose, orthographic), factors, crop["ids"])
         return image.float().cpu().numpy(), row
 
 
@@ -399,7 +452,7 @@ class RuntimeEngine(Engine):
     """FleXray's own code for every step: its packer's window and crops, its loader's air clamp,
     its crop weights and sampler, its label projection, its SegmentationDRRRuntime at the MOOSE
     effective profile with the detector, the ray samples and the attenuation gate the blocks
-    name, one view a call."""
+    name, one view a call; under pose fluxray-grid, its primitives with the explicit pose."""
 
     name = "flexray-runtime"
 
@@ -415,23 +468,41 @@ class RuntimeEngine(Engine):
         self.parts = blocks_tool()
         self.projection = TrainingLabelProjection.from_label_remap(label_remap())
         self.protocol, self.profile = runtime_profile(blocks)
-        self.runtime = SegmentationDRRRuntime.from_effective_config(
-            {"protocol": self.protocol, "drr_model": self.profile}, device=self.device)
-        self.attenuation_probability = float(self.runtime.render_config.attenuation_prob)
+        self.grid = blocks.pose == "fluxray-grid"
+        self.runtime = None
+        self.attenuation_probability = 0.0
+        if not self.grid:
+            self.runtime = SegmentationDRRRuntime.from_effective_config(
+                {"protocol": self.protocol, "drr_model": self.profile}, device=self.device)
+            self.attenuation_probability = float(self.runtime.render_config.attenuation_prob)
 
     def profile_record(self):
-        return {"effective_profile": self.profile, "protocol": self.protocol["name"],
-                "hu_window": list(HU_WINDOW), "air_clamp_hu": AIR_CLAMP_HU,
-                "crop_depth": CROP_DEPTH, "crop_tau": CROP_TAU}
+        return {"effective_profile": None if self.grid else self.profile,
+                "protocol": self.protocol["name"], "hu_window": list(HU_WINDOW),
+                "air_clamp_hu": AIR_CLAMP_HU, "crop_depth": CROP_DEPTH, "crop_tau": CROP_TAU,
+                "crop_overlap": rules().CROP_OVERLAP.get(self.blocks.crop),
+                "grid": grid_record() if self.grid else None}
+
+    def crop_specs(self, depth):
+        """The crops as FleXray's packer plans them (plan_z_crops at the recipe's overlap), or
+        the whole volume as one crop (a CropSpec with no pad, what crop_z and offset_affine take)
+        under crop=whole."""
+        from fxr.datasets.ct_crops import CropSpec, plan_z_crops
+
+        if self.blocks.crop == "whole":
+            return (CropSpec(0, 0, depth, 0, 0),)
+        overlap = rules().CROP_OVERLAP[self.blocks.crop]
+        return plan_z_crops(depth, CROP_DEPTH, max_overlap=overlap)
 
     def prepare(self, subject):
         """The pack and the loader: the HU window to float16 (CTPreprocessing.apply), the air clamp
         the loader applies (_apply_ct_hu_bounds), the crops planned and described as the packer
         describes them (plan_z_crops, crop_z, crop_metadata), the background-only ones dropped,
-        and the weights of the training sampler (inverse_label_frequency_weights)."""
+        and the weights of the training sampler (inverse_label_frequency_weights), or every crop
+        alike under crop_sampler=uniform."""
         import numpy as np
         import torch
-        from fxr.datasets.ct_crops import crop_metadata, crop_z, plan_z_crops
+        from fxr.datasets.ct_crops import crop_metadata, crop_z
         from fxr.datasets.preprocessing import CTPreprocessing
         from fxr.datasets.runtime import _apply_ct_hu_bounds
         from fxr.datasets.sampling import inverse_label_frequency_weights
@@ -440,7 +511,7 @@ class RuntimeEngine(Engine):
         loaded = _apply_ct_hu_bounds(torch.from_numpy(stored.astype(np.float32)),
                                      hu_min=AIR_HU, air_clamp_hu=AIR_CLAMP_HU)
         crops = []
-        for spec in plan_z_crops(int(subject["volume"].shape[-1]), CROP_DEPTH):
+        for spec in self.crop_specs(int(subject["volume"].shape[-1])):
             label_crop = crop_z(subject["label"], spec, fill_value=0)
             if not np.any(label_crop != 0):
                 continue
@@ -451,9 +522,13 @@ class RuntimeEngine(Engine):
                           "ids": [int(i) for i in meta["crop_foreground_label_ids"]],
                           "centroids": [tuple(c) for c in meta["fg_centroids_ijk"]]})
         if not crops:
-            raise SkipSubject("no crop holds a supervised structure")
-        weights = inverse_label_frequency_weights([c["ids"] for c in crops], self.lut,
-                                                  tau=CROP_TAU, class_aggregation="max")
+            raise SkipSubject("no crop holds a structure")
+        if self.blocks.crop_sampler == "uniform":
+            weights = torch.ones(len(crops), dtype=torch.float64)
+        else:
+            weights = inverse_label_frequency_weights([c["ids"] for c in crops], self.lut,
+                                                      tau=CROP_TAU, class_aggregation="max")
+        self.no_supervised_crop(weights)
         return {"volume": loaded.numpy(), "label": subject["label"], "affine": subject["affine"],
                 "crops": crops, "weights": weights}
 
@@ -464,25 +539,36 @@ class RuntimeEngine(Engine):
 
         return int(next(iter(WeightedRandomSampler(weights, num_samples=1, replacement=True))))
 
-    def view(self, prepared, subject):
-        """One view through SegmentationDRRRuntime.render, as fxr-render calls it
-        (fxr/launch/render.py, render_dataset): the native labels validated by the projection,
-        the supervised centroids, the collapse map and the native attenuated ids."""
+    def cut(self, prepared, subject):
+        """The drawn crop of the volume and the labels as FleXray's loader hands them to its
+        renderer: the crop, the volume with air in the pads, the native labels validated by the
+        projection (the pack's label item carries a channel axis and the loader batches one
+        subject, so the projection reads (1, 1, D, H, W) and gives back (1, D, H, W), as it does
+        for fxr-render), and the affine moved to the crop."""
         import numpy as np
         import torch
         from fxr.datasets.ct_crops import crop_z, offset_affine
-        from fxr.models.camera.runtime import scale_rendered_images
 
         crop = prepared["crops"][self.draw_crop(prepared["weights"])]
         spec = crop["spec"]
         volume = torch.from_numpy(crop_z(prepared["volume"], spec, fill_value=AIR_HU))[None]
-        volume = volume.to(self.device)
-        # The pack's label item carries a channel axis and the loader batches one subject, so the
-        # projection reads (1, 1, D, H, W) and gives back (1, D, H, W), as it does for fxr-render.
         label = torch.from_numpy(crop_z(prepared["label"], spec, fill_value=0).astype(np.int64))
         native = self.projection.validated_native_ids(label[None, None].to(self.device),
                                                       source=f"CT {subject}", require_mapped=True)
         affine = torch.from_numpy(offset_affine(prepared["affine"], spec))
+        return crop, volume.to(self.device), native, affine
+
+    def view(self, prepared, subject):
+        """One view through SegmentationDRRRuntime.render, as fxr-render calls it
+        (fxr/launch/render.py, render_dataset): the native labels validated by the projection,
+        the supervised centroids, the collapse map and the native attenuated ids; or, under pose
+        fluxray-grid, through the explicit-pose primitives (view_grid)."""
+        import torch
+        from fxr.models.camera.runtime import scale_rendered_images
+
+        if self.grid:
+            return self.view_grid(prepared, subject)
+        crop, volume, native, affine = self.cut(prepared, subject)
         kept = [n for n, i in enumerate(crop["ids"]) if i in self.supervised]
         ids_kept = [crop["ids"][n] for n in kept]
         centroids = torch.tensor([crop["centroids"][n] for n in kept], dtype=torch.float32)
@@ -501,12 +587,40 @@ class RuntimeEngine(Engine):
         if ids_kept:
             chosen = torch.as_tensor(request.isocenter).reshape(-1)[:3]
             label_id = ids_kept[self.parts.nearest_centroid(chosen, centroids, affine)]
-        pose_row = {"rot_deg": [float(v) for v in torch.as_tensor(request.rot)[0].tolist()],
-                    "xyz_mm": [float(v) for v in torch.as_tensor(request.xyz)[0].tolist()],
-                    "orthographic": bool(request.orthographic),
-                    "sdd": float(request.intrinsics["sdd"][0]),
-                    "delx": float(request.intrinsics["delx"][0])}
-        row = self.row(crop, point, label_id, pose_row, factors, crop["ids"])
+        pose = {"rot": torch.as_tensor(request.rot), "xyz": torch.as_tensor(request.xyz),
+                "sdd": request.intrinsics["sdd"][0], "delx": request.intrinsics["delx"][0]}
+        row = self.row(crop, point, label_id, pose_record(pose, request.orthographic), factors,
+                       crop["ids"])
+        return image.float().cpu().numpy(), row
+
+    def view_grid(self, prepared, subject):
+        """One of FluXray's raw renders through FleXray's primitives, since its PoseSampler
+        (fxr/drr/poses.py) draws presets and ranges and no grid: the isocentre at the volume's
+        centre (fxr.drr.compute_isocenter, volume_center), the pose drawn as the blocks engine
+        draws it (one torch.randint over the 90), the request with that pose, the fixed distance
+        and pixel and a cone beam (fxr.drr.DRRRenderRequest, the intrinsics as sample_request
+        lays them out), render_drr with no attenuation factors, and scale_rendered_images."""
+        import torch
+        from fxr.drr import DRRRenderRequest, compute_isocenter, render_drr
+        from fxr.models.camera.runtime import scale_rendered_images
+
+        blocks = self.blocks
+        crop, volume, _, affine = self.cut(prepared, subject)
+        affine = affine.to(self.device)
+        point = compute_isocenter(volume, None, affine, "volume_center")
+        pose = self.parts.pose_fluxray_grid(None)
+        intrinsics = {"sdd": [pose["sdd"]], "delx": [pose["delx"]], "dely": [pose["delx"]],
+                      "x0": [0.0], "y0": [0.0], "height": int(blocks.detector),
+                      "width": int(blocks.detector)}
+        request = DRRRenderRequest(
+            rot=pose["rot"], xyz=pose["xyz"], intrinsics=intrinsics,
+            isocenter=point.reshape(1, 3).to(torch.float32), orientation=self.parts.ORIENTATION,
+            n_samples=int(blocks.ray_samples), orthographic=False)
+        with torch.inference_mode():
+            result = render_drr(volume=volume, label=None, affine=affine, request=request)
+            image = scale_rendered_images(result.images)[0, 0]
+        centre = [float(v) for v in point.reshape(-1)[:3].tolist()]
+        row = self.row(crop, centre, None, pose_record(pose, False), None, crop["ids"])
         return image.float().cpu().numpy(), row
 
     def factors_ahead(self, centroid_count):
@@ -532,6 +646,14 @@ class RuntimeEngine(Engine):
             drawn = sample_attenuation(config.attenuation_range, len(self.supervised), self.device,
                                        torch.float32, config.attenuation_dist)
         return dict(zip(self.supervised, (float(f) for f in drawn.tolist()), strict=True))
+
+
+def grid_record():
+    """FluXray's grid as RENDER.json records it, from the pure rules."""
+    found = rules()
+    return {"poses": found.GRID_POSES, "y_mm": list(found.GRID_Y_MM),
+            "z_mm": list(found.GRID_Z_MM), "alpha_deg": list(found.GRID_ALPHA_DEG),
+            "sdd": found.GRID_SDD_MM, "pixel_mm": found.GRID_PIXEL_MM}
 
 
 def runtime_profile(blocks):
@@ -615,30 +737,35 @@ def versions():
 
 def render_settings(blocks, engine, salt):
     """What decides a view's pixels besides its subject and index; a view on disk is reused only
-    by a run under the same."""
+    by a run under the same. The blocks record carries the segmenter."""
     found = versions()
     return {"blocks": rules().as_record(blocks), "engine": engine, "salt": salt,
             "flexray": found["flexray"], "nanodrr": found["nanodrr"]}
 
 
-def earlier_rows(out, settings):
-    """The rows of the manifest an earlier run under the same settings wrote, by file; none when
-    RENDER.json is missing or names other settings, since the renders on disk are then another
-    run's, whatever their names."""
+def earlier_manifest(out, settings):
+    """The rows by file and the label records by subject that an earlier run under the same
+    settings wrote; none when RENDER.json is missing or names other settings, since the renders
+    on disk are then another run's, whatever their names."""
     record = read_json(out / "RENDER.json")
     if not isinstance(record, dict) or record.get("settings") != settings:
-        return {}
+        return {}, {}
     manifest = read_json(out / "manifest.json")
-    rows = manifest.get("views") if isinstance(manifest, dict) else manifest
-    if not isinstance(rows, list):
-        return {}
-    return {row["file"]: row for row in rows if isinstance(row, dict) and "file" in row}
+    if not isinstance(manifest, dict) or not isinstance(manifest.get("views"), list):
+        return {}, {}
+    rows = {row["file"]: row for row in manifest["views"]
+            if isinstance(row, dict) and "file" in row}
+    labels = manifest.get("labels")
+    return rows, dict(labels) if isinstance(labels, dict) else {}
 
 
-def write_manifest(out, settings, rows):
-    """manifest.json: the blocks, the engine, FleXray's version and the rows by file name."""
+def write_manifest(out, settings, rows, labels):
+    """manifest.json: the blocks, the engine, the segmenter, FleXray's version, each subject's
+    label record and the rows by file name."""
     write_json(out / "manifest.json", {
-        "blocks": settings["blocks"], "engine": settings["engine"], "flexray": settings["flexray"],
+        "blocks": settings["blocks"], "engine": settings["engine"],
+        "segmenter": settings["blocks"]["segmenter"], "flexray": settings["flexray"],
+        "labels": {subject: labels[subject] for subject in sorted(labels)},
         "views": sorted(rows.values(), key=lambda row: row["file"])})
 
 
@@ -648,9 +775,9 @@ def log(text):
 
 # --- the run --------------------------------------------------------------------------------------
 
-def check_arguments(subjects, salt, device, blocks, engine):
+def check_arguments(subjects, salt, device, blocks, engine, roots):
     """The arguments held to what the engines take, the blocks' faults in engine_problems' words
-    before anything is written."""
+    and a segmenter with no masks folder refused, before anything is written."""
     found = rules().engine_problems(engine, blocks)
     if found:
         raise rules().RenderBlockError("; ".join(found))
@@ -660,6 +787,12 @@ def check_arguments(subjects, salt, device, blocks, engine):
         raise ValueError("salt must be a non-empty string")
     if str(device).split(":")[0] not in ("cpu", "cuda"):
         raise ValueError("device must be cpu or cuda")
+    root = roots.get(blocks.segmenter)
+    if root is None:
+        raise ValueError(f"segmenter={blocks.segmenter}: no masks folder given "
+                         f"(roots[{blocks.segmenter!r}], --{blocks.segmenter} on the command line)")
+    if not Path(root).is_dir():
+        raise ValueError(f"segmenter={blocks.segmenter}: its masks folder is not a folder")
 
 
 def ordered_subjects(found, subject_ids, salt):
@@ -671,14 +804,18 @@ def ordered_subjects(found, subject_ids, salt):
 
 
 def load_or_skip(state, subject):
-    """The subject read and prepared for its engine, or None after recording why it is passed
-    over."""
+    """The subject read and prepared for its engine, its label record kept, or None after
+    recording why it is passed over."""
     started = time.perf_counter()
     folder = state["root"] / subject
+    engine = state["engine"]
     try:
         if subject not in state["found"]:
             raise SkipSubject("not found under the CT folder")
-        return state["engine"].prepare(load_subject(folder, subject))
+        loaded = load_subject(folder, subject, engine.blocks, state["roots"], engine.supervised)
+        prepared = engine.prepare(loaded)
+        state["labels"][subject] = loaded["record"]
+        return prepared
     except SkipSubject as reason:
         state["skipped"].append(f"{subject}: {reason}")
     except Exception as error:  # nibabel raises several unrelated error types, as fxr notes
@@ -717,6 +854,8 @@ def visit_subject(state, subject):
         if prepared is None:
             return False
         render_missing(state, subject, prepared, missing)
+    elif subject in state["earlier_labels"]:
+        state["labels"][subject] = state["earlier_labels"][subject]
     for f in done:
         state["rows"][f] = state["earlier"][f]
     state["reused"] += len(done)
@@ -724,38 +863,42 @@ def visit_subject(state, subject):
 
 
 def render_subjects(ct_root, out, subjects, salt, device, *, blocks, engine="blocks",
-                    subject_ids=None):
+                    subject_ids=None, roots=None):
     """Render blocks.views views of each of the first `subjects` usable CTs under ct_root, in the
-    salted order, or of the subject_ids given, into out, by the engine named; returns what was
-    rendered, the subjects kept and the ones passed over with their reasons."""
-    check_arguments(subjects, salt, device, blocks, engine)
+    salted order, or of the subject_ids given, into out, by the engine named, the masks under
+    roots[blocks.segmenter]; returns what was rendered, the subjects kept and the ones passed
+    over with their reasons."""
+    roots = {name: Path(path) for name, path in (roots or {}).items() if path is not None}
+    check_arguments(subjects, salt, device, blocks, engine, roots)
     started = time.perf_counter()
     # The engine first: one that cannot be built writes nothing.
     built = ENGINE_CLASSES[engine](blocks, device)
     out = Path(out)
     (out / "images").mkdir(parents=True, exist_ok=True)
     settings = render_settings(blocks, engine, salt)
+    earlier, earlier_labels = earlier_manifest(out, settings)
     state = {"root": Path(ct_root), "out": out, "salt": salt, "views": blocks.views,
-             "settings": settings, "earlier": earlier_rows(out, settings), "rows": {},
-             "skipped": [], "rendered_now": 0, "reused": 0, "seconds_loading": 0.0,
-             "seconds_rendering": 0.0, "engine": built}
+             "settings": settings, "earlier": earlier, "earlier_labels": earlier_labels,
+             "rows": {}, "labels": {}, "roots": roots, "skipped": [], "rendered_now": 0,
+             "reused": 0, "seconds_loading": 0.0, "seconds_rendering": 0.0, "engine": built}
     # The manifest first, holding only what this run may reuse, then RENDER.json naming this
     # run's settings, so a run cut at any point never leaves rows another run would trust.
-    write_manifest(out, settings, state["earlier"])
+    write_manifest(out, settings, state["earlier"], state["earlier_labels"])
     state["found"] = set(find_subjects(ct_root))
     kept = []
     arguments = {"ct_root": str(ct_root), "subjects": subjects, "salt": salt, "device": str(device),
-                 "engine": engine, "subject_ids": list(subject_ids) if subject_ids else None}
+                 "engine": engine, "subject_ids": list(subject_ids) if subject_ids else None,
+                 "roots": {name: str(path) for name, path in sorted(roots.items())}}
     write_json(out / "RENDER.json", run_record(state, kept, arguments, started, "running"))
     for subject in ordered_subjects(sorted(state["found"]), subject_ids, salt):
         if len(kept) >= subjects:
             break
         if visit_subject(state, subject):
             kept.append(subject)
-            write_manifest(out, settings, state["rows"])
+            write_manifest(out, settings, state["rows"], state["labels"])
             if len(kept) % 25 == 0:
                 log(f"{len(kept)} subjects kept, {state['rendered_now']} rendered now")
-    write_manifest(out, settings, state["rows"])
+    write_manifest(out, settings, state["rows"], state["labels"])
     record = run_record(state, kept, arguments, started, "done")
     write_json(out / "RENDER.json", record)
     log(f"{engine}: {len(kept)} of {subjects} subjects kept, {len(state['skipped'])} passed over, "
@@ -768,7 +911,7 @@ def run_record(state, kept, arguments, started, status):
     """RENDER.json: the settings, the arguments, the counts, the subjects, the profile and the
     versions."""
     return {
-        "version": 2,
+        "version": 3,
         "status": status,
         "settings": state["settings"],
         "arguments": arguments,
@@ -785,7 +928,225 @@ def run_record(state, kept, arguments, started, status):
     }
 
 
-def main(argv=None):
+# --- the segment subcommand -----------------------------------------------------------------------
+
+def segment_models():
+    """The moosez models the segment subcommand runs: the five whose labels MOOSE.yml stores, in
+    schwingnet.segmenters' order."""
+    return tuple(schemes().MOOSEZ_MODELS)
+
+
+def moosez_metadata():
+    """Each model's weights folder and release URL, from the copy above, so the plan imports
+    nothing of moosez (the fetch row's URLs are the same, by tests/test_flexray_render.py)."""
+    return {m: (f, MOOSEZ_RELEASE + z) for m, (f, z) in MOOSEZ_WEIGHTS.items()}
+
+
+def zip_of(url):
+    """The file name a release URL's zip lands under, as the fetch row names it."""
+    return url.rsplit("/", 1)[-1]
+
+
+def moosez_disagreements(metadata):
+    """Where moosez's own metadata (moosez/models.py, MODEL_METADATA) names another folder or
+    URL than the copy, in words: moosez would download such a model, so the run refuses first.
+    Called only where moosez imports."""
+    from moosez.constants import KEY_FOLDER_NAME, KEY_URL
+    from moosez.models import MODEL_METADATA
+
+    found = []
+    for model, (folder, url) in metadata.items():
+        entry = MODEL_METADATA.get(model, {})
+        theirs = (str(entry.get(KEY_FOLDER_NAME)), str(entry.get(KEY_URL)))
+        if theirs != (folder, url):
+            found.append(f"{model}: moosez names {theirs[0]} at {theirs[1]}, this tool {folder} "
+                         f"at {url}")
+    return found
+
+
+def read_subject_list(path, ct_root):
+    """The subjects the segment subcommand works on: render-subjects.json's list under the CT
+    folder's name (or its one folder), or a plain list of ids."""
+    data = read_json(path)
+    if isinstance(data, list):
+        return [str(s) for s in data]
+    if not isinstance(data, dict) or not data:
+        raise SegmentError("the subjects file is not render-subjects.json ({folder: [ids]}) "
+                           "or a list of subject ids")
+    key = Path(ct_root).name
+    if key in data:
+        return [str(s) for s in data[key]]
+    if len(data) == 1:
+        return [str(s) for s in next(iter(data.values()))]
+    raise SegmentError(f"the subjects file names the folders {', '.join(sorted(data))} and none "
+                       f"is the CT folder's name {key!r}")
+
+
+def weights_plan(weights, metadata):
+    """Each model's zip under --weights, by the file name of its release URL, as the fetch row
+    lands it: whether it is there and how many bytes it holds."""
+    found = {}
+    for model, (folder, url) in metadata.items():
+        path = Path(weights) / zip_of(url)
+        present = path.is_file()
+        found[model] = {"zip": path.name, "folder": folder, "present": present,
+                        "bytes": path.stat().st_size if present else 0}
+    return found
+
+
+def zips_missing(weights_found):
+    """The model zips not under --weights, in words, each a refusal: the weights are fetched by
+    their row and never downloaded here."""
+    return [f"MOOSE's model zip {w['zip']} ({m}) is not under --weights (fetch moose_weights "
+            "first); never downloaded here" for m, w in weights_found.items() if not w["present"]]
+
+
+def segment_plan(args):
+    """What a segment run would do, decided without moosez: the subjects of the list, what each
+    lacks under --out, the zips found under --weights, and the refusals."""
+    parts = blocks_tool()
+    metadata = moosez_metadata()
+    models = segment_models()
+    subjects = []
+    for subject in read_subject_list(args.subjects, args.ct_root):
+        found = parts.locate_moose(subject, args.out)
+        missing = [m for m in models if m not in found]
+        ct = (Path(args.ct_root) / subject / CT_NAME).is_file()
+        action = "done" if not missing else ("run" if ct else "no CT")
+        subjects.append({"id": subject, "ct": ct, "found": sorted(found), "missing": missing,
+                         "action": action})
+    weights = weights_plan(args.weights, metadata)
+    return {"segmenter": "moose", "ct_root": str(args.ct_root), "out": str(args.out),
+            "weights": str(args.weights), "models": list(models), "weights_found": weights,
+            "models_directory": "moosez's own (moosez.system.MODELS_DIRECTORY_PATH), where the "
+                                "zips are unpacked when the run starts",
+            "refusals": zips_missing(weights), "subjects": subjects,
+            "to_run": sum(s["action"] == "run" for s in subjects),
+            "moosez": "importable" if importlib.util.find_spec("moosez") else "absent"}
+
+
+def check_weights(plan):
+    """Every model's zip must be under --weights: a missing one refuses the run."""
+    if plan["refusals"]:
+        raise SegmentError("; ".join(plan["refusals"]))
+
+
+def safe_members(archive):
+    """A zip's members, refused when one would land outside the folder it is unpacked into."""
+    for member in archive.namelist():
+        path = Path(member)
+        if path.is_absolute() or ".." in path.parts:
+            raise SegmentError(f"{archive.filename} holds a member outside its folder: {member}")
+    return archive.namelist()
+
+
+def unpack_model(zip_path, models_dir, folder, url):
+    """One model's zip unpacked into moosez's models directory as moosez's own download unpacks
+    it (moosez/models.py, Model.__download: the members into the base directory, then
+    model_version.json naming the URL, which it reads before downloading), so moosez finds the
+    model there and fetches nothing; left as it is when its version file already names the
+    URL. Returns what was done."""
+    import zipfile
+
+    home = models_dir / folder
+    version = home / MODEL_VERSION_FILE
+    if (read_json(version) or {}).get("url") == url:
+        return "kept"
+    with zipfile.ZipFile(zip_path) as archive:
+        archive.extractall(models_dir, members=safe_members(archive))
+    if not home.is_dir():
+        raise SegmentError(f"{zip_path.name} did not unpack to {folder} under moosez's models "
+                           "directory, where moosez looks for it")
+    version.write_text(json.dumps({"url": url}) + "\n", encoding="utf-8")
+    return "unpacked"
+
+
+def unpack_weights(weights, metadata):
+    """Every model's zip from --weights unpacked into moosez's models directory, the default of
+    Model.__init__ (moosez/system.py, MODELS_DIRECTORY_PATH); returns what was done to each."""
+    from moosez import system
+
+    models_dir = Path(system.MODELS_DIRECTORY_PATH)
+    models_dir.mkdir(parents=True, exist_ok=True)
+    return {model: unpack_model(Path(weights) / zip_of(url), models_dir, folder, url)
+            for model, (folder, url) in metadata.items()}
+
+
+def segment_one(subject, args, models):
+    """moosez on one CT: a link named CT_<id>.nii.gz to the CT inside --out/<subject>/, which
+    is also moosez's output folder, so its outputs land there whichever side of its input it
+    writes on; the models' files found afterwards, and the ones the locator did not find."""
+    from moosez import moose
+
+    home = Path(args.out) / subject
+    home.mkdir(parents=True, exist_ok=True)
+    name = str(subject).rsplit("/", 1)[-1]
+    link = home / f"CT_{name}.nii.gz"
+    if not link.exists():
+        link.symlink_to((Path(args.ct_root) / subject / CT_NAME).resolve())
+    moose(str(link), list(models), str(home), args.device)
+    found = blocks_tool().locate_moose(subject, args.out)
+    return {"id": subject, "found": sorted(found),
+            "not_found": [m for m in models if m not in found]}
+
+
+def run_segment(plan, args):
+    """The segment run after its plan: the zips checked, moosez imported and its metadata held
+    equal to the copy, the zips unpacked where moosez looks, then each subject that lacks a
+    model's masks; the record written to --out/SEGMENT.json."""
+    check_weights(plan)
+    if plan["moosez"] != "importable":
+        raise SegmentError("moosez is not installed here; the plan above says what it would do")
+    metadata = moosez_metadata()
+    differs = moosez_disagreements(metadata)
+    if differs:
+        raise SegmentError("moosez's own metadata differs from this tool's copy, so it would "
+                           "download: " + "; ".join(differs))
+    record = {"plan": plan, "weights": unpack_weights(args.weights, metadata), "done": []}
+    for entry in plan["subjects"]:
+        if entry["action"] != "run":
+            continue
+        record["done"].append(segment_one(entry["id"], args, entry["missing"]))
+        write_json(Path(args.out) / "SEGMENT.json", record)
+    write_json(Path(args.out) / "SEGMENT.json", record)
+    return record
+
+
+def segment_main(argv):
+    parser = argparse.ArgumentParser(prog="flexray_render.py segment",
+                                     description="MOOSE's masks for the replication's CTs")
+    parser.add_argument("--segmenter", required=True)
+    parser.add_argument("--ct-root", required=True, type=Path)
+    parser.add_argument("--subjects", required=True, type=Path,
+                        help="render-subjects.json ({folder: [ids]}) or a list of ids")
+    parser.add_argument("--weights", required=True, type=Path,
+                        help="the folder the fetch row landed moosez's model zips in "
+                             "(moose_weights/raw)")
+    parser.add_argument("--out", required=True, type=Path, help="the moose masks folder")
+    parser.add_argument("--device", default="cuda")
+    parser.add_argument("--plan", action="store_true", help="print the plan and stop")
+    args = parser.parse_args(argv)
+    try:
+        if args.segmenter == "spineps":
+            raise SegmentError(SPINEPS_REFUSAL)
+        problems = schemes().scheme_problems(args.segmenter)
+        if problems:
+            raise SegmentError("; ".join(problems))
+        plan = segment_plan(args)
+        print(json.dumps(plan, indent=1, sort_keys=True))
+        if args.plan:
+            return 0
+        record = run_segment(plan, args)
+    except SegmentError as error:
+        print(f"segment: refused: {error}", file=sys.stderr)
+        return 2
+    print(json.dumps({"done": record["done"]}, indent=1, sort_keys=True))
+    return 0
+
+
+# --- the command line -----------------------------------------------------------------------------
+
+def render_main(argv):
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--ct-root", required=True, type=Path)
     parser.add_argument("--out", required=True, type=Path)
@@ -794,15 +1155,29 @@ def main(argv=None):
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--engine", default="blocks", choices=rules().ENGINES)
     parser.add_argument("--blocks", action="append", default=[], metavar="KEY=VALUE",
-                        help="a render block, repeatable; none is FleXray's released recipe")
+                        help="a render block, repeatable; none is FleXray's released recipe on "
+                             "SPINEPS masks")
     parser.add_argument("--subject", action="append", default=None, metavar="ID",
                         help="a subject to render, repeatable; none takes the salted order")
+    parser.add_argument("--spineps", type=Path, default=None, help="the SPINEPS masks folder")
+    parser.add_argument("--moose", type=Path, default=None, help="the MOOSE masks folder")
     args = parser.parse_args(argv)
     blocks = rules().parse(args.blocks)
+    roots = {name: path for name, path in (("spineps", args.spineps), ("moose", args.moose))
+             if path is not None}
     done = render_subjects(args.ct_root, args.out, args.subjects, args.salt, args.device,
                            blocks=blocks, engine=args.engine,
-                           subject_ids=tuple(args.subject) if args.subject else None)
+                           subject_ids=tuple(args.subject) if args.subject else None, roots=roots)
     return 0 if done["subjects"] else 1
+
+
+def main(argv=None):
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if argv and argv[0] == "segment":
+        return segment_main(argv[1:])
+    if argv and argv[0] == "render":
+        argv = argv[1:]
+    return render_main(argv)
 
 
 if __name__ == "__main__":

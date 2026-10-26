@@ -9,7 +9,7 @@
    "init": null,
    "role": "trial",
    "size": 64,
-   "slug": "trial-resnet18-64px-b5888752",
+   "slug": "trial-resnet18-64px-c2102ce2",
    "weights": "resnet18"
   },
   {
@@ -20,7 +20,7 @@
    "init": null,
    "role": "trial",
    "size": 64,
-   "slug": "trial-resnet18-64px-0bdc27d6",
+   "slug": "trial-resnet18-64px-0eba3c6b",
    "weights": "resnet18"
   },
   {
@@ -36,7 +36,7 @@
    "init": null,
    "role": "trial",
    "size": 64,
-   "slug": "trial-resnet18-64px-4f585a05",
+   "slug": "trial-resnet18-64px-924e37dd",
    "weights": "resnet18"
   },
   {
@@ -47,7 +47,7 @@
    "init": null,
    "role": "trial",
    "size": 96,
-   "slug": "trial-resnet18-96px-9c90963e",
+   "slug": "trial-resnet18-96px-768a6a88",
    "weights": "resnet18"
   },
   {
@@ -60,7 +60,7 @@
    "init": null,
    "role": "trial",
    "size": 64,
-   "slug": "trial-resnet18-64px-ede3daa6",
+   "slug": "trial-resnet18-64px-dd84a67f",
    "weights": "resnet18"
   },
   {
@@ -78,7 +78,7 @@
    "init": null,
    "role": "trial",
    "size": 64,
-   "slug": "trial-resnet18-64px-8606ec55",
+   "slug": "trial-resnet18-64px-87684670",
    "weights": "resnet18"
   }
  ],

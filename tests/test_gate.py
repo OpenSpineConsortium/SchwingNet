@@ -370,48 +370,64 @@ class GateTest(unittest.TestCase):
         self.assertEqual(self.gate("fetch", "nosuchset").returncode, 64)
         self.assertEqual(self.submitted(), [])
 
-    def test_fluxray_is_a_fetch_word_with_the_owners_hugging_face_token(self):
-        # FluXray (hf_flexray_data), the optional group of bench flexray_drr_gap, is a public repository
-        # fetched with the owner's token as the other hf rows are: never in the chain, its stated size
-        # the card's 20 GB, refused on the login node while the token file is missing or readable by
-        # others, and queued as one platform fetch otherwise
+    MOOSE_MODELS = ("clin_ct_vertebrae", "clin_ct_peripheral_bones", "clin_ct_ribs", "clin_ct_organs",
+                    "clin_ct_cardiac")
+    MOOSE_RELEASE = "https://github.com/ENHANCE-PET/MOOSE/releases/download/moosez-v.3.1.3/"
+
+    def moose_zips(self):
+        """The model zips the row moose_weights of grid/run-platform-fetch.sh names, by their file
+        names, read from the row as the gate and the bench job read them."""
+        args = subprocess.run(["bash", str(self.repo / "grid" / "run-platform-fetch.sh"), "--args", "moose_weights"],
+                              capture_output=True, text=True).stdout.split()
+        return [url.rsplit("/", 1)[1] for url in args]
+
+    def moose_weights_landed(self, names):
+        raw = self.data / "moose_weights" / "raw"
+        raw.mkdir(parents=True, exist_ok=True)
+        for name in names:
+            (raw / name).write_bytes(b"zip")
+
+    def test_moose_weights_is_a_fetch_word_for_the_five_model_zips_outside_the_chain(self):
+        # MOOSE's weights (moose_weights), what bench flexray_drr_seg runs on, are the five model zips
+        # of the moosez CT models whose labels FleXray's MOOSE.yml stores (schwingnet.segmenters
+        # MOOSEZ_MODELS; lungs, muscles and digestive store none), by their release URLs, one row of the owner's own lines:
+        # never in the chain, no token file, no size stated (the job reads each zip's exact size before
+        # a byte lands), GPL-3.0 as moosez's repository says, and queued as one platform fetch
         script = self.repo / "grid" / "run-platform-fetch.sh"
-        row = [line for line in script.read_text(encoding="utf-8").splitlines() if line.startswith("hf_flexray_data|")]
+        row = [line for line in script.read_text(encoding="utf-8").splitlines() if line.startswith("moose_weights|")]
         self.assertEqual(len(row), 1, row)
-        self.assertIn("|hf-token|20|", row[0])
-        self.assertIn("|open|--repo VictorButoi/flexray-data --repo-type dataset|TOKEN_FILE=~/.hf/token.env ", row[0])
-        stated = subprocess.run(["bash", str(script), "--stated", "hf_flexray_data"], capture_output=True, text=True)
-        self.assertEqual(stated.stdout.strip(), "20")
-        done = self.gate_at_home("fetch", "hf_flexray_data")
-        self.assertEqual(done.returncode, 2, done.stdout)
-        self.assertIn("~/.hf/token.env", done.stdout)
-        token = self.tmp / "home" / ".hf" / "token.env"
-        token.parent.mkdir(parents=True, exist_ok=True)
-        token.write_text("HF_TOKEN=hf_" + "Ab" * 17 + "\n", encoding="utf-8")
-        token.chmod(0o644)
-        done = self.gate_at_home("fetch", "hf_flexray_data")
-        self.assertEqual(done.returncode, 2, done.stdout)
-        self.assertIn("mode 644", done.stdout)
-        self.assertEqual(self.submitted(), [])
-        token.chmod(0o600)
-        done = self.gate_at_home("fetch", "hf_flexray_data")
+        fields = row[0].split("|")
+        self.assertEqual(fields[1:3], ["url", "0"])
+        self.assertIn("GPL-3.0", fields[3])
+        self.assertEqual(fields[4], "open")
+        urls = fields[5].split()
+        self.assertEqual(len(urls), 5, urls)
+        names = [url[len(self.MOOSE_RELEASE):] for url in urls]
+        for url, name in zip(urls, names):
+            self.assertTrue(url.startswith(self.MOOSE_RELEASE) and url.endswith(".zip"), url)
+        for model in self.MOOSE_MODELS:
+            self.assertEqual(len([name for name in names if name.startswith(model + "_")]), 1, (model, names))
+        self.assertEqual(self.moose_zips(), names)
+        stated = subprocess.run(["bash", str(script), "--stated", "moose_weights"], capture_output=True, text=True)
+        self.assertEqual(stated.stdout.strip(), "0")
+        self.assertEqual(subprocess.run(["bash", str(script), "--args", "no;such"], capture_output=True, text=True).returncode, 64)
+        done = self.gate_at_home("fetch", "moose_weights")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
-        self.assertNotIn("Ab" * 17, done.stdout + done.stderr)
-        self.assertIn("hf_flexray_data: job", done.stdout)
+        self.assertIn("moose_weights: job", done.stdout)
         jobs = self.line_of("platform-fetch.sbatch")
         self.assertEqual(len(jobs), 1, jobs)
-        self.assertIn("ID=hf_flexray_data", jobs[0])
-        self.assertIn("dp_hf_flexray_data", self.recorded())
-        # the open chain never carries it, and the dry run names its route
+        self.assertIn("ID=moose_weights", jobs[0])
+        self.assertIn("dp_moose_weights", self.recorded())
+        # the open chain never carries it, and the dry run names its route, every URL and that no size is stated
         env = dict(self.gate_env(), HOME=str(self.tmp / "home"), HPCW_DRY="1")
         chain = subprocess.run(["bash", str(script)], env=env, capture_output=True, text=True, timeout=120)
-        self.assertNotIn("hf_flexray_data", chain.stdout.split("Not submitted")[0])
-        dry = subprocess.run(["bash", str(script), "--only", "hf_flexray_data"], env=env, capture_output=True, text=True,
+        self.assertNotIn("moose_weights", chain.stdout.split("Not submitted")[0])
+        dry = subprocess.run(["bash", str(script), "--only", "moose_weights"], env=env, capture_output=True, text=True,
                              timeout=120)
         self.assertEqual(dry.returncode, 0, dry.stdout + dry.stderr)
-        self.assertIn("would submit hf_flexray_data: ROUTE=hf-token ARGS='--repo VictorButoi/flexray-data --repo-type dataset'",
-                      dry.stdout)
-        self.assertIn("size budget: 1 sources, 20 GB stated", dry.stdout)
+        self.assertIn(f"would submit moose_weights: ROUTE=url ARGS='{' '.join(urls)}'", dry.stdout)
+        self.assertIn("size budget: 1 sources, 0 GB stated", dry.stdout)
+        self.assertIn("no size stated on the line for: moose_weights", dry.stdout)
 
     def test_v1_with_every_input_there_submits_the_run_alone(self):
         self.environments_ready()
@@ -1908,7 +1924,8 @@ esac
 
     def drr_gap_inputs(self):
         """Every input bench flexray_drr_gap refuses without: FleXray's bundle, a whole sample index,
-        the TotalSegmentator CTs and the ImageNet file; the index's path comes back."""
+        the TotalSegmentator CTs, the SPINEPS and MOOSE mask folders and the ImageNet file; the
+        index's path comes back."""
         bundle = self.data / "hf_flexray_weights" / "raw"
         bundle.mkdir(parents=True, exist_ok=True)
         (bundle / "ensemble.json").write_text("{}\n", encoding="utf-8")
@@ -1917,13 +1934,16 @@ esac
         (run / "samples.sqlite").write_bytes(b"")
         (self.data / "_samples" / "CURRENT").write_text(run.name + "\n", encoding="utf-8")
         (self.data / "totalsegmentator_v201" / "s0001").mkdir(parents=True, exist_ok=True)
+        (self.data / "spineps").mkdir(exist_ok=True)
+        (self.data / "moose").mkdir(exist_ok=True)
         self.weights_ready()
         return run / "samples.sqlite"
 
     def test_bench_flexray_drr_gap_refuses_each_missing_input_then_queues_one_gpu_job(self):
         # the DRR domain-gap study (tools/domain_gap.py) is a bench id of its own: refused, naming one
-        # input a send, until FleXray's weights, a whole sample index, the TotalSegmentator CTs and the
-        # ImageNet file are on the volume; FluXray is optional, said and never waited for
+        # input a send, until FleXray's weights, a whole sample index, the TotalSegmentator CTs, the
+        # SPINEPS masks, the MOOSE masks (which bench flexray_drr_seg makes) and the ImageNet file are
+        # on the volume; FluXray is optional, said and never waited for
         refused = self.gate("bench", "flexray_drr_gap")
         self.assertEqual(refused.returncode, 2, refused.stdout)
         self.assertIn("fetch hf_flexray_weights first", refused.stdout)
@@ -1941,6 +1961,14 @@ esac
         self.assertEqual(refused.returncode, 2, refused.stdout)
         self.assertIn("totalsegmentator_v201", refused.stdout)
         (self.data / "totalsegmentator_v201" / "s0001").mkdir(parents=True)
+        refused = self.gate("bench", "flexray_drr_gap")
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn(f"the SPINEPS masks at {self.data}/spineps", refused.stdout)
+        (self.data / "spineps").mkdir()
+        refused = self.gate("bench", "flexray_drr_gap")
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn(f"the MOOSE masks at {self.data}/moose (bench flexray_drr_seg makes them)", refused.stdout)
+        (self.data / "moose").mkdir()
         refused = self.gate("bench", "flexray_drr_gap")
         self.assertEqual(refused.returncode, 2, refused.stdout)
         self.assertIn("resnet18-f37072fd.pth", refused.stdout)
@@ -1997,7 +2025,8 @@ esac
         self.assertTrue(runs[0].endswith(
             f"tools/domain_gap.py run --groups data/domain_gap/groups.json --data-root {self.data} --index {index}"
             f" --weights {self.data / 'hf_flexray_weights' / 'raw'} --imagenet {self.models / 'resnet18-f37072fd.pth'}"
-            f" --out {out} --device cuda --frozen data/splits/test-persons.json"), runs[0])
+            f" --out {out} --device cuda --frozen data/splits/test-persons.json"
+            f" --spineps {self.data}/spineps --moose {self.data}/moose"), runs[0])
         self.assertTrue(boxed[-1].endswith(f"tools/domain_gap.py summary --out {out}"), boxed)
         self.assertTrue(boxed.index(runs[0]) < len(boxed) - 1)
         report = (self.repo / "grid" / "logs" / "BENCH-flexray_drr_gap.md").read_text(encoding="utf-8")
@@ -2009,6 +2038,7 @@ esac
         self.assertEqual(masked.splitlines(), list(self.DRR_GAP_SUMMARY))
         self.assertIn("- FluXray: not on the data root (fetch hf_flexray_data)", report)
         self.assertIn(f"- environment: {self.DRR_GAP_PINS}; index: {index};", report)
+        self.assertIn(f"; masks: {self.data}/spineps, {self.data}/moose\n", report)
         self.assertIn("- exit 0 at ", report)
         # the run's own output names files, so it stays in the run folder and reaches neither the
         # report nor the job's log
@@ -2029,6 +2059,123 @@ esac
         self.assertNotIn(token, report + done.stdout)
         self.assertIn(f"--index {other} ", self.boxed()[-1])
         self.assertEqual(len([line for line in self.boxed() if "domain_gap.py summary" in line]), 1)
+        self.assertFalse((self.repo / "grid" / "logs" / "HOLD").exists())
+
+    def test_bench_flexray_drr_seg_refuses_each_missing_input_then_queues_one_gpu_job(self):
+        # MOOSE's masks for the study's CTs are a bench id of their own, sent before flexray_drr_gap:
+        # refused, naming one input a send, until the TotalSegmentator CTs, the SPINEPS masks (the
+        # choice of CTs is made among them) and every one of the five model zips are on the volume;
+        # then one GPU job, never requeued, and a second send while it is live is refused
+        refused = self.gate("bench", "flexray_drr_seg")
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn("totalsegmentator_v201", refused.stdout)
+        (self.data / "totalsegmentator_v201" / "s0001").mkdir(parents=True)
+        refused = self.gate("bench", "flexray_drr_seg")
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn(f"the SPINEPS masks at {self.data}/spineps", refused.stdout)
+        (self.data / "spineps").mkdir()
+        zips = self.moose_zips()
+        self.assertEqual(len(zips), 5, zips)
+        refused = self.gate("bench", "flexray_drr_seg")
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn(f"MOOSE's model zip {zips[0]} under {self.data}/moose_weights/raw (fetch moose_weights first)", refused.stdout)
+        self.moose_weights_landed(zips[:-1])
+        refused = self.gate("bench", "flexray_drr_seg")
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn(f"MOOSE's model zip {zips[-1]} under", refused.stdout)
+        self.assertEqual(self.submitted(), [])
+        self.moose_weights_landed(zips[-1:])
+        self.environments_ready()
+        done = self.gate("bench", "flexray_drr_seg")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        lines = self.submitted()
+        self.assertEqual(len(lines), 1, lines)
+        self.assertIn("--class gpu --name bench_flexray_drr_seg", lines[0])
+        self.assertIn("BENCH=flexray_drr_seg", lines[0])
+        self.assertIn(f"DATA_ROOT={self.data}", lines[0])
+        self.assertIn("--no-requeue", lines[0])
+        self.assertIn("bench.sbatch", lines[0])
+        job = self.recorded()["bench_flexray_drr_seg"]
+        self.live(job)
+        self.assertEqual(self.gate("bench", "flexray_drr_seg").returncode, 75)
+        self.assertEqual(len(self.submitted()), 1)
+        # a row the script cannot give back refuses the word rather than queue a job with no weights
+        script = self.repo / "grid" / "run-platform-fetch.sh"
+        script.write_text(script.read_text(encoding="utf-8").replace("moose_weights|url|", "moose_weights_gone|url|"), encoding="utf-8")
+        (self.fake / "queue").write_text("", encoding="utf-8")
+        refused = self.gate("bench", "flexray_drr_seg")
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn("the row moose_weights of grid/run-platform-fetch.sh was not read", refused.stdout)
+
+    def test_the_drr_seg_job_plans_the_subjects_then_runs_moose_on_them_with_the_fetched_weights(self):
+        # bench.sbatch with BENCH=flexray_drr_seg: the moosez pin goes into the throwaway environment,
+        # the study's plan subcommand chooses the CTs into the job's own folder (its log stays there
+        # under umask 077), and the segment subcommand runs on exactly that file with the fetched zips
+        # as its weights, writing under the data root's moose; a zip not there or a plan that fails
+        # ends the job by name before any segmenter runs
+        self.git_repo()
+        (self.data / "totalsegmentator_v201" / "s0001").mkdir(parents=True)
+        (self.data / "spineps").mkdir()
+        zips = self.moose_zips()
+        self.moose_weights_landed(zips)
+        (self.repo / "grid" / "box.sh").write_text(
+            '#!/bin/bash\necho "$*" >> "$FAKE/box.log"\n'
+            'case "$*" in *"domain_gap.py plan "*) word=plan ;; *"flexray_render.py segment "*) word=segment ;; *) exit 0 ;; esac\n'
+            'out=""; subjects=""; while [ $# -gt 0 ]; do [ "$1" = --out ] && out=$2; [ "$1" = --subjects ] && subjects=$2; shift; done\n'
+            'if [ "$word" = plan ]; then\n'
+            '  echo "render: totalsegmentator_v201: 2 CTs chosen of 3 with spineps masks, moose to be made"\n'
+            '  [ ! -f "$FAKE/plan_fail" ] || { echo "drr-gap FAILED: no CT chosen for totalsegmentator_v201, token $(cat "$FAKE/plan_fail")"; exit 2; }\n'
+            '  printf \'{"totalsegmentator_v201": ["s0001", "s0002"]}\\n\' > "$out/render-subjects.json"\n'
+            'else\n'
+            '  [ -f "$subjects" ] || { echo "no subjects file at $subjects"; exit 2; }\n'
+            '  mkdir -p "$out/s0001" && echo mask > "$out/s0001/mask"\n'
+            '  echo "segment: 2 subjects, 8 models, written under $out"\n'
+            'fi\n', encoding="utf-8")
+        done = self.bench_job("flexray_drr_seg")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        boxed = self.boxed()
+        self.assertTrue([line for line in boxed if line.endswith("-m pip install --quiet moosez==3.2.2")], boxed)
+        out = self.tmp / "go2432" / "bench" / "flexray_drr_seg"
+        plans = [line for line in boxed if "tools/domain_gap.py plan " in line]
+        self.assertEqual(len(plans), 1, boxed)
+        self.assertTrue(plans[0].endswith(
+            f"tools/domain_gap.py plan --groups data/domain_gap/groups.json --data-root {self.data} --out {out}"
+            f" --frozen data/splits/test-persons.json --spineps {self.data}/spineps --moose {self.data}/moose"), plans[0])
+        self.assertTrue(boxed[-1].endswith(
+            f"tools/flexray_render.py segment --segmenter moose --ct-root {self.data}/totalsegmentator_v201"
+            f" --subjects {out}/render-subjects.json --weights {self.data}/moose_weights/raw --out {self.data}/moose"), boxed[-1])
+        self.assertLess(boxed.index(plans[0]), len(boxed) - 1)
+        self.assertTrue((self.data / "moose" / "s0001" / "mask").is_file())
+        report = (self.repo / "grid" / "logs" / "BENCH-flexray_drr_seg.md").read_text(encoding="utf-8")
+        self.assertIn(f"- environment: moosez==3.2.2; weights: {self.data}/moose_weights/raw; CTs: {self.data}/totalsegmentator_v201;"
+                      f" masks: {self.data}/moose\n", report)
+        self.assertIn(f"\n  segment: 2 subjects, 8 models, written under {self.data}/moose\n", report)
+        self.assertIn("- exit 0 at ", report)
+        # the plan's log stays in the job's folder, the owner's alone
+        self.assertNotIn("CTs chosen", report + done.stdout)
+        self.assertIn("2 CTs chosen", (out / "plan.log").read_text(encoding="utf-8"))
+        self.assertEqual(out.stat().st_mode & 0o777, 0o700)
+        self.assertEqual((out / "plan.log").stat().st_mode & 0o777, 0o600)
+        self.assertFalse((self.repo / "grid" / "logs" / "HOLD").exists())
+        # a plan that chooses nothing: its last line in the report with a token masked, exit 2, no segmenter run
+        token = "hf_" + "Cd" * 17
+        (self.fake / "plan_fail").write_text(token, encoding="utf-8")
+        done = self.bench_job("flexray_drr_seg")
+        self.assertEqual(done.returncode, 2, done.stdout + done.stderr)
+        self.assertIn("SN_BENCH_RC=2", done.stdout)
+        report = (self.repo / "grid" / "logs" / "BENCH-flexray_drr_seg.md").read_text(encoding="utf-8")
+        self.assertIn("- FAILED: domain_gap.py plan ended 2 (drr-gap FAILED: no CT chosen for totalsegmentator_v201, token <withheld>)", report)
+        self.assertNotIn(token, report + done.stdout)
+        self.assertEqual(len([line for line in self.boxed() if "flexray_render.py segment" in line]), 1)
+        # a zip the fetch has not landed: named with its fetch, before the environment or the plan
+        (self.fake / "plan_fail").unlink()
+        (self.data / "moose_weights" / "raw" / zips[2]).unlink()
+        before = len(self.boxed())
+        done = self.bench_job("flexray_drr_seg")
+        self.assertEqual(done.returncode, 2, done.stdout + done.stderr)
+        report = (self.repo / "grid" / "logs" / "BENCH-flexray_drr_seg.md").read_text(encoding="utf-8")
+        self.assertIn(f"- FAILED: no {zips[2]} under {self.data}/moose_weights/raw (fetch moose_weights first)", report)
+        self.assertEqual(len(self.boxed()), before)
         self.assertFalse((self.repo / "grid" / "logs" / "HOLD").exists())
 
     def test_dropzip_deletes_once_then_prints_what_it_did(self):

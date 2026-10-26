@@ -1051,6 +1051,30 @@ def run_fetch_job(tmp, volume, route, args, source="hf_example", **extra):
     return done.returncode, done.stdout + done.stderr
 
 
+CURL_STAND_IN = """#!/bin/bash
+# A stand-in for curl on file:// URLs: a one-byte range request (-r) answers the file's length, or
+# FAKE_URL_SIZE where the test sets it; a download copies the file to -o; a file that is not there
+# fails as curl's --fail does.
+url=${@: -1}
+out=""
+range=no
+while [ $# -gt 1 ]; do
+  case "$1" in
+    -o) out=$2; shift ;;
+    -r) range=yes; shift ;;
+  esac
+  shift
+done
+path=${url#file://}
+[ -f "$path" ] || exit 22
+if [ "$range" = yes ]; then
+  printf 'HTTP/1.1 206 Partial Content\r\nContent-Range: bytes 0-0/%s\r\n\r\n' "${FAKE_URL_SIZE:-$(stat -c %s "$path")}"
+else
+  cp "$path" "$out"
+fi
+"""
+
+
 HF_ARGS = "--repo a/b --include *0043_new_ct_tri*"
 
 
@@ -1520,6 +1544,47 @@ class SizeRuleTest(unittest.TestCase):
         self.assertNotIn("curl stand-in:", out)
         self.assertIn("hf_example: refused; no exact size; the link answers no range request with its length at ",
                       shown(out))
+
+    def test_the_url_route_reads_every_links_length_first_and_lands_each_under_its_own_name(self):
+        # Public URLs, as the row moose_weights names moosez's model zips: every URL's length is read
+        # by a one-byte range request before a byte lands, summed and less what is there already;
+        # each file lands as raw/<its own name>, resumed, and one that is whole already is left
+        # alone; one URL that answers no length refuses the whole row.
+        release = self.tmp / "release"
+        release.mkdir()
+        (release / "a_model.zip").write_bytes(b"alpha")
+        (release / "b_model.zip").write_bytes(b"bravo!!")
+        curl = self.volume.tools / "curl"
+        curl.write_text(CURL_STAND_IN, encoding="utf-8")
+        curl.chmod(0o755)
+        urls = f"file://{release}/a_model.zip file://{release}/b_model.zip"
+        raw = self.volume.data / "hf_example" / "raw"
+        size = self.volume.data / "hf_example" / "meta" / "SIZE"
+        code, out = self.fetch(0, route="url", args=urls, CURL=str(curl), FAKE_URL_SIZE=str(GB))
+        self.assertEqual(code, 0, out)
+        self.assertIn("hf_example: admitted; it needs 2 gb of its 2 gb by the links answer and 8845 gb is free ",
+                      shown(out))
+        self.assertEqual((raw / "a_model.zip").read_bytes(), b"alpha")
+        self.assertEqual((raw / "b_model.zip").read_bytes(), b"bravo!!")
+        self.assertIn("a_model.zip: landed 5 bytes", out)
+        self.assertIn("b_model.zip: landed 7 bytes", out)
+        size.unlink()
+        # whole already: the lengths match what is there, so nothing is to land and nothing is fetched again
+        code, out = self.fetch(0, route="url", args=urls, CURL=str(curl))
+        self.assertEqual(code, 0, out)
+        self.assertIn("hf_example: admitted; it needs 0 gb of its 1 gb by the links answer", shown(out))
+        self.assertIn("a_model.zip: landed whole already", out)
+        self.assertIn("b_model.zip: landed whole already", out)
+        self.assertNotIn("landed 5 bytes", out)
+        size.unlink()
+        # one URL that answers no length refuses the row before a byte lands
+        for file in raw.iterdir():
+            file.unlink()
+        code, out = self.fetch(0, route="url", args=urls + f" file://{release}/missing.zip", CURL=str(curl))
+        self.assertEqual(code, 4, out)
+        self.assertIn("hf_example: refused; no exact size; missing zip answers no range request with its length at ",
+                      shown(out))  # the refusal's line keeps the shape grid/log-shapes.awk keeps, a dot among the stops
+        self.assertEqual(list(raw.iterdir()), [])
 
     def test_the_room_is_the_smaller_of_two_readings_a_settle_apart_from_one_figure(self):
         # CephFS carries new bytes, and each half of a move, up to the volume with a lag of seconds, so

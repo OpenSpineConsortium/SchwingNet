@@ -9,7 +9,7 @@
    "init": null,
    "role": "cover",
    "size": 64,
-   "slug": "resnet18-64px-78311e7a",
+   "slug": "resnet18-64px-3d291b87",
    "weights": null
   },
   {
@@ -32,7 +32,7 @@
    "init": null,
    "role": "cover",
    "size": 32,
-   "slug": "resnet34-32px-3e69d17e",
+   "slug": "resnet34-32px-b2928840",
    "weights": null
   },
   {
@@ -47,7 +47,7 @@
    "init": null,
    "role": "cover",
    "size": 96,
-   "slug": "resnet50-96px-61a3266e",
+   "slug": "resnet50-96px-6133c32a",
    "weights": null
   },
   {
@@ -65,7 +65,7 @@
    "init": null,
    "role": "cover",
    "size": 128,
-   "slug": "mobilenet-v3-small-128px-e0f33f11",
+   "slug": "mobilenet-v3-small-128px-c50b248b",
    "weights": null
   },
   {
@@ -78,7 +78,7 @@
    "init": null,
    "role": "cover",
    "size": 64,
-   "slug": "efficientnet-b0-64px-1f54fa0c",
+   "slug": "efficientnet-b0-64px-545eb859",
    "weights": null
   },
   {
@@ -101,7 +101,7 @@
    "init": null,
    "role": "cover",
    "size": 32,
-   "slug": "densenet121-32px-e56d1e60",
+   "slug": "densenet121-32px-1f3a04de",
    "weights": null
   },
   {
@@ -111,7 +111,7 @@
    "init": null,
    "role": "cover",
    "size": 96,
-   "slug": "se-resnet50-96px-32f7e4bf",
+   "slug": "se-resnet50-96px-c1626611",
    "weights": null
   },
   {
@@ -134,7 +134,7 @@
    "init": null,
    "role": "cover",
    "size": 128,
-   "slug": "se-resnext50-128px-e80c6710",
+   "slug": "se-resnext50-128px-75d41973",
    "weights": null
   },
   {
@@ -145,7 +145,7 @@
    "init": null,
    "role": "cover",
    "size": 64,
-   "slug": "resnet18-64px-bd498d21",
+   "slug": "resnet18-64px-8e2329d2",
    "weights": null
   },
   {
@@ -156,7 +156,7 @@
    "init": null,
    "role": "cover",
    "size": 64,
-   "slug": "resnet18-64px-ebfd9423",
+   "slug": "resnet18-64px-4f49dbf3",
    "weights": null
   },
   {
@@ -167,7 +167,7 @@
    "init": null,
    "role": "cover",
    "size": 64,
-   "slug": "resnet18-64px-4de97de5",
+   "slug": "resnet18-64px-fa764e02",
    "weights": null
   },
   {
@@ -192,7 +192,7 @@
    "init": null,
    "role": "cover",
    "size": 32,
-   "slug": "resnet34-32px-58e64ab8",
+   "slug": "resnet34-32px-7bccd885",
    "weights": null
   },
   {
@@ -209,7 +209,7 @@
    "init": null,
    "role": "cover",
    "size": 96,
-   "slug": "resnet50-96px-ce5150c2",
+   "slug": "resnet50-96px-38ea23ae",
    "weights": null
   },
   {
@@ -229,7 +229,7 @@
    "init": null,
    "role": "cover",
    "size": 128,
-   "slug": "mobilenet-v3-small-128px-dda0db48",
+   "slug": "mobilenet-v3-small-128px-e95641ed",
    "weights": null
   },
   {
@@ -244,7 +244,7 @@
    "init": null,
    "role": "cover",
    "size": 64,
-   "slug": "efficientnet-b0-64px-34140bc9",
+   "slug": "efficientnet-b0-64px-7c1ff13a",
    "weights": null
   },
   {
@@ -269,7 +269,7 @@
    "init": null,
    "role": "cover",
    "size": 32,
-   "slug": "densenet121-32px-b01024a6",
+   "slug": "densenet121-32px-119a87da",
    "weights": null
   },
   {
@@ -281,7 +281,7 @@
    "init": null,
    "role": "cover",
    "size": 96,
-   "slug": "se-resnet50-96px-87cc4ab4",
+   "slug": "se-resnet50-96px-c79224aa",
    "weights": null
   },
   {
@@ -306,7 +306,7 @@
    "init": null,
    "role": "cover",
    "size": 128,
-   "slug": "se-resnext50-128px-acd6ade8",
+   "slug": "se-resnext50-128px-1d645e9c",
    "weights": null
   },
   {
@@ -319,7 +319,7 @@
    "init": null,
    "role": "cover",
    "size": 64,
-   "slug": "resnet18-64px-48c758ed",
+   "slug": "resnet18-64px-56fd6f7a",
    "weights": null
   },
   {
@@ -332,7 +332,7 @@
    "init": null,
    "role": "cover",
    "size": 64,
-   "slug": "resnet18-64px-6a94606a",
+   "slug": "resnet18-64px-369d9fdb",
    "weights": null
   },
   {
@@ -342,15 +342,15 @@
    "init": null,
    "role": "imagenet",
    "size": 64,
-   "slug": "imagenet-resnet18-64px-6915edfc",
+   "slug": "imagenet-resnet18-64px-1e33835d",
    "weights": "resnet18"
   },
   {
    "blocks": [],
-   "init": "resnet18-64px-78311e7a",
+   "init": "resnet18-64px-3d291b87",
    "role": "init",
    "size": 64,
-   "slug": "init-resnet18-64px-53342468",
+   "slug": "init-resnet18-64px-b03858b7",
    "weights": null
   },
   {
@@ -358,10 +358,10 @@
     "prior=level-map",
     "prior_weight=0.5"
    ],
-   "init": "resnet18-64px-78311e7a",
+   "init": "resnet18-64px-3d291b87",
    "role": "init",
    "size": 64,
-   "slug": "init-resnet18-64px-d9278249",
+   "slug": "init-resnet18-64px-93712140",
    "weights": null
   },
   {
@@ -372,7 +372,7 @@
    "init": null,
    "role": "refuse",
    "size": 64,
-   "slug": "refuse-resnet18-64px-ac1f423e",
+   "slug": "refuse-resnet18-64px-80de8455",
    "weights": null
   },
   {
@@ -383,25 +383,25 @@
    "init": null,
    "role": "refuse",
    "size": 64,
-   "slug": "refuse-resnet18-64px-93129504",
+   "slug": "refuse-resnet18-64px-2c9cde6c",
    "weights": null
   },
   {
    "blocks": [
     "architecture=resnet34"
    ],
-   "init": "resnet18-64px-78311e7a",
+   "init": "resnet18-64px-3d291b87",
    "role": "refuse",
    "size": 64,
-   "slug": "refuse-resnet34-64px-7da32a40",
+   "slug": "refuse-resnet34-64px-47874f95",
    "weights": null
   },
   {
    "blocks": [],
-   "init": "resnet18-64px-78311e7a",
+   "init": "resnet18-64px-3d291b87",
    "role": "refuse",
    "size": 64,
-   "slug": "refuse-resnet18-64px-69509b67",
+   "slug": "refuse-resnet18-64px-f03d95ca",
    "weights": "resnet18"
   }
  ],

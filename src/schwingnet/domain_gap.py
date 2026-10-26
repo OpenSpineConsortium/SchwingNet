@@ -8,16 +8,20 @@ reviewer expects. The images stay on the Wayne State grid and the study runs the
 (tools/domain_gap.py); what is decided rather than computed lives here, so the gate proves it and
 the job only applies it. Files are chosen by person, round-robin in a salted hash order, so a
 corpus with one person of a thousand images cannot fill a group, and the choice depends on no
-order of reading and no clock. The AUC is the Mann-Whitney statistic counted in integers, the
-permutation p-value is never zero, the Benjamini-Hochberg adjustment never makes a smaller p
-larger, and the gap's word is fixed before the numbers come back. Only printable text leaves the
-grid, through grid/redact.sed, so a report line is made to pass that filter unchanged: a line the
-filter would rewrite would lose the number it carries.
+order of reading and no clock. The CTs the render groups on one folder draw from are chosen the
+same way, once for the folder, among the subjects that have masks under every segmenter those
+groups name (the owner's words of 2026-10-26: MOOSE's masks when replicating FleXray's own
+dataset, SPINEPS's for the project's production runs, the segmenter a block of the recipe), so
+that groups differing only by their recipe render the same CTs. The AUC is the Mann-Whitney
+statistic counted in integers, the permutation p-value is never zero, the Benjamini-Hochberg
+adjustment never makes a smaller p larger, and the gap's word is fixed before the numbers come
+back. Only printable text leaves the grid, through grid/redact.sed, so a report line is made to
+pass that filter unchanged: a line the filter would rewrite would lose the number it carries.
 """
 
 import re
 from collections import Counter
-from collections.abc import Callable
+from collections.abc import Callable, Mapping, Sequence
 from hashlib import sha256
 from itertools import groupby
 from math import floor, isfinite, isnan
@@ -141,9 +145,12 @@ class GroupSpec(BaseModel):
     licence: str = Field(default="", max_length=2000, pattern=r"^[ -~]*$")
     note: str = Field(default="", max_length=2000, pattern=r"^[ -~]*$")
     # A render group's recipe: KEY=VALUE words for schwingnet.render_blocks.parse (none is
-    # FleXray's released recipe), the engine that runs them (one of render_blocks.ENGINES), and
-    # the id of a render group whose choice of CTs this group shares, so a pair of render groups
-    # differs only by its recipe.
+    # FleXray's recipe with the project's segmenter, SPINEPS; segmenter=moose takes MOOSE's masks,
+    # FleXray's own, for the replication of its dataset), the engine that runs them (one of
+    # render_blocks.ENGINES), and the id of a render group whose choice of CTs this group shares,
+    # so a pair of render groups differs only by its recipe. Groups joined by subjects_from need
+    # not share the segmenter: the choice is made among the CTs that have masks under every
+    # segmenter the folder's groups name (choose_subjects), so they still render the same CTs.
     blocks: tuple[str, ...] = ()
     engine: str = "blocks"
     subjects_from: str = Field(default="", pattern=r"^[a-z0-9_]{0,40}$")
@@ -156,22 +163,27 @@ class GroupSpec(BaseModel):
         return self
 
 
+def _render_fields_misused(spec: GroupSpec) -> list[str]:
+    """The render fields a group of any other source has set, which are not its to set."""
+    return [
+        message
+        for holds, message in (
+            (
+                not spec.blocks and spec.engine == "blocks",
+                "blocks and an engine are only for a render group",
+            ),
+            (not spec.subjects_from, "subjects_from is only for a render group"),
+        )
+        if not holds
+    ]
+
+
 def _render_problems(spec: GroupSpec) -> list[str]:
     """How a render group's recipe falls short, in words: blocks that do not parse, an engine that
     does not exist or cannot honour them, views that disagree with per_person, a group sharing
     subjects with itself; for any other source, that these fields are not its to set."""
     if spec.source != "render":
-        return [
-            message
-            for holds, message in (
-                (
-                    not spec.blocks and spec.engine == "blocks",
-                    "blocks and an engine are only for a render group",
-                ),
-                (not spec.subjects_from, "subjects_from is only for a render group"),
-            )
-            if not holds
-        ]
+        return _render_fields_misused(spec)
     try:
         blocks = render_blocks.parse(spec.blocks)
     except render_blocks.RenderBlockError as error:
@@ -427,6 +439,91 @@ def choose(
             keyed.append((turn, rank_key(salt, person), person, file))
     keyed.sort()
     return tuple((file, person) for _, _, person, file in keyed[:cap])
+
+
+# --- the choice of CTs: the render groups on one folder render the same subjects ----------------
+
+
+def _blocks_hold(words: tuple[str, ...]) -> bool:
+    """Whether KEY=VALUE words parse as render blocks."""
+    try:
+        render_blocks.parse(words)
+    except render_blocks.RenderBlockError:
+        return False
+    return True
+
+
+@beartype
+@require(
+    lambda blocks_named: all(_blocks_hold(words) for words in blocks_named),
+    "every group's blocks parse",
+)
+@ensure(lambda result: list(result) == sorted(set(result)), "each segmenter once, in order")
+@ensure(
+    lambda result: all(name in render_blocks.CHOICES["segmenter"] for name in result),
+    "each one of the segmenters",
+)
+@ensure(
+    lambda result, blocks_named: len(result) >= 1 or not blocks_named,
+    "groups name at least one segmenter, since every recipe has one",
+)
+def segmenters_named(blocks_named: Sequence[tuple[str, ...]]) -> tuple[str, ...]:
+    """The segmenters the render groups on one folder name, each once and in order: the
+    segmenter block of each group's recipe, the project's default (SPINEPS) where the words name
+    none. The folder's CTs are chosen among those that have masks under every one of them."""
+    return tuple(sorted({render_blocks.parse(words).segmenter for words in blocks_named}))
+
+
+@beartype
+@ensure(lambda result, subjects: result <= subjects, "only subjects of the folder")
+@ensure(
+    lambda result, subjects, masked: (
+        result == frozenset(s for s in subjects if all(s in found for found in masked.values()))
+    ),
+    "exactly the subjects every segmenter has masks for",
+)
+@ensure(
+    lambda result, subjects, masked: masked or result == subjects, "no segmenter, every subject"
+)
+def with_masks(subjects: frozenset[str], masked: Mapping[str, frozenset[str]]) -> frozenset[str]:
+    """The subjects of a CT folder that have masks under every segmenter named: the ones every
+    render group on the folder can render, whatever its recipe's segmenter."""
+    return frozenset(s for s in subjects if all(s in found for found in masked.values()))
+
+
+def _subject_order(salt: str, subject: str) -> tuple[str, str]:
+    return rank_key(f"{salt}:subjects", subject), subject
+
+
+@beartype
+@require(lambda count: count >= 0, "a count of CTs")
+@ensure(lambda result, count: len(result) <= count, "never more than the count")
+@ensure(lambda result: len(set(result)) == len(result), "no subject twice")
+@ensure(
+    lambda result, subjects, masked: set(result) <= with_masks(subjects, masked),
+    "only subjects every segmenter has masks for",
+)
+@ensure(
+    lambda result, subjects, masked, count: (
+        len(result) == min(count, len(with_masks(subjects, masked)))
+    ),
+    "as many as the count and the masks allow, none left out",
+)
+@ensure(
+    lambda result, salt: list(result) == sorted(result, key=lambda s: _subject_order(salt, s)),
+    "in the salted order, the id breaking a tie",
+)
+def choose_subjects(
+    subjects: frozenset[str], masked: Mapping[str, frozenset[str]], count: int, salt: str
+) -> tuple[str, ...]:
+    """The CTs every render group on one folder renders: the first count, in the order of
+    rank_key("<salt>:subjects", id) with the id breaking a tie, of the subjects that have masks
+    under every segmenter the folder's groups name (with_masks), so that groups differing only by
+    their recipe, the segmenter among its parts, render the same CTs; with no segmenter named,
+    among every subject. The order of the subjects given does not matter, since only the hashes
+    order them."""
+    ranked = sorted(with_masks(subjects, masked), key=lambda s: _subject_order(salt, s))
+    return tuple(ranked[:count])
 
 
 def _finite(values: tuple[float, ...]) -> bool:

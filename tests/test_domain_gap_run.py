@@ -2,11 +2,13 @@
 each group's files from a sample index or a folder by its rules (formats, modalities, sizes, globs,
 masks left out, persons by rule with the frozen test persons dropped), the images come out as
 256 x 256 windows of the centre square whatever their depth or shape, and a whole run over three
-small corpora of different textures and three render groups drawn by a fake renderer, with only
-the physics space, writes a summary of at most 80 lines that survive the grid's redaction, tells
-the textured corpora apart, finds nothing in its split-half nulls, renders the three render groups
-from one choice of CTs under one salt, and reads the replication pairs with the pre-registered
-word beside the first.
+small corpora of different textures and the study's six render groups drawn by a fake renderer,
+with only the physics space, writes a summary of at most 80 lines that survive the grid's
+redaction, tells the textured corpora apart, finds nothing in its split-half nulls, renders the
+six render groups from one choice of CTs under one salt, drawn among the CTs with masks under both
+segmenters they name and passed the mask roots, and reads the five replication pairs with the
+pre-registered word beside the two engine pairs; and the plan subcommand writes that choice alone,
+without the masks the segment job makes, for that job to read.
 
 It needs numpy, Pillow, torch, scikit-learn and the package's contracts, which the job's
 environment holds and the required check's python does not, so each case runs where they import
@@ -238,20 +240,27 @@ class ImageTest(unittest.TestCase):
 
 
 class FakeRenderer:
-    """tools/flexray_render as the run sees it: find_subjects lists the fake CT folders, and
-    render_subjects writes one textured 16-bit PNG a view for the subject ids it is given, with a
-    manifest in the renderer's shape, recording every call, so the test reads which subjects,
-    salt, blocks and engine each render group got."""
+    """tools/flexray_render as the run sees it (brief3's signatures): find_subjects lists the fake
+    CT folders, and with a segmenter named only those with a mask file <subject>.nii.gz under
+    roots[segmenter]; render_subjects writes one textured 16-bit PNG a view for the subject ids it
+    is given, with a manifest in the renderer's shape, recording every call, so the test reads
+    which subjects, salt, blocks, engine and roots each render group got."""
 
     def __init__(self, rng, kind):
-        self.rng, self.kind, self.calls = rng, kind, []
+        self.rng, self.kind, self.calls, self.finds = rng, kind, [], []
 
-    def find_subjects(self, ct_root):
-        return sorted(p.name for p in Path(ct_root).iterdir() if p.is_dir())
+    def find_subjects(self, ct_root, segmenter=None, roots=None):
+        self.finds.append((segmenter, roots))
+        found = sorted(p.name for p in Path(ct_root).iterdir() if p.is_dir())
+        if segmenter is None:
+            return found
+        root = (roots or {}).get(segmenter)
+        return [s for s in found if root is not None and (Path(root) / f"{s}.nii.gz").is_file()]
 
-    def render_subjects(self, ct_root, out, subjects, salt, device, *, blocks, engine="blocks", subject_ids=None):
+    def render_subjects(self, ct_root, out, subjects, salt, device, *, blocks, engine="blocks", subject_ids=None,
+                        roots=None):
         self.calls.append({"group": Path(out).name, "subjects": subjects, "salt": salt, "device": device,
-                           "blocks": blocks, "engine": engine, "subject_ids": subject_ids})
+                           "blocks": blocks, "engine": engine, "subject_ids": subject_ids, "roots": roots})
         rows = []
         for subject in subject_ids:
             for view in range(blocks.views):
@@ -263,14 +272,50 @@ class FakeRenderer:
 
 
 CT_FOLDER = "totalsegmentator_v201"
-RENDER_GROUPS = (("flexray_drr", ["attenuation=off", "views=2"], "blocks", ""),
-                 ("flexray_replica", ["views=2"], "blocks", "flexray_drr"),
-                 ("flexray_reference", ["views=2"], "flexray-runtime", "flexray_drr"))
+SUBJECTS = [f"s{n:04d}" for n in range(30)]
+# The fake masks: SPINEPS's for every CT but the last three, MOOSE's for every CT but s0001 and
+# the last two, so 26 CTs have both and the choice of 24 is made among them.
+SPINEPS_MASKED = SUBJECTS[:27]
+MOOSE_MASKED = [s for s in SUBJECTS[:28] if s != "s0001"]
+FLUXRAY_RAW = ["segmenter=moose", "crop=whole", "crop_sampler=uniform", "pose=fluxray-grid", "isocentre=volume-centre",
+               "projection=cone", "attenuation=off", "scale=minmax", "detector=1024"]
+# The study's six render groups at two views a CT: (id, blocks, engine, subjects_from).
+RENDER_GROUPS = (("flexray_drr", ["segmenter=moose", "attenuation=off", "views=2"], "blocks", ""),
+                 ("flexray_replica", ["segmenter=moose", "views=2"], "blocks", "flexray_drr"),
+                 ("flexray_reference", ["segmenter=moose", "views=2"], "flexray-runtime", "flexray_drr"),
+                 ("flexray_spineps", ["views=2"], "blocks", "flexray_drr"),
+                 ("fluxray_raw", FLUXRAY_RAW + ["views=2"], "blocks", "flexray_drr"),
+                 ("fluxray_raw_reference", FLUXRAY_RAW + ["views=2"], "flexray-runtime", "flexray_drr"))
+PAIRS = ("flexray_replica|flexray_reference", "fluxray_raw|fluxray_raw_reference", "flexray_drr|flexray_replica",
+         "flexray_spineps|flexray_replica", "fluxray_raw_reference|fluxray")
+
+
+def ranked(tool, subjects, salt="test-salt"):
+    """The subjects in the order the study chooses them: by rank_key("<salt>:subjects", id)."""
+    pure = tool.rules()
+    return sorted(subjects, key=lambda s: (pure.rank_key(f"{salt}:subjects", s), s))
+
+
+def make_cts(folder, masks):
+    """The fake CT folders under the data root and a mask file a subject under each root given,
+    {root: [subjects]}."""
+    for subject in SUBJECTS:
+        (folder / "data" / CT_FOLDER / subject).mkdir(parents=True, exist_ok=True)
+    for root, subjects in masks.items():
+        root.mkdir(parents=True, exist_ok=True)
+        for subject in subjects:
+            (root / f"{subject}.nii.gz").write_bytes(b"")
+
+
+def render_rows(cap=48, per_person=2):
+    return [{"id": name, "label": name, "family": "synthetic", "source": "render", "folder": CT_FOLDER,
+             "cap": cap, "per_person": per_person, "blocks": blocks, "engine": engine, "subjects_from": subjects_from}
+            for name, blocks, engine, subjects_from in RENDER_GROUPS]
 
 
 @unittest.skipIf(MISSING_WHOLE, f"needs {', '.join(MISSING_WHOLE)}")
 class WholeRunTest(unittest.TestCase):
-    def test_a_run_over_three_textured_corpora_and_three_render_groups(self):
+    def test_a_run_over_three_textured_corpora_and_six_render_groups(self):
         tool = load_tool()
         tool.PERMUTATIONS_C2ST, tool.PERMUTATIONS_MMD, tool.BOOTSTRAP = 5, 50, 50
         tool.SPLIT_PERSONS = 12
@@ -281,6 +326,7 @@ class WholeRunTest(unittest.TestCase):
             lines = (Path(args.out) / "summary.txt").read_text(encoding="ascii").splitlines()
             results = json.loads((Path(args.out) / "results.json").read_text(encoding="utf-8"))
             plan = json.loads((Path(args.out) / "plan.json").read_text(encoding="utf-8"))
+            subjects_file = json.loads((Path(args.out) / "render-subjects.json").read_text(encoding="utf-8"))
         self.assertLessEqual(len(lines), 80)
         for line in lines:
             self.assertLessEqual(len(line), 200)
@@ -293,59 +339,87 @@ class WholeRunTest(unittest.TestCase):
         self.assertLess(physics["calibration"]["auc_median"], 0.75)
         self.assertEqual(results["spaces"]["flexray"]["invalid"], "no FleXray bundle (ensemble.json)")
         self.assertTrue(any(line.startswith(" blobs vs film auc") for line in lines))
-        self.renders_share_their_subjects(tool, renderer, plan)
+        self.renders_share_their_subjects(tool, renderer, plan, subjects_file, folder)
         self.replication_is_tested_and_summarised(tool, results, lines)
 
-    def renders_share_their_subjects(self, tool, renderer, plan):
-        """The three render groups were rendered from one choice of CTs, the first 24 of the 30 in
-        the salted order, under the folder's salt, each with its own blocks and engine; the plan
-        records the choice."""
+    def renders_share_their_subjects(self, tool, renderer, plan, subjects_file, folder):
+        """The six render groups were rendered from one choice of CTs, the first 24 in the salted
+        order of the 26 that have masks under both segmenters the folder's groups name, under the
+        folder's salt, each with its own blocks, engine and segmenter, the mask roots passed
+        through; the plan and render-subjects.json record the choice and its counts."""
         self.assertEqual([c["group"] for c in renderer.calls], [g for g, _, _, _ in RENDER_GROUPS])
+        both = sorted(set(SPINEPS_MASKED) & set(MOOSE_MASKED))
+        self.assertEqual(len(both), 26)
+        expected = ranked(tool, both)[:24]
         first = renderer.calls[0]
-        self.assertEqual(len(first["subject_ids"]), 24)
+        self.assertEqual(list(first["subject_ids"]), expected)
         self.assertEqual(first["subjects"], 24)
         self.assertEqual(first["salt"], f"test-salt:{CT_FOLDER}")
-        pure = tool.rules()
-        expected = sorted((f"s{n:04d}" for n in range(30)), key=lambda s: pure.rank_key("test-salt:subjects", s))[:24]
-        self.assertEqual(list(first["subject_ids"]), expected)
-        for call in renderer.calls[1:]:
-            self.assertEqual(call["subject_ids"], first["subject_ids"])
+        roots = {"spineps": folder / "data" / "spineps", "moose": folder / "data" / "moose"}
+        for call in renderer.calls:
+            self.assertEqual(list(call["subject_ids"]), expected)
             self.assertEqual(call["salt"], first["salt"])
             self.assertEqual(call["device"], "cpu")
-        self.assertEqual([c["blocks"].attenuation for c in renderer.calls], ["off", "flexray-lognormal", "flexray-lognormal"])
-        self.assertEqual([c["engine"] for c in renderer.calls], ["blocks", "blocks", "flexray-runtime"])
+            self.assertEqual(call["roots"], roots)
+        self.assertEqual([c["blocks"].segmenter for c in renderer.calls],
+                         ["moose", "moose", "moose", "spineps", "moose", "moose"])
+        self.assertEqual([c["blocks"].attenuation for c in renderer.calls],
+                         ["off", "flexray-lognormal", "flexray-lognormal", "flexray-lognormal", "off", "off"])
+        self.assertEqual([c["blocks"].pose for c in renderer.calls[4:]], ["fluxray-grid", "fluxray-grid"])
+        self.assertEqual([c["engine"] for c in renderer.calls],
+                         ["blocks", "blocks", "flexray-runtime", "blocks", "blocks", "flexray-runtime"])
+        # The masks were looked for under each root once, for the folder.
+        self.assertEqual([(s, r) for s, r in renderer.finds if s], [("moose", roots), ("spineps", roots)])
         rows = {g["id"]: g for g in plan["groups"]}
         records = [rows[g]["render"] for g, _, _, _ in RENDER_GROUPS]
         self.assertEqual({tuple(r["subjects"]) for r in records}, {tuple(expected)})
-        self.assertEqual([r["engine"] for r in records], ["blocks", "blocks", "flexray-runtime"])
-        self.assertEqual(records[0]["blocks"]["attenuation"], "off")
+        self.assertEqual([r["blocks"]["segmenter"] for r in records],
+                         ["moose", "moose", "moose", "spineps", "moose", "moose"])
         self.assertEqual(records[0]["rendered"], 48)
-        self.assertEqual(len(rows["flexray_reference"]["chosen"]), 48)
+        self.assertEqual(len(rows["fluxray_raw_reference"]["chosen"]), 48)
+        self.assertEqual(subjects_file, {CT_FOLDER: expected})
+        self.assertEqual(plan["renders"], {CT_FOLDER: {
+            "subjects": expected, "segmenters": ["moose", "spineps"], "pending": [],
+            "roots": {"moose": "found", "spineps": "found"}, "ct": 30, "masks": {"moose": 27, "spineps": 27},
+            "every": 26, "count": 24}})
 
     def replication_is_tested_and_summarised(self, tool, results, lines):
-        """The replication section holds the three pairs, the first with the pre-registered word
-        from its own numbers, the FluXray pair with its reason; the verdict names the space that
-        did not run; and the summary carries the lines."""
+        """The replication section holds the five pairs, the two engine pairs with the
+        pre-registered word from their own numbers, the FluXray pair with its reason; the verdict
+        names the space that did not run; and the summary carries the lines, the folder's mask
+        counts among them, with the render groups' equal counts folded."""
         pure = tool.rules()
         replication = results["spaces"]["physics"]["replication"]
-        self.assertEqual(set(replication), {"flexray_replica|flexray_reference", "flexray_drr|flexray_replica",
-                                            "flexray_reference|fluxray"})
-        first = replication["flexray_replica|flexray_reference"]
-        for key in ("auc_logistic", "auc_knn", "mmd", "fd64", "kid64", "prdc"):
-            self.assertIn(key, first)
-        self.assertIn("p", first["auc_logistic"])
-        self.assertIn("q", first["mmd"])
-        self.assertEqual(first["word"], pure.replication_word(first["auc_logistic"]["lo"], first["mmd"]["q"]))
-        self.assertEqual(first["word"], "replicated")  # three draws of one texture law
-        self.assertNotIn("word", replication["flexray_drr|flexray_replica"])
-        self.assertIn("fluxray: not in the table", replication["flexray_reference|fluxray"]["skipped"])
-        self.assertIsNone(results["replication"]["word"])
-        self.assertIn("space flexray not run", results["replication"]["reason"])
+        self.assertEqual(set(replication), set(PAIRS))
+        for pair in PAIRS[:2]:
+            found = replication[pair]
+            for key in ("auc_logistic", "auc_knn", "mmd", "fd64", "kid64", "prdc"):
+                self.assertIn(key, found)
+            self.assertIn("p", found["auc_logistic"])
+            self.assertIn("q", found["mmd"])
+            self.assertEqual(found["word"], pure.replication_word(found["auc_logistic"]["lo"], found["mmd"]["q"]))
+            self.assertEqual(found["word"], "replicated")  # draws of one texture law
+        for pair in PAIRS[2:4]:
+            self.assertNotIn("word", replication[pair])
+            self.assertIn("auc_logistic", replication[pair])
+        self.assertIn("fluxray: not in the table", replication["fluxray_raw_reference|fluxray"]["skipped"])
+        verdict = results["replication"]
+        self.assertIsNone(verdict["word"])
+        self.assertIn("space flexray not run", verdict["reason"])
+        self.assertEqual(set(verdict["pairs"]), set(PAIRS[:2]))
+        self.assertEqual(results["renders"][CT_FOLDER]["every"], 26)
         self.assertTrue(lines[1].startswith("replication flexray_replica vs flexray_reference: no verdict"))
-        pair_lines = [line for line in lines if line.startswith(" replication flexray_replica vs flexray_reference auc")]
-        self.assertEqual(len(pair_lines), 1)
-        self.assertTrue(pair_lines[0].endswith(" replicated"))
-        self.assertTrue(any(line.startswith(" replication flexray_reference vs fluxray not tested") for line in lines))
+        self.assertTrue(lines[2].startswith("replication fluxray_raw vs fluxray_raw_reference: no verdict"))
+        self.assertEqual(lines[3], f"render {CT_FOLDER}: 24 CTs chosen of 26 with every mask of 30 CTs (moose 27, spineps 27)")
+        self.assertIn("group flexray_replica synthetic counts as flexray_drr", lines)
+        self.assertEqual(sum(1 for line in lines if line.startswith("group ")), 9)
+        for pair in PAIRS[:2]:
+            a, b = pair.split("|")
+            pair_lines = [line for line in lines if line.startswith(f" replication {a} vs {b} auc")]
+            self.assertEqual(len(pair_lines), 1)
+            self.assertTrue(pair_lines[0].endswith(" replicated"))
+        self.assertTrue(any(line.startswith(" replication flexray_spineps vs flexray_replica auc") for line in lines))
+        self.assertTrue(any(line.startswith(" replication fluxray_raw_reference vs fluxray not tested") for line in lines))
 
     def corpora(self, tool, folder):
         import numpy as np
@@ -359,16 +433,74 @@ class WholeRunTest(unittest.TestCase):
                     save_png(folder / "data" / name / f"p{person:02d}_{view}.png", texture(rng, kind, 280))
             groups.append({"id": name, "label": name, "family": family, "source": "walk", "folder": name,
                            "person": "regex:(?P<person>p[0-9]+)_", "cap": 100, "per_person": 2})
-        for n in range(30):
-            (folder / "data" / CT_FOLDER / f"s{n:04d}").mkdir(parents=True)
-        for name, blocks, engine, subjects_from in RENDER_GROUPS:
-            groups.append({"id": name, "label": name, "family": "synthetic", "source": "render", "folder": CT_FOLDER,
-                           "cap": 48, "per_person": 2, "blocks": blocks, "engine": engine,
-                           "subjects_from": subjects_from})
+        # The mask roots at their defaults under the data root.
+        make_cts(folder, {folder / "data" / "spineps": SPINEPS_MASKED, folder / "data" / "moose": MOOSE_MASKED})
+        groups += render_rows()
         renderer = FakeRenderer(np.random.default_rng(12), "blobs")
         original = tool.tool
         tool.tool = lambda name: renderer if name == "flexray_render" else original(name)
         return args_for(tool, folder, table(folder, groups), index_of(folder, [])), renderer
+
+
+@unittest.skipIf(MISSING_BASE, f"needs {', '.join(MISSING_BASE)}")
+class PlanSubcommandTest(unittest.TestCase):
+    """The plan subcommand chooses the CTs as the run does, less the masks the segment job makes
+    (MOOSE's), and writes render-subjects.json alone: the grid's segment job reads it before any
+    MOOSE mask exists."""
+
+    def setUp(self):
+        self.tool = load_tool()
+        self.temporary = tempfile.TemporaryDirectory()
+        self.folder = Path(self.temporary.name)
+        self.renderer = FakeRenderer(None, "blobs")
+        original = self.tool.tool
+        self.tool.tool = lambda name: self.renderer if name == "flexray_render" else original(name)
+
+    def tearDown(self):
+        self.temporary.cleanup()
+
+    def plan(self, groups, spineps, moose):
+        film = {"id": "films", "label": "films", "family": "film", "source": "walk", "folder": "films", "cap": 10,
+                "per_person": 1}
+        return self.tool.main(["plan", "--groups", str(table(self.folder, groups + [film])), "--data-root",
+                               str(self.folder / "data"), "--out", str(self.folder / "out"),
+                               "--spineps", str(spineps), "--moose", str(moose)])
+
+    def test_the_plan_chooses_without_the_masks_the_segment_job_makes(self):
+        spineps, moose = self.folder / "masks" / "spineps", self.folder / "masks" / "moose"
+        make_cts(self.folder, {spineps: SPINEPS_MASKED})  # no MOOSE mask exists yet
+        self.assertEqual(self.plan(render_rows(), spineps, moose), 0)
+        out = self.folder / "out"
+        written = json.loads((out / "render-subjects.json").read_text(encoding="utf-8"))
+        self.assertEqual(written, {CT_FOLDER: ranked(self.tool, SPINEPS_MASKED)[:24]})
+        self.assertEqual(sorted(p.name for p in out.iterdir()), ["render-subjects.json"])
+        self.assertEqual(self.renderer.calls, [])
+        self.assertEqual([s for s, _ in self.renderer.finds], [None, "spineps"])
+        # Once the segment job has made MOOSE's masks for those CTs, the run's choice, over both
+        # segmenters, is the same list.
+        make_cts(self.folder, {moose: written[CT_FOLDER]})
+        roots = self.tool.mask_roots(self.tool.parse(["run", "--data-root", str(self.folder / "data"), "--out",
+                                                      str(out), "--spineps", str(spineps), "--moose", str(moose)]))
+        folders = self.tool.render_folders(
+            self.tool.parse(["run", "--data-root", str(self.folder / "data"), "--out", str(out)]),
+            self.tool.read_table(self.folder / "groups.json"), self.renderer, roots)
+        self.assertEqual(folders[CT_FOLDER]["subjects"], written[CT_FOLDER])
+        self.assertEqual((folders[CT_FOLDER]["masks"], folders[CT_FOLDER]["every"]), ({"moose": 24, "spineps": 27}, 24))
+
+    def test_groups_naming_moose_alone_are_planned_over_every_ct(self):
+        spineps, moose = self.folder / "masks" / "spineps", self.folder / "masks" / "moose"
+        make_cts(self.folder, {})
+        groups = [g for g in render_rows() if g["id"] != "flexray_spineps"]
+        self.assertEqual(self.plan(groups, spineps, moose), 0)
+        written = json.loads((self.folder / "out" / "render-subjects.json").read_text(encoding="utf-8"))
+        self.assertEqual(written, {CT_FOLDER: ranked(self.tool, SUBJECTS)[:24]})
+
+    def test_a_folder_with_no_ct_to_choose_fails_the_plan(self):
+        spineps, moose = self.folder / "masks" / "spineps", self.folder / "masks" / "moose"
+        make_cts(self.folder, {spineps: []})
+        self.assertEqual(self.plan(render_rows(), spineps, moose), 2)
+        written = json.loads((self.folder / "out" / "render-subjects.json").read_text(encoding="utf-8"))
+        self.assertEqual(written, {CT_FOLDER: []})
 
 
 if __name__ == "__main__":

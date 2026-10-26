@@ -8,6 +8,7 @@ from itertools import combinations
 
 import pytest
 
+from schwingnet import segmenters
 from schwingnet.blocks import (
     ARCHITECTURE,
     AUGMENT,
@@ -134,6 +135,25 @@ def test_the_prior_goes_with_its_weight_and_is_off_by_default():
     assert as_record(chosen)["prior_weight"] == 0.5
     assert from_record(as_record(chosen)) == chosen
     assert "prior" in CHOICES and "prior_weight" in SETTINGS
+
+
+def test_the_segmenter_is_the_pack_stages_choice_with_the_segmenters_default():
+    # The field's default is spelled as a literal for tools/experiments_panel.py's reader; the
+    # choices and the default are schwingnet.segmenters', which no block module spells again.
+    assert DEFAULT.segmenter == segmenters.DEFAULT_SEGMENTER == "spineps"
+    assert FIELDS[-1] == "segmenter"
+    chosen = parse(["segmenter=moose"])
+    assert chosen.segmenter == "moose"
+    assert as_record(chosen)["segmenter"] == "moose"
+    assert from_record(as_record(chosen)) == chosen
+    assert words_of(chosen) == ["segmenter=moose"]
+    # No training step reads it, so it is a setting, not one of the trainer's combinable choices.
+    assert "segmenter" in SETTINGS and "segmenter" not in CHOICES
+    for name in segmenters.SEGMENTERS:
+        assert name in SETTINGS["segmenter"]
+    with pytest.raises(BlockError, match="is not one of spineps, moose"):
+        parse(["segmenter=totalsegmentator"])
+    assert from_record({"segmenter": "moose"}) == chosen
 
 
 def test_kept_keeps_everything_by_default_and_cuts_by_source_or_by_person():

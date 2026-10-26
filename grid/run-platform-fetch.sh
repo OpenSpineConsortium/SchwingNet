@@ -15,6 +15,7 @@
 #   bash grid/run-platform-fetch.sh --gated               # the open chain plus the granted gated sources
 #   bash grid/run-platform-fetch.sh --gated-ids           # the granted gated ids, one a line (grid/gate.sh's fetch)
 #   bash grid/run-platform-fetch.sh --stated idc_nlst     # the GB a source's line states (grid/size-rule.sh)
+#   bash grid/run-platform-fetch.sh --args moose_weights   # a source's args field (the bench word's check of what landed)
 #   HPCW_DRY=1 bash grid/run-platform-fetch.sh            # dry run
 #
 # Each fetch is admitted or refused whole by the owner's size rule of 2026-10-23 when its job
@@ -27,13 +28,14 @@ set -uo pipefail
 REPO=${SCHWINGNET:-$HOME/SchwingNet}
 VOLUME=${VOLUME:-/rs/rs_grp_oschome}
 DATA_ROOT=${DATA_ROOT:-/rs/rs_grp_oschome/go2432/data}
-ONLY=""; GATED=0; GATED_IDS=0; STATED=""
+ONLY=""; GATED=0; GATED_IDS=0; STATED=""; ARGS_OF=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --only) ONLY=$2; shift 2 ;;
     --gated) GATED=1; shift ;;
     --gated-ids) GATED_IDS=1; shift ;;
     --stated) STATED=$2; shift 2 ;;
+    --args) ARGS_OF=$2; shift 2 ;;
     *) echo "unknown argument $1"; exit 64 ;;
   esac
 done
@@ -91,9 +93,9 @@ fluorosam_weights_drive|gdown|1.0|per arcadelab/fluorosam; not stated on the fil
 kaggle_fracture_multiregion|kaggle-dataset|0.51|not stated; merged from three other Kaggle uploads, to map back by hand|gated|bmadushanirodrigo/fracture-multi-region-x-ray-data|TOKEN_FILE=~/.fluorocap/credentials.env NOTE=507,724,147 bytes and 10,580 images by Kaggle's dataset API on 2026-10-22; fetched to explore on the owner's yes of 2026-10-23, out of every split until its sources and licences are read (spine-datasets #23)
 kaggle_scoliosis_yolov5|kaggle-dataset|0.26|MIT in the licence field, CC BY 4.0 in the description|gated|salmankey/scoliosis-yolov5-annotated-spine-x-ray-dataset|TOKEN_FILE=~/.fluorocap/credentials.env NOTE=251,996,951 bytes by Kaggle's dataset API on 2026-10-22; fetched to explore on the owner's yes of 2026-10-23, every image hash-checked against the AASCE copy before any use (spine-datasets #24)
 hf_flexray_weights|hf-token|0|weights CC-BY-NC-4.0, code MIT; a benchmark row only, never in a SchwingNet network|gated|--repo VictorButoi/flexray --repo-type model|TOKEN_FILE=~/.hf/token.env NOTE=FleXray's open weights (MIT CSAIL, arXiv 2609.26756), every member with its checksums, for the bench word's two FleXray jobs; the owner's yes of 2026-10-25 (#287)
-hf_flexray_data|hf-token|20|CC BY-NC 4.0 on the card (its real folders CC BY 4.0, HaN-Seg CC BY-NC-ND); a synthetic group of the DRR domain-gap study only, never in a SchwingNet network|open|--repo VictorButoi/flexray-data --repo-type dataset|TOKEN_FILE=~/.hf/token.env NOTE=FluXray, FleXray's FLUX-edited DRRs, about 20 GB by its card (the size rule reads the exact size before a byte lands); the optional group of bench flexray_drr_gap, read from hf_flexray_data/raw by tools/domain_gap.py and skipped with its reason until fetched, the audit plan's item 6 (docs/research/drr-domain-gap/README.md); a public repository, fetched with the owner's token as the other hf rows are
 hf_xvr_models|hf-token|3.7|MIT; a benchmark row only|gated|--repo eigenvivek/xvr --repo-type model|TOKEN_FILE=~/.hf/token.env NOTE=xvr's published registration models (arXiv 2503.16309), 3.7 GB by its README, for bench xvr_deepfluoro; the owner's yes of 2026-10-25 (#287)
 hf_xvr_data|hf-token|4.8|CC-BY-NC-ND-4.0; read-only, a benchmark row only|gated|--repo eigenvivek/xvr-data --repo-type dataset --include deepfluoro/*|TOKEN_FILE=~/.hf/token.env NOTE=xvr's DeepFluoro folder alone of its 4.8 GB data, what bench xvr_deepfluoro reads; the owner's yes of 2026-10-25 (#287)
+moose_weights|url|0|GPL-3.0, moosez's licence by its repository (ENHANCE-PET/MOOSE); a segmenter's weights only, never in a SchwingNet network|open|https://github.com/ENHANCE-PET/MOOSE/releases/download/moosez-v.3.1.3/clin_ct_vertebrae_ras_21052025.zip https://github.com/ENHANCE-PET/MOOSE/releases/download/moosez-v.3.1.3/clin_ct_peripheral_bones_ras_07052025.zip https://github.com/ENHANCE-PET/MOOSE/releases/download/moosez-v.3.1.3/clin_ct_ribs_ras_08052025.zip https://github.com/ENHANCE-PET/MOOSE/releases/download/moosez-v.3.1.3/clin_ct_organs_ras_07052025.zip https://github.com/ENHANCE-PET/MOOSE/releases/download/moosez-v.3.1.3/clin_ct_cardiac_ras_21052025.zip|NOTE=the five model zips of moosez's CT models whose labels FleXray's MOOSE.yml stores (vertebrae, peripheral bones, ribs, organs, cardiac: moosez/models.py MODEL_METADATA, the release moosez-v.3.1.3; lungs, muscles and digestive store no label FleXray reads, so they are not fetched), for bench flexray_drr_seg, which runs MOOSE on the CTs the DRR domain-gap study chooses, the segmenter of the FleXray replication (the owner's word of 2026-10-26); no size stated, since the release page could not be read from the session that wrote this line, so the job reads each zip's exact size before a byte lands (the url route); landed as the zips under moose_weights/raw, which the segment job unpacks once into moose_weights/models beside them, each with the model_version.json moosez reads, so moosez never downloads
 hf_fluoroseg|hf-token|2650|FluoroSeg data use terms, accepted by the owner on 2026-10-22|gated|--repo benjamindkilleen/fluoroseg --repo-type dataset|TOKEN_FILE=~/.hf/token.env NOTE=the whole set, about 2.65 TB of simulated X-rays with masks, on the owner's yes of 2026-10-22 (12.6 TB free of the 22 TB quota at the time, 6.8 TB of it promised to queued fetches)
 "
 # Never in the chain: the owner's own lines, printed at the end.
@@ -108,6 +110,13 @@ fi
 if [ -n "$STATED" ]; then
   case "$STATED" in *[!a-z0-9_]*) echo "unknown id $STATED"; exit 64 ;; esac
   sed -n "s/^$STATED|[^|]*|\([^|]*\)|.*/\1/p" <<< "$OPEN$GATED_LIST$OWNER_LIST$APART" | head -n 1
+  exit 0
+fi
+if [ -n "$ARGS_OF" ]; then
+  # The sixth field, read on the login node as --stated is: the bench word checks a fetch's landing
+  # against the files its own line names, so the list is written once.
+  case "$ARGS_OF" in *[!a-z0-9_]*) echo "unknown id $ARGS_OF"; exit 64 ;; esac
+  sed -n "s/^$ARGS_OF|[^|]*|[^|]*|[^|]*|[^|]*|\([^|]*\)|.*/\1/p" <<< "$OPEN$GATED_LIST$OWNER_LIST$APART" | head -n 1
   exit 0
 fi
 mkdir -p "$REPO/grid/logs"
@@ -140,10 +149,10 @@ total_gb=0; unknown=""; n=0; missing=""
 while IFS='|' read -r id route size licence access args extra; do
   [ -n "$id" ] || continue
   wanted "$id" || continue
-  # Every line that names a token or link file is checked, whatever its access: a public repository
-  # fetched with the owner's token (hf_flexray_data) needs the file as a gated source does.
-  problem=$(secret_file_problem "${extra%%NOTE=*}")
-  [ -z "$problem" ] || { echo "$id: left out: $problem"; missing="$missing $id"; continue; }
+  if [ "$access" = gated ]; then
+    problem=$(secret_file_problem "${extra%%NOTE=*}")
+    [ -z "$problem" ] || { echo "$id: left out: $problem"; missing="$missing $id"; continue; }
+  fi
   n=$((n + 1))
   if [ "$size" = 0 ]; then unknown="$unknown $id"; else total_gb=$(awk -v a="$total_gb" -v b="$size" 'BEGIN { printf "%d", a + b + 0.999 }'); fi
 done <<< "$TABLE"

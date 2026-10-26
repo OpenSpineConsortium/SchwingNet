@@ -2,14 +2,18 @@
 in a table NAMES keyed as its CHOICES are, each saying what FleXray does and where in its source
 (flexray 1.0.2 from pip, src/fxr/...), so the blocks engine of tools/flexray_render.py is read
 beside FleXray's own runtime step by step and tests/test_flexray_render.py holds the two tables
-equal.
+equal. The segmenter part is the one that reads files: label_spineps and label_moose each find a
+subject's existing masks under that scheme's folder (locate_spineps, locate_moose) and write one
+int16 label volume of MOOSE's stored ids through schwingnet.segmenters' maps, with a record of
+what the masks carried, so both engines read the labels as FleXray's own code reads MOOSE's.
 
 A view is made in the order FleXray's runtime draws (fxr/models/camera/runtime.py,
 SegmentationDRRRuntime.render, then sample_request; then fxr/drr/rendering.py, render_drr): the
 subject is prepared once (hu_window, then air_clamp, then crop plans the crops and crop_sampler
 weighs them); per view, the crop is drawn, isocentre draws the target, pose draws the pixel
-spacing, the distance and the camera, projection the beam, attenuation the gate and the factors,
-render_drr renders, scale scales and edit edits. The draws come from Python's random and torch's
+spacing, the distance and the camera (or, under fluxray-grid, one of FluXray's 90 fixed poses),
+projection the beam, attenuation the gate and the factors, render_drr renders, scale scales and
+edit edits. The draws come from Python's random and torch's
 global generator, both seeded by the caller for the view, as FleXray's runtime draws from the same
 two; so two configurations that differ only in attenuation, the last draw, share the crop, the
 isocentre and the pose of every view.
@@ -20,7 +24,9 @@ fxr.models, whose camera package imports kornia, a training dependency a render-
 need not hold.
 """
 
+import functools
 import random
+import re
 import sys
 from pathlib import Path
 
@@ -42,6 +48,7 @@ from fxr.drr import (  # noqa: E402
 )
 
 from schwingnet import render_blocks as rules  # noqa: E402
+from schwingnet import segmenters  # noqa: E402
 
 AIR_HU = -1000.0
 HU_WINDOW = (-1000.0, 2000.0)
@@ -59,9 +66,24 @@ ORIENTATION = "AP"
 ATTENUATION_PROBABILITY = 0.5
 ATTENUATION_RANGE = (0.1, 4.0)
 ATTENUATION_DISTRIBUTION = {"type": "lognormal", "mode": 1.0, "sigma": 1.0}
-# MOOSE's stored ids of vertebra_c1 to vertebra_l5 (fxr/configs/datasets/MOOSE.yml); vertebra_l6,
-# 83, is dropped by the protocol and never written.
-VERTEBRA_IDS = frozenset(range(59, 83))
+# MOOSE's stored ids of vertebra_c1 to vertebra_l6 (fxr/configs/datasets/MOOSE.yml): what the
+# isocentre choice "vertebra" aims at, L6 among them since a production render on SPINEPS masks
+# may aim at one, though FleXray's protocol drops it (schwingnet.segmenters.MOOSE_DROPPED).
+VERTEBRA_IDS = frozenset(i for i, n in segmenters.MOOSE_STORED.items() if n.startswith("vertebra_"))
+# The file a SPINEPS run writes for the vertebrae (tools/chain_stats.py reads the same name), and
+# the word in a moosez output's path that says which of its models wrote it.
+SPINEPS_MASK = "*_seg-vert_msk.nii*"
+MOOSE_REGIONS = {
+    "clin_ct_organs": "organs",
+    "clin_ct_cardiac": "cardiac",
+    "clin_ct_peripheral_bones": "peripheral",
+    "clin_ct_ribs": "ribs",
+    "clin_ct_vertebrae": "vertebrae",
+}
+
+
+class MaskProblem(Exception):
+    """A subject whose masks cannot give a label volume, with the reason the render records."""
 
 
 # --- the volume, once a subject -------------------------------------------------------------------
@@ -98,12 +120,19 @@ def air_clamp_none(volume):
 
 
 def crop_flexray_axial(depth):
-    """FleXray's packer cuts a CT along its last voxel axis into the fewest 256-slice crops that
-    cover it, the first and last touching the ends, the slice plane the volume's own, a shorter
-    volume one crop padded with air on both sides (fxr/datasets/ct_crops.py, plan_z_crops at
-    max_overlap 0 and crop_z); the plan is schwingnet.render_blocks.plan_crops, held equal to
-    it. Which crops are dropped for holding no structure is crop_content's to say."""
-    return rules.plan_crops(depth)
+    """FleXray's packer cuts a CT along its last voxel axis into 256-slice crops that cover it,
+    the first and last touching the ends, neighbours at most 128 slices apart, the slice plane
+    the volume's own, a shorter volume one crop padded with air on both sides
+    (fxr/datasets/ct_crops.py, plan_z_crops at the max_overlap 0.5 its released packs were made
+    with, and crop_z); the plan is schwingnet.render_blocks.plan_crops, held equal to it. Which
+    crops are dropped for holding no structure is crop_content's to say."""
+    return rules.plan_crops(depth, rules.CROP_OVERLAP["flexray-axial"])
+
+
+def crop_flexray_axial_min(depth):
+    """The fewest such crops, neighbours up to 256 slices apart (fxr/datasets/ct_crops.py,
+    plan_z_crops at its default max_overlap 0)."""
+    return rules.plan_crops(depth, rules.CROP_OVERLAP["flexray-axial-min"])
 
 
 def crop_whole(depth):
@@ -142,24 +171,29 @@ def draw_crop(weights):
     return int(torch.multinomial(weights.double(), 1, replacement=True).item())
 
 
-def isocentre_random_label(crop, affine, volume):
+def isocentre_random_label(crop, affine, volume, supervised):
     """FleXray's MOOSE profile aims each view at the centroid of one structure the crop holds,
-    drawn without replacement over the crop's supervised foreground centroids
+    drawn without replacement over the crop's supervised foreground centroids, the structures
+    its protocol keeps and not the ones it drops, L6 and the thirteenth ribs among them
     (fxr/drr/isocenter.py, sample_isocenters_from_centroids with replacement false, called by
-    SegmentationDRRRuntime._resolve_isocenter for isocenter_cfg random_label; the volume's
-    centre when the crop holds none)."""
-    return aim(crop["centroids"], affine, volume)
+    SegmentationDRRRuntime._resolve_isocenter for isocenter_cfg random_label over the centroids
+    fxr-render keeps, TrainingLabelProjection's foreground; the volume's centre when the crop
+    holds none)."""
+    held = {i: c for i, c in crop["centroids"].items() if i in supervised}
+    return aim(held, affine, volume)
 
 
-def isocentre_vertebra(crop, affine, volume):
+def isocentre_vertebra(crop, affine, volume, supervised):
     """The same draw (fxr/drr/isocenter.py, sample_isocenters_from_centroids) over the vertebrae
-    alone, MOOSE's vertebra_c1 to vertebra_l5; the volume's centre when the crop holds none."""
+    alone, MOOSE's vertebra_c1 to vertebra_l6, whether or not FleXray supervises them; the
+    volume's centre when the crop holds none."""
     return aim({i: c for i, c in crop["centroids"].items() if i in VERTEBRA_IDS}, affine, volume)
 
 
-def isocentre_volume_centre(crop, affine, volume):
+def isocentre_volume_centre(crop, affine, volume, supervised):
     """The crop's centre in world coordinates, FleXray's volume_center scheme
-    (fxr/drr/isocenter.py, compute_isocenter), which draws nothing."""
+    (fxr/drr/isocenter.py, compute_isocenter), which draws nothing; the raw FluXray renders'
+    choice."""
     point = compute_isocenter(volume, None, affine, "volume_center")
     return [float(v) for v in point.tolist()], None
 
@@ -169,7 +203,7 @@ def aim(centroids, affine, volume):
     sample_isocenters_from_centroids over the ids in ascending order, as its collate orders
     them), with the id whose centroid it is; the volume's centre when there is none."""
     if not centroids:
-        return isocentre_volume_centre(None, affine, volume)
+        return isocentre_volume_centre(None, affine, volume, ())
     ids = sorted(centroids)
     points = torch.tensor([centroids[i] for i in ids], dtype=torch.float32)
     chosen = sample_isocenters_from_centroids(points, affine, 1, replacement=False)[0]
@@ -205,7 +239,23 @@ def pose_flexray_moose(sampler):
     delx = random.uniform(*DELX_RANGE)
     sdd = torch.tensor([random.uniform(*SDD_RANGE)], dtype=torch.float32)
     rot, xyz = sampler.sample(num_poses=1, sampled_sdd=sdd)
-    return {"rot": rot, "xyz": xyz, "sdd": float(sdd[0]), "delx": float(delx)}
+    return {"rot": rot, "xyz": xyz, "sdd": float(sdd[0]), "delx": float(delx), "grid": None}
+
+
+def pose_fluxray_grid(sampler):
+    """One of the 90 fixed poses FluXray's raw renders were made from, drawn uniformly on torch's
+    global generator (one torch.randint, as a training draw of FluXray takes one of a subject's
+    poses): ZXY Euler angles (alpha, 0, 0) and a translation (0, y, z) from the isocentre in the
+    units fxr/drr/rendering.py's DRRRenderRequest takes (degrees and mm), the detector 1250 mm
+    from the source with 0.6 mm pixels, fixed by the choice (schwingnet.render_blocks.grid_pose,
+    from the paper's enhanced-DRR appendix; FleXray's own PoseSampler, fxr/drr/poses.py, knows
+    fixed presets and random ranges and no such grid, so the sampler is not used). The record
+    carries the pose's index in the grid."""
+    index = int(torch.randint(rules.GRID_POSES, (1,)).item())
+    alpha, y, z = rules.grid_pose(index)
+    return {"rot": torch.tensor([[alpha, 0.0, 0.0]], dtype=torch.float32),
+            "xyz": torch.tensor([[0.0, y, z]], dtype=torch.float32),
+            "sdd": rules.GRID_SDD_MM, "delx": rules.GRID_PIXEL_MM, "grid": index}
 
 
 def projection_flexray_mix():
@@ -271,15 +321,220 @@ def edit_none(image):
     return image
 
 
+# --- the labels, once a subject ------------------------------------------------------------------
+
+def names_subject(stem, subject):
+    """Whether a mask's stem names the subject: the id itself, or the id between separators or at
+    either end after one (sub-s0011, s0011_ct); a nested subject (batch/s0002) by its last part."""
+    name = str(subject).rsplit("/", 1)[-1]
+    if stem == name:
+        return True
+    return re.search(r"(?:^|[-_])" + re.escape(name) + r"(?:[-_]|$)", stem) is not None
+
+
+@functools.lru_cache(maxsize=8)
+def spineps_index(root):
+    """Every SPINEPS vertebra mask under a folder, as (stem before _seg-vert, path), sorted by
+    path, read once a root since the data root's spineps folder holds thousands."""
+    found = []
+    for path in sorted(Path(root).rglob(SPINEPS_MASK)):
+        if path.is_file():
+            found.append((path.name.split("_seg-vert")[0], path))
+    return tuple(found)
+
+
+@functools.lru_cache(maxsize=8)
+def moose_index(root):
+    """Every NIfTI file under a MOOSE masks folder, sorted, read once a root: the fallback of
+    locate_moose for a subject with no folder of its own."""
+    return tuple(sorted(p for p in Path(root).rglob("*.nii*") if p.is_file()))
+
+
+def mask_shape(path):
+    """A mask's array shape from its header alone, trailing axes of length one dropped as
+    read_values drops them, so a mask on another grid is told apart without reading it."""
+    import nibabel
+
+    shape = tuple(int(n) for n in nibabel.load(str(path)).shape)
+    while len(shape) > 3 and shape[-1] == 1:
+        shape = shape[:-1]
+    return shape
+
+
+def on_grid(paths, shape):
+    """The masks among paths that lie on the CT's grid, and the names of the ones that do not,
+    which are skipped with that reason; every path when no shape is given, as the subject
+    listing of find_subjects asks before any CT is read."""
+    if shape is None:
+        return list(paths), []
+    kept, skipped = [], []
+    for path in paths:
+        (kept if mask_shape(path) == tuple(shape) else skipped).append(path)
+    return kept, [p.name for p in skipped]
+
+
+def spineps_matches(subject, root):
+    """Every SPINEPS mask under root whose name before _seg-vert names the subject
+    (names_subject), in sorted order; the folder's layout is not recorded, so the whole folder
+    is walked once and indexed."""
+    if root is None:
+        return []
+    return [path for stem, path in spineps_index(str(root)) if names_subject(stem, subject)]
+
+
+def locate_spineps(subject, root, shape=None):
+    """The subject's SPINEPS mask under root: the first, in sorted order, of the files
+    *_seg-vert_msk.nii* whose name before _seg-vert names the subject and, when the CT's shape
+    is given, whose header is on the CT's grid, a mask on another grid skipped (brief: the
+    spineps folder is shared by several CT corpora, so a name alone may name another CT); None
+    when there is none."""
+    kept, _ = on_grid(spineps_matches(subject, root), shape)
+    return kept[0] if kept else None
+
+
+def moose_candidates(subject, root):
+    """The NIfTI files that may be the subject's moosez outputs, each with its path below the
+    folder the region word is read in: the files under root/<subject>/, the folder the segment
+    subcommand gives moosez as its output and its input's home, below that folder; or, where
+    that folder is missing, the files under root whose name holds the subject's id, below root.
+    Below the subject's folder, so a region word in the subject's own id matches nothing."""
+    home = Path(root) / str(subject)
+    if home.is_dir():
+        return [(p, p.relative_to(home)) for p in sorted(home.rglob("*.nii*")) if p.is_file()]
+    return [(p, p.relative_to(root)) for p in moose_index(str(root))
+            if names_subject(p.name.split(".")[0], subject)]
+
+
+def by_region(candidates, shape):
+    """Each model's file among the candidates, {model: path}: a file is a model's when its path
+    below the folder names the model's region (MOOSE_REGIONS), the first in sorted order that
+    lies on the CT's grid when a shape is given; and the names of the files on another grid."""
+    paths = {path: below for path, below in candidates}
+    kept, skipped = on_grid(list(paths), shape)
+    found = {}
+    for path in kept:
+        below = paths[path].as_posix().lower()
+        for model, region in MOOSE_REGIONS.items():
+            if model not in found and region in below:
+                found[model] = path
+                break
+    return found, skipped
+
+
+def locate_moose(subject, root, shape=None):
+    """The subject's moosez outputs under root, one file a model, {model: path}, from
+    moose_candidates by region (by_region: moosez names its output folders
+    moosez-<model>-<stamp>/segmentations/ by its constants, and its multilabel files carry the
+    model's name, by its README's examples; what its library entry writes exactly was not run
+    here, so the match is by the region word anywhere in the path below the subject's folder),
+    a file on another grid skipped when the CT's shape is given. Empty when there is none."""
+    if root is None:
+        return {}
+    found, _ = by_region(moose_candidates(subject, root), shape)
+    return found
+
+
+def read_values(path, shape):
+    """A mask's values as int32 on the CT's grid (trailing axes of length one dropped, as fxr's
+    NIfTI loader drops them); a mask on another grid is a MaskProblem."""
+    import nibabel
+
+    array = np.asarray(nibabel.load(str(path)).dataobj)
+    while array.ndim > 3 and array.shape[-1] == 1:
+        array = array[..., 0]
+    if tuple(array.shape) != tuple(shape):
+        raise MaskProblem(f"{path.name} is on another grid than the CT")
+    return np.rint(array).astype(np.int32)
+
+
+def grid_note(skipped):
+    """The tail of a reason naming the masks skipped for lying on another grid, or nothing."""
+    return f" on the CT's grid ({', '.join(skipped)} are not)" if skipped else ""
+
+
+def label_record(scheme, files, label, skipped):
+    """What a label volume holds, as the manifest records it: the scheme, the files read (names
+    only) and the ones skipped for lying on another grid, the MOOSE ids present with their
+    names, and the names present that FleXray's protocol drops (vertebra_l6, the thirteenth
+    ribs), which its remap drops at render time (fxr/datasets/remap.py,
+    compile_training_label_remap_by_name)."""
+    present = [int(i) for i in np.unique(label) if i > 0]
+    names = {str(i): segmenters.MOOSE_STORED[i] for i in present}
+    dropped = [n for n in names.values() if n in segmenters.MOOSE_DROPPED]
+    return {"scheme": scheme, "files": files, "skipped": list(skipped), "labels": names,
+            "dropped": dropped, "unsupervised": {}, "models_missing": []}
+
+
+def relabel(values, table, label):
+    """Write each raw value's MOOSE stored id into the label volume where the mask holds it;
+    returns the raw values the table has no id for, which stay out of the volume."""
+    outside = []
+    for value in (int(v) for v in np.unique(values) if v > 0):
+        if value in table:
+            label[values == value] = table[value]
+        else:
+            outside.append(value)
+    return outside
+
+
+def label_spineps(subject, ct_shape, roots):
+    """The subject's SPINEPS mask (the VerSe alphabet, schwingnet.segmenters.VERSE) relabelled
+    into MOOSE's stored ids (segmenters.to_moose_ids), which FleXray's own code reads
+    (fxr/experiment/label_projection.py, TrainingLabelProjection over the dataset's
+    stored_labels): L1 to L5 and L6 to vertebra_l1 to vertebra_l6, the sacrum to sacrum; T13 and
+    the coccyx have no MOOSE id, so they are left out of the volume and recorded as
+    unsupervised, as is any value outside the alphabet. One int16 volume and its record."""
+    kept, skipped = on_grid(spineps_matches(subject, roots.get("spineps")), ct_shape)
+    if not kept:
+        raise MaskProblem("no SPINEPS mask found under its folder" + grid_note(skipped))
+    values = read_values(kept[0], ct_shape)
+    label = np.zeros(ct_shape, dtype=np.int16)
+    outside = relabel(values, segmenters.to_moose_ids("spineps"), label)
+    names = segmenters.unsupervised_in("spineps")
+    record = label_record("spineps", {"spineps": kept[0].name}, label, skipped)
+    record["unsupervised"] = {str(v): names.get(v, "outside the VerSe alphabet") for v in outside}
+    return label, record
+
+
+def label_moose(subject, ct_shape, roots):
+    """The subject's moosez outputs merged into one volume of MOOSE's stored ids, as FleXray's
+    own MOOSE dataset was labelled (its CTs were run through moosez; the volume is what
+    fxr/experiment/label_projection.py's TrainingLabelProjection reads): each model's file in
+    the order of segmenters.MOOSEZ_MODELS, soft tissue first and the vertebrae last so a bone
+    wins where two models overlap, its values to stored ids by segmenters.moosez_to_moose_ids;
+    a value MOOSE never stored (the organs model's trachea) or outside the model's table is left
+    out and recorded as unsupervised; a missing model's file is recorded, and at least one must
+    be there. One int16 volume and its record."""
+    root = roots.get("moose")
+    found, skipped = by_region(moose_candidates(subject, root), ct_shape) if root else ({}, [])
+    if not found:
+        raise MaskProblem("no MOOSE masks found under its folder" + grid_note(skipped))
+    label = np.zeros(ct_shape, dtype=np.int16)
+    unsupervised, missing = {}, []
+    for model, names in segmenters.MOOSEZ_MODELS.items():
+        if model not in found:
+            missing.append(model)
+            continue
+        values = read_values(found[model], ct_shape)
+        for value in relabel(values, segmenters.moosez_to_moose_ids(model), label):
+            unsupervised[f"{model}:{value}"] = names.get(value, "outside the model's table")
+    files = {model: path.name for model, path in found.items()}
+    record = label_record("moose", files, label, skipped)
+    record["unsupervised"] = unsupervised
+    record["models_missing"] = missing
+    return label, record
+
+
 NAMES = {
     "hu_window": {"flexray": hu_window_flexray, "none": hu_window_none},
     "air_clamp": {"flexray": air_clamp_flexray, "none": air_clamp_none},
-    "crop": {"flexray-axial": crop_flexray_axial, "whole": crop_whole},
+    "crop": {"flexray-axial": crop_flexray_axial, "flexray-axial-min": crop_flexray_axial_min,
+             "whole": crop_whole},
     "crop_sampler": {
         "inverse-label-frequency": crop_sampler_inverse_label_frequency,
         "uniform": crop_sampler_uniform,
     },
-    "pose": {"flexray-moose": pose_flexray_moose},
+    "pose": {"flexray-moose": pose_flexray_moose, "fluxray-grid": pose_fluxray_grid},
     "isocentre": {
         "random-label": isocentre_random_label,
         "vertebra": isocentre_vertebra,
@@ -289,6 +544,7 @@ NAMES = {
     "attenuation": {"flexray-lognormal": attenuation_flexray_lognormal, "off": attenuation_off},
     "scale": {"minmax": scale_minmax},
     "edit": {"none": edit_none},
+    "segmenter": {"spineps": label_spineps, "moose": label_moose},
 }
 
 
