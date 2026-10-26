@@ -21,10 +21,10 @@ Nothing else was in the project's files. The other threads' handoffs are in git 
 
 ## 3. The threads' handoffs, by path
 
-- Plan the FleXray audit for #391: anomaly-route.md in this folder (branch claude/project-thread-x16ebc, pull request #410, until it merges).
+- Plan the FleXray audit for #391: anomaly-route.md in this folder (branch claude/project-thread-x16ebc, pull request #412, until it merges; the pack stage itself merged as #410 at 03:11 UTC).
 - Compare FleXray DRRs to real X-ray corpora: docs/checkpoints/2026-10-26-drr-comparison/HANDOFF.md on claude/project-thread-7ltron (#401, a draft; the public method note is symphony-template #493).
 - Finish CNS slides with junction predictor: bordercall's HANDOFF.md and the checkpoint page the thread's pull request adds under docs/checkpoints/ here; bordercall #1 and SchwingNet #404 merged; hpcworker #50 and symphony-template #495 open.
-- Stage the textbook for this project: docs/checkpoints/2026-10-26-front-door/HANDOFF.md on claude/project-thread-24opi2 (#409, ready, auto-merge armed), with the owner's remaining steps for the door in order.
+- Stage the textbook for this project: docs/checkpoints/2026-10-26-front-door/HANDOFF.md merged with #409 at 03:13 UTC (main e4fdf74), with the owner's remaining steps for the door in order.
 - Finetune Flux Realism for X-rays: docs/checkpoints/2026-10-26-flux-realism/HANDOFF.md on claude/project-thread-vd6p1l (#406, ready, auto-merge armed).
 - Add fetch size readers for #163: done; #400 merged (570e6c7) and #163 closed; the two things still unverified are in docs/research/exact-fetch-sizes.md.
 
@@ -39,7 +39,7 @@ The restart page's section 1 carries it; this is the same text, kept here so the
 ```
 You are picking up the "symphony" project from an earlier project, perhaps on another Claude account. First read docs/research/handoff-2026-10-26-checkpoint-3.md in OpenSpineConsortium/symphony-template, on main, or on the branch claude/project-thread-x16ebc until its pull request merges. Then, in order:
 1. Write this project's instructions yourself: section 2 of symphony-template's docs/research/handoff-2026-10-25.md, verbatim, with its line "No API key or Claude credential anywhere." replaced by the key rule in that page's section 0, the goal line of its section 11, step 3, at the top, and the owner's rules of 2026-10-26 from section 4 of the checkpoint-3 page after it. Attach OpenSpineConsortium/FleXray, OpenSpineConsortium/bordercall and OpenSpineConsortium/hpcworker with add_repo, and the other repositories that page lists when a thread needs one.
-2. Read SchwingNet's docs/checkpoints/2026-10-26-morning/README.md (on the branch claude/project-thread-x16ebc until SchwingNet #410 merges), and write into this project's memory whatever in its project-memory/ folder still holds.
+2. Read SchwingNet's docs/checkpoints/2026-10-26-morning/README.md (on the branch claude/project-thread-x16ebc until SchwingNet #412 merges), and write into this project's memory whatever in its project-memory/ folder still holds.
 3. Start one thread for each open thread in section 2 of the checkpoint page, each told to restart from its own handoff as that section says.
 Send nothing to the grid beyond the counts section 3 of the checkpoint page records as approved, each word once and only after reading the grid's status record, and ask me for any other count once, as a decision card. Never give me a step that only moves or edits text. When I answer idk, take the option you recommend. Do not copy anything from SchwingNet or bordercall into a public place, and put no career material in git.
 ```
