@@ -89,7 +89,10 @@
 #                   queued once as one job (grid/anomaly.sbatch, tools/anomaly_route.py) once the stage's code has
 #                   merged; the next send prints logs/ANOMALY-<stage>.md, and every later one prints it again and
 #                   queues nothing. Built so far: select, the inventory, the two-labeller call, the holdout's
-#                   score and the selection, one CPU job over masks that already exist
+#                   score and the selection, one CPU job over masks that already exist; timing, one GPU job that
+#                   lists the paired CTs without a named SPINEPS mask and times SPINEPS on ten of them
+#                   (tools/anomaly_timing.py), sent once select's report ended well, and queued again at the
+#                   same commit when its GPU self-test left a node the spineps environment cannot use (exit 4)
 #   stop            cancel the gate's own jobs that are still queued or running, and nothing else
 #   cancel <job>    cancel one of the gate's own live jobs and every other live job its word queued
 #                   with it (a fetch's bank and catalog), and nothing else
@@ -1069,29 +1072,55 @@ word_bench() {  # one public model's benchmark (#287): queued once, its report p
 anomaly_class() {  # the job class a built stage of the anomaly route runs as, else nothing
   case "$1" in
     select) echo batch ;;
+    timing) echo gpu ;;
   esac
 }
+anomaly_options() {  # the job options a stage asks beyond its class: timing as spinesurg-ct-nnunet's slurm/spineps_cases.sh asked them
+  case "$1" in
+    timing) echo "--cpus 8 --mem 64G --time 04:00:00" ;;
+  esac
+}
+anomaly_ended_well() {  # a stage report whose last line is exit 0
+  [[ "$(tail -n 1 "$1" 2>/dev/null)" =~ ^-\ exit\ 0\  ]]
+}
+anomaly_left_its_node() {  # a stage report whose last line is exit 4: step 0 left a node the environment cannot use (grid/anomaly.sbatch)
+  [[ "$(tail -n 1 "$1" 2>/dev/null)" =~ ^-\ exit\ 4\  ]] && [ -n "$(bench_job_of "$1")" ]
+}
 anomaly_inputs_missing() {  # what anomaly $id still lacks, one line, or nothing
+  local conda_sh=${CONDA_SH:-$HOME/mambaforge/etc/profile.d/conda.sh} runner=${SSN:-$HOME/spinesurg-ct-nnunet}/benchmark/run_spineps_cases.py
   case "$id" in
     select)
       [ -f "$REPO/data/splits/anomaly-holdout.json" ] || echo "the frozen holdout, data/splits/anomaly-holdout.json" ;;
+    timing)
+      # Each stage goes once the one before looks sane (docs/research/spineps-anomaly-route.md, section 5).
+      anomaly_ended_well "$LOGS/ANOMALY-select.md" || { echo "a select report that ended in exit 0 (logs/ANOMALY-select.md: send anomaly select first and read it)"; return; }
+      [ -f "$conda_sh" ] || { echo "conda at $conda_sh, which holds the spineps environment"; return; }
+      [ -f "$runner" ] || echo "the SPINEPS runner, $runner (the spinesurg-ct-nnunet clone at its branch L6_Class)" ;;
   esac
 }
 word_anomaly() {  # one stage of the SPINEPS to FleXray anomaly route (#398): queued once, its report printed on every later send
-  local report=$LOGS/ANOMALY-$id.md class busy missing holds opts setup
+  local report=$LOGS/ANOMALY-$id.md class busy missing holds opts setup stage_opts
   class=$(anomaly_class "$id")
-  [ -n "$class" ] || { echo "refusing: anomaly takes select; the stages timing, pack, render, figure, tune and eval are not built yet, and each comes by pull request first"; return 64; }
+  [ -n "$class" ] || { echo "refusing: anomaly takes select or timing; the stages pack, render, figure, tune and eval are not built yet, and each comes by pull request first"; return 64; }
   busy=$(live_of "anomaly_$id")
   [ -z "$busy" ] || { echo "refusing: the anomaly stage $id is still queued or running (job $busy); send anomaly $id again once it ends"; return 75; }
   if [ -f "$report" ]; then
     # Kept, so the owner's count of one job a stage holds: a report that stands queues nothing.
     echo "## $(basename "$report") ($(date -r "$report" '+%F %T'))"
     head -n 200 "$report" | LC_ALL=C tr -cd '\11\12\40-\176' | masked | head -c 30000
-    bench_failed_on_older_code "$report" || return 0
-    # A stage that failed decided nothing, so once a fix has moved the checkout it is queued once
-    # more, its report kept under its job's number, as a benchmark's is; the same commit queues nothing.
-    mv "$report" "$LOGS/ANOMALY-$id-$(bench_job_of "$report").md" || return 1
-    echo "  the report above ended in failure on older code: queueing the stage again at $commit"
+    if anomaly_left_its_node "$report"; then
+      # Step 0 left a node the environment cannot use before a CT was staged, so the stage spent
+      # nothing of the count: it is queued again at the same commit, its report kept under its
+      # job's number, to land where the class's partitions next have room.
+      mv "$report" "$LOGS/ANOMALY-$id-$(bench_job_of "$report").md" || return 1
+      echo "  the report above says the stage left its node unused: queueing the stage again at $commit"
+    else
+      bench_failed_on_older_code "$report" || return 0
+      # A stage that failed decided nothing, so once a fix has moved the checkout it is queued once
+      # more, its report kept under its job's number, as a benchmark's is; the same commit queues nothing.
+      mv "$report" "$LOGS/ANOMALY-$id-$(bench_job_of "$report").md" || return 1
+      echo "  the report above ended in failure on older code: queueing the stage again at $commit"
+    fi
   fi
   missing=$(anomaly_inputs_missing)
   [ -z "$missing" ] || { echo "refusing: anomaly $id needs $missing"; return 2; }
@@ -1100,6 +1129,9 @@ word_anomaly() {  # one stage of the SPINEPS to FleXray anomaly route (#398): qu
   holds=$(checkout_holders)
   [ -z "$holds" ] || echo "  the checkout: after the live runs that hold it ($holds)"
   depend_on "$(joined "$setup" "$holds")" || return 1
+  # depend_on filled opts with the --after options; the stage's own job options follow them
+  read -ra stage_opts <<< "$(anomaly_options "$id")"
+  opts+=(${stage_opts[@]+"${stage_opts[@]}"})
   submit "anomaly_$id" "$class" STAGE="$id" DATA_ROOT="$DATA_ROOT" ${opts[@]+"${opts[@]}"} --no-requeue -- anomaly.sbatch > /dev/null || return 1
   echo "submitted the anomaly stage $id. Send anomaly $id again once it ends to read its report, logs/ANOMALY-$id.md."
 }
