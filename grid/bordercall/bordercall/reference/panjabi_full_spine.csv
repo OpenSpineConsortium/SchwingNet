@@ -1,0 +1,117 @@
+# Panjabi's quantitative three-dimensional anatomy, thoracic (1991) and
+# lumbar (1992). Dispersion is the STANDARD ERROR as printed; the population
+# SD is sem*sqrt(n). Cervical levels are absent: see build_panjabi.py.
+measure,level,mean,sem,n,panjabi_name,source_table,source_page,citation
+canal_ap,C2,21.0,0.35,12,SCD,3,864,Panjabi MM et al. Spine 1991;16(8):861-869
+canal_ap,C3,16.2,1.33,12,SCD,3,864,Panjabi MM et al. Spine 1991;16(8):861-869
+canal_ap,C4,17.7,0.46,12,SCD,3,864,Panjabi MM et al. Spine 1991;16(8):861-869
+canal_ap,C5,17.4,0.72,12,SCD,3,864,Panjabi MM et al. Spine 1991;16(8):861-869
+canal_ap,C6,18.1,0.46,12,SCD,3,864,Panjabi MM et al. Spine 1991;16(8):861-869
+canal_ap,C7,15.2,1.15,12,SCD,3,864,Panjabi MM et al. Spine 1991;16(8):861-869
+canal_ap,L1,19.0,0.67,12,canal_ap,2-5,301,Panjabi MM et al. Spine 1992;17(3):299-306
+canal_ap,L2,18.2,0.53,12,canal_ap,2-5,301,Panjabi MM et al. Spine 1992;17(3):299-306
+canal_ap,L3,17.5,0.53,12,canal_ap,2-5,301,Panjabi MM et al. Spine 1992;17(3):299-306
+canal_ap,L4,18.6,0.71,12,canal_ap,2-5,301,Panjabi MM et al. Spine 1992;17(3):299-306
+canal_ap,L5,19.7,0.49,12,canal_ap,2-5,301,Panjabi MM et al. Spine 1992;17(3):299-306
+canal_ap,T1,16.4,0.42,12,SCD,4,893,Panjabi MM et al. Spine 1991;16(8):888-901
+canal_ap,T10,15.5,0.7,12,SCD,4,893,Panjabi MM et al. Spine 1991;16(8):888-901
+canal_ap,T11,16.0,0.46,12,SCD,4,893,Panjabi MM et al. Spine 1991;16(8):888-901
+canal_ap,T12,18.1,0.62,12,SCD,4,893,Panjabi MM et al. Spine 1991;16(8):888-901
+canal_ap,T2,15.3,1.25,12,SCD,4,893,Panjabi MM et al. Spine 1991;16(8):888-901
+canal_ap,T3,15.9,1.09,12,SCD,4,893,Panjabi MM et al. Spine 1991;16(8):888-901
+canal_ap,T4,16.2,0.89,12,SCD,4,893,Panjabi MM et al. Spine 1991;16(8):888-901
+canal_ap,T5,16.3,0.72,12,SCD,4,893,Panjabi MM et al. Spine 1991;16(8):888-901
+canal_ap,T6,16.5,0.62,12,SCD,4,893,Panjabi MM et al. Spine 1991;16(8):888-901
+canal_ap,T7,16.1,0.69,12,SCD,4,893,Panjabi MM et al. Spine 1991;16(8):888-901
+canal_ap,T8,15.9,0.76,12,SCD,4,893,Panjabi MM et al. Spine 1991;16(8):888-901
+canal_ap,T9,15.7,0.82,12,SCD,4,893,Panjabi MM et al. Spine 1991;16(8):888-901
+canal_w,C2,24.5,0.61,12,SCW,3,864,Panjabi MM et al. Spine 1991;16(8):861-869
+canal_w,C3,22.9,1.15,12,SCW,3,864,Panjabi MM et al. Spine 1991;16(8):861-869
+canal_w,C4,24.7,0.52,12,SCW,3,864,Panjabi MM et al. Spine 1991;16(8):861-869
+canal_w,C5,24.9,1.13,12,SCW,3,864,Panjabi MM et al. Spine 1991;16(8):861-869
+canal_w,C6,25.8,0.66,12,SCW,3,864,Panjabi MM et al. Spine 1991;16(8):861-869
+canal_w,C7,24.5,0.92,12,SCW,3,864,Panjabi MM et al. Spine 1991;16(8):861-869
+canal_w,L1,23.7,0.92,12,canal_w,2-5,301,Panjabi MM et al. Spine 1992;17(3):299-306
+canal_w,L2,23.8,0.71,12,canal_w,2-5,301,Panjabi MM et al. Spine 1992;17(3):299-306
+canal_w,L3,24.3,0.64,12,canal_w,2-5,301,Panjabi MM et al. Spine 1992;17(3):299-306
+canal_w,L4,25.4,0.49,12,canal_w,2-5,301,Panjabi MM et al. Spine 1992;17(3):299-306
+canal_w,L5,27.1,0.88,12,canal_w,2-5,301,Panjabi MM et al. Spine 1992;17(3):299-306
+canal_w,T1,21.8,0.71,12,SCW,4,893,Panjabi MM et al. Spine 1991;16(8):888-901
+canal_w,T10,18.2,0.78,12,SCW,4,893,Panjabi MM et al. Spine 1991;16(8):888-901
+canal_w,T11,19.4,0.95,12,SCW,4,893,Panjabi MM et al. Spine 1991;16(8):888-901
+canal_w,T12,22.2,1.12,12,SCW,4,893,Panjabi MM et al. Spine 1991;16(8):888-901
+canal_w,T2,19.5,0.34,12,SCW,4,893,Panjabi MM et al. Spine 1991;16(8):888-901
+canal_w,T3,18.3,0.54,12,SCW,4,893,Panjabi MM et al. Spine 1991;16(8):888-901
+canal_w,T4,17.0,0.57,12,SCW,4,893,Panjabi MM et al. Spine 1991;16(8):888-901
+canal_w,T5,17.1,0.68,12,SCW,4,893,Panjabi MM et al. Spine 1991;16(8):888-901
+canal_w,T6,17.3,0.74,12,SCW,4,893,Panjabi MM et al. Spine 1991;16(8):888-901
+canal_w,T7,17.3,0.83,12,SCW,4,893,Panjabi MM et al. Spine 1991;16(8):888-901
+canal_w,T8,17.7,0.63,12,SCW,4,893,Panjabi MM et al. Spine 1991;16(8):888-901
+canal_w,T9,17.9,1.19,12,SCW,4,893,Panjabi MM et al. Spine 1991;16(8):888-901
+endplate,C3,15.8,0.46,12,EPWu,2,863,Panjabi MM et al. Spine 1991;16(8):861-869
+endplate,C4,17.2,0.66,12,EPWu,2,863,Panjabi MM et al. Spine 1991;16(8):861-869
+endplate,C5,17.5,0.58,12,EPWu,2,863,Panjabi MM et al. Spine 1991;16(8):861-869
+endplate,C6,18.5,0.55,12,EPWu,2,863,Panjabi MM et al. Spine 1991;16(8):861-869
+endplate,C7,21.8,0.66,12,EPWu,2,863,Panjabi MM et al. Spine 1991;16(8):861-869
+endplate,L1,41.2,1.03,12,endplate,2-5,301,Panjabi MM et al. Spine 1992;17(3):299-306
+endplate,L2,42.6,0.74,12,endplate,2-5,301,Panjabi MM et al. Spine 1992;17(3):299-306
+endplate,L3,44.1,0.88,12,endplate,2-5,301,Panjabi MM et al. Spine 1992;17(3):299-306
+endplate,L4,46.6,1.2,12,endplate,2-5,301,Panjabi MM et al. Spine 1992;17(3):299-306
+endplate,L5,47.3,1.2,12,endplate,2-5,301,Panjabi MM et al. Spine 1992;17(3):299-306
+endplate,T1,24.5,0.85,12,EPWu,3,892,Panjabi MM et al. Spine 1991;16(8):888-901
+endplate,T10,31.9,0.67,12,EPWu,3,892,Panjabi MM et al. Spine 1991;16(8):888-901
+endplate,T11,34.9,0.97,12,EPWu,3,892,Panjabi MM et al. Spine 1991;16(8):888-901
+endplate,T12,39.0,0.58,12,EPWu,3,892,Panjabi MM et al. Spine 1991;16(8):888-901
+endplate,T2,24.9,0.59,12,EPWu,3,892,Panjabi MM et al. Spine 1991;16(8):888-901
+endplate,T3,24.6,0.43,12,EPWu,3,892,Panjabi MM et al. Spine 1991;16(8):888-901
+endplate,T4,24.5,0.58,12,EPWu,3,892,Panjabi MM et al. Spine 1991;16(8):888-901
+endplate,T5,24.9,0.77,12,EPWu,3,892,Panjabi MM et al. Spine 1991;16(8):888-901
+endplate,T6,26.2,0.79,12,EPWu,3,892,Panjabi MM et al. Spine 1991;16(8):888-901
+endplate,T7,27.8,0.7,12,EPWu,3,892,Panjabi MM et al. Spine 1991;16(8):888-901
+endplate,T8,29.5,0.71,12,EPWu,3,892,Panjabi MM et al. Spine 1991;16(8):888-901
+endplate,T9,30.6,1.06,12,EPWu,3,892,Panjabi MM et al. Spine 1991;16(8):888-901
+h_post,C3,11.6,0.35,12,VBHp,2,863,Panjabi MM et al. Spine 1991;16(8):861-869
+h_post,C4,11.4,0.43,12,VBHp,2,863,Panjabi MM et al. Spine 1991;16(8):861-869
+h_post,C5,11.4,0.32,12,VBHp,2,863,Panjabi MM et al. Spine 1991;16(8):861-869
+h_post,C6,10.9,0.26,12,VBHp,2,863,Panjabi MM et al. Spine 1991;16(8):861-869
+h_post,C7,12.8,0.46,12,VBHp,2,863,Panjabi MM et al. Spine 1991;16(8):861-869
+h_post,L1,23.8,0.92,12,h_post,2-5,301,Panjabi MM et al. Spine 1992;17(3):299-306
+h_post,L2,24.3,0.95,12,h_post,2-5,301,Panjabi MM et al. Spine 1992;17(3):299-306
+h_post,L3,23.8,1.1,12,h_post,2-5,301,Panjabi MM et al. Spine 1992;17(3):299-306
+h_post,L4,24.1,1.1,12,h_post,2-5,301,Panjabi MM et al. Spine 1992;17(3):299-306
+h_post,L5,22.9,0.95,12,h_post,2-5,301,Panjabi MM et al. Spine 1992;17(3):299-306
+h_post,T1,14.1,0.41,12,VBHp,3,892,Panjabi MM et al. Spine 1991;16(8):888-901
+h_post,T10,20.2,0.44,12,VBHp,3,892,Panjabi MM et al. Spine 1991;16(8):888-901
+h_post,T11,21.3,0.71,12,VBHp,3,892,Panjabi MM et al. Spine 1991;16(8):888-901
+h_post,T12,22.7,1.04,12,VBHp,3,892,Panjabi MM et al. Spine 1991;16(8):888-901
+h_post,T2,15.6,0.58,12,VBHp,3,892,Panjabi MM et al. Spine 1991;16(8):888-901
+h_post,T3,15.7,0.57,12,VBHp,3,892,Panjabi MM et al. Spine 1991;16(8):888-901
+h_post,T4,16.2,0.48,12,VBHp,3,892,Panjabi MM et al. Spine 1991;16(8):888-901
+h_post,T5,16.2,0.6,12,VBHp,3,892,Panjabi MM et al. Spine 1991;16(8):888-901
+h_post,T6,17.4,0.54,12,VBHp,3,892,Panjabi MM et al. Spine 1991;16(8):888-901
+h_post,T7,18.2,0.7,12,VBHp,3,892,Panjabi MM et al. Spine 1991;16(8):888-901
+h_post,T8,18.7,0.69,12,VBHp,3,892,Panjabi MM et al. Spine 1991;16(8):888-901
+h_post,T9,19.3,0.59,12,VBHp,3,892,Panjabi MM et al. Spine 1991;16(8):888-901
+pedicle,C2,8.0,0.21,12,PDW (mean of l/r),4,864,Panjabi MM et al. Spine 1991;16(8):861-869
+pedicle,C3,5.6,0.48,12,PDW (mean of l/r),4,864,Panjabi MM et al. Spine 1991;16(8):861-869
+pedicle,C4,5.4,0.53,12,PDW (mean of l/r),4,864,Panjabi MM et al. Spine 1991;16(8):861-869
+pedicle,C5,5.6,0.405,12,PDW (mean of l/r),4,864,Panjabi MM et al. Spine 1991;16(8):861-869
+pedicle,C6,5.95,0.44,12,PDW (mean of l/r),4,864,Panjabi MM et al. Spine 1991;16(8):861-869
+pedicle,C7,6.55,0.385,12,PDW (mean of l/r),4,864,Panjabi MM et al. Spine 1991;16(8):861-869
+pedicle,L1,8.6,0.915,12,pedicle,2-5,301,Panjabi MM et al. Spine 1992;17(3):299-306
+pedicle,L2,8.25,0.675,12,pedicle,2-5,301,Panjabi MM et al. Spine 1992;17(3):299-306
+pedicle,L3,10.15,0.6,12,pedicle,2-5,301,Panjabi MM et al. Spine 1992;17(3):299-306
+pedicle,L4,14.05,0.32,12,pedicle,2-5,301,Panjabi MM et al. Spine 1992;17(3):299-306
+pedicle,L5,18.6,1.03,12,pedicle,2-5,301,Panjabi MM et al. Spine 1992;17(3):299-306
+pedicle,T1,8.45,0.485,12,PDW (mean of l/r),5,894,Panjabi MM et al. Spine 1991;16(8):888-901
+pedicle,T10,9.0,0.74,12,PDW (mean of l/r),5,894,Panjabi MM et al. Spine 1991;16(8):888-901
+pedicle,T11,9.75,0.635,12,PDW (mean of l/r),5,894,Panjabi MM et al. Spine 1991;16(8):888-901
+pedicle,T12,8.7,0.745,12,PDW (mean of l/r),5,894,Panjabi MM et al. Spine 1991;16(8):888-901
+pedicle,T2,8.15,1.015,12,PDW (mean of l/r),5,894,Panjabi MM et al. Spine 1991;16(8):888-901
+pedicle,T3,6.75,0.665,12,PDW (mean of l/r),5,894,Panjabi MM et al. Spine 1991;16(8):888-901
+pedicle,T4,6.25,0.6,12,PDW (mean of l/r),5,894,Panjabi MM et al. Spine 1991;16(8):888-901
+pedicle,T5,5.95,0.455,12,PDW (mean of l/r),5,894,Panjabi MM et al. Spine 1991;16(8):888-901
+pedicle,T6,6.0,0.825,12,PDW (mean of l/r),5,894,Panjabi MM et al. Spine 1991;16(8):888-901
+pedicle,T7,5.85,0.625,12,PDW (mean of l/r),5,894,Panjabi MM et al. Spine 1991;16(8):888-901
+pedicle,T8,6.7,0.49,12,PDW (mean of l/r),5,894,Panjabi MM et al. Spine 1991;16(8):888-901
+pedicle,T9,7.65,0.595,12,PDW (mean of l/r),5,894,Panjabi MM et al. Spine 1991;16(8):888-901
