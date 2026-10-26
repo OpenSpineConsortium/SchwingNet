@@ -136,7 +136,9 @@ def get(url, token="", byte_range=None, timeout=120):
                 # Reading on would download the whole file to learn what its end says; a page is
                 # read only as far as its form, which is all a page in place of a file holds.
                 raise NotRanged(stated_length(answer.headers), first_page(answer), answer.geturl())
-            limit = byte_range[1] - byte_range[0] + 1 if byte_range else -1
+            # None, never -1, for the whole body: Python 3.12's read(-1) returns what arrived and
+            # says nothing of a body cut short, which read() with no count raises on.
+            limit = byte_range[1] - byte_range[0] + 1 if byte_range else None
             headers = answer.headers
             # The address the answer came from, after every redirect, kept beside its headers,
             # since a client names what it lands by that address (size_kaggle).
