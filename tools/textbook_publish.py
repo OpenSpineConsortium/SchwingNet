@@ -111,14 +111,21 @@ def load_state(path):
 def plan(page, state, capabilities=None):
     """What to publish: nothing where the record holds this page and these capabilities; else the
     page, as a new artifact where the record has no link, with the capabilities on a first publish
-    and again only when the record's differ, since a redeploy that passes none keeps what it has."""
+    and again only when the record's differ, since a redeploy that passes none keeps what it has.
+    The Artifact tool refuses a declaration that drops a capability the artifact holds, so where
+    the door's declaration drops one (an adopted link holds the reader's files, which the door does
+    not use; a record may name one the door no longer declares) the artifact's declaration is
+    cleared first, with capabilities {}, and the door's goes out after it: `clear`."""
     capabilities = capabilities or CAPABILITIES
     digest = sha256(page)
     first = not state.get("url")
     nothing = not first and state.get("page") == digest and state.get("capabilities") == capabilities
+    goes = capabilities if first or state.get("capabilities") != capabilities else None
+    held = state.get("capabilities") or {}
+    clear = goes is not None and not first and (bool(state.get("adopted")) or any(name not in goes for name in held))
     return {"first": first, "url": state.get("url", ""), "nothing": nothing, "page": digest,
-            "bytes": Path(page).stat().st_size, "adopted": bool(state.get("adopted")),
-            "capabilities": capabilities if first or state.get("capabilities") != capabilities else None}
+            "bytes": Path(page).stat().st_size, "adopted": bool(state.get("adopted")), "clear": clear,
+            "capabilities": goes}
 
 
 # prompt
@@ -151,15 +158,16 @@ def prompt(plan_, sha, page, answer):
     else:
         keep = (f", capabilities {capabilities}, since the door's capabilities are not the ones recorded" if capabilities
                 else "; pass no capabilities")
+        step = 4 if plan_.get("clear") else 3
         if plan_.get("adopted"):
             holds = [
                 f"The artifact at {plan_['url']} is the link the owner keeps. It holds the page a thread published there on",
                 f"2026-10-26 before the door existed, the textbook reader titled \"{READER_TITLE}\", whose declaration is",
                 "files and sample, or an edition of the door. Replacing that page and its declaration with the door is",
                 "what this command does, on the owner's choice of 2026-10-26: the read of step 2 showing the reader is as",
-                "expected, and the publish of step 3 needs no confirmation from the person.",
+                f"expected, and the publish of step {step} needs no confirmation from the person.",
             ]
-            how = (f"3. Action publish with url {plan_['url']}, file_path {page}, label \"{label}\", icon door, description",
+            how = (f"{step}. Action publish with url {plan_['url']}, file_path {page}, label \"{label}\", icon door, description",
                    f"   \"{DESCRIPTION}\"{keep}; the page's own title names the artifact.")
         else:
             holds = [
@@ -167,13 +175,21 @@ def prompt(plan_, sha, page, answer):
                 f"\"{READER_TITLE}\" that the door replaced. Publishing over it is what this command does, and it needs no",
                 "confirmation from the person.",
             ]
-            how = (f"3. Action publish with url {plan_['url']}, file_path {page}, label \"{label}\"{keep}; pass no icon,",
+            how = (f"{step}. Action publish with url {plan_['url']}, file_path {page}, label \"{label}\"{keep}; pass no icon,",
                    "   title or description, so the artifact keeps what it has.")
+        clearing = [
+            f"3. Action publish with url {plan_['url']}, file_path {page}, label \"{label}, cleared\" and capabilities {{}},",
+            "   nothing else. This clears the declaration the artifact holds (the reader's files and sample, or a",
+            "   capability the door no longer declares), which the door does not use: the Artifact tool refuses a",
+            "   declaration that drops a stored capability unless the artifact is cleared first, and dropping it is",
+            "   the owner's choice of 2026-10-26, so this step needs no confirmation either.",
+        ] if plan_.get("clear") else []
         lines += [""] + holds + [
             f"Stop, writing the line {MISMATCH} to {answer} with what you found after it on the same line, only where",
             "the read fails or shows a page that is neither the door nor that reader.",
             "",
             f"2. Action read with url {plan_['url']} (a publish to an artifact this session has not read is refused).",
+            *clearing,
             *how,
         ]
     if plan_["capabilities"]:
