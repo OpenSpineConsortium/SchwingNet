@@ -82,12 +82,14 @@ class RecordsAreRead(unittest.TestCase):
         self.assertEqual([r["name"] for r in panel.recipes(ROOT)], ["commercial", "commercial-share-alike", "non-commercial", "research-internal"])
         sys.path.insert(0, str(ROOT / "src"))
         try:
-            from schwingnet import blocks
+            from schwingnet import blocks, segmenters
         except ImportError:
             self.skipTest("the package's dependencies are not here; the gate lane holds the two equal")
         self.assertEqual(self.catalog["fields"], list(blocks.FIELDS))
         self.assertEqual(self.catalog["defaults"], blocks.as_record(blocks.DEFAULT))
-        self.assertEqual(self.catalog["choices"], {k: list(v) for k, v in blocks.CHOICES.items()})
+        self.assertEqual(self.catalog["choices"],
+                         {**{k: list(v) for k, v in blocks.CHOICES.items()}, "segmenter": list(segmenters.SEGMENTERS)})
+        self.assertNotIn("segmenter", blocks.CHOICES, "the segmenter's choices are schwingnet.segmenters', read from its source")
 
     def test_wilson_is_the_evaluation_pages(self):
         for correct, total in ((430, 431), (556, 556), (0, 10), (7, 20)):
@@ -197,7 +199,7 @@ Promise.all(asks.map((a) => window.schwingnetDispatch(a))).then((results) => {
     def test_the_currency_check_fails_on_a_stale_page(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            for rel in (panel.BLOCKS_PY, panel.LEDGER):
+            for rel in (panel.BLOCKS_PY, panel.LEDGER, *(module for module, _ in panel.OUTSIDE_CHOICES.values())):
                 (root / rel).parent.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(ROOT / rel, root / rel)
             shutil.copytree(ROOT / panel.RECIPES, root / panel.RECIPES)
