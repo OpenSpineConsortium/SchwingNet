@@ -262,6 +262,9 @@ def problems(blocks: RenderBlocks) -> list[str]:
     return found
 
 
+@beartype
+@ensure(lambda result: all(name in FIELDS for name in result), "each key is a render part")
+@ensure(lambda result: all(allowed for allowed in result.values()), "each part keeps a choice")
 def runtime_choices(blocks: RenderBlocks) -> dict[str, tuple[str, ...]]:
     """The choices FleXray's code honours for the pose named: its runtime's under flexray-moose,
     its primitives' under fluxray-grid."""

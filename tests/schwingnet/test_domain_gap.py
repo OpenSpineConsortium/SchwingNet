@@ -304,9 +304,9 @@ def test_a_choice_of_subjects_refuses_a_count_below_zero_and_what_is_no_set() ->
     with pytest.raises(ViolationError):
         gap.choose_subjects(frozenset({"s1"}), {}, -1, SALT)
     with pytest.raises(BeartypeCallHintParamViolation):
-        gap.choose_subjects(["s1"], {}, 1, SALT)  # type: ignore[arg-type]
+        gap.choose_subjects(["s1"], {}, 1, SALT)
     with pytest.raises(BeartypeCallHintParamViolation):
-        gap.choose_subjects(frozenset({"s1"}), {"spineps": ["s1"]}, 1, SALT)  # type: ignore[dict-item]
+        gap.choose_subjects(frozenset({"s1"}), {"spineps": ["s1"]}, 1, SALT)
 
 
 def test_the_families_and_sources_are_the_studys() -> None:
