@@ -92,7 +92,11 @@
 #                   score and the selection, one CPU job over masks that already exist; timing, one GPU job that
 #                   lists the paired CTs without a named SPINEPS mask and times SPINEPS on ten of them
 #                   (tools/anomaly_timing.py), sent once select's report ended well, and queued again at the
-#                   same commit when its GPU self-test left a node the spineps environment cannot use (exit 4)
+#                   same commit when its GPU self-test left a node the spineps environment cannot use (exit 4);
+#                   pack, one CPU job of three days at most that rewrites the existing masks to the canonical
+#                   ids and packs FleXray's two whole-volume packages under the landing flexray_pack
+#                   (tools/anomaly_pack.py), sent once timing's report ended well, admitted under the size
+#                   rule before a byte lands and queued again at the same commit when the rule refused it (exit 5)
 #   bordercall <stage>  the bordercall corpus and its answer, which junction the shape of the bone names most
 #                   robustly in normal and anomalous spines, over every full-spine SPINEPS mask the grid holds
 #                   (the owner's prompt of 2026-10-25 23:48 UTC and count of 23:56 UTC: two CPU jobs; grid/bordercall.sbatch,
@@ -151,6 +155,10 @@ SMOKE=${SMOKE:-/rs/rs_grp_oschome/go2432/smoke}
 MODELS=${MODELS:-/rs/rs_grp_oschome/go2432/models}
 WEIGHTS=$MODELS/resnet18-f37072fd.pth
 SWEEP_BANK=${SWEEP_BANK:-$DATA_ROOT/realxray/carmlspine_sweep}
+# The anomaly route's stages write under ANOMALY_ROOT (grid/anomaly.sbatch reads the same default from
+# the lab volume), and its pack stage reads G3's person split from the home, as the clone's tools do.
+ANOMALY_ROOT=${ANOMALY_ROOT:-$VOLUME/go2432/anomaly}
+G3_SPLIT=${G3_SPLIT:-$HOME/split_final.json}
 NETRC=${NETRC:-$HOME/.netrc}
 LOGS=$REPO/grid/logs
 STATE=$LOGS/GATE_JOBS.txt
@@ -1087,13 +1095,14 @@ word_bench() {  # one public model's benchmark (#287): queued once, its report p
 
 anomaly_class() {  # the job class a built stage of the anomaly route runs as, else nothing
   case "$1" in
-    select) echo batch ;;
+    select|pack) echo batch ;;
     timing) echo gpu ;;
   esac
 }
-anomaly_options() {  # the job options a stage asks beyond its class: timing as spinesurg-ct-nnunet's slurm/spineps_cases.sh asked them
+anomaly_options() {  # the job options a stage asks beyond its class: timing as spinesurg-ct-nnunet's slurm/spineps_cases.sh asked them, pack three days of one node for the guard, the rewrite and two packs over about a thousand CTs
   case "$1" in
     timing) echo "--cpus 8 --mem 64G --time 04:00:00" ;;
+    pack) echo "--cpus 4 --mem 64G --time 3-00:00:00" ;;
   esac
 }
 anomaly_ended_well() {  # a stage report whose last line is exit 0
@@ -1102,8 +1111,11 @@ anomaly_ended_well() {  # a stage report whose last line is exit 0
 anomaly_left_its_node() {  # a stage report whose last line is exit 4: step 0 left a node the environment cannot use (grid/anomaly.sbatch)
   [[ "$(tail -n 1 "$1" 2>/dev/null)" =~ ^-\ exit\ 4\  ]] && [ -n "$(bench_job_of "$1")" ]
 }
+anomaly_refused_room() {  # a stage report whose last line is exit 5: the size rule refused the pack before a byte landed (grid/anomaly.sbatch)
+  [[ "$(tail -n 1 "$1" 2>/dev/null)" =~ ^-\ exit\ 5\  ]] && [ -n "$(bench_job_of "$1")" ]
+}
 anomaly_inputs_missing() {  # what anomaly $id still lacks, one line, or nothing
-  local conda_sh=${CONDA_SH:-$HOME/mambaforge/etc/profile.d/conda.sh} runner=${SSN:-$HOME/spinesurg-ct-nnunet}/benchmark/run_spineps_cases.py
+  local conda_sh=${CONDA_SH:-$HOME/mambaforge/etc/profile.d/conda.sh} ssn=${SSN:-$HOME/spinesurg-ct-nnunet}
   case "$id" in
     select)
       [ -f "$REPO/data/splits/anomaly-holdout.json" ] || echo "the frozen holdout, data/splits/anomaly-holdout.json" ;;
@@ -1111,13 +1123,22 @@ anomaly_inputs_missing() {  # what anomaly $id still lacks, one line, or nothing
       # Each stage goes once the one before looks sane (docs/research/spineps-anomaly-route.md, section 5).
       anomaly_ended_well "$LOGS/ANOMALY-select.md" || { echo "a select report that ended in exit 0 (logs/ANOMALY-select.md: send anomaly select first and read it)"; return; }
       [ -f "$conda_sh" ] || { echo "conda at $conda_sh, which holds the spineps environment"; return; }
-      [ -f "$runner" ] || echo "the SPINEPS runner, $runner (the spinesurg-ct-nnunet clone at its branch L6_Class)" ;;
+      [ -f "$ssn/benchmark/run_spineps_cases.py" ] || echo "the SPINEPS runner, $ssn/benchmark/run_spineps_cases.py (the spinesurg-ct-nnunet clone at its branch L6_Class)" ;;
+    pack)
+      # Pack needs nothing of timing's, but the route's rule is one stage at a time, each after the last looked sane.
+      anomaly_ended_well "$LOGS/ANOMALY-select.md" || { echo "a select report that ended in exit 0 (logs/ANOMALY-select.md: send anomaly select first and read it)"; return; }
+      anomaly_ended_well "$LOGS/ANOMALY-timing.md" || { echo "a timing report that ended in exit 0 (logs/ANOMALY-timing.md: send anomaly timing first and read it)"; return; }
+      [ -f "$REPO/data/splits/anomaly-validation.json" ] || { echo "the frozen validation rule, data/splits/anomaly-validation.json"; return; }
+      [ -f "$conda_sh" ] || { echo "conda at $conda_sh, which holds the spineps environment"; return; }
+      [ -f "$ssn/tools/spineps_ids.py" ] || { echo "the SPINEPS guard, $ssn/tools/spineps_ids.py (the spinesurg-ct-nnunet clone at its branch L6_Class)"; return; }
+      [ -f "$G3_SPLIT" ] || { echo "G3's person split, $G3_SPLIT (spine-program 02_transitional_naming_truth's split_final.json)"; return; }
+      [ -f "$ANOMALY_ROOT/select/selection.csv" ] || echo "the selection select wrote, $ANOMALY_ROOT/select/selection.csv" ;;
   esac
 }
 word_anomaly() {  # one stage of the SPINEPS to FleXray anomaly route (#398): queued once, its report printed on every later send
   local report=$LOGS/ANOMALY-$id.md class busy missing holds opts setup stage_opts
   class=$(anomaly_class "$id")
-  [ -n "$class" ] || { echo "refusing: anomaly takes select or timing; the stages pack, render, figure, tune and eval are not built yet, and each comes by pull request first"; return 64; }
+  [ -n "$class" ] || { echo "refusing: anomaly takes select, timing or pack; the stages render, figure, tune and eval are not built yet, and each comes by pull request first"; return 64; }
   busy=$(live_of "anomaly_$id")
   [ -z "$busy" ] || { echo "refusing: the anomaly stage $id is still queued or running (job $busy); send anomaly $id again once it ends"; return 75; }
   if [ -f "$report" ]; then
@@ -1130,6 +1151,11 @@ word_anomaly() {  # one stage of the SPINEPS to FleXray anomaly route (#398): qu
       # job's number, to land where the class's partitions next have room.
       mv "$report" "$LOGS/ANOMALY-$id-$(bench_job_of "$report").md" || return 1
       echo "  the report above says the stage left its node unused: queueing the stage again at $commit"
+    elif anomaly_refused_room "$report"; then
+      # The size rule refused the pack before a byte landed, so the stage spent nothing of the count:
+      # queued again at the same commit, to decide once more when it starts; status shows the room.
+      mv "$report" "$LOGS/ANOMALY-$id-$(bench_job_of "$report").md" || return 1
+      echo "  the report above says the size rule refused the pack: queueing the stage again at $commit (status shows the room)"
     else
       bench_failed_on_older_code "$report" || return 0
       # A stage that failed decided nothing, so once a fix has moved the checkout it is queued once
@@ -1532,11 +1558,12 @@ settle_banks() {  # every bank's admission whose job Slurm no longer holds is se
   # The job hands itself to the launcher with exec and so cannot settle its own once it ends; the
   # size rule counts only a live job's admission, and a settled one counts for nothing even where
   # Slurm hands the job's id out again.
-  local DATA=$DATA_ROOT job from one
+  local DATA=$DATA_ROOT job from what one
   [ -f "$STATE" ] || return 0
-  awk '$3 == "bank" { print $1, $2 }' "$STATE" | sort -u | while read -r job from; do
+  # The anomaly route's pack holds its admission under the landing flexray_pack, whatever its word says.
+  awk '$3 == "bank" || $3 == "anomaly_pack" { print $1, $2, $3 }' "$STATE" | sort -u | while read -r job from what; do
     case "$QUEUED" in *" $job "*) continue ;; esac
-    one=${from#bank:}
+    if [ "$what" = anomaly_pack ]; then one=flexray_pack; else one=${from#bank:}; fi
     case "$one" in ""|*[!a-z0-9_]*) continue ;; esac
     settle_admission "$one" "$job"
   done

@@ -11,6 +11,7 @@ scancel and df on PATH answer for Slurm; nothing reaches a scheduler. Standard l
 required check runs it."""
 
 import hashlib
+import json
 import os
 import shutil
 import subprocess
@@ -25,7 +26,7 @@ GRID = ROOT / "grid"
 FAKE_HPCWORKER = ROOT / "tests" / "fakes" / "hpcworker"
 NEW_SCRIPTS = ("gate.sh", "hpcw.sh", "box.sh", "bin/pixi", "bin/train-cpu-python", "00-setup.sbatch", "00-weights.sbatch",
                "00-carmlspine.sbatch", "v1-driver.sbatch", "experiment-driver.sbatch", "run-xray-chain.sh",
-               "run-platform-fetch.sh", "sweep-driver.sbatch", "v1-version.sh", "realism.sbatch")
+               "run-platform-fetch.sh", "sweep-driver.sbatch", "v1-version.sh", "realism.sbatch", "venv.sh")
 ENVS = ("default", "train-cpu", "train-gpu", "telemetry")
 # A stand-in for spinesurg-ct-nnunet's benchmark/run_spineps_cases.py, which the timing stage of the anomaly
 # route runs in the spineps conda environment: a mask and a timing record per case, no SPINEPS; a case whose
@@ -52,6 +53,53 @@ with open(a.cases, newline="") as fh, open(out / "timing_shard0.jsonl", "a") as 
         log.write(json.dumps({"case": row["case"], "seconds": 60.0 + 30 * n, "ok": ok}) + "\\n")
         print(row["case"], "ok" if ok else "failed", flush=True)
 sys.exit(rc)
+"""
+# A stand-in for spinesurg-ct-nnunet's tools/spineps_ids.py check --strict, the guard the pack stage of the anomaly
+# route runs over every SPINEPS mask in the spineps conda environment: OK for each mask but the one whose name
+# holds FAKE_GUARD_FAIL (amos_0001 unless the test says otherwise), refused as a skipped name, as the real one prints them.
+FAKE_SPINEPS_GUARD = """import os, sys
+args = sys.argv[1:]
+assert args[0] == "check" and "--strict" in args, args
+fail = os.environ.get("FAKE_GUARD_FAIL", "amos_0001")
+print("WARNING something: misnamed_1_2_levels at a level", file=sys.stderr)
+for path in args[1:]:
+    if path.startswith("--"):
+        continue
+    if fail in path:
+        print(f"FAIL {path}: SPINEPS ids cannot be read as VerSe names [veridah_skipped_name]: VERIDAH's ctd skips T12")
+    else:
+        print(f"OK   {path}: verse_ok")
+"""
+# A stand-in for the packager's python in the pack stage's venv (grid/venv.sh), run through grid/box.sh with
+# SCHWINGNET_NATIVE=1: the probe and the projection check by -c, fxr-dataset pack by copying the manifest into the
+# package, check by its one line; it logs what it saw at each call, whether the checkout was held and whether the
+# landing's masks folder and the admission stood, so a test reads the order the stage did things in.
+FAKE_PACK_PYTHON = """#!/bin/bash
+log=$FAKE/fakepy.log
+hold=no; [ -e "$SCHWINGNET/grid/logs/HOLD" ] && hold=yes
+masks=no; [ -d "$DATA_ROOT/flexray_pack/masks" ] && masks=yes
+admission=$(cut -d' ' -f1 "$DATA_ROOT/flexray_pack/meta/SIZE" 2>/dev/null)
+case "$1" in
+  -c) echo "c hold=$hold masks=$masks admission=${admission:-none}" >> "$log"; exit 0 ;;
+  -m)
+    [ "$2" = fxr.datasets ] || { echo "fake python: $*" >&2; exit 64; }
+    case "$3" in
+      pack)
+        dataset=$(basename "$(dirname "$(dirname "$5")")")
+        echo "pack $dataset hold=$hold masks=$masks admission=${admission:-none}" >> "$log"
+        [ ! -f "$FAKE/pack_fails" ] || { echo "the packager fell over"; exit 3; }
+        mkdir -p "$5" && cp "$4" "$5/MANIFEST.json" || exit 2
+        [ ! -f "$FAKE/commit_during_pack" ] || git -C "$SCHWINGNET" -c user.name=t -c user.email=t@t -c gc.auto=0 -c maintenance.auto=false commit -q --allow-empty -m moved
+        echo "$dataset: ct-seg, dense labels, 2 subjects, 3 samples (train=2, val=1) -> $5" ;;
+      check)
+        dataset=$(basename "$(dirname "$(dirname "$4")")")
+        echo "check $dataset" >> "$log"
+        [ -f "$4/MANIFEST.json" ] || { echo "no package at $4"; exit 1; }
+        echo "$dataset: ct-seg, dense labels, 2 subjects, 3 samples (train=2, val=1) -> $4" ;;
+      *) echo "fake python: $*" >&2; exit 64 ;;
+    esac ;;
+  *) echo "fake python: $*" >&2; exit 64 ;;
+esac
 """
 
 FAKES = {
@@ -1798,9 +1846,10 @@ esac
         (carm / "cases.csv").write_text("case,ct\n" + "\n".join(rows) + "\n", encoding="utf-8")
         (carm / "spineps" / "carm_named_seg-vert_msk.nii.gz").write_bytes(b"mask")
 
-    def anomaly_tool_committed(self, name):
+    def anomaly_tools_committed(self, *names):
         self.git_repo()
-        shutil.copy(ROOT / "tools" / name, self.repo / "tools" / name)
+        for name in names:
+            shutil.copy(ROOT / "tools" / name, self.repo / "tools" / name)
         subprocess.run(["git", "-C", str(self.repo), "add", "-A"], check=True)
         subprocess.run(["git", "-C", str(self.repo), "-c", "user.name=t", "-c", "user.email=t@t", "-c", "gc.auto=0",
                         "-c", "maintenance.auto=false", "commit", "-q", "-m", "tool"], check=True)
@@ -1809,7 +1858,7 @@ esac
         # anomaly.sbatch with STAGE=timing: the GPU self-test, the inventory, the pick, SPINEPS through
         # spinesurg-ct-nnunet's runner in the spineps environment, and the estimate; no case id or path
         # in the report, the runner's log on the lab volume, the work folder gone
-        self.anomaly_tool_committed("anomaly_timing.py")
+        self.anomaly_tools_committed("anomaly_timing.py")
         self.paired_cts()
         ssn, conda = self.spineps_fakes()
         done = self.timing_job(ssn, conda)
@@ -1838,7 +1887,7 @@ esac
         self.assertFalse((self.repo / "grid" / "logs" / "HOLD").exists())
 
     def test_the_timing_stage_leaves_a_blackwell_node_before_staging_a_ct(self):
-        self.anomaly_tool_committed("anomaly_timing.py")
+        self.anomaly_tools_committed("anomaly_timing.py")
         self.paired_cts()
         ssn, conda = self.spineps_fakes(smi="NVIDIA RTX PRO 6000 Blackwell Server Edition, 12.0")
         done = self.timing_job(ssn, conda)
@@ -1850,6 +1899,306 @@ esac
         self.assertFalse((self.tmp / "go2432" / "anomaly" / "timing" / "inventory.csv").exists())
         self.assertFalse((self.fake / "conda.log").exists())
         self.assertFalse((self.repo / "grid" / "logs" / "HOLD").exists())
+
+    def test_anomaly_pack_is_refused_until_its_inputs_stand_then_queued_once_as_batch(self):
+        self.environments_ready()
+        ssn, conda = self.spineps_fakes()
+        guard = ssn / "tools" / "spineps_ids.py"
+        g3 = self.tmp / "split_final.json"
+        selection = self.tmp / "go2432" / "anomaly" / "select" / "selection.csv"
+        validation = self.repo / "data" / "splits" / "anomaly-validation.json"
+        validation.unlink()
+        logs = self.repo / "grid" / "logs"
+        logs.mkdir(parents=True, exist_ok=True)
+        head = "# anomaly {}: job 101 on n1, commit unknown, 2026-10-26 00:10:00 UTC\n"
+        env = dict(SSN=str(ssn), CONDA_SH=str(self.tmp / "no-conda.sh"), G3_SPLIT=str(g3))
+
+        def write_selection():
+            selection.parent.mkdir(parents=True, exist_ok=True)
+            selection.write_text("person,collection,case,variant,tier,role,fold\n", encoding="utf-8")
+
+        # each want in the order the gate names them: the two reports that ended well, the validation rule, conda,
+        # the guard, G3's split and the selection select wrote; nothing is queued before the last stands
+        steps = [("logs/ANOMALY-select.md", lambda: (logs / "ANOMALY-select.md").write_text(head.format("select") + "- exit 0 at 2026-10-26 00:20:00 UTC\n", encoding="utf-8")),
+                 ("logs/ANOMALY-timing.md", lambda: (logs / "ANOMALY-timing.md").write_text(head.format("timing") + "- exit 0 at 2026-10-26 00:30:00 UTC\n", encoding="utf-8")),
+                 ("data/splits/anomaly-validation.json", lambda: shutil.copy(ROOT / "data" / "splits" / "anomaly-validation.json", validation)),
+                 ("conda at", lambda: env.update(CONDA_SH=str(conda))),
+                 ("spineps_ids.py", lambda: (guard.parent.mkdir(parents=True, exist_ok=True), guard.write_text("", encoding="utf-8"))),
+                 ("split_final.json", lambda: g3.write_text("{}", encoding="utf-8")),
+                 ("selection.csv", write_selection)]
+        for want, provide in steps:
+            refused = self.gate("anomaly", "pack", **env)
+            self.assertEqual(refused.returncode, 2, f"{want}: {refused.stdout}")
+            self.assertIn(want, refused.stdout)
+            provide()
+        self.assertEqual(self.submitted(), [])
+        done = self.gate("anomaly", "pack", **env)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        lines = self.submitted()
+        self.assertEqual(len(lines), 1, lines)
+        self.assertIn("--class batch --name anomaly_pack", lines[0])
+        self.assertIn("--cpus 4 --mem 64G --time 3-00:00:00 --no-requeue", lines[0])
+        self.assertIn("STAGE=pack", lines[0])
+        self.assertIn("anomaly.sbatch", lines[0])
+        job = self.recorded()["anomaly_pack"]
+        self.live(job)
+        self.assertEqual(self.gate("anomaly", "pack", **env).returncode, 75)
+        self.live()
+        # the size rule refused the pack before a byte landed: the stage spent nothing, so it is queued again at
+        # the same commit, its report kept under its job's number
+        report = logs / "ANOMALY-pack.md"
+        head = "# anomaly pack: job {} on n1, commit unknown, 2026-10-26 01:00:00 UTC\n- admission: flexray_pack: refused for space\n"
+        report.write_text(head.format(job) + "- exit 5 at 2026-10-26 01:00:05 UTC\n", encoding="utf-8")
+        done = self.gate("anomaly", "pack", **env)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("the size rule refused the pack: queueing the stage again", done.stdout)
+        self.assertFalse(report.exists())
+        self.assertIn("- exit 5", (logs / f"ANOMALY-pack-{job}.md").read_text(encoding="utf-8"))
+        self.assertEqual(len(self.submitted()), 2)
+        # a stage that failed at the same commit is not queued again, and one that ended well never is
+        report.write_text(head.format(job) + "- exit 1 at 2026-10-26 01:20:00 UTC\n", encoding="utf-8")
+        self.assertEqual(self.gate("anomaly", "pack", **env).returncode, 0)
+        self.assertEqual(len(self.submitted()), 2)
+        report.write_text(head.format(job) + "- exit 0 at 2026-10-26 01:30:00 UTC\n", encoding="utf-8")
+        for _ in range(2):
+            done = self.gate("anomaly", "pack", **env)
+            self.assertEqual(done.returncode, 0, done.stdout)
+            self.assertIn("- exit 0", done.stdout)
+        self.assertEqual(len(self.submitted()), 2)
+
+    def test_a_pack_admission_is_settled_by_the_next_word_when_its_job_died(self):
+        # the pack's admission lives under the landing flexray_pack, whatever the gate's row for the job says;
+        # a job Slurm no longer holds is settled by the next word, as a bank's is
+        self.state_line(4242, "anomaly:pack", "anomaly_pack")
+        size = self.data / "flexray_pack" / "meta" / "SIZE"
+        size.parent.mkdir(parents=True)
+        size.write_text("admitted 4242 1000 2600000000000 2026-10-26T01:00:00Z 1000\n", encoding="utf-8")
+        self.ceph_fake()
+        self.live(4242)
+        done = self.gate_with_ceph("status")
+        self.assertIn("still to land for 1 running fetch\n", done.stdout)
+        self.assertTrue(size.read_text(encoding="utf-8").startswith("admitted 4242 "))
+        self.live()
+        done = self.gate_with_ceph("status")
+        self.assertIn("still to land for 0 running fetches\n", done.stdout)
+        self.assertTrue(size.read_text(encoding="utf-8").startswith("settled 4242 1000 "))
+
+    PACK_ROWS = (("verse:verse100", "verse", "verse100", "L6", "read", "train", ""),
+                 ("verse:verse200", "verse", "verse200", "normal", "", "train", "1"),
+                 ("verse:verse300", "verse", "verse300", "T13", "read", "train", ""),
+                 ("cobra:B100", "cobra2026", "B100", "normal", "", "test", ""),
+                 ("amos22:0001", "amos22", "amos_0001", "normal", "", "train", ""),
+                 ("amos22:0002", "amos22", "amos_0002", "L6", "two-labeller", "train", ""))
+
+    def write_selection(self, rows):
+        from tests.test_anomaly_pack import SELECTION_COLUMNS, write_csv
+        selection = self.tmp / "go2432" / "anomaly" / "select" / "selection.csv"
+        selection.parent.mkdir(parents=True, exist_ok=True)
+        write_csv(selection, SELECTION_COLUMNS, [dict(zip(SELECTION_COLUMNS, row)) for row in rows])
+
+    def pack_tree(self):
+        """A small selection over the stores the records name, 16x16x8 NIfTIs: three VerSe release masks (an L6, a
+        normal with a fold, a T13 that G3 holds on val), a COBRA test case and two harvest cases with SPINEPS masks,
+        one of them the guard refuses and the other carrying metal; one holdout person with one scan; the registry
+        in the clone; the selection under the route's root. Returns the home the VerSe and ctd stores hang from."""
+        from tests.test_anomaly_pack import NORMAL, WITH_L6, WITH_T13, REGISTRY_COLUMNS, ct_file, mask_file, write_csv
+        home = self.tmp / "home"
+        unified = home / "VerSeFusion" / "data" / "unified"
+        for case, ids in (("verse100", WITH_L6), ("verse200", NORMAL), ("verse300", WITH_T13), ("verse401", NORMAL), ("verse500", NORMAL)):
+            ct_file(unified / f"scan-{case}" / f"scan-{case}_ct.nii.gz")
+            mask_file(unified / f"scan-{case}" / f"scan-{case}_msk.nii.gz", ids)
+        cobra = self.data / "cobra2026"
+        ct_file(cobra / "lstv" / "nifti" / "B100_ct.nii.gz")
+        mask_file(cobra / "lstv" / "seg" / "B100_seg-vert_msk.nii.gz", NORMAL)
+        harvest = self.data / "anomaly_harvest" / "amos22"
+        for case, ids, plant in (("amos_0001", NORMAL, ()), ("amos_0002", WITH_L6, ((80, 30),))):
+            ct_file(self.data / "amos22" / "nifti" / f"{case}_ct.nii.gz")
+            mask_file(harvest / "spineps" / f"{case}_seg-vert_msk.nii.gz", ids, plant=plant)
+        self.write_selection(self.PACK_ROWS)
+        registry = self.tmp / "ssn" / "SchwingNet" / "results" / "transitional_registry"
+        registry.mkdir(parents=True, exist_ok=True)
+        flags = {"verse:verse100": ("L6", "True"), "verse:verse200": ("none", "True"), "verse:verse300": ("T13", "True"),
+                 "verse:verse400": ("L6", "True"), "verse:verse500": ("none", "True"), "cobra:B100": ("none", "True"),
+                 "amos22:0001": ("none", "True"), "amos22:0002": ("L6", "True")}
+        write_csv(registry / "registry.csv", REGISTRY_COLUMNS,
+                  [{"patient_key": key, "subtype": subtype, "junction_ls_in_fov": ls} for key, (subtype, ls) in flags.items()])
+        (self.repo / "data" / "splits" / "anomaly-holdout.json").write_text(json.dumps({
+            "frozen": "test", "rule": {}, "inputs": {},
+            "persons": [{"person": "verse:verse400", "variant": "L6", "release": "2019", "stratum": "L6", "scans": ["verse401"]}],
+            "folds": [{"person": "verse:verse200", "fold": 1}], "disputed": []}), encoding="utf-8")
+        return home
+
+    def pack_fakes(self):
+        """What the pack stage needs on the node, each a stand-in: the spineps conda and its guard, the packager's venv
+        whose python records what it saw, and G3's person split holding the T13 person on val."""
+        ssn, conda = self.spineps_fakes()
+        guard = ssn / "tools" / "spineps_ids.py"
+        guard.parent.mkdir(parents=True, exist_ok=True)
+        guard.write_text(FAKE_SPINEPS_GUARD, encoding="utf-8")
+        venv = self.tmp / "venv"
+        (venv / "bin").mkdir(parents=True)
+        (venv / "READY").write_text("fake\n", encoding="utf-8")
+        (venv / "bin" / "python").write_text(FAKE_PACK_PYTHON, encoding="utf-8")
+        (venv / "bin" / "python").chmod(0o755)
+        g3 = self.tmp / "split_final.json"
+        g3.write_text(json.dumps({"_format": "g3-person-split-v1", "side_of_person": {"verse:verse300": "val", "verse:verse100": "train"},
+                                  "group_of": {}, "raw_to_group": {}, "item_side": {}}), encoding="utf-8")
+        return ssn, conda, venv, g3
+
+    def pack_job(self, ssn, conda, venv, g3, home, job="781", **extra):
+        self.ceph_fake()
+        env = self.gate_env()
+        env.update(GETFATTR=str(self.fake / "getfattr"), LAB_VOLUME=str(self.tmp), SSN=str(ssn), CONDA_SH=str(conda),
+                   SPINEPS_PYTHON=sys.executable, PACK_VENV=str(venv), G3_SPLIT=str(g3), PACK_HOME=str(home),
+                   SCHWINGNET_NATIVE="1", STAGE="pack", SLURM_JOB_ID=job, PYDRV=sys.executable, **extra)
+        return subprocess.run(["bash", str(self.repo / "grid" / "anomaly.sbatch")], cwd=self.repo / "grid", env=env,
+                              capture_output=True, text=True, timeout=120)
+
+    def pack_report(self):
+        return (self.repo / "grid" / "logs" / "ANOMALY-pack.md").read_text(encoding="utf-8")
+
+    def test_the_pack_stage_admits_before_it_writes_rewrites_packs_and_reports_counts_only(self):
+        # anomaly.sbatch with STAGE=pack: the code copied and run from the copy with no HOLD, the rows, the guard in
+        # the spineps environment, the packager's temp folder swept, the admission under the size rule before a
+        # byte lands and settled at the end, the masks rewritten under the landing, the splits, the route check,
+        # one package packed and the other empty, the projection check; counts and digests only in the report
+        self.anomaly_tools_committed("anomaly_pack.py", "nifti_label.py", "anomaly_route.py")
+        home = self.pack_tree()
+        ssn, conda, venv, g3 = self.pack_fakes()
+        landing = self.data / "flexray_pack"
+        dead = landing / "schwingnet_spine" / "thunder_dbs" / ".v1.fxr-pack-dead"
+        dead.mkdir(parents=True)
+        (dead / "x").write_bytes(b"0" * 10)
+        done = self.pack_job(ssn, conda, venv, g3, home)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("SN_ANOMALY_RC=0", done.stdout)
+        report = self.pack_report()
+        self.assertIn("# anomaly pack: job 781", report.splitlines()[0])
+        for line in ("- selection: sha256 ", ", 6 rows", "- environment: flexray==1.0.2 h5py thunderpack nibabel",
+                     "- test gate after the rows: 0 test/holdout rows unresolved or refused",
+                     "- guard: 3 SPINEPS masks checked, 2 listed OK, 1 refused",
+                     "- orphans: 1 folders, 10 bytes removed",
+                     "- admission: flexray_pack: admitted; it needs 1 gb of its 1 gb by header census of 7 cts float16 image uint8 label and uint8 mask uncompressed and 8845 gb is free under the quota after 0 gb owed to 0 running fetches at ",
+                     "- test gate after the masks: 0 test/holdout rows unresolved or refused",
+                     "- route check: no held-out or disputed person",
+                     "- package schwingnet_spine: packed in ", "- projection schwingnet_spine: ok",
+                     "- package schwingnet_spine_partial: no sample, nothing packed",
+                     "- pack: schwingnet_spine ", " bytes on disk; seconds: rewrite ",
+                     "- rewritten 6 (release 4, spineps 2); kept 0 from an earlier run",
+                     "- refused by the guard 1: none; veridah_skipped_name 1 apart",
+                     "- dropped ids: 80 in 1 masks (30 voxels)",
+                     "- countable 6, complete 6, partial 0, uncountable 0",
+                     "- exit 0 at "):
+            self.assertIn(line, report)
+        self.assertNotIn("FAILED", report)
+        self.assertNotIn("NOTE", report)
+        for text in ("verse100", "verse401", "B100", "amos_0001", "amos_0002", str(self.tmp)):
+            self.assertNotIn(text, report)
+        self.assertLess(len(report.splitlines()), 200)
+        # what the packager's python saw: no HOLD ever, no byte under the landing before the admission stood
+        log = (self.fake / "fakepy.log").read_text(encoding="utf-8").splitlines()
+        self.assertEqual(log[0], "c hold=no masks=no admission=none")
+        self.assertIn("pack schwingnet_spine hold=no masks=yes admission=admitted", log)
+        # the projection check, the last call, runs under the admission, which the stage settles after it
+        self.assertEqual(log[-1], "c hold=no masks=yes admission=admitted")
+        self.assertNotIn("check schwingnet_spine", log)
+        self.assertFalse((self.repo / "grid" / "logs" / "HOLD").exists())
+        self.assertTrue((landing / "meta" / "SIZE").read_text(encoding="utf-8").startswith("settled 781 "))
+        self.assertFalse(dead.exists())
+        self.assertTrue((landing / "schwingnet_spine" / "thunder_dbs" / "v1" / "MANIFEST.json").exists())
+        self.assertFalse((landing / "schwingnet_spine_partial" / "thunder_dbs" / "v1").exists())
+        self.assertEqual(sorted(path.name for path in (landing / "masks").glob("*.nii.gz")),
+                         ["amos22__amos_0002.nii.gz", "cobra2026__B100.nii.gz", "verse__verse100.nii.gz", "verse__verse200.nii.gz",
+                          "verse__verse300.nii.gz", "verse__verse401.nii.gz"])
+        out = self.tmp / "go2432" / "anomaly" / "pack"
+        manifest = out / "manifest-schwingnet_spine.yml"
+        self.assertEqual((out / "packed-schwingnet_spine.sha256").read_text(encoding="utf-8").strip(),
+                         hashlib.sha256(manifest.read_bytes()).hexdigest()[:16])
+        self.assertFalse((out / "manifest-schwingnet_spine_partial.yml").exists())
+        self.assertTrue((out / "landing").is_symlink())
+        commit = subprocess.run(["git", "-C", str(self.repo), "rev-parse", "--short=7", "HEAD"], capture_output=True, text=True).stdout.strip()
+        self.assertTrue((out / f"code-{commit}" / "tools" / "anomaly_pack.py").is_file())
+        self.assertIn("conda activate spineps", (self.fake / "conda.log").read_text(encoding="utf-8"))
+        splits = (out / "splits.csv").read_text(encoding="utf-8")
+        self.assertIn("verse:verse300,verse300,g3_excluded", splits)
+        self.assertIn("cobra:B100,B100,test", splits)
+        self.assertIn("verse:verse400,verse401,holdout", splits)
+        # a second run rewrites no mask and packs nothing: the masks are kept by their sidecars, the package by its digest
+        done = self.pack_job(ssn, conda, venv, g3, home, job="782")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        report = self.pack_report()
+        self.assertIn("- rewritten 0 (release 0, spineps 0); kept 6 from an earlier run", report)
+        self.assertIn("- package schwingnet_spine: kept, manifest sha256 ", report)
+        self.assertIn("- orphans: 0 folders, 0 bytes removed", report)
+        log = (self.fake / "fakepy.log").read_text(encoding="utf-8").splitlines()
+        self.assertEqual(log.count("pack schwingnet_spine hold=no masks=yes admission=admitted"), 1)
+        self.assertIn("check schwingnet_spine", log)
+        self.assertTrue((landing / "meta" / "SIZE").read_text(encoding="utf-8").startswith("settled 782 "))
+        # a selection that grew changes the manifest: the old package is removed, with its bytes reported, and packed again
+        self.write_selection(self.PACK_ROWS + (("verse:verse500", "verse", "verse500", "normal", "", "train", ""),))
+        done = self.pack_job(ssn, conda, venv, g3, home, job="783")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        report = self.pack_report()
+        self.assertIn(", 7 rows", report)
+        self.assertIn("- rewritten 1 (release 1, spineps 0); kept 6 from an earlier run", report)
+        self.assertIn("- package schwingnet_spine rebuilt: ", report)
+        self.assertIn(" bytes removed", report)
+        self.assertIn("- package schwingnet_spine: packed in ", report)
+
+    def test_a_missing_test_mask_fails_the_pack_unless_allowed(self):
+        # a test or holdout row that resolves to nothing stops the stage before the admission; one the guard refuses
+        # stops it after the masks, its admission settled; ALLOW_PARTIAL_TEST=yes lets either go on, counted
+        self.anomaly_tools_committed("anomaly_pack.py", "nifti_label.py", "anomaly_route.py")
+        home = self.pack_tree()
+        ssn, conda, venv, g3 = self.pack_fakes()
+        mask = self.data / "cobra2026" / "lstv" / "seg" / "B100_seg-vert_msk.nii.gz"
+        kept = mask.read_bytes()
+        mask.unlink()
+        done = self.pack_job(ssn, conda, venv, g3, home)
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        report = self.pack_report()
+        self.assertIn("- FAILED: 1 test/holdout rows cannot be packed after the rows (ALLOW_PARTIAL_TEST=yes lets the stage go on without them)", report)
+        self.assertTrue(report.splitlines()[-1].startswith("- exit 1 at "))
+        self.assertFalse((self.data / "flexray_pack").exists())
+        # the packager's python saw the probe and nothing after it
+        self.assertEqual((self.fake / "fakepy.log").read_text(encoding="utf-8").splitlines(), ["c hold=no masks=no admission=none"])
+        done = self.pack_job(ssn, conda, venv, g3, home, job="782", ALLOW_PARTIAL_TEST="yes")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        report = self.pack_report()
+        self.assertIn("- test gate after the rows: 1 test/holdout rows unresolved or refused, allowed (ALLOW_PARTIAL_TEST=yes)", report)
+        self.assertIn("- exit 0 at ", report)
+        mask.write_bytes(kept)
+        (self.fake / "fakepy.log").unlink()
+        done = self.pack_job(ssn, conda, venv, g3, home, job="783", FAKE_GUARD_FAIL="B100")
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        report = self.pack_report()
+        self.assertIn("- guard: 3 SPINEPS masks checked, 2 listed OK, 1 refused", report)
+        self.assertIn("- FAILED: 1 test/holdout rows cannot be packed after the masks", report)
+        self.assertTrue((self.data / "flexray_pack" / "meta" / "SIZE").read_text(encoding="utf-8").startswith("settled 783 "))
+        self.assertNotIn("pack schwingnet_spine", (self.fake / "fakepy.log").read_text(encoding="utf-8"))
+
+    def test_a_moved_checkout_is_a_note_for_a_stage_run_from_its_copy(self):
+        # the pack stage runs from its copy of the code, so a checkout that moved under it (the packager's python
+        # commits during the pack) is a note on a report that still ends in exit 0, where the other stages fail
+        self.anomaly_tools_committed("anomaly_pack.py", "nifti_label.py", "anomaly_route.py")
+        home = self.pack_tree()
+        ssn, conda, venv, g3 = self.pack_fakes()
+        (self.fake / "commit_during_pack").write_text("", encoding="utf-8")
+        done = self.pack_job(ssn, conda, venv, g3, home)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        report = self.pack_report()
+        self.assertIn("- NOTE: the checkout moved from ", report)
+        self.assertIn("which ran from its own copy of the code at ", report)
+        self.assertTrue(report.splitlines()[-1].startswith("- exit 0 at "))
+        # and a packager that falls over fails the stage at the same commit, its admission settled
+        (self.fake / "commit_during_pack").unlink()
+        (self.fake / "pack_fails").write_text("", encoding="utf-8")
+        self.write_selection(self.PACK_ROWS + (("verse:verse500", "verse", "verse500", "normal", "", "train", ""),))
+        done = self.pack_job(ssn, conda, venv, g3, home, job="782")
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        report = self.pack_report()
+        self.assertIn("- FAILED: pack of schwingnet_spine exited 3 (1 log lines)", report)
+        self.assertTrue((self.data / "flexray_pack" / "meta" / "SIZE").read_text(encoding="utf-8").startswith("settled 782 "))
 
     def bench_job(self, name):
         env = dict(os.environ, SCHWINGNET=str(self.repo), DATA_ROOT=str(self.data), LAB_VOLUME=str(self.tmp), FAKE=str(self.fake),
