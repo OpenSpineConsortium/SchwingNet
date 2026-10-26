@@ -1,0 +1,17 @@
+{
+ "frozen": "2026-10-26",
+ "why": "picks the fine-tune's checkpoint; the holdout never picks an epoch, and a fold person is the folds' test material",
+ "rule": {
+  "rank": "first 8 bytes, big-endian, of sha256 over the UTF-8 of 'schwingnet-anomaly-validation|' + salt + '|' + person, over 2**64; lowest first within each variant",
+  "salt": "2026-10-26",
+  "counts": {
+   "T13": 1,
+   "L6": 6,
+   "four_lumbar": 1,
+   "both_L6_T13": 1,
+   "normal": 12
+  },
+  "pool": "countable train-role persons of the selection with no fold, after the G3 exclusion and the distrusted collections, measured on the grid"
+ },
+ "drawn": null
+}
