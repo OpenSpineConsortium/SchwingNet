@@ -60,6 +60,7 @@ import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ElementTree
 import zipfile
+import zlib
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
@@ -77,6 +78,9 @@ SIZE_READERS = ROOT / "grid" / "fetch_size.py"
 PHYSIONET_FILES = re.compile(r"^https://physionet\.org/files/([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+)/$")
 PHYSIONET_API = "https://physionet.org/api/v1/projects/{}/versions/{}/"
 PHYSIONET_ROBOTS = "https://physionet.org/robots.txt"
+# What a .torrent whose server states no length counts for: fetch_torrent reads one whole whatever
+# its server says, and none of the lists' comes near this.
+TORRENT_BOUND = 64 * 10**6
 # The length wget's own default line states for a file it was asked about.
 WGET_LENGTH = re.compile(r"^Length: ([0-9]{1,18}) ", re.M)
 COMPRESSED_TARS = (".tar.gz", ".tgz")
@@ -545,7 +549,8 @@ def print_plan(entry, plan):
         # The share's link is the agreement's to keep inside the organisation, so no log carries it.
         print(f"   nextcloud: list the entry's share by WebDAV, then http-get each file with its size into {entry['dest']}")
     if "physionet" in plan:
-        print(f"   physionet: wget -r -N -c -np --user <login from ~/.netrc> -P {entry['dest']} {plan['physionet']}")
+        # The command as physionet_commands builds it, so the plan never drifts from the run.
+        print("   physionet: " + shlex.join(physionet_commands(entry, "<login from ~/.netrc>")[0]))
     for index, command in enumerate(plan.get("commands", [])):
         prefix = "   fallback: " if plan.get("fallback") and index else "   "
         print(prefix + shlex.join(command))
@@ -1134,7 +1139,9 @@ def unpack_size(dest, landed, fetch):
 
 def torrent_need(entry, fetch):
     """What fetch_torrent writes under the state folder: the .torrent, unless the copy there is the
-    one the URL names."""
+    one the URL names; TORRENT_BOUND where its server states no length for it, since the file is a
+    few kilobytes that fetch_torrent reads whole whatever the server says, and the set's archives,
+    sized by their own servers, are what the rule decides."""
     cached = Path(state_dir(entry)) / "release.torrent"
     expected = entry["torrent"].rstrip("/").rsplit("/", 1)[-1].split(".", 1)[0].lower()
     try:
@@ -1142,7 +1149,11 @@ def torrent_need(entry, fetch):
             return 0
     except (FetchError, ValueError, IndexError):
         pass
-    return size_readers().first_byte_total(entry["torrent"], fetch)
+    readers = size_readers()
+    try:
+        return readers.first_byte_total(entry["torrent"], fetch)
+    except (readers.NoSize, readers.NoAnswer):
+        return TORRENT_BOUND
 
 
 def sized_by(entry, commands):
@@ -1196,7 +1207,9 @@ def size_words(error):
 def unpack_admitted(entry, outcome, admission):
     """Whether the set's compressed tars may be unpacked: their members, read from the archives
     that landed, with every zip's again, decided under the size rule in place of the set's first
-    admission. Refused, nothing of them is unpacked and the set is refused."""
+    admission. Refused, or where an archive cannot be listed, nothing of them is unpacked and the
+    set is refused."""
+    readers = size_readers()
     try:
         zips, zips_owed, _, _ = unpack_size(entry["dest"], [], None)
         tars = owed = 0
@@ -1204,8 +1217,8 @@ def unpack_admitted(entry, outcome, admission):
                               if p.is_file() and p.name.endswith(COMPRESSED_TARS)):
             more, still = tar_need(archive)
             tars, owed = tars + more, owed + still
-    except (tarfile.TarError, OSError, EOFError) as error:
-        outcome.update(status=REFUSED, error=admission.refuse(entry, f"its tars could not be listed ({type(error).__name__})"))
+    except (tarfile.TarError, zlib.error, zipfile.BadZipFile, readers.NoSize, OSError, EOFError) as error:
+        outcome.update(status=REFUSED, error=admission.refuse(entry, f"its archives could not be listed ({type(error).__name__})"))
         return False
     size = {"total": outcome["size"]["downloads"] + zips + tars, "need": zips_owed + owed,
             "how": "the members of its archives"}
@@ -1225,8 +1238,12 @@ def admitted(entry, plan, commands, env, admission, outcome):
     try:
         commands, size = size_entry(entry, plan, commands, env)
     except (readers.NoSize, readers.NoAnswer, FetchError, OSError, ValueError, KeyError, TypeError,
-            IndexError) as error:
+            IndexError, AttributeError) as error:
         outcome.update(status=REFUSED, error=admission.refuse(entry, size_words(error)), ended=now())
+        return None
+    except Exception as error:  # noqa: BLE001  one set's reader failing ends that set, never the run's other sets
+        outcome.update(status=REFUSED, ended=now(),
+                       error=admission.refuse(entry, f"the size reader failed with {type(error).__name__}"))
         return None
     ok, said = admission.admit(entry, size)
     outcome["size"] = dict(size, said=said)
@@ -1353,8 +1370,9 @@ def main(argv=None):
             print(f"dry run: {len(plans)} entries planned, nothing fetched; add --run inside a Slurm job")
             return 0
         refusal = refuse_unless_job(args.outside_slurm)
-        if not refusal and not args.admit and not args.outside_slurm:
-            # On the grid every set is sized and admitted first (grid/01-fetch.sbatch passes it).
+        if not refusal and not args.admit and os.environ.get("SLURM_JOB_ID"):
+            # On the grid every set is sized and admitted first (grid/01-fetch.sbatch passes it);
+            # --outside-slurm lifts only the refusal of a shell with no job.
             refusal = "refusing to fetch in a Slurm job without --admit: the size rule decides each set first"
         if refusal:
             print(refusal, file=sys.stderr)
@@ -1379,12 +1397,13 @@ def run_all(plans, args, helper):
         print(f"{entry['id']}: fetching at {now()}", flush=True)
         outcome = run_entry(entry, plan, args.python, helper, args, admission)
         print(f"{entry['id']}: {outcome['status']} at {now()}, record {write_record(entry, outcome)}", flush=True)
-        if admission is not None and "size" in outcome:
+        if admission is not None:
             # Landed whole, the set's bank keeps its room until the bank job decides it; else
-            # nothing more of it lands, and its room is freed.
-            if outcome["status"] == DONE:
+            # nothing more of it lands, and its room is freed: a set refused or failed before it
+            # was sized too, since a requeued job may hold the admission its first run gave it.
+            if outcome["status"] == DONE and "size" in outcome:
                 admission.landed(entry, outcome["bytes"])
-            else:
+            elif outcome["status"] != DONE:
                 admission.settle(entry)
         outcomes.append(outcome)
     lines = report_lines(outcomes, started)

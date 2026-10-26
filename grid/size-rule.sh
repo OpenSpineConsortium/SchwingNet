@@ -102,8 +102,11 @@
 # landing holds. A running fetch whose size nothing states, an X-ray fetch sent before its size was
 # recorded or a line that states none, cannot be counted, so nothing is admitted beside it.
 #
-# Sourced by grid/platform-fetch.sbatch (the decision, in the job), grid/run-platform-fetch.sh and
-# grid/run-xray-chain.sh (the room after the running fetches, on the login node). DATA, VOLUME and
+# Sourced by grid/platform-fetch.sbatch, grid/unpack.sbatch and grid/02-bank-ingest.sbatch (the
+# decision, in the job), grid/admit.sh (the X-ray fetch job's, set by set, #163), grid/gate.sh (the
+# bank word's room, on the login node) and grid/run-platform-fetch.sh and grid/run-xray-chain.sh (the
+# room reported at submit); each on the node itself, never inside the container the stages' Python
+# runs in, which has no squeue and no view of the folders above the volume. DATA, VOLUME and
 # REPO name the folders. The tools, the Python that reads the attributes where no getfattr runs,
 # the mount table and the minute between the room's two readings are this file's own: a test
 # stands in for them, through GETFATTR, XATTR_PYTHON, STAT, SQUEUE, DF, MOUNTINFO and
@@ -954,6 +957,20 @@ owed_by_running() {  # owed_by_running SELF [SET]: "<bytes> <fetches> [unsized..
   echo "$owed $n${unsized}"
 }
 
+held_by_another() {  # held_by_another ID SELF: the job, SELF aside, whose admission of ID stands while Slurm holds it, else nothing
+  # A decision about ID writes its own line over that admission, which would then be owed by
+  # nobody while its job still lands bytes; so it is refused instead. A hold (grid/admit.sh) is no
+  # such admission, since the job it was handed to decides the set yet. The queue is read again
+  # here, after owed_by_running read it in a subshell: a job that ended between the two readings
+  # holds nothing, which is what the second reading says.
+  local state job mark ids
+  [ -f "$DATA/$1/meta/SIZE" ] || return 0
+  read -r state job _ _ _ _ mark _ < "$DATA/$1/meta/SIZE"
+  [ "$state" = admitted ] && [ "$job" != "$2" ] && [ "$mark" != hold ] || return 0
+  ids=$(live_job_ids) || return 0
+  case " $(printf '%s' "$ids" | tr '\n' ' ') " in *" $job "*) echo "$job" ;; esac
+}
+
 plain_words() {  # plain_words TEXT: lower-case letters, digits, spaces and semicolons alone, as status keeps them
   printf '%s' "$1" | tr '[:upper:]' '[:lower:]' | LC_ALL=C tr -c 'a-z0-9 ;' ' ' | tr -s ' ' | sed 's/^ //; s/ $//'
 }
@@ -975,7 +992,7 @@ room_words() {  # room_words FROM: where the free figure was read, in lower-case
 }
 
 admit_fetch() {  # admit_fetch ID TOTAL NEED HOW [MARK]: 0 when the fetch may start, 4 when it is refused, with one line either way
-  local id=$1 total=$2 need=$3 how mark=${5:-} job=${SLURM_JOB_ID:-none} said room from owed n unsized free base verdict
+  local id=$1 total=$2 need=$3 how mark=${5:-} job=${SLURM_JOB_ID:-none} said room from owed n unsized free base verdict holder
   how=$(plain_words "$4")
   mkdir -p "$DATA/$id/meta"
   # One decision at a time, so two fetches starting together never each find the other unadmitted.
@@ -998,6 +1015,12 @@ admit_fetch() {  # admit_fetch ID TOTAL NEED HOW [MARK]: 0 when the fetch may st
   if [ -n "$unsized" ]; then
     exec 8>&-
     size_refused "$id" "the running fetch of $unsized states no size so nothing is admitted beside it"
+    return
+  fi
+  holder=$(held_by_another "$id" "$job")
+  if [ -n "$holder" ]; then
+    exec 8>&-
+    size_refused "$id" "its room is held by job $holder which is still queued or running"
     return
   fi
   # VOLUME is the caller's, as DATA is.

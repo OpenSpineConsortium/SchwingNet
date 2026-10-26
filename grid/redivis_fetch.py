@@ -16,7 +16,11 @@ table's export, which Redivis makes and states the size of before any byte of it
 The client writes a file it fetches again in place of what is there, so a file adds no more than
 its listed size less what is on disk at its landing path; a CSV export is counted whole, since its
 name and its parts are known only once it is downloaded. A client that fails is one line and exit 2,
-naming the kind of failure and never its text, which could carry an address.
+naming the kind of failure and never its text, which could carry an address; a client or an answer
+this reader does not fit is another line and exit 5, so a mismatch never reads as Redivis being
+down. The export the size read waits for is not reused: the download asks Redivis for one of its
+own (Table.download), so a set sized and then fetched has two exports built; reusing the first
+waits on the client's export download being run once on the grid.
 
     python grid/redivis_fetch.py --dest <data>/chexpert_plus/raw \
         --manifest <data>/chexpert_plus/meta --max-gb 3000 \
@@ -31,6 +35,7 @@ from pathlib import Path
 
 REFUSED_FOR_SIZE = 3
 NO_ANSWER = 2
+NO_FIT = 5
 
 
 class NoSize(Exception):
@@ -98,10 +103,10 @@ def client_internals():
     return make_request, Export
 
 
-def export_bytes(redivis, reference):
+def export_bytes(redivis, reference, internals):
     """The bytes of a data table's CSV export, asked for as Table.download asks for it and waited
     on until Redivis has made it; nothing of it is downloaded."""
-    make_request, export_class = client_internals()
+    make_request, export_class = internals
     table = redivis.table(reference)
     answer = make_request(method="POST", path=f"{table.uri}/exports", payload={"format": "csv"})
     export = export_class(answer["id"], table=table, properties=answer)
@@ -112,10 +117,10 @@ def export_bytes(redivis, reference):
     return size
 
 
-def size_line(args, redivis, rows, landings):
+def size_line(args, redivis, rows, landings, internals):
     """The size reader's line for the files listed and the CSV tables asked for."""
     files_need = still_to_land(args.dest, landings)
-    csv_total = sum(export_bytes(redivis, reference) for reference in args.csv)
+    csv_total = sum(export_bytes(redivis, reference, internals) for reference in args.csv)
     total = sum(size for _, _, size, _ in rows) + csv_total
     how = f"{len(rows)} files and {len(args.csv)} csv exports listed by redivis"
     return f"{total} {files_need + csv_total} {how}"
@@ -153,12 +158,19 @@ def main(argv=None):
     import redivis
 
     if args.size:
+        # The client's internals first, outside the try: a client that has moved them fails here
+        # plainly, before any request, and never reads as the source not answering.
+        internals = client_internals()
         try:
-            return size_only(args, redivis)
+            return size_only(args, redivis, internals)
         except NoSize as reason:
             print(f"no exact size; {reason}")
             return REFUSED_FOR_SIZE
-        except Exception as failure:  # the client's own errors are many kinds; none is printed
+        except (TypeError, AttributeError, KeyError, ValueError) as failure:
+            print(f"the redivis client or its answer does not fit this reader ({type(failure).__name__});"
+                  " grid/redivis_fetch.py needs a change before this set is sized")
+            return NO_FIT
+        except Exception as failure:  # noqa: BLE001  the client's own errors are many kinds; none is printed
             print(f"the source did not answer; the redivis client failed with {type(failure).__name__}")
             return NO_ANSWER
     directories, rows, _ = listed_files(redivis, args.files)
@@ -189,7 +201,7 @@ def main(argv=None):
     return 0
 
 
-def size_only(args, redivis):
+def size_only(args, redivis, internals):
     """The size reader: the listing and its manifest, the owner's cap, then the line."""
     _, rows, landings = listed_files(redivis, args.files)
     total = sum(size for _, _, size, _ in rows)
@@ -202,7 +214,7 @@ def size_only(args, redivis):
             f" {args.max_gb:g} gb the source line names"
         )
         return REFUSED_FOR_SIZE
-    print(size_line(args, redivis, rows, landings))
+    print(size_line(args, redivis, rows, landings, internals))
     return 0
 
 

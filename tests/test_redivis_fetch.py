@@ -85,7 +85,9 @@ class FakeExport:
 class RedivisCase(unittest.TestCase):
     def setUp(self):
         self.tool = load_tool()
-        self.tmp = Path(tempfile.mkdtemp())
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.tmp = Path(tmp.name)
         self.calls = []
         sys.modules["redivis"] = fake_client(self.calls)
         self.addCleanup(sys.modules.pop, "redivis", None)
@@ -145,15 +147,16 @@ class RedivisSizeTest(RedivisCase):
         self.assertTrue((self.tmp / "meta" / "redivis_files.tsv").is_file())
 
     def test_a_file_on_disk_counts_against_what_is_still_to_land(self):
+        # sizes in the kilobytes, so the file on disk is written whole and needs no sparse-file support
+        FakeDirectory.files = [FakeFile("train/p1/a.png", 6000), FakeFile("train/p2/b.png", 5000)]
+        FakeExport.sizes = {CSV_REF: 70}
         landed = self.tmp / "raw" / "png_train" / "train" / "p1"
         landed.mkdir(parents=True)
         # a file is written in place of what is there, so it adds its size less what it holds
-        with open(landed / "a.png", "wb") as handle:
-            handle.truncate(4 * 10**9)
+        (landed / "a.png").write_bytes(b"p" * 4000)
         code, out = self.run_tool("--size")
         self.assertEqual(code, 0, out)
-        total = 11 * 10**9 + 70_000_000
-        self.assertEqual(out.split()[:2], [str(total), str(total - 4 * 10**9)])
+        self.assertEqual(out.split()[:2], ["11070", "7070"])
 
     def test_the_cap_refuses_the_size_before_any_export_is_asked(self):
         code, out = self.run_tool("--size", "--max-gb", "10")

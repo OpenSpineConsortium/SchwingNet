@@ -128,7 +128,9 @@ case "$ROUTE" in
   verify)
     python3 "$SSN/data_platform/reacquire/reacquire.py" --verify "$ID"; rc=$? ;;
   gdown)
-    # The folder is named before the size is read, so a file already landed in it today counts.
+    # The folder is named here so the reader and gdown are given one place; the reader counts
+    # nothing in it, since gdown writes the whole file into a new temporary beside the output
+    # (grid/fetch_size.py, size_gdown).
     scratch=$DATA/$ID/raw/gdown_$(date '+%F')
     # shellcheck disable=SC2086
     if size_and_admit "$ID" $SIZER gdown --id "$ARGS" --dest "$scratch"; then
@@ -177,8 +179,9 @@ case "$ROUTE" in
     load_token REDIVIS_API_TOKEN "${TOKEN_FILE:-~/.redivis/token.env}" || exit 2
     renv=${REDIVIS_ENV:-/rs/rs_grp_oschome/go2432/envs/redivis}
     # Under a lock, so two Redivis fetches starting together never build the environment at once.
-    # It is built before the size is read, since the size reader is the client too; the client is
-    # a few megabytes, which the rule's room leaves no question of.
+    # It is built before the size is read, since the size reader is the client too; the client and
+    # what it pulls in (pyarrow among them) come to some hundreds of megabytes, far under any room
+    # the rule decides.
     (
       flock 9
       "$renv/bin/python" -c 'import redivis' 2>/dev/null ||

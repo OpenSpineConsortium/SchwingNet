@@ -23,9 +23,13 @@
 # landed that room passes to the chain's bank job, which grid/run-xray-chain.sh records beside the
 # fetch job in grid/logs/XRAY_SIZES.txt, as a hold that job counts and decides when it banks the set
 # (grid/02-bank-ingest.sbatch). A requeued job keeps what it was admitted, the download's and the
-# unpacking's apart (admitted_before). Lines are in plain words, the shape the gate's status word
-# keeps; DATA is the data root, VOLUME the lab volume and PYDRV the job's Python, which reads the
-# quota's attributes on a node with no getfattr.
+# unpacking's apart (admitted_before), and a set it landed whole before, whose hold it handed on,
+# is neither decided nor recorded again (landed_already). It runs on the node, outside the
+# container the stages' Python runs in, since the rule reads Slurm's queue with squeue and takes
+# a flock on the data root, which that container has not: grid/01-fetch.sbatch runs the fetch tool
+# under the node's own Python for that, the helpers under PYDRV. Lines are in plain words, the shape
+# the gate's status word keeps; DATA is the data root, VOLUME the lab volume and PYDRV the job's
+# Python, which reads the quota's attributes on a node with no getfattr.
 set -uo pipefail
 REPO=${SCHWINGNET:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}
 DATA=${DATA:-/rs/rs_grp_oschome/go2432/data}
@@ -45,6 +49,9 @@ admit() {  # admit MARK ID TOTAL NEED HOW: the set with its bank, decided under 
     echo "$id: admitted already; job $job restarted and keeps the room it was given at $(date -u '+%FT%TZ')"
     return 0
   fi
+  if [ "$need" = 0 ] && landed_already "$id"; then
+    return 0
+  fi
   if ! read -r bank factor <<< "$(bank_budget "$id" "$total")" || ! is_count "$bank" \
     || ! fits_in_count "$total" "$bank" || ! fits_in_count "$need" "$bank"; then
     size_refused "$id" "its bank would need more than the size rule counts"
@@ -54,23 +61,41 @@ admit() {  # admit MARK ID TOTAL NEED HOW: the set with its bank, decided under 
   admit_fetch "$id" $(( total + bank )) $(( need + bank )) "$how" "$mark"
 }
 
+landed_already() {  # landed_already ID: whether ID landed whole under this chain, the room of its bank held by the chain's bank job
+  # A requeued job runs every set again; one whose files are all there, and whose hold a run of
+  # this job handed on (landed), is neither decided nor recorded anew: decided for its bank alone
+  # against the room as it is now, a set on disk whole could be refused and its record replaced.
+  local state holder mark banker
+  [ -f "$DATA/$1/meta/SIZE" ] || return 1
+  read -r state holder _ _ _ _ mark _ < "$DATA/$1/meta/SIZE"
+  banker=$(bank_job)
+  [ "$state" = admitted ] && [ "$mark" = hold ] && [ -n "$banker" ] && [ "$holder" = "$banker" ] || return 1
+  echo "$1: landed already; the room of its bank is held by job $holder at $(date -u '+%FT%TZ')"
+}
+
 bank_job() {  # bank_job: the chain's bank job grid/run-xray-chain.sh recorded beside this fetch job, else nothing
   [ -f "$REPO/grid/logs/XRAY_SIZES.txt" ] || return 0
   awk -v job="$job" '$1 == job && $2 == "sets" { bank = $4 } END { print bank }' "$REPO/grid/logs/XRAY_SIZES.txt"
 }
 
 landed() {  # landed ID BYTES: the room of the set's bank handed to the chain's bank job, else the admission settled
-  local id=$1 bytes=$2 file=$DATA/$1/meta/SIZE state holder bank factor base banker
+  local id=$1 bytes=$2 file=$DATA/$1/meta/SIZE state holder bank factor base banker before
   [ -f "$file" ] || return 0
-  read -r state holder _ < "$file"
+  read -r state holder _ before _ < "$file"
   [ "$state" = admitted ] && [ "$holder" = "$job" ] || return 0
   banker=$(bank_job) bank="" base=""
   if is_count "$bytes" && is_count "$banker"; then
     read -r bank factor <<< "$(bank_budget "$id" "$bytes")"
     base=$(landing_bytes "$id")
+    # Measured from what the landing holds now, so the set itself counts for nothing more; and
+    # CephFS folds a landing's last bytes into ceph.dir.rbytes with a lag of seconds, so where
+    # the admission's base and the set's bytes come to more than it shows, that is the base, and
+    # no byte of the set is later credited to the bank as its growth.
+    if is_count "$base" && is_count "$before" && fits_in_count "$before" "$bytes" && [ $(( before + bytes )) -gt "$base" ]; then
+      base=$(( before + bytes ))
+    fi
   fi
   if is_count "$bank" && [ "$bank" != 0 ] && [ -n "$base" ]; then
-    # Measured from what the landing holds now, so the set itself counts for nothing more.
     echo "admitted $banker $bank $base $(date -u '+%FT%TZ') $bank hold" > "$file.new" && mv -f "$file.new" "$file" \
       && { echo "$id: landed; $(gb_up "$bank") gb held for its bank at $factor times by job $banker at $(date -u '+%FT%TZ')"; return 0; }
   fi

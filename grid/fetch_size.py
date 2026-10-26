@@ -53,6 +53,7 @@ sent only to its own host and is never printed. The Redivis route is sized by gr
 import argparse
 import csv
 import fnmatch
+import http.client
 import io
 import json
 import os
@@ -106,12 +107,12 @@ class NoAnswer(Exception):
 
 class NotRanged(NoSize):
     """A server that answered a range request with the whole of what it serves: the length it
-    stated for it, where it stated one plainly, and the first part of the page it sent, where it
-    sent a page."""
+    stated for it, where it stated one plainly, the first part of the page it sent, where it
+    sent a page, and the address it answered from, after every redirect, where the fetch says."""
 
-    def __init__(self, length=None, page=None):
+    def __init__(self, length=None, page=None, address=None):
         super().__init__("the file server answers no range request")
-        self.length, self.page = length, page
+        self.length, self.page, self.address = length, page, address
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -134,11 +135,19 @@ def get(url, token="", byte_range=None, timeout=120):
             if byte_range and answer.status != 206:
                 # Reading on would download the whole file to learn what its end says; a page is
                 # read only as far as its form, which is all a page in place of a file holds.
-                raise NotRanged(stated_length(answer.headers), first_page(answer))
+                raise NotRanged(stated_length(answer.headers), first_page(answer), answer.geturl())
             limit = byte_range[1] - byte_range[0] + 1 if byte_range else -1
-            return answer.read(limit), answer.headers
+            headers = answer.headers
+            # The address the answer came from, after every redirect, kept beside its headers,
+            # since a client names what it lands by that address (size_kaggle).
+            headers.address = answer.geturl()
+            return answer.read(limit), headers
     except urllib.error.HTTPError as error:
         raise NoAnswer(f"http {error.code}") from None
+    except http.client.HTTPException:
+        # A body cut short or a status line that is none: the answer is no answer, and a reader
+        # that let it through would end the whole run in place of one set.
+        raise NoAnswer("an answer cut short") from None
     except (urllib.error.URLError, OSError):
         raise NoAnswer("no connection") from None
 
@@ -157,20 +166,26 @@ def first_page(answer):
     return answer.read(PAGE_LIMIT) if kind == "text/html" else None
 
 
-def first_byte_total(url, fetch=get, token=""):
-    """The exact size of the file at an address: the total a one-byte range request states, or the
-    length an answer that ignores the range states for the whole file. A page sent in place of the
-    file is no size of it."""
+def ranged_answer(url, fetch=get, token=""):
+    """(total, address): the exact size of the file at an address, the total a one-byte range
+    request states, or the length an answer that ignores the range states for the whole file, and
+    the address the answer came from after every redirect, the one asked where the fetch says
+    nothing of it. A page sent in place of the file is no size of it."""
     try:
         _, headers = fetch(url, token, (0, 0))
     except NotRanged as answer:
         if answer.page is None and answer.length is not None:
-            return answer.length
+            return answer.length, answer.address or url
         raise
     match = CONTENT_RANGE.match((headers.get("Content-Range") or "").strip())
     if not match:
         raise NoSize("the file server states no length beside its range")
-    return int(match.group(1))
+    return int(match.group(1)), getattr(headers, "address", None) or url
+
+
+def first_byte_total(url, fetch=get, token=""):
+    """The exact size of the file at an address (ranged_answer)."""
+    return ranged_answer(url, fetch, token)[0]
 
 
 def next_page(link):
@@ -527,8 +542,10 @@ def size_kaggle(args, fetch=get, post=post_for_location):
         {"competitionName": args.competition},
         post,
     )
-    total = first_byte_total(location, fetch)
-    name = f"{args.competition}.{location.split('?')[0].split('.')[-1]}"
+    # Named by the address the storage answers from after every redirect, as the client names it
+    # from the answer it followed, never by the API's first redirect alone.
+    total, address = ranged_answer(location, fetch)
+    name = f"{args.competition}.{address.split('?')[0].split('.')[-1]}"
     return total, kaggle_need(args.dest / name, total), "the archive kaggle's storage states"
 
 

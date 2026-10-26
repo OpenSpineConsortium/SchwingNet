@@ -792,6 +792,10 @@ word_fetch() {
   # the bank's in the set's meta/SIZE.
   busy=$(live_of bank "bank:$id")
   [ -z "$busy" ] || { echo "refusing: a bank of $id is still queued or running (job $busy), and this fetch's chain banks the same folder"; return 75; }
+  # Nor beside an unpacking of the set, a look at it or a deletion of its zips, each of which
+  # holds its room through the same admission file and reads the raw folder this fetch writes.
+  busy=$( { live_of unpack "unpack:$id"; live_of explore "explore:$id"; live_of dropzip "dropzip:$id"; } | tr '\n' ' ')
+  [ -z "${busy// /}" ] || { echo "refusing: an unpacking, a look or a deletion of zips in $id is still queued or running (job $busy)"; return 75; }
   # One catalog build at a time: this chain's catalog job waits for every one still live.
   for one in $(awk '$3 == "catalog" || $3 == "xr_catalog" { print $1 }' "$STATE" 2>/dev/null | sort -u); do
     case "$QUEUED" in *" $one "*) waits=$(joined "$waits" "afterany:$one") ;; esac
@@ -894,7 +898,7 @@ word_unpack() {
   fi
   # Never beside a fetch of the set, a look at it, a deletion of its zips or a bank of it, which
   # would read half a raw folder and holds its room through the same admission file.
-  busy=$( { live_of xr_fetch "fetch:$id"; live_of "dp_$id"; live_of explore "explore:$id"; live_of dropzip "dropzip:$id"; live_of bank "bank:$id"; } | tr '\n' ' ')
+  busy=$( { live_of xr_fetch "fetch:$id"; live_of "dp_$id"; live_of explore "explore:$id"; live_of dropzip "dropzip:$id"; live_of bank "bank:$id"; live_of xr_bank; } | tr '\n' ' ')
   [ -z "${busy// /}" ] || { echo "refusing: a fetch, a deletion, a bank or a look at $id is still queued or running (job $busy)"; return 75; }
   [ -d "$raw" ] || { echo "refusing: $id has no raw folder on the data root yet; fetch it first"; return 2; }
   envs_ready || { echo "refusing: the environments are not ready; 'start' makes them first"; return 75; }
@@ -1253,8 +1257,9 @@ landing_of() {  # landing_of RAW: the folder under the data root that holds RAW,
   echo "$landing"
 }
 bank_room() {  # bank_room NEED: 0 where the room under the quota takes NEED bytes after what the running fetches owe, saying both
-  # The room the fetch word's chain decides against (grid/size-rule.sh, run-xray-chain.sh): what the
-  # running fetches owe first, then the room twice a minute apart, the smaller kept.
+  # The room the bank word decides against before it queues its job (grid/size-rule.sh): what the
+  # running fetches owe first, then the room twice a minute apart, the smaller kept. The fetch
+  # word's chain decides nothing at submit since #163; its job decides each set in turn.
   local owed owed_bytes owed_n unsized free free_from room
   owed=$(owed_by_running "") || { echo "refusing: squeue did not answer, so what the running fetches owe is not known; nothing was queued"; return 75; }
   read -r owed_bytes owed_n unsized <<< "$owed"

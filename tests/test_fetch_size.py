@@ -10,8 +10,10 @@ length a one-byte range states, through Drive's confirmation form where it shows
 archive the length its storage states, the storage address asked of Kaggle's API with the token and
 read without it (issue #163). Every answer that gives no exact size ends 3 and every source that
 does not answer ends 2, so the size rule refuses the fetch. The HTTP reads are checked against a
-local server: a range is asked and refused when the server ignores it, a token is never carried
-through a redirect, and Kaggle's redirect is read and never followed. grid/idc_manifest.py's byte
+local server: an answer that ignores the range counts only by a length it states plainly, never by
+a page or under a content coding, the address an answer came from is kept through a redirect, a
+token is never carried through one, an answer cut short is no answer, and Kaggle's redirect is read
+and never followed. grid/idc_manifest.py's byte
 column is checked too. Standard library only, so the required check runs it."""
 
 import csv
@@ -424,7 +426,8 @@ class FetchSizeTest(unittest.TestCase):
 
 class Server(http.server.BaseHTTPRequestHandler):
     """A file server on 127.0.0.1: /ranged honours a range, /whole ignores it, /moved redirects to
-    /ranged, /page sends a page in place of the file; a POST to /api answers as Kaggle's API does,
+    /ranged, /page sends a page in place of the file, /gzip ignores the range and states its length
+    under a content coding, /cut states a length and sends less; a POST to /api answers as Kaggle's API does,
     with a redirect to the file's storage, and to /api-json with a body; each request's path and
     Authorization header is kept, and each POST's body."""
 
@@ -460,6 +463,21 @@ class Server(http.server.BaseHTTPRequestHandler):
             self.send_response(302)
             self.send_header("Location", "/ranged")
             self.end_headers()
+            return
+        if self.path == "/gzip":
+            body = gzip.compress(self.BODY)
+            self.send_response(200)
+            self.send_header("Content-Encoding", "gzip")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
+        if self.path == "/cut":
+            self.send_response(200)
+            self.send_header("Content-Length", str(len(self.BODY)))
+            self.end_headers()
+            self.wfile.write(self.BODY[:10])
+            self.close_connection = True
             return
         if self.path not in ("/ranged", "/whole"):
             self.send_error(404)
@@ -507,8 +525,15 @@ class GetTest(unittest.TestCase):
         with self.assertRaises(self.tool.NotRanged) as refused:
             self.tool.get(self.base + "/page", byte_range=(0, 0))
         self.assertTrue(refused.exception.page.startswith(b"<html>"))
+        # a page in place of the file, or a length stated under a content coding, is no size
+        for path in ("/page", "/gzip"):
+            with self.assertRaisesRegex(self.tool.NoSize, "answers no range request"):
+                self.tool.first_byte_total(self.base + path)
         with self.assertRaisesRegex(self.tool.NoAnswer, "http 404"):
             self.tool.get(self.base + "/missing")
+        # a body cut short is no answer, never an error that ends the reader
+        with self.assertRaisesRegex(self.tool.NoAnswer, "an answer cut short"):
+            self.tool.get(self.base + "/cut")
 
     def test_kaggles_redirect_is_read_with_the_token_and_never_followed(self):
         token = "kaggle-not-a-token"
@@ -524,10 +549,14 @@ class GetTest(unittest.TestCase):
         with self.assertRaisesRegex(self.tool.NoAnswer, "http 302"):
             self.tool.get(self.base + "/moved", token="t-secret")
         self.assertEqual(Server.seen, [("/moved", "Bearer t-secret")])
-        # with no token the redirect is followed, the range with it
-        body, _ = self.tool.get(self.base + "/moved", byte_range=(0, 3))
+        # with no token the redirect is followed, the range with it, and the address the answer
+        # came from is kept, since a client names what it lands by it (size_kaggle)
+        body, headers = self.tool.get(self.base + "/moved", byte_range=(0, 3))
         self.assertEqual(body, Server.BODY[:4])
         self.assertEqual(Server.seen[1:], [("/moved", None), ("/ranged", None)])
+        self.assertEqual(headers.address, self.base + "/ranged")
+        self.assertEqual(self.tool.ranged_answer(self.base + "/moved"), (len(Server.BODY), self.base + "/ranged"))
+        self.assertEqual(self.tool.ranged_answer(self.base + "/whole"), (len(Server.BODY), self.base + "/whole"))
 
 
 class IdcManifestTest(unittest.TestCase):

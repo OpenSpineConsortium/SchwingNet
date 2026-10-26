@@ -62,7 +62,7 @@ cat "${FAKE_QUEUE:-/dev/null}" 2>/dev/null
 exit 0
 """,
     "sizer": """#!/bin/bash
-echo "sizer: $*" >&2
+echo "sizer: $* with a token of ${#KAGGLE_API_TOKEN} characters" >&2
 printf '%s\\n' "${FAKE_SIZE:-no exact size; the test gave none}"
 exit "${FAKE_SIZE_RC:-0}"
 """,
@@ -1185,14 +1185,19 @@ class SizeRuleTest(unittest.TestCase):
         code, out = self.fetch(9000)
         self.assertEqual(code, 4, out)
         self.assertIn("sizer:", out)
-        # the admission another job holds is no admission of this one's: it decides by the room left
-        # after the 2,000 GB that job still owes
+        # the admission another job holds is no admission of this one's, and while Slurm holds that
+        # job the set is not decided again, since a decision would write over what it still owes
         self.volume.admitted("hf_example", 777, need=5000 * GB, base=0, landed=3000 * GB)
         self.volume.live(777, 900)
         code, out = self.fetch(6846, SLURM_RESTART_COUNT="1")
         self.assertEqual(code, 4, out)
-        self.assertIn("only 6845 gb is free under the quota after 2000 gb owed to 1 running fetch at ", shown(out))
+        self.assertIn("hf_example: refused; its room is held by job 777 which is still queued or running at ", shown(out))
         self.assertEqual((self.volume.data / "hf_example" / "meta" / "SIZE").read_text(encoding="utf-8").split()[1], "777")
+        # once that job has ended, its admission counts for nothing and the set is decided by the room
+        self.volume.live(900)
+        code, out = self.fetch(8846, SLURM_RESTART_COUNT="1")
+        self.assertEqual(code, 4, out)
+        self.assertIn("only 8845 gb is free under the quota after 0 gb owed to 0 running fetches at ", shown(out))
 
     def test_a_landing_whose_bytes_cannot_be_read_is_refused(self):
         # the growth of a landing is measured from what it held when its fetch was admitted, so an
@@ -1291,7 +1296,8 @@ class SizeRuleTest(unittest.TestCase):
             # the Redivis client's environment is its own size reader, asked with --size
             clients / "redivis" / "bin" / "python": (
                 '[ "$1" = -c ] && exit 0\n'
-                'case " $* " in *" --size "*) echo "redivis sizer: $*" >&2; printf \'%s\\n\' "$FAKE_SIZE";'
+                'case " $* " in *" --size "*) echo "redivis sizer: $* with a token of ${#REDIVIS_API_TOKEN} characters" >&2;'
+                ' printf \'%s\\n\' "$FAKE_SIZE";'
                 ' exit "${FAKE_SIZE_RC:-0}" ;; esac\n'
                 'echo "redivis: $* with a token of ${#REDIVIS_API_TOKEN} characters"\n'),
         }
@@ -1322,6 +1328,10 @@ class SizeRuleTest(unittest.TestCase):
             code, out = self.fetch(10, route=route, args=args, source=source, **env)
             self.assertEqual(code, 0, f"{route}: {out}")
             self.assertIn(asked, out)
+            if route != "gdown":
+                # the token was loaded before the size was read, since the reader asks with it: the
+                # stand-in token file's one line, 20 characters, is what load_token exports
+                self.assertIn(f"{asked} with a token of 20 characters", out)
             self.assertIn(ran, out)
             self.assertIn(f"{source}: admitted; it needs 10 gb of its 10 gb by 3 files listed by the hub", shown(out))
             self.assertNotIn("not-a-token", out)
@@ -2151,12 +2161,15 @@ class AdmitTest(unittest.TestCase):
         self.volume.live(900, 901)
         code, out = self.admit("admit", "x_png", 100 * GB, 100 * GB, "1 file zenodo lists")
         self.assertEqual(code, 0, out)
-        self.volume.attribute(self.volume.data / "x_png", "ceph.dir.rbytes", 100 * GB)
+        # CephFS has not folded the set's last bytes into the landing's attribute yet (it still reads
+        # 0): the hold's base is the admission's base and the set's bytes, so none of them is later
+        # credited to the bank as its growth
         code, out = self.admit("landed", "x_png", 100 * GB)
         self.assertEqual(code, 0, out)
         self.assertIn("x_png: landed; 200 gb held for its bank at 2 times by job 901 at ", shown(out))
         line = self.size_line("x_png")
         self.assertEqual(line[:4] + line[5:], ["admitted", "901", str(200 * GB), str(100 * GB), str(200 * GB), "hold"])
+        self.volume.attribute(self.volume.data / "x_png", "ceph.dir.rbytes", 100 * GB)
         # every other decision counts the hold while the bank job runs: another job's, the fetch
         # job's about its next set and the bank job's about another recipe
         for call, job in (("owed_by_running 950", "950"), ("owed_by_running 900 x_other", "900"),
@@ -2169,6 +2182,19 @@ class AdmitTest(unittest.TestCase):
         # a landing reported by a job that no longer holds the set changes nothing
         self.assertEqual(self.admit("landed", "x_png", 100 * GB), (0, ""))
         self.assertEqual(self.size_line("x_png")[1], "901")
+        # the fetch job requeued runs the set again: on disk whole, with its hold handed on, it is
+        # neither decided nor recorded anew, so no room filled since can refuse it
+        self.volume.attribute(self.volume.path, "ceph.dir.rbytes", 21900 * GB)
+        code, out = self.admit("admit", "x_png", 100 * GB, 0, "1 file zenodo lists", SLURM_RESTART_COUNT="1")
+        self.assertEqual(code, 0, out)
+        self.assertIn("x_png: landed already; the room of its bank is held by job 901 at ", shown(out))
+        self.assertEqual(self.size_line("x_png")[1], "901")
+        self.assertFalse((self.volume.data / "x_png" / "meta" / "REFUSED").exists())
+        # a set whose hold another chain's bank job keeps is decided as any other
+        code, out = self.admit("admit", "x_png", 100 * GB, 0, "1 file zenodo lists", job="950", SLURM_RESTART_COUNT="1")
+        self.assertEqual(code, 4, out)
+        self.assertIn("x_png: refused for space;", out)
+        self.volume.attribute(self.volume.path, "ceph.dir.rbytes", 13146 * GB)
         # with nothing to bank, or no bank job recorded beside the fetch job, the admission is settled
         for source, job in (("x_none", "900"), ("x_jpg", "904")):
             self.assertEqual(self.admit("admit", source, 10 * GB, 10 * GB, "1 file", job=job)[0], 0)
@@ -2176,6 +2202,27 @@ class AdmitTest(unittest.TestCase):
             self.assertEqual(code, 0, out)
             self.assertIn(f"{source}: landed; its admission settled with no bank to hold at ", shown(out))
             self.assertEqual(self.size_line(source)[:2], ["settled", job])
+
+    def test_another_live_jobs_admission_of_the_set_is_never_written_over(self):
+        # a set admitted to a job Slurm still holds, an unpacking's or another fetch's, keeps its
+        # line: written over, what that job still lands would be owed by nobody
+        self.volume.admitted("x_png", 777, need=500 * GB)
+        self.volume.live(777, 900)
+        code, out = self.admit("admit", "x_png", 10 * GB, 10 * GB, "1 file zenodo lists")
+        self.assertEqual(code, 4, out)
+        self.assertIn("x_png: refused; its room is held by job 777 which is still queued or running at ", shown(out))
+        self.assertEqual(self.size_line("x_png")[:3], ["admitted", "777", str(500 * GB)])
+        self.assertEqual(self.rule("owed_by_running 900 x_png"), (0, f"{500 * GB} 1"))
+        # one whose job has ended is written over, as a hold by another job is, which that job decides yet
+        self.volume.live(900)
+        code, out = self.admit("admit", "x_png", 10 * GB, 10 * GB, "1 file zenodo lists")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.size_line("x_png")[:2], ["admitted", "900"])
+        self.volume.meta("x_jpg", "SIZE", f"admitted 901 {60 * GB} 0 2026-10-25T21:00:00Z {60 * GB} hold")
+        self.volume.live(900, 901)
+        code, out = self.admit("admit", "x_jpg", 10 * GB, 10 * GB, "1 file zenodo lists")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.size_line("x_jpg")[:2], ["admitted", "900"])
 
     def test_settle_and_refuse_say_so_in_the_shape_status_keeps(self):
         self.volume.admitted("x_a", 900, need=10 * GB)
@@ -2421,11 +2468,18 @@ class SizedFetchTest(unittest.TestCase):
             self.assertEqual(admissions.calls, [("unpack", {"total": 1400, "need": 200, "how": "the members of its archives"})])
             self.assertEqual(outcome["status"], "done" if ok else "refused")
         self.assertEqual(outcome["error"], "x_tar: refused for space")
-        # a tar that cannot be listed is refused, nothing of it unpacked
+        # a tar that cannot be listed is refused, nothing of it unpacked; so is a zip beside the
+        # tars whose directory cannot be read, in place of ending the run
         (dest / "broken.tgz").write_bytes(b"not a tar")
         admissions, outcome = Admissions(True), {"status": "done", "size": {"downloads": 900}}
         self.assertFalse(self.tool.unpack_admitted(entry, outcome, admissions))
-        self.assertEqual(admissions.calls, [("refuse", "its tars could not be listed (ReadError)")])
+        self.assertEqual(admissions.calls, [("refuse", "its archives could not be listed (ReadError)")])
+        self.assertEqual(outcome["status"], "refused")
+        (dest / "broken.tgz").unlink()
+        (dest / "stray.zip").write_bytes(b"not a zip")
+        admissions, outcome = Admissions(True), {"status": "done", "size": {"downloads": 900}}
+        self.assertFalse(self.tool.unpack_admitted(entry, outcome, admissions))
+        self.assertEqual(admissions.calls, [("refuse", "its archives could not be listed (NoSize)")])
         self.assertEqual(outcome["status"], "refused")
 
     def test_a_run_asks_the_rule_for_every_set_and_a_set_refused_lands_nothing(self):
@@ -2467,17 +2521,75 @@ class SizedFetchTest(unittest.TestCase):
                                                                f"{entry['dest']}/a.bin", entry)]})]
         with redirect_stdout(io.StringIO()), mock.patch.object(self.readers, "get", FakeWeb(self.readers)):
             self.assertEqual(self.tool.run_all(silent, args, helper), 1)
+        # and its admission is settled too, since a requeued job may hold one its first run gave it
         self.assertEqual(log.read_text(encoding="utf-8").splitlines(),
-                         ["refuse x_silent the source did not answer; http 404"])
+                         ["refuse x_silent the source did not answer; http 404", "settle x_silent"])
+        # a reader failing in a way size_words does not name refuses the set the same, never ends the run
+        log.unlink()
+        with redirect_stdout(io.StringIO()), mock.patch.object(self.tool, "size_entry", side_effect=RuntimeError("odd")):
+            self.assertEqual(self.tool.run_all(silent, args, helper), 1)
+        self.assertEqual(log.read_text(encoding="utf-8").splitlines(),
+                         ["refuse x_silent the size reader failed with RuntimeError", "settle x_silent"])
 
     def test_a_run_in_a_slurm_job_is_refused_without_the_size_rule(self):
-        with mock.patch.object(self.tool.socket, "gethostname", return_value="wsu123"), \
-                mock.patch.dict(os.environ, dict(outside_slurm_env(), SLURM_JOB_ID="900"), clear=True):
-            code, _, err = run_tool(self.tool, ["--run", "--only", "fracatlas"])
-        self.assertEqual(code, 3)
-        self.assertIn("refusing to fetch in a Slurm job without --admit: the size rule decides each set first", err)
+        # with or without --outside-slurm, which lifts only the refusal of a shell with no job
+        for words in ([], ["--outside-slurm"]):
+            with mock.patch.object(self.tool.socket, "gethostname", return_value="wsu123"), \
+                    mock.patch.dict(os.environ, dict(outside_slurm_env(), SLURM_JOB_ID="900"), clear=True):
+                code, _, err = run_tool(self.tool, ["--run", "--only", "fracatlas", *words])
+            self.assertEqual(code, 3, words)
+            self.assertIn("refusing to fetch in a Slurm job without --admit: the size rule decides each set first", err)
         text = (GRID / "01-fetch.sbatch").read_text(encoding="utf-8")
         self.assertIn('ADMIT=(--admit "bash $REPO/grid/admit.sh")', text)
+
+    def test_the_fetch_job_runs_the_tool_under_the_nodes_python_and_the_helpers_under_pydrv(self):
+        # the size rule reads Slurm's queue with squeue and takes a flock, which the container PYDRV
+        # runs the stages in has not, so the job runs the tool outside it and the helpers inside
+        repo = repo_copy(self)
+        calls = self.tmp / "calls.log"
+
+        def stand_in(name, body):
+            path = self.tmp / name
+            path.write_text("#!/bin/bash\n" + body, encoding="utf-8")
+            path.chmod(0o755)
+            return path
+
+        pydrv = stand_in("container-python", 'echo "container: $*" >> "$CALLS"\n')
+        node = stand_in("node-python", '[ "$1" = -c ] && exit 0\necho "node: $*" >> "$CALLS"\n')
+        env = dict(outside_slurm_env(), SCHWINGNET=str(repo), PYDRV=str(pydrv), FETCH_PYTHON=str(node), CALLS=str(calls),
+                   SLURM_JOB_ID="900", DATA_ROOT=str(self.tmp / "data"), TMPDIR_OVERRIDE=str(self.tmp / "t"),
+                   FETCH_ARGS="--only x_a")
+
+        def job():
+            calls.unlink(missing_ok=True)
+            done = subprocess.run(["bash", str(repo / "grid" / "01-fetch.sbatch")], cwd=repo / "grid", env=env,
+                                  capture_output=True, text=True, timeout=60)
+            lines = calls.read_text(encoding="utf-8").splitlines() if calls.exists() else []
+            return done.returncode, done.stdout + done.stderr, lines
+
+        code, out, lines = job()
+        self.assertEqual(code, 0, out)
+        self.assertEqual(len(lines), 1, lines)
+        self.assertTrue(lines[0].startswith(f"node: {repo}/tools/fetch_sources.py --run --python {pydrv} "), lines)
+        self.assertIn(f" --admit bash {repo}/grid/admit.sh ", lines[0])
+        self.assertIn(" --only x_a", lines[0])
+        self.assertNotIn("--outside-slurm", lines[0])
+        # a node with no such Python fetches nothing, since nothing could decide
+        env.pop("FETCH_PYTHON")
+        env["ACQ_ENV"] = str(self.tmp / "no-acq")
+        code, out, lines = job()
+        self.assertEqual(code, 4, out)
+        self.assertIn("XR_FETCH refused: no Python of 3.9 or later on the node for the size rule", out)
+        self.assertEqual(lines, [])
+        # off the grid the tool runs under PYDRV and asks no admission
+        env.pop("SLURM_JOB_ID")
+        env["OUTSIDE_SLURM"] = "1"
+        code, out, lines = job()
+        self.assertEqual(code, 0, out)
+        self.assertEqual(len(lines), 1, lines)
+        self.assertTrue(lines[0].startswith(f"container: {repo}/tools/fetch_sources.py --run --python {pydrv} "), lines)
+        self.assertNotIn("--admit", lines[0])
+        self.assertIn(" --outside-slurm", lines[0])
 
 
 class QuotaReadoutTest(unittest.TestCase):

@@ -2,6 +2,8 @@
 
 Written 2026-10-25 about 22:40 UTC from the project thread working #163, at the owner's checkpoint of 22:35 UTC: "PLEASE CHECKPOINT IMMEDIATELY WHERE YOU ARE, PUSH ALL FILES TO GIT, WRITE A HANDOFF I CAN PICK UP, GIVE INSTRUCTIONS ON HOW TO RESTART!". The work is on the branch claude/163, draft pull request #400. No fetch, grid job or training was sent, and none is sent by this work: every fetch it admits still waits for the owner's word and count (the owner's comment on #163).
 
+Picked up on 2026-10-26 in the same pull request: the Open list below was worked through in order, an adversarial review of the diff found 21 points, the chief one that the fetch job ran the size rule inside the stages' container, where squeue is absent, so every set would have been refused on the grid, and the fixes are in #400 with the review in its body; docs/research/exact-fetch-sizes.md records what was verified for the readers and what was not. The list below is kept as it was written.
+
 ## Goal
 
 Issue #163 as written, on the owner's go of 2026-10-25 21:09 UTC ("10. go"):
