@@ -1,9 +1,10 @@
 """The front door, tools/front_door.html, driven in a browser against the stand-in of
 tests/door_stand_in.py over a small repository: the top folder with its README rendered and the
 head of main named, a document opened by a relative link with its picture, code, emphasis, lists
-and table, an anchor in the same document, Back, a deep link, an exported artifact run sealed with
-its stylesheet, script, image and fetch of a file beside it, and its link opening a document at its
-anchor, the board branch, the newest commits, a search, Ask reaching sample with a tool that reads
+and table, an SVG and a heading with an id of its own, an anchor in the same document, Back, a deep
+link, an exported artifact run sealed with its stylesheet, script, image and fetch of a file beside
+it, its reads by message answered at its own branch alone, its link outside the repository shown and
+not opened, and its link opening a document at its anchor, the board branch, the newest commits, a search, Ask reaching sample with a tool that reads
 through the connector, a picture and a binary file, a path the repository lacks, the viewer with no
 connector, no GitHub, or a declined grant told what to do, calls refused for the rate made again,
 and the folder pane on a phone. The browser is Playwright's Chromium; where it is not installed, as
@@ -58,18 +59,31 @@ FILES = {
                   "[picture](docs/figures/dot.png), the [blob](data/blob.bin), [away](https://example.com/), "
                   "[missing](docs/none.md) and a [script](javascript:alert(1)) link.\n\n"
                   "| Column | Value |\n|---|---:|\n| rows | 2 |\n"),
-    "docs/one.md": ("# One\n\nA paragraph with `code`, **bold** and a [back link](../README.md); [down](#far).\n\n"
-                    "![a dot](figures/dot.png)\n\n- first\n- second\n  - nested\n\n```python\nprint(1)\n```\n\n"
+    "docs/one.md": ("# One\n\nA paragraph with `code`, **bold** and a [back link](../README.md); [down](#far), "
+                    f"an [odd]({GITHUB}/blob/main/%E0%A4%A) address.\n\n"
+                    "![a dot](figures/dot.png)\n\n![mark](figures/mark.svg)\n\n![see https://example.com/alt](figures/dot.png)\n\n"
+                    "## Files\n\n- first\n- second\n  - nested\n\n```python\nprint(1)\n```\n\n"
                     + LONG + "\n\n## Far\n\nFar text.\n"),
+    "docs/figures/mark.svg": '<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"></svg>\n',
     "artifacts/thing/index.html": ("<!doctype html><html><head><title>The thing itself</title>"
                                    "<link rel=\"stylesheet\" href=\"style.css\"></head><body><p id=\"t\">not run</p>"
                                    "<img id=\"pic\" src=\"fig.png\" alt=\"fig\" width=\"10\" height=\"10\">"
                                    "<a id=\"to-one\" href=\"../../docs/one.md#far\">One, far</a>"
+                                   "<a id=\"out\" href=\"https://example.com/out\">out</a>"
+                                   "<p id=\"r1\"></p><p id=\"r2\"></p>"
                                    "<script src=\"app.js\" defer></script></body></html>\n"),
     "artifacts/thing/style.css": "#t { color: rgb(4, 5, 6); }\n",
     "artifacts/thing/app.js": ('fetch("data.json").then(function (r) { return r.json(); }).then(function (j) {\n'
                                '  document.getElementById("t").textContent = "thing ran " + j.n;\n'
-                               '}, function () { document.getElementById("t").textContent = "fetch failed"; });\n'),
+                               '}, function () { document.getElementById("t").textContent = "fetch failed"; });\n'
+                               'addEventListener("message", function (e) {\n'
+                               '  var d = e.data;\n'
+                               '  if (d && d.type === "schwingnet.read.result")\n'
+                               '    document.getElementById(d.id).textContent = d.ok ? "read " + d.text.trim() : "refused " + d.error;\n'
+                               '});\n'
+                               f'var repo = "{stand_in.OWNER}/{stand_in.REPO}";\n'
+                               'parent.postMessage({type: "schwingnet.read", id: "r1", repo: repo, ref: "main", path: "artifacts/thing/data.json"}, "*");\n'
+                               'parent.postMessage({type: "schwingnet.read", id: "r2", repo: repo, ref: "refs/heads/board", path: "STATE.md"}, "*");\n'),
     "artifacts/thing/data.json": '{"n": 7}\n',
 }
 BYTES = {"docs/figures/dot.png": png(), "artifacts/thing/fig.png": png(), "data/blob.bin": bytes(range(12))}
@@ -167,8 +181,18 @@ class DoorInABrowser(unittest.TestCase):
         expect(self.heading(page)).to_have_text("One", timeout=WAIT)
         expect(door.locator("#where")).to_contain_text("docs / one.md")
         doc = door.locator("#content .doc")
-        expect(doc.locator("img")).to_have_attribute("src", BLOB, timeout=WAIT)
-        self.assertEqual(doc.locator("img").evaluate("i => i.complete && i.naturalWidth"), 1)
+        dot = doc.locator("img[alt='a dot']")
+        expect(dot).to_have_attribute("src", BLOB, timeout=WAIT)
+        self.assertEqual(dot.evaluate("i => i.complete && i.naturalWidth"), 1)
+        # An SVG is shown from a data address, since a blob of it would run its scripts on this origin.
+        expect(doc.locator("img[alt='mark']")).to_have_attribute("src", re.compile(r"^data:image/svg\+xml"), timeout=WAIT)
+        # An address inside an image's words is words, not the image's link.
+        expect(doc.locator("img[alt='see https://example.com/alt']")).to_have_attribute("src", BLOB, timeout=WAIT)
+        # A heading carries an id of its own, prefixed doc-, so Files never stands in for the page's button.
+        expect(doc.locator("h2#doc-files")).to_have_text("Files")
+        self.assertEqual(door.locator("#files").evaluate("e => e.tagName"), "BUTTON")
+        # A GitHub address that is no valid encoding still renders as a link.
+        expect(doc.locator("a", has_text="odd")).to_be_visible()
         expect(doc.locator("p code").first).to_have_text("code")
         expect(doc.locator("strong")).to_have_text("bold")
         expect(doc.locator("ul > li > ul > li")).to_have_text("nested")
@@ -192,12 +216,22 @@ class DoorInABrowser(unittest.TestCase):
         page = self.front()
         door = self.door(page)
         door.locator(".doc a", has_text="thing").click()
-        expect(door.locator("#view iframe")).to_have_attribute("sandbox", "allow-scripts allow-popups", timeout=WAIT)
+        expect(door.locator("#view iframe")).to_have_attribute("sandbox", "allow-scripts", timeout=WAIT)
         expect(door.locator("#where")).to_contain_text("artifacts / thing / index.html")
         thing = self.sealed(page)
         expect(thing.locator("#t")).to_have_text("thing ran 7", timeout=WAIT)
         expect(thing.locator("#t")).to_have_css("color", "rgb(4, 5, 6)")
         expect(thing.locator("#pic")).to_have_attribute("src", PNG_INLINE)
+        # A read the page asks for by message is answered at its own branch and refused at another.
+        expect(thing.locator("#r1")).to_have_text('read {"n": 7}', timeout=WAIT)
+        expect(thing.locator("#r2")).to_have_text("refused ref not allowed", timeout=WAIT)
+        # A link outside the repository opens no page: the door shows it for the viewer to open.
+        thing.locator("#out").click()
+        expect(self.note(page)).to_have_text("The page asks to open a link outside the repository.", timeout=WAIT)
+        expect(door.locator("#note-more a")).to_have_attribute("href", "https://example.com/out")
+        self.assertEqual(len(self.context.pages), 1, "the sealed frame opened nothing itself")
+        door.get_by_role("button", name="Close").click()
+        expect(door.locator("#note")).to_be_hidden()
         thing.locator("#to-one").click()
         expect(self.heading(page)).to_have_text("One", timeout=WAIT)
         self.wait_for(lambda: door.locator("#view").evaluate("v => v.scrollTop") > 1000, "the document opened at #far")

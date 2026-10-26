@@ -38,7 +38,8 @@ input, textarea { font:inherit; color:var(--fg); background:var(--bg); border:1p
 #busy { position:absolute; top:0; left:0; right:0; height:3px; z-index:3; background:var(--accent); opacity:.75; }
 #where { color:var(--muted); font:12.5px/1.4 var(--mono); margin:0 0 12px; overflow-wrap:anywhere; }
 #where button { font:inherit; }
-#note { max-width:40em; }
+#note { max-width:40em; position:relative; z-index:2; }   /* above a sealed frame, which fills the view behind it */
+#view.framed #note { margin:16px; padding:12px 14px; background:var(--panel); border:1px solid var(--line); border-radius:8px; }
 #note p { margin:0 0 10px; }
 #note-text { font-size:15px; font-weight:600; text-wrap:balance; }
 #note-more { color:var(--muted); }
@@ -125,7 +126,7 @@ ul.hits pre { margin:6px 0 0; white-space:pre-wrap; }
   "use strict";
   var SERVER = "GitHub", OWNER = "OpenSpineConsortium", REPO = "SchwingNet", MAIN = "main";
   var GITHUB = "https://github.com/" + OWNER + "/" + REPO;
-  var SEALED = "allow-scripts allow-popups";   // how the docs site frames an exported artifact
+  var SEALED = "allow-scripts";   // scripts and nothing else: no popup, no navigation, no origin, so nothing leaves the frame
   var DOORS = [["Textbook", "docs/textbook", MAIN], ["Research", "docs/research/README.md", MAIN],
                ["Artifacts", "artifacts/README.md", MAIN], ["Board", "STATE.md", "board"],
                ["Memory", "docs/memory/MEMORY.md", MAIN], ["Checkpoints", "docs/checkpoints", MAIN],
@@ -305,18 +306,17 @@ ul.hits pre { margin:6px 0 0; white-space:pre-wrap; }
   // A reference a page makes, resolved against the page's own path; one that names another site,
   // a data or blob address or a place in the same page is none of the repository's. A link into
   // this repository on GitHub, by blob, raw or tree, is the file it names.
+  function decode(s) { try { return decodeURIComponent(s); } catch (e) { return String(s); } }
   function resolve(base, ref) {
     ref = String(ref == null ? "" : ref).trim();
     var m = new RegExp("^" + GITHUB.replace(/[.]/g, "\\.") + "/(?:blob|raw|tree)/([^/#?]+)/([^#?]*)").exec(ref);
-    if (m) return {ref: decodeURIComponent(m[1]), path: decodeURIComponent(m[2]).replace(/\/+$/, "")};
+    if (m) return {ref: decode(m[1]), path: decode(m[2]).replace(/\/+$/, "")};
     if (!ref || ELSEWHERE.test(ref) || ref.charAt(0) === "#" || ref.charAt(0) === "?") return null;
     ref = ref.split("#")[0].split("?")[0];
     var parts = ref.charAt(0) === "/" ? [] : String(base).split("/").slice(0, -1);
     ref.split("/").forEach(function (step) {
       if (step === "..") parts.pop();
-      else if (step && step !== ".") {
-        try { parts.push(decodeURIComponent(step)); } catch (e) { parts.push(step); }
-      }
+      else if (step && step !== ".") parts.push(decode(step));
     });
     return {ref: null, path: parts.join("/")};
   }
@@ -346,7 +346,7 @@ ul.hits pre { margin:6px 0 0; white-space:pre-wrap; }
         continue;
       }
       if ((m = /^(#{1,6})\s+(.*?)\s*#*\s*$/.exec(line))) {
-        out.push("<h" + m[1].length + " id=\"" + esc(slug(m[2])) + "\">" + inline(m[2]) + "</h" + m[1].length + ">");
+        out.push("<h" + m[1].length + " id=\"doc-" + esc(slug(m[2])) + "\">" + inline(m[2]) + "</h" + m[1].length + ">");
         i++;
         continue;
       }
@@ -400,7 +400,7 @@ ul.hits pre { margin:6px 0 0; white-space:pre-wrap; }
       while (i < lines.length && (underline(lines[i]) || !blockStart(lines[i]))) {
         if (underline(lines[i])) {
           var level = /=/.test(lines[i]) ? 1 : 2, title = para.join(" ");
-          out.push("<h" + level + " id=\"" + esc(slug(title)) + "\">" + inline(title) + "</h" + level + ">");
+          out.push("<h" + level + " id=\"doc-" + esc(slug(title)) + "\">" + inline(title) + "</h" + level + ">");
           para = null;
           i++;
           break;
@@ -427,17 +427,25 @@ ul.hits pre { margin:6px 0 0; white-space:pre-wrap; }
     }
     return out;
   }
-  function spans(s) {
-    s = esc(s);
-    // A link's address may hold one level of parentheses, as a Wikipedia address does.
-    s = s.replace(/!\[([^\]]*)\]\(((?:[^()\s]|\([^()\s]*\))+)(?:\s+&quot;[^&]*&quot;)?\)/g, function (all, alt, src) { return image(src, alt); });
-    s = s.replace(/\[([^\]]+)\]\(((?:[^()\s]|\([^()\s]*\))+)(?:\s+&quot;([^&]*)&quot;)?\)/g, function (all, t, href) { return link(href, t); });
-    s = s.replace(/&lt;(https?:\/\/[^&\s]+)&gt;/g, function (all, u) { return link(u, u); });
-    s = s.replace(/(^|[\s(])(https?:\/\/[^\s<)]+[^\s<).,;:!?&])/g, function (all, before, u) { return before + link(u, u); });
+  function emphasis(s) {
     s = s.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>").replace(/__([^_]+)__/g, "<strong>$1</strong>");
     s = s.replace(/(^|[^\w*])\*([^*\n]+)\*(?!\w)/g, "$1<em>$2</em>").replace(/(^|[^\w_])_([^_\n]+)_(?!\w)/g, "$1<em>$2</em>");
-    s = s.replace(/~~([^~]+)~~/g, "<del>$1</del>");
-    return s.replace(/ {2,}\n/g, "<br>\n");
+    return s.replace(/~~([^~]+)~~/g, "<del>$1</del>");
+  }
+  // Images and links are rendered first and held aside behind markers, so the passes after them
+  // never read the HTML they emitted: an address with underscores, or an alt text that holds an
+  // address, stays whole. A link's address may hold one level of parentheses, as a Wikipedia
+  // address does.
+  function spans(s) {
+    var held = [];
+    function hold(html) { held.push(html); return "\u0001" + (held.length - 1) + "\u0001"; }
+    s = esc(s).replace(/\u0001/g, "");
+    s = s.replace(/!\[([^\]]*)\]\(((?:[^()\s]|\([^()\s]*\))+)(?:\s+&quot;[^&]*&quot;)?\)/g, function (all, alt, src) { return hold(image(src, alt)); });
+    s = s.replace(/\[([^\]]+)\]\(((?:[^()\s]|\([^()\s]*\))+)(?:\s+&quot;([^&]*)&quot;)?\)/g, function (all, t, href) { return hold(link(href, emphasis(t))); });
+    s = s.replace(/&lt;(https?:\/\/[^&\s]+)&gt;/g, function (all, u) { return hold(link(u, u)); });
+    s = s.replace(/(^|[\s(])(https?:\/\/[^\s<)]+[^\s<).,;:!?&])/g, function (all, before, u) { return before + hold(link(u, u)); });
+    s = emphasis(s).replace(/ {2,}\n/g, "<br>\n");
+    return s.replace(/\u0001(\d+)\u0001/g, function (all, n) { return held[+n]; });
   }
   var docBase = {ref: MAIN, path: ""};   // the document being rendered, for its relative links
   function link(href, label) {
@@ -588,10 +596,6 @@ ul.hits pre { margin:6px 0 0; white-space:pre-wrap; }
       var a = e.target && e.target.closest ? e.target.closest("a[href]") : null;
       if (!a || e.defaultPrevented) return;
       var href = a.getAttribute("href") || "";
-      if (away(href)) {
-        if (!a.target && /^(?:https?:)?\/\//i.test(href)) a.target = "_blank";
-        return;
-      }
       e.preventDefault();
       if (href.charAt(0) === "#") {
         var t = document.getElementById(href.slice(1));
@@ -614,6 +618,7 @@ ul.hits pre { margin:6px 0 0; white-space:pre-wrap; }
     if (d.type === "front-door.open") {
       var w = resolve(sealed.path, d.href);
       if (w) open({kind: "path", ref: w.ref || sealed.ref, path: w.path, hash: fragment(d.href)});
+      else if (/^https?:\/\//i.test(String(d.href))) elsewhere(String(d.href), "");
     } else if (d.type === "front-door.fetch") {
       var w2 = resolve(sealed.path, d.href);
       (w2 && !w2.ref ? loadIfKnown(sealed.ref, w2.path) : Promise.resolve(null)).then(function (f) {
@@ -621,19 +626,27 @@ ul.hits pre { margin:6px 0 0; white-space:pre-wrap; }
                 : {type: "front-door.fetch.result", id: d.id, ok: false});
       });
     } else if (d.type === "schwingnet.open") {
-      if (typeof d.href === "string" && /^https?:\/\//i.test(d.href)) {
-        say("A figure asks to open a link.", "<a href=\"" + esc(d.href) + "\" target=\"_blank\" rel=\"noopener\">" + esc(d.label || d.href) + "</a>",
-            [["Close", function () { note.hidden = true; }]]);
-      }
+      if (typeof d.href === "string" && /^https?:\/\//i.test(d.href)) elsewhere(d.href, typeof d.label === "string" ? d.label : "");
     } else if (d.type === "schwingnet.read") {
+      // A page reads only at its own branch: what the viewer sees beside it, never another branch.
+      var ref = String(d.ref || MAIN).replace(/^refs\/heads\//, "");
       if (d.repo !== OWNER + "/" + REPO) { reply({type: "schwingnet.read.result", id: d.id, ok: false, error: "repository not allowed"}); return; }
-      read(String(d.ref || MAIN).replace(/^refs\/heads\//, ""), String(d.path || "").replace(/^\/+/, "")).then(function (f) {
+      if (ref !== sealed.ref) { reply({type: "schwingnet.read.result", id: d.id, ok: false, error: "ref not allowed"}); return; }
+      read(ref, String(d.path || "").replace(/^\/+/, "")).then(function (f) {
         reply({type: "schwingnet.read.result", id: d.id, ok: true, text: textOf(f)});
       }, function (err) { reply({type: "schwingnet.read.result", id: d.id, ok: false, error: code(err)}); });
     } else if (d.type === "schwingnet.dispatch" || d.type === "schwingnet.experiment") {
       if (d.type === "schwingnet.dispatch") reply({type: "schwingnet.dispatch.result", label: d.label, ok: false, error: "no connector"});
     }
   });
+
+  // A link out of the repository that a sealed page asks for: shown with its whole address, for the
+  // viewer to open or not; the sealed frame itself can open nothing.
+  function elsewhere(href, label) {
+    say("The page asks to open a link outside the repository.",
+        (label ? esc(label) + ": " : "") + "<a href=\"" + esc(href) + "\" target=\"_blank\" rel=\"noopener\">" + esc(href) + "</a>",
+        [["Close", function () { note.hidden = true; }]]);
+  }
 
   // Showing
 
@@ -733,21 +746,27 @@ ul.hits pre { margin:6px 0 0; white-space:pre-wrap; }
     }
     return doc;
   }
+  function pictureUrl(f) {
+    if (f.type === "image/svg+xml") return dataUrl(f);
+    var url = URL.createObjectURL(new Blob([bytesOf(f)], {type: f.type}));
+    blobs.push(url);
+    return url;
+  }
   function picture(img) {
     var ref = img.getAttribute("data-door-ref"), p = img.getAttribute("data-door-src");
     img.removeAttribute("data-door-src");
-    read(ref, p).then(function (f) {
-      var url = URL.createObjectURL(new Blob([bytesOf(f)], {type: f.type}));
-      blobs.push(url);
-      img.src = url;
-    }, function (e) { img.alt = (img.alt ? img.alt + " " : "") + "(not in the repository: " + p + ")"; });
+    read(ref, p).then(function (f) { img.src = pictureUrl(f); },
+                      function (e) { img.alt = (img.alt ? img.alt + " " : "") + "(not in the repository: " + p + ")"; });
   }
+  // A document's headings carry ids prefixed doc-, so a heading named Files or Note never takes
+  // the place of the page's own elements; an anchor is looked up by that id, and the hash by itself
+  // only inside the document, for an id a document gives in its own HTML.
   function reveal(hash) {
     if (!hash) { view.scrollTop = 0; return; }
-    var t = null;
-    try { t = document.getElementById(decodeURIComponent(hash)); } catch (e) { t = null; }
+    var t = content.querySelector("#doc-" + cssEscape(decode(hash))) || document.getElementById(decode(hash));
     if (t && content.contains(t)) t.scrollIntoView();
   }
+  function cssEscape(s) { return window.CSS && CSS.escape ? CSS.escape(s) : String(s).replace(/[^\w-]/g, "\\$&"); }
 
   function showFile(ref, path, en) {
     var e = ext(path);
@@ -755,9 +774,7 @@ ul.hits pre { margin:6px 0 0; white-space:pre-wrap; }
     if (IMAGE.test(path)) return read(ref, path).then(function (f) {
       clear();
       crumbs(ref, path);
-      var url = URL.createObjectURL(new Blob([bytesOf(f)], {type: f.type}));
-      blobs.push(url);
-      content.appendChild(el("img", {"class": "picture", src: url, alt: name(path)}));
+      content.appendChild(el("img", {"class": "picture", src: pictureUrl(f), alt: name(path)}));
       note.hidden = true;
     });
     if (BINARY.test(path)) {
@@ -945,13 +962,23 @@ ul.hits pre { margin:6px 0 0; white-space:pre-wrap; }
     busy.hidden = true;
     var c = code(e);
     if (c === "absent") say("This view cannot reach your connectors.", "Open the door on claude.ai, signed in to the account that holds it.", []);
-    else if (c === "server_not_connected" || c === "server_not_found" || c === "needs_reauth" || c === "selection_required")
+    else if (c === "needs_reauth")
+      say("Your GitHub connector needs to be connected again.", "Reconnect GitHub in claude.ai Settings, Connectors, then try again.", [["Try again", start]]);
+    else if (c === "selection_required")
+      say("More than one of your connectors is named GitHub.", "Choose one when claude.ai asks, or keep one connector of that name in claude.ai Settings, Connectors, then try again.",
+          [["Try again", start]]);
+    else if (c === "server_not_connected" || c === "server_not_found")
       say("GitHub is not connected to your claude.ai account, so the door has nothing to show.", connectSteps(), [["Try again", start]]);
     else if (c === "not_granted" || c === "consent_required")
       say("The door may not use your GitHub connector, so it cannot read the repository.", "You chose not to allow it. The artifact's Permissions menu turns it back on.",
           [["Open permissions", permissions], ["Try again", start]]);
-    else if (c === "not_in_manifest" || c === "blocked_by_policy")
-      say("This page may not call the connector's tools (" + esc(c) + ").", "Publish the door again from the repository's tools/front_door.html.", []);
+    else if (c === "not_in_manifest")
+      say("The door may not call your GitHub connector's tools.",
+          "If you turned GitHub off for this page, or declined it when the page first asked, the artifact's Permissions menu turns it on. " +
+          "Otherwise the page's published capabilities are stale, and the door is published again from the repository's tools/front_door.html.",
+          [["Open permissions", permissions], ["Try again", start]]);
+    else if (c === "blocked_by_policy")
+      say("Your organization's policy blocks this tool for you, so the door cannot read the repository.", "", []);
     else say("The repository could not be read (" + esc(c) + ").", esc((e && e.message) || "This is usually a passing network or service problem."), [["Try again", start]]);
   }
 
