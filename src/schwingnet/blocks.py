@@ -33,9 +33,11 @@ part (docs/research/training-review.md, section 1):
   voxels mapped onto the X-ray by the render's geometry or a registered pose, and its loss is
   added with prior_weight; the head is training-only, so the exported classifier is unchanged;
 - segmenter: which segmentation model's masks label the unannotated CTs a run's data is made
-  from, read by the pack stage before any training step (the owner, 2026-10-26: the segmentation
-  model on the unannotated data is a configurable block, the production runs on SPINEPS, the
-  replication of FleXray's dataset on MOOSE), "spineps" or "moose"; the names, the alphabets and
+  from, recorded for the pack stage (tools/anomaly_pack.py, which spells the VerSe alphabet
+  itself until it imports schwingnet.segmenters) to read before any training step (the owner,
+  2026-10-26: the segmentation model on the unannotated data is a configurable block, the
+  production runs on SPINEPS, the replication of FleXray's dataset on MOOSE), "spineps" or
+  "moose"; the names, the alphabets and
   the maps between them are schwingnet.segmenters, and no training step reads it, so the torch
   side has no function for it, the smoke test's cover does not vary it and tools/block_sweep.py
   counts no combination of it.

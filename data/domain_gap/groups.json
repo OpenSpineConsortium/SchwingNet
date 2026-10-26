@@ -27,7 +27,7 @@
    "engine": "blocks",
    "subjects_from": "flexray_drr",
    "licence": "open: TotalSegmentator CC BY 4.0 CTs; FleXray code MIT; SPINEPS masks as held, MOOSE masks made by moosez (GPL-3.0 code) in the segment job",
-   "note": "FleXray's released MOOSE recipe to the letter on MOOSE's labels, the attenuation randomisation on half the renders, through this project's render blocks, on the same CTs, crops and poses as flexray_drr. Against flexray_reference it is the replication test: our blocks against FleXray's own code under the same labels. Against flexray_spineps it isolates the segmenter."
+   "note": "FleXray's released MOOSE recipe to the letter on MOOSE's labels, the attenuation randomisation on half the renders, through this project's render blocks, on the same CTs, crops and poses as flexray_drr. Against flexray_reference it is the replication test: our blocks against FleXray's own code under the same labels. Against flexray_spineps it isolates the labels and what the labels decide (the crops, isocentres and poses follow them)."
   },
   {
    "id": "flexray_reference",
@@ -55,7 +55,7 @@
    "engine": "blocks",
    "subjects_from": "flexray_drr",
    "licence": "open: TotalSegmentator CC BY 4.0 CTs; FleXray code MIT; SPINEPS masks as held, MOOSE masks made by moosez (GPL-3.0 code) in the segment job",
-   "note": "FleXray's recipe through this project's render blocks on the project's production labels, SPINEPS's existing masks (the owner's word of 2026-10-26: SPINEPS for the production runs, MOOSE only when replicating FleXray's dataset), on the same CTs, crops and poses as flexray_replica. Against flexray_replica it isolates the segmenter: production labels against the replication's."
+   "note": "FleXray's recipe through this project's render blocks on the project's production labels, SPINEPS's existing masks (the owner's word of 2026-10-26: SPINEPS for the production runs, MOOSE only when replicating FleXray's dataset), on the same CTs and seeds as flexray_replica; the crops, isocentres and poses follow the labels, as FleXray's recipe draws them from the label volume before the pose. Against flexray_replica it isolates the labels and what they decide: production labels against the replication's."
   },
   {
    "id": "fluxray_raw",
