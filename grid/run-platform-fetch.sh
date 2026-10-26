@@ -91,6 +91,7 @@ fluorosam_weights_drive|gdown|1.0|per arcadelab/fluorosam; not stated on the fil
 kaggle_fracture_multiregion|kaggle-dataset|0.51|not stated; merged from three other Kaggle uploads, to map back by hand|gated|bmadushanirodrigo/fracture-multi-region-x-ray-data|TOKEN_FILE=~/.fluorocap/credentials.env NOTE=507,724,147 bytes and 10,580 images by Kaggle's dataset API on 2026-10-22; fetched to explore on the owner's yes of 2026-10-23, out of every split until its sources and licences are read (spine-datasets #23)
 kaggle_scoliosis_yolov5|kaggle-dataset|0.26|MIT in the licence field, CC BY 4.0 in the description|gated|salmankey/scoliosis-yolov5-annotated-spine-x-ray-dataset|TOKEN_FILE=~/.fluorocap/credentials.env NOTE=251,996,951 bytes by Kaggle's dataset API on 2026-10-22; fetched to explore on the owner's yes of 2026-10-23, every image hash-checked against the AASCE copy before any use (spine-datasets #24)
 hf_flexray_weights|hf-token|0|weights CC-BY-NC-4.0, code MIT; a benchmark row only, never in a SchwingNet network|gated|--repo VictorButoi/flexray --repo-type model|TOKEN_FILE=~/.hf/token.env NOTE=FleXray's open weights (MIT CSAIL, arXiv 2609.26756), every member with its checksums, for the bench word's two FleXray jobs; the owner's yes of 2026-10-25 (#287)
+hf_flexray_data|hf-token|20|CC BY-NC 4.0 on the card (its real folders CC BY 4.0, HaN-Seg CC BY-NC-ND); a synthetic group of the DRR domain-gap study only, never in a SchwingNet network|open|--repo VictorButoi/flexray-data --repo-type dataset|TOKEN_FILE=~/.hf/token.env NOTE=FluXray, FleXray's FLUX-edited DRRs, about 20 GB by its card (the size rule reads the exact size before a byte lands); the optional group of bench flexray_drr_gap, read from hf_flexray_data/raw by tools/domain_gap.py and skipped with its reason until fetched, the audit plan's item 6 (docs/research/drr-domain-gap/README.md); a public repository, fetched with the owner's token as the other hf rows are
 hf_xvr_models|hf-token|3.7|MIT; a benchmark row only|gated|--repo eigenvivek/xvr --repo-type model|TOKEN_FILE=~/.hf/token.env NOTE=xvr's published registration models (arXiv 2503.16309), 3.7 GB by its README, for bench xvr_deepfluoro; the owner's yes of 2026-10-25 (#287)
 hf_xvr_data|hf-token|4.8|CC-BY-NC-ND-4.0; read-only, a benchmark row only|gated|--repo eigenvivek/xvr-data --repo-type dataset --include deepfluoro/*|TOKEN_FILE=~/.hf/token.env NOTE=xvr's DeepFluoro folder alone of its 4.8 GB data, what bench xvr_deepfluoro reads; the owner's yes of 2026-10-25 (#287)
 hf_fluoroseg|hf-token|2650|FluoroSeg data use terms, accepted by the owner on 2026-10-22|gated|--repo benjamindkilleen/fluoroseg --repo-type dataset|TOKEN_FILE=~/.hf/token.env NOTE=the whole set, about 2.65 TB of simulated X-rays with masks, on the owner's yes of 2026-10-22 (12.6 TB free of the 22 TB quota at the time, 6.8 TB of it promised to queued fetches)
@@ -139,10 +140,10 @@ total_gb=0; unknown=""; n=0; missing=""
 while IFS='|' read -r id route size licence access args extra; do
   [ -n "$id" ] || continue
   wanted "$id" || continue
-  if [ "$access" = gated ]; then
-    problem=$(secret_file_problem "${extra%%NOTE=*}")
-    [ -z "$problem" ] || { echo "$id: left out: $problem"; missing="$missing $id"; continue; }
-  fi
+  # Every line that names a token or link file is checked, whatever its access: a public repository
+  # fetched with the owner's token (hf_flexray_data) needs the file as a gated source does.
+  problem=$(secret_file_problem "${extra%%NOTE=*}")
+  [ -z "$problem" ] || { echo "$id: left out: $problem"; missing="$missing $id"; continue; }
   n=$((n + 1))
   if [ "$size" = 0 ]; then unknown="$unknown $id"; else total_gb=$(awk -v a="$total_gb" -v b="$size" 'BEGIN { printf "%d", a + b + 0.999 }'); fi
 done <<< "$TABLE"

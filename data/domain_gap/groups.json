@@ -4,14 +4,44 @@
  "groups": [
   {
    "id": "flexray_drr",
-   "label": "FleXray raw DRRs (TotalSegmentator v2.0.1 CTs)",
+   "label": "FleXray physical DRRs (attenuation off, our blocks)",
    "family": "synthetic",
    "source": "render",
    "folder": "totalsegmentator_v201",
    "cap": 1000,
    "per_person": 4,
+   "blocks": ["attenuation=off"],
+   "engine": "blocks",
    "licence": "open: TotalSegmentator CC BY 4.0; FleXray code MIT",
-   "note": "Rendered in the job by tools/flexray_render.py with FleXray's own nanodrr pose profile, its attenuation option off, the isocentre on a vertebra; the person is the CT's subject."
+   "note": "Rendered in the job by tools/flexray_render.py through this project's render blocks: FleXray's MOOSE recipe, its random-label isocentre, its crop and pose sampling, with the attenuation randomisation off, the physical render a comparison with real X-rays reads; the person is the CT's subject. Against flexray_replica it isolates the attenuation randomisation."
+  },
+  {
+   "id": "flexray_replica",
+   "label": "FleXray recipe through our blocks (replica)",
+   "family": "synthetic",
+   "source": "render",
+   "folder": "totalsegmentator_v201",
+   "cap": 1000,
+   "per_person": 4,
+   "blocks": [],
+   "engine": "blocks",
+   "subjects_from": "flexray_drr",
+   "licence": "open: TotalSegmentator CC BY 4.0; FleXray code MIT",
+   "note": "FleXray's released MOOSE recipe to the letter, the attenuation randomisation on half the renders, through this project's render blocks, on the same CTs, crops and poses as flexray_drr. Against flexray_reference it is the replication test: our blocks against FleXray's own code."
+  },
+  {
+   "id": "flexray_reference",
+   "label": "FleXray recipe through FleXray's code (reference)",
+   "family": "synthetic",
+   "source": "render",
+   "folder": "totalsegmentator_v201",
+   "cap": 1000,
+   "per_person": 4,
+   "blocks": [],
+   "engine": "flexray-runtime",
+   "subjects_from": "flexray_drr",
+   "licence": "open: TotalSegmentator CC BY 4.0; FleXray code MIT",
+   "note": "The same recipe rendered by FleXray's own runtime code, its crop planning, label remap, camera runtime and scaling, on the same CTs, each view seeded from the same number as the replica's. Against flexray_replica it is the replication test; against fluxray it isolates the FLUX edit."
   },
   {
    "id": "fluxray",

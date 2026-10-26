@@ -26,6 +26,8 @@ from beartype import beartype
 from beethoven_qa.contracts import ensure, require
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from schwingnet import render_blocks
+
 FAMILIES: tuple[str, ...] = ("synthetic", "fluoroscopy", "film")
 SOURCES: tuple[str, ...] = ("render", "thunderdb", "index", "walk")
 # Sources that make images rather than find them: their groups can only be synthetic.
@@ -45,6 +47,13 @@ IMAGE_FORMATS: tuple[str, ...] = (
 # group cannot be told from a real one.
 INDISTINGUISHABLE_AUC = 0.6
 GAP_WORDS: tuple[str, ...] = ("indistinguishable", "closer than two real corpora", "separable")
+# The pre-registered words of the replication test (FleXray's recipe through this project's render
+# blocks against the same recipe through FleXray's own code): replicated when a classifier cannot
+# tell the two apart, the AUC's lower bound at or under the same 0.6, and the MMD finds nothing
+# after the space's Benjamini-Hochberg adjustment, its q at or above 0.05.
+REPLICATION_AUC = INDISTINGUISHABLE_AUC
+REPLICATION_Q = 0.05
+REPLICATION_WORDS: tuple[str, ...] = ("replicated", "not replicated")
 # A report line's limits: the bench report keeps 200 characters a line, and a run of 32 word
 # characters could be a hashed identifier grid/redact.sed withholds.
 LINE_LIMIT = 200
@@ -131,6 +140,13 @@ class GroupSpec(BaseModel):
     per_person: int = Field(default=4, ge=1, le=100)
     licence: str = Field(default="", max_length=2000, pattern=r"^[ -~]*$")
     note: str = Field(default="", max_length=2000, pattern=r"^[ -~]*$")
+    # A render group's recipe: KEY=VALUE words for schwingnet.render_blocks.parse (none is
+    # FleXray's released recipe), the engine that runs them (one of render_blocks.ENGINES), and
+    # the id of a render group whose choice of CTs this group shares, so a pair of render groups
+    # differs only by its recipe.
+    blocks: tuple[str, ...] = ()
+    engine: str = "blocks"
+    subjects_from: str = Field(default="", pattern=r"^[a-z0-9_]{0,40}$")
 
     @model_validator(mode="after")
     def _holds_together(self) -> "GroupSpec":
@@ -138,6 +154,40 @@ class GroupSpec(BaseModel):
         if problems:
             raise ValueError(f"group {self.id}: " + "; ".join(problems))
         return self
+
+
+def _render_problems(spec: GroupSpec) -> list[str]:
+    """How a render group's recipe falls short, in words: blocks that do not parse, an engine that
+    does not exist or cannot honour them, views that disagree with per_person, a group sharing
+    subjects with itself; for any other source, that these fields are not its to set."""
+    if spec.source != "render":
+        return [
+            message
+            for holds, message in (
+                (
+                    not spec.blocks and spec.engine == "blocks",
+                    "blocks and an engine are only for a render group",
+                ),
+                (not spec.subjects_from, "subjects_from is only for a render group"),
+            )
+            if not holds
+        ]
+    try:
+        blocks = render_blocks.parse(spec.blocks)
+    except render_blocks.RenderBlockError as error:
+        return [f"blocks: {error}"]
+    found = []
+    if spec.engine not in render_blocks.ENGINES:
+        found.append(f"engine {spec.engine!r} is not one of {render_blocks.ENGINES}")
+    else:
+        found += render_blocks.engine_problems(spec.engine, blocks)
+    if blocks.views != spec.per_person:
+        found.append(
+            f"the blocks render {blocks.views} views a CT but per_person is {spec.per_person}"
+        )
+    if spec.subjects_from == spec.id:
+        found.append("a group does not share subjects with itself")
+    return found
 
 
 def _spec_problems(spec: GroupSpec) -> list[str]:
@@ -162,7 +212,47 @@ def _spec_problems(spec: GroupSpec) -> list[str]:
         (_all_match(spec.exclude_words, r"[a-z0-9]{1,40}"), "an excluded word is lower case"),
         (all(spec.index_sources) and all(spec.globs), "no source or glob is empty"),
     )
-    return [message for holds, message in checks if not holds]
+    return [message for holds, message in checks if not holds] + _render_problems(spec)
+
+
+def _comes_back(group: GroupSpec, by_id: dict[str, GroupSpec]) -> bool:
+    """Whether following subjects_from from this group returns to a group already passed."""
+    seen = {group.id}
+    here = by_id.get(group.subjects_from)
+    while here is not None and here.subjects_from:
+        if here.id in seen:
+            return True
+        seen.add(here.id)
+        here = by_id.get(here.subjects_from)
+    return False
+
+
+def _shared_subject_problems(groups: tuple[GroupSpec, ...]) -> list[str]:
+    """Every subjects_from that names no render group of the table, one with another folder, cap
+    or per_person (whose choice of CTs could not be the same), or one in a cycle, in words."""
+    by_id = {group.id: group for group in groups}
+    found = []
+    for group in groups:
+        if not group.subjects_from:
+            continue
+        other = by_id.get(group.subjects_from)
+        if other is None or other.source != "render":
+            found.append(
+                f"group {group.id} shares subjects with {group.subjects_from},"
+                " which is no render group of the table"
+            )
+        elif (other.folder, other.cap, other.per_person) != (
+            group.folder,
+            group.cap,
+            group.per_person,
+        ):
+            found.append(
+                f"group {group.id} shares subjects with {group.subjects_from}"
+                " but not its folder, cap and per_person"
+            )
+        elif _comes_back(group, by_id):
+            found.append(f"group {group.id} shares subjects in a cycle")
+    return found
 
 
 class GroupTable(BaseModel):
@@ -183,6 +273,9 @@ class GroupTable(BaseModel):
             raise ValueError(f"group ids are named twice: {repeated}")
         if len({group.family for group in self.groups}) < 2:
             raise ValueError("a study sets at least two families beside each other")
+        shared = _shared_subject_problems(self.groups)
+        if shared:
+            raise ValueError("; ".join(shared))
         return self
 
 
@@ -542,6 +635,25 @@ def gap_word(auc_low: float, real_real_median: float) -> str:
     if auc_low < real_real_median:
         return GAP_WORDS[1]
     return GAP_WORDS[2]
+
+
+@beartype
+@require(lambda auc_low: 0.0 <= auc_low <= 1.0, "an AUC bound is a probability")
+@require(lambda mmd_q: 0.0 <= mmd_q <= 1.0, "an adjusted p lies in [0, 1]")
+@ensure(lambda result: result in REPLICATION_WORDS, "one of the pre-registered words")
+@ensure(
+    lambda result, auc_low, mmd_q: (
+        (result == REPLICATION_WORDS[0]) == (auc_low <= REPLICATION_AUC and mmd_q >= REPLICATION_Q)
+    ),
+    "replicated exactly when the AUC's lower bound is at most 0.6 and the MMD's q at least 0.05",
+)
+def replication_word(auc_low: float, mmd_q: float) -> str:
+    """The pre-registered word for the replication test, from the logistic two-sample AUC's lower
+    bound and the MMD's Benjamini-Hochberg q between FleXray's recipe through this project's
+    render blocks and the same recipe through FleXray's own code."""
+    if auc_low <= REPLICATION_AUC and mmd_q >= REPLICATION_Q:
+        return REPLICATION_WORDS[0]
+    return REPLICATION_WORDS[1]
 
 
 # --- the report line: what grid/redact.sed leaves alone -------------------------------------------

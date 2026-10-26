@@ -83,7 +83,11 @@
 #   bench <name>    one public model's benchmark as its authors published it (#287, the owner's word and
 #                   count of 2026-10-25): flexray_carmlspine, flexray_deepfluoro or xvr_deepfluoro, each one
 #                   GPU job (grid/bench.sbatch, tools/bench_public.py) once its fetch has landed; the next
-#                   send prints logs/BENCH-<name>.md, and every later one prints it again and queues nothing
+#                   send prints logs/BENCH-<name>.md, and every later one prints it again and queues nothing;
+#                   and flexray_drr_gap, the DRR domain-gap study (tools/domain_gap.py) as one GPU job of
+#                   the same shape, once FleXray's weights, a whole sample index, the TotalSegmentator CTs
+#                   and the ImageNet file are there, FluXray read when fetched and skipped with its reason
+#                   otherwise; only its summary leaves the grid, through grid/redact.sed
 #   stop            cancel the gate's own jobs that are still queued or running, and nothing else
 #   cancel <job>    cancel one of the gate's own live jobs and every other live job its word queued
 #                   with it (a fetch's bank and catalog), and nothing else
@@ -1015,6 +1019,14 @@ bench_inputs_missing() {  # what bench $id still lacks on the data root, one lin
       find "$DATA_ROOT/hf_xvr_models/raw" -path '*/deepfluoro/finetuned/subject01.pth' -print -quit 2>/dev/null | grep -q . \
         || { echo "xvr's DeepFluoro models (fetch hf_xvr_models first)"; return; }
       [ -f "$DATA_ROOT/hf_xvr_data/raw/deepfluoro/subject01/volume.nii.gz" ] || echo "xvr's DeepFluoro data (fetch hf_xvr_data first)" ;;
+    flexray_drr_gap)
+      # The study's inputs in the order the job reads them (grid/bench.sbatch); FluXray is optional
+      # and never refused for, so word_bench only says when it is not there.
+      find "$DATA_ROOT/hf_flexray_weights/raw" -maxdepth 3 -name ensemble.json -print -quit 2>/dev/null | grep -q . \
+        || { echo "FleXray's weights (fetch hf_flexray_weights first)"; return; }
+      samples_index > /dev/null || { echo "a whole sample index (the gate word samples makes it)"; return; }
+      [ -d "$DATA_ROOT/totalsegmentator_v201" ] || { echo "the TotalSegmentator CTs at $DATA_ROOT/totalsegmentator_v201, which its render groups draw"; return; }
+      weights_ready || echo "the ImageNet ResNet-18 file at $WEIGHTS (the gate word start fetches it)" ;;
   esac
 }
 bench_job_of() {  # the job number a benchmark report's first line names
@@ -1028,10 +1040,11 @@ bench_failed_on_older_code() {  # a report whose last line is a nonzero exit, fr
   [ -n "$began" ] && [ -n "$(bench_job_of "$1")" ] && [ "$began" != "${commit:0:7}" ]
 }
 word_bench() {  # one public model's benchmark (#287): queued once, its report printed on every later send
-  local report=$LOGS/BENCH-$id.md busy missing holds opts setup
+  local report=$LOGS/BENCH-$id.md busy missing holds opts setup extra
+  extra=()
   case "$id" in
-    flexray_carmlspine|flexray_deepfluoro|xvr_deepfluoro) ;;
-    *) echo "refusing: bench takes flexray_carmlspine, flexray_deepfluoro or xvr_deepfluoro"; return 64 ;;
+    flexray_carmlspine|flexray_deepfluoro|xvr_deepfluoro|flexray_drr_gap) ;;
+    *) echo "refusing: bench takes flexray_carmlspine, flexray_deepfluoro, xvr_deepfluoro or flexray_drr_gap"; return 64 ;;
   esac
   busy=$(live_of "bench_$id")
   [ -z "$busy" ] || { echo "refusing: the benchmark $id is still queued or running (job $busy); send bench $id again once it ends"; return 75; }
@@ -1047,6 +1060,12 @@ word_bench() {  # one public model's benchmark (#287): queued once, its report p
   fi
   missing=$(bench_inputs_missing)
   [ -z "$missing" ] || { echo "refusing: bench $id needs $missing"; return 2; }
+  if [ "$id" = flexray_drr_gap ]; then
+    # The study reads the index this word checked and the ImageNet file beside the models; FluXray
+    # joins it only once fetched, and the job says so in its report rather than wait for it.
+    extra=(INDEX="$(samples_index)" MODELS="$MODELS")
+    [ -d "$DATA_ROOT/hf_flexray_data/raw" ] || echo "  FluXray: not on the data root (fetch hf_flexray_data); the study skips its group with that reason"
+  fi
   # Stale environments are rebuilt by the one setup job, which every bench sent while it runs waits
   # on, rather than by 'start', which would queue the whole pipeline (the owner's choice, 2026-10-25).
   setup=$(setup_dependency) || return 1
@@ -1056,7 +1075,7 @@ word_bench() {  # one public model's benchmark (#287): queued once, its report p
   holds=$(checkout_holders)
   [ -z "$holds" ] || echo "  the checkout: after the live runs that hold it ($holds)"
   depend_on "$(joined "$setup" "$holds")" || return 1
-  submit "bench_$id" gpu BENCH="$id" DATA_ROOT="$DATA_ROOT" ${opts[@]+"${opts[@]}"} --no-requeue -- bench.sbatch > /dev/null || return 1
+  submit "bench_$id" gpu BENCH="$id" DATA_ROOT="$DATA_ROOT" ${extra[@]+"${extra[@]}"} ${opts[@]+"${opts[@]}"} --no-requeue -- bench.sbatch > /dev/null || return 1
   echo "submitted the benchmark. Send bench $id again once it ends to read its report, logs/BENCH-$id.md."
 }
 

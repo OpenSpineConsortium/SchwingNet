@@ -342,6 +342,49 @@ class GateTest(unittest.TestCase):
         self.assertEqual(self.gate("fetch", "nosuchset").returncode, 64)
         self.assertEqual(self.submitted(), [])
 
+    def test_fluxray_is_a_fetch_word_with_the_owners_hugging_face_token(self):
+        # FluXray (hf_flexray_data), the optional group of bench flexray_drr_gap, is a public repository
+        # fetched with the owner's token as the other hf rows are: never in the chain, its stated size
+        # the card's 20 GB, refused on the login node while the token file is missing or readable by
+        # others, and queued as one platform fetch otherwise
+        script = self.repo / "grid" / "run-platform-fetch.sh"
+        row = [line for line in script.read_text(encoding="utf-8").splitlines() if line.startswith("hf_flexray_data|")]
+        self.assertEqual(len(row), 1, row)
+        self.assertIn("|hf-token|20|", row[0])
+        self.assertIn("|open|--repo VictorButoi/flexray-data --repo-type dataset|TOKEN_FILE=~/.hf/token.env ", row[0])
+        stated = subprocess.run(["bash", str(script), "--stated", "hf_flexray_data"], capture_output=True, text=True)
+        self.assertEqual(stated.stdout.strip(), "20")
+        done = self.gate_at_home("fetch", "hf_flexray_data")
+        self.assertEqual(done.returncode, 2, done.stdout)
+        self.assertIn("~/.hf/token.env", done.stdout)
+        token = self.tmp / "home" / ".hf" / "token.env"
+        token.parent.mkdir(parents=True, exist_ok=True)
+        token.write_text("HF_TOKEN=hf_" + "Ab" * 17 + "\n", encoding="utf-8")
+        token.chmod(0o644)
+        done = self.gate_at_home("fetch", "hf_flexray_data")
+        self.assertEqual(done.returncode, 2, done.stdout)
+        self.assertIn("mode 644", done.stdout)
+        self.assertEqual(self.submitted(), [])
+        token.chmod(0o600)
+        done = self.gate_at_home("fetch", "hf_flexray_data")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertNotIn("Ab" * 17, done.stdout + done.stderr)
+        self.assertIn("hf_flexray_data: job", done.stdout)
+        jobs = self.line_of("platform-fetch.sbatch")
+        self.assertEqual(len(jobs), 1, jobs)
+        self.assertIn("ID=hf_flexray_data", jobs[0])
+        self.assertIn("dp_hf_flexray_data", self.recorded())
+        # the open chain never carries it, and the dry run names its route
+        env = dict(self.gate_env(), HOME=str(self.tmp / "home"), HPCW_DRY="1")
+        chain = subprocess.run(["bash", str(script)], env=env, capture_output=True, text=True, timeout=120)
+        self.assertNotIn("hf_flexray_data", chain.stdout.split("Not submitted")[0])
+        dry = subprocess.run(["bash", str(script), "--only", "hf_flexray_data"], env=env, capture_output=True, text=True,
+                             timeout=120)
+        self.assertEqual(dry.returncode, 0, dry.stdout + dry.stderr)
+        self.assertIn("would submit hf_flexray_data: ROUTE=hf-token ARGS='--repo VictorButoi/flexray-data --repo-type dataset'",
+                      dry.stdout)
+        self.assertIn("size budget: 1 sources, 20 GB stated", dry.stdout)
+
     def test_v1_with_every_input_there_submits_the_run_alone(self):
         self.environments_ready()
         self.weights_ready()
@@ -1513,9 +1556,9 @@ esac
         self.assertEqual(self.gate("bench", "flexray_deepfluoro").returncode, 0)
         self.assertEqual(len(self.submitted()), 1)
 
-    def bench_job(self, name):
+    def bench_job(self, name, **extra):
         env = dict(os.environ, SCHWINGNET=str(self.repo), DATA_ROOT=str(self.data), LAB_VOLUME=str(self.tmp), FAKE=str(self.fake),
-                   BENCH=name, SLURM_JOB_ID="778")
+                   BENCH=name, SLURM_JOB_ID="778", **extra)
         return subprocess.run(["bash", str(self.repo / "grid" / "bench.sbatch")], cwd=self.repo / "grid", env=env,
                               capture_output=True, text=True, timeout=60)
 
@@ -1599,6 +1642,145 @@ esac
         self.assertEqual(len(lines), 3, lines)
         self.assertIn("--name bench_flexray_deepfluoro", lines[2])
         self.assertIn(f"afterok:{setup}", lines[2])
+
+    DRR_GAP_PINS = "flexray[train]==1.0.2 nanodrr==0.1.5 scikit-learn==1.9.1 umap-learn==0.5.12 numpy==2.4.6"
+    # Lines in the shapes tools/domain_gap.py's summary prints, the replication lines among them;
+    # each must reach the report as it is, since the report is the one thing that leaves the grid.
+    DRR_GAP_SUMMARY = (
+        "drr gap: 3000 images, 17 groups, W&B off",
+        "replication flexray_replica vs flexray_reference in flexray (invariant): replicated",
+        "group fluxray synthetic skipped, nothing found under its rules",
+        " replication flexray_replica vs flexray_reference auc 0.52 [0.48, 0.56] p 0.120 q 0.300 knn 0.51"
+        " mmd p 0.400 q 0.500 fd64 1.2 kid64 0.001 prdc 0.90 0.90 1.00 0.90 replicated",
+        " replication flexray_drr vs flexray_replica auc 0.71 [0.66, 0.75] p 0.001 q 0.002 knn 0.70"
+        " mmd p 0.001 q 0.002 fd64 9.8 kid64 0.031 prdc 0.61 0.58 0.70 0.66 not replicated",
+        " replication flexray_reference vs fluxray not tested, nothing found under its rules",
+    )
+
+    def drr_gap_inputs(self):
+        """Every input bench flexray_drr_gap refuses without: FleXray's bundle, a whole sample index,
+        the TotalSegmentator CTs and the ImageNet file; the index's path comes back."""
+        bundle = self.data / "hf_flexray_weights" / "raw"
+        bundle.mkdir(parents=True, exist_ok=True)
+        (bundle / "ensemble.json").write_text("{}\n", encoding="utf-8")
+        run = self.data / "_samples" / "20261022-000000-abcd"
+        run.mkdir(parents=True, exist_ok=True)
+        (run / "samples.sqlite").write_bytes(b"")
+        (self.data / "_samples" / "CURRENT").write_text(run.name + "\n", encoding="utf-8")
+        (self.data / "totalsegmentator_v201" / "s0001").mkdir(parents=True, exist_ok=True)
+        self.weights_ready()
+        return run / "samples.sqlite"
+
+    def test_bench_flexray_drr_gap_refuses_each_missing_input_then_queues_one_gpu_job(self):
+        # the DRR domain-gap study (tools/domain_gap.py) is a bench id of its own: refused, naming one
+        # input a send, until FleXray's weights, a whole sample index, the TotalSegmentator CTs and the
+        # ImageNet file are on the volume; FluXray is optional, said and never waited for
+        refused = self.gate("bench", "flexray_drr_gap")
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn("fetch hf_flexray_weights first", refused.stdout)
+        bundle = self.data / "hf_flexray_weights" / "raw"
+        bundle.mkdir(parents=True)
+        (bundle / "ensemble.json").write_text("{}\n", encoding="utf-8")
+        refused = self.gate("bench", "flexray_drr_gap")
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn("a whole sample index (the gate word samples makes it)", refused.stdout)
+        run = self.data / "_samples" / "20261022-000000-abcd"
+        run.mkdir(parents=True)
+        (run / "samples.sqlite").write_bytes(b"")
+        (self.data / "_samples" / "CURRENT").write_text(run.name + "\n", encoding="utf-8")
+        refused = self.gate("bench", "flexray_drr_gap")
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn("totalsegmentator_v201", refused.stdout)
+        (self.data / "totalsegmentator_v201" / "s0001").mkdir(parents=True)
+        refused = self.gate("bench", "flexray_drr_gap")
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn("resnet18-f37072fd.pth", refused.stdout)
+        self.assertEqual(self.submitted(), [])
+        self.weights_ready()
+        self.environments_ready()
+        done = self.gate("bench", "flexray_drr_gap")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("FluXray: not on the data root (fetch hf_flexray_data)", done.stdout)
+        lines = self.submitted()
+        self.assertEqual(len(lines), 1, lines)
+        self.assertIn("--class gpu --name bench_flexray_drr_gap", lines[0])
+        self.assertIn("BENCH=flexray_drr_gap", lines[0])
+        self.assertIn(f"MODELS={self.models}", lines[0])
+        self.assertIn("--no-requeue", lines[0])
+        self.assertIn("bench.sbatch", lines[0])
+        self.assertIn("bench_flexray_drr_gap", self.recorded())
+        # once FluXray is fetched the send says nothing of it, and the other bench ids are as they were
+        (self.data / "hf_flexray_data" / "raw").mkdir(parents=True)
+        done = self.gate("bench", "flexray_drr_gap")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertNotIn("FluXray", done.stdout)
+        self.assertEqual(len(self.submitted()), 2)
+        self.assertEqual(self.gate("bench", "fluorosam").returncode, 64)
+        refused = self.gate("bench", "flexray_deepfluoro")
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn("DeepFluoro's .h5", refused.stdout)
+
+    def test_the_drr_gap_job_runs_the_study_in_its_own_environment_and_reports_the_summary_alone(self):
+        # bench.sbatch with BENCH=flexray_drr_gap: the pins go into the throwaway environment, the run
+        # reads the index the gate checked (else the newest whole one), FleXray's bundle, the ImageNet
+        # file and the frozen test persons, its own output stays in the run folder (umask 077), and the
+        # report carries the summary whole, each line as grid/redact.sed leaves it; a run that fails
+        # reports its last line masked and runs no summary
+        self.git_repo()
+        index = self.drr_gap_inputs()
+        (self.fake / "summary").write_text("\n".join(self.DRR_GAP_SUMMARY) + "\n", encoding="utf-8")
+        (self.repo / "grid" / "box.sh").write_text(
+            '#!/bin/bash\necho "$*" >> "$FAKE/box.log"\n'
+            'case "$*" in *"domain_gap.py run "*) word=run ;; *"domain_gap.py summary "*) word=summary ;; *) exit 0 ;; esac\n'
+            'out=""; while [ $# -gt 0 ]; do [ "$1" = --out ] && out=$2; shift; done\n'
+            'if [ "$word" = run ]; then\n'
+            '  echo "plan: $out/plan.json names files"\n'
+            '  [ ! -f "$FAKE/fail" ] || { echo "drr-gap FAILED: no image decoded, token $(cat "$FAKE/fail")"; exit 2; }\n'
+            '  cp "$FAKE/summary" "$out/summary.txt"\n'
+            'else\n  cat "$out/summary.txt"\nfi\n', encoding="utf-8")
+        done = self.bench_job("flexray_drr_gap", MODELS=str(self.models))
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        boxed = self.boxed()
+        self.assertTrue([line for line in boxed if line.endswith(f"-m pip install --quiet {self.DRR_GAP_PINS}")], boxed)
+        runs = [line for line in boxed if "tools/domain_gap.py run " in line]
+        self.assertEqual(len(runs), 1, boxed)
+        out = self.tmp / "go2432" / "bench" / "flexray_drr_gap"
+        self.assertTrue(runs[0].endswith(
+            f"tools/domain_gap.py run --groups data/domain_gap/groups.json --data-root {self.data} --index {index}"
+            f" --weights {self.data / 'hf_flexray_weights' / 'raw'} --imagenet {self.models / 'resnet18-f37072fd.pth'}"
+            f" --out {out} --device cuda --frozen data/splits/test-persons.json"), runs[0])
+        self.assertTrue(boxed[-1].endswith(f"tools/domain_gap.py summary --out {out}"), boxed)
+        self.assertTrue(boxed.index(runs[0]) < len(boxed) - 1)
+        report = (self.repo / "grid" / "logs" / "BENCH-flexray_drr_gap.md").read_text(encoding="utf-8")
+        for line in self.DRR_GAP_SUMMARY:
+            self.assertIn(f"\n  {line}\n", report)
+            self.assertIn(line, done.stdout)
+        masked = subprocess.run(["sed", "-r", "-f", str(GRID / "redact.sed")], input="\n".join(self.DRR_GAP_SUMMARY) + "\n",
+                                capture_output=True, text=True).stdout
+        self.assertEqual(masked.splitlines(), list(self.DRR_GAP_SUMMARY))
+        self.assertIn("- FluXray: not on the data root (fetch hf_flexray_data)", report)
+        self.assertIn(f"- environment: {self.DRR_GAP_PINS}; index: {index};", report)
+        self.assertIn("- exit 0 at ", report)
+        # the run's own output names files, so it stays in the run folder and reaches neither the
+        # report nor the job's log
+        self.assertNotIn("names files", report + done.stdout)
+        self.assertIn("names files", (out / "run.log").read_text(encoding="utf-8"))
+        self.assertEqual(out.stat().st_mode & 0o777, 0o700)
+        self.assertEqual((out / "run.log").stat().st_mode & 0o777, 0o600)
+        # a failed run: its last line in the report with the token masked, exit 2, no summary step
+        token = "hf_" + "Ab" * 17
+        (self.fake / "fail").write_text(token, encoding="utf-8")
+        other = self.data / "other.sqlite"
+        other.write_bytes(b"")
+        done = self.bench_job("flexray_drr_gap", MODELS=str(self.models), INDEX=str(other))
+        self.assertEqual(done.returncode, 2, done.stdout + done.stderr)
+        self.assertIn("SN_BENCH_RC=2", done.stdout)
+        report = (self.repo / "grid" / "logs" / "BENCH-flexray_drr_gap.md").read_text(encoding="utf-8")
+        self.assertIn("- FAILED: domain_gap.py run ended 2 (drr-gap FAILED: no image decoded, token <withheld>)", report)
+        self.assertNotIn(token, report + done.stdout)
+        self.assertIn(f"--index {other} ", self.boxed()[-1])
+        self.assertEqual(len([line for line in self.boxed() if "domain_gap.py summary" in line]), 1)
+        self.assertFalse((self.repo / "grid" / "logs" / "HOLD").exists())
 
     def test_dropzip_deletes_once_then_prints_what_it_did(self):
         shutil.copy(GRID / "fetch-xray.json", self.repo / "grid" / "fetch-xray.json")

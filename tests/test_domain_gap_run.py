@@ -2,9 +2,11 @@
 each group's files from a sample index or a folder by its rules (formats, modalities, sizes, globs,
 masks left out, persons by rule with the frozen test persons dropped), the images come out as
 256 x 256 windows of the centre square whatever their depth or shape, and a whole run over three
-small corpora of different textures, with only the physics space, writes a summary of at most 80
-lines that survive the grid's redaction, tells the textured corpora apart and finds nothing in its
-split-half nulls.
+small corpora of different textures and three render groups drawn by a fake renderer, with only
+the physics space, writes a summary of at most 80 lines that survive the grid's redaction, tells
+the textured corpora apart, finds nothing in its split-half nulls, renders the three render groups
+from one choice of CTs under one salt, and reads the replication pairs with the pre-registered
+word beside the first.
 
 It needs numpy, Pillow, torch, scikit-learn and the package's contracts, which the job's
 environment holds and the required check's python does not, so each case runs where they import
@@ -235,18 +237,50 @@ class ImageTest(unittest.TestCase):
         self.assertTrue(np.array_equal(first, second))
 
 
+class FakeRenderer:
+    """tools/flexray_render as the run sees it: find_subjects lists the fake CT folders, and
+    render_subjects writes one textured 16-bit PNG a view for the subject ids it is given, with a
+    manifest in the renderer's shape, recording every call, so the test reads which subjects,
+    salt, blocks and engine each render group got."""
+
+    def __init__(self, rng, kind):
+        self.rng, self.kind, self.calls = rng, kind, []
+
+    def find_subjects(self, ct_root):
+        return sorted(p.name for p in Path(ct_root).iterdir() if p.is_dir())
+
+    def render_subjects(self, ct_root, out, subjects, salt, device, *, blocks, engine="blocks", subject_ids=None):
+        self.calls.append({"group": Path(out).name, "subjects": subjects, "salt": salt, "device": device,
+                           "blocks": blocks, "engine": engine, "subject_ids": subject_ids})
+        rows = []
+        for subject in subject_ids:
+            for view in range(blocks.views):
+                name = f"{subject}_v{view}.png"
+                save_png(Path(out) / name, texture(self.rng, self.kind, 280), 16)
+                rows.append({"file": name, "subject": subject, "view": view})
+        (Path(out) / "manifest.json").write_text(json.dumps({"engine": engine, "views": rows}), encoding="utf-8")
+        return {"rendered": len(rows), "subjects": list(subject_ids), "skipped": []}
+
+
+CT_FOLDER = "totalsegmentator_v201"
+RENDER_GROUPS = (("flexray_drr", ["attenuation=off", "views=2"], "blocks", ""),
+                 ("flexray_replica", ["views=2"], "blocks", "flexray_drr"),
+                 ("flexray_reference", ["views=2"], "flexray-runtime", "flexray_drr"))
+
+
 @unittest.skipIf(MISSING_WHOLE, f"needs {', '.join(MISSING_WHOLE)}")
 class WholeRunTest(unittest.TestCase):
-    def test_a_run_over_three_textured_corpora(self):
+    def test_a_run_over_three_textured_corpora_and_three_render_groups(self):
         tool = load_tool()
         tool.PERMUTATIONS_C2ST, tool.PERMUTATIONS_MMD, tool.BOOTSTRAP = 5, 50, 50
         tool.SPLIT_PERSONS = 12
         with tempfile.TemporaryDirectory() as temporary:
             folder = Path(temporary)
-            args = self.corpora(tool, folder)
+            args, renderer = self.corpora(tool, folder)
             self.assertEqual(tool.run(args), 0)
             lines = (Path(args.out) / "summary.txt").read_text(encoding="ascii").splitlines()
             results = json.loads((Path(args.out) / "results.json").read_text(encoding="utf-8"))
+            plan = json.loads((Path(args.out) / "plan.json").read_text(encoding="utf-8"))
         self.assertLessEqual(len(lines), 80)
         for line in lines:
             self.assertLessEqual(len(line), 200)
@@ -259,6 +293,59 @@ class WholeRunTest(unittest.TestCase):
         self.assertLess(physics["calibration"]["auc_median"], 0.75)
         self.assertEqual(results["spaces"]["flexray"]["invalid"], "no FleXray bundle (ensemble.json)")
         self.assertTrue(any(line.startswith(" blobs vs film auc") for line in lines))
+        self.renders_share_their_subjects(tool, renderer, plan)
+        self.replication_is_tested_and_summarised(tool, results, lines)
+
+    def renders_share_their_subjects(self, tool, renderer, plan):
+        """The three render groups were rendered from one choice of CTs, the first 24 of the 30 in
+        the salted order, under the folder's salt, each with its own blocks and engine; the plan
+        records the choice."""
+        self.assertEqual([c["group"] for c in renderer.calls], [g for g, _, _, _ in RENDER_GROUPS])
+        first = renderer.calls[0]
+        self.assertEqual(len(first["subject_ids"]), 24)
+        self.assertEqual(first["subjects"], 24)
+        self.assertEqual(first["salt"], f"test-salt:{CT_FOLDER}")
+        pure = tool.rules()
+        expected = sorted((f"s{n:04d}" for n in range(30)), key=lambda s: pure.rank_key("test-salt:subjects", s))[:24]
+        self.assertEqual(list(first["subject_ids"]), expected)
+        for call in renderer.calls[1:]:
+            self.assertEqual(call["subject_ids"], first["subject_ids"])
+            self.assertEqual(call["salt"], first["salt"])
+            self.assertEqual(call["device"], "cpu")
+        self.assertEqual([c["blocks"].attenuation for c in renderer.calls], ["off", "flexray-lognormal", "flexray-lognormal"])
+        self.assertEqual([c["engine"] for c in renderer.calls], ["blocks", "blocks", "flexray-runtime"])
+        rows = {g["id"]: g for g in plan["groups"]}
+        records = [rows[g]["render"] for g, _, _, _ in RENDER_GROUPS]
+        self.assertEqual({tuple(r["subjects"]) for r in records}, {tuple(expected)})
+        self.assertEqual([r["engine"] for r in records], ["blocks", "blocks", "flexray-runtime"])
+        self.assertEqual(records[0]["blocks"]["attenuation"], "off")
+        self.assertEqual(records[0]["rendered"], 48)
+        self.assertEqual(len(rows["flexray_reference"]["chosen"]), 48)
+
+    def replication_is_tested_and_summarised(self, tool, results, lines):
+        """The replication section holds the three pairs, the first with the pre-registered word
+        from its own numbers, the FluXray pair with its reason; the verdict names the space that
+        did not run; and the summary carries the lines."""
+        pure = tool.rules()
+        replication = results["spaces"]["physics"]["replication"]
+        self.assertEqual(set(replication), {"flexray_replica|flexray_reference", "flexray_drr|flexray_replica",
+                                            "flexray_reference|fluxray"})
+        first = replication["flexray_replica|flexray_reference"]
+        for key in ("auc_logistic", "auc_knn", "mmd", "fd64", "kid64", "prdc"):
+            self.assertIn(key, first)
+        self.assertIn("p", first["auc_logistic"])
+        self.assertIn("q", first["mmd"])
+        self.assertEqual(first["word"], pure.replication_word(first["auc_logistic"]["lo"], first["mmd"]["q"]))
+        self.assertEqual(first["word"], "replicated")  # three draws of one texture law
+        self.assertNotIn("word", replication["flexray_drr|flexray_replica"])
+        self.assertIn("fluxray: not in the table", replication["flexray_reference|fluxray"]["skipped"])
+        self.assertIsNone(results["replication"]["word"])
+        self.assertIn("space flexray not run", results["replication"]["reason"])
+        self.assertTrue(lines[1].startswith("replication flexray_replica vs flexray_reference: no verdict"))
+        pair_lines = [line for line in lines if line.startswith(" replication flexray_replica vs flexray_reference auc")]
+        self.assertEqual(len(pair_lines), 1)
+        self.assertTrue(pair_lines[0].endswith(" replicated"))
+        self.assertTrue(any(line.startswith(" replication flexray_reference vs fluxray not tested") for line in lines))
 
     def corpora(self, tool, folder):
         import numpy as np
@@ -272,7 +359,16 @@ class WholeRunTest(unittest.TestCase):
                     save_png(folder / "data" / name / f"p{person:02d}_{view}.png", texture(rng, kind, 280))
             groups.append({"id": name, "label": name, "family": family, "source": "walk", "folder": name,
                            "person": "regex:(?P<person>p[0-9]+)_", "cap": 100, "per_person": 2})
-        return args_for(tool, folder, table(folder, groups), index_of(folder, []))
+        for n in range(30):
+            (folder / "data" / CT_FOLDER / f"s{n:04d}").mkdir(parents=True)
+        for name, blocks, engine, subjects_from in RENDER_GROUPS:
+            groups.append({"id": name, "label": name, "family": "synthetic", "source": "render", "folder": CT_FOLDER,
+                           "cap": 48, "per_person": 2, "blocks": blocks, "engine": engine,
+                           "subjects_from": subjects_from})
+        renderer = FakeRenderer(np.random.default_rng(12), "blobs")
+        original = tool.tool
+        tool.tool = lambda name: renderer if name == "flexray_render" else original(name)
+        return args_for(tool, folder, table(folder, groups), index_of(folder, [])), renderer
 
 
 if __name__ == "__main__":

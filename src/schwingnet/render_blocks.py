@@ -11,15 +11,17 @@ flexray_drr_gap). A render names one choice per part:
   packs do, or "none";
 - air_clamp: "flexray" sets every voxel at or below -900 HU to -1000, as FleXray's CT loader does
   before rendering, or "none";
-- crop: "flexray-axial" pads or cuts the slice plane to 512 x 512 around its centre and cuts the
-  volume into the fewest 256-slice axial crops that cover it, the first and last touching its ends
-  (FleXray's packing, src/fxr/datasets/ct_crops.py), or "whole";
+- crop: "flexray-axial" cuts the volume along its last voxel axis into the fewest 256-slice axial
+  crops that cover it, the first and last touching its ends, each in the volume's own slice plane
+  (FleXray's packing, src/fxr/datasets/ct_crops.py; its released crops are 512 x 512 x 256 only
+  because MOOSE's CTs are 512 x 512 in-plane), a shorter volume being one crop padded with air on
+  both sides and a crop holding no structure being dropped, as its packer drops it; or "whole";
 - crop_sampler: "inverse-label-frequency" draws crops with FleXray's weights, each model class a
   crop holds contributing (N / n_c) ** 0.5 and the crop taking the largest, or "uniform";
 - pose: "flexray-moose" draws the gantry angle over the full orbit, the tilt within 30 degrees,
   the source within 100 mm of the isocentre across and 500 to 900 mm away, a detector 1150 to
-  1250 mm away with 1.25 to 2.25 mm pixels (FleXray's MOOSE profile), or "flexray-default", the
-  same orbit at the default profile's geometry;
+  1250 mm away with 1.25 to 2.25 mm pixels (FleXray's MOOSE profile; its default profile alone
+  names no distance, pixel size or translation, so it is no choice);
 - isocentre: "random-label" aims at the centroid of a structure the crop holds, drawn without
   replacement (FleXray's random_label), "vertebra" at a vertebra's, or "volume-centre";
 - projection: "flexray-mix" is a cone beam nine times in ten and orthographic otherwise, "cone"
@@ -35,10 +37,17 @@ The settings: views a CT, the detector's side in pixels and the samples along ea
 
 DEFAULT is FleXray's released recipe for MOOSE 3.0, the largest share of its online CT stream and
 the renders FluXray was edited from; PHYSICAL is the same with the attenuation randomisation off,
-the render a comparison with real X-rays reads. The choices and the arithmetic that needs no torch
-(the crop plan, the crop weights) are kept here, under the gate's contracts; tools/render_blocks.py
-holds the torch side, one function per name, and its tests hold the two lists equal and this
-module's crop plan equal to FleXray's own.
+the render a comparison with real X-rays reads. ENGINES names what runs a configuration: "blocks"
+is tools/render_blocks.py, one function per choice above, and "flexray-runtime" is FleXray's own
+code for every step (its crop planner, its crop weights, its label remap, its
+SegmentationDRRRuntime), which honours only the choices FleXray's code makes, RUNTIME_CHOICES,
+attenuation on or off being its gate's probability 0.5 or 0; engine_problems says in words where
+a configuration asks an engine for what it cannot do. The replication test of tools/domain_gap.py
+renders the same CTs with FleXray's recipe through both engines and sets them beside each other.
+The choices and the arithmetic that needs no torch (the crop plan, the crop weights) are kept
+here, under the gate's contracts; tools/render_blocks.py holds the torch side, one function per
+name, and tests/test_flexray_render.py holds the two tables equal and this module's crop plan
+and crop weights equal to FleXray's own.
 """
 
 import hashlib
@@ -55,18 +64,32 @@ HU_WINDOW = ("flexray", "none")
 AIR_CLAMP = ("flexray", "none")
 CROP = ("flexray-axial", "whole")
 CROP_SAMPLER = ("inverse-label-frequency", "uniform")
-POSE = ("flexray-moose", "flexray-default")
+POSE = ("flexray-moose",)
 ISOCENTRE = ("random-label", "vertebra", "volume-centre")
 PROJECTION = ("flexray-mix", "cone")
 ATTENUATION = ("flexray-lognormal", "off")
 SCALE = ("minmax",)
 EDIT = ("none",)
 
-# FleXray's packing: 512 x 512 in the slice plane, 256 slices a crop.
-CROP_SIDE = 512
+# FleXray's packing: 256 slices a crop, along the volume's last voxel axis, in its own plane.
 CROP_DEPTH = 256
 # FleXray's crop weights: the tempering exponent, and the largest class weight is the crop's.
 CROP_TAU = 0.5
+
+ENGINES = ("blocks", "flexray-runtime")
+# The choices FleXray's own runtime makes, so the only ones the flexray-runtime engine honours.
+RUNTIME_CHOICES = {
+    "hu_window": ("flexray",),
+    "air_clamp": ("flexray",),
+    "crop": ("flexray-axial",),
+    "crop_sampler": ("inverse-label-frequency",),
+    "pose": ("flexray-moose",),
+    "isocentre": ("random-label",),
+    "projection": ("flexray-mix",),
+    "attenuation": ("flexray-lognormal", "off"),
+    "scale": ("minmax",),
+    "edit": ("none",),
+}
 
 
 class RenderBlockError(ValueError):
@@ -114,6 +137,7 @@ RULES = (
     "each part names one of its choices",
     "views is 1 to 100 renders a CT, detector 32 to 1024 pixels, ray_samples 16 to 4000",
     "crop_sampler=inverse-label-frequency weighs crops, so it goes with crop=flexray-axial",
+    "the flexray-runtime engine takes only the choices FleXray's own code makes",
 )
 
 
@@ -138,6 +162,35 @@ def problems(blocks: RenderBlocks) -> list[str]:
     found += _count_problems(blocks)
     if blocks.crop_sampler == "inverse-label-frequency" and blocks.crop != "flexray-axial":
         found.append("crop_sampler=inverse-label-frequency goes with crop=flexray-axial")
+    return found
+
+
+@beartype
+@ensure(lambda result: all(isinstance(line, str) and line for line in result), "each said in words")
+@ensure(
+    lambda result, engine, blocks: engine != "blocks" or result == problems(blocks),
+    "the blocks engine runs every configuration that holds",
+)
+@ensure(
+    lambda result, engine, blocks: engine not in ENGINES
+    or blocks not in (DEFAULT, PHYSICAL)
+    or not result,
+    "FleXray's recipe, and the physical render, run in every engine",
+)
+def engine_problems(engine: str, blocks: RenderBlocks) -> list[str]:
+    """Every way an engine cannot run the choices, in words, after the choices' own problems: an
+    engine that does not exist, or a choice FleXray's runtime does not make; empty when it can."""
+    found = problems(blocks)
+    if engine not in ENGINES:
+        return found + [f"engine {engine!r} is not one of {', '.join(ENGINES)}"]
+    if engine == "flexray-runtime":
+        for name, allowed in RUNTIME_CHOICES.items():
+            choice = getattr(blocks, name)
+            if choice not in allowed:
+                found.append(
+                    f"FleXray's runtime cannot honour {name}={choice!r}: it runs only "
+                    f"{', '.join(allowed)}"
+                )
     return found
 
 
@@ -225,8 +278,11 @@ def _crop_covers(depth: int, plan: Sequence[tuple[int, int, int, int]]) -> bool:
 @ensure(lambda result: result[0][0] == 0, "the first crop starts at the first slice")
 def plan_crops(depth: int) -> tuple[tuple[int, int, int, int], ...]:
     """FleXray's fewest axial crops of CROP_DEPTH slices that cover a volume, as (start, stop, pad
-    before, pad after): the first and last touch the ends and the starts between are spread evenly,
-    and a volume shorter than a crop is one crop padded with air on both sides."""
+    before, pad after), the arithmetic of fxr.datasets.ct_crops.plan_z_crops at its default
+    max_overlap of 0: the first and last touch the ends and the starts between are spread evenly
+    (a 700-slice volume starts at 0, 222 and 444), and a volume shorter than a crop is one crop
+    padded with air on both sides, the shorter pad first. Which crops are dropped for holding no
+    structure is the engine's to say, since it reads the labels."""
     if depth <= CROP_DEPTH:
         before = (CROP_DEPTH - depth) // 2
         return ((0, depth, before, CROP_DEPTH - depth - before),)
@@ -247,9 +303,11 @@ def plan_crops(depth: int) -> tuple[tuple[int, int, int, int], ...]:
 @ensure(lambda result: all(w >= 0.0 for w in result), "weights are 0 or more")
 @ensure(lambda result: abs(sum(result) / len(result) - 1.0) < 1e-9, "weights average 1")
 def crop_weights(classes: Sequence[frozenset[int]]) -> tuple[float, ...]:
-    """FleXray's crop sampling weights: each model class a crop holds contributes (N / n_c) ** tau,
-    N the crops and n_c the crops holding the class, and the crop takes the largest; a crop with no
-    model class weighs 0; the weights are scaled to average 1."""
+    """FleXray's crop sampling weights, the arithmetic of
+    fxr.datasets.sampling.inverse_label_frequency_weights at tau 0.5 and class_aggregation max:
+    each model class a crop holds contributes (N / n_c) ** tau, N the crops and n_c the crops
+    holding the class, and the crop takes the largest; a crop with no model class weighs 0; the
+    weights are scaled to average 1, as FleXray scales them."""
     holding: dict[int, int] = {}
     for crop in classes:
         for name in crop:

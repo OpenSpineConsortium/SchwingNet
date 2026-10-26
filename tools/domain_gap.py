@@ -14,8 +14,12 @@ train-gpu's torch), once the owner gives the word and the count.
     python tools/domain_gap.py summary --out <dir>
 
 Stages, each written under --out and skipped when its output is there for the same inputs: the
-FleXray renders (tools/flexray_render.py, FleXray's own nanodrr path from held TotalSegmentator
-CTs), the plan (which files of which groups, data/domain_gap/groups.json, chosen by person in a
+renders (tools/flexray_render.py from held TotalSegmentator CTs, each render group a recipe of
+named blocks, schwingnet.render_blocks, through this project's code or FleXray's own; the groups
+on one CT folder render the same CTs, chosen once in the salted order, so flexray_drr,
+flexray_replica and flexray_reference differ only by their recipe and engine, and the replication
+test reads the replica against the reference), the plan (which files of which groups,
+data/domain_gap/groups.json, chosen by person in a
 salted order, frozen test persons left out), the images (each decoded, MONOCHROME1 inverted,
 windowed to its 0.5-99.5 percentiles, cut to the centre square of 0.9 of its shorter side and
 resized to 256, as float16), the features (three spaces: FleXray's own encoder, an ImageNet
@@ -80,6 +84,15 @@ BOOTSTRAP = 1000
 SPACES = ("flexray", "imagenet", "physics")
 PRIMARY_SPACE = "flexray"
 FOCUS_GROUPS = ("flexray_drr", "fluxray")  # FleXray's own groups, read in most detail
+# The replication test's pairs, the first its verdict: FleXray's recipe through this project's
+# render blocks against the same recipe through FleXray's own code; the physical render against
+# the recipe, which isolates the attenuation randomisation; FleXray's code against its FLUX edit.
+REPLICATION_PAIRS = (("flexray_replica", "flexray_reference"), ("flexray_drr", "flexray_replica"),
+                     ("flexray_reference", "fluxray"))
+# The groups that exist for the replication test alone: their contrasts with the real corpora
+# are secondary outside the primary space, so the summary gives them up first.
+REPLICATION_ONLY = ("flexray_replica", "flexray_reference")
+LINE_BUDGET = 80        # lines of summary.txt, what the bench report carries off the grid
 THUNDER = "thunderdb://"
 
 
@@ -94,6 +107,13 @@ def rules():
     from schwingnet import domain_gap
 
     return domain_gap
+
+
+def blocks_rules():
+    """schwingnet.render_blocks, the renderer's named parts, under the same gate."""
+    from schwingnet import render_blocks
+
+    return render_blocks
 
 
 def tool(name):
@@ -265,17 +285,26 @@ def thunder_candidates(group, data_root):
 
 
 def render_candidates(group, out):
-    """The FleXray renders of the render stage, each with its CT's subject as person."""
+    """The renders of the render stage, each with its CT's subject as person."""
     manifest = Path(out) / "renders" / group.id / "manifest.json"
     failed = manifest.with_name("FAILED")
     if failed.is_file():
         raise StageError(f"the render failed ({failed.read_text(encoding='ascii').strip()})")
     if not manifest.is_file():
         raise StageError("the render stage wrote no manifest")
-    rows = read_json(manifest)
-    rows = rows["renders"] if isinstance(rows, dict) else rows
     base = manifest.parent
-    return [(str(base / r["file"]), r["file"], r["subject"], "") for r in rows]
+    return [(str(base / r["file"]), r["file"], r["subject"], "") for r in manifest_rows(read_json(manifest))]
+
+
+def manifest_rows(manifest):
+    """The per-view rows of a render manifest: a list, or a record keeping them under "views" or
+    "renders" beside the blocks, the engine and the versions."""
+    if isinstance(manifest, dict):
+        for key in ("views", "renders"):
+            if isinstance(manifest.get(key), list):
+                return manifest[key]
+        raise StageError("the render manifest lists no views")
+    return manifest
 
 
 def dicom_person_rule(group, candidates):
@@ -307,12 +336,15 @@ def persons_of(group, candidates, rule):
     return pairs, fallback
 
 
-def plan_group(group, args, salt, frozen):
-    """One group's row of the plan: what was found, what was chosen and why anything was not."""
+def plan_group(group, args, salt, frozen, renders):
+    """One group's row of the plan: what was found, what was chosen and why anything was not; a
+    render group's row also records which CTs it rendered, with what blocks, engine and salt."""
     row = {"id": group.id, "label": group.label, "family": group.family, "source": group.source,
            "licence": group.licence, "note": group.note, "chosen": [], "skipped": ""}
+    if group.source == "render":
+        row["render"] = renders.get(group.id, {"skipped": "the render stage did not reach it"})
     try:
-        candidates = candidate_rows(group, args)
+        candidates = candidate_rows(group, args, renders)
     except StageError as error:
         row["skipped"] = str(error)
         return row
@@ -332,53 +364,97 @@ def plan_group(group, args, salt, frozen):
     return row
 
 
-def candidate_rows(group, args):
+def candidate_rows(group, args, renders):
     if group.source == "index":
         return index_candidates(group, args.index)
     if group.source == "walk":
         return walk_candidates(group, args.data_root)
     if group.source == "thunderdb":
         return thunder_candidates(group, args.data_root)
+    skipped = renders.get(group.id, {}).get("skipped")
+    if skipped:
+        raise StageError(skipped)
     return render_candidates(group, args.out)
 
 
-def stage_plan(args, table):
-    """plan.json: every group's chosen files, made once for the same table and frozen list."""
+def stage_plan(args, table, renders=None):
+    """plan.json: every group's chosen files, made once for the same table, frozen list and
+    renders (what stage_render returned), so a render that fails in one run and succeeds in the
+    next is planned again."""
+    renders = renders or {}
     path = Path(args.out) / "plan.json"
     stamp = {"table": sha256_of(args.groups), "frozen": sha256_of(args.frozen) if args.frozen else "",
-             "index": str(args.index or "")}
+             "index": str(args.index or ""), "renders": digest_of(renders)}
     if path.is_file() and read_json(path).get("stamp") == stamp:
         return read_json(path)
     frozen = frozen_persons(args.frozen)
-    groups = [plan_group(g, args, table.salt, frozen) for g in table.groups]
+    groups = [plan_group(g, args, table.salt, frozen, renders) for g in table.groups]
     plan = {"version": 1, "salt": table.salt, "stamp": stamp, "groups": groups}
     write_json(path, plan)
     return plan
 
 
+def digest_of(data):
+    return hashlib.sha256(json.dumps(data, sort_keys=True, default=str).encode("utf-8")).hexdigest()
+
+
 # --- the renders -----------------------------------------------------------------------------------
 
 def stage_render(args, table):
-    """FleXray's raw DRRs for every render group, by tools/flexray_render.py."""
-    for group in table.groups:
-        if group.source != "render":
-            continue
-        out = Path(args.out) / "renders" / group.id
+    """The synthetic X-rays of every render group, by tools/flexray_render.py: the CTs of a folder
+    are chosen once, in the salted order, so every render group on one folder renders the same
+    subjects, and the per-view seeds take the folder's salt and not the group's, so two groups on
+    one folder differ only by their blocks and engine. Returns what each group got, for the plan."""
+    renders = {}
+    groups = [g for g in table.groups if g.source == "render"]
+    if not groups:
+        return renders
+    renderer = tool("flexray_render")
+    ranked = {}
+    for group in groups:
         ct_root = Path(args.data_root) / group.folder
         if not ct_root.is_dir():
             log(f"{group.id}: no CT folder {group.folder}; its renders are skipped")
+            renders[group.id] = {"skipped": f"no CT folder {group.folder} under the data root"}
             continue
-        subjects = max(1, group.cap // group.per_person)
-        log(f"{group.id}: rendering {subjects} subjects x {group.per_person} views")
-        (out / "FAILED").unlink(missing_ok=True)
-        try:
-            tool("flexray_render").render_subjects(
-                ct_root, out, subjects, group.per_person, f"{table.salt}:{group.id}", args.device,
-                0.0, "vertebra")
-        except Exception as error:  # the other groups are still worth the job; the reason is kept
-            traceback.print_exc(file=sys.stderr)
-            out.mkdir(parents=True, exist_ok=True)
-            (out / "FAILED").write_text(type(error).__name__ + "\n", encoding="ascii")
+        if group.folder not in ranked:
+            ranked[group.folder] = ranked_subjects(renderer, ct_root, table.salt)
+        subjects = ranked[group.folder][:max(1, group.cap // group.per_person)]
+        renders[group.id] = render_group(renderer, args, group, ct_root, subjects, f"{table.salt}:{group.folder}")
+    return renders
+
+
+def subject_id(item):
+    """A subject as find_subjects lists it: its id, or the first of a pair (id, path)."""
+    return str(item[0]) if isinstance(item, (tuple, list)) else str(item)
+
+
+def ranked_subjects(renderer, ct_root, salt):
+    """Every subject the renderer finds under a CT folder, in the salted order every render group
+    on the folder takes its CTs from; the id breaks a tie, so the order is total."""
+    ids = [subject_id(item) for item in renderer.find_subjects(ct_root)]
+    return sorted(ids, key=lambda s: (rules().rank_key(f"{salt}:subjects", s), s))
+
+
+def render_group(renderer, args, group, ct_root, subjects, salt):
+    """One render group's renders, into <out>/renders/<group>, and the record the plan keeps: the
+    subjects, the salt, the engine and the blocks, what was rendered or why it failed."""
+    out = Path(args.out) / "renders" / group.id
+    blocks = blocks_rules().parse(group.blocks)
+    record = {"subjects": list(subjects), "salt": salt, "engine": group.engine,
+              "blocks": blocks_rules().as_record(blocks)}
+    log(f"{group.id}: rendering {len(subjects)} subjects x {blocks.views} views, engine {group.engine}")
+    (out / "FAILED").unlink(missing_ok=True)
+    try:
+        done = renderer.render_subjects(ct_root, out, len(subjects), salt, args.device, blocks=blocks,
+                                        engine=group.engine, subject_ids=tuple(subjects))
+        record.update(rendered=done.get("rendered"), passed_over=done.get("skipped", []))
+    except Exception as error:  # the other groups are still worth the job; the reason is kept
+        traceback.print_exc(file=sys.stderr)
+        out.mkdir(parents=True, exist_ok=True)
+        (out / "FAILED").write_text(type(error).__name__ + "\n", encoding="ascii")
+        record["failed"] = type(error).__name__
+    return record
 
 
 # --- the images ------------------------------------------------------------------------------------
@@ -693,6 +769,7 @@ class Frame:
         self.family = np.array([r["family"] for r in rows])
         self.person = np.array([r["person"] for r in rows])
         self.labels = {g["id"]: g["label"] for g in plan["groups"]}
+        self.skipped = {g["id"]: g.get("skipped", "") for g in plan["groups"]}
         self.order = [g["id"] for g in plan["groups"] if (self.group == g["id"]).sum() >= MIN_ROWS]
 
     def rows_of(self, group):
@@ -709,6 +786,20 @@ class Frame:
 
     def family_of(self, group):
         return str(self.family[self.rows_of(group)[0]])
+
+    def why_untestable(self, group):
+        """Why a group is not in the tests, in words, or "" when it is: not in the table, skipped
+        by the plan for its reason, too few images decoded, or too few persons."""
+        if group not in self.labels:
+            return "not in the table"
+        if group in self.testable():
+            return ""
+        if self.skipped.get(group):
+            return self.skipped[group]
+        rows = len(self.rows_of(group))
+        if rows < MIN_ROWS:
+            return f"{rows} images decoded, fewer than {MIN_ROWS}"
+        return f"{self.persons(group)} persons, fewer than {MIN_PERSONS}"
 
 
 def capped(frame, rows, limit, salt):
@@ -821,11 +912,13 @@ def analyse_space(frame, salt, seed):
                            for i, a in enumerate(real) for b in real[i + 1:]}
     if len(families["fluoroscopy"]) and len(families["film"]):
         result["fluoroscopy_vs_film"] = contrast(frame, z64, families["fluoroscopy"], families["film"], seed)
+    result["replication"] = replication_contrasts(frame, z64, seed)
     result["calibration"] = calibration(frame, z64, salt, seed)
     result["ratios"] = gap_ratios(frame, result, synthetic)
     result["structure"] = structure(frame, z64, real, synthetic, seed)
     result["fd_all"] = all_distances(frame, z64, seed)
     adjust(result)
+    replication_words(result)
     maps = map_coordinates(frame, z, salt, seed)
     result["maps"] = {k: v for k, v in maps.items() if k != "coords"}
     return result, maps
@@ -834,6 +927,30 @@ def analyse_space(frame, salt, seed):
 def family_contrasts(frame, z64, synthetic, families, seed):
     return {sg: {f: contrast(frame, z64, frame.rows_of(sg), rows, seed, permute=True, prdc=True)
                  for f, rows in families.items() if len(rows)} for sg in synthetic}
+
+
+def replication_contrasts(frame, z64, seed):
+    """The replication test's pairs (REPLICATION_PAIRS), each with every measure a family contrast
+    gets, the C2ST permutation p and PRDC among them, precision and recall being the first group's
+    against the second; a pair with a group the space cannot test is listed with the reason, so a
+    FluXray not fetched or a render that failed is read in the result and not guessed at."""
+    out = {}
+    for a, b in REPLICATION_PAIRS:
+        missing = [f"{g}: {frame.why_untestable(g)}" for g in (a, b) if frame.why_untestable(g)]
+        if missing:
+            out[f"{a}|{b}"] = {"skipped": "; ".join(missing)}
+            continue
+        out[f"{a}|{b}"] = contrast(frame, z64, frame.rows_of(a), frame.rows_of(b), seed, permute=True, prdc=True)
+    return out
+
+
+def replication_words(result):
+    """The pre-registered word beside the first pair, from its logistic AUC's lower bound and its
+    MMD's q, once adjust has set the q over the space's MMD p-values; the study's verdict is this
+    word in the primary space's inversion-invariant reading (replication_verdict)."""
+    first = result.get("replication", {}).get("|".join(REPLICATION_PAIRS[0]))
+    if first and "skipped" not in first:
+        first["word"] = rules().replication_word(float(first["auc_logistic"]["lo"]), float(first["mmd"]["q"]))
 
 
 def family_pairs(frame, result, family):
@@ -888,8 +1005,9 @@ def structure(frame, z64, real, synthetic, seed):
 
 
 def adjust(result):
-    """Benjamini-Hochberg over every MMD p of the space's contrasts, and over its C2ST permutation
-    p-values; the split-half nulls are adjusted among themselves (flagged_nulls)."""
+    """Benjamini-Hochberg over every MMD p of the space's contrasts, the replication pairs among
+    them, and over its C2ST permutation p-values; the split-half nulls are adjusted among
+    themselves (flagged_nulls)."""
     pure = rules()
     for key in ("mmd", "c2st"):
         found = list(p_values(result, key))
@@ -905,6 +1023,7 @@ def p_values(result, key):
     blocks = [result.get("vs_group", {}), result.get("vs_family", {})]
     contrasts = [c for block in blocks for inner in block.values() for c in inner.values()]
     contrasts += list(result.get("real_real", {}).values())
+    contrasts += [c for c in result.get("replication", {}).values() if "skipped" not in c]
     if "fluoroscopy_vs_film" in result:
         contrasts.append(result["fluoroscopy_vs_film"])
     for c in contrasts:
@@ -961,11 +1080,28 @@ def stage_analysis(args, plan, rows):
             results["spaces"][key] = result
             if maps:
                 all_maps[key] = (frame, maps)
+    results["replication"] = replication_verdict(results)
     write_json(Path(args.out) / "results.json", results)
     tool_figures = Path(args.out) / "figures"
     tool_figures.mkdir(exist_ok=True)
     figures(all_maps, results, tool_figures)
     return results, all_maps
+
+
+def replication_verdict(results):
+    """The word the study reports for the replication test: the first pair's, in the primary
+    space's inversion-invariant reading, or why there is none."""
+    pair = "|".join(REPLICATION_PAIRS[0])
+    verdict = {"space": PRIMARY_SPACE, "reading": "invariant", "pair": pair, "word": None, "reason": ""}
+    space = results["spaces"].get(PRIMARY_SPACE, {})
+    found = space.get("replication", {}).get(pair, {})
+    if space.get("invalid"):
+        verdict["reason"] = f"space {PRIMARY_SPACE} not run, {space['invalid']}"
+    elif "word" in found:
+        verdict["word"] = found["word"]
+    else:
+        verdict["reason"] = found.get("skipped", "the pair was not tested")
+    return verdict
 
 
 def group_rows(plan, rows):
@@ -1268,15 +1404,41 @@ def auc_text(auc):
 
 
 def summary_lines(results, wandb_line):
-    """At most 80 short lines, each made safe for the grid's redaction, of what the study found: the
-    groups, then the primary space in full, FleXray's space as stored for FleXray's own groups, and
-    the other spaces' family contrasts, so the most read numbers come first if a line is lost."""
-    lines = [f"drr gap: {sum(g['decoded'] for g in results['groups'])} images,"
-             f" {sum(1 for g in results['groups'] if g['decoded'] >= MIN_ROWS)} groups, W&B {wandb_line}"]
-    lines += group_summary(results["groups"])
+    """At most LINE_BUDGET short lines, each made safe for the grid's redaction, of what the study
+    found: the header and the replication verdict, the groups, then the primary space in full,
+    the other spaces' family contrasts and replication pair, FleXray's space as stored for
+    FleXray's own groups, and last the secondary lines (the nearest real corpora, the other spaces'
+    replication-only contrasts, the map centres). The sections carry a rank, and whole sections
+    are given up from the highest rank down until the lines fit, so what is cut is the least read
+    and never the middle of a table."""
+    header = (f"drr gap: {sum(g['decoded'] for g in results['groups'])} images,"
+              f" {sum(1 for g in results['groups'] if g['decoded'] >= MIN_ROWS)} groups, W&B {wandb_line}")
+    sections = [(0, [header, verdict_line(results.get("replication", {}))]), (1, group_summary(results["groups"]))]
     for key, space in results["spaces"].items():
-        lines += space_summary(key, space, detail_of(key))
-    return [rules().safe_line(line) for line in lines][:80]
+        sections += space_sections(key, space, detail_of(key))
+    lines = fit_lines(sections, LINE_BUDGET)
+    return [rules().safe_line(line) for line in lines][:LINE_BUDGET]
+
+
+def fit_lines(sections, budget):
+    """The sections' lines in their order, whole sections dropped from the highest rank down,
+    the later of two at one rank first, until at most budget lines remain."""
+    kept = list(range(len(sections)))
+    order = sorted(kept, key=lambda i: (sections[i][0], i), reverse=True)
+    for i in order:
+        if sum(len(sections[j][1]) for j in kept) <= budget:
+            break
+        kept.remove(i)
+    return [line for i in sorted(kept) for line in sections[i][1]]
+
+
+def verdict_line(verdict):
+    if not verdict:
+        return "replication: no verdict"
+    a, b = verdict["pair"].split("|")
+    if verdict.get("word"):
+        return f"replication {a} vs {b} in {verdict['space']} ({verdict['reading']}): {verdict['word']}"
+    return f"replication {a} vs {b}: no verdict, {verdict['reason'][:140]}"
 
 
 def detail_of(key):
@@ -1299,24 +1461,74 @@ def group_summary(groups):
     return lines
 
 
-def space_summary(key, space, detail):
+# The rank of each section of a space's summary, by how it is read (fit_lines gives the highest
+# up first): the primary space's tables 2 to 4, the other spaces' 5, the as-stored reading 6, the
+# context lines 7 (the nearest real corpora, the other spaces' real-real medians), the
+# replication-only contrasts outside the primary space 8, the map centres 9. With the study's
+# own table and every space run, the centres go first, then the replication-only contrasts, and
+# with FluXray present the context lines too; the tables of every space stay whole.
+RANK = {"full": 2, "full_real": 3, "full_auc": 4, "brief": 5, "focus": 6, "context": 7, "secondary": 8, "centres": 9}
+
+
+def space_sections(key, space, detail):
+    """One space's summary as ranked sections: its line and calibration, its replication pairs
+    and its family contrasts first; the primary space adds the real-real table, the heatmap rows,
+    the nearest real corpora and the map centres; the as-stored reading keeps FleXray's own
+    groups; outside the primary space the replication-only groups and the pairs after the first
+    are secondary."""
     if space.get("invalid"):
-        return [f"space {key} not run, {space['invalid']}"]
-    lines = [f"space {key} dim {space['dim']} rows {space['rows']} spread {fmt(space['feature_spread'], 3)}"
-             f" pca64 {fmt(space['pca64_explained'])}"]
-    lines += calibration_summary(space)
+        return [(RANK[detail], [f"space {key} not run, {space['invalid']}"])]
+    head = [f"space {key} dim {space['dim']} rows {space['rows']} spread {fmt(space['feature_spread'], 3)}"
+            f" pca64 {fmt(space['pca64_explained'])}"] + calibration_summary(space)
+    first, later = replication_summary(space)
+    families, secondary = family_summary(space, detail)
+    sections = [(RANK[detail], head + first + families)]
+    if detail == "full":
+        sections += [(RANK["full"], later), (RANK["full_real"], real_summary(space, detail)),
+                     (RANK["full_auc"], group_auc_summary(space)), (RANK["context"], nearest_summary(space)),
+                     (RANK["centres"], centre_summary(space))]
+    elif detail == "brief":
+        sections += [(RANK["context"], real_summary(space, detail)), (RANK["secondary"], later + secondary)]
+    else:
+        sections.append((RANK["secondary"], later))
+    return [(rank, lines) for rank, lines in sections if lines]
+
+
+def family_summary(space, detail):
+    """The family contrasts' lines: all of them for the primary space, FleXray's own groups for
+    the as-stored reading, and for the other spaces every group but the replication-only ones,
+    whose lines come second."""
+    kept, secondary = [], []
     for sg, inner in space.get("vs_family", {}).items():
         if detail == "focus" and sg not in FOCUS_GROUPS:
             continue
-        lines += [family_line(space, sg, family, c) for family, c in inner.items()]
-    if detail == "focus":
-        return lines
-    lines += real_summary(space, detail)
-    if detail == "full":
-        lines += group_auc_summary(space)
-        lines += nearest_summary(space)
-        lines += centre_summary(space)
-    return lines
+        lines = [family_line(space, sg, family, c) for family, c in inner.items()]
+        if detail == "brief" and sg in REPLICATION_ONLY:
+            secondary += lines
+        else:
+            kept += lines
+    return kept, secondary
+
+
+def replication_summary(space):
+    """The replication pairs' lines in REPLICATION_PAIRS' order, the first pair's apart from the
+    later ones."""
+    found = space.get("replication", {})
+    pairs = [pair for pair in ("|".join(p) for p in REPLICATION_PAIRS) if pair in found]
+    lines = [replication_line(pair, found[pair]) for pair in pairs]
+    return lines[:1], lines[1:]
+
+
+def replication_line(pair, c):
+    a, b = pair.split("|")
+    if "skipped" in c:
+        return f" replication {a} vs {b} not tested, {c['skipped'][:130]}"
+    prdc = c.get("prdc", {})
+    return (f" replication {a} vs {b} auc {auc_text(c['auc_logistic'])} q {fmt(c['auc_logistic'].get('q'), 3)}"
+            f" knn {fmt(c['auc_knn']['auc'])} mmd p {fmt(c['mmd']['p'], 3)} q {fmt(c['mmd'].get('q'), 3)}"
+            f" fd64 {fmt(c['fd64'], 1)} kid64 {fmt(c['kid64']['kid'], 3)}"
+            f" prdc {' '.join(fmt(prdc.get(k)) for k in ('precision', 'recall', 'density', 'coverage'))}"
+            f" {c.get('word', '')}").rstrip()
 
 
 def calibration_summary(space):
@@ -1363,11 +1575,13 @@ def group_auc_summary(space):
 
 
 def nearest_summary(space):
-    lines = []
+    """Which real corpora a classifier trained on the real corpora alone calls each synthetic
+    group, its top three, several groups to a line."""
+    parts = []
     for sg, shares in space.get("structure", {}).get("nearest_real", {}).items():
         top = sorted(shares.items(), key=lambda kv: -kv[1])[:3]
-        lines.append(f" nearest real for {sg}: " + ", ".join(f"{g} {100 * v:.0f} pct" for g, v in top))
-    return lines
+        parts.append(f"{sg} " + ", ".join(f"{g} {100 * v:.0f} pct" for g, v in top))
+    return wrapped(" nearest real", parts)
 
 
 def centre_summary(space, method="tsne"):
@@ -1395,8 +1609,8 @@ def run(args):
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     table = read_table(args.groups)
-    stage_render(args, table)
-    plan = stage_plan(args, table)
+    renders = stage_render(args, table)
+    plan = stage_plan(args, table, renders)
     rows, images = stage_images(args, plan)
     if not rows["rows"]:
         raise StageError("no image decoded")

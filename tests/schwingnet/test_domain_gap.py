@@ -58,6 +58,13 @@ RENDER = {
 }
 
 
+def render(**fields: Any) -> dict[str, Any]:
+    """A render group, FleXray's recipe through this project's blocks, with fields replaced."""
+    row = dict(RENDER)
+    row.update(fields)
+    return row
+
+
 def table(*groups: dict[str, Any], **fields: Any) -> dict[str, Any]:
     row: dict[str, Any] = {"version": 1, "salt": SALT, "groups": list(groups)}
     row.update(fields)
@@ -70,9 +77,125 @@ def test_a_table_of_two_families_reads_with_its_defaults() -> None:
     assert (vindr.cap, vindr.per_person, vindr.min_side) == (1000, 4, 256)
     assert vindr.exclude_words == ("mask", "label", "seg", "crop", "preview", "thumb", "overlay")
     assert (vindr.globs, vindr.formats, vindr.modalities, vindr.folder) == ((), (), (), "")
+    assert (vindr.blocks, vindr.engine, vindr.subjects_from) == ((), "blocks", "")
     assert flexray.family == "synthetic" and flexray.source in gap.SYNTHETIC_SOURCES
+    assert (flexray.blocks, flexray.engine, flexray.subjects_from) == ((), "blocks", "")
     again = gap.GroupTable.model_validate_json(parsed.model_dump_json())
     assert again == parsed
+
+
+# --- render groups: blocks, engine and shared subjects ----------------------------------------
+
+
+def test_a_render_group_reads_its_blocks_engine_and_shared_subjects() -> None:
+    physical = gap.GroupSpec.model_validate(render(blocks=["attenuation=off"]))
+    assert (physical.blocks, physical.engine, physical.subjects_from) == (
+        ("attenuation=off",),
+        "blocks",
+        "",
+    )
+    reference = gap.GroupSpec.model_validate(
+        render(id="flexray_reference", engine="flexray-runtime", subjects_from="flexray_raw")
+    )
+    assert (reference.engine, reference.subjects_from) == ("flexray-runtime", "flexray_raw")
+    two_views = gap.GroupSpec.model_validate(render(blocks=["views=2"], per_person=2))
+    assert two_views.per_person == 2
+
+
+@pytest.mark.parametrize(
+    ("fields", "says"),
+    [
+        ({"per_person": 2}, "views"),
+        ({"blocks": ["views=2"]}, "views"),
+        ({"blocks": ["detector=abc"]}, "blocks"),
+        ({"blocks": ["colour=red"]}, "blocks"),
+        ({"blocks": ["attenuation=off", "attenuation=off"]}, "twice"),
+        ({"blocks": ["isocentre=vertebra"], "engine": "flexray-runtime"}, "isocentre"),
+        ({"engine": "nanodrr"}, "engine"),
+        ({"subjects_from": "flexray_raw"}, "itself"),
+        ({"subjects_from": "Bad Id"}, "pattern"),
+    ],
+)
+def test_a_render_group_refuses_a_recipe_that_does_not_hold(
+    fields: dict[str, Any], says: str
+) -> None:
+    with pytest.raises(ValidationError, match=says):
+        gap.GroupSpec.model_validate(render(**fields))
+
+
+def test_the_engines_are_the_render_blocks_engines() -> None:
+    # The table reads an engine against the renderer's own list, so a third engine added there
+    # is read here with no change.
+    from schwingnet import render_blocks
+
+    assert "blocks" in render_blocks.ENGINES and "flexray-runtime" in render_blocks.ENGINES
+    for engine in render_blocks.ENGINES:
+        assert render_blocks.engine_problems(engine, render_blocks.DEFAULT) == []
+
+
+@pytest.mark.parametrize(
+    "fields",
+    [
+        {"blocks": ["attenuation=off"]},
+        {"engine": "flexray-runtime"},
+        {"subjects_from": "flexray_raw"},
+    ],
+)
+def test_blocks_an_engine_and_shared_subjects_are_a_render_groups_alone(
+    fields: dict[str, Any],
+) -> None:
+    with pytest.raises(ValidationError, match="only for a render group"):
+        gap.GroupSpec.model_validate(film(**fields))
+
+
+def test_a_table_holds_shared_subjects_to_a_render_group_of_the_same_shape() -> None:
+    replica = render(id="replica", subjects_from="flexray_raw")
+    held = gap.GroupTable.model_validate(table(film(), RENDER, replica))
+    assert held.groups[2].subjects_from == "flexray_raw"
+    # A chain is no cycle: a from b, b from the first render group.
+    chained = render(id="chained", subjects_from="replica")
+    gap.GroupTable.model_validate(table(film(), RENDER, replica, chained))
+    with pytest.raises(ValidationError, match="no render group"):
+        gap.GroupTable.model_validate(
+            table(film(), RENDER, render(id="replica", subjects_from="missing"))
+        )
+    with pytest.raises(ValidationError, match="no render group"):
+        gap.GroupTable.model_validate(
+            table(film(), RENDER, render(id="replica", subjects_from="vindr_spinexr"))
+        )
+    for other in ({"cap": 500}, {"folder": "other_cts"}, {"per_person": 2, "blocks": ["views=2"]}):
+        with pytest.raises(ValidationError, match="folder, cap and per_person"):
+            gap.GroupTable.model_validate(
+                table(film(), RENDER, render(id="replica", subjects_from="flexray_raw", **other))
+            )
+    with pytest.raises(ValidationError, match="cycle"):
+        gap.GroupTable.model_validate(
+            table(film(), render(id="a", subjects_from="b"), render(id="b", subjects_from="a"))
+        )
+
+
+def test_the_studys_own_table_holds_and_names_the_three_render_groups() -> None:
+    parsed = gap.GroupTable.model_validate_json(
+        (ROOT / "data" / "domain_gap" / "groups.json").read_text(encoding="utf-8")
+    )
+    by_id = {group.id: group for group in parsed.groups}
+    drr, replica, reference = (
+        by_id[i] for i in ("flexray_drr", "flexray_replica", "flexray_reference")
+    )
+    assert (drr.blocks, drr.engine, drr.subjects_from) == (("attenuation=off",), "blocks", "")
+    assert (replica.blocks, replica.engine, replica.subjects_from) == ((), "blocks", "flexray_drr")
+    assert (reference.blocks, reference.engine, reference.subjects_from) == (
+        (),
+        "flexray-runtime",
+        "flexray_drr",
+    )
+    assert len({(g.folder, g.cap, g.per_person, g.licence) for g in (drr, replica, reference)}) == 1
+    assert [g.id for g in parsed.groups[:4]] == [
+        "flexray_drr",
+        "flexray_replica",
+        "flexray_reference",
+        "fluxray",
+    ]
 
 
 def test_the_families_and_sources_are_the_studys() -> None:
@@ -477,6 +600,33 @@ def test_the_gap_word_refuses_a_bound_that_is_no_probability() -> None:
         gap.gap_word(1.2, 0.8)
     with pytest.raises(ViolationError):
         gap.gap_word(0.7, nan)
+
+
+@pytest.mark.parametrize(
+    ("auc_low", "mmd_q", "word"),
+    [
+        (0.5, 0.5, "replicated"),
+        (0.6, 0.05, "replicated"),
+        (0.0, 1.0, "replicated"),
+        (0.6000001, 0.05, "not replicated"),
+        (0.6, 0.0499, "not replicated"),
+        (0.6000001, 0.0499, "not replicated"),
+        (1.0, 1.0, "not replicated"),
+        (0.0, 0.0, "not replicated"),
+    ],
+)
+def test_the_replication_word_is_pre_registered(auc_low: float, mmd_q: float, word: str) -> None:
+    assert gap.REPLICATION_WORDS == ("replicated", "not replicated")
+    assert (gap.REPLICATION_AUC, gap.REPLICATION_Q) == (0.6, 0.05)
+    assert gap.replication_word(auc_low, mmd_q) == word
+
+
+@pytest.mark.parametrize(
+    ("auc_low", "mmd_q"), [(1.2, 0.5), (-0.1, 0.5), (0.5, 1.5), (0.5, nan), (nan, 0.5)]
+)
+def test_the_replication_word_refuses_what_is_no_probability(auc_low: float, mmd_q: float) -> None:
+    with pytest.raises(ViolationError):
+        gap.replication_word(auc_low, mmd_q)
 
 
 # --- the report line ---------------------------------------------------------------------------

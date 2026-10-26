@@ -10,6 +10,10 @@
 #   flexray_deepfluoro  FleXray's Dice on DeepFluoro against its published 0.916
 #   xvr_deepfluoro      xvr's published DeepFluoro models through xvr's own register and evaluate scripts,
 #                       against its published 1.1 mm median mTRE
+#   flexray_drr_gap     the DRR domain-gap study (tools/domain_gap.py, docs/research/drr-domain-gap/README.md):
+#                       FleXray's recipe through this project's render blocks and through FleXray's own
+#                       code, beside every held real X-ray corpus and FluXray, with the replication test;
+#                       only its summary.txt leaves the grid, each line through grid/redact.sed
 #
 # The public package goes into a throwaway virtual environment on the lab volume, made from the
 # train-gpu environment with its site packages (torch among them) and kept for a rerun under a name
@@ -30,7 +34,8 @@ BENCH=${BENCH:-}
 FLEXRAY_PIN="flexray==1.0.2 h5py"
 XVR_COMMIT=1abc2af07efa5b5a6c3576525a79de1f9b3e9f81
 XVR_PIN="git+https://github.com/eigenvivek/xvr.git@$XVR_COMMIT pandas click tqdm"
-case "$BENCH" in flexray_carmlspine|flexray_deepfluoro|xvr_deepfluoro) ;; *) echo "bench: BENCH is one of flexray_carmlspine, flexray_deepfluoro, xvr_deepfluoro"; echo "SN_BENCH_RC=64"; exit 64 ;; esac
+DRR_GAP_PIN="flexray[train]==1.0.2 nanodrr==0.1.5 scikit-learn==1.9.1 umap-learn==0.5.12 numpy==2.4.6"
+case "$BENCH" in flexray_carmlspine|flexray_deepfluoro|xvr_deepfluoro|flexray_drr_gap) ;; *) echo "bench: BENCH is one of flexray_carmlspine, flexray_deepfluoro, xvr_deepfluoro, flexray_drr_gap"; echo "SN_BENCH_RC=64"; exit 64 ;; esac
 REPORT=$REPO/grid/logs/BENCH-$BENCH.md
 OUT=$BENCH_ROOT/$BENCH
 mkdir -p "$REPO/grid/logs" "$OUT"
@@ -70,8 +75,11 @@ venv_for() {  # venv_for PINS: a virtual environment holding PINS beside train-g
   if [ ! -f "$venv/READY" ]; then
     rm -rf "$venv"
     bash grid/box.sh pixi run --locked -e train-gpu python -m venv --system-site-packages "$venv" || return 1
+    # set -f: a pin may carry an extra's brackets (flexray[train]), which the shell would read as a pattern.
+    set -f
     # shellcheck disable=SC2086
-    bash grid/box.sh "$venv/bin/python" -m pip install --quiet $1 || return 1
+    bash grid/box.sh "$venv/bin/python" -m pip install --quiet $1 || { set +f; return 1; }
+    set +f
     printf '%s\n' "$1" > "$venv/READY"
   fi
   echo "$venv"
@@ -82,7 +90,14 @@ failure_of() {  # the first compiler or linker error in a log, else its last lin
 weights_dir() {  # the FleXray bundle the fetch landed: the folder that holds ensemble.json
   dirname "$(find "$DATA/hf_flexray_weights/raw" -maxdepth 3 -name ensemble.json -print -quit 2>/dev/null)"
 }
+samples_index() {  # the sample index the gate checked (INDEX), else the newest whole run's, as grid/gate.sh names it in CURRENT
+  local out=${SAMPLES_OUT:-$DATA/_samples} current
+  [ -z "${INDEX:-}" ] || { echo "$INDEX"; return; }
+  current=$(cat "$out/CURRENT" 2>/dev/null)
+  [ -n "$current" ] && echo "$out/$current/samples.sqlite"
+}
 
+tail_lines=12  # how much of what the tool said the report carries: its last lines, or the whole summary
 case "$BENCH" in
   flexray_carmlspine|flexray_deepfluoro)
     venv=$(venv_for "$FLEXRAY_PIN") || { report "FAILED: the environment for $FLEXRAY_PIN could not be made"; finish 1; }
@@ -126,8 +141,36 @@ case "$BENCH" in
         --main "$OUT/registration.csv" --device cuda ) > "$OUT/evaluate.log" 2>&1 \
       || { report "FAILED: xvr's evaluate.py ($(tail -n 1 "$OUT/evaluate.log" | cut -c1-160))"; finish 1; }
     said=$(bash grid/box.sh "$venv/bin/python" tools/bench_public.py xvr-summary --csv "$OUT/registration.csv" --out "$OUT" 2>&1) || rc=1 ;;
+  flexray_drr_gap)
+    # The study's inputs, each named in the report, since its numbers are read against them. The gate
+    # refused the word without them (grid/gate.sh, bench_inputs_missing); a miss here is a samples run
+    # or a fetch that moved since, said and failed rather than run on part of the table.
+    venv=$(venv_for "$DRR_GAP_PIN") || { report "FAILED: the environment for $DRR_GAP_PIN could not be made"; finish 1; }
+    weights=$(weights_dir)
+    [ -f "$weights/ensemble.json" ] || { report "FAILED: no ensemble.json under $DATA/hf_flexray_weights/raw"; finish 2; }
+    index=$(samples_index)
+    [ -n "$index" ] && [ -f "$index" ] || { report "FAILED: no whole sample index under ${SAMPLES_OUT:-$DATA/_samples} (the gate word samples makes it)"; finish 2; }
+    [ -d "$DATA/totalsegmentator_v201" ] || { report "FAILED: no totalsegmentator_v201 under $DATA, the CTs the render groups draw"; finish 2; }
+    imagenet=${MODELS:-$LAB/go2432/models}/resnet18-f37072fd.pth
+    [ -s "$imagenet" ] || { report "FAILED: no ImageNet ResNet-18 file at $imagenet (the gate word start fetches it)"; finish 2; }
+    # FluXray is the one optional input: the tool reads it when the fetch has landed it and skips its
+    # group with that reason otherwise, so the study never waits for it.
+    if [ -d "$DATA/hf_flexray_data/raw" ]; then report "FluXray: read from $DATA/hf_flexray_data/raw"
+    else report "FluXray: not on the data root (fetch hf_flexray_data); the study skips its group with that reason"; fi
+    report "environment: $DRR_GAP_PIN; index: $index; weights: $weights; imagenet: $imagenet"
+    # The run folder is the owner's alone: the plan names files and person keys, and the run's own
+    # output goes there too, since only summary.txt leaves the grid.
+    umask 077; chmod 700 "$OUT"
+    bash grid/box.sh "$venv/bin/python" tools/domain_gap.py run --groups data/domain_gap/groups.json --data-root "$DATA" \
+      --index "$index" --weights "$weights" --imagenet "$imagenet" --out "$OUT" --device cuda \
+      --frozen data/splits/test-persons.json > "$OUT/run.log" 2>&1; rc=$?
+    [ "$rc" = 0 ] || { report "FAILED: domain_gap.py run ended $rc ($(tail -n 1 "$OUT/run.log" | sed -r -f grid/redact.sed | cut -c1-160))"; finish "$rc"; }
+    # The summary, at most 80 lines of numbers and group names, each through the filter the gate word
+    # status applies to every log line, and the report carries it whole.
+    said=$(bash grid/box.sh "$venv/bin/python" tools/domain_gap.py summary --out "$OUT" 2>&1 | sed -r -f grid/redact.sed); rc=$?
+    tail_lines=80 ;;
 esac
 echo "$said"
 report "results: $OUT"
-echo "$said" | tail -n 12 | sed 's/^/  /' >> "$REPORT.part"
+echo "$said" | tail -n "$tail_lines" | sed 's/^/  /' >> "$REPORT.part"
 finish "$rc"
