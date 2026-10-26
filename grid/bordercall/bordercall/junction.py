@@ -30,11 +30,16 @@ the real-data check reports them with the constant it needed. The profile featur
 over its window's median) are convention-free but see the whole window, so a long window
 that takes in the anomaly moves them a little; they are off by default for the same reason.
 
-THE THORACOLUMBAR TRANSITIONAL BODY IS THE HARD CASE. A body that is half thoracic and half
-lumbar in shape (a rudimentary rib on L1, a rib-less T12, a true T13) sits on the junction
-itself, so the shape alone cannot say which side of the border it is on; blend_sweep shows
-how the call degrades as the body moves from one shape to the other, and the margin the
-decoder reports is what a caller should abstain on.
+THE THORACOLUMBAR TRANSITIONAL BODY IS THE HARD CASE, and the hardness is a convention. The
+truth scored everywhere is the count's: the 19th body from C2 is L1 whatever its shape or
+its rib. A body of thoracic shape in that place (a rib-bearing L1, which a rib reading calls
+a thirteenth thoracic body) and a body of lumbar shape in the 18th (a rib-less T12) are shape
+hypotheses the template carries at the count's cut, so the count junction is named from the
+profile of the whole window and the transitional body's own shape moves it little. The rib
+reading names the same columns one level apart, and the shape cannot choose between the two
+conventions: blend_sweep scores one set of calls both ways, and panjabi.py's docstring says
+why only a count from C2 settles it. The margin the decoder reports is what a caller should
+abstain on.
 """
 from __future__ import annotations
 
@@ -212,23 +217,35 @@ def structure_levels(n_thoracic: int, n_lumbar: int) -> List[str]:
             + ["L%d" % i for i in range(1, n_lumbar + 1)])
 
 
-def cuts_of(names: Sequence[str]) -> Dict[str, int]:
-    regs = [P.region_of(n) for n in names]
-    return {"ct": sum(1 for r in regs if r == "C"), "tl": sum(1 for r in regs if r in ("C", "T"))}
+# the count's cuts in a whole column from C3: C3..C7 above C7/T1, C3..T12 above T12/L1, whatever
+# the shape of the bodies, since the count names the 18th body from C2 T12 and the 19th L1
+COUNT_CUT = {"ct": len(P.CERVICAL), "tl": len(P.CERVICAL) + len(P.THORACIC)}
+
+
+def count_cuts(start: int, n: int) -> Dict[str, int]:
+    """The count's cuts inside a window of n levels that begins at index start of the column."""
+    return {j: min(max(c - start, 0), n) for j, c in COUNT_CUT.items()}
 
 
 class Template:
     """Panjabi's column as a template the window is slid along.
 
-    Every way of naming the window's levels that a column with 11 to 13 thoracic and 4 to 6
-    lumbar bodies allows is scored by how well the window's log values match the table's
+    Every way of naming the window's levels that a column with 11 to 13 thoracic-shaped and 4
+    to 6 lumbar bodies allows is scored by how well the window's log values match the table's
     profile, with one free offset per measure (patient size and measurement convention
-    together), weighted by the table's spread. The junction's posterior is the sum over the
-    namings that put it in one place. Nothing is fitted: the model is the table.
+    together), weighted by the table's spread. A naming is a shape hypothesis with a position
+    in the column, and the position fixes where the count's junction falls in the window
+    (count_cuts): a column with thirteen thoracic-shaped bodies has its count junction above
+    the thirteenth, one with eleven below the first lumbar-shaped one. The junction's
+    posterior is the average over the namings that put it in one place, under a flat prior
+    over where it falls, so a cut is not favoured for having more ways to be named (the sum
+    over namings would hand the all-above cut of a six-level window thirteen namings against
+    three for a cut in view). Nothing is fitted: the model is the table.
 
-    The count anomalies are hypotheses of the same model, not exceptions to it, which is why a
-    sixth lumbar body or a thirteenth rib-bearing one cannot move the call by surprise: the
-    naming with the extra level is simply one of the candidates, scored like the rest."""
+    The anomalies are hypotheses of the same model, not exceptions to it, which is why a sixth
+    lumbar body or a rib-bearing body of thoracic shape below T12 cannot move the call by
+    surprise: the naming with the extra level is simply one of the candidates, scored like the
+    rest, and the transitional body's two shapes are two namings of one cut."""
 
     def __init__(self, junction: str, ref, measures: Sequence[str] = DEFAULT_MEASURES,
                  noise_mm: float = 1.0, structures: Sequence[Tuple[int, int]] = STRUCTURES):
@@ -252,15 +269,18 @@ class Template:
         return ["profile match of %s" % m for m in self.measures]
 
     def namings(self, n: int) -> List[Tuple[Tuple[str, ...], Dict[str, int]]]:
-        """Every distinct way of naming n consecutive levels, with the cuts it implies."""
+        """Every distinct way of naming n consecutive levels, with the count's cuts its position
+        implies; the same names at two positions (L1, L2, L3 as the first lumbar bodies, or as
+        the 18th body of lumbar shape and the two below it) are two namings."""
         if n not in self._cache:
             seen = {}
             for nt, nl in self.structures:
                 levels = structure_levels(nt, nl)
                 for start in range(0, len(levels) - n + 1):
                     names = tuple(levels[start:start + n])
-                    seen.setdefault(names, cuts_of(names))
-            self._cache[n] = list(seen.items())
+                    cuts = count_cuts(start, n)
+                    seen.setdefault((names, cuts["ct"], cuts["tl"]), (names, cuts))
+            self._cache[n] = list(seen.values())
         return self._cache[n]
 
     def loglik(self, values: Dict[str, np.ndarray], names: Sequence[str]) -> Dict[str, float]:
@@ -286,9 +306,13 @@ class Template:
             rows.append({"names": names, "cut": cuts[self.junction], "parts": parts,
                          "ll": sum(parts.values())})
         ll = np.full(n + 1, -np.inf)
+        count = np.zeros(n + 1)
         for r in rows:
             k = r["cut"]
             ll[k] = np.logaddexp(ll[k], r["ll"])
+            count[k] += 1
+        # a flat prior over the cut: the namings of one cut share it, so the average, not the sum
+        ll[count > 0] -= np.log(count[count > 0])
         return ll, rows
 
     def place(self, values: Dict[str, np.ndarray]) -> Placement:
@@ -426,15 +450,18 @@ def wilson(k: int, n: int, z: float = 1.959964) -> Tuple[float, float]:
 
 
 def evaluate(model: Model, ref, phenotype: str, seed: int = 1, n: int = 500,
-             width: Tuple[int, int] = (5, 12), margin: float = 0.0, **synth) -> Score:
-    """Place the junction in n random windows of columns of one phenotype."""
+             width: Tuple[int, int] = (5, 12), margin: float = 0.0, truth: str = "count",
+             **synth) -> Score:
+    """Place the junction in n random windows of columns of one phenotype, scored against the
+    count's junction or, with truth="ribs", the rib reading's; the same seed draws the same
+    windows under either, so the two scores are of one set of calls."""
     rng = np.random.default_rng(seed)
     score = Score()
     for _ in range(n):
         col = P.synthesize(ref, phenotype, rng, measures=list(model.measures), **synth)
         start, stop = random_window(col, rng, width, model.junction)
         sub = col.window(start, stop)
-        score.add(model.place(sub.values), col.cut(model.junction) - start, margin)
+        score.add(model.place(sub.values), sub.cut(model.junction, truth), margin)
     return score
 
 
@@ -468,8 +495,9 @@ def twin_invariance(models: Dict[str, Model], ref, seed: int = 3, n: int = 500,
                     agree[j] += 1
                 if pa.cut == a.cut(j) and pb.cut == b.cut(j):
                     both_right[j] += 1
-                # the per-level calls above L3 should be bit-identical for a local model
-                k = min(len(a), len(b)) - 3
+                # the per-level calls above L3 should be bit-identical for a local model; L3 is
+                # at the same index in both twins, since they differ only below it
+                k = a.levels.index("L3")
                 pmax[j] = max(pmax[j], float(np.max(np.abs(pa.p[:k] - pb.p[:k]))))
         out[ph] = {j: {"n": n, "same_call": agree[j], "same_call_rate": agree[j] / n,
                        "both_right": both_right[j], "max_shift_above_L3": pmax[j]}
@@ -480,14 +508,18 @@ def twin_invariance(models: Dict[str, Model], ref, seed: int = 3, n: int = 500,
 def blend_sweep(model: Model, ref, blends: Sequence[float], seed: int = 4, n: int = 300,
                 phenotypes: Sequence[str] = P.THORACOLUMBAR, width: Tuple[int, int] = (5, 12),
                 margin: float = 0.0, **synth) -> List[dict]:
-    """How the thoracolumbar call degrades as the transitional body moves from one shape to
-    the other: blend 0 is the body in its named region's shape, 1 wholly the other region's."""
+    """How the thoracolumbar call moves as the transitional body goes from one shape to the
+    other: blend 0 is the body in its own region's shape, 1 wholly the neighbour's. Each row
+    scores one set of calls against the count's junction (exact, within_one) and against the
+    rib reading's (exact_ribs, within_one_ribs), one level apart on these phenotypes."""
     rows = []
     for ph in phenotypes:
         for b in blends:
             s = evaluate(model, ref, ph, seed=seed, n=n, width=width, margin=margin, blend=b, **synth)
+            by_ribs = evaluate(model, ref, ph, seed=seed, n=n, width=width, margin=margin, blend=b,
+                               truth="ribs", **synth)
             r = s.row()
-            r.update(phenotype=ph, blend=b)
+            r.update(phenotype=ph, blend=b, exact_ribs=by_ribs.exact, within_one_ribs=by_ribs.within_one)
             rows.append(r)
     return rows
 
@@ -613,8 +645,10 @@ def run_synthetic(outdir: Optional[str] = None, n_columns: int = 2000, n_eval: i
                                               n_columns=n_columns, within=within, profile=profile,
                                               **synth).items() if a in arms}
               for j in JUNCTIONS}
+    # the record names everything that chose its numbers, so a later build reproduces the run
     result = {"measures": list(measures), "within": within, "profile": profile, "margin": margin,
-              "n_columns": n_columns, "n_eval": n_eval, "synth": synth, "arms": list(arms)}
+              "n_columns": n_columns, "n_eval": n_eval, "synth": synth, "arms": list(arms),
+              "seed": seed, "widths": list(widths), "blends": list(blends)}
     print("Panjabi junction models on synthetic columns: measures %s; the local rule fitted on %d "
           "columns (within-vertebra ratios %s, profile features %s); the profile template fitted "
           "on nothing" % (", ".join(measures), n_columns, "on" if within else "off",
@@ -661,7 +695,8 @@ def run_synthetic(outdir: Optional[str] = None, n_columns: int = 2000, n_eval: i
     result["twins"] = tw_all
 
     print("\nThe transitional body at the thoracolumbar junction, as its shape moves from its own "
-          "region's to the other's (blend 0 to 1), junction placed exactly:")
+          "region's to the other's (blend 0 to 1): the junction placed at the count's (first) and "
+          "at the rib reading's (second), one level apart on these phenotypes:")
     bs_all = {}
     for a in arms:
         bs = blend_sweep(models["tl"][a], ref, blends, seed=seed + 4, n=max(100, n_eval // 2),
@@ -669,7 +704,8 @@ def run_synthetic(outdir: Optional[str] = None, n_columns: int = 2000, n_eval: i
         bs_all[a] = bs
         for ph in P.THORACOLUMBAR:
             print("  %-8s %-26s " % (a, P.PRETTY[ph])
-                  + "; ".join("%.2f: %s" % (r["blend"], fmt_rate(r["exact"], r["called"]))
+                  + "; ".join("%.2f: %s / %s" % (r["blend"], fmt_rate(r["exact"], r["called"]),
+                                                 fmt_rate(r["exact_ribs"], r["called"]))
                               for r in bs if r["phenotype"] == ph))
     result["blend_sweep"] = bs_all
 

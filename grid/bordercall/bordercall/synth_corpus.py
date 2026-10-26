@@ -55,19 +55,33 @@ def count_names(column: P.Column) -> List[str]:
     return names
 
 
-def fabricate(column: P.Column, names: List[str], rng: np.random.Generator) -> Dict[str, np.ndarray]:
-    """The two measures the table lacks, from the ones it has."""
+def shape_factor(level: str) -> float:
+    """The transverse-process span over the end-plate width of a body of this shape: the region's
+    factor, the thoracic span narrowing down the column and the lumbar widening to L3 then
+    narrowing. Keyed to the generator's own level name, the shape it drew, never to the count's
+    name, so a transitional body carries its shape's span and the count arm has nothing to read
+    the count off."""
+    region, k = level[0], int(level[1:])
+    f = TP_OVER_ENDPLATE[region]
+    if region == "T":
+        return f * (1.0 - 0.02 * (k - 1))
+    if region == "L":
+        return f * (1.0 + 0.04 * min(k - 1, 2) - 0.03 * max(k - 3, 0))
+    return f
+
+
+def fabricate(column: P.Column, rng: np.random.Generator) -> Dict[str, np.ndarray]:
+    """The two measures the table lacks, from the ones it has, by the shape the generator drew:
+    the transitional body's span is blended between its two shapes as its end-plate is."""
     ep = column.values["endplate"]
     hp = column.values["h_post"]
-    regions = [n[0] for n in names]
+    factor = np.array([shape_factor(l) for l in column.levels])
+    i = column.transitional_at
+    if i is not None:
+        own, other = {"t13": ("T12", "L1"), "lumbar_rib": ("L1", "T12"), "no_rib_t12": ("T12", "L1")}[column.phenotype]
+        factor[i] = (1 - column.blend) * shape_factor(own) + column.blend * shape_factor(other)
     tilt = rng.normal(0.0, 0.04)
-    tp = np.array([TP_OVER_ENDPLATE[r] for r in regions]) * ep * np.exp(tilt + rng.normal(0, 0.05, len(ep)))
-    # the thoracic span narrows down the column and the lumbar widens to L3 then narrows
-    for i, n in enumerate(names):
-        if n[0] == "T":
-            tp[i] *= 1.0 - 0.02 * (int(n[1:]) - 1)
-        elif n[0] == "L":
-            tp[i] *= 1.0 + 0.04 * min(int(n[1:]) - 1, 2) - 0.03 * max(int(n[1:]) - 3, 0)
+    tp = factor * ep * np.exp(tilt + rng.normal(0, 0.05, len(ep)))
     body = hp * np.exp(rng.normal(0.03, 0.03, len(hp)))
     return {"tp_span": tp, "body_height": body}
 
@@ -84,7 +98,7 @@ def write(outdir: str, n: int = 300, seed: int = 0) -> Dict[str, int]:
         ph = phenotypes[rng.choice(len(phenotypes), p=shares)]
         column = P.synthesize(ref, ph, rng, measures=MEASURES)
         names = count_names(column)
-        values = dict(column.values, **fabricate(column, names, rng))
+        values = dict(column.values, **fabricate(column, rng))
         case = "synthetic__%04d" % i
         row = {"case": case}
         for m, template in COLUMN.items():

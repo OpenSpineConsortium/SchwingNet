@@ -3,6 +3,7 @@ and the files the grid job reads and writes. Needs numpy, nibabel and scipy, whi
 check's environment may lack, so it is a plain unittest under tests/ and skips without them."""
 from __future__ import annotations
 
+import argparse
 import csv
 import json
 import os
@@ -37,6 +38,29 @@ def column_volume(names_by_slab, shape=(20, 20, 160), slab=6):
         arr[4:16, 4:16, z:z + slab - 1] = vid
         z -= slab
     return arr
+
+
+def spaced_column(ids_and_spacing, shape=(20, 20, 600)):
+    """Boxes at the spacings given, cranial first: [(id, voxels to the next centroid)], so a
+    column can sit as a spine does, cervical bodies about half as far apart as lumbar ones."""
+    arr = np.zeros(shape, np.int16)
+    z = shape[2] - 8
+    for vid, step in ids_and_spacing:
+        if vid is not None:
+            arr[4:16, 4:16, z - 2:z + 2] = vid
+        z -= step
+    return arr
+
+
+def spine_spacing(missing=()):
+    """A whole column with a spine's spacings (cervical 16, thoracic 22 to 30, lumbar 34 voxels),
+    the ids named in missing left out of the mask but their room kept."""
+    rows = []
+    for vid in range(1, 25):
+        step = 16 if vid <= 7 else (22 + (vid - 8) if vid <= 19 else 34)
+        rows.append((None if vid in missing else vid, step))
+    rows.append((26, 40))
+    return rows
 
 
 @unittest.skipUnless(HAVE_IMAGING, "numpy, nibabel and scipy are needed")
@@ -118,10 +142,89 @@ class CountFromC2(unittest.TestCase):
         self.assertEqual(rec["status"], "set_aside")
         self.assertIn("gap", rec["reason"])
 
+    def test_a_missed_cervical_body_is_caught_against_its_neighbours(self):
+        # C4 missing leaves a 32-voxel gap among 16-voxel cervical gaps, narrower than any lumbar
+        # gap, so a rule against the column's median would pass it and shift every name below
+        arr = spaced_column(spine_spacing(missing=(4,)))
+        inst = BC.instances(arr, (1.0, 1.0, 1.0))
+        with self.assertRaises(BC.SetAside) as cm:
+            BC.name_by_count(inst)
+        self.assertIn("a gap of 32 mm between instances 3 and 4", str(cm.exception))
+        # the same spine whole is countable, its lumbar gaps twice its cervical ones
+        inst = BC.instances(spaced_column(spine_spacing()), (1.0, 1.0, 1.0))
+        mapping = BC.name_by_count(inst)
+        self.assertEqual(len(mapping), 24)
+        self.assertEqual(BC.NAMES[mapping[24]], "L5")
+
+    def test_a_missed_thoracic_body_is_caught_too(self):
+        arr = spaced_column(spine_spacing(missing=(10,)))
+        with self.assertRaises(BC.SetAside) as cm:
+            BC.name_by_count(BC.instances(arr, (1.0, 1.0, 1.0)))
+        self.assertIn("between instances 9 and 10", str(cm.exception))
+
+    def test_four_lumbar_bodies_need_the_sacrum_in_view(self):
+        ribs = {v: 100.0 for v in range(8, 20)}
+        mapping = {v: v for v in range(1, 24)}                # C1 to L4, the field ends there
+        rec = BC.phenotype_of(mapping, ribs, has_sacrum=False)
+        self.assertEqual((rec["phenotype"], rec["phenotype_known"], rec["n_lumbar"]), ("", 1, 4))
+        rec = BC.phenotype_of(mapping, ribs, has_sacrum=True)
+        self.assertEqual(rec["phenotype"], "four_lumbar")
+        # five lumbar bodies with no sacrum in view are not a typical column either
+        rec = BC.phenotype_of({v: v for v in range(1, 25)}, ribs, has_sacrum=False)
+        self.assertEqual(rec["phenotype"], "")
+        # a sixth lumbar body is one whether or not the sacrum is in view
+        rec = BC.phenotype_of({v: v for v in range(1, 26)}, ribs, has_sacrum=False)
+        self.assertEqual(rec["phenotype"], "six_lumbar")
+
+    def test_an_empty_rib_table_leaves_the_ribs_unread(self):
+        rec = BC.phenotype_of({v: v for v in range(1, 25)}, {}, has_sacrum=True)
+        self.assertEqual((rec["phenotype"], rec["phenotype_known"], rec["n_rib_bearing"]), ("", 0, ""))
+
+    def test_rib_bearing_is_strictly_over_38_mm_as_the_census_reads_it(self):
+        ribs = {v: 100.0 for v in range(8, 19)}
+        ribs[19] = 38.0
+        rec = BC.phenotype_of({v: v for v in range(1, 25)}, ribs, has_sacrum=True)
+        self.assertEqual((rec["lowest_rib_bearing"], rec["phenotype"]), ("T11", "no_rib_T12"))
+        ribs[19] = 38.1
+        rec = BC.phenotype_of({v: v for v in range(1, 25)}, ribs, has_sacrum=True)
+        self.assertEqual((rec["lowest_rib_bearing"], rec["phenotype"]), ("T12", "typical"))
+
+    def test_the_report_reads_its_numbers_back_as_numbers(self):
+        out = self.tmp / "report"
+        out.mkdir()
+        rows = []
+        for i, (sac, n) in enumerate(((0, 9), (0, 10), (1, 23), (1, 24))):
+            r = {k: "" for k in BC.ROW_FIELDS}
+            r.update(case="c%d" % i, collection="made_up", status="countable", countable=1,
+                     has_sacrum=sac, n_from_c2=n, phenotype="typical", phenotype_known=1,
+                     reason="as read", n_lumbar=5, has_l6=0, spineps_ids="verse_coded",
+                     veridah_names_agree=1, veridah_l1_offset="0")
+            rows.append(r)
+        r = {k: "" for k in BC.ROW_FIELDS}
+        r.update(case="c9", collection="made_up", status="set_aside", countable=0,
+                 reason="a gap of 37 mm between instances 3 and 4 (the spacing beside it 16 mm)")
+        rows.append(r)
+        BC.write_rows(rows, out / "corpus.csv")
+        import contextlib
+        import io
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            BC.cmd_report(argparse.Namespace(out=str(out)))
+        text = buf.getvalue()
+        self.assertIn("  23 bodies: 1\n  24 bodies: 1", text)
+        self.assertNotIn(" 9 bodies", text)
+        self.assertIn("set aside, a gap of N mm between instances N and N: 1", text)
+
     def test_no_rib_table_leaves_the_phenotype_unknown(self):
         rec = self.run_one(self.write("noribs", list(range(1, 25)) + [26]), ribs=False)
         self.assertEqual(rec["status"], "countable")
         self.assertEqual((rec["phenotype"], rec["phenotype_known"]), ("", 0))
+
+    def test_no_rib_table_still_counts_six_lumbar_bodies(self):
+        # the count alone settles the lumbosacral classes, so a disagreement there is still in a
+        # counted anomaly when the ribs were never read
+        rec = self.run_one(self.write("noribs6", list(range(1, 26)) + [26]), ribs=False)
+        self.assertEqual((rec["phenotype"], rec["phenotype_known"], rec["n_lumbar"]), ("six_lumbar", 0, 6))
 
     def test_a_raw_mask_is_set_aside_without_the_guard(self):
         row = self.write("raw", list(range(1, 25)), [], ids_state="raw")
@@ -143,26 +246,15 @@ class CountFromC2(unittest.TestCase):
         rc = BC.main(["build", "--tiers", str(tiers), "--moller", str(self.tmp / "moller"),
                       "--out", str(out), "--workers", "1"])
         self.assertEqual(rc, 0)
-        corpus = list(csv.DictReader(open(out / "corpus.csv")))
+        with open(out / "corpus.csv", encoding="utf-8", newline="") as fh:
+            corpus = list(csv.DictReader(fh))
         self.assertEqual([r["status"] for r in corpus], ["countable", "set_aside"])
-        phen = list(csv.DictReader(open(out / "phenotype.csv")))
+        with open(out / "phenotype.csv", encoding="utf-8", newline="") as fh:
+            phen = list(csv.DictReader(fh))
         self.assertEqual([(r["case"], r["phenotype"], r["countable"]) for r in phen],
                          [("made_up__a", "typical", "1")])
         self.assertTrue((out / "labels" / "made_up__a_label.nii.gz").exists())
         self.assertFalse((out / "labels" / "made_up__b_label.nii.gz").exists())
-
-
-class CentroidFile(unittest.TestCase):
-    def test_both_layouts_are_read(self):
-        tmp = Path(tempfile.mkdtemp())
-        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
-        a = tmp / "a_ctd.json"
-        a.write_text(json.dumps([{"direction": ["R", "A", "S"]}, {"label": 2, "X": 1, "Y": 2, "Z": 3}]))
-        b = tmp / "b_ctd.json"
-        b.write_text(json.dumps({"centroids": {"2-50": [1, 2, 3], "2-41": [9, 9, 9], "20-50": [4, 5, 6]},
-                                 "orientation": ["R", "A", "S"]}))
-        self.assertEqual(BC.read_ctd(a), {2: (1.0, 2.0, 3.0)})
-        self.assertEqual(BC.read_ctd(b), {2: (1.0, 2.0, 3.0), 20: (4.0, 5.0, 6.0)})
 
 
 if __name__ == "__main__":

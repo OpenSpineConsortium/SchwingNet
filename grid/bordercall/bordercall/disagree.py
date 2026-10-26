@@ -44,6 +44,32 @@ ANOMALOUS = [k for k in PH.CLASS_ORDER if k != "typical"]
 COUNT_ORDER = [l for l in S.ORDER if l != "T13"]
 
 
+def class_of(row) -> str:
+    """The case's class for the tables: the phenotype column where the ribs were read, else what
+    the count alone settles (four or six lumbar bodies are counted anomalies with no rib read),
+    else unknown, which the table prints as 'No rib reading'."""
+    ph = row.get("phenotype") or ""
+    if ph:
+        return ph
+    n_lumbar = str(row.get("n_lumbar") or "")
+    if n_lumbar == "6" or str(row.get("has_l6") or "") == "1":
+        return "six_lumbar"
+    if n_lumbar == "4" and str(row.get("has_sacrum") or "") == "1":
+        return "four_lumbar"               # four lumbar bodies with no sacrum in view is a cut field
+    return "unknown"
+
+
+def rib_label_at(k: int, upper, levels) -> int:
+    """Whether the level whose count position, shifted by the rib reading, is k lies above the
+    rib border: above when the shift carries it off the top of the column (k < 0), below when
+    off the bottom, else as the count names the level at k."""
+    if k < 0:
+        return 1
+    if k >= len(levels):
+        return 0
+    return 1 if levels[k] in upper else 0
+
+
 def calls(corpus, labels_of_case, folds, seed):
     """{case: {level: called above}} out of fold, trained on the labels given."""
     X, groups, lv, _ = corpus.features()
@@ -67,18 +93,28 @@ def truth_cut(present, upper):
     return sum(1 for l in present if l in upper)
 
 
-def rib_shift(row, above, below):
-    """How many levels the rib reading moves this border from the count's name; None without ribs."""
-    if not row.get("phenotype_known") or row.get("phenotype_known") in ("0", 0):
-        return None
+def rib_criterion(above, below):
+    """The rib column that names this border independently, and the count name it anchors on:
+    the lowest rib-bearing body is T12 at T12/L1, the first is T1 at C7/T1; no other border has
+    a rib criterion."""
     if below == "L1":
-        name = row.get("lowest_rib_bearing") or ""
-        anchor = "T12"
-    elif below == "T1":
-        name = row.get("first_rib_bearing") or ""
-        anchor = "T1"
-    else:
+        return "lowest_rib_bearing", "T12"
+    if below == "T1":
+        return "first_rib_bearing", "T1"
+    return None, None
+
+
+def rib_shift(row, above, below):
+    """How many levels the rib reading moves this border from the count's name; None where the
+    ribs were not read (phenotype_known 0, or the rib column absent or empty, as bordercall's own
+    phenotype command leaves it) or the border has no rib criterion."""
+    column, anchor = rib_criterion(above, below)
+    if column is None:
         return None
+    known = row.get("phenotype_known")
+    if known is not None and str(known) in ("", "0"):
+        return None
+    name = row.get(column) or ""
     if name not in COUNT_ORDER or anchor not in COUNT_ORDER:
         return None
     return COUNT_ORDER.index(name) - COUNT_ORDER.index(anchor)
@@ -111,8 +147,8 @@ def run(levels_csv, phenotype_csv, above="T12", below="L1", folds=5, seed=0, cas
         verdict[g] = (c is not None and c == truth_cut(present, upper))
     right = sum(verdict.values())
     disagree = [g for g, ok in verdict.items() if not ok]
-    by_class = Counter(rows[g].get("phenotype") or "unknown" for g in disagree)
-    class_n = Counter(rows[g].get("phenotype") or "unknown" for g in in_view)
+    by_class = Counter(class_of(rows[g]) for g in disagree)
+    class_n = Counter(class_of(rows[g]) for g in in_view)
     print("border %s/%s against the count names: %d of %d cases placed exactly (%.1f%%)"
           % (above, below, right, n, 100.0 * right / n if n else float("nan")))
     print("  disagreements %d, of which in a counted anomaly: %d; by class (disagreements / cases):"
@@ -124,22 +160,22 @@ def run(levels_csv, phenotype_csv, above="T12", below="L1", folds=5, seed=0, cas
     # arm 2: the ribs, an independent naming
     shifts = {g: rib_shift(rows[g], above, below) for g in in_view}
     ribbed = {g: s for g, s in shifts.items() if s is not None}
+    sided = 0
     if ribbed:
         def rib_label(g, l):
-            s = shifts.get(g)
-            k = order[l] - (s or 0)
-            return 1 if 0 <= k < len(corpus.levels) and corpus.levels[k] in upper else 0
+            return rib_label_at(order[l] - shifts[g], upper, corpus.levels)
         ribbed_corpus = Corpus(rows=[r for r in corpus.rows if r[case_key] in ribbed],
                                levels=corpus.levels, case_key=case_key)
         rib_calls = calls(ribbed_corpus, rib_label, folds, seed)
-        rib_right = rib_n = sided = 0
+        rib_right = rib_n = 0
         for g, d in rib_calls.items():
             if above not in d or below not in d:
                 continue
             rib_n += 1
             present = sorted(d, key=lambda l: order[l])
             c = cut_of([d[l] for l in present])
-            truth = truth_cut(present, upper) + shifts[g]
+            # the rib truth on the levels this case measured, the labels the refit was given
+            truth = sum(rib_label(g, l) for l in present)
             rib_right += int(c is not None and c == truth)
             # of the count's disagreements, the ones where the ribs name the border where the model did
             _, c0 = model_cut.get(g, (None, None))
@@ -150,14 +186,18 @@ def run(levels_csv, phenotype_csv, above="T12", below="L1", folds=5, seed=0, cas
               "against the rib names: %d of %d placed exactly (%.1f%%); of the count's disagreements "
               "the ribs side with the shape in %d" % (moved, len(ribbed), rib_right, rib_n,
                                                       100.0 * rib_right / rib_n if rib_n else float("nan"), sided))
+    elif rib_criterion(above, below)[0] is None:
+        print("  the ribs: no rib criterion names the %s/%s border, so the independent arm is empty"
+              % (above, below))
     else:
-        print("  the ribs: no case with a rib reading, so the independent arm is empty")
+        print("  the ribs: no case with a rib reading (%s), so the independent arm is empty"
+              % rib_criterion(above, below)[0])
 
-    # arm 3: circular, for scale only
+    # arm 3: circular, for scale only: the disagreeing cases take the model's own per-level calls
+    # as their labels, so a level the measurement skipped changes nothing
     def circular_label(g, l):
-        present, c = model_cut.get(g, (None, None))
-        if g in verdict and not verdict[g] and c is not None:
-            return 1 if order[l] < order[present[0]] + c else 0
+        if g in disagree and model_cut[g][1] is not None:
+            return int(per_case[g][l])
         return 1 if l in upper else 0
     circ = calls(corpus, circular_label, folds, seed)
     circ_right = circ_n = 0
@@ -167,10 +207,10 @@ def run(levels_csv, phenotype_csv, above="T12", below="L1", folds=5, seed=0, cas
         circ_n += 1
         present = sorted(d, key=lambda l: order[l])
         c = cut_of([d[l] for l in present])
-        present0, c0 = model_cut.get(g, (None, None))
-        truth = c0 if (g in disagree and c0 is not None) else truth_cut(present, upper)
+        truth = sum(circular_label(g, l) for l in present)
         circ_right += int(c is not None and c == truth)
     print("  circular (for scale, proves nothing): disagreements relabelled to the model's own call, "
           "refitted and scored: %d of %d placed exactly (%.1f%%)"
           % (circ_right, circ_n, 100.0 * circ_right / circ_n if circ_n else float("nan")))
-    return {"n": n, "right": right, "disagreements": len(disagree), "by_class": dict(by_class)}
+    return {"n": n, "right": right, "disagreements": len(disagree), "by_class": dict(by_class),
+            "ribbed": len(ribbed), "sided": sided}

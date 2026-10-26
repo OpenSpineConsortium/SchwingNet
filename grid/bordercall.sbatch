@@ -127,7 +127,7 @@ for pair in "T12 L1 thoracolumbar" "C7 T1 cervicothoracic"; do
   report "border $1/$2 (count names, countable corpus, out of fold):"
   grep -E "vertebrae from|AUC|junction placed" "$OUT/border_$3.txt" | sed 's/^/    /' >> "$REPORT.part"
   step "breakout_$3" "$PY" "$BC/run.py" breakout --levels "$OUT/levels.csv" --phenotype "$OUT/phenotype.csv" --above "$1" --below "$2" || true
-  report "breakout $1/$2 by rib phenotype (denominators are cases with the border in view and ribs read):"
+  report "breakout $1/$2 by rib phenotype (denominators are cases with the border in view; a case with no rib reading is its own row):"
   sed -n '/class/,/^$/p' "$OUT/breakout_$3.txt" | head -n 9 | sed 's/^/    /' >> "$REPORT.part"
   step "disagree_$3" "$PY" "$BC/run.py" disagree --levels "$OUT/levels.csv" --phenotype "$OUT/phenotype.csv" --above "$1" --below "$2" || true
   report "disagreements $1/$2: the count, the ribs and the circular arm:"

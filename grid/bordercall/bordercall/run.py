@@ -15,6 +15,7 @@ Run the commands in this order on a corpus you have not measured before.
     python run.py panjabi-corpus --levels levels.csv --phenotype phenotype.csv
     python run.py disagree --levels levels.csv --phenotype phenotype.csv --above T12 --below L1
     python run.py synth-corpus --out out/synth         # a made-up corpus to run the rest on
+    python run.py panjabi-figures --json out/panjabi/panjabi_junction.json --outdir figures/junction
 
 `scheme` and `selftest` are not optional. The first catches a corpus numbered differently
 from this package's assumption, which produces finite, plausible, wrong numbers and raises
@@ -89,7 +90,9 @@ def _accuracy_by_class(levels_csv, phenotype_csv, above, below, case_key="case",
     for g, d in per_case.items():
         if above not in d or below not in d:
             continue
-        k = phen.get(g, {}).get("phenotype", "typical")
+        # a case the file has no class for is unknown, never typical: the grid writes every
+        # countable case with its phenotype empty where the ribs were not read
+        k = phen.get(g, {}).get("phenotype") or "unknown"
         present = sorted(d, key=lambda l: order[l])
         seq = [d[l] for l in present]
         n = sum(seq)
@@ -109,22 +112,22 @@ def cmd_breakout(a) -> int:
     print("border %s/%s, broken out by phenotype\n" % (a.above, a.below))
     print("  %-30s %7s %9s %10s" % ("class", "cases", "correct", "accuracy"))
     tot_n = tot_k = 0
-    for k in PH.CLASS_ORDER:
+    for k in PH.CLASS_ORDER + ["unknown"]:
         if k not in acc:
             continue
         n, ok = acc[k]
         tot_n += n
         tot_k += ok
-        print("  %-30s %7d %9d %9.1f%%" % (PH.PRETTY.get(k, k), n, ok,
+        print("  %-30s %7d %9d %9.1f%%" % (PH.PRETTY.get(k, "No rib reading"), n, ok,
                                            100.0 * ok / n if n else float("nan")))
     if tot_n:
         print("  %-30s %7d %9d %9.1f%%" % ("ALL", tot_n, tot_k, 100.0 * tot_k / tot_n))
     print("\n  offsets, per class (0 = the border is where the labels put it)")
-    for k in PH.CLASS_ORDER:
+    for k in PH.CLASS_ORDER + ["unknown"]:
         if k in offs:
             d = ", ".join("%s:%d" % (x, offs[k][x])
                           for x in sorted(offs[k], key=lambda z: (isinstance(z, str), z)))
-            print("    %-30s %s" % (PH.PRETTY.get(k, k), d))
+            print("    %-30s %s" % (PH.PRETTY.get(k, "No rib reading"), d))
     print("\n  A corpus average over classes of very different size hides the result.")
     print("  Read the per-class rows, and read a class of fewer than ~20 cases as")
     print("  'no failures seen' rather than as an accuracy.")
@@ -179,6 +182,12 @@ def cmd_disagree(a) -> int:
     import disagree
     disagree.run(a.levels, a.phenotype, above=a.above, below=a.below, folds=a.folds,
                  seed=a.seed, case_key=a.case_key)
+    return 0
+
+
+def cmd_panjabi_figures(a) -> int:
+    import junction_figures
+    junction_figures.run(a.json, a.outdir)
     return 0
 
 
@@ -347,6 +356,11 @@ def main() -> int:
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--case_key", default="case")
     p.set_defaults(fn=cmd_disagree)
+
+    p = sub.add_parser("panjabi-figures", help="the junction predictor's figures from a panjabi run's JSON")
+    p.add_argument("--json", required=True, help="panjabi_junction.json")
+    p.add_argument("--outdir", default="figures/junction")
+    p.set_defaults(fn=cmd_panjabi_figures)
 
     p = sub.add_parser("synth-corpus", help="a made-up corpus in the grid job's layout, to run every command on")
     p.add_argument("--out", required=True)

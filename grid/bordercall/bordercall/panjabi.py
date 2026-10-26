@@ -23,18 +23,27 @@ every level), e the per-level draw, and n a measurement error in millimetres. sd
 population SD, sem * sqrt(12), never the printed standard error (reference/build_panjabi.py).
 
 THE ANOMALIES ARE DEFINED BY THE COUNT, as a radiologist with C2 in view would define
-them, and the truth of each junction follows from the count, not from the shape:
+them, and the truth every table scores against follows from the count, not from the shape:
 
   four_lumbar   L5 is absorbed into the sacrum and is not a free vertebra: the column ends
                 at L4. Both junctions are where they always were.
   six_lumbar    S1 is lumbarised: an L6 below L5, its morphology the lumbar trend carried
                 one level on. Both junctions are where they always were.
-  t13           a thirteenth rib-bearing vertebra between T12 and L1, thoracic by count,
-                its body half-way between T12 and L1 in shape. The thoraco-lumbar junction
-                is below it.
-  lumbar_rib    a rib on L1. L1 is lumbar by count; its body leans toward T12 in shape.
+  t13           a thirteenth rib-bearing vertebra between T12 and L1, its body T12's in
+                shape at blend 0 and L1's at blend 1. The count from C2 names it L1, so by
+                the count the thoraco-lumbar junction is above it; by the ribs it is below.
+  lumbar_rib    a rib on L1. L1 is lumbar by count; its body leans toward T12 in shape; by
+                the ribs the junction is below it.
   no_rib_t12    the twelfth rib is absent. T12 is thoracic by count; its body leans toward
-                L1 in shape.
+                L1 in shape; by the ribs the junction is above it.
+
+TWO TRUTHS AT THE THORACOLUMBAR JUNCTION. Column.cut gives the count's answer, the one
+bordercall scores against everywhere; Column.cut(..., truth="ribs") gives the rib reading's,
+one level apart on the three thoracolumbar phenotypes and the same elsewhere, and the
+evaluation reports both side by side, since on a real spine a rib on L1 can be a rudimentary
+rib or a thirteenth thoracic vertebra and only the count tells them apart. The t13 column and
+the lumbar_rib column are one anatomy (a rib-bearing body the count names L1) drawn from the
+two ends of the blend.
 
 The blend, how far the transitional body leans, is a parameter (default one half) and is
 swept by the evaluation, because nothing published measures it: it is the one assumption
@@ -75,11 +84,13 @@ PRETTY = {"typical": "Typical column",
           "no_rib_t12": "No rib on T12"}
 LUMBOSACRAL = ("four_lumbar", "six_lumbar")
 THORACOLUMBAR = ("t13", "lumbar_rib", "no_rib_t12")
+# how far the rib reading moves the thoracolumbar cut from the count's, by phenotype
+RIB_SHIFT = {"t13": 1, "lumbar_rib": 1, "no_rib_t12": -1}
 
 
 def region_of(level: str) -> str:
-    """C, T or L, by the name the count gives the level."""
-    return level[0]
+    """C, T or L, by the name the count gives the level: a thirteenth rib-bearing body is L1."""
+    return "L" if level == "T13" else level[0]
 
 
 def load_reference(path: str = DEFAULT_REFERENCE, measures: Sequence[str] = MEASURES):
@@ -123,14 +134,22 @@ class Column:
     def regions(self) -> List[str]:
         return [region_of(l) for l in self.levels]
 
-    def cut(self, junction: str) -> int:
-        """The count's answer: how many levels sit above the junction (ct or tl)."""
+    def cut(self, junction: str, truth: str = "count") -> int:
+        """How many levels sit above the junction (ct or tl): the count's answer, or with
+        truth="ribs" the rib reading's, one level apart at T12/L1 when the transitional body
+        is in view (RIB_SHIFT) and the same everywhere else."""
         regs = self.regions
         if junction == "ct":
-            return sum(1 for r in regs if r == "C")
-        if junction == "tl":
-            return sum(1 for r in regs if r in ("C", "T"))
-        raise ValueError(junction)
+            k = sum(1 for r in regs if r == "C")
+        elif junction == "tl":
+            k = sum(1 for r in regs if r in ("C", "T"))
+        else:
+            raise ValueError(junction)
+        if truth == "ribs" and junction == "tl" and self.transitional_at is not None:
+            k = min(max(k + RIB_SHIFT.get(self.phenotype, 0), 0), len(self.levels))
+        elif truth not in ("count", "ribs"):
+            raise ValueError(truth)
+        return k
 
     def window(self, start: int, stop: int) -> "Column":
         """Levels start..stop-1, as a field of view would hold them."""

@@ -147,9 +147,10 @@ could not.
 
 | File | What it is |
 |---|---|
-| `run.py` | CLI: `scheme`, `selftest`, `measure`, `phenotype`, `border`, `breakout`, `sweep`, `plot`, `disagree`, `panjabi`, `panjabi-corpus`, `synth-corpus`, `all` |
+| `run.py` | CLI: `scheme`, `selftest`, `measure`, `phenotype`, `border`, `breakout`, `sweep`, `plot`, `disagree`, `panjabi`, `panjabi-corpus`, `panjabi-figures`, `synth-corpus`, `all` |
 | `disagree.py` | step 5 below as a command: the count, the ribs and the circular arm, with denominators |
-| `panjabi.py`, `junction.py` | the junction named from Panjabi's tables with no CT; the owner's junction predictor for the CNS slides, robust to lumbosacral anomalies by construction and weak at a TLTV by construction (README, `panjabi`) |
+| `panjabi.py`, `junction.py` | the junction named from Panjabi's tables with no CT; the owner's junction predictor for the CNS slides, robust to lumbosacral anomalies by construction; at a TLTV the count and the ribs name the junction one level apart and the shape cannot choose (README, `panjabi`) |
+| `junction_figures.py`, `records/`, `slides/make_junction_slides.py` | the five figures from a recorded `panjabi` run (textbook line figures, each with its CSV, caption and `FIGURES.md`), the recorded runs, and the six CNS slides built from them on the deck's own template |
 | `synth_corpus.py` | a made-up corpus in SchwingNet's grid layout, so the commands run anywhere; nothing from it is a finding |
 | `border.py` | corpus loading, shape features, grouped-CV logistic regression, border evaluation. No corpus-specific knowledge |
 | `measure_levels.py` | label volumes -> wide per-level table. CTSpinoPelvic1K's `extract_level_gradients.py` with `LEVELS` widened to the full spine; everything else unchanged |

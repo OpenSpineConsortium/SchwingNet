@@ -19,9 +19,13 @@ How a level is named. The instances are ordered cranio-caudally by centroid. The
 centroid file calls C2 (the dens makes it the one call a labeller gets right) is C2, and
 every instance below it is named by its ordinal: the standard column C1 to C7, T1 to T12,
 L1 to L6. The labeller's own names below C2 are never used for the truth, since VERIDAH
-skips and over-calls levels (the SchwingNet memory spineps-ids-can-be-scrambled). A column
-with a gap between two instances wider than a vertebra is not countable, since a missed body
-would shift every name below it, and is set aside with its reason.
+skips and over-calls levels (spinesurg-ct-nnunet's tools/spineps_ids.py says how, and the
+census's DATA.md). A column with a gap between two instances wider than its neighbours'
+spacing allows is not countable, since a missed body would shift every name below it, and is
+set aside with its reason. Two bodies fused into one instance with its centroid between them,
+or a sacrum instance that swallowed the lowest lumbar body (the census's CLASSIFIERS.md, rule
+R9, saw L6 inside the sacrum instance in 7 of 18 CTSP cases read L6), leave no gap and pass
+as countable one body short; the report says so, and nothing here can catch them.
 
 The phenotype comes from an independent reading of the ribs: the Moller arm of the census
 measured every rib on the TotalSegmentator output and assigned it to the vertebra it joins
@@ -29,8 +33,10 @@ measured every rib on the TotalSegmentator output and assigned it to the vertebr
 38 mm on either side is rib-bearing, as the census's rule 1 reads it. Under the count-based
 names a thirteenth rib-bearing body is "L1 bearing a rib" (bordercall's class lumbar_rib),
 a column whose twelfth thoracic bears no rib is no_rib_T12, and six or four lumbar
-identifiers are what the count says. A case with no rib reading is countable but has no
-phenotype, and the report says how many.
+identifiers are what the count says, four only with the sacrum in view, since a field that
+ends at L4 says nothing about L5. A case with no rib reading is countable with its class
+unknown unless the count alone settles it (six or four lumbar bodies), and the report says
+how many.
 
 Three namings are kept side by side for the owner's question of how many shape-versus-name
 disagreements are counted anomalies: the count (the truth bordercall scores against), the
@@ -49,9 +55,11 @@ import argparse
 import csv
 import json
 import os
+import re
 import sys
 from collections import Counter, defaultdict
 from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures.process import BrokenProcessPool
 from pathlib import Path
 
 # bordercall's VerSe-native scheme, repeated here so this file needs no import from the copy
@@ -73,8 +81,9 @@ NAMES[T13_ID] = "T13"
 NAMES[26] = "sacrum"
 NAMES[29] = "sacrum"
 VERTEBRA_IDS = STANDARD + (T13_ID,)
-RIB_BEARING_MM = 38.0           # the census's rule 1: a rib over this on either side makes the body rib-bearing
-GAP_FACTOR = 1.8                # a centroid gap wider than this many median spacings is a missed body
+RIB_BEARING_MM = 38.0           # the census's rule 1: a rib over this (strictly) on either side makes the body rib-bearing
+GAP_FACTOR = 1.8                # a centroid gap wider than this many times its neighbours' spacing is a missed body
+GAP_NEIGHBOURS = 2              # the gaps on each side a gap is compared with (cervical bodies sit half as far apart as lumbar)
 MIN_VOXELS = 500                # an instance smaller than this is a fragment, not a vertebra
 
 TIER_COLUMNS = ("tier", "collection", "case_id", "person_key", "spineps_vert", "spineps_spine",
@@ -109,33 +118,6 @@ def case_key(row):
 
 
 # ---- the centroid file ----------------------------------------------------------------------
-
-def read_ctd(path):
-    """{label: (x, y, z)} from a SPINEPS centroid file, in either layout it has been written
-    in: a list of {"label", "X", "Y", "Z"} entries, or a dict whose keys are "<label>-<subregion>"
-    (TPTBox's POI file, subregion 50 the whole body) or plain labels."""
-    data = json.loads(Path(path).read_text(encoding="utf-8"))
-    out = {}
-    if isinstance(data, list):
-        for e in data:
-            if isinstance(e, dict) and "label" in e and all(k in e for k in ("X", "Y", "Z")):
-                out[int(e["label"])] = (float(e["X"]), float(e["Y"]), float(e["Z"]))
-        return out
-    if isinstance(data, dict):
-        table = data.get("centroids", data)
-        for k, v in table.items():
-            if not isinstance(v, (list, tuple)) or len(v) < 3:
-                continue
-            key = str(k).split("-")
-            try:
-                label = int(key[0])
-            except ValueError:
-                continue
-            sub = int(key[1]) if len(key) > 1 and key[1].isdigit() else 50
-            if sub == 50 or label not in out:
-                out[label] = (float(v[0]), float(v[1]), float(v[2]))
-    return out
-
 
 def find_ctd(mask_path):
     p = Path(mask_path)
@@ -242,17 +224,18 @@ def name_by_count(inst):
     if pos > 1:
         raise SetAside("%d instances above the one called C2" % pos)
     gaps = [inst[i][1] - inst[i + 1][1] for i in range(len(inst) - 1)]
-    if len(gaps) >= 3:
-        med = float(np.median(gaps))
-        wide = [i for i, g in enumerate(gaps) if g > GAP_FACTOR * med]
-        if wide:
-            raise SetAside("a gap of %.0f mm between instances %d and %d (median spacing %.0f mm)"
-                           % (gaps[wide[0]], wide[0] + 1, wide[0] + 2, med))
+    for i, g in enumerate(gaps):
+        # against the neighbouring gaps, not the column's median: cervical bodies sit about half
+        # as far apart as lumbar ones, so a missed cervical body is no wider than a lumbar gap
+        near = [gaps[j] for j in range(max(0, i - GAP_NEIGHBOURS), min(len(gaps), i + GAP_NEIGHBOURS + 1)) if j != i]
+        if near and g > GAP_FACTOR * float(np.median(near)):
+            raise SetAside("a gap of %.0f mm between instances %d and %d (the spacing beside it %.0f mm)"
+                           % (g, i + 1, i + 2, float(np.median(near))))
     mapping = {}
     for k, (vid, _, _) in enumerate(inst[pos:]):
         ordinal = 1 + k                                           # 1 is C2's place in STANDARD
         if ordinal >= len(STANDARD):
-            raise SetAside("more than %d bodies below C2" % (len(STANDARD) - 1))
+            raise SetAside("more than %d bodies below C2" % (len(STANDARD) - 2))
         mapping[vid] = STANDARD[ordinal]
     if pos == 1:
         mapping[ids[0]] = STANDARD[0]
@@ -293,16 +276,36 @@ def read_ribs(moller_dir, row):
     return dict(longest)
 
 
-def phenotype_of(mapping, ribs):
-    """bordercall's five classes from the count names and the independent rib reading."""
+def lumbosacral_class(n_lumbar, has_l6, has_sacrum):
+    """What the count alone says of the lumbosacral end: a sixth lumbar body is one whether or
+    not the sacrum is in view; four lumbar bodies, or the usual five, are a class only with the
+    sacrum in view, since a field that ends at L4 says nothing about L5. Empty when it cannot."""
+    if has_l6 or n_lumbar >= 6:
+        return "six_lumbar"
+    if not has_sacrum:
+        return ""
+    if n_lumbar == 4:
+        return "four_lumbar"
+    if n_lumbar == 5:
+        return "typical"
+    return ""
+
+
+def phenotype_of(mapping, ribs, has_sacrum=True):
+    """bordercall's five classes from the count names and the independent rib reading. ribs is
+    None where the arm never ran on the CT and empty where its table holds no rib, which on a
+    full spine means the reading failed; both leave the ribs unread."""
     present = set(mapping.values())
     lumbar = sorted(v for v in LUMBAR_IDS if v in present)
     r = {"n_lumbar": len(lumbar), "has_l6": int(25 in present), "has_t13": 0,
          "has_lumbar_rib": 0, "lowest_rib_bearing": "", "lowest_rib_bearing_id": "",
          "first_rib_bearing": "", "n_rib_bearing": "", "phenotype": "", "phenotype_known": 0}
-    if ribs is None:
+    ls = lumbosacral_class(r["n_lumbar"], r["has_l6"], has_sacrum)
+    if not ribs:
+        # the count alone settles the lumbosacral anomalies; typical and the rib classes need ribs
+        r["phenotype"] = ls if ls in ("six_lumbar", "four_lumbar") else ""
         return r
-    bearing = [mapping[v] for v, length in ribs.items() if length >= RIB_BEARING_MM and v in mapping]
+    bearing = [mapping[v] for v, length in ribs.items() if length > RIB_BEARING_MM and v in mapping]
     r["n_rib_bearing"] = len(bearing)
     r["phenotype_known"] = 1
     if bearing:
@@ -315,12 +318,8 @@ def phenotype_of(mapping, ribs):
         r["phenotype"] = "lumbar_rib"
     elif rb and rb != "T12":
         r["phenotype"] = "no_rib_T12"
-    elif r["has_l6"] or r["n_lumbar"] == 6:
-        r["phenotype"] = "six_lumbar"
-    elif r["n_lumbar"] == 4 and 26 in present | {26}:
-        r["phenotype"] = "four_lumbar"
     else:
-        r["phenotype"] = "typical"
+        r["phenotype"] = ls                     # six_lumbar, four_lumbar, typical, or unknown without the sacrum
     return r
 
 
@@ -334,7 +333,7 @@ def veridah_record(inst, mapping, ribs):
         offset = str(count_pos.index(mapping[20]) - count_pos.index(20)) if 20 in count_pos else ""
     low = ""
     if ribs:
-        bearing = [v for v, length in ribs.items() if length >= RIB_BEARING_MM and v in NAMES]
+        bearing = [v for v, length in ribs.items() if length > RIB_BEARING_MM and v in NAMES]
         if bearing:
             low = NAMES[max(bearing, key=lambda v: STANDARD.index(v) if v in STANDARD else 99)]
     return {"veridah_names_agree": int(agree), "veridah_l1_offset": offset,
@@ -373,7 +372,7 @@ def one(args):
     rec.update(status="countable", countable=1, n_from_c2=sum(1 for c in count_ids if c >= C2_ID),
                lowest_by_count=NAMES[max(count_ids)], topmost=NAMES[min(count_ids)], reason=note)
     ribs = read_ribs(moller_dir, row) if moller_dir else None
-    rec.update(phenotype_of(mapping, ribs))
+    rec.update(phenotype_of(mapping, ribs, has_sacrum=bool(rec["has_sacrum"])))
     rec.update(veridah_record(inst, mapping, ribs))
     if write:
         import nibabel as nib
@@ -393,8 +392,10 @@ def write_rows(rows, path):
 
 
 def write_phenotype(rows, path, known_only):
-    """bordercall's phenotype.csv, its own columns, for the sweep: every countable case, or
-    only the ones whose ribs were read."""
+    """bordercall's phenotype.csv, its own columns: every countable case, its phenotype empty
+    where the ribs were not read and the count settles nothing, since bordercall's breakout and
+    plot read a case absent from the file as a typical column; or only the ones whose ribs were
+    read, for the record."""
     fields = ["case", "phenotype", "countable", "has_c2", "topmost", "n_lumbar", "has_l6",
               "has_t13", "has_lumbar_rib", "lowest_rib_bearing", "lowest_rib_bearing_id",
               "first_rib_bearing", "n_from_c2", "has_sacrum", "phenotype_known", "collection", "error"]
@@ -416,23 +417,32 @@ def cmd_build(a):
     print("%d census rows with a SPINEPS mask; stopping after %s countable cases or %d rows"
           % (len(rows), a.limit or "every", a.scan or len(rows)), flush=True)
     rows = rows[: a.scan] if a.scan else rows
-    records, countable = [], 0
+    records, countable, broken = [], 0, ""
     jobs = ((r, a.moller, str(labels), not a.inventory) for r in rows)
-    with ProcessPoolExecutor(max_workers=a.workers) as ex:
-        for i, rec in enumerate(ex.map(one, jobs, chunksize=2), 1):
-            records.append(rec)
-            countable += rec["countable"]
-            if i % 100 == 0:
-                print("  %d rows read, %d countable" % (i, countable), flush=True)
-            if a.limit and countable >= a.limit:
-                print("  the limit of %d countable cases is reached after %d rows" % (a.limit, i), flush=True)
-                ex.shutdown(cancel_futures=True)
-                break
+    try:
+        with ProcessPoolExecutor(max_workers=a.workers) as ex:
+            for i, rec in enumerate(ex.map(one, jobs, chunksize=2), 1):
+                records.append(rec)
+                countable += rec["countable"]
+                if i % 100 == 0:
+                    print("  %d rows read, %d countable" % (i, countable), flush=True)
+                if a.limit and countable >= a.limit:
+                    print("  the limit of %d countable cases is reached after %d rows" % (a.limit, i), flush=True)
+                    ex.shutdown(cancel_futures=True)
+                    break
+    except BrokenProcessPool as exc:
+        # a worker killed outside Python (out of memory, a crash in a C extension) ends the pool;
+        # what was read is written, so the hours are not lost, and the build is still a failure
+        broken = "the worker pool broke after %d rows (%s); the rows read so far are written" % (len(records), exc)
+        print(broken, flush=True)
     records.sort(key=lambda r: r["case"])
     write_rows(records, Path(a.out) / "corpus.csv")
-    write_phenotype(records, Path(a.out) / "phenotype.csv", known_only=True)
-    write_phenotype(records, Path(a.out) / "phenotype_all.csv", known_only=False)
+    write_phenotype(records, Path(a.out) / "phenotype.csv", known_only=False)
+    write_phenotype(records, Path(a.out) / "phenotype_ribs_read.csv", known_only=True)
     print(summary(records))
+    if broken:
+        print("FAILED: " + broken)
+        return 1
     return 0
 
 
@@ -443,7 +453,9 @@ def summary(records):
     c = Counter(r["status"] for r in records)
     lines.append("rows read %d: countable %d, set aside %d, errors %d"
                  % (n, c["countable"], c["set_aside"], c["error"]))
-    by_reason = Counter(r["reason"].split(" (")[0].split(":")[0] for r in records if r["status"] != "countable")
+    # one line per kind of reason: the millimetres and instance numbers of a message are not kinds
+    by_reason = Counter(re.sub(r"\d+(\.\d+)?", "N", r["reason"].split(" (")[0].split(":")[0])
+                        for r in records if r["status"] != "countable")
     for reason, k in by_reason.most_common(12):
         lines.append("  set aside, %s: %d" % (reason, k))
     lines.append("by collection (rows / countable / with ribs read):")
@@ -457,15 +469,17 @@ def summary(records):
         lines.append("  %-28s %6d %6d %6d" % (coll, rows_n, cnt, ribs))
     ids = Counter(r["spineps_ids"] for r in records if r["countable"])
     lines.append("countable by id state: " + ", ".join("%s %d" % t for t in ids.most_common()))
-    ph = Counter(r["phenotype"] or "unknown (no rib reading)" for r in records if r["countable"])
+    ph = Counter(r["phenotype"] or ("unknown (no rib reading)" if not r["phenotype_known"]
+                                    else "unknown (sacrum not in view)") for r in records if r["countable"])
     lines.append("phenotype of the countable cases (denominator %d):" % c["countable"])
     for k, v in ph.most_common():
         lines.append("  %-30s %6d" % (k, v))
-    counts = Counter(r["n_from_c2"] for r in records if r["countable"] and r["has_sacrum"])
+    counts = Counter(int(r["n_from_c2"]) for r in records if r["countable"] and int(r["has_sacrum"] or 0))
     lines.append("bodies from C2 to the last presacral one, cases with the sacrum in view "
-                 "(the true count; 23 is the usual column):")
+                 "(the true count; 23 is the usual column; a sacrum instance that swallowed the "
+                 "lowest lumbar body, or two bodies fused into one instance, count one short unseen):")
     for k, v in sorted(counts.items()):
-        lines.append("  %2s bodies: %d" % (k, v))
+        lines.append("  %2d bodies: %d" % (k, v))
     vd = Counter((r["veridah_names_agree"], r["veridah_l1_offset"]) for r in records if r["countable"])
     lines.append("the labeller's own names against the count (agree at every level, its L1 offset in levels):")
     for (agree, off), v in sorted(vd.items(), key=lambda t: -t[1])[:8]:
@@ -477,8 +491,8 @@ def cmd_report(a):
     with open(Path(a.out) / "corpus.csv", encoding="utf-8", newline="") as fh:
         records = list(csv.DictReader(fh))
     for r in records:
-        r["countable"] = int(r["countable"] or 0)
-        r["phenotype_known"] = int(r["phenotype_known"] or 0)
+        for k in ("countable", "phenotype_known", "has_sacrum", "n_from_c2", "n_lumbar", "has_l6"):
+            r[k] = int(r.get(k) or 0)
     print(summary(records))
     return 0
 

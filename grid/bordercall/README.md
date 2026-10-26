@@ -138,17 +138,44 @@ the per-level spread, so it is weak there, and it says so. `explain` prints, per
 log-likelihood gap between the best naming and the runner-up, which is the explanation a slide
 shows.
 
+The truth every table scores against is the count's: the 19th body from C2 is L1 whatever
+its shape or its rib, so a thoracic-shaped body in that place (a rib-bearing L1, which a rib
+reading calls a thirteenth thoracic vertebra) and a lumbar-shaped 18th body (a rib-less T12)
+are shape hypotheses the template carries at the count's cut, and the rib reading names those
+columns one level apart (`panjabi.py`, `Column.cut(..., truth="ribs")`). `blend_sweep` scores
+one set of calls both ways. The posterior takes a flat prior over where the cut falls (the
+namings of one cut are averaged, not summed), so a cut is not favoured for having more ways to
+be named.
+
 On synthetic columns (`python run.py panjabi`, three measures a CT mask gives, windows of 5 to
-12 levels) the template names C7/T1 exactly in about four windows of five and within one level
-in 96 of 100, T12/L1 exactly in two of five and within one level in 86 of 100; a lumbosacral
-twin (the same column with four or six lumbar bodies) changes the C7/T1 call in fewer than 1
-in 100 and the T12/L1 call in about 1 in 6; a thoracolumbar transitional body (TLTV) blended
-halfway between T12 and L1 is where it breaks, as the owner expected. Those are numbers about
-Panjabi's tables and the generator, not about a spine: `panjabi-corpus` runs the same two
-models on a measured corpus counted from C2, by phenotype, with bordercall's own model fitted
-on that corpus out of fold printed beside them as the ceiling, and only that table is a result.
-Adding the canal depth and the pedicle width, which Panjabi gives and a CT mask gives only in
-part, lifts the synthetic T12/L1 figure to three in five.
+12 levels, 500 per class) the template names C7/T1 exactly in 85 windows of 100 and within one
+level in 97, T12/L1 exactly in 59 to 68 and within one level in 88 to 92, the same for every
+phenotype within the intervals; a lumbosacral twin (the same column with four or six lumbar
+bodies, whole) changes either call in fewer than 1 in 100; as the thoracolumbar transitional
+body (TLTV) blends from its own shape to its neighbour's, the count's junction is still named
+exactly in 53 to 67 of 100 and within one in 83 to 92, while the same calls score 6 to 21
+against the rib naming: the hard case is the convention, which the shape cannot choose, not the
+shape. Those are numbers about Panjabi's tables and the generator, not about a spine:
+`panjabi-corpus` runs the same two models on a measured corpus counted from C2, by phenotype,
+with bordercall's own model fitted on that corpus out of fold printed beside them as the
+ceiling, and only that table is a result. Adding the canal depth, which Panjabi gives and a CT
+mask gives too, lifts the synthetic C7/T1 figure to 89 and T12/L1 to 68 to 74.
+
+`panjabi-figures` draws the five figures (the profile, one posterior, the width curve, the
+twins, the blend) from a run's JSON, every number read and none typed, in the style of a
+textbook's line figures: black ink on white, a serif face, series told apart by line and
+marker and never by hue, panel letters, and the column drawn to Panjabi's millimetres. Beside
+each PDF and PNG it writes the CSV of the numbers drawn and the caption, and one `FIGURES.md`
+with the hash of the run, the reference and the code, so a figure can be checked against its
+numbers and rebuilt byte for byte. The runs the figures come from are kept under `records/`
+(its README says what made each), and `slides/make_junction_slides.py` builds the six CNS
+slides from a record and its figures on the deck's own template, with a check that no word of
+the confidential work is on a slide or in a note:
+
+```bash
+python run.py panjabi-figures --json records/panjabi-2026-10-26/three-measures/panjabi_junction.json --outdir figures/junction
+python slides/make_junction_slides.py --template /path/to/deck.pptx --out out/junction_slides.pptx --figures figures/junction
+```
 
 `synth-corpus` writes a made-up corpus in the layout SchwingNet's grid job writes (the count's
 names, the rib reading, the fabricated anterior height and transverse-process span the
@@ -258,6 +285,9 @@ one.
 | `disagree.py` | the count, the ribs and the circular arm where the shape disagrees with the name |
 | `panjabi.py` | synthetic columns from Panjabi's tables, with the phenotypes and their twins |
 | `junction.py` | the junction named from the shape profile, fitted on the tables alone |
+| `junction_figures.py` | the five junction figures from a recorded run, with their CSV, caption and `FIGURES.md` |
+| `records/` | the recorded `panjabi` runs the figures and slides are drawn from |
+| `slides/` | the CNS slides built from a record and its figures |
 | `synth_corpus.py` | a made-up corpus in the grid job's layout, to run the commands on |
 | `reference/` | the Panjabi tables and the script that builds them |
 | `render_anchors.py` | the 3-D phenotype gallery |
