@@ -337,7 +337,7 @@ jobs:
       - name: Keep the record where the metrics workflow reads it
         if: always() && steps.claude.outcome != 'skipped'
         continue-on-error: true
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: symphony-usage-${{ github.run_id }}-${{ github.run_attempt }}-agent-${{ matrix.agent }}
           path: ${{ runner.temp }}/symphony-usage/record.json

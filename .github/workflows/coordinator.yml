@@ -180,7 +180,7 @@ jobs:
       - name: Keep the record where the metrics workflow reads it
         if: always() && steps.plan.outcome != 'skipped'
         continue-on-error: true
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: symphony-usage-${{ github.run_id }}-${{ github.run_attempt }}-plan
           path: ${{ runner.temp }}/symphony-usage/record.json
@@ -275,7 +275,7 @@ jobs:
       - name: Keep the record where the metrics workflow reads it
         if: always() && steps.settle.outcome != 'skipped'
         continue-on-error: true
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: symphony-usage-${{ github.run_id }}-${{ github.run_attempt }}-unblock
           path: ${{ runner.temp }}/symphony-usage/record.json
@@ -386,7 +386,7 @@ jobs:
       - name: Keep the record where the metrics workflow reads it
         if: always() && steps.integrate.outcome != 'skipped'
         continue-on-error: true
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: symphony-usage-${{ github.run_id }}-${{ github.run_attempt }}-integrate
           path: ${{ runner.temp }}/symphony-usage/record.json
@@ -455,7 +455,7 @@ jobs:
       - name: Keep the record where the metrics workflow reads it
         if: always() && steps.tidy.outcome != 'skipped'
         continue-on-error: true
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: symphony-usage-${{ github.run_id }}-${{ github.run_attempt }}-tidy
           path: ${{ runner.temp }}/symphony-usage/record.json
