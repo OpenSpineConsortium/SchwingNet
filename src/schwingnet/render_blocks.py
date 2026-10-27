@@ -9,7 +9,16 @@ flexray_drr_gap). The owner's two words of 2026-10-26 fix one more part: "WHEN R
 DATA SET YOU SHOULD USE MOOSE BUT FOR MY PRODUCTION RUNS I WANT SPINEPS, FURTHER THE SEGMENTATION
 MODEL ON THE UNANNOTATED DATA SHOULD DEFINITELY BE A CONFIGURABLE BLOCK! MAKE SURE THE DIFFERNCE IN
 THE LABELS IS HANDLED CORRECTLY EVERYWHERE!", and "MAKE SURE THESE USE SPINEPS SEGMENTATIONS AS
-WELL NOT TOTAL SEGMENTATOR! EXISTING ONES IF POSSIBLE". A render names one choice per part:
+WELL NOT TOTAL SEGMENTATOR! EXISTING ONES IF POSSIBLE". And on 2026-10-27: "does the CT need to be
+segmented for flexray drrs to be compared to real xrays? im not saying stop because i have use for
+them, but i think they tests im doing should be able to run without them". It need not: a DRR's
+pixels are a projection of the CT alone (nanodrr scatters each ray sample into the channel of its
+label id, background 0 among them, and fxr's render_drr sums the channels, so the image is the
+whole volume's ray march whatever the labels), and the masks enter a render only through the parts
+that read them (reads_labels): FleXray's crop weights, an isocentre at a structure's centroid, the
+per-structure attenuation factors, and an axial crop's rule that a crop holding no structure is
+dropped. So the segmenter has a third, render-only choice, "none", for a recipe that reads none of
+them. A render names one choice per part:
 
 - hu_window: "flexray" clips the CT to -1000 to 2000 HU and stores it as float16, as FleXray's
   packs do, or "none";
@@ -22,7 +31,8 @@ WELL NOT TOTAL SEGMENTATOR! EXISTING ONES IF POSSIBLE". A render names one choic
   ct_crops.py, plan_z_crops at max_overlap 0.5), each in the volume's own slice plane (the
   released crops are 512 x 512 x 256 only because MOOSE's CTs are 512 x 512 in-plane), a shorter
   volume being one crop padded with air on both sides and a crop holding no structure being
-  dropped, as its packer drops it; "flexray-axial-min" the fewest such crops, plan_z_crops at its
+  dropped, as its packer drops it (under segmenter none, which holds no structure to tell by,
+  every planned crop is kept); "flexray-axial-min" the fewest such crops, plan_z_crops at its
   default max_overlap 0; or "whole";
 - crop_sampler: "inverse-label-frequency" draws crops with FleXray's weights, each model class a
   crop holds contributing (N / n_c) ** 0.5 and the crop taking the largest, or "uniform";
@@ -36,8 +46,10 @@ WELL NOT TOTAL SEGMENTATOR! EXISTING ONES IF POSSIBLE". A render names one choic
   gamma 0, with the detector 1250 mm away and 0.6 mm pixels fixed by the choice (the paper's
   enhanced-DRR appendix; GRID_Y_MM, GRID_Z_MM, GRID_ALPHA_DEG, grid_pose);
 - isocentre: "random-label" aims at the centroid of a structure the crop holds, drawn without
-  replacement (FleXray's random_label), "vertebra" at a vertebra's, or "volume-centre" (the raw
-  FluXray renders' choice);
+  replacement (FleXray's random_label), "vertebra" at a vertebra's, or "volume-centre", the
+  centre of the crop drawn, which under crop whole is the volume's (the raw FluXray renders'
+  choice; FleXray's compute_isocenter at volume_center on the cropped volume and the affine moved
+  to the crop);
 - projection: "flexray-mix" is a cone beam nine times in ten and orthographic otherwise, "cone"
   always a cone beam;
 - attenuation: "flexray-lognormal" multiplies each supervised structure's attenuation by a
@@ -48,11 +60,15 @@ WELL NOT TOTAL SEGMENTATOR! EXISTING ONES IF POSSIBLE". A render names one choic
 - edit: "none". FleXray's realism edit (FLUX.2 [klein]) is not in its code; it gets a name here
   when one exists to run;
 - segmenter: which segmentation model's masks label the CTs, "spineps" (the default: the
-  production runs, SPINEPS masks in the VerSe alphabet) or "moose" (moosez's masks, the model
-  FleXray's own dataset was labelled with, so only when replicating it); the names, the
-  alphabets and the maps are schwingnet.segmenters, and a label volume of either scheme holds
-  MOOSE's stored ids, which is what FleXray's own code reads, L6 and the thirteenth ribs in it
-  and dropped by FleXray's remap, T13 and the coccyx left out and recorded as unsupervised.
+  production runs, SPINEPS masks in the VerSe alphabet), "moose" (moosez's masks, the model
+  FleXray's own dataset was labelled with, so only when replicating it), or "none" (NO_SEGMENTER:
+  no masks are read and every CT renders, so only with a recipe that reads no labels, crop_sampler
+  uniform, isocentre volume-centre and attenuation off); the names, the alphabets and the maps
+  are schwingnet.segmenters, and a label volume of either scheme holds MOOSE's stored ids, which
+  is what FleXray's own code reads, L6 and the thirteenth ribs in it and dropped by FleXray's
+  remap, T13 and the coccyx left out and recorded as unsupervised. "none" is a render choice
+  alone: segmenters.SEGMENTERS and the training blocks keep their two values, since a training
+  pack and the anomaly route need masks.
 
 The settings: views a CT, the detector's side in pixels and the samples along each ray. The
 detector is a count; the pixel size comes with the pose choice, drawn under flexray-moose and
@@ -61,25 +77,31 @@ detector is a count; the pixel size comes with the pose choice, drawn under flex
 The presets: DEFAULT is FleXray's released recipe for MOOSE 3.0 in every part but the segmenter,
 the project's own (spineps), the configuration a production render takes; FLEXRAY is DEFAULT
 with segmenter moose, FleXray's recipe to the bit, the replication's; PHYSICAL is DEFAULT with
-the attenuation randomisation off, the render a comparison with real X-rays reads; FLUXRAY_RAW
-is the raw render stream FluXray was edited from, by the paper: segmenter moose, the whole
-volume, drawn uniformly, pose fluxray-grid, the volume's centre as the isocentre, a cone beam,
-the attenuation randomisation off, min-max scaling, 4 views at a 1024-pixel detector. Every
-image of the study, X-ray or DRR, is then clipped to its own 0.5 and 99.5 percentiles and
-min-max scaled by tools/domain_gap.py's decoding, as the paper did to every image.
+the attenuation randomisation off, the render a comparison with real X-rays reads; PHYSICAL_CT
+is PHYSICAL with no label read, segmenter none: FleXray's pose, projection, windowing and axial
+crops, every planned crop kept and drawn uniformly, the isocentre the drawn crop's centre, so it
+renders any CT, masks or none; FLUXRAY_RAW is the raw render stream FluXray was edited from, by
+the paper: segmenter moose, the whole volume, drawn uniformly, pose fluxray-grid, the volume's
+centre as the isocentre, a cone beam, the attenuation randomisation off, min-max scaling, 4 views
+at a 1024-pixel detector; its recipe reads no labels, so its pixels are the same under segmenter
+none, which the study's raw render groups take, though the preset keeps the replication's MOOSE
+labels. Every image of the study, X-ray or DRR, is then clipped to its own 0.5 and 99.5
+percentiles and min-max scaled by tools/domain_gap.py's decoding, as the paper did to every image.
 
 ENGINES names what runs a configuration: "blocks" is tools/render_blocks.py, one function per
 choice above, and "flexray-runtime" is FleXray's own code for every step. Under pose
 flexray-moose that is its crop planner, its crop weights, its label remap and its
 SegmentationDRRRuntime, which honours only the choices FleXray's code makes, RUNTIME_CHOICES,
 attenuation on or off being its gate's probability 0.5 or 0, and both segmenters, since each
-hands it MOOSE stored ids. Under pose fluxray-grid FleXray's runtime cannot draw the grid, whose
-PoseSampler knows fixed presets and random ranges, so the engine builds the request with the
-explicit pose through fxr.drr's primitives (compute_isocenter at the volume's centre,
-DRRRenderRequest with rot, xyz, the fixed sdd and delx, render_drr, scale_rendered_images), which
-honours exactly FLUXRAY_RAW's parts, GRID_CHOICES. engine_problems says in words where a
-configuration asks an engine for what it cannot do. The replication test of tools/domain_gap.py
-renders the same CTs with FleXray's recipe through both engines and sets them beside each other.
+hands it MOOSE stored ids, but never none, since that runtime reads labels for every view; so it
+runs every preset but physical-ct (ENGINE_PRESETS). Under pose fluxray-grid FleXray's runtime
+cannot draw the grid, whose PoseSampler knows fixed presets and random ranges, so the engine
+builds the request with the explicit pose through fxr.drr's primitives (compute_isocenter at the
+volume's centre, DRRRenderRequest with rot, xyz, the fixed sdd and delx, render_drr,
+scale_rendered_images), which honours exactly FLUXRAY_RAW's parts, GRID_CHOICES, segmenter none
+among them since that path reads no label. engine_problems says in words where a configuration
+asks an engine for what it cannot do. The replication test of tools/domain_gap.py renders the
+same CTs with FleXray's recipe through both engines and sets them beside each other.
 
 The choices and the arithmetic that needs no torch (the crop plan, the crop weights, the grid's
 poses) are kept here, under the gate's contracts; tools/render_blocks.py holds the torch side,
@@ -109,7 +131,11 @@ PROJECTION = ("flexray-mix", "cone")
 ATTENUATION = ("flexray-lognormal", "off")
 SCALE = ("minmax",)
 EDIT = ("none",)
-SEGMENTER = segmenters.SEGMENTERS
+# The render-only segmenter choice: no masks read, so the CT alone decides the render.
+NO_SEGMENTER = "none"
+SEGMENTER = segmenters.SEGMENTERS + (NO_SEGMENTER,)
+# The crop sampler, isocentre and attenuation choices that read no label: what it goes with.
+LABEL_FREE = ("uniform", "volume-centre", "off")
 
 # FleXray's packing: 256 slices a crop, along the volume's last voxel axis, in its own plane, and
 # the overlap each axial choice plans with (plan_z_crops's max_overlap): the released packs' 50
@@ -132,7 +158,8 @@ GRID_PIXEL_MM = 0.6
 
 ENGINES = ("blocks", "flexray-runtime")
 # The choices FleXray's own runtime makes under its MOOSE profile, so the only ones the
-# flexray-runtime engine honours with pose flexray-moose.
+# flexray-runtime engine honours with pose flexray-moose: a segmenter's masks always, since it
+# reads labels for every view.
 RUNTIME_CHOICES = {
     "hu_window": ("flexray",),
     "air_clamp": ("flexray",),
@@ -144,11 +171,11 @@ RUNTIME_CHOICES = {
     "attenuation": ("flexray-lognormal", "off"),
     "scale": ("minmax",),
     "edit": ("none",),
-    "segmenter": SEGMENTER,
+    "segmenter": segmenters.SEGMENTERS,
 }
 # The choices FleXray's primitives honour with pose fluxray-grid: the raw FluXray stream's parts
 # alone, since the explicit-pose path goes through no crop planner, no isocentre sampler and no
-# attenuation gate of FleXray's.
+# attenuation gate of FleXray's, and so reads no label: segmenter none among them.
 GRID_CHOICES = {
     "hu_window": ("flexray",),
     "air_clamp": ("flexray",),
@@ -192,6 +219,9 @@ class RenderBlocks:
 DEFAULT = RenderBlocks()
 FLEXRAY = replace(DEFAULT, segmenter=segmenters.FLEXRAY_SEGMENTER)
 PHYSICAL = replace(DEFAULT, attenuation="off")
+PHYSICAL_CT = replace(
+    PHYSICAL, crop_sampler="uniform", isocentre="volume-centre", segmenter=NO_SEGMENTER
+)
 FLUXRAY_RAW = RenderBlocks(
     crop="whole",
     crop_sampler="uniform",
@@ -208,7 +238,14 @@ PRESETS = {
     "default": DEFAULT,
     "flexray": FLEXRAY,
     "physical": PHYSICAL,
+    "physical-ct": PHYSICAL_CT,
     "fluxray-raw": FLUXRAY_RAW,
+}
+# The presets each engine runs: the blocks engine every one; FleXray's runtime every one but
+# physical-ct, whose pose is that runtime's own and which reads labels for every view it draws.
+ENGINE_PRESETS = {
+    "blocks": tuple(PRESETS),
+    "flexray-runtime": ("default", "flexray", "physical", "fluxray-raw"),
 }
 CHOICES = {
     "hu_window": HU_WINDOW,
@@ -232,6 +269,8 @@ RULES = (
     "views is 1 to 100 renders a CT, detector 32 to 1024 pixels, ray_samples 16 to 4000",
     "crop_sampler=inverse-label-frequency weighs crops, so it goes with an axial crop choice",
     "segmenter=spineps is the production label scheme, segmenter=moose the replication's",
+    "segmenter=none renders from the CT alone, so it goes with a recipe that reads no labels:"
+    " crop_sampler=uniform, isocentre=volume-centre and attenuation=off",
     "the flexray-runtime engine takes only the choices FleXray's own code makes, by the pose",
 )
 
@@ -245,8 +284,60 @@ def _count_problems(blocks: RenderBlocks) -> list[str]:
 
 
 @beartype
+@ensure(
+    lambda result, blocks: result or blocks.crop_sampler != "inverse-label-frequency",
+    "FleXray's crop weights count the structures each crop holds",
+)
+@ensure(
+    lambda result, blocks: result or blocks.isocentre not in ("random-label", "vertebra"),
+    "a structure's centroid is read from the labels",
+)
+@ensure(
+    lambda result, blocks: result or blocks.attenuation != "flexray-lognormal",
+    "the attenuation factors are drawn per structure",
+)
+@ensure(lambda result, blocks: not (result and _label_free(blocks)), "LABEL_FREE reads none")
+def reads_labels(blocks: RenderBlocks) -> bool:
+    """Whether the recipe reads the CT's labels anywhere: FleXray's crop weights, an isocentre at
+    a structure's centroid or the per-structure attenuation factors. A recipe that reads none
+    renders the same pixels whatever the segmenter, since the image is the CT's projection
+    alone, so it may take segmenter none and render a CT that has no masks."""
+    return (
+        blocks.crop_sampler == "inverse-label-frequency"
+        or blocks.isocentre in ("random-label", "vertebra")
+        or blocks.attenuation == "flexray-lognormal"
+    )
+
+
+def _label_free(blocks: RenderBlocks) -> bool:
+    # The recipe takes the three choices that read no label, the ones segmenter none goes with.
+    return (blocks.crop_sampler, blocks.isocentre, blocks.attenuation) == LABEL_FREE
+
+
+def _pairing_problems(blocks: RenderBlocks) -> list[str]:
+    # The choices that hold alone but not together.
+    found = []
+    if blocks.crop_sampler == "inverse-label-frequency" and blocks.crop not in AXIAL_CROPS:
+        found.append(
+            "crop_sampler=inverse-label-frequency goes with crop=" + " or ".join(AXIAL_CROPS)
+        )
+    if blocks.segmenter == NO_SEGMENTER and reads_labels(blocks):
+        found.append(
+            "segmenter=none renders from the CT alone, so it goes with crop_sampler=uniform, "
+            "isocentre=volume-centre and attenuation=off"
+        )
+    return found
+
+
+@beartype
 @ensure(lambda result: all(isinstance(line, str) and line for line in result), "each said in words")
 @ensure(lambda result, blocks: blocks not in PRESETS.values() or not result, "every preset holds")
+@ensure(
+    lambda result, blocks: (
+        blocks.segmenter != NO_SEGMENTER or not reads_labels(blocks) or len(result) > 0
+    ),
+    "a recipe that reads labels needs a segmenter's masks",
+)
 def problems(blocks: RenderBlocks) -> list[str]:
     """Every way the choices fall outside what exists, in words; empty when they hold."""
     found = [
@@ -254,12 +345,7 @@ def problems(blocks: RenderBlocks) -> list[str]:
         for name, allowed in CHOICES.items()
         if getattr(blocks, name) not in allowed
     ]
-    found += _count_problems(blocks)
-    if blocks.crop_sampler == "inverse-label-frequency" and blocks.crop not in AXIAL_CROPS:
-        found.append(
-            "crop_sampler=inverse-label-frequency goes with crop=" + " or ".join(AXIAL_CROPS)
-        )
-    return found
+    return found + _count_problems(blocks) + _pairing_problems(blocks)
 
 
 @beartype
@@ -293,9 +379,11 @@ def _runtime_problems(blocks: RenderBlocks) -> list[str]:
 )
 @ensure(
     lambda result, engine, blocks: (
-        engine not in ENGINES or blocks not in PRESETS.values() or not result
+        engine not in ENGINES
+        or blocks not in [PRESETS[name] for name in ENGINE_PRESETS[engine]]
+        or not result
     ),
-    "every preset runs in every engine",
+    "every preset runs in each engine that takes it",
 )
 def engine_problems(engine: str, blocks: RenderBlocks) -> list[str]:
     """Every way an engine cannot run the choices, in words, after the choices' own problems: an
@@ -469,7 +557,7 @@ def grid_pose(index: int) -> tuple[float, float, float]:
 @ensure(lambda result: not problems(result), "the blocks returned hold")
 def from_record(record: Mapping[str, object]) -> RenderBlocks:
     """The blocks a render's record names; a record written before the segmenter was a part
-    names none and takes the default, spineps.
+    names no segmenter and takes the default, spineps.
 
     :raises RenderBlockError: a record naming a block that does not exist, or choices that do not
         hold.
