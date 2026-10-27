@@ -1,7 +1,8 @@
 """tools/domain_gap.py's analysis in a Slurm array (prepare, shard, merge), the owner's word of
 2026-10-27 17:51 UTC that the study be sharded onto the H200 nodes by the Lab Recipe's rules: the
-array's result is the one-process run's to the bit, two tasks working at once share the list with
-no unit done twice, a pool of spawned workers gives each unit the result it gets in one process, a
+array's result is the one-process run's to the bit (both in a process of one BLAS, OpenMP and
+torch thread, as the grid's workers run), two tasks working at once share the list with no unit
+done twice, a pool of spawned workers gives each unit the result it gets in one process, a
 claim whose holder stopped beating is taken over and a live one never is, a task stops after three
 failures in a row, a task with no list exits 0 having claimed nothing, the merge refuses while any
 unit is open and says how many of which kind, and PROGRESS.txt says where the study stands in lines
@@ -41,6 +42,28 @@ def neighbour():
 
 RUN = neighbour()
 SMALL = {"PERMUTATIONS_C2ST": 5, "PERMUTATIONS_MMD": 50, "BOOTSTRAP": 50, "SPLIT_PERSONS": 12}
+ONE_THREAD = {"OMP_NUM_THREADS": "1", "OPENBLAS_NUM_THREADS": "1", "MKL_NUM_THREADS": "1"}
+IN_ONE_THREAD = "DOMAIN_GAP_TEST_ONE_THREAD"
+
+
+def in_one_thread():
+    return os.environ.get(IN_ONE_THREAD) == "1"
+
+
+def rerun_in_one_thread(case, name):
+    """The test case name again in a new process whose BLAS, OpenMP and torch libraries each start
+    with one thread, as the grid's workers do (tools/domain_gap.py, unit_pool): the libraries read
+    these settings when they load, and OpenMP's is each thread's own after that, so a new process
+    is the one place that sets them for every thread it starts."""
+    script = ("import importlib.util, sys, unittest\n"
+              "spec = importlib.util.spec_from_file_location('domain_gap_array_one_thread', sys.argv[1])\n"
+              "tests = importlib.util.module_from_spec(spec); spec.loader.exec_module(tests)\n"
+              "result = unittest.TextTestRunner(verbosity=2).run(tests.ArrayTest(sys.argv[2]))\n"
+              "sys.exit(0 if result.wasSuccessful() and not result.skipped else 1)\n")
+    environment = dict(os.environ, PYTHONDONTWRITEBYTECODE="1", **ONE_THREAD, **{IN_ONE_THREAD: "1"})
+    done = subprocess.run([sys.executable, "-c", script, str(Path(__file__).resolve()), name],
+                          capture_output=True, text=True, timeout=1800, env=environment)
+    case.assertEqual(done.returncode, 0, (done.stdout + done.stderr)[-6000:])
 
 
 def small_tool():
@@ -87,7 +110,15 @@ class ArrayTest(unittest.TestCase):
     def test_the_array_gives_the_run_s_result_to_the_bit(self):
         # the one-process run first, then prepare on the same folder (every stage up to the
         # features kept), two tasks at once and the merge: results.json is the same object but
-        # for the record of what ran where, and the summary the same lines but for the record's
+        # for the record of what ran where, and the summary the same lines but for the record's.
+        # Both run in a process of one library thread, as the grid's workers do: how BLAS splits
+        # a product among its threads changes the order it sums in (the study's z64 times its
+        # transpose comes out differently with one, two, three and four threads), and with four
+        # the run and the array did not always agree in the last digit of a silhouette
+        # (DEVIATIONS.md, item 2)
+        if not in_one_thread():
+            rerun_in_one_thread(self, "test_the_array_gives_the_run_s_result_to_the_bit")
+            return
         self.assertEqual(self.tool.run(self.args), 0)
         serial = read(self.out / "results.json")
         serial_lines = (self.out / "summary.txt").read_text(encoding="ascii").splitlines()

@@ -3182,7 +3182,10 @@ def wrapped(head, parts, width=180):
 
 def run(args):
     """Every stage in this process, the analysis's units one after another: the reference the
-    array's three steps (prepare, shard, merge) reproduce."""
+    array's three steps (prepare, shard, merge) reproduce, to the bit where this process has one
+    BLAS, OpenMP and torch thread (OMP_NUM_THREADS, OPENBLAS_NUM_THREADS and MKL_NUM_THREADS of 1)
+    as the array's workers have; with more, a measure may move in its last digits (DEVIATIONS.md,
+    item 2)."""
     os.umask(0o077)
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
