@@ -43,6 +43,11 @@ XVR_PIN="git+https://github.com/eigenvivek/xvr.git@$XVR_COMMIT pandas click tqdm
 DRR_GAP_PIN="flexray[train]==1.0.2 nanodrr==0.1.5 scikit-learn==1.9.1 umap-learn==0.5.12 numpy==2.4.6"
 # moosez's newest release on PyPI when this line was written (2026-10-26); its README calls it MOOSE 3.2.
 MOOSE_PIN="moosez==3.2.2"
+# The segmentation job runs MOOSE but chooses its CTs through tools/flexray_render.py, which loads
+# tools/render_blocks.py, and that imports fxr.drr at the top; fxr.drr imports nanodrr, which
+# flexray keeps among its train extras. With MOOSE alone the plan stopped at the import
+# (job 40790826), so the job's environment carries both, pinned as DRR_GAP_PIN pins them.
+SEG_PIN="$MOOSE_PIN flexray==1.0.2 nanodrr==0.1.5"
 case "$BENCH" in flexray_carmlspine|flexray_deepfluoro|xvr_deepfluoro|flexray_drr_gap|flexray_drr_seg) ;; *) echo "bench: BENCH is one of flexray_carmlspine, flexray_deepfluoro, xvr_deepfluoro, flexray_drr_gap, flexray_drr_seg"; echo "SN_BENCH_RC=64"; exit 64 ;; esac
 REPORT=$REPO/grid/logs/BENCH-$BENCH.md
 OUT=$BENCH_ROOT/$BENCH
@@ -211,8 +216,8 @@ case "$BENCH" in
       *" damaged") report "FAILED: ${zip% damaged} under $DATA/moose_weights/raw is whole by its record but unzip finds a member damaged (a download resumed across two uploads of the asset, say): delete it in the grid's shell and resend fetch moose_weights, which lands it again"; finish 2 ;;
       *) report "FAILED: no ${zip% missing} under $DATA/moose_weights/raw (fetch moose_weights first)"; finish 2 ;;
     esac
-    venv=$(venv_for "$MOOSE_PIN") || { report "FAILED: the environment for $MOOSE_PIN could not be made"; finish 1; }
-    report "environment: $MOOSE_PIN; weights: $DATA/moose_weights/raw; CTs: $DATA/totalsegmentator_v201; masks: $DATA/moose"
+    venv=$(venv_for "$SEG_PIN") || { report "FAILED: the environment for $SEG_PIN could not be made"; finish 1; }
+    report "environment: $SEG_PIN; weights: $DATA/moose_weights/raw; CTs: $DATA/totalsegmentator_v201; masks: $DATA/moose"
     # The choice of CTs, made as the study makes it but before any MOOSE mask exists, to
     # render-subjects.json in this job's own folder (the plan's log stays there too, under umask 077
     # as the study's does, though it names TotalSegmentator subjects alone).
