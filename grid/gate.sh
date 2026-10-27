@@ -1066,8 +1066,8 @@ bench_inputs_missing() {  # what bench $id still lacks on the data root, one lin
       # The study's inputs in the order the job reads them (grid/bench.sbatch). FluXray and the two
       # segmenters' masks are optional and never refused for, so word_bench only says which are
       # there: a DRR is a projection of the CT alone, so the render groups that read no label
-      # (segmenter=none) render without any mask, and a group whose segmenter's masks are not there
-      # is skipped by the study with that reason (the owner's word of 2026-10-27).
+      # (segmenter=none) render without any mask, and a group whose segmenter's masks are not there,
+      # or too few CTs have, is skipped by the study with that reason (the owner's word of 2026-10-27).
       find "$DATA_ROOT/hf_flexray_weights/raw" -maxdepth 3 -name ensemble.json -print -quit 2>/dev/null | grep -q . \
         || { echo "FleXray's weights (fetch hf_flexray_weights first)"; return; }
       samples_index > /dev/null || { echo "a whole sample index (the gate word samples makes it)"; return; }
@@ -1129,14 +1129,16 @@ bench_failed_on_older_code() {  # a report whose last line is a nonzero exit, fr
 drr_gap_masks() {  # one line on each segmenter's masks bench flexray_drr_gap will read
   # The study waits afterany on a live bench flexray_drr_seg, as on every run that holds the
   # checkout, so it reads the MOOSE masks that job wrote once it has ended, however it ended; a
-  # folder that holds none is read as no masks. While that job holds the checkout this word is
-  # read by the gate at the commit the job started from, so it is sent once the job has ended.
+  # folder that holds fewer CTs' masks than a group needs to be tested is read as no masks, which
+  # the study's summary says, so this line says only where each folder is. While that job holds
+  # the checkout this word is read by the gate at the commit the job started from, so it is sent
+  # once the job has ended.
   local name label maker
   for name in spineps moose; do
     label="the ${name^^} masks" maker=""
     [ "$name" != moose ] || maker=" (bench flexray_drr_seg makes them)"
     if [ -d "$DATA_ROOT/$name" ]; then
-      echo "  $label: read from $DATA_ROOT/$name"
+      echo "  $label: in $DATA_ROOT/$name, read where enough CTs have them (the study's summary says how many)"
     else
       echo "  $label: not at $DATA_ROOT/$name$maker; the render groups that name segmenter=$name are skipped with that reason"
     fi

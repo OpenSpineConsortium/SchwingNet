@@ -127,9 +127,9 @@ samples_index() {  # the sample index the gate checked (INDEX), else the newest 
   current=$(cat "$out/CURRENT" 2>/dev/null)
   [ -n "$current" ] && echo "$out/$current/samples.sqlite"
 }
-mask_state() {  # mask_state NAME: whether the study reads a segmenter's masks, from its folder
+mask_state() {  # mask_state NAME: where a segmenter's masks are, or that their folder is not there
   local name=$1
-  if [ -d "$DATA/$name" ]; then echo "$name read from $DATA/$name"
+  if [ -d "$DATA/$name" ]; then echo "$name in $DATA/$name"
   elif [ "$name" = moose ]; then echo "$name absent, no $DATA/$name (bench flexray_drr_seg makes them)"
   else echo "$name absent, no $DATA/$name"; fi
 }
@@ -196,8 +196,8 @@ case "$BENCH" in
     else report "FluXray: not on the data root (fetch hf_flexray_data); the study skips its group with that reason"; fi
     # The masks are optional too: a DRR is a projection of the CT alone, so the groups that read no
     # label render without them, and the study skips a group whose segmenter's masks are absent,
-    # with that reason (the owner's word of 2026-10-27).
-    report "masks: $(mask_state spineps); $(mask_state moose); a render group whose segmenter's masks are not read is skipped with that reason"
+    # or held for too few CTs to test a group, with that reason (the owner's word of 2026-10-27).
+    report "masks: $(mask_state spineps); $(mask_state moose); a render group whose segmenter's masks are not read, or too few CTs have, is skipped with that reason"
     report "environment: $DRR_GAP_PIN; index: $index; weights: $weights; imagenet: $imagenet"
     # The run folder is the owner's alone: the plan names files and person keys, and the run's own
     # output goes there too, since only summary.txt leaves the grid.

@@ -30,6 +30,9 @@ NEW_SCRIPTS = ("gate.sh", "hpcw.sh", "box.sh", "bin/pixi", "bin/train-cpu-python
                "00-carmlspine.sbatch", "v1-driver.sbatch", "experiment-driver.sbatch", "run-xray-chain.sh",
                "run-platform-fetch.sh", "sweep-driver.sbatch", "v1-version.sh", "realism.sbatch", "venv.sh")
 ENVS = ("default", "train-cpu", "train-gpu", "telemetry")
+# What bench flexray_drr_gap's word says of a mask folder that is there: the study reads too few CTs'
+# masks as none, which its summary says, so the word says only where the folder is.
+READ_WHERE = "read where enough CTs have them (the study's summary says how many)"
 # A stand-in for spinesurg-ct-nnunet's benchmark/run_spineps_cases.py, which the timing stage of the anomaly
 # route runs in the spineps conda environment: a mask and a timing record per case, no SPINEPS; a case whose
 # name says fail fails, and the runner then exits 2 as the real one does.
@@ -2441,8 +2444,8 @@ esac
         done = self.gate("bench", "flexray_drr_gap")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         self.assertNotIn("FluXray", done.stdout)
-        self.assertIn(f"  the SPINEPS masks: read from {self.data}/spineps\n", done.stdout)
-        self.assertIn(f"  the MOOSE masks: read from {self.data}/moose\n", done.stdout)
+        self.assertIn(f"  the SPINEPS masks: in {self.data}/spineps, {READ_WHERE}\n", done.stdout)
+        self.assertIn(f"  the MOOSE masks: in {self.data}/moose, {READ_WHERE}\n", done.stdout)
         self.assertNotIn("skipped", done.stdout)
         self.assertEqual(len(self.submitted()), 2)
         self.assertEqual(self.gate("bench", "fluorosam").returncode, 64)
@@ -2461,8 +2464,8 @@ esac
         self.live(4242)
         done = self.gate("bench", "flexray_drr_gap")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
-        self.assertIn(f"  the SPINEPS masks: read from {self.data}/spineps\n", done.stdout)
-        self.assertIn(f"  the MOOSE masks: read from {self.data}/moose\n", done.stdout)
+        self.assertIn(f"  the SPINEPS masks: in {self.data}/spineps, {READ_WHERE}\n", done.stdout)
+        self.assertIn(f"  the MOOSE masks: in {self.data}/moose, {READ_WHERE}\n", done.stdout)
         self.assertNotIn("left out", done.stdout)
         self.assertIn("--dependency=afterany:4242 ", self.line_of("bench_flexray_drr_gap")[0])
         self.assertNotIn("BENCH_SKIP_MASKS", self.line_of("bench_flexray_drr_gap")[0])
@@ -2470,7 +2473,7 @@ esac
         self.live(4343)
         done = self.gate("bench", "flexray_drr_gap")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
-        self.assertIn(f"  the MOOSE masks: read from {self.data}/moose\n", done.stdout)
+        self.assertIn(f"  the MOOSE masks: in {self.data}/moose, {READ_WHERE}\n", done.stdout)
         self.assertNotIn("left out", done.stdout)
 
     def drr_gap_box(self):
@@ -2504,7 +2507,8 @@ esac
         self.assertEqual(len(runs), 1, self.boxed())
         self.assertTrue(runs[0].endswith(f" --spineps {self.data}/spineps --moose {self.data}/moose"), runs[0])
         self.assertIn(f"- masks: spineps absent, no {self.data}/spineps; moose absent, no {self.data}/moose (bench flexray_drr_seg"
-                      " makes them); a render group whose segmenter's masks are not read is skipped with that reason\n",
+                      " makes them); a render group whose segmenter's masks are not read, or too few CTs have, is"
+                      " skipped with that reason\n",
                       report.read_text(encoding="utf-8"))
         self.assertIn("- exit 0 at ", report.read_text(encoding="utf-8"))
         self.assertNotIn("--skip-masks", runs[0])
@@ -2543,8 +2547,8 @@ esac
         self.assertIn("- FluXray: not on the data root (fetch hf_flexray_data)", report)
         self.assertIn(f"- environment: {self.DRR_GAP_PINS}; index: {index}; weights: {self.data / 'hf_flexray_weights' / 'raw'};"
                       f" imagenet: {self.models / 'resnet18-f37072fd.pth'}\n", report)
-        self.assertIn(f"- masks: spineps read from {self.data}/spineps; moose read from {self.data}/moose; a render group"
-                      " whose segmenter's masks are not read is skipped with that reason\n", report)
+        self.assertIn(f"- masks: spineps in {self.data}/spineps; moose in {self.data}/moose; a render group whose"
+                      " segmenter's masks are not read, or too few CTs have, is skipped with that reason\n", report)
         self.assertIn("- exit 0 at ", report)
         # the run's own output names files, so it stays in the run folder and reaches neither the
         # report nor the job's log

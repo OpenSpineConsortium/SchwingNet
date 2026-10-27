@@ -25,9 +25,12 @@ and is skipped elsewhere.
     <venv>/bin/python -m unittest tests/test_domain_gap_run.py
 """
 
+import contextlib
 import importlib.util
+import io
 import json
 import re
+import shutil
 import sqlite3
 import sys
 import tempfile
@@ -449,7 +452,7 @@ class WholeRunTest(unittest.TestCase):
             self.assertEqual(len(rows[group]["chosen"]), 46, group)
             self.assertFalse(any(p.endswith(f":{first}") for _, p in rows[group]["chosen"]), group)
         self.assertEqual(plan["renders"], {CT_FOLDER: {
-            "subjects": expected, "segmenters": ["moose", "spineps"], "pending": [],
+            "subjects": expected, "segmenters": ["moose", "spineps"], "pending": [], "thin": {},
             "roots": {"moose": "found", "spineps": "found"}, "ct": 30, "masks": {"moose": 27, "spineps": 27},
             "every": 26, "count": 24, "shared": shared}})
 
@@ -754,21 +757,37 @@ class MaskFreeRenderTest(unittest.TestCase):
                          [f"render {CT_FOLDER}: 24 CTs chosen of 27 with every mask of 30 CTs (spineps 27),"
                           " moose not read (no folder); 23 kept by every group"])
 
-    def test_a_moose_folder_that_holds_no_ct_s_masks_is_read_as_none(self):
-        # A segment job that stopped on its first CT leaves the folder and nothing in it; required,
-        # it would leave the folder no CT and skip the groups that read no mask with the rest.
-        renders, folder, plan = self.render({"spineps": SPINEPS_MASKED, "moose": []})
+    def assert_too_few_read_as_none(self, moose, state):
+        """A segment job that stopped on one of its first CTs leaves the moose folder with too few
+        CTs' masks to test a group; required, they would leave every group on the folder those
+        few CTs, the groups that read no mask among them."""
+        renders, folder, plan = self.render({"spineps": SPINEPS_MASKED, "moose": moose})
         expected = ranked(self.tool, SPINEPS_MASKED)[:24]
         self.assertEqual(folder["subjects"], expected)
         self.assertEqual((folder["roots"], folder["masks"], folder["every"]),
-                         ({"moose": "no CT here has them", "spineps": "found"}, {"spineps": 27}, 27))
+                         ({"moose": state, "spineps": "found"}, {"spineps": 27}, 27))
         self.assertEqual(self.rendered(), ["flexray_drr_ct", "flexray_spineps", "fluxray_raw", "fluxray_raw_reference"])
         for call in self.renderer.calls:
             self.assertEqual(list(call["subject_ids"]), expected)
-        self.assert_skipped(renders, plan, MOOSE_GROUPS, "its segmenter moose's masks are not read (no CT here has them)")
+        self.assert_skipped(renders, plan, MOOSE_GROUPS, f"its segmenter moose's masks are not read ({state})")
         self.assertEqual(self.tool.render_summary({CT_FOLDER: folder}),
                          [f"render {CT_FOLDER}: 24 CTs chosen of 27 with every mask of 30 CTs (spineps 27),"
-                          " moose not read (no CT here has them); 23 kept by every group"])
+                          f" moose not read ({state}); 23 kept by every group"])
+
+    def test_a_moose_folder_that_holds_no_ct_s_masks_is_read_as_none(self):
+        self.assert_too_few_read_as_none([], "no CT here has them")
+
+    def test_a_moose_folder_with_fewer_cts_than_a_test_needs_is_read_as_none(self):
+        self.assert_too_few_read_as_none(MOOSE_MASKED[:4], "only 4 CTs here have them, fewer than the 5 a group"
+                                                           " needs to be tested")
+
+    def test_a_moose_folder_with_as_many_cts_as_a_test_needs_is_read(self):
+        renders, folder, _ = self.render({"spineps": SPINEPS_MASKED, "moose": MOOSE_MASKED[:5]})
+        both = [s for s in MOOSE_MASKED[:5] if s in SPINEPS_MASKED]
+        self.assertEqual(folder["subjects"], ranked(self.tool, both))
+        self.assertEqual((folder["roots"], folder["masks"]), ({"moose": "found", "spineps": "found"},
+                                                             {"moose": 5, "spineps": 27}))
+        self.assertEqual(sorted(self.rendered()), sorted(g for g, *_ in RENDER_GROUPS))
 
     def test_skip_masks_leaves_a_folder_that_is_there_out(self):
         renders, folder, plan = self.render({"spineps": SPINEPS_MASKED, "moose": MOOSE_MASKED}, "--skip-masks", "moose")
@@ -1023,11 +1042,21 @@ class PlanSubcommandTest(unittest.TestCase):
         self.assertEqual(written, {CT_FOLDER: ranked(self.tool, SUBJECTS)[:24]})
 
     def test_a_folder_with_no_ct_to_choose_fails_the_plan(self):
+        # The masks the plan reads are ones the data root already holds, so a folder of them
+        # holding too few is refused with its reason, where the run would read it as none.
         spineps, moose = self.folder / "masks" / "spineps", self.folder / "masks" / "moose"
-        make_cts(self.folder, {spineps: []})
-        self.assertEqual(self.plan(render_rows(), spineps, moose), 2)
-        written = json.loads((self.folder / "out" / "render-subjects.json").read_text(encoding="utf-8"))
-        self.assertEqual(written, {CT_FOLDER: []})
+        for held in ([], SPINEPS_MASKED[:4]):
+            with self.subTest(held=len(held)):
+                shutil.rmtree(self.folder, ignore_errors=True)
+                make_cts(self.folder, {spineps: held})
+                printed = io.StringIO()
+                with contextlib.redirect_stdout(printed), contextlib.redirect_stderr(printed):
+                    self.assertEqual(self.plan(render_rows(), spineps, moose), 2)
+                written = json.loads((self.folder / "out" / "render-subjects.json").read_text(encoding="utf-8"))
+                self.assertEqual(written, {CT_FOLDER: []})
+                self.assertIn(f"render {CT_FOLDER}: 0 CTs chosen of 0 with every mask of 30 CTs", printed.getvalue())
+                self.assertIn(f"no CT chosen for {CT_FOLDER} (too few CTs with the masks the data root should"
+                              f" already hold: spineps {len(held)})", printed.getvalue())
 
 
 if __name__ == "__main__":
