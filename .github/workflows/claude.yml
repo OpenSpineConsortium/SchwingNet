@@ -87,7 +87,7 @@ jobs:
       - name: Point at the setup when the token is not there
         if: env.HAVE_TOKEN != 'true'
         run: echo "The repository secret CLAUDE_CODE_OAUTH_TOKEN is not set; docs/setup/claude-action.md says how. Doing nothing."
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
         if: env.HAVE_TOKEN == 'true'
         with:
           fetch-depth: 0

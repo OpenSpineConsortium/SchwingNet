@@ -58,7 +58,7 @@ jobs:
       BRANCH: drive/sync
       CONFIG: .github/symphony/drive.json
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
         with:
           ref: ${{ github.event.repository.default_branch }}
           persist-credentials: false

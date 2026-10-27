@@ -102,7 +102,7 @@ jobs:
       # to read this workflow's earlier runs on the head (tools/earlier_pass.py)
       actions: read
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
 
       - name: Whether an earlier run on this head passed the checks
         id: earlier

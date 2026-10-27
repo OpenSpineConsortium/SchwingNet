@@ -37,7 +37,7 @@ jobs:
     steps:
       # No credentials are left in the checkout: the push below names the
       # token it pushes with, which may be the App's rather than this one.
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
 

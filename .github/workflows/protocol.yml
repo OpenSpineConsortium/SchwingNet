@@ -67,7 +67,7 @@ jobs:
       BRANCH: symphony-protocol/sync
     steps:
       # No credentials are left in the checkout: the push names its token.
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
         with:
           ref: ${{ github.event.repository.default_branch }}
           persist-credentials: false

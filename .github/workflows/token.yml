@@ -86,7 +86,7 @@ jobs:
       ACTOR: ${{ github.event_name == 'issues' && github.event.issue.user.login || github.triggering_actor }}
       GITHUB_TOKEN: ${{ github.token }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
       - name: Install Claude Code
@@ -118,7 +118,7 @@ jobs:
       GITHUB_TOKEN: ${{ github.token }}
       STORE_ORG: ${{ github.repository_owner }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
       # A person who has a token in the pool already gets it lent here and no
@@ -192,7 +192,7 @@ jobs:
       GITHUB_TOKEN: ${{ github.token }}
       STORE_ORG: ${{ github.repository_owner }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
       - uses: actions/create-github-app-token@v3
@@ -225,7 +225,7 @@ jobs:
       contents: read
       issues: write
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
       - name: Say that the pool is not kept here
@@ -247,7 +247,7 @@ jobs:
       contents: read
       issues: write
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
       - name: Say that crowd mode holds no token
