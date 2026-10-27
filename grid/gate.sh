@@ -1128,7 +1128,9 @@ bench_failed_on_older_code() {  # a report whose last line is a nonzero exit, fr
 }
 drr_gap_masks() {  # one line on each segmenter's masks bench flexray_drr_gap will read
   # The study waits afterany on a live bench flexray_drr_seg, as on every run that holds the
-  # checkout, so it reads MOOSE's masks once that job has ended and written them all.
+  # checkout, so it reads the MOOSE masks that job wrote once it has ended, however it ended; a
+  # folder that holds none is read as no masks. While that job holds the checkout this word is
+  # read by the gate at the commit the job started from, so it is sent once the job has ended.
   local name label maker
   for name in spineps moose; do
     label="the ${name^^} masks" maker=""

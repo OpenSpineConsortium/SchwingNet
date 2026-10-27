@@ -2,6 +2,8 @@
 
 Source: the thread "Compare FleXray DRRs to real X-ray corpora" of the claude.ai project symphony. Written at about 04:55 UTC on 2026-10-27 on the owner's checkpoint word of 04:47 UTC: "YO PLEASE CHECKPOINT ALL SESSIONS AND PUSH ALL FILES AND WRITE A HANDOFF SO A NEW ACCOUNT CAN PICK UP WHERE THESE LEFT OFF!"
 
+Done since: the thread "Compare synthetic FluXray against real fluoroscopy" (2026-10-27, on the owner's restart word of 12:47 UTC) carried this branch's commits on its own branch, took BENCH_SKIP_MASKS out and finished the study part below in the pull request that supersedes #418, so what this page lists as unfinished is on main once that pull request is merged; the grid steps below still stand.
+
 The earlier handoff of this work is docs/checkpoints/2026-10-26-drr-comparison/HANDOFF.md. The research is docs/research/drr-domain-gap/README.md (confidential). In public words it is symphony-template's docs/research/drr-domain-gap-method-2026-10-25.md. The memory is docs/memory/drr-domain-gap.md. This page points at them and carries none of their content.
 
 ## Done since the last handoff

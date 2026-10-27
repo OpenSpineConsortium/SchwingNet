@@ -698,7 +698,7 @@ class RenderPlanTest(unittest.TestCase):
 class MaskFreeRenderTest(unittest.TestCase):
     """A DRR's pixels are a projection of the CT alone, so the study runs without segmentation
     (the owner's word of 2026-10-27): where a segmenter's masks are not read, for want of their
-    folder or by --skip-masks, the folder's CTs are chosen among those with the masks still read,
+    folder, of any CT's masks in it or by --skip-masks, the folder's CTs are chosen among those with the masks still read,
     or among every CT where none is, the groups on segmenter none render them, and each group
     that names the unread segmenter is skipped with the reason, in its record, its plan row and
     the summary, while the others render."""
@@ -753,6 +753,22 @@ class MaskFreeRenderTest(unittest.TestCase):
         self.assertEqual(self.tool.render_summary({CT_FOLDER: folder}),
                          [f"render {CT_FOLDER}: 24 CTs chosen of 27 with every mask of 30 CTs (spineps 27),"
                           " moose not read (no folder); 23 kept by every group"])
+
+    def test_a_moose_folder_that_holds_no_ct_s_masks_is_read_as_none(self):
+        # A segment job that stopped on its first CT leaves the folder and nothing in it; required,
+        # it would leave the folder no CT and skip the groups that read no mask with the rest.
+        renders, folder, plan = self.render({"spineps": SPINEPS_MASKED, "moose": []})
+        expected = ranked(self.tool, SPINEPS_MASKED)[:24]
+        self.assertEqual(folder["subjects"], expected)
+        self.assertEqual((folder["roots"], folder["masks"], folder["every"]),
+                         ({"moose": "no CT here has them", "spineps": "found"}, {"spineps": 27}, 27))
+        self.assertEqual(self.rendered(), ["flexray_drr_ct", "flexray_spineps", "fluxray_raw", "fluxray_raw_reference"])
+        for call in self.renderer.calls:
+            self.assertEqual(list(call["subject_ids"]), expected)
+        self.assert_skipped(renders, plan, MOOSE_GROUPS, "its segmenter moose's masks are not read (no CT here has them)")
+        self.assertEqual(self.tool.render_summary({CT_FOLDER: folder}),
+                         [f"render {CT_FOLDER}: 24 CTs chosen of 27 with every mask of 30 CTs (spineps 27),"
+                          " moose not read (no CT here has them); 23 kept by every group"])
 
     def test_skip_masks_leaves_a_folder_that_is_there_out(self):
         renders, folder, plan = self.render({"spineps": SPINEPS_MASKED, "moose": MOOSE_MASKED}, "--skip-masks", "moose")

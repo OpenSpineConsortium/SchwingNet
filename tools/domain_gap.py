@@ -27,8 +27,8 @@ fluxray_raw_reference, differ only by their recipe and engine, and the replicati
 recipe through our blocks against the same recipe through FleXray's code; a DRR's pixels are a
 projection of the CT alone, so the groups on segmenter none, flexray_drr_ct and the two FluXray
 raw groups, read no mask and render wherever the CTs are, while a group whose segmenter's masks
-are not read, no folder of them or one --skip-masks names, is skipped with that reason and the
-others render, the owner's word of 2026-10-27), the plan (which files of which groups,
+are not read, no folder of them, one that holds no CT's masks or one --skip-masks names, is
+skipped with that reason and the others render, the owner's word of 2026-10-27), the plan (which files of which groups,
 data/domain_gap/groups.json, chosen by person in a
 salted order, frozen test persons left out), the images (each decoded, MONOCHROME1 inverted,
 windowed to its 0.5-99.5 percentiles, cut to the centre square of 0.9 of its shorter side and
@@ -135,6 +135,10 @@ MADE_SEGMENTERS = ("moose",)
 # root's folder of its name; --skip-masks leaves one out for a run by hand.
 MASK_SEGMENTERS = ("spineps", "moose")
 LEFT_OUT = "left out by --skip-masks"
+# A folder that is there and holds no CT's masks, as a segment job that stopped on its first CT
+# leaves one, is read as no masks at all: required, it would leave the folder no CT to choose and
+# skip the groups that read no mask with the rest.
+NO_MASKS = "no CT here has them"
 RENDER_SUBJECTS = "render-subjects.json"
 LINE_BUDGET = 80        # lines of summary.txt, what the bench report carries off the grid
 THUNDER = "thunderdb://"
@@ -475,12 +479,13 @@ def stage_render(args, table):
     """The synthetic X-rays of every render group, by tools/flexray_render.py: the CTs of a folder
     are chosen once (render_folders), among those with masks under every segmenter the folder's
     groups name whose masks are read, so every render group on one folder renders the same
-    subjects, a group whose segmenter's masks are not read (no folder, or --skip-masks) being
-    skipped with that reason while the others render (the owner's word of 2026-10-27), and the per-view
-    seeds take the folder's salt and not the group's, so two groups on one folder differ only by
-    their blocks and engine; once every group has rendered, the subjects every group on a folder
-    kept are the ones that enter the analysis (share_subjects), since one scheme's masks may
-    hold nothing FleXray supervises for a CT the other's do. Returns what each group got and
+    subjects, a group whose segmenter's masks are not read (no folder, one that holds no CT's
+    masks, or --skip-masks) being skipped with that reason while the others render (the owner's
+    word of 2026-10-27), and the per-view seeds take the folder's salt and not the group's, so two
+    groups on one folder differ only by their blocks and engine; once every group has rendered,
+    the subjects every group on a folder kept are the ones that enter the analysis
+    (share_subjects), since one scheme's masks may hold nothing FleXray supervises for a CT the
+    other's do. Returns what each group got and
     each folder's choice, for the plan."""
     renders = {}
     groups = [g for g in table.groups if g.source == "render"]
@@ -568,8 +573,9 @@ def render_folders(args, table, renderer, roots, pending=()):
     the pending ones, the masks the segment job is yet to make, and less those whose masks are not
     read (no folder, or --skip-masks: mask_state), the subjects with masks under each one left,
     and the first of them in the salted order (schwingnet.domain_gap.choose_subjects), as many as
-    the largest group needs, every subject being a candidate where none is left; with the counts
-    the plan and the summary say. A folder that is not there is skipped with its reason."""
+    the largest group needs, every subject being a candidate where none is left; a segmenter
+    whose folder holds no CT's masks is not read either (NO_MASKS); with the counts the plan and
+    the summary say. A folder that is not there is skipped with its reason."""
     folders = {}
     for group in (g for g in table.groups if g.source == "render"):
         if group.folder in folders:
@@ -581,23 +587,28 @@ def render_folders(args, table, renderer, roots, pending=()):
             continue
         named = rules().segmenters_named([g.blocks for g in on_folder])
         count = max(max(1, g.cap // g.per_person) for g in on_folder)
-        folders[group.folder] = subject_choice(renderer, ct_root, named, roots, table.salt, count, pending)
-        folders[group.folder]["roots"] = {name: mask_state(args, name, roots) for name in named}
+        choice = subject_choice(renderer, ct_root, named, roots, table.salt, count, pending)
+        states = {name: mask_state(args, name, roots) for name in named}
+        choice["roots"] = states | {name: NO_MASKS for name in choice.pop("empty")}
+        folders[group.folder] = choice
     return folders
 
 
 def subject_choice(renderer, ct_root, named, roots, salt, count, pending):
     """One folder's choice of CTs and the record it is made from: every subject the renderer finds
     under the folder, those with masks under each segmenter required (named less pending, less
-    those with no root, whose masks are not read), and the first count, in the salted order, of
-    the subjects with masks under every one of them; every subject where none is required."""
+    those with no root, whose masks are not read, and less those whose root holds no subject's
+    masks, listed as empty), and the first count, in the salted order, of the subjects with masks
+    under every one of them; every subject where none is required."""
     pure = rules()
     subjects = frozenset(subject_id(s) for s in renderer.find_subjects(ct_root))
-    masked = {name: masked_subjects(renderer, ct_root, name, roots) & subjects
-              for name in named if name not in pending and name in roots}
+    found = {name: masked_subjects(renderer, ct_root, name, roots) & subjects
+             for name in named if name not in pending and name in roots}
+    masked = {name: held for name, held in found.items() if held}
     chosen = pure.choose_subjects(subjects, masked, count, salt)
     return {"subjects": list(chosen), "segmenters": list(named), "pending": [n for n in named if n in pending],
-            "ct": len(subjects), "masks": {name: len(found) for name, found in masked.items()},
+            "empty": [name for name in found if name not in masked],
+            "ct": len(subjects), "masks": {name: len(held) for name, held in masked.items()},
             "every": len(pure.with_masks(subjects, masked)), "count": count}
 
 
@@ -1647,8 +1658,8 @@ def auc_text(auc):
 def summary_lines(results, wandb_line):
     """At most LINE_BUDGET short lines, each made safe for the grid's redaction, of what the study
     found: the header and the replication verdict, the groups, then the primary space in full,
-    the other spaces' family contrasts and replication pair, FleXray's space as stored for
-    FleXray's own groups, and last the secondary lines (the nearest real corpora, the other spaces'
+    the other spaces' family contrasts, FleXray's space as stored for FleXray's own groups, and
+    last the secondary lines (the nearest real corpora, the other spaces' replication pairs and
     replication-only contrasts, the map centres). The sections carry a rank, and whole sections
     are given up from the highest rank down until the lines fit, so what is cut is the least read
     and never the middle of a table."""
@@ -1956,11 +1967,16 @@ def plan_subjects(args):
     none require no masks, so the table's choice is the one the segment job served before they
     were added, among the CTs with SPINEPS's masks; a segmenter whose masks are not read is left
     out of it as the run leaves it out. A folder whose choice is empty fails the command, so the
-    job never runs on nothing."""
+    job never runs on nothing, and so does one whose mask folder holds no CT's masks: the run
+    reads such a folder as no masks, but the masks the plan reads are ones the data root already
+    holds, so a folder of them holding none is a data root to look at, not a choice to make."""
     os.umask(0o077)
     table = read_table(args.groups)
     renderer = tool("flexray_render")
     folders = render_folders(args, table, renderer, mask_roots(args), pending=MADE_SEGMENTERS)
+    for record in folders.values():
+        if NO_MASKS in record.get("roots", {}).values():
+            record["subjects"] = []
     write_subjects(args.out, folders)
     for folder, record in folders.items():
         log(render_summary({folder: record})[0])
