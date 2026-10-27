@@ -975,7 +975,7 @@ ul.hits pre { margin:6px 0 0; white-space:pre-wrap; }
     else if (c === "not_in_manifest")
       say("The door may not call your GitHub connector's tools.",
           "If you turned GitHub off for this page, or declined it when the page first asked, the artifact's Permissions menu turns it on. " +
-          "Otherwise the page's published capabilities are stale, and the door is published again from the repository's tools/front_door.html.",
+          "Otherwise the page's published capabilities are stale, and the door's loader, tools/front_door_loader.html, is published again with tools/textbook_publish.py.",
           [["Open permissions", permissions], ["Try again", start]]);
     else if (c === "blocked_by_policy")
       say("Your organization's policy blocks this tool for you, so the door cannot read the repository.", "", []);

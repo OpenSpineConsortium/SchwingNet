@@ -14,8 +14,12 @@ door into a repo", so the page at the link is now tools/front_door.html: it hold
 repository and, when it is opened, reads the repository itself, as the viewer, through the viewer's
 own GitHub connector in claude.ai (the artifact runtime's mcp capability, three read-only tools),
 so a merge to main is at the link the moment it is opened, with nothing staged and nothing
-republished (docs/research/textbook-as-an-artifact.md, The front door). The page is published once
-and again only when it changes.
+republished (docs/research/textbook-as-an-artifact.md, The front door). On 2026-10-27 the owner
+asked to read the textbook in claude.ai "without needing to ever need to republish the front door
+artefact", so the page published is now the door's loader, tools/front_door_loader.html, which
+reads tools/front_door.html from main through the same connector each time it is opened and runs
+it: a change to the door is at the link once merged, and the loader is published again only when
+the loader itself changes or the door needs a capability CAPABILITIES does not yet declare.
 
 Two things fix where the publish runs. GitHub is not in claude.ai's connector directory and its
 server takes no dynamic client registration, so the owner adds it once as a custom connector named
@@ -50,7 +54,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 REPO_NAME = "OpenSpineConsortium/SchwingNet"
-PAGE_SOURCE = "tools/front_door.html"
+PAGE_SOURCE = "tools/front_door_loader.html"
+DOOR_SOURCE = "tools/front_door.html"   # what the loader reads from main and runs; never published itself
 PAGE = "door.html"                  # the page's name in the work folder, where the Artifact tool reads it
 # The record's schema is the reader's still: the record has the same fields (the link, the commit,
 # the page's hash, the capabilities), and a reader's record names the artifact the door takes over,
@@ -141,8 +146,8 @@ def prompt(plan_, sha, page, answer):
         f"publish nothing but {page}.",
         "",
         f"The page is {page}, {plan_['bytes']} bytes of HTML that hold no file of the repository: when it is opened it",
-        f"reads the repository through the viewer's own GitHub connector in claude.ai (the connector named {SERVER}),",
-        "with the viewer's own access.",
+        f"reads the door, {DOOR_SOURCE} on main, and then the repository, through the viewer's own GitHub connector",
+        f"in claude.ai (the connector named {SERVER}), with the viewer's own access.",
         "",
         f"If the Artifact tool is not among your tools, write the line ARTIFACT_TOOL_MISSING to {answer}, tell the",
         "person to type /exit, and stop.",
@@ -186,7 +191,7 @@ def prompt(plan_, sha, page, answer):
         ] if plan_.get("clear") else []
         lines += [""] + holds + [
             f"Stop, writing the line {MISMATCH} to {answer} with what you found after it on the same line, only where",
-            "the read fails or shows a page that is neither the door nor that reader.",
+            "the read fails or shows a page that is neither the door, its loader, nor that reader.",
             "",
             f"2. Action read with url {plan_['url']} (a publish to an artifact this session has not read is refused).",
             *clearing,

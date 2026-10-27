@@ -57,11 +57,22 @@ class ThePublish(unittest.TestCase):
         self.assertEqual(tp.CAPABILITIES, {"mcp": {"servers": [{"server": "GitHub", "tools": tp.TOOLS}]}, "sample": {}})
         self.assertEqual(tp.TOOLS, ["get_file_contents", "list_commits", "search_code"], "read-only tools alone")
         self.assertTrue((ROOT / tp.PAGE_SOURCE).is_file())
-        # The page names the same connector and calls no tool but the ones declared.
-        page = (ROOT / tp.PAGE_SOURCE).read_text(encoding="ascii")
-        self.assertIn('SERVER = "GitHub"', page)
-        called = set(re.findall(r'call\("([a-z_]+)"', page))
+        # The door names the same connector and calls no tool but the ones declared.
+        door = (ROOT / tp.DOOR_SOURCE).read_text(encoding="ascii")
+        self.assertIn('SERVER = "GitHub"', door)
+        called = set(re.findall(r'call\("([a-z_]+)"', door))
         self.assertEqual(called, set(tp.TOOLS))
+
+    def test_the_page_published_is_the_loader_which_reads_the_door_from_main(self):
+        # The published page holds none of the door: it reads the door's path on main through the
+        # same connector with a tool the declaration names, so the declaration covers both pages.
+        self.assertEqual(tp.PAGE_SOURCE, "tools/front_door_loader.html")
+        loader = (ROOT / tp.PAGE_SOURCE).read_text(encoding="ascii")
+        self.assertIn('SERVER = "GitHub"', loader)
+        self.assertIn(f'DOOR = "{tp.DOOR_SOURCE}", REF = "refs/heads/main"', loader)
+        self.assertEqual(set(re.findall(r'callTool\(SERVER, "([a-z_]+)"', loader)), {"get_file_contents"})
+        self.assertNotIn("listTools", loader.split("<script>")[0])
+        self.assertLess(len(loader), len((ROOT / tp.DOOR_SOURCE).read_text(encoding="ascii")) // 4)
 
 
 class StateFile(unittest.TestCase):
@@ -176,7 +187,7 @@ class Prompt(unittest.TestCase):
             self.assertRegex(text, rf'the textbook reader titled\s+"{tp.READER_TITLE}"')
             self.assertRegex(text, r"needs no\s+confirmation from the person")
             self.assertIn(f"Stop, writing the line {tp.MISMATCH} to {ANSWER} with what you found after it on the same line, only where\n"
-                          "the read fails or shows a page that is neither the door nor that reader.", text)
+                          "the read fails or shows a page that is neither the door, its loader, nor that reader.", text)
             self.assertLess(text.index(tp.MISMATCH), text.index("2. Action read"), "the stop is said before the read")
         self.assertIn("Replacing that page and its declaration with the door is\nwhat this command does, on the owner's "
                       "choice of 2026-10-26", self.text(self.adopted))
@@ -225,7 +236,7 @@ class Prompt(unittest.TestCase):
             self.assertIn(f"write the line ARTIFACT_TOOL_MISSING to {ANSWER}", text)
             self.assertIn(f"write the line ARTIFACT_URL=<url> to {ANSWER} with the Write\ntool", text)
             self.assertIn("typing /exit lets the command that opened this session record it", text)
-            self.assertIn("the viewer's own GitHub connector in claude.ai (the connector named GitHub)", text)
+        self.assertIn("the viewer's own GitHub connector\nin claude.ai (the connector named GitHub)", text)
 
     def test_nothing_of_the_pages_text_is_in_the_prompt_or_the_plan(self):
         for plan in (self.first, self.later, self.again):
