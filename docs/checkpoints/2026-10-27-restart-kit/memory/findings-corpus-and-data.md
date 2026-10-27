@@ -1,0 +1,19 @@
+---
+name: findings-corpus-and-data
+description: What data is held by the owner's gold and silver tiers, the fourteen closed full-spine cohorts with reader counts, the pending sources, room on the grid and the data rules; the starting point for gold tier 1-3 work (bordercall TODO.md item 5)
+metadata:
+  type: project
+---
+
+Full text with sources: FINDINGS.md section 9, beside this folder; SchwingNet docs/research/full-spine-corpora-with-reader-counted-variants.md; the tiers thread's docs/checkpoints/2026-10-27-corpus-tiers/HANDOFF.md on branch claude/project-thread-cdwl0r. The tiers themselves are in [[owner-science-rules]].
+
+- Held, each person once at the best tier (estimates until the census job runs): gold 1 none; gold 2 none; gold 3 159 persons from release masks (TotalSegmentator 142, VerSe 17); gold 4 about 1,929; silver 2 848 (COBRA, C-ArmLSpine, DeepFluoro, one cadaver). Conversions are counted apart, never pooled: SPINEPS masks 4 to 3 only as machine and provisional; a Flux-edited DRR 3 to 1 only once the domain-gap test passes; review or SchwingCheck 3 to 1 needs a person confirming.
+- The sorter is tools/corpus_tiers.py with data/corpus-tiers/sources.json and the grid word `census tiers` (1 CPU job, not counted), all on SchwingNet #420 (draft); its public method note is symphony-template #500 (draft).
+- Gold 1 and 2 candidates: fourteen cohorts the project does not hold carry per-case reader counts over both junctions, none open (each an e-mail request or a cohort application). Best: Lodz 2026 (499 trauma CTs: L6 24, T13 13, four lumbar 11, eleven thoracic 10), Jeonbuk 2020 (1,340 whole-spine CTs, two readers), the VERIDAH-labelled TUM CT (1,536) and NAKO MRI (6,291), Tatara 2021 (880, counted from C2 on whole-spine films with CT), Sabri 2025 (3,147 full-length films, 28 with thirteen rib-bearing vertebrae). The one open addition is Hofmann's VertebralBodiesCT-Labels over images already held (69 L6 and 14 T13 flags on 1,460 CTs, 70 of them linked in the records). Letters are drafted only once the owner names cohorts; the owner sends them.
+- Pending: Radiopaedia (approval 202610-9517, mostly silver 3, by hand only, never by script); Setting Scoliosis Straight and the Harms Study Group (images held centrally, no CT, gold 3 and silver 3 expected; the owner's follow-up is in the owner's Outlook Drafts); Exeter and Bournemouth (about 1,180 partial fluoroscopy events with corner templates, silver 3; passed to Alan and Alex Breen on 2026-10-26).
+- Not truth: CTSpinoPelvic1K's 802 abdominopelvic CTs, none countable from C2 (the most cranial body mostly T6 to T11); the junction model's 95.0 percent T12/L1 placement on them (bordercall archive/README.md) is reported as no result.
+- The grid (Wayne State, /rs/rs_grp_oschome): quota 21,990.23 GB, 17,596.87 used, 4,393.36 GB room at 2026-10-27 04:08 UTC. The sample index's first run held 140 groups, 7,008,826 files, 7.3 TB (docs/research/data-manifest/MANIFEST.md). Every fetch reads its exact size first and is refused whole if it would pass the quota (the size rule; gdown, Kaggle and Redivis sized since #163, unverified rows in docs/research/exact-fetch-sizes.md).
+- Rules: CT-RATE (21.3 TB) never without the owner's terabytes; data/licences.json classes every set (ENHANCE.PET, FluXray and COBRA non-commercial); VinDr-SpineXR is covered by WSU IRB HPR 2026-330; dataset letters go from the owner's Wayne State Outlook, tagged [XR/CT Imaging Research], as drafts the owner sends, and say nothing of models or training; returns are searched in Junk Email too.
+
+**Why:** item 5 starts from these counts and candidates, and the census, the letters and the fetches each need the owner's word.
+**How to apply:** count a person once; never raise a tier with a machine mask; ask once, on a decision card, for the census job. See [[priority-panjabi-first]], [[grid-words-and-counts]].

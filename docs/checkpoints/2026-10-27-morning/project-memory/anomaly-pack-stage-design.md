@@ -1,0 +1,12 @@
+---
+name: anomaly-pack-stage-design
+description: The decisions of the SPINEPS to FleXray anomaly route's pack stage (SchwingNet #391, designed 2026-10-26 00:20-01:16 UTC): whole volumes, two packages under $DATA/flexray_pack, 28 canonical ids, countable and complete measured, the frozen validation rule, no HOLD
+metadata:
+  type: project
+---
+
+Stage 3, pack, designed 2026-10-26 00:20-01:16 UTC (design at the thread's scratchpad pack-design.md; being built as of 01:30 UTC): whole volumes, not 512x512x256 crops, since fxr-dataset pack never resamples and refuses in-plane sizes other than the crop's (storage_layout subjects, the crop recipe one switch away); HU window -1000..2000, float16; masks rewritten to 28 canonical ids (background, vertebra_c1..c7, t1..t12, t13, l1..l5, l6, sacrum) by a standard-library NIfTI-1 reader and writer (tools/nifti_label.py); existing relabelled SPINEPS copies and release masks only, the guard spineps_ids.py check --strict in the spineps conda env, no relabel run; countable (C2 or C1 and the sacrum in the field) and complete (both from the mask, no presacral gap) measured per CT; two packages under the landing $DATA/flexray_pack (schwingnet_spine complete, schwingnet_spine_partial), splits train, val, test, holdout, uncounted (uncountable or distrusted: ctsp by default), g3_excluded; the validation split frozen as rule, salt and counts in data/splits/anomaly-validation.json with drawn null until the run; protocol schwingnet_spine_v1 (65) and model labels (63) under grid/flexray/configs, the manifest binding no protocol; admission under the size lock before any byte, the stage runs from a code copy and holds no HOLD; gate class batch, --cpus 4 --mem 64G --time 3-00:00:00, exit 5 (room refused) re-queued at the same commit.
+
+**Why:** these choices came from reading FleXray 1.0.2's packaging code and the grid's records, and the owner's words of 2026-10-26 (C2-countable truth, SPINEPS never TotalSegmentator, existing masks); a later stage that assumes crops, one package or a protocol bound in the manifest would break against them.
+
+**How to apply:** the render and tune stages pass `--set protocol.name=schwingnet_spine_v1 --set protocol.config_root=<repo>/grid/flexray/configs`, route schwingnet_spine as standard_seg and schwingnet_spine_partial as partial_labeled_seg, read only the train and val splits for training, and copy the validation draw's digest into data/splits/anomaly-validation.json from the pack report. See [[anomaly-route-thread-state]] and [[owner-trusts-only-c2-countable-spines]].
