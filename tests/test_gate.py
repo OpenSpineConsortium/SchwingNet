@@ -2607,7 +2607,7 @@ esac
         done = self.bench_job("flexray_drr_seg")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         boxed = self.boxed()
-        self.assertTrue([line for line in boxed if line.endswith("-m pip install --quiet moosez==3.2.2")], boxed)
+        self.assertTrue([line for line in boxed if line.endswith("-m pip install --quiet moosez==3.2.2 flexray==1.0.2 nanodrr==0.1.5")], boxed)
         out = self.tmp / "go2432" / "bench" / "flexray_drr_seg"
         plans = [line for line in boxed if "tools/domain_gap.py plan " in line]
         self.assertEqual(len(plans), 1, boxed)
@@ -2620,7 +2620,7 @@ esac
         self.assertLess(boxed.index(plans[0]), len(boxed) - 1)
         self.assertTrue((self.data / "moose" / "s0001" / "mask").is_file())
         report = (self.repo / "grid" / "logs" / "BENCH-flexray_drr_seg.md").read_text(encoding="utf-8")
-        self.assertIn(f"- environment: moosez==3.2.2; weights: {self.data}/moose_weights/raw; CTs: {self.data}/totalsegmentator_v201;"
+        self.assertIn(f"- environment: moosez==3.2.2 flexray==1.0.2 nanodrr==0.1.5; weights: {self.data}/moose_weights/raw; CTs: {self.data}/totalsegmentator_v201;"
                       f" masks: {self.data}/moose\n", report)
         self.assertIn(f"- results: {out}\n  segment: 2 subjects run, 5 models, 10 files found, 0 not found,"
                       f" written under {self.data}/moose\n- exit 0 at ", report)
