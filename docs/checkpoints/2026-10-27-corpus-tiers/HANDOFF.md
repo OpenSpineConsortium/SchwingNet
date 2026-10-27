@@ -1,0 +1,30 @@
+# Sort the corpus into gold and silver tiers: handoff of 2026-10-27
+
+Source: the thread "Sort the corpus into gold and silver tiers" of the claude.ai project symphony, written at about 05:10 UTC on 2026-10-27 at the owner's checkpoint ("PLEASE CHECKPOINT ALL SESSIONS AND PUSH ALL FILES AND WRITE A HANDOFF SO A NEW ACCOUNT CAN PICK UP WHERE THESE LEFT OFF!", 04:47 UTC). The research is docs/research/corpus-tiers/README.md; this page says where the work stands and what is left, and carries no findings of its own.
+
+## The ask
+
+The owner's message of 03:06 UTC: sort every deidentified dataset into gold tiers 1 to 4 (one study shows the whole spine, so the count from C2 holds) and silver tiers 1 to 4 (partial), so the power of the experiments can be computed and they can use gold data wherever possible. Include the approved Radiopaedia licence and the correspondence with Michelle Marks (Setting Scoliosis Straight) and with Fiona Mellor of Exeter for Alan and Alex Breen. Account for the conversions the owner named: Flux-edited DRRs (tier 3 to 1, once the domain-gap study shows they cannot be told apart), SPINEPS masks (tier 4 to 3), and a person's review or SchwingCheck (3 to 1). The owner's SchwingCheck aside, online recomputation in the operating room and the generator run in reverse as an outline for a realism model, is recorded in the research page and not built.
+
+## Where it stands
+
+- SchwingNet, branch claude/project-thread-cdwl0r, draft pull request (link in the thread): the tier table data/corpus-tiers/sources.json (310 sources), the per-case sorter and power tool tools/corpus_tiers.py with tests/test_corpus_tiers.py (14 tests), the grid word `census tiers` (grid/gate.sh, grid/census.sbatch, two tests in tests/test_gate.py), the research page, the memory fact docs/memory/the-corpus-tiers.md, and the Radiopaedia and both Bournemouth records brought up to date with docs/research/datasets-inventory.md re-rendered.
+- data/corpus-tiers/work/ holds what a new account needs to finish: rows-verified.json (the 303 rows after their batch skeptics, with every change), critics.json (the five lenses: accepted and rejected verdicts, the four conflicts settled by hand, the census map, the overlaps, the gold candidates, the 7 checked rows of missing sources, and the consistency lens's adjudicated verdicts under consistency_adjudicated_not_applied, which arrived after the build), hand_rows.json (the Setting Scoliosis Straight and Bournemouth rows set by hand) and build.py.txt, the script that applies them.
+- symphony-template, the same branch name, draft pull request: the public method note docs/research/corpus-evidence-tiers-2026-10-27.md with its README line. It names no holdings.
+- The follow-up to Michelle Marks is in the owner's Outlook Drafts, subject "[XR/CT Imaging Research] RE: Introduction: Gregory Schwing", for the owner to send. The owner already wrote to her on 2026-10-23.
+- No grid job was sent and none is approved. GitHub Actions runs again since the owner raised the budget (grid-accounts.yml runs succeeded from 03:10 UTC).
+- Neither pull request has run `bash scripts/check.sh` in a throwaway copy or carries its "## Adversarial review" section yet. Both stay drafts.
+
+## What is left, in order
+
+1. Apply the consistency lens: critics.json, key consistency_adjudicated_not_applied, holds its adjudicated verdicts (tier sums, statuses, consistent annotation calls, licence classes against data/licences.json, synthetic sources), which came after the build. Two things must be settled first. It puts idc_tier1 counted_in its 39 members, while the gold and census lenses put each member counted_in idc_tier1, which keeps their sum: choose one direction. Some verdicts give counted_in as a list of ids for an umbrella row (anomaly_harvest_b, ctspine1k_ctpelvic1k_ribfrac, polypose_synthetic), which tools/corpus_tiers.py and its test read as one id, so either teach both a list or keep the umbrella's tiers at zero as now. Then add the accepted verdicts to the accepted list. Duplicates the overlap lens missed show up there or still stand (for example aasce and aasce2019_boostnet hold the same 609 and 98).
+2. Rebuild: copy build.py.txt to build.py in data/corpus-tiers/work/, run it there, and rerun `python3 tools/corpus_tiers.py power` and the tests. Check that no umbrella and its members both keep the same persons: the IDC members are counted_in idc_tier1, which keeps their sum, and anomaly_harvest_b keeps none.
+3. Write the census map's facts into the research page's section 7 if they change, then update the numbers in sections 1 and 6.
+4. Run `bash scripts/check.sh` in a throwaway copy (never in the clone), write the adversarial review into the body, and mark the SchwingNet pull request ready in a call of its own once green; then the symphony-template one.
+5. Ask the owner once, as a decision card, for one CPU job: `census tiers`, sent only after the SchwingNet pull request merges and an `update` is sent, with logs/job-schwingnet-status.json on symphony-template's grid branch read first. Its report replaces every gold 4 estimate marked needs_grid_read.
+
+## What a new thread needs to know
+
+- The reading of tiers 3 and 4 as one modality alone is the thread's, stated wherever the tiers are printed. Machine labels never raise a tier; a report that only mentions a level is report-only and does not either; a DRR is never an X-ray; a CBCT reconstruction counts as a CT and a raw kV projection or C-arm frame as a real X-ray, partial.
+- CTSpinoPelvic1K is untrusted as ground truth by the owner's rule of 2026-10-26, and the census never reads it as whole. Its masks are a person's on 784 of 802, so the census map marks it "some", which the per-case census reads as unannotated: the census undercounts silver 3 there and touches no gold.
+- The workflow runs that produced the rows are gone with this container; their outputs are the work files above.

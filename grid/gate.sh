@@ -114,6 +114,12 @@
 #                   cases, then full, every countable mask, which the gate takes only once the pilot's report ended
 #                   well; each queued once as one batch job, the next send printing logs/BORDERCALL-<stage>.md, and
 #                   every later one printing it again and queueing nothing
+#   census <stage>  the owner's gold and silver tiers (2026-10-27), case by case: tiers, one CPU job
+#                   (grid/census.sbatch, tools/corpus_tiers.py) that reads every SPINEPS mask the
+#                   transitional census lists, as the bordercall corpus reads them, and says whether
+#                   it reaches from C2 to the sacrum; annotation and pairing come from the committed
+#                   data/corpus-tiers/sources.json; queued once, the next send printing
+#                   logs/CENSUS-<stage>.md and every later one printing it again and queueing nothing
 #   realism <stage> one stage of the Flux realism programme (docs/research/flux-realism/README.md; no count
 #                   given yet, each stage waits for the owner's word): edit, stats, lora or eval, each one GPU
 #                   job (grid/realism.sbatch, tools/realism.py) once its inputs have landed and the stage before
@@ -123,9 +129,9 @@
 #   cancel <job>    cancel one of the gate's own live jobs and every other live job its word queued
 #                   with it (a fetch's bank and catalog), and nothing else
 #
-# While a version 1 run, a sweep, an experiment run, a benchmark, an anomaly stage, a bordercall stage or a
+# While a version 1 run, a sweep, an experiment run, a benchmark, an anomaly stage, a bordercall stage, the census or a
 # realism stage lasts, grid/logs/HOLD names its job and commit (grid/v1-driver.sbatch, grid/sweep-driver.sbatch,
-# grid/experiment-driver.sbatch, grid/bench.sbatch, grid/anomaly.sbatch, grid/bordercall.sbatch, grid/realism.sbatch); the gate's side skips its fast-forward while the file is there, and every word but a refused one
+# grid/experiment-driver.sbatch, grid/bench.sbatch, grid/anomaly.sbatch, grid/bordercall.sbatch, grid/census.sbatch, grid/realism.sbatch); the gate's side skips its fast-forward while the file is there, and every word but a refused one
 # clears a hold whose job Slurm no longer holds, so the run's later steps run the code it
 # recorded. One file holds one job, so each run that takes it waits afterany on every other one
 # still live (checkout_holders) rather than run beside it.
@@ -172,18 +178,18 @@ G3_SPLIT=${G3_SPLIT:-$HOME/split_final.json}
 NETRC=${NETRC:-$HOME/.netrc}
 LOGS=$REPO/grid/logs
 STATE=$LOGS/GATE_JOBS.txt
-WORDS="start status leaks v1 latency fetch explore dropzip unpack nodequota folders samples sweep bank experiment bench anomaly bordercall realism stop cancel"
+WORDS="start status leaks v1 latency fetch explore dropzip unpack nodequota folders samples sweep bank experiment bench anomaly bordercall census realism stop cancel"
 ENVS="default train-cpu train-gpu telemetry"
 
 word=${1:-}
 id=${2:-}
 # Matched whole, so one argument holding two words ("v1 latency") is refused and never runs nothing.
 case "$word" in
-  start|status|leaks|v1|latency|fetch|explore|dropzip|unpack|nodequota|folders|samples|sweep|bank|experiment|bench|anomaly|bordercall|realism|stop|cancel) ;;
+  start|status|leaks|v1|latency|fetch|explore|dropzip|unpack|nodequota|folders|samples|sweep|bank|experiment|bench|anomaly|bordercall|census|realism|stop|cancel) ;;
   "") echo "refusing: no word; one of: $WORDS"; exit 64 ;;
   *) echo "refusing: '$word' is not one of: $WORDS"; exit 64 ;;
 esac
-if [ "$word" = fetch ] || [ "$word" = explore ] || [ "$word" = dropzip ] || [ "$word" = unpack ] || [ "$word" = sweep ] || [ "$word" = bank ] || [ "$word" = bench ] || [ "$word" = anomaly ] || [ "$word" = bordercall ] || [ "$word" = realism ]; then
+if [ "$word" = fetch ] || [ "$word" = explore ] || [ "$word" = dropzip ] || [ "$word" = unpack ] || [ "$word" = sweep ] || [ "$word" = bank ] || [ "$word" = bench ] || [ "$word" = anomaly ] || [ "$word" = bordercall ] || [ "$word" = census ] || [ "$word" = realism ]; then
   [ $# -eq 2 ] || { echo "refusing: $word takes exactly one id"; exit 64; }
   case "$id" in ""|*[!a-z0-9_]*) echo "refusing: an id is lower-case letters, digits and _"; exit 64 ;; esac
   [ ${#id} -le 40 ] || { echo "refusing: an id is at most 40 characters"; exit 64; }
@@ -315,13 +321,13 @@ chain() {  # chain DEPEND [run-xray-chain.sh arguments...]: the X-ray chain afte
   record "$XR_FETCH" xr_fetch; record "$(value_of bank "$after")" xr_bank; record "$XR_CATALOG" xr_catalog
 }
 checkout_holders() {  # afterany:<job> for every live job of the gate's that holds the checkout while it runs, comma-joined
-  # A version 1 run, a sweep, an experiment run, a benchmark, an anomaly stage and a bordercall stage each write grid/logs/HOLD, one file
+  # A version 1 run, a sweep, an experiment run, a benchmark, an anomaly stage, a bordercall stage and the census each write grid/logs/HOLD, one file
   # naming one job, and the first of two side by side to end would clear it while the other still
   # runs, whose end check then finds the checkout moved and throws the run away; so each waits for
   # the others, a sweep sent while a benchmark lasts up to its 12 hours among them.
   local job waits=""
   [ -f "$STATE" ] || return 0
-  for job in $(awk '$3 == "v1_driver" || $3 == "sweep" || $3 ~ /^experiment_[0-9]+$/ || $3 ~ /^bench_[a-z_]+$/ || $3 ~ /^anomaly_[a-z_]+$/ || $3 ~ /^bordercall_[a-z]+$/ { print $1 }' "$STATE" | sort -u); do
+  for job in $(awk '$3 == "v1_driver" || $3 == "sweep" || $3 ~ /^experiment_[0-9]+$/ || $3 ~ /^bench_[a-z_]+$/ || $3 ~ /^anomaly_[a-z_]+$/ || $3 ~ /^bordercall_[a-z]+$/ || $3 ~ /^census_[a-z]+$/ { print $1 }' "$STATE" | sort -u); do
     case "$QUEUED" in *" $job "*) waits=$(joined "$waits" "afterany:$job") ;; esac
   done
   echo "$waits"
@@ -1287,6 +1293,32 @@ word_bordercall() {  # the bordercall corpus, pilot then full (the owner's count
   echo "submitted the bordercall stage $id. Send bordercall $id again once it ends to read its report, logs/BORDERCALL-$id.md."
 }
 
+word_census() {  # the owner's tiers over every SPINEPS mask the census lists, one CPU job: queued once, its report printed on every later send
+  local report=$LOGS/CENSUS-$id.md busy holds opts setup
+  case "$id" in
+    tiers) ;;
+    *) echo "refusing: census takes tiers"; return 64 ;;
+  esac
+  busy=$(live_of "census_$id" | tr '\n' ' ')
+  [ -z "${busy// /}" ] || { echo "refusing: the census is still queued or running (job $busy); send census $id again once it ends"; return 75; }
+  if [ -f "$report" ]; then
+    # Kept, so the one job the owner counts holds: a report that stands queues nothing.
+    echo "## $(basename "$report") ($(date -r "$report" '+%F %T'))"
+    head -n 200 "$report" | LC_ALL=C tr -cd '\11\12\40-\176' | masked | head -c 30000
+    bench_failed_on_older_code "$report" || return 0
+    mv "$report" "$LOGS/CENSUS-$id-$(bench_job_of "$report").md" || return 1
+    echo "  the report above ended in failure on older code: queueing the census again at $commit"
+  fi
+  [ -f "$REPO/data/corpus-tiers/sources.json" ] || { echo "refusing: no data/corpus-tiers/sources.json at this commit"; return 2; }
+  setup=$(setup_dependency) || return 1
+  [ -z "$setup" ] || echo "  the environments: after the setup job that rebuilds them (${setup#afterok:})"
+  holds=$(checkout_holders)
+  [ -z "$holds" ] || echo "  the checkout: after the live runs that hold it ($holds)"
+  depend_on "$(joined "$setup" "$holds")" || return 1
+  submit "census_$id" batch STAGE="$id" ${opts[@]+"${opts[@]}"} --no-requeue -- census.sbatch > /dev/null || return 1
+  echo "submitted the census $id. Send census $id again once it ends to read its report, logs/CENSUS-$id.md."
+}
+
 realism_class() {  # the job class a stage of the realism programme runs as, else nothing
   case "$1" in
     edit|stats|lora|eval) echo gpu ;;
@@ -1617,7 +1649,7 @@ word_cancel() {  # the job named, if the gate's and live, with every live job of
   "$SCANCEL" $cancel && echo "cancelled ($from): $cancel"
 }
 
-release_hold() {  # a run's hold (grid/v1-driver.sbatch, grid/sweep-driver.sbatch, grid/experiment-driver.sbatch, grid/bench.sbatch, grid/anomaly.sbatch, grid/bordercall.sbatch) is cleared once Slurm no longer holds its job
+release_hold() {  # a run's hold (grid/v1-driver.sbatch, grid/sweep-driver.sbatch, grid/experiment-driver.sbatch, grid/bench.sbatch, grid/anomaly.sbatch, grid/bordercall.sbatch, grid/census.sbatch) is cleared once Slurm no longer holds its job
   local job
   [ -f "$LOGS/HOLD" ] || return 0
   job=$(awk '{ print $1; exit }' "$LOGS/HOLD")
@@ -1666,6 +1698,7 @@ case "$word" in
   bench) word_bench ;;
   anomaly) word_anomaly ;;
   bordercall) word_bordercall ;;
+  census) word_census ;;
   realism) word_realism ;;
   samples) word_samples ;;
   sweep) word_sweep ;;

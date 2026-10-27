@@ -1686,6 +1686,63 @@ esac
             self.assertIn("- exit 0", done.stdout)
         self.assertEqual(len(self.submitted()), 1)
 
+    def test_census_queues_one_cpu_job_for_the_tiers_and_then_keeps_printing_its_report(self):
+        # no stage, two stages and another stage are refused before anything is read
+        self.assertEqual(self.gate("census").returncode, 64)
+        self.assertEqual(self.gate("census", "a", "b").returncode, 64)
+        self.assertEqual(self.gate("census", "full").returncode, 64)
+        self.environments_ready()
+        refused = self.gate("census", "tiers")
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn("data/corpus-tiers/sources.json", refused.stdout)
+        shutil.copytree(ROOT / "data" / "corpus-tiers", self.repo / "data" / "corpus-tiers")
+        done = self.gate("census", "tiers")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        lines = self.submitted()
+        self.assertEqual(len(lines), 1, lines)
+        self.assertIn("--class batch --name census_tiers", lines[0])
+        self.assertIn("STAGE=tiers", lines[0])
+        self.assertIn("--no-requeue", lines[0])
+        self.assertIn("census.sbatch", lines[0])
+        self.live(self.recorded()["census_tiers"])
+        self.assertEqual(self.gate("census", "tiers").returncode, 75)
+        (self.fake / "queue").write_text("", encoding="utf-8")
+        report = self.repo / "grid" / "logs" / "CENSUS-tiers.md"
+        report.write_text("# census tiers\n- exit 0\n", encoding="utf-8")
+        for _ in range(2):
+            done = self.gate("census", "tiers")
+            self.assertEqual(done.returncode, 0, done.stdout)
+            self.assertIn("- exit 0", done.stdout)
+        self.assertEqual(len(self.submitted()), 1)
+
+    def test_the_census_job_reports_counts_and_releases_the_checkout(self):
+        # census.sbatch runs tools/corpus_tiers.py from the checkout over the census lists; with no
+        # interpreter that reads a mask it fails at once and says so, holding nothing afterwards
+        self.git_repo()
+        for name in ("corpus_tiers.py", "bordercall_corpus.py"):
+            shutil.copy(ROOT / "tools" / name, self.repo / "tools" / name)
+        shutil.copytree(ROOT / "data" / "corpus-tiers", self.repo / "data" / "corpus-tiers")
+        tiers = self.tmp / "go2432" / "ruleclass" / "tiers"
+        tiers.mkdir(parents=True)
+        env = dict(os.environ, SCHWINGNET=str(self.repo), LAB_VOLUME=str(self.tmp), SSN=str(self.tmp / "ssn"),
+                   STAGE="tiers", SLURM_JOB_ID="781", CENSUS_PYTHON=str(self.fake / "nopython"),
+                   PATH=f"{self.fake}:/usr/bin:/bin")
+        (self.fake / "nopython").write_text("#!/bin/sh\nexit 1\n", encoding="utf-8")
+        (self.fake / "nopython").chmod(0o755)
+        done = subprocess.run(["bash", str(self.repo / "grid" / "census.sbatch")], cwd=self.repo / "grid", env=env,
+                              capture_output=True, text=True, timeout=60)
+        report = (self.repo / "grid" / "logs" / "CENSUS-tiers.md").read_text(encoding="utf-8")
+        self.assertIn("# census tiers: job 781", report.splitlines()[0])
+        if "FAILED: no interpreter" in report:
+            self.assertEqual(done.returncode, 2, report)
+        else:                                               # an interpreter on PATH reads masks: an empty census
+            self.assertEqual(done.returncode, 0, report + done.stdout + done.stderr)
+            self.assertIn("CTs read 0", report)
+        self.assertFalse((self.repo / "grid" / "logs" / "HOLD").exists())
+        bad = subprocess.run(["bash", str(self.repo / "grid" / "census.sbatch")], cwd=self.repo / "grid",
+                             env=dict(env, STAGE="full"), capture_output=True, text=True, timeout=60)
+        self.assertEqual(bad.returncode, 64)
+
     def realism_inputs(self, *which):
         """The data root as the realism fetches leave it, each named set landed by its marker file."""
         markers = {"klein_4b": ("hf_flux2_klein_4b", "raw", "model_index.json"),
