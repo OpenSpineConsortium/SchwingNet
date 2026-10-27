@@ -1,0 +1,11 @@
+{
+ "version": 1,
+ "salt": "fixture-salt",
+ "groups": [
+  {"id": "flexray_drr", "label": "fixture render group", "family": "synthetic", "source": "render", "folder": "fixture_cts", "cap": 40, "per_person": 4, "licence": "fixture licence text R"},
+  {"id": "flexray_drr_ct", "label": "fixture render group from the CT alone", "family": "synthetic", "source": "render", "folder": "fixture_cts", "cap": 40, "per_person": 4, "licence": "fixture licence text R"},
+  {"id": "fluxray", "label": "fixture edited group", "family": "synthetic", "source": "thunderdb", "folder": "fixture_flux/raw", "cap": 40, "per_person": 4, "licence": "fixture licence text F"},
+  {"id": "fixture_fluoro", "label": "fixture fluoroscopy", "family": "fluoroscopy", "source": "index", "index_sources": ["fixture_fluoro_source"], "cap": 40, "per_person": 5, "licence": "fixture licence text A"},
+  {"id": "fixture_film", "label": "fixture film", "family": "film", "source": "index", "index_sources": ["fixture_film_alias"], "cap": 50, "per_person": 1, "licence": "fixture licence text B"}
+ ]
+}

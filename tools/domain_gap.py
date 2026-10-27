@@ -4,8 +4,8 @@ The owner's ask of 2026-10-25 (SchwingNet #391, the FleXray audit; the thread "C
 DRRs to real X-ray corpora"): plot FleXray's synthetic DRRs alongside the held X-ray corpora, plain
 film and fluoroscopy, in t-SNE and other dimension-reduction maps, and run the statistical tests
 for separation a machine-learning reviewer would expect. docs/research/drr-domain-gap/README.md is
-the pre-registered design; this tool is its one job, run by grid/bench.sbatch as the bench id
-flexray_drr_gap, in the job's own environment (flexray, nanodrr, scikit-learn and umap-learn over
+the pre-registered design, frozen as PREREG.md beside it; this tool is its job, run by
+grid/drr-gap.sbatch as the bench id flexray_drr_gap in three steps, in the job's own environment (flexray, nanodrr, scikit-learn and umap-learn over
 train-gpu's torch), once the owner gives the word and the count.
 
     python tools/domain_gap.py run --groups data/domain_gap/groups.json --data-root <data root> \\
@@ -15,6 +15,19 @@ train-gpu's torch), once the owner gives the word and the count.
     python tools/domain_gap.py plan --groups ... --data-root ... --out <dir> [the same flags less
         --weights and --imagenet]
     python tools/domain_gap.py summary --out <dir>
+    python tools/domain_gap.py prepare <the flags of run>
+    python tools/domain_gap.py shard --out <dir> [--task N --tasks T] [--workers W] [--device cuda]
+    python tools/domain_gap.py merge --out <dir> --groups data/domain_gap/groups.json [--wandb auto|off]
+    python tools/domain_gap.py progress --out <dir>
+
+`run` does the whole study in one process. On the grid it runs as three steps instead (the owner's
+word of 2026-10-27, grid/drr-gap.sbatch): `prepare` makes every stage up to the analysis and each
+reading's head, and writes the list of units under <out>/analysis; `shard`, one task of a Slurm
+array, claims units from that list one at a time by creating a file only it can create, runs them
+in a pool of W processes and writes each one's result, taking over a claim whose holder has been
+silent for STALE_SECONDS; and `merge` assembles results.json, the figures and the summary from the
+units' results exactly as `run` does, refusing in words while a unit is open or failed. `progress`
+prints <out>/PROGRESS.txt, the safe lines every step rewrites as it goes.
 
 Stages, each written under --out and skipped when its output is there for the same inputs: the
 renders (tools/flexray_render.py from held TotalSegmentator CTs, each render group a recipe of
@@ -52,8 +65,8 @@ with masks under every segmenter named but the ones the segment job makes (MADE_
 `run` among those with masks under every one, which is the same set once the segment job has done
 them all and a smaller one, said in the plan and the summary, where it has not.
 
-What leaves the grid is summary.txt, at most 80 lines of numbers and group names that the bench
-report carries; results.json, the figures and the plan, which names files, stay in --out (umask 077)
+What leaves the grid is summary.txt, five record lines and at most 80 lines of numbers and group
+names that the bench report carries; results.json, the figures and the plan, which names files, stay in --out (umask 077)
 and the figures and the map coordinates go to W&B where the grid's key is found. tools/ never goes
 on sys.path, since tools/profile.py would shadow the standard library's profile, which torch
 imports.
@@ -71,8 +84,10 @@ import os
 import re
 import sqlite3
 import sys
+import threading
 import time
 import traceback
+import zipfile
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
@@ -145,7 +160,8 @@ LEFT_OUT = "left out by --skip-masks"
 # the segment job's report has been read.
 NO_MASKS = "no CT here has them"
 RENDER_SUBJECTS = "render-subjects.json"
-LINE_BUDGET = 80        # lines of summary.txt, what the bench report carries off the grid
+LINE_BUDGET = 80        # lines of summary.txt's findings, what the bench report carries off the grid
+RECORD_LINES = 5        # the run's record above them (record_lines), so summary.txt holds at most 85
 THUNDER = "thunderdb://"
 
 
@@ -184,9 +200,19 @@ def sha256_of(path):
 def write_json(path, data):
     """Write a JSON file whole: to a neighbour first, then renamed, so a cut job leaves none half."""
     path = Path(path)
-    part = path.with_name(path.name + ".part")
+    part = own_part(path)
     part.write_text(json.dumps(data, indent=1, sort_keys=True) + "\n", encoding="utf-8")
     os.replace(part, path)
+
+
+def own_part(path):
+    """The neighbour a file is written to before it is renamed into place, named by this host,
+    process and thread, so two writers of one file, an array's tasks on nodes that share the folder
+    or two threads of one process, never write one neighbour."""
+    import socket
+
+    path = Path(path)
+    return path.with_name(f"{path.name}.{socket.gethostname()}.{os.getpid()}.{threading.get_ident()}.part")
 
 
 def read_json(path):
@@ -500,7 +526,8 @@ def stage_render(args, table):
     roots = mask_roots(args)
     folders = render_folders(args, table, renderer, roots)
     write_subjects(args.out, folders)
-    for group in groups:
+    for number, group in enumerate(groups, 1):
+        note_stage(args.out, "render", "running", f"group {number} of {len(groups)}: {group.id}")
         folder = folders[group.folder]
         subjects = folder["subjects"][:max(1, group.cap // group.per_person)]
         why = folder.get("skipped") or unread_masks(group, folder)
@@ -958,7 +985,8 @@ def unavailable(space, args):
 
 
 def stage_features(args, images, rows):
-    """features/<space>.npz: for each image, the space's features of the image and of its inverse."""
+    """features/<space>.npz: for each image, the space's features of the image and of its inverse,
+    written whole and renamed, so a job cut while it writes leaves the last whole file or none."""
     import numpy as np
     import torch
 
@@ -971,7 +999,7 @@ def stage_features(args, images, rows):
         if why:
             done[space] = why
             continue
-        if path.is_file() and str(np.load(path)["plan"]) == rows["plan"]:
+        if features_kept(path, rows["plan"]):
             done[space] = None
             continue
         log(f"features: {space} over {len(images)} images")
@@ -981,9 +1009,27 @@ def stage_features(args, images, rows):
             batch = torch.from_numpy(np.asarray(images[start:start + 64], dtype=np.float32)).unsqueeze(1)
             stored.append(embed(batch))
             inverse.append(embed(1.0 - batch))
-        np.savez(path, stored=np.concatenate(stored), inverse=np.concatenate(inverse), plan=rows["plan"])
+            if start % (64 * 20) == 0:
+                note_stage(args.out, "features", "running", f"{space} {start} of {len(images)} images")
+        part = folder / f"{space}.npz.part"
+        with open(part, "wb") as handle:
+            np.savez(handle, stored=np.concatenate(stored), inverse=np.concatenate(inverse), plan=rows["plan"])
+        os.replace(part, path)
         done[space] = None
     return done
+
+
+def features_kept(path, plan):
+    """Whether a space's features are there whole for this plan; a file a cut job left half
+    written, which np.load cannot open, counts as none."""
+    import numpy as np
+
+    if not path.is_file():
+        return False
+    try:
+        return str(np.load(path)["plan"]) == plan
+    except (OSError, ValueError, KeyError, EOFError, zipfile.BadZipFile):
+        return False
 
 
 # --- the analysis ----------------------------------------------------------------------------------
@@ -1112,20 +1158,11 @@ def equal_rows(frame, a, b, seed):
     return capped(frame, a, size, f"fd:{seed}"), capped(frame, b, size, f"fd:{seed}")
 
 
-def calibration(frame, z64, salt, seed):
-    """The split-half nulls: each group with enough persons split in two by person; the tests
-    must find nothing there, or the pipeline is leaking."""
+def calibration_of(nulls):
+    """The split-half nulls read together: each group with SPLIT_PERSONS persons or more split in
+    two by person (null_unit), where the tests must find nothing, or the pipeline is leaking."""
     import numpy as np
 
-    s = stats()
-    nulls = {}
-    for group in frame.order:
-        if frame.persons(group) < SPLIT_PERSONS:
-            continue
-        rows = frame.rows_of(group)
-        half = s.split_half(list(frame.person[rows]), f"{salt}:{group}")
-        a, b = rows[half == 1], rows[half == 0]
-        nulls[group] = contrast(frame, z64, a, b, seed)
     aucs = [v["auc_logistic"]["auc"] for v in nulls.values()]
     return {"groups": nulls, "auc_median": float(np.median(aucs)) if aucs else None,
             "auc_range": [float(min(aucs)), float(max(aucs))] if aucs else None,
@@ -1144,59 +1181,258 @@ def flagged_nulls(nulls):
     return [g for g, value in zip(groups, q) if value < 0.05]
 
 
-def analyse_space(frame, salt, seed):
-    """The whole analysis of one feature space."""
+# A reading's analysis is a list of units, each one contrast, one null, one structure measure or one
+# map, which reads only the reading's head (the features, their standardised copy and its first 64
+# principal components) and the plan, with its own seed. So the list gives the same result run one
+# unit after another in one process (analyse_head, the run subcommand) or claimed by the tasks of a
+# Slurm array (prepare, shard, merge), and the assembly puts every unit where the analysis has
+# always put it, in the order it has always run them. Each unit's result passes through JSON in
+# both, so a unit run here and one read back from a task's file are the same object.
+
+MAP_METHODS = ("pca", "tsne", "umap", "lda")
+SEED = 0
+
+
+class Head:
+    """One reading of one feature space, ready for its units: the frame, the standardised features
+    and their first 64 principal components, the reading's first numbers, and the groups its units
+    are planned from (the testable synthetic and real groups and each pooled real family)."""
+
+    def __init__(self, key, frame, z, z64, base, salt):
+        self.key, self.frame, self.z, self.z64, self.base, self.salt = key, frame, z, z64, base, salt
+        self.invalid = base.get("invalid", "")
+        self.synthetic, self.real, self.families = [], [], {}
+        if not self.invalid:
+            self.synthetic = frame.testable("synthetic")
+            self.real = frame.testable("fluoroscopy") + frame.testable("film")
+            self.families = {f: pooled(frame, f, salt) for f in ("fluoroscopy", "film")}
+
+
+def space_head(key, frame, salt, seed=SEED):
+    """The head of one reading: z, z64 and its first numbers, the reason it is not read among them
+    where every image has the same features."""
     import numpy as np
 
     s = stats()
     z = s.standardise(frame.x)
     z64, explained = s.pca(z, min(64, z.shape[1], len(z) - 1), seed=seed)
-    result = {"dim": int(frame.x.shape[1]), "rows": int(len(frame.x)),
-              "feature_spread": float(np.mean(np.std(frame.x, axis=0))),
-              "pca64_explained": float(np.sum(explained))}
-    if result["feature_spread"] < 1e-6:
-        result["invalid"] = "every image has the same features"
+    base = {"dim": int(frame.x.shape[1]), "rows": int(len(frame.x)),
+            "feature_spread": float(np.mean(np.std(frame.x, axis=0))),
+            "pca64_explained": float(np.sum(explained))}
+    if base["feature_spread"] < 1e-6:
+        base["invalid"] = "every image has the same features"
+    return Head(key, frame, z, z64, base, salt)
+
+
+def unit_id(key, kind, a="", b=""):
+    return "/".join(part for part in (key, kind, a, b) if part)
+
+
+def space_units(head):
+    """The reading's units in the order the analysis has always run them: each synthetic group
+    against each pooled family (with the C2ST's permutation p and PRDC) and against each real
+    group, every pair of real groups, the two families against each other, the replication pairs,
+    the split-half nulls, the structure measures, the nearest real corpus of each synthetic group,
+    the FD64 of every pair and the four maps."""
+    if head.invalid:
+        return []
+    frame, plan = head.frame, []
+    plan += [("family", sg, f) for sg in head.synthetic for f, rows in head.families.items() if len(rows)]
+    plan += [("group", sg, rg) for sg in head.synthetic for rg in head.real]
+    plan += [("real", a, b) for i, a in enumerate(head.real) for b in head.real[i + 1:]]
+    if both_families(head):
+        plan.append(("fvf", "fluoroscopy", "film"))
+    plan += [("replication", a, b) for a, b in REPLICATION_PAIRS]
+    plan += [("null", g, "") for g in frame.order if frame.persons(g) >= SPLIT_PERSONS]
+    plan.append(("structure", "", ""))
+    if nearest_ready(head):
+        plan += [("nearest", sg, "") for sg in head.synthetic]
+    plan.append(("fd_all", "", ""))
+    plan += [("maps", method, "") for method in MAP_METHODS]
+    return [{"id": unit_id(head.key, kind, a, b), "key": head.key, "kind": kind, "a": a, "b": b}
+            for kind, a, b in plan]
+
+
+def both_families(head):
+    return bool(len(head.families.get("fluoroscopy", ())) and len(head.families.get("film", ())))
+
+
+def nearest_ready(head):
+    """Whether there are two real corpora or more, so a classifier trained on them alone can name
+    the nearest of them for each synthetic group."""
+    import numpy as np
+
+    real_rows = np.flatnonzero(np.isin(head.frame.group, head.real))
+    return len(set(head.frame.group[real_rows])) >= 2
+
+
+def run_unit(head, unit, seed=SEED):
+    """One unit's result as JSON reads it back, its keys sorted as a task's result file holds them
+    (write_json), and the arrays a map unit draws beside it."""
+    piece, arrays = UNIT_RUNNERS[unit["kind"]](head, unit["a"], unit["b"], seed)
+    return json.loads(json.dumps(piece, sort_keys=True)), arrays
+
+
+def family_unit(head, sg, family, seed):
+    frame = head.frame
+    return contrast(frame, head.z64, frame.rows_of(sg), head.families[family], seed, permute=True, prdc=True), {}
+
+
+def pair_unit(head, a, b, seed):
+    frame = head.frame
+    return contrast(frame, head.z64, frame.rows_of(a), frame.rows_of(b), seed), {}
+
+
+def families_unit(head, _a, _b, seed):
+    return contrast(head.frame, head.z64, head.families["fluoroscopy"], head.families["film"], seed), {}
+
+
+def replication_unit(head, a, b, seed):
+    """One replication pair (REPLICATION_PAIRS) with every measure a family contrast gets, the C2ST
+    permutation p and PRDC among them, precision and recall being the first group's against the
+    second; a pair with a group the space cannot test is listed with the reason, so a FluXray not
+    fetched or a render that failed is read in the result and not guessed at."""
+    frame = head.frame
+    missing = [f"{g}: {frame.why_untestable(g)}" for g in (a, b) if frame.why_untestable(g)]
+    if missing:
+        return {"skipped": "; ".join(missing)}, {}
+    return contrast(frame, head.z64, frame.rows_of(a), frame.rows_of(b), seed, permute=True, prdc=True), {}
+
+
+def null_unit(head, group, _b, seed):
+    """One split-half null: the group split in two by person and every test run on the halves."""
+    frame = head.frame
+    rows = frame.rows_of(group)
+    half = stats().split_half(list(frame.person[rows]), f"{head.salt}:{group}")
+    return contrast(frame, head.z64, rows[half == 1], rows[half == 0], seed), {}
+
+
+def structure_unit(head, _a, _b, seed):
+    """Silhouette, neighbour purity and the share of each group's neighbours in each family."""
+    import numpy as np
+
+    s, frame, z64 = stats(), head.frame, head.z64
+    keep = np.isin(frame.group, frame.order)
+    return {"silhouette": s.silhouette(z64[keep], frame.group[keep], seed=seed),
+            "purity": s.knn_purity(z64[keep], frame.group[keep]),
+            "family_share": s.neighbour_family_share(z64[keep], frame.group[keep], frame.family[keep])}, {}
+
+
+def nearest_unit(head, sg, _b, seed):
+    """Which real corpus a classifier trained on the real corpora alone calls one synthetic group."""
+    import numpy as np
+
+    frame = head.frame
+    real_rows = np.flatnonzero(np.isin(frame.group, head.real))
+    return stats().nearest_real(frame.x[real_rows], frame.group[real_rows], list(frame.person[real_rows]),
+                                frame.x[frame.rows_of(sg)], seed=seed), {}
+
+
+def distances_unit(head, _a, _b, seed):
+    return all_distances(head.frame, head.z64, seed), {}
+
+
+def map_unit(head, method, _b, seed):
+    """One of the maps of up to MAP_ROWS rows a group, drawn on those rows' first 50 components,
+    with its trustworthiness against them (none for LDA, which is supervised) and each group's
+    centre and spread; a map that could not be drawn keeps the sentence that says why."""
+    s, frame = stats(), head.frame
+    rows = map_rows(frame, head.salt)
+    z50, _ = s.pca(head.z[rows], min(50, head.z.shape[1], len(rows) - 1), seed=seed)
+    xy = s.reductions(z50, seed=seed, groups=frame.group[rows], methods=(method,))[method]
+    if not hasattr(xy, "shape"):
+        return {"trust": None, "not_drawn": xy}, {"rows": rows}
+    trust = float(s.trust(z50, xy, seed=seed)) if method != "lda" else None
+    centres = {g: centre(xy[frame.group[rows] == g]) for g in frame.order}
+    return {"trust": trust, "centres": centres}, {"rows": rows, "xy": xy}
+
+
+def map_rows(frame, salt):
+    import numpy as np
+
+    return np.concatenate([capped(frame, frame.rows_of(g), MAP_ROWS, f"{salt}:map:{g}") for g in frame.order])
+
+
+UNIT_RUNNERS = {"family": family_unit, "group": pair_unit, "real": pair_unit, "fvf": families_unit,
+                "replication": replication_unit, "null": null_unit, "structure": structure_unit,
+                "nearest": nearest_unit, "fd_all": distances_unit, "maps": map_unit}
+
+
+def assemble_space(head, pieces, arrays):
+    """The reading's result and maps from its units' results, each put where the analysis has
+    always put it, then the steps that read them together: the nulls' summary, the gap ratios,
+    Benjamini-Hochberg over the space and the replication words."""
+    result = dict(head.base)
+    if head.invalid:
         return result, None
-    synthetic = [g for g in frame.testable("synthetic")]
-    real = frame.testable("fluoroscopy") + frame.testable("film")
-    families = {f: pooled(frame, f, salt) for f in ("fluoroscopy", "film")}
-    result["vs_family"] = family_contrasts(frame, z64, synthetic, families, seed)
-    result["vs_group"] = {sg: {rg: contrast(frame, z64, frame.rows_of(sg), frame.rows_of(rg), seed)
-                               for rg in real} for sg in synthetic}
-    result["real_real"] = {f"{a}|{b}": contrast(frame, z64, frame.rows_of(a), frame.rows_of(b), seed)
-                           for i, a in enumerate(real) for b in real[i + 1:]}
-    if len(families["fluoroscopy"]) and len(families["film"]):
-        result["fluoroscopy_vs_film"] = contrast(frame, z64, families["fluoroscopy"], families["film"], seed)
-    result["replication"] = replication_contrasts(frame, z64, seed)
-    result["calibration"] = calibration(frame, z64, salt, seed)
-    result["ratios"] = gap_ratios(frame, result, synthetic)
-    result["structure"] = structure(frame, z64, real, synthetic, seed)
-    result["fd_all"] = all_distances(frame, z64, seed)
+    slots = {"vs_family": {sg: {} for sg in head.synthetic}, "vs_group": {sg: {} for sg in head.synthetic},
+             "real_real": {}, "replication": {}, "nulls": {},
+             "structure": {"nearest_real": {}} if nearest_ready(head) else {}}
+    maps = {"coords": {}, "trust": {}, "centres": {}}
+    for unit in space_units(head):
+        piece = pieces[unit["id"]]
+        if unit["kind"] == "maps":
+            place_map(maps, unit["a"], piece, arrays[unit["id"]])
+        else:
+            place(slots, unit, piece)
+    result.update(vs_family=slots["vs_family"], vs_group=slots["vs_group"], real_real=slots["real_real"])
+    if "fvf" in slots:
+        result["fluoroscopy_vs_film"] = slots["fvf"]
+    result["replication"] = slots["replication"]
+    result["calibration"] = calibration_of(slots["nulls"])
+    result["ratios"] = gap_ratios(head.frame, result, head.synthetic)
+    result["structure"] = slots["structure"]
+    result["fd_all"] = slots["fd_all"]
     adjust(result)
     replication_words(result)
-    maps = map_coordinates(frame, z, salt, seed)
     result["maps"] = {k: v for k, v in maps.items() if k != "coords"}
     return result, maps
 
 
-def family_contrasts(frame, z64, synthetic, families, seed):
-    return {sg: {f: contrast(frame, z64, frame.rows_of(sg), rows, seed, permute=True, prdc=True)
-                 for f, rows in families.items() if len(rows)} for sg in synthetic}
+def place(slots, unit, piece):
+    """One unit's result in its slot of the reading's result."""
+    kind, a, b = unit["kind"], unit["a"], unit["b"]
+    if kind in ("family", "group"):
+        slots["vs_family" if kind == "family" else "vs_group"][a][b] = piece
+    elif kind in ("real", "replication"):
+        slots["real_real" if kind == "real" else "replication"][f"{a}|{b}"] = piece
+    elif kind == "null":
+        slots["nulls"][a] = piece
+    elif kind == "structure":
+        slots["structure"].update(piece)
+    elif kind == "nearest":
+        slots["structure"]["nearest_real"][a] = piece
+    else:
+        slots[kind] = piece
 
 
-def replication_contrasts(frame, z64, seed):
-    """The replication test's pairs (REPLICATION_PAIRS), each with every measure a family contrast
-    gets, the C2ST permutation p and PRDC among them, precision and recall being the first group's
-    against the second; a pair with a group the space cannot test is listed with the reason, so a
-    FluXray not fetched or a render that failed is read in the result and not guessed at."""
-    out = {}
-    for a, b in REPLICATION_PAIRS:
-        missing = [f"{g}: {frame.why_untestable(g)}" for g in (a, b) if frame.why_untestable(g)]
-        if missing:
-            out[f"{a}|{b}"] = {"skipped": "; ".join(missing)}
-            continue
-        out[f"{a}|{b}"] = contrast(frame, z64, frame.rows_of(a), frame.rows_of(b), seed, permute=True, prdc=True)
-    return out
+def place_map(maps, method, piece, arrays):
+    """One map's coordinates, trustworthiness and centres; every map draws the same rows."""
+    maps["coords"]["rows"] = arrays["rows"]
+    maps["coords"][method] = arrays["xy"] if "xy" in arrays else piece["not_drawn"]
+    maps["trust"][method] = piece["trust"]
+    if "centres" in piece:
+        maps["centres"][method] = piece["centres"]
+
+
+def analyse_space(frame, salt, seed=SEED, key="space"):
+    """The whole analysis of one reading of a feature space, its units run here one after another."""
+    return analyse_head(space_head(key, frame, salt, seed), seed)
+
+
+def analyse_head(head, seed=SEED, seconds=None):
+    """A reading's units one after another and their assembly; each unit's seconds are added to
+    seconds[0] where a list is given, as the record's summed unit seconds."""
+    units = space_units(head)
+    pieces, arrays = {}, {}
+    for number, unit in enumerate(units, 1):
+        started = time.time()
+        pieces[unit["id"]], arrays[unit["id"]] = run_unit(head, unit, seed)
+        took = time.time() - started
+        if seconds is not None:
+            seconds[0] += took
+        log(f"unit {number} of {len(units)}: {unit['id']} in {took:.1f} s")
+    return assemble_space(head, pieces, arrays)
 
 
 def replication_words(result):
@@ -1243,24 +1479,6 @@ def gap_ratios(frame, result, synthetic):
     return ratios
 
 
-def structure(frame, z64, real, synthetic, seed):
-    """Silhouette, neighbour purity, the share of each group's neighbours in each family, and which
-    real corpus a classifier trained on the real corpora alone calls each synthetic group."""
-    import numpy as np
-
-    s = stats()
-    keep = np.isin(frame.group, frame.order)
-    out = {"silhouette": s.silhouette(z64[keep], frame.group[keep], seed=seed),
-           "purity": s.knn_purity(z64[keep], frame.group[keep]),
-           "family_share": s.neighbour_family_share(z64[keep], frame.group[keep], frame.family[keep])}
-    real_rows = np.flatnonzero(np.isin(frame.group, real))
-    if len(set(frame.group[real_rows])) >= 2:
-        out["nearest_real"] = {sg: s.nearest_real(frame.x[real_rows], frame.group[real_rows],
-                                                  list(frame.person[real_rows]), frame.x[frame.rows_of(sg)],
-                                                  seed=seed) for sg in synthetic}
-    return out
-
-
 def adjust(result):
     """Benjamini-Hochberg over every MMD p of the space's contrasts, the replication pairs among
     them, and over its C2ST permutation p-values; the split-half nulls are adjusted among
@@ -1289,25 +1507,6 @@ def p_values(result, key):
             yield holder, float(holder["p"])
 
 
-def map_coordinates(frame, z, salt, seed):
-    """PCA, t-SNE, UMAP and LDA maps of up to MAP_ROWS rows a group, with each map's
-    trustworthiness against the first 50 components and each group's centre and spread."""
-    import numpy as np
-
-    s = stats()
-    rows = np.concatenate([capped(frame, frame.rows_of(g), MAP_ROWS, f"{salt}:map:{g}") for g in frame.order])
-    z50, _ = s.pca(z[rows], min(50, z.shape[1], len(rows) - 1), seed=seed)
-    maps = s.reductions(z50, seed=seed, groups=frame.group[rows])
-    out = {"coords": {"rows": rows, **maps}, "trust": {}, "centres": {}}
-    for name, xy in maps.items():
-        if not hasattr(xy, "shape"):
-            out["trust"][name] = None
-            continue
-        out["trust"][name] = float(s.trust(z50, xy, seed=seed)) if name != "lda" else None
-        out["centres"][name] = {g: centre(xy[frame.group[rows] == g]) for g in frame.order}
-    return out
-
-
 def centre(xy):
     import numpy as np
 
@@ -1315,34 +1514,61 @@ def centre(xy):
 
 
 def stage_analysis(args, plan, rows):
-    """results.json and the figures, every available space in turn."""
+    """results.json and the figures, every available reading in turn, its units run here."""
+    results, all_maps, total, seconds = new_results(plan, rows), {}, 0, [0.0]
+    for key, head in reading_heads(args, plan, rows):
+        if isinstance(head, str):
+            results["spaces"][key] = {"invalid": head}
+            continue
+        total += len(space_units(head))
+        log(f"analysis: {key}, {len(space_units(head))} units")
+        result, maps = analyse_head(head, seconds=seconds)
+        results["spaces"][key] = result
+        if maps:
+            all_maps[key] = (head.frame, maps)
+    record = {"jobs": {"run": job_label()}, "gpus": {gpu_name(args.device): 1},
+              "units": {"total": total, "done": total, "failed": 0}, "mmd": mmd_backend(),
+              "units_seconds": round(seconds[0])}
+    return finish_results(args, results, all_maps, record=record)
+
+
+def reading_heads(args, plan, rows):
+    """(key, head) for each reading in the order the analysis reads them: every space
+    inversion-invariant, and FleXray's own space as stored too; a space with no features gives the
+    reason in place of a head."""
     import numpy as np
 
-    results = {"plan": rows["plan"], "spaces": {}, "groups": group_rows(plan, rows),
-               "renders": plan.get("renders", {})}
-    all_maps = {}
     for space in SPACES:
         path = Path(args.out) / "features" / f"{space}.npz"
         if not path.is_file():
-            results["spaces"][space] = {"invalid": unavailable(space, args) or "no features"}
+            yield space, unavailable(space, args) or "no features"
             continue
         data = np.load(path)
         stored, inverse = data["stored"], data["inverse"]
         for reading, x in (("invariant", (stored + inverse) / 2.0), ("as_stored", stored)):
             if reading == "as_stored" and space != PRIMARY_SPACE:
                 continue
-            log(f"analysis: {space} ({reading})")
-            frame = Frame(x, rows["rows"], plan)
-            result, maps = analyse_space(frame, plan["salt"], seed=0)
             key = space if reading == "invariant" else f"{space}_as_stored"
-            results["spaces"][key] = result
-            if maps:
-                all_maps[key] = (frame, maps)
+            yield key, space_head(key, Frame(x, rows["rows"], plan), plan["salt"])
+
+
+def new_results(plan, rows):
+    return {"plan": rows["plan"], "spaces": {}, "groups": group_rows(plan, rows), "renders": plan.get("renders", {})}
+
+
+def finish_results(args, results, all_maps, record=None, run=None):
+    """The study's verdict, its run record, results.json and the figures, the same whether the
+    units ran here or in an array's tasks; an array's run block is its prepare's, what the renders,
+    the plan and the features were made from, with the merge's own beside it."""
     results["replication"] = replication_verdict(results)
+    results["_run"] = run or run_block(args)
+    results["_record"] = record or {}
     write_json(Path(args.out) / "results.json", results)
     tool_figures = Path(args.out) / "figures"
     tool_figures.mkdir(exist_ok=True)
+    started = time.time()
     figures(all_maps, results, tool_figures)
+    note_seconds(args.out, "figures", time.time() - started)
     return results, all_maps
 
 
@@ -1384,6 +1610,954 @@ def group_rows(plan, rows):
              "persons": len(decoded.get(g["id"], ())), "person_rule": g.get("person_rule", ""),
              "person_fallback": g.get("person_fallback", 0), "frozen_dropped": g.get("frozen_dropped", 0),
              "failures": rows["failures"].get(g["id"], {}), "skipped": g["skipped"]} for g in plan["groups"]]
+
+
+# --- the record: what ran, from which code, on what -----------------------------------------------
+
+STUDY = "drr-domain-gap"
+# The files a unit runs, whose digest names the units: a done unit from other code is done again,
+# and a task whose copy differs from the one prepare planned with refuses (runs are named by their
+# code, docs/memory/runs-are-named-by-their-code.md).
+CODE_FILES = ("tools/domain_gap.py", "tools/domain_gap_stats.py", "src/schwingnet/domain_gap.py")
+PREREG = ROOT / "docs" / "research" / "drr-domain-gap" / "PREREG.md"
+# Everything the study runs or reads from the repository, the renderers and the groups among them,
+# which a run by hand reports dirty when any of it differs from the commit it names.
+RUN_PATHS = ("tools", "src", "vendor", "data/domain_gap", "data/splits", "docs/research/drr-domain-gap/PREREG.md")
+
+
+def code_digest():
+    digest = hashlib.sha256()
+    for name in CODE_FILES:
+        digest.update(name.encode("ascii") + b"\0" + (ROOT / name).read_bytes() + b"\0")
+    return digest.hexdigest()
+
+
+def prereg_digest():
+    """The frozen pre-registration's sha256, or empty where this copy holds none."""
+    return sha256_of(PREREG) if PREREG.is_file() else ""
+
+
+def git_state():
+    """(commit, dirty) of the code this process runs: the grid's step gives them, since it runs
+    from a copy of the commit that is no checkout; by hand they are read from git."""
+    if os.environ.get("SN_GIT_HEAD"):
+        return os.environ["SN_GIT_HEAD"], os.environ.get("SN_GIT_DIRTY", "no") != "no"
+    import subprocess
+
+    def git(*words):
+        done = subprocess.run(["git", "-C", str(ROOT), *words], capture_output=True, text=True)
+        return done.stdout.strip() if done.returncode == 0 else ""
+
+    head = git("rev-parse", "HEAD")
+    return head or "unknown", bool(git("status", "--porcelain", "--", *RUN_PATHS))
+
+
+def job_label():
+    """The Slurm job this process runs in, an array task as <array job>_<task>, else local."""
+    array, task = os.environ.get("SLURM_ARRAY_JOB_ID"), os.environ.get("SLURM_ARRAY_TASK_ID")
+    if array and task:
+        return f"{array}_{task}"
+    return os.environ.get("SLURM_JOB_ID", "local")
+
+
+def utc_now():
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+
+def run_block(args):
+    """The Lab Recipe's _run block (its section on code and environment): the job and task, host and
+    time, the commit and whether the tree was clean, the script with its hash and arguments, the
+    sha256 of every input read, and the frozen pre-registration's hash."""
+    import socket
+
+    head, dirty = git_state()
+    out = Path(args.out)
+    inputs = {name: sha256_of(out / name) for name in ("plan.json", "rows.json") if (out / name).is_file()}
+    inputs.update({f"features/{p.name}": sha256_of(p) for p in sorted((out / "features").glob("*.npz"))})
+    if getattr(args, "groups", "") and Path(args.groups).is_file():
+        inputs["groups.json"] = sha256_of(args.groups)
+    return {"job": os.environ.get("SLURM_ARRAY_JOB_ID") or os.environ.get("SLURM_JOB_ID", "local"),
+            "task": os.environ.get("SLURM_ARRAY_TASK_ID", ""), "host": socket.gethostname(), "utc": utc_now(),
+            "git_head": head, "git_dirty": dirty, "script": "tools/domain_gap.py",
+            "script_sha256": sha256_of(Path(__file__)), "code_digest": code_digest(), "argv": sys.argv[1:],
+            "inputs": inputs, "prereg_sha256": prereg_digest(), "seed": SEED}
+
+
+# --- the stages' progress: STAGES.json and PROGRESS.txt -------------------------------------------
+#
+# The owner's ask of 2026-10-27 17:53 UTC: "make sure you are logging, and I want to see a visual
+# representation of what is happening". Every stage says when it starts and how long it took in
+# analysis/STAGES.json, and PROGRESS.txt says where the whole study stands in at most about 40
+# lines of counts and group ids, each made safe for the grid's redaction, which grid/gate.sh's
+# status shows and a cloud session draws; nothing in it names a file or a person.
+
+ANALYSIS = "analysis"
+PROGRESS = "PROGRESS.txt"
+PROGRESS_SECONDS = 30   # a task rewrites PROGRESS.txt at most this often, since it lists folders on CephFS
+STAGE_ORDER = ("render", "plan", "images", "features", "heads", "analysis", "figures", "summary")
+
+
+def analysis_folder(out):
+    folder = Path(out) / ANALYSIS
+    folder.mkdir(parents=True, exist_ok=True)
+    return folder
+
+
+def stages_of(out):
+    path = Path(out) / ANALYSIS / "STAGES.json"
+    try:
+        return read_json(path)
+    except (OSError, ValueError):
+        return {}
+
+
+def note_stage(out, stage, state, detail=""):
+    """One stage's state (running, done, failed or skipped) with when it began and what it is on."""
+    stages = stages_of(out)
+    entry = stages.get(stage, {})
+    if state == "running" and entry.get("state") != "running":
+        entry["since"] = time.time()
+    if state != "running" and "since" in entry:
+        entry["seconds"] = round(time.time() - entry["since"], 1)
+    entry.update(state=state, detail=detail)
+    stages[stage] = entry
+    write_json(analysis_folder(out) / "STAGES.json", stages)
+    write_progress(out, force=True)
+
+
+def note_seconds(out, stage, seconds):
+    stages = stages_of(out)
+    stages[stage] = {"state": "done", "seconds": round(seconds, 1), "detail": ""}
+    write_json(analysis_folder(out) / "STAGES.json", stages)
+
+
+def staged(out, stage, step):
+    """step() run as one stage, its start, end and seconds noted, a failure noted before it rises."""
+    note_stage(out, stage, "running")
+    log(f"stage {stage}: started")
+    try:
+        result = step()
+    except BaseException:
+        note_stage(out, stage, "failed")
+        raise
+    note_stage(out, stage, "done")
+    log(f"stage {stage}: done in {stages_of(out).get(stage, {}).get('seconds', 0)} s")
+    return result
+
+
+_LAST_PROGRESS = [0.0]
+
+
+def write_progress(out, force=False):
+    """PROGRESS.txt whole, renamed into place, at most every PROGRESS_SECONDS unless forced."""
+    if not force and time.time() - _LAST_PROGRESS[0] < PROGRESS_SECONDS:
+        return
+    _LAST_PROGRESS[0] = time.time()
+    try:
+        lines = [rules().safe_line(line) for line in progress_lines(Path(out))]
+        part = own_part(Path(out) / PROGRESS)
+        part.write_text("\n".join(lines) + "\n", encoding="ascii")
+        os.replace(part, Path(out) / PROGRESS)
+    except (OSError, ValueError) as error:  # the progress page is a view of the run, never a reason to stop it
+        log(f"PROGRESS.txt not rewritten: {type(error).__name__}: {error}")
+
+
+def progress_lines(out):
+    """Where the study stands: the headline, the stages, each reading's units by kind, each task,
+    the rate with the time left, and the units done by five-minute step for the live view's chart."""
+    stages, record = stages_of(out), units_record(out)
+    state = unit_state(out, record) if record else None
+    lines = [headline(stages, record, state)]
+    lines += stage_lines(stages)
+    if record:
+        lines += reading_lines(record, state)
+        lines += task_lines(out, state)
+        lines += rate_lines(record, state)
+    return lines[:60]
+
+
+def headline(stages, record, state):
+    now = time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime())
+    running = [s for s in STAGE_ORDER if stages.get(s, {}).get("state") == "running"]
+    stage = running[0] if running else next((s for s in reversed(STAGE_ORDER) if s in stages), "none")
+    if record and not running and "figures" not in stages and len(state["done"]) < len(record["units"]):
+        stage = "analysis"
+    if not record:
+        return f"drr-gap at {now}: stage {stage}"
+    return (f"drr-gap at {now}: stage {stage}; units {len(state['done'])} of {len(record['units'])} done,"
+            f" {len(state['running'])} running, {len(state['failed'])} failed")
+
+
+def stage_lines(stages):
+    lines = []
+    for stage in STAGE_ORDER:
+        entry = stages.get(stage)
+        if not entry:
+            continue
+        if entry.get("state") == "running":
+            since = time.strftime("%H:%M UTC", time.gmtime(entry.get("since", time.time())))
+            minutes = (time.time() - entry.get("since", time.time())) / 60
+            text = f"stage {stage}: running since {since} ({minutes:.0f} min)"
+        else:
+            text = f"stage {stage}: {entry.get('state')} in {entry.get('seconds', 0):.0f} s"
+        lines.append(text + (f", {entry['detail']}" if entry.get("detail") else ""))
+    return lines
+
+
+def unit_state(out, record):
+    """Which units are done, failed and claimed, from the folders' names alone (no file read)."""
+    folder = Path(out) / ANALYSIS
+    names = {kind: listed(folder / kind) for kind in ("done", "failed", "claims")}
+    numbers = {kind: {int(n.split(".")[0]) for n in found if n.split(".")[0].isdigit()} for kind, found in names.items()}
+    done = {i for i in numbers["done"] if f"{i:05d}.json" in names["done"]}
+    failed = numbers["failed"] - done
+    return {"done": done, "failed": failed, "running": numbers["claims"] - done - failed}
+
+
+def listed(folder):
+    try:
+        return set(os.listdir(folder))
+    except OSError:
+        return set()
+
+
+def reading_lines(record, state):
+    lines = []
+    for key in record["keys"]:
+        if key in record.get("invalid", {}):
+            lines.append(f"reading {key}: not read, {record['invalid'][key]}")
+            continue
+        indexes = [i for i, u in enumerate(record["units"]) if u["key"] == key]
+        kinds = {}
+        for i in indexes:
+            kind = record["units"][i]["kind"]
+            kinds.setdefault(kind, [0, 0])
+            kinds[kind][1] += 1
+            kinds[kind][0] += i in state["done"]
+        parts = ", ".join(f"{kind} {d} of {t}" for kind, (d, t) in kinds.items())
+        lines.append(f"reading {key}: {sum(i in state['done'] for i in indexes)} of {len(indexes)} ({parts})")
+    return lines
+
+
+def task_lines(out, state):
+    lines = []
+    for path in sorted((Path(out) / ANALYSIS / "tasks").glob("*.json")):
+        try:
+            task = read_json(path)
+        except (OSError, ValueError):
+            continue
+        beat = time.strftime("%H:%M:%S", time.gmtime(task.get("beat", 0)))
+        lines.append(f"task {task.get('task')} ({task.get('job')}, {task.get('host')}, {task.get('gpu')}):"
+                     f" {task.get('state')}, {task.get('done', 0)} done, {task.get('held', 0)} running,"
+                     f" {task.get('failed', 0)} failed, beat {beat} UTC")
+    return lines
+
+
+def rate_lines(record, state):
+    """Units a minute over the last ten minutes, weighted by their cost for the time left, and the
+    units done at each five minutes since the first was done."""
+    times = sorted(done_times(record))
+    if not times:
+        return []
+    now, first = time.time(), times[0][0]
+    recent = [cost for at, cost in times if at > now - 600]
+    left = sum(unit_cost(u) for i, u in enumerate(record["units"]) if i not in state["done"])
+    speed = sum(recent) / 10.0
+    lines = [f"rate: {len(recent) / 10.0:.1f} units a minute over the last 10 minutes"
+             + (f", about {left / speed:.0f} min left" if speed > 0 and left else "")]
+    steps = [f"{minute} min {sum(1 for at, _ in times if at <= first + 60 * minute)}"
+             for minute in range(5, int((times[-1][0] - first) / 60) + 5, 5)]
+    lines.append("timeline of units done: " + ", ".join(steps[-12:]))
+    return lines
+
+
+def done_times(record):
+    """(time, cost) of every unit the tasks' event logs say is done."""
+    units = record["units"]
+    return [(event["at"], unit_cost(units[event["index"]])) for event in events_of(record) if event["event"] == "done"]
+
+
+def events_of(record):
+    """Every whole event the tasks of this list logged, in file order: a line a killed task left
+    half written, or one that names no unit of this list, is passed over, since the events are the
+    progress's and the record's view and never what decides a unit."""
+    folder = Path(record["out"]) / ANALYSIS / "events"
+    found = []
+    for path in sorted(folder.glob("*.jsonl")):
+        try:
+            lines = path.read_text(encoding="utf-8").splitlines()
+        except OSError:
+            continue
+        for line in lines:
+            try:
+                event = json.loads(line)
+                event["at"], event["index"] = float(event["at"]), int(event["index"])
+            except (ValueError, TypeError, KeyError, AttributeError):
+                continue
+            if 0 <= event["index"] < len(record["units"]) and event.get("stamp", record["stamp"]) == record["stamp"]:
+                found.append(event)
+    return found
+
+
+# --- the analysis in a Slurm array: prepare, shard, merge -----------------------------------------
+#
+# The owner's word of 2026-10-27 17:51 UTC, after the study ran for three hours on four CPUs of a
+# V100 node: "cancel and shard requesting h200 / see the beethoven protocol for doing so". The
+# Beethoven protocol is the Lab Recipe (artifacts/the-lab-recipe-1t2gvp/index.md, its grid rules):
+# one job prepares (every stage up to the features, then each reading's head and the list of its
+# units), an array's tasks share that one list through atomic claims, beat while they work, take
+# over a claim whose holder stopped beating, run a GPU self-test before the first unit and stop
+# after three failures in a row (rule 8), and a join assembles the result once every unit is done.
+# A unit is idempotent, so a claim taken over from a task that was only slow costs a duplicate of
+# the same file and nothing else.
+
+HEARTBEAT_SECONDS = 60
+STALE_SECONDS = 1200    # twenty missed beats: a holder this quiet has died or lost its node
+TAKEOVER_SETTLE = 2.0   # seconds a takeover waits before it reads back whose claim stood
+WATCH_SECONDS = 60      # how often a task with nothing left to claim looks at the others' units
+FAILURE_STREAK = 3
+# A unit's weight in the order units are claimed in, heaviest first so the array's tail is short,
+# and in the time left: a permuted C2ST refits its classifier PERMUTATIONS_C2ST times a fold.
+UNIT_WEIGHT = {"family": 60, "replication": 60, "maps": 6, "structure": 4, "nearest": 4}
+MAP_WEIGHT = {"tsne": 20, "umap": 10}
+
+
+def unit_cost(unit):
+    if unit["kind"] == "maps":
+        return MAP_WEIGHT.get(unit["a"], 2)
+    return UNIT_WEIGHT.get(unit["kind"], 2)
+
+
+def units_record(out):
+    """analysis/units.json with the run folder it is in, or None before prepare has written it."""
+    path = Path(out) / ANALYSIS / "units.json"
+    try:
+        record = read_json(path)
+    except (OSError, ValueError):
+        return None
+    record["out"] = str(out)
+    return record
+
+
+def prepared_inputs(args, out):
+    """Every stage up to the features, each noted: the plan, the rows and the images."""
+    table = read_table(args.groups)
+    renders, folders = staged(out, "render", lambda: stage_render(args, table))
+    plan = staged(out, "plan", lambda: stage_plan(args, table, renders, folders))
+    rows, images = staged(out, "images", lambda: stage_images(args, plan))
+    if not rows["rows"]:
+        raise StageError("no image decoded")
+    staged(out, "features", lambda: stage_features(args, images, rows))
+    return plan, rows
+
+
+def prepare(args):
+    """The prepare subcommand: every stage up to the features as run makes them, then each
+    reading's head under analysis/heads/ and the list of every unit in analysis/units.json, and
+    last analysis/PREPARED.json, so an array task reads a whole list or none. The claims, failures
+    and task records of an earlier array are cleared; its done units are kept and count where their
+    stamp is this list's, the same plan, heads and code."""
+    os.umask(0o077)
+    out = Path(args.out)
+    out.mkdir(parents=True, exist_ok=True)
+    folder = analysis_folder(out)
+    (folder / "PREPARED.json").unlink(missing_ok=True)
+    plan, rows = prepared_inputs(args, out)
+    record = staged(out, "heads", lambda: write_heads(args, plan, rows))
+    clear_array(folder)
+    gpu = gpu_name(args.device)
+    write_json(folder / "PREPARED.json", {"job": job_label(), "utc": utc_now(), "gpu": gpu, "units": len(record["units"]),
+                                          "stamp": record["stamp"], "run": run_block(args)})
+    write_progress(out, force=True)
+    log(f"prepared {len(record['units'])} units over {len(record['keys'])} readings, stamp {record['stamp'][:16]}")
+    return 0
+
+
+def write_heads(args, plan, rows):
+    """Each reading's head, written once for the same features, plan and code, and units.json."""
+    import numpy as np
+
+    folder = analysis_folder(args.out) / "heads"
+    folder.mkdir(exist_ok=True)
+    keys, units, invalid, heads = [], [], {}, {}
+    for key, head in reading_heads(args, plan, rows):
+        keys.append(key)
+        if isinstance(head, str):
+            invalid[key] = head
+            continue
+        heads[key] = save_head(folder, head, np)
+        units += space_units(head)
+    code = code_digest()
+    record = {"study": STUDY, "plan": rows["plan"], "salt": plan["salt"], "seed": SEED, "keys": keys,
+              "invalid": invalid, "units": units, "code": code, "heads": heads,
+              "stamp": digest_of([rows["plan"], code, heads, SEED])}
+    write_json(analysis_folder(args.out) / "units.json", record)
+    return record
+
+
+def save_head(folder, head, np):
+    """A reading's head as heads/<key>.npz (the features, z and z64) and heads/<key>.json (its first
+    numbers), the arrays written whole and renamed; their sha256 names the head in the units' stamp."""
+    path = folder / f"{head.key}.npz"
+    part = folder / f"{head.key}.npz.part"
+    with open(part, "wb") as handle:
+        np.savez(handle, x=head.frame.x, z=head.z, z64=head.z64)
+    os.replace(part, path)
+    write_json(folder / f"{head.key}.json", {"key": head.key, "base": head.base, "salt": head.salt})
+    return sha256_of(path)
+
+
+def load_head(out, key):
+    """A reading's head as prepare wrote it, its frame rebuilt from the run's own plan and rows."""
+    import numpy as np
+
+    out = Path(out)
+    folder = out / ANALYSIS / "heads"
+    data = np.load(folder / f"{key}.npz")
+    meta = read_json(folder / f"{key}.json")
+    frame = Frame(data["x"], read_json(out / "rows.json")["rows"], read_json(out / "plan.json"))
+    return Head(key, frame, data["z"], data["z64"], meta["base"], meta["salt"])
+
+
+def clear_array(folder):
+    """An earlier array's claims, failures, task records and events gone, so this one starts clean;
+    its done units stay, each counting again where its stamp is the new list's."""
+    for name in ("claims", "failed", "tasks", "events"):
+        sub = folder / name
+        if sub.is_dir():
+            for path in sub.iterdir():
+                path.unlink(missing_ok=True)
+        sub.mkdir(exist_ok=True)
+    (folder / "done").mkdir(exist_ok=True)
+
+
+def gpu_name(device):
+    """The card this process would compute on, by torch, or what stands in its place."""
+    if device != "cuda":
+        return "cpu"
+    try:
+        import torch
+
+        return torch.cuda.get_device_name(0) if torch.cuda.is_available() else "no CUDA device"
+    except Exception as error:  # torch missing or the driver refusing: said, never fatal here
+        return f"no GPU ({type(error).__name__})"
+
+
+def gpu_self_test(device):
+    """Rule 8's self-test before the first unit: the card's name where a small product on it comes
+    out right, else None and why; a CPU run passes as cpu."""
+    if device != "cuda":
+        return "cpu", ""
+    try:
+        import torch
+
+        if not torch.cuda.is_available():
+            return None, "torch sees no CUDA device"
+        a = torch.ones((64, 64), dtype=torch.float64, device="cuda")
+        if float((a @ a).sum().item()) != 64.0 ** 3:
+            return None, "a product on the card came out wrong"
+        return torch.cuda.get_device_name(0), ""
+    except Exception as error:  # a card the build cannot run fails here and not on the first unit
+        return None, f"{type(error).__name__}: {error}"
+
+
+def claim_path(folder, index):
+    return folder / "claims" / f"{index:05d}"
+
+
+def done_path(folder, index):
+    return folder / "done" / f"{index:05d}.json"
+
+
+def failed_path(folder, index):
+    return folder / "failed" / f"{index:05d}.json"
+
+
+def unit_done(folder, index, stamp):
+    """Whether unit index has a result from this list's plan, heads and code."""
+    try:
+        return read_json(done_path(folder, index)).get("stamp") == stamp
+    except (OSError, ValueError):
+        return False
+
+
+def settled(folder, index, stamp):
+    return unit_done(folder, index, stamp) or failed_path(folder, index).exists()
+
+
+def try_claim(folder, index, token):
+    """Whether this task now holds unit index: a claim file made new, which only one creator wins,
+    or one whose holder has not beaten for STALE_SECONDS, taken over and read back."""
+    path = claim_path(folder, index)
+    try:
+        handle = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+    except FileExistsError:
+        return take_over(path, token)
+    with os.fdopen(handle, "w", encoding="ascii") as stream:
+        stream.write(token)
+    return True
+
+
+def take_over(path, token):
+    try:
+        if time.time() - path.stat().st_mtime < STALE_SECONDS:
+            return False
+        part = path.with_name(f"{path.name}.{os.getpid()}.take")
+        part.write_text(token, encoding="ascii")
+        os.replace(part, path)
+        time.sleep(TAKEOVER_SETTLE)
+        taken = path.read_text(encoding="ascii") == token
+    except OSError:
+        return False
+    if taken:
+        log(f"took over the stale claim on unit {int(path.name)}")
+    return taken
+
+
+def claim_is_stale(folder, index):
+    try:
+        return time.time() - claim_path(folder, index).stat().st_mtime >= STALE_SECONDS
+    except OSError:
+        return True
+
+
+class Task:
+    """One array task's record: tasks/<task>.json rewritten at each beat, and events/<task>-<pid>.jsonl
+    appended at each claim, unit done and failure, which the progress reads."""
+
+    def __init__(self, folder, task, tasks, gpu, stamp):
+        import socket
+
+        self.folder, self.task, self.tasks, self.gpu, self.stamp = folder, task, tasks, gpu, stamp
+        self.host, self.job = socket.gethostname(), job_label()
+        self.token = f"{self.job} task {task} on {self.host} pid {os.getpid()} at {utc_now()}"
+        self.counts = {"done": 0, "failed": 0}
+        self.held = 0
+        self.events = folder / "events" / f"{task:04d}-{os.getpid()}.jsonl"
+
+    def event(self, what, index, unit_id_, **extra):
+        if what in self.counts:
+            self.counts[what] += 1
+        line = json.dumps({"event": what, "index": index, "id": unit_id_, "at": time.time(), "task": self.task,
+                           "stamp": self.stamp, **extra})
+        with open(self.events, "a", encoding="utf-8") as stream:
+            stream.write(line + "\n")
+
+    def beat(self, claims, state="running"):
+        """Every held claim touched, so no other task takes it over, and the task's record rewritten."""
+        for path in claims:
+            try:
+                os.utime(path)
+            except OSError:
+                pass
+        self.held = len(claims)
+        write_json(self.folder / "tasks" / f"{self.task:04d}.json",
+                   {"task": self.task, "tasks": self.tasks, "job": self.job, "host": self.host, "gpu": self.gpu,
+                    "state": state, "beat": time.time(), "held": self.held, **self.counts})
+
+
+def shard(args):
+    """The shard subcommand, one task of the array: units claimed from the list prepare wrote,
+    heaviest first, run by a pool of --workers processes, each result written whole, until none is
+    left to claim and no other task's claim is still beating. It exits 0 having done nothing where
+    prepare wrote no list (rule 9: the merge says why), 4 where the GPU fails its self-test before
+    the first unit, so a task on a card the build cannot run claims nothing, and 3 once
+    FAILURE_STREAK units have failed in a row."""
+    os.umask(0o077)
+    out = Path(args.out)
+    folder = out / ANALYSIS
+    if not (folder / "PREPARED.json").is_file():
+        log("shard: prepare left no analysis/PREPARED.json, so there is nothing to claim")
+        return 0
+    record = units_record(out)
+    if record is None or record["code"] != code_digest():
+        raise StageError("the code differs from the code prepare planned the units with")
+    gpu, why = gpu_self_test(args.device)
+    if gpu is None:
+        log(f"shard: the GPU self-test failed ({why}); no unit claimed")
+        return 4
+    task = Task(folder, args.task, args.tasks, gpu, record["stamp"])
+    task.beat([])
+    log(f"shard: task {args.task} of {args.tasks} on {task.host}, {gpu}, {args.workers} workers,"
+        f" {len(record['units'])} units in the list")
+    code = claim_loop(out, record, task, args.workers)
+    task.beat([], state="stopped" if code else "finished")
+    write_progress(out, force=True)
+    return code
+
+
+def claim_loop(out, record, task, workers):
+    """Claim, run and settle units until none is left to claim and no other task's claim is still
+    beating; 3 once FAILURE_STREAK units have failed in a row, 0 otherwise, and 0 too where a new
+    prepare replaced the list under this task. A pool that a worker's death breaks is replaced by
+    one of half the size, down to one worker, whose death names the unit it ran (broken_pool)."""
+    from concurrent.futures import FIRST_COMPLETED, wait
+    from concurrent.futures.process import BrokenProcessPool
+
+    folder, stamp, units = Path(out) / ANALYSIS, record["stamp"], record["units"]
+    order = sorted(range(len(units)), key=lambda i: (-unit_cost(units[i]), i))
+    todo, others, held, streak, size = [i for i in order if not settled(folder, i, stamp)], [], {}, 0, workers
+    pool = unit_pool(size)
+    try:
+        while streak < FAILURE_STREAK:
+            if list_replaced(out, stamp):
+                log("shard: a new prepare replaced the list of units, so this task stops and claims nothing more")
+                return 0
+            try:
+                while streak < FAILURE_STREAK and len(held) < max(1, size):
+                    index = next_unit(folder, todo, others, stamp, task.token)
+                    if index is None:
+                        break
+                    try:
+                        held[pool.submit(unit_task, str(out), index, units[index], record["seed"], stamp)] = (index, time.time())
+                    except BrokenProcessPool:
+                        release(folder, task, units, index)
+                        todo.insert(0, index)
+                        raise
+                    task.event("claimed", index, units[index]["id"])
+                if not held:
+                    if streak >= FAILURE_STREAK:
+                        break
+                    task.beat([], state="watching")
+                    if not watch_others(folder, todo, others, stamp):
+                        break
+                    continue
+                finished, _ = wait(list(held), timeout=HEARTBEAT_SECONDS, return_when=FIRST_COMPLETED)
+                broken = [future for future in finished if isinstance(future.exception(), BrokenProcessPool)]
+                for future in finished:
+                    if future in broken:
+                        continue
+                    index, started = held.pop(future)
+                    outcome = settle(folder, task, units, index, future, started)
+                    if outcome is None:
+                        continue
+                    streak = 0 if outcome else streak + 1
+                if broken:
+                    raise BrokenProcessPool("a worker of the pool died")
+            except BrokenProcessPool:
+                pool, size, failed = broken_pool(pool, held, folder, task, units, todo, size, workers)
+                streak += failed
+                continue
+            task.beat([claim_path(folder, i) for i, _ in held.values()])
+            write_progress(out)
+    finally:
+        pool.shutdown(wait=False, cancel_futures=True)
+    if streak >= FAILURE_STREAK:
+        log(f"shard: stopped after {FAILURE_STREAK} failures in a row")
+        return 3
+    log(f"shard: nothing left to claim; {task.counts['done']} done and {task.counts['failed']} failed here")
+    return 0
+
+
+LIST_READS = 3            # reads of units.json before an unreadable list is taken as unchanged
+LIST_RETRY_SECONDS = 2.0  # the pause before each read again
+
+
+def list_replaced(out, stamp):
+    """Whether a new prepare has replaced the list this task claims from: units.json read whole
+    with another stamp. A read the lab volume fails for a moment is tried again, and a list that
+    still cannot be read is no reason to stop, since the task holds its list in memory and a
+    replacement is seen at the next read that works."""
+    for attempt in range(LIST_READS):
+        record = units_record(out)
+        if record is not None:
+            return record["stamp"] != stamp
+        if attempt < LIST_READS - 1:
+            time.sleep(LIST_RETRY_SECONDS)
+    return False
+
+
+def release(folder, task, units, index):
+    """This task's claim on a unit let go, so any task may take the unit at once; a claim another
+    task has taken since is left as it stands."""
+    path = claim_path(folder, index)
+    try:
+        if path.read_text(encoding="ascii") == task.token:
+            path.unlink()
+    except OSError:
+        pass
+    task.event("released", index, units[index]["id"])
+
+
+def broken_pool(pool, held, folder, task, units, todo, size, workers):
+    """A worker of the pool died (the kernel's OOM killer, a crash in native code), which breaks
+    every unit the pool held. In a pool of more than one worker none of them is failed for it,
+    since all but one did nothing wrong: each claim is let go, the unit put back at the head of
+    this task's list, and a pool of half as many workers takes them, so units that filled the
+    job's memory together run fewer at a time, and a unit that breaks every pool it is in soon
+    runs alone. In a pool of one worker the unit broke it alone: it is failed (error
+    BrokenProcessPool), counted toward FAILURE_STREAK, and the next pool has the task's full
+    count of workers again. Every pool after a break is of processes, so no death reaches the
+    task itself. The new pool, its size and how many units failed."""
+    pool.shutdown(wait=False, cancel_futures=True)
+    entries = sorted(held.values(), reverse=True)
+    held.clear()
+    if size <= 1:
+        for index, started in entries:
+            fail_unit(folder, task, units[index], index, started, "BrokenProcessPool",
+                      ["its worker died running it alone"], "its worker died running it alone")
+        log(f"shard: a worker died running unit {', '.join(units[i]['id'] for i, _ in entries) or 'none'} alone;"
+            f" failed, and a pool of {workers} workers goes on")
+        return unit_pool(workers, processes=True), workers, len(entries)
+    smaller = max(1, size // 2)
+    log(f"shard: a worker died and broke the pool; {len(entries)} units let go and claimed again by {smaller} workers")
+    for index, _ in entries:
+        release(folder, task, units, index)
+        todo.insert(0, index)
+    return unit_pool(smaller, processes=True), smaller, 0
+
+
+def next_unit(folder, todo, others, stamp, token):
+    """The next unit this task claims, or None: a settled one is dropped and one another task holds
+    is set aside, to be watched once nothing is left to claim."""
+    while todo:
+        index = todo.pop(0)
+        if settled(folder, index, stamp):
+            continue
+        if try_claim(folder, index, token):
+            return index
+        others.append(index)
+    return None
+
+
+def watch_others(folder, todo, others, stamp):
+    """With nothing left to claim, the units other tasks hold: a settled one dropped, one whose
+    holder stopped beating put back to be taken over; True while any is still held."""
+    still = [i for i in others if not settled(folder, i, stamp)]
+    others[:] = []
+    for index in still:
+        (todo if claim_is_stale(folder, index) else others).append(index)
+    if others and not todo:
+        time.sleep(WATCH_SECONDS)
+    return bool(todo or others)
+
+
+class ListChanged(Exception):
+    """The list of units a task claims from was replaced by a new prepare while a unit waited."""
+
+
+def settle(folder, task, units, index, future, started):
+    """A finished unit's outcome: True when done and logged with its seconds; False when it failed,
+    recorded with the kind of error and where in the study's code it rose; None when a new prepare
+    replaced the list under it, which is no failure of the unit: this task's claim on it is let go
+    and the new list's folders are left alone."""
+    unit = units[index]
+    try:
+        seconds, backend = future.result()
+    except ListChanged:
+        release(folder, task, units, index)
+        return None
+    except Exception as error:  # one unit's failure is recorded and counted toward the streak, never fatal alone
+        fail_unit(folder, task, unit, index, started, type(error).__name__, where_raised(error), str(error))
+        return False
+    task.event("done", index, unit["id"], seconds=round(seconds, 1), backend=backend)
+    log(f"unit {unit['id']} done in {seconds:.1f} s ({task.counts['done']} done by this task)")
+    return True
+
+
+def fail_unit(folder, task, unit, index, started, kind, where, message):
+    """failed/<index>.json for a unit, which settles it for every task until a new prepare."""
+    write_json(failed_path(folder, index), {"id": unit["id"], "error": kind, "where": where, "task": task.token})
+    task.event("failed", index, unit["id"], seconds=round(time.time() - started, 1), error=kind)
+    log(f"unit {unit['id']} FAILED after {time.time() - started:.0f} s: {kind}: {message}")
+
+
+def where_raised(error):
+    """The last frames of the study's own code an error rose through, as name:line: a worker's
+    error comes back with the worker's traceback as its cause, in text, and the parent's own frames
+    there are the pool's."""
+    cause = getattr(error, "__cause__", None)
+    text = getattr(cause, "tb", "") if cause is not None else ""
+    frames = re.findall(r'File "([^"]+)", line (\d+), in (\S+)', text)
+    if not frames and error.__traceback__ is not None:
+        frames = [(f.filename, str(f.lineno), f.name) for f in traceback.extract_tb(error.__traceback__)]
+    return [f"{Path(name).name}:{function}:{line}" for name, line, function in frames[-3:]]
+
+
+def unit_pool(workers, processes=None):
+    """workers processes, started fresh rather than forked (the self-test opened CUDA here, which a
+    fork must not copy), each with one BLAS and torch thread so the node's CPUs are the pool's; or,
+    for one worker unless processes is asked for, one thread of this process, so the task still
+    beats while a unit runs. After a pool breaks the task asks for processes even for one worker,
+    so a unit that kills its worker never kills the task (broken_pool)."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    if not (workers > 1 if processes is None else processes):
+        return ThreadPoolExecutor(max_workers=1)
+    for name in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS"):
+        os.environ[name] = "1"
+    context = multiprocessing.get_context("spawn")
+    return ProcessPoolExecutor(max_workers=max(1, workers), mp_context=context, initializer=pool_start)
+
+
+def pool_start():
+    """A worker's first act: one torch thread, so the node's CPUs are the pool's."""
+    try:
+        import torch
+
+        torch.set_num_threads(1)
+    except ImportError:
+        pass
+
+
+_LOADED = {}
+
+
+def loaded(key, make):
+    """One object per process for key: a worker reads the list and each head once."""
+    if key not in _LOADED:
+        _LOADED[key] = make()
+    return _LOADED[key]
+
+
+def unit_task(out, index, unit, seed, stamp):
+    """One unit in a worker, as the task read it from its list: its head loaded once per process,
+    its result written whole, then (seconds, the MMD's backend); ListChanged, with nothing written,
+    where a new prepare has replaced the list, before the unit runs or once it has, so a unit of
+    an old list never writes over the new list's result of the same number."""
+    if list_replaced(out, stamp):
+        raise ListChanged(f"unit {index} was claimed from list {stamp[:16]}, which a new prepare replaced")
+    head = loaded((str(out), stamp, unit["key"]), lambda: load_head(out, unit["key"]))
+    started = time.time()
+    piece, arrays = run_unit(head, unit, seed)
+    seconds = time.time() - started
+    backend = mmd_backend()
+    if list_replaced(out, stamp):
+        raise ListChanged(f"unit {index} of list {stamp[:16]} ran while a new prepare replaced the list")
+    save_unit(Path(out) / ANALYSIS, index, unit, piece, arrays, stamp, seconds, backend)
+    return seconds, backend
+
+
+def mmd_backend():
+    """Which backend the MMD's permutations ran on here, as domain_gap_stats chooses it."""
+    torch, device = stats().torch_device("auto")
+    return f"torch-{device.type}" if torch is not None else "numpy"
+
+
+def save_unit(folder, index, unit, piece, arrays, stamp, seconds, backend):
+    """done/<index>.npz with a map's arrays first, then done/<index>.json, both written whole: a
+    result file that is there names arrays that are there."""
+    import numpy as np
+
+    if arrays:
+        part = own_part(folder / "done" / f"{index:05d}.npz")
+        with open(part, "wb") as handle:
+            np.savez(handle, **arrays)
+        os.replace(part, folder / "done" / f"{index:05d}.npz")
+    write_json(done_path(folder, index), {"id": unit["id"], "stamp": stamp, "piece": piece, "seconds": round(seconds, 3),
+                                          "backend": backend, "job": job_label(), "utc": utc_now()})
+
+
+def read_units(folder, record, key):
+    """The results of one reading's units as prepare listed them, and a map unit's arrays."""
+    import numpy as np
+
+    pieces, arrays = {}, {}
+    for index, unit in enumerate(record["units"]):
+        if unit["key"] != key:
+            continue
+        done = read_json(done_path(folder, index))
+        if done["id"] != unit["id"] or done["stamp"] != record["stamp"]:
+            raise StageError(f"unit {index} holds another unit's result")
+        pieces[unit["id"]] = done["piece"]
+        npz = folder / "done" / f"{index:05d}.npz"
+        arrays[unit["id"]] = dict(np.load(npz)) if npz.is_file() else {}
+    return pieces, arrays
+
+
+def open_units(folder, record):
+    """(the units not done, the units failed), each as a count by kind."""
+    missing, failed = {}, {}
+    for index, unit in enumerate(record["units"]):
+        if unit_done(folder, index, record["stamp"]):
+            continue
+        holder = failed if failed_path(folder, index).exists() else missing
+        holder[unit["kind"]] = holder.get(unit["kind"], 0) + 1
+    return missing, failed
+
+
+def merge(args):
+    """The merge subcommand, the array's join: every unit's result read back and each reading
+    assembled as the analysis in one process assembles it, then results.json, the figures, W&B and
+    summary.txt as run writes them. It refuses while any unit is not done or has failed, saying
+    how many of which kind, so no part of a result is ever written; a resend of the study word then
+    runs only those, the done units counting again under the same plan, heads and code."""
+    os.umask(0o077)
+    out = Path(args.out)
+    folder = out / ANALYSIS
+    if not (folder / "PREPARED.json").is_file():
+        raise StageError("prepare did not finish: there is no analysis/PREPARED.json")
+    record = units_record(out)
+    if record is None:
+        raise StageError("analysis/units.json cannot be read whole")
+    if record["code"] != code_digest():
+        raise StageError("the code differs from the code prepare planned the units with")
+    missing, failed = open_units(folder, record)
+    write_progress(out, force=True)
+    if missing or failed:
+        raise StageError(f"{sum(missing.values())} of {len(record['units'])} units not done {words_by_kind(missing)}"
+                         f" and {sum(failed.values())} failed {words_by_kind(failed)}")
+    joined = array_record(out, record)
+    note_seconds(out, "analysis", joined["analysis_seconds"])
+    plan, rows = read_json(out / "plan.json"), read_json(out / "rows.json")
+    results, all_maps = new_results(plan, rows), {}
+    for key in record["keys"]:
+        if key in record["invalid"]:
+            results["spaces"][key] = {"invalid": record["invalid"][key]}
+            continue
+        head = load_head(out, key)
+        result, maps = assemble_space(head, *read_units(folder, record, key))
+        results["spaces"][key] = result
+        if maps:
+            all_maps[key] = (head.frame, maps)
+    run = dict(read_json(folder / "PREPARED.json")["run"], merge=run_block(args))
+    if run["prereg_sha256"] != prereg_digest():
+        raise StageError("the pre-registration differs from the one prepare read")
+    results, all_maps = finish_results(args, results, all_maps, record=joined, run=run)
+    write_summary(args, results, all_maps)
+    return 0
+
+
+def words_by_kind(counts):
+    return "(" + ", ".join(f"{kind} {n}" for kind, n in sorted(counts.items())) + ")" if counts else ""
+
+
+def array_record(out, record):
+    """What the report says of the run as a whole: the jobs, the cards, the units and the seconds
+    of every stage, read from prepare's record, the tasks' records and the units' results."""
+    folder = Path(out) / ANALYSIS
+    prepared = read_json(folder / "PREPARED.json")
+    tasks = [read_json(p) for p in sorted((folder / "tasks").glob("*.json"))]
+    seconds, backends, finished, began = 0.0, set(), [], []
+    for index in range(len(record["units"])):
+        done = read_json(done_path(folder, index))
+        seconds += float(done.get("seconds", 0))
+        backends.add(done.get("backend", "unknown"))
+    for event in events_of(record):
+        (finished if event["event"] == "done" else began if event["event"] == "claimed" else []).append(event["at"])
+    gpus = {}
+    for name in [prepared.get("gpu", "")] + [t.get("gpu", "") for t in tasks]:
+        if name:
+            gpus[name] = gpus.get(name, 0) + 1
+    arrays = sorted({t["job"].split("_")[0] for t in tasks if "_" in str(t.get("job", ""))})
+    return {"jobs": {"prepare": prepared.get("job", "unknown"), "array": ", ".join(arrays) or "none",
+                     "tasks": len(tasks), "merge": job_label()},
+            "gpus": gpus, "units": {"total": len(record["units"]), "done": len(record["units"]), "failed": 0},
+            "mmd": backends.pop() if len(backends) == 1 else "mixed " + "/".join(sorted(backends)),
+            "units_seconds": round(seconds), "analysis_seconds": round(max(finished) - min(began)) if finished and began else 0}
+
+
+def write_summary(args, results, all_maps):
+    """W&B, then summary.txt with the record's lines first, and results.json again with every
+    stage's seconds in its record, which only now are all known."""
+    out = Path(args.out)
+    line = wandb_push(args, results, all_maps)
+    results["_record"]["seconds"] = {stage: entry.get("seconds", 0) for stage, entry in stages_of(out).items()}
+    write_json(out / "results.json", results)
+    lines = summary_lines(results, line)
+    (out / "summary.txt").write_text("\n".join(lines) + "\n", encoding="ascii")
+    note_stage(out, "summary", "done")
+    print("\n".join(lines))
 
 
 # --- the figures -----------------------------------------------------------------------------------
@@ -1671,8 +2845,9 @@ def auc_text(auc):
 
 
 def summary_lines(results, wandb_line):
-    """At most LINE_BUDGET short lines, each made safe for the grid's redaction, of what the study
-    found: the header and the replication verdict, the groups, then the primary space in full,
+    """The run's record in RECORD_LINES lines first, which the study's report reads from the top
+    (tools/report.py, study mode), then at most LINE_BUDGET short lines of what the study found, each
+    made safe for the grid's redaction: the header and the replication verdict, the groups, then the primary space in full,
     the other spaces' family contrasts, FleXray's space as stored for FleXray's own groups, and
     last the secondary lines (the nearest real corpora, the other spaces' replication pairs and
     replication-only contrasts, the map centres). The sections carry a rank, and whole sections
@@ -1685,7 +2860,42 @@ def summary_lines(results, wandb_line):
     for key, space in results["spaces"].items():
         sections += space_sections(key, space, detail_of(key))
     lines = fit_lines(sections, LINE_BUDGET)
-    return [rules().safe_line(line) for line in lines][:LINE_BUDGET]
+    record = [rules().safe_line(line) for line in record_lines(results)][:RECORD_LINES]
+    return record + [rules().safe_line(line) for line in lines][:LINE_BUDGET]
+
+
+RECORD_SECONDS = ("render", "plan", "images", "features", "heads", "analysis", "figures")
+
+
+def short_digest(digest):
+    """A digest's first 16 hex digits in four groups of four, so no run of eight digits is ever read
+    as a date by the grid's filter, which would split it (schwingnet.domain_gap.safe_line)."""
+    return "-".join(digest[i:i + 4] for i in range(0, 16, 4)) if digest else "none"
+
+
+def record_lines(results):
+    """The run's record in five lines, which the study's CLAIM report reads from the summary
+    (tools/report.py, study mode): the code and its inputs, the jobs and the cards, the units, the
+    seconds of each stage, and the environment's pins as the grid's step gives them."""
+    run, record = results.get("_run"), results.get("_record", {})
+    if not run:
+        return []
+    jobs, units, seconds = record.get("jobs", {}), record.get("units", {}), record.get("seconds", {})
+    cards = ", ".join(f"{name} x{count}" for name, count in sorted(record.get("gpus", {}).items())) or "none"
+    if "prepare" in jobs:
+        ran = f"prepare {jobs['prepare']}, array {jobs['array']} ({jobs['tasks']} tasks), merge {jobs['merge']}"
+    else:
+        ran = f"run {jobs.get('run', 'local')}"
+    timed = [f"{stage} {seconds.get(stage, 0):.0f}" + (" (wall)" if stage == "analysis" else "") for stage in RECORD_SECONDS]
+    timed.insert(-1, f"units {record.get('units_seconds', 0):.0f} (summed)")
+    return [f"record: study {STUDY}; commit {run['git_head'][:7]}; tree {'dirty' if run['git_dirty'] else 'clean'};"
+            f" seed {run['seed']}; plan {short_digest(results.get('plan', ''))}; groups.json {short_digest(run['inputs'].get('groups.json', ''))};"
+            f" PREREG {short_digest(run['prereg_sha256'])}; code {short_digest(run['code_digest'])}",
+            f"record: jobs {ran}; GPUs {cards}",
+            f"record: units {units.get('done', 0)} of {units.get('total', 0)} done, {units.get('failed', 0)} failed;"
+            f" mmd backend {record.get('mmd', 'unknown')}",
+            "record: seconds " + ", ".join(timed),
+            f"record: environment {os.environ.get('SN_PINS', 'not given')}"]
 
 
 def fit_lines(sections, budget):
@@ -1884,13 +3094,27 @@ def within_limit(head, numbers, word):
 
 
 def calibration_summary(space):
+    """The split-half nulls' line, its counts first, then the flagged groups' names on lines of
+    their own within the report's limit, so no cut ever takes a count or a name (DEVIATIONS.md,
+    item 8: every contrast of a flagged group in the space is not read)."""
     cal = space.get("calibration", {})
     if cal.get("auc_median") is None:
         return []
-    return [f" calibration split-half auc median {fmt(cal['auc_median'])} range"
-            f" {fmt(cal['auc_range'][0])} to {fmt(cal['auc_range'][1])} over {len(cal['groups'])},"
-            f" mmd flagged {len(cal['flagged'])}" + (f" ({' '.join(cal['flagged'])})" if cal["flagged"] else "")
-            + f", auc interval above half {len(cal.get('auc_above', []))}"]
+    head = (f" calibration split-half auc median {fmt(cal['auc_median'])} range {fmt(cal['auc_range'][0])} to"
+            f" {fmt(cal['auc_range'][1])} over {len(cal['groups'])}, mmd flagged {len(cal['flagged'])},"
+            f" auc interval above half {len(cal.get('auc_above', []))}")
+    return [head] + name_lines(" calibration flagged", cal["flagged"])
+
+
+def name_lines(lead, names):
+    """lead and as many names as the report's limit takes on each line, every name on one."""
+    limit, lines, line = rules().LINE_LIMIT, [], lead
+    for name in names:
+        if line != lead and len(line) + 1 + len(name) > limit:
+            lines.append(line)
+            line = lead
+        line += f" {name}"
+    return lines + ([line] if line != lead else [])
 
 
 def family_line(space, sg, family, c):
@@ -1957,21 +3181,17 @@ def wrapped(head, parts, width=180):
 # --- the command line ------------------------------------------------------------------------------
 
 def run(args):
+    """Every stage in this process, the analysis's units one after another: the reference the
+    array's three steps (prepare, shard, merge) reproduce, to the bit where this process has one
+    BLAS, OpenMP and torch thread (OMP_NUM_THREADS, OPENBLAS_NUM_THREADS and MKL_NUM_THREADS of 1)
+    as the array's workers have; with more, a measure may move in its last digits (DEVIATIONS.md,
+    item 2)."""
     os.umask(0o077)
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    table = read_table(args.groups)
-    renders, folders = stage_render(args, table)
-    plan = stage_plan(args, table, renders, folders)
-    rows, images = stage_images(args, plan)
-    if not rows["rows"]:
-        raise StageError("no image decoded")
-    stage_features(args, images, rows)
-    results, all_maps = stage_analysis(args, plan, rows)
-    line = wandb_push(args, results, all_maps)
-    lines = summary_lines(results, line)
-    (out / "summary.txt").write_text("\n".join(lines) + "\n", encoding="ascii")
-    print("\n".join(lines))
+    plan, rows = prepared_inputs(args, out)
+    results, all_maps = staged(out, "analysis", lambda: stage_analysis(args, plan, rows))
+    write_summary(args, results, all_maps)
     return 0
 
 
@@ -2041,12 +3261,31 @@ def parse(argv):
     sub = parser.add_subparsers(dest="command", required=True)
     study_arguments(sub.add_parser("run", help="every stage, each skipped when done"))
     study_arguments(sub.add_parser("plan", help="the choice of CTs alone, to render-subjects.json"), features=False)
-    show = sub.add_parser("summary", help="print the summary of a finished run")
-    show.add_argument("--out", required=True)
+    study_arguments(sub.add_parser("prepare", help="every stage up to the features, then the heads and the list of units"))
+    task = sub.add_parser("shard", help="one array task: claim units from the list and run them")
+    task.add_argument("--out", required=True)
+    task.add_argument("--task", type=int, default=int(os.environ.get("SLURM_ARRAY_TASK_ID", "0")))
+    task.add_argument("--tasks", type=int, default=int(os.environ.get("SLURM_ARRAY_TASK_COUNT", "1")))
+    task.add_argument("--workers", type=int, default=1)
+    task.add_argument("--device", default="cuda")
+    join = sub.add_parser("merge", help="the array's join: every unit read back, results.json and summary.txt")
+    join.add_argument("--out", required=True)
+    join.add_argument("--groups", default=str(ROOT / "data" / "domain_gap" / "groups.json"))
+    join.add_argument("--wandb", choices=("auto", "off"), default="auto")
+    for name, words in (("summary", "print the summary of a finished run"), ("progress", "write and print PROGRESS.txt")):
+        show = sub.add_parser(name, help=words)
+        show.add_argument("--out", required=True)
     return parser.parse_args(argv)
 
 
-COMMANDS = {"run": run, "plan": plan_subjects, "summary": summary}
+def progress(args):
+    write_progress(args.out, force=True)
+    print((Path(args.out) / PROGRESS).read_text(encoding="ascii"), end="")
+    return 0
+
+
+COMMANDS = {"run": run, "plan": plan_subjects, "prepare": prepare, "shard": shard, "merge": merge,
+            "summary": summary, "progress": progress}
 
 
 def main(argv=None):
