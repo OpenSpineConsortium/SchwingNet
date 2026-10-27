@@ -1,4 +1,4 @@
-record: study drr-domain-gap; commit 0000000; tree clean; seed 0; plan 1111111111111111; groups.json 7e1b145e9d74759a; PREREG 2222222222222222; code 3333333333333333
+record: study drr-domain-gap; commit 0000000; tree clean; seed 0; plan 1111-1111-1111-1111; groups.json 7e1b-145e-9d74-759a; PREREG 2222-2222-2222-2222; code 3333-3333-3333-3333
 record: jobs prepare 1000001, array 1000002 (4 tasks), merge 1000003; GPUs FIXTURE GPU x1
 record: units 4 of 4 done, 0 failed; mmd backend numpy
 record: seconds render 1, plan 2, images 3, features 4, heads 5, analysis 6 (wall), units 7 (summed), figures 8

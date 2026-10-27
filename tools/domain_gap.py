@@ -4,8 +4,8 @@ The owner's ask of 2026-10-25 (SchwingNet #391, the FleXray audit; the thread "C
 DRRs to real X-ray corpora"): plot FleXray's synthetic DRRs alongside the held X-ray corpora, plain
 film and fluoroscopy, in t-SNE and other dimension-reduction maps, and run the statistical tests
 for separation a machine-learning reviewer would expect. docs/research/drr-domain-gap/README.md is
-the pre-registered design; this tool is its one job, run by grid/bench.sbatch as the bench id
-flexray_drr_gap, in the job's own environment (flexray, nanodrr, scikit-learn and umap-learn over
+the pre-registered design, frozen as PREREG.md beside it; this tool is its job, run by
+grid/drr-gap.sbatch as the bench id flexray_drr_gap in three steps, in the job's own environment (flexray, nanodrr, scikit-learn and umap-learn over
 train-gpu's torch), once the owner gives the word and the count.
 
     python tools/domain_gap.py run --groups data/domain_gap/groups.json --data-root <data root> \\
@@ -65,8 +65,8 @@ with masks under every segmenter named but the ones the segment job makes (MADE_
 `run` among those with masks under every one, which is the same set once the segment job has done
 them all and a smaller one, said in the plan and the summary, where it has not.
 
-What leaves the grid is summary.txt, at most 80 lines of numbers and group names that the bench
-report carries; results.json, the figures and the plan, which names files, stay in --out (umask 077)
+What leaves the grid is summary.txt, five record lines and at most 80 lines of numbers and group
+names that the bench report carries; results.json, the figures and the plan, which names files, stay in --out (umask 077)
 and the figures and the map coordinates go to W&B where the grid's key is found. tools/ never goes
 on sys.path, since tools/profile.py would shadow the standard library's profile, which torch
 imports.
@@ -160,7 +160,8 @@ LEFT_OUT = "left out by --skip-masks"
 # the segment job's report has been read.
 NO_MASKS = "no CT here has them"
 RENDER_SUBJECTS = "render-subjects.json"
-LINE_BUDGET = 80        # lines of summary.txt, what the bench report carries off the grid
+LINE_BUDGET = 80        # lines of summary.txt's findings, what the bench report carries off the grid
+RECORD_LINES = 5        # the run's record above them (record_lines), so summary.txt holds at most 85
 THUNDER = "thunderdb://"
 
 
@@ -1266,9 +1267,10 @@ def nearest_ready(head):
 
 
 def run_unit(head, unit, seed=SEED):
-    """One unit's result as JSON reads it back, and the arrays a map unit draws beside it."""
+    """One unit's result as JSON reads it back, its keys sorted as a task's result file holds them
+    (write_json), and the arrays a map unit draws beside it."""
     piece, arrays = UNIT_RUNNERS[unit["kind"]](head, unit["a"], unit["b"], seed)
-    return json.loads(json.dumps(piece)), arrays
+    return json.loads(json.dumps(piece, sort_keys=True)), arrays
 
 
 def family_unit(head, sg, family, seed):
@@ -1418,13 +1420,18 @@ def analyse_space(frame, salt, seed=SEED, key="space"):
     return analyse_head(space_head(key, frame, salt, seed), seed)
 
 
-def analyse_head(head, seed=SEED):
+def analyse_head(head, seed=SEED, seconds=None):
+    """A reading's units one after another and their assembly; each unit's seconds are added to
+    seconds[0] where a list is given, as the record's summed unit seconds."""
     units = space_units(head)
     pieces, arrays = {}, {}
     for number, unit in enumerate(units, 1):
         started = time.time()
         pieces[unit["id"]], arrays[unit["id"]] = run_unit(head, unit, seed)
-        log(f"unit {number} of {len(units)}: {unit['id']} in {time.time() - started:.1f} s")
+        took = time.time() - started
+        if seconds is not None:
+            seconds[0] += took
+        log(f"unit {number} of {len(units)}: {unit['id']} in {took:.1f} s")
     return assemble_space(head, pieces, arrays)
 
 
@@ -1508,19 +1515,20 @@ def centre(xy):
 
 def stage_analysis(args, plan, rows):
     """results.json and the figures, every available reading in turn, its units run here."""
-    results, all_maps, total = new_results(plan, rows), {}, 0
+    results, all_maps, total, seconds = new_results(plan, rows), {}, 0, [0.0]
     for key, head in reading_heads(args, plan, rows):
         if isinstance(head, str):
             results["spaces"][key] = {"invalid": head}
             continue
         total += len(space_units(head))
         log(f"analysis: {key}, {len(space_units(head))} units")
-        result, maps = analyse_head(head)
+        result, maps = analyse_head(head, seconds=seconds)
         results["spaces"][key] = result
         if maps:
             all_maps[key] = (head.frame, maps)
     record = {"jobs": {"run": job_label()}, "gpus": {gpu_name(args.device): 1},
-              "units": {"total": total, "done": total, "failed": 0}, "mmd": mmd_backend()}
+              "units": {"total": total, "done": total, "failed": 0}, "mmd": mmd_backend(),
+              "units_seconds": round(seconds[0])}
     return finish_results(args, results, all_maps, record=record)
 
 
@@ -1548,11 +1556,12 @@ def new_results(plan, rows):
     return {"plan": rows["plan"], "spaces": {}, "groups": group_rows(plan, rows), "renders": plan.get("renders", {})}
 
 
-def finish_results(args, results, all_maps, record=None):
+def finish_results(args, results, all_maps, record=None, run=None):
     """The study's verdict, its run record, results.json and the figures, the same whether the
-    units ran here or in an array's tasks."""
+    units ran here or in an array's tasks; an array's run block is its prepare's, what the renders,
+    the plan and the features were made from, with the merge's own beside it."""
     results["replication"] = replication_verdict(results)
-    results["_run"] = run_block(args)
+    results["_run"] = run or run_block(args)
     results["_record"] = record or {}
     write_json(Path(args.out) / "results.json", results)
     tool_figures = Path(args.out) / "figures"
@@ -1611,6 +1620,9 @@ STUDY = "drr-domain-gap"
 # code, docs/memory/runs-are-named-by-their-code.md).
 CODE_FILES = ("tools/domain_gap.py", "tools/domain_gap_stats.py", "src/schwingnet/domain_gap.py")
 PREREG = ROOT / "docs" / "research" / "drr-domain-gap" / "PREREG.md"
+# Everything the study runs or reads from the repository, the renderers and the groups among them,
+# which a run by hand reports dirty when any of it differs from the commit it names.
+RUN_PATHS = ("tools", "src", "vendor", "data/domain_gap", "data/splits", "docs/research/drr-domain-gap/PREREG.md")
 
 
 def code_digest():
@@ -1637,7 +1649,7 @@ def git_state():
         return done.stdout.strip() if done.returncode == 0 else ""
 
     head = git("rev-parse", "HEAD")
-    return head or "unknown", bool(git("status", "--porcelain", "--", *CODE_FILES))
+    return head or "unknown", bool(git("status", "--porcelain", "--", *RUN_PATHS))
 
 
 def job_label():
@@ -1843,7 +1855,7 @@ def task_lines(out, state):
 
 def rate_lines(record, state):
     """Units a minute over the last ten minutes, weighted by their cost for the time left, and the
-    units done at each five minutes since the first was claimed."""
+    units done at each five minutes since the first was done."""
     times = sorted(done_times(record))
     if not times:
         return []
@@ -1861,20 +1873,29 @@ def rate_lines(record, state):
 
 def done_times(record):
     """(time, cost) of every unit the tasks' event logs say is done."""
+    units = record["units"]
+    return [(event["at"], unit_cost(units[event["index"]])) for event in events_of(record) if event["event"] == "done"]
+
+
+def events_of(record):
+    """Every whole event the tasks of this list logged, in file order: a line a killed task left
+    half written, or one that names no unit of this list, is passed over, since the events are the
+    progress's and the record's view and never what decides a unit."""
     folder = Path(record["out"]) / ANALYSIS / "events"
     found = []
     for path in sorted(folder.glob("*.jsonl")):
         try:
-            text = path.read_text(encoding="utf-8")
+            lines = path.read_text(encoding="utf-8").splitlines()
         except OSError:
             continue
-        for line in text.splitlines():
+        for line in lines:
             try:
                 event = json.loads(line)
-            except ValueError:
+                event["at"], event["index"] = float(event["at"]), int(event["index"])
+            except (ValueError, TypeError, KeyError, AttributeError):
                 continue
-            if event.get("event") == "done":
-                found.append((float(event["at"]), unit_cost(record["units"][event["index"]])))
+            if 0 <= event["index"] < len(record["units"]) and event.get("stamp", record["stamp"]) == record["stamp"]:
+                found.append(event)
     return found
 
 
@@ -1999,15 +2020,15 @@ def load_head(out, key):
 
 
 def clear_array(folder):
-    """An earlier array's claims, failures and task records gone, so this one starts clean."""
-    for name in ("claims", "failed", "tasks"):
+    """An earlier array's claims, failures, task records and events gone, so this one starts clean;
+    its done units stay, each counting again where its stamp is the new list's."""
+    for name in ("claims", "failed", "tasks", "events"):
         sub = folder / name
         if sub.is_dir():
             for path in sub.iterdir():
                 path.unlink(missing_ok=True)
         sub.mkdir(exist_ok=True)
-    for name in ("done", "events"):
-        (folder / name).mkdir(exist_ok=True)
+    (folder / "done").mkdir(exist_ok=True)
 
 
 def gpu_name(device):
@@ -2104,10 +2125,10 @@ class Task:
     """One array task's record: tasks/<task>.json rewritten at each beat, and events/<task>-<pid>.jsonl
     appended at each claim, unit done and failure, which the progress reads."""
 
-    def __init__(self, folder, task, tasks, gpu):
+    def __init__(self, folder, task, tasks, gpu, stamp):
         import socket
 
-        self.folder, self.task, self.tasks, self.gpu = folder, task, tasks, gpu
+        self.folder, self.task, self.tasks, self.gpu, self.stamp = folder, task, tasks, gpu, stamp
         self.host, self.job = socket.gethostname(), job_label()
         self.token = f"{self.job} task {task} on {self.host} pid {os.getpid()} at {utc_now()}"
         self.counts = {"done": 0, "failed": 0}
@@ -2117,7 +2138,8 @@ class Task:
     def event(self, what, index, unit_id_, **extra):
         if what in self.counts:
             self.counts[what] += 1
-        line = json.dumps({"event": what, "index": index, "id": unit_id_, "at": time.time(), "task": self.task, **extra})
+        line = json.dumps({"event": what, "index": index, "id": unit_id_, "at": time.time(), "task": self.task,
+                           "stamp": self.stamp, **extra})
         with open(self.events, "a", encoding="utf-8") as stream:
             stream.write(line + "\n")
 
@@ -2154,7 +2176,7 @@ def shard(args):
     if gpu is None:
         log(f"shard: the GPU self-test failed ({why}); no unit claimed")
         return 4
-    task = Task(folder, args.task, args.tasks, gpu)
+    task = Task(folder, args.task, args.tasks, gpu, record["stamp"])
     task.beat([])
     log(f"shard: task {args.task} of {args.tasks} on {task.host}, {gpu}, {args.workers} workers,"
         f" {len(record['units'])} units in the list")
@@ -2165,37 +2187,89 @@ def shard(args):
 
 
 def claim_loop(out, record, task, workers):
+    """Claim, run and settle units until none is left to claim and no other task's claim is still
+    beating; 3 once FAILURE_STREAK units have failed in a row or the pool has broken that many
+    times in a row, 0 otherwise, and 0 too where a new prepare replaced the list under this task."""
     from concurrent.futures import FIRST_COMPLETED, wait
+    from concurrent.futures.process import BrokenProcessPool
 
     folder, stamp, units = Path(out) / ANALYSIS, record["stamp"], record["units"]
     order = sorted(range(len(units)), key=lambda i: (-unit_cost(units[i]), i))
-    todo, others, held, streak = [i for i in order if not settled(folder, i, stamp)], [], {}, 0
-    with unit_pool(out, workers) as pool:
-        while True:
-            while streak < FAILURE_STREAK and len(held) < max(1, workers):
-                index = next_unit(folder, todo, others, stamp, task.token)
-                if index is None:
-                    break
-                held[pool.submit(unit_task, str(out), index)] = (index, time.time())
-                task.event("claimed", index, units[index]["id"])
-            if not held:
-                if streak >= FAILURE_STREAK:
-                    break
-                task.beat([], state="watching")
-                if not watch_others(folder, todo, others, stamp):
-                    break
+    todo, others, held, streak, breaks = [i for i in order if not settled(folder, i, stamp)], [], {}, 0, 0
+    pool = unit_pool(workers)
+    try:
+        while streak < FAILURE_STREAK and breaks < FAILURE_STREAK:
+            if not list_is(out, stamp):
+                log("shard: a new prepare replaced the list of units, so this task stops and claims nothing more")
+                return 0
+            try:
+                while streak < FAILURE_STREAK and len(held) < max(1, workers):
+                    index = next_unit(folder, todo, others, stamp, task.token)
+                    if index is None:
+                        break
+                    try:
+                        held[pool.submit(unit_task, str(out), index, stamp)] = (index, time.time())
+                    except BrokenProcessPool:
+                        claim_path(folder, index).unlink(missing_ok=True)
+                        todo.insert(0, index)
+                        raise
+                    task.event("claimed", index, units[index]["id"])
+                if not held:
+                    if streak >= FAILURE_STREAK:
+                        break
+                    task.beat([], state="watching")
+                    if not watch_others(folder, todo, others, stamp):
+                        break
+                    continue
+                finished, _ = wait(list(held), timeout=HEARTBEAT_SECONDS, return_when=FIRST_COMPLETED)
+                broken = [future for future in finished if isinstance(future.exception(), BrokenProcessPool)]
+                for future in finished:
+                    if future in broken:
+                        continue
+                    index, started = held.pop(future)
+                    outcome = settle(folder, task, units, index, future, started)
+                    if outcome is not None:
+                        streak = 0 if outcome else streak + 1
+                if broken:
+                    raise BrokenProcessPool("a worker of the pool died")
+                breaks = 0 if finished else breaks
+            except BrokenProcessPool:
+                breaks += 1
+                pool, workers = broken_pool(pool, held, folder, task, units, todo, workers)
                 continue
-            finished, _ = wait(list(held), timeout=HEARTBEAT_SECONDS, return_when=FIRST_COMPLETED)
-            for future in finished:
-                index, started = held.pop(future)
-                streak = 0 if settle(folder, task, units, index, future, started) else streak + 1
             task.beat([claim_path(folder, i) for i, _ in held.values()])
             write_progress(out)
-    if streak >= FAILURE_STREAK:
-        log(f"shard: stopped after {FAILURE_STREAK} failures in a row")
+    finally:
+        pool.shutdown(wait=False, cancel_futures=True)
+    if streak >= FAILURE_STREAK or breaks >= FAILURE_STREAK:
+        log(f"shard: stopped after {FAILURE_STREAK} {'failures' if streak >= FAILURE_STREAK else 'broken pools'} in a row")
         return 3
     log(f"shard: nothing left to claim; {task.counts['done']} done and {task.counts['failed']} failed here")
     return 0
+
+
+def list_is(out, stamp):
+    """Whether units.json still holds the list this task claims from (a new prepare writes another)."""
+    record = units_record(out)
+    return record is not None and record["stamp"] == stamp
+
+
+def broken_pool(pool, held, folder, task, units, todo, workers):
+    """A worker of the pool died (the kernel's OOM killer, a crash in native code), which breaks
+    every unit the pool held: none of them is failed for it, since all but one did nothing wrong;
+    each claim is let go and the unit put back at the head of this task's list, and a new pool of
+    half as many workers takes them, so units that broke the pool by filling the job's memory
+    together run fewer at a time. FAILURE_STREAK breaks in a row stop the task (claim_loop),
+    leaving the units for the merge to name as not done. The new pool and its size."""
+    smaller = max(1, workers // 2)
+    log(f"shard: a worker died and broke the pool; {len(held)} units let go and claimed again by {smaller} workers")
+    for index, _ in sorted(held.values(), reverse=True):
+        claim_path(folder, index).unlink(missing_ok=True)
+        task.event("released", index, units[index]["id"])
+        todo.insert(0, index)
+    held.clear()
+    pool.shutdown(wait=False, cancel_futures=True)
+    return unit_pool(smaller), smaller
 
 
 def next_unit(folder, todo, others, stamp, token):
@@ -2223,16 +2297,22 @@ def watch_others(folder, todo, others, stamp):
     return bool(todo or others)
 
 
+class ListChanged(Exception):
+    """The list of units a task claims from was replaced by a new prepare while a unit waited."""
+
+
 def settle(folder, task, units, index, future, started):
-    """A finished unit's outcome: done, logged with its seconds, or failed, recorded with the kind
-    of error and where it rose; True when done."""
+    """A finished unit's outcome: True when done and logged with its seconds; False when it failed,
+    recorded with the kind of error and where in the study's code it rose; None when the list was
+    replaced under it, which is no failure of the unit and leaves the new list's folders alone."""
     unit = units[index]
     try:
         seconds, backend = future.result()
+    except ListChanged:
+        return None
     except Exception as error:  # one unit's failure is recorded and counted toward the streak, never fatal alone
-        where = traceback.extract_tb(error.__traceback__)[-1:] if error.__traceback__ else []
         write_json(failed_path(folder, index), {"id": unit["id"], "error": type(error).__name__,
-                                                "where": [f"{f.name}:{f.lineno}" for f in where], "task": task.token})
+                                                "where": where_raised(error), "task": task.token})
         task.event("failed", index, unit["id"], seconds=round(time.time() - started, 1), error=type(error).__name__)
         log(f"unit {unit['id']} FAILED after {time.time() - started:.0f} s: {type(error).__name__}: {error}")
         return False
@@ -2241,32 +2321,26 @@ def settle(folder, task, units, index, future, started):
     return True
 
 
-class InlinePool:
-    """A pool of one: each unit run in this process when it is submitted, its future already done."""
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *_):
-        return False
-
-    def submit(self, fn, *args):
-        from concurrent.futures import Future
-
-        future = Future()
-        try:
-            future.set_result(fn(*args))
-        except Exception as error:  # carried in the future as a process pool carries it
-            future.set_exception(error)
-        return future
+def where_raised(error):
+    """The last frames of the study's own code an error rose through, as name:line: a worker's
+    error comes back with the worker's traceback as its cause, in text, and the parent's own frames
+    there are the pool's."""
+    cause = getattr(error, "__cause__", None)
+    text = getattr(cause, "tb", "") if cause is not None else ""
+    frames = re.findall(r'File "([^"]+)", line (\d+), in (\S+)', text)
+    if not frames and error.__traceback__ is not None:
+        frames = [(f.filename, str(f.lineno), f.name) for f in traceback.extract_tb(error.__traceback__)]
+    return [f"{Path(name).name}:{function}:{line}" for name, line, function in frames[-3:]]
 
 
-def unit_pool(out, workers):
+def unit_pool(workers):
     """workers processes, started fresh rather than forked (the self-test opened CUDA here, which a
-    fork must not copy), each with one BLAS and torch thread so the node's CPUs are the pool's; or
-    this process alone for one worker."""
+    fork must not copy), each with one BLAS and torch thread so the node's CPUs are the pool's; or,
+    for one worker, one thread of this process, so the task still beats while a unit runs."""
+    from concurrent.futures import ThreadPoolExecutor
+
     if workers <= 1:
-        return InlinePool()
+        return ThreadPoolExecutor(max_workers=1)
     for name in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS"):
         os.environ[name] = "1"
     context = multiprocessing.get_context("spawn")
@@ -2274,6 +2348,7 @@ def unit_pool(out, workers):
 
 
 def pool_start():
+    """A worker's first act: one torch thread, so the node's CPUs are the pool's."""
     try:
         import torch
 
@@ -2292,17 +2367,23 @@ def loaded(key, make):
     return _LOADED[key]
 
 
-def unit_task(out, index):
+def unit_task(out, index, stamp):
     """One unit in a worker: its head loaded once per process, its result written whole, then
-    (seconds, the MMD's backend)."""
+    (seconds, the MMD's backend); ListChanged, with nothing written, where units.json no longer
+    holds the list the task claimed it from, before the unit or once it has run, so a unit of an
+    old list never writes over the new list's result of the same number."""
     folder = Path(out) / ANALYSIS
     record = units_record(out)
+    if record is None or record["stamp"] != stamp:
+        raise ListChanged(f"unit {index} was claimed from list {stamp[:16]}, which a new prepare replaced")
     unit = record["units"][index]
     head = loaded((str(out), record["stamp"], unit["key"]), lambda: load_head(out, unit["key"]))
     started = time.time()
     piece, arrays = run_unit(head, unit, record["seed"])
     seconds = time.time() - started
     backend = mmd_backend()
+    if not list_is(out, stamp):
+        raise ListChanged(f"unit {index} of list {stamp[:16]} ran while a new prepare replaced the list")
     save_unit(folder, index, unit, piece, arrays, record["stamp"], seconds, backend)
     return seconds, backend
 
@@ -2387,7 +2468,10 @@ def merge(args):
         results["spaces"][key] = result
         if maps:
             all_maps[key] = (head.frame, maps)
-    results, all_maps = finish_results(args, results, all_maps, record=joined)
+    run = dict(read_json(folder / "PREPARED.json")["run"], merge=run_block(args))
+    if run["prereg_sha256"] != prereg_digest():
+        raise StageError("the pre-registration differs from the one prepare read")
+    results, all_maps = finish_results(args, results, all_maps, record=joined, run=run)
     write_summary(args, results, all_maps)
     return 0
 
@@ -2407,12 +2491,8 @@ def array_record(out, record):
         done = read_json(done_path(folder, index))
         seconds += float(done.get("seconds", 0))
         backends.add(done.get("backend", "unknown"))
-    for at, _ in done_times(record):
-        finished.append(at)
-    for path in sorted((folder / "events").glob("*.jsonl")):
-        for line in path.read_text(encoding="utf-8").splitlines():
-            if '"claimed"' in line:
-                began.append(json.loads(line)["at"])
+    for event in events_of(record):
+        (finished if event["event"] == "done" else began if event["event"] == "claimed" else []).append(event["at"])
     gpus = {}
     for name in [prepared.get("gpu", "")] + [t.get("gpu", "") for t in tasks]:
         if name:
@@ -2723,8 +2803,9 @@ def auc_text(auc):
 
 
 def summary_lines(results, wandb_line):
-    """At most LINE_BUDGET short lines, each made safe for the grid's redaction, of what the study
-    found: the header and the replication verdict, the groups, then the primary space in full,
+    """The run's record in RECORD_LINES lines first, which the study's report reads from the top
+    (tools/report.py, study mode), then at most LINE_BUDGET short lines of what the study found, each
+    made safe for the grid's redaction: the header and the replication verdict, the groups, then the primary space in full,
     the other spaces' family contrasts, FleXray's space as stored for FleXray's own groups, and
     last the secondary lines (the nearest real corpora, the other spaces' replication pairs and
     replication-only contrasts, the map centres). The sections carry a rank, and whole sections
@@ -2732,15 +2813,22 @@ def summary_lines(results, wandb_line):
     and never the middle of a table."""
     header = (f"drr gap: {sum(g['decoded'] for g in results['groups'])} images,"
               f" {sum(1 for g in results['groups'] if g['decoded'] >= MIN_ROWS)} groups, W&B {wandb_line}")
-    sections = [(0, [header] + record_lines(results) + verdict_lines(results.get("replication", {}))),
+    sections = [(0, [header] + verdict_lines(results.get("replication", {}))),
                 (1, render_summary(results.get("renders", {})) + group_summary(results["groups"]))]
     for key, space in results["spaces"].items():
         sections += space_sections(key, space, detail_of(key))
     lines = fit_lines(sections, LINE_BUDGET)
-    return [rules().safe_line(line) for line in lines][:LINE_BUDGET]
+    record = [rules().safe_line(line) for line in record_lines(results)][:RECORD_LINES]
+    return record + [rules().safe_line(line) for line in lines][:LINE_BUDGET]
 
 
 RECORD_SECONDS = ("render", "plan", "images", "features", "heads", "analysis", "figures")
+
+
+def short_digest(digest):
+    """A digest's first 16 hex digits in four groups of four, so no run of eight digits is ever read
+    as a date by the grid's filter, which would split it (schwingnet.domain_gap.safe_line)."""
+    return "-".join(digest[i:i + 4] for i in range(0, 16, 4)) if digest else "none"
 
 
 def record_lines(results):
@@ -2759,8 +2847,8 @@ def record_lines(results):
     timed = [f"{stage} {seconds.get(stage, 0):.0f}" + (" (wall)" if stage == "analysis" else "") for stage in RECORD_SECONDS]
     timed.insert(-1, f"units {record.get('units_seconds', 0):.0f} (summed)")
     return [f"record: study {STUDY}; commit {run['git_head'][:7]}; tree {'dirty' if run['git_dirty'] else 'clean'};"
-            f" seed {run['seed']}; plan {results['plan'][:16]}; groups.json {run['inputs'].get('groups.json', '')[:16] or 'none'};"
-            f" PREREG {run['prereg_sha256'][:16] or 'none'}; code {run['code_digest'][:16]}",
+            f" seed {run['seed']}; plan {short_digest(results.get('plan', ''))}; groups.json {short_digest(run['inputs'].get('groups.json', ''))};"
+            f" PREREG {short_digest(run['prereg_sha256'])}; code {short_digest(run['code_digest'])}",
             f"record: jobs {ran}; GPUs {cards}",
             f"record: units {units.get('done', 0)} of {units.get('total', 0)} done, {units.get('failed', 0)} failed;"
             f" mmd backend {record.get('mmd', 'unknown')}",

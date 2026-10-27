@@ -113,10 +113,10 @@ class ArrayTest(unittest.TestCase):
         lines = (self.out / "summary.txt").read_text(encoding="ascii").splitlines()
         self.assertEqual([x for x in lines if not x.startswith("record: ")],
                          [x for x in serial_lines if not x.startswith("record: ")])
-        self.assertTrue(lines[2].startswith("record: jobs prepare local, array none (2 tasks), merge local; GPUs cpu x3"),
-                        lines[2])
-        self.assertTrue(lines[3].startswith(f"record: units {len(record['units'])} of {len(record['units'])} done, 0 failed;"
-                                            " mmd backend "), lines[3])
+        self.assertTrue(lines[1].startswith("record: jobs prepare local, array none (2 tasks), merge local; GPUs cpu x3"),
+                        lines[1])
+        self.assertTrue(lines[2].startswith(f"record: units {len(record['units'])} of {len(record['units'])} done, 0 failed;"
+                                            " mmd backend "), lines[2])
         # both tasks worked, and no unit was done twice
         done = [json.loads(line) for path in sorted((self.analysis / "events").glob("*.jsonl"))
                 for line in path.read_text(encoding="utf-8").splitlines()]
@@ -130,7 +130,9 @@ class ArrayTest(unittest.TestCase):
     def test_a_pool_of_spawned_workers_gives_each_unit_its_one_process_result(self):
         # the grid's tasks run their units in spawned workers of one thread each; the script run
         # as it runs there, on a few cheap units of the list at the study's own constants, gives
-        # every unit the result the same unit gets here
+        # every unit the result the same unit gets in a process of one thread (a process of many
+        # BLAS and torch threads sums in another order, which moves float32 results in their
+        # seventh digit, as DEVIATIONS.md item 2 says)
         tool = RUN.load_tool()
         tool.tool = self.tool.tool
         self.tool = tool
@@ -144,9 +146,19 @@ class ArrayTest(unittest.TestCase):
                                "--workers", "2", "--device", "cpu"], capture_output=True, text=True, timeout=900,
                               env=environment)
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
-        head = tool.load_head(self.out, "physics")
+        one_thread = dict(environment, OMP_NUM_THREADS="1", OPENBLAS_NUM_THREADS="1", MKL_NUM_THREADS="1")
+        script = ("import importlib.util, json, sys\n"
+                  "spec = importlib.util.spec_from_file_location('one_thread_tool', sys.argv[1])\n"
+                  "tool = importlib.util.module_from_spec(spec); sys.modules[spec.name] = tool; spec.loader.exec_module(tool)\n"
+                  "record = json.loads(open(sys.argv[3], encoding='utf-8').read())\n"
+                  "head = tool.load_head(sys.argv[2], 'physics')\n"
+                  "print(json.dumps([tool.run_unit(head, unit, record['seed'])[0] for unit in record['units']]))\n")
+        alone = subprocess.run([sys.executable, "-c", script, str(ROOT / "tools" / "domain_gap.py"), str(self.out), str(record_path)],
+                               capture_output=True, text=True, timeout=900, env=one_thread)
+        self.assertEqual(alone.returncode, 0, alone.stderr)
+        pieces = json.loads(alone.stdout.splitlines()[-1])
         for index, unit in enumerate(keep):
-            here, _ = tool.run_unit(head, unit, record["seed"])
+            here = pieces[index]
             there = read(self.analysis / "done" / f"{index:05d}.json")
             self.assertEqual(there["piece"], here, unit["id"])
             self.assertEqual(there["stamp"], record["stamp"])
@@ -196,6 +208,101 @@ class ArrayTest(unittest.TestCase):
         self.assertEqual(list((self.analysis / "failed").iterdir()), [])
         self.assertEqual(tool.shard(shard_args(self.out)), 0)
         self.assertEqual(tool.merge(merge_args(self.out, self.args.groups)), 0)
+
+    def test_a_broken_pool_fails_no_unit_and_a_smaller_pool_takes_its_units(self):
+        # the first pool breaks every unit it is given, as a worker the OOM killer takes breaks a
+        # process pool: the units are let go, not failed, and a pool of half the workers does them
+        from concurrent.futures import Future, ThreadPoolExecutor
+        from concurrent.futures.process import BrokenProcessPool
+
+        class Broken:
+            def submit(self, *args):
+                future = Future()
+                future.set_exception(BrokenProcessPool("a worker died"))
+                return future
+
+            def shutdown(self, wait=True, cancel_futures=False):
+                pass
+
+        record = self.prepared()
+        tool, sizes = self.tool, []
+        tool.unit_pool = lambda workers: sizes.append(workers) or (Broken() if len(sizes) == 1 else ThreadPoolExecutor(1))
+        self.assertEqual(tool.shard(shard_args(self.out, workers=4)), 0)
+        self.assertEqual(sizes, [4, 2])
+        self.assertEqual(list((self.analysis / "failed").iterdir()), [])
+        events = [json.loads(line) for path in (self.analysis / "events").glob("*.jsonl")
+                  for line in path.read_text(encoding="utf-8").splitlines()]
+        self.assertEqual(sum(e["event"] == "released" for e in events), 4)
+        self.assertTrue(all(tool.unit_done(self.analysis, i, record["stamp"]) for i in range(len(record["units"]))))
+
+    def test_three_broken_pools_in_a_row_stop_the_task_with_its_claims_let_go(self):
+        from concurrent.futures import Future
+        from concurrent.futures.process import BrokenProcessPool
+
+        class Broken:
+            def submit(self, *args):
+                future = Future()
+                future.set_exception(BrokenProcessPool("a worker died"))
+                return future
+
+            def shutdown(self, wait=True, cancel_futures=False):
+                pass
+
+        self.prepared()
+        tool = self.tool
+        tool.unit_pool = lambda workers: Broken()
+        self.assertEqual(tool.shard(shard_args(self.out, workers=8)), 3)
+        self.assertEqual(list((self.analysis / "failed").iterdir()), [])
+        self.assertEqual(list((self.analysis / "claims").iterdir()), [])
+
+    def test_a_unit_of_a_replaced_list_writes_nothing_and_is_no_failure(self):
+        record = self.prepared()
+        tool = self.tool
+        with self.assertRaises(tool.ListChanged):
+            tool.unit_task(str(self.out), 0, "another list's stamp")
+        self.assertFalse(tool.done_path(self.analysis, 0).exists())
+
+        class Replaced:
+            def result(self):
+                raise tool.ListChanged("replaced")
+
+        task = tool.Task(self.analysis, 0, 1, "cpu", record["stamp"])
+        self.assertIsNone(tool.settle(self.analysis, task, record["units"], 0, Replaced(), time.time()))
+        self.assertFalse(tool.failed_path(self.analysis, 0).exists())
+
+    def test_a_failure_names_the_frames_of_the_study_it_rose_through(self):
+        def deepest():
+            raise ArithmeticError("made up")
+
+        try:
+            deepest()
+        except ArithmeticError as error:
+            where = self.tool.where_raised(error)
+        self.assertRegex(where[-1], r"^test_domain_gap_array[.]py:deepest:[0-9]+$")
+
+        class Remote(Exception):
+            tb = 'Traceback:\n  File "/grid/code/tools/domain_gap.py", line 12, in run_unit\n  File "/grid/code/tools/domain_gap_stats.py", line 34, in mmd\n'
+
+        error = ValueError("in a worker")
+        error.__cause__ = Remote()
+        self.assertEqual(self.tool.where_raised(error), ["domain_gap.py:run_unit:12", "domain_gap_stats.py:mmd:34"])
+
+    def test_events_a_killed_task_left_half_written_or_out_of_the_list_are_passed_over(self):
+        record = self.prepared()
+        self.assertEqual(self.tool.shard(shard_args(self.out)), 0)
+        events = next((self.analysis / "events").glob("*.jsonl"))
+        with open(events, "a", encoding="utf-8") as stream:
+            stream.write(json.dumps({"event": "done", "index": len(record["units"]) + 5, "at": time.time(), "stamp": record["stamp"]}) + "\n")
+            stream.write(json.dumps({"event": "done", "index": 0, "at": time.time(), "stamp": "an old list"}) + "\n")
+            stream.write("[1, 2]\n")
+            stream.write('{"event": "done", "index": 1, "at"')
+        self.assertEqual(len([e for e in self.tool.events_of(self.tool.units_record(self.out)) if e["event"] == "done"]),
+                         len(record["units"]))
+        self.tool.write_progress(self.out, force=True)
+        self.assertEqual(self.tool.merge(merge_args(self.out, self.args.groups)), 0)
+        # a new prepare clears the events with the claims and the failures
+        self.prepared()
+        self.assertEqual(list((self.analysis / "events").iterdir()), [])
 
     def test_done_units_are_kept_across_a_prepare_and_other_code_does_them_again(self):
         record = self.prepared()

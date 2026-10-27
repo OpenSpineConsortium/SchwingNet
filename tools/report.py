@@ -508,7 +508,7 @@ def recorded_runs():
 
 LICENCES = ROOT / "data" / "licences.json"
 STUDY_FILES = ("BENCH.md", "summary.txt")
-SUMMARY_LINES = 80  # what the bench report carries of a summary (tools/domain_gap.py, LINE_BUDGET)
+SUMMARY_LINES = 85  # what the bench report carries of a summary (tools/domain_gap.py, RECORD_LINES + LINE_BUDGET)
 
 # How the DRR domain-gap study answers each item a training run answers by code, and the two it
 # hands to the owner: ("code", fact) is read from the recorded folder by STUDY_FACTS, ("declared",
@@ -552,16 +552,23 @@ STUDIES = {
 
 # The record lines, in the forms the study writes them after grid/redact.sed's rules
 # (schwingnet.domain_gap.safe_line): one form for each kind, two for the jobs, since a serial run
-# writes the one job it ran where the grid's array writes its three.
-HEX7, HEX16, COUNT, SECONDS = "[0-9a-f]{7}", "[0-9a-f]{16}", "[0-9]+", "[0-9]+(?:[.][0-9]+)?"
+# writes the one job it ran where the grid's array writes its three. A digest is its first 16 hex
+# digits in four groups of four (tools/domain_gap.py, short_digest), since the filter would split
+# a run of eight digits that reads as a date; it is compared with its dashes taken out. A job is
+# its Slurm number, or local where a step ran outside Slurm; the array is none where no task
+# reported, or every array job a task ran under.
+HEX7, COUNT, SECONDS = "[0-9a-f]{7}", "[0-9]+", "[0-9]+(?:[.][0-9]+)?"
+HEX16 = "[0-9a-f]{4}(?:-[0-9a-f]{4}){3}"
+JOB = rf"{COUNT}(?:_{COUNT})?|local|unknown"
+ARRAY = rf"{COUNT}(?:, {COUNT})*|none"
 GPUS = r"GPUs (?P<gpu>\S(?:.*\S)?) x(?P<gpus>[0-9]+)"
 SECONDS_PARTS = ("render", "plan", "images", "features", "heads", "analysis", "units", "figures")
 SECONDS_TAILS = {"analysis": " [(]wall[)]", "units": " [(]summed[)]"}
 RECORD_FORMS = {
     "study": (rf"study (?P<study>[a-z0-9-]+); commit (?P<commit>{HEX7}); tree (?P<tree>clean|dirty); seed (?P<seed>{COUNT});"
               rf" plan (?P<plan>{HEX16}); groups[.]json (?P<groups>{HEX16}|none); PREREG (?P<prereg>{HEX16}|none); code (?P<code>{HEX16})",),
-    "jobs": (rf"jobs prepare (?P<prepare>{COUNT}), array (?P<array>{COUNT}) [(](?P<tasks>{COUNT}) tasks[)], merge (?P<merge>{COUNT}); {GPUS}",
-             rf"jobs run (?P<run>{COUNT}|local); {GPUS}"),
+    "jobs": (rf"jobs prepare (?P<prepare>{JOB}), array (?P<array>{ARRAY}) [(](?P<tasks>{COUNT}) tasks[)], merge (?P<merge>{JOB}); {GPUS}",
+             rf"jobs run (?P<run>{JOB}); {GPUS}"),
     "units": (rf"units (?P<done>{COUNT}) of (?P<total>{COUNT}) done, (?P<failed>{COUNT}) failed; mmd backend (?P<backend>torch-cuda|numpy|mixed [a-z/-]+)",),
     "seconds": ("seconds " + ", ".join(f"{part} (?P<{part}>{SECONDS}){SECONDS_TAILS.get(part, '')}" for part in SECONDS_PARTS),),
     "environment": (r"environment (?P<pins>\S(?:.*\S)?)",),
@@ -704,10 +711,20 @@ def table_of(run):
     if not path.is_file():
         return None, f"needs the groups table the record names, {named}: {where} is not there"
     digest = hashlib.sha256(path.read_bytes()).hexdigest()[:16]
-    if digest != named:
-        return None, f"needs the groups table the record names, {named}: {where} is {digest}, so the table the run read is not here (keep it in the run folder as groups.json)"
+    if digest != undashed(named):
+        return None, f"needs the groups table the record names, {named}: {where} is {dashed(digest)}, so the table the run read is not here (keep it in the run folder as groups.json)"
     table = json.loads(path.read_text(encoding="utf-8"))
-    return table, f"{where}, version {table.get('version')}, sha256 {digest} as the record names it"
+    return table, f"{where}, version {table.get('version')}, sha256 {named} as the record names it"
+
+
+def undashed(digest):
+    """A record's digest as the hex it stands for, its four groups joined."""
+    return digest.replace("-", "")
+
+
+def dashed(digest):
+    """Sixteen hex digits in the record's four groups of four."""
+    return "-".join(digest[i:i + 4] for i in range(0, len(digest), 4))
 
 
 def sources_of(group):
@@ -776,8 +793,8 @@ def prereg_gap(run):
     if not path.is_file():
         return f"the record names PREREG {named}, and {shown(path)} is not there to hold it to"
     digest = hashlib.sha256(path.read_bytes()).hexdigest()[:16]
-    if digest != named:
-        return f"the record names PREREG {named}, which is not the frozen {shown(path)} ({digest}): the run read another design"
+    if digest != undashed(named):
+        return f"the record names PREREG {named}, which is not the frozen {shown(path)} ({dashed(digest)}): the run read another design"
     return ""
 
 
@@ -902,6 +919,8 @@ def study_instruments(run):
 def study_software(run):
     """CLAIM 23: the packages the study ran on."""
     record = run["record"]
+    if record["environment"]["pins"] == "not given":
+        return missing("needs the environment's pins in summary.txt's record line 'record: environment ...': the step gave none (SN_PINS), so the packages the study ran on are not recorded")
     return met(f"the pins {record['environment']['pins']} over train-gpu's locked pixi environment (pixi.lock) at commit {record['study']['commit']}; the MMD computed on {record['units']['backend']} (summary.txt record)")
 
 

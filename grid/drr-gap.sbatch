@@ -34,8 +34,8 @@
 # whole output to a log in the run folder. Only the merge writes the report,
 # logs/BENCH-flexray_drr_gap.md: prepare's lines first, whose first line names prepare's job and the
 # commit as grid/gate.sh's bench_job_of and bench_failed_on_older_code read them, a line per shard
-# task, the merge's lines and the summary. Only summary.txt, at most 80 lines of numbers and group
-# names, leaves the grid, each line through grid/redact.sed; the plan, results.json and the logs name
+# task, the merge's lines and the summary. Only summary.txt, five record lines and at most 80 lines of
+# numbers and group names, leaves the grid, each line through grid/redact.sed; the plan, results.json and the logs name
 # files and stay in the run folder, the owner's alone (umask 077); the figures go to W&B where the
 # grid's key is found.
 set -uo pipefail
@@ -251,7 +251,7 @@ merge_finish() {  # merge_finish RC [summary]: the report composed from every st
     cat "$STEP_FILE"
     if [ "${2:-}" = summary ]; then
       echo "- results: $OUT"
-      printf '%s\n' "$SUMMARY" | head -n 80 | sed 's/^/  /'
+      printf '%s\n' "$SUMMARY" | head -n 85 | sed 's/^/  /'
     fi
     echo "- exit $rc at $ended"
   } > "$REPORT.part"
@@ -287,7 +287,7 @@ step_merge() {
   study_venv || { report "FAILED: the environment for $DRR_GAP_PIN could not be made"; merge_finish 1; }
   study_tool merge --out "$OUT" --groups "$CODE/data/domain_gap/groups.json" > "$ANALYSIS/logs/merge.log" 2>&1; rc=$?
   [ "$rc" = 0 ] || { report "FAILED: domain_gap.py merge ended $rc ($(last_line_of "$ANALYSIS/logs/merge.log"))"; merge_finish "$rc"; }
-  # The summary, at most 80 lines of numbers and group names, each through the filter the gate word
+  # The summary, five record lines and at most 80 of numbers and group names, each through the filter the gate word
   # status applies to every log line, and the report carries it whole.
   SUMMARY=$(study_tool summary --out "$OUT" 2>&1 | sed -r -f "$REDACT"); rc=$?
   printf '%s\n' "$SUMMARY"

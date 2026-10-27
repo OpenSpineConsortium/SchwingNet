@@ -9,7 +9,7 @@ src/schwingnet/domain_gap.py and against direct sums, PRDC against Naeem et al.'
 written as loops, and every map against its shape.
 
 It needs numpy and scikit-learn, and the pure module's pydantic, icontract and beartype, as the
-study's job environment holds them (a venv beside train-gpu's packages, grid/bench.sbatch), so it
+study's job environment holds them (a venv beside train-gpu's packages, grid/drr-gap.sbatch), so it
 runs there and is skipped under the required check's python:
 
     python -m unittest tests/test_domain_gap_stats.py

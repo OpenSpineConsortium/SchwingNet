@@ -58,8 +58,8 @@ class StudyFolder(unittest.TestCase):
         # a frozen pre-registration of the fixture's own, its digest written into the record line
         prereg = root / "PREREG.md"
         prereg.write_text("fixture pre-registration, frozen\n", encoding="ascii")
-        self.prereg = hashlib.sha256(prereg.read_bytes()).hexdigest()[:16]
-        self.replace_line("record: study ", self.lines()[0].replace("PREREG 2222222222222222", f"PREREG {self.prereg}"))
+        self.prereg = report.dashed(hashlib.sha256(prereg.read_bytes()).hexdigest()[:16])
+        self.replace_line("record: study ", self.lines()[0].replace("PREREG 2222-2222-2222-2222", f"PREREG {self.prereg}"))
         config = report.STUDIES[STUDY]
         self.addCleanup(config.update, dict(config))
         config.update(answers=self.answers, runs=root / "runs", prereg=prereg)
@@ -92,7 +92,7 @@ class RecordTest(StudyFolder):
         fields, problems, unknown, body = report.record_of(self.lines(), STUDY)
         self.assertEqual((problems, unknown), ({}, []))
         self.assertEqual({key: fields["study"][key] for key in ("commit", "tree", "seed", "groups", "prereg")},
-                         {"commit": "0000000", "tree": "clean", "seed": "0", "groups": "7e1b145e9d74759a", "prereg": self.prereg})
+                         {"commit": "0000000", "tree": "clean", "seed": "0", "groups": "7e1b-145e-9d74-759a", "prereg": self.prereg})
         self.assertEqual((fields["jobs"]["prepare"], fields["jobs"]["tasks"], fields["jobs"]["gpu"], fields["jobs"]["gpus"]),
                          ("1000001", "4", "FIXTURE GPU", "1"))
         self.assertEqual((fields["units"]["done"], fields["units"]["backend"]), ("4", "numpy"))
@@ -108,6 +108,24 @@ class RecordTest(StudyFolder):
         self.assertEqual(compute["state"], "met")
         self.assertIn("one job, run local, on GPUs FIXTURE GPU x1", compute["evidence"])
 
+    def test_the_array_forms_a_local_step_and_a_missing_array_write_are_read(self):
+        for jobs, array in (("prepare local, array none (0 tasks), merge local", "none"),
+                            ("prepare 1000001, array 1000002, 1000004 (5 tasks), merge 1000003", "1000002, 1000004")):
+            self.replace_line("record: jobs", f"record: jobs {jobs}; GPUs FIXTURE GPU x1")
+            fields, problems, _, _ = report.record_of(self.lines(), STUDY)
+            self.assertEqual((problems, fields["jobs"]["array"]), ({}, array), jobs)
+
+    def test_a_digest_written_whole_is_out_of_its_form(self):
+        self.replace_line("record: study ", self.lines()[0].replace("code 3333-3333-3333-3333", "code 3333333333333333"))
+        _, problems, _, _ = report.record_of(self.lines(), STUDY)
+        self.assertEqual(problems, {"study": "not in its form"})
+
+    def test_pins_the_step_did_not_give_leave_the_software_item_missing(self):
+        self.replace_line("record: environment", "record: environment not given")
+        software = self.rows("claim")["23"]
+        self.assertEqual(software["state"], "missing")
+        self.assertIn("SN_PINS", software["evidence"])
+
     def test_a_line_out_of_its_form_given_twice_or_after_the_summary_is_not_read(self):
         lines = self.lines()
         study = lines[0].replace("commit 0000000", "commit 00000000")
@@ -121,7 +139,7 @@ class RecordTest(StudyFolder):
         self.assertEqual(problems, {"study": "names study other-study"})
 
     def test_digests_the_record_names_as_none_are_read_and_answer_nothing(self):
-        line = self.lines()[0].replace("groups.json 7e1b145e9d74759a", "groups.json none").replace(f"PREREG {self.prereg}", "PREREG none")
+        line = self.lines()[0].replace("groups.json 7e1b-145e-9d74-759a", "groups.json none").replace(f"PREREG {self.prereg}", "PREREG none")
         self.replace_line("record: study", line)
         claim = self.rows("claim")
         self.assertEqual(claim["7"]["state"], "missing")
@@ -180,16 +198,16 @@ class NotApplicableTest(StudyFolder):
         for row in (claim["26"], claim["33"], claim["38"], reforms["5d"]):
             self.assertEqual(row["state"], "not applicable", row["id"])
             self.assertTrue(row["evidence"].startswith("Not applicable: the study "), row["id"])
-            self.assertIn("study drr-domain-gap, commit 0000000, code 3333333333333333", row["evidence"])
+            self.assertIn("study drr-domain-gap, commit 0000000, code 3333-3333-3333-3333", row["evidence"])
         self.assertIn(f"PREREG.md {self.prereg}", claim["26"]["evidence"])
         self.assertIn("trains no model", claim["33"]["evidence"])
 
     def test_a_record_naming_another_pre_registration_answers_nothing_that_reads_it(self):
-        self.replace_line("record: study ", self.lines()[0].replace(f"PREREG {self.prereg}", "PREREG 2222222222222222"))
+        self.replace_line("record: study ", self.lines()[0].replace(f"PREREG {self.prereg}", "PREREG 2222-2222-2222-2222"))
         claim, reforms = self.rows("claim"), self.rows("reforms")
         for row in (claim["26"], reforms["5d"], reforms["2d"]):
             self.assertEqual(row["state"], "missing", row["id"])
-            self.assertIn("the record names PREREG 2222222222222222, which is not the frozen ", row["evidence"])
+            self.assertIn("the record names PREREG 2222-2222-2222-2222, which is not the frozen ", row["evidence"])
 
     def test_only_code_items_are_not_applicable_by_code(self):
         rows = {**self.rows("claim"), **{f"R{key}": row for key, row in self.rows("reforms").items()}}
@@ -211,7 +229,7 @@ class TableAndLicenceTest(StudyFolder):
         (self.run / "groups.json").unlink()
         claim = self.rows("claim")
         self.assertEqual(claim["7"]["state"], "missing")
-        self.assertIn("needs the groups table the record names, 7e1b145e9d74759a: data/domain_gap/groups.json is", claim["7"]["evidence"])
+        self.assertIn("needs the groups table the record names, 7e1b-145e-9d74-759a: data/domain_gap/groups.json is", claim["7"]["evidence"])
         self.assertEqual(claim["35"]["state"], "met")
         self.assertIn("Not recorded: the report needs the groups table", self.text())
 
