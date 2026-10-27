@@ -18,4 +18,4 @@ On 2026-10-27 the owner asked for the README to stop "throwing me off" (05:17 UT
 **Why:** old paths in every handoff point at the top level and break without the archive/ prefix.
 **How to apply:** work item P in archive/bordercall; do not start TODO items other than P. See [[priority-panjabi-first]], [[findings-naming]].
 
-Since 7015802, at the checkpoint of 2026-10-27 11:33 UTC: main f85e042 carries TODO.md item P as widened (PR 3) and archive/bordercall/reference/provenance/ (PRs 4 and 5: provenance.csv, the cell images, CONTRADICTIONS.md; the archive's tests are 240); bordercall PR 6, a draft on branch claude/project-thread-cstta6, adds schwingcheck/, tests/ and requirements-schwingcheck.txt, unfinished ([[priority-panjabi-first]]).
+Since 7015802, at the checkpoint of 2026-10-27 11:33 UTC: main f85e042 carries TODO.md item P as widened (PR 3) and archive/bordercall/reference/provenance/ (PRs 4 and 5: provenance.csv, the cell images, CONTRADICTIONS.md; the archive's tests are 240); bordercall PR 6, merged as it stood at 13:33 UTC, adds schwingcheck/, tests/ and requirements-schwingcheck.txt, unfinished ([[priority-panjabi-first]]).
