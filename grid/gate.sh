@@ -90,8 +90,7 @@
 #                   masks (moose, which flexray_drr_seg makes) are each read where they are there and
 #                   the groups that need one skipped with its reason otherwise, since a DRR is a
 #                   projection of the CT alone and the groups that read no label render without masks
-#                   (the owner's word of 2026-10-27); MOOSE's are left out too while flexray_drr_seg
-#                   is queued or running (BENCH_SKIP_MASKS=moose), and the send says which are read;
+#                   (the owner's word of 2026-10-27), and the send says which are read;
 #                   only its summary leaves the grid, through grid/redact.sed; and
 #                   flexray_drr_seg, one GPU job before it (the owner's word of 2026-10-26: MOOSE labels
 #                   for the FleXray replication, SPINEPS for production): the study's choice of CTs
@@ -1127,21 +1126,14 @@ bench_failed_on_older_code() {  # a report whose last line is a nonzero exit, fr
   began=$(sed -n '1s/.*, commit \([0-9a-f]*\|unknown\),.*/\1/p' "$1")
   [ -n "$began" ] && [ -n "$(bench_job_of "$1")" ] && [ "$began" != "${commit:0:7}" ]
 }
-drr_gap_masks() {  # one line on each segmenter's masks bench flexray_drr_gap will read, and the ones left out into skip
-  # MOOSE's are left out while bench flexray_drr_seg is queued or running, since that job writes
-  # them under the data root's moose: the study waits afterany on it, as on every run that holds the
-  # checkout, so it starts once that job ends however it ended, and its choice of CTs must not
-  # hang on how far the masks got. The job turns skip into --skip-masks (grid/bench.sbatch).
-  local seg name label maker
-  seg=$(live_of bench_flexray_drr_seg)
-  skip=""
-  [ -z "$seg" ] || skip=moose
+drr_gap_masks() {  # one line on each segmenter's masks bench flexray_drr_gap will read
+  # The study waits afterany on a live bench flexray_drr_seg, as on every run that holds the
+  # checkout, so it reads MOOSE's masks once that job has ended and written them all.
+  local name label maker
   for name in spineps moose; do
     label="the ${name^^} masks" maker=""
     [ "$name" != moose ] || maker=" (bench flexray_drr_seg makes them)"
-    if [ "$name" = "$skip" ]; then
-      echo "  $label: left out (BENCH_SKIP_MASKS=$name) while bench flexray_drr_seg, which writes them, is queued or running (job $seg); the render groups that name segmenter=$name are skipped with that reason"
-    elif [ -d "$DATA_ROOT/$name" ]; then
+    if [ -d "$DATA_ROOT/$name" ]; then
       echo "  $label: read from $DATA_ROOT/$name"
     else
       echo "  $label: not at $DATA_ROOT/$name$maker; the render groups that name segmenter=$name are skipped with that reason"
@@ -1149,7 +1141,7 @@ drr_gap_masks() {  # one line on each segmenter's masks bench flexray_drr_gap wi
   done
 }
 word_bench() {  # one public model's benchmark (#287): queued once, its report printed on every later send
-  local report=$LOGS/BENCH-$id.md busy missing holds opts setup extra skip
+  local report=$LOGS/BENCH-$id.md busy missing holds opts setup extra
   extra=()
   case "$id" in
     flexray_carmlspine|flexray_deepfluoro|xvr_deepfluoro|flexray_drr_gap|flexray_drr_seg) ;;
@@ -1172,10 +1164,9 @@ word_bench() {  # one public model's benchmark (#287): queued once, its report p
   if [ "$id" = flexray_drr_gap ]; then
     # The study reads the index this word checked and the ImageNet file beside the models; FluXray
     # and each segmenter's masks join it only where they are there, and the job says so in its
-    # report rather than wait for them. BENCH_SKIP_MASKS goes to the job empty where nothing is
-    # left out, so a value in the caller's environment never reaches it.
+    # report rather than wait for them.
     drr_gap_masks
-    extra=(INDEX="$(samples_index)" MODELS="$MODELS" BENCH_SKIP_MASKS="$skip")
+    extra=(INDEX="$(samples_index)" MODELS="$MODELS")
     [ -d "$DATA_ROOT/hf_flexray_data/raw" ] || echo "  FluXray: not on the data root (fetch hf_flexray_data); the study skips its group with that reason"
   fi
   # Stale environments are rebuilt by the one setup job, which every bench sent while it runs waits
