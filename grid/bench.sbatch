@@ -16,8 +16,9 @@
 #                       the groups that read no label render from the CT alone, and the others read the
 #                       CTs' existing masks, SPINEPS's (the production segmenter) and MOOSE's (the
 #                       replication's, the owner's word of 2026-10-26), which flexray_drr_seg makes, each
-#                       where it is there, a group whose masks are not there being skipped with that
-#                       reason (the owner's word of 2026-10-27); only its summary.txt leaves the grid,
+#                       where enough CTs have them, a group whose masks are not there, or too few CTs
+#                       have, being skipped with that reason (the owner's word of 2026-10-27); only its
+#                       summary.txt leaves the grid,
 #                       each line through grid/redact.sed
 #   flexray_drr_seg     the study's choice of CTs (tools/domain_gap.py plan, rendering nothing) and MOOSE
 #                       on exactly those (tools/flexray_render.py segment, moosez's Python entry on the

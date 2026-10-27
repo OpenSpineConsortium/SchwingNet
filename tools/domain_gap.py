@@ -138,8 +138,11 @@ MASK_SEGMENTERS = ("spineps", "moose")
 LEFT_OUT = "left out by --skip-masks"
 # A folder that is there and holds fewer CTs' masks than a group needs persons to be tested, as a
 # segment job that stopped on one of its first CTs leaves one, is read as no masks at all:
-# required, it would leave every group on the folder too few CTs to test, the groups that read no
-# mask among them, so leaving it out can lose no test.
+# required, it would leave every group on the folder fewer persons than any test takes, the
+# groups that read no mask among them, so leaving it out can lose no test. A folder of more is
+# read and holds every render group on the folder to the CTs it covers, so a segment job cut short
+# a little later can still leave too few once groups pass CTs over: the study word goes only after
+# the segment job's report has been read.
 NO_MASKS = "no CT here has them"
 RENDER_SUBJECTS = "render-subjects.json"
 LINE_BUDGET = 80        # lines of summary.txt, what the bench report carries off the grid
@@ -621,7 +624,7 @@ def too_few_masks(count):
     group needs persons to be tested."""
     if count == 0:
         return NO_MASKS
-    return f"only {count} CTs here have them, fewer than the {MIN_PERSONS} a group needs to be tested"
+    return f"only {count} CTs have them, under {MIN_PERSONS}"
 
 
 def masked_subjects(renderer, ct_root, segmenter, roots):

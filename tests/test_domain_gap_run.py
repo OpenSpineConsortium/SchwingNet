@@ -778,16 +778,21 @@ class MaskFreeRenderTest(unittest.TestCase):
         self.assert_too_few_read_as_none([], "no CT here has them")
 
     def test_a_moose_folder_with_fewer_cts_than_a_test_needs_is_read_as_none(self):
-        self.assert_too_few_read_as_none(MOOSE_MASKED[:4], "only 4 CTs here have them, fewer than the 5 a group"
-                                                           " needs to be tested")
+        self.assert_too_few_read_as_none(MOOSE_MASKED[:4], "only 4 CTs have them, under 5")
 
-    def test_a_moose_folder_with_as_many_cts_as_a_test_needs_is_read(self):
+    def test_a_moose_folder_of_five_cts_is_read_and_holds_every_group_to_them(self):
+        # The limit the research note states: past the cutoff the folder is read, and every render
+        # group on it is held to the CTs it covers, less those a group passed over, which is why the
+        # study word waits for the segment job's report.
         renders, folder, _ = self.render({"spineps": SPINEPS_MASKED, "moose": MOOSE_MASKED[:5]})
         both = [s for s in MOOSE_MASKED[:5] if s in SPINEPS_MASKED]
         self.assertEqual(folder["subjects"], ranked(self.tool, both))
         self.assertEqual((folder["roots"], folder["masks"]), ({"moose": "found", "spineps": "found"},
                                                              {"moose": 5, "spineps": 27}))
         self.assertEqual(sorted(self.rendered()), sorted(g for g, *_ in RENDER_GROUPS))
+        self.assertEqual(len(folder["shared"]), 4)
+        for group in MASK_FREE:
+            self.assertEqual(renders[group]["shared"], folder["shared"], group)
 
     def test_skip_masks_leaves_a_folder_that_is_there_out(self):
         renders, folder, plan = self.render({"spineps": SPINEPS_MASKED, "moose": MOOSE_MASKED}, "--skip-masks", "moose")
