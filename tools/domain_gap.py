@@ -11,7 +11,7 @@ train-gpu's torch), once the owner gives the word and the count.
     python tools/domain_gap.py run --groups data/domain_gap/groups.json --data-root <data root> \\
         --index <samples.sqlite> --weights <FleXray bundle dir> --imagenet <resnet18 file> \\
         --out <dir> [--device cuda] [--workers 4] [--wandb auto|off] [--frozen <test-persons.json>] \\
-        [--spineps <data root>/spineps] [--moose <data root>/moose]
+        [--spineps <data root>/spineps] [--moose <data root>/moose] [--skip-masks spineps|moose ...]
     python tools/domain_gap.py plan --groups ... --data-root ... --out <dir> [the same flags less
         --weights and --imagenet]
     python tools/domain_gap.py summary --out <dir>
@@ -20,11 +20,15 @@ Stages, each written under --out and skipped when its output is there for the sa
 renders (tools/flexray_render.py from held TotalSegmentator CTs, each render group a recipe of
 named blocks, schwingnet.render_blocks, through this project's code or FleXray's own; the groups
 on one CT folder render the same CTs, chosen once in the salted order among the CTs that have
-masks under every segmenter those groups name, SPINEPS's existing masks under --spineps and
-MOOSE's under --moose, so the six render groups, flexray_drr, flexray_replica, flexray_reference,
-flexray_spineps, fluxray_raw and fluxray_raw_reference, differ only by their recipe and engine,
-and the replication test reads each recipe through our blocks against the same recipe through
-FleXray's code), the plan (which files of which groups,
+masks under every segmenter those groups name whose masks are read, SPINEPS's existing masks
+under --spineps and MOOSE's under --moose, so the seven render groups, flexray_drr,
+flexray_drr_ct, flexray_replica, flexray_reference, flexray_spineps, fluxray_raw and
+fluxray_raw_reference, differ only by their recipe and engine, and the replication test reads each
+recipe through our blocks against the same recipe through FleXray's code; a DRR's pixels are a
+projection of the CT alone, so the groups on segmenter none, flexray_drr_ct and the two FluXray
+raw groups, read no mask and render wherever the CTs are, while a group whose segmenter's masks
+are not read, no folder of them or one --skip-masks names, is skipped with that reason and the
+others render, the owner's word of 2026-10-27), the plan (which files of which groups,
 data/domain_gap/groups.json, chosen by person in a
 salted order, frozen test persons left out), the images (each decoded, MONOCHROME1 inverted,
 windowed to its 0.5-99.5 percentiles, cut to the centre square of 0.9 of its shorter side and
@@ -98,19 +102,26 @@ PERMUTATIONS_MMD = 1000
 BOOTSTRAP = 1000
 SPACES = ("flexray", "imagenet", "physics")
 PRIMARY_SPACE = "flexray"
-FOCUS_GROUPS = ("flexray_drr", "fluxray")  # FleXray's own groups, read in most detail
+# The primary endpoints, read in most detail: FleXray's physical render, the same render from the
+# CT alone with no mask read (added on 2026-10-27, before any number was seen, on the owner's word
+# that the comparison with real X-rays should run without segmentation), and FluXray.
+FOCUS_GROUPS = ("flexray_drr", "flexray_drr_ct", "fluxray")
 # The replication test's pairs, in the order the summary reads them: FleXray's MOOSE recipe through
 # this project's render blocks against the same recipe through FleXray's own code, the study's
 # verdict; FluXray's raw-render recipe (the paper's 90 fixed poses) through our blocks against the
-# same through FleXray's primitives; the physical render against the recipe, which isolates the
-# attenuation randomisation; the production labels (SPINEPS) against the replication's (MOOSE),
+# same through FleXray's primitives; the physical render from the CT alone against the physical
+# render on MOOSE's labels, which isolates what the labels' aiming does (the crops weighted by the
+# structures they hold and the isocentre on a structure, the attenuation off in both; the crops,
+# isocentres and poses are not shared, since the draws differ); the physical render against the
+# recipe, which isolates the attenuation randomisation; the production labels (SPINEPS) against
+# the replication's (MOOSE),
 # which shares the CTs and the seeds with it while the crops, isocentres and poses follow the
 # labels, since FleXray's recipe draws them from the label volume before the pose (so the pair
 # reads the segmenter with everything the labels decide); and the raw renders against the
 # FLUX-edited FluXray, which isolates the edit with the pose recipe held the same.
 REPLICATION_PAIRS = (("flexray_replica", "flexray_reference"), ("fluxray_raw", "fluxray_raw_reference"),
-                     ("flexray_drr", "flexray_replica"), ("flexray_spineps", "flexray_replica"),
-                     ("fluxray_raw_reference", "fluxray"))
+                     ("flexray_drr_ct", "flexray_drr"), ("flexray_drr", "flexray_replica"),
+                     ("flexray_spineps", "flexray_replica"), ("fluxray_raw_reference", "fluxray"))
 # The pairs that get the pre-registered word: one recipe through two engines.
 REPLICATION_WORDED = REPLICATION_PAIRS[:2]
 # The groups that exist for the replication tests alone: their contrasts with the real corpora
@@ -120,6 +131,10 @@ REPLICATION_ONLY = ("flexray_replica", "flexray_reference", "fluxray_raw", "flux
 # for the CTs this study chooses, reading the choice from render-subjects.json: the plan subcommand
 # that writes it for that job chooses without them, since none exists before the job has run.
 MADE_SEGMENTERS = ("moose",)
+# The segmenters whose masks a render group can read, each from --spineps and --moose or the data
+# root's folder of its name; --skip-masks leaves one out for a run by hand.
+MASK_SEGMENTERS = ("spineps", "moose")
+LEFT_OUT = "left out by --skip-masks"
 RENDER_SUBJECTS = "render-subjects.json"
 LINE_BUDGET = 80        # lines of summary.txt, what the bench report carries off the grid
 THUNDER = "thunderdb://"
@@ -459,7 +474,9 @@ def index_stamp(index):
 def stage_render(args, table):
     """The synthetic X-rays of every render group, by tools/flexray_render.py: the CTs of a folder
     are chosen once (render_folders), among those with masks under every segmenter the folder's
-    groups name, so every render group on one folder renders the same subjects, and the per-view
+    groups name whose masks are read, so every render group on one folder renders the same
+    subjects, a group whose segmenter's masks are not read (no folder, or --skip-masks) being
+    skipped with that reason while the others render (the owner's word of 2026-10-27), and the per-view
     seeds take the folder's salt and not the group's, so two groups on one folder differ only by
     their blocks and engine; once every group has rendered, the subjects every group on a folder
     kept are the ones that enter the analysis (share_subjects), since one scheme's masks may
@@ -476,8 +493,9 @@ def stage_render(args, table):
     for group in groups:
         folder = folders[group.folder]
         subjects = folder["subjects"][:max(1, group.cap // group.per_person)]
-        if folder.get("skipped") or not subjects:
-            why = folder.get("skipped") or "no CT has masks under every segmenter named, " + mask_counts(folder)
+        why = folder.get("skipped") or unread_masks(group, folder)
+        if why or not subjects:
+            why = why or "no CT has masks under every segmenter required, " + mask_counts(folder)
             log(f"{group.id}: {why}; its renders are skipped")
             renders[group.id] = {"skipped": why}
             continue
@@ -510,23 +528,48 @@ def share_subjects(renders, groups, folders):
 
 def mask_roots(args):
     """The folder of each segmenter's masks, --spineps and --moose or <data root>/<segmenter>,
-    those that are there: a root that is not is left out, so the renderer finds no mask under it
-    and refuses a render that needs it in words, and the folder's record says it was not found."""
+    those that are there and not named by --skip-masks: a root that is not is left out, so the
+    renderer finds no mask under it, the folder's CTs are chosen without it and the groups that
+    name it are skipped with the reason the folder's record gives (mask_state)."""
     roots = {}
-    for name in ("spineps", "moose"):
-        given = getattr(args, name, "") or str(Path(args.data_root) / name)
-        if Path(given).is_dir():
-            roots[name] = Path(given)
+    for name in MASK_SEGMENTERS:
+        given = Path(getattr(args, name, "") or str(Path(args.data_root) / name))
+        if not left_out(args, name) and given.is_dir():
+            roots[name] = given
     return roots
+
+
+def left_out(args, name):
+    return name in (getattr(args, "skip_masks", None) or ())
+
+
+def mask_state(args, name, roots):
+    """Whether a segmenter's masks are read, by the roots mask_roots found: found, left out by
+    --skip-masks, or no folder."""
+    if name in roots:
+        return "found"
+    return LEFT_OUT if left_out(args, name) else "no folder"
+
+
+def unread_masks(group, folder):
+    """Why a render group cannot render, where its recipe's segmenter is one whose masks the run
+    does not read (the folder's record of its roots says why); nothing for a group that reads
+    them, or none."""
+    segmenter = blocks_rules().parse(group.blocks).segmenter
+    state = folder.get("roots", {}).get(segmenter, "found")
+    if state == "found":
+        return ""
+    return f"its segmenter {segmenter}'s masks are not read ({state})"
 
 
 def render_folders(args, table, renderer, roots, pending=()):
     """Each render folder's choice of CTs, made once for every render group on it: the segmenters
-    its groups name (schwingnet.domain_gap.segmenters_named) less the pending ones, the masks the
-    segment job is yet to make, the subjects with masks under each, and the first of them in the
-    salted order (schwingnet.domain_gap.choose_subjects), as many as the largest group needs;
-    with the counts the plan and the summary say. A folder that is not there is skipped with its
-    reason."""
+    its groups name (schwingnet.domain_gap.segmenters_named, which leaves segmenter none out) less
+    the pending ones, the masks the segment job is yet to make, and less those whose masks are not
+    read (no folder, or --skip-masks: mask_state), the subjects with masks under each one left,
+    and the first of them in the salted order (schwingnet.domain_gap.choose_subjects), as many as
+    the largest group needs, every subject being a candidate where none is left; with the counts
+    the plan and the summary say. A folder that is not there is skipped with its reason."""
     folders = {}
     for group in (g for g in table.groups if g.source == "render"):
         if group.folder in folders:
@@ -539,20 +582,21 @@ def render_folders(args, table, renderer, roots, pending=()):
         named = rules().segmenters_named([g.blocks for g in on_folder])
         count = max(max(1, g.cap // g.per_person) for g in on_folder)
         folders[group.folder] = subject_choice(renderer, ct_root, named, roots, table.salt, count, pending)
+        folders[group.folder]["roots"] = {name: mask_state(args, name, roots) for name in named}
     return folders
 
 
 def subject_choice(renderer, ct_root, named, roots, salt, count, pending):
     """One folder's choice of CTs and the record it is made from: every subject the renderer finds
-    under the folder, those with masks under each segmenter required (named less pending), and
-    the first count, in the salted order, of the subjects with masks under every one of them."""
+    under the folder, those with masks under each segmenter required (named less pending, less
+    those with no root, whose masks are not read), and the first count, in the salted order, of
+    the subjects with masks under every one of them; every subject where none is required."""
     pure = rules()
     subjects = frozenset(subject_id(s) for s in renderer.find_subjects(ct_root))
     masked = {name: masked_subjects(renderer, ct_root, name, roots) & subjects
-              for name in named if name not in pending}
+              for name in named if name not in pending and name in roots}
     chosen = pure.choose_subjects(subjects, masked, count, salt)
     return {"subjects": list(chosen), "segmenters": list(named), "pending": [n for n in named if n in pending],
-            "roots": {name: ("found" if name in roots else "no folder") for name in named},
             "ct": len(subjects), "masks": {name: len(found) for name, found in masked.items()},
             "every": len(pure.with_masks(subjects, masked)), "count": count}
 
@@ -567,16 +611,22 @@ def masked_subjects(renderer, ct_root, segmenter, roots):
 
 
 def mask_counts(folder):
-    """A folder's mask counts in words: how many CTs had masks under each segmenter and under
-    every one, of how many CTs."""
-    parts = [f"{name} {folder['masks'].get(name, 0)}" for name in folder.get("segmenters", [])
-             if name not in folder.get("pending", [])]
+    """A folder's mask counts in words: how many CTs had masks under each segmenter required and
+    under every one, of how many CTs, then the named segmenters that were not required: those the
+    segment job is yet to make, and those whose masks were not read, with why."""
     pending = folder.get("pending", [])
+    states = folder.get("roots", {})
+    unread = [name for name in folder.get("segmenters", [])
+              if name not in pending and states.get(name, "found") != "found"]
+    parts = [f"{name} {folder['masks'].get(name, 0)}" for name in folder.get("segmenters", [])
+             if name not in pending and name not in unread]
     text = f"{folder.get('every', 0)} with every mask of {folder.get('ct', 0)} CTs"
     if parts:
         text += f" ({', '.join(parts)})"
     if pending:
         text += f", {' and '.join(pending)} to be made"
+    if unread:
+        text += ", " + ", ".join(f"{name} not read ({states[name]})" for name in unread)
     return text
 
 
@@ -1653,8 +1703,9 @@ def counts_text(c):
 
 def render_summary(folders):
     """One line a CT folder: how many CTs its render groups drew from, of how many with masks under
-    every segmenter they name, each segmenter's count and the folder's CTs, and how many every
-    group kept (share_subjects), the CTs the analysis reads; or why it was skipped."""
+    every segmenter required, each such segmenter's count and the folder's CTs, the named
+    segmenters whose masks were not read and why (mask_counts), and how many every group kept
+    (share_subjects), the CTs the analysis reads; or why it was skipped."""
     lines = []
     for folder, record in folders.items():
         if record.get("skipped"):
@@ -1675,37 +1726,51 @@ def detail_of(key):
 
 
 def group_summary(groups):
-    """One line a group: its counts, or why it was skipped; a render group whose counts are those
-    of a render group listed before it, as the six that render one choice of CTs are, says so in
-    place of the counts, which keeps five lines for the tables."""
-    lines, seen = [], {}
+    """One line a group: its counts, or why it was skipped; the render groups whose counts are
+    those of a render group listed before it, as the seven that render one choice of CTs are, are
+    named together on one line where the first of them stands, in place of their counts, which
+    keeps the lines for the tables."""
+    lines, first_of, folded = [], {}, {}
     for g in groups:
-        if g["skipped"] and not g["decoded"]:
-            lines.append(f"group {g['id']} {g['family']} skipped, {g['skipped'][:90]}")
-            continue
-        flag = " persons by file" if g["person_fallback"] and g["person_fallback"] >= g["chosen"] else ""
-        fails = sum(g["failures"].values())
-        line = (f"group {g['id']} {g['family']} found {g['found']} chosen {g['chosen']} decoded {g['decoded']}"
-                f" persons {g['persons']}{flag}" + (f" undecoded {fails}" if fails else ""))
+        line = group_line(g)
         counts = line.split(" ", 3)[3]
-        if g.get("source") == "render" and counts in seen:
-            line = f"group {g['id']} {g['family']} counts as {seen[counts]}"
-        elif g.get("source") == "render":
-            seen[counts] = g["id"]
-        lines.append(line)
+        if g.get("source") != "render" or g["skipped"] and not g["decoded"]:
+            lines.append(line)
+        elif counts not in first_of:
+            first_of[counts] = g["id"]
+            lines.append(line)
+        else:
+            head = first_of[counts]
+            if head not in folded:
+                folded[head] = (len(lines), [])
+                lines.append("")
+            folded[head][1].append(g["id"])
+    for head, (at, ids) in folded.items():
+        lines[at] = f"groups counted as {head}: {' '.join(ids)}"
     return lines
+
+
+def group_line(g):
+    """A group's line: its counts, or why it was skipped."""
+    if g["skipped"] and not g["decoded"]:
+        return f"group {g['id']} {g['family']} skipped, {g['skipped'][:90]}"
+    flag = " persons by file" if g["person_fallback"] and g["person_fallback"] >= g["chosen"] else ""
+    fails = sum(g["failures"].values())
+    return (f"group {g['id']} {g['family']} found {g['found']} chosen {g['chosen']} decoded {g['decoded']}"
+            f" persons {g['persons']}{flag}" + (f" undecoded {fails}" if fails else ""))
 
 
 # The rank of each section of a space's summary, by how it is read (fit_lines gives the highest
 # up first): the primary space's table 2 and its real-real lines 3, the other spaces' tables 4,
 # since no finding rests on one encoder's view, the primary space's heatmap rows 5, the as-stored
 # reading 6, the context lines 7 (the nearest real corpora, the other spaces' real-real medians),
-# the replication-only groups' contrasts with the real corpora and the later pairs outside the
-# primary space 8, the map centres 9. With the study's 22-group table and every space run, the
-# centres, the secondary lines, the context lines and the as-stored reading are given up, and the
-# heatmap rows too once FluXray is present; the tables of the three spaces stay whole (counted
-# on 2026-10-26 from a results record in this shape with every group full: 128 lines fitted to 76
-# without FluXray, 138 to 80 with it; tests/test_domain_gap_run.py holds the budget).
+# the replication-only groups' contrasts with the real corpora and every replication pair outside
+# the primary space 8, whose words the study's verdict never reads, the map centres 9. With the
+# study's 23-group table and every space run, the centres, the secondary lines, the context lines
+# and the as-stored reading are given up, and the heatmap rows too once FluXray is present; the
+# tables of the three spaces stay whole (counted on 2026-10-27 from a results record in this shape
+# with every group full and the render groups' equal counts on one line: 134 lines fitted to 75
+# without FluXray, 150 to 79 with it; tests/test_domain_gap_run.py holds the budget).
 RANK = {"full": 2, "full_real": 3, "brief": 4, "full_auc": 5, "focus": 6, "context": 7, "secondary": 8, "centres": 9}
 
 
@@ -1714,8 +1779,8 @@ def space_sections(key, space, detail):
     pairs and the family contrasts of the groups that face the real corpora first; the primary
     space adds the later pairs, the real-real table, the heatmap rows, the nearest real corpora
     and the map centres; the as-stored reading keeps FleXray's own groups; the replication-only
-    groups' contrasts are secondary in every space, and so are the later pairs outside the
-    primary one."""
+    groups' contrasts are secondary in every space, and so is every pair of the other spaces,
+    worded or not, since the study's verdict is read in the primary space alone."""
     if space.get("invalid"):
         return [(RANK[detail], [f"space {key} not run, {space['invalid']}"])]
     head = [f"space {key} dim {space['dim']} rows {space['rows']} spread {fmt(space['feature_spread'], 3)}"
@@ -1728,7 +1793,8 @@ def space_sections(key, space, detail):
                      (RANK["full_auc"], group_auc_summary(space)), (RANK["context"], nearest_summary(space)),
                      (RANK["secondary"], secondary), (RANK["centres"], centre_summary(space))]
     elif detail == "brief":
-        sections += [(RANK["context"], real_summary(space, detail)), (RANK["secondary"], later + secondary)]
+        sections[0] = (RANK[detail], head + families)
+        sections += [(RANK["context"], real_summary(space, detail)), (RANK["secondary"], first + later + secondary)]
     else:
         sections.append((RANK["secondary"], later))
     return [(rank, lines) for rank, lines in sections if lines]
@@ -1886,8 +1952,11 @@ def run(args):
 def plan_subjects(args):
     """The plan subcommand: each render folder's choice of CTs, made as the run makes it but
     without the masks the segment job is yet to make (MADE_SEGMENTERS), written to
-    <out>/render-subjects.json for that job; nothing is rendered or decoded. A folder whose choice
-    is empty fails the command, so the job never runs on nothing."""
+    <out>/render-subjects.json for that job; nothing is rendered or decoded. The groups on segmenter
+    none require no masks, so the table's choice is the one the segment job served before they
+    were added, among the CTs with SPINEPS's masks; a segmenter whose masks are not read is left
+    out of it as the run leaves it out. A folder whose choice is empty fails the command, so the
+    job never runs on nothing."""
     os.umask(0o077)
     table = read_table(args.groups)
     renderer = tool("flexray_render")
@@ -1921,6 +1990,9 @@ def study_arguments(parser, features=True):
     parser.add_argument("--frozen", default="")
     parser.add_argument("--spineps", default="", help="the SPINEPS masks' folder; <data root>/spineps")
     parser.add_argument("--moose", default="", help="the MOOSE masks' folder; <data root>/moose")
+    parser.add_argument("--skip-masks", action="append", default=[], choices=MASK_SEGMENTERS, metavar="NAME",
+                        help="leave a segmenter's masks out (spineps or moose, repeatable): the groups that name it"
+                             " are skipped with that reason and the CTs are chosen without its masks")
 
 
 def parse(argv):

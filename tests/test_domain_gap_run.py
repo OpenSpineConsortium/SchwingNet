@@ -2,12 +2,15 @@
 each group's files from a sample index or a folder by its rules (formats, modalities, sizes, globs,
 masks left out, persons by rule with the frozen test persons dropped), the images come out as
 256 x 256 windows of the centre square whatever their depth or shape, and a whole run over three
-small corpora of different textures and the study's six render groups drawn by a fake renderer,
+small corpora of different textures and the study's seven render groups drawn by a fake renderer,
 with only the physics space, writes a summary of at most 80 lines that survive the grid's
 redaction, tells the textured corpora apart, finds nothing in its split-half nulls, renders the
-six render groups from one choice of CTs under one salt, drawn among the CTs with masks under both
-segmenters they name and passed the mask roots, and reads the five replication pairs with the
-pre-registered word beside the two engine pairs; twin renders, one CT's view under two engines,
+seven render groups from one choice of CTs under one salt, drawn among the CTs with masks under
+both segmenters they name and passed the mask roots, and reads the six replication pairs with the
+pre-registered word beside the two engine pairs; the groups on segmenter none render from the CT
+alone, so where a segmenter's masks are not read, no folder of them or --skip-masks naming it,
+the CTs are chosen without them, the groups naming that segmenter are skipped with the reason and
+the others render; twin renders, one CT's view under two engines,
 are read as the paired sample they are, so identical twins read an AUC of one half and a gamma
 curve between them reads "not replicated", where twins keyed as persons of their own read neither;
 a second run after a mask lands makes the plan, the rows and the features again; a render group
@@ -324,17 +327,22 @@ SUBJECTS = [f"s{n:04d}" for n in range(30)]
 # the last two, so 26 CTs have both and the choice of 24 is made among them.
 SPINEPS_MASKED = SUBJECTS[:27]
 MOOSE_MASKED = [s for s in SUBJECTS[:28] if s != "s0001"]
-FLUXRAY_RAW = ["segmenter=moose", "crop=whole", "crop_sampler=uniform", "pose=fluxray-grid", "isocentre=volume-centre",
+FLUXRAY_RAW = ["segmenter=none", "crop=whole", "crop_sampler=uniform", "pose=fluxray-grid", "isocentre=volume-centre",
                "projection=cone", "attenuation=off", "scale=minmax", "detector=1024"]
-# The study's six render groups at two views a CT: (id, blocks, engine, subjects_from).
+PHYSICAL_CT = ["segmenter=none", "crop_sampler=uniform", "isocentre=volume-centre", "attenuation=off"]
+# The study's seven render groups at two views a CT: (id, blocks, engine, subjects_from).
 RENDER_GROUPS = (("flexray_drr", ["segmenter=moose", "attenuation=off", "views=2"], "blocks", ""),
+                 ("flexray_drr_ct", PHYSICAL_CT + ["views=2"], "blocks", "flexray_drr"),
                  ("flexray_replica", ["segmenter=moose", "views=2"], "blocks", "flexray_drr"),
                  ("flexray_reference", ["segmenter=moose", "views=2"], "flexray-runtime", "flexray_drr"),
                  ("flexray_spineps", ["views=2"], "blocks", "flexray_drr"),
                  ("fluxray_raw", FLUXRAY_RAW + ["views=2"], "blocks", "flexray_drr"),
                  ("fluxray_raw_reference", FLUXRAY_RAW + ["views=2"], "flexray-runtime", "flexray_drr"))
-PAIRS = ("flexray_replica|flexray_reference", "fluxray_raw|fluxray_raw_reference", "flexray_drr|flexray_replica",
-         "flexray_spineps|flexray_replica", "fluxray_raw_reference|fluxray")
+PAIRS = ("flexray_replica|flexray_reference", "fluxray_raw|fluxray_raw_reference", "flexray_drr_ct|flexray_drr",
+         "flexray_drr|flexray_replica", "flexray_spineps|flexray_replica", "fluxray_raw_reference|fluxray")
+# The render groups that read no mask, and those that read MOOSE's.
+MASK_FREE = ("flexray_drr_ct", "fluxray_raw", "fluxray_raw_reference")
+MOOSE_GROUPS = ("flexray_drr", "flexray_replica", "flexray_reference")
 # The gamma the twin test raises flexray_reference's images to: a curve the physics features see
 # as a shift under the paired reading and the keying before the fix reads as none (measured
 # 2026-10-26 on this fixture, 24 CTs x 2 views: paired AUC 0.60 and MMD p at its floor, the other
@@ -367,7 +375,7 @@ def render_rows(cap=48, per_person=2):
 
 @unittest.skipIf(MISSING_WHOLE, f"needs {', '.join(MISSING_WHOLE)}")
 class WholeRunTest(unittest.TestCase):
-    def test_a_run_over_three_textured_corpora_and_six_render_groups(self):
+    def test_a_run_over_three_textured_corpora_and_seven_render_groups(self):
         tool = load_tool()
         tool.PERMUTATIONS_C2ST, tool.PERMUTATIONS_MMD, tool.BOOTSTRAP = 5, 50, 50
         tool.SPLIT_PERSONS = 12
@@ -395,7 +403,7 @@ class WholeRunTest(unittest.TestCase):
         self.replication_is_tested_and_summarised(tool, results, lines)
 
     def renders_share_their_subjects(self, tool, renderer, plan, subjects_file, folder):
-        """The six render groups were rendered from one choice of CTs, the first 24 in the salted
+        """The seven render groups were rendered from one choice of CTs, the first 24 in the salted
         order of the 26 that have masks under both segmenters the folder's groups name, under the
         folder's salt, each with its own blocks, engine and segmenter, the mask roots passed
         through; the plan and render-subjects.json record the choice and its counts."""
@@ -414,19 +422,19 @@ class WholeRunTest(unittest.TestCase):
             self.assertEqual(call["device"], "cpu")
             self.assertEqual(call["roots"], roots)
         self.assertEqual([c["blocks"].segmenter for c in renderer.calls],
-                         ["moose", "moose", "moose", "spineps", "moose", "moose"])
+                         ["moose", "none", "moose", "moose", "spineps", "none", "none"])
         self.assertEqual([c["blocks"].attenuation for c in renderer.calls],
-                         ["off", "flexray-lognormal", "flexray-lognormal", "flexray-lognormal", "off", "off"])
-        self.assertEqual([c["blocks"].pose for c in renderer.calls[4:]], ["fluxray-grid", "fluxray-grid"])
+                         ["off", "off", "flexray-lognormal", "flexray-lognormal", "flexray-lognormal", "off", "off"])
+        self.assertEqual([c["blocks"].pose for c in renderer.calls[5:]], ["fluxray-grid", "fluxray-grid"])
         self.assertEqual([c["engine"] for c in renderer.calls],
-                         ["blocks", "blocks", "flexray-runtime", "blocks", "blocks", "flexray-runtime"])
+                         ["blocks", "blocks", "blocks", "flexray-runtime", "blocks", "blocks", "flexray-runtime"])
         # The masks were looked for under each root once, for the folder.
         self.assertEqual([(s, r) for s, r in renderer.finds if s], [("moose", roots), ("spineps", roots)])
         rows = {g["id"]: g for g in plan["groups"]}
         records = [rows[g]["render"] for g, _, _, _ in RENDER_GROUPS]
         self.assertEqual({tuple(r["subjects"]) for r in records}, {tuple(expected)})
         self.assertEqual([r["blocks"]["segmenter"] for r in records],
-                         ["moose", "moose", "moose", "spineps", "moose", "moose"])
+                         ["moose", "none", "moose", "moose", "spineps", "none", "none"])
         self.assertEqual(records[0]["rendered"], 48)
         self.assertEqual(subjects_file, {CT_FOLDER: expected})
         # The subject flexray_spineps passed over is in no group's rows: every group's shared list
@@ -446,7 +454,7 @@ class WholeRunTest(unittest.TestCase):
             "every": 26, "count": 24, "shared": shared}})
 
     def replication_is_tested_and_summarised(self, tool, results, lines):
-        """The replication section holds the five pairs, the two engine pairs with the
+        """The replication section holds the six pairs, the two engine pairs with the
         pre-registered word from their own numbers, the FluXray pair with its reason; the verdict
         names the space that did not run; and the summary carries the lines, the folder's mask
         counts among them, with the render groups' equal counts folded."""
@@ -461,7 +469,7 @@ class WholeRunTest(unittest.TestCase):
             self.assertIn("q", found["mmd"])
             self.assertEqual(found["word"], pure.replication_word(found["auc_logistic"]["lo"], found["mmd"]["q"]))
             self.assertEqual(found["word"], "replicated")  # draws of one texture law
-        for pair in PAIRS[2:4]:
+        for pair in PAIRS[2:5]:
             self.assertNotIn("word", replication[pair])
             self.assertIn("auc_logistic", replication[pair])
         self.assertIn("fluxray: not in the table", replication["fluxray_raw_reference|fluxray"]["skipped"])
@@ -474,8 +482,9 @@ class WholeRunTest(unittest.TestCase):
         self.assertTrue(lines[2].startswith("replication fluxray_raw vs fluxray_raw_reference: no verdict"))
         self.assertEqual(lines[3], f"render {CT_FOLDER}: 24 CTs chosen of 26 with every mask of 30 CTs "
                                    "(moose 27, spineps 27); 23 kept by every group")
-        self.assertIn("group flexray_replica synthetic counts as flexray_drr", lines)
-        self.assertEqual(sum(1 for line in lines if line.startswith("group ")), 9)
+        self.assertIn("groups counted as flexray_drr: flexray_drr_ct flexray_replica flexray_reference flexray_spineps"
+                      " fluxray_raw fluxray_raw_reference", lines)
+        self.assertEqual(sum(1 for line in lines if line.startswith("group ")), 4)
         self.replication_lines_carry_the_counts(replication, lines)
 
     def replication_lines_carry_the_counts(self, replication, lines):
@@ -608,7 +617,7 @@ class WholeRunTest(unittest.TestCase):
                             for name in ("plan.json", "rows.json", "features/physics.npz")]}
 
     def render_corpora(self, tool, folder, renderer, cap=48):
-        """The six render groups alone, with a film group whose folder is absent (a table sets
+        """The seven render groups alone, with a film group whose folder is absent (a table sets
         two families beside each other), the mask roots at their defaults under the data root and
         the fake renderer in the tool's place."""
         make_cts(folder, {folder / "data" / "spineps": SPINEPS_MASKED, folder / "data" / "moose": MOOSE_MASKED})
@@ -662,7 +671,8 @@ class RenderPlanTest(unittest.TestCase):
         rows = {g["id"]: g for g in plan["groups"]}
         self.assertEqual(rows["flexray_spineps"]["skipped"], "it kept no CT, 24 passed over")
         self.assertEqual(rows["flexray_spineps"]["chosen"], [])
-        for group in ("flexray_drr", "flexray_replica", "flexray_reference", "fluxray_raw", "fluxray_raw_reference"):
+        for group in ("flexray_drr", "flexray_drr_ct", "flexray_replica", "flexray_reference", "fluxray_raw",
+                      "fluxray_raw_reference"):
             self.assertEqual(renders[group]["shared"], expected, group)
             self.assertEqual(len(rows[group]["chosen"]), 48, group)
         with self.assertRaises(tool.StageError) as refused:
@@ -670,7 +680,7 @@ class RenderPlanTest(unittest.TestCase):
         self.assertEqual(str(refused.exception), "no CT kept by every render group on its folder")
 
     def render_and_plan(self, tool, folder, renderer):
-        """The render stage and the plan over the six render groups and an absent walk group,
+        """The render stage and the plan over the seven render groups and an absent walk group,
         on the fake renderer: the arguments, the table, the render and folder records, the plan."""
         make_cts(folder, {folder / "data" / "spineps": SPINEPS_MASKED, folder / "data" / "moose": MOOSE_MASKED})
         films = {"id": "films", "label": "films", "family": "film", "source": "walk", "folder": "films", "cap": 10,
@@ -682,6 +692,211 @@ class RenderPlanTest(unittest.TestCase):
         table_ = tool.read_table(args.groups)
         renders, folders = tool.stage_render(args, table_)
         return args, table_, renders, folders, tool.stage_plan(args, table_, renders, folders)
+
+
+@unittest.skipIf(MISSING_BASE, f"needs {', '.join(MISSING_BASE)}")
+class MaskFreeRenderTest(unittest.TestCase):
+    """A DRR's pixels are a projection of the CT alone, so the study runs without segmentation
+    (the owner's word of 2026-10-27): where a segmenter's masks are not read, for want of their
+    folder or by --skip-masks, the folder's CTs are chosen among those with the masks still read,
+    or among every CT where none is, the groups on segmenter none render them, and each group
+    that names the unread segmenter is skipped with the reason, in its record, its plan row and
+    the summary, while the others render."""
+
+    def setUp(self):
+        self.tool = load_tool()
+        self.temporary = tempfile.TemporaryDirectory()
+        self.folder = Path(self.temporary.name)
+        self.renderer = FakeRenderer(None, "blobs", twins=True)
+        original = self.tool.tool
+        self.tool.tool = lambda name: self.renderer if name == "flexray_render" else original(name)
+
+    def tearDown(self):
+        self.temporary.cleanup()
+
+    def render(self, masks, *flags):
+        """The render stage and the plan over the seven render groups, the mask folders given made
+        under the data root, the flags added to the run's."""
+        data = self.folder / "data"
+        make_cts(self.folder, {data / name: subjects for name, subjects in masks.items()})
+        groups = table(self.folder, render_rows() + [self.films()])
+        args = self.tool.parse(["run", "--groups", str(groups), "--data-root", str(data), "--out",
+                                str(self.folder / "out"), "--device", "cpu", *flags])
+        Path(args.out).mkdir(parents=True)
+        table_ = self.tool.read_table(args.groups)
+        renders, folders = self.tool.stage_render(args, table_)
+        return renders, folders[CT_FOLDER], self.tool.stage_plan(args, table_, renders, folders)
+
+    def rendered(self):
+        return [call["group"] for call in self.renderer.calls]
+
+    def assert_skipped(self, renders, plan, groups, reason):
+        rows = {g["id"]: g for g in plan["groups"]}
+        for group in groups:
+            self.assertEqual(renders[group], {"skipped": reason}, group)
+            self.assertEqual(rows[group]["skipped"], reason, group)
+            self.assertEqual(rows[group]["chosen"], [], group)
+
+    def test_without_the_moose_folder_the_moose_groups_alone_are_skipped(self):
+        renders, folder, plan = self.render({"spineps": SPINEPS_MASKED})
+        expected = ranked(self.tool, SPINEPS_MASKED)[:24]
+        self.assertEqual(folder["subjects"], expected)
+        self.assertEqual((folder["roots"], folder["masks"], folder["every"]),
+                         ({"moose": "no folder", "spineps": "found"}, {"spineps": 27}, 27))
+        self.assertEqual(self.rendered(), ["flexray_drr_ct", "flexray_spineps", "fluxray_raw", "fluxray_raw_reference"])
+        for call in self.renderer.calls:
+            self.assertEqual(list(call["subject_ids"]), expected)
+            self.assertEqual(call["roots"], {"spineps": self.folder / "data" / "spineps"})
+        self.assert_skipped(renders, plan, MOOSE_GROUPS, "its segmenter moose's masks are not read (no folder)")
+        # The CT that flexray_spineps passed over is out of every group's rows, as ever.
+        self.assertEqual(folder["shared"], expected[1:])
+        self.assertEqual(self.tool.render_summary({CT_FOLDER: folder}),
+                         [f"render {CT_FOLDER}: 24 CTs chosen of 27 with every mask of 30 CTs (spineps 27),"
+                          " moose not read (no folder); 23 kept by every group"])
+
+    def test_skip_masks_leaves_a_folder_that_is_there_out(self):
+        renders, folder, plan = self.render({"spineps": SPINEPS_MASKED, "moose": MOOSE_MASKED}, "--skip-masks", "moose")
+        self.assertEqual(folder["subjects"], ranked(self.tool, SPINEPS_MASKED)[:24])
+        self.assertEqual(folder["roots"], {"moose": "left out by --skip-masks", "spineps": "found"})
+        self.assertNotIn("moose", [segmenter for segmenter, _ in self.renderer.finds])
+        self.assert_skipped(renders, plan, MOOSE_GROUPS, "its segmenter moose's masks are not read (left out by"
+                                                         " --skip-masks)")
+        self.assertEqual(self.rendered(), ["flexray_drr_ct", "flexray_spineps", "fluxray_raw", "fluxray_raw_reference"])
+
+    def test_with_no_mask_folder_the_mask_free_groups_render_every_ct_they_draw(self):
+        renders, folder, plan = self.render({})
+        expected = ranked(self.tool, SUBJECTS)[:24]
+        self.assertEqual(folder["subjects"], expected)
+        self.assertEqual((folder["roots"], folder["masks"], folder["every"]),
+                         ({"moose": "no folder", "spineps": "no folder"}, {}, 30))
+        self.assertEqual(self.rendered(), list(MASK_FREE))
+        for call in self.renderer.calls:
+            self.assertEqual(list(call["subject_ids"]), expected)
+            self.assertEqual(call["roots"], {})
+        self.assert_skipped(renders, plan, MOOSE_GROUPS, "its segmenter moose's masks are not read (no folder)")
+        self.assert_skipped(renders, plan, ["flexray_spineps"], "its segmenter spineps's masks are not read (no folder)")
+        rows = {g["id"]: g for g in plan["groups"]}
+        for group in MASK_FREE:
+            self.assertEqual(renders[group]["shared"], expected, group)
+            self.assertEqual(len(rows[group]["chosen"]), 48, group)
+        self.assertEqual(self.tool.render_summary({CT_FOLDER: folder}),
+                         [f"render {CT_FOLDER}: 24 CTs chosen of 30 with every mask of 30 CTs, moose not read (no folder),"
+                          " spineps not read (no folder); 24 kept by every group"])
+
+    def test_skip_masks_takes_the_two_segmenters_and_nothing_else(self):
+        common = ["run", "--data-root", "d", "--out", "o"]
+        self.assertEqual(self.tool.parse(common).skip_masks, [])
+        both = self.tool.parse(common + ["--skip-masks", "moose", "--skip-masks", "spineps"])
+        self.assertEqual(both.skip_masks, ["moose", "spineps"])
+        self.assertEqual(self.tool.parse(["plan", *common[1:], "--skip-masks", "spineps"]).skip_masks, ["spineps"])
+        for name in ("none", "totalsegmentator"):
+            with self.assertRaises(SystemExit):
+                self.tool.parse(common + ["--skip-masks", name])
+
+    def test_the_plan_chooses_as_it_did_before_the_mask_free_groups_were_added(self):
+        """The segment job's choice of CTs (the plan subcommand) is the one it made over the six
+        render groups it served, the FluXray raw groups on MOOSE's labels and no group from the CT
+        alone, since the groups on segmenter none require no masks."""
+        spineps, moose = self.folder / "masks" / "spineps", self.folder / "masks" / "moose"
+        make_cts(self.folder, {spineps: SPINEPS_MASKED})
+        before = [dict(row, blocks=[w.replace("segmenter=none", "segmenter=moose") for w in row["blocks"]])
+                  for row in render_rows() if row["id"] != "flexray_drr_ct"]
+        chosen = {}
+        for name, groups in (("before", before), ("now", render_rows())):
+            out = self.folder / name
+            self.assertEqual(self.tool.main(["plan", "--groups", str(table(self.folder, groups + [self.films()])),
+                                             "--data-root", str(self.folder / "data"), "--out", str(out),
+                                             "--spineps", str(spineps), "--moose", str(moose)]), 0)
+            chosen[name] = json.loads((out / "render-subjects.json").read_text(encoding="utf-8"))
+        self.assertEqual(chosen["now"], chosen["before"])
+        self.assertEqual(chosen["now"], {CT_FOLDER: ranked(self.tool, SPINEPS_MASKED)[:24]})
+
+    def films(self):
+        return {"id": "films", "label": "films", "family": "film", "source": "walk", "folder": "films", "cap": 10,
+                "per_person": 1}
+
+
+def full_contrast(word=None):
+    """A contrast in the shape the analysis writes, at the widest numbers the lines carry."""
+    found = {"persons": [250, 250], "n": [1000, 1000], "paired": False,
+             "auc_logistic": {"auc": 0.91, "lo": 0.88, "hi": 0.94, "p": 0.001}, "auc_knn": {"auc": 0.9},
+             "mmd": {"mmd2": 0.1, "p": 0.001, "q": 0.002}, "fd64": 1234.5, "fd_rows": 250, "kid64": {"kid": 0.012},
+             "prdc": {"precision": 0.5, "recall": 0.5, "density": 1.34, "coverage": 0.5}}
+    return dict(found, word=word) if word else found
+
+
+def full_space(tool, synthetic, real):
+    """One space's record with every group full: every contrast the analysis makes, its pairs
+    worded where the study words them."""
+    worded = {"|".join(pair) for pair in tool.REPLICATION_WORDED}
+    pairs = ["|".join(p) for p in tool.REPLICATION_PAIRS if all(g in synthetic for g in p)]
+    families = ("fluoroscopy", "film")
+    return {"dim": 61, "rows": 23000, "feature_spread": 0.5, "pca64_explained": 0.9,
+            "calibration": {"auc_median": 0.5, "auc_range": [0.45, 0.55], "groups": {g: {} for g in synthetic + real},
+                            "flagged": [], "auc_above": []},
+            "replication": {p: full_contrast("replicated" if p in worded else None) for p in pairs},
+            "vs_family": {sg: {f: full_contrast() for f in families} for sg in synthetic},
+            "ratios": {sg: {f: {"fd_ratio": 1.5, "word": "separable"} for f in families} for sg in synthetic},
+            "real_real": {f"{a}|{b}": full_contrast() for i, a in enumerate(real) for b in real[i + 1:]},
+            "fluoroscopy_vs_film": full_contrast(),
+            "structure": {"silhouette": {"overall": 0.2},
+                          "nearest_real": {sg: {rg: 1 / len(real) for rg in real} for sg in synthetic}},
+            "vs_group": {sg: {rg: full_contrast() for rg in real} for sg in synthetic},
+            "maps": {"centres": {"tsne": {g: [1.0, 2.0, 3.0, 4.0] for g in synthetic + real}}}}
+
+
+def full_results(tool, groups):
+    """A results record for the groups given, every group full and every space run, the render
+    groups with the equal counts a run's shared CTs give them."""
+    synthetic = [g["id"] for g in groups if g["family"] == "synthetic"]
+    real = [g["id"] for g in groups if g["family"] != "synthetic"]
+    rows = [{"id": g["id"], "family": g["family"], "source": g["source"], "skipped": "", "decoded": 992,
+             "person_fallback": 0, "chosen": 992, "failures": {}, "persons": 248,
+             "found": 992 if g["source"] == "render" else 1000 + i} for i, g in enumerate(groups)]
+    worded = {"|".join(p): {"word": "replicated", "persons": [248, 248], "n": [992, 992], "reason": ""}
+              for p in tool.REPLICATION_WORDED}
+    first = "|".join(tool.REPLICATION_PAIRS[0])
+    renders = {CT_FOLDER: {"subjects": ["s"] * 250, "segmenters": ["moose", "spineps"], "pending": [],
+                           "roots": {"moose": "found", "spineps": "found"}, "ct": 1228,
+                           "masks": {"moose": 1000, "spineps": 1100}, "every": 990, "count": 250, "shared": ["s"] * 248}}
+    spaces = {key: full_space(tool, synthetic, real) for key in ("flexray", "flexray_as_stored", "imagenet", "physics")}
+    return {"groups": rows, "spaces": spaces, "renders": renders,
+            "replication": {"space": "flexray", "reading": "invariant", "pair": first, **worded[first], "pairs": worded}}
+
+
+@unittest.skipIf(MISSING_BASE, f"needs {', '.join(MISSING_BASE)}")
+class SummaryBudgetTest(unittest.TestCase):
+    """The study's own 23-group table with every group full and every space run fits the 80 lines
+    the bench report carries with the three spaces' tables whole: the header and the verdicts, every
+    group's line (the render groups' equal counts on one), and in each space its line, its
+    calibration and every family contrast of the groups that face the real corpora, the primary
+    space's replication pairs and real-real lines too, with FluXray fetched or not."""
+
+    def test_the_full_table_keeps_the_three_spaces_tables_whole(self):
+        tool = load_tool()
+        groups = json.loads((ROOT / "data" / "domain_gap" / "groups.json").read_text(encoding="utf-8"))["groups"]
+        self.assertEqual(len(groups), 23)
+        for present in (True, False):
+            kept = [g for g in groups if present or g["id"] != "fluxray"]
+            results = full_results(tool, kept)
+            lines = tool.summary_lines(results, "off")
+            self.assertLessEqual(len(lines), tool.LINE_BUDGET, present)
+            self.assertEqual(lines[1:3], tool.verdict_lines(results["replication"]))
+            for line in tool.render_summary(results["renders"]) + tool.group_summary(results["groups"]):
+                self.assertIn(line, lines)
+            self.assertEqual(sum(1 for line in lines if line.startswith("groups counted as flexray_drr: ")), 1)
+            facing = [g["id"] for g in kept if g["family"] == "synthetic" and g["id"] not in tool.REPLICATION_ONLY]
+            self.assertIn("flexray_drr_ct", facing)
+            for key in ("flexray", "imagenet", "physics"):
+                space = results["spaces"][key]
+                self.assertTrue(any(line.startswith(f"space {key} dim ") for line in lines), key)
+                for sg in facing:
+                    for family in ("fluoroscopy", "film"):
+                        self.assertIn(tool.family_line(space, sg, family, space["vs_family"][sg][family]), lines)
+            primary = results["spaces"]["flexray"]
+            for pair in primary["replication"]:
+                self.assertIn(tool.replication_line(pair, primary["replication"][pair]), lines, pair)
+            self.assertTrue(any(line.startswith(" real-real auc median ") for line in lines))
 
 
 @unittest.skipIf(MISSING_BASE, f"needs {', '.join(MISSING_BASE)}")

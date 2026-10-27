@@ -16,6 +16,20 @@
    "note": "Rendered in the job by tools/flexray_render.py through this project's render blocks: FleXray's MOOSE recipe on MOOSE's labels (moosez's masks, the segmenter FleXray's own dataset was labelled with), its random-label isocentre, its crop and pose sampling, with the attenuation randomisation off, the physical render a comparison with real X-rays reads; the person is the CT's subject. The other render groups share its choice of CTs. Against flexray_replica it isolates the attenuation randomisation."
   },
   {
+   "id": "flexray_drr_ct",
+   "label": "FleXray physical DRRs from the CT alone (no masks)",
+   "family": "synthetic",
+   "source": "render",
+   "folder": "totalsegmentator_v201",
+   "cap": 1000,
+   "per_person": 4,
+   "blocks": ["segmenter=none", "crop_sampler=uniform", "isocentre=volume-centre", "attenuation=off"],
+   "engine": "blocks",
+   "subjects_from": "flexray_drr",
+   "licence": "open: TotalSegmentator CC BY 4.0 CTs; FleXray code MIT; no masks are read",
+   "note": "Rendered in the job by tools/flexray_render.py through this project's render blocks: FleXray's physical render from the CT alone, its pose, projection, windowing and axial crops with no label read, every crop kept and drawn uniformly, the isocentre the crop's centre, on flexray_drr's CTs. It is the render the comparison with real X-rays reads without any segmentation (the owner's word of 2026-10-27). Against flexray_drr it isolates what the labels' aiming does: the crops weighted by the structures they hold and the isocentre on a structure."
+  },
+  {
    "id": "flexray_replica",
    "label": "FleXray recipe, MOOSE labels, our blocks (replica)",
    "family": "synthetic",
@@ -65,11 +79,11 @@
    "folder": "totalsegmentator_v201",
    "cap": 1000,
    "per_person": 4,
-   "blocks": ["segmenter=moose", "crop=whole", "crop_sampler=uniform", "pose=fluxray-grid", "isocentre=volume-centre", "projection=cone", "attenuation=off", "scale=minmax", "views=4", "detector=1024"],
+   "blocks": ["segmenter=none", "crop=whole", "crop_sampler=uniform", "pose=fluxray-grid", "isocentre=volume-centre", "projection=cone", "attenuation=off", "scale=minmax", "views=4", "detector=1024"],
    "engine": "blocks",
    "subjects_from": "flexray_drr",
-   "licence": "open: TotalSegmentator CC BY 4.0 CTs; FleXray code MIT; SPINEPS masks as held, MOOSE masks made by moosez (GPL-3.0 code) in the segment job",
-   "note": "The recipe FluXray's raw renders were made with, from FleXray's paper: one of its 90 fixed C-arm poses a view (y 650, 900 or 1150 mm, z -300 to 200 mm, alpha 0, +-45 or +-90 degrees), SDD 1250 mm, 0.6 mm pixels on a 1024 detector, the whole volume, the volume's centre as the isocentre, the attenuation randomisation off, MOOSE's labels; through this project's render blocks on flexray_drr's CTs. Against fluxray_raw_reference it is a replication test of that recipe."
+   "licence": "open: TotalSegmentator CC BY 4.0 CTs; FleXray code MIT; no masks are read",
+   "note": "The recipe FluXray's raw renders were made with, from FleXray's paper: one of its 90 fixed C-arm poses a view (y 650, 900 or 1150 mm, z -300 to 200 mm, alpha 0, +-45 or +-90 degrees), SDD 1250 mm, 0.6 mm pixels on a 1024 detector, the whole volume, the volume's centre as the isocentre, the attenuation randomisation off; through this project's render blocks on flexray_drr's CTs. The recipe reads no label, so it takes segmenter none and its pixels are FluXray's raw renders' with or without masks; the FluXray raw preset itself keeps MOOSE's labels for a replication of the dataset with its masks. Against fluxray_raw_reference it is a replication test of that recipe."
   },
   {
    "id": "fluxray_raw_reference",
@@ -79,11 +93,11 @@
    "folder": "totalsegmentator_v201",
    "cap": 1000,
    "per_person": 4,
-   "blocks": ["segmenter=moose", "crop=whole", "crop_sampler=uniform", "pose=fluxray-grid", "isocentre=volume-centre", "projection=cone", "attenuation=off", "scale=minmax", "views=4", "detector=1024"],
+   "blocks": ["segmenter=none", "crop=whole", "crop_sampler=uniform", "pose=fluxray-grid", "isocentre=volume-centre", "projection=cone", "attenuation=off", "scale=minmax", "views=4", "detector=1024"],
    "engine": "flexray-runtime",
    "subjects_from": "flexray_drr",
-   "licence": "open: TotalSegmentator CC BY 4.0 CTs; FleXray code MIT; SPINEPS masks as held, MOOSE masks made by moosez (GPL-3.0 code) in the segment job",
-   "note": "The same FluXray raw-render recipe through FleXray's own primitives (its render request built with the explicit pose), on the same CTs. Against fluxray_raw it is a replication test; against fluxray, the FLUX-edited renders made from renders like these, it isolates the FLUX edit, with the pose recipe held the same."
+   "licence": "open: TotalSegmentator CC BY 4.0 CTs; FleXray code MIT; no masks are read",
+   "note": "The same FluXray raw-render recipe through FleXray's own primitives (its render request built with the explicit pose), on the same CTs, reading no label, as fluxray_raw. Against fluxray_raw it is a replication test; against fluxray, the FLUX-edited renders made from renders like these, it isolates the FLUX edit, with the pose recipe held the same."
   },
   {
    "id": "fluxray",
