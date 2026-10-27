@@ -9,12 +9,12 @@ https://claude.ai/artifact/4VwMe9CKMX87s4jiEJBpRE, which the owner rewrote into 
 
 Where things are:
 
-- The paper, revision 188, is chapter 36 of the textbook
+- The paper, revision 189, is chapter 36 of the textbook
   (docs/textbook/36-schwingcheck-an-explainable-bayesian-check-on-vertebral-labels.md), whole, with
   its five figures under docs/textbook/figures/36/, drawn by tools/schwingcheck_figures.py from
   tools/schwingcheck_records.json, which copies each number from the record it names.
 - The same text and every computation behind it are in OpenSpineConsortium/bordercall, private:
-  docs/SCHWINGCHECK_LEVELCHECK.md at 6ceb475, records/exact-2026-10-26/ (the exact rule, at 00f969f)
+  docs/SCHWINGCHECK_LEVELCHECK.md at df976d7, records/exact-2026-10-26/ (the exact rule, at 00f969f)
   and records/whitepaper-2026-10-26/ (the second opinion, the latency, the anomalous columns counted
   from C2, the power of the two-arm and three-arm reader studies), with HANDOFF.md step 11.
 

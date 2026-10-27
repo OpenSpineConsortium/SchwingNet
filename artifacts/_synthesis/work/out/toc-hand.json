@@ -652,7 +652,7 @@
      "number": "36",
      "file": "docs/textbook/36-schwingcheck-an-explainable-bayesian-check-on-vertebral-labels.md",
      "title": "SchwingCheck: an explainable Bayesian check on vertebral labels",
-     "purpose": "Carries the owner's white paper on SchwingCheck whole, at revision 188, with five diagrams drawn for it: SchwingNet's stages as built and where SchwingCheck joins them; the rule that names the bodies in view from seven measurements an anatomist would recognise and returns a probability over every place between C3 and L5; the paper's three pathways to a level label, LevelCheck as prior art, SchwingCheck3D with a preoperative CT and SchwingCheck2D without one; the seven measures as distances between landmarks; and a proposed device that reads them in one landmark pass with no segmentation, to keep the latency low. Every SchwingCheck number is from synthetic columns drawn from Panjabi's tables.",
+     "purpose": "Carries the owner's white paper on SchwingCheck whole, at revision 189, with five diagrams drawn for it: SchwingNet's stages as built and where SchwingCheck joins them; the rule that names the bodies in view from seven measurements an anatomist would recognise and returns a probability over every place between C3 and L5; the paper's three pathways to a level label, LevelCheck as prior art, SchwingCheck3D with a preoperative CT and SchwingCheck2D without one; the seven measures as distances between landmarks; and a proposed device that reads them in one landmark pass with no segmentation, to keep the latency low. Every SchwingCheck number is from synthetic columns drawn from Panjabi's tables.",
      "questions_answered": [
       "What is SchwingCheck, and why is no function of the same measurements more accurate than it on its own fields?",
       "How does it compare with LevelCheck, and where does each of the three pathways decide the level?",
@@ -672,7 +672,7 @@
       "docs/memory/bordercall-on-the-grid.md"
      ],
      "confidentiality": "confidential-method",
-     "research_needed": "The first test on real spines: the existing SPINEPS masks of full-spine CTs counted from C2, scored by the rule, on the owner's word for the bordercall pilot's two CPU jobs; anomalous phenotypes added to the rule as places of their own; and the segmentation-free device built and timed, with a landmark head for the pedicles' medial borders and the spinolaminar point and its lengths scored in millimetres. The paper's text and its records live in OpenSpineConsortium/bordercall (docs/SCHWINGCHECK_LEVELCHECK.md at 6ceb475, records/exact-2026-10-26/, records/whitepaper-2026-10-26/)."
+     "research_needed": "The first test on real spines: the existing SPINEPS masks of full-spine CTs counted from C2, scored by the rule, on the owner's word for the bordercall pilot's two CPU jobs; anomalous phenotypes added to the rule as places of their own; and the segmentation-free device built and timed, with a landmark head for the pedicles' medial borders and the spinolaminar point and its lengths scored in millimetres. The paper's text and its records live in OpenSpineConsortium/bordercall (docs/SCHWINGCHECK_LEVELCHECK.md at df976d7, records/exact-2026-10-26/, records/whitepaper-2026-10-26/)."
     }
    ]
   },
