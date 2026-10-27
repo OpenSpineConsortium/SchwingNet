@@ -31,6 +31,7 @@ from reader_stand_in import ARTIFACT_HOST, CSP, SKELETON, VIEWER_HOST, chromium,
 
 ROOT = Path(__file__).resolve().parent.parent
 DOOR = ROOT / "tools" / "front_door.html"
+LOADER = ROOT / "tools" / "front_door_loader.html"
 OWNER, REPO = "OpenSpineConsortium", "SchwingNet"
 TOOLS = ("get_file_contents", "list_commits", "search_code")
 TEXT = re.compile(r"\.(?:md|html?|css|js|json|txt|csv|py|sh|ya?ml|toml|svg|xml)$", re.I)
@@ -138,9 +139,11 @@ RUNTIME = r"""
 
 
 def artifact_document(config):
-    """The door as the artifact's frame serves it, with the stand-in runtime first in its head."""
+    """The door as the artifact's frame serves it, with the stand-in runtime first in its head; a
+    config whose page is "loader" serves the door's loader, the page published at the link, in its place."""
     runtime = RUNTIME.replace("CONFIG", json.dumps(config)).replace("</", "<\\/")
-    return SKELETON.replace("{runtime}", runtime).replace("{page}", DOOR.read_text(encoding="utf-8"))
+    page = LOADER if config.get("page") == "loader" else DOOR
+    return SKELETON.replace("{runtime}", runtime).replace("{page}", page.read_text(encoding="utf-8"))
 
 
 class ToolError(Exception):

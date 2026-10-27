@@ -41,6 +41,10 @@ Whatever the route, what a browser shows can be saved or photographed: viewing o
 
 Approve no outside reader of SchwingNet before the provisional is filed. After it, the public edition of #196 needs no access control for what its allowlist carries, and route 1 serves what stays confidential while the organization keeps Enterprise Cloud; without it, route 3 is the only one that withholds the files. Whether a reader before the filing needs a confidentiality agreement is a question for the technology transfer office.
 
+## The site reader, 2026-10-27
+
+At 04:19 UTC the owner narrowed the ask: other people should see the live door as the owner does, after one publish, on an individual claude.ai plan with no other members. The claude.ai door cannot do that whatever is done with the GitHub App, since the runtime gives connectors only to the organization's own members. So the door is being moved, as route 2 above, to a page on the organization's public site: the reader signs in with GitHub through the control panel's sign-in and reads the repository live with their own access, the page itself holding nothing of the repository. It is a draft at this writing (openspineconsortium.github.io #147), the repository's starting points are .github/symphony/door.json, and what is left is docs/checkpoints/2026-10-27-door-for-readers/HANDOFF.md. It keeps route 2's costs: a seat per reader where the plan charges one, a reader who can clone, and no Ask.
+
 ## Not measured
 
 The organization's plan today; whether SchwingNet's Pages site is on; whether an outside collaborator with Read opens an access-controlled site; whether a member of the claude.ai organization at a view-only level gets connectors; whether claude.ai's Share menu offers a request flow of its own, or refuses a public link on an artifact that declares a connector.
