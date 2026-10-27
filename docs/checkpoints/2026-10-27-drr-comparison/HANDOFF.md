@@ -46,7 +46,7 @@ The answer, checked in FleXray's code:
   - per-structure attenuation factors.
 - They also enter through the replication test, the segmenter pair, and the CT choice and the grid word's refusals, which are code, not physics.
 
-This branch, claude/project-thread-d14v3r, draft pull request (see the PR body), carries three commits:
+This branch, claude/project-thread-d14v3r, SchwingNet draft pull request #418, carries three commits:
 
 - **2636862, render blocks.** A render-only segmenter value `none`:
   - Not in schwingnet.segmenters.SEGMENTERS, the training blocks or the experiments panel, which need masks.
