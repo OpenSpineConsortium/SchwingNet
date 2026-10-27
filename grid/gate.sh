@@ -251,14 +251,14 @@ submit() {  # submit WHAT CLASS [K=V...] [job submit options...] -- SCRIPT: the 
 gate_ids() {  # every job id the gate's list names, oldest first
   [ -f "$STATE" ] && awk '{ print $1 }' "$STATE"
 }
-QUEUED=""
+QUEUED="" SQUEUE_ANSWERED=""
 snapshot() {  # what Slurm holds for WHO, read once per word; a failed squeue refuses the word
   local out
   if ! out=$("$SQUEUE" -h -u "$WHO" -o '%i' 2>/dev/null); then
     echo "refusing: squeue failed, so the gate cannot tell which of its jobs are queued or running; send the word again"
     return 75
   fi
-  QUEUED=" $(echo "$out" | sed 's/_.*//' | sort -u | tr '\n' ' ') "
+  QUEUED=" $(echo "$out" | sed 's/_.*//' | sort -u | tr '\n' ' ') " SQUEUE_ANSWERED=yes
 }
 live_ids() {  # the gate's jobs Slurm still holds, queued or running (an array as its base id)
   gate_ids | sort -u | while read -r job; do
@@ -434,16 +434,23 @@ what_of() {  # what_of ID: what the gate recorded job ID as
 # sacct says a queued job is PENDING and no more, so a job that waits hours reads the same whether
 # Slurm is waiting for a node to come free or will never start it under its partition's or QoS's
 # limits; squeue's reason tells the two apart, and its expected start says how long the first is.
-pending_reasons() {  # one squeue read of WHO's pending jobs: base id|reason|expected start per job, nothing where squeue does not answer
-  "$SQUEUE" -h -u "$WHO" -t PENDING -o '%i|%r|%S' 2>/dev/null | LC_ALL=C tr -cd '\12\40-\176' \
-    | awk -F'|' 'NF == 3 && $1 ~ /^[0-9]/ { sub(/_.*/, "", $1); if (!seen[$1]++) print $1 "|" substr($2, 1, 80) "|" substr($3, 1, 19) }'
+# The reason is the one field of the job list Slurm may write in words of its own, so it passes the
+# same redaction as a log's lines; a row the redaction cuts short is dropped, never shown in part.
+pending_reasons() {  # one squeue read of WHO's pending jobs: id|base id|reason|expected start per row, nothing where squeue does not answer
+  "$SQUEUE" -h -u "$WHO" -t PENDING -o '%i|%r|%S' 2>/dev/null | LC_ALL=C tr -cd '\12\40-\176' | sed -r -f "$REPO/grid/redact.sed" \
+    | awk -F'|' 'NF == 3 && $1 ~ /^[0-9]/ { base = $1; sub(/_.*/, "", base); print $1 "|" base "|" substr($2, 1, 80) "|" substr($3, 1, 19) }'
 }
 waiting_for() {  # waiting_for ID STATE PENDING: what a PENDING job waits for, as a tail for its sacct line, else nothing
+  # An array split by Slurm, one task held or requeued apart from the rest, has a row for each part,
+  # so the row of the same id comes first and its array's first row only where none has that id.
   [ "$2" = PENDING ] || return 0
-  awk -F'|' -v job="$1" '$1 == job && $2 != "" {
-    tail = ", waiting: " $2
-    if ($3 ~ /^[0-9][0-9][0-9][0-9]-/) tail = tail ", start expected " $3 " grid time"
-    print tail; exit }' <<< "$3"
+  awk -F'|' -v job="$1" 'function tail(reason, start) {
+      return ", waiting: " reason (start ~ /^[0-9][0-9][0-9][0-9]-/ ? ", start expected " start " grid time" : "") }
+    $3 == "" { next }
+    $1 == job { exact = tail($3, $4); exit }
+    { base = job; sub(/_.*/, "", base) }
+    $2 == base && first == "" { first = tail($3, $4) }
+    END { print (exact != "" ? exact : first) }' <<< "$3"
 }
 masked() {  # every line status shows of a log or a stage report: masked, then cut
   sed -r -f "$REPO/grid/redact.sed" | cut -c "1-$LINE_CHARS"
@@ -654,10 +661,13 @@ status_sections() {  # every section of status whole, in the order the page show
   else
     echo "## the gate's newest jobs (sacct): id, what, state, elapsed, exit code, node, and what a pending job waits for (squeue)"
     lines=$("$SACCT" -X -n -P -j "$ids" --format=JobID,JobName,State,Elapsed,ExitCode,NodeList 2>/dev/null)
-    pending=$(pending_reasons)
+    # squeue is asked for reasons only where the word's own read of it answered and a job waits,
+    # so a slow scheduler costs status no second timeout and a quiet list no extra call.
+    pending=""
+    if [ -n "$SQUEUE_ANSWERED" ] && [[ "$lines" == *"|PENDING|"* ]]; then pending=$(pending_reasons); fi
     while IFS='|' read -r job name state elapsed code node; do
       [ -n "$job" ] || continue
-      echo "  $job $(what_of "${job%%_*}") $state $elapsed $code $node$(waiting_for "${job%%_*}" "$state" "$pending")"
+      echo "  $job $(what_of "${job%%_*}") $state $elapsed $code $node$(waiting_for "$job" "$state" "$pending")"
     done <<< "$lines"
     fetch_progress
     failed_tails "$lines"
