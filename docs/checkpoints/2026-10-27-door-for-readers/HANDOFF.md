@@ -27,43 +27,24 @@ Done is: a link the owner sends to a reader, which opens the live door into this
   `build_site.py --check-only` passes with 0 problems and both scripts parse. It was written by an implementer agent whose workflow was stopped at the checkpoint, so nobody has reviewed it yet.
 - This pull request: .github/symphony/door.json, this repository's starting points for the site reader (the same eight as the claude.ai door's DOORS), this page, and a line in reader-access.md.
 
-## Open, in order
+## Finished, 2026-10-27, thread "Finish the one-click reader page"
 
-1. Write tests/test_door_browser.py in the site repository. It uses Playwright and skips where Playwright is absent, since the site's CI has none. Run it with `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers python3 -m unittest discover -s tests -t .` in the site clone. Setup:
-   - serve the site folder over http.server;
-   - put a token in sessionStorage under symphony_panel_token through add_init_script;
-   - stand in for api.github.com with context.route, using small fixture repositories: a README with a relative link, a picture, an SVG, a nested folder, a document with headings, an exported page under artifacts/x/index.html whose script tries fetch('https://example.com/') and an outside image and posts schwingnet.read, a board branch and a door.json;
-   - also stand in for GET /user and the repository list the panel calls on enter.
+The owner started this thread at 08:38 UTC to carry out steps 1 to 5 of the list this page held. The work went into the site pull request, https://github.com/OpenSpineConsortium/openspineconsortium.github.io/pull/147.
 
-   Assert:
-   - the README renders and a relative link opens;
-   - a picture shows as blob: and an SVG as data:;
-   - Changes and Find render, and the board reads ref=board;
-   - a missing path and an unreadable repository say so, and ?repo= picks the repository;
-   - a sealed page has sandbox exactly allow-scripts and its head starts with the CSP meta;
-   - no request from a sealed page reaches example.com, and schwingnet.read is answered at its ref and refused at another;
-   - "..", "%2e%2e", "%2F" and empty segments in the hash and in a document link send no request outside /repos/O/R/contents/;
-   - no console errors, and no horizontal scroll at 400 px.
-2. Review it adversarially, by three independent readers given the code and not a conclusion:
-   - Security. The reader's token sits in sessionStorage or localStorage on the same origin as the control panel, whose token can hold Administration and other writes. Check:
-     - any way repository content (Markdown, file names, door.json, exported pages and their messages, search results, commit messages, the hash) runs script on that origin;
-     - any way it reads or sends the token;
-     - any authenticated request outside the intended GET endpoints (traversal, encoded slashes, ref or query injection);
-     - any way a sealed page sends content to another host (the meta's position, nested frames, about:blank, blob: workers, prefetch, form, navigation, window.open, CSS url(), fonts).
-   - Parity. Compare door.js with tools/front_door.html function by function beyond the asked removals (Ask, permissions, connector steps). Check the REST usage against GitHub's documented behaviour (contents API shapes, the raw media type, the 1,000-entry folder limit, commits, code search's text-match type and its rate limit) and the error mapping (401, 403, 404, 429, SSO). Also check initDoor's wiring (enter, finishOauth, watchOtherTabs, signOut, the dispatch order before cp-app).
-   - Site. Check the two-click reach, that /docs/ and /docs/buttons.html stay generic, phone width, and both themes.
-   Fix what holds up, run `python3 -X utf8 tools/build_site.py` and `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers bash scripts/check.sh`, and write the "## Adversarial review" section into #147's body. Then mark #147 ready in a call of its own and merge once green, on the owner's standing permission (the org ruleset asks for no approval of a pull request under the owner's login).
-3. Settle what this sandbox could not:
-   - whether GitHub's code search accepts the App's user token;
-   - whether the SymphonyBoard App holds Contents read on SchwingNet, since a user-to-server token reads only what both the person and the App's installation reach;
-   - which callback URLs the App already has (GitHub keeps at most 10 and matches them exactly).
-   The first reader's sign-in answers all three.
-4. Look again at the message names: the exported pages speak schwingnet.open, schwingnet.read and schwingnet.dispatch, so door.js carries those strings on the public site. The control panel's script already names the repository in a comment, but say so to the owner and offer neutral aliases if the name itself should stay off the site until the filing.
-5. Once #147 is merged, give the owner these steps, numbered, with exact links:
-   1. Add the callback URL https://openspineconsortium.com/symphony/door/ in the SymphonyBoard App's settings (https://github.com/organizations/OpenSpineConsortium/settings/apps/symphonyboard, Callback URL, Add Callback URL, Save changes).
-   2. Give each reader Read on SchwingNet (the control panel's Share tab, or https://github.com/OpenSpineConsortium/SchwingNet/settings/access, Add people, Read).
-   3. Send the reader https://openspineconsortium.com/symphony/door/?repo=OpenSpineConsortium/SchwingNet.
+- Step 1. tests/test_door_browser.py is in the site repository. It holds 25 Playwright tests against a stand-in for api.github.com and skips where Playwright is absent, as on the site's CI. Python Playwright is not preinstalled in a cloud session: `pip install playwright==1.63.0`, matching the node copy, then `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers`.
+- Step 2. The review ran with three readers (security, parity, site) and a critic, and every defect was checked by two skeptics. Seven held and were fixed, each with a test that fails on the old code:
+  - a deep link lost its hash across the first sign-in;
+  - a slow read landed over a later open;
+  - a remembered repository opened without ?repo=;
+  - a mistyped ?repo= was dropped silently;
+  - WebRTC leaves a sealed frame, which no CSP governs in Chromium; the frame's first script now takes its constructors away, which narrows the channel without closing it;
+  - the "no repository" note faded;
+  - a large Markdown file froze the page.
+  Most notes were taken up as well: frame-src now sits in the built head, DNS hints are taken out of sealed pages, and search is held to the repository. #147's "## Adversarial review" section lists each finding and the residuals.
+- Step 3 is still open. Whether code search takes the App's user token, whether SymphonyBoard holds Contents read here, and the App's callback list are answered only by the first real sign-in.
+- Step 4. door.js answers schwingnet.open, schwingnet.read and schwingnet.dispatch. The names were kept, since the exported pages send them, and the site's master already names the repository in symphony-panel.js (grid words, the W&B project, the RAG repository). This is put to the owner as a residual.
+- Step 5. The owner's three steps follow the merge of #147: the callback URL on the SymphonyBoard App, Read for each reader, and the link https://openspineconsortium.com/symphony/door/?repo=OpenSpineConsortium/SchwingNet.
 
 ## Not measured
 
-Every item under Open, step 3; the page against the real GitHub API, measured only against stand-ins and only once step 1 exists; the sign-in Worker accepting the new page, which it does for any page on the origin by its own reading, not by a run.
+What step 3 above leaves open; the page against the real GitHub API, measured only against the stand-ins of tests/test_door_browser.py; the sign-in Worker accepting the new page, which it does for any page on the origin by its own reading, not by a run.
