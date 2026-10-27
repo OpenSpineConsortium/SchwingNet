@@ -1,6 +1,6 @@
-# The textbook reader: handoff of 2026-10-27, reserved for accounts other than gregoryjschwing@gmail.com
+# The textbook reader: handoff of 2026-10-27
 
-Source: the project thread "View the textbook live in claude.ai", 2026-10-27, from 08:38 to 11:35 UTC. At 11:33 UTC the owner handed all remaining work to other accounts, and this item is reserved for them. Nothing here restarts until the owner says so, and nothing is sent to the grid.
+Source: the project thread "View the textbook live in claude.ai", 2026-10-27, from 08:38 to 11:35 UTC. Nothing here restarts until the owner says so, and nothing is sent to the grid.
 
 ## What the owner asked
 
