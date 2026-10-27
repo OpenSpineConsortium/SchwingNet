@@ -3,7 +3,7 @@
 Loaded from SchwingNet docs/checkpoints/2026-10-27-restart-kit/memory/. The research record these files point to is FINDINGS.md in that folder's parent; the owner's exact words with their times are in docs/checkpoints/2026-10-27-morning/project-memory/.
 
 ## In force now
-- [priority-panjabi-first](priority-panjabi-first.md): the owner's order of 2026-10-27 05:48 UTC - bordercall TODO.md item P alone, one thread, no grid; then gold tier 1-3 data (item 5) only on the owner's word.
+- [priority-panjabi-first](priority-panjabi-first.md): the owner's order of 2026-10-27 05:48 UTC, widened at 08:10 UTC - bordercall TODO.md item P in five steps a to e, then the owner's queue of 09:44 UTC; at the checkpoint of 11:33 UTC steps a and b are merged (bordercall PRs 3 to 5) and step c is bordercall PR 6, a draft; then gold tier 1-3 data (item 5) only on the owner's word; nothing to the grid.
 - [owner-working-style](owner-working-style.md): idk means the recommendation; one decision card per count; numbered steps with exact links; never a step that only moves text.
 - [owner-science-rules](owner-science-rules.md): C2-countable truth only; SPINEPS for production, MOOSE only to replicate FleXray, the segmenter a block; no arbitrary constraints, a series of solutions per phenotype; Benzel figures; the evidence tiers; results, not method, before the filing.
 
