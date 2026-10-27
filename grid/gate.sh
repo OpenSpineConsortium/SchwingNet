@@ -85,10 +85,14 @@
 #                   GPU job (grid/bench.sbatch, tools/bench_public.py) once its fetch has landed; the next
 #                   send prints logs/BENCH-<name>.md, and every later one prints it again and queues nothing;
 #                   and flexray_drr_gap, the DRR domain-gap study (tools/domain_gap.py) as one GPU job of
-#                   the same shape, once FleXray's weights, a whole sample index, the TotalSegmentator CTs,
-#                   the SPINEPS masks (spineps), the MOOSE masks (moose, which flexray_drr_seg makes) and
-#                   the ImageNet file are there, FluXray read when fetched and skipped with its reason
-#                   otherwise; only its summary leaves the grid, through grid/redact.sed; and
+#                   the same shape, once FleXray's weights, a whole sample index, the TotalSegmentator CTs
+#                   and the ImageNet file are there; FluXray, the SPINEPS masks (spineps) and the MOOSE
+#                   masks (moose, which flexray_drr_seg makes) are each read where they are there and
+#                   the groups that need one skipped with its reason otherwise, since a DRR is a
+#                   projection of the CT alone and the groups that read no label render without masks
+#                   (the owner's word of 2026-10-27); MOOSE's are left out too while flexray_drr_seg
+#                   is queued or running (BENCH_SKIP_MASKS=moose), and the send says which are read;
+#                   only its summary leaves the grid, through grid/redact.sed; and
 #                   flexray_drr_seg, one GPU job before it (the owner's word of 2026-10-26: MOOSE labels
 #                   for the FleXray replication, SPINEPS for production): the study's choice of CTs
 #                   (tools/domain_gap.py plan) and MOOSE on exactly those (tools/flexray_render.py segment),
@@ -1060,17 +1064,15 @@ bench_inputs_missing() {  # what bench $id still lacks on the data root, one lin
         || { echo "xvr's DeepFluoro models (fetch hf_xvr_models first)"; return; }
       [ -f "$DATA_ROOT/hf_xvr_data/raw/deepfluoro/subject01/volume.nii.gz" ] || echo "xvr's DeepFluoro data (fetch hf_xvr_data first)" ;;
     flexray_drr_gap)
-      # The study's inputs in the order the job reads them (grid/bench.sbatch); FluXray is optional
-      # and never refused for, so word_bench only says when it is not there. The masks are not
-      # optional: every render group's CTs are chosen among those with masks under both segmenters,
-      # so with no SPINEPS or no MOOSE folder the six render groups render nothing and the job
-      # would answer none of the replication.
+      # The study's inputs in the order the job reads them (grid/bench.sbatch). FluXray and the two
+      # segmenters' masks are optional and never refused for, so word_bench only says which are
+      # there: a DRR is a projection of the CT alone, so the render groups that read no label
+      # (segmenter=none) render without any mask, and a group whose segmenter's masks are not there
+      # is skipped by the study with that reason (the owner's word of 2026-10-27).
       find "$DATA_ROOT/hf_flexray_weights/raw" -maxdepth 3 -name ensemble.json -print -quit 2>/dev/null | grep -q . \
         || { echo "FleXray's weights (fetch hf_flexray_weights first)"; return; }
       samples_index > /dev/null || { echo "a whole sample index (the gate word samples makes it)"; return; }
       [ -d "$DATA_ROOT/totalsegmentator_v201" ] || { echo "the TotalSegmentator CTs at $DATA_ROOT/totalsegmentator_v201, which its render groups draw"; return; }
-      [ -d "$DATA_ROOT/spineps" ] || { echo "the SPINEPS masks at $DATA_ROOT/spineps, the production segmenter's labels"; return; }
-      [ -d "$DATA_ROOT/moose" ] || { echo "the MOOSE masks at $DATA_ROOT/moose (bench flexray_drr_seg makes them)"; return; }
       weights_ready || echo "the ImageNet ResNet-18 file at $WEIGHTS (the gate word start fetches it)" ;;
     flexray_drr_seg)
       # The segment job's inputs in the order it reads them: the CTs and the SPINEPS masks the plan
@@ -1125,8 +1127,29 @@ bench_failed_on_older_code() {  # a report whose last line is a nonzero exit, fr
   began=$(sed -n '1s/.*, commit \([0-9a-f]*\|unknown\),.*/\1/p' "$1")
   [ -n "$began" ] && [ -n "$(bench_job_of "$1")" ] && [ "$began" != "${commit:0:7}" ]
 }
+drr_gap_masks() {  # one line on each segmenter's masks bench flexray_drr_gap will read, and the ones left out into skip
+  # MOOSE's are left out while bench flexray_drr_seg is queued or running, since that job writes
+  # them under the data root's moose: the study waits afterany on it, as on every run that holds the
+  # checkout, so it starts once that job ends however it ended, and its choice of CTs must not
+  # hang on how far the masks got. The job turns skip into --skip-masks (grid/bench.sbatch).
+  local seg name label maker
+  seg=$(live_of bench_flexray_drr_seg)
+  skip=""
+  [ -z "$seg" ] || skip=moose
+  for name in spineps moose; do
+    label="the ${name^^} masks" maker=""
+    [ "$name" != moose ] || maker=" (bench flexray_drr_seg makes them)"
+    if [ "$name" = "$skip" ]; then
+      echo "  $label: left out (BENCH_SKIP_MASKS=$name) while bench flexray_drr_seg, which writes them, is queued or running (job $seg); the render groups that name segmenter=$name are skipped with that reason"
+    elif [ -d "$DATA_ROOT/$name" ]; then
+      echo "  $label: read from $DATA_ROOT/$name"
+    else
+      echo "  $label: not at $DATA_ROOT/$name$maker; the render groups that name segmenter=$name are skipped with that reason"
+    fi
+  done
+}
 word_bench() {  # one public model's benchmark (#287): queued once, its report printed on every later send
-  local report=$LOGS/BENCH-$id.md busy missing holds opts setup extra
+  local report=$LOGS/BENCH-$id.md busy missing holds opts setup extra skip
   extra=()
   case "$id" in
     flexray_carmlspine|flexray_deepfluoro|xvr_deepfluoro|flexray_drr_gap|flexray_drr_seg) ;;
@@ -1148,8 +1171,11 @@ word_bench() {  # one public model's benchmark (#287): queued once, its report p
   [ -z "$missing" ] || { echo "refusing: bench $id needs $missing"; return 2; }
   if [ "$id" = flexray_drr_gap ]; then
     # The study reads the index this word checked and the ImageNet file beside the models; FluXray
-    # joins it only once fetched, and the job says so in its report rather than wait for it.
-    extra=(INDEX="$(samples_index)" MODELS="$MODELS")
+    # and each segmenter's masks join it only where they are there, and the job says so in its
+    # report rather than wait for them. BENCH_SKIP_MASKS goes to the job empty where nothing is
+    # left out, so a value in the caller's environment never reaches it.
+    drr_gap_masks
+    extra=(INDEX="$(samples_index)" MODELS="$MODELS" BENCH_SKIP_MASKS="$skip")
     [ -d "$DATA_ROOT/hf_flexray_data/raw" ] || echo "  FluXray: not on the data root (fetch hf_flexray_data); the study skips its group with that reason"
   fi
   # Stale environments are rebuilt by the one setup job, which every bench sent while it runs waits

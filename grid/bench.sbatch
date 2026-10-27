@@ -12,14 +12,17 @@
 #                       against its published 1.1 mm median mTRE
 #   flexray_drr_gap     the DRR domain-gap study (tools/domain_gap.py, docs/research/drr-domain-gap/README.md):
 #                       FleXray's recipe through this project's render blocks and through FleXray's own
-#                       code, beside every held real X-ray corpus and FluXray, with the replication test,
-#                       the CTs labelled by SPINEPS's existing masks (the production segmenter) and by
-#                       MOOSE's (the replication's, the owner's word of 2026-10-26), which flexray_drr_seg
-#                       makes; only its summary.txt leaves the grid, each line through grid/redact.sed
+#                       code, beside every held real X-ray corpus and FluXray, with the replication test;
+#                       the groups that read no label render from the CT alone, and the others read the
+#                       CTs' existing masks, SPINEPS's (the production segmenter) and MOOSE's (the
+#                       replication's, the owner's word of 2026-10-26), which flexray_drr_seg makes, each
+#                       where it is there and not named in BENCH_SKIP_MASKS, a group whose masks are not
+#                       read being skipped with that reason (the owner's word of 2026-10-27); only its
+#                       summary.txt leaves the grid, each line through grid/redact.sed
 #   flexray_drr_seg     the study's choice of CTs (tools/domain_gap.py plan, rendering nothing) and MOOSE
 #                       on exactly those (tools/flexray_render.py segment, moosez's Python entry on the
 #                       fetched model zips, never a download), written under the data root's moose in
-#                       moosez's own layout; sent before flexray_drr_gap, which reads the masks
+#                       moosez's own layout; sent before flexray_drr_gap, whose MOOSE groups read them
 #
 # The public package goes into a throwaway virtual environment on the lab volume, made from the
 # train-gpu environment with its site packages (torch among them) and kept for a rerun under a name
@@ -124,6 +127,15 @@ samples_index() {  # the sample index the gate checked (INDEX), else the newest 
   current=$(cat "$out/CURRENT" 2>/dev/null)
   [ -n "$current" ] && echo "$out/$current/samples.sqlite"
 }
+mask_state() {  # mask_state NAME: whether the study reads a segmenter's masks, from the folder and the names in skipped
+  local name=$1 one
+  for one in ${skipped[@]+"${skipped[@]}"}; do
+    [ "$one" != "$name" ] || { echo "$name left out by BENCH_SKIP_MASKS, which the gate sets to moose while bench flexray_drr_seg, which writes those masks, is queued or running"; return; }
+  done
+  if [ -d "$DATA/$name" ]; then echo "$name read from $DATA/$name"
+  elif [ "$name" = moose ]; then echo "$name absent, no $DATA/$name (bench flexray_drr_seg makes them)"
+  else echo "$name absent, no $DATA/$name"; fi
+}
 
 tail_lines=12  # how much of what the tool said the report carries: its last lines, or the whole summary
 case "$BENCH" in
@@ -170,6 +182,17 @@ case "$BENCH" in
       || { report "FAILED: xvr's evaluate.py ($(tail -n 1 "$OUT/evaluate.log" | cut -c1-160))"; finish 1; }
     said=$(bash grid/box.sh "$venv/bin/python" tools/bench_public.py xvr-summary --csv "$OUT/registration.csv" --out "$OUT" 2>&1) || rc=1 ;;
   flexray_drr_gap)
+    # The segmenters whose masks the gate left out, read first, so that a name the study does not
+    # know fails the job in words before the environment is made rather than at the study's
+    # argument parser hours later; separated by spaces or commas, where the gate sends moose alone.
+    IFS=', ' read -ra skipped <<< "${BENCH_SKIP_MASKS:-}"
+    mask_args=(--spineps "$DATA/spineps" --moose "$DATA/moose")
+    for name in ${skipped[@]+"${skipped[@]}"}; do
+      case "$name" in
+        spineps|moose) mask_args+=(--skip-masks "$name") ;;
+        *) report "FAILED: BENCH_SKIP_MASKS names '$name', and the study reads the masks of spineps and moose alone"; finish 64 ;;
+      esac
+    done
     # The study's inputs, each named in the report, since its numbers are read against them. The gate
     # refused the word without them (grid/gate.sh, bench_inputs_missing); a miss here is a samples run
     # or a fetch that moved since, said and failed rather than run on part of the table.
@@ -179,23 +202,23 @@ case "$BENCH" in
     index=$(samples_index)
     [ -n "$index" ] && [ -f "$index" ] || { report "FAILED: no whole sample index under ${SAMPLES_OUT:-$DATA/_samples} (the gate word samples makes it)"; finish 2; }
     [ -d "$DATA/totalsegmentator_v201" ] || { report "FAILED: no totalsegmentator_v201 under $DATA, the CTs the render groups draw"; finish 2; }
-    # The masks of both segmenters: the render groups' CTs are chosen among those with masks under
-    # each, so a missing folder would render nothing (the gate refused the word without them).
-    [ -d "$DATA/spineps" ] || { report "FAILED: no spineps under $DATA, the production segmenter's masks"; finish 2; }
-    [ -d "$DATA/moose" ] || { report "FAILED: no moose under $DATA, the replication's masks (bench flexray_drr_seg makes them)"; finish 2; }
     imagenet=${MODELS:-$LAB/go2432/models}/resnet18-f37072fd.pth
     [ -s "$imagenet" ] || { report "FAILED: no ImageNet ResNet-18 file at $imagenet (the gate word start fetches it)"; finish 2; }
-    # FluXray is the one optional input: the tool reads it when the fetch has landed it and skips its
-    # group with that reason otherwise, so the study never waits for it.
+    # FluXray is optional: the tool reads it when the fetch has landed it and skips its group with
+    # that reason otherwise, so the study never waits for it.
     if [ -d "$DATA/hf_flexray_data/raw" ]; then report "FluXray: read from $DATA/hf_flexray_data/raw"
     else report "FluXray: not on the data root (fetch hf_flexray_data); the study skips its group with that reason"; fi
-    report "environment: $DRR_GAP_PIN; index: $index; weights: $weights; imagenet: $imagenet; masks: $DATA/spineps, $DATA/moose"
+    # The masks are optional too: a DRR is a projection of the CT alone, so the groups that read no
+    # label render without them, and the study skips a group whose segmenter's masks are absent or
+    # left out, with that reason (the owner's word of 2026-10-27).
+    report "masks: $(mask_state spineps); $(mask_state moose); a render group whose segmenter's masks are not read is skipped with that reason"
+    report "environment: $DRR_GAP_PIN; index: $index; weights: $weights; imagenet: $imagenet"
     # The run folder is the owner's alone: the plan names files and person keys, and the run's own
     # output goes there too, since only summary.txt leaves the grid.
     umask 077; chmod 700 "$OUT"
     bash grid/box.sh "$venv/bin/python" tools/domain_gap.py run --groups data/domain_gap/groups.json --data-root "$DATA" \
       --index "$index" --weights "$weights" --imagenet "$imagenet" --out "$OUT" --device cuda \
-      --frozen data/splits/test-persons.json --spineps "$DATA/spineps" --moose "$DATA/moose" > "$OUT/run.log" 2>&1; rc=$?
+      --frozen data/splits/test-persons.json "${mask_args[@]}" > "$OUT/run.log" 2>&1; rc=$?
     [ "$rc" = 0 ] || { report "FAILED: domain_gap.py run ended $rc ($(tail -n 1 "$OUT/run.log" | sed -r -f grid/redact.sed | cut -c1-160))"; finish "$rc"; }
     # The summary, at most 80 lines of numbers and group names, each through the filter the gate word
     # status applies to every log line, and the report carries it whole.
