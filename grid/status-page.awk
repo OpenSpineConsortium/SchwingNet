@@ -3,9 +3,10 @@
 # on the grid, so a cut at the page's end once took the newest jobs, every failed job's log and
 # every stage report, which come after the space, the sweeps and the sample manifest. Each section
 # is made whole first and then handed lines and bytes in the order a reader needs them: the space,
-# the sweeps' progress, the newest jobs, the failed jobs' logs newest first, the newest run's
-# latency, the stage reports newest first with the sample manifest among them by its date, the
-# newest run and the latency probe. Every section keeps its place on the page. One handed fewer
+# the sweeps' progress and the benchmarks' (the DRR domain-gap study's PROGRESS.txt), the newest
+# jobs, the failed jobs' logs newest first, the newest run's latency, the stage reports newest first
+# with the sample manifest among them by its date, the newest run and the latency probe. Every
+# section keeps its place on the page. One handed fewer
 # lines than it holds keeps its heading and says how many lines it left out: the job list, a
 # failed job's log and a stage report keep their last lines, which are their newest, and the rest
 # their first, which for the manifest are its largest groups. One that cannot keep even its
@@ -20,6 +21,7 @@ function kind_of(heading) {
   if (heading ~ /STAGE-REPORT\.md \(/) return "report"
   if (heading ~ /^## space on the lab volume/) return "space"
   if (heading ~ /^## sweep [a-z0-9_]*, /) return "sweep"
+  if (heading ~ /^## bench [a-z0-9_]*, progress \(/) return "bench"
   if (heading ~ /^## the gate's newest jobs/ || heading ~ /^no job submitted by the gate/) return "jobs"
   if (heading ~ /^## [0-9]/) return "failed"
   if (heading ~ /^## latency of the newest run/) return "latency"
@@ -28,10 +30,11 @@ function kind_of(heading) {
   return "other"
 }
 # The order the kinds are handed room in; a failed job's log goes newest first, the reverse of the
-# page's id order, and the stage reports as the page shows them, newest first.
+# page's id order, and the stage reports as the page shows them, newest first. A benchmark's
+# progress is a live view as a sweep's is, so it is handed room at the sweeps' rank.
 function rank_of(kind) {
   if (kind == "space") return 1
-  if (kind == "sweep") return 2
+  if (kind == "sweep" || kind == "bench") return 2
   if (kind == "jobs") return 3
   if (kind == "failed") return 4
   if (kind == "latency") return 5
@@ -79,10 +82,11 @@ function note_of(b) {
 function plural(count, one, many) { return count == 1 ? one : count " " many }
 function unsaid(    k, said, phrase) {
   said = ""
-  for (k = 1; k <= 10; k++) {
+  for (k = 1; k <= 11; k++) {
     if (!dropped[names[k]]) continue
     if (names[k] == "space") phrase = "the space on the lab volume"
     else if (names[k] == "sweep") phrase = plural(dropped["sweep"], "one sweep's progress", "sweeps' progress")
+    else if (names[k] == "bench") phrase = plural(dropped["bench"], "one benchmark's progress", "benchmarks' progress")
     else if (names[k] == "jobs") phrase = "the job list"
     else if (names[k] == "failed") phrase = plural(dropped["failed"], "one failed job's log", "failed jobs' logs")
     else if (names[k] == "latency") phrase = "the newest run's latency"
@@ -102,7 +106,7 @@ function unsaid(    k, said, phrase) {
   size[blocks] += length($0) + 1
 }
 END {
-  split("space sweep jobs failed latency report manifest run probe other", names, " ")
+  split("space sweep bench jobs failed latency report manifest run probe other", names, " ")
   for (b = 1; b <= blocks; b++) {
     kind[b] = kind_of(line[first[b]])
     rank[b] = rank_of(kind[b])
